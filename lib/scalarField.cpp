@@ -1,6 +1,7 @@
 #include<cstdlib>
 #include<cstring>
 #include<complex>
+#include<random>
 
 #include"square.h"
 #include"fftCuda.h"
@@ -16,13 +17,13 @@
 #endif
 
 #include<mpi.h>
+#include<omp.h>
 
 #ifdef	USE_XEON
 	#include"xeonDefs.h"
 #endif
 
-int	kMax  = 128;
-double	kCrit = 1.;
+#include "index.h"
 
 using namespace std;
 
@@ -60,20 +61,25 @@ class	Scalar
 
 	void	*sStreams;
 #endif
-
-
 	void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 	void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
-	void	addZmom(int pz, int oPz, void *data, int sign);
+	void	scaleField(FieldIndex fIdx, double factor);
+	void	randConf();
+	void	smoothConf(const int iter, const double alpha);
+
+	template<typename Float>
+	void	iteraField(const int iter, const Float alpha);
+
+
+	template<typename Float>
+	void	momConf(const int kMax, const Float kCrit);
 
 	public:
 
-//			 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp);
-			 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp);
+			 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
+				ConfType cType, const int parm1, const double parm2);
 			~Scalar();
-
-	void		genConf();
 
 	void		*mCpu() { return m; }
 	const void	*mCpu() const { return m; }
@@ -99,8 +105,6 @@ class	Scalar
 	void		*m2Gpu() { return m2_d; }
 	const void	*m2Gpu() const { return m2_d; }
 #endif
-
-
 	bool		LowMem()  { return lowmem; }
 
 	int		Size()   { return n3; }
@@ -126,12 +130,9 @@ class	Scalar
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
 	void	sendGhosts(FieldIndex fIdx, CommOperation commOp);		// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
-//	void	recvGhosts(FieldIndex fIdx);		// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
-//	void	waitGhosts();				// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 	void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
 	void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
-	void	fftCpu2(int sign);			// Fast Fourier Transform in the Cpu
 	void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
 
 	void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
@@ -139,16 +140,15 @@ class	Scalar
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
 
-	void	genConf	(const int kMax);
+	void	genConf	(ConfType cType, const int parm1, const double parm2);
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
 #endif
 };
 
-//	Scalar::Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp=1) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2),
-//																	   v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev), lowmem(lowmem)
-	Scalar::Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp=1) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2),
-																			    Tz(nSp*Lz), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev), lowmem(lowmem)
+	Scalar::Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp, ConfType cType, const int parm1,
+		       const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(nSp*Lz), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
+		       lowmem(lowmem)
 {
 	switch (prec)
 	{
@@ -172,13 +172,16 @@ class	Scalar
 	switch	(dev)
 	{
 		case DEV_XEON:
+			printf("Using Xeon Phi 64 bytes alignment\n");
 			mAlign = 64;
 			break;
 
 		case DEV_CPU:
 			#if	defined(__AVX__) || defined(__AVX2__)
+			printf("Using AVX 32 bytes alignment\n");
 			mAlign = 32;
 			#else
+			printf("Using SSE 16 bytes alignment\n");
 			mAlign = 16;
 			#endif
 			break;
@@ -186,6 +189,12 @@ class	Scalar
 		case DEV_GPU:
 			mAlign = 16;
 			break;
+	}
+
+	if (n2*fSize*2 % mAlign)
+	{
+		printf("Error: misaligned memory. Are you using an odd dimension?\n");
+		exit(1);
 	}
 
 	const size_t	mBytes = v3*fSize*2;
@@ -248,26 +257,10 @@ class	Scalar
 		fread((((char *) m) + 2*fSize*n2), fSize*2, n3, fileM);
 		fclose(fileM);
 
-		if (precision == FIELD_DOUBLE)
-		{
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int lpc = 0; lpc < n3; lpc++)
-			{
-				((std::complex<double> *)v)[lpc]  = ((std::complex<double> *)m)[lpc+n2];
-				((std::complex<double> *)m)[lpc+n2] *= zI;
-			}
-		}
-		else
-		{
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int lpc = 0; lpc < n3; lpc++)
-			{
-				((std::complex<float> *)v)[lpc]  = ((std::complex<float> *)m)[lpc+n2];
-				((std::complex<float> *)m)[lpc+n2] *= zI;
-			}
-		}
+		memcpy (v, ((char *) m) + 2*fSize*n2, 2*fSize*n3);
+		scaleField (FIELD_M, zI);
 	} else {
-		genConf();
+		genConf(cType, parm1, parm2);
 	}
 
 	posix_memalign ((void **) &z, mAlign, sizeof(double));
@@ -313,13 +306,13 @@ class	Scalar
 		cudaStreamCreate(&((cudaStream_t *)sStreams)[1]);
 		cudaStreamCreate(&((cudaStream_t *)sStreams)[2]);
 
-		if (!lowmem)
-			initCudaFFT(n1, Lz, prec);
+//		if (!lowmem)
+//			initCudaFFT(n1, Lz, prec);
 #endif
 	} else {
-		if (!lowmem)
+//		if (!lowmem)
 			//initFFT((((char *) m2) + 2*n2*fSize), n1, Tz, precision);//Lz, precision);
-			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision);
+//			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision);
 	}
 
 	*z = zI;
@@ -379,12 +372,12 @@ class	Scalar
 			if (sStreams != NULL)
 				free(sStreams);
 
-			if (!lowmem)
-				closeCudaFFT();
+//			if (!lowmem)
+//				closeCudaFFT();
 		#endif
 	} else {
-		if (!lowmem)
-			closeFFT();
+//		if (!lowmem)
+//			closeFFT();
 	}
 
 	if (device == DEV_XEON)
@@ -569,67 +562,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 		#endif
 	}
 }
-/*
-void	Scalar::sendGhosts(FieldIndex fIdx)
-{
-	const int rank = commRank();
-	const int fwdNeig = (rank + 1) % nSplit;
-	const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	const int ghostBytes = 2*n2*fSize;
-
-	/* Assign receive buffers to the right parts of m, v */
-/*
-	void *sGhostBck, *sGhostFwd;
-
-	if (fIdx & FIELD_M)
-	{
-		sGhostBck = (void *) (((char *) m) + 2*n2*fSize);
-		sGhostFwd = (void *) (((char *) m) + 2*n3*fSize);
-	}
-	else
-	{
-		sGhostBck = (void *) (((char *) m2) + 2*n2*fSize);
-		sGhostFwd = (void *) (((char *) m2) + 2*n3*fSize);
-	}
-
-	MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-	MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
-
-	MPI_Start(&rSendFwd);
-	MPI_Start(&rSendBck);
-}
-
-void	Scalar::recvGhosts(FieldIndex fIdx)
-{
-	const int rank = commRank();
-	const int fwdNeig = (rank + 1) % nSplit;
-	const int bckNeig = (rank - 1 + nSplit) % nSplit;
-
-	const int ghostBytes = 2*n2*fSize;
-
-	/* Assign receive buffers to the right parts of m, v */
-/*
-	void *rGhostBck, *rGhostFwd;
-
-	if (fIdx & FIELD_M)
-	{
-		rGhostBck = m;
-		rGhostFwd = (void *) (((char *) m) + 2*(n3+n2)*fSize);
-	}
-	else
-	{
-		rGhostBck = m2;
-		rGhostFwd = (void *) (((char *) m2) + 2*(n3+n2)*fSize);
-	}
-
-	MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-	MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
-
-	MPI_Start(&rRecvBck);
-	MPI_Start(&rRecvFwd);
-}
-*/
 void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 {
 	static const int rank = commRank();
@@ -744,8 +677,6 @@ void	Scalar::foldField()
 		posix_memalign (&m2, mAlign, fSize*2*v3);
 
 	shift = mAlign/(2*fSize);
-
-	printf("mAlign %d\n", mAlign);
 
 	switch (precision)
 	{
@@ -936,7 +867,7 @@ void	Scalar::squareCpu()
 }
 
 /*	ARREGLAR PARA DIFERENTES PRECISIONES	*/
-
+/*
 void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 {
 	int zDiff = pz - oPz;
@@ -990,14 +921,11 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 		break;
 	}
 }
+*/
 
 void	Scalar::fftCpu	(int sign)
 {
-//	memcpy (m2, (((char *) m) + 2*fSize*n2), 2*fSize*n3);
-
 	runFFT(sign);
-
-//	memcpy ((((char *) m) + 2*fSize*n2), m2, 2*fSize*n3);
 }
 
 /*
@@ -1074,83 +1002,363 @@ void	Scalar::fftGpu	(int sign)
 #endif
 }
 
-void	Scalar::genConf	() //const int kMax)
+void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
+{
+	switch (cType)
+	{
+		case CONF_NONE:
+		break;
+
+		case CONF_KMAX:		// kMax = parm1, kCrit = parm2
+
+//		if (device == DEV_CPU || device == DEV_XEON)	//	Do this always...
+		{
+			switch (precision)
+			{
+				case FIELD_DOUBLE:
+
+				momConf(parm1, parm2);
+
+				break;
+
+				case FIELD_SINGLE:
+
+				momConf(parm1, (float) parm2);
+
+				break;
+
+				default:
+
+				printf("Wrong precision\n");
+				exit(1);
+
+				break;
+			}
+
+			fftCpu(1);	// FFTW_BACKWARD
+		}
+
+		exchangeGhosts(FIELD_M);
+
+		break;
+
+		case CONF_SMOOTH:	// iter = parm1, alpha = parm2
+
+		switch (device)
+		{
+			case	DEV_XEON:
+			case	DEV_CPU:
+
+			randConf ();
+			smoothConf (parm1, parm2);
+			break;
+
+			case	DEV_GPU:
+
+//			randConfGpu (m, n1, Lz, n3, precision);
+//			smoothConfGpu (this, iter, alpha);
+			break;
+		}
+
+		break;
+
+		default:
+
+		printf("Configuration type not recognized\n");
+		exit(1);
+
+		break;
+	}
+
+	if (cType != CONF_NONE)
+	{
+		memcpy (v, ((char *) m) + 2*fSize*n2, 2*fSize*n3);
+		scaleField (FIELD_M, *z);
+	}
+}
+
+void	Scalar::randConf ()
+{
+	int	maxThreads = omp_get_max_threads();
+	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
+
+	std::random_device seed;		// Totally random seed coming from memory garbage
+
+	for (int i=0; i<maxThreads; i++)
+		sd[i] = seed();
+
+	switch (precision)
+	{
+		case FIELD_DOUBLE:
+
+		#pragma omp parallel default(shared)
+		{
+			int nThread = omp_get_thread_num();
+
+			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+
+			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
+			std::uniform_real_distribution<double> uni(0.0, 1.0);
+
+			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
+			for (int idx=2*n2; idx<2*(n2+n3); idx+=2)
+			{
+				((double *) m)[idx]   = uni(mt64);
+				((double *) m)[idx+1] = uni(mt64);
+			}
+		}
+
+		break;
+
+		case FIELD_SINGLE:
+
+		#pragma omp parallel default(shared)
+		{
+			int nThread = omp_get_thread_num();
+
+			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+
+			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
+			std::uniform_real_distribution<float> uni(0.0, 1.0);
+
+			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
+			for (int idx=2*n2; idx<2*(n2+n3); idx+=2)
+			{
+				((float *) m)[idx]   = uni(mt64);
+				((float *) m)[idx+1] = uni(mt64);
+			}
+		}
+
+		break;
+
+		default:
+
+		printf("Unrecognized precision\n");
+		free(sd);
+		exit(1);
+
+		break;
+	}
+
+	free(sd);
+}
+
+template<typename Float>
+void	Scalar::momConf (const int kMax, Float kCrit)
 {
 	const int kMax2 = kMax*kMax;
 
-	if (device == DEV_CPU || device == DEV_XEON)
+	int	maxThreads = omp_get_max_threads();
+	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
+
+	std::random_device seed;		// Totally random seed coming from memory garbage
+
+	for (int i=0; i<maxThreads; i++)
+		sd[i] = seed();
+
+	#pragma omp parallel default(shared)
 	{
-		switch (precision)
+		int nThread = omp_get_thread_num();
+
+		printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+
+		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
+		std::uniform_real_distribution<Float> uni(0.0, 1.0);
+
+		#pragma omp for schedule(static)
+		for (int oz = 0; oz < Tz; oz++)
 		{
-			case FIELD_DOUBLE:
-			#pragma omp parallel default(shared)
-			{
-				#pragma omp for schedule(static)
-				for (int oz = 0; oz < Tz; oz++)
+			if (oz/Lz != commRank())
+				continue;
+
+			int pz = oz - (oz/(Tz >> 1))*Tz;
+
+			for(int py = -(kMax-pz); py <= (kMax-pz); py++)
+				for(int px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
 				{
-					if (oz/Lz != commRank())
-						continue;
-					
-					int pz = oz - (oz/(Tz >> 1))*Tz;
-					pz = oz;
+					int idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
+					int modP = px*px + py*py + pz*pz;
 
-					for(int py = -(kMax-pz); py <= (kMax-pz); py++)
-						for(int px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
-						{
-							int idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
-							int modP = px*px + py*py + pz*pz;
+					if (modP <= kMax2)
+					{
+						Float mP = sqrt(((Float) modP))/((Float) kCrit);
+						Float vl = 2.0f*M_PI*(uni(mt64));
 
-							if (modP <= kMax2)
-							{
-								double mP = sqrt(((double) modP))/kCrit;
-								double vl = 2.0*M_PI*(((double) rand())/((double) RAND_MAX));
-
-								((complex<double> *) m2)[idx] = complex<double>(cos(vl),sin(vl))*(sin(mP)/mP);
-							}
-						}
+						((complex<float> *) m2)[idx] = complex<Float>(cos(vl),sin(vl))*(sin(mP)/mP);
+					}
 				}
+		}
+	}
+
+	free(sd);
+}
+
+template<typename Float>
+void	Scalar::iteraField(const int iter, const Float alpha)
+{
+	complex<Float> *mIn, *mOut, *tmp;
+
+	mIn  = (complex<Float> *) m;
+	mOut = (complex<Float> *) m2;
+
+	exchangeGhosts(FIELD_M);
+
+	for (int it=0; it<iter; it++)
+	{
+		#pragma omp parallel default(shared)
+		{
+			#pragma omp for schedule(static)
+			for (int idx=n2; idx<(n2+n3); idx++)
+			{
+				int iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+				indexXeon::idx2Vec (idx, X, n1);
+
+				if (X[0] == 0)
+				{
+					iPx = idx + 1;
+					iMx = idx + n1 - 1;
+				} else {
+					if (X[0] == n1 - 1)
+					{
+						iPx = idx - n1 + 1;
+						iMx = idx - 1;
+					} else {
+						iPx = idx + 2;
+						iMx = idx - 2;
+					}
+				}
+
+				if (X[1] == 0)
+				{
+					iPx = idx + n1;
+					iMx = idx + n2 - n1;
+				} else {
+					if (X[1] == n1 - 1)
+					{
+						iPx = idx - n2 + n1;
+						iMx = idx - n1;
+					} else {
+						iPx = idx + n1;
+						iMx = idx - n1;
+					}
+				}
+
+				iPz = idx + n2;
+				iMz = idx - n2;
+
+				mOut[idx]   = alpha*mIn[idx] + (1.f-alpha)*(mIn[iPx] + mIn[iMx] + mIn[iPy] + mIn[iMy] + mIn[iPz] + mIn[iMz]);
+			}
+		}
+
+		if (it & 1)
+			exchangeGhosts(FIELD_M);
+		else
+			exchangeGhosts(FIELD_M2);
+
+		/*	Swap mIn and mOut	*/
+
+		tmp = mIn;
+		mIn = mOut;
+		mOut = tmp;
+	}
+}
+
+void	Scalar::smoothConf (const int iter, const double alpha)
+{
+	switch	(precision)
+	{
+		case	FIELD_DOUBLE:
+		iteraField (iter, alpha);
+		break;
+
+		case	FIELD_SINGLE:
+		iteraField (iter, (float) alpha);
+		break;
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+
+	if (iter & 1)		// With an odd number of iterations, the output field is in m2
+		memcpy(m, m2, 2*fSize*v3);
+}
+
+void	Scalar::scaleField (FieldIndex fIdx, double factor)
+{
+	switch (precision)
+	{
+		case FIELD_DOUBLE:
+		{
+			complex<double> *field;
+			int vol = n3;
+
+			switch (fIdx)
+			{
+				case FIELD_M:
+				field = (complex<double> *) m;
+				vol = v3;
+				break;
+
+				case FIELD_V:
+				field = (complex<double> *) v;
+				break;
+
+				case FIELD_M2:
+				field = (complex<double> *) m2;
+				vol = v3;
+				break;
+
+				default:
+				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
+				break;
 			}
 
-			break;
-
-			case FIELD_SINGLE:
-			#pragma omp parallel default(shared)
-			{
-				#pragma omp for schedule(static)
-				for (int oz = 0; oz < Tz; oz++)
-				{
-					if (oz/Lz != commRank())
-						continue;
-
-					int pz = oz - (oz/(Tz >> 1))*Tz;
-
-					for(int py = -(kMax-pz); py <= (kMax-pz); py++)
-						for(int px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
-						{
-							int idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
-							int modP = px*px + py*py + pz*pz;
-
-							if (modP <= kMax2)
-							{
-								float mP = sqrtf(((float) modP))/((float) kCrit);
-								float vl = 2.0f*M_PI*(((float) rand())/((float) RAND_MAX));
-
-								((complex<float> *) m2)[idx] = complex<float>(cosf(vl),sinf(vl))*(sinf(mP)/mP);
-							}
-						}
-				}
-			}
-
-			break;
-
-			default:
-
-			printf("Wrong precision\n");
-			exit(1);
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int lpc = 0; lpc < vol; lpc++)
+				field[lpc] *= factor;
 
 			break;
 		}
 
-		fftCpu(1);	// FFTW_BACKWARD
+		case FIELD_SINGLE:
+		{
+			complex<float> *field;
+			float fac = factor;
+			int vol = n3;
+
+			switch (fIdx)
+			{
+				case FIELD_M:
+				field = (complex<float> *) m;
+				vol = v3;
+				break;
+
+				case FIELD_V:
+				field = (complex<float> *) v;
+				break;
+
+				case FIELD_M2:
+				field = (complex<float> *) m2;
+				vol = v3;
+				break;
+
+				default:
+				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
+				break;
+			}
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int lpc = 0; lpc < vol; lpc++)
+				field[lpc] *= fac;
+
+			break;
+		}
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
 	}
 }

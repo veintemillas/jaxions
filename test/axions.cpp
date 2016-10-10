@@ -18,6 +18,8 @@
 #include"readWrite.h"
 #include"comms.h"
 #include"flopCounter.h"
+//JAVIER
+#include"map.h"
 
 using namespace std;
 
@@ -65,12 +67,12 @@ int	main (int argc, char *argv[])
 		else
 			sprintf(fileName, "data/initial_conditions_m.txt");
 
-		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid);
+		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0);
 	}
 	else
 	{
 		if (fIndex == -1)
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2);
 		else
 			readConf(&axion, fIndex);
 	}
@@ -103,15 +105,15 @@ int	main (int argc, char *argv[])
 	printMpi("INITIAL CONDITIONS LOADED\n");
 	if (sPrec != FIELD_DOUBLE)
 	{
-		printMpi("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real()/zInit, ((complex<float> *) axion->mCpu())[S0].imag()/zInit,
-									        ((complex<float> *) axion->mCpu())[SF].real()/zInit, ((complex<float> *) axion->mCpu())[SF].imag()/zInit);
+		printMpi("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
+									        ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
 		printMpi("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
 									        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
 	}
 	else
 	{
-		printMpi("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real()/zInit, ((complex<double> *) axion->mCpu())[S0].imag()/zInit,
-										    ((complex<double> *) axion->mCpu())[SF].real()/zInit, ((complex<double> *) axion->mCpu())[SF].imag()/zInit);
+		printMpi("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
+										    ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
 		printMpi("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
 										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
 	}
@@ -133,7 +135,7 @@ int	main (int argc, char *argv[])
 
 	printMpi ("Dumping configuration %05d...\n", index);
 	fflush (stdout);
-//	writeConf(axion, index);
+	writeConf(axion, index);
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -182,6 +184,8 @@ int	main (int argc, char *argv[])
 
 			fCount->addTime(elapsed.count()*1.e-3);
 			printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), fCount->DTime());
+
+            
 //			fflush(stdout);
 			counter++;
 		} // zsubloop
@@ -189,6 +193,11 @@ int	main (int argc, char *argv[])
 		printMpi ("Dumping configuration %05d...\n", index);
 		fflush (stdout);
 		axion->transferCpu(FIELD_MV);
+        
+
+//JAVIER        
+        writeMap (axion, index);
+        
 /*		if (cDev != DEV_GPU)
 		{
 			axion->unfoldField();
@@ -233,6 +242,9 @@ int	main (int argc, char *argv[])
 	printMpi("GFlops: %.3f\n", fCount->GFlops());
 	printMpi("GBytes: %.3f\n", fCount->GBytes());
 	printMpi("--------------------------------------------------\n");
+
+	delete fCount;
+	delete axion;
 
 	endComms();
     

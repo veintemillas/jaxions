@@ -38,7 +38,6 @@ void	writeConf (Scalar *axion, int index)
 	hid_t	file_id, mset_id, vset_id, plist_id;
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slab, offset;
-	herr_t	status;
 
 	char	prec[16];
 	int	length;
@@ -99,14 +98,14 @@ void	writeConf (Scalar *axion, int index)
 
 	/*	Write header	*/
 
-	hid_t attr, attr_id, attr_type;
+	hid_t attr_type;
 
 	/*	Attributes	*/
 
 	int cSteps = dump*index;
 	int totlZ  = sizeZ*zGrid;
 
-	attr_type      = H5Tcopy(H5T_C_S1);
+	attr_type = H5Tcopy(H5T_C_S1);
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
@@ -121,6 +120,8 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
 	writeAttribute(file_id, &cSteps,"Current step",  H5T_NATIVE_INT);
+
+	H5Tclose (attr_type);
 
 	/*	Create plist for collective write	*/
 
@@ -179,11 +180,10 @@ void	writeConf (Scalar *axion, int index)
 void	readConf (Scalar **axion, int index)
 {
 	hid_t	file_id, mset_id, vset_id, plist_id;
-	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
-	hid_t	attr, attr_type;
+	hid_t	mSpace, vSpace, memSpace, dataType;
+	hid_t	attr_type;
 
-	hsize_t	total, slab, offset;
-	herr_t	status;
+	hsize_t	slab, offset;
 
 	FieldPrecision	precision;
 
@@ -231,6 +231,8 @@ void	readConf (Scalar **axion, int index)
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
 
+	H5Tclose (attr_type);
+
 	if (!strcmp(prec, "Double"))
 	{
 		precision = FIELD_DOUBLE;
@@ -259,7 +261,7 @@ void	readConf (Scalar **axion, int index)
 	else
 		sizeZ = totlZ/zGrid;
 
-	*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, NULL, lowmem, zGrid);
+	*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, NULL, lowmem, zGrid, CONF_NONE, 0, 0);
 
 	/*	Create plist for collective read	*/
 

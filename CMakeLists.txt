@@ -76,26 +76,29 @@ if(${USE_XEON})
   add_definitions(-DUSE_XEON)
 endif()
 
-#if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  # using Clang
-#elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+#if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 #  # using Visual Studio C++
 if(${USE_AVX2})
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(AVX_FLAGS "-mavx2")
   elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(AVX_FLAGS "-mavx")
   endif()
 elseif(${USE_AVX})
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+#  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(AVX_FLAGS "-mavx")
-  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    set(AVX_FLAGS "-mavx")
-  endif()
+#  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+#    set(AVX_FLAGS "-mavx")
+#  endif()
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} -std=c++11")
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wa,-q")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-q")
+endif()
 
 set(CMAKE_CXX_FLAGS_DEVEL "-O3 -Wall" CACHE STRING
     "Flags used by the CUDA compiler during regular development builds." FORCE )

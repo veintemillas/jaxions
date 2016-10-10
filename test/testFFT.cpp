@@ -64,7 +64,7 @@ int	main (int argc, char *argv[])
 		sprintf(fileName, "data/initial_conditions_m.txt");
 
 	//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid);
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, NULL, lowmem, zGrid);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, NULL, lowmem, zGrid, CONF_NONE, 0, 0);
 	readConf(&axion, 0);
 
 	//--------------------------------------------------

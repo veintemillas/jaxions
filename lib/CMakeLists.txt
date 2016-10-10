@@ -1,4 +1,4 @@
-set(OBJS fftCuda.cpp comms.cpp fftCode.cpp parse.cpp readWrite.cpp scalarField.cpp propagator.cpp propXeon.cpp propGpu.cu)
+set(OBJS fftCuda.cpp comms.cpp fftCode.cpp parse.cpp readWrite.cpp scalarField.cpp propagator.cpp propXeon.cpp propGpu.cu map.cpp)
 
 include_directories(.)
 if(USE_GPU)
