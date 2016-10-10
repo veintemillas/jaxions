@@ -11,10 +11,13 @@ int nSteps = 500;
 int dump = 100;
 int nQcd = 3;
 int fIndex = -1;
+//int kMax = 8;
 
 double sizeL = 4.;
 double zInit = 0.5;
 double zFinl = 1.0;
+//double kCrit = 1.;
+extern double kCrit;
 double LL = 15000.;
 
 bool lowmem = false;
@@ -22,6 +25,7 @@ bool lowmem = false;
 char *initFile = NULL;
 
 FieldPrecision	sPrec = FIELD_DOUBLE;
+DeviceType	cDev  = DEV_CPU;
 
 void	printUsage(char *name)
 {
@@ -37,13 +41,15 @@ void	printUsage(char *name)
 	printf("--zf    [float]                 Defines the final value of the redshift (default 1.0).\n");
 	printf("--lsize [float]                 Defines the physical size of the system (default 4.0).\n");
 	printf("--llcf  [float]                 Defines the lagrangian coefficient (default 15000).\n");
+	printf("--kcr   [float]                 Defines the critical kappa (default 1.0).\n");
 	printf("--qcd   [int]                   Defines the number of QCD colors (default 3).\n");
-	printf("--prec  double/single/mixed     Defines the precision of the axion field simulation (default double)\n");
+	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
 	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
 	printf("--load  [filename]              Loads filename as initial conditions (default out/initial_conditions_m(_single).txt).\n");
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
-	printf("--lowmem                        Reduces memory usage by 33%, but decreases performance as well (default false).\n");
+	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
+	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
 	printf("--help                          Prints this message.\n");
 
 	return;
@@ -130,6 +136,28 @@ int	parseArgs (int argc, char *argv[])
 			if (zGrid < 1)
 			{
 				printf("Error: The number of gpus must be larger than 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--kcr"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the critical kappa.\n");
+				exit(1);
+			}
+
+			kCrit = atof(argv[i+1]);
+
+			if (kCrit < 0.)
+			{
+				printf("Error: Critical kappa must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -359,13 +387,41 @@ int	parseArgs (int argc, char *argv[])
 			{
 				sPrec = FIELD_SINGLE;
 			}
-			else if (!strcmp(argv[i+1], "mixed"))
-			{
-				sPrec = FIELD_MIXED;
-			}
 			else
 			{
 				printf("Error: Unrecognized precision %s\n", argv[i+1]);
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--device"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a device name (cpu/gpu/xeon).\n");
+				exit(1);
+			}
+
+			if (!strcmp(argv[i+1], "cpu"))
+			{
+				cDev = DEV_CPU;
+			}
+			else if (!strcmp(argv[i+1], "gpu"))
+			{
+				cDev = DEV_GPU;
+			}
+			else if (!strcmp(argv[i+1], "xeon"))
+			{
+				cDev = DEV_XEON;
+			}
+			else
+			{
+				printf("Error: Unrecognized device %s\n", argv[i+1]);
 				exit(1);
 			}
 

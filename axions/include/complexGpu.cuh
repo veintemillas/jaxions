@@ -388,6 +388,15 @@ public:
       return *this;
     }
 
+  template <typename T>
+    __host__ __device__
+    inline complex<ValueType>& operator=(const double2 z)
+    {
+      real((ValueType) z.x);
+      imag((ValueType) z.y);
+      return *this;
+    }
+
   __host__ __device__
     inline complex<ValueType>& operator+=(const complex<ValueType> z)
     {

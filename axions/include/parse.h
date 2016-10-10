@@ -15,5 +15,6 @@ extern char *initFile;
 extern bool lowmem;
 
 extern FieldPrecision sPrec;
+extern DeviceType     cDev;
 
 int	parseArgs (int argc, char *argv[]);
