@@ -28,6 +28,14 @@
 //		FIELD_HALF,
 	}	FieldPrecision;
 
+	typedef enum	ConfType_s
+	{
+		CONF_KMAX,
+		CONF_SMOOTH,
+		CONF_READ,
+		CONF_NONE,
+	}	ConfType;
+
 	typedef enum	DeviceType_s
 	{
 		DEV_CPU,

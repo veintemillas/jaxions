@@ -3,17 +3,13 @@
 
 	#include"enum-field.h"
 
-	#ifdef	USE_GPU
-//		#include<cuda.h>
-		#include<cuda_runtime.h>
-	#endif
+//	#ifdef	USE_GPU
+//		#include<cuda_runtime.h>
+//	#endif
 
 	#ifdef	USE_XEON
 		#include "xeonDefs.h"
 	#endif
-
-	extern double	kCrit;
-	extern int	kMax;
 
 	class	Scalar
 	{
@@ -49,15 +45,22 @@
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
-		void	addZmom(int pz, int oPz, void *data, int sign);
+		void	scaleField(FieldIndex fIdx, double factor);
+		void	randConf();
+		void	smoothConf(const int iter, const double alpha);
+
+		template<typename Float>
+		void	iteraField(const int iter, const Float alpha);
+
+
+		template<typename Float>
+		void	momConf(const int kMax, const Float kCrit);
 
 		public:
 
-//				 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp);
-				 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp);
+				 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
+					ConfType cType, const int parm1, const double parm2);
 				~Scalar();
-
-		void		genConf();
 
 		void		*mCpu() { return m; }
 		const void	*mCpu() const { return m; }
@@ -114,7 +117,6 @@
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
 		void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
-		void	fftCpu2(int sign);			// Fast Fourier Transform in the Cpu
 		void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
 
 
@@ -123,7 +125,7 @@
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
-		void	genConf	(const int kMax);
+		void	genConf	(ConfType cType, const int parm1, const double parm2);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

@@ -13,7 +13,11 @@
 #endif
 
 #include <omp.h>
-#include<sched.h>
+#include <sched.h>
+
+#ifndef __USE_POSIX
+	#define HOST_NAME_MAX   128
+#endif
 
 static int rank = -1;
 static int idxAcc = -1;
@@ -46,7 +50,6 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 	int tProv;
 	char *allHosts;
 
-//	MPI_Init (&argc, &argv);
 	MPI_Init_thread (&argc, &argv, MPI_THREAD_FUNNELED, &tProv);
 	MPI_Comm_size (MPI_COMM_WORLD, &realSize);
 
@@ -170,5 +173,6 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 void	endComms()
 {
+	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
 }

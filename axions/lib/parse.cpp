@@ -16,11 +16,18 @@ int fIndex = -1;
 double sizeL = 4.;
 double zInit = 0.5;
 double zFinl = 1.0;
-//double kCrit = 1.;
-extern double kCrit;
+double kCrit = 1.0;
+double alpha = 0.5;
 double LL = 15000.;
+double parm2 = 0.;
 
 bool lowmem = false;
+
+int kMax  = 8;
+int iter  = 50;
+int parm1 = 0;
+
+ConfType cType = CONF_NONE;
 
 char *initFile = NULL;
 
@@ -44,6 +51,7 @@ void	printUsage(char *name)
 	printf("--kcr   [float]                 Defines the critical kappa (default 1.0).\n");
 	printf("--qcd   [int]                   Defines the number of QCD colors (default 3).\n");
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
+	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
 	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
 	printf("--load  [filename]              Loads filename as initial conditions (default out/initial_conditions_m(_single).txt).\n");
@@ -331,7 +339,7 @@ int	parseArgs (int argc, char *argv[])
 
 			initFile = argv[i+1];
 
-			if (fIndex == -1)
+			if (fIndex != -1)
 			{
 				printf("Error: You must use either --load or --index, they are mutually exclusive.\n");
 				exit(1);
@@ -362,6 +370,34 @@ int	parseArgs (int argc, char *argv[])
 			if (initFile != NULL)
 			{
 				printf("Error: You must use either --load or --index, they are mutually exclusive.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--ctype"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the configuration type (smooth/kMax).\n");
+				exit(1);
+			}
+
+			if (!strcmp(argv[i+1], "smooth"))
+			{
+				cType = CONF_SMOOTH;
+			}
+			else if (!strcmp(argv[i+1], "kmax"))
+			{
+				cType = CONF_KMAX;
+			}
+			else
+			{
+				printf("Error: Unrecognized configuration type %s\n", argv[i+1]);
 				exit(1);
 			}
 
@@ -439,6 +475,15 @@ int	parseArgs (int argc, char *argv[])
 			printf("\n\nUnrecognized option %s\n", argv[i]);
 			exit(1);
 		}
+	}
+
+	if (cType == CONF_SMOOTH)
+	{
+		parm1 = iter;
+		parm2 = alpha;
+	} else if (cType == CONF_KMAX) {
+		parm1 = kMax;
+		parm2 = kCrit;
 	}
 
 	return	procArgs;

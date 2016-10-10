@@ -16,8 +16,9 @@ void	writeMap	(Scalar *axion, const int index)
 
 	const int n1 = axion->Length();
 
-	sprintf(stoRoh, "out/rho/rho-%05d.dat", index);
-	sprintf( stoAt, "out/at/at-%05d.dat", index);
+//JAVIER changed .dat to .txt    
+	sprintf(stoRoh, "out/rho/rho-%05d.txt", index);
+	sprintf( stoAt, "out/at/at-%05d.txt", index);
 
 	FILE *atWrite = NULL;
 	FILE *rhoWrite = NULL;
@@ -25,13 +26,15 @@ void	writeMap	(Scalar *axion, const int index)
 	if ((atWrite  = fopen(stoAt, "w+")) == NULL)
 	{
 		printf ("Couldn't open file %s for writing\n", stoAt);
-		return 1;
+//JAVIER changed return 1; -> return ;        
+		return ;
 	}
 
 	if ((rhoWrite = fopen(stoRoh, "w+")) == NULL)
 	{
 		printf ("Couldn't open file %s for writing\n", stoRoh);
-		return 1;
+//JAVIER changed return 1; -> return ;        
+        return ;
 	}
 
 
@@ -39,8 +42,8 @@ void	writeMap	(Scalar *axion, const int index)
 	{
 		for (int lz = 0; lz < n1; lz++)
 		{
-			fprintf(atWrite,  "%f ", arg( ((complex<double> *) axion->mCpu())[lz + n1*ly + n1*n1]) );
-			fprintf(rhoWrite, "%f ", abs( ((complex<double> *) axion->mCpu())[lz + n1*ly + n1*n1])/(*(axion->zV())));
+			fprintf(atWrite,  "%f ", arg( ((complex<float> *) axion->mCpu())[lz + n1*ly + n1*n1]) );
+			fprintf(rhoWrite, "%f ", abs( ((complex<float> *) axion->mCpu())[lz + n1*ly + n1*n1])/(*(axion->zV())));
 		}
 
 		fprintf(atWrite , "\n");
@@ -50,5 +53,10 @@ void	writeMap	(Scalar *axion, const int index)
 	fclose(atWrite);
 	fclose(rhoWrite);
 
-	printf("\nMap printed...\n");
+//JAVIER removed a \n before Map
+	printf("Map printed...\n");
+//JAVIER    
+    printf("z = %lf -", *(axion->zV()));   
+    printf("-Examples m: m[0]= %f + %f*I = |%f|exp(I*%f)\n",  ((complex<float> *) axion->mCpu())[0].real(), ((complex<float> *) axion->mCpu())[0].imag(), arg( ((complex<float> *) axion->mCpu())[0]), abs( ((complex<float> *) axion->mCpu())[0])/(*(axion->zV() )) );
+
 }
