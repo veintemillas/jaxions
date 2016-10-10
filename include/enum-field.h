@@ -25,6 +25,21 @@
 	{
 		FIELD_DOUBLE,
 		FIELD_SINGLE,
-		FIELD_MIXED,
+//		FIELD_HALF,
 	}	FieldPrecision;
+
+	typedef enum	DeviceType_s
+	{
+		DEV_CPU,
+		DEV_GPU,
+		DEV_XEON,
+	}	DeviceType;
+
+	typedef enum	CommOperation_s
+	{
+		COMM_SEND,
+		COMM_RECV,
+		COMM_SDRV,
+		COMM_WAIT,
+	}	CommOperation;
 #endif

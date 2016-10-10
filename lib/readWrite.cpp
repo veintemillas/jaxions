@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <hdf5.h>
 
 #include "scalarField.h"
@@ -77,17 +78,6 @@ void	writeConf (Scalar *axion, int index)
 
 		break;
 
-		case FIELD_MIXED:
-		{
-			dataType = H5T_NATIVE_FLOAT;
-			dataSize = sizeof(float);
-
-			sprintf(prec, "Mixed ");
-			length = strlen(prec)+1;
-		}
-
-		break;
-
 		case FIELD_DOUBLE:
 		{
 			dataType = H5T_NATIVE_DOUBLE;
@@ -114,6 +104,7 @@ void	writeConf (Scalar *axion, int index)
 	/*	Attributes	*/
 
 	int cSteps = dump*index;
+	int totlZ  = sizeZ*zGrid;
 
 	attr_type      = H5Tcopy(H5T_C_S1);
 	H5Tset_size   (attr_type, length);
@@ -121,6 +112,7 @@ void	writeConf (Scalar *axion, int index)
 
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
 	writeAttribute(file_id, &sizeN, "Size",          H5T_NATIVE_INT);
+	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_INT);
 	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_INT);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
@@ -225,10 +217,11 @@ void	readConf (Scalar **axion, int index)
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
 	double	zTmp, zTfl, zTin;
-	int	tStep, cStep;
+	int	tStep, cStep, totlZ;
 
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_INT);
+	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_INT);
 	readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_INT);
 	readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
@@ -250,12 +243,6 @@ void	readConf (Scalar **axion, int index)
 		dataType  = H5T_NATIVE_FLOAT;
 		dataSize  = sizeof(float);
 	}
-	else if (!strcmp(prec, "Mixed "))
-	{
-		precision = FIELD_MIXED;
-		dataType  = H5T_NATIVE_FLOAT;
-		dataSize  = sizeof(float);
-	}
 	else
 	{
 		printf("Error reading file %s: Invalid precision %s\n", base, prec);
@@ -264,15 +251,15 @@ void	readConf (Scalar **axion, int index)
 
 	/*	Create axion field	*/
 
-	if (sizeN % zGrid)
+	if (totlZ % zGrid)
 	{
 		printf("Error: Geometry not valid. Try a different partitioning.\n");
 		exit (1);
 	}
 	else
-		sizeZ = sizeN/zGrid;
+		sizeZ = totlZ/zGrid;
 
-	*axion = new Scalar(sizeN, sizeZ, precision, zTmp, lowmem, zGrid);
+	*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, NULL, lowmem, zGrid);
 
 	/*	Create plist for collective read	*/
 

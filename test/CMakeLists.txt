@@ -1,0 +1,17 @@
+include_directories(.)
+set(LIBS Axions ${CMAKE_THREAD_LIBS_INIT} )
+LIST(APPEND LIBS ${MPI_CXX_LIBRARIES})
+LIST(APPEND LIBS ${FFTW_LIBRARY})
+LIST(APPEND LIBS ${FFTWF_LIBRARY})
+LIST(APPEND LIBS ${FFTW_MPI_LIBRARY})
+LIST(APPEND LIBS ${FFTWF_MPI_LIBRARY})
+LIST(APPEND LIBS ${HDF5_LIBRARY})
+
+if(USE_GPU)
+  LIST(APPEND LIBS ${CUDA_cufft_LIBRARY} ${CUDA_cudart_LIBRARY})
+endif()
+
+add_executable(axion3d axions.cpp)
+add_executable(testFFT testFFT.cpp)
+target_link_libraries(axion3d ${LIBS} )
+target_link_libraries(testFFT ${LIBS} )

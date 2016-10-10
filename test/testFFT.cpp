@@ -4,11 +4,10 @@
 //          simple gradient to accelerate calculations
 
 #include<cmath>
-#include<ctime>
+#include<chrono>
 
 #include<complex>
 #include<vector>
-#include<omp.h>
 
 #include"code3DCpu.h"
 #include"scalarField.h"
@@ -18,33 +17,33 @@
 #include"parse.h"
 #include"readWrite.h"
 #include"comms.h"
-
-#ifdef	PROFILE
-#include<cuda_profiler_api.h>
-#endif
+#include"flopCounter.h"
 
 using namespace std;
 
 /*	TODO
 
 	2. Generate configurations
-	3. MPI y comms
-	4. Overlapp comms y calc?
 */
 
+
+#ifdef	USE_XEON
+	__declspec(target(mic)) char *mX, *vX, *m2X;
+#endif
 
 #define printMpi(...) do {		\
 	if (!commRank()) {		\
 	  printf(__VA_ARGS__);  }	\
 }	while (0)
 
+
 int	main (int argc, char *argv[])
 {
 	parseArgs(argc, argv);
 
-	if (initCudaComms(argc, argv, zGrid) == -1)
+	if (initComms(argc, argv, zGrid, cDev) == -1)
 	{
-		printf ("Error initializing Cuda and Mpi\n");
+		printf ("Error initializing devices and Mpi\n");
 		return 1;
 	}
 
@@ -59,23 +58,14 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1))
-	{
-		if (sPrec != FIELD_DOUBLE)
-			sprintf(fileName, "data/initial_conditions_m_single.txt");
-		else
-			sprintf(fileName, "data/initial_conditions_m.txt");
-
-		axion = new Scalar (sizeN, sizeZ, sPrec, zInit, fileName, lowmem, zGrid);
-	}
+	if (sPrec != FIELD_DOUBLE)
+		sprintf(fileName, "data/initial_conditions_m_single.txt");
 	else
-	{
-		if (fIndex == -1)
-			axion = new Scalar (sizeN, sizeZ, sPrec, zInit, initFile, lowmem, zGrid);
-		else
-			readConf(&axion, fIndex);
-	}
+		sprintf(fileName, "data/initial_conditions_m.txt");
 
+	//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, NULL, lowmem, zGrid);
+	readConf(&axion, 0);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -101,9 +91,6 @@ int	main (int argc, char *argv[])
 	const int V0 = 0;
 	const int VF = axion->Size()-1;
 
-	axion->transferGpu(FIELD_MV);
-	axion->transferCpu(FIELD_MV);
-
 	printMpi("INITIAL CONDITIONS LOADED\n");
 	if (sPrec != FIELD_DOUBLE)
 	{
@@ -119,7 +106,7 @@ int	main (int argc, char *argv[])
 		printMpi("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
 										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
 	}
-        
+
 	printMpi("Ez     =  %d\n",    axion->eDepth());
 
 	//--------------------------------------------------
@@ -130,60 +117,32 @@ int	main (int argc, char *argv[])
 	printMpi("           STARTING COMPUTATION                   \n");
 	printMpi("--------------------------------------------------\n");
 
-	clock_t start, current;
+	std::chrono::high_resolution_clock::time_point start, current, old;
 
 	int counter = 0;
 	int index = 0;
 
-	printMpi ("Dumping configuration %05d...\n", index);
+	//printMpi ("Dumping configuration %05d...\n", index);
+	//fflush (stdout);
+	//writeConf(axion, index);
+
+
+	printMpi ("Start FFT\n");
 	fflush (stdout);
+
+	commSync();
+
+	start = std::chrono::high_resolution_clock::now();
+	old = start;
+	std::chrono::milliseconds elapsed;
+
+	axion->fftCpu(1);
+
+	current = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+
+	index++;
 	writeConf(axion, index);
-
-	if (dump > nSteps)
-		dump = nSteps;
-
-	int nLoops = (int)(nSteps/dump);
-
-	printMpi ("Start redshift loop\n");
-	fflush (stdout);
-	start = clock();
-
-	for (int zloop = 0; zloop < nLoops; zloop++)
-	{
-		//--------------------------------------------------
-		// THE TIME ITERATION SUB-LOOP
-		//--------------------------------------------------
-
-		index++;
-
-		#ifdef PROFILE
-		cudaProfilerStart();
-		#endif
-
-		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-		{
-			if (!lowmem)
-				propagate (axion, dz, LL, nQcd, delta, true);
-			else
-				propLowMem(axion, dz, LL, nQcd, delta, true);
-
-			current = clock();
-			printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), (double)(current-start)/((double)CLOCKS_PER_SEC*24.));
-//			fflush(stdout);
-			counter++;
-		} // zsubloop
-
-		#ifdef PROFILE
-		cudaProfilerStop();
-		#endif
-
-		printMpi ("Dumping configuration %05d...\n", index);
-		fflush (stdout);
-		axion->transferCpu(FIELD_MV);
-		writeConf(axion, index);
-	} // zloop
-
-	current = clock();
 
 	printMpi("\n PROGRAMM FINISHED\n");
 
@@ -203,9 +162,7 @@ int	main (int argc, char *argv[])
 	}
 
 	printMpi("z_final = %f\n", *axion->zV());
-	printMpi("#_steps = %i\n", counter);
-	printMpi("#_prints = %i\n", index);
-	printMpi("Elapsed time: %.2f s\n ",(double)(current-start)/(double)CLOCKS_PER_SEC);
+	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 	printMpi("--------------------------------------------------\n");
 
 	endComms();
