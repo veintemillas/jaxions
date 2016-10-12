@@ -1,33 +1,22 @@
-//
-//          RungeKuttaNyström version
-//          created on 20.11.2015
-//          simple gradient to accelerate calculations
+#include <cmath>
+#include <cstring>
+#include <chrono>
 
-#include<cmath>
-#include<chrono>
+#include <complex>
+#include <vector>
 
-#include<complex>
-#include<vector>
-
-#include"code3DCpu.h"
-#include"scalarField.h"
-#include"propagator.h"
-#include"enum-field.h"
-#include"index.h"
-#include"parse.h"
-#include"readWrite.h"
-#include"comms.h"
-#include"flopCounter.h"
-//JAVIER
-#include"map.h"
+#include "code3DCpu.h"
+#include "scalarField.h"
+#include "propagator.h"
+#include "enum-field.h"
+#include "index.h"
+#include "parse.h"
+#include "readWrite.h"
+#include "comms.h"
+#include "flopCounter.h"
+#include "map.h"
 
 using namespace std;
-
-/*	TODO
-
-	2. Generate configurations
-*/
-
 
 #ifdef	USE_XEON
 	__declspec(target(mic)) char *mX, *vX, *m2X;
@@ -180,36 +169,34 @@ int	main (int argc, char *argv[])
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-//			old = current;
 
 			fCount->addTime(elapsed.count()*1.e-3);
 			printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), fCount->DTime());
 
-            
-//			fflush(stdout);
 			counter++;
 		} // zsubloop
 
-		printMpi ("Dumping configuration %05d...\n", index);
+		printMpi ("Generating 2D map...\n");
 		fflush (stdout);
 		axion->transferCpu(FIELD_MV);
-        
 
-//JAVIER        
-        writeMap (axion, index);
-        
-/*		if (cDev != DEV_GPU)
+/*	TODO
+
+	2. Fix writeMap so it reads data from the first slice of m
+*/
+
+		if (cDev != DEV_GPU)
 		{
-			axion->unfoldField();
+			axion->unfoldField2D(sizeZ-1);
 //			writeConf(axion, index);
-
-			if (cDev == DEV_CPU)
-				axion->foldField();
+			writeMap (axion, index);
 		}
 		else
 		{
 //			writeConf(axion, index);
-		}*/
+			memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+			writeMap (axion, index);
+		}
 	} // zloop
 
 	current = std::chrono::high_resolution_clock::now();
