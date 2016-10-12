@@ -10,7 +10,7 @@ fftwf_plan pf, pfb;
 
 bool single;
 
-void	initFFT	(void *m, void *m2, const int n1, const int Lz, FieldPrecision prec)
+void	initFFT	(void *m, void *m2, const int n1, const int Lz, FieldPrecision prec, bool lowmem)
 {
 	const int nD[2] = { n1, n1 };
 	const int dist  = n1*n1;
@@ -22,8 +22,13 @@ void	initFFT	(void *m, void *m2, const int n1, const int Lz, FieldPrecision prec
 		case FIELD_DOUBLE:
 
 		single = false;
-		p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-		pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m2), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+		if (lowmem) {
+			p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+		} else {
+			p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m2), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+		}
 //		p  = fftw_plan_many_dft(2, nD, Lz, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
 //		pb = fftw_plan_many_dft(2, nD, Lz, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
 		break;
@@ -31,8 +36,13 @@ void	initFFT	(void *m, void *m2, const int n1, const int Lz, FieldPrecision prec
 		case FIELD_SINGLE:
 
 		single = true;
-		pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m), reinterpret_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-		pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m2), reinterpret_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+		if (lowmem) {
+			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m), reinterpret_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m2), reinterpret_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+		} else {
+			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m), reinterpret_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m2), reinterpret_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+		}
 //		pf  = fftwf_plan_many_dft(2, nD, Lz, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
 //		pfb = fftwf_plan_many_dft(2, nD, Lz, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
 		break;

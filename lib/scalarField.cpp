@@ -125,11 +125,12 @@ class	Scalar
 
 	void	foldField	();
 	void	unfoldField	();
+	void	unfoldField2D	(const int sZ);		// Just for the maps
 
 	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
-	void	sendGhosts(FieldIndex fIdx, CommOperation commOp);		// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
+	void	sendGhosts(FieldIndex fIdx, CommOperation commOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 	void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
 	void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
@@ -312,7 +313,7 @@ class	Scalar
 	} else {
 //		if (!lowmem)
 			//initFFT((((char *) m2) + 2*n2*fSize), n1, Tz, precision);//Lz, precision);
-//			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision);
+//			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision, lowmem);
 	}
 
 	*z = zI;
@@ -669,12 +670,11 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 	transferGhosts(fIdx);
 }
 
+//	USAR TEMPLATES PARA ESTO
+
 void	Scalar::foldField()
 {
 	int	shift;
-
-	if (lowmem)
-		posix_memalign (&m2, mAlign, fSize*2*v3);
 
 	shift = mAlign/(2*fSize);
 
@@ -682,69 +682,50 @@ void	Scalar::foldField()
 	{
 		case FIELD_DOUBLE:
 
-			memcpy (m2, m, 2*fSize*v3);
-
 			for (int iz=0; iz < Lz; iz++)
+			{
+				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+
 				for (int iy=0; iy < n1/shift; iy++)
 					for (int ix=0; ix < n1; ix++)
 						for (int sy=0; sy<shift; sy++)
 						{
-							int oIdx = n2 + iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-							int dIdx = n2 + iz*n2 + iy*n1*shift + ix*shift + sy;
-
-							((double *) m)[2*dIdx]   = ((double *) m2)[2*oIdx];
-							((double *) m)[2*dIdx+1] = ((double *) m2)[2*oIdx+1];
-						}
-
-			memcpy (m2, v, 2*fSize*n3);
-
-			for (int iz=0; iz < Lz; iz++)
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
-						{
-							int oIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
 							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
-							((double *) v)[2*dIdx]   = ((double *) m2)[2*oIdx];
-							((double *) v)[2*dIdx+1] = ((double *) m2)[2*oIdx+1];
+							((double *) m)[2*dIdx+n2]   = ((double *) m)[2*oIdx];
+							((double *) m)[2*dIdx+n2+1] = ((double *) m)[2*oIdx+1];
+							((double *) v)[2*dIdx]      = ((double *) m)[2*(oIdx+n2+n3)];
+							((double *) v)[2*dIdx+1]    = ((double *) m)[2*(oIdx+n2+n3)+1];
 						}
+			}
+
 			break;
 
 		case FIELD_SINGLE:
 
-			memcpy (m2, m, 2*fSize*v3);
-
 			for (int iz=0; iz < Lz; iz++)
+			{
+				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+
 				for (int iy=0; iy < n1/shift; iy++)
 					for (int ix=0; ix < n1; ix++)
 						for (int sy=0; sy<shift; sy++)
 						{
-							int oIdx = n2 + iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-							int dIdx = n2 + iz*n2 + iy*n1*shift + ix*shift + sy;
-
-							((float *) m)[2*dIdx]   = ((float *) m2)[2*oIdx];
-							((float *) m)[2*dIdx+1] = ((float *) m2)[2*oIdx+1];
-						}
-
-			memcpy (m2, v, 2*fSize*n3);
-
-			for (int iz=0; iz < Lz; iz++)
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
-						{
-							int oIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
 							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
-							((float *) v)[2*dIdx]   = ((float *) m2)[2*oIdx];
-							((float *) v)[2*dIdx+1] = ((float *) m2)[2*oIdx+1];
+							((float *) m)[2*dIdx+n2]   = ((float *) m)[2*oIdx];
+							((float *) m)[2*dIdx+n2+1] = ((float *) m)[2*oIdx+1];
+							((float *) v)[2*dIdx]      = ((float *) m)[2*(oIdx+n2+n3)];
+							((float *) v)[2*dIdx+1]    = ((float *) m)[2*(oIdx+n2+n3)+1];
 						}
+			}
+
 			break;
 	}
-
-	if (lowmem)
-		free	(m2);
 
 	return;
 }
@@ -753,8 +734,63 @@ void	Scalar::unfoldField()
 {
 	int	shift;
 
-	if (lowmem)
-		posix_memalign (&m2, mAlign, fSize*2*v3);
+	shift = mAlign/(2*fSize);
+
+	switch (precision)
+	{
+		case FIELD_DOUBLE:
+
+			for (int iz=0; iz < Lz; iz++)
+			{
+				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+
+				for (int iy=0; iy < n1/shift; iy++)
+					for (int ix=0; ix < n1; ix++)
+						for (int sy=0; sy<shift; sy++)
+						{
+							int oIdx = iy*n1*shift + ix*shift + sy;
+							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+
+							((double *) m)[2*dIdx+n2]   = ((double *) m)[2*oIdx];
+							((double *) m)[2*dIdx+n2+1] = ((double *) m)[2*oIdx+1];
+							((double *) v)[2*dIdx]      = ((double *) m)[2*(oIdx+n2+n3)];
+							((double *) v)[2*dIdx+1]    = ((double *) m)[2*(oIdx+n2+n3)+1];
+						}
+			}
+
+			break;
+
+		case FIELD_SINGLE:
+
+			for (int iz=0; iz < Lz; iz++)
+			{
+				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+
+				for (int iy=0; iy < n1/shift; iy++)
+					for (int ix=0; ix < n1; ix++)
+						for (int sy=0; sy<shift; sy++)
+						{
+							int oIdx = iy*n1*shift + ix*shift + sy;
+							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+
+							((float *) m)[2*dIdx+n2]   = ((float *) m)[2*oIdx];
+							((float *) m)[2*dIdx+n2+1] = ((float *) m)[2*oIdx+1];
+							((float *) v)[2*dIdx]      = ((float *) m)[2*(oIdx+n2+n3)];
+							((float *) v)[2*dIdx+1]    = ((float *) m)[2*(oIdx+n2+n3)+1];
+						}
+			}
+
+			break;
+	}
+
+	return;
+}
+
+void	Scalar::unfoldField2D(const int sZ)
+{
+	int	shift;
 
 	shift = mAlign/(2*fSize);
 
@@ -762,73 +798,38 @@ void	Scalar::unfoldField()
 	{
 		case FIELD_DOUBLE:
 
-			memcpy (m2, m, 2*fSize*v3);
+		for (int iy=0; iy < n1/shift; iy++)
+			for (int ix=0; ix < n1; ix++)
+				for (int sy=0; sy<shift; sy++)
+				{
+					int oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					int dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
-			for (int iz=0; iz < Lz; iz++)
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
-						{
-							int oIdx = n2 + iz*n2 + iy*n1*shift + ix*shift + sy;
-							int dIdx = n2 + iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+					((double *) m)[2*dIdx]   = ((double *) m)[2*oIdx];
+					((double *) m)[2*dIdx+1] = ((double *) m)[2*oIdx+1];
+				}
 
-							((double *) m)[2*dIdx]   = ((double *) m2)[2*oIdx];
-							((double *) m)[2*dIdx+1] = ((double *) m2)[2*oIdx+1];
-						}
-
-			memcpy (m2, v, 2*fSize*n3);
-
-			for (int iz=0; iz < Lz; iz++)
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
-						{
-							int oIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
-							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-
-							((double *) v)[2*dIdx]   = ((double *) m2)[2*oIdx];
-							((double *) v)[2*dIdx+1] = ((double *) m2)[2*oIdx+1];
-						}
-			break;
+		break;
 
 		case FIELD_SINGLE:
 
-			memcpy (m2, m, 2*fSize*v3);
+		for (int iy=0; iy < n1/shift; iy++)
+			for (int ix=0; ix < n1; ix++)
+				for (int sy=0; sy<shift; sy++)
+				{
+					int oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					int dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
-			for (int iz=0; iz < Lz; iz++)
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
-						{
-							int oIdx = n2 + iz*n2 + iy*n1*shift + ix*shift + sy;
-							int dIdx = n2 + iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+					((float *) m)[2*dIdx]   = ((float *) m)[2*oIdx];
+					((float *) m)[2*dIdx+1] = ((float *) m)[2*oIdx+1];
+				}
 
-							((float *) m)[2*dIdx]   = ((float *) m2)[2*oIdx];
-							((float *) m)[2*dIdx+1] = ((float *) m2)[2*oIdx+1];
-						}
-
-			memcpy (m2, v, 2*fSize*n3);
-
-			for (int iz=0; iz < Lz; iz++)
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
-						{
-							int oIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
-							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-
-							((float *) v)[2*dIdx]   = ((float *) m2)[2*oIdx];
-							((float *) v)[2*dIdx+1] = ((float *) m2)[2*oIdx+1];
-						}
 			break;
 	}
 
-	if (lowmem)
-		free	(m2);
-
 	return;
 }
-
+//	USA M2, ARREGLAR LOWMEM
 void	Scalar::prepareCpu(int *window)
 {
 	if (precision == FIELD_DOUBLE)
@@ -845,11 +846,13 @@ void	Scalar::prepareCpu(int *window)
 	}
 }
 
+// EN TEORIA USA M2, ARREGLAR LOWMEM
 void	Scalar::squareGpu()
 {
 //	square(m2_d, n1, Lz, n3, precision);
 }
 
+// USA M2, ARREGLAR LOWMEM
 void	Scalar::squareCpu()
 {
 	if (precision == FIELD_DOUBLE)
@@ -928,7 +931,7 @@ void	Scalar::fftCpu	(int sign)
 	runFFT(sign);
 }
 
-/*
+/*	CODIGO VIEJO INUTIL, IGUAL PARA FFT GPU...
 void	Scalar::fftCpu	(int sign)
 {
 	int	  oldPz = 0;
@@ -995,6 +998,8 @@ void	Scalar::fftCpu	(int sign)
 	}
 }
 */
+
+// ESTO YA NO SE USA, LA FFT ES SIEMPRE EN LA CPU
 void	Scalar::fftGpu	(int sign)
 {
 #ifdef	USE_GPU
@@ -1144,9 +1149,16 @@ void	Scalar::randConf ()
 }
 
 template<typename Float>
-void	Scalar::momConf (const int kMax, Float kCrit)
+void	Scalar::momConf (const int kMax, const Float kCrit)
 {
 	const int kMax2 = kMax*kMax;
+
+	complex<Float> *fM;
+
+	if (!lowmem)
+		fM = (complex<Float> *) m2;
+	else
+		fM = (complex<Float> *) m;
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
@@ -1184,7 +1196,7 @@ void	Scalar::momConf (const int kMax, Float kCrit)
 						Float mP = sqrt(((Float) modP))/((Float) kCrit);
 						Float vl = 2.0f*M_PI*(uni(mt64));
 
-						((complex<float> *) m2)[idx] = complex<Float>(cos(vl),sin(vl))*(sin(mP)/mP);
+						fM[idx] = complex<Float>(cos(vl),sin(vl))*(sin(mP)/mP);
 					}
 				}
 		}
@@ -1196,12 +1208,12 @@ void	Scalar::momConf (const int kMax, Float kCrit)
 template<typename Float>
 void	Scalar::iteraField(const int iter, const Float alpha)
 {
-	complex<Float> *mIn, *mOut, *tmp;
-
-	mIn  = (complex<Float> *) m;
-	mOut = (complex<Float> *) m2;
+	const Float One = 1.;
 
 	exchangeGhosts(FIELD_M);
+
+	complex<Float> *mCp = (complex<Float> *) m;
+	complex<Float> *vCp = (complex<Float> *) v;
 
 	for (int it=0; it<iter; it++)
 	{
@@ -1246,20 +1258,13 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 				iPz = idx + n2;
 				iMz = idx - n2;
 
-				mOut[idx]   = alpha*mIn[idx] + (1.f-alpha)*(mIn[iPx] + mIn[iMx] + mIn[iPy] + mIn[iMy] + mIn[iPz] + mIn[iMz]);
+				vCp[idx-n2]   = alpha*mCp[idx] + (One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
 			}
 		}
 
-		if (it & 1)
-			exchangeGhosts(FIELD_M);
-		else
-			exchangeGhosts(FIELD_M2);
+		memcpy (((char *)m) + 2*fSize*n2, v, 2*fSize*n3);
 
-		/*	Swap mIn and mOut	*/
-
-		tmp = mIn;
-		mIn = mOut;
-		mOut = tmp;
+		exchangeGhosts(FIELD_M);
 	}
 }
 
@@ -1280,9 +1285,6 @@ void	Scalar::smoothConf (const int iter, const double alpha)
 		exit(1);
 		break;
 	}
-
-	if (iter & 1)		// With an odd number of iterations, the output field is in m2
-		memcpy(m, m2, 2*fSize*v3);
 }
 
 void	Scalar::scaleField (FieldIndex fIdx, double factor)
@@ -1306,12 +1308,18 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 				break;
 
 				case FIELD_M2:
+				if (lowmem) {
+					printf ("Wrong field. Lowmem forbids the use of m2");
+					return;
+				}
+					
 				field = (complex<double> *) m2;
 				vol = v3;
 				break;
 
 				default:
 				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
+				return;
 				break;
 			}
 
@@ -1340,6 +1348,11 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 				break;
 
 				case FIELD_M2:
+				if (lowmem) {
+					printf ("Wrong field. Lowmem forbids the use of m2");
+					return;
+				}
+
 				field = (complex<float> *) m2;
 				vol = v3;
 				break;

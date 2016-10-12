@@ -106,6 +106,7 @@
 
 		void	foldField	();
 		void	unfoldField	();
+		void	unfoldField2D	(const int sZ);		// Just for the maps
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
