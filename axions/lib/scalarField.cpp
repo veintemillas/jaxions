@@ -242,11 +242,24 @@ class	Scalar
 		}
 	}
 
+	posix_memalign ((void **) &z, mAlign, sizeof(double));
+
+	if (z == NULL)
+	{
+		printf("\n\nError: Couldn't allocate %d bytes on host for the z field\n", sizeof(double));
+		exit(1);
+	}
 
 	/*	If present, read fileName	*/
 
-	if (fileName != NULL)
+	if (cType == CONF_NONE)
 	{
+		if (fileName == NULL)
+		{
+			printf("Sorry! Could not find initial Conditions\n");
+			exit(1);
+		}
+
 		FILE *fileM = fopen(fileName,"r");
 
 		if (fileM == 0)
@@ -255,21 +268,13 @@ class	Scalar
 			exit(1);
 		}
 
-		fread((((char *) m) + 2*fSize*n2), fSize*2, n3, fileM);
+		fread(static_cast<char *> (m) + 2*fSize*n2, fSize*2, n3, fileM);
 		fclose(fileM);
 
-		memcpy (v, ((char *) m) + 2*fSize*n2, 2*fSize*n3);
+		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
 		scaleField (FIELD_M, zI);
 	} else {
 		genConf(cType, parm1, parm2);
-	}
-
-	posix_memalign ((void **) &z, mAlign, sizeof(double));
-
-	if (z == NULL)
-	{
-		printf("\n\nError: Couldn't allocate %d bytes on host for the z field\n", sizeof(double));
-		exit(1);
 	}
 
 	if (device == DEV_GPU)
@@ -313,7 +318,11 @@ class	Scalar
 	} else {
 //		if (!lowmem)
 			//initFFT((((char *) m2) + 2*n2*fSize), n1, Tz, precision);//Lz, precision);
-//			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision, lowmem);
+			printf ("Arranco FFT\t");
+			fflush (stdout);
+			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision, lowmem);
+			printf ("Ok\n");
+			fflush (stdout);
 	}
 
 	*z = zI;
@@ -1040,7 +1049,11 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 				break;
 			}
 
+			printf ("FFT\t\t");
+			fflush (stdout);
 			fftCpu(1);	// FFTW_BACKWARD
+			printf ("Ok!\n");
+			fflush (stdout);
 		}
 
 		exchangeGhosts(FIELD_M);
@@ -1077,7 +1090,7 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 
 	if (cType != CONF_NONE)
 	{
-		memcpy (v, ((char *) m) + 2*fSize*n2, 2*fSize*n3);
+		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
 		scaleField (FIELD_M, *z);
 	}
 }
@@ -1156,9 +1169,9 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	complex<Float> *fM;
 
 	if (!lowmem)
-		fM = (complex<Float> *) m2;
+		fM = static_cast<complex<Float>*> (m2);
 	else
-		fM = (complex<Float> *) m;
+		fM = static_cast<complex<Float>*> (m);
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
@@ -1172,7 +1185,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	{
 		int nThread = omp_get_thread_num();
 
-		printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+	//	printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
 
 		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
@@ -1195,8 +1208,9 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 					{
 						Float mP = sqrt(((Float) modP))/((Float) kCrit);
 						Float vl = 2.0f*M_PI*(uni(mt64));
+						Float sc = sin(mP)/mP;
 
-						fM[idx] = complex<Float>(cos(vl),sin(vl))*(sin(mP)/mP);
+						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
 					}
 				}
 		}
@@ -1212,8 +1226,8 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 
 	exchangeGhosts(FIELD_M);
 
-	complex<Float> *mCp = (complex<Float> *) m;
-	complex<Float> *vCp = (complex<Float> *) v;
+	complex<Float> *mCp = static_cast<complex<Float>*> (m);
+	complex<Float> *vCp = static_cast<complex<Float>*> (v);
 
 	for (int it=0; it<iter; it++)
 	{
@@ -1262,8 +1276,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 			}
 		}
 
-		memcpy (((char *)m) + 2*fSize*n2, v, 2*fSize*n3);
-
+		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, 2*fSize*n3);
 		exchangeGhosts(FIELD_M);
 	}
 }
@@ -1299,12 +1312,12 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = (complex<double> *) m;
+				field = static_cast<complex<double>*> (m);
 				vol = v3;
 				break;
 
 				case FIELD_V:
-				field = (complex<double> *) v;
+				field = static_cast<complex<double> *> (v);
 				break;
 
 				case FIELD_M2:
@@ -1313,7 +1326,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 					return;
 				}
 					
-				field = (complex<double> *) m2;
+				field = static_cast<complex<double> *> (m2);
 				vol = v3;
 				break;
 
@@ -1339,12 +1352,12 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = (complex<float> *) m;
+				field = static_cast<complex<float> *> (m);
 				vol = v3;
 				break;
 
 				case FIELD_V:
-				field = (complex<float> *) v;
+				field = static_cast<complex<float> *> (v);
 				break;
 
 				case FIELD_M2:
@@ -1353,7 +1366,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 					return;
 				}
 
-				field = (complex<float> *) m2;
+				field = static_cast<complex<float> *> (m2);
 				vol = v3;
 				break;
 

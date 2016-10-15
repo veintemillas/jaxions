@@ -49,7 +49,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1))
+	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
 	{
 		if (sPrec != FIELD_DOUBLE)
 			sprintf(fileName, "data/initial_conditions_m_single.txt");
@@ -57,6 +57,7 @@ int	main (int argc, char *argv[])
 			sprintf(fileName, "data/initial_conditions_m.txt");
 
 		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0);
+		printMpi("Eo\n");
 	}
 	else
 	{

@@ -23,28 +23,28 @@ void	initFFT	(void *m, void *m2, const int n1, const int Lz, FieldPrecision prec
 
 		single = false;
 		if (lowmem) {
-			p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftw_complex*>(m), static_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftw_complex*>(m), static_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 		} else {
-			p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m), reinterpret_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftw_complex*>(m2), reinterpret_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			p  = fftw_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftw_complex*>(m), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pb = fftw_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 		}
-//		p  = fftw_plan_many_dft(2, nD, Lz, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
-//		pb = fftw_plan_many_dft(2, nD, Lz, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, reinterpret_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
+//		p  = fftw_plan_many_dft(2, nD, Lz, static_cast<fftw_complex*>(m), NULL, 1, dist, static_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
+//		pb = fftw_plan_many_dft(2, nD, Lz, static_cast<fftw_complex*>(m), NULL, 1, dist, static_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
 		break;
 
 		case FIELD_SINGLE:
 
 		single = true;
 		if (lowmem) {
-			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m), reinterpret_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m2), reinterpret_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 		} else {
-			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m), reinterpret_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, reinterpret_cast<fftwf_complex*>(m2), reinterpret_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 		}
-//		pf  = fftwf_plan_many_dft(2, nD, Lz, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
-//		pfb = fftwf_plan_many_dft(2, nD, Lz, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, reinterpret_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
+//		pf  = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
+//		pfb = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
 		break;
 
 		default:
