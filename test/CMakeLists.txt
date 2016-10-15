@@ -15,3 +15,8 @@ add_executable(axion3d axions.cpp)
 add_executable(testFFT testFFT.cpp)
 target_link_libraries(axion3d ${LIBS} )
 target_link_libraries(testFFT ${LIBS} )
+
+add_custom_target(outFolder  ALL COMMAND ${CMAKE_COMMAND} -E make_directory out)
+add_custom_target(dumpFolder ALL COMMAND ${CMAKE_COMMAND} -E make_directory out/dump)
+add_custom_target(atFolder   ALL COMMAND ${CMAKE_COMMAND} -E make_directory out/at)
+add_custom_target(rhoFolder  ALL COMMAND ${CMAKE_COMMAND} -E make_directory out/rho)
