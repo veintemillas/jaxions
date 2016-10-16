@@ -1138,7 +1138,7 @@ void	Scalar::randConf ()
 		{
 			int nThread = omp_get_thread_num();
 
-			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+			//printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
 
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 			//JAVIER included negative values
@@ -1171,8 +1171,7 @@ template<typename Float>
 void	Scalar::iteraField(const int iter, const Float alpha)
 {
 	const Float One = 1.;
-	//JAVIER
-	const Float OneSixth = 0.166666667;
+	const Float OneSixth = (1./6.);
 
 	exchangeGhosts(FIELD_M);
 
@@ -1228,7 +1227,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 				vCp[idx-n2]   = alpha*mCp[idx] + OneSixth*(One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
 			}
 		}
-		//Copies v a m
+		//Copies v to m
 		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, 2*fSize*n3);
 		exchangeGhosts(FIELD_M);
 
