@@ -1257,7 +1257,6 @@ void	Scalar::smoothConf (const int iter, const double alpha)
 template<typename Float>
 void	Scalar::momConf (const int kMax, const Float kCrit)
 {
-	const int kMax2  = kMax*kMax;
 	const Float Twop = 2.0*M_PI;
 
 	complex<Float> *fM;
@@ -1298,7 +1297,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 					int idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
 					int modP = px*px + py*py + pz*pz;
 
-					if (modP <= kMax2)
+					if (modP <= kMax)
 					{
 						Float mP = sqrt(((Float) modP))/((Float) kCrit);
 						Float vl = Twop*(uni(mt64));
