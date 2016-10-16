@@ -23,7 +23,7 @@ double parm2 = 0.;
 
 bool lowmem = false;
 
-int kMax  = 8;
+int kMax  = 0;
 //JAVIER changed to 5
 int iter  = 10;
 int parm1 = 0;
@@ -343,6 +343,50 @@ int	parseArgs (int argc, char *argv[])
 			if (fIndex != -1)
 			{
 				printf("Error: You must use either --load or --index, they are mutually exclusive.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--kMax"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need an integer value for the maximum momentum.\n");
+				exit(1);
+			}
+
+			kMax = atoi(argv[i+1]);
+
+			if (kMax < 0)
+			{
+				printf("Error: The maximum momentum must be equal or greater than zero.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--sIter"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of iterations for the smoothing.\n");
+				exit(1);
+			}
+
+			iter = atoi(argv[i+1]);
+
+			if (iter < 0)
+			{
+				printf("Error: Number of iterations must be equal or greater than zero.\n");
 				exit(1);
 			}
 

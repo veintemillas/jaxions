@@ -242,39 +242,18 @@ class	Scalar
 		}
 	}
 
+	memset (m, 0, 2*fSize*v3);
+	memset (v, 0, 2*fSize*n3);
+
+	if (!lowmem)
+		memset (m, 0, 2*fSize*v3);
+
 	posix_memalign ((void **) &z, mAlign, sizeof(double));
 
 	if (z == NULL)
 	{
 		printf("\n\nError: Couldn't allocate %d bytes on host for the z field\n", sizeof(double));
 		exit(1);
-	}
-
-	/*	If present, read fileName	*/
-
-	if (cType == CONF_NONE)
-	{
-		if (fileName == NULL)
-		{
-			printf("Sorry! Could not find initial Conditions\n");
-			exit(1);
-		}
-
-		FILE *fileM = fopen(fileName,"r");
-
-		if (fileM == 0)
-		{
-			printf("Sorry! Could not find initial Conditions\n");
-			exit(1);
-		}
-
-		fread(static_cast<char *> (m) + 2*fSize*n2, fSize*2, n3, fileM);
-		fclose(fileM);
-
-		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
-		scaleField (FIELD_M, zI);
-	} else {
-		genConf(cType, parm1, parm2);
 	}
 
 	if (device == DEV_GPU)
@@ -316,16 +295,37 @@ class	Scalar
 //			initCudaFFT(n1, Lz, prec);
 #endif
 	} else {
-//		if (!lowmem)
-			//initFFT((((char *) m2) + 2*n2*fSize), n1, Tz, precision);//Lz, precision);
-			printf ("Arranco FFT\t");
-			fflush (stdout);
-			initFFT((void *) (((char *) m) + 2*n2*fSize), m2, n1, Tz, precision, lowmem);
-			printf ("Ok\n");
-			fflush (stdout);
+		initFFT(static_cast<void *>((static_cast<char *> (m) + 2*n2*fSize)), m2, n1, Tz, precision, lowmem);
 	}
 
 	*z = zI;
+
+	/*	If present, read fileName	*/
+
+	if (cType == CONF_NONE)
+	{
+		if (fileName == NULL)
+		{
+			printf("Sorry! Could not find initial Conditions\n");
+			exit(1);
+		}
+
+		FILE *fileM = fopen(fileName,"r");
+
+		if (fileM == 0)
+		{
+			printf("Sorry! Could not find initial Conditions\n");
+			exit(1);
+		}
+
+		fread(static_cast<char *> (m) + 2*fSize*n2, fSize*2, n3, fileM);
+		fclose(fileM);
+
+		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
+		scaleField (FIELD_M, zI);
+	} else {
+		genConf(cType, parm1, parm2);
+	}
 
 	if (dev == DEV_XEON)
 	{
@@ -387,7 +387,7 @@ class	Scalar
 		#endif
 	} else {
 //		if (!lowmem)
-//			closeFFT();
+			closeFFT();
 	}
 
 	if (device == DEV_XEON)
@@ -1049,11 +1049,7 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 				break;
 			}
 
-			printf ("FFT\t\t");
-			fflush (stdout);
-			fftCpu(1);	// FFTW_BACKWARD
-			printf ("Ok!\n");
-			fflush (stdout);
+			fftCpu (1);	// FFTW_BACKWARD
 		}
 
 		exchangeGhosts(FIELD_M);
@@ -1261,14 +1257,15 @@ void	Scalar::smoothConf (const int iter, const double alpha)
 template<typename Float>
 void	Scalar::momConf (const int kMax, const Float kCrit)
 {
-	const int kMax2 = kMax*kMax;
+	const int kMax2  = kMax*kMax;
+	const Float Twop = 2.0*M_PI;
 
 	complex<Float> *fM;
 
 	if (!lowmem)
 		fM = static_cast<complex<Float>*> (m2);
 	else
-		fM = static_cast<complex<Float>*> (m);
+		fM = static_cast<complex<Float>*> (static_cast<void*>(static_cast<char*>(m) + 2*fSize*n2));
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
@@ -1304,8 +1301,8 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 					if (modP <= kMax2)
 					{
 						Float mP = sqrt(((Float) modP))/((Float) kCrit);
-						Float vl = 2.0f*M_PI*(uni(mt64));
-						Float sc = sin(mP)/mP;
+						Float vl = Twop*(uni(mt64));
+						Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
 					}
