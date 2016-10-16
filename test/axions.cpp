@@ -173,7 +173,7 @@ int	main (int argc, char *argv[])
 
 			fCount->addTime(elapsed.count()*1.e-3);
 			//JAVIER commented next line
-			//verbose?
+			//verbose? YEAH
 			//printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), fCount->DTime());
 
 			counter++;
