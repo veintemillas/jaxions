@@ -54,7 +54,7 @@ void	printUsage(char *name)
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
 	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--kMax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 8)\n");
-	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 10)\n);
+	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 10)\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
 	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
 	printf("--load  [filename]              Loads filename as initial conditions (default out/initial_conditions_m(_single).txt).\n");
