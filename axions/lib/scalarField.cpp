@@ -204,7 +204,7 @@ class	Scalar
 #ifdef	USE_XEON
 	posix_memalign ((void**) &mX, mAlign, mBytes);
 	posix_memalign ((void**) &vX, mAlign, vBytes);
-	
+
 	if (!lowmem)
 		posix_memalign ((void**) &m2X, mAlign, mBytes);
 
@@ -216,7 +216,7 @@ class	Scalar
 #else
 	posix_memalign ((void**) &m, mAlign, mBytes);
 	posix_memalign ((void**) &v, mAlign, vBytes);
-	
+
 	if (!lowmem)
 		posix_memalign ((void**) &m2, mAlign, mBytes);
 #endif
@@ -525,10 +525,10 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 			if (fIdx & FIELD_M)
 			{
 				#pragma offload_transfer target(mic:micIdx) out(mX[2*n2*fSize:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) out(mX[2*n3*fSize:2*n2*fSize] : ReUseX) 
+				#pragma offload_transfer target(mic:micIdx) out(mX[2*n3*fSize:2*n2*fSize] : ReUseX)
 			} else {
 				#pragma offload_transfer target(mic:micIdx) out(m2X[2*n2*fSize:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) out(m2X[2*n3*fSize:2*n2*fSize] : ReUseX) 
+				#pragma offload_transfer target(mic:micIdx) out(m2X[2*n3*fSize:2*n2*fSize] : ReUseX)
 			}
 		#endif
 	}
@@ -564,10 +564,10 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 			if (fIdx & FIELD_M)
 			{
 				#pragma offload_transfer target(mic:micIdx) in(mX[0:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) in(mX[2*(n2+n3)*fSize:2*n2*fSize] : ReUseX) 
+				#pragma offload_transfer target(mic:micIdx) in(mX[2*(n2+n3)*fSize:2*n2*fSize] : ReUseX)
 			} else {
 				#pragma offload_transfer target(mic:micIdx) in(m2X[0:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) in(m2X[2*(n2+n3)*fSize:2*n2*fSize] : ReUseX) 
+				#pragma offload_transfer target(mic:micIdx) in(m2X[2*(n2+n3)*fSize:2*n2*fSize] : ReUseX)
 			}
 		#endif
 	}
@@ -843,13 +843,13 @@ void	Scalar::prepareCpu(int *window)
 {
 	if (precision == FIELD_DOUBLE)
 	{
-		#pragma omp parallel for default(shared) schedule(static)   
+		#pragma omp parallel for default(shared) schedule(static)
 		for(int i=0; i < n3; i++)
 			((std::complex<double> *) m2)[i] = I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag()*((double) window[i]);
 	}
 	else
 	{
-		#pragma omp parallel for default(shared) schedule(static)   
+		#pragma omp parallel for default(shared) schedule(static)
 		for(int i=0; i < n3; i++)
 			((std::complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag()*((float) window[i]);
 	}
@@ -866,13 +866,13 @@ void	Scalar::squareCpu()
 {
 	if (precision == FIELD_DOUBLE)
 	{
-		#pragma omp parallel for default(shared) schedule(static)   
+		#pragma omp parallel for default(shared) schedule(static)
 		for(int i=0; i < n3; i++)
 			((std::complex<double> *) m2)[i] = pow(abs(((std::complex<double> *) m2)[i]/((double) n3)),2);
 	}
 	else
 	{
-		#pragma omp parallel for default(shared) schedule(static)   
+		#pragma omp parallel for default(shared) schedule(static)
 		for(int i=0; i < n3; i++)
 			((std::complex<float> *) m2)[i] = pow(abs(((std::complex<float> *) m2)[i]/((float) n3)),2);
 	}
@@ -895,7 +895,7 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 			complex<double> phase[Lz];
 			double sg = sign;
 
-			#pragma omp parallel for default(shared) schedule(static)   
+			#pragma omp parallel for default(shared) schedule(static)
 			for (int zc = 0; zc < Lz; zc++)
 			{
 				int zTot = zBase + zc;
@@ -903,7 +903,7 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 			}
 
 
-			#pragma omp parallel for default(shared) schedule(static)   
+			#pragma omp parallel for default(shared) schedule(static)
 			for (int idx = 0; idx < n2; idx++)
 				for (int zc = 0; zc < Lz; zc++)
 					((complex<double> *) data)[n2*(zc+1)+idx] *= phase[zc];
@@ -916,7 +916,7 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 			complex<float> phase[Lz];
 			float sg = sign;
 
-			#pragma omp parallel for default(shared) schedule(static)   
+			#pragma omp parallel for default(shared) schedule(static)
 			for (int zc = 0; zc < Lz; zc++)
 			{
 				int zTot = zBase + zc;
@@ -924,7 +924,7 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 			}
 
 
-			#pragma omp parallel for default(shared) schedule(static)   
+			#pragma omp parallel for default(shared) schedule(static)
 			for (int idx = 0; idx < n2; idx++)
 				for (int zc = 0; zc < Lz; zc++)
 					((complex<float> *) data)[n2*(zc+1)+idx] *= phase[zc];
@@ -1113,10 +1113,12 @@ void	Scalar::randConf ()
 		{
 			int nThread = omp_get_thread_num();
 
-			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+			//JAVIER commented next line, it seems to work
+			//printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
 
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-			std::uniform_real_distribution<double> uni(0.0, 1.0);
+			//JAVIER included negative values
+			std::uniform_real_distribution<double> uni(-1.0, 1.0);
 
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 			for (int idx=2*n2; idx<2*(n2+n3); idx+=2)
@@ -1125,6 +1127,8 @@ void	Scalar::randConf ()
 				((double *) m)[idx+1] = uni(mt64);
 			}
 		}
+		//JAVIER control print
+		printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2,((double *) m)[2*n2],((double *) m)[2*n2+1]);
 
 		break;
 
@@ -1137,7 +1141,8 @@ void	Scalar::randConf ()
 			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
 
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-			std::uniform_real_distribution<float> uni(0.0, 1.0);
+			//JAVIER included negative values
+			std::uniform_real_distribution<float> uni(-1.0, 1.0);
 
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 			for (int idx=2*n2; idx<2*(n2+n3); idx+=2)
@@ -1159,7 +1164,100 @@ void	Scalar::randConf ()
 	}
 
 	free(sd);
+}// End Scalar::randConf ()
+
+
+template<typename Float>
+void	Scalar::iteraField(const int iter, const Float alpha)
+{
+	const Float One = 1.;
+	//JAVIER
+	const Float OneSixth = 0.166666667;
+
+	exchangeGhosts(FIELD_M);
+
+	complex<Float> *mCp = static_cast<complex<Float>*> (m);
+	complex<Float> *vCp = static_cast<complex<Float>*> (v);
+	//JAVIER
+	//printf("smoothing check m[0]= (%lf,%lf)\n",  ((Float *) m)[n2] , ((Float *) m)[n2] );
+	//printf("the same? ????? m[0]= (%lf,%lf)\n",  ((Float *) mCp)[n2] , ((Float *) mCp)[n2] ); yes
+
+	for (int it=0; it<iter; it++)
+	{
+		#pragma omp parallel default(shared)
+		{
+			#pragma omp for schedule(static)
+			for (int idx=n2; idx<(n2+n3); idx++)
+			{
+				int iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+				indexXeon::idx2Vec (idx, X, n1);
+
+				if (X[0] == 0)
+				{
+					iPx = idx + 1;
+					iMx = idx + n1 - 1;
+				} else {
+					if (X[0] == n1 - 1)
+					{
+						iPx = idx - n1 + 1;
+						iMx = idx - 1;
+					} else {
+						iPx = idx + 2;
+						iMx = idx - 2;
+					}
+				}
+
+				if (X[1] == 0)
+				{
+					iPx = idx + n1;
+					iMx = idx + n2 - n1;
+				} else {
+					if (X[1] == n1 - 1)
+					{
+						iPx = idx - n2 + n1;
+						iMx = idx - n1;
+					} else {
+						iPx = idx + n1;
+						iMx = idx - n1;
+					}
+				}
+
+				iPz = idx + n2;
+				iMz = idx - n2;
+				//Uses v to copy the smoothed configuration
+				vCp[idx-n2]   = alpha*mCp[idx] + OneSixth*(One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
+			}
+		}
+		//Copies v a m
+		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, 2*fSize*n3);
+		exchangeGhosts(FIELD_M);
+
+		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
+		printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) ); 
+	}//END iteration loop
 }
+
+void	Scalar::smoothConf (const int iter, const double alpha)
+{
+	switch	(precision)
+	{
+		case	FIELD_DOUBLE:
+		iteraField (iter, alpha);
+		break;
+
+		case	FIELD_SINGLE:
+		iteraField (iter, (float) alpha);
+		break;
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+}
+
+
+
 
 template<typename Float>
 void	Scalar::momConf (const int kMax, const Float kCrit)
@@ -1219,87 +1317,6 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	free(sd);
 }
 
-template<typename Float>
-void	Scalar::iteraField(const int iter, const Float alpha)
-{
-	const Float One = 1.;
-
-	exchangeGhosts(FIELD_M);
-
-	complex<Float> *mCp = static_cast<complex<Float>*> (m);
-	complex<Float> *vCp = static_cast<complex<Float>*> (v);
-
-	for (int it=0; it<iter; it++)
-	{
-		#pragma omp parallel default(shared)
-		{
-			#pragma omp for schedule(static)
-			for (int idx=n2; idx<(n2+n3); idx++)
-			{
-				int iPx, iMx, iPy, iMy, iPz, iMz, X[3];
-				indexXeon::idx2Vec (idx, X, n1);
-
-				if (X[0] == 0)
-				{
-					iPx = idx + 1;
-					iMx = idx + n1 - 1;
-				} else {
-					if (X[0] == n1 - 1)
-					{
-						iPx = idx - n1 + 1;
-						iMx = idx - 1;
-					} else {
-						iPx = idx + 2;
-						iMx = idx - 2;
-					}
-				}
-
-				if (X[1] == 0)
-				{
-					iPx = idx + n1;
-					iMx = idx + n2 - n1;
-				} else {
-					if (X[1] == n1 - 1)
-					{
-						iPx = idx - n2 + n1;
-						iMx = idx - n1;
-					} else {
-						iPx = idx + n1;
-						iMx = idx - n1;
-					}
-				}
-
-				iPz = idx + n2;
-				iMz = idx - n2;
-
-				vCp[idx-n2]   = alpha*mCp[idx] + (One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
-			}
-		}
-
-		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, 2*fSize*n3);
-		exchangeGhosts(FIELD_M);
-	}
-}
-
-void	Scalar::smoothConf (const int iter, const double alpha)
-{
-	switch	(precision)
-	{
-		case	FIELD_DOUBLE:
-		iteraField (iter, alpha);
-		break;
-
-		case	FIELD_SINGLE:
-		iteraField (iter, (float) alpha);
-		break;
-
-		default:
-		printf("Unrecognized precision\n");
-		exit(1);
-		break;
-	}
-}
-
 void	Scalar::scaleField (FieldIndex fIdx, double factor)
 {
 	switch (precision)
@@ -1325,7 +1342,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 					printf ("Wrong field. Lowmem forbids the use of m2");
 					return;
 				}
-					
+
 				field = static_cast<complex<double> *> (m2);
 				vol = v3;
 				break;

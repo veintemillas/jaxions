@@ -67,7 +67,21 @@ void	writeMap	(Scalar *axion, const int index)
 	printf("Map printed...\n");
 
 /*	ESTO HABRA QUE BORRARLO EVENTUALMENTE	*/
-    printf("z = %lf -", *(axion->zV()));   
-    printf("-Examples m: m[0]= %f + %f*I = |%f|exp(I*%f)\n",  ((complex<float> *) axion->mCpu())[0].real(), ((complex<float> *) axion->mCpu())[0].imag(), arg( ((complex<float> *) axion->mCpu())[0]), abs( ((complex<float> *) axion->mCpu())[0])/(*(axion->zV() )) );
+    printf("z = %lf -", *(axion->zV()));
+		//JAVIER included switch to test outputsin double and single
+switch (axion->Precision())
+{
+	case FIELD_DOUBLE:
+		printf("-Examples m: m[0]= %lf + %lf*I = |%lf|exp(I*%lf)\n",  ((complex<double> *) axion->mCpu())[0].real(), ((complex<double> *) axion->mCpu())[0].imag(), abs( ((complex<double> *) axion->mCpu())[0]), arg( ((complex<double> *) axion->mCpu())[0])/(*(axion->zV() )) );
+		break;
+
+	case FIELD_SINGLE:
+		printf("-Examples m: m[0]= %f + %f*I = |%f|exp(I*%f)\n",  ((complex<float> *) axion->mCpu())[0].real(), ((complex<float> *) axion->mCpu())[0].imag(), abs( ((complex<float> *) axion->mCpu())[0]), arg( ((complex<float> *) axion->mCpu())[0])/(*(axion->zV() )) );
+		break;
+}
+
+
+
+
 
 }
