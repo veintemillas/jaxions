@@ -24,7 +24,8 @@ double parm2 = 0.;
 bool lowmem = false;
 
 int kMax  = 8;
-int iter  = 50;
+//JAVIER changed to 5
+int iter  = 10;
 int parm1 = 0;
 
 ConfType cType = CONF_NONE;

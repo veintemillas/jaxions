@@ -42,7 +42,7 @@ int	main (int argc, char *argv[])
 	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
-	//       READING INITIAL CONDITIONS       
+	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
 
@@ -70,7 +70,7 @@ int	main (int argc, char *argv[])
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
-	//-------------------------------------------------- 
+	//--------------------------------------------------
 
 	double dz = (zFinl - zInit)/((double) nSteps);
 	double delta = sizeL/sizeN;
@@ -82,7 +82,7 @@ int	main (int argc, char *argv[])
 	printMpi("N      =  %d\n",    sizeN);
 	printMpi("Nz     =  %d\n",    sizeZ);
 	printMpi("zGrid  =  %d\n",    zGrid);
-	printMpi("dx     =  %2.5f\n", delta);  
+	printMpi("dx     =  %2.5f\n", delta);
 	printMpi("dz     =  %2.5f\n", dz);
 	printMpi("LL     =  %2.5f\n", LL);
 	printMpi("--------------------------------------------------\n");
@@ -112,7 +112,7 @@ int	main (int argc, char *argv[])
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
-	//--------------------------------------------------  
+	//--------------------------------------------------
 
 	printMpi("--------------------------------------------------\n");
 	printMpi("           STARTING COMPUTATION                   \n");
@@ -172,12 +172,14 @@ int	main (int argc, char *argv[])
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 
 			fCount->addTime(elapsed.count()*1.e-3);
-			printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), fCount->DTime());
+			//JAVIER commented next line
+			//verbose?
+			//printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), fCount->DTime());
 
 			counter++;
 		} // zsubloop
 
-		printMpi ("Generating 2D map...\n");
+		printMpi ("Generating 2D map...");
 		fflush (stdout);
 		axion->transferCpu(FIELD_MV);
 
@@ -235,6 +237,6 @@ int	main (int argc, char *argv[])
 	delete axion;
 
 	endComms();
-    
+
 	return 0;
 }
