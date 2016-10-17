@@ -53,11 +53,11 @@ void	writeMap	(Scalar *axion, const int index)
 	switch (axion->Precision())
 	{
 		case FIELD_DOUBLE:
-			writeData((complex<double> *) axion->mCpu(),         (*axion->zV()), n1, atWrite, rhoWrite);
+			writeData(static_cast<complex<double> *> (axion->mCpu()),         (*axion->zV()), n1, atWrite, rhoWrite);
 			break;
 
 		case FIELD_SINGLE:
-			writeData((complex<float> *)  axion->mCpu(), (float) (*axion->zV()), n1, atWrite, rhoWrite);
+			writeData(static_cast<complex<float> *>  (axion->mCpu()), (float) (*axion->zV()), n1, atWrite, rhoWrite);
 			break;
 	}
 

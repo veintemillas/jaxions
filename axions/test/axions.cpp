@@ -131,6 +131,7 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
+		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 	else
