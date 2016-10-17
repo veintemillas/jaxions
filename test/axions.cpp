@@ -127,6 +127,17 @@ int	main (int argc, char *argv[])
 	fflush (stdout);
 	writeConf(axion, index);
 
+	if (cDev != DEV_GPU)
+	{
+		axion->unfoldField2D(sizeZ-1);
+		writeMap (axion, index);
+	}
+	else
+	{
+		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		writeMap (axion, index);
+	}
+
 	if (dump > nSteps)
 		dump = nSteps;
 
