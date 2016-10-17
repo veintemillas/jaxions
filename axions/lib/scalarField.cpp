@@ -813,8 +813,8 @@ void	Scalar::unfoldField2D(const int sZ)
 					int oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
 					int dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
-					((double *) m)[2*dIdx]   = ((double *) m)[2*oIdx];
-					((double *) m)[2*dIdx+1] = ((double *) m)[2*oIdx+1];
+					static_cast<double *> (m)[2*dIdx]   = static_cast<double *> (m)[2*oIdx];
+					static_cast<double *> (m)[2*dIdx+1] = static_cast<double *> (m)[2*oIdx+1];
 				}
 
 		break;
@@ -828,8 +828,8 @@ void	Scalar::unfoldField2D(const int sZ)
 					int oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
 					int dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
-					((float *) m)[2*dIdx]   = ((float *) m)[2*oIdx];
-					((float *) m)[2*dIdx+1] = ((float *) m)[2*oIdx+1];
+					static_cast<float *> (m)[2*dIdx]   = static_cast<float *> (m)[2*oIdx];
+					static_cast<float *> (m)[2*dIdx+1] = static_cast<float *> (m)[2*oIdx+1];
 				}
 
 			break;
