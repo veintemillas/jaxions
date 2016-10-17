@@ -131,7 +131,6 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
-		axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);
 	}
 	else
