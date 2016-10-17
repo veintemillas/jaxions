@@ -10,10 +10,10 @@ void	writeData	(complex<Float> *m, const Float z, const int n1, FILE *atWrite, F
 {
 	for (int ly = 0; ly < n1; ly++)
 	{
-		for (int lz = 0; lz < n1; lz++)
+		for (int lx = 0; lx < n1; lx++)
 		{
-			fprintf(atWrite,  "%f ", arg(m[lz + n1*ly + n1*n1]) );
-			fprintf(rhoWrite, "%f ", abs(m[lz + n1*ly + n1*n1])/z);
+			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
+			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);
 		}
 
 		fprintf(atWrite , "\n");
