@@ -693,8 +693,8 @@ void	Scalar::foldField()
 
 			for (int iz=0; iz < Lz; iz++)
 			{
-				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
 				for (int iy=0; iy < n1/shift; iy++)
 					for (int ix=0; ix < n1; ix++)
@@ -703,10 +703,10 @@ void	Scalar::foldField()
 							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
 							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
-							((double *) m)[2*dIdx+n2]   = ((double *) m)[2*oIdx];
-							((double *) m)[2*dIdx+n2+1] = ((double *) m)[2*oIdx+1];
-							((double *) v)[2*dIdx]      = ((double *) m)[2*(oIdx+n2+n3)];
-							((double *) v)[2*dIdx+1]    = ((double *) m)[2*(oIdx+n2+n3)+1];
+							((double *) m)[2*(dIdx+n2)]   = ((double *) m)[2*oIdx];
+							((double *) m)[2*(dIdx+n2)+1] = ((double *) m)[2*oIdx+1];
+							((double *) v)[2*dIdx]        = ((double *) m)[2*(oIdx+n2+n3)];
+							((double *) v)[2*dIdx+1]      = ((double *) m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
@@ -716,20 +716,20 @@ void	Scalar::foldField()
 
 			for (int iz=0; iz < Lz; iz++)
 			{
-				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
 				for (int iy=0; iy < n1/shift; iy++)
 					for (int ix=0; ix < n1; ix++)
 						for (int sy=0; sy<shift; sy++)
 						{
 							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
+							int dIdx = (iz+1)*n2 + iy*n1*shift + ix*shift + sy;
 
-							((float *) m)[2*dIdx+n2]   = ((float *) m)[2*oIdx];
-							((float *) m)[2*dIdx+n2+1] = ((float *) m)[2*oIdx+1];
-							((float *) v)[2*dIdx]      = ((float *) m)[2*(oIdx+n2+n3)];
-							((float *) v)[2*dIdx+1]    = ((float *) m)[2*(oIdx+n2+n3)+1];
+							((float *) m)[2*(dIdx+n2)]   = ((float *) m)[2*oIdx];
+							((float *) m)[2*(dIdx+n2)+1] = ((float *) m)[2*oIdx+1];
+							((float *) v)[2*dIdx]        = ((float *) m)[2*(oIdx+n2+n3)];
+							((float *) v)[2*dIdx+1]      = ((float *) m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
@@ -751,8 +751,8 @@ void	Scalar::unfoldField()
 
 			for (int iz=0; iz < Lz; iz++)
 			{
-				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
 				for (int iy=0; iy < n1/shift; iy++)
 					for (int ix=0; ix < n1; ix++)
@@ -761,10 +761,10 @@ void	Scalar::unfoldField()
 							int oIdx = iy*n1*shift + ix*shift + sy;
 							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							((double *) m)[2*dIdx+n2]   = ((double *) m)[2*oIdx];
-							((double *) m)[2*dIdx+n2+1] = ((double *) m)[2*oIdx+1];
-							((double *) v)[2*dIdx]      = ((double *) m)[2*(oIdx+n2+n3)];
-							((double *) v)[2*dIdx+1]    = ((double *) m)[2*(oIdx+n2+n3)+1];
+							((double *) m)[2*(dIdx+n2)]   = ((double *) m)[2*oIdx];
+							((double *) m)[2*(dIdx+n2)+1] = ((double *) m)[2*oIdx+1];
+							((double *) v)[2*dIdx]        = ((double *) m)[2*(oIdx+n2+n3)];
+							((double *) v)[2*dIdx+1]      = ((double *) m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
@@ -774,8 +774,8 @@ void	Scalar::unfoldField()
 
 			for (int iz=0; iz < Lz; iz++)
 			{
-				memcpy (         m,                    ((char *)m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (((char *)m) + 2*fSize*(n3+n2), ((char *)v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
+				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
 				for (int iy=0; iy < n1/shift; iy++)
 					for (int ix=0; ix < n1; ix++)
@@ -784,10 +784,10 @@ void	Scalar::unfoldField()
 							int oIdx = iy*n1*shift + ix*shift + sy;
 							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							((float *) m)[2*dIdx+n2]   = ((float *) m)[2*oIdx];
-							((float *) m)[2*dIdx+n2+1] = ((float *) m)[2*oIdx+1];
-							((float *) v)[2*dIdx]      = ((float *) m)[2*(oIdx+n2+n3)];
-							((float *) v)[2*dIdx+1]    = ((float *) m)[2*(oIdx+n2+n3)+1];
+							((float *) m)[2*(dIdx+n2)]   = ((float *) m)[2*oIdx];
+							((float *) m)[2*(dIdx+n2)+1] = ((float *) m)[2*oIdx+1];
+							((float *) v)[2*dIdx]        = ((float *) m)[2*(oIdx+n2+n3)];
+							((float *) v)[2*dIdx+1]      = ((float *) m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
