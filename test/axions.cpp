@@ -55,15 +55,17 @@ int	main (int argc, char *argv[])
 			sprintf(fileName, "data/initial_conditions_m_single.txt");
 		else
 			sprintf(fileName, "data/initial_conditions_m.txt");
-
+		//This prepares the axion field from default files
 		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0);
 		printMpi("Eo\n");
 	}
 	else
 	{
 		if (fIndex == -1)
+			//This generates initial conditions
 			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2);
 		else
+			//This reads from an Axion.00000 file
 			readConf(&axion, fIndex);
 	}
 
