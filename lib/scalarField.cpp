@@ -308,7 +308,7 @@ class	Scalar
 	{
 		if (fileName != NULL)
 		{
-			FILE *fileM = fopen(fileName,"r");
+/*			FILE *fileM = fopen(fileName,"r");
 
 			if (fileM == 0)
 			{
@@ -321,6 +321,23 @@ class	Scalar
 
 			memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
 			scaleField (FIELD_M, zI);
+*/
+			if (prec == FIELD_DOUBLE)
+			{
+				for (int i=n2; i<n3+n2; i++)
+				{
+					static_cast<double*>(m)[2*i]   = i-n2;
+					static_cast<double*>(m)[2*i+1] = i-n2;
+				}
+			}
+			else
+			{
+				for (int i=n2; i<n3+n2; i++)
+				{
+					static_cast<float*>(m)[2*i]   = i-n2;
+					static_cast<float*>(m)[2*i+1] = i-n2;
+				}
+			}
 		}
 	} else {
 		genConf(cType, parm1, parm2);
@@ -723,7 +740,7 @@ void	Scalar::foldField()
 						for (int sy=0; sy<shift; sy++)
 						{
 							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							int dIdx = (iz+1)*n2 + iy*n1*shift + ix*shift + sy;
+							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
 							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
 							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
@@ -807,6 +824,7 @@ void	Scalar::unfoldField2D(const int sZ)
 		case FIELD_DOUBLE:
 
 		for (int iy=0; iy < n1/shift; iy++)
+		{
 			for (int ix=0; ix < n1; ix++)
 				for (int sy=0; sy<shift; sy++)
 				{
@@ -816,12 +834,14 @@ void	Scalar::unfoldField2D(const int sZ)
 					static_cast<double *> (m)[2*dIdx]   = static_cast<double *> (m)[2*oIdx];
 					static_cast<double *> (m)[2*dIdx+1] = static_cast<double *> (m)[2*oIdx+1];
 				}
+		}
 
 		break;
 
 		case FIELD_SINGLE:
 
 		for (int iy=0; iy < n1/shift; iy++)
+		{
 			for (int ix=0; ix < n1; ix++)
 				for (int sy=0; sy<shift; sy++)
 				{
@@ -831,8 +851,9 @@ void	Scalar::unfoldField2D(const int sZ)
 					static_cast<float *> (m)[2*dIdx]   = static_cast<float *> (m)[2*oIdx];
 					static_cast<float *> (m)[2*dIdx+1] = static_cast<float *> (m)[2*oIdx+1];
 				}
+		}
 
-			break;
+		break;
 	}
 
 	return;

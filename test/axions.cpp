@@ -140,6 +140,30 @@ int	main (int argc, char *argv[])
 		writeMap (axion, index);
 	}
 
+// TEST
+/*
+
+		axion->foldField();
+	index++;
+	writeConf(axion, index);
+		axion->unfoldField();
+
+	index++;
+
+	writeConf(axion, index);
+	if (cDev != DEV_GPU)
+	{
+		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		writeMap (axion, index);
+	}
+	else
+	{
+		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		writeMap (axion, index);
+	}
+*/
+// FIN
+
 	if (dump > nSteps)
 		dump = nSteps;
 
