@@ -67,6 +67,8 @@ class	Scalar
 	void	scaleField(FieldIndex fIdx, double factor);
 	void	randConf();
 	void	smoothConf(const int iter, const double alpha);
+	//JAVIER
+	void	normaliseField(FieldIndex fIdx);
 
 	template<typename Float>
 	void	iteraField(const int iter, const Float alpha);
@@ -1047,6 +1049,8 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 			}
 
 			fftCpu (1);	// FFTW_BACKWARD
+			//JAVIER normalisation
+			normaliseField(FIELD_M);
 		}
 
 		exchangeGhosts(FIELD_M);
@@ -1225,7 +1229,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 		exchangeGhosts(FIELD_M);
 
 		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
-		printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) ); 
+		printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
 	}//END iteration loop
 }
 
@@ -1387,6 +1391,91 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			#pragma omp parallel for default(shared) schedule(static)
 			for (int lpc = 0; lpc < vol; lpc++)
 				field[lpc] *= fac;
+
+			break;
+		}
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+}
+
+
+
+//JAVIER ADDED THIS FUNCTION
+void	Scalar::normaliseField (FieldIndex fIdx)
+{
+	switch (precision)
+	{
+		case FIELD_DOUBLE:
+		{
+			complex<double> *field;
+
+			switch (fIdx)
+			{
+				case FIELD_M:
+				field = static_cast<complex<double>*> (m);
+				break;
+
+				case FIELD_V:
+					printf ("Wrong field. normaliseField only works for m");
+					return;
+				break;
+
+				case FIELD_M2:
+				if (lowmem) {
+					printf ("Wrong field. normaliseField only works for m");
+					return;
+				}
+				break;
+
+				default:
+				printf ("Wrong field. Valid possibilities: FIELD_M");
+				return;
+				break;
+			}
+
+			//JAVIER ADDED normalisation: this will be improved to soften strings
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int lpc = 0; lpc < v3; lpc++)
+				field[lpc] = field[lpc]/abs(field[lpc]);
+
+			break;
+		}
+
+		case FIELD_SINGLE:
+		{
+			complex<float> *field;
+
+			switch (fIdx)
+			{
+				case FIELD_M:
+				field = static_cast<complex<float> *> (m);
+				break;
+
+				case FIELD_V:
+					printf ("Wrong field. normaliseField only works for m");
+					return;
+				break;
+
+				case FIELD_M2:
+				if (lowmem) {
+					printf ("Wrong field. normaliseField only works for m");
+					return;
+				}
+				break;
+
+				default:
+				printf ("Wrong field. Valid possibilities: FIELD_M");
+				return;
+				break;
+			}
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int lpc = 0; lpc < v3; lpc++)
+				field[lpc] = field[lpc]/abs(field[lpc]);
 
 			break;
 		}

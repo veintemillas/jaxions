@@ -17,15 +17,16 @@ double sizeL = 4.;
 double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
-double alpha = 0.5;
+//JAVIER
+double alpha = 0.857;
 double LL = 15000.;
 double parm2 = 0.;
 
 bool lowmem = false;
 
 int kMax  = 0;
-//JAVIER changed to 5
-int iter  = 10;
+//JAVIER played with the following number 
+int iter  = 40;
 int parm1 = 0;
 
 ConfType cType = CONF_NONE;
