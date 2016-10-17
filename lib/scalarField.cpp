@@ -304,25 +304,22 @@ class	Scalar
 
 	if (cType == CONF_NONE)
 	{
-		if (fileName == NULL)
+		if (fileName != NULL)
 		{
-			printf("Sorry! Could not find initial Conditions\n");
-			exit(1);
+			FILE *fileM = fopen(fileName,"r");
+
+			if (fileM == 0)
+			{
+				printf("Sorry! Could not find initial Conditions\n");
+				exit(1);
+			}
+
+			fread(static_cast<char *> (m) + 2*fSize*n2, fSize*2, n3, fileM);
+			fclose(fileM);
+
+			memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
+			scaleField (FIELD_M, zI);
 		}
-
-		FILE *fileM = fopen(fileName,"r");
-
-		if (fileM == 0)
-		{
-			printf("Sorry! Could not find initial Conditions\n");
-			exit(1);
-		}
-
-		fread(static_cast<char *> (m) + 2*fSize*n2, fSize*2, n3, fileM);
-		fclose(fileM);
-
-		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
-		scaleField (FIELD_M, zI);
 	} else {
 		genConf(cType, parm1, parm2);
 	}
