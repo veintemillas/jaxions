@@ -702,10 +702,10 @@ void	Scalar::foldField()
 							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
 							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
-							((double *) m)[2*(dIdx+n2)]   = ((double *) m)[2*oIdx];
-							((double *) m)[2*(dIdx+n2)+1] = ((double *) m)[2*oIdx+1];
-							((double *) v)[2*dIdx]        = ((double *) m)[2*(oIdx+n2+n3)];
-							((double *) v)[2*dIdx+1]      = ((double *) m)[2*(oIdx+n2+n3)+1];
+							static_cast<double *> (m)[2*(dIdx+n2)]   = static_cast<double *> (m)[2*oIdx];
+							static_cast<double *> (m)[2*(dIdx+n2)+1] = static_cast<double *> (m)[2*oIdx+1];
+							static_cast<double *> (v)[2*dIdx]        = static_cast<double *> (m)[2*(oIdx+n2+n3)];
+							static_cast<double *> (v)[2*dIdx+1]      = static_cast<double *> (m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
@@ -725,10 +725,10 @@ void	Scalar::foldField()
 							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
 							int dIdx = (iz+1)*n2 + iy*n1*shift + ix*shift + sy;
 
-							((float *) m)[2*(dIdx+n2)]   = ((float *) m)[2*oIdx];
-							((float *) m)[2*(dIdx+n2)+1] = ((float *) m)[2*oIdx+1];
-							((float *) v)[2*dIdx]        = ((float *) m)[2*(oIdx+n2+n3)];
-							((float *) v)[2*dIdx+1]      = ((float *) m)[2*(oIdx+n2+n3)+1];
+							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
+							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
+							static_cast<float *> (v)[2*dIdx]        = static_cast<float *> (m)[2*(oIdx+n2+n3)];
+							static_cast<float *> (v)[2*dIdx+1]      = static_cast<float *> (m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
@@ -760,10 +760,10 @@ void	Scalar::unfoldField()
 							int oIdx = iy*n1*shift + ix*shift + sy;
 							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							((double *) m)[2*(dIdx+n2)]   = ((double *) m)[2*oIdx];
-							((double *) m)[2*(dIdx+n2)+1] = ((double *) m)[2*oIdx+1];
-							((double *) v)[2*dIdx]        = ((double *) m)[2*(oIdx+n2+n3)];
-							((double *) v)[2*dIdx+1]      = ((double *) m)[2*(oIdx+n2+n3)+1];
+							static_cast<double *> (m)[2*(dIdx+n2)]   = static_cast<double *> (m)[2*oIdx];
+							static_cast<double *> (m)[2*(dIdx+n2)+1] = static_cast<double *> (m)[2*oIdx+1];
+							static_cast<double *> (v)[2*dIdx]        = static_cast<double *> (m)[2*(oIdx+n2+n3)];
+							static_cast<double *> (v)[2*dIdx+1]      = static_cast<double *> (m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
@@ -783,10 +783,10 @@ void	Scalar::unfoldField()
 							int oIdx = iy*n1*shift + ix*shift + sy;
 							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							((float *) m)[2*(dIdx+n2)]   = ((float *) m)[2*oIdx];
-							((float *) m)[2*(dIdx+n2)+1] = ((float *) m)[2*oIdx+1];
-							((float *) v)[2*dIdx]        = ((float *) m)[2*(oIdx+n2+n3)];
-							((float *) v)[2*dIdx+1]      = ((float *) m)[2*(oIdx+n2+n3)+1];
+							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
+							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
+							static_cast<float *> (v)[2*dIdx]        = static_cast<float *> (m)[2*(oIdx+n2+n3)];
+							static_cast<float *> (v)[2*dIdx+1]      = static_cast<float *> (m)[2*(oIdx+n2+n3)+1];
 						}
 			}
 
