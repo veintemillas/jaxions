@@ -1,5 +1,8 @@
 #ifndef	_ENUM_FIELD_
 	#define _ENUM_FIELD_
+
+	typedef	unsigned int uint;
+
 	typedef	enum	FieldIndex_s
 	{
 		FIELD_M   = 1,

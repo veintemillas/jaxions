@@ -38,7 +38,7 @@
 #include<cstdio>
 #ifndef	__MIC__
 #ifdef	__AVX__
-void printFloat(int idx, int con, __m256 dat)
+void printFloat(uint idx, uint con, __m256 dat)
 {
 	if (idx == con) {
 		float caca[8];
@@ -47,7 +47,7 @@ void printFloat(int idx, int con, __m256 dat)
 	}
 }
 
-void printDouble(int idx, int con, __m256d dat)
+void printDouble(uint idx, uint con, __m256d dat)
 {
 	if (idx == con) {
 		double caca[4];
@@ -58,7 +58,7 @@ void printDouble(int idx, int con, __m256d dat)
 
 #else
 
-void printFloat(int idx, int con, __m128 dat)
+void printFloat(uint idx, uint con, __m128 dat)
 {
 	if (idx == con) {
 		float caca[4];
@@ -67,7 +67,7 @@ void printFloat(int idx, int con, __m128 dat)
 	}
 }
 
-void printDouble(int idx, int con, __m128d dat)
+void printDouble(uint idx, uint con, __m128d dat)
 {
 	if (idx == con) {
 		double caca[2];
@@ -78,7 +78,7 @@ void printDouble(int idx, int con, __m128d dat)
 #endif
 #else
 __attribute__((target(mic)))
-void printFloat(int idx, int con, __m512 dat)
+void printFloat(uint idx, uint con, __m512 dat)
 {
 	if (idx == con) {
 		static float __attribute((aligned(64))) caca[16];
@@ -89,7 +89,7 @@ void printFloat(int idx, int con, __m512 dat)
 }
 
 __attribute__((target(mic)))
-void printDouble(int idx, int con, __m512d dat)
+void printDouble(uint idx, uint con, __m512d dat)
 {
 	if (idx == con) {
 		static double  __attribute((aligned(64))) caca[8];
@@ -102,9 +102,9 @@ void printDouble(int idx, int con, __m512d dat)
 __attribute__((target(mic)))
 #endif
 void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-			    const double ood2, const double LL, const double nQcd, const int Lx, const int Vo, const int Vf, FieldPrecision precision)
+			    const double ood2, const double LL, const double nQcd, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision)
 {
-	const int Sf = Lx*Lx;
+	const uint Sf = Lx*Lx;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -140,8 +140,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double zQ = 9.*pow(zR, nQcd+3.);
 
 #ifdef	__MIC__
-		const int XC = (Lx<<2);
-		const int YC = (Lx>>2);
+		const uint XC = (Lx<<2);
+		const uint YC = (Lx>>2);
 
 		const double __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
@@ -151,8 +151,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
 #elif	defined(__AVX__)
-		const int XC = (Lx<<1);
-		const int YC = (Lx>>1);
+		const uint XC = (Lx<<1);
+		const uint YC = (Lx>>1);
 
 		const double __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
@@ -162,8 +162,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
 		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
 #else
-		const int XC = Lx;
-		const int YC = Lx;
+		const uint XC = Lx;
+		const uint YC = Lx;
 
 		const double __attribute__((aligned(Align))) z2Aux[2]  = {-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
@@ -187,12 +187,12 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 			_MData_ tmp, mel, mPx, mPy;
 
 			#pragma omp for schedule(static)
-			for (int idx = Vo; idx < Vf; idx += step)
+			for (uint idx = Vo; idx < Vf; idx += step)
 			{
-				int X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
+				uint X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
 
 				{
-					int tmi = idx/XC, tpi;
+					uint tmi = idx/XC, tpi;
 
 					tpi = tmi/YC;
 					X[1] = tmi - tpi*YC;
@@ -330,8 +330,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float zQ = 9.*powf(zR, nQcd+3.);
 
 #ifdef	__MIC__
-		const int XC = (Lx<<3);
-		const int YC = (Lx>>3);
+		const uint XC = (Lx<<3);
+		const uint YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) z2Aux[16]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2};
 		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
@@ -341,8 +341,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float __attribute__((aligned(Align))) dzcAux[16] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
 #elif	defined(__AVX__)
-		const int XC = (Lx<<2);
-		const int YC = (Lx>>2);
+		const uint XC = (Lx<<2);
+		const uint YC = (Lx>>2);
 
 		const float __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
@@ -352,8 +352,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 		const float __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
 #else
-		const int XC = (Lx<<1);
-		const int YC = (Lx>>1);
+		const uint XC = (Lx<<1);
+		const uint YC = (Lx>>1);
 
 		const float __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
@@ -377,12 +377,12 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 			_MData_ tmp, mel, mPx, mPy, mMx;
 
 			#pragma omp for schedule(static)
-			for (int idx = Vo; idx < Vf; idx += step)
+			for (uint idx = Vo; idx < Vf; idx += step)
 			{
-				int X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+				uint X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
 
 				{
-					int tmi = idx/XC, itp;
+					uint tmi = idx/XC, itp;
 
 					itp = tmi/YC;
 					X[1] = tmi - itp*YC;
@@ -499,11 +499,11 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 	}
 }
 
-void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const int Lx, const int V, const int S, FieldPrecision precision)
+void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const uint Lx, const uint V, const uint S, FieldPrecision precision)
 {
 #ifdef USE_XEON
-	const int micIdx = commAcc(); 
-	const int ext = V + S;
+	const int  micIdx = commAcc(); 
+	const uint ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 
@@ -567,7 +567,7 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 #endif
 }
 
-void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const int Lx, const int V, const int S, FieldPrecision precision)
+void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const uint Lx, const uint V, const uint S, FieldPrecision precision)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
@@ -604,7 +604,7 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d, const int Vo, const int Vf, const int Sf, FieldPrecision precision)
+void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d, const uint Vo, const uint Vf, const uint Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
 	{
@@ -644,7 +644,7 @@ void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const dou
 			register _MData_ mIn, vIn, tmp;
 
 			#pragma omp for schedule(static)
-			for (int idx = Vo; idx < Vf; idx += step)
+			for (uint idx = Vo; idx < Vf; idx += step)
 			{
 #ifdef	__MIC__
 				vIn = opCode(load_pd, &v[2*(idx-Sf)]);
@@ -689,18 +689,20 @@ void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const dou
 		const float dzd = dz*d;
 #ifdef	__MIC__
 		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd  };
+#elif	defined(__AVX__)
+		const float __attribute__((aligned(Align))) dzdAux[8]  = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
 #else
-		const float __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) dzdAux[4]  = { dzd, dzd, dzd, dzd };
 #endif
 		const _MData_ dzdVec = opCode(load_ps, dzdAux);
 
 		#pragma omp parallel default(shared)
 		{
 			register _MData_ mIn, vIn, tmp;
-			register int idxP0, idxMz;
+			register uint idxP0, idxMz;
 
 			#pragma omp for schedule(static)
-			for (int idx = Vo; idx < Vf; idx += step)
+			for (uint idx = Vo; idx < Vf; idx += step)
 			{
 				idxP0 = idx << 1;
 				idxMz = (idx - Sf) << 1;
@@ -726,7 +728,7 @@ void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const dou
 __attribute__((target(mic)))
 #endif
 void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z, const double dz, const double c, const double ood2,
-		    const double LL, const double nQcd, const int Lx, const int Vo, const int Vf, const int Sf, FieldPrecision precision)
+		    const double LL, const double nQcd, const uint Lx, const uint Vo, const uint Vf, const uint Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
 	{
@@ -756,8 +758,8 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const double zQ = 9.*pow(zR, nQcd+3.);
 		const double dzc = dz*c;
 #ifdef	__MIC__
-		const int XC = (Lx<<2);
-		const int YC = (Lx>>2);
+		const uint XC = (Lx<<2);
+		const uint YC = (Lx>>2);
 
 		const double __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
@@ -766,8 +768,8 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const double __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
 		const double __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 #elif	defined(__AVX__)
-		const int XC = (Lx<<1);
-		const int YC = (Lx>>1);
+		const uint XC = (Lx<<1);
+		const uint YC = (Lx>>1);
 
 		const double __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
@@ -776,8 +778,8 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const double __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
 		const double __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
 #else
-		const int XC = Lx;
-		const int YC = Lx;
+		const uint XC = Lx;
+		const uint YC = Lx;
 
 		const double __attribute__((aligned(Align))) z2Aux[2]  = {-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
@@ -798,12 +800,12 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 			_MData_ tmp, mel, mPx, mPy;
 
 			#pragma omp for schedule(static)
-			for (int idx = Vo; idx < Vf; idx += step)
+			for (uint idx = Vo; idx < Vf; idx += step)
 			{
-				int X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
+				uint X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
 
 				{
-					int tmi = idx/XC, tpi;
+					uint tmi = idx/XC, tpi;
 
 					tpi = tmi/YC;
 					X[1] = tmi - tpi*YC;
@@ -932,8 +934,8 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const float zQ = 9.*powf(zR, nQcd+3.);
 		const float dzc = dz*c;
 #ifdef	__MIC__
-		const int XC = (Lx<<3);
-		const int YC = (Lx>>3);
+		const uint XC = (Lx<<3);
+		const uint YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) z2Aux[16]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2};
 		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
@@ -941,9 +943,9 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const float __attribute__((aligned(Align))) lbAux[16]  = { LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL};
 		const float __attribute__((aligned(Align))) d2Aux[16]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
 		const float __attribute__((aligned(Align))) dzcAux[16] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-#else
-		const int XC = (Lx<<2);
-		const int YC = (Lx>>2);
+#elif	defined(__AVX__)
+		const uint XC = (Lx<<2);
+		const uint YC = (Lx>>2);
 
 		const float __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
@@ -951,6 +953,16 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const float __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
 		const float __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
 		const float __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
+#else
+		const uint XC = (Lx<<1);
+		const uint YC = (Lx>>1);
+
+		const float __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
+		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
+		const float __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
+		const float __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
+		const float __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
+		const float __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
 #endif
 		const _MData_ z2Vec  = opCode(load_ps, z2Aux);
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
@@ -964,12 +976,12 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 			_MData_ tmp, mel, mPx, mPy, mMx;
 
 			#pragma omp for schedule(static)
-			for (int idx = Vo; idx < Vf; idx += step)
+			for (uint idx = Vo; idx < Vf; idx += step)
 			{
-				int X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+				uint X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
 
 				{
-					int tmi = idx/XC, itp;
+					uint tmi = idx/XC, itp;
 
 					itp = tmi/YC;
 					X[1] = tmi - itp*YC;
@@ -1083,11 +1095,11 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 	}
 }
 
-void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const int Lx, const int V, const int S, FieldPrecision precision)
+void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const uint Lx, const uint V, const uint S, FieldPrecision precision)
 {
 #ifdef USE_XEON
-	const int micIdx = commAcc(); 
-	const int ext = V + S;
+	const int  micIdx = commAcc(); 
+	const uint ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = (double *) __builtin_assume_aligned((void *) axionField->zV(), Align);
 
@@ -1176,7 +1188,7 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 #endif
 }
-void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const int Lx, const int V, const int S, FieldPrecision precision)
+void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const uint Lx, const uint V, const uint S, FieldPrecision precision)
 {
 	const double ood2 = 1./delta2; 
 	double *z = axionField->zV();

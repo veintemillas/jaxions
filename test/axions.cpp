@@ -82,18 +82,18 @@ int	main (int argc, char *argv[])
 	printMpi("           INITIAL CONDITIONS                     \n\n");
 
 	printMpi("Length =  %2.5f\n", sizeL);
-	printMpi("N      =  %d\n",    sizeN);
-	printMpi("Nz     =  %d\n",    sizeZ);
-	printMpi("zGrid  =  %d\n",    zGrid);
+	printMpi("N      =  %ld\n",   sizeN);
+	printMpi("Nz     =  %ld\n",   sizeZ);
+	printMpi("zGrid  =  %ld\n",   zGrid);
 	printMpi("dx     =  %2.5f\n", delta);
 	printMpi("dz     =  %2.5f\n", dz);
 	printMpi("LL     =  %2.5f\n", LL);
 	printMpi("--------------------------------------------------\n");
 
-	const int S0 = sizeN*sizeN;
-	const int SF = sizeN*sizeN*(sizeZ+1)-1;
-	const int V0 = 0;
-	const int VF = axion->Size()-1;
+	const uint S0 = sizeN*sizeN;
+	const uint SF = sizeN*sizeN*(sizeZ+1)-1;
+	const uint V0 = 0;
+	const uint VF = axion->Size()-1;
 
 	printMpi("INITIAL CONDITIONS LOADED\n");
 	if (sPrec != FIELD_DOUBLE)
@@ -111,7 +111,7 @@ int	main (int argc, char *argv[])
 										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
 	}
 
-	printMpi("Ez     =  %d\n",    axion->eDepth());
+	printMpi("Ez     =  %ld\n",    axion->eDepth());
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
@@ -132,12 +132,12 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
-		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 	else
 	{
-		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 
@@ -154,12 +154,12 @@ int	main (int argc, char *argv[])
 	writeConf(axion, index);
 	if (cDev != DEV_GPU)
 	{
-		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 	else
 	{
-		memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 */
@@ -235,7 +235,7 @@ int	main (int argc, char *argv[])
 		else
 		{
 //			writeConf(axion, index);
-			memcpy   (axion->mCpu(), ((char *) (axion->mCpu())) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 			writeMap (axion, index);
 		}
 	} // zloop
@@ -250,17 +250,17 @@ int	main (int argc, char *argv[])
 
 	if (sPrec == FIELD_DOUBLE)
 	{
-		printMpi("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
-		 								  ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
-									 	  ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
+		printMpi("\n Examples m: m[0]= %le + %le*I, m[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
+		 								  static_cast<complex<double> *> (axion->mCpu())[SF].real(), static_cast<complex<double> *> (axion->mCpu())[SF].imag());
+		printMpi("\n Examples v: v[0]= %le + %le*I, v[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->vCpu())[V0].real(), static_cast<complex<double> *> (axion->vCpu())[V0].imag(),
+									 	  static_cast<complex<double> *> (axion->vCpu())[VF].real(), static_cast<complex<double> *> (axion->vCpu())[VF].imag());
 	}
 	else
 	{
-		printMpi("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
-										  ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
-										  ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
+		printMpi("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  static_cast<complex<float> *> (axion->mCpu())[S0].real(), static_cast<complex<float> *> (axion->mCpu())[S0].imag(),
+										  static_cast<complex<float> *> (axion->mCpu())[SF].real(), static_cast<complex<float> *> (axion->mCpu())[SF].imag());
+		printMpi("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",static_cast<complex<float> *> (axion->vCpu())[V0].real(), static_cast<complex<float> *> (axion->vCpu())[V0].imag(),
+										  static_cast<complex<float> *> (axion->vCpu())[VF].real(), static_cast<complex<float> *> (axion->vCpu())[VF].imag());
 	}
 
 	printMpi("z_final = %f\n", *axion->zV());

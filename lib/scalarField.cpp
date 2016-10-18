@@ -36,24 +36,24 @@ class	Scalar
 {
 	private:
 
-	const int n1;
-	const int n2;
-	const int n3;
+	const uint n1;
+	const uint n2;
+	const uint n3;
 
-	const int Lz;
-	const int Tz;
-	const int Ez;
-	const int v3;
+	const uint Lz;
+	const uint Tz;
+	const uint Ez;
+	const uint v3;
 
-	const int nSplit;
+	const uint nSplit;
 
 	const bool lowmem;
 
 	DeviceType	device;
 	FieldPrecision	precision;
 
-	int	fSize;
-	int	mAlign;
+	uint	fSize;
+	uint	mAlign;
 
 	double	*z;
 
@@ -68,21 +68,21 @@ class	Scalar
 
 	void	scaleField(FieldIndex fIdx, double factor);
 	void	randConf();
-	void	smoothConf(const int iter, const double alpha);
+	void	smoothConf(const uint iter, const double alpha);
 	//JAVIER
 	void	normaliseField(FieldIndex fIdx);
 
 	template<typename Float>
-	void	iteraField(const int iter, const Float alpha);
+	void	iteraField(const uint iter, const Float alpha);
 
 
 	template<typename Float>
-	void	momConf(const int kMax, const Float kCrit);
+	void	momConf(const uint kMax, const Float kCrit);
 
 	public:
 
-			 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
-				ConfType cType, const int parm1, const double parm2);
+			 Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp,
+				ConfType cType, const uint parm1, const double parm2);
 			~Scalar();
 
 	void		*mCpu() { return m; }
@@ -111,16 +111,16 @@ class	Scalar
 #endif
 	bool		LowMem()  { return lowmem; }
 
-	int		Size()   { return n3; }
-	int		Surf()   { return n2; }
-	int		Length() { return n1; }
-	int		Depth()  { return Lz; }
-	int		eDepth() { return Ez; }
-	int		eSize()  { return v3; }
+	uint		Size()   { return n3; }
+	uint		Surf()   { return n2; }
+	uint		Length() { return n1; }
+	uint		Depth()  { return Lz; }
+	uint		eDepth() { return Ez; }
+	uint		eSize()  { return v3; }
 
 	FieldPrecision	Precision() { return precision; }
 
-	int		dataSize() { return fSize; }
+	uint		dataSize() { return fSize; }
 
 	double		*zV() { return z; }
 	const double	*zV() const { return z; }
@@ -129,7 +129,7 @@ class	Scalar
 
 	void	foldField	();
 	void	unfoldField	();
-	void	unfoldField2D	(const int sZ);		// Just for the maps
+	void	unfoldField2D	(const uint sZ);	// Just for the maps
 
 	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
@@ -145,13 +145,13 @@ class	Scalar
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
 
-	void	genConf	(ConfType cType, const int parm1, const double parm2);
+	void	genConf	(ConfType cType, const uint parm1, const double parm2);
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
 #endif
 };
 
-	Scalar::Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp, ConfType cType, const int parm1,
+	Scalar::Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp, ConfType cType, const uint parm1,
 		       const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(nSp*Lz), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
 		       lowmem(lowmem)
 {
@@ -202,8 +202,8 @@ class	Scalar
 		exit(1);
 	}
 
-	const size_t	mBytes = v3*fSize*2;
-	const size_t	vBytes = n3*fSize*2;
+	const size_t	mBytes = ((size_t) v3)*((size_t) (fSize*2));
+	const size_t	vBytes = ((size_t) n3)*((size_t) (fSize*2));
 
 #ifdef	USE_XEON
 	alignAlloc ((void**) &mX, mAlign, mBytes);
@@ -326,7 +326,7 @@ class	Scalar
 */
 			if (prec == FIELD_DOUBLE)
 			{
-				for (int i=n2; i<n3+n2; i++)
+				for (uint i=n2; i<n3+n2; i++)
 				{
 					static_cast<double*>(m)[2*i]   = i-n2;
 					static_cast<double*>(m)[2*i+1] = i-n2;
@@ -334,7 +334,7 @@ class	Scalar
 			}
 			else
 			{
-				for (int i=n2; i<n3+n2; i++)
+				for (uint i=n2; i<n3+n2; i++)
 				{
 					static_cast<float*>(m)[2*i]   = i-n2;
 					static_cast<float*>(m)[2*i+1] = i-n2;
@@ -366,17 +366,19 @@ class	Scalar
 
 	Scalar::~Scalar()
 {
+	printf ("Calling destructor...\n");
+	fflush (stdout);
 	if (m != NULL)
-		trackFree(m, ALLOC_ALIGN);
+		trackFree(&m, ALLOC_ALIGN);
 
 	if (v != NULL)
-		trackFree(v, ALLOC_ALIGN);
+		trackFree(&v, ALLOC_ALIGN);
 
 	if (m2 != NULL)
-		trackFree(m2, ALLOC_ALIGN);
+		trackFree(&m2, ALLOC_ALIGN);
 
 	if (z != NULL)
-		trackFree(z, ALLOC_ALIGN);
+		trackFree((void **) &z, ALLOC_ALIGN);
 
 	if (device == DEV_GPU)
 	{
@@ -597,7 +599,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	static const int ghostBytes = 2*n2*fSize;
+	static const uint ghostBytes = 2*n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
@@ -701,7 +703,7 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 
 void	Scalar::foldField()
 {
-	int	shift;
+	uint	shift;
 
 	shift = mAlign/(2*fSize);
 
@@ -709,17 +711,17 @@ void	Scalar::foldField()
 	{
 		case FIELD_DOUBLE:
 
-			for (int iz=0; iz < Lz; iz++)
+			for (uint iz=0; iz < Lz; iz++)
 			{
 				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
 				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
+				for (uint iy=0; iy < n1/shift; iy++)
+					for (uint ix=0; ix < n1; ix++)
+						for (uint sy=0; sy<shift; sy++)
 						{
-							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
+							uint oIdx = (iy+sy*(n1/shift))*n1 + ix;
+							uint dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
 							static_cast<double *> (m)[2*(dIdx+n2)]   = static_cast<double *> (m)[2*oIdx];
 							static_cast<double *> (m)[2*(dIdx+n2)+1] = static_cast<double *> (m)[2*oIdx+1];
@@ -732,17 +734,17 @@ void	Scalar::foldField()
 
 		case FIELD_SINGLE:
 
-			for (int iz=0; iz < Lz; iz++)
+			for (uint iz=0; iz < Lz; iz++)
 			{
 				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
 				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
+				for (uint iy=0; iy < n1/shift; iy++)
+					for (uint ix=0; ix < n1; ix++)
+						for (uint sy=0; sy<shift; sy++)
 						{
-							int oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							int dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
+							uint oIdx = (iy+sy*(n1/shift))*n1 + ix;
+							uint dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
 
 							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
 							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
@@ -759,7 +761,7 @@ void	Scalar::foldField()
 
 void	Scalar::unfoldField()
 {
-	int	shift;
+	uint	shift;
 
 	shift = mAlign/(2*fSize);
 
@@ -767,17 +769,17 @@ void	Scalar::unfoldField()
 	{
 		case FIELD_DOUBLE:
 
-			for (int iz=0; iz < Lz; iz++)
+			for (uint iz=0; iz < Lz; iz++)
 			{
 				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
 				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
+				for (uint iy=0; iy < n1/shift; iy++)
+					for (uint ix=0; ix < n1; ix++)
+						for (uint sy=0; sy<shift; sy++)
 						{
-							int oIdx = iy*n1*shift + ix*shift + sy;
-							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+							uint oIdx = iy*n1*shift + ix*shift + sy;
+							uint dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
 							static_cast<double *> (m)[2*(dIdx+n2)]   = static_cast<double *> (m)[2*oIdx];
 							static_cast<double *> (m)[2*(dIdx+n2)+1] = static_cast<double *> (m)[2*oIdx+1];
@@ -790,17 +792,17 @@ void	Scalar::unfoldField()
 
 		case FIELD_SINGLE:
 
-			for (int iz=0; iz < Lz; iz++)
+			for (uint iz=0; iz < Lz; iz++)
 			{
 				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
 				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
 
-				for (int iy=0; iy < n1/shift; iy++)
-					for (int ix=0; ix < n1; ix++)
-						for (int sy=0; sy<shift; sy++)
+				for (uint iy=0; iy < n1/shift; iy++)
+					for (uint ix=0; ix < n1; ix++)
+						for (uint sy=0; sy<shift; sy++)
 						{
-							int oIdx = iy*n1*shift + ix*shift + sy;
-							int dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+							uint oIdx = iy*n1*shift + ix*shift + sy;
+							uint dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
 							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
 							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
@@ -815,7 +817,7 @@ void	Scalar::unfoldField()
 	return;
 }
 
-void	Scalar::unfoldField2D(const int sZ)
+void	Scalar::unfoldField2D(const uint sZ)
 {
 	int	shift;
 
@@ -825,13 +827,13 @@ void	Scalar::unfoldField2D(const int sZ)
 	{
 		case FIELD_DOUBLE:
 
-		for (int iy=0; iy < n1/shift; iy++)
+		for (uint iy=0; iy < n1/shift; iy++)
 		{
-			for (int ix=0; ix < n1; ix++)
-				for (int sy=0; sy<shift; sy++)
+			for (uint ix=0; ix < n1; ix++)
+				for (uint sy=0; sy<shift; sy++)
 				{
-					int oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
-					int dIdx = (iy+sy*(n1/shift))*n1 + ix;
+					uint oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					uint dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
 					static_cast<double *> (m)[2*dIdx]   = static_cast<double *> (m)[2*oIdx];
 					static_cast<double *> (m)[2*dIdx+1] = static_cast<double *> (m)[2*oIdx+1];
@@ -842,13 +844,13 @@ void	Scalar::unfoldField2D(const int sZ)
 
 		case FIELD_SINGLE:
 
-		for (int iy=0; iy < n1/shift; iy++)
+		for (uint iy=0; iy < n1/shift; iy++)
 		{
-			for (int ix=0; ix < n1; ix++)
-				for (int sy=0; sy<shift; sy++)
+			for (uint ix=0; ix < n1; ix++)
+				for (uint sy=0; sy<shift; sy++)
 				{
-					int oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
-					int dIdx = (iy+sy*(n1/shift))*n1 + ix;
+					uint oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					uint dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
 					static_cast<float *> (m)[2*dIdx]   = static_cast<float *> (m)[2*oIdx];
 					static_cast<float *> (m)[2*dIdx+1] = static_cast<float *> (m)[2*oIdx+1];
@@ -866,13 +868,13 @@ void	Scalar::prepareCpu(int *window)
 	if (precision == FIELD_DOUBLE)
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(int i=0; i < n3; i++)
+		for(uint i=0; i < n3; i++)
 			((std::complex<double> *) m2)[i] = I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag()*((double) window[i]);
 	}
 	else
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(int i=0; i < n3; i++)
+		for(uint i=0; i < n3; i++)
 			((std::complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag()*((float) window[i]);
 	}
 }
@@ -889,13 +891,13 @@ void	Scalar::squareCpu()
 	if (precision == FIELD_DOUBLE)
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(int i=0; i < n3; i++)
+		for(uint i=0; i < n3; i++)
 			((std::complex<double> *) m2)[i] = pow(abs(((std::complex<double> *) m2)[i]/((double) n3)),2);
 	}
 	else
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(int i=0; i < n3; i++)
+		for(uint i=0; i < n3; i++)
 			((std::complex<float> *) m2)[i] = pow(abs(((std::complex<float> *) m2)[i]/((float) n3)),2);
 	}
 }
@@ -1038,7 +1040,7 @@ void	Scalar::fftGpu	(int sign)
 #endif
 }
 
-void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
+void	Scalar::genConf	(ConfType cType, const uint parm1, const double parm2)
 {
 	switch (cType)
 	{
@@ -1120,12 +1122,24 @@ void	Scalar::randConf ()
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
-	trackAlloc((void *) sd, sizeof(int)*maxThreads);
+	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
 
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
+			printf ("Creating seeds for %d threads\n", maxThreads);
+			fflush (stdout);
+			printf ("SD pointer %p (%p)\n", sd, &(sd[0]));
+			fflush (stdout);
 	for (int i=0; i<maxThreads; i++)
-		sd[i] = seed();
+	{
+			printf ("Thread %d ", i);
+			fflush (stdout);
+		sd[i] = 0;//seed();
+			printf ("Ok!\n");
+			fflush (stdout);
+	}
+			printf ("Done\n");
+			fflush (stdout);
 
 	switch (precision)
 	{
@@ -1143,11 +1157,8 @@ void	Scalar::randConf ()
 			std::uniform_real_distribution<double> uni(-1.0, 1.0);
 
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-			for (int idx=2*n2; idx<2*(n2+n3); idx+=2)
-			{
-				((double *) m)[idx]   = uni(mt64);
-				((double *) m)[idx+1] = uni(mt64);
-			}
+			for (uint idx=n2; idx<n2+n3; idx++)
+				static_cast<complex<double>*> (m)[idx]   = complex<double>(uni(mt64), uni(mt64));
 		}
 		//JAVIER control print
 		printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2,((double *) m)[2*n2],((double *) m)[2*n2+1]);
@@ -1160,18 +1171,24 @@ void	Scalar::randConf ()
 		{
 			int nThread = omp_get_thread_num();
 
-			//printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+			printf ("There we go\n");
+			fflush (stdout);
+			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
+			fflush (stdout);
 
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 			//JAVIER included negative values
 			std::uniform_real_distribution<float> uni(-1.0, 1.0);
 
+			printf ("Thread %d starts loop\n", nThread);
+			fflush (stdout);
+
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-			for (int idx=2*n2; idx<2*(n2+n3); idx+=2)
-			{
-				((float *) m)[idx]   = uni(mt64);
-				((float *) m)[idx+1] = uni(mt64);
-			}
+			for (uint idx=n2; idx<n2+n3; idx++)
+				static_cast<complex<float>*> (m)[idx]   = complex<float>(uni(mt64), uni(mt64));
+
+			printf ("Thread %d finished loop\n", nThread);
+			fflush (stdout);
 		}
 
 		break;
@@ -1179,18 +1196,18 @@ void	Scalar::randConf ()
 		default:
 
 		printf("Unrecognized precision\n");
-		trackFree(sd, ALLOC_TRACK);
+		trackFree((void **) &sd, ALLOC_TRACK);
 		exit(1);
 
 		break;
 	}
 
-	trackFree(sd, ALLOC_TRACK);
+	trackFree((void **) &sd, ALLOC_TRACK);
 }// End Scalar::randConf ()
 
 
 template<typename Float>
-void	Scalar::iteraField(const int iter, const Float alpha)
+void	Scalar::iteraField(const uint iter, const Float alpha)
 {
 	const Float One = 1.;
 	const Float OneSixth = (1./6.);
@@ -1203,14 +1220,14 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 	//printf("smoothing check m[0]= (%lf,%lf)\n",  ((Float *) m)[n2] , ((Float *) m)[n2] );
 	//printf("the same? ????? m[0]= (%lf,%lf)\n",  ((Float *) mCp)[n2] , ((Float *) mCp)[n2] ); yes
 
-	for (int it=0; it<iter; it++)
+	for (uint it=0; it<iter; it++)
 	{
 		#pragma omp parallel default(shared)
 		{
 			#pragma omp for schedule(static)
-			for (int idx=n2; idx<(n2+n3); idx++)
+			for (uint idx=n2; idx<(n2+n3); idx++)
 			{
-				int iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+				uint iPx, iMx, iPy, iMy, iPz, iMz, X[3];
 				indexXeon::idx2Vec (idx, X, n1);
 
 				if (X[0] == 0)
@@ -1258,7 +1275,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 	}//END iteration loop
 }
 
-void	Scalar::smoothConf (const int iter, const double alpha)
+void	Scalar::smoothConf (const uint iter, const double alpha)
 {
 	switch	(precision)
 	{
@@ -1281,7 +1298,7 @@ void	Scalar::smoothConf (const int iter, const double alpha)
 
 
 template<typename Float>
-void	Scalar::momConf (const int kMax, const Float kCrit)
+void	Scalar::momConf (const uint kMax, const Float kCrit)
 {
 	const Float Twop = 2.0*M_PI;
 
@@ -1295,7 +1312,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
-	trackAlloc((void *) sd, sizeof(int)*maxThreads);
+	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
 
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
@@ -1312,7 +1329,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 
 		#pragma omp for schedule(static)
-		for (int oz = 0; oz < Tz; oz++)
+		for (uint oz = 0; oz < Tz; oz++)
 		{
 			if (oz/Lz != commRank())
 				continue;
@@ -1322,8 +1339,8 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 			for(int py = -(kMax-pz); py <= (kMax-pz); py++)
 				for(int px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
 				{
-					int idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
-					int modP = px*px + py*py + pz*pz;
+					uint idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
+					uint modP = px*px + py*py + pz*pz;
 
 					if (modP <= kMax)
 					{
@@ -1337,7 +1354,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 		}
 	}
 
-	trackFree(sd, ALLOC_TRACK);
+	trackFree((void **) &sd, ALLOC_TRACK);
 }
 
 void	Scalar::scaleField (FieldIndex fIdx, double factor)
@@ -1347,7 +1364,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 		case FIELD_DOUBLE:
 		{
 			complex<double> *field;
-			int vol = n3;
+			uint vol = n3;
 
 			switch (fIdx)
 			{
@@ -1377,7 +1394,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			}
 
 			#pragma omp parallel for default(shared) schedule(static)
-			for (int lpc = 0; lpc < vol; lpc++)
+			for (uint lpc = 0; lpc < vol; lpc++)
 				field[lpc] *= factor;
 
 			break;
@@ -1387,7 +1404,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 		{
 			complex<float> *field;
 			float fac = factor;
-			int vol = n3;
+			uint vol = n3;
 
 			switch (fIdx)
 			{
@@ -1416,7 +1433,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			}
 
 			#pragma omp parallel for default(shared) schedule(static)
-			for (int lpc = 0; lpc < vol; lpc++)
+			for (uint lpc = 0; lpc < vol; lpc++)
 				field[lpc] *= fac;
 
 			break;
@@ -1466,7 +1483,7 @@ void	Scalar::normaliseField (FieldIndex fIdx)
 
 			//JAVIER ADDED normalisation: this will be improved to soften strings
 			#pragma omp parallel for default(shared) schedule(static)
-			for (int lpc = 0; lpc < v3; lpc++)
+			for (uint lpc = 0; lpc < v3; lpc++)
 				field[lpc] = field[lpc]/abs(field[lpc]);
 
 			break;
@@ -1501,7 +1518,7 @@ void	Scalar::normaliseField (FieldIndex fIdx)
 			}
 
 			#pragma omp parallel for default(shared) schedule(static)
-			for (int lpc = 0; lpc < v3; lpc++)
+			for (uint lpc = 0; lpc < v3; lpc++)
 				field[lpc] = field[lpc]/abs(field[lpc]);
 
 			break;
