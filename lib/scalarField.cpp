@@ -609,17 +609,17 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 	if (fIdx & FIELD_M)
 	{
-		sGhostBck = (void *) (((char *) m) + 2*n2*fSize);
-		sGhostFwd = (void *) (((char *) m) + 2*n3*fSize);
+		sGhostBck = static_cast<void *> (static_cast<char *> (m) + ((size_t) (2*fSize))*((size_t) n2));
+		sGhostFwd = static_cast<void *> (static_cast<char *> (m) + ((size_t) (2*fSize))*((size_t) n3));
 		rGhostBck = m;
-		rGhostFwd = (void *) (((char *) m) + 2*(n3+n2)*fSize);
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + ((size_t) (2*fSize))*(((size_t) n3) + ((size_t) n2)));
 	}
 	else
 	{
-		sGhostBck = (void *) (((char *) m2) + 2*n2*fSize);
-		sGhostFwd = (void *) (((char *) m2) + 2*n3*fSize);
+		sGhostBck = static_cast<void *> (static_cast<char *> (m2) + ((size_t) (2*fSize))*((size_t) n2));
+		sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + ((size_t) (2*fSize))*((size_t) n3));
 		rGhostBck = m2;
-		rGhostFwd = (void *) (((char *) m2) + 2*(n3+n2)*fSize);
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + ((size_t) (2*fSize))*(((size_t) n3) + ((size_t) n2)));
 	}
 
 	switch	(opComm)
