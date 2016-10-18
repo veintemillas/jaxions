@@ -10,10 +10,10 @@ fftwf_plan pf, pfb;
 
 bool single;
 
-void	initFFT	(void *m, void *m2, const int n1, const int Lz, FieldPrecision prec, bool lowmem)
+void	initFFT	(void *m, void *m2, const uint n1, const uint Lz, FieldPrecision prec, bool lowmem)
 {
-	const int nD[2] = { n1, n1 };
-	const int dist  = n1*n1;
+	const ptrdiff_t nD[2] = { ((size_t) n1), ((size_t) n1) };
+	const ptrdiff_t dist  = ((size_t) n1*n1);
 
 	fftw_mpi_init();
 

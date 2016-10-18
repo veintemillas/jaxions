@@ -47,19 +47,19 @@
 
 		void	scaleField(FieldIndex fIdx, double factor);
 		void	randConf();
-		void	smoothConf(const uint iter, const double alpha);
+		void	smoothConf(const int iter, const double alpha);
 
 		template<typename Float>
-		void	iteraField(const uint iter, const Float alpha);
+		void	iteraField(const int iter, const Float alpha);
 
 
 		template<typename Float>
-		void	momConf(const uint kMax, const Float kCrit);
+		void	momConf(const int kMax, const Float kCrit);
 
 		public:
 
 				 Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp,
-					ConfType cType, const uint parm1, const double parm2);
+					ConfType cType, const int parm1, const double parm2);
 				~Scalar();
 
 		void		*mCpu() { return m; }
@@ -126,7 +126,7 @@
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
-		void	genConf	(ConfType cType, const uint parm1, const double parm2);
+		void	genConf	(ConfType cType, const int parm1, const double parm2);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

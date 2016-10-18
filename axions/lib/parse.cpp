@@ -4,13 +4,13 @@
 
 #include "enum-field.h"
 
-int sizeN = 128;
-int sizeZ = 128;
-int zGrid = 1;
-int nSteps = 500;
-int dump = 100;
-int nQcd = 3;
-int fIndex = -1;
+uint sizeN = 128;
+uint sizeZ = 128;
+uint zGrid = 1;
+int  nSteps = 500;
+int  dump = 100;
+int  nQcd = 3;
+int  fIndex = -1;
 //int kMax = 8;
 
 double sizeL = 4.;

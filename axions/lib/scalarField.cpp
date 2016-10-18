@@ -68,21 +68,21 @@ class	Scalar
 
 	void	scaleField(FieldIndex fIdx, double factor);
 	void	randConf();
-	void	smoothConf(const uint iter, const double alpha);
+	void	smoothConf(const int iter, const double alpha);
 	//JAVIER
 	void	normaliseField(FieldIndex fIdx);
 
 	template<typename Float>
-	void	iteraField(const uint iter, const Float alpha);
+	void	iteraField(const int iter, const Float alpha);
 
 
 	template<typename Float>
-	void	momConf(const uint kMax, const Float kCrit);
+	void	momConf(const int kMax, const Float kCrit);
 
 	public:
 
 			 Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp,
-				ConfType cType, const uint parm1, const double parm2);
+				ConfType cType, const int parm1, const double parm2);
 			~Scalar();
 
 	void		*mCpu() { return m; }
@@ -145,13 +145,13 @@ class	Scalar
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
 
-	void	genConf	(ConfType cType, const uint parm1, const double parm2);
+	void	genConf	(ConfType cType, const int parm1, const double parm2);
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
 #endif
 };
 
-	Scalar::Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp, ConfType cType, const uint parm1,
+	Scalar::Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp, ConfType cType, const int parm1,
 		       const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(nSp*Lz), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
 		       lowmem(lowmem)
 {
@@ -1041,8 +1041,11 @@ void	Scalar::fftGpu	(int sign)
 #endif
 }
 
-void	Scalar::genConf	(ConfType cType, const uint parm1, const double parm2)
+void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 {
+	printf ("Generating conf\n");
+	fflush (stdout);
+
 	switch (cType)
 	{
 		case CONF_NONE:
@@ -1074,7 +1077,11 @@ void	Scalar::genConf	(ConfType cType, const uint parm1, const double parm2)
 				break;
 			}
 
+			printf ("Running FFT\n");
+			fflush (stdout);
 			fftCpu (1);	// FFTW_BACKWARD
+			printf ("Normalising field\n");
+			fflush (stdout);
 			//JAVIER normalisation
 			normaliseField(FIELD_M);
 		}
@@ -1208,7 +1215,7 @@ void	Scalar::randConf ()
 
 
 template<typename Float>
-void	Scalar::iteraField(const uint iter, const Float alpha)
+void	Scalar::iteraField(const int iter, const Float alpha)
 {
 	const Float One = 1.;
 	const Float OneSixth = (1./6.);
@@ -1221,7 +1228,7 @@ void	Scalar::iteraField(const uint iter, const Float alpha)
 	//printf("smoothing check m[0]= (%lf,%lf)\n",  ((Float *) m)[n2] , ((Float *) m)[n2] );
 	//printf("the same? ????? m[0]= (%lf,%lf)\n",  ((Float *) mCp)[n2] , ((Float *) mCp)[n2] ); yes
 
-	for (uint it=0; it<iter; it++)
+	for (int it=0; it<iter; it++)
 	{
 		#pragma omp parallel default(shared)
 		{
@@ -1276,7 +1283,7 @@ void	Scalar::iteraField(const uint iter, const Float alpha)
 	}//END iteration loop
 }
 
-void	Scalar::smoothConf (const uint iter, const double alpha)
+void	Scalar::smoothConf (const int iter, const double alpha)
 {
 	switch	(precision)
 	{
@@ -1299,7 +1306,7 @@ void	Scalar::smoothConf (const uint iter, const double alpha)
 
 
 template<typename Float>
-void	Scalar::momConf (const uint kMax, const Float kCrit)
+void	Scalar::momConf (const int kMax, const Float kCrit)
 {
 	const Float Twop = 2.0*M_PI;
 
@@ -1330,14 +1337,15 @@ void	Scalar::momConf (const uint kMax, const Float kCrit)
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 
 		#pragma omp for schedule(static)
-		for (uint oz = 0; oz < Tz; oz++)
+		for (int oz = 0; oz < Tz; oz++)
 		{
 			if (oz/Lz != commRank())
 				continue;
 
-			int pz = oz - (oz/(Tz >> 1))*Tz;
+			int pz = oz - (oz/(((int) Tz) >> 1))*((int)Tz);
 
 			for(int py = -(kMax-pz); py <= (kMax-pz); py++)
+			{
 				for(int px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
 				{
 					uint idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
@@ -1352,6 +1360,7 @@ void	Scalar::momConf (const uint kMax, const Float kCrit)
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
 					}
 				}
+			}
 		}
 	}
 
