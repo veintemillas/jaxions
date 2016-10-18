@@ -23,7 +23,7 @@ class	Propagator
 	const double d1, d2, d3, d4;
 	const double delta2, dz;
 	const double nQcd, LL;
-	const int Lx, Lz, V, S;
+	const uint   Lx, Lz, V, S;
 
 	FieldPrecision precision;
 
@@ -53,7 +53,7 @@ class	Propagator
 void	Propagator::runGpu	()
 {
 #ifdef	USE_GPU
-	const int ext = V + S;
+	const uint ext = V + S;
 	double *z = axionField->zV();
 
         propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);
@@ -96,7 +96,7 @@ void	Propagator::runGpu	()
 void	Propagator::propLowGpu	(const double c, const double d)
 {
 #ifdef	USE_GPU
-	const int ext = V + S;
+	const uint ext = V + S;
 	double *z = axionField->zV();
 
 	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);

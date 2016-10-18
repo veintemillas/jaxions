@@ -8,10 +8,10 @@ using namespace gpuCu;
 using namespace indexHelper;
 
 template<typename Float>
-static __device__ __forceinline__ void	propagateCoreGpu(const int idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z2,
-							 const Float zQ, const Float dzc, const Float dzd, const Float ood2, const Float LL, const int Lx, const int Sf)
+static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z2,
+							 const Float zQ, const Float dzc, const Float dzd, const Float ood2, const Float LL, const uint Lx, const uint Sf)
 {
-	int X[3], idxPx, idxPy, idxMx, idxMy;
+	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
 	complex<Float> mel, a, tmp;
 
@@ -52,9 +52,9 @@ static __device__ __forceinline__ void	propagateCoreGpu(const int idx, const com
 
 template<typename Float>
 __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z2, const Float zQ,
-				const Float dzc, const Float dzd, const Float ood2, const Float LL, const int Lx, const int Sf, const int Vo, const int Vf)
+				const Float dzc, const Float dzd, const Float ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo, const uint Vf)
 {
-	int idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 
 	if	(idx >= Vf)
 		return;
@@ -63,10 +63,10 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 }
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d,
-		     const double delta2, const double LL, const double nQcd, const int Lx, const int Lz, const int Vo, const int Vf, FieldPrecision precision, cudaStream_t &stream)
+		     const double delta2, const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
 	#define	BLSIZE 512
-	const int Lz2 = (Vf-Vo)/(Lx*Lx);
+	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
 
@@ -93,7 +93,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 }
 
 template<typename Float>
-static __device__ void	__forceinline__ updateMCoreGpu(const int idx, complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const int Sf)
+static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Sf)
 {
 	complex<Float> mm = m[idx], vv = v[idx-Sf];
 
@@ -102,10 +102,10 @@ static __device__ void	__forceinline__ updateMCoreGpu(const int idx, complex<Flo
 }
 
 template<typename Float>
-static __device__ void __forceinline__	updateVCoreGpu(const int idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z2, const Float zQ,
-						       const Float dzc, const Float ood2, const Float LL, const int Lx, const int Sf)
+static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z2, const Float zQ,
+						       const Float dzc, const Float ood2, const Float LL, const uint Lx, const uint Sf)
 {
-	int X[3], idxMx, idxPx, idxMy, idxPy;
+	uint X[3], idxMx, idxPx, idxMy, idxPy;
 
 	complex<Float> mel, a, tmp;
 
@@ -142,9 +142,9 @@ static __device__ void __forceinline__	updateVCoreGpu(const int idx, const compl
 }
 
 template<typename Float>
-__global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const int Vo, const int Vf, const int Sf)
+__global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Vo, const uint Vf, const uint Sf)
 {
-	int idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 
 	if	(idx >= Vf)
 		return;
@@ -154,9 +154,9 @@ __global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Flo
 
 template<typename Float>
 __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z2, const Float zQ, const Float dzc,
-				const Float ood2, const Float LL, const int Lx, const int Lz, const int Vo, const int Vf)
+				const Float ood2, const Float LL, const uint Lx, const uint Lz, const uint Vo, const uint Vf)
 {
-	int idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 
 	if	(idx >= Vf)
 		return;
@@ -164,10 +164,10 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 	updateVCoreGpu<Float>(idx, m, v, z2, zQ, dzc, ood2, LL, Lx, Lz);
 }
 
-void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const int Lx, const int Vo, const int Vf, FieldPrecision precision, cudaStream_t &stream)
+void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
 	#define	BSSIZE 512
-	const int Lz2 = (Vf-Vo)/(Lx*Lx);
+	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
 
@@ -184,10 +184,10 @@ void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double
 }
 
 void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c,
-		     const double delta2, const double LL, const double nQcd, const int Lx, const int Lz, const int Vo, const int Vf, FieldPrecision precision, cudaStream_t &stream)
+		     const double delta2, const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
 	#define	BLSIZE 512
-	const int Lz2 = (Vf-Vo)/(Lx*Lx);
+	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
 
