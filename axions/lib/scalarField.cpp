@@ -1253,23 +1253,23 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 						iPx = idx - n1 + 1;
 						iMx = idx - 1;
 					} else {
-						iPx = idx + 2;
-						iMx = idx - 2;
+						iPx = idx + 1;
+						iMx = idx - 1;
 					}
 				}
 
 				if (X[1] == 0)
 				{
-					iPx = idx + n1;
-					iMx = idx + n2 - n1;
+					iPy = idx + n1;
+					iMy = idx + n2 - n1;
 				} else {
 					if (X[1] == n1 - 1)
 					{
-						iPx = idx - n2 + n1;
-						iMx = idx - n1;
+						iPy = idx - n2 + n1;
+						iMy = idx - n1;
 					} else {
-						iPx = idx + n1;
-						iMx = idx - n1;
+						iPy = idx + n1;
+						iMy = idx - n1;
 					}
 				}
 
