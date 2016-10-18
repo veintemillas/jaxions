@@ -15,6 +15,7 @@
 #include "comms.h"
 #include "flopCounter.h"
 #include "map.h"
+#include "memAlloc.h"
 
 using namespace std;
 
@@ -274,6 +275,8 @@ int	main (int argc, char *argv[])
 	delete axion;
 
 	endComms();
+
+	printMemStats();
 
 	return 0;
 }

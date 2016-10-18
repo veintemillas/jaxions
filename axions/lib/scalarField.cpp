@@ -16,6 +16,8 @@
 	#include "cudaErrors.h"
 #endif
 
+#include "memAlloc.h"
+
 #include<mpi.h>
 #include<omp.h>
 
@@ -204,11 +206,11 @@ class	Scalar
 	const size_t	vBytes = n3*fSize*2;
 
 #ifdef	USE_XEON
-	posix_memalign ((void**) &mX, mAlign, mBytes);
-	posix_memalign ((void**) &vX, mAlign, vBytes);
+	alignAlloc ((void**) &mX, mAlign, mBytes);
+	alignAlloc ((void**) &vX, mAlign, vBytes);
 
 	if (!lowmem)
-		posix_memalign ((void**) &m2X, mAlign, mBytes);
+		alignAlloc ((void**) &m2X, mAlign, mBytes);
 
 	m = mX;
 	v = vX;
@@ -216,11 +218,11 @@ class	Scalar
 	if (!lowmem)
 		m2 = m2X;
 #else
-	posix_memalign ((void**) &m, mAlign, mBytes);
-	posix_memalign ((void**) &v, mAlign, vBytes);
+	alignAlloc ((void**) &m, mAlign, mBytes);
+	alignAlloc ((void**) &v, mAlign, vBytes);
 
 	if (!lowmem)
-		posix_memalign ((void**) &m2, mAlign, mBytes);
+		alignAlloc ((void**) &m2, mAlign, mBytes);
 #endif
 
 	if (m == NULL)
@@ -250,7 +252,7 @@ class	Scalar
 	if (!lowmem)
 		memset (m, 0, 2*fSize*v3);
 
-	posix_memalign ((void **) &z, mAlign, sizeof(double));
+	alignAlloc ((void **) &z, mAlign, mAlign);//sizeof(double));
 
 	if (z == NULL)
 	{
@@ -365,16 +367,16 @@ class	Scalar
 	Scalar::~Scalar()
 {
 	if (m != NULL)
-		free(m);
+		trackFree(m, ALLOC_ALIGN);
 
 	if (v != NULL)
-		free(v);
+		trackFree(v, ALLOC_ALIGN);
 
 	if (m2 != NULL)
-		free(m2);
+		trackFree(m2, ALLOC_ALIGN);
 
 	if (z != NULL)
-		free(z);
+		trackFree(z, ALLOC_ALIGN);
 
 	if (device == DEV_GPU)
 	{
@@ -1116,7 +1118,9 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 void	Scalar::randConf ()
 {
 	int	maxThreads = omp_get_max_threads();
-	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
+	int	*sd;
+
+	trackAlloc((void *) sd, sizeof(int)*maxThreads);
 
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
@@ -1175,13 +1179,13 @@ void	Scalar::randConf ()
 		default:
 
 		printf("Unrecognized precision\n");
-		free(sd);
+		trackFree(sd, ALLOC_TRACK);
 		exit(1);
 
 		break;
 	}
 
-	free(sd);
+	trackFree(sd, ALLOC_TRACK);
 }// End Scalar::randConf ()
 
 
@@ -1289,7 +1293,9 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 		fM = static_cast<complex<Float>*> (static_cast<void*>(static_cast<char*>(m) + 2*fSize*n2));
 
 	int	maxThreads = omp_get_max_threads();
-	int	*sd = (int *) malloc(sizeof(int)*maxThreads);
+	int	*sd;
+
+	trackAlloc((void *) sd, sizeof(int)*maxThreads);
 
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
@@ -1331,7 +1337,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 		}
 	}
 
-	free(sd);
+	trackFree(sd, ALLOC_TRACK);
 }
 
 void	Scalar::scaleField (FieldIndex fIdx, double factor)

@@ -1,8 +1,10 @@
 #include <cstdlib>
-#include "enum_field.h"
+#include <map>
+#include "enum-field.h"
 
 static std::map<void *, size_t> allocTable[2];
 static size_t trackAlignMem = 0;
+static size_t trackAllocMem = 0;
 
 void	alignAlloc (void **ptr, size_t align, size_t size)
 {
@@ -11,6 +13,8 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 	switch (out)
 	{
 		case 0:
+		printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer...\n", size, align);
+		fflush (stdout);
 		trackAlignMem += size;
 		allocTable[ALLOC_ALIGN].insert(std::make_pair(ptr, size));
 		break;
@@ -35,7 +39,7 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 
 void	trackFree (void *ptr, AllocType aType)
 {
-	free (ptr)
+	free (ptr);
 	trackAlignMem -= allocTable[aType][ptr];
 	allocTable[aType].erase(ptr);
 	ptr = NULL;
@@ -49,6 +53,9 @@ void	trackAlloc (void *ptr, size_t size)
 		exit (1);
 	}
 
+	printf ("Memory allocated correctly (%lu bytes). Registering pointer...\n", size);
+	fflush (stdout);
+
 	allocTable[ALLOC_TRACK].insert(std::make_pair(ptr, size));
 	trackAllocMem += size;
 }
@@ -57,22 +64,24 @@ void	printMemStats	()
 {
 	printf ("Total allocated aligned   memory %lu\n", trackAlignMem);
 	printf ("Total allocated unaligned memory %lu\n", trackAllocMem);
-	printf ("\nCurrent pointers in memory:"\n);
+	printf ("\nCurrent pointers in memory:\n");
 	printf ("\tAligned\n");
 
-	std::map<void *, size_t>::iterator it = allocTable[ALLOC_ALIGN].begin();
+	std::map<void *, size_t>::iterator data;
 
-	while(it != allocTable[ALLOC_ALIGN].end())
+	for (data = allocTable[ALLOC_ALIGN].begin(); data != allocTable[ALLOC_ALIGN].end(); data++)
 	{
-		std::cout<<it->first<<" :: "<<it->second<<std::endl;
-		it++;
+		void *ptr   = data->first;
+		size_t size = data->second;
+		printf ("Pointer %p\tSize %lu\n", ptr, size);
 	}
 
 	printf ("\n\tUnaligned\n");
-	
-	while(it != allocTable[ALLOC_TRACK].end())
+
+	for (data = allocTable[ALLOC_TRACK].begin(); data != allocTable[ALLOC_TRACK].end(); data++)
 	{
-		std::cout<<it->first<<" :: "<<it->second<<std::endl;
-		it++;
+		void *ptr   = data->first;
+		size_t size = data->second;
+		printf ("Pointer %p\tSize %lu\n", ptr, size);
 	}
 }
