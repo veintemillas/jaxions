@@ -1124,7 +1124,7 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 		printf("Normalising field ... ");
 		normaliseField(FIELD_M);
 		printf("Copying m to v ...");
-		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
+		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, ((size_t) (2*fSize))*((size_t) n3));
 		printf("Scaling m to mu=z*m ... Done\n");
 		scaleField (FIELD_M, *z);
 	}
@@ -1280,7 +1280,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 			}
 		}
 		//Copies v to m
-		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, 2*fSize*n3);
+		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, ((size_t) (2*fSize))*((size_t) n3));
 		exchangeGhosts(FIELD_M);
 
 		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
