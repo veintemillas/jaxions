@@ -290,5 +290,9 @@ int	main (int argc, char *argv[])
 
 	printMemStats();
 
+
+	//JAVIER
+	fclose(file_sample);
+	
 	return 0;
 }

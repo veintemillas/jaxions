@@ -1120,7 +1120,12 @@ void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
 
 	if (cType != CONF_NONE)
 	{
+		//JAVIER
+		printf("Normalising field ... ");
+		normaliseField(FIELD_M);
+		printf("Copying m to v ...");
 		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
+		printf("Scaling m to mu=z*m ... Done\n");
 		scaleField (FIELD_M, *z);
 	}
 }
