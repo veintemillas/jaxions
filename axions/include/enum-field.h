@@ -50,4 +50,10 @@
 		COMM_SDRV,
 		COMM_WAIT,
 	}	CommOperation;
+
+	typedef enum	AllocType_s
+	{
+		ALLOC_TRACK = 0,
+		ALLOC_ALIGN = 1,
+	}	AllocType;
 #endif
