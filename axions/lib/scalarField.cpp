@@ -1238,7 +1238,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 		#pragma omp parallel default(shared)
 		{
 			#pragma omp for schedule(static)
-			for (uint idx=n2; idx<(n2+n3); idx++)
+			for (uint idx=0; idx<n3; idx++)
 			{
 				uint iPx, iMx, iPy, iMy, iPz, iMz, X[3];
 				indexXeon::idx2Vec (idx, X, n1);
@@ -1276,7 +1276,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 				iPz = idx + n2;
 				iMz = idx - n2;
 				//Uses v to copy the smoothed configuration
-				vCp[idx-n2]   = alpha*mCp[idx] + OneSixth*(One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
+				vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
 			}
 		}
 		//Copies v to m
