@@ -109,7 +109,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 			return 0;
 		}
 
-		trackAlloc((void *) allHosts, sizeof(char)*HOST_NAME_MAX*size);
+		trackAlloc((void **) &allHosts, sizeof(char)*HOST_NAME_MAX*size);
 
 		MPI_Allgather(hostname, HOST_NAME_MAX, MPI_CHAR, allHosts, HOST_NAME_MAX, MPI_CHAR, MPI_COMM_WORLD);
 
@@ -127,7 +127,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 		printf("Rank %d got accid %d\n", rank, idxAcc);
 		fflush(stdout);
 
-		trackFree(allHosts, ALLOC_TRACK);
+		trackFree((void **) &allHosts, ALLOC_TRACK);
 
 #ifdef	USE_GPU
 		if (dev == DEV_GPU)

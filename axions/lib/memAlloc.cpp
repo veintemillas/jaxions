@@ -13,10 +13,10 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 	switch (out)
 	{
 		case 0:
-		printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer...\n", size, align);
+		printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p\n", size, align, *ptr);
 		fflush (stdout);
 		trackAlignMem += size;
-		allocTable[ALLOC_ALIGN].insert(std::make_pair(ptr, size));
+		allocTable[ALLOC_ALIGN].insert(std::make_pair(*ptr, size));
 		break;
 
 		case EINVAL:
@@ -37,26 +37,35 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 
 }
 
-void	trackFree (void *ptr, AllocType aType)
+void	trackFree (void **ptr, AllocType aType)
 {
-	free (ptr);
-	trackAlignMem -= allocTable[aType][ptr];
-	allocTable[aType].erase(ptr);
+	size_t bytes = allocTable[aType][*ptr];
+	free (*ptr);
+
+	printf ("Memory freed correctly (%lu bytes). Deregistering pointer %p\n", bytes, *ptr);
+	fflush (stdout);
+
+	if (aType == ALLOC_ALIGN)
+		trackAlignMem -= bytes;
+	else
+		trackAllocMem -= bytes;
+
+	allocTable[aType].erase(*ptr);
 	ptr = NULL;
 }
 
-void	trackAlloc (void *ptr, size_t size)
+void	trackAlloc (void **ptr, size_t size)
 {
-	if ((ptr = malloc(size)) == NULL)
+	if (((*ptr) = malloc(size)) == NULL)
 	{
 		printf ("Error allocating %lu bytes of unaligned memory\n", size);
 		exit (1);
 	}
 
-	printf ("Memory allocated correctly (%lu bytes). Registering pointer...\n", size);
+	printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
 	fflush (stdout);
 
-	allocTable[ALLOC_TRACK].insert(std::make_pair(ptr, size));
+	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
 	trackAllocMem += size;
 }
 

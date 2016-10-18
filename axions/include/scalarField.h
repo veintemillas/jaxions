@@ -15,24 +15,24 @@
 	{
 		private:
 
-		const int n1;
-		const int n2;
-		const int n3;
+		const uint n1;
+		const uint n2;
+		const uint n3;
 
-		const int Lz;
-		const int Tz;
-		const int Ez;
-		const int v3;
+		const uint Lz;
+		const uint Tz;
+		const uint Ez;
+		const uint v3;
 
-		const int nSplit;
+		const uint nSplit;
 
 		const bool lowmem;
 
 		DeviceType	device;
 		FieldPrecision	precision;
 
-		int	fSize;
-		int	mAlign;
+		uint	fSize;
+		uint	mAlign;
 
 		double	*z;
 
@@ -47,19 +47,19 @@
 
 		void	scaleField(FieldIndex fIdx, double factor);
 		void	randConf();
-		void	smoothConf(const int iter, const double alpha);
+		void	smoothConf(const uint iter, const double alpha);
 
 		template<typename Float>
-		void	iteraField(const int iter, const Float alpha);
+		void	iteraField(const uint iter, const Float alpha);
 
 
 		template<typename Float>
-		void	momConf(const int kMax, const Float kCrit);
+		void	momConf(const uint kMax, const Float kCrit);
 
 		public:
 
-				 Scalar(const int nLx, const int nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
-					ConfType cType, const int parm1, const double parm2);
+				 Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp,
+					ConfType cType, const uint parm1, const double parm2);
 				~Scalar();
 
 		void		*mCpu() { return m; }
@@ -106,7 +106,7 @@
 
 		void	foldField	();
 		void	unfoldField	();
-		void	unfoldField2D	(const int sZ);		// Just for the maps
+		void	unfoldField2D	(const uint sZ);	// Just for the maps
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
@@ -126,7 +126,7 @@
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
-		void	genConf	(ConfType cType, const int parm1, const double parm2);
+		void	genConf	(ConfType cType, const uint parm1, const double parm2);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

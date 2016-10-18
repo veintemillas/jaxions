@@ -103,7 +103,7 @@ void	writeConf (Scalar *axion, int index)
 	/*	Attributes	*/
 
 	int cSteps = dump*index;
-	int totlZ  = sizeZ*zGrid;
+	uint totlZ = sizeZ*zGrid;
 
 	attr_type = H5Tcopy(H5T_C_S1);
 	H5Tset_size   (attr_type, length);
@@ -147,7 +147,7 @@ void	writeConf (Scalar *axion, int index)
 	mSpace = H5Dget_space (mset_id);
 	vSpace = H5Dget_space (vset_id);
 
-	for (int zDim=0; zDim<axion->Depth(); zDim++)
+	for (uint zDim=0; zDim<axion->Depth(); zDim++)
 	{
 		/*	Select the slab in the file	*/
 
@@ -157,8 +157,8 @@ void	writeConf (Scalar *axion, int index)
 
 		/*	Write raw data	*/
 
-		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (((char *) axion->mCpu())+axion->Surf()*2*(1+zDim)*dataSize));
-		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (((char *) axion->vCpu())+axion->Surf()*2*zDim*dataSize));
+		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+axion->Surf()*2*(1+zDim)*dataSize));
+		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+axion->Surf()*2*zDim*dataSize));
 	}
 
 	/*	Close the dataset	*/
@@ -217,7 +217,7 @@ void	readConf (Scalar **axion, int index)
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
 	double	zTmp, zTfl, zTin;
-	int	tStep, cStep, totlZ;
+	uint	tStep, cStep, totlZ;
 
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_INT);
@@ -279,7 +279,7 @@ void	readConf (Scalar **axion, int index)
 	mSpace   = H5Dget_space (mset_id);
 	vSpace   = H5Dget_space (vset_id);
 
-	for (int zDim=0; zDim<(*axion)->Depth(); zDim++)
+	for (uint zDim=0; zDim<(*axion)->Depth(); zDim++)
 	{
 		/*	Select the slab in the file	*/
 
@@ -289,8 +289,8 @@ void	readConf (Scalar **axion, int index)
 
 		/*	Read raw data	*/
 
-		H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (((char *) (*axion)->mCpu())+(*axion)->Surf()*2*(1+zDim)*dataSize));
-		H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (((char *) (*axion)->vCpu())+(*axion)->Surf()*2*zDim*dataSize));
+		H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+(*axion)->Surf()*2*(1+zDim)*dataSize));
+		H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+(*axion)->Surf()*2*zDim*dataSize));
 	}
 
 	/*	Close the dataset	*/
