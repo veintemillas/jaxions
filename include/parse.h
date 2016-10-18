@@ -1,10 +1,10 @@
-extern int sizeN;
-extern int sizeZ;
-extern int zGrid;
-extern int nSteps;
-extern int dump;
-extern int nQcd;
-extern int fIndex;
+extern uint sizeN;
+extern uint sizeZ;
+extern uint zGrid;
+extern int  nSteps;
+extern int  dump;
+extern int  nQcd;
+extern int  fIndex;
 
 extern double sizeL;
 extern double zInit;
