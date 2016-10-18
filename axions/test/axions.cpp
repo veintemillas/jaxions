@@ -70,6 +70,13 @@ int	main (int argc, char *argv[])
 			readConf(&axion, fIndex);
 	}
 
+	//--------------------------------------------------
+	//          OUTPUTS FOR CHECKING
+	//--------------------------------------------------
+	FILE *file_sample ;
+	file_sample = NULL;
+	file_sample = fopen("out/sample.txt","w+");
+	//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -203,6 +210,11 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 		{
+			if (sPrec == FIELD_DOUBLE)
+			{		fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),static_cast<complex<double> *> (axion->vCpu())[S0].real(), static_cast<complex<double> *> (axion->vCpu())[S0].imag());
+			} else
+			{ 	fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[S0].real(), static_cast<complex<float>  *> (axion->mCpu())[S0].imag(),static_cast<complex<float>  *> (axion->vCpu())[S0].real(), static_cast<complex<float>  *> (axion->vCpu())[S0].imag());
+			}
 			old = std::chrono::high_resolution_clock::now();
 			propagate (axion, dz, LL, nQcd, delta, cDev, fCount);
 

@@ -25,7 +25,7 @@ double parm2 = 0.;
 bool lowmem = false;
 
 int kMax  = 0;
-//JAVIER played with the following number 
+//JAVIER played with the following number
 int iter  = 40;
 int parm1 = 0;
 

@@ -706,6 +706,7 @@ void	Scalar::foldField()
 	uint	shift;
 
 	shift = mAlign/(2*fSize);
+	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize,shift,n2);
 
 	switch (precision)
 	{
@@ -764,7 +765,7 @@ void	Scalar::unfoldField()
 	uint	shift;
 
 	shift = mAlign/(2*fSize);
-
+	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize,shift,n2);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
@@ -822,11 +823,11 @@ void	Scalar::unfoldField2D(const uint sZ)
 	int	shift;
 
 	shift = mAlign/(2*fSize);
-
+	printf("Unfold-2D mAlign=%d, fSize=%d, shift=%d ", mAlign, fSize,shift);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
-
+		printf("Case double n1/shift=%d, shift=%d ...", n1/shift, shift);
 		for (uint iy=0; iy < n1/shift; iy++)
 		{
 			for (uint ix=0; ix < n1; ix++)
@@ -843,7 +844,7 @@ void	Scalar::unfoldField2D(const uint sZ)
 		break;
 
 		case FIELD_SINGLE:
-
+		printf("Case single n1/shift=%d, shift=%d ...", n1/shift, shift);
 		for (uint iy=0; iy < n1/shift; iy++)
 		{
 			for (uint ix=0; ix < n1; ix++)
