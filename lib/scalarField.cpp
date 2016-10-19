@@ -332,7 +332,7 @@ class	Scalar
 				#pragma omp parallel for schedule(static)
 				for (size_t i=n2; i<n3+n2; i++)
 				{
-					complex<double> tmp((i-n2)&1, 1-((i-n2)&1));
+					complex<double> tmp((i-n2)&1, (i-n2)&1));//1-((i-n2)&1));
 					static_cast<complex<double>*>(m)[i] = tmp;
 				}
 			}
@@ -341,7 +341,7 @@ class	Scalar
 				#pragma omp parallel for schedule(static)
 				for (size_t i=n2; i<n3+n2; i++)
 				{
-					complex<float> tmp((i-n2)&1, 1-((i-n2)&1));
+					complex<float> tmp((i-n2)&1, (i-n2)&1));//1-((i-n2)&1));
 					static_cast<complex<float>*>(m)[i] = tmp;
 				}
 			}
