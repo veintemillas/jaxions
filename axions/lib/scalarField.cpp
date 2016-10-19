@@ -302,7 +302,7 @@ class	Scalar
 //			initCudaFFT(n1, Lz, prec);
 #endif
 	} else {
-//		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 	}
 
 	*z = zI;
