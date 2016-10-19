@@ -4,30 +4,29 @@
 
 #include "enum-field.h"
 
-uint sizeN = 128;
-uint sizeZ = 128;
-uint zGrid = 1;
+size_t sizeN = 128;
+size_t sizeZ = 128;
+int  zGrid = 1;
 int  nSteps = 500;
 int  dump = 100;
 int  nQcd = 3;
 int  fIndex = -1;
-//int kMax = 8;
 
 double sizeL = 4.;
 double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
-double alpha = 0.857;
+double alpha = 0.143;
 double LL = 15000.;
 double parm2 = 0.;
 
 bool lowmem = false;
 
-int kMax  = 0;
+size_t kMax  = 2;
 //JAVIER played with the following number
-int iter  = 40;
-int parm1 = 0;
+size_t iter  = 40;
+size_t parm1 = 0;
 
 ConfType cType = CONF_NONE;
 
@@ -54,8 +53,9 @@ void	printUsage(char *name)
 	printf("--qcd   [int]                   Defines the number of QCD colors (default 3).\n");
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
 	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("--kMax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 8)\n");
-	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 10)\n");
+	printf("--kMax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 2)\n");
+	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
+	printf("--alpha [float]                 Defines the alpha parameter for the smoothing (default 0.143).\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
 	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
 	printf("--load  [filename]              Loads filename as initial conditions (default out/initial_conditions_m(_single).txt).\n");
@@ -99,7 +99,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sizeN = atoi(argv[i+1]);
+			sscanf(argv[i+1], "%zu", &sizeN);
 
 			if (sizeN < 2)
 			{
@@ -121,7 +121,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sizeZ = atoi(argv[i+1]);
+			sscanf(argv[i+1], "%zu", &sizeZ);
 
 			if (sizeZ < 2)
 			{
@@ -363,7 +363,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			kMax = atoi(argv[i+1]);
+			sscanf(argv[i+1], "%zu", &kMax);
 
 			if (kMax < 0)
 			{
@@ -385,7 +385,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			iter = atoi(argv[i+1]);
+			sscanf(argv[i+1], "%zu", &iter);
 
 			if (iter < 0)
 			{

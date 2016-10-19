@@ -6,11 +6,11 @@
 using namespace std;
 
 template<typename Float>
-void	writeData	(complex<Float> *m, const Float z, const int n1, FILE *atWrite, FILE *rhoWrite)
+void	writeData	(complex<Float> *m, const Float z, const size_t n1, FILE *atWrite, FILE *rhoWrite)
 {
-	for (int ly = 0; ly < n1; ly++)
+	for (size_t ly = 0; ly < n1; ly++)
 	{
-		for (int lx = 0; lx < n1; lx++)
+		for (size_t lx = 0; lx < n1; lx++)
 		{
 			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
 			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);

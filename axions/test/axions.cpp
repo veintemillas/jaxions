@@ -260,6 +260,8 @@ int	main (int argc, char *argv[])
 	if (cDev != DEV_GPU)
 		axion->unfoldField();
 
+	writeConf(axion, index);
+
 	if (sPrec == FIELD_DOUBLE)
 	{
 		printMpi("\n Examples m: m[0]= %le + %le*I, m[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
