@@ -23,7 +23,7 @@ class	Propagator
 	const double d1, d2, d3, d4;
 	const double delta2, dz;
 	const double nQcd, LL;
-	const uint   Lx, Lz, V, S;
+	const size_t Lx, Lz, V, S;
 
 	FieldPrecision precision;
 
@@ -53,37 +53,38 @@ class	Propagator
 void	Propagator::runGpu	()
 {
 #ifdef	USE_GPU
-	const uint ext = V + S;
+	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
+	const uint ext = uV + uS;
 	double *z = axionField->zV();
 
-        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);
+        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M);
-        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, Lx, Lz, S, 2*S, precision, ((cudaStream_t *)axionField->Streams())[0]);
-        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, Lx, Lz, V, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, LL, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
 	*z += dz*d1;
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
-        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);
+        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M2);
-        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, LL, nQcd, Lx, Lz, S, 2*S, precision, ((cudaStream_t *)axionField->Streams())[0]);
-        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, LL, nQcd, Lx, Lz, V, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, LL, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
 	*z += dz*d2;
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
-        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);
+        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M);
-        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, LL, nQcd, Lx, Lz, S, 2*S, precision, ((cudaStream_t *)axionField->Streams())[0]);
-        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, LL, nQcd, Lx, Lz, V, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+        propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, LL, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
 	*z += dz*d3;
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
-        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);
+        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M2);
-        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, LL, nQcd, Lx, Lz, S, 2*S, precision, ((cudaStream_t *)axionField->Streams())[0]);
-        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, LL, nQcd, Lx, Lz, V, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+        propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, LL, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
 	*z += dz*d4;
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -96,17 +97,18 @@ void	Propagator::runGpu	()
 void	Propagator::propLowGpu	(const double c, const double d)
 {
 #ifdef	USE_GPU
+	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 	const uint ext = V + S;
 	double *z = axionField->zV();
 
-	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, Lx, Lz, 2*S, V, precision, ((cudaStream_t *)axionField->Streams())[2]);
+	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	updateMGpu(axionField->mGpu(), axionField->vGpu(), dz, d, Lx, 3*S, V-S, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M);
-	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, Lx, Lz, S, 2*S, precision, ((cudaStream_t *)axionField->Streams())[0]);
-	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, Lx, Lz, V, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	updateVGpu(axionField->mGpu(), axionField->vGpu(), z, dz, c, delta2, LL, nQcd, uLx, uLz, uV,  ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
 	cudaStreamSynchronize(((cudaStream_t *)axionField->Streams())[2]);
-	updateMGpu(axionField->mGpu(), axionField->vGpu(), dz, d, Lx, S, 3*S, precision, ((cudaStream_t *)axionField->Streams())[0]);
-	updateMGpu(axionField->mGpu(), axionField->vGpu(), dz, d, Lx, V-S, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+	updateMGpu(axionField->mGpu(), axionField->vGpu(), dz, d, uLx, uS,   3*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	updateMGpu(axionField->mGpu(), axionField->vGpu(), dz, d, uLx, uV-uS, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
 
 	*z += dz*d;
 

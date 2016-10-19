@@ -36,24 +36,23 @@ class	Scalar
 {
 	private:
 
-	const uint n1;
-	const uint n2;
-	const uint n3;
+	const size_t n1;
+	const size_t n2;
+	const size_t n3;
 
-	const uint Lz;
-	const uint Tz;
-	const uint Ez;
-	const uint v3;
+	const size_t Lz;
+	const size_t Tz;
+	const size_t Ez;
+	const size_t v3;
 
-	const uint nSplit;
-
+	const int  nSplit;
 	const bool lowmem;
 
 	DeviceType	device;
 	FieldPrecision	precision;
 
-	uint	fSize;
-	uint	mAlign;
+	size_t	fSize;
+	size_t	mAlign;
 
 	double	*z;
 
@@ -68,21 +67,21 @@ class	Scalar
 
 	void	scaleField(FieldIndex fIdx, double factor);
 	void	randConf();
-	void	smoothConf(const int iter, const double alpha);
+	void	smoothConf(const size_t iter, const double alpha);
 	//JAVIER
 	void	normaliseField(FieldIndex fIdx);
 
 	template<typename Float>
-	void	iteraField(const int iter, const Float alpha);
+	void	iteraField(const size_t iter, const Float alpha);
 
 
 	template<typename Float>
-	void	momConf(const int kMax, const Float kCrit);
+	void	momConf(const size_t kMax, const Float kCrit);
 
 	public:
 
-			 Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp,
-				ConfType cType, const int parm1, const double parm2);
+			 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
+				ConfType cType, const size_t parm1, const double parm2);
 			~Scalar();
 
 	void		*mCpu() { return m; }
@@ -111,16 +110,16 @@ class	Scalar
 #endif
 	bool		LowMem()  { return lowmem; }
 
-	uint		Size()   { return n3; }
-	uint		Surf()   { return n2; }
-	uint		Length() { return n1; }
-	uint		Depth()  { return Lz; }
-	uint		eDepth() { return Ez; }
-	uint		eSize()  { return v3; }
+	size_t		Size()   { return n3; }
+	size_t		Surf()   { return n2; }
+	size_t		Length() { return n1; }
+	size_t		Depth()  { return Lz; }
+	size_t		eSize()  { return v3; }
+	size_t	eDepth() { return Ez; }
 
 	FieldPrecision	Precision() { return precision; }
 
-	uint		dataSize() { return fSize; }
+	size_t		dataSize() { return fSize; }
 
 	double		*zV() { return z; }
 	const double	*zV() const { return z; }
@@ -129,7 +128,7 @@ class	Scalar
 
 	void	foldField	();
 	void	unfoldField	();
-	void	unfoldField2D	(const uint sZ);	// Just for the maps
+	void	unfoldField2D	(const size_t sZ);	// Just for the maps
 
 	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
@@ -145,26 +144,26 @@ class	Scalar
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
 
-	void	genConf	(ConfType cType, const int parm1, const double parm2);
+	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
 #endif
 };
 
-	Scalar::Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp, ConfType cType, const int parm1,
-		       const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(nSp*Lz), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
+	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp, ConfType cType, const size_t parm1,
+		       const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
 		       lowmem(lowmem)
 {
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
 
-		fSize = sizeof(double);
+		fSize = sizeof(double)*2;
 		break;
 
 		case FIELD_SINGLE:
 
-		fSize = sizeof(float);
+		fSize = sizeof(float)*2;
 		break;
 
 		default:
@@ -196,14 +195,14 @@ class	Scalar
 			break;
 	}
 
-	if (n2*fSize*2 % mAlign)
+	if (n2*fSize % mAlign)
 	{
 		printf("Error: misaligned memory. Are you using an odd dimension?\n");
 		exit(1);
 	}
 
-	const size_t	mBytes = ((size_t) v3)*((size_t) (fSize*2));
-	const size_t	vBytes = ((size_t) n3)*((size_t) (fSize*2));
+	const size_t	mBytes = v3*fSize;
+	const size_t	vBytes = n3*fSize;
 
 #ifdef	USE_XEON
 	alignAlloc ((void**) &mX, mAlign, mBytes);
@@ -217,12 +216,16 @@ class	Scalar
 
 	if (!lowmem)
 		m2 = m2X;
+	else
+		m2 = m2X = NULL;
 #else
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
 	if (!lowmem)
 		alignAlloc ((void**) &m2, mAlign, mBytes);
+	else
+		m2 = NULL;
 #endif
 
 	if (m == NULL)
@@ -246,11 +249,11 @@ class	Scalar
 		}
 	}
 
-	memset (m, 0, 2*fSize*v3);
-	memset (v, 0, 2*fSize*n3);
+	memset (m, 0, fSize*v3);
+	memset (v, 0, fSize*n3);
 
 	if (!lowmem)
-		memset (m, 0, 2*fSize*v3);
+		memset (m2, 0, fSize*v3);
 
 	alignAlloc ((void **) &z, mAlign, mAlign);//sizeof(double));
 
@@ -299,7 +302,7 @@ class	Scalar
 //			initCudaFFT(n1, Lz, prec);
 #endif
 	} else {
-		initFFT(static_cast<void *>((static_cast<char *> (m) + 2*n2*fSize)), m2, n1, Tz, precision, lowmem);
+//		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 	}
 
 	*z = zI;
@@ -318,28 +321,31 @@ class	Scalar
 				exit(1);
 			}
 
-			fread(static_cast<char *> (m) + 2*fSize*n2, fSize*2, n3, fileM);
+			fread(static_cast<char *> (m) + fSize*n2, fSize*2, n3, fileM);
 			fclose(fileM);
 
-			memcpy (v, static_cast<char *> (m) + 2*fSize*n2, 2*fSize*n3);
+			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 			scaleField (FIELD_M, zI);
 */
 			if (prec == FIELD_DOUBLE)
 			{
-				for (uint i=n2; i<n3+n2; i++)
+				#pragma omp parallel for schedule(static)
+				for (size_t i=n2; i<n3+n2; i++)
 				{
-					static_cast<double*>(m)[2*i]   = i-n2;
-					static_cast<double*>(m)[2*i+1] = i-n2;
+					complex<double> tmp((i-n2)&1, 1-((i-n2)&1));
+					static_cast<complex<double>*>(m)[i] = tmp;
 				}
 			}
 			else
 			{
-				for (uint i=n2; i<n3+n2; i++)
+				#pragma omp parallel for schedule(static)
+				for (size_t i=n2; i<n3+n2; i++)
 				{
-					static_cast<float*>(m)[2*i]   = i-n2;
-					static_cast<float*>(m)[2*i+1] = i-n2;
+					complex<float> tmp((i-n2)&1, 1-((i-n2)&1));
+					static_cast<complex<float>*>(m)[i] = tmp;
 				}
 			}
+			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 		}
 	} else {
 		genConf(cType, parm1, parm2);
@@ -353,12 +359,12 @@ class	Scalar
 #else
 		const int micIdx = commAcc();
 
-		#pragma offload_transfer target(mic:micIdx) nocopy(mX : length(2*fSize*v3) AllocX)
-		#pragma offload_transfer target(mic:micIdx) nocopy(vX : length(2*fSize*n3) AllocX)
+		#pragma offload_transfer target(mic:micIdx) nocopy(mX : length(fSize*v3) AllocX)
+		#pragma offload_transfer target(mic:micIdx) nocopy(vX : length(fSize*n3) AllocX)
 
 		if (!lowmem)
 		{
-			#pragma offload_transfer target(mic:micIdx) nocopy(m2X : length(2*fSize*v3) AllocX)
+			#pragma offload_transfer target(mic:micIdx) nocopy(m2X : length(fSize*v3) AllocX)
 		}
 #endif
 	}
@@ -418,12 +424,12 @@ class	Scalar
 		#else
 			const int micIdx = commAcc();
 
-			#pragma offload_transfer target(mic:micIdx) nocopy(mX : length(2*fSize*v3) FreeX)
-			#pragma offload_transfer target(mic:micIdx) nocopy(vX : length(2*fSize*n3) FreeX)
+			#pragma offload_transfer target(mic:micIdx) nocopy(mX : length(fSize*v3) FreeX)
+			#pragma offload_transfer target(mic:micIdx) nocopy(vX : length(fSize*n3) FreeX)
 
 			if (!lowmem)
 			{
-				#pragma offload_transfer target(mic:micIdx) nocopy(m2X : length(2*fSize*v3) FreeX)
+				#pragma offload_transfer target(mic:micIdx) nocopy(m2X : length(fSize*v3) FreeX)
 			}
 		#endif
 	}
@@ -438,13 +444,13 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			exit   (1);
 		#else
 			if (fIdx & 1)
-				cudaMemcpy((((char *) m_d) + 2*n2*fSize), (((char *) m) + 2*n2*fSize),  2*n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m_d) + n2*fSize), (((char *) m) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 
 			if (fIdx & 2)
-				cudaMemcpy(v_d,  v,  2*n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
 
 			if ((fIdx & 4) & (!lowmem))
-				cudaMemcpy((((char *) m2_d) + 2*n2*fSize), (((char *) m2) + 2*n2*fSize),  2*n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m2_d) + n2*fSize), (((char *) m2) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
 	} else if (device == DEV_XEON) {
 		#ifndef	USE_XEON
@@ -455,17 +461,17 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 
 			if (fIdx & 1)
 			{
-				#pragma offload_transfer target(mic:micIdx) in(mX : length(2*v3*fSize) ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(mX : length(v3*fSize) ReUseX)
 			}
 
 			if (fIdx & 2)
 			{
-				#pragma offload_transfer target(mic:micIdx) in(vX : length(2*n3*fSize) ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(vX : length(n3*fSize) ReUseX)
 			}
 
 			if ((fIdx & 4) & (!lowmem))
 			{
-				#pragma offload_transfer target(mic:micIdx) in(m2X : length(2*v3*fSize) ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(m2X : length(v3*fSize) ReUseX)
 			}
 		#endif
 	}
@@ -480,13 +486,13 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 			exit   (1);
 		#else
 			if (fIdx & 1)
-				cudaMemcpy(m,  m_d,  2*v3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(m,  m_d,  v3*fSize, cudaMemcpyDeviceToHost);
 
 			if (fIdx & 2)
-				cudaMemcpy(v,  v_d,  2*n3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(v,  v_d,  n3*fSize, cudaMemcpyDeviceToHost);
 
 			if ((fIdx & 4) & (!lowmem))
-				cudaMemcpy(m2, m2_d, 2*v3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
 		#endif
 	} else if (device == DEV_XEON) {
 		#ifndef	USE_XEON
@@ -497,17 +503,17 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 
 			if (fIdx & 1)
 			{
-				#pragma offload_transfer target(mic:micIdx) out(mX : length(2*v3*fSize) ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(mX : length(v3*fSize) ReUseX)
 			}
 
 			if (fIdx & 2)
 			{
-				#pragma offload_transfer target(mic:micIdx) out(vX : length(2*n3*fSize) ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(vX : length(n3*fSize) ReUseX)
 			}
 
 			if ((fIdx & 4) & (!lowmem))
 			{
-				#pragma offload_transfer target(mic:micIdx) out(m2X : length(2*v3*fSize) ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(m2X : length(v3*fSize) ReUseX)
 			}
 		#endif
 	}
@@ -523,13 +529,13 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 		#else
 			if (fIdx & FIELD_M)
 			{
-				cudaMemcpyAsync((((char *) m) + 2*n2*fSize), (((char *) m_d) + 2*n2*fSize), 2*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync((((char *) m) + 2*n3*fSize), (((char *) m_d) + 2*n3*fSize), 2*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m) + n2*fSize, static_cast<char *> (m_d) + n2*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m) + n3*fSize, static_cast<char *> (m_d) + n3*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			}
 			else
 			{
-				cudaMemcpyAsync((((char *) m2) + 2*n2*fSize), (((char *) m2_d) + 2*n2*fSize), 2*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync((((char *) m2) + 2*n3*fSize), (((char *) m2_d) + 2*n3*fSize), 2*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m2) + n2*fSize, static_cast<char *> (m2_d) + n2*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2) + n3*fSize, static_cast<char *> (m2_d) + n3*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			}
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
@@ -544,11 +550,11 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 
 			if (fIdx & FIELD_M)
 			{
-				#pragma offload_transfer target(mic:micIdx) out(mX[2*n2*fSize:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) out(mX[2*n3*fSize:2*n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(mX[n2*fSize:n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(mX[n3*fSize:n2*fSize] : ReUseX)
 			} else {
-				#pragma offload_transfer target(mic:micIdx) out(m2X[2*n2*fSize:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) out(m2X[2*n3*fSize:2*n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(m2X[n2*fSize:n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) out(m2X[n3*fSize:n2*fSize] : ReUseX)
 			}
 		#endif
 	}
@@ -564,11 +570,11 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 		#else
 			if (fIdx & FIELD_M)
 			{
-				cudaMemcpyAsync( ((char *) m_d),                      ((char *) m),                     2*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync((((char *) m_d)  + 2*(n3+n2)*fSize), (((char *) m)  + 2*(n3+n2)*fSize), 2*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m_d),                  static_cast<char *> (m),                 n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(Static_cast<char *> (m_d) + (n3+n2)*fSize), static_cast<char *> (m) + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			} else {
-				cudaMemcpyAsync( ((char *) m2_d),                      ((char *) m2),                     2*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync((((char *) m2_d)  + 2*(n3+n2)*fSize), (((char *) m2)  + 2*(n3+n2)*fSize), 2*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d),                  static_cast<char *> (m2),                    n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d) + (n3+n2)*fSize), static_cast<char *> (m2)  + 2*(n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			}
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
@@ -583,11 +589,11 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 
 			if (fIdx & FIELD_M)
 			{
-				#pragma offload_transfer target(mic:micIdx) in(mX[0:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) in(mX[2*(n2+n3)*fSize:2*n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(mX[0:n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(mX[(n2+n3)*fSize:n2*fSize] : ReUseX)
 			} else {
-				#pragma offload_transfer target(mic:micIdx) in(m2X[0:2*n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) in(m2X[2*(n2+n3)*fSize:2*n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(m2X[0:n2*fSize] : ReUseX)
+				#pragma offload_transfer target(mic:micIdx) in(m2X[(n2+n3)*fSize:n2*fSize] : ReUseX)
 			}
 		#endif
 	}
@@ -599,7 +605,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	static const uint ghostBytes = 2*n2*fSize;
+	static const int ghostBytes = n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
@@ -609,17 +615,17 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 	if (fIdx & FIELD_M)
 	{
-		sGhostBck = static_cast<void *> (static_cast<char *> (m) + ((size_t) (2*fSize))*((size_t) n2));
-		sGhostFwd = static_cast<void *> (static_cast<char *> (m) + ((size_t) (2*fSize))*((size_t) n3));
+		sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2);
+		sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n3);
 		rGhostBck = m;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + ((size_t) (2*fSize))*(((size_t) n3) + ((size_t) n2)));
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2));
 	}
 	else
 	{
-		sGhostBck = static_cast<void *> (static_cast<char *> (m2) + ((size_t) (2*fSize))*((size_t) n2));
-		sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + ((size_t) (2*fSize))*((size_t) n3));
+		sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2);
+		sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*n3);
 		rGhostBck = m2;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + ((size_t) (2*fSize))*(((size_t) n3) + ((size_t) n2)));
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2));
 	}
 
 	switch	(opComm)
@@ -703,31 +709,29 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 
 void	Scalar::foldField()
 {
-	uint	shift;
+	int	shift;
 
-	shift = mAlign/(2*fSize);
-	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize,shift,n2);
+	shift = mAlign/fSize;
+	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize, shift, n2);
 
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
 
-			for (uint iz=0; iz < Lz; iz++)
+			for (size_t iz=0; iz < Lz; iz++)
 			{
-				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (uint iy=0; iy < n1/shift; iy++)
-					for (uint ix=0; ix < n1; ix++)
-						for (uint sy=0; sy<shift; sy++)
+				for (size_t iy=0; iy < n1/shift; iy++)
+					for (size_t ix=0; ix < n1; ix++)
+						for (size_t sy=0; sy<shift; sy++)
 						{
-							uint oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							uint dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
+							size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+							size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
 
-							static_cast<double *> (m)[2*(dIdx+n2)]   = static_cast<double *> (m)[2*oIdx];
-							static_cast<double *> (m)[2*(dIdx+n2)+1] = static_cast<double *> (m)[2*oIdx+1];
-							static_cast<double *> (v)[2*dIdx]        = static_cast<double *> (m)[2*(oIdx+n2+n3)];
-							static_cast<double *> (v)[2*dIdx+1]      = static_cast<double *> (m)[2*(oIdx+n2+n3)+1];
+							static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
+							static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
 						}
 			}
 
@@ -735,22 +739,20 @@ void	Scalar::foldField()
 
 		case FIELD_SINGLE:
 
-			for (uint iz=0; iz < Lz; iz++)
+			for (size_t iz=0; iz < Lz; iz++)
 			{
-				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (uint iy=0; iy < n1/shift; iy++)
-					for (uint ix=0; ix < n1; ix++)
-						for (uint sy=0; sy<shift; sy++)
+				for (size_t iy=0; iy < n1/shift; iy++)
+					for (size_t ix=0; ix < n1; ix++)
+						for (size_t sy=0; sy<shift; sy++)
 						{
-							uint oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							uint dIdx = iz*n2 + iy*n1*shift + ix*shift + sy;
+							size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+							size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
 
-							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
-							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
-							static_cast<float *> (v)[2*dIdx]        = static_cast<float *> (m)[2*(oIdx+n2+n3)];
-							static_cast<float *> (v)[2*dIdx+1]      = static_cast<float *> (m)[2*(oIdx+n2+n3)+1];
+							static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
+							static_cast<complex<float> *> (v)[dIdx]    = static_cast<complex<float> *> (m)[oIdx+n2+n3];
 						}
 			}
 
@@ -762,30 +764,28 @@ void	Scalar::foldField()
 
 void	Scalar::unfoldField()
 {
-	uint	shift;
+	int	shift;
 
-	shift = mAlign/(2*fSize);
+	shift = mAlign/fSize;
 	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize,shift,n2);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
 
-			for (uint iz=0; iz < Lz; iz++)
+			for (size_t iz=0; iz < Lz; iz++)
 			{
-				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (uint iy=0; iy < n1/shift; iy++)
-					for (uint ix=0; ix < n1; ix++)
-						for (uint sy=0; sy<shift; sy++)
+				for (size_t iy=0; iy < n1/shift; iy++)
+					for (size_t ix=0; ix < n1; ix++)
+						for (size_t sy=0; sy<shift; sy++)
 						{
-							uint oIdx = iy*n1*shift + ix*shift + sy;
-							uint dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+							size_t oIdx = iy*n1*shift + ix*shift + sy;
+							size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							static_cast<double *> (m)[2*(dIdx+n2)]   = static_cast<double *> (m)[2*oIdx];
-							static_cast<double *> (m)[2*(dIdx+n2)+1] = static_cast<double *> (m)[2*oIdx+1];
-							static_cast<double *> (v)[2*dIdx]        = static_cast<double *> (m)[2*(oIdx+n2+n3)];
-							static_cast<double *> (v)[2*dIdx+1]      = static_cast<double *> (m)[2*(oIdx+n2+n3)+1];
+							static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
+							static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
 						}
 			}
 
@@ -793,22 +793,20 @@ void	Scalar::unfoldField()
 
 		case FIELD_SINGLE:
 
-			for (uint iz=0; iz < Lz; iz++)
+			for (size_t iz=0; iz < Lz; iz++)
 			{
-				memcpy (                    m,                    static_cast<char *>(m) + 2*fSize*n2*(1+iz), 2*fSize*n2);
-				memcpy (static_cast<char *>(m) + 2*fSize*(n3+n2), static_cast<char *>(v) + 2*fSize*n2*iz,     2*fSize*n2);
+				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (uint iy=0; iy < n1/shift; iy++)
-					for (uint ix=0; ix < n1; ix++)
-						for (uint sy=0; sy<shift; sy++)
+				for (size_t iy=0; iy < n1/shift; iy++)
+					for (size_t ix=0; ix < n1; ix++)
+						for (size_t sy=0; sy<shift; sy++)
 						{
-							uint oIdx = iy*n1*shift + ix*shift + sy;
-							uint dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+							size_t oIdx = iy*n1*shift + ix*shift + sy;
+							size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							static_cast<float *> (m)[2*(dIdx+n2)]   = static_cast<float *> (m)[2*oIdx];
-							static_cast<float *> (m)[2*(dIdx+n2)+1] = static_cast<float *> (m)[2*oIdx+1];
-							static_cast<float *> (v)[2*dIdx]        = static_cast<float *> (m)[2*(oIdx+n2+n3)];
-							static_cast<float *> (v)[2*dIdx+1]      = static_cast<float *> (m)[2*(oIdx+n2+n3)+1];
+							static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
+							static_cast<complex<float> *> (v)[dIdx]     = static_cast<complex<float> *> (m)[oIdx+n2+n3];
 						}
 			}
 
@@ -818,45 +816,39 @@ void	Scalar::unfoldField()
 	return;
 }
 
-void	Scalar::unfoldField2D(const uint sZ)
+void	Scalar::unfoldField2D(const size_t sZ)
 {
 	int	shift;
 
-	shift = mAlign/(2*fSize);
+	shift = mAlign/fSize;
 	printf("Unfold-2D mAlign=%d, fSize=%d, shift=%d ", mAlign, fSize,shift);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
 		printf("Case double n1/shift=%d, shift=%d ...", n1/shift, shift);
-		for (uint iy=0; iy < n1/shift; iy++)
-		{
-			for (uint ix=0; ix < n1; ix++)
-				for (uint sy=0; sy<shift; sy++)
+		for (size_t iy=0; iy < n1/shift; iy++)
+			for (size_t ix=0; ix < n1; ix++)
+				for (size_t sy=0; sy<shift; sy++)
 				{
-					uint oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
-					uint dIdx = (iy+sy*(n1/shift))*n1 + ix;
+					size_t oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
-					static_cast<double *> (m)[2*dIdx]   = static_cast<double *> (m)[2*oIdx];
-					static_cast<double *> (m)[2*dIdx+1] = static_cast<double *> (m)[2*oIdx+1];
+					static_cast<complex<double> *> (m)[dIdx] = static_cast<complex<double> *> (m)[oIdx];
 				}
-		}
 
 		break;
 
 		case FIELD_SINGLE:
 		printf("Case single n1/shift=%d, shift=%d ...", n1/shift, shift);
-		for (uint iy=0; iy < n1/shift; iy++)
-		{
-			for (uint ix=0; ix < n1; ix++)
-				for (uint sy=0; sy<shift; sy++)
+		for (size_t iy=0; iy < n1/shift; iy++)
+			for (size_t ix=0; ix < n1; ix++)
+				for (size_t sy=0; sy<shift; sy++)
 				{
-					uint oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
-					uint dIdx = (iy+sy*(n1/shift))*n1 + ix;
+					size_t oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
 
-					static_cast<float *> (m)[2*dIdx]   = static_cast<float *> (m)[2*oIdx];
-					static_cast<float *> (m)[2*dIdx+1] = static_cast<float *> (m)[2*oIdx+1];
+					static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx];
 				}
-		}
 
 		break;
 	}
@@ -869,14 +861,14 @@ void	Scalar::prepareCpu(int *window)
 	if (precision == FIELD_DOUBLE)
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(uint i=0; i < n3; i++)
-			((std::complex<double> *) m2)[i] = I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag()*((double) window[i]);
+		for(size_t i=0; i < n3; i++)
+			((complex<double> *) m2)[i] = I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag()*((double) window[i]);
 	}
 	else
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(uint i=0; i < n3; i++)
-			((std::complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag()*((float) window[i]);
+		for(size_t i=0; i < n3; i++)
+			((complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag()*((float) window[i]);
 	}
 }
 
@@ -892,13 +884,13 @@ void	Scalar::squareCpu()
 	if (precision == FIELD_DOUBLE)
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(uint i=0; i < n3; i++)
+		for(size_t i=0; i < n3; i++)
 			((std::complex<double> *) m2)[i] = pow(abs(((std::complex<double> *) m2)[i]/((double) n3)),2);
 	}
 	else
 	{
 		#pragma omp parallel for default(shared) schedule(static)
-		for(uint i=0; i < n3; i++)
+		for(size_t i=0; i < n3; i++)
 			((std::complex<float> *) m2)[i] = pow(abs(((std::complex<float> *) m2)[i]/((float) n3)),2);
 	}
 }
@@ -1041,7 +1033,7 @@ void	Scalar::fftGpu	(int sign)
 #endif
 }
 
-void	Scalar::genConf	(ConfType cType, const int parm1, const double parm2)
+void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 {
 	printf ("Generating conf\n");
 	fflush (stdout);
@@ -1139,20 +1131,8 @@ void	Scalar::randConf ()
 
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
-			printf ("Creating seeds for %d threads\n", maxThreads);
-			fflush (stdout);
-			printf ("SD pointer %p (%p)\n", sd, &(sd[0]));
-			fflush (stdout);
 	for (int i=0; i<maxThreads; i++)
-	{
-			printf ("Thread %d ", i);
-			fflush (stdout);
-		sd[i] = 0;//seed();
-			printf ("Ok!\n");
-			fflush (stdout);
-	}
-			printf ("Done\n");
-			fflush (stdout);
+		sd[i] = seed();
 
 	switch (precision)
 	{
@@ -1170,11 +1150,11 @@ void	Scalar::randConf ()
 			std::uniform_real_distribution<double> uni(-1.0, 1.0);
 
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-			for (uint idx=n2; idx<n2+n3; idx++)
+			for (size_t idx=n2; idx<n2+n3; idx++)
 				static_cast<complex<double>*> (m)[idx]   = complex<double>(uni(mt64), uni(mt64));
 		}
 		//JAVIER control print
-		printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2,((double *) m)[2*n2],((double *) m)[2*n2+1]);
+		printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2, static_cast<double *> (m)[2*n2], static_cast<double *> (m)[2*n2+1]);
 
 		break;
 
@@ -1184,20 +1164,12 @@ void	Scalar::randConf ()
 		{
 			int nThread = omp_get_thread_num();
 
-			printf ("There we go\n");
-			fflush (stdout);
-			printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
-			fflush (stdout);
-
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 			//JAVIER included negative values
 			std::uniform_real_distribution<float> uni(-1.0, 1.0);
 
-			printf ("Thread %d starts loop\n", nThread);
-			fflush (stdout);
-
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-			for (uint idx=n2; idx<n2+n3; idx++)
+			for (size_t idx=n2; idx<n2+n3; idx++)
 				static_cast<complex<float>*> (m)[idx]   = complex<float>(uni(mt64), uni(mt64));
 
 			printf ("Thread %d finished loop\n", nThread);
@@ -1220,7 +1192,7 @@ void	Scalar::randConf ()
 
 
 template<typename Float>
-void	Scalar::iteraField(const int iter, const Float alpha)
+void	Scalar::iteraField(const size_t iter, const Float alpha)
 {
 	const Float One = 1.;
 	const Float OneSixth = (1./6.);
@@ -1233,14 +1205,14 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 	//printf("smoothing check m[0]= (%lf,%lf)\n",  ((Float *) m)[n2] , ((Float *) m)[n2] );
 	//printf("the same? ????? m[0]= (%lf,%lf)\n",  ((Float *) mCp)[n2] , ((Float *) mCp)[n2] ); yes
 
-	for (int it=0; it<iter; it++)
+	for (size_t it=0; it<iter; it++)
 	{
 		#pragma omp parallel default(shared)
 		{
 			#pragma omp for schedule(static)
-			for (uint idx=0; idx<n3; idx++)
+			for (size_t idx=0; idx<n3; idx++)
 			{
-				uint iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+				size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
 				indexXeon::idx2Vec (idx, X, n1);
 
 				if (X[0] == 0)
@@ -1280,7 +1252,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 			}
 		}
 		//Copies v to m
-		memcpy (static_cast<char *>(m) + 2*fSize*n2, v, ((size_t) (2*fSize))*((size_t) n3));
+		memcpy (static_cast<char *>(m) + fSize*n2, v, fSize*n3);
 		exchangeGhosts(FIELD_M);
 
 		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
@@ -1288,7 +1260,7 @@ void	Scalar::iteraField(const int iter, const Float alpha)
 	}//END iteration loop
 }
 
-void	Scalar::smoothConf (const int iter, const double alpha)
+void	Scalar::smoothConf (const size_t iter, const double alpha)
 {
 	switch	(precision)
 	{
@@ -1311,7 +1283,7 @@ void	Scalar::smoothConf (const int iter, const double alpha)
 
 
 template<typename Float>
-void	Scalar::momConf (const int kMax, const Float kCrit)
+void	Scalar::momConf (const size_t kMax, const Float kCrit)
 {
 	const Float Twop = 2.0*M_PI;
 
@@ -1320,7 +1292,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	if (!lowmem)
 		fM = static_cast<complex<Float>*> (m2);
 	else
-		fM = static_cast<complex<Float>*> (static_cast<void*>(static_cast<char*>(m) + 2*fSize*n2));
+		fM = static_cast<complex<Float>*> (static_cast<void*>(static_cast<char*>(m) + fSize*n2));
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
@@ -1342,19 +1314,19 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 
 		#pragma omp for schedule(static)
-		for (int oz = 0; oz < Tz; oz++)
+		for (size_t oz = 0; oz < Tz; oz++)
 		{
 			if (oz/Lz != commRank())
 				continue;
 
-			int pz = oz - (oz/(((int) Tz) >> 1))*((int)Tz);
+			size_t pz = oz - (oz/(Tz >> 1))*Tz;
 
-			for(int py = -(kMax-pz); py <= (kMax-pz); py++)
+			for(size_t py = -(kMax-pz); py <= (kMax-pz); py++)
 			{
-				for(int px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
+				for(size_t px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
 				{
-					uint idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
-					uint modP = px*px + py*py + pz*pz;
+					size_t idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
+					size_t modP = px*px + py*py + pz*pz;
 
 					if (modP <= kMax)
 					{
@@ -1379,7 +1351,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 		case FIELD_DOUBLE:
 		{
 			complex<double> *field;
-			uint vol = n3;
+			size_t vol = n3;
 
 			switch (fIdx)
 			{
@@ -1409,7 +1381,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			}
 
 			#pragma omp parallel for default(shared) schedule(static)
-			for (uint lpc = 0; lpc < vol; lpc++)
+			for (size_t lpc = 0; lpc < vol; lpc++)
 				field[lpc] *= factor;
 
 			break;
@@ -1418,8 +1390,8 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 		case FIELD_SINGLE:
 		{
 			complex<float> *field;
-			float fac = factor;
-			uint vol = n3;
+			float  fac = factor;
+			size_t vol = n3;
 
 			switch (fIdx)
 			{
@@ -1448,7 +1420,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 			}
 
 			#pragma omp parallel for default(shared) schedule(static)
-			for (uint lpc = 0; lpc < vol; lpc++)
+			for (size_t lpc = 0; lpc < vol; lpc++)
 				field[lpc] *= fac;
 
 			break;
@@ -1498,7 +1470,7 @@ void	Scalar::normaliseField (FieldIndex fIdx)
 
 			//JAVIER ADDED normalisation: this will be improved to soften strings
 			#pragma omp parallel for default(shared) schedule(static)
-			for (uint lpc = 0; lpc < v3; lpc++)
+			for (size_t lpc = 0; lpc < v3; lpc++)
 				field[lpc] = field[lpc]/abs(field[lpc]);
 
 			break;
@@ -1533,7 +1505,7 @@ void	Scalar::normaliseField (FieldIndex fIdx)
 			}
 
 			#pragma omp parallel for default(shared) schedule(static)
-			for (uint lpc = 0; lpc < v3; lpc++)
+			for (size_t lpc = 0; lpc < v3; lpc++)
 				field[lpc] = field[lpc]/abs(field[lpc]);
 
 			break;

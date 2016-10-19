@@ -15,24 +15,23 @@
 	{
 		private:
 
-		const uint n1;
-		const uint n2;
-		const uint n3;
+		const size_t n1;
+		const size_t n2;
+		const size_t n3;
 
-		const uint Lz;
-		const uint Tz;
-		const uint Ez;
-		const uint v3;
+		const size_t Lz;
+		const size_t Tz;
+		const size_t Ez;
+		const size_t v3;
 
-		const uint nSplit;
-
+		const int  nSplit;
 		const bool lowmem;
 
 		DeviceType	device;
 		FieldPrecision	precision;
 
-		uint	fSize;
-		uint	mAlign;
+		size_t	fSize;
+		size_t	mAlign;
 
 		double	*z;
 
@@ -47,19 +46,19 @@
 
 		void	scaleField(FieldIndex fIdx, double factor);
 		void	randConf();
-		void	smoothConf(const int iter, const double alpha);
+		void	smoothConf(const size_t iter, const double alpha);
 
 		template<typename Float>
-		void	iteraField(const int iter, const Float alpha);
+		void	iteraField(const size_t iter, const Float alpha);
 
 
 		template<typename Float>
-		void	momConf(const int kMax, const Float kCrit);
+		void	momConf(const size_t kMax, const Float kCrit);
 
 		public:
 
-				 Scalar(const uint nLx, const uint nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const uint nSp,
-					ConfType cType, const int parm1, const double parm2);
+				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
+					ConfType cType, const size_t parm1, const double parm2);
 				~Scalar();
 
 		void		*mCpu() { return m; }
@@ -88,16 +87,16 @@
 #endif
 		bool		LowMem()  { return lowmem; }
 
-		int		Size()   { return n3; }
-		int		Surf()   { return n2; }
-		int		Length() { return n1; }
-		int		Depth()  { return Lz; }
-		int		eDepth() { return Ez; }
-		int		eSize()  { return v3; }
+		size_t		Size()   { return n3; }
+		size_t		Surf()   { return n2; }
+		size_t		Length() { return n1; }
+		size_t		Depth()  { return Lz; }
+		size_t		eDepth() { return Ez; }
+		size_t		eSize()  { return v3; }
 
 		FieldPrecision	Precision() { return precision; }
 
-		int		dataSize() { return fSize; }
+		size_t		dataSize() { return fSize; }
 
 		double		*zV() { return z; }
 		const double	*zV() const { return z; }
@@ -106,7 +105,7 @@
 
 		void	foldField	();
 		void	unfoldField	();
-		void	unfoldField2D	(const uint sZ);	// Just for the maps
+		void	unfoldField2D	(const size_t sZ);	// Just for the maps
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
@@ -126,7 +125,7 @@
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
-		void	genConf	(ConfType cType, const int parm1, const double parm2);
+		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

@@ -35,12 +35,14 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 
 void	writeConf (Scalar *axion, int index)
 {
-	hid_t	file_id, mset_id, vset_id, plist_id;
+	hid_t	file_id, mset_id, vset_id, plist_id, chunk_id;
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
-	hsize_t	total, slab, offset;
+	hsize_t	total, slice, slab, offset;
 
 	char	prec[16];
 	int	length;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
 
 	size_t	dataSize;
 
@@ -96,6 +98,7 @@ void	writeConf (Scalar *axion, int index)
 		break;
 	}
 
+
 	/*	Write header	*/
 
 	hid_t attr_type;
@@ -103,15 +106,16 @@ void	writeConf (Scalar *axion, int index)
 	/*	Attributes	*/
 
 	int cSteps = dump*index;
-	uint totlZ = sizeZ*zGrid;
+	hsize_t totlZ = sizeZ*zGrid;
+	hsize_t tmpS  = sizeN;
 
 	attr_type = H5Tcopy(H5T_C_S1);
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
-	writeAttribute(file_id, &sizeN, "Size",          H5T_NATIVE_INT);
-	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_INT);
+	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
+	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
 	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_INT);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
@@ -128,37 +132,42 @@ void	writeConf (Scalar *axion, int index)
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
 	H5Pset_dxpl_mpio(plist_id,H5FD_MPIO_COLLECTIVE);
 
-	/*	Create space for writing the raw data to disk	*/
+	/*	Create space for writing the raw data to disk with chunkde access	*/
 
-	total = axion->Size()*2*zGrid;
+	total = sizeN*sizeN*totlZ*2;
+	slab  = axion->Surf()*2;
 
-	totalSpace = H5Screate_simple(1, &total, NULL);	// Whole data
+	/*	Set chunked access	*/
+
+	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
+	H5Pset_layout (chunk_id, H5D_CHUNKED);
+	H5Pset_chunk (chunk_id, 1, &slab);
+
+	totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
 
 	/*	Create a dataset for the whole axion data	*/
 
-	mset_id = H5Dcreate (file_id, "/m", dataType, totalSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	vset_id = H5Dcreate (file_id, "/v", dataType, totalSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	mset_id = H5Dcreate (file_id, "/m", dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	vset_id = H5Dcreate (file_id, "/v", dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
-
-	slab   = axion->Surf()*2;
 
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 	mSpace = H5Dget_space (mset_id);
 	vSpace = H5Dget_space (vset_id);
 
-	for (uint zDim=0; zDim<axion->Depth(); zDim++)
+	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
 
-		offset = (myRank*axion->Depth()+zDim)*2*axion->Surf();
+		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*((hsize_t) (2*axion->Surf()));
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
 
-		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+axion->Surf()*2*(1+zDim)*dataSize));
-		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+axion->Surf()*2*zDim*dataSize));
+		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()*2))*(1+zDim)*dataSize));
+		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()*2))*zDim*dataSize));
 	}
 
 	/*	Close the dataset	*/
@@ -172,6 +181,7 @@ void	writeConf (Scalar *axion, int index)
 	/*	Close the file		*/
 
 	H5Sclose (totalSpace);
+	H5Pclose (chunk_id);
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 }
@@ -189,6 +199,8 @@ void	readConf (Scalar **axion, int index)
 
 	char	prec[16];
 	int	length = 8;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
 
 	size_t	dataSize;
 
@@ -220,8 +232,8 @@ void	readConf (Scalar **axion, int index)
 	uint	tStep, cStep, totlZ;
 
 	readAttribute (file_id, prec,   "Precision",    attr_type);
-	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_INT);
-	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_INT);
+	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
+	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
 	readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_INT);
 	readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
@@ -273,32 +285,32 @@ void	readConf (Scalar **axion, int index)
 	mset_id = H5Dopen (file_id, "/m", H5P_DEFAULT);
 	vset_id = H5Dopen (file_id, "/v", H5P_DEFAULT);
 
-	slab   = (*axion)->Surf()*2;
+	slab   = (hsize_t) ((*axion)->Surf()*2);
 
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 	mSpace   = H5Dget_space (mset_id);
 	vSpace   = H5Dget_space (vset_id);
 
-	for (uint zDim=0; zDim<(*axion)->Depth(); zDim++)
+	for (hsize_t zDim=0; zDim<((hsize_t) (*axion)->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
 
-		offset = (myRank*(*axion)->Depth()+zDim)*2*(*axion)->Surf();
+		offset = (((hsize_t) (myRank*(*axion)->Depth()))+zDim)*((hsize_t) (2*(*axion)->Surf()));
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Read raw data	*/
 
-		H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+(*axion)->Surf()*2*(1+zDim)*dataSize));
-		H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+(*axion)->Surf()*2*zDim*dataSize));
+		H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+((hsize_t) ((*axion)->Surf()*2))*(1+zDim)*dataSize));
+		H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+((hsize_t) ((*axion)->Surf()*2))*zDim*dataSize));
 	}
 
 	/*	Close the dataset	*/
 
-	H5Dclose (mset_id);
-	H5Dclose (vset_id);
 	H5Sclose (mSpace);
 	H5Sclose (vSpace);
+	H5Dclose (mset_id);
+	H5Dclose (vset_id);
 	H5Sclose (memSpace);
 
 	/*	Close the file		*/
