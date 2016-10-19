@@ -1,5 +1,7 @@
+#include <cstdio>
 #include <cstdlib>
 #include <map>
+#include <errno.h>
 #include "enum-field.h"
 
 static std::map<void *, size_t> allocTable[2];
