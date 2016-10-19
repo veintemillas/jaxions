@@ -8,7 +8,7 @@ using namespace std;
 fftw_plan p, pb;
 fftwf_plan pf, pfb;
 
-bool single;
+static bool iFFT = false, single = false;
 
 void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecision prec, bool lowmem)
 {
@@ -51,6 +51,8 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 
 		break;
 	}
+
+	iFFT = true;
 }
 
 void	runFFT(int sign)
@@ -77,6 +79,9 @@ void	runFFT(int sign)
             
 void	closeFFT	()
 {
+	if (!iFFT)
+		return;
+
 	if (single)
 	{
 		fftwf_destroy_plan(pf);

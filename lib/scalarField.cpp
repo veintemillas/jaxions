@@ -301,9 +301,9 @@ class	Scalar
 //		if (!lowmem)
 //			initCudaFFT(n1, Lz, prec);
 #endif
-	} else {
-		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
-	}
+	}// else {
+//		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+//	}
 
 	*z = zI;
 
@@ -348,6 +348,9 @@ class	Scalar
 			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 		}
 	} else {
+		if (cType == CONF_KMAX)
+			initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+
 		genConf(cType, parm1, parm2);
 	}
 
