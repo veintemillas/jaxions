@@ -97,10 +97,10 @@ int	main (int argc, char *argv[])
 	printMpi("LL     =  %2.5f\n", LL);
 	printMpi("--------------------------------------------------\n");
 
-	const uint S0 = sizeN*sizeN;
-	const uint SF = sizeN*sizeN*(sizeZ+1)-1;
-	const uint V0 = 0;
-	const uint VF = axion->Size()-1;
+	const size_t S0 = sizeN*sizeN;
+	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
+	const size_t V0 = 0;
+	const size_t VF = axion->Size()-1;
 
 	printMpi("INITIAL CONDITIONS LOADED\n");
 	if (sPrec != FIELD_DOUBLE)
@@ -139,12 +139,7 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
-		writeMap (axion, index);
-	}
-	else
-	{
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 
@@ -161,12 +156,7 @@ int	main (int argc, char *argv[])
 	writeConf(axion, index);
 	if (cDev != DEV_GPU)
 	{
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
-		writeMap (axion, index);
-	}
-	else
-	{
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
 	}
 */
@@ -242,12 +232,6 @@ int	main (int argc, char *argv[])
 		{
 			axion->unfoldField2D(sizeZ-1);
 //			writeConf(axion, index);
-			writeMap (axion, index);
-		}
-		else
-		{
-//			writeConf(axion, index);
-			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + 2*S0*sizeZ*axion->dataSize(), 2*S0*axion->dataSize());
 			writeMap (axion, index);
 		}
 	} // zloop
