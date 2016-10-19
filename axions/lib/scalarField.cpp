@@ -571,7 +571,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 			if (fIdx & FIELD_M)
 			{
 				cudaMemcpyAsync(static_cast<char *> (m_d),                  static_cast<char *> (m),                 n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(Static_cast<char *> (m_d) + (n3+n2)*fSize), static_cast<char *> (m) + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m_d) + (n3+n2)*fSize), static_cast<char *> (m) + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			} else {
 				cudaMemcpyAsync(static_cast<char *> (m2_d),                  static_cast<char *> (m2),                    n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m2_d) + (n3+n2)*fSize), static_cast<char *> (m2)  + 2*(n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
