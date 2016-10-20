@@ -1171,7 +1171,7 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		printf("Copying m to v ... ");
 		fflush (stdout);
 
-		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, ((size_t) (2*fSize))*((size_t) n3));
+		memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 
 		printf("Scaling m to mu=z*m ... ");
 		fflush (stdout);
