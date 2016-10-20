@@ -58,6 +58,7 @@ void	trackFree (void **ptr, AllocType aType)
 
 void	trackAlloc (void **ptr, size_t size)
 {
+
 	if (((*ptr) = malloc(size)) == NULL)
 	{
 		printf ("Error allocating %lu bytes of unaligned memory\n", size);
@@ -65,10 +66,11 @@ void	trackAlloc (void **ptr, size_t size)
 	}
 
 	printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
-	fflush (stdout);
 
+	fflush (stdout);
 	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
 	trackAllocMem += size;
+	fflush (stdout);
 }
 
 void	printMemStats	()

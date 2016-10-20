@@ -17,6 +17,8 @@
 #endif
 
 #include "memAlloc.h"
+//JAVIER
+#include "parse.h"
 
 #include<mpi.h>
 #include<omp.h>
@@ -73,6 +75,11 @@ class	Scalar
 
 	template<typename Float>
 	void	iteraField(const size_t iter, const Float alpha);
+
+	//JAVIER
+	template<typename Float>
+	void	normaCOREField(const Float alpha);
+
 
 
 	template<typename Float>
@@ -824,11 +831,11 @@ void	Scalar::unfoldField2D(const size_t sZ)
 	int	shift;
 
 	shift = mAlign/fSize;
-	printf("Unfold-2D mAlign=%d, fSize=%d, shift=%d ", mAlign, fSize,shift);
+	// printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d ", mAlign, fSize,shift);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
-		printf("Case double n1/shift=%d, shift=%d ...", n1/shift, shift);
+		//printf("Case double n1/shift=%d, shift=%d ...", n1/shift, shift);
 		for (size_t iy=0; iy < n1/shift; iy++)
 			for (size_t ix=0; ix < n1; ix++)
 				for (size_t sy=0; sy<shift; sy++)
@@ -842,7 +849,7 @@ void	Scalar::unfoldField2D(const size_t sZ)
 		break;
 
 		case FIELD_SINGLE:
-		printf("Case single n1/shift=%d, shift=%d ...", n1/shift, shift);
+		//printf("Case single n1/shift=%d, shift=%d ...", n1/shift, shift);
 		for (size_t iy=0; iy < n1/shift; iy++)
 			for (size_t ix=0; ix < n1; ix++)
 				for (size_t sy=0; sy<shift; sy++)
@@ -1038,7 +1045,7 @@ void	Scalar::fftGpu	(int sign)
 
 void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 {
-	printf ("Generating conf\n");
+
 	fflush (stdout);
 
 	switch (cType)
@@ -1053,32 +1060,57 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 			switch (precision)
 			{
 				case FIELD_DOUBLE:
-
+				printf ("Generating conf (KMAX) (double prec) ... ");
 				momConf(parm1, parm2);
 
 				break;
 
 				case FIELD_SINGLE:
-
+				printf ("Generating conf (KMAX) (single prec) ... ");
 				momConf(parm1, (float) parm2);
 
 				break;
 
 				default:
-
-				printf("Wrong precision\n");
+				printf ("Generating conf (KMAX) ...\n");
+				printf("Wrong precision!\n");
 				exit(1);
 
 				break;
 			}
 
-			printf ("Running FFT\n");
+			printf ("flush ... ");
 			fflush (stdout);
+			printf ("FFT ... ");
 			fftCpu (1);	// FFTW_BACKWARD
-			printf ("Normalising field\n");
+			printf ("flush ...");
 			fflush (stdout);
+			printf ("Done!\n");
+
+			printf ("Normalising field ");
 			//JAVIER normalisation
-			normaliseField(FIELD_M);
+			switch (precision)
+			{
+				case FIELD_DOUBLE:
+				printf ("(double prec) ... ");
+				normaliseField(FIELD_M);
+				//normaCOREField( (double) alpha )
+				printf ("Done!\n");
+				break;
+
+				case FIELD_SINGLE:
+				printf ("(single prec) ... ");
+				normaliseField(FIELD_M);
+				printf ("Done!\n");
+				//normaCOREField( (float) alpha )
+				break;
+
+				default:
+				printf("Wrong precision! \n");
+				exit(1);
+				break;
+			}
+
 		}
 
 		exchangeGhosts(FIELD_M);
@@ -1091,9 +1123,11 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		{
 			case	DEV_XEON:
 			case	DEV_CPU:
-
+			printf ("Generating random conf (SMOOTH) ...");
 			randConf ();
+			printf("Smoothing (sIter=%d) ... ",parm1);
 			smoothConf (parm1, parm2);
+			printf("Done !\n ");
 			break;
 
 			case	DEV_GPU:
@@ -1118,10 +1152,11 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		//JAVIER
 		printf("Normalising field ... ");
 		normaliseField(FIELD_M);
-		printf("Copying m to v ...");
+		printf("Copying m to v ... ");
 		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, ((size_t) (2*fSize))*((size_t) n3));
-		printf("Scaling m to mu=z*m ... Done\n");
+		printf("Scaling m to mu=z*m ... ");
 		scaleField (FIELD_M, *z);
+		printf("Done!\n");
 	}
 }
 
@@ -1140,7 +1175,7 @@ void	Scalar::randConf ()
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
-
+		printf(" (double prec) ");
 		#pragma omp parallel default(shared)
 		{
 			int nThread = omp_get_thread_num();
@@ -1157,12 +1192,13 @@ void	Scalar::randConf ()
 				static_cast<complex<double>*> (m)[idx]   = complex<double>(uni(mt64), uni(mt64));
 		}
 		//JAVIER control print
-		printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2, static_cast<double *> (m)[2*n2], static_cast<double *> (m)[2*n2+1]);
+		printf(" Done! ");
+		//printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2, static_cast<double *> (m)[2*n2], static_cast<double *> (m)[2*n2+1]);
 
 		break;
 
 		case FIELD_SINGLE:
-
+		printf(" (single prec) ");
 		#pragma omp parallel default(shared)
 		{
 			int nThread = omp_get_thread_num();
@@ -1175,10 +1211,10 @@ void	Scalar::randConf ()
 			for (size_t idx=n2; idx<n2+n3; idx++)
 				static_cast<complex<float>*> (m)[idx]   = complex<float>(uni(mt64), uni(mt64));
 
-			printf ("Thread %d finished loop\n", nThread);
+			printf ("Thread %d finished loop ", nThread);
 			fflush (stdout);
 		}
-
+		printf(" Done! ");
 		break;
 
 		default:
@@ -1252,6 +1288,7 @@ void	Scalar::iteraField(const size_t iter, const Float alpha)
 				iMz = idx - n2;
 				//Uses v to copy the smoothed configuration
 				vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
+				vCp[idx]   = vCp[idx]/abs(vCp[idx]);
 			}
 		}
 		//Copies v to m
@@ -1259,9 +1296,10 @@ void	Scalar::iteraField(const size_t iter, const Float alpha)
 		exchangeGhosts(FIELD_M);
 
 		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
-		printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
+		//printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
 	}//END iteration loop
-}
+		printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
+}//END Scalar::iteraField
 
 void	Scalar::smoothConf (const size_t iter, const double alpha)
 {
@@ -1300,8 +1338,9 @@ void	Scalar::momConf (const size_t kMax, const Float kCrit)
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
+	printf(" (traca in) ");
 	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
-
+	printf(" (traca out) ");
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
 	for (int i=0; i<maxThreads; i++)
@@ -1519,4 +1558,90 @@ void	Scalar::normaliseField (FieldIndex fIdx)
 		exit(1);
 		break;
 	}
+}
+
+//JAVIER
+template<typename Float>
+void	Scalar::normaCOREField(const Float alpha)
+{
+
+	const Float deltaa = sizeL/sizeN ;
+	const Float LLa = LL ;
+	const Float zia = zInit ;
+
+	exchangeGhosts(FIELD_M);
+
+	complex<Float> *mCp = static_cast<complex<Float>*> (m);
+	complex<Float> *vCp = static_cast<complex<Float>*> (v);
+
+	printf("Entering CORE smoothing\n");
+
+		#pragma omp parallel default(shared)
+		{
+			#pragma omp for schedule(static)
+			for (size_t idx=0; idx<n3; idx++)
+			{
+				size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+				indexXeon::idx2Vec (idx, X, n1);
+
+				Float gradx, grady, gradz, sss, rhof;
+
+				if (X[0] == 0)
+				{
+					iPx = idx + 1;
+					iMx = idx + n1 - 1;
+				} else {
+					if (X[0] == n1 - 1)
+					{
+						iPx = idx - n1 + 1;
+						iMx = idx - 1;
+					} else {
+						iPx = idx + 1;
+						iMx = idx - 1;
+					}
+				}
+
+				if (X[1] == 0)
+				{
+					iPy = idx + n1;
+					iMy = idx + n2 - n1;
+				} else {
+					if (X[1] == n1 - 1)
+					{
+						iPy = idx - n2 + n1;
+						iMy = idx - n1;
+					} else {
+						iPy = idx + n1;
+						iMy = idx - n1;
+					}
+				}
+
+				iPz = idx + n2;
+				iMz = idx - n2;
+				//Uses v to copy the smoothed configuration
+				//vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
+				//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
+				gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
+				grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
+				grady = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
+
+				sss  = sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
+				rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
+
+				vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
+
+				if(idx % sizeN*sizeN*10 == 0)
+				{
+				printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
+				}
+
+			}
+		}
+		//Copies v to m
+		memcpy (static_cast<char *>(m) + fSize*n2, v, fSize*n3);
+		exchangeGhosts(FIELD_M);
+
+		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
+		printf("CORE smoothing Done\n");
+
 }
