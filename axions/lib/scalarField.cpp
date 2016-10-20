@@ -384,6 +384,7 @@ class	Scalar
 {
 	printf ("Calling destructor...\n");
 	fflush (stdout);
+
 	if (m != NULL)
 		trackFree(&m, ALLOC_ALIGN);
 
@@ -709,10 +710,16 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
+	printf ("Ghost exchange...  ");
+	fflush (stdout);
+
 	recallGhosts(fIdx);
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
+
+	printf ("Done!\n");
+	fflush (stdout);
 }
 
 //	USAR TEMPLATES PARA ESTO
@@ -1045,9 +1052,6 @@ void	Scalar::fftGpu	(int sign)
 
 void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 {
-
-	fflush (stdout);
-
 	switch (cType)
 	{
 		case CONF_NONE:
@@ -1079,29 +1083,28 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 				break;
 			}
 
-			printf ("flush ... ");
-			fflush (stdout);
-			printf ("FFT ... ");
 			fftCpu (1);	// FFTW_BACKWARD
-			printf ("flush ...");
-			fflush (stdout);
-			printf ("Done!\n");
 
 			printf ("Normalising field ");
+			fflush (stdout);
 			//JAVIER normalisation
 			switch (precision)
 			{
 				case FIELD_DOUBLE:
 				printf ("(double prec) ... ");
+			fflush (stdout);
 				normaliseField(FIELD_M);
 				//normaCOREField( (double) alpha )
 				printf ("Done!\n");
+			fflush (stdout);
 				break;
 
 				case FIELD_SINGLE:
 				printf ("(single prec) ... ");
+			fflush (stdout);
 				normaliseField(FIELD_M);
 				printf ("Done!\n");
+			fflush (stdout);
 				//normaCOREField( (float) alpha )
 				break;
 
@@ -1151,12 +1154,16 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 	{
 		//JAVIER
 		printf("Normalising field ... ");
+		fflush (stdout);
 		normaliseField(FIELD_M);
 		printf("Copying m to v ... ");
-		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, ((size_t) (2*fSize))*((size_t) n3));
+		fflush (stdout);
+		memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 		printf("Scaling m to mu=z*m ... ");
+		fflush (stdout);
 		scaleField (FIELD_M, *z);
 		printf("Done!\n");
+		fflush (stdout);
 	}
 }
 
@@ -1338,13 +1345,14 @@ void	Scalar::momConf (const size_t kMax, const Float kCrit)
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
-	printf(" (traca in) ");
 	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
-	printf(" (traca out) ");
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = seed();
+
+	printf ("Starting parallel loop for kMax\n");
+	fflush (stdout);
 
 	#pragma omp parallel default(shared)
 	{
@@ -1361,11 +1369,11 @@ void	Scalar::momConf (const size_t kMax, const Float kCrit)
 			if (oz/Lz != commRank())
 				continue;
 
-			size_t pz = oz - (oz/(Tz >> 1))*Tz;
+			int pz = oz - (oz/(Tz >> 1))*Tz;
 
-			for(size_t py = -(kMax-pz); py <= (kMax-pz); py++)
+			for(int py = -(((int) kMax)-pz); py <= (((int) kMax)-pz); py++)
 			{
-				for(size_t px = -(kMax-pz-py); px <= (kMax-pz-py); px++)
+				for(int px = -(((int) kMax)-pz-py); px <= (((int) kMax)-pz-py); px++)
 				{
 					size_t idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
 					size_t modP = px*px + py*py + pz*pz;
