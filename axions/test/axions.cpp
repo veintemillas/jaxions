@@ -78,6 +78,12 @@ int	main (int argc, char *argv[])
 	file_sample = fopen("out/sample.txt","w+");
 	//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 
+	FILE *file_energy ;
+	file_energy = NULL;
+	file_energy = fopen("out/energy.txt","w+");
+	//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
+
+
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
 	//--------------------------------------------------
@@ -141,6 +147,7 @@ int	main (int argc, char *argv[])
 	{
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
+		writeENERGY ((*(axion->zV() )),file_energy);
 	}
 
 // TEST
@@ -233,6 +240,7 @@ int	main (int argc, char *argv[])
 			axion->unfoldField2D(sizeZ-1);
 //			writeConf(axion, index);
 			writeMap (axion, index);
+			writeENERGY ((*(axion->zV() )),file_energy);
 		}
 	} // zloop
 
@@ -279,6 +287,7 @@ int	main (int argc, char *argv[])
 
 	//JAVIER
 	fclose(file_sample);
+	fclose(file_energy);
 
 	return 0;
 }

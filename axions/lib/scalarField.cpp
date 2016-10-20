@@ -80,6 +80,8 @@ class	Scalar
 	template<typename Float>
 	void	normaCOREField(const Float alpha);
 
+	template<typename Float>
+	void	ENERGY(const Float z, FILE *enWrite);
 
 
 	template<typename Float>
@@ -152,6 +154,9 @@ class	Scalar
 	void	squareCpu();				// Squares the m2 field in the Cpu
 
 	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
+	//JAVIER
+	void	writeENERGY	(double z, FILE *enwrite);
+
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
 #endif
@@ -1682,4 +1687,116 @@ void	Scalar::normaCOREField(const Float alpha)
 	//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
 	printf("CORE smoothing Done\n");
 	fflush (stdout);
+}
+
+
+void	Scalar::writeENERGY (double zzz, FILE *enwrite)
+{
+	switch	(precision)
+	{
+		case	FIELD_DOUBLE:
+		ENERGY (zzz, *enwrite);
+		break;
+
+		case	FIELD_SINGLE:
+		ENERGY ( (float) zzz, *enwrite);
+		break;
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+}
+
+
+
+//JAVIER ENERGY
+template<typename Float>
+void	Scalar::ENERGY(const Float z, FILE *enWrite)
+{
+	int	shift;
+	shift = mAlign/fSize;
+
+	const Float deltaa2 = pow(sizeL/sizeN,2) ;
+	const Float LLa = LL ;
+
+	exchangeGhosts(FIELD_M);
+
+	complex<Float> *mCp = static_cast<complex<Float>*> (m);
+	complex<Float> *vCp = static_cast<complex<Float>*> (v);
+
+	printf("ENERGY CALCULATOR\n");
+	fflush (stdout);
+	//LEAVES BOUNDARIES OUT OF THE LOOP FOR SIMPLICITY
+
+
+	//SUM variables
+	Float Vrho1 = 0;
+	Float Vtheta1 = 0;
+	Float Krho1 = 0;
+	Float Ktheta1 = 0;
+	Float Grho1 = 0;
+	Float Gtheta1=0;
+
+	const Float invz	= 1/z	;
+	const Float LLzz2 = LL*z*z/4.0 ;
+	const Float z9QCD = 9.0*pow(z,nQcd+2) ;
+
+
+	#pragma omp parallel default(shared)
+	{
+		#pragma omp for schedule(static) reduction(+:Vrho1,Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1)
+		for (size_t iz=0; iz < Lz; iz++)
+		{
+			Float modul, modfac	;
+			size_t idd	;
+
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+
+//unfolded coordinates	//size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+//folded coordinates		//size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+					size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+
+					modul = abs(mCp[dIdx+n2]);
+					modfac = modul*modul*invz*invz;
+					//Vrho misses LLzz2 factor
+					Vrho1 	+= pow(modfac-1.0,2)	;
+					//Vtheta misses z9QCD factor
+					Vtheta1 += 1-real(mCp[dIdx+n2])*invz	;
+					//Krho1 misses 0.5 factor
+					Krho1 += modfac*pow(real(vCp[dIdx]/mCp[dIdx+n2])-invz,2);
+					//Krho1 misses 0.5 factor
+					Ktheta1 += modfac*pow(imag(vCp[dIdx]/mCp[dIdx+n2]),2);
+
+					//Grho1 misses a factor 3*0.5/delta^2
+					//only computed in the z direction ... easy!
+					Grho1 += modfac*pow(real((mCp[dIdx+2*n2]+mCp[dIdx]-2.0*mCp[dIdx+n2])/mCp[dIdx+n2]),2);
+					Gtheta1 += modfac*pow(imag((mCp[dIdx+2*n2]+mCp[dIdx]-2.0*mCp[dIdx+n2])/mCp[dIdx+n2]),2);
+
+					}
+		}
+	//RENORMALISE
+	//Vrho misses LLzz2 factor
+	Vrho1 	*= LLzz2/n3	;
+	//Vtheta misses z9QCD factor
+	Vtheta1 *= z9QCD/n3	;
+	//Krho1 misses 0.5 factor
+	Krho1 *= 0.5/n3;
+	//Krho1 misses 0.5 factor
+	Ktheta1 *= 0.5/n3;
+
+	//Grho1 misses a factor 3*0.5/delta^2
+	Grho1 *= 3.0*0.5/(deltaa2*n3);
+	Gtheta1 *= 3.0*0.5/(deltaa2*n3);
+
+	fprintf(enWrite,  "%f %f %f %f %f %f %f ", z, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
+	Printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
+	fflush (stdout);
+	}
 }
