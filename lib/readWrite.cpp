@@ -48,8 +48,6 @@ void	writeConf (Scalar *axion, int index)
 
 	int myRank = commRank();
 
-//	MPI_Info mpiInfo;
-
 	/*	Set up parallel access with Hdf5	*/
 
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
@@ -132,29 +130,66 @@ void	writeConf (Scalar *axion, int index)
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
 	H5Pset_dxpl_mpio(plist_id,H5FD_MPIO_COLLECTIVE);
 
-	/*	Create space for writing the raw data to disk with chunkde access	*/
+	/*	Create space for writing the raw data to disk with chunked access	*/
 
 	total = sizeN*sizeN*totlZ*2;
 	slab  = axion->Surf()*2;
 
+	totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
+
+	if (totalSpace < 0)
+	{
+		printf ("Fatal error H5Screate_simple\n");
+		exit (1);
+	}
+
 	/*	Set chunked access	*/
 
-	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
-	H5Pset_layout (chunk_id, H5D_CHUNKED);
-	H5Pset_chunk (chunk_id, 1, &slab);
+	herr_t status;
 
-	totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
+	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
+
+	if (chunk_id < 0)
+	{
+		printf ("Fatal error H5Pcreate\n");
+		exit (1);
+	}
+
+	status = H5Pset_layout (chunk_id, H5D_CHUNKED);
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_layout\n");
+		exit (1);
+	}
+
+	status = H5Pset_chunk (chunk_id, 1, &slab);
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_chunk\n");
+		exit (1);
+	}
 
 	/*	Create a dataset for the whole axion data	*/
 
-	mset_id = H5Dcreate (file_id, "/m", dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-	vset_id = H5Dcreate (file_id, "/v", dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	char mCh[8] = "/m";
+	char vCh[8] = "/v";
+
+	mset_id = H5Dcreate (file_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	vset_id = H5Dcreate (file_id, vCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	if ((mset_id < 0) || (vset_id < 0))
+	{
+		printf	("Fatal error.\n");
+		exit (0);
+	}
 
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
-	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 	mSpace = H5Dget_space (mset_id);
 	vSpace = H5Dget_space (vset_id);
+	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 
 	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
