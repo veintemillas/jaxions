@@ -1719,7 +1719,6 @@ void	Scalar::ENERGY(const Float z, FILE *enWrite)
 	shift = mAlign/fSize;
 
 	const Float deltaa2 = pow(sizeL/sizeN,2) ;
-	const Float LLa = LL ;
 
 	exchangeGhosts(FIELD_M);
 
@@ -1739,8 +1738,8 @@ void	Scalar::ENERGY(const Float z, FILE *enWrite)
 	Float Grho1 = 0;
 	Float Gtheta1=0;
 
-	const Float invz	= 1/z	;
-	const Float LLzz2 = LL*z*z/4.0 ;
+	const Float invz	= 1/(*z)	;
+	const Float LLzz2 = LL*(*z)*(*z)/4.0 ;
 	const Float z9QCD = 9.0*pow(z,nQcd+2) ;
 
 
@@ -1774,10 +1773,10 @@ void	Scalar::ENERGY(const Float z, FILE *enWrite)
 					//Krho1 misses 0.5 factor
 					Ktheta1 += modfac*pow(imag(vCp[dIdx]/mCp[dIdx+n2]),2);
 
-					//Grho1 misses a factor 3*0.5/delta^2
+					//Grho1 misses a factor 3*0.5/4 delta^2
 					//only computed in the z direction ... easy!
-					Grho1 += modfac*pow(real((mCp[dIdx+2*n2]+mCp[dIdx]-2.0*mCp[dIdx+n2])/mCp[dIdx+n2]),2);
-					Gtheta1 += modfac*pow(imag((mCp[dIdx+2*n2]+mCp[dIdx]-2.0*mCp[dIdx+n2])/mCp[dIdx+n2]),2);
+					Grho1 += modfac*pow(real((mCp[dIdx+2*n2]-mCp[dIdx])/mCp[dIdx+n2]),2);
+					Gtheta1 += modfac*pow(imag((mCp[dIdx+2*n2]-mCp[dIdx])/mCp[dIdx+n2]),2);
 
 					}
 		}
@@ -1792,8 +1791,8 @@ void	Scalar::ENERGY(const Float z, FILE *enWrite)
 	Ktheta1 *= 0.5/n3;
 
 	//Grho1 misses a factor 3*0.5/delta^2
-	Grho1 *= 3.0*0.5/(deltaa2*n3);
-	Gtheta1 *= 3.0*0.5/(deltaa2*n3);
+	Grho1 *= 3.0*0.125/(deltaa2*n3);
+	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
 
 	fprintf(enWrite,  "%f %f %f %f %f %f %f ", z, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	Printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
