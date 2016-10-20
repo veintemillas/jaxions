@@ -710,16 +710,10 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
-	printf ("Ghost exchange...  ");
-	fflush (stdout);
-
 	recallGhosts(fIdx);
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
-
-	printf ("Done!\n");
-	fflush (stdout);
 }
 
 //	USAR TEMPLATES PARA ESTO
