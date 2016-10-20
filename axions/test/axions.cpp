@@ -147,7 +147,7 @@ int	main (int argc, char *argv[])
 	{
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
-		writeENERGY ((*(axion->zV() )),file_energy);
+		axion->writeENERGY ((*(axion->zV() )),file_energy);
 	}
 
 // TEST
@@ -240,7 +240,7 @@ int	main (int argc, char *argv[])
 			axion->unfoldField2D(sizeZ-1);
 //			writeConf(axion, index);
 			writeMap (axion, index);
-			writeENERGY ((*(axion->zV() )),file_energy);
+			axion->writeENERGY ((*(axion->zV() )),file_energy);
 		}
 	} // zloop
 

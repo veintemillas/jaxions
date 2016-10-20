@@ -1695,11 +1695,11 @@ void	Scalar::writeENERGY (double zzz, FILE *enwrite)
 	switch	(precision)
 	{
 		case	FIELD_DOUBLE:
-		ENERGY (zzz, *enwrite);
+		ENERGY (zzz, enwrite);
 		break;
 
 		case	FIELD_SINGLE:
-		ENERGY ( (float) zzz, *enwrite);
+		ENERGY ( (float) zzz, enwrite);
 		break;
 
 		default:
@@ -1713,7 +1713,7 @@ void	Scalar::writeENERGY (double zzz, FILE *enwrite)
 
 //JAVIER ENERGY
 template<typename Float>
-void	Scalar::ENERGY(const Float z, FILE *enWrite)
+void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 {
 	int	shift;
 	shift = mAlign/fSize;
@@ -1738,9 +1738,9 @@ void	Scalar::ENERGY(const Float z, FILE *enWrite)
 	Float Grho1 = 0;
 	Float Gtheta1=0;
 
-	const Float invz	= 1/(*z)	;
-	const Float LLzz2 = LL*(*z)*(*z)/4.0 ;
-	const Float z9QCD = 9.0*pow(z,nQcd+2) ;
+	const Float invz	= 1/zz;
+	const Float LLzz2 = LL*zz*zz/4.0 ;
+	const Float z9QCD = 9.0*pow(zz,nQcd+2) ;
 
 
 	#pragma omp parallel default(shared)
@@ -1795,7 +1795,7 @@ void	Scalar::ENERGY(const Float z, FILE *enWrite)
 	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
 
 	fprintf(enWrite,  "%f %f %f %f %f %f %f ", z, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
-	Printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
+	printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	fflush (stdout);
 	}
 }
