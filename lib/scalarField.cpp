@@ -83,7 +83,7 @@ class	Scalar
 
 
 	template<typename Float>
-	void	momConf(const size_t kMax, const Float kCrit);
+	void	momConf(const int kMax, const Float kCrit);
 
 	public:
 
@@ -384,7 +384,6 @@ class	Scalar
 {
 	printf ("Calling destructor...\n");
 	fflush (stdout);
-
 	if (m != NULL)
 		trackFree(&m, ALLOC_ALIGN);
 
@@ -1046,6 +1045,9 @@ void	Scalar::fftGpu	(int sign)
 
 void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 {
+
+	fflush (stdout);
+
 	switch (cType)
 	{
 		case CONF_NONE:
@@ -1077,36 +1079,15 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 				break;
 			}
 
+			printf ("flush ... ");
+			fflush (stdout);
+			printf ("FFT ... ");
 			fftCpu (1);	// FFTW_BACKWARD
+			printf ("flush ...");
+			fflush (stdout);
+			printf ("Done!\n");
 
-			printf ("Normalising field ");
-			fflush (stdout);
-			//JAVIER normalisation
-			switch (precision)
-			{
-				case FIELD_DOUBLE:
-				printf ("(double prec) ... ");
-			fflush (stdout);
-				normaliseField(FIELD_M);
-				//normaCOREField( (double) alpha )
-				printf ("Done!\n");
-			fflush (stdout);
-				break;
 
-				case FIELD_SINGLE:
-				printf ("(single prec) ... ");
-			fflush (stdout);
-				normaliseField(FIELD_M);
-				printf ("Done!\n");
-			fflush (stdout);
-				//normaCOREField( (float) alpha )
-				break;
-
-				default:
-				printf("Wrong precision! \n");
-				exit(1);
-				break;
-			}
 
 		}
 
@@ -1142,22 +1123,41 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		exit(1);
 
 		break;
-	}
+	} // END SwITCH TYPE KMAX vs SMOOTH
 
 	if (cType != CONF_NONE)
 	{
+		printf ("Normalising field ");
+		//JAVIER normalisation
+		switch (precision)
+		{
+			case FIELD_DOUBLE:
+			printf ("(double prec) ... ");
+			normaliseField(FIELD_M);
+			normaCOREField( (double) alpha );
+			printf ("Done!\n");
+			break;
+
+			case FIELD_SINGLE:
+			printf ("(single prec) ... ");
+			normaliseField(FIELD_M);
+			normaCOREField( (float) alpha );
+			printf ("Done!\n");
+			break;
+
+			default:
+			printf("Wrong precision! \n");
+			exit(1);
+			break;
+		}
+
 		//JAVIER
-		printf("Normalising field ... ");
-		fflush (stdout);
-		normaliseField(FIELD_M);
+
 		printf("Copying m to v ... ");
-		fflush (stdout);
-		memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
+		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, ((size_t) (2*fSize))*((size_t) n3));
 		printf("Scaling m to mu=z*m ... ");
-		fflush (stdout);
 		scaleField (FIELD_M, *z);
 		printf("Done!\n");
-		fflush (stdout);
 	}
 }
 
@@ -1325,7 +1325,7 @@ void	Scalar::smoothConf (const size_t iter, const double alpha)
 
 
 template<typename Float>
-void	Scalar::momConf (const size_t kMax, const Float kCrit)
+void	Scalar::momConf (const int kMax, const Float kCrit)
 {
 	const Float Twop = 2.0*M_PI;
 
@@ -1340,13 +1340,15 @@ void	Scalar::momConf (const size_t kMax, const Float kCrit)
 	int	*sd;
 
 	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
+
+
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = seed();
 
-	printf ("Starting parallel loop for kMax\n");
-	fflush (stdout);
+	printf("kMax,Tz,Lz,nSplit,commRank():%d,%lu,%lu,%lu\n", kMax, Tz, Lz, nSplit,commRank());
+
 
 	#pragma omp parallel default(shared)
 	{
@@ -1357,32 +1359,40 @@ void	Scalar::momConf (const size_t kMax, const Float kCrit)
 		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 
+
 		#pragma omp for schedule(static)
-		for (size_t oz = 0; oz < Tz; oz++)
+		for (int oz = 0; oz < Tz; oz++)
 		{
 			if (oz/Lz != commRank())
 				continue;
 
 			int pz = oz - (oz/(Tz >> 1))*Tz;
 
-			for(int py = -(((int) kMax)-pz); py <= (((int) kMax)-pz); py++)
+			//printf("Thread %d got pz=%d -- py-range (%d,%d)\n", nThread,pz,pz,-kMax,kMax);
+
+
+			for(int py = -kMax; py <= kMax; py++)
 			{
-				for(int px = -(((int) kMax)-pz-py); px <= (((int) kMax)-pz-py); px++)
+				for(int px = -kMax; px <= kMax; px++)
 				{
 					size_t idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
-					size_t modP = px*px + py*py + pz*pz;
+					int modP = px*px + py*py + pz*pz;
 
-					if (modP <= kMax)
+					//printf("modP=%d,idx=%lu,idx=%d =%d\n",modP,idx,idx,kMax*kMax);
+
+					if (modP <= kMax*kMax)
 					{
 						Float mP = sqrt(((Float) modP))/((Float) kCrit);
 						Float vl = Twop*(uni(mt64));
 						Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
+						//printf("oz=%d,Tz=%lu,pz=%d,idx=%lu, fM[idx]=(%f,%f)\n",oz,Tz,pz,idx,real(fM[idx]),imag(fM[idx]));
+
 					}
-				}
-			}
-		}
+				} //END  px loop
+			}		//END  py loop
+		}//END oz FOR
 	}
 
 	trackFree((void **) &sd, ALLOC_TRACK);
@@ -1586,7 +1596,7 @@ void	Scalar::normaCOREField(const Float alpha)
 				size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
 				indexXeon::idx2Vec (idx, X, n1);
 
-				Float gradx, grady, gradz, sss, rhof;
+				Float gradx, grady, gradz, sss, sss2, sss4, rhof;
 
 				if (X[0] == 0)
 				{
@@ -1625,17 +1635,20 @@ void	Scalar::normaCOREField(const Float alpha)
 				//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
 				gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
 				grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
-				grady = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
+				gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
 
 				sss  = sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
-				rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
+				//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
+				sss2 = sss*sss;
+				sss4 = sss2*sss2;
+				rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
 
 				vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
 
-				if(idx % sizeN*sizeN*10 == 0)
-				{
-				printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
-				}
+				//if(idx % sizeN*sizeN*10 == 0)
+				//{
+				//printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
+				//}
 
 			}
 		}
