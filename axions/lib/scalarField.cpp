@@ -1061,33 +1061,30 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 			{
 				case FIELD_DOUBLE:
 				printf ("Generating conf (KMAX) (double prec) ... ");
+				fflush (stdout);
 				momConf(parm1, parm2);
 
 				break;
 
 				case FIELD_SINGLE:
 				printf ("Generating conf (KMAX) (single prec) ... ");
+				fflush (stdout);
 				momConf(parm1, (float) parm2);
 
 				break;
 
 				default:
-				printf ("Generating conf (KMAX) ...\n");
 				printf("Wrong precision!\n");
 				exit(1);
 
 				break;
 			}
 
-			printf ("flush ... ");
-			fflush (stdout);
 			printf ("FFT ... ");
-			fftCpu (1);	// FFTW_BACKWARD
-			printf ("flush ...");
 			fflush (stdout);
+			fftCpu (1);	// FFTW_BACKWARD
 			printf ("Done!\n");
-
-
+			fflush (stdout);
 
 		}
 
@@ -1101,11 +1098,19 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		{
 			case	DEV_XEON:
 			case	DEV_CPU:
+
 			printf ("Generating random conf (SMOOTH) ...");
+			fflush (stdout);
+
 			randConf ();
+
 			printf("Smoothing (sIter=%d) ... ",parm1);
+			fflush (stdout);
+
 			smoothConf (parm1, parm2);
+
 			printf("Done !\n ");
+			fflush (stdout);
 			break;
 
 			case	DEV_GPU:
@@ -1132,17 +1137,27 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		switch (precision)
 		{
 			case FIELD_DOUBLE:
+
 			printf ("(double prec) ... ");
+			fflush (stdout);
+
 			normaliseField(FIELD_M);
 			normaCOREField( (double) alpha );
+
 			printf ("Done!\n");
+			fflush (stdout);
 			break;
 
 			case FIELD_SINGLE:
+
 			printf ("(single prec) ... ");
+			fflush (stdout);
+
 			normaliseField(FIELD_M);
 			normaCOREField( (float) alpha );
+
 			printf ("Done!\n");
+			fflush (stdout);
 			break;
 
 			default:
@@ -1154,10 +1169,16 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		//JAVIER
 
 		printf("Copying m to v ... ");
+		fflush (stdout);
+
 		memcpy (v, static_cast<char *> (m) + 2*fSize*n2, ((size_t) (2*fSize))*((size_t) n3));
+
 		printf("Scaling m to mu=z*m ... ");
+		fflush (stdout);
+
 		scaleField (FIELD_M, *z);
 		printf("Done!\n");
+		fflush (stdout);
 	}
 }
 
@@ -1587,76 +1608,78 @@ void	Scalar::normaCOREField(const Float alpha)
 	complex<Float> *vCp = static_cast<complex<Float>*> (v);
 
 	printf("Entering CORE smoothing\n");
+	fflush (stdout);
 
-		#pragma omp parallel default(shared)
+	#pragma omp parallel default(shared)
+	{
+		#pragma omp for schedule(static)
+		for (size_t idx=0; idx<n3; idx++)
 		{
-			#pragma omp for schedule(static)
-			for (size_t idx=0; idx<n3; idx++)
+			size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+			indexXeon::idx2Vec (idx, X, n1);
+
+			Float gradx, grady, gradz, sss, sss2, sss4, rhof;
+
+			if (X[0] == 0)
 			{
-				size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
-				indexXeon::idx2Vec (idx, X, n1);
-
-				Float gradx, grady, gradz, sss, sss2, sss4, rhof;
-
-				if (X[0] == 0)
+				iPx = idx + 1;
+				iMx = idx + n1 - 1;
+			} else {
+				if (X[0] == n1 - 1)
 				{
+					iPx = idx - n1 + 1;
+					iMx = idx - 1;
+				} else {
 					iPx = idx + 1;
-					iMx = idx + n1 - 1;
-				} else {
-					if (X[0] == n1 - 1)
-					{
-						iPx = idx - n1 + 1;
-						iMx = idx - 1;
-					} else {
-						iPx = idx + 1;
-						iMx = idx - 1;
-					}
+					iMx = idx - 1;
 				}
-
-				if (X[1] == 0)
-				{
-					iPy = idx + n1;
-					iMy = idx + n2 - n1;
-				} else {
-					if (X[1] == n1 - 1)
-					{
-						iPy = idx - n2 + n1;
-						iMy = idx - n1;
-					} else {
-						iPy = idx + n1;
-						iMy = idx - n1;
-					}
-				}
-
-				iPz = idx + n2;
-				iMz = idx - n2;
-				//Uses v to copy the smoothed configuration
-				//vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
-				//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
-				gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
-				grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
-				gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
-
-				sss  = sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
-				//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
-				sss2 = sss*sss;
-				sss4 = sss2*sss2;
-				rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
-
-				vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
-
-				//if(idx % sizeN*sizeN*10 == 0)
-				//{
-				//printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
-				//}
-
 			}
+
+			if (X[1] == 0)
+			{
+				iPy = idx + n1;
+				iMy = idx + n2 - n1;
+			} else {
+				if (X[1] == n1 - 1)
+				{
+					iPy = idx - n2 + n1;
+					iMy = idx - n1;
+				} else {
+					iPy = idx + n1;
+					iMy = idx - n1;
+				}
+			}
+
+			iPz = idx + n2;
+			iMz = idx - n2;
+			//Uses v to copy the smoothed configuration
+			//vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
+			//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
+			gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
+			grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
+			gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
+
+			sss  = sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
+			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
+			sss2 = sss*sss;
+			sss4 = sss2*sss2;
+			rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
+
+			vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
+
+			//if(idx % sizeN*sizeN*10 == 0)
+			//{
+			//printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
+			//}
+
 		}
-		//Copies v to m
-		memcpy (static_cast<char *>(m) + fSize*n2, v, fSize*n3);
-		exchangeGhosts(FIELD_M);
+	}
 
-		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
-		printf("CORE smoothing Done\n");
+	//Copies v to m
+	memcpy (static_cast<char *>(m) + fSize*n2, v, fSize*n3);
+	exchangeGhosts(FIELD_M);
 
+	//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
+	printf("CORE smoothing Done\n");
+	fflush (stdout);
 }
