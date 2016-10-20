@@ -1743,9 +1743,8 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 	const Float z9QCD = 9.0*pow(zz,nQcd+2) ;
 
 
-	#pragma omp parallel default(shared)
-	{
-		#pragma omp for schedule(static) reduction(+:Vrho1,Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1)
+
+		#pragma omp parallel for default(shared) schedule(static) reduction(+:Vrho1,Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1)
 		for (size_t iz=0; iz < Lz; iz++)
 		{
 			Float modul, modfac	;
@@ -1794,8 +1793,8 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 	Grho1 *= 3.0*0.125/(deltaa2*n3);
 	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
 
-	fprintf(enWrite,  "%f %f %f %f %f %f %f ", z, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
+
+	fprintf(enWrite,  "%f %f %f %f %f %f %f \n", zz, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	fflush (stdout);
-	}
 }
