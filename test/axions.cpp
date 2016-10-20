@@ -219,7 +219,7 @@ int	main (int argc, char *argv[])
 			counter++;
 		} // zsubloop
 
-		printMpi ("Generating 2D map...");
+		//printMpi ("Transfer to CPU ...");
 		fflush (stdout);
 		axion->transferCpu(FIELD_MV);
 
@@ -279,6 +279,6 @@ int	main (int argc, char *argv[])
 
 	//JAVIER
 	fclose(file_sample);
-	
+
 	return 0;
 }
