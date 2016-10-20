@@ -51,6 +51,12 @@
 		template<typename Float>
 		void	iteraField(const size_t iter, const Float alpha);
 
+		//JAVIER
+		template<typename Float>
+		void	normaCOREField(const Float alpha);
+		//JAVIER
+		template<typename Float>
+		void	ENERGY(const Float z, FILE *enWrite);
 
 		template<typename Float>
 		void	momConf(const size_t kMax, const Float kCrit);
@@ -126,6 +132,8 @@
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
 		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
+
+		void	writeENERGY	(double z, FILE *enwrite);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif
