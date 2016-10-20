@@ -66,11 +66,10 @@ void	trackAlloc (void **ptr, size_t size)
 	}
 
 	printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
-
 	fflush (stdout);
+
 	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
 	trackAllocMem += size;
-	fflush (stdout);
 }
 
 void	printMemStats	()
@@ -97,4 +96,6 @@ void	printMemStats	()
 		size_t size = data->second;
 		printf ("Pointer %p\tSize %lu\n", ptr, size);
 	}
+
+	fflush (stdout);
 }

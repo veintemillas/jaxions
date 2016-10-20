@@ -15,7 +15,22 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 //	const ptrdiff_t nD[2] = { n1, n1 };
 //	const ptrdiff_t dist  = (n1*n1);
 
+	printf ("Initializing FFT...\n");
+	fflush (stdout);
+
+	if (iFFT == true)
+	{
+		printf ("Already initialized!!\n");
+		fflush (stdout);
+	}
+
 	fftw_mpi_init();
+
+	printf ("  MPI Ok\n");
+	fflush (stdout);
+
+	printf ("  Plan 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Lz);
+	fflush (stdout);
 
 	switch (prec)
 	{
@@ -52,11 +67,18 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 		break;
 	}
 
+	printf ("  Plans Ok\n");
+	printf ("Done!\n");
+	fflush (stdout);
+
 	iFFT = true;
 }
 
 void	runFFT(int sign)
 {
+	printf ("Executing FFT...\n");
+	fflush (stdout);
+
 	switch (sign)
 	{
 		case FFTW_FORWARD:
@@ -75,6 +97,9 @@ void	runFFT(int sign)
 			fftw_execute(pb);
 		break;
 	}
+
+	printf ("Done!\n");
+	fflush (stdout);
 }
             
 void	closeFFT	()
