@@ -124,9 +124,9 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
 		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned (v_, Align);
 #endif
-
-		const double zR = *z;
-		const double invZ = 1./zR;
+		const double zR  = *z;
+		const double iz  = 1./zR;
+		const double iz2 = iz*iz;
 		const double zQ = 9.*pow(zR, nQcd+2.);
 		const double lZ = 0.25*L*L*zR*zR;
 
@@ -134,48 +134,37 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
-		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const double __attribute__((aligned(Align))) oneAux[8]  = { 1., 1., 1., 1., 1., 1., 1., 1. };
+		const double __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+		const double __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) ivZ2Aux[8] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
-		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
-		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
+		const double __attribute__((aligned(Align))) oneAux[4]  = { 1., 1., 1., 1. };
+		const double __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
+		const double __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) ivZ2Aux[4] = {iz2,iz2,iz2,iz2 };
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) z2Aux[2]  = {-z2,-z2 };
-		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[2]  = {-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[2]  = { LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[2]  = { ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[2] = { dzc, dzc };
-		const double __attribute__((aligned(Align))) dzdAux[2] = { dzd, dzd };
+		const double __attribute__((aligned(Align))) oneAux[2]  = { 1., 1. };
+		const double __attribute__((aligned(Align))) cjgAux[2]  = { 1.,-1. };
+		const double __attribute__((aligned(Align))) ivZAux[2]  = { iz, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) ivZ2Aux[2] = {iz2,iz2 };
 
 #endif
-		const _MData_ z2Vec  = opCode(load_pd, z2Aux);
-		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ c6Vec  = opCode(load_pd, c6Aux);
-		const _MData_ lbVec  = opCode(load_pd, lbAux);
-		const _MData_ d2Vec  = opCode(load_pd, d2Aux);
-		const _MData_ dzcVec = opCode(load_pd, dzcAux);
-		const _MData_ dzdVec = opCode(load_pd, dzdAux);
+		const _MData_ one  = opCode(load_pd, oneAux);
+		const _MData_ cjg  = opCode(load_pd, cjgAux);
+		const _MData_ ivZ  = opCode(load_pd, ivZAux);
+		const _MData_ ivZ2 = opCode(load_pd, ivZ2Aux);
 
 		#pragma omp parallel default(shared) 
 		{
-			_MData_ tmp, mel, mPx, mPy;
+			_MData_ tmp1, tmp2, mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
+			_MData_ Grx,  Gry,  Grz, tGp, tVp, tKp, mCg, mSg;
 
 			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Grho,Gth)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -243,8 +232,12 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 				idxP0 = (idx << 1);
 
 				// Empiezo aqui
+				mMx = opCode(sub_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx]));
+				// mMy ya esta cargado
+				mMz = opCode(sub_pd, opCode(load_pd, &m[idzPx]), opCode(load_pd, &m[idzMx]));
+
 				mel = opCode(load_pd, &m[idxP0]);//Carga m
-				vel = opCode(load_pd, &v[idxP0]);//Carga v
+				vel = opCode(load_pd, &v[idxMz]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
 
 #ifdef	__MIC__
@@ -254,79 +247,82 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 #else
 				mTp = opCode(add_pd, opCode(shuffle_pd, mod, mod, 0b00000001), mod);
 #endif
-				mCg = opCode(div_pd, opCode(mul_pd, mel, cjg), mTp);
+				mod = opCode(mul_pd, mTp, ivZ2);	// Factor |mel|^2/z^2, util luego
 
+				mCg = opCode(div_pd, opCode(mul_pd, mel, cjg), mTp);	// Ahora mCg tiene 1/mel
 
-				Vth = opCode(mul_pd, vel, mCg)
+				// Meto en mSg = shuffled(mCg) (Intercambio parte real por parte imaginaria)
 #ifdef	__MIC__
-				Krh = opCode(mul_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC)), Vth);
-				mdv = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(add_pd,
-							opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, Krh), _MM_PERM_BADC)), Krh),
-						opCode(add_pd,
-							opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, Vth), _MM_PERM_BADC)), Vth)),
-					ivZ);
+				mSg = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC));
 #elif defined(__AVX__)
-				Krh = opCode(mul_pd, opCode(permute_pd, mCg, 0b00000101), Vth);
-				mdv = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(add_pd,
-							opCode(permute_pd, Krh, 0b00000101), Krh),
-						opCode(add_pd,
-							opCode(permute_pd, Vth, 0b00000101), Vth)),
-					ivZ);
+				mSg = opCode(permute_pd, mCg, 0b00000101);
 #else
-				Krh = opCode(mul_pd, opCode(shuffle_pd, mCg, mCg, 0b00000001), Vth);
-				mdv = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(add_pd,
-							opCode(shuffle_pd, Krh, Krh, 0b00000001), Vth),
-						opCode(add_pd,
-							opCode(shuffle_pd, Vth, Vth, 0b00000001), Vth)),
-					ivZ);
+				mSg = opCode(shuffle_pd, mCg, mCg, 0b00000001);
 #endif
 
-				mod = opCode(mul_pd, mTp, ivZ2);
+				// Calculo los gradientes
+#ifdef	__MIC__
+				tmp1 = opCode(mul_pd, mMx, mCg);
+				tmp2 = opCode(mul_pd, mMx, mSg);
 
-				Krh = opCode(mul_pd, opCode(mul_pd, mdv, mdv), mod);	// Parte real Krh, parte imaginaria Kth
+				tmp1 = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp2), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp1), _MM_PERM_BADC)),
+					tmp1);
+
+				Grx = opCode(mask_add_pd, tmp1, opCode(int2mask, 0b0000000010101010), tmp1, tmp2);
+
+				tmp1 = opCode(mul_pd, mMy, mCg);
+				tmp2 = opCode(mul_pd, mMy, mSg);
+
+				tmp1 = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp2), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp1), _MM_PERM_BADC)),
+					tmp1);
+
+				Gry = opCode(mask_add_pd, tmp1, opCode(int2mask, 0b0000000010101010), tmp1, tmp2);
+
+				tmp1 = opCode(mul_pd, mMz, mCg);
+				tmp2 = opCode(mul_pd, mMz, mSg);
+
+				tmp1 = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp2), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp1), _MM_PERM_BADC)),
+					tmp1);
+
+				Grz = opCode(mask_add_pd, tmp1, opCode(int2mask, 0b0000000010101010), tmp1, tmp2);
+#else				// Las instrucciones se llaman igual con AVX o con SSE3
+				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
+				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
+				Grz = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
+				mdv = opCode(sub_pd,  opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
+#endif
+				tGp = opCode(add_pd,
+					tGp,
+					opCode(mul_pd,
+						opcode(add_pd,
+							opCode(add_pd,
+								opCode(mul_pd, Grx, Grx),
+								opCode(mul_pd, Gry, Gry)),
+							opCode(mul_pd, Grz, Grz)),
+						mod));
+					
+				tKp = opCode(add_pd, tKp, opCode(mul_pd, opCode(mul_pd, mdv, mdv), mod));
 
 				mTp = opCode(sub_pd, mod, one);
-				Vrh = opCode(mul_pd, mTp, mTp);
-				Vth = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
-
-				// Hasta aqui has calculado los V's y los K's
-
-				mPx = opCode(sub_pd, 
-					opCode(add_pd, 
-						opCode(mul_pd, 
-							opCode(add_pd, 
-								opCode(add_pd, 
-									opCode(load_pd, &m[idxMz]), 
-									opCode(add_pd, 
-										opCode(add_pd, 
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])), 
-											opCode(load_pd, &m[idxMx])), 
-										opCode(load_pd, &m[idxPz]))), 
-								opCode(mul_pd, mel, c6Vec)), 
-							d2Vec), 
-						zQVec),
-					opCode(mul_pd, 
-						opCode(mul_pd, 
-							opCode(add_pd, mPx, z2Vec), 
-							lbVec), 
-						mel));
-
-				mPy = opCode(load_pd, &v[idxMz]);
-#if	defined(__MIC__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mPx, dzcVec, mPy);
-				mPx = opCode(fmadd_pd, tmp, dzdVec, mel);
+				mod = opCode(mul_pd, mTp, mTp);
+				mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
+#ifdef	__MIC__
+				vel = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mTp), _MM_PERM_BADC));
+				tVp =opCode(add_pd, tVp, opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel));
+#elif defined(__AVX__)
+				tVp = opCode(add_pd, tVp, opCode(blend_pd, mod, opCode(permute_pd, mTp, 0b00000101), 0b10101010);
 #else
-				tmp = opCode(add_pd, mPy, opCode(mul_pd, mPx, dzcVec));
-				mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
+				tVp = opCode(add_pd, tVp, opCode(shuffle_pd, mod, mTp, 0b00000001));
 #endif
-				opCode(store_pd,  &v[idxMz], tmp);
-				opCode(store_pd, &m2[idxP0], mPx);
 			}
 		}
 #undef	_MData_
@@ -359,54 +355,42 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
 #endif
 
-		const float dzc = dz*c;
-		const float dzd = dz*d;
-		const float zR = *z;
-		const float z2 = zR*zR;
-		const float zQ = 9.*powf(zR, nQcd+3.);
+		const float zR  = *z;
+		const float iz  = 1./zR;
+		const float iz2 = iz*iz;
+		const float zQ = 9.f*powf(zR, nQcd+2.);
+		const float lZ = 0.25f*L*L*zR*zR;
 
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
-		const float __attribute__((aligned(Align))) z2Aux[16]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2};
-		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
-		const float __attribute__((aligned(Align))) c6Aux[16]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.};
-		const float __attribute__((aligned(Align))) lbAux[16]  = { LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL};
-		const float __attribute__((aligned(Align))) d2Aux[16]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[16] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) oneAux[16]  = { 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1. };
+		const float __attribute__((aligned(Align))) cjgAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+		const float __attribute__((aligned(Align))) ivZAux[16]  = { iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0. };
+		const float __attribute__((aligned(Align))) ivZ2Aux[16] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const float __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
-		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
-		const float __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
-		const float __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-		const float __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) oneAux[8]  = { 1., 1., 1., 1., 1., 1., 1., 1. };
+		const float __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+		const float __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
+		const float __attribute__((aligned(Align))) ivZ2Aux[8] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const float __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
-		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
-		const float __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
-		const float __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
-		const float __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) oneAux[4]  = { 1., 1., 1., 1. };
+		const float __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
+		const float __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
+		const float __attribute__((aligned(Align))) ivZ2Aux[4] = {iz2,iz2,iz2,iz2 };
 #endif
 
-		const _MData_ z2Vec  = opCode(load_ps, z2Aux);
-		const _MData_ zQVec  = opCode(load_ps, zQAux);
-		const _MData_ c6Vec  = opCode(load_ps, c6Aux);
-		const _MData_ lbVec  = opCode(load_ps, lbAux);
-		const _MData_ d2Vec  = opCode(load_ps, d2Aux);
-		const _MData_ dzcVec = opCode(load_ps, dzcAux);
-		const _MData_ dzdVec = opCode(load_ps, dzdAux);
+		const _MData_ one  = opCode(load_ps, oneAux);
+		const _MData_ cjg  = opCode(load_ps, cjgAux);
+		const _MData_ ivZ  = opCode(load_ps, ivZAux);
+		const _MData_ ivZ2 = opCode(load_ps, ivZ2Aux);
 
 		#pragma omp parallel default(shared) 
 		{
@@ -442,17 +426,17 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 
 #ifdef	__MIC__
 					mMx = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_BADC);
-					mPx = opCode(permute4f128_ps, mMx, _MM_PERM_CBAD);
-					tmp = opCode(add_ps, opCode(mask_blend_ps, opCode(int2mask, 0b0011001100110011), mMx, mPx), opCode(load_ps, &m[idxPy]));
-#elif	defined(__AVX2__)	//AVX2
-					tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 6,7,0,1,2,3,4,5)),  opCode(load_ps, &m[idxPy]));
-#elif	defined(__AVX__)	//AVX
+					mMz = opCode(permute4f128_ps, mMx, _MM_PERM_CBAD);
+					mMy = opCode(sub_ps, opCode(load_ps, &m[idxPy]), opCode(mask_blend_ps, opCode(int2mask, 0b0011001100110011), mMx, mMz));
+#elif	defined(__AVX2__)
+					mMy = opCode(sub_ps,  opCode(load_ps, &m[idxPy]), opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+#elif	defined(__AVX__)
 					mMx = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b01001110);
-					mPx = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
-					tmp = opCode(add_ps, opCode(blend_ps, mMx, mPx, 0b00110011), opCode(load_ps, &m[idxPy]));
+					mMz = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
+					mMy = opCode(sub_ps, opCode(load_ps, &m[idxPy]), opCode(blend_ps, mMx, mMz, 0b00110011));
 #else
 					mMx = opCode(load_ps, &m[idxMy]);
-					tmp = opCode(add_ps, opCode(shuffle_ps, mMx, mMx, 0b01001110), opCode(load_ps, &m[idxPy]));
+					mMy = opCode(sub_ps, opCode(load_ps, &m[idxPy]), opCode(shuffle_ps, mMx, mMx, 0b01001110));
 #endif
 				}
 				else
@@ -464,23 +448,23 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 						idxPy = ((idx - Sf + XC) << 1);
 #ifdef	__MIC__
 						mMx = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_BADC);
-						mPx = opCode(permute4f128_ps, mMx, _MM_PERM_ADCB);
-						tmp = opCode(add_ps, opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), mMx, mPx), opCode(load_ps, &m[idxMy]));
-#elif	defined(__AVX2__)	//AVX2
-						tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1)), opCode(load_ps, &m[idxMy]));
-#elif	defined(__AVX__)	//AVX
+						mMz = opCode(permute4f128_ps, mMx, _MM_PERM_ADCB);
+						mMy = opCode(sub_ps, opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), mMx, mMz), opCode(load_ps, &m[idxMy]));
+#elif	defined(__AVX2__)
+						mMy = opCode(sub_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1)), opCode(load_ps, &m[idxMy]));
+#elif	defined(__AVX__)
 						mMx = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b01001110);
-						mPx = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
-						tmp = opCode(add_ps, opCode(blend_ps, mMx, mPx, 0b11001100), opCode(load_ps, &m[idxMy]));
+						mMz = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
+						mMy = opCode(sub_ps, opCode(blend_ps, mMx, mMz, 0b11001100), opCode(load_ps, &m[idxMy]));
 #else
-						mPx = opCode(load_ps, &m[idxPy]);
-						tmp = opCode(add_ps, opCode(shuffle_ps, mPx, mPx, 0b01001110), opCode(load_ps, &m[idxMy]));
+						mMx = opCode(load_ps, &m[idxPy]);
+						mMy = opCode(sub_ps, opCode(shuffle_ps, mMx, mMx, 0b01001110), opCode(load_ps, &m[idxMy]));
 #endif
 					}
 					else
 					{
 						idxPy = ((idx + XC) << 1);
-						tmp = opCode(add_ps, opCode(load_ps, &m[idxPy]), opCode(load_ps, &m[idxMy]));
+						mMy = opCode(sub_ps, opCode(load_ps, &m[idxPy]), opCode(load_ps, &m[idxMy]));
 					}
 				}
 
@@ -488,46 +472,100 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
 
-				mel = opCode(load_ps, &m[idxP0]);
-				mPy = opCode(mul_ps, mel, mel);
+				// Empiezo aqui
+				mMx = opCode(sub_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx]));
+				// mMy ya esta cargado
+				mMz = opCode(sub_ps, opCode(load_ps, &m[idzPx]), opCode(load_ps, &m[idzMx]));
+
+				mel = opCode(load_ps, &m[idxP0]);//Carga m
+				vel = opCode(load_ps, &v[idxMz]);//Carga v
+				mod = opCode(mul_ps, mel, mel);
 
 #ifdef	__MIC__
-				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
-#elif	defined(__AVX__)
-				mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
+				mTp = opCode(add_ps, opCode(swizzle_ps, mod, _MM_SWIZ_REG_CDAB), mod);
+#elif defined(__AVX__)
+				mTp = opCode(add_ps, opCode(permute_ps, mod, 0b10110001), mod);
 #else
-				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
+				mTp = opCode(add_ps, opCode(shuffle_ps, mod, mod, 0b10110001), mod);
 #endif
-				mMx = opCode(sub_ps, 
-					opCode(add_ps, 
-						opCode(mul_ps, 
-							opCode(add_ps, 
-								opCode(add_ps, 
-									opCode(load_ps, &m[idxMz]), 
-									opCode(add_ps, 
-										opCode(add_ps, 
-											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])), 
-											opCode(load_ps, &m[idxMx])), 
-										opCode(load_ps, &m[idxPz]))), 
-								opCode(mul_ps, mel, c6Vec)), 
-							d2Vec),
-						zQVec),
-					opCode(mul_ps, 
-						opCode(mul_ps, 
-							opCode(add_ps, mPx, z2Vec), 
-							lbVec), 
-						mel));
-				mPy = opCode(load_ps, &v[idxMz]);
+				mod = opCode(mul_ps, mTp, ivZ2);	// Factor |mel|^2/z^2, util luego
 
-#if	defined(__MIC__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, mMx, dzcVec, mPy);
-				mPx = opCode(fmadd_ps, tmp, dzdVec, mel);
+				mCg = opCode(div_ps, opCode(mul_ps, mel, cjg), mTp);	// Ahora mCg tiene 1/mel
+
+				// Meto en mSg = shuffled(mCg) (Intercambio parte real por parte imaginaria)
+#ifdef	__MIC__
+				mSg = opCode(swizzle_ps, mCg, _MM_SWIZ_REG_CDAB);
+#elif defined(__AVX__)
+				mSg = opCode(permute_ps, mCg, 0b10110001);
 #else
-				tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, dzcVec));
-				mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
+				mSg = opCode(shuffle_ps, mCg, mCg, 0b10110001);
 #endif
-				opCode(store_ps,  &v[idxMz], tmp);
-				opCode(store_ps, &m2[idxP0], mPx);
+
+				// Calculo los gradientes
+#ifdef	__MIC__
+				tmp1 = opCode(mul_ps, mMx, mCg);
+				tmp2 = opCode(mul_ps, mMx, mSg);
+
+				tmp1 = opCode(mask_add_ps,
+					opCode(swizzle_ps, tmp2, _MM_SWIZ_REG_CDAB),
+					opCode(int2mask, 0b0101010101010101),
+					opCode(swizzle_ps, tmp1, _MM_SWIZ_REG_CDAB),
+					tmp1);
+
+				Grx = opCode(mask_add_ps, tmp1, opCode(int2mask, 0b1010101010101010), tmp1, tmp2);
+
+				tmp1 = opCode(mul_ps, mMy, mCg);
+				tmp2 = opCode(mul_ps, mMy, mSg);
+
+				tmp1 = opCode(mask_add_ps,
+					opCode(swizzle_ps, tmp2, _MM_SWIZ_REG_CDAB),
+					opCode(int2mask, 0b0101010101010101),
+					opCode(swizzle_ps, tmp1, _MM_SWIZ_REG_CDAB),
+					tmp1);
+
+				Gry = opCode(mask_add_ps, tmp1, opCode(int2mask, 0b1010101010101010), tmp1, tmp2);
+
+				tmp1 = opCode(mul_ps, mMz, mCg);
+				tmp2 = opCode(mul_ps, mMz, mSg);
+
+				tmp1 = opCode(mask_add_ps,
+					opCode(swizzle_ps, tmp2, _MM_SWIZ_REG_CDAB),
+					opCode(int2mask, 0b0101010101010101),
+					opCode(swizzle_ps, tmp1, _MM_SWIZ_REG_CDAB),
+					tmp1);
+
+				Grz = opCode(mask_add_ps, tmp1, opCode(int2mask, 0b1010101010101010), tmp1, tmp2);
+#else				// Las instrucciones se llaman igual con AVX o con SSE3
+				TODO ESTA PARTE + mdv CON XEON PHI, QUE SE TE HA OLVIDADO
+
+				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
+				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
+				Grz = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
+				mdv = opCode(sub_pd,  opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
+#endif
+				tGp = opCode(add_ps,
+					tGp,
+					opCode(mul_ps,
+						opcode(add_ps,
+							opCode(add_ps,
+								opCode(mul_ps, Grx, Grx),
+								opCode(mul_ps, Gry, Gry)),
+							opCode(mul_ps, Grz, Grz)),
+						mod));
+					
+				tKp = opCode(add_ps, tKp, opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod));
+
+				mTp = opCode(sub_ps, mod, one);
+				mod = opCode(mul_ps, mTp, mTp);
+				mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));
+#ifdef	__MIC__
+				vel = opCode(swizzle_ps, mTp, _MM_SWIZ_REG_CDAB);
+				tVp =opCode(add_ps, tVp, opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, vel));
+#elif defined(__AVX__)
+				tVp = opCode(add_ps, tVp, opCode(blend_ps, mod, opCode(permute_pd, mTp, 0b10110001), 0b10101010);
+#else
+				tVp = opCode(add_ps, tVp, opCode(shuffle_pd, mod, mTp, 0b10110001));
+#endif
 			}
 		}
 #undef	_MData_
