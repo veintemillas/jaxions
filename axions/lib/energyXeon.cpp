@@ -2,7 +2,6 @@
 #include<cmath>
 #include"scalarField.h"
 #include"enum-field.h"
-#include"RKParms.h"
 
 #ifdef USE_XEON
 	#include"comms.h"
@@ -14,11 +13,7 @@
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
 #define opCode(x,...) opCode_N(_PREFIX_, x, __VA_ARGS__)
 
-//#if	defined(__AVX__) || defined(__AVX2__) || defined(__MIC__)
-	#include <immintrin.h>
-//#else
-//	#include <xmmintrin.h>
-//#endif
+#include <immintrin.h>
 
 
 #ifdef	__MIC__
@@ -26,7 +21,6 @@
 	#define	_PREFIX_ _mm512
 #else
 	#if not defined(__AVX__) and not defined(__AVX2__)
-//		#error("AVX instruction set required")
 		#define	Align 16
 		#define	_PREFIX_ _mm
 	#else
@@ -210,14 +204,13 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 				{
 					idxMy = ((idx + Sf - XC) << 1);
 					idxPy = ((idx + XC) << 1);
-//					mPx = opCode(load_pd, &m[idxMy]);
 #ifdef	__MIC__
-					tmp = opCode(add_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)), opCode(load_pd, &m[idxPy]));
+					mMy = opCode(add_pd, opCode(load_pd, &m[idxPy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)));
 #elif	defined(__AVX__)
-					mPx = opCode(load_pd, &m[idxMy]);
-					tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxPy]));
+					mMx = opCode(load_pd, &m[idxMy]);
+					mMy = opCode(add_pd, opCode(load_pd, &m[idxPy]), opCode(permute2f128_pd, mMx, mMx, 0b00000001));
 #else
-					tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
 #endif
 				}
 				else
@@ -228,20 +221,22 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 					{
 						idxPy = ((idx - Sf + XC) << 1);
 #ifdef	__MIC__
-						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)));
+						mMy = opCode(sub_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)), opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX__)
-						mPx = opCode(load_pd, &m[idxPy]);
-						tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxMy]));
+						mMx = opCode(load_pd, &m[idxPy]);
+						mMy = opCode(sub_pd, opCode(permute2f128_pd, mMx, mMx, 0b00000001), opCode(load_pd, &m[idxMy]));
 #else
-						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+						mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
 #endif
 					}
 					else
 					{
 						idxPy = ((idx + XC) << 1);
-						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+						mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
 					}
 				}
+
+				// Tienes mMy y los puntos para mMx y mMz. Calcula todo ya!!!
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
@@ -250,15 +245,57 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 				// Empiezo aqui
 				mel = opCode(load_pd, &m[idxP0]);//Carga m
 				vel = opCode(load_pd, &v[idxP0]);//Carga v
-				mPy = opCode(mul_pd, mel, mel);
+				mod = opCode(mul_pd, mel, mel);
 
 #ifdef	__MIC__
-				mPx = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mPy), _MM_PERM_BADC)), mPy);
+				mTp = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mod), _MM_PERM_BADC)), mod);
 #elif defined(__AVX__)
-				mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
+				mTp = opCode(add_pd, opCode(permute_pd, mod, 0b00000101), mod);
 #else
-				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
+				mTp = opCode(add_pd, opCode(shuffle_pd, mod, mod, 0b00000001), mod);
 #endif
+				mCg = opCode(div_pd, opCode(mul_pd, mel, cjg), mTp);
+
+
+				Vth = opCode(mul_pd, vel, mCg)
+#ifdef	__MIC__
+				Krh = opCode(mul_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC)), Vth);
+				mdv = opCode(sub_pd,
+					opCode(add_pd,
+						opCode(add_pd,
+							opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, Krh), _MM_PERM_BADC)), Krh),
+						opCode(add_pd,
+							opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, Vth), _MM_PERM_BADC)), Vth)),
+					ivZ);
+#elif defined(__AVX__)
+				Krh = opCode(mul_pd, opCode(permute_pd, mCg, 0b00000101), Vth);
+				mdv = opCode(sub_pd,
+					opCode(add_pd,
+						opCode(add_pd,
+							opCode(permute_pd, Krh, 0b00000101), Krh),
+						opCode(add_pd,
+							opCode(permute_pd, Vth, 0b00000101), Vth)),
+					ivZ);
+#else
+				Krh = opCode(mul_pd, opCode(shuffle_pd, mCg, mCg, 0b00000001), Vth);
+				mdv = opCode(sub_pd,
+					opCode(add_pd,
+						opCode(add_pd,
+							opCode(shuffle_pd, Krh, Krh, 0b00000001), Vth),
+						opCode(add_pd,
+							opCode(shuffle_pd, Vth, Vth, 0b00000001), Vth)),
+					ivZ);
+#endif
+
+				mod = opCode(mul_pd, mTp, ivZ2);
+
+				Krh = opCode(mul_pd, opCode(mul_pd, mdv, mdv), mod);	// Parte real Krh, parte imaginaria Kth
+
+				mTp = opCode(sub_pd, mod, one);
+				Vrh = opCode(mul_pd, mTp, mTp);
+				Vth = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
+
+				// Hasta aqui has calculado los V's y los K's
 
 				mPx = opCode(sub_pd, 
 					opCode(add_pd, 
