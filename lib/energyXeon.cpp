@@ -294,6 +294,17 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 					tmp1);
 
 				Grz = opCode(mask_add_pd, tmp1, opCode(int2mask, 0b0000000010101010), tmp1, tmp2);
+
+				tmp1 = opCode(mul_pd, vel, mCg);
+				tmp2 = opCode(mul_pd, vel, mSg);
+
+				tmp1 = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp2), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tmp1), _MM_PERM_BADC)),
+					tmp1);
+
+				mdv = opCode(sub_pd, opCode(mask_add_pd, tmp1, opCode(int2mask, 0b0000000010101010), tmp1, tmp2), ivZ);
 #else				// Las instrucciones se llaman igual con AVX o con SSE3
 				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
 				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
@@ -317,7 +328,7 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 				mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
 #ifdef	__MIC__
 				vel = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mTp), _MM_PERM_BADC));
-				tVp =opCode(add_pd, tVp, opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel));
+				tVp = opCode(add_pd, tVp, opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel));
 #elif defined(__AVX__)
 				tVp = opCode(add_pd, tVp, opCode(blend_pd, mod, opCode(permute_pd, mTp, 0b00000101), 0b10101010);
 #else
@@ -325,6 +336,8 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 #endif
 			}
 		}
+
+		STORE IN MEMORY ARRAY
 #undef	_MData_
 #undef	step
 	}
@@ -344,15 +357,12 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 #ifdef	USE_XEON
 		const float * __restrict__ m	= (const float * __restrict__) m_;
 		float * __restrict__ v		= (float * __restrict__) v_;
-		float * __restrict__ m2		= (float * __restrict__) m2_;
 
 		__assume_aligned(m, Align);
 		__assume_aligned(v, Align);
-		__assume_aligned(m2, Align);
 #else
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
 		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
-		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
 #endif
 
 		const float zR  = *z;
@@ -535,13 +545,27 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 					tmp1);
 
 				Grz = opCode(mask_add_ps, tmp1, opCode(int2mask, 0b1010101010101010), tmp1, tmp2);
-#else				// Las instrucciones se llaman igual con AVX o con SSE3
-				TODO ESTA PARTE + mdv CON XEON PHI, QUE SE TE HA OLVIDADO
 
-				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
-				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
-				Grz = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
-				mdv = opCode(sub_pd,  opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
+				tmp1 = opCode(mul_ps, vel, mCg);
+				tmp2 = opCode(mul_ps, vel, mSg);
+
+				tmp1 = opCode(mask_add_ps,
+					opCode(swizzle_ps, tmp2, _MM_SWIZ_REG_CDAB),
+					opCode(int2mask, 0b0101010101010101),
+					opCode(swizzle_ps, tmp1, _MM_SWIZ_REG_CDAB),
+					tmp1);
+
+				mdv = opCode(sub_ps, opCode(mask_add_ps, tmp1, opCode(int2mask, 0b1010101010101010), tmp1, tmp2), ivZ);
+#elif defined(__AVX__)
+				Grx = opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, mMx, mCg), opCode(mul_ps, mMx, mSg)), 0b11011000);
+				Gry = opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, mMy, mCg), opCode(mul_ps, mMy, mSg)), 0b11011000);
+				Grz = opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, mMz, mCg), opCode(mul_ps, mMz, mSg)), 0b11011000);
+				mdv = opCode(sub_ps, opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg)), 0b11011000), ivZ);
+#else
+				Grx = opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, mMx, mCg), opCode(mul_ps, mMx, mSg)), 0b11011000);
+				Gry = opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, mMy, mCg), opCode(mul_ps, mMy, mSg)), 0b11011000);
+				Grz = opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, mMz, mCg), opCode(mul_ps, mMz, mSg)), 0b11011000);
+				mdv = opCode(sub_ps, opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg)), 0b11011000), ivZ);
 #endif
 				tGp = opCode(add_ps,
 					tGp,
@@ -560,14 +584,56 @@ void	energyKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, doub
 				mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));
 #ifdef	__MIC__
 				vel = opCode(swizzle_ps, mTp, _MM_SWIZ_REG_CDAB);
-				tVp =opCode(add_ps, tVp, opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, vel));
+				tVp = opCode(add_ps, tVp, opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, vel));
 #elif defined(__AVX__)
-				tVp = opCode(add_ps, tVp, opCode(blend_ps, mod, opCode(permute_pd, mTp, 0b10110001), 0b10101010);
+				tVp = opCode(add_ps, tVp, opCode(blend_ps, mod, opCode(permute_ps, mTp, 0b10110001), 0b10101010); //REVISAR
 #else
-				tVp = opCode(add_ps, tVp, opCode(shuffle_pd, mod, mTp, 0b10110001));
+				tVp = opCode(add_ps, tVp, opCode(shuffle_ps, mod, mTp, 0b10110001)); // REVISAR
 #endif
 			}
 		}
+#ifdef	__MIC__
+		Vtt = opCode(load_ps, zero);
+		Vtt = opCode(add_ps,
+			opCode(add_ps,
+				opCode(add_ps,
+					opCode(mask_reduce_add_ps, opCode(int2mask, 0b0101010101010101), tGp),
+					opCode(swizzle_ps, opCode(mask_reduce_add_ps, opCode(int2mask, 0b1010101010101010), tGp), __MM_SWIZ_REG_CDAB)),
+				opCode(swizzle_ps,
+					opCode(add_ps,
+						opCode(mask_reduce_add_ps, opCode(int2mask, 0b0101010101010101), tVp),
+						opCode(swizzle_ps, opCode(mask_reduce_add_ps, opCode(int2mask, 0b1010101010101010), tVp), __MM_SWIZ_REG_CDAB)),
+					__MM_SWIZ_REG_BADC)),
+			opCode(permute4f_128,
+				opCode(add_ps,
+					opCode(mask_reduce_add_ps, opCode(int2mask, 0b0101010101010101), tKp),
+					opCode(swizzle_ps, opCode(mask_reduce_add_ps, opCode(int2mask, 0b1010101010101010), tKp), __MM_SWIZ_REG_CDAB)),
+				__MM_PERM_CDAB));
+		opCode(store_ps, Vtt, &eRes);
+#elif defined(__AVX__)
+		Vtt = opCode(setzero_ps);
+	
+		vel = opCode(shuffle_ps, tGp, tGp, 0b11011000);
+		mel = opCode(shuffle_ps, tVp, tVp, 0b11011000);
+		mdv = opCode(shuffle_ps, tKp, tKp, 0b11011000);
+
+		TERMINAR + DOUBLE PRECISION
+#else
+		Vtt = opCode(setzero_ps);
+		Vt2 = opCode(setzero_ps);
+
+		vel = opCode(shuffle_ps, tGp, tGp, 0b11011000);
+		mel = opCode(shuffle_ps, tVp, tVp, 0b11011000);
+		mdv = opCode(shuffle_ps, tKp, tKp, 0b11011000);
+
+		Vtt = opCode(hadd_ps, vel, mel);
+		Vt2 = opCode(hadd_ps, tKp, zero);
+
+		opCode(store_ps, Vtt, &eRes);
+		opCode(store_ps, Vtt, &(eRes[4]));
+#endif
+				
+		STORE IN MEMORY ARRAY
 #undef	_MData_
 #undef	step
 	}
