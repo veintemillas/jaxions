@@ -29,7 +29,7 @@
 	#endif
 #endif
 
-
+/*
 #include<cstdio>
 #ifndef	__MIC__
 #ifdef	__AVX__
@@ -93,6 +93,7 @@ void printDouble(size_t idx, size_t con, __m512d dat)
 	}
 }
 #endif
+*/
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
@@ -114,7 +115,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	#define	step 1
 #endif
 
-		double	Vrho, Vth, Krho, Kth, Grho, Gth;
+		double	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
 
 #ifdef	USE_XEON
 		const double * __restrict__ m	= (const double * __restrict__) m_;
@@ -131,8 +132,6 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double iz2 = iz*iz;
 		const double zQ = 9.*pow(zR, nQcd+2.);
 		const double lZ = 0.25*LL*zR*zR;
-
-		double tmpS[2*step] __attribute__((aligned(Align)));
 #ifdef	__MIC__
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -147,7 +146,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const size_t YC = (Lx>>1);
 
 		const double __attribute__((aligned(Align))) zeroAux[4] = { 0., 0., 0., 0. };
-		const double __attribute__((aligned(Align))) oneAux[2]  = { 1., 1. };
+		const double __attribute__((aligned(Align))) oneAux[4]  = { 1., 1., 1., 1. };
 		const double __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) ivZ2Aux[4] = {iz2,iz2,iz2,iz2 };
@@ -171,9 +170,25 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		#pragma omp parallel default(shared) 
 		{
 			_MData_ tmp1, tmp2, mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
-			_MData_ Grx,  Gry,  Grz, tGp, tVp, tKp, mCg, mSg;
+			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
 
-			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Grho,Gth)
+			double tmpS[2*step] __attribute__((aligned(Align)));
+
+#ifdef	__MIC__
+			tGx = zero;
+			tGy = zero;
+			tGz = zero;
+			tVp = zero;
+			tKp = zero;
+#else
+			tGx = opCode(setzero_pd);
+			tGy = opCode(setzero_pd);
+			tGz = opCode(setzero_pd);
+			tVp = opCode(setzero_pd);
+			tKp = opCode(setzero_pd);
+#endif
+
+			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 				size_t X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
@@ -246,7 +261,6 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				mel = opCode(load_pd, &m[idxP0]);//Carga m
 				vel = opCode(load_pd, &v[idxMz]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
-
 #ifdef	__MIC__
 				mTp = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mod), _MM_PERM_BADC)), mod);
 #elif defined(__AVX__)
@@ -256,15 +270,15 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 #endif
 				mod = opCode(mul_pd, mTp, ivZ2);	// Factor |mel|^2/z^2, util luego
 
-				mCg = opCode(div_pd, opCode(mul_pd, mel, cjg), mTp);	// Ahora mCg tiene 1/mel
+				mCg = opCode(div_pd, mel, mTp);	// Ahora mCg tiene 1/mel
 
 				// Meto en mSg = shuffled(mCg) (Intercambio parte real por parte imaginaria)
 #ifdef	__MIC__
-				mSg = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC));
+				mSg = opCode(mul_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC)), cjg);
 #elif defined(__AVX__)
-				mSg = opCode(permute_pd, mCg, 0b00000101);
+				mSg = opCode(mul_pd, opCode(permute_pd, mCg, 0b00000101), cjg);
 #else
-				mSg = opCode(shuffle_pd, mCg, mCg, 0b00000001);
+				mSg = opCode(mul_pd, opCode(shuffle_pd, mCg, mCg, 0b00000001), cjg);
 #endif
 
 				// Calculo los gradientes
@@ -316,8 +330,12 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
 				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
 				Grz = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
-				mdv = opCode(sub_pd,  opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
+				mdv = opCode(sub_pd, opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
 #endif
+				tGx = opCode(mul_pd, mod, opCode(mul_pd, Grx, Grx));
+				tGy = opCode(mul_pd, mod, opCode(mul_pd, Gry, Gry));
+				tGz = opCode(mul_pd, mod, opCode(mul_pd, Grz, Grz));
+/*
 				tGp = opCode(add_pd,
 					tGp,
 					opCode(mul_pd,
@@ -327,68 +345,110 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 								opCode(mul_pd, Gry, Gry)),
 							opCode(mul_pd, Grz, Grz)),
 						mod));
-					
-				tKp = opCode(add_pd, tKp, opCode(mul_pd, opCode(mul_pd, mdv, mdv), mod));
+*/					
+				tKp = opCode(mul_pd, opCode(mul_pd, mdv, mdv), mod);
 
 				mTp = opCode(sub_pd, mod, one);
 				mod = opCode(mul_pd, mTp, mTp);
 				mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
 #ifdef	__MIC__
 				vel = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mTp), _MM_PERM_BADC));
-				tVp = opCode(add_pd, tVp, opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel));
+				tVp = opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel);
 #elif defined(__AVX__)
-				tVp = opCode(add_pd, tVp, opCode(blend_pd, mod, opCode(permute_pd, mTp, 0b00000101), 0b00001010));
+				tVp = opCode(blend_pd, mod, opCode(permute_pd, mTp, 0b00000101), 0b00001010);
 #else
-				tVp = opCode(add_pd, tVp, opCode(shuffle_pd, mod, mTp, 0b00000001));
+				tVp = opCode(shuffle_pd, mod, mTp, 0b00000001);
 #endif
 
 #ifdef	__MIC__
+/*
 				opCode(store_pd, tmpS, tGp);
-				Grho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Gth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Grho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+*/
+				opCode(store_pd, tmpS, tGx);
+				Gxrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gxth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+				opCode(store_pd, tmpS, tGy);
+				Gyrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gyth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+				opCode(store_pd, tmpS, tGz);
+				Gzrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gzth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 
 				opCode(store_pd, tmpS, tVp);
-				Vrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Vth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Vrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Vth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 
 				opCode(store_pd, tmpS, tKp);
-				Krho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Kth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Krho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Kth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 #elif defined(__AVX__)
+/*
 				opCode(store_pd, tmpS, tGp);
-				Grho = tmpS[0] + tmpS[2];
-				Gth  = tmpS[1] + tmpS[3];
+				Grho += tmpS[0] + tmpS[2];
+				Gth  += tmpS[1] + tmpS[3];
+*/
+				opCode(store_pd, tmpS, tGx);
+				Gxrho += tmpS[0] + tmpS[2];
+				Gxth  += tmpS[1] + tmpS[3];
+
+				opCode(store_pd, tmpS, tGy);
+				Gyrho += tmpS[0] + tmpS[2];
+				Gyth  += tmpS[1] + tmpS[3];
+
+				opCode(store_pd, tmpS, tGz);
+				Gzrho += tmpS[0] + tmpS[2];
+				Gzth  += tmpS[1] + tmpS[3];
 
 				opCode(store_pd, tmpS, tVp);
-				Vrho = tmpS[0] + tmpS[2];
-				Vth  = tmpS[1] + tmpS[3];
+				Vrho += tmpS[0] + tmpS[2];
+				Vth  += tmpS[1] + tmpS[3];
 
-				opCode(store_pd, tmpS,tKp);
-				Krho = tmpS[0] + tmpS[2];
-				Kth  = tmpS[1] + tmpS[3];
-#elif defined(__AVX__)
+				opCode(store_pd, tmpS, tKp);
+				Krho += tmpS[0] + tmpS[2];
+				Kth  += tmpS[1] + tmpS[3];
 #else
+/*
 				opCode(store_pd, tmpS, tGp);
-				Grho = tmpS[0];
-				Gth  = tmpS[1];
-                                                           
+				Grho += tmpS[0];
+				Gth  += tmpS[1];
+*/
+				opCode(store_pd, tmpS, tGx);
+				Gxrho += tmpS[0];
+				Gxth  += tmpS[1];
+
+				opCode(store_pd, tmpS, tGy);
+				Gyrho += tmpS[0];
+				Gyth  += tmpS[1];
+
+				opCode(store_pd, tmpS, tGz);
+				Gzrho += tmpS[0];
+				Gzth  += tmpS[1];
+
 				opCode(store_pd, tmpS, tVp);
-				Vrho = tmpS[0];
-				Vth  = tmpS[1];
+				Vrho += tmpS[0];
+				Vth  += tmpS[1];
                                                            
 				opCode(store_pd, tmpS, tKp);
-				Krho = tmpS[0];
-				Kth  = tmpS[1];
+				Krho += tmpS[0];
+				Kth  += tmpS[1];
 #endif
 			}
 		}
 
-		static_cast<double *> (eRes)[0] = Grho*0.375*ood2/((double) (Vf-Vo));
-		static_cast<double *> (eRes)[1] = Gth *0.375*ood2/((double) (Vf-Vo));
-		static_cast<double *> (eRes)[2] = Vrho*lZ/((double) (Vf-Vo));
-		static_cast<double *> (eRes)[3] = Vth *zQ/((double) (Vf-Vo));
-		static_cast<double *> (eRes)[4] = Krho*0.5/((double) (Vf-Vo));
-		static_cast<double *> (eRes)[5] = Kth *0.5/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[0] = Gxrho*0.375*ood2/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[1] = Gxth *0.375*ood2/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[2] = Gyrho*0.375*ood2/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[3] = Gyth *0.375*ood2/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[4] = Gzrho*0.375*ood2/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[5] = Gzth *0.375*ood2/((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[6] = Vrho * lZ       /((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[7] = Vth  * zQ       /((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[8] = Krho *0.5       /((double) (Vf-Vo));
+		(static_cast<double *> (eRes))[9] = Kth  *0.5       /((double) (Vf-Vo));
 #undef	_MData_
 #undef	step
 	}
@@ -405,7 +465,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	#define	step 2
 #endif
 
-		float	Vrho, Vth, Krho, Kth, Grho, Gth;
+		float	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
 
 #ifdef	USE_XEON
 		const float * __restrict__ m	= (const float * __restrict__) m_;
@@ -417,14 +477,11 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
 		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
 #endif
-
 		const float zR  = *z;
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
 		const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float lZ = 0.25f*LL*zR*zR;
-
-		float tmpS[2*step] __attribute__((aligned(Align)));
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -463,9 +520,23 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		#pragma omp parallel default(shared) 
 		{
 			_MData_ tmp1, tmp2, mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
-			_MData_ Grx,  Gry,  Grz, tGp, tVp, tKp, mCg, mSg;
+			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
 
-			#pragma omp for schedule(static)
+			float tmpS[2*step] __attribute__((aligned(Align)));
+#ifdef	__MIC__
+			tGx = zero;
+			tGy = zero;
+			tGz = zero;
+			tVp = zero;
+			tKp = zero;
+#else
+			tGx = opCode(setzero_ps);
+			tGy = opCode(setzero_ps);
+			tGz = opCode(setzero_ps);
+			tVp = opCode(setzero_ps);
+			tKp = opCode(setzero_ps);
+#endif
+			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
@@ -559,15 +630,15 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 #endif
 				mod = opCode(mul_ps, mTp, ivZ2);	// Factor |mel|^2/z^2, util luego
 
-				mCg = opCode(div_ps, opCode(mul_ps, mel, cjg), mTp);	// Ahora mCg tiene 1/mel
+				mCg = opCode(div_ps, mel, mTp);	// Ahora mCg tiene 1/mel
 
 				// Meto en mSg = shuffled(mCg) (Intercambio parte real por parte imaginaria)
 #ifdef	__MIC__
-				mSg = opCode(swizzle_ps, mCg, _MM_SWIZ_REG_CDAB);
+				mSg = opCode(mul_ps, cjg, opCode(swizzle_ps, mCg, _MM_SWIZ_REG_CDAB));
 #elif defined(__AVX__)
-				mSg = opCode(permute_ps, mCg, 0b10110001);
+				mSg = opCode(mul_ps, cjg, opCode(permute_ps, mCg, 0b10110001));
 #else
-				mSg = opCode(shuffle_ps, mCg, mCg, 0b10110001);
+				mSg = opCode(mul_ps, cjg, opCode(shuffle_ps, mCg, mCg, 0b10110001));
 #endif
 
 				// Calculo los gradientes
@@ -621,11 +692,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Grz = opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, mMz, mCg), opCode(mul_ps, mMz, mSg)), 0b11011000);
 				mdv = opCode(sub_ps, opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg)), 0b11011000), ivZ);
 #else
-				Grx = opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, mMx, mCg), opCode(mul_ps, mMx, mSg)), 0b11011000);
-				Gry = opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, mMy, mCg), opCode(mul_ps, mMy, mSg)), 0b11011000);
-				Grz = opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, mMz, mCg), opCode(mul_ps, mMz, mSg)), 0b11011000);
-				mdv = opCode(sub_ps, opCode(shuffle_ps, opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg)), 0b11011000), ivZ);
+				tmp1 = opCode(hadd_ps, opCode(mul_ps, mMx, mCg), opCode(mul_ps, mMx, mSg));
+				tmp2 = opCode(hadd_ps, opCode(mul_ps, mMy, mCg), opCode(mul_ps, mMy, mSg));
+				mdv  = opCode(hadd_ps, opCode(mul_ps, mMz, mCg), opCode(mul_ps, mMz, mSg));
+				tKp  = opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg));
+
+				Grx = opCode(shuffle_ps, tmp1, tmp1, 0b11011000);
+				Gry = opCode(shuffle_ps, tmp2, tmp2, 0b11011000);
+				Grz = opCode(shuffle_ps, mdv,  mdv,  0b11011000);
+				mdv = opCode(sub_ps, opCode(shuffle_ps, tKp, tKp, 0b11011000), ivZ);
 #endif
+				tGx = opCode(mul_ps, mod, opCode(mul_ps, Grx, Grx));
+				tGy = opCode(mul_ps, mod, opCode(mul_ps, Gry, Gry));
+				tGz = opCode(mul_ps, mod, opCode(mul_ps, Grz, Grz));
+/*
 				tGp = opCode(add_ps,
 					tGp,
 					opCode(mul_ps,
@@ -635,25 +715,38 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 								opCode(mul_ps, Gry, Gry)),
 							opCode(mul_ps, Grz, Grz)),
 						mod));
-					
-				tKp = opCode(add_ps, tKp, opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod));
+*/				
+				tKp = opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod);
 
 				mTp = opCode(sub_ps, mod, one);
 				mod = opCode(mul_ps, mTp, mTp);
 				mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));
 #ifdef	__MIC__
 				vel = opCode(swizzle_ps, mTp, _MM_SWIZ_REG_CDAB);
-				tVp = opCode(add_ps, tVp, opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, vel));
+				tVp = opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, vel);
 #elif defined(__AVX__)
-				tVp = opCode(add_ps, tVp, opCode(blend_ps, mod, opCode(permute_ps, mTp, 0b10110001), 0b10101010)); //REVISAR
+				tVp = opCode(blend_ps, mod, opCode(permute_ps, mTp, 0b10110001), 0b10101010); //REVISAR
 #else
-				tVp = opCode(add_ps, tVp, opCode(shuffle_ps, mod, mTp, 0b10110001)); // REVISAR
+				tVp = opCode(blend_ps, mod, opCode(shuffle_ps, mTp, mTp, 0b10110001), 0b10101010); // REVISAR, NO RULA!!
 #endif
 
 #ifdef	__MIC__
+/*
 				opCode(store_ps, tmpS, tGp);
 				Grho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
 				Gth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+*/
+				opCode(store_ps, tmpS, tGx);
+				Gxrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
+				Gxth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+
+				opCode(store_ps, tmpS, tGy);
+				Gyrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
+				Gyth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+
+				opCode(store_ps, tmpS, tGz);
+				Gzrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
+				Gzth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
 
 				opCode(store_ps, tmpS, tVp);
 				Vrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
@@ -663,40 +756,70 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Krho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
 				Kth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
 #elif defined(__AVX__)
+/*
 				opCode(store_ps, tmpS, tGp);
-				Grho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Gth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Grho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+*/
+				opCode(store_ps, tmpS, tGx);
+				Gxrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gxth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+				opCode(store_ps, tmpS, tGy);
+				Gyrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gyth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+				opCode(store_ps, tmpS, tGz);
+				Gzrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Gzth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 
 				opCode(store_ps, tmpS, tVp);
-				Vrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Vth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Vrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Vth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 
 				opCode(store_ps, tmpS, tKp);
-				Krho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Kth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
-#elif defined(__AVX__)
+				Krho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				Kth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 #else
+/*
 				opCode(store_ps, tmpS, tGp);
-				Grho = tmpS[0] + tmpS[2];
-				Gth  = tmpS[1] + tmpS[3];
+				Grho += tmpS[0] + tmpS[2];
+				Gth  += tmpS[1] + tmpS[3];
+*/
+				opCode(store_ps, tmpS, tGx);
+				Gxrho += tmpS[0] + tmpS[2];
+				Gxth  += tmpS[1] + tmpS[3];
+
+				opCode(store_ps, tmpS, tGy);
+				Gyrho += tmpS[0] + tmpS[2];
+				Gyth  += tmpS[1] + tmpS[3];
+
+				opCode(store_ps, tmpS, tGz);
+				Gzrho += tmpS[0] + tmpS[2];
+				Gzth  += tmpS[1] + tmpS[3];
 
 				opCode(store_ps, tmpS, tVp);
-				Vrho = tmpS[0] + tmpS[2];
-				Vth  = tmpS[1] + tmpS[3];
+				Vrho += tmpS[0] + tmpS[2];
+				Vth  += tmpS[1] + tmpS[3];
 
 				opCode(store_ps, tmpS, tKp);
-				Krho = tmpS[0] + tmpS[2];
-				Kth  = tmpS[1] + tmpS[3];
+				Krho += tmpS[0] + tmpS[2];
+				Kth  += tmpS[1] + tmpS[3];
+
 #endif
 			}
 		}
 
-		static_cast<float *> (eRes)[0] = Grho*0.375*ood2/((float) (Vf-Vo));
-		static_cast<float *> (eRes)[1] = Gth *0.375*ood2/((float) (Vf-Vo));
-		static_cast<float *> (eRes)[2] = Vrho*lZ/((float) (Vf-Vo));
-		static_cast<float *> (eRes)[3] = Vth *zQ/((float) (Vf-Vo));
-		static_cast<float *> (eRes)[4] = Krho*0.5/((float) (Vf-Vo));
-		static_cast<float *> (eRes)[5] = Kth *0.5/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[0] = Gxrho*0.375*ood2/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[1] = Gxth *0.375*ood2/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[2] = Gyrho*0.375*ood2/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[3] = Gyth *0.375*ood2/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[4] = Gzrho*0.375*ood2/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[5] = Gzth *0.375*ood2/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[6] = Vrho*lZ/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[7] = Vth *zQ/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[8] = Krho*0.5/((float) (Vf-Vo));
+		(static_cast<float *> (eRes))[9] = Kth *0.5/((float) (Vf-Vo));
 #undef	_MData_
 #undef	step
 	}
@@ -724,7 +847,6 @@ void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const 
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 
-	axionField->sendGhosts(FIELD_M, COMM_SDRV);
-	axionField->sendGhosts(FIELD_M, COMM_WAIT);
+	axionField->exchangeGhosts(FIELD_M);
 	energyKernelXeon(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes);
 }

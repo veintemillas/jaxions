@@ -54,9 +54,8 @@
 		//JAVIER
 		template<typename Float>
 		void	normaCOREField(const Float alpha);
-		//JAVIER
 		template<typename Float>
-		void	ENERGY(const Float z, FILE *enWrite);
+		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1);
 
 		template<typename Float>
 		void	momConf(const size_t kMax, const Float kCrit);
@@ -133,7 +132,7 @@
 
 		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 
-		void	writeENERGY	(double z, FILE *enwrite);
+		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

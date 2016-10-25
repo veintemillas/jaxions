@@ -78,7 +78,7 @@ void	Energy::runXeon	()
 #endif
 }
 
-void	energy	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount)
+void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount)
 {
 	Energy *eDark = new Energy(field, LL, nQcd, delta, eRes);
 
