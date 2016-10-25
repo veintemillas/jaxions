@@ -8,6 +8,7 @@
 #include "code3DCpu.h"
 #include "scalarField.h"
 #include "propagator.h"
+#include "energy.h"
 #include "enum-field.h"
 #include "index.h"
 #include "parse.h"
@@ -135,9 +136,15 @@ int	main (int argc, char *argv[])
 	printMpi("--------------------------------------------------\n");
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
+	std::chrono::milliseconds elapsed;
 
 	int counter = 0;
 	int index = 0;
+
+	FlopCounter *fCount = new FlopCounter;
+
+	void *eRes = malloc(128);
+	memset(eRes, 0, 128);
 
 	printMpi ("Dumping configuration %05d...\n", index);
 	fflush (stdout);
@@ -145,10 +152,47 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
+		double Grz, Gtz, Vr, Vt, Kr, Kt;
+
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
-		axion->writeENERGY ((*(axion->zV() )),file_energy);
+			old = std::chrono::high_resolution_clock::now();
+		axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+			current = std::chrono::high_resolution_clock::now();
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
+
+			printMpi("Elapsed %2.3lf\n", elapsed.count()*1.e-3);
+
+			old = std::chrono::high_resolution_clock::now();
+		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			current = std::chrono::high_resolution_clock::now();
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
+
+			printMpi("Elapsed %2.3lf\n", elapsed.count()*1.e-3);
+
+		if (axion->Precision() == FIELD_SINGLE)
+		{
+			printf ("Gxrho %+e +%le\nGxth %+e +%le\nGyrho %+e +%le\nGyth %+e +%le\nGzrho %+e +%le\nGzth %+e +%le\n",
+			(static_cast<float*>(eRes))[0], 0., (static_cast<float*>(eRes))[1], 0.,  (static_cast<float*>(eRes))[2], 0.,
+			(static_cast<float*>(eRes))[3], 0., (static_cast<float*>(eRes))[4], Grz, (static_cast<float*>(eRes))[5], Gtz);
+
+			printf ("Vrho %+e +%le\nVth %+e +%le\nKrho %+e +%le\nKth %+e +%le\n",
+			(static_cast<float*>(eRes))[6], Vr, (static_cast<float*>(eRes))[7], Vt, (static_cast<float*>(eRes))[8], Kr,
+			(static_cast<float*>(eRes))[9], Kt);
+			fflush(stdout);
+		} else { 
+
+			printf ("Gxrho %+le +%le\nGxth %+e +%e\nGyrho %+le +%le\nGyth %+le +%le\nGzrho %+le +%le\nGzth %+le +%le\n",
+			(static_cast<double*>(eRes))[0], 0., (static_cast<double*>(eRes))[1], 0.,  (static_cast<double*>(eRes))[2], 0.,
+			(static_cast<double*>(eRes))[3], 0., (static_cast<double*>(eRes))[4], Grz, (static_cast<double*>(eRes))[5], Gtz);
+
+			printf ("Vrho %+le +%e\nVth %+le +%le\nKrho %+le +%le\nKth %+e +%e\n",
+			(static_cast<double*>(eRes))[6], Vr, (static_cast<double*>(eRes))[7], Vt, (static_cast<double*>(eRes))[8], Kr,
+			(static_cast<double*>(eRes))[9], Kt);
+			fflush(stdout);
+		}
 	}
+	free(eRes);
 
 // TEST
 /*
@@ -174,8 +218,6 @@ int	main (int argc, char *argv[])
 
 	int nLoops = (int)(nSteps/dump);
 
-	FlopCounter *fCount = new FlopCounter;
-
 	if (cDev != DEV_GPU)
 	{
 		printMpi ("Folding configuration\n");
@@ -195,7 +237,6 @@ int	main (int argc, char *argv[])
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
-	std::chrono::milliseconds elapsed;
 
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
@@ -237,10 +278,11 @@ int	main (int argc, char *argv[])
 
 		if (cDev != DEV_GPU)
 		{
+			double Grz, Gtz, Vr, Vt, Kr, Kt;
 			axion->unfoldField2D(sizeZ-1);
 //			writeConf(axion, index);
 			writeMap (axion, index);
-			axion->writeENERGY ((*(axion->zV() )),file_energy);
+			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 		}
 	} // zloop
 

@@ -79,10 +79,8 @@ class	Scalar
 	//JAVIER
 	template<typename Float>
 	void	normaCOREField(const Float alpha);
-
 	template<typename Float>
-	void	ENERGY(const Float z, FILE *enWrite);
-
+	void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1);
 
 	template<typename Float>
 	void	momConf(const int kMax, const Float kCrit);
@@ -124,7 +122,7 @@ class	Scalar
 	size_t		Length() { return n1; }
 	size_t		Depth()  { return Lz; }
 	size_t		eSize()  { return v3; }
-	size_t	eDepth() { return Ez; }
+	size_t		eDepth() { return Ez; }
 
 	FieldPrecision	Precision() { return precision; }
 
@@ -155,7 +153,7 @@ class	Scalar
 
 	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 	//JAVIER
-	void	writeENERGY	(double z, FILE *enwrite);
+	void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft);
 
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
@@ -1371,7 +1369,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
 	for (int i=0; i<maxThreads; i++)
-		sd[i] = seed();
+		sd[i] = 0;//seed();
 
 	printf("kMax,Tz,Lz,nSplit,commRank():%d,%lu,%lu,%lu\n", kMax, Tz, Lz, nSplit,commRank());
 
@@ -1441,7 +1439,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 				break;
 
 				case FIELD_V:
-				field = static_cast<complex<double> *> (v);
+				field = static_cast<complex<double>*> (v);
 				break;
 
 				case FIELD_M2:
@@ -1450,7 +1448,7 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 					return;
 				}
 
-				field = static_cast<complex<double> *> (m2);
+				field = static_cast<complex<double>*> (m2);
 				vol = v3;
 				break;
 
@@ -1690,16 +1688,27 @@ void	Scalar::normaCOREField(const Float alpha)
 }
 
 
-void	Scalar::writeENERGY (double zzz, FILE *enwrite)
+void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft)
 {
 	switch	(precision)
 	{
 		case	FIELD_DOUBLE:
-		ENERGY (zzz, enwrite);
+		{
+			ENERGY (zzz, enwrite, Gfr, Gft, Vfr, Vft, Kfr, Kft);
+		}
 		break;
 
 		case	FIELD_SINGLE:
-		ENERGY ( (float) zzz, enwrite);
+		{
+			float Gr, Gt, Vr, Vt, Kr, Kt;
+			ENERGY (static_cast<float>(zzz), enwrite, Gr, Gt, Vr, Vt, Kr, Kt);
+			Gfr = static_cast<double>(Gr);
+			Gft = static_cast<double>(Gt);
+			Vfr = static_cast<double>(Vr);
+			Vft = static_cast<double>(Vt);
+			Kfr = static_cast<double>(Kr);
+			Kft = static_cast<double>(Kt);
+		}
 		break;
 
 		default:
@@ -1710,10 +1719,9 @@ void	Scalar::writeENERGY (double zzz, FILE *enwrite)
 }
 
 
-
 //JAVIER ENERGY
 template<typename Float>
-void	Scalar::ENERGY(const Float zz, FILE *enWrite)
+void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1)
 {
 	int	shift;
 	shift = mAlign/fSize;
@@ -1724,19 +1732,19 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 
 	complex<Float> *mCp = static_cast<complex<Float>*> (m);
 	complex<Float> *vCp = static_cast<complex<Float>*> (v);
-
+/*
 	printf("ENERGY CALCULATOR\n");
 	fflush (stdout);
 	//LEAVES BOUNDARIES OUT OF THE LOOP FOR SIMPLICITY
-
+*/
 
 	//SUM variables
-	Float Vrho1 = 0;
-	Float Vtheta1 = 0;
-	Float Krho1 = 0;
-	Float Ktheta1 = 0;
-	Float Grho1 = 0;
-	Float Gtheta1=0;
+	Vrho1 = 0;
+	Vtheta1 = 0;
+	Krho1 = 0;
+	Ktheta1 = 0;
+	Grho1 = 0;
+	Gtheta1=0;
 
 	const Float invz	= 1/zz;
 	const Float LLzz2 = LL*zz*zz/4.0 ;
@@ -1793,8 +1801,9 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 	Grho1 *= 3.0*0.125/(deltaa2*n3);
 	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
 
-
+/*
 	fprintf(enWrite,  "%f %f %f %f %f %f %f \n", zz, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	fflush (stdout);
+*/
 }
