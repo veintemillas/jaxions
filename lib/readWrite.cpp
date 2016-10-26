@@ -57,7 +57,7 @@ void	writeConf (Scalar *axion, int index)
 
 	char base[256];
 
-	sprintf(base, "out/dump/axion.%05d", index);
+	sprintf(base, "out/dump/%s.%05d", outName, index);
 
 	/*	Create the file and release the plist	*/
 
@@ -270,11 +270,17 @@ void	readConf (Scalar **axion, int index)
 
 	char base[256];
 
-	sprintf(base, "out/dump/axion.%05d", index);
+	sprintf(base, "out/dump/%s.%05d", outName, index);
 
 	/*	Open the file and release the plist	*/
 
-	file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id);
+	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
+	{
+		*axion == NULL;
+		printf ("Error opening file %s\n", base);
+		return;
+	}
+
 	H5Pclose(plist_id);
 
 	/*	Attributes	*/
@@ -300,22 +306,40 @@ void	readConf (Scalar **axion, int index)
 
 	H5Tclose (attr_type);
 
-	if (!strcmp(prec, "Double"))
+	if (!uPrec)
 	{
-		precision = FIELD_DOUBLE;
-		dataType  = H5T_NATIVE_DOUBLE;
-		dataSize  = sizeof(double);
-	}
-	else if (!strcmp(prec, "Single"))
-	{
-		precision = FIELD_SINGLE;
-		dataType  = H5T_NATIVE_FLOAT;
-		dataSize  = sizeof(float);
-	}
-	else
-	{
-		printf("Error reading file %s: Invalid precision %s\n", base, prec);
-		exit(1);
+		if (!strcmp(prec, "Double"))
+		{
+			precision = FIELD_DOUBLE;
+			dataType  = H5T_NATIVE_DOUBLE;
+			dataSize  = sizeof(double);
+		} else if (!strcmp(prec, "Single")) {
+			precision = FIELD_SINGLE;
+			dataType  = H5T_NATIVE_FLOAT;
+			dataSize  = sizeof(float);
+		} else {
+			printf("Error reading file %s: Invalid precision %s\n", base, prec);
+			exit(1);
+		}
+	} else {
+		precision = sPrec;
+
+		if (sPrec == FIELD_DOUBLE)
+		{
+			dataType  = H5T_NATIVE_DOUBLE;
+			dataSize  = sizeof(double);
+	
+			if (!strcmp(prec, "Single"))
+				printf("Reading double precision configuration as single precision\n");
+		} else if (sPrec == FIELD_SINGLE) {
+			dataType  = H5T_NATIVE_FLOAT;
+			dataSize  = sizeof(float);
+			if (!strcmp(prec, "Double"))
+				printf("Reading single precision configuration as double precision\n");
+		} else {
+			printf("Input error: Invalid precision\n");
+			exit(1);
+		}
 	}
 
 	/*	Create axion field	*/

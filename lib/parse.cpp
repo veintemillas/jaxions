@@ -22,6 +22,7 @@ double LL = 15000.;
 double parm2 = 0.;
 
 bool lowmem = false;
+bool uPrec  = false;
 
 size_t kMax  = 2;
 //JAVIER played with the following number
@@ -31,6 +32,7 @@ size_t parm1 = 0;
 ConfType cType = CONF_NONE;
 
 char *initFile = NULL;
+char outName[128] = "axion\0";
 
 FieldPrecision	sPrec = FIELD_DOUBLE;
 DeviceType	cDev  = DEV_CPU;
@@ -53,12 +55,13 @@ void	printUsage(char *name)
 	printf("--qcd   [int]                   Defines the number of QCD colors (default 3).\n");
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
 	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("--kMax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 2)\n");
+	printf("--kmax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 2)\n");
 	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("--alpha [float]                 Defines the alpha parameter for the smoothing (default 0.143).\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
 	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
 	printf("--load  [filename]              Loads filename as initial conditions (default out/initial_conditions_m(_single).txt).\n");
+	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
 	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
@@ -169,7 +172,29 @@ int	parseArgs (int argc, char *argv[])
 
 			if (kCrit < 0.)
 			{
-				printf("Error: Critical kappa must be larger than 0.\n");
+				printf("Error: Critical kappa must be larger than or equal to 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--alpha"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for alpha.\n");
+				exit(1);
+			}
+
+			alpha = atof(argv[i+1]);
+
+			if ((alpha < 0.) || (alpha > 1.))
+			{
+				printf("Error: Alpha parameter must belong to the [0,1] interval.\n");
 				exit(1);
 			}
 
@@ -299,9 +324,9 @@ int	parseArgs (int argc, char *argv[])
 
 			nSteps = atoi(argv[i+1]);
 
-			if (nSteps <= 0)
+			if (nSteps < 0)
 			{
-				printf("Error: Number of steps must be greater than zero.\n");
+				printf("Error: Number of steps must be greater than or equal to zero.\n");
 				exit(1);
 			}
 
@@ -355,7 +380,29 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--kMax"))
+		if (!strcmp(argv[i], "--name"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a name for the files.\n");
+				exit(1);
+			}
+
+			if (strlen(argv[i+1]) > 96)
+			{
+				printf("Error: Name too long, keep it under 96 characters\n");
+				exit(1);
+			}
+
+			strcpy (outName, argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--kmax"))
 		{
 			if (i+1 == argc)
 			{
@@ -457,6 +504,8 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--prec"))
 		{
+			uPrec = true;
+
 			if (i+1 == argc)
 			{
 				printf("Error: I need a value for the precision (double/single/mixed).\n");

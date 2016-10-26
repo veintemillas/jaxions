@@ -80,7 +80,8 @@ class	Scalar
 	template<typename Float>
 	void	normaCOREField(const Float alpha);
 	template<typename Float>
-	void	ENERGY(const Float zz, FILE *enWrite);//, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1);
+//	void	ENERGY(const Float zz, FILE *enWrite);
+	void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
 
 	template<typename Float>
 	void	momConf(const int kMax, const Float kCrit);
@@ -154,7 +155,8 @@ class	Scalar
 
 	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 	//JAVIER
-	void	writeENERGY (double zzz, FILE *enwrite);//, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft);
+//	void	writeENERGY (double zzz, FILE *enwrite);
+	void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
@@ -1689,26 +1691,29 @@ void	Scalar::normaCOREField(const Float alpha)
 }
 
 
-void	Scalar::writeENERGY (double zzz, FILE *enwrite)//, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft)
+//void	Scalar::writeENERGY (double zzz, FILE *enwrite)
+void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
 {
 	switch	(precision)
 	{
 		case	FIELD_DOUBLE:
 		{
-			ENERGY (zzz, enwrite);//, Gfr, Gft, Vfr, Vft, Kfr, Kft);
+//			ENERGY (zzz, enwrite);
+			ENERGY (zzz, enwrite, Gfr, Gft, Vfr, Vft, Kfr, Kft); // TEST
 		}
 		break;
 
 		case	FIELD_SINGLE:
 		{
-//			float Gr, Gt, Vr, Vt, Kr, Kt;
-			ENERGY (static_cast<float>(zzz), enwrite);//, Gr, Gt, Vr, Vt, Kr, Kt);
-//			Gfr = static_cast<double>(Gr);
-//			Gft = static_cast<double>(Gt);
-//			Vfr = static_cast<double>(Vr);
-//			Vft = static_cast<double>(Vt);
-//			Kfr = static_cast<double>(Kr);
-//			Kft = static_cast<double>(Kt);
+			float Gr, Gt, Vr, Vt, Kr, Kt;  // TEST
+//			ENERGY (static_cast<float>(zzz), enwrite);
+			ENERGY (static_cast<float>(zzz), enwrite, Gr, Gt, Vr, Vt, Kr, Kt); // TEST
+			Gfr = static_cast<double>(Gr); // TEST
+			Gft = static_cast<double>(Gt); // TEST;
+			Vfr = static_cast<double>(Vr); // TEST;
+			Vft = static_cast<double>(Vt); // TEST;
+			Kfr = static_cast<double>(Kr); // TEST;
+			Kft = static_cast<double>(Kt); // TEST;
 		}
 		break;
 
@@ -1722,7 +1727,8 @@ void	Scalar::writeENERGY (double zzz, FILE *enwrite)//, double &Gfr, double &Gft
 
 //JAVIER ENERGY
 template<typename Float>
-void	Scalar::ENERGY(const Float zz, FILE *enWrite)//, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1)
+//void	Scalar::ENERGY(const Float zz, FILE *enWrite)
+void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1) // TEST
 {
 	int	shift;
 	shift = mAlign/fSize;
@@ -1739,12 +1745,8 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite)//, Float &Grho1, Float &Gthet
 	//LEAVES BOUNDARIES OUT OF THE LOOP FOR SIMPLICITY
 
 	//SUM variables
-	Float Vrho1 = 0;
-	Float Vtheta1 = 0;
-	Float Krho1 = 0;
-	Float Ktheta1 = 0;
-	Float Grho1 = 0;
-	Float Gtheta1=0;
+	//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
+	Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
 
 	const Float invz	= 1/zz;
 	const Float LLzz2 = LL*zz*zz/4.0 ;
