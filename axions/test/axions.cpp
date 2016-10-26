@@ -74,16 +74,21 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	//          OUTPUTS FOR CHECKING
 	//--------------------------------------------------
+
 	FILE *file_sample ;
 	file_sample = NULL;
-	file_sample = fopen("out/sample.txt","w+");
-	//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 
 	FILE *file_energy ;
 	file_energy = NULL;
-	file_energy = fopen("out/energy.txt","w+");
-	//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 
+	if (commRank() == 0)
+	{
+		file_sample = fopen("out/sample.txt","w+");
+		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
+
+		file_energy = fopen("out/energy.txt","w+");
+		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
+	}
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -143,19 +148,47 @@ int	main (int argc, char *argv[])
 
 	FlopCounter *fCount = new FlopCounter;
 
-	void *eRes = malloc(128);
+	commSync();
+
+	void *eRes;			// Para guardar la energia
+	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
+
+	commSync();
 
 	printMpi ("Dumping configuration %05d...\n", index);
 	fflush (stdout);
 	writeConf(axion, index);
 
+	printf ("Process %d reached syncing point\n", commRank());
+	fflush (stdout);
+	commSync();
+
 	if (cDev != DEV_GPU)
 	{
-		double Grz, Gtz, Vr, Vt, Kr, Kt;
-
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
+		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+
+		if (commRank() == 0)
+		{
+			if (axion->Precision() == FIELD_DOUBLE)
+			{
+				double *eR = static_cast<double *> (eRes);
+				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+				printMpi("ENERGY & PRINTED - - - Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+			}
+			else
+			{
+				float *eR = static_cast<float *> (eRes);
+				fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+				printMpi("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+			}
+		}
+
+/*	TEST  CON LA ENERGIA MODIFICADA PARA VER EL RENDIMIENTO, SE PUEDE BORRAR	*/
+/*
+		double Grz, Gtz, Vr, Vt, Kr, Kt;
 			old = std::chrono::high_resolution_clock::now();
 		axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			current = std::chrono::high_resolution_clock::now();
@@ -191,27 +224,8 @@ int	main (int argc, char *argv[])
 			(static_cast<double*>(eRes))[9], Kt);
 			fflush(stdout);
 		}
-	}
-	free(eRes);
-
-// TEST
-/*
-
-		axion->foldField();
-	index++;
-	writeConf(axion, index);
-		axion->unfoldField();
-
-	index++;
-
-	writeConf(axion, index);
-	if (cDev != DEV_GPU)
-	{
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
-		writeMap (axion, index);
-	}
 */
-// FIN
+	}
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -248,11 +262,16 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 		{
-			if (sPrec == FIELD_DOUBLE)
-			{		fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),static_cast<complex<double> *> (axion->vCpu())[S0].real(), static_cast<complex<double> *> (axion->vCpu())[S0].imag());
-			} else
-			{ 	fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[S0].real(), static_cast<complex<float>  *> (axion->mCpu())[S0].imag(),static_cast<complex<float>  *> (axion->vCpu())[S0].real(), static_cast<complex<float>  *> (axion->vCpu())[S0].imag());
+			if (commRank() == 0) {
+				if (sPrec == FIELD_DOUBLE) {
+					fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
+						static_cast<complex<double> *> (axion->vCpu())[S0].real(), static_cast<complex<double> *> (axion->vCpu())[S0].imag());
+				} else {
+					fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[S0].real(), static_cast<complex<float>  *> (axion->mCpu())[S0].imag(),
+						static_cast<complex<float>  *> (axion->vCpu())[S0].real(), static_cast<complex<float>  *> (axion->vCpu())[S0].imag());
+				}
 			}
+
 			old = std::chrono::high_resolution_clock::now();
 			propagate (axion, dz, LL, nQcd, delta, cDev, fCount);
 
@@ -279,10 +298,27 @@ int	main (int argc, char *argv[])
 		if (cDev != DEV_GPU)
 		{
 			double Grz, Gtz, Vr, Vt, Kr, Kt;
-			axion->unfoldField2D(sizeZ-1);
 //			writeConf(axion, index);
+			axion->unfoldField2D(sizeZ-1);
 			writeMap (axion, index);
-			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+//			axion->writeENERGY ((*(axion->zV() )),file_energy);//, Grz, Gtz, Vr, Vt, Kr, Kt);
+			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+
+			if (commRank() == 0)
+			{
+				if (axion->Precision() == FIELD_DOUBLE)
+				{
+					double *eR = static_cast<double *> (eRes);
+					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+					printMpi("ENERGY & PRINTED - - - Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+				}
+				else
+				{
+					float *eR = static_cast<float *> (eRes);
+					fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+					printMpi("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+				}
+			}
 		}
 	} // zloop
 
@@ -319,6 +355,8 @@ int	main (int argc, char *argv[])
 	printMpi("GBytes: %.3f\n", fCount->GBytes());
 	printMpi("--------------------------------------------------\n");
 
+	trackFree(&eRes, ALLOC_TRACK);
+
 	delete fCount;
 	delete axion;
 
@@ -326,10 +364,12 @@ int	main (int argc, char *argv[])
 
 	printMemStats();
 
-
 	//JAVIER
-	fclose(file_sample);
-	fclose(file_energy);
+	if (commRank() == 0)
+	{
+		fclose (file_sample);
+		fclose (file_energy);
+	}
 
 	return 0;
 }
