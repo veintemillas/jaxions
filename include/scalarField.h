@@ -55,7 +55,7 @@
 		template<typename Float>
 		void	normaCOREField(const Float alpha);
 		template<typename Float>
-		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1);
+		void	ENERGY(const Float zz, FILE *enWrite);//, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1);
 
 		template<typename Float>
 		void	momConf(const size_t kMax, const Float kCrit);
@@ -92,12 +92,13 @@
 #endif
 		bool		LowMem()  { return lowmem; }
 
-		size_t		Size()   { return n3; }
-		size_t		Surf()   { return n2; }
-		size_t		Length() { return n1; }
-		size_t		Depth()  { return Lz; }
-		size_t		eDepth() { return Ez; }
-		size_t		eSize()  { return v3; }
+		size_t		TotalSize() { return n3*nSplit; }
+		size_t		Size()      { return n3; }
+		size_t		Surf()      { return n2; }
+		size_t		Length()    { return n1; }
+		size_t		Depth()     { return Lz; }
+		size_t		eDepth()    { return Ez; }
+		size_t		eSize()     { return v3; }
 
 		FieldPrecision	Precision() { return precision; }
 
@@ -132,7 +133,7 @@
 
 		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 
-		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft);
+		void	writeENERGY (double zzz, FILE *enwrite);//, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

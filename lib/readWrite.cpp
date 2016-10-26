@@ -48,6 +48,8 @@ void	writeConf (Scalar *axion, int index)
 
 	int myRank = commRank();
 
+	commSync();
+
 	/*	Set up parallel access with Hdf5	*/
 
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
@@ -191,19 +193,37 @@ void	writeConf (Scalar *axion, int index)
 	vSpace = H5Dget_space (vset_id);
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 
+	printf ("Rank %d ready to write\n", myRank);
+	fflush (stdout);
+
 	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
+		printf ("Rank %d writting slab %ld\n", myRank, zDim + myRank*axion->Depth());
+		fflush (stdout);
+
 		/*	Select the slab in the file	*/
 
 		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*((hsize_t) (2*axion->Surf()));
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
+		printf ("Rank %d select hyperslab at offset %ld\n", myRank, offset);
+		fflush (stdout);
+
 		/*	Write raw data	*/
 
 		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()*2))*(1+zDim)*dataSize));
+		printf ("Rank %d write m\n", myRank);
+		fflush (stdout);
 		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()*2))*zDim*dataSize));
+		printf ("Rank %d write v\n", myRank);
+		fflush (stdout);
+		printf ("Rank %d done\n", myRank);
+		fflush (stdout);
 	}
+
+	printf ("Rank %d closing\n", myRank);
+	fflush (stdout);
 
 	/*	Close the dataset	*/
 

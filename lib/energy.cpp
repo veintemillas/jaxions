@@ -13,6 +13,9 @@
 #endif
 
 #include "flopCounter.h"
+#include "memAlloc.h"
+
+#include <mpi.h>
 
 class	Energy
 {
@@ -20,7 +23,7 @@ class	Energy
 
 	const double delta2;
 	const double nQcd, LL;
-	const size_t Lx, Lz, V, S;
+	const size_t Lx, Lz, V, S, Vt;
 
 	FieldPrecision precision;
 
@@ -38,7 +41,7 @@ class	Energy
 };
 
 	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes) : axionField(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()),
-				S(field->Surf()), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), eRes(eRes)
+				S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), eRes(eRes)
 {
 }
 
@@ -65,13 +68,13 @@ void	Energy::runGpu	()
 
 void	Energy::runCpu	()
 {
-	energyCpu(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes);
+	energyCpu(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
 }
 
 void	Energy::runXeon	()
 {
 #ifdef	USE_XEON
-	energyXeon(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes);
+	energyXeon(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
@@ -80,7 +83,10 @@ void	Energy::runXeon	()
 
 void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount)
 {
-	Energy *eDark = new Energy(field, LL, nQcd, delta, eRes);
+	void *eTmp;
+	trackAlloc(&eTmp, 128);
+
+	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp);
 
 	switch (dev)
 	{
@@ -103,7 +109,16 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 
 	delete	eDark;
 
-	fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->dataSize()*field->Size()*1.e-9);
+	if (field->Precision() == FIELD_DOUBLE)
+	{
+		MPI_Allreduce(eTmp, eRes, 10, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	} else {
+		MPI_Allreduce(eTmp, eRes, 10, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+	} 
+
+	trackFree(&eTmp, ALLOC_TRACK);
+
+	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
 
 	return;
 }
