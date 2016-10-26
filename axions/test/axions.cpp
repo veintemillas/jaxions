@@ -67,8 +67,15 @@ int	main (int argc, char *argv[])
 			//This generates initial conditions
 			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2);
 		else
+		{
 			//This reads from an Axion.00000 file
 			readConf(&axion, fIndex);
+			if (axion == NULL)
+			{
+				printMpi ("Error reading HDF5 file\n");
+				exit (0);
+			}
+		}
 	}
 
 	//--------------------------------------------------
@@ -94,8 +101,13 @@ int	main (int argc, char *argv[])
 	//          SETTING BASE PARAMETERS
 	//--------------------------------------------------
 
-	double dz = (zFinl - zInit)/((double) nSteps);
 	double delta = sizeL/sizeN;
+	double dz;
+
+	if (nSteps == 0)
+		dz = 0.;
+	else
+		dz = (zFinl - zInit)/((double) nSteps);
 
 	printMpi("--------------------------------------------------\n");
 	printMpi("           INITIAL CONDITIONS                     \n\n");
@@ -166,6 +178,18 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
+		printMpi ("Folding configuration\n");
+		axion->foldField();
+	}
+
+	if (cDev != DEV_CPU)
+	{
+		printMpi ("Transferring configuration to device\n");
+		axion->transferDev(FIELD_MV);
+	}
+
+	if (cDev != DEV_GPU)
+	{
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		writeMap (axion, index);
 		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
@@ -187,7 +211,7 @@ int	main (int argc, char *argv[])
 		}
 
 /*	TEST  CON LA ENERGIA MODIFICADA PARA VER EL RENDIMIENTO, SE PUEDE BORRAR	*/
-/*
+
 		double Grz, Gtz, Vr, Vt, Kr, Kt;
 			old = std::chrono::high_resolution_clock::now();
 		axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
@@ -224,25 +248,18 @@ int	main (int argc, char *argv[])
 			(static_cast<double*>(eRes))[9], Kt);
 			fflush(stdout);
 		}
-*/
+
 	}
 
 	if (dump > nSteps)
 		dump = nSteps;
 
-	int nLoops = (int)(nSteps/dump);
+	int nLoops;
 
-	if (cDev != DEV_GPU)
-	{
-		printMpi ("Folding configuration\n");
-		axion->foldField();
-	}
-
-	if (cDev != DEV_CPU)
-	{
-		printMpi ("Transferring configuration to device\n");
-		axion->transferDev(FIELD_MV);
-	}
+	if (dump == 0)
+		nLoops = 0;
+	else
+		nLoops = (int)(nSteps/dump);
 
 	printMpi ("Start redshift loop\n");
 	fflush (stdout);
@@ -301,7 +318,7 @@ int	main (int argc, char *argv[])
 //			writeConf(axion, index);
 			axion->unfoldField2D(sizeZ-1);
 			writeMap (axion, index);
-//			axion->writeENERGY ((*(axion->zV() )),file_energy);//, Grz, Gtz, Vr, Vt, Kr, Kt);
+//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 
 			if (commRank() == 0)
@@ -330,7 +347,8 @@ int	main (int argc, char *argv[])
 	if (cDev != DEV_GPU)
 		axion->unfoldField();
 
-	writeConf(axion, index);
+	if (nSteps > 0)
+		writeConf(axion, index);
 
 	if (sPrec == FIELD_DOUBLE)
 	{
@@ -341,9 +359,9 @@ int	main (int argc, char *argv[])
 	}
 	else
 	{
-		printMpi("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  static_cast<complex<float> *> (axion->mCpu())[S0].real(), static_cast<complex<float> *> (axion->mCpu())[S0].imag(),
+		printMpi("\n Examples m: m[0]= %e + %e*I, m[N3-1]= %e + %e*I\n",  static_cast<complex<float> *> (axion->mCpu())[S0].real(), static_cast<complex<float> *> (axion->mCpu())[S0].imag(),
 										  static_cast<complex<float> *> (axion->mCpu())[SF].real(), static_cast<complex<float> *> (axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %le + %le*I, v[N3-1]= %le + %le*I\n\n",static_cast<complex<float> *> (axion->vCpu())[V0].real(), static_cast<complex<float> *> (axion->vCpu())[V0].imag(),
+		printMpi("\n Examples v: v[0]= %e + %e*I, v[N3-1]= %e + %e*I\n\n",static_cast<complex<float> *> (axion->vCpu())[V0].real(), static_cast<complex<float> *> (axion->vCpu())[V0].imag(),
 										  static_cast<complex<float> *> (axion->vCpu())[VF].real(), static_cast<complex<float> *> (axion->vCpu())[VF].imag());
 	}
 

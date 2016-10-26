@@ -20,7 +20,9 @@ extern int parm1;
 
 
 extern char *initFile;
+extern char outName[128];
 extern bool lowmem;
+extern bool uPrec;
 
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
