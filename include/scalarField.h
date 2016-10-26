@@ -55,7 +55,8 @@
 		template<typename Float>
 		void	normaCOREField(const Float alpha);
 		template<typename Float>
-		void	ENERGY(const Float zz, FILE *enWrite);//, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1);
+		//void	ENERGY(const Float zz, FILE *enWrite);
+		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
 
 		template<typename Float>
 		void	momConf(const size_t kMax, const Float kCrit);
@@ -133,7 +134,8 @@
 
 		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 
-		void	writeENERGY (double zzz, FILE *enwrite);//, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft);
+		//void	writeENERGY (double zzz, FILE *enwrite);
+		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif
