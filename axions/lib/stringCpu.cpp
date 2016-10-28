@@ -2,6 +2,7 @@
 #include <complex>
 
 #include "index.h"
+#include "comms.h"
 #include "scalarField.h"
 
 using namespace std;
@@ -56,11 +57,12 @@ void	analyzeStr	(Scalar *axion, int *window, const int index)
 	//--------------------------------------------------          
 
 	const int nx = axion->Length();
+	const int myRank = commRank();
 	int hand;
 
 	char stoStr[256];
 
-	sprintf(stoStr, "out/str/str-%05d.dat", index);
+	sprintf(stoStr, "out/str/str-%05d.dat.%03d", index, myRank);
 	strWrite = NULL;
 
 	if ((strWrite = fopen(stoStr, "w+")) == NULL)

@@ -133,10 +133,10 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					idxMy = ((idx + Sf - XC) << 1);
 					idxPy = ((idx + XC) << 1);
 #ifdef	__MIC__
-					mMy = opCode(add_pd, opCode(load_pd, &m[idxPy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)));
+					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)));
 #elif	defined(__AVX__)
 					mMx = opCode(load_pd, &m[idxMy]);
-					mMy = opCode(add_pd, opCode(load_pd, &m[idxPy]), opCode(permute2f128_pd, mMx, mMx, 0b00000001));
+					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(permute2f128_pd, mMx, mMx, 0b00000001));
 #else
 					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
 #endif
