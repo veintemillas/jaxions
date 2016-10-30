@@ -60,7 +60,9 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, long long int *hand)
 #ifdef __AVX2__
 	str = opCode(permute4x64_pd, tmp, 0b10001101);
 #else
-
+	tp2 = opCode(permute2f128_pd, tmp, tmp, 0b00000001);
+	tp3 = opCode(permute_pd, tp2, 0b00000101);
+	str = opCode(blend_pd, tp3, tmp, 0b00000101);
 #endif
 	opCode(maskstore_pd, &(static_cast<double *>(hand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
 	hand[0] = ((hand[0] >> 62) & 2) - 1;
@@ -71,22 +73,30 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, long long int *hand)
 
 inline	void	stringHandS(const __m256 s1, const __m256 s2, long long int *hand)
 {
+	int hand;
+
 	str = opCode(mul_ps, mel, mPx);
 	tmp = opCode(cmp_ps, str, zero, _CMP_LT_OS);
 	str = opCode(mul_ps, mPx, conj);
-		tp2 = opCode(permute_ps, str, 0b00000101);
+	tp2 = opCode(permute_ps, str, 0b10110001);
 	tp3 = opCode(mul_ps, tmp, tp2);
-		tp2 = opCode(add_ps, tp3, opCode(permute_pd, tp3, 0b00000101));
+	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
 	tp3 = opCode(cmp_ps, tp2, zero, _CMP_GT_OS);
 	tmp = opCode(and_ps, tp2, zero);
 #ifdef __AVX2__
-		str = opCode(permutevar8x32_ps, tmp, 0b10001101);
+	str = opCode(permutevar8x32_ps, tmp, opCode(set_epi32, 6, 4, 3, 0, 7, 5, 3, 1));
 #else
-
+	tp2 = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+	tp3 = opCode(permute_ps, tp2, 0b10110001);
+	str = opCode(blend_ps, tp3, tmp, 0b01010101);
 #endif
 	opCode(maskstore_ps, &(static_cast<float *>(hand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
+
+/* Vectoriza esto tb */
 	hand[0] = ((hand[0] >> 62) & 2) - 1;
 	hand[1] = ((hand[1] >> 62) & 2) - 1;
+	hand[2] = ((hand[2] >> 62) & 2) - 1;
+	hand[3] = ((hand[3] >> 62) & 2) - 1;
 
 	return;
 }
