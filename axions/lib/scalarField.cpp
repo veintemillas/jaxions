@@ -728,7 +728,7 @@ void	Scalar::foldField()
 	int	shift;
 
 	shift = mAlign/fSize;
-	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize, shift, n2);
+	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize, shift, n2);
 
 	switch (precision)
 	{
@@ -774,7 +774,7 @@ void	Scalar::foldField()
 
 			break;
 	}
-
+	printf("Done!\n");
 	return;
 }
 
@@ -783,7 +783,7 @@ void	Scalar::unfoldField()
 	int	shift;
 
 	shift = mAlign/fSize;
-	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ", mAlign, fSize,shift,n2);
+	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize,shift,n2);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
@@ -828,7 +828,7 @@ void	Scalar::unfoldField()
 
 			break;
 	}
-
+	printf("Done!\n");
 	return;
 }
 
@@ -1740,7 +1740,7 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1,
 	complex<Float> *mCp = static_cast<complex<Float>*> (m);
 	complex<Float> *vCp = static_cast<complex<Float>*> (v);
 
-	printf("ENERGY CALCULATOR\n");
+	//printf("ENERGY CALCULATOR\n");
 	fflush (stdout);
 	//LEAVES BOUNDARIES OUT OF THE LOOP FOR SIMPLICITY
 

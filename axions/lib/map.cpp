@@ -2,12 +2,15 @@
 #include <complex>
 
 #include "scalarField.h"
+#include "parse.h"
 
 using namespace std;
 
 template<typename Float>
 void	writeData	(complex<Float> *m, const Float z, const size_t n1, FILE *atWrite, FILE *rhoWrite)
 {
+	fprintf(atWrite,  "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
+	fprintf(rhoWrite, "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
 	for (size_t ly = 0; ly < n1; ly++)
 	{
 		for (size_t lx = 0; lx < n1; lx++)
@@ -64,19 +67,19 @@ void	writeMap	(Scalar *axion, const int index)
 	fclose(atWrite);
 	fclose(rhoWrite);
 
-	printf("Map printed...\n");
+	//printf("Map printed...\n");
 
 	/*	ESTO HABRA QUE BORRARLO EVENTUALMENTE	*/
-	printf("z = %lf - ", *(axion->zV()));
+	//printf("z = %lf - ", *(axion->zV()));
 	//JAVIER included switch to test outputsin double and single
-	switch (axion->Precision())
-	{
-		case FIELD_DOUBLE:
-			printf("(MAP) m[0]= %lf + %lf*I = |%lf|exp(I*%lf)\n",  ((complex<double> *) axion->mCpu())[0].real(), ((complex<double> *) axion->mCpu())[0].imag(), abs( ((complex<double> *) axion->mCpu())[0]), arg( ((complex<double> *) axion->mCpu())[0])/(*(axion->zV() )) );
-			break;
+	//switch (axion->Precision())
+	//{
+	//	case FIELD_DOUBLE:
+	//		printf("(MAP) m[0]= %lf + %lf*I = |%lf|exp(I*%lf)\n",  ((complex<double> *) axion->mCpu())[0].real(), ((complex<double> *) axion->mCpu())[0].imag(), abs( ((complex<double> *) axion->mCpu())[0]), arg( ((complex<double> *) axion->mCpu())[0])/(*(axion->zV() )) );
+	//		break;
 
-		case FIELD_SINGLE:
-			printf("(MAP) m[0]= %f + %f*I = |%f|exp(I*%f)\n",  ((complex<float> *) axion->mCpu())[0].real(), ((complex<float> *) axion->mCpu())[0].imag(), abs( ((complex<float> *) axion->mCpu())[0]), arg( ((complex<float> *) axion->mCpu())[0])/(*(axion->zV() )) );
-			break;
-	}
+	//	case FIELD_SINGLE:
+	//		printf("(MAP) m[0]= %f + %f*I = |%f|exp(I*%f)\n",  ((complex<float> *) axion->mCpu())[0].real(), ((complex<float> *) axion->mCpu())[0].imag(), abs( ((complex<float> *) axion->mCpu())[0]), arg( ((complex<float> *) axion->mCpu())[0])/(*(axion->zV() )) );
+	//		break;
+	//}
 }

@@ -144,8 +144,8 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 	{
 		int nprocs, nthreads;
 
-		#pragma offload target(mic) 
-		#pragma omp parallel 
+		#pragma offload target(mic)
+		#pragma omp parallel
 		{
 			nprocs = omp_get_num_procs();
 			nthreads = omp_get_num_threads();
@@ -159,7 +159,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 	{
 		int nprocs, nthreads, mthreads;
 
-		#pragma omp parallel 
+		#pragma omp parallel
 		{
 			nprocs = omp_get_num_procs();
 			nthreads = omp_get_num_threads();

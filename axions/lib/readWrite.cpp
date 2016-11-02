@@ -198,7 +198,8 @@ void	writeConf (Scalar *axion, int index)
 
 	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
-		printf ("Rank %d writting slab %ld\n", myRank, zDim + myRank*axion->Depth());
+		//JAVIER commented next
+		//printf ("Rank %d writting slab %ld\n", myRank, zDim + myRank*axion->Depth());
 		fflush (stdout);
 
 		/*	Select the slab in the file	*/
@@ -206,23 +207,27 @@ void	writeConf (Scalar *axion, int index)
 		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*((hsize_t) (2*axion->Surf()));
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-
-		printf ("Rank %d select hyperslab at offset %ld\n", myRank, offset);
+		//JAVIER commented next
+		//printf ("Rank %d select hyperslab at offset %ld\n", myRank, offset);
 		fflush (stdout);
 
 		/*	Write raw data	*/
 
 		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()*2))*(1+zDim)*dataSize));
-		printf ("Rank %d write m\n", myRank);
+		//JAVIER commented next
+		//printf ("Rank %d write m\n", myRank);
 		fflush (stdout);
 		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()*2))*zDim*dataSize));
-		printf ("Rank %d write v\n", myRank);
+		//JAVIER commented next
+		//printf ("Rank %d write v\n", myRank);
 		fflush (stdout);
-		printf ("Rank %d done\n", myRank);
+		//JAVIER commented next
+		//printf ("Rank %d done\n", myRank);
 		fflush (stdout);
 	}
 
-	printf ("Rank %d closing\n", myRank);
+	//JAVIER commented next
+	//printf ("Rank %d closing\n", myRank);
 	fflush (stdout);
 
 	/*	Close the dataset	*/
@@ -328,7 +333,7 @@ void	readConf (Scalar **axion, int index)
 		{
 			dataType  = H5T_NATIVE_DOUBLE;
 			dataSize  = sizeof(double);
-	
+
 			if (!strcmp(prec, "Single"))
 				printf("Reading double precision configuration as single precision\n");
 		} else if (sPrec == FIELD_SINGLE) {
@@ -397,4 +402,3 @@ void	readConf (Scalar **axion, int index)
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 }
-

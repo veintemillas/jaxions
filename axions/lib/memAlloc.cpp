@@ -15,7 +15,8 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 	switch (out)
 	{
 		case 0:
-		printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p\n", size, align, *ptr);
+		//JAVIER commented this
+		//printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p\n", size, align, *ptr);
 		fflush (stdout);
 		trackAlignMem += size;
 		allocTable[ALLOC_ALIGN].insert(std::make_pair(*ptr, size));
@@ -43,8 +44,8 @@ void	trackFree (void **ptr, AllocType aType)
 {
 	size_t bytes = allocTable[aType][*ptr];
 	free (*ptr);
-
-	printf ("Memory freed correctly (%lu bytes). Deregistering pointer %p\n", bytes, *ptr);
+	//JAVIER commented this
+	//printf ("Memory freed correctly (%lu bytes). Deregistering pointer %p\n", bytes, *ptr);
 	fflush (stdout);
 
 	if (aType == ALLOC_ALIGN)
@@ -64,8 +65,8 @@ void	trackAlloc (void **ptr, size_t size)
 		printf ("Error allocating %lu bytes of unaligned memory\n", size);
 		exit (1);
 	}
-
-	printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
+	//JAVIER commented next
+	//printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
 	fflush (stdout);
 
 	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
