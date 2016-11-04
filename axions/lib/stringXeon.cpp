@@ -64,7 +64,7 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, const __m256d conj, 
 	tp2 = opCode(permute_pd, str, 0b00000101);
 	tp3 = opCode(mul_pd, s1,  tp2);
 	tp2 = opCode(add_pd, tp3, opCode(permute_pd, tp3, 0b00000101));
-	tp3 = opCode(cmp_pd, tp2, opCode(setzero_ps), _CMP_GT_OS);
+	tp3 = opCode(cmp_pd, tp2, opCode(setzero_pd), _CMP_GT_OS);
 	tp2 = opCode(and_pd, tp3, tmp);
 #ifdef __AVX2__
 	str = opCode(permute4x64_pd, tp2, 0b10001101);
@@ -73,7 +73,7 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, const __m256d conj, 
 	tp3 = opCode(permute_pd, tmp, 0b00000101);
 	str = opCode(blend_pd, tp3, tp2, 0b00000101);
 #endif
-	opCode(maskstore_pd, &(static_cast<double *>(tmpHand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
+	opCode(maskstore_pd, static_cast<double*>(static_cast<void*>(tmpHand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
 	hand[0] = ((tmpHand[0] >> 62) & 2) - 1;
 	hand[1] = ((tmpHand[1] >> 62) & 2) - 1;
 
@@ -101,7 +101,7 @@ inline	void	stringHandS(const __m256 s1, const __m256 s2, const __m256 conj, int
 	tp3 = opCode(permute_ps, tmp, 0b10110001);
 	str = opCode(blend_ps, tp3, tp2, 0b01010101);
 #endif
-	opCode(maskstore_ps, &(static_cast<float *>(tmpHand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
+	opCode(maskstore_ps, static_cast<float*>(static_cast<void*>(tmpHand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
 
 /* Vectoriza esto tb */
 	hand[0] += ((tmpHand[0] >> 30) & 2) - 1;
@@ -261,9 +261,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					tmp = opCode(load_pd, &m[idxPy]);
 					str = opCode(load_pd, &m[idxXY]);
 					mPy = opCode(load_pd, &m[idxYZ]);
-					mYZ = opCode(permute2f128_pd, mPy, mPy, 0b00000001));
-					mXY = opCode(permute2f128_pd, str, str, 0b00000001));
-					mPy = opCode(permute2f128_pd, tmp, tmp, 0b00000001));
+					mYZ = opCode(permute2f128_pd, mPy, mPy, 0b00000001);
+					mXY = opCode(permute2f128_pd, str, str, 0b00000001);
+					mPy = opCode(permute2f128_pd, tmp, tmp, 0b00000001);
 #else
 					mPy = opCode(load_pd, &m[idxPy]);
 					mXY = opCode(load_pd, &m[idxXY]);
@@ -300,9 +300,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					tmp = opCode(load_pd, &m[idxPy]);
 					str = opCode(load_pd, &m[idxXY]);
 					mPy = opCode(load_pd, &m[idxYZ]);
-					mYZ = opCode(permute2f128_pd, mPy, mPy, 0b00000001));
-					mXY = opCode(permute2f128_pd, str, str, 0b00000001));
-					mPy = opCode(permute2f128_pd, tmp, tmp, 0b00000001));
+					mYZ = opCode(permute2f128_pd, mPy, mPy, 0b00000001);
+					mXY = opCode(permute2f128_pd, str, str, 0b00000001);
+					mPy = opCode(permute2f128_pd, tmp, tmp, 0b00000001);
 #else
 					mPy = opCode(load_pd, &m[idxPy]);
 					mXY = opCode(load_pd, &m[idxXY]);
