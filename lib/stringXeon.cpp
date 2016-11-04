@@ -54,22 +54,24 @@ void	stringHandD(const __m512d s1, const __m512d s2)
 #elif defined(__AVX__)
 inline	void	stringHandD(const __m256d s1, const __m256d s2, const __m256d conj, long long int *hand)
 {
+	__m256d	str, tmp, tp2, tp3;
+
 	long long int tmpHand[2];
 
-	str = opCode(mul_pd, mel, mPx);
-	tmp = opCode(cmp_pd, str, zero, _CMP_LT_OS);
-	str = opCode(mul_pd, mPx, conj);
+	str = opCode(mul_pd, s1, s2);
+	tmp = opCode(cmp_pd, str, opCode(setzero_pd), _CMP_LT_OS);
+	str = opCode(mul_pd, s2, conj);
 	tp2 = opCode(permute_pd, str, 0b00000101);
-	tp3 = opCode(mul_pd, tmp, tp2);
+	tp3 = opCode(mul_pd, s1,  tp2);
 	tp2 = opCode(add_pd, tp3, opCode(permute_pd, tp3, 0b00000101));
-	tp3 = opCode(cmp_pd, tp2, zero, _CMP_GT_OS);
-	tmp = opCode(and_pd, tp2, zero);
+	tp3 = opCode(cmp_pd, tp2, opCode(setzero_ps), _CMP_GT_OS);
+	tp2 = opCode(and_pd, tp3, tmp);
 #ifdef __AVX2__
-	str = opCode(permute4x64_pd, tmp, 0b10001101);
+	str = opCode(permute4x64_pd, tp2, 0b10001101);
 #else
-	tp2 = opCode(permute2f128_pd, tmp, tmp, 0b00000001);
-	tp3 = opCode(permute_pd, tp2, 0b00000101);
-	str = opCode(blend_pd, tp3, tmp, 0b00000101);
+	tmp = opCode(permute2f128_pd, tp2, tp2, 0b00000001);
+	tp3 = opCode(permute_pd, tmp, 0b00000101);
+	str = opCode(blend_pd, tp3, tp2, 0b00000101);
 #endif
 	opCode(maskstore_pd, &(static_cast<double *>(tmpHand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
 	hand[0] = ((tmpHand[0] >> 62) & 2) - 1;
@@ -80,22 +82,24 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, const __m256d conj, 
 
 inline	void	stringHandS(const __m256 s1, const __m256 s2, const __m256 conj, int *hand)
 {
+	__m256	str, tmp, tp2, tp3;
+
 	int tmpHand[4];
 
-	str = opCode(mul_ps, mel, mPx);
-	tmp = opCode(cmp_ps, str, zero, _CMP_LT_OS);
-	str = opCode(mul_ps, mPx, conj);
+	str = opCode(mul_ps, s1, s2);
+	tmp = opCode(cmp_ps, str, opCode(setzero_ps), _CMP_LT_OS);
+	str = opCode(mul_ps, s2, conj);
 	tp2 = opCode(permute_ps, str, 0b10110001);
 	tp3 = opCode(mul_ps, tmp, tp2);
 	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
-	tp3 = opCode(cmp_ps, tp2, zero, _CMP_GT_OS);
-	tmp = opCode(and_ps, tp2, zero);
+	tp3 = opCode(cmp_ps, tp2, opCode(setzero_ps), _CMP_GT_OS);
+	tp2 = opCode(and_ps, tp3, tmp);
 #ifdef __AVX2__
-	str = opCode(permutevar8x32_ps, tmp, opCode(set_epi32, 6, 4, 3, 0, 7, 5, 3, 1));
+	str = opCode(permutevar8x32_ps, tp2, opCode(set_epi32, 6, 4, 3, 0, 7, 5, 3, 1));
 #else
-	tp2 = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
-	tp3 = opCode(permute_ps, tp2, 0b10110001);
-	str = opCode(blend_ps, tp3, tmp, 0b01010101);
+	tmp = opCode(permute2f128_ps, tp2, tp2, 0b00000001);
+	tp3 = opCode(permute_ps, tmp, 0b10110001);
+	str = opCode(blend_ps, tp3, tp2, 0b01010101);
 #endif
 	opCode(maskstore_ps, &(static_cast<float *>(tmpHand)), opCode(setr_epi64x, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0, 0), str);
 
@@ -110,17 +114,19 @@ inline	void	stringHandS(const __m256 s1, const __m256 s2, const __m256 conj, int
 #else
 inline	void	stringHandD(const __m128d s1, const __m128d s2, const __m128d conj, long long int *hand)
 {
+	__m128d	str, tmp, tp2, tp3;
+
 	long long int tmpHand;
 
-	str = opCode(mul_pd, mel, mPx);
-	tmp = opCode(cmplt_pd, str, zero);
-	str = opCode(mul_pd, mPx, conj);
+	str = opCode(mul_pd, s1, s2);
+	tmp = opCode(cmplt_pd, str, opCode(setzero_pd));
+	str = opCode(mul_pd, s2, conj);
 	tp2 = opCode(shuffle_pd, str, str, 0b00000001);
 	tp3 = opCode(mul_pd, tmp, tp2);
 	tp2 = opCode(add_pd, tp3, opCode(shuffle_pd, tp3, tp3, 0b00000001));
-	tp3 = opCode(cmpgt_pd, tp2, zero);
-	str = opCode(and_pd, tp2, zero);
-	opCode(storeh_pd, static_cast<double *>(&tmpHand), str);
+	tp3 = opCode(cmpgt_pd, tp2, opCode(setzero_pd));
+	str = opCode(and_pd,   tp3, tmp);
+	opCode(storeh_pd, static_cast<double*>(static_cast<void*>(&tmpHand)), str);
 	*hand = ((tmpHand >> 62) & 2) - 1;
 
 	return;
@@ -128,18 +134,20 @@ inline	void	stringHandD(const __m128d s1, const __m128d s2, const __m128d conj, 
 
 inline	void	stringHandS(const __m128 s1, const __m128 s2, const __m128 conj, int *hand)
 {
+	__m128	str, tmp, tp2, tp3;
+
 	long long int tmpHand[2];
 
-	str = opCode(mul_ps, mel, mPx);
-	tmp = opCode(cmplt_ps, str, zero);
-	str = opCode(mul_ps, mPx, conj);
+	str = opCode(mul_ps, s1, s2);
+	tmp = opCode(cmplt_ps, str, opCode(setzero_ps));
+	str = opCode(mul_ps, s2, conj);
 	tp2 = opCode(shuffle_ps, str, str, 0b10110001);
 	tp3 = opCode(mul_ps, tmp, tp2);
-	tp2 = opCode(add_ps, tp3, opCode(shuffle_pd, tp3, tp3, 0b10110001));
-	tp3 = opCode(cmpgt_ps, tp2, zero);
-	tmp = opCode(and_ps, tp2, zero);
-	tp2 = opCode(shuffle_ps, tmp, tmp, 0b11011000));
-	opCode(storeh_pd, static_cast<double *>(tmpHand), opCode(castpd_ps, str));
+	tp2 = opCode(add_ps, tp3, opCode(shuffle_ps, tp3, tp3, 0b10110001));
+	tp3 = opCode(cmpgt_ps, tp2, opCode(setzero_ps));
+	tmp = opCode(and_ps,   tp3, tmp);
+	tp2 = opCode(shuffle_ps, tmp, tmp, 0b11011000);
+	opCode(storeh_pd, static_cast<double*>(static_cast<void*>(tmpHand)), opCode(castps_pd, str));
 	hand[0] = ((tmpHand[0] >> 30) & 2) - 1;
 	hand[1] = ((tmpHand[1] >> 30) & 2) - 1;
 
@@ -321,7 +329,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 1;								// 0b0001
 							printf ("Positive string %d %d %d, 0\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -330,7 +338,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 9;								// 0b1001
 							printf ("Negative string %d %d %d, 0\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -356,7 +364,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 2;								// 0b0010
 							printf ("Positive string %d %d %d, 1\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -365,7 +373,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 10;								// 0b1010
 							printf ("Negative string %d %d %d, 1\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -393,7 +401,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 4;								// 0b0100
 							printf ("Positive string %d %d %d, 2\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -402,7 +410,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 12;								// 0b1100
 							printf ("Negative string %d %d %d, 2\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -445,9 +453,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 		const float __attribute__((aligned(Align))) zeroAux[16]  = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
 		const float __attribute__((aligned(Align))) conjAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 
-		const _MData_ zero  = opCode(load_ps, zeroAux);
-
 		int hand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+		const _MData_ zero  = opCode(load_ps, zeroAux);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -468,10 +476,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 		int hand[2] = { 0, 0 };
 #endif
 
-		const _MData_ one  = opCode(load_ps, oneAux);
-		const _MData_ cjg  = opCode(load_ps, cjgAux);
-		const _MData_ ivZ  = opCode(load_ps, ivZAux);
-		const _MData_ ivZ2 = opCode(load_ps, ivZ2Aux);
+		const _MData_ conj = opCode(load_ps, conjAux);
 
 		#pragma omp parallel default(shared) private(hand) 
 		{
@@ -589,7 +594,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 1;								// 0b0001
 							printf ("Positive string %d %d %d, 0\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -598,7 +603,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 9;								// 0b1001
 							printf ("Negative string %d %d %d, 0\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -626,7 +631,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 2;								// 0b0010
 							printf ("Positive string %d %d %d, 1\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -635,7 +640,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 10;								// 0b1010
 							printf ("Negative string %d %d %d, 1\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -663,7 +668,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 4;								// 0b0100
 							printf ("Positive string %d %d %d, 2\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -672,7 +677,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = 12;								// 0b1100
 							printf ("Negative string %d %d %d, 2\n", X[0]+ih, X[1], idx/(XC*YC));
 							fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih)
+							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
 
@@ -708,5 +713,5 @@ void	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size
 void	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *string)
 {
 	axionField->exchangeGhosts(FIELD_M);
-	energyKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, string);
+	stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, string);
 }
