@@ -596,50 +596,50 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 #elif defined(__AVX__)
 				tVp = opCode(blend_ps, mod, opCode(permute_ps, mTp, 0b10110001), 0b10101010);
 #else
-				mdv = opCode(shuffle_ps, mod, mTp, 0b11011000);
+				mdv = opCode(shuffle_ps, mod, mTp, 0b10001000); //Era 11011000
 				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000);
 #endif
 
 #ifdef	__MIC__
 				opCode(store_ps, tmpS, tGx);
-				Gxrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
-				Gxth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+				Gxrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Gxth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tGy);
-				Gyrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
-				Gyth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+				Gyrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Gyth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tGz);
-				Gzrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
-				Gzth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+				Gzrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Gzth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tVp);
-				Vrho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
-				Vth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+				Vrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Vth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tKp);
-				Krho = tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14];
-				Kth  = tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15];
+				Krho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Kth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 #elif defined(__AVX__)
 				opCode(store_ps, tmpS, tGx);
-				Gxrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Gxth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Gxrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				Gxth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 
 				opCode(store_ps, tmpS, tGy);
-				Gyrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Gyth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Gyrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				Gyth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 
 				opCode(store_ps, tmpS, tGz);
-				Gzrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Gzth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Gzrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				Gzth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 
 				opCode(store_ps, tmpS, tVp);
-				Vrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Vth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Vrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				Vth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 
 				opCode(store_ps, tmpS, tKp);
-				Krho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-				Kth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				Krho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				Kth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 #else
 /*
 				opCode(store_ps, tmpS, tGp);
