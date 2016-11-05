@@ -359,8 +359,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	#define	_MData_ __m128
 	#define	step 2
 #endif
-
-		float	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
+		// TEST
+		//float	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
+		double	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
 
 #ifdef	USE_XEON
 		const float * __restrict__ m	= (const float * __restrict__) m_;
@@ -646,29 +647,29 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Gth  += tmpS[1] + tmpS[3];
 */
 				opCode(store_ps, tmpS, tGx);
-				Gxrho += tmpS[0] + tmpS[2];
-				Gxth  += tmpS[1] + tmpS[3];
+				Gxrho += (double) (tmpS[0] + tmpS[2]);
+				Gxth  += (double) (tmpS[1] + tmpS[3]);
 
 				opCode(store_ps, tmpS, tGy);
-				Gyrho += tmpS[0] + tmpS[2];
-				Gyth  += tmpS[1] + tmpS[3];
+				Gyrho += (double) (tmpS[0] + tmpS[2]);
+				Gyth  += (double) (tmpS[1] + tmpS[3]);
 
 				opCode(store_ps, tmpS, tGz);
-				Gzrho += tmpS[0] + tmpS[2];
-				Gzth  += tmpS[1] + tmpS[3];
+				Gzrho += (double) (tmpS[0] + tmpS[2]);
+				Gzth  += (double) (tmpS[1] + tmpS[3]);
 
 				opCode(store_ps, tmpS, tVp);
-				Vrho += tmpS[0] + tmpS[2];
-				Vth  += tmpS[1] + tmpS[3];
+				Vrho += (double) (tmpS[0] + tmpS[2]);
+				Vth  += (double) (tmpS[1] + tmpS[3]);
 
 				opCode(store_ps, tmpS, tKp);
-				Krho += tmpS[0] + tmpS[2];
-				Kth  += tmpS[1] + tmpS[3];
+				Krho += (double) (tmpS[0] + tmpS[2]);
+				Kth  += (double) (tmpS[1] + tmpS[3]);
 
 #endif
 			}
 		}
-
+/*
 		const float iV = 1./((float) Vt);
 		const float o2 = ((float) ood2)*0.375f;
 
@@ -682,6 +683,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		(static_cast<float *> (eRes))[7] = Vth  *zQ*iV;
 		(static_cast<float *> (eRes))[8] = Krho *.5*iV;
 		(static_cast<float *> (eRes))[9] = Kth  *.5*iV;
+*/
+		const double iV = 1./((double) Vt);
+		const double o2 = ood2*0.375;
+
+		(static_cast<double *> (eRes))[0] = Gxrho*o2*iV;
+		(static_cast<double *> (eRes))[1] = Gxth *o2*iV;
+		(static_cast<double *> (eRes))[2] = Gyrho*o2*iV;
+		(static_cast<double *> (eRes))[3] = Gyth *o2*iV;
+		(static_cast<double *> (eRes))[4] = Gzrho*o2*iV;
+		(static_cast<double *> (eRes))[5] = Gzth *o2*iV;
+		(static_cast<double *> (eRes))[6] = Vrho *lZ*iV;
+		(static_cast<double *> (eRes))[7] = Vth  *zQ*iV;
+		(static_cast<double *> (eRes))[8] = Krho *.5*iV;
+		(static_cast<double *> (eRes))[9] = Kth  *.5*iV;
 #undef	_MData_
 #undef	step
 	}
