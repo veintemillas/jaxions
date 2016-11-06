@@ -17,6 +17,7 @@
 #include "flopCounter.h"
 #include "map.h"
 #include "memAlloc.h"
+#include "strings.h"
 
 using namespace std;
 
@@ -87,8 +88,10 @@ int	main (int argc, char *argv[])
 
 	FILE *file_energy ;
 	file_energy = NULL;
-	FILE *file_energy2 ;
-	file_energy2 = NULL;
+
+
+	//energy 2//	FILE *file_energy2 ;
+	//energy 2//	file_energy2 = NULL;
 
 	if (commRank() == 0)
 	{
@@ -97,8 +100,11 @@ int	main (int argc, char *argv[])
 
 		file_energy = fopen("out/energy.txt","w+");
 		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
-		file_energy2 = fopen("out/energy2.txt","w+");
+
+		//energy 2//	file_energy2 = fopen("out/energy2.txt","w+");
 	}
+
+	double Vr, Vt, Kr, Kt, Grz, Gtz;
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -200,8 +206,9 @@ int	main (int argc, char *argv[])
 		axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);
 		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-		double Vr, Vt, Kr, Kt, Grz, Gtz;
-		axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+
+		//energy 2//	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+
 
 		if (commRank() == 0)
 		{
@@ -209,7 +216,8 @@ int	main (int argc, char *argv[])
 			{
 				double *eR = static_cast<double *> (eRes);
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-				fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+
+				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 				printMpi("??/?? - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 				//printMpi("ENERGY & PRINTED - - - Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 			}
@@ -219,7 +227,8 @@ int	main (int argc, char *argv[])
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
 				//float *eR = static_cast<float *> (eRes);
 				//fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-				fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+
+				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 				//printMpi("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 				printMpi("??/?? - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 			}
@@ -329,13 +338,23 @@ int	main (int argc, char *argv[])
 
 		if (cDev != DEV_GPU)
 		{
-			double Grz, Gtz, Vr, Vt, Kr, Kt;
+			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
+			//if (axion->Precision() == FIELD_DOUBLE)
+			if ((*axion->zV()) > 0.4 )
+			{
+				printMpi("Strings (if %f>0.4) ... ", (*axion->zV()));
+				fflush (stdout);
+				analyzeStrFolded(axion, index);
+			}
+
+
 			axion->unfoldField2D(sizeZ-1);
 			writeMap (axion, index);
 //			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+
+			//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 
 			if (commRank() == 0)
 			{
@@ -343,8 +362,7 @@ int	main (int argc, char *argv[])
 				{
 					double *eR = static_cast<double *> (eRes);
 					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-					fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					//fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+					//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 					printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 				}
 				else
@@ -353,8 +371,7 @@ int	main (int argc, char *argv[])
 					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
 		//			float *eR = static_cast<float *> (eRes);
 		//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-					fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					//fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+					//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 					printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 				}
 			}
@@ -409,7 +426,7 @@ int	main (int argc, char *argv[])
 	{
 		fclose (file_sample);
 		fclose (file_energy);
-		fclose (file_energy2);
+		//energy 2//	fclose (file_energy2);
 	}
 
 	return 0;
