@@ -32,7 +32,9 @@
 
 		size_t	fSize;
 		size_t	mAlign;
-
+		//JAVI
+		int sHift;
+		
 		double	*z;
 
 		void	*m,   *v,   *m2;			// Cpu data
@@ -104,6 +106,8 @@
 		FieldPrecision	Precision() { return precision; }
 
 		size_t		dataSize() { return fSize; }
+		//JAVI
+		int		shift() { return sHift; }
 
 		double		*zV() { return z; }
 		const double	*zV() const { return z; }

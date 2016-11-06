@@ -55,6 +55,8 @@ class	Scalar
 
 	size_t	fSize;
 	size_t	mAlign;
+	//JAVI
+	int sHift;
 
 	double	*z;
 
@@ -80,8 +82,10 @@ class	Scalar
 	template<typename Float>
 	void	normaCOREField(const Float alpha);
 	template<typename Float>
-//	void	ENERGY(const Float zz, FILE *enWrite);
 	void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
+
+	template<typename Float>
+	void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
 
 	template<typename Float>
 	void	momConf(const int kMax, const Float kCrit);
@@ -129,6 +133,8 @@ class	Scalar
 	FieldPrecision	Precision() { return precision; }
 
 	size_t		dataSize() { return fSize; }
+	//JAVI
+	int		shift() { return sHift; }
 
 	double		*zV() { return z; }
 	const double	*zV() const { return z; }
@@ -207,6 +213,8 @@ class	Scalar
 			mAlign = 16;
 			break;
 	}
+	//JAVI
+	sHift = mAlign/fSize;
 
 	if (n2*fSize % mAlign)
 	{
@@ -1239,7 +1247,7 @@ void	Scalar::randConf ()
 			for (size_t idx=n2; idx<n2+n3; idx++)
 				static_cast<complex<float>*> (m)[idx]   = complex<float>(uni(mt64), uni(mt64));
 
-			printf ("Thread %d finished loop ", nThread);
+			//printf ("Thread %d finished loop ", nThread);
 			fflush (stdout);
 		}
 		printf(" Done! ");
@@ -1326,7 +1334,7 @@ void	Scalar::iteraField(const size_t iter, const Float alpha)
 		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
 		//printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
 	}//END iteration loop
-		printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
+		//printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
 }//END Scalar::iteraField
 
 void	Scalar::smoothConf (const size_t iter, const double alpha)
@@ -1374,8 +1382,8 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = 0;//seed();
 
-	printf("kMax,Tz,Lz,nSplit,commRank():%d,%lu,%lu,%lu\n", kMax, Tz, Lz, nSplit,commRank());
-
+	//printf("kMax,Tz,Lz,nSplit,commRank():%d,%lu,%lu,%lu,%d\n", kMax, Tz, Lz, nSplit,commRank());
+	printf("kMax,Tz,Lz,nSplit,commRank():%d,%d,%d,%d,%d\n", kMax, Tz, Lz, nSplit,commRank());
 
 	#pragma omp parallel default(shared)
 	{
@@ -1395,7 +1403,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 
 			int pz = oz - (oz/(Tz >> 1))*Tz;
 
-			//printf("Thread %d got pz=%d -- py-range (%d,%d)\n", nThread,pz,pz,-kMax,kMax);
+			//printf("Thread %d got pz=%d -- py-range (%d,%d)\n", nThread,pz,-kMax,kMax);
 
 
 			for(int py = -kMax; py <= kMax; py++)
@@ -1414,7 +1422,7 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 						Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
-						//printf("oz=%d,Tz=%lu,pz=%d,idx=%lu, fM[idx]=(%f,%f)\n",oz,Tz,pz,idx,real(fM[idx]),imag(fM[idx]));
+						//printf("oz=%d,Tz=%lu,(px,py,pz)=(%d,%d,%d),idx=%lu, fM[idx]=(%f,%f)\n",oz,Tz,px,py,pz,idx,real(fM[idx]),imag(fM[idx]));
 
 					}
 				} //END  px loop
@@ -1664,8 +1672,8 @@ void	Scalar::normaCOREField(const Float alpha)
 			gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
 			grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
 			gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
-
-			sss  = sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
+			//JAVIER added an artificial factor of 1.0, can be changed
+			sss  = 1.0*sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
 			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
 			sss2 = sss*sss;
 			sss4 = sss2*sss2;
@@ -1705,15 +1713,18 @@ void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, d
 
 		case	FIELD_SINGLE:
 		{
-			float Gr, Gt, Vr, Vt, Kr, Kt;  // TEST
-//			ENERGY (static_cast<float>(zzz), enwrite);
-			ENERGY (static_cast<float>(zzz), enwrite, Gr, Gt, Vr, Vt, Kr, Kt); // TEST
-			Gfr = static_cast<double>(Gr); // TEST
-			Gft = static_cast<double>(Gt); // TEST;
-			Vfr = static_cast<double>(Vr); // TEST;
-			Vft = static_cast<double>(Vt); // TEST;
-			Kfr = static_cast<double>(Kr); // TEST;
-			Kft = static_cast<double>(Kt); // TEST;
+			//float Gr, Gt, Vr, Vt, Kr, Kt;  // TEST
+			//
+			// ENERGY (static_cast<float>(zzz), enwrite, Gr, Gt, Vr, Vt, Kr, Kt); // TEST
+			// Gfr = static_cast<double>(Gr); // TEST
+			// Gft = static_cast<double>(Gt); // TEST;
+			// Vfr = static_cast<double>(Vr); // TEST;
+			// Vft = static_cast<double>(Vt); // TEST;
+			// Kfr = static_cast<double>(Kr); // TEST;
+			// Kft = static_cast<double>(Kt); // TEST;
+			//Alternative
+			ENERGY2 (static_cast<float>(zzz), enwrite, Gfr, Gft, Vfr, Vft, Kfr, Kft); // TEST
+
 		}
 		break;
 
@@ -1748,7 +1759,92 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1,
 	//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
 	Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
 
-	const Float invz	= 1/zz;
+	const Float invz	= 1.0/zz;
+	const Float LLzz2 = LL*zz*zz/4.0 ;
+	const Float z9QCD = 9.0*pow(zz,nQcd+2) ;
+
+
+
+		#pragma omp parallel for default(shared) schedule(static) reduction(+:Vrho1,Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1)
+		for (size_t iz=0; iz < Lz; iz++)
+		{
+			Float modul, modfac	;
+			size_t idd	;
+
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+
+//unfolded coordinates	//size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+//folded coordinates		//size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+					size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+
+					modul = abs(mCp[dIdx+n2]);
+					modfac = modul*modul*invz*invz;
+					//Vrho misses LLzz2 factor
+					Vrho1 	+= pow(modfac-1.0,2)	;
+					//Vtheta misses z9QCD factor
+					Vtheta1 += 1-real(mCp[dIdx+n2])*invz	;
+					//Krho1 misses 0.5 factor
+					Krho1 += modfac*pow(real(vCp[dIdx]/mCp[dIdx+n2])-invz,2);
+					//Krho1 misses 0.5 factor
+					Ktheta1 += modfac*pow(imag(vCp[dIdx]/mCp[dIdx+n2]),2);
+
+					//Grho1 misses a factor 3*0.5/4 delta^2
+					//only computed in the z direction ... easy!
+					Grho1 += modfac*pow(real((mCp[dIdx+2*n2]-mCp[dIdx])/mCp[dIdx+n2]),2);
+					Gtheta1 += modfac*pow(imag((mCp[dIdx+2*n2]-mCp[dIdx])/mCp[dIdx+n2]),2);
+
+					}
+		}
+	//RENORMALISE
+	//Vrho misses LLzz2 factor
+	Vrho1 	*= LLzz2/n3	;
+	//Vtheta misses z9QCD factor
+	Vtheta1 *= z9QCD/n3	;
+	//Krho1 misses 0.5 factor
+	Krho1 *= 0.5/n3;
+	//Krho1 misses 0.5 factor
+	Ktheta1 *= 0.5/n3;
+
+	//Grho1 misses a factor 3*0.5/delta^2
+	Grho1 *= 3.0*0.125/(deltaa2*n3);
+	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
+
+/*
+	fprintf(enWrite,  "%f %f %f %f %f %f %f \n", zz, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
+	printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
+	fflush (stdout);
+*/
+}
+
+//JAVIER ENERGY
+template<typename Float>
+//void	Scalar::ENERGY(const Float zz, FILE *enWrite)
+void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1) // TEST
+{
+	int	shift;
+	shift = mAlign/fSize;
+
+	const Float deltaa2 = pow(sizeL/sizeN,2) ;
+
+	exchangeGhosts(FIELD_M);
+
+	complex<Float> *mCp = static_cast<complex<Float>*> (m);
+	complex<Float> *vCp = static_cast<complex<Float>*> (v);
+
+	//printf("ENERGY CALCULATOR\n");
+	fflush (stdout);
+	//LEAVES BOUNDARIES OUT OF THE LOOP FOR SIMPLICITY
+
+	//SUM variables
+	//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
+	Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
+
+	const Float invz	= 1.0/zz;
 	const Float LLzz2 = LL*zz*zz/4.0 ;
 	const Float z9QCD = 9.0*pow(zz,nQcd+2) ;
 
