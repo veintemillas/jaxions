@@ -9,6 +9,7 @@
 #include "scalarField.h"
 #include "propagator.h"
 #include "energy.h"
+#include "strings.h"
 #include "enum-field.h"
 #include "index.h"
 #include "parse.h"
@@ -27,7 +28,8 @@ using namespace std;
 
 #define printMpi(...) do {		\
 	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  }	\
+	  printf(__VA_ARGS__);  	\
+	  fflush(stdout); }		\
 }	while (0)
 
 
@@ -172,9 +174,17 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	void *eRes;			// Para guardar la energia
+	void *eRes, *str;			// Para guardar la energia
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
+#ifdef	__MIC__
+	alignAlloc(&str, 64, (axion->Size()/2));
+#elif defined(__AVX__)
+	alignAlloc(&str, 32, (axion->Size()/2));
+#else
+	alignAlloc(&str, 16, (axion->Size()/2));
+#endif
+	memset(str, 0, axion->Size()/2);
 
 	commSync();
 
@@ -186,7 +196,7 @@ int	main (int argc, char *argv[])
 	//JAVIER commented next
 	//printf ("Process %d reached syncing point\n", commRank());
 	//fflush (stdout);
-	commSync();
+//	commSync();
 
 	if (cDev != DEV_GPU)
 	{
@@ -202,6 +212,11 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
+		printMpi("Strings...");
+		analyzeStrFolded(axion, index);
+		printMpi("Vector Strings...");
+		strings(axion, cDev, str, fCount);
+		printMpi(" Done!");
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);
@@ -413,6 +428,7 @@ int	main (int argc, char *argv[])
 	printMpi("--------------------------------------------------\n");
 
 	trackFree(&eRes, ALLOC_TRACK);
+	trackFree(&str,  ALLOC_ALIGN);
 
 	delete fCount;
 	delete axion;

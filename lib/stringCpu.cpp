@@ -21,6 +21,8 @@ int	stringHand	(complex<Float> s1, complex<Float> s2, complex<Float> s3, complex
 			hand--;
 	}
 
+//	printf ("%d ", hand);
+
 	if ((s2.imag() > 0.) != (s3.imag() > 0.))
 	{
 		if ((s2*conj(s3)).imag() > 0.)
@@ -28,6 +30,8 @@ int	stringHand	(complex<Float> s1, complex<Float> s2, complex<Float> s3, complex
 		else
 			hand--;
 	}
+
+//	printf ("%d ", hand);
 
 	if ((s3.imag() > 0.) != (s4.imag() > 0.))
 	{
@@ -37,6 +41,8 @@ int	stringHand	(complex<Float> s1, complex<Float> s2, complex<Float> s3, complex
 			hand--;
 	}
 
+//	printf ("%d ", hand);
+
 	if ((s4.imag() > 0.) != (s1.imag() > 0.))
 	{
 		if ((s4*conj(s1)).imag() > 0.)
@@ -45,6 +51,8 @@ int	stringHand	(complex<Float> s1, complex<Float> s2, complex<Float> s3, complex
 			hand--;
 	}
 	//printf("sh-called! hand=%d\n",hand);
+//	printf ("%d\n", hand);
+
 	return hand;
 }
 
@@ -216,7 +224,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 		{
 			complex<double> *mM = static_cast<complex<double>*> (axion->mCpu());
 
-			#pragma omp parallel for default(shared) schedule(static)
+			#pragma omp parallel for default(shared) private(hand) schedule(static)
 			for (size_t iz=0; iz<Lz; iz++)
 			{
 
@@ -263,8 +271,11 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 								// printf("s3= [%f,%f] (%lu) ",real(s3),imag(s3),fIdx010);
 								// printf("s4= [%f,%f] (%lu) \n",real(s4),imag(s4),fIdx010 + shift);
 								#pragma omp critical
-								fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
-								//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+								{
+									//fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
+									fprintf(file_strings,  "%d %d %d 0 %+d\n", ix , iy, iz, hand);
+									//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+								}
 							}
 							//PLAQUETTE YZ      -------------------------------------------
 							//s1 = ...fIdx000 ; //already got
@@ -279,8 +290,11 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 							if ((hand == 2) || (hand == -2))
 							{
 								#pragma omp critical
-								fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
-								//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+								{
+									//fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
+									fprintf(file_strings,  "%d %d %d 1 %+d\n", ix , iy, iz, hand);
+									//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+								}
 							}
 							// PLAQUETTE XZ      -------------------------------------------
 							//s1 = ...fIdx000 ; //already got
@@ -295,8 +309,11 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 							if ((hand == 2) || (hand == -2))
 							{
 								#pragma omp critical
-								fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
-								//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+								{
+									//fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
+									fprintf(file_strings,  "%d %d %d 2 %+d\n", ix , iy, iz, hand);
+									//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+								}
 							}
 
 						}	//end ix
@@ -359,8 +376,11 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 							// printf("s3= [%f,%f] (%lu) ",real(s3),imag(s3),fIdx010);
 							// printf("s4= [%f,%f] (%lu) \n",real(s4),imag(s4),fIdx010 + shift);
 							#pragma omp critical
-							fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
-							//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+							{
+								//fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
+								fprintf(file_strings,  "%d %d %d 0 %+d\n", ix , iy, iz, hand);
+								//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+							}
 						}
 						//PLAQUETTE YZ      -------------------------------------------
 						//s1 = ...fIdx000 ; //already got
@@ -370,13 +390,16 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 						s2 = mM[fIdx000 + n2] ;
 						s3 = mM[fIdx010 + n2] ;
 
-						hand = stringHand(s1, s2, s3, s4);
+						hand = stringHand(s1, s4, s3, s2);
 
 						if ((hand == 2) || (hand == -2))
 						{
 							#pragma omp critical
-							fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
-							//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+							{
+								//fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
+								fprintf(file_strings,  "%d %d %d 1 %+d\n", ix, iy, iz, hand);
+								//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+							}
 						}
 						// PLAQUETTE XZ      -------------------------------------------
 						//s1 = ...fIdx000 ; //already got
@@ -391,8 +414,11 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 						if ((hand == 2) || (hand == -2))
 						{
 							#pragma omp critical
-							fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
-							//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+							{
+								//fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
+								fprintf(file_strings,  "%d %d %d 2 %+d\n", ix, iy, iz, hand);
+								//window[n1] = 0;window[n2] = 0;window[n3] = 0;window[n4] = 0;
+							}
 						}
 
 					}	//end ix

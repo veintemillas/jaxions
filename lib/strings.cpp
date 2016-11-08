@@ -17,7 +17,7 @@
 
 #include <mpi.h>
 
-class	String
+class	Strings
 {
 	private:
 
@@ -30,19 +30,19 @@ class	String
 
 	public:
 
-		 String(Scalar *field, void *str);
-		~String() {};
+		 Strings(Scalar *field, void *str);
+		~Strings() {};
 
 	void	runCpu	();
 	void	runGpu	();
 	void	runXeon	();
 };
 
-	String::String(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), string(str)
+	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), string(str)
 {
 }
 
-void	String::runGpu	()
+void	Strings::runGpu	()
 {
 #ifdef	USE_GPU
 /*
@@ -63,12 +63,12 @@ void	String::runGpu	()
 #endif
 }
 
-void	String::runCpu	()
+void	Strings::runCpu	()
 {
 	stringCpu(axionField, Lx, V, S, precision, string);
 }
 
-void	String::runXeon	()
+void	Strings::runXeon	()
 {
 #ifdef	USE_XEON
 	energyXeon(axionField, Lx, V, S, precision, string);
@@ -78,9 +78,9 @@ void	String::runXeon	()
 #endif
 }
 
-void	string	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount)
+void	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount)
 {
-	String *eStr = new String(field, string);
+	Strings *eStr = new Strings(field, string);
 
 	switch (dev)
 	{
