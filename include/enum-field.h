@@ -31,6 +31,15 @@
 //		FIELD_HALF,
 	}	FieldPrecision;
 
+	typedef	enum	StringType_s
+	{
+		STRING_POSITIVE = 0,
+		STRING_NEGATIVE = 8,
+		STRING_XY = 1,
+		STRING_YZ = 2,
+		STRING_ZX = 4,
+	}	StringType;
+
 	typedef enum	ConfType_s
 	{
 		CONF_KMAX,

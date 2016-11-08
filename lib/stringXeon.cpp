@@ -31,8 +31,9 @@
 	#endif
 #endif
 
-// HACER INLINE
-// ACABAR
+// ACABAR XEON PHI
+
+// FUSIONA OPERACIONES
 
 #ifdef USE_XEON
 __attribute__((target(mic)))
@@ -57,11 +58,11 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, int *hand)
 	__m256d tp2, tp3;
 	__m256i	str, tmp;
 
-	int __attribute__((aligned(Align))) tmpHand[4];
+	int __attribute__((aligned(Align))) tmpHand[8];
 
 	tp2 = opCode(mul_pd, s1, s2);
 	tmp = opCode(castpd_si256, opCode(cmp_pd, tp2, opCode(setzero_pd), _CMP_LT_OS));
-	tp3 = opCode(mul_pd, s2, opCode(set_pd, 1.,-1., 1.,-1.));
+	tp3 = opCode(mul_pd, s2, opCode(set_pd,-1., 1.,-1., 1.));
 	tp2 = opCode(permute_pd, tp3, 0b00000101);
 	tp3 = opCode(mul_pd, s1,  tp2);
 	tp2 = opCode(add_pd, tp3, opCode(permute_pd, tp3, 0b00000101));
@@ -70,13 +71,18 @@ inline	void	stringHandD(const __m256d s1, const __m256d s2, int *hand)
 	str = opCode(sub_epi64, opCode(castpd_si256, opCode(and_pd, tp3, opCode(castsi256_pd, opCode(set_epi64x,2,0,2,0)))), opCode(set_epi64x,1,0,1,0));
 	str = opCode(and_si256, str, tmp);
 #else
-	str = opCode(sub_epi64, opCode(castpd_si256, opCode(and_pd, tp3, opCode(castsi256_pd, opCode(set_epi64x,2,0,2,0)))), opCode(set_epi64x,1,0,1,0));
+	str = opCode(castpd_si256, opCode(or_pd, opCode(and_pd, tp3, opCode(castsi256_pd, opCode(set_epi64x,2,0,2,0))), opCode(castsi256_pd, opCode(set_epi64x,1,0,1,0))));
 	str = opCode(castpd_si256, opCode(and_pd, opCode(castsi256_pd, str), opCode(castsi256_pd, tmp)));
 #endif
 	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), str);
 
+#ifdef __AVX2__
 	hand[0] += tmpHand[2];
 	hand[1] += tmpHand[6];
+#else
+	hand[0] += (tmpHand[2] & 2) - (tmpHand[2] & 1);
+	hand[1] += (tmpHand[6] & 2) - (tmpHand[6] & 1);
+#endif
 
 	return;
 }
@@ -90,8 +96,8 @@ inline	void	stringHandS(const __m256 s1, const __m256 s2, int *hand)
 
 	tp2 = opCode(mul_ps, s1, s2);
 	tmp = opCode(castps_si256, opCode(cmp_ps, tp2, opCode(setzero_ps), _CMP_LT_OS));
-	tp3 = opCode(mul_ps, s2, opCode(set_ps, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f));
-	tp2 = opCode(permute_ps, tp2, 0b10110001);
+	tp3 = opCode(mul_ps, s2, opCode(set_ps,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f));
+	tp2 = opCode(permute_ps, tp3, 0b10110001);
 	tp3 = opCode(mul_ps, s1, tp2);
 	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
 	tp3 = opCode(cmp_ps, tp2, opCode(setzero_ps), _CMP_GT_OS);
@@ -99,15 +105,22 @@ inline	void	stringHandS(const __m256 s1, const __m256 s2, int *hand)
 	str = opCode(sub_epi64, opCode(castps_si256, opCode(and_ps, tp3, opCode(castsi256_ps, opCode(set_epi32,2,0,2,0,2,0,2,0)))), opCode(set_epi32,1,0,1,0,1,0,1,0));
 	str = opCode(and_si256, str, tmp);
 #else
-	str = opCode(sub_epi64, opCode(castps_si256, opCode(and_ps, tp3, opCode(castsi256_ps, opCode(set_epi32,2,0,2,0,2,0,2,0)))), opCode(set_epi32,1,0,1,0,1,0,1,0));
+	str = opCode(castps_si256, opCode(or_ps, opCode(and_ps, tp3, opCode(castsi256_ps, opCode(set_epi32,2,0,2,0,2,0,2,0))), opCode(castsi256_ps, opCode(set_epi32,1,0,1,0,1,0,1,0))));
 	str = opCode(castps_si256, opCode(and_ps, opCode(castsi256_ps, str), opCode(castsi256_ps, tmp)));
 #endif
 	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), str);
 
+#ifdef __AVX2__
 	hand[0] += tmpHand[1];
 	hand[1] += tmpHand[3];
 	hand[2] += tmpHand[5];
 	hand[3] += tmpHand[7];
+#else
+	hand[0] += (tmpHand[1] & 2) - (tmpHand[1] & 1);
+	hand[1] += (tmpHand[3] & 2) - (tmpHand[3] & 1);
+	hand[2] += (tmpHand[5] & 2) - (tmpHand[5] & 1);
+	hand[3] += (tmpHand[7] & 2) - (tmpHand[7] & 1);
+#endif
 
 	return;
 }
@@ -121,7 +134,7 @@ inline	void	stringHandD(const __m128d s1, const __m128d s2, int *hand)
 
 	tp2 = opCode(mul_pd, s1, s2);
 	tmp = opCode(castpd_si128, opCode(cmplt_pd, tp2, opCode(setzero_pd)));
-	tp3 = opCode(mul_pd, s2, opCode(set_pd, 1., -1.));
+	tp3 = opCode(mul_pd, s2, opCode(set_pd,-1., 1.));
 	tp2 = opCode(shuffle_pd, tp3, tp3, 0b00000001);
 	tp3 = opCode(mul_pd, s1, tp2);
 	tp2 = opCode(add_pd, tp3, opCode(shuffle_pd, tp3, tp3, 0b00000001));
@@ -143,15 +156,13 @@ inline	void	stringHandS(const __m128 s1, const __m128 s2, int *hand)
 
 	tp2 = opCode(mul_ps, s1, s2);
 	tmp = opCode(castps_si128, opCode(cmplt_ps, tp2, opCode(setzero_ps)));
-	tp3 = opCode(mul_ps, s2, opCode(set_ps, 1.f,-1.f, 1.f,-1.f));
+	tp3 = opCode(mul_ps, s2, opCode(set_ps,-1.f, 1.f,-1.f, 1.f));
 	tp2 = opCode(shuffle_ps, tp3, tp3, 0b10110001);
 	tp3 = opCode(mul_ps, s1, tp2);
 	tp2 = opCode(add_ps, tp3, opCode(shuffle_ps, tp3, tp3, 0b10110001));
 	tp3 = opCode(cmpgt_ps, tp2, opCode(setzero_ps));
 	str = opCode(sub_epi64, opCode(castps_si128, opCode(and_ps, tp3, opCode(castsi128_ps, opCode(set_epi32,2,0,2,0)))), opCode(set_epi32,1,0,1,0));
 	str = opCode(and_si128, str, tmp);
-//	tmp = opCode(and_si128, str, tmp);
-//	str = opCode(shuffle_epi32, tmp, 0b10001101);
 	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), str);
 	hand[0] += tmpHand[1];
 	hand[1] += tmpHand[3];
@@ -288,34 +299,19 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					mPx = opCode(load_pd, &m[idxPx]);
 					mPz = opCode(load_pd, &m[idxPz]);
 					mZX = opCode(load_pd, &m[idxZX]);
-#ifdef	__MIC__
-					mPy = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB));
-					mXY = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxXY])), _MM_PERM_ADCB));
-					mYZ = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxYZ])), _MM_PERM_ADCB));
-#elif	defined(__AVX__)
-					tmp = opCode(load_pd, &m[idxPy]);
-					str = opCode(load_pd, &m[idxXY]);
-					mPy = opCode(load_pd, &m[idxYZ]);
-					mYZ = opCode(permute2f128_pd, mPy, mPy, 0b00000001);
-					mXY = opCode(permute2f128_pd, str, str, 0b00000001);
-					mPy = opCode(permute2f128_pd, tmp, tmp, 0b00000001);
-#else
 					mPy = opCode(load_pd, &m[idxPy]);
 					mXY = opCode(load_pd, &m[idxXY]);
 					mYZ = opCode(load_pd, &m[idxYZ]);
-#endif
 				}
 
 				// Tienes los 7 puntos que definen las 3 plaquetas
 
 				// Plaqueta XY
 
-				printf ("Point (%d, %d, %d) 0\n", X[0], X[1], idx/(XC*YC)-1);
 				stringHandD (mel, mPx, hand);
 				stringHandD (mPx, mXY, hand);
 				stringHandD (mXY, mPy, hand);
 				stringHandD (mPy, mel, hand);
-				printf ("\n");
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -324,18 +320,18 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					{
 						case 2:
 						{
-							int strDf = 1;								// 0b0001
-							printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_POSITIVE | STRING_XY);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
-							int strDf = 9;						   	// 0b1001
-							printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_NEGATIVE | STRING_XY);
+							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
 						}
 						break;
@@ -353,7 +349,6 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 				stringHandD (mPy, mYZ, hand);
 				stringHandD (mYZ, mPz, hand);
 				stringHandD (mPz, mel, hand);
-				printf ("\n");
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -362,19 +357,19 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					{
 						case 2:
 						{
-							int strDf = 2;									// 0b0010
-							printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_POSITIVE | STRING_YZ);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
-							int strDf = 10;						   		// 0b1010
-							printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_NEGATIVE | STRING_YZ);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -391,7 +386,6 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 				stringHandD (mPz, mZX, hand);
 				stringHandD (mZX, mPx, hand);
 				stringHandD (mPx, mel, hand);
-				printf ("\n");
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -400,19 +394,19 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					{
 						case 2:
 						{
-							int strDf = 4;						   		// 0b0100
-							printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_POSITIVE | STRING_ZX);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
-							int strDf = 12;						   		// 0b1100
-							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_NEGATIVE | STRING_YZ);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -571,12 +565,10 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 
 				// Plaqueta XY
 
-				printf ("Point (%d, %d, %d) 0\n", X[0]/step, X[1]*step, idx/(XC*YC)-1);
 				stringHandS (mel, mPx, hand);
 				stringHandS (mPx, mXY, hand);
 				stringHandS (mXY, mPy, hand);
 				stringHandS (mPy, mel, hand);
-				printf ("\n");
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -585,19 +577,19 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					{
 						case 2:
 						{
-							int strDf = 1;								// 0b0001
-							printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_POSITIVE | STRING_XY);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
-							int strDf = 9;						   	// 0b1001
-							printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_NEGATIVE | STRING_XY);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -614,7 +606,6 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 				stringHandS (mPy, mYZ, hand);
 				stringHandS (mYZ, mPz, hand);
 				stringHandS (mPz, mel, hand);
-				printf ("\n");
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -623,19 +614,19 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					{
 						case 2:
 						{
-							int strDf = 2;						   	// 0b0010
-							printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_POSITIVE | STRING_YZ);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
-							int strDf = 10;						   	// 0b1010
-							printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_NEGATIVE | STRING_YZ);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -652,7 +643,6 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 				stringHandS (mPz, mZX, hand);
 				stringHandS (mZX, mPx, hand);
 				stringHandS (mPx, mel, hand);
-				printf ("\n");
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -661,19 +651,19 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 					{
 						case 2:
 						{
-							int strDf = 4;						   	// 0b0100
-							printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_POSITIVE | STRING_ZX);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
-							int strDf = 12;						   	// 0b1100
-							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							int strDf = (STRING_NEGATIVE | STRING_ZX);
 							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -699,7 +689,7 @@ void	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size
 	int bulk  = 32;
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
+	#pragma offload target(mic:micIdx) nocopy(mX : ReUseX) signal(&bulk)
 	{
 		stringKernelXeon(mX, Lx, S, V+S, precision, string);
 	}
