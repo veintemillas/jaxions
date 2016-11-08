@@ -188,10 +188,15 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	printMpi ("Dumping configuration %05d ...", index);
-	writeConf(axion, index);
-	printMpi ("Done!\n");
-	fflush (stdout);
+	if (fIndex == -1)
+	{
+		printMpi ("Dumping configuration %05d ...", index);
+		writeConf(axion, index);
+		printMpi ("Done!\n");
+		fflush (stdout);
+	}
+	else
+		index = fIndex + 1;
 
 	//JAVIER commented next
 	//printf ("Process %d reached syncing point\n", commRank());
