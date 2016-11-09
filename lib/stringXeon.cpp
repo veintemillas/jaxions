@@ -174,7 +174,7 @@ inline	void	stringHandS(const __m128 s1, const __m128 s2, int *hand)
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ string)
+void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ strg)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -225,7 +225,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0;
+				size_t X[2], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
 
 				{
 					size_t tmi = idx/XC, tpi;
@@ -237,6 +237,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
+				idxMz = ((idx - Sf) >> 1);
 
 				if (X[1] == YC-1)
 				{
@@ -321,7 +322,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_XY);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -332,7 +333,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 							int strDf = (STRING_NEGATIVE | STRING_XY);
 							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 						}
 						break;
 
@@ -358,7 +359,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_YZ);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -367,7 +368,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -395,7 +396,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_ZX);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -404,7 +405,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -472,7 +473,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0;
+				size_t X[2], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
 
 				{
 					size_t tmi = idx/XC, tpi;
@@ -484,6 +485,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
+				idxMz = ((idx - Sf) >> 1);
 
 				if (X[1] == YC-1)
 				{
@@ -578,7 +580,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_XY);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<int *>(strg)[idx>>3] |= (strDf << (4*ih));
 							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -587,7 +589,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_XY);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<int *>(strg)[idx>>3] |= (strDf << (4*ih));
 							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -615,7 +617,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_YZ);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -624,7 +626,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -652,7 +654,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_ZX);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -661,7 +663,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_ZX);
-							static_cast<int *>(string)[idx>>3] |= (strDf << (4*ih));
+//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -681,7 +683,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 	}
 }
 
-void	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *string)
+void	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc(); 
@@ -691,13 +693,13 @@ void	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) nocopy(mX : ReUseX) signal(&bulk)
 	{
-		stringKernelXeon(mX, Lx, S, V+S, precision, string);
+		stringKernelXeon(mX, Lx, S, V+S, precision, strg);
 	}
 #endif
 }
 
-void	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *string)
+void	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
 	axionField->exchangeGhosts(FIELD_M);
-	stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, string);
+	stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, strg);
 }
