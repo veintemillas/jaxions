@@ -8,6 +8,7 @@
 #include "code3DCpu.h"
 #include "scalarField.h"
 #include "propagator.h"
+#include "propSimple.h"
 #include "energy.h"
 #include "strings.h"
 #include "enum-field.h"
@@ -335,6 +336,7 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 			propagate (axion, dz, LL, nQcd, delta, cDev, fCount);
+//			propagateSimple (axion, dz, LL, nQcd, delta);
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
