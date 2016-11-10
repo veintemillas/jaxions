@@ -39,19 +39,64 @@
 __attribute__((target(mic)))
 #endif
 #ifdef	__MIC__
-
-#define	_MData_ __m256d
-
-void	stringHandD(const __m512d s1, const __m512d s2)
+inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 {
-	str = opCode(mul_pd, mel, mPx);
-	tmp =
-	str = opCode(mul_pd, mPx, conj);
-	tp2 = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, str), _MM_PERM_BADC));
-	tp3 = opCode(mul_pd, tmp, tp2);
+	__m512d zero = { 0., 0., 0., 0., 0., 0., 0., 0. };
+	__m512d conj = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+	__m512d tp2, tp3;
+	__mmask16 tpm, tmm, tmp, str;
+
+	tp2 = opCode(mul_pd, s1, s2);
+	tmp = opCode(cmp_pd_mask, tp2, zero, _CMP_LT_OS);
+
+	tmp &= 0b1010101010101010;
+
+	tp3 = opCode(mul_pd, s2, conj);
+	tp2 = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tp3), _MM_PERM_BADC));
+	tp3 = opCode(mul_pd, s1,  tp2);
 	tp2 = opCode(add_pd, tp3, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tp3), _MM_PERM_BADC)));
-	tp3 = 
-	str = opCode(and_pd, tp2, zero);
+	tpm = opCode(cmp_pd_mask, tp2, zero, _CMP_GT_OS);
+	tmm = opCode(cmp_pd_mask, tp2, zero, _CMP_LE_OS);
+
+	hand[0] = (((tmp&1) & (tpm&1))     ) - (((tmp&1) & (tmm&1))     );
+	hand[1] = (((tmp&2) & (tpm&2)) >> 1) - (((tmp&2) & (tmm&2)) >> 1);
+	hand[2] = (((tmp&4) & (tpm&4)) >> 2) - (((tmp&4) & (tmm&4)) >> 2);
+	hand[3] = (((tmp&8) & (tpm&8)) >> 3) - (((tmp&8) & (tmm&8)) >> 3);
+
+	return;
+}
+
+inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
+{
+	__m512 zero = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+	__m512 conj = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+	__m512 tp2, tp3;
+	__mmask16 tpm, tmm, tmp, str;
+
+	tp2 = opCode(mul_ps, s1, s2);
+	tmp = opCode(cmp_ps_mask, tp2, zero, _CMP_LT_OS);
+
+	tmp &= 0b1010101010101010;
+
+	tp3 = opCode(mul_ps, s2, conj);
+	tp2 = opCode(swizzle_ps, tp3, _MM_SWIZ_REG_CDAB);
+	tp3 = opCode(mul_ps, s1,  tp2);
+	tp2 = opCode(add_ps, tp3, opCode(swizzle_ps, tp3, _MM_SWIZ_REG_CDAB));
+	tpm = opCode(cmp_ps_mask, tp2, zero, _CMP_GT_OS);
+	tmm = opCode(cmp_ps_mask, tp2, zero, _CMP_LE_OS);
+
+	hand[0] = (((tmp&1  ) & (tpm&1  ))     ) - (((tmp&1  ) & (tmm&1  ))     );
+	hand[1] = (((tmp&2  ) & (tpm&2  )) >> 1) - (((tmp&2  ) & (tmm&2  )) >> 1);
+	hand[2] = (((tmp&4  ) & (tpm&4  )) >> 2) - (((tmp&4  ) & (tmm&4  )) >> 2);
+	hand[3] = (((tmp&8  ) & (tpm&8  )) >> 3) - (((tmp&8  ) & (tmm&8  )) >> 3);
+	hand[4] = (((tmp&16 ) & (tpm&16 )) >> 4) - (((tmp&16 ) & (tmm&16 )) >> 4);
+	hand[5] = (((tmp&32 ) & (tpm&32 )) >> 5) - (((tmp&32 ) & (tmm&32 )) >> 5);
+	hand[6] = (((tmp&64 ) & (tpm&64 )) >> 6) - (((tmp&64 ) & (tmm&64 )) >> 6);
+	hand[7] = (((tmp&128) & (tpm&128)) >> 7) - (((tmp&128) & (tmm&128)) >> 7);
+
+	return;
+}
+
 #elif defined(__AVX__)
 inline	void	stringHandD(const __m256d s1, const __m256d s2, int *hand)
 {
@@ -204,10 +249,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) zeroAux[8]  = { 0., 0., 0., 0., 0., 0., 0., 0. };
-		const double __attribute__((aligned(Align))) conjAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
-
-		const _MData_ zero  = opCode(load_pd, zeroAux);
+		int hand[4] = { 0, 0, 0, 0 };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
@@ -461,12 +503,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
-		const float __attribute__((aligned(Align))) zeroAux[16]  = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
-		const float __attribute__((aligned(Align))) conjAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
-
 		int hand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-
-		const _MData_ zero  = opCode(load_ps, zeroAux);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
