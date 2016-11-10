@@ -33,16 +33,16 @@ class	Strings
 		 Strings(Scalar *field, void *str);
 		~Strings() {};
 
-	void	runCpu	();
-	void	runGpu	();
-	void	runXeon	();
+	double	runCpu	();
+	double	runGpu	();
+	double	runXeon	();
 };
 
 	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), string(str)
 {
 }
 
-void	Strings::runGpu	()
+double	Strings::runGpu	()
 {
 #ifdef	USE_GPU
 /*
@@ -63,37 +63,39 @@ void	Strings::runGpu	()
 #endif
 }
 
-void	Strings::runCpu	()
+double	Strings::runCpu	()
 {
-	stringCpu(axionField, Lx, V, S, precision, string);
+	return	stringCpu(axionField, Lx, V, S, precision, string);
 }
 
-void	Strings::runXeon	()
+double	Strings::runXeon	()
 {
 #ifdef	USE_XEON
-	energyXeon(axionField, Lx, V, S, precision, string);
+	return	stringXeon(axionField, Lx, V, S, precision, string);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount)
+double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount)
 {
 	Strings *eStr = new Strings(field, string);
+
+	double	strDen = 0.;
 
 	switch (dev)
 	{
 		case DEV_CPU:
-			eStr->runCpu ();
+			strDen = eStr->runCpu ();
 			break;
 
 		case DEV_GPU:
-			eStr->runGpu ();
+			strDen = eStr->runGpu ();
 			break;
 
 		case	DEV_XEON:
-			eStr->runXeon();
+			strDen = eStr->runXeon();
 			break;
 
 		default:
@@ -105,5 +107,5 @@ void	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount)
 
 //	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
 
-	return;
+	return	strDen;
 }

@@ -218,11 +218,13 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
+		double	strDen;
+
 		printMpi("Strings...");
 		analyzeStrFolded(axion, index);
 		printMpi("Vector Strings...");
-		strings(axion, cDev, str, fCount);
-		printMpi(" Done!");
+		strDen = strings(axion, cDev, str, fCount);
+		printMpi(" Done! String density %lf\n", strDen);
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);

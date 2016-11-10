@@ -174,9 +174,11 @@ inline	void	stringHandS(const __m128 s1, const __m128 s2, int *hand)
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ strg)
+double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ strg)
 {
-	const size_t Sf = Lx*Lx;
+	const size_t	Sf = Lx*Lx;
+	size_t		nStrings = 0;
+	long long int	nChiral = 0;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -217,7 +219,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 
 		int hand[1] = { 0 };
 #endif
-		#pragma omp parallel default(shared) private(hand)
+		#pragma omp parallel default(shared) private(hand) reduction(+:nStrings,nChiral)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
 			_MData_ str, tmp;
@@ -322,7 +324,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_XY);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral++;
 							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -331,9 +335,11 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_XY);
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral--;
 							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
 						}
 						break;
 
@@ -359,7 +365,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_YZ);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral++;
 							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -368,7 +376,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral--;
 							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -396,7 +406,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_ZX);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral++;
 							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -405,7 +417,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral--;
 							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -465,7 +479,7 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 		int hand[2] = { 0, 0 };
 #endif
 
-		#pragma omp parallel default(shared) private(hand) 
+		#pragma omp parallel default(shared) private(hand) reduction(+:nStrings,nChiral)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
 			_MData_ str, tmp;
@@ -580,7 +594,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_XY);
-//							static_cast<int *>(strg)[idx>>3] |= (strDf << (4*ih));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral++;
 							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -589,7 +605,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_XY);
-//							static_cast<int *>(strg)[idx>>3] |= (strDf << (4*ih));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral--;
 							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -617,7 +635,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_YZ);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral++;
 							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -626,7 +646,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral--;
 							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -654,7 +676,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_ZX);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral++;
 							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -663,7 +687,9 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_ZX);
-//							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							nStrings++;
+							nChiral--;
 							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
 							//fflush (stdout);
 						}
@@ -681,25 +707,33 @@ void	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, 
 #undef	_MData_
 #undef	step
 	}
+
+	printf ("Chirality of configuration %lf (%lld chiral points)\n", ((double) nChiral)/((double) (Vf-Vo)), nChiral);
+	printf ("Density of configuration %lf (%llu string points)\n", ((double) nStrings)/((double) (Vf-Vo)), nStrings);
+	fflush (stdout);
+
+	return (((double) nStrings)/((double) (Vf-Vo)));
 }
 
-void	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+double	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
+	double	  strDen = 0.;
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int micIdx = commAcc();
 
 	int bulk  = 32;
 
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) nocopy(mX : ReUseX) signal(&bulk)
 	{
-		stringKernelXeon(mX, Lx, S, V+S, precision, strg);
+		strDen = stringKernelXeon(mX, Lx, S, V+S, precision, strg);
 	}
 #endif
+	return	strDen;
 }
 
-void	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+double	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
 	axionField->exchangeGhosts(FIELD_M);
-	stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, strg);
+	return	(stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, strg));
 }
