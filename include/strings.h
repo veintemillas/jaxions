@@ -4,3 +4,5 @@
 double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount);
 
 void	analyzeStrFolded	(Scalar *axion, const int index);
+
+void	analyzeStrUNFolded	(Scalar *axion, const int index);
