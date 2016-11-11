@@ -495,3 +495,190 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 // 	fclose(file_strings);
 // 	printf(" ... String printed\n");
 // }
+
+void	analyzeStrUNFolded	(Scalar *axion, const int index)
+{
+	//--------------------------------------------------
+	//    JAVI STRINGS UNFOLDED
+	//--------------------------------------------------
+
+	const size_t n1 = axion->Length();
+	const size_t n2 = axion->Surf();
+	const size_t shift = axion->shift();
+	const size_t Lz = axion->Depth()	;
+	size_t Nshift=n1/shift;
+	const size_t fSize = axion->dataSize();
+
+//	const int myRank = commRank();
+	int hand;
+
+	char stoStr[256];
+
+	sprintf(stoStr, "out/str/str-%05d.txt", index);
+	FILE *file_strings ;
+	file_strings = NULL;
+	file_strings = fopen(stoStr,"w+");
+	fprintf(file_strings,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, (*axion->zV()) );
+	//printf("TEST+ %d \n", stringHand( complex<double> (0.1,0.1), complex<double>(0.1,-0.1), complex<double>(-0.1,-0.1), complex<double>(-0.1,0.1)));
+	//printf("TEST- %d \n", stringHand( complex<double> (0.1,0.1), complex<double>(0.1,-0.1), complex<double>(0.1,0.1), complex<double> (0.1,0.1)));
+
+	//printf(" called (n1,n2,shift,Lz,Nshift)=(%d,%d,%d,%d,%d) \n",n1,n2,shift,Lz,Nshift);fflush (stdout);
+
+
+	switch	(axion->Precision())
+	{
+		case	FIELD_DOUBLE:
+		{
+			complex<double> *mM = static_cast<complex<double>*> (axion->mCpu());
+
+			#pragma omp parallel for default(shared) private(hand) schedule(static)
+			for (size_t iz=0; iz<Lz; iz++)
+			{
+
+				complex<double> s1, s2, s3, s4;
+				size_t sy, sy1, iys, iys1;
+				size_t fIdx000,fIdx010 ;
+
+				//printf("-%d-",iz);fflush (stdout);
+				//DOES NOT TAKE THE LAST Iy=N-1 FOR SIMPLICITY
+				for (size_t iy=0; iy<n1-1; iy++)
+					{
+						for (size_t ix=0; ix<n1-1; ix++)
+						{
+							// PLAQUETTE XY      -------------------------------------------
+							fIdx000 = n2 + iz*n2 + ((size_t) iy*n1 + ix);
+							fIdx010 = n2 + iz*n2 + ((size_t) (iy+1)*n1 + ix);
+							s1 = mM[fIdx000] ;
+							s2 = mM[fIdx000 + 1] ;
+							s4 = mM[fIdx010] ;
+							s3 = mM[fIdx010 + 1] ;
+
+							hand = stringHand(s1, s2, s3, s4);
+
+							if ((hand == 2) || (hand == -2))
+							{
+								#pragma omp critical
+								{
+									fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
+								}
+							}
+							//PLAQUETTE YZ      -------------------------------------------
+							s2 = mM[fIdx000 + n2] ;
+							s3 = mM[fIdx010 + n2] ;
+
+							hand = stringHand(s1, s4, s3, s2);
+
+							if ((hand == 2) || (hand == -2))
+							{
+								#pragma omp critical
+								{
+									fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
+								}
+							}
+							// PLAQUETTE XZ      -------------------------------------------
+							s4 = mM[fIdx000 + 1] ;
+							s3 = mM[fIdx000 + 1 + n2];
+
+							hand = stringHand(s1, s2, s3, s4);
+
+							if ((hand == 2) || (hand == -2))
+							{
+								#pragma omp critical
+								{
+									fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
+								}
+							}
+
+						}	//end ix
+					}	//end for iy
+				}	//end for iz
+
+
+
+		}
+		break;
+
+		case	FIELD_SINGLE:
+		{
+		complex<float> *mM = static_cast<complex<float>*> (axion->mCpu());
+
+		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t iz=0; iz<Lz; iz++)
+		{
+
+			complex<float> s1, s2, s3, s4;
+			size_t sy, sy1, iys, iys1;
+			size_t fIdx000,fIdx010 ;
+
+			//DOES NOT TAKE THE LAST Iy=N-1 FOR SIMPLICITY
+			for (size_t iy=0; iy<n1-1; iy++)
+				{
+					for (size_t ix=0; ix<n1-1; ix++)
+					{
+						// PLAQUETTE XY      -------------------------------------------
+						fIdx000 = n2 + iz*n2 + ((size_t) iy*n1 + ix);
+						fIdx010 = n2 + iz*n2 + ((size_t) (iy+1)*n1 + ix);
+						s1 = mM[fIdx000] ;
+						s2 = mM[fIdx000 + 1] ;
+						s4 = mM[fIdx010] ;
+						s3 = mM[fIdx010 + 1] ;
+
+						hand = stringHand(s1, s2, s3, s4);
+
+						if ((hand == 2) || (hand == -2))
+						{
+							#pragma omp critical
+							{
+								fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
+							}
+						}
+						//PLAQUETTE YZ      -------------------------------------------
+						s2 = mM[fIdx000 + n2] ;
+						s3 = mM[fIdx010 + n2] ;
+
+						hand = stringHand(s1, s4, s3, s2);
+
+						if ((hand == 2) || (hand == -2))
+						{
+							#pragma omp critical
+							{
+								fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
+							}
+						}
+						// PLAQUETTE XZ      -------------------------------------------
+						s4 = mM[fIdx000 + 1] ;
+						s3 = mM[fIdx000 + 1 + n2];
+
+						hand = stringHand(s1, s2, s3, s4);
+
+						if ((hand == 2) || (hand == -2))
+						{
+							#pragma omp critical
+							{
+								fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
+							}
+						}
+
+					}	//end ix
+				}	//end for iy
+			}	//end for iz
+
+
+
+		}
+		break;
+
+		default:
+		{
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+		}
+	}
+
+
+
+
+	fclose(file_strings);
+	printf(" ... String printed\n");
+}
