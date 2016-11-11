@@ -10,6 +10,8 @@ int  zGrid = 1;
 int  nSteps = 500;
 int  dump = 100;
 int  nQcd = 3;
+//JAVIER
+int  Ng = 1 ;
 int  fIndex = -1;
 
 double sizeL = 4.;
@@ -65,6 +67,7 @@ void	printUsage(char *name)
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
 	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
+	printf("--lapla 0/1/2/3/4               NUmber of Neighbours in the laplacian [only for simple3D] \n");
 	printf("--help                          Prints this message.\n");
 
 	return;
@@ -564,6 +567,29 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		//JAVIER added gradient
+		if (!strcmp(argv[i], "--lapla"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of neighbours.\n");
+				exit(1);
+			}
+
+			Ng = atoi(argv[i+1]);
+
+			if (Ng < 0 || Ng > 3 )
+			{
+				printf("Error: The number of neighbours must be 0,1,2,3. Set to 1.\n");
+				//exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		endFor:
 
 		if (!passed)
@@ -572,6 +598,7 @@ int	parseArgs (int argc, char *argv[])
 			printf("\n\nUnrecognized option %s\n", argv[i]);
 			exit(1);
 		}
+
 	}
 
 	if (cType == CONF_SMOOTH)

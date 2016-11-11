@@ -17,6 +17,7 @@ extern double parm2;
 extern int kMax;
 extern int iter;
 extern int parm1;
+extern int Ng;
 
 
 extern char *initFile;
