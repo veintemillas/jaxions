@@ -15,22 +15,31 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 			const Float dzc, const Float dzd, const Float ood2, const Float LL, const size_t Lx, const size_t Sf, const size_t Vf,
 			int Ng)
 {
-	Float CO[4]  ;
+	Float CO[4] = {0, 0, 0, 0} ;
 
 	if (Ng == 2)
 	{
-		CO[0] = -7.50000000; CO[1] = 1.333333333; CO[2] = -0.083333333 ;
+		CO[0] = 16/12; CO[1] = 1/12;
 	}
 	else if (Ng == 3)
 	{
-		CO[0] = -8.16666666; CO[1] = 1.500000000; CO[2] = -0.150000000 ; CO[3] = 0.01111111 ;
+		CO[0] = 3/2; CO[1] = -3/20; CO[2] = 1/90 ;
+	}
+	else if (Ng == 4)
+	{
+		CO[0] = 8/5; CO[1] = -1/5; CO[2] = 8/315 ; CO[3] = -1/560 ;
+	}
+	else if (Ng == 0)
+	{
+		CO[0] = 0 ;
 	}
 	else
 	{
-		CO[0] = -6.00000000; CO[1] = 1.000000000;
+		CO[0] = 1 ;
 		if (Ng != 1)
 		{
-			printf("Unknown gradient!\n");
+			//printf("Unknown gradient!\n");
+			exit ;
 		}
 	}
 	//printf("%f %f %f %f \n", CO[0], CO[1], CO[2], CO[3]);
@@ -108,15 +117,21 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 				//printf("Yol %lu %lu %lu %lu %lu\n", Yol[0] , Yol[1], Yol[2], Yol[3], Yol[4]);
 				//printf("Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
 				//Compute
-					lap = 0;
-				for (int l = 0; l < Ng; l++)
+
+				tmp = ((Float) 6)*(m[Xol[Ng]]);
+				lap = ((Float) 0 , (Float) 0);
+				for (int l = 1; l < Ng+1; l++)
 				{
-					lap += CO[Ng-l]*(m[Xol[l]] + m[Xol[lin-l-1]] + m[Yol[l]] + m[Yol[lin-l-1]] + m[Zol[l]] + m[Zol[lin-l-1]]);
+					//printf("Ng %d l %d \n", Ng, l);
+					//lap +=(m[Xol[l]] + m[Xol[lin-l-1]] + m[Yol[l]] + m[Yol[lin-l-1]] + m[Zol[l]] + m[Zol[lin-l-1]] - tmp)*CO[Ng-l-1];
+					acc = m[Xol[Ng+l]] + m[Xol[Ng-l]] + m[Yol[Ng+l]] + m[Yol[Ng-l]] + m[Zol[Ng+l]] + m[Zol[Ng-l]] - tmp ;
+					acc *= CO[l-1];
+					lap += acc;
 				}
 				tmp = m[Xol[Ng]];
-				lap += CO[Ng]*tmp;
+				//lap += CO[Ng]*tmp;
 
-				acc = lap*ood2 + zQ - tmp*(((Float) LL)*(tmp.real()*tmp.real() + tmp.imag()*tmp.imag() - z2));
+				acc = lap*ood2 ; //+ zQ - tmp*(((Float) LL)*(tmp.real()*tmp.real() + tmp.imag()*tmp.imag() - z2));
 				//lap is aux
 				lap = v[Xol[Ng]-Sf];
 				lap += acc*dzc;

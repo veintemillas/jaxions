@@ -131,6 +131,7 @@ int	main (int argc, char *argv[])
 	printMpi("dx     =  %2.5f\n", delta);
 	printMpi("dz     =  %2.5f\n", dz);
 	printMpi("LL     =  %2.5f\n", LL);
+	printMpi("Ng     =  %d  \n", Ng);
 	printMpi("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
@@ -261,7 +262,7 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 //			propagate (axion, dz, LL, nQcd, delta, cDev, fCount);
-			propagateSimple (axion, dz, LL, nQcd, delta, 2);
+			propagateSimple (axion, dz, LL, nQcd, delta, Ng);
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
