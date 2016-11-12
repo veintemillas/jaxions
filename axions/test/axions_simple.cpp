@@ -197,28 +197,15 @@ int	main (int argc, char *argv[])
 	{
 		printMpi("Strings...");
 		//analyzeStrFolded(axion, index);
-		//analyzeStrUNFolded(axion, index);
+		analyzeStrUNFolded(axion, index);
 		printMpi(" Done!");
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		//axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);
 		//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 		axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-
-
-		if (commRank() == 0)
-		{
-			if (axion->Precision() == FIELD_DOUBLE)
-			{
-				double *eR = static_cast<double *> (eRes);
-				fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-			}
-			else
-			{
-				double *eR = static_cast<double *> (eRes);
-				fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-			}
-		}
+		fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+		printf("%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 
 	}
 
@@ -253,10 +240,10 @@ int	main (int argc, char *argv[])
 			if (commRank() == 0) {
 				if (sPrec == FIELD_DOUBLE) {
 					fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
-						static_cast<complex<double> *> (axion->vCpu())[S0].real(), static_cast<complex<double> *> (axion->vCpu())[S0].imag());
+						static_cast<complex<double> *> (axion->vCpu())[V0].real(), static_cast<complex<double> *> (axion->vCpu())[V0].imag());
 				} else {
 					fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[S0].real(), static_cast<complex<float>  *> (axion->mCpu())[S0].imag(),
-						static_cast<complex<float>  *> (axion->vCpu())[S0].real(), static_cast<complex<float>  *> (axion->vCpu())[S0].imag());
+						static_cast<complex<float>  *> (axion->vCpu())[V0].real(), static_cast<complex<float>  *> (axion->vCpu())[V0].imag());
 				}
 			}
 
@@ -290,7 +277,7 @@ int	main (int argc, char *argv[])
 				//printMpi("Strings (if %f>0.4) ... ", (*axion->zV()));
 				fflush (stdout);
 				//analyzeStrFolded(axion, index);
-				//analyzeStrUNFolded(axion, index);
+				analyzeStrUNFolded(axion, index);
 			}
 
 
@@ -298,20 +285,8 @@ int	main (int argc, char *argv[])
 			writeMap (axion, index);
 			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-
-			if (commRank() == 0)
-			{
-				if (axion->Precision() == FIELD_DOUBLE)
-				{
-					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				}
-				else
-				{
-					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				}
-			}
+			fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+			printf("%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 		}
 	} // zloop
 

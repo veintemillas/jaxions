@@ -9,50 +9,64 @@
 
 using namespace std;
 
+	void  shiftcross1(const int Ng, const int lin, const size_t Lx, const size_t ix,
+		                const size_t aYol[], const size_t aZol[], size_t Xol[], size_t Yol[], size_t Zol[])
+	{
+		int l; size_t auxi;
+		for (int l = -Ng; l < Ng+1; l++)
+		{
+			//would be ix-Ng, ix-Ng+1 ... ix ... ix+Ng
+			Xol[Ng+l] = (ix + l + Lx)%Lx ;
+		}
+			//  printf("Xol %lu %lu %lu %lu %lu\n", Xol[0] , Xol[1], Xol[2], Xol[3], Xol[4]);
+			//shift to 3D cross
+		for (int l = 0; l < lin; l++)
+		{
+			Zol[l] = aZol[l] + Xol[Ng];
+			Yol[l] = aYol[l] + Xol[Ng] ;
+		}
+		// printf("-Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
+		for (int l = 0; l < lin; l++)
+		{
+			auxi = Xol[l] ;
+			Xol[l] = auxi + aZol[Ng] ;
+		}
+	}
+	void  shiftcross2(const int Ng, const int lin, size_t Xol[], size_t Yol[], size_t Zol[]))
+	{
+		int l;
+		for (int l = 0; l < lin; l++)
+		{
+				Xol[l]++ ; Yol[l]++ ; Zol[l]++ ;
+		}
+	}
+
+void  fun()
+{}
 //										(field->m2Cpu()), (field->vCpu()),(field->mCpu()), z2, zQ, dzc, dzd, ood2, LL, Lx, S, V+S, Ng);
 template<typename Float>
 void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float> *m2, const Float z2, const Float zQ,
 			const Float dzc, const Float dzd, const Float ood2, const Float LL, const size_t Lx, const size_t Sf, const size_t Vf,
 			int Ng)
 {
-	Float CO[4] = {0, 0, 0, 0} ;
+	Float CO[4] = {0.0, 0.0, 0.0, 0.0} ;
 
-	if (Ng == 2)
-	{
-		CO[0] = 16/12; CO[1] = 1/12;
+	if (Ng == 2) {
+		CO[0] = (Float) 16/12; CO[1] = (Float) -1/12;
+	} else if (Ng == 3) {
+		CO[0] = (Float) 3/2; CO[1] = (Float) -3/20; CO[2] = (Float) 1/90 ;
+	} else if (Ng == 4) {
+		CO[0] = (Float) 8/5; CO[1] = (Float) -1/5; CO[2] = (Float) 8/315 ; CO[3] = (Float) -1/560 ;
+	} else if (Ng == 0) {
+		CO[0] = (Float) 0 ;
+	} else {
+		CO[0] = (Float) 1 ;
 	}
-	else if (Ng == 3)
-	{
-		CO[0] = 3/2; CO[1] = -3/20; CO[2] = 1/90 ;
-	}
-	else if (Ng == 4)
-	{
-		CO[0] = 8/5; CO[1] = -1/5; CO[2] = 8/315 ; CO[3] = -1/560 ;
-	}
-	else if (Ng == 0)
-	{
-		CO[0] = 0 ;
-	}
-	else
-	{
-		CO[0] = 1 ;
-		if (Ng != 1)
-		{
-			//printf("Unknown gradient!\n");
-			exit ;
-		}
-	}
-	//printf("%f %f %f %f \n", CO[0], CO[1], CO[2], CO[3]);
-	// switch (Ng)
-	// {
-	// 	case 1:	Float CO[2]; CO[0] = -6.00000; CO[1] = 1.000000; break;
-	// 	case 2: Float CO[3]; CO[0] = -7.50000; CO[1] = 1.333333; CO[2] = -0.083333 ; break;
-	// 	case 3: Float CO[4]; CO[0] = -8.16666; CO[1] = 1.500000; CO[2] = -0.150000 ; CO[3]; = 0.01111 ; break;
-	// 	default: printf("parameters not defined - switch to 1 neighbour\n");
-	// 					Float CO[2]; CO[0] = -6.00000; CO[1] = 1.000000; break;
-	// }
+
+	// printf("CASE Ng=%d, %lf %lf %lf %lf \n", Ng, CO[0], CO[1], CO[2], CO[3]);
+
+
 	int lin = 2*Ng+1;
-	//	Float  arX[lin], arY[lin], arZ[lin];
 
 	// z loop
 	#pragma omp parallel for default(shared) schedule(static)
@@ -60,7 +74,7 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 	{
 		size_t auxi , iy, ix ;
 		size_t Xol[lin], Yol[lin], Zol[lin];
-		size_t aYol[lin], aZol[lin];
+		size_t aYol[lin], aZol[lin], bZol[lin];
 		//size_t ix, iy, iz ;
 		complex<Float> lap , tmp , acc ;
 		int l ;
@@ -69,28 +83,28 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 		for (int l = -Ng; l < Ng+1; l++)
 		{
 			//would be iz-Ng, iz-Ng+1 ... iz ... iz+Ng
-			aZol[Ng+l] = Sf + ((iz + l + Lx)%Lx)*Sf ;
+			bZol[Ng+l] = Sf + ((iz + l + Lx)%Lx)*Sf ;
 		}
-		//printf("aZol %lu %lu %lu %lu %lu\n", aZol[0] , aZol[1], aZol[2], aZol[3], aZol[4]);
+		  // printf("~Zol %lu %lu %lu %lu %lu\n", bZol[0] , bZol[1], bZol[2], bZol[3], bZol[4]);
 		for (int iy = 0; iy < Lx; iy++)
 		{
 			//compute base arY UNFOLDED
 			for (int l = -Ng; l < Ng+1; l++)
 			{
 				//would be iy-Ng, iy-Ng+1 ... iy ... iy+Ng  l =2Ng+1
-				aYol[Ng+l] = ((iy + l + Lx )%Lx)*Lx ;
+				Yol[Ng+l] = ((iy + l + Lx )%Lx)*Lx ;
 			}
-			//printf("aYol %lu %lu %lu %lu %lu\n", aYol[0] , aYol[1], aYol[2], aYol[3], aYol[4]);
+				// 	printf("~Yol %lu %lu %lu %lu %lu\n", Yol[0] , Yol[1], Yol[2], Yol[3], Yol[4]);
 			//set the Y, Z, in position
 			for (int l = 0; l<lin; l++)
 			{
-				//Xol is aux here
-				auxi   = aZol[l]+aYol[Ng];
-				Zol[l] = auxi;
-				auxi   = aZol[Ng]+aYol[l];
-				Yol[l] = auxi ;
+				auxi   = bZol[l]+Yol[Ng];
+				aZol[l] = auxi;
+				auxi   = bZol[Ng]+Yol[l];
+				aYol[l] = auxi ;
 			}
-			//printf("Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
+			  // printf("Zol %lu %lu %lu %lu %lu\n", aZol[0] , aZol[1], aZol[2], aZol[3], aZol[4]);
+			  // printf("Yol %lu %lu %lu %lu %lu\n", aYol[0] , aYol[1], aYol[2], aYol[3], aYol[4]);
 			for (int ix = 0; ix < Lx; ix++)
 			{
 				for (int l = -Ng; l < Ng+1; l++)
@@ -98,28 +112,28 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 					//would be ix-Ng, ix-Ng+1 ... ix ... ix+Ng
 					Xol[Ng+l] = (ix + l + Lx)%Lx ;
 				}
-					//printf("Xol %lu %lu %lu %lu %lu\n", Xol[0] , Xol[1], Xol[2], Xol[3], Xol[4]);
+					//  printf("Xol %lu %lu %lu %lu %lu\n", Xol[0] , Xol[1], Xol[2], Xol[3], Xol[4]);
 					//shift to 3D cross
 				for (int l = 0; l < lin; l++)
 				{
-					auxi = Zol[l] + Xol[Ng];
-					Zol[l] = auxi ;
-					auxi = Yol[l] + Xol[Ng] ;
-					Yol[l] = auxi ;
+					Zol[l] = aZol[l] + Xol[Ng];
+					Yol[l] = aYol[l] + Xol[Ng] ;
 				}
-				//printf("Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
+				// printf("-Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
 				for (int l = 0; l < lin; l++)
 				{
 					auxi = Xol[l] ;
-					Xol[l] = auxi + aZol[Ng] + aYol[Ng] ;
+					Xol[l] = auxi + aZol[Ng] ;
 				}
-				//printf("Xol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
-				//printf("Yol %lu %lu %lu %lu %lu\n", Yol[0] , Yol[1], Yol[2], Yol[3], Yol[4]);
-				//printf("Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
+					// printf("iziyix %d %d %d \n", iz, iy, ix);
+					// printf("-Xol %lu %lu %lu %lu %lu\n", Xol[0] , Xol[1], Xol[2], Xol[3], Xol[4]);
+					// 	printf("-Yol %lu %lu %lu %lu %lu\n", Yol[0] , Yol[1], Yol[2], Yol[3], Yol[4]);
+					// 	printf("-Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2]/Sf, Zol[3], Zol[4]);
 				//Compute
-
+				// printf("pretmp .. ");fflush(stdout);
 				tmp = ((Float) 6)*(m[Xol[Ng]]);
 				lap = ((Float) 0 , (Float) 0);
+				// printf("prelap .. ");
 				for (int l = 1; l < Ng+1; l++)
 				{
 					//printf("Ng %d l %d \n", Ng, l);
@@ -130,8 +144,7 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 				}
 				tmp = m[Xol[Ng]];
 				//lap += CO[Ng]*tmp;
-
-				acc = lap*ood2 ; //+ zQ - tmp*(((Float) LL)*(tmp.real()*tmp.real() + tmp.imag()*tmp.imag() - z2));
+				acc = lap*ood2 + zQ - tmp*(((Float) LL)*(tmp.real()*tmp.real() + tmp.imag()*tmp.imag() - z2));
 				//lap is aux
 				lap = v[Xol[Ng]-Sf];
 				lap += acc*dzc;
@@ -144,6 +157,147 @@ void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float>
 		}		//END Y LOOP
 	}			//END Z LOOP
 }
+
+
+
+// //	----------------------------------------------------------------------------------------------------------------
+// //	THIS WORKS
+// //	----------------------------------------------------------------------------------------------------------------
+//
+//
+// //										(field->m2Cpu()), (field->vCpu()),(field->mCpu()), z2, zQ, dzc, dzd, ood2, LL, Lx, S, V+S, Ng);
+// template<typename Float>
+// void	propSimpleCoreN (const complex<Float> *m, complex<Float> *v, complex<Float> *m2, const Float z2, const Float zQ,
+// 			const Float dzc, const Float dzd, const Float ood2, const Float LL, const size_t Lx, const size_t Sf, const size_t Vf,
+// 			int Ng)
+// {
+// 	Float CO[4] = {0.0, 0.0, 0.0, 0.0} ;
+//
+// 	if (Ng == 2) {
+// 		CO[0] = (Float) 16/12; CO[1] = (Float) -1/12;
+// 	} else if (Ng == 3) {
+// 		CO[0] = (Float) 3/2; CO[1] = (Float) -3/20; CO[2] = (Float) 1/90 ;
+// 	} else if (Ng == 4) {
+// 		CO[0] = (Float) 8/5; CO[1] = (Float) -1/5; CO[2] = (Float) 8/315 ; CO[3] = (Float) -1/560 ;
+// 	} else if (Ng == 0) {
+// 		CO[0] = (Float) 0 ;
+// 	} else {
+// 		CO[0] = (Float) 1 ;
+// 	}
+//
+// 	// printf("CASE Ng=%d, %lf %lf %lf %lf \n", Ng, CO[0], CO[1], CO[2], CO[3]);
+//
+//
+// 	int lin = 2*Ng+1;
+//
+// 	// z loop
+// 	#pragma omp parallel for default(shared) schedule(static)
+// 	for (size_t iz = 0; iz < Lx; iz++)
+// 	{
+// 		size_t auxi , iy, ix ;
+// 		size_t Xol[lin], Yol[lin], Zol[lin];
+// 		size_t aYol[lin], aZol[lin], bZol[lin];
+// 		//size_t ix, iy, iz ;
+// 		complex<Float> lap , tmp , acc ;
+// 		int l ;
+//
+// 		//compute base arZ
+// 		for (int l = -Ng; l < Ng+1; l++)
+// 		{
+// 			//would be iz-Ng, iz-Ng+1 ... iz ... iz+Ng
+// 			bZol[Ng+l] = Sf + ((iz + l + Lx)%Lx)*Sf ;
+// 		}
+// 		  // printf("~Zol %lu %lu %lu %lu %lu\n", bZol[0] , bZol[1], bZol[2], bZol[3], bZol[4]);
+// 		for (int iy = 0; iy < Lx; iy++)
+// 		{
+// 			//compute base arY UNFOLDED
+// 			for (int l = -Ng; l < Ng+1; l++)
+// 			{
+// 				//would be iy-Ng, iy-Ng+1 ... iy ... iy+Ng  l =2Ng+1
+// 				Yol[Ng+l] = ((iy + l + Lx )%Lx)*Lx ;
+// 			}
+// 				// 	printf("~Yol %lu %lu %lu %lu %lu\n", Yol[0] , Yol[1], Yol[2], Yol[3], Yol[4]);
+// 			//set the Y, Z, in position
+// 			for (int l = 0; l<lin; l++)
+// 			{
+// 				auxi   = bZol[l]+Yol[Ng];
+// 				aZol[l] = auxi;
+// 				auxi   = bZol[Ng]+Yol[l];
+// 				aYol[l] = auxi ;
+// 			}
+// 			  // printf("Zol %lu %lu %lu %lu %lu\n", aZol[0] , aZol[1], aZol[2], aZol[3], aZol[4]);
+// 			  // printf("Yol %lu %lu %lu %lu %lu\n", aYol[0] , aYol[1], aYol[2], aYol[3], aYol[4]);
+// 			for (int ix = 0; ix < Lx; ix++)
+// 			{
+// 				for (int l = -Ng; l < Ng+1; l++)
+// 				{
+// 					//would be ix-Ng, ix-Ng+1 ... ix ... ix+Ng
+// 					Xol[Ng+l] = (ix + l + Lx)%Lx ;
+// 				}
+// 					//  printf("Xol %lu %lu %lu %lu %lu\n", Xol[0] , Xol[1], Xol[2], Xol[3], Xol[4]);
+// 					//shift to 3D cross
+// 				for (int l = 0; l < lin; l++)
+// 				{
+// 					Zol[l] = aZol[l] + Xol[Ng];
+// 					Yol[l] = aYol[l] + Xol[Ng] ;
+// 				}
+// 				// printf("-Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2], Zol[3], Zol[4]);
+// 				for (int l = 0; l < lin; l++)
+// 				{
+// 					auxi = Xol[l] ;
+// 					Xol[l] = auxi + aZol[Ng] ;
+// 				}
+// 					// printf("iziyix %d %d %d \n", iz, iy, ix);
+// 					// printf("-Xol %lu %lu %lu %lu %lu\n", Xol[0] , Xol[1], Xol[2], Xol[3], Xol[4]);
+// 					// 	printf("-Yol %lu %lu %lu %lu %lu\n", Yol[0] , Yol[1], Yol[2], Yol[3], Yol[4]);
+// 					// 	printf("-Zol %lu %lu %lu %lu %lu\n", Zol[0] , Zol[1], Zol[2]/Sf, Zol[3], Zol[4]);
+// 				//Compute
+// 				// printf("pretmp .. ");fflush(stdout);
+// 				tmp = ((Float) 6)*(m[Xol[Ng]]);
+// 				lap = ((Float) 0 , (Float) 0);
+// 				// printf("prelap .. ");
+// 				for (int l = 1; l < Ng+1; l++)
+// 				{
+// 					//printf("Ng %d l %d \n", Ng, l);
+// 					//lap +=(m[Xol[l]] + m[Xol[lin-l-1]] + m[Yol[l]] + m[Yol[lin-l-1]] + m[Zol[l]] + m[Zol[lin-l-1]] - tmp)*CO[Ng-l-1];
+// 					acc = m[Xol[Ng+l]] + m[Xol[Ng-l]] + m[Yol[Ng+l]] + m[Yol[Ng-l]] + m[Zol[Ng+l]] + m[Zol[Ng-l]] - tmp ;
+// 					acc *= CO[l-1];
+// 					lap += acc;
+// 				}
+// 				tmp = m[Xol[Ng]];
+// 				//lap += CO[Ng]*tmp;
+// 				acc = lap*ood2 + zQ - tmp*(((Float) LL)*(tmp.real()*tmp.real() + tmp.imag()*tmp.imag() - z2));
+// 				//lap is aux
+// 				lap = v[Xol[Ng]-Sf];
+// 				lap += acc*dzc;
+// 				v[Xol[Ng]-Sf] = lap;
+// 				lap *= dzd;
+// 				tmp += lap;
+// 				m2[Xol[Ng]] = tmp;
+//
+// 			}	//END X LOOP
+// 		}		//END Y LOOP
+// 	}			//END Z LOOP
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//	----------------------------------------------------------------------------------------------------------------
+//	NOT CHECKED
+//	----------------------------------------------------------------------------------------------------------------
+
+
 
 // //									(field->m2Cpu()), (field->vCpu()),(field->mCpu()), z2, zQ, dzc, dzd, ood2, LL, Lx, S, V+S, Ng);
 // template<typename Float>
