@@ -15,8 +15,8 @@ void	writeData	(complex<Float> *m, const Float z, const size_t n1, FILE *atWrite
 	{
 		for (size_t lx = 0; lx < n1; lx++)
 		{
-			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
-			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);
+			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly + n1*n1]) );
+			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly + n1*n1])/z);
 		}
 
 		fprintf(atWrite , "\n");
