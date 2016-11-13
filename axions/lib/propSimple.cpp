@@ -9,7 +9,7 @@
 
 using namespace std;
 
-	void  shiftcross1(const int Ng, const int lin, const size_t Lx, const size_t ix,
+	void  shiftstencilboundary(const int Ng, const int lin, const size_t Lx, const size_t ix,
 		                const size_t aYol[], const size_t aZol[], size_t Xol[], size_t Yol[], size_t Zol[])
 	{
 		int l; size_t auxi;
@@ -32,7 +32,7 @@ using namespace std;
 			Xol[l] = auxi + aZol[Ng] ;
 		}
 	}
-	void  shiftcross2(const int Ng, const int lin, size_t Xol[], size_t Yol[], size_t Zol[]))
+	void  shiftstencilbulk(const int Ng, const int lin, size_t Xol[], size_t Yol[], size_t Zol[])
 	{
 		int l;
 		for (int l = 0; l < lin; l++)
