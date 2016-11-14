@@ -1739,7 +1739,7 @@ void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, d
 //JAVIER ENERGY
 template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
-void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1) // TEST
+void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho, Float &Gtheta, Float &Vrho, Float &Vtheta, Float &Krho, Float &Ktheta) // TEST
 {
 	int	shift;
 	shift = mAlign/fSize;
@@ -1757,7 +1757,7 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1,
 
 	//SUM variables
 	//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
-	Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
+	double Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
 
 	const Float invz	= 1.0/zz;
 	const Float LLzz2 = LL*zz*zz/4.0 ;
@@ -1813,6 +1813,8 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1,
 	//Grho1 misses a factor 3*0.5/delta^2
 	Grho1 *= 3.0*0.125/(deltaa2*n3);
 	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
+
+	Vrho = Vrho1; Vtheta = Vtheta1; Krho = Krho1; Ktheta = Ktheta1; Grho = Grho1; Gtheta = Gtheta1;
 
 /*
 	fprintf(enWrite,  "%f %f %f %f %f %f %f \n", zz, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
@@ -1824,7 +1826,7 @@ void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1,
 //JAVIER ENERGY
 template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
-void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1) // TEST
+void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta, double &Vrho, double &Vtheta, double &Krho, double &Ktheta) // TEST
 {
 	int	shift;
 	shift = mAlign/fSize;
@@ -1842,7 +1844,7 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gthet
 
 	//SUM variables
 	//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
-	Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
+	Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
 
 	const Float invz	= 1.0/zz;
 	const Float LLzz2 = LL*zz*zz/4.0 ;
@@ -1899,6 +1901,7 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gthet
 	Grho1 *= 3.0*0.125/(deltaa2*n3);
 	Gtheta1 *= 3.0*0.125/(deltaa2*n3);
 
+	Vrho = Vrho1; Vtheta = Vtheta1; Krho = Krho1; Ktheta = Ktheta1; Grho = Grho1; Gtheta = Gtheta1;
 /*
 	fprintf(enWrite,  "%f %f %f %f %f %f %f \n", zz, Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
