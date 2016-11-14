@@ -82,20 +82,20 @@ double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount
 {
 	Strings *eStr = new Strings(field, string);
 
-	double	strDen = 0.;
+	double	strDen = 0., strTmp = 0.;
 
 	switch (dev)
 	{
 		case DEV_CPU:
-			strDen = eStr->runCpu ();
+			strTmp = eStr->runCpu ();
 			break;
 
 		case DEV_GPU:
-			strDen = eStr->runGpu ();
+			strTmp = eStr->runGpu ();
 			break;
 
 		case	DEV_XEON:
-			strDen = eStr->runXeon();
+			strTmp = eStr->runXeon();
 			break;
 
 		default:
@@ -105,7 +105,8 @@ double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount
 
 	delete	eStr;
 
+	MPI_Allreduce(&strTmp, &strDen, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 //	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
 
-	return	strDen;
+	return	(strDen*field->Size())/((double) field->TotalSize());
 }
