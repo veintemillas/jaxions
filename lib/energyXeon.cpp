@@ -33,7 +33,7 @@
 __attribute__((target(mic)))
 #endif
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, double *z, const double ood2, const double LL, const double nQcd,
-			 const size_t Lx, const size_t Vo, const size_t Vf, const size_t Vt, FieldPrecision precision, void *eRes)
+			 const size_t Lx, const size_t Vo, const size_t Vf, const size_t Vt, FieldPrecision precision, void * __restrict__ eRes_)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -54,14 +54,16 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 #ifdef	USE_XEON
 		const double * __restrict__ m	= (const double * __restrict__) m_;
-		double * __restrict__ v		= (double * __restrict__) v_;
+		const double * __restrict__ v	= (const double * __restrict__) v_;
 
 		__assume_aligned(m, Align);
 		__assume_aligned(v, Align);
 #else
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned (v_, Align);
+		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_, Align);
 #endif
+		double * __restrict__ eRes	= (double * __restrict__) eRes_;
+
 		const double zR  = *z;
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
@@ -334,16 +336,16 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double iV = 1./((double) Vt);
 		const double o2 = ood2*0.375;
 
-		(static_cast<double *> (eRes))[0] = Gxrho*o2*iV;
-		(static_cast<double *> (eRes))[1] = Gxth *o2*iV;
-		(static_cast<double *> (eRes))[2] = Gyrho*o2*iV;
-		(static_cast<double *> (eRes))[3] = Gyth *o2*iV;
-		(static_cast<double *> (eRes))[4] = Gzrho*o2*iV;
-		(static_cast<double *> (eRes))[5] = Gzth *o2*iV;
-		(static_cast<double *> (eRes))[6] = Vrho *lZ*iV;
-		(static_cast<double *> (eRes))[7] = Vth  *zQ*iV;
-		(static_cast<double *> (eRes))[8] = Krho *.5*iV;
-		(static_cast<double *> (eRes))[9] = Kth  *.5*iV;
+		eRes[0] = Gxrho*o2*iV;
+		eRes[1] = Gxth *o2*iV;
+		eRes[2] = Gyrho*o2*iV;
+		eRes[3] = Gyth *o2*iV;
+		eRes[4] = Gzrho*o2*iV;
+		eRes[5] = Gzth *o2*iV;
+		eRes[6] = Vrho *lZ*iV;
+		eRes[7] = Vth  *zQ*iV;
+		eRes[8] = Krho *.5*iV;
+		eRes[9] = Kth  *.5*iV;
 #undef	_MData_
 #undef	step
 	}
@@ -359,20 +361,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	#define	_MData_ __m128
 	#define	step 2
 #endif
-		// TEST
-		//float	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
 		double	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
 
 #ifdef	USE_XEON
 		const float * __restrict__ m	= (const float * __restrict__) m_;
-		float * __restrict__ v		= (float * __restrict__) v_;
+		const float * __restrict__ v	= (const float * __restrict__) v_;
 
 		__assume_aligned(m, Align);
 		__assume_aligned(v, Align);
 #else
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
-		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
+		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_, Align);
 #endif
+		double * __restrict__ eRes	= (double * __restrict__) eRes_;
+
 		const float zR  = *z;
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
@@ -602,24 +604,24 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 #ifdef	__MIC__
 				opCode(store_ps, tmpS, tGx);
-				Gxrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
-				Gxth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				Gxrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Gxth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tGy);
-				Gyrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
-				Gyth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				Gyrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Gyth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tGz);
-				Gzrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
-				Gzth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				Gzrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Gzth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tVp);
-				Vrho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
-				Vth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				Vrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Vth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 
 				opCode(store_ps, tmpS, tKp);
-				Krho = (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
-				Kth  = (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				Krho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				Kth  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
 #elif defined(__AVX__)
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
@@ -669,34 +671,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 #endif
 			}
 		}
-/*
-		const float iV = 1./((float) Vt);
-		const float o2 = ((float) ood2)*0.375f;
 
-		(static_cast<float *> (eRes))[0] = Gxrho*o2*iV;
-		(static_cast<float *> (eRes))[1] = Gxth *o2*iV;
-		(static_cast<float *> (eRes))[2] = Gyrho*o2*iV;
-		(static_cast<float *> (eRes))[3] = Gyth *o2*iV;
-		(static_cast<float *> (eRes))[4] = Gzrho*o2*iV;
-		(static_cast<float *> (eRes))[5] = Gzth *o2*iV;
-		(static_cast<float *> (eRes))[6] = Vrho *lZ*iV;
-		(static_cast<float *> (eRes))[7] = Vth  *zQ*iV;
-		(static_cast<float *> (eRes))[8] = Krho *.5*iV;
-		(static_cast<float *> (eRes))[9] = Kth  *.5*iV;
-*/
 		const double iV = 1./((double) Vt);
 		const double o2 = ood2*0.375;
 
-		(static_cast<double *> (eRes))[0] = Gxrho*o2*iV;
-		(static_cast<double *> (eRes))[1] = Gxth *o2*iV;
-		(static_cast<double *> (eRes))[2] = Gyrho*o2*iV;
-		(static_cast<double *> (eRes))[3] = Gyth *o2*iV;
-		(static_cast<double *> (eRes))[4] = Gzrho*o2*iV;
-		(static_cast<double *> (eRes))[5] = Gzth *o2*iV;
-		(static_cast<double *> (eRes))[6] = Vrho *lZ*iV;
-		(static_cast<double *> (eRes))[7] = Vth  *zQ*iV;
-		(static_cast<double *> (eRes))[8] = Krho *.5*iV;
-		(static_cast<double *> (eRes))[9] = Kth  *.5*iV;
+		eRes[0] = Gxrho*o2*iV;
+		eRes[1] = Gxth *o2*iV;
+		eRes[2] = Gyrho*o2*iV;
+		eRes[3] = Gyth *o2*iV;
+		eRes[4] = Gzrho*o2*iV;
+		eRes[5] = Gzth *o2*iV;
+		eRes[6] = Vrho *lZ*iV;
+		eRes[7] = Vth  *zQ*iV;
+		eRes[8] = Krho *.5*iV;
+		eRes[9] = Kth  *.5*iV;
 #undef	_MData_
 #undef	step
 	}
@@ -707,14 +695,13 @@ void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const
 #ifdef USE_XEON
 	const int  micIdx = commAcc(); 
 	const double ood2 = 1./delta2;
-	double *z = axionField->zV();
-
-	int bulk  = 32;
+	double *z  = axionField->zV();
+	double *eR = static_cast<double*>(eRes);
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
+	#pragma offload target(mic:micIdx) in(z:length(8) UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		energyKernelXeon(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, Vt, precision, eRes);
+		energyKernelXeon(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, Vt, precision, (void*) eR);
 	}
 #endif
 }

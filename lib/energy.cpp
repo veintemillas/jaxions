@@ -109,12 +109,7 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 
 	delete	eDark;
 
-//	if (field->Precision() == FIELD_DOUBLE)
-//	{
-		MPI_Allreduce(eTmp, eRes, 10, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-//	} else {
-//		MPI_Allreduce(eTmp, eRes, 10, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
-//	} 
+	MPI_Allreduce(eTmp, eRes, 10, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 	trackFree(&eTmp, ALLOC_TRACK);
 
