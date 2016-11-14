@@ -1,5 +1,3 @@
-// ANADIR CONTADOR DE CUERDAS
-
 #include<cstdio>
 #include<cmath>
 #include"scalarField.h"
@@ -31,14 +29,12 @@
 	#endif
 #endif
 
-// ACABAR XEON PHI
-
 // FUSIONA OPERACIONES
 
+#ifdef	__MIC__
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-#ifdef	__MIC__
 inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 {
 	__m512d zero = { 0., 0., 0., 0., 0., 0., 0., 0. };
@@ -58,14 +54,20 @@ inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 	tpm = opCode(cmp_pd_mask, tp2, zero, _CMP_GT_OS);
 	tmm = opCode(cmp_pd_mask, tp2, zero, _CMP_LE_OS);
 
-	hand[0] = (((tmp&1) & (tpm&1))     ) - (((tmp&1) & (tmm&1))     );
-	hand[1] = (((tmp&2) & (tpm&2)) >> 1) - (((tmp&2) & (tmm&2)) >> 1);
-	hand[2] = (((tmp&4) & (tpm&4)) >> 2) - (((tmp&4) & (tmm&4)) >> 2);
-	hand[3] = (((tmp&8) & (tpm&8)) >> 3) - (((tmp&8) & (tmm&8)) >> 3);
+	tpm &= tmp;
+	tmm &= tmp;
+
+	hand[0] += ((tpm &  2) >> 1) - ((tmm &  2) >> 1);
+	hand[1] += ((tpm &  8) >> 3) - ((tmm &  8) >> 3);
+	hand[2] += ((tpm & 32) >> 5) - ((tmm & 32) >> 5);
+	hand[3] += ((tpm &128) >> 7) - ((tmm &128) >> 7);
 
 	return;
 }
 
+#ifdef USE_XEON
+__attribute__((target(mic)))
+#endif
 inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 {
 	__m512 zero = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
@@ -85,14 +87,17 @@ inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 	tpm = opCode(cmp_ps_mask, tp2, zero, _CMP_GT_OS);
 	tmm = opCode(cmp_ps_mask, tp2, zero, _CMP_LE_OS);
 
-	hand[0] = (((tmp&1  ) & (tpm&1  ))     ) - (((tmp&1  ) & (tmm&1  ))     );
-	hand[1] = (((tmp&2  ) & (tpm&2  )) >> 1) - (((tmp&2  ) & (tmm&2  )) >> 1);
-	hand[2] = (((tmp&4  ) & (tpm&4  )) >> 2) - (((tmp&4  ) & (tmm&4  )) >> 2);
-	hand[3] = (((tmp&8  ) & (tpm&8  )) >> 3) - (((tmp&8  ) & (tmm&8  )) >> 3);
-	hand[4] = (((tmp&16 ) & (tpm&16 )) >> 4) - (((tmp&16 ) & (tmm&16 )) >> 4);
-	hand[5] = (((tmp&32 ) & (tpm&32 )) >> 5) - (((tmp&32 ) & (tmm&32 )) >> 5);
-	hand[6] = (((tmp&64 ) & (tpm&64 )) >> 6) - (((tmp&64 ) & (tmm&64 )) >> 6);
-	hand[7] = (((tmp&128) & (tpm&128)) >> 7) - (((tmp&128) & (tmm&128)) >> 7);
+	tpm &= tmp;
+	tmm &= tmp;
+
+	hand[0] += ((tpm &    2) >> 1) - ((tmm &    2) >> 1);
+	hand[1] += ((tpm &    8) >> 3) - ((tmm &    8) >> 3);
+	hand[2] += ((tpm &   32) >> 5) - ((tmm &   32) >> 5);
+	hand[3] += ((tpm &  128) >> 7) - ((tmm &  128) >> 7);
+	hand[4] += ((tpm &  512) >> 9) - ((tmm &  512) >> 9);
+	hand[5] += ((tpm & 2048) >>11) - ((tmm & 2048) >>11);
+	hand[6] += ((tpm & 8192) >>13) - ((tmm & 8192) >>13);
+	hand[7] += ((tpm &32768) >>15) - ((tmm &32768) >>15);
 
 	return;
 }
@@ -269,13 +274,13 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
+				size_t X[3], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
 
 				{
-					size_t tmi = idx/XC, tpi;
+					size_t tmi = idx/XC;
 
-					tpi = tmi/YC;
-					X[1] = tmi - tpi*YC;
+					X[2] = tmi/YC;
+					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
 				}
 
@@ -358,30 +363,36 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				stringHandD (mXY, mPy, hand);
 				stringHandD (mPy, mel, hand);
 
+				size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
+					size_t tIdx = nIdx + ih*YC*Lx;
+					size_t sIdx = tIdx>>1;
+					int    disP = tIdx&1;	
+
 					switch (hand[ih])
 					{
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_XY);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_XY);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							fflush (stdout);
 						}
 						break;
 
@@ -402,27 +413,31 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
+					size_t tIdx = nIdx + ih*YC*Lx;
+					size_t sIdx = tIdx>>1;
+					int    disP = tIdx&1;	
+
 					switch (hand[ih])
 					{
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_YZ);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							fflush (stdout);
 						}
 						break;
 
@@ -443,27 +458,31 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
+					size_t tIdx = nIdx + ih*YC*Lx;
+					size_t sIdx = tIdx>>1;
+					int    disP = tIdx&1;	
+
 					switch (hand[ih])
 					{
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_ZX);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							fflush (stdout);
 						}
 						break;
 
@@ -623,30 +642,36 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				stringHandS (mXY, mPy, hand);
 				stringHandS (mPy, mel, hand);
 
+				size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
+					size_t tIdx = nIdx + ih*YC*Lx;
+					size_t sIdx = tIdx>>1;
+					int    disP = tIdx&1;	
+
 					switch (hand[ih])
 					{
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_XY);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_XY);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							fflush (stdout);
 						}
 						break;
 
@@ -667,27 +692,31 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
+					size_t tIdx = nIdx + ih*YC*Lx;
+					size_t sIdx = tIdx>>1;
+					int    disP = tIdx&1;	
+
 					switch (hand[ih])
 					{
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_YZ);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							fflush (stdout);
 						}
 						break;
 
@@ -708,27 +737,31 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
+					size_t tIdx = nIdx + ih*YC*Lx;
+					size_t sIdx = tIdx>>1;
+					int    disP = tIdx&1;	
+
 					switch (hand[ih])
 					{
 						case 2:
 						{
 							int strDf = (STRING_POSITIVE | STRING_ZX);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							fflush (stdout);
 						}
 						break;
 
 						case -2:
 						{
 							int strDf = (STRING_NEGATIVE | STRING_ZX);
-							static_cast<char *>(strg)[idxMz+(ih>>1)] |= (strDf << (4*(ih&1)));
+							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
+							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							fflush (stdout);
 						}
 						break;
 
@@ -756,14 +789,14 @@ double	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const si
 {
 	double	  strDen = 0.;
 #ifdef USE_XEON
-	const int micIdx = commAcc();
-
-	int bulk  = 32;
+	const int    micIdx = commAcc();
+	const size_t Vh = (V>>1);
+	char *str = static_cast<char*>(strg);
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) nocopy(mX : ReUseX) signal(&bulk)
+	#pragma offload target(mic:micIdx) out(str : length(Vh) UseX) nocopy(mX : ReUseX)
 	{
-		strDen = stringKernelXeon(mX, Lx, S, V+S, precision, strg);
+		strDen = stringKernelXeon(mX, Lx, S, V+S, precision, str);
 	}
 #endif
 	return	strDen;
