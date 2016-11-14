@@ -380,8 +380,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
-							fflush (stdout);
+							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -391,8 +391,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
-							fflush (stdout);
+							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -425,8 +425,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
-							fflush (stdout);
+							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -436,8 +436,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
-							fflush (stdout);
+							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -470,8 +470,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
-							fflush (stdout);
+							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -481,8 +481,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
-							fflush (stdout);
+							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -543,13 +543,13 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
+				size_t X[3], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
 
 				{
-					size_t tmi = idx/XC, tpi;
+					size_t tmi = idx/XC;
 
-					tpi = tmi/YC;
-					X[1] = tmi - tpi*YC;
+					X[2] = tmi/YC;
+					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
 				}
 
@@ -659,8 +659,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -670,8 +670,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -704,8 +704,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -715,8 +715,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -749,8 +749,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral++;
-							printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
@@ -760,8 +760,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
 							nStrings++;
 							nChiral--;
-							printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							fflush (stdout);
+							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
+							//fflush (stdout);
 						}
 						break;
 
