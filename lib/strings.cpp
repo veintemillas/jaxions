@@ -25,7 +25,7 @@ class	Strings
 
 	FieldPrecision precision;
 
-	void    *string;
+	void    *strData;
 	Scalar	*axionField;
 
 	public:
@@ -38,25 +38,20 @@ class	Strings
 	double	runXeon	();
 };
 
-	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), string(str)
+	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
 {
 }
 
 double	Strings::runGpu	()
 {
 #ifdef	USE_GPU
-/*
-	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
-	const uint ext = uV + uS;
-	double *z = axionField->zV();
+	const uint uLx = Lx, uS = S, uV = V;
 
-        energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[0]);
 	axionField->exchangeGhosts(FIELD_M);
-        energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
-        energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	stringGpu(axionField->mGpu(), uLx, uV, uS, precision, strData, ((cudaStream_t *)axionField->Streams())[0]);
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
-*/
+
 #else
 	printf("Gpu support not built");
 	exit(1);
@@ -65,22 +60,22 @@ double	Strings::runGpu	()
 
 double	Strings::runCpu	()
 {
-	return	stringCpu(axionField, Lx, V, S, precision, string);
+	return	stringCpu(axionField, Lx, V, S, precision, strData);
 }
 
 double	Strings::runXeon	()
 {
 #ifdef	USE_XEON
-	return	stringXeon(axionField, Lx, V, S, precision, string);
+	return	stringXeon(axionField, Lx, V, S, precision, strData);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount)
+double	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCount)
 {
-	Strings *eStr = new Strings(field, string);
+	Strings *eStr = new Strings(field, strData);
 
 	double	strDen = 0., strTmp = 0.;
 
