@@ -48,18 +48,21 @@ class	Energy
 void	Energy::runGpu	()
 {
 #ifdef	USE_GPU
-/*
-	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
-	const uint ext = uV + uS;
+
+	const uint uLx = Lx, uLz = Lz, uS = S, uV = V, uVt = Vt;
 	double *z = axionField->zV();
 
-        energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[0]);
 	axionField->exchangeGhosts(FIELD_M);
-        energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
-        energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	int st = energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, uVt, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
-*/
+
+	if (st != 0)
+	{
+		printf("Gpu error computing energy.");
+		exit(1);
+	}
+
 #else
 	printf("Gpu support not built");
 	exit(1);

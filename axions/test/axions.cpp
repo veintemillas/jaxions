@@ -216,7 +216,7 @@ int	main (int argc, char *argv[])
 		axion->transferDev(FIELD_MV);
 	}
 
-	if (cDev != DEV_GPU)
+//	if (cDev != DEV_GPU)
 	{
 		double	strDen;
 
@@ -360,7 +360,7 @@ int	main (int argc, char *argv[])
 	2. Fix writeMap so it reads data from the first slice of m
 */
 
-		if (cDev != DEV_GPU)
+//		if (cDev != DEV_GPU)
 		{
 			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
