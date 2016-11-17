@@ -133,8 +133,8 @@
 
 		void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 
-		void	thetaz2m2(int *window);			// COPIES dTHETA/dz into m2
-		void	theta2m2(int *window);			// COPIES THETA     into m2
+//		void	thetaz2m2(int *window);			// COPIES dTHETA/dz into m2
+		void	theta2m2();//int *window);			// COPIES THETA     into m2
 
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu

@@ -1,7 +1,7 @@
 set(OBJS fftCuda.cpp comms.cpp fftCode.cpp parse.cpp readWrite.cpp
 scalarField.cpp propagator.cpp propXeon.cpp propGpu.cu energy.cpp
 energyXeon.cpp energyGpu.cu strings.cpp stringCpu.cpp stringXeon.cpp
-stringGpu.cu propSimple.cpp map.cpp memAlloc.cpp)
+stringGpu.cu propSimple.cpp map.cpp memAlloc.cpp powerCpusimple.cpp)
 
 include_directories(.)
 if(USE_GPU)
