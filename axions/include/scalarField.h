@@ -34,7 +34,7 @@
 		size_t	mAlign;
 		//JAVI
 		int sHift;
-		
+
 		double	*z;
 
 		void	*m,   *v,   *m2;			// Cpu data
@@ -129,12 +129,16 @@
 
 		void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
 		void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
-
+		void	fftCpuSpectrum(int sign);			// Fast Fourier Transform in m2 [axion spectrum usage]
 
 		void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 
+		void	thetaz2m2(int *window);			// COPIES dTHETA/dz into m2
+		void	theta2m2(int *window);			// COPIES THETA     into m2
+
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
+
 
 		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 

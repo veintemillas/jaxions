@@ -153,8 +153,12 @@ class	Scalar
 
 	void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
 	void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
+	void	fftCpuSpectrum(int sign);			// Fast Fourier Transform in the Cpu for m2 [axion spectrum usage]
 
 	void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
+	//JAVIER
+	//void	thetaz2m2(int *window);		// COPIES dTHETA/dz into m2	//not used
+	void	theta2m2(int *window);			// COPIES THETA + I dTHETA/dz     into m2
 
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
@@ -843,6 +847,7 @@ void	Scalar::unfoldField()
 
 void	Scalar::unfoldField2D(const size_t sZ)
 {
+	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
 	int	shift;
 
 	shift = mAlign/fSize;
@@ -855,10 +860,12 @@ void	Scalar::unfoldField2D(const size_t sZ)
 			for (size_t ix=0; ix < n1; ix++)
 				for (size_t sy=0; sy<shift; sy++)
 				{
-					size_t oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
 					size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-
-					static_cast<complex<double> *> (m)[dIdx] = static_cast<complex<double> *> (m)[oIdx];
+					//this copies m into buffer 1
+					static_cast<complex<double> *> (m)[dIdx] = static_cast<complex<double> *> (m)[oIdx+n2];
+					//this copies v into buffer last
+					static_cast<complex<double> *> (m)[dIdx+n3+n2] = static_cast<complex<double> *> (v)[oIdx];
 				}
 
 		break;
@@ -869,10 +876,12 @@ void	Scalar::unfoldField2D(const size_t sZ)
 			for (size_t ix=0; ix < n1; ix++)
 				for (size_t sy=0; sy<shift; sy++)
 				{
-					size_t oIdx = (sZ+1)*n2 + iy*n1*shift + ix*shift + sy;
+					size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
 					size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-
-					static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx];
+					//this copies m into buffer 1
+					static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx+n2];
+					//this copies v into buffer last
+					static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (m)[oIdx];
 				}
 
 		break;
@@ -919,6 +928,41 @@ void	Scalar::squareCpu()
 			((std::complex<float> *) m2)[i] = pow(abs(((std::complex<float> *) m2)[i]/((float) n3)),2);
 	}
 }
+
+//	USA M2, ARREGLAR LOWMEM
+// void	Scalar::thetaz2m2(int *window)
+// {
+// 	if (precision == FIELD_DOUBLE)
+// 	{
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t i=0; i < n3; i++)
+// 			((complex<double> *) m2)[i] = I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag();
+// 	}
+// 	else
+// 	{
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t i=0; i < n3; i++)
+// 			((complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag();
+// 	}
+// }
+
+//	USA M2, ARREGLAR LOWMEM
+void	Scalar::theta2m2(int *window)
+{
+	if (precision == FIELD_DOUBLE)
+	{
+		#pragma omp parallel for default(shared) schedule(static)
+		for(size_t i=0; i < n3; i++)
+			((complex<double> *) m2)[i] = arg(((std::complex<double> *) m)[i]) + I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag();//*((double) window[i]);
+	}
+	else
+	{
+		#pragma omp parallel for default(shared) schedule(static)
+		for(size_t i=0; i < n3; i++)
+			((complex<float> *) m2)[i] = arg(((std::complex<float> *) m)[i]) +If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag();//*((float) window[i]);
+	}
+}
+
 
 /*	ARREGLAR PARA DIFERENTES PRECISIONES	*/
 /*
@@ -980,6 +1024,11 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 void	Scalar::fftCpu	(int sign)
 {
 	runFFT(sign);
+}
+
+void	Scalar::fftCpuSpectrum	(int sign)
+{
+	runFFTSpectrum(sign);
 }
 
 /*	CODIGO VIEJO INUTIL, IGUAL PARA FFT GPU...
