@@ -220,12 +220,18 @@ int	main (int argc, char *argv[])
 	{
 		double	strDen;
 
-		printMpi("Strings...");
-		analyzeStrFolded(axion, index);
-		printMpi("Vector Strings...");
-		strDen = strings(axion, cDev, str, fCount);
-		printMpi(" Done! String density %lf\n", strDen);
+		if ((*axion->zV()) > 0.8 )
+		{
+			printMpi("Strings...");
+			analyzeStrFolded(axion, index);
+			printMpi("Vector Strings...");
+			strDen = strings(axion, cDev, str, fCount);
+			printMpi(" Done! String density %lf\n", strDen);
+		}
+
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
+		//copy v unfolded into last slice
+		//memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 		axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);
 		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
@@ -365,9 +371,9 @@ int	main (int argc, char *argv[])
 			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
 			//if (axion->Precision() == FIELD_DOUBLE)
-			if ((*axion->zV()) > 0.4 )
+			if ((*axion->zV()) > 0.8 )
 			{
-				printMpi("Strings (if %f>0.4) ... ", (*axion->zV()));
+				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
 				fflush (stdout);
 				analyzeStrFolded(axion, index);
 			}

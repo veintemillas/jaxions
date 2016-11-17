@@ -20,6 +20,7 @@
 #include "map.h"
 #include "memAlloc.h"
 #include "strings.h"
+#include "powerCpu.h"
 
 using namespace std;
 
@@ -92,9 +93,12 @@ int	main (int argc, char *argv[])
 	FILE *file_energy ;
 	file_energy = NULL;
 
-
 	FILE *file_energy2 ;
 	file_energy2 = NULL;
+
+	FILE *file_spectrum ;
+	file_spectrum = NULL;
+
 
 	if (commRank() == 0)
 	{
@@ -105,9 +109,24 @@ int	main (int argc, char *argv[])
 		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 
 		file_energy2 = fopen("out/energy2.txt","w+");
+
+		file_spectrum = fopen("out/spectrum.txt","w+");
 	}
 
+	// Energy 2
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
+	// Strings
+	int nstrings = 0 ;
+
+	// Axion spectrum
+	const int kmax = axion->Length()/2 -1;
+	int powmax = floor(1.733*kmax)+2 ;
+
+	double  *spectrumK ;
+	double  *spectrumG ;
+	double  *spectrumV ;
+	trackAlloc(&spectrumK, 128);
+	memset(spectrumK, 0, 128);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -193,22 +212,6 @@ int	main (int argc, char *argv[])
 		axion->transferDev(FIELD_MV);
 	}
 
-	if (cDev != DEV_GPU)
-	{
-		printMpi("Strings...");
-		//analyzeStrFolded(axion, index);
-		analyzeStrUNFolded(axion, index);
-		printMpi(" Done!");
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
-		//axion->unfoldField2D(sizeZ-1);
-		writeMap (axion, index);
-		//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-		axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-		fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-		printf("%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-
-	}
-
 	if (dump > nSteps)
 		dump = nSteps;
 
@@ -218,6 +221,21 @@ int	main (int argc, char *argv[])
 		nLoops = 0;
 	else
 		nLoops = (int)(nSteps/dump);
+
+		if (cDev != DEV_GPU)
+		{
+			//printMpi("Strings...");
+			//analyzeStrFolded(axion, index);
+			//analyzeStrUNFolded(axion, index);
+			//printMpi(" Done!");
+			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
+			//axion->unfoldField2D(sizeZ-1);
+			writeMap (axion, index);
+			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+			fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %d\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz, nstrings);
+			printf("%d/%d | z = %lf | st = %d | Vr %+lf Vt %+lf Kr %+lf Kt %+lf Grz %+lf Gtz %+lf\n", index, nLoops, (*axion->zV()), nstrings, Vr, Vt, Kr, Kt, Grz, Gtz);
+		}
 
 	printMpi ("Start redshift loop\n\n");
 	fflush (stdout);
@@ -277,16 +295,26 @@ int	main (int argc, char *argv[])
 				//printMpi("Strings (if %f>0.4) ... ", (*axion->zV()));
 				fflush (stdout);
 				//analyzeStrFolded(axion, index);
-				analyzeStrUNFolded(axion, index);
+				nstrings = analyzeStrUNFolded(axion, index);
 			}
 
-
-			//axion->unfoldField2D(sizeZ-1);
+			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
 			writeMap (axion, index);
 			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-			fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-			printf("%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+			fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %d\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz, nstrings);
+			printf("%d/%d | z = %lf | st = %d | Vr %+lf Vt %+lf Kr %+lf Kt %+lf Grz %+lf Gtz %+lf\n", index, nLoops, (*axion->zV()), nstrings, Vr, Vt, Kr, Kt, Grz, Gtz);
+
+			if ((*axion->zV()) > 0.4 )
+			{
+				double *sK = static_cast<double *> (spectrumK);
+				double *sG = static_cast<double *> (spectrumG);
+				double *sV = static_cast<double *> (spectrumV);
+				spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+				printf("sp %lf %lf %lf ...\n",sK[0]+sG[0]+sV[0], sK[1]+sG[1]+sV[1], sK[2]+sG[2]+sV[2]);
+			}
+
+
 		}
 	} // zloop
 

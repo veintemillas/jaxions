@@ -101,7 +101,7 @@ void	runFFT(int sign)
 	printf ("Done!\n");
 	fflush (stdout);
 }
-            
+
 void	closeFFT	()
 {
 	if (!iFFT)
@@ -113,7 +113,7 @@ void	closeFFT	()
 		fftwf_destroy_plan(pfb);
 		void fftwf_cleanup_threads(void);
 	}
-	else	
+	else
 	{
 		fftw_destroy_plan(p);
 		fftw_destroy_plan(pb);
@@ -121,3 +121,105 @@ void	closeFFT	()
 	}
 }
 
+
+
+//----------------------------------------------------------------------------------------------------------
+// 			FFT Spectrum
+//----------------------------------------------------------------------------------------------------------
+
+fftw_plan p2;
+fftwf_plan pf2;
+
+
+static bool iFFTSpectrum = false;
+
+void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Lz, FieldPrecision prec, bool lowmem)
+{
+
+	printf ("Initializing FFTSpectrum...\n");
+	fflush (stdout);
+
+	if (iFFTSpectrum == true)
+	{
+		printf ("Already initialized!!\n");
+		fflush (stdout);
+	}
+
+	//fftw_mpi_init();
+
+	//printf ("  MPI Ok\n");
+	//fflush (stdout);
+
+	printf ("  Plan 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Lz);
+	fflush (stdout);
+
+	switch (prec)
+	{
+		case FIELD_DOUBLE:
+
+		single = false;
+		if (lowmem) {
+			printf("Spectrum not available in lowmem until the end");
+		} else {
+			p2  = fftw_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+		}
+//		p  = fftw_plan_many_dft(2, nD, Lz, static_cast<fftw_complex*>(m), NULL, 1, dist, static_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
+//		pb = fftw_plan_many_dft(2, nD, Lz, static_cast<fftw_complex*>(m), NULL, 1, dist, static_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
+		break;
+
+		case FIELD_SINGLE:
+
+		single = true;
+		if (lowmem) {
+			printf("Spectrum not available in lowmem until the end");
+		} else {
+			pf2  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+		}
+//		pf  = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
+//		pfb = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
+		break;
+
+		default:
+
+		break;
+	}
+
+	printf ("  Plan_Spectrum Ok\n");
+	fflush (stdout);
+
+	iFFTSpectrum = true;
+}
+
+void	runFFTSpectrum(int sign)
+{
+	printf ("Spectrum FFT...\n");
+	fflush (stdout);
+
+	if (single) {
+		fftwf_execute(pf2);
+	}
+	else
+	{
+		fftw_execute(p2);
+	}
+
+	printf ("Done!\n");
+	fflush (stdout);
+}
+
+void	closeFFTSpectrum	()
+{
+	if (!iFFTSpectrum)
+		return;
+
+	if (single)
+	{
+		fftwf_destroy_plan(pf2);
+		void fftwf_cleanup_threads(void);
+	}
+	else
+	{
+		fftw_destroy_plan(p2);
+		void fftw_cleanup_threads(void);
+	}
+}
