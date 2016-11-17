@@ -2,58 +2,17 @@
 
 #include "index.h"
 #include "scalarField.h"
+#include "parse.h"
 
 using namespace std;
 
-void	spectrumUNFOLDED(Scalar *field, void *spectrumK, void *spectrumG, void *spectrumV)
-{
-	const int n1 = axion->Length();
-	const int kmax = n1/2 -1;
-	int powmax = floor(1.733*kmax)+2 ;
-	//const double z = axion->zV();
-	double mass2 = 9.*pow(axion->zV(),nQCD+2);
-
-	// 	New scheme
-
-	//  Copies theta + I theta_z into m2
-			axion->thethazm2()
-	//  FFT[m2] = FFT[theta] + I*FFT[theta_z]
-	//					= a + I b		 + I (c + I d)
-	//	MAKE SURE SAME ORDER OF MAGNITUDE! MULTIPLY BY a clever factor?
-
-	//	FFT m2 inplace ->
-			axion->fftCpuSpectrum();
-
-switch(field->Precision())
-{
-	case FIELD_DOUBLE:
-	{
-		nSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(field->m2Cpu()), spectrumK, spectrumG, spectrumV,
-																					int n1, int powmax, int kmax, double mass2);
-		break;
-	}
-
-	case FIELD_SINGLE:
-	{
-		nSpectrumUNFOLDED<float>(static_cast<const complex<float>*>(field->m2Cpu()), spectrumK, spectrumG, spectrumV,
-																					int n1, int powmax, int kmax, double mass2););
-		break;
-	}
-
-	default:
-	printf ("Not a valid precision.\n");
-
-	break;
-}
-}
 
 //--------------------------------------------------
 // POWER SPECTRUM
 //--------------------------------------------------
 
 template<typename Float>
-void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,
-																			int n1, int powmax, int kmax, double mass2)
+void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,	int n1, int powmax, int kmax, double mass2)
 {
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < powmax; i++)
@@ -99,12 +58,9 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 		double spectrumG_private[powmax] ={0.0};
 		double spectrumV_private[powmax] ={0.0};
 
-		#pragma omp parallel for default(shared) private(NH)
+		#pragma omp parallel for default(shared)
 		for (int kz = 0; kz<kmax + 1; kz++)
 		{
-			int ky, kx ;
-			int iz, iy, ix ;	// half space
-			int nz, ny, nx ;	// negative
 			int bin;
 
 			int iz = (n1+kz)%n1 ;
@@ -123,32 +79,31 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 					int nx = (n1-kx)%n1 ;
 
 					double k2 =	kx*kx + ky*ky + kz*kz;
-					double w = (double) sqrt(k2 + mass2));
+					double w = (double) sqrt(k2 + mass2);
 					int bin  = (int) floor(sqrt(k2)) 	;
 
-					ftk = ft2[ix+iy*n1+iz*n1*n1];
+					ftk = ft[ix+iy*n1+iz*n1*n1]; // Era ft2
 					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
 
 					spectrumK_private[bin] += pow(abs(ftk + ftmk),2)/w;
 					spectrumG_private[bin] += pow(abs(ftk - ftmk),2)*k2/w;
-					spectrum_privateV[bin] += pow(abs(ftk - ftmk),2)*mass2/w;
+					spectrumV_private[bin] += pow(abs(ftk - ftmk),2)*mass2/w;
 				}//x
 
 			}//y
 		}//z
 		#pragma omp critical
-    {
-        for(int n=0; n<powmax; ++n) {
-            spectrumK[n] += spectrumK_private[n];
-						spectrumG[n] += spectrumG_private[n];
-						spectrumV[n] += spectrumV_private[n];
-						//		(static_cast<double *> (eRes))[0] = Gxrho*o2*iV;
-        }
-    }
+		{
+			for(int n=0; n<powmax; ++n) {
+				static_cast<double*>(spectrumK)[n] += spectrumK_private[n];
+				static_cast<double*>(spectrumG)[n] += spectrumG_private[n];
+				static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
+		//		(static_cast<double *> (eRes))[0] = Gxrho*o2*iV;
+        		}
+		}
 	}//parallel
 
 	printf("Axion spectrum spectrum printed\n");
-
 }
 
 
@@ -160,3 +115,38 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 //	|mode|^2 * k^2/w
 //	Bin power spectrum VthetaPS
 //	|mode|^2 * m^2/w
+
+void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV)
+{
+	const int n1 = axion->Length();
+	const int kmax = n1/2 -1;
+	int powmax = floor(1.733*kmax)+2 ;
+	//const double z = axion->zV();
+	double mass2 = 9.*pow((*axion->zV()),nQcd+2);
+
+	// 	New scheme
+
+	//  Copies theta + I theta_z into m2
+			axion->theta2m2();
+	//  FFT[m2] = FFT[theta] + I*FFT[theta_z]
+	//					= a + I b		 + I (c + I d)
+	//	MAKE SURE SAME ORDER OF MAGNITUDE! MULTIPLY BY a clever factor?
+
+	//	FFT m2 inplace ->
+			axion->fftCpuSpectrum(1);
+
+	switch(axion->Precision())
+	{
+		case FIELD_DOUBLE:
+		nSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax, mass2);
+		break;
+
+		case FIELD_SINGLE:
+		nSpectrumUNFOLDED<float>(static_cast<const complex<float>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax, mass2);
+		break;
+
+		default:
+		printf ("Not a valid precision.\n");
+		break;
+	}
+}

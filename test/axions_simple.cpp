@@ -125,7 +125,7 @@ int	main (int argc, char *argv[])
 	double  *spectrumK ;
 	double  *spectrumG ;
 	double  *spectrumV ;
-	trackAlloc(&spectrumK, 128);
+	trackAlloc((void**) (&spectrumK), 128);
 	memset(spectrumK, 0, 128);
 
 	//--------------------------------------------------

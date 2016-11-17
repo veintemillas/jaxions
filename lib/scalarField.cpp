@@ -158,7 +158,7 @@ class	Scalar
 	void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 	//JAVIER
 	//void	thetaz2m2(int *window);		// COPIES dTHETA/dz into m2	//not used
-	void	theta2m2(int *window);			// COPIES THETA + I dTHETA/dz     into m2
+	void	theta2m2();//int *window);			// COPIES THETA + I dTHETA/dz     into m2
 
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
@@ -947,7 +947,7 @@ void	Scalar::squareCpu()
 // }
 
 //	USA M2, ARREGLAR LOWMEM
-void	Scalar::theta2m2(int *window)
+void	Scalar::theta2m2()//int *window)
 {
 	if (precision == FIELD_DOUBLE)
 	{
