@@ -125,8 +125,10 @@ int	main (int argc, char *argv[])
 	double  *spectrumK ;
 	double  *spectrumG ;
 	double  *spectrumV ;
-	trackAlloc((void**) (&spectrumK), 128);
-	memset(spectrumK, 0, 128);
+	trackAlloc((void**) (&spectrumK), 8*powmax);
+	trackAlloc((void**) (&spectrumG), 8*powmax);
+	trackAlloc((void**) (&spectrumV), 8*powmax);
+
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -311,7 +313,11 @@ int	main (int argc, char *argv[])
 				double *sG = static_cast<double *> (spectrumG);
 				double *sV = static_cast<double *> (spectrumV);
 				spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-				printf("sp %lf %lf %lf ...\n",sK[0]+sG[0]+sV[0], sK[1]+sG[1]+sV[1], sK[2]+sG[2]+sV[2]);
+				printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+				fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
+				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
+				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
 			}
 
 
@@ -339,6 +345,9 @@ int	main (int argc, char *argv[])
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
+	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
+	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
+	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 
 	delete fCount;
 	delete axion;
@@ -353,6 +362,7 @@ int	main (int argc, char *argv[])
 		fclose (file_sample);
 		fclose (file_energy);
 		fclose (file_energy2);
+		fclose (file_spectrum);
 	}
 
 	return 0;

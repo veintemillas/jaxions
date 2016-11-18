@@ -396,6 +396,8 @@ class	Scalar
 		}
 #endif
 	}
+	//
+	initFFTSpectrum(m2, n1, Tz, precision, lowmem);
 }
 
 	Scalar::~Scalar()
@@ -1107,6 +1109,11 @@ void	Scalar::fftGpu	(int sign)
 #endif
 }
 
+			// ----------------------------------------------------------------------
+			// 		INITIAL CONDITIONS
+			// ----------------------------------------------------------------------
+
+
 void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 {
 
@@ -1116,7 +1123,7 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 	{
 		case CONF_NONE:
 		break;
-
+//------------------------------------------------------------------------------
 		case CONF_KMAX:		// kMax = parm1, kCrit = parm2
 
 //		if (device == DEV_CPU || device == DEV_XEON)	//	Do this always...
@@ -1124,23 +1131,30 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 			switch (precision)
 			{
 				case FIELD_DOUBLE:
-				printf ("Generating conf (KMAX) (double prec) ... ");
-				fflush (stdout);
-				momConf(parm1, parm2);
-
+					printf ("Generating conf (KMAX) (double prec) ... ");
+					fflush (stdout);
+					momConf(parm1, parm2);
+					printf ("Normalising field ");
+					normaliseField(FIELD_M);
+					normaCOREField( (double) alpha );
+					fflush (stdout);
+					printf ("Done!\n");
 				break;
 
 				case FIELD_SINGLE:
-				printf ("Generating conf (KMAX) (single prec) ... ");
-				fflush (stdout);
-				momConf(parm1, (float) parm2);
-
+					printf ("Generating conf (KMAX) (single prec) ... ");
+					fflush (stdout);
+					momConf(parm1, (float) parm2);
+					printf ("Normalising field ");
+					normaliseField(FIELD_M);
+					normaCOREField( (float) alpha );
+					printf ("Done!\n");
+					fflush (stdout);
 				break;
 
 				default:
-				printf("Wrong precision!\n");
-				exit(1);
-
+					printf("Wrong precision!\n");
+					exit(1);
 				break;
 			}
 
@@ -1155,7 +1169,42 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		exchangeGhosts(FIELD_M);
 
 		break;
+//------------------------------------------------------------------------------
+		case CONF_TKACHEV:		// kMax = parm1, kCrit = parm2
 
+//		if (device == DEV_CPU || device == DEV_XEON)	//	Do this always...
+		{
+			switch (precision)
+			{
+				case FIELD_DOUBLE:
+				printf ("Generating conf (TKA) (double prec) ... ");
+				fflush (stdout);
+				momConf(parm1, parm2);
+
+				break;
+
+				case FIELD_SINGLE:
+				printf ("Generating conf (TKA) (single prec) ... ");
+				fflush (stdout);
+				momConf(parm1, (float) parm2);
+
+				break;
+
+				default:
+				printf("Wrong precision!\n");
+				exit(1);
+
+				break;
+			}
+			printf ("FFT ... ");
+			fflush (stdout);
+			fftCpu (1);	// FFTW_BACKWARD
+			printf ("Done!\n");
+			fflush (stdout);
+		}
+		exchangeGhosts(FIELD_M);
+		break;
+//------------------------------------------------------------------------------
 		case CONF_SMOOTH:	// iter = parm1, alpha = parm2
 
 		switch (device)
@@ -1165,25 +1214,41 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 
 			printf ("Generating random conf (SMOOTH) ...");
 			fflush (stdout);
-
 			randConf ();
-
 			printf("Smoothing (sIter=%d) ... ",parm1);
 			fflush (stdout);
-
 			smoothConf (parm1, parm2);
-
 			printf("Done !\n ");
 			fflush (stdout);
+			printf ("Normalising field ");
+			switch (precision)
+			{
+				case FIELD_DOUBLE:
+					printf ("(double prec) ... ");
+					fflush (stdout);
+					normaliseField(FIELD_M);
+					normaCOREField( (double) alpha );
+					printf ("Done!\n");
+					fflush (stdout);
+				break;
+
+				case FIELD_SINGLE:
+				printf ("(single prec) ... ");
+				fflush (stdout);
+				normaliseField(FIELD_M);
+				normaCOREField( (float) alpha );
+				printf ("Done!\n");
+				fflush (stdout);
 			break;
 
 			case	DEV_GPU:
-
-//			randConfGpu (m, n1, Lz, n3, precision);
-//			smoothConfGpu (this, iter, alpha);
+			break;
+			default:
+			printf("Wrong precision! \n");
+			exit(1);
 			break;
 		}
-
+//------------------------------------------------------------------------------
 		break;
 
 		default:
@@ -1192,46 +1257,46 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		exit(1);
 
 		break;
-	} // END SwITCH TYPE KMAX vs SMOOTH
 
+	} // END SwITCH TYPE KMAX vs SMOOTH ... & TKACHEV
+//------------------------------------------------------------------------------
 	if (cType != CONF_NONE)
 	{
-		printf ("Normalising field ");
-		//JAVIER normalisation
-		switch (precision)
-		{
-			case FIELD_DOUBLE:
-
-			printf ("(double prec) ... ");
-			fflush (stdout);
-
-			normaliseField(FIELD_M);
-			normaCOREField( (double) alpha );
-
-			printf ("Done!\n");
-			fflush (stdout);
-			break;
-
-			case FIELD_SINGLE:
-
-			printf ("(single prec) ... ");
-			fflush (stdout);
-
-			normaliseField(FIELD_M);
-			normaCOREField( (float) alpha );
-
-			printf ("Done!\n");
-			fflush (stdout);
-			break;
-
-			default:
-			printf("Wrong precision! \n");
-			exit(1);
-			break;
+		// printf ("Normalising field ");
+		// //JAVIER normalisation
+		// switch (precision)
+		// {
+		// 	case FIELD_DOUBLE:
+		//
+		// 	printf ("(double prec) ... ");
+		// 	fflush (stdout);
+		//
+		// 	normaliseField(FIELD_M);
+		// 	normaCOREField( (double) alpha );
+		//
+		// 	printf ("Done!\n");
+		// 	fflush (stdout);
+		// 	break;
+		//
+		// 	case FIELD_SINGLE:
+		//
+		// 	printf ("(single prec) ... ");
+		// 	fflush (stdout);
+		//
+		// 	normaliseField(FIELD_M);
+		// 	normaCOREField( (float) alpha );
+		//
+		// 	printf ("Done!\n");
+		// 	fflush (stdout);
+		// 	break;
+		//
+		// 	default:
+		// 	printf("Wrong precision! \n");
+		// 	exit(1);
+		// 	break;
 		}
 
 		//JAVIER
-
 		printf("Copying m to v ... ");
 		fflush (stdout);
 
@@ -1245,6 +1310,11 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		fflush (stdout);
 	}
 }
+
+				//----------------------------------------------------------------------
+				//		FUNCTIONS FOR INIT. COND.
+				//----------------------------------------------------------------------
+
 
 void	Scalar::randConf ()
 {
@@ -1747,6 +1817,11 @@ void	Scalar::normaCOREField(const Float alpha)
 	printf("CORE smoothing Done\n");
 	fflush (stdout);
 }
+
+
+
+
+
 
 
 //void	Scalar::writeENERGY (double zzz, FILE *enwrite)
