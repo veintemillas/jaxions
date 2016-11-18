@@ -578,7 +578,7 @@ int	parseArgs (int argc, char *argv[])
 
 			Ng = atoi(argv[i+1]);
 
-			if (Ng < 0 || Ng > 3 )
+			if (Ng < 0 || Ng > 4 )
 			{
 				printf("Error: The number of neighbours must be 0,1,2,3. Set to 1.\n");
 				//exit(1);

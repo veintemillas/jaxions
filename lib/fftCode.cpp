@@ -192,7 +192,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Lz, FieldPrecision
 
 void	runFFTSpectrum(int sign)
 {
-	printf ("Spectrum FFT...\n");
+	printf ("Spectrum FFT... ");
 	fflush (stdout);
 
 	if (single) {
@@ -203,7 +203,7 @@ void	runFFTSpectrum(int sign)
 		fftw_execute(p2);
 	}
 
-	printf ("Done!\n");
+	printf ("Done! ");
 	fflush (stdout);
 }
 

@@ -14,12 +14,14 @@ using namespace std;
 template<typename Float>
 void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,	int n1, int powmax, int kmax, double mass2)
 {
+	double voli = 1.0/((double) n1*n1*n1) ;
+
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < powmax; i++)
 	{
-		(static_cast<double *> (spectrumK))[0] = 0.0;
-		(static_cast<double *> (spectrumG))[0] = 0.0;
-		(static_cast<double *> (spectrumV))[0] = 0.0;
+		(static_cast<double *> (spectrumK))[i] = 0.0;
+		(static_cast<double *> (spectrumG))[i] = 0.0;
+		(static_cast<double *> (spectrumV))[i] = 0.0;
 	}
 //	Bin power spectrum
 //  KthetaPS |mode|^2 / w
@@ -92,18 +94,28 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 
 			}//y
 		}//z
+
 		#pragma omp critical
 		{
-			for(int n=0; n<powmax; ++n) {
+			for(int n=0; n<powmax; n++)
+			{
 				static_cast<double*>(spectrumK)[n] += spectrumK_private[n];
 				static_cast<double*>(spectrumG)[n] += spectrumG_private[n];
 				static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
-		//		(static_cast<double *> (eRes))[0] = Gxrho*o2*iV;
-        		}
+      }
 		}
+
 	}//parallel
 
-	printf("Axion spectrum spectrum printed\n");
+	#pragma omp parallel for default(shared)
+	for(int n=0; n<powmax; n++)
+	{
+		static_cast<double*>(spectrumK)[n] *= voli;
+		static_cast<double*>(spectrumG)[n] *= voli;
+		static_cast<double*>(spectrumV)[n] *= voli;
+	}
+
+	printf(" ... Axion spectrum printed\n");
 }
 
 
