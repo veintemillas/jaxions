@@ -25,13 +25,12 @@ static __device__ __forceinline__ int	stringHand(const complex<Float> s1, const 
 template<typename Float>
 static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, void * __restrict__ str)
 {
-	uint X[3], idxPx, idxPy, idxXY, idxYZ, idxZX, sIdx, disP, strDf;
-	int hand;
+	uint X[3], idxPx, idxPy, idxXY, idxYZ, idxZX;
 
 	complex<Float> mel, mPx, mXY, mPy, mYZ, mPz, mZX;
-
-	disP = ((idx-Sf)&1);
-	sIdx = ((idx-Sf)>>1);
+	uint sIdx = idx-Sf;
+	int hand = 0;
+	char strDf = 0;
 
 	idx2Vec(idx, X, Lx);
 
@@ -42,8 +41,8 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 
 		if (X[1] == Lx-1)
 		{
-			idxPy = idx - Sf + Lx;
-			idxXY = idx - Sf + 1;
+			idxPy = sIdx + Lx;
+			idxXY = sIdx + 1;
 			idxYZ = idx + Lx;
 		} else {
 			idxPy = idx + Lx;
@@ -56,7 +55,7 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 
 		if (X[1] == Lx-1)
 		{
-			idxPy = idx - Sf + Lx;
+			idxPy = sIdx + Lx;
 			idxYZ = idx + Lx;
 		} else {
 			idxPy = idx + Lx;
@@ -82,8 +81,10 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mPy, mel);
 /*	ARREGLAR PARA QUE SOLO HAYA UN STORE	*/
 /*	LA QUIRALIDAD SE GUARDA MAL	*/
-	strDf = ((hand&128)>>4) | ((hand&2)>>1);
-	static_cast<char *>(str)[sIdx] |= (strDf << (4*disP));	
+	if (hand == 2)
+		strDf |= STRING_XY_POSITIVE;
+	else if (hand == -2)
+		strDf |= STRING_XY_NEGATIVE;
 
 	hand = 0;
 
@@ -94,8 +95,10 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mYZ, mPz);
 	hand += stringHand (mPz, mel);
 
-	strDf |= (((hand&128)>>4) | (hand&2));
-	static_cast<char *>(str)[sIdx] |= (strDf << (4*disP));	
+	if (hand == 2)
+		strDf |= STRING_YZ_POSITIVE;
+	else if (hand == -2)
+		strDf |= STRING_YZ_NEGATIVE;
 
 	hand = 0;
 
@@ -104,10 +107,14 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mel, mPz);
 	hand += stringHand (mPz, mZX);
 	hand += stringHand (mZX, mPx);
-	hand += stringHand (mPz, mel);
+	hand += stringHand (mPx, mel);
 
-	strDf |= (((hand&128)>>4) | ((hand&2)<<1));
-	static_cast<char *>(str)[sIdx] |= (strDf << (4*disP));	
+	if (hand == 2)
+		strDf |= STRING_ZX_POSITIVE;
+	else if (hand == -2)
+		strDf |= STRING_ZX_NEGATIVE;
+
+	static_cast<char *>(str)[sIdx] = strDf;
 }
 
 template<typename Float>
@@ -128,7 +135,7 @@ double	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, cons
 
 	void   *strg;
 
-	if (cudaMalloc(&strg, sizeof(char)*(V>>1)) != cudaSuccess)
+	if (cudaMalloc(&strg, sizeof(char)*V) != cudaSuccess)
 		return -1;
 
 	if (precision == FIELD_DOUBLE)
@@ -138,7 +145,7 @@ double	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, cons
 
 	cudaDeviceSynchronize();
 
-	cudaMemcpy(str, strg, sizeof(char)*(V>>1), cudaMemcpyDeviceToHost);
+	cudaMemcpy(str, strg, sizeof(char)*V, cudaMemcpyDeviceToHost);
 	cudaFree(strg);
 
 	return	0;
