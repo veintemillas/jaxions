@@ -356,6 +356,8 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 				// Tienes los 7 puntos que definen las 3 plaquetas
 
+				size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+
 				// Plaqueta XY
 
 				stringHandD (mel, mPx, hand);
@@ -363,21 +365,16 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				stringHandD (mXY, mPy, hand);
 				stringHandD (mPy, mel, hand);
 
-				size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
-
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
 					size_t tIdx = nIdx + ih*YC*Lx;
-					size_t sIdx = tIdx>>1;
-					int    disP = tIdx&1;	
 
 					switch (hand[ih])
 					{
 						case 2:
 						{
-							int strDf = (STRING_POSITIVE | STRING_XY);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_XY_POSITIVE;
 							nStrings++;
 							nChiral++;
 							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
@@ -387,8 +384,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 						case -2:
 						{
-							int strDf = (STRING_NEGATIVE | STRING_XY);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_XY_NEGATIVE;
 							nStrings++;
 							nChiral--;
 							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*YC, X[2]-1);
@@ -414,15 +410,12 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				for (int ih=0; ih<step; ih++)
 				{
 					size_t tIdx = nIdx + ih*YC*Lx;
-					size_t sIdx = tIdx>>1;
-					int    disP = tIdx&1;	
 
 					switch (hand[ih])
 					{
 						case 2:
 						{
-							int strDf = (STRING_POSITIVE | STRING_YZ);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_YZ_POSITIVE;
 							nStrings++;
 							nChiral++;
 							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
@@ -432,8 +425,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 						case -2:
 						{
-							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_YZ_NEGATIVE;
 							nStrings++;
 							nChiral--;
 							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*YC, X[2]-1);
@@ -459,15 +451,12 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				for (int ih=0; ih<step; ih++)
 				{
 					size_t tIdx = nIdx + ih*YC*Lx;
-					size_t sIdx = tIdx>>1;
-					int    disP = tIdx&1;	
 
 					switch (hand[ih])
 					{
 						case 2:
 						{
-							int strDf = (STRING_POSITIVE | STRING_ZX);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_ZX_POSITIVE;
 							nStrings++;
 							nChiral++;
 							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
@@ -477,8 +466,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 						case -2:
 						{
-							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_ZX_NEGATIVE;
 							nStrings++;
 							nChiral--;
 							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*YC, X[2]-1);
@@ -648,15 +636,12 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				for (int ih=0; ih<step; ih++)
 				{
 					size_t tIdx = nIdx + ih*YC*Lx;
-					size_t sIdx = tIdx>>1;
-					int    disP = tIdx&1;	
 
 					switch (hand[ih])
 					{
 						case 2:
 						{
-							int strDf = (STRING_POSITIVE | STRING_XY);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_XY_POSITIVE;
 							nStrings++;
 							nChiral++;
 							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
@@ -666,8 +651,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 						case -2:
 						{
-							int strDf = (STRING_NEGATIVE | STRING_XY);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_XY_NEGATIVE;
 							nStrings++;
 							nChiral--;
 							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
@@ -693,15 +677,12 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				for (int ih=0; ih<step; ih++)
 				{
 					size_t tIdx = nIdx + ih*YC*Lx;
-					size_t sIdx = tIdx>>1;
-					int    disP = tIdx&1;	
 
 					switch (hand[ih])
 					{
 						case 2:
 						{
-							int strDf = (STRING_POSITIVE | STRING_YZ);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_YZ_POSITIVE;
 							nStrings++;
 							nChiral++;
 							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
@@ -711,8 +692,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 						case -2:
 						{
-							int strDf = (STRING_NEGATIVE | STRING_YZ);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_YZ_NEGATIVE;
 							nStrings++;
 							nChiral--;
 							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
@@ -738,15 +718,12 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 				for (int ih=0; ih<step; ih++)
 				{
 					size_t tIdx = nIdx + ih*YC*Lx;
-					size_t sIdx = tIdx>>1;
-					int    disP = tIdx&1;	
 
 					switch (hand[ih])
 					{
 						case 2:
 						{
-							int strDf = (STRING_POSITIVE | STRING_ZX);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_ZX_POSITIVE;
 							nStrings++;
 							nChiral++;
 							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
@@ -756,8 +733,7 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 						case -2:
 						{
-							int strDf = (STRING_NEGATIVE | STRING_ZX);
-							static_cast<char *>(strg)[sIdx] |= (strDf << (4*disP));
+							static_cast<char *>(strg)[tIdx] |= STRING_ZX_NEGATIVE;
 							nStrings++;
 							nChiral--;
 							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);

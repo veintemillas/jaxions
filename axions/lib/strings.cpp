@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include "scalarField.h"
 #include "enum-field.h"
 
@@ -40,6 +41,7 @@ class	Strings
 
 	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
 {
+	memset(strData, 0, V);
 }
 
 double	Strings::runGpu	()
