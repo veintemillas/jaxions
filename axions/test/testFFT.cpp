@@ -54,6 +54,7 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS       
 	//--------------------------------------------------
 
+	FlopCounter *fCount = new FlopCounter;
 
 	Scalar *axion;
 	char fileName[256];
@@ -64,7 +65,7 @@ int	main (int argc, char *argv[])
 		sprintf(fileName, "data/initial_conditions_m.txt");
 
 	//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid);
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, NULL, lowmem, zGrid, CONF_NONE, 0, 0);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, NULL, lowmem, zGrid, CONF_NONE, 0, 0, NULL);
 	readConf(&axion, 0);
 
 	//--------------------------------------------------
@@ -164,6 +165,8 @@ int	main (int argc, char *argv[])
 	printMpi("z_final = %f\n", *axion->zV());
 	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 	printMpi("--------------------------------------------------\n");
+
+	delete fCount;
 
 	endComms();
     

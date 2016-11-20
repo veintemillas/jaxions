@@ -51,6 +51,7 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
+	FlopCounter *fCount = new FlopCounter;
 
 	Scalar *axion;
 	char fileName[256];
@@ -62,14 +63,14 @@ int	main (int argc, char *argv[])
 		else
 			sprintf(fileName, "data/initial_conditions_m.txt");
 		//This prepares the axion field from default files
-		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0);
+		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0, fCount);
 		printMpi("Eo\n");
 	}
 	else
 	{
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2, fCount);
 		else
 		{
 			//This reads from an Axion.00000 file
@@ -171,8 +172,6 @@ int	main (int argc, char *argv[])
 	int counter = 0;
 	int index = 0;
 
-	FlopCounter *fCount = new FlopCounter;
-
 	commSync();
 
 	void *eRes, *str;			// Para guardar la energia
@@ -229,9 +228,9 @@ int	main (int argc, char *argv[])
 			printMpi(" Done! String density %lf\n", strDen);
 		}
 
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
+		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 		//copy v unfolded into last slice
-		//memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->dataSize(), S0*axion->dataSize());
+		//memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 		axion->unfoldField2D(sizeZ-1);
 		writeMap (axion, index);
 		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);

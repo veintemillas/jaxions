@@ -357,7 +357,7 @@ void	readConf (Scalar **axion, int index)
 	else
 		sizeZ = totlZ/zGrid;
 
-	*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, NULL, lowmem, zGrid, CONF_NONE, 0, 0);
+	*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, NULL, lowmem, zGrid, CONF_NONE, 0, 0, NULL);
 
 	/*	Create plist for collective read	*/
 

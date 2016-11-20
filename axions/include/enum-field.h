@@ -33,11 +33,12 @@
 
 	typedef	enum	StringType_s
 	{
-		STRING_POSITIVE = 0,
-		STRING_NEGATIVE = 8,
-		STRING_XY = 1,
-		STRING_YZ = 2,
-		STRING_ZX = 4,
+		STRING_XY_POSITIVE = 1,
+		STRING_YZ_POSITIVE = 2,
+		STRING_ZX_POSITIVE = 4,
+		STRING_XY_NEGATIVE = 8,
+		STRING_YZ_NEGATIVE = 16,
+		STRING_ZX_NEGATIVE = 32,
 	}	StringType;
 
 	typedef enum	ConfType_s
