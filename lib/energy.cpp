@@ -116,7 +116,7 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 
 	trackFree(&eTmp, ALLOC_TRACK);
 
-	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
+	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->DataSize()*field->Size()*1.e-9);
 
 	return;
 }

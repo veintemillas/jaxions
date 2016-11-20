@@ -191,7 +191,7 @@ void	propagate	(Scalar *field, const double dz, const double LL, const double nQ
 
 	delete	prop;
 
-	fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->dataSize()*field->Size()*1.e-9);
+	fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
 
 	return;
 }

@@ -193,7 +193,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 	const size_t shift = axion->shift();
 	const size_t Lz = axion->Depth()	;
 	size_t Nshift=n1/shift;
-	const size_t fSize = axion->dataSize();
+	const size_t fSize = axion->DataSize();
 
 //	const int myRank = commRank();
 	int hand;
@@ -507,7 +507,7 @@ int	analyzeStrUNFolded	(Scalar *axion, const int index)
 	const size_t shift = axion->shift();
 	const size_t Lz = axion->Depth()	;
 	size_t Nshift=n1/shift;
-	const size_t fSize = axion->dataSize();
+	const size_t fSize = axion->DataSize();
 
 //	const int myRank = commRank();
 	int hand;

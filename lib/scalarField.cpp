@@ -1,12 +1,13 @@
 #include<cstdlib>
 #include<cstring>
 #include<complex>
-#include<random>
 
 #include"square.h"
 #include"fftCuda.h"
 #include"fftCode.h"
 #include"enum-field.h"
+
+#include"flopCounter.h"
 
 #include"comms.h"
 
@@ -17,7 +18,6 @@
 #endif
 
 #include "memAlloc.h"
-//JAVIER
 #include "parse.h"
 
 #include<mpi.h>
@@ -28,6 +28,8 @@
 #endif
 
 #include "index.h"
+
+#define	_SCALAR_CLASS_
 
 using namespace std;
 
@@ -69,31 +71,29 @@ class	Scalar
 	void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 	void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
-	void	scaleField(FieldIndex fIdx, double factor);
-	void	randConf();
-	void	smoothConf(const size_t iter, const double alpha);
+//	void	scaleField(FieldIndex fIdx, double factor);
+//	void	randConf();
+//	void	smoothConf(const size_t iter, const double alpha);
 	//JAVIER
-	void	normaliseField(FieldIndex fIdx);
+//	void	normaliseField(FieldIndex fIdx);
 
-	template<typename Float>
-	void	iteraField(const size_t iter, const Float alpha);
+//	template<typename Float>
+//	void	iteraField(const size_t iter, const Float alpha);
 
 	//JAVIER
-	template<typename Float>
-	void	normaCOREField(const Float alpha);
 	template<typename Float>
 	void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
 
 	template<typename Float>
 	void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
 
-	template<typename Float>
-	void	momConf(const int kMax, const Float kCrit);
+//	template<typename Float>
+//	void	momConf(const int kMax, const Float kCrit);
 
 	public:
 
 			 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
-				ConfType cType, const size_t parm1, const double parm2);
+				ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
 			~Scalar();
 
 	void		*mCpu() { return m; }
@@ -126,13 +126,15 @@ class	Scalar
 	size_t		Size()      { return n3; }
 	size_t		Surf()      { return n2; }
 	size_t		Length()    { return n1; }
+	size_t		TotalDepth(){ return Lz*nSplit; }
 	size_t		Depth()     { return Lz; }
 	size_t		eSize()     { return v3; }
 	size_t		eDepth()    { return Ez; }
 
 	FieldPrecision	Precision() { return precision; }
+	DeviceType	Device()    { return device; }
 
-	size_t		dataSize() { return fSize; }
+	size_t		DataSize() { return fSize; }
 	//JAVI
 	int		shift() { return sHift; }
 
@@ -163,7 +165,7 @@ class	Scalar
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
 
-	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
+//	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 	//JAVIER
 //	void	writeENERGY (double zzz, FILE *enwrite);
 	void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
@@ -171,10 +173,14 @@ class	Scalar
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
 #endif
+//	template<typename Float>
+//	void	normaCOREField(const Float alpha);
 };
 
+#include "genConf.h"
+
 	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp, ConfType cType, const size_t parm1,
-		       const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
+		       const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
 		       lowmem(lowmem)
 {
 	switch (prec)
@@ -336,9 +342,9 @@ class	Scalar
 
 	if (cType == CONF_NONE)
 	{
-		if (fileName != NULL)
+/*		if (fileName != NULL)
 		{
-/*			FILE *fileM = fopen(fileName,"r");
+			FILE *fileM = fopen(fileName,"r");
 
 			if (fileM == 0)
 			{
@@ -350,8 +356,8 @@ class	Scalar
 			fclose(fileM);
 
 			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
-			scaleField (FIELD_M, zI);
-*/
+//			scaleField (FIELD_M, zI);
+
 			if (prec == FIELD_DOUBLE)
 			{
 				#pragma omp parallel for schedule(static)
@@ -370,13 +376,13 @@ class	Scalar
 					static_cast<complex<float>*>(m)[i] = tmp;
 				}
 			}
-			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
+*/			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 		}
 	} else {
 		if (cType == CONF_KMAX)
 			initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
-		genConf(cType, parm1, parm2);
+		genConf	(this, cType, parm1, parm2, fCount);
 	}
 
 	if (dev == DEV_XEON)
@@ -1108,7 +1114,7 @@ void	Scalar::fftGpu	(int sign)
 	runCudaFFT(m2_d, sign);
 #endif
 }
-
+/*
 			// ----------------------------------------------------------------------
 			// 		INITIAL CONDITIONS
 			// ----------------------------------------------------------------------
@@ -1305,12 +1311,12 @@ void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
 		printf("Scaling m to mu=z*m ... ");
 		fflush (stdout);
 
-		scaleField (FIELD_M, *z);
+//		scaleField (FIELD_M, *z);
 		printf("Done!\n");
 		fflush (stdout);
 	}
 }
-
+/*
 				//----------------------------------------------------------------------
 				//		FUNCTIONS FOR INIT. COND.
 				//----------------------------------------------------------------------
@@ -1552,7 +1558,8 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 
 	trackFree((void **) &sd, ALLOC_TRACK);
 }
-
+*/
+/*
 void	Scalar::scaleField (FieldIndex fIdx, double factor)
 {
 	switch (precision)
@@ -1641,7 +1648,6 @@ void	Scalar::scaleField (FieldIndex fIdx, double factor)
 		break;
 	}
 }
-
 
 
 //JAVIER ADDED THIS FUNCTION
@@ -1817,7 +1823,7 @@ void	Scalar::normaCOREField(const Float alpha)
 	printf("CORE smoothing Done\n");
 	fflush (stdout);
 }
-
+*/
 
 
 

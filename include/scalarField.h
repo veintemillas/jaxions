@@ -2,6 +2,7 @@
 	#define	_SCALAR_CLASS_
 
 	#include"enum-field.h"
+	#include"flopCounter.h"
 
 //	#ifdef	USE_GPU
 //		#include<cuda_runtime.h>
@@ -46,27 +47,25 @@
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
-		void	scaleField(FieldIndex fIdx, double factor);
-		void	randConf();
-		void	smoothConf(const size_t iter, const double alpha);
+//		void	scaleField(FieldIndex fIdx, double factor);
+//		void	randConf();
+//		void	smoothConf(const size_t iter, const double alpha);
 
-		template<typename Float>
-		void	iteraField(const size_t iter, const Float alpha);
+//		template<typename Float>
+//		void	iteraField(const size_t iter, const Float alpha);
 
 		//JAVIER
-		template<typename Float>
-		void	normaCOREField(const Float alpha);
 		template<typename Float>
 		//void	ENERGY(const Float zz, FILE *enWrite);
 		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
 
-		template<typename Float>
-		void	momConf(const size_t kMax, const Float kCrit);
+//		template<typename Float>
+//		void	momConf(const size_t kMax, const Float kCrit);
 
 		public:
 
 				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
-					ConfType cType, const size_t parm1, const double parm2);
+					ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
 				~Scalar();
 
 		void		*mCpu() { return m; }
@@ -99,13 +98,15 @@
 		size_t		Size()      { return n3; }
 		size_t		Surf()      { return n2; }
 		size_t		Length()    { return n1; }
+		size_t		TotalDepth(){ return Lz*nSplit; }
 		size_t		Depth()     { return Lz; }
 		size_t		eDepth()    { return Ez; }
 		size_t		eSize()     { return v3; }
 
 		FieldPrecision	Precision() { return precision; }
+		DeviceType	Device()    { return device; }
 
-		size_t		dataSize() { return fSize; }
+		size_t		DataSize() { return fSize; }
 		//JAVI
 		int		shift() { return sHift; }
 
@@ -140,12 +141,14 @@
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
 
-		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
+//		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 
 		//void	writeENERGY (double zzz, FILE *enwrite);
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif
+		template<typename Float>
+		void	normaCOREField(const Float alpha);
 	};
 #endif
