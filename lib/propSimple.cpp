@@ -47,6 +47,7 @@ using namespace std;
 				const Float dzc, const Float dzd, const Float ood2, const Float LL, const size_t Lx, const size_t Sf, const size_t Vf,
 				int Ng)
 	{
+		const std::complex<Float> I(0.,1.);
 		Float CO[4] = {0.0, 0.0, 0.0, 0.0} ;
 
 		if (Ng == 2) {
