@@ -376,8 +376,9 @@ class	Scalar
 					static_cast<complex<float>*>(m)[i] = tmp;
 				}
 			}
-*/			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
+			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
 		}
+*/
 	} else {
 		if (cType == CONF_KMAX)
 			initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);

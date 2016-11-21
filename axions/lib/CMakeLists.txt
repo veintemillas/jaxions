@@ -1,6 +1,6 @@
 set(OBJS fftCuda.cpp comms.cpp fftCode.cpp parse.cpp readWrite.cpp scalarField.cpp propagator.cpp propXeon.cpp propGpu.cu energy.cpp energyXeon.cpp
 energyGpu.cu strings.cpp stringCpu.cpp stringXeon.cpp stringGpu.cu propSimple.cpp map.cpp memAlloc.cpp powerCpusimple.cpp genConf.cpp momConf.cpp
-randXeon.cpp smoothXeon.cpp scaleField.cpp scaleXeon.cpp normField.cpp normXeon.cpp normCore.cpp normCoreXeon.cpp)
+randXeon.cpp smoothXeon.cpp scaleField.cpp scaleXeon.cpp normField.cpp normXeon.cpp normCore.cpp normCoreXeon.cpp energyMap.cpp energyMapXeon.cpp)
 
 include_directories(.)
 if(USE_GPU)
