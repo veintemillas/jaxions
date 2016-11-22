@@ -6,20 +6,19 @@
 #include <vector>
 
 #include "code3DCpu.h"
-#include "scalarField.h"
-#include "propagator.h"
-#include "propSimple.h"
-#include "energy.h"
-#include "strings.h"
+#include "scalar/scalarField.h"
+#include "propagator/propagator.h"
+#include "propagator/propSimple.h"
+#include "energy/energy.h"
 #include "enum-field.h"
-#include "index.h"
-#include "parse.h"
-#include "readWrite.h"
-#include "comms.h"
-#include "flopCounter.h"
-#include "map.h"
-#include "memAlloc.h"
-#include "strings.h"
+#include "utils/index.h"
+#include "utils/parse.h"
+#include "utils/flopCounter.h"
+#include "utils/memAlloc.h"
+#include "io/readWrite.h"
+#include "comms/comms.h"
+#include "map/map.h"
+#include "strings/strings.h"
 
 using namespace std;
 

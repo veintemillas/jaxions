@@ -1,8 +1,8 @@
 #include <complex>
 
-#include "index.h"
-#include "scalarField.h"
-#include "parse.h"
+#include "scalar/scalarField.h"
+#include "utils/index.h"
+#include "utils/parse.h"
 
 using namespace std;
 
