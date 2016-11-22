@@ -10,14 +10,14 @@
 #include<vector>
 
 #include"code3DCpu.h"
-#include"scalarField.h"
-#include"propagator.h"
+#include"scalar/scalarField.h"
+#include"propagator/propagator.h"
 #include"enum-field.h"
-#include"index.h"
-#include"parse.h"
-#include"readWrite.h"
-#include"comms.h"
-#include"flopCounter.h"
+#include"utils/index.h"
+#include"utils/parse.h"
+#include"utils/flopCounter.h"
+#include"io/readWrite.h"
+#include"comms/comms.h"
 
 using namespace std;
 

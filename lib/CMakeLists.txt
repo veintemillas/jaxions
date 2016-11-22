@@ -1,6 +1,8 @@
-set(OBJS fftCuda.cpp comms.cpp fftCode.cpp parse.cpp readWrite.cpp scalarField.cpp propagator.cpp propXeon.cpp propGpu.cu energy.cpp energyXeon.cpp
-energyGpu.cu strings.cpp stringCpu.cpp stringXeon.cpp stringGpu.cu propSimple.cpp map.cpp memAlloc.cpp powerCpusimple.cpp genConf.cpp momConf.cpp
-randXeon.cpp smoothXeon.cpp scaleField.cpp scaleXeon.cpp normField.cpp normXeon.cpp normCore.cpp normCoreXeon.cpp energyMap.cpp energyMapXeon.cpp)
+set(OBJS fft/fftCuda.cpp comms/comms.cpp fft/fftCode.cpp utils/parse.cpp io/readWrite.cpp scalar/scalarField.cpp propagator/propagator.cpp
+propagator/propXeon.cpp propagator/propGpu.cu energy/energy.cpp energy/energyXeon.cpp energy/energyGpu.cu strings/strings.cpp
+strings/stringCpu.cpp strings/stringXeon.cpp strings/stringGpu.cu propagator/propSimple.cpp map/map.cpp utils/memAlloc.cpp
+powerCpusimple.cpp gen/genConf.cpp gen/momConf.cpp gen/randXeon.cpp gen/smoothXeon.cpp scalar/scaleField.cpp scalar/scaleXeon.cpp
+scalar/normField.cpp scalar/normXeon.cpp scalar/normCore.cpp scalar/normCoreXeon.cpp energy/energyMap.cpp energy/energyMapXeon.cpp)
 
 include_directories(.)
 if(USE_GPU)
