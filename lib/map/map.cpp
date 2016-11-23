@@ -64,7 +64,7 @@ void	writeMap	(Scalar *axion, const int index)
 
 	if ((densWrite = fopen(stoDens, "w+")) == NULL)
 	{
-		printf ("Couldn't open file %s for writing\n", stoRoh);
+		printf ("Couldn't open file %s for writing\n", stoDens);
 		return ;
 	}
 
