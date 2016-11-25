@@ -189,9 +189,10 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		printMpi ("Dumping configuration %05d ...", index);
-		writeConf(axion, index);
-		printMpi ("Done!\n");
+		//printMpi ("Dumping configuration %05d ...", index);
+		//writeConf(axion, index);
+		//printMpi ("Done!\n");
+		printMpi ("Bypass configuration writting!\n");
 		fflush (stdout);
 	}
 	else
@@ -414,8 +415,8 @@ int	main (int argc, char *argv[])
 	if (cDev != DEV_GPU)
 		axion->unfoldField();
 
-	if (nSteps > 0)
-		writeConf(axion, index);
+	//if (nSteps > 0)
+	//	writeConf(axion, index);
 
 	if (sPrec == FIELD_DOUBLE)
 	{
