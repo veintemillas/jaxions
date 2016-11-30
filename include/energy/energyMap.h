@@ -4,5 +4,5 @@
 	#include "scalar/scalarField.h"
 	#include "utils/flopCounter.h"
 
-	void	energy	(Scalar *field, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount);
+	void	energyMap (Scalar *field, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount);
 #endif
