@@ -54,6 +54,7 @@ class	Scalar
 
 	DeviceType	device;
 	FieldPrecision	precision;
+	FieldType	fieldType;
 
 	size_t	fSize;
 	size_t	mAlign;
@@ -143,6 +144,8 @@ class	Scalar
 
 	void		setZ(const double newZ) { *z = newZ; }
 
+	void	setField	(FieldType field);
+
 	void	foldField	();
 	void	unfoldField	();
 	void	unfoldField2D	(const size_t sZ);	// Just for the maps
@@ -183,6 +186,8 @@ class	Scalar
 		       const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
 		       lowmem(lowmem)
 {
+	fieldType = FIELD_SAXION;
+
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
@@ -1560,276 +1565,20 @@ void	Scalar::momConf (const int kMax, const Float kCrit)
 	trackFree((void **) &sd, ALLOC_TRACK);
 }
 */
-/*
-void	Scalar::scaleField (FieldIndex fIdx, double factor)
+
+void	Scalar::setField (FieldType fType)
 {
-	switch (precision)
+	switch (fType)
 	{
-		case FIELD_DOUBLE:
-		{
-			complex<double> *field;
-			size_t vol = n3;
+		case FIELD_AXION:
+		break;
 
-			switch (fIdx)
-			{
-				case FIELD_M:
-				field = static_cast<complex<double>*> (m);
-				vol = v3;
-				break;
-
-				case FIELD_V:
-				field = static_cast<complex<double>*> (v);
-				break;
-
-				case FIELD_M2:
-				if (lowmem) {
-					printf ("Wrong field. Lowmem forbids the use of m2");
-					return;
-				}
-
-				field = static_cast<complex<double>*> (m2);
-				vol = v3;
-				break;
-
-				default:
-				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
-				return;
-				break;
-			}
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (size_t lpc = 0; lpc < vol; lpc++)
-				field[lpc] *= factor;
-
-			break;
-		}
-
-		case FIELD_SINGLE:
-		{
-			complex<float> *field;
-			float  fac = factor;
-			size_t vol = n3;
-
-			switch (fIdx)
-			{
-				case FIELD_M:
-				field = static_cast<complex<float> *> (m);
-				vol = v3;
-				break;
-
-				case FIELD_V:
-				field = static_cast<complex<float> *> (v);
-				break;
-
-				case FIELD_M2:
-				if (lowmem) {
-					printf ("Wrong field. Lowmem forbids the use of m2");
-					return;
-				}
-
-				field = static_cast<complex<float> *> (m2);
-				vol = v3;
-				break;
-
-				default:
-				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
-				break;
-			}
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (size_t lpc = 0; lpc < vol; lpc++)
-				field[lpc] *= fac;
-
-			break;
-		}
-
-		default:
-		printf("Unrecognized precision\n");
-		exit(1);
+		case	FIELD_SAXION:
 		break;
 	}
+
+	fieldType = fType;
 }
-
-
-//JAVIER ADDED THIS FUNCTION
-void	Scalar::normaliseField (FieldIndex fIdx)
-{
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-		{
-			complex<double> *field;
-
-			switch (fIdx)
-			{
-				case FIELD_M:
-				field = static_cast<complex<double>*> (m);
-				break;
-
-				case FIELD_V:
-					printf ("Wrong field. normaliseField only works for m");
-					return;
-				break;
-
-				case FIELD_M2:
-				if (lowmem) {
-					printf ("Wrong field. normaliseField only works for m");
-					return;
-				}
-				break;
-
-				default:
-				printf ("Wrong field. Valid possibilities: FIELD_M");
-				return;
-				break;
-			}
-
-			//JAVIER ADDED normalisation: this will be improved to soften strings
-			#pragma omp parallel for default(shared) schedule(static)
-			for (size_t lpc = 0; lpc < v3; lpc++)
-				field[lpc] = field[lpc]/abs(field[lpc]);
-
-			break;
-		}
-
-		case FIELD_SINGLE:
-		{
-			complex<float> *field;
-
-			switch (fIdx)
-			{
-				case FIELD_M:
-				field = static_cast<complex<float> *> (m);
-				break;
-
-				case FIELD_V:
-					printf ("Wrong field. normaliseField only works for m");
-					return;
-				break;
-
-				case FIELD_M2:
-				if (lowmem) {
-					printf ("Wrong field. normaliseField only works for m");
-					return;
-				}
-				break;
-
-				default:
-				printf ("Wrong field. Valid possibilities: FIELD_M");
-				return;
-				break;
-			}
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (size_t lpc = 0; lpc < v3; lpc++)
-				field[lpc] = field[lpc]/abs(field[lpc]);
-
-			break;
-		}
-
-		default:
-		printf("Unrecognized precision\n");
-		exit(1);
-		break;
-	}
-}
-
-//JAVIER
-template<typename Float>
-void	Scalar::normaCOREField(const Float alpha)
-{
-
-	const Float deltaa = sizeL/sizeN ;
-	const Float LLa = LL ;
-	const Float zia = zInit ;
-
-	exchangeGhosts(FIELD_M);
-
-	complex<Float> *mCp = static_cast<complex<Float>*> (m);
-	complex<Float> *vCp = static_cast<complex<Float>*> (v);
-
-	printf("Entering CORE smoothing\n");
-	fflush (stdout);
-
-	#pragma omp parallel default(shared)
-	{
-		#pragma omp for schedule(static)
-		for (size_t idx=0; idx<n3; idx++)
-		{
-			size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
-			indexXeon::idx2Vec (idx, X, n1);
-
-			Float gradx, grady, gradz, sss, sss2, sss4, rhof;
-
-			if (X[0] == 0)
-			{
-				iPx = idx + 1;
-				iMx = idx + n1 - 1;
-			} else {
-				if (X[0] == n1 - 1)
-				{
-					iPx = idx - n1 + 1;
-					iMx = idx - 1;
-				} else {
-					iPx = idx + 1;
-					iMx = idx - 1;
-				}
-			}
-
-			if (X[1] == 0)
-			{
-				iPy = idx + n1;
-				iMy = idx + n2 - n1;
-			} else {
-				if (X[1] == n1 - 1)
-				{
-					iPy = idx - n2 + n1;
-					iMy = idx - n1;
-				} else {
-					iPy = idx + n1;
-					iMy = idx - n1;
-				}
-			}
-
-			iPz = idx + n2;
-			iMz = idx - n2;
-			//Uses v to copy the smoothed configuration
-			//vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
-			//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
-			gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
-			grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
-			gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
-			//JAVIER added an artificial factor of 1.0, can be changed
-			sss  = 1.0*sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
-			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
-			sss2 = sss*sss;
-			sss4 = sss2*sss2;
-			rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
-
-			vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
-
-			//if(idx % sizeN*sizeN*10 == 0)
-			//{
-			//printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
-			//}
-
-		}
-	}
-
-	//Copies v to m
-	memcpy (static_cast<char *>(m) + fSize*n2, v, fSize*n3);
-	exchangeGhosts(FIELD_M);
-
-	//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
-	printf("CORE smoothing Done\n");
-	fflush (stdout);
-}
-*/
-
-
-
-
-
 
 //void	Scalar::writeENERGY (double zzz, FILE *enwrite)
 void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST

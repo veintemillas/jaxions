@@ -3,6 +3,12 @@
 
 	typedef	unsigned int uint;
 
+	typedef enum	FieldType_s
+	{
+		FIELD_SAXION,
+		FIELD_AXION,
+	}	FieldType;
+
 	typedef	enum	FieldIndex_s
 	{
 		FIELD_M   = 1,

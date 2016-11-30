@@ -30,6 +30,7 @@
 
 		DeviceType	device;
 		FieldPrecision	precision;
+		FieldType	fieldType;
 
 		size_t	fSize;
 		size_t	mAlign;
@@ -114,6 +115,8 @@
 		const double	*zV() const { return z; }
 
 		void		setZ(const double newZ) { *z = newZ; }
+
+		void	setField	(FieldType field);
 
 		void	foldField	();
 		void	unfoldField	();

@@ -61,8 +61,15 @@ void	writeConf (Scalar *axion, int index)
 
 	/*	Create the file and release the plist	*/
 
-	file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
+	{
+		printf ("Error creating file %s\n", base);
+		return;
+	}
+
 	H5Pclose(plist_id);
+
+	commSync();
 
 	/* Puedes juntar casi todo el código y que el switch elija el datatype y el sizeof() */
 
@@ -127,6 +134,8 @@ void	writeConf (Scalar *axion, int index)
 
 	H5Tclose (attr_type);
 
+	commSync();
+
 	/*	Create plist for collective write	*/
 
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -181,6 +190,8 @@ void	writeConf (Scalar *axion, int index)
 	mset_id = H5Dcreate (file_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 	vset_id = H5Dcreate (file_id, vCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
+	commSync();
+
 	if ((mset_id < 0) || (vset_id < 0))
 	{
 		printf	("Fatal error.\n");
@@ -192,6 +203,8 @@ void	writeConf (Scalar *axion, int index)
 	mSpace = H5Dget_space (mset_id);
 	vSpace = H5Dget_space (vset_id);
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+
+	commSync();
 
 	printf ("Rank %d ready to write\n", myRank);
 	fflush (stdout);
@@ -209,26 +222,28 @@ void	writeConf (Scalar *axion, int index)
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		//JAVIER commented next
 		//printf ("Rank %d select hyperslab at offset %ld\n", myRank, offset);
-		fflush (stdout);
+		//fflush (stdout);
 
 		/*	Write raw data	*/
 
 		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()*2))*(1+zDim)*dataSize));
 		//JAVIER commented next
 		//printf ("Rank %d write m\n", myRank);
-		fflush (stdout);
+		//fflush (stdout);
 		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()*2))*zDim*dataSize));
 		//JAVIER commented next
 		//printf ("Rank %d write v\n", myRank);
 		fflush (stdout);
 		//JAVIER commented next
 		//printf ("Rank %d done\n", myRank);
-		fflush (stdout);
+		//fflush (stdout);
+
+		commSync();
 	}
 
 	//JAVIER commented next
 	//printf ("Rank %d closing\n", myRank);
-	fflush (stdout);
+	//fflush (stdout);
 
 	/*	Close the dataset	*/
 
