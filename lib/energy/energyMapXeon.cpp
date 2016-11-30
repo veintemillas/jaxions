@@ -1,5 +1,6 @@
 #include<cstdio>
 #include<cmath>
+#include<complex>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
 
@@ -290,8 +291,9 @@ void	energyMapKernelXeon(const void * __restrict__ m_, const void * __restrict__
 				#pragma unroll
 				for (int ih=1; ih<(step<<1); ih+=2)
 				{
-					int iNx = X[0]/step + (X[1]+(ih>>1)*YC)*Lx + (X[2]-1)*Sf;
-					static_cast<complex<double>*>(m2)[iNx] = complex<double>(tmpS[ih], tmpV[ih]);
+					int iNx   = ((X[0]/step + (X[1]+(ih>>1)*YC)*Lx + (X[2]-1)*Sf)<<1);
+					m2[iNx]   = tmpS[ih];
+					m2[iNx+1] = tmpV[ih];
 				}
 			}
 		}
@@ -574,8 +576,9 @@ void	energyMapKernelXeon(const void * __restrict__ m_, const void * __restrict__
 				#pragma unroll
 				for (int ih=1; ih<(step<<1); ih+=2)
 				{
-					int iNx = X[0]/step + (X[1]+(ih>>1)*YC)*Lx + (X[2]-1)*Sf;
-					static_cast<complex<float>*>(m2)[iNx] = complex<float>(tmpS[ih], tmpV[ih]);
+					int iNx   = ((X[0]/step + (X[1]+(ih>>1)*YC)*Lx + (X[2]-1)*Sf)<<1);
+					m2[iNx]   = tmpS[ih];
+					m2[iNx+1] = tmpV[ih];
 				}
 			}
 		}

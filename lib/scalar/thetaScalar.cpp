@@ -24,18 +24,18 @@ class	CmplxToTheta
 	public:
 
 		 CmplxToTheta(Scalar *field);
-		~() {};
+		~CmplxToTheta() {};
 
 	void	runCpu	();
 	void	runGpu	();
 	void	runXeon	();
 };
 
-	ScaleField::ScaleField(Scalar *field) : axionField(field)
+	CmplxToTheta::CmplxToTheta(Scalar *field) : axionField(field)
 {
 }
 
-void	ScaleField::runGpu	()
+void	CmplxToTheta::runGpu	()
 {
 #ifdef	USE_GPU
 #else
@@ -44,12 +44,12 @@ void	ScaleField::runGpu	()
 #endif
 }
 
-void	ScaleField::runCpu	()
+void	CmplxToTheta::runCpu	()
 {
 	toThetaXeon(axionField);
 }
 
-void	ScaleField::runXeon	()
+void	CmplxToTheta::runXeon	()
 {
 #ifdef	USE_XEON
 	toThetaXeon(axionField);
@@ -84,7 +84,7 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	delete	theta;
 
-	field->setField(AXION_FIELD);
+	field->setField(FIELD_AXION);
 
 	fCount->addFlops(field->Size()*2.e-9, field->DataSize()*field->Size()*1.e-9);
 

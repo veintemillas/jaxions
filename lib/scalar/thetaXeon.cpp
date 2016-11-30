@@ -13,11 +13,11 @@ void	toThetaKernelXeon (Scalar *sField)
 	const size_t Lz = sField->Depth();
 	const size_t Go = 2*(V+S);
 	Float *mField   = static_cast<Float*>(sField->mCpu());
-	Float *cmField  = static_cast<complex<Float>*>(sField->mCpu());
 	Float *vField   = static_cast<Float*>(sField->mCpu()) + 2*S + V;
-	Float *cvField  = static_cast<complex<Float>*>(sField->vCpu());
+	complex<Float> *cmField  = static_cast<complex<Float>*>(sField->mCpu());
+	complex<Float> *cvField  = static_cast<complex<Float>*>(sField->vCpu());
 
-	const Float z = static_cast<Float>(sField->zV()[0])
+	const Float z = static_cast<Float>(sField->zV()[0]);
 
 	for (size_t cZ = 1; cZ < Lz+1; cZ++)
 	{
@@ -27,7 +27,7 @@ void	toThetaKernelXeon (Scalar *sField)
 		{
 			Float iMod     = z/(cmField[Vo+lpc].real()*cmField[Vo+lpc].real() + cmField[Vo+lpc].imag()*cmField[Vo+lpc].imag());
 			mField[lpc]    = arg(cmField[Vo+lpc])*z;
-			mField[Go+lpc] = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])*iMod + mField[lpc];
+			mField[Go+lpc] = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])).imag()*iMod + mField[lpc];
 		}
 
 		memcpy (mField + Vo,   mField,      sizeof(Float)*S);
@@ -51,7 +51,7 @@ void	toThetaXeon (Scalar *sField)
 
 		default:
 
-			printf("Wrong precision\n);
+			printf("Wrong precision\n");
 			exit  (1);
 			break;
 	}
