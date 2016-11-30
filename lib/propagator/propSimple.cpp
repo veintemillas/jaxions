@@ -173,7 +173,7 @@ using namespace std;
 					//acc = lap*ood2dzc + zQdzc - mupdate*LLdzc*( mupdate.real()*mupdate.real()+mupdate.imag()*mupdate.imag() - z2);
 
 					//PQ2 VQCD2
-					//acc = lap*ood2dzc - zQdzc*(mupdate-z1)/z1 -mupdate*LLdzc*( mupdate.real()*mupdate.real()+mupdate.imag()*mupdate.imag() - z2);
+					acc = lap*ood2dzc - zQdzc*(mupdate-z1)/z1 -mupdate*LLdzc*( mupdate.real()*mupdate.real()+mupdate.imag()*mupdate.imag() - z2);
 
 					//PQ1 VQCD2
 					//acc = lap*ood2dzc - zQdzc*(mupdate-z1)/z1 - mupdate*((Float) LLdzc*z2*(1-z1/modulo)/2);
@@ -188,7 +188,7 @@ using namespace std;
 					//harmonic oscillator centered in (0,1) with constant mass = 1;
 					//saxion mass set to the usual m2 = 2 lambda
 					// Use with modified initial conditions around vacuum for testing particles
-					acc = lap*ood2dzc - I*LLdzc*(mupdate.real()-z1)/z1 - mupdate.imag()/z1;
+					//acc = lap*ood2dzc - I*LLdzc*(mupdate.real()-z1)/z1 - mupdate.imag()/z1;
 
 					//acc already contains dzc
 					v[Xol[Ng]-Sf] = v[Xol[Ng]-Sf] + acc ;
