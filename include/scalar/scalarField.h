@@ -30,6 +30,7 @@
 
 		DeviceType	device;
 		FieldPrecision	precision;
+		FieldType	fieldType;
 
 		size_t	fSize;
 		size_t	mAlign;
