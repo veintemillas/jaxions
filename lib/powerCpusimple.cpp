@@ -81,15 +81,19 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 					int nx = (n1-kx)%n1 ;
 
 					double k2 =	kx*kx + ky*ky + kz*kz;
-					double w = (double) sqrt(k2 + mass2);
 					int bin  = (int) floor(sqrt(k2)) 	;
+					k2 =	(39.47842/(sizeL*sizeL)) * k2;
+					//CONTINUUM DEFINITION
+					//double w = (double) sqrt(k2 + mass2);
+					//LATICE DEFINITION
+					double w = (double) sqrt(k2 + mass2);
 
 					ftk = ft[ix+iy*n1+iz*n1*n1]; // Era ft2
 					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
 
-					spectrumK_private[bin] += pow(abs(ftk + ftmk),2)/w;
-					spectrumG_private[bin] += pow(abs(ftk - ftmk),2)*k2/w;
-					spectrumV_private[bin] += pow(abs(ftk - ftmk),2)*mass2/w;
+					spectrumK_private[bin] += pow(abs(ftk - ftmk),2)/w;
+					spectrumG_private[bin] += pow(abs(ftk + ftmk),2)*k2/w;
+					spectrumV_private[bin] += pow(abs(ftk + ftmk),2)*mass2/w;
 				}//x
 
 			}//y

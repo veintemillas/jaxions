@@ -973,7 +973,7 @@ void	Scalar::theta2m2()//int *window)
 	{
 		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t i=0; i < n3; i++)
-			((complex<float> *) m2)[i] = arg(((std::complex<float> *) m)[i]) +If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag();//*((float) window[i]);
+			((complex<float> *) m2)[i] = arg(((std::complex<float> *) m)[i]) +  If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag();//*((float) window[i]);
 	}
 }
 

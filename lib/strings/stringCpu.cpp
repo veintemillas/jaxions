@@ -182,7 +182,7 @@ int	stringHand	(complex<Float> s1, complex<Float> s2, complex<Float> s3, complex
 
 
 
-void	analyzeStrFolded	(Scalar *axion, const int index)
+int	analyzeStrFolded	(Scalar *axion, const int index)
 {
 	//--------------------------------------------------
 	//    JAVI STRINGS FOLDED
@@ -197,6 +197,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 
 //	const int myRank = commRank();
 	int hand;
+	int stlength = 0;
 
 	char stoStr[256];
 
@@ -217,7 +218,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 		{
 			complex<double> *mM = static_cast<complex<double>*> (axion->mCpu());
 
-			#pragma omp parallel for default(shared) private(hand) schedule(static)
+			#pragma omp parallel for default(shared) private(hand) schedule(static) reduction(+:stlength)
 			for (size_t iz=0; iz<Lz; iz++)
 			{
 
@@ -263,6 +264,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 								// printf("s2= [%f,%f] (%lu) ",real(s2),imag(s2),fIdx000 + shift);
 								// printf("s3= [%f,%f] (%lu) ",real(s3),imag(s3),fIdx010);
 								// printf("s4= [%f,%f] (%lu) \n",real(s4),imag(s4),fIdx010 + shift);
+								++stlength;
 								#pragma omp critical
 								{
 									fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
@@ -281,6 +283,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 
 							if ((hand == 2) || (hand == -2))
 							{
+								++stlength;
 								#pragma omp critical
 								{
 									fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
@@ -299,6 +302,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 
 							if ((hand == 2) || (hand == -2))
 							{
+								++stlength;
 								#pragma omp critical
 								{
 									fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
@@ -319,7 +323,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 		{
 		complex<float> *mM = static_cast<complex<float>*> (axion->mCpu());
 
-		#pragma omp parallel for default(shared) schedule(static)
+		#pragma omp parallel for default(shared) schedule(static) reduction(+:stlength)
 		for (size_t iz=0; iz<Lz; iz++)
 		{
 
@@ -365,6 +369,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 							// printf("s2= [%f,%f] (%lu) ",real(s2),imag(s2),fIdx000 + shift);
 							// printf("s3= [%f,%f] (%lu) ",real(s3),imag(s3),fIdx010);
 							// printf("s4= [%f,%f] (%lu) \n",real(s4),imag(s4),fIdx010 + shift);
+							++stlength;
 							#pragma omp critical
 							{
 								fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.5, iz+0.0);
@@ -383,6 +388,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 
 						if ((hand == 2) || (hand == -2))
 						{
+							++stlength;
 							#pragma omp critical
 							{
 								fprintf(file_strings,  "%f %f %f \n", ix+0.0 , iy+0.5, iz+0.5);
@@ -401,6 +407,7 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 
 						if ((hand == 2) || (hand == -2))
 						{
+							++stlength;
 							#pragma omp critical
 							{
 								fprintf(file_strings,  "%f %f %f \n", ix+0.5 , iy+0.0, iz+0.5);
@@ -430,6 +437,8 @@ void	analyzeStrFolded	(Scalar *axion, const int index)
 
 	fclose(file_strings);
 	printf(" ... String printed\n");
+
+	return stlength ;
 }
 
 // void	analyzeStrFolded	(Scalar *axion, const int index)
