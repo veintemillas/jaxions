@@ -114,6 +114,7 @@ void	energyMapKernelXeon(const void * __restrict__ m_, const void * __restrict__
 			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
 
 			double tmpS[2*step] __attribute__((aligned(Align)));
+			double tmpV[2*step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -274,22 +275,23 @@ void	energyMapKernelXeon(const void * __restrict__ m_, const void * __restrict__
 #elif defined(__AVX__)
 				tVp = opCode(blend_pd, mod, opCode(permute_pd, mTp, 0b00000101), 0b00001010);
 #else
-				tVp = opCode(shuffle_pd, mod, mTp, 0b00000001);
+				tVp = opCode(mul_pd, opCode(shuffle_pd, mod, mTp, 0b00000001), opCode(set_pd,ZQVEC));
 #endif
 
 #ifdef	__MIC__
 #else
 				mel = opCode(add_pd,
 					opCode(mul_pd, opCode(add_pd, opCode(add_pd, tGx, tGy), tGz), opCode(set_pd,O2VEC)),
-					opCode(add_pd, opCode(mul_pd, tVp, opCode(set_pd,ZQVEC)), opCode(mul_pd, tKp, opCode(set_pd,HFVEC))));
+					opCode(add_pd, tVp, opCode(mul_pd, tKp, opCode(set_pd,HFVEC))));
 #endif
 
 				opCode(store_pd, tmpS, mel);
+				opCode(store_pd, tmpV, tVp);
 				#pragma unroll
 				for (int ih=1; ih<(step<<1); ih+=2)
 				{
 					int iNx = X[0]/step + (X[1]+(ih>>1)*YC)*Lx + (X[2]-1)*Sf;
-					static_cast<double*>(m2)[iNx] = tmpS[ih];
+					static_cast<complex<double>*>(m2)[iNx] = complex<double>(tmpS[ih], tmpV[ih]);
 				}
 			}
 		}
@@ -374,6 +376,7 @@ void	energyMapKernelXeon(const void * __restrict__ m_, const void * __restrict__
 			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
 
 			float tmpS[2*step] __attribute__((aligned(Align)));
+			float tmpV[2*step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -556,22 +559,23 @@ void	energyMapKernelXeon(const void * __restrict__ m_, const void * __restrict__
 				tVp = opCode(blend_ps, mod, opCode(permute_ps, mTp, 0b10110001), 0b10101010);
 #else
 				mdv = opCode(shuffle_ps, mod, mTp, 0b10001000); //Era 11011000
-				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000);
+				tVp = opCode(mul_ps, opCode(shuffle_ps, mdv, mdv, 0b11011000), opCode(set_ps, ZQVEC));
 #endif
 
 #ifdef	__MIC__
 #else
 				mel = opCode(add_ps,
 					opCode(mul_ps, opCode(add_ps, opCode(add_ps, tGx, tGy), tGz), opCode(set_ps,O2VEC)),
-					opCode(add_ps, opCode(mul_ps, tVp, opCode(set_ps,ZQVEC)), opCode(mul_ps, tKp, opCode(set_ps,HFVEC))));
+					opCode(add_ps, tVp, opCode(mul_ps, tKp, opCode(set_ps,HFVEC))));
 #endif
 
 				opCode(store_ps, tmpS, mel);
+				opCode(store_ps, tmpV, tVp);
 				#pragma unroll
 				for (int ih=1; ih<(step<<1); ih+=2)
 				{
 					int iNx = X[0]/step + (X[1]+(ih>>1)*YC)*Lx + (X[2]-1)*Sf;
-					static_cast<float*>(m2)[iNx] = tmpS[ih];
+					static_cast<complex<float>*>(m2)[iNx] = complex<float>(tmpS[ih], tmpV[ih]);
 				}
 			}
 		}

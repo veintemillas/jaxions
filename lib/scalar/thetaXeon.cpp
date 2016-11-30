@@ -14,8 +14,10 @@ void	toThetaKernelXeon (Scalar *sField)
 	const size_t Go = 2*(V+S);
 	Float *mField   = static_cast<Float*>(sField->mCpu());
 	Float *cmField  = static_cast<complex<Float>*>(sField->mCpu());
-	Float *vField   = static_cast<Float*>(sField->vCpu());
+	Float *vField   = static_cast<Float*>(sField->mCpu()) + 2*S + V;
 	Float *cvField  = static_cast<complex<Float>*>(sField->vCpu());
+
+	const Float z = static_cast<Float>(sField->zV()[0])
 
 	for (size_t cZ = 1; cZ < Lz+1; cZ++)
 	{
@@ -23,11 +25,9 @@ void	toThetaKernelXeon (Scalar *sField)
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t lpc = 0; lpc < S; lpc++)
 		{
-			Float yDx      = cmField[Vo+lpc].imag()/cmField[Vo+lpc].real();
-			Float dyDx     = cvField[Vo+lpc].imag()/cmField[Vo+lpc].real();
-			Float dxDx     = cvField[Vo+lpc].real()/cmField[Vo+lpc].real();
-			mField[Go+lpc] = (dyDx-yDx*dxDx)/(1.+yDx*yDx);
-			mField[lpc]    = arg(cmField[Vo+lpc]);
+			Float iMod     = z/(cmField[Vo+lpc].real()*cmField[Vo+lpc].real() + cmField[Vo+lpc].imag()*cmField[Vo+lpc].imag());
+			mField[lpc]    = arg(cmField[Vo+lpc])*z;
+			mField[Go+lpc] = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])*iMod + mField[lpc];
 		}
 
 		memcpy (mField + Vo,   mField,      sizeof(Float)*S);

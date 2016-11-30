@@ -84,6 +84,8 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	delete	theta;
 
+	field->setField(AXION_FIELD);
+
 	fCount->addFlops(field->Size()*2.e-9, field->DataSize()*field->Size()*1.e-9);
 
 	return;

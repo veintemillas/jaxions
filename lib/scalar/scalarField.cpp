@@ -143,6 +143,8 @@ class	Scalar
 
 	void		setZ(const double newZ) { *z = newZ; }
 
+	void	setField	(FieldType field);
+
 	void	foldField	();
 	void	unfoldField	();
 	void	unfoldField2D	(const size_t sZ);	// Just for the maps
