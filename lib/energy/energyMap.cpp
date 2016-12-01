@@ -82,7 +82,7 @@ void	EnergyMap::runXeon	()
 #endif
 }
 
-void	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+void	energyMap	(Scalar *field, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
 {
 	EnergyMap *eDark = new EnergyMap(field, nQcd, delta);
 

@@ -19,6 +19,7 @@
 #include "comms/comms.h"
 #include "map/map.h"
 #include "strings/strings.h"
+#include "powerCpu.h"
 
 using namespace std;
 
@@ -96,6 +97,11 @@ int	main (int argc, char *argv[])
 	//energy 2//	FILE *file_energy2 ;
 	//energy 2//	file_energy2 = NULL;
 
+	FILE *file_spectrum ;
+	file_spectrum = NULL;
+	FILE *file_power ;
+	file_power = NULL;
+
 	if (commRank() == 0)
 	{
 		file_sample = fopen("out/sample.txt","w+");
@@ -105,9 +111,24 @@ int	main (int argc, char *argv[])
 		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 
 		//energy 2//	file_energy2 = fopen("out/energy2.txt","w+");
+
+		file_spectrum = fopen("out/spectrum.txt","w+");
+		file_power = fopen("out/power.txt","w+");
 	}
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
+	int nstrings = 0 ;
+
+	// Axion spectrum
+	const int kmax = axion->Length()/2 -1;
+	int powmax = floor(1.733*kmax)+2 ;
+
+	double  *spectrumK ;
+	double  *spectrumG ;
+	double  *spectrumV ;
+	trackAlloc((void**) (&spectrumK), 8*powmax);
+	trackAlloc((void**) (&spectrumG), 8*powmax);
+	trackAlloc((void**) (&spectrumV), 8*powmax);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -219,19 +240,20 @@ int	main (int argc, char *argv[])
 	{
 		double	strDen;
 
-		if ((*axion->zV()) > 0.8 )
+		if ((*axion->zV()) > 1.2 )
 		{
 			printMpi("Strings...");
 			analyzeStrFolded(axion, index);
 			printMpi("Vector Strings...");
-			strDen = strings(axion, cDev, str, fCount);
-			printMpi(" Done! String density %lf\n", strDen);
+			//strDen = strings(axion, cDev, str, fCount);
+			//printMpi(" Done! String density %lf\n", strDen);
 		}
 
 		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 		//copy v unfolded into last slice
 		//memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
-		axion->unfoldField2D(sizeZ-1);
+		//axion->unfoldField2D(sizeZ-1);
+		axion->unfoldField2D(0);
 		writeMap (axion, index);
 		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 
@@ -370,15 +392,46 @@ int	main (int argc, char *argv[])
 			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
 			//if (axion->Precision() == FIELD_DOUBLE)
-			if ((*axion->zV()) > 0.8 )
+			if ((*axion->zV()) > 1.2 )
 			{
-				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
+				printMpi("Strings (if %f>1.2) ... ", (*axion->zV()));
 				fflush (stdout);
-				analyzeStrFolded(axion, index);
+				nstrings = analyzeStrFolded(axion, index);
+				printMpi("stLength = %d ", nstrings);
+				fflush (stdout);
+
+				if (nstrings == 0 )
+				{
+					//POWER SPECTRUM
+					double *sK = static_cast<double *> (spectrumK);
+					double *sG = static_cast<double *> (spectrumG);
+					double *sV = static_cast<double *> (spectrumV);
+					axion->unfoldField();
+					powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
+					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+					fprintf(file_power,  "%f ", (*axion->zV()));
+					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
+					fprintf(file_power,  "%f ", (*axion->zV()));
+					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
+					fprintf(file_power,  "%f ", (*axion->zV()));
+					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+					//NUMBER SPECTRUM
+					spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+					fprintf(file_spectrum,  "%f ", (*axion->zV()));
+					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
+					fprintf(file_spectrum,  "%f ", (*axion->zV()));
+					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
+					fprintf(file_spectrum,  "%f ", (*axion->zV()));
+					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
+					axion->foldField();
+				}
 			}
 
 
-			axion->unfoldField2D(sizeZ-1);
+
+			//axion->unfoldField2D(sizeZ-1);
+			axion->unfoldField2D(0);
 			writeMap (axion, index);
 //			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
@@ -406,6 +459,12 @@ int	main (int argc, char *argv[])
 			}
 		}
 	} // zloop
+
+	// LAST DENSITY MAP
+	//energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+	//energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+
+
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
@@ -443,6 +502,9 @@ int	main (int argc, char *argv[])
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
+	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
+	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
+	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 
 	delete fCount;
 	delete axion;
@@ -456,6 +518,8 @@ int	main (int argc, char *argv[])
 	{
 		fclose (file_sample);
 		fclose (file_energy);
+		fclose (file_spectrum);
+		fclose (file_power);
 		//energy 2//	fclose (file_energy2);
 	}
 

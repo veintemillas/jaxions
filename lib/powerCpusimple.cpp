@@ -3,12 +3,13 @@
 #include "scalar/scalarField.h"
 #include "utils/index.h"
 #include "utils/parse.h"
+#include "energy/energyMap.h"
 
 using namespace std;
 
 
 //--------------------------------------------------
-// POWER SPECTRUM
+// NUMBER SPECTRUM
 //--------------------------------------------------
 
 template<typename Float>
@@ -159,6 +160,120 @@ void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spe
 
 		case FIELD_SINGLE:
 		nSpectrumUNFOLDED<float>(static_cast<const complex<float>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax, mass2);
+		break;
+
+		default:
+		printf ("Not a valid precision.\n");
+		break;
+	}
+}
+
+//--------------------------------------------------------------------------------
+//					POWER SPECTRUM
+//--------------------------------------------------------------------------------
+//		pSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
+template<typename Float>
+void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectrumN, void *spectrumV,	int n1, int powmax, int kmax)
+{
+	double voli = 1.0/((double) n1*n1*n1) ;
+
+	#pragma omp parallel for default(shared) schedule(static)
+	for (int i=0; i < powmax; i++)
+	{
+		(static_cast<double *> (spectrumT))[i] = 0.0;
+		(static_cast<double *> (spectrumN))[i] = 0.0;
+		(static_cast<double *> (spectrumV))[i] = 0.0;
+	}
+
+	#pragma omp parallel
+	{
+		double spectrumT_private[powmax] ={0.0};
+		double spectrumN_private[powmax] ={0.0};
+		double spectrumV_private[powmax] ={0.0};
+
+		#pragma omp parallel for default(shared)
+		for (int kz = 0; kz<kmax + 1; kz++)
+		{
+			int bin;
+
+			int iz = (n1+kz)%n1 ;
+			int nz = (n1-kz)%n1 ;
+
+			complex<Float> ftk, ftmk;
+
+			for (int ky = -kmax; ky<kmax + 1; ky++)
+			{
+				int iy = (n1+ky)%n1 ;
+				int ny = (n1-ky)%n1 ;
+
+				for	(int kx = -kmax; kx<kmax + 1; kx++)
+				{
+					int ix = (n1+kx)%n1 ;
+					int nx = (n1-kx)%n1 ;
+
+					double k2 =	kx*kx + ky*ky + kz*kz;
+					int bin  = (int) floor(sqrt(k2)) 	;
+
+					ftk = ft[ix+iy*n1+iz*n1*n1]; // Era ft2
+					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
+
+					spectrumT_private[bin] += pow(abs(ftk + ftmk),2);
+					spectrumN_private[bin] += 1.;
+					spectrumV_private[bin] += pow(abs(ftk + ftmk),2);
+				}//x
+
+			}//y
+		}//z
+
+		#pragma omp critical
+		{
+			for(int n=0; n<powmax; n++)
+			{
+				static_cast<double*>(spectrumT)[n] += spectrumT_private[n];
+				static_cast<double*>(spectrumN)[n]  = spectrumN_private[n];
+				static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
+      }
+		}
+
+	}//parallel
+
+
+	#pragma omp parallel for default(shared)
+	for(int n=0; n<powmax; n++)
+	{
+		static_cast<double*>(spectrumT)[n] *= voli;
+		static_cast<double*>(spectrumV)[n] *= voli;
+	}
+
+	printf(" ... power spectrum printed\n");
+}
+
+void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, FlopCounter *fCount)
+{
+	const int n1 = axion->Length();
+	const int kmax = n1/2 -1;
+	int powmax = floor(1.733*kmax)+2 ;
+	double delta = sizeL/sizeN ;
+	//const double z = axion->zV();
+	//double mass2 = 9.*pow((*axion->zV()),nQcd+2);
+
+	// 	New scheme
+
+	//  Copies energy_theta + I potential_energy_theta into m2
+	// 	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+			energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
+
+	//	FFT m2 inplace ->
+			axion->fftCpuSpectrum(1);
+
+	switch(axion->Precision())
+	{
+		case FIELD_DOUBLE:
+		pSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
+		break;
+
+		case FIELD_SINGLE:
+		pSpectrumUNFOLDED<float>(static_cast<const complex<float>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
 		break;
 
 		default:
