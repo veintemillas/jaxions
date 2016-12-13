@@ -135,7 +135,8 @@ class	Scalar
 	FieldPrecision	Precision() { return precision; }
 	DeviceType	Device()    { return device; }
 
-	size_t		DataSize() { return fSize; }
+	size_t		DataSize()  { return fSize; }
+	size_t		setDataSize(const double newDS)  { fSize = newDS; }
 	//JAVI
 	int		shift() { return sHift; }
 
@@ -761,44 +762,83 @@ void	Scalar::foldField()
 	{
 		case FIELD_DOUBLE:
 
-			for (size_t iz=0; iz < Lz; iz++)
+			if (fieldType == FIELD_SAXION)
 			{
-				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (size_t iy=0; iy < n1/shift; iy++)
-					for (size_t ix=0; ix < n1; ix++)
-						for (size_t sy=0; sy<shift; sy++)
-						{
-							size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
 
-							static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
-							static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
-						}
+								static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
+								static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
+							}
+				}
+			} else {
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+								static_cast<double *> (m)[dIdx+n2] = static_cast<double *> (m)[oIdx];
+								static_cast<double *> (v)[dIdx]    = static_cast<double *> (m)[oIdx+n2+n3];
+							}
+				}
 			}
 
 			break;
 
 		case FIELD_SINGLE:
 
-			for (size_t iz=0; iz < Lz; iz++)
+			if (fieldType == FIELD_SAXION)
 			{
-				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (size_t iy=0; iy < n1/shift; iy++)
-					for (size_t ix=0; ix < n1; ix++)
-						for (size_t sy=0; sy<shift; sy++)
-						{
-							size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-							size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
 
-							static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
-							static_cast<complex<float> *> (v)[dIdx]    = static_cast<complex<float> *> (m)[oIdx+n2+n3];
-						}
+								static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
+								static_cast<complex<float> *> (v)[dIdx]    = static_cast<complex<float> *> (m)[oIdx+n2+n3];
+							}
+				}
+			} else {
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+								static_cast<float *> (m)[dIdx+n2] = static_cast<float *> (m)[oIdx];
+								static_cast<float *> (v)[dIdx]    = static_cast<float *> (m)[oIdx+n2+n3];
+							}
+				}
 			}
-
 			break;
 	}
 	printf("Done!\n");
@@ -811,48 +851,87 @@ void	Scalar::unfoldField()
 
 	shift = mAlign/fSize;
 	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize,shift,n2);
+
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
 
-			for (size_t iz=0; iz < Lz; iz++)
+			if (fieldType == FIELD_SAXION)
 			{
-				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (size_t iy=0; iy < n1/shift; iy++)
-					for (size_t ix=0; ix < n1; ix++)
-						for (size_t sy=0; sy<shift; sy++)
-						{
-							size_t oIdx = iy*n1*shift + ix*shift + sy;
-							size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = iy*n1*shift + ix*shift + sy;
+								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
-							static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
-						}
+								static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
+								static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
+							}
+				}
+			} else {
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = iy*n1*shift + ix*shift + sy;
+								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+
+								static_cast<double *> (m)[dIdx+n2] = static_cast<double *> (m)[oIdx];
+								static_cast<double *> (v)[dIdx]    = static_cast<double *> (m)[oIdx+n2+n3];
+							}
+				}
 			}
-
 			break;
 
 		case FIELD_SINGLE:
 
-			for (size_t iz=0; iz < Lz; iz++)
+			if (fieldType == FIELD_SAXION)
 			{
-				memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-				memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
 
-				for (size_t iy=0; iy < n1/shift; iy++)
-					for (size_t ix=0; ix < n1; ix++)
-						for (size_t sy=0; sy<shift; sy++)
-						{
-							size_t oIdx = iy*n1*shift + ix*shift + sy;
-							size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = iy*n1*shift + ix*shift + sy;
+								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
 
-							static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
-							static_cast<complex<float> *> (v)[dIdx]     = static_cast<complex<float> *> (m)[oIdx+n2+n3];
-						}
+								static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
+								static_cast<complex<float> *> (v)[dIdx]    = static_cast<complex<float> *> (m)[oIdx+n2+n3];
+							}
+				}
+			} else {
+				for (size_t iz=0; iz < Lz; iz++)
+				{
+					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
+					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
+
+					for (size_t iy=0; iy < n1/shift; iy++)
+						for (size_t ix=0; ix < n1; ix++)
+							for (size_t sy=0; sy<shift; sy++)
+							{
+								size_t oIdx = iy*n1*shift + ix*shift + sy;
+								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+
+								static_cast<float *> (m)[dIdx+n2] = static_cast<float *> (m)[oIdx];
+								static_cast<float *> (v)[dIdx]    = static_cast<float *> (m)[oIdx+n2+n3];
+							}
+				}
 			}
-
 			break;
 	}
 	printf("Done!\n");
@@ -870,34 +949,62 @@ void	Scalar::unfoldField2D(const size_t sZ)
 	{
 		case FIELD_DOUBLE:
 		//printf("Case double n1/shift=%d, shift=%d ...", n1/shift, shift);
-		for (size_t iy=0; iy < n1/shift; iy++)
-			for (size_t ix=0; ix < n1; ix++)
-				for (size_t sy=0; sy<shift; sy++)
-				{
-					size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-					size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-					//this copies m into buffer 1
-					static_cast<complex<double> *> (m)[dIdx] = static_cast<complex<double> *> (m)[oIdx+n2];
-					//this copies v into buffer last
-					static_cast<complex<double> *> (m)[dIdx+n3+n2] = static_cast<complex<double> *> (v)[oIdx];
-				}
-
+		if (fieldType == FIELD_SAXION)
+		{
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
+						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
+						//this copies m into buffer 1
+						static_cast<complex<double> *> (m)[dIdx] = static_cast<complex<double> *> (m)[oIdx+n2];
+						//this copies v into buffer last
+						static_cast<complex<double> *> (m)[dIdx+n3+n2] = static_cast<complex<double> *> (v)[oIdx];
+					}
+		} else {
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
+						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
+						//this copies m into buffer 1
+						static_cast<double *> (m)[dIdx] = static_cast<double *> (m)[oIdx+n2];
+						//this copies v into buffer last
+						static_cast<double *> (m)[dIdx+n3+n2] = static_cast<double *> (v)[oIdx];
+					}
+		}
 		break;
 
 		case FIELD_SINGLE:
 		//printf("Case single n1/shift=%d, shift=%d ...", n1/shift, shift);
-		for (size_t iy=0; iy < n1/shift; iy++)
-			for (size_t ix=0; ix < n1; ix++)
-				for (size_t sy=0; sy<shift; sy++)
-				{
-					size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-					size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-					//this copies m into buffer 1
-					static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx+n2];
-					//this copies v into buffer last
-					static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (m)[oIdx];
-				}
-
+		if (fieldType == FIELD_SAXION)
+		{
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
+						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
+						//this copies m into buffer 1
+						static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx+n2];
+						//this copies v into buffer last
+						static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (m)[oIdx];
+					}
+		} else {
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
+						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
+						//this copies m into buffer 1
+						static_cast<float *> (m)[dIdx] = static_cast<float *> (m)[oIdx+n2];
+						//this copies v into buffer last
+						static_cast<float *> (m)[dIdx+n3+n2] = static_cast<float *> (m)[oIdx];
+					}
+		}
 		break;
 	}
 
@@ -1571,7 +1678,9 @@ void	Scalar::setField (FieldType fType)
 	switch (fType)
 	{
 		case FIELD_AXION:
-		break;
+			if (fieldType == FIELD_SAXION)
+				fSize /= 2;
+				break;
 
 		case	FIELD_SAXION:
 		break;

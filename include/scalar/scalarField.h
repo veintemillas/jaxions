@@ -108,6 +108,7 @@
 		DeviceType	Device()    { return device; }
 
 		size_t		DataSize() { return fSize; }
+		size_t		setDataSize(const double newDS)  { fSize = newDS; }
 		//JAVI
 		int		shift() { return sHift; }
 

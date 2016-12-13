@@ -25,9 +25,10 @@ void	toThetaKernelXeon (Scalar *sField)
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t lpc = 0; lpc < S; lpc++)
 		{
-			Float iMod     = z/(cmField[Vo+lpc].real()*cmField[Vo+lpc].real() + cmField[Vo+lpc].imag()*cmField[Vo+lpc].imag());
-			mField[lpc]    = arg(cmField[Vo+lpc])*z;
-			mField[Go+lpc] = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])).imag()*iMod + mField[lpc];
+			Float iMod      = z/(cmField[Vo+lpc].real()*cmField[Vo+lpc].real() + cmField[Vo+lpc].imag()*cmField[Vo+lpc].imag());
+			mField[lpc]     = arg(cmField[Vo+lpc]);
+			mField[Go+lpc]  = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])).imag()*iMod + mField[lpc];
+			mField[lpc]    *= z;
 		}
 
 		memcpy (mField + Vo,   mField,      sizeof(Float)*S);
