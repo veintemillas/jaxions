@@ -57,10 +57,18 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 
 	#pragma omp parallel
 	{
-		double spectrumK_private[powmax] ={0.0};
-		double spectrumG_private[powmax] ={0.0};
-		double spectrumV_private[powmax] ={0.0};
+		double spectrumK_private[powmax];
+		double spectrumG_private[powmax];
+		double spectrumV_private[powmax];
 
+	
+		for (int i=0; i < powmax; i++)
+		{
+			spectrumK_private[i] = 0.0;
+			spectrumG_private[i] = 0.0;
+			spectrumV_private[i] = 0.0;
+		}
+	
 		#pragma omp parallel for default(shared)
 		for (int kz = 0; kz<kmax + 1; kz++)
 		{
@@ -187,9 +195,18 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 
 	#pragma omp parallel
 	{
-		double spectrumT_private[powmax] ={0.0};
-		double spectrumN_private[powmax] ={0.0};
-		double spectrumV_private[powmax] ={0.0};
+	
+		double spectrumK_private[powmax];
+		double spectrumG_private[powmax];
+		double spectrumV_private[powmax];
+
+	
+		for (int i=0; i < powmax; i++)
+		{
+			spectrumK_private[i] = 0.0;
+			spectrumG_private[i] = 0.0;
+			spectrumV_private[i] = 0.0;
+		}	
 
 		#pragma omp parallel for default(shared)
 		for (int kz = 0; kz<kmax + 1; kz++)
