@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <complex>
 
+#include "comms/comms.h"
 #include "scalar/scalarField.h"
 #include "utils/parse.h"
 
@@ -19,9 +20,9 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 		for (size_t lx = 0; lx < n1; lx++)
 		{
 
-			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
-			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);
-			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])/z,2)*( pow(arg(m[lx + n1*ly]),2)+pow(imag(m[lx + n1*ly + n3 + n2]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
+			fprintf(atWrite,  "%f ", arg(m[lx + n1*lx]) );
+			fprintf(rhoWrite, "%f ", abs(m[lx + n1*lx])/z);
+			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*lx])/z,2)*( pow(arg(m[lx + n1*lx]),2)+pow(imag(m[lx + n1*lx]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
 		}
 
 		fprintf(atWrite , "\n");
@@ -32,6 +33,9 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 
 void	writeMap	(Scalar *axion, const int index)
 {
+	if (commRank() != 0)
+		return;
+
 	//--------------------------------------------------
 	// DIRECT SHORT OUTPUT PICTURES 2D
 	//--------------------------------------------------
