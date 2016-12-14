@@ -55,6 +55,7 @@ class	Scalar
 	DeviceType	device;
 	FieldPrecision	precision;
 	FieldType	fieldType;
+	LambdaType	lambdaType;
 
 	size_t	fSize;
 	size_t	mAlign;
@@ -134,9 +135,9 @@ class	Scalar
 
 	FieldPrecision	Precision() { return precision; }
 	DeviceType	Device()    { return device; }
+	LambdaType	Lambda()    { return lambdaType; }
 
 	size_t		DataSize()  { return fSize; }
-	size_t		setDataSize(const double newDS)  { fSize = newDS; }
 	//JAVI
 	int		shift() { return sHift; }
 
@@ -187,7 +188,8 @@ class	Scalar
 		       const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
 		       lowmem(lowmem)
 {
-	fieldType = FIELD_SAXION;
+	fieldType  = FIELD_SAXION;
+	lambdaType = LAMBDA_Z2;
 
 	switch (prec)
 	{

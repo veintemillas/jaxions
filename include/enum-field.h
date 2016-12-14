@@ -47,6 +47,12 @@
 		STRING_ZX_NEGATIVE = 32,
 	}	StringType;
 
+	typedef	enum	LambdaType_s
+	{
+		LAMBDA_FIXED,
+		LAMBDA_Z2,
+	}	LambdaType;
+
 	typedef enum	ConfType_s
 	{
 		CONF_KMAX,

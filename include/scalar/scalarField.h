@@ -31,6 +31,7 @@
 		DeviceType	device;
 		FieldPrecision	precision;
 		FieldType	fieldType;
+		LambdaType	lambdaType;
 
 		size_t	fSize;
 		size_t	mAlign;
@@ -106,9 +107,9 @@
 
 		FieldPrecision	Precision() { return precision; }
 		DeviceType	Device()    { return device; }
+		LambdaType	Lambda()    { return lambdaType; }
 
 		size_t		DataSize() { return fSize; }
-		size_t		setDataSize(const double newDS)  { fSize = newDS; }
 		//JAVI
 		int		shift() { return sHift; }
 

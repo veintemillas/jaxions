@@ -500,60 +500,73 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 	const size_t ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
+	double lambda = LL;
 
 	int bulk  = 32;
 
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, LL, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, LL, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, LL, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
 	*z += dz*D1;
 
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = lambda/((*z)*(*z));
+
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, LL, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M2);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, LL, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, LL, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
 	*z += dz*D2;
 
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = lambda/((*z)*(*z));
+
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, LL, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, LL, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, LL, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
 	*z += dz*D3;
 
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = lambda/((*z)*(*z));
+
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, LL, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M2);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, LL, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, LL, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -565,8 +578,13 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
+	double lambda = LL;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
         propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, LL, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
         propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, LL, nQcd, Lx, S, 2*S, precision);
@@ -574,6 +592,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	*z += dz*D1;
 
 	axionField->sendGhosts(FIELD_M2, COMM_SDRV);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
         propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, LL, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M2, COMM_WAIT);
         propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, LL, nQcd, Lx, S, 2*S, precision);
@@ -581,6 +603,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	*z += dz*D2;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
         propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, LL, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
         propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, LL, nQcd, Lx, S, 2*S, precision);
@@ -588,6 +614,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	*z += dz*D3;
 
 	axionField->sendGhosts(FIELD_M2, COMM_SDRV);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
         propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, LL, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M2, COMM_WAIT);
         propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, LL, nQcd, Lx, S, 2*S, precision);
@@ -1096,8 +1126,12 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 	const size_t ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = (double *) __builtin_assume_aligned((void *) axionField->zV(), Align);
+	double lambda = LL;
 
 	int bulk  = 32;
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
@@ -1107,8 +1141,8 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C1, ood2, LL, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C1, ood2, LL, nQcd, Lx, V, ext, S, precision);
+		updateVXeon(mX, vX, z, dz, C1, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon(mX, vX, z, dz, C1, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1120,16 +1154,19 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 	*z += dz*D1;
 
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C2, ood2, LL, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D2, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C2, ood2, LL, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C2, ood2, LL, nQcd, Lx, V, ext, S, precision);
+		updateVXeon(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1138,18 +1175,22 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 		updateMXeon(mX, vX, dz, D2, S,   3*S, S, precision);
 		updateMXeon(mX, vX, dz, D2, V-S, ext, S, precision);
 	}
+
 	*z += dz*D2;
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C3, ood2, LL, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D3, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C3, ood2, LL, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C3, ood2, LL, nQcd, Lx, V, ext, S, precision);
+		updateVXeon(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1158,18 +1199,22 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 		updateMXeon(mX, vX, dz, D3, S,   3*S, S, precision);
 		updateMXeon(mX, vX, dz, D3, V-S, ext, S, precision);
 	}
+
 	*z += dz*D3;
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C4, ood2, LL, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D4, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C4, ood2, LL, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C4, ood2, LL, nQcd, Lx, V, ext, S, precision);
+		updateVXeon(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1178,6 +1223,7 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 		updateMXeon(mX, vX, dz, D4, S,   3*S, S, precision);
 		updateMXeon(mX, vX, dz, D4, V-S, ext, S, precision);
 	}
+
 	*z += dz*D4;
 
 #endif
@@ -1186,27 +1232,44 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 {
 	const double ood2 = 1./delta2; 
 	double *z = axionField->zV();
+	double lambda = LL;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, LL, nQcd, Lx, S, V + S, S, precision);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D1, S, V + S, S, precision);
 	*z += dz*D1;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, LL, nQcd, Lx, S, V + S, S, precision);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D2, S, V + S, S, precision);
 	*z += dz*D2;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, LL, nQcd, Lx, S, V + S, S, precision);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D3, S, V + S, S, precision);
 	*z += dz*D3;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, LL, nQcd, Lx, S, V + S, S, precision);
+
+	if (axionField->Lambda() != LAMBDA_FIXED)
+		lambda = LL/((*z)*(*z));
+
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D4, S, V + S, S, precision);
 	*z += dz*D4;
