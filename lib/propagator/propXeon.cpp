@@ -14,19 +14,13 @@
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
 #define opCode(x,...) opCode_N(_PREFIX_, x, __VA_ARGS__)
 
-//#if	defined(__AVX__) || defined(__AVX2__) || defined(__MIC__)
-	#include <immintrin.h>
-//#else
-//	#include <xmmintrin.h>
-//#endif
-
+#include <immintrin.h>
 
 #ifdef	__MIC__
 	#define	Align 64
 	#define	_PREFIX_ _mm512
 #else
 	#if not defined(__AVX__) and not defined(__AVX2__)
-//		#error("AVX instruction set required")
 		#define	Align 16
 		#define	_PREFIX_ _mm
 	#else

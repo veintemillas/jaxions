@@ -14,19 +14,13 @@
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
 #define opCode(x,...) opCode_N(_PREFIX_, x, __VA_ARGS__)
 
-//#if	defined(__AVX__) || defined(__AVX2__) || defined(__MIC__)
-	#include <immintrin.h>
-//#else
-//	#include <xmmintrin.h>
-//#endif
-
+#include <immintrin.h>
 
 #ifdef	__MIC__
 	#define	Align 64
 	#define	_PREFIX_ _mm512
 #else
 	#if not defined(__AVX__) and not defined(__AVX2__)
-//		#error("AVX instruction set required")
 		#define	Align 16
 		#define	_PREFIX_ _mm
 	#else
@@ -36,10 +30,91 @@
 #endif
 
 
-#define	tV 2.*M_PI
+#define	tV	2.*M_PI
+#define	M_PI2	(M_PI *M_PI)
+#define	M_PI4	(M_PI2*M_PI2)
+#define	M_PI6	(M_PI4*M_PI2)
 
-#ifndef	__MIC__
-#ifdef	__AVX__
+#ifdef	__MIC__
+	#define	_MData_ __m512d
+#elif	defined(__AVX__)
+	#define	_MData_ __m256d
+#else
+	#define	_MData_ __m128d
+#endif
+
+inline _MData_	opCode(sin_pd, _MData_ x)
+{
+	_MData_ tmp2, tmp3, tmp5, a, b, c;
+	static const double a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4*M_PI2*a_s+6*M_PI4*b_s)/(M_PI6);
+
+	a = opCode(set1_pd, a_s); 
+	b = opCode(set1_pd, b_s); 
+	c = opCode(set1_pd, c_s); 
+
+	tmp2 = opCode(mul_pd, x, x);
+	tmp3 = opCode(mul_pd, tmp2, x);
+	tmp5 = opCode(mul_pd, tmp3, tmp2);
+	return opCode(add_pd, x, opCode(add_pd,
+		opCode(add_pd,
+			opCode(mul_pd, tmp3, a),
+			opCode(mul_pd, tmp5, b)),
+		opCode(mul_pd, c, opCode(mul_pd, tmp2, tmp5))));
+}
+
+#undef	_MData_
+
+#ifdef	__MIC__
+	#define	_MData_ __m512
+#elif	defined(__AVX__)
+	#define	_MData_ __m256
+#else
+	#define	_MData_ __m128
+#endif
+
+inline _MData_	opCode(sin_ps, _MData_ x)
+{
+	_MData_ tmp2, tmp3, tmp5, a, b, c;
+	static const float a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4*M_PI2*a_s+6*M_PI4*b_s)/(M_PI6);
+
+	a = opCode(set1_ps, a_s); 
+	b = opCode(set1_ps, b_s); 
+	c = opCode(set1_ps, c_s); 
+
+	tmp2 = opCode(mul_ps, x, x);
+	tmp3 = opCode(mul_ps, tmp2, x);
+	tmp5 = opCode(mul_ps, tmp3, tmp2);
+	return opCode(add_ps, x, opCode(add_ps,
+		opCode(add_ps,
+			opCode(mul_ps, tmp3, a),
+			opCode(mul_ps, tmp5, b)),
+		opCode(mul_ps, c, opCode(mul_ps, tmp2, tmp5))));
+}
+
+#undef	_MData_
+
+#ifdef	__MIC__
+__attribute__((target(mic)))
+void printFloat(size_t idx, size_t con, __m512 dat)
+{
+	if (idx == con) {
+		static float __attribute((aligned(64))) caca[16];
+		opCode(store_ps, caca, dat);
+		printf ("%e %e | %e %e | %e %e | %e %e | %e %e | %e %e | %e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7],
+											   caca[8], caca[9], caca[10], caca[11], caca[12], caca[13], caca[14], caca[15]);
+	}
+}
+
+__attribute__((target(mic)))
+void printDouble(size_t idx, size_t con, __m512d dat)
+{
+	if (idx == con) {
+		static double  __attribute((aligned(64))) caca[8];
+		opCode(store_pd, caca, dat);
+		printf ("%le %le | %le %le | %le %le | %le %le\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7]);
+	}
+}
+#elif	defined(__AVX__)
 void printFloat(size_t idx, size_t con, __m256 dat)
 {
 	if (idx == con) {
@@ -78,28 +153,7 @@ void printDouble(size_t idx, size_t con, __m128d dat)
 	}
 }
 #endif
-#else
-__attribute__((target(mic)))
-void printFloat(size_t idx, size_t con, __m512 dat)
-{
-	if (idx == con) {
-		static float __attribute((aligned(64))) caca[16];
-		opCode(store_ps, caca, dat);
-		printf ("%e %e | %e %e | %e %e | %e %e | %e %e | %e %e | %e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7],
-											   caca[8], caca[9], caca[10], caca[11], caca[12], caca[13], caca[14], caca[15]);
-	}
-}
 
-__attribute__((target(mic)))
-void printDouble(size_t idx, size_t con, __m512d dat)
-{
-	if (idx == con) {
-		static double  __attribute((aligned(64))) caca[8];
-		opCode(store_pd, caca, dat);
-		printf ("%le %le | %le %le | %le %le | %le %le\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7]);
-	}
-}
-#endif
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
@@ -180,13 +234,13 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double __attribute__((aligned(Align))) dzdAux[2] = { dzd, dzd };
 
 #endif
-		const _MData_ tpVec  = opCode(load_pd, tpAux);
-		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ izVec  = opCode(load_pd, izAux);
-		const _MData_ c6Vec  = opCode(load_pd, c6Aux);
-		const _MData_ d2Vec  = opCode(load_pd, d2Aux);
-		const _MData_ dzcVec = opCode(load_pd, dzcAux);
-		const _MData_ dzdVec = opCode(load_pd, dzdAux);
+		const _MData_ tpVec  = opCode(set1_pd, tV);
+		const _MData_ zQVec  = opCode(set1_pd, zQ);
+		const _MData_ izVec  = opCode(set1_pd, iZ);
+		const _MData_ c6Vec  = opCode(set1_pd,-6.);
+		const _MData_ d2Vec  = opCode(set1_pd, ood2);
+		const _MData_ dzcVec = opCode(set1_pd, dzc);
+		const _MData_ dzdVec = opCode(set1_pd, dzd);
 
 #ifdef __MIC__
 		const _MInt_  vShRg  = opCode(load_si512, shfRg);
@@ -235,7 +289,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 					tpP = opCode(permute2f128_pd, tpM, tpM, 0b00000001);
 					mMy = opCode(blend_pd, tpM, tpP, 0b00000101);
 #else
-					mMy = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0x00000001);
+					tpM = opCode(load_pd, &m[idxMy]);
+					mMy = opCode(shuffle_pd, tpM, tpM, 0x00000001);
 #endif
 				}
 				else
@@ -255,7 +310,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 						tpP = opCode(permute2f128_pd, tpM, tpM, 0b00000001);
 						mPy = opCode(blend_pd, tpM, tpP, 0b00001010);
 #else
-						mPy = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0x00000001);
+						tpP = opCode(load_pd, &m[idxPy]);
+						mPy = opCode(shuffle_pd, tpP, tpP, 0x00000001);
 #endif
 					}
 					else
