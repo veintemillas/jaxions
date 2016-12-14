@@ -1,20 +1,18 @@
-#include<complex>
-#include<vector>
-#include<fftw3-mpi.h>
-#include"enum-field.h"
+#include <complex>
+#include <vector>
+#include <fftw3-mpi.h>
+#include <omp.h>
+#include "enum-field.h"
 
 using namespace std;
 
 fftw_plan p, pb;
 fftwf_plan pf, pfb;
 
-static bool iFFT = false, single = false;
+static bool iFFT = false, single = false, useThreads = true;
 
 void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecision prec, bool lowmem)
 {
-//	const ptrdiff_t nD[2] = { n1, n1 };
-//	const ptrdiff_t dist  = (n1*n1);
-
 	printf ("Initializing FFT...\n");
 	fflush (stdout);
 
@@ -22,6 +20,18 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 	{
 		printf ("Already initialized!!\n");
 		fflush (stdout);
+	}
+
+	if (!fftw_init_threads())
+	{
+		printf ("Error initializing FFT with threads\n");
+		fflush (stdout);
+		useThreads = false;
+	} else {
+		int nThreads = omp_get_max_threads();
+		printf ("Using %d threads for the FFTW\n");
+		fflush (stdout);
+		fftw_plan_with_nthreads(nThreads);
 	}
 
 	fftw_mpi_init();
@@ -111,13 +121,21 @@ void	closeFFT	()
 	{
 		fftwf_destroy_plan(pf);
 		fftwf_destroy_plan(pfb);
-		void fftwf_cleanup_threads(void);
+
+		if (useThreads)
+			fftwf_cleanup_threads();
+		else
+			fftwf_cleanup();
 	}
 	else
 	{
 		fftw_destroy_plan(p);
 		fftw_destroy_plan(pb);
-		void fftw_cleanup_threads(void);
+
+		if (useThreads)
+			fftw_cleanup_threads();
+		else
+			fftw_cleanup();
 	}
 }
 
