@@ -196,15 +196,15 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 	#pragma omp parallel
 	{
 	
-		double spectrumK_private[powmax];
-		double spectrumG_private[powmax];
+		double spectrumT_private[powmax];
+		double spectrumN_private[powmax];
 		double spectrumV_private[powmax];
 
 	
 		for (int i=0; i < powmax; i++)
 		{
-			spectrumK_private[i] = 0.0;
-			spectrumG_private[i] = 0.0;
+			spectrumT_private[i] = 0.0;
+			spectrumN_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
 		}	
 
