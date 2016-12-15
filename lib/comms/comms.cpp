@@ -53,12 +53,8 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 	MPI_Init_thread (&argc, &argv, MPI_THREAD_FUNNELED, &tProv);
 
-	if (tProv < MPI_THREAD_FUNNELED)
-	{
-		printf ("Error: Requested MPI_THREAD_FUNNELED could not be satisfied.\n");
-		MPI_Finalize();
-		return -1;
-	}
+	if (tProv != MPI_THREAD_FUNNELED)
+		printf ("Error: Requested MPI_THREAD_FUNNELED could not be satisfied. Got %d\nOpenMP behavior undefined!!", tProv);
 
 	MPI_Comm_size (MPI_COMM_WORLD, &realSize);
 
