@@ -165,7 +165,8 @@ class	Scalar
 	void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 	//JAVIER
 	//void	thetaz2m2(int *window);		// COPIES dTHETA/dz into m2	//not used
-	void	theta2m2();//int *window);			// COPIES THETA + I dTHETA/dz     into m2
+	void	theta2m2();//int *window);	// COPIES THETA + I dTHETA/dz     into m2
+	double	maxtheta();								// RETURNS THE MAX VALUE OF THETA [OR IM m]
 
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
@@ -1899,4 +1900,56 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 	printf("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", Vrho1, Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1);
 	fflush (stdout);
 */
+}
+
+//----------------------------------------------------------------------
+//		FUNCTIONS FOR MAX THETA
+//----------------------------------------------------------------------
+
+double	Scalar::maxtheta()//int *window)
+{
+	double mymaxd;
+	if (precision == FIELD_DOUBLE)
+	{
+
+		double tauxd;
+		#pragma omp parallel for reduction(max:mymaxd)
+		for(size_t i=0; i < n3; i++)
+		{
+			if(fieldType == FIELD_SAXION)
+			{
+				tauxd = abs(arg(((complex<double> *) m)[i]));
+			}
+			else
+			{
+				tauxd = abs(((double *) m)[i]);
+			}
+			if( tauxd > mymaxd )
+			{
+				mymaxd = tauxd ;
+			}
+		}
+	}
+	else // PRECISION SINGLE
+	{
+		float mymax, taux;
+		#pragma omp parallel for reduction(max:mymax)
+		for(size_t i=0; i < n3; i++)
+		{
+			if(fieldType == FIELD_SAXION)
+			{
+				taux = abs(arg(((complex<float> *) m)[i]));
+			}
+			else
+			{
+				taux = abs(((float *) m)[i]);
+			}
+			if( taux > mymax )
+			{
+				mymax = taux ;
+			}
+		}
+		mymaxd = (double) mymax;
+	}
+	return mymaxd ;
 }
