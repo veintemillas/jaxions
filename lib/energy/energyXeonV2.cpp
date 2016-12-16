@@ -613,7 +613,7 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 				mTp = opCode(mul_ps, opCode(add_ps, opCode(swizzle_ps, mel, _MM_SWIZ_REG_CDAB), mel), opCode(set1_ps, 0.5));
 				tVp = opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, mTp);
 #elif defined(__AVX__)
-				mTp = opCode(mul_ps, opCode(add_pd, opCode(permute_pd, mel, 0b00000101), mel), opCode(set1_ps, 0.5));
+				mTp = opCode(mul_ps, opCode(add_ps, opCode(permute_ps, mel, 0b10110001), mel), opCode(set1_ps, 0.5));
 				tVp = opCode(blend_ps, mod, mTp, 0b10101010);
 #else
 				mTp = opCode(mul_ps, opCode(add_ps, opCode(shuffle_ps, mod, mod, 0b10110001), mod), opCode(set1_ps, 0.5));
