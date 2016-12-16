@@ -26,6 +26,7 @@ class	Propagator
 	const size_t Lx, Lz, V, S;
 
 	FieldPrecision precision;
+	VqcdType pot;
 
 	Scalar	*axionField;
 
@@ -33,7 +34,7 @@ class	Propagator
 
 	public:
 
-		 Propagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz);
+		 Propagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz, VqcdType pot);
 		~Propagator() {};
 
 	void	runCpu	();
@@ -45,8 +46,8 @@ class	Propagator
 	void	lowXeon	();
 };
 
-	Propagator::Propagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz) : axionField(field), dz(dz), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()),
-				S(field->Surf()), c1(C1), d1(D1), c2(C2), d2(D2), c3(C3), d3(D3), c4(C4), d4(D4), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd)
+	Propagator::Propagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz, VqcdType pot) : axionField(field), dz(dz), Lx(field->Length()), Lz(field->eDepth()),
+				V(field->Size()), S(field->Surf()), c1(C1), d1(D1), c2(C2), d2(D2), c3(C3), d3(D3), c4(C4), d4(D4), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), pot(pot)
 {
 }
 
@@ -129,18 +130,45 @@ void	Propagator::lowGpu	()
 
 void	Propagator::runCpu	()
 {
-	propagateCpu(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+	switch (pot)
+	{
+		case VQCD_1:
+			propagateCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case VQCD_2:
+			propagateCpuV2	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
 }
 
 void	Propagator::lowCpu	()
 {
-	propLowMemCpu(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+	switch (pot)
+	{
+		case VQCD_1:
+			propLowMemCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case VQCD_2:
+			propLowMemCpuV2	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
 }
 
 void	Propagator::runXeon	()
 {
 #ifdef	USE_XEON
-	propagateXeon(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+	switch (pot)
+	{
+		case VQCD_1:
+			propagateXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case VQCD_2:
+			propagateXeonV2	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
@@ -150,16 +178,25 @@ void	Propagator::runXeon	()
 void	Propagator::lowXeon	()
 {
 #ifdef	USE_XEON
-	propLowMemXeon(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+	switch (pot)
+	{
+		case VQCD_1:
+			propLowMemXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case VQCD_2:
+			propLowMemXeonV2(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	propagate	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+void	propagate	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount, VqcdType pot)
 {
-	Propagator *prop = new Propagator(field, LL, nQcd, delta, dz);
+	Propagator *prop = new Propagator(field, LL, nQcd, delta, dz, pot);
 
 	switch (dev)
 	{
@@ -191,7 +228,16 @@ void	propagate	(Scalar *field, const double dz, const double LL, const double nQ
 
 	delete	prop;
 
-	fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+	switch (pot)
+	{
+		case VQCD_1:
+			fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+			break;
+
+		case VQCD_2:
+			fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+			break;
+	}
 
 	return;
 }
