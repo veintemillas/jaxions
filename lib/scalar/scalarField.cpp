@@ -993,7 +993,7 @@ void	Scalar::unfoldField2D(const size_t sZ)
 						//this copies m into buffer 1
 						static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx+n2];
 						//this copies v into buffer last
-						static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (m)[oIdx];
+						static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (v)[oIdx];
 					}
 		} else {
 			for (size_t iy=0; iy < n1/shift; iy++)
@@ -1005,7 +1005,7 @@ void	Scalar::unfoldField2D(const size_t sZ)
 						//this copies m into buffer 1
 						static_cast<float *> (m)[dIdx] = static_cast<float *> (m)[oIdx+n2];
 						//this copies v into buffer last
-						static_cast<float *> (m)[dIdx+n3+n2] = static_cast<float *> (m)[oIdx];
+						static_cast<float *> (m)[dIdx+n3+n2] = static_cast<float *> (v)[oIdx];
 					}
 		}
 		break;

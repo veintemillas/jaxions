@@ -118,6 +118,7 @@ int	main (int argc, char *argv[])
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 0 ;
+	double maximumtheta = 3.141597;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;
@@ -392,15 +393,16 @@ int	main (int argc, char *argv[])
 			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
 			//if (axion->Precision() == FIELD_DOUBLE)
-			if ((*axion->zV()) > 1.2 )
+			if ((*axion->zV()) > 0.8 )
 			{
-				printMpi("Strings (if %f>1.2) ... ", (*axion->zV()));
+				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
 				fflush (stdout);
 				nstrings = analyzeStrFolded(axion, index);
+				maximumtheta = axion->maxtheta();
 				printMpi("stLength = %d ", nstrings);
 				fflush (stdout);
 
-				if (nstrings == 0 )
+				if (nstrings < 200 )
 				{
 					//POWER SPECTRUM
 					double *sK = static_cast<double *> (spectrumK);
@@ -415,6 +417,7 @@ int	main (int argc, char *argv[])
 					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
 					fprintf(file_power,  "%f ", (*axion->zV()));
 					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+					//writeMap (axion, index);
 					//NUMBER SPECTRUM
 					spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
 					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
@@ -425,6 +428,7 @@ int	main (int argc, char *argv[])
 					fprintf(file_spectrum,  "%f ", (*axion->zV()));
 					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
 					axion->foldField();
+
 				}
 			}
 
@@ -433,6 +437,7 @@ int	main (int argc, char *argv[])
 			//axion->unfoldField2D(sizeZ-1);
 			axion->unfoldField2D(0);
 			writeMap (axion, index);
+
 //			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 
@@ -443,18 +448,18 @@ int	main (int argc, char *argv[])
 				if (axion->Precision() == FIELD_DOUBLE)
 				{
 					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
 					//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+					printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
 				}
 				else
 				{
 					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
 		//			float *eR = static_cast<float *> (eRes);
 		//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
 					//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+					printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
 				}
 			}
 		}

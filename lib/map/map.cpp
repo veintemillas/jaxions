@@ -13,16 +13,17 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 	fprintf(atWrite,  "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
 	fprintf(rhoWrite, "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
 	fprintf(densWrite, "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
-	int n2 = n1*n1;
-	int n3 = n2*n1;
+	//int n2 = n1*n1;
+	size_t nlast = n1*n1*sizeZ+n1*n1;
 	for (size_t ly = 0; ly < n1; ly++)
 	{
 		for (size_t lx = 0; lx < n1; lx++)
 		{
 
-			fprintf(atWrite,  "%f ", arg(m[lx + n1*lx]) );
-			fprintf(rhoWrite, "%f ", abs(m[lx + n1*lx])/z);
-			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*lx])/z,2)*( pow(arg(m[lx + n1*lx]),2)+pow(imag(m[lx + n1*lx]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
+			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
+			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);
+			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])/z,2)*( pow(arg(m[lx + n1*ly]),2)+pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
+
 		}
 
 		fprintf(atWrite , "\n");
