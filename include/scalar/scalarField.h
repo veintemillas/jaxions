@@ -109,6 +109,8 @@
 		DeviceType	Device()    { return device; }
 		LambdaType	Lambda()    { return lambdaType; }
 
+		void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
+
 		size_t		DataSize() { return fSize; }
 		//JAVI
 		int		shift() { return sHift; }
