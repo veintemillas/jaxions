@@ -26,13 +26,14 @@ class	Energy
 	const size_t Lx, Lz, V, S, Vt;
 
 	FieldPrecision precision;
+	VqcdType pot;
 
 	void    *eRes;
 	Scalar	*axionField;
 
 	public:
 
-		 Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes);
+		 Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot);
 		~Energy() {};
 
 	void	runCpu	();
@@ -40,8 +41,8 @@ class	Energy
 	void	runXeon	();
 };
 
-	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes) : axionField(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()),
-				S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), eRes(eRes)
+	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot) : axionField(field), Lx(field->Length()), Lz(field->eDepth()),
+	V(field->Size()), S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), eRes(eRes), pot(pot)
 {
 }
 
@@ -71,25 +72,43 @@ void	Energy::runGpu	()
 
 void	Energy::runCpu	()
 {
-	energyCpu(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
+	switch (pot)
+	{
+		case VQCD_1:
+			energyCpu	(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
+			break;
+
+		case VQCD_2:
+			energyCpuV2	(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
+			break;
+	}
 }
 
 void	Energy::runXeon	()
 {
 #ifdef	USE_XEON
-	energyXeon(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
+	switch (pot)
+	{
+		case VQCD_1:
+			energyXeon	(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
+			break;
+
+		case VQCD_2:
+			energyXeonV2	(axionField, delta2, LL, nQcd, Lx, V, S, Vt, precision, eRes);
+			break;
+	}
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount)
+void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount, VqcdType pot)
 {
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
-	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp);
+	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot);
 
 	switch (dev)
 	{

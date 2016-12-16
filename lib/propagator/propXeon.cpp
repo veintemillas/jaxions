@@ -522,7 +522,7 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 	*z += dz*D1;
 
 	if (axionField->Lambda() != LAMBDA_FIXED)
-		lambda = lambda/((*z)*(*z));
+		lambda = LL/((*z)*(*z));
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
@@ -539,7 +539,7 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 	*z += dz*D2;
 
 	if (axionField->Lambda() != LAMBDA_FIXED)
-		lambda = lambda/((*z)*(*z));
+		lambda = LL/((*z)*(*z));
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
@@ -556,7 +556,7 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 	*z += dz*D3;
 
 	if (axionField->Lambda() != LAMBDA_FIXED)
-		lambda = lambda/((*z)*(*z));
+		lambda = LL/((*z)*(*z));
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{

@@ -53,6 +53,12 @@
 		LAMBDA_Z2,
 	}	LambdaType;
 
+	typedef	enum	VqcdType_s
+	{
+		VQCD_1,
+		VQCD_2,
+	}	VqcdType;
+
 	typedef enum	ConfType_s
 	{
 		CONF_KMAX,
