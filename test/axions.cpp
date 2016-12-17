@@ -228,7 +228,7 @@ int	main (int argc, char *argv[])
 //	commSync();
 
 	printMpi ("Lambda to FIXED\n");
-	axion->SetLambda(LAMBDA_Z2);
+	axion->SetLambda(LAMBDA_FIXED);
 
 	if (cDev != DEV_GPU)
 	{
@@ -371,7 +371,7 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 			propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
-//			propagateSimple (axion, dz, LL, nQcd, delta);
+
 
 
 			current = std::chrono::high_resolution_clock::now();

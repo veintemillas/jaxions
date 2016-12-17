@@ -17,6 +17,16 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 {
 	double voli = 1.0/((double) n1*n1*n1) ;
 
+	double minus1costab [kmax+1] ;
+
+	double id2 = 2.0/pow(sizeL/sizeN,2);
+
+	#pragma omp parallel for default(shared) schedule(static)
+	for (int i=0; i < kmax + 1; i++)
+	{
+		minus1costab[i] = id2*(1.0 - cos(((double) 6.2831853071796*(i/n1))));
+	}
+
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < powmax; i++)
 	{
@@ -24,6 +34,8 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 		(static_cast<double *> (spectrumG))[i] = 0.0;
 		(static_cast<double *> (spectrumV))[i] = 0.0;
 	}
+//
+
 //	Bin power spectrum
 //  KthetaPS |mode|^2 / w
 // 	(c^2 + d^2)/w
@@ -55,20 +67,26 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 //	Gthetak = |FFT[i]+(FTT[N-i])*|^2 k^2/w	/8
 //	Vthetak = |FFT[i]+(FTT[N-i])*|^2 m^2/w	/8
 
+// 	RECALL THAT THETA IS NOW MULTIPLIED BY MASS SO
+
+//	Gthetak = |FFT[i]+(FTT[N-i])*|^2 k^2/(MASS2*w)	/8
+//	Vthetak = |FFT[i]+(FTT[N-i])*|^2 /w	/8
+
+
 	#pragma omp parallel
 	{
 		double spectrumK_private[powmax];
 		double spectrumG_private[powmax];
 		double spectrumV_private[powmax];
 
-	
+
 		for (int i=0; i < powmax; i++)
 		{
 			spectrumK_private[i] = 0.0;
 			spectrumG_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
 		}
-	
+
 		#pragma omp parallel for default(shared)
 		for (int kz = 0; kz<kmax + 1; kz++)
 		{
@@ -91,18 +109,22 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 
 					double k2 =	kx*kx + ky*ky + kz*kz;
 					int bin  = (int) floor(sqrt(k2)) 	;
-					k2 =	(39.47842/(sizeL*sizeL)) * k2;
+
 					//CONTINUUM DEFINITION
+					//k2 =	(39.47842/(sizeL*sizeL)) * k2;
 					//double w = (double) sqrt(k2 + mass2);
 					//LATICE DEFINITION
-					double w = (double) sqrt(k2 + mass2);
+					//this first instance of w is aux
+					k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+					double w = sqrt(k2 + mass2);
+					//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 
 					ftk = ft[ix+iy*n1+iz*n1*n1]; // Era ft2
 					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
 
 					spectrumK_private[bin] += pow(abs(ftk - ftmk),2)/w;
-					spectrumG_private[bin] += pow(abs(ftk + ftmk),2)*k2/w;
-					spectrumV_private[bin] += pow(abs(ftk + ftmk),2)*mass2/w;
+					spectrumG_private[bin] += pow(abs(ftk + ftmk),2)*k2/(mass2*w);		//mass2 is included
+					spectrumV_private[bin] += pow(abs(ftk + ftmk),2)/w;								//mass2 is included
 				}//x
 
 			}//y
@@ -151,7 +173,7 @@ void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spe
 
 	// 	New scheme
 
-	//  Copies theta + I theta_z into m2
+	//  Copies theta*mass + I theta_z into m2
 			axion->theta2m2();
 	//  FFT[m2] = FFT[theta] + I*FFT[theta_z]
 	//					= a + I b		 + I (c + I d)
@@ -195,18 +217,18 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 
 	#pragma omp parallel
 	{
-	
+
 		double spectrumT_private[powmax];
 		double spectrumN_private[powmax];
 		double spectrumV_private[powmax];
 
-	
+
 		for (int i=0; i < powmax; i++)
 		{
 			spectrumT_private[i] = 0.0;
 			spectrumN_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
-		}	
+		}
 
 		#pragma omp parallel for default(shared)
 		for (int kz = 0; kz<kmax + 1; kz++)

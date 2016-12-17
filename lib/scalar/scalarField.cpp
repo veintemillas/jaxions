@@ -1073,21 +1073,59 @@ void	Scalar::squareCpu()
 // }
 
 //	USA M2, ARREGLAR LOWMEM
+//	COPIES CONFORMAL FIELD AND DERIVATIVE FROM PQ FIELD
 void	Scalar::theta2m2()//int *window)
 {
+
 	if (precision == FIELD_DOUBLE)
 	{
+		double za = (*z);
+		double massfactor = 3.0 * pow(za, nQcd/2 + 1);
+
 		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t i=0; i < n3; i++)
-			((complex<double> *) m2)[i] = arg(((std::complex<double> *) m)[i]) + I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag();//*((double) window[i]);
+		{
+		double thetaaux = arg(((std::complex<double> *) m)[i]);
+			((complex<double> *) m2)[i] = thetaaux*massfactor*za
+																		+ I*( ((((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag())*za
+																		      + thetaaux ) ;
+		}
 	}
 	else
 	{
+		float zaf = *z ;
+		float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
+
 		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t i=0; i < n3; i++)
-			((complex<float> *) m2)[i] = arg(((std::complex<float> *) m)[i]) +  If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag();//*((float) window[i]);
+		{
+		float thetaauxf = arg(((std::complex<float> *) m)[i]);
+			((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf
+																	 + If*( ((((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag())*zaf
+																	      + thetaauxf);
+		}
 	}
 }
+
+//
+
+//OLD VERSION, THETA
+// void	Scalar::theta2m2()//int *window)
+// {
+//
+// 	if (precision == FIELD_DOUBLE)
+// 	{
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t i=0; i < n3; i++)
+// 			((complex<double> *) m2)[i] = arg(((std::complex<double> *) m)[i]) + I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag();//*((double) window[i]);
+// 	}
+// 	else
+// 	{
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t i=0; i < n3; i++)
+// 			((complex<float> *) m2)[i] = arg(((std::complex<float> *) m)[i]) +  If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag();//*((float) window[i]);
+// 	}
+// }
 
 
 /*	ARREGLAR PARA DIFERENTES PRECISIONES	*/

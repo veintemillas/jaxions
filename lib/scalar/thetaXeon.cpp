@@ -12,8 +12,12 @@ void	toThetaKernelXeon (Scalar *sField)
 	const size_t S  = sField->Surf();
 	const size_t Lz = sField->Depth();
 	const size_t Go = 2*(V+S);
+	//POINTERS FOR THETA
+	//(conformal)THETA STARTS AT m
 	Float *mField   = static_cast<Float*>(sField->mCpu());
+	//(conformal)THETA' is stored in the (almost) second half of m
 	Float *vField   = static_cast<Float*>(sField->mCpu()) + 2*S + V;
+	//POINTERS FOR COMPLEX PQ FIELD
 	complex<Float> *cmField  = static_cast<complex<Float>*>(sField->mCpu());
 	complex<Float> *cvField  = static_cast<complex<Float>*>(sField->vCpu());
 
@@ -25,13 +29,20 @@ void	toThetaKernelXeon (Scalar *sField)
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t lpc = 0; lpc < S; lpc++)
 		{
+			//aux quantity z/|m|^2
 			Float iMod      = z/(cmField[Vo+lpc].real()*cmField[Vo+lpc].real() + cmField[Vo+lpc].imag()*cmField[Vo+lpc].imag());
+			//theta, starts reading after buffer, copies into buffer
 			mField[lpc]     = arg(cmField[Vo+lpc]);
+			//c_theta' = Im [v conj(m)]z/|m|^2+theta
+			// the v array has no buffer hence the need of -S in their index
+			// gets temporarily stored outside the Physical range of mField V+2S and vField V -> i.e. 2(V+S)=Go
 			mField[Go+lpc]  = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])).imag()*iMod + mField[lpc];
+			//c_theta
 			mField[lpc]    *= z;
 		}
-
+		//displaces the mField from buffer to position
 		memcpy (mField + Vo,   mField,      sizeof(Float)*S);
+		//displaces the vField from buffer' to position
 		memcpy (vField + Vo-S, mField + Go, sizeof(Float)*S);
 	}
 }

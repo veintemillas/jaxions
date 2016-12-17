@@ -54,7 +54,7 @@ void	printUsage(char *name)
 	printf("--lsize [float]                 Defines the physical size of the system (default 4.0).\n");
 	printf("--llcf  [float]                 Defines the lagrangian coefficient (default 15000).\n");
 	printf("--kcr   [float]                 Defines the critical kappa (default 1.0).\n");
-	printf("--qcd   [int]                   Defines the number of QCD colors (default 3).\n");
+	printf("--qcd   [int]                   Defines the exponent of topological susceptibility (default 3).\n");
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
 	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--kmax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 2)\n");
@@ -299,7 +299,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a number of colors.\n");
+				printf("Error: I need an exponent for the susceptibility nQcd!.\n");
 				exit(1);
 			}
 
@@ -307,7 +307,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (nQcd < 0)
 			{
-				printf("Error: The number of colors must be equal or greater than 0.\n");
+				printf("Error: The exponent of the top. susceptibility nQcd must be equal or greater than 0.\n");
 				exit(1);
 			}
 

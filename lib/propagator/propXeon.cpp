@@ -176,7 +176,7 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const _MData_ dzcVec = opCode(load_pd, dzcAux);
 		const _MData_ dzdVec = opCode(load_pd, dzdAux);
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mPy;
 
@@ -255,24 +255,24 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
 
-				mPx = opCode(sub_pd, 
-					opCode(add_pd, 
-						opCode(mul_pd, 
-							opCode(add_pd, 
-								opCode(add_pd, 
-									opCode(load_pd, &m[idxMz]), 
-									opCode(add_pd, 
-										opCode(add_pd, 
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])), 
-											opCode(load_pd, &m[idxMx])), 
-										opCode(load_pd, &m[idxPz]))), 
-								opCode(mul_pd, mel, c6Vec)), 
-							d2Vec), 
+				mPx = opCode(sub_pd,
+					opCode(add_pd,
+						opCode(mul_pd,
+							opCode(add_pd,
+								opCode(add_pd,
+									opCode(load_pd, &m[idxMz]),
+									opCode(add_pd,
+										opCode(add_pd,
+											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+											opCode(load_pd, &m[idxMx])),
+										opCode(load_pd, &m[idxPz]))),
+								opCode(mul_pd, mel, c6Vec)),
+							d2Vec),
 						zQVec),
-					opCode(mul_pd, 
-						opCode(mul_pd, 
-							opCode(add_pd, mPx, z2Vec), 
-							lbVec), 
+					opCode(mul_pd,
+						opCode(mul_pd,
+							opCode(add_pd, mPx, z2Vec),
+							lbVec),
 						mel));
 
 				mPy = opCode(load_pd, &v[idxMz]);
@@ -366,7 +366,7 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const _MData_ dzcVec = opCode(load_ps, dzcAux);
 		const _MData_ dzdVec = opCode(load_ps, dzdAux);
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mPy, mMx;
 
@@ -456,24 +456,24 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				mMx = opCode(sub_ps, 
-					opCode(add_ps, 
-						opCode(mul_ps, 
-							opCode(add_ps, 
-								opCode(add_ps, 
-									opCode(load_ps, &m[idxMz]), 
-									opCode(add_ps, 
-										opCode(add_ps, 
-											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])), 
-											opCode(load_ps, &m[idxMx])), 
-										opCode(load_ps, &m[idxPz]))), 
-								opCode(mul_ps, mel, c6Vec)), 
+				mMx = opCode(sub_ps,
+					opCode(add_ps,
+						opCode(mul_ps,
+							opCode(add_ps,
+								opCode(add_ps,
+									opCode(load_ps, &m[idxMz]),
+									opCode(add_ps,
+										opCode(add_ps,
+											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+											opCode(load_ps, &m[idxMx])),
+										opCode(load_ps, &m[idxPz]))),
+								opCode(mul_ps, mel, c6Vec)),
 							d2Vec),
 						zQVec),
-					opCode(mul_ps, 
-						opCode(mul_ps, 
-							opCode(add_ps, mPx, z2Vec), 
-							lbVec), 
+					opCode(mul_ps,
+						opCode(mul_ps,
+							opCode(add_ps, mPx, z2Vec),
+							lbVec),
 						mel));
 				mPy = opCode(load_ps, &v[idxMz]);
 
@@ -496,7 +496,7 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int  micIdx = commAcc();
 	const size_t ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
@@ -585,10 +585,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, LL, nQcd, Lx, 2*S, V, precision);
+        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, LL, nQcd, Lx, S, 2*S, precision);
-        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, LL, nQcd, Lx, V, V+S, precision);
+        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D1;
 
 	axionField->sendGhosts(FIELD_M2, COMM_SDRV);
@@ -596,10 +596,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, LL, nQcd, Lx, 2*S, V, precision);
+        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M2, COMM_WAIT);
-        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, LL, nQcd, Lx, S, 2*S, precision);
-        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, LL, nQcd, Lx, V, V+S, precision);
+        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D2;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
@@ -607,10 +607,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, LL, nQcd, Lx, 2*S, V, precision);
+        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, LL, nQcd, Lx, S, 2*S, precision);
-        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, LL, nQcd, Lx, V, V+S, precision);
+        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+        propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D3;
 
 	axionField->sendGhosts(FIELD_M2, COMM_SDRV);
@@ -618,10 +618,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, LL, nQcd, Lx, 2*S, V, precision);
+        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M2, COMM_WAIT);
-        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, LL, nQcd, Lx, S, 2*S, precision);
-        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, LL, nQcd, Lx, V, V+S, precision);
+        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+        propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D4;
 }
 
@@ -657,7 +657,7 @@ void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const dou
 
 #ifdef	__MIC__
 		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
-#else                                                       
+#else
 		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
 #endif
 
@@ -898,24 +898,24 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
 
-				mPx = opCode(sub_pd, 
-					opCode(add_pd, 
-						opCode(mul_pd, 
-							opCode(add_pd, 
-								opCode(add_pd, 
-									opCode(load_pd, &m[idxMz]), 
-									opCode(add_pd, 
-										opCode(add_pd, 
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])), 
-											opCode(load_pd, &m[idxMx])), 
-										opCode(load_pd, &m[idxPz]))), 
-								opCode(mul_pd, mel, c6Vec)), 
-							d2Vec), 
+				mPx = opCode(sub_pd,
+					opCode(add_pd,
+						opCode(mul_pd,
+							opCode(add_pd,
+								opCode(add_pd,
+									opCode(load_pd, &m[idxMz]),
+									opCode(add_pd,
+										opCode(add_pd,
+											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+											opCode(load_pd, &m[idxMx])),
+										opCode(load_pd, &m[idxPz]))),
+								opCode(mul_pd, mel, c6Vec)),
+							d2Vec),
 						zQVec),
-					opCode(mul_pd, 
-						opCode(mul_pd, 
-							opCode(add_pd, mPx, z2Vec), 
-							lbVec), 
+					opCode(mul_pd,
+						opCode(mul_pd,
+							opCode(add_pd, mPx, z2Vec),
+							lbVec),
 						mel));
 
 				mPy = opCode(load_pd, &v[idxMz]);
@@ -995,7 +995,7 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const _MData_ d2Vec  = opCode(load_ps, d2Aux);
 		const _MData_ dzcVec = opCode(load_ps, dzcAux);
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mPy, mMx;
 
@@ -1085,24 +1085,24 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				mMx = opCode(sub_ps, 
-					opCode(add_ps, 
-						opCode(mul_ps, 
-							opCode(add_ps, 
-								opCode(add_ps, 
-									opCode(load_ps, &m[idxMz]), 
-									opCode(add_ps, 
-										opCode(add_ps, 
-											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])), 
-											opCode(load_ps, &m[idxMx])), 
-										opCode(load_ps, &m[idxPz]))), 
-								opCode(mul_ps, mel, c6Vec)), 
+				mMx = opCode(sub_ps,
+					opCode(add_ps,
+						opCode(mul_ps,
+							opCode(add_ps,
+								opCode(add_ps,
+									opCode(load_ps, &m[idxMz]),
+									opCode(add_ps,
+										opCode(add_ps,
+											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+											opCode(load_ps, &m[idxMx])),
+										opCode(load_ps, &m[idxPz]))),
+								opCode(mul_ps, mel, c6Vec)),
 							d2Vec),
 						zQVec),
-					opCode(mul_ps, 
-						opCode(mul_ps, 
-							opCode(add_ps, mPx, z2Vec), 
-							lbVec), 
+					opCode(mul_ps,
+						opCode(mul_ps,
+							opCode(add_ps, mPx, z2Vec),
+							lbVec),
 						mel));
 				mPy = opCode(load_ps, &v[idxMz]);
 
@@ -1122,7 +1122,7 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int  micIdx = commAcc();
 	const size_t ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = (double *) __builtin_assume_aligned((void *) axionField->zV(), Align);
@@ -1230,7 +1230,7 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 }
 void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
-	const double ood2 = 1./delta2; 
+	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 	double lambda = LL;
 

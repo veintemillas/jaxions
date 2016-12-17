@@ -164,7 +164,7 @@ void	WKBUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrum
 	// IF PQ FIELD
 			axion->theta2m2();
 
-	//IF theta FIELD
+	// IF theta FIELD
 	//	axion->theta2m2axion();
 
 	//  FFT[m2] = FFT[theta] + I*FFT[theta_z]
