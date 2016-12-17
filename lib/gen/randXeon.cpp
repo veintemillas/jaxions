@@ -31,6 +31,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
 			//to produce only axions substitute for this
 			//m[idx]   = std::complex<Float>(1.0, 0.0+uni(mt64)/20.);
+			//to produce only SAXIONS for testing
+			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
 	}
 
 	trackFree((void **) &sd, ALLOC_TRACK);

@@ -11,8 +11,17 @@ template<typename Float>
 void normCoreKernelXeon (Scalar *field, Float alph)
 {
 	const Float deltaa = sizeL/sizeN;
-	const Float LLa = LL;
 	const Float zia = static_cast<Float>(*field->zV());
+	Float LLa ;
+
+	if (field->Lambda() == LAMBDA_FIXED)
+	{
+		LLa = LL ;
+	}
+	else
+	{
+		LLa = LL/((zia)*(zia));
+	}
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
@@ -75,7 +84,7 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 			grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
 			gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
 			//JAVIER added an artificial factor of 1.0, can be changed
-			sss  = 1.0*sqrt(LLa)*zia*2.0*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
+			sss  = 3.0*sqrt(LLa)*zia*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
 			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
 			sss2 = sss*sss;
 			sss4 = sss2*sss2;

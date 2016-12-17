@@ -20,6 +20,8 @@
 #include "map/map.h"
 #include "strings/strings.h"
 #include "powerCpu.h"
+#include "scalar/normField.h"
+#include "scalar/scaleField.h"
 
 using namespace std;
 
@@ -225,6 +227,9 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
+	printMpi ("Lambda to FIXED\n");
+	axion->SetLambda(LAMBDA_Z2);
+
 	if (cDev != DEV_GPU)
 	{
 		printMpi ("Folding configuration\n");
@@ -245,7 +250,7 @@ int	main (int argc, char *argv[])
 		{
 			printMpi("Strings...");
 			analyzeStrFolded(axion, index);
-			printMpi("Vector Strings...");
+			//printMpi("Vector Strings...");
 			//strDen = strings(axion, cDev, str, fCount);
 			//printMpi(" Done! String density %lf\n", strDen);
 		}
@@ -269,7 +274,7 @@ int	main (int argc, char *argv[])
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
 
 				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				printMpi("??/?? - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+				printMpi("0/XX - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 				//printMpi("ENERGY & PRINTED - - - Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 			}
 			else
@@ -281,7 +286,7 @@ int	main (int argc, char *argv[])
 
 				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 				//printMpi("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
-				printMpi("??/?? - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
+				printMpi("0/XX - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
 			}
 		}
 
@@ -365,8 +370,9 @@ int	main (int argc, char *argv[])
 			}
 
 			old = std::chrono::high_resolution_clock::now();
-			propagate (axion, dz, LL, nQcd, delta, cDev, fCount);
+			propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
 //			propagateSimple (axion, dz, LL, nQcd, delta);
+
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
