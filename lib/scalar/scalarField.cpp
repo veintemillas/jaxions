@@ -426,7 +426,7 @@ class	Scalar
 	if (m != NULL)
 		trackFree(&m, ALLOC_ALIGN);
 
-	if (v != NULL)
+	if (v != NULL && fieldType == FIELD_SAXION)
 		trackFree(&v, ALLOC_ALIGN);
 
 	if (m2 != NULL)
@@ -1723,8 +1723,25 @@ void	Scalar::setField (FieldType fType)
 	{
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
+			{
 				fSize /= 2;
-				break;
+				trackFree(&m2, ALLOC_ALIGN);
+				m2 = v;
+				
+				switch (precision)
+				{
+					case FIELD_SINGLE:
+					v = static_cast<float*>(m) + 2*S + V;
+					m2 = realloc(m2, ((2*S + V)*sizeof(float));
+					break;
+
+					case FIELD_DOUBLE:
+					v = static_cast<double*>(m) + 2*S + V;
+					m2 = realloc(m2, ((2*S + V)*sizeof(double));
+					break;
+				}
+			}
+			break;
 
 		case	FIELD_SAXION:
 		break;
