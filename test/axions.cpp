@@ -22,6 +22,8 @@
 #include "powerCpu.h"
 #include "scalar/normField.h"
 #include "scalar/scaleField.h"
+#include "scalar/thetaScalar.h"
+#include "propagator/propTheta.h"
 
 using namespace std;
 
@@ -119,7 +121,7 @@ int	main (int argc, char *argv[])
 	}
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
-	int nstrings = 0 ;
+	int nstrings = 1 ;
 	double maximumtheta = 3.141597;
 
 	// Axion spectrum
@@ -227,8 +229,17 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
-	printMpi ("Lambda to FIXED\n");
-	axion->SetLambda(LAMBDA_FIXED);
+	axion->SetLambda(LAMBDA_FIXED)	;
+	if (LAMBDA_FIXED == axion->Lambda())
+	{
+	printMpi ("Lambda in FIXED mode\n");
+	}
+	else
+	{
+		printMpi ("Lambda in Z2 mode\n");
+	}
+
+
 
 	if (cDev != DEV_GPU)
 	{
@@ -265,70 +276,6 @@ int	main (int argc, char *argv[])
 
 		//energy 2//	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 
-
-		if (commRank() == 0)
-		{
-			if (axion->Precision() == FIELD_DOUBLE)
-			{
-				double *eR = static_cast<double *> (eRes);
-				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-
-				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				printMpi("0/XX - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
-				//printMpi("ENERGY & PRINTED - - - Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
-			}
-			else
-			{
-				double *eR = static_cast<double *> (eRes);
-				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-				//float *eR = static_cast<float *> (eRes);
-				//fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-
-				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				//printMpi("ENERGY & PRINTED - - - Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
-				printMpi("0/XX - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf \n", eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5]);
-			}
-		}
-
-/*	TEST  CON LA ENERGIA MODIFICADA PARA VER EL RENDIMIENTO, SE PUEDE BORRAR	*/
-
-		// double Grz, Gtz, Vr, Vt, Kr, Kt;
-		// 	old = std::chrono::high_resolution_clock::now();
-		// axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-		// 	current = std::chrono::high_resolution_clock::now();
-		// 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-		//
-		// 	printMpi("Elapsed %2.3lf\n", elapsed.count()*1.e-3);
-		//
-		// 	old = std::chrono::high_resolution_clock::now();
-		// energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-		// 	current = std::chrono::high_resolution_clock::now();
-		// 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-		//
-		// 	printMpi("Elapsed %2.3lf\n", elapsed.count()*1.e-3);
-		//
-		// if (axion->Precision() == FIELD_SINGLE)
-		// {
-		// 	printf ("Gxrho %+e +%le\nGxth %+e +%le\nGyrho %+e +%le\nGyth %+e +%le\nGzrho %+e +%le\nGzth %+e +%le\n",
-		// 	(static_cast<float*>(eRes))[0], 0., (static_cast<float*>(eRes))[1], 0.,  (static_cast<float*>(eRes))[2], 0.,
-		// 	(static_cast<float*>(eRes))[3], 0., (static_cast<float*>(eRes))[4], Grz, (static_cast<float*>(eRes))[5], Gtz);
-		//
-		// 	printf ("Vrho %+e +%le\nVth %+e +%le\nKrho %+e +%le\nKth %+e +%le\n",
-		// 	(static_cast<float*>(eRes))[6], Vr, (static_cast<float*>(eRes))[7], Vt, (static_cast<float*>(eRes))[8], Kr,
-		// 	(static_cast<float*>(eRes))[9], Kt);
-		// 	fflush(stdout);
-		// } else {
-		//
-		// 	printf ("Gxrho %+le +%le\nGxth %+e +%e\nGyrho %+le +%le\nGyth %+le +%le\nGzrho %+le +%le\nGzth %+le +%le\n",
-		// 	(static_cast<double*>(eRes))[0], 0., (static_cast<double*>(eRes))[1], 0.,  (static_cast<double*>(eRes))[2], 0.,
-		// 	(static_cast<double*>(eRes))[3], 0., (static_cast<double*>(eRes))[4], Grz, (static_cast<double*>(eRes))[5], Gtz);
-		//
-		// 	printf ("Vrho %+le +%e\nVth %+le +%le\nKrho %+le +%le\nKth %+e +%e\n",
-		// 	(static_cast<double*>(eRes))[6], Vr, (static_cast<double*>(eRes))[7], Vt, (static_cast<double*>(eRes))[8], Kr,
-		// 	(static_cast<double*>(eRes))[9], Kt);
-		// 	fflush(stdout);
-		// }
-
 	}
 
 	if (dump > nSteps)
@@ -340,6 +287,27 @@ int	main (int argc, char *argv[])
 		nLoops = 0;
 	else
 		nLoops = (int)(nSteps/dump);
+
+		if (commRank() == 0)
+		{
+			if (axion->Precision() == FIELD_DOUBLE)
+			{
+				double *eR = static_cast<double *> (eRes);
+				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
+				//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+				printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+			}
+			else
+			{
+				double *eR = static_cast<double *> (eRes);
+				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
+	//			float *eR = static_cast<float *> (eRes);
+	//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+				printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+			}
+		}
+
 
 	printMpi ("Start redshift loop\n\n");
 	fflush (stdout);
@@ -359,20 +327,38 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 		{
-			if (commRank() == 0) {
-				if (sPrec == FIELD_DOUBLE) {
-					fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
-						static_cast<complex<double> *> (axion->vCpu())[S0].real(), static_cast<complex<double> *> (axion->vCpu())[S0].imag());
-				} else {
-					fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[S0].real(), static_cast<complex<float>  *> (axion->mCpu())[S0].imag(),
-						static_cast<complex<float>  *> (axion->vCpu())[S0].real(), static_cast<complex<float>  *> (axion->vCpu())[S0].imag());
+			if (commRank() == 0)
+			{
+				if (axion->Fieldo() == FIELD_SAXION)
+				{
+					if (sPrec == FIELD_DOUBLE) {
+						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
+							static_cast<complex<double> *> (axion->vCpu())[S0].real(), static_cast<complex<double> *> (axion->vCpu())[S0].imag());
+					} else {
+						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[S0].real(), static_cast<complex<float>  *> (axion->mCpu())[S0].imag(),
+							static_cast<complex<float>  *> (axion->vCpu())[S0].real(), static_cast<complex<float>  *> (axion->vCpu())[S0].imag());
+					}
+				}
+				else
+				{
+					if (sPrec == FIELD_DOUBLE) {
+						fprintf(file_sample,"%f %f %f\n",(*(axion->zV() )), static_cast<double*> (axion->mCpu())[S0], static_cast<double*> (axion->vCpu())[S0]);
+					} else {
+						fprintf(file_sample,"%f %f %f\n",(*(axion->zV() )), static_cast<float*> (axion->mCpu())[S0], static_cast<float*> (axion->vCpu())[S0]);
+					}
 				}
 			}
 
 			old = std::chrono::high_resolution_clock::now();
-			propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
 
-
+			if (axion->Fieldo() == FIELD_SAXION)
+			{
+				propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
+			}
+			else
+			{
+				propTheta	(axion, dz,     nQcd, delta, cDev, fCount);
+			}
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
@@ -395,11 +381,11 @@ int	main (int argc, char *argv[])
 */
 
 //		if (cDev != DEV_GPU)
-		{
+
 			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
 			//if (axion->Precision() == FIELD_DOUBLE)
-			if ((*axion->zV()) > 0.8 )
+			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 0.8 )
 			{
 				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
 				fflush (stdout);
@@ -439,43 +425,49 @@ int	main (int argc, char *argv[])
 			}
 
 
-
-			//axion->unfoldField2D(sizeZ-1);
-			axion->unfoldField2D(0);
-			writeMap (axion, index);
-
-//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-
-			//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-
-			if (commRank() == 0)
+			if ( axion->Fieldo() == FIELD_SAXION  )
 			{
-				if (axion->Precision() == FIELD_DOUBLE)
+				//axion->unfoldField2D(sizeZ-1);
+				axion->unfoldField2D(0);
+				writeMap (axion, index);
+
+	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+
+				//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+
+				if (commRank() == 0)
 				{
-					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-					//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-				}
-				else
-				{
-					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-		//			float *eR = static_cast<float *> (eRes);
-		//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-					//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+					if (axion->Precision() == FIELD_DOUBLE)
+					{
+						double *eR = static_cast<double *> (eRes);
+						fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
+						//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+						printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+					}
+					else
+					{
+						double *eR = static_cast<double *> (eRes);
+						fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
+			//			float *eR = static_cast<float *> (eRes);
+			//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+						//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+						printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+					}
 				}
 			}
-		}
+
+			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 )
+			{
+				cmplxToTheta	(axion, fCount);
+				printf("\n TRANSITION TO THETA \n");
+			}
+
 	} // zloop
 
 	// LAST DENSITY MAP
 	//energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
 	//energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
-
-
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);

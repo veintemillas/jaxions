@@ -63,6 +63,9 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 {
 	CmplxToTheta *theta = new CmplxToTheta(field);
 
+	//NORMALLY CALLED WHEN UNFOLDED
+	field->unfoldField();
+
 	switch (field->Device())
 	{
 		case DEV_CPU:
@@ -84,7 +87,6 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	delete	theta;
 
-	field->unfoldField();
 	field->setField(FIELD_AXION);
 	field->foldField();
 

@@ -48,9 +48,9 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 	_MData_ tmp2, tmp3, tmp5, a, b, c;
 	static const double a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4*M_PI2*a_s+6*M_PI4*b_s)/(M_PI6);
 
-	a = opCode(set1_pd, a_s); 
-	b = opCode(set1_pd, b_s); 
-	c = opCode(set1_pd, c_s); 
+	a = opCode(set1_pd, a_s);
+	b = opCode(set1_pd, b_s);
+	c = opCode(set1_pd, c_s);
 
 	tmp2 = opCode(mul_pd, x, x);
 	tmp3 = opCode(mul_pd, tmp2, x);
@@ -77,9 +77,9 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 	_MData_ tmp2, tmp3, tmp5, a, b, c;
 	static const float a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4*M_PI2*a_s+6*M_PI4*b_s)/(M_PI6);
 
-	a = opCode(set1_ps, a_s); 
-	b = opCode(set1_ps, b_s); 
-	c = opCode(set1_ps, c_s); 
+	a = opCode(set1_ps, a_s);
+	b = opCode(set1_ps, b_s);
+	c = opCode(set1_ps, c_s);
 
 	tmp2 = opCode(mul_ps, x, x);
 	tmp3 = opCode(mul_ps, tmp2, x);
@@ -115,23 +115,23 @@ void printDouble(size_t idx, size_t con, __m512d dat)
 	}
 }
 #elif	defined(__AVX__)
-void printFloat(size_t idx, size_t con, __m256 dat)
-{
-	if (idx == con) {
-		float caca[8];
-		opCode(storeu_ps, caca, dat);
-		printf ("%e %e | %e %e | %e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7]);
-	}
-}
-
-void printDouble(size_t idx, size_t con, __m256d dat)
-{
-	if (idx == con) {
-		double caca[4];
-		opCode(storeu_pd, caca, dat);
-		printf ("%le %le | %le %le\n", caca[0], caca[1], caca[2], caca[3]);
-	}
-}
+// void printFloat(size_t idx, size_t con, __m256 dat)
+// {
+// 	if (idx == con) {
+// 		float caca[8];
+// 		opCode(storeu_ps, caca, dat);
+// 		printf ("%e %e | %e %e | %e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7]);
+// 	}
+// }
+//
+// void printDouble(size_t idx, size_t con, __m256d dat)
+// {
+// 	if (idx == con) {
+// 		double caca[4];
+// 		opCode(storeu_pd, caca, dat);
+// 		printf ("%le %le | %le %le\n", caca[0], caca[1], caca[2], caca[3]);
+// 	}
+// }
 
 #else
 
@@ -248,7 +248,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const _MData_ z0Vec  = opCode(load_ps, z0Aux);
 #endif
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, vel, tpP, tpM, mPy, mMy, acu, v2p, tP2, tM2;
 
@@ -501,7 +501,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 //#ifdef	__MIC__		NO SE SI VA A FUNCIONAR PORQUE CREO QUE EL SENO NO ESTA DEFINIDO EN KNC
 
 //#else
-				tpM = opCode(sub_pd, 
+				tpM = opCode(sub_pd,
 					opCode(mul_pd, opCode(add_pd, acu, opCode(mul_pd, mel, c6Vec)), d2Vec),
 					opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
 //#endif
@@ -604,7 +604,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const _MData_ z0Vec  = opCode(load_ps, z0Aux);
 #endif
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, vel, tpP, mPy, tpM, mMy, v2p, acu, tP2, tM2;
 
@@ -861,7 +861,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 //#ifdef	__MIC__		NO SE SI VA A FUNCIONAR PORQUE CREO QUE EL SENO NO ESTA DEFINIDO EN KNC
 
 //#else
-				tpM = opCode(sub_ps, 
+				tpM = opCode(sub_ps,
 					opCode(mul_ps, opCode(add_ps, acu, opCode(mul_ps, mel, c6Vec)), d2Vec),
 					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
 //#endif
@@ -886,7 +886,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 void	propThetaXeon	(Scalar *axionField, const double dz, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int  micIdx = commAcc();
 	const size_t ext = V + S;
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
@@ -984,4 +984,3 @@ void	propThetaCpu	(Scalar *axionField, const double dz, const double delta2, con
         propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, nQcd, Lx, V, V+S, precision);
 	*z += dz*D4;
 }
-

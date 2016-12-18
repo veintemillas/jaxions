@@ -108,6 +108,7 @@
 		FieldPrecision	Precision() { return precision; }
 		DeviceType	Device()    { return device; }
 		LambdaType	Lambda()    { return lambdaType; }
+		FieldType	Fieldo()    { return fieldType; }
 
 		void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
 

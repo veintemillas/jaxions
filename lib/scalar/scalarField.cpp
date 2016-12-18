@@ -136,6 +136,7 @@ class	Scalar
 	FieldPrecision	Precision() { return precision; }
 	DeviceType	Device()    { return device; }
 	LambdaType	Lambda()    { return lambdaType; }
+	FieldType	Fieldo()    { return fieldType; }
 
 	void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
@@ -193,7 +194,7 @@ class	Scalar
 {
 	fieldType  = FIELD_SAXION;
 	lambdaType = LAMBDA_Z2;
-
+	
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
