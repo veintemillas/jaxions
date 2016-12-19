@@ -1732,12 +1732,12 @@ void	Scalar::setField (FieldType fType)
 				{
 					case FIELD_SINGLE:
 					v = static_cast<float*>(m) + 2*n2 + n3;
-					m2 = realloc(m2, ((2*n2 + n3)*sizeof(float));
+					m2 = realloc(m2, ((2*n2 + n3)*sizeof(float)));
 					break;
 
 					case FIELD_DOUBLE:
 					v = static_cast<double*>(m) + 2*n2 + n3;
-					m2 = realloc(m2, ((2*n2 + n3)*sizeof(double));
+					m2 = realloc(m2, ((2*n2 + n3)*sizeof(double)));
 					break;
 				}
 			}

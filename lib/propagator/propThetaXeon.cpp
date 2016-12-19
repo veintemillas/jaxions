@@ -222,7 +222,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 #ifdef	__MIC__
 					mMy = opCode(castsi512_pd, opCode(permutevar_epi32, vShRg, opCode(castpd_si512, opCode(load_pd, &m[idxMy]))));
 #elif	defined(__AVX2__)	//AVX2
-					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_ps, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
 					tpM = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
 					tpP = opCode(permute2f128_pd, tpM, tpM, 0b00000001);
