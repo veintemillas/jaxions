@@ -30,7 +30,7 @@
 #endif
 
 
-#define	tV	2.*M_PI
+#define	tV	(2.*M_PI)
 #define	M_PI2	(M_PI *M_PI)
 #define	M_PI4	(M_PI2*M_PI2)
 #define	M_PI6	(M_PI4*M_PI2)
@@ -46,7 +46,7 @@
 inline _MData_	opCode(sin_pd, _MData_ x)
 {
 	_MData_ tmp2, tmp3, tmp5, a, b, c;
-	static const double a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4*M_PI2*a_s+6*M_PI4*b_s)/(M_PI6);
+	static const double a_s = -0.0415758*4., b_s = 0.00134813*6., c_s = -(1+M_PI2*a_s+M_PI4*b_s)/(M_PI6);
 
 	a = opCode(set1_pd, a_s);
 	b = opCode(set1_pd, b_s);
@@ -75,7 +75,7 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 inline _MData_	opCode(sin_ps, _MData_ x)
 {
 	_MData_ tmp2, tmp3, tmp5, a, b, c;
-	static const float a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4*M_PI2*a_s+6*M_PI4*b_s)/(M_PI6);
+	static const float a_s = -0.0415758f*4.f, b_s = 0.00134813f*6.f, c_s = -(1+M_PI2*a_s+M_PI4*b_s)/(M_PI6);
 
 	a = opCode(set1_ps, a_s);
 	b = opCode(set1_ps, b_s);
@@ -92,67 +92,6 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 }
 
 #undef	_MData_
-
-#ifdef	__MIC__
-__attribute__((target(mic)))
-void printFloat(size_t idx, size_t con, __m512 dat)
-{
-	if (idx == con) {
-		static float __attribute((aligned(64))) caca[16];
-		opCode(store_ps, caca, dat);
-		printf ("%e %e | %e %e | %e %e | %e %e | %e %e | %e %e | %e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7],
-											   caca[8], caca[9], caca[10], caca[11], caca[12], caca[13], caca[14], caca[15]);
-	}
-}
-
-__attribute__((target(mic)))
-void printDouble(size_t idx, size_t con, __m512d dat)
-{
-	if (idx == con) {
-		static double  __attribute((aligned(64))) caca[8];
-		opCode(store_pd, caca, dat);
-		printf ("%le %le | %le %le | %le %le | %le %le\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7]);
-	}
-}
-#elif	defined(__AVX__)
-// void printFloat(size_t idx, size_t con, __m256 dat)
-// {
-// 	if (idx == con) {
-// 		float caca[8];
-// 		opCode(storeu_ps, caca, dat);
-// 		printf ("%e %e | %e %e | %e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3], caca[4], caca[5], caca[6], caca[7]);
-// 	}
-// }
-//
-// void printDouble(size_t idx, size_t con, __m256d dat)
-// {
-// 	if (idx == con) {
-// 		double caca[4];
-// 		opCode(storeu_pd, caca, dat);
-// 		printf ("%le %le | %le %le\n", caca[0], caca[1], caca[2], caca[3]);
-// 	}
-// }
-
-#else
-
-void printFloat(size_t idx, size_t con, __m128 dat)
-{
-	if (idx == con) {
-		float caca[4];
-		opCode(storeu_ps, caca, dat);
-		printf ("%e %e | %e %e\n", caca[0], caca[1], caca[2], caca[3]);
-	}
-}
-
-void printDouble(size_t idx, size_t con, __m128d dat)
-{
-	if (idx == con) {
-		double caca[2];
-		opCode(storeu_pd, caca, dat);
-		printf ("%le %le\n", caca[0], caca[1]);
-	}
-}
-#endif
 
 #ifdef USE_XEON
 __attribute__((target(mic)))
