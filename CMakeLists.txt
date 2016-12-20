@@ -44,6 +44,7 @@ include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 include_directories(SYSTEM ${HDF5_INCLUDE_DIR})
 
 find_package(OpenMP REQUIRED)
+find_package(GSL REQUIRED)
 
 find_library(FFTW_LIBRARY NAMES fftw3 fftw)
 find_library(FFTW_OMP_LIBRARY NAMES fftw3_omp fftw_omp)
