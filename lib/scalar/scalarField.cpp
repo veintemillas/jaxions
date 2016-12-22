@@ -1730,19 +1730,32 @@ void	Scalar::setField (FieldType fType)
 			if (fieldType == FIELD_SAXION)
 			{
 				fSize /= 2;
-				trackFree(&m2, ALLOC_ALIGN);
-				m2 = v;
+				trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
 				{
 					case FIELD_SINGLE:
 					v = static_cast<float*>(m) + 2*n2 + n3;
-					m2 = realloc(m2, ((2*n2 + n3)*sizeof(float)));
+					#ifdef	USE_XEON
+					trackFree(&m2X, ALLOC_ALIGN);
+					alignAlloc ((void**) &m2X, mAlign, v3*fSize);
+					m2  = m2X;
+					#else
+					trackFree(&m2, ALLOC_ALIGN);
+					alignAlloc ((void**) &m2, mAlign, v3*fSize);
+					#endif
 					break;
 
 					case FIELD_DOUBLE:
 					v = static_cast<double*>(m) + 2*n2 + n3;
-					m2 = realloc(m2, ((2*n2 + n3)*sizeof(double)));
+					#ifdef	USE_XEON
+					trackFree(&m2X, ALLOC_ALIGN);
+					alignAlloc ((void**) &m2, mAlign, v3*fSize);
+					m2  = m2X;
+					#else
+					trackFree(&m2, ALLOC_ALIGN);
+					alignAlloc ((void**) &m2, mAlign, v3*fSize);
+					#endif
 					break;
 				}
 			}

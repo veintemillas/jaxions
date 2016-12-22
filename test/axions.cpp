@@ -426,20 +426,19 @@ int	main (int argc, char *argv[])
 				}
 			}
 
+			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 )
+			{
+				printf("\n TRANSITION TO THETA \n");
+				cmplxToTheta	(axion, fCount);
+//				printf("")
+			}
 
-				if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 )
-				{
-					printf("\n TRANSITION TO THETA \n");
-					cmplxToTheta	(axion, fCount);
-//					printf("")
-				}
+			//axion->unfoldField2D(sizeZ-1);
+			axion->unfoldField2D(0);
+			writeMap (axion, index);
 
-				//axion->unfoldField2D(sizeZ-1);
-				axion->unfoldField2D(0);
-				writeMap (axion, index);
-
-				if ( axion->Fieldo() == FIELD_SAXION  )
-				{
+			if ( axion->Fieldo() == FIELD_SAXION  )
+			{
 
 	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
