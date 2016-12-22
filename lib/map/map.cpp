@@ -6,13 +6,13 @@
 #include "utils/parse.h"
 
 using namespace std;
-
+// WUITAR n1*n1 !!!
 template<typename Float>
 void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_t n1, FILE *atWrite, FILE *rhoWrite, FILE *densWrite)
 {
-	fprintf(atWrite,  "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
-	fprintf(rhoWrite, "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
-	fprintf(densWrite, "# %d %f %f %f \n", sizeN , sizeL , sizeL/sizeN , z );
+	fprintf(atWrite,  "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0);
+	fprintf(rhoWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0 );
+	fprintf(densWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0);
 	//int n2 = n1*n1;
 	size_t nlast = n1*n1*sizeZ+n1*n1;
 	for (size_t ly = 0; ly < n1; ly++)
@@ -22,7 +22,9 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 
 			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
 			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);
-			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])/z,2)*( pow(arg(m[lx + n1*ly]),2)+pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
+			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])/z,2)*( pow(arg(m[lx + n1*ly]),2)+
+								pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
+
 
 		}
 
@@ -31,6 +33,33 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 		fprintf(densWrite, "\n");
 	}
 }
+
+template<typename Float>
+void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FILE *atWrite, FILE *rhoWrite, FILE *densWrite)
+{
+	fprintf(atWrite,  "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
+	fprintf(rhoWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
+	fprintf(densWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
+	//int n2 = n1*n1;
+	size_t nlast = n1*n1*sizeZ + n1*n1;
+	for (size_t ly = 0; ly < n1; ly++)
+	{
+		for (size_t lx = 0; lx < n1; lx++)
+		{
+
+			// m contains c_theta = z*theta
+			fprintf(atWrite,  "%f ", m[lx + n1*ly]/z) ;
+			fprintf(rhoWrite, "%f ", 1);
+			fprintf(densWrite, "%f ", ( pow(m[lx + n1*ly]/z,2) + pow(m[lx + n1*ly + nlast],2)/(9.0*pow(z,nQcd+2))) );
+
+		}
+
+		fprintf(atWrite , "\n");
+		fprintf(rhoWrite, "\n");
+		fprintf(densWrite, "\n");
+	}
+}
+
 
 void	writeMap	(Scalar *axion, const int index)
 {
@@ -73,34 +102,35 @@ void	writeMap	(Scalar *axion, const int index)
 		return ;
 	}
 
-	switch (axion->Precision())
+	if ( axion->Fieldo() == FIELD_SAXION)
 	{
-		case FIELD_DOUBLE:
-			writeData(static_cast<complex<double> *> (axion->mCpu()), static_cast<complex<double> *> (axion->vCpu()) ,         (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
-			break;
+		switch (axion->Precision())
+		{
+			case FIELD_DOUBLE:
+				writeData(static_cast<complex<double> *> (axion->mCpu()), static_cast<complex<double> *> (axion->vCpu()) ,         (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
+				break;
 
-		case FIELD_SINGLE:
-			writeData(static_cast<complex<float> *>  (axion->mCpu()), static_cast<complex<float> *>  (axion->vCpu()),  (float) (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
-			break;
+			case FIELD_SINGLE:
+				writeData(static_cast<complex<float> *>  (axion->mCpu()), static_cast<complex<float> *>  (axion->vCpu()),  (float) (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
+				break;
+		}
 	}
+	else // Fieldo() = FIELD_AXION
+	{
+		switch (axion->Precision())
+		{
+			case FIELD_DOUBLE:
+				writeDatafromTheta(static_cast<double *> (axion->mCpu()), static_cast<double *> (axion->vCpu()) ,        (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
+				break;
+
+			case FIELD_SINGLE:
+				writeDatafromTheta(static_cast<float *>  (axion->mCpu()), static_cast<float *>  (axion->vCpu()),  (float) (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
+				break;
+		}
+	}
+
 
 	fclose(atWrite);
 	fclose(rhoWrite);
 	fclose(densWrite);
-
-	//printf("Map printed...\n");
-
-	/*	ESTO HABRA QUE BORRARLO EVENTUALMENTE	*/
-	//printf("z = %lf - ", *(axion->zV()));
-	//JAVIER included switch to test outputsin double and single
-	//switch (axion->Precision())
-	//{
-	//	case FIELD_DOUBLE:
-	//		printf("(MAP) m[0]= %lf + %lf*I = |%lf|exp(I*%lf)\n",  ((complex<double> *) axion->mCpu())[0].real(), ((complex<double> *) axion->mCpu())[0].imag(), abs( ((complex<double> *) axion->mCpu())[0]), arg( ((complex<double> *) axion->mCpu())[0])/(*(axion->zV() )) );
-	//		break;
-
-	//	case FIELD_SINGLE:
-	//		printf("(MAP) m[0]= %f + %f*I = |%f|exp(I*%f)\n",  ((complex<float> *) axion->mCpu())[0].real(), ((complex<float> *) axion->mCpu())[0].imag(), abs( ((complex<float> *) axion->mCpu())[0]), arg( ((complex<float> *) axion->mCpu())[0])/(*(axion->zV() )) );
-	//		break;
-	//}
 }

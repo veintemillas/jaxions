@@ -194,7 +194,7 @@ class	Scalar
 {
 	fieldType  = FIELD_SAXION;
 	lambdaType = LAMBDA_Z2;
-	
+
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
@@ -950,7 +950,8 @@ void	Scalar::unfoldField2D(const size_t sZ)
 	int	shift;
 
 	shift = mAlign/fSize;
-	// printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d ", mAlign, fSize,shift);
+	printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d, field = %d ", mAlign, fSize,shift, fieldType == FIELD_SAXION);
+	//fflush(stdout);
 	switch (precision)
 	{
 		case FIELD_DOUBLE:
@@ -968,7 +969,9 @@ void	Scalar::unfoldField2D(const size_t sZ)
 						//this copies v into buffer last
 						static_cast<complex<double> *> (m)[dIdx+n3+n2] = static_cast<complex<double> *> (v)[oIdx];
 					}
-		} else {
+		}
+		else // FIELD_AXION
+		{
 			for (size_t iy=0; iy < n1/shift; iy++)
 				for (size_t ix=0; ix < n1; ix++)
 					for (size_t sy=0; sy<shift; sy++)
@@ -998,7 +1001,9 @@ void	Scalar::unfoldField2D(const size_t sZ)
 						//this copies v into buffer last
 						static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (v)[oIdx];
 					}
-		} else {
+		}
+		else // FIELD_AXION
+		{
 			for (size_t iy=0; iy < n1/shift; iy++)
 				for (size_t ix=0; ix < n1; ix++)
 					for (size_t sy=0; sy<shift; sy++)
@@ -1727,7 +1732,7 @@ void	Scalar::setField (FieldType fType)
 				fSize /= 2;
 				trackFree(&m2, ALLOC_ALIGN);
 				m2 = v;
-				
+
 				switch (precision)
 				{
 					case FIELD_SINGLE:

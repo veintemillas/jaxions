@@ -229,7 +229,7 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
-	axion->SetLambda(LAMBDA_FIXED)	;
+	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{
 	printMpi ("Lambda in FIXED mode\n");
@@ -345,6 +345,8 @@ int	main (int argc, char *argv[])
 						fprintf(file_sample,"%f %f %f\n",(*(axion->zV() )), static_cast<double*> (axion->mCpu())[S0], static_cast<double*> (axion->vCpu())[S0]);
 					} else {
 						fprintf(file_sample,"%f %f %f\n",(*(axion->zV() )), static_cast<float*> (axion->mCpu())[S0], static_cast<float*> (axion->vCpu())[S0]);
+						// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
+						// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
 					}
 				}
 			}
@@ -385,7 +387,7 @@ int	main (int argc, char *argv[])
 			//double Grz, Gtz, Vr, Vt, Kr, Kt;
 //			writeConf(axion, index);
 			//if (axion->Precision() == FIELD_DOUBLE)
-			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 0.8 )
+			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 0.9 )
 			{
 				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
 				fflush (stdout);
@@ -425,11 +427,19 @@ int	main (int argc, char *argv[])
 			}
 
 
-			if ( axion->Fieldo() == FIELD_SAXION  )
-			{
+				if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 )
+				{
+					printf("\n TRANSITION TO THETA \n");
+					cmplxToTheta	(axion, fCount);
+//					printf("")
+				}
+
 				//axion->unfoldField2D(sizeZ-1);
 				axion->unfoldField2D(0);
 				writeMap (axion, index);
+
+				if ( axion->Fieldo() == FIELD_SAXION  )
+				{
 
 	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
@@ -457,11 +467,6 @@ int	main (int argc, char *argv[])
 				}
 			}
 
-			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 )
-			{
-				cmplxToTheta	(axion, fCount);
-				printf("\n TRANSITION TO THETA \n");
-			}
 
 	} // zloop
 

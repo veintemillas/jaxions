@@ -63,7 +63,7 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 {
 	CmplxToTheta *theta = new CmplxToTheta(field);
 
-	//NORMALLY CALLED WHEN UNFOLDED
+	//NORMALLY CALLED WHEN FOLDED
 	field->unfoldField();
 
 	switch (field->Device())
@@ -88,6 +88,7 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 	delete	theta;
 
 	field->setField(FIELD_AXION);
+	printf("folding... \n");fflush(stdout);
 	field->foldField();
 
 	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);

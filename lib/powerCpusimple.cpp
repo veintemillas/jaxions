@@ -258,7 +258,7 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 
 					spectrumT_private[bin] += pow(abs(ftk + ftmk),2);
 					spectrumN_private[bin] += 1.;
-					spectrumV_private[bin] += pow(abs(ftk + ftmk),2);
+					spectrumV_private[bin] += pow(abs(ftk - ftmk),2);
 				}//x
 
 			}//y
