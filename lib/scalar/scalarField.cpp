@@ -655,7 +655,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	static const int ghostBytes = n2*fSize;
+	const int ghostBytes = n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
@@ -677,6 +677,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 		rGhostBck = m2;
 		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2));
 	}
+
 
 	switch	(opComm)
 	{
@@ -1729,35 +1730,40 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-				fSize /= 2;
 				trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
 				{
 					case FIELD_SINGLE:
-					v = static_cast<float*>(m) + 2*n2 + n3;
-					#ifdef	USE_XEON
-					trackFree(&m2X, ALLOC_ALIGN);
-					alignAlloc ((void**) &m2X, mAlign, v3*fSize);
-					m2  = m2X;
-					#else
-					trackFree(&m2, ALLOC_ALIGN);
-					alignAlloc ((void**) &m2, mAlign, v3*fSize);
-					#endif
+					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
 					break;
 
 					case FIELD_DOUBLE:
-					v = static_cast<double*>(m) + 2*n2 + n3;
-					#ifdef	USE_XEON
-					trackFree(&m2X, ALLOC_ALIGN);
-					alignAlloc ((void**) &m2, mAlign, v3*fSize);
-					m2  = m2X;
-					#else
-					trackFree(&m2, ALLOC_ALIGN);
-					alignAlloc ((void**) &m2, mAlign, v3*fSize);
-					#endif
+					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
 					break;
 				}
+
+				fSize /= 2;
+
+				const size_t	mBytes = v3*fSize;
+
+				#ifdef	USE_XEON
+				if (!lowmem)
+				{
+					trackFree(&m2X, ALLOC_ALIGN);
+					m2 = m2X = NULL;
+				}
+				alignAlloc ((void**) &m2X, mAlign, mBytes);
+				m2  = m2X;
+				#else
+				if (!lowmem)
+				{
+					trackFree(&m2, ALLOC_ALIGN);
+					m2 = NULL;
+				}
+				alignAlloc ((void**) &m2, mAlign, mBytes);
+				#endif
+
 			}
 			break;
 

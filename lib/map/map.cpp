@@ -42,6 +42,7 @@ void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FIL
 	fprintf(densWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
 	//int n2 = n1*n1;
 	size_t nlast = n1*n1*sizeZ + n1*n1;
+
 	for (size_t ly = 0; ly < n1; ly++)
 	{
 		for (size_t lx = 0; lx < n1; lx++)
@@ -76,9 +77,9 @@ void	writeMap	(Scalar *axion, const int index)
 
 	const int n1 = axion->Length();
 
-	sprintf(stoRoh, "out/rho/rho-%05d.txt", index);
-	sprintf( stoAt, "out/at/at-%05d.txt", index);
-	sprintf( stoDens, "out/dens/dens-%05d.txt", index);
+	sprintf(stoRoh,  "out/rho/rho-%05d.txt",   index);
+	sprintf(stoAt,   "out/at/at-%05d.txt",     index);
+	sprintf(stoDens, "out/dens/dens-%05d.txt", index);
 
 	FILE *atWrite = NULL;
 	FILE *rhoWrite = NULL;
@@ -120,15 +121,14 @@ void	writeMap	(Scalar *axion, const int index)
 		switch (axion->Precision())
 		{
 			case FIELD_DOUBLE:
-				writeDatafromTheta(static_cast<double *> (axion->mCpu()), static_cast<double *> (axion->vCpu()) ,        (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
+				writeDatafromTheta(static_cast<double *> (axion->mCpu()), static_cast<double *> (axion->vCpu()),         (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
 				break;
 
 			case FIELD_SINGLE:
-				writeDatafromTheta(static_cast<float *>  (axion->mCpu()), static_cast<float *>  (axion->vCpu()),  (float) (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
+				writeDatafromTheta(static_cast<float *>  (axion->mCpu()), static_cast<float *>  (axion->vCpu()), (float) (*axion->zV()), n1, atWrite, rhoWrite, densWrite);
 				break;
 		}
 	}
-
 
 	fclose(atWrite);
 	fclose(rhoWrite);

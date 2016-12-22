@@ -142,7 +142,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double __attribute__((aligned(Align))) tpAux[8]  = { tV, tV, tV, tV, tV, tV, tV, tV };
 		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ };
 		const double __attribute__((aligned(Align))) izAux[8]  = { iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ };
-		const double __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
 		const double __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
 		const double __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
@@ -156,7 +155,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double __attribute__((aligned(Align))) tpAux[4]  = { tV, tV, tV, tV };
 		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, zQ, zQ, zQ };
 		const double __attribute__((aligned(Align))) izAux[4]  = { iZ, iZ, iZ, iZ };
-		const double __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
 		const double __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
 		const double __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
 		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
@@ -167,7 +165,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double __attribute__((aligned(Align))) tpAux[2]  = { tV, tV };
 		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, zQ };
 		const double __attribute__((aligned(Align))) izAux[2]  = { iZ, iZ };
-		const double __attribute__((aligned(Align))) c6Aux[2]  = {-6.,-6. };
 		const double __attribute__((aligned(Align))) d2Aux[2]  = { ood2, ood2 };
 		const double __attribute__((aligned(Align))) dzcAux[2] = { dzc, dzc };
 		const double __attribute__((aligned(Align))) dzdAux[2] = { dzd, dzd };
@@ -176,7 +173,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const _MData_ tpVec  = opCode(set1_pd, tV);
 		const _MData_ zQVec  = opCode(set1_pd, zQ);
 		const _MData_ izVec  = opCode(set1_pd, iZ);
-		const _MData_ c6Vec  = opCode(set1_pd,-6.);
 		const _MData_ d2Vec  = opCode(set1_pd, ood2);
 		const _MData_ dzcVec = opCode(set1_pd, dzc);
 		const _MData_ dzdVec = opCode(set1_pd, dzd);
@@ -451,8 +447,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tmp = opCode(add_pd, mPy, opCode(mul_pd, tpM, dzcVec));
 				tpP = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
 #endif
-				opCode(store_pd,  &v[idxMz], tmp);
-				opCode(store_pd, &m2[idx], tpP);
+				opCode(store_pd, &v[idxMz], tmp);
+				opCode(store_pd, &m2[idx],  tpP);
 			}
 		}
 #undef	_MData_
@@ -502,7 +498,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float __attribute__((aligned(Align))) tpAux[16]  = { tV, tV, tV, tV, tV, tV, tV, tV, tV, tV, tV, tV, tV, tV, tV, tV };
 		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ };
 		const float __attribute__((aligned(Align))) izAux[16]  = { iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ };
-		const float __attribute__((aligned(Align))) c6Aux[16]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
 		const float __attribute__((aligned(Align))) d2Aux[16]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
 		const float __attribute__((aligned(Align))) dzcAux[16] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
@@ -513,7 +508,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float __attribute__((aligned(Align))) tpAux[8]  = { tV, tV, tV, tV, tV, tV, tV, tV };
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, zQ, zQ, zQ, zQ, zQ, zQ, zQ };
 		const float __attribute__((aligned(Align))) izAux[8]  = { iZ, iZ, iZ, iZ, iZ, iZ, iZ, iZ };
-		const float __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
 		const float __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
 		const float __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
 		const float __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
@@ -524,7 +518,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float __attribute__((aligned(Align))) tpAux[4]  = { tV, tV, tV, tV };
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, zQ, zQ, zQ };
 		const float __attribute__((aligned(Align))) izAux[4]  = { iZ, iZ, iZ, iZ };
-		const float __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
 		const float __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
 		const float __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
 		const float __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
@@ -534,7 +527,6 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const _MData_ tpVec  = opCode(load_ps, tpAux);
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
 		const _MData_ izVec  = opCode(load_ps, izAux);
-		const _MData_ c6Vec  = opCode(load_ps, c6Aux);
 		const _MData_ d2Vec  = opCode(load_ps, d2Aux);
 		const _MData_ dzcVec = opCode(load_ps, dzcAux);
 		const _MData_ dzdVec = opCode(load_ps, dzdAux);
@@ -811,8 +803,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tmp = opCode(add_ps, mPy, opCode(mul_ps, tpM, dzcVec));
 				tpP = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
-				opCode(store_ps,  &v[idxMz], tmp);
-				opCode(store_ps, &m2[idx], tpP);
+				opCode(store_ps, &v[idxMz], tmp);
+				opCode(store_ps, &m2[idx],  tpP);
 			}
 		}
 #undef	_MData_

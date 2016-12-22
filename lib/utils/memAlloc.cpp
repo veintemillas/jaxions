@@ -17,7 +17,7 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 		case 0:
 		//JAVIER commented this
 		//printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p\n", size, align, *ptr);
-		fflush (stdout);
+		//fflush (stdout);
 		trackAlignMem += size;
 		allocTable[ALLOC_ALIGN].insert(std::make_pair(*ptr, size));
 		break;
@@ -46,7 +46,7 @@ void	trackFree (void **ptr, AllocType aType)
 	free (*ptr);
 	//JAVIER commented this
 	//printf ("Memory freed correctly (%lu bytes). Deregistering pointer %p\n", bytes, *ptr);
-	fflush (stdout);
+	//fflush (stdout);
 
 	if (aType == ALLOC_ALIGN)
 		trackAlignMem -= bytes;
@@ -67,7 +67,7 @@ void	trackAlloc (void **ptr, size_t size)
 	}
 	//JAVIER commented next
 	//printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
-	fflush (stdout);
+	//fflush (stdout);
 
 	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
 	trackAllocMem += size;
