@@ -440,7 +440,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 
 //#else
 				tpM = opCode(sub_pd,
-					opCode(mul_pd, opCode(add_pd, acu, opCode(mul_pd, mel, c6Vec)), d2Vec),
+					opCode(mul_pd, acu, d2Vec),
 					opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
 //#endif
 				mPy = opCode(load_pd, &v[idxMz]);
@@ -799,7 +799,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 
 //#else
 				tpM = opCode(sub_ps,
-					opCode(mul_ps, opCode(add_ps, acu, opCode(mul_ps, mel, c6Vec)), d2Vec),
+					opCode(mul_ps, acu, d2Vec),
 					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
 //#endif
 				mPy = opCode(load_ps, &v[idxMz]);
