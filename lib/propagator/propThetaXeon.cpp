@@ -194,7 +194,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
+				size_t X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz;
 
 				{
 					size_t tmi = idx/XC, tpi;
@@ -205,19 +205,19 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				}
 
 				if (X[0] == XC-step)
-					idxPx = ((idx - XC + step) << 1);
+					idxPx = idx - XC + step;
 				else
-					idxPx = ((idx + step) << 1);
+					idxPx = idx + step;
 
 				if (X[0] == 0)
-					idxMx = ((idx + XC - step) << 1);
+					idxMx = idx + XC - step;
 				else
-					idxMx = ((idx - step) << 1);
+					idxMx = idx - step;
 
 				if (X[1] == 0)
 				{
-					idxMy = ((idx + Sf - XC) << 1);
-					idxPy = ((idx + XC) << 1);
+					idxMy = idx + Sf - XC;
+					idxPy = idx + XC;
 					mPy = opCode(load_pd, &m[idxPy]);
 #ifdef	__MIC__
 					mMy = opCode(castsi512_pd, opCode(permutevar_epi32, vShRg, opCode(castpd_si512, opCode(load_pd, &m[idxMy]))));
@@ -234,12 +234,12 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				}
 				else
 				{
-					idxMy = ((idx - XC) << 1);
+					idxMy = idx - XC;
 					mMy = opCode(load_pd, &m[idxMy]);
 
 					if (X[1] == YC-1)
 					{
-						idxPy = ((idx - Sf + XC) << 1);
+						idxPy = idx - Sf + XC;
 #ifdef	__MIC__
 						mPy = opCode(castsi512_pd, opCode(permutevar_epi32, vShLf, opCode(castpd_si512, opCode(load_pd, &m[idxPy]))));
 #elif	defined(__AVX2__)	//AVX2
@@ -255,16 +255,15 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 					}
 					else
 					{
-						idxPy = ((idx + XC) << 1);
+						idxPy = idx + XC;
 						mPy = opCode(load_pd, &m[idxPy]);
 					}
 				}
 
-				idxPz = ((idx+Sf) << 1);
-				idxMz = ((idx-Sf) << 1);
-				idxP0 = (idx << 1);
+				idxPz = idx+Sf;
+				idxMz = idx-Sf;
 
-				mel = opCode(load_pd, &m[idxP0]);
+				mel = opCode(load_pd, &m[idx]);
 
 				/*	idxPx	*/
 
@@ -453,7 +452,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tpP = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
 #endif
 				opCode(store_pd,  &v[idxMz], tmp);
-				opCode(store_pd, &m2[idxP0], tpP);
+				opCode(store_pd, &m2[idx], tpP);
 			}
 		}
 #undef	_MData_
@@ -550,7 +549,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
 
 				{
 					size_t tmi = idx/XC, itp;
@@ -561,19 +560,19 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				}
 
 				if (X[0] == XC-step)
-					idxPx = ((idx - XC + step) << 1);
+					idxPx = idx - XC + step;
 				else
-					idxPx = ((idx + step) << 1);
+					idxPx = idx + step;
 
 				if (X[0] == 0)
-					idxMx = ((idx + XC - step) << 1);
+					idxMx = idx + XC - step;
 				else
-					idxMx = ((idx - step) << 1);
+					idxMx = idx - step;
 
 				if (X[1] == 0)
 				{
-					idxMy = ((idx + Sf - XC) << 1);
-					idxPy = ((idx + XC) << 1);
+					idxMy = idx + Sf - XC;
+					idxPy = idx + XC;
 					mPy = opCode(load_ps, &m[idxPy]);
 #ifdef	__MIC__
 					tpM = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_CBAD);
@@ -592,12 +591,12 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				}
 				else
 				{
-					idxMy = ((idx - XC) << 1);
+					idxMy = idx - XC;
 					mMy = opCode(load_ps, &m[idxMy]);
 
 					if (X[1] == YC-1)
 					{
-						idxPy = ((idx - Sf + XC) << 1);
+						idxPy = idx - Sf + XC;
 #ifdef	__MIC__
 						tpM = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_ADCB);
 						tpP = opCode(permute4f128_ps, tpM, _MM_PERM_ADCB);
@@ -615,16 +614,15 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 					}
 					else
 					{
-						idxPy = ((idx + XC) << 1);
+						idxPy = idx + XC;
 						mPy = opCode(load_ps, &m[idxPy]);
 					}
 				}
 
-				idxPz = ((idx+Sf) << 1);
-				idxMz = ((idx-Sf) << 1);
-				idxP0 = (idx << 1);
+				idxPz = idx+Sf;
+				idxMz = idx-Sf;
 
-				mel = opCode(load_ps, &m[idxP0]);
+				mel = opCode(load_ps, &m[idx]);
 
 				/*	idxPx	*/
 
@@ -814,7 +812,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tpP = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
 				opCode(store_ps,  &v[idxMz], tmp);
-				opCode(store_ps, &m2[idxP0], tpP);
+				opCode(store_ps, &m2[idx], tpP);
 			}
 		}
 #undef	_MData_
