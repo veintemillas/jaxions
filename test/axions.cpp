@@ -484,19 +484,20 @@ int	main (int argc, char *argv[])
 	//if (nSteps > 0)
 	//	writeConf(axion, index);
 
-	if (sPrec == FIELD_DOUBLE)
+	if (axion->Fieldo() == FIELD_SAXION)
 	{
-		printMpi("\n Examples m: m[0]= %le + %le*I, m[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
-		 								  static_cast<complex<double> *> (axion->mCpu())[SF].real(), static_cast<complex<double> *> (axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %le + %le*I, v[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->vCpu())[V0].real(), static_cast<complex<double> *> (axion->vCpu())[V0].imag(),
-									 	  static_cast<complex<double> *> (axion->vCpu())[VF].real(), static_cast<complex<double> *> (axion->vCpu())[VF].imag());
-	}
-	else
-	{
-		printMpi("\n Examples m: m[0]= %e + %e*I, m[N3-1]= %e + %e*I\n",  static_cast<complex<float> *> (axion->mCpu())[S0].real(), static_cast<complex<float> *> (axion->mCpu())[S0].imag(),
-										  static_cast<complex<float> *> (axion->mCpu())[SF].real(), static_cast<complex<float> *> (axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %e + %e*I, v[N3-1]= %e + %e*I\n\n",static_cast<complex<float> *> (axion->vCpu())[V0].real(), static_cast<complex<float> *> (axion->vCpu())[V0].imag(),
-										  static_cast<complex<float> *> (axion->vCpu())[VF].real(), static_cast<complex<float> *> (axion->vCpu())[VF].imag());
+		if (sPrec == FIELD_DOUBLE)
+		{
+			printMpi("\n Examples m: m[0]= %le + %le*I, m[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
+		 									    static_cast<complex<double> *> (axion->mCpu())[SF].real(), static_cast<complex<double> *> (axion->mCpu())[SF].imag());
+			printMpi("\n Examples v: v[0]= %le + %le*I, v[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->vCpu())[V0].real(), static_cast<complex<double> *> (axion->vCpu())[V0].imag(),
+											    static_cast<complex<double> *> (axion->vCpu())[VF].real(), static_cast<complex<double> *> (axion->vCpu())[VF].imag());
+		} else {
+			printMpi("\n Examples m: m[0]= %e + %e*I, m[N3-1]= %e + %e*I\n",  static_cast<complex<float> *> (axion->mCpu())[S0].real(), static_cast<complex<float> *> (axion->mCpu())[S0].imag(),
+											  static_cast<complex<float> *> (axion->mCpu())[SF].real(), static_cast<complex<float> *> (axion->mCpu())[SF].imag());
+			printMpi("\n Examples v: v[0]= %e + %e*I, v[N3-1]= %e + %e*I\n\n",static_cast<complex<float> *> (axion->vCpu())[V0].real(), static_cast<complex<float> *> (axion->vCpu())[V0].imag(),
+											  static_cast<complex<float> *> (axion->vCpu())[VF].real(), static_cast<complex<float> *> (axion->vCpu())[VF].imag());
+		}
 	}
 
 	printMpi("z_final = %f\n", *axion->zV());
