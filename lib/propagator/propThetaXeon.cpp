@@ -447,8 +447,38 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tmp = opCode(add_pd, mPy, opCode(mul_pd, tpM, dzcVec));
 				tpP = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
 #endif
+
+				/* Make sure the result is between -pi and pi	*/
+
+				mMy = opCode(sub_pd, tpP, tpVec);
+				mPy = opCode(add_pd, tpP, tpVec);
+				v2p = opCode(mul_pd, tpP, tpP);
+				tP2 = opCode(mul_pd, mPy, mPy);
+				tM2 = opCode(mul_pd, mMy, mMy);
+				acu = opCode(setzero_pd);
+#ifdef	__MIC__
+				vel = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, tP2, _CMP_EQ_OQ), acu, mPy);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, tM2, _CMP_EQ_OQ), acu, mMy);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, v2p, _CMP_EQ_OQ), acu, tpP);
+#elif	defined(__AVX__)
+				vel = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
+				acu = opCode(add_pd, acu, opCode(add_pd,
+					opCode(add_pd,
+						opCode(and_pd, opCode(cmp_pd, vel, tP2, _CMP_EQ_OQ), mPy),
+						opCode(and_pd, opCode(cmp_pd, vel, tM2, _CMP_EQ_OQ), mMy)),
+					opCode(and_pd, opCode(cmp_pd, vel, v2p, _CMP_EQ_OQ), tpP)));
+#else
+				vel = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
+				acu = opCode(add_pd, acu, opCode(add_pd,
+					 opCode(add_pd,
+						opCode(and_pd, opCode(cmpeq_pd, vel, tP2), mPy),
+						opCode(and_pd, opCode(cmpeq_pd, vel, tM2), mMy)),
+					opCode(and_pd, opCode(cmpeq_pd, vel, v2p), tpP)));
+#endif
+
 				opCode(store_pd, &v[idxMz], tmp);
-				opCode(store_pd, &m2[idx],  tpP);
+				opCode(store_pd, &m2[idx],  acu);
 			}
 		}
 #undef	_MData_
@@ -803,8 +833,38 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tmp = opCode(add_ps, mPy, opCode(mul_ps, tpM, dzcVec));
 				tpP = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
+
+				/* Make sure the result is between -pi and pi	*/
+
+				mMy = opCode(sub_ps, tpP, tpVec);
+				mPy = opCode(add_ps, tpP, tpVec);
+				v2p = opCode(mul_ps, tpP, tpP);
+				tP2 = opCode(mul_ps, mPy, mPy);
+				tM2 = opCode(mul_ps, mMy, mMy);
+				acu = opCode(setzero_ps);
+#ifdef	__MIC__
+				vel = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, tP2, _CMP_EQ_OQ), acu, mPy);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, tM2, _CMP_EQ_OQ), acu, mMy);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, v2p, _CMP_EQ_OQ), acu, tpP);
+#elif	defined(__AVX__)
+				vel = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
+				acu = opCode(add_ps, acu, opCode(add_ps,
+					opCode(add_ps,
+						opCode(and_ps, opCode(cmp_ps, vel, tP2, _CMP_EQ_OQ), mPy),
+						opCode(and_ps, opCode(cmp_ps, vel, tM2, _CMP_EQ_OQ), mMy)),
+					opCode(and_ps, opCode(cmp_ps, vel, v2p, _CMP_EQ_OQ), tpP)));
+#else
+				vel = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
+				acu = opCode(add_ps, acu, opCode(add_ps,
+					 opCode(add_ps,
+						opCode(and_ps, opCode(cmpeq_ps, vel, tP2), mPy),
+						opCode(and_ps, opCode(cmpeq_ps, vel, tM2), mMy)),
+					opCode(and_ps, opCode(cmpeq_ps, vel, v2p), tpP)));
+#endif
+
 				opCode(store_ps, &v[idxMz], tmp);
-				opCode(store_ps, &m2[idx],  tpP);
+				opCode(store_ps, &m2[idx],  acu);
 			}
 		}
 #undef	_MData_
