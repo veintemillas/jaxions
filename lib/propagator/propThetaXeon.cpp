@@ -264,8 +264,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPx	*/
 
 				vel = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
-				tpM = opCode(sub_pd, tmp, tpVec);
-				tpP = opCode(add_pd, tmp, tpVec);
+				tpM = opCode(sub_pd, vel, tpVec);
+				tpP = opCode(add_pd, vel, tpVec);
 				v2p = opCode(mul_pd, vel, vel);
 				tP2 = opCode(mul_pd, tpP, tpP);
 				tM2 = opCode(mul_pd, tpM, tpM);
@@ -294,8 +294,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxMx	*/
 
 				vel = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
-				tpM = opCode(sub_pd, tmp, tpVec);
-				tpP = opCode(add_pd, tmp, tpVec);
+				tpM = opCode(sub_pd, vel, tpVec);
+				tpP = opCode(add_pd, vel, tpVec);
 				v2p = opCode(mul_pd, vel, vel);
 				tP2 = opCode(mul_pd, tpP, tpP);
 				tM2 = opCode(mul_pd, tpM, tpM);
@@ -322,8 +322,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPz	*/
 
 				vel = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
-				tpM = opCode(sub_pd, tmp, tpVec);
-				tpP = opCode(add_pd, tmp, tpVec);
+				tpM = opCode(sub_pd, vel, tpVec);
+				tpP = opCode(add_pd, vel, tpVec);
 				v2p = opCode(mul_pd, vel, vel);
 				tP2 = opCode(mul_pd, tpP, tpP);
 				tM2 = opCode(mul_pd, tpM, tpM);
@@ -350,8 +350,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxMz	*/
 
 				vel = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
-				tpM = opCode(sub_pd, tmp, tpVec);
-				tpP = opCode(add_pd, tmp, tpVec);
+				tpM = opCode(sub_pd, vel, tpVec);
+				tpP = opCode(add_pd, vel, tpVec);
 				v2p = opCode(mul_pd, vel, vel);
 				tP2 = opCode(mul_pd, tpP, tpP);
 				tM2 = opCode(mul_pd, tpM, tpM);
@@ -378,8 +378,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPy	*/
 
 				vel = opCode(sub_pd, mPy, mel);
-				tpM = opCode(sub_pd, tmp, tpVec);
-				tpP = opCode(add_pd, tmp, tpVec);
+				tpM = opCode(sub_pd, vel, tpVec);
+				tpP = opCode(add_pd, vel, tpVec);
 				v2p = opCode(mul_pd, vel, vel);
 				tP2 = opCode(mul_pd, tpP, tpP);
 				tM2 = opCode(mul_pd, tpM, tpM);
@@ -406,8 +406,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxMy	*/
 
 				vel = opCode(sub_pd, mMy, mel);
-				tpM = opCode(sub_pd, tmp, tpVec);
-				tpP = opCode(add_pd, tmp, tpVec);
+				tpM = opCode(sub_pd, vel, tpVec);
+				tpP = opCode(add_pd, vel, tpVec);
 				v2p = opCode(mul_pd, vel, vel);
 				tP2 = opCode(mul_pd, tpP, tpP);
 				tM2 = opCode(mul_pd, tpM, tpM);
@@ -649,8 +649,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPx	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
-				tpM = opCode(sub_ps, tmp, tpVec);
-				tpP = opCode(add_ps, tmp, tpVec);
+				tpM = opCode(sub_ps, vel, tpVec);
+				tpP = opCode(add_ps, vel, tpVec);
 				v2p = opCode(mul_ps, vel, vel);
 				tP2 = opCode(mul_ps, tpP, tpP);
 				tM2 = opCode(mul_ps, tpM, tpM);
@@ -679,8 +679,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxMx	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
-				tpM = opCode(sub_ps, tmp, tpVec);
-				tpP = opCode(add_ps, tmp, tpVec);
+				tpM = opCode(sub_ps, vel, tpVec);
+				tpP = opCode(add_ps, vel, tpVec);
 				v2p = opCode(mul_ps, vel, vel);
 				tP2 = opCode(mul_ps, tpP, tpP);
 				tM2 = opCode(mul_ps, tpM, tpM);
@@ -707,8 +707,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPz	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
-				tpM = opCode(sub_ps, tmp, tpVec);
-				tpP = opCode(add_ps, tmp, tpVec);
+				tpM = opCode(sub_ps, vel, tpVec);
+				tpP = opCode(add_ps, vel, tpVec);
 				v2p = opCode(mul_ps, vel, vel);
 				tP2 = opCode(mul_ps, tpP, tpP);
 				tM2 = opCode(mul_ps, tpM, tpM);
@@ -735,8 +735,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxMz	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
-				tpM = opCode(sub_ps, tmp, tpVec);
-				tpP = opCode(add_ps, tmp, tpVec);
+				tpM = opCode(sub_ps, vel, tpVec);
+				tpP = opCode(add_ps, vel, tpVec);
 				v2p = opCode(mul_ps, vel, vel);
 				tP2 = opCode(mul_ps, tpP, tpP);
 				tM2 = opCode(mul_ps, tpM, tpM);
@@ -763,8 +763,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPy	*/
 
 				vel = opCode(sub_ps, mPy, mel);
-				tpM = opCode(sub_ps, tmp, tpVec);
-				tpP = opCode(add_ps, tmp, tpVec);
+				tpM = opCode(sub_ps, vel, tpVec);
+				tpP = opCode(add_ps, vel, tpVec);
 				v2p = opCode(mul_ps, vel, vel);
 				tP2 = opCode(mul_ps, tpP, tpP);
 				tM2 = opCode(mul_ps, tpM, tpM);
@@ -791,8 +791,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxMy	*/
 
 				vel = opCode(sub_ps, mMy, mel);
-				tpM = opCode(sub_ps, tmp, tpVec);
-				tpP = opCode(add_ps, tmp, tpVec);
+				tpM = opCode(sub_ps, vel, tpVec);
+				tpP = opCode(add_ps, vel, tpVec);
 				v2p = opCode(mul_ps, vel, vel);
 				tP2 = opCode(mul_ps, tpP, tpP);
 				tM2 = opCode(mul_ps, tpM, tpM);
