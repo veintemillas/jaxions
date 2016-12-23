@@ -10,26 +10,30 @@ using namespace std;
 template<typename Float>
 void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_t n1, FILE *atWrite, FILE *rhoWrite, FILE *densWrite)
 {
-	fprintf(atWrite,  "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0);
-	fprintf(rhoWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0 );
+	fprintf(atWrite,   "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0);
+	fprintf(rhoWrite,  "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0);
 	fprintf(densWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 0);
 	//int n2 = n1*n1;
 	size_t nlast = n1*n1*sizeZ+n1*n1;
+
+	const Float iZ = 1./z;
+	const Float zQ = 1./(9.*pow(z,nQcd+2));
+
 	for (size_t ly = 0; ly < n1; ly++)
 	{
 		for (size_t lx = 0; lx < n1; lx++)
 		{
 
-			fprintf(atWrite,  "%f ", arg(m[lx + n1*ly]) );
-			fprintf(rhoWrite, "%f ", abs(m[lx + n1*ly])/z);
-			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])/z,2)*( pow(arg(m[lx + n1*ly]),2)+
-								pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly]),2)/(9.0*pow(z,nQcd+2))) );
+			fprintf(atWrite,   "%f ", arg(m[lx + n1*ly]) );
+			fprintf(rhoWrite,  "%f ", abs(m[lx + n1*ly])*iZ);
+			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])*iZ,2)*( pow(arg(m[lx + n1*ly]),2)+
+								pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly]),2)*zQ) );
 
 
 		}
 
-		fprintf(atWrite , "\n");
-		fprintf(rhoWrite, "\n");
+		fprintf(atWrite ,  "\n");
+		fprintf(rhoWrite,  "\n");
 		fprintf(densWrite, "\n");
 	}
 }
@@ -37,11 +41,14 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 template<typename Float>
 void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FILE *atWrite, FILE *rhoWrite, FILE *densWrite)
 {
-	fprintf(atWrite,  "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
-	fprintf(rhoWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
+	fprintf(atWrite,   "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
+	fprintf(rhoWrite,  "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
 	fprintf(densWrite, "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
 	//int n2 = n1*n1;
 	size_t nlast = n1*n1*sizeZ + n1*n1;
+
+	const Float iZ = 1./z;
+	const Float zQ = 1./(9.*pow(z,nQcd+2));
 
 	for (size_t ly = 0; ly < n1; ly++)
 	{
@@ -49,14 +56,13 @@ void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FIL
 		{
 
 			// m contains c_theta = z*theta
-			fprintf(atWrite,  "%f ", m[lx + n1*ly]/z) ;
-			fprintf(rhoWrite, "%f ", 1);
-			fprintf(densWrite, "%f ", ( pow(m[lx + n1*ly]/z,2) + pow(m[lx + n1*ly + nlast],2)/(9.0*pow(z,nQcd+2))) );
-
+			fprintf(atWrite,   "%f ", m[lx + n1*ly]*iZ) ;
+			fprintf(rhoWrite,  "%f ", 1.);
+			fprintf(densWrite, "%f ", ( pow(m[lx + n1*ly]*iZ,2) + pow(m[lx + n1*ly + nlast],2)*zQ) );
 		}
 
-		fprintf(atWrite , "\n");
-		fprintf(rhoWrite, "\n");
+		fprintf(atWrite ,  "\n");
+		fprintf(rhoWrite,  "\n");
 		fprintf(densWrite, "\n");
 	}
 }
