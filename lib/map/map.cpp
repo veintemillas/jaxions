@@ -17,17 +17,18 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 	size_t nlast = n1*n1*sizeZ+n1*n1;
 
 	const Float iZ = 1./z;
-	const Float zQ = 1./(9.*pow(z,nQcd+2));
+	//const Float zQ = 1./(9.*pow(z,nQcd+2));
+	const Float zQ = 3.*pow(z,nQcd/2.+1);
 
 	for (size_t ly = 0; ly < n1; ly++)
 	{
 		for (size_t lx = 0; lx < n1; lx++)
 		{
-
-			fprintf(atWrite,   "%f ", arg(m[lx + n1*ly]) );
+			Float thethis = arg(m[lx + n1*ly]);
+			fprintf(atWrite,   "%f ", thethis);
 			fprintf(rhoWrite,  "%f ", abs(m[lx + n1*ly])*iZ);
-			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])*iZ,2)*( pow(arg(m[lx + n1*ly]),2)+
-								pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly]),2)*zQ) );
+			fprintf(densWrite, "%f ", //pow(abs(m[lx + n1*ly])*iZ,2)*
+							(pow(thethis*z,2)*zQ + pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly])*z+thethis,2)/zQ) );
 
 
 		}
@@ -48,7 +49,8 @@ void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FIL
 	size_t nlast = n1*n1*sizeZ + n1*n1;
 
 	const Float iZ = 1./z;
-	const Float zQ = 1./(9.*pow(z,nQcd+2));
+	//const Float zQ = 1./(9.*pow(z,nQcd+2));
+	const Float zQ = 3.*pow(z,nQcd/2.+1);
 
 	for (size_t ly = 0; ly < n1; ly++)
 	{
@@ -58,7 +60,7 @@ void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FIL
 			// m contains c_theta = z*theta
 			fprintf(atWrite,   "%f ", m[lx + n1*ly]*iZ) ;
 			fprintf(rhoWrite,  "%f ", 1.);
-			fprintf(densWrite, "%f ", ( pow(m[lx + n1*ly]*iZ,2) + pow(m[lx + n1*ly + nlast],2)*zQ) );
+			fprintf(densWrite, "%f ", ( pow(m[lx + n1*ly],2)*zQ + pow(m[lx + n1*ly + nlast],2)/zQ) );
 		}
 
 		fprintf(atWrite ,  "\n");

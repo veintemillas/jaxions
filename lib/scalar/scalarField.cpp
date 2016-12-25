@@ -170,6 +170,7 @@ class	Scalar
 	//void	thetaz2m2(int *window);		// COPIES dTHETA/dz into m2	//not used
 	void	theta2m2();//int *window);	// COPIES THETA + I dTHETA/dz     into m2
 	double	maxtheta();								// RETURNS THE MAX VALUE OF THETA [OR IM m]
+	double	thetaDIST(int numbins, void *thetabin);							// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
 
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
@@ -951,7 +952,7 @@ void	Scalar::unfoldField2D(const size_t sZ)
 	int	shift;
 
 	shift = mAlign/fSize;
-	printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d, field = %d ", mAlign, fSize,shift, fieldType == FIELD_SAXION);
+	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d, field = %d ", mAlign, fSize,shift, fieldType == FIELD_SAXION);
 	//fflush(stdout);
 	switch (precision)
 	{
@@ -1984,9 +1985,9 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 */
 }
 
-//----------------------------------------------------------------------
-//		FUNCTIONS FOR MAX THETA
-//----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// 		FUNCTIONS FOR MAX THETA [works but integrated with next]
+// ----------------------------------------------------------------------
 
 double	Scalar::maxtheta()//int *window)
 {
@@ -2002,9 +2003,9 @@ double	Scalar::maxtheta()//int *window)
 			{
 				tauxd = abs(arg(((complex<double> *) m)[i]));
 			}
-			else
+			else // FILD_AXION
 			{
-				tauxd = abs(((double *) m)[i]);
+				tauxd = abs(((double *) m)[i]/(*z));
 			}
 			if( tauxd > mymaxd )
 			{
@@ -2022,9 +2023,9 @@ double	Scalar::maxtheta()//int *window)
 			{
 				taux = abs(arg(((complex<float> *) m)[i]));
 			}
-			else
+			else // FILD_AXION
 			{
-				taux = abs(((float *) m)[i]);
+				taux = abs(((float *) m)[i]/(*z));
 			}
 			if( taux > mymax )
 			{
@@ -2034,4 +2035,199 @@ double	Scalar::maxtheta()//int *window)
 		mymaxd = (double) mymax;
 	}
 	return mymaxd ;
+}
+
+//----------------------------------------------------------------------
+//		FUNCTION FOR THETA DISTRIBUTION [and max]
+//----------------------------------------------------------------------
+// 		THIS VERSION GIVES MAX IN EACH SLICE (used to fix the theta transition problem)
+//
+// double	Scalar::thetaDIST(void * thetabin)//int *window)
+// {
+//
+// 	for(size_t iz = 0; iz < Lz+2; iz++)
+// 	{
+// 	(static_cast<double *> (thetabin))[iz] = 0.;
+// 	}
+//
+// 	if (precision == FIELD_DOUBLE)
+// 	{
+// 			//double tauxd;
+// 			if(fieldType == FIELD_SAXION)
+// 			{
+// 				#pragma omp parallel for //reduction(max:mymaxd)
+// 				for(size_t iz=0; iz < Lz+2; iz++)
+// 				{
+// 					double tauxd ;
+// 					size_t n2shift = iz*n2;
+// 					for(size_t i=0; i < n2; i++)
+// 					{
+// 						tauxd = abs(arg(((complex<double> *) m)[i+n2shift]));
+// 						if( tauxd > (static_cast<double *> (thetabin))[iz] )
+// 						{
+// 							(static_cast<double *> (thetabin))[iz] = tauxd ;
+// 						}
+// 					}
+// 				}
+// 			}
+// 			else // FIELD_AXION // recall c_theta is saved
+// 			{
+// 				#pragma omp parallel for //reduction(max:mymaxd)
+// 				for(size_t iz=0; iz < Lz+2; iz++)
+// 				{
+// 					double tauxd ;
+// 					size_t n2shift = iz*n2;
+// 					for(size_t i=0; i < n2; i++)
+// 					{
+// 						tauxd = abs(((double *) m)[i + n2shift]/(*z));
+// 						if( tauxd > (static_cast<double *> (thetabin))[iz] )
+// 						{
+// 							(static_cast<double *> (thetabin))[iz] = tauxd ;
+// 						}
+// 					}
+// 				}
+// 			}
+// 	}
+// 	else // PRECISION SINGLE
+// 	{
+// 		if(fieldType == FIELD_SAXION)
+// 		{
+// 			#pragma omp parallel for //reduction(max:mymax)
+// 			for(size_t iz=0; iz < Lz+2; iz++)
+// 			{
+// 				float taux;
+// 				size_t n2shift = iz*n2;
+// 				for(size_t i=0; i < n2; i++)
+// 				{
+// 					taux = abs(arg(((complex<float> *) m)[i+n2shift]));
+// 					if( (double) taux > (static_cast<double *> (thetabin))[iz] )
+// 					{
+// 						(static_cast<double *> (thetabin))[iz] = (double) taux ;
+// 					}
+// 				}
+// 			}
+// 		}
+// 		else	//FIELD_AXION
+// 		{
+// 			#pragma omp parallel for //reduction(max:mymax)
+// 			for(size_t iz=0; iz < Lz+2; iz++)
+// 			{
+// 				double taux;
+// 				size_t n2shift = iz*n2;
+// 				for(size_t i=0; i < n2; i++)
+// 				{
+// 					taux = abs(((float *) m)[i+n2shift]/(*z));
+// 					if( (double) taux > (static_cast<double *> (thetabin))[iz] )
+// 					{
+// 						(static_cast<double *> (thetabin))[iz] = (double) taux ;
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	double mymaxd = 0.;
+// 	for(size_t iz = 1; iz < Lz+1; iz++)
+// 	{
+// 		if((static_cast<double *> (thetabin))[iz]>mymaxd)
+// 		{
+// 			mymaxd = (static_cast<double *> (thetabin))[iz];
+// 		}
+// 	}
+//
+// 	return mymaxd ;
+// }
+
+//----------------------------------------------------------------------
+//		FUNCTION FOR THETA DISTRIBUTION [and max]
+//----------------------------------------------------------------------
+//		BINS THE DISTRIBUTION OF THETA
+
+double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
+{
+	double thetamaxi = maxtheta();
+
+//	printf("hallo von inside %f\n", thetamaxi);
+
+	double n2p = numbins/thetamaxi;
+
+	for(size_t i = 0; i < numbins ; i++)
+	{
+	(static_cast<double *> (thetabin))[i] = 0.;
+	}
+
+	if (precision == FIELD_DOUBLE)
+	{
+			//double tauxd;
+			//if(fieldType == FIELD_SAXION)
+			//{
+			// 	#pragma omp parallel for //reduction(max:mymaxd)
+			// 	for(size_t iz=0; iz < Lz+2; iz++)
+			// 	{
+			// 		double tauxd ;
+			// 		size_t n2shift = iz*n2;
+			// 		for(size_t i=0; i < n2; i++)
+			// 		{
+			// 			tauxd = abs(arg(((complex<double> *) m)[i+n2shift]));
+			// 			if( tauxd > (static_cast<double *> (thetabin))[iz] )
+			// 			{
+			// 				(static_cast<double *> (thetabin))[iz] = tauxd ;
+			// 			}
+			// 		}
+			// 	}
+			// }
+			// else // FIELD_AXION // recall c_theta is saved
+			// {
+			// 	#pragma omp parallel for //reduction(max:mymaxd)
+			// 	for(size_t iz=0; iz < Lz+2; iz++)
+			// 	{
+			// 		double tauxd ;
+			// 		size_t n2shift = iz*n2;
+			// 		for(size_t i=0; i < n2; i++)
+			// 		{
+			// 			tauxd = abs(((double *) m)[i + n2shift]/(*z));
+			// 			if( tauxd > (static_cast<double *> (thetabin))[iz] )
+			// 			{
+			// 				(static_cast<double *> (thetabin))[iz] = tauxd ;
+			// 			}
+			// 		}
+			// 	}
+			//	}
+	}
+	else // PRECISION SINGLE
+	{
+		float n2pf = numbins/thetamaxi;
+
+		if(fieldType == FIELD_SAXION)
+		{
+//			#pragma omp parallel for default(shared)
+			for(size_t i=0; i < n3 ; i++)
+			{
+				int bin;
+				bin =  n2pf*abs(arg(((complex<float> *) m)[i+n2]));
+				(static_cast<double *> (thetabin))[bin] += 1.;
+			}
+		}
+		else	//FIELD_AXION
+		{
+//			#pragma omp parallel for default(shared)
+			for(size_t i=0; i < n3; i++)
+			{
+				int bin;
+				bin = n2pf*abs(((float *) m)[i+n2]/(*z));
+				(static_cast<double *> (thetabin))[bin] += 1. ;
+			}
+		}
+	}
+
+	// #pragma omp critical
+	// {
+	// 	for(int n=0; n<numbins; n++)
+	// 	{
+	// 		static_cast<double*>(thetabin)[n] += thetabin_private[n];
+	// 	}
+	// }
+
+//}//END PARALLEL
+
+	return thetamaxi ;
 }

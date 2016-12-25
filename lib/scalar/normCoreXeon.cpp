@@ -84,12 +84,20 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 			grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
 			gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
 			//JAVIER added an artificial factor of 1.0, can be changed
-			sss  = 3.0*sqrt(LLa)*zia*deltaa/sqrt(gradx*gradx + grady*grady + gradz*gradz);
-			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
-			sss2 = sss*sss;
-			sss4 = sss2*sss2;
-			rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
-
+			gradx = gradx*gradx + grady*grady + gradz*gradz ;
+			if (gradx > 0)
+			{
+				sss  = 3.0*sqrt(LLa)*zia*deltaa/sqrt(gradx);
+				//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
+				sss2 = sss*sss;
+				sss4 = sss2*sss2;
+				rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
+			}
+			else
+			{
+				//printf("shock!");
+				rhof = 1.0 ;
+			}
 			vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
 
 			//if(idx % sizeN*sizeN*10 == 0)

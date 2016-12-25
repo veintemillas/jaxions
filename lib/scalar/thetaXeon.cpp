@@ -15,8 +15,10 @@ void	toThetaKernelXeon (Scalar *sField)
 	//POINTERS FOR THETA
 	//(conformal)THETA STARTS AT m
 	Float *mField   = static_cast<Float*>(sField->mCpu());
-	//(conformal)THETA' is stored in the (almost) second half of m
+	//(conformal)THETA' will be stored in the (almost) second half of m
 	Float *vField   = static_cast<Float*>(sField->mCpu()) + 2*S + V;
+	//but we need an intermediate storage array
+	Float *vFieldaux   = static_cast<Float*>(sField->vCpu()) ;
 	//POINTERS FOR COMPLEX PQ FIELD
 	complex<Float> *cmField  = static_cast<complex<Float>*>(sField->mCpu());
 	complex<Float> *cvField  = static_cast<complex<Float>*>(sField->vCpu());
@@ -42,9 +44,12 @@ void	toThetaKernelXeon (Scalar *sField)
 		}
 		//displaces the mField from buffer to position
 		memcpy (mField + Vo,   mField,      sizeof(Float)*S);
-		//displaces the vField from buffer' to position
-		memcpy (vField + Vo-S, mField + Go, sizeof(Float)*S);
+		//displaces the vField from buffer' to aux position in varray (but in zone already read)
+		memcpy (vFieldaux + Vo-S, mField + Go, sizeof(Float)*S);
 	}
+// copies v from auxiliary position to final position in second half of complex m
+memcpy (vField, vFieldaux, sizeof(Float)*V);
+
 }
 
 void	toThetaXeon (Scalar *sField)

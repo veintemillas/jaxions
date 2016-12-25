@@ -145,6 +145,7 @@
 //		void	thetaz2m2(int *window);			// COPIES dTHETA/dz into m2
 		void	theta2m2();//int *window);		// COPIES THETA     into m2
 		double	maxtheta();									// RETURNS THE MAX VALUE OF THETA [OR IM m]
+		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
 
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
