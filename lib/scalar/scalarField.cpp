@@ -89,6 +89,10 @@ class	Scalar
 	template<typename Float>
 	void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
 
+	template<typename Float>
+	double energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
+
+
 //	template<typename Float>
 //	void	momConf(const int kMax, const Float kCrit);
 
@@ -179,6 +183,7 @@ class	Scalar
 	//JAVIER
 //	void	writeENERGY (double zzz, FILE *enwrite);
 	void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
+	double	writeMAPTHETA (double zzz, int index, void *contbin, int numbins);
 
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
@@ -1986,12 +1991,154 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 }
 
 // ----------------------------------------------------------------------
+// 		FUNCTION FOR AXION ENERGY ; MAKES AN ENERGY MAP IN M2
+// ----------------------------------------------------------------------
+double	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numbins)//, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
+{
+	double maxcontrast ;
+	switch	(precision)
+	{
+		case	FIELD_DOUBLE:
+		{
+		}
+		break;
+
+		case	FIELD_SINGLE:
+		{
+			maxcontrast = energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+
+		}
+		break;
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+	return maxcontrast ;
+}
+
+template<typename Float>
+//void	Scalar::ENERGY(const Float zz, FILE *enWrite)
+double	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
+{
+	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
+
+	// 	FILES DENSITY CONTRAST
+	char stoCON[256];
+	sprintf(stoCON, "out/con/con-%05d.txt", index);
+	FILE *file_con ;
+	file_con = NULL;
+	file_con = fopen(stoCON,"w+");
+	fprintf(file_con,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz );
+
+	// 	CONSTANTS
+	const Float deltaa2 = pow(sizeL/sizeN,2.)*2. ;
+	const Float invz	= 1.0/(*z);
+	const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
+
+	//	AUX VARIABLES
+	Float maxi = 0.;
+	double toti = 0.;
+
+	exchangeGhosts(FIELD_M);
+
+	if(fieldType == FIELD_AXION)
+	{
+		Float *mCp = static_cast<Float*> (m);
+		Float *vCp = static_cast<Float*> (v);
+		Float *mCp2 = static_cast<Float*> (m2);
+		//printf("ENERGY map theta \n");
+
+		//SUM variables
+		//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
+		//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
+		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
+		for (int iz=0; iz < Lz; iz++)
+		{
+			Float acu , grad ;
+			size_t idx, idaux ;
+			for (int iy=0; iy < n1; iy++)
+			{
+				int iyP = (iy+1)%n1;
+				int iyM = (iy-1+n1)%n1;
+				for (int ix=0; ix < n1; ix++)
+				{
+					int ixP = (ix+1)%n1;
+					int ixM = (ix-1+n1)%n1;
+
+					idx = ix + iy*n1+(iz+1)*n2 ;
+					//KINETIC + POTENTIAL
+					acu = vCp[idx-n2]*vCp[idx-n2]/2. + z9QCD4*(1.0-cos(mCp[idx]*invz)) ;
+					//GRADIENTS
+					idaux = ixP + iy*n1+(iz+1)*n2 ;
+					grad = pow(mCp[idaux]-mCp[idx],2);
+					idaux = ixM + iy*n1+(iz+1)*n2 ;
+					grad += pow(mCp[idaux]-mCp[idx],2);
+					idaux = ix + iyP*n1+(iz+1)*n2 ;
+					grad += pow(mCp[idaux]-mCp[idx],2);
+					idaux = ix + iyM*n1+(iz+1)*n2 ;
+					grad += pow(mCp[idaux]-mCp[idx],2);
+					grad += pow(mCp[idx+n2]-mCp[idx],2);
+					grad += pow(mCp[idx-n2]-mCp[idx],2);
+					//mCp2[idx] = acu + grad/deltaa2 ;
+					mCp2[idx] = acu ;
+
+					toti += (double) mCp2[idx] ;
+					if (mCp2[idx] > maxi)
+					{
+						maxi = mCp2[idx] ;
+					}
+				} //END X LOOP
+			} //END Y LOOP
+		} //END Z LOOP
+
+		toti = toti/n3 ;
+		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t idx=0; idx < n3; idx++)
+		{
+			mCp2[idx] = (mCp2[idx]/toti-1.)	;
+		}
+		maxi = (Float) maxi/toti ;
+
+		//BIN delta from 0 to maxi+1
+
+		for(size_t i = 0; i < numbins+2 ; i++)
+		{
+		(static_cast<double *> (contbin))[i] = 0.;
+		}
+
+		(static_cast<double *> (contbin))[0] = (double) toti ;
+		(static_cast<double *> (contbin))[1] = (double) maxi ;
+
+		Float norma = (maxi)/100 ;
+		for(size_t i=n2; i < n3+n2; i++)
+		{
+			int bin;
+			bin = (mCp2[i]+1.)/norma	;
+			(static_cast<double *> (contbin))[bin+2] += 1. ;
+		}
+
+	}
+	else // FIELD_SAXION
+	{
+			// DO NOTHING
+	}
+
+
+	printf("%d/?? - - - ENERGYdens = %f Max contrast = %f\n ", index, toti, maxi);
+	fflush (stdout);
+	return maxi;
+}
+
+
+// ----------------------------------------------------------------------
 // 		FUNCTIONS FOR MAX THETA [works but integrated with next]
 // ----------------------------------------------------------------------
 
 double	Scalar::maxtheta()//int *window)
 {
-	double mymaxd;
+	double mymaxd = 0.;
 	if (precision == FIELD_DOUBLE)
 	{
 
@@ -2015,7 +2162,7 @@ double	Scalar::maxtheta()//int *window)
 	}
 	else // PRECISION SINGLE
 	{
-		float mymax, taux;
+		float mymax = 0.f, taux;
 		#pragma omp parallel for reduction(max:mymax)
 		for(size_t i=0; i < n3; i++)
 		{
@@ -2157,41 +2304,26 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 
 	if (precision == FIELD_DOUBLE)
 	{
-			//double tauxd;
-			//if(fieldType == FIELD_SAXION)
-			//{
-			// 	#pragma omp parallel for //reduction(max:mymaxd)
-			// 	for(size_t iz=0; iz < Lz+2; iz++)
-			// 	{
-			// 		double tauxd ;
-			// 		size_t n2shift = iz*n2;
-			// 		for(size_t i=0; i < n2; i++)
-			// 		{
-			// 			tauxd = abs(arg(((complex<double> *) m)[i+n2shift]));
-			// 			if( tauxd > (static_cast<double *> (thetabin))[iz] )
-			// 			{
-			// 				(static_cast<double *> (thetabin))[iz] = tauxd ;
-			// 			}
-			// 		}
-			// 	}
-			// }
-			// else // FIELD_AXION // recall c_theta is saved
-			// {
-			// 	#pragma omp parallel for //reduction(max:mymaxd)
-			// 	for(size_t iz=0; iz < Lz+2; iz++)
-			// 	{
-			// 		double tauxd ;
-			// 		size_t n2shift = iz*n2;
-			// 		for(size_t i=0; i < n2; i++)
-			// 		{
-			// 			tauxd = abs(((double *) m)[i + n2shift]/(*z));
-			// 			if( tauxd > (static_cast<double *> (thetabin))[iz] )
-			// 			{
-			// 				(static_cast<double *> (thetabin))[iz] = tauxd ;
-			// 			}
-			// 		}
-			// 	}
-			//	}
+			if(fieldType == FIELD_SAXION)
+			{
+	//			#pragma omp parallel for default(shared)
+				for(size_t i=0; i < n3 ; i++)
+				{
+					int bin;
+					bin =  n2p*abs(arg(((complex<double> *) m)[i+n2]));
+					(static_cast<double *> (thetabin))[bin] += 1.;
+				}
+			}
+			else	//FIELD_AXION
+			{
+	//			#pragma omp parallel for default(shared)
+				for(size_t i=0; i < n3; i++)
+				{
+					int bin;
+					bin = n2p*abs(((double *) m)[i+n2]/(*z));
+					(static_cast<double *> (thetabin))[bin] += 1. ;
+				}
+			}
 	}
 	else // PRECISION SINGLE
 	{

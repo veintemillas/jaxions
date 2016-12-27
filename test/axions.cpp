@@ -109,6 +109,9 @@ int	main (int argc, char *argv[])
 	FILE *file_thetabin ;
 	file_thetabin = NULL;
 
+	FILE *file_contbin ;
+	file_contbin = NULL;
+
 
 	if (commRank() == 0)
 	{
@@ -120,6 +123,7 @@ int	main (int argc, char *argv[])
 		file_spectrum = fopen("out/spectrum.txt","w+");
 		file_power = fopen("out/power.txt","w+");
 		file_thetabin = fopen("out/thetabin.txt","w+");
+		file_contbin = fopen("out/contbin.txt","w+");
 	}
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
@@ -342,8 +346,8 @@ int	main (int argc, char *argv[])
 			if (commRank() == 0)
 			{
 				// BIN THETA
-				//fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
-				//for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
+				// fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
+				// for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
 
 				if (axion->Fieldo() == FIELD_SAXION)
 				{
@@ -398,17 +402,12 @@ int	main (int argc, char *argv[])
 	2. Fix writeMap so it reads data from the first slice of m
 */
 
-//		if (cDev != DEV_GPU)
-
-			//double Grz, Gtz, Vr, Vt, Kr, Kt;
-//			writeConf(axion, index);
-			//if (axion->Precision() == FIELD_DOUBLE)
-			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 1.5 )
+			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 0.8 )
 			{
 				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
 				fflush (stdout);
 				nstrings = analyzeStrFolded(axion, index);
-				maximumtheta = axion->maxtheta();
+				//maximumtheta = axion->maxtheta();
 				printMpi("stLength = %d ", nstrings);
 				fflush (stdout);
 
@@ -442,20 +441,18 @@ int	main (int argc, char *argv[])
 				}
 			}
 
-			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.5 )
+			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
 			{
 				printf("\n TRANSITION TO THETA \n");fflush(stdout);
 				cmplxToTheta	(axion, fCount);
 //				printf("")
 			}
 
-			//axion->unfoldField2D(sizeZ-1);
 			axion->unfoldField2D(sliceprint);
 			writeMap (axion, index);
 
 			if ( axion->Fieldo() == FIELD_SAXION  )
 			{
-
 	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 
@@ -482,6 +479,16 @@ int	main (int argc, char *argv[])
 				}
 			}
 
+			if (axion->Fieldo() == FIELD_AXION)
+			{
+				axion->unfoldField();
+				double maxcontrast = axion->writeMAPTHETA( (*(axion->zV() )) , index, spectrumK, 100)		;
+				axion->foldField();
+				fprintf(file_contbin,"%f ", (*(axion->zV() )));
+				// first two numbers are average and max contrast -1
+				for(int i = 0; i<102; i++) {	fprintf(file_contbin, "%f ", (float) sK[i]);}
+				fprintf(file_contbin, "\n");
+			}
 
 	} // zloop
 
@@ -496,6 +503,8 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 		axion->unfoldField();
+
+
 
 	//if (nSteps > 0)
 	//	writeConf(axion, index);
@@ -550,6 +559,7 @@ int	main (int argc, char *argv[])
 		fclose (file_spectrum);
 		fclose (file_power);
 		fclose (file_thetabin);
+		fclose (file_contbin);
 		//energy 2//	fclose (file_energy2);
 	}
 

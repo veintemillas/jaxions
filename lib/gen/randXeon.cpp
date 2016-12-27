@@ -28,9 +28,14 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 
 		#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 		for (size_t idx=Vo; idx<Vf; idx++)
-			//m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
-			//to produce only axions substitute for this
-			m[idx]   = std::complex<Float>(1.0, 0.1+uni(mt64)/2.);
+			//RANDOM INITIAL CONDITIONS
+			m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM WITH A LITTLE 0 MODE
+			//m[idx]   = std::complex<Float>(1.0, 0.1+uni(mt64)/1.);
+			//MORE AXIONS
+			//m[idx]   = std::complex<Float>(0.0+0.7*uni(mt64), 1.0);
+			//LARGE AMPLITUDE AXIONS ZERO MODE
+			//m[idx]   = std::complex<Float>(0.0, 1.000001);
 			//to produce only SAXIONS for testing
 			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
 	}
