@@ -138,7 +138,7 @@ int	main (int argc, char *argv[])
 	double  *spectrumK ;
 	double  *spectrumG ;
 	double  *spectrumV ;
-	size_t  *binarray	 ;
+	double  *binarray	 ;
 	trackAlloc((void**) (&spectrumK), 8*powmax);
 	trackAlloc((void**) (&spectrumG), 8*powmax);
 	trackAlloc((void**) (&spectrumV), 8*powmax);
@@ -147,7 +147,7 @@ int	main (int argc, char *argv[])
 	double *sK = static_cast<double *> (spectrumK);
 	double *sG = static_cast<double *> (spectrumG);
 	double *sV = static_cast<double *> (spectrumV);
-	size_t *bA = static_cast<size_t *> (binarray);
+	double *bA = static_cast<double *> (binarray);
 	//double *bAd = static_cast<double *> (binarray);
 
 	//--------------------------------------------------
@@ -246,7 +246,7 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
-	axion->SetLambda(LAMBDA_Z2)	;
+	axion->SetLambda(LAMBDA_FIXED)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{
 	printMpi ("Lambda in FIXED mode\n");
@@ -500,8 +500,7 @@ int	main (int argc, char *argv[])
 				fprintf(file_contbin,"%f ", (*(axion->zV() )));
 				// first two numbers are average and max contrast -1
 				//[used as reference value] normalised to 10^6
-				fprintf(file_contbin,"%f %f ", ((float) bA[0])/1000000., ((float) bA[1])/1000000.);
-				for(int i = 2; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
+				for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 				fprintf(file_contbin, "\n");
 				printf("sol5");fflush(stdout);
 				fflush(file_contbin);

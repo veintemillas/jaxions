@@ -2097,32 +2097,43 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=n2; idx < n3+n2; idx++)
 		{
-			mCONT[idx] = (mCONT[idx]/toti-1.)	;
+			mCONT[idx] = mCONT[idx]/toti	;
 		}
 		maxi = (Float) maxi/toti ;
 
-		//BIN delta from 0 to maxi+1
-
-		for(size_t i = 0; i < numbins ; i++)
+		if (maxi >100.)
 		{
-		(static_cast<size_t *> (contbin))[i] = 0.;
+			maxi = 100.;
+		}
+		//BIN delta from 0 to maxi+1
+		size_t auxintarray[numbins] ;
+
+		for(size_t bin = 0; bin < numbins ; bin++)
+		{
+		(static_cast<double *> (contbin))[bin] = 0.;
+		auxintarray[bin] = 0;
 		}
 
-		(static_cast<size_t *> (contbin))[0] = (size_t) toti*1000000. ;
-		(static_cast<size_t *> (contbin))[1] = (size_t) maxi*1000000. ;
+		(static_cast<double *> (contbin))[0] = toti;
+		(static_cast<double *> (contbin))[1] = maxi;
 
 		Float norma = (maxi)/(numbins-2) ;
 		for(size_t i=n2; i < n3+n2; i++)
 		{
 			int bin;
-			bin = (mCONT[i]+1.)/norma	;
-			// if (bin > numbins)
-			// {
-			// 	printf("what!\n");
-			// 	bin=numbins;
-			// }
-			(static_cast<size_t *> (contbin))[bin+2] += 1 ;
+			bin = (mCONT[i]/norma)	;
+			//(static_cast<double *> (contbin))[bin+2] += 1. ;
+			if (bin<numbins)
+			{
+				auxintarray[bin] +=1;
+			}
 		}
+		#pragma omp parallel for default(shared) schedule(static)
+		for(size_t bin = 0; bin < numbins-2 ; bin++)
+		{
+			(static_cast<double *> (contbin))[bin+2] = (double) auxintarray[bin];
+		}
+
 
 	}
 	else // FIELD_SAXION

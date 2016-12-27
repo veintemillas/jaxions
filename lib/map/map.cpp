@@ -27,8 +27,8 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 			Float thethis = arg(m[lx + n1*ly]);
 			fprintf(atWrite,   "%f ", thethis);
 			fprintf(rhoWrite,  "%f ", abs(m[lx + n1*ly])*iZ);
-			fprintf(densWrite, "%f ", //pow(abs(m[lx + n1*ly])*iZ,2)*
-							(pow(thethis*z,2)*zQ + pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly])*z+thethis,2)/zQ) );
+			fprintf(densWrite, "%f ", pow(abs(m[lx + n1*ly])*iZ,2)*
+						(	(pow(thethis*z,2)*zQ + pow(imag(m[lx + n1*ly + nlast]/m[lx + n1*ly])*z+thethis,2)/zQ) ) );
 
 
 		}
