@@ -138,13 +138,17 @@ int	main (int argc, char *argv[])
 	double  *spectrumK ;
 	double  *spectrumG ;
 	double  *spectrumV ;
+	size_t  *binarray	 ;
 	trackAlloc((void**) (&spectrumK), 8*powmax);
 	trackAlloc((void**) (&spectrumG), 8*powmax);
 	trackAlloc((void**) (&spectrumV), 8*powmax);
+	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
 
 	double *sK = static_cast<double *> (spectrumK);
 	double *sG = static_cast<double *> (spectrumG);
 	double *sV = static_cast<double *> (spectrumV);
+	size_t *bA = static_cast<size_t *> (binarray);
+	//double *bAd = static_cast<double *> (binarray);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -369,6 +373,7 @@ int	main (int argc, char *argv[])
 						// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
 					}
 				}
+				fflush(file_sample);
 			}
 
 			old = std::chrono::high_resolution_clock::now();
@@ -380,6 +385,7 @@ int	main (int argc, char *argv[])
 			else
 			{
 				propTheta	(axion, dz,     nQcd, delta, cDev, fCount);
+				printf("pt-");fflush(stdout);
 			}
 
 			current = std::chrono::high_resolution_clock::now();
@@ -392,7 +398,7 @@ int	main (int argc, char *argv[])
 
 			counter++;
 		} // zsubloop
-
+		printf("p\n");fflush(stdout);
 		//printMpi ("Transfer to CPU ...");
 		//fflush (stdout);
 		//axion->transferCpu(FIELD_MV);
@@ -437,6 +443,8 @@ int	main (int argc, char *argv[])
 					fprintf(file_spectrum,  "%f ", (*axion->zV()));
 					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
 					axion->foldField();
+					fflush(file_power);
+					fflush(file_spectrum);
 
 				}
 			}
@@ -476,18 +484,28 @@ int	main (int argc, char *argv[])
 						//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
 						printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
 					}
+					fflush(file_energy);
 				}
 			}
 
 			if (axion->Fieldo() == FIELD_AXION)
 			{
+				printf("sol1");fflush(stdout);
 				axion->unfoldField();
-				double maxcontrast = axion->writeMAPTHETA( (*(axion->zV() )) , index, spectrumK, 100)		;
+				printf("sol2");fflush(stdout);
+				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				printf("sol3");fflush(stdout);
 				axion->foldField();
+				printf("sol4");fflush(stdout);
 				fprintf(file_contbin,"%f ", (*(axion->zV() )));
 				// first two numbers are average and max contrast -1
-				for(int i = 0; i<102; i++) {	fprintf(file_contbin, "%f ", (float) sK[i]);}
+				//[used as reference value] normalised to 10^6
+				fprintf(file_contbin,"%f %f ", ((float) bA[0])/1000000., ((float) bA[1])/1000000.);
+				for(int i = 2; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 				fprintf(file_contbin, "\n");
+				printf("sol5");fflush(stdout);
+				fflush(file_contbin);
+				printf("sol6\n");
 			}
 
 	} // zloop
@@ -543,6 +561,8 @@ int	main (int argc, char *argv[])
 	printMpi("4--------------------------------------------------\n");
 	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 	printMpi("5--------------------------------------------------\n");
+	trackFree((void**) (&binarray),  ALLOC_TRACK);
+	printMpi("6--------------------------------------------------\n");
 
 	delete fCount;
 	delete axion;

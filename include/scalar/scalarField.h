@@ -155,7 +155,7 @@
 
 		//void	writeENERGY (double zzz, FILE *enwrite);
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
-		double	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
+		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

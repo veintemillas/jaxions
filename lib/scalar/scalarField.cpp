@@ -90,7 +90,7 @@ class	Scalar
 	void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
 
 	template<typename Float>
-	double energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
+	void energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
 
 
 //	template<typename Float>
@@ -183,7 +183,7 @@ class	Scalar
 	//JAVIER
 //	void	writeENERGY (double zzz, FILE *enwrite);
 	void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
-	double	writeMAPTHETA (double zzz, int index, void *contbin, int numbins);
+	void	writeMAPTHETA (double zzz, int index, void *contbin, int numbins);
 
 #ifdef	USE_GPU
 	void	*Streams() { return sStreams; }
@@ -863,7 +863,7 @@ void	Scalar::unfoldField()
 	int	shift;
 
 	shift = mAlign/fSize;
-	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize,shift,n2);
+	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize,shift,n2);
 
 	switch (precision)
 	{
@@ -947,7 +947,7 @@ void	Scalar::unfoldField()
 			}
 			break;
 	}
-	printf("Done!\n");
+	//printf("Done!\n");
 	return;
 }
 
@@ -1993,7 +1993,7 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 // ----------------------------------------------------------------------
 // 		FUNCTION FOR AXION ENERGY ; MAKES AN ENERGY MAP IN M2
 // ----------------------------------------------------------------------
-double	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numbins)//, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
+void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numbins)//, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
 {
 	double maxcontrast ;
 	switch	(precision)
@@ -2005,7 +2005,7 @@ double	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int nu
 
 		case	FIELD_SINGLE:
 		{
-			maxcontrast = energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+			energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
 
 		}
 		break;
@@ -2015,12 +2015,12 @@ double	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int nu
 		exit(1);
 		break;
 	}
-	return maxcontrast ;
+	return ;
 }
 
 template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
-double	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
+void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
 
@@ -2045,9 +2045,9 @@ double	Scalar::energymapTheta(const Float zz, const int index, void *contbin, in
 
 	if(fieldType == FIELD_AXION)
 	{
-		Float *mCp = static_cast<Float*> (m);
-		Float *vCp = static_cast<Float*> (v);
-		Float *mCp2 = static_cast<Float*> (m2);
+		Float *mTheta = static_cast<Float*> (m);
+		Float *mVeloc = static_cast<Float*> (v);
+		Float *mCONT = static_cast<Float*> (m2);
 		//printf("ENERGY map theta \n");
 
 		//SUM variables
@@ -2069,25 +2069,25 @@ double	Scalar::energymapTheta(const Float zz, const int index, void *contbin, in
 
 					idx = ix + iy*n1+(iz+1)*n2 ;
 					//KINETIC + POTENTIAL
-					acu = vCp[idx-n2]*vCp[idx-n2]/2. + z9QCD4*(1.0-cos(mCp[idx]*invz)) ;
+					acu = mVeloc[idx-n2]*mVeloc[idx-n2]/2. + z9QCD4*(1.0-cos(mTheta[idx]*invz)) ;
 					//GRADIENTS
 					idaux = ixP + iy*n1+(iz+1)*n2 ;
-					grad = pow(mCp[idaux]-mCp[idx],2);
+					grad = pow(mTheta[idaux]-mTheta[idx],2);
 					idaux = ixM + iy*n1+(iz+1)*n2 ;
-					grad += pow(mCp[idaux]-mCp[idx],2);
+					grad += pow(mTheta[idaux]-mTheta[idx],2);
 					idaux = ix + iyP*n1+(iz+1)*n2 ;
-					grad += pow(mCp[idaux]-mCp[idx],2);
+					grad += pow(mTheta[idaux]-mTheta[idx],2);
 					idaux = ix + iyM*n1+(iz+1)*n2 ;
-					grad += pow(mCp[idaux]-mCp[idx],2);
-					grad += pow(mCp[idx+n2]-mCp[idx],2);
-					grad += pow(mCp[idx-n2]-mCp[idx],2);
-					//mCp2[idx] = acu + grad/deltaa2 ;
-					mCp2[idx] = acu ;
+					grad += pow(mTheta[idaux]-mTheta[idx],2);
+					grad += pow(mTheta[idx+n2]-mTheta[idx],2);
+					grad += pow(mTheta[idx-n2]-mTheta[idx],2);
+					mCONT[idx] = acu + grad/deltaa2 ;
+					//mCONT[idx] = acu ;
 
-					toti += (double) mCp2[idx] ;
-					if (mCp2[idx] > maxi)
+					toti += (double) mCONT[idx] ;
+					if (mCONT[idx] > maxi)
 					{
-						maxi = mCp2[idx] ;
+						maxi = mCONT[idx] ;
 					}
 				} //END X LOOP
 			} //END Y LOOP
@@ -2095,28 +2095,33 @@ double	Scalar::energymapTheta(const Float zz, const int index, void *contbin, in
 
 		toti = toti/n3 ;
 		#pragma omp parallel for default(shared) schedule(static)
-		for (size_t idx=0; idx < n3; idx++)
+		for (size_t idx=n2; idx < n3+n2; idx++)
 		{
-			mCp2[idx] = (mCp2[idx]/toti-1.)	;
+			mCONT[idx] = (mCONT[idx]/toti-1.)	;
 		}
 		maxi = (Float) maxi/toti ;
 
 		//BIN delta from 0 to maxi+1
 
-		for(size_t i = 0; i < numbins+2 ; i++)
+		for(size_t i = 0; i < numbins ; i++)
 		{
-		(static_cast<double *> (contbin))[i] = 0.;
+		(static_cast<size_t *> (contbin))[i] = 0.;
 		}
 
-		(static_cast<double *> (contbin))[0] = (double) toti ;
-		(static_cast<double *> (contbin))[1] = (double) maxi ;
+		(static_cast<size_t *> (contbin))[0] = (size_t) toti*1000000. ;
+		(static_cast<size_t *> (contbin))[1] = (size_t) maxi*1000000. ;
 
-		Float norma = (maxi)/100 ;
+		Float norma = (maxi)/(numbins-2) ;
 		for(size_t i=n2; i < n3+n2; i++)
 		{
 			int bin;
-			bin = (mCp2[i]+1.)/norma	;
-			(static_cast<double *> (contbin))[bin+2] += 1. ;
+			bin = (mCONT[i]+1.)/norma	;
+			// if (bin > numbins)
+			// {
+			// 	printf("what!\n");
+			// 	bin=numbins;
+			// }
+			(static_cast<size_t *> (contbin))[bin+2] += 1 ;
 		}
 
 	}
@@ -2128,7 +2133,7 @@ double	Scalar::energymapTheta(const Float zz, const int index, void *contbin, in
 
 	printf("%d/?? - - - ENERGYdens = %f Max contrast = %f\n ", index, toti, maxi);
 	fflush (stdout);
-	return maxi;
+	return ;
 }
 
 
