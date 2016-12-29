@@ -1089,34 +1089,65 @@ void	Scalar::squareCpu()
 //	COPIES CONFORMAL FIELD AND DERIVATIVE FROM PQ FIELD
 void	Scalar::theta2m2()//int *window)
 {
-
-	if (precision == FIELD_DOUBLE)
+	switch (fieldType)
 	{
-		double za = (*z);
-		double massfactor = 3.0 * pow(za, nQcd/2 + 1);
+		case FIELD_SAXION:
+					if (precision == FIELD_DOUBLE)
+					{
+						double za = (*z);
+						double massfactor = 3.0 * pow(za, nQcd/2 + 1);
 
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
-		{
-		double thetaaux = arg(((std::complex<double> *) m)[i]);
-			((complex<double> *) m2)[i] = thetaaux*massfactor*za
-																		+ I*( ((((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag())*za
-																		      + thetaaux ) ;
-		}
-	}
-	else
-	{
-		float zaf = *z ;
-		float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
+						#pragma omp parallel for default(shared) schedule(static)
+						for(size_t i=0; i < n3; i++)
+						{
+						double thetaaux = arg(((std::complex<double> *) m)[i]);
+							((complex<double> *) m2)[i] = thetaaux*massfactor*za
+																						+ I*( ((((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag())*za
+																						      + thetaaux ) ;
+						}
+					}
+					else
+					{
+						float zaf = *z ;
+						float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
 
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
-		{
-		float thetaauxf = arg(((std::complex<float> *) m)[i]);
-			((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf
-																	 + If*( ((((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag())*zaf
-																	      + thetaauxf);
-		}
+						#pragma omp parallel for default(shared) schedule(static)
+						for(size_t i=0; i < n3; i++)
+						{
+						float thetaauxf = arg(((std::complex<float> *) m)[i]);
+							((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf
+																					 + If*( ((((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag())*zaf
+																					      + thetaauxf);
+						}
+					}
+		break;
+
+		case FIELD_AXION:
+
+					if (precision == FIELD_DOUBLE)
+					{
+						double massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+
+						#pragma omp parallel for default(shared) schedule(static)
+						for(size_t i=0; i < n3; i++)
+						{
+							((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i])*massfactor + I*((static_cast<double*> (v))[i]);
+						}
+					}
+					else
+					{
+						float massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+
+						#pragma omp parallel for default(shared) schedule(static)
+						for(size_t i=0; i < n3; i++)
+						{
+						float thetaauxf = arg(((std::complex<float> *) m)[i]);
+							((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i])*massfactor + If*((static_cast<float*> (v))[i]);
+						}
+					}
+		break;
+
+
 	}
 }
 
@@ -1753,22 +1784,23 @@ void	Scalar::setField (FieldType fType)
 
 				const size_t	mBytes = v3*fSize;
 
-				#ifdef	USE_XEON
-				if (!lowmem)
-				{
-					trackFree(&m2X, ALLOC_ALIGN);
-					m2 = m2X = NULL;
-				}
-				alignAlloc ((void**) &m2X, mAlign, mBytes);
-				m2  = m2X;
-				#else
-				if (!lowmem)
-				{
-					trackFree(&m2, ALLOC_ALIGN);
-					m2 = NULL;
-				}
-				alignAlloc ((void**) &m2, mAlign, mBytes);
-				#endif
+				// OJO ! COMMENTED AWAY WITHOUT CARE ABOUT USE_XEON!
+				// #ifdef	USE_XEON
+				// if (!lowmem)
+				// {
+				// 	trackFree(&m2X, ALLOC_ALIGN);
+				// 	m2 = m2X = NULL;
+				// }
+				// alignAlloc ((void**) &m2X, mAlign, mBytes);
+				// m2  = m2X;
+				// #else
+				// if (!lowmem)
+				// {
+				// 	trackFree(&m2, ALLOC_ALIGN);
+				// 	m2 = NULL;
+				// }
+				// alignAlloc ((void**) &m2, mAlign, mBytes);
+				// #endif
 
 			}
 			break;
@@ -2023,7 +2055,8 @@ template<typename Float>
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
-
+	// COPIES THE CONTRAST INTO THE REAL PART OF M2 (WHICH IS COMPLEX)
+	// TO USE THE POWER SPECTRUM AFTER
 	// 	FILES DENSITY CONTRAST
 	char stoCON[256];
 	sprintf(stoCON, "out/con/con-%05d.txt", index);
@@ -2047,7 +2080,10 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	{
 		Float *mTheta = static_cast<Float*> (m);
 		Float *mVeloc = static_cast<Float*> (v);
-		Float *mCONT = static_cast<Float*> (m2);
+		// REAL VERSION
+		//Float *mCONT = static_cast<Float*> (m2);
+		// COMPLEX VERSION
+		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
 		//printf("ENERGY map theta \n");
 
 		//SUM variables
@@ -2084,10 +2120,10 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					mCONT[idx] = acu + grad/deltaa2 ;
 					//mCONT[idx] = acu ;
 
-					toti += (double) mCONT[idx] ;
-					if (mCONT[idx] > maxi)
+					toti += (double) mCONT[idx].real() ;
+					if (mCONT[idx].real() > maxi)
 					{
-						maxi = mCONT[idx] ;
+						maxi = mCONT[idx].real() ;
 					}
 				} //END X LOOP
 			} //END Y LOOP
@@ -2097,7 +2133,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=n2; idx < n3+n2; idx++)
 		{
-			mCONT[idx] = mCONT[idx]/toti	;
+			mCONT[idx] = mCONT[idx].real()/toti	;
 		}
 		maxi = (Float) maxi/toti ;
 
@@ -2121,7 +2157,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		for(size_t i=n2; i < n3+n2; i++)
 		{
 			int bin;
-			bin = (mCONT[i]/norma)	;
+			bin = (mCONT[i].real()/norma)	;
 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
 			if (bin<numbins)
 			{

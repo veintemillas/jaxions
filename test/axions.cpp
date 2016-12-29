@@ -385,7 +385,7 @@ int	main (int argc, char *argv[])
 			else
 			{
 				propTheta	(axion, dz,     nQcd, delta, cDev, fCount);
-				printf("pt-");fflush(stdout);
+				//printf("pt-");fflush(stdout);
 			}
 
 			current = std::chrono::high_resolution_clock::now();
@@ -495,7 +495,7 @@ int	main (int argc, char *argv[])
 				printf("sol2");fflush(stdout);
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 				printf("sol3");fflush(stdout);
-				axion->foldField();
+//				axion->foldField();
 				printf("sol4");fflush(stdout);
 				fprintf(file_contbin,"%f ", (*(axion->zV() )));
 				// first two numbers are average and max contrast -1
@@ -505,6 +505,31 @@ int	main (int argc, char *argv[])
 				printf("sol5");fflush(stdout);
 				fflush(file_contbin);
 				printf("sol6\n");
+
+//				axion->unfoldField();
+				//POWER SPECTRUM
+				powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
+				//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+				fprintf(file_power,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
+				fprintf(file_power,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
+				fprintf(file_power,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+				//writeMap (axion, index);
+				//NUMBER SPECTRUM
+				spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+				//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+				fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
+				fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
+				fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
+				axion->foldField();
+				fflush(file_power);
+				fflush(file_spectrum);
+
 			}
 
 	} // zloop

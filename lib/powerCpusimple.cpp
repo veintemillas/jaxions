@@ -300,8 +300,16 @@ void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void
 
 	//  Copies energy_theta + I potential_energy_theta into m2
 	// 	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
-			energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
 
+			//PATCH
+			if ( axion->Fieldo() == FIELD_SAXION)
+			{
+				energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
+			}
+			else
+			{
+			//ASSUMES THAT M2 FIELD WAS ALREADY CREATED BY THE DENSITY ANALYSIS PART
+			}
 	//	FFT m2 inplace ->
 			axion->fftCpuSpectrum(1);
 
