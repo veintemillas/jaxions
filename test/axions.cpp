@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "code3DCpu.h"
-#include "scalar/scalarField.h"
 #include "propagator/propagator.h"
 #include "propagator/propSimple.h"
 #include "energy/energy.h"
@@ -20,9 +19,13 @@
 #include "map/map.h"
 #include "strings/strings.h"
 #include "powerCpu.h"
+/*
+#include "scalar/scalarField.h"
 #include "scalar/normField.h"
 #include "scalar/scaleField.h"
 #include "scalar/thetaScalar.h"
+*/
+#include "scalar.h"
 #include "propagator/propTheta.h"
 
 using namespace std;
@@ -256,13 +259,14 @@ int	main (int argc, char *argv[])
 		printMpi ("Lambda in Z2 mode\n");
 	}
 
-
+	Folder munge(axion);
 
 	if (cDev != DEV_GPU)
 	{
 		printMpi ("Folding configuration\n");
-		axion->foldField();
+		munge(FOLD_ALL);
 	}
+	printMpi ("Folded %f\n", static_cast<float*>(axion->mCpu())[2*S0]);
 
 	if (cDev != DEV_CPU)
 	{
@@ -287,7 +291,9 @@ int	main (int argc, char *argv[])
 		//copy v unfolded into last slice
 		//memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 		//axion->unfoldField2D(sizeZ-1);
-		axion->unfoldField2D(sliceprint);
+		//axion->unfoldField2D(sliceprint);
+
+		munge(UNFOLD_SLICE, sliceprint);
 		writeMap (axion, index);
 		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 
@@ -423,7 +429,8 @@ int	main (int argc, char *argv[])
 					//double *sK = static_cast<double *> (spectrumK);
 					//double *sG = static_cast<double *> (spectrumG);
 					//double *sV = static_cast<double *> (spectrumV);
-					axion->unfoldField();
+					//axion->unfoldField();
+					munge(UNFOLD_ALL);
 					powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
 					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 					fprintf(file_power,  "%f ", (*axion->zV()));
@@ -442,7 +449,8 @@ int	main (int argc, char *argv[])
 					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
 					fprintf(file_spectrum,  "%f ", (*axion->zV()));
 					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
-					axion->foldField();
+					//axion->foldField();
+					munge(FOLD_ALL);
 					fflush(file_power);
 					fflush(file_spectrum);
 
@@ -456,7 +464,8 @@ int	main (int argc, char *argv[])
 //				printf("")
 			}
 
-			axion->unfoldField2D(sliceprint);
+			//axion->unfoldField2D(sliceprint);
+			munge(UNFOLD_SLICE, sliceprint);
 			writeMap (axion, index);
 
 			if ( axion->Fieldo() == FIELD_SAXION  )
@@ -491,7 +500,8 @@ int	main (int argc, char *argv[])
 			if (axion->Fieldo() == FIELD_AXION)
 			{
 				printf("sol1");fflush(stdout);
-				axion->unfoldField();
+				//axion->unfoldField();
+				munge(UNFOLD_ALL);
 				printf("sol2");fflush(stdout);
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 				printf("sol3");fflush(stdout);
@@ -526,7 +536,8 @@ int	main (int argc, char *argv[])
 				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
 				fprintf(file_spectrum,  "%f ", (*axion->zV()));
 				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
-				axion->foldField();
+				//axion->foldField();
+				munge(FOLD_ALL);
 				fflush(file_power);
 				fflush(file_spectrum);
 
@@ -544,9 +555,10 @@ int	main (int argc, char *argv[])
 	printMpi("\n PROGRAMM FINISHED\n");
 
 	if (cDev != DEV_GPU)
-		axion->unfoldField();
-
-
+	{
+		//axion->unfoldField();
+		munge(UNFOLD_ALL);
+	}
 
 	//if (nSteps > 0)
 	//	writeConf(axion, index);

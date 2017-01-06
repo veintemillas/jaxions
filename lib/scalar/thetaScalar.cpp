@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "scalar/scalarField.h"
+#include "scalar/folder.h"
 #include "enum-field.h"
 
 #include "scalar/thetaXeon.h"
@@ -62,9 +63,9 @@ void	CmplxToTheta::runXeon	()
 void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 {
 	CmplxToTheta *theta = new CmplxToTheta(field);
-
+	Folder	     *munge = new Folder(field);
 	//NORMALLY CALLED WHEN FOLDED
-	field->unfoldField();
+	(*munge)(UNFOLD_ALL);
 
 	switch (field->Device())
 	{
@@ -89,7 +90,9 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	field->setField(FIELD_AXION);
 	printf("folding... \n");fflush(stdout);
-	field->foldField();
+	(*munge)(FOLD_ALL);
+
+	delete	munge;
 
 	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
 

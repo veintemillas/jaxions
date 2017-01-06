@@ -200,12 +200,6 @@ int	main (int argc, char *argv[])
 	else
 		index = fIndex + 1;
 
-	if (cDev != DEV_GPU)
-	{
-		printMpi ("Avoid the folding\n");
-		//axion->foldField();
-	}
-
 	if (cDev != DEV_CPU)
 	{
 		printMpi ("Transferring configuration to device\n");
@@ -229,7 +223,6 @@ int	main (int argc, char *argv[])
 			//analyzeStrUNFolded(axion, index);
 			//printMpi(" Done!");
 			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
-			//axion->unfoldField2D(sizeZ-1);
 			writeMap (axion, index);
 			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
@@ -328,9 +321,6 @@ int	main (int argc, char *argv[])
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 
 	printMpi("\n PROGRAMM FINISHED\n");
-
-	// if (cDev != DEV_GPU)
-	// 	axion->unfoldField();
 
 	if (nSteps > 0)
 		writeConf(axion, index);
