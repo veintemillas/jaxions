@@ -37,6 +37,13 @@
 //		FIELD_HALF,
 	}	FieldPrecision;
 
+	typedef enum	FoldType_s
+	{
+		FOLD_ALL,
+		UNFOLD_ALL,
+		UNFOLD_SLICE,
+	}	FoldType;
+
 	typedef	enum	StringType_s
 	{
 		STRING_XY_POSITIVE = 1,

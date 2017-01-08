@@ -112,7 +112,8 @@
 
 		void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
-		size_t		DataSize() { return fSize; }
+		size_t		DataSize () { return fSize; }
+		size_t		DataAlign() { return mAlign; }
 		//JAVI
 		int		shift() { return sHift; }
 
@@ -122,11 +123,11 @@
 		void		setZ(const double newZ) { *z = newZ; }
 
 		void	setField	(FieldType field);
-
+/*
 		void	foldField	();
 		void	unfoldField	();
 		void	unfoldField2D	(const size_t sZ);	// Just for the maps
-
+*/
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
