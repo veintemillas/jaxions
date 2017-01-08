@@ -129,7 +129,7 @@ int	main (int argc, char *argv[])
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 1 ;
 	double maximumtheta = 3.141597;
-	size_t sliceprint = 10;
+	size_t sliceprint = 0;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;
@@ -398,7 +398,7 @@ int	main (int argc, char *argv[])
 
 			counter++;
 		} // zsubloop
-		printf("p\n");fflush(stdout);
+
 		//printMpi ("Transfer to CPU ...");
 		//fflush (stdout);
 		//axion->transferCpu(FIELD_MV);
@@ -417,36 +417,36 @@ int	main (int argc, char *argv[])
 				printMpi("stLength = %d ", nstrings);
 				fflush (stdout);
 
-				if (nstrings < 200 )
-				{
-					//POWER SPECTRUM
-					//double *sK = static_cast<double *> (spectrumK);
-					//double *sG = static_cast<double *> (spectrumG);
-					//double *sV = static_cast<double *> (spectrumV);
-					axion->unfoldField();
-					powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-					fprintf(file_power,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
-					fprintf(file_power,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
-					fprintf(file_power,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
-					//writeMap (axion, index);
-					//NUMBER SPECTRUM
-					spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-					fprintf(file_spectrum,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
-					fprintf(file_spectrum,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
-					fprintf(file_spectrum,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
-					axion->foldField();
-					fflush(file_power);
-					fflush(file_spectrum);
-
-				}
+			// 	if (nstrings < 200 )
+			// 	{
+			// 		//POWER SPECTRUM
+			// 		//double *sK = static_cast<double *> (spectrumK);
+			// 		//double *sG = static_cast<double *> (spectrumG);
+			// 		//double *sV = static_cast<double *> (spectrumV);
+			// 		axion->unfoldField();
+			// 		powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
+			// 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+			// 		fprintf(file_power,  "%f ", (*axion->zV()));
+			// 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
+			// 		fprintf(file_power,  "%f ", (*axion->zV()));
+			// 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
+			// 		fprintf(file_power,  "%f ", (*axion->zV()));
+			// 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+			// 		//writeMap (axion, index);
+			// 		//NUMBER SPECTRUM
+			// 		spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+			// 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+			// 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
+			// 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
+			// 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
+			// 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
+			// 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
+			// 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
+			// 		axion->foldField();
+			// 		fflush(file_power);
+			// 		fflush(file_spectrum);
+			//
+			// 	}
 			}
 
 			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
@@ -455,56 +455,52 @@ int	main (int argc, char *argv[])
 				cmplxToTheta	(axion, fCount);
 //				printf("")
 			}
-
-			axion->unfoldField2D(sliceprint);
-			writeMap (axion, index);
-
-			if ( axion->Fieldo() == FIELD_SAXION  )
-			{
-	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-
-				//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-
-				if (commRank() == 0)
-				{
-					if (axion->Precision() == FIELD_DOUBLE)
-					{
-						double *eR = static_cast<double *> (eRes);
-						fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-						//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-						printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-					}
-					else
-					{
-						double *eR = static_cast<double *> (eRes);
-						fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-			//			float *eR = static_cast<float *> (eRes);
-			//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-						//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-						printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-					}
-					fflush(file_energy);
-				}
-			}
+//
+ 			axion->unfoldField2D(sliceprint);
+ 			writeMap (axion, index);
+//
+// 			if ( axion->Fieldo() == FIELD_SAXION  )
+// 			{
+// 	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+// 				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+//
+// 				//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
+//
+// 				if (commRank() == 0)
+// 				{
+// 					if (axion->Precision() == FIELD_DOUBLE)
+// 					{
+// 						double *eR = static_cast<double *> (eRes);
+// 						fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
+// 						//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+// 						printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+// 					}
+// 					else
+// 					{
+// 						double *eR = static_cast<double *> (eRes);
+// 						fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
+// 			//			float *eR = static_cast<float *> (eRes);
+// 			//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
+// 						//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
+// 						printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
+// 					}
+// 					fflush(file_energy);
+// 				}
+// 			}
 
 			if (axion->Fieldo() == FIELD_AXION)
 			{
-				printf("sol1");fflush(stdout);
+
 				axion->unfoldField();
-				printf("sol2");fflush(stdout);
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-				printf("sol3");fflush(stdout);
+
 //				axion->foldField();
-				printf("sol4");fflush(stdout);
+
 				fprintf(file_contbin,"%f ", (*(axion->zV() )));
-				// first two numbers are average and max contrast -1
-				//[used as reference value] normalised to 10^6
+				// first three numbers are dens average, max contrast and maximum of the binning
 				for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 				fprintf(file_contbin, "\n");
-				printf("sol5");fflush(stdout);
 				fflush(file_contbin);
-				printf("sol6\n");
 
 //				axion->unfoldField();
 				//POWER SPECTRUM
@@ -546,10 +542,11 @@ int	main (int argc, char *argv[])
 	if (cDev != DEV_GPU)
 		axion->unfoldField();
 
+	// axion->unfoldField();
+	// axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
-
-	//if (nSteps > 0)
-	//	writeConf(axion, index);
+	// if (nSteps > 0)
+	// writeConf(axion, index);
 
 	if (axion->Fieldo() == FIELD_SAXION)
 	{
@@ -573,20 +570,13 @@ int	main (int argc, char *argv[])
 	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 	printMpi("GFlops: %.3f\n", fCount->GFlops());
 	printMpi("GBytes: %.3f\n", fCount->GBytes());
-	printMpi("0--------------------------------------------------\n");
 
 	trackFree(&eRes, ALLOC_TRACK);
-	printMpi("1--------------------------------------------------\n");
 	trackFree(&str,  ALLOC_ALIGN);
-	printMpi("2--------------------------------------------------\n");
 	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
-	printMpi("3--------------------------------------------------\n");
 	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
-	printMpi("4--------------------------------------------------\n");
 	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
-	printMpi("5--------------------------------------------------\n");
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
-	printMpi("6--------------------------------------------------\n");
 
 	delete fCount;
 	delete axion;
