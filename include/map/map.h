@@ -4,4 +4,5 @@
 	#include "scalar/scalarField.h"
 
 	void	writeMap	(Scalar *axion, const int index);
+//	void	writeDensityMap3D	(Scalar *axion, const int index)
 #endif

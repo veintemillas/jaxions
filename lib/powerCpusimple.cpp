@@ -15,7 +15,8 @@ using namespace std;
 template<typename Float>
 void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,	int n1, int powmax, int kmax, double mass2)
 {
-	double voli = 1.0/((double) n1*n1*n1) ;
+	printf("sizeL=%f\n",sizeL);
+	double norma = pow(sizeL,3.)/(8.*pow((double) n1,6)) ;
 
 	double minus1costab [kmax+1] ;
 
@@ -24,7 +25,7 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < kmax + 1; i++)
 	{
-		minus1costab[i] = id2*(1.0 - cos(((double) 6.2831853071796*(i/n1))));
+		minus1costab[i] = id2*(1.0 - cos(((double) (6.2831853071796*i)/n1)));
 	}
 
 	#pragma omp parallel for default(shared) schedule(static)
@@ -71,6 +72,8 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 
 //	Gthetak = |FFT[i]+(FTT[N-i])*|^2 k^2/(MASS2*w)	/8
 //	Vthetak = |FFT[i]+(FTT[N-i])*|^2 /w	/8
+
+//	those are the values for a given mode vec k
 
 
 	#pragma omp parallel
@@ -119,12 +122,24 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 					double w = sqrt(k2 + mass2);
 					//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 
-					ftk = ft[ix+iy*n1+iz*n1*n1]; // Era ft2
+					ftk = ft[ix+iy*n1+iz*n1*n1]; 									// Era ft2
 					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
 
+					if(!(kz==0||kz==kmax))
+					{
+					// -k is in the negative kx volume
+					// it not summed in the for loop so include a factor of 2
+					spectrumK_private[bin] += 2.*pow(abs(ftk - ftmk),2)/w;
+					spectrumG_private[bin] += 2.*pow(abs(ftk + ftmk),2)*k2/(mass2*w);		//mass2 is included
+					spectrumV_private[bin] += 2.*pow(abs(ftk + ftmk),2)/w;								//mass2 is included
+					}
+					else
+					{
+					// -k is in the kz=0 so both k and -k will be summed in the loop
 					spectrumK_private[bin] += pow(abs(ftk - ftmk),2)/w;
 					spectrumG_private[bin] += pow(abs(ftk + ftmk),2)*k2/(mass2*w);		//mass2 is included
 					spectrumV_private[bin] += pow(abs(ftk + ftmk),2)/w;								//mass2 is included
+					}
 				}//x
 
 			}//y
@@ -145,9 +160,9 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 	#pragma omp parallel for default(shared)
 	for(int n=0; n<powmax; n++)
 	{
-		static_cast<double*>(spectrumK)[n] *= voli;
-		static_cast<double*>(spectrumG)[n] *= voli;
-		static_cast<double*>(spectrumV)[n] *= voli;
+		static_cast<double*>(spectrumK)[n] *= norma;
+		static_cast<double*>(spectrumG)[n] *= norma;
+		static_cast<double*>(spectrumV)[n] *= norma;
 	}
 
 	printf(" ... Axion spectrum printed\n");
@@ -169,7 +184,7 @@ void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spe
 	const int kmax = n1/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
 	//const double z = axion->zV();
-	double mass2 = 9.*pow((*axion->zV()),nQcd+2);
+	double mass2 = 9.*pow((*axion->zV()),nQcd+2.);
 
 	// 	New scheme
 
@@ -205,7 +220,7 @@ void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spe
 template<typename Float>
 void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectrumN, void *spectrumV,	int n1, int powmax, int kmax)
 {
-	double voli = 1.0/((double) n1*n1*n1) ;
+	double norma = pow(sizeL,3.)/(8.*pow((double) n1,6)) ;
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < powmax; i++)
@@ -253,12 +268,23 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 					double k2 =	kx*kx + ky*ky + kz*kz;
 					int bin  = (int) floor(sqrt(k2)) 	;
 
-					ftk = ft[ix+iy*n1+iz*n1*n1]; // Era ft2
+					ftk = 			ft[ix+iy*n1+iz*n1*n1];
 					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
 
+					if(!(kz==0||kz==kmax))
+					{
+					// -k is in the negative kx volume
+					// it not summed in the for loop so include a factor of 2
+					spectrumT_private[bin] += 2*pow(abs(ftk + ftmk),2);
+					spectrumN_private[bin] += 2.;
+					spectrumV_private[bin] += 2*pow(abs(ftk - ftmk),2);
+					}
+					else
+					{
 					spectrumT_private[bin] += pow(abs(ftk + ftmk),2);
 					spectrumN_private[bin] += 1.;
 					spectrumV_private[bin] += pow(abs(ftk - ftmk),2);
+					}
 				}//x
 
 			}//y
@@ -280,8 +306,8 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 	#pragma omp parallel for default(shared)
 	for(int n=0; n<powmax; n++)
 	{
-		static_cast<double*>(spectrumT)[n] *= voli;
-		static_cast<double*>(spectrumV)[n] *= voli;
+		static_cast<double*>(spectrumT)[n] *= norma;
+		static_cast<double*>(spectrumV)[n] *= norma;
 	}
 
 	printf(" ... power spectrum printed\n");
@@ -309,6 +335,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void
 			else
 			{
 			//ASSUMES THAT M2 FIELD WAS ALREADY CREATED BY THE DENSITY ANALYSIS PART
+			//which is already normalised by the average density
 			}
 	//	FFT m2 inplace ->
 			axion->fftCpuSpectrum(1);

@@ -142,3 +142,77 @@ void	writeMap	(Scalar *axion, const int index)
 	fclose(rhoWrite);
 	fclose(densWrite);
 }
+
+//--------------------------------------------------
+// OVERDENSITY MAP 3D
+//--------------------------------------------------
+
+//
+// template<typename Float>
+// void	writeDatafromTheta3D	(Float *m2, const Float z, const size_t n1, const size_t size, FILE *DDDWrite)
+// {
+// 	fprintf(DDDWrite,   "# %d %f %f %f %d \n", sizeN , sizeL , sizeL/sizeN , z , 1);
+//
+// 	// ASSUMES M2 CONTAINS DENSITY CONTRAST
+// 	// ASSUMES M2 UNFOLDED
+// 	// PRINTS ONLY POINTS WITH D>10
+// 	size_t n2 = n1*n1 ;
+//
+// 	#pragma omp parallel for default(shared) schedule(static)
+// 	for (size_t idx = 0; idx < size; idx++)
+// 	{
+// 		int ix, iy, iz;
+// 			if (m2[n2+idx].real() > 10.)
+// 			{
+// 				iz = idx/n2 ;
+// 				iy = (idx%n2)/n1 ;
+// 				ix = (idx%n2)%n1 ;
+// 				#pragma omp critical
+// 				{
+// 					fprintf(DDDWrite,   "%d %d %d %f", ix, iy, iz, m2[n2+idx].real()) ;
+// 				}
+// 			}
+// 	}
+//
+// }
+//
+//
+// void	writeDensityMap3D	(Scalar *axion, const int index)
+// {
+// 	if (commRank() != 0)
+// 		return;
+//
+// 	//--------------------------------------------------
+// 	// OVERDENSITY MAP 3D
+// 	//--------------------------------------------------
+//
+// 	char sto3D[256];
+//
+// 	const size_t n1 = axion->Length();
+// 	const size_t size = axion->Size();
+//
+// 	sprintf(sto3D,  "out/con/con-%05d.txt",   index);
+//
+// 	FILE *DDDWrite = NULL;
+//
+// 	if ((DDDWrite  = fopen(sto3D, "w+")) == NULL)
+// 	{
+// 		printf ("Couldn't open file %s for writing\n", sto3D);
+// 		return ;
+// 	}
+//
+// 	if ( axion->Fieldo() == FIELD_AXION)
+// 	{
+// 		switch (axion->Precision())
+// 		{
+// 			case FIELD_DOUBLE:
+// 				writeDatafromTheta3D(static_cast<complex<double> *>(axion->m2Cpu()), (*axion->zV()),         n1, size, DDDWrite);
+// 				break;
+//
+// 			case FIELD_SINGLE:
+// 				writeDatafromTheta3D(static_cast<complex<float> *> (axion->m2Cpu()), (float) (*axion->zV()), n1, size, DDDWrite);
+// 				break;
+// 		}
+// 	}
+// 	fclose(3DWrite);
+// }
