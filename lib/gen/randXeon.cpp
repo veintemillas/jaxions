@@ -50,13 +50,20 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			size_t iy = (pidx%Vo)/sizeN ;
 			size_t ix = (pidx%Vo)%sizeN ;
 			// assumes N even;
-			iz = (iz%sizeN)-(sizeN*((iz-1)/(sizeN/2)));
-			iy = (iy%sizeN)-(sizeN*((iy-1)/(sizeN/2)));
-			ix = (ix%sizeN)-(sizeN*((ix-1)/(sizeN/2)));
-			Float theta = (Float) -5.*(ix*ix+iy*iy+iz*iz)/(Vo);
-			theta = exp(theta);
+			// iz = (iz%sizeN)-(sizeN*((iz-1)/(sizeN/2)));
+			// iy = (iy%sizeN)-(sizeN*((iy-1)/(sizeN/2)));
+			// ix = (ix%sizeN)-(sizeN*((ix-1)/(sizeN/2)));
+			if (iz>sizeN/2) {iz = iz-sizeN; }
+			if (iy>sizeN/2) {iy = iy-sizeN; }
+			if (ix>sizeN/2) {ix = ix-sizeN; }
+
+			Float theta = ((Float) (ix*ix+iy*iy+iz*iz))/(Vo);
+			theta = exp(-20*theta);
 			m[idx] = std::complex<Float>(cos(theta), sin(theta));
-			//printf("MINICLUSTER data! (%d,%d,%d) %f %f \n",ix,iy,iz,m[idx].real(),m[idx].imag());
+			// if(ix<2)
+			// {
+			// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (pidx%Vo)%sizeN, ix,iy,iz,m[idx].real(),m[idx].imag());
+			// }
 		}
 	}
 
