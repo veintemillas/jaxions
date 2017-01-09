@@ -176,6 +176,7 @@ class	Scalar
 	void	theta2m2();//int *window);	// COPIES THETA + I dTHETA/dz     into m2
 	double	maxtheta();								// RETURNS THE MAX VALUE OF THETA [OR IM m]
 	double	thetaDIST(int numbins, void *thetabin);							// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
+	void	denstom(); 	//
 
 	void	squareGpu();				// Squares the m2 field in the Gpu
 	void	squareCpu();				// Squares the m2 field in the Cpu
@@ -1786,6 +1787,7 @@ void	Scalar::setField (FieldType fType)
 
 				const size_t	mBytes = v3*fSize;
 
+
 				// OJO ! COMMENTED AWAY WITHOUT CARE ABOUT USE_XEON!
 				// #ifdef	USE_XEON
 				// if (!lowmem)
@@ -2074,10 +2076,12 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 
 	//	AUX VARIABLES
 	Float maxi = 0.;
+	Float maxibin = 0.;
 	double toti = 0.;
 
 	exchangeGhosts(FIELD_M);
 
+	printf("p0 ");fflush(stdout);
 	if(fieldType == FIELD_AXION)
 	{
 		Float *mTheta = static_cast<Float*> (m);
@@ -2131,6 +2135,8 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			} //END Y LOOP
 		} //END Z LOOP
 
+		printf("p1 ");fflush(stdout);
+
 		toti = toti/n3 ;
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=n2; idx < n3+n2; idx++)
@@ -2141,7 +2147,11 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 
 		if (maxi >100.)
 		{
-			maxi = 100.;
+			maxibin = 100.;
+		}
+		else
+		{
+			maxibin = maxi ;
 		}
 		//BIN delta from 0 to maxi+1
 		size_t auxintarray[numbins] ;
@@ -2151,11 +2161,16 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		(static_cast<double *> (contbin))[bin] = 0.;
 		auxintarray[bin] = 0;
 		}
-
+		// 	SAVE AVERAGE
+		//	MAXIMUM VALUE OF ENERGY CONTRAST
+		//	MAXIMUM VALUE TO BE BINNED
 		(static_cast<double *> (contbin))[0] = toti;
 		(static_cast<double *> (contbin))[1] = maxi;
+		(static_cast<double *> (contbin))[2] = maxibin;
 
-		Float norma = (maxi)/(numbins-2) ;
+		printf("p2 ");fflush(stdout);
+
+		Float norma = (maxi)/(numbins-3) ;
 		for(size_t i=n2; i < n3+n2; i++)
 		{
 			int bin;
@@ -2166,12 +2181,35 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 				auxintarray[bin] +=1;
 			}
 		}
+
+		printf("p3 ");fflush(stdout);
+
 		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t bin = 0; bin < numbins-2 ; bin++)
+		for(size_t bin = 0; bin < numbins-3 ; bin++)
 		{
-			(static_cast<double *> (contbin))[bin+2] = (double) auxintarray[bin];
+			(static_cast<double *> (contbin))[bin+3] = (double) auxintarray[bin];
 		}
 
+		printf("p4 ");fflush(stdout);
+
+		//PRINT 3D maps
+		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t idx = 0; idx < n3; idx++)
+		{
+			size_t ix, iy, iz;
+				if (mCONT[n2+idx].real() > 5.)
+				{
+					iz = idx/n2 ;
+					iy = (idx%n2)/n1 ;
+					ix = (idx%n2)%n1 ;
+					#pragma omp critical
+					{
+						fprintf(file_con,   "%d %d %d %f \n", ix, iy, iz, mCONT[n2+idx].real() ) ;
+					}
+				}
+		}
+
+		printf("p5 ");fflush(stdout);
 
 	}
 	else // FIELD_SAXION
@@ -2179,7 +2217,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			// DO NOTHING
 	}
 
-
+	printf("p6\n ");fflush(stdout);
 	printf("%d/?? - - - ENERGYdens = %f Max contrast = %f\n ", index, toti, maxi);
 	fflush (stdout);
 	return ;
@@ -2416,4 +2454,51 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 //}//END PARALLEL
 
 	return thetamaxi ;
+}
+
+//--------------------------------------------------------------------
+//		DENS M2 -> M
+//--------------------------------------------------------------------
+
+//	FOR FINAL OUTPUT, COPIES M2 INTO M
+
+void	Scalar::denstom()//int *window)
+{
+	double thetamaxi = maxtheta();
+
+//	printf("hallo von inside %f\n", thetamaxi);
+
+if(fieldType == FIELD_AXION)
+{
+	if (precision == FIELD_SINGLE)
+	{
+	float *mTheta = static_cast<float*> (m);
+	complex<float> *mCONT = static_cast<complex<float>*> (m2);
+
+	#pragma omp parallel for default(shared)
+		for(size_t idx=0; idx < n3; idx++)
+			{
+				mTheta[n2+idx] = mCONT[n2+idx].real();
+			}
+
+	}
+	else //	FIELD_DOUBLE
+	{
+	double *mThetad = static_cast<double*> (m);
+	complex<double> *mCONTd = static_cast<complex<double>*> (m2);
+
+	#pragma omp parallel for default(shared)
+		for(size_t idx=0; idx < n3; idx++)
+			{
+				mThetad[n2+idx] = mCONTd[n2+idx].real();
+			}
+	}
+	printf("dens to m ... done\n");
+
+}
+else
+{
+	printf("dens to m not available for SAXION\n");
+}
+
 }

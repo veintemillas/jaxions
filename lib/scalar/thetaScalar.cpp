@@ -87,12 +87,16 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 	}
 
 	delete	theta;
+	delete	munge;
 
 	field->setField(FIELD_AXION);
-	printf("folding... \n");fflush(stdout);
-	(*munge)(FOLD_ALL);
+	//printf("folding... \n");fflush(stdout);
 
-	delete	munge;
+	Folder	     *munge2 = new Folder(field);
+	(*munge2)(FOLD_ALL);
+	
+	delete	munge2;
+
 
 	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
 

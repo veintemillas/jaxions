@@ -7,8 +7,10 @@
 	{
 		private:
 
-		const int shift;
-		const int fSize;
+//		const int shift;
+//		const int fSize;
+		int shift;
+		int fSize;
 		const int Lz;
 		const int n1;
 		const int n2;

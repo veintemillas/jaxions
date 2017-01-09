@@ -500,13 +500,13 @@ int	main (int argc, char *argv[])
 
 			if (axion->Fieldo() == FIELD_AXION)
 			{
-				printf("sol1");fflush(stdout);
+				printf("sol1\n");fflush(stdout);
 				//axion->unfoldField();
 				munge(UNFOLD_ALL);
-				printf("sol2");fflush(stdout);
+				printf("sol2\n");fflush(stdout);
 
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-
+				printf("sol3\n");fflush(stdout);
 //				axion->foldField();
 
 				fprintf(file_contbin,"%f ", (*(axion->zV() )));
@@ -514,10 +514,12 @@ int	main (int argc, char *argv[])
 				for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 				fprintf(file_contbin, "\n");
 				fflush(file_contbin);
+				printf("sol4\n");fflush(stdout);
 
 //				axion->unfoldField();
 				//POWER SPECTRUM
 				powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
+				printf("sol5\n");fflush(stdout);
 				//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 				fprintf(file_power,  "%f ", (*axion->zV()));
 				for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
@@ -525,6 +527,7 @@ int	main (int argc, char *argv[])
 				for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
 				fprintf(file_power,  "%f ", (*axion->zV()));
 				for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+				printf("sol6\n");fflush(stdout);
 				//writeMap (axion, index);
 				//NUMBER SPECTRUM
 				spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
@@ -536,6 +539,7 @@ int	main (int argc, char *argv[])
 				fprintf(file_spectrum,  "%f ", (*axion->zV()));
 				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
 				//axion->foldField();
+				printf("sol7\n");fflush(stdout);
 				munge(FOLD_ALL);
 				fflush(file_power);
 				fflush(file_spectrum);

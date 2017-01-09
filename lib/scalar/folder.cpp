@@ -19,8 +19,10 @@ class	Folder
 {
 	private:
 
-	const int shift;
-	const int fSize;
+//		const int shift;
+//		const int fSize;
+	int shift;
+	int fSize;
 	const int Lz;
 	const int n1;
 	const int n2;
@@ -45,15 +47,19 @@ class	Folder
 	void	operator()(FoldType fType, size_t Cz=0);
 };
 
-	Folder:: Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), fSize(scalar->DataSize()), n1(scalar->Length()), n2(scalar->Surf()),
-					 n3(scalar->Size()), shift(scalar->DataAlign()/scalar->DataSize())
+//	Folder:: Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), fSize(scalar->DataSize()), n1(scalar->Length()), n2(scalar->Surf()),
+//					 n3(scalar->Size()), shift(scalar->DataAlign()/scalar->DataSize())
+		Folder:: Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), n1(scalar->Length()), n2(scalar->Surf()),
+										n3(scalar->Size())
 {
 }
 
 template<typename cFloat>
 void	Folder::foldField()
 {
-	//printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize, shift, n2);
+	shift = field->DataAlign()/field->DataSize();
+	fSize = field->DataSize();
+	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
@@ -86,7 +92,11 @@ void	Folder::unfoldField()
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
-	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize,shift,n2);
+	shift = field->DataAlign()/field->DataSize();
+	fSize = field->DataSize();
+
+
+	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(),shift,n2);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -116,11 +126,15 @@ void	Folder::unfoldField2D (const size_t sZ)
 	if ((sZ < 0) || (sZ > field->Depth()))
 		return;
 
+	shift = field->DataAlign()/field->DataSize();
+	fSize = field->DataSize();
+
+
 	cFloat *m = static_cast<cFloat *> (field->mCpu());
 	cFloat *v = static_cast<cFloat *> (field->vCpu());
 
 	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
-	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d, field = %d ", mAlign, fSize,shift, fieldType == FIELD_SAXION);
+	printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);
 	//fflush(stdout);
 
 	#pragma omp parallel for schedule(static)
@@ -143,7 +157,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 	switch (fType)
 	{
 		case	FOLD_ALL:
-							
+
 			switch(field->Precision())
 			{
 				case	FIELD_DOUBLE:
@@ -186,7 +200,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 			break;
 
 		case	UNFOLD_ALL:
-							
+
 			switch(field->Precision())
 			{
 				case	FIELD_DOUBLE:
@@ -225,11 +239,11 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 					break;
 			}
-			
+
 			break;
-	
+
 		case	UNFOLD_SLICE:
-							
+
 			switch(field->Precision())
 			{
 				case	FIELD_DOUBLE:
@@ -268,7 +282,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 					break;
 			}
-			
+
 			break;
 
 		default:
