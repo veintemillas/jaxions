@@ -5,6 +5,7 @@
 #include "scalar/scalarField.h"
 #include "enum-field.h"
 #include "utils/memAlloc.h"
+#include "utils/parse.h"
 
 template<typename Float>
 void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size_t Vf)
@@ -28,8 +29,11 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 
 		#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 		for (size_t idx=Vo; idx<Vf; idx++)
+		{
 			//RANDOM INITIAL CONDITIONS
-			m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+			//m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
+			//m[idx]   = std::complex<Float>(0.2, uni(mt64)/1.);
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM WITH A LITTLE 0 MODE
 			//m[idx]   = std::complex<Float>(1.0, 0.1+uni(mt64)/1.);
 			//MORE AXIONS
@@ -38,6 +42,29 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//m[idx]   = std::complex<Float>(0.0, 1.000001);
 			//to produce only SAXIONS for testing
 			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
+
+			//	MINICLUSTER
+			//printf("\nMINICLUSTER IC!\n\n");
+			size_t pidx = idx-Vo;
+			size_t iz = pidx/Vo ;
+			size_t iy = (pidx%Vo)/sizeN ;
+			size_t ix = (pidx%Vo)%sizeN ;
+			// assumes N even;
+			// iz = (iz%sizeN)-(sizeN*((iz-1)/(sizeN/2)));
+			// iy = (iy%sizeN)-(sizeN*((iy-1)/(sizeN/2)));
+			// ix = (ix%sizeN)-(sizeN*((ix-1)/(sizeN/2)));
+			if (iz>sizeN/2) {iz = iz-sizeN; }
+			if (iy>sizeN/2) {iy = iy-sizeN; }
+			if (ix>sizeN/2) {ix = ix-sizeN; }
+
+			Float theta = ((Float) (ix*ix+iy*iy+iz*iz))/(Vo);
+			theta = exp(-20*theta);
+			m[idx] = std::complex<Float>(cos(theta), sin(theta));
+			// if(ix<2)
+			// {
+			// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (pidx%Vo)%sizeN, ix,iy,iz,m[idx].real(),m[idx].imag());
+			// }
+		}
 	}
 
 	trackFree((void **) &sd, ALLOC_TRACK);

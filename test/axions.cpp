@@ -132,7 +132,7 @@ int	main (int argc, char *argv[])
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 1 ;
 	double maximumtheta = 3.141597;
-	size_t sliceprint = 10;
+	size_t sliceprint = 0;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;
@@ -404,7 +404,7 @@ int	main (int argc, char *argv[])
 
 			counter++;
 		} // zsubloop
-		printf("p\n");fflush(stdout);
+
 		//printMpi ("Transfer to CPU ...");
 		//fflush (stdout);
 		//axion->transferCpu(FIELD_MV);
@@ -423,38 +423,39 @@ int	main (int argc, char *argv[])
 				printMpi("stLength = %d ", nstrings);
 				fflush (stdout);
 
-				if (nstrings < 200 )
-				{
-					//POWER SPECTRUM
-					//double *sK = static_cast<double *> (spectrumK);
-					//double *sG = static_cast<double *> (spectrumG);
-					//double *sV = static_cast<double *> (spectrumV);
-					//axion->unfoldField();
-					munge(UNFOLD_ALL);
-					powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-					fprintf(file_power,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
-					fprintf(file_power,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
-					fprintf(file_power,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
-					//writeMap (axion, index);
-					//NUMBER SPECTRUM
-					spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-					//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-					fprintf(file_spectrum,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
-					fprintf(file_spectrum,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
-					fprintf(file_spectrum,  "%f ", (*axion->zV()));
-					for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
-					//axion->foldField();
-					munge(FOLD_ALL);
-					fflush(file_power);
-					fflush(file_spectrum);
 
-				}
+				// if (nstrings < 200 )
+				// {
+				// 	//POWER SPECTRUM
+				// 	//double *sK = static_cast<double *> (spectrumK);
+				// 	//double *sG = static_cast<double *> (spectrumG);
+				// 	//double *sV = static_cast<double *> (spectrumV);
+				// 	//axion->unfoldField();
+				// 	munge(UNFOLD_ALL);
+				// 	powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
+				// 	//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+				// 	fprintf(file_power,  "%f ", (*axion->zV()));
+				// 	for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
+				// 	fprintf(file_power,  "%f ", (*axion->zV()));
+				// 	for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
+				// 	fprintf(file_power,  "%f ", (*axion->zV()));
+				// 	for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+				// 	//writeMap (axion, index);
+				// 	//NUMBER SPECTRUM
+				// 	spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+				// 	//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+				// 	fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				// 	for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
+				// 	fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				// 	for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
+				// 	fprintf(file_spectrum,  "%f ", (*axion->zV()));
+				// 	for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
+				// 	//axion->foldField();
+				// 	munge(FOLD_ALL);
+				// 	fflush(file_power);
+				// 	fflush(file_spectrum);
+				// 	}
+
 			}
 
 			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
@@ -503,18 +504,16 @@ int	main (int argc, char *argv[])
 				//axion->unfoldField();
 				munge(UNFOLD_ALL);
 				printf("sol2");fflush(stdout);
+
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-				printf("sol3");fflush(stdout);
+
 //				axion->foldField();
-				printf("sol4");fflush(stdout);
+
 				fprintf(file_contbin,"%f ", (*(axion->zV() )));
-				// first two numbers are average and max contrast -1
-				//[used as reference value] normalised to 10^6
+				// first three numbers are dens average, max contrast and maximum of the binning
 				for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 				fprintf(file_contbin, "\n");
-				printf("sol5");fflush(stdout);
 				fflush(file_contbin);
-				printf("sol6\n");
 
 //				axion->unfoldField();
 				//POWER SPECTRUM
@@ -563,42 +562,19 @@ int	main (int argc, char *argv[])
 	//if (nSteps > 0)
 	//	writeConf(axion, index);
 
-	if (axion->Fieldo() == FIELD_SAXION)
-	{
-		if (sPrec == FIELD_DOUBLE)
-		{
-			printMpi("\n Examples m: m[0]= %le + %le*I, m[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->mCpu())[S0].real(), static_cast<complex<double> *> (axion->mCpu())[S0].imag(),
-		 									    static_cast<complex<double> *> (axion->mCpu())[SF].real(), static_cast<complex<double> *> (axion->mCpu())[SF].imag());
-			printMpi("\n Examples v: v[0]= %le + %le*I, v[N3-1]= %le + %le*I\n",static_cast<complex<double> *> (axion->vCpu())[V0].real(), static_cast<complex<double> *> (axion->vCpu())[V0].imag(),
-											    static_cast<complex<double> *> (axion->vCpu())[VF].real(), static_cast<complex<double> *> (axion->vCpu())[VF].imag());
-		} else {
-			printMpi("\n Examples m: m[0]= %e + %e*I, m[N3-1]= %e + %e*I\n",  static_cast<complex<float> *> (axion->mCpu())[S0].real(), static_cast<complex<float> *> (axion->mCpu())[S0].imag(),
-											  static_cast<complex<float> *> (axion->mCpu())[SF].real(), static_cast<complex<float> *> (axion->mCpu())[SF].imag());
-			printMpi("\n Examples v: v[0]= %e + %e*I, v[N3-1]= %e + %e*I\n\n",static_cast<complex<float> *> (axion->vCpu())[V0].real(), static_cast<complex<float> *> (axion->vCpu())[V0].imag(),
-											  static_cast<complex<float> *> (axion->vCpu())[VF].real(), static_cast<complex<float> *> (axion->vCpu())[VF].imag());
-		}
-	}
-
 	printMpi("z_final = %f\n", *axion->zV());
 	printMpi("#_steps = %i\n", counter);
 	printMpi("#_prints = %i\n", index);
 	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 	printMpi("GFlops: %.3f\n", fCount->GFlops());
 	printMpi("GBytes: %.3f\n", fCount->GBytes());
-	printMpi("0--------------------------------------------------\n");
 
 	trackFree(&eRes, ALLOC_TRACK);
-	printMpi("1--------------------------------------------------\n");
 	trackFree(&str,  ALLOC_ALIGN);
-	printMpi("2--------------------------------------------------\n");
 	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
-	printMpi("3--------------------------------------------------\n");
 	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
-	printMpi("4--------------------------------------------------\n");
 	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
-	printMpi("5--------------------------------------------------\n");
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
-	printMpi("6--------------------------------------------------\n");
 
 	delete fCount;
 	delete axion;

@@ -84,8 +84,8 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 			grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
 			gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
 			//JAVIER added an artificial factor of 1.0, can be changed
-			gradx = gradx*gradx + grady*grady + gradz*gradz ;
-			if (gradx > 0)
+			gradx = gradx*gradx + grady*grady + gradz*gradz +0.00001;
+			if (gradx > 0.)
 			{
 				sss  = 3.0*sqrt(LLa)*zia*deltaa/sqrt(gradx);
 				//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));

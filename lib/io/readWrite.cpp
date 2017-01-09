@@ -144,7 +144,8 @@ void	writeConf (Scalar *axion, int index)
 	/*	Create space for writing the raw data to disk with chunked access	*/
 
 	total = sizeN*sizeN*totlZ*2;
-	slab  = axion->Surf()*2;
+	//slab  = axion->Surf()*2;
+	slab  = axion->Surf();
 
 	totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
 
@@ -216,8 +217,9 @@ void	writeConf (Scalar *axion, int index)
 		fflush (stdout);
 
 		/*	Select the slab in the file	*/
-
-		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*((hsize_t) (2*axion->Surf()));
+		// JAVIER CHANGED 2*axion->Surf to axion->Surf
+		//offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*((hsize_t) (2*axion->Surf()));
+		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*((hsize_t) (axion->Surf()));
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		//JAVIER commented next
@@ -226,11 +228,14 @@ void	writeConf (Scalar *axion, int index)
 
 		/*	Write raw data	*/
 
-		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()*2))*(1+zDim)*dataSize));
+		// JAVIER CHANGED 2*axion->Surf to axion->Surf
+		//H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()*2))*(1+zDim)*dataSize));
+		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+((hsize_t) (axion->Surf()))*(1+zDim)*dataSize));
 		//JAVIER commented next
 		//printf ("Rank %d write m\n", myRank);
 		//fflush (stdout);
-		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()*2))*zDim*dataSize));
+		//H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()*2))*zDim*dataSize));
+		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+((hsize_t) (axion->Surf()))*zDim*dataSize));
 		//JAVIER commented next
 		//printf ("Rank %d write v\n", myRank);
 		fflush (stdout);
