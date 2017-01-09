@@ -59,7 +59,7 @@ void	Folder::foldField()
 {
 	shift = field->DataAlign()/field->DataSize();
 	fSize = field->DataSize();
-	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
+	//printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
@@ -96,7 +96,7 @@ void	Folder::unfoldField()
 	fSize = field->DataSize();
 
 
-	printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(),shift,n2);
+	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(),shift,n2);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -134,7 +134,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 	cFloat *v = static_cast<cFloat *> (field->vCpu());
 
 	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
-	printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);
+	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);
 	//fflush(stdout);
 
 	#pragma omp parallel for schedule(static)

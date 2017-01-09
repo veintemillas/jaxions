@@ -2081,7 +2081,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 
 	exchangeGhosts(FIELD_M);
 
-	printf("p0 ");fflush(stdout);
+
 	if(fieldType == FIELD_AXION)
 	{
 		Float *mTheta = static_cast<Float*> (m);
@@ -2135,7 +2135,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			} //END Y LOOP
 		} //END Z LOOP
 
-		printf("p1 ");fflush(stdout);
+
 
 		toti = toti/n3 ;
 		#pragma omp parallel for default(shared) schedule(static)
@@ -2168,7 +2168,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		(static_cast<double *> (contbin))[1] = maxi;
 		(static_cast<double *> (contbin))[2] = maxibin;
 
-		printf("p2 ");fflush(stdout);
+
 
 		Float norma = (maxi)/(numbins-3) ;
 		for(size_t i=n2; i < n3+n2; i++)
@@ -2182,7 +2182,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			}
 		}
 
-		printf("p3 ");fflush(stdout);
+
 
 		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t bin = 0; bin < numbins-3 ; bin++)
@@ -2190,7 +2190,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			(static_cast<double *> (contbin))[bin+3] = (double) auxintarray[bin];
 		}
 
-		printf("p4 ");fflush(stdout);
+
 
 		//PRINT 3D maps
 		#pragma omp parallel for default(shared) schedule(static)
@@ -2209,7 +2209,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 				}
 		}
 
-		printf("p5 ");fflush(stdout);
+
 
 	}
 	else // FIELD_SAXION
@@ -2217,7 +2217,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			// DO NOTHING
 	}
 
-	printf("p6\n ");fflush(stdout);
+
 	printf("%d/?? - - - ENERGYdens = %f Max contrast = %f\n ", index, toti, maxi);
 	fflush (stdout);
 	return ;
