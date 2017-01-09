@@ -66,6 +66,7 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 	Folder	     *munge = new Folder(field);
 	//NORMALLY CALLED WHEN FOLDED
 	(*munge)(UNFOLD_ALL);
+	delete	munge;
 
 	switch (field->Device())
 	{
@@ -90,8 +91,8 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	field->setField(FIELD_AXION);
 	printf("folding... \n");fflush(stdout);
+	Folder	     *munge = new Folder(field);
 	(*munge)(FOLD_ALL);
-
 	delete	munge;
 
 	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
