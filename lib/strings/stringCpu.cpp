@@ -436,7 +436,7 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 
 
 	fclose(file_strings);
-	printf(" ... String printed\n");
+	//printf(" ... String printed\n");
 
 	return stlength ;
 }
@@ -695,7 +695,7 @@ int	analyzeStrUNFolded	(Scalar *axion, const int index)
 	}
 
 	fclose(file_strings);
-	printf(" %d ... String printed\n", (int) stlength);
+	//printf(" %d ... String printed\n", (int) stlength);
 
 	return stlength ;
 }
