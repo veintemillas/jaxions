@@ -5,22 +5,16 @@
 #include <complex>
 #include <vector>
 
-#include "code3DCpu.h"
-#include "propagator/propagator.h"
-#include "propagator/propSimple.h"
+#include "propagator/allProp.h"
 #include "energy/energy.h"
 #include "enum-field.h"
-#include "utils/index.h"
-#include "utils/parse.h"
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
+#include "utils/utils.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
 #include "map/map.h"
 #include "strings/strings.h"
 #include "powerCpu.h"
-#include "scalar.h"
-#include "propagator/propTheta.h"
+#include "scalar/scalar.h"
 
 using namespace std;
 

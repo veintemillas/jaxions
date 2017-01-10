@@ -10,12 +10,10 @@
 #include<vector>
 
 #include"code3DCpu.h"
-#include"scalar/scalarField.h"
-#include"propagator/propagator.h"
+#include"scalar/scalar.h"
+#include "propagator/allProp.h"
 #include"enum-field.h"
-#include"utils/index.h"
-#include"utils/parse.h"
-#include"utils/flopCounter.h"
+#include"utils/utils.h"
 #include"io/readWrite.h"
 #include"comms/comms.h"
 
