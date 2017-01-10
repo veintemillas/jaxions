@@ -31,7 +31,8 @@ size_t kMax  = 2;
 size_t iter  = 40;
 size_t parm1 = 0;
 
-ConfType cType = CONF_NONE;
+ConfType  cType = CONF_NONE;
+FieldType fType = FIELD_SAXION;
 
 char *initFile = NULL;
 char outName[128] = "axion\0";
@@ -57,12 +58,12 @@ void	printUsage(char *name)
 	printf("--qcd   [int]                   Defines the exponent of topological susceptibility (default 3).\n");
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
 	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--ftype saxion/axion            Defines the kind of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
 	printf("--kmax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 2)\n");
 	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("--alpha [float]                 Defines the alpha parameter for the smoothing (default 0.143).\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
 	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
-	printf("--load  [filename]              Loads filename as initial conditions (default out/initial_conditions_m(_single).txt).\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");

@@ -28,5 +28,6 @@ extern bool uPrec;
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
 extern ConfType	      cType;
+extern FieldType      fType;
 
 int	parseArgs (int argc, char *argv[]);

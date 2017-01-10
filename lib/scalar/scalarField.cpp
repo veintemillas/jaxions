@@ -59,8 +59,7 @@ class	Scalar
 
 	size_t	fSize;
 	size_t	mAlign;
-	//JAVI
-	int sHift;
+	int	shift;
 
 	double	*z;
 
@@ -98,8 +97,8 @@ class	Scalar
 
 	public:
 
-			 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
-				ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
+			 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
+				FieldType fType, ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
 			~Scalar();
 
 	void		*mCpu() { return m; }
@@ -140,14 +139,14 @@ class	Scalar
 	FieldPrecision	Precision() { return precision; }
 	DeviceType	Device()    { return device; }
 	LambdaType	Lambda()    { return lambdaType; }
-	FieldType	Fieldo()    { return fieldType; }
+	FieldType	Field()     { return fieldType; }
 
 	void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
 	size_t		DataSize () { return fSize; }
 	size_t		DataAlign() { return mAlign; }
 	//JAVI
-	int		shift() { return sHift; }
+	int		Shift() { return shift; }
 
 	double		*zV() { return z; }
 	const double	*zV() const { return z; }
@@ -196,30 +195,44 @@ class	Scalar
 
 #include "gen/genConf.h"
 
-	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp, ConfType cType, const size_t parm1,
-		       const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), precision(prec), device(dev),
-		       lowmem(lowmem)
+	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType fType, ConfType cType,
+		       const size_t parm1, const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), fieldType(fType),
+		       precision(prec), device(dev), lowmem(lowmem)
 {
-	fieldType  = FIELD_SAXION;
+	size_t nData;
+
 	lambdaType = LAMBDA_Z2;
+
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			nData = 2;
+			break;
+
+		case FIELD_AXION:
+			nData = 1;
+			break;
+
+		default:
+			printf("Unrecognized field type\n");
+			exit(1);
+			break;
+	}
 
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
-
-		fSize = sizeof(double)*2;
-		break;
+			fSize = sizeof(double)*nData;
+			break;
 
 		case FIELD_SINGLE:
-
-		fSize = sizeof(float)*2;
-		break;
+			fSize = sizeof(float)*nData;
+			break;
 
 		default:
-
-		printf("Unrecognized precision\n");
-		exit(1);
-		break;
+			printf("Unrecognized precision\n");
+			exit(1);
+			break;
 	}
 
 	switch	(dev)
@@ -243,8 +256,8 @@ class	Scalar
 			mAlign = 16;
 			break;
 	}
-	//JAVI
-	sHift = mAlign/fSize;
+
+	shift = mAlign/fSize;
 
 	if (n2*fSize % mAlign)
 	{
@@ -270,18 +283,18 @@ class	Scalar
 	else
 		m2 = m2X = NULL;
 #else
-	printf("Allocating m and v\n");
+	printf("Allocating m and v\n"); fflush(stdout);
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
 	if (!lowmem)
 	{
-	printf("Allocating m2\n");
+		printf("Allocating m2\n"); fflush(stdout);
 		alignAlloc ((void**) &m2, mAlign, mBytes);
 	}
 	else
 	{
-	printf("LOWMEM!\n");
+		printf("LOWMEM!\n"); fflush(stdout);
 		m2 = NULL;
 	}
 #endif
@@ -306,7 +319,8 @@ class	Scalar
 			exit(1);
 		}
 	}
-	printf("set m,v=0\n");
+
+	printf("set m,v=0\n"); fflush(stdout);
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*n3);
 
@@ -369,48 +383,16 @@ class	Scalar
 
 	if (cType == CONF_NONE)
 	{
-/*		if (fileName != NULL)
-		{
-			FILE *fileM = fopen(fileName,"r");
-
-			if (fileM == 0)
-			{
-				printf("Sorry! Could not find initial Conditions\n");
-				exit(1);
-			}
-
-			fread(static_cast<char *> (m) + fSize*n2, fSize*2, n3, fileM);
-			fclose(fileM);
-
-			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
-//			scaleField (FIELD_M, zI);
-
-			if (prec == FIELD_DOUBLE)
-			{
-				#pragma omp parallel for schedule(static)
-				for (size_t i=n2; i<n3+n2; i++)
-				{
-					complex<double> tmp((i-n2)&1, (i-n2)&1);//1-((i-n2)&1));
-					static_cast<complex<double>*>(m)[i] = tmp;
-				}
-			}
-			else
-			{
-				#pragma omp parallel for schedule(static)
-				for (size_t i=n2; i<n3+n2; i++)
-				{
-					complex<float> tmp((i-n2)&1, (i-n2)&1);//1-((i-n2)&1));
-					static_cast<complex<float>*>(m)[i] = tmp;
-				}
-			}
-			memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
-		}
-*/
 	} else {
-		if (cType == CONF_KMAX)
-			initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+		if (fieldType == FIELD_AXION)
+		{
+			printf("Configuration generation not supported for Axion fields... yet\n");
+		} else {
+			if (cType == CONF_KMAX)
+				initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
-		genConf	(this, cType, parm1, parm2, fCount);
+			genConf	(this, cType, parm1, parm2, fCount);
+		}
 	}
 
 	if (dev == DEV_XEON)
@@ -774,273 +756,6 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 	transferGhosts(fIdx);
 }
 
-//	USAR TEMPLATES PARA ESTO
-/*
-void	Scalar::foldField()
-{
-	int	shift;
-
-	shift = mAlign/fSize;
-	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize, shift, n2);
-
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-
-			if (fieldType == FIELD_SAXION)
-			{
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
-
-								static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
-								static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
-							}
-				}
-			} else {
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
-
-								static_cast<double *> (m)[dIdx+n2] = static_cast<double *> (m)[oIdx];
-								static_cast<double *> (v)[dIdx]    = static_cast<double *> (m)[oIdx+n2+n3];
-							}
-				}
-			}
-
-			break;
-
-		case FIELD_SINGLE:
-
-			if (fieldType == FIELD_SAXION)
-			{
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
-
-								static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
-								static_cast<complex<float> *> (v)[dIdx]    = static_cast<complex<float> *> (m)[oIdx+n2+n3];
-							}
-				}
-			} else {
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-								size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
-
-								static_cast<float *> (m)[dIdx+n2] = static_cast<float *> (m)[oIdx];
-								static_cast<float *> (v)[dIdx]    = static_cast<float *> (m)[oIdx+n2+n3];
-							}
-				}
-			}
-			break;
-	}
-	printf("Done!\n");
-	return;
-}
-
-void	Scalar::unfoldField()
-{
-	int	shift;
-
-	shift = mAlign/fSize;
-	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", mAlign, fSize,shift,n2);
-
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-
-			if (fieldType == FIELD_SAXION)
-			{
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = iy*n1*shift + ix*shift + sy;
-								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-
-								static_cast<complex<double> *> (m)[dIdx+n2] = static_cast<complex<double> *> (m)[oIdx];
-								static_cast<complex<double> *> (v)[dIdx]    = static_cast<complex<double> *> (m)[oIdx+n2+n3];
-							}
-				}
-			} else {
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = iy*n1*shift + ix*shift + sy;
-								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-
-								static_cast<double *> (m)[dIdx+n2] = static_cast<double *> (m)[oIdx];
-								static_cast<double *> (v)[dIdx]    = static_cast<double *> (m)[oIdx+n2+n3];
-							}
-				}
-			}
-			break;
-
-		case FIELD_SINGLE:
-
-			if (fieldType == FIELD_SAXION)
-			{
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = iy*n1*shift + ix*shift + sy;
-								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-
-								static_cast<complex<float> *> (m)[dIdx+n2] = static_cast<complex<float> *> (m)[oIdx];
-								static_cast<complex<float> *> (v)[dIdx]    = static_cast<complex<float> *> (m)[oIdx+n2+n3];
-							}
-				}
-			} else {
-				for (size_t iz=0; iz < Lz; iz++)
-				{
-					memcpy (                    m,                  static_cast<char *>(m) + fSize*n2*(1+iz), fSize*n2);
-					memcpy (static_cast<char *>(m) + fSize*(n3+n2), static_cast<char *>(v) + fSize*n2*iz,     fSize*n2);
-
-					for (size_t iy=0; iy < n1/shift; iy++)
-						for (size_t ix=0; ix < n1; ix++)
-							for (size_t sy=0; sy<shift; sy++)
-							{
-								size_t oIdx = iy*n1*shift + ix*shift + sy;
-								size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
-
-								static_cast<float *> (m)[dIdx+n2] = static_cast<float *> (m)[oIdx];
-								static_cast<float *> (v)[dIdx]    = static_cast<float *> (m)[oIdx+n2+n3];
-							}
-				}
-			}
-			break;
-	}
-	//printf("Done!\n");
-	return;
-}
-
-void	Scalar::unfoldField2D(const size_t sZ)
-{
-	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
-	int	shift;
-
-	shift = mAlign/fSize;
-	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d, field = %d ", mAlign, fSize,shift, fieldType == FIELD_SAXION);
-	//fflush(stdout);
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-		//printf("Case double n1/shift=%d, shift=%d ...", n1/shift, shift);
-		if (fieldType == FIELD_SAXION)
-		{
-			for (size_t iy=0; iy < n1/shift; iy++)
-				for (size_t ix=0; ix < n1; ix++)
-					for (size_t sy=0; sy<shift; sy++)
-					{
-						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-						//this copies m into buffer 1
-						static_cast<complex<double> *> (m)[dIdx] = static_cast<complex<double> *> (m)[oIdx+n2];
-						//this copies v into buffer last
-						static_cast<complex<double> *> (m)[dIdx+n3+n2] = static_cast<complex<double> *> (v)[oIdx];
-					}
-		}
-		else // FIELD_AXION
-		{
-			for (size_t iy=0; iy < n1/shift; iy++)
-				for (size_t ix=0; ix < n1; ix++)
-					for (size_t sy=0; sy<shift; sy++)
-					{
-						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-						//this copies m into buffer 1
-						static_cast<double *> (m)[dIdx] = static_cast<double *> (m)[oIdx+n2];
-						//this copies v into buffer last
-						static_cast<double *> (m)[dIdx+n3+n2] = static_cast<double *> (v)[oIdx];
-					}
-		}
-		break;
-
-		case FIELD_SINGLE:
-		//printf("Case single n1/shift=%d, shift=%d ...", n1/shift, shift);
-		if (fieldType == FIELD_SAXION)
-		{
-			for (size_t iy=0; iy < n1/shift; iy++)
-				for (size_t ix=0; ix < n1; ix++)
-					for (size_t sy=0; sy<shift; sy++)
-					{
-						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-						//this copies m into buffer 1
-						static_cast<complex<float> *> (m)[dIdx] = static_cast<complex<float> *> (m)[oIdx+n2];
-						//this copies v into buffer last
-						static_cast<complex<float> *> (m)[dIdx+n3+n2] = static_cast<complex<float> *> (v)[oIdx];
-					}
-		}
-		else // FIELD_AXION
-		{
-			for (size_t iy=0; iy < n1/shift; iy++)
-				for (size_t ix=0; ix < n1; ix++)
-					for (size_t sy=0; sy<shift; sy++)
-					{
-						size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-						size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-						//this copies m into buffer 1
-						static_cast<float *> (m)[dIdx] = static_cast<float *> (m)[oIdx+n2];
-						//this copies v into buffer last
-						static_cast<float *> (m)[dIdx+n3+n2] = static_cast<float *> (v)[oIdx];
-					}
-		}
-		break;
-	}
-
-	return;
-}
-*/
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::prepareCpu(int *window)
 {
@@ -1327,451 +1042,6 @@ void	Scalar::fftGpu	(int sign)
 	runCudaFFT(m2_d, sign);
 #endif
 }
-/*
-			// ----------------------------------------------------------------------
-			// 		INITIAL CONDITIONS
-			// ----------------------------------------------------------------------
-
-
-void	Scalar::genConf	(ConfType cType, const size_t parm1, const double parm2)
-{
-
-	fflush (stdout);
-
-	switch (cType)
-	{
-		case CONF_NONE:
-		break;
-//------------------------------------------------------------------------------
-		case CONF_KMAX:		// kMax = parm1, kCrit = parm2
-
-//		if (device == DEV_CPU || device == DEV_XEON)	//	Do this always...
-		{
-			switch (precision)
-			{
-				case FIELD_DOUBLE:
-					printf ("Generating conf (KMAX) (double prec) ... ");
-					fflush (stdout);
-					momConf(parm1, parm2);
-					printf ("Normalising field ");
-					normaliseField(FIELD_M);
-					normaCOREField( (double) alpha );
-					fflush (stdout);
-					printf ("Done!\n");
-				break;
-
-				case FIELD_SINGLE:
-					printf ("Generating conf (KMAX) (single prec) ... ");
-					fflush (stdout);
-					momConf(parm1, (float) parm2);
-					printf ("Normalising field ");
-					normaliseField(FIELD_M);
-					normaCOREField( (float) alpha );
-					printf ("Done!\n");
-					fflush (stdout);
-				break;
-
-				default:
-					printf("Wrong precision!\n");
-					exit(1);
-				break;
-			}
-
-			printf ("FFT ... ");
-			fflush (stdout);
-			fftCpu (1);	// FFTW_BACKWARD
-			printf ("Done!\n");
-			fflush (stdout);
-
-		}
-
-		exchangeGhosts(FIELD_M);
-
-		break;
-//------------------------------------------------------------------------------
-		case CONF_TKACHEV:		// kMax = parm1, kCrit = parm2
-
-//		if (device == DEV_CPU || device == DEV_XEON)	//	Do this always...
-		{
-			switch (precision)
-			{
-				case FIELD_DOUBLE:
-				printf ("Generating conf (TKA) (double prec) ... ");
-				fflush (stdout);
-				momConf(parm1, parm2);
-
-				break;
-
-				case FIELD_SINGLE:
-				printf ("Generating conf (TKA) (single prec) ... ");
-				fflush (stdout);
-				momConf(parm1, (float) parm2);
-
-				break;
-
-				default:
-				printf("Wrong precision!\n");
-				exit(1);
-
-				break;
-			}
-			printf ("FFT ... ");
-			fflush (stdout);
-			fftCpu (1);	// FFTW_BACKWARD
-			printf ("Done!\n");
-			fflush (stdout);
-		}
-		exchangeGhosts(FIELD_M);
-		break;
-//------------------------------------------------------------------------------
-		case CONF_SMOOTH:	// iter = parm1, alpha = parm2
-
-		switch (device)
-		{
-			case	DEV_XEON:
-			case	DEV_CPU:
-
-			printf ("Generating random conf (SMOOTH) ...");
-			fflush (stdout);
-			randConf ();
-			printf("Smoothing (sIter=%d) ... ",parm1);
-			fflush (stdout);
-			smoothConf (parm1, parm2);
-			printf("Done !\n ");
-			fflush (stdout);
-			printf ("Normalising field ");
-			switch (precision)
-			{
-				case FIELD_DOUBLE:
-					printf ("(double prec) ... ");
-					fflush (stdout);
-					normaliseField(FIELD_M);
-					normaCOREField( (double) alpha );
-					printf ("Done!\n");
-					fflush (stdout);
-				break;
-
-				case FIELD_SINGLE:
-				printf ("(single prec) ... ");
-				fflush (stdout);
-				normaliseField(FIELD_M);
-				normaCOREField( (float) alpha );
-				printf ("Done!\n");
-				fflush (stdout);
-			break;
-
-			case	DEV_GPU:
-			break;
-			default:
-			printf("Wrong precision! \n");
-			exit(1);
-			break;
-		}
-//------------------------------------------------------------------------------
-		break;
-
-		default:
-
-		printf("Configuration type not recognized\n");
-		exit(1);
-
-		break;
-
-	} // END SwITCH TYPE KMAX vs SMOOTH ... & TKACHEV
-//------------------------------------------------------------------------------
-	if (cType != CONF_NONE)
-	{
-		// printf ("Normalising field ");
-		// //JAVIER normalisation
-		// switch (precision)
-		// {
-		// 	case FIELD_DOUBLE:
-		//
-		// 	printf ("(double prec) ... ");
-		// 	fflush (stdout);
-		//
-		// 	normaliseField(FIELD_M);
-		// 	normaCOREField( (double) alpha );
-		//
-		// 	printf ("Done!\n");
-		// 	fflush (stdout);
-		// 	break;
-		//
-		// 	case FIELD_SINGLE:
-		//
-		// 	printf ("(single prec) ... ");
-		// 	fflush (stdout);
-		//
-		// 	normaliseField(FIELD_M);
-		// 	normaCOREField( (float) alpha );
-		//
-		// 	printf ("Done!\n");
-		// 	fflush (stdout);
-		// 	break;
-		//
-		// 	default:
-		// 	printf("Wrong precision! \n");
-		// 	exit(1);
-		// 	break;
-		}
-
-		//JAVIER
-		printf("Copying m to v ... ");
-		fflush (stdout);
-
-		memcpy (v, static_cast<char *> (m) + fSize*n2, fSize*n3);
-
-		printf("Scaling m to mu=z*m ... ");
-		fflush (stdout);
-
-//		scaleField (FIELD_M, *z);
-		printf("Done!\n");
-		fflush (stdout);
-	}
-}
-/*
-				//----------------------------------------------------------------------
-				//		FUNCTIONS FOR INIT. COND.
-				//----------------------------------------------------------------------
-
-
-void	Scalar::randConf ()
-{
-	int	maxThreads = omp_get_max_threads();
-	int	*sd;
-
-	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
-
-	std::random_device seed;		// Totally random seed coming from memory garbage
-
-	for (int i=0; i<maxThreads; i++)
-		sd[i] = seed();
-
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-		printf(" (double prec) ");
-		#pragma omp parallel default(shared)
-		{
-			int nThread = omp_get_thread_num();
-
-			//JAVIER commented next line, it seems to work
-			//printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
-
-			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-			//JAVIER included negative values
-			std::uniform_real_distribution<double> uni(-1.0, 1.0);
-
-			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-			for (size_t idx=n2; idx<n2+n3; idx++)
-				static_cast<complex<double>*> (m)[idx]   = complex<double>(uni(mt64), uni(mt64));
-		}
-		//JAVIER control print
-		printf(" Done! ");
-		//printf	("CHECK: %d, %d+1 got (%lf,%lf)  \n", 2*n2,2*n2, static_cast<double *> (m)[2*n2], static_cast<double *> (m)[2*n2+1]);
-
-		break;
-
-		case FIELD_SINGLE:
-		printf(" (single prec) ");
-		#pragma omp parallel default(shared)
-		{
-			int nThread = omp_get_thread_num();
-
-			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-			//JAVIER included negative values
-			std::uniform_real_distribution<float> uni(-1.0, 1.0);
-
-			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-			for (size_t idx=n2; idx<n2+n3; idx++)
-				static_cast<complex<float>*> (m)[idx]   = complex<float>(uni(mt64), uni(mt64));
-
-			//printf ("Thread %d finished loop ", nThread);
-			fflush (stdout);
-		}
-		printf(" Done! ");
-		break;
-
-		default:
-
-		printf("Unrecognized precision\n");
-		trackFree((void **) &sd, ALLOC_TRACK);
-		exit(1);
-
-		break;
-	}
-
-	trackFree((void **) &sd, ALLOC_TRACK);
-}// End Scalar::randConf ()
-
-
-template<typename Float>
-void	Scalar::iteraField(const size_t iter, const Float alpha)
-{
-	const Float One = 1.;
-	const Float OneSixth = (1./6.);
-
-	exchangeGhosts(FIELD_M);
-
-	complex<Float> *mCp = static_cast<complex<Float>*> (m);
-	complex<Float> *vCp = static_cast<complex<Float>*> (v);
-	//JAVIER
-	//printf("smoothing check m[0]= (%lf,%lf)\n",  ((Float *) m)[n2] , ((Float *) m)[n2] );
-	//printf("the same? ????? m[0]= (%lf,%lf)\n",  ((Float *) mCp)[n2] , ((Float *) mCp)[n2] ); yes
-
-	for (size_t it=0; it<iter; it++)
-	{
-		#pragma omp parallel default(shared)
-		{
-			#pragma omp for schedule(static)
-			for (size_t idx=0; idx<n3; idx++)
-			{
-				size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
-				indexXeon::idx2Vec (idx, X, n1);
-
-				if (X[0] == 0)
-				{
-					iPx = idx + 1;
-					iMx = idx + n1 - 1;
-				} else {
-					if (X[0] == n1 - 1)
-					{
-						iPx = idx - n1 + 1;
-						iMx = idx - 1;
-					} else {
-						iPx = idx + 1;
-						iMx = idx - 1;
-					}
-				}
-
-				if (X[1] == 0)
-				{
-					iPy = idx + n1;
-					iMy = idx + n2 - n1;
-				} else {
-					if (X[1] == n1 - 1)
-					{
-						iPy = idx - n2 + n1;
-						iMy = idx - n1;
-					} else {
-						iPy = idx + n1;
-						iMy = idx - n1;
-					}
-				}
-
-				iPz = idx + n2;
-				iMz = idx - n2;
-				//Uses v to copy the smoothed configuration
-				vCp[idx]   = alpha*mCp[idx+n2] + OneSixth*(One-alpha)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
-				vCp[idx]   = vCp[idx]/abs(vCp[idx]);
-			}
-		}
-		//Copies v to m
-		memcpy (static_cast<char *>(m) + fSize*n2, v, fSize*n3);
-		exchangeGhosts(FIELD_M);
-
-		//printf("smoothing check m[0]= (%lf,%lf)\n",  real(((complex<double> *) m)[n2]), real(mCp[n2]) ); both give the same
-		//printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
-	}//END iteration loop
-		//printf("smoothing check m[0],m[1]= (%lf,%lf), (%lf,%lf)\n",  real(mCp[n2]), imag(mCp[n2]),real(mCp[n2+1]), imag(mCp[n2+1]) );
-}//END Scalar::iteraField
-
-void	Scalar::smoothConf (const size_t iter, const double alpha)
-{
-	switch	(precision)
-	{
-		case	FIELD_DOUBLE:
-		iteraField (iter, alpha);
-		break;
-
-		case	FIELD_SINGLE:
-		iteraField (iter, (float) alpha);
-		break;
-
-		default:
-		printf("Unrecognized precision\n");
-		exit(1);
-		break;
-	}
-}
-
-
-
-
-template<typename Float>
-void	Scalar::momConf (const int kMax, const Float kCrit)
-{
-	const Float Twop = 2.0*M_PI;
-
-	complex<Float> *fM;
-
-	if (!lowmem)
-		fM = static_cast<complex<Float>*> (m2);
-	else
-		fM = static_cast<complex<Float>*> (static_cast<void*>(static_cast<char*>(m) + fSize*n2));
-
-	int	maxThreads = omp_get_max_threads();
-	int	*sd;
-
-	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
-
-
-	std::random_device seed;		// Totally random seed coming from memory garbage
-
-	for (int i=0; i<maxThreads; i++)
-		sd[i] = 0;//seed();
-
-	//printf("kMax,Tz,Lz,nSplit,commRank():%d,%lu,%lu,%lu,%d\n", kMax, Tz, Lz, nSplit,commRank());
-	printf("kMax,Tz,Lz,nSplit,commRank():%d,%d,%d,%d,%d\n", kMax, Tz, Lz, nSplit,commRank());
-
-	#pragma omp parallel default(shared)
-	{
-		int nThread = omp_get_thread_num();
-
-	//	printf	("Thread %d got seed %d\n", nThread, sd[nThread]);
-
-		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-		std::uniform_real_distribution<Float> uni(0.0, 1.0);
-
-
-		#pragma omp for schedule(static)
-		for (int oz = 0; oz < Tz; oz++)
-		{
-			if (oz/Lz != commRank())
-				continue;
-
-			int pz = oz - (oz/(Tz >> 1))*Tz;
-
-			//printf("Thread %d got pz=%d -- py-range (%d,%d)\n", nThread,pz,-kMax,kMax);
-
-
-			for(int py = -kMax; py <= kMax; py++)
-			{
-				for(int px = -kMax; px <= kMax; px++)
-				{
-					size_t idx  = n2 + ((px + n1)%n1) + ((py+n1)%n1)*n1 + ((pz+Tz)%Tz)*n2 - commRank()*n3;
-					int modP = px*px + py*py + pz*pz;
-
-					//printf("modP=%d,idx=%lu,idx=%d =%d\n",modP,idx,idx,kMax*kMax);
-
-					if (modP <= kMax*kMax)
-					{
-						Float mP = sqrt(((Float) modP))/((Float) kCrit);
-						Float vl = Twop*(uni(mt64));
-						Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
-
-						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
-						//printf("oz=%d,Tz=%lu,(px,py,pz)=(%d,%d,%d),idx=%lu, fM[idx]=(%f,%f)\n",oz,Tz,px,py,pz,idx,real(fM[idx]),imag(fM[idx]));
-
-					}
-				} //END  px loop
-			}		//END  py loop
-		}//END oz FOR
-	}
-
-	trackFree((void **) &sd, ALLOC_TRACK);
-}
-*/
 
 void	Scalar::setField (FieldType fType)
 {
@@ -1794,6 +1064,7 @@ void	Scalar::setField (FieldType fType)
 				}
 
 				fSize /= 2;
+				shift *= 2;
 
 				const size_t	mBytes = v3*fSize;
 
@@ -1879,9 +1150,6 @@ template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho, Float &Gtheta, Float &Vrho, Float &Vtheta, Float &Krho, Float &Ktheta) // TEST
 {
-	int	shift;
-	shift = mAlign/fSize;
-
 	const Float deltaa2 = pow(sizeL/sizeN,2) ;
 
 	exchangeGhosts(FIELD_M);
@@ -1966,9 +1234,6 @@ template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta, double &Vrho, double &Vtheta, double &Krho, double &Ktheta) // TEST
 {
-	int	shift;
-	shift = mAlign/fSize;
-
 	const Float deltaa2 = pow(sizeL/sizeN,2) ;
 
 	exchangeGhosts(FIELD_M);
@@ -1993,8 +1258,8 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 		#pragma omp parallel for default(shared) schedule(static) reduction(+:Vrho1,Vtheta1, Krho1, Ktheta1, Grho1, Gtheta1)
 		for (size_t iz=0; iz < Lz; iz++)
 		{
-			Float modul, modfac	;
-			size_t idd	;
+			Float modul, modfac;
+			size_t idd;
 
 			for (size_t iy=0; iy < n1/shift; iy++)
 				for (size_t ix=0; ix < n1; ix++)

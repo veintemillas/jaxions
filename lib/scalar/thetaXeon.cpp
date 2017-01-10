@@ -47,8 +47,9 @@ void	toThetaKernelXeon (Scalar *sField)
 		//displaces the vField from buffer' to aux position in varray (but in zone already read)
 		memcpy (vFieldaux + Vo-S, mField + Go, sizeof(Float)*S);
 	}
-// copies v from auxiliary position to final position in second half of complex m
-memcpy (vField, vFieldaux, sizeof(Float)*V);
+
+	// copies v from auxiliary position to final position in second half of complex m
+	memcpy (vField, vFieldaux, sizeof(Float)*V);
 
 }
 

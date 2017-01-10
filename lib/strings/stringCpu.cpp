@@ -2,7 +2,6 @@
 #include <complex>
 
 #include "utils/index.h"
-//#include "comms.h"
 #include "scalar/scalarField.h"
 #include "utils/parse.h"
 
@@ -188,12 +187,12 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 	//    JAVI STRINGS FOLDED
 	//--------------------------------------------------
 
-	const size_t n1 = axion->Length();
-	const size_t n2 = axion->Surf();
-	const size_t shift = axion->shift();
-	const size_t Lz = axion->Depth()	;
-	size_t Nshift=n1/shift;
-	const size_t fSize = axion->DataSize();
+	const size_t n1     = axion->Length();
+	const size_t n2     = axion->Surf();
+	const size_t shift  = axion->Shift();
+	const size_t Lz     = axion->Depth()	;
+	size_t 	     Nshift = n1/shift;
+	const size_t fSize  = axion->DataSize();
 
 //	const int myRank = commRank();
 	int hand;
@@ -317,23 +316,24 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 
 
 		}
+
 		break;
 
 		case	FIELD_SINGLE:
 		{
-		complex<float> *mM = static_cast<complex<float>*> (axion->mCpu());
+			complex<float> *mM = static_cast<complex<float>*> (axion->mCpu());
 
-		#pragma omp parallel for default(shared) schedule(static) reduction(+:stlength)
-		for (size_t iz=0; iz<Lz; iz++)
-		{
+			#pragma omp parallel for default(shared) schedule(static) reduction(+:stlength)
+			for (size_t iz=0; iz<Lz; iz++)
+			{
 
-			complex<double> s1, s2, s3, s4;
-			size_t sy, sy1, iys, iys1;
-			size_t fIdx000,fIdx010 ;
+				complex<double> s1, s2, s3, s4;
+				size_t sy, sy1, iys, iys1;
+				size_t fIdx000,fIdx010 ;
 
-			//printf("-%d-",iz);fflush (stdout);
-			//DOES NOT TAKE THE LAST Iy=N-1 FOR SIMPLICITY
-			for (size_t iy=0; iy<n1-1; iy++)
+				//printf("-%d-",iz);fflush (stdout);
+				//DOES NOT TAKE THE LAST Iy=N-1 FOR SIMPLICITY
+				for (size_t iy=0; iy<n1-1; iy++)
 				{
 					sy   =  iy/Nshift;
 					iys  =  iy%Nshift;
@@ -422,14 +422,13 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 
 
 		}
+
 		break;
 
 		default:
-		{
-		printf("Unrecognized precision\n");
-		exit(1);
-		break;
-		}
+			printf("Unrecognized precision\n");
+			exit(1);
+			break;
 	}
 
 
@@ -449,7 +448,7 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 //
 // 	const int n1 = axion->Length();
 // 	const int n2 = axion->Surf();
-// 	const int shift = axion->shift();
+// 	const int shift = axion->Shift();
 // 	const int Lz = axion->Depth()	;
 // 	int Nshift=n1/shift;
 //
@@ -511,12 +510,12 @@ int	analyzeStrUNFolded	(Scalar *axion, const int index)
 	//    JAVI STRINGS UNFOLDED
 	//--------------------------------------------------
 
-	const size_t n1 = axion->Length();
-	const size_t n2 = axion->Surf();
-	const size_t shift = axion->shift();
-	const size_t Lz = axion->Depth()	;
-	size_t Nshift=n1/shift;
-	const size_t fSize = axion->DataSize();
+	const size_t n1     = axion->Length();
+	const size_t n2     = axion->Surf();
+	const size_t shift  = axion->Shift();
+	const size_t Lz     = axion->Depth()	;
+	size_t       Nshift = n1/shift;
+	const size_t fSize  = axion->DataSize();
 
 //	const int myRank = commRank();
 	int hand;

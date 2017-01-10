@@ -328,7 +328,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void
 	// 	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
 
 			//PATCH
-			if ( axion->Fieldo() == FIELD_SAXION)
+			if ( axion->Field() == FIELD_SAXION)
 			{
 				energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
 			}

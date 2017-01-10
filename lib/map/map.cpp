@@ -111,7 +111,7 @@ void	writeMap	(Scalar *axion, const int index)
 		return ;
 	}
 
-	if ( axion->Fieldo() == FIELD_SAXION)
+	if ( axion->Field() == FIELD_SAXION)
 	{
 		switch (axion->Precision())
 		{
@@ -124,7 +124,7 @@ void	writeMap	(Scalar *axion, const int index)
 				break;
 		}
 	}
-	else // Fieldo() = FIELD_AXION
+	else // Field() = FIELD_AXION
 	{
 		switch (axion->Precision())
 		{
@@ -201,7 +201,7 @@ void	writeMap	(Scalar *axion, const int index)
 // 		return ;
 // 	}
 //
-// 	if ( axion->Fieldo() == FIELD_AXION)
+// 	if ( axion->Field() == FIELD_AXION)
 // 	{
 // 		switch (axion->Precision())
 // 		{

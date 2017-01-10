@@ -59,13 +59,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if (sPrec != FIELD_DOUBLE)
-		sprintf(fileName, "data/initial_conditions_m_single.txt");
-	else
-		sprintf(fileName, "data/initial_conditions_m.txt");
-
-	//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid);
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, NULL, lowmem, zGrid, CONF_NONE, 0, 0, NULL);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, FIELD_SAXION, CONF_NONE, 0, 0, NULL);
 	readConf(&axion, 0);
 
 	//--------------------------------------------------

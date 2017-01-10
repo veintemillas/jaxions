@@ -59,8 +59,7 @@ class	Scalar
 
 	size_t	fSize;
 	size_t	mAlign;
-	//JAVI
-	int sHift;
+	int	shift;
 
 	double	*z;
 
@@ -140,13 +139,12 @@ class	Scalar
 	FieldPrecision	Precision() { return precision; }
 	DeviceType	Device()    { return device; }
 	LambdaType	Lambda()    { return lambdaType; }
-	FieldType	Fieldo()    { return fieldType; }
+	FieldType	Field()     { return fieldType; }
 
 	void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
 	size_t		DataSize()  { return fSize; }
-	//JAVI
-	int		shift() { return sHift; }
+	int		Shift()     { return shift; }
 
 	double		*zV() { return z; }
 	const double	*zV() const { return z; }
@@ -154,10 +152,6 @@ class	Scalar
 	void		setZ(const double newZ) { *z = newZ; }
 
 	void	setField	(FieldType field);
-
-	void	foldField	();
-	void	unfoldField	();
-	void	unfoldField2D	(const size_t sZ);	// Just for the maps
 
 	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu

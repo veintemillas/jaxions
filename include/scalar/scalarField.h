@@ -35,8 +35,7 @@
 
 		size_t	fSize;
 		size_t	mAlign;
-		//JAVI
-		int sHift;
+		int	shift;
 
 		double	*z;
 
@@ -49,25 +48,14 @@
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
-//		void	scaleField(FieldIndex fIdx, double factor);
-//		void	randConf();
-//		void	smoothConf(const size_t iter, const double alpha);
-
-//		template<typename Float>
-//		void	iteraField(const size_t iter, const Float alpha);
-
-		//JAVIER
 		template<typename Float>
 		//void	ENERGY(const Float zz, FILE *enWrite);
 		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
 
-//		template<typename Float>
-//		void	momConf(const size_t kMax, const Float kCrit);
-
 		public:
 
-				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, char fileName[], bool lowmem, const int nSp,
-					ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
+				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
+					FieldType fType, ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
 				~Scalar();
 
 		void		*mCpu() { return m; }
@@ -108,14 +96,14 @@
 		FieldPrecision	Precision() { return precision; }
 		DeviceType	Device()    { return device; }
 		LambdaType	Lambda()    { return lambdaType; }
-		FieldType	Fieldo()    { return fieldType; }
+		FieldType	Field()     { return fieldType; }
 
 		void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize () { return fSize; }
 		size_t		DataAlign() { return mAlign; }
-		//JAVI
-		int		shift() { return sHift; }
+
+		int		Shift() { return shift; }
 
 		double		*zV() { return z; }
 		const double	*zV() const { return z; }
@@ -123,18 +111,11 @@
 		void		setZ(const double newZ) { *z = newZ; }
 
 		void	setField	(FieldType field);
-/*
-		void	foldField	();
-		void	unfoldField	();
-		void	unfoldField2D	(const size_t sZ);	// Just for the maps
-*/
+
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
-		//void	sendGhosts(FieldIndex fIdx);		// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
-		void	sendGhosts(FieldIndex fIdx, CommOperation commOp);		// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
-		//void	recvGhosts(FieldIndex fIdx);		// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
-		//void	waitGhosts();				// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
+		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
 		void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
@@ -152,8 +133,6 @@
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
-
-//		void	genConf	(ConfType cType, const size_t parm1, const double parm2);
 
 		//void	writeENERGY (double zzz, FILE *enwrite);
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST

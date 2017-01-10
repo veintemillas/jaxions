@@ -7,8 +7,6 @@
 	{
 		private:
 
-//		const int shift;
-//		const int fSize;
 		int shift;
 		int fSize;
 		const int Lz;

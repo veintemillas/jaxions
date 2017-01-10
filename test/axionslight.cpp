@@ -19,12 +19,6 @@
 #include "map/map.h"
 #include "strings/strings.h"
 #include "powerCpu.h"
-/*
-#include "scalar/scalarField.h"
-#include "scalar/normField.h"
-#include "scalar/scaleField.h"
-#include "scalar/thetaScalar.h"
-*/
 #include "scalar.h"
 #include "propagator/propTheta.h"
 
@@ -64,22 +58,14 @@ int	main (int argc, char *argv[])
 	char fileName[256];
 
 	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
-	{
-		if (sPrec != FIELD_DOUBLE)
-			sprintf(fileName, "data/initial_conditions_m_single.txt");
-		else
-			sprintf(fileName, "data/initial_conditions_m.txt");
-		//This prepares the axion field from default files
-		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0, fCount);
-		printMpi("Eo\n");
-	}
+		printMpi("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
 		if (fIndex == -1)
 		{
 			//This generates initial conditions
 			printMpi("Generating scalar ... ");
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
 			printMpi("Done! \n");
 		}
 		else
@@ -321,7 +307,7 @@ int	main (int argc, char *argv[])
 			if (commRank() == 0)
 			{
 
-				if (axion->Fieldo() == FIELD_SAXION)
+				if (axion->Field() == FIELD_SAXION)
 				{
 					if (sPrec == FIELD_DOUBLE) {
 						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].imag(),
@@ -346,7 +332,7 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 
-			if (axion->Fieldo() == FIELD_SAXION)
+			if (axion->Field() == FIELD_SAXION)
 			{
 				propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
 			}
@@ -363,7 +349,7 @@ int	main (int argc, char *argv[])
 			counter++;
 		} // ZSUBLOOP
 
-			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 0.5 )
+			if ( axion->Field() == FIELD_SAXION && (*axion->zV()) > 0.5 )
 			{
 				printMpi("z=%f | strings (z>0.5) ", (*axion->zV()));
 				fflush (stdout);
@@ -373,7 +359,7 @@ int	main (int argc, char *argv[])
 
 			}
 
-			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
+			if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
 			{
 				printMpi("\n");
 				printMpi("--------------------------------------------------\n");
@@ -395,7 +381,7 @@ int	main (int argc, char *argv[])
 	printMpi("--------------------------------------------------\n");
 	fflush(stdout);
 
-	if (axion->Fieldo() == FIELD_AXION)
+	if (axion->Field() == FIELD_AXION)
 	{
 		printMpi("Unfold | ");
 		munge(UNFOLD_ALL);

@@ -19,12 +19,6 @@
 #include "map/map.h"
 #include "strings/strings.h"
 #include "powerCpu.h"
-/*
-#include "scalar/scalarField.h"
-#include "scalar/normField.h"
-#include "scalar/scaleField.h"
-#include "scalar/thetaScalar.h"
-*/
 #include "scalar.h"
 #include "propagator/propTheta.h"
 
@@ -64,23 +58,15 @@ int	main (int argc, char *argv[])
 	char fileName[256];
 
 	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
-	{
-		if (sPrec != FIELD_DOUBLE)
-			sprintf(fileName, "data/initial_conditions_m_single.txt");
-		else
-			sprintf(fileName, "data/initial_conditions_m.txt");
-		//This prepares the axion field from default files
-		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, fileName, lowmem, zGrid, CONF_NONE, 0, 0, fCount);
-		printMpi("Eo\n");
-	}
+		printMpi("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
 		else
 		{
-			//This reads from an Axion.00000 file
+			//This reads from an Axion.$fIndex file
 			readConf(&axion, fIndex);
 			if (axion == NULL)
 			{
@@ -249,15 +235,12 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
-	axion->SetLambda(LAMBDA_FIXED)	;
+	axion->SetLambda(LAMBDA_FIXED);
+
 	if (LAMBDA_FIXED == axion->Lambda())
-	{
-	printMpi ("Lambda in FIXED mode\n");
-	}
+		printMpi ("Lambda in FIXED mode\n");
 	else
-	{
 		printMpi ("Lambda in Z2 mode\n");
-	}
 
 	Folder munge(axion);
 
@@ -359,7 +342,7 @@ int	main (int argc, char *argv[])
 				// fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
 				// for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
 
-				if (axion->Fieldo() == FIELD_SAXION)
+				if (axion->Field() == FIELD_SAXION)
 				{
 					if (sPrec == FIELD_DOUBLE) {
 						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].imag(),
@@ -384,7 +367,7 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 
-			if (axion->Fieldo() == FIELD_SAXION)
+			if (axion->Field() == FIELD_SAXION)
 			{
 				propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
 			}
@@ -414,7 +397,7 @@ int	main (int argc, char *argv[])
 	2. Fix writeMap so it reads data from the first slice of m
 */
 
-			if ( axion->Fieldo() == FIELD_SAXION && (*axion->zV()) > 0.8 )
+			if ( axion->Field() == FIELD_SAXION && (*axion->zV()) > 0.8 )
 			{
 				printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
 				fflush (stdout);
@@ -458,7 +441,7 @@ int	main (int argc, char *argv[])
 
 			}
 
-			if ( axion->Fieldo() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
+			if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
 			{
 				printf("\n TRANSITION TO THETA \n");fflush(stdout);
 				cmplxToTheta	(axion, fCount);
@@ -469,7 +452,7 @@ int	main (int argc, char *argv[])
 			munge(UNFOLD_SLICE, sliceprint);
 			writeMap (axion, index);
 
-			if ( axion->Fieldo() == FIELD_SAXION  )
+			if ( axion->Field() == FIELD_SAXION  )
 			{
 	//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 				energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
@@ -498,7 +481,7 @@ int	main (int argc, char *argv[])
 				}
 			}
 
-			if (axion->Fieldo() == FIELD_AXION)
+			if (axion->Field() == FIELD_AXION)
 			{
 
 				//axion->unfoldField();
