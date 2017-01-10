@@ -1796,6 +1796,8 @@ void	Scalar::setField (FieldType fType)
 					#else
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 					#endif
+					//initFFTSpectrum(m2, n1, Tz, precision, lowmem);
+					initFFTSpectrum(m2, n1, Tz, precision, 0);
 				}
 				//IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 				// #ifdef	USE_XEON
