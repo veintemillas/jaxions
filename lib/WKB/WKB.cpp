@@ -1,3 +1,4 @@
+#include <cmath>
 #include <complex>
 #include <cstring>
 #include <gsl/gsl_sf_hyperg.h>
@@ -7,7 +8,6 @@
 #include "utils/index.h"
 #include "utils/parse.h"
 #include "energy/energyMap.h"
-#include "code3DCpu.h"
 
 using namespace std;
 
@@ -171,7 +171,7 @@ public:
 
 		//evolve
 		//evolve does not update the time variable of axion -> should we change that?
-		Float mom = pow(2.*Pi/(n1*delta),2)*(kx*kx + ky*ky + kz*kz);
+		Float mom = pow(2.*M_PI/(n1*delta),2)*(kx*kx + ky*ky + kz*kz);
 		propP(mRe, vRe, mIm, vIm, mom);
 
 		//add the new correction factor
@@ -182,7 +182,7 @@ public:
 		//power spectrum
 		Float ft_out = abs((vRe + I*vIm)/zz - (mRe + I*mIm)/(zz*zz));
 		ft_out = pow(ft_out,2);
-		ft_out = ft_out*mom/(2.*pow(2.*Pi,3));
+		ft_out = ft_out*mom/(2.*pow(2.*M_PI,3));
 
 		//account for hemitian redundancy
 		if(!(kz==0||kz==kmax))

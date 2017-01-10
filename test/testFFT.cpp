@@ -9,7 +9,6 @@
 #include<complex>
 #include<vector>
 
-#include"code3DCpu.h"
 #include"scalar/scalar.h"
 #include "propagator/allProp.h"
 #include"enum-field.h"
