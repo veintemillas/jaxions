@@ -99,8 +99,6 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	delete	munge2;
 
-	printf("folding... \n");fflush(stdout);
-
 	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
 
 	return;

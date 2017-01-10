@@ -1787,8 +1787,17 @@ void	Scalar::setField (FieldType fType)
 
 				const size_t	mBytes = v3*fSize;
 
-
-				// OJO ! COMMENTED AWAY WITHOUT CARE ABOUT USE_XEON!
+				//IF low mem was used before, it creates m2 COMPLEX
+				if (lowmem)
+				{
+					#ifdef	USE_XEON
+					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
+					m2  = m2X;
+					#else
+					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+					#endif
+				}
+				//IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 				// #ifdef	USE_XEON
 				// if (!lowmem)
 				// {

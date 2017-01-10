@@ -372,10 +372,10 @@ int	main (int argc, char *argv[])
 				printMpi("\n");
 				printMpi("--------------------------------------------------\n");
 				printMpi("              TRANSITION TO THETA \n");
+				cmplxToTheta	(axion, fCount);
 				printMpi("--------------------------------------------------\n");
 				fflush(stdout);
-				cmplxToTheta	(axion, fCount);
-//				printf("")
+
 			}
 
 	} // ZLOOP
@@ -391,8 +391,6 @@ int	main (int argc, char *argv[])
 
 	if (axion->Fieldo() == FIELD_AXION)
 	{
-
-		//axion->unfoldField();
 		printMpi("Unfold | ");
 		munge(UNFOLD_ALL);
 
