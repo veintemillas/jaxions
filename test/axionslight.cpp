@@ -76,10 +76,12 @@ int	main (int argc, char *argv[])
 	else
 	{
 		if (fIndex == -1)
+		{
 			//This generates initial conditions
 			printMpi("Generating scalar ... ");
 			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2, fCount);
 			printMpi("Done! \n");
+		}
 		else
 		{
 			//This reads from an Axion.00000 file

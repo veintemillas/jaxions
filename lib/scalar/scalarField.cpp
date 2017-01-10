@@ -275,11 +275,15 @@ class	Scalar
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
 	if (!lowmem)
+	{
 	printf("Allocating m2\n");
 		alignAlloc ((void**) &m2, mAlign, mBytes);
+	}
 	else
+	{
 	printf("LOWMEM!\n");
 		m2 = NULL;
+	}
 #endif
 
 	if (m == NULL)
