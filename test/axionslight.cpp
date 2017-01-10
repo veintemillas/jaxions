@@ -77,7 +77,9 @@ int	main (int argc, char *argv[])
 	{
 		if (fIndex == -1)
 			//This generates initial conditions
+			printMpi("Generating scalar ... ");
 			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, initFile, lowmem, zGrid, cType, parm1, parm2, fCount);
+			printMpi("Done! \n");
 		else
 		{
 			//This reads from an Axion.00000 file
@@ -128,6 +130,7 @@ int	main (int argc, char *argv[])
 		file_thetabin = fopen("out/thetabin.txt","w+");
 		file_contbin = fopen("out/contbin.txt","w+");
 	}
+	printMpi("Files prepared! \n");
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 1 ;
@@ -146,6 +149,7 @@ int	main (int argc, char *argv[])
 	trackAlloc((void**) (&spectrumG), 8*powmax);
 	trackAlloc((void**) (&spectrumV), 8*powmax);
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
+	printMpi("Bins allocated! \n");
 
 	double *sK = static_cast<double *> (spectrumK);
 	double *sG = static_cast<double *> (spectrumG);

@@ -270,12 +270,15 @@ class	Scalar
 	else
 		m2 = m2X = NULL;
 #else
+	printf("Allocating m and v\n");
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
 	if (!lowmem)
+	printf("Allocating m2\n");
 		alignAlloc ((void**) &m2, mAlign, mBytes);
 	else
+	printf("LOWMEM!\n");
 		m2 = NULL;
 #endif
 
@@ -299,7 +302,7 @@ class	Scalar
 			exit(1);
 		}
 	}
-
+	printf("set m,v=0\n");
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*n3);
 
@@ -424,8 +427,11 @@ class	Scalar
 #endif
 	}
 	//
+	printf("FFTing m2\n");
 	initFFTSpectrum(m2, n1, Tz, precision, lowmem);
 }
+
+// END SCALAR
 
 	Scalar::~Scalar()
 {
