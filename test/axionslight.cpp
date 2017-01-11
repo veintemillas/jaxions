@@ -145,6 +145,8 @@ int	main (int argc, char *argv[])
 
 	double delta = sizeL/sizeN;
 	double dz;
+	double dzaux;
+	double llaux;
 
 	if (nSteps == 0)
 		dz = 0.;
@@ -167,6 +169,7 @@ int	main (int argc, char *argv[])
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
 	const size_t V0 = 0;
 	const size_t VF = axion->Size()-1;
+
 
 
 
@@ -235,7 +238,9 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
-	axion->SetLambda(LAMBDA_FIXED)	;
+	bool coZ = 1;
+
+	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{
 	printMpi ("Lambda in FIXED mode\n");
@@ -326,13 +331,38 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 
+
+			//--------------------------------------------------
+			// DYAMICAL delta
+			//--------------------------------------------------
+
+			dzaux = min(delta,1./(sqrt(LL)*(*axion->zV())));
+			dzaux = min(dzaux,1./(3.*pow((*axion->zV()),nQcd/2.)))/6.;
+			llaux = 1./pow(2.*delta,2.);
+			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
+			if (LL > llaux && coZ )
+			{
+				axion->SetLambda(LAMBDA_FIXED)	;
+				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
+				coZ = 0;
+			}
+			if ( !coZ )
+			{
+				llaux = LL;
+			}
+
+			//--------------------------------------------------
+			// PROPAGATOR
+			//--------------------------------------------------
+
+			//printMpi("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
 			if (axion->Field() == FIELD_SAXION)
 			{
-				propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
+				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
 			}
 			else
 			{
-				propTheta	(axion, dz,     nQcd, delta, cDev, fCount);
+				propTheta	(axion, dzaux,     nQcd, delta, cDev, fCount);
 			}
 
 			current = std::chrono::high_resolution_clock::now();
@@ -343,17 +373,34 @@ int	main (int argc, char *argv[])
 			counter++;
 		} // ZSUBLOOP
 
-			if ( axion->Field() == FIELD_SAXION && (*axion->zV()) > 0.5 )
-			{
-				printMpi("z=%f | strings (z>0.5) ", (*axion->zV()));
-				fflush (stdout);
-				nstrings = analyzeStrFolded(axion, index);
-				printMpi("= %d \n", nstrings);
-				fflush (stdout);
+		//--------------------------------------------------
+		// PARTIAL ANALISIS
+		//--------------------------------------------------
 
+			if ( axion->Field() == FIELD_SAXION)
+			{
+				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
+				if ((*axion->zV()) > 0.2)
+				{
+					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
+					fflush (stdout);
+					nstrings = analyzeStrFolded(axion, index);
+					printMpi("= %d ", nstrings);
+					fflush (stdout);
+				}
+				printMpi("\n");
+			}
+			else
+			{
+				printMpi("%d/%d | z=%f | dz=%.3e \n", zloop, nLoops, (*axion->zV()), dzaux);
+				fflush (stdout);
 			}
 
-			if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
+			munge(UNFOLD_SLICE, sliceprint);
+			writeMap (axion, index);
+
+
+			if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 0.6 )
 			{
 				printMpi("\n");
 				printMpi("--------------------------------------------------\n");
@@ -416,6 +463,9 @@ int	main (int argc, char *argv[])
 		//munge(FOLD_ALL);
 		fflush(file_power);
 		fflush(file_spectrum);
+
+		printMpi("dens2m | ");
+		axion->denstom();
 	}
 
 	if (cDev != DEV_GPU)
@@ -424,8 +474,8 @@ int	main (int argc, char *argv[])
 		//munge(UNFOLD_ALL);
 	}
 
-	//if (nSteps > 0)
-	//	writeConf(axion, index);
+	if (nSteps > 0)
+	writeConf(axion, index);
 
 	printMpi("z_final = %f\n", *axion->zV());
 	printMpi("#_steps = %i\n", counter);

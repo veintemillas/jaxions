@@ -54,7 +54,7 @@ void	iteraXeon (complex<Float> * __restrict__ mCp, complex<Float> * __restrict__
 			iMz = idx - S;
 			//Uses v to copy the smoothed configuration
 			vCp[idx]   = alpha*mCp[idx+S] + OneSixth*(One-alpha)*(mCp[iPx+S] + mCp[iMx+S] + mCp[iPy+S] + mCp[iMy+S] + mCp[iPz+S] + mCp[iMz+S]);
-			vCp[idx]   = vCp[idx]/abs(vCp[idx]);
+			//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
 		}
 	}
 	//Copies v to m

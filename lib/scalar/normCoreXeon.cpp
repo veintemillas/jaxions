@@ -10,14 +10,25 @@ using namespace std;
 template<typename Float>
 void normCoreKernelXeon (Scalar *field, Float alph)
 {
+
+	printf("Entering CORE smoothing ");
+	fflush (stdout);
+
 	const Float deltaa = sizeL/sizeN;
 	const Float zia = static_cast<Float>(*field->zV());
 	Float LLa ;
 
 	if (field->Lambda() == LAMBDA_FIXED)
-		LLa = LL ;
+		{
+			LLa = LL ;
+			printf("(LAMBDA_FIXED,%.3E) ",LLa);
+		}
 	else
-		LLa = LL/((zia)*(zia));
+		{
+			//LLa = LL/((zia)*(zia));
+			LLa = 1/(pow(2.*deltaa*zia,2.));
+			printf("(LAMBDA_Z2,%.3E) ",LLa);
+		}
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
@@ -28,8 +39,6 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 	complex<Float> *mCp = static_cast<complex<Float>*> (field->mCpu());
 	complex<Float> *vCp = static_cast<complex<Float>*> (field->vCpu());
 
-	printf("Entering CORE smoothing\n");
-	fflush (stdout);
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=0; idx<n3; idx++)
@@ -81,7 +90,7 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 		gradx = gradx*gradx + grady*grady + gradz*gradz;
 		if (gradx > 0.001)
 		{
-			sss  = 3.0*sqrt(LLa)*zia*deltaa/sqrt(gradx);
+			sss  = sqrt(LLa)*zia*deltaa/sqrt(gradx);
 			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
 			sss2 = sss*sss;
 			sss4 = sss2*sss2;
