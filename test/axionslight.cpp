@@ -39,6 +39,9 @@ int	main (int argc, char *argv[])
 		return 1;
 	}
 
+	std::chrono::high_resolution_clock::time_point start, current, old;
+	std::chrono::milliseconds elapsed;
+
 	printMpi("\n-------------------------------------------------\n");
 	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
 
@@ -47,6 +50,8 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 	FlopCounter *fCount = new FlopCounter;
+
+	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
 	char fileName[256];
@@ -73,6 +78,10 @@ int	main (int argc, char *argv[])
 			}
 		}
 	}
+
+	current = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	printMpi("ICtime %f min\n",elapsed.count()*1.e-3/60.);
 
 	//--------------------------------------------------
 	//          OUTPUTS FOR CHECKING
@@ -200,8 +209,6 @@ int	main (int argc, char *argv[])
 	printMpi("           STARTING COMPUTATION                   \n");
 	printMpi("--------------------------------------------------\n");
 
-	std::chrono::high_resolution_clock::time_point start, current, old;
-	std::chrono::milliseconds elapsed;
 
 	int counter = 0;
 	int index = 0;
@@ -295,7 +302,7 @@ int	main (int argc, char *argv[])
     	//--------------------------------------------------
 		// THE TIME ITERATION LOOP
 		//--------------------------------------------------
-    
+
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		//--------------------------------------------------
@@ -380,9 +387,9 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
-            
-            printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
-            
+
+      printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
+
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
