@@ -36,6 +36,7 @@
 		size_t	fSize;
 		size_t	mAlign;
 		int	shift;
+		bool	folded;
 
 		double	*z;
 
@@ -102,8 +103,8 @@
 
 		size_t		DataSize () { return fSize; }
 		size_t		DataAlign() { return mAlign; }
-
-		int		Shift() { return shift; }
+		int		Shift()     { return shift; }
+		bool		Folded()    { return folded; }
 
 		double		*zV() { return z; }
 		const double	*zV() const { return z; }

@@ -52,6 +52,9 @@ class	Folder
 template<typename cFloat>
 void	Folder::foldField()
 {
+	if (field->Folded())
+		return;
+
 	const int fSize = field->DataSize();
 	const int shift = field->DataAlign()/fSize;
 	//printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
@@ -84,6 +87,9 @@ void	Folder::foldField()
 template<typename cFloat>
 void	Folder::unfoldField()
 {
+	if (!field->Folded())
+		return;
+
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
@@ -120,11 +126,18 @@ void	Folder::unfoldField2D (const size_t sZ)
 	if ((sZ < 0) || (sZ > field->Depth()))
 		return;
 
-	const int fSize = field->DataSize();
-	const int shift = field->DataAlign()/fSize;
-
 	cFloat *m = static_cast<cFloat *> (field->mCpu());
 	cFloat *v = static_cast<cFloat *> (field->vCpu());
+
+	if (!field->Folded())
+	{
+		memcpy ( m,        &m[(sZ+1)*n2], sizeof(cFloat)*n2);
+		memcpy (&m[n2+n3], &v[sZ*n2],     sizeof(cFloat)*n2);
+		return;
+	}
+
+	const int fSize = field->DataSize();
+	const int shift = field->DataAlign()/fSize;
 
 	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
 	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);

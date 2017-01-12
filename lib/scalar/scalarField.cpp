@@ -60,6 +60,7 @@ class	Scalar
 	size_t	fSize;
 	size_t	mAlign;
 	int	shift;
+	bool	folded;
 
 	double	*z;
 
@@ -145,8 +146,8 @@ class	Scalar
 
 	size_t		DataSize () { return fSize; }
 	size_t		DataAlign() { return mAlign; }
-	//JAVI
-	int		Shift() { return shift; }
+	int		Shift()     { return shift; }
+	bool		Folded()    { return folded; }
 
 	double		*zV() { return z; }
 	const double	*zV() const { return z; }
@@ -154,11 +155,7 @@ class	Scalar
 	void		setZ(const double newZ) { *z = newZ; }
 
 	void	setField	(FieldType field);
-/*
-	void	foldField	();
-	void	unfoldField	();
-	void	unfoldField2D	(const size_t sZ);	// Just for the maps
-*/
+
 	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
@@ -202,6 +199,7 @@ class	Scalar
 	size_t nData;
 
 	lambdaType = LAMBDA_Z2;
+	folded 	   = false;
 
 	switch (fieldType)
 	{
