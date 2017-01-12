@@ -57,9 +57,9 @@ void	printUsage(char *name)
 	printf("--kcr   [float]                 Defines the critical kappa (default 1.0).\n");
 	printf("--qcd   [int]                   Defines the exponent of topological susceptibility (default 3).\n");
 	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
-	printf("--ctype smooth/kmax             Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--ctype smooth/kmax/tkachev     Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--ftype saxion/axion            Defines the kind of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
-	printf("--kmax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax (default 2)\n");
+	printf("--kmax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("--alpha [float]                 Defines the alpha parameter for the smoothing (default 0.143).\n");
 	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
@@ -482,7 +482,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the configuration type (smooth/kMax).\n");
+				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev).\n");
 				exit(1);
 			}
 
@@ -493,6 +493,10 @@ int	parseArgs (int argc, char *argv[])
 			else if (!strcmp(argv[i+1], "kmax"))
 			{
 				cType = CONF_KMAX;
+			}
+			else if (!strcmp(argv[i+1], "tkachev"))
+			{
+				cType = CONF_TKACHEV;
 			}
 			else
 			{
