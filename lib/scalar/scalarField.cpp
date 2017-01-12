@@ -388,7 +388,7 @@ class	Scalar
 		{
 			printf("Configuration generation not supported for Axion fields... yet\n");
 		} else {
-			if (cType == CONF_KMAX)
+			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
 				initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
 			genConf	(this, cType, parm1, parm2, fCount);
