@@ -337,10 +337,10 @@ int	main (int argc, char *argv[])
 			//--------------------------------------------------
 
 			dzaux = min(delta,1./(sqrt(LL)*(*axion->zV())));
-			dzaux = min(dzaux,1./(3.*pow((*axion->zV()),nQcd/2.)))/6.;
+			dzaux = min(dzaux,1./(3.*pow((*axion->zV()),nQcd/2.)))/2.;
 			llaux = 1./pow(2.*delta,2.);
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
-			if (LL > llaux && coZ )
+			if (LL*pow((*axion->zV()),2.) > llaux && coZ )
 			{
 				axion->SetLambda(LAMBDA_FIXED)	;
 				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
