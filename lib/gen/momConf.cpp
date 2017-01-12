@@ -99,7 +99,4 @@ void	momConf (Scalar *field, const size_t kMax, const double kCrt)
 		default:
 		break;
 	}
-
-	field->fftCpu(1);
-	field->exchangeGhosts(FIELD_M);
 }

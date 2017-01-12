@@ -58,6 +58,7 @@ class	ConfGenerator
 	switch (type)
 	{
 		case CONF_KMAX:
+		case CONF_TKACHEV:
 
 		kMax = parm1;
 		kCrt = parm2;
@@ -86,6 +87,7 @@ class	ConfGenerator
 	switch (type)
 	{
 		case CONF_KMAX:
+		case CONF_TKACHEV:
 
 		kMax = 2;
 		kCrt = 1.0;
@@ -131,8 +133,16 @@ void	ConfGenerator::runCpu	()
 		readConf (&axionField, index);
 		break;
 
+		case CONF_TKACHEV:
+		momConf(axionField, kMax, kCrt);
+		axionField->fftCpu(1);
+		axionField->exchangeGhosts(FIELD_M);
+		break;
+
 		case CONF_KMAX:
 		momConf(axionField, kMax, kCrt);
+		axionField->fftCpu(1);
+		axionField->exchangeGhosts(FIELD_M);
 		normaliseField(axionField, FIELD_M, fCount);
 		normCoreField (axionField, alpha, fCount);
 		break;
@@ -144,7 +154,7 @@ void	ConfGenerator::runCpu	()
 		break;
 	}
 
-	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH))
+	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
 	{
 		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
 		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
