@@ -1050,7 +1050,8 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-				trackFree(&v, ALLOC_ALIGN);
+
+                trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
 				{
@@ -1062,7 +1063,7 @@ void	Scalar::setField (FieldType fType)
 					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
 					break;
 				}
-
+                
 				fSize /= 2;
 				shift *= 2;
 
@@ -1076,6 +1077,7 @@ void	Scalar::setField (FieldType fType)
 					m2  = m2X;
 					#else
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+                    //m2  = v;
 					#endif
 					//initFFTSpectrum(m2, n1, Tz, precision, lowmem);
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
@@ -1098,6 +1100,9 @@ void	Scalar::setField (FieldType fType)
 				// alignAlloc ((void**) &m2, mAlign, mBytes);
 				// #endif
 
+
+
+				
 			}
 			break;
 

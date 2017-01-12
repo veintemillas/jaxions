@@ -254,10 +254,10 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_GPU)
 	{
-		printMpi ("Folding configuration\n");
+		printMpi ("Folding configuration ... ");
 		munge(FOLD_ALL);
 	}
-	printMpi ("Folded %f\n", static_cast<float*>(axion->mCpu())[2*S0]);
+	printMpi ("Done! \n");
 
 	if (cDev != DEV_CPU)
 	{
@@ -292,6 +292,10 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
+    	//--------------------------------------------------
+		// THE TIME ITERATION LOOP
+		//--------------------------------------------------
+    
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		//--------------------------------------------------
@@ -340,7 +344,7 @@ int	main (int argc, char *argv[])
 			dzaux = min(dzaux,1./(3.*pow((*axion->zV()),nQcd/2.)))/2.;
 			llaux = 1./pow(2.*delta,2.);
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
-			if (LL*pow((*axion->zV()),2.) > llaux && coZ )
+			if (LL*pow((*axion->zV()),2.) > llaux && coZ && axion->Field() == FIELD_SAXION )
 			{
 				axion->SetLambda(LAMBDA_FIXED)	;
 				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
@@ -376,7 +380,9 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
-
+            
+            printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
+            
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
