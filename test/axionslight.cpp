@@ -220,11 +220,11 @@ int	main (int argc, char *argv[])
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 #ifdef	__MIC__
-	alignAlloc(&str, 64, (axion->Size()/2));
+	alignAlloc(&str, 64, (axion->Size()));
 #elif defined(__AVX__)
-	alignAlloc(&str, 32, (axion->Size()/2));
+	alignAlloc(&str, 32, (axion->Size()));
 #else
-	alignAlloc(&str, 16, (axion->Size()/2));
+	alignAlloc(&str, 16, (axion->Size()));
 #endif
 	memset(str, 0, axion->Size()/2);
 
@@ -247,7 +247,8 @@ int	main (int argc, char *argv[])
 //	commSync();
 
 	bool coZ = 1;
-
+    bool coS = 1;
+    
 	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{
@@ -321,11 +322,11 @@ int	main (int argc, char *argv[])
 				if (axion->Field() == FIELD_SAXION)
 				{
 					if (sPrec == FIELD_DOUBLE) {
-						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].imag(),
-							static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag());
+						fprintf(file_sample,"%f %f %f %f %f %d\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].imag(),
+							static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag(),nstrings);
 					} else {
-						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0].imag(),
-							static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag());
+						fprintf(file_sample,"%f %f %f %f %f %d\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0].imag(),
+							static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),nstrings);
 					}
 				}
 				else
@@ -377,11 +378,23 @@ int	main (int argc, char *argv[])
 			if (axion->Field() == FIELD_SAXION)
 			{
 				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
-                //nstringsd = strings(axion, cDev, str, fCount);
-                //nstrings = analyzeStrFolded(axion, index);
-                //printMpi("%d ", (int) nstringsd); fflush(stdout);
-                if (nstrings < 200)
-                    nstrings = analyzeStrFolded(axion, index);
+
+                if (nstringsd < 200.)
+                {
+                  //nstrings = analyzeStrFoldedNP(axion, index);
+                  nstringsd = strings(axion, cDev, str, fCount);
+                  nstrings = (int) nstringsd ;
+                  //printMpi("%d ", (int) nstringsd); fflush(stdout);
+                }
+                if ( axion->Field() == FIELD_SAXION && nstrings ==0 && !coZ && (*axion->zV()) > 0.6 )
+                {
+                    printMpi("\n");
+                    printMpi("--------------------------------------------------\n");
+                    printMpi("              TRANSITION TO THETA \n");
+                    cmplxToTheta	(axion, fCount);
+                    printMpi("--------------------------------------------------\n");
+                    fflush(stdout);
+                }
 			}
 			else
 			{
@@ -417,10 +430,16 @@ int	main (int argc, char *argv[])
 					printMpi("strings (z>0.1) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 					fflush (stdout);
 					nstrings = analyzeStrFolded(axion, index);
-                    printMpi("= %d ", nstrings);
+                    //printMpi("= %d ", nstrings);
                     //nstringsd = strings(axion, cDev, str, fCount);
-					//printMpi("= %.0f ", nstringsd);
+                    //nstrings = (int) nstringsd ;
+					printMpi("= %d ", nstrings);
 					fflush (stdout);
+                    if (nstrings < 2)
+                    {
+                        coS = 0;
+                        printMpi("Low string density!");
+                    }
 				}
 				printMpi("\n");
 			}
@@ -430,20 +449,19 @@ int	main (int argc, char *argv[])
 				fflush (stdout);
 			}
 
-			//munge(UNFOLD_SLICE, sliceprint);
-			//writeMap (axion, index);
+			munge(UNFOLD_SLICE, sliceprint);
+			writeMap (axion, index);
 
-
-			if ( axion->Field() == FIELD_SAXION && nstringsd < 2.0 && (*axion->zV()) > 0.6 )
-			{
-				printMpi("\n");
-				printMpi("--------------------------------------------------\n");
-				printMpi("              TRANSITION TO THETA \n");
-				cmplxToTheta	(axion, fCount);
-				printMpi("--------------------------------------------------\n");
-				fflush(stdout);
-
-			}
+//
+//	if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 0.6 )
+//	{
+//		printMpi("\n");
+//		printMpi("--------------------------------------------------\n");
+//		printMpi("              TRANSITION TO THETA \n");
+//		cmplxToTheta	(axion, fCount);
+//		printMpi("--------------------------------------------------\n");
+//		fflush(stdout);
+//	}
 
 			if ((*axion->zV()) > zFinl)
 			{

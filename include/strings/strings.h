@@ -7,6 +7,7 @@
 	double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount);
 
 	int	analyzeStrFolded	(Scalar *axion, const int index);
-
+    int	analyzeStrFoldedNP 	(Scalar *axion, const int index);
+    
 	int	analyzeStrUNFolded	(Scalar *axion, const int index);
 #endif

@@ -184,7 +184,7 @@ int	stringHand	(complex<Float> s1, complex<Float> s2, complex<Float> s3, complex
 int	analyzeStrFolded	(Scalar *axion, const int index)
 {
 	//--------------------------------------------------
-	//    JAVI STRINGS FOLDED
+	//    JAVI STRINGS FOLDED PRINT
 	//--------------------------------------------------
 
 	const size_t n1     = axion->Length();
@@ -439,6 +439,169 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 
 	return stlength ;
 }
+
+
+int	analyzeStrFoldedNP 	(Scalar *axion, const int index)
+{
+	//--------------------------------------------------
+	//    JAVI STRINGS FOLDED NO PRINT
+	//--------------------------------------------------
+
+	const size_t n1     = axion->Length();
+	const size_t n2     = axion->Surf();
+	const size_t shift  = axion->Shift();
+	const size_t Lz     = axion->Depth()	;
+	size_t 	     Nshift = n1/shift;
+	const size_t fSize  = axion->DataSize();
+
+//	const int myRank = commRank();
+	int hand;
+	int stlength = 0;
+
+
+	switch	(axion->Precision())
+	{
+		case	FIELD_DOUBLE:
+		{
+			complex<double> *mM = static_cast<complex<double>*> (axion->mCpu());
+
+			#pragma omp parallel for default(shared) private(hand) schedule(static) reduction(+:stlength)
+			for (size_t iz=0; iz<Lz; iz++)
+			{
+				complex<double> s1, s2, s3, s4;
+				size_t sy, sy1, iys, iys1;
+				size_t fIdx000,fIdx010 ;
+
+				//DOES NOT TAKE THE LAST Iy=N-1 FOR SIMPLICITY
+				for (size_t iy=0; iy<n1-1; iy++)
+					{
+						sy   =  iy/Nshift;
+						iys  =  iy%Nshift;
+						sy1  = (iy+1)/Nshift;
+						iys1 = (iy+1)%Nshift;
+						//printf("-(%d,%d,%d,%d))-",iy,iz,sy,iys);fflush (stdout);
+					//DOES NOT TAKE THE LAST Ix=N-1 FOR SIMPLICITY
+						for (size_t ix=0; ix<n1-1; ix++)
+						{
+							// PLAQUETTE XY      -------------------------------------------
+							fIdx000 = n2 + iz*n2 + ((size_t) (iys*n1*shift + ix*shift + sy));
+							fIdx010 = n2 + iz*n2 + ((size_t) (iys1*n1*shift + ix*shift + sy1));
+							s1 = mM[fIdx000] ;
+							s2 = mM[fIdx000 + shift] ;
+							s4 = mM[fIdx010] ;
+							s3 = mM[fIdx010 + shift] ;
+
+							hand = stringHand(s1, s2, s3, s4);
+
+							if ((hand == 2) || (hand == -2))
+							{
+								++stlength;
+							}
+							//PLAQUETTE YZ      -------------------------------------------
+							s2 = mM[fIdx000 + n2] ;
+							s3 = mM[fIdx010 + n2] ;
+
+							hand = stringHand(s1, s4, s3, s2);
+
+							if ((hand == 2) || (hand == -2))
+							{
+								++stlength;
+							}
+							// PLAQUETTE XZ      -------------------------------------------
+							s4 = mM[fIdx000 + shift] ;
+							s3 = mM[fIdx000 + shift + n2];
+
+							hand = stringHand(s1, s2, s3, s4);
+
+							if ((hand == 2) || (hand == -2))
+							{
+								++stlength;
+							}
+
+						}	//end ix
+					}	//end for iy
+				}	//end for iz
+
+		}
+
+		break;
+
+		case	FIELD_SINGLE:
+		{
+			complex<float> *mM = static_cast<complex<float>*> (axion->mCpu());
+
+			#pragma omp parallel for default(shared) schedule(static) reduction(+:stlength)
+			for (size_t iz=0; iz<Lz; iz++)
+			{
+
+				complex<double> s1, s2, s3, s4;
+				size_t sy, sy1, iys, iys1;
+				size_t fIdx000,fIdx010 ;
+
+				//DOES NOT TAKE THE LAST Iy=N-1 FOR SIMPLICITY
+				for (size_t iy=0; iy<n1-1; iy++)
+				{
+					sy   =  iy/Nshift;
+					iys  =  iy%Nshift;
+					sy1  = (iy+1)/Nshift;
+					iys1 = (iy+1)%Nshift;
+				//DOES NOT TAKE THE LAST Ix=N-1 FOR SIMPLICITY
+					for (size_t ix=0; ix<n1-1; ix++)
+					{
+						// PLAQUETTE XY      -------------------------------------------
+						fIdx000 = n2 + iz*n2 + ((size_t) (iys*n1*shift + ix*shift + sy));
+						fIdx010 = n2 + iz*n2 + ((size_t) (iys1*n1*shift + ix*shift + sy1));
+						s1 = mM[fIdx000] ;
+						s2 = mM[fIdx000 + shift] ;
+						s4 = mM[fIdx010] ;
+						s3 = mM[fIdx010 + shift] ;
+
+						hand = stringHand(s1, s2, s3, s4);
+
+						if ((hand == 2) || (hand == -2))
+						{
+							++stlength;
+						}
+						//PLAQUETTE YZ      -------------------------------------------
+						s2 = mM[fIdx000 + n2] ;
+						s3 = mM[fIdx010 + n2] ;
+
+						hand = stringHand(s1, s4, s3, s2);
+
+						if ((hand == 2) || (hand == -2))
+						{
+							++stlength;
+						}
+						// PLAQUETTE XZ      -------------------------------------------
+						s4 = mM[fIdx000 + shift] ;
+						s3 = mM[fIdx000 + shift + n2];
+
+						hand = stringHand(s1, s2, s3, s4);
+
+						if ((hand == 2) || (hand == -2))
+						{
+							++stlength;
+						}
+
+					}	//end ix
+				}	//end for iy
+			}	//end for iz
+
+		}
+
+		break;
+
+		default:
+			printf("Unrecognized precision\n");
+			exit(1);
+			break;
+	}
+
+	return stlength ;
+}
+
+
+
 
 // void	analyzeStrFolded	(Scalar *axion, const int index)
 // {
@@ -698,3 +861,5 @@ int	analyzeStrUNFolded	(Scalar *axion, const int index)
 
 	return stlength ;
 }
+
+
