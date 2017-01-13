@@ -754,11 +754,12 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 #undef	step
 	}
 
-	printf ("Chirality of configuration %lf (%lld chiral points)\n", ((double) nChiral)/((double) (Vf-Vo)), nChiral);
-	printf ("Density of configuration %lf (%llu string points)\n", ((double) nStrings)/((double) (Vf-Vo)), nStrings);
+	//printf ("Chirality of configuration %lf (%lld chiral points)\n", ((double) nChiral)/((double) (Vf-Vo)), nChiral);
+	//printf ("Density of configuration %lf (%llu string points)\n", ((double) nStrings)/((double) (Vf-Vo)), nStrings);
 	fflush (stdout);
 
-	return (((double) nStrings)/((double) (Vf-Vo)));
+	//return (((double) nStrings)/((double) (Vf-Vo)));
+    return  (double) nStrings ;
 }
 
 double	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)

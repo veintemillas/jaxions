@@ -1087,9 +1087,9 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-
+         printf("| free v ");fflush(stdout);
          trackFree(&v, ALLOC_ALIGN);
-
+        printf("| s_cast v ");fflush(stdout);
 				switch (precision)
 				{
 					case FIELD_SINGLE:
@@ -1100,12 +1100,12 @@ void	Scalar::setField (FieldType fType)
 					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
 					break;
 				}
-
+        printf("| resize ");fflush(stdout);
 				fSize /= 2;
 				shift *= 2;
 
 				const size_t	mBytes = v3*fSize;
-
+        printf("| alloc m2 ");
 				//IF low mem was used before, it creates m2 COMPLEX
 				if (lowmem)
 				{
@@ -1142,8 +1142,9 @@ void	Scalar::setField (FieldType fType)
 		case	FIELD_SAXION:
 		break;
 	}
-
+    printf("| fType ");fflush(stdout);
 	fieldType = fType;
+    printf("| ");fflush(stdout);
 }
 
 void	Scalar::setFolded (bool foli)

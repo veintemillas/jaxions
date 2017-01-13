@@ -64,9 +64,10 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 {
 	CmplxToTheta *theta = new CmplxToTheta(field);
 	Folder	     munge(field);
-
+    
+    printf("toTheta | fold ");fflush(stdout);
 	munge(UNFOLD_ALL);
-
+     printf("| do");fflush(stdout);
 	switch (field->Device())
 	{
 		case DEV_CPU:
@@ -88,13 +89,13 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 
 	delete	theta;
 
-
+    printf("| setField ");fflush(stdout);
 	field->setField(FIELD_AXION);
 
 	//printf("folding... \n");fflush(stdout);
-
+    printf("| fold ");fflush(stdout);
 	munge(FOLD_ALL);
-
+    printf("| \n");fflush(stdout);
 	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
 
 	return;

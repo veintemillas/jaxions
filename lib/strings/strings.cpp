@@ -105,5 +105,6 @@ double	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCoun
 	MPI_Allreduce(&strTmp, &strDen, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 //	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
 
-	return	(strDen*field->Size())/((double) field->TotalSize());
+	//return	(strDen*field->Size())/((double) field->TotalSize());
+    return	strDen ;
 }

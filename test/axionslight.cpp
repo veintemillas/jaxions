@@ -125,6 +125,7 @@ int	main (int argc, char *argv[])
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 1 ;
+    double nstringsd = 1. ;
 	double maximumtheta = 3.141597;
 	size_t sliceprint = 1;
 
@@ -338,23 +339,22 @@ int	main (int argc, char *argv[])
 					}
 				}
 				fflush(file_sample);
+                
 			}
 
 			old = std::chrono::high_resolution_clock::now();
 
 
 			//--------------------------------------------------
-			// DYAMICAL delta
+			// DYAMICAL deltaz
 			//--------------------------------------------------
 
-			dzaux = min(delta,1./(3.*pow((*axion->zV()),nQcd/2.)));
-			if (axion->Field() == FIELD_SAXION)
+			dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
+			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE 
 			{
-				dzaux = min(dzaux,1./(sqrt(2.*LL)*(*axion->zV())));
 				llaux = 1./pow(2.*delta,2.);
 			}
-			dzaux = dzaux/2.;
-
+			
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
 			if (axion->Field() == FIELD_SAXION && LL*pow((*axion->zV()),2.) > llaux && coZ )
 			{
@@ -365,8 +365,10 @@ int	main (int argc, char *argv[])
 			if ( !coZ )
 			{
 				llaux = LL;
+                dzaux = min(dzaux,1./(sqrt(2.*LL)*(*axion->zV())));
 			}
-
+            dzaux = dzaux/2.;
+            
 			//--------------------------------------------------
 			// PROPAGATOR
 			//--------------------------------------------------
@@ -375,12 +377,17 @@ int	main (int argc, char *argv[])
 			if (axion->Field() == FIELD_SAXION)
 			{
 				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
+                //nstringsd = strings(axion, cDev, str, fCount);
+                //nstrings = analyzeStrFolded(axion, index);
+                //printMpi("%d ", (int) nstringsd); fflush(stdout);
+                if (nstrings < 200)
+                    nstrings = analyzeStrFolded(axion, index);
 			}
 			else
 			{
 				propTheta	(axion, dzaux,     nQcd, delta, cDev, fCount);
 			}
-
+            
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 
@@ -405,12 +412,14 @@ int	main (int argc, char *argv[])
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-				if ((*axion->zV()) > 0.2)
+				if ((*axion->zV()) > 0.1)
 				{
-					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
+					printMpi("strings (z>0.1) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 					fflush (stdout);
 					nstrings = analyzeStrFolded(axion, index);
-					printMpi("= %d ", nstrings);
+                    printMpi("= %d ", nstrings);
+                    //nstringsd = strings(axion, cDev, str, fCount);
+					//printMpi("= %.0f ", nstringsd);
 					fflush (stdout);
 				}
 				printMpi("\n");
@@ -421,11 +430,11 @@ int	main (int argc, char *argv[])
 				fflush (stdout);
 			}
 
-			munge(UNFOLD_SLICE, sliceprint);
-			writeMap (axion, index);
+			//munge(UNFOLD_SLICE, sliceprint);
+			//writeMap (axion, index);
 
 
-			if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 0.6 )
+			if ( axion->Field() == FIELD_SAXION && nstringsd < 2.0 && (*axion->zV()) > 0.6 )
 			{
 				printMpi("\n");
 				printMpi("--------------------------------------------------\n");
