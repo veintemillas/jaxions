@@ -106,13 +106,15 @@
 		int		Shift()     { return shift; }
 		bool		Folded()    { return folded; }
 
+
 		double		*zV() { return z; }
 		const double	*zV() const { return z; }
 
 		void		setZ(const double newZ) { *z = newZ; }
 
 		void	setField	(FieldType field);
-
+		void	setFolded	(bool foli);
+		
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 

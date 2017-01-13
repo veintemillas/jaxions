@@ -1,6 +1,7 @@
 #include<cstdlib>
 #include<cstring>
 #include<complex>
+#include <chrono>
 
 #include"square.h"
 #include"fft/fftCuda.h"
@@ -155,6 +156,7 @@ class	Scalar
 	void		setZ(const double newZ) { *z = newZ; }
 
 	void	setField	(FieldType field);
+	void	setFolded	(bool foli);
 
 	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
@@ -196,6 +198,13 @@ class	Scalar
 		       const size_t parm1, const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), fieldType(fType),
 		       precision(prec), device(dev), lowmem(lowmem)
 {
+
+	std::chrono::high_resolution_clock::time_point start, current, old;
+	std::chrono::milliseconds elapsed;
+
+	start = std::chrono::high_resolution_clock::now();
+
+
 	size_t nData;
 
 	lambdaType = LAMBDA_Z2;
@@ -266,6 +275,7 @@ class	Scalar
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = n3*fSize;
 
+printf("Allocating m and v\n"); fflush(stdout);
 #ifdef	USE_XEON
 	alignAlloc ((void**) &mX, mAlign, mBytes);
 	alignAlloc ((void**) &vX, mAlign, vBytes);
@@ -281,7 +291,6 @@ class	Scalar
 	else
 		m2 = m2X = NULL;
 #else
-	printf("Allocating m and v\n"); fflush(stdout);
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
@@ -296,6 +305,11 @@ class	Scalar
 		m2 = NULL;
 	}
 #endif
+
+current = std::chrono::high_resolution_clock::now();
+elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+printf("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
+start = std::chrono::high_resolution_clock::now();
 
 	if (m == NULL)
 	{
@@ -324,6 +338,11 @@ class	Scalar
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);
+
+	current = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	printf("zeroing TIME %f min\n",elapsed.count()*1.e-3/60.);
+	start = std::chrono::high_resolution_clock::now();
 
 	alignAlloc ((void **) &z, mAlign, mAlign);//sizeof(double));
 
@@ -385,11 +404,25 @@ class	Scalar
 		if (fieldType == FIELD_AXION)
 		{
 			printf("Configuration generation not supported for Axion fields... yet\n");
-		} else {
+		}
+		else
+		{
+				start = std::chrono::high_resolution_clock::now();
+				printf("Entering initFFT\n");
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
+			{
 				initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+			}
+				current = std::chrono::high_resolution_clock::now();
+				elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+			printf("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
 
+			printf("Entering GEN_CONF\n");
+				start = std::chrono::high_resolution_clock::now();
 			genConf	(this, cType, parm1, parm2, fCount);
+				current = std::chrono::high_resolution_clock::now();
+				elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+			printf("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
 		}
 	}
 
@@ -411,8 +444,14 @@ class	Scalar
 #endif
 	}
 	//
-	printf("FFTing m2\n");
+
+		start = std::chrono::high_resolution_clock::now();
+	printf("FFTing m2 if no lowmem\n");
 	initFFTSpectrum(m2, n1, Tz, precision, lowmem);
+		current = std::chrono::high_resolution_clock::now();
+		elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	printf("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
+
 }
 
 // END SCALAR
@@ -1049,7 +1088,7 @@ void	Scalar::setField (FieldType fType)
 			if (fieldType == FIELD_SAXION)
 			{
 
-                trackFree(&v, ALLOC_ALIGN);
+         trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
 				{
@@ -1061,7 +1100,7 @@ void	Scalar::setField (FieldType fType)
 					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
 					break;
 				}
-                
+
 				fSize /= 2;
 				shift *= 2;
 
@@ -1097,10 +1136,6 @@ void	Scalar::setField (FieldType fType)
 				// }
 				// alignAlloc ((void**) &m2, mAlign, mBytes);
 				// #endif
-
-
-
-				
 			}
 			break;
 
@@ -1110,6 +1145,12 @@ void	Scalar::setField (FieldType fType)
 
 	fieldType = fType;
 }
+
+void	Scalar::setFolded (bool foli)
+{
+	folded = foli ;
+}
+
 
 //void	Scalar::writeENERGY (double zzz, FILE *enwrite)
 void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST

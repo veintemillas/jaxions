@@ -347,11 +347,16 @@ int	main (int argc, char *argv[])
 			// DYAMICAL delta
 			//--------------------------------------------------
 
-			dzaux = min(delta,1./(sqrt(LL)*(*axion->zV())));
-			dzaux = min(dzaux,1./(3.*pow((*axion->zV()),nQcd/2.)))/2.;
-			llaux = 1./pow(2.*delta,2.);
+			dzaux = min(delta,1./(3.*pow((*axion->zV()),nQcd/2.)));
+			if (axion->Field() == FIELD_SAXION)
+			{
+				dzaux = min(dzaux,1./(sqrt(2.*LL)*(*axion->zV())));
+				llaux = 1./pow(2.*delta,2.);
+			}
+			dzaux = dzaux/2.;
+
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
-			if (LL*pow((*axion->zV()),2.) > llaux && coZ && axion->Field() == FIELD_SAXION )
+			if (axion->Field() == FIELD_SAXION && LL*pow((*axion->zV()),2.) > llaux && coZ )
 			{
 				axion->SetLambda(LAMBDA_FIXED)	;
 				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
@@ -382,6 +387,13 @@ int	main (int argc, char *argv[])
 			fCount->addTime(elapsed.count()*1.e-3);
 
 			counter++;
+
+			if ((*axion->zV()) > zFinl)
+			{
+				printMpi("zf reached! ENDING ... \n");
+				break;
+			}
+
 		} // ZSUBLOOP
 
 		//--------------------------------------------------
@@ -422,6 +434,12 @@ int	main (int argc, char *argv[])
 				printMpi("--------------------------------------------------\n");
 				fflush(stdout);
 
+			}
+
+			if ((*axion->zV()) > zFinl)
+			{
+				printMpi("zf reached! ENDING FINALLY... \n");
+				break;
 			}
 
 	} // ZLOOP

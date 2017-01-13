@@ -80,6 +80,8 @@ void	Folder::foldField()
 				}
 	}
 
+		field->setFolded(true);
+
 //	printf("Done!\n");
 	return;
 }
@@ -116,6 +118,7 @@ void	Folder::unfoldField()
 				}
 	}
 
+	field->setFolded(false);
 	//printf("Done!\n");
 	return;
 }
