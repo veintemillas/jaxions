@@ -16,6 +16,8 @@
 #include "powerCpu.h"
 #include "scalar/scalar.h"
 
+#include<mpi.h>
+
 using namespace std;
 
 #ifdef	USE_XEON
@@ -124,8 +126,10 @@ int	main (int argc, char *argv[])
 	printMpi("Files prepared! \n");
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
-	int nstrings = 1 ;
-    double nstringsd = 1. ;
+	int nstrings = 201 ;
+
+  double nstringsd = 201. ;
+	double nstringsd_global = 201 ;
 	double maximumtheta = 3.141597;
 	size_t sliceprint = 1;
 
@@ -248,7 +252,7 @@ int	main (int argc, char *argv[])
 
 	bool coZ = 1;
     bool coS = 1;
-    
+
 	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{
@@ -340,7 +344,7 @@ int	main (int argc, char *argv[])
 					}
 				}
 				fflush(file_sample);
-                
+
 			}
 
 			old = std::chrono::high_resolution_clock::now();
@@ -351,11 +355,11 @@ int	main (int argc, char *argv[])
 			//--------------------------------------------------
 
 			dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
-			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE 
+			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
 				llaux = 1./pow(2.*delta,2.);
 			}
-			
+
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
 			if (axion->Field() == FIELD_SAXION && LL*pow((*axion->zV()),2.) > llaux && coZ )
 			{
@@ -366,10 +370,10 @@ int	main (int argc, char *argv[])
 			if ( !coZ )
 			{
 				llaux = LL;
-                dzaux = min(dzaux,1./(sqrt(2.*LL)*(*axion->zV())));
+        dzaux = min(dzaux,1./(sqrt(2.*LL)*(*axion->zV())));
 			}
-            dzaux = dzaux/2.;
-            
+        dzaux = dzaux/2.;
+
 			//--------------------------------------------------
 			// PROPAGATOR
 			//--------------------------------------------------
@@ -379,14 +383,16 @@ int	main (int argc, char *argv[])
 			{
 				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
 
-                if (nstringsd < 200.)
+                if (nstrings < 200)
                 {
                   //nstrings = analyzeStrFoldedNP(axion, index);
                   nstringsd = strings(axion, cDev, str, fCount);
-                  nstrings = (int) nstringsd ;
-                  //printMpi("%d ", (int) nstringsd); fflush(stdout);
+                  MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+									nstrings = (int) nstringsd_global ;
+
+                  //printMpi("%d (%d) %f ", nstrings, coS, (*axion->zV())); fflush(stdout);
                 }
-                if ( axion->Field() == FIELD_SAXION && nstrings ==0 && !coZ && (*axion->zV()) > 0.6 )
+                if ( (nstrings ==0) && (!coZ) && ((*axion->zV()) > 0.6) )
                 {
                     printMpi("\n");
                     printMpi("--------------------------------------------------\n");
@@ -400,7 +406,7 @@ int	main (int argc, char *argv[])
 			{
 				propTheta	(axion, dzaux,     nQcd, delta, cDev, fCount);
 			}
-            
+
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 
@@ -425,20 +431,24 @@ int	main (int argc, char *argv[])
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-				if ((*axion->zV()) > 0.1)
+				if ((*axion->zV()) > 0.2)
 				{
-					printMpi("strings (z>0.1) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
+					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 					fflush (stdout);
-					nstrings = analyzeStrFolded(axion, index);
+										//nstrings = analyzeStrFolded(axion, index);
                     //printMpi("= %d ", nstrings);
                     //nstringsd = strings(axion, cDev, str, fCount);
                     //nstrings = (int) nstringsd ;
-					printMpi("= %d ", nstrings);
+										//printMpi("= %d ", nstrings);
+										nstringsd = strings(axion, cDev, str, fCount);
+										MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+										nstrings = (int) nstringsd_global ;
+										printMpi("= %d ", nstrings);
 					fflush (stdout);
-                    if (nstrings < 2)
+                    if (nstrings < 200)
                     {
                         coS = 0;
-                        printMpi("Low string density!");
+                        printMpi("Low string density! coS=0");
                     }
 				}
 				printMpi("\n");
@@ -489,6 +499,8 @@ int	main (int argc, char *argv[])
 		//NUMBER SPECTRUM
 		spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+		if (commRank() == 0)
+		{
 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
@@ -496,21 +508,35 @@ int	main (int argc, char *argv[])
 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
 		//axion->foldField();
+		}
 
 		printMpi("DensMap | ");
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
+
+		if (commRank() == 0)
+		{
 		fprintf(file_contbin,"%f ", (*(axion->zV() )));
 		// first three numbers are dens average, max contrast and maximum of the binning
 		for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 		fprintf(file_contbin, "\n");
 		fflush(file_contbin);
+		}
+		// BIN THETA
+		maximumtheta = axion->thetaDIST(100, spectrumK);
+		if (commRank() == 0)
+		{
+			fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
+			for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
+		}
+
+		printMpi("dens2m | ");
+		axion->denstom();
 
 		printMpi("pSpec | ");
 		//POWER SPECTRUM
 		powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-
-		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+		printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 		fprintf(file_power,  "%f ", (*axion->zV()));
 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
 		fprintf(file_power,  "%f ", (*axion->zV()));
@@ -521,9 +547,6 @@ int	main (int argc, char *argv[])
 		//munge(FOLD_ALL);
 		fflush(file_power);
 		fflush(file_spectrum);
-
-		printMpi("dens2m | ");
-		axion->denstom();
 	}
 
 	if (cDev != DEV_GPU)

@@ -1393,12 +1393,14 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	// COPIES THE CONTRAST INTO THE REAL PART OF M2 (WHICH IS COMPLEX)
 	// TO USE THE POWER SPECTRUM AFTER
 	// 	FILES DENSITY CONTRAST
-	char stoCON[256];
-	sprintf(stoCON, "out/con/con-%05d.txt", index);
-	FILE *file_con ;
-	file_con = NULL;
-	file_con = fopen(stoCON,"w+");
-	fprintf(file_con,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz );
+
+	// WITH NO MPI THIS WORKS FOR OUTPUT
+	// char stoCON[256];
+	// sprintf(stoCON, "out/con/con-%05d.txt", index);
+	// FILE *file_con ;
+	// file_con = NULL;
+	// file_con = fopen(stoCON,"w+");
+	// fprintf(file_con,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz );
 
 	// 	CONSTANTS
 	const Float deltaa2 = pow(sizeL/sizeN,2.)*2. ;
@@ -1412,7 +1414,11 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 
 	exchangeGhosts(FIELD_M);
 
-
+	//SUM variables
+	double contbin_local[numbins] ;
+	double toti_global;
+	double maxi_global;
+	//printf("\n q1-%d",commRank());fflush(stdout);
 	if(fieldType == FIELD_AXION)
 	{
 		Float *mTheta = static_cast<Float*> (m);
@@ -1423,9 +1429,6 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
 		//printf("ENERGY map theta \n");
 
-		//SUM variables
-		//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0;
-		//Float Vrho1 = 0, Vtheta1 = 0, Krho1 = 0, Ktheta1 = 0, Grho1 = 0, Gtheta1=0; // TEST
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
 		for (int iz=0; iz < Lz; iz++)
 		{
@@ -1466,15 +1469,21 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			} //END Y LOOP
 		} //END Z LOOP
 
+		//printf("\n q2-%d",commRank());fflush(stdout);
+		double maxid = (double) maxi;
 
+		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+		//printf("\n q3-%d",commRank());fflush(stdout);
+		toti_global = toti_global/(n3*nSplit) ;
 
-		toti = toti/n3 ;
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=n2; idx < n3+n2; idx++)
 		{
-			mCONT[idx] = mCONT[idx].real()/toti	;
+			mCONT[idx] = mCONT[idx].real()/toti_global	;
 		}
-		maxi = (Float) maxi/toti ;
+		//printf("\n q4-%d",commRank());fflush(stdout);
+		maxi = ((Float) (maxi_global/toti_global)) ;
 
 		if (maxi >100.)
 		{
@@ -1489,19 +1498,20 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 
 		for(size_t bin = 0; bin < numbins ; bin++)
 		{
-		(static_cast<double *> (contbin))[bin] = 0.;
+		(static_cast<double *> (contbin_local))[bin] = 0.;
 		auxintarray[bin] = 0;
 		}
 		// 	SAVE AVERAGE
 		//	MAXIMUM VALUE OF ENERGY CONTRAST
 		//	MAXIMUM VALUE TO BE BINNED
-		(static_cast<double *> (contbin))[0] = toti;
-		(static_cast<double *> (contbin))[1] = maxi;
-		(static_cast<double *> (contbin))[2] = maxibin;
+		(static_cast<double *> (contbin_local))[0] = toti_global;
+		(static_cast<double *> (contbin_local))[1] = maxi_global;
+		(static_cast<double *> (contbin_local))[2] = (double) maxibin;
+
+		//printf("\n q5-%d",commRank());fflush(stdout);
 
 
-
-		Float norma = (maxi)/(numbins-3) ;
+		Float norma = (maxi_global)/(numbins-3) ;
 		for(size_t i=n2; i < n3+n2; i++)
 		{
 			int bin;
@@ -1513,34 +1523,33 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			}
 		}
 
-
+		//printf("\n q7-%d",commRank());fflush(stdout);
 
 		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t bin = 0; bin < numbins-3 ; bin++)
 		{
-			(static_cast<double *> (contbin))[bin+3] = (double) auxintarray[bin];
+			(static_cast<double *> (contbin_local))[bin+3] = (double) auxintarray[bin];
 		}
 
+		// NO BORRAR!
+		// //PRINT 3D maps
+		// #pragma omp parallel for default(shared) schedule(static)
+		// for (size_t idx = 0; idx < n3; idx++)
+		// {
+		// 	size_t ix, iy, iz;
+		// 		if (mCONT[n2+idx].real() > 5.)
+		// 		{
+		// 			iz = idx/n2 ;
+		// 			iy = (idx%n2)/n1 ;
+		// 			ix = (idx%n2)%n1 ;
+		// 			#pragma omp critical
+		// 			{
+		// 				fprintf(file_con,   "%d %d %d %f \n", ix, iy, iz, mCONT[n2+idx].real() ) ;
+		// 			}
+		// 		}
+		// }
 
-
-		//PRINT 3D maps
-		#pragma omp parallel for default(shared) schedule(static)
-		for (size_t idx = 0; idx < n3; idx++)
-		{
-			size_t ix, iy, iz;
-				if (mCONT[n2+idx].real() > 5.)
-				{
-					iz = idx/n2 ;
-					iy = (idx%n2)/n1 ;
-					ix = (idx%n2)%n1 ;
-					#pragma omp critical
-					{
-						fprintf(file_con,   "%d %d %d %f \n", ix, iy, iz, mCONT[n2+idx].real() ) ;
-					}
-				}
-		}
-
-
+		//printf("\n q8-%d",commRank());fflush(stdout);
 
 	}
 	else // FIELD_SAXION
@@ -1548,8 +1557,13 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			// DO NOTHING
 	}
 
+	MPI_Reduce(contbin_local, contbin, numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-	printf("%d/?? - - - ENERGYdens = %f Max contrast = %f\n ", index, toti, maxi);
+	//printf("\n q9-%d",commRank());fflush(stdout);
+
+	if (commRank() ==0)
+	printf("%d/?? - - - ENERGYdens = %f(%f) Max contrast = %f(%f)\n ", index, toti_global, toti, maxi_global, maxi);
+
 	fflush (stdout);
 	return ;
 }
@@ -1562,6 +1576,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 double	Scalar::maxtheta()//int *window)
 {
 	double mymaxd = 0.;
+	double mymaxd_global = 0.;
 	if (precision == FIELD_DOUBLE)
 	{
 
@@ -1604,7 +1619,8 @@ double	Scalar::maxtheta()//int *window)
 		}
 		mymaxd = (double) mymax;
 	}
-	return mymaxd ;
+	MPI_Allreduce(&mymaxd, &mymaxd_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+	return mymaxd_global ;
 }
 
 //----------------------------------------------------------------------
@@ -1715,14 +1731,15 @@ double	Scalar::maxtheta()//int *window)
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
 	double thetamaxi = maxtheta();
-
+	printf("\n qq10-%d (%f)",commRank(), thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
 
 	double n2p = numbins/thetamaxi;
+	double thetabin_local[numbins];
 
 	for(size_t i = 0; i < numbins ; i++)
 	{
-	(static_cast<double *> (thetabin))[i] = 0.;
+	(static_cast<double *> (thetabin_local))[i] = 0.;
 	}
 
 	if (precision == FIELD_DOUBLE)
@@ -1734,7 +1751,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 				{
 					int bin;
 					bin =  n2p*abs(arg(((complex<double> *) m)[i+n2]));
-					(static_cast<double *> (thetabin))[bin] += 1.;
+					(static_cast<double *> (thetabin_local))[bin] += 1.;
 				}
 			}
 			else	//FIELD_AXION
@@ -1744,7 +1761,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 				{
 					int bin;
 					bin = n2p*abs(((double *) m)[i+n2]/(*z));
-					(static_cast<double *> (thetabin))[bin] += 1. ;
+					(static_cast<double *> (thetabin_local))[bin] += 1. ;
 				}
 			}
 	}
@@ -1759,7 +1776,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 			{
 				int bin;
 				bin =  n2pf*abs(arg(((complex<float> *) m)[i+n2]));
-				(static_cast<double *> (thetabin))[bin] += 1.;
+				(static_cast<double *> (thetabin_local))[bin] += 1.;
 			}
 		}
 		else	//FIELD_AXION
@@ -1769,7 +1786,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 			{
 				int bin;
 				bin = n2pf*abs(((float *) m)[i+n2]/(*z));
-				(static_cast<double *> (thetabin))[bin] += 1. ;
+				(static_cast<double *> (thetabin_local))[bin] += 1. ;
 			}
 		}
 	}
@@ -1783,7 +1800,10 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 	// }
 
 //}//END PARALLEL
+	MPI_Reduce(thetabin_local, thetabin, numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
+	//if (commRank()==0)
+	//printf("out = %f\n",thetamaxi);
 	return thetamaxi ;
 }
 
