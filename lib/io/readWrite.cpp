@@ -8,7 +8,7 @@
 #include "comms/comms.h"
 
 hid_t	meas_id = -1, mlist_id;
-hsize_t	tSpace, slabSz;
+hsize_t	tSize, slabSz, sLz;
 
 herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 {
@@ -433,236 +433,276 @@ void	readConf (Scalar **axion, int index)
 }
 
 /*	Creates a hdf5 file to write all the measurements	*/
-//void	createMeas (Scalar *axion, int index)
-//{
-//	hid_t	plist_id;
-//
-//	if (meas_id >= 0)
-//	{
-//		printf ("Error, a hdf5 file is already opened\n");
-//		return;
-//	}
-//
-//	/*	Set up parallel access with Hdf5	*/
-//
-//	plist_id = H5Pcreate (H5P_FILE_ACCESS);
-//	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
-//
-//	char base[256];
-//
-//	sprintf(base, "%s.m.%05d", outName, index);
-//
-//	/*	Create the file and release the plist	*/
-//
-//	if ((meas_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
-//	{
-//		printf ("Error creating file %s\n", base);
-//		return;
-//	}
-//
-//	H5Pclose(plist_id);
-//
-//	commSync();
-//
-//	switch (axion->Precision())
-//	{
-//		case FIELD_SINGLE:
-//		{
-//			dataType = H5T_NATIVE_FLOAT;
-//			dataSize = sizeof(float);
-//
-//			sprintf(prec, "Single");
-//			length = strlen(prec)+1;
-//		}
-//
-//		break;
-//
-//		case FIELD_DOUBLE:
-//		{
-//			dataType = H5T_NATIVE_DOUBLE;
-//			dataSize = sizeof(double);
-//
-//			sprintf(prec, "Double");
-//			length = strlen(prec)+1;
-//		}
-//
-//		break;
-//
-//		default:
-//
-//		printf("Error: Invalid precision. How did you get this far?\n");
-//		exit(1);
-//
-//		break;
-//	}
-//
-//	int cSteps = dump*index;
-//	hsize_t totlZ = sizeZ*zGrid;
-//	hsize_t tmpS  = sizeN;
-//
-//	switch (axion->Field())
-//	{
-//		case 	FIELD_SAXION:
-//		{
-//			total = tmpS*tmpS*totlZ*2;
-//			slab  = (hsize_t) (axion->Surf()*2);
-//
-//			sprintf(fStr, "Saxion");
-//		}
-//		break;
-//
-//		case	FIELD_AXION:
-//		{
-//			total = tmpS*tmpS*totlZ;
-//			slab  = (hsize_t) axion->Surf();
-//
-//			sprintf(fStr, "Axion");
-//		}
-//		break;
-//
-//		default:
-//
-//		printf("Error: Invalid field type. How did you get this far?\n");
-//		exit(1);
-//
-//		break;
-//	}
-//
-//	/*	Write header	*/
-//
-//	hid_t attr_type;
-//
-//	/*	Attributes	*/
-//
-//	attr_type = H5Tcopy(H5T_C_S1);
-//	H5Tset_size   (attr_type, length);
-//	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
-//
-//	writeAttribute(file_id, fStr,   "Field type",    attr_type);
-//	writeAttribute(file_id, prec,   "Precision",     attr_type);
-//	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
-//	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
-//	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-//	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_INT);
-//	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
-//	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
-//	writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
-//	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
-//	writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
-//	writeAttribute(file_id, &cSteps,"Current step",  H5T_NATIVE_INT);
-//
-//	H5Tclose (attr_type);
-//
-//	commSync();
-//
-//	/*	Create plist for collective write	*/
-//
-//	mlist_id = H5Pcreate(H5P_DATASET_XFER);
-//	H5Pset_dxpl_mpio(mlist_id,H5FD_MPIO_COLLECTIVE);
-//
-//	tSize  = tmpS*tmpS*totlZ;
-//	slabSz = tmpS*tmpS;
-//
-//	return;
-//}
-
-
-//void	destroyMeas ()
-//{
-//	/*	Closes the currently opened file for measurements	*/
-//
-//	H5Pclose (mlist_id);
-//	H5Fclose (meas_id);
-//
-//	meas_id = -1;
-//}
-/*
-void	writeString	(char *strData, size_t nString)
+void	createMeas (Scalar *axion, int index)
 {
-	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
+	hid_t	plist_id, dataType;
+
+	char	prec[16], fStr[16];
+	int	length = 8;
+
+//	const hsize_t maxD[1] = { H5S_UNLIMITED };
+
+	size_t	dataSize;
 
 	int myRank = commRank();
-*/
-	/*	Create space for writing the raw data to disk with chunked access	*/
-/*
-	totalSpace = H5Screate_simple(1, &sTotal, maxD);	// Whole data
 
-	if (totalSpace < 0)
+	if (myRank != 0)	// Only rank 0 writes measurement data
+		return;
+
+	if (meas_id >= 0)
 	{
-		printf ("Fatal error H5Screate_simple\n");
-		exit (1);
-	}
-*/
-	/*	Set chunked access	*/
-/*
-	herr_t status;
-
-	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
-
-	if (chunk_id < 0)
-	{
-		printf ("Fatal error H5Pcreate\n");
-		exit (1);
+		printf ("Error, a hdf5 file is already opened\n");
+		return;
 	}
 
-	status = H5Pset_layout (chunk_id, H5D_CHUNKED);
+	/*	Set up parallel access with Hdf5	*/
 
-	if (status < 0)
+//	We give up pHdf5 for the measurements because compression is not supported
+//	plist_id = H5Pcreate (H5P_FILE_ACCESS);
+//	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+	char base[256];
+
+	sprintf(base, "%s.m.%05d", outName, index);
+
+	/*	Create the file and release the plist	*/
+
+	if ((meas_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)) < 0)	//plist_id)) < 0)
 	{
-		printf ("Fatal error H5Pset_layout\n");
-		exit (1);
+		printf ("Error creating file %s\n", base);
+		return;
 	}
 
-	status = H5Pset_chunk (chunk_id, 1, &slab);
-
-	if (status < 0)
-	{
-		printf ("Fatal error H5Pset_chunk\n");
-		exit (1);
-	}
-*/
-	/*	Create a group for string data	*/
-//	group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-//	writeAttribute(group_id, &nString, "String count", H5T_NATIVE_HSIZE);
-
-	/*	Create a dataset for string data	*/
-/*	char sCh[16] = "/string/data";
-
-	sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHARACTER, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	H5Pclose(plist_id);
 
 	commSync();
 
-	if (sSet_id < 0)
+	switch (axion->Precision())
 	{
-		printf	("Fatal error.\n");
-		exit (0);
+		case FIELD_SINGLE:
+		{
+			dataType = H5T_NATIVE_FLOAT;
+			dataSize = sizeof(float);
+
+			sprintf(prec, "Single");
+			length = strlen(prec)+1;
+		}
+
+		break;
+
+		case FIELD_DOUBLE:
+		{
+			dataType = H5T_NATIVE_DOUBLE;
+			dataSize = sizeof(double);
+
+			sprintf(prec, "Double");
+			length = strlen(prec)+1;
+		}
+
+		break;
+
+		default:
+
+		printf("Error: Invalid precision. How did you get this far?\n");
+		exit(1);
+
+		break;
 	}
-*/
-	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
-/*
-	sSpace = H5Dget_space (sSet_id);
-	memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
+
+	int cSteps = dump*index;
+	hsize_t totlZ = sizeZ*zGrid;
+	hsize_t tmpS  = sizeN;
+
+	switch (axion->Field())
+	{
+		case 	FIELD_SAXION:
+			sprintf(fStr, "Saxion");
+			break;
+
+		case	FIELD_AXION:
+			sprintf(fStr, "Axion");
+			break;
+
+		default:
+			printf("Error: Invalid field type. How did you get this far?\n");
+			exit(1);
+			break;
+	}
+
+	/*	Write header	*/
+
+	hid_t attr_type;
+
+	/*	Attributes	*/
+
+	attr_type = H5Tcopy(H5T_C_S1);
+	H5Tset_size   (attr_type, length);
+	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+	writeAttribute(meas_id, fStr,   "Field type",    attr_type);
+	writeAttribute(meas_id, prec,   "Precision",     attr_type);
+	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
+	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
+	writeAttribute(meas_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_INT);
+	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
+	writeAttribute(meas_id, &cSteps,"Current step",  H5T_NATIVE_INT);
+
+	H5Tclose (attr_type);
 
 	commSync();
 
-	printf ("Rank %d ready to write\n", myRank);
-	fflush (stdout);
+	/*	Create plist for collective write	*/
 
-	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
+//	mlist_id = H5Pcreate(H5P_DATASET_XFER);
+//	H5Pset_dxpl_mpio(mlist_id,H5FD_MPIO_COLLECTIVE);
+
+	tSize  = tmpS*tmpS*totlZ;
+	slabSz = tmpS*tmpS;
+	sLz    = sizeZ;
+
+	return;
+}
+
+
+void	destroyMeas ()
+{
+	/*	Closes the currently opened file for measurements	*/
+
+	H5Pclose (mlist_id);
+	H5Fclose (meas_id);
+
+	meas_id = -1;
+}
+
+void	writeString	(void *str, double strDen)
+{
+	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
+	hid_t	datum;
+
+	int myRank = commRank();
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	char *strData = static_cast<char *>(str);
+	char sCh[16] = "/string/data";
+
+	if (myRank == 0)
 	{
-*/		/*	Select the slab in the file	*/
-/*		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*slabSz;
-		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
-*/
-		/*	Write raw data	*/
 
-//		H5Dwrite (sSet_id, H5T_NATIVE_CHARACTER, memSpace, mSpace, mlist_id, (strData)+slabSz*zDim);
+	/*	If we give up compression and use Javi's dataTypes...
+		datum = H5Tcreate (H5T_COMPOUND, 3*sizeof(size_t)+sizeof(char));
 
-		//commSync();
-//	}
+		H5Tinsert (datum, "x",                0, H5T_NATIVE_HSIZE);
+		H5Tinsert (datum, "y",   sizeof(size_t), H5T_NATIVE_HSIZE);
+		H5Tinsert (datum, "z", 2*sizeof(size_t), H5T_NATIVE_HSIZE);
+		H5Tinsert (datum, "t", 3*sizeof(size_t), H5T_NATIVE_CHAR);
+	*/
+		/*	Create space for writing the raw data to disk with chunked access	*/
+
+		totalSpace = H5Screate_simple(1, &tSize, maxD);	// Whole data
+
+		if (totalSpace < 0)
+		{
+			printf ("Fatal error H5Screate_simple\n");
+			exit (1);
+		}
+
+		/*	Set chunked access and dynamical compression	*/
+
+		herr_t status;
+
+		chunk_id = H5Pcreate (H5P_DATASET_CREATE);
+
+		if (chunk_id < 0)
+		{
+			printf ("Fatal error H5Pcreate\n");
+			exit (1);
+		}
+
+		status = H5Pset_layout (chunk_id, H5D_CHUNKED);
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_layout\n");
+			exit (1);
+		}
+
+		status = H5Pset_chunk (chunk_id, 1, &slabSz);
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_chunk\n");
+			exit (1);
+		}
+
+		status = H5Pset_deflate (chunk_id, 9);	// Maximum compression
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_deflate\n");
+			exit (1);
+		}
+
+		/*	Create a group for string data	*/
+		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		writeAttribute(group_id, &strDen, "String density", H5T_NATIVE_DOUBLE);
+
+		/*	Create a dataset for string data	*/
+
+		//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+		if (sSet_id < 0)
+		{
+			printf	("Fatal error.\n");
+			exit (0);
+		}
+
+		/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+		sSpace = H5Dget_space (sSet_id);
+		memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
+
+//		printf ("Rank %d ready to write\n", myRank);
+//		fflush (stdout);
+	}
+
+	int tSz = commSize();
+
+	for (int rank=0; rank<tSz; rank++)
+	{
+		if (myRank != 0)
+		{
+			if (myRank == rank)
+				MPI_Send(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+
+		} else {
+			if (rank != 0)
+				MPI_Recv(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD, NULL);
+
+			for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
+			{
+				/*	Select the slab in the file	*/
+				hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;
+				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+
+				/*	Write raw data	*/
+
+//				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (strData)+slabSz*zDim);
+				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
+			}
+
+			//commSync();
+		}
+	}
 
 	/*	Close the dataset	*/
-/*
+
+//	H5Tclose (datum);
 	H5Dclose (sSet_id);
 	H5Sclose (sSpace);
 	H5Sclose (memSpace);
@@ -671,7 +711,7 @@ void	writeString	(char *strData, size_t nString)
 	H5Pclose (chunk_id);
 	H5Gclose (group_id);
 }
-
+/*
 void	writeEnergy	(double *eData)
 {
 	hid_t	group_id;
