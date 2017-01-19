@@ -22,11 +22,17 @@
 
 static int rank = -1;
 static int idxAcc = -1;
+static int commSz = 0;
 static char hostname[HOST_NAME_MAX];
 
 int	commRank()
 {
 	return rank;
+}
+
+int	commSize()
+{
+	return commSz;
 }
 
 int	commAcc()
@@ -64,6 +70,8 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 		MPI_Finalize();
 		return -1;
 	}
+
+	commSz = realSize;
 
 	gethostname(hostname, HOST_NAME_MAX);
 	hostname[HOST_NAME_MAX-1] = '\0';		// gethostname no termina la cadena con \0

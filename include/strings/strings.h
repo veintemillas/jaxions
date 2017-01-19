@@ -3,11 +3,12 @@
 
 	#include "scalar/scalarField.h"
 	#include "utils/flopCounter.h"
+	#include <vector>
 
 	double	strings	(Scalar *field, DeviceType dev, void *string, FlopCounter *fCount);
+	std::vector<std::vector<size_t>>  strToCoords     (char *strData, size_t Lx, size_t V);
 
 	int	analyzeStrFolded	(Scalar *axion, const int index);
-    int	analyzeStrFoldedNP 	(Scalar *axion, const int index);
-    
+	int	analyzeStrFoldedNP	(Scalar *axion, const int index);
 	int	analyzeStrUNFolded	(Scalar *axion, const int index);
 #endif

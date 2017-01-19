@@ -3,6 +3,12 @@
 
 	#include "scalar/scalarField.h"
 
-	void	writeConf (Scalar  *axion, int index);
-	void	readConf  (Scalar **axion, int index);
+	void	writeConf	(Scalar  *axion, int index);
+	void	readConf	(Scalar **axion, int index);
+
+	void	createMeas	(Scalar *axion, int index);
+	void	destroyMeas	();
+
+	void	writeString	(void *strData, double strDen);
+
 #endif

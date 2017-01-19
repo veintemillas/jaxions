@@ -16,6 +16,9 @@
 #include "utils/flopCounter.h"
 #include "utils/memAlloc.h"
 
+#include <vector>
+#include "utils/index.h"
+
 #include <mpi.h>
 
 class	Strings
@@ -105,6 +108,24 @@ double	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCoun
 	MPI_Allreduce(&strTmp, &strDen, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 //	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
 
-	//return	(strDen*field->Size())/((double) field->TotalSize());
-    return	strDen ;
+	return	(strDen*field->Size())/((double) field->TotalSize());
+}
+
+std::vector<std::vector<size_t>>	strToCoords	(char *strData, size_t Lx, size_t V)
+{
+	std::vector<std::vector<size_t>> out(0,std::vector<size_t>(4));
+
+	for (int x=0; x<V; x++)
+	{
+		if (strData[x] != 0)
+		{
+			std::vector<size_t>	data(4);
+
+			indexXeon::idx2Vec (x, data.data(), Lx);
+			data[3] = strData[x];
+			out.push_back(data);
+		}
+	}
+
+	return	out;
 }
