@@ -11,6 +11,7 @@
 #include"utils/flopCounter.h"
 
 #include"comms/comms.h"
+#include"scalar/varNQCD.h"
 
 #ifdef	USE_GPU
 	#include<cuda.h>
@@ -852,6 +853,7 @@ void	Scalar::squareCpu()
 
 //	USA M2, ARREGLAR LOWMEM
 //	COPIES CONFORMAL FIELD AND DERIVATIVE FROM PQ FIELD
+// 	M2 IS NOT SHIFTED BY S,N2
 void	Scalar::theta2m2()//int *window)
 {
 	switch (fieldType)
@@ -860,28 +862,30 @@ void	Scalar::theta2m2()//int *window)
 					if (precision == FIELD_DOUBLE)
 					{
 						double za = (*z);
-						double massfactor = 3.0 * pow(za, nQcd/2 + 1);
+						//double massfactor = 3.0 * pow(za, nQcd/2 + 1);
+						double massfactor = axionmass(za, nQcd,1.5,3.0)*za;
 
 						#pragma omp parallel for default(shared) schedule(static)
 						for(size_t i=0; i < n3; i++)
 						{
-						double thetaaux = arg(((std::complex<double> *) m)[i]);
+						double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
 							((complex<double> *) m2)[i] = thetaaux*massfactor*za
-																						+ I*( ((((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag())*za
+																						+ I*( ((((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i+n2]).imag())*za
 																						      + thetaaux ) ;
 						}
 					}
 					else
 					{
 						float zaf = *z ;
-						float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
+						//float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
+						float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
 
 						#pragma omp parallel for default(shared) schedule(static)
 						for(size_t i=0; i < n3; i++)
 						{
-						float thetaauxf = arg(((std::complex<float> *) m)[i]);
+						float thetaauxf = arg(((std::complex<float> *) m)[i+n2]);
 							((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf
-																					 + If*( ((((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag())*zaf
+																					 + If*( ((((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i+n2]).imag())*zaf
 																					      + thetaauxf);
 						}
 					}
@@ -891,23 +895,25 @@ void	Scalar::theta2m2()//int *window)
 
 					if (precision == FIELD_DOUBLE)
 					{
-						double massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+						//double massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+						double massfactor = axionmass((*z), nQcd,1.5,3.0)*(*z);
 
 						#pragma omp parallel for default(shared) schedule(static)
 						for(size_t i=0; i < n3; i++)
 						{
-							((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i])*massfactor + I*((static_cast<double*> (v))[i]);
+							((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2])*massfactor + I*((static_cast<double*> (v))[i]);
 						}
 					}
 					else
 					{
-						float massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+						//float massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+						float zaf = (float) *z ;
+						float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
 
 						#pragma omp parallel for default(shared) schedule(static)
 						for(size_t i=0; i < n3; i++)
 						{
-						float thetaauxf = arg(((std::complex<float> *) m)[i]);
-							((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i])*massfactor + If*((static_cast<float*> (v))[i]);
+							((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2])*massfactor + If*((static_cast<float*> (v))[i]);
 						}
 					}
 		break;
@@ -1403,13 +1409,15 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	// fprintf(file_con,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz );
 
 	// 	CONSTANTS
-	const Float deltaa2 = pow(sizeL/sizeN,2.)*2. ;
+	const Float deltaa2 = pow(sizeL/sizeN,2.)*4. ;
 	const Float invz	= 1.0/(*z);
-	const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
+	//const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
+	const Float z9QCD4 = axionmass2((*z), nQcd,1.5,3.0)*pow((*z),4);
 
 	//	AUX VARIABLES
 	Float maxi = 0.;
 	Float maxibin = 0.;
+	double maxid =0.;
 	double toti = 0.;
 
 	exchangeGhosts(FIELD_M);
@@ -1418,6 +1426,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	double contbin_local[numbins] ;
 	double toti_global;
 	double maxi_global;
+
 	//printf("\n q1-%d",commRank());fflush(stdout);
 	if(fieldType == FIELD_AXION)
 	{
@@ -1457,71 +1466,99 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
 					grad += pow(mTheta[idx+n2]-mTheta[idx],2);
 					grad += pow(mTheta[idx-n2]-mTheta[idx],2);
-					mCONT[idx] = acu + grad/deltaa2 ;
+					mCONT[idx-n2] = acu + grad/deltaa2 ;
 					//mCONT[idx] = acu ;
+					//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 
-					toti += (double) mCONT[idx].real() ;
-					if (mCONT[idx].real() > maxi)
+					toti += (double) mCONT[idx-n2].real() ;
+					if (mCONT[idx-n2].real() > maxi)
 					{
-						maxi = mCONT[idx].real() ;
+						maxi = mCONT[idx-n2].real() ;
 					}
 				} //END X LOOP
 			} //END Y LOOP
 		} //END Z LOOP
 
 		//printf("\n q2-%d",commRank());fflush(stdout);
-		double maxid = (double) maxi;
+		maxid = (double) maxi;
 
 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-		//printf("\n q3-%d",commRank());fflush(stdout);
+
+		//printf("\n %d gets tot=%f(%f) max=%f(%f) av=%f(%f)",
+		//						commRank(),toti,toti_global,maxid,maxi_global,toti_global/(n3*nSplit),
+		//						maxi_global*n3*nSplit/toti_global);
+		fflush(stdout);
+		toti = toti/(n3*nSplit);
 		toti_global = toti_global/(n3*nSplit) ;
 
+		// NORMALISED DENSITY
 		#pragma omp parallel for default(shared) schedule(static)
-		for (size_t idx=n2; idx < n3+n2; idx++)
+		for (size_t idx=0; idx < n3; idx++)
 		{
-			mCONT[idx] = mCONT[idx].real()/toti_global	;
+			mCONT[idx] = mCONT[idx].real()/((Float) toti_global)	;
+			//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 		}
 		//printf("\n q4-%d",commRank());fflush(stdout);
-		maxi = ((Float) (maxi_global/toti_global)) ;
 
-		if (maxi >100.)
-		{
-			maxibin = 100.;
-		}
-		else
-		{
-			maxibin = maxi ;
-		}
+		maxid = maxid/toti_global ;
+		maxi_global = maxi_global/toti_global ;
+
+		// //LINEAR BINNING CONSTRAINED TO 100
+		//
+		// if (maxi_global >100.)
+		// {
+		// 	maxibin = 100.;
+		// }
+		// else
+		// {
+		// 	maxibin = maxi_global ;
+		// }
+		//
+		// //BIN delta from 0 to maxi+1
+		// size_t auxintarray[numbins] ;
+		// for(size_t bin = 0; bin < numbins ; bin++)
+		// {
+		// (static_cast<double *> (contbin_local))[bin] = 0.;
+		// auxintarray[bin] = 0;
+		// }
+		// Float norma = (Float) (maxi_global/(numbins-3)) ;
+		// for(size_t i=n2; i < n3+n2; i++)
+		// {
+		// 	int bin;
+		// 	bin = (mCONT[i].real()/norma)	;
+		// 	//(static_cast<double *> (contbin))[bin+2] += 1. ;
+		// 	if (bin<numbins)
+		// 	{
+		// 		auxintarray[bin] +=1;
+		// 	}
+		// }
+
+		//LOG BINNING from log10(10^-5) to log(maxi_global)
+
+		maxibin = log10(maxi_global) ;
+
 		//BIN delta from 0 to maxi+1
 		size_t auxintarray[numbins] ;
-
 		for(size_t bin = 0; bin < numbins ; bin++)
 		{
 		(static_cast<double *> (contbin_local))[bin] = 0.;
 		auxintarray[bin] = 0;
 		}
-		// 	SAVE AVERAGE
-		//	MAXIMUM VALUE OF ENERGY CONTRAST
-		//	MAXIMUM VALUE TO BE BINNED
-		(static_cast<double *> (contbin_local))[0] = toti_global;
-		(static_cast<double *> (contbin_local))[1] = maxi_global;
-		(static_cast<double *> (contbin_local))[2] = (double) maxibin;
 
-		//printf("\n q5-%d",commRank());fflush(stdout);
-
-
-		Float norma = (maxi_global)/(numbins-3) ;
-		for(size_t i=n2; i < n3+n2; i++)
+		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
+		for(size_t i=0; i < n3; i++)
 		{
 			int bin;
-			bin = (mCONT[i].real()/norma)	;
+			bin = (log10(mCONT[i].real())+5.)/norma	;
 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
-			if (bin<numbins)
+			if (0<=bin<numbins)
 			{
 				auxintarray[bin] +=1;
 			}
 		}
+
+
 
 		//printf("\n q7-%d",commRank());fflush(stdout);
 
@@ -1557,12 +1594,19 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			// DO NOTHING
 	}
 
-	MPI_Reduce(contbin_local, contbin, numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	// 	SAVE AVERAGE
+	//	MAXIMUM VALUE OF ENERGY CONTRAST
+	//	MAXIMUM VALUE TO BE BINNED
 
-	//printf("\n q9-%d",commRank());fflush(stdout);
+	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+	(static_cast<double *> (contbin))[0] = toti_global;
+	(static_cast<double *> (contbin))[1] = maxi_global;
+	//note that maxibin is log10(maxContrast)
+	(static_cast<double *> (contbin))[2] = (double) maxibin;
 
 	if (commRank() ==0)
-	printf("%d/?? - - - ENERGYdens = %f(%f) Max contrast = %f(%f)\n ", index, toti_global, toti, maxi_global, maxi);
+	printf("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
 
 	fflush (stdout);
 	return ;
@@ -1815,7 +1859,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 
 void	Scalar::denstom()//int *window)
 {
-	double thetamaxi = maxtheta();
+	//double thetamaxi = maxtheta();
 
 //	printf("hallo von inside %f\n", thetamaxi);
 
@@ -1829,7 +1873,7 @@ if(fieldType == FIELD_AXION)
 	#pragma omp parallel for default(shared)
 		for(size_t idx=0; idx < n3; idx++)
 			{
-				mTheta[n2+idx] = mCONT[n2+idx].real();
+				mTheta[idx] = mCONT[n2+idx].real();
 			}
 
 	}
@@ -1841,7 +1885,7 @@ if(fieldType == FIELD_AXION)
 	#pragma omp parallel for default(shared)
 		for(size_t idx=0; idx < n3; idx++)
 			{
-				mThetad[n2+idx] = mCONTd[n2+idx].real();
+				mThetad[idx] = mCONTd[n2+idx].real();
 			}
 	}
 	printf("dens to m ... done\n");

@@ -4,6 +4,7 @@
 #include "comms/comms.h"
 #include "scalar/scalarField.h"
 #include "utils/parse.h"
+#include "scalar/varNQCD.h"
 
 using namespace std;
 // WUITAR n1*n1 !!!
@@ -18,8 +19,8 @@ void	writeData	(complex<Float> *m, complex<Float> *v, const Float z, const size_
 
 	const Float iZ = 1./z;
 	//const Float zQ = 1./(9.*pow(z,nQcd+2));
-	const Float zQ = 3.*pow(z,nQcd/2.+1);
-
+	//const Float zQ = 3.*pow(z,nQcd/2.+1);
+	const Float zQ = (Float) axionmass((double) z, nQcd, 1.5, 3.)*((double) z);
 	for (size_t ly = 0; ly < n1; ly++)
 	{
 		for (size_t lx = 0; lx < n1; lx++)
@@ -50,7 +51,8 @@ void	writeDatafromTheta	(Float *m, Float *v, const Float z, const size_t n1, FIL
 
 	const Float iZ = 1./z;
 	//const Float zQ = 1./(9.*pow(z,nQcd+2));
-	const Float zQ = 3.*pow(z,nQcd/2.+1);
+	//const Float zQ = 3.*pow(z,nQcd/2.+1);
+	const Float zQ = (Float) axionmass((double) z, nQcd, 1.5, 3.)*((double) z);
 
 	for (size_t ly = 0; ly < n1; ly++)
 	{

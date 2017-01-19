@@ -3,6 +3,7 @@
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 #include"propagator/RKParms.h"
+#include"scalar/varNQCD.h"
 
 #ifdef USE_XEON
 	#include"comms/comms.h"
@@ -132,7 +133,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double dzd = dz*d;
 		const double zR = *z;
 		const double iZ = 1./zR;
-		const double zQ = 9.*pow(zR, nQcd+3.);
+		//const double zQ = 9.*pow(zR, nQcd+3.);
+		const double zQ = axionmass2(zR,nQcd, 1.5 , 3.)*zR*zR*zR;
 		const double tV	= 2.*M_PI*zR;
 
 #ifdef	__MIC__
@@ -518,7 +520,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float dzd = dz*d;
 		const float zR = *z;
 		const float iZ = 1./zR;
-		const float zQ = 9.*powf(zR, nQcd+3.);
+		//const float zQ = 9.*powf(zR, nQcd+3.);
+		const float zQ = (float) axionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
 		const float tV	= 2.*M_PI*zR;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<4);

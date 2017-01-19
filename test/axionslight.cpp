@@ -354,10 +354,11 @@ int	main (int argc, char *argv[])
 			// DYAMICAL deltaz
 			//--------------------------------------------------
 
-			dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
+			//dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
+			dzaux = min(delta,1./((*axion->zV()*axionmass((*axion->zV()),nQcd,1.5 , 3.))));
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
-				llaux = 1./pow(2.*delta,2.);
+				llaux = 1./pow(1.5*delta,2.);
 			}
 
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
@@ -383,16 +384,18 @@ int	main (int argc, char *argv[])
 			{
 				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
 
-                if (nstrings < 200)
+                if (nstrings < 50000)
                 {
                   //nstrings = analyzeStrFoldedNP(axion, index);
                   nstringsd = strings(axion, cDev, str, fCount);
-                  MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+                  MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 									nstrings = (int) nstringsd_global ;
 
                   //printMpi("%d (%d) %f ", nstrings, coS, (*axion->zV())); fflush(stdout);
                 }
-                if ( (nstrings ==0) && (!coZ) && ((*axion->zV()) > 0.6) )
+								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
+								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
+                if ( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6) )
                 {
                     printMpi("\n");
                     printMpi("--------------------------------------------------\n");
@@ -435,12 +438,10 @@ int	main (int argc, char *argv[])
 				{
 					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 					fflush (stdout);
-										//nstrings = analyzeStrFolded(axion, index);
+										nstrings = analyzeStrFolded(axion, index);
                     //printMpi("= %d ", nstrings);
-                    //nstringsd = strings(axion, cDev, str, fCount);
-                    //nstrings = (int) nstringsd ;
-										//printMpi("= %d ", nstrings);
-										nstringsd = strings(axion, cDev, str, fCount);
+										nstringsd = (double) nstrings ;
+										//nstringsd = strings(axion, cDev, str, fCount);
 										MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 										nstrings = (int) nstringsd_global ;
 										printMpi("= %d ", nstrings);
@@ -492,13 +493,15 @@ int	main (int argc, char *argv[])
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		printMpi("Unfold | ");
+		printMpi("Unfold ... ");
 		munge(UNFOLD_ALL);
+		printMpi("| ");
 
-		printMpi("nSpec | ");
+		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
 		spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+		printMpi("| ");
 		if (commRank() == 0)
 		{
 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
@@ -510,9 +513,9 @@ int	main (int argc, char *argv[])
 		//axion->foldField();
 		}
 
-		printMpi("DensMap | ");
+		printMpi("DensMap ... ");
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-
+		printMpi("| ");
 
 		if (commRank() == 0)
 		{
@@ -530,11 +533,14 @@ int	main (int argc, char *argv[])
 			for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
 		}
 
-		printMpi("dens2m | ");
+		printMpi("dens2m ... ");
 		axion->denstom();
+		printMpi("| ");
 
-		printMpi("pSpec | ");
+		printMpi("pSpec ... ");
 		//POWER SPECTRUM
+		if (commRank() == 0)
+		{
 		powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
 		printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 		fprintf(file_power,  "%f ", (*axion->zV()));
@@ -543,6 +549,8 @@ int	main (int argc, char *argv[])
 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
 		fprintf(file_power,  "%f ", (*axion->zV()));
 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+		}
+		printMpi("| ");
 
 		//munge(FOLD_ALL);
 		fflush(file_power);

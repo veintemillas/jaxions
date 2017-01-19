@@ -4,6 +4,8 @@
 #include "utils/index.h"
 #include "utils/parse.h"
 #include "energy/energyMap.h"
+#include"scalar/varNQCD.h"
+#include <omp.h>
 
 using namespace std;
 
@@ -16,14 +18,14 @@ template<typename Float>
 void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,	int n1, int powmax, int kmax, double mass2)
 {
 	printf("sizeL=%f\n",sizeL);
-	double norma = pow(sizeL,3.)/(8.*pow((double) n1,6)) ;
+	double norma = pow(sizeL,3.)/(4.*pow((double) n1,6.)) ;
 
 	double minus1costab [kmax+1] ;
 
 	double id2 = 2.0/pow(sizeL/sizeN,2);
 
 	#pragma omp parallel for default(shared) schedule(static)
-	for (int i=0; i < kmax + 1; i++)
+	for (int i=0; i < kmax + 2; i++)
 	{
 		minus1costab[i] = id2*(1.0 - cos(((double) (6.2831853071796*i)/n1)));
 	}
@@ -76,7 +78,7 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 //	those are the values for a given mode vec k
 
 
-	#pragma omp parallel
+	#pragma omp parallel default(shared)
 	{
 		double spectrumK_private[powmax];
 		double spectrumG_private[powmax];
@@ -89,29 +91,30 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 			spectrumG_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
 		}
+		int bin;
+		int kz, ky, kx, iz, nz, iy, ny, ix, nx;
+		double k2, w;
+		complex<Float> ftk, ftmk;
 
-		#pragma omp parallel for default(shared)
-		for (int kz = 0; kz<kmax + 1; kz++)
+		#pragma omp for schedule(static)
+		for (int kz = 0; kz<kmax + 2; kz++)
 		{
-			int bin;
 
-			int iz = (n1+kz)%n1 ;
-			int nz = (n1-kz)%n1 ;
-
-			complex<Float> ftk, ftmk;
+			iz = (n1+kz)%n1 ;
+			nz = (n1-kz)%n1 ;
 
 			for (int ky = -kmax; ky<kmax + 1; ky++)
 			{
-				int iy = (n1+ky)%n1 ;
-				int ny = (n1-ky)%n1 ;
+				iy = (n1+ky)%n1 ;
+				ny = (n1-ky)%n1 ;
 
 				for	(int kx = -kmax; kx<kmax + 1; kx++)
 				{
-					int ix = (n1+kx)%n1 ;
-					int nx = (n1-kx)%n1 ;
+					ix = (n1+kx)%n1 ;
+					nx = (n1-kx)%n1 ;
 
-					double k2 =	kx*kx + ky*ky + kz*kz;
-					int bin  = (int) floor(sqrt(k2)) 	;
+					k2 =	kx*kx + ky*ky + kz*kz;
+					bin  = (int) floor(sqrt(k2)) 	;
 
 					//CONTINUUM DEFINITION
 					//k2 =	(39.47842/(sizeL*sizeL)) * k2;
@@ -119,13 +122,13 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 					//LATICE DEFINITION
 					//this first instance of w is aux
 					k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
-					double w = sqrt(k2 + mass2);
+					w = sqrt(k2 + mass2);
 					//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 
-					ftk = ft[ix+iy*n1+iz*n1*n1]; 									// Era ft2
+					ftk = ft[ix+iy*n1+iz*n1*n1];
 					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
 
-					if(!(kz==0||kz==kmax))
+					if(!(kz==0||kz==kmax+1))
 					{
 					// -k is in the negative kx volume
 					// it not summed in the for loop so include a factor of 2
@@ -184,7 +187,8 @@ void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spe
 	const int kmax = n1/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
 	//const double z = axion->zV();
-	double mass2 = 9.*pow((*axion->zV()),nQcd+2.);
+	//double mass2 = 9.*pow((*axion->zV()),nQcd+2.);
+	double mass2 = axionmass2((*axion->zV()), nQcd, 1.5, 3.0)*(*axion->zV())*(*axion->zV());
 
 	// 	New scheme
 
@@ -220,7 +224,7 @@ void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spe
 template<typename Float>
 void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectrumN, void *spectrumV,	int n1, int powmax, int kmax)
 {
-	double norma = pow(sizeL,3.)/(8.*pow((double) n1,6)) ;
+	double norma = pow(sizeL,3.)/(4.*pow((double) n1,6.)) ;
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < powmax; i++)
@@ -230,8 +234,9 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 		(static_cast<double *> (spectrumV))[i] = 0.0;
 	}
 
-	#pragma omp parallel
+	#pragma omp parallel default(shared)
 	{
+		int tid = omp_get_thread_num();
 
 		double spectrumT_private[powmax];
 		double spectrumN_private[powmax];
@@ -244,46 +249,50 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 			spectrumN_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
 		}
+		int kz, ky, kx, iz, nz, iy, ny, ix, nx;
+		int bin;
+		double k2;
+		complex<Float> ftk, ftmk;
 
-		#pragma omp parallel for default(shared)
-		for (int kz = 0; kz<kmax + 1; kz++)
+		#pragma omp for schedule(static)
+		for (int kz = 0; kz<kmax + 2; kz++)
 		{
-			int bin;
+			//printf("thread %d gets kz=%d\n",tid, kz);
 
-			int iz = (n1+kz)%n1 ;
-			int nz = (n1-kz)%n1 ;
+			iz = (n1+kz)%n1 ;
+			nz = (n1-kz)%n1 ;
 
-			complex<Float> ftk, ftmk;
-
-			for (int ky = -kmax; ky<kmax + 1; ky++)
+			for (int ky = -kmax; ky<kmax + 2; ky++)
 			{
-				int iy = (n1+ky)%n1 ;
-				int ny = (n1-ky)%n1 ;
+				iy = (n1+ky)%n1 ;
+				ny = (n1-ky)%n1 ;
 
-				for	(int kx = -kmax; kx<kmax + 1; kx++)
+				for	(int kx = -kmax; kx<kmax + 2; kx++)
 				{
-					int ix = (n1+kx)%n1 ;
-					int nx = (n1-kx)%n1 ;
+					ix = (n1+kx)%n1 ;
+					nx = (n1-kx)%n1 ;
 
-					double k2 =	kx*kx + ky*ky + kz*kz;
-					int bin  = (int) floor(sqrt(k2)) 	;
+					k2 =	kx*kx + ky*ky + kz*kz;
+					bin  = (int) floor(sqrt(k2)) 	;
 
-					ftk = 			ft[ix+iy*n1+iz*n1*n1];
-					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
+					ftk = 			ft[ix + iy*n1 + iz*n1*n1];
+					ftmk = conj(ft[nx + ny*n1 + nz*n1*n1]);
 
-					if(!(kz==0||kz==kmax))
+					//printf("ftk(%d,%d,%d)=%f + I*%f - ftmk(%d,%d,%d)=%f + I*%f\n", iz,iy,ix,ftk.real(),ftk.imag(),nz,ny,nx,ftmk.real(),ftmk.imag());
+					if(!(kz==0||kz==kmax+1))
 					{
 					// -k is in the negative kx volume
 					// it not summed in the for loop so include a factor of 2
-					spectrumT_private[bin] += 2*pow(abs(ftk + ftmk),2);
+					spectrumT_private[bin] += 2.*((double) pow(abs(ftk + ftmk),2));
 					spectrumN_private[bin] += 2.;
-					spectrumV_private[bin] += 2*pow(abs(ftk - ftmk),2);
+					spectrumV_private[bin] += 2.*((double) pow(abs(ftk - ftmk),2));
 					}
 					else
 					{
-					spectrumT_private[bin] += pow(abs(ftk + ftmk),2);
+					//printf("ID %d kz(%d) ftk(%d,%d,%d)=%f + I*%f - ftmk(%d,%d,%d)=%f + I*%f\n", tid, kz,iz,iy,ix,ftk.real(),ftk.imag(),nz,ny,nx,ftmk.real(),ftmk.imag());
+					spectrumT_private[bin] += (double) pow(abs(ftk + ftmk),2);
 					spectrumN_private[bin] += 1.;
-					spectrumV_private[bin] += pow(abs(ftk - ftmk),2);
+					spectrumV_private[bin] += (double) pow(abs(ftk - ftmk),2);
 					}
 				}//x
 
@@ -292,12 +301,15 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 
 		#pragma omp critical
 		{
+			//printf("thread %d gets %f %f %f %f %f\n", tid, spectrumT_private[0],spectrumT_private[1],spectrumT_private[2],spectrumT_private[3],spectrumT_private[4]);
 			for(int n=0; n<powmax; n++)
 			{
 				static_cast<double*>(spectrumT)[n] += spectrumT_private[n];
-				static_cast<double*>(spectrumN)[n]  = spectrumN_private[n];
+				static_cast<double*>(spectrumN)[n] += spectrumN_private[n];
 				static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
       }
+//			printf("thread %d sums %f %f %f %f %f\n", spectrumT[0],spectrumT[1],spectrumT[2],spectrumT[3],spectrumT[4]);
+
 		}
 
 	}//parallel
@@ -310,7 +322,7 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 		static_cast<double*>(spectrumV)[n] *= norma;
 	}
 
-	printf(" ... power spectrum printed\n");
+	//printf(" ... power spectrum printed (L=%f, norma = %f)\n",sizeL,norma);
 }
 
 void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, FlopCounter *fCount)

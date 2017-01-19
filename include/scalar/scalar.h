@@ -6,3 +6,4 @@
 #include "scalar/normField.h"
 #include "scalar/normCore.h"
 #include "scalar/thetaScalar.h"
+#include "scalar/varNQCD.h"

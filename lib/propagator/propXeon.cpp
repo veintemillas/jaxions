@@ -3,6 +3,7 @@
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 #include"propagator/RKParms.h"
+#include"scalar/varNQCD.h"
 
 #ifdef USE_XEON
 	#include"comms/comms.h"
@@ -131,7 +132,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double dzd = dz*d;
 		const double zR = *z;
 		const double z2 = zR*zR;
-		const double zQ = 9.*pow(zR, nQcd+3.);
+		//const double zQ = 9.*pow(zR, nQcd+3.);
+		const double zQ = axionmass2(zR, nQcd, 1.5, 3.)*zR*zR*zR;
 
 #ifdef	__MIC__
 		const size_t XC = (Lx<<2);
@@ -321,7 +323,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const float dzd = dz*d;
 		const float zR = *z;
 		const float z2 = zR*zR;
-		const float zQ = 9.*powf(zR, nQcd+3.);
+		//const float zQ = 9.*powf(zR, nQcd+3.);
+		const float zQ = axionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
 
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
@@ -779,7 +782,8 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 #endif
 		const double zR = *z;
 		const double z2 = zR*zR;
-		const double zQ = 9.*pow(zR, nQcd+3.);
+		//const double zQ = 9.*pow(zR, nQcd+3.);
+		const double zQ = axionmass2(zR, nQcd, 1.5, 3.)*zR*zR*zR;
 		const double dzc = dz*c;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<2);
@@ -955,7 +959,8 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 #endif
 		const float zR = *z;
 		const float z2 = zR*zR;
-		const float zQ = 9.*powf(zR, nQcd+3.);
+		//const float zQ = 9.*powf(zR, nQcd+3.);
+		const float zQ = (float) axionmass2( (double) zR, nQcd, 1.5, 3.)*zR*zR*zR;
 		const float dzc = dz*c;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
