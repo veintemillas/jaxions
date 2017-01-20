@@ -367,13 +367,17 @@ void	readConf (Scalar **axion, int index)
 		}
 	}
 
+	// OJO que LO he CAMBIADOOOOOO
+	//printf("RW/ %d %d",sizeN,sizeZ);
+	hsize_t sizeZ = totlZ/zGrid;
+
 	if (!strcmp(fStr, "Saxion"))
 	{
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,  CONF_NONE, 0, 0, NULL);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,  CONF_NONE, 0, 0, NULL);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
-	} else if (!strcmp(fStr, "Saxion")) {
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION, CONF_NONE, 0, 0, NULL);
-		slab   = (hsize_t) (*axion)->Surf();
+	} else if (!strcmp(fStr, "Axion")) {
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION, CONF_NONE, 0, 0, NULL);
+		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
 		printf("Input error: Invalid field type\n");
 		exit(1);
@@ -649,7 +653,7 @@ void	writeString	(void *str, double strDen)
 
 		/*	Create a group for string data	*/
 		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		writeAttribute(group_id, &strDen, "String density", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &strDen, "String number", H5T_NATIVE_DOUBLE);
 
 		/*	Create a dataset for string data	*/
 

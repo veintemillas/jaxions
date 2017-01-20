@@ -447,6 +447,7 @@ start = std::chrono::high_resolution_clock::now();
 	//
 
 		start = std::chrono::high_resolution_clock::now();
+	// THIS MIGHT NOT BE NEEDED, CHECK OUT
 	printf("FFTing m2 if no lowmem\n");
 	initFFTSpectrum(m2, n1, Tz, precision, lowmem);
 		current = std::chrono::high_resolution_clock::now();
