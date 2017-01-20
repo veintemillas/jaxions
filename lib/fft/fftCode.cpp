@@ -29,7 +29,7 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 		useThreads = false;
 	} else {
 		int nThreads = omp_get_max_threads();
-		printf ("Using %d threads for the FFTW\n");
+		printf ("Using %d threads for the FFTW\n", nThreads);
 		fflush (stdout);
 		fftw_plan_with_nthreads(nThreads);
 	}

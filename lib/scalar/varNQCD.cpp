@@ -6,8 +6,8 @@ double	axionmass(double z, double nQcd, double zthreshold, double indi)
 {
 	double zthres= 10.;
 	double morsa;
-	double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
-	//double expo = nQcd ;
+	//double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
+	double expo = nQcd;
 	if (z > zthres)
 	{
 		morsa = indi*pow(zthres,expo/2.);
@@ -24,8 +24,8 @@ double	axionmass2(double z, double nQcd, double zthreshold, double indi)
 {
 	double zthres= 10.;
 	double morsa;
-	double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
-	//double expo = nQcd ;
+	//double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
+	double expo = nQcd;
 	if (z > zthres)
 	{
 		morsa = indi*indi*pow(zthres,expo);
@@ -36,3 +36,11 @@ double	axionmass2(double z, double nQcd, double zthreshold, double indi)
 	}
 	return morsa;
 }
+
+// double	saxionshift(double z, double nQcd, double zthreshold, double indi)
+// {
+// 	double alpha = axionmass2(z, nQcd)/LL;
+// 	double morsa = ((2./sqrt(3.))*cos(arctan(sqrt(4./3.-alpha*alpha),3*alpha))-1.);
+// 	return morsa;
+//
+// }
