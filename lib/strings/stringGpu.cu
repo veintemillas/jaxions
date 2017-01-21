@@ -126,7 +126,7 @@ __global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __
 		stringCoreGpu<Float>(idx, m, Lx, Sf, strg);
 }
 
-double	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
+size_t	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);

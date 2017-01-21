@@ -224,7 +224,7 @@ inline	void	stringHandS(const __m128 s1, const __m128 s2, int *hand)
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ strg)
+size_t	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ strg)
 {
 	const size_t	Sf = Lx*Lx;
 	size_t		nStrings = 0;
@@ -756,15 +756,14 @@ double	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 
 	//printf ("Chirality of configuration %lf (%lld chiral points)\n", ((double) nChiral)/((double) (Vf-Vo)), nChiral);
 	//printf ("Density of configuration %lf (%llu string points)\n", ((double) nStrings)/((double) (Vf-Vo)), nStrings);
-	fflush (stdout);
+	//fflush (stdout);
 
-	//return (((double) nStrings)/((double) (Vf-Vo)));
-    return  (double) nStrings ;
+	return  nStrings ;
 }
 
-double	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+size_t	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
-	double	  strDen = 0.;
+	size_t	  strDen = 0.;
 #ifdef USE_XEON
 	const int    micIdx = commAcc();
 	const size_t Vh = (V>>1);
@@ -779,7 +778,7 @@ double	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const si
 	return	strDen;
 }
 
-double	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+size_t	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
 	axionField->exchangeGhosts(FIELD_M);
 	return	(stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, strg));

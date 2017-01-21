@@ -37,9 +37,9 @@ class	Strings
 		 Strings(Scalar *field, void *str);
 		~Strings() {};
 
-	double	runCpu	();
-	double	runGpu	();
-	double	runXeon	();
+	size_t	runCpu	();
+	size_t	runGpu	();
+	size_t	runXeon	();
 };
 
 	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
@@ -47,7 +47,7 @@ class	Strings
 	memset(strData, 0, V);
 }
 
-double	Strings::runGpu	()
+size_t	Strings::runGpu	()
 {
 #ifdef	USE_GPU
 	const uint uLx = Lx, uS = S, uV = V;
@@ -63,12 +63,12 @@ double	Strings::runGpu	()
 #endif
 }
 
-double	Strings::runCpu	()
+size_t	Strings::runCpu	()
 {
 	return	stringCpu(axionField, Lx, V, S, precision, strData);
 }
 
-double	Strings::runXeon	()
+size_t	Strings::runXeon	()
 {
 #ifdef	USE_XEON
 	return	stringXeon(axionField, Lx, V, S, precision, strData);
@@ -78,11 +78,11 @@ double	Strings::runXeon	()
 #endif
 }
 
-double	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCount)
+size_t	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCount)
 {
 	Strings *eStr = new Strings(field, strData);
 
-	double	strDen = 0., strTmp = 0.;
+	size_t	strDen = 0, strTmp = 0;
 
 	switch (dev)
 	{
@@ -105,10 +105,10 @@ double	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCoun
 
 	delete	eStr;
 
-	MPI_Allreduce(&strTmp, &strDen, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&strTmp, &strDen, 1, MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
 //	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
 
-	return	(strDen*field->Size())/((double) field->TotalSize());
+	return	strDen;
 }
 
 std::vector<std::vector<size_t>>	strToCoords	(char *strData, size_t Lx, size_t V)
