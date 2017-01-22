@@ -114,7 +114,7 @@
 
 		void	setField	(FieldType field);
 		void	setFolded	(bool foli);
-		
+
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
@@ -124,6 +124,8 @@
 		void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
 		void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
 		void	fftCpuSpectrum(int sign);			// Fast Fourier Transform in m2 [axion spectrum usage]
+		void	fftCpuHalo(int sign);					// Fast Fourier Transform in the Cpu for m -> [halo search usage]
+		void  loadHalo();										// LOADS HALO UTILITIES
 
 		void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 

@@ -24,6 +24,7 @@
 
 #include<mpi.h>
 #include<omp.h>
+#include <fftw3-mpi.h>
 
 #ifdef	USE_XEON
 	#include"utils/xeonDefs.h"
@@ -168,6 +169,8 @@ class	Scalar
 	void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
 	void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
 	void	fftCpuSpectrum(int sign);			// Fast Fourier Transform in the Cpu for m2 [axion spectrum usage]
+	void	fftCpuHalo(int sign);			// Fast Fourier Transform in the Cpu for m -> [halo search usage]
+	void  loadHalo();						// LOADS HALO UTILITIES
 
 	void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 	//JAVIER
@@ -274,7 +277,8 @@ class	Scalar
 	}
 
 	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = n3*fSize;
+	//JAVIER ADDED 2 SLICES TO V FOR REAL TO COMPLEX FTT in HALO
+	const size_t	vBytes = v3*fSize;
 
 printf("Allocating m and v\n"); fflush(stdout);
 #ifdef	USE_XEON
@@ -335,7 +339,7 @@ start = std::chrono::high_resolution_clock::now();
 
 	printf("set m,v=0\n"); fflush(stdout);
 	memset (m, 0, fSize*v3);
-	memset (v, 0, fSize*n3);
+	memset (v, 0, fSize*v3);
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);
@@ -448,11 +452,14 @@ start = std::chrono::high_resolution_clock::now();
 
 		start = std::chrono::high_resolution_clock::now();
 	// THIS MIGHT NOT BE NEEDED, CHECK OUT
-	printf("FFTing m2 if no lowmem\n");
-	initFFTSpectrum(m2, n1, Tz, precision, lowmem);
-		current = std::chrono::high_resolution_clock::now();
-		elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printf("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
+	if(!lowmem)
+	{
+		printf("FFTing m2 if no lowmem\n");
+		initFFTSpectrum(m2, n1, Tz, precision, lowmem);
+			current = std::chrono::high_resolution_clock::now();
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+		printf("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
+	}
 
 }
 
@@ -1010,6 +1017,8 @@ void	Scalar::fftCpuSpectrum	(int sign)
 {
 	runFFTSpectrum(sign);
 }
+
+
 
 /*	CODIGO VIEJO INUTIL, IGUAL PARA FFT GPU...
 void	Scalar::fftCpu	(int sign)
@@ -1864,37 +1873,60 @@ void	Scalar::denstom()//int *window)
 
 //	printf("hallo von inside %f\n", thetamaxi);
 
-if(fieldType == FIELD_AXION)
-{
-	if (precision == FIELD_SINGLE)
+	if(fieldType == FIELD_AXION)
 	{
-	float *mTheta = static_cast<float*> (m);
-	complex<float> *mCONT = static_cast<complex<float>*> (m2);
+		if (precision == FIELD_SINGLE)
+		{
+		float *mTheta = static_cast<float*> (m);
+		complex<float> *mCONT = static_cast<complex<float>*> (m2);
 
-	#pragma omp parallel for default(shared)
-		for(size_t idx=0; idx < n3; idx++)
-			{
-				mTheta[idx] = mCONT[n2+idx].real();
-			}
+		#pragma omp parallel for default(shared)
+			for(size_t idx=0; idx < n3; idx++)
+				{
+					mTheta[idx] = mCONT[n2+idx].real();
+				}
+
+		}
+		else //	FIELD_DOUBLE
+		{
+		double *mThetad = static_cast<double*> (m);
+		complex<double> *mCONTd = static_cast<complex<double>*> (m2);
+
+		#pragma omp parallel for default(shared)
+			for(size_t idx=0; idx < n3; idx++)
+				{
+					mThetad[idx] = mCONTd[n2+idx].real();
+				}
+		}
+		printf("dens to m ... done\n");
 
 	}
-	else //	FIELD_DOUBLE
+	else
 	{
-	double *mThetad = static_cast<double*> (m);
-	complex<double> *mCONTd = static_cast<complex<double>*> (m2);
-
-	#pragma omp parallel for default(shared)
-		for(size_t idx=0; idx < n3; idx++)
-			{
-				mThetad[idx] = mCONTd[n2+idx].real();
-			}
+		printf("dens to m not available for SAXION\n");
 	}
-	printf("dens to m ... done\n");
 
 }
-else
+
+//----------------------------------------------------------------------
+//		HALO UTILITIES
+//----------------------------------------------------------------------
+
+void	Scalar::loadHalo()
 {
-	printf("dens to m not available for SAXION\n");
+	printf("initFFThalo sending fSize=%d, n1=%d, Tz=%d\n", fSize, n1, Tz);
+	// printf("| free v ");fflush(stdout);
+	// trackFree(&v, ALLOC_ALIGN);
+	//
+ // 	const size_t	mBytes = v3*fSize;
+ // 	printf("| realoc m2 ");
+	// v = (fftwf_complex*) fftwf_malloc(sizeN*sizeN*(sizeN/2+1) * sizeof(fftwf_complex));
+	//
+	initFFThalo(static_cast<void *>(static_cast<char *> (m) + n2*fSize), v, n1, Tz, precision);
+
 }
 
+void	Scalar::fftCpuHalo	(int sign)
+{
+	runFFThalo(sign);
 }
