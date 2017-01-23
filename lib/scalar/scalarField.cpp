@@ -278,7 +278,7 @@ class	Scalar
 
 	const size_t	mBytes = v3*fSize;
 	//JAVIER ADDED 2 SLICES TO V FOR REAL TO COMPLEX FTT in HALO
-	const size_t	vBytes = v3*fSize;
+	const size_t	vBytes = n3*fSize;
 
 printf("Allocating m and v\n"); fflush(stdout);
 #ifdef	USE_XEON
@@ -339,7 +339,7 @@ start = std::chrono::high_resolution_clock::now();
 
 	printf("set m,v=0\n"); fflush(stdout);
 	memset (m, 0, fSize*v3);
-	memset (v, 0, fSize*v3);
+	memset (v, 0, fSize*n3);
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);

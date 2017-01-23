@@ -57,13 +57,14 @@ void	Folder::foldField()
 
 	const int fSize = field->DataSize();
 	const int shift = field->DataAlign()/fSize;
-	//printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
+	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
+		//printf("slice %d ",iz);fflush(stdout);
 		memcpy (m,           m + n2*(1+iz), fSize*n2);
 		memcpy (m + (n3+n2), v + n2*iz,     fSize*n2);
 
@@ -82,7 +83,7 @@ void	Folder::foldField()
 
 		field->setFolded(true);
 
-//	printf("Done!\n");
+	printf("Done from inside Folder!\n");
 	return;
 }
 

@@ -294,6 +294,7 @@ int	main (int argc, char *argv[])
 		writeMapAt (axion, sliceprint+10);
 	}
 
+	axion->exchangeGhosts(FIELD_M);
 	Nmaxima = 0;
 	reads= 0;
 	#pragma omp parallel for default(shared) schedule(static) reduction(+:Nmaxima,reads)
@@ -405,7 +406,7 @@ int	main (int argc, char *argv[])
 	{
 		for (size_t n=0; n<Nmaxima; n++)
 		{
-			printf("Max[%d][r]= %f ", n, mD[Listmax[n]+S0]);
+			printf("Max[%d][r]= %f ", n, mD[Listmax[n]]);
 		}
 	}
 	else
@@ -429,10 +430,112 @@ int	main (int argc, char *argv[])
 	{
 		for(size_t n=0; n<Nmaxima; n++)
 		{
-			fprintf(HalWrite, "%f ", mD[Listmax[n]+S0]) ;
+			fprintf(HalWrite, "%f ", mD[Listmax[n]]) ;
 		}
 		fprintf(HalWrite,"\n");
 	}
+
+
+	//CHOOSE the BIG HALO
+	size_t biggy = 0;
+	float maxi = 0.;
+	for (size_t n=0; n<Nmaxima; n++)
+	{
+		if (mD[Listmax[n]] > maxi )
+		{
+			printMpi("biggy n=%d, r=%f, candidate= %f\n", biggy, maxi, mD[Listmax[n]]);
+			maxi = mD[Listmax[n]];
+			biggy = n;
+		}
+	}
+
+
+	//EXTRACT ITS MASS DISTRIBUTION
+	//ELLIPTICITY?
+
+	int numi = 50;
+	size_t cubeside = numi*2+1;
+	size_t cubeside2 = cubeside*cubeside;
+	size_t center = Listmax[biggy];
+	float localcube[cubeside*cubeside*cubeside];
+	float binned[cubeside];
+	float binned2[cubeside];
+	int   nparts[cubeside];
+
+	size_t cz, cy, cx;
+	cx = center%n1;
+	cy = ((center-cx)/n1)%n1;
+	cz = center/S0 -1 ;
+
+	printMpi("cube centered at (%d,%d,%d)[%d], side = %d sites\n ",
+	cz, cy, cx, Listmax[biggy], cubeside);
+
+
+//#pragma omp parallel
+//{
+
+	size_t idx;
+	size_t pz, py, px;
+	size_t lz, ly, lx;
+	size_t bin;
+	double COMz =0.;
+	double COMy =0.;
+	double COMx =0.;
+	printMpi("checs\n");
+//	#pragma omp for schedule(static)
+	for (int iz=-numi; iz < numi+1; iz++)
+	{
+		pz = (cz+iz)%n1 ;
+		lz = (iz+numi);
+		for (int iy=-numi; iy < numi+1; iy++)
+		{
+			py = (cy+iy)%n1 ;
+			ly = (iy+numi);
+			for (int ix=-numi; ix < numi+1; ix++)
+			{
+				px = (cx+ix)%n1 ;
+				lx = ix+numi ;
+				idx = px + py*n1 + pz*S0;
+				bin= (int) sqrt((double) iz*iz+iy*iy+ix*ix);
+				//printMpi("[%d](%d,%d,%d) %d %f",idx, pz,py,px, bin, mD[idx+S0]);
+				localcube[lx+cubeside*ly+cubeside2*lz] = mD[idx+S0];
+				if (bin<numi+1)
+				{
+					binned[bin] +=  mD[idx+S0];
+					binned2[bin] +=  pow(mD[idx+S0],2);
+					nparts[bin] += 1 ;
+					COMz += (double) mD[idx+S0]*iz	;
+					COMy += (double) mD[idx+S0]*iy	;
+					COMx += (double) mD[idx+S0]*iz	;
+				}
+			}
+		}
+	}
+//}
+for(size_t n=0; n<numi+1; n++)
+{
+	fprintf(HalWrite, "%f ", binned[n]) ;
+}
+fprintf(HalWrite,"\n");
+for(size_t n=0; n<numi+1; n++)
+{
+	fprintf(HalWrite, "%f ", binned2[n]) ;
+}
+fprintf(HalWrite,"\n");
+for(size_t n=0; n<numi+1; n++)
+{
+	fprintf(HalWrite, "%d ", nparts[n]) ;
+}
+fprintf(HalWrite,"\n");
+fprintf(HalWrite, "%f %f %f\n", COMz, COMy, COMx) ;
+
+printMpi("Print dens around biggy\n");
+for (int sliceprint = 0; sliceprint<cubeside; sliceprint++)
+{
+	pz = (cz+(sliceprint-numi))%n1 ;
+	munge(UNFOLD_SLICE, pz);
+	writeMapAt (axion, sliceprint+20);
+}
 
 
 
@@ -440,7 +543,7 @@ int	main (int argc, char *argv[])
 	printMpi("   FISHING ...\n");
 	printMpi("--------------------------------------------------\n");
 
-
+	fclose(HalWrite);
 
 	fftwf_destroy_plan(planc2r);
 	fftwf_destroy_plan(planr2c);
