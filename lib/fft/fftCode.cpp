@@ -277,16 +277,16 @@ void	initFFThalo	(void *m, void *v, const size_t n1, const size_t Lz, FieldPreci
 		case FIELD_DOUBLE:
 
 		single = false;
-			p3   = fftw_mpi_plan_dft_r2c_3d(Lz, n1, n1, static_cast<double*>(m), static_cast<fftw_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_UNALIGNED);
-			p3b  = fftw_mpi_plan_dft_c2r_3d(Lz, n1, n1, static_cast<fftw_complex*>(v), static_cast<double*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_UNALIGNED);
+			p3   = fftw_mpi_plan_dft_r2c_3d(Lz, n1, n1, static_cast<double*>(m), static_cast<fftw_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE );
+			p3b  = fftw_mpi_plan_dft_c2r_3d(Lz, n1, n1, static_cast<fftw_complex*>(v), static_cast<double*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE );
 
 		break;
 
 		case FIELD_SINGLE:
 
 		single = true;
-			pf3  = fftwf_mpi_plan_dft_r2c_3d(Lz, n1, n1, static_cast<float*>(m), static_cast<fftwf_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_UNALIGNED);
-			pf3b = fftwf_mpi_plan_dft_c2r_3d(Lz, n1, n1, static_cast<fftwf_complex*>(v), static_cast<float*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE | FFTW_UNALIGNED);
+			pf3  = fftwf_mpi_plan_dft_r2c_3d(Lz, n1, n1, static_cast<float*>(m), static_cast<fftwf_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE );
+			pf3b = fftwf_mpi_plan_dft_c2r_3d(Lz, n1, n1, static_cast<fftwf_complex*>(v), static_cast<float*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE );
 		break;
 
 		default:

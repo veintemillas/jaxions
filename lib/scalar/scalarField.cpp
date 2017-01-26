@@ -337,7 +337,7 @@ start = std::chrono::high_resolution_clock::now();
 		}
 	}
 
-	printf("set m,v=0\n"); fflush(stdout);
+	printf("set m,v=0, fSize=%d m[%ld] v[%ld]\n",fSize,v3,n3); fflush(stdout);
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*n3);
 

@@ -19,12 +19,12 @@ class	Folder
 {
 	private:
 
-	int shift;
-	int fSize;
-	const int Lz;
-	const int n1;
-	const int n2;
-	const int n3;
+	size_t shift;
+	size_t fSize;
+	const size_t Lz;
+	const size_t n1;
+	const size_t n2;
+	const size_t n3;
 
 	Scalar *field;
 
@@ -55,20 +55,21 @@ void	Folder::foldField()
 	if (field->Folded())
 		return;
 
-	const int fSize = field->DataSize();
-	const int shift = field->DataAlign()/fSize;
+	const size_t fSize = field->DataSize();
+	const size_t shift = field->DataAlign()/fSize;
 	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
-	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
+ 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
-		//printf("slice %d ",iz);fflush(stdout);
+		// printf("slice %d ",iz);fflush(stdout);
 		memcpy (m,           m + n2*(1+iz), fSize*n2);
+		// printf("slice %d ",iz);fflush(stdout);
 		memcpy (m + (n3+n2), v + n2*iz,     fSize*n2);
 
-		#pragma omp parallel for schedule(static)
+	#pragma omp parallel for schedule(static)
 		for (size_t iy=0; iy < n1/shift; iy++)
 			for (size_t ix=0; ix < n1; ix++)
 				for (size_t sy=0; sy<shift; sy++)
@@ -83,7 +84,7 @@ void	Folder::foldField()
 
 		field->setFolded(true);
 
-	printf("Done from inside Folder!\n");
+	//printf("Done from inside Folder!\n");
 	return;
 }
 
