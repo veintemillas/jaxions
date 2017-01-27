@@ -52,6 +52,12 @@
 		template<typename Float>
 		//void	ENERGY(const Float zz, FILE *enWrite);
 		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
+        	template<typename Float>
+	        void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
+
+        	template<typename Float>
+	        void energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
+
 
 		public:
 
@@ -145,7 +151,7 @@
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif
-		template<typename Float>
-		void	normaCOREField(const Float alpha);
+//		template<typename Float>
+//		void	normaCOREField(const Float alpha);
 	};
 #endif

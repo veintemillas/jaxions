@@ -45,7 +45,7 @@ class	Folder
 	void	operator()(FoldType fType, size_t Cz=0);
 };
 
-	Folder:: Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), n1(scalar->Length()), n2(scalar->Surf()), n3(scalar->Size())
+	Folder::Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), n1(scalar->Length()), n2(scalar->Surf()), n3(scalar->Size())
 {
 }
 
@@ -55,8 +55,8 @@ void	Folder::foldField()
 	if (field->Folded())
 		return;
 	// WHY THE FOLLOWING DEFINITIONS WERE CONSTANTS?
-	size_t fSize = field->DataSize();
-	size_t shift = field->DataAlign()/fSize;
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
 	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), fSize, shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
@@ -97,8 +97,8 @@ void	Folder::unfoldField()
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
-	const size_t fSize = field->DataSize();
-	const size_t shift = field->DataAlign()/fSize;
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
 
 	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(),shift,n2);
 
@@ -141,8 +141,8 @@ void	Folder::unfoldField2D (const size_t sZ)
 		return;
 	}
 
-	const size_t fSize = field->DataSize();
-	const size_t shift = field->DataAlign()/fSize;
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
 
 	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
 	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);

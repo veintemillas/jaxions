@@ -9,6 +9,6 @@
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
 
-	void	writeString	(void *strData, double strDen);
+	void	writeString	(void *strData, size_t strDen);
 
 #endif

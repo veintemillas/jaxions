@@ -137,8 +137,8 @@ class	Scalar
 	size_t		Length()    { return n1; }
 	size_t		TotalDepth(){ return Lz*nSplit; }
 	size_t		Depth()     { return Lz; }
-	size_t		eSize()     { return v3; }
 	size_t		eDepth()    { return Ez; }
+	size_t		eSize()     { return v3; }
 
 	FieldPrecision	Precision() { return precision; }
 	DeviceType	Device()    { return device; }

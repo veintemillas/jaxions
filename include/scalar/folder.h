@@ -7,8 +7,8 @@
 	{
 		private:
 
-		int shift;
-		int fSize;
+		size_t shift;
+		size_t fSize;
 		const int Lz;
 		const int n1;
 		const int n2;
