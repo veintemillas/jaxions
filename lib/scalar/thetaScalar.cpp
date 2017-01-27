@@ -63,10 +63,10 @@ void	CmplxToTheta::runXeon	()
 void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 {
 	CmplxToTheta *theta = new CmplxToTheta(field);
-	Folder	     munge(field);
-    
-    printf("toTheta | fold ");fflush(stdout);
-	munge(UNFOLD_ALL);
+	Folder	     mungen(field);
+
+    printf("toTheta | unfold ");fflush(stdout);
+	mungen(UNFOLD_ALL);
      printf("| do");fflush(stdout);
 	switch (field->Device())
 	{
@@ -93,10 +93,16 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
 	field->setField(FIELD_AXION);
 
 	//printf("folding... \n");fflush(stdout);
-    printf("| fold ");fflush(stdout);
-	munge(FOLD_ALL);
-    printf("| \n");fflush(stdout);
-	fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
+	if (field->Field() == FIELD_AXION)
+	printf("well done! ");
 
-	return;
+	printf("| fold ");fflush(stdout);
+
+	mungen(FOLD_ALL);
+
+	printf("| returning \n");fflush(stdout);
+
+	//fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
+
+	return ;
 }

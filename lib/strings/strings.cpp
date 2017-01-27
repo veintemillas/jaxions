@@ -115,7 +115,7 @@ std::vector<std::vector<size_t>>	strToCoords	(char *strData, size_t Lx, size_t V
 {
 	std::vector<std::vector<size_t>> out(0,std::vector<size_t>(4));
 
-	for (int x=0; x<V; x++)
+	for (size_t x=0; x<V; x++)
 	{
 		if (strData[x] != 0)
 		{

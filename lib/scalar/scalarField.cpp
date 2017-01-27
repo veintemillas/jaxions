@@ -1116,9 +1116,10 @@ void	Scalar::setField (FieldType fType)
 					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
 					break;
 				}
-        printf("| resize ");fflush(stdout);
+        printf("| resize %d->",fSize);fflush(stdout);
 				fSize /= 2;
 				shift *= 2;
+				printf("%d ",fSize);fflush(stdout);
 
 				const size_t	mBytes = v3*fSize;
         printf("| alloc m2 ");
@@ -1132,8 +1133,9 @@ void	Scalar::setField (FieldType fType)
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
                     //m2  = v;
 					#endif
-					//initFFTSpectrum(m2, n1, Tz, precision, lowmem);
-					initFFTSpectrum(m2, n1, Tz, precision, 0);
+
+					//initFFTSpectrum(m2, n1, Tz, precision, 0);
+					printf("(yes) ");
 				}
 				//IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 				// #ifdef	USE_XEON

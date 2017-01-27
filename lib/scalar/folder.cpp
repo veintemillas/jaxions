@@ -54,19 +54,19 @@ void	Folder::foldField()
 {
 	if (field->Folded())
 		return;
-
-	const size_t fSize = field->DataSize();
-	const size_t shift = field->DataAlign()/fSize;
-	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(), shift, n2);
+	// WHY THE FOLLOWING DEFINITIONS WERE CONSTANTS?
+	size_t fSize = field->DataSize();
+	size_t shift = field->DataAlign()/fSize;
+	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), fSize, shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
  	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
-		// printf("slice %d ",iz);fflush(stdout);
+		//printf("slice %d ",iz);fflush(stdout);
 		memcpy (m,           m + n2*(1+iz), fSize*n2);
-		// printf("slice %d ",iz);fflush(stdout);
+		//printf("slice %d ",iz);fflush(stdout);
 		memcpy (m + (n3+n2), v + n2*iz,     fSize*n2);
 
 	#pragma omp parallel for schedule(static)
@@ -81,7 +81,7 @@ void	Folder::foldField()
 					v[dIdx]    = m[oIdx+n2+n3];
 				}
 	}
-
+	//printf("setFolded ");fflush(stdout);
 		field->setFolded(true);
 
 	//printf("Done from inside Folder!\n");
@@ -97,8 +97,8 @@ void	Folder::unfoldField()
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
-	const int fSize = field->DataSize();
-	const int shift = field->DataAlign()/fSize;
+	const size_t fSize = field->DataSize();
+	const size_t shift = field->DataAlign()/fSize;
 
 	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(),shift,n2);
 
@@ -141,8 +141,8 @@ void	Folder::unfoldField2D (const size_t sZ)
 		return;
 	}
 
-	const int fSize = field->DataSize();
-	const int shift = field->DataAlign()/fSize;
+	const size_t fSize = field->DataSize();
+	const size_t shift = field->DataAlign()/fSize;
 
 	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
 	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);

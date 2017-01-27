@@ -126,10 +126,11 @@ int	main (int argc, char *argv[])
 	printMpi("Files prepared! \n");
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
-	int nstrings = 201 ;
+	size_t nstrings = 0 ;
+	size_t nstrings_global = 0 ;
 
-  double nstringsd = 201. ;
-	double nstringsd_global = 201 ;
+  double nstringsd = 0. ;
+	double nstringsd_global = 0. ;
 	double maximumtheta = 3.141597;
 	size_t sliceprint = 1;
 
@@ -375,18 +376,20 @@ int	main (int argc, char *argv[])
 						if (axion->Field() == FIELD_SAXION)
 						{
 							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %d\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
 								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag(),
-								nstrings);
+								nstrings_global);
 							} else {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %d\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
 								static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].imag(),
-								static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),nstrings);
+								static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),
+								nstrings_global);
 							}
 						}
 						else
 						{
+							printMpi("llegue print!\n");fflush(stdout);
 							if (sPrec == FIELD_DOUBLE) {
 								fprintf(file_sample,"%f %f %f %f\n", z_now, axionmass(z_now,nQcd,1.5,3.),
 								static_cast<double*> (axion->mCpu())[sliceprint*S0+S0], static_cast<double*> (axion->vCpu())[sliceprint*S0]);
@@ -446,33 +449,37 @@ int	main (int argc, char *argv[])
                 if (nstrings < 200)
                 {
                   //nstrings = analyzeStrFoldedNP(axion, index);
-                  nstringsd = strings(axion, cDev, str, fCount);
-                  MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-									nstrings = (int) nstringsd_global ;
+                  nstrings = strings(axion, cDev, str, fCount);
+									//nstringsd = (double) nstrings;
+                  MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
-                  //printMpi("%d (%d) %f ", nstrings, coS, (*axion->zV())); fflush(stdout);
+                  //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
                 }
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-                if ( (nstrings == 0) && (!coS) && ((*axion->zV()) > 0.6) )
+                if ( (nstrings_global == 0) && (!coS) && ((*axion->zV()) > 0.6) )
                 {
 										strcount += 1;
-										printMpi("  str countdown (%d/100)\n",strcount);
-										if (strcount >100)
+										printMpi("  str countdown (%d/100)\n",strcount);fflush(stdout);
+										if (strcount >5)
 										{
 											printMpi("\n");
 	                    printMpi("--------------------------------------------------\n");
 	                    printMpi("              TRANSITION TO THETA \n");
-	                    cmplxToTheta	(axion, fCount);
+	                    cmplxToTheta (axion, fCount);
+											fflush(stdout);
 	                    printMpi("--------------------------------------------------\n");
-	                    fflush(stdout);
 										}
                 }
 			}
 			else
 			{
+				printMpi("llegue!\n");fflush(stdout);
 				propTheta	(axion, dzaux,     nQcd, delta, cDev, fCount);
 			}
+
+			if (axion->Field() == FIELD_AXION)
+			printf("THETAS!\n");
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
@@ -483,7 +490,7 @@ int	main (int argc, char *argv[])
 
 			if ((*axion->zV()) > zFinl)
 			{
-				printMpi("zf reached! ENDING ... \n");
+				printMpi("zf reached! ENDING ... \n"); fflush(stdout);
 				break;
 			}
 
@@ -494,26 +501,30 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 
       printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
+			fflush(stdout);
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
+				fflush(stdout);
 				if ((*axion->zV()) > 0.2)
 				{
 					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 					fflush (stdout);
 										nstrings = analyzeStrFolded(axion, index);
                     //printMpi("= %d ", nstrings);
-										nstringsd = (double) nstrings ;
-										//nstringsd = strings(axion, cDev, str, fCount);
-										MPI_Allreduce(&nstringsd, &nstringsd_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-										nstrings = (int) nstringsd_global ;
-										printMpi("= %d ", nstrings);
-					fflush (stdout);
-                    if (nstrings == 0 )
+										//nstrings = strings(axion, cDev, str, fCount);
+										//nstringsd = (double) nstrings ;
+										MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+										//nstrings = (int) nstringsd_global ;
+										printMpi("= %ld ", nstrings_global);
+										fflush (stdout);
+
+										if (nstrings_global == 0 )
                     {
                         coS = 0;
                         printMpi("Low string density! coS=0 (stcount=%d)",strcount);
+												fflush(stdout);
                     }
 				}
 				printMpi("\n");

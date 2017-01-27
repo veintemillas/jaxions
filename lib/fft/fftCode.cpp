@@ -39,7 +39,25 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 	printf ("  MPI Ok\n");
 	fflush (stdout);
 
-	printf ("  Plan 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Lz);
+	int rank;
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+	if (rank == 0)
+	{
+		if(!fftw_import_wisdom_from_filename("wisdomsave.txt"))
+		{
+			printf("  Warning: could not import wisdom\n");
+		}
+		else
+		{
+			printf("  Wisdom file loaded\n\n");
+		}
+	}
+
+
+
+	printf ("  Planning 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Lz);
 	fflush (stdout);
 
 	switch (prec)
@@ -77,7 +95,15 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 		break;
 	}
 
+
+
 	printf ("  Plans Ok\n");
+
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave.txt");
+
+	printf ("  Wisdom saved\n");
 	printf ("Done!\n");
 	fflush (stdout);
 
@@ -114,6 +140,13 @@ void	runFFT(int sign)
 
 void	closeFFT	()
 {
+	int rank;
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave");
+
+	printf ("  Wisdom saved once more in rank %d\n",rank);
+
 	if (!iFFT)
 		return;
 
@@ -137,6 +170,8 @@ void	closeFFT	()
 		else
 			fftw_cleanup();
 	}
+
+
 }
 
 

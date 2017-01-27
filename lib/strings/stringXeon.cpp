@@ -224,7 +224,7 @@ inline	void	stringHandS(const __m128 s1, const __m128 s2, int *hand)
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-size_t	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo, const int Vf, FieldPrecision precision, void * __restrict__ strg)
+size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ strg)
 {
 	const size_t	Sf = Lx*Lx;
 	size_t		nStrings = 0;
@@ -395,7 +395,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 						default:
 						break;
 					}
-	
+
 					hand[ih] = 0;
 				}
 
@@ -662,7 +662,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const int Lx, const int Vo
 						default:
 						break;
 					}
-	
+
 					hand[ih] = 0;
 				}
 
