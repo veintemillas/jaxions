@@ -234,6 +234,8 @@ printf("Allocating m and v\n"); fflush(stdout);
 //		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 //	}
 
+	initFFT();
+
 	*z = zI;
 
 	/*	If present, read fileName	*/
@@ -251,7 +253,7 @@ printf("Allocating m and v\n"); fflush(stdout);
 			printf("Entering initFFT\n");
 
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
-				initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+				initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
@@ -340,11 +342,13 @@ printf("Allocating m and v\n"); fflush(stdout);
 
 //			if (!lowmem)
 //				closeCudaFFT();
+			closeFFTPlans();
 			closeFFT();
 		#endif
 	} else {
 //		if (!lowmem)
-			closeFFT();
+		closeFFTPlans();
+		closeFFT();
 	}
 
 	if (device == DEV_XEON)

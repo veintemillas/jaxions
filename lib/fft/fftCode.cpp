@@ -9,9 +9,9 @@ using namespace std;
 fftw_plan p, pb;
 fftwf_plan pf, pfb;
 
-static bool iFFT = false, single = false, useThreads = true;
+static bool iFFT = false, iFFTPlans = false, single = false, useThreads = true;
 
-void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecision prec, bool lowmem)
+void	initFFT	()
 {
 	printf ("Initializing FFT...\n");
 	fflush (stdout);
@@ -27,17 +27,22 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 		printf ("Error initializing FFT with threads\n");
 		fflush (stdout);
 		useThreads = false;
+		fftw_mpi_init();
 	} else {
 		int nThreads = omp_get_max_threads();
 		printf ("Using %d threads for the FFTW\n", nThreads);
 		fflush (stdout);
+		fftw_mpi_init();
 		fftw_plan_with_nthreads(nThreads);
 	}
 
-	fftw_mpi_init();
+	iFFT = true;
+}
 
-	printf ("  MPI Ok\n");
-	fflush (stdout);
+void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecision prec, bool lowmem)
+{
+	if (!iFFT)
+		initFFT();
 
 	int rank;
 
@@ -54,8 +59,6 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 			printf("  Wisdom file loaded\n\n");
 		}
 	}
-
-
 
 	printf ("  Planning 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Lz);
 	fflush (stdout);
@@ -107,7 +110,7 @@ void	initFFT	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecisio
 	printf ("Done!\n");
 	fflush (stdout);
 
-	iFFT = true;
+	iFFTPlans = true;
 }
 
 void	runFFT(int sign)
@@ -150,28 +153,34 @@ void	closeFFT	()
 	if (!iFFT)
 		return;
 
+	if (useThreads)
+		fftwf_cleanup_threads();
+	else
+		fftwf_cleanup();
+}
+
+void	closeFFTPlans	()
+{
+	int rank;
+	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave");
+
+	printf ("  Wisdom saved once more in rank %d\n",rank);
+
+	if (!iFFTPlans)
+		return;
+
 	if (single)
 	{
 		fftwf_destroy_plan(pf);
 		fftwf_destroy_plan(pfb);
-
-		if (useThreads)
-			fftwf_cleanup_threads();
-		else
-			fftwf_cleanup();
 	}
 	else
 	{
 		fftw_destroy_plan(p);
 		fftw_destroy_plan(pb);
-
-		if (useThreads)
-			fftw_cleanup_threads();
-		else
-			fftw_cleanup();
 	}
-
-
 }
 
 
@@ -188,6 +197,8 @@ static bool iFFTSpectrum = false;
 
 void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Lz, FieldPrecision prec, bool lowmem)
 {
+	if (!iFFT)
+		initFFT();
 
 	printf ("Initializing FFTSpectrum...\n");
 	fflush (stdout);
@@ -266,15 +277,9 @@ void	closeFFTSpectrum	()
 		return;
 
 	if (single)
-	{
 		fftwf_destroy_plan(pf2);
-		void fftwf_cleanup_threads(void);
-	}
 	else
-	{
-		fftw_destroy_plan(p2);
 		void fftw_cleanup_threads(void);
-	}
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -289,6 +294,8 @@ static bool iFFThalo = false;
 
 void	initFFThalo	(void *m, void *v, const size_t n1, const size_t Lz, FieldPrecision prec)
 {
+	if (!iFFT)
+		initFFT();
 
 	printf ("Initializing FFTSpectrum halo...\n");
 	fflush (stdout);
@@ -363,29 +370,19 @@ void	runFFThalo(int sign)
 	fflush (stdout);
 }
 
-	void	closeFFThalo()
+void	closeFFThalo()
+{
+	if (!iFFThalo)
+		return;
+
+	if (single)
 	{
-		if (!iFFThalo)
-			return;
-
-		if (single)
-		{
-			fftwf_destroy_plan(pf3);
-			fftwf_destroy_plan(pf3b);
-
-			if (useThreads)
-				fftwf_cleanup_threads();
-			else
-				fftwf_cleanup();
-		}
-		else
-		{
-			fftw_destroy_plan(p3);
-			fftw_destroy_plan(p3b);
-
-			if (useThreads)
-				fftw_cleanup_threads();
-			else
-				fftw_cleanup();
-		}
+		fftwf_destroy_plan(pf3);
+		fftwf_destroy_plan(pf3b);
 	}
+	else
+	{
+		fftw_destroy_plan(p3);
+		fftw_destroy_plan(p3b);
+	}
+}
