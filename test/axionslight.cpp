@@ -358,23 +358,26 @@ int	main (int argc, char *argv[])
 				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
 				coZ = 0;
 			}
-			if ( !coZ )
+			if ( axion->Field() == FIELD_SAXION && (!coZ) )
 			{
 				llaux = LL;
         dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
+				printMpi(" * ");
 			}
         dzaux = dzaux/2.;
 
 				//--------------------------------------------------
 				// PRINT POINT
 				//--------------------------------------------------
-				llprint = max(LL , llaux/pow(z_now,2.));
+
 
 				if (commRank() == 0)
 					{
 
 						if (axion->Field() == FIELD_SAXION)
 						{
+							llprint = max(LL , llaux/pow(z_now,2.));
+
 							if (sPrec == FIELD_DOUBLE) {
 								fprintf(file_sample,"%f %f %f %f %f %f %f %ld\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
 								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].imag(),
@@ -389,7 +392,6 @@ int	main (int argc, char *argv[])
 						}
 						else
 						{
-							printMpi("llegue print!\n");fflush(stdout);
 							if (sPrec == FIELD_DOUBLE) {
 								fprintf(file_sample,"%f %f %f %f\n", z_now, axionmass(z_now,nQcd,1.5,3.),
 								static_cast<double*> (axion->mCpu())[sliceprint*S0+S0], static_cast<double*> (axion->vCpu())[sliceprint*S0]);
@@ -402,7 +404,7 @@ int	main (int argc, char *argv[])
 						}
 						fflush(file_sample);
 
-		}
+					}
 
 				// if (commRank() == 0)
 				// {
@@ -474,12 +476,9 @@ int	main (int argc, char *argv[])
 			}
 			else
 			{
-				printMpi("llegue!\n");fflush(stdout);
 				propTheta	(axion, dzaux,     nQcd, delta, cDev, fCount);
 			}
 
-			if (axion->Field() == FIELD_AXION)
-			printf("THETAS!\n");
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
@@ -532,7 +531,7 @@ int	main (int argc, char *argv[])
 			else
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e \n", zloop, nLoops, (*axion->zV()), dzaux);
-				fflush (stdout);
+				fflush(stdout);
 			}
 
 			munge(UNFOLD_SLICE, sliceprint);

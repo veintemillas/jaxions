@@ -1134,7 +1134,7 @@ void	Scalar::setField (FieldType fType)
                     //m2  = v;
 					#endif
 
-					//initFFTSpectrum(m2, n1, Tz, precision, 0);
+					initFFTSpectrum(m2, n1, Tz, precision, 0);
 					printf("(yes) ");
 				}
 				//IF no lowmem was used, we kill m2 complex and create m2 real ... not used
