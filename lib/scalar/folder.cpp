@@ -2,48 +2,16 @@
 #include<cstring>
 #include<complex>
 
-#include"scalar/scalarField.h"
-#include"enum-field.h"
-
 #ifdef	USE_GPU
 	#include<cuda.h>
 	#include<cuda_runtime.h>
 	#include "cudaErrors.h"
 #endif
 
-#define	_FOLDER_CLASS_
+#include"scalar/folder.h"
+#include"enum-field.h"
 
 using namespace std;
-
-class	Folder
-{
-	private:
-
-	size_t shift;
-	size_t fSize;
-	const size_t Lz;
-	const size_t n1;
-	const size_t n2;
-	const size_t n3;
-
-	Scalar *field;
-
-	template<typename cFloat>
-	void	foldField();
-
-	template<typename cFloat>
-	void	unfoldField();
-
-	template<typename cFloat>
-	void	unfoldField2D(const size_t cZ);
-
-	public:
-
-		 Folder(Scalar *scalar);
-		~Folder() {};
-
-	void	operator()(FoldType fType, size_t Cz=0);
-};
 
 	Folder::Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), n1(scalar->Length()), n2(scalar->Surf()), n3(scalar->Size())
 {

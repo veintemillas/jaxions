@@ -9,10 +9,10 @@
 
 		size_t shift;
 		size_t fSize;
-		const int Lz;
-		const int n1;
-		const int n2;
-		const int n3;
+		const size_t Lz;
+		const size_t n1;
+		const size_t n2;
+		const size_t n3;
 
 		Scalar *field;
 
@@ -23,7 +23,7 @@
 		void	unfoldField();
 
 		template<typename cFloat>
-		void	unfoldField2D(size_t cZ);
+		void	unfoldField2D(const size_t cZ);
 
 		public:
 

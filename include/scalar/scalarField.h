@@ -4,10 +4,6 @@
 	#include"enum-field.h"
 	#include"utils/flopCounter.h"
 
-//	#ifdef	USE_GPU
-//		#include<cuda_runtime.h>
-//	#endif
-
 	#ifdef	USE_XEON
 		#include "utils/xeonDefs.h"
 	#endif
@@ -50,7 +46,6 @@
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
 		template<typename Float>
-		//void	ENERGY(const Float zz, FILE *enWrite);
 		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
         	template<typename Float>
 	        void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
@@ -135,7 +130,6 @@
 
 		void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
 
-//		void	thetaz2m2(int *window);			// COPIES dTHETA/dz into m2
 		void	theta2m2();//int *window);		// COPIES THETA     into m2
 		double	maxtheta();									// RETURNS THE MAX VALUE OF THETA [OR IM m]
 		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
@@ -145,13 +139,10 @@
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
 
-		//void	writeENERGY (double zzz, FILE *enwrite);
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif
-//		template<typename Float>
-//		void	normaCOREField(const Float alpha);
 	};
 #endif

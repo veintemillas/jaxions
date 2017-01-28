@@ -6,9 +6,8 @@
 #include"square.h"
 #include"fft/fftCuda.h"
 #include"fft/fftCode.h"
-#include"enum-field.h"
 
-#include"utils/flopCounter.h"
+#include"scalar/scalarField.h"
 
 #include"comms/comms.h"
 #include"scalar/varNQCD.h"
@@ -26,177 +25,13 @@
 #include<omp.h>
 #include <fftw3-mpi.h>
 
-#ifdef	USE_XEON
-	#include"utils/xeonDefs.h"
-#endif
-
 #include "utils/index.h"
-
-#define	_SCALAR_CLASS_
+#include "gen/genConf.h"
 
 using namespace std;
 
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
-
-class	Scalar
-{
-	private:
-
-	const size_t n1;
-	const size_t n2;
-	const size_t n3;
-
-	const size_t Lz;
-	const size_t Tz;
-	const size_t Ez;
-	const size_t v3;
-
-	const int  nSplit;
-	const bool lowmem;
-
-	DeviceType	device;
-	FieldPrecision	precision;
-	FieldType	fieldType;
-	LambdaType	lambdaType;
-
-	size_t	fSize;
-	size_t	mAlign;
-	int	shift;
-	bool	folded;
-
-	double	*z;
-
-	void	*m,   *v,   *m2;			// Cpu data
-#ifdef	USE_GPU
-	void	*m_d, *v_d, *m2_d;			// Gpu data
-
-	void	*sStreams;
-#endif
-	void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
-	void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
-
-//	void	scaleField(FieldIndex fIdx, double factor);
-//	void	randConf();
-//	void	smoothConf(const size_t iter, const double alpha);
-	//JAVIER
-//	void	normaliseField(FieldIndex fIdx);
-
-//	template<typename Float>
-//	void	iteraField(const size_t iter, const Float alpha);
-
-	//JAVIER
-	template<typename Float>
-	void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
-
-	template<typename Float>
-	void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
-
-	template<typename Float>
-	void energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
-
-
-//	template<typename Float>
-//	void	momConf(const int kMax, const Float kCrit);
-
-	public:
-
-			 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
-				FieldType fType, ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
-			~Scalar();
-
-	void		*mCpu() { return m; }
-	const void	*mCpu() const { return m; }
-	void		*vCpu() { return v; }
-	const void	*vCpu() const { return v; }
-	void		*m2Cpu() { return m2; }
-	const void	*m2Cpu() const { return m2; }
-
-#ifdef	USE_XEON
-	__attribute__((target(mic))) void	*mXeon() { return mX; }
-	__attribute__((target(mic))) const void	*mXeon() const { return mX; }
-	__attribute__((target(mic))) void	*vXeon() { return vX; }
-	__attribute__((target(mic))) const void	*vXeon() const { return vX; }
-	__attribute__((target(mic))) void	*m2Xeon() { return m2X; }
-	__attribute__((target(mic))) const void	*m2Xeon() const { return m2X; }
-#endif
-
-#ifdef	USE_GPU
-	void		*mGpu() { return m_d; }
-	const void	*mGpu() const { return m_d; }
-	void		*vGpu() { return v_d; }
-	const void	*vGpu() const { return v_d; }
-	void		*m2Gpu() { return m2_d; }
-	const void	*m2Gpu() const { return m2_d; }
-#endif
-	bool		LowMem()  { return lowmem; }
-
-	size_t		TotalSize() { return n3*nSplit; }
-	size_t		Size()      { return n3; }
-	size_t		Surf()      { return n2; }
-	size_t		Length()    { return n1; }
-	size_t		TotalDepth(){ return Lz*nSplit; }
-	size_t		Depth()     { return Lz; }
-	size_t		eDepth()    { return Ez; }
-	size_t		eSize()     { return v3; }
-
-	FieldPrecision	Precision() { return precision; }
-	DeviceType	Device()    { return device; }
-	LambdaType	Lambda()    { return lambdaType; }
-	FieldType	Field()     { return fieldType; }
-
-	void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
-
-	size_t		DataSize () { return fSize; }
-	size_t		DataAlign() { return mAlign; }
-	int		Shift()     { return shift; }
-	bool		Folded()    { return folded; }
-
-	double		*zV() { return z; }
-	const double	*zV() const { return z; }
-
-	void		setZ(const double newZ) { *z = newZ; }
-
-	void	setField	(FieldType field);
-	void	setFolded	(bool foli);
-
-	void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
-	void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
-
-	void	sendGhosts(FieldIndex fIdx, CommOperation commOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
-	void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
-
-	void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
-	void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
-	void	fftCpuSpectrum(int sign);			// Fast Fourier Transform in the Cpu for m2 [axion spectrum usage]
-	void	fftCpuHalo(int sign);			// Fast Fourier Transform in the Cpu for m -> [halo search usage]
-	void  loadHalo();						// LOADS HALO UTILITIES
-
-	void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
-	//JAVIER
-	//void	thetaz2m2(int *window);		// COPIES dTHETA/dz into m2	//not used
-	void	theta2m2();//int *window);	// COPIES THETA + I dTHETA/dz     into m2
-	double	maxtheta();								// RETURNS THE MAX VALUE OF THETA [OR IM m]
-	double	thetaDIST(int numbins, void *thetabin);							// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
-	void	denstom(); 	//
-
-	void	squareGpu();				// Squares the m2 field in the Gpu
-	void	squareCpu();				// Squares the m2 field in the Cpu
-
-//	void	genConf	(ConfType cType, const size_t parm1, const double parm2);
-	//JAVIER
-//	void	writeENERGY (double zzz, FILE *enwrite);
-	void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
-	void	writeMAPTHETA (double zzz, int index, void *contbin, int numbins);
-
-#ifdef	USE_GPU
-	void	*Streams() { return sStreams; }
-#endif
-//	template<typename Float>
-//	void	normaCOREField(const Float alpha);
-};
-
-#include "gen/genConf.h"
 
 	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType fType, ConfType cType,
 		       const size_t parm1, const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), fieldType(fType),
@@ -311,10 +146,10 @@ printf("Allocating m and v\n"); fflush(stdout);
 	}
 #endif
 
-current = std::chrono::high_resolution_clock::now();
-elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-printf("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
-start = std::chrono::high_resolution_clock::now();
+	current = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	printf("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
+	start = std::chrono::high_resolution_clock::now();
 
 	if (m == NULL)
 	{
@@ -412,21 +247,21 @@ start = std::chrono::high_resolution_clock::now();
 		}
 		else
 		{
-				start = std::chrono::high_resolution_clock::now();
-				printf("Entering initFFT\n");
+			start = std::chrono::high_resolution_clock::now();
+			printf("Entering initFFT\n");
+
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
-			{
 				initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
-			}
-				current = std::chrono::high_resolution_clock::now();
-				elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+
+			current = std::chrono::high_resolution_clock::now();
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 			printf("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
 
 			printf("Entering GEN_CONF\n");
-				start = std::chrono::high_resolution_clock::now();
+			start = std::chrono::high_resolution_clock::now();
 			genConf	(this, cType, parm1, parm2, fCount);
-				current = std::chrono::high_resolution_clock::now();
-				elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+			current = std::chrono::high_resolution_clock::now();
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 			printf("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
 		}
 	}
@@ -773,25 +608,8 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 			MPI_Request_free(&rRecvFwd);
 			MPI_Request_free(&rRecvBck);
 
-//			MPI_Barrier(MPI_COMM_WORLD);
-
 			break;
 	}
-
-/*
-	{
-		MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, rSendFwd);
-		MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, rSendBck);
-
-		MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, rRecvFwd);
-		MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, rRecvBck);
-
-		MPI_Start(rRecvBck);
-		MPI_Start(rRecvFwd);
-		MPI_Start(rSendFwd);
-		MPI_Start(rSendBck);
-	}
-*/
 }
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
@@ -867,63 +685,52 @@ void	Scalar::theta2m2()//int *window)
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
-					if (precision == FIELD_DOUBLE)
-					{
-						double za = (*z);
-						//double massfactor = 3.0 * pow(za, nQcd/2 + 1);
-						double massfactor = axionmass(za, nQcd,1.5,3.0)*za;
+			if (precision == FIELD_DOUBLE)
+			{
+				double za = (*z);
+				//double massfactor = 3.0 * pow(za, nQcd/2 + 1);
+				double massfactor = axionmass(za, nQcd,1.5,3.0)*za;
 
-						#pragma omp parallel for default(shared) schedule(static)
-						for(size_t i=0; i < n3; i++)
-						{
-						double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-							((complex<double> *) m2)[i] = thetaaux*massfactor*za
-																						+ I*( ((((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i+n2]).imag())*za
-																						      + thetaaux ) ;
-						}
-					}
-					else
-					{
-						float zaf = *z ;
-						//float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
-						float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
+					((complex<double> *) m2)[i] = thetaaux*massfactor*za + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+				}
+			} else {
+				float zaf = *z ;
+				//float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
+				float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
 
-						#pragma omp parallel for default(shared) schedule(static)
-						for(size_t i=0; i < n3; i++)
-						{
-						float thetaauxf = arg(((std::complex<float> *) m)[i+n2]);
-							((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf
-																					 + If*( ((((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i+n2]).imag())*zaf
-																					      + thetaauxf);
-						}
-					}
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
+					((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+				}
+			}
 		break;
 
 		case FIELD_AXION:
+			if (precision == FIELD_DOUBLE)
+			{
+				//double massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+				double massfactor = axionmass((*z), nQcd,1.5,3.0)*(*z);
 
-					if (precision == FIELD_DOUBLE)
-					{
-						//double massfactor = 3.0 * pow((*z), nQcd/2 + 1);
-						double massfactor = axionmass((*z), nQcd,1.5,3.0)*(*z);
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2])*massfactor + I*((static_cast<double*> (v))[i]);
+			}
+			else
+			{
+				//float massfactor = 3.0 * pow((*z), nQcd/2 + 1);
+				float zaf = (float) *z ;
+				float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
 
-						#pragma omp parallel for default(shared) schedule(static)
-						for(size_t i=0; i < n3; i++)
-						{
-							((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2])*massfactor + I*((static_cast<double*> (v))[i]);
-						}
-					}
-					else
-					{
-						//float massfactor = 3.0 * pow((*z), nQcd/2 + 1);
-						float zaf = (float) *z ;
-						float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
-
-						#pragma omp parallel for default(shared) schedule(static)
-						for(size_t i=0; i < n3; i++)
-						{
-							((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2])*massfactor + If*((static_cast<float*> (v))[i]);
-						}
-					}
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2])*massfactor + If*((static_cast<float*> (v))[i]);
+			}
 		break;
 
 
@@ -1103,9 +910,10 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-         printf("| free v ");fflush(stdout);
-         trackFree(&v, ALLOC_ALIGN);
-        printf("| s_cast v ");fflush(stdout);
+				printf("| free v ");fflush(stdout);
+				trackFree(&v, ALLOC_ALIGN);
+				printf("| s_cast v ");fflush(stdout);
+
 				switch (precision)
 				{
 					case FIELD_SINGLE:
@@ -1116,14 +924,15 @@ void	Scalar::setField (FieldType fType)
 					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
 					break;
 				}
-        printf("| resize %d->",fSize);fflush(stdout);
+
+				printf("| resize %d->",fSize);fflush(stdout);
 				fSize /= 2;
 				shift *= 2;
 				printf("%d ",fSize);fflush(stdout);
 
 				const size_t	mBytes = v3*fSize;
-        printf("| alloc m2 ");
-				//IF low mem was used before, it creates m2 COMPLEX
+				printf("| alloc m2 ");
+				// IF low mem was used before, it creates m2 COMPLEX
 				if (lowmem)
 				{
 					#ifdef	USE_XEON
@@ -1131,38 +940,41 @@ void	Scalar::setField (FieldType fType)
 					m2  = m2X;
 					#else
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-                    //m2  = v;
 					#endif
 
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
 					printf("(yes) ");
+				} else {
+				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
+					closeFFTSpectrum();
+				#ifdef	USE_XEON
+					trackFree(&m2X, ALLOC_ALIGN);
+					m2 = m2X = NULL;
+					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
+					m2  = m2X;
+				#else
+					trackFree(&m2, ALLOC_ALIGN);
+					m2 = NULL;
+					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+				#endif
+					initFFTSpectrum(m2, n1, Tz, precision, 0);
 				}
-				//IF no lowmem was used, we kill m2 complex and create m2 real ... not used
-				// #ifdef	USE_XEON
-				// if (!lowmem)
-				// {
-				// 	trackFree(&m2X, ALLOC_ALIGN);
-				// 	m2 = m2X = NULL;
-				// }
-				// alignAlloc ((void**) &m2X, mAlign, mBytes);
-				// m2  = m2X;
-				// #else
-				// if (!lowmem)
-				// {
-				// 	trackFree(&m2, ALLOC_ALIGN);
-				// 	m2 = NULL;
-				// }
-				// alignAlloc ((void**) &m2, mAlign, mBytes);
-				// #endif
 			}
 			break;
 
 		case	FIELD_SAXION:
-		break;
+			if (fieldType == FIELD_AXION)
+			{
+				if (commRank() == 0)
+					printf ("Not supported\n");
+			} else {
+				fieldType = FIELD_SAXION;
+			}
+			break;
 	}
-    printf("| fType ");fflush(stdout);
+	printf("| fType ");fflush(stdout);
 	fieldType = fType;
-    printf("| ");fflush(stdout);
+	printf("| ");fflush(stdout);
 }
 
 void	Scalar::setFolded (bool foli)
