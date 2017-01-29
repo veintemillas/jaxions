@@ -730,6 +730,119 @@ void	writeString	(void *str, size_t strDen)
 	H5Gclose (group_id);
 }
 
+void	writeMapHdf5	(Scalar *axion)
+{
+	hid_t	mapSpace, chunk_id, group_id, sSet_id, sSpace, memSpace, dataType;
+	hsize_t	dataSize = axion->DataSize();
+
+	int myRank = commRank();
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	char *dataM  = static_cast<char *>(axion->mCpu());
+	char *dataV  = static_cast<char *>(axion->vCpu());
+	char mCh[16] = "/map/m";
+	char vCh[16] = "/map/v";
+
+	if (header == false || opened == false)
+	{
+		printf("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	if (myRank == 0)
+	{
+		if (axion->Precision() == FIELD_DOUBLE)
+			dataType = H5T_NATIVE_DOUBLE;
+		else
+			dataType = H5T_NATIVE_FLOAT;
+
+		/*	Create space for writing the raw data to disk with chunked access	*/
+		mapSpace = H5Screate_simple(1, &slabSz, NULL);	// Whole data
+
+		if (mapSpace < 0)
+		{
+			printf ("Fatal error H5Screate_simple\n");
+			exit (1);
+		}
+
+		/*	Set chunked access and dynamical compression	*/
+
+		herr_t status;
+
+		chunk_id = H5Pcreate (H5P_DATASET_CREATE);
+
+		if (chunk_id < 0)
+		{
+			printf ("Fatal error H5Pcreate\n");
+			exit (1);
+		}
+
+		status = H5Pset_layout (chunk_id, H5D_CHUNKED);
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_layout\n");
+			exit (1);
+		}
+
+		status = H5Pset_chunk (chunk_id, 1, &slabSz);
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_chunk\n");
+			exit (1);
+		}
+
+		status = H5Pset_deflate (chunk_id, 9);	// Maximum compression, hoping that the map is a bunch of zeroes
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_deflate\n");
+			exit (1);
+		}
+
+		/*	Create a group for map data	*/
+		group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+		/*	Create a dataset for map data	*/
+
+		//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+		if (mSet_id < 0 || vSet_id < 0)
+		{
+			printf	("Fatal error.\n");
+			exit (0);
+		}
+
+		/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+		mSpace = H5Dget_space (mSet_id);
+		vSpace = H5Dget_space (vSet_id);
+
+		/*	Select the slab in the file	*/
+//		hsize_t offset = 0;
+//		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+//		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+
+		/*	Write raw data	*/
+		H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
+		H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
+	}
+
+	/*	Close the dataset	*/
+
+	H5Dclose (mSet_id);
+	H5Dclose (vSet_id);
+	H5Sclose (mSpace);
+	H5Sclose (vSpace);
+
+	H5Sclose (mapSpace);
+	H5Pclose (chunk_id);
+	H5Gclose (group_id);
+}
+
 void	writeEnergy	(double *eData)
 {
 	hid_t	group_id;
@@ -766,6 +879,56 @@ void	writeEnergy	(double *eData)
 	writeAttribute(group_id, &eData[9],  "Ka",  H5T_NATIVE_DOUBLE);
 
 	/*	Close the group		*/
+	H5Gclose (group_id);
+}
+
+void	writePoint (Scalar *axion)
+{
+	hid_t	group_id, dataType;
+	herr_t	status;
+	hsize_t dims[1];
+
+	size_t	dataSize = axion->DataSize(), S0 = axion->Surf();
+
+	char	dataName[32];
+
+	if (header == false || opened == false)
+	{
+		printf("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	/*	Create a group for point data if it doesn't exist	*/
+	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
+
+	if (!(status = H5Gget_objinfo (meas_id, "/point", 0, NULL)))	// Create group if it doesn't exists
+		group_id = H5Gcreate2(meas_id, "/point", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else
+		group_id = H5Gopen2(meas_id, "/point", H5P_DEFAULT);
+
+//	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
+
+	/*	Create minidataset	*/
+	if (axion->Precision() == FIELD_DOUBLE)
+	{
+			dataType = H5T_NATIVE_FLOAT;
+			dims[0]	 = dataSize/8;
+	} else {
+			dataType = H5T_NATIVE_FLOAT;
+			dims[0]	 = dataSize/4;
+	}
+
+	dataSpace = H5Screate_simple(1, dims, NULL);
+	dataSet	  = H5Dcreate(group_id, "value", dataType, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	sSpace	  = H5Dget_space (sSet_id);
+
+	/*	Write point data	*/
+	status = H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize);
+
+	/*	Close everything		*/
+	H5Sclose (sSpace);
+	H5Dclose (dataSet);
+	H5Sclose (dataSpace);
 	H5Gclose (group_id);
 }
 
