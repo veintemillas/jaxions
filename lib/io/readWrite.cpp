@@ -732,7 +732,7 @@ void	writeString	(void *str, size_t strDen)
 
 void	writeMapHdf5	(Scalar *axion)
 {
-	hid_t	mapSpace, chunk_id, group_id, sSet_id, sSpace, memSpace, dataType;
+	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
 	hsize_t	dataSize = axion->DataSize();
 
 	int myRank = commRank();
@@ -884,7 +884,7 @@ void	writeEnergy	(double *eData)
 
 void	writePoint (Scalar *axion)
 {
-	hid_t	group_id, dataType;
+	hid_t	group_id, dataSpace, sSet_id, sSpace, dataSet, dataType;
 	herr_t	status;
 	hsize_t dims[1];
 
