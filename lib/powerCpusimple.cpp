@@ -17,7 +17,7 @@ using namespace std;
 template<typename Float>
 void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,	int n1, int powmax, int kmax, double mass2)
 {
-	printf("sizeL=%f\n",sizeL);
+	printf("sizeL=%f , ",sizeL);fflush(stdout);
 	double norma = pow(sizeL,3.)/(4.*pow((double) n1,6.)) ;
 
 	double minus1costab [kmax+1] ;
@@ -29,7 +29,7 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 	{
 		minus1costab[i] = id2*(1.0 - cos(((double) (6.2831853071796*i)/n1)));
 	}
-
+	printf("mtab , ");fflush(stdout);
 	#pragma omp parallel for default(shared) schedule(static)
 	for (int i=0; i < powmax; i++)
 	{
@@ -38,7 +38,7 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 		(static_cast<double *> (spectrumV))[i] = 0.0;
 	}
 //
-
+	 printf("0ing , ");fflush(stdout);
 //	Bin power spectrum
 //  KthetaPS |mode|^2 / w
 // 	(c^2 + d^2)/w
@@ -80,10 +80,13 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 
 	#pragma omp parallel default(shared)
 	{
+
+		int tid = omp_get_thread_num();
+
+
 		double spectrumK_private[powmax];
 		double spectrumG_private[powmax];
 		double spectrumV_private[powmax];
-
 
 		for (int i=0; i < powmax; i++)
 		{
@@ -91,10 +94,15 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 			spectrumG_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
 		}
+
+		size_t idx, midx;
 		int bin;
-		int kz, ky, kx, iz, nz, iy, ny, ix, nx;
+		int kz, ky, kx;
+		size_t iz, nz, iy, ny, ix, nx;
 		double k2, w;
 		complex<Float> ftk, ftmk;
+
+	  #pragma omp barrier
 
 		#pragma omp for schedule(static)
 		for (int kz = 0; kz<kmax + 2; kz++)
@@ -125,8 +133,11 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 					w = sqrt(k2 + mass2);
 					//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 
-					ftk = ft[ix+iy*n1+iz*n1*n1];
-					ftmk = conj(ft[nx+ny*n1+nz*n1*n1]);
+					idx  = ix+iy*n1+iz*n1*n1;
+					midx = nx+ny*n1+nz*n1*n1;
+
+					ftk = ft[idx];
+					ftmk = conj(ft[midx]);
 
 					if(!(kz==0||kz==kmax+1))
 					{
@@ -249,7 +260,10 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 			spectrumN_private[i] = 0.0;
 			spectrumV_private[i] = 0.0;
 		}
-		int kz, ky, kx, iz, nz, iy, ny, ix, nx;
+
+		size_t idx, midx;
+		int kz, ky, kx;
+		size_t iz, nz, iy, ny, ix, nx;
 		int bin;
 		double k2;
 		complex<Float> ftk, ftmk;
@@ -275,8 +289,11 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 					k2 =	kx*kx + ky*ky + kz*kz;
 					bin  = (int) floor(sqrt(k2)) 	;
 
-					ftk = 			ft[ix + iy*n1 + iz*n1*n1];
-					ftmk = conj(ft[nx + ny*n1 + nz*n1*n1]);
+					idx  = ix+iy*n1+iz*n1*n1;
+					midx = nx+ny*n1+nz*n1*n1;
+
+					ftk = ft[idx];
+					ftmk = conj(ft[midx]);
 
 					//printf("ftk(%d,%d,%d)=%f + I*%f - ftmk(%d,%d,%d)=%f + I*%f\n", iz,iy,ix,ftk.real(),ftk.imag(),nz,ny,nx,ftmk.real(),ftmk.imag());
 					if(!(kz==0||kz==kmax+1))

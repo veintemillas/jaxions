@@ -1267,18 +1267,19 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		//printf("ENERGY map theta \n");
 
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
-		for (int iz=0; iz < Lz; iz++)
+		for (size_t iz=0; iz < Lz; iz++)
 		{
 			Float acu , grad ;
 			size_t idx, idaux ;
-			for (int iy=0; iy < n1; iy++)
+			size_t iyP, iyM, ixP, ixM;
+			for (size_t iy=0; iy < n1; iy++)
 			{
-				int iyP = (iy+1)%n1;
-				int iyM = (iy-1+n1)%n1;
-				for (int ix=0; ix < n1; ix++)
+				iyP = (iy+1)%n1;
+				iyM = (iy-1+n1)%n1;
+				for (size_t ix=0; ix < n1; ix++)
 				{
-					int ixP = (ix+1)%n1;
-					int ixM = (ix-1+n1)%n1;
+					ixP = (ix+1)%n1;
+					ixM = (ix-1+n1)%n1;
 
 					idx = ix + iy*n1+(iz+1)*n2 ;
 					//KINETIC + POTENTIAL
@@ -1458,11 +1459,11 @@ double	Scalar::maxtheta()//int *window)
 		{
 			if(fieldType == FIELD_SAXION)
 			{
-				tauxd = abs(arg(((complex<double> *) m)[i]));
+				tauxd = abs(arg(((complex<double> *) m)[i+n2]));
 			}
-			else // FILD_AXION
+			else // FIELD_AXION
 			{
-				tauxd = abs(((double *) m)[i]/(*z));
+				tauxd = abs(((double *) m)[i+n2]/(*z));
 			}
 			if( tauxd > mymaxd )
 			{
@@ -1478,11 +1479,11 @@ double	Scalar::maxtheta()//int *window)
 		{
 			if(fieldType == FIELD_SAXION)
 			{
-				taux = abs(arg(((complex<float> *) m)[i]));
+				taux = abs(arg(((complex<float> *) m)[i+n2]));
 			}
 			else // FILD_AXION
 			{
-				taux = abs(((float *) m)[i]/(*z));
+				taux = abs(((float *) m)[i+n2]/(*z));
 			}
 			if( taux > mymax )
 			{
