@@ -349,6 +349,7 @@ int	main (int argc, char *argv[])
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
 				llaux = 1.125/pow(delta,2.);
+				dzaux = min(dzaux,delta/1.5);
 			}
 
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
