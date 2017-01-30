@@ -348,7 +348,7 @@ int	main (int argc, char *argv[])
 			dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,1.5 , 3.)));
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
-				llaux = 1./pow(1.5*delta,2.);
+				llaux = 1.125/pow(delta,2.);
 			}
 
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
@@ -362,7 +362,7 @@ int	main (int argc, char *argv[])
 			{
 				llaux = LL;
         dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
-				printMpi(" * ");
+				printMpi("*");
 			}
         dzaux = dzaux/2.;
 
@@ -565,11 +565,12 @@ int	main (int argc, char *argv[])
 	printMpi("--------------------------------------------------\n");
 	fflush(stdout);
 
+	printMpi("Unfold ... ");
+	munge(UNFOLD_ALL);
+	printMpi("| ");
+
 	if (axion->Field() == FIELD_AXION)
 	{
-		printMpi("Unfold ... ");
-		munge(UNFOLD_ALL);
-		printMpi("| ");
 
 		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
