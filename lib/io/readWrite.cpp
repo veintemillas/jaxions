@@ -857,7 +857,7 @@ void	writeEnergy	(double *eData)
 	/*	Create a group for string data if it doesn't exist	*/
 	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
 
-	if (!(status = H5Gget_objinfo (meas_id, "/energy", 0, NULL)))	// Create group if it doesn't exists
+	if (status = H5Gget_objinfo (meas_id, "/energy", 0, NULL))	// Create group if it doesn't exists
 		group_id = H5Gcreate2(meas_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else
 		group_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);
@@ -890,8 +890,6 @@ void	writePoint (Scalar *axion)
 
 	size_t	dataSize = axion->DataSize(), S0 = axion->Surf();
 
-	char	dataName[32];
-
 	if (header == false || opened == false)
 	{
 		printf("Error: measurement file not opened. Ignoring write request.\n");
@@ -901,7 +899,7 @@ void	writePoint (Scalar *axion)
 	/*	Create a group for point data if it doesn't exist	*/
 	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
 
-	if (!(status = H5Gget_objinfo (meas_id, "/point", 0, NULL)))	// Create group if it doesn't exists
+	if (status = H5Gget_objinfo (meas_id, "/point", 0, NULL))	// Create group if it doesn't exist
 		group_id = H5Gcreate2(meas_id, "/point", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else
 		group_id = H5Gopen2(meas_id, "/point", H5P_DEFAULT);
@@ -911,7 +909,7 @@ void	writePoint (Scalar *axion)
 	/*	Create minidataset	*/
 	if (axion->Precision() == FIELD_DOUBLE)
 	{
-			dataType = H5T_NATIVE_FLOAT;
+			dataType = H5T_NATIVE_DOUBLE;
 			dims[0]	 = dataSize/8;
 	} else {
 			dataType = H5T_NATIVE_FLOAT;
@@ -920,7 +918,7 @@ void	writePoint (Scalar *axion)
 
 	dataSpace = H5Screate_simple(1, dims, NULL);
 	dataSet	  = H5Dcreate(group_id, "value", dataType, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	sSpace	  = H5Dget_space (sSet_id);
+	sSpace	  = H5Dget_space (dataSet);
 
 	/*	Write point data	*/
 	status = H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize);
@@ -1126,7 +1124,7 @@ void	writeEDens (Scalar *axion, int index)
 
 	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
 
-	if (!(status = H5Gget_objinfo (file_id, "/energy", 0, NULL)))	// Create group if it doesn't exists
+	if (status = H5Gget_objinfo (file_id, "/energy", 0, NULL))	// Create group if it doesn't exist
 		group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else
 		group_id = H5Gopen2(file_id, "/energy", H5P_DEFAULT);
@@ -1211,3 +1209,100 @@ void	writeEDens (Scalar *axion, int index)
 		H5Pclose(plist_id);
 	}
 }
+
+void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power)
+{
+	hid_t	group_id, dataSpace, kSpace, gSpace, vSpace, dataSetK, dataSetG, dataSetV;
+	herr_t	status;
+	hsize_t dims[1] = { powMax };
+
+	char	dataName[32];
+	char	*sK = static_cast<char*>(spectrumK);
+	char	*sG = static_cast<char*>(spectrumG);
+	char	*sV = static_cast<char*>(spectrumV);
+
+	if (header == false || opened == false)
+	{
+		printf("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	if (power == true)
+		sprintf(dataName, "/pSpectrum");
+	else
+		sprintf(dataName, "/nSpectrum");
+
+	/*	Create a group for the spectra if it doesn't exist	*/
+	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
+
+	if (status = H5Gget_objinfo (meas_id, dataName, 0, NULL))	// Create group if it doesn't exist
+		group_id = H5Gcreate2(meas_id, dataName, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else
+		group_id = H5Gopen2(meas_id, dataName, H5P_DEFAULT);
+
+//	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
+
+	/*	Create datasets	*/
+	dataSpace = H5Screate_simple(1, dims, NULL);
+	dataSetK  = H5Dcreate(group_id, "sK", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	dataSetG  = H5Dcreate(group_id, "sG", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	dataSetV  = H5Dcreate(group_id, "sV", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	kSpace	  = H5Dget_space (dataSetK);
+	gSpace	  = H5Dget_space (dataSetG);
+	vSpace	  = H5Dget_space (dataSetV);
+
+	/*	Write spectrum data	*/
+	status = H5Dwrite(dataSetK, H5T_NATIVE_DOUBLE, dataSpace, kSpace, H5P_DEFAULT, sK);
+	status = H5Dwrite(dataSetG, H5T_NATIVE_DOUBLE, dataSpace, gSpace, H5P_DEFAULT, sG);
+	status = H5Dwrite(dataSetV, H5T_NATIVE_DOUBLE, dataSpace, vSpace, H5P_DEFAULT, sV);
+
+	/*	Close everything		*/
+	H5Sclose (kSpace);
+	H5Sclose (gSpace);
+	H5Sclose (vSpace);
+	H5Dclose (dataSetK);
+	H5Dclose (dataSetG);
+	H5Dclose (dataSetV);
+	H5Sclose (dataSpace);
+	H5Gclose (group_id);
+}
+
+void	writeArray (Scalar *axion, void *aData, size_t aSize, const char *group, const char *dataName)
+{
+	hid_t	group_id, dataSpace, sSpace, dataSet;
+	herr_t	status;
+	hsize_t dims[1] = { aSize };
+
+	size_t	dataSize;
+
+	if (header == false || opened == false)
+	{
+		printf("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	/*	Create the group for the data if it doesn't exist	*/
+	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
+
+	if (status = H5Gget_objinfo (meas_id, group, 0, NULL))	// Create group if it doesn't exists
+		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else
+		group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);
+
+//	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
+
+	/*	Create dataset	*/
+	dataSpace = H5Screate_simple(1, dims, NULL);
+	dataSet   = H5Dcreate(group_id, dataName, H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	sSpace	  = H5Dget_space (dataSet);
+
+	/*	Write spectrum data	*/
+	status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, dataSpace, sSpace, H5P_DEFAULT, aData);
+
+	/*	Close everything		*/
+	H5Sclose (sSpace);
+	H5Dclose (dataSet);
+	H5Sclose (dataSpace);
+	H5Gclose (group_id);
+}
+

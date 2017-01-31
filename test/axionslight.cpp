@@ -572,6 +572,8 @@ int	main (int argc, char *argv[])
 
 	if (axion->Field() == FIELD_AXION)
 	{
+		printMpi ("Allá voy!!\n");
+		createMeas(axion, 0);
 
 		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
@@ -589,6 +591,8 @@ int	main (int argc, char *argv[])
 		//axion->foldField();
 		}
 
+		writeSpectrum(axion, sK, sG, sV, powmax, false);
+
 		printMpi("DensMap ... ");
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		printMpi("| ");
@@ -601,6 +605,8 @@ int	main (int argc, char *argv[])
 		fprintf(file_contbin, "\n");
 		fflush(file_contbin);
 		}
+		writeArray(axion, bA, 10000, "/bins", "cont");
+
 		// BIN THETA
 		maximumtheta = axion->thetaDIST(100, spectrumK);
 		if (commRank() == 0)
@@ -608,6 +614,8 @@ int	main (int argc, char *argv[])
 			fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
 			for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
 		}
+
+		writeArray(axion, sK, 100, "/bins", "theta");
 
 		printMpi("dens2m ... ");
 		axion->denstom();
@@ -627,6 +635,9 @@ int	main (int argc, char *argv[])
 		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
 		}
 		printMpi("| ");
+
+		writeSpectrum(axion, sK, sG, sV, powmax, true);
+		destroyMeas();
 
 		//munge(FOLD_ALL);
 		fflush(file_power);
