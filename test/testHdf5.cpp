@@ -166,9 +166,7 @@ int	main (int argc, char *argv[])
 	int nLoops;
 */
 
-	printMpi ("Vamos!\n");
 	writeConf(axion, index);
-	printMpi ("Yeah!\n");
 
 	printMpi("--------------------------------------------------\n");
 	printMpi("TO THETA\n");
@@ -177,9 +175,7 @@ int	main (int argc, char *argv[])
 	printMpi("--------------------------------------------------\n");
 	index++;
 
-	printMpi ("Otra!\n");
 	writeConf(axion, index);
-	printMpi ("Ouh Yeah!\n");
 
 //	munge(UNFOLD_SLICE, sliceprint);
 //	writeMap (axion, index);
