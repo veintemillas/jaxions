@@ -202,6 +202,7 @@ void	writeConf (Scalar *axion, int index)
 		printf ("Fatal error H5Pset_alloc_time\n");
 		exit (1);
 	}
+
 	/*	Create a dataset for the whole axion data	*/
 	char mCh[8] = "/m";
 	char vCh[8] = "/v";
@@ -633,14 +634,6 @@ void	writeString	(void *str, size_t strDen)
 			exit (1);
 		}
 
-		status = H5Pset_layout (chunk_id, H5D_CHUNKED);
-
-		if (status < 0)
-		{
-			printf ("Fatal error H5Pset_layout\n");
-			exit (1);
-		}
-
 		status = H5Pset_chunk (chunk_id, 1, &slabSz);
 
 		if (status < 0)
@@ -654,6 +647,15 @@ void	writeString	(void *str, size_t strDen)
 		if (status < 0)
 		{
 			printf ("Fatal error H5Pset_deflate\n");
+			exit (1);
+		}
+
+		/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+		status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_alloc_time\n");
 			exit (1);
 		}
 
@@ -769,14 +771,6 @@ void	writeMapHdf5	(Scalar *axion)
 			exit (1);
 		}
 
-		status = H5Pset_layout (chunk_id, H5D_CHUNKED);
-
-		if (status < 0)
-		{
-			printf ("Fatal error H5Pset_layout\n");
-			exit (1);
-		}
-
 		status = H5Pset_chunk (chunk_id, 1, &slabSz);
 
 		if (status < 0)
@@ -790,6 +784,15 @@ void	writeMapHdf5	(Scalar *axion)
 		if (status < 0)
 		{
 			printf ("Fatal error H5Pset_deflate\n");
+			exit (1);
+		}
+
+		/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+		status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
+
+		if (status < 0)
+		{
+			printf ("Fatal error H5Pset_alloc_time\n");
 			exit (1);
 		}
 
@@ -1096,14 +1099,6 @@ void	writeEDens (Scalar *axion, int index)
 		exit (1);
 	}
 
-	status = H5Pset_layout (chunk_id, H5D_CHUNKED);
-
-	if (status < 0)
-	{
-		printf ("Fatal error H5Pset_layout\n");
-		exit (1);
-	}
-
 	status = H5Pset_chunk (chunk_id, 1, &slab);
 
 	if (status < 0)
@@ -1112,8 +1107,16 @@ void	writeEDens (Scalar *axion, int index)
 		exit (1);
 	}
 
-	/*	Create a group for string data if it doesn't exist	*/
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
 
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_alloc_time\n");
+		exit (1);
+	}
+
+	/*	Create a group for string data if it doesn't exist	*/
 	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
 
 	if (status = H5Gget_objinfo (file_id, "/energy", 0, NULL))	// Create group if it doesn't exist
