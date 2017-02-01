@@ -55,7 +55,6 @@ void	writeConf (Scalar *axion, int index)
 	commSync();
 
 	/*	Set up parallel access with Hdf5	*/
-
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
@@ -64,7 +63,6 @@ void	writeConf (Scalar *axion, int index)
 	sprintf(base, "%s.%05d", outName, index);
 
 	/*	Create the file and release the plist	*/
-
 	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
 	{
 		printf ("Error creating file %s\n", base);
@@ -140,7 +138,6 @@ void	writeConf (Scalar *axion, int index)
 	}
 
 	/*	Write header	*/
-
 	hid_t attr_type;
 
 	/*	Attributes	*/
@@ -167,12 +164,10 @@ void	writeConf (Scalar *axion, int index)
 	commSync();
 
 	/*	Create plist for collective write	*/
-
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
-	H5Pset_dxpl_mpio(plist_id,H5FD_MPIO_COLLECTIVE);
+	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
-
 	totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
 
 	if (totalSpace < 0)
@@ -182,22 +177,12 @@ void	writeConf (Scalar *axion, int index)
 	}
 
 	/*	Set chunked access	*/
-
 	herr_t status;
-
 	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
 
 	if (chunk_id < 0)
 	{
 		printf ("Fatal error H5Pcreate\n");
-		exit (1);
-	}
-
-	status = H5Pset_layout (chunk_id, H5D_CHUNKED);
-
-	if (status < 0)
-	{
-		printf ("Fatal error H5Pset_layout\n");
 		exit (1);
 	}
 
@@ -209,8 +194,15 @@ void	writeConf (Scalar *axion, int index)
 		exit (1);
 	}
 
-	/*	Create a dataset for the whole axion data	*/
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
 
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_alloc_time\n");
+		exit (1);
+	}
+	/*	Create a dataset for the whole axion data	*/
 	char mCh[8] = "/m";
 	char vCh[8] = "/v";
 

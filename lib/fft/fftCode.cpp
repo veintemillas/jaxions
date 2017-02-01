@@ -259,13 +259,10 @@ void	runFFTSpectrum(int sign)
 	printf ("Spectrum FFT... ");
 	fflush (stdout);
 
-	if (single) {
+	if (single)
 		fftwf_execute(pf2);
-	}
 	else
-	{
 		fftw_execute(p2);
-	}
 
 	printf ("Done! ");
 	fflush (stdout);

@@ -939,6 +939,7 @@ void	Scalar::setField (FieldType fType)
 				// IF low mem was used before, it creates m2 COMPLEX
 				if (lowmem)
 				{
+					closeFFTSpectrum();
 					#ifdef	USE_XEON
 					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
 					m2  = m2X;
