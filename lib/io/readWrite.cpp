@@ -447,7 +447,7 @@ void	createMeas (Scalar *axion, int index)
 	if (myRank != 0)	// Only rank 0 writes measurement data
 		return;
 
-	if (meas_id >= 0)
+	if (opened)
 	{
 		printf ("Error, a hdf5 file is already opened\n");
 		return;
@@ -464,7 +464,6 @@ void	createMeas (Scalar *axion, int index)
 	sprintf(base, "%s.m.%05d", outName, index);
 
 	/*	Create the file and release the plist	*/
-
 	if ((meas_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)) < 0)	//plist_id)) < 0)
 	{
 		printf ("Error creating file %s\n", base);
@@ -472,8 +471,6 @@ void	createMeas (Scalar *axion, int index)
 	}
 
 	H5Pclose(plist_id);
-
-	commSync();
 
 	opened = true;
 
@@ -554,8 +551,6 @@ void	createMeas (Scalar *axion, int index)
 
 	H5Tclose (attr_type);
 
-	commSync();
-
 	/*	Create plist for collective write	*/
 
 //	mlist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -567,16 +562,23 @@ void	createMeas (Scalar *axion, int index)
 
 	header = true;
 
+	printf("\n\n\nHeader %d Opened %d\n\n\n", header, opened); fflush(stdout);
+
 	return;
 }
 
 
 void	destroyMeas ()
 {
+	if (commRank() != 0)
+		return;
+
 	/*	Closes the currently opened file for measurements	*/
 
-	H5Pclose (mlist_id);
-	H5Fclose (meas_id);
+	if (opened) {
+		H5Pclose (mlist_id);
+		H5Fclose (meas_id);
+	}
 
 	opened = false;
 	header = false;
@@ -595,13 +597,15 @@ void	writeString	(void *str, size_t strDen)
 	char *strData = static_cast<char *>(str);
 	char sCh[16] = "/string/data";
 
+	if (myRank != 0)
+		return;
+
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request.\n");
+		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
 		return;
 	}
 
-	if (myRank == 0)
 	{
 
 	/*	If we give up compression and use Javi's dataTypes...
@@ -731,6 +735,9 @@ void	writeMapHdf5	(Scalar *axion)
 
 	int myRank = commRank();
 
+	if (myRank != 0)
+		return;
+
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	char *dataM  = static_cast<char *>(axion->mCpu());
 	char *dataV  = static_cast<char *>(axion->vCpu());
@@ -739,92 +746,90 @@ void	writeMapHdf5	(Scalar *axion)
 
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request.\n");
+		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
 		return;
 	}
 
-	if (myRank == 0)
+	if (axion->Precision() == FIELD_DOUBLE)
+		dataType = H5T_NATIVE_DOUBLE;
+	else
+		dataType = H5T_NATIVE_FLOAT;
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	mapSpace = H5Screate_simple(1, &slabSz, NULL);	// Whole data
+
+	if (mapSpace < 0)
 	{
-		if (axion->Precision() == FIELD_DOUBLE)
-			dataType = H5T_NATIVE_DOUBLE;
-		else
-			dataType = H5T_NATIVE_FLOAT;
-
-		/*	Create space for writing the raw data to disk with chunked access	*/
-		mapSpace = H5Screate_simple(1, &slabSz, NULL);	// Whole data
-
-		if (mapSpace < 0)
-		{
-			printf ("Fatal error H5Screate_simple\n");
-			exit (1);
-		}
-
-		/*	Set chunked access and dynamical compression	*/
-
-		herr_t status;
-
-		chunk_id = H5Pcreate (H5P_DATASET_CREATE);
-
-		if (chunk_id < 0)
-		{
-			printf ("Fatal error H5Pcreate\n");
-			exit (1);
-		}
-
-		status = H5Pset_chunk (chunk_id, 1, &slabSz);
-
-		if (status < 0)
-		{
-			printf ("Fatal error H5Pset_chunk\n");
-			exit (1);
-		}
-
-		status = H5Pset_deflate (chunk_id, 9);	// Maximum compression, hoping that the map is a bunch of zeroes
-
-		if (status < 0)
-		{
-			printf ("Fatal error H5Pset_deflate\n");
-			exit (1);
-		}
-
-		/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
-		status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
-
-		if (status < 0)
-		{
-			printf ("Fatal error H5Pset_alloc_time\n");
-			exit (1);
-		}
-
-		/*	Create a group for map data	*/
-		group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-		/*	Create a dataset for map data	*/
-
-		//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-		mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-		vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-
-		if (mSet_id < 0 || vSet_id < 0)
-		{
-			printf	("Fatal error.\n");
-			exit (0);
-		}
-
-		/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
-
-		mSpace = H5Dget_space (mSet_id);
-		vSpace = H5Dget_space (vSet_id);
-
-		/*	Select the slab in the file	*/
-//		hsize_t offset = 0;
-//		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
-//		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
-
-		/*	Write raw data	*/
-		H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
-		H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
+		printf ("Fatal error H5Screate_simple\n");
+		exit (1);
 	}
+
+	/*	Set chunked access and dynamical compression	*/
+
+	herr_t status;
+
+	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
+
+	if (chunk_id < 0)
+	{
+		printf ("Fatal error H5Pcreate\n");
+		exit (1);
+	}
+
+	status = H5Pset_chunk (chunk_id, 1, &slabSz);
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_chunk\n");
+		exit (1);
+	}
+
+	status = H5Pset_deflate (chunk_id, 9);	// Maximum compression, hoping that the map is a bunch of zeroes
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_deflate\n");
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_alloc_time\n");
+		exit (1);
+	}
+
+	/*	Create a group for map data	*/
+	group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	/*	Create a dataset for map data	*/
+
+	//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	if (mSet_id < 0 || vSet_id < 0)
+	{
+		printf	("Fatal error.\n");
+		exit (0);
+	}
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	mSpace = H5Dget_space (mSet_id);
+	vSpace = H5Dget_space (vSet_id);
+
+	/*	Select the slab in the file	*/
+//	hsize_t offset = 0;
+//	H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+//	H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+
+	/*	Write raw data	*/
+	H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
+	H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
+	
 
 	/*	Close the dataset	*/
 
@@ -843,9 +848,12 @@ void	writeEnergy	(double *eData)
 	hid_t	group_id;
 	herr_t	status;
 
+	if (commRank() != 0)
+		return;
+
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request.\n");
+		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
 		return;
 	}
 
@@ -885,9 +893,12 @@ void	writePoint (Scalar *axion)
 
 	size_t	dataSize = axion->DataSize(), S0 = axion->Surf();
 
+	if (commRank() != 0)
+		return;
+
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request.\n");
+		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
 		return;
 	}
 
@@ -951,10 +962,14 @@ void	writeEDens (Scalar *axion, int index)
 
 	sprintf(base, "%s.m.%05d", outName, index);
 
-	/*	If the measurement file is opened, we reopen it with parallel access	*/
+	/*	Broadcast the values of opened/header	*/
+	MPI_Bcast(&opened, sizeof(opened), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&opened, sizeof(header), MPI_BYTE, 0, MPI_COMM_WORLD);
 
+	/*	If the measurement file is opened, we reopen it with parallel access	*/
 	if (opened == true)
 	{
+		printf ("All ranks here\n");
 		destroyMeas();
 
 		if ((file_id = H5Fopen (base, H5F_ACC_RDWR, plist_id)) < 0)
@@ -964,7 +979,7 @@ void	writeEDens (Scalar *axion, int index)
 		}
 	} else {
 		/*	Else we create the file		*/
-
+		printf ("All ranks there\n");
 		if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
 		{
 			printf ("Error creating file %s\n", base);
@@ -1216,9 +1231,12 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 	char	*sG = static_cast<char*>(spectrumG);
 	char	*sV = static_cast<char*>(spectrumV);
 
+	if (commRank() != 0)
+		return;
+
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request.\n");
+		printf("Error: measurement file not opened. Ignoring write request. %d %d\n",header,opened);
 		return;
 	}
 
@@ -1269,6 +1287,9 @@ void	writeArray (Scalar *axion, void *aData, size_t aSize, const char *group, co
 	hsize_t dims[1] = { aSize };
 
 	size_t	dataSize;
+
+	if (commRank() != 0)
+		return;
 
 	if (header == false || opened == false)
 	{
