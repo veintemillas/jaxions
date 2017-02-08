@@ -20,6 +20,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = seed();
 
+	const int ene = sqrt(Vo);
+
 	#pragma omp parallel default(shared)
 	{
 		int nThread = omp_get_thread_num();
@@ -43,18 +45,30 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//to produce only SAXIONS for testing
 			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
 
-			//	MINICLUSTER
+			// //	MINICLUSTER
+			//
+			// size_t pidx = idx-Vo;
+			// size_t iz = pidx/Vo ;
+			// size_t iy = (pidx%Vo)/sizeN ;
+			// size_t ix = (pidx%Vo)%sizeN ;
+			// if (iz>sizeN/2) {iz = iz-sizeN; }
+			// if (iy>sizeN/2) {iy = iy-sizeN; }
+			// if (ix>sizeN/2) {ix = ix-sizeN; }
+			//
+			// Float theta = ((Float) (ix*ix+iy*iy+iz*iz))/(Vo);
+			// theta = exp(-20*theta);
+			// m[idx] = std::complex<Float>(cos(theta), sin(theta));
+
+			//	ONE MODE
+
 			size_t pidx = idx-Vo;
 			size_t iz = pidx/Vo ;
 			size_t iy = (pidx%Vo)/sizeN ;
 			size_t ix = (pidx%Vo)%sizeN ;
-			if (iz>sizeN/2) {iz = iz-sizeN; }
-			if (iy>sizeN/2) {iy = iy-sizeN; }
-			if (ix>sizeN/2) {ix = ix-sizeN; }
 
-			Float theta = ((Float) (ix*ix+iy*iy+iz*iz))/(Vo);
-			theta = exp(-20*theta);
+			Float theta = ((Float) sin(3.14159*2.*ix*50/ene));
 			m[idx] = std::complex<Float>(cos(theta), sin(theta));
+
 
 			//// if(ix<2)
 			//// {

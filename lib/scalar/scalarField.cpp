@@ -681,10 +681,113 @@ void	Scalar::squareCpu()
 // 	}
 // }
 
-//	USA M2, ARREGLAR LOWMEM
-//	COPIES CONFORMAL FIELD AND DERIVATIVE FROM PQ FIELD
+
+//	COPIES c_theta into m2
 // 	M2 IS NOT SHIFTED BY S,N2
+//	USA M2, ARREGLAR LOWMEM
 void	Scalar::theta2m2()//int *window)
+{
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			if (precision == FIELD_DOUBLE)
+			{
+				double za = (*z);
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
+					((complex<double> *) m2)[i] = thetaaux*za + I*0.;
+				}
+			}
+			else // FIELD_SINGLE
+			{
+				float zaf = *z ;
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
+					((complex<float> *) m2)[i] = thetaauxf*zaf + If*0.f;
+				}
+			}
+		break;
+
+		case FIELD_AXION:
+			if (precision == FIELD_DOUBLE)
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2]) + I*0.;
+			}
+			else	// FIELD_SINGLE
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2]) + If*0.f;
+			}
+		break;
+	}
+}
+
+//	COPIES c_theta_v (vtheta) into m2
+// 	M2 IS NOT SHIFTED BY S,N2
+//	USA M2, ARREGLAR LOWMEM
+void	Scalar::vheta2m2()//int *window)
+{
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			if (precision == FIELD_DOUBLE)
+			{
+				double za = (*z);
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
+					((complex<double> *) m2)[i] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+				}
+			}
+			else // FIELD_SINGLE
+			{
+				float zaf = *z ;
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
+					((complex<float> *) m2)[i] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+				}
+			}
+		break;
+
+		case FIELD_AXION:
+			if (precision == FIELD_DOUBLE)
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<double> *) m2)[i] = 0.0 + I*((static_cast<double*> (v))[i]);
+			}
+			else	// FIELD_SINGLE
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<float> *) m2)[i] = 0.f + If*((static_cast<float*> (v))[i]);
+			}
+		break;
+	}	// END FIELDTYPE
+}		// END vheta2m2
+
+
+// LEGACY FUNCTION COPYING c_theta*mass + I c_theta_z in m2 for the number spectrum
+// SUPERSEEDED BY theta2m2 and vheta2m2 to work with MPI
+void	Scalar::thetav2m2()//int *window)
 {
 	switch (fieldType)
 	{
