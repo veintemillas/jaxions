@@ -26,9 +26,13 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 	else
 		{
 			//LLa = LL/((zia)*(zia));
-			LLa = 1/(pow(2.*deltaa*zia,2.));
+			LLa = 1.125/(pow(deltaa*zia,2.));
 			printf("(LAMBDA_Z2,%.3E) ",LLa);
 		}
+
+	//if ( 1.125/pow(delta,2.) > LL*pow(zia,2.) )
+
+
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();

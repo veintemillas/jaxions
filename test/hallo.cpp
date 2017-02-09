@@ -82,6 +82,7 @@ int	main (int argc, char *argv[])
 	printMpi("Length =  %2.2\n", sizeL);
 	printMpi("N      =  %ld\n",   sizeN);
 	printMpi("Nz     =  %ld\n",   Lz);
+	printMpi("n3     =  %ld\n",   n3);
 	printMpi("zGrid  =  %ld\n",   zGrid);
 	printMpi("dx     =  %2.5f\n", delta);
 	printMpi("z      =  %2.5f\n", (*axion->zV()));
@@ -114,17 +115,21 @@ int	main (int argc, char *argv[])
 		// printMpi("\n");
 		// for (size_t i =0; i<5; i++)
 		// {
-		// 	lala = mD[S0+i];
+		// 	lala = mD[S0*n1+i];
 		// 	printMpi("m[S0+%d] = %f ", i, lala);
 		// }
 		// printMpi("\n");
 
+
+
 	// COPY initial m(dens) into v [it will be rewriten]
+
 	#pragma omp parallel for default(shared) schedule(static)
-	for (size_t idx=S0; idx < n3+S0; idx++)
+	for (size_t idx=0; idx < n3; idx++)
 	{
-		vD[idx] = mD[idx-S0];
+		vD[idx] = mD[idx+S0];
 	}
+
 
 	printMpi("1 - Search for local maxima \n");
 	printMpi("---------------------------\n");
@@ -204,6 +209,7 @@ int	main (int argc, char *argv[])
 	//axion->loadHalo();
 	//printMpi("\n");
 
+	// PREPARE FFT
 
 	if (!fftw_init_threads())
 	{
@@ -223,6 +229,8 @@ int	main (int argc, char *argv[])
 
 	planr2c = fftwf_plan_dft_r2c_3d(Lz, n1, n1, mD, FTFT, FFTW_ESTIMATE );
 	planc2r = fftwf_plan_dft_c2r_3d(Lz, n1, n1, FTFT, mD,  FFTW_ESTIMATE );
+
+	// EXECUTE FFT DENS INTO FTFT
 
 	fftwf_execute(planr2c);
 
@@ -268,14 +276,24 @@ int	main (int argc, char *argv[])
 			 FTFT[idk][1] *= exp(-control)	;
 		}
 }
+
+	// INVERSE FFT
+
 	//axion->fftCpuHalo(+1);
 	fftwf_execute(planc2r);
+
+
+	// NORMALISE
+
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=S0; idx < n3+S0; idx++)
 	{
 		mD[idx] = mD[idx]/((float) n3);
 	}
+
+
+	// CHECK THAT THE AVERAGE STAYS AT 1
 
 	printMpi("Check average ... \n");
 	double ave = 0.;
@@ -287,12 +305,20 @@ int	main (int argc, char *argv[])
 	}
 	printMpi("%f \n", ave/n3);
 
+
+	// PRINT SLICES OF THE FILTERED DATA FOR COMPARISON
+	// USES WRITE AT, WHICH ASUMES IS c_THETA, SO DIVIDES BY Z 
 	printMpi("Print dens in at\n");
 	for (int sliceprint =0; sliceprint<10; sliceprint++)
 	{
 		munge(UNFOLD_SLICE, sliceprint);
 		writeMapAt (axion, sliceprint+10);
 	}
+
+
+	// FIND NEW MAXIMA OF THE FILTERED DENS MAP
+
+	// FIND NUMBER
 
 	axion->exchangeGhosts(FIELD_M);
 	Nmaxima = 0;
@@ -347,9 +373,13 @@ int	main (int argc, char *argv[])
 	printMpi("n1=%d,Lz=%d Nmaxima=%lu  out of %f  reads [%f permil in volume]\n",
 	n1, Lz, Nmaxima, reads/pow(sizeN,3),(float) 1000*Nmaxima/reads);
 
-
+	//CREATE ARRAY OF ADRESSES TO CONTAIN MAXIMA
 	size_t Listmax[Nmaxima];
 	Nmaxima=0;
+
+
+	// FILL THE ARRAY WITH MAXIMA
+
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -401,6 +431,7 @@ int	main (int argc, char *argv[])
 	} //END Z LOOP
 
 
+	// PRINT FOR JOY IF NOT A BURDEN
 
 	if (Nmaxima <1000)
 	{
@@ -413,6 +444,9 @@ int	main (int argc, char *argv[])
 	{
 		printMpi("Too many maxima to print\n");
 	}
+
+
+	// OUTPUT THE NUMBER OF MAXIMA
 
 	printMpi("- Outputbin \n");
 	printMpi("---------------------------\n");

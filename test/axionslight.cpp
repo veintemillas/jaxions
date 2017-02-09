@@ -469,10 +469,10 @@ int	main (int argc, char *argv[])
                 }
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-                if ( (nstrings_global == 0) && (!coS) && ((*axion->zV()) > 0.3) )
+                if ( (nstrings_global == 0) && (!coS) && ((*axion->zV()) > 0.6) )
                 {
 										strcount += 1;
-										printMpi("  str countdown (%d/50)\n",strcount);fflush(stdout);
+										printMpi("  str countdown (%d/20)\n",strcount);fflush(stdout);
 										if (strcount >20)
 										{
 											printMpi("\n");
@@ -524,7 +524,7 @@ int	main (int argc, char *argv[])
                     //printMpi("= %d ", nstrings);
 										nstrings = strings(axion, cDev, str, fCount);
 										//nstringsd = (double) nstrings ;
-										printf("(%d)= %ld ", commRank(), nstrings);fflush (stdout);
+										//printf("(%d)= %ld ", commRank(), nstrings);fflush (stdout);
 										MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
 										printMpi("(G)= %ld \n", nstrings_global);
@@ -631,26 +631,26 @@ int	main (int argc, char *argv[])
 
 		writeArray(axion, sK, 100, "/bins", "theta");
 
-		//printMpi("dens2m ... ");
-		//axion->denstom();
-		//printMpi("| ");
+		printMpi("dens2m ... ");
+		axion->denstom();
+		printMpi("| ");
 
-		// printMpi("pSpec ... ");
+		printMpi("pSpec ... ");
 		//POWER SPECTRUM
-		// if (commRank() == 0)
-		// {
-		// powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-		// printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-		// fprintf(file_power,  "%f ", (*axion->zV()));
-		// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
-		// fprintf(file_power,  "%f ", (*axion->zV()));
-		// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
-		// fprintf(file_power,  "%f ", (*axion->zV()));
-		// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
-		// }
-		// printMpi("| ");
+		if (commRank() == 0)
+		{
+		powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
+		printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
+		fprintf(file_power,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
+		fprintf(file_power,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
+		fprintf(file_power,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
+		}
+		printMpi("| ");
 
-		// writeSpectrum(axion, sK, sG, sV, powmax, true);
+		 writeSpectrum(axion, sK, sG, sV, powmax, true);
 		destroyMeas();
 
 		//munge(FOLD_ALL);
