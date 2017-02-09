@@ -17,7 +17,6 @@
 #include "scalar/scalar.h"
 
 #include<mpi.h>
-#include<omp.h>
 
 using namespace std;
 
@@ -46,8 +45,7 @@ int	main (int argc, char *argv[])
 	std::chrono::milliseconds elapsed;
 
 	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n          TESTING CODE STUFF!                \n\n");
-
+	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -60,18 +58,72 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	printMpi("Generating scalar ... ");
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
-	printMpi("Done! \n");
+	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
+		printMpi("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
+	else
+	{
+		if (fIndex == -1)
+		{
+			//This generates initial conditions
+			printMpi("Generating scalar ... ");
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			printMpi("Done! \n");
+		}
+		else
+		{
+			//This reads from an Axion.00000 file
+			readConf(&axion, fIndex);
+			if (axion == NULL)
+			{
+				printMpi ("Error reading HDF5 file\n");
+				exit (0);
+			}
+		}
+	}
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	printMpi("ICtime %f min\n",elapsed.count()*1.e-3/60.);
 
-
 	//--------------------------------------------------
 	//          OUTPUTS FOR CHECKING
 	//--------------------------------------------------
+
+	FILE *file_sample ;
+	file_sample = NULL;
+
+	FILE *file_energy ;
+	file_energy = NULL;
+
+	//energy 2//	FILE *file_energy2 ;
+	//energy 2//	file_energy2 = NULL;
+
+	FILE *file_spectrum ;
+	file_spectrum = NULL;
+
+	FILE *file_power ;
+	file_power = NULL;
+
+	FILE *file_thetabin ;
+	file_thetabin = NULL;
+
+	FILE *file_contbin ;
+	file_contbin = NULL;
+
+
+	if (commRank() == 0)
+	{
+		file_sample = fopen("out/sample.txt","w+");
+		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
+		file_energy = fopen("out/energy.txt","w+");
+		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
+		//energy 2//	file_energy2 = fopen("out/energy2.txt","w+");
+		file_spectrum = fopen("out/spectrum.txt","w+");
+		file_power = fopen("out/power.txt","w+");
+		file_thetabin = fopen("out/thetabin.txt","w+");
+		file_contbin = fopen("out/contbin.txt","w+");
+	}
+	printMpi("Files prepared! \n");
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	size_t nstrings = 0 ;
@@ -96,134 +148,18 @@ int	main (int argc, char *argv[])
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
 	printMpi("Bins allocated! \n");
 
-	double *sK = static_cast<double *> (spectrumK);
-	double *sG = static_cast<double *> (spectrumG);
-	double *sV = static_cast<double *> (spectrumV);
+	// double *sK = static_cast<double *> (spectrumK);
+	// double *sG = static_cast<double *> (spectrumG);
+	// double *sV = static_cast<double *> (spectrumV);
 	double *bA = static_cast<double *> (binarray);
 	//double *bAd = static_cast<double *> (binarray);
 
- // complex<float> *mSf = static_cast<complex<float>*> (axion->mCpu());
- // complex<float> *vSf = static_cast<complex<float>*> (axion->vCpu());
- // complex<double> *mSd = static_cast<complex<double>*> (axion->mCpu());
- // complex<double> *vSd = static_cast<complex<double>*> (axion->vCpu());
- //
- // float *mTf = static_cast<float*> (axion->mCpu());
- // float *vTf = static_cast<float*> (axion->vCpu());
- // double *mTd = static_cast<double*> (axion->mCpu());
- // double *vTd = static_cast<double*> (axion->vCpu());
+	double *sK = static_cast<double *> (axion->mCpu());
+	double *sG = static_cast<double *> (axion->mCpu())+powmax;
+	double *sV = static_cast<double *> (axion->mCpu())+2*powmax;
+
 
 	double z_now ;
-
-
-	///////////////////////////////
-
-	//const int kmax = axion->Length()/2 -1;
-	//int powmax = floor(1.733*kmax)+2 ;
-	const int n1 = axion->Length();
-
-
-	#pragma omp parallel default(shared)
-	{
-
-		int tid = omp_get_thread_num();
-
-
-		double spectrumK_private[powmax];
-		double spectrumG_private[powmax];
-		double spectrumV_private[powmax];
-
-		printf("th%d alloc, ",tid);fflush(stdout);
-
-		for (int i=0; i < powmax; i++)
-		{
-			spectrumK_private[i] = 0.0;
-			spectrumG_private[i] = 0.0;
-			spectrumV_private[i] = 0.0;
-		}
-
-	size_t idx, midx;
-	int bin;
-	int kz, ky, kx ;
-	size_t iz, nz, iy, ny, ix, nx;
-	double k2, w;
-	complex<float> ftk, ftmk;
-
-
-	#pragma omp for schedule(static)
-	for (int kz = 0; kz<kmax + 0; kz++)
-	{
-
-		iz = (n1+kz)%n1 ;
-		nz = (n1-kz)%n1 ;
-
-		for (int ky = -kmax; ky<kmax + 1; ky++)
-		{
-			iy = (n1+ky)%n1 ;
-			ny = (n1-ky)%n1 ;
-
-			for	(int kx = -kmax; kx<kmax + 1; kx++)
-			{
-				ix = (n1+kx)%n1 ;
-				nx = (n1-kx)%n1 ;
-
-				k2 =	kx*kx + ky*ky + kz*kz;
-				bin  = (int) floor(sqrt(k2)) 	;
-
-				//CONTINUUM DEFINITION
-				//k2 =	(39.47842/(sizeL*sizeL)) * k2;
-				//double w = (double) sqrt(k2 + mass2);
-				//LATICE DEFINITION
-				//this first instance of w is aux
-				//k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
-				//w = sqrt(k2 + mass2);
-				//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
-
-				idx  = ix+iy*n1+iz*n1*n1;
-				midx = nx+ny*n1+nz*n1*n1;
-
-				ftk = static_cast<complex<float>  *> (axion->mCpu())[idx];
-				ftmk = static_cast<complex<float>  *> (axion->mCpu())[midx];
-
-				if(!(kz==0||kz==kmax+1))
-				{
-				// -k is in the negative kx volume
-				// it not summed in the for loop so include a factor of 2
-				spectrumK_private[bin] += 2.*pow(abs(ftk - ftmk),2);
-				spectrumG_private[bin] += 2.*pow(abs(ftk + ftmk),2);		//mass2 is included
-				spectrumV_private[bin] += 2.*pow(abs(ftk + ftmk),2);								//mass2 is included
-				}
-				else
-				{
-				// -k is in the kz=0 so both k and -k will be summed in the loop
-				spectrumK_private[bin] += pow(abs(ftk - ftmk),2);
-				spectrumG_private[bin] += pow(abs(ftk + ftmk),2);		//mass2 is included
-				spectrumV_private[bin] += pow(abs(ftk + ftmk),2);								//mass2 is included
-				}
-			}//x
-
-		}//y
-	}//z
-
-	#pragma omp critical
-	{
-		for(int n=0; n<powmax; n++)
-		{
-			static_cast<double*>(spectrumK)[n] += spectrumK_private[n];
-			static_cast<double*>(spectrumG)[n] += spectrumG_private[n];
-			static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
-		}
-	}
-
-}
-
-
-
-
-
-
-
-
-
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -241,7 +177,7 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	printMpi("--------------------------------------------------\n");
-	printMpi("           INITIAL CONDITIONS                     \n\n");
+	printMpi("           BASE INITIAL CONDITIONS                \n\n");
 
 	printMpi("Length =  %2.5f\n", sizeL);
 	printMpi("N      =  %ld\n",   sizeN);
@@ -257,17 +193,6 @@ int	main (int argc, char *argv[])
 	const size_t V0 = 0;
 	const size_t VF = axion->Size()-1;
 
-	//--------------------------------------------------
-	//   THE TIME ITERATION LOOP
-	//--------------------------------------------------
-
-	printMpi("--------------------------------------------------\n");
-	printMpi("           STARTING TEST                   \n");
-	printMpi("--------------------------------------------------\n");
-
-
-	int counter = 0;
-	int index = 0;
 
 	commSync();
 
@@ -285,130 +210,79 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	if (fIndex == -1)
-	{
-		//printMpi ("Dumping configuration %05d ...", index);
-		//writeConf(axion, index);
-		//printMpi ("Done!\n");
-		printMpi ("Bypass configuration writting!\n");
-		fflush (stdout);
-	}
-	else
-		index = fIndex + 1;
-
-	//JAVIER commented next
-	//printf ("Process %d reached syncing point\n", commRank());
-	//fflush (stdout);
-//	commSync();
 
 	bool coZ = 1;
   bool coS = 1;
 	int strcount = 0;
 
-	axion->SetLambda(LAMBDA_Z2)	;
-	if (LAMBDA_FIXED == axion->Lambda())
-	{
-	printMpi ("Lambda in FIXED mode\n");
-	}
-	else
-	{
-		printMpi ("Lambda in Z2 mode\n");
-	}
+
+	commSync();
+
 
 	Folder munge(axion);
+
+
+	printMpi("\n");
+  printMpi("--------------------------------------------------\n");
+  printMpi("              TRANSITION TO THETA \n");
+  cmplxToTheta (axion, fCount);
+	fflush(stdout);
+  printMpi("--------------------------------------------------\n");
 
 	if (cDev != DEV_GPU)
 	{
 		printMpi ("Folding configuration ... ");
-		munge(FOLD_ALL);
+		munge(UNFOLD_ALL);
 	}
-	printMpi ("Done! \n");
 
-	int nLoops;
-
-	if (dump == 0)
-		nLoops = 0;
-	else
-		nLoops = (int)(nSteps/dump);
-
-	commSync();
-
-	start = std::chrono::high_resolution_clock::now();
-	old = start;
-
-	printMpi("--------------------------------------------------\n");
-	printMpi("TO THETA\n");
-	cmplxToTheta (axion, fCount);
-	fflush(stdout);
-	printMpi("--------------------------------------------------\n");
-
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-
-
-  munge(UNFOLD_SLICE, sliceprint);
-	writeMap (axion, index);
-
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-
-	printMpi("Unfold ... ");
-	munge(UNFOLD_ALL);
-	printMpi("| ");
-
-	if (axion->Field() == FIELD_AXION)
-	{
 
 		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
-		spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+		//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+		spectrumUNFOLDED(axion);
+
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 		printMpi("| ");
-
-		printMpi("DensMap ... ");
-		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-		printMpi("| ");
-
 		if (commRank() == 0)
 		{
-		printf("%f ", (*(axion->zV() )));
-		// first three numbers are dens average, max contrast and maximum of the binning
-		for(int i = 0; i<10000; i++) {	printf("%f ", (float) bA[i]);}
-		printf("\n");
-
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sK[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sG[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sV[i]);} fprintf(file_spectrum, "\n");
+		//axion->foldField();
 		}
-		// BIN THETA
-		maximumtheta = axion->thetaDIST(100, spectrumK);
-		if (commRank() == 0)
+		printMpi("LINE\n");
+		for (int ris = 0; ris <commSize(); ris++)
 		{
-			printf("%f %f ", (*(axion->zV() )), maximumtheta );
-			for(int i = 0; i<100; i++) {	printf("%f ", (float) sK[i]);} printf("\n");
+				if (commRank() == ris)
+				{
+					//printf("rank %d prints\n", ris);fflush(stdout);
+					for (int i = 0; i < sizeN/commSize(); i++)
+					{
+						//fprintf(file_power,  "%lf ", static_cast<float *> (axion->mCpu())[S0*(1+i)]);
+						printf("%lf,", static_cast<float *> (axion->mCpu())[S0*(1+i)]);
+					}
+					printf("\n");
+					fflush(stdout);
+				}
+				commSync();
 		}
 
-		printMpi("dens2m ... ");
-		axion->denstom();
-		printMpi("| ");
-
-		printMpi("pSpec ... ");
-		//POWER SPECTRUM
-		if (commRank() == 0)
-		{
-		powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-		printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-		printf("%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	printf("%f ", (float) sK[i]);} printf("\n");
-		printf("%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	printf("%f ", (float) sG[i]);} printf("\n");
-		printf("%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	printf("%f ", (float) sV[i]);} printf("\n");
-		}
-		printMpi("| ");
+		commSync();
 
 		//munge(FOLD_ALL);
-	}
+		fflush(file_power);
+		fflush(file_spectrum);
 
-	if (nSteps > 0)
-	writeConf(axion, index);
+
+	// if (axion->Field() == FIELD_AXION)
+	// {
+	// if (nSteps > 0)
+	// writeConf(axion, 19);
+	// }
+
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
@@ -424,6 +298,17 @@ int	main (int argc, char *argv[])
 
 	printMemStats();
 
+	//JAVIER
+	if (commRank() == 0)
+	{
+		fclose (file_sample);
+		fclose (file_energy);
+		fclose (file_spectrum);
+		fclose (file_power);
+		fclose (file_thetabin);
+		fclose (file_contbin);
+		//energy 2//	fclose (file_energy2);
+	}
 
 	return 0;
 }

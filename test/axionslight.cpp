@@ -148,21 +148,16 @@ int	main (int argc, char *argv[])
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
 	printMpi("Bins allocated! \n");
 
-	double *sK = static_cast<double *> (spectrumK);
-	double *sG = static_cast<double *> (spectrumG);
-	double *sV = static_cast<double *> (spectrumV);
+	// double *sK = static_cast<double *> (spectrumK);
+	// double *sG = static_cast<double *> (spectrumG);
+	// double *sV = static_cast<double *> (spectrumV);
 	double *bA = static_cast<double *> (binarray);
 	//double *bAd = static_cast<double *> (binarray);
 
- // complex<float> *mSf = static_cast<complex<float>*> (axion->mCpu());
- // complex<float> *vSf = static_cast<complex<float>*> (axion->vCpu());
- // complex<double> *mSd = static_cast<complex<double>*> (axion->mCpu());
- // complex<double> *vSd = static_cast<complex<double>*> (axion->vCpu());
- //
- // float *mTf = static_cast<float*> (axion->mCpu());
- // float *vTf = static_cast<float*> (axion->vCpu());
- // double *mTd = static_cast<double*> (axion->mCpu());
- // double *vTd = static_cast<double*> (axion->vCpu());
+	double *sK = static_cast<double *> (axion->mCpu());
+	double *sG = static_cast<double *> (axion->mCpu())+powmax;
+	double *sV = static_cast<double *> (axion->mCpu())+2*powmax;
+
 
 	double z_now ;
 
@@ -182,7 +177,7 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	printMpi("--------------------------------------------------\n");
-	printMpi("           INITIAL CONDITIONS                     \n\n");
+	printMpi("           BASE INITIAL CONDITIONS                \n\n");
 
 	printMpi("Length =  %2.5f\n", sizeL);
 	printMpi("N      =  %ld\n",   sizeN);
@@ -297,9 +292,11 @@ int	main (int argc, char *argv[])
 	{
 		double	strDen;
 
+		if (commRank() == 0)
+		{
 		munge(UNFOLD_SLICE, sliceprint);
 		writeMap (axion, index);
-
+		}
 	}
 
 	if (dump > nSteps)
@@ -311,6 +308,18 @@ int	main (int argc, char *argv[])
 		nLoops = 0;
 	else
 		nLoops = (int)(nSteps/dump);
+
+
+	printMpi("--------------------------------------------------\n");
+	printMpi("           START LOOP  						                \n\n");
+	printMpi("Length =  %2.5f\n", sizeL);
+	printMpi("N      =  %ld\n",   sizeN);
+	printMpi("Nz     =  %ld\n",   sizeZ);
+	printMpi("zGrid  =  %ld\n",   zGrid);
+	printMpi("dx     =  %2.5f\n", delta);
+	printMpi("dz     =  variable min[1/d,1/m_a,1/m_s]/2\n", dz);
+	printMpi("LL     =  FM_variable ms a =1.5\n", LL);
+	printMpi("--------------------------------------------------\n");
 
 	printMpi ("Start redshift loop\n\n");
 	fflush (stdout);
@@ -463,8 +472,8 @@ int	main (int argc, char *argv[])
                 if ( (nstrings_global == 0) && (!coS) && ((*axion->zV()) > 0.6) )
                 {
 										strcount += 1;
-										printMpi("  str countdown (%d/100)\n",strcount);fflush(stdout);
-										if (strcount >5)
+										printMpi("  str countdown (%d/20)\n",strcount);fflush(stdout);
+										if (strcount >20)
 										{
 											printMpi("\n");
 	                    printMpi("--------------------------------------------------\n");
@@ -511,14 +520,15 @@ int	main (int argc, char *argv[])
 				{
 					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 					fflush (stdout);
-										nstrings = analyzeStrFolded(axion, index);
+										//nstrings = analyzeStrFolded(axion, index);
                     //printMpi("= %d ", nstrings);
-										//nstrings = strings(axion, cDev, str, fCount);
+										nstrings = strings(axion, cDev, str, fCount);
 										//nstringsd = (double) nstrings ;
+										//printf("(%d)= %ld ", commRank(), nstrings);fflush (stdout);
 										MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
-										printMpi("= %ld ", nstrings_global);
-										fflush (stdout);
+										printMpi("(G)= %ld \n", nstrings_global);
+
 
 										if (nstrings_global == 0 )
                     {
@@ -535,8 +545,11 @@ int	main (int argc, char *argv[])
 				fflush(stdout);
 			}
 
+			if (commRank() == 0)
+			{
 			munge(UNFOLD_SLICE, sliceprint);
 			writeMap (axion, index);
+			}
 
 //
 //	if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 0.6 )
@@ -572,22 +585,23 @@ int	main (int argc, char *argv[])
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		printMpi ("Allá voy!!\n");
 		createMeas(axion, 0);
 
 		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
-		spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+		//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+		spectrumUNFOLDED(axion);
+
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 		printMpi("| ");
 		if (commRank() == 0)
 		{
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sK[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sG[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sV[i]);} fprintf(file_spectrum, "\n");
 		//axion->foldField();
 		}
 
@@ -636,7 +650,7 @@ int	main (int argc, char *argv[])
 		}
 		printMpi("| ");
 
-		writeSpectrum(axion, sK, sG, sV, powmax, true);
+		 writeSpectrum(axion, sK, sG, sV, powmax, true);
 		destroyMeas();
 
 		//munge(FOLD_ALL);
@@ -650,13 +664,17 @@ int	main (int argc, char *argv[])
 		//munge(UNFOLD_ALL);
 	}
 
+	if (axion->Field() == FIELD_AXION)
+	{
 	if (nSteps > 0)
 	writeConf(axion, index);
+	}
 
 	printMpi("z_final = %f\n", *axion->zV());
 	printMpi("#_steps = %i\n", counter);
 	printMpi("#_prints = %i\n", index);
-	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
+	printMpi("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
+	printMpi("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 	printMpi("GFlops: %.3f\n", fCount->GFlops());
 	printMpi("GBytes: %.3f\n", fCount->GBytes());
 

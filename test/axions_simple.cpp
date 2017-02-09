@@ -290,7 +290,8 @@ int	main (int argc, char *argv[])
 				double *sK = static_cast<double *> (spectrumK);
 				double *sG = static_cast<double *> (spectrumG);
 				double *sV = static_cast<double *> (spectrumV);
-				spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+				spectrumUNFOLDED(axion);
+				//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
 				printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 				fprintf(file_spectrum,  "%f ", (*axion->zV()));
 				for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
