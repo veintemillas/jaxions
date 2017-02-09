@@ -593,11 +593,10 @@ void	energyMapXeon	(Scalar *axionField, const double delta2, const double nQcd, 
 	const int  micIdx = commAcc(); 
 	const double ood2 = 1./delta2;
 	double *z  = axionField->zV();
-	double *eR = static_cast<double*>(eRes);
 	const FieldPrecision precision = axionField->Precision();
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) in(z:length(8) UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
+	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
 		energyMapKernelXeon(mX, vX, m2X, z, ood2, nQcd, Lx, S, V+S,precision);
 	}
