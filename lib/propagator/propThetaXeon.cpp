@@ -10,6 +10,7 @@
 	#include"utils/xeonDefs.h"
 #endif
 
+#include"utils/triSimd.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -30,7 +31,7 @@
 	#endif
 #endif
 
-
+/*
 #define	M_PI2	(M_PI *M_PI)
 #define	M_PI4	(M_PI2*M_PI2)
 #define	M_PI6	(M_PI4*M_PI2)
@@ -92,7 +93,7 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 }
 
 #undef	_MData_
-
+*/
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif

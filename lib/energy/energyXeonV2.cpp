@@ -33,7 +33,7 @@
 __attribute__((target(mic)))
 #endif
 void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ v_, double *z, const double ood2, const double LL, const double nQcd,
-			 const size_t Lx, const size_t Vo, const size_t Vf, const size_t Vt, FieldPrecision precision, void * __restrict__ eRes_)
+			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -343,19 +343,18 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 			}
 		}
 
-		const double iV = 1./((double) Vt);
 		const double o2 = ood2*0.375;
 
-		eRes[0] = Gxrho*o2*iV;
-		eRes[1] = Gxth *o2*iV;
-		eRes[2] = Gyrho*o2*iV;
-		eRes[3] = Gyth *o2*iV;
-		eRes[4] = Gzrho*o2*iV;
-		eRes[5] = Gzth *o2*iV;
-		eRes[6] = Vrho *lZ*iV;
-		eRes[7] = Vth  *zQ*iV;
-		eRes[8] = Krho *.5*iV;
-		eRes[9] = Kth  *.5*iV;
+		eRes[0] = Gxrho*o2;
+		eRes[1] = Gxth *o2;
+		eRes[2] = Gyrho*o2;
+		eRes[3] = Gyth *o2;
+		eRes[4] = Gzrho*o2;
+		eRes[5] = Gzth *o2;
+		eRes[6] = Vrho *lZ;
+		eRes[7] = Vth  *zQ;
+		eRes[8] = Krho *.5;
+		eRes[9] = Kth  *.5;
 #undef	_MData_
 #undef	step
 	}
@@ -691,25 +690,24 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 			}
 		}
 
-		const double iV = 1./((double) Vt);
 		const double o2 = ood2*0.375;
 
-		eRes[0] = Gxrho*o2*iV;
-		eRes[1] = Gxth *o2*iV;
-		eRes[2] = Gyrho*o2*iV;
-		eRes[3] = Gyth *o2*iV;
-		eRes[4] = Gzrho*o2*iV;
-		eRes[5] = Gzth *o2*iV;
-		eRes[6] = Vrho *lZ*iV;
-		eRes[7] = Vth  *zQ*iV;
-		eRes[8] = Krho *.5*iV;
-		eRes[9] = Kth  *.5*iV;
+		eRes[0] = Gxrho*o2;
+		eRes[1] = Gxth *o2;
+		eRes[2] = Gyrho*o2;
+		eRes[3] = Gyth *o2;
+		eRes[4] = Gzrho*o2;
+		eRes[5] = Gzth *o2;
+		eRes[6] = Vrho *lZ;
+		eRes[7] = Vth  *zQ;
+		eRes[8] = Krho *.5;
+		eRes[9] = Kth  *.5;
 #undef	_MData_
 #undef	step
 	}
 }
 
-void	energyXeonV2	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, const size_t Vt, FieldPrecision precision, void *eRes)
+void	energyXeonV2	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes)
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc(); 
@@ -720,16 +718,16 @@ void	energyXeonV2	(Scalar *axionField, const double delta2, const double LL, con
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		energyKernelXeonV2(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, Vt, precision, (void*) eR);
+		energyKernelXeonV2(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR);
 	}
 #endif
 }
 
-void	energyCpuV2	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, const size_t Vt, FieldPrecision precision, void *eRes)
+void	energyCpuV2	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 
 	axionField->exchangeGhosts(FIELD_M);
-	energyKernelXeonV2(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, Vt, precision, eRes);
+	energyKernelXeonV2(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes);
 }

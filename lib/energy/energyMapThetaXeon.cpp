@@ -8,6 +8,7 @@
 	#include "utils/xeonDefs.h"
 #endif
 
+#include"utils/triSimd.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -28,7 +29,7 @@
 		#define	_PREFIX_ _mm256
 	#endif
 #endif
-
+/*
 #ifdef	__MIC__
 	#define	_MData_ __m512d
 #elif	defined(__AVX__)
@@ -88,7 +89,7 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 }
 
 #undef	_MData_
-
+*/
 
 #ifdef USE_XEON
 __attribute__((target(mic)))
@@ -141,11 +142,9 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 
 		#pragma omp parallel default(shared) 
 		{
-			_MData_ mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
-			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
+			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
 
-			double tmpS[step] __attribute__((aligned(Align)));
-			double tmpV[step] __attribute__((aligned(Align)));
+			double tmp[step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -174,35 +173,45 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 				{
 					idxMy = idx + Sf - XC;
 					idxPy = idx + XC;
+					mPy = opCode(load_pd, &m[idxPy]);
 #ifdef	__MIC__
-					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)));
+					mMy = opCode(castsi512_pd, opCode(permutevar_epi32, vShRg, opCode(castpd_si512, opCode(load_pd, &m[idxMy]))));
+#elif	defined(__AVX2__)	//AVX2
+					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
-					mMx = opCode(load_pd, &m[idxMy]);
-					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(permute2f128_pd, mMx, mMx, 0b00000001));
+					mel = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
+					vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
+					mMy = opCode(blend_pd, mel, vel, 0b00000101);
 #else
-					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
+					mel = opCode(load_pd, &m[idxMy]);
+					mMy = opCode(shuffle_pd, mel, mel, 0x00000001);
 #endif
 				}
 				else
 				{
 					idxMy = idx - XC;
+					mMy = opCode(load_pd, &m[idxMy]);
 
 					if (X[1] == YC-1)
 					{
 						idxPy = idx - Sf + XC;
 #ifdef	__MIC__
-						mMy = opCode(sub_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)), opCode(load_pd, &m[idxMy]));
+						mPy = opCode(castsi512_pd, opCode(permutevar_epi32, vShLf, opCode(castpd_si512, opCode(load_pd, &m[idxPy]))));
+#elif	defined(__AVX2__)       //AVX2
+						tmp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif	defined(__AVX__)
-						mMx = opCode(load_pd, &m[idxPy]);
-						mMy = opCode(sub_pd, opCode(permute2f128_pd, mMx, mMx, 0b00000001), opCode(load_pd, &m[idxMy]));
+						mel = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
+						vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
+						mPy = opCode(blend_pd, mel, vel, 0b00001010);
 #else
-						mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
+						vel = opCode(load_pd, &m[idxPy]);
+						mPy = opCode(shuffle_pd, vel, vel, 0x00000001);
 #endif
 					}
 					else
 					{
-						idxPy = ((idx + XC) << 1);
-						mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
+						idxPy = idx + XC;
+						mPy = opCode(load_pd, &m[idxPy]);
 					}
 				}
 
@@ -232,8 +241,9 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 							opCode(add_pd,
 								opCode(mul_pd, mPy, mPy),
 								opCode(mul_pd, mMy, mMy))),
-						opCode(mul_pd, mPz, mPz),
-						opCode(mul_pd, mMz, mMz)),
+						opCode(add_pd,
+							opCode(mul_pd, mPz, mPz),
+							opCode(mul_pd, mMz, mMz))),
 					opCode(set1_pd, ood2));
 
 				mPx = opCode(add_pd,
@@ -245,12 +255,12 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 						opCode(sub_pd,
 							opCode(set1_pd, 1.),
 							opCode(mul_pd,
-								opCode(set1_pd, iZ),
+								opCode(set1_pd, iz),
 								opCode(cos_pd, mel)))));
 
 				// STORAGE, CHECK BOUNDARIES (Y DIRECTION MOSTLY)
 
-				opCode(store_pd, tmp, opCode(add_pd, grd, mPx);
+				opCode(store_pd, tmp, opCode(add_pd, grd, mPx));
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
@@ -306,11 +316,9 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 
 		#pragma omp parallel default(shared) 
 		{
-			_MData_ mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
-			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
+			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
 
-			float tmpS[2*step] __attribute__((aligned(Align)));
-			float tmpV[2*step] __attribute__((aligned(Align)));
+			float tmp[step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -341,18 +349,18 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 					idxPy = idx + XC;
 					mPy = opCode(load_ps, &m[idxPy]);
 #ifdef  __MIC__
-					tpM = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_CBAD);
-					tpP = opCode(permute4f128_ps, tpM, _MM_PERM_CBAD);
-					mMy = opCode(mask_blend_ps, opCode(int2mask, 0b0001000100010001), tpM, tpP);
+					mel = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_CBAD);
+					vel = opCode(permute4f128_ps, mel, _MM_PERM_CBAD);
+					mMy = opCode(mask_blend_ps, opCode(int2mask, 0b0001000100010001), mel, vel);
 #elif	defined(__AVX2__)	//AVX2
 					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
 #elif	defined(__AVX__)	//AVX
-					tpM = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
-					tpP = opCode(permute2f128_ps, tpM, tpM, 0b00000001);
-					mMy = opCode(blend_ps, tpM, tpP, 0b00010001);
+					mel = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
+					vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
+					mMy = opCode(blend_ps, mel, vel, 0b00010001);
 #else
-					tpM = opCode(load_ps, &m[idxMy]);
-					mMy = opCode(shuffle_ps, tpM, tpM, 0b10010011);
+					mel = opCode(load_ps, &m[idxMy]);
+					mMy = opCode(shuffle_ps, mel, mel, 0b10010011);
 #endif
 				}
 				else
@@ -364,18 +372,18 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 					{
 						idxPy = idx - Sf + XC;
 #ifdef  __MIC__
-						tpM = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_ADCB);
-						tpP = opCode(permute4f128_ps, tpM, _MM_PERM_ADCB);
-						mPy = opCode(mask_blend_ps, opCode(int2mask, 0b1110111011101110), tpM, tpP);
+						mel = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_ADCB);
+						vel = opCode(permute4f128_ps, mel, _MM_PERM_ADCB);
+						mPy = opCode(mask_blend_ps, opCode(int2mask, 0b1110111011101110), mel, vel);
 #elif	defined(__AVX2__)	//AVX2
 						mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
 #elif	defined(__AVX__)	//AVX
-						tpM = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
-						tpP = opCode(permute2f128_ps, tpM, tpM, 0b00000001);
-						mPy = opCode(blend_ps, tpM, tpP, 0b10001000);
+						mel = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
+						vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
+						mPy = opCode(blend_ps, mel, vel, 0b10001000);
 #else
-						tpP = opCode(load_ps, &m[idxPy]);
-						mPy = opCode(shuffle_ps, tpP, tpP, 0b00111001);
+						vel = opCode(load_ps, &m[idxPy]);
+						mPy = opCode(shuffle_ps, vel, vel, 0b00111001);
 #endif
 					}
 					else
@@ -411,8 +419,9 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 							opCode(add_ps,
 								opCode(mul_ps, mPy, mPy),
 								opCode(mul_ps, mMy, mMy))),
-						opCode(mul_ps, mPz, mPz),
-						opCode(mul_ps, mMz, mMz)),
+						opCode(add_ps,
+							opCode(mul_ps, mPz, mPz),
+							opCode(mul_ps, mMz, mMz))),
 					opCode(set1_ps, ood2));
 
 				mPx = opCode(add_ps,
@@ -424,12 +433,12 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 						opCode(sub_ps,
 							opCode(set1_ps, 1.),
 							opCode(mul_ps,
-								opCode(set1_ps, iZ),
+								opCode(set1_ps, iz),
 								opCode(cos_ps, mel)))));
 
 				// CHECK BOUNDARIES (Y DIRECTION MOSTLY)
 
-				opCode(store_ps, tmp, opCode(add_ps, grd, mPx);
+				opCode(store_ps, tmp, opCode(add_ps, grd, mPx));
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
