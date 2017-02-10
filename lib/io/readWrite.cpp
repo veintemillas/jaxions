@@ -693,7 +693,6 @@ void	writeString	(void *str, size_t strDen)
 			}
 		}
 		commSync();
-		printf ("Rank %d in %d iteration\n", myRank, rank); fflush(stdout);
 	}
 
 	/*	Close the dataset	*/
