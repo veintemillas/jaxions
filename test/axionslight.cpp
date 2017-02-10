@@ -512,6 +512,9 @@ int	main (int argc, char *argv[])
       printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
 			fflush(stdout);
 
+			// CREATE FILE OUTPUT
+
+
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
@@ -527,7 +530,15 @@ int	main (int argc, char *argv[])
 										//printf("(%d)= %ld ", commRank(), nstrings);fflush (stdout);
 										MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
-										printMpi("(G)= %ld \n", nstrings_global);
+
+										createMeas(axion, index);
+										printMpi("[mc-");
+										writeString	( str , nstrings_global);
+										printMpi("sw-");
+										destroyMeas();
+										printMpi("d] ");
+										printMpi("(G)= %ld ", nstrings_global);
+
 
 
 										if (nstrings_global == 0 )
@@ -550,6 +561,8 @@ int	main (int argc, char *argv[])
 			munge(UNFOLD_SLICE, sliceprint);
 			writeMap (axion, index);
 			}
+
+			// SAVE FILE OUTPUT
 
 //
 //	if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 0.6 )
@@ -585,7 +598,7 @@ int	main (int argc, char *argv[])
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		createMeas(axion, 0);
+		createMeas(axion, index+1);
 
 		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
