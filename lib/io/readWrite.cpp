@@ -677,10 +677,9 @@ void	writeString	(void *str, size_t strDen)
 		{
 			if (myRank == rank)
 				MPI_Send(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
-
 		} else {
 			if (rank != 0)
-				MPI_Recv(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD, NULL);
+				MPI_Recv(strData, slabSz*sLz, MPI_CHAR, rank, 0, MPI_COMM_WORLD, NULL);
 
 			for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
 			{
@@ -693,17 +692,21 @@ void	writeString	(void *str, size_t strDen)
 				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
 			}
 		}
+		commSync();
+		printf ("Rank %d in %d iteration\n", myRank, rank); fflush(stdout);
 	}
 
 	/*	Close the dataset	*/
 
-	H5Dclose (sSet_id);
-	H5Sclose (sSpace);
-	H5Sclose (memSpace);
+	if (myRank == 0) {
+		H5Dclose (sSet_id);
+		H5Sclose (sSpace);
+		H5Sclose (memSpace);
 
-	H5Sclose (totalSpace);
-	H5Pclose (chunk_id);
-	H5Gclose (group_id);
+		H5Sclose (totalSpace);
+		H5Pclose (chunk_id);
+		H5Gclose (group_id);
+	}
 
 	commSync();
 }
