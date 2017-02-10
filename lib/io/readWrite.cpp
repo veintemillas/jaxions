@@ -444,6 +444,14 @@ void	createMeas (Scalar *axion, int index)
 
 	int myRank = commRank();
 
+	int cSteps = dump*index;
+	hsize_t totlZ = sizeZ*zGrid;
+	hsize_t tmpS  = sizeN;
+
+	tSize  = axion->TotalSize();
+	slabSz = tmpS*tmpS;
+	sLz    = sizeZ;
+
 	if (myRank != 0)	// Only rank 0 writes measurement data
 		return;
 
@@ -506,10 +514,6 @@ void	createMeas (Scalar *axion, int index)
 		break;
 	}
 
-	int cSteps = dump*index;
-	hsize_t totlZ = sizeZ*zGrid;
-	hsize_t tmpS  = sizeN;
-
 	switch (axion->Field())
 	{
 		case 	FIELD_SAXION:
@@ -556,13 +560,7 @@ void	createMeas (Scalar *axion, int index)
 //	mlist_id = H5Pcreate(H5P_DATASET_XFER);
 //	H5Pset_dxpl_mpio(mlist_id,H5FD_MPIO_COLLECTIVE);
 
-	tSize  = tmpS*tmpS*totlZ;
-	slabSz = tmpS*tmpS;
-	sLz    = sizeZ;
-
 	header = true;
-
-	printf("\n\n\nHeader %d Opened %d\n\n\n", header, opened); fflush(stdout);
 
 	return;
 }
@@ -669,17 +667,19 @@ void	writeString	(void *str, size_t strDen)
 		memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
 	}
 
-	int tSz = commSize();
+	int tSz = commSize(), test = myRank;
 
 	for (int rank=0; rank<tSz; rank++)
 	{
+		commSync();
+
 		if (myRank != 0)
 		{
 			if (myRank == rank)
-				MPI_Send(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+				MPI_Send(&(strData[0]), slabSz*sLz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
 		} else {
 			if (rank != 0)
-				MPI_Recv(strData, slabSz*sLz, MPI_CHAR, rank, 0, MPI_COMM_WORLD, NULL);
+				MPI_Recv(&(strData[0]), slabSz*sLz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, NULL);
 
 			for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
 			{
@@ -688,7 +688,6 @@ void	writeString	(void *str, size_t strDen)
 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
 
 				/*	Write raw data	*/
-
 				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
 			}
 		}

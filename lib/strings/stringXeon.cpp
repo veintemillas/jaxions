@@ -763,14 +763,13 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 size_t	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
-	size_t	  strDen = 0.;
+	size_t	  strDen = 0;
 #ifdef USE_XEON
 	const int    micIdx = commAcc();
-	const size_t Vh = (V>>1);
 	char *str = static_cast<char*>(strg);
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) out(str : length(Vh) UseX) nocopy(mX : ReUseX)
+	#pragma offload target(mic:micIdx) out(str : length(V) UseX) nocopy(mX : ReUseX)
 	{
 		strDen = stringKernelXeon(mX, Lx, S, V+S, precision, str);
 	}
