@@ -562,7 +562,7 @@ void	createMeas (Scalar *axion, int index)
 
 	header = true;
 
-	//printf("\n\n\nHeader %d Opened %d\n\n\n", header, opened); fflush(stdout);
+	printf("\n\n\nHeader %d Opened %d\n\n\n", header, opened); fflush(stdout);
 
 	return;
 }
@@ -597,27 +597,15 @@ void	writeString	(void *str, size_t strDen)
 	char *strData = static_cast<char *>(str);
 	char sCh[16] = "/string/data";
 
-	if (myRank != 0)
-		return;
-
-	if (header == false || opened == false)
+	if (myRank == 0)
 	{
-		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
-		return;
-	}
+		if (header == false || opened == false)
+		{
+			printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+			return;
+		}
 
-	{
-
-	/*	If we give up compression and use Javi's dataTypes...
-		datum = H5Tcreate (H5T_COMPOUND, 3*sizeof(size_t)+sizeof(char));
-
-		H5Tinsert (datum, "x",                0, H5T_NATIVE_HSIZE);
-		H5Tinsert (datum, "y",   sizeof(size_t), H5T_NATIVE_HSIZE);
-		H5Tinsert (datum, "z", 2*sizeof(size_t), H5T_NATIVE_HSIZE);
-		H5Tinsert (datum, "t", 3*sizeof(size_t), H5T_NATIVE_CHAR);
-	*/
 		/*	Create space for writing the raw data to disk with chunked access	*/
-
 		totalSpace = H5Screate_simple(1, &tSize, maxD);	// Whole data
 
 		if (totalSpace < 0)
@@ -627,7 +615,6 @@ void	writeString	(void *str, size_t strDen)
 		}
 
 		/*	Set chunked access and dynamical compression	*/
-
 		herr_t status;
 
 		chunk_id = H5Pcreate (H5P_DATASET_CREATE);
@@ -668,8 +655,6 @@ void	writeString	(void *str, size_t strDen)
 		writeAttribute(group_id, &strDen, "String number", H5T_NATIVE_HSIZE);
 
 		/*	Create a dataset for string data	*/
-
-		//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 		sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
 		if (sSet_id < 0)
@@ -682,25 +667,18 @@ void	writeString	(void *str, size_t strDen)
 
 		sSpace = H5Dget_space (sSet_id);
 		memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
-
-//		printf ("Rank %d ready to write\n", myRank);
-//		fflush (stdout);
 	}
 
 	int tSz = commSize();
 
-
 	for (int rank=0; rank<tSz; rank++)
 	{
-		printf("rank%d(w)",myRank);fflush(stdout);
 		if (myRank != 0)
 		{
 			if (myRank == rank)
 				MPI_Send(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
 
-		}
-		else
-		{
+		} else {
 			if (rank != 0)
 				MPI_Recv(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD, NULL);
 
@@ -711,17 +689,14 @@ void	writeString	(void *str, size_t strDen)
 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
 
 				/*	Write raw data	*/
-//				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (strData)+slabSz*zDim);
+
 				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
 			}
-
-			//commSync();
 		}
 	}
 
 	/*	Close the dataset	*/
 
-//	H5Tclose (datum);
 	H5Dclose (sSet_id);
 	H5Sclose (sSpace);
 	H5Sclose (memSpace);
@@ -729,6 +704,8 @@ void	writeString	(void *str, size_t strDen)
 	H5Sclose (totalSpace);
 	H5Pclose (chunk_id);
 	H5Gclose (group_id);
+
+	commSync();
 }
 
 void	writeMapHdf5	(Scalar *axion)
@@ -832,7 +809,7 @@ void	writeMapHdf5	(Scalar *axion)
 	/*	Write raw data	*/
 	H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
 	H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
-
+	
 
 	/*	Close the dataset	*/
 
@@ -1324,3 +1301,4 @@ void	writeArray (Scalar *axion, void *aData, size_t aSize, const char *group, co
 	H5Sclose (dataSpace);
 	H5Gclose (group_id);
 }
+

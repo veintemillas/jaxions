@@ -29,67 +29,6 @@
 		#define	_PREFIX_ _mm256
 	#endif
 #endif
-/*
-#ifdef	__MIC__
-	#define	_MData_ __m512d
-#elif	defined(__AVX__)
-	#define	_MData_ __m256d
-#else
-	#define	_MData_ __m128d
-#endif 
-inline _MData_	opCode(cos_pd, _MData_ x)
-{
-	_MData_ tmp2, tmp4, tmp6, a, b, c;
-	static const double a_s = -0.0415758., b_s = 0.00134813., c_s = -(1+4.*M_PI2*a_s+6.*M_PI4*b_s)/(8.*M_PI6);
-
-	a = opCode(set1_pd, a_s);
-	b = opCode(set1_pd, b_s);
-	c = opCode(set1_pd, c_s);
-
-	tmp2 = opCode(mul_pd, x, x);
-	tmp4 = opCode(mul_pd, tmp2, tmp2);
-	tmp6 = opCode(mul_pd, tmp2, tmp4);
-	return opCode(sub_pd, opCode(set1_pd, 1.),
-		opCode(add_pd, opCode(mul_pd, opCode(set1_pd, 0.5), tmp2),
-			opCode(add_pd,
-				opCode(add_pd,
-					opCode(mul_pd, tmp4, a),
-					opCode(mul_pd, tmp6, b)),
-				opCode(mul_pd, c, opCode(mul_pd, tmp4, tmp4))));
-}
-
-#undef	_MData_
-
-#ifdef	__MIC__
-	#define	_MData_ __m512
-#elif	defined(__AVX__)
-	#define	_MData_ __m256
-#else
-	#define	_MData_ __m128
-#endif 
-inline _MData_	opCode(cos_ps, _MData_ x)
-{
-	_MData_ tmp2, tmp4, tmp6, a, b, c;
-	static const double a_s = -0.0415758., b_s = 0.00134813., c_s = -(1+4.*M_PI2*a_s+6.*M_PI4*b_s)/(8.*M_PI6);
-
-	a = opCode(set1_ps, a_s);
-	b = opCode(set1_ps, b_s);
-	c = opCode(set1_ps, c_s);
-
-	tmp2 = opCode(mul_ps, x, x);
-	tmp4 = opCode(mul_ps, tmp2, tmp2);
-	tmp6 = opCode(mul_ps, tmp2, tmp4);
-	return opCode(sub_ps, opCode(set1_ps, 1.),
-		opCode(add_ps, opCode(mul_ps, opCode(set1_ps, 0.5), tmp2),
-			opCode(add_ps,
-				opCode(add_ps,
-					opCode(mul_ps, tmp4, a),
-					opCode(mul_ps, tmp6, b)),
-				opCode(mul_ps, c, opCode(mul_ps, tmp4, tmp4))));
-}
-
-#undef	_MData_
-*/
 
 #ifdef USE_XEON
 __attribute__((target(mic)))
