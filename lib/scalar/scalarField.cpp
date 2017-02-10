@@ -30,6 +30,12 @@
 
 using namespace std;
 
+#define printMpi(...) do {		\
+	if (!commRank()) {		\
+	  printf(__VA_ARGS__);  	\
+	  fflush(stdout); }		\
+}	while (0)
+
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
@@ -42,7 +48,6 @@ const std::complex<float> If(0.,1.);
 	std::chrono::milliseconds elapsed;
 
 	start = std::chrono::high_resolution_clock::now();
-
 
 	size_t nData;
 
@@ -84,16 +89,16 @@ const std::complex<float> If(0.,1.);
 	switch	(dev)
 	{
 		case DEV_XEON:
-			printf("Using Xeon Phi 64 bytes alignment\n");
+			printMpi("Using Xeon Phi 64 bytes alignment\n");
 			mAlign = 64;
 			break;
 
 		case DEV_CPU:
 			#if	defined(__AVX__) || defined(__AVX2__)
-			printf("Using AVX 32 bytes alignment\n");
+			printMpi("Using AVX 32 bytes alignment\n");
 			mAlign = 32;
 			#else
-			printf("Using SSE 16 bytes alignment\n");
+			printMpi("Using SSE 16 bytes alignment\n");
 			mAlign = 16;
 			#endif
 			break;
@@ -115,7 +120,7 @@ const std::complex<float> If(0.,1.);
 	//JAVIER ADDED 2 SLICES TO V FOR REAL TO COMPLEX FTT in HALO
 	const size_t	vBytes = n3*fSize;
 
-printf("Allocating m and v\n"); fflush(stdout);
+//printMpi("Allocating m and v\n"); fflush(stdout);
 #ifdef	USE_XEON
 	alignAlloc ((void**) &mX, mAlign, mBytes);
 	alignAlloc ((void**) &vX, mAlign, vBytes);
@@ -136,19 +141,19 @@ printf("Allocating m and v\n"); fflush(stdout);
 
 	if (!lowmem)
 	{
-		printf("Allocating m2\n"); fflush(stdout);
+		printMpi("Allocating m2\n"); fflush(stdout);
 		alignAlloc ((void**) &m2, mAlign, mBytes);
 	}
 	else
 	{
-		printf("LOWMEM!\n"); fflush(stdout);
+		printMpi("LOWMEM!\n"); fflush(stdout);
 		m2 = NULL;
 	}
 #endif
 
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printf("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
+	// current = std::chrono::high_resolution_clock::now();
+	// elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	// printMpi("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
 	start = std::chrono::high_resolution_clock::now();
 
 	if (m == NULL)
@@ -172,16 +177,17 @@ printf("Allocating m and v\n"); fflush(stdout);
 		}
 	}
 
-	printf("set m,v=0, fSize=%d m[%ld] v[%ld]\n",fSize,v3,n3); fflush(stdout);
+	printMpi("set m,v=0, fSize=%d m[%ld] v[%ld]\n",fSize,v3,n3); fflush(stdout);
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*n3);
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);
 
+	commSync();
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printf("zeroing TIME %f min\n",elapsed.count()*1.e-3/60.);
+	printMpi("zeroing TIME %f min\n",elapsed.count()*1.e-3/60.);
 	start = std::chrono::high_resolution_clock::now();
 
 	alignAlloc ((void **) &z, mAlign, mAlign);//sizeof(double));
@@ -245,26 +251,26 @@ printf("Allocating m and v\n"); fflush(stdout);
 	} else {
 		if (fieldType == FIELD_AXION)
 		{
-			printf("Configuration generation not supported for Axion fields... yet\n");
+			printMpi("Configuration generation not supported for Axion fields... yet\n");
 		}
 		else
 		{
 			start = std::chrono::high_resolution_clock::now();
-			printf("Entering initFFT\n");
+			printMpi("Entering initFFT\n");
 
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
 				initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-			printf("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
+			printMpi("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
 
-			printf("Entering GEN_CONF\n");
+			printMpi("Entering GEN_CONF\n");
 			start = std::chrono::high_resolution_clock::now();
 			genConf	(this, cType, parm1, parm2, fCount);
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-			printf("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
+			printMpi("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
 		}
 	}
 
@@ -291,11 +297,11 @@ printf("Allocating m and v\n"); fflush(stdout);
 	// THIS MIGHT NOT BE NEEDED, CHECK OUT
 	if(!lowmem)
 	{
-		printf("FFTing m2 if no lowmem\n");
+		printMpi("FFTing m2 if no lowmem\n");
 		initFFTSpectrum(m2, n1, Tz, precision, lowmem);
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-		printf("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
+		printMpi("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
 	}
 
 }
@@ -304,7 +310,8 @@ printf("Allocating m and v\n"); fflush(stdout);
 
 	Scalar::~Scalar()
 {
-	printf ("Calling destructor...\n");
+	commSync();
+	printf ("Rank %d Calling destructor...\n",commRank());
 	fflush (stdout);
 	if (m != NULL)
 		trackFree(&m, ALLOC_ALIGN);
@@ -1017,9 +1024,9 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-				printf("| free v ");fflush(stdout);
+				printMpi("| free v ");fflush(stdout);
 				trackFree(&v, ALLOC_ALIGN);
-				printf("| s_cast v ");fflush(stdout);
+				printMpi("| s_cast v ");fflush(stdout);
 
 				switch (precision)
 				{
@@ -1032,13 +1039,13 @@ void	Scalar::setField (FieldType fType)
 					break;
 				}
 
-				printf("| resize %d->",fSize);fflush(stdout);
+				printMpi("| resize %d->",fSize);fflush(stdout);
 				fSize /= 2;
 				shift *= 2;
-				printf("%d ",fSize);fflush(stdout);
+				printMpi("%d ",fSize);fflush(stdout);
 
 				const size_t	mBytes = v3*fSize;
-				printf("| alloc m2 ");
+				printMpi("| alloc m2 ");
 				// IF low mem was used before, it creates m2 COMPLEX
 				if (lowmem)
 				{
@@ -1051,7 +1058,7 @@ void	Scalar::setField (FieldType fType)
 					#endif
 
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
-					printf("(yes) ");
+					
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 					closeFFTSpectrum();
@@ -1080,9 +1087,9 @@ void	Scalar::setField (FieldType fType)
 			}
 			break;
 	}
-	printf("| fType ");fflush(stdout);
+	printMpi("| fType ");fflush(stdout);
 	fieldType = fType;
-	printf("| ");fflush(stdout);
+	printMpi("| ");fflush(stdout);
 }
 
 void	Scalar::setFolded (bool foli)
@@ -1328,6 +1335,11 @@ template<typename Float>
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
+	if (folded)
+		{
+			printMpi("EMT called Folded!\n");
+			return;
+		}
 	// COPIES THE CONTRAST INTO THE REAL PART OF M2 (WHICH IS COMPLEX)
 	// TO USE THE POWER SPECTRUM AFTER
 	// 	FILES DENSITY CONTRAST
@@ -1491,8 +1503,6 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			}
 		}
 
-
-
 		//printf("\n q7-%d",commRank());fflush(stdout);
 
 		#pragma omp parallel for default(shared) schedule(static)
@@ -1539,8 +1549,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	(static_cast<double *> (contbin))[2] = (double) maxibin;
 
 	if (commRank() ==0)
-	printf("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
-
+	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
 	fflush (stdout);
 	return ;
 }
@@ -1708,7 +1717,7 @@ double	Scalar::maxtheta()//int *window)
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
 	double thetamaxi = maxtheta();
-	printf("\n qq10-%d (%f)",commRank(), thetamaxi);fflush(stdout);
+	printMpi("MAXTHETA=%f\n",thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
 
 	double n2p = numbins/thetamaxi;
@@ -1821,12 +1830,13 @@ void	Scalar::denstom()//int *window)
 					mThetad[idx] = mCONTd[n2+idx].real();
 				}
 		}
-		printf("dens to m ... done\n");
+		commSync();
+		printMpi("dens to m ... done\n");
 
 	}
 	else
 	{
-		printf("dens to m not available for SAXION\n");
+		printMpi("dens to m not available for SAXION\n");
 	}
 
 }

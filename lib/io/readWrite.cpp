@@ -562,7 +562,7 @@ void	createMeas (Scalar *axion, int index)
 
 	header = true;
 
-	printf("\n\n\nHeader %d Opened %d\n\n\n", header, opened); fflush(stdout);
+	//printf("\n\n\nHeader %d Opened %d\n\n\n", header, opened); fflush(stdout);
 
 	return;
 }
@@ -689,14 +689,18 @@ void	writeString	(void *str, size_t strDen)
 
 	int tSz = commSize();
 
+
 	for (int rank=0; rank<tSz; rank++)
 	{
+		printf("rank%d(w)",myRank);fflush(stdout);
 		if (myRank != 0)
 		{
 			if (myRank == rank)
 				MPI_Send(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
 
-		} else {
+		}
+		else
+		{
 			if (rank != 0)
 				MPI_Recv(strData, slabSz*sLz, MPI_CHAR, 0, 0, MPI_COMM_WORLD, NULL);
 
@@ -707,7 +711,6 @@ void	writeString	(void *str, size_t strDen)
 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
 
 				/*	Write raw data	*/
-
 //				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (strData)+slabSz*zDim);
 				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
 			}
@@ -829,7 +832,7 @@ void	writeMapHdf5	(Scalar *axion)
 	/*	Write raw data	*/
 	H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
 	H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
-	
+
 
 	/*	Close the dataset	*/
 
@@ -1321,4 +1324,3 @@ void	writeArray (Scalar *axion, void *aData, size_t aSize, const char *group, co
 	H5Sclose (dataSpace);
 	H5Gclose (group_id);
 }
-

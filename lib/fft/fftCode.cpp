@@ -3,8 +3,15 @@
 #include <fftw3-mpi.h>
 #include <omp.h>
 #include "enum-field.h"
+#include "comms/comms.h"
 
 using namespace std;
+
+#define printMpi(...) do {		\
+	if (!commRank()) {		\
+	  printf(__VA_ARGS__);  	\
+	  fflush(stdout); }		\
+}	while (0)
 
 fftw_plan p, pb;
 fftwf_plan pf, pfb;
@@ -13,24 +20,24 @@ static bool iFFT = false, iFFTPlans = false, single = false, useThreads = true;
 
 void	initFFT	()
 {
-	printf ("Initializing FFT...\n");
+	printMpi ("  Initializing FFT (#MPI=%d)...\n",commSize());
 	fflush (stdout);
 
 	if (iFFT == true)
 	{
-		printf ("Already initialized!!\n");
+		printMpi ("  Already initialized!!\n");
 		fflush (stdout);
 	}
 
 	if (!fftw_init_threads())
 	{
-		printf ("Error initializing FFT with threads\n");
+		printf ("  Error initializing FFT with threads\n");
 		fflush (stdout);
 		useThreads = false;
 		fftw_mpi_init();
 	} else {
 		int nThreads = omp_get_max_threads();
-		printf ("Using %d threads for the FFTW\n", nThreads);
+		printMpi ("  Using %d threads for the FFTW\n", nThreads);
 		fflush (stdout);
 		fftw_mpi_init();
 		fftw_plan_with_nthreads(nThreads);
@@ -46,11 +53,11 @@ void	initFFT	()
 	{
 		if(!fftw_import_wisdom_from_filename("wisdomsave.txt"))
 		{
-			printf("  Warning: could not import wisdom\n");
+			printMpi("  Warning: could not import wisdom\n");
 		}
 		else
 		{
-			printf("  Wisdom file loaded\n\n");
+			printMpi("  Wisdom file loaded\n\n");
 		}
 	}
 
@@ -58,11 +65,11 @@ void	initFFT	()
 	{
 		if(!fftwf_import_wisdom_from_filename("wisdomsavef.txt"))
 		{
-			printf("  Warning: could not import wisdom-f\n");
+			printMpi("  Warning: could not import wisdom-f\n");
 		}
 		else
 		{
-			printf("  Wisdom-f file loaded\n\n");
+			printMpi("  Wisdom-f file loaded\n\n");
 		}
 	}
 
@@ -102,7 +109,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 	// }
 
 
-	printf ("  Planning 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Tz);
+	printMpi ("  Planning 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Tz);
 	fflush (stdout);
 
 	switch (prec)
@@ -120,7 +127,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
 		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave.txt");
-		printf ("  d-Wisdom saved\n");
+		printMpi ("  d-Wisdom saved\n");
 		break;
 
 		case FIELD_SINGLE:
@@ -138,7 +145,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
-		printf ("  f-Wisdom saved\n");
+		printMpi ("  f-Wisdom saved\n");
 
 		break;
 
@@ -147,18 +154,14 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		break;
 	}
 
-	printf ("  Plans Ok\n");
-
-
-	printf ("Done!\n");
-	fflush (stdout);
+	printMpi ("  Plans Ok\n");
 
 	iFFTPlans = true;
 }
 
 void	runFFT(int sign)
 {
-	printf ("Executing FFT...\n");
+	printMpi ("Executing FFT...\n");
 	fflush (stdout);
 
 	switch (sign)
@@ -180,7 +183,7 @@ void	runFFT(int sign)
 		break;
 	}
 
-	printf ("Done!\n");
+	printMpi ("Done!\n");
 	fflush (stdout);
 }
 
@@ -247,12 +250,12 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 	if (!iFFT)
 		initFFT();
 
-	printf ("Initializing FFTSpectrum...\n");
+	printMpi ("Initializing FFTSpectrum...\n");
 	fflush (stdout);
 
 	if (iFFTSpectrum == true)
 	{
-		printf ("Already initialized!!\n");
+		printMpi ("Already initialized!!\n");
 		fflush (stdout);
 	}
 
@@ -274,7 +277,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 	// printf ("	 rank=%d - local_nz=%lld - local_nz_start=%lld - alloc_need =%lld*n2 - Lz=%lld\n", rank, local_n0, local_0_start, alloc_local/(n1*n1), Tz);
 	// printf ("	 transpo - local_ny=%lld - local_ny_start=%lld \n", local_n1, local_1_start);
 
-	printf ("  Plan 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Tz);
+	printMpi ("  Plan 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Tz);
 	fflush (stdout);
 
 	switch (prec)
@@ -283,7 +286,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 
 		single = false;
 		if (lowmem) {
-			printf("Spectrum not available in lowmem until the end");
+			printMpi("  Spectrum not available in lowmem until the end");
 		} else {
 			p2  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT);
 		}
@@ -297,21 +300,21 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 
 		if(!fftwf_import_wisdom_from_filename("wisdomsavef.txt"))
 		{
-			printf("  Warning: could not import wisdom-f\n");
+			printMpi("  Warning: could not import wisdom-f\n");
 		}
 		else
 		{
-			printf("  Wisdom-f file loaded\n\n");
+			printMpi("  Wisdom-f file loaded\n\n");
 		}
 
 		if (lowmem) {
-			printf("Spectrum not available in lowmem until the end");
+			printMpi("Spectrum not available in lowmem until the end");
 		} else {
 			pf2  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT);
 		}
 
 		if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
-		printf ("  f-Wisdom saved\n");
+		printMpi ("  f-Wisdom saved\n");
 
 		break;
 
@@ -320,7 +323,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 		break;
 	}
 
-	printf ("  Plan_Spectrum Ok\n");
+	printMpi ("  Plan_Spectrum Ok\n");
 	fflush (stdout);
 
 	iFFTSpectrum = true;
@@ -328,7 +331,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 
 void	runFFTSpectrum(int sign)
 {
-	printf ("Spectrum FFT... ");
+	printMpi ("Spectrum FFT... ");
 	fflush (stdout);
 
 	if (single)
@@ -336,7 +339,7 @@ void	runFFTSpectrum(int sign)
 	else
 		fftw_execute(p2);
 
-	printf ("Done! ");
+	printMpi ("Done! ");
 	fflush (stdout);
 }
 

@@ -37,10 +37,10 @@ double	axionmass2(double z, double nQcd, double zthreshold, double indi)
 	return morsa;
 }
 
-// double	saxionshift(double z, double nQcd, double zthreshold, double indi)
-// {
-// 	double alpha = axionmass2(z, nQcd)/LL;
-// 	double morsa = ((2./sqrt(3.))*cos(arctan(sqrt(4./3.-alpha*alpha),3*alpha))-1.);
-// 	return morsa;
-//
-// }
+double	saxionshift(double z, double nQcd, double zthreshold, double indi, double LL)
+{
+ 	double alpha = axionmass2(z, nQcd, zthreshold, indi)/LL;
+ 	double morsa = ((2./sqrt(3.))*cos(atan2(sqrt(4./3.-alpha*alpha),3*alpha)/3.0)-1.);
+ 	return morsa;
+
+}
