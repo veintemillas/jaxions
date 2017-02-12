@@ -346,17 +346,6 @@ void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t 
 
 	double norma = pow(sizeL,3.)/(2.*pow((double) n1,6.)) ;
 
-	// DISCRETE VERSION OF K2
-	double minus1costab [kmax+1] ;
-	double id2 = 2.0/pow(sizeL/sizeN,2);
-
-	#pragma omp parallel for default(shared) schedule(static)
-	for (int i=0; i < kmax + 2; i++)
-	{
-		minus1costab[i] = id2*(1.0 - cos(((double) (6.2831853071796*i)/n1)));
-	}
-	//printf("mtab , ");fflush(stdout);
-
 
 	// MPI FFT STUFF
 	int rank = commRank();
@@ -436,9 +425,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 	const size_t Tz = axion->TotalSize();
 	const int kmax = n1/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
-
-	double delta = sizeL/sizeN ;
-
+	const double delta = sizeL/sizeN;
 	const int fSize = axion->DataSize();
 	// SETS 1 ARRAY TO ZERO AT THE BEGGINING OF M
 	//memset (axion->mCpu(), 0, 2*fSize*powmax);

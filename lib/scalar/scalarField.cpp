@@ -1058,7 +1058,7 @@ void	Scalar::setField (FieldType fType)
 					#endif
 
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
-					
+
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 					closeFFTSpectrum();
@@ -1403,15 +1403,19 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					//GRADIENTS
 					idaux = ixP + iy*n1+(iz+1)*n2 ;
 					grad = pow(mTheta[idaux]-mTheta[idx],2);
+
 					idaux = ixM + iy*n1+(iz+1)*n2 ;
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
+
 					idaux = ix + iyP*n1+(iz+1)*n2 ;
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
+
 					idaux = ix + iyM*n1+(iz+1)*n2 ;
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
 					grad += pow(mTheta[idx+n2]-mTheta[idx],2);
 					grad += pow(mTheta[idx-n2]-mTheta[idx],2);
-					mCONT[idx-n2] = acu + grad/deltaa2 ;
+					mCONT[idx-n2] = acu + grad/deltaa2;
+
 					//mCONT[idx] = acu ;
 					//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 
@@ -1551,6 +1555,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	if (commRank() ==0)
 	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
 	fflush (stdout);
+	commRank();
 	return ;
 }
 
