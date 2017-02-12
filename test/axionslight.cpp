@@ -635,6 +635,7 @@ int	main (int argc, char *argv[])
 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sV[i]);} fprintf(file_spectrum, "\n");
 		//axion->foldField();
 		}
+		commSync();
 
 		writeSpectrum(axion, sK, sG, sV, powmax, false);
 
@@ -650,7 +651,27 @@ int	main (int argc, char *argv[])
 		fprintf(file_contbin, "\n");
 		fflush(file_contbin);
 		}
+		commSync();
 		writeArray(axion, bA, 10000, "/bins", "cont");
+
+
+		//POWER SPECTRUM
+
+		printMpi("pSpec ... ");
+
+		powerspectrumUNFOLDED(axion, fCount);
+		if (commRank() == 0)
+		{
+		printf("sp %f ...\n", sK[0]);
+		fprintf(file_power,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", sK[i]);} fprintf(file_power, "\n");
+		}
+		printMpi("| ");
+
+		//writeArray(axion, bA, 10000, "/bins", "cont");
+		//writeSpectrum(axion, sK, sG, sV, powmax, true);
+
+
 
 		// BIN THETA
 		maximumtheta = axion->thetaDIST(100, spectrumK);
@@ -662,24 +683,10 @@ int	main (int argc, char *argv[])
 
 		writeArray(axion, sK, 100, "/bins", "theta");
 
-		printMpi("dens2m ... ");
-		axion->denstom();
-		printMpi("| ");
-
-
-
-		// //POWER SPECTRUM
-		//		printMpi("pSpec ... ");
-		// if (commRank() == 0)
-		// {
-		// powerspectrumUNFOLDED(axion, fCount);
-		// printf("sp %f ...\n", sK[0]);
-		// fprintf(file_power,  "%f ", (*axion->zV()));
-		// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", sK[i]);} fprintf(file_power, "\n");
-		// }
+		// printMpi("dens2m ... ");
+		// axion->denstom();
 		// printMpi("| ");
 
-		// writeSpectrum(axion, sK, sG, sV, powmax, true);
 		destroyMeas();
 
 		//munge(FOLD_ALL);
