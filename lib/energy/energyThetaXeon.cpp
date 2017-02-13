@@ -141,7 +141,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #ifdef  __MIC__
 						mPy = opCode(castsi512_pd, opCode(permutevar_epi32, vShLf, opCode(castpd_si512, opCode(load_pd, &m[idxPy]))));
 #elif   defined(__AVX2__)       //AVX2
-						tmp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
+						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif   defined(__AVX__)
 						mel = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
 						vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
