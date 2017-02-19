@@ -385,7 +385,7 @@ int	main (int argc, char *argv[])
         dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
 				printMpi("*");
 			}
-        dzaux = dzaux/2.;
+        dzaux = dzaux/3.;
 
 
 
@@ -397,10 +397,11 @@ int	main (int argc, char *argv[])
 
 				if (commRank() == 0)
 					{
-						double saskia = saxionshift(z_now, nQcd, 0, 3.0, llaux);
+
 						if (axion->Field() == FIELD_SAXION)
 						{
 							llprint = max(LL , llaux/pow(z_now,2.));
+							double saskia = saxionshift(z_now, nQcd, 0, 3.0, llprint);
 
 							if (sPrec == FIELD_DOUBLE) {
 								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
@@ -474,29 +475,30 @@ int	main (int argc, char *argv[])
 			{
 				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
 
-                if (nstrings_global < 200)
+                if (nstrings_global < 500)
                 {
                   //nstrings = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 									nstrings_global = strings(axion, cDev, str, fCount);
 									maximumtheta = axion->maxtheta();
+									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
                 }
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-                if ( (nstrings_global == 0) && (!coS) && ((*axion->zV()) > 0.6) )
+                if ( (nstrings_global == 0) && ((*axion->zV()) > 0.6) )
                 {
-										strcount += 1;
-										printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
-										if ((strcount >20 ) && (maximumtheta <2.5))
-										{
+										// strcount += 1;
+										// printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
+										// if ((strcount >20 ) )
+										// {
 											printMpi("\n");
 	                    printMpi("--------------------------------------------------\n");
 	                    printMpi("              TRANSITION TO THETA \n");
 	                    cmplxToTheta (axion, fCount);
 											fflush(stdout);
 	                    printMpi("--------------------------------------------------\n");
-										}
+										// }
                 }
 			}
 			else
@@ -524,45 +526,31 @@ int	main (int argc, char *argv[])
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
 
-      printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
+      printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 			fflush(stdout);
-
-			// CREATE FILE OUTPUT
-
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-				fflush(stdout);
-
-				if ((*axion->zV()) > 0.2)
-				{
-					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-					fflush (stdout);
+				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
 										nstrings_global = strings(axion, cDev, str, fCount);
-										//nstrings = analyzeStrFolded(axion, index);
+//										analyzeStrFolded(axion, index);
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
 
-										 createMeas(axion, index);
-										 printMpi("[mc-");
-										 writeString	( str , nstrings_global);
-										 printMpi("sw-");
-										 destroyMeas();
-										 printMpi("d] ");
+										if ((*axion->zV()) > 0.6)
+										{
+//										 createMeas(axion, index);
+//										 printMpi("[mc-");
+//										 writeString	( str , nstrings_global);
+//									 printMpi("sw-");
+//										 destroyMeas();
+	//								 printMpi("d] ");
+										}
 
-										printMpi("(G)= %ld ", nstrings_global);
+										printMpi("(G)= %ld \n", nstrings_global);
 
-
-										if (nstrings_global == 0 )
-                    {
-                        coS = 0;
-                        printMpi("Low string density! coS=0 (stcount=%d)",strcount);
-												fflush(stdout);
-                    }
-				}
-				printMpi("\n");
 			}
 			else
 			{
@@ -574,11 +562,11 @@ int	main (int argc, char *argv[])
 				// munge(FOLD_ALL);
 			}
 
-			if (commRank() == 0)
-			{
-			munge(UNFOLD_SLICE, sliceprint);
-			writeMap (axion, index);
-			}
+			// if (commRank() == 0)
+			// {
+			// munge(UNFOLD_SLICE, sliceprint);
+			// writeMap (axion, index);
+			// }
 
 			// SAVE FILE OUTPUT
 
