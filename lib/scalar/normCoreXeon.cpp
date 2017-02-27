@@ -1,5 +1,6 @@
 #include <complex>
 #include <cstring>
+#include "comms/comms.h"
 
 #include "scalar/scalarField.h"
 #include "utils/parse.h"
@@ -7,12 +8,18 @@
 
 using namespace std;
 
+#define printMpi(...) do {		\
+	if (!commRank()) {		\
+	  printf(__VA_ARGS__);  	\
+	  fflush(stdout); }		\
+}	while (0)
+
 template<typename Float>
 void normCoreKernelXeon (Scalar *field, Float alph)
 {
 
-	printf("Entering CORE smoothing ");
-	fflush (stdout);
+	//printf("Entering CORE smoothing ");
+	//fflush (stdout);
 
 	const Float deltaa = sizeL/sizeN;
 	const Float zia = static_cast<Float>(*field->zV());
@@ -21,14 +28,18 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 	if (field->Lambda() == LAMBDA_FIXED)
 		{
 			LLa = LL ;
-			printf("(LAMBDA_FIXED,%.3E) ",LLa);
+			printMpi("(LAMBDA_FIXED,%.3E) ",LLa);
 		}
 	else
 		{
 			//LLa = LL/((zia)*(zia));
-			LLa = 1/(pow(2.*deltaa*zia,2.));
-			printf("(LAMBDA_Z2,%.3E) ",LLa);
+			LLa = 1.125/(pow(deltaa*zia,2.));
+			printMpi("(LAMBDA_Z2,%.3E) ",LLa);
 		}
+
+	//if ( 1.125/pow(delta,2.) > LL*pow(zia,2.) )
+
+
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
@@ -119,7 +130,8 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 	field->exchangeGhosts(FIELD_M);
 	#endif
 
-	printf("CORE smoothing Done\n");
+	commSync();
+	printMpi("CORE smoothing Done\n");
 	fflush (stdout);
 }
 

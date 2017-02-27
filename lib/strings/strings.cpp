@@ -104,9 +104,13 @@ size_t	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCoun
 	}
 
 	delete	eStr;
-
-	MPI_Allreduce(&strTmp, &strDen, 1, MPI_UINT64_T, MPI_SUM, MPI_COMM_WORLD);
+	// int rank ;
+	// MPI_Comm_rank( MPI_COMM_WORLD, &rank ) ;
+	//
+	// printf("rank%d =%d ",rank,strTmp);
+	MPI_Allreduce(&strTmp, &strDen, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 //	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
+	
 
 	return	strDen;
 }

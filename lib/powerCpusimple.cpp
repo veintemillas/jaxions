@@ -7,21 +7,29 @@
 #include"scalar/varNQCD.h"
 #include <omp.h>
 
+#include <fftw3-mpi.h>
+#include "comms/comms.h"
+
+//#include<mpi.h>
+
 using namespace std;
 
 
 //--------------------------------------------------
-// NUMBER SPECTRUM
+// BIN NUMBER SPECTRUM Gradient and Votential part
 //--------------------------------------------------
 
 template<typename Float>
-void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectrumG, void *spectrumV,	int n1, int powmax, int kmax, double mass2)
+void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_t Lz, size_t Tz, size_t powmax, int kmax, double mass2)
 {
-	printf("sizeL=%f , ",sizeL);fflush(stdout);
-	double norma = pow(sizeL,3.)/(4.*pow((double) n1,6.)) ;
+	//printf("sizeL=%f , ",sizeL);fflush(stdout);
+	const size_t n2 = n1*n1 ;
+	const size_t n3 = n1*n1*Lz ;
 
+	double norma = pow(sizeL,3.)/(2.*pow((double) n1,6.)) ;
+
+	// DISCRETE VERSION OF K2
 	double minus1costab [kmax+1] ;
-
 	double id2 = 2.0/pow(sizeL/sizeN,2);
 
 	#pragma omp parallel for default(shared) schedule(static)
@@ -29,160 +37,222 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 	{
 		minus1costab[i] = id2*(1.0 - cos(((double) (6.2831853071796*i)/n1)));
 	}
-	printf("mtab , ");fflush(stdout);
-	#pragma omp parallel for default(shared) schedule(static)
-	for (int i=0; i < powmax; i++)
+	//printf("mtab , ");fflush(stdout);
+
+
+	// MPI FFT STUFF
+	int rank = commRank();
+	size_t local_1_start = rank*Lz;
+	// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	// ptrdiff_t alloc_local, local_n0, local_0_start, local_n1, local_1_start;
+	//
+	// alloc_local = fftw_mpi_local_size_3d_transposed(
+	// 						 Tz, n1, n1, MPI_COMM_WORLD,
+	// 						 &local_n0, &local_0_start,
+	// 						 &local_n1, &local_1_start);
+
+	//printf ("BIN rank=%d - transpo - local_ny_start=%lld \n", rank,  local_1_start);
+	fflush(stdout);
+
+	#pragma omp parallel
 	{
-		(static_cast<double *> (spectrumK))[i] = 0.0;
-		(static_cast<double *> (spectrumG))[i] = 0.0;
-		(static_cast<double *> (spectrumV))[i] = 0.0;
+
+		int tid = omp_get_thread_num();
+		// LOCAL THREAD BINS
+		double spectrumG_private[powmax];
+		double spectrumV_private[powmax];
+
+		for (int i=0; i < powmax; i++)
+		{
+			spectrumG_private[i] = 0.0;
+			spectrumV_private[i] = 0.0;
+		}
+
+		// FFT MPI NON TRANSPOSED
+		// GLOBALLY
+		// kdx = iX + iY*n1 + iZ*n2 (i < n1)
+		// K = (iZ, iY, iX) or (iZ-n1, iY-n1, iX-n1) [the smallest]
+		// LOCAL DISTRIBUTION on Z
+		// kdx = iX + iY*n1 + iZ*n2 (iZ < Lz)
+		// K = (iZ+rank*Lz, iY, iX) or (iZ+rank*Lz-n1, iY-n1, iX-n1) [the smallest]
+		//
+		// FFT MPI TRANSPOSED
+		// GLOBALLY
+		// kdx = iX + iZ*n1 + iY*n2 (i < n1)
+		// K = (iZ, iY, iX) or (iZ-n1, iY-n1, iX-n1) [the smallest]
+		// LOCAL DISTRIBUTION on Y
+		// kdx = iX + iZ*n1 + iY*n2 (iZ < Lz)
+		// K = (iZ, iY+rank*Lz, iX) or (iZ-n1, iY++rank*Lz-n1, iX-n1) [the smallest]
+
+		size_t kdx;
+		int bin;
+		size_t iz, iy, ix;
+		int kz, ky, kx;
+		double k2, w;
+
+	  #pragma omp barrier
+
+		#pragma omp for schedule(static)
+		for (size_t kdx = 0; kdx< n3; kdx++)
+		{
+			// ASSUMED TRANSPOSED
+			iy = kdx/n2 + local_1_start;
+			iz = (kdx%n2)/n1 ;
+			ix = kdx%n1 ;
+			ky = (int) iy;
+			kz = (int) iz;
+			kx = (int) ix;
+			if (kz>n1/2) {kz = kz-n1; }
+			if (ky>n1/2) {ky = ky-n1; }
+			if (kx>n1/2) {kx = kx-n1; }
+
+			k2 = kz*kz + ky*ky + kx*kx;
+			bin  = (int) floor(sqrt(k2)) 	;
+
+			//CONTINUUM DEFINITION
+			//k2 =	(39.47842/(sizeL*sizeL)) * k2;
+			//double w = (double) sqrt(k2 + mass2);
+			//LATICE DEFINITION
+			//this first instance of w is aux
+			k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+			w = sqrt(k2 + mass2);
+			//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
+
+			spectrumG_private[bin] += pow(abs(ft[kdx]),2)*k2/(w);
+			spectrumV_private[bin] += pow(abs(ft[kdx]),2)*mass2/w;
+
+		}// END LOOP
+
+
+		#pragma omp critical
+		{
+			for(int n=0; n<powmax; n++)
+			{
+				//binarray[n] += spectrumK_private[n];
+				binarray[powmax*4	+ n] += spectrumG_private[n];
+				binarray[powmax*5 + n] += spectrumV_private[n];
+      }
+		}
+
+	}//parallel
+
+	for(int n=0; n<powmax; n++)
+	{
+		////binarray[n] *= norma;
+		// binarray[powmax   + n] = (double) powmax   + n;
+		// binarray[powmax*2 + n] = (double) 2*powmax   + n;
+		 binarray[powmax*4 + n] *= norma;
+		 binarray[powmax*5 + n] *= norma;
 	}
-//
-	 printf("0ing , ");fflush(stdout);
-//	Bin power spectrum
-//  KthetaPS |mode|^2 / w
-// 	(c^2 + d^2)/w
 
-//	Bin power spectrum GthetaPS
-//	|mode|^2 * k^2/w
-// 	(a^2 + b^2)/w
+	MPI_Reduce(&binarray[powmax*4], &binarray[powmax], 2*powmax, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-//	Bin power spectrum VthetaPS
-//	|mode|^2 * m^2/w
-// 	(a^2 + b^2) * m^2/w/w
+}
 
-//	The FFT is entangled
-//	FFT[i] = (R , I) = (a[i] - d[i], b[i] + c[i])
+template<typename Float>
+void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t Lz, size_t Tz, size_t powmax, int kmax, double mass2)
+{
+	//printf("sizeL=%f , ",sizeL);fflush(stdout);
+	const size_t n2 = n1*n1 ;
+	const size_t n3 = n1*n1*Lz ;
 
-//	BUT theta, theta_z are real so elements i and N-i are complex conjugate
-//	a[i] + I b[i] = a[N-i] - I b[N-i]
-//	c[i] + I d[i] = c[N-i] - I d[N-i]
-//	THEREFORE
-//	FFT[i]++(FFT[N-i])* = (a[i] -d[i] ++ a[N-i] -d[N-i], b[i] + c[i] ++ - b[N-i] - c[N-i])
-//	FFT[i]++(FFT[N-i])* = +2(a[i], b[i]) = 2 theta_k
+	double norma = pow(sizeL,3.)/(2.*pow((double) n1,6.)) ;
 
-//	FFT[i]--(FFT[N-i])* = (a[i] -d[i] -- a[N-i] -d[N-i], b[i] + c[i] -- - b[N-i] - c[N-i])
-//	FFT[i]--(FFT[N-i])* = 2(-d[i], c[i]) = 2 I (c[i], d[i]) = 2 I theta_z_k
+	// DISCRETE VERSION OF K2
+	double minus1costab [kmax+1] ;
+	double id2 = 2.0/pow(sizeL/sizeN,2);
 
-//  Note that the Fourier coefficients of theta_z (with minus) and theta (with +) are explcitly those from an imagnary and real field
+	#pragma omp parallel for default(shared) schedule(static)
+	for (int i=0; i < kmax + 2; i++)
+	{
+		minus1costab[i] = id2*(1.0 - cos(((double) (6.2831853071796*i)/n1)));
+	}
+	//printf("mtab , ");fflush(stdout);
 
-// 	Kthetak = |FFT[i]-(FTT[N-i])*|^2    /w	/8
-//	Gthetak = |FFT[i]+(FTT[N-i])*|^2 k^2/w	/8
-//	Vthetak = |FFT[i]+(FTT[N-i])*|^2 m^2/w	/8
 
-// 	RECALL THAT THETA IS NOW MULTIPLIED BY MASS SO
+	// MPI FFT STUFF
+	int rank = commRank();
+	size_t local_1_start = rank*Lz;
 
-//	Gthetak = |FFT[i]+(FTT[N-i])*|^2 k^2/(MASS2*w)	/8
-//	Vthetak = |FFT[i]+(FTT[N-i])*|^2 /w	/8
-
-//	those are the values for a given mode vec k
-
+	// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	// ptrdiff_t alloc_local, local_n0, local_0_start, local_n1, local_1_start;
+	//
+	// alloc_local = fftw_mpi_local_size_3d_transposed(
+	// 						 Tz, n1, n1, MPI_COMM_WORLD,
+	// 						 &local_n0, &local_0_start,
+	// 						 &local_n1, &local_1_start);
+	//printf ("BIN rank=%d - transpo - local_ny_start=%lld \n", rank, local_1_start);
 
 	#pragma omp parallel default(shared)
 	{
 
 		int tid = omp_get_thread_num();
 
-
+		// LOCAL THREAD BINS
 		double spectrumK_private[powmax];
-		double spectrumG_private[powmax];
-		double spectrumV_private[powmax];
 
 		for (int i=0; i < powmax; i++)
 		{
 			spectrumK_private[i] = 0.0;
-			spectrumG_private[i] = 0.0;
-			spectrumV_private[i] = 0.0;
 		}
 
-		size_t idx, midx;
+		size_t kdx;
 		int bin;
+		size_t iz, iy, ix;
 		int kz, ky, kx;
-		size_t iz, nz, iy, ny, ix, nx;
 		double k2, w;
-		complex<Float> ftk, ftmk;
 
-	  #pragma omp barrier
+		#pragma omp barrier
 
 		#pragma omp for schedule(static)
-		for (int kz = 0; kz<kmax + 2; kz++)
+		for (size_t kdx = 0; kdx< n3; kdx++)
 		{
+			// ASSUMED TRANSPOSED
+			iy = kdx/n2 + local_1_start;
+			iz = (kdx%n2)/n1 ;
+			ix = kdx%n1 ;
+			ky = (int) iy;
+			kz = (int) iz;
+			kx = (int) ix;
+			if (kz>n1/2) {kz = kz-n1; }
+			if (ky>n1/2) {ky = ky-n1; }
+			if (kx>n1/2) {kx = kx-n1; }
 
-			iz = (n1+kz)%n1 ;
-			nz = (n1-kz)%n1 ;
+			k2 = kz*kz + ky*ky + kx*kx;
+			bin  = (int) floor(sqrt(k2)) 	;
 
-			for (int ky = -kmax; ky<kmax + 1; ky++)
-			{
-				iy = (n1+ky)%n1 ;
-				ny = (n1-ky)%n1 ;
+			//CONTINUUM DEFINITION
+			//k2 =	(39.47842/(sizeL*sizeL)) * k2;
+			//double w = (double) sqrt(k2 + mass2);
+			//LATICE DEFINITION
+			//this first instance of w is aux
+			k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+			w = sqrt(k2 + mass2);
+			//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 
-				for	(int kx = -kmax; kx<kmax + 1; kx++)
-				{
-					ix = (n1+kx)%n1 ;
-					nx = (n1-kx)%n1 ;
+			spectrumK_private[bin] += pow(abs(ft[kdx]),2)/(w);
 
-					k2 =	kx*kx + ky*ky + kz*kz;
-					bin  = (int) floor(sqrt(k2)) 	;
+		}// END LOOP
 
-					//CONTINUUM DEFINITION
-					//k2 =	(39.47842/(sizeL*sizeL)) * k2;
-					//double w = (double) sqrt(k2 + mass2);
-					//LATICE DEFINITION
-					//this first instance of w is aux
-					k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
-					w = sqrt(k2 + mass2);
-					//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
-
-					idx  = ix+iy*n1+iz*n1*n1;
-					midx = nx+ny*n1+nz*n1*n1;
-
-					ftk = ft[idx];
-					ftmk = conj(ft[midx]);
-
-					if(!(kz==0||kz==kmax+1))
-					{
-					// -k is in the negative kx volume
-					// it not summed in the for loop so include a factor of 2
-					spectrumK_private[bin] += 2.*pow(abs(ftk - ftmk),2)/w;
-					spectrumG_private[bin] += 2.*pow(abs(ftk + ftmk),2)*k2/(mass2*w);		//mass2 is included
-					spectrumV_private[bin] += 2.*pow(abs(ftk + ftmk),2)/w;								//mass2 is included
-					}
-					else
-					{
-					// -k is in the kz=0 so both k and -k will be summed in the loop
-					spectrumK_private[bin] += pow(abs(ftk - ftmk),2)/w;
-					spectrumG_private[bin] += pow(abs(ftk + ftmk),2)*k2/(mass2*w);		//mass2 is included
-					spectrumV_private[bin] += pow(abs(ftk + ftmk),2)/w;								//mass2 is included
-					}
-				}//x
-
-			}//y
-		}//z
 
 		#pragma omp critical
 		{
 			for(int n=0; n<powmax; n++)
 			{
-				static_cast<double*>(spectrumK)[n] += spectrumK_private[n];
-				static_cast<double*>(spectrumG)[n] += spectrumG_private[n];
-				static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
+				binarray[powmax*3 + n] += spectrumK_private[n];
       }
 		}
 
 	}//parallel
 
-	#pragma omp parallel for default(shared)
 	for(int n=0; n<powmax; n++)
 	{
-		static_cast<double*>(spectrumK)[n] *= norma;
-		static_cast<double*>(spectrumG)[n] *= norma;
-		static_cast<double*>(spectrumV)[n] *= norma;
+		binarray[powmax*3 + n] *= norma;
 	}
 
-	printf(" ... Axion spectrum printed\n");
+	MPI_Reduce(&binarray[powmax*3], &binarray[0], powmax, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	//printf(" ... GV Axion spectrum printed\n");
 }
-
-
 
 //  Copies theta into m2
 //	axion->thetha2m2
@@ -191,165 +261,180 @@ void	nSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumK, void *spectru
 //	|mode|^2 * k^2/w
 //	Bin power spectrum VthetaPS
 //	|mode|^2 * m^2/w
-
-void	spectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV)
+//
+void	spectrumUNFOLDED(Scalar *axion)
 {
-	const int n1 = axion->Length();
+	const size_t n1 = axion->Length();
+	const size_t Lz = axion->Depth();
+	const size_t Tz = axion->TotalSize();
 	const int kmax = n1/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
-	//const double z = axion->zV();
-	//double mass2 = 9.*pow((*axion->zV()),nQcd+2.);
+
+	const int fSize = axion->DataSize();
+	// SETS 3 ARRAYS TO ZERO AT THE BEGGINING OF M
+	//memset (axion->mCpu(), 0, 6*fSize*powmax);
+	for(size_t dix=0; dix < 6*fSize*powmax; dix++)
+	{
+		static_cast<double*> (axion->mCpu())[dix] = 0. ;
+	}
+
 	double mass2 = axionmass2((*axion->zV()), nQcd, 1.5, 3.0)*(*axion->zV())*(*axion->zV());
 
-	// 	New scheme
+	// 	2 STEP SCHEME FOR MPI // OUTPUTS TO M
 
-	//  Copies theta*mass + I theta_z into m2
+	// 	FIRST G AND V
+	//	COPIES c_theta into RE[m2], IM[m2] = 0
 			axion->theta2m2();
-	//  FFT[m2] = FFT[theta] + I*FFT[theta_z]
-	//					= a + I b		 + I (c + I d)
-	//	MAKE SURE SAME ORDER OF MAGNITUDE! MULTIPLY BY a clever factor?
-
 	//	FFT m2 inplace ->
 			axion->fftCpuSpectrum(1);
 
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		nSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax, mass2);
+		BinSpectrumGV<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		nSpectrumUNFOLDED<float>(static_cast<const complex<float>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax, mass2);
+		BinSpectrumGV<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		default:
 		printf ("Not a valid precision.\n");
 		break;
 	}
+
+	// 	SECOND KIN
+	//	COPIES vheta into RE[m2], IM[m2] = 0
+			axion->vheta2m2();
+	//	FFT m2 inplace ->
+			axion->fftCpuSpectrum(1);
+
+	switch(axion->Precision())
+	{
+		case FIELD_DOUBLE:
+		BinSpectrumK<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
+		break;
+
+		case FIELD_SINGLE:
+		BinSpectrumK<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
+		break;
+
+		default:
+		printf ("Not a valid precision.\n");
+		break;
+	}
+
+
+
 }
 
 //--------------------------------------------------------------------------------
 //					POWER SPECTRUM
 //--------------------------------------------------------------------------------
 //		pSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
-template<typename Float>
-void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectrumN, void *spectrumV,	int n1, int powmax, int kmax)
-{
-	double norma = pow(sizeL,3.)/(4.*pow((double) n1,6.)) ;
 
-	#pragma omp parallel for default(shared) schedule(static)
-	for (int i=0; i < powmax; i++)
-	{
-		(static_cast<double *> (spectrumT))[i] = 0.0;
-		(static_cast<double *> (spectrumN))[i] = 0.0;
-		(static_cast<double *> (spectrumV))[i] = 0.0;
-	}
+template<typename Float>
+void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t Lz, size_t Tz, size_t powmax, int kmax, double mass2)
+{
+	//printf("sizeL=%f , ",sizeL);fflush(stdout);
+	const size_t n2 = n1*n1 ;
+	const size_t n3 = n1*n1*Lz ;
+
+	double norma = pow(sizeL,3.)/(2.*pow((double) n1,6.)) ;
+
+
+	// MPI FFT STUFF
+	int rank = commRank();
+	size_t local_1_start = rank*Lz;
+
 
 	#pragma omp parallel default(shared)
 	{
+
 		int tid = omp_get_thread_num();
 
-		double spectrumT_private[powmax];
-		double spectrumN_private[powmax];
-		double spectrumV_private[powmax];
-
+		// LOCAL THREAD BINS
+		double spectrumK_private[powmax];
 
 		for (int i=0; i < powmax; i++)
 		{
-			spectrumT_private[i] = 0.0;
-			spectrumN_private[i] = 0.0;
-			spectrumV_private[i] = 0.0;
+			spectrumK_private[i] = 0.0;
 		}
 
-		size_t idx, midx;
-		int kz, ky, kx;
-		size_t iz, nz, iy, ny, ix, nx;
+		size_t kdx;
 		int bin;
-		double k2;
-		complex<Float> ftk, ftmk;
+		size_t iz, iy, ix;
+		int kz, ky, kx;
+		double k2, w;
+
+		#pragma omp barrier
 
 		#pragma omp for schedule(static)
-		for (int kz = 0; kz<kmax + 2; kz++)
+		for (size_t kdx = 0; kdx< n3; kdx++)
 		{
-			//printf("thread %d gets kz=%d\n",tid, kz);
+			// ASSUMED TRANSPOSED
+			iy = kdx/n2 + local_1_start;
+			iz = (kdx%n2)/n1 ;
+			ix = kdx%n1 ;
+			ky = (int) iy;
+			kz = (int) iz;
+			kx = (int) ix;
+			if (kz>n1/2) {kz = kz-n1; }
+			if (ky>n1/2) {ky = ky-n1; }
+			if (kx>n1/2) {kx = kx-n1; }
 
-			iz = (n1+kz)%n1 ;
-			nz = (n1-kz)%n1 ;
+			k2 = kz*kz + ky*ky + kx*kx;
+			bin  = (int) floor(sqrt(k2)) 	;
 
-			for (int ky = -kmax; ky<kmax + 2; ky++)
-			{
-				iy = (n1+ky)%n1 ;
-				ny = (n1-ky)%n1 ;
+			spectrumK_private[bin] += pow(abs(ft[kdx]),2);
 
-				for	(int kx = -kmax; kx<kmax + 2; kx++)
-				{
-					ix = (n1+kx)%n1 ;
-					nx = (n1-kx)%n1 ;
+		}// END LOOP
 
-					k2 =	kx*kx + ky*ky + kz*kz;
-					bin  = (int) floor(sqrt(k2)) 	;
-
-					idx  = ix+iy*n1+iz*n1*n1;
-					midx = nx+ny*n1+nz*n1*n1;
-
-					ftk = ft[idx];
-					ftmk = conj(ft[midx]);
-
-					//printf("ftk(%d,%d,%d)=%f + I*%f - ftmk(%d,%d,%d)=%f + I*%f\n", iz,iy,ix,ftk.real(),ftk.imag(),nz,ny,nx,ftmk.real(),ftmk.imag());
-					if(!(kz==0||kz==kmax+1))
-					{
-					// -k is in the negative kx volume
-					// it not summed in the for loop so include a factor of 2
-					spectrumT_private[bin] += 2.*((double) pow(abs(ftk + ftmk),2));
-					spectrumN_private[bin] += 2.;
-					spectrumV_private[bin] += 2.*((double) pow(abs(ftk - ftmk),2));
-					}
-					else
-					{
-					//printf("ID %d kz(%d) ftk(%d,%d,%d)=%f + I*%f - ftmk(%d,%d,%d)=%f + I*%f\n", tid, kz,iz,iy,ix,ftk.real(),ftk.imag(),nz,ny,nx,ftmk.real(),ftmk.imag());
-					spectrumT_private[bin] += (double) pow(abs(ftk + ftmk),2);
-					spectrumN_private[bin] += 1.;
-					spectrumV_private[bin] += (double) pow(abs(ftk - ftmk),2);
-					}
-				}//x
-
-			}//y
-		}//z
 
 		#pragma omp critical
 		{
-			//printf("thread %d gets %f %f %f %f %f\n", tid, spectrumT_private[0],spectrumT_private[1],spectrumT_private[2],spectrumT_private[3],spectrumT_private[4]);
 			for(int n=0; n<powmax; n++)
 			{
-				static_cast<double*>(spectrumT)[n] += spectrumT_private[n];
-				static_cast<double*>(spectrumN)[n] += spectrumN_private[n];
-				static_cast<double*>(spectrumV)[n] += spectrumV_private[n];
+				binarray[powmax + n] += spectrumK_private[n];
       }
-//			printf("thread %d sums %f %f %f %f %f\n", spectrumT[0],spectrumT[1],spectrumT[2],spectrumT[3],spectrumT[4]);
-
 		}
 
 	}//parallel
 
-
-	#pragma omp parallel for default(shared)
 	for(int n=0; n<powmax; n++)
 	{
-		static_cast<double*>(spectrumT)[n] *= norma;
-		static_cast<double*>(spectrumV)[n] *= norma;
+		binarray[powmax + n] *= norma;
 	}
 
-	//printf(" ... power spectrum printed (L=%f, norma = %f)\n",sizeL,norma);
+	MPI_Reduce(&binarray[powmax], &binarray[0], powmax, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	//printf(" ... GV Axion spectrum printed\n");
 }
 
-void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, FlopCounter *fCount)
+
+
+
+void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 {
-	const int n1 = axion->Length();
+
+	const size_t n1 = axion->Length();
+	const size_t Lz = axion->Depth();
+	const size_t Tz = axion->TotalSize();
 	const int kmax = n1/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
-	double delta = sizeL/sizeN ;
-	//const double z = axion->zV();
-	//double mass2 = 9.*pow((*axion->zV()),nQcd+2);
+	const double delta = sizeL/sizeN;
+	const int fSize = axion->DataSize();
+	// SETS 1 ARRAY TO ZERO AT THE BEGGINING OF M
+	//memset (axion->mCpu(), 0, 2*fSize*powmax);
+	for(size_t dix=0; dix < 2*fSize*powmax; dix++)
+	{
+		static_cast<double*> (axion->mCpu())[dix] = 0. ;
+	}
+
+	double mass2 = axionmass2((*axion->zV()), nQcd, 1.5, 3.0)*(*axion->zV())*(*axion->zV());
 
 	// 	New scheme
 
@@ -372,11 +457,13 @@ void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		pSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
+		BinSpectrum<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		pSpectrumUNFOLDED<float>(static_cast<const complex<float>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
+		BinSpectrum<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		default:

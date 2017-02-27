@@ -1,6 +1,7 @@
 #include<cstdlib>
 #include<cstring>
 #include<complex>
+#include "comms/comms.h"
 
 #ifdef	USE_GPU
 	#include<cuda.h>
@@ -10,6 +11,12 @@
 
 #include"scalar/folder.h"
 #include"enum-field.h"
+
+#define printMpi(...) do {		\
+	if (!commRank()) {		\
+	  printf(__VA_ARGS__);  	\
+	  fflush(stdout); }		\
+}	while (0)
 
 using namespace std;
 
@@ -25,7 +32,7 @@ void	Folder::foldField()
 	// WHY THE FOLLOWING DEFINITIONS WERE CONSTANTS?
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
-	printf("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), fSize, shift, n2);
+	printMpi("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", field->DataAlign(), fSize, shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
  	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());

@@ -7,6 +7,8 @@
 #include "utils/memAlloc.h"
 #include "utils/parse.h"
 
+#include "comms/comms.h"
+
 template<typename Float>
 void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size_t Vf)
 {
@@ -20,9 +22,15 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = seed();
 
+	const int ene = sqrt(Vo);
+
 	#pragma omp parallel default(shared)
 	{
 		int nThread = omp_get_thread_num();
+		int rank = commRank();
+		size_t Lz = sizeN/commSize();
+		size_t local_z_start = rank*Lz;
+		printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, sizeN, Lz, local_z_start);
 
 		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 		std::uniform_real_distribution<Float> uni(-1.0, 1.0);
@@ -31,7 +39,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 		for (size_t idx=Vo; idx<Vf; idx++)
 		{
 			//RANDOM INITIAL CONDITIONS
-			//m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+			m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
 			//m[idx]   = std::complex<Float>(0.2, uni(mt64)/10.);
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM WITH A LITTLE 0 MODE
@@ -43,18 +51,33 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//to produce only SAXIONS for testing
 			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
 
-			//	MINICLUSTER
-			size_t pidx = idx-Vo;
-			size_t iz = pidx/Vo ;
-			size_t iy = (pidx%Vo)/sizeN ;
-			size_t ix = (pidx%Vo)%sizeN ;
-			if (iz>sizeN/2) {iz = iz-sizeN; }
-			if (iy>sizeN/2) {iy = iy-sizeN; }
-			if (ix>sizeN/2) {ix = ix-sizeN; }
+			// //	MINICLUSTER
+			//
+			// size_t pidx = idx-Vo;
+			// size_t iz = pidx/Vo + local_z_start;
+			// size_t iy = (pidx%Vo)/sizeN ;
+			// size_t ix = (pidx%Vo)%sizeN ;
+			// int z = iz;
+			// int y = iy;
+			// int x = ix;
+			// if (z>sizeN/2) {z = z-sizeN; }
+			// if (y>sizeN/2) {y = y-sizeN; }
+			// if (x>sizeN/2) {x = x-sizeN; }
+			//
+			// Float theta = ((Float) (x*x+y*y+z*z))/(Vo);
+			// theta = 0.1*exp(-20*theta);
+			// m[idx] = std::complex<Float>(cos(theta), sin(theta));
 
-			Float theta = ((Float) (ix*ix+iy*iy+iz*iz))/(Vo);
-			theta = exp(-20*theta);
-			m[idx] = std::complex<Float>(cos(theta), sin(theta));
+			//	ONE MODE
+
+			// size_t pidx = idx-Vo;
+			// size_t iz = pidx/Vo + local_z_start;
+			// size_t iy = (pidx%Vo)/sizeN ;
+			// size_t ix = (pidx%Vo)%sizeN ;
+			//
+			// Float theta = ((Float) 0.0001*cos(3.14159*2.*iz*3/ene)+0.0*cos(3.14159*2.*ix*5/ene));
+			// m[idx] = std::complex<Float>(cos(theta), sin(theta));
+
 
 			//// if(ix<2)
 			//// {

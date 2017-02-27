@@ -10,6 +10,7 @@
 	#include"utils/xeonDefs.h"
 #endif
 
+#include"utils/triSimd.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -29,69 +30,6 @@
 		#define	_PREFIX_ _mm256
 	#endif
 #endif
-
-
-#define	M_PI2	(M_PI *M_PI)
-#define	M_PI4	(M_PI2*M_PI2)
-#define	M_PI6	(M_PI4*M_PI2)
-
-#ifdef	__MIC__
-	#define	_MData_ __m512d
-#elif	defined(__AVX__)
-	#define	_MData_ __m256d
-#else
-	#define	_MData_ __m128d
-#endif
-
-inline _MData_	opCode(sin_pd, _MData_ x)
-{
-	_MData_ tmp2, tmp3, tmp5, a, b, c;
-	static const double a_s = -0.0415758*4., b_s = 0.00134813*6., c_s = -(1+M_PI2*a_s+M_PI4*b_s)/(M_PI6);
-
-	a = opCode(set1_pd, a_s);
-	b = opCode(set1_pd, b_s);
-	c = opCode(set1_pd, c_s);
-
-	tmp2 = opCode(mul_pd, x, x);
-	tmp3 = opCode(mul_pd, tmp2, x);
-	tmp5 = opCode(mul_pd, tmp3, tmp2);
-	return opCode(add_pd, x, opCode(add_pd,
-		opCode(add_pd,
-			opCode(mul_pd, tmp3, a),
-			opCode(mul_pd, tmp5, b)),
-		opCode(mul_pd, c, opCode(mul_pd, tmp2, tmp5))));
-}
-
-#undef	_MData_
-
-#ifdef	__MIC__
-	#define	_MData_ __m512
-#elif	defined(__AVX__)
-	#define	_MData_ __m256
-#else
-	#define	_MData_ __m128
-#endif
-
-inline _MData_	opCode(sin_ps, _MData_ x)
-{
-	_MData_ tmp2, tmp3, tmp5, a, b, c;
-	static const float a_s = -0.0415758f*4.f, b_s = 0.00134813f*6.f, c_s = -(1+M_PI2*a_s+M_PI4*b_s)/(M_PI6);
-
-	a = opCode(set1_ps, a_s);
-	b = opCode(set1_ps, b_s);
-	c = opCode(set1_ps, c_s);
-
-	tmp2 = opCode(mul_ps, x, x);
-	tmp3 = opCode(mul_ps, tmp2, x);
-	tmp5 = opCode(mul_ps, tmp3, tmp2);
-	return opCode(add_ps, x, opCode(add_ps,
-		opCode(add_ps,
-			opCode(mul_ps, tmp3, a),
-			opCode(mul_ps, tmp5, b)),
-		opCode(mul_ps, c, opCode(mul_ps, tmp2, tmp5))));
-}
-
-#undef	_MData_
 
 #ifdef USE_XEON
 __attribute__((target(mic)))

@@ -1244,8 +1244,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D1, S, V + S, S, precision);
 	*z += dz*D1;
 
@@ -1254,8 +1256,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D2, S, V + S, S, precision);
 	*z += dz*D2;
 
@@ -1264,8 +1268,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D3, S, V + S, S, precision);
 	*z += dz*D3;
 
@@ -1274,8 +1280,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, S, V + S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D4, S, V + S, S, precision);
 	*z += dz*D4;
 }

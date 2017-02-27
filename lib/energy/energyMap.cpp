@@ -25,6 +25,7 @@ class	EnergyMap
 	const size_t Lx, Lz, V, S;
 
 	FieldPrecision precision;
+	FieldType fType;
 
 	Scalar	*axionField;
 
@@ -39,7 +40,7 @@ class	EnergyMap
 };
 
 	EnergyMap::EnergyMap(Scalar *field, const double nQcd, const double delta) : axionField(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()),
-				S(field->Surf()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd)
+				S(field->Surf()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), fType(field->Field())
 {
 }
 
@@ -49,13 +50,17 @@ void	EnergyMap::runGpu	()
 
 	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 	double *z = axionField->zV();
+	int st;
 
 	axionField->exchangeGhosts(FIELD_M);
-//	int st = energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
 
+	if (fType == FIELD_SAXION)
+		st = 0;//energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	else
+		st = 0;//energyMapThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
-//	if (st != 0)
+	if (st != 0)
 	{
 		printf("Gpu error computing energy.");
 		exit(1);
@@ -69,13 +74,19 @@ void	EnergyMap::runGpu	()
 
 void	EnergyMap::runCpu	()
 {
-	energyMapCpu(axionField, delta2, nQcd, Lx, V, S);
+	if (fType == FIELD_SAXION)
+		energyMapCpu(axionField, delta2, nQcd, Lx, V, S);
+	else
+		energyMapThetaCpu(axionField, delta2, nQcd, Lx, V, S);
 }
 
 void	EnergyMap::runXeon	()
 {
 #ifdef	USE_XEON
-	energyMapXeon(axionField, delta2, nQcd, Lx, V, S);
+	if (fType == FIELD_SAXION)
+		energyMapXeon(axionField, delta2, nQcd, Lx, V, S);
+	else
+		energyMapThetaXeon(axionField, delta2, nQcd, Lx, V, S);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
@@ -107,7 +118,7 @@ void	energyMap	(Scalar *field, const double nQcd, const double delta, DeviceType
 
 	delete	eDark;
 
-	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->DataSize()*field->Size()*1.e-9);
+	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->DataSize()*field->Size()*1.e-9);	//FIXME: Flops wrong for theta
 
 	return;
 }

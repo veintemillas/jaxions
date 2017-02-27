@@ -30,6 +30,12 @@
 
 using namespace std;
 
+#define printMpi(...) do {		\
+	if (!commRank()) {		\
+	  printf(__VA_ARGS__);  	\
+	  fflush(stdout); }		\
+}	while (0)
+
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
@@ -42,7 +48,6 @@ const std::complex<float> If(0.,1.);
 	std::chrono::milliseconds elapsed;
 
 	start = std::chrono::high_resolution_clock::now();
-
 
 	size_t nData;
 
@@ -84,16 +89,16 @@ const std::complex<float> If(0.,1.);
 	switch	(dev)
 	{
 		case DEV_XEON:
-			printf("Using Xeon Phi 64 bytes alignment\n");
+			printMpi("Using Xeon Phi 64 bytes alignment\n");
 			mAlign = 64;
 			break;
 
 		case DEV_CPU:
 			#if	defined(__AVX__) || defined(__AVX2__)
-			printf("Using AVX 32 bytes alignment\n");
+			printMpi("Using AVX 32 bytes alignment\n");
 			mAlign = 32;
 			#else
-			printf("Using SSE 16 bytes alignment\n");
+			printMpi("Using SSE 16 bytes alignment\n");
 			mAlign = 16;
 			#endif
 			break;
@@ -135,19 +140,19 @@ const std::complex<float> If(0.,1.);
 
 	if (!lowmem)
 	{
-		printf("Allocating m2\n"); fflush(stdout);
+		printMpi("Allocating m2\n"); fflush(stdout);
 		alignAlloc ((void**) &m2, mAlign, mBytes);
 	}
 	else
 	{
-		printf("LOWMEM!\n"); fflush(stdout);
+		printMpi("LOWMEM!\n"); fflush(stdout);
 		m2 = NULL;
 	}
 #endif
 
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printf("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
+	// current = std::chrono::high_resolution_clock::now();
+	// elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	// printMpi("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
 	start = std::chrono::high_resolution_clock::now();
 
 	if (m == NULL)
@@ -171,16 +176,17 @@ const std::complex<float> If(0.,1.);
 		}
 	}
 
-	printf("set m,v=0, fSize=%d m[%ld] v[%ld]\n",fSize,v3,n3); fflush(stdout);
+	printMpi("set m,v=0, fSize=%d m[%ld] v[%ld]\n",fSize,v3,n3); fflush(stdout);
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*n3);
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);
 
+	commSync();
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printf("zeroing TIME %f min\n",elapsed.count()*1.e-3/60.);
+	printMpi("zeroing TIME %f min\n",elapsed.count()*1.e-3/60.);
 	start = std::chrono::high_resolution_clock::now();
 
 	alignAlloc ((void **) &z, mAlign, mAlign);//sizeof(double));
@@ -244,26 +250,26 @@ const std::complex<float> If(0.,1.);
 	} else {
 		if (fieldType == FIELD_AXION)
 		{
-			printf("Configuration generation not supported for Axion fields... yet\n");
+			printMpi("Configuration generation not supported for Axion fields... yet\n");
 		}
 		else
 		{
 			start = std::chrono::high_resolution_clock::now();
-			printf("Entering initFFT\n");
+			printMpi("Entering initFFT\n");
 
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
 				initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-			printf("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
+			printMpi("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
 
-			printf("Entering GEN_CONF\n");
+			printMpi("Entering GEN_CONF\n");
 			start = std::chrono::high_resolution_clock::now();
 			genConf	(this, cType, parm1, parm2, fCount);
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-			printf("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
+			printMpi("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
 		}
 	}
 
@@ -290,11 +296,11 @@ const std::complex<float> If(0.,1.);
 	// THIS MIGHT NOT BE NEEDED, CHECK OUT
 	if(!lowmem)
 	{
-		printf("FFTing m2 if no lowmem\n");
+		printMpi("FFTing m2 if no lowmem\n");
 		initFFTSpectrum(m2, n1, Tz, precision, lowmem);
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-		printf("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
+		printMpi("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
 	}
 
 }
@@ -303,7 +309,8 @@ const std::complex<float> If(0.,1.);
 
 	Scalar::~Scalar()
 {
-	printf ("Calling destructor...\n");
+	commSync();
+	printf ("Rank %d Calling destructor...\n",commRank());
 	fflush (stdout);
 	if (m != NULL)
 		trackFree(&m, ALLOC_ALIGN);
@@ -680,10 +687,113 @@ void	Scalar::squareCpu()
 // 	}
 // }
 
-//	USA M2, ARREGLAR LOWMEM
-//	COPIES CONFORMAL FIELD AND DERIVATIVE FROM PQ FIELD
+
+//	COPIES c_theta into m2
 // 	M2 IS NOT SHIFTED BY S,N2
+//	USA M2, ARREGLAR LOWMEM
 void	Scalar::theta2m2()//int *window)
+{
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			if (precision == FIELD_DOUBLE)
+			{
+				double za = (*z);
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
+					((complex<double> *) m2)[i] = thetaaux*za + I*0.;
+				}
+			}
+			else // FIELD_SINGLE
+			{
+				float zaf = *z ;
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
+					((complex<float> *) m2)[i] = thetaauxf*zaf + If*0.f;
+				}
+			}
+		break;
+
+		case FIELD_AXION:
+			if (precision == FIELD_DOUBLE)
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2]) + I*0.;
+			}
+			else	// FIELD_SINGLE
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2]) + If*0.f;
+			}
+		break;
+	}
+}
+
+//	COPIES c_theta_v (vtheta) into m2
+// 	M2 IS NOT SHIFTED BY S,N2
+//	USA M2, ARREGLAR LOWMEM
+void	Scalar::vheta2m2()//int *window)
+{
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			if (precision == FIELD_DOUBLE)
+			{
+				double za = (*z);
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
+					((complex<double> *) m2)[i] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+				}
+			}
+			else // FIELD_SINGLE
+			{
+				float zaf = *z ;
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+				{
+					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
+					((complex<float> *) m2)[i] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+				}
+			}
+		break;
+
+		case FIELD_AXION:
+			if (precision == FIELD_DOUBLE)
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<double> *) m2)[i] = 0.0 + I*((static_cast<double*> (v))[i]);
+			}
+			else	// FIELD_SINGLE
+			{
+
+				#pragma omp parallel for default(shared) schedule(static)
+				for(size_t i=0; i < n3; i++)
+					((complex<float> *) m2)[i] = 0.f + If*((static_cast<float*> (v))[i]);
+			}
+		break;
+	}	// END FIELDTYPE
+}		// END vheta2m2
+
+
+// LEGACY FUNCTION COPYING c_theta*mass + I c_theta_z in m2 for the number spectrum
+// SUPERSEEDED BY theta2m2 and vheta2m2 to work with MPI
+void	Scalar::thetav2m2()//int *window)
 {
 	switch (fieldType)
 	{
@@ -913,9 +1023,9 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-				printf("| free v ");fflush(stdout);
+				printMpi("| free v ");fflush(stdout);
 				trackFree(&v, ALLOC_ALIGN);
-				printf("| s_cast v ");fflush(stdout);
+				printMpi("| s_cast v ");fflush(stdout);
 
 				switch (precision)
 				{
@@ -928,16 +1038,17 @@ void	Scalar::setField (FieldType fType)
 					break;
 				}
 
-				printf("| resize %d->",fSize);fflush(stdout);
+				printMpi("| resize %d->",fSize);fflush(stdout);
 				fSize /= 2;
 				shift *= 2;
-				printf("%d ",fSize);fflush(stdout);
+				printMpi("%d ",fSize);fflush(stdout);
 
 				const size_t	mBytes = v3*fSize;
-				printf("| alloc m2 ");
+				printMpi("| alloc m2 ");
 				// IF low mem was used before, it creates m2 COMPLEX
 				if (lowmem)
 				{
+					closeFFTSpectrum();
 					#ifdef	USE_XEON
 					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
 					m2  = m2X;
@@ -946,7 +1057,7 @@ void	Scalar::setField (FieldType fType)
 					#endif
 
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
-					printf("(yes) ");
+
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 					closeFFTSpectrum();
@@ -975,9 +1086,9 @@ void	Scalar::setField (FieldType fType)
 			}
 			break;
 	}
-	printf("| fType ");fflush(stdout);
+	printMpi("| fType ");fflush(stdout);
 	fieldType = fType;
-	printf("| ");fflush(stdout);
+	printMpi("| ");fflush(stdout);
 }
 
 void	Scalar::setFolded (bool foli)
@@ -1223,6 +1334,11 @@ template<typename Float>
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
+	if (folded)
+		{
+			printMpi("EMT called Folded!\n");
+			return;
+		}
 	// COPIES THE CONTRAST INTO THE REAL PART OF M2 (WHICH IS COMPLEX)
 	// TO USE THE POWER SPECTRUM AFTER
 	// 	FILES DENSITY CONTRAST
@@ -1286,15 +1402,19 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					//GRADIENTS
 					idaux = ixP + iy*n1+(iz+1)*n2 ;
 					grad = pow(mTheta[idaux]-mTheta[idx],2);
+
 					idaux = ixM + iy*n1+(iz+1)*n2 ;
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
+
 					idaux = ix + iyP*n1+(iz+1)*n2 ;
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
+
 					idaux = ix + iyM*n1+(iz+1)*n2 ;
 					grad += pow(mTheta[idaux]-mTheta[idx],2);
 					grad += pow(mTheta[idx+n2]-mTheta[idx],2);
 					grad += pow(mTheta[idx-n2]-mTheta[idx],2);
-					mCONT[idx-n2] = acu + grad/deltaa2 ;
+					mCONT[idx-n2] = acu + grad/deltaa2;
+
 					//mCONT[idx] = acu ;
 					//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 
@@ -1386,8 +1506,6 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 			}
 		}
 
-
-
 		//printf("\n q7-%d",commRank());fflush(stdout);
 
 		#pragma omp parallel for default(shared) schedule(static)
@@ -1434,9 +1552,9 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	(static_cast<double *> (contbin))[2] = (double) maxibin;
 
 	if (commRank() ==0)
-	printf("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
-
+	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
 	fflush (stdout);
+	commRank();
 	return ;
 }
 
@@ -1603,7 +1721,7 @@ double	Scalar::maxtheta()//int *window)
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
 	double thetamaxi = maxtheta();
-	printf("\n qq10-%d (%f)",commRank(), thetamaxi);fflush(stdout);
+	printMpi("MAXTHETA=%f\n",thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
 
 	double n2p = numbins/thetamaxi;
@@ -1716,12 +1834,13 @@ void	Scalar::denstom()//int *window)
 					mThetad[idx] = mCONTd[n2+idx].real();
 				}
 		}
-		printf("dens to m ... done\n");
+		commSync();
+		printMpi("dens to m ... done\n");
 
 	}
 	else
 	{
-		printf("dens to m not available for SAXION\n");
+		printMpi("dens to m not available for SAXION\n");
 	}
 
 }

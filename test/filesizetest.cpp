@@ -69,11 +69,19 @@ int	main (int argc, char *argv[])
 	printMpi("ICtime %f min\n",elapsed.count()*1.e-3/60.);
 
 
+	old = std::chrono::high_resolution_clock::now();
+	printMpi("Comlex to theta\n");
 	cmplxToTheta (axion, fCount);
+	current = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
+	printMpi("Complex2Theta time %f min\n",elapsed.count()*1.e-3/60.);
 
+	old = std::chrono::high_resolution_clock::now();
+	printMpi("Write conf\n");
 	writeConf(axion, 0);
-
-	
+	current = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
+	printMpi("Write time time %f min\n",elapsed.count()*1.e-3/60.);
 
 	delete fCount;
 	delete axion;

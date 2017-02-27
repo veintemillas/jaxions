@@ -44,8 +44,11 @@ int	main (int argc, char *argv[])
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
+	commSync();
 	printMpi("\n-------------------------------------------------\n");
 	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
+
+
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -148,21 +151,16 @@ int	main (int argc, char *argv[])
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
 	printMpi("Bins allocated! \n");
 
-	double *sK = static_cast<double *> (spectrumK);
-	double *sG = static_cast<double *> (spectrumG);
-	double *sV = static_cast<double *> (spectrumV);
+	// double *sK = static_cast<double *> (spectrumK);
+	// double *sG = static_cast<double *> (spectrumG);
+	// double *sV = static_cast<double *> (spectrumV);
 	double *bA = static_cast<double *> (binarray);
 	//double *bAd = static_cast<double *> (binarray);
 
- // complex<float> *mSf = static_cast<complex<float>*> (axion->mCpu());
- // complex<float> *vSf = static_cast<complex<float>*> (axion->vCpu());
- // complex<double> *mSd = static_cast<complex<double>*> (axion->mCpu());
- // complex<double> *vSd = static_cast<complex<double>*> (axion->vCpu());
- //
- // float *mTf = static_cast<float*> (axion->mCpu());
- // float *vTf = static_cast<float*> (axion->vCpu());
- // double *mTd = static_cast<double*> (axion->mCpu());
- // double *vTd = static_cast<double*> (axion->vCpu());
+	double *sK = static_cast<double *> (axion->mCpu());
+	double *sG = static_cast<double *> (axion->mCpu())+powmax;
+	double *sV = static_cast<double *> (axion->mCpu())+2*powmax;
+
 
 	double z_now ;
 
@@ -182,7 +180,7 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	printMpi("--------------------------------------------------\n");
-	printMpi("           INITIAL CONDITIONS                     \n\n");
+	printMpi("           BASE INITIAL CONDITIONS                \n\n");
 
 	printMpi("Length =  %2.5f\n", sizeL);
 	printMpi("N      =  %ld\n",   sizeN);
@@ -201,24 +199,31 @@ int	main (int argc, char *argv[])
 
 
 
-	printMpi("INITIAL CONDITIONS LOADED\n");
-	if (sPrec != FIELD_DOUBLE)
-	{
-		printMpi("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
-									        ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
-		printMpi("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
-									        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
-	}
-	else
-	{
-		printMpi("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
-										    ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
-		printMpi("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
-										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
-	}
+	// printMpi("INITIAL CONDITIONS LOADED\n");
+	// if (sPrec != FIELD_DOUBLE)
+	// {
+	// 	printMpi("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
+	// 								        ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
+	// 	printMpi("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
+	// 								        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
+	// }
+	// else
+	// {
+	// 	printMpi("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
+	// 									    ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
+	// 	printMpi("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
+	// 									    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
+	// }
 
 	//JAVIER commented next
 	//printMpi("Ez     =  %ld\n",    axion->eDepth());
+
+
+	// for (i=0; i<100;i++)
+	// {
+	// 	printMpi("%f",saxionshift(z_now, nQcd, 0, 3., LL);)
+	// }
+
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
@@ -247,6 +252,7 @@ int	main (int argc, char *argv[])
 	memset(str, 0, axion->Size()/2);
 
 	commSync();
+
 
 	if (fIndex == -1)
 	{
@@ -297,9 +303,11 @@ int	main (int argc, char *argv[])
 	{
 		double	strDen;
 
+		if (commRank() == 0)
+		{
 		munge(UNFOLD_SLICE, sliceprint);
 		writeMap (axion, index);
-
+		}
 	}
 
 	if (dump > nSteps)
@@ -311,6 +319,18 @@ int	main (int argc, char *argv[])
 		nLoops = 0;
 	else
 		nLoops = (int)(nSteps/dump);
+
+
+	printMpi("--------------------------------------------------\n");
+	printMpi("           START LOOP  						                \n\n");
+	printMpi("Length =  %2.5f\n", sizeL);
+	printMpi("N      =  %ld\n",   sizeN);
+	printMpi("Nz     =  %ld\n",   sizeZ);
+	printMpi("zGrid  =  %ld\n",   zGrid);
+	printMpi("dx     =  %2.5f\n", delta);
+	printMpi("dz     =  variable min[1/d,1/m_a,1/m_s]/2\n", dz);
+	printMpi("LL     =  FM_variable ms a =1.5\n", LL);
+	printMpi("--------------------------------------------------\n");
 
 	printMpi ("Start redshift loop\n\n");
 	fflush (stdout);
@@ -365,7 +385,10 @@ int	main (int argc, char *argv[])
         dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
 				printMpi("*");
 			}
-        dzaux = dzaux/2.;
+        dzaux = dzaux/3.;
+
+
+
 
 				//--------------------------------------------------
 				// PRINT POINT
@@ -378,27 +401,30 @@ int	main (int argc, char *argv[])
 						if (axion->Field() == FIELD_SAXION)
 						{
 							llprint = max(LL , llaux/pow(z_now,2.));
+							double saskia = saxionshift(z_now, nQcd, 0, 3.0, llprint);
 
 							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
 								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag(),
-								nstrings_global);
+								nstrings_global, maximumtheta, saskia );
 							} else {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
 								static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),
-								nstrings_global);
+								nstrings_global, maximumtheta, saskia);
 							}
 						}
 						else
 						{
 							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f\n", z_now, axionmass(z_now,nQcd,1.5,3.),
-								static_cast<double*> (axion->mCpu())[sliceprint*S0+S0], static_cast<double*> (axion->vCpu())[sliceprint*S0]);
+								fprintf(file_sample,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,1.5,3.),
+								static_cast<double*> (axion->mCpu())[sliceprint*S0+S0], static_cast<double*> (axion->vCpu())[sliceprint*S0],
+								maximumtheta);
 							} else {
-								fprintf(file_sample,"%f %f %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.),
-								static_cast<float*> (axion->mCpu())[sliceprint*S0+S0], static_cast<float*> (axion->vCpu())[sliceprint*S0]);
+								fprintf(file_sample,"%f %f %f %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.),
+								static_cast<float*> (axion->mCpu())[sliceprint*S0+S0], static_cast<float*> (axion->vCpu())[sliceprint*S0],
+								maximumtheta);
 								// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
 								// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
 							}
@@ -449,30 +475,30 @@ int	main (int argc, char *argv[])
 			{
 				propagate (axion, dzaux, llaux, nQcd, delta, cDev, fCount, VQCD_1);
 
-                if (nstrings < 200)
+                if (nstrings_global < 500)
                 {
                   //nstrings = analyzeStrFoldedNP(axion, index);
-                  nstrings = strings(axion, cDev, str, fCount);
-									//nstringsd = (double) nstrings;
-                  MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-
+                  //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+									nstrings_global = strings(axion, cDev, str, fCount);
+									maximumtheta = axion->maxtheta();
+									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
                 }
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-                if ( (nstrings_global == 0) && (!coS) && ((*axion->zV()) > 0.6) )
+                if ( (nstrings_global == 0) && ((*axion->zV()) > 0.6) )
                 {
-										strcount += 1;
-										printMpi("  str countdown (%d/100)\n",strcount);fflush(stdout);
-										if (strcount >5)
-										{
+										// strcount += 1;
+										// printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
+										// if ((strcount >20 ) )
+										// {
 											printMpi("\n");
 	                    printMpi("--------------------------------------------------\n");
 	                    printMpi("              TRANSITION TO THETA \n");
 	                    cmplxToTheta (axion, fCount);
 											fflush(stdout);
 	                    printMpi("--------------------------------------------------\n");
-										}
+										// }
                 }
 			}
 			else
@@ -500,43 +526,49 @@ int	main (int argc, char *argv[])
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
 
-      printMpi("IT %.3f ETA %.3f ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60.));
+      printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 			fflush(stdout);
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-				fflush(stdout);
-				if ((*axion->zV()) > 0.2)
-				{
-					printMpi("strings (z>0.2) ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-					fflush (stdout);
-										nstrings = analyzeStrFolded(axion, index);
-                    //printMpi("= %d ", nstrings);
-										//nstrings = strings(axion, cDev, str, fCount);
-										//nstringsd = (double) nstrings ;
-										MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-										//nstrings = (int) nstringsd_global ;
-										printMpi("= %ld ", nstrings_global);
-										fflush (stdout);
+				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
-										if (nstrings_global == 0 )
-                    {
-                        coS = 0;
-                        printMpi("Low string density! coS=0 (stcount=%d)",strcount);
-												fflush(stdout);
-                    }
-				}
-				printMpi("\n");
+										nstrings_global = strings(axion, cDev, str, fCount);
+//										analyzeStrFolded(axion, index);
+										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+										//nstrings = (int) nstringsd_global ;
+
+										if ((*axion->zV()) > 0.6)
+										{
+//										 createMeas(axion, index);
+//										 printMpi("[mc-");
+//										 writeString	( str , nstrings_global);
+//									 printMpi("sw-");
+//										 destroyMeas();
+	//								 printMpi("d] ");
+										}
+
+										printMpi("(G)= %ld \n", nstrings_global);
+
 			}
 			else
 			{
-				printMpi("%d/%d | z=%f | dz=%.3e \n", zloop, nLoops, (*axion->zV()), dzaux);
+				maximumtheta = axion->maxtheta();
+				printMpi("%d/%d | z=%f | dz=%.3e | maxtheta=%f\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
+				// munge(UNFOLD_ALL);
+				// writeConf(axion, index);
+				// munge(FOLD_ALL);
 			}
 
-			munge(UNFOLD_SLICE, sliceprint);
-			writeMap (axion, index);
+			// if (commRank() == 0)
+			// {
+			// munge(UNFOLD_SLICE, sliceprint);
+			// writeMap (axion, index);
+			// }
+
+			// SAVE FILE OUTPUT
 
 //
 //	if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 0.6 )
@@ -572,24 +604,26 @@ int	main (int argc, char *argv[])
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		printMpi ("Allá voy!!\n");
-		createMeas(axion, 0);
+		createMeas(axion, index+1);
 
 		printMpi("nSpec ... ");
 		//NUMBER SPECTRUM
-		spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+		//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
+		spectrumUNFOLDED(axion);
+
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 		printMpi("| ");
 		if (commRank() == 0)
 		{
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sK[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sG[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sV[i]);} fprintf(file_spectrum, "\n");
 		//axion->foldField();
 		}
+		commSync();
 
 		writeSpectrum(axion, sK, sG, sV, powmax, false);
 
@@ -605,7 +639,27 @@ int	main (int argc, char *argv[])
 		fprintf(file_contbin, "\n");
 		fflush(file_contbin);
 		}
+		commSync();
 		writeArray(axion, bA, 10000, "/bins", "cont");
+
+
+		//POWER SPECTRUM
+
+		printMpi("pSpec ... ");
+
+		powerspectrumUNFOLDED(axion, fCount);
+		if (commRank() == 0)
+		{
+		printf("sp %f ...\n", sK[0]);
+		fprintf(file_power,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", sK[i]);} fprintf(file_power, "\n");
+		}
+		printMpi("| ");
+
+		//writeArray(axion, bA, 10000, "/bins", "cont");
+		//writeSpectrum(axion, sK, sG, sV, powmax, true);
+
+
 
 		// BIN THETA
 		maximumtheta = axion->thetaDIST(100, spectrumK);
@@ -617,26 +671,10 @@ int	main (int argc, char *argv[])
 
 		writeArray(axion, sK, 100, "/bins", "theta");
 
-		printMpi("dens2m ... ");
-		axion->denstom();
-		printMpi("| ");
+		// printMpi("dens2m ... ");
+		// axion->denstom();
+		// printMpi("| ");
 
-		printMpi("pSpec ... ");
-		//POWER SPECTRUM
-		if (commRank() == 0)
-		{
-		powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-		printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-		fprintf(file_power,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
-		fprintf(file_power,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
-		fprintf(file_power,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
-		}
-		printMpi("| ");
-
-		writeSpectrum(axion, sK, sG, sV, powmax, true);
 		destroyMeas();
 
 		//munge(FOLD_ALL);
@@ -650,13 +688,17 @@ int	main (int argc, char *argv[])
 		//munge(UNFOLD_ALL);
 	}
 
+	if (axion->Field() == FIELD_AXION)
+	{
 	if (nSteps > 0)
 	writeConf(axion, index);
+	}
 
 	printMpi("z_final = %f\n", *axion->zV());
 	printMpi("#_steps = %i\n", counter);
 	printMpi("#_prints = %i\n", index);
-	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
+	printMpi("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
+	printMpi("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 	printMpi("GFlops: %.3f\n", fCount->GFlops());
 	printMpi("GBytes: %.3f\n", fCount->GBytes());
 
