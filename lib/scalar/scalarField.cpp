@@ -115,7 +115,6 @@ const std::complex<float> If(0.,1.);
 	//JAVIER ADDED 2 SLICES TO V FOR REAL TO COMPLEX FTT in HALO
 	const size_t	vBytes = n3*fSize;
 
-printf("Allocating m and v\n"); fflush(stdout);
 #ifdef	USE_XEON
 	alignAlloc ((void**) &mX, mAlign, mBytes);
 	alignAlloc ((void**) &vX, mAlign, vBytes);

@@ -22,13 +22,13 @@ int	initCudaFFT	(const int size, const int Lz, FieldPrecision prec)
 	int nD[2] = { size, size };
 	int Vol   = size*size;
 
-	cudaStreamCreate        (&streamCuFFT);
+//	cudaStreamCreate        (&streamCuFFT);
 
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
 
-		if      (cufftPlanMany(&fftPlan, 2, nD, nD, 1, Vol, nD, 1, Vol, CUFFT_Z2Z, Lz) != CUFFT_SUCCESS)
+//		if      (cufftPlanMany(&fftPlan, 2, nD, nD, 1, Vol, nD, 1, Vol, CUFFT_Z2Z, Lz) != CUFFT_SUCCESS)
 		{
 			printf  ("Error in the FFT!!!\n");
 			return 1;
@@ -38,7 +38,7 @@ int	initCudaFFT	(const int size, const int Lz, FieldPrecision prec)
 
 		case FIELD_SINGLE:
 
-		if      (cufftPlanMany(&fftPlan, 2, nD, nD, 1, Vol, nD, 1, Vol, CUFFT_C2C, Lz) != CUFFT_SUCCESS)
+//		if      (cufftPlanMany(&fftPlan, 2, nD, nD, 1, Vol, nD, 1, Vol, CUFFT_C2C, Lz) != CUFFT_SUCCESS)
 		{
 			printf  ("Error in the FFT!!!\n");
 			return 1;
@@ -47,10 +47,10 @@ int	initCudaFFT	(const int size, const int Lz, FieldPrecision prec)
 		break;
 	}
 
-	cufftSetCompatibilityMode       (fftPlan, CUFFT_COMPATIBILITY_NATIVE);
-	cufftSetStream                  (fftPlan, streamCuFFT);
+//	cufftSetCompatibilityMode       (fftPlan, CUFFT_COMPATIBILITY_NATIVE);
+//	cufftSetStream                  (fftPlan, streamCuFFT);
 
-	if      (cudaDeviceSynchronize() != cudaSuccess)
+//	if      (cudaDeviceSynchronize() != cudaSuccess)
 	{
 		printf  ("Error synchronizing!!!\n");
 		return 1;
@@ -69,13 +69,13 @@ int	runCudaFFT(void *data, int sign)
 #ifdef	USE_GPU
 	if (singPr)
 	{
-		if      (cufftExecC2C(fftPlan, (float2 *) data, (float2 *) data, sign) != CUFFT_SUCCESS)
+//		if      (cufftExecC2C(fftPlan, (float2 *) data, (float2 *) data, sign) != CUFFT_SUCCESS)
 		{
 			printf  ("Error executing FFT!!!\n");
 			return 1;
 		}
 	} else {
-		if      (cufftExecZ2Z(fftPlan, (double2 *) data, (double2 *) data, sign) != CUFFT_SUCCESS)
+//		if      (cufftExecZ2Z(fftPlan, (double2 *) data, (double2 *) data, sign) != CUFFT_SUCCESS)
 		{
 			printf  ("Error executing FFT!!!\n");
 			return 1;
@@ -93,8 +93,8 @@ void	closeCudaFFT	()
 #ifdef	USE_GPU
 	printf	("Destroying cuFFT\n");
 	fflush	(stdout);
-	cufftDestroy (fftPlan);
-	cudaStreamDestroy (streamCuFFT);
+//	cufftDestroy (fftPlan);
+//	cudaStreamDestroy (streamCuFFT);
 #else
 	printf  ("Gpu support not built\n");
 	exit	(1);

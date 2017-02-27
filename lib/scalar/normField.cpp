@@ -9,7 +9,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-	#include "scalar/normGpu.h"
+//	#include "scalar/normGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -40,6 +40,8 @@ class	NormaliseField
 void	NormaliseField::runGpu	()
 {
 #ifdef	USE_GPU
+	printf("Field will be normalized in the CPU");
+	normXeon(axionField, fIdx);
 #else
 	printf("Gpu support not built");
 	exit(1);

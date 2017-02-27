@@ -1,5 +1,5 @@
 #include "complexGpu.cuh"
-#include "index.cuh"
+#include "utils/index.cuh"
 
 #include "enum-field.h"
 #include "cub/cub.cuh"

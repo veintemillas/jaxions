@@ -112,7 +112,12 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 
 	//Copies v to m
 	memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*n2, field->vCpu(), field->DataSize()*n3);
+	#ifdef	USE_GPU
+	field->sendGhosts(FIELD_M, COMM_SDRV);
+	field->sendGhosts(FIELD_M, COMM_WAIT);
+	#else
 	field->exchangeGhosts(FIELD_M);
+	#endif
 
 	printf("CORE smoothing Done\n");
 	fflush (stdout);

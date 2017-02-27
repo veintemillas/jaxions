@@ -16,7 +16,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-	#include "gen/randGpu.h"
+//	#include "gen/randGpu.h"
 	#include "gen/smoothGpu.h"
 #endif
 
@@ -115,7 +115,49 @@ void	ConfGenerator::runGpu	()
 {
 #ifdef	USE_GPU
 	printf("The configuration will be generated on host");
-	runCpu();
+
+	switch (cType)
+	{
+		case CONF_NONE:
+		break;
+
+		case CONF_READ:
+		readConf (&axionField, index);
+		break;
+
+		case CONF_TKACHEV:
+		momConf(axionField, kMax, kCrt);
+		axionField->fftCpu(1);
+		axionField->sendGhosts(FIELD_M, COMM_SDRV);
+		axionField->sendGhosts(FIELD_M, COMM_WAIT);
+		break;
+
+		case CONF_KMAX:
+		momConf(axionField, kMax, kCrt);
+		axionField->fftCpu(1);
+		axionField->sendGhosts(FIELD_M, COMM_SDRV);
+		axionField->sendGhosts(FIELD_M, COMM_WAIT);
+		normaliseField(axionField, FIELD_M, fCount);
+		normCoreField (axionField, alpha, fCount);
+		break;
+
+		case CONF_SMOOTH:
+		randConf (axionField);
+		axionField->transferDev(FIELD_M);
+		smoothGpu (axionField, sIter, alpha);
+		axionField->transferCpu(FIELD_M);
+		normCoreField (axionField, alpha, fCount);
+		break;
+	}
+
+
+	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
+	{
+		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
+		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+	}
+
+	axionField->transferDev(FIELD_MV);
 #else
 	printf("Gpu support not built");
 	exit(1);

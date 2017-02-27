@@ -10,7 +10,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-	#include "propagator/propThetaGpu.h"
+//	#include "propagator/propThetaGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -52,7 +52,7 @@ void	PropTheta::runGpu	()
 	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 	const uint ext = uV + uS;
 	double *z = axionField->zV();
-
+/*
         propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M);
         propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
@@ -84,6 +84,7 @@ void	PropTheta::runGpu	()
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 	*z += dz*d4;
+*/
 #else
 	printf("Gpu support not built");
 	exit(1);

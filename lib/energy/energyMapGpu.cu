@@ -66,8 +66,8 @@ __global__ void	energyKernel(const complex<Float> * __restrict__ m, const comple
 		energyMapCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp);
 }
 
-void	energyMapGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double LL, const double nQcd,
-			 const uint Lx, const uint Lz, const uint V, const uint Vt, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
+void	energyMapGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
+			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);
@@ -91,22 +91,6 @@ void	energyMapGpu	(const void * __restrict__ m, const void * __restrict__ v, voi
 	}
 
 	cudaDeviceSynchronize();
-
-	const double iV = 1./((double) Vt);
-	const double o2 = 0.375/delta2;
-	const double zQ = 9.*pow(zR, nQcd+2.);
-	const double lZ = 0.25*LL*zR*zR;
-
-	eR[0] *= o2*iV;
-	eR[1] *= o2*iV;
-	eR[2] *= o2*iV;
-	eR[3] *= o2*iV;
-	eR[4] *= o2*iV;
-	eR[5] *= o2*iV;
-	eR[6] *= lZ*iV;
-	eR[7] *= zQ*iV;
-	eR[8] *= .5*iV;
-	eR[9] *= .5*iV;
 
 	return;
 }

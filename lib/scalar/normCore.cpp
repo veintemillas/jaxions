@@ -9,7 +9,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-	#include "scalar/normCoreGpu.h"
+//	#include "scalar/normCoreGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -39,6 +39,8 @@ class	NormCoreField
 void	NormCoreField::runGpu	()
 {
 #ifdef	USE_GPU
+	printf("Field will be core-smoothed in the CPU");
+	normCoreXeon(axionField, alpha);
 #else
 	printf("Gpu support not built");
 	exit(1);

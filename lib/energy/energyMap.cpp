@@ -51,11 +51,11 @@ void	EnergyMap::runGpu	()
 	double *z = axionField->zV();
 
 	axionField->exchangeGhosts(FIELD_M);
-	int st = energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+//	int st = energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
-	if (st != 0)
+//	if (st != 0)
 	{
 		printf("Gpu error computing energy.");
 		exit(1);
