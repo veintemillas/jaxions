@@ -802,7 +802,7 @@ void	Scalar::thetav2m2()//int *window)
 			{
 				double za = (*z);
 				//double massfactor = 3.0 * pow(za, nQcd/2 + 1);
-				double massfactor = axionmass(za, nQcd,1.5,3.0)*za;
+				double massfactor = axionmass(za, nQcd,zthres, zrestore)*za;
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
@@ -813,7 +813,7 @@ void	Scalar::thetav2m2()//int *window)
 			} else {
 				float zaf = *z ;
 				//float massfactor = 3.0 * pow(zaf, nQcd/2 + 1);
-				float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
+				float massfactor = (float) axionmass((double) zaf, nQcd,zthres, zrestore)*zaf;
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
@@ -828,7 +828,7 @@ void	Scalar::thetav2m2()//int *window)
 			if (precision == FIELD_DOUBLE)
 			{
 				//double massfactor = 3.0 * pow((*z), nQcd/2 + 1);
-				double massfactor = axionmass((*z), nQcd,1.5,3.0)*(*z);
+				double massfactor = axionmass((*z), nQcd,zthres, zrestore)*(*z);
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
@@ -838,7 +838,7 @@ void	Scalar::thetav2m2()//int *window)
 			{
 				//float massfactor = 3.0 * pow((*z), nQcd/2 + 1);
 				float zaf = (float) *z ;
-				float massfactor = (float) axionmass((double) zaf, nQcd,1.5,3.0)*zaf;
+				float massfactor = (float) axionmass((double) zaf, nQcd,zthres, zrestore)*zaf;
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
@@ -1355,7 +1355,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	const Float deltaa2 = pow(sizeL/sizeN,2.)*4. ;
 	const Float invz	= 1.0/(*z);
 	//const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
-	const Float z9QCD4 = axionmass2((*z), nQcd,1.5,3.0)*pow((*z),4);
+	const Float z9QCD4 = axionmass2((*z), nQcd,zthres, zrestore)*pow((*z),4);
 
 	//	AUX VARIABLES
 	Float maxi = 0.;

@@ -1,12 +1,12 @@
 #!/bin/bash
 for j in $(ls out/rho/rho-*.txt); do
-read  dum nnn lll ddd zzz < $j
+read  dum nnn lll ddd zzz mode< $j
 NAME=${j%.txt}  			# get the part before the colon
 NAME=${NAME#*/rho-}		# get the part after the rh- (number)
 FILE="ploter2.gnu"
 /bin/cat <<EOM > $FILE
-set title "(N=$nnn, prec=?) z=$zzz" offset 0,-1
-set terminal png medium size 1200,1200
+set title "(N=$nnn, mode=$mode) z=$zzz" offset 0,-1
+set terminal png medium size $nnn+200,$nnn+200
 set xrange [0:$lll]
 set yrange [0:$lll]
 set size 1,1
@@ -22,5 +22,6 @@ plot '$j' u (\$1*$ddd):(\$2*$ddd):3 matrix with image notitle
 #plot '$j' binary array=${nnn}x$nnn dx=$ddd dy=$ddd format="%float" with image notitle
 EOM
 gnuplot 'ploter2.gnu'
+rm 'ploter2.gnu'
 done
 ffmpeg -nostats -loglevel 0 -r 5 -i out/plots/rho/rho-%05d.png -c:v libx264 -r 30 -pix_fmt yuv420p out/rh-movie.mp4

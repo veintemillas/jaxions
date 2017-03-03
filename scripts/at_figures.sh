@@ -1,6 +1,6 @@
 #!/bin/bash
 for j in $(ls out/at/at-*.txt); do
-read  dum nnn lll ddd zzz < $j
+read  dum nnn lll ddd zzz mode < $j
 #echo $nnn
 #echo $lll
 #echo $ddd
@@ -8,7 +8,7 @@ NAME=${j%.txt}  			# get the part before the colon
 NAME=${NAME#*/at-}		# get the part after the at- (number)
 FILE="ploter.gnu"
 /bin/cat <<EOM > $FILE
-set title "(N=$nnn, prec=?) z=$zzz" offset 0,-1
+set title "(N=$nnn, mode=$mode) z=$zzz" offset 0,-1
 set terminal png medium size 1200,1200
 set xrange [0:$lll]
 set yrange [0:$lll]
@@ -25,5 +25,11 @@ plot '$j' u (\$1*$ddd):(\$2*$ddd):3 matrix with image notitle
 #plot '$j' binary array=${nnn}x$nnn dx=$ddd dy=$ddd format="%float" with image notitle
 EOM
 gnuplot 'ploter.gnu'
+rm 'ploter.gnu'
 done
 ffmpeg -nostats -loglevel 0 -r 3 -i out/plots/at/at-%05d.png -c:v libx264 -r 30 -pix_fmt yuv420p out/at-movie.mp4
+
+
+#ffmpeg -nostats -loglevel 0 -framerate 3 -pattern_type glob -i 'out/plots/at/*.png' -c:v libx264 -r 30 -pix_fmt yuv420p out/at-movie.mp4
+#ffmpeg -nostats -loglevel 0 -framerate 3 -pattern_type glob -i 'out/plots/dens/*.png' -c:v libx264 -r 30 -pix_fmt yuv420p out/dens-movie.mp4
+#ffmpeg -nostats -loglevel 0 -framerate 3 -pattern_type glob -i 'out/plots/rho/*.png' -c:v libx264 -r 30 -pix_fmt yuv420p out/rho-movie.mp4

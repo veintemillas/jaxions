@@ -30,7 +30,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 		int rank = commRank();
 		size_t Lz = sizeN/commSize();
 		size_t local_z_start = rank*Lz;
-		printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, sizeN, Lz, local_z_start);
+		//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, sizeN, Lz, local_z_start);
 
 		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 		std::uniform_real_distribution<Float> uni(-1.0, 1.0);

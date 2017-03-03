@@ -242,6 +242,8 @@ int	main (int argc, char *argv[])
 	void *eRes, *str;			// Para guardar la energia
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
+	double *eR = static_cast<double *> (eRes);
+
 #ifdef	__MIC__
 	alignAlloc(&str, 64, (axion->Size()));
 #elif defined(__AVX__)
@@ -270,19 +272,37 @@ int	main (int argc, char *argv[])
 	//fflush (stdout);
 //	commSync();
 
+//	--------------------------------------------------
+//	TRICK PARAMETERS TO RESPECT STRINGS
+//	--------------------------------------------------
+
+	// WE USE LAMDA_Z2 WITH msa = 1.5 so
+	// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
+
+	double msa = 1.0 ;
+	printMpi ("zth-zres (%f,%f) changed to ", zthres, zrestore);
+	zthres = pow(msa*sizeN/(indi3*sizeL*9.),2./(nQcd+2.)) ;
+	zrestore = 3.0 ;
+	printMpi ("(%f,%f) \n", zthres, zrestore);
+	LL = pow(msa*sizeN/(sizeL*zthres),2.)/2. ;
+	printMpi ("LL reset to %f \n", LL);
+
 	bool coZ = 1;
   bool coS = 1;
 	int strcount = 0;
 
+
 	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
-	{
-	printMpi ("Lambda in FIXED mode\n");
-	}
+	{ 	printMpi ("Lambda in FIXED mode\n"); 	}
 	else
-	{
-		printMpi ("Lambda in Z2 mode\n");
-	}
+	{		printMpi ("Lambda in Z2 mode\n"); 		}
+
+
+
+//	--------------------------------------------------
+//	--------------------------------------------------
+
 
 	Folder munge(axion);
 
@@ -365,10 +385,10 @@ int	main (int argc, char *argv[])
 			z_now = (*axion->zV());
 
 			//dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
-			dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,1.5 , 3.)));
+			dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
-				llaux = 1.125/pow(delta,2.);
+				llaux = 0.5/pow(delta/msa,2.);
 				dzaux = min(dzaux,delta/1.5);
 			}
 
@@ -385,7 +405,7 @@ int	main (int argc, char *argv[])
         dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
 				printMpi("*");
 			}
-        dzaux = dzaux/3.;
+        dzaux = dzaux/2.0;
 
 
 
@@ -404,12 +424,12 @@ int	main (int argc, char *argv[])
 							double saskia = saxionshift(z_now, nQcd, 0, 3.0, llprint);
 
 							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %lf\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
 								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag(),
 								nstrings_global, maximumtheta, saskia );
 							} else {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %lf\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
 								static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),
 								nstrings_global, maximumtheta, saskia);
@@ -418,11 +438,11 @@ int	main (int argc, char *argv[])
 						else
 						{
 							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,1.5,3.),
+								fprintf(file_sample,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
 								static_cast<double*> (axion->mCpu())[sliceprint*S0+S0], static_cast<double*> (axion->vCpu())[sliceprint*S0],
 								maximumtheta);
 							} else {
-								fprintf(file_sample,"%f %f %f %f %f\n",z_now, axionmass(z_now,nQcd,1.5,3.),
+								fprintf(file_sample,"%f %f %f %f %f\n",z_now, axionmass(z_now,nQcd,zthres, zrestore),
 								static_cast<float*> (axion->mCpu())[sliceprint*S0+S0], static_cast<float*> (axion->vCpu())[sliceprint*S0],
 								maximumtheta);
 								// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
@@ -477,7 +497,7 @@ int	main (int argc, char *argv[])
 
                 if (nstrings_global < 500)
                 {
-                  //nstrings = analyzeStrFoldedNP(axion, index);
+                  //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 									nstrings_global = strings(axion, cDev, str, fCount);
 									maximumtheta = axion->maxtheta();
@@ -526,16 +546,19 @@ int	main (int argc, char *argv[])
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
 
-      printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3*dump,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
+      printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 			fflush(stdout);
+			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			//fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
+			//(*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
-										nstrings_global = strings(axion, cDev, str, fCount);
-//										analyzeStrFolded(axion, index);
+										//nstrings_global = strings(axion, cDev, str, fCount);
+										nstrings_global =	analyzeStrFolded(axion, index);
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
 
@@ -562,11 +585,11 @@ int	main (int argc, char *argv[])
 				// munge(FOLD_ALL);
 			}
 
-			// if (commRank() == 0)
-			// {
-			// munge(UNFOLD_SLICE, sliceprint);
-			// writeMap (axion, index);
-			// }
+			 if (commRank() == 0)
+			 {
+			 munge(UNFOLD_SLICE, sliceprint);
+			 writeMap (axion, index);
+			 }
 
 			// SAVE FILE OUTPUT
 

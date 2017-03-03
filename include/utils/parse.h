@@ -18,6 +18,9 @@ extern int kMax;
 extern int iter;
 extern int parm1;
 extern int Ng;
+extern double indi3;
+extern double zthres;
+extern double zrestore;
 
 
 extern char *initFile;

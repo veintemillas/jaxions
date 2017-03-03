@@ -12,6 +12,7 @@ int  dump = 100;
 int  nQcd = 3;
 //JAVIER
 int  Ng = 1 ;
+double indi3 = 3.0;
 int  fIndex = -1;
 
 double sizeL = 4.;
@@ -20,6 +21,8 @@ double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
 double alpha = 0.143;
+double zthres   = 1.0;
+double zrestore = 1.0;
 double LL = 15000.;
 double parm2 = 0.;
 

@@ -1,9 +1,9 @@
 #!/bin/bash
-for j in $(ls out/str/str-*.txt); do
+for j in $(ls out/con/con-*.txt); do
 read  dum nnn lll ddd zzz < $j
 NAME=${j%.txt}  			# get the part before the colon
-NAME=${NAME#*/str-}		# get the part after the rh- (number)
-FILE="ploter3.gnu"
+NAME=${NAME#*/con-}		# get the part after the rh- (number)
+FILE="ploter8.gnu"
 /bin/cat <<EOM > $FILE
 set title "(N=$nnn, prec=?) z=$zzz" font "Helvetica,20" offset -50,-10 tc lt 1
 set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb"black" behind
@@ -17,19 +17,19 @@ set xrange [0:$lll]
 set yrange [0:$lll]
 set zrange [0:$lll]
 set ticslevel 0
-set output 'out/plots/str/st-$NAME.png'
+set output 'out/plots/con/con-$NAME.png'
 set key off
 unset colorbox
-splot '$j' u (\$1*$ddd):(\$2*$ddd):(\$3*$ddd):((\$1*$ddd - $lll/2)**2+(\$2*$ddd - $lll/2)**2) with points palette pointsize 0.2 pointtype 7 notitle
+splot '$j' u (\$1*$ddd):(\$2*$ddd):(\$3*$ddd):(\$4) with points palette pointsize 0.2 pointtype 7 notitle
 EOM
-gnuplot 'ploter3.gnu'
+gnuplot 'ploter8.gnu'
 #echo $j printed
 done
 
-for j in $(ls out/str/str-*.txt); do
+for j in $(ls out/con/con-*.txt); do
   NAME=${j%.txt}  			# get the part before the colon
-  NAME=${NAME#*/str-}		# get the part after the rh- (number)
+  NAME=${NAME#*/con-}		# get the part after the con- (number)
 break
 done
 
-ffmpeg -nostats -loglevel 0 -r 3 -start_number $NAME -i out/plots/str/st-%05d.png -c:v libx264 -r 30 -pix_fmt yuv420p out/st-movie.mp4
+ffmpeg -nostats -loglevel 0 -r 3 -start_number $NAME -i out/plots/con/con-%05d.png -c:v libx264 -r 30 -pix_fmt yuv420p out/con-movie.mp4

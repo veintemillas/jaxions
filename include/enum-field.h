@@ -60,6 +60,13 @@
 		LAMBDA_Z2,
 	}	LambdaType;
 
+	typedef	enum	AxionMassType_s
+	{
+		AXIONMASS_POWERLAW,
+		AXIONMASS_ZIGZAG,
+	}	AxionMassType;
+
+
 	typedef	enum	VqcdType_s
 	{
 		VQCD_1,

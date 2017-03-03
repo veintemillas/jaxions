@@ -278,7 +278,7 @@ void	spectrumUNFOLDED(Scalar *axion)
 		static_cast<double*> (axion->mCpu())[dix] = 0. ;
 	}
 
-	double mass2 = axionmass2((*axion->zV()), nQcd, 1.5, 3.0)*(*axion->zV())*(*axion->zV());
+	double mass2 = axionmass2((*axion->zV()), nQcd, zthres, zrestore)*(*axion->zV())*(*axion->zV());
 
 	// 	2 STEP SCHEME FOR MPI // OUTPUTS TO M
 
@@ -434,7 +434,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 		static_cast<double*> (axion->mCpu())[dix] = 0. ;
 	}
 
-	double mass2 = axionmass2((*axion->zV()), nQcd, 1.5, 3.0)*(*axion->zV())*(*axion->zV());
+	double mass2 = axionmass2((*axion->zV()), nQcd, zthres, zrestore)*(*axion->zV())*(*axion->zV());
 
 	// 	New scheme
 
