@@ -132,9 +132,9 @@ void	ConfGenerator::runGpu	()
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
 
 		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+		axionField->transferDev(FIELD_MV);
 		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
 
-		axionField->transferDev(FIELD_MV);
 		break;
 
 		case CONF_KMAX:
