@@ -3,5 +3,5 @@
 
 	#include "scalar/scalarField.h"
 
-	void	normCoreXeon (Scalar *sField, const double alph);
+	void	normCoreXeon (Scalar *sField);
 #endif

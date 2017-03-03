@@ -58,9 +58,9 @@ void	Energy::runGpu	()
 	axionField->exchangeGhosts(FIELD_M);
 
 	if (fType == FIELD_SAXION)
-		st = energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
+		st = 0;//energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 	else
-		st = energyThetaGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
+		st = 0;//energyThetaGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 

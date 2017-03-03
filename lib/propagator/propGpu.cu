@@ -4,6 +4,8 @@
 
 #include "enum-field.h"
 
+#include "scalar/varNQCD.h"
+
 using namespace gpuCu;
 using namespace indexHelper;
 
@@ -65,7 +67,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d,
 		     const double delta2, const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
-	#define	BLSIZE 256
+	#define	BLSIZE 512
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
@@ -134,7 +136,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 	tmp = m[idx];
 	mel = m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+Sf] + m[idx-Sf];
 
-	a = (mel-((Float) 6.)*tmp)*ood2 + zQ - tmp*(((Float) LL)*((tmp.real()*tmp.real() + tmp.imag()*tmp.imag())- z2));
+	a = (mel-((Float) 6.)*tmp)*ood2 + zQ - tmp*(((Float) LL)*((tmp.real()*tmp.real() + tmp.imag()*tmp.imag()) - z2));
 
 	mel = v[idx-Sf];
 	mel += a*dzc;
@@ -195,7 +197,8 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 	{
 		const double zR   = *z;
 		const double z2   = zR*zR;
-		const double zQ   = 9.*pow(zR, nQcd+3.);
+		//const double zQ   = 9.*pow(zR, nQcd+3.);
+		const double zQ = axionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
 		const double dzc  = dz*c;
 		const double ood2 = 1./delta2;
 		updateVKernel<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, z2, zQ, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
@@ -204,7 +207,8 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 	{
 		const float zR   = *z;
 		const float z2   = zR*zR;
-		const float zQ   = 9.*powf(zR, nQcd+3.);
+		//const float zQ   = 9.*powf(zR, nQcd+3.);
+		const float zQ = axionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
 		const float dzc  = dz*c;
 		const float ood2 = 1./delta2;
 		updateVKernel<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, z2, zQ, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);

@@ -23,7 +23,7 @@
 #include "utils/flopCounter.h"
 #include "utils/memAlloc.h"
 
-#include <mpi.h>
+//#include <mpi.h>
 
 class	ConfGenerator
 {
@@ -130,34 +130,41 @@ void	ConfGenerator::runGpu	()
 		axionField->fftCpu(1);
 		axionField->sendGhosts(FIELD_M, COMM_SDRV);
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
+
+		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+
+		axionField->transferDev(FIELD_MV);
 		break;
 
 		case CONF_KMAX:
 		momConf(axionField, kMax, kCrt);
 		axionField->fftCpu(1);
+
 		axionField->sendGhosts(FIELD_M, COMM_SDRV);
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
+		axionField->transferDev(FIELD_M);
+
 		normaliseField(axionField, FIELD_M, fCount);
-		normCoreField (axionField, alpha, fCount);
+		normCoreField (axionField, fCount);
+		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+
+		axionField->transferCpu(FIELD_MV);
 		break;
 
 		case CONF_SMOOTH:
 		randConf (axionField);
+
 		axionField->transferDev(FIELD_M);
+
 		smoothGpu (axionField, sIter, alpha);
-		axionField->transferCpu(FIELD_M);
-		normCoreField (axionField, alpha, fCount);
+		normCoreField (axionField, fCount);
+		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+
+		axionField->transferCpu(FIELD_MV);
 		break;
 	}
 
-
-	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
-	{
-		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
-		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
-	}
-
-	axionField->transferDev(FIELD_MV);
 #else
 	printf("Gpu support not built");
 	exit(1);
@@ -186,13 +193,13 @@ void	ConfGenerator::runCpu	()
 		axionField->fftCpu(1);
 		axionField->exchangeGhosts(FIELD_M);
 		normaliseField(axionField, FIELD_M, fCount);
-		normCoreField (axionField, alpha, fCount);
+		normCoreField (axionField, fCount);
 		break;
 
 		case CONF_SMOOTH:
 		randConf (axionField);
 		smoothXeon (axionField, sIter, alpha);
-		normCoreField (axionField, alpha, fCount);
+		normCoreField (axionField, fCount);
 		break;
 	}
 

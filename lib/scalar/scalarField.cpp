@@ -1031,10 +1031,18 @@ void	Scalar::setField (FieldType fType)
 				{
 					case FIELD_SINGLE:
 					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
+
+					if (device == DEV_GPU)
+						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
+
 					break;
 
 					case FIELD_DOUBLE:
 					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
+
+					if (device == DEV_GPU)
+						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
+
 					break;
 				}
 

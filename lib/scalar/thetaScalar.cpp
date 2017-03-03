@@ -10,7 +10,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-//	#include "scalar/thetaGpu.h"
+	#include "scalar/thetaGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -39,6 +39,7 @@ class	CmplxToTheta
 void	CmplxToTheta::runGpu	()
 {
 #ifdef	USE_GPU
+	toThetaGpu(axionField);
 #else
 	printf("Gpu support not built");
 	exit(1);

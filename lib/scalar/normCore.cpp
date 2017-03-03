@@ -9,7 +9,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-//	#include "scalar/normCoreGpu.h"
+	#include "scalar/normCoreGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -19,12 +19,11 @@ class	NormCoreField
 {
 	private:
 
-	const double alpha;
 	Scalar *axionField;
 
 	public:
 
-		 NormCoreField(Scalar *field, const double alpha);
+		 NormCoreField(Scalar *field);
 		~NormCoreField() {};
 
 	void	runCpu	();
@@ -32,15 +31,14 @@ class	NormCoreField
 	void	runXeon	();
 };
 
-	NormCoreField::NormCoreField(Scalar *field, const double alpha) : axionField(field), alpha(alpha)
+	NormCoreField::NormCoreField(Scalar *field) : axionField(field)
 {
 }
 
 void	NormCoreField::runGpu	()
 {
 #ifdef	USE_GPU
-	printf("Field will be core-smoothed in the CPU");
-	normCoreXeon(axionField, alpha);
+	normCoreGpu(axionField);
 #else
 	printf("Gpu support not built");
 	exit(1);
@@ -49,22 +47,22 @@ void	NormCoreField::runGpu	()
 
 void	NormCoreField::runCpu	()
 {
-	normCoreXeon(axionField, alpha);
+	normCoreXeon(axionField);
 }
 
 void	NormCoreField::runXeon	()
 {
 #ifdef	USE_XEON
-	normCoreXeon(axionField, alpha);
+	normCoreXeon(axionField);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	normCoreField	(Scalar *field, const double alpha, FlopCounter *fCount)
+void	normCoreField	(Scalar *field, FlopCounter *fCount)
 {
-	NormCoreField *nField = new NormCoreField(field, alpha);
+	NormCoreField *nField = new NormCoreField(field);
 
 	switch (field->Device())
 	{

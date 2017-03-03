@@ -9,7 +9,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-//	#include "scalar/scaleGpu.h"
+	#include "scalar/scaleGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -42,8 +42,7 @@ class	ScaleField
 void	ScaleField::runGpu	()
 {
 #ifdef	USE_GPU
-	printf("Field will be scaled in the CPU");
-	scaleXeon(axionField, fIdx, factor);
+	scaleGpu(axionField, fIdx, factor);
 #else
 	printf("Gpu support not built");
 	exit(1);

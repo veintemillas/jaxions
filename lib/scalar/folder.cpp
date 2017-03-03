@@ -27,7 +27,7 @@ using namespace std;
 template<typename cFloat>
 void	Folder::foldField()
 {
-	if (field->Folded())
+	if (field->Folded() || field->Device() == DEV_GPU)
 		return;
 	// WHY THE FOLLOWING DEFINITIONS WERE CONSTANTS?
 	fSize = field->DataSize();
@@ -66,7 +66,7 @@ void	Folder::foldField()
 template<typename cFloat>
 void	Folder::unfoldField()
 {
-	if (!field->Folded())
+	if (!field->Folded() || field->Device() == DEV_GPU)
 		return;
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
@@ -103,7 +103,7 @@ void	Folder::unfoldField()
 template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
 void	Folder::unfoldField2D (const size_t sZ)
 {
-	if ((sZ < 0) || (sZ > field->Depth()))
+	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
 		return;
 
 	cFloat *m = static_cast<cFloat *> (field->mCpu());
@@ -140,6 +140,9 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 void	Folder::operator()(FoldType fType, size_t cZ)
 {
+	if (field->Device() == DEV_GPU)
+		return;
+
 	switch (fType)
 	{
 		case	FOLD_ALL:

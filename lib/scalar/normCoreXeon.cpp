@@ -8,14 +8,8 @@
 
 using namespace std;
 
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  	\
-	  fflush(stdout); }		\
-}	while (0)
-
 template<typename Float>
-void normCoreKernelXeon (Scalar *field, Float alph)
+void normCoreKernelXeon (Scalar *field)
 {
 
 	//printf("Entering CORE smoothing ");
@@ -26,20 +20,9 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 	Float LLa ;
 
 	if (field->Lambda() == LAMBDA_FIXED)
-		{
 			LLa = LL ;
-			printMpi("(LAMBDA_FIXED,%.3E) ",LLa);
-		}
 	else
-		{
-			//LLa = LL/((zia)*(zia));
 			LLa = 1.125/(pow(deltaa*zia,2.));
-			printMpi("(LAMBDA_Z2,%.3E) ",LLa);
-		}
-
-	//if ( 1.125/pow(delta,2.) > LL*pow(zia,2.) )
-
-
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
@@ -91,9 +74,7 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 
 		iPz = idx + n2;
 		iMz = idx - n2;
-		//Uses v to copy the smoothed configuration
-		//vCp[idx]   = alph*mCp[idx+n2] + OneSixth*(One-alph)*(mCp[iPx+n2] + mCp[iMx+n2] + mCp[iPy+n2] + mCp[iMy+n2] + mCp[iPz+n2] + mCp[iMz+n2]);
-		//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
+
 		gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
 		grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
 		gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
@@ -123,30 +104,23 @@ void normCoreKernelXeon (Scalar *field, Float alph)
 
 	//Copies v to m
 	memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*n2, field->vCpu(), field->DataSize()*n3);
-	#ifdef	USE_GPU
-	field->sendGhosts(FIELD_M, COMM_SDRV);
-	field->sendGhosts(FIELD_M, COMM_WAIT);
-	#else
 	field->exchangeGhosts(FIELD_M);
-	#endif
 
 	commSync();
-	printMpi("CORE smoothing Done\n");
-	fflush (stdout);
 }
 
-void	normCoreXeon (Scalar *sField, const double alph)
+void	normCoreXeon (Scalar *sField)
 {
 	switch (sField->Precision())
 	{
 		case FIELD_DOUBLE:
 
-			normCoreKernelXeon<double> (sField, alph);
+			normCoreKernelXeon<double> (sField);
 			break;
 
 		case FIELD_SINGLE:
 
-			normCoreKernelXeon<float> (sField, static_cast<float>(alph));
+			normCoreKernelXeon<float> (sField);
 			break;
 
 		default:

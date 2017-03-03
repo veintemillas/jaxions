@@ -5,5 +5,5 @@
 	#include "enum-field.h"
 	#include "utils/flopCounter.h"
 
-	void	normCoreField	(Scalar *field, const double alpha, FlopCounter *fCount);
+	void	normCoreField	(Scalar *field, FlopCounter *fCount);
 #endif
