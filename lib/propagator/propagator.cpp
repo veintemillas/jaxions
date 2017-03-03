@@ -252,11 +252,11 @@ void	propagate	(Scalar *field, const double dz, const double LL, const double nQ
 	switch (pot)
 	{
 		case VQCD_1:
-			fCount->addFlops(32.*4.*field->Size()*1.e-9, 4.*4.*field->DataSize()*field->Size()*1.e-9);
+			fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
 			break;
 
 		case VQCD_2:
-			fCount->addFlops(35.*4.*field->Size()*1.e-9, 4.*4.*field->DataSize()*field->Size()*1.e-9);
+			fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
 			break;
 	}
 
