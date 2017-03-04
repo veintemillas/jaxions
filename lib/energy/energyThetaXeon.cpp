@@ -183,34 +183,33 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mMy = opCode(sub_pd, mMy, mel);
 
 				grd = opCode(mul_pd,
-								opCode(add_pd,
-									opCode(mul_pd, mPx, mPx),
-									opCode(mul_pd, mMx, mMx)),
-								opCode(set1_pd, ood2));
+					opCode(add_pd,
+						opCode(mul_pd, mPx, mPx),
+						opCode(mul_pd, mMx, mMx)),
+					opCode(set1_pd, ood2));
 
 				mMx = opCode(mul_pd,
-								opCode(add_pd,
-									opCode(mul_pd, mPy, mPy),
-									opCode(mul_pd, mMy, mMy)),
-								opCode(set1_pd, ood2));
+					opCode(add_pd,
+						opCode(mul_pd, mPy, mPy),
+						opCode(mul_pd, mMy, mMy)),
+					opCode(set1_pd, ood2));
 
 				mMy = opCode(mul_pd,
-								opCode(add_pd,
-									opCode(mul_pd, mPz, mPz),
-									opCode(mul_pd, mMz, mMz)),
-								opCode(set1_pd, ood2));
+					opCode(add_pd,
+						opCode(mul_pd, mPz, mPz),
+						opCode(mul_pd, mMz, mMz)),
+					opCode(set1_pd, ood2));
 
 				mPx = opCode(mul_pd,
-								opCode(set1_pd, 0.5),
-								opCode(mul_pd, vel, vel));
+					opCode(set1_pd, 0.5),
+					opCode(mul_pd, vel, vel));
 
 				mPy = opCode(mul_pd,
-								opCode(set1_pd, zQ),
-								opCode(sub_pd,
-									opCode(set1_pd, 1.),
-									opCode(mul_pd,
-										opCode(set1_pd, iz),
-										opCode(cos_pd, mel))));
+					opCode(set1_pd, zQ),
+					opCode(sub_pd,
+						opCode(set1_pd, 1.),
+						opCode(cos_pd,
+							opCode(mul_pd, opCode(set1_pd, iz), mel))));
 
 				// CHECK BOUNDARIES (Y DIRECTION MOSTLY)
 

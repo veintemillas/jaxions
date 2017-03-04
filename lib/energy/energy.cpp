@@ -146,7 +146,7 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 
 	delete	eDark;
 
-	const int size = field->Field() == FIELD_SAXION ? 10 : 2;
+	const int size = field->Field() == FIELD_SAXION ? 10 : 5;
 
 	MPI_Allreduce(eTmp, eRes, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	trackFree(&eTmp, ALLOC_TRACK);
