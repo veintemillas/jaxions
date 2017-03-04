@@ -10,6 +10,7 @@
 #endif
 
 #include"utils/triSimd.h"
+#include"utils/parse.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -80,7 +81,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 		const size_t YC = (Lx>>1);
 #endif
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
 
@@ -254,7 +255,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 		const size_t YC = (Lx>>1);
 #endif
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
 
@@ -396,7 +397,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 void	energyMapThetaXeon	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S)
 {
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int  micIdx = commAcc();
 	const double ood2 = 1./delta2;
 	double *z  = axionField->zV();
 	const FieldPrecision precision = axionField->Precision();

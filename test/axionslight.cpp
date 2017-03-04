@@ -599,7 +599,7 @@ int	main (int argc, char *argv[])
 				energy(axion, llaux, nQcd, delta, cDev, eRes, fCount, VQCD_1);
 				if (commRank()==0)
 				{
-				fprintf(file_energy,  "%+lf %+lf %+lf \n",(*axion->zV()), eR[0], eR[1], maximumtheta);
+				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n",(*axion->zV()), eR[0], eR[1],eR[2], eR[3],eR[4], maximumtheta);
 				fflush(file_energy);
 				}
 

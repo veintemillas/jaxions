@@ -41,7 +41,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	const size_t Sf = Lx*Lx;
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
-	double grC = 0., ptC = 0.;
+	double gxC = 0., gyC = 0., gzC = 0., ktC = 0., ptC = 0.;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -71,6 +71,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #endif
 		const double zR  = *z;
 		const double iz  = 1./zR;
+		const double iz2 = iz*iz;
 		//const double zQ = 9.*pow(zR, nQcd+2.);
 		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
 		const double o2 = ood2*0.25;
@@ -87,12 +88,15 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
+			_MData_ mel, vel, grd, mMx, mMy, mMz, mPx, mPy, mPz;
 
-			double tmpG[step] __attribute__((aligned(Align)));
-			double tmpV[step] __attribute__((aligned(Align)));
+			double tmpGx[step] __attribute__((aligned(Align)));
+			double tmpGy[step] __attribute__((aligned(Align)));
+			double tmpGz[step] __attribute__((aligned(Align)));
+			double tmpK [step] __attribute__((aligned(Align)));
+			double tmpV [step] __attribute__((aligned(Align)));
 
-			#pragma omp for schedule(static) reduction(+:grC,ptC)
+			#pragma omp for schedule(static) reduction(+:gxC,gyC,gzC,ktC,ptC)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
@@ -179,44 +183,56 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mMy = opCode(sub_pd, mMy, mel);
 
 				grd = opCode(mul_pd,
-					opCode(add_pd,
-						opCode(add_pd,
-							opCode(add_pd,
-								opCode(mul_pd, mPx, mPx),
-								opCode(mul_pd, mMx, mMx)),
-							opCode(add_pd,
-								opCode(mul_pd, mPy, mPy),
-								opCode(mul_pd, mMy, mMy))),
-						opCode(add_pd,
-							opCode(mul_pd, mPz, mPz),
-							opCode(mul_pd, mMz, mMz))),
-					opCode(set1_pd, ood2));
+								opCode(add_pd,
+									opCode(mul_pd, mPx, mPx),
+									opCode(mul_pd, mMx, mMx)),
+								opCode(set1_pd, ood2));
 
-				mPx = opCode(add_pd,
-					opCode(mul_pd,
-						opCode(set1_pd, 0.5),
-						opCode(mul_pd, vel, vel)),
-					opCode(mul_pd,
-						opCode(set1_pd, zQ),
-						opCode(sub_pd,
-							opCode(set1_pd, 1.),
-							opCode(mul_pd,
-								opCode(set1_pd, iz),
-								opCode(cos_pd, mel)))));
+				mMx = opCode(mul_pd,
+								opCode(add_pd,
+									opCode(mul_pd, mPy, mPy),
+									opCode(mul_pd, mMy, mMy)),
+								opCode(set1_pd, ood2));
 
-				// STORAGE, CHECK BOUNDARIES (Y DIRECTION MOSTLY)
+				mMy = opCode(mul_pd,
+								opCode(add_pd,
+									opCode(mul_pd, mPz, mPz),
+									opCode(mul_pd, mMz, mMz)),
+								opCode(set1_pd, ood2));
 
-				opCode(store_pd, tmpG, grd);
-				opCode(store_pd, tmpV, mPx);
+				mPx = opCode(mul_pd,
+								opCode(set1_pd, 0.5),
+								opCode(mul_pd, vel, vel));
+
+				mPy = opCode(mul_pd,
+								opCode(set1_pd, zQ),
+								opCode(sub_pd,
+									opCode(set1_pd, 1.),
+									opCode(mul_pd,
+										opCode(set1_pd, iz),
+										opCode(cos_pd, mel))));
+
+				// CHECK BOUNDARIES (Y DIRECTION MOSTLY)
+
+				opCode(store_pd, tmpGx, grd);
+				opCode(store_pd, tmpGy, mMx);
+				opCode(store_pd, tmpGz, mMy);
+				opCode(store_pd, tmpK,  mPx);
+				opCode(store_pd, tmpV,  mPy);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
 					ptC += tmpV[ih];
-					grC += tmpG[ih];
+					ktC += tmpK[ih];
+					gxC += tmpGx[ih];
+					gyC += tmpGy[ih];
+					gzC += tmpGz[ih];
 				}
 			}
 		}
+
+		gxC *= iz2; gyC *= iz2; gzC *= iz2; ktC *= iz2;
 
 #undef	_MData_
 #undef	step
@@ -249,6 +265,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #endif
 		const float zR  = *z;
 		const float iz  = 1./zR;
+		const float iz2 = iz*iz;
 		//const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 		const float o2 = ood2*0.25;
@@ -265,12 +282,15 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
+			_MData_ mel, vel, grd, mMx, mMy, mMz, mPx, mPy, mPz;
 
-			float tmpG[step] __attribute__((aligned(Align)));
-			float tmpV[step] __attribute__((aligned(Align)));
+			float tmpGx[step] __attribute__((aligned(Align)));
+			float tmpGy[step] __attribute__((aligned(Align)));
+			float tmpGz[step] __attribute__((aligned(Align)));
+			float tmpK [step] __attribute__((aligned(Align)));
+			float tmpV [step] __attribute__((aligned(Align)));
 
-			#pragma omp for schedule(static) reduction(+:grC,ptC)
+			#pragma omp for schedule(static) reduction(+:gxC,gyC,gzC,ktC,ptC)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 				size_t X[3], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
@@ -361,50 +381,64 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mMy = opCode(sub_ps, mMy, mel);
 
 				grd = opCode(mul_ps,
-					opCode(add_ps,
-						opCode(add_ps,
-							opCode(add_ps,
-								opCode(mul_ps, mPx, mPx),
-								opCode(mul_ps, mMx, mMx)),
-							opCode(add_ps,
-								opCode(mul_ps, mPy, mPy),
-								opCode(mul_ps, mMy, mMy))),
-						opCode(add_ps,
-							opCode(mul_ps, mPz, mPz),
-							opCode(mul_ps, mMz, mMz))),
-					opCode(set1_ps, ood2));
+								opCode(add_ps,
+									opCode(mul_ps, mPx, mPx),
+									opCode(mul_ps, mMx, mMx)),
+								opCode(set1_ps, ood2));
 
-				mPx = opCode(add_ps,
-					opCode(mul_ps,
-						opCode(set1_ps, 0.5),
-						opCode(mul_ps, vel, vel)),
-					opCode(mul_ps,
-						opCode(set1_ps, zQ),
-						opCode(sub_ps,
-							opCode(set1_ps, 1.),
-							opCode(mul_ps,
-								opCode(set1_ps, iz),
-								opCode(cos_ps, mel)))));
+				mMx = opCode(mul_ps,
+								opCode(add_ps,
+									opCode(mul_ps, mPy, mPy),
+									opCode(mul_ps, mMy, mMy)),
+								opCode(set1_ps, ood2));
+
+				mMy = opCode(mul_ps,
+								opCode(add_ps,
+									opCode(mul_ps, mPz, mPz),
+									opCode(mul_ps, mMz, mMz)),
+								opCode(set1_ps, ood2));
+
+				mPx = opCode(mul_ps,
+								opCode(set1_ps, 0.5),
+								opCode(mul_ps, vel, vel));
+
+				mPy = opCode(mul_ps,
+								opCode(set1_ps, zQ),
+								opCode(sub_ps,
+									opCode(set1_ps, 1.),
+									opCode(mul_ps,
+										opCode(set1_ps, iz),
+										opCode(cos_ps, mel))));
 
 				// CHECK BOUNDARIES (Y DIRECTION MOSTLY)
 
-				opCode(store_ps, tmpG, grd);
-				opCode(store_ps, tmpV, mPx);
+				opCode(store_ps, tmpGx, grd);
+				opCode(store_ps, tmpGy, mMx);
+				opCode(store_ps, tmpGz, mMy);
+				opCode(store_ps, tmpK,  mPx);
+				opCode(store_ps, tmpV,  mPy);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
 					ptC += (double) (tmpV[ih]);
-					grC += (double) (tmpG[ih]);
+					ktC += (double) (tmpK[ih]);
+					gxC += (double) (tmpGx[ih]);
+					gyC += (double) (tmpGy[ih]);
+					gzC += (double) (tmpGz[ih]);
 				}
 			}
 		}
 #undef	_MData_
 #undef	step
+		gxC *= iz2; gyC *= iz2; gzC *= iz2; ktC *= iz2;
 	}
 
-	eRes[0] = grC;
-	eRes[1] = ptC;
+	eRes[0] = gxC;
+	eRes[1] = gyC;
+	eRes[2] = gzC;
+	eRes[3] = ktC;
+	eRes[4] = ptC;
 }
 
 void	energyThetaXeon	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes)
