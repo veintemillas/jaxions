@@ -73,7 +73,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const double iz  = 1./zR;
 		//const double zQ = 9.*pow(zR, nQcd+2.);
 		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
-		const double o2 = ood2*0.5;
+		const double o2 = ood2*0.25;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -251,7 +251,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const float iz  = 1./zR;
 		//const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
-		const float o2 = ood2*0.5;
+		const float o2 = ood2*0.25;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -403,11 +403,8 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #undef	step
 	}
 
-	const double o2 = ood2*0.375;
-	const double zQ = 9.*pow(*z, nQcd+2.);
-
-	eRes[0] = grC*o2;
-	eRes[1] = ptC*zQ;
+	eRes[0] = grC;
+	eRes[1] = ptC;
 }
 
 void	energyThetaXeon	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes)

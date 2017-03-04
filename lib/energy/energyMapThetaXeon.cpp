@@ -2,6 +2,7 @@
 #include<cmath>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
+#include "scalar/varNQCD.h"
 
 #ifdef USE_XEON
 	#include "comms/comms.h"
@@ -66,8 +67,8 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 #endif
 		const double zR  = *z;
 		const double iz  = 1./zR;
-		const double zQ = 9.*pow(zR, nQcd+2.);
-		const double o2 = ood2*0.375;
+		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
+		const double o2 = ood2*0.25;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -240,8 +241,8 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 #endif
 		const float zR  = *z;
 		const float iz  = 1./zR;
-		const float zQ = 9.f*powf(zR, nQcd+2.);
-		const float o2 = ood2*0.375;
+		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
+		const float o2 = ood2*0.25;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
