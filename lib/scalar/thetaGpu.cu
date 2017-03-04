@@ -10,17 +10,18 @@ using namespace gpuCu;
 using namespace indexHelper;
 
 template<class Float>
-static __device__ __forceinline__ void	toThetaCoreGpu (const uint idx, const uint cIdx, const uint bIdx, complex<Float> *mC, Float *m, complex<Float> *vC, Float *v, Float z, const uint S)
+static __device__ __forceinline__ void	toThetaCoreGpu (const uint idx, const uint cIdx, const uint bIdx, complex<Float> *mC, Float *m, complex<Float> *vC, Float *v, Float z, const uint S, const Float shift)
 {
+  complex<Float> mTmp = mC[cIdx] - complex<Float>(shift,0.);
 
-	Float iMod = z/(mC[cIdx].real()*mC[cIdx].real() + mC[cIdx].imag()*mC[cIdx].imag());
-	m[idx]	   = arg(mC[cIdx]);
-	m[bIdx]	   = (vC[cIdx-S]*conj(mC[cIdx])).imag()*iMod + m[idx];
+	Float iMod = z/(mTmp.real()*mTmp.real() + mTmp.imag()*mTmp.imag());
+	m[idx]	   = arg(mTmp);
+	m[bIdx]	   = (vC[cIdx-S]*conj(mTmp)).imag()*iMod + m[idx];
 	m[idx]	  *= z;
 }
 
 template<typename Float>
-__global__ void toThetaKernelGpu (complex<Float> *mC, Float *m, complex<Float> *vC, Float *v, Float z, const uint S, const uint ofC, const uint ofB)
+__global__ void toThetaKernelGpu (complex<Float> *mC, Float *m, complex<Float> *vC, Float *v, Float z, const uint S, const uint ofC, const uint ofB, const Float shift)
 {
 	const uint idx = (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 
@@ -30,11 +31,11 @@ __global__ void toThetaKernelGpu (complex<Float> *mC, Float *m, complex<Float> *
 	const uint cIdx = idx + ofC;
 	const uint bIdx = idx + ofB;
 
-	toThetaCoreGpu (idx, cIdx, bIdx, mC, m, vC, v, z, S);
+	toThetaCoreGpu (idx, cIdx, bIdx, mC, m, vC, v, z, S, shift);
 }
 
 template<typename Float>
-void	toThetaTemplateGpu (Scalar *sField)
+void	toThetaTemplateGpu (Scalar *sField, const Float shift)
 {
 	const uint V  = sField->Size();
 	const uint S  = sField->Surf();
@@ -68,18 +69,18 @@ void	toThetaTemplateGpu (Scalar *sField)
 	cudaMemcpy (v, vT, sizeof(Float)*V, cudaMemcpyDeviceToDevice);
 }
 
-void	toThetaGpu (Scalar *sField)
+void	toThetaGpu (Scalar *sField, const double shift)
 {
 	switch (sField->Precision())
 	{
 		case FIELD_DOUBLE:
 
-			toThetaTemplateGpu<double> (sField);
+			toThetaTemplateGpu<double> (sField, shift);
 			break;
 
 		case FIELD_SINGLE:
 
-			toThetaTemplateGpu<float>  (sField);
+			toThetaTemplateGpu<float>  (sField, (float) shift);
 			break;
 
 		default:

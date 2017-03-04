@@ -2,6 +2,7 @@
 #include<cmath>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
+#include "scalar/varNQCD.h"
 
 #ifdef USE_XEON
 	#include "comms/comms.h"
@@ -9,6 +10,7 @@
 #endif
 
 #include"utils/triSimd.h"
+#include"utils/parse.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -69,8 +71,9 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #endif
 		const double zR  = *z;
 		const double iz  = 1./zR;
-		const double zQ = 9.*pow(zR, nQcd+2.);
-		const double o2 = ood2*0.375;
+		//const double zQ = 9.*pow(zR, nQcd+2.);
+		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
+		const double o2 = ood2*0.5;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -82,7 +85,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const size_t YC = (Lx>>1);
 #endif
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
 
@@ -246,8 +249,9 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #endif
 		const float zR  = *z;
 		const float iz  = 1./zR;
-		const float zQ = 9.f*powf(zR, nQcd+2.);
-		const float o2 = ood2*0.375;
+		//const float zQ = 9.f*powf(zR, nQcd+2.);
+		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
+		const float o2 = ood2*0.5;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -259,7 +263,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const size_t YC = (Lx>>1);
 #endif
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, grd, pot, mMx, mMy, mMz, mPx, mPy, mPz;
 
@@ -409,7 +413,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 void	energyThetaXeon	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes)
 {
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int  micIdx = commAcc();
 	const double ood2 = 1./delta2;
 	double *z  = axionField->zV();
 	const FieldPrecision precision = axionField->Precision();

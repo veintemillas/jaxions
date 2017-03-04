@@ -194,7 +194,7 @@ void	closeFFT	()
 	fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 //	if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave");
-	if (rank == 0) fftw_export_wisdom_to_filename("wisdomsavef");
+	if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
 
 	printMpi ("  Wisdom saved once more in rank %d\n",rank);
 

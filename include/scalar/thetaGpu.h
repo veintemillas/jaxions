@@ -3,5 +3,5 @@
 
 	#include "scalar/scalarField.h"
 
-	void	toThetaGpu (Scalar *sField);
+	void	toThetaGpu (Scalar *sField, const double shift);
 #endif

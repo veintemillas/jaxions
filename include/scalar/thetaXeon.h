@@ -3,5 +3,5 @@
 
 	#include "scalar/scalarField.h"
 
-	void	toThetaXeon (Scalar *sField);
+	void	toThetaXeon (Scalar *sField, const double shift);
 #endif

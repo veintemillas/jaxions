@@ -2,12 +2,14 @@
 #include<cmath>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
+#include"scalar/varNQCD.h"
 
 #ifdef USE_XEON
 	#include"comms/comms.h"
 	#include"utils/xeonDefs.h"
 #endif
 
+#include "utils/parse.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -33,7 +35,7 @@
 __attribute__((target(mic)))
 #endif
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, double *z, const double ood2, const double LL, const double nQcd,
-			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
+			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -67,7 +69,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double zR  = *z;
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
-		const double zQ = 9.*pow(zR, nQcd+2.);
+		//const double zQ = 9.*pow(zR, nQcd+2.);
+		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
 		const double lZ = 0.25*LL*zR*zR;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<2);
@@ -76,7 +79,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double __attribute__((aligned(Align))) oneAux[8]  = { 1., 1., 1., 1., 1., 1., 1., 1. };
 		const double __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) ivZ2Aux[8] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
+		const double __attribute__((aligned(Align))) oneAux[8]  = { 1., 1., 1., 1., 1., 1., 1., 1. };
+		const double __attribute__((aligned(Align))) shfAux[8]  = {shift, 0., shift, 0., shift, 0., shift, 0. };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
@@ -85,6 +89,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) ivZ2Aux[4] = {iz2,iz2,iz2,iz2 };
+		const double __attribute__((aligned(Align))) shfAux[4]  = {shift, 0., shift, 0. };
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
@@ -93,14 +98,16 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double __attribute__((aligned(Align))) cjgAux[2]  = { 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[2]  = { iz, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) ivZ2Aux[2] = {iz2,iz2 };
+		const double __attribute__((aligned(Align))) shfAux[2]  = {shift, 0.};
 
 #endif
 		const _MData_ one  = opCode(load_pd, oneAux);
 		const _MData_ cjg  = opCode(load_pd, cjgAux);
 		const _MData_ ivZ  = opCode(load_pd, ivZAux);
 		const _MData_ ivZ2 = opCode(load_pd, ivZ2Aux);
+		const _MData_ shVc = opCode(load_pd, shfAux);
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
 			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
@@ -177,7 +184,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				// mMy ya esta cargado
 				mMz = opCode(sub_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz]));
 
-				mel = opCode(load_pd, &m[idxP0]);//Carga m
+				mel = opCode(sub_pd, opCode(load_pd, &m[idxP0]), shVc); //Carga m con shift
 				vel = opCode(load_pd, &v[idxMz]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
 #ifdef	__MIC__
@@ -246,6 +253,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				mdv = opCode(sub_pd, opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy), ivZ);
 #else				// Las instrucciones se llaman igual con AVX o con SSE3
+				// Here we divide by mel
 				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
 				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
 				Grz = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
@@ -254,19 +262,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				tGx = opCode(mul_pd, mod, opCode(mul_pd, Grx, Grx));
 				tGy = opCode(mul_pd, mod, opCode(mul_pd, Gry, Gry));
 				tGz = opCode(mul_pd, mod, opCode(mul_pd, Grz, Grz));
-					
+
 				tKp = opCode(mul_pd, mod, opCode(mul_pd, mdv, mdv));
 
-				mTp = opCode(sub_pd, mod, one);
-				mod = opCode(mul_pd, mTp, mTp);
-				mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
+				mSg = opCode(sub_pd, mod, one);
+				mod = opCode(mul_pd, mSg, mSg);
+				//mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));  Old potential 1 - m/z
+				mCg = opCode(sub_pd, one, opCode(div_pd, mel, opCode(sqrt_pd, mTp)));  // 1-m/|m|
 #ifdef	__MIC__
-				vel = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mTp), _MM_PERM_BADC));
+				vel = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC));
 				tVp = opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel);
 #elif defined(__AVX__)
-				tVp = opCode(blend_pd, mod, opCode(permute_pd, mTp, 0b00000101), 0b00001010);
+				tVp = opCode(blend_pd, mod, opCode(permute_pd, mCg, 0b00000101), 0b00001010);
 #else
-				tVp = opCode(shuffle_pd, mod, mTp, 0b00000001);
+				tVp = opCode(shuffle_pd, mod, mCg, 0b00000001);
 #endif
 
 #ifdef	__MIC__
@@ -325,7 +334,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				opCode(store_pd, tmpS, tVp);
 				Vrho += tmpS[0];
 				Vth  += tmpS[1];
-                                                           
+
 				opCode(store_pd, tmpS, tKp);
 				Krho += tmpS[0];
 				Kth  += tmpS[1];
@@ -333,7 +342,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			}
 		}
 
-		const double o2 = ood2*0.375;
+		const double o2 = ood2*0.125;
 
 		eRes[0] = Gxrho*o2;
 		eRes[1] = Gxth *o2;
@@ -377,7 +386,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float zR  = *z;
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
-		const float zQ = 9.f*powf(zR, nQcd+2.);
+		//const float zQ = 9.f*powf(zR, nQcd+2.);
+		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 		const float lZ = 0.25f*LL*zR*zR;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
@@ -387,6 +397,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float __attribute__((aligned(Align))) cjgAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[16]  = { iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0. };
 		const float __attribute__((aligned(Align))) ivZ2Aux[16] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
+		const float __attribute__((aligned(Align))) shfAux[16]  = {shift, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0. };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -395,6 +406,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
 		const float __attribute__((aligned(Align))) ivZ2Aux[8] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
+		const float __attribute__((aligned(Align))) shfAux[8]  = {shift, 0., shift, 0., shift, 0., shift, 0.};
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
@@ -403,14 +415,16 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
 		const float __attribute__((aligned(Align))) ivZ2Aux[4] = {iz2,iz2,iz2,iz2 };
+		const float __attribute__((aligned(Align))) shfAux[4]  = {shift, 0., shift, 0. };
 #endif
 
 		const _MData_ one  = opCode(load_ps, oneAux);
 		const _MData_ cjg  = opCode(load_ps, cjgAux);
 		const _MData_ ivZ  = opCode(load_ps, ivZAux);
 		const _MData_ ivZ2 = opCode(load_ps, ivZ2Aux);
+		const _MData_ shVc = opCode(load_ps, shfAux);
 
-		#pragma omp parallel default(shared) 
+		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
 			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
@@ -498,7 +512,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				// mMy ya esta cargado
 				mMz = opCode(sub_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz]));
 
-				mel = opCode(load_ps, &m[idxP0]);//Carga m
+				mel = opCode(sub_ps, opCode(load_ps, &m[idxP0]), shVc);//Carga m
 				vel = opCode(load_ps, &v[idxMz]);//Carga v
 				mod = opCode(mul_ps, mel, mel);
 
@@ -589,15 +603,16 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				tKp = opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod);
 
-				mTp = opCode(sub_ps, mod, one);
-				mod = opCode(mul_ps, mTp, mTp);
-				mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));
+				mSg = opCode(sub_ps, mod, one);
+				mod = opCode(mul_ps, mSg, mSg);
+//				mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));	Old potential 1 - m/z
+				mCg = opCode(sub_ps, one, opCode(div_ps, mel, opCode(sqrt_ps, mTp)));
 #ifdef	__MIC__
-				tVp = opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, opCode(swizzle_ps, mTp, _MM_SWIZ_REG_CDAB));
+				tVp = opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, opCode(swizzle_ps, mCg, _MM_SWIZ_REG_CDAB));
 #elif defined(__AVX__)
-				tVp = opCode(blend_ps, mod, opCode(permute_ps, mTp, 0b10110001), 0b10101010);
+				tVp = opCode(blend_ps, mod, opCode(permute_ps, mCg, 0b10110001), 0b10101010);
 #else
-				mdv = opCode(shuffle_ps, mod, mTp, 0b10001000); //Era 11011000
+				mdv = opCode(shuffle_ps, mod, mCg, 0b10001000); //Era 11011000
 				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000);
 #endif
 
@@ -671,7 +686,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			}
 		}
 
-		const double o2 = ood2*0.375;
+		const double o2 = ood2*0.125;
 
 		eRes[0] = Gxrho*o2;
 		eRes[1] = Gxth *o2;
@@ -688,27 +703,27 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	}
 }
 
-void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes)
+void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift)
 {
 #ifdef USE_XEON
-	const int  micIdx = commAcc(); 
+	const int  micIdx = commAcc();
 	const double ood2 = 1./delta2;
 	double *z  = axionField->zV();
 	double *eR = static_cast<double*>(eRes);
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) in(z:length(8) UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
+	#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		energyKernelXeon(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR);
+		energyKernelXeon(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
 	}
 #endif
 }
 
-void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes)
+void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 
 	axionField->exchangeGhosts(FIELD_M);
-	energyKernelXeon(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes);
+	energyKernelXeon(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
 }

@@ -4,5 +4,5 @@
 	#include "scalar/scalarField.h"
 	#include "utils/flopCounter.h"
 
-	void	cmplxToTheta	(Scalar *field, FlopCounter *fCount);
+	void	cmplxToTheta	(Scalar *field, FlopCounter *fCount, const double shift=0);
 #endif

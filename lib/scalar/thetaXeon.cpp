@@ -6,7 +6,7 @@
 using namespace std;
 
 template<typename Float>
-void	toThetaKernelXeon (Scalar *sField)
+void	toThetaKernelXeon (Scalar *sField, const Float shift)
 {
 	const size_t V  = sField->Size();
 	const size_t S  = sField->Surf();
@@ -25,20 +25,21 @@ void	toThetaKernelXeon (Scalar *sField)
 
 	const Float z = static_cast<Float>(sField->zV()[0]);
 
-	for (size_t cZ = 1; cZ < Lz+1; cZ++)
+		for (size_t cZ = 1; cZ < Lz+1; cZ++)
 	{
 		const size_t Vo = cZ*S;
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t lpc = 0; lpc < S; lpc++)
 		{
+			complex<Float> mTmp = cmField[Vo+lpc] - complex<Float>(shift,0.);
 			//aux quantity z/|m|^2
-			Float iMod      = z/(cmField[Vo+lpc].real()*cmField[Vo+lpc].real() + cmField[Vo+lpc].imag()*cmField[Vo+lpc].imag());
+			Float iMod      = z/(mTmp.real()*mTmp.real() + mTmp.imag()*mTmp.imag());
 			//theta, starts reading after buffer, copies into buffer
-			mField[lpc]     = arg(cmField[Vo+lpc]);
+			mField[lpc]     = arg(mTmp);
 			//c_theta' = Im [v conj(m)]z/|m|^2+theta
 			// the v array has no buffer hence the need of -S in their index
 			// gets temporarily stored outside the Physical range of mField V+2S and vField V -> i.e. 2(V+S)=Go
-			mField[Go+lpc]  = (cvField[Vo-S+lpc]*conj(cmField[Vo+lpc])).imag()*iMod + mField[lpc];
+			mField[Go+lpc]  = (cvField[Vo-S+lpc]*conj(mTmp)).imag()*iMod + mField[lpc];
 			//c_theta
 			mField[lpc]    *= z;
 		}
@@ -53,18 +54,18 @@ void	toThetaKernelXeon (Scalar *sField)
 
 }
 
-void	toThetaXeon (Scalar *sField)
+void	toThetaXeon (Scalar *sField, const double shift)
 {
 	switch (sField->Precision())
 	{
 		case FIELD_DOUBLE:
 
-			toThetaKernelXeon<double> (sField);
+			toThetaKernelXeon<double> (sField, shift);
 			break;
 
 		case FIELD_SINGLE:
 
-			toThetaKernelXeon<float> (sField);
+			toThetaKernelXeon<float> (sField, (float) shift);
 			break;
 
 		default:

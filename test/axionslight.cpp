@@ -279,7 +279,7 @@ int	main (int argc, char *argv[])
 	// WE USE LAMDA_Z2 WITH msa = 1.5 so
 	// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
 
-	double msa = 1.0 ;
+	double msa = 1.5 ;
 	printMpi ("zth-zres (%f,%f) changed to ", zthres, zrestore);
 	zthres = pow(msa*sizeN/(indi3*sizeL*9.),2./(nQcd+2.)) ;
 	zrestore = 3.0 ;
@@ -349,7 +349,7 @@ int	main (int argc, char *argv[])
 	printMpi("zGrid  =  %ld\n",   zGrid);
 	printMpi("dx     =  %2.5f\n", delta);
 	printMpi("dz     =  variable min[1/d,1/m_a,1/m_s]/2\n", dz);
-	printMpi("LL     =  FM_variable ms a =1.5\n", LL);
+	printMpi("LL     =  FM_variable ms a =%f ZIGZAG\n", msa);
 	printMpi("--------------------------------------------------\n");
 
 	printMpi ("Start redshift loop\n\n");
@@ -415,21 +415,22 @@ int	main (int argc, char *argv[])
 				//--------------------------------------------------
 
 
+
 				if (commRank() == 0)
 					{
 
 						if (axion->Field() == FIELD_SAXION)
 						{
 							llprint = max(LL , llaux/pow(z_now,2.));
-							double saskia = saxionshift(z_now, nQcd, 0, 3.0, llprint);
+							double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 
 							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %lf\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %e\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
 								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag(),
 								nstrings_global, maximumtheta, saskia );
 							} else {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %lf\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %e\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
 								static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].imag(),
 								static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),
 								nstrings_global, maximumtheta, saskia);
@@ -513,9 +514,11 @@ int	main (int argc, char *argv[])
 										// if ((strcount >20 ) )
 										// {
 											printMpi("\n");
+											llprint = max(LL , llaux/pow(z_now,2.));
+											double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 	                    printMpi("--------------------------------------------------\n");
 	                    printMpi("              TRANSITION TO THETA \n");
-	                    cmplxToTheta (axion, fCount);
+	                    cmplxToTheta (axion, fCount, saskia);
 											fflush(stdout);
 	                    printMpi("--------------------------------------------------\n");
 										// }
@@ -547,14 +550,14 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 
       printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
-			fflush(stdout);
-			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
-			//fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
-			//(*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
+				double maa = 40*axionmass(z_now,nQcd,zthres, zrestore)/(2*llaux);
+				if (axion->Lambda() == LAMBDA_Z2 )
+				maa = maa*z_now*z_now;
+
+				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux, maa );
 				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
 										//nstrings_global = strings(axion, cDev, str, fCount);
@@ -564,16 +567,26 @@ int	main (int argc, char *argv[])
 
 										if ((*axion->zV()) > 0.6)
 										{
-//										 createMeas(axion, index);
-//										 printMpi("[mc-");
-//										 writeString	( str , nstrings_global);
-//									 printMpi("sw-");
-//										 destroyMeas();
+										 createMeas(axion, index);
+	//									 printMpi("[mc-");
+										 writeString	( str , nstrings_global);
+	//								 	 printMpi("sw-");
+										 destroyMeas();
 	//								 printMpi("d] ");
 										}
 
 										printMpi("(G)= %ld \n", nstrings_global);
 
+
+				llprint = max(LL , llaux/pow(z_now,2.));
+				double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+				energy(axion, llaux, nQcd, delta, cDev, eRes, fCount, VQCD_1, saskia);
+				if (commRank()==0)
+				{
+				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
+				(*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings_global, maximumtheta);
+				fflush(file_energy);
+				}
 			}
 			else
 			{
@@ -583,6 +596,13 @@ int	main (int argc, char *argv[])
 				// munge(UNFOLD_ALL);
 				// writeConf(axion, index);
 				// munge(FOLD_ALL);
+				energy(axion, llaux, nQcd, delta, cDev, eRes, fCount, VQCD_1);
+				if (commRank()==0)
+				{
+				fprintf(file_energy,  "%+lf %+lf %+lf \n",(*axion->zV()), eR[0], eR[1], maximumtheta);
+				fflush(file_energy);
+				}
+
 			}
 
 			 if (commRank() == 0)

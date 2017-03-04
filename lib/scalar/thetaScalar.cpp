@@ -21,10 +21,11 @@ class	CmplxToTheta
 	private:
 
 	Scalar	*axionField;
+	const double shift;
 
 	public:
 
-		 CmplxToTheta(Scalar *field);
+		 CmplxToTheta(Scalar *field, const double sh);
 		~CmplxToTheta() {};
 
 	void	runCpu	();
@@ -32,14 +33,14 @@ class	CmplxToTheta
 	void	runXeon	();
 };
 
-	CmplxToTheta::CmplxToTheta(Scalar *field) : axionField(field)
+	CmplxToTheta::CmplxToTheta(Scalar *field, const double sh) : axionField(field), shift(sh)
 {
 }
 
 void	CmplxToTheta::runGpu	()
 {
 #ifdef	USE_GPU
-	toThetaGpu(axionField);
+	toThetaGpu(axionField,shift);
 #else
 	printf("Gpu support not built");
 	exit(1);
@@ -48,22 +49,22 @@ void	CmplxToTheta::runGpu	()
 
 void	CmplxToTheta::runCpu	()
 {
-	toThetaXeon(axionField);
+	toThetaXeon(axionField,shift);
 }
 
 void	CmplxToTheta::runXeon	()
 {
 #ifdef	USE_XEON
-	toThetaXeon(axionField);
+	toThetaXeon(axionField,shift);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	cmplxToTheta	(Scalar *field, FlopCounter *fCount)
+void	cmplxToTheta	(Scalar *field, FlopCounter *fCount, const double shift)
 {
-	CmplxToTheta *theta = new CmplxToTheta(field);
+	CmplxToTheta *theta = new CmplxToTheta(field, shift);
 	Folder	     munge(field);
 
 	munge(UNFOLD_ALL);
