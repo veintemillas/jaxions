@@ -381,34 +381,33 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mMy = opCode(sub_ps, mMy, mel);
 
 				grd = opCode(mul_ps,
-								opCode(add_ps,
-									opCode(mul_ps, mPx, mPx),
-									opCode(mul_ps, mMx, mMx)),
-								opCode(set1_ps, ood2));
+					opCode(add_ps,
+						opCode(mul_ps, mPx, mPx),
+						opCode(mul_ps, mMx, mMx)),
+					opCode(set1_ps, ood2));
 
 				mMx = opCode(mul_ps,
-								opCode(add_ps,
-									opCode(mul_ps, mPy, mPy),
-									opCode(mul_ps, mMy, mMy)),
-								opCode(set1_ps, ood2));
+					opCode(add_ps,
+						opCode(mul_ps, mPy, mPy),
+						opCode(mul_ps, mMy, mMy)),
+					opCode(set1_ps, ood2));
 
 				mMy = opCode(mul_ps,
-								opCode(add_ps,
-									opCode(mul_ps, mPz, mPz),
-									opCode(mul_ps, mMz, mMz)),
-								opCode(set1_ps, ood2));
+					opCode(add_ps,
+						opCode(mul_ps, mPz, mPz),
+						opCode(mul_ps, mMz, mMz)),
+					opCode(set1_ps, ood2));
 
 				mPx = opCode(mul_ps,
-								opCode(set1_ps, 0.5),
-								opCode(mul_ps, vel, vel));
+					opCode(set1_ps, 0.5),
+					opCode(mul_ps, vel, vel));
 
 				mPy = opCode(mul_ps,
-								opCode(set1_ps, zQ),
-								opCode(sub_ps,
-									opCode(set1_ps, 1.),
-									opCode(mul_ps,
-										opCode(set1_ps, iz),
-										opCode(cos_ps, mel))));
+					opCode(set1_ps, zQ),
+					opCode(sub_ps,
+						opCode(set1_ps, 1.),
+						opCode(cos_ps,
+							opCode(mul_ps, opCode(set1_ps, iz), mel))));
 
 				// CHECK BOUNDARIES (Y DIRECTION MOSTLY)
 
