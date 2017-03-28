@@ -75,6 +75,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		//const double zQ = 9.*pow(zR, nQcd+2.);
 		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
 		const double o2 = ood2*0.25;
+		const double tV = 2.*M_PI*zR;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -88,7 +89,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ mel, vel, grd, mMx, mMy, mMz, mPx, mPy, mPz;
+			_MData_ mel, vel, mMx, mMy, mMz, mPx, mPy, mPz, tmp, grd;
 
 			double tmpGx[step] __attribute__((aligned(Align)));
 			double tmpGy[step] __attribute__((aligned(Align)));
@@ -171,16 +172,34 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				idxMz = idx-Sf;
 				idxP0 = idx;
 
-				mel = opCode(load_pd, &m[idxP0]);//Carga m
-				vel = opCode(load_pd, &v[idxMz]);//Carga v
+				mel = opCode(load_pd, &m[idxP0]); // Carga m
+				vel = opCode(load_pd, &v[idxMz]); // Carga v
 
-				// Calculo los gradientes
-				mPx = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
-				mMx = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
-				mPz = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
-				mMz = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
-				mPy = opCode(sub_pd, mPy, mel);
-				mMy = opCode(sub_pd, mMy, mel);
+				// Calculo los gradientes con módulo
+
+				grd = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
+				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
+				mPx = opCode(mul_pd, tmp, tmp);
+
+				grd = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
+				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
+				mMx = opCode(mul_pd, tmp, tmp);
+
+				grd = opCode(sub_pd, opCode(load_pd, &m[idxPy]), mel);
+				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
+				mPy = opCode(mul_pd, tmp, tmp);
+
+				grd = opCode(sub_pd, opCode(load_pd, &m[idxMy]), mel);
+				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
+				mMy = opCode(mul_pd, tmp, tmp);
+
+				grd = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
+				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
+				mPz = opCode(mul_pd, tmp, tmp);
+
+				grd = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
+				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
+				mMz = opCode(mul_pd, tmp, tmp);
 
 				grd = opCode(mul_pd,
 					opCode(add_pd,
@@ -268,6 +287,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		//const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 		const float o2 = ood2*0.25;
+		const float tV = 2.f*M_PI*zR;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -281,7 +301,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ mel, vel, grd, mMx, mMy, mMz, mPx, mPy, mPz;
+			_MData_ mel, vel, grd, tmp, mMx, mMy, mMz, mPx, mPy, mPz;
 
 			float tmpGx[step] __attribute__((aligned(Align)));
 			float tmpGy[step] __attribute__((aligned(Align)));
@@ -368,33 +388,45 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				idxMz = idx-Sf;
 				idxP0 = idx;
 
-				mel = opCode(load_ps, &m[idxP0]);//Carga m
-				vel = opCode(load_ps, &v[idxMz]);//Carga v
+				mel = opCode(load_ps, &m[idxP0]); // Carga m
+				vel = opCode(load_ps, &v[idxMz]); // Carga v
 
-				// Calculo los gradientes
-				mPx = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
-				mMx = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
-				mPz = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
-				mMz = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
-				mPy = opCode(sub_ps, mPy, mel);
-				mMy = opCode(sub_ps, mMy, mel);
+				// Calculo los gradientes con módulo
+
+				grd = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
+				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
+				mPx = opCode(mul_ps, tmp, tmp);
+
+				grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
+				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
+				mMx = opCode(mul_ps, tmp, tmp);
+
+				grd = opCode(sub_ps, opCode(load_ps, &m[idxPy]), mel);
+				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
+				mPy = opCode(mul_ps, tmp, tmp);
+
+				grd = opCode(sub_ps, opCode(load_ps, &m[idxMy]), mel);
+				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
+				mMy = opCode(mul_ps, tmp, tmp);
+
+				grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
+				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
+				mPz = opCode(mul_ps, tmp, tmp);
+
+				grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
+				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
+				mMz = opCode(mul_ps, tmp, tmp);
 
 				grd = opCode(mul_ps,
-					opCode(add_ps,
-						opCode(mul_ps, mPx, mPx),
-						opCode(mul_ps, mMx, mMx)),
+					opCode(add_ps, mPx, mMx),
 					opCode(set1_ps, ood2));
 
 				mMx = opCode(mul_ps,
-					opCode(add_ps,
-						opCode(mul_ps, mPy, mPy),
-						opCode(mul_ps, mMy, mMy)),
+					opCode(add_ps, mPy, mMy),
 					opCode(set1_ps, ood2));
 
 				mMy = opCode(mul_ps,
-					opCode(add_ps,
-						opCode(mul_ps, mPz, mPz),
-						opCode(mul_ps, mMz, mMz)),
+					opCode(add_ps, mPz, mMz),
 					opCode(set1_ps, ood2));
 
 				mPx = opCode(mul_ps,

@@ -60,7 +60,7 @@ void	toThetaTemplateGpu (Scalar *sField, const Float shift)
 	{
 		const uint Vo = cZ*S;
 
-		toThetaKernelGpu<Float><<<gridSize,blockSize,0,((cudaStream_t *)sField->Streams())[0]>>>(mC, m, vC, v, z, S, Vo, Go);
+		toThetaKernelGpu<Float><<<gridSize,blockSize,0,((cudaStream_t *)sField->Streams())[0]>>>(mC, m, vC, v, z, S, Vo, Go, shift);
 
 		cudaMemcpy (m + Vo,      m,      sizeof(Float)*S, cudaMemcpyDeviceToDevice);
 		cudaMemcpy (vT + Vo - S, m + Go, sizeof(Float)*S, cudaMemcpyDeviceToDevice);

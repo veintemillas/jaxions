@@ -73,7 +73,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const double zR = *z;
 		const double iZ = 1./zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = axionmass2(zR,nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double tV	= 2.*M_PI*zR;
 
 #ifdef	__MIC__
@@ -180,7 +180,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 #ifdef	__MIC__
 						mPy = opCode(castsi512_pd, opCode(permutevar_epi32, vShLf, opCode(castpd_si512, opCode(load_pd, &m[idxPy]))));
 #elif	defined(__AVX2__)	//AVX2
-						tmp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
+						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif	defined(__AVX__)
 						tpM = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
 						tpP = opCode(permute2f128_pd, tpM, tpM, 0b00000001);
@@ -212,17 +212,17 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_pd, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, z0Vec, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), z0Vec, tpP);
-				acu = opCode(mask_add_pd, acu,   opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), acu,   tpM);
-				acu = opCode(mask_add_pd, acu,   opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), acu,   vel);
+				acu = opCode(mask_add_pd, z0Vec, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), z0Vec, tpP);
+				acu = opCode(mask_add_pd, acu,   opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), acu,   tpM);
+				acu = opCode(mask_add_pd, acu,   opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), acu,   vel);
 #elif	defined(__AVX__)
 				acu = opCode(setzero_pd);
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), vel));
+						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), vel));
 #else
 				acu = opCode(setzero_pd);
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
@@ -242,16 +242,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_pd, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
@@ -270,16 +270,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_pd, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
@@ -298,16 +298,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_pd, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
@@ -326,16 +326,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_pd, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
@@ -354,16 +354,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_pd, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_pd, opCode(cmp_pd, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_pd, opCode(cmp_pd, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_pd, opCode(cmp_pd, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
@@ -399,16 +399,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				acu = opCode(setzero_pd);
 #ifdef	__MIC__
 				vel = opCode(gmin_pd, opCode(gmin_pd, tP2, tM2), v2p);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, tP2, _CMP_EQ_OQ), acu, mPy);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, tM2, _CMP_EQ_OQ), acu, mMy);
-				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, v2p, _CMP_EQ_OQ), acu, tpP);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, tP2, _CMP_EQ_OS), acu, mPy);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, tM2, _CMP_EQ_OS), acu, mMy);
+				acu = opCode(mask_add_pd, acu, opCode(cmp_pd, vel, v2p, _CMP_EQ_OS), acu, tpP);
 #elif	defined(__AVX__)
 				vel = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
 					opCode(add_pd,
-						opCode(and_pd, opCode(cmp_pd, vel, tP2, _CMP_EQ_OQ), mPy),
-						opCode(and_pd, opCode(cmp_pd, vel, tM2, _CMP_EQ_OQ), mMy)),
-					opCode(and_pd, opCode(cmp_pd, vel, v2p, _CMP_EQ_OQ), tpP)));
+						opCode(and_pd, opCode(cmp_pd, vel, tP2, _CMP_EQ_OS), mPy),
+						opCode(and_pd, opCode(cmp_pd, vel, tM2, _CMP_EQ_OS), mMy)),
+					opCode(and_pd, opCode(cmp_pd, vel, v2p, _CMP_EQ_OS), tpP)));
 #else
 				vel = opCode(min_pd, opCode(min_pd, tP2, tM2), v2p);
 				acu = opCode(add_pd, acu, opCode(add_pd,
@@ -598,17 +598,17 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_ps, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, z0Vec, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), z0Vec, tpP);
-				acu = opCode(mask_add_ps, acu,   opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), acu,   tpM);
-				acu = opCode(mask_add_ps, acu,   opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), acu,   vel);
+				acu = opCode(mask_add_ps, z0Vec, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), z0Vec, tpP);
+				acu = opCode(mask_add_ps, acu,   opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), acu,   tpM);
+				acu = opCode(mask_add_ps, acu,   opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), acu,   vel);
 #elif	defined(__AVX__)
 				acu = opCode(setzero_ps);
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), vel));
+						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), vel));
 #else
 				acu = opCode(setzero_ps);
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
@@ -628,16 +628,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_ps, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
@@ -656,16 +656,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_ps, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
@@ -684,16 +684,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_ps, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
@@ -712,16 +712,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_ps, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
@@ -740,16 +740,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tM2 = opCode(mul_ps, tpM, tpM);
 #ifdef	__MIC__
 				tmp = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), acu, tpP);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), acu, tpM);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), acu, vel);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), acu, tpP);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), acu, tpM);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), acu, vel);
 #elif	defined(__AVX__)
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OQ), tpP),
-						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OQ), tpM)),
-					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OQ), vel)));
+						opCode(and_ps, opCode(cmp_ps, tmp, tP2, _CMP_EQ_OS), tpP),
+						opCode(and_ps, opCode(cmp_ps, tmp, tM2, _CMP_EQ_OS), tpM)),
+					opCode(and_ps, opCode(cmp_ps, tmp, v2p, _CMP_EQ_OS), vel)));
 #else
 				tmp = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
@@ -759,13 +759,11 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 					opCode(and_ps, opCode(cmpeq_ps, tmp, v2p), vel)));
 #endif
 
-//#ifdef	__MIC__		NO SE SI VA A FUNCIONAR PORQUE CREO QUE EL SENO NO ESTA DEFINIDO EN KNC
-
-//#else
 				tpM = opCode(sub_ps,
 					opCode(mul_ps, acu, d2Vec),
 					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
-//#endif
+//				tpM = opCode(sub_ps, opCode(setzero_ps), opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+
 				mPy = opCode(load_ps, &v[idxMz]);
 
 #if	defined(__MIC__) || defined(__FMA__)
@@ -786,16 +784,16 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				acu = opCode(setzero_ps);
 #ifdef	__MIC__
 				vel = opCode(gmin_ps, opCode(gmin_ps, tP2, tM2), v2p);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, tP2, _CMP_EQ_OQ), acu, mPy);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, tM2, _CMP_EQ_OQ), acu, mMy);
-				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, v2p, _CMP_EQ_OQ), acu, tpP);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, tP2, _CMP_EQ_OS), acu, mPy);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, tM2, _CMP_EQ_OS), acu, mMy);
+				acu = opCode(mask_add_ps, acu, opCode(cmp_ps, vel, v2p, _CMP_EQ_OS), acu, tpP);
 #elif	defined(__AVX__)
 				vel = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,
 					opCode(add_ps,
-						opCode(and_ps, opCode(cmp_ps, vel, tP2, _CMP_EQ_OQ), mPy),
-						opCode(and_ps, opCode(cmp_ps, vel, tM2, _CMP_EQ_OQ), mMy)),
-					opCode(and_ps, opCode(cmp_ps, vel, v2p, _CMP_EQ_OQ), tpP)));
+						opCode(and_ps, opCode(cmp_ps, vel, tP2, _CMP_EQ_OS), mPy),
+						opCode(and_ps, opCode(cmp_ps, vel, tM2, _CMP_EQ_OS), mMy)),
+					opCode(and_ps, opCode(cmp_ps, vel, v2p, _CMP_EQ_OS), tpP)));
 #else
 				vel = opCode(min_ps, opCode(min_ps, tP2, tM2), v2p);
 				acu = opCode(add_ps, acu, opCode(add_ps,

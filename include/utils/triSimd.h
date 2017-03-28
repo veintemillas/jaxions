@@ -70,6 +70,40 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 				opCode(mul_pd, c, opCode(mul_pd, tmp4, tmp4)))));
 }
 
+inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
+{
+	_MData_	x2, xP, xP2, xM, xM2, min, ret;
+
+	xP  = opCode(add_pd, x,  md);
+	xM  = opCode(sub_pd, x,  md);
+	x2  = opCode(mul_pd, x,   x);
+	xP2 = opCode(mul_pd, xP, xP);
+	xM2 = opCode(mul_pd, xM, xM);
+#ifdef  __MIC__
+	min = opCode(gmin_pd, opCode(gmin_pd, xM2, xP2), x2);
+	ret = opCode(mask_add_pd, opCode(setzero_pd), opCode(cmp_pd, min, xP2, _CMP_EQ_OQ), opCode(setzero_pd), xP);
+	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd, min, xM2, _CMP_EQ_OQ), ret,   xM);
+	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd, min, x2,  _CMP_EQ_OQ), ret,   x);
+#elif   defined(__AVX__)
+	ret = opCode(setzero_pd);
+	min = opCode(min_pd, opCode(min_pd, xP2, xM2), x2);
+	ret = opCode(add_pd,
+		opCode(add_pd,
+			opCode(and_pd, opCode(cmp_pd, min, xP2, _CMP_EQ_OQ), xP),
+			opCode(and_pd, opCode(cmp_pd, min, xM2, _CMP_EQ_OQ), xM)),
+		opCode(and_pd, opCode(cmp_pd, min, x2, _CMP_EQ_OQ), x));
+#else
+	ret = opCode(setzero_pd);
+	min = opCode(min_pd, opCode(min_pd, xP2, xM2), x2);
+	ret = opCode(add_pd,
+		opCode(add_pd,
+			opCode(and_pd, opCode(cmpeq_pd, min, xP2), xP),
+			opCode(and_pd, opCode(cmpeq_pd, min, xM2), xM)),
+		opCode(and_pd, opCode(cmpeq_pd, min, x2), x));
+#endif
+	return	ret;
+}
+
 #undef	_MData_
 
 #ifdef	__MIC__
@@ -118,6 +152,40 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 					opCode(mul_ps, tmp4, a),
 					opCode(mul_ps, tmp6, b)),
 				opCode(mul_ps, c, opCode(mul_ps, tmp4, tmp4)))));
+}
+
+inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
+{
+	_MData_	x2, xP, xP2, xM, xM2, min, ret;
+
+	xP  = opCode(add_ps, x,  md);
+	xM  = opCode(sub_ps, x,  md);
+	x2  = opCode(mul_ps, x,   x);
+	xP2 = opCode(mul_ps, xP, xP);
+	xM2 = opCode(mul_ps, xM, xM);
+#ifdef  __MIC__
+	min = opCode(gmin_ps, opCode(gmin_ps, xM2, xP2), x2);
+	ret = opCode(mask_add_ps, opCode(setzero_ps), opCode(cmp_ps, min, xP2, _CMP_EQ_OQ), opCode(setzero_ps), xP);
+	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps, min, xM2, _CMP_EQ_OQ), ret,   xM);
+	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps, min, x2,  _CMP_EQ_OQ), ret,   x);
+#elif   defined(__AVX__)
+	ret = opCode(setzero_ps);
+	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
+	ret = opCode(add_ps,
+		opCode(add_ps,
+			opCode(and_ps, opCode(cmp_ps, min, xP2, _CMP_EQ_OQ), xP),
+			opCode(and_ps, opCode(cmp_ps, min, xM2, _CMP_EQ_OQ), xM)),
+		opCode(and_ps, opCode(cmp_ps, min, x2, _CMP_EQ_OQ), x));
+#else
+	ret = opCode(setzero_ps);
+	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
+	ret = opCode(add_ps,
+		opCode(add_ps,
+			opCode(and_ps, opCode(cmpeq_ps, min, xP2), xP),
+			opCode(and_ps, opCode(cmpeq_ps, min, xM2), xM)),
+		opCode(and_ps, opCode(cmpeq_ps, min, x2), x));
+#endif
+	return	ret;
 }
 
 #undef	_MData_

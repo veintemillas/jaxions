@@ -1,5 +1,5 @@
-#ifndef	_PROP_CPU_
-	#define	_PROP_CPU_
+#ifndef	_PROP_THETA_CPU_
+	#define	_PROP_THETA_CPU_
 
 	#include "scalar/scalarField.h"
 

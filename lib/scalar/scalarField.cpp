@@ -139,15 +139,9 @@ const std::complex<float> If(0.,1.);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
 	if (!lowmem)
-	{
-		printMpi("Allocating m2\n"); fflush(stdout);
 		alignAlloc ((void**) &m2, mAlign, mBytes);
-	}
 	else
-	{
-		printMpi("LOWMEM!\n"); fflush(stdout);
 		m2 = NULL;
-	}
 #endif
 
 	// current = std::chrono::high_resolution_clock::now();
@@ -514,7 +508,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 				cudaMemcpyAsync(static_cast<char *> (m_d),                 static_cast<char *> (m),                 n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m_d) + (n3+n2)*fSize, static_cast<char *> (m) + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			} else {
-				cudaMemcpyAsync(static_cast<char *> (m2_d),                 static_cast<char *> (m2),                    n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d),                 static_cast<char *> (m2),                  n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m2_d) + (n3+n2)*fSize, static_cast<char *> (m2)  + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			}
 
@@ -1052,7 +1046,10 @@ void	Scalar::setField (FieldType fType)
 
 				printMpi("| resize %d->",fSize);fflush(stdout);
 				fSize /= 2;
-				shift *= 2;
+
+				if (device != DEV_GPU)
+					shift *= 2;
+
 				printMpi("%d ",fSize);fflush(stdout);
 
 				const size_t	mBytes = v3*fSize;
@@ -1070,6 +1067,11 @@ void	Scalar::setField (FieldType fType)
 
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
 
+					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
+					{
+						printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", 2*mBytes);
+						exit(1);
+					}
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 					closeFFTSpectrum();
@@ -1084,6 +1086,14 @@ void	Scalar::setField (FieldType fType)
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 				#endif
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
+
+					cudaFree(m2_d);
+
+					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
+					{
+						printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", 2*mBytes);
+						exit(1);
+					}
 				}
 			}
 			break;

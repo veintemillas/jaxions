@@ -5,6 +5,7 @@
 #include "enum-field.h"
 
 #include "scalar/varNQCD.h"
+#include "utils/parse.h"
 
 using namespace gpuCu;
 using namespace indexHelper;
@@ -78,7 +79,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dzd  = dz*d;
 		const double zR   = *z;
 		const double z2   = zR*zR;
-		const double zQ   = 9.*pow(zR, nQcd+3.);
+		const double zQ   = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double ood2 = 1./delta2;
 		propagateKernel<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2, z2, zQ, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
 	}
@@ -88,7 +89,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dzd = dz*d;
 		const float zR = *z;
 		const float z2 = zR*zR;
-		const float zQ = 9.*powf(zR, nQcd+3.);
+		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float ood2 = 1./delta2;
 		propagateKernel<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2, z2, zQ, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
 	}
