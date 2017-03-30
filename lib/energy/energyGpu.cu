@@ -4,6 +4,9 @@
 #include "enum-field.h"
 #include "cub/cub.cuh"
 
+#include "scalar/varNQCD.h"
+#include "utils/parse.h"
+
 #define	BLSIZE 512
 
 using namespace gpuCu;
@@ -128,11 +131,11 @@ __device__ inline void reduction(Float * __restrict__ eRes, const Float * __rest
 
 
 template<typename Float>
-static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const double iZ, const double iZ2, double *tR)
+static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const double iZ, const double iZ2, double *tR, const Float shift)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
-	complex<Float> mDX, mDY, mDZ, tmp, vOm;
+	complex<Float> mPX, mPY, mPZ, mMX, mMY, mMZ, tmp, tp2, vOm;
 
 	idx2Vec(idx, X, Lx);
 
@@ -156,46 +159,49 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	else
 		idxMy = idx - Lx;
 
-	tmp = m[idx];
+	tp2 = m[idx];
+	tmp = tp2 - shift;
 
 	Float mod = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
 	Float mFac = iZ2*mod;
 	Float iMod = 1./mod;
 
+	mPX = (m[idxPx]  - tp2)*conj(m[idx])*iMod;
+	mPY = (m[idxPy]  - tp2)*conj(m[idx])*iMod;
+	mPZ = (m[idx+Sf] - tp2)*conj(m[idx])*iMod;
+	mMX = (m[idxMx]  - tp2)*conj(m[idx])*iMod;
+	mMY = (m[idxMy]  - tp2)*conj(m[idx])*iMod;
+	mMZ = (m[idx-Sf] - tp2)*conj(m[idx])*iMod;
+	vOm = v[idx-Sf]*conj(tmp)*iMod - gpuCu::complex<Float>(iZ, 0.);
 
-	vOm = v[idx-Sf]*conj(m[idx])*iMod - gpuCu::complex<Float>(iZ, 0.);
-	mDX = (m[idxPx]  - m[idxMx]) *conj(m[idx])*iMod;
-	mDY = (m[idxPy]  - m[idxMy]) *conj(m[idx])*iMod;
-	mDZ = (m[idx+Sf] - m[idx-Sf])*conj(m[idx])*iMod;
-
-
-	tR[0] = (double) ((Float) (mFac*mDX.real()*mDX.real()));
-	tR[1] = (double) ((Float) (mFac*mDX.imag()*mDX.imag()));
-	tR[2] = (double) ((Float) (mFac*mDY.real()*mDY.real()));
-	tR[3] = (double) ((Float) (mFac*mDY.imag()*mDY.imag()));
-	tR[4] = (double) ((Float) (mFac*mDZ.real()*mDZ.real()));
-	tR[5] = (double) ((Float) (mFac*mDZ.imag()*mDZ.imag()));
+	tR[0] = (double) ((Float) (mFac*(mPX.real()*mPX.real() + mMX.real()*mMX.real())));
+	tR[1] = (double) ((Float) (mFac*(mPX.imag()*mPX.imag() + mMX.imag()*mMX.imag())));
+	tR[2] = (double) ((Float) (mFac*(mPY.real()*mPY.real() + mMY.real()*mMY.real())));
+	tR[3] = (double) ((Float) (mFac*(mPY.imag()*mPY.imag() + mMY.imag()*mMY.imag())));
+	tR[4] = (double) ((Float) (mFac*(mPZ.real()*mPZ.real() + mMZ.real()*mMZ.real())));
+	tR[5] = (double) ((Float) (mFac*(mPZ.imag()*mPZ.imag() + mMZ.imag()*mMZ.imag())));
 	tR[6] = (double) ((Float) (mFac - 1.)*(mFac - 1.));
-	tR[7] = (double) (((Float) 1.) - tmp.real()*iZ);
+	//tR[7] = (double) (((Float) 1.) - tmp.real()*iZ);	// Old potential
+	tR[7] = (double) (((Float) 1.) - tmp.real()/sqrt(mod));
 	tR[8] = (double) ((Float) (mFac*vOm.real()*vOm.real()));
 	tR[9] = (double) ((Float) (mFac*vOm.imag()*vOm.imag()));
 }
 
 template<typename Float>
-__global__ void	energyKernel(const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const uint V, const double iZ, const double iZ2, double *eR, double *partial)
+__global__ void	energyKernel(const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const uint V, const double iZ, const double iZ2, double *eR, double *partial, const Float shift)
 {
 	uint idx = Sf + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 
 	double tmp[10] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
 
 	if	(idx < V)
-		energyCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp);
+		energyCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp, shift);
 
 	reduction<BLSIZE,double>   (eR, tmp, partial);
 }
 
-int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double LL, const double nQcd,
-			 const uint Lx, const uint Lz, const uint V, const uint Vt, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
+int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double LL, const double nQcd, const double shift,
+			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);
@@ -215,13 +221,13 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double 
 	{
 		const double iZ  = 1./zR;
 		const double iZ2 = iZ*iZ;
-		energyKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial);
+		energyKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, shift);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float iZ = 1./zR;
 		const float iZ2 = iZ*iZ;
-		energyKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial);
+		energyKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, (float) shift);
 	}
 
 	cudaDeviceSynchronize();
@@ -229,27 +235,26 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double 
 	cudaMemcpy(eR, tR, sizeof(double)*10, cudaMemcpyDeviceToHost);
 	cudaFree(tR); cudaFree(partial);
 
-	const double iV = 1./((double) Vt);
-	const double o2 = 0.375/delta2;
-	const double zQ = 9.*pow(zR, nQcd+2.);
+	const double o2 = 0.25/delta2;
+	const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;//9.*pow(zR, nQcd+2.);
 	const double lZ = 0.25*LL*zR*zR;
 
-	eR[0] *= o2*iV;
-	eR[1] *= o2*iV;
-	eR[2] *= o2*iV;
-	eR[3] *= o2*iV;
-	eR[4] *= o2*iV;
-	eR[5] *= o2*iV;
-	eR[6] *= lZ*iV;
-	eR[7] *= zQ*iV;
-	eR[8] *= .5*iV;
-	eR[9] *= .5*iV;
+	eR[0] *= o2;
+	eR[1] *= o2;
+	eR[2] *= o2;
+	eR[3] *= o2;
+	eR[4] *= o2;
+	eR[5] *= o2;
+	eR[6] *= lZ;
+	eR[7] *= zQ;
+	eR[8] *= .5;
+	eR[9] *= .5;
 
 	return	0;
 }
-
+/*
 int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double LL, const double nQcd,
 			 const uint Lx, const uint Lz, const uint V, const uint Vt, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
 {
 	return	1;
-}
+}*/

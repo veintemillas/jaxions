@@ -173,9 +173,9 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
 	ret = opCode(add_ps,
 		opCode(add_ps,
-			opCode(and_ps, opCode(cmp_ps, min, xP2, _CMP_EQ_OQ), xP),
-			opCode(and_ps, opCode(cmp_ps, min, xM2, _CMP_EQ_OQ), xM)),
-		opCode(and_ps, opCode(cmp_ps, min, x2, _CMP_EQ_OQ), x));
+			opCode(and_ps, opCode(cmp_ps, min, xP2, _CMP_EQ_OS), xP),
+			opCode(and_ps, opCode(cmp_ps, min, xM2, _CMP_EQ_OS), xM)),
+		opCode(and_ps, opCode(cmp_ps, min, x2, _CMP_EQ_OS), x));
 #else
 	ret = opCode(setzero_ps);
 	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);

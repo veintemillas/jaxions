@@ -438,7 +438,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
-				idxP0 = (idx << 1);
+				idxP0 =  (idx     << 1);
 
 				mTp = opCode(load_ps, &m[idxP0]);
 

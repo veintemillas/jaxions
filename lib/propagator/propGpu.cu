@@ -68,7 +68,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d,
 		     const double delta2, const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
-	#define	BLSIZE 512
+	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
@@ -85,11 +85,11 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-		const float dzc = dz*c;
-		const float dzd = dz*d;
-		const float zR = *z;
-		const float z2 = zR*zR;
-		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float dzc  = dz*c;
+		const float dzd  = dz*d;
+		const float zR   = *z;
+		const float z2   = zR*zR;
+		const float zQ   = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float ood2 = 1./delta2;
 		propagateKernel<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2, z2, zQ, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
 	}

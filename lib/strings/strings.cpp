@@ -53,10 +53,7 @@ size_t	Strings::runGpu	()
 	const uint uLx = Lx, uS = S, uV = V;
 
 	axionField->exchangeGhosts(FIELD_M);
-	stringGpu(axionField->mGpu(), uLx, uV, uS, precision, strData, ((cudaStream_t *)axionField->Streams())[0]);
-
-	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
-
+	return	stringGpu(axionField->mGpu(), uLx, uV, uS, precision, strData, ((cudaStream_t *)axionField->Streams())[0]);
 #else
 	printf("Gpu support not built");
 	exit(1);

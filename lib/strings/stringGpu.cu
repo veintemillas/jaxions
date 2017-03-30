@@ -4,11 +4,60 @@
 #include "enum-field.h"
 #include "cub/cub.cuh"
 
-#define	BLSIZE 512
+#define	BLSIZE 256
 
 using namespace gpuCu;
 using namespace indexHelper;
 
+__device__ uint bCount = 0;
+
+template <int bSize, typename Int>
+__device__ inline void reductionInt(Int &nStr, const Int &in, Int *partial)
+{
+	typedef cub::BlockReduce<Int, bSize, cub::BLOCK_REDUCE_WARP_REDUCTIONS> BlockReduce;
+	const int blockSurf = gridDim.x*gridDim.y;
+
+	__shared__ bool isLastBlockDone;
+	__shared__ typename BlockReduce::TempStorage cub_tmp;
+
+	Int tmpStr = BlockReduce(cub_tmp).Sum(in);
+
+	if (threadIdx.x == 0)
+	{
+		const int bIdx = blockIdx.x + gridDim.x*blockIdx.y;
+		partial[bIdx] = tmpStr;
+		__threadfence();
+
+		unsigned int cBlock = atomicInc(&bCount, blockSurf);
+		isLastBlockDone = (cBlock == (blockSurf-1));
+	}
+
+	__syncthreads();
+
+	// finish the reduction if last block
+	if (isLastBlockDone)
+	{
+		uint i = threadIdx.x;
+
+		tmpStr = 0;
+
+		while (i < blockSurf)
+		{
+
+			tmpStr += partial[i];
+
+			i += bSize;
+		}
+
+		tmpStr = BlockReduce(cub_tmp).Sum(tmpStr);
+
+		if (threadIdx.x == 0)
+		{
+			nStr = tmpStr;
+			bCount = 0;
+		}
+	}
+}
 
 template<typename Float>
 static __device__ __forceinline__ int	stringHand(const complex<Float> s1, const complex<Float> s2)
@@ -23,13 +72,13 @@ static __device__ __forceinline__ int	stringHand(const complex<Float> s1, const 
 
 
 template<typename Float>
-static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, void * __restrict__ str)
+static __device__ __forceinline__ uint	stringCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, void * __restrict__ str)
 {
 	uint X[3], idxPx, idxPy, idxXY, idxYZ, idxZX;
 
 	complex<Float> mel, mPx, mXY, mPy, mYZ, mPz, mZX;
-	uint sIdx = idx-Sf;
-	int hand = 0;
+	uint sIdx = idx-Sf, nStr = 0;
+	int  hand = 0;
 	char strDf = 0;
 
 	idx2Vec(idx, X, Lx);
@@ -81,10 +130,13 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mPy, mel);
 /*	ARREGLAR PARA QUE SOLO HAYA UN STORE	*/
 /*	LA QUIRALIDAD SE GUARDA MAL	*/
-	if (hand == 2)
+	if (hand == 2) {
+		nStr++;
 		strDf |= STRING_XY_POSITIVE;
-	else if (hand == -2)
+	} else if (hand == -2) {
+		nStr++;
 		strDf |= STRING_XY_NEGATIVE;
+	}
 
 	hand = 0;
 
@@ -95,10 +147,13 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mYZ, mPz);
 	hand += stringHand (mPz, mel);
 
-	if (hand == 2)
+	if (hand == 2) {
+		nStr++;
 		strDf |= STRING_YZ_POSITIVE;
-	else if (hand == -2)
+	} else if (hand == -2) {
+		nStr++;
 		strDf |= STRING_YZ_NEGATIVE;
+	}
 
 	hand = 0;
 
@@ -109,44 +164,61 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mZX, mPx);
 	hand += stringHand (mPx, mel);
 
-	if (hand == 2)
+	if (hand == 2) {
+		nStr++;
 		strDf |= STRING_ZX_POSITIVE;
-	else if (hand == -2)
+	} else if (hand == -2) {
+		nStr++;
 		strDf |= STRING_ZX_NEGATIVE;
+	}
 
 	static_cast<char *>(str)[sIdx] = strDf;
+
+	return	nStr;
 }
 
 template<typename Float>
-__global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, const uint V)
+__global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, const uint V, uint &nStr, uint *partial)
 {
 	uint idx = Sf + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint tStr;
 
 	if	(idx < V)
-		stringCoreGpu<Float>(idx, m, Lx, Sf, strg);
+		tStr = stringCoreGpu<Float>(idx, m, Lx, Sf, strg);
+
+	reductionInt<BLSIZE,uint>   (nStr, tStr, partial);
 }
 
-size_t	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
+uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);
 	dim3  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3  blockSize(BLSIZE,1,1);
 
-	void   *strg;
+	const int nBlocks = gridSize.x*gridSize.y;
+
+	void  *strg;
+	uint  *d_str, *partial, nStr = 129572;
 
 	if (cudaMalloc(&strg, sizeof(char)*V) != cudaSuccess)
 		return -1;
 
+	if ((cudaMalloc(&d_str, sizeof(uint)) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
+		return -1;
+
 	if (precision == FIELD_DOUBLE)
-		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, Vm);
+		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, Vm, *d_str, partial);
 	else if (precision == FIELD_SINGLE)
-		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<float>*>(m), Lx, S, Vm);
+		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<float>*>(m), Lx, S, Vm, *d_str, partial);
 
 	cudaDeviceSynchronize();
+	cudaMemcpy(str,    strg, sizeof(char)*V, cudaMemcpyDeviceToHost);
+	cudaMemcpy(&nStr, d_str, sizeof(uint),   cudaMemcpyDeviceToHost);
 
-	cudaMemcpy(str, strg, sizeof(char)*V, cudaMemcpyDeviceToHost);
 	cudaFree(strg);
+	cudaFree(d_str);
+	cudaFree(partial);
 
-	return	0;
+	return	nStr;
 }

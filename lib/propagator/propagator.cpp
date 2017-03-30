@@ -73,7 +73,7 @@ void	Propagator::runGpu	()
 
 
 	if (lType != LAMBDA_FIXED)
-		lambda = lambda/((*z)*(*z));
+		lambda = LL/((*z)*(*z));
 
         propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M2);
@@ -85,7 +85,7 @@ void	Propagator::runGpu	()
 
 
 	if (lType != LAMBDA_FIXED)
-		lambda = lambda/((*z)*(*z));
+		lambda = LL/((*z)*(*z));
 
         propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M);
@@ -97,7 +97,7 @@ void	Propagator::runGpu	()
 
 
 	if (lType != LAMBDA_FIXED)
-		lambda = lambda/((*z)*(*z));
+		lambda = LL/((*z)*(*z));
 
         propagateGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
 	axionField->exchangeGhosts(FIELD_M2);

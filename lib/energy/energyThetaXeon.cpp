@@ -185,11 +185,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
 				mMx = opCode(mul_pd, tmp, tmp);
 
-				grd = opCode(sub_pd, opCode(load_pd, &m[idxPy]), mel);
+				grd = opCode(sub_pd, mPy, mel);
 				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
 				mPy = opCode(mul_pd, tmp, tmp);
 
-				grd = opCode(sub_pd, opCode(load_pd, &m[idxMy]), mel);
+				grd = opCode(sub_pd, mMy, mel);
 				tmp = opCode(mod_pd, grd, opCode(set1_pd, tV));
 				mMy = opCode(mul_pd, tmp, tmp);
 
@@ -289,14 +289,14 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const float o2 = ood2*0.25;
 		const float tV = 2.f*M_PI*zR;
 #ifdef	__MIC__
+		const size_t XC = (Lx<<4);
+		const size_t YC = (Lx>>4);
+#elif	defined(__AVX__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
-#elif	defined(__AVX__)
+#else
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
-#else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
 #endif
 
 		#pragma omp parallel default(shared)
@@ -401,11 +401,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
 				mMx = opCode(mul_ps, tmp, tmp);
 
-				grd = opCode(sub_ps, opCode(load_ps, &m[idxPy]), mel);
+				grd = opCode(sub_ps, mPy, mel);
 				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
 				mPy = opCode(mul_ps, tmp, tmp);
 
-				grd = opCode(sub_ps, opCode(load_ps, &m[idxMy]), mel);
+				grd = opCode(sub_ps, mMy, mel);
 				tmp = opCode(mod_ps, grd, opCode(set1_ps, tV));
 				mMy = opCode(mul_ps, tmp, tmp);
 
@@ -419,15 +419,15 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 				grd = opCode(mul_ps,
 					opCode(add_ps, mPx, mMx),
-					opCode(set1_ps, ood2));
+					opCode(set1_ps, o2));
 
 				mMx = opCode(mul_ps,
 					opCode(add_ps, mPy, mMy),
-					opCode(set1_ps, ood2));
+					opCode(set1_ps, o2));
 
 				mMy = opCode(mul_ps,
 					opCode(add_ps, mPz, mMz),
-					opCode(set1_ps, ood2));
+					opCode(set1_ps, o2));
 
 				mPx = opCode(mul_ps,
 					opCode(set1_ps, 0.5),
