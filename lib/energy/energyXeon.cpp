@@ -109,8 +109,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
-			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
+			_MData_ mel, vel, mPx, mMx, mPy, mMy, mPz, mMz, mdv, mod, mTp;
+			_MData_ Grx, Gry, Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
 
 			double tmpS[2*step] __attribute__((aligned(Align)));
 
@@ -127,6 +127,12 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					X[0] = idx - tmi*XC;
 				}
 
+				idxPz = ((idx+Sf) << 1);
+				idxMz = ((idx-Sf) << 1);
+				idxP0 = (idx << 1);
+
+				mTp = opCode(load_pd, &m[idxP0]); //Carga m con shift
+
 				if (X[0] == XC-step)
 					idxPx = ((idx - XC + step) << 1);
 				else
@@ -141,50 +147,49 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				{
 					idxMy = ((idx + Sf - XC) << 1);
 					idxPy = ((idx + XC) << 1);
+
+					mPy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), mTp);
 #ifdef	__MIC__
-					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)));
+					mMy = opCode(sub_pd, mTp, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)));
 #elif	defined(__AVX__)
 					mMx = opCode(load_pd, &m[idxMy]);
-					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(permute2f128_pd, mMx, mMx, 0b00000001));
+					mMy = opCode(sub_pd, mTp, opCode(permute2f128_pd, mMx, mMx, 0b00000001));
 #else
-					mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
+					mMy = opCode(sub_pd, mTp, opCode(load_pd, &m[idxMy]));
 #endif
 				}
 				else
 				{
 					idxMy = ((idx - XC) << 1);
 
+					mMy = opCode(sub_pd, mTp, opCode(load_pd, &m[idxMy]));
+
 					if (X[1] == YC-1)
 					{
 						idxPy = ((idx - Sf + XC) << 1);
 #ifdef	__MIC__
-						mMy = opCode(sub_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)), opCode(load_pd, &m[idxMy]));
+						mPy = opCode(sub_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)), mTp);
 #elif	defined(__AVX__)
 						mMx = opCode(load_pd, &m[idxPy]);
-						mMy = opCode(sub_pd, opCode(permute2f128_pd, mMx, mMx, 0b00000001), opCode(load_pd, &m[idxMy]));
+						mPy = opCode(sub_pd, opCode(permute2f128_pd, mMx, mMx, 0b00000001), mTp);
 #else
-						mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
+						mPy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), mTp);
 #endif
 					}
 					else
 					{
 						idxPy = ((idx + XC) << 1);
-						mMy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), opCode(load_pd, &m[idxMy]));
+						mPy = opCode(sub_pd, opCode(load_pd, &m[idxPy]), mTp);
 					}
 				}
 
-				// Tienes mMy y los puntos para mMx y mMz. Calcula todo ya!!!
+				mPx = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mTp);
+				mMx = opCode(sub_pd, mTp, opCode(load_pd, &m[idxMx]));
+				// mPy y mMy ya están cargado
+				mPz = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mTp);
+				mMz = opCode(sub_pd, mTp, opCode(load_pd, &m[idxMz]));
 
-				idxPz = ((idx+Sf) << 1);
-				idxMz = ((idx-Sf) << 1);
-				idxP0 = (idx << 1);
-
-				// Empiezo aqui
-				mMx = opCode(sub_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx]));
-				// mMy ya esta cargado
-				mMz = opCode(sub_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz]));
-
-				mel = opCode(sub_pd, opCode(load_pd, &m[idxP0]), shVc); //Carga m con shift
+				mel = opCode(sub_pd, mTp, shVc); //Carga m con shift
 				vel = opCode(load_pd, &v[idxMz]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
 #ifdef	__MIC__
@@ -209,6 +214,17 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				// Calculo los gradientes
 #ifdef	__MIC__
+				tGx = opCode(mul_pd, mPx, mCg);
+				tGy = opCode(mul_pd, mPx, mSg);
+
+				tGz = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGy), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGx), _MM_PERM_BADC)),
+					tGx);
+
+				mdv = opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy);
+
 				tGx = opCode(mul_pd, mMx, mCg);
 				tGy = opCode(mul_pd, mMx, mSg);
 
@@ -219,6 +235,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					tGx);
 
 				Grx = opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy);
+				Grx = opCode(add_ps,
+					opCode(mul_ps, mdv, mdv),
+					opCode(mul_ps, Grx, Grx));
+
+				tGx = opCode(mul_pd, mPy, mCg);
+				tGy = opCode(mul_pd, mPy, mSg);
+
+				tGz = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGy), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGx), _MM_PERM_BADC)),
+					tGx);
+
+				mdv = opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy);
 
 				tGx = opCode(mul_pd, mMy, mCg);
 				tGy = opCode(mul_pd, mMy, mSg);
@@ -230,6 +260,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					tGx);
 
 				Gry = opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy);
+				Gry = opCode(add_ps,
+					opCode(mul_ps, mdv, mdv),
+					opCode(mul_ps, Gry, Gry));
+
+				tGx = opCode(mul_pd, mPz, mCg);
+				tGy = opCode(mul_pd, mPz, mSg);
+
+				tGz = opCode(mask_add_pd,
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGy), _MM_PERM_BADC)),
+					opCode(int2mask, 0b0000000001010101),
+					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGx), _MM_PERM_BADC)),
+					tGx);
+
+				mdv = opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy);
 
 				tGx = opCode(mul_pd, mMz, mCg);
 				tGy = opCode(mul_pd, mMz, mSg);
@@ -241,6 +285,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					tGx);
 
 				Grz = opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy);
+				Grz = opCode(add_ps,
+					opCode(mul_ps, mdv, mdv),
+					opCode(mul_ps, Grz, Grz));
 
 				tGx = opCode(mul_pd, vel, mCg);
 				tGy = opCode(mul_pd, vel, mSg);
@@ -253,15 +300,29 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				mdv = opCode(sub_pd, opCode(mask_add_pd, tGz, opCode(int2mask, 0b0000000010101010), tGz, tGy), ivZ);
 #else				// Las instrucciones se llaman igual con AVX o con SSE3
-				// Here we divide by mel
-				Grx = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
-				Gry = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
-				Grz = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
+				Grx = opCode(hadd_pd, opCode(mul_pd, mPx, mCg), opCode(mul_pd, mPx, mSg));
+				mdv = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
+				Grx = opCode(add_pd,
+					opCode(mul_pd, mdv, mdv),
+					opCode(mul_pd, Grx, Grx));
+
+				Gry = opCode(hadd_pd, opCode(mul_pd, mPy, mCg), opCode(mul_pd, mPy, mSg));
+				mdv = opCode(hadd_pd, opCode(mul_pd, mMy, mCg), opCode(mul_pd, mMy, mSg));
+				Gry = opCode(add_pd,
+					opCode(mul_pd, mdv, mdv),
+					opCode(mul_pd, Gry, Gry));
+
+				Grz = opCode(hadd_pd, opCode(mul_pd, mPz, mCg), opCode(mul_pd, mPz, mSg));
+				mdv = opCode(hadd_pd, opCode(mul_pd, mMz, mCg), opCode(mul_pd, mMz, mSg));
+				Grz = opCode(add_pd,
+					opCode(mul_pd, mdv, mdv),
+					opCode(mul_pd, Grz, Grz));
+
 				mdv = opCode(sub_pd, opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
 #endif
-				tGx = opCode(mul_pd, mod, opCode(mul_pd, Grx, Grx));
-				tGy = opCode(mul_pd, mod, opCode(mul_pd, Gry, Gry));
-				tGz = opCode(mul_pd, mod, opCode(mul_pd, Grz, Grz));
+				tGx = opCode(mul_pd, mod, Grx);
+				tGy = opCode(mul_pd, mod, Gry);
+				tGz = opCode(mul_pd, mod, Grz);
 
 				tKp = opCode(mul_pd, mod, opCode(mul_pd, mdv, mdv));
 
