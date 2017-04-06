@@ -2,133 +2,16 @@
 #include "utils/index.cuh"
 
 #include "enum-field.h"
-#include "cub/cub.cuh"
 
 #include "scalar/varNQCD.h"
 #include "utils/parse.h"
+
+#include "utils/reduceGpu.cuh"
 
 #define	BLSIZE 512
 
 using namespace gpuCu;
 using namespace indexHelper;
-
-__device__ uint bCount = 0;
-
-template <int bSize, typename Float>
-__device__ inline void reduction(Float * __restrict__ eRes, const Float * __restrict__ tmp, Float *partial)
-{
-	typedef cub::BlockReduce<Float, bSize, cub::BLOCK_REDUCE_WARP_REDUCTIONS> BlockReduce;
-	const int blockSurf = gridDim.x*gridDim.y;
-
-	__shared__ bool isLastBlockDone;
-	__shared__ typename BlockReduce::TempStorage cub_tmp[10];
-//	__shared__ typename BlockReduce::TempStorage cub_tmp;
-
-
-	Float tmpGrhx = BlockReduce(cub_tmp[0]).Sum(tmp[0]);
-	Float tmpGthx = BlockReduce(cub_tmp[1]).Sum(tmp[1]);
-	Float tmpGrhy = BlockReduce(cub_tmp[2]).Sum(tmp[2]);
-	Float tmpGthy = BlockReduce(cub_tmp[3]).Sum(tmp[3]);
-	Float tmpGrhz = BlockReduce(cub_tmp[4]).Sum(tmp[4]);
-	Float tmpGthz = BlockReduce(cub_tmp[5]).Sum(tmp[5]);
-	Float tmpVrho = BlockReduce(cub_tmp[6]).Sum(tmp[6]);
-	Float tmpVth  = BlockReduce(cub_tmp[7]).Sum(tmp[7]);
-	Float tmpKrho = BlockReduce(cub_tmp[8]).Sum(tmp[8]);
-	Float tmpKth  = BlockReduce(cub_tmp[9]).Sum(tmp[9]);
-
-//	Float tmp = BlockReduce(cub_tmp).Sum(*tmpC);
-
-	if (threadIdx.x == 0)
-	{
-		const int bIdx = blockIdx.x + gridDim.x*blockIdx.y;
-
-		partial[bIdx + 0*blockSurf] = tmpGrhx;
-		partial[bIdx + 1*blockSurf] = tmpGthx;
-		partial[bIdx + 2*blockSurf] = tmpGrhy;
-		partial[bIdx + 3*blockSurf] = tmpGthy;
-		partial[bIdx + 4*blockSurf] = tmpGrhz;
-		partial[bIdx + 5*blockSurf] = tmpGthz;
-		partial[bIdx + 6*blockSurf] = tmpVrho;
-		partial[bIdx + 7*blockSurf] = tmpVth;
-		partial[bIdx + 8*blockSurf] = tmpKrho;
-		partial[bIdx + 9*blockSurf] = tmpKth;
-
-//		partial[bIdx] = tmp;
-
-		__threadfence();
-
-		unsigned int cBlock = atomicInc(&bCount, blockSurf);
-		isLastBlockDone = (cBlock == (blockSurf-1));
-	}
-
-	__syncthreads();
-
-	// finish the reduction if last block
-	if (isLastBlockDone)
-	{
-		uint i = threadIdx.x;
-
-		tmpGrhx = 0., tmpGthx = 0.;
-		tmpGrhy = 0., tmpGthy = 0.;
-		tmpGrhz = 0., tmpGthz = 0.;
-		tmpVrho = 0., tmpVth  = 0.;
-		tmpKrho = 0., tmpKth  = 0.;
-
-//		tmp = 0.;
-
-		while (i < blockSurf)
-		{
-
-			tmpGrhx += partial[i + 0*blockSurf];
-			tmpGthx += partial[i + 1*blockSurf];
-			tmpGrhy += partial[i + 2*blockSurf];
-			tmpGthy += partial[i + 3*blockSurf];
-			tmpGrhz += partial[i + 4*blockSurf];
-			tmpGthz += partial[i + 5*blockSurf];
-			tmpVrho += partial[i + 6*blockSurf];
-			tmpVth  += partial[i + 7*blockSurf];
-			tmpKrho += partial[i + 8*blockSurf];
-			tmpKth  += partial[i + 9*blockSurf];
-
-//			tmp  += partial[i];
-
-			i += bSize;
-		}
-
-		tmpGrhx = BlockReduce(cub_tmp[0]).Sum(tmpGrhx);
-		tmpGthx = BlockReduce(cub_tmp[1]).Sum(tmpGthx);
-		tmpGrhy = BlockReduce(cub_tmp[2]).Sum(tmpGrhy);
-		tmpGthy = BlockReduce(cub_tmp[3]).Sum(tmpGthy);
-		tmpGrhz = BlockReduce(cub_tmp[4]).Sum(tmpGrhz);
-		tmpGthz = BlockReduce(cub_tmp[5]).Sum(tmpGthz);
-		tmpVrho = BlockReduce(cub_tmp[6]).Sum(tmpVrho);
-		tmpVth  = BlockReduce(cub_tmp[7]).Sum(tmpVth);
-		tmpKrho = BlockReduce(cub_tmp[8]).Sum(tmpKrho);
-		tmpKth  = BlockReduce(cub_tmp[9]).Sum(tmpKth);
-
-//		tmp = BlockReduce(cub_tmp).Sum(tmp);
-
-		if (threadIdx.x == 0)
-		{
-
-			eRes[0] = tmpGrhx;
-			eRes[1] = tmpGthx;
-			eRes[2] = tmpGrhy;
-			eRes[3] = tmpGthy;
-			eRes[4] = tmpGrhz;
-			eRes[5] = tmpGthz;
-			eRes[6] = tmpVrho;
-			eRes[7] = tmpVth;
-			eRes[8] = tmpKrho;
-			eRes[9] = tmpKth;
-
-//			eRes[0] = tmp;
-
-			bCount = 0;
-		}
-	}
-}
-
 
 template<typename Float>
 static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const double iZ, const double iZ2, double *tR, const Float shift)
@@ -174,17 +57,17 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	mMZ = (m[idx-Sf] - tp2)*conj(m[idx])*iMod;
 	vOm = v[idx-Sf]*conj(tmp)*iMod - gpuCu::complex<Float>(iZ, 0.);
 
-	tR[0] = (double) ((Float) (mFac*(mPX.real()*mPX.real() + mMX.real()*mMX.real())));
-	tR[1] = (double) ((Float) (mFac*(mPX.imag()*mPX.imag() + mMX.imag()*mMX.imag())));
-	tR[2] = (double) ((Float) (mFac*(mPY.real()*mPY.real() + mMY.real()*mMY.real())));
-	tR[3] = (double) ((Float) (mFac*(mPY.imag()*mPY.imag() + mMY.imag()*mMY.imag())));
-	tR[4] = (double) ((Float) (mFac*(mPZ.real()*mPZ.real() + mMZ.real()*mMZ.real())));
-	tR[5] = (double) ((Float) (mFac*(mPZ.imag()*mPZ.imag() + mMZ.imag()*mMZ.imag())));
-	tR[6] = (double) ((Float) (mFac - 1.)*(mFac - 1.));
-	//tR[7] = (double) (((Float) 1.) - tmp.real()*iZ);	// Old potential
-	tR[7] = (double) (((Float) 1.) - tmp.real()/sqrt(mod));
-	tR[8] = (double) ((Float) (mFac*vOm.real()*vOm.real()));
-	tR[9] = (double) ((Float) (mFac*vOm.imag()*vOm.imag()));
+	tR[RH_GRX] = (double) ((Float) (mFac*(mPX.real()*mPX.real() + mMX.real()*mMX.real())));
+	tR[TH_GRX] = (double) ((Float) (mFac*(mPX.imag()*mPX.imag() + mMX.imag()*mMX.imag())));
+	tR[RH_GRY] = (double) ((Float) (mFac*(mPY.real()*mPY.real() + mMY.real()*mMY.real())));
+	tR[TH_GRY] = (double) ((Float) (mFac*(mPY.imag()*mPY.imag() + mMY.imag()*mMY.imag())));
+	tR[RH_GRZ] = (double) ((Float) (mFac*(mPZ.real()*mPZ.real() + mMZ.real()*mMZ.real())));
+	tR[TH_GRZ] = (double) ((Float) (mFac*(mPZ.imag()*mPZ.imag() + mMZ.imag()*mMZ.imag())));
+	tR[RH_POT] = (double) ((Float) (mFac - 1.)*(mFac - 1.));
+	//tR[TH_POT] = (double) (((Float) 1.) - tmp.real()*iZ);	// Old potential
+	tR[TH_POT] = (double) (((Float) 1.) - tmp.real()/sqrt(mod));
+	tR[RH_KIN] = (double) ((Float) (mFac*vOm.real()*vOm.real()));
+	tR[TH_KIN] = (double) ((Float) (mFac*vOm.imag()*vOm.imag()));
 }
 
 template<typename Float>
@@ -197,7 +80,7 @@ __global__ void	energyKernel(const complex<Float> * __restrict__ m, const comple
 	if	(idx < V)
 		energyCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp, shift);
 
-	reduction<BLSIZE,double>   (eR, tmp, partial);
+	reduction<BLSIZE,double,10>   (eR, tmp, partial);
 }
 
 int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double LL, const double nQcd, const double shift,
@@ -239,22 +122,16 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double 
 	const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;//9.*pow(zR, nQcd+2.);
 	const double lZ = 0.25*LL*zR*zR;
 
-	eR[0] *= o2;
-	eR[1] *= o2;
-	eR[2] *= o2;
-	eR[3] *= o2;
-	eR[4] *= o2;
-	eR[5] *= o2;
-	eR[6] *= lZ;
-	eR[7] *= zQ;
-	eR[8] *= .5;
-	eR[9] *= .5;
+	eR[TH_GRX] *= o2;
+	eR[TH_GRY] *= o2;
+	eR[TH_GRZ] *= o2;
+	eR[TH_KIN] *= .5;
+	eR[TH_POT] *= zQ;
+	eR[RH_GRX] *= o2;
+	eR[RH_GRY] *= o2;
+	eR[RH_GRZ] *= o2;
+	eR[RH_KIN] *= .5;
+	eR[RH_POT] *= lZ;
 
 	return	0;
 }
-/*
-int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double LL, const double nQcd,
-			 const uint Lx, const uint Lz, const uint V, const uint Vt, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
-{
-	return	1;
-}*/

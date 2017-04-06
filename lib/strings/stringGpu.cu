@@ -2,62 +2,13 @@
 #include "utils/index.cuh"
 
 #include "enum-field.h"
-#include "cub/cub.cuh"
+
+#include "utils/reduceGpu.cuh"
 
 #define	BLSIZE 256
 
 using namespace gpuCu;
 using namespace indexHelper;
-
-__device__ uint bCount = 0;
-
-template <int bSize, typename Int>
-__device__ inline void reductionInt(Int &nStr, const Int &in, Int *partial)
-{
-	typedef cub::BlockReduce<Int, bSize, cub::BLOCK_REDUCE_WARP_REDUCTIONS> BlockReduce;
-	const int blockSurf = gridDim.x*gridDim.y;
-
-	__shared__ bool isLastBlockDone;
-	__shared__ typename BlockReduce::TempStorage cub_tmp;
-
-	Int tmpStr = BlockReduce(cub_tmp).Sum(in);
-
-	if (threadIdx.x == 0)
-	{
-		const int bIdx = blockIdx.x + gridDim.x*blockIdx.y;
-		partial[bIdx] = tmpStr;
-		__threadfence();
-
-		unsigned int cBlock = atomicInc(&bCount, blockSurf);
-		isLastBlockDone = (cBlock == (blockSurf-1));
-	}
-
-	__syncthreads();
-
-	// finish the reduction if last block
-	if (isLastBlockDone)
-	{
-		uint i = threadIdx.x;
-
-		tmpStr = 0;
-
-		while (i < blockSurf)
-		{
-
-			tmpStr += partial[i];
-
-			i += bSize;
-		}
-
-		tmpStr = BlockReduce(cub_tmp).Sum(tmpStr);
-
-		if (threadIdx.x == 0)
-		{
-			nStr = tmpStr;
-			bCount = 0;
-		}
-	}
-}
 
 template<typename Float>
 static __device__ __forceinline__ int	stringHand(const complex<Float> s1, const complex<Float> s2)
@@ -186,7 +137,7 @@ __global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __
 	if	(idx < V)
 		tStr = stringCoreGpu<Float>(idx, m, Lx, Sf, strg);
 
-	reductionInt<BLSIZE,uint>   (nStr, tStr, partial);
+	reduction<BLSIZE,uint,1>   (&nStr, &tStr, partial);
 }
 
 uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)

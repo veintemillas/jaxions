@@ -2,98 +2,16 @@
 #include "utils/index.cuh"
 
 #include "enum-field.h"
-#include "cub/cub.cuh"
 
 #include "scalar/varNQCD.h"
 #include "utils/parse.h"
+
+#include "utils/reduceGpu.cuh"
 
 #define	BLSIZE 512
 
 using namespace gpuCu;
 using namespace indexHelper;
-
-__device__ uint bCount = 0;
-
-template <int bSize, typename Float>
-__device__ inline void reductionTheta(Float * __restrict__ eRes, const Float * __restrict__ tmp, Float *partial)
-{
-	typedef cub::BlockReduce<Float, bSize, cub::BLOCK_REDUCE_WARP_REDUCTIONS> BlockReduce;
-	const int blockSurf = gridDim.x*gridDim.y;
-
-	__shared__ bool isLastBlockDone;
-	__shared__ typename BlockReduce::TempStorage cub_tmp[5];
-
-
-	Float tmpGthx = BlockReduce(cub_tmp[0]).Sum(tmp[0]);
-	Float tmpGthy = BlockReduce(cub_tmp[1]).Sum(tmp[1]);
-	Float tmpGthz = BlockReduce(cub_tmp[2]).Sum(tmp[2]);
-	Float tmpKth  = BlockReduce(cub_tmp[3]).Sum(tmp[3]);
-	Float tmpVth  = BlockReduce(cub_tmp[4]).Sum(tmp[4]);
-
-	if (threadIdx.x == 0)
-	{
-		const int bIdx = blockIdx.x + gridDim.x*blockIdx.y;
-
-		partial[bIdx + 0*blockSurf] = tmpGthx;
-		partial[bIdx + 1*blockSurf] = tmpGthy;
-		partial[bIdx + 2*blockSurf] = tmpGthz;
-		partial[bIdx + 3*blockSurf] = tmpKth;
-		partial[bIdx + 4*blockSurf] = tmpVth;
-
-		__threadfence();
-
-		unsigned int cBlock = atomicInc(&bCount, blockSurf);
-		isLastBlockDone = (cBlock == (blockSurf-1));
-	}
-
-	__syncthreads();
-
-	// finish the reduction if last block
-	if (isLastBlockDone)
-	{
-		uint i = threadIdx.x;
-
-		tmpGthx = 0.;
-		tmpGthy = 0.;
-		tmpGthz = 0.;
-		tmpKth  = 0.;
-		tmpVth  = 0.;
-
-//		tmp = 0.;
-
-		while (i < blockSurf)
-		{
-
-			tmpGthx += partial[i + 0*blockSurf];
-			tmpGthy += partial[i + 1*blockSurf];
-			tmpGthz += partial[i + 2*blockSurf];
-			tmpKth  += partial[i + 3*blockSurf];
-			tmpVth  += partial[i + 4*blockSurf];
-
-//			tmp  += partial[i];
-
-			i += bSize;
-		}
-
-		tmpGthx = BlockReduce(cub_tmp[0]).Sum(tmpGthx);
-		tmpGthy = BlockReduce(cub_tmp[1]).Sum(tmpGthy);
-		tmpGthz = BlockReduce(cub_tmp[2]).Sum(tmpGthz);
-		tmpKth  = BlockReduce(cub_tmp[3]).Sum(tmpKth);
-		tmpVth  = BlockReduce(cub_tmp[4]).Sum(tmpVth);
-
-		if (threadIdx.x == 0)
-		{
-
-			eRes[0] = tmpGthx;
-			eRes[1] = tmpGthy;
-			eRes[2] = tmpGthz;
-			eRes[3] = tmpKth;
-			eRes[4] = tmpVth;
-
-			bCount = 0;
-		}
-	}
-}
 
 template<typename Float>
 static __device__ __forceinline__ Float modPi (const Float x, const Float OneOvPi, const Float TwoPiZ)
@@ -172,7 +90,7 @@ __global__ void	energyThetaKernel(const Float * __restrict__ m, const Float * __
 	if	(idx < V)
 		energyThetaCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, zP, tPz, tmp);
 
-	reductionTheta<BLSIZE,double>   (eR, tmp, partial);
+	reduction<BLSIZE,double,5>   (eR, tmp, partial);
 }
 
 int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double nQcd,

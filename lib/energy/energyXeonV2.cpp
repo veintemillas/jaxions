@@ -2,12 +2,14 @@
 #include<cmath>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
+#include"scalar/varNQCD.h"
 
 #ifdef USE_XEON
 	#include"comms/comms.h"
 	#include"utils/xeonDefs.h"
 #endif
 
+#include "utils/parse.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -33,7 +35,7 @@
 __attribute__((target(mic)))
 #endif
 void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ v_, double *z, const double ood2, const double LL, const double nQcd,
-			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
+			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -67,43 +69,37 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 		const double zR  = *z;
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
-		const double zQ = 9.*pow(zR, nQcd+2.);
+		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
 		const double lZ = 0.25*LL*zR*zR;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) oneAux[8]  = { 1., 1., 1., 1., 1., 1., 1., 1. };
 		const double __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) ivZ2Aux[8] = {iz2,iz2,iz2,iz2,iz2,iz2,iz2,iz2 };
+		const double __attribute__((aligned(Align))) shfAux[8]  = {shift, 0., shift, 0., shift, 0., shift, 0. };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) oneAux[4]  = { 1., 1., 1., 1. };
 		const double __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) ivZ2Aux[4] = {iz2,iz2,iz2,iz2 };
+		const double __attribute__((aligned(Align))) shfAux[4]  = {shift, 0., shift, 0. };
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) oneAux[2]  = { 1., 1. };
 		const double __attribute__((aligned(Align))) cjgAux[2]  = { 1.,-1. };
 		const double __attribute__((aligned(Align))) ivZAux[2]  = { iz, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) ivZ2Aux[2] = {iz2,iz2 };
-
+		const double __attribute__((aligned(Align))) shfAux[2]  = {shift, 0.};
 #endif
-		const _MData_ one  = opCode(load_pd, oneAux);
 		const _MData_ cjg  = opCode(load_pd, cjgAux);
 		const _MData_ ivZ  = opCode(load_pd, ivZAux);
-		const _MData_ ivZ2 = opCode(load_pd, ivZ2Aux);
 
 		#pragma omp parallel default(shared) 
 		{
-			_MData_ mel, vel, mMx, mMy, mMz, mdv, mod, mTp;
-			_MData_ Grx,  Gry,  Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
+			_MData_ mel, vel, mPx, mMx, mPy, mMy, mPz, mMz, mdv, mod, mTp;
+			_MData_ Grx, Gry, Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
 
 			double tmpS[2*step] __attribute__((aligned(Align)));
 
@@ -119,6 +115,12 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 					X[1] = tmi - tpi*YC;
 					X[0] = idx - tmi*XC;
 				}
+
+				idxPz = ((idx+Sf) << 1);
+				idxMz = ((idx-Sf) << 1);
+				idxP0 = (idx << 1);
+
+				mTp = opCode(load_pd, &m[idxP0]); //Carga m con shift
 
 				if (X[0] == XC-step)
 					idxPx = ((idx - XC + step) << 1);
@@ -187,7 +189,7 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 #else
 				mTp = opCode(add_pd, opCode(shuffle_pd, mod, mod, 0b00000001), mod);
 #endif
-				mod = opCode(mul_pd, mTp, ivZ2);	// Factor |mel|^2/z^2, util luego
+				mod = opCode(mul_pd, mTp, opCode(set1_pd, iz2));	// Factor |mel|^2/z^2, util luego
 
 				mCg = opCode(div_pd, mel, mTp);	// Ahora mCg tiene 1/mel
 
@@ -257,9 +259,9 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 					
 				tKp = opCode(mul_pd, mod, opCode(mul_pd, mdv, mdv));
 
-				mTp = opCode(sub_pd, mod, one);
+				mTp = opCode(sub_pd, mod, opCode(set1_pd, 1.0));
 				mod = opCode(mul_pd, mTp, mTp);
-				mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
+				mTp = opCode(sub_pd, opCode(set1_pd, 1.0), opCode(mul_pd, mel, ivZ));
 
 				/****************
  				 * POTENTIAL V2 *
@@ -343,18 +345,18 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 			}
 		}
 
-		const double o2 = ood2*0.375;
+		const double o2 = ood2*0.25;//0.375;
 
-		eRes[0] = Gxrho*o2;
-		eRes[1] = Gxth *o2;
-		eRes[2] = Gyrho*o2;
-		eRes[3] = Gyth *o2;
-		eRes[4] = Gzrho*o2;
-		eRes[5] = Gzth *o2;
-		eRes[6] = Vrho *lZ;
-		eRes[7] = Vth  *zQ;
-		eRes[8] = Krho *.5;
-		eRes[9] = Kth  *.5;
+		eRes[RH_GRX] = Gxrho*o2;
+		eRes[TH_GRX] = Gxth *o2;
+		eRes[RH_GRY] = Gyrho*o2;
+		eRes[TH_GRY] = Gyth *o2;
+		eRes[RH_GRZ] = Gzrho*o2;
+		eRes[TH_GRZ] = Gzth *o2;
+		eRes[RH_POT] = Vrho *lZ;
+		eRes[TH_POT] = Vth  *zQ;
+		eRes[RH_KIN] = Krho *.5;
+		eRes[TH_KIN] = Kth  *.5;
 #undef	_MData_
 #undef	step
 	}
@@ -690,18 +692,18 @@ void	energyKernelXeonV2(const void * __restrict__ m_, const void * __restrict__ 
 			}
 		}
 
-		const double o2 = ood2*0.375;
+		const double o2 = ood2*0.25;//0.375;
 
-		eRes[0] = Gxrho*o2;
-		eRes[1] = Gxth *o2;
-		eRes[2] = Gyrho*o2;
-		eRes[3] = Gyth *o2;
-		eRes[4] = Gzrho*o2;
-		eRes[5] = Gzth *o2;
-		eRes[6] = Vrho *lZ;
-		eRes[7] = Vth  *zQ;
-		eRes[8] = Krho *.5;
-		eRes[9] = Kth  *.5;
+		eRes[RH_GRX] = Gxrho*o2;
+		eRes[TH_GRX] = Gxth *o2;
+		eRes[RH_GRY] = Gyrho*o2;
+		eRes[TH_GRY] = Gyth *o2;
+		eRes[RH_GRZ] = Gzrho*o2;
+		eRes[TH_GRZ] = Gzth *o2;
+		eRes[RH_POT] = Vrho *lZ;
+		eRes[TH_POT] = Vth  *zQ;
+		eRes[RH_KIN] = Krho *.5;
+		eRes[TH_KIN] = Kth  *.5;
 #undef	_MData_
 #undef	step
 	}
@@ -729,5 +731,5 @@ void	energyCpuV2	(Scalar *axionField, const double delta2, const double LL, cons
 	double *z = axionField->zV();
 
 	axionField->exchangeGhosts(FIELD_M);
-	energyKernelXeonV2(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes);
+	energyKernelXeonV2(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, 0.0);
 }

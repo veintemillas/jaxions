@@ -584,7 +584,7 @@ int	main (int argc, char *argv[])
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
-				(*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings_global, maximumtheta);
+				(*axion->zV()), eR[TH_GRX], eR[TH_GRY], eR[TH_GRZ], eR[TH_POT], eR[TH_KIN], eR[RH_GRX], eR[RH_GRY], eR[RH_GRZ], eR[RH_POT], eR[RH_KIN], nstrings_global, maximumtheta);
 				fflush(file_energy);
 				}
 			}
@@ -599,7 +599,7 @@ int	main (int argc, char *argv[])
 				energy(axion, llaux, nQcd, delta, cDev, eRes, fCount, VQCD_1);
 				if (commRank()==0)
 				{
-				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n",(*axion->zV()), eR[0], eR[1],eR[2], eR[3],eR[4], maximumtheta);
+				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n",(*axion->zV()), eR[TH_GRX], eR[TH_GRY],eR[TH_GRZ], eR[TH_POT],eR[TH_KIN], maximumtheta);
 				fflush(file_energy);
 				}
 

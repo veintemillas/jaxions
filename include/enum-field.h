@@ -102,4 +102,18 @@
 		ALLOC_TRACK = 0,
 		ALLOC_ALIGN = 1,
 	}	AllocType;
+
+	typedef	enum	Int_EnergyIdx_s
+	{
+		TH_GRX = 0,
+		TH_GRY = 1,
+		TH_GRZ = 2,
+		TH_KIN = 3,
+		TH_POT = 4,
+		RH_GRX = 5,
+		RH_GRY = 6,
+		RH_GRZ = 7,
+		RH_KIN = 8,
+		RH_POT = 9,
+	}	EnergyIdx;
 #endif

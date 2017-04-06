@@ -403,18 +403,18 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			}
 		}
 
-		const double o2 = ood2*0.125;
+		const double o2 = ood2*0.25;
 
-		eRes[0] = Gxrho*o2;
-		eRes[1] = Gxth *o2;
-		eRes[2] = Gyrho*o2;
-		eRes[3] = Gyth *o2;
-		eRes[4] = Gzrho*o2;
-		eRes[5] = Gzth *o2;
-		eRes[6] = Vrho *lZ;
-		eRes[7] = Vth  *zQ;
-		eRes[8] = Krho *.5;
-		eRes[9] = Kth  *.5;
+		eRes[RH_GRX] = Gxrho*o2;
+		eRes[TH_GRX] = Gxth *o2;
+		eRes[RH_GRY] = Gyrho*o2;
+		eRes[TH_GRY] = Gyth *o2;
+		eRes[RH_GRZ] = Gzrho*o2;
+		eRes[TH_GRZ] = Gzth *o2;
+		eRes[RH_POT] = Vrho *lZ;
+		eRes[TH_POT] = Vth  *zQ;
+		eRes[RH_KIN] = Krho *.5;
+		eRes[TH_KIN] = Kth  *.5;
 #undef	_MData_
 #undef	step
 	}
@@ -837,16 +837,16 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 		const double o2 = ood2*0.25;
 
-		eRes[0] = Gxrho*o2;
-		eRes[1] = Gxth *o2;
-		eRes[2] = Gyrho*o2;
-		eRes[3] = Gyth *o2;
-		eRes[4] = Gzrho*o2;
-		eRes[5] = Gzth *o2;
-		eRes[6] = Vrho *lZ;
-		eRes[7] = Vth  *zQ;
-		eRes[8] = Krho *.5;
-		eRes[9] = Kth  *.5;
+		eRes[RH_GRX] = Gxrho*o2;
+		eRes[TH_GRX] = Gxth *o2;
+		eRes[RH_GRY] = Gyrho*o2;
+		eRes[TH_GRY] = Gyth *o2;
+		eRes[RH_GRZ] = Gzrho*o2;
+		eRes[TH_GRZ] = Gzth *o2;
+		eRes[RH_POT] = Vrho *lZ;
+		eRes[TH_POT] = Vth  *zQ;
+		eRes[RH_KIN] = Krho *.5;
+		eRes[TH_KIN] = Kth  *.5;
 #undef	_MData_
 #undef	step
 	}
