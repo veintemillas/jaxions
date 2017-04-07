@@ -73,11 +73,11 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 	Kt = vel*vel;
 	Vt = 1.0f - cos(mel*iZ);
 
-	tR[0] = (double) aX;
-	tR[1] = (double) aY;
-	tR[2] = (double) aZ;
-	tR[3] = (double) Kt;
-	tR[4] = (double) Vt;
+	tR[TH_GRX] = (double) aX;
+	tR[TH_GRY] = (double) aY;
+	tR[TH_GRZ] = (double) aZ;
+	tR[TH_KIN] = (double) Kt;
+	tR[TH_POT] = (double) Vt;
 }
 
 template<typename Float>
@@ -134,11 +134,11 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, do
 	const double zQ  = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 	const double iz2 = 1./(zR*zR);
 
-	eR[0] *= o2*iz2;
-	eR[1] *= o2*iz2;
-	eR[2] *= o2*iz2;
-	eR[3] *= .5*iz2;
-	eR[4] *= zQ;
+	eR[TH_GRX] *= o2*iz2;
+	eR[TH_GRY] *= o2*iz2;
+	eR[TH_GRZ] *= o2*iz2;
+	eR[TH_KIN] *= .5*iz2;
+	eR[TH_POT] *= zQ;
 
 	return	0;
 }

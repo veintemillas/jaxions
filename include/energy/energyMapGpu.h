@@ -3,6 +3,8 @@
 
 	#include"scalar/scalarField.h"
 
-	void    energyMapGpu    (const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
-	                         const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, cudaStream_t &stream);
+	void    energyMapGpu	  (const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd, const double lambda,
+				   const double shift, const VqcdType VQcd, const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, cudaStream_t &stream);
+	void	energyMapThetaGpu (const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
+				   const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, cudaStream_t &stream);
 #endif

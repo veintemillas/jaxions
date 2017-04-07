@@ -35,8 +35,8 @@
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double ood2, const double nQcd,
-			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double o2, const double nQcd,
+				 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -64,12 +64,11 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 #else
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
 		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_, Align);
-		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_,Align);
+		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_, Align);
 #endif
 		const double zR  = *z;
 		const double iz  = 1./zR;
 		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
-		const double o2 = ood2*0.25;
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -185,7 +184,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 						opCode(add_pd,
 							opCode(mul_pd, mPz, mPz),
 							opCode(mul_pd, mMz, mMz))),
-					opCode(set1_pd, ood2));
+					opCode(set1_pd, o2));
 
 				mPx = opCode(add_pd,
 					opCode(mul_pd,
@@ -243,16 +242,15 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 		const float zR  = *z;
 		const float iz  = 1./zR;
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
-		const float o2 = ood2*0.25;
 #ifdef	__MIC__
+		const size_t XC = (Lx<<4);
+		const size_t YC = (Lx>>4);
+#elif	defined(__AVX__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
-#elif	defined(__AVX__)
+#else
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
-#else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
 #endif
 
 		#pragma omp parallel default(shared)
@@ -363,7 +361,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 						opCode(add_ps,
 							opCode(mul_ps, mPz, mPz),
 							opCode(mul_ps, mMz, mMz))),
-					opCode(set1_ps, ood2));
+					opCode(set1_ps, o2));
 
 				mPx = opCode(add_ps,
 					opCode(mul_ps,
@@ -398,7 +396,7 @@ void	energyMapThetaXeon	(Scalar *axionField, const double delta2, const double n
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc();
-	const double ood2 = 1./delta2;
+	const double ood2 = 0.25/delta2;
 	double *z  = axionField->zV();
 	const FieldPrecision precision = axionField->Precision();
 
@@ -412,7 +410,7 @@ void	energyMapThetaXeon	(Scalar *axionField, const double delta2, const double n
 
 void	energyMapThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S)
 {
-	const double ood2 = 1./delta2;
+	const double ood2 = 0.25/delta2;
 	double *z = axionField->zV();
 	const FieldPrecision precision = axionField->Precision();
 

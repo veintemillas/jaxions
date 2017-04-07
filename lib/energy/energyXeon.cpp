@@ -34,6 +34,7 @@
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
+template<const VqcdType VQcd>
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, double *z, const double ood2, const double LL, const double nQcd,
 			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
@@ -328,8 +329,17 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				mSg = opCode(sub_pd, mod, one);
 				mod = opCode(mul_pd, mSg, mSg);
-				//mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));  Old potential 1 - m/z
-				mCg = opCode(sub_pd, one, opCode(div_pd, mel, opCode(sqrt_pd, mTp)));  // 1-m/|m|
+
+				switch	(VQcd) {
+					case	VQCD_1:
+						mCg = opCode(sub_pd, one, opCode(div_pd, mel, opCode(sqrt_pd, mTp)));  // 1-m/|m|
+						break;
+
+					case	VQCD_2:
+						mTp = opCode(sub_pd, one, opCode(mul_pd, mel, ivZ));
+						mCg = opCode(mul_pd, mTp, mTp);
+						break;
+				}
 #ifdef	__MIC__
 				vel = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mCg), _MM_PERM_BADC));
 				tVp = opCode(mask_blend_pd, opCode(int2mask, 0b0000000010101010), mod, vel);
@@ -754,8 +764,17 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				mSg = opCode(sub_ps, mod, one);
 				mod = opCode(mul_ps, mSg, mSg);
-//				mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));	Old potential 1 - m/z
-				mCg = opCode(sub_ps, one, opCode(div_ps, mel, opCode(sqrt_ps, mTp)));
+
+				switch	(VQcd) {
+					case	VQCD_1:
+						mCg = opCode(sub_ps, one, opCode(div_ps, mel, opCode(sqrt_ps, mTp)));  // 1-m/|m|
+						break;
+
+					case	VQCD_2:
+						mTp = opCode(sub_ps, one, opCode(mul_ps, mel, ivZ));
+						mCg = opCode(mul_ps, mTp, mTp);
+						break;
+				}
 #ifdef	__MIC__
 				tVp = opCode(mask_blend_ps, opCode(int2mask, 0b1010101010101010), mod, opCode(swizzle_ps, mCg, _MM_SWIZ_REG_CDAB));
 #elif defined(__AVX__)
@@ -852,7 +871,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	}
 }
 
-void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift)
+void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift, const VqcdType VQcd)
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc();
@@ -861,18 +880,39 @@ void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const
 	double *eR = static_cast<double*>(eRes);
 
 	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
-	{
-		energyKernelXeon(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+
+	switch (VQcd) {
+		case	VQCD_1:
+			#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
+			{
+				energyKernelXeon<VQCD_1>(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+			}
+			break;
+
+		case	VQCD_2:
+			#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
+			{
+				energyKernelXeon<VQCD_2>(mX, vX, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+			}
+			break;
 	}
 #endif
 }
 
-void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift)
+void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift, const VqcdType VQcd)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 
 	axionField->exchangeGhosts(FIELD_M);
-	energyKernelXeon(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
+
+	switch (VQcd) {
+		case	VQCD_1:
+			energyKernelXeon<VQCD_1>(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
+			break;
+
+		case	VQCD_2:
+			energyKernelXeon<VQCD_2>(axionField->mCpu(), axionField->vCpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
+			break;
+	}
 }

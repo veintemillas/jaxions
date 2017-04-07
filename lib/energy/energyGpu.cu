@@ -13,7 +13,7 @@
 using namespace gpuCu;
 using namespace indexHelper;
 
-template<typename Float>
+template<const VqcdType VQcd, typename Float>
 static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const double iZ, const double iZ2, double *tR, const Float shift)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
@@ -64,13 +64,20 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	tR[RH_GRZ] = (double) ((Float) (mFac*(mPZ.real()*mPZ.real() + mMZ.real()*mMZ.real())));
 	tR[TH_GRZ] = (double) ((Float) (mFac*(mPZ.imag()*mPZ.imag() + mMZ.imag()*mMZ.imag())));
 	tR[RH_POT] = (double) ((Float) (mFac - 1.)*(mFac - 1.));
-	//tR[TH_POT] = (double) (((Float) 1.) - tmp.real()*iZ);	// Old potential
-	tR[TH_POT] = (double) (((Float) 1.) - tmp.real()/sqrt(mod));
 	tR[RH_KIN] = (double) ((Float) (mFac*vOm.real()*vOm.real()));
 	tR[TH_KIN] = (double) ((Float) (mFac*vOm.imag()*vOm.imag()));
+
+	switch (VQcd) {
+		case	VQCD_1:
+			tR[TH_POT] = (double) (((Float) 1.) - tmp.real()/sqrt(mod));
+			break;
+		case	VQCD_2:
+			double smp = (double) (((Float) 1.) - tmp.real()*iZ);
+			tR[TH_POT] = smp*smp;
+	}
 }
 
-template<typename Float>
+template<const VqcdType VQcd, typename Float>
 __global__ void	energyKernel(const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const uint Lx, const uint Sf, const uint V, const double iZ, const double iZ2, double *eR, double *partial, const Float shift)
 {
 	uint idx = Sf + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -78,13 +85,13 @@ __global__ void	energyKernel(const complex<Float> * __restrict__ m, const comple
 	double tmp[10] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
 
 	if	(idx < V)
-		energyCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp, shift);
+		energyCoreGpu<VQcd,Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp, shift);
 
 	reduction<BLSIZE,double,10>   (eR, tmp, partial);
 }
 
 int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double *z, const double delta2, const double LL, const double nQcd, const double shift,
-			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
+			 const VqcdType VQcd, const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);
@@ -104,13 +111,31 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, double 
 	{
 		const double iZ  = 1./zR;
 		const double iZ2 = iZ*iZ;
-		energyKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, shift);
+
+		switch (VQcd) {
+			case	VQCD_1:
+				energyKernel<VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, shift);
+				break;
+
+			case	VQCD_2:
+				energyKernel<VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, shift);
+				break;
+		}
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float iZ = 1./zR;
 		const float iZ2 = iZ*iZ;
-		energyKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, (float) shift);
+
+		switch (VQcd) {
+			case	VQCD_1:
+				energyKernel<VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, (float) shift);
+				break;
+
+			case	VQCD_2:
+				energyKernel<VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), Lx, S, Vm, iZ, iZ2, tR, partial, (float) shift);
+				break;
+		}
 	}
 
 	cudaDeviceSynchronize();

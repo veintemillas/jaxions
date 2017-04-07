@@ -4,7 +4,7 @@
 #include "utils/index.h"
 #include "utils/parse.h"
 #include "energy/energyMap.h"
-#include"scalar/varNQCD.h"
+#include "scalar/varNQCD.h"
 #include <omp.h>
 
 #include <fftw3-mpi.h>
@@ -444,7 +444,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 			//PATCH
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
+				energyMap	(axion, LL, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
 			}
 			else
 			{

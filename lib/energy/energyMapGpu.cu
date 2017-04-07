@@ -1,20 +1,22 @@
 #include "complexGpu.cuh"
-#include "index.cuh"
+#include "utils/index.cuh"
 
 #include "enum-field.h"
-#include "cub/cub.cuh"
+
+#include "scalar/varNQCD.h"
+#include "utils/parse.h"
 
 #define	BLSIZE 512
 
 using namespace gpuCu;
 using namespace indexHelper;
 
-template<typename Float>
-static __device__ __forceinline__ void	energyMapCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const uint Lx, const uint Sf, const double iZ, const double iZ2, double *tR) //zQ, o2
+template<const VqcdType VQcd, typename Float>
+static __device__ __forceinline__ void	energyMapCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const uint Lx, const uint Sf, const Float iZ, const Float iZ2, const Float zQ, const Float lZ, const Float o2, const Float shift)
 {
-	uint X[3], idxPx, idxPy, idxMx, idxMy;
+	uint X[3], idxPx, idxPy, idxMx, idxMy, idxPz = idx + Sf, idxMz = idx - Sf;
 
-	complex<Float> mDX, mDY, mDZ, tmp, vOm;
+	complex<Float> mPx, mPy, mPz, mMx, mMy, mMz, tmp, tp2, vOm;
 
 	idx2Vec(idx, X, Lx);
 
@@ -38,36 +40,51 @@ static __device__ __forceinline__ void	energyMapCoreGpu(const uint idx, const co
 	else
 		idxMy = idx - Lx;
 
-	tmp = m[idx];
+	tp2 = m[idx];
+	tmp = tp2 - shift;
 
-	Float mod = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
-	Float mFac = iZ2*mod;
-	Float iMod = 1./mod;
+	Float mdl = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
+	Float mFac = iZ2*mdl;
+	Float iMod = 1./mdl;
 
+	mPx = (m[idxPx] - tp2)*conj(m[idx])*iMod;
+	mPy = (m[idxPy] - tp2)*conj(m[idx])*iMod;
+	mPz = (m[idxPz] - tp2)*conj(m[idx])*iMod;
+	mMx = (m[idxMx] - tp2)*conj(m[idx])*iMod;
+	mMy = (m[idxMy] - tp2)*conj(m[idx])*iMod;
+	mMz = (m[idxMz] - tp2)*conj(m[idx])*iMod;
+	vOm = v[idxMz]*conj(tmp)*iMod - gpuCu::complex<Float>(iZ, 0.);
 
-	vOm = v[idx-Sf]*conj(m[idx])*iMod - gpuCu::complex<Float>(iZ, 0.);
-	mDX = (m[idxPx]  - m[idxMx]) *conj(m[idx])*iMod;
-	mDY = (m[idxPy]  - m[idxMy]) *conj(m[idx])*iMod;
-	mDZ = (m[idx+Sf] - m[idx-Sf])*conj(m[idx])*iMod;
+	Float	rP = 0.5*mFac*(mPx.real()*mPx.real() + mMx.real()*mMx.real() + mPy.real()*mPy.real() + mMy.real()*mMy.real() + mPz.real()*mPz.real() + mMz.real()*mMz.real())
+		   + 0.5*mFac*vOm.real()*vOm.real() + lZ*((Float) (mFac - 1.)*(mFac - 1.));
+	Float	iP = 0.5*mFac*(mPx.imag()*mPx.imag() + mMx.imag()*mMx.imag() + mPy.imag()*mPy.imag() + mMy.imag()*mMy.imag() + mPz.imag()*mPz.imag() + mMz.imag()*mMz.imag());
+		   + 0.5*mFac*vOm.imag()*vOm.imag();
 
+	switch	(VQcd) {
+		case	VQCD_1:
+			iP += zQ*(((Float) 1.) - tmp.real()/(sqrt(mdl)));
+			break;
 
-	m2[idx] = 0.5*((mFac*mDX.imag()*mDX.imag()) + (mFac*mDY.imag()*mDY.imag()) + (mFac*mDZ.imag()*mDZ.imag()))
-		+ o2*(((Float) 1.) - tmp.real()*iZ) + (mFac*vOm.imag()*vOm.imag())*zQ;
+		case	VQCD_2:
+			mdl = ((Float) 1.) - tmp.real()*iZ;
+			iP += zQ*mdl*mdl;
+			break;
+	}
+
+	m2[idxMz] = complex<Float>(rP,iP);
 }
 
-template<typename Float>
-__global__ void	energyKernel(const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const uint Lx, const uint Sf, const uint V, const double iZ, const double iZ2, double *eR, double *partial)
+template<const VqcdType VQcd, typename Float>
+__global__ void	energyMapKernel(const complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const uint Lx, const uint Sf, const uint V, const Float iZ, const Float iZ2, const Float zQ, const Float lZ, const Float o2, const Float shift)
 {
 	uint idx = Sf + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 
-	double tmp[10] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
-
 	if	(idx < V)
-		energyMapCoreGpu<Float>(idx, m, v, Lx, Sf, iZ, iZ2, tmp);
+		energyMapCoreGpu<VQcd, Float>(idx, m, v, m2, Lx, Sf, iZ, iZ2, zQ, lZ, o2, shift);
 }
 
-void	energyMapGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
-			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, cudaStream_t &stream)
+void	energyMapGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd, const double lambda,
+			 const double shift, const VqcdType VQcd, const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);
@@ -81,13 +98,41 @@ void	energyMapGpu	(const void * __restrict__ m, const void * __restrict__ v, voi
 	{
 		const double iZ  = 1./zR;
 		const double iZ2 = iZ*iZ;
-		energyMapKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<complex<double>*>(m2), Lx, S, Vm, iZ, iZ2);
+		const double o2  = 0.25/delta2;
+		const double zQ  = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;
+		const double lZ  = 0.25*lambda*zR*zR;
+
+		switch (VQcd) {
+			case    VQCD_1:
+				energyMapKernel<VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v),
+											  static_cast<complex<double>*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, shift);
+				break;
+
+			case    VQCD_2:
+				energyMapKernel<VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v),
+											  static_cast<complex<double>*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, shift);
+				break;
+		}
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-		const float iZ = 1./zR;
+		const float iZ  = 1./zR;
 		const float iZ2 = iZ*iZ;
-		energyMapKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<complex<float>*>(m2), Lx, S, Vm, iZ, iZ2);
+		const float o2  = 0.25/delta2;
+		const float zQ  = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;
+		const float lZ  = 0.25*lambda*zR*zR;
+
+		switch (VQcd) {
+			case    VQCD_1:
+				energyMapKernel<VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v),
+											  static_cast<complex<float>*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, (float) shift);
+				break;
+
+			case    VQCD_2:
+				energyMapKernel<VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v),
+											  static_cast<complex<float>*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, (float) shift);
+				break;
+		}
 	}
 
 	cudaDeviceSynchronize();

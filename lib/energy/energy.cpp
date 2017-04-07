@@ -59,7 +59,7 @@ void	Energy::runGpu	()
 	axionField->exchangeGhosts(FIELD_M);
 
 	if (fType == FIELD_SAXION)
-		energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, shift, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
+		energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 	else
 		energyThetaGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 
@@ -80,16 +80,7 @@ void	Energy::runGpu	()
 void	Energy::runCpu	()
 {
 	if (fType == FIELD_SAXION) {
-		switch (pot)
-		{
-			case VQCD_1:
-				energyCpu	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift);
-				break;
-
-			case VQCD_2:
-				energyCpuV2	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes);
-				break;
-		}
+		energyCpu	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot);
 	} else {
 		energyThetaCpu	(axionField, delta2, nQcd, Lx, V, S, eRes);
 	}
@@ -99,16 +90,7 @@ void	Energy::runXeon	()
 {
 #ifdef	USE_XEON
 	if (fType == FIELD_SAXION) {
-		switch (pot)
-		{
-			case VQCD_1:
-				energyXeon	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift);
-				break;
-
-			case VQCD_2:
-				energyXeonV2	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes);
-				break;
-		}
+		energyXeon	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot);
 	} else {
 		energyThetaXeon	(axionField, delta2, nQcd, Lx, V, S, eRes);
 	}

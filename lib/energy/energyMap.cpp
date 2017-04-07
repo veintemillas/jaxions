@@ -21,17 +21,19 @@ class	EnergyMap
 {
 	private:
 
-	const double delta2, nQcd;
+	const double delta2;
+	const double nQcd, LL, shift;
 	const size_t Lx, Lz, V, S;
 
 	FieldPrecision precision;
 	FieldType fType;
+	VqcdType pot;
 
 	Scalar	*axionField;
 
 	public:
 
-		 EnergyMap(Scalar *field, const double nQcd, const double delta);
+		 EnergyMap(Scalar *field, const double LL, const double nQcd, const double delta, VqcdType pot, const double sh);
 		~EnergyMap() {};
 
 	void	runCpu	();
@@ -39,8 +41,9 @@ class	EnergyMap
 	void	runXeon	();
 };
 
-	EnergyMap::EnergyMap(Scalar *field, const double nQcd, const double delta) : axionField(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()),
-				S(field->Surf()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), fType(field->Field())
+	EnergyMap::EnergyMap(Scalar *field, const double LL, const double nQcd, const double delta, VqcdType pot, const double sh) : axionField(field), Lx(field->Length()), Lz(field->eDepth()),
+				V(field->Size()), S(field->Surf()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), pot(pot), fType(field->Field()), shift(sh),
+				LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL)
 {
 }
 
@@ -54,10 +57,12 @@ void	EnergyMap::runGpu	()
 
 	axionField->exchangeGhosts(FIELD_M);
 
-	if (fType == FIELD_SAXION)
-		st = 0;//energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
-	else
-		st = 0;//energyMapThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	if (fType == FIELD_SAXION) {
+		energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, LL, shift, pot, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	} else {
+		energyMapThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	}
+
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
 	if (st != 0)
@@ -75,7 +80,7 @@ void	EnergyMap::runGpu	()
 void	EnergyMap::runCpu	()
 {
 	if (fType == FIELD_SAXION)
-		energyMapCpu(axionField, delta2, nQcd, Lx, V, S);
+		energyMapCpu(axionField, delta2, LL, nQcd, Lx, V, S, precision, shift, pot);
 	else
 		energyMapThetaCpu(axionField, delta2, nQcd, Lx, V, S);
 }
@@ -84,7 +89,7 @@ void	EnergyMap::runXeon	()
 {
 #ifdef	USE_XEON
 	if (fType == FIELD_SAXION)
-		energyMapXeon(axionField, delta2, nQcd, Lx, V, S);
+		energyMapXeon(axionField, delta2, lambda, nQcd, Lx, V, S, precision, shift, pot);
 	else
 		energyMapThetaXeon(axionField, delta2, nQcd, Lx, V, S);
 #else
@@ -93,9 +98,9 @@ void	EnergyMap::runXeon	()
 #endif
 }
 
-void	energyMap	(Scalar *field, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+void	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount, const VqcdType pot, const double sh)
 {
-	EnergyMap *eDark = new EnergyMap(field, nQcd, delta);
+	EnergyMap *eDark = new EnergyMap(field, LL, nQcd, delta, pot, sh);
 
 	switch (dev)
 	{
