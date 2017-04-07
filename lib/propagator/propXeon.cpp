@@ -97,8 +97,9 @@ void printDouble(size_t idx, size_t con, __m512d dat)
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-			    const double ood2, const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+template<const VqcdType VQcd>
+inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+				    const double ood2, const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -140,44 +141,24 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const double __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
-		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
+		const double __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };	// Only real part
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) z2Aux[2]  = {-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[2]  = {-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[2]  = { LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[2]  = { ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[2] = { dzc, dzc };
-		const double __attribute__((aligned(Align))) dzdAux[2] = { dzd, dzd };
+		const double __attribute__((aligned(Align))) zRAux[2]  = { zR, 0. };	// Only real part
 
 #endif
-		const _MData_ z2Vec  = opCode(load_pd, z2Aux);
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ c6Vec  = opCode(load_pd, c6Aux);
-		const _MData_ lbVec  = opCode(load_pd, lbAux);
-		const _MData_ d2Vec  = opCode(load_pd, d2Aux);
-		const _MData_ dzcVec = opCode(load_pd, dzcAux);
-		const _MData_ dzdVec = opCode(load_pd, dzdAux);
+		const _MData_ zRVec  = opCode(load_pd, zRAux);
 
 		#pragma omp parallel default(shared)
 		{
@@ -258,33 +239,59 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
 
-				mPx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
+				switch	(VQcd) {
+					case	VQCD_1:
+						mPx = opCode(sub_pd,
 							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
+								opCode(mul_pd,
 									opCode(add_pd,
 										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, c6Vec)),
-							d2Vec),
-						zQVec),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(add_pd, mPx, z2Vec),
-							lbVec),
-						mel));
+											opCode(load_pd, &m[idxMz]),
+											opCode(add_pd,
+												opCode(add_pd,
+													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+													opCode(load_pd, &m[idxMx])),
+												opCode(load_pd, &m[idxPz]))),
+										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+									opCode(set1_pd, ood2)),
+								zQVec),
+							opCode(mul_pd,
+								opCode(mul_pd,
+									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+									opCode(set1_pd, LL)),
+								mel));
+						break;
+
+					case	VQCD_2:
+						mPx = opCode(sub_pd,
+							opCode(add_pd,
+								opCode(mul_pd,
+									opCode(add_pd,
+										opCode(add_pd,
+											opCode(load_pd, &m[idxMz]),
+											opCode(add_pd,
+												opCode(add_pd,
+													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+													opCode(load_pd, &m[idxMx])),
+												opCode(load_pd, &m[idxPz]))),
+										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+									opCode(set1_pd, ood2)),
+								opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
+							opCode(mul_pd,
+								opCode(mul_pd,
+									opCode(add_pd, mPx, opCode(set1_pd, z2)),
+									opCode(set1_pd, LL)),
+								mel));
+						break;
+				}
 
 				mPy = opCode(load_pd, &v[idxMz]);
 #if	defined(__MIC__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mPx, dzcVec, mPy);
-				mPx = opCode(fmadd_pd, tmp, dzdVec, mel);
+				tmp = opCode(fmadd_pd, mPx, opCode(set1_pd, dzc), mPy);
+				mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
 #else
-				tmp = opCode(add_pd, mPy, opCode(mul_pd, mPx, dzcVec));
-				mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
+				tmp = opCode(add_pd, mPy, opCode(mul_pd, mPx, opCode(set1_pd, dzc)));
+				mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
 #endif
 				opCode(store_pd,  &v[idxMz], tmp);
 				opCode(store_pd, &m2[idxP0], mPx);
@@ -331,44 +338,24 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
-		const float __attribute__((aligned(Align))) z2Aux[16]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2};
-		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
-		const float __attribute__((aligned(Align))) c6Aux[16]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.};
-		const float __attribute__((aligned(Align))) lbAux[16]  = { LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL};
-		const float __attribute__((aligned(Align))) d2Aux[16]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[16] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
+		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0.};
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const float __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
-		const float __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
-		const float __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
-		const float __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const float __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
-		const float __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
-		const float __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
-		const float __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
+		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };
 #endif
 
-		const _MData_ z2Vec  = opCode(load_ps, z2Aux);
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
-		const _MData_ c6Vec  = opCode(load_ps, c6Aux);
-		const _MData_ lbVec  = opCode(load_ps, lbAux);
-		const _MData_ d2Vec  = opCode(load_ps, d2Aux);
-		const _MData_ dzcVec = opCode(load_ps, dzcAux);
-		const _MData_ dzdVec = opCode(load_ps, dzdAux);
+		const _MData_ zRVec  = opCode(load_ps, zRAux);
 
 		#pragma omp parallel default(shared)
 		{
@@ -460,33 +447,60 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				mMx = opCode(sub_ps,
-					opCode(add_ps,
-						opCode(mul_ps,
+				switch	(VQcd) {
+					case	VQCD_1:
+						mMx = opCode(sub_ps,
 							opCode(add_ps,
-								opCode(add_ps,
-									opCode(load_ps, &m[idxMz]),
+								opCode(mul_ps,
 									opCode(add_ps,
 										opCode(add_ps,
-											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-											opCode(load_ps, &m[idxMx])),
-										opCode(load_ps, &m[idxPz]))),
-								opCode(mul_ps, mel, c6Vec)),
-							d2Vec),
-						zQVec),
-					opCode(mul_ps,
-						opCode(mul_ps,
-							opCode(add_ps, mPx, z2Vec),
-							lbVec),
-						mel));
+											opCode(load_ps, &m[idxMz]),
+											opCode(add_ps,
+												opCode(add_ps,
+													opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+													opCode(load_ps, &m[idxMx])),
+												opCode(load_ps, &m[idxPz]))),
+										opCode(mul_ps, mel, opCode(set1_ps, -6.0))),
+									opCode(set1_ps, ood2)),
+								zQVec),
+							opCode(mul_ps,
+								opCode(mul_ps,
+									opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+									opCode(set1_ps, LL)),
+								mel));
+						break;
+
+					case	VQCD_2:
+						mMx = opCode(sub_ps,
+							opCode(add_ps,
+								opCode(mul_ps,
+									opCode(add_ps,
+										opCode(add_ps,
+											opCode(load_ps, &m[idxMz]),
+											opCode(add_ps,
+												opCode(add_ps,
+													opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+													opCode(load_ps, &m[idxMx])),
+												opCode(load_ps, &m[idxPz]))),
+										opCode(mul_ps, mel, opCode(set1_ps, -6.0))),
+									opCode(set1_ps, ood2)),
+								opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
+							opCode(mul_ps,
+								opCode(mul_ps,
+									opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+									opCode(set1_ps, LL)),
+								mel));
+						break;
+				}
+
 				mPy = opCode(load_ps, &v[idxMz]);
 
 #if	defined(__MIC__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, mMx, dzcVec, mPy);
-				mPx = opCode(fmadd_ps, tmp, dzdVec, mel);
+				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
+				mPx = opCode(fmadd_ps, tmp, opCode(set1_ps, dzd), mel);
 #else
-				tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, dzcVec));
-				mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
+				tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
+				mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
 #endif
 				opCode(store_ps,  &v[idxMz], tmp);
 				opCode(store_ps, &m2[idxP0], mPx);
@@ -497,7 +511,8 @@ void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 	}
 }
 
-void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
+template<const VqcdType VQcd>
+inline	void	propXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc();
@@ -513,13 +528,13 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -530,13 +545,13 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon<VQcd>(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M2);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon<VQcd>(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon<VQcd>(m2X, vX, mX, z, dz, C2, D2, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -547,13 +562,13 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -564,13 +579,13 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+		propagateKernelXeon<VQcd>(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M2);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
 	{
-		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-		propagateKernelXeon(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, V, ext, precision);
+		propagateKernelXeon<VQcd>(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+		propagateKernelXeon<VQcd>(m2X, vX, mX, z, dz, C4, D4, ood2, lambda, nQcd, Lx, V, ext, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -578,7 +593,21 @@ void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, co
 #endif
 }
 
-void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
+void	propagateXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
+{
+	switch	(VQcd) {
+		case	VQCD_1:
+			propXeon<VQCD_1>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case	VQCD_2:
+			propXeon<VQCD_2>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
+}
+
+template<const VqcdType VQcd>
+inline	void	propCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
@@ -589,10 +618,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+	propagateKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-	propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-	propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, V, V+S, precision);
+	propagateKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+	propagateKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D1;
 
 	axionField->sendGhosts(FIELD_M2, COMM_SDRV);
@@ -600,10 +629,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+	propagateKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M2, COMM_WAIT);
-	propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-	propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, V, V+S, precision);
+	propagateKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+	propagateKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C2, D2, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D2;
 
 	axionField->sendGhosts(FIELD_M, COMM_SDRV);
@@ -611,10 +640,10 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+	propagateKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-	propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-	propagateKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, V, V+S, precision);
+	propagateKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+	propagateKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D3;
 
 	axionField->sendGhosts(FIELD_M2, COMM_SDRV);
@@ -622,17 +651,30 @@ void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, con
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, 2*S, V, precision);
+	propagateKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, 2*S, V, precision);
 	axionField->sendGhosts(FIELD_M2, COMM_WAIT);
-	propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, S, 2*S, precision);
-	propagateKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, V, V+S, precision);
+	propagateKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, S, 2*S, precision);
+	propagateKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, C4, D4, ood2, lambda, nQcd, Lx, V, V+S, precision);
 	*z += dz*D4;
+}
+
+void	propagateCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
+{
+	switch	(VQcd) {
+		case	VQCD_1:
+			propCpu<VQCD_1>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case	VQCD_2:
+			propCpu<VQCD_2>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
 }
 
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
+inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
 	{
@@ -661,8 +703,10 @@ void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const dou
 
 #ifdef	__MIC__
 		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
-#else
+#elif	defined(__AVX__)
 		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
+#else
+		const double __attribute__((aligned(Align))) dzdAux[2] = { dzd, dzd };
 #endif
 
 		const _MData_ dzdVec = opCode(load_pd, dzdAux);
@@ -755,7 +799,8 @@ void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const dou
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z, const double dz, const double c, const double ood2,
+template<const VqcdType VQcd>
+inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z, const double dz, const double c, const double ood2,
 		    const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
@@ -790,39 +835,23 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
+		const double __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
+		const double __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };	// Only real part
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) z2Aux[2]  = {-z2,-z2 };
 		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) c6Aux[2]  = {-6.,-6. };
-		const double __attribute__((aligned(Align))) lbAux[2]  = { LL, LL };
-		const double __attribute__((aligned(Align))) d2Aux[2]  = { ood2, ood2 };
-		const double __attribute__((aligned(Align))) dzcAux[2] = { dzc, dzc,  };
+		const double __attribute__((aligned(Align))) zRAux[2]  = { zR, 0. };	// Only real part
 #endif
-		const _MData_ z2Vec  = opCode(load_pd, z2Aux);
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ c6Vec  = opCode(load_pd, c6Aux);
-		const _MData_ lbVec  = opCode(load_pd, lbAux);
-		const _MData_ d2Vec  = opCode(load_pd, d2Aux);
-		const _MData_ dzcVec = opCode(load_pd, dzcAux);
+		const _MData_ zRVec  = opCode(load_pd, zRAux);
 
 		#pragma omp parallel default(shared)
 		{
@@ -902,32 +931,57 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 #else
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
-
-				mPx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
+				switch	(VQcd) {
+					case	VQCD_1:
+						mPx = opCode(sub_pd,
 							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
+								opCode(mul_pd,
 									opCode(add_pd,
 										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, c6Vec)),
-							d2Vec),
-						zQVec),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(add_pd, mPx, z2Vec),
-							lbVec),
-						mel));
+											opCode(load_pd, &m[idxMz]),
+											opCode(add_pd,
+												opCode(add_pd,
+													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+													opCode(load_pd, &m[idxMx])),
+												opCode(load_pd, &m[idxPz]))),
+										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+									opCode(set1_pd, ood2)),
+								zQVec),
+							opCode(mul_pd,
+								opCode(mul_pd,
+									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+									opCode(set1_pd, LL)),
+								mel));
+						break;
+
+					case	VQCD_2:
+						mPx = opCode(sub_pd,
+							opCode(add_pd,
+								opCode(mul_pd,
+									opCode(add_pd,
+										opCode(add_pd,
+											opCode(load_pd, &m[idxMz]),
+											opCode(add_pd,
+												opCode(add_pd,
+													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+													opCode(load_pd, &m[idxMx])),
+												opCode(load_pd, &m[idxPz]))),
+										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+									opCode(set1_pd, (float) ood2)),
+								opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
+							opCode(mul_pd,
+								opCode(mul_pd,
+									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+									opCode(set1_pd, LL)),
+								mel));
+						break;
+				}
 
 				mPy = opCode(load_pd, &v[idxMz]);
 #if	defined(__MIC__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mPx, dzcVec, mPy);
+				tmp = opCode(fmadd_pd, mPx, opCode(set1_pd, dzc), mPy);
 #else
-				tmp = opCode(add_pd, mPy, opCode(mul_pd, mPx, dzcVec));
+				tmp = opCode(add_pd, mPy, opCode(mul_pd, mPx, opCode(set1_pd, dzc)));
 #endif
 				opCode(store_pd,  &v[idxMz], tmp);
 			}
@@ -967,39 +1021,23 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
-		const float __attribute__((aligned(Align))) z2Aux[16]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2};
 		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
-		const float __attribute__((aligned(Align))) c6Aux[16]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6.};
-		const float __attribute__((aligned(Align))) lbAux[16]  = { LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL, LL};
-		const float __attribute__((aligned(Align))) d2Aux[16]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[16] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
+		const float __attribute__((aligned(Align))) zRAux[16]  = { zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0.};
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const float __attribute__((aligned(Align))) z2Aux[8]  = {-z2,-z2,-z2,-z2,-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) c6Aux[8]  = {-6.,-6.,-6.,-6.,-6.,-6.,-6.,-6. };
-		const float __attribute__((aligned(Align))) lbAux[8]  = { LL, LL, LL, LL, LL, LL, LL, LL };
-		const float __attribute__((aligned(Align))) d2Aux[8]  = { ood2, ood2, ood2, ood2, ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[8] = { dzc, dzc, dzc, dzc, dzc, dzc, dzc, dzc };
+		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const float __attribute__((aligned(Align))) z2Aux[4]  = {-z2,-z2,-z2,-z2 };
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) c6Aux[4]  = {-6.,-6.,-6.,-6. };
-		const float __attribute__((aligned(Align))) lbAux[4]  = { LL, LL, LL, LL };
-		const float __attribute__((aligned(Align))) d2Aux[4]  = { ood2, ood2, ood2, ood2 };
-		const float __attribute__((aligned(Align))) dzcAux[4] = { dzc, dzc, dzc, dzc };
+		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };
 #endif
-		const _MData_ z2Vec  = opCode(load_ps, z2Aux);
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
-		const _MData_ c6Vec  = opCode(load_ps, c6Aux);
-		const _MData_ lbVec  = opCode(load_ps, lbAux);
-		const _MData_ d2Vec  = opCode(load_ps, d2Aux);
-		const _MData_ dzcVec = opCode(load_ps, dzcAux);
+		const _MData_ zRVec  = opCode(load_ps, zRAux);
 
 		#pragma omp parallel default(shared)
 		{
@@ -1091,31 +1129,58 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				mMx = opCode(sub_ps,
-					opCode(add_ps,
-						opCode(mul_ps,
+				switch	(VQcd) {
+					case	VQCD_1:
+						mMx = opCode(sub_ps,
 							opCode(add_ps,
-								opCode(add_ps,
-									opCode(load_ps, &m[idxMz]),
+								opCode(mul_ps,
 									opCode(add_ps,
 										opCode(add_ps,
-											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-											opCode(load_ps, &m[idxMx])),
-										opCode(load_ps, &m[idxPz]))),
-								opCode(mul_ps, mel, c6Vec)),
-							d2Vec),
-						zQVec),
-					opCode(mul_ps,
-						opCode(mul_ps,
-							opCode(add_ps, mPx, z2Vec),
-							lbVec),
-						mel));
+											opCode(load_ps, &m[idxMz]),
+											opCode(add_ps,
+												opCode(add_ps,
+													opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+													opCode(load_ps, &m[idxMx])),
+												opCode(load_ps, &m[idxPz]))),
+										opCode(mul_ps, mel, opCode(set1_ps, -6.0f))),
+									opCode(set1_ps, ood2)),
+								zQVec),
+							opCode(mul_ps,
+								opCode(mul_ps,
+									opCode(add_ps, mPx, opCode(set1_ps, z2)),
+									opCode(set1_ps, (float) LL)),
+								mel));
+						break;
+
+					case	VQCD_2:
+						mMx = opCode(sub_ps,
+							opCode(add_ps,
+								opCode(mul_ps,
+									opCode(add_ps,
+										opCode(add_ps,
+											opCode(load_ps, &m[idxMz]),
+											opCode(add_ps,
+												opCode(add_ps,
+													opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+													opCode(load_ps, &m[idxMx])),
+												opCode(load_ps, &m[idxPz]))),
+										opCode(mul_ps, mel, opCode(set1_ps, -6.0f))),
+									opCode(set1_ps, (float) ood2)),
+								opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
+							opCode(mul_ps,
+								opCode(mul_ps,
+									opCode(add_ps, mPx, opCode(set1_ps, z2)),
+									opCode(set1_ps, (float) LL)),
+								mel));
+						break;
+				}
+
 				mPy = opCode(load_ps, &v[idxMz]);
 
 #if	defined(__MIC__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, mMx, dzcVec, mPy);
+				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
 #else
-				tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, dzcVec));
+				tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
 #endif
 				opCode(store_ps,  &v[idxMz], tmp);
 			}
@@ -1125,6 +1190,7 @@ void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z
 	}
 }
 
+template<const VqcdType VQcd>
 void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 #ifdef USE_XEON
@@ -1141,14 +1207,14 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C1, ood2, LL, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C1, ood2, LL, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D1, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C1, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C1, ood2, lambda, nQcd, Lx, V, ext, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C1, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C1, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1165,14 +1231,14 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D2, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, V, ext, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C2, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1189,14 +1255,14 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D3, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, V, ext, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C3, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1213,14 +1279,14 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX) signal(&bulk)
 	{
-		updateVXeon(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 		updateMXeon(mX, vX, dz, D4, 3*S, V-S, S, precision);
 	}
 	axionField->exchangeGhosts(FIELD_M);
 	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX : ReUseX)
 	{
-		updateVXeon(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-		updateVXeon(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, V, ext, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+		updateVXeon<VQcd>(mX, vX, z, dz, C4, ood2, lambda, nQcd, Lx, V, ext, S, precision);
 	}
 	#pragma offload_wait target(mic:micIdx) wait(&bulk)
 
@@ -1234,7 +1300,22 @@ void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, c
 
 #endif
 }
-void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
+
+void	propLowMemXeon	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
+{
+	switch	(VQcd) {
+		case	VQCD_1:
+			propLowMemXeon<VQCD_1>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case	VQCD_2:
+			propLowMemXeon<VQCD_2>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
+}
+
+template<const VqcdType VQcd>
+inline void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
@@ -1245,10 +1326,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C1, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D1, S, V + S, S, precision);
 	*z += dz*D1;
 
@@ -1257,10 +1338,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C2, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D2, S, V + S, S, precision);
 	*z += dz*D2;
 
@@ -1269,10 +1350,10 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C3, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D3, S, V + S, S, precision);
 	*z += dz*D3;
 
@@ -1281,10 +1362,23 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 	if (axionField->Lambda() != LAMBDA_FIXED)
 		lambda = LL/((*z)*(*z));
 
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, 2*S, V, S, precision);
 	axionField->sendGhosts(FIELD_M, COMM_WAIT);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
-	updateVXeon(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, S, 2*S, S, precision);
+	updateVXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), z, dz, C4, ood2, lambda, nQcd, Lx, V, V+S, S, precision);
 	updateMXeon(axionField->mCpu(), axionField->vCpu(), dz, D4, S, V + S, S, precision);
 	*z += dz*D4;
+}
+
+void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
+{
+	switch	(VQcd) {
+		case	VQCD_1:
+			propLowMemCpu<VQCD_1>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+
+		case	VQCD_2:
+			propLowMemCpu<VQCD_2>	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
+			break;
+	}
 }

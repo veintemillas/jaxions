@@ -7,6 +7,9 @@
 #include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
+#define	BLSIZE 256
+#define	BSSIZE 256
+
 using namespace gpuCu;
 using namespace indexHelper;
 
@@ -65,10 +68,9 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 	propagateCoreGpu<Float>(idx, m, v, m2, z2, zQ, dzc, dzd, ood2, LL, Lx, Sf);
 }
 
-void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d,
-		     const double delta2, const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
+void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
+		     const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
-	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
@@ -169,7 +171,6 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 
 void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
-	#define	BSSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
@@ -186,10 +187,9 @@ void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double
 	}
 }
 
-void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c,
-		     const double delta2, const double LL, const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
+void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c, const double delta2, const double LL, const double nQcd,
+		   const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
-	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);

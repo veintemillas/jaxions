@@ -151,45 +151,18 @@ void	Propagator::lowGpu	()
 
 void	Propagator::runCpu	()
 {
-	switch (pot)
-	{
-		case VQCD_1:
-			propagateCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-
-		case VQCD_2:
-			propagateCpuV2	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-	}
+	propagateCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 }
 
 void	Propagator::lowCpu	()
 {
-	switch (pot)
-	{
-		case VQCD_1:
-			propLowMemCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-
-		case VQCD_2:
-			propLowMemCpuV2	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-	}
+	propLowMemCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 }
 
 void	Propagator::runXeon	()
 {
 #ifdef	USE_XEON
-	switch (pot)
-	{
-		case VQCD_1:
-			propagateXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-
-		case VQCD_2:
-			propagateXeonV2	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-	}
+	propagateXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
@@ -199,16 +172,7 @@ void	Propagator::runXeon	()
 void	Propagator::lowXeon	()
 {
 #ifdef	USE_XEON
-	switch (pot)
-	{
-		case VQCD_1:
-			propLowMemXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-
-		case VQCD_2:
-			propLowMemXeonV2(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision);
-			break;
-	}
+	propLowMemXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
