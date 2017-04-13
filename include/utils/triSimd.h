@@ -104,6 +104,17 @@ inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 	return	ret;
 }
 
+inline _MData_	opCode(md2_pd, const _MData_ &x)
+{
+#ifdef  __MIC__
+	return	opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, x), _MM_PERM_BADC)), x);
+#elif defined(__AVX__)
+	return	opCode(add_pd, opCode(permute_pd, x, 0b00000101), x);
+#else
+	return	opCode(add_pd, opCode(shuffle_pd, x, x, 0b00000001), x);
+#endif
+}
+
 #undef	_MData_
 
 #ifdef	__MIC__
@@ -186,6 +197,17 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 		opCode(and_ps, opCode(cmpeq_ps, min, x2), x));
 #endif
 	return	ret;
+}
+
+inline _MData_	opCode(md2_ps, const _MData_ &x)
+{
+#ifdef  __MIC__
+	return	opCode(add_ps, opCode(swizzle_ps, x, _MM_SWIZ_REG_CDAB), x);
+#elif defined(__AVX__)
+	return	opCode(add_ps, opCode(permute_ps, x, 0b10110001), x);
+#else
+	return	opCode(add_ps, opCode(shuffle_ps, x, x, 0b10110001), x);
+#endif
 }
 
 #undef	_MData_

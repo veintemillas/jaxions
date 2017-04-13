@@ -42,19 +42,21 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	else
 		idxMy = idx - Lx;
 
-	tp2 = m[idx];
-	tmp = tp2 - shift;
+	tmp = m[idx];
+	tp2 = tmp - shift;
 
 	Float mod = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
+	Float md2 = tp2.real()*tp2.real() + tp2.imag()*tp2.imag();
 	Float mFac = iZ2*mod;
+	Float mFc2 = iZ2*md2;
 	Float iMod = 1./mod;
 
-	mPX = (m[idxPx]  - tp2)*conj(m[idx])*iMod;
-	mPY = (m[idxPy]  - tp2)*conj(m[idx])*iMod;
-	mPZ = (m[idx+Sf] - tp2)*conj(m[idx])*iMod;
-	mMX = (m[idxMx]  - tp2)*conj(m[idx])*iMod;
-	mMY = (m[idxMy]  - tp2)*conj(m[idx])*iMod;
-	mMZ = (m[idx-Sf] - tp2)*conj(m[idx])*iMod;
+	mPX = (m[idxPx]  - tmp)*conj(tmp)*iMod;
+	mPY = (m[idxPy]  - tmp)*conj(tmp)*iMod;
+	mPZ = (m[idx+Sf] - tmp)*conj(tmp)*iMod;
+	mMX = (m[idxMx]  - tmp)*conj(tmp)*iMod;
+	mMY = (m[idxMy]  - tmp)*conj(tmp)*iMod;
+	mMZ = (m[idx-Sf] - tmp)*conj(tmp)*iMod;
 	vOm = v[idx-Sf]*conj(tmp)*iMod - gpuCu::complex<Float>(iZ, 0.);
 
 	tR[RH_GRX] = (double) ((Float) (mFac*(mPX.real()*mPX.real() + mMX.real()*mMX.real())));
@@ -63,16 +65,16 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	tR[TH_GRY] = (double) ((Float) (mFac*(mPY.imag()*mPY.imag() + mMY.imag()*mMY.imag())));
 	tR[RH_GRZ] = (double) ((Float) (mFac*(mPZ.real()*mPZ.real() + mMZ.real()*mMZ.real())));
 	tR[TH_GRZ] = (double) ((Float) (mFac*(mPZ.imag()*mPZ.imag() + mMZ.imag()*mMZ.imag())));
-	tR[RH_POT] = (double) ((Float) (mFac - 1.)*(mFac - 1.));
+	tR[RH_POT] = (double) ((Float) (mFc2 - 1.)*(mFc2 - 1.));
 	tR[RH_KIN] = (double) ((Float) (mFac*vOm.real()*vOm.real()));
 	tR[TH_KIN] = (double) ((Float) (mFac*vOm.imag()*vOm.imag()));
 
 	switch (VQcd) {
 		case	VQCD_1:
-			tR[TH_POT] = (double) (((Float) 1.) - tmp.real()/sqrt(mod));
+			tR[TH_POT] = (double) (((Float) 1.) - tp2.real()/sqrt(md2));
 			break;
 		case	VQCD_2:
-			double smp = (double) (((Float) 1.) - tmp.real()*iZ);
+			double smp = (double) (((Float) 1.) - tp2.real()*iZ);
 			tR[TH_POT] = smp*smp;
 	}
 }

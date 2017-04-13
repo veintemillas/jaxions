@@ -73,7 +73,7 @@ static __device__ __forceinline__ void	energyMapThetaCoreGpu(const uint idx, con
 	Kt = 0.5*vel*vel;
 	Vt = zQ*(1.0f - cos(mel*iZ));
 
-	m2[idxMz] = o2*(aX + aY + aZ) + Kt + Vt;
+	m2[idxMz] = iZ2*(o2*(aX + aY + aZ) + Kt) + Vt;
 }
 
 template<typename Float>
@@ -102,7 +102,7 @@ void	energyMapThetaGpu	(const void * __restrict__ m, const void * __restrict__ v
 		const double zP  = M_1_PI*iz;
 		const double tPz = 2.0*M_PI*zR;
 		const double o2  = 0.25/delta2;
-		const double zQ  = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
+		const double zQ  = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;
 		const double iz2 = 1./(zR*zR);
 
 		energyMapThetaKernel<<<gridSize,blockSize,0,stream>>> (static_cast<const double*>(m), static_cast<const double*>(v), static_cast<double*>(m2), Lx, S, Vm, iz, iz2, zP, tPz, o2, zQ);

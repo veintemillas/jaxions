@@ -11,7 +11,7 @@ __device__ inline void reduction(Float * __restrict__ eRes, const Float * __rest
 	__shared__ bool isLastBlockDone;
 	__shared__ typename BlockReduce::TempStorage cub_tmp[eSize];
 
-	Float tmpA[10];
+	Float tmpA[eSize];
 
 	#pragma unroll
 	for (int j=0; j<eSize; j++)

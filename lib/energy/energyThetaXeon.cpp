@@ -72,8 +72,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const double zR  = *z;
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
-		//const double zQ = 9.*pow(zR, nQcd+2.);
-		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
+		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;
 		const double o2 = ood2*0.25;
 		const double tV = 2.*M_PI*zR;
 #ifdef	__MIC__
@@ -202,22 +201,16 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mMz = opCode(mul_pd, tmp, tmp);
 
 				grd = opCode(mul_pd,
-					opCode(add_pd,
-						opCode(mul_pd, mPx, mPx),
-						opCode(mul_pd, mMx, mMx)),
-					opCode(set1_pd, ood2));
+					opCode(add_pd, mPx, mMx),
+					opCode(set1_pd, o2));
 
 				mMx = opCode(mul_pd,
-					opCode(add_pd,
-						opCode(mul_pd, mPy, mPy),
-						opCode(mul_pd, mMy, mMy)),
-					opCode(set1_pd, ood2));
+					opCode(add_pd, mPy, mMy),
+					opCode(set1_pd, o2));
 
 				mMy = opCode(mul_pd,
-					opCode(add_pd,
-						opCode(mul_pd, mPz, mPz),
-						opCode(mul_pd, mMz, mMz)),
-					opCode(set1_pd, ood2));
+					opCode(add_pd, mPz, mMz),
+					opCode(set1_pd, o2));
 
 				mPx = opCode(mul_pd,
 					opCode(set1_pd, 0.5),
@@ -284,7 +277,6 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const float zR  = *z;
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
-		//const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 		const float o2 = ood2*0.25;
 		const float tV = 2.f*M_PI*zR;

@@ -53,7 +53,6 @@ void	EnergyMap::runGpu	()
 
 	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 	double *z = axionField->zV();
-	int st;
 
 	axionField->exchangeGhosts(FIELD_M);
 
@@ -64,12 +63,6 @@ void	EnergyMap::runGpu	()
 	}
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
-
-	if (st != 0)
-	{
-		printf("Gpu error computing energy.");
-		exit(1);
-	}
 
 #else
 	printf("Gpu support not built");

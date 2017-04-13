@@ -40,34 +40,36 @@ static __device__ __forceinline__ void	energyMapCoreGpu(const uint idx, const co
 	else
 		idxMy = idx - Lx;
 
-	tp2 = m[idx];
-	tmp = tp2 - shift;
+	tmp = m[idx];
+	tp2 = tmp - shift;
 
-	Float mdl = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
-	Float mFac = iZ2*mdl;
-	Float iMod = 1./mdl;
+	Float mod = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
+	Float md2 = tp2.real()*tp2.real() + tp2.imag()*tp2.imag();
+	Float mFac = iZ2*mod;
+	Float mFc2 = iZ2*md2;
+	Float iMod = 1./mod;
 
-	mPx = (m[idxPx] - tp2)*conj(m[idx])*iMod;
-	mPy = (m[idxPy] - tp2)*conj(m[idx])*iMod;
-	mPz = (m[idxPz] - tp2)*conj(m[idx])*iMod;
-	mMx = (m[idxMx] - tp2)*conj(m[idx])*iMod;
-	mMy = (m[idxMy] - tp2)*conj(m[idx])*iMod;
-	mMz = (m[idxMz] - tp2)*conj(m[idx])*iMod;
+	mPx = (m[idxPx] - tmp)*conj(tmp)*iMod;
+	mPy = (m[idxPy] - tmp)*conj(tmp)*iMod;
+	mPz = (m[idxPz] - tmp)*conj(tmp)*iMod;
+	mMx = (m[idxMx] - tmp)*conj(tmp)*iMod;
+	mMy = (m[idxMy] - tmp)*conj(tmp)*iMod;
+	mMz = (m[idxMz] - tmp)*conj(tmp)*iMod;
 	vOm = v[idxMz]*conj(tmp)*iMod - gpuCu::complex<Float>(iZ, 0.);
 
-	Float	rP = 0.5*mFac*(mPx.real()*mPx.real() + mMx.real()*mMx.real() + mPy.real()*mPy.real() + mMy.real()*mMy.real() + mPz.real()*mPz.real() + mMz.real()*mMz.real())
-		   + 0.5*mFac*vOm.real()*vOm.real() + lZ*((Float) (mFac - 1.)*(mFac - 1.));
-	Float	iP = 0.5*mFac*(mPx.imag()*mPx.imag() + mMx.imag()*mMx.imag() + mPy.imag()*mPy.imag() + mMy.imag()*mMy.imag() + mPz.imag()*mPz.imag() + mMz.imag()*mMz.imag());
+	Float	rP = o2*mFac*(mPx.real()*mPx.real() + mMx.real()*mMx.real() + mPy.real()*mPy.real() + mMy.real()*mMy.real() + mPz.real()*mPz.real() + mMz.real()*mMz.real())
+		   + 0.5*mFac*vOm.real()*vOm.real() + lZ*((Float) (mFc2 - 1.)*(mFc2 - 1.));
+	Float	iP = o2*mFac*(mPx.imag()*mPx.imag() + mMx.imag()*mMx.imag() + mPy.imag()*mPy.imag() + mMy.imag()*mMy.imag() + mPz.imag()*mPz.imag() + mMz.imag()*mMz.imag())
 		   + 0.5*mFac*vOm.imag()*vOm.imag();
 
 	switch	(VQcd) {
 		case	VQCD_1:
-			iP += zQ*(((Float) 1.) - tmp.real()/(sqrt(mdl)));
+			iP += zQ*(((Float) 1.) - tp2.real()/(sqrt(md2)));
 			break;
 
 		case	VQCD_2:
-			mdl = ((Float) 1.) - tmp.real()*iZ;
-			iP += zQ*mdl*mdl;
+			md2 = ((Float) 1.) - tp2.real()*iZ;
+			iP += zQ*md2*md2;
 			break;
 	}
 

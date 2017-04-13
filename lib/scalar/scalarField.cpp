@@ -384,7 +384,7 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			if (fIdx & 2)
 				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
 
-			if ((fIdx & 4) & (!lowmem))
+			if ((fIdx & 4) && (!lowmem))
 				cudaMemcpy((((char *) m2_d) + n2*fSize), (((char *) m2) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
 	} else if (device == DEV_XEON) {
@@ -404,7 +404,7 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 				#pragma offload_transfer target(mic:micIdx) in(vX : length(n3*fSize) ReUseX)
 			}
 
-			if ((fIdx & 4) & (!lowmem))
+			if ((fIdx & 4) && (!lowmem))
 			{
 				#pragma offload_transfer target(mic:micIdx) in(m2X : length(v3*fSize) ReUseX)
 			}
@@ -426,7 +426,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 			if (fIdx & 2)
 				cudaMemcpy(v,  v_d,  n3*fSize, cudaMemcpyDeviceToHost);
 
-			if ((fIdx & 4) & (!lowmem))
+			if ((fIdx & 4) && (!lowmem))
 				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
 		#endif
 	} else if (device == DEV_XEON) {
@@ -446,7 +446,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 				#pragma offload_transfer target(mic:micIdx) out(vX : length(n3*fSize) ReUseX)
 			}
 
-			if ((fIdx & 4) & (!lowmem))
+			if ((fIdx & 4) && (!lowmem))
 			{
 				#pragma offload_transfer target(mic:micIdx) out(m2X : length(v3*fSize) ReUseX)
 			}
@@ -1074,13 +1074,15 @@ void	Scalar::setField (FieldType fType)
 					}
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
-					closeFFTSpectrum();
 				#ifdef	USE_XEON
+					closeFFTSpectrum();
 					trackFree(&m2X, ALLOC_ALIGN);
 					m2 = m2X = NULL;
 					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
 					m2  = m2X;
 				#else
+					closeFFTSpectrum();
+					printf ("%p %f\n", m2, static_cast<float *>(m2)[0]); fflush(stdout);
 					trackFree(&m2, ALLOC_ALIGN);
 					m2 = NULL;
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);

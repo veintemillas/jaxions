@@ -23,12 +23,12 @@ static __device__ __forceinline__ int	stringHand(const complex<Float> s1, const 
 
 
 template<typename Float>
-static __device__ __forceinline__ uint	stringCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, void * __restrict__ str)
+static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, void * __restrict__ str, uint * __restrict__ tStr)
 {
 	uint X[3], idxPx, idxPy, idxXY, idxYZ, idxZX;
 
 	complex<Float> mel, mPx, mXY, mPy, mYZ, mPz, mZX;
-	uint sIdx = idx-Sf, nStr = 0;
+	uint sIdx = idx-Sf;
 	int  hand = 0;
 	char strDf = 0;
 
@@ -82,10 +82,12 @@ static __device__ __forceinline__ uint	stringCoreGpu(const uint idx, const compl
 /*	ARREGLAR PARA QUE SOLO HAYA UN STORE	*/
 /*	LA QUIRALIDAD SE GUARDA MAL	*/
 	if (hand == 2) {
-		nStr++;
+		tStr[0]++;
+		tStr[1]++;
 		strDf |= STRING_XY_POSITIVE;
 	} else if (hand == -2) {
-		nStr++;
+		tStr[0]++;
+		tStr[1]--;
 		strDf |= STRING_XY_NEGATIVE;
 	}
 
@@ -99,10 +101,12 @@ static __device__ __forceinline__ uint	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mPz, mel);
 
 	if (hand == 2) {
-		nStr++;
+		tStr[0]++;
+		tStr[1]++;
 		strDf |= STRING_YZ_POSITIVE;
 	} else if (hand == -2) {
-		nStr++;
+		tStr[0]++;
+		tStr[1]--;
 		strDf |= STRING_YZ_NEGATIVE;
 	}
 
@@ -116,28 +120,30 @@ static __device__ __forceinline__ uint	stringCoreGpu(const uint idx, const compl
 	hand += stringHand (mPx, mel);
 
 	if (hand == 2) {
-		nStr++;
+		tStr[0]++;
+		tStr[1]++;
 		strDf |= STRING_ZX_POSITIVE;
 	} else if (hand == -2) {
-		nStr++;
+		tStr[0]++;
+		tStr[1]--;
 		strDf |= STRING_ZX_NEGATIVE;
 	}
 
 	static_cast<char *>(str)[sIdx] = strDf;
 
-	return	nStr;
+	return;
 }
 
 template<typename Float>
-__global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, const uint V, uint &nStr, uint *partial)
+__global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, const uint V, uint *nStr, uint *partial)
 {
 	uint idx = Sf + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
-	uint tStr;
+	uint tStr[2] = { 0, 0 };
 
 	if	(idx < V)
-		tStr = stringCoreGpu<Float>(idx, m, Lx, Sf, strg);
+		stringCoreGpu<Float>(idx, m, Lx, Sf, strg, tStr);
 
-	reduction<BLSIZE,uint,1>   (&nStr, &tStr, partial);
+	reduction<BLSIZE,uint,2>   (nStr, tStr, partial);
 }
 
 uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
@@ -150,26 +156,26 @@ uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const 
 	const int nBlocks = gridSize.x*gridSize.y;
 
 	void  *strg;
-	uint  *d_str, *partial, nStr = 129572;
+	uint  *d_str, *partial, nStr[2];
 
 	if (cudaMalloc(&strg, sizeof(char)*V) != cudaSuccess)
 		return -1;
 
-	if ((cudaMalloc(&d_str, sizeof(uint)) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
+	if ((cudaMalloc(&d_str, sizeof(uint)*2) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
 		return -1;
 
 	if (precision == FIELD_DOUBLE)
-		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, Vm, *d_str, partial);
+		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, Vm, d_str, partial);
 	else if (precision == FIELD_SINGLE)
-		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<float>*>(m), Lx, S, Vm, *d_str, partial);
+		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<float>*>(m), Lx, S, Vm, d_str, partial);
 
 	cudaDeviceSynchronize();
-	cudaMemcpy(str,    strg, sizeof(char)*V, cudaMemcpyDeviceToHost);
-	cudaMemcpy(&nStr, d_str, sizeof(uint),   cudaMemcpyDeviceToHost);
+	cudaMemcpy(str,   strg, sizeof(char)*V, cudaMemcpyDeviceToHost);
+	cudaMemcpy(nStr, d_str, sizeof(uint)*2, cudaMemcpyDeviceToHost);
 
 	cudaFree(strg);
 	cudaFree(d_str);
 	cudaFree(partial);
 
-	return	nStr;
+	return	nStr[0];
 }

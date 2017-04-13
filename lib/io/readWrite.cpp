@@ -824,7 +824,7 @@ void	writeMapHdf5	(Scalar *axion)
 	H5Gclose (group_id);
 }
 
-void	writeEnergy	(double *eData)
+void	writeEnergy	(Scalar *axion, double *eData)
 {
 	hid_t	group_id;
 	herr_t	status;
@@ -848,19 +848,22 @@ void	writeEnergy	(double *eData)
 
 //	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
 
-	/* TODO distinguir axion de saxion */
-	/* escribir energia total */
+	writeAttribute(group_id, &eData[TH_GRX],  "Axion Gr X", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &eData[TH_GRY],  "Axion Gr Y", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &eData[TH_GRZ],  "Axion Gr Z", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &eData[TH_KIN],  "Axion Kinetic", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &eData[TH_POT],  "Axion Potential", H5T_NATIVE_DOUBLE);
 
-	writeAttribute(group_id, &eData[0],  "Grx", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[1],  "Gax", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[2],  "Gry", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[3],  "Gay", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[4],  "Grz", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[5],  "Gaz", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[6],  "Vr",  H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[7],  "Va",  H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[8],  "Kr",  H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[9],  "Ka",  H5T_NATIVE_DOUBLE);
+	if	(axion->Field() == FIELD_SAXION)
+	{
+		writeAttribute(group_id, &eData[RH_GRX],  "Saxion Gr X", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[RH_GRY],  "Saxion Gr Y", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[RH_GRZ],  "Saxion Gr Z", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[RH_POT],  "Saxion Potential", H5T_NATIVE_DOUBLE);
+	}
+
+	/*	TODO	Distinguish the different versions of the potentials	*/
 
 	/*	Close the group		*/
 	H5Gclose (group_id);
@@ -950,17 +953,15 @@ void	writeEDens (Scalar *axion, int index)
 	/*	If the measurement file is opened, we reopen it with parallel access	*/
 	if (opened == true)
 	{
-		printf ("All ranks here\n");
 		destroyMeas();
 
 		if ((file_id = H5Fopen (base, H5F_ACC_RDWR, plist_id)) < 0)
 		{
-			printf ("Error creating file %s\n", base);
+			printf ("Error opening file %s\n", base);
 			return;
 		}
 	} else {
 		/*	Else we create the file		*/
-		printf ("All ranks there\n");
 		if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
 		{
 			printf ("Error creating file %s\n", base);
@@ -1149,12 +1150,12 @@ void	writeEDens (Scalar *axion, int index)
 	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
-		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*slab;
+		offset = (((hsize_t) (myRank*axion->Depth())) + zDim)*slab;
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
-
-		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+slab*(1+zDim)*dataSize));
+		// CAMBIAR A mCpu!!!
+		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->m2Cpu())+slab*zDim*dataSize));
 
 		//commSync();
 	}
