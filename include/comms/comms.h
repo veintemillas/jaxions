@@ -9,4 +9,5 @@
 	int	commSize();
 	int	commAcc();
 	void	commSync();
+	size_t	gpuMemAvail();
 #endif

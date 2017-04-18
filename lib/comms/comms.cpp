@@ -25,6 +25,8 @@ static int idxAcc = -1;
 static int commSz = 0;
 static char hostname[HOST_NAME_MAX];
 
+static size_t gpuMem = 0;
+
 int	commRank()
 {
 	return rank;
@@ -48,6 +50,11 @@ char	*commHost()
 void	commSync()
 {
 	MPI_Barrier(MPI_COMM_WORLD);
+}
+
+size_t	gpuMemAvail()
+{
+	return	gpuMem;
 }
 
 int	initComms (int argc, char *argv[], int size, DeviceType dev)
@@ -146,6 +153,13 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 		{
 			cudaSetDevice(idxAcc);
 			cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+
+			cudaDeviceProp gpuProp;
+
+			cudaGetDeviceProperties(&gpuProp, idxAcc);
+
+			printf("  Peak Memory Bandwidth of Gpu %d (GB/s): %f\n\n", idxAcc, 2.0*gpuProp.memoryClockRate*(gpuProp.memoryBusWidth/8)/1.0e6);
+			gpuMem = gpuProp.totalGlobalMem;
 		}
 #endif
 		printf ("Rank %d reporting from host %s: Found %d accelerators, using accelerator %d\n\n", rank, hostname, nAccs, idxAcc);

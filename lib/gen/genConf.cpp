@@ -16,7 +16,8 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-//	#include "gen/randGpu.h"
+	#include "gen/momGpu.h"
+	#include "gen/randGpu.h"
 	#include "gen/smoothGpu.h"
 #endif
 
@@ -114,7 +115,8 @@ class	ConfGenerator
 void	ConfGenerator::runGpu	()
 {
 #ifdef	USE_GPU
-	printf("The configuration will be generated on host");
+	printf("The configuration will be generated on host\n");
+	fflush(stdout);
 
 	switch (cType)
 	{
@@ -154,8 +156,8 @@ void	ConfGenerator::runGpu	()
 
 		case CONF_SMOOTH:
 		randConf (axionField);
-
 		axionField->transferDev(FIELD_M);
+		//randGpu (axionField);
 
 		smoothGpu (axionField, sIter, alpha);
 		normCoreField (axionField, fCount);
