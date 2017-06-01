@@ -1067,11 +1067,13 @@ void	Scalar::setField (FieldType fType)
 
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
 
+					#ifdef	USE_GPU
 					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
 					{
 						printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", 2*mBytes);
 						exit(1);
 					}
+					#endif
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 				#ifdef	USE_XEON
@@ -1089,13 +1091,17 @@ void	Scalar::setField (FieldType fType)
 				#endif
 					initFFTSpectrum(m2, n1, Tz, precision, 0);
 
+				#ifdef	USE_GPU
 					cudaFree(m2_d);
+				#endif
 
+				#ifdef	USE_GPU
 					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
 					{
 						printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", 2*mBytes);
 						exit(1);
 					}
+				#endif
 				}
 			}
 			break;
