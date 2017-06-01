@@ -363,7 +363,18 @@ void	readConf (Scalar **axion, int index)
 
 	// OJO que LO he CAMBIADOOOOOO
 	//printf("RW/ %d %d",sizeN,sizeZ);
-	hsize_t sizeZ = totlZ/zGrid;
+	//hsize_t sizeZ = totlZ/zGrid;
+
+	/*	Create axion field	*/
+
+	if (totlZ % zGrid)
+	{
+		printf("Error: Geometry not valid. Try a different partitioning.\n");
+		exit (1);
+	}
+	else
+		sizeZ = totlZ/zGrid;
+
 
 	if (!strcmp(fStr, "Saxion"))
 	{
@@ -376,16 +387,6 @@ void	readConf (Scalar **axion, int index)
 		printf("Input error: Invalid field type\n");
 		exit(1);
 	}
-
-	/*	Create axion field	*/
-
-	if (totlZ % zGrid)
-	{
-		printf("Error: Geometry not valid. Try a different partitioning.\n");
-		exit (1);
-	}
-	else
-		sizeZ = totlZ/zGrid;
 
 	/*	Create plist for collective read	*/
 
