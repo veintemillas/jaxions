@@ -1147,7 +1147,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 								zQVec),
 							opCode(mul_ps,
 								opCode(mul_ps,
-									opCode(add_ps, mPx, opCode(set1_ps, z2)),
+									opCode(sub_ps, mPx, opCode(set1_ps, z2)),
 									opCode(set1_ps, (float) LL)),
 								mel));
 						break;
@@ -1169,7 +1169,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 								opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
 							opCode(mul_ps,
 								opCode(mul_ps,
-									opCode(add_ps, mPx, opCode(set1_ps, z2)),
+									opCode(sub_ps, mPx, opCode(set1_ps, z2)),
 									opCode(set1_ps, (float) LL)),
 								mel));
 						break;
