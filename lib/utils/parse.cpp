@@ -12,7 +12,7 @@ int  dump = 100;
 int  nQcd = 3;
 //JAVIER
 int  Ng = 1 ;
-double indi3 = 3.0;
+double indi3 = 1.0;
 int  fIndex = -1;
 
 double sizeL = 4.;

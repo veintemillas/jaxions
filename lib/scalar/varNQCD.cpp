@@ -10,7 +10,7 @@ double	axionmass(double z, double nQcd, double zth, double zres)
 	double morsa;
 	//double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
 	double expo = nQcd;
-	if (z > zth)
+	if (z > zth &&  zth < zres )
 	{
 		morsa = indi3*pow(zth,expo/2.);
 		if (z > zres)
@@ -31,7 +31,7 @@ double	axionmass2(double z, double nQcd, double zth, double zres)
 	double morsa;
 	//double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
 	double expo = nQcd;
-	if (z > zth)
+	if (z > zth &&  zth < zres)
 	{
 		morsa = indi3*indi3*pow(zth,expo);
 		if (z > zres)

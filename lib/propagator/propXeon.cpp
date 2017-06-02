@@ -264,7 +264,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 					case	VQCD_2:
 						mPx = opCode(sub_pd,
-							opCode(add_pd,
+							opCode(sub_pd,
 								opCode(mul_pd,
 									opCode(add_pd,
 										opCode(add_pd,
@@ -472,7 +472,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 					case	VQCD_2:
 						mMx = opCode(sub_ps,
-							opCode(add_ps,
+							opCode(sub_ps,
 								opCode(mul_ps,
 									opCode(add_ps,
 										opCode(add_ps,
@@ -956,7 +956,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 					case	VQCD_2:
 						mPx = opCode(sub_pd,
-							opCode(add_pd,
+							opCode(sub_pd,
 								opCode(mul_pd,
 									opCode(add_pd,
 										opCode(add_pd,
@@ -1154,7 +1154,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 					case	VQCD_2:
 						mMx = opCode(sub_ps,
-							opCode(add_ps,
+							opCode(sub_ps,
 								opCode(mul_ps,
 									opCode(add_ps,
 										opCode(add_ps,

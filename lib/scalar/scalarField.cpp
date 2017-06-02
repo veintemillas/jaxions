@@ -1359,6 +1359,10 @@ void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numb
 	return ;
 }
 
+//----------------------------------------------------------
+//	DENSITY CONTRAST FUNCTION BY JAVIER< IT WORKS...
+//----------------------------------------------------------
+
 template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
@@ -1373,19 +1377,13 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	// TO USE THE POWER SPECTRUM AFTER
 	// 	FILES DENSITY CONTRAST
 
-	// WITH NO MPI THIS WORKS FOR OUTPUT
-	// char stoCON[256];
-	// sprintf(stoCON, "out/con/con-%05d.txt", index);
-	// FILE *file_con ;
-	// file_con = NULL;
-	// file_con = fopen(stoCON,"w+");
-	// fprintf(file_con,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz );
 
 	// 	CONSTANTS
 	const Float deltaa2 = pow(sizeL/sizeN,2.)*4. ;
 	const Float invz	= 1.0/(*z);
+	const Float piz2	= 3.1415926535898*(zz)*3.1415926535898*(zz);
 	//const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
-	const Float z9QCD4 = axionmass2((*z), nQcd,zthres, zrestore)*pow((*z),4);
+	const Float z9QCD4 = axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4);
 
 	//	AUX VARIABLES
 	Float maxi = 0.;
@@ -1414,9 +1412,47 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
 		for (size_t iz=0; iz < Lz; iz++)
 		{
-			Float acu , grad ;
+			//OLD VERSION
+			// Float acu , grad ;
+			// size_t idx, idaux ;
+			// size_t iyP, iyM, ixP, ixM;
+			// for (size_t iy=0; iy < n1; iy++)
+			// {
+			// 	iyP = (iy+1)%n1;
+			// 	iyM = (iy-1+n1)%n1;
+			// 	for (size_t ix=0; ix < n1; ix++)
+			// 	{
+			// 		ixP = (ix+1)%n1;
+			// 		ixM = (ix-1+n1)%n1;
+			//
+			// 		idx = ix + iy*n1+(iz+1)*n2 ;
+			// 		//KINETIC + POTENTIAL
+			// 		acu = mVeloc[idx-n2]*mVeloc[idx-n2]/2. + z9QCD4*(1.0-cos(mTheta[idx]*invz)) ;
+			// 		//GRADIENTS
+			// 		idaux = ixP + iy*n1+(iz+1)*n2 ;
+			// 		grad = pow(mTheta[idaux]-mTheta[idx],2);
+			//
+			// 		idaux = ixM + iy*n1+(iz+1)*n2 ;
+			// 		grad += pow(mTheta[idaux]-mTheta[idx],2);
+			//
+			// 		idaux = ix + iyP*n1+(iz+1)*n2 ;
+			// 		grad += pow(mTheta[idaux]-mTheta[idx],2);
+			//
+			// 		idaux = ix + iyM*n1+(iz+1)*n2 ;
+			// 		grad += pow(mTheta[idaux]-mTheta[idx],2);
+			// 		grad += pow(mTheta[idx+n2]-mTheta[idx],2);
+			// 		grad += pow(mTheta[idx-n2]-mTheta[idx],2);
+			// 		mCONT[idx-n2] = acu + grad/deltaa2 + If*grad/deltaa2;
+
+					//mCONT[idx] = acu ;
+					//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
+
+			//NEW TEST VERSION
+			Float acu , grad , asu;
 			size_t idx, idaux ;
 			size_t iyP, iyM, ixP, ixM;
+			Float mC0, mXp, mXm, mYp, mYm, mZp, mZm ;
+
 			for (size_t iy=0; iy < n1; iy++)
 			{
 				iyP = (iy+1)%n1;
@@ -1426,27 +1462,48 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					ixP = (ix+1)%n1;
 					ixM = (ix-1+n1)%n1;
 
-					idx = ix + iy*n1+(iz+1)*n2 ;
+					idx   = ix  + iy*n1+(iz+1)*n2 ;
+					mC0   = mTheta[ix  + iy*n1+(iz+1)*n2] ;
+					//idaux = ixP + iy*n1+(iz+1)*n2 ;
+					mXp   = mTheta[ixP + iy*n1+(iz+1)*n2] ;
+					//idaux = ixM + iy*n1+(iz+1)*n2 ;
+					mXm   = mTheta[ixM + iy*n1+(iz+1)*n2] ;
+					//idaux = ix + iyP*n1+(iz+1)*n2 ;
+					mYp   = mTheta[ix + iyP*n1+(iz+1)*n2] ;
+					//idaux = ix + iyM*n1+(iz+1)*n2 ;
+					mYm   = mTheta[ix + iyM*n1+(iz+1)*n2] ;
+					mZp   = mTheta[idx+n2] ;
+					mZm   = mTheta[idx-n2] ;
+
 					//KINETIC + POTENTIAL
-					acu = mVeloc[idx-n2]*mVeloc[idx-n2]/2. + z9QCD4*(1.0-cos(mTheta[idx]*invz)) ;
+					acu = mVeloc[idx-n2]*mVeloc[idx-n2]/2.f + z9QCD4*(1.f-cos(mC0*invz)) ;
+					grad = 0.f ;
 					//GRADIENTS
-					idaux = ixP + iy*n1+(iz+1)*n2 ;
-					grad = pow(mTheta[idaux]-mTheta[idx],2);
+					asu = (mXp-mC0)*(mXp-mC0);
+					if (asu < piz2)
+					grad += asu;
 
-					idaux = ixM + iy*n1+(iz+1)*n2 ;
-					grad += pow(mTheta[idaux]-mTheta[idx],2);
+					asu = (mXm-mC0)*(mXm-mC0);
+					if (asu < piz2)
+					grad += asu;
 
-					idaux = ix + iyP*n1+(iz+1)*n2 ;
-					grad += pow(mTheta[idaux]-mTheta[idx],2);
+					asu = (mYp-mC0)*(mYp-mC0);
+					if (asu < piz2)
+					grad += asu;
 
-					idaux = ix + iyM*n1+(iz+1)*n2 ;
-					grad += pow(mTheta[idaux]-mTheta[idx],2);
-					grad += pow(mTheta[idx+n2]-mTheta[idx],2);
-					grad += pow(mTheta[idx-n2]-mTheta[idx],2);
-					mCONT[idx-n2] = acu + grad/deltaa2;
+					asu = (mYm-mC0)*(mYm-mC0);
+					if (asu < piz2)
+					grad += asu;
 
-					//mCONT[idx] = acu ;
-					//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
+					asu = (mZp-mC0)*(mZp-mC0);
+					if (asu < piz2)
+					grad += asu;
+
+					asu = (mZm-mC0)*(mZm-mC0);
+					if (asu < piz2)
+					grad += asu;
+
+					mCONT[idx-n2] = acu + grad/deltaa2 + If*grad/deltaa2;
 
 					toti += (double) mCONT[idx-n2].real() ;
 					if (mCONT[idx-n2].real() > maxi)
@@ -1474,7 +1531,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=0; idx < n3; idx++)
 		{
-			mCONT[idx] = mCONT[idx].real()/((Float) toti_global)	;
+			mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
 			//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 		}
 		//printf("\n q4-%d",commRank());fflush(stdout);
@@ -1546,21 +1603,38 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 
 		// NO BORRAR!
 		// //PRINT 3D maps
-		// #pragma omp parallel for default(shared) schedule(static)
-		// for (size_t idx = 0; idx < n3; idx++)
-		// {
-		// 	size_t ix, iy, iz;
-		// 		if (mCONT[n2+idx].real() > 5.)
-		// 		{
-		// 			iz = idx/n2 ;
-		// 			iy = (idx%n2)/n1 ;
-		// 			ix = (idx%n2)%n1 ;
-		// 			#pragma omp critical
-		// 			{
-		// 				fprintf(file_con,   "%d %d %d %f \n", ix, iy, iz, mCONT[n2+idx].real() ) ;
-		// 			}
-		// 		}
-		// }
+
+		//WITH NO MPI THIS WORKS FOR OUTPUT
+		if (commRank() ==0)
+		{
+						char stoCON[256];
+						sprintf(stoCON, "out/con/con-%05d.txt", index);
+						FILE *file_con ;
+						file_con = NULL;
+						file_con = fopen(stoCON,"w+");
+						fprintf(file_con,  "# %d %f %f %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz, toti_global, z9QCD4 );
+
+						//PRINT 3D maps
+						#pragma omp parallel for default(shared) schedule(static)
+						for (size_t idx = 0; idx < n3; idx++)
+						{
+							size_t ix, iy, iz;
+								if (mCONT[idx].real() > 100.)
+								{
+									iz = idx/n2 ;
+									iy = (idx%n2)/n1 ;
+									ix = (idx%n2)%n1 ;
+									#pragma omp critical
+									{
+										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag(),
+										mVeloc[idx]*mVeloc[idx]/(2.f*toti_global) , z9QCD4*(1.f-cos(mTheta[idx+n2]/zz))/toti_global,
+										mTheta[idx+n2]/zz ) ;
+									}
+								}
+						}
+						fclose(file_con);
+
+		}//END PRINT COMRANK 0
 
 		//printf("\n q8-%d",commRank());fflush(stdout);
 
@@ -1587,6 +1661,189 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	commRank();
 	return ;
 }
+
+//----------------------------------------------------------
+//	DENSITY CONTRAST USING VECTORS
+//----------------------------------------------------------
+
+// template<typename Float>
+// //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
+// void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
+// {
+// 	// THIS TEMPLATE IS TO BE CALLED FOLDED
+// 	if (!folded)
+// 		{
+// 			printMpi("EMT_vector called UNFolded! ...  we quit\n");
+// 			return;
+// 		}
+// 	// COPIES THE CONTRAST INTO THE REAL PART OF M2 (WHICH IS COMPLEX)
+// 	// TO USE THE POWER SPECTRUM AFTER
+// 	// 	FILES DENSITY CONTRAST
+//
+//
+// 	// 	CONSTANTS
+// 	const Float deltaa2 = pow(sizeL/sizeN,2.)*4. ;
+// 	const Float invz	= 1.0/(*z);
+// 	const Float piz2	= 3.1415926535898*(zz)*3.1415926535898*(zz);
+// 	//const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
+// 	const Float z9QCD4 = axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4);
+//
+// 	//	AUX VARIABLES
+// 	Float maxi = 0.;
+// 	Float maxibin = 0.;
+// 	double maxid =0.;
+// 	double toti = 0.;
+//
+// 	exchangeGhosts(FIELD_M);
+//
+// 	//SUM variables
+// 	double contbin_local[numbins] ;
+// 	double toti_global;
+// 	double maxi_global;
+//
+// 	//COMPUTE THE MAP IN M2
+// 	//HAS TO BE DONE FROM THE PROGRAM!!
+// 	//note that I do not care about LL, or shift=0.0
+// 	//energyMap	(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.0);
+// 	//
+//
+// 	if(fieldType == FIELD_AXION)
+// 	{
+// 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+//
+// 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
+// 		for (size_t idx=0; idx < n3; idx++)
+// 		{
+// 				toti += (double) mCONT[idx].real() ;
+// 				if (mCONT[idx].real() > maxi)
+// 				{
+// 					maxi = mCONT[idx].real() ;
+// 				}
+// 		}
+//
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for (size_t idx=0; idx < n3; idx++)
+// 			{
+// 				mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
+// 				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
+// 			}
+//
+//
+// 		maxid = (double) maxi;
+//
+// 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+// 		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+//
+// 		//printf("\n %d gets tot=%f(%f) max=%f(%f) av=%f(%f)",
+// 		//						commRank(),toti,toti_global,maxid,maxi_global,toti_global/(n3*nSplit),
+// 		//						maxi_global*n3*nSplit/toti_global);
+// 		fflush(stdout);
+// 		toti = toti/(n3*nSplit);
+// 		toti_global = toti_global/(n3*nSplit) ;
+//
+// 		// NORMALISED DENSITY
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for (size_t idx=0; idx < n3; idx++)
+// 		{
+// 			mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
+// 		}
+//
+// 		maxid = maxid/toti_global ;
+// 		maxi_global = maxi_global/toti_global ;
+//
+// 		maxibin = log10(maxi_global) ;
+//
+// 		//BIN delta from 0 to maxi+1
+// 		size_t auxintarray[numbins] ;
+// 		for(size_t bin = 0; bin < numbins ; bin++)
+// 		{
+// 		(static_cast<double *> (contbin_local))[bin] = 0.;
+// 		auxintarray[bin] = 0;
+// 		}
+//
+// 		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
+// 		for(size_t idx=0; i < n3; i++)
+// 		{
+// 			int bin;
+// 			bin = (log10(mCONT[idx].real())+5.)/norma	;
+// 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
+// 			if (0<=bin<numbins)
+// 			{
+// 				auxintarray[bin] +=1;
+// 			}
+// 		}
+//
+// 		//printf("\n q7-%d",commRank());fflush(stdout);
+//
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t bin = 0; bin < numbins-3 ; bin++)
+// 		{
+// 			(static_cast<double *> (contbin_local))[bin+3] = (double) auxintarray[bin];
+// 		}
+//
+// 		// NO BORRAR!
+// 		// //PRINT 3D maps
+//
+// 		//WITH NO MPI THIS WORKS FOR OUTPUT
+// 		if (commRank() ==0)
+// 		{
+// 						char stoCON[256];
+// 						sprintf(stoCON, "out/con/con-%05d.txt", index);
+// 						FILE *file_con ;
+// 						file_con = NULL;
+// 						file_con = fopen(stoCON,"w+");
+// 						fprintf(file_con,  "# %d %f %f %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz, toti_global, z9QCD4 );
+//
+// 						//PRINT 3D maps
+// 						#pragma omp parallel for default(shared) schedule(static)
+// 						for (size_t idx = 0; idx < n3; idx++)
+// 						{
+// 							size_t ix, iy, iz;
+// 								if (mCONT[idx].real() > 100.)
+// 								{
+// 									iz = idx/n2 ;
+// 									iy = (idx%n2)/n1 ;
+// 									ix = (idx%n2)%n1 ;
+// 									#pragma omp critical
+// 									{
+// 										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag(),
+// 										1.0 , 1.0 ,
+// 										1.0 ) ;
+// 									}
+// 								}
+// 						}
+// 						fclose(file_con);
+//
+// 		}//END PRINT COMRANK 0
+//
+// 		//printf("\n q8-%d",commRank());fflush(stdout);
+//
+// 	}
+// 	else // FIELD_SAXION
+// 	{
+// 			// DO NOTHING
+// 	}
+//
+// 	// 	SAVE AVERAGE
+// 	//	MAXIMUM VALUE OF ENERGY CONTRAST
+// 	//	MAXIMUM VALUE TO BE BINNED
+//
+// 	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+//
+// 	(static_cast<double *> (contbin))[0] = toti_global;
+// 	(static_cast<double *> (contbin))[1] = maxi_global;
+// 	//note that maxibin is log10(maxContrast)
+// 	(static_cast<double *> (contbin))[2] = (double) maxibin;
+//
+// 	if (commRank() ==0)
+// 	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
+// 	fflush (stdout);
+// 	commRank();
+// 	return ;
+// }
+
+
+
 
 
 // ----------------------------------------------------------------------

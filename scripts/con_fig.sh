@@ -1,11 +1,11 @@
 #!/bin/bash
 for j in $(ls out/con/con-*.txt); do
-read  dum nnn lll ddd zzz < $j
+read  dum nnn lll ddd zzz totaldens z4m2 < $j
 NAME=${j%.txt}  			# get the part before the colon
 NAME=${NAME#*/con-}		# get the part after the rh- (number)
 FILE="ploter8.gnu"
 /bin/cat <<EOM > $FILE
-set title "(N=$nnn, prec=?) z=$zzz" font "Helvetica,20" offset -50,-10 tc lt 1
+set title "(N=$nnn, <den>=$totaldens, z4m2=$z4m2 ) z=$zzz" font "Helvetica,20" offset -50,-10 tc lt 1
 set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb"black" behind
 set palette rgb 33,13,10;
 set border lw 1 lc rgb "white"
