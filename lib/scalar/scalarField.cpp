@@ -1346,8 +1346,12 @@ void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numb
 
 		case	FIELD_SINGLE:
 		{
-			energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+			//COMPUTES JAVIER DENSITY MAP AND BINS
+			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
 
+			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
+			// USE WITH ALEX'FUNCTION
+			contrastbin(static_cast<float>(zzz), index, contbin, numbins);
 		}
 		break;
 
@@ -1663,184 +1667,157 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 }
 
 //----------------------------------------------------------
-//	DENSITY CONTRAST USING VECTORS
+//	DENSITY CONTRAST BINING USING VECTORS
+//	IT ASSUMES M2 ALREADY CONTAINS A DENSITY DISTRIBUTION
 //----------------------------------------------------------
 
-// template<typename Float>
-// //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
-// void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
-// {
-// 	// THIS TEMPLATE IS TO BE CALLED FOLDED
-// 	if (!folded)
-// 		{
-// 			printMpi("EMT_vector called UNFolded! ...  we quit\n");
-// 			return;
-// 		}
-// 	// COPIES THE CONTRAST INTO THE REAL PART OF M2 (WHICH IS COMPLEX)
-// 	// TO USE THE POWER SPECTRUM AFTER
-// 	// 	FILES DENSITY CONTRAST
-//
-//
-// 	// 	CONSTANTS
-// 	const Float deltaa2 = pow(sizeL/sizeN,2.)*4. ;
-// 	const Float invz	= 1.0/(*z);
-// 	const Float piz2	= 3.1415926535898*(zz)*3.1415926535898*(zz);
-// 	//const Float z9QCD4 = 9.0*pow((*z),nQcd+4.) ;
-// 	const Float z9QCD4 = axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4);
-//
-// 	//	AUX VARIABLES
-// 	Float maxi = 0.;
-// 	Float maxibin = 0.;
-// 	double maxid =0.;
-// 	double toti = 0.;
-//
-// 	exchangeGhosts(FIELD_M);
-//
-// 	//SUM variables
-// 	double contbin_local[numbins] ;
-// 	double toti_global;
-// 	double maxi_global;
-//
-// 	//COMPUTE THE MAP IN M2
-// 	//HAS TO BE DONE FROM THE PROGRAM!!
-// 	//note that I do not care about LL, or shift=0.0
-// 	//energyMap	(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.0);
-// 	//
-//
-// 	if(fieldType == FIELD_AXION)
-// 	{
-// 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
-//
-// 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
-// 		for (size_t idx=0; idx < n3; idx++)
-// 		{
-// 				toti += (double) mCONT[idx].real() ;
-// 				if (mCONT[idx].real() > maxi)
-// 				{
-// 					maxi = mCONT[idx].real() ;
-// 				}
-// 		}
-//
-// 		#pragma omp parallel for default(shared) schedule(static)
-// 		for (size_t idx=0; idx < n3; idx++)
-// 			{
-// 				mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
-// 				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
-// 			}
-//
-//
-// 		maxid = (double) maxi;
-//
-// 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-// 		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-//
-// 		//printf("\n %d gets tot=%f(%f) max=%f(%f) av=%f(%f)",
-// 		//						commRank(),toti,toti_global,maxid,maxi_global,toti_global/(n3*nSplit),
-// 		//						maxi_global*n3*nSplit/toti_global);
-// 		fflush(stdout);
-// 		toti = toti/(n3*nSplit);
-// 		toti_global = toti_global/(n3*nSplit) ;
-//
-// 		// NORMALISED DENSITY
-// 		#pragma omp parallel for default(shared) schedule(static)
-// 		for (size_t idx=0; idx < n3; idx++)
-// 		{
-// 			mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
-// 		}
-//
-// 		maxid = maxid/toti_global ;
-// 		maxi_global = maxi_global/toti_global ;
-//
-// 		maxibin = log10(maxi_global) ;
-//
-// 		//BIN delta from 0 to maxi+1
-// 		size_t auxintarray[numbins] ;
-// 		for(size_t bin = 0; bin < numbins ; bin++)
-// 		{
-// 		(static_cast<double *> (contbin_local))[bin] = 0.;
-// 		auxintarray[bin] = 0;
-// 		}
-//
-// 		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
-// 		for(size_t idx=0; i < n3; i++)
-// 		{
-// 			int bin;
-// 			bin = (log10(mCONT[idx].real())+5.)/norma	;
-// 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
-// 			if (0<=bin<numbins)
-// 			{
-// 				auxintarray[bin] +=1;
-// 			}
-// 		}
-//
-// 		//printf("\n q7-%d",commRank());fflush(stdout);
-//
-// 		#pragma omp parallel for default(shared) schedule(static)
-// 		for(size_t bin = 0; bin < numbins-3 ; bin++)
-// 		{
-// 			(static_cast<double *> (contbin_local))[bin+3] = (double) auxintarray[bin];
-// 		}
-//
-// 		// NO BORRAR!
-// 		// //PRINT 3D maps
-//
-// 		//WITH NO MPI THIS WORKS FOR OUTPUT
-// 		if (commRank() ==0)
-// 		{
-// 						char stoCON[256];
-// 						sprintf(stoCON, "out/con/con-%05d.txt", index);
-// 						FILE *file_con ;
-// 						file_con = NULL;
-// 						file_con = fopen(stoCON,"w+");
-// 						fprintf(file_con,  "# %d %f %f %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz, toti_global, z9QCD4 );
-//
-// 						//PRINT 3D maps
-// 						#pragma omp parallel for default(shared) schedule(static)
-// 						for (size_t idx = 0; idx < n3; idx++)
-// 						{
-// 							size_t ix, iy, iz;
-// 								if (mCONT[idx].real() > 100.)
-// 								{
-// 									iz = idx/n2 ;
-// 									iy = (idx%n2)/n1 ;
-// 									ix = (idx%n2)%n1 ;
-// 									#pragma omp critical
-// 									{
-// 										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag(),
-// 										1.0 , 1.0 ,
-// 										1.0 ) ;
-// 									}
-// 								}
-// 						}
-// 						fclose(file_con);
-//
-// 		}//END PRINT COMRANK 0
-//
-// 		//printf("\n q8-%d",commRank());fflush(stdout);
-//
-// 	}
-// 	else // FIELD_SAXION
-// 	{
-// 			// DO NOTHING
-// 	}
-//
-// 	// 	SAVE AVERAGE
-// 	//	MAXIMUM VALUE OF ENERGY CONTRAST
-// 	//	MAXIMUM VALUE TO BE BINNED
-//
-// 	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-//
-// 	(static_cast<double *> (contbin))[0] = toti_global;
-// 	(static_cast<double *> (contbin))[1] = maxi_global;
-// 	//note that maxibin is log10(maxContrast)
-// 	(static_cast<double *> (contbin))[2] = (double) maxibin;
-//
-// 	if (commRank() ==0)
-// 	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
-// 	fflush (stdout);
-// 	commRank();
-// 	return ;
-// }
+template<typename Float>
+void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
+{
+	// THIS TEMPLATE IS TO BE CALLED FOLDED
+	if (!folded)
+		{
+			printMpi("contrastbin called UNFolded! ...  we quit\n");
+			return;
+		}
+
+	//	AUX VARIABLES
+	Float maxi = 0.;
+	Float maxibin = 0.;
+	double maxid =0.;
+	double toti = 0.;
+
+	//SUM variables
+	double contbin_local[numbins] ;
+	double toti_global;
+	double maxi_global;
+
+	//COMPUTES AVERAGE AND MAX
+	//IF M2 IS ALREADY CONTRAST DOES NOT CHANGE ANYTHING
+
+	if(fieldType == FIELD_AXION)
+	{
+		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+
+		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
+		for (size_t idx=0; idx < n3; idx++)
+		{
+				toti += (double) mCONT[idx].real() ;
+				if (mCONT[idx].real() > maxi)
+				{
+					maxi = mCONT[idx].real() ;
+				}
+		}
+		//SUMS THE DENSITIES OF ALL RANGES
+		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		//GLOBAL MAXIMUM
+		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+
+		fflush(stdout);
+		//CONVERT SUM OF DENSITIES INTO AVERAGE GLOBAL
+		toti_global = toti_global/(n3) ;
+
+		//DENSITIES ARE CONVERTED INTO DENSITY CONTRAST
+		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t idx=0; idx < n3; idx++)
+			{
+				mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
+				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
+			}
+
+		maxid = (double) maxi;
+
+		//MAX DENSITY ARE CONVERTED INTO MAXIMUM DENSITY CONTRAST
+		maxi_global = maxi_global/toti_global ;
+
+		maxibin = log10(maxi_global) ;
+
+		//BIN delta from 0 to maxi+1
+		size_t auxintarray[numbins] ;
+		for(size_t bin = 0; bin < numbins ; bin++)
+		{
+		(static_cast<double *> (contbin_local))[bin] = 0.;
+		auxintarray[bin] = 0;
+		}
+
+		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
+		for(size_t idx=0; idx < n3; idx++)
+		{
+			int bin;
+			bin = (log10(mCONT[idx].real())+5.)/norma	;
+			//(static_cast<double *> (contbin))[bin+2] += 1. ;
+			if (0<=bin<numbins)
+			{
+				auxintarray[bin] +=1;
+			}
+		}
+
+		#pragma omp parallel for default(shared) schedule(static)
+		for(size_t bin = 0; bin < numbins-3 ; bin++)
+		{
+			(static_cast<double *> (contbin_local))[bin+3] = (double) auxintarray[bin];
+		}
+
+		// NO BORRAR!
+		// //PRINT 3D maps
+
+		//WITH NO MPI THIS WORKS FOR OUTPUT
+		if (commRank() ==0)
+		{
+						char stoCON[256];
+						sprintf(stoCON, "out/con/con-%05d.txt", index);
+						FILE *file_con ;
+						file_con = NULL;
+						file_con = fopen(stoCON,"w+");
+						fprintf(file_con,  "# %d %f %f %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz, toti_global, axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4) );
+
+						//PRINT 3D maps
+						#pragma omp parallel for default(shared) schedule(static)
+						for (size_t idx = 0; idx < n3; idx++)
+						{
+							size_t ix, iy, iz;
+								if (mCONT[idx].real() > 100.)
+								{
+									iz = idx/n2 ;
+									iy = (idx%n2)/n1 ;
+									ix = (idx%n2)%n1 ;
+									#pragma omp critical
+									{
+										//PRINT COORDINATES CONTRAST AND [?]
+										fprintf(file_con,   "%d %d %d %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag()) ;
+									}
+								}
+						}
+						fclose(file_con);
+
+		}//END PRINT COMRANK 0
+
+		//printf("\n q8-%d",commRank());fflush(stdout);
+
+	}
+	else // FIELD_SAXION
+	{
+			// DO NOTHING
+	}
+
+	// 	SAVE AVERAGE
+	//	MAXIMUM VALUE OF ENERGY CONTRAST
+	//	MAXIMUM VALUE TO BE BINNED
+
+	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+	(static_cast<double *> (contbin))[0] = toti_global;
+	(static_cast<double *> (contbin))[1] = maxi_global;
+	//note that maxibin is log10(maxContrast)
+	(static_cast<double *> (contbin))[2] = (double) maxibin;
+
+	if (commRank() ==0)
+	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
+	fflush (stdout);
+	commRank();
+	return ;
+}
 
 
 

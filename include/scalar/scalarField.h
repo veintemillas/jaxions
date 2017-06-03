@@ -53,6 +53,8 @@
         	template<typename Float>
 	        void energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
 
+					template<typename Float>
+	        void contrastbin(const Float zz, const int index, void *contbin, int numbins); // TEST
 
 		public:
 
@@ -133,7 +135,7 @@
 		void	theta2m2();//int *window);		// COPIES c_THETA     					into m2
 		void	vheta2m2();//int *window);		// COPIES c_THETA_z (vheta)   	into m2
 		void	thetav2m2();//int *window);		// COPIES c_THETA + I*vheta   	into m2
-		
+
 		double	maxtheta();									// RETURNS THE MAX VALUE OF THETA [OR IM m]
 		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
 		void	denstom(); 	//

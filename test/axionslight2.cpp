@@ -526,6 +526,7 @@ int	main (int argc, char *argv[])
 			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 			fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			(*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
+			fflush(file_energy);
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
@@ -559,19 +560,26 @@ int	main (int argc, char *argv[])
 				// writeConf(axion, index);
 				// munge(FOLD_ALL);
 
-				// munge(UNFOLD_ALL);
-				//
-				// axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-				//
-				// if (commRank() == 0)
-				// {
-				// fprintf(file_contbin,"%f ", (*(axion->zV() )));
-				// // first three numbers are dens average, max contrast and maximum of the binning
-				// for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%e ", (float) bA[i]);}
-				// fprintf(file_contbin, "\n");
-				// fflush(file_contbin);
-				// }
-				//
+
+
+				//IF USING DENSITY FROM ALEX
+				energyMap(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.);
+				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+
+				//IF USING DENSITY FROM JAVI
+				//munge(UNFOLD_ALL);
+				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+
+
+				if (commRank() == 0)
+				{
+				fprintf(file_contbin,"%f ", (*(axion->zV() )));
+				// first three numbers are dens average, max contrast and maximum of the binning
+				for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%e ", (float) bA[i]);}
+				fprintf(file_contbin, "\n");
+				fflush(file_contbin);
+				}
+
 				// // BIN THETA
 				// maximumtheta = axion->thetaDIST(100, binarray);
 				// if (commRank() == 0)
