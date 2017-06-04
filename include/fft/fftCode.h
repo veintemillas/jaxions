@@ -1,7 +1,7 @@
 #ifndef	_FFT_CPU_
 	#define	_FFT_CPU_
 
-	void	initFFT		();
+	void	initFFT		(const FieldPrecision &prec);
 	void	closeFFT	();
 	void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrecision prec, bool lowmem);
 	void	runFFT		(int sign);
