@@ -563,12 +563,14 @@ int	main (int argc, char *argv[])
 
 
 				//IF USING DENSITY FROM ALEX
-				energyMap(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.);
-				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				//energyMap(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.);
+				//printMpi("bineando\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
+				//fflush(stdout);
+				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
 				//IF USING DENSITY FROM JAVI
-				//munge(UNFOLD_ALL);
-				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				munge(UNFOLD_ALL);
+				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
 
 				if (commRank() == 0)

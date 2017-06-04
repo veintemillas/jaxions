@@ -1347,11 +1347,11 @@ void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numb
 		case	FIELD_SINGLE:
 		{
 			//COMPUTES JAVIER DENSITY MAP AND BINS
-			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+			energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
 
 			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
 			// USE WITH ALEX'FUNCTION
-			contrastbin(static_cast<float>(zzz), index, contbin, numbins);
+			//contrastbin(static_cast<float>(zzz), index, contbin, numbins);
 		}
 		break;
 
@@ -1698,7 +1698,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	if(fieldType == FIELD_AXION)
 	{
 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
-
+		printMpi("COMP-");
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
 		for (size_t idx=0; idx < n3; idx++)
 		{
@@ -1708,16 +1708,20 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 					maxi = mCONT[idx].real() ;
 				}
 		}
+		maxid = (double) maxi;
+
+		printMpi("RED-");
 		//SUMS THE DENSITIES OF ALL RANGES
 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 		//GLOBAL MAXIMUM
 		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
+		printMpi("(TG %f,MG %f)",toti_global,maxi_global);
 
 		fflush(stdout);
 		//CONVERT SUM OF DENSITIES INTO AVERAGE GLOBAL
 		toti_global = toti_global/(n3) ;
 
+		printMpi("NORM-");
 		//DENSITIES ARE CONVERTED INTO DENSITY CONTRAST
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=0; idx < n3; idx++)
@@ -1733,8 +1737,10 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 		maxibin = log10(maxi_global) ;
 
+		printMpi("(MG %f,maxbinlog %f)BIN-",maxi_global,maxibin);
 		//BIN delta from 0 to maxi+1
 		size_t auxintarray[numbins] ;
+
 		for(size_t bin = 0; bin < numbins ; bin++)
 		{
 		(static_cast<double *> (contbin_local))[bin] = 0.;
@@ -1742,29 +1748,34 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		}
 
 		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
-		for(size_t idx=0; idx < n3; idx++)
+		printMpi("BIN2-(%F) ",norma);
+		for(size_t i=0; i < n3; i++)
 		{
 			int bin;
-			bin = (log10(mCONT[idx].real())+5.)/norma	;
+			bin = (int) (log10(mCONT[i].real())+5.)/norma	;
 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
-			if (0<=bin<numbins)
+			if (0<=bin<numbins-4)
 			{
-				auxintarray[bin] +=1;
+				printMpi("b%d-",bin);
+				(static_cast<double *> (contbin_local))[bin+3] += 1.;
+				//auxintarray[bin] +=1;
 			}
-		}
 
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t bin = 0; bin < numbins-3 ; bin++)
-		{
-			(static_cast<double *> (contbin_local))[bin+3] = (double) auxintarray[bin];
 		}
+		// printMpi("BIN3-");
+		// #pragma omp parallel for default(shared) schedule(static)
+		// for(size_t bin = 0; bin < numbins-3 ; bin++)
+		// {
+		// 	(static_cast<double *> (contbin_local))[bin+3] = (double) auxintarray[bin];
+		// }
 
 		// NO BORRAR!
 		// //PRINT 3D maps
-
+		printMpi("PRI-");
 		//WITH NO MPI THIS WORKS FOR OUTPUT
 		if (commRank() ==0)
 		{
+
 						char stoCON[256];
 						sprintf(stoCON, "out/con/con-%05d.txt", index);
 						FILE *file_con ;
@@ -1804,7 +1815,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	// 	SAVE AVERAGE
 	//	MAXIMUM VALUE OF ENERGY CONTRAST
 	//	MAXIMUM VALUE TO BE BINNED
-
+	printMpi("RED-");
 	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	(static_cast<double *> (contbin))[0] = toti_global;
