@@ -233,7 +233,7 @@ const std::complex<float> If(0.,1.);
 //		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 //	}
 
-	initFFT();
+	initFFT(prec);
 
 	*z = zI;
 

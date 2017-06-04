@@ -18,7 +18,7 @@ fftwf_plan pf, pfb;
 
 static bool iFFT = false, iFFTPlans = false, single = false, useThreads = true;
 
-void	initFFT	()
+void	initFFT	(const FieldPrecision &prec)
 {
 	printMpi ("  Initializing FFT (#MPI=%d)...\n",commSize());
 	fflush (stdout);
@@ -29,85 +29,62 @@ void	initFFT	()
 		fflush (stdout);
 	}
 
-	if (!fftw_init_threads())
+	switch (prec)
 	{
-		printf ("  Error initializing FFT with threads\n");
-		fflush (stdout);
-		useThreads = false;
-		fftw_mpi_init();
-	} else {
-		int nThreads = omp_get_max_threads();
-		printMpi ("  Using %d threads for the FFTW\n", nThreads);
-		fflush (stdout);
-		fftw_mpi_init();
-		fftw_plan_with_nthreads(nThreads);
+		case FIELD_DOUBLE:
+
+		if (!fftw_init_threads())
+		{
+			printf ("  Error initializing FFT with threads\n");
+			fflush (stdout);
+			useThreads = false;
+			fftw_mpi_init();
+		} else {
+			int nThreads = omp_get_max_threads();
+			printMpi ("  Using %d threads for the FFTW\n", nThreads);
+			fflush (stdout);
+			fftw_mpi_init();
+			fftw_plan_with_nthreads(nThreads);
+		}
+
+		break;
+
+		case FIELD_SINGLE:
+
+		if (!fftwf_init_threads())
+		{
+			printf ("  Error initializing FFT with threads\n");
+			fflush (stdout);
+			useThreads = false;
+			fftwf_mpi_init();
+		} else {
+			int nThreads = omp_get_max_threads();
+			printMpi ("  Using %d threads for the FFTW\n", nThreads);
+			fflush (stdout);
+			fftwf_mpi_init();
+			fftwf_plan_with_nthreads(nThreads);
+		}
+
+		break;
+
+		default:
+
+		printf ("Unrecognized precision\n");
+		return;
+		break;
 	}
 
 	iFFT = true;
-
-	int rank;
-
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-	// if (rank == 0)
-	// {
-	// 	if(!fftw_import_wisdom_from_filename("wisdomsave.txt"))
-	// 	{
-	// 		printMpi("  Warning: could not import wisdom\n");
-	// 	}
-	// 	else
-	// 	{
-	// 		printMpi("  Wisdom file loaded\n\n");
-	// 	}
-	// }
-
-	if (rank == 0)
-	{
-		if(!fftwf_import_wisdom_from_filename("wisdomsavef.txt"))
-		{
-			printMpi("  Warning: could not import wisdom-f\n");
-		}
-		else
-		{
-			printMpi("  Wisdom-f file loaded\n\n");
-		}
-	}
-
 }
 
 void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrecision prec, bool lowmem)
 {
 	if (!iFFT)
-		initFFT();
+		initFFT(prec);
 
 	int rank;
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-	// if (rank == 0)
-	// {
-	// 	if(!fftw_import_wisdom_from_filename("wisdomsave.txt"))
-	// 	{
-	// 		printf("  Warning: could not import wisdom\n");
-	// 	}
-	// 	else
-	// 	{
-	// 		printf("  Wisdom file loaded\n\n");
-	// 	}
-	// }
-	//
-	// if (rank == 0)
-	// {
-	// 	if(!fftwf_import_wisdom_from_filename("wisdomsavef.txt"))
-	// 	{
-	// 		printf("  Warning: could not import wisdom-f\n");
-	// 	}
-	// 	else
-	// 	{
-	// 		printf("  Wisdom-f file loaded\n\n");
-	// 	}
-	// }
-
 
 	printMpi ("  Planning 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Tz);
 	fflush (stdout);
@@ -115,6 +92,13 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 	switch (prec)
 	{
 		case FIELD_DOUBLE:
+
+		if (rank == 0) {
+			if (fftw_import_wisdom_from_filename("fftWisdom.double") == 0)
+				printf ("  Warning: could not import wisdom from fftWisdom.double\n");
+		}
+
+		fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 
 		single = false;
 		if (lowmem) {
@@ -124,15 +108,24 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 			p  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
 			pb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 		}
-		// fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-		// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-		// if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave.txt");
-		// printMpi ("  d-Wisdom saved\n");
+
+		fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+		if (rank == 0) { fftw_export_wisdom_to_filename("fftWisdom.double"); }
+		printMpi ("  Wisdom saved\n");
+
 		break;
 
 		case FIELD_SINGLE:
 
 		single = true;
+
+		if (rank == 0) {
+			if (fftwf_import_wisdom_from_filename("fftWisdom.single") == 0)
+				printf ("  Warning: could not import wisdom from fftWisdom.single\n");
+		}
+
+		fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
 		if (lowmem) {
 			pf  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
 			pfb = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
@@ -142,10 +135,9 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		}
 //		pf  = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
 //		pfb = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
-		// fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-		// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-		// if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
-		// printMpi ("  f-Wisdom saved\n");
+
+		fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
+		if (rank == 0) fftwf_export_wisdom_to_filename("./fftWisdom.single");
 
 		break;
 
@@ -189,15 +181,6 @@ void	runFFT(int sign)
 
 void	closeFFT	()
 {
-	int rank;
-//	fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-	fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//	if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave");
-	if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
-
-	printMpi ("  Wisdom saved once more in rank %d\n",rank);
-
 	if (!iFFT)
 		return;
 
@@ -209,15 +192,6 @@ void	closeFFT	()
 
 void	closeFFTPlans	()
 {
-	int rank;
-	// fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-	// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	// fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-	// if (rank == 0) fftw_export_wisdom_to_filename("wisdomsave");
-	// if (rank == 0) fftw_export_wisdom_to_filename("wisdomsavef");
-	//
-	// printMpi ("  Wisdom saved once more in rank %d\n",rank);
-
 	if (!iFFTPlans)
 		return;
 
@@ -248,7 +222,7 @@ static bool iFFTSpectrum = false;
 void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision prec, bool lowmem)
 {
 	if (!iFFT)
-		initFFT();
+		initFFT(prec);
 
 	printMpi ("Initializing FFTSpectrum...\n");
 	fflush (stdout);
@@ -297,7 +271,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 		case FIELD_SINGLE:
 
 		single = true;
-
+/*
 		if(!fftwf_import_wisdom_from_filename("wisdomsavef.txt"))
 		{
 			printMpi("  Warning: could not import wisdom-f\n");
@@ -306,7 +280,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 		{
 			printMpi("  Wisdom-f file loaded\n\n");
 		}
-
+*/
 		if (lowmem) {
 			printMpi("Spectrum not available in lowmem until the end");
 		} else {
@@ -368,7 +342,7 @@ static bool iFFThalo = false;
 void	initFFThalo	(void *m, void *v, const size_t n1, const size_t Tz, FieldPrecision prec)
 {
 	if (!iFFT)
-		initFFT();
+		initFFT(prec);
 
 	printf ("Initializing FFTSpectrum halo...\n");
 	fflush (stdout);
@@ -402,12 +376,12 @@ void	initFFThalo	(void *m, void *v, const size_t n1, const size_t Tz, FieldPreci
 		single = true;
 			pf3  = fftwf_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<float*>(m), static_cast<fftwf_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE );
 			pf3b = fftwf_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftwf_complex*>(v), static_cast<float*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE );
-
+/*
 			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 			MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 			if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
 			printf ("  f-Wisdom saved\n");
-
+*/
 		break;
 
 		default:
