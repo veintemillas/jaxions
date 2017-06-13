@@ -16,7 +16,7 @@
 #include <immintrin.h>
 
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	Align 64
 	#define	_PREFIX_ _mm512
 #else
@@ -31,7 +31,7 @@
 
 // FUSIONA OPERACIONES
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
@@ -81,9 +81,15 @@ inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 	tmp &= 0b1010101010101010;
 
 	tp3 = opCode(mul_ps, s2, conj);
+#ifdef	__MIC__
 	tp2 = opCode(swizzle_ps, tp3, _MM_SWIZ_REG_CDAB);
 	tp3 = opCode(mul_ps, s1,  tp2);
 	tp2 = opCode(add_ps, tp3, opCode(swizzle_ps, tp3, _MM_SWIZ_REG_CDAB));
+#elif	defined(__AVX512F__)
+	tp2 = opCode(permute_ps, tp3, 0b10110001);
+	tp3 = opCode(mul_ps, s1,  tp2);
+	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
+#endif
 	tpm = opCode(cmp_ps_mask, tp2, zero, _CMP_GT_OS);
 	tmm = opCode(cmp_ps_mask, tp2, zero, _CMP_LE_OS);
 
@@ -232,7 +238,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 	if (precision == FIELD_DOUBLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
 #elif	defined(__AVX__)
@@ -250,7 +256,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
 #endif
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
@@ -314,6 +320,10 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 					mPy = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB));
 					mXY = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxXY])), _MM_PERM_ADCB));
 					mYZ = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxYZ])), _MM_PERM_ADCB));
+#elif	defined(__AVX512F__)
+					mPy = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00111001);
+					mXY = opCode(permute_pd, opCode(load_pd, &m[idxXY]), 0b00111001);
+					mYZ = opCode(permute_pd, opCode(load_pd, &m[idxYZ]), 0b00111001);
 #elif	defined(__AVX__)
 					tmp = opCode(load_pd, &m[idxPy]);
 					str = opCode(load_pd, &m[idxXY]);
@@ -488,7 +498,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 8
 #elif	defined(__AVX__)
@@ -574,6 +584,10 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 					mYZ = opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), mPy, opCode(permute4f128_ps, mPy, _MM_PERM_ADCB));
 					mXY = opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), str, opCode(permute4f128_ps, str, _MM_PERM_ADCB));
 					mPy = opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), tmp, opCode(permute4f128_ps, tmp, _MM_PERM_ADCB));
+#elif	defined(__AVX512F__)
+					mPy = opCode(permutexvar_ps, opCode(setr_epi32, 2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1), opCode(load_ps, &m[idxPy]));
+					mXY = opCode(permutexvar_ps, opCode(setr_epi32, 2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1), opCode(load_ps, &m[idxXY]));
+					mYZ = opCode(permutexvar_ps, opCode(setr_epi32, 2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1), opCode(load_ps, &m[idxYZ]));
 #elif	defined(__AVX2__)
 					mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1));
 					mXY = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxXY]), opCode(setr_epi32, 2,3,4,5,6,7,0,1));

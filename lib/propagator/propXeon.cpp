@@ -18,9 +18,10 @@
 
 #include <immintrin.h>
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	Align 64
 	#define	_PREFIX_ _mm512
+	#define	_MInt_  __m512i
 #else
 	#if not defined(__AVX__) and not defined(__AVX2__)
 		#define	Align 16
@@ -31,7 +32,7 @@
 	#endif
 #endif
 
-
+/*
 #ifndef	__MIC__
 #ifdef	__AVX__
 void printFloat(size_t idx, size_t con, __m256 dat)
@@ -94,6 +95,7 @@ void printDouble(size_t idx, size_t con, __m512d dat)
 	}
 }
 #endif
+*/
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
@@ -105,7 +107,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 	if (precision == FIELD_DOUBLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
 #elif	defined(__AVX__)
@@ -137,24 +139,29 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
+		const double    __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
+		const double    __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
+		const long long __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
+		const long long __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
+
+		const _MInt_  vShRg = opCode(load_si512, shfRg);
+		const _MInt_  vShLf = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zRAux[2]  = { zR, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
 
 #endif
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
@@ -194,6 +201,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 //					mPx = opCode(load_pd, &m[idxMy]);
 #ifdef	__MIC__
 					tmp = opCode(add_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)), opCode(load_pd, &m[idxPy]));
+#elif	defined(__AVX512F__)
+					tmp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), opCode(load_pd, &m[idxPy]));
 #elif	defined(__AVX__)
 					mPx = opCode(load_pd, &m[idxMy]);
 					tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxPy]));
@@ -210,6 +219,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 						idxPy = ((idx - Sf + XC) << 1);
 #ifdef	__MIC__
 						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)));
+#elif	defined(__AVX512F__)
+						tmp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX__)
 						mPx = opCode(load_pd, &m[idxPy]);
 						tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxMy]));
@@ -231,7 +242,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 				mel = opCode(load_pd, &m[idxP0]);
 				mPy = opCode(mul_pd, mel, mel);
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 				mPx = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mPy), _MM_PERM_BADC)), mPy);
 #elif defined(__AVX__)
 				mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
@@ -286,7 +297,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 				}
 
 				mPy = opCode(load_pd, &v[idxMz]);
-#if	defined(__MIC__) || defined(__FMA__)
+#if	defined(__MIC__) || defined(__AVX512F__) || defined(__FMA__)
 				tmp = opCode(fmadd_pd, mPx, opCode(set1_pd, dzc), mPy);
 				mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
 #else
@@ -302,7 +313,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 8
 #elif	defined(__AVX__)
@@ -334,12 +345,17 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
 		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0.};
+		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
+
+		const _MInt_  vShRg  = opCode(load_si512, shfRg);
+		const _MInt_  vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -353,7 +369,6 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
 		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };
 #endif
-
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
 
@@ -393,6 +408,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 					mMx = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_BADC);
 					mPx = opCode(permute4f128_ps, mMx, _MM_PERM_CBAD);
 					tmp = opCode(add_ps, opCode(mask_blend_ps, opCode(int2mask, 0b0011001100110011), mMx, mPx), opCode(load_ps, &m[idxPy]));
+#elif	defined(__AVX512F__)
+					tmp = opCode(add_ps, opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy])), opCode(load_ps, &m[idxPy]));
 #elif	defined(__AVX2__)	//AVX2
 					tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 6,7,0,1,2,3,4,5)),  opCode(load_ps, &m[idxPy]));
 #elif	defined(__AVX__)	//AVX
@@ -415,6 +432,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 						mMx = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_BADC);
 						mPx = opCode(permute4f128_ps, mMx, _MM_PERM_ADCB);
 						tmp = opCode(add_ps, opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), mMx, mPx), opCode(load_ps, &m[idxMy]));
+#elif	defined(__AVX512F__)
+						tmp = opCode(add_ps, opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy])), opCode(load_ps, &m[idxMy]));
 #elif	defined(__AVX2__)	//AVX2
 						tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1)), opCode(load_ps, &m[idxMy]));
 #elif	defined(__AVX__)	//AVX
@@ -440,9 +459,9 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 				mel = opCode(load_ps, &m[idxP0]);
 				mPy = opCode(mul_ps, mel, mel);
 
-#ifdef	__MIC__
+#if	defined(__MIC__)
 				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
-#elif	defined(__AVX__)
+#elif	defined(__AVX__) || defined(__AVX512F__)
 				mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
@@ -495,7 +514,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				mPy = opCode(load_ps, &v[idxMz]);
 
-#if	defined(__MIC__) || defined(__FMA__)
+#if	defined(__MIC__) || defined(__AVX512F__) || defined(__FMA__)
 				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
 				mPx = opCode(fmadd_ps, tmp, opCode(set1_ps, dzd), mel);
 #else
@@ -678,7 +697,7 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 {
 	if (precision == FIELD_DOUBLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
 #elif	defined(__AVX__)
@@ -701,16 +720,6 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 #endif
 		const double dzd = dz*d;
 
-#ifdef	__MIC__
-		const double __attribute__((aligned(Align))) dzdAux[8] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
-#elif	defined(__AVX__)
-		const double __attribute__((aligned(Align))) dzdAux[4] = { dzd, dzd, dzd, dzd };
-#else
-		const double __attribute__((aligned(Align))) dzdAux[2] = { dzd, dzd };
-#endif
-
-		const _MData_ dzdVec = opCode(load_pd, dzdAux);
-
 		#pragma omp parallel default(shared)
 		{
 			register _MData_ mIn, vIn, tmp;
@@ -718,15 +727,15 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 				vIn = opCode(load_pd, &v[2*(idx-Sf)]);
 				mIn = opCode(load_pd, &m[2*idx]);
-				tmp = opCode(fmadd_pd, dzdVec, vIn, mIn);
+				tmp = opCode(fmadd_pd, opCode(set1_pd, dzd), vIn, mIn);
 				opCode(store_pd, &m[2*idx], tmp);
 #else
 				mIn = opCode(load_pd, &m[2*idx]);
 				tmp = opCode(load_pd, &v[2*(idx-Sf)]);
-				vIn = opCode(mul_pd, dzdVec, tmp);
+				vIn = opCode(mul_pd, opCode(set1_pd, dzd), tmp);
 				tmp = opCode(add_pd, mIn, vIn);
 				opCode(store_pd, &m[2*idx], tmp);
 #endif
@@ -737,7 +746,7 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 8
 #elif	defined(__AVX__)
@@ -759,7 +768,7 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_, Align);
 #endif
 		const float dzd = dz*d;
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd  };
 #elif	defined(__AVX__)
 		const float __attribute__((aligned(Align))) dzdAux[8]  = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
@@ -778,15 +787,15 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 			{
 				idxP0 = idx << 1;
 				idxMz = (idx - Sf) << 1;
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 				vIn = opCode(load_ps, &v[idxMz]);
 				mIn = opCode(load_ps, &m[idxP0]);
-				tmp = opCode(fmadd_ps, dzdVec, vIn, mIn);
+				tmp = opCode(fmadd_ps, opCode(set1_ps, dzd), vIn, mIn);
 				opCode(store_ps, &m[idxP0], tmp);
 #else
 				vIn = opCode(load_ps, &v[idxMz]);
 				mIn = opCode(load_ps, &m[idxP0]);
-				tmp = opCode(add_ps, mIn, opCode(mul_ps, dzdVec, vIn));
+				tmp = opCode(add_ps, mIn, opCode(mul_ps, opCode(set1_ps, dzd), vIn));
 				opCode(store_ps, &m[idxP0], tmp);
 #endif
 			}
@@ -805,7 +814,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 {
 	if (precision == FIELD_DOUBLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
 #elif	defined(__AVX__)
@@ -831,24 +840,29 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double dzc = dz*c;
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
+		const int    __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
+		const int    __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
+
+		const _MInt_  vShRg  = opCode(load_si512, shfRg);
+		const _MInt_  vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zRAux[2]  = { zR, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
 #endif
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
 		const _MData_ zRVec  = opCode(load_pd, zRAux);
@@ -887,6 +901,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 					mPx = opCode(load_pd, &m[idxMy]);
 #ifdef	__MIC__
 					tmp = opCode(add_pd, opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxMy])), _MM_PERM_CBAD)), opCode(load_pd, &m[idxPy]));
+#elif	defined(__AVX512F__)
+					tmp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), opCode(load_pd, &m[idxPy]));
 #elif	defined(__AVX__)
 					mPx = opCode(load_pd, &m[idxMy]);
 					tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxPy]));
@@ -903,6 +919,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 						idxPy = ((idx - Sf + XC) << 1);
 #ifdef	__MIC__
 						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB)));
+#elif	defined(__AVX512F__)
+						tmp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX__)
 						mPx = opCode(load_pd, &m[idxPy]);
 						tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxMy]));
@@ -924,7 +942,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 				mel = opCode(load_pd, &m[idxP0]);
 				mPy = opCode(mul_pd, mel, mel);
 
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 				mPx = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mPy), _MM_PERM_BADC)), mPy);
 #elif	defined(__AVX__)
 				mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
@@ -978,7 +996,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 				}
 
 				mPy = opCode(load_pd, &v[idxMz]);
-#if	defined(__MIC__) || defined(__FMA__)
+#if	defined(__MIC__) || defined(__AVX512F__) || defined(__FMA__)
 				tmp = opCode(fmadd_pd, mPx, opCode(set1_pd, dzc), mPy);
 #else
 				tmp = opCode(add_pd, mPy, opCode(mul_pd, mPx, opCode(set1_pd, dzc)));
@@ -991,7 +1009,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 8
 #elif	defined(__AVX__)
@@ -1017,12 +1035,17 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) axionmass2( (double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float dzc = dz*c;
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) zQAux[16]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
 		const float __attribute__((aligned(Align))) zRAux[16]  = { zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0.};
+		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
+
+		const _MInt_  vShRg  = opCode(load_si512, shfRg);
+		const _MInt_  vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -1075,6 +1098,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 					mMx = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_BADC);
 					mPx = opCode(permute4f128_ps, mMx, _MM_PERM_CBAD);
 					tmp = opCode(add_ps, opCode(mask_blend_ps, opCode(int2mask, 0b0011001100110011), mMx, mPx), opCode(load_ps, &m[idxPy]));
+#elif	defined(__AVX512F__)
+					tmp = opCode(add_ps, opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy])), opCode(load_ps, &m[idxPy]));
 #elif	defined(__AVX2__)	//AVX2
 					tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 6,7,0,1,2,3,4,5)),  opCode(load_ps, &m[idxPy]));
 #elif	defined(__AVX__)	//AVX
@@ -1097,6 +1122,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 						mMx = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_BADC);
 						mPx = opCode(permute4f128_ps, mMx, _MM_PERM_ADCB);
 						tmp = opCode(add_ps, opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), mMx, mPx), opCode(load_ps, &m[idxMy]));
+#elif	defined(__AVX512F__)
+						tmp = opCode(add_ps, opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy])), opCode(load_ps, &m[idxMy]));
 #elif	defined(__AVX2__)	//AVX2
 						tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1)), opCode(load_ps, &m[idxMy]));
 #elif	defined(__AVX__)	//AVX
@@ -1122,9 +1149,9 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 				mel = opCode(load_ps, &m[idxP0]);
 				mPy = opCode(mul_ps, mel, mel);
 
-#ifdef	__MIC__
+#if	defined(__MIC__)
 				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
-#elif	defined(__AVX__)
+#elif	defined(__AVX__) || defined(__AVX512F__)
 				mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
@@ -1177,7 +1204,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 				mPy = opCode(load_ps, &v[idxMz]);
 
-#if	defined(__MIC__) || defined(__FMA__)
+#if	defined(__MIC__) || defined(__AVX512F__) || defined(__FMA__)
 				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
 #else
 				tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
@@ -1382,3 +1409,7 @@ void	propLowMemCpu	(Scalar *axionField, const double dz, const double delta2, co
 			break;
 	}
 }
+
+#if	defined(__MIC__) || defined(__AVX512F__)
+	#undef	_MInt_
+#endif

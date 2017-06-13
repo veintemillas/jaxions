@@ -18,10 +18,10 @@
 
 #include <immintrin.h>
 
-
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	Align 64
 	#define	_PREFIX_ _mm512
+	#define _MInt_  __m512i
 #else
 	#if not defined(__AVX__) and not defined(__AVX2__)
 		#define	Align 16
@@ -42,7 +42,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 
 	if (precision == FIELD_DOUBLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 8
 #elif	defined(__AVX__)
@@ -75,12 +75,26 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 #ifdef	__MIC__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
+
+		const int    __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+		const int    __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
+#elif	defined(__AVX512F__)
+		const size_t XC = (Lx<<3);
+		const size_t YC = (Lx>>3);
+
+		const long long int __attribute__((aligned(Align))) shfRg[8] = { 7, 0, 1, 2, 3, 4, 5, 6 };
+		const long long int __attribute__((aligned(Align))) shfLf[8] = { 1, 2, 3, 4, 5, 6, 7, 0 };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
+#endif
+
+#if	defined(__MIC__) || defined(__AVX512F__)
+		const _MInt_  vShRg  = opCode(load_si512, shfRg);
+		const _MInt_  vShLf  = opCode(load_si512, shfLf);
 #endif
 
 		#pragma omp parallel default(shared)
@@ -119,6 +133,8 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 					mPy = opCode(load_pd, &m[idxPy]);
 #ifdef	__MIC__
 					mMy = opCode(castsi512_pd, opCode(permutevar_epi32, vShRg, opCode(castpd_si512, opCode(load_pd, &m[idxMy]))));
+#elif	defined(__AVX512F__)
+					mMy = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
 #elif	defined(__AVX2__)	//AVX2
 					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
@@ -140,6 +156,8 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 						idxPy = idx - Sf + XC;
 #ifdef	__MIC__
 						mPy = opCode(castsi512_pd, opCode(permutevar_epi32, vShLf, opCode(castpd_si512, opCode(load_pd, &m[idxPy]))));
+#elif	defined(__AVX512F__)
+						mPy = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
 #elif	defined(__AVX2__)       //AVX2
 						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif	defined(__AVX__)
@@ -229,7 +247,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 16
 #elif	defined(__AVX__)
@@ -257,11 +275,17 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
 		const float zQ  = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
-		const float o2  = ood2*iz2;
+		const float o2  = ood2*iz2*0.25;
 		const float tV  = 2.f*M_PI*zR;
-#ifdef	__MIC__
+#if	defined(__MIC__) || defined(__AVX512F__)
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
+
+		const int    __attribute__((aligned(Align))) shfRg[16] = {15,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14};
+		const int    __attribute__((aligned(Align))) shfLf[16] = { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,  0};
+
+		const _MInt_  vShRg  = opCode(load_si512, shfRg);
+		const _MInt_  vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -269,7 +293,7 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 #endif
-
+/*
 		#pragma omp parallel default(shared)
 		{
 			_MData_ mel, vel, grd, tmp, mMx, mMy, mMz, mPx, mPy, mPz;
@@ -308,6 +332,8 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 					mel = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_CBAD);
 					vel = opCode(permute4f128_ps, mel, _MM_PERM_CBAD);
 					mMy = opCode(mask_blend_ps, opCode(int2mask, 0b0001000100010001), mel, vel);
+#elif	defined(__AVX512F__)
+					mMy = opCode(add_ps, opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy])), mPy);
 #elif	defined(__AVX2__)	//AVX2
 					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
 #elif	defined(__AVX__)	//AVX
@@ -331,6 +357,8 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 						mel = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_ADCB);
 						vel = opCode(permute4f128_ps, mel, _MM_PERM_ADCB);
 						mPy = opCode(mask_blend_ps, opCode(int2mask, 0b1110111011101110), mel, vel);
+#elif	defined(__AVX512F__)
+						mPy = opCode(add_ps, opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy])), mMy);
 #elif	defined(__AVX2__)	//AVX2
 						mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
 #elif	defined(__AVX__)	//AVX
@@ -408,11 +436,12 @@ void	energyMapThetaKernelXeon(const void * __restrict__ m_, const void * __restr
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					int iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf);
+					unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf);
 					m2[iNx]   = tmpD[ih];
 				}
 			}
 		}
+*/
 #undef	_MData_
 #undef	step
 	}

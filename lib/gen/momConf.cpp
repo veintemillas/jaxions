@@ -25,7 +25,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
 	for (int i=0; i<maxThreads; i++)
-		sd[i] = seed();
+		sd[i] = seed()*(1 + commRank());
 
 	#pragma omp parallel default(shared)
 	{

@@ -20,7 +20,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 	std::random_device seed;		// Totally random seed coming from memory garbage
 
 	for (int i=0; i<maxThreads; i++)
-		sd[i] = seed();
+		sd[i] = seed()*(1 + commRank());
 
 	const int ene = sqrt(Vo);
 
