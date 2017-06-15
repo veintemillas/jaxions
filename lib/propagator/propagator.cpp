@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "scalar/scalarField.h"
+#include "scalar/folder.h"
 #include "enum-field.h"
 #include "propagator/RKParms.h"
 
@@ -182,6 +183,12 @@ void	Propagator::lowXeon	()
 void	propagate	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount, VqcdType pot)
 {
 	Propagator *prop = new Propagator(field, LL, nQcd, delta, dz, pot);
+
+	if	(!field->Folded())
+	{
+		Folder	munge(field);
+		munge(FOLD_ALL);
+	}
 
 	switch (dev)
 	{

@@ -4,6 +4,7 @@
 #include <hdf5.h>
 
 #include "scalar/scalarField.h"
+#include "scalar/folder.h"
 #include "utils/parse.h"
 #include "comms/comms.h"
 
@@ -53,6 +54,18 @@ void	writeConf (Scalar *axion, int index)
 	int myRank = commRank();
 
 	commSync();
+
+	/*	Unfold field before writing configuration	*/
+
+	bool	wasFolded = axion->Folded();
+
+	Folder	*munge;
+
+	if (wasFolded)
+	{
+		munge	= new Folder(axion);
+		(*munge)(UNFOLD_ALL);
+	}
 
 	/*	Set up parallel access with Hdf5	*/
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
@@ -259,6 +272,14 @@ void	writeConf (Scalar *axion, int index)
 	H5Pclose (chunk_id);
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
+
+	/*	Fold back the field	*/
+
+	if (wasFolded)
+	{
+		(*munge)(FOLD_ALL);
+		delete	munge;
+	}
 }
 
 
@@ -429,6 +450,11 @@ void	readConf (Scalar **axion, int index)
 
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
+
+	/*	Fold the field		*/
+
+	Folder munge(*axion);
+	munge(FOLD_ALL);
 }
 
 /*	Creates a hdf5 file to write all the measurements	*/
@@ -825,10 +851,12 @@ void	writeMapHdf5	(Scalar *axion)
 	H5Gclose (group_id);
 }
 
-void	writeEnergy	(Scalar *axion, double *eData)
+void	writeEnergy	(Scalar *axion, void *eData_)
 {
 	hid_t	group_id;
 	herr_t	status;
+
+	double	*eData = static_cast<double *>(eData_);
 
 	if (commRank() != 0)
 		return;

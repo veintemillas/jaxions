@@ -113,8 +113,8 @@ int	main (int argc, char *argv[])
 	int index = 0;
 
 	commSync();
-/*
-	void *eRes, *str;			// Para guardar la energia
+
+	void	*eRes, *str;
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 #ifdef	__MIC__
@@ -127,46 +127,23 @@ int	main (int argc, char *argv[])
 	memset(str, 0, axion->Size());
 
 	commSync();
-*/
-	if (fIndex == -1)
-	{
-		//printMpi ("Dumping configuration %05d ...", index);
-		//writeConf(axion, index);
-		//printMpi ("Done!\n");
-		printMpi ("Bypass configuration writting!\n");
-		fflush (stdout);
-	}
-	else
-		index = fIndex + 1;
-
-	//JAVIER commented next
-	//printf ("Process %d reached syncing point\n", commRank());
-	//fflush (stdout);
-//	commSync();
-
-	bool coZ = 1;
-	bool coS = 1;
-	int strcount = 0;
 
 	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 		printMpi ("Lambda in FIXED mode\n");
 	else
 		printMpi ("Lambda in Z2 mode\n");
-/*
-	Folder munge(axion);
-
-	if (cDev != DEV_GPU)
-	{
-		printMpi ("Folding configuration ... ");
-		munge(FOLD_ALL);
-	}
-	printMpi ("Done! \n");
-
-	int nLoops;
-*/
 
 	writeConf(axion, index);
+
+	auto strDen = strings(axion, cDev, str, fCount);
+	energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+
+	createMeas(axion, index);
+	writeString(str, strDen);
+	writeEnergy(axion, eRes);
+	writePoint(axion);
+	destroyMeas();
 
 	printMpi("--------------------------------------------------\n");
 	printMpi("TO THETA\n");
@@ -177,19 +154,15 @@ int	main (int argc, char *argv[])
 
 	writeConf(axion, index);
 
-//	munge(UNFOLD_SLICE, sliceprint);
-//	writeMap (axion, index);
-/*
-	if (cDev != DEV_GPU)
-	{
-		printMpi("Unfold ... ");
-		munge(UNFOLD_ALL);
-	}
-*/
-	writeConf(axion, index);
+	energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
 
-//	trackFree(&eRes, ALLOC_TRACK);
-//	trackFree(&str,  ALLOC_ALIGN);
+	createMeas(axion, index);
+	writeEnergy(axion, eRes);
+	writePoint(axion);
+	destroyMeas();
+
+	trackFree(&eRes, ALLOC_TRACK);
+	trackFree(&str,  ALLOC_ALIGN);
 
 	delete fCount;
 	delete axion;

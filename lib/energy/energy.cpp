@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "scalar/scalarField.h"
+#include "scalar/folder.h"
 #include "enum-field.h"
 
 #include "energy/energyXeon.h"
@@ -61,7 +62,7 @@ void	Energy::runGpu	()
 	if (fType == FIELD_SAXION)
 		energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 	else
-		energyThetaGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
+		energyThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
@@ -107,6 +108,12 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 
 	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot, shift);
 
+	if	(!field->Folded())
+	{
+		Folder	munge(field);
+		munge(FOLD_ALL);
+	}
+
 	switch (dev)
 	{
 		case DEV_CPU:
@@ -139,7 +146,10 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 	for (int i=0; i<size; i++)
 		static_cast<double*>(eRes)[i] *= Vt;
 
-	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->DataSize()*field->Size()*1.e-9);	// FIXME: Flops wrong for theta
+	double flops = (field->Field() == FIELD_SAXION ? (pot == VQCD_1 ? 111 : 112) : 25)*field->Size()*1e-9;
+	double bytes = 8.*field->DataSize()*field->Size()*1e-9;
+
+	fCount->addFlops(flops, bytes);
 
 	return;
 }
