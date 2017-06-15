@@ -36,6 +36,21 @@ void	initFFT	()
 		fftw_plan_with_nthreads(nThreads);
 	}
 
+	if (!fftwf_init_threads())
+	{
+		printf ("Error initializing FFT_f with threads\n");
+		fflush (stdout);
+		useThreads = false;
+		fftwf_mpi_init();
+	} else {
+		int nThreads = omp_get_max_threads();
+		printf ("Using %d threads for the FFTW\n", nThreads);
+		fflush (stdout);
+		fftwf_mpi_init();
+		fftwf_plan_with_nthreads(nThreads);
+	}
+
+
 	iFFT = true;
 
 	int rank;
@@ -127,11 +142,11 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPre
 
 		single = true;
 		if (lowmem) {
-			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_EXHAUSTIVE);
+			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_EXHAUSTIVE);
 		} else {
-			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pf  = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_EXHAUSTIVE);
+			pfb = fftwf_mpi_plan_dft_3d(Lz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_EXHAUSTIVE);
 		}
 //		pf  = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
 //		pfb = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
@@ -290,7 +305,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Lz, FieldPrecision
 		{
 			printf("  Wisdom-f file loaded\n\n");
 		}
-		
+
 		if (lowmem) {
 			printf("Spectrum not available in lowmem until the end");
 		} else {

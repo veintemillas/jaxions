@@ -120,7 +120,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		single = true;
 
 		if (rank == 0) {
-			if (fftwf_import_wisdom_from_filename("fftWisdom.single") == 0)
+			if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0)
 				printf ("  Warning: could not import wisdom from fftWisdom.single\n");
 		}
 
@@ -137,7 +137,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 //		pfb = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
 
 		fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-		if (rank == 0) fftwf_export_wisdom_to_filename("./fftWisdom.single");
+		if (rank == 0) fftwf_export_wisdom_to_filename("../fftWisdom.single");
 
 		break;
 

@@ -106,7 +106,7 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 	trackAlloc(&eTmp, 128);
 
 	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot, shift);
-
+	//printf("fomE LL=%f",LL);
 	switch (dev)
 	{
 		case DEV_CPU:

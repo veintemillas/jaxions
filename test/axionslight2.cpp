@@ -100,8 +100,10 @@ int	main (int argc, char *argv[])
 	FILE *file_energy ;
 	file_energy = NULL;
 
-	//energy 2//	FILE *file_energy2 ;
-	//energy 2//	file_energy2 = NULL;
+	//energy 2//
+	//FILE *file_energy2 ;
+	//energy 2//
+	//file_energy2 = NULL;
 
 	FILE *file_spectrum ;
 	file_spectrum = NULL;
@@ -122,7 +124,8 @@ int	main (int argc, char *argv[])
 		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
 		file_energy = fopen("out/energy.txt","w+");
 		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
-		//energy 2//	file_energy2 = fopen("out/energy2.txt","w+");
+		//energy 2//
+		//file_energy2 = fopen("out/energy2.txt","w+");
 		file_spectrum = fopen("out/spectrum.txt","w+");
 		file_power = fopen("out/power.txt","w+");
 		file_thetabin = fopen("out/thetabin.txt","w+");
@@ -198,7 +201,7 @@ int	main (int argc, char *argv[])
 	const size_t V0 = 0;
 	const size_t VF = axion->Size()-1;
 
-
+	double saskia;
 
 
 	// printMpi("INITIAL CONDITIONS LOADED\n");
@@ -278,15 +281,29 @@ int	main (int argc, char *argv[])
 //	TRICK PARAMETERS TO RESPECT STRINGS
 //	--------------------------------------------------
 
-	// WE USE LAMDA_Z2 WITH msa = 1.5 so
-	// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
+	//THIS STRATEGY HAS THREE STEPS
+	// WE USE LAMDA_Z2 (LL/Z^2) WITH msa = 1.5
+	// 	THIS FIXES A NEW LL
+	// 	AS THE AXION MASS INCREASES, THERE WILL BE A POINT WHEN ma^2/ms^2 =1/80=1/9*9
+
+	// AT THIS zthreshold, WE SWITCH OFF THE GROWTH OF AXION MASS AND THE DECREASE OF LAMBDA
+	// 	zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
+	//
+	// WHEN STRINGS HAVE ALL DECAYED WE TURN ON THE MASS INCREASE AGAIN
+	// ABOVE zrestore
+
 
 	double msa = 2.0 ;
+	double llconstantZ2 = 0.5/pow(delta/msa,2.);
+	printMpi ("llconstantZ2 in Z2 mode set to %f\n",  llconstantZ2);
+
 	printMpi ("zth-zres (%f,%f) changed to ", zthres, zrestore);
 	zthres = pow(msa*sizeN/(indi3*sizeL*9.),2./(nQcd+2.)) ;
 	zrestore = 3.0 ;
-	printMpi ("(%f,%f) \n", zthres, zrestore);
-	LL = pow(msa*sizeN/(sizeL*zthres),2.)/2. ;
+
+	printMpi ("(%f,%f)  \n", zthres, zrestore);
+
+	LL = llconstantZ2/pow(zthres,2.) ;
 	printMpi ("LL reset to %f \n", LL);
 
 	bool coZ = 1;
@@ -387,23 +404,30 @@ int	main (int argc, char *argv[])
 			z_now = (*axion->zV());
 
 			//dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
-			dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
+			dzaux = min(delta/1.5,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
-				llaux = 0.5/pow(delta/msa,2.);
-				dzaux = min(dzaux,delta/1.5);
+				// llaux is the (ARGUMENT) I have to feed the propagator that uses LL=(ARGUMENT)/z^2 IN LAMBDA_Z2 mode
+				llaux = llconstantZ2;
+				llprint = llaux/(z_now*z_now); //physical value
+				dzaux = min(dzaux,delta);
 			}
 
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
-			if (axion->Field() == FIELD_SAXION && LL*pow(z_now,2.) > llaux && coZ )
+			// HERE I CHANGE THE SAXION MASS ABOVE z_thres
+			// NOTE THAT I DEFINED zthr as LL = llconstantZ2/pow(zthr,2.)
+			if ((axion->Field() == FIELD_SAXION) && (z_now > zthres) && coZ )
 			{
 				axion->SetLambda(LAMBDA_FIXED)	;
 				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
 				coZ = 0;
 			}
-			if ( axion->Field() == FIELD_SAXION && (!coZ) )
+
+			if ( axion->Field() == FIELD_SAXION && (!coZ) ) // IF SAXION and LAMBDA MODE
 			{
+				// llaux is the (ARGUMENT) I have to feed the propagator that uses LL=(ARGUMENT) IN LAMBDA_FIXED mode
 				llaux = LL;
+				llprint = LL; //physical value
         dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
 				printMpi("*");
 			}
@@ -422,8 +446,8 @@ int	main (int argc, char *argv[])
 
 						if (axion->Field() == FIELD_SAXION)
 						{
-							llprint = max(LL , llaux/pow(z_now,2.));
-							double saskia = saxionshift(z_now, nQcd, 0, 3.0, llprint);
+
+							 saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 
 							if (sPrec == FIELD_DOUBLE) {
 								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %lf\n",z_now, axionmass(z_now,nQcd,zthres, zrestore), llprint,
@@ -484,8 +508,14 @@ int	main (int argc, char *argv[])
 											printMpi("\n");
 	                    printMpi("--------------------------------------------------\n");
 	                    printMpi("              TRANSITION TO THETA \n");
-	                    cmplxToTheta (axion, fCount);
 											fflush(stdout);
+
+											z_now = (*axion->zV());
+											llprint = max(LL,llconstantZ2/(z_now*z_now)); //physical value
+
+											saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+
+	                    cmplxToTheta (axion, fCount, saskia);
 											zrestore = z_now;
 	                    printMpi("--------------------------------------------------\n");
 										 }
@@ -523,10 +553,23 @@ int	main (int argc, char *argv[])
 
       printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 			fflush(stdout);
-			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+
+			z_now = (*axion->zV());
+			llprint = max(LL,llconstantZ2/(z_now*z_now)); //physical value
+
+			saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+			// ENERGY NEEDS, axion, llaux (autocorrectes Z2 mode), nQCD?, delta, ..., shift of conformal field = z*shift_physical)
+			energy(axion, llaux, nQcd, delta, cDev, eRes, fCount,VQCD_1,saskia);
+
+			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
+			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
+			// fflush(file_energy);
+
 			fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
-			(*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
+			(*axion->zV()), eR[TH_GRX], eR[TH_GRY], eR[TH_GRZ], eR[TH_POT], eR[TH_KIN], eR[RH_GRX], eR[RH_GRY], eR[RH_GRZ], eR[RH_POT], eR[RH_KIN], nstrings_global, maximumtheta);
 			fflush(file_energy);
+
+
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
@@ -603,7 +646,7 @@ int	main (int argc, char *argv[])
 				// }
 				// commSync();
 
-//				munge(FOLD_ALL);
+				munge(FOLD_ALL);
 			}
 
 			 if (commRank() == 0)

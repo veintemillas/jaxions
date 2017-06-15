@@ -468,7 +468,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				}
 			}
 		}
-
+		//
 		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= 0.5*iz2; ptC *= zQ;
 #undef	_MData_
 #undef	step

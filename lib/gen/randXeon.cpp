@@ -39,7 +39,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 		for (size_t idx=Vo; idx<Vf; idx++)
 		{
 			//RANDOM INITIAL CONDITIONS
-			m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+			//m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
 			//m[idx]   = std::complex<Float>(0.2, uni(mt64)/10.);
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM WITH A LITTLE 0 MODE
@@ -49,10 +49,10 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//LARGE AMPLITUDE AXIONS ZERO MODE
 			//m[idx]   = std::complex<Float>(0.0, 1.000001);
 			//to produce only SAXIONS for testing
-			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
+			m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
 
-			// //	MINICLUSTER
-			//
+			//	MINICLUSTER
+
 			// size_t pidx = idx-Vo;
 			// size_t iz = pidx/Vo + local_z_start;
 			// size_t iy = (pidx%Vo)/sizeN ;
