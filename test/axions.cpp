@@ -365,11 +365,11 @@ int	main (int argc, char *argv[])
 
 			if (axion->Field() == FIELD_SAXION)
 			{
-				propagate (axion, dz, LL, nQcd, delta, cDev, fCount, VQCD_1);
+				propagate (axion, dz, LL, nQcd, delta, fCount, VQCD_1);
 			}
 			else
 			{
-				propTheta	(axion, dz,     nQcd, delta, cDev, fCount);
+				propTheta	(axion, dz,     nQcd, delta, fCount);
 				//printf("pt-");fflush(stdout);
 			}
 

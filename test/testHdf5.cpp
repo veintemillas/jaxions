@@ -136,8 +136,8 @@ int	main (int argc, char *argv[])
 
 	writeConf(axion, index);
 
-	auto strDen = strings(axion, cDev, str, fCount);
-	energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+	auto strDen = strings(axion, str, fCount);
+	energy(axion, LL, nQcd, delta, eRes, fCount);
 
 	createMeas(axion, index);
 	writeString(str, strDen);
@@ -154,7 +154,7 @@ int	main (int argc, char *argv[])
 
 	writeConf(axion, index);
 
-	energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+	energy(axion, LL, nQcd, delta, eRes, fCount);
 
 	createMeas(axion, index);
 	writeEnergy(axion, eRes);

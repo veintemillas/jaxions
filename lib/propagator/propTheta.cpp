@@ -105,11 +105,11 @@ void	PropTheta::runXeon	()
 #endif
 }
 
-void	propTheta	(Scalar *field, const double dz, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
+void	propTheta	(Scalar *field, const double dz, const double nQcd, const double delta, FlopCounter *fCount)
 {
 	PropTheta *prop = new PropTheta(field, nQcd, delta, dz);
 
-	switch (dev)
+	switch (field->Device())
 	{
 		case DEV_CPU:
 			prop->runCpu ();

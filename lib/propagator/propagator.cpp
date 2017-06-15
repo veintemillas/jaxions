@@ -180,7 +180,7 @@ void	Propagator::lowXeon	()
 #endif
 }
 
-void	propagate	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount, VqcdType pot)
+void	propagate	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, FlopCounter *fCount, VqcdType pot)
 {
 	Propagator *prop = new Propagator(field, LL, nQcd, delta, dz, pot);
 
@@ -190,7 +190,7 @@ void	propagate	(Scalar *field, const double dz, const double LL, const double nQ
 		munge(FOLD_ALL);
 	}
 
-	switch (dev)
+	switch (field->Device())
 	{
 		case DEV_CPU:
 			if (field->LowMem())
