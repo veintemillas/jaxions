@@ -195,15 +195,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				vel = opCode(load_pd, &v[idxMz]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
-/*
-#ifdef	__MIC__
-				mTp = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mod), _MM_PERM_BADC)), mod);
-#elif defined(__AVX__)
-				mTp = opCode(add_pd, opCode(permute_pd, mod, 0b00000101), mod);
-#else
-				mTp = opCode(add_pd, opCode(shuffle_pd, mod, mod, 0b00000001), mod);
-#endif
-*/
+
 				mTp = opCode(md2_pd, mod);
 
 				mod = opCode(mul_pd, mTp, opCode(set1_pd, iz2));	// Factor |mel|^2/z^2, util luego

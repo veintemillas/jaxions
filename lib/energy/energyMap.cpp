@@ -4,12 +4,14 @@
 #include "enum-field.h"
 
 #include "energy/energyMapXeon.h"
+#include "energy/energyXeon.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
 	#include "energy/energyMapGpu.h"
+	#include "energy/energyGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -29,11 +31,12 @@ class	EnergyMap
 	FieldType fType;
 	VqcdType pot;
 
+	void	*eRes;
 	Scalar	*axionField;
 
 	public:
 
-		 EnergyMap(Scalar *field, const double LL, const double nQcd, const double delta, VqcdType pot, const double sh);
+		 EnergyMap(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh);
 		~EnergyMap() {};
 
 	void	runCpu	();
@@ -41,9 +44,9 @@ class	EnergyMap
 	void	runXeon	();
 };
 
-	EnergyMap::EnergyMap(Scalar *field, const double LL, const double nQcd, const double delta, VqcdType pot, const double sh) : axionField(field), Lx(field->Length()), Lz(field->eDepth()),
+	EnergyMap::EnergyMap(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh) : axionField(field), Lx(field->Length()), Lz(field->eDepth()),
 				V(field->Size()), S(field->Surf()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), pot(pot), fType(field->Field()), shift(sh),
-				LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL)
+				LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL), eRes(eRes)
 {
 }
 
@@ -59,7 +62,7 @@ void	EnergyMap::runGpu	()
 	if (fType == FIELD_SAXION) {
 		energyMapGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, LL, shift, pot, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
 	} else {
-		energyMapThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+		energyThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0], true);
 	}
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -75,7 +78,7 @@ void	EnergyMap::runCpu	()
 	if (fType == FIELD_SAXION)
 		energyMapCpu(axionField, delta2, LL, nQcd, Lx, V, S, precision, shift, pot);
 	else
-		energyMapThetaCpu(axionField, delta2, nQcd, Lx, V, S);
+		energyThetaCpu(axionField, delta2, nQcd, Lx, V, S, static_cast<double*>(eRes), true);
 }
 
 void	EnergyMap::runXeon	()
@@ -84,16 +87,19 @@ void	EnergyMap::runXeon	()
 	if (fType == FIELD_SAXION)
 		energyMapXeon(axionField, delta2, lambda, nQcd, Lx, V, S, precision, shift, pot);
 	else
-		energyMapThetaXeon(axionField, delta2, nQcd, Lx, V, S);
+		energyMapThetaXeon(axionField, delta2, nQcd, Lx, V, S, static_cast<double*>(eRes), true);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount, const VqcdType pot, const double sh)
+void	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount, const VqcdType pot, const double sh)
 {
-	EnergyMap *eDark = new EnergyMap(field, LL, nQcd, delta, pot, sh);
+	void *eTmp;
+	trackAlloc(&eTmp, 128);
+
+	EnergyMap *eDark = new EnergyMap(field, LL, nQcd, delta, eRes, pot, sh);
 
 	switch (dev)
 	{
@@ -105,7 +111,7 @@ void	energyMap	(Scalar *field, const double LL, const double nQcd, const double 
 			eDark->runGpu ();
 			break;
 
-		case	DEV_XEON:
+		case DEV_XEON:
 			eDark->runXeon();
 			break;
 
@@ -116,7 +122,21 @@ void	energyMap	(Scalar *field, const double LL, const double nQcd, const double 
 
 	delete	eDark;
 
-	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->DataSize()*field->Size()*1.e-9);	//FIXME: Flops wrong for theta
+	const int size = field->Field() == FIELD_SAXION ? 10 : 5;
+
+	MPI_Allreduce(eTmp, eRes, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	trackFree(&eTmp, ALLOC_TRACK);
+
+	const double Vt = 1./(field->TotalSize());
+
+	#pragma unroll
+	for (int i=0; i<size; i++)
+		static_cast<double*>(eRes)[i] *= Vt;
+
+	double flops = (field->Field() == FIELD_SAXION ? (pot == VQCD_1 ? 111 : 112) : 25)*field->Size()*1e-9;
+	double bytes = 9.*field->DataSize()*field->Size()*1e-9;
+
+	fCount->addFlops(flops, bytes);
 
 	return;
 }

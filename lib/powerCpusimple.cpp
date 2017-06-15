@@ -435,7 +435,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 	}
 
 	double mass2 = axionmass2((*axion->zV()), nQcd, zthres, zrestore)*(*axion->zV())*(*axion->zV());
-
+	double eRes[10];
 	// 	New scheme
 
 	//  Copies energy_theta + I potential_energy_theta into m2
@@ -444,7 +444,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 			//PATCH
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				energyMap	(axion, LL, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
+				energyMap	(axion, LL, nQcd, delta, axion->Device(), eRes, fCount); ////// CHECKKKK!!!!
 			}
 			else
 			{

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "scalar/scalarField.h"
+#include "scalar/folder.h"
 #include "enum-field.h"
 
 #include "strings/stringXeon.h"
@@ -80,6 +81,12 @@ size_t	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCoun
 	Strings *eStr = new Strings(field, strData);
 
 	size_t	strDen = 0, strTmp = 0;
+
+	if	(!field->Folded())
+	{
+		Folder	munge(field);
+		munge(FOLD_ALL);
+	}
 
 	switch (dev)
 	{
