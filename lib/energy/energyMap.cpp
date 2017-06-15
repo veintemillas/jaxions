@@ -94,14 +94,14 @@ void	EnergyMap::runXeon	()
 #endif
 }
 
-void	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount, const VqcdType pot, const double sh)
+void	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, FlopCounter *fCount, const VqcdType pot, const double sh)
 {
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
 	EnergyMap *eDark = new EnergyMap(field, LL, nQcd, delta, eRes, pot, sh);
 
-	switch (dev)
+	switch (field->Device())
 	{
 		case DEV_CPU:
 			eDark->runCpu ();

@@ -28,7 +28,7 @@ class	Strings
 
 	const size_t Lx, V, S;
 
-	FieldPrecision precision;
+	FieldPrecision	precision;
 
 	void    *strData;
 	Scalar	*axionField;
@@ -76,7 +76,7 @@ size_t	Strings::runXeon	()
 #endif
 }
 
-size_t	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCount)
+size_t	strings	(Scalar *field, void *strData, FlopCounter *fCount)
 {
 	Strings *eStr = new Strings(field, strData);
 
@@ -88,7 +88,7 @@ size_t	strings	(Scalar *field, DeviceType dev, void *strData, FlopCounter *fCoun
 		munge(FOLD_ALL);
 	}
 
-	switch (dev)
+	switch (field->Device())
 	{
 		case DEV_CPU:
 			strTmp = eStr->runCpu ();

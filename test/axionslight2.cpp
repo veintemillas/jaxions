@@ -492,7 +492,7 @@ int	main (int argc, char *argv[])
                 {
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-									nstrings_global = strings(axion, cDev, str, fCount);
+									nstrings_global = strings(axion, str, fCount);
 									maximumtheta = axion->maxtheta();
 									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
@@ -541,7 +541,7 @@ int	main (int argc, char *argv[])
 			}
 
 			//ENERGY EVERY TIME STEP
-			// energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			// energy(axion, LL, nQcd, delta, eRes, fCount);
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
 
@@ -559,7 +559,7 @@ int	main (int argc, char *argv[])
 
 			saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			// ENERGY NEEDS, axion, llaux (autocorrectes Z2 mode), nQCD?, delta, ..., shift of conformal field = z*shift_physical)
-			energy(axion, llaux, nQcd, delta, cDev, eRes, fCount,VQCD_1,saskia);
+			energy(axion, llaux, nQcd, delta, eRes, fCount, VQCD_1, saskia);
 
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
@@ -576,7 +576,7 @@ int	main (int argc, char *argv[])
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
-										//nstrings_global = strings(axion, cDev, str, fCount);
+										//nstrings_global = strings(axion, str, fCount);
 										nstrings_global =	analyzeStrFolded(axion, index);
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
@@ -606,7 +606,7 @@ int	main (int argc, char *argv[])
 
 
 				//IF USING DENSITY FROM ALEX
-				//energyMap(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.);
+				//energyMap(axion, LL, nQcd, delta, fCount, VQCD_1, 0.);
 				//printMpi("bineando\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				//fflush(stdout);
 				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;

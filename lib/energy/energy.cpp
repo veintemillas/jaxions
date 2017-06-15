@@ -26,9 +26,9 @@ class	Energy
 	const double nQcd, LL, shift;
 	const size_t Lx, Lz, V, S, Vt;
 
-	FieldPrecision precision;
-	FieldType fType;
-	VqcdType pot;
+	FieldPrecision	precision;
+	FieldType	fType;
+	VqcdType	pot;
 
 	void    *eRes;
 	Scalar	*axionField;
@@ -44,8 +44,8 @@ class	Energy
 };
 
 	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh) : axionField(field), Lx(field->Length()), Lz(field->eDepth()),
-	V(field->Size()), S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
-	LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL)
+	V(field->Size()), S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()),
+	shift(sh), LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL)
 {
 }
 
@@ -101,15 +101,12 @@ void	Energy::runXeon	()
 #endif
 }
 
-void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, void *eRes, FlopCounter *fCount, VqcdType pot, const double shift)
+void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, FlopCounter *fCount, VqcdType pot, const double shift)
 {
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
 	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot, shift);
-<<<<<<< HEAD
-	//printf("fomE LL=%f",LL);
-=======
 
 	if	(!field->Folded())
 	{
@@ -117,8 +114,7 @@ void	energy	(Scalar *field, const double LL, const double nQcd, const double del
 		munge(FOLD_ALL);
 	}
 
->>>>>>> 6d3a2a130f4eb4f6f6f85d11a92a07cbfc5b283e
-	switch (dev)
+	switch (field->Device())
 	{
 		case DEV_CPU:
 			eDark->runCpu ();

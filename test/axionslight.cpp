@@ -500,7 +500,7 @@ int	main (int argc, char *argv[])
                 {
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-									nstrings_global = strings(axion, cDev, str, fCount);
+									nstrings_global = strings(axion, str, fCount);
 									maximumtheta = axion->maxtheta();
 									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
@@ -560,7 +560,7 @@ int	main (int argc, char *argv[])
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux, maa );
 				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
-										//nstrings_global = strings(axion, cDev, str, fCount);
+										//nstrings_global = strings(axion, str, fCount);
 										nstrings_global =	analyzeStrFolded(axion, index);
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
@@ -580,7 +580,7 @@ int	main (int argc, char *argv[])
 
 				llprint = max(LL , llaux/pow(z_now,2.));
 				double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
-				energy(axion, llaux, nQcd, delta, cDev, eRes, fCount, VQCD_1, saskia);
+				energy(axion, llaux, nQcd, delta, eRes, fCount, VQCD_1, saskia);
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
@@ -596,7 +596,7 @@ int	main (int argc, char *argv[])
 				// munge(UNFOLD_ALL);
 				// writeConf(axion, index);
 				// munge(FOLD_ALL);
-				energy(axion, llaux, nQcd, delta, cDev, eRes, fCount, VQCD_1);
+				energy(axion, llaux, nQcd, delta, eRes, fCount, VQCD_1);
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n",(*axion->zV()), eR[TH_GRX], eR[TH_GRY],eR[TH_GRZ], eR[TH_POT],eR[TH_KIN], maximumtheta);

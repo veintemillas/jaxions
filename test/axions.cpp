@@ -260,7 +260,7 @@ int	main (int argc, char *argv[])
 			printMpi("Strings...");
 			analyzeStrFolded(axion, index);
 			//printMpi("Vector Strings...");
-			//strDen = strings(axion, cDev, str, fCount);
+			//strDen = strings(axion, str, fCount);
 			//printMpi(" Done! String density %lf\n", strDen);
 		}
 
@@ -274,7 +274,7 @@ int	main (int argc, char *argv[])
 	*/
 		munge(UNFOLD_SLICE, sliceprint);
 		writeMap (axion, index);
-		energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+		energy(axion, LL, nQcd, delta, eRes, fCount);
 
 		//energy 2//	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 
@@ -446,7 +446,7 @@ int	main (int argc, char *argv[])
 		if ( axion->Field() == FIELD_SAXION  )
 		{
 //			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			energy(axion, LL, nQcd, delta, eRes, fCount);
 
 			//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 
