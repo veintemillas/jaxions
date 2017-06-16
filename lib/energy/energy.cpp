@@ -101,7 +101,7 @@ void	Energy::runXeon	()
 #endif
 }
 
-void	energy	(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, FlopCounter *fCount, VqcdType pot, const double shift)
+void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
 {
 	void *eTmp;
 	trackAlloc(&eTmp, 128);

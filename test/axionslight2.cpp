@@ -484,9 +484,9 @@ int	main (int argc, char *argv[])
 			//--------------------------------------------------
 
 			//printMpi("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
-			if (axion->Field() == FIELD_SAXION)
-			{
-				propagate (axion, dzaux, llaux, nQcd, delta, fCount, VQCD_1);
+//			if (axion->Field() == FIELD_SAXION)
+//			{
+				propagate (axion, fCount, dzaux, delta, nQcd, llaux, VQCD_1);
 
                 if (nstrings_global < 500)
                 {
@@ -499,7 +499,7 @@ int	main (int argc, char *argv[])
                 }
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-                if ( (nstrings_global == 0) && ((*axion->zV()) > 0.1) )
+                if ( (nstrings_global == 0) && ((*axion->zV()) > 0.1) && axion->Field() == FIELD_SAXION )
                 {
 										strcount += 1;
 										printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
@@ -520,11 +520,11 @@ int	main (int argc, char *argv[])
 	                    printMpi("--------------------------------------------------\n");
 										 }
                 }
-			}
-			else
-			{
-				propTheta	(axion, dzaux, nQcd, delta, fCount);
-			}
+//			}
+//			else
+//			{
+//				propTheta	(axion, dzaux, nQcd, delta, fCount);
+//			}
 
 
 			current = std::chrono::high_resolution_clock::now();
@@ -541,7 +541,7 @@ int	main (int argc, char *argv[])
 			}
 
 			//ENERGY EVERY TIME STEP
-			// energy(axion, LL, nQcd, delta, eRes, fCount);
+			// energy(axion, fCount, eRes, delta, nQcd, LL);
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
 
@@ -559,7 +559,7 @@ int	main (int argc, char *argv[])
 
 			saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			// ENERGY NEEDS, axion, llaux (autocorrectes Z2 mode), nQCD?, delta, ..., shift of conformal field = z*shift_physical)
-			energy(axion, llaux, nQcd, delta, eRes, fCount, VQCD_1, saskia);
+			energy(axion, fCount, eRes, delta, nQcd, llaux, VQCD_1, saskia);
 
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);

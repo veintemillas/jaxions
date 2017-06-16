@@ -492,42 +492,43 @@ int	main (int argc, char *argv[])
 			//--------------------------------------------------
 
 			//printMpi("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
+//			if (axion->Field() == FIELD_SAXION)
+//			{
+				propagate (axion, fCount, dzaux, delta, nQcd, llaux, VQCD_1);
 			if (axion->Field() == FIELD_SAXION)
 			{
-				propagate (axion, dzaux, llaux, nQcd, delta, fCount, VQCD_1);
 
-                if (nstrings_global < 500)
-                {
+				if (nstrings_global < 500)
+				{
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-									nstrings_global = strings(axion, str, fCount);
-									maximumtheta = axion->maxtheta();
-									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
+					nstrings_global = strings(axion, str, fCount);
+					maximumtheta = axion->maxtheta();
+					printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
-                }
+				}
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-                if ( (nstrings_global == 0) && ((*axion->zV()) > 0.6) )
-                {
-										// strcount += 1;
-										// printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
-										// if ((strcount >20 ) )
-										// {
-											printMpi("\n");
-											llprint = max(LL , llaux/pow(z_now,2.));
-											double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
-	                    printMpi("--------------------------------------------------\n");
-	                    printMpi("              TRANSITION TO THETA \n");
-	                    cmplxToTheta (axion, fCount, saskia);
-											fflush(stdout);
-	                    printMpi("--------------------------------------------------\n");
-										// }
-                }
-			}
-			else
-			{
-				propTheta	(axion, dzaux, nQcd, delta, fCount);
-			}
+				if ( (nstrings_global == 0) && ((*axion->zV()) > 0.6) )
+				{
+					// strcount += 1;
+					// printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
+					// if ((strcount >20 ) )
+					// {
+					printMpi("\n");
+					llprint = max(LL , llaux/pow(z_now,2.));
+					double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+					printMpi("--------------------------------------------------\n");
+					printMpi("              TRANSITION TO THETA \n");
+					cmplxToTheta (axion, fCount, saskia);
+					printMpi("--------------------------------------------------\n");
+				}
+	                }	
+//			}
+//			else
+//			{
+//				propTheta	(axion, dzaux, nQcd, delta, fCount);
+//			}
 
 
 			current = std::chrono::high_resolution_clock::now();
@@ -580,7 +581,7 @@ int	main (int argc, char *argv[])
 
 				llprint = max(LL , llaux/pow(z_now,2.));
 				double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
-				energy(axion, llaux, nQcd, delta, eRes, fCount, VQCD_1, saskia);
+				energy(axion, fCount, eRes, delta, nQcd, llaux, VQCD_1, saskia);
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
@@ -596,7 +597,7 @@ int	main (int argc, char *argv[])
 				// munge(UNFOLD_ALL);
 				// writeConf(axion, index);
 				// munge(FOLD_ALL);
-				energy(axion, llaux, nQcd, delta, eRes, fCount, VQCD_1);
+				energy(axion, fCount, eRes, delta, nQcd);
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n",(*axion->zV()), eR[TH_GRX], eR[TH_GRY],eR[TH_GRZ], eR[TH_POT],eR[TH_KIN], maximumtheta);

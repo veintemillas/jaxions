@@ -94,7 +94,10 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		case DEV_CPU:
-			#if	defined(__AVX__) || defined(__AVX2__)
+			#ifdef	__AVX512F__
+			printMpi("Using AVX-512 64 bytes alignment\n");
+			mAlign = 64;
+			#elif	defined(__AVX__) || defined(__AVX2__)
 			printMpi("Using AVX 32 bytes alignment\n");
 			mAlign = 32;
 			#else
