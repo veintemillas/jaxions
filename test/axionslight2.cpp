@@ -559,7 +559,7 @@ int	main (int argc, char *argv[])
 
 			saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			// ENERGY NEEDS, axion, llaux (autocorrectes Z2 mode), nQCD?, delta, ..., shift of conformal field = z*shift_physical)
-			energy(axion, fCount, eRes, delta, nQcd, llaux, VQCD_1, saskia);
+			energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);

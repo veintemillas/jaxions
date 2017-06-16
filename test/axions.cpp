@@ -274,7 +274,7 @@ int	main (int argc, char *argv[])
 	*/
 		munge(UNFOLD_SLICE, sliceprint);
 		writeMap (axion, index);
-		energy(axion, fCount, eRes, delta, nQcd, LL);
+		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
 		//energy 2//	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 
@@ -446,7 +446,7 @@ int	main (int argc, char *argv[])
 		if ( axion->Field() == FIELD_SAXION  )
 		{
 //			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-			energy(axion, fCount, eRes, delta, nQcd, LL);
+			energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
 			//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 

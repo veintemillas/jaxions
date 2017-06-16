@@ -25,17 +25,17 @@ class	Energy
 	const double delta2;
 	const double nQcd, LL, shift;
 	const size_t Lx, Lz, V, S, Vt;
+	const bool   map;
 
-	FieldPrecision	precision;
 	FieldType	fType;
 	VqcdType	pot;
 
 	void    *eRes;
-	Scalar	*axionField;
+	Scalar	*field;
 
 	public:
 
-		 Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh);
+		 Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh, const bool map);
 		~Energy() {};
 
 	void	runCpu	();
@@ -43,9 +43,9 @@ class	Energy
 	void	runXeon	();
 };
 
-	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh) : axionField(field), Lx(field->Length()), Lz(field->eDepth()),
-	V(field->Size()), S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), precision(field->Precision()), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()),
-	shift(sh), LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL)
+	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field), Lx(field->Length()), Lz(field->eDepth()),
+	V(field->Size()), S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()),
+	shift(sh), LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL), map(map)
 {
 }
 
@@ -54,15 +54,15 @@ void	Energy::runGpu	()
 #ifdef	USE_GPU
 
 	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
-	double *z = axionField->zV();
+	double *z = field->zV();
 	int st;
 
-	axionField->exchangeGhosts(FIELD_M);
+	field->exchangeGhosts(FIELD_M);
 
 	if (fType == FIELD_SAXION)
-		energyGpu(axionField->mGpu(), axionField->vGpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
+		energyGpu(field->mGpu(), field->vGpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
 	else
-		energyThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, precision, static_cast<double*>(eRes), ((cudaStream_t *)axionField->Streams())[0]);
+		energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
@@ -81,9 +81,9 @@ void	Energy::runGpu	()
 void	Energy::runCpu	()
 {
 	if (fType == FIELD_SAXION) {
-		energyCpu	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot);
+		energyCpu	(field, delta2, LL, nQcd, Lx, V, S, eRes, shift, pot, map);
 	} else {
-		energyThetaCpu	(axionField, delta2, nQcd, Lx, V, S, eRes);
+		energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map);
 	}
 }
 
@@ -91,9 +91,9 @@ void	Energy::runXeon	()
 {
 #ifdef	USE_XEON
 	if (fType == FIELD_SAXION) {
-		energyXeon	(axionField, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot);
+		energyXeon	(field, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot, map);
 	} else {
-		energyThetaXeon	(axionField, delta2, nQcd, Lx, V, S, eRes);
+		energyThetaXeon	(field, delta2, nQcd, Lx, V, S, eRes, map);
 	}
 #else
 	printf("Xeon Phi support not built");
@@ -101,12 +101,18 @@ void	Energy::runXeon	()
 #endif
 }
 
-void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
+void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
 {
+	if (map && (field->Field() == FIELD_SAXION) && field->LowMem())
+	{
+		printf	("Can't compute energy map for saxion wit lowmem kernels\n");
+		return;
+	}
+
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
-	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot, shift);
+	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot, shift, map);
 
 	if	(!field->Folded())
 	{

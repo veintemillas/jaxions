@@ -581,7 +581,7 @@ int	main (int argc, char *argv[])
 
 				llprint = max(LL , llaux/pow(z_now,2.));
 				double saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
-				energy(axion, fCount, eRes, delta, nQcd, llaux, VQCD_1, saskia);
+				energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
@@ -597,7 +597,7 @@ int	main (int argc, char *argv[])
 				// munge(UNFOLD_ALL);
 				// writeConf(axion, index);
 				// munge(FOLD_ALL);
-				energy(axion, fCount, eRes, delta, nQcd);
+				energy(axion, fCount, eRes, false, delta, nQcd);
 				if (commRank()==0)
 				{
 				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n",(*axion->zV()), eR[TH_GRX], eR[TH_GRY],eR[TH_GRZ], eR[TH_POT],eR[TH_KIN], maximumtheta);
