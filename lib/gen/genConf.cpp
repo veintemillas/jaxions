@@ -195,7 +195,7 @@ void	ConfGenerator::runCpu	()
 		axionField->fftCpu(1);
 		axionField->exchangeGhosts(FIELD_M);
 		normaliseField(axionField, FIELD_M, fCount);
-		normCoreField (axionField, fCount);
+		//normCoreField (axionField, fCount);
 		break;
 
 		case CONF_SMOOTH:

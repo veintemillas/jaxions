@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
+#include "utils/utils.h"
 
 #include "scalar/normCoreXeon.h"
 

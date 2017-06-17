@@ -1995,6 +1995,7 @@ double	Scalar::maxtheta()//int *window)
 //		FUNCTION FOR THETA DISTRIBUTION [and max]
 //----------------------------------------------------------------------
 //		BINS THE DISTRIBUTION OF THETA
+//		ADDS THE DISTRIBUTION OF RHO IF IN SAXION MODE
 
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
@@ -2003,9 +2004,9 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 //	printf("hallo von inside %f\n", thetamaxi);
 
 	double n2p = numbins/thetamaxi;
-	double thetabin_local[numbins];
+	double thetabin_local[2*numbins];
 
-	for(size_t i = 0; i < numbins ; i++)
+	for(size_t i = 0; i < 2*numbins ; i++)
 	{
 	(static_cast<double *> (thetabin_local))[i] = 0.;
 	}
@@ -2020,6 +2021,9 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 					int bin;
 					bin =  n2p*abs(arg(((complex<double> *) m)[i+n2]));
 					(static_cast<double *> (thetabin_local))[bin] += 1.;
+					bin =  numbins*(abs(((complex<double> *) m)[i+n2])/((*z)*2.));
+					if (bin < numbins)
+					(static_cast<double *> (thetabin_local))[bin+numbins] += 1.;
 				}
 			}
 			else	//FIELD_AXION
@@ -2036,7 +2040,6 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 	else // PRECISION SINGLE
 	{
 		float n2pf = numbins/thetamaxi;
-
 		if(fieldType == FIELD_SAXION)
 		{
 //			#pragma omp parallel for default(shared)
@@ -2045,6 +2048,11 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 				int bin;
 				bin =  n2pf*abs(arg(((complex<float> *) m)[i+n2]));
 				(static_cast<double *> (thetabin_local))[bin] += 1.;
+				bin =  numbins*(abs(((complex<float> *) m)[i+n2])/((*z)*2.));
+				if (bin < numbins)
+				{
+				(static_cast<double *> (thetabin_local))[numbins + bin] += 1.;
+				}
 			}
 		}
 		else	//FIELD_AXION
@@ -2068,7 +2076,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 	// }
 
 //}//END PARALLEL
-	MPI_Reduce(thetabin_local, thetabin, numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(thetabin_local, thetabin, 2*numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	//if (commRank()==0)
 	//printf("out = %f\n",thetamaxi);
