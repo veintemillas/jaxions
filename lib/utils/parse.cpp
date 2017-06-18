@@ -13,6 +13,7 @@ int  nQcd = 3;
 //JAVIER
 int  Ng = 1 ;
 double indi3 = 1.0;
+double msa = 1.5;
 int  fIndex = -1;
 
 double sizeL = 4.;

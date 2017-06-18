@@ -19,6 +19,7 @@ extern int iter;
 extern int parm1;
 extern int Ng;
 extern double indi3;
+extern double msa;
 extern double zthres;
 extern double zrestore;
 

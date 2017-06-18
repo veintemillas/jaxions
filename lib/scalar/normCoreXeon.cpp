@@ -22,7 +22,7 @@ void normCoreKernelXeon (Scalar *field)
 	if (field->Lambda() == LAMBDA_FIXED)
 			LLa = LL ;
 	else
-			LLa = 1.125/(pow(deltaa*zia,2.));
+			LLa = 0.5*pow(msa/(deltaa*zia),2.);
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
@@ -32,7 +32,6 @@ void normCoreKernelXeon (Scalar *field)
 
 	complex<Float> *mCp = static_cast<complex<Float>*> (field->mCpu());
 	complex<Float> *vCp = static_cast<complex<Float>*> (field->vCpu());
-
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=0; idx<n3; idx++)
@@ -107,6 +106,9 @@ void normCoreKernelXeon (Scalar *field)
 	field->exchangeGhosts(FIELD_M);
 
 	commSync();
+
+
+
 }
 
 void	normCoreXeon (Scalar *sField)
