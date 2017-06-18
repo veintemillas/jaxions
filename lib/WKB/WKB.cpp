@@ -1,8 +1,8 @@
 #include <cmath>
 #include <complex>
 #include <cstring>
-#include <gsl/gsl_sf_hyperg.h>
-#include <gsl/gsl_sf_gamma.h>
+//#include <gsl/gsl_sf_hyperg.h>
+//#include <gsl/gsl_sf_gamma.h>
 
 #include "scalar/scalarField.h"
 #include "utils/index.h"
