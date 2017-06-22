@@ -1350,11 +1350,11 @@ void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numb
 		case	FIELD_SINGLE:
 		{
 			//COMPUTES JAVIER DENSITY MAP AND BINS
-			energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
 
 			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
 			// USE WITH ALEX'FUNCTION
-			//contrastbin(static_cast<float>(zzz), index, contbin, numbins);
+			contrastbin(static_cast<float>(zzz), index, contbin, numbins);
 		}
 		break;
 
@@ -1634,8 +1634,10 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 									ix = (idx%n2)%n1 ;
 									#pragma omp critical
 									{
-										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag(),
-										mVeloc[idx]*mVeloc[idx]/(2.f*toti_global) , z9QCD4*(1.f-cos(mTheta[idx+n2]/zz))/toti_global,
+										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
+										mCONT[idx].real(), mCONT[idx].imag(),
+										mVeloc[idx]*mVeloc[idx]/(2.f*toti_global) ,
+										z9QCD4*(1.f-cos(mTheta[idx+n2]/zz))/toti_global,
 										mTheta[idx+n2]/zz ) ;
 									}
 								}
@@ -1697,7 +1699,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	if(fieldType == FIELD_AXION)
 	{
 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
-		printMpi("COMP-");
+		//printMpi("COMP-");
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
 		for (size_t idx=0; idx < n3; idx++)
 		{
@@ -1707,59 +1709,64 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 					maxi = mCONT[idx].real() ;
 				}
 		}
+		// compute local average density
+		toti = toti / n3;
+		// pointer for the maximum density in double
 		maxid = (double) maxi;
 
-		printMpi("RED-");
+		//printMpi("RED-");
 		//SUMS THE DENSITIES OF ALL RANGES
 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		//GLOBAL MAXIMUM
+		//GLOBAL MAXIMUM DENSITY
 		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-		printMpi("(TG %f,MG %f)",toti_global,maxi_global);
+		//printMpi("(TG %f,MG %f)",toti_global,maxi_global);
 
 		fflush(stdout);
-		//CONVERT SUM OF DENSITIES INTO AVERAGE GLOBAL
-		toti_global = toti_global/(n3) ;
+		//CONVERT SUM OF DENSITIES INTO GLOBAL AVERAGE [divide by number of ranges]
+		toti_global = toti_global/(nSplit) ;
 
-		printMpi("NORM-");
+		// float version
+		Float averagedens = (Float) toti_global ;
+
+		//printMpi("NORM-");
 		//DENSITIES ARE CONVERTED INTO DENSITY CONTRAST
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=0; idx < n3; idx++)
 			{
-				mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
+				mCONT[idx] = mCONT[idx]/(averagedens)	;
 				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 			}
 
-		maxid = (double) maxi;
-
 		//MAX DENSITY ARE CONVERTED INTO MAXIMUM DENSITY CONTRAST
 		maxi_global = maxi_global/toti_global ;
-
 		maxibin = log10(maxi_global) ;
 
-		printMpi("(MG %f,maxbinlog %f)BIN-",maxi_global,maxibin);
+		//printMpi("(MG %f,maxbinlog %f)BIN-",maxi_global,maxibin);
+
 		//BIN delta from 0 to maxi+1
 		size_t auxintarray[numbins] ;
-
+		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t bin = 0; bin < numbins ; bin++)
 		{
 		(static_cast<double *> (contbin_local))[bin] = 0.;
 		auxintarray[bin] = 0;
 		}
 
-		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
-		printMpi("BIN2-(%F) ",norma);
+		Float norma = (Float) ((maxibin + 5.)/(numbins-3)) ;
+
+		//printMpi("BIN2-(%f) ",norma);
+		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t i=0; i < n3; i++)
 		{
-			int bin;
-			bin = (int) (log10(mCONT[i].real())+5.)/norma	;
+			int bin = ((log10(mCONT[i].real()) + 5.)/norma)	;
 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
 			if (0<=bin<numbins-4)
 			{
 				//printMpi("b%d-",bin);
+			#pragma omp atomic
 				(static_cast<double *> (contbin_local))[bin+3] += 1.;
 				//auxintarray[bin] +=1;
 			}
-
 		}
 		// printMpi("BIN3-");
 		// #pragma omp parallel for default(shared) schedule(static)
@@ -1770,7 +1777,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 		// NO BORRAR!
 		// //PRINT 3D maps
-		printMpi("PRI-");
+		//printMpi("PRI-");
 		//WITH NO MPI THIS WORKS FOR OUTPUT
 		if (commRank() ==0)
 		{
@@ -1780,7 +1787,9 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 						FILE *file_con ;
 						file_con = NULL;
 						file_con = fopen(stoCON,"w+");
-						fprintf(file_con,  "# %d %f %f %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz, toti_global, axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4) );
+						fprintf(file_con,  "# %d %f %f %f %f %f \n",
+						sizeN, sizeL, sizeL/sizeN, zz, toti_global,
+						axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4) );
 
 						//PRINT 3D maps
 						#pragma omp parallel for default(shared) schedule(static)
@@ -1795,7 +1804,9 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 									#pragma omp critical
 									{
 										//PRINT COORDINATES CONTRAST AND [?]
-										fprintf(file_con,   "%d %d %d %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag()) ;
+										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
+										mCONT[idx].real(), mCONT[idx].imag(),
+										0., 0., 0.) ;
 									}
 								}
 						}
@@ -1814,7 +1825,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	// 	SAVE AVERAGE
 	//	MAXIMUM VALUE OF ENERGY CONTRAST
 	//	MAXIMUM VALUE TO BE BINNED
-	printMpi("RED-");
+	//printMpi("RED-");
 	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	(static_cast<double *> (contbin))[0] = toti_global;
@@ -2148,7 +2159,9 @@ if(fieldType == FIELD_AXION)
 	if (precision == FIELD_SINGLE)
 	{
 	float *mTheta = static_cast<float*> (m);
+	float *mVeloc = static_cast<float*> (v);
 	float zPi = (*z)*3.14159265359 ;
+	float Pi2 = 6.283185307179586  ;
 	float P0, PN;
 
 	for(size_t zP=0; zP < Lz-1; zP++)
@@ -2167,13 +2180,15 @@ if(fieldType == FIELD_AXION)
 						{
 							if(abs( nn*2*zPi + PN - P0) < zPi)
 							{
-								mTheta[n2*(1+zP)+ n1*yP + xP + 1] = nn*2*zPi + PN;
+								mTheta[n2*(1+zP)+ n1*yP + xP + 1] += nn*2*zPi   ;
+								mVeloc[n2*(  zP)+ n1*yP + xP + 1] += nn*Pi2     ;
 								//printf("(%f->%f)",mTheta[n2*(1+zP)+ n1*yP +xP],)
 								break;
 							}
 							if(abs(-nn*2*zPi + PN - P0) < zPi)
 							{
-								mTheta[n2*(1+zP)+ n1*yP + xP + 1] = - nn*2*zPi + PN;
+								mTheta[n2*(1+zP)+ n1*yP + xP + 1] += - nn*2*zPi ;
+								mVeloc[n2*(  zP)+ n1*yP + xP + 1] += - nn*Pi2   ;
 								break ;
 							}
 						}
@@ -2181,7 +2196,7 @@ if(fieldType == FIELD_AXION)
 
 			}//END X LINE
 			//PREPARE Y+1 POINT
-			P0 = mTheta[n2*(1+zP) + n1*yP] ;
+			P0 = mTheta[n2*(1+zP) + n1*yP] 			;
 			PN = mTheta[n2*(1+zP) + n1*yP +n1] ;
 
 				if (abs((PN - P0)) > zPi)
@@ -2191,12 +2206,14 @@ if(fieldType == FIELD_AXION)
 						{
 							if(abs( nn*2*zPi + PN - P0) < zPi)
 							{
-								mTheta[n2*(1+zP) + n1*yP +n1] = nn*2*zPi + PN;
+								mTheta[n2*(1+zP) + n1*yP +n1] += nn*2*zPi ;
+								mVeloc[n2*(  zP) + n1*yP +n1] += nn*Pi2 ;
 								break;
 							}
 							if(abs(-nn*2*zPi + PN - P0) < zPi)
 							{
-								mTheta[n2*(1+zP) + n1*yP +n1] = - nn*2*zPi + PN;
+								mTheta[n2*(1+zP) + n1*yP +n1] += - nn*2*zPi ;
+								mVeloc[n2*(  zP) + n1*yP +n1] += - nn*Pi2   ;
 								break ;
 							}
 						}
@@ -2215,12 +2232,14 @@ if(fieldType == FIELD_AXION)
 					{
 						if(abs( nn*2*zPi + PN - P0) < zPi)
 						{
-							mTheta[n2*(1+zP) + n2] = nn*2*zPi + PN;
+							mTheta[n2*(1+zP) + n2] += nn*2*zPi ;
+							mVeloc[n2*(  zP) + n2] += nn*Pi2   ;
 							break;
 						}
 						if(abs(-nn*2*zPi + PN - P0) < zPi)
 						{
-							mTheta[n2*(1+zP) + n2] = - nn*2*zPi + PN;
+							mTheta[n2*(1+zP) + n2] += - nn*2*zPi ;
+							mVeloc[n2*(  zP) + n2] += - nn*Pi2   ;
 							break ;
 						}
 					}

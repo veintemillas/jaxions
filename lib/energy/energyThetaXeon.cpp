@@ -411,42 +411,59 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				vel = opCode(load_ps, &v[idxMz]); // Carga v
 
 				// Calculo los gradientes con módulo
-
+				// Version sin módulo ; descomentar si modulo necesario ; assumes continuous field
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
-				tmp = opCode(mod_ps, grd, tpVec);
-				mPx = opCode(mul_ps, tmp, tmp);
+				// tmp = opCode(mod_ps, grd, tpVec);
+				// mPx = opCode(mul_ps, tmp, tmp);
+				mPx = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
-				tmp = opCode(mod_ps, grd, tpVec);
-				mMx = opCode(mul_ps, tmp, tmp);
+				//tmp = opCode(mod_ps, grd, tpVec);
+				//mMx = opCode(mul_ps, tmp, tmp);
+				mMx = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, mPy, mel);
-				tmp = opCode(mod_ps, grd, tpVec);
-				mPy = opCode(mul_ps, tmp, tmp);
+				//tmp = opCode(mod_ps, grd, tpVec);
+				//mPy = opCode(mul_ps, tmp, tmp);
+				mPy = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, mMy, mel);
-				tmp = opCode(mod_ps, grd, tpVec);
-				mMy = opCode(mul_ps, tmp, tmp);
+				//tmp = opCode(mod_ps, grd, tpVec);
+				//mMy = opCode(mul_ps, tmp, tmp);
+				mMy = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
-				tmp = opCode(mod_ps, grd, tpVec);
-				mPz = opCode(mul_ps, tmp, tmp);
+				// tmp = opCode(mod_ps, grd, tpVec);
+				// mPz = opCode(mul_ps, tmp, tmp);
+				mPz = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
-				tmp = opCode(mod_ps, grd, tpVec);
-				mMz = opCode(mul_ps, tmp, tmp);
+				//tmp = opCode(mod_ps, grd, tpVec);
+				//mMz = opCode(mul_ps, tmp, tmp);
+				mMz = opCode(mul_ps, grd, grd);
 
 				grd = opCode(add_ps, mPx, mMx);
 				mMx = opCode(add_ps, mPy, mMy);
 				mMy = opCode(add_ps, mPz, mMz);
 
+				// KINETIC
 				// Added full contribution, cancels outside the horizon
 				tmp = opCode(sub_ps, vel , opCode(mul_ps, mel, izVec));
 				mPx = opCode(mul_ps, tmp, tmp);
 
-				mPy = opCode(sub_ps,
-					one,
-					opCode(cos_ps, opCode(mul_ps, izVec, mel)));
+				// POTENTIAL
+				// vectorised version, assuming -pi,pi
+				// mPy = opCode(sub_ps,
+				// 	one,
+				// 	opCode(cos_ps, opCode(mul_ps, izVec, mel)));
+
+				// Full cosine no vectorised , no assumption
+				tmp = opCode(mul_ps, mel, izVec);
+				for (int ih=0; ih<step; ih++)
+				{
+					tmp[ih] = cos(tmp[ih]);
+				}
+				mPy = opCode(sub_ps, one, tmp);
 
 				opCode(store_ps, tmpGx, grd);
 				opCode(store_ps, tmpGy, mMx);
@@ -463,6 +480,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					gyC += (double) (tmpGy[ih]);
 					gzC += (double) (tmpGz[ih]);
 
+					// Saves map
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf);
 						//NEEDS TO BE SAVED AS A COMPLEX FIELD!
