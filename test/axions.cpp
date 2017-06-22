@@ -112,7 +112,7 @@ int	main (int argc, char *argv[])
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 1 ;
 	double maximumtheta = 3.141597;
-	size_t sliceprint = 1;
+	size_t sliceprint = 128;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;

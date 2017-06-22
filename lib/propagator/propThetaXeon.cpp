@@ -306,7 +306,7 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ tmp, mel, vel, tpP, mPy, tpM, mMy, v2p, acu, tP2, tM2;
+			_MData_ tmp, mel, vel, tpP, mPy, tpM, mMy, v2p, acu, tP2, tM2, sel;
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -393,38 +393,52 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				/*	idxPx	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
-				acu = opCode(mod_ps, vel, tpVec);
-
+				//acu = opCode(mod_ps, vel, tpVec);
+				acu = vel;
 				/*	idxMx	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
-				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				//acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				acu = opCode(add_ps, acu, vel);
 
 				/*	idxPz	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
-				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				//acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				acu = opCode(add_ps, acu, vel);
 
 				/*	idxMz	*/
 
 				vel = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
-				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				//acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				acu = opCode(add_ps, acu, vel);
 
 				/*	idxPy	*/
 
 				vel = opCode(sub_ps, mPy, mel);
-				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				//acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				acu = opCode(add_ps, acu, vel);
 
 				/*	idxMy	*/
 
 				vel = opCode(sub_ps, mMy, mel);
-				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				//acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+				acu = opCode(add_ps, acu, vel);
 
 				/*	Dv	*/
 
+				//ADD BY JAVI
+				for (int ih=0; ih<step; ih++)
+				{
+					sel[ih] = sin(mel[ih]*iZ)	;
+				}
+
+
 				tpM = opCode(sub_ps,
 					opCode(mul_ps, acu, d2Vec),
-					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+					//CHANGED BY JAVI
+					//opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+					opCode(mul_ps, zQVec, sel));
 
 				mPy = opCode(load_ps, &v[idxMz]);
 
@@ -436,7 +450,8 @@ void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, v
 				tpP = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
 				/*	Make sure the result is between -pi and pi	*/
-				acu = opCode(mod_ps, tpP, tpVec);
+				//acu = opCode(mod_ps, tpP, tpVec);
+				acu = tpP ;
 
 				/*	Store	*/
 

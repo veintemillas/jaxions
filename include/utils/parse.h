@@ -10,6 +10,7 @@ extern double sizeL;
 extern double zInit;
 extern double zFinl;
 extern double LL;
+extern double mode0;
 extern double alpha;
 extern double kCrit;
 extern double parm2;

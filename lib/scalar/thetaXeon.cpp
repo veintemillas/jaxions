@@ -40,6 +40,7 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 			// the v array has no buffer hence the need of -S in their index
 			// gets temporarily stored outside the Physical range of mField V+2S and vField V -> i.e. 2(V+S)=Go
 			mField[Go+lpc]  = (cvField[Vo-S+lpc]*conj(mTmp)).imag()*iMod + mField[lpc];
+			//mField[Go+lpc]  = z*(cvField[Vo-S+lpc]/mTmp).imag() + mField[lpc];
 			//c_theta
 			mField[lpc]    *= z;
 		}
@@ -51,6 +52,7 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 
 	// copies v from auxiliary position to final position in second half of complex m
 	memcpy (vField, vFieldaux, sizeof(Float)*V);
+
 
 }
 

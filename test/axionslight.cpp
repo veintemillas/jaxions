@@ -137,7 +137,7 @@ int	main (int argc, char *argv[])
   double nstringsd = 0. ;
 	double nstringsd_global = 0. ;
 	double maximumtheta = 3.141597;
-	size_t sliceprint = 1;
+	size_t sliceprint = sizeN/2;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;
@@ -386,7 +386,9 @@ int	main (int argc, char *argv[])
 				// PRINT POINT
 				//--------------------------------------------------
 
-
+				// give idx folded! NOW SHIT
+				//size_t idxprint = sliceprint*S0  + (sizeN/2)*sizeN + sizeN/2 ;
+				size_t idxprint = 0 ;
 
 				if (commRank() == 0)
 					{
@@ -402,10 +404,10 @@ int	main (int argc, char *argv[])
 								z_now,
 								axionmass(z_now,nQcd,zthres, zrestore),
 								llprint,
-								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].real(),
-								static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0+S0].imag(),
-								static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(),
-								static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag(),
+								static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].real(),
+								static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].imag(),
+								static_cast<complex<double> *> (axion->vCpu())[idxprint].real(),
+								static_cast<complex<double> *> (axion->vCpu())[idxprint].imag(),
 								nstrings_global,
 								maximumtheta,
 								saskia );
@@ -414,8 +416,10 @@ int	main (int argc, char *argv[])
 								z_now,
 								axionmass(z_now,nQcd,zthres, zrestore),
 								llprint,
-								static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0+S0].imag(),
-								static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag(),
+								static_cast<complex<float>  *> (axion->mCpu())[idxprint + S0].real(),
+								static_cast<complex<float>  *> (axion->mCpu())[idxprint + S0].imag(),
+								static_cast<complex<float>  *> (axion->vCpu())[idxprint].real(),
+								static_cast<complex<float>  *> (axion->vCpu())[idxprint].imag(),
 								nstrings_global, maximumtheta, saskia);
 							}
 						}
@@ -425,15 +429,15 @@ int	main (int argc, char *argv[])
 								fprintf(file_sample,"%f %f %f %f %f\n",
 								z_now,
 								axionmass(z_now,nQcd,zthres, zrestore),
-								static_cast<double*> (axion->mCpu())[sliceprint*S0+S0],
-								static_cast<double*> (axion->vCpu())[sliceprint*S0],
+								static_cast<double*> (axion->mCpu())[idxprint + S0],
+								static_cast<double*> (axion->vCpu())[idxprint],
 								maximumtheta);
 							} else {
 								fprintf(file_sample,"%f %f %f %f %f\n",
 								z_now,
 								axionmass(z_now,nQcd,zthres, zrestore),
-								static_cast<float*> (axion->mCpu())[sliceprint*S0+S0],
-								static_cast<float*> (axion->vCpu())[sliceprint*S0],
+								static_cast<float*> (axion->mCpu())[idxprint + S0],
+								static_cast<float*> (axion->vCpu())[idxprint],
 								maximumtheta);
 								// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
 								// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
@@ -480,7 +484,7 @@ int	main (int argc, char *argv[])
 				}
 								//printMpi("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
 								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-				if ( (nstrings_global == 0) && ((*axion->zV()) > 0.6) )
+				if ( (nstrings_global == 0) && ((*axion->zV()) > 0.2) )
 				{
 					 strcount += 1;
 					 printMpi("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
@@ -514,7 +518,22 @@ int	main (int argc, char *argv[])
 						fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
 						for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
 					}
+					//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
+					 munge(UNFOLD_SLICE, sliceprint);
+					  	writeMap (axion, 100000);
 					cmplxToTheta (axion, fCount, saskia);
+
+					// SHIFTS THETA TO A CONTINUOUS FIELD
+					// REQUIRED UNFOLDED FIELDS
+					munge(UNFOLD_ALL);
+					axion->mendtheta();
+					munge(FOLD_ALL);
+
+					//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
+					munge(UNFOLD_SLICE, sliceprint);
+					writeMap (axion, 100001);
+
+
 					printMpi("--------------------------------------------------\n");
 				}
 			}
@@ -551,21 +570,12 @@ int	main (int argc, char *argv[])
 			z_now = (*axion->zV());
 			llprint = llaux/(z_now*z_now); //physical value
 			saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
-			energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
-			if (commRank()==0)
-			{
-			fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
-			(*axion->zV()),
-			eR[TH_GRX], eR[TH_GRY], eR[TH_GRZ],
-			eR[TH_POT], eR[TH_KIN],
-			eR[RH_GRX], eR[RH_GRY], eR[RH_GRZ],
-			eR[RH_POT], eR[RH_KIN],
-			nstrings_global, maximumtheta);
-			fflush(file_energy);
-			}
+
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
+				energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
+
 				double maa = 40*axionmass(z_now,nQcd,zthres, zrestore)/(2*llaux);
 				if (axion->Lambda() == LAMBDA_Z2 )
 				maa = maa*z_now*z_now;
@@ -588,24 +598,40 @@ int	main (int argc, char *argv[])
 			}
 			else
 			{
-				maximumtheta = axion->maxtheta();
+				//BINS THETA
+				maximumtheta = axion->thetaDIST(100, binarray);
+				if (commRank() == 0)
+				{
+					fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
+					for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
+					fflush(file_thetabin);
+				}
+
 				printMpi("%d/%d | z=%f | dz=%.3e | maxtheta=%f\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
 
-				munge(UNFOLD_ALL);
-
 				printMpi("DensMap ... ");
-				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-				printMpi("| ");
 
-				if (commRank() == 0)
-				{
-				fprintf(file_contbin,"%f ", (*(axion->zV() )));
-				// first three numbers are dens average, max contrast and maximum of the binning
-				for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
-				fprintf(file_contbin, "\n");
-				fflush(file_contbin);
-				}
+				//OLD VERSION, NEEDS UNFOLD
+				munge(UNFOLD_ALL);
+				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+
+				// NEW VERSION
+				// computes energy and creates map
+				//energy(axion, fCount, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+				//bins density
+				// axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+
+				 printMpi("| ");
+
+				 if (commRank() == 0)
+					{
+					fprintf(file_contbin,"%f ", (*(axion->zV() )));
+					// first three numbers are dens average, max contrast and maximum of the binning
+					for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
+					fprintf(file_contbin, "\n");
+					fflush(file_contbin);
+					}
 
 				// writeConf(axion, index);
 				munge(FOLD_ALL);
@@ -616,6 +642,18 @@ int	main (int argc, char *argv[])
 			 {
 			 munge(UNFOLD_SLICE, sliceprint);
 			 writeMap (axion, index);
+
+			 //Prints energy computed before
+			 fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
+			 (*axion->zV()),
+			 eR[TH_GRX], eR[TH_GRY], eR[TH_GRZ],
+			 eR[TH_POT], eR[TH_KIN],
+			 eR[RH_GRX], eR[RH_GRY], eR[RH_GRZ],
+			 eR[RH_POT], eR[RH_KIN],
+			 nstrings_global, maximumtheta);
+			 fflush(file_energy);
+
+
 			 }
 
 			// SAVE FILE OUTPUT
@@ -698,15 +736,14 @@ int	main (int argc, char *argv[])
 		//writeArray(axion, bA, 10000, "/bins", "cont");
 		//writeSpectrum(axion, sK, sG, sV, powmax, true);
 
-
-
 		// BIN THETA
-		maximumtheta = axion->thetaDIST(100, spectrumK);
+		maximumtheta = axion->thetaDIST(100, binarray);
 		if (commRank() == 0)
 		{
 			fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
-			for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
+			for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
 		}
+
 
 		writeArray(axion, sK, 100, "/bins", "theta");
 

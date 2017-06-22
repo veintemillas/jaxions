@@ -9,6 +9,7 @@
 #include "enum-field.h"
 #include "utils/memAlloc.h"
 #include "comms/comms.h"
+#include "utils/parse.h"
 
 using namespace std;
 
@@ -62,6 +63,11 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 			} // END  py loop
 		} // END oz FOR
 	}
+
+	// zero mode
+
+	if (mode0 < 3.141597)
+	fM[0] = complex<Float>(cos(mode0), sin(mode0));
 
 	trackFree((void **) &sd, ALLOC_TRACK);
 }

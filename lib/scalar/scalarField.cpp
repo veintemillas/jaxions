@@ -1510,7 +1510,8 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					if (asu < piz2)
 					grad += asu;
 
-					mCONT[idx-n2] = acu + grad/deltaa2 + If*grad/deltaa2;
+					//mCONT[idx-n2] = acu + grad/deltaa2 + If*grad/deltaa2;
+					mCONT[idx-n2] = acu + grad/deltaa2 + If*0.f;
 
 					toti += (double) mCONT[idx-n2].real() ;
 					if (mCONT[idx-n2].real() > maxi)
@@ -1677,12 +1678,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
-	// THIS TEMPLATE IS TO BE CALLED FOLDED
-	if (!folded)
-		{
-			printMpi("contrastbin called UNFolded! ...  we quit\n");
-			return;
-		}
+	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
 
 	//	AUX VARIABLES
 	Float maxi = 0.;
@@ -1759,7 +1755,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
 			if (0<=bin<numbins-4)
 			{
-				printMpi("b%d-",bin);
+				//printMpi("b%d-",bin);
 				(static_cast<double *> (contbin_local))[bin+3] += 1.;
 				//auxintarray[bin] +=1;
 			}
@@ -2128,6 +2124,120 @@ void	Scalar::denstom()//int *window)
 	{
 		printMpi("dens to m not available for SAXION\n");
 	}
+
+}
+
+//----------------------------------------------------------------------
+//		CHECK JUMPS
+//----------------------------------------------------------------------
+
+//	THIS FUNCTION CHECKS THETA IN ORDER AND NOTES DOWN POSITIONS WITH JUMPS OF 2 PI
+//  MARKS THEM DOWN INTO THE ST BIN ARRAY AS POSSIBLE PROBLEMATIC POINTS WITH GRADIENTS
+//  TRIES TO MEND THE THETA DISTRIBUTION INTO MANY RIEMMAN SHEETS TO HAVE A CONTINUOUS FIELD
+
+void	Scalar::mendtheta()//int *window)
+{
+//	make sure field unfolded
+// 	make sure ghosts sent
+
+if(fieldType == FIELD_AXION)
+{
+
+	int counter = 0;
+
+	if (precision == FIELD_SINGLE)
+	{
+	float *mTheta = static_cast<float*> (m);
+	float zPi = (*z)*3.14159265359 ;
+	float P0, PN;
+
+	for(size_t zP=0; zP < Lz-1; zP++)
+	{
+		for(size_t yP=0; yP < n1-1; yP++)
+		{
+			for(size_t xP=0; xP < n1-1; xP++)
+			{
+				P0 = mTheta[n2*(1+zP)+ n1*yP +xP] ;
+				PN = mTheta[n2*(1+zP)+ n1*yP +xP+1] ;
+
+				if (abs((PN - P0)) > zPi)
+				{
+						counter++ ;
+						for (int nn = 1 ; nn <6 ; nn++)
+						{
+							if(abs( nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP)+ n1*yP + xP + 1] = nn*2*zPi + PN;
+								//printf("(%f->%f)",mTheta[n2*(1+zP)+ n1*yP +xP],)
+								break;
+							}
+							if(abs(-nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP)+ n1*yP + xP + 1] = - nn*2*zPi + PN;
+								break ;
+							}
+						}
+				}
+
+			}//END X LINE
+			//PREPARE Y+1 POINT
+			P0 = mTheta[n2*(1+zP) + n1*yP] ;
+			PN = mTheta[n2*(1+zP) + n1*yP +n1] ;
+
+				if (abs((PN - P0)) > zPi)
+				{
+						counter++ ;
+						for (int nn = 1 ; nn <6 ; nn++)
+						{
+							if(abs( nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP) + n1*yP +n1] = nn*2*zPi + PN;
+								break;
+							}
+							if(abs(-nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP) + n1*yP +n1] = - nn*2*zPi + PN;
+								break ;
+							}
+						}
+				}
+
+
+		}//END Y LINE
+		//PREPARE Z+1 POINT
+		P0 = mTheta[n2*(1+zP) ] ;
+		PN = mTheta[n2*(1+zP) + n2] ;
+
+			if (abs((PN - P0)) > zPi)
+			{
+					counter++ ;
+					for (int nn = 1 ; nn <6 ; nn++)
+					{
+						if(abs( nn*2*zPi + PN - P0) < zPi)
+						{
+							mTheta[n2*(1+zP) + n2] = nn*2*zPi + PN;
+							break;
+						}
+						if(abs(-nn*2*zPi + PN - P0) < zPi)
+						{
+							mTheta[n2*(1+zP) + n2] = - nn*2*zPi + PN;
+							break ;
+						}
+					}
+			}
+		}
+	}
+	else //	FIELD_DOUBLE
+	{
+	}
+	commSync();
+	printMpi("mendtheta done, mends = %d\n", counter);
+
+}
+else
+{
+	printMpi("mendtheta not available for SAXION\n");
+}
 
 }
 
