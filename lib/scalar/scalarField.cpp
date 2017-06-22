@@ -2261,6 +2261,158 @@ else
 }
 
 //----------------------------------------------------------------------
+//		AXITON FINDER
+//----------------------------------------------------------------------
+void	Scalar::writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons)
+{
+	switch	(precision)
+	{
+		case	FIELD_DOUBLE:
+		{
+		}
+		break;
+
+		case	FIELD_SINGLE:
+		{
+			//COMPUTES JAVIER DENSITY MAP AND BINS
+			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+
+			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
+			// USE WITH ALEX'FUNCTION
+			axitonfinder(static_cast<float>(contrastthreshold), idxbin, numaxitons);
+		}
+		break;
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+
+}
+
+// READS A DENSITY GRID IN M2 AND SEARCHES FOR LOCAL MAXIMA ABOVE A GIVEN CONTRAST
+// RETURNS COORDINATES FOLDED AND UNFOLDED TO A POINTER
+
+template<typename Float>
+void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
+{
+
+	//array for idx
+	size_t ar_local[numaxitons] ;
+	//array for contrast comparisons
+	Float  ct_local[numaxitons] ;
+	for(int i = 0; i < numaxitons ; i++)
+	{
+		ar_local[i] = 0 ;
+		ct_local[i] = 0. ;
+	}
+
+	if(fieldType == FIELD_AXION)
+	{
+		//mCONT assumed normalised // i.e. contrastbin was called before
+		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+
+		int size = 0 ;
+		size_t iyP, iyM, ixP, ixM;
+		size_t iz, iy, ix ;
+		size_t idaux, ixyzAux	;
+//		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t idx = 0; idx < n3; idx++)
+		{
+			//size_t ix, iy, iz;
+				if (mCONT[idx].real() > contrastthreshold)
+				{
+					// iz = idx/n2 ;
+					// iy = (idx%n2)/n1 ;
+					// ix = (idx%n2)%n1 ;
+					Float val = mCONT[idx].real();
+
+					iz = idx/n2 ;
+					iy = (idx%n2)/n1 ;
+					ix = (idx%n2)%n1 ;
+
+					ixyzAux = (ix+1)%n1;
+					idaux = ixyzAux + iy*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (ix-1+n1)%n1;
+					idaux = ixyzAux + iy*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (iy+1)%n1;
+					idaux = ix + ixyzAux*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (iy-1+n1)%n1;
+					idaux = ix + ixyzAux*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					// I CANNOT CHECK THE Z DIRECTION BECAUSE I DO NOT HAVE GHOSTS
+					// IN THE CURRENT MPI IMPLEMENTATION
+					// I NEVERTHELESS USE THIS WITHOUT MPI
+					// CHANGE M2 TO HAVE GHOSTS? FFT, ETC...
+
+					ixyzAux = (iz+1)%Lz;
+					idaux = ix + iy*n1+(ixyzAux)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (iz-1+Lz)%Lz;
+					idaux = ix + iy*n1+(ixyzAux)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					// IF IT REACHED HERE IT IS REALLY A MAXIMUM OF DENSITY
+				//	#pragma omp critical
+				//	{
+		   				int pos = size;
+		   				while (pos > 0 && ct_local[pos - 1] < val)
+							{
+		      			pos--;
+		      			if (pos < numaxitons-1)
+								{
+									ct_local[pos + 1] = ct_local[pos];
+									ar_local[pos + 1] = ar_local[pos];
+								}
+		   				}
+		   				if (size < numaxitons) size++;
+		   				if (pos < size)
+							{
+								ct_local[pos] = val;
+								ar_local[pos] = idx ;
+							}
+				//	}
+
+				}
+		}
+	}
+	else
+	{
+		printMpi("axiton finder not available in SAXION mode\n");
+		return;
+	}
+
+	printMpi("%d axitons: ", numaxitons );
+	for(int i = 0; i<numaxitons; i++)
+	{
+		printMpi("%f(%d)", ct_local[i], ar_local[i]);
+	}
+	printMpi("\n");
+
+	for(int i = 0; i < numaxitons ; i++)
+	{
+		(static_cast<size_t *> (idxbin))[i] = ar_local[i];
+	}
+	return ;
+}
+
+
+//----------------------------------------------------------------------
 //		HALO UTILITIES
 //----------------------------------------------------------------------
 

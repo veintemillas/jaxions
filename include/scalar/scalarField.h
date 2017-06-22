@@ -56,6 +56,10 @@
 					template<typename Float>
 	        void contrastbin(const Float zz, const int index, void *contbin, int numbins); // TEST
 
+					template<typename Float>
+					void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
+
+
 		public:
 
 				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
@@ -147,6 +151,8 @@
 
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
+		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
+
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

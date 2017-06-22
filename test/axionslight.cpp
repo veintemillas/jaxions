@@ -636,6 +636,8 @@ int	main (int argc, char *argv[])
 				// writeConf(axion, index);
 				//munge(FOLD_ALL);
 
+				axion->writeAXITONlist(100. , binarray, 10) ;
+
 			}
 
 			 if (commRank() == 0)
@@ -663,6 +665,9 @@ int	main (int argc, char *argv[])
 				printMpi("zf reached! ENDING FINALLY... \n");
 				break;
 			}
+
+
+
 
 	} // ZLOOP
 
@@ -705,7 +710,7 @@ int	main (int argc, char *argv[])
 		writeSpectrum(axion, sK, sG, sV, powmax, false);
 
 		printMpi("DensMap ... ");
-		
+
 		energy(axion, fCount, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		printMpi("| ");
