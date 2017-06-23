@@ -1687,6 +1687,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	Float maxibin = 0.;
 	double maxid =0.;
 	double toti = 0.;
+	const Float z9QCD2 = axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),2);
 
 	//SUM variables
 	double contbin_local[numbins] ;
@@ -1698,6 +1699,9 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 	if(fieldType == FIELD_AXION)
 	{
+		Float *mTheta = static_cast<Float*> (m);
+		Float *mVeloc = static_cast<Float*> (v);
+
 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
 		//printMpi("COMP-");
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
@@ -1790,23 +1794,42 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 						fprintf(file_con,  "# %d %f %f %f %f %f \n",
 						sizeN, sizeL, sizeL/sizeN, zz, toti_global,
 						axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4) );
+						size_t cues = n1/shift ;
 
 						//PRINT 3D maps
 						#pragma omp parallel for default(shared) schedule(static)
 						for (size_t idx = 0; idx < n3; idx++)
 						{
 							size_t ix, iy, iz;
+							size_t sy, iiy, fidx ;
 								if (mCONT[idx].real() > 100.)
 								{
 									iz = idx/n2 ;
 									iy = (idx%n2)/n1 ;
 									ix = (idx%n2)%n1 ;
+
+									if (folded)
+									{
+										sy = iy/(cues)	;
+										iiy = iy - sy*cues;
+										fidx = iz*n2+ iiy*n1*shift + ix*shift + sy ;
+									}
+									else
+									{
+										size_t fidx = idx;
+									}
+
 									#pragma omp critical
 									{
 										//PRINT COORDINATES CONTRAST AND [?]
+										// fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
+										// mCONT[idx].real(), mCONT[idx].imag(),
+										// 0., 0., 0.) ;
 										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
 										mCONT[idx].real(), mCONT[idx].imag(),
-										0., 0., 0.) ;
+										mVeloc[fidx]*mVeloc[fidx]/(2.f*toti_global) ,
+										z9QCD2*(1.f-cos(mTheta[fidx+n2]/zz))/toti_global,
+										mTheta[fidx+n2]/zz ) ;
 									}
 								}
 						}
@@ -2302,6 +2325,10 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	size_t ar_local[numaxitons] ;
 	//array for contrast comparisons
 	Float  ct_local[numaxitons] ;
+	// for folding issues
+	size_t cues = n1/shift ;
+
+
 	for(int i = 0; i < numaxitons ; i++)
 	{
 		ar_local[i] = 0 ;
@@ -2312,25 +2339,46 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	{
 		//mCONT assumed normalised // i.e. contrastbin was called before
 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+		Float *mTheta = static_cast<Float*> (m);
+		//float *mVeloc = static_cast<float*> (v);
 
 		int size = 0 ;
 		size_t iyP, iyM, ixP, ixM;
+		size_t fidx ;
 		size_t iz, iy, ix ;
 		size_t idaux, ixyzAux	;
+
 //		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx = 0; idx < n3; idx++)
 		{
 			//size_t ix, iy, iz;
+			// ONE CAN USE DENSITY CONTRAST BUT HF FLUCTUATIONS MASK THE AXITONS
+			// IT IS PERHAPS GOOD TO USE THE THETA FIELD INSTEAD
 				if (mCONT[idx].real() > contrastthreshold)
 				{
 					// iz = idx/n2 ;
 					// iy = (idx%n2)/n1 ;
 					// ix = (idx%n2)%n1 ;
+
 					Float val = mCONT[idx].real();
 
 					iz = idx/n2 ;
 					iy = (idx%n2)/n1 ;
 					ix = (idx%n2)%n1 ;
+
+					if (folded)
+					{
+						size_t sy = iy/(cues)	;
+						size_t iiy = iy - sy*cues;
+						fidx = iz*n2+ iiy*n1*shift + ix*shift + sy ;
+					}
+					else
+					{
+						fidx = idx;
+					}
+
+					if (abs(mTheta[n2+fidx]/(*z)) > 3.14)
+					continue;
 
 					ixyzAux = (ix+1)%n1;
 					idaux = ixyzAux + iy*n1+(iz)*n2 ;
@@ -2368,6 +2416,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 					continue;
 
 					// IF IT REACHED HERE IT IS REALLY A MAXIMUM OF DENSITY
+					// AND HAS A LARGE AMPLITUDE
 				//	#pragma omp critical
 				//	{
 		   				int pos = size;
@@ -2384,7 +2433,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		   				if (pos < size)
 							{
 								ct_local[pos] = val;
-								ar_local[pos] = idx ;
+								ar_local[pos] = fidx ;
 							}
 				//	}
 
@@ -2403,6 +2452,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		printMpi("%f(%d)", ct_local[i], ar_local[i]);
 	}
 	printMpi("\n");
+
 
 	for(int i = 0; i < numaxitons ; i++)
 	{

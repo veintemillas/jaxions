@@ -115,6 +115,9 @@ int	main (int argc, char *argv[])
 	FILE *file_contbin ;
 	file_contbin = NULL;
 
+	FILE *file_axiton ;
+	file_axiton = NULL;
+
 
 	if (commRank() == 0)
 	{
@@ -127,6 +130,7 @@ int	main (int argc, char *argv[])
 		file_power = fopen("out/power.txt","w+");
 		file_thetabin = fopen("out/thetabin.txt","w+");
 		file_contbin = fopen("out/contbin.txt","w+");
+		file_axiton = fopen("out/axiton.txt","w+");
 	}
 	printMpi("Files prepared! \n");
 
@@ -147,10 +151,12 @@ int	main (int argc, char *argv[])
 	double  *spectrumG ;
 	double  *spectrumV ;
 	double  *binarray	 ;
+	size_t  *axitonarray	 ;
 	trackAlloc((void**) (&spectrumK), 8*powmax);
 	trackAlloc((void**) (&spectrumG), 8*powmax);
 	trackAlloc((void**) (&spectrumV), 8*powmax);
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
+	trackAlloc((void**) (&axitonarray),  100*sizeof(size_t));
 	printMpi("Bins allocated! \n");
 
 	// double *sK = static_cast<double *> (spectrumK);
@@ -205,7 +211,7 @@ int	main (int argc, char *argv[])
 		// WE USE LAMDA_Z2 WITH msa = 1.5 so
 		// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
 
-		msa = 1.5 ;
+		msa = 1.2 ;
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
@@ -214,7 +220,10 @@ int	main (int argc, char *argv[])
 
 		bool coZ = 1;
 	  bool coS = 1;
+		bool coA = 1;
 		int strcount = 0;
+
+		int numaxiprint = 10 ;
 
 		axion->SetLambda(LAMBDA_Z2)	;
 		if (LAMBDA_FIXED == axion->Lambda())
@@ -445,22 +454,42 @@ int	main (int argc, char *argv[])
 						}
 						fflush(file_sample);
 
+						// AXITONS
+
+						if (!coA)
+						{
+							fprintf(file_axiton,"%f ", z_now);
+							for (int i =0; i <numaxiprint ; i++)
+							{		// IF FOLDED!!
+									fprintf(file_axiton,"%f ", static_cast<float*> (axion->mCpu())[axitonarray[i] + S0]);
+							}
+							fprintf(file_axiton,"\n ");
+							fflush(file_axiton);
+						}
+
+
 					}
 			//--------------------------------------------------
 			// DYAMICAL deltaz
 			//--------------------------------------------------
 
 			//Set dz to gradients and axion mass
-			dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
+			//dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
+			 double masi = z_now*axionmass(z_now,nQcd,zthres, zrestore);
+			 double mfre = sqrt(masi*masi + 12./(delta*delta));
+			 dzaux = 1.5/mfre ;
+
 			//If SAXION_MODE
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
 			{
 				llaux = llconstantZ2;
 				llprint = llaux/(z_now*z_now); //physical value
-				dzaux = min(dzaux,delta/1.5);
+				// dzaux = min(dzaux,delta/1.5);
+				double mfre = sqrt( msa*msa + 12.)/delta;
+				dzaux = min(dzaux,1.5/mfre)  ;
 			}
 
-      dzaux = dzaux/1.5 ;
+      //dzaux = dzaux/1.5 ;
 
 			//--------------------------------------------------
 			// PROPAGATOR
@@ -636,7 +665,29 @@ int	main (int argc, char *argv[])
 				// writeConf(axion, index);
 				//munge(FOLD_ALL);
 
-				axion->writeAXITONlist(100. , binarray, 10) ;
+				if (coA && maximumtheta > 3.14 && z_now > 3.0)
+				{
+					// threshold ; pointer ; number of axitons
+					axion->writeAXITONlist(100. , axitonarray, numaxiprint) ;
+					for(int i = 0; i<numaxiprint; i++)
+					{
+						printMpi("(%ld)", axitonarray[i]);
+					}
+					printMpi("\n");
+					if (axitonarray[numaxiprint-1]>0)
+					coA = 0 ;
+				}
+
+				// if (!coA)
+				// {
+				// 	fprintf(file_axiton,"%f ", z_now);
+				// 	for (int i =0; i <10 ; i++)
+				// 	{		// IF FOLDED!!
+				// 			fprintf(file_axiton,"%f ", static_cast<float*> (axion->mCpu())[axitonarray[i] + S0]);
+				// 	}
+				// 	fprintf(file_axiton,"\n ");
+				// 	fflush(file_axiton);
+				// }
 
 			}
 
@@ -791,6 +842,7 @@ int	main (int argc, char *argv[])
 	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
 	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
+	trackFree((void**) (&axitonarray),  ALLOC_TRACK);
 
 	delete fCount;
 	delete axion;
@@ -808,6 +860,7 @@ int	main (int argc, char *argv[])
 		fclose (file_power);
 		fclose (file_thetabin);
 		fclose (file_contbin);
+		fclose (file_axiton);
 		//energy 2//	fclose (file_energy2);
 	}
 

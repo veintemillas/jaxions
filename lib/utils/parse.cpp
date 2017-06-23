@@ -67,7 +67,7 @@ void	printUsage(char *name)
 	printf("--ctype smooth/kmax/tkachev     Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
-	printf("--mode0 [float]               Value of axion zero mode [rad] (default random).\n");
+	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
 	printf("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
