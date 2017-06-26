@@ -44,7 +44,7 @@ int	main (int argc, char *argv[])
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
-	msa =1.5 ;
+	msa =1.7 ;
 
 	commSync();
 	printMpi("\n-------------------------------------------------\n");
@@ -187,17 +187,17 @@ int	main (int argc, char *argv[])
 	else
 		dz = (zFinl - zInit)/((double) nSteps);
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           BASE INITIAL CONDITIONS                \n\n");
-
-	printMpi("Length =  %2.5f\n", sizeL);
-	printMpi("N      =  %ld\n",   sizeN);
-	printMpi("Nz     =  %ld\n",   sizeZ);
-	printMpi("zGrid  =  %ld\n",   zGrid);
-	printMpi("dx     =  %2.5f\n", delta);
-	printMpi("dz     =  %2.5f\n", dz);
-	printMpi("LL     =  %2.5f\n", LL);
-	printMpi("--------------------------------------------------\n");
+	// printMpi("--------------------------------------------------\n");
+	// printMpi("           BASE INITIAL CONDITIONS                \n\n");
+	//
+	// printMpi("Length =  %2.5f\n", sizeL);
+	// printMpi("N      =  %ld\n",   sizeN);
+	// printMpi("Nz     =  %ld\n",   sizeZ);
+	// printMpi("zGrid  =  %ld\n",   zGrid);
+	// printMpi("dx     =  %2.5f\n", delta);
+	// printMpi("dz     =  %2.5f\n", dz);
+	// printMpi("LL     =  %2.5f\n", LL);
+	// printMpi("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
@@ -211,7 +211,7 @@ int	main (int argc, char *argv[])
 		// WE USE LAMDA_Z2 WITH msa = 1.5 so
 		// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
 
-		msa = 1.2 ;
+		msa = 1.7 ;
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
@@ -354,14 +354,16 @@ int	main (int argc, char *argv[])
 
 
 	printMpi("--------------------------------------------------\n");
-	printMpi("           START LOOP  						                \n\n");
-	printMpi("Length =  %2.5f\n", sizeL);
+	printMpi("           PARAMETERS  						                \n\n");
+	printMpi("Length =  %2.2f\n", sizeL);
+	printMpi("nQCD   =  %2.2f\n", nQcd);
 	printMpi("N      =  %ld\n",   sizeN);
 	printMpi("Nz     =  %ld\n",   sizeZ);
 	printMpi("zGrid  =  %ld\n",   zGrid);
 	printMpi("dx     =  %2.5f\n", delta);
-	printMpi("dz     =  variable ~ min[1/d,1/m_a,1/m_s]/2\n", dz);
-	printMpi("LL     =  FM_variable with ms*delta =%f \n", msa);
+	printMpi("dz     =  %2.2f/FREQ\n", 1.2);
+	printMpi("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa);
+	printMpi("VQCD1,shift,con_thres=100, continuous theta  \n", llconstantZ2, msa);
 	printMpi("--------------------------------------------------\n");
 
 	printMpi ("Start redshift loop\n\n");
@@ -477,7 +479,7 @@ int	main (int argc, char *argv[])
 			//dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
 			 double masi = z_now*axionmass(z_now,nQcd,zthres, zrestore);
 			 double mfre = sqrt(masi*masi + 12./(delta*delta));
-			 dzaux = 1.5/mfre ;
+			 dzaux = 1.2/mfre ;
 
 			//If SAXION_MODE
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
@@ -486,7 +488,7 @@ int	main (int argc, char *argv[])
 				llprint = llaux/(z_now*z_now); //physical value
 				// dzaux = min(dzaux,delta/1.5);
 				double mfre = sqrt( msa*msa + 12.)/delta;
-				dzaux = min(dzaux,1.5/mfre)  ;
+				dzaux = min(dzaux,1.2/mfre)  ;
 			}
 
       //dzaux = dzaux/1.5 ;
@@ -636,7 +638,7 @@ int	main (int argc, char *argv[])
 					fflush(file_thetabin);
 				}
 
-				printMpi("%d/%d | z=%f | dz=%.3e | maxtheta=%f\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
+				printMpi("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
 
 				printMpi("DensMap ... ");
@@ -677,7 +679,7 @@ int	main (int argc, char *argv[])
 					if (axitonarray[numaxiprint-1]>0)
 					coA = 0 ;
 				}
-
+				printMpi("\n");
 				// if (!coA)
 				// {
 				// 	fprintf(file_axiton,"%f ", z_now);
