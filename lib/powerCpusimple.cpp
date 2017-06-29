@@ -3,7 +3,7 @@
 #include "scalar/scalarField.h"
 #include "utils/index.h"
 #include "utils/parse.h"
-#include "energy/energyMap.h"
+#include "energy/energy.h"
 #include "scalar/varNQCD.h"
 #include <omp.h>
 
@@ -444,7 +444,7 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 			//PATCH
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				energyMap	(axion, LL, nQcd, delta, eRes, fCount); ////// CHECKKKK!!!!
+				energy	(axion, fCount, eRes, true, delta, nQcd, LL); ////// CHECKKKK!!!!
 			}
 			else
 			{

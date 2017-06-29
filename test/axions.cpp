@@ -112,7 +112,7 @@ int	main (int argc, char *argv[])
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	int nstrings = 1 ;
 	double maximumtheta = 3.141597;
-	size_t sliceprint = 1;
+	size_t sliceprint = 128;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;
@@ -274,7 +274,7 @@ int	main (int argc, char *argv[])
 	*/
 		munge(UNFOLD_SLICE, sliceprint);
 		writeMap (axion, index);
-		energy(axion, LL, nQcd, delta, eRes, fCount);
+		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
 		//energy 2//	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 
@@ -363,15 +363,15 @@ int	main (int argc, char *argv[])
 
 			old = std::chrono::high_resolution_clock::now();
 
-			if (axion->Field() == FIELD_SAXION)
-			{
-				propagate (axion, dz, LL, nQcd, delta, fCount, VQCD_1);
-			}
-			else
-			{
-				propTheta	(axion, dz,     nQcd, delta, fCount);
+//			if (axion->Field() == FIELD_SAXION)
+//			{
+				propagate (axion, fCount, dz, delta, nQcd, LL, VQCD_1);
+//			}
+//			else
+//			{
+//				propTheta	(axion, dz,     nQcd, delta, fCount);
 				//printf("pt-");fflush(stdout);
-			}
+//			}
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
@@ -446,7 +446,7 @@ int	main (int argc, char *argv[])
 		if ( axion->Field() == FIELD_SAXION  )
 		{
 //			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-			energy(axion, LL, nQcd, delta, eRes, fCount);
+			energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
 			//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 

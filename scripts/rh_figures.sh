@@ -6,7 +6,7 @@ NAME=${NAME#*/rho-}		# get the part after the rh- (number)
 FILE="ploter2.gnu"
 /bin/cat <<EOM > $FILE
 set title "(N=$nnn, mode=$mode) z=$zzz" offset 0,-1
-set terminal png medium size $nnn+200,$nnn+200
+set terminal png medium size 1200,1200
 set xrange [0:$lll]
 set yrange [0:$lll]
 set size 1,1

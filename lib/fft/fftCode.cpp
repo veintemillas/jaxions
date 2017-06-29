@@ -262,7 +262,7 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 		if (lowmem) {
 			printMpi("  Spectrum not available in lowmem until the end");
 		} else {
-			p2  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT);
+			p2  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT);
 		}
 //		p  = fftw_plan_many_dft(2, nD, Lz, static_cast<fftw_complex*>(m), NULL, 1, dist, static_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
 //		pb = fftw_plan_many_dft(2, nD, Lz, static_cast<fftw_complex*>(m), NULL, 1, dist, static_cast<fftw_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
@@ -284,8 +284,11 @@ void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision
 		if (lowmem) {
 			printMpi("Spectrum not available in lowmem until the end");
 		} else {
-			pf2  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT);
+			pf2  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT);
 		}
+
+		fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
+		if (rank == 0) fftwf_export_wisdom_to_filename("../fftWisdom.single");
 
 		// if (rank == 0) fftwf_export_wisdom_to_filename("wisdomsavef.txt");
 		// printMpi ("  f-Wisdom saved\n");
@@ -366,16 +369,16 @@ void	initFFThalo	(void *m, void *v, const size_t n1, const size_t Tz, FieldPreci
 		case FIELD_DOUBLE:
 
 		single = false;
-			p3   = fftw_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<double*>(m), static_cast<fftw_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE );
-			p3b  = fftw_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftw_complex*>(v), static_cast<double*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE );
+			p3   = fftw_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<double*>(m), static_cast<fftw_complex*>(v), MPI_COMM_WORLD, FFTW_MEASURE );
+			p3b  = fftw_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftw_complex*>(v), static_cast<double*>(m), MPI_COMM_WORLD, FFTW_MEASURE );
 
 		break;
 
 		case FIELD_SINGLE:
 
 		single = true;
-			pf3  = fftwf_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<float*>(m), static_cast<fftwf_complex*>(v), MPI_COMM_WORLD, FFTW_ESTIMATE );
-			pf3b = fftwf_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftwf_complex*>(v), static_cast<float*>(m), MPI_COMM_WORLD, FFTW_ESTIMATE );
+			pf3  = fftwf_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<float*>(m), static_cast<fftwf_complex*>(v), MPI_COMM_WORLD, FFTW_MEASURE );
+			pf3b = fftwf_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftwf_complex*>(v), static_cast<float*>(m), MPI_COMM_WORLD, FFTW_MEASURE );
 /*
 			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 			MPI_Comm_rank(MPI_COMM_WORLD, &rank);

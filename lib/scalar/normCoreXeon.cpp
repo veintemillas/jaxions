@@ -22,7 +22,7 @@ void normCoreKernelXeon (Scalar *field)
 	if (field->Lambda() == LAMBDA_FIXED)
 			LLa = LL ;
 	else
-			LLa = 1.125/(pow(deltaa*zia,2.));
+			LLa = 0.5*pow(msa/(deltaa*zia),2.);
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
@@ -32,7 +32,6 @@ void normCoreKernelXeon (Scalar *field)
 
 	complex<Float> *mCp = static_cast<complex<Float>*> (field->mCpu());
 	complex<Float> *vCp = static_cast<complex<Float>*> (field->vCpu());
-
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=0; idx<n3; idx++)
@@ -80,7 +79,7 @@ void normCoreKernelXeon (Scalar *field)
 		gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
 		//JAVIER added an artificial factor of 1.0, can be changed
 		gradx = gradx*gradx + grady*grady + gradz*gradz;
-		if (gradx > 0.001)
+		if (gradx > 0.0000001)
 		{
 			sss  = sqrt(LLa)*zia*deltaa/sqrt(gradx);
 			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
@@ -107,6 +106,9 @@ void normCoreKernelXeon (Scalar *field)
 	field->exchangeGhosts(FIELD_M);
 
 	commSync();
+
+
+
 }
 
 void	normCoreXeon (Scalar *sField)

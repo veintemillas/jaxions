@@ -13,6 +13,7 @@ int  nQcd = 3;
 //JAVIER
 int  Ng = 1 ;
 double indi3 = 1.0;
+double msa = 1.5;
 int  fIndex = -1;
 
 double sizeL = 4.;
@@ -20,11 +21,13 @@ double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
+double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1.0;
 double zrestore = 1.0;
 double LL = 15000.;
 double parm2 = 0.;
+
 
 bool lowmem = false;
 bool uPrec  = false;
@@ -49,29 +52,30 @@ void	printUsage(char *name)
 
 	printf("\nOptions:\n\n");
 
-	printf("--size  [int]                   Defines the size of the lattice Lx. Local size is Lx^2 x Lz (default 128).\n");
-	printf("--depth [int]                   Defines the local depth of the lattice Lz (default 128).\n");
-	printf("--zgrid [int]                   Defines the number of gpus involved in the computation (default 1).\n");
+	printf("--size  [int]                   Number of lattice points along x and y (Lx). Local size is Lx^2 x Lz (default 128).\n");
+	printf("--depth [int]                   Number of lattice points of depth (Lz) (default 128).\n");
+	printf("--zgrid [int]                   Number of gpus involved in the computation (default 1).\n");
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
-	printf("--zi    [float]                 Defines the initial value of the redshift (default 0.5).\n");
-	printf("--zf    [float]                 Defines the final value of the redshift (default 1.0).\n");
-	printf("--lsize [float]                 Defines the physical size of the system (default 4.0).\n");
-	printf("--llcf  [float]                 Defines the lagrangian coefficient (default 15000).\n");
-	printf("--kcr   [float]                 Defines the critical kappa (default 1.0).\n");
-	printf("--qcd   [int]                   Defines the exponent of topological susceptibility (default 3).\n");
-	printf("--prec  double/single           Defines the precision of the axion field simulation (default double)\n");
-	printf("--ctype smooth/kmax/tkachev     Defines now to calculate the initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("--ftype saxion/axion            Defines the kind of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
-	printf("--kmax  [int]                   Defines the maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
-	printf("--sIter [int]                   Defines the number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
-	printf("--alpha [float]                 Defines the alpha parameter for the smoothing (default 0.143).\n");
-	printf("--steps [int]                   Defines the number of steps of the simulation (default 500).\n");
-	printf("--dump  [int]                   Defines the frequency of the output (default 100).\n");
+	printf("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
+	printf("--zf    [float]                 Final value of the redshift (default 1.0).\n");
+	printf("--lsize [float]                 Physical size of the system (default 4.0).\n");
+	printf("--qcd   [int]                   Exponent of topological susceptibility (default 3).\n");
+	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
+	printf("--llcf  [float]                 Lagrangian coefficient (default 15000).\n");
+	printf("--prec  double/single           Precision of the axion field simulation (default double)\n");
+	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
+	printf("--ctype smooth/kmax/tkachev     Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
+	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
+	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
+	printf("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
+	printf("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
+	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
 	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
-	printf("--lapla 0/1/2/3/4               NUmber of Neighbours in the laplacian [only for simple3D] \n");
+	printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
 	printf("--help                          Prints this message.\n");
 
 	return;
@@ -298,6 +302,25 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		// NEW
+		if (!strcmp(argv[i], "--mode0"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the axion zero mode.\n");
+				exit(1);
+			}
+
+			mode0 = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+
 
 		if (!strcmp(argv[i], "--qcd"))
 		{

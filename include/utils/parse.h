@@ -10,6 +10,7 @@ extern double sizeL;
 extern double zInit;
 extern double zFinl;
 extern double LL;
+extern double mode0;
 extern double alpha;
 extern double kCrit;
 extern double parm2;
@@ -19,6 +20,7 @@ extern int iter;
 extern int parm1;
 extern int Ng;
 extern double indi3;
+extern double msa;
 extern double zthres;
 extern double zrestore;
 

@@ -6,12 +6,14 @@
 #include "propagator/RKParms.h"
 
 #include "propagator/propXeon.h"
+#include "propagator/propThetaXeon.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
 	#include "propagator/propGpu.h"
+	#include "propagator/propThetaGpu.h"
 #endif
 
 #include "utils/flopCounter.h"
@@ -39,11 +41,15 @@ class	Propagator
 		 Propagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz, VqcdType pot);
 		~Propagator() {};
 
-	void	runCpu	();
-	void	runGpu	();
-	void	runXeon	();
+	void	sRunCpu	();	// Saxion propagator
+	void	sRunGpu	();
+	void	sRunXeon();
 
-	void	lowCpu	();
+	void	tRunCpu	();	// Axion propagator
+	void	tRunGpu	();
+	void	tRunXeon();
+
+	void	lowCpu	();	// Lowmem only available for saxion
 	void	lowGpu	();
 	void	lowXeon	();
 };
@@ -53,7 +59,7 @@ class	Propagator
 {
 }
 
-void	Propagator::runGpu	()
+void	Propagator::sRunGpu	()
 {
 #ifdef	USE_GPU
 	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
@@ -150,7 +156,7 @@ void	Propagator::lowGpu	()
 	propLowGpu(c4, d4);
 }
 
-void	Propagator::runCpu	()
+void	Propagator::sRunCpu	()
 {
 	propagateCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 }
@@ -160,7 +166,7 @@ void	Propagator::lowCpu	()
 	propLowMemCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 }
 
-void	Propagator::runXeon	()
+void	Propagator::sRunXeon	()
 {
 #ifdef	USE_XEON
 	propagateXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
@@ -180,7 +186,67 @@ void	Propagator::lowXeon	()
 #endif
 }
 
-void	propagate	(Scalar *field, const double dz, const double LL, const double nQcd, const double delta, FlopCounter *fCount, VqcdType pot)
+void    Propagator::tRunGpu	()
+{
+#ifdef  USE_GPU
+	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
+	const uint ext = uV + uS;
+	double *z = axionField->zV();
+
+	propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
+	axionField->exchangeGhosts(FIELD_M);
+	propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+
+	cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+	*z += dz*d1;
+
+	propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
+	axionField->exchangeGhosts(FIELD_M2);
+	propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+
+	cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+	*z += dz*d2;
+
+	propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
+	axionField->exchangeGhosts(FIELD_M);
+	propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c3, d3, delta2, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+
+	cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+	*z += dz*d3;
+
+	propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axionField->Streams())[2]);
+	axionField->exchangeGhosts(FIELD_M2);
+	propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axionField->Streams())[0]);
+	propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c4, d4, delta2, nQcd, uLx, uLz, uV, ext, precision, ((cudaStream_t *)axionField->Streams())[1]);
+
+	cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+	*z += dz*d4;
+#else
+	printf("Gpu support not built");
+	exit(1);
+#endif
+}
+
+void    Propagator::tRunCpu	()
+{
+	propThetaCpu(axionField, dz, delta2, nQcd, Lx, V, S, precision);
+}
+
+void    Propagator::tRunXeon	()
+{
+#ifdef  USE_XEON
+	propThetaXeon(axionField, dz, delta2, nQcd, Lx, V, S, precision);
+#else
+	printf("Xeon Phi support not built");
+	exit(1);
+#endif
+}
+
+
+void	propagate	(Scalar *field, FlopCounter *fCount, const double dz, const double delta, const double nQcd, const double LL, VqcdType pot)
 {
 	Propagator *prop = new Propagator(field, LL, nQcd, delta, dz, pot);
 
@@ -193,25 +259,37 @@ void	propagate	(Scalar *field, const double dz, const double LL, const double nQ
 	switch (field->Device())
 	{
 		case DEV_CPU:
-			if (field->LowMem())
-				prop->lowCpu ();
-			else
-				prop->runCpu ();
+			if (field->Field() == FIELD_SAXION) {
+				if (field->LowMem())
+					prop->lowCpu ();
+				else
+					prop->sRunCpu ();
+			} else {
+				prop->tRunCpu ();
+			}
 			break;
 
 		case DEV_GPU:
-			if (field->LowMem())
-				prop->lowGpu ();
-			else
-				prop->runGpu ();
+			if (field->Field() == FIELD_SAXION) {
+				if (field->LowMem())
+					prop->lowGpu ();
+				else
+					prop->sRunGpu ();
+			} else {
+				prop->tRunGpu ();
+			}
 			break;
 
 		case	DEV_XEON:
-			if (field->LowMem())
-				prop->lowXeon();
-			else
-				prop->runXeon();
-			break;
+			if (field->Field() == FIELD_SAXION) {
+				if (field->LowMem())
+					prop->lowXeon();
+				else
+					prop->sRunXeon();
+				break;
+			} else {
+				prop->tRunXeon ();
+			}
 
 		default:
 			printf ("Not a valid device\n");
@@ -220,15 +298,19 @@ void	propagate	(Scalar *field, const double dz, const double LL, const double nQ
 
 	delete	prop;
 
-	switch (pot)
-	{
-		case VQCD_1:
-			fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
-			break;
+	if (field->Field() == FIELD_SAXION) {
+		switch (pot)
+		{
+			case VQCD_1:
+				fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				break;
 
-		case VQCD_2:
-			fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
-			break;
+			case VQCD_2:
+				fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				break;
+		}
+	} else {
+		fCount->addFlops(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
 	}
 
 	return;

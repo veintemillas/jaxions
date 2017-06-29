@@ -56,6 +56,10 @@
 					template<typename Float>
 	        void contrastbin(const Float zz, const int index, void *contbin, int numbins); // TEST
 
+					template<typename Float>
+					void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
+
+
 		public:
 
 				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
@@ -139,6 +143,7 @@
 		double	maxtheta();									// RETURNS THE MAX VALUE OF THETA [OR IM m]
 		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
 		void	denstom(); 	//
+		void	mendtheta(); 	//
 
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
@@ -146,6 +151,8 @@
 
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
+		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
+
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
 #endif

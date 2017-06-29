@@ -49,24 +49,28 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//LARGE AMPLITUDE AXIONS ZERO MODE
 			//m[idx]   = std::complex<Float>(0.0, 1.000001);
 			//to produce only SAXIONS for testing
-			m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
+			//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
 
 			//	MINICLUSTER
 
-			// size_t pidx = idx-Vo;
-			// size_t iz = pidx/Vo + local_z_start;
-			// size_t iy = (pidx%Vo)/sizeN ;
-			// size_t ix = (pidx%Vo)%sizeN ;
-			// int z = iz;
-			// int y = iy;
-			// int x = ix;
+			size_t pidx = idx-Vo;
+			size_t iz = pidx/Vo + local_z_start;
+			size_t iy = (pidx%Vo)/sizeN ;
+			size_t ix = (pidx%Vo)%sizeN ;
+			int z = iz;
+			int y = iy;
+			int x = ix;
+			//CENTERED AT GRID
+			Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
+			//CENTERED AT ZERO
 			// if (z>sizeN/2) {z = z-sizeN; }
 			// if (y>sizeN/2) {y = y-sizeN; }
 			// if (x>sizeN/2) {x = x-sizeN; }
 			//
-			// Float theta = ((Float) (x*x+y*y+z*z))/(Vo);
-			// theta = 0.1*exp(-20*theta);
-			// m[idx] = std::complex<Float>(cos(theta), sin(theta));
+			// Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
+
+			theta = exp(-theta*30.)*12.;
+			m[idx] = std::complex<Float>(cos(theta), sin(theta));
 
 			//	ONE MODE
 

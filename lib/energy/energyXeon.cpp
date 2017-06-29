@@ -36,7 +36,7 @@
 __attribute__((target(mic)))
 #endif
 template<const VqcdType VQcd, const bool map>
-void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double ood2, const double LL,
+void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double o2, const double LL,
 			 const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
 	const size_t Sf = Lx*Lx;
@@ -84,6 +84,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double    __attribute__((aligned(Align))) cjgAux[8] = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const double    __attribute__((aligned(Align))) ivZAux[8] = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
 		const double    __attribute__((aligned(Align))) shfAux[8] = {shift, 0., shift, 0., shift, 0., shift, 0. };
+		const double    __attribute__((aligned(Align))) lzQAux[8] = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
 		const long long __attribute__((aligned(Align))) shfRg[8]  = {6, 7, 0, 1, 2, 3, 4, 5 };
 		const long long __attribute__((aligned(Align))) shfLf[8]  = {2, 3, 4, 5, 6, 7, 0, 1 };
 
@@ -93,23 +94,28 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const double __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
-		const double __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) shfAux[4]  = {shift, 0., shift, 0. };
+		const double __attribute__((aligned(Align))) cjgAux[4] = { 1.,-1., 1.,-1. };
+		const double __attribute__((aligned(Align))) ivZAux[4] = { iz, 0., iz, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) shfAux[4] = {shift, 0., shift, 0. };
+		const double __attribute__((aligned(Align))) lzQAux[4] = { lZ, zQ, lZ, zQ };
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		const double __attribute__((aligned(Align))) cjgAux[2]  = { 1.,-1. };
-		const double __attribute__((aligned(Align))) ivZAux[2]  = { iz, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) shfAux[2]  = {shift, 0.};
+		const double __attribute__((aligned(Align))) cjgAux[2] = { 1.,-1. };
+		const double __attribute__((aligned(Align))) ivZAux[2] = { iz, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) shfAux[2] = {shift, 0.};
+		const double __attribute__((aligned(Align))) lzQAux[2] = { lZ, zQ };
 
 #endif
 		const _MData_ cjg  = opCode(load_pd, cjgAux);
 		const _MData_ ivZ  = opCode(load_pd, ivZAux);
 		const _MData_ shVc = opCode(load_pd, shfAux);
+		const _MData_ pVec = opCode(load_pd, lzQAux);
 		const _MData_ one  = opCode(set1_pd, 1.0);
+		const _MData_ hVec = opCode(set1_pd, 0.5);
 		const _MData_ ivZ2 = opCode(set1_pd, iz2);
+		const _MData_ oVec = opCode(set1_pd, o2);
 
 		#pragma omp parallel default(shared)
 		{
@@ -360,6 +366,23 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 #else
 				tVp = opCode(shuffle_pd, mod, mCg, 0b00000001);
 #endif
+				if	(map == true) {
+	                                mdv = opCode(add_pd,
+						opCode(add_pd,
+							opCode(mul_pd, tKp, hVec),
+							opCode(mul_pd, opCode(add_pd, tGx, opCode(add_pd, tGy, tGz)), oVec)),
+						opCode(mul_pd, pVec, tVp));
+
+        	                        opCode(store_pd, tmpS, mdv);
+
+					#pragma unroll
+					for (int ih=0; ih<step; ih++)
+					{
+						int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf)<<1);
+						m2[iNx]   = tmpS[(ih<<1)];
+						m2[iNx+1] = tmpS[(ih<<1)+1];
+					}
+				}
 
 #if	defined(__MIC__) || defined(__AVX512F__)
 				opCode(store_pd, tmpS, tGx);
@@ -425,8 +448,6 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			}
 		}
 
-		const double o2 = ood2*0.25;
-
 		eRes[RH_GRX] = Gxrho*o2;
 		eRes[TH_GRX] = Gxth *o2;
 		eRes[RH_GRY] = Gyrho*o2;
@@ -482,6 +503,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float __attribute__((aligned(Align))) cjgAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[16]  = { iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0. };
 		const float __attribute__((aligned(Align))) shfAux[16]  = {shift, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0. };
+		const float __attribute__((aligned(Align))) lzQAux[16]  = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
 		const int   __attribute__((aligned(Align))) shfRg[16]   = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 		const int   __attribute__((aligned(Align))) shfLf[16]   = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
 
@@ -494,6 +516,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
 		const float __attribute__((aligned(Align))) shfAux[8]  = {shift, 0., shift, 0., shift, 0., shift, 0.};
+		const float __attribute__((aligned(Align))) lzQAux[8]  = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
@@ -501,13 +524,17 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
 		const float __attribute__((aligned(Align))) shfAux[4]  = {shift, 0., shift, 0. };
+		const float __attribute__((aligned(Align))) lzQAux[4]  = { lZ, zQ, lZ, zQ };
 #endif
 
 		const _MData_ cjg  = opCode(load_ps, cjgAux);
 		const _MData_ ivZ  = opCode(load_ps, ivZAux);
 		const _MData_ shVc = opCode(load_ps, shfAux);
+		const _MData_ pVec = opCode(load_ps, lzQAux);
 		const _MData_ one  = opCode(set1_ps, 1.0);
+		const _MData_ hVec = opCode(set1_ps, 0.5);
 		const _MData_ ivZ2 = opCode(set1_ps, iz2);
+		const _MData_ oVec = opCode(set1_ps, o2);
 
 		#pragma omp parallel default(shared)
 		{
@@ -882,6 +909,23 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				mdv = opCode(shuffle_ps, mod, mCg, 0b10001000); //Era 11011000
 				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000);
 #endif
+				if (map == true) {
+					mdv = opCode(add_ps,
+						opCode(add_ps,
+							opCode(mul_ps, tKp, hVec),
+							opCode(mul_ps, opCode(add_ps, tGx, opCode(add_ps, tGy, tGz)), oVec)),
+						opCode(mul_ps, tVp, pVec));
+
+					opCode(store_ps, tmpS, mdv);
+
+					#pragma unroll
+					for (int ih=0; ih<step; ih++)
+					{
+						int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf)<<1);
+						m2[iNx]   = tmpS[(ih<<1)];
+						m2[iNx+1] = tmpS[(ih<<1)+1];
+					}
+				}
 
 #if	defined(__MIC__) || defined(__AVX512F__)
 				opCode(store_ps, tmpS, tGx);
@@ -953,8 +997,6 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			}
 		}
 
-		const double o2 = ood2*0.25;
-
 		eRes[RH_GRX] = Gxrho*o2;
 		eRes[TH_GRX] = Gxth *o2;
 		eRes[RH_GRY] = Gyrho*o2;
@@ -970,27 +1012,27 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	}
 }
 
-void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift, const VqcdType VQcd)
+void	energyXeon	(Scalar *field, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const double shift, const VqcdType VQcd, const bool map)
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc();
-	const double ood2 = 1./delta2;
-	double *z  = axionField->zV();
+	const double ood2 = 0.25/delta2;
+	double *z  = field->zV();
 	double *eR = static_cast<double*>(eRes);
 
-	axionField->exchangeGhosts(FIELD_M);
+	field->exchangeGhosts(FIELD_M);
 
 	switch (VQcd) {
 		case	VQCD_1:
 			if (map == true)
 				#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 				{
-					energyKernelXeon<VQCD_1,true> (mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+					energyKernelXeon<VQCD_1,true> (mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), (void*) eR, shift);
 				}
 			else
 				#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 				{
-					energyKernelXeon<VQCD_1,false>(mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+					energyKernelXeon<VQCD_1,false>(mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), (void*) eR, shift);
 				}
 			break;
 
@@ -998,38 +1040,38 @@ void	energyXeon	(Scalar *axionField, const double delta2, const double LL, const
 			if (map == true)
 				#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 				{
-					energyKernelXeon<VQCD_2,true> (mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+					energyKernelXeon<VQCD_2,true> (mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), (void*) eR, shift);
 				}
 			else
 				#pragma offload target(mic:micIdx) in(z:length(8),shift UseX) out(eR:length(16) UseX) nocopy(mX, vX, m2X : ReUseX)
 				{
-					energyKernelXeon<VQCD_2,false>(mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, precision, (void*) eR, shift);
+					energyKernelXeon<VQCD_2,false>(mX, vX, m2X, z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), (void*) eR, shift);
 				}
 			break;
 	}
 #endif
 }
 
-void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *eRes, const double shift, const VqcdType VQcd, const bool map)
+void	energyCpu	(Scalar *field, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const double shift, const VqcdType VQcd, const bool map)
 {
-	const double ood2 = 1./delta2;
-	double *z = axionField->zV();
+	const double ood2 = 0.25/delta2;
+	double *z = field->zV();
 
-	axionField->exchangeGhosts(FIELD_M);
+	field->exchangeGhosts(FIELD_M);
 
 	switch (VQcd) {
 		case	VQCD_1:
 			if (map == true)
-				energyKernelXeon<VQCD_1,true> (axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
-			else                                                                         
-				energyKernelXeon<VQCD_1,false>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
-			break;                                                                       
-                                                                                                     
-		case	VQCD_2:                                                                      
-			if (map == true)                                                             
-				energyKernelXeon<VQCD_2,true> (axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
-			else                                                                         
-				energyKernelXeon<VQCD_2,false>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, precision, eRes, shift);
+				energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+			else
+				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+			break;
+
+		case	VQCD_2:
+			if (map == true)
+				energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+			else
+				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			break;
 	}
 }

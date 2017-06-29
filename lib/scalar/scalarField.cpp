@@ -94,7 +94,7 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		case DEV_CPU:
-			#if	defined(__AVX512F__)
+			#ifdef	__AVX512F__
 			printMpi("Using AVX-512 64 bytes alignment\n");
 			mAlign = 64;
 			#elif	defined(__AVX__) || defined(__AVX2__)
@@ -1350,11 +1350,11 @@ void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numb
 		case	FIELD_SINGLE:
 		{
 			//COMPUTES JAVIER DENSITY MAP AND BINS
-			energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
 
 			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
 			// USE WITH ALEX'FUNCTION
-			//contrastbin(static_cast<float>(zzz), index, contbin, numbins);
+			contrastbin(static_cast<float>(zzz), index, contbin, numbins);
 		}
 		break;
 
@@ -1510,7 +1510,8 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 					if (asu < piz2)
 					grad += asu;
 
-					mCONT[idx-n2] = acu + grad/deltaa2 + If*grad/deltaa2;
+					//mCONT[idx-n2] = acu + grad/deltaa2 + If*grad/deltaa2;
+					mCONT[idx-n2] = acu + grad/deltaa2 + If*0.f;
 
 					toti += (double) mCONT[idx-n2].real() ;
 					if (mCONT[idx-n2].real() > maxi)
@@ -1633,8 +1634,10 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 									ix = (idx%n2)%n1 ;
 									#pragma omp critical
 									{
-										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag(),
-										mVeloc[idx]*mVeloc[idx]/(2.f*toti_global) , z9QCD4*(1.f-cos(mTheta[idx+n2]/zz))/toti_global,
+										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
+										mCONT[idx].real(), mCONT[idx].imag(),
+										mVeloc[idx]*mVeloc[idx]/(2.f*toti_global) ,
+										z9QCD4*(1.f-cos(mTheta[idx+n2]/zz))/toti_global,
 										mTheta[idx+n2]/zz ) ;
 									}
 								}
@@ -1677,18 +1680,14 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
-	// THIS TEMPLATE IS TO BE CALLED FOLDED
-	if (!folded)
-		{
-			printMpi("contrastbin called UNFolded! ...  we quit\n");
-			return;
-		}
+	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
 
 	//	AUX VARIABLES
 	Float maxi = 0.;
 	Float maxibin = 0.;
 	double maxid =0.;
 	double toti = 0.;
+	const Float z9QCD2 = axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),2);
 
 	//SUM variables
 	double contbin_local[numbins] ;
@@ -1700,8 +1699,11 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 	if(fieldType == FIELD_AXION)
 	{
+		Float *mTheta = static_cast<Float*> (m);
+		Float *mVeloc = static_cast<Float*> (v);
+
 		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
-		printMpi("COMP-");
+		//printMpi("COMP-");
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
 		for (size_t idx=0; idx < n3; idx++)
 		{
@@ -1711,59 +1713,64 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 					maxi = mCONT[idx].real() ;
 				}
 		}
+		// compute local average density
+		toti = toti / n3;
+		// pointer for the maximum density in double
 		maxid = (double) maxi;
 
-		printMpi("RED-");
+		//printMpi("RED-");
 		//SUMS THE DENSITIES OF ALL RANGES
 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		//GLOBAL MAXIMUM
+		//GLOBAL MAXIMUM DENSITY
 		MPI_Allreduce(&maxid, &maxi_global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-		printMpi("(TG %f,MG %f)",toti_global,maxi_global);
+		//printMpi("(TG %f,MG %f)",toti_global,maxi_global);
 
 		fflush(stdout);
-		//CONVERT SUM OF DENSITIES INTO AVERAGE GLOBAL
-		toti_global = toti_global/(n3) ;
+		//CONVERT SUM OF DENSITIES INTO GLOBAL AVERAGE [divide by number of ranges]
+		toti_global = toti_global/(nSplit) ;
 
-		printMpi("NORM-");
+		// float version
+		Float averagedens = (Float) toti_global ;
+
+		//printMpi("NORM-");
 		//DENSITIES ARE CONVERTED INTO DENSITY CONTRAST
 		#pragma omp parallel for default(shared) schedule(static)
 		for (size_t idx=0; idx < n3; idx++)
 			{
-				mCONT[idx] = mCONT[idx]/((Float) toti_global)	;
+				mCONT[idx] = mCONT[idx]/(averagedens)	;
 				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
 			}
 
-		maxid = (double) maxi;
-
 		//MAX DENSITY ARE CONVERTED INTO MAXIMUM DENSITY CONTRAST
 		maxi_global = maxi_global/toti_global ;
-
 		maxibin = log10(maxi_global) ;
 
-		printMpi("(MG %f,maxbinlog %f)BIN-",maxi_global,maxibin);
+		//printMpi("(MG %f,maxbinlog %f)BIN-",maxi_global,maxibin);
+
 		//BIN delta from 0 to maxi+1
 		size_t auxintarray[numbins] ;
-
+		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t bin = 0; bin < numbins ; bin++)
 		{
 		(static_cast<double *> (contbin_local))[bin] = 0.;
 		auxintarray[bin] = 0;
 		}
 
-		Float norma = (Float) ((maxibin+5.)/(numbins-3)) ;
-		printMpi("BIN2-(%F) ",norma);
+		Float norma = (Float) ((maxibin + 5.)/(numbins-3)) ;
+
+		//printMpi("BIN2-(%f) ",norma);
+		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t i=0; i < n3; i++)
 		{
-			int bin;
-			bin = (int) (log10(mCONT[i].real())+5.)/norma	;
+			int bin = ((log10(mCONT[i].real()) + 5.)/norma)	;
 			//(static_cast<double *> (contbin))[bin+2] += 1. ;
 			if (0<=bin<numbins-4)
 			{
-				printMpi("b%d-",bin);
+				//printMpi("b%d-",bin);
+			#pragma omp atomic
 				(static_cast<double *> (contbin_local))[bin+3] += 1.;
 				//auxintarray[bin] +=1;
 			}
-
 		}
 		// printMpi("BIN3-");
 		// #pragma omp parallel for default(shared) schedule(static)
@@ -1774,7 +1781,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 		// NO BORRAR!
 		// //PRINT 3D maps
-		printMpi("PRI-");
+		//printMpi("PRI-");
 		//WITH NO MPI THIS WORKS FOR OUTPUT
 		if (commRank() ==0)
 		{
@@ -1784,22 +1791,45 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 						FILE *file_con ;
 						file_con = NULL;
 						file_con = fopen(stoCON,"w+");
-						fprintf(file_con,  "# %d %f %f %f %f %f \n", sizeN, sizeL, sizeL/sizeN, zz, toti_global, axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4) );
+						fprintf(file_con,  "# %d %f %f %f %f %f \n",
+						sizeN, sizeL, sizeL/sizeN, zz, toti_global,
+						axionmass2((*z), nQcd, zthres, zrestore )*pow((*z),4) );
+						size_t cues = n1/shift ;
 
 						//PRINT 3D maps
 						#pragma omp parallel for default(shared) schedule(static)
 						for (size_t idx = 0; idx < n3; idx++)
 						{
 							size_t ix, iy, iz;
+							size_t sy, iiy, fidx ;
 								if (mCONT[idx].real() > 100.)
 								{
 									iz = idx/n2 ;
 									iy = (idx%n2)/n1 ;
 									ix = (idx%n2)%n1 ;
+
+									if (folded)
+									{
+										sy = iy/(cues)	;
+										iiy = iy - sy*cues;
+										fidx = iz*n2+ iiy*n1*shift + ix*shift + sy ;
+									}
+									else
+									{
+										size_t fidx = idx;
+									}
+
 									#pragma omp critical
 									{
 										//PRINT COORDINATES CONTRAST AND [?]
-										fprintf(file_con,   "%d %d %d %f %f \n", ix, iy, iz, mCONT[idx].real(), mCONT[idx].imag()) ;
+										// fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
+										// mCONT[idx].real(), mCONT[idx].imag(),
+										// 0., 0., 0.) ;
+										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
+										mCONT[idx].real(), mCONT[idx].imag(),
+										mVeloc[fidx]*mVeloc[fidx]/(2.f*toti_global) ,
+										z9QCD2*(1.f-cos(mTheta[fidx+n2]/zz))/toti_global,
+										mTheta[fidx+n2]/zz ) ;
 									}
 								}
 						}
@@ -1818,7 +1848,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	// 	SAVE AVERAGE
 	//	MAXIMUM VALUE OF ENERGY CONTRAST
 	//	MAXIMUM VALUE TO BE BINNED
-	printMpi("RED-");
+	//printMpi("RED-");
 	MPI_Reduce(contbin_local, (static_cast<double *> (contbin)), numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	(static_cast<double *> (contbin))[0] = toti_global;
@@ -1995,6 +2025,7 @@ double	Scalar::maxtheta()//int *window)
 //		FUNCTION FOR THETA DISTRIBUTION [and max]
 //----------------------------------------------------------------------
 //		BINS THE DISTRIBUTION OF THETA
+//		ADDS THE DISTRIBUTION OF RHO IF IN SAXION MODE
 
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
@@ -2003,9 +2034,9 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 //	printf("hallo von inside %f\n", thetamaxi);
 
 	double n2p = numbins/thetamaxi;
-	double thetabin_local[numbins];
+	double thetabin_local[2*numbins];
 
-	for(size_t i = 0; i < numbins ; i++)
+	for(size_t i = 0; i < 2*numbins ; i++)
 	{
 	(static_cast<double *> (thetabin_local))[i] = 0.;
 	}
@@ -2020,6 +2051,9 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 					int bin;
 					bin =  n2p*abs(arg(((complex<double> *) m)[i+n2]));
 					(static_cast<double *> (thetabin_local))[bin] += 1.;
+					bin =  numbins*(abs(((complex<double> *) m)[i+n2])/((*z)*2.));
+					if (bin < numbins)
+					(static_cast<double *> (thetabin_local))[bin+numbins] += 1.;
 				}
 			}
 			else	//FIELD_AXION
@@ -2036,7 +2070,6 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 	else // PRECISION SINGLE
 	{
 		float n2pf = numbins/thetamaxi;
-
 		if(fieldType == FIELD_SAXION)
 		{
 //			#pragma omp parallel for default(shared)
@@ -2045,6 +2078,11 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 				int bin;
 				bin =  n2pf*abs(arg(((complex<float> *) m)[i+n2]));
 				(static_cast<double *> (thetabin_local))[bin] += 1.;
+				bin =  numbins*(abs(((complex<float> *) m)[i+n2])/((*z)*2.));
+				if (bin < numbins)
+				{
+				(static_cast<double *> (thetabin_local))[numbins + bin] += 1.;
+				}
 			}
 		}
 		else	//FIELD_AXION
@@ -2068,7 +2106,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 	// }
 
 //}//END PARALLEL
-	MPI_Reduce(thetabin_local, thetabin, numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce(thetabin_local, thetabin, 2*numbins, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	//if (commRank()==0)
 	//printf("out = %f\n",thetamaxi);
@@ -2122,6 +2160,307 @@ void	Scalar::denstom()//int *window)
 	}
 
 }
+
+//----------------------------------------------------------------------
+//		CHECK JUMPS
+//----------------------------------------------------------------------
+
+//	THIS FUNCTION CHECKS THETA IN ORDER AND NOTES DOWN POSITIONS WITH JUMPS OF 2 PI
+//  MARKS THEM DOWN INTO THE ST BIN ARRAY AS POSSIBLE PROBLEMATIC POINTS WITH GRADIENTS
+//  TRIES TO MEND THE THETA DISTRIBUTION INTO MANY RIEMMAN SHEETS TO HAVE A CONTINUOUS FIELD
+
+void	Scalar::mendtheta()//int *window)
+{
+//	make sure field unfolded
+// 	make sure ghosts sent
+
+if(fieldType == FIELD_AXION)
+{
+
+	int counter = 0;
+
+	if (precision == FIELD_SINGLE)
+	{
+	float *mTheta = static_cast<float*> (m);
+	float *mVeloc = static_cast<float*> (v);
+	float zPi = (*z)*3.14159265359 ;
+	float Pi2 = 6.283185307179586  ;
+	float P0, PN;
+
+	for(size_t zP=0; zP < Lz-1; zP++)
+	{
+		for(size_t yP=0; yP < n1-1; yP++)
+		{
+			for(size_t xP=0; xP < n1-1; xP++)
+			{
+				P0 = mTheta[n2*(1+zP)+ n1*yP +xP] ;
+				PN = mTheta[n2*(1+zP)+ n1*yP +xP+1] ;
+
+				if (abs((PN - P0)) > zPi)
+				{
+						counter++ ;
+						for (int nn = 1 ; nn <6 ; nn++)
+						{
+							if(abs( nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP)+ n1*yP + xP + 1] += nn*2*zPi   ;
+								mVeloc[n2*(  zP)+ n1*yP + xP + 1] += nn*Pi2     ;
+								//printf("(%f->%f)",mTheta[n2*(1+zP)+ n1*yP +xP],)
+								break;
+							}
+							if(abs(-nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP)+ n1*yP + xP + 1] += - nn*2*zPi ;
+								mVeloc[n2*(  zP)+ n1*yP + xP + 1] += - nn*Pi2   ;
+								break ;
+							}
+						}
+				}
+
+			}//END X LINE
+			//PREPARE Y+1 POINT
+			P0 = mTheta[n2*(1+zP) + n1*yP] 			;
+			PN = mTheta[n2*(1+zP) + n1*yP +n1] ;
+
+				if (abs((PN - P0)) > zPi)
+				{
+						counter++ ;
+						for (int nn = 1 ; nn <6 ; nn++)
+						{
+							if(abs( nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP) + n1*yP +n1] += nn*2*zPi ;
+								mVeloc[n2*(  zP) + n1*yP +n1] += nn*Pi2 ;
+								break;
+							}
+							if(abs(-nn*2*zPi + PN - P0) < zPi)
+							{
+								mTheta[n2*(1+zP) + n1*yP +n1] += - nn*2*zPi ;
+								mVeloc[n2*(  zP) + n1*yP +n1] += - nn*Pi2   ;
+								break ;
+							}
+						}
+				}
+
+
+		}//END Y LINE
+		//PREPARE Z+1 POINT
+		P0 = mTheta[n2*(1+zP) ] ;
+		PN = mTheta[n2*(1+zP) + n2] ;
+
+			if (abs((PN - P0)) > zPi)
+			{
+					counter++ ;
+					for (int nn = 1 ; nn <6 ; nn++)
+					{
+						if(abs( nn*2*zPi + PN - P0) < zPi)
+						{
+							mTheta[n2*(1+zP) + n2] += nn*2*zPi ;
+							mVeloc[n2*(  zP) + n2] += nn*Pi2   ;
+							break;
+						}
+						if(abs(-nn*2*zPi + PN - P0) < zPi)
+						{
+							mTheta[n2*(1+zP) + n2] += - nn*2*zPi ;
+							mVeloc[n2*(  zP) + n2] += - nn*Pi2   ;
+							break ;
+						}
+					}
+			}
+		}
+	}
+	else //	FIELD_DOUBLE
+	{
+	}
+	commSync();
+	printMpi("mendtheta done, mends = %d\n", counter);
+
+}
+else
+{
+	printMpi("mendtheta not available for SAXION\n");
+}
+
+}
+
+//----------------------------------------------------------------------
+//		AXITON FINDER
+//----------------------------------------------------------------------
+void	Scalar::writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons)
+{
+	switch	(precision)
+	{
+		case	FIELD_DOUBLE:
+		{
+		}
+		break;
+
+		case	FIELD_SINGLE:
+		{
+			//COMPUTES JAVIER DENSITY MAP AND BINS
+			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
+
+			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
+			// USE WITH ALEX'FUNCTION
+			axitonfinder(static_cast<float>(contrastthreshold), idxbin, numaxitons);
+		}
+		break;
+
+		default:
+		printf("Unrecognized precision\n");
+		exit(1);
+		break;
+	}
+
+}
+
+// READS A DENSITY GRID IN M2 AND SEARCHES FOR LOCAL MAXIMA ABOVE A GIVEN CONTRAST
+// RETURNS COORDINATES FOLDED AND UNFOLDED TO A POINTER
+
+template<typename Float>
+void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
+{
+
+	//array for idx
+	size_t ar_local[numaxitons] ;
+	//array for contrast comparisons
+	Float  ct_local[numaxitons] ;
+	// for folding issues
+	size_t cues = n1/shift ;
+
+
+	for(int i = 0; i < numaxitons ; i++)
+	{
+		ar_local[i] = 0 ;
+		ct_local[i] = 0. ;
+	}
+
+	if(fieldType == FIELD_AXION)
+	{
+		//mCONT assumed normalised // i.e. contrastbin was called before
+		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+		Float *mTheta = static_cast<Float*> (m);
+		//float *mVeloc = static_cast<float*> (v);
+
+		int size = 0 ;
+		size_t iyP, iyM, ixP, ixM;
+		size_t fidx ;
+		size_t iz, iy, ix ;
+		size_t idaux, ixyzAux	;
+
+//		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t idx = 0; idx < n3; idx++)
+		{
+			//size_t ix, iy, iz;
+			// ONE CAN USE DENSITY CONTRAST BUT HF FLUCTUATIONS MASK THE AXITONS
+			// IT IS PERHAPS GOOD TO USE THE THETA FIELD INSTEAD
+				if (mCONT[idx].real() > contrastthreshold)
+				{
+					// iz = idx/n2 ;
+					// iy = (idx%n2)/n1 ;
+					// ix = (idx%n2)%n1 ;
+
+					Float val = mCONT[idx].real();
+
+					iz = idx/n2 ;
+					iy = (idx%n2)/n1 ;
+					ix = (idx%n2)%n1 ;
+
+					if (folded)
+					{
+						size_t sy = iy/(cues)	;
+						size_t iiy = iy - sy*cues;
+						fidx = iz*n2+ iiy*n1*shift + ix*shift + sy ;
+					}
+					else
+					{
+						fidx = idx;
+					}
+
+					if (abs(mTheta[n2+fidx]/(*z)) > 3.14)
+					continue;
+
+					ixyzAux = (ix+1)%n1;
+					idaux = ixyzAux + iy*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (ix-1+n1)%n1;
+					idaux = ixyzAux + iy*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (iy+1)%n1;
+					idaux = ix + ixyzAux*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (iy-1+n1)%n1;
+					idaux = ix + ixyzAux*n1+(iz)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					// I CANNOT CHECK THE Z DIRECTION BECAUSE I DO NOT HAVE GHOSTS
+					// IN THE CURRENT MPI IMPLEMENTATION
+					// I NEVERTHELESS USE THIS WITHOUT MPI
+					// CHANGE M2 TO HAVE GHOSTS? FFT, ETC...
+
+					ixyzAux = (iz+1)%Lz;
+					idaux = ix + iy*n1+(ixyzAux)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					ixyzAux = (iz-1+Lz)%Lz;
+					idaux = ix + iy*n1+(ixyzAux)*n2 ;
+					if (mCONT[idaux].real() - val > 0)
+					continue;
+
+					// IF IT REACHED HERE IT IS REALLY A MAXIMUM OF DENSITY
+					// AND HAS A LARGE AMPLITUDE
+				//	#pragma omp critical
+				//	{
+		   				int pos = size;
+		   				while (pos > 0 && ct_local[pos - 1] < val)
+							{
+		      			pos--;
+		      			if (pos < numaxitons-1)
+								{
+									ct_local[pos + 1] = ct_local[pos];
+									ar_local[pos + 1] = ar_local[pos];
+								}
+		   				}
+		   				if (size < numaxitons) size++;
+		   				if (pos < size)
+							{
+								ct_local[pos] = val;
+								ar_local[pos] = fidx ;
+							}
+				//	}
+
+				}
+		}
+	}
+	else
+	{
+		printMpi("axiton finder not available in SAXION mode\n");
+		return;
+	}
+
+	printMpi("%d axitons: ", numaxitons );
+	for(int i = 0; i<numaxitons; i++)
+	{
+		printMpi("%f(%d)", ct_local[i], ar_local[i]);
+	}
+	printMpi("\n");
+
+
+	for(int i = 0; i < numaxitons ; i++)
+	{
+		(static_cast<size_t *> (idxbin))[i] = ar_local[i];
+	}
+	return ;
+}
+
 
 //----------------------------------------------------------------------
 //		HALO UTILITIES
