@@ -44,7 +44,8 @@ int	main (int argc, char *argv[])
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
-	msa =1.7 ;
+	//msa = 1.7 ;
+	//wDz = 0.8 ;
 
 	commSync();
 	printMpi("\n-------------------------------------------------\n");
@@ -211,7 +212,7 @@ int	main (int argc, char *argv[])
 		// WE USE LAMDA_Z2 WITH msa = 1.5 so
 		// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
 
-		msa = 1.7 ;
+		//msa = 1.7 ;
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
@@ -361,7 +362,7 @@ int	main (int argc, char *argv[])
 	printMpi("Nz     =  %ld\n",   sizeZ);
 	printMpi("zGrid  =  %ld\n",   zGrid);
 	printMpi("dx     =  %2.5f\n", delta);
-	printMpi("dz     =  %2.2f/FREQ\n", 1.2);
+	printMpi("dz     =  %2.2f/FREQ\n", wDz);
 	printMpi("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa);
 	printMpi("VQCD1,shift,con_thres=100, continuous theta  \n", llconstantZ2, msa);
 	printMpi("--------------------------------------------------\n");
@@ -479,7 +480,7 @@ int	main (int argc, char *argv[])
 			//dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
 			 double masi = z_now*axionmass(z_now,nQcd,zthres, zrestore);
 			 double mfre = sqrt(masi*masi + 12./(delta*delta));
-			 dzaux = 1.2/mfre ;
+			 dzaux = wDz/mfre ;
 
 			//If SAXION_MODE
 			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
@@ -488,7 +489,7 @@ int	main (int argc, char *argv[])
 				llprint = llaux/(z_now*z_now); //physical value
 				// dzaux = min(dzaux,delta/1.5);
 				double mfre = sqrt( msa*msa + 12.)/delta;
-				dzaux = min(dzaux,1.2/mfre)  ;
+				dzaux = min(dzaux,wDz/mfre)  ;
 			}
 
       //dzaux = dzaux/1.5 ;

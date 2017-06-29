@@ -13,7 +13,8 @@ int  nQcd = 3;
 //JAVIER
 int  Ng = 1 ;
 double indi3 = 1.0;
-double msa = 1.5;
+double msa  = 1.5;
+double wDz  = 0.8;
 int  fIndex = -1;
 
 double sizeL = 4.;
@@ -56,13 +57,16 @@ void	printUsage(char *name)
 	printf("--depth [int]                   Number of lattice points of depth (Lz) (default 128).\n");
 	printf("--zgrid [int]                   Number of gpus involved in the computation (default 1).\n");
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
+	printf("--prec  double/single           Precision of the axion field simulation (default double)\n");
+	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
+
+	printf("--qcd   [int]                   Exponent of topological susceptibility (default 3).\n");
+	printf("--lsize [float]                 Physical size of the system (default 4.0).\n");
 	printf("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
 	printf("--zf    [float]                 Final value of the redshift (default 1.0).\n");
-	printf("--lsize [float]                 Physical size of the system (default 4.0).\n");
-	printf("--qcd   [int]                   Exponent of topological susceptibility (default 3).\n");
-	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
 	printf("--llcf  [float]                 Lagrangian coefficient (default 15000).\n");
-	printf("--prec  double/single           Precision of the axion field simulation (default double)\n");
+	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [laxion3D].\n");
+	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [laxion3D].\n");
 	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
 	printf("--ctype smooth/kmax/tkachev     Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
@@ -294,6 +298,51 @@ int	parseArgs (int argc, char *argv[])
 			if (LL <= 0.)
 			{
 				printf("Error: The lagrangian coefficient must be greater than zero.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		//NEW
+		if (!strcmp(argv[i], "--msa"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for Spacing-to-core ratio msa.\n");
+				exit(1);
+			}
+
+			msa = atof(argv[i+1]);
+
+			if (msa <= 0.)
+			{
+				printf("Error: The Spacing-to-core must be greater than zero.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--wDz"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the adaptive time step.\n");
+				exit(1);
+			}
+
+			wDz = atof(argv[i+1]);
+
+			if (wDz <= 0.)
+			{
+				printf("Error: backwards propagation?\n");
 				exit(1);
 			}
 

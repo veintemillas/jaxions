@@ -39,7 +39,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 		for (size_t idx=Vo; idx<Vf; idx++)
 		{
 			//RANDOM INITIAL CONDITIONS
-			//m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+			m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
 			//m[idx]   = std::complex<Float>(0.2, uni(mt64)/10.);
 			//RANDOM AXIONS AROUND CP CONSERVING MINIMUM WITH A LITTLE 0 MODE
@@ -53,15 +53,16 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 
 			//	MINICLUSTER
 
-			size_t pidx = idx-Vo;
-			size_t iz = pidx/Vo + local_z_start;
-			size_t iy = (pidx%Vo)/sizeN ;
-			size_t ix = (pidx%Vo)%sizeN ;
-			int z = iz;
-			int y = iy;
-			int x = ix;
+			// size_t pidx = idx-Vo;
+			// size_t iz = pidx/Vo + local_z_start;
+			// size_t iy = (pidx%Vo)/sizeN ;
+			// size_t ix = (pidx%Vo)%sizeN ;
+			// int z = iz;
+			// int y = iy;
+			// int x = ix;
 			//CENTERED AT GRID
-			Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
+			// Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
+
 			//CENTERED AT ZERO
 			// if (z>sizeN/2) {z = z-sizeN; }
 			// if (y>sizeN/2) {y = y-sizeN; }
@@ -69,8 +70,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//
 			// Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
 
-			theta = exp(-theta*30.)*12.;
-			m[idx] = std::complex<Float>(cos(theta), sin(theta));
+			// theta = exp(-theta*30.)*12.;
+			// m[idx] = std::complex<Float>(cos(theta), sin(theta));
 
 			//	ONE MODE
 
