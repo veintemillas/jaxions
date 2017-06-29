@@ -46,9 +46,10 @@ int	main (int argc, char *argv[])
 
 	commSync();
 	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n        CREATING DENSITY CONTRAST MAP!           \n");
+	printMpi("\n   CREATING DENSITY CONTRAST MAP!(%d)           \n",fIndex);
 	printMpi("\n-------------------------------------------------\n");
 
+	printMpi("\n-------------------------------------------------\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -75,11 +76,15 @@ int	main (int argc, char *argv[])
 		else
 		{
 			//This reads from an Axion.00000 file
+			printMpi ("reading conf %d ...", fIndex);
 			readConf(&axion, fIndex);
 			if (axion == NULL)
 			{
 				printMpi ("Error reading HDF5 file\n");
 				exit (0);
+			}
+			else{
+			printMpi ("Done!\n", fIndex);
 			}
 		}
 	}
@@ -97,31 +102,40 @@ int	main (int argc, char *argv[])
 	double *bA = static_cast<double *> (binarray);
 
 	double delta = sizeL/sizeN;
-	int index = 10901 ;
+	double z_now = (*(axion->zV() ));
+	int indexa = 10901 ;
 	// creates energy map
 	// posible problems with zthreshold, etc... but if mass was simple powerlaw, ok
 	// version for theta only
+	printMpi("ene \n");
+
+	printMpi("%f %f %f %f \n",
+	z_now,
+	axionmass(z_now,nQcd,zthres, zrestore),
+	static_cast<float*> (axion->mCpu())[sizeN*sizeN],
+	static_cast<float*> (axion->vCpu())[0]
+	);
+
 	energy(axion, fCount, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 	// bins density
-	axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+	printMpi("bin \n");
+	axion->writeMAPTHETA( (*(axion->zV() )) , indexa, binarray, 10000)		;
 	// complex to real
+	printMpi("auto \n");
 	axion->autodenstom2() ;
 	// Writes contrast map
-	writeEDens (axion, 10101010) ;
+	printMpi("write \n");
+	writeEDens (axion, indexa) ;
 
-
+	printMpi("z_final = %f\n", *axion->zV());
+	printMpi("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
+	printMpi("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 
 	delete fCount;
 	delete axion;
-
-	printMpi("z_final = %f\n", *axion->zV());
-	printMpi("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
-	printMpi("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
-	printMpi("GFlops: %.3f\n", fCount->GFlops());
-	printMpi("GBytes: %.3f\n", fCount->GBytes());
 
 	endComms();
 

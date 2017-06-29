@@ -141,10 +141,30 @@ const std::complex<float> If(0.,1.);
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
-	if (!lowmem)
-		alignAlloc ((void**) &m2, mAlign, mBytes);
-	else
-		m2 = NULL;
+	//  M2 issue ;; we always allocate a complex m2 in theta mode!
+	//	EVEN IF WE DO NOT SPECIFY lowmem
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			if (!lowmem)
+				{
+					alignAlloc ((void**) &m2, mAlign, mBytes);
+				}
+			else
+				m2 = NULL;
+
+			break;
+
+		case FIELD_AXION:
+			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+			break;
+
+		default:
+			printf("Unrecognized field type\n");
+			exit(1);
+			break;
+	}
+
 #endif
 
 	// current = std::chrono::high_resolution_clock::now();
