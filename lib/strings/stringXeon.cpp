@@ -292,7 +292,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
-				idxMz = ((idx - Sf) >> 1);
+				idxMz = ((idx - Sf) << 1);
 
 				if (X[1] == YC-1)
 				{
@@ -553,7 +553,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
-				idxMz = ((idx - Sf) >> 1);
+				idxMz = ((idx - Sf) << 1);
 
 				if (X[1] == YC-1)
 				{
