@@ -141,10 +141,30 @@ const std::complex<float> If(0.,1.);
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
 
-	if (!lowmem)
-		alignAlloc ((void**) &m2, mAlign, mBytes);
-	else
-		m2 = NULL;
+	//  M2 issue ;; we always allocate a complex m2 in theta mode!
+	//	EVEN IF WE DO NOT SPECIFY lowmem
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			if (!lowmem)
+				{
+					alignAlloc ((void**) &m2, mAlign, mBytes);
+				}
+			else
+				m2 = NULL;
+
+			break;
+
+		case FIELD_AXION:
+			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+			break;
+
+		default:
+			printf("Unrecognized field type\n");
+			exit(1);
+			break;
+	}
+
 #endif
 
 	// current = std::chrono::high_resolution_clock::now();
@@ -2152,6 +2172,54 @@ void	Scalar::denstom()//int *window)
 		}
 		commSync();
 		printMpi("dens to m ... done\n");
+
+	}
+	else
+	{
+		printMpi("dens to m not available for SAXION\n");
+	}
+
+}
+
+//--------------------------------------------------------------------
+//		DENS M2 -> M
+//--------------------------------------------------------------------
+
+//	FOR FINAL OUTPUT, COPIES M2 (AS COMPLEX) INTO M2 (AS REAL TO BE EXPORTED BY writeEDens)
+
+void	Scalar::autodenstom2()//int *window)
+{
+	//double thetamaxi = maxtheta();
+
+//	printf("hallo von inside %f\n", thetamaxi);
+
+	if(fieldType == FIELD_AXION)
+	{
+		if (precision == FIELD_SINGLE)
+		{
+		float *mCONTREAL = static_cast<float*> (m2);
+		complex<float> *mCONT = static_cast<complex<float>*> (m2);
+
+		#pragma omp parallel for default(shared)
+			for(size_t idx=0; idx < n3; idx++)
+				{
+					mCONTREAL[idx] = mCONT[idx].real();
+				}
+
+		}
+		else //	FIELD_DOUBLE
+		{
+		double *mCONTREALd = static_cast<double*> (m);
+		complex<double> *mCONTd = static_cast<complex<double>*> (m2);
+
+		#pragma omp parallel for default(shared)
+			for(size_t idx=0; idx < n3; idx++)
+				{
+					mCONTREALd[idx] = mCONTd[idx].real();
+				}
+		}
+		commSync();
+		printMpi("m2 (complex) to m2 (real)... done\n");
 
 	}
 	else
