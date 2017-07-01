@@ -127,13 +127,13 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
+				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
 
 				{
-					size_t tmi = idx/XC, tpi;
+					size_t tmi = idx/XC;
 
-					tpi = tmi/YC;
-					X[1] = tmi - tpi*YC;
+					X[2] = tmi/YC;
+					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
 				}
 
@@ -546,7 +546,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+				size_t X[3], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
@@ -555,10 +555,10 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				mel = opCode(load_ps, &m[idxP0]);
 
 				{
-					size_t tmi = idx/XC, itp;
+					size_t tmi = idx/XC;
 
-					itp = tmi/YC;
-					X[1] = tmi - itp*YC;
+					X[2] = tmi/YC;
+					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
 				}
 

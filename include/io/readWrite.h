@@ -9,7 +9,7 @@
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
 
-	void	writeString	(void *strData, size_t strDen);
+	void	writeString	(void *strData, StringData strDat);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, int index);
 	void	writePoint	(Scalar *axion);

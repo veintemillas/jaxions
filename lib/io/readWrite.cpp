@@ -611,7 +611,7 @@ void	destroyMeas ()
 	meas_id = -1;
 }
 
-void	writeString	(void *str, size_t strDen)
+void	writeString	(void *str, StringData strDat)
 {
 	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
 	hid_t	datum;
@@ -677,7 +677,9 @@ void	writeString	(void *str, size_t strDen)
 
 		/*	Create a group for string data	*/
 		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		writeAttribute(group_id, &strDen, "String number", H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
 
 		/*	Create a dataset for string data	*/
 		sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);

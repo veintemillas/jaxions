@@ -38,9 +38,9 @@ class	Strings
 		 Strings(Scalar *field, void *str);
 		~Strings() {};
 
-	size_t	runCpu	();
-	size_t	runGpu	();
-	size_t	runXeon	();
+	StringData	runCpu	();
+	StringData	runGpu	();
+	StringData	runXeon	();
 };
 
 	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
@@ -48,25 +48,33 @@ class	Strings
 	memset(strData, 0, V);
 }
 
-size_t	Strings::runGpu	()
+StringData	Strings::runGpu	()
 {
 #ifdef	USE_GPU
 	const uint uLx = Lx, uS = S, uV = V;
+	uint3		tmpData;
+	StringData	ret;
 
 	axionField->exchangeGhosts(FIELD_M);
-	return	(size_t) stringGpu(axionField->mGpu(), uLx, uV, uS, precision, strData, ((cudaStream_t *)axionField->Streams())[0]);
+	tmpData = stringGpu(axionField->mGpu(), uLx, uV, uS, precision, strData, ((cudaStream_t *)axionField->Streams())[0]);
+
+	ret.strDen = tmpData.x;
+	ret.strChr = tmpData.y;
+	ret.wallDn = tmpData.z;
+
+	return	ret;
 #else
 	printf("Gpu support not built");
 	exit(1);
 #endif
 }
 
-size_t	Strings::runCpu	()
+StringData	Strings::runCpu	()
 {
 	return	stringCpu(axionField, Lx, V, S, precision, strData);
 }
 
-size_t	Strings::runXeon	()
+StringData	Strings::runXeon	()
 {
 #ifdef	USE_XEON
 	return	stringXeon(axionField, Lx, V, S, precision, strData);
@@ -76,11 +84,11 @@ size_t	Strings::runXeon	()
 #endif
 }
 
-size_t	strings	(Scalar *field, void *strData, FlopCounter *fCount)
+StringData	strings	(Scalar *field, void *strData, FlopCounter *fCount)
 {
 	Strings *eStr = new Strings(field, strData);
 
-	size_t	strDen = 0, strTmp = 0;
+	StringData	strTmp, strDen;
 
 	if	(!field->Folded())
 	{
@@ -108,13 +116,12 @@ size_t	strings	(Scalar *field, void *strData, FlopCounter *fCount)
 	}
 
 	delete	eStr;
-	// int rank ;
-	// MPI_Comm_rank( MPI_COMM_WORLD, &rank ) ;
-	//
-	// printf("rank%d =%d ",rank,strTmp);
-	MPI_Allreduce(&strTmp, &strDen, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-//	fCount->addFlops((75.*field->Size() - 10.)*1.e-9, 8.*field->dataSize()*field->Size()*1.e-9);
-	
+
+	MPI_Allreduce(&(strTmp.strDen), &(strDen.strDen), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&(strTmp.strChr), &(strDen.strChr), 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&(strTmp.wallDn), &(strDen.wallDn), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+
+	fCount->addFlops((15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
 
 	return	strDen;
 }

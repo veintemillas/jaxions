@@ -52,6 +52,7 @@
 		STRING_XY_NEGATIVE = 8,
 		STRING_YZ_NEGATIVE = 16,
 		STRING_ZX_NEGATIVE = 32,
+		STRING_WALL	   = 64,
 	}	StringType;
 
 	typedef	enum	LambdaType_s
@@ -116,4 +117,11 @@
 		RH_KIN = 8,
 		RH_POT = 9,
 	}	EnergyIdx;
+
+	typedef	struct	StringData_v
+	{
+		size_t	strDen;
+		size_t	strChr;
+		size_t	wallDn;
+	}	StringData;
 #endif
