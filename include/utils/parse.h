@@ -21,6 +21,7 @@ extern int parm1;
 extern int Ng;
 extern double indi3;
 extern double msa;
+extern double wDz;
 extern double zthres;
 extern double zrestore;
 

@@ -611,7 +611,7 @@ void	destroyMeas ()
 	meas_id = -1;
 }
 
-void	writeString	(void *str, size_t strDen)
+void	writeString	(void *str, StringData strDat)
 {
 	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
 	hid_t	datum;
@@ -677,7 +677,9 @@ void	writeString	(void *str, size_t strDen)
 
 		/*	Create a group for string data	*/
 		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		writeAttribute(group_id, &strDen, "String number", H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
 
 		/*	Create a dataset for string data	*/
 		sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
@@ -696,20 +698,20 @@ void	writeString	(void *str, size_t strDen)
 
 	int tSz = commSize(), test = myRank;
 
+	commSync();
+
 	for (int rank=0; rank<tSz; rank++)
 	{
-		commSync();
-
-		if (myRank != 0)
+		for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
 		{
-			if (myRank == rank)
-				MPI_Send(&(strData[0]), slabSz*sLz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
-		} else {
-			if (rank != 0)
-				MPI_Recv(&(strData[0]), slabSz*sLz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, NULL);
-
-			for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
+			if (myRank != 0)
 			{
+				if (myRank == rank)
+					MPI_Send(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+			} else {
+				if (rank != 0)
+					MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, NULL);
+
 				/*	Select the slab in the file	*/
 				hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;
 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
@@ -717,8 +719,9 @@ void	writeString	(void *str, size_t strDen)
 				/*	Write raw data	*/
 				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
 			}
+
+			commSync();
 		}
-		commSync();
 	}
 
 	/*	Close the dataset	*/

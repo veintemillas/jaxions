@@ -180,6 +180,108 @@ inline	void	stringHandS(const __m256 s1, const __m256 s2, int *hand)
 
 	return;
 }
+
+inline	void	stringWallD(const __m256d s1, const __m256d s2, int *hand, int *wHand)
+{
+	__m256d tp2, tp3, wll;
+	__m256i	str, tmp;
+
+	int __attribute__((aligned(Align))) tmpHand[8];
+
+	tp2 = opCode(mul_pd, s1, s2);
+	tmp = opCode(castpd_si256, opCode(cmp_pd, tp2, opCode(setzero_pd), _CMP_LT_OS));
+	tp3 = opCode(mul_pd, s2, opCode(set_pd,-1., 1.,-1., 1.));
+	tp2 = opCode(permute_pd, tp3, 0b00000101);
+	tp3 = opCode(mul_pd, s1,  tp2);
+	tp2 = opCode(add_pd, tp3, opCode(permute_pd, tp3, 0b00000101));
+	tp3 = opCode(mul_pd, tp2, opCode(sub_pd, s1, s2));
+
+	/*	Walls		*/
+
+	wll = opCode(and_pd, opCode(cmp_pd, tp3, opCode(setzero_pd), _CMP_GT_OS), opCode(castsi256_pd, opCode(set_epi64x,1,0,1,0)));
+	wll = opCode(and_pd, wll, opCode(castsi256_pd, tmp));
+
+	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), opCode(castpd_si256, wll));
+
+	wHand[0] |= tmpHand[2];
+	wHand[1] |= tmpHand[6];
+
+	/*	Strings		*/
+
+	tp3 = opCode(cmp_pd, tp2, opCode(setzero_pd), _CMP_GT_OS);
+#ifdef __AVX2__
+	str = opCode(sub_epi64, opCode(castpd_si256, opCode(and_pd, tp3, opCode(castsi256_pd, opCode(set_epi64x,2,0,2,0)))), opCode(set_epi64x,1,0,1,0));
+	str = opCode(and_si256, str, tmp);
+#else
+	str = opCode(castpd_si256, opCode(or_pd, opCode(and_pd, tp3, opCode(castsi256_pd, opCode(set_epi64x,2,0,2,0))), opCode(castsi256_pd, opCode(set_epi64x,1,0,1,0))));
+	str = opCode(castpd_si256, opCode(and_pd, opCode(castsi256_pd, str), opCode(castsi256_pd, tmp)));
+#endif
+	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), str);
+
+#ifdef __AVX2__
+	hand[0] += tmpHand[2];
+	hand[1] += tmpHand[6];
+#else
+	hand[0] += (tmpHand[2] & 2) - (tmpHand[2] & 1);
+	hand[1] += (tmpHand[6] & 2) - (tmpHand[6] & 1);
+#endif
+
+	return;
+}
+
+inline	void	stringWallS(const __m256 s1, const __m256 s2, int *hand, int *wHand)
+{
+	__m256	tp2, tp3, wll;
+	__m256i	str, tmp;
+
+	int __attribute__((aligned(Align))) tmpHand[8];
+
+	tp2 = opCode(mul_ps, s1, s2);
+	tmp = opCode(castps_si256, opCode(cmp_ps, tp2, opCode(setzero_ps), _CMP_LT_OS));
+	tp3 = opCode(mul_ps, s2, opCode(set_ps,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f));
+	tp2 = opCode(permute_ps, tp3, 0b10110001);
+	tp3 = opCode(mul_ps, s1, tp2);
+	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
+	tp3 = opCode(mul_ps, tp2, opCode(sub_ps, s1, s2));
+
+	/*	Walls		*/
+
+	wll = opCode(and_ps, opCode(cmp_ps, tp3, opCode(setzero_ps), _CMP_GT_OS), opCode(castsi256_ps, opCode(set_epi32,1,0,1,0,1,0,1,0)));
+	wll = opCode(and_ps, wll, opCode(castsi256_ps, tmp));
+
+	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), opCode(castps_si256, wll));
+
+	wHand[0] |= tmpHand[1];
+	wHand[1] |= tmpHand[3];
+	wHand[2] |= tmpHand[5];
+	wHand[3] |= tmpHand[7];
+
+	/*	Strings		*/
+
+	tp3 = opCode(cmp_ps, tp2, opCode(setzero_ps), _CMP_GT_OS);
+#ifdef __AVX2__
+	str = opCode(sub_epi64, opCode(castps_si256, opCode(and_ps, tp3, opCode(castsi256_ps, opCode(set_epi32,2,0,2,0,2,0,2,0)))), opCode(set_epi32,1,0,1,0,1,0,1,0));
+	str = opCode(and_si256, str, tmp);
+#else
+	str = opCode(castps_si256, opCode(or_ps, opCode(and_ps, tp3, opCode(castsi256_ps, opCode(set_epi32,2,0,2,0,2,0,2,0))), opCode(castsi256_ps, opCode(set_epi32,1,0,1,0,1,0,1,0))));
+	str = opCode(castps_si256, opCode(and_ps, opCode(castsi256_ps, str), opCode(castsi256_ps, tmp)));
+#endif
+	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), str);
+
+#ifdef __AVX2__
+	hand[0] += tmpHand[1];
+	hand[1] += tmpHand[3];
+	hand[2] += tmpHand[5];
+	hand[3] += tmpHand[7];
+#else
+	hand[0] += (tmpHand[1] & 2) - (tmpHand[1] & 1);
+	hand[1] += (tmpHand[3] & 2) - (tmpHand[3] & 1);
+	hand[2] += (tmpHand[5] & 2) - (tmpHand[5] & 1);
+	hand[3] += (tmpHand[7] & 2) - (tmpHand[7] & 1);
+#endif
+
+	return;
+}
 #else
 inline	void	stringHandD(const __m128d s1, const __m128d s2, int *hand)
 {
@@ -225,16 +327,85 @@ inline	void	stringHandS(const __m128 s1, const __m128 s2, int *hand)
 
 	return;
 }
+
+inline	void	stringWallD(const __m128d s1, const __m128d s2, int *hand, int *wHand)
+{
+	__m128d	tp2, tp3, wll;
+	__m128i	str, tmp;
+
+	int __attribute__((aligned(Align))) tmpHand[4];
+
+	tp2 = opCode(mul_pd, s1, s2);
+	tmp = opCode(castpd_si128, opCode(cmplt_pd, tp2, opCode(setzero_pd)));
+	tp3 = opCode(mul_pd, s2, opCode(set_pd,-1., 1.));
+	tp2 = opCode(shuffle_pd, tp3, tp3, 0b00000001);
+	tp3 = opCode(mul_pd, s1, tp2);
+	tp2 = opCode(add_pd, tp3, opCode(shuffle_pd, tp3, tp3, 0b00000001));
+
+	/*	Walls		*/
+
+	tp3 = opCode(mul_pd, tp2, opCode(sub_pd, s1, s2));
+	wll = opCode(and_pd, opCode(cmpgt_pd, tp3, opCode(setzero_pd)), opCode(castsi128_pd, opCode(set_epi64x, 1, 0)));
+	wll = opCode(and_pd, wll, opCode(castsi128_pd, tmp));
+	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), opCode(castpd_si128, wll));
+	*wHand |= tmpHand[2];
+
+	/*	Strings		*/
+
+	tp3 = opCode(cmpgt_pd, tp2, opCode(setzero_pd));
+	str = opCode(sub_epi64, opCode(castpd_si128, opCode(and_pd, tp3, opCode(castsi128_pd, opCode(set_epi64x, 2, 0)))), opCode(set_epi64x, 1, 0));
+	str = opCode(and_si128, str, tmp);
+	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), str);
+	*hand += tmpHand[2];
+
+	return;
+}
+
+inline	void	stringWallS(const __m128 s1, const __m128 s2, int *hand, int *wHand)
+{
+	__m128	tp2, tp3, wll;
+	__m128i	str, tmp;
+
+	int __attribute__((aligned(Align))) tmpHand[4];
+
+	tp2 = opCode(mul_ps, s1, s2);
+	tmp = opCode(castps_si128, opCode(cmplt_ps, tp2, opCode(setzero_ps)));
+	tp3 = opCode(mul_ps, s2, opCode(set_ps,-1.f, 1.f,-1.f, 1.f));
+	tp2 = opCode(shuffle_ps, tp3, tp3, 0b10110001);
+	tp3 = opCode(mul_ps, s1, tp2);
+	tp2 = opCode(add_ps, tp3, opCode(shuffle_ps, tp3, tp3, 0b10110001));
+
+	/*	Walls		*/
+
+	tp3 = opCode(mul_ps, tp2, opCode(sub_ps, s1, s2));
+	wll = opCode(and_ps, opCode(cmpgt_ps, tp3, opCode(setzero_ps)), opCode(castsi128_ps, opCode(set_epi32,1,0,1,0)));
+	wll = opCode(and_ps, wll, opCode(castsi128_ps, tmp));
+	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), opCode(castps_si128, wll));
+	wHand[0] |= tmpHand[1];
+	wHand[1] |= tmpHand[3];
+
+	/*	Strings		*/
+
+	tp3 = opCode(cmpgt_ps, tp2, opCode(setzero_ps));
+	str = opCode(sub_epi64, opCode(castps_si128, opCode(and_ps, tp3, opCode(castsi128_ps, opCode(set_epi32,2,0,2,0)))), opCode(set_epi32,1,0,1,0));
+	str = opCode(and_si128, str, tmp);
+	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), str);
+	hand[0] += tmpHand[1];
+	hand[1] += tmpHand[3];
+
+	return;
+}
 #endif
 
 #ifdef USE_XEON
 __attribute__((target(mic)))
 #endif
-size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ strg)
+StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ strg)
 {
 	const size_t	Sf = Lx*Lx;
 	size_t		nStrings = 0;
-	long long int	nChiral = 0;
+	size_t		nWalls	 = 0;
+	long long int	nChiral	 = 0;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -260,19 +431,22 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		int hand[4] = { 0, 0, 0, 0 };
+		int wHand[4] = { 0, 0, 0, 0 };
+		int  hand[4] = { 0, 0, 0, 0 };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		int hand[2] = { 0, 0 };
+		int wHand[2] = { 0, 0 };
+		int  hand[2] = { 0, 0 };
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
-		int hand[1] = { 0 };
+		int wHand[1] = { 0 };
+		int  hand[1] = { 0 };
 #endif
-		#pragma omp parallel default(shared) private(hand) reduction(+:nStrings,nChiral)
+		#pragma omp parallel default(shared) private(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
 			_MData_ str, tmp;
@@ -292,7 +466,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
-				idxMz = ((idx - Sf) >> 1);
+				idxMz = ((idx - Sf) << 1);
 
 				if (X[1] == YC-1)
 				{
@@ -370,7 +544,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				// Plaqueta XY
 
-				stringHandD (mel, mPx, hand);
+				stringWallD (mel, mPx, hand, wHand);
 				stringHandD (mPx, mXY, hand);
 				stringHandD (mXY, mPy, hand);
 				stringHandD (mPy, mel, hand);
@@ -411,7 +585,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				// Plaqueta YZ
 
-				stringHandD (mel, mPy, hand);
+				stringWallD (mel, mPy, hand, wHand);
 				stringHandD (mPy, mYZ, hand);
 				stringHandD (mYZ, mPz, hand);
 				stringHandD (mPz, mel, hand);
@@ -452,7 +626,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				// Plaqueta ZX
 
-				stringHandD (mel, mPz, hand);
+				stringWallD (mel, mPz, hand, wHand);
 				stringHandD (mPz, mZX, hand);
 				stringHandD (mZX, mPx, hand);
 				stringHandD (mPx, mel, hand);
@@ -488,7 +662,13 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 						break;
 					}
 
+					if	(wHand[ih] != 0) {
+						static_cast<char *>(strg)[tIdx] |= STRING_WALL;
+						nWalls++;
+					}
+
 					hand[ih] = 0;
+					wHand[ih] = 0;
 				}
 			}
 		}
@@ -520,20 +700,23 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
-		int hand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		int  hand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		int wHand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 #elif	defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		int hand[4] = { 0, 0, 0, 0 };
+		int  hand[4] = { 0, 0, 0, 0 };
+		int wHand[4] = { 0, 0, 0, 0 };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		int hand[2] = { 0, 0 };
+		int  hand[2] = { 0, 0 };
+		int wHand[2] = { 0, 0 };
 #endif
 
-		#pragma omp parallel default(shared) private(hand) reduction(+:nStrings,nChiral)
+		#pragma omp parallel default(shared) private(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
 			_MData_ str, tmp;
@@ -553,7 +736,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
-				idxMz = ((idx - Sf) >> 1);
+				idxMz = ((idx - Sf) << 1);
 
 				if (X[1] == YC-1)
 				{
@@ -639,7 +822,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				// Plaqueta XY
 
-				stringHandS (mel, mPx, hand);
+				stringWallS (mel, mPx, hand, wHand);
 				stringHandS (mPx, mXY, hand);
 				stringHandS (mXY, mPy, hand);
 				stringHandS (mPy, mel, hand);
@@ -682,7 +865,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				// Plaqueta YZ
 
-				stringHandS (mel, mPy, hand);
+				stringWallS (mel, mPy, hand, wHand);
 				stringHandS (mPy, mYZ, hand);
 				stringHandS (mYZ, mPz, hand);
 				stringHandS (mPz, mel, hand);
@@ -723,7 +906,7 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 
 				// Plaqueta ZX
 
-				stringHandS (mel, mPz, hand);
+				stringWallS (mel, mPz, hand, wHand);
 				stringHandS (mPz, mZX, hand);
 				stringHandS (mZX, mPx, hand);
 				stringHandS (mPx, mel, hand);
@@ -759,7 +942,13 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 						break;
 					}
 
+					if	(wHand[ih] != 0) {
+						static_cast<char *>(strg)[tIdx] |= STRING_WALL;
+						nWalls++;
+					}
+
 					hand[ih] = 0;
+					wHand[ih] = 0;
 				}
 			}
 		}
@@ -772,12 +961,18 @@ size_t	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const siz
 	//printf ("Density of configuration %lf (%llu string points)\n", ((double) nStrings)/((double) (Vf-Vo)), nStrings);
 	//fflush (stdout);
 
-	return  nStrings ;
+	StringData	strDat;
+
+	strDat.strDen = nStrings;
+	strDat.strChr = nChiral;
+	strDat.wallDn = nWalls;
+
+	return	strDat;
 }
 
-size_t	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+StringData	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
-	size_t	  strDen = 0;
+	StringData	  strDen;
 #ifdef USE_XEON
 	const int    micIdx = commAcc();
 	char *str = static_cast<char*>(strg);
@@ -791,7 +986,7 @@ size_t	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const si
 	return	strDen;
 }
 
-size_t	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+StringData	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
 {
 	axionField->exchangeGhosts(FIELD_M);
 	return	(stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, strg));

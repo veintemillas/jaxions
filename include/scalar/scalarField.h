@@ -146,6 +146,7 @@
 		double	maxtheta();									// RETURNS THE MAX VALUE OF THETA [OR IM m]
 		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
 		void	denstom(); 	//
+		void	autodenstom2(); 	//
 		void	mendtheta(); 	//
 
 		void	squareGpu();				// Squares the m2 field in the Gpu

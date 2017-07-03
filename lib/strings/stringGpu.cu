@@ -16,7 +16,21 @@ static __device__ __forceinline__ int	stringHand(const complex<Float> s1, const 
 	int hand = 0;
 
 	if (s1.imag()*s2.imag() < 0)
-		hand = (((s1*conj(s2)).imag() > 0)<<1) - 1;
+		hand = (((s1.imag()*s2.real() - s1.real()*s2.imag()) > 0) << 1) - 1;
+
+	return hand;
+}
+
+template<typename Float>
+static __device__ __forceinline__ int2	stringWall(const complex<Float> s1, const complex<Float> s2)
+{
+	int2 hand = make_int2(0,0);
+
+	if (s1.imag()*s2.imag() < 0) {
+		Float cross = s1.imag()*s2.real() - s1.real()*s2.imag();
+		hand.x = ((cross > 0) << 1) - 1;
+		hand.y = ((cross*(s1.imag() - s2.imag())) > 0);
+	}
 
 	return hand;
 }
@@ -26,6 +40,8 @@ template<typename Float>
 static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, void * __restrict__ str, uint * __restrict__ tStr)
 {
 	uint X[3], idxPx, idxPy, idxXY, idxYZ, idxZX;
+	int2 hand0X, hand0Y, hand0Z;
+	int  handXY, handXZ, handYX, handYZ, handZX, handZY;
 
 	complex<Float> mel, mPx, mXY, mPy, mYZ, mPz, mZX;
 	uint sIdx = idx-Sf;
@@ -73,14 +89,21 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	mZX = m[idxZX];
 	mYZ = m[idxYZ];
 
+	hand0X = stringWall(mel, mPx);
+	hand0Y = stringWall(mel, mPy);
+	hand0Z = stringWall(mel, mPz);
+
+	handXY = stringHand(mPx, mXY);
+	handXZ = stringHand(mPx, mZX);
+	handYX = stringHand(mPy, mXY);
+	handYZ = stringHand(mPy, mYZ);
+	handZX = stringHand(mPz, mZX);
+	handZY = stringHand(mPz, mYZ);
+
 	// Primera plaqueta XY
 
-	hand += stringHand (mel, mPx);
-	hand += stringHand (mPx, mXY);
-	hand += stringHand (mXY, mPy);
-	hand += stringHand (mPy, mel);
-/*	ARREGLAR PARA QUE SOLO HAYA UN STORE	*/
-/*	LA QUIRALIDAD SE GUARDA MAL	*/
+	hand = hand0X.x + handXY - handYX - hand0Y.x;
+
 	if (hand == 2) {
 		tStr[0]++;
 		tStr[1]++;
@@ -91,14 +114,9 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 		strDf |= STRING_XY_NEGATIVE;
 	}
 
-	hand = 0;
-
 	// Segunda plaqueta YZ
 
-	hand += stringHand (mel, mPy);
-	hand += stringHand (mPy, mYZ);
-	hand += stringHand (mYZ, mPz);
-	hand += stringHand (mPz, mel);
+	hand = hand0Y.x + handYZ - handZY - hand0Z.x;
 
 	if (hand == 2) {
 		tStr[0]++;
@@ -110,14 +128,9 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 		strDf |= STRING_YZ_NEGATIVE;
 	}
 
-	hand = 0;
-
 	// Tercera plaqueta ZX
 
-	hand += stringHand (mel, mPz);
-	hand += stringHand (mPz, mZX);
-	hand += stringHand (mZX, mPx);
-	hand += stringHand (mPx, mel);
+	hand = hand0Z.x + handZX - handXZ - hand0X.x;
 
 	if (hand == 2) {
 		tStr[0]++;
@@ -129,6 +142,11 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 		strDf |= STRING_ZX_NEGATIVE;
 	}
 
+	auto nWall = hand0X.y | hand0Y.y | hand0Z.y;
+
+	tStr[2] += nWall;
+	strDf   |= nWall << 6;	// STRING_WALL = 64 = 2^6, and we don't distinguish the wall direction (lack of bits) 
+
 	static_cast<char *>(str)[sIdx] = strDf;
 
 	return;
@@ -138,15 +156,15 @@ template<typename Float>
 __global__ void	stringKernel(void * __restrict__ strg, const complex<Float> * __restrict__ m, const uint Lx, const uint Sf, const uint V, uint *nStr, uint *partial)
 {
 	uint idx = Sf + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
-	uint tStr[2] = { 0, 0 };
+	uint tStr[3] = { 0, 0, 0 };
 
 	if	(idx < V)
 		stringCoreGpu<Float>(idx, m, Lx, Sf, strg, tStr);
 
-	reduction<BLSIZE,uint,2>   (nStr, tStr, partial);
+	reduction<BLSIZE,uint,3>   (nStr, tStr, partial);
 }
 
-uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
+uint3	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const uint S, FieldPrecision precision, void * __restrict__ str, cudaStream_t &stream)
 {
 	const uint Vm = V+S;
 	const uint Lz2 = V/(Lx*Lx);
@@ -156,13 +174,13 @@ uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const 
 	const int nBlocks = gridSize.x*gridSize.y;
 
 	void  *strg;
-	uint  *d_str, *partial, nStr[2];
+	uint  *d_str, *partial, nStr[3];
 
 	if (cudaMalloc(&strg, sizeof(char)*V) != cudaSuccess)
-		return -1;
+		return	make_uint3(-1,-1,-1);
 
-	if ((cudaMalloc(&d_str, sizeof(uint)*2) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
-		return -1;
+	if ((cudaMalloc(&d_str, sizeof(uint)*3) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
+		return	make_uint3(-1,-1,-1);
 
 	if (precision == FIELD_DOUBLE)
 		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, Vm, d_str, partial);
@@ -171,11 +189,11 @@ uint	stringGpu	(const void * __restrict__ m, const uint Lx, const uint V, const 
 
 	cudaDeviceSynchronize();
 	cudaMemcpy(str,   strg, sizeof(char)*V, cudaMemcpyDeviceToHost);
-	cudaMemcpy(nStr, d_str, sizeof(uint)*2, cudaMemcpyDeviceToHost);
+	cudaMemcpy(nStr, d_str, sizeof(uint)*3, cudaMemcpyDeviceToHost);
 
 	cudaFree(strg);
 	cudaFree(d_str);
 	cudaFree(partial);
 
-	return	nStr[0];
+	return	make_uint3(nStr[0], nStr[1], nStr[2]);
 }
