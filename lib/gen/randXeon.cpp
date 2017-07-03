@@ -53,15 +53,15 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 
 			//	MINICLUSTER
 
-			size_t pidx = idx-Vo;
-			size_t iz = pidx/Vo + local_z_start;
-			size_t iy = (pidx%Vo)/sizeN ;
-			size_t ix = (pidx%Vo)%sizeN ;
-			int z = iz;
-			int y = iy;
-			int x = ix;
-			//CENTERED AT GRID
-			Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
+			// size_t pidx = idx-Vo;
+			// size_t iz = pidx/Vo + local_z_start;
+			// size_t iy = (pidx%Vo)/sizeN ;
+			// size_t ix = (pidx%Vo)%sizeN ;
+			// int z = iz;
+			// int y = iy;
+			// int x = ix;
+			// //CENTERED AT GRID
+			// Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
 			//CENTERED AT ZERO
 			// if (z>sizeN/2) {z = z-sizeN; }
 			// if (y>sizeN/2) {y = y-sizeN; }
@@ -69,8 +69,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//
 			// Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
 
-			theta = exp(-theta*30.)*12.;
-			m[idx] = std::complex<Float>(cos(theta), sin(theta));
+			// theta = exp(-theta*30.)*12.;
+			// m[idx] = std::complex<Float>(cos(theta), sin(theta));
 
 			//	ONE MODE
 
@@ -87,6 +87,24 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			//// {
 			//// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (pidx%Vo)%sizeN, ix,iy,iz,m[idx].real(),m[idx].imag());
 			//// }
+
+			//	MINICLUSTER
+
+			size_t pidx = idx-Vo;
+			size_t iz = pidx/Vo + local_z_start;
+			size_t iy = (pidx%Vo)/sizeN ;
+			size_t ix = (pidx%Vo)%sizeN ;
+			int z = iz;
+			int y = iy;
+			int x = ix;
+			//CENTERED AT GRID, z=0
+			if (z>sizeN/2) {z = z-sizeN; }
+			Float aL = (Float) 1./4.;	//RADIUS
+			Float rho2 = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2))/Vo);
+			Float d12 = (sqrt(rho2) + aL)*(sqrt(rho2) + aL) + (z*z/Vo) ;
+			Float d22 = (sqrt(rho2) - aL)*(sqrt(rho2) - aL) + (z*z/Vo) ;
+			Float theta = 1.5707963*(0.5 + (4. - d12 - d22)/(4.*sqrt(d12*d22)))*z/abs(z+ 0.0000001)	;
+			m[idx] = std::complex<Float>(cos(theta), sin(theta));
 		}
 	}
 

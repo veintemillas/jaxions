@@ -14,7 +14,7 @@ using namespace std;
 }	while (0)
 
 fftw_plan p, pb;
-fftwf_plan pf, pfb;
+fftwf_plan pf, pfb, pfb2;
 
 static bool iFFT = false, iFFTPlans = false, single = false, useThreads = true;
 
@@ -130,8 +130,9 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 			pf  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
 			pfb = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 		} else {
-			pf  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pfb = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pf  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_PATIENT);
+			pfb = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_PATIENT);
+			pfb2 = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_PATIENT);
 		}
 //		pf  = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_FORWARD,  FFTW_MEASURE);
 //		pfb = fftwf_plan_many_dft(2, nD, Lz, static_cast<fftwf_complex*>(m), NULL, 1, dist, static_cast<fftwf_complex*>(m), NULL, 1, dist, FFTW_BACKWARD, FFTW_MEASURE);
@@ -173,6 +174,16 @@ void	runFFT(int sign)
 		else
 			fftw_execute(pb);
 		break;
+
+		case 2:
+
+		if (single)
+			fftwf_execute(pfb2);
+		else
+			//fftw_execute(pb);
+		break;
+
+
 	}
 
 	printMpi ("Done!\n");
@@ -199,6 +210,7 @@ void	closeFFTPlans	()
 	{
 		fftwf_destroy_plan(pf);
 		fftwf_destroy_plan(pfb);
+		fftwf_destroy_plan(pfb2);
 	}
 	else
 	{
