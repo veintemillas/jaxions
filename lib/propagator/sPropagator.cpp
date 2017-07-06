@@ -5,9 +5,9 @@
 #include "enum-field.h"
 #include "propagator/RKParms.h"
 
-#include "propagator/propXeon.h"
-#include "propagator/propThetaXeon.h"
-
+#include "propagator/sPropXeon.h"
+//#include "propagator/propThetaXeon.h"
+/*
 #ifdef	USE_GPU
 	#include <cuda.h>
 	#include <cuda_runtime.h>
@@ -15,7 +15,7 @@
 	#include "propagator/propGpu.h"
 	#include "propagator/propThetaGpu.h"
 #endif
-
+*/
 #include "utils/logger.h"
 #include "utils/profiler.h"
 
@@ -35,22 +35,26 @@ class	SPropagator
 
 	Scalar	*axionField;
 
-	void	spropLowGpu	(const double c, const double d);
-
 	public:
 
 		 SPropagator(Scalar *field, const double LL, const double nQcd, const double dz, VqcdType pot);
 		~SPropagator() {};
 
-	void	sRunCpu	();	// Saxion propagator
+	void	sRunGpu	();	// Saxion propagator
+	void	sRunCpu	();
 	void	sRunXeon();
 
-	void	tRunCpu	();	// Axion propagator
+	void	tRunGpu	();	// Axion propagator
+	void	tRunCpu	();
 	void	tRunXeon();
 };
 
 	SPropagator::SPropagator(Scalar *field, const double LL, const double nQcd, const double dz, VqcdType pot) : axionField(field), dz(dz), Lx(field->Length()), Lz(field->eDepth()),
 		V(field->Size()), S(field->Surf()), c1(C1), d1(D1), c2(C2), d2(D2), c3(C3), d3(D3), c4(C4), d4(D4), precision(field->Precision()), LL(LL), nQcd(nQcd), pot(pot), lType(field->Lambda())
+{
+}
+
+void	SPropagator::sRunGpu	()
 {
 }
 
@@ -67,6 +71,10 @@ void	SPropagator::sRunXeon	()
 	printf("Xeon Phi support not built");
 	exit(1);
 #endif
+}
+
+void	SPropagator::tRunGpu	()
+{
 }
 
 void    SPropagator::tRunCpu	()

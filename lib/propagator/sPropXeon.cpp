@@ -5,6 +5,7 @@
 #include"propagator/RKParms.h"
 #include"scalar/varNQCD.h"
 #include "utils/parse.h"
+#include "fft/fftCode.h"
 
 #ifdef USE_XEON
 	#include"comms/comms.h"
@@ -36,7 +37,7 @@ __attribute__((target(mic)))
 #endif
 template<const VqcdType VQcd>
 inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-				   const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+				   const double LL, const double nQcd, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -101,6 +102,7 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 #endif
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
 		const _MData_ zRVec  = opCode(load_pd, zRAux);
+		const _MData_ fMVec  = opCode(set1_pd, fMom);
 
 		#pragma omp parallel default(shared)
 		{
@@ -113,7 +115,8 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
 
-				tmp = opCode(load_pd, &m2[idxP0]);
+				mPx = opCode(load_pd, &m2[idxP0]);
+				tmp = opCode(mul_pd, mPx, fMVec);
 				mel = opCode(load_pd,  &m[idxP0]);
 				mPy = opCode(mul_pd, mel, mel);
 
@@ -221,6 +224,7 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 #endif
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
+		const _MData_ fMVec  = opCode(set1_ps, fMom);
 
 		#pragma omp parallel default(shared)
 		{
@@ -232,9 +236,10 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
 
-				tmp = opCode(load_ps, &m2[idxP0]);
-				mel = opCode(load_ps,  &m[idxP0]);
+				mPx = opCode(load_ps, &m2[idxP0]);
+				tmp = opCode(mul_ps, mPx, fMVec);
 				mPy = opCode(mul_ps, mel, mel);
+				mel = opCode(load_ps,  &m[idxP0]);
 
 #if	defined(__MIC__)
 				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
@@ -282,7 +287,7 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 }
 
 template<const VqcdType VQcd>
-inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
+inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const double nQcd, const double fMom, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 #ifdef USE_XEON
 	const int  micIdx = commAcc();
@@ -296,7 +301,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D1;
@@ -306,7 +311,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 		#pragma offload_wait target(mic:micIdx) wait(&bulk)
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(m2X, vX, mX, z, dz, C2, D2, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(m2X, vX, mX, z, dz, C2, D2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D2;
@@ -316,7 +321,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 		#pragma offload_wait target(mic:micIdx) wait(&bulk)
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D3;
@@ -326,7 +331,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 		#pragma offload_wait target(mic:micIdx) wait(&bulk)
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(m2X, vX, mX, z, dz, C4, D4, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(m2X, vX, mX, z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D4;
@@ -334,7 +339,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 	} else {
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D1;
@@ -342,7 +347,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 		#pragma offload_wait target(mic:micIdx) wait(&bulk)
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C2, D2, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C2, D2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D2;
@@ -350,7 +355,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 		#pragma offload_wait target(mic:micIdx) wait(&bulk)
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C3, D3, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D3;
@@ -358,7 +363,7 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 		#pragma offload_wait target(mic:micIdx) wait(&bulk)
 		#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX) signal(&bulk)
 		{
-			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C4, D4, lambda, nQcd, Lx, S, V+S, precision);
+			propSpecKernelXeon<VQcd>(mX, vX, m2X, z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 
 		*z += dz*D4;
@@ -369,57 +374,73 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 
 void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
 {
+	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->(), precision);
+
+	constexpr double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+
 	switch	(VQcd) {
 		case	VQCD_1:
-			propSpecXeon<VQCD_1>	(axionField, dz, LL, nQcd, Lx, V, S, precision);
+			propSpecXeon<VQCD_1>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);
 			break;
 
 		case	VQCD_2:
-			propSpecXeon<VQCD_2>	(axionField, dz, LL, nQcd, Lx, V, S, precision);
+			propSpecXeon<VQCD_2>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);
 			break;
 	}
 }
 
 template<const VqcdType VQcd>
-inline	void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
+inline	void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const double nQcd, const double fMom, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 	double *z = axionField->zV();
 	double lambda = LL;
 
 	if (axionField->Lambda() != LAMBDA_FIXED) {
+		axionField->laplacian();
 		lambda = LL/((*z)*(*z));
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, Lx, S, V+S, precision);
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D1;
+		axionField->laplacian();
 		lambda = LL/((*z)*(*z));
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C2, D2, lambda, nQcd, Lx, S, V+S, precision);
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C2, D2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D2;
+		axionField->laplacian();
 		lambda = LL/((*z)*(*z));
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, lambda, nQcd, Lx, S, V+S, precision);
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D3;
+		axionField->laplacian();
 		lambda = LL/((*z)*(*z));
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, Lx, S, V+S, precision);
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D4;
 	} else {
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, Lx, S, V+S, precision);
+		axionField->laplacian();
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D1;
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, Lx, S, V+S, precision);
+		axionField->laplacian();
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D2;
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, Lx, S, V+S, precision);
+		axionField->laplacian();
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D3;
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, Lx, S, V+S, precision);
+		axionField->laplacian();
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D4;
 	}
 }
 
 void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
 {
+	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->(), precision);
+
+	constexpr double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+
 	switch	(VQcd) {
 		case	VQCD_1:
-			propCpu<VQCD_1>	(axionField, dz, LL, nQcd, Lx, V, S, precision);
+			propSpecCpu<VQCD_1>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);
 			break;
 
 		case	VQCD_2:
-			propCpu<VQCD_2>	(axionField, dz, LL, nQcd, Lx, V, S, precision);
+			propSpecCpu<VQCD_2>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);
 			break;
 	}
 }

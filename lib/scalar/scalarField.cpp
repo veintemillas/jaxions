@@ -2234,11 +2234,11 @@ void	Scalar::autodenstom2()//int *window)
 //----------------------------------------------------------------------
 
 template<typename Float>
-void	Scalar::laplacianm2(Float var)
+void	Scalar::laplacianm2()
 {
 	// VERSION FOR COMPLEX_SCALAR // NO LOW MEM //FLOAT
 	// NO MPI!
-	runFFT(FFTW_FORWARD)	;
+	runFFTspec(FFTW_FORWARD);
 	// MULTIPLY BY K^2/N
 	// (A,B,C), (-A,B,C) ... 6 MODES HAVE SAME K^2
 	// CHOSE A,B,C IN (0,n1/2)
@@ -2248,27 +2248,32 @@ void	Scalar::laplacianm2(Float var)
 		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
 		size_t n12 = n1/2 ;
 		#pragma omp parallel for schedule(static) default(shared)
-		for (size_t kz = 0; kz < n1/2; kz++)
+		for (size_t kz = 0; kz < n1; kz++)
 		{
 			size_t kkz = kz ;
-			if (kz>n1/2) {kkz = kz-n1; }
-			for (size_t ky = 0; kz < n1/2; ky++)
+
+			if (kz > n1/2)
+				kkz = kz-n1;
+
+			for (size_t ky = 0; kz < n1; ky++)
 			{
 				size_t kky = ky ;
-				if (ky>n1/2) {kky = ky-n1; }
+				if (ky > n1/2)
+					kky = ky-n1;
+
 				size_t kk2 = kkz*kkz + kky*kky ;
 				size_t iidx = n1*ky + n2*kz ;
-				for (size_t kx = 0; kx < n1/2; kx++)
+
+				for (size_t kx = 0; kx < n1; kx++)
 				{
 					size_t idx = iidx + kx ;
 					size_t kkx = kx ;
-					if (kx>n1/2)
-					{
+					if (kx > n1/2)
 						kkx = kx-n1;
-					}
-					size_t k2 = kk2 + kkx*kkx ;
 
-					mTRANS[idx] *= k2 	;
+					size_t k2 = kk2 + kkx*kkx;
+
+					mTRANS[idx] *= (Float) k2;
 				}
 			}
 		}
@@ -2278,9 +2283,22 @@ void	Scalar::laplacianm2(Float var)
 	{
 	}
 
-	runFFT(2)	;
-
+	runFFTspec(FFT_BACKWARD);
 }
+
+void	Scalar::laplacian()
+{
+	switch (prec) {
+		case	PREC_DOUBLE:
+			laplacianm2<double>();
+			break;
+
+		case	PREC_SINGLE:
+			laplacianm2<float>();
+			break;
+	}
+}
+
 //----------------------------------------------------------------------
 //		CHECK JUMPS
 //----------------------------------------------------------------------

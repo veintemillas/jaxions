@@ -60,7 +60,9 @@
 					void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
 
 					template<typename Float>
-					void	laplacianm2(const Float var);
+					void	laplacianm2();
+
+					void	laplacian();
 
 
 		public:

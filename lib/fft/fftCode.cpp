@@ -495,8 +495,8 @@ void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrec
 			fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 
 			single = false;
-			pS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m),  static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m),  static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFT_MPI_TRANSPOSED_OUT);
+			pSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFT_MPI_TRANSPOSED_IN);
 
 			fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
 			if (rank == 0) { fftw_export_wisdom_to_filename("../fftWisdom.double"); }
@@ -514,8 +514,8 @@ void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrec
 			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 
 			single = true;
-			pfS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m),  static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
-			pfSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			pfS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m),  static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFT_MPI_TRANSPOSED_OUT);
+			pfSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFT_MPI_TRANSPOSED_IN);
 
 			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 			if (rank == 0) fftwf_export_wisdom_to_filename("../fftWisdom.single");
