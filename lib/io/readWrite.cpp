@@ -3,13 +3,18 @@
 #include <cstring>
 #include <hdf5.h>
 
+#include <fftw3-mpi.h>
+
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "utils/parse.h"
 #include "comms/comms.h"
 
+#include "utils/memAlloc.h"
 #include "utils/profiler.h"
 #include "utils/logger.h"
+
+#include "fft/fftCode.h"
 
 hid_t	meas_id = -1, mlist_id;
 hsize_t	tSize, slabSz, sLz;
@@ -1248,13 +1253,13 @@ void	writeEDens (Scalar *axion, int index)
 	}
 
 	/*	Create a group for string data if it doesn't exist	*/
-	auto status = H5Lexists (meas_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
+	auto status = H5Lexists (file_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
 
 	if (!status)
-		group_id = H5Gcreate2(meas_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
 		if (status > 0)
-			group_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);		// Group exists
+			group_id = H5Gopen2(file_id, "/energy", H5P_DEFAULT);		// Group exists
 		else {
 			LogError ("Error: can't check whether group /energy exists");
 			prof.stop();
@@ -1528,5 +1533,407 @@ void	writeMapHdf5	(Scalar *axion)
 	H5Sclose (mapSpace);
 	H5Pclose (chunk_id);
 	H5Gclose (group_id);
+}
+
+
+
+
+
+void	reduceEDens (int index, uint newLx, uint newLz)
+{
+	hid_t	file_id, eset_id, plist_id, chunk_id, group_id;
+	hid_t	eSpace, memSpace, totalSpace, dataType;
+	hid_t	attr_type;
+
+	hsize_t	slab, offset, nSlb, total;
+
+	FieldPrecision	precision;
+
+	char	prec[16], fStr[16];
+	int	length = 8;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+
+	size_t	dataSize, newSz;
+
+	int myRank = commRank();
+
+	void *axionIn  = nullptr;
+	void *axionOut = nullptr;
+
+	LogMsg (VERB_NORMAL, "Reading Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "");
+
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	/*	Set up parallel access with Hdf5	*/
+
+	plist_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+	char baseIn[256], baseOut[256];
+
+	sprintf(baseIn, "%s.m.%05d", outName, index);
+
+	/*	Open the file and release the plist	*/
+
+	if ((file_id = H5Fopen (baseIn, H5F_ACC_RDONLY, plist_id)) < 0)
+	{
+		LogError ("Error opening file %s", baseIn);
+		return;
+	}
+
+	H5Pclose(plist_id);
+
+	/*	Attributes	*/
+
+	attr_type = H5Tcopy(H5T_C_S1);
+	H5Tset_size (attr_type, length);
+	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+	double	zTmp, zTfl, zTin;
+	uint	tStep, cStep, totlZ;
+
+	readAttribute (file_id, fStr,   "Field type",   attr_type);
+	readAttribute (file_id, prec,   "Precision",    attr_type);
+	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
+	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
+	readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &zTin,  "zInitial",     H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &zTfl,  "zFinal",       H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
+	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
+
+	H5Tclose (attr_type);
+
+	if ((newLx > sizeN) || (newLz > totlZ)) {
+		LogError ("Error: new size must be smaller");
+		prof.stop();
+		exit(1);
+	}
+
+	if (!uPrec)
+	{
+		if (!strcmp(prec, "Double"))
+		{
+			precision = FIELD_DOUBLE;
+			dataType  = H5T_NATIVE_DOUBLE;
+			dataSize  = sizeof(double);
+		} else if (!strcmp(prec, "Single")) {
+			precision = FIELD_SINGLE;
+			dataType  = H5T_NATIVE_FLOAT;
+			dataSize  = sizeof(float);
+		} else {
+			LogError ("Error reading file %s: Invalid precision %s", baseIn, prec);
+			exit(1);
+		}
+	} else {
+		precision = sPrec;
+
+		if (sPrec == FIELD_DOUBLE)
+		{
+			dataType  = H5T_NATIVE_DOUBLE;
+			dataSize  = sizeof(double);
+
+			if (!strcmp(prec, "Single"))
+				LogMsg (VERB_HIGH, "Reading single precision configuration as double precision");
+		} else if (sPrec == FIELD_SINGLE) {
+			dataType  = H5T_NATIVE_FLOAT;
+			dataSize  = sizeof(float);
+
+			if (!strcmp(prec, "Double"))
+				LogMsg (VERB_HIGH, "Reading double precision configuration as single precision");
+		} else {
+			LogError ("Input error: Invalid precision");
+			prof.stop();
+			exit(1);
+		}
+	}
+
+	if ((totlZ % zGrid) || (newLz % zGrid))
+	{
+		LogError ("Error: Geometry not valid. Try a different partitioning");
+		prof.stop();
+		exit (1);
+	}
+
+	sizeZ = totlZ/zGrid;
+	newSz = newLz/zGrid;
+	slab  = ((hsize_t) (sizeN)) * ((hsize_t) (sizeN));
+	nSlb  = ((hsize_t) (newLx)) * ((hsize_t) (newLx));
+
+	total = nSlb*newSz;
+
+	trackAlloc(&axionIn,  (slab+1)*sizeZ*dataSize);	// The extra-slab is for FFTW with MPI, just in case
+	trackAlloc(&axionOut, (slab+1)*sizeZ*dataSize*2);
+
+	/*	Create plist for collective read	*/
+
+	plist_id = H5Pcreate(H5P_DATASET_XFER);
+	H5Pset_dxpl_mpio(plist_id,H5FD_MPIO_COLLECTIVE);
+
+	/*	Open a dataset for the whole axion data	*/
+
+	if ((eset_id = H5Dopen (file_id, "/energy/density", H5P_DEFAULT)) < 0) {
+		prof.stop();
+		LogError ("Error opening /energy/density dataset");
+		return;
+	}
+
+	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+	eSpace   = H5Dget_space (eset_id);
+
+	for (hsize_t zDim=0; zDim < ((hsize_t) sizeZ); zDim++)
+	{
+		/*	Select the slab in the file	*/
+
+		offset = ((hsize_t) (myRank*sizeZ)+zDim)*slab;
+		H5Sselect_hyperslab(eSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+		/*	Read raw data	*/
+
+		auto eErr = H5Dread (eset_id, dataType, memSpace, eSpace, plist_id, static_cast<char *> (axionIn+slab*zDim*dataSize));
+
+		if (eErr < 0) {
+			LogError ("Error reading dataset from file");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Close the dataset	*/
+
+	H5Sclose (eSpace);
+	H5Dclose (eset_id);
+	H5Sclose (memSpace);
+
+	/*	Close the file		*/
+
+	H5Pclose (plist_id);
+	H5Fclose (file_id);
+
+//	prof.add(std::string("Read data"), 0, (dataSize*totlZ*slab + 77.)*1.e-9);
+
+	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab + 77);
+
+	/*	FFT		*/
+	LogMsg (VERB_HIGH, "Creating FFT plans");
+
+	initFFT(precision);
+
+	fftw_plan	planDoubleForward, planDoubleBackward;
+	fftwf_plan	planSingleForward, planSingleBackward;
+
+	switch (precision)
+	{
+		case FIELD_DOUBLE:
+			if (myRank == 0) {
+				if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0)
+					LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.double");
+                	}
+
+			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
+			planDoubleForward  = fftw_mpi_plan_dft_r2c_3d(totlZ, sizeN, sizeN, static_cast<double*>(axionIn),  static_cast<fftw_complex*>(axionOut), MPI_COMM_WORLD, FFTW_MEASURE);
+
+			LogMsg (VERB_HIGH, "  Execute");
+			fftw_execute (planDoubleForward);
+
+			LogMsg (VERB_HIGH, "  Remove high modes");
+			for (hsize_t zDim = 0; zDim < sizeZ; zDim++) {
+				hsize_t offIn  = zDim*slab*dataSize;
+				hsize_t offOut = zDim*nSlb*dataSize;
+				memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+			} 
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
+			planDoubleBackward = fftw_mpi_plan_dft_c2r_3d(newLz, newLx, newLx, static_cast<fftw_complex*>(axionOut),  static_cast<double*>(axionIn),  MPI_COMM_WORLD, FFTW_MEASURE);
+
+			LogMsg (VERB_HIGH, "  Execute");
+			fftw_execute (planDoubleBackward);
+
+			break;
+
+		case FIELD_SINGLE:
+			if (myRank == 0) {
+				if (fftw_import_wisdom_from_filename("../fftWisdom.single") == 0)
+					LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.single");
+                	}
+
+			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
+			planSingleForward  = fftwf_mpi_plan_dft_r2c_3d(totlZ, sizeN, sizeN, static_cast<float*>(axionIn),  static_cast<fftwf_complex*>(axionOut), MPI_COMM_WORLD, FFTW_MEASURE);
+
+			LogMsg (VERB_HIGH, "  Execute");
+			fftwf_execute (planSingleForward);
+
+			LogMsg (VERB_HIGH, "  Remove high modes");
+			for (hsize_t zDim = 0; zDim < sizeZ; zDim++) {
+				hsize_t offIn  = zDim*slab*dataSize;
+				hsize_t offOut = zDim*nSlb*dataSize;
+				memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+			} 
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
+			planSingleBackward = fftwf_mpi_plan_dft_c2r_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionOut), static_cast<float*>(axionIn),  MPI_COMM_WORLD, FFTW_MEASURE);
+
+			LogMsg (VERB_HIGH, "  Execute");
+			fftwf_execute (planSingleBackward);
+
+			break;
+	}
+
+	/*	Open the file again and release the plist	*/
+	sprintf(baseOut, "%s.r.%05d", outName, index);
+
+	if ((file_id = H5Fopen (baseOut, H5F_ACC_RDONLY, plist_id)) < 0)
+	{
+		LogError ("Error opening file %s", baseOut);
+		return;
+	}
+
+	H5Pclose(plist_id);
+
+	/*	Write header	*/
+	/*	Attributes	*/
+
+	attr_type = H5Tcopy(H5T_C_S1);
+	H5Tset_size   (attr_type, length);
+	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+	writeAttribute(file_id, fStr,   "Field type",    attr_type);
+	writeAttribute(file_id, prec,   "Precision",     attr_type);
+	writeAttribute(file_id, &newLx, "Size",          H5T_NATIVE_UINT);
+	writeAttribute(file_id, &newLz, "Depth",         H5T_NATIVE_UINT);
+	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &zTmp,  "z",             H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &zTin,  "zInitial",      H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &zTfl,  "zFinal",        H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &tStep, "nSteps",        H5T_NATIVE_INT);
+	writeAttribute(file_id, &cStep, "Current step",  H5T_NATIVE_INT);
+
+	H5Tclose (attr_type);
+
+	commSync();
+
+	/*	Create plist for collective write	*/
+	plist_id = H5Pcreate(H5P_DATASET_XFER);
+	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	if ((totalSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
+	{
+		LogError ("Error calling H5Screate_simple");
+		exit (1);
+	}
+
+	/*	Set chunked access	*/
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Error calling H5Pcreate");
+		exit (1);
+	}
+
+	if (H5Pset_chunk (chunk_id, 1, &nSlb) < 0)
+	{
+		LogError ("Error setting chunked access");
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Error calling H5Pset_alloc_time\n");
+		exit (1);
+	}
+
+	/*	Create a group for string data if it doesn't exist	*/
+	auto status = H5Lexists (file_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
+
+	if (!status)
+		group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0)
+			group_id = H5Gopen2(file_id, "/energy", H5P_DEFAULT);		// Group exists
+		else {
+			LogError ("Error: can't check whether group /energy exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create a dataset for the whole axion data	*/
+
+	char mCh[24] = "/energy/density";
+
+	eset_id = H5Dcreate (file_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	commSync();
+
+	if (eset_id < 0)
+	{
+		LogError("Error creating dataset");
+		prof.stop();
+		exit (0);
+	}
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	eSpace = H5Dget_space (eset_id);
+	memSpace = H5Screate_simple(1, &nSlb, NULL);	// Slab
+
+	commSync();
+
+	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
+
+	for (hsize_t zDim=0; zDim < newSz; zDim++)
+	{
+		/*	Select the slab in the file	*/
+		offset = ((hsize_t) (myRank*newSz) + zDim)*nSlb;
+		H5Sselect_hyperslab(eSpace, H5S_SELECT_SET, &offset, NULL, &nSlb, NULL);
+
+		/*	Write raw data	*/
+		auto eErr = H5Dwrite (eset_id, dataType, memSpace, eSpace, plist_id, (static_cast<char *> (axionIn) + nSlb*zDim*dataSize));
+
+		if (eErr < 0)
+		{
+			LogError ("Error writing dataset");
+			prof.stop();
+			exit(0);
+		}
+
+		//commSync();
+	}
+
+	/*	Close the dataset	*/
+
+	H5Dclose (eset_id);
+	H5Sclose (eSpace);
+	H5Sclose (memSpace);
+
+	/*	Close the file		*/
+
+	H5Sclose (totalSpace);
+	H5Pclose (chunk_id);
+	H5Pclose (plist_id);
+	H5Fclose (file_id);
+
+	trackFree (&axionOut, ALLOC_TRACK);
+	trackFree (&axionIn,  ALLOC_TRACK);
+
+        prof.stop();
+//	prof.add(std::string("Reduced energy map"), 0., (2.*total*dataSize + 78.)*1e-9);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes", nSlb*newLz*dataSize + 78);
 }
 
