@@ -2246,34 +2246,35 @@ void	Scalar::laplacianm2()
 	if(fieldType == FIELD_SAXION)
 	{
 		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
-		size_t n12 = n1/2 ;
+		int n12 = n1/2 ;
+
 		#pragma omp parallel for schedule(static) default(shared)
 		for (size_t kz = 0; kz < n1; kz++)
 		{
-			size_t kkz = kz ;
+			int kkz = (int) kz ;
 
-			if (kz > n1/2)
-				kkz = kz-n1;
+			if (kz > n12)
+				kkz = ((int) kz)-n1;
 
-			for (size_t ky = 0; kz < n1; ky++)
+			for (size_t ky = 0; ky < n1; ky++)
 			{
-				size_t kky = ky ;
-				if (ky > n1/2)
-					kky = ky-n1;
+				int kky = ky ;
+				if (ky > n12)
+					kky = ((int) ky)-n1;
 
-				size_t kk2 = kkz*kkz + kky*kky ;
+				int kk2 = kkz*kkz + kky*kky ;
 				size_t iidx = n1*ky + n2*kz ;
 
 				for (size_t kx = 0; kx < n1; kx++)
 				{
 					size_t idx = iidx + kx ;
-					size_t kkx = kx ;
-					if (kx > n1/2)
-						kkx = kx-n1;
+					int kkx = (int) kx ;
+					if (kx > n12)
+						kkx = ((int) kx)-n1;
 
 					size_t k2 = kk2 + kkx*kkx;
-
-					mTRANS[idx] *= (Float) k2;
+					//printMpi("(%d,%d,%d) %ld\n",kkz,kky,kkx,idx);
+					mTRANS[idx + n2] *= (Float) k2;
 				}
 			}
 		}
@@ -2283,7 +2284,18 @@ void	Scalar::laplacianm2()
 	{
 	}
 
+
 	runFFTspec(FFTW_BACKWARD);
+
+	if(fieldType == FIELD_SAXION)
+	{
+		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
+		printMpi("tiempo loco ");
+		for (size_t idx = 0; idx < 10; idx++)
+		{
+			printMpi("%f-%f ",mTRANS[idx + n2].real(),mTRANS[idx + n2].imag());
+		}
+	}
 }
 
 void	Scalar::laplacian()

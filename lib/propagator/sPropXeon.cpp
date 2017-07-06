@@ -5,6 +5,7 @@
 #include"propagator/RKParms.h"
 #include"scalar/varNQCD.h"
 #include "utils/parse.h"
+#include "utils/logger.h"
 #include "fft/fftCode.h"
 
 #ifdef USE_XEON
@@ -434,10 +435,10 @@ void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const do
 	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
 	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
 
-	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->Depth(), precision);
+	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
 
-	const double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
-
+	const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+	LogOut("mom=%f\n",fMom);
 	switch	(VQcd) {
 		case	VQCD_1:
 			propSpecCpu<VQCD_1>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);

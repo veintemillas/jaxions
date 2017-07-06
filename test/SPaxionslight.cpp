@@ -497,10 +497,10 @@ int	main (int argc, char *argv[])
 			//LogOut("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
 //			if (axion->Field() == FIELD_SAXION)
 //			{
-				propagate (axion, dzaux, delta, nQcd, llaux, VQCD_1);
+				//propagate (axion, dzaux, delta, nQcd, llaux, VQCD_1);
 			if (axion->Field() == FIELD_SAXION)
 			{
-
+				sPropagate (axion, dzaux, nQcd, llaux, VQCD_1);
 				if (nstrings_global < 500)
 				{
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
@@ -530,8 +530,6 @@ int	main (int argc, char *argv[])
 
 				if ((strcount >10 ) )
 				{
-
-
 
 					LogOut("\n");
 
@@ -567,11 +565,10 @@ int	main (int argc, char *argv[])
 				}
 			}
 	    }
-//			}
-//			else
-//			{
-//				propTheta	(axion, dzaux, nQcd, delta, fCount);
-//			}
+			else
+			{
+				propagate (axion, dzaux, delta, nQcd, llaux, VQCD_1);
+			}
 
 
 			current = std::chrono::high_resolution_clock::now();
