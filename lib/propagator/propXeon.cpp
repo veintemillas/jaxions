@@ -290,7 +290,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 								opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
 							opCode(mul_pd,
 								opCode(mul_pd,
-									opCode(add_pd, mPx, opCode(set1_pd, z2)),
+									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
 									opCode(set1_pd, LL)),
 								mel));
 						break;

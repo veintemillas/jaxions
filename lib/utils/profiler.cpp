@@ -62,11 +62,17 @@ namespace profiler {
 		FlopCounter		rkn4SaxionfCounter;
 		propProfiler.insert(std::string("RKN4 Saxion"), rkn4SaxionfCounter);
 
+		FlopCounter		rkn4sSaxionfCounter;
+		propProfiler.insert(std::string("RKN4 Spectral Saxion"), rkn4sSaxionfCounter);
+
 		FlopCounter		rkn4SaxionLMfCounter;
 		propProfiler.insert(std::string("RKN4 Saxion Lowmem"), rkn4SaxionLMfCounter);
 
 		FlopCounter		rkn4AxionfCounter;
 		propProfiler.insert(std::string("RKN4 Axion"),  rkn4AxionfCounter);
+
+		FlopCounter		rkn4sAxionfCounter;
+		propProfiler.insert(std::string("RKN4 Spectral Axion"),  rkn4sAxionfCounter);
 
 		profs.insert(std::make_pair(PROF_PROP, propProfiler));
 
@@ -122,6 +128,9 @@ namespace profiler {
 
 		FlopCounter	wEngyfCounter;
 		folderProfiler.insert(std::string("Write energy"), wEngyfCounter);
+
+		FlopCounter	wEmapfCounter;
+		folderProfiler.insert(std::string("Write energy map"), wEmapfCounter);
 
 		FlopCounter	wArrayfCounter;
 		folderProfiler.insert(std::string("Write array"), wArrayfCounter);

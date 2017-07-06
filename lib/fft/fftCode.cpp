@@ -94,7 +94,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		case FIELD_DOUBLE:
 
 		if (rank == 0) {
-			if (fftw_import_wisdom_from_filename("fftWisdom.double") == 0)
+			if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0)
 				printf ("  Warning: could not import wisdom from fftWisdom.double\n");
 		}
 
@@ -110,7 +110,7 @@ void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPre
 		}
 
 		fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-		if (rank == 0) { fftw_export_wisdom_to_filename("fftWisdom.double"); }
+		if (rank == 0) { fftw_export_wisdom_to_filename("../fftWisdom.double"); }
 		printMpi ("  Wisdom saved\n");
 
 		break;
@@ -452,5 +452,127 @@ void	closeFFThalo()
 	{
 		fftw_destroy_plan(p3);
 		fftw_destroy_plan(p3b);
+	}
+}
+
+//----------------------------------------------------------------------------------------------------------
+// 			FFT SPECTRAL PROPAGATOR
+//----------------------------------------------------------------------------------------------------------
+
+fftw_plan  pS,  pSb;
+fftwf_plan pfS, pfSb;
+
+
+static bool iFFTspec = false;
+
+void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrecision prec)
+{
+	if (!iFFT)
+		initFFT(prec);
+
+	printf ("Initializing FFTSpectrum for the spectral propagator...\n");
+	fflush (stdout);
+
+	if (iFFTspec == true)
+	{
+		printf ("Already initialized!!\n");
+		fflush (stdout);
+	}
+	int rank;
+
+	printf ("  Plan 3d (%lld x %lld x %lld)\n", (ptrdiff_t) n1, (ptrdiff_t) n1, (ptrdiff_t) Tz);
+	fflush (stdout);
+
+	switch (prec)
+	{
+		case FIELD_DOUBLE:
+
+			if (rank == 0) {
+				if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0)
+					printf ("  Warning: could not import wisdom from fftWisdom.double\n");
+			}
+
+			fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+			single = false;
+			pS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m),  static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+
+			fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+			if (rank == 0) { fftw_export_wisdom_to_filename("../fftWisdom.double"); }
+			printMpi ("  Wisdom saved\n");
+
+			break;
+
+		case FIELD_SINGLE:
+
+			if (rank == 0) {
+				if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0)
+					printf ("  Warning: could not import wisdom from fftWisdom.single\n");
+			}
+
+			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+			single = true;
+			pfS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m),  static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE);
+			pfSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+
+			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
+			if (rank == 0) fftwf_export_wisdom_to_filename("../fftWisdom.single");
+
+			break;
+
+		default:
+			break;
+	}
+
+	printf ("  Plan_Spectrum Ok\n");
+	fflush (stdout);
+
+	iFFTspec = true;
+}
+
+
+void	runFFTspec(int sign)
+{
+	printf ("Spec FFT...");
+	fflush (stdout);
+
+	switch (sign)
+	{
+		case FFTW_FORWARD:
+
+		if (single)
+			fftwf_execute(pfS);
+		else
+			fftw_execute(pS);
+		break;
+
+		case FFTW_BACKWARD:
+
+		if (single)
+			fftwf_execute(pfSb);
+		else
+			fftw_execute(pSb);
+		break;
+	}
+	printf ("Done!\n");
+	fflush (stdout);
+}
+
+void	closeFFTspec()
+{
+	if (!iFFTspec)
+		return;
+
+	if (single)
+	{
+		fftwf_destroy_plan(pfS);
+		fftwf_destroy_plan(pfSb);
+	}
+	else
+	{
+		fftw_destroy_plan(pS);
+		fftw_destroy_plan(pSb);
 	}
 }

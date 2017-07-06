@@ -16,7 +16,8 @@
 	#include "propagator/propThetaGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
+#include "utils/logger.h"
+#include "utils/profiler.h"
 
 class	SPropagator
 {
@@ -24,7 +25,7 @@ class	SPropagator
 
 	const double c1, c2, c3, c4;	// The parameters of the Runge-Kutta-Nyström
 	const double d1, d2, d3, d4;
-	const double delta2, dz;
+	const double dz;
 	const double nQcd, LL;
 	const size_t Lx, Lz, V, S;
 
@@ -38,7 +39,7 @@ class	SPropagator
 
 	public:
 
-		 SPropagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz, VqcdType pot);
+		 SPropagator(Scalar *field, const double LL, const double nQcd, const double dz, VqcdType pot);
 		~SPropagator() {};
 
 	void	sRunCpu	();	// Saxion propagator
@@ -46,42 +47,22 @@ class	SPropagator
 
 	void	tRunCpu	();	// Axion propagator
 	void	tRunXeon();
-
-	void	lowCpu	();	// Lowmem only available for saxion
-	void	lowXeon	();
 };
 
-	SPropagator::SPropagator(Scalar *field, const double LL, const double nQcd, const double delta, const double dz, VqcdType pot) : axionField(field), dz(dz), Lx(field->Length()), Lz(field->eDepth()),
-		V(field->Size()), S(field->Surf()), c1(C1), d1(D1), c2(C2), d2(D2), c3(C3), d3(D3), c4(C4), d4(D4), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), pot(pot), lType(field->Lambda())
+	SPropagator::SPropagator(Scalar *field, const double LL, const double nQcd, const double dz, VqcdType pot) : axionField(field), dz(dz), Lx(field->Length()), Lz(field->eDepth()),
+		V(field->Size()), S(field->Surf()), c1(C1), d1(D1), c2(C2), d2(D2), c3(C3), d3(D3), c4(C4), d4(D4), precision(field->Precision()), LL(LL), nQcd(nQcd), pot(pot), lType(field->Lambda())
 {
 }
-
-
 
 void	SPropagator::sRunCpu	()
 {
-	spropagateCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
-}
-
-void	SPropagator::lowCpu	()
-{
-	spropLowMemCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
+	propSpecCpu	(axionField, dz, LL, nQcd, Lx, V, S, precision, pot);
 }
 
 void	SPropagator::sRunXeon	()
 {
 #ifdef	USE_XEON
-	spropagateXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
-#else
-	printf("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
-void	SPropagator::lowXeon	()
-{
-#ifdef	USE_XEON
-	spropLowMemXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
+	propSpecXeon	(axionField, dz, LL, nQcd, Lx, V, S, precision, pot);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
@@ -90,13 +71,13 @@ void	SPropagator::lowXeon	()
 
 void    SPropagator::tRunCpu	()
 {
-	spropThetaCpu(axionField, dz, delta2, nQcd, Lx, V, S, precision);
+//	propSpecThetaCpu(axionField, dz, nQcd, Lx, V, S, precision);
 }
 
 void    SPropagator::tRunXeon	()
 {
 #ifdef  USE_XEON
-	spropThetaXeon(axionField, dz, delta2, nQcd, Lx, V, S, precision);
+//	propSpecThetaXeon(axionField, dz, delta2, nQcd, Lx, V, S, precision);
 #else
 	printf("Xeon Phi support not built");
 	exit(1);
@@ -104,51 +85,52 @@ void    SPropagator::tRunXeon	()
 }
 
 
-void	spropagate	(Scalar *field, FlopCounter *fCount, const double dz, const double delta, const double nQcd, const double LL, VqcdType pot)
+void	sPropagate	(Scalar *field, const double dz, const double nQcd, const double LL, VqcdType pot)
 {
-	SPropagator *prop = new SPropagator(field, LL, nQcd, delta, dz, pot);
+	LogMsg  (VERB_HIGH, "Called propagator");
+	profiler::Profiler &prof = getProfiler(PROF_PROP);
 
-	if	(!field->Folded())
+	SPropagator *prop = new SPropagator(field, LL, nQcd, dz, pot);
+
+	if	(field->Folded())
 	{
 		Folder	munge(field);
-		munge(FOLD_ALL);
+		munge(UNFOLD_ALL);
 	}
+
+	prof.start();
 
 	switch (field->Device())
 	{
 		case DEV_CPU:
 			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem())
-					prop->lowCpu ();
-				else
-					prop->sRunCpu ();
+				name.assign("RKN4 Spectral Saxion");
+				prop->sRunCpu ();
 			} else {
+				name.assign("RKN4 Spectral Axion");
 				prop->tRunCpu ();
 			}
 			break;
 
 		case DEV_GPU:
 			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem())
-					prop->lowGpu ();
-				else
-					prop->sRunGpu ();
+				name.assign("RKN4 Spectral Saxion");
+				prop->sRunGpu ();
 			} else {
+				name.assign("RKN4 Spectral Axion");
 				prop->tRunGpu ();
 			}
 			break;
 
 		case	DEV_XEON:
 			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem())
-					prop->lowXeon();
-				else
-					prop->sRunXeon();
-				break;
+				name.assign("RKN4 Spectral Saxion");
+				prop->sRunXeon();
 			} else {
+				name.assign("RKN4 Spectral Axion");
 				prop->tRunXeon ();
 			}
-
+			break;
 		default:
 			printf ("Not a valid device\n");
 			break;
@@ -160,16 +142,24 @@ void	spropagate	(Scalar *field, FlopCounter *fCount, const double dz, const doub
 		switch (pot)
 		{
 			case VQCD_1:
-				fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				double	gFlops = (field->Size()*64 + field->Length()*(14*log2(field->Length()) + 2))*1e-9;	// Approx
+				double	gBytes = field->Size()*field->DataSize()*22e-9;
+				prof.add(name, gFlops, gBytes);
 				break;
 
 			case VQCD_2:
-				fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				double	gFlops = (field->Size()*76 + field->Length()*(14*log2(field->Length()) + 2))*1e-9;	// Approx
+				double	gBytes = field->Size()*field->DataSize()*22e-9;
+				prof.add(name, gFlops, gBytes);
 				break;
 		}
 	} else {
-		fCount->addFlops(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+		double	gFlops = 0.*1e-9;	// Approx
+		double	gBytes = 0.*field->Size()*field->DataSize()*22e-9;
+		prof.add(name, gFlops, gBytes);
 	}
+
+	LogMsg  (VERB_HIGH, "Propagator %s reporting %lf GFlops %lf GBytes", name.c_str(), prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
 
 	return;
 }

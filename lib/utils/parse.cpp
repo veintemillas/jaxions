@@ -10,7 +10,7 @@ size_t sizeZ = 128;
 int  zGrid = 1;
 int  nSteps = 500;
 int  dump = 100;
-int  nQcd = 3;
+double  nQcd = 7.0;
 //JAVIER
 int  Ng = 1 ;
 double indi3 = 1.0;
@@ -63,7 +63,7 @@ void	printUsage(char *name)
 	LogOut("--prec  double/single           Precision of the axion field simulation (default double)\n");
 	LogOut("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
 
-	LogOut("--qcd   [int]                   Exponent of topological susceptibility (default 3).\n");
+	LogOut("--qcd   [float]                 Exponent of topological susceptibility (default 7).\n");
 	LogOut("--lsize [float]                 Physical size of the system (default 4.0).\n");
 	LogOut("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
 	LogOut("--zf    [float]                 Final value of the redshift (default 1.0).\n");
@@ -403,7 +403,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			nQcd = atoi(argv[i+1]);
+			nQcd = atof(argv[i+1]);
 
 			if (nQcd < 0)
 			{
