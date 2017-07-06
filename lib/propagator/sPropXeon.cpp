@@ -431,7 +431,10 @@ inline	void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, c
 
 void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
 {
-	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->Depth(), precision);
+	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
+	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
+
+	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->Depth(), precision);
 
 	const double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
