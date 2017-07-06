@@ -36,7 +36,7 @@ int	main (int argc, char *argv[])
 {
 	parseArgs(argc, argv);
 
-	if (initComms(argc, argv, zGrid, cDev) == -1)
+	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
 	{
 		printf ("Error initializing devices and Mpi\n");
 		return 1;
@@ -60,9 +60,24 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	printMpi("Generating scalar ... ");
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
-	printMpi("Done! \n");
+	if (fIndex == -1) {
+		//This generates initial conditions
+		printMpi("Generating scalar... ");
+		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+		printMpi("Done! \n");
+	} else {
+		//This reads from an Axion.$fIndex file
+		printMpi("Reading from file... ");
+		readConf(&axion, fIndex);
+		if (axion == NULL)
+		{
+			printMpi ("Error reading HDF5 file\n");
+			exit (0);
+		}
+		printMpi("Done! \n");
+	}
+
+	axion->transferDev(FIELD_MV);
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
@@ -115,11 +130,11 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	void	*eRes, *str;
-	trackAlloc(&eRes, 128);
-	memset(eRes, 0, 128);
-#ifdef	__MIC__
+	trackAlloc(&eRes, 256);
+	memset(eRes, 0, 256);
+#if	defined(__MIC__) || defined(__AVX512F__)
 	alignAlloc(&str, 64, (axion->Size()));
-#elif defined(__AVX__)
+#elif	defined(__AVX__)
 	alignAlloc(&str, 32, (axion->Size()));
 #else
 	alignAlloc(&str, 16, (axion->Size()));
@@ -134,21 +149,43 @@ int	main (int argc, char *argv[])
 	else
 		printMpi ("Lambda in Z2 mode\n");
 
-	writeConf(axion, index);
+//	writeConf(axion, index);
 
-	auto strDen = strings(axion, str, fCount);
+	auto strDen = strings(axion, str);
+
+	fCount->addTime(elapsed.count()*1.e-3);
 
 	if (axion->LowMem())
 		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 	else
 		energy(axion, fCount, eRes, true,  delta, nQcd, LL);
 
+	printMpi("Nstrings %lu\n", strDen.strDen);
+	printMpi("Chiral   %ld\n", strDen.strChr);
+	printMpi("Nwalls   %lu\n", strDen.wallDn);
+	printMpi("GFlops %lf\tGBytes %lf\n", fCount->GFlops(), fCount->GBytes());
+
+	auto S = axion->Surf();
+	auto V = axion->Size();
+
+	if	(axion->Precision() == FIELD_SINGLE) {
+		double *eR = static_cast<double *>(eRes);
+		printMpi("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9]);
+		printMpi("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*S], static_cast<float *>(axion->mCpu())[2*S+1]);
+		printMpi("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*(V+S)-2], static_cast<float *>(axion->mCpu())[2*(V+S)-1]);
+	}	else	{
+		double *eR = static_cast<double *>(eRes);
+		printMpi("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9]);
+		printMpi("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*S], static_cast<double *>(axion->mCpu())[2*S+1]);
+		printMpi("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*(V+S)-2], static_cast<double *>(axion->mCpu())[2*(V+S)-1]);
+	}
+
 	createMeas(axion, index);
 	writeString(str, strDen);
 	writeEnergy(axion, eRes);
 	writePoint(axion);
 	destroyMeas();
-
+/*
 	printMpi("--------------------------------------------------\n");
 	printMpi("TO THETA\n");
 	cmplxToTheta (axion, fCount);
@@ -164,7 +201,7 @@ int	main (int argc, char *argv[])
 	writeEnergy(axion, eRes);
 	writePoint(axion);
 	destroyMeas();
-
+*/
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
 

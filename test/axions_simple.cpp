@@ -33,7 +33,7 @@ int	main (int argc, char *argv[])
 {
 	parseArgs(argc, argv);
 
-	if (initComms(argc, argv, zGrid, cDev) == -1)
+	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
 	{
 		printf ("Error initializing devices and Mpi\n");
 		return 1;
