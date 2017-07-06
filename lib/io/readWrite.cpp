@@ -8,9 +8,20 @@
 #include "utils/parse.h"
 #include "comms/comms.h"
 
+#include "utils/profiler.h"
+#include "utils/logger.h"
+
 hid_t	meas_id = -1, mlist_id;
 hsize_t	tSize, slabSz, sLz;
 bool	opened = false, header = false;
+
+bool	mDisabled = true;
+H5E_auto2_t eFunc;
+void	   *cData;
+
+using namespace profiler;
+
+/*	TODO	Añade excepciones para salir limpiamente del programa	*/
 
 herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 {
@@ -18,10 +29,14 @@ herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type
 	herr_t	status;
 
 	attr_id = H5Screate(H5S_SCALAR);
-	attr    = H5Acreate2 (file_id, name, h5_type, attr_id, H5P_DEFAULT, H5P_DEFAULT);
-	status  = H5Awrite (attr, h5_type, data);
+	if ((attr    = H5Acreate2 (file_id, name, h5_type, attr_id, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+		LogError ("Error creating attribute %s", name);
+	if ((status  = H5Awrite (attr, h5_type, data)) < 0)
+		LogError ("Error writing attribute %s to file");
 	H5Sclose (attr_id);
 	H5Aclose (attr);
+
+	LogMsg (VERB_HIGH, "Write attribute %s", name);	// Usa status para hacer logging de los errores!!!
 
 	return	status;
 }
@@ -31,11 +46,50 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 	hid_t	attr;
 	herr_t	status;
 
-	attr   = H5Aopen_by_name (file_id, "/", name, H5P_DEFAULT, H5P_DEFAULT);
-	status = H5Aread (attr, h5_type, data);
+	if ((attr   = H5Aopen_by_name (file_id, "/", name, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+		LogError ("Error opening attribute %s");
+	if ((status = H5Aread (attr, h5_type, data)) < 0)
+		LogError ("Error reading attribute %s");
 	status = H5Aclose(attr);
 
+	LogMsg (VERB_HIGH, "Read attribute %s", name);
+
 	return	status;
+}
+
+void	disableErrorStack	()
+{
+	if (H5Eget_auto2(H5E_DEFAULT, &eFunc, &cData) < 0) {	// Save current error stack
+		mDisabled = false;
+		LogMsg (VERB_NORMAL, "Warning: retrieve current hdf5 error stack");
+		LogMsg (VERB_NORMAL, "Warning: group existence check might lead to spurious errors");
+
+		return;
+	} else {
+		if (H5Eset_auto2(H5E_DEFAULT, NULL, NULL) < 0) {	// Turn off error output, we don't want trash if the group doesn't exist
+			mDisabled = false;
+			LogMsg (VERB_NORMAL, "Warning: couldn't disable current hdf5 error stack");
+			LogMsg (VERB_NORMAL, "Warning: group existence check might lead to spurious errors");
+
+			return;
+		}
+	}
+
+	mDisabled = true;
+}
+
+void	enableErrorStack	()
+{
+	if (mDisabled) {
+		if (H5Eset_auto2(H5E_DEFAULT, eFunc, cData) < 0) {	// Save current error stack
+			LogMsg (VERB_NORMAL, "Warning: couldn't enable hdf5 error stack");
+			LogMsg (VERB_NORMAL, "Warning: hdf5 errors will be silent");
+
+			return;
+		}
+	}
+
+	mDisabled = false;
 }
 
 void	writeConf (Scalar *axion, int index)
@@ -53,7 +107,8 @@ void	writeConf (Scalar *axion, int index)
 
 	int myRank = commRank();
 
-	commSync();
+	LogMsg (VERB_NORMAL, "Writing Hdf5 configuration to disk");
+	LogMsg (VERB_NORMAL, "");
 
 	/*	Unfold field before writing configuration	*/
 
@@ -63,9 +118,15 @@ void	writeConf (Scalar *axion, int index)
 
 	if (wasFolded)
 	{
+		LogMsg (VERB_HIGH, "Folded configuration, will unfold at the end");
 		munge	= new Folder(axion);
 		(*munge)(UNFOLD_ALL);
 	}
+
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
 
 	/*	Set up parallel access with Hdf5	*/
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
@@ -78,7 +139,7 @@ void	writeConf (Scalar *axion, int index)
 	/*	Create the file and release the plist	*/
 	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
 	{
-		printf ("Error creating file %s\n", base);
+		LogError ("Error creating file %s", base);
 		return;
 	}
 
@@ -112,21 +173,21 @@ void	writeConf (Scalar *axion, int index)
 
 		default:
 
-		printf("Error: Invalid precision. How did you get this far?\n");
+		LogError ("Error: Invalid precision. How did you get this far?");
 		exit(1);
 
 		break;
 	}
 
 	int cSteps = dump*index;
-	hsize_t totlZ = sizeZ*zGrid;
-	hsize_t tmpS  = sizeN;
+	uint totlZ = sizeZ*zGrid;
+	uint tmpS  = sizeN;
 
 	switch (axion->Field())
 	{
 		case 	FIELD_SAXION:
 		{
-			total = tmpS*tmpS*totlZ*2;
+			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ*2));
 			slab  = (hsize_t) (axion->Surf()*2);
 
 			sprintf(fStr, "Saxion");
@@ -135,7 +196,7 @@ void	writeConf (Scalar *axion, int index)
 
 		case	FIELD_AXION:
 		{
-			total = tmpS*tmpS*totlZ;
+			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
 			slab  = (hsize_t) axion->Surf();
 
 			sprintf(fStr, "Axion");
@@ -144,7 +205,7 @@ void	writeConf (Scalar *axion, int index)
 
 		default:
 
-		printf("Error: Invalid field type. How did you get this far?\n");
+		LogError ("Error: Invalid field type. How did you get this far?");
 		exit(1);
 
 		break;
@@ -161,10 +222,10 @@ void	writeConf (Scalar *axion, int index)
 
 	writeAttribute(file_id, fStr,   "Field type",    attr_type);
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
-	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
-	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
+	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
+	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
 	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_INT);
+	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
@@ -181,38 +242,29 @@ void	writeConf (Scalar *axion, int index)
 	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
-	totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
-
-	if (totalSpace < 0)
+	if ((totalSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
 	{
-		printf ("Fatal error H5Screate_simple\n");
+		LogError ("Error calling H5Screate_simple");
 		exit (1);
 	}
 
 	/*	Set chunked access	*/
-	herr_t status;
-	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
-
-	if (chunk_id < 0)
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
 	{
-		printf ("Fatal error H5Pcreate\n");
+		LogError ("Error calling H5Pcreate");
 		exit (1);
 	}
 
-	status = H5Pset_chunk (chunk_id, 1, &slab);
-
-	if (status < 0)
+	if (H5Pset_chunk (chunk_id, 1, &slab) < 0)
 	{
-		printf ("Fatal error H5Pset_chunk\n");
+		LogError ("Error setting chunked access");
 		exit (1);
 	}
 
 	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
-	status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
-
-	if (status < 0)
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
 	{
-		printf ("Fatal error H5Pset_alloc_time\n");
+		LogError ("Error calling H5Pset_alloc_time\n");
 		exit (1);
 	}
 
@@ -227,7 +279,7 @@ void	writeConf (Scalar *axion, int index)
 
 	if ((mset_id < 0) || (vset_id < 0))
 	{
-		printf	("Fatal error.\n");
+		LogError ("Error creating datasets");
 		exit (0);
 	}
 
@@ -239,8 +291,7 @@ void	writeConf (Scalar *axion, int index)
 
 	commSync();
 
-	printf ("Rank %d ready to write\n", myRank);
-	fflush (stdout);
+	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
 
 	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
@@ -250,11 +301,14 @@ void	writeConf (Scalar *axion, int index)
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
+		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+slab*(1+zDim)*dataSize));
+		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+slab*zDim*dataSize));
 
-		// JAVIER CHANGED 2*axion->Surf to axion->Surf
-		H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+slab*(1+zDim)*dataSize));
-		H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+slab*zDim*dataSize));
-
+		if ((mErr < 0) || (vErr < 0))
+		{
+			LogError ("Error writing dataset");
+			exit(0);
+		}
 		//commSync();
 	}
 
@@ -272,6 +326,11 @@ void	writeConf (Scalar *axion, int index)
 	H5Pclose (chunk_id);
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
+
+	prof.stop();
+	prof.add(std::string("Write configuration"), 0., (2.*total*dataSize + 81.)*1e-9);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes", total*dataSize*2 + 81);
 
 	/*	Fold back the field	*/
 
@@ -302,6 +361,14 @@ void	readConf (Scalar **axion, int index)
 
 	int myRank = commRank();
 
+	LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk");
+	LogMsg (VERB_NORMAL, "");
+
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
 	/*	Set up parallel access with Hdf5	*/
 
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
@@ -316,7 +383,7 @@ void	readConf (Scalar **axion, int index)
 	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
 	{
 		*axion == NULL;
-		printf ("Error opening file %s\n", base);
+		LogError ("Error opening file %s", base);
 		return;
 	}
 
@@ -335,7 +402,7 @@ void	readConf (Scalar **axion, int index)
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-	readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_INT);
+	readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
@@ -358,7 +425,7 @@ void	readConf (Scalar **axion, int index)
 			dataType  = H5T_NATIVE_FLOAT;
 			dataSize  = sizeof(float);
 		} else {
-			printf("Error reading file %s: Invalid precision %s\n", base, prec);
+			LogError ("Error reading file %s: Invalid precision %s", base, prec);
 			exit(1);
 		}
 	} else {
@@ -370,27 +437,23 @@ void	readConf (Scalar **axion, int index)
 			dataSize  = sizeof(double);
 
 			if (!strcmp(prec, "Single"))
-				printf("Reading double precision configuration as single precision\n");
+				LogMsg (VERB_HIGH, "Reading single precision configuration as double precision");
 		} else if (sPrec == FIELD_SINGLE) {
 			dataType  = H5T_NATIVE_FLOAT;
 			dataSize  = sizeof(float);
 			if (!strcmp(prec, "Double"))
-				printf("Reading single precision configuration as double precision\n");
+				LogMsg (VERB_HIGH, "Reading double precision configuration as single precision");
 		} else {
-			printf("Input error: Invalid precision\n");
+			LogError ("Input error: Invalid precision");
 			exit(1);
 		}
 	}
-
-	// OJO que LO he CAMBIADOOOOOO
-	//printf("RW/ %d %d",sizeN,sizeZ);
-	//hsize_t sizeZ = totlZ/zGrid;
 
 	/*	Create axion field	*/
 
 	if (totlZ % zGrid)
 	{
-		printf("Error: Geometry not valid. Try a different partitioning.\n");
+		LogError ("Error: Geometry not valid. Try a different partitioning");
 		exit (1);
 	}
 	else
@@ -405,7 +468,7 @@ void	readConf (Scalar **axion, int index)
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION, CONF_NONE, 0, 0, NULL);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
-		printf("Input error: Invalid field type\n");
+		LogError ("Input error: Invalid field type");
 		exit(1);
 	}
 
@@ -416,9 +479,11 @@ void	readConf (Scalar **axion, int index)
 
 	/*	Open a dataset for the whole axion data	*/
 
-	mset_id = H5Dopen (file_id, "/m", H5P_DEFAULT);
-	vset_id = H5Dopen (file_id, "/v", H5P_DEFAULT);
+	if ((mset_id = H5Dopen (file_id, "/m", H5P_DEFAULT)) < 0)
+		LogError ("Error opening dataset");
 
+	if ((vset_id = H5Dopen (file_id, "/v", H5P_DEFAULT)) < 0)
+		LogError ("Error opening dataset");
 
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 	mSpace   = H5Dget_space (mset_id);
@@ -434,8 +499,13 @@ void	readConf (Scalar **axion, int index)
 
 		/*	Read raw data	*/
 
-		H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
-		H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
+		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
+		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
+
+		if ((mErr < 0) || (vErr < 0)) {
+			LogError ("Error reading dataset from file");
+			return;
+		}
 	}
 
 	/*	Close the dataset	*/
@@ -450,6 +520,11 @@ void	readConf (Scalar **axion, int index)
 
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
+
+	prof.stop();
+	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab + 77.)*1.e-9);
+
+	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 
 	/*	Fold the field		*/
 
@@ -482,9 +557,11 @@ void	createMeas (Scalar *axion, int index)
 	if (myRank != 0)	// Only rank 0 writes measurement data
 		return;
 
+	LogMsg (VERB_NORMAL, "Creating measurement file with index %d", index);
+
 	if (opened)
 	{
-		printf ("Error, a hdf5 file is already opened\n");
+		LogError ("Error: Hdf5 measurement file already opened");
 		return;
 	}
 
@@ -501,7 +578,7 @@ void	createMeas (Scalar *axion, int index)
 	/*	Create the file and release the plist	*/
 	if ((meas_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)) < 0)	//plist_id)) < 0)
 	{
-		printf ("Error creating file %s\n", base);
+		LogError ("Error creating file %s", base);
 		return;
 	}
 
@@ -535,7 +612,7 @@ void	createMeas (Scalar *axion, int index)
 
 		default:
 
-		printf("Error: Invalid precision. How did you get this far?\n");
+		LogError ("Error: Invalid precision. How did you get this far?");
 		exit(1);
 
 		break;
@@ -552,7 +629,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 
 		default:
-			printf("Error: Invalid field type. How did you get this far?\n");
+			LogError ("Error: Invalid field type. How did you get this far?");
 			exit(1);
 			break;
 	}
@@ -589,6 +666,8 @@ void	createMeas (Scalar *axion, int index)
 
 	header = true;
 
+	LogMsg (VERB_NORMAL, "Measurement file %s successfuly openend", base);
+
 	return;
 }
 
@@ -609,6 +688,8 @@ void	destroyMeas ()
 	header = false;
 
 	meas_id = -1;
+
+	LogMsg (VERB_NORMAL, "Measurement file successfuly closed");
 }
 
 void	writeString	(void *str, StringData strDat)
@@ -616,18 +697,28 @@ void	writeString	(void *str, StringData strDat)
 	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
 	hid_t	datum;
 
+	bool	mpiCheck = true;
+
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	char *strData = static_cast<char *>(str);
 	char sCh[16] = "/string/data";
 
+	Profiler &prof = getProfiler(PROF_HDF5);
+
 	if (myRank == 0)
 	{
+		/*	Start profiling		*/
+		prof.start();
+
+		LogMsg (VERB_NORMAL, "Writing string data");
+
 		if (header == false || opened == false)
 		{
-			printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
-			return;
+			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+			mpiCheck = false;
+			goto bCastAndExit;		// HELL
 		}
 
 		/*	Create space for writing the raw data to disk with chunked access	*/
@@ -635,50 +726,57 @@ void	writeString	(void *str, StringData strDat)
 
 		if (totalSpace < 0)
 		{
-			printf ("Fatal error H5Screate_simple\n");
-			exit (1);
+			LogError ("Fatal error H5Screate_simple");
+			mpiCheck = false;
+			goto bCastAndExit;		// Hurts my eyes
 		}
 
 		/*	Set chunked access and dynamical compression	*/
-		herr_t status;
-
-		chunk_id = H5Pcreate (H5P_DATASET_CREATE);
-
-		if (chunk_id < 0)
-		{
-			printf ("Fatal error H5Pcreate\n");
-			exit (1);
+		if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0) {
+			LogError ("Fatal error H5Pcreate");
+			mpiCheck = false;
+			goto bCastAndExit;		// Really?
 		}
 
-		status = H5Pset_chunk (chunk_id, 1, &slabSz);
-
-		if (status < 0)
-		{
-			printf ("Fatal error H5Pset_chunk\n");
-			exit (1);
+		if (H5Pset_chunk (chunk_id, 1, &slabSz) < 0) {
+			LogError ("Fatal error H5Pset_chunk");
+			mpiCheck = false;
+			goto bCastAndExit;		// You MUST be kidding
 		}
 
-		status = H5Pset_deflate (chunk_id, 9);	// Maximum compression
-
-		if (status < 0)
+		if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression
 		{
-			printf ("Fatal error H5Pset_deflate\n");
-			exit (1);
+			LogError ("Error: couldn't set compression level to 9");
+			mpiCheck = false;
+			goto bCastAndExit;		// NOOOOOO
 		}
 
 		/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
-		status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
-
-		if (status < 0)
+		if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
 		{
-			printf ("Fatal error H5Pset_alloc_time\n");
-			exit (1);
+			LogError ("Fatal error H5Pset_alloc_time");
+			mpiCheck = false;
+			goto bCastAndExit;		// Aaaaaaaaaaarrggggggghhhh
 		}
 
-		/*	Create a group for string data	*/
-		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		/*	Create a group for string data		*/
+		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+
+		if (!status)
+			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		else {
+			if (status > 0) {
+				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
+				LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
+			} else {
+				LogError ("Error: can't check whether group /string exists");
+				mpiCheck - false;
+				goto bCastAndExit;
+			}
+		}
+
 		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
 		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
 
 		/*	Create a dataset for string data	*/
@@ -686,14 +784,25 @@ void	writeString	(void *str, StringData strDat)
 
 		if (sSet_id < 0)
 		{
-			printf	("Fatal error.\n");
-			exit (0);
+			LogError ("Fatal error creating dataset");
+			mpiCheck = false;
+			goto bCastAndExit;		// adslfkjñasldkñkja
 		}
 
 		/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
 		sSpace = H5Dget_space (sSet_id);
 		memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
+	}
+
+	bCastAndExit:
+
+	MPI_Bcast(&mpiCheck, sizeof(mpiCheck), MPI_CHAR, 0, MPI_COMM_WORLD);
+
+	if (mpiCheck == false) {	// Prevent non-zero ranks deadlock in case there is an error with rank 0. MPI would force exit anyway..
+		if (myRank == 0)
+			prof.stop();
+		return;
 	}
 
 	int tSz = commSize(), test = myRank;
@@ -706,11 +815,15 @@ void	writeString	(void *str, StringData strDat)
 		{
 			if (myRank != 0)
 			{
-				if (myRank == rank)
+				if (myRank == rank) {
+					LogMsg (VERB_HIGH, "Sending %lu bytes to rank 0", slabSz);
 					MPI_Send(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+				}
 			} else {
-				if (rank != 0)
+				if (rank != 0) {
+					LogMsg (VERB_HIGH, "Receiving %lu bytes from rank %d", slabSz, rank);
 					MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, NULL);
+				}
 
 				/*	Select the slab in the file	*/
 				hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;
@@ -734,130 +847,19 @@ void	writeString	(void *str, StringData strDat)
 		H5Sclose (totalSpace);
 		H5Pclose (chunk_id);
 		H5Gclose (group_id);
+
+		prof.stop();
+		prof.add(std::string("Write strings"), 0, 1e-9*(slabSz*sLz));
 	}
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", slabSz*sLz);
 
 	commSync();
-}
-
-void	writeMapHdf5	(Scalar *axion)
-{
-	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
-	hsize_t	dataSize = axion->DataSize();
-
-	int myRank = commRank();
-
-	if (myRank != 0)
-		return;
-
-	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	char *dataM  = static_cast<char *>(axion->mCpu());
-	char *dataV  = static_cast<char *>(axion->vCpu());
-	char mCh[16] = "/map/m";
-	char vCh[16] = "/map/v";
-
-	if (header == false || opened == false)
-	{
-		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
-		return;
-	}
-
-	if (axion->Precision() == FIELD_DOUBLE)
-		dataType = H5T_NATIVE_DOUBLE;
-	else
-		dataType = H5T_NATIVE_FLOAT;
-
-	/*	Create space for writing the raw data to disk with chunked access	*/
-	mapSpace = H5Screate_simple(1, &slabSz, NULL);	// Whole data
-
-	if (mapSpace < 0)
-	{
-		printf ("Fatal error H5Screate_simple\n");
-		exit (1);
-	}
-
-	/*	Set chunked access and dynamical compression	*/
-
-	herr_t status;
-
-	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
-
-	if (chunk_id < 0)
-	{
-		printf ("Fatal error H5Pcreate\n");
-		exit (1);
-	}
-
-	status = H5Pset_chunk (chunk_id, 1, &slabSz);
-
-	if (status < 0)
-	{
-		printf ("Fatal error H5Pset_chunk\n");
-		exit (1);
-	}
-
-	status = H5Pset_deflate (chunk_id, 9);	// Maximum compression, hoping that the map is a bunch of zeroes
-
-	if (status < 0)
-	{
-		printf ("Fatal error H5Pset_deflate\n");
-		exit (1);
-	}
-
-	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
-	status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
-
-	if (status < 0)
-	{
-		printf ("Fatal error H5Pset_alloc_time\n");
-		exit (1);
-	}
-
-	/*	Create a group for map data	*/
-	group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-	/*	Create a dataset for map data	*/
-
-	//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-	mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-	vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-
-	if (mSet_id < 0 || vSet_id < 0)
-	{
-		printf	("Fatal error.\n");
-		exit (0);
-	}
-
-	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
-
-	mSpace = H5Dget_space (mSet_id);
-	vSpace = H5Dget_space (vSet_id);
-
-	/*	Select the slab in the file	*/
-//	hsize_t offset = 0;
-//	H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
-//	H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
-
-	/*	Write raw data	*/
-	H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
-	H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
-	
-
-	/*	Close the dataset	*/
-
-	H5Dclose (mSet_id);
-	H5Dclose (vSet_id);
-	H5Sclose (mSpace);
-	H5Sclose (vSpace);
-
-	H5Sclose (mapSpace);
-	H5Pclose (chunk_id);
-	H5Gclose (group_id);
 }
 
 void	writeEnergy	(Scalar *axion, void *eData_)
 {
 	hid_t	group_id;
-	herr_t	status;
 
 	double	*eData = static_cast<double *>(eData_);
 
@@ -866,19 +868,33 @@ void	writeEnergy	(Scalar *axion, void *eData_)
 
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+		LogError ("Error: measurement file not opened. Ignoring write request. %d %d", header, opened);
 		return;
 	}
 
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	LogMsg (VERB_NORMAL, "Writing energy data");
+
 	/*	Create a group for string data if it doesn't exist	*/
-	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
+	auto status = H5Lexists (meas_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
 
-	if (status = H5Gget_objinfo (meas_id, "/energy", 0, NULL))	// Create group if it doesn't exists
+	if (!status)
 		group_id = H5Gcreate2(meas_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	else
-		group_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);	// Group exists, so we open it
+		} else {
+			LogError ("Error: can't check whether group /energy exists");
+			prof.stop();
+			return;
+		}
+	}
 
-//	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
+	int totalBytes = 40;
 
 	writeAttribute(group_id, &eData[TH_GRX],  "Axion Gr X", H5T_NATIVE_DOUBLE);
 	writeAttribute(group_id, &eData[TH_GRY],  "Axion Gr Y", H5T_NATIVE_DOUBLE);
@@ -893,18 +909,22 @@ void	writeEnergy	(Scalar *axion, void *eData_)
 		writeAttribute(group_id, &eData[RH_GRZ],  "Saxion Gr Z", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &eData[RH_POT],  "Saxion Potential", H5T_NATIVE_DOUBLE);
+
+		totalBytes += 40;
 	}
 
 	/*	TODO	Distinguish the different versions of the potentials	*/
 
 	/*	Close the group		*/
 	H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write energy"), 0, 1e-9*totalBytes);
 }
 
-void	writePoint (Scalar *axion)
+void	writePoint (Scalar *axion)	// NO PROFILER YET
 {
 	hid_t	group_id, dataSpace, sSet_id, sSpace, dataSet, dataType;
-	herr_t	status;
 	hsize_t dims[1];
 
 	size_t	dataSize = axion->DataSize(), S0 = axion->Surf();
@@ -912,21 +932,28 @@ void	writePoint (Scalar *axion)
 	if (commRank() != 0)
 		return;
 
+	LogMsg (VERB_NORMAL, "Writing single point data to measurement file");
+
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+		LogError ("Error: measurement file not opened. Ignoring write request. %d %d", header, opened);
 		return;
 	}
 
 	/*	Create a group for point data if it doesn't exist	*/
-	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
+	auto status = H5Lexists (meas_id, "/point", H5P_DEFAULT);	// Create group if it doesn't exists
 
-	if (status = H5Gget_objinfo (meas_id, "/point", 0, NULL))	// Create group if it doesn't exist
+	if (!status)
 		group_id = H5Gcreate2(meas_id, "/point", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	else
-		group_id = H5Gopen2(meas_id, "/point", H5P_DEFAULT);
-
-//	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/point", H5P_DEFAULT);	// Group exists, but it shouldn't
+			LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
+		} else {
+			LogError ("Error: can't check whether group /point exists");
+			return;
+		}
+	}
 
 	/*	Create minidataset	*/
 	if (axion->Precision() == FIELD_DOUBLE)
@@ -943,13 +970,86 @@ void	writePoint (Scalar *axion)
 	sSpace	  = H5Dget_space (dataSet);
 
 	/*	Write point data	*/
-	status = H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize);
+	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize) < 0)
+		LogError ("Error: couldn't write point data to file");
 
 	/*	Close everything		*/
 	H5Sclose (sSpace);
 	H5Dclose (dataSet);
 	H5Sclose (dataSpace);
 	H5Gclose (group_id);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes", dataSize);
+}
+
+void	writeArray (Scalar *axion, void *aData, size_t aSize, const char *group, const char *dataName)
+{
+	hid_t	group_id, dataSpace, sSpace, dataSet;
+	hsize_t dims[1] = { aSize };
+
+	size_t	dataSize;
+
+	if (commRank() != 0)
+		return;
+
+	LogMsg (VERB_NORMAL, "Writing array to measurement file");
+
+	if (header == false || opened == false)
+	{
+		LogError ("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	/*	Create the group for the data if it doesn't exist	*/
+	auto status = H5Lexists (meas_id, group, H5P_DEFAULT);	// Create group if it doesn't exists
+
+	if (!status)
+		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);		// Group exists, but it shouldn't
+			LogMsg(VERB_NORMAL, "Warning: group %s exists!", group);	// Since this is weird, log it
+		} else {
+			LogError ("Error: can't check whether group %s exists", group);
+			return;
+		}
+	}
+/*	disableErrorStack();
+
+	if (H5Gget_objinfo (meas_id, group, 0, NULL) < 0)	// Create group if it doesn't exists
+		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else
+		group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);
+
+	enableErrorStack();
+*/
+	/*	Create dataset	*/
+	dataSpace = H5Screate_simple(1, dims, NULL);
+	dataSet   = H5Dcreate(group_id, dataName, H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	sSpace	  = H5Dget_space (dataSet);
+
+	/*	Write spectrum data	*/
+	if (H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, dataSpace, sSpace, H5P_DEFAULT, aData) < 0) {
+		LogError ("Error writing %lu bytes to dataset", aSize*8);
+		prof.stop();
+		return;
+	}
+
+	/*	Close everything		*/
+	H5Sclose (sSpace);
+	H5Dclose (dataSet);
+	H5Sclose (dataSpace);
+	H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write array"), 0, 1e-9*(aSize*8));
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", aSize*8);
 }
 
 void	writeEDens (Scalar *axion, int index)
@@ -980,7 +1080,7 @@ void	writeEDens (Scalar *axion, int index)
 
 	/*	Broadcast the values of opened/header	*/
 	MPI_Bcast(&opened, sizeof(opened), MPI_BYTE, 0, MPI_COMM_WORLD);
-	MPI_Bcast(&opened, sizeof(header), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&header, sizeof(header), MPI_BYTE, 0, MPI_COMM_WORLD);
 
 	/*	If the measurement file is opened, we reopen it with parallel access	*/
 	if (opened == true)
@@ -1262,7 +1362,7 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 	/*	Create a group for the spectra if it doesn't exist	*/
 	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
 
-	if (status = H5Gget_objinfo (meas_id, dataName, 0, NULL))	// Create group if it doesn't exist
+	if (H5Gget_objinfo (meas_id, dataName, 0, NULL) < 0)	// Create group if it doesn't exist
 		group_id = H5Gcreate2(meas_id, dataName, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else
 		group_id = H5Gopen2(meas_id, dataName, H5P_DEFAULT);
@@ -1294,45 +1394,118 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 	H5Gclose (group_id);
 }
 
-void	writeArray (Scalar *axion, void *aData, size_t aSize, const char *group, const char *dataName)
+void	writeMapHdf5	(Scalar *axion)
 {
-	hid_t	group_id, dataSpace, sSpace, dataSet;
-	herr_t	status;
-	hsize_t dims[1] = { aSize };
+	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
+	hsize_t	dataSize = axion->DataSize();
 
-	size_t	dataSize;
+	int myRank = commRank();
 
-	if (commRank() != 0)
+	if (myRank != 0)
 		return;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	char *dataM  = static_cast<char *>(axion->mCpu());
+	char *dataV  = static_cast<char *>(axion->vCpu());
+	char mCh[16] = "/map/m";
+	char vCh[16] = "/map/v";
 
 	if (header == false || opened == false)
 	{
-		printf("Error: measurement file not opened. Ignoring write request.\n");
+		printf("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
 		return;
 	}
 
-	/*	Create the group for the data if it doesn't exist	*/
-	status = H5Eset_auto(H5E_DEFAULT, NULL, NULL);	// Turn off error output, we don't want trash if the group doesn't exist
-
-	if (status = H5Gget_objinfo (meas_id, group, 0, NULL))	// Create group if it doesn't exists
-		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	if (axion->Precision() == FIELD_DOUBLE)
+		dataType = H5T_NATIVE_DOUBLE;
 	else
-		group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);
+		dataType = H5T_NATIVE_FLOAT;
 
-//	status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);	// Restore error output
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	mapSpace = H5Screate_simple(1, &slabSz, NULL);	// Whole data
 
-	/*	Create dataset	*/
-	dataSpace = H5Screate_simple(1, dims, NULL);
-	dataSet   = H5Dcreate(group_id, dataName, H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	sSpace	  = H5Dget_space (dataSet);
+	if (mapSpace < 0)
+	{
+		printf ("Fatal error H5Screate_simple\n");
+		exit (1);
+	}
 
-	/*	Write spectrum data	*/
-	status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, dataSpace, sSpace, H5P_DEFAULT, aData);
+	/*	Set chunked access and dynamical compression	*/
 
-	/*	Close everything		*/
-	H5Sclose (sSpace);
-	H5Dclose (dataSet);
-	H5Sclose (dataSpace);
+	herr_t status;
+
+	chunk_id = H5Pcreate (H5P_DATASET_CREATE);
+
+	if (chunk_id < 0)
+	{
+		printf ("Fatal error H5Pcreate\n");
+		exit (1);
+	}
+
+	status = H5Pset_chunk (chunk_id, 1, &slabSz);
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_chunk\n");
+		exit (1);
+	}
+
+	status = H5Pset_deflate (chunk_id, 9);	// Maximum compression, hoping that the map is a bunch of zeroes
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_deflate\n");
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	status = H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER);
+
+	if (status < 0)
+	{
+		printf ("Fatal error H5Pset_alloc_time\n");
+		exit (1);
+	}
+
+	/*	Create a group for map data	*/
+	group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	/*	Create a dataset for map data	*/
+
+	//sSet_id = H5Dcreate (meas_id, sCh, datum, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	if (mSet_id < 0 || vSet_id < 0)
+	{
+		printf	("Fatal error.\n");
+		exit (0);
+	}
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	mSpace = H5Dget_space (mSet_id);
+	vSpace = H5Dget_space (vSet_id);
+
+	/*	Select the slab in the file	*/
+//	hsize_t offset = 0;
+//	H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+//	H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+
+	/*	Write raw data	*/
+	H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
+	H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
+	
+
+	/*	Close the dataset	*/
+
+	H5Dclose (mSet_id);
+	H5Dclose (vSet_id);
+	H5Sclose (mSpace);
+	H5Sclose (vSpace);
+
+	H5Sclose (mapSpace);
+	H5Pclose (chunk_id);
 	H5Gclose (group_id);
 }
 

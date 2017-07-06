@@ -3,9 +3,9 @@ extern uint sizeZ;
 extern uint zGrid;
 extern int  nSteps;
 extern int  dump;
-extern int  nQcd;
 extern int  fIndex;
 
+extern double nQcd;
 extern double sizeL;
 extern double zInit;
 extern double zFinl;
@@ -35,5 +35,6 @@ extern FieldPrecision sPrec;
 extern DeviceType     cDev;
 extern ConfType	      cType;
 extern FieldType      fType;
+extern VerbosityLevel verb;
 
 int	parseArgs (int argc, char *argv[]);

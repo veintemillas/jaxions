@@ -3,6 +3,7 @@
 #include <map>
 #include <errno.h>
 #include "enum-field.h"
+#include "utils/logger.h"
 
 static std::map<void *, size_t> allocTable[2];
 static size_t trackAlignMem = 0;
@@ -15,25 +16,23 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 	switch (out)
 	{
 		case 0:
-		//JAVIER commented this
-		//printf ("Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p\n", size, align, *ptr);
-		//fflush (stdout);
+		LogMsg (VERB_HIGH, "Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p", size, align, *ptr);
 		trackAlignMem += size;
 		allocTable[ALLOC_ALIGN].insert(std::make_pair(*ptr, size));
 		break;
 
 		case EINVAL:
-		printf ("Error aligning memory: size (%lu) must be a multiple of align (%lu)\n", size, align);
+		LogError ("Error aligning memory: size (%lu) must be a multiple of align (%lu)", size, align);
 		exit   (1);
 		break;
 
 		case ENOMEM:
-		printf ("Not enough memory. Requested %lu bytes with %lu alignment\n", size, align);
+		LogError ("Not enough memory. Requested %lu bytes with %lu alignment", size, align);
 		exit   (1);
 		break;
 
 		default:
-		printf ("Unknown error\n");
+		LogError ("Unknown error");
 		exit   (1);
 		break;
 	}
@@ -44,9 +43,8 @@ void	trackFree (void **ptr, AllocType aType)
 {
 	size_t bytes = allocTable[aType][*ptr];
 	free (*ptr);
-	//JAVIER commented this
-	//printf ("Memory freed correctly (%lu bytes). Deregistering pointer %p\n", bytes, *ptr);
-	//fflush (stdout);
+
+	LogMsg (VERB_HIGH, "Memory freed correctly (%lu bytes). Deregistering pointer %p", bytes, *ptr);
 
 	if (aType == ALLOC_ALIGN)
 		trackAlignMem -= bytes;
@@ -59,15 +57,13 @@ void	trackFree (void **ptr, AllocType aType)
 
 void	trackAlloc (void **ptr, size_t size)
 {
-
 	if (((*ptr) = malloc(size)) == NULL)
 	{
-		printf ("Error allocating %lu bytes of unaligned memory\n", size);
+		LogError ("Error allocating %lu bytes of unaligned memory", size);
 		exit (1);
 	}
-	//JAVIER commented next
-	//printf ("Memory allocated correctly (%lu bytes). Registering pointer %p\n", size, *ptr);
-	//fflush (stdout);
+
+	LogMsg (VERB_HIGH, "Memory allocated correctly (%lu bytes). Registering pointer %p", size, *ptr);
 
 	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
 	trackAllocMem += size;
@@ -75,10 +71,12 @@ void	trackAlloc (void **ptr, size_t size)
 
 void	printMemStats	()
 {
-	printf ("Total allocated aligned   memory %lu\n", trackAlignMem);
-	printf ("Total allocated unaligned memory %lu\n", trackAllocMem);
-	printf ("\nCurrent pointers in memory:\n");
-	printf ("\tAligned\n");
+	LogMsg (VERB_NORMAL, "Total allocated aligned   memory %lu", trackAlignMem);
+	LogMsg (VERB_NORMAL, "Total allocated unaligned memory %lu", trackAllocMem);
+	LogMsg (VERB_NORMAL, "");
+
+	LogMsg (VERB_NORMAL, "Current pointers in memory:");
+	LogMsg (VERB_NORMAL, "\tAligned");
 
 	std::map<void *, size_t>::iterator data;
 
@@ -86,17 +84,16 @@ void	printMemStats	()
 	{
 		void *ptr   = data->first;
 		size_t size = data->second;
-		printf ("Pointer %p\tSize %lu\n", ptr, size);
+		LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
 	}
 
-	printf ("\n\tUnaligned\n");
+	LogMsg (VERB_NORMAL, "");
+	LogMsg (VERB_NORMAL, "\tUnaligned");
 
 	for (data = allocTable[ALLOC_TRACK].begin(); data != allocTable[ALLOC_TRACK].end(); data++)
 	{
 		void *ptr   = data->first;
 		size_t size = data->second;
-		printf ("Pointer %p\tSize %lu\n", ptr, size);
+		LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
 	}
-
-	fflush (stdout);
 }

@@ -118,6 +118,37 @@
 		RH_POT = 9,
 	}	EnergyIdx;
 
+	typedef	enum	LogLevel_s
+	{
+		LOG_MSG   = 0,
+		LOG_DEBUG = 1,
+		LOG_ERROR = 2,
+	}	LogLevel;
+
+	typedef	enum	LogMpi_s
+	{
+		ALL_RANKS,
+		ZERO_RANK,
+	}	LogMpi;
+
+	typedef	enum	ProfType_s
+	{
+		PROF_SCALAR,
+		PROF_GENCONF,
+		PROF_PROP,
+		PROF_STRING,
+		PROF_ENERGY,
+		PROF_FOLD,
+		PROF_HDF5,
+	}	ProfType;
+
+	typedef	enum	VerbosityLevel_s
+	{
+		VERB_SILENT=0,
+		VERB_NORMAL=1,
+		VERB_HIGH=2,
+	}	VerbosityLevel;
+
 	typedef	struct	StringData_v
 	{
 		size_t	strDen;

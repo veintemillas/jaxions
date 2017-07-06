@@ -3,7 +3,7 @@
 
 	#include "enum-field.h"
 
-	int	initComms (int argc, char *argv[], int size, DeviceType dev);
+	int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel verb);
 	void	endComms();
 	int	commRank();
 	int	commSize();

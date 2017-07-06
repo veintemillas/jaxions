@@ -16,31 +16,24 @@
 #include "powerCpu.h"
 #include "scalar/scalar.h"
 
+#include "utils/logger.h"
+#include "utils/profiler.h"
+#include "utils/misc.h"
+#include "utils/parse.h"
+
 using namespace std;
 
 #ifdef	USE_XEON
 	__declspec(target(mic)) char *mX, *vX, *m2X;
 #endif
 
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  	\
-	  fflush(stdout); }		\
-}	while (0)
-
 
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
+	initAxions(argc, argv);
 
-	if (initComms(argc, argv, zGrid, cDev) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
-
-	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
+	LogOut("\n-------------------------------------------------\n");
+	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -51,10 +44,9 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
-		printMpi("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
-	else
-	{
+	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE)) {
+		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
+	} else {
 		if (fIndex == -1)
 			//This generates initial conditions
 			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
@@ -64,74 +56,11 @@ int	main (int argc, char *argv[])
 			readConf(&axion, fIndex);
 			if (axion == NULL)
 			{
-				printMpi ("Error reading HDF5 file\n");
+				LogOut ("Error reading HDF5 file\n");
 				exit (0);
 			}
 		}
 	}
-
-	//--------------------------------------------------
-	//          OUTPUTS FOR CHECKING
-	//--------------------------------------------------
-
-	FILE *file_sample ;
-	file_sample = NULL;
-
-	FILE *file_energy ;
-	file_energy = NULL;
-
-	//energy 2//	FILE *file_energy2 ;
-	//energy 2//	file_energy2 = NULL;
-
-	FILE *file_spectrum ;
-	file_spectrum = NULL;
-
-	FILE *file_power ;
-	file_power = NULL;
-
-	FILE *file_thetabin ;
-	file_thetabin = NULL;
-
-	FILE *file_contbin ;
-	file_contbin = NULL;
-
-
-	if (commRank() == 0)
-	{
-		file_sample = fopen("out/sample.txt","w+");
-		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
-		file_energy = fopen("out/energy.txt","w+");
-		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
-		//energy 2//	file_energy2 = fopen("out/energy2.txt","w+");
-		file_spectrum = fopen("out/spectrum.txt","w+");
-		file_power = fopen("out/power.txt","w+");
-		file_thetabin = fopen("out/thetabin.txt","w+");
-		file_contbin = fopen("out/contbin.txt","w+");
-	}
-
-	double Vr, Vt, Kr, Kt, Grz, Gtz;
-	int nstrings = 1 ;
-	double maximumtheta = 3.141597;
-	size_t sliceprint = 128;
-
-	// Axion spectrum
-	const int kmax = axion->Length()/2 -1;
-	int powmax = floor(1.733*kmax)+2 ;
-
-	double  *spectrumK ;
-	double  *spectrumG ;
-	double  *spectrumV ;
-	double  *binarray	 ;
-	trackAlloc((void**) (&spectrumK), 8*powmax);
-	trackAlloc((void**) (&spectrumG), 8*powmax);
-	trackAlloc((void**) (&spectrumV), 8*powmax);
-	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
-
-	double *sK = static_cast<double *> (spectrumK);
-	double *sG = static_cast<double *> (spectrumG);
-	double *sV = static_cast<double *> (spectrumV);
-	double *bA = static_cast<double *> (binarray);
-	//double *bAd = static_cast<double *> (binarray);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -145,17 +74,17 @@ int	main (int argc, char *argv[])
 	else
 		dz = (zFinl - zInit)/((double) nSteps);
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           INITIAL CONDITIONS                     \n\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	printMpi("Length =  %2.5f\n", sizeL);
-	printMpi("N      =  %ld\n",   sizeN);
-	printMpi("Nz     =  %ld\n",   sizeZ);
-	printMpi("zGrid  =  %ld\n",   zGrid);
-	printMpi("dx     =  %2.5f\n", delta);
-	printMpi("dz     =  %2.5f\n", dz);
-	printMpi("LL     =  %2.5f\n", LL);
-	printMpi("--------------------------------------------------\n");
+	LogOut("Length =  %2.5f\n", sizeL);
+	LogOut("N      =  %ld\n",   sizeN);
+	LogOut("Nz     =  %ld\n",   sizeZ);
+	LogOut("zGrid  =  %ld\n",   zGrid);
+	LogOut("dx     =  %2.5f\n", delta);
+	LogOut("dz     =  %2.5f\n", dz);
+	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
@@ -163,33 +92,29 @@ int	main (int argc, char *argv[])
 	const size_t VF = axion->Size()-1;
 
 
-
-	printMpi("INITIAL CONDITIONS LOADED\n");
+	LogOut("INITIAL CONDITIONS LOADED\n");
 	if (sPrec != FIELD_DOUBLE)
 	{
-		printMpi("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
+		LogOut("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
 									        ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
-		printMpi("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
+		LogOut("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
 									        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
 	}
 	else
 	{
-		printMpi("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
+		LogOut("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
 										    ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
-		printMpi("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
+		LogOut("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
 										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
 	}
-
-	//JAVIER commented next
-	//printMpi("Ez     =  %ld\n",    axion->eDepth());
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
 	//--------------------------------------------------
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           STARTING COMPUTATION                   \n");
-	printMpi("--------------------------------------------------\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           STARTING COMPUTATION                   \n");
+	LogOut("--------------------------------------------------\n");
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -215,70 +140,27 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		//printMpi ("Dumping configuration %05d ...", index);
-		//writeConf(axion, index);
-		//printMpi ("Done!\n");
-		printMpi ("Bypass configuration writting!\n");
-		fflush (stdout);
+		LogOut ("Dumping configuration %05d ...", index);
+		writeConf(axion, index);
+		LogOut ("Done!\n");
 	}
 	else
 		index = fIndex + 1;
 
-	//JAVIER commented next
-	//printf ("Process %d reached syncing point\n", commRank());
-	//fflush (stdout);
-//	commSync();
-
-	axion->SetLambda(LAMBDA_FIXED);
+	axion->SetLambda(LAMBDA_Z2);
 
 	if (LAMBDA_FIXED == axion->Lambda())
-		printMpi ("Lambda in FIXED mode\n");
+		LogOut ("Lambda in FIXED mode\n");
 	else
-		printMpi ("Lambda in Z2 mode\n");
+		LogOut ("Lambda in Z2 mode\n");
 
 	Folder munge(axion);
 
-	if (cDev != DEV_GPU)
-	{
-		printMpi ("Folding configuration\n");
-		munge(FOLD_ALL);
-	}
-	printMpi ("Folded %f\n", static_cast<float*>(axion->mCpu())[2*S0]);
+	LogOut ("Folding configuration\n");
+	munge(FOLD_ALL);
 
-	if (cDev != DEV_CPU)
-	{
-		printMpi ("Transferring configuration to device\n");
-		axion->transferDev(FIELD_MV);
-	}
-
-//	if (cDev != DEV_GPU)
-	{
-		double	strDen;
-
-		if ((*axion->zV()) > 1.2 )
-		{
-			printMpi("Strings...");
-			analyzeStrFolded(axion, index);
-			//printMpi("Vector Strings...");
-			//strDen = strings(axion, str, fCount);
-			//printMpi(" Done! String density %lf\n", strDen);
-		}
-
-		/*	I think the folder takes care of that memcopy TO BE TESTED	*/
-	/*
-		memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
-		//copy v unfolded into last slice
-		//memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
-		//axion->unfoldField2D(sizeZ-1);
-		//axion->unfoldField2D(sliceprint);
-	*/
-		munge(UNFOLD_SLICE, sliceprint);
-		writeMap (axion, index);
-		energy(axion, fCount, eRes, false, delta, nQcd, LL);
-
-		//energy 2//	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-
-	}
+	LogOut ("Transferring configuration to device\n");
+	axion->transferDev(FIELD_MV);
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -290,29 +172,7 @@ int	main (int argc, char *argv[])
 	else
 		nLoops = (int)(nSteps/dump);
 
-		if (commRank() == 0)
-		{
-			if (axion->Precision() == FIELD_DOUBLE)
-			{
-				double *eR = static_cast<double *> (eRes);
-				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-				//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-			}
-			else
-			{
-				double *eR = static_cast<double *> (eRes);
-				fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-	//			float *eR = static_cast<float *> (eRes);
-	//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-				//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-				printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-			}
-		}
-
-
-	printMpi ("Start redshift loop\n\n");
-	fflush (stdout);
+	LogOut ("Start redshift loop\n");
 
 	commSync();
 
@@ -332,243 +192,54 @@ int	main (int argc, char *argv[])
 			//axion->exchangeGhosts(FIELD_M);
 			//maximumtheta = axion->thetaDIST(100, spectrumK);
 
-			if (commRank() == 0)
-			{
-				// BIN THETA
-				// fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
-				// for(int i = 0; i<100; i++) {	fprintf(file_thetabin, "%f ", (float) sK[i]);} fprintf(file_thetabin, "\n");
-
-				if (axion->Field() == FIELD_SAXION)
-				{
-					if (sPrec == FIELD_DOUBLE) {
-						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->mCpu())[sliceprint*S0].imag(),
-							static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<double> *> (axion->vCpu())[sliceprint*S0].imag());
-					} else {
-						fprintf(file_sample,"%f %f %f %f %f\n",(*(axion->zV() )), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->mCpu())[sliceprint*S0].imag(),
-							static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].real(), static_cast<complex<float>  *> (axion->vCpu())[sliceprint*S0].imag());
-					}
-				}
-				else
-				{
-					if (sPrec == FIELD_DOUBLE) {
-						fprintf(file_sample,"%f %f %f\n",(*(axion->zV() )), static_cast<double*> (axion->mCpu())[sliceprint*S0], static_cast<double*> (axion->vCpu())[sliceprint*S0]);
-					} else {
-						fprintf(file_sample,"%f %f %f\n",(*(axion->zV() )), static_cast<float*> (axion->mCpu())[sliceprint*S0], static_cast<float*> (axion->vCpu())[sliceprint*S0]);
-						// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
-						// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
-					}
-				}
-				fflush(file_sample);
-			}
-
 			old = std::chrono::high_resolution_clock::now();
 
-//			if (axion->Field() == FIELD_SAXION)
-//			{
-				propagate (axion, fCount, dz, delta, nQcd, LL, VQCD_1);
-//			}
-//			else
-//			{
-//				propTheta	(axion, dz,     nQcd, delta, fCount);
-				//printf("pt-");fflush(stdout);
-//			}
+			propagate (axion, dz, delta, nQcd, LL, VQCD_1);
 
-			current = std::chrono::high_resolution_clock::now();
+/*			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 
 			fCount->addTime(elapsed.count()*1.e-3);
-			//JAVIER commented next line
-			//verbose? YEAH
-			//printMpi("%2d - %2d: z = %lf elapsed time =  %2.3lf s\n", zloop, zsubloop, *(axion->zV()), fCount->DTime());
-
-			counter++;
+*/
 		} // zsubloop
 
-		//printMpi ("Transfer to CPU ...");
-		//fflush (stdout);
-		//axion->transferCpu(FIELD_MV);
+		auto strDen = strings(axion, str);
 
-		if ( axion->Field() == FIELD_SAXION && (*axion->zV()) > 0.8 )
-		{
-			printMpi("Strings (if %f>0.8) ... ", (*axion->zV()));
-			fflush (stdout);
-			nstrings = analyzeStrFolded(axion, index);
-			//maximumtheta = axion->maxtheta();
-			printMpi("stLength = %d ", nstrings);
-			fflush (stdout);
+		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
+		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
 
-			// if (nstrings < 200 )
-			// {
-			// 	//POWER SPECTRUM
-			// 	//double *sK = static_cast<double *> (spectrumK);
-			// 	//double *sG = static_cast<double *> (spectrumG);
-			// 	//double *sV = static_cast<double *> (spectrumV);
-			// 	//axion->unfoldField();
-			// 	munge(UNFOLD_ALL);
-			// 	powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-			// 	//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-			// 	fprintf(file_power,  "%f ", (*axion->zV()));
-			// 	for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
-			// 	fprintf(file_power,  "%f ", (*axion->zV()));
-			// 	for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
-			// 	fprintf(file_power,  "%f ", (*axion->zV()));
-			// 	for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
-			// 	//writeMap (axion, index);
-			// 	//NUMBER SPECTRUM
-			// 	spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-			// 	//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-			// 	fprintf(file_spectrum,  "%f ", (*axion->zV()));
-			// 	for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
-			// 	fprintf(file_spectrum,  "%f ", (*axion->zV()));
-			// 	for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
-			// 	fprintf(file_spectrum,  "%f ", (*axion->zV()));
-			// 	for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
-			// 	//axion->foldField();
-			// 	munge(FOLD_ALL);
-			// 	fflush(file_power);
-			// 	fflush(file_spectrum);
-			// 	}
-
-		}
-
-		if ( axion->Field() == FIELD_SAXION && nstrings == 0 && (*axion->zV()) > 1.0 )
-		{
-			printf("\n TRANSITION TO THETA \n");fflush(stdout);
-			cmplxToTheta	(axion, fCount);
-			//printf("")
-		}
-
-		//axion->unfoldField2D(sliceprint);
-		munge(UNFOLD_SLICE, sliceprint);
-		writeMap (axion, index);
-
-		if ( axion->Field() == FIELD_SAXION  )
-		{
-//			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-			energy(axion, fCount, eRes, false, delta, nQcd, LL);
-
-			//energy 2// 	axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
-
-			if (commRank() == 0)
-			{
-				if (axion->Precision() == FIELD_DOUBLE)
-				{
-					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-					//energy 2// 	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					printMpi("\r%d/%d - - - ENERGY Vr=%lf Va=%lf Kr=%lf Ka=%lf Gr=%lf Ga=%lf Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-				}
-				else
-				{
-					double *eR = static_cast<double *> (eRes);
-					fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5], nstrings, maximumtheta);
-		//			float *eR = static_cast<float *> (eRes);
-		//			fprintf(file_energy,  "%+f %+f %+f %+f %+f %+f %+f %+f %+f %+f %+f\n", (*axion->zV()), eR[6], eR[7], eR[8], eR[9], eR[0], eR[2], eR[4], eR[1], eR[3], eR[5]);
-					//energy 2//	fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz);
-					printMpi("\r%d/%d - - - ENERGY Vr=%f Va=%f Kr=%f Ka=%f Gr=%f Ga=%f Nstring=%d Max=%f\n", index, nLoops, eR[6], eR[7], eR[8], eR[9], eR[0] + eR[2] + eR[4], eR[1] + eR[3] + eR[5], nstrings, maximumtheta);
-				}
-				fflush(file_energy);
-			}
-		}
-
-		if (axion->Field() == FIELD_AXION)
-		{
-
-			//axion->unfoldField();
-			munge(UNFOLD_ALL);
-
-
-			axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-
-			fprintf(file_contbin,"%f ", (*(axion->zV() )));
-			// first three numbers are dens average, max contrast and maximum of the binning
-			for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
-			fprintf(file_contbin, "\n");
-			fflush(file_contbin);
-
-			//POWER SPECTRUM
-			// powerspectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV, fCount);
-			//
-			// //printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-			// fprintf(file_power,  "%f ", (*axion->zV()));
-			// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sK[i]);} fprintf(file_power, "\n");
-			// fprintf(file_power,  "%f ", (*axion->zV()));
-			// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sG[i]);} fprintf(file_power, "\n");
-			// fprintf(file_power,  "%f ", (*axion->zV()));
-			// for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", (float) sV[i]);} fprintf(file_power, "\n");
-
-			//writeMap (axion, index);
-			//NUMBER SPECTRUM
-			spectrumUNFOLDED(axion);
-			//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-			//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-			fprintf(file_spectrum,  "%f ", (*axion->zV()));
-			for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sK[i]);} fprintf(file_spectrum, "\n");
-			fprintf(file_spectrum,  "%f ", (*axion->zV()));
-			for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sG[i]);} fprintf(file_spectrum, "\n");
-			fprintf(file_spectrum,  "%f ", (*axion->zV()));
-			for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%f ", (float) sV[i]);} fprintf(file_spectrum, "\n");
-			//axion->foldField();
-
-			munge(FOLD_ALL);
-			fflush(file_power);
-			fflush(file_spectrum);
-
-		}
+		createMeas(axion, index);
+		writeString(str, strDen);
+		writeEnergy(axion, eRes);
+		writePoint(axion);
+		destroyMeas();
 
 	} // zloop
-
-	// LAST DENSITY MAP
-	//energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
-	//energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 
-	printMpi("\n PROGRAMM FINISHED\n");
+	LogOut("\n PROGRAMM FINISHED\n");
 
-	if (cDev != DEV_GPU)
-	{
-		//axion->unfoldField();
-		munge(UNFOLD_ALL);
-	}
+	munge(UNFOLD_ALL);
 
-	//if (nSteps > 0)
-	//	writeConf(axion, index);
+//	writeConf(axion, index);
 
-	printMpi("z_final = %f\n", *axion->zV());
-	printMpi("#_steps = %i\n", counter);
-	printMpi("#_prints = %i\n", index);
-	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
-	printMpi("GFlops: %.3f\n", fCount->GFlops());
-	printMpi("GBytes: %.3f\n", fCount->GBytes());
+	LogOut("z_final = %f\n", *axion->zV());
+	LogOut("#_steps = %i\n", counter);
+	LogOut("#_prints = %i\n", index);
+	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
+	LogOut("GFlops: %.3f\n", fCount->GFlops());
+	LogOut("GBytes: %.3f\n", fCount->GBytes());
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
-	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
-	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
-	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
-	trackFree((void**) (&binarray),  ALLOC_TRACK);
 
 	delete fCount;
 	delete axion;
 
-	endComms();
-
-	printMemStats();
-
-	//JAVIER
-	if (commRank() == 0)
-	{
-		fclose (file_sample);
-		fclose (file_energy);
-		fclose (file_spectrum);
-		fclose (file_power);
-		fclose (file_thetabin);
-		fclose (file_contbin);
-		//energy 2//	fclose (file_energy2);
-	}
+	endAxions();
 
 	return 0;
 }

@@ -29,7 +29,7 @@ static __device__ __forceinline__ int2	stringWall(const complex<Float> s1, const
 	if (s1.imag()*s2.imag() < 0) {
 		Float cross = s1.imag()*s2.real() - s1.real()*s2.imag();
 		hand.x = ((cross > 0) << 1) - 1;
-		hand.y = ((cross*(s1.imag() - s2.imag())) > 0);
+		hand.y = ((cross*(s1.imag() - s2.imag())) < 0);
 	}
 
 	return hand;

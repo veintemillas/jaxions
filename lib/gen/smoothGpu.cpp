@@ -28,7 +28,7 @@ class	Smoother
 
 void	Smoother::operator()
 {
-	#define BLSIZE 512
+	#define BLSIZE 256
 	dim3	gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz,1);
 	dim3	blockSize(BLSIZE,1,1);
 

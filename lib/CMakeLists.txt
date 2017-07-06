@@ -3,7 +3,7 @@ propagator/propSimple.cpp propagator/propThetaXeon.cpp propagator/propThetaGpu.c
 energy/energyThetaGpu.cu strings/strings.cpp strings/stringCpu.cpp strings/stringXeon.cpp strings/stringGpu.cu map/maps.cpp utils/memAlloc.cpp powerCpusimple.cpp gen/genConf.cpp
 gen/momConf.cpp gen/momGpu.cu gen/randXeon.cpp gen/randGpu.cu gen/smoothXeon.cpp gen/smoothKernel.cu scalar/scaleField.cpp scalar/scaleXeon.cpp scalar/scaleGpu.cu scalar/normField.cpp
 scalar/normXeon.cpp scalar/normGpu.cu scalar/normCore.cpp scalar/normCoreXeon.cpp scalar/normCoreGpu.cu scalar/thetaGpu.cu scalar/thetaXeon.cpp scalar/thetaScalar.cpp scalar/folder.cpp
-scalar/varNQCD.cpp WKB/WKB.cpp)
+scalar/varNQCD.cpp utils/logger.cpp utils/profiler.cpp utils/misc.cpp WKB/WKB.cpp)
 
 include_directories(.)
 if(USE_GPU)

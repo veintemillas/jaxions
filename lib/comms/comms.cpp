@@ -7,6 +7,7 @@
 
 #include "enum-field.h"
 #include "utils/memAlloc.h"
+#include "utils/logger.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -57,7 +58,7 @@ size_t	gpuMemAvail()
 	return	gpuMem;
 }
 
-int	initComms (int argc, char *argv[], int size, DeviceType dev)
+int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel verb)
 {
 	int nAccs = 0;
 	int realSize = 1;
@@ -87,6 +88,8 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	createLogger	(0, ZERO_RANK, verb);
+
 	switch (dev)
 	{
 		case DEV_GPU:
@@ -96,13 +99,12 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 			if (cErr != cudaSuccess)
 			{
-				printf("Rank %d CUDA error (host %s):\n", rank, hostname);
-				printf("%s\n", cudaGetErrorString(cErr));
+				LogError ("Rank %d CUDA error (host %s): %s", rank, hostname, cudaGetErrorString(cErr));
 				MPI_Finalize();
 				return -1;
 			}
 #else
-			printf ("Gpu support not built\n");
+			LogError ("Gpu support not built");
 			exit   (1);
 #endif
 			break;
@@ -124,7 +126,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 		if (!nAccs)
 		{
-			printf ("Error: There are no visible accelerators");
+			LogError ("Error: There are no visible accelerators");
 			return 0;
 		}
 
@@ -134,8 +136,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 		idxAcc = 0;
 
-		printf("Rank %d got %d accelerators\n", rank, nAccs);
-		fflush(stdout);
+		LogMsg (VERB_NORMAL, "Rank %d got %d accelerators", rank, nAccs);
 
 		for (int i=0; i<rank; i++)
 		{
@@ -143,8 +144,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 				idxAcc++;
 		}
 
-		printf("Rank %d got accid %d\n", rank, idxAcc);
-		fflush(stdout);
+		LogMsg (VERB_NORMAL, "Rank %d got accid %d", rank, idxAcc);
 
 		trackFree((void **) &allHosts, ALLOC_TRACK);
 
@@ -158,11 +158,11 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 
 			cudaGetDeviceProperties(&gpuProp, idxAcc);
 
-			printf("  Peak Memory Bandwidth of Gpu %d (GB/s): %f\n\n", idxAcc, 2.0*gpuProp.memoryClockRate*(gpuProp.memoryBusWidth/8)/1.0e6);
+			LogMsg (VERB_NORMAL, "  Peak Memory Bandwidth of Gpu %d (GB/s): %f", idxAcc, 2.0*gpuProp.memoryClockRate*(gpuProp.memoryBusWidth/8)/1.0e6);
 			gpuMem = gpuProp.totalGlobalMem;
 		}
 #endif
-		printf ("Rank %d reporting from host %s: Found %d accelerators, using accelerator %d\n\n", rank, hostname, nAccs, idxAcc);
+		LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: Found %d accelerators, using accelerator %d", rank, hostname, nAccs, idxAcc);
 	}
 
 #ifdef	USE_XEON
@@ -177,7 +177,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 			nthreads = omp_get_num_threads();
 		}
 
-		printf ("Rank %d Xeon Phi will use %d threads for %d processors\n", rank, nthreads, nprocs);
+		LogMsg (VERB_NORMAL, "Rank %d Xeon Phi will use %d threads for %d processors", rank, nthreads, nprocs);
 	}
 #endif
 
@@ -192,7 +192,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev)
 			mthreads = omp_get_max_threads();
 		}
 
-		printf ("Rank %d Cpu will use %d threads for %d processors (max %d)\n", rank, nthreads, nprocs, mthreads);
+		LogMsg (VERB_NORMAL, "Rank %d Cpu will use %d threads for %d processors (max %d)", rank, nthreads, nprocs, mthreads);
 	}
 
 	return nAccs;

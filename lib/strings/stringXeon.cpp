@@ -198,7 +198,7 @@ inline	void	stringWallD(const __m256d s1, const __m256d s2, int *hand, int *wHan
 
 	/*	Walls		*/
 
-	wll = opCode(and_pd, opCode(cmp_pd, tp3, opCode(setzero_pd), _CMP_GT_OS), opCode(castsi256_pd, opCode(set_epi64x,1,0,1,0)));
+	wll = opCode(and_pd, opCode(cmp_pd, tp3, opCode(setzero_pd), _CMP_LT_OS), opCode(castsi256_pd, opCode(set_epi64x,1,0,1,0)));
 	wll = opCode(and_pd, wll, opCode(castsi256_pd, tmp));
 
 	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), opCode(castpd_si256, wll));
@@ -246,7 +246,7 @@ inline	void	stringWallS(const __m256 s1, const __m256 s2, int *hand, int *wHand)
 
 	/*	Walls		*/
 
-	wll = opCode(and_ps, opCode(cmp_ps, tp3, opCode(setzero_ps), _CMP_GT_OS), opCode(castsi256_ps, opCode(set_epi32,1,0,1,0,1,0,1,0)));
+	wll = opCode(and_ps, opCode(cmp_ps, tp3, opCode(setzero_ps), _CMP_LT_OS), opCode(castsi256_ps, opCode(set_epi32,1,0,1,0,1,0,1,0)));
 	wll = opCode(and_ps, wll, opCode(castsi256_ps, tmp));
 
 	opCode(store_si256, static_cast<__m256i*>(static_cast<void*>(tmpHand)), opCode(castps_si256, wll));
@@ -345,7 +345,7 @@ inline	void	stringWallD(const __m128d s1, const __m128d s2, int *hand, int *wHan
 	/*	Walls		*/
 
 	tp3 = opCode(mul_pd, tp2, opCode(sub_pd, s1, s2));
-	wll = opCode(and_pd, opCode(cmpgt_pd, tp3, opCode(setzero_pd)), opCode(castsi128_pd, opCode(set_epi64x, 1, 0)));
+	wll = opCode(and_pd, opCode(cmplt_pd, tp3, opCode(setzero_pd)), opCode(castsi128_pd, opCode(set_epi64x, 1, 0)));
 	wll = opCode(and_pd, wll, opCode(castsi128_pd, tmp));
 	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), opCode(castpd_si128, wll));
 	*wHand |= tmpHand[2];
@@ -378,7 +378,7 @@ inline	void	stringWallS(const __m128 s1, const __m128 s2, int *hand, int *wHand)
 	/*	Walls		*/
 
 	tp3 = opCode(mul_ps, tp2, opCode(sub_ps, s1, s2));
-	wll = opCode(and_ps, opCode(cmpgt_ps, tp3, opCode(setzero_ps)), opCode(castsi128_ps, opCode(set_epi32,1,0,1,0)));
+	wll = opCode(and_ps, opCode(cmplt_ps, tp3, opCode(setzero_ps)), opCode(castsi128_ps, opCode(set_epi32,1,0,1,0)));
 	wll = opCode(and_ps, wll, opCode(castsi128_ps, tmp));
 	opCode(store_si128, static_cast<__m128i*>(static_cast<void*>(tmpHand)), opCode(castps_si128, wll));
 	wHand[0] |= tmpHand[1];

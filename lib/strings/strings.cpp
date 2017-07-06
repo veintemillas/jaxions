@@ -14,8 +14,10 @@
 	#include "strings/stringGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
+//#include "utils/flopCounter.h"
 #include "utils/memAlloc.h"
+#include "utils/logger.h"
+#include "utils/profiler.h"
 
 #include <vector>
 #include "utils/index.h"
@@ -64,7 +66,7 @@ StringData	Strings::runGpu	()
 
 	return	ret;
 #else
-	printf("Gpu support not built");
+	LogError("Gpu support not built");
 	exit(1);
 #endif
 }
@@ -79,13 +81,22 @@ StringData	Strings::runXeon	()
 #ifdef	USE_XEON
 	return	stringXeon(axionField, Lx, V, S, precision, strData);
 #else
-	printf("Xeon Phi support not built");
+	LogError("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-StringData	strings	(Scalar *field, void *strData, FlopCounter *fCount)
+using namespace profiler;
+
+//StringData	strings	(Scalar *field, void *strData, FlopCounter *fCount)
+StringData	strings	(Scalar *field, void *strData)
 {
+	LogMsg	(VERB_HIGH, "Called strings");
+	profiler::Profiler &prof = getProfiler(PROF_STRING);
+	const std::string name("Strings and walls");
+
+	prof.start();
+
 	Strings *eStr = new Strings(field, strData);
 
 	StringData	strTmp, strDen;
@@ -111,7 +122,7 @@ StringData	strings	(Scalar *field, void *strData, FlopCounter *fCount)
 			break;
 
 		default:
-			printf ("Not a valid device\n");
+			LogError ("Not a valid device\n");
 			break;
 	}
 
@@ -121,7 +132,12 @@ StringData	strings	(Scalar *field, void *strData, FlopCounter *fCount)
 	MPI_Allreduce(&(strTmp.strChr), &(strDen.strChr), 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(&(strTmp.wallDn), &(strDen.wallDn), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
-	fCount->addFlops((15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
+	prof.stop();
+
+//	fCount->addFlops((15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
+	prof.add(name, (15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
+
+	LogMsg	(VERB_HIGH, "Strings reporting %lf GFlops %lf GBytes", prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
 
 	return	strDen;
 }

@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -16,7 +17,8 @@
 	#include "propagator/propThetaGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
+#include "utils/logger.h"
+#include "utils/profiler.h"
 
 class	Propagator
 {
@@ -159,6 +161,7 @@ void	Propagator::lowGpu	()
 void	Propagator::sRunCpu	()
 {
 	propagateCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
+	//propOmelyanCpu	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 }
 
 void	Propagator::lowCpu	()
@@ -245,9 +248,14 @@ void    Propagator::tRunXeon	()
 #endif
 }
 
+using	namespace profiler;
 
-void	propagate	(Scalar *field, FlopCounter *fCount, const double dz, const double delta, const double nQcd, const double LL, VqcdType pot)
+//void	propagate	(Scalar *field, FlopCounter *fCount, const double dz, const double delta, const double nQcd, const double LL, VqcdType pot)
+void	propagate	(Scalar *field, const double dz, const double delta, const double nQcd, const double LL, VqcdType pot)
 {
+	LogMsg	(VERB_HIGH, "Called propagator");
+	profiler::Profiler &prof = getProfiler(PROF_PROP);
+
 	Propagator *prop = new Propagator(field, LL, nQcd, delta, dz, pot);
 
 	if	(!field->Folded())
@@ -256,62 +264,87 @@ void	propagate	(Scalar *field, FlopCounter *fCount, const double dz, const doubl
 		munge(FOLD_ALL);
 	}
 
+	prof.start();
+
+	std::string	name;
+
 	switch (field->Device())
 	{
 		case DEV_CPU:
 			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem())
+				if (field->LowMem()) {
+					name.assign("RKN4 Saxion Lowmem");
 					prop->lowCpu ();
-				else
+				} else {
+					name.assign("RKN4 Saxion");
 					prop->sRunCpu ();
+				}
 			} else {
+				name.assign("RKN4 Axion");
 				prop->tRunCpu ();
 			}
 			break;
 
 		case DEV_GPU:
 			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem())
+				if (field->LowMem()) {
+					name.assign("RKN4 Saxion Lowmem");
 					prop->lowGpu ();
-				else
+				} else {
+					name.assign("RKN4 Saxion");
 					prop->sRunGpu ();
+				}
 			} else {
+				name.assign("RKN4 Axion");
 				prop->tRunGpu ();
 			}
 			break;
 
 		case	DEV_XEON:
 			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem())
+				if (field->LowMem()) {
+					name.assign("RKN4 Saxion Lowmem");
 					prop->lowXeon();
-				else
+				} else {
+					name.assign("RKN4 Saxion");
 					prop->sRunXeon();
+				}
 				break;
 			} else {
+				name.assign("RKN4 Axion");
 				prop->tRunXeon ();
 			}
 
 		default:
-			printf ("Not a valid device\n");
+			LogError ("Not a valid device\n");
 			break;
 	}
 
 	delete	prop;
 
+	prof.stop();
+
 	if (field->Field() == FIELD_SAXION) {
 		switch (pot)
 		{
 			case VQCD_1:
-				fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				prof.add(name, (32.*4.+30.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);
+				//fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				//fCount->addFlops((32.*4.+30.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);	//Omelyan
 				break;
 
 			case VQCD_2:
-				fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				prof.add(name, (35.*4.+33.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);
+				//fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+				//fCount->addFlops((35.*4.+33.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);	//Omelyan
 				break;
 		}
 	} else {
-		fCount->addFlops(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+		prof.add(name, 16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+		//fCount->addFlops(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
 	}
+
+	LogMsg	(VERB_HIGH, "Propagator %s reporting %lf GFlops %lf GBytes", name.c_str(), prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
 
 	return;
 }
