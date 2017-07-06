@@ -492,7 +492,7 @@ int	main (int argc, char *argv[])
                 {
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-									nstrings_global = strings(axion, str, fCount);
+									//nstrings_global = strings(axion, str, fCount);
 									maximumtheta = axion->maxtheta();
 									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
