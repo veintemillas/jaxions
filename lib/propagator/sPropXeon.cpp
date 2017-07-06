@@ -107,11 +107,11 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mPy;
+			size_t idxMz, idxP0 ;
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
 
@@ -229,6 +229,7 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mPy, mMx;
+			size_t idxMz, idxP0 ;
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -263,8 +264,8 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 							opCode(sub_ps, tmp, opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
 							opCode(mul_ps,
 								opCode(mul_ps, mel,
-									opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-									opCode(set1_ps, LL))));
+									opCode(sub_ps, mPx, opCode(set1_ps, z2))),
+									opCode(set1_ps, LL)));
 						break;
 				}
 
@@ -374,9 +375,9 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 
 void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
 {
-	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->(), precision);
+	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->Depth(), precision);
 
-	constexpr double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+	const double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
 	switch	(VQcd) {
 		case	VQCD_1:
@@ -430,9 +431,9 @@ inline	void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, c
 
 void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
 {
-	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->(), precision);
+	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->Depth(), precision);
 
-	constexpr double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+	const double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
 	switch	(VQcd) {
 		case	VQCD_1:

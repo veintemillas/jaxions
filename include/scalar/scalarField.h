@@ -62,9 +62,6 @@
 					template<typename Float>
 					void	laplacianm2();
 
-					void	laplacian();
-
-
 		public:
 
 				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
@@ -154,6 +151,7 @@
 		void	squareGpu();				// Squares the m2 field in the Gpu
 		void	squareCpu();				// Squares the m2 field in the Cpu
 
+		void	laplacian();
 
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);

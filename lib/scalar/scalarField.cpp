@@ -2283,17 +2283,17 @@ void	Scalar::laplacianm2()
 	{
 	}
 
-	runFFTspec(FFT_BACKWARD);
+	runFFTspec(FFTW_BACKWARD);
 }
 
 void	Scalar::laplacian()
 {
-	switch (prec) {
-		case	PREC_DOUBLE:
+	switch (precision) {
+		case	FIELD_DOUBLE:
 			laplacianm2<double>();
 			break;
 
-		case	PREC_SINGLE:
+		case	FIELD_SINGLE:
 			laplacianm2<float>();
 			break;
 	}

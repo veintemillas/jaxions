@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
+#include <string>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -92,11 +94,12 @@ void    SPropagator::tRunXeon	()
 #endif
 }
 
+using namespace profiler;
 
 void	sPropagate	(Scalar *field, const double dz, const double nQcd, const double LL, VqcdType pot)
 {
 	LogMsg  (VERB_HIGH, "Called propagator");
-	profiler::Profiler &prof = getProfiler(PROF_PROP);
+	Profiler &prof = getProfiler(PROF_PROP);
 
 	SPropagator *prop = new SPropagator(field, LL, nQcd, dz, pot);
 
@@ -105,6 +108,8 @@ void	sPropagate	(Scalar *field, const double dz, const double nQcd, const double
 		Folder	munge(field);
 		munge(UNFOLD_ALL);
 	}
+
+	std::string	name;
 
 	prof.start();
 
@@ -149,17 +154,19 @@ void	sPropagate	(Scalar *field, const double dz, const double nQcd, const double
 	if (field->Field() == FIELD_SAXION) {
 		switch (pot)
 		{
-			case VQCD_1:
-				double	gFlops = (field->Size()*64 + field->Length()*(14*log2(field->Length()) + 2))*1e-9;	// Approx
+			case VQCD_1: {
+				double	gFlops = (field->Size()*64 + field->Size()*(20.1977*log(field->Size()) + 2))*1e-9;	// Approx
 				double	gBytes = field->Size()*field->DataSize()*22e-9;
 				prof.add(name, gFlops, gBytes);
 				break;
+			}
 
-			case VQCD_2:
-				double	gFlops = (field->Size()*76 + field->Length()*(14*log2(field->Length()) + 2))*1e-9;	// Approx
+			case VQCD_2: {
+				double	gFlops = (field->Size()*76 + field->Size()*(20.1977*log(field->Size()) + 2))*1e-9;	// Approx
 				double	gBytes = field->Size()*field->DataSize()*22e-9;
 				prof.add(name, gFlops, gBytes);
 				break;
+			}
 		}
 	} else {
 		double	gFlops = 0.*1e-9;	// Approx
