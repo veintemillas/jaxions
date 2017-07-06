@@ -304,7 +304,7 @@ int	main (int argc, char *argv[])
 	bool coZ = 1;
   bool coS = 1;
 	int strcount = 0;
-
+	StringData rts ;
 
 	axion->SetLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
@@ -548,7 +548,7 @@ int	main (int argc, char *argv[])
 
       LogOut("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 			fflush(stdout);
-			
+
 
 			z_now = (*axion->zV());
 			llprint = max(LL,llconstantZ2/(z_now*z_now)); //physical value
@@ -569,11 +569,6 @@ int	main (int argc, char *argv[])
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				if (axion->Lowmem())
-					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
-				else
-					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
-
 				LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 				LogOut("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
@@ -597,7 +592,6 @@ int	main (int argc, char *argv[])
 			}
 			else
 			{
-				profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Axion"));
 				maximumtheta = axion->maxtheta();
 				LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);

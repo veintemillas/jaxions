@@ -603,7 +603,7 @@ int	main (int argc, char *argv[])
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				if (axion->Lowmem())
+				if (axion->LowMem())
 					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
 				else
 					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
@@ -618,15 +618,17 @@ int	main (int argc, char *argv[])
 				LogOut("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
 										//nstrings_global = strings(axion, str, fCount);
-										nstrings_global =	analyzeStrFolded(axion, index);
+										//nstrings_global =	analyzeStrFolded(axion, index);
+										rts = strings(axion, str);
+										nstrings_global = rts.strDen ;
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
-										// if ((*axion->zV()) > 0.6)
-										// {
-										//  createMeas(axion, index);
-										//  writeString	( str , nstrings_global);
-										//  destroyMeas();
-										// }
+										 if ((*axion->zV()) > 0.6)
+										 {
+										  createMeas(axion, index);
+										  writeString	( str , rts);
+										  destroyMeas();
+										 }
 										LogOut("(G)= %ld \n", nstrings_global);
 
 			}
