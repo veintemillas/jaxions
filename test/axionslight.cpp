@@ -604,9 +604,9 @@ int	main (int argc, char *argv[])
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				if (axion->LowMem())
-					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
-				else
 					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
+				else
+					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
 
 				energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 
