@@ -420,7 +420,7 @@ void	spropThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, 
 // #endif
 // }
 
-void	propThetaCpu	(Scalar *axionField, const double dz, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
+void	spropThetaCpu	(Scalar *axionField, const double dz, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
 {
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();

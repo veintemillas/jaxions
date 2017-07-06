@@ -142,7 +142,7 @@ int	main (int argc, char *argv[])
   double nstringsd = 0. ;
 	double nstringsd_global = 0. ;
 	double maximumtheta = 3.141597;
-	size_t sliceprint = sizeN/2;
+	size_t sliceprint = 0 ; // sizeN/2;
 
 	// Axion spectrum
 	const int kmax = axion->Length()/2 -1;
@@ -225,6 +225,7 @@ int	main (int argc, char *argv[])
 		int strcount = 0;
 
 		int numaxiprint = 10 ;
+		StringData rts ;
 
 		axion->SetLambda(LAMBDA_Z2)	;
 		if (LAMBDA_FIXED == axion->Lambda())
@@ -509,7 +510,8 @@ int	main (int argc, char *argv[])
 				{
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-					nstrings_global = strings(axion, str, fCount);
+					rts = strings(axion, str, fCount);
+					nstrings_global = rts.strDen ;
 					maximumtheta = axion->maxtheta();
 					printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
