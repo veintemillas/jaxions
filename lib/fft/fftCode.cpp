@@ -468,13 +468,15 @@ static bool iFFTspec = false;
 void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrecision prec)
 {
 	if (!iFFT)
-		initFFT(prec);
-
+	{
 	printf ("Initializing FFTSpectrum for the spectral propagator...\n");
+	initFFT(prec);
 	fflush (stdout);
+	}
 
 	if (iFFTspec == true)
 	{
+		return ;
 		printf ("Already initialized!!\n");
 		fflush (stdout);
 	}
@@ -535,8 +537,8 @@ void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrec
 
 void	runFFTspec(int sign)
 {
-	printf ("Spec FFT...");
-	fflush (stdout);
+	// printf ("Spec FFT...");
+	// fflush (stdout);
 
 	switch (sign)
 	{
@@ -556,8 +558,8 @@ void	runFFTspec(int sign)
 			fftw_execute(pSb);
 		break;
 	}
-	printf ("Done!\n");
-	fflush (stdout);
+	// printf ("Done!\n");
+	// fflush (stdout);
 }
 
 void	closeFFTspec()

@@ -240,8 +240,9 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 
 				mPx = opCode(load_ps, &m2[idxP0]);
 				tmp = opCode(mul_ps, mPx, fMVec);
-				mPy = opCode(mul_ps, mel, mel);
 				mel = opCode(load_ps,  &m[idxP0]);
+				mPy = opCode(mul_ps, mel, mel);
+
 
 #if	defined(__MIC__)
 				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
@@ -419,10 +420,10 @@ inline	void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, c
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D1;
 		axionField->laplacian();
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C2, D2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D2;
 		axionField->laplacian();
-		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
+		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D3;
 		axionField->laplacian();
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
@@ -438,7 +439,7 @@ void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const do
 	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
 
 	const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
-	LogOut("mom=%f\n",fMom);
+	//LogOut("mom=%f\n",fMom);
 	switch	(VQcd) {
 		case	VQCD_1:
 			propSpecCpu<VQCD_1>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);

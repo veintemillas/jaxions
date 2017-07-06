@@ -2287,15 +2287,15 @@ void	Scalar::laplacianm2()
 
 	runFFTspec(FFTW_BACKWARD);
 
-	if(fieldType == FIELD_SAXION)
-	{
-		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
-		printMpi("tiempo loco ");
-		for (size_t idx = 0; idx < 10; idx++)
-		{
-			printMpi("%f-%f ",mTRANS[idx + n2].real(),mTRANS[idx + n2].imag());
-		}
-	}
+	// if(fieldType == FIELD_SAXION)
+	// {
+	// 	complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
+	// 	printMpi("tiempo loco ");
+	// 	for (size_t idx = 0; idx < 10; idx++)
+	// 	{
+	// 		printMpi("%f-%f ",mTRANS[idx + n2].real(),mTRANS[idx + n2].imag());
+	// 	}
+	// }
 }
 
 void	Scalar::laplacian()
