@@ -240,9 +240,8 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 
 				mPx = opCode(load_ps, &m2[idxP0]);
 				tmp = opCode(mul_ps, mPx, fMVec);
-				mel = opCode(load_ps,  &m[idxP0]);
+				mel = opCode(load_ps, &m[idxP0]);
 				mPy = opCode(mul_ps, mel, mel);
-
 
 #if	defined(__MIC__)
 				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
@@ -439,7 +438,7 @@ void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const do
 	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
 
 	const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
-	//LogOut("mom=%f\n",fMom);
+
 	switch	(VQcd) {
 		case	VQCD_1:
 			propSpecCpu<VQCD_1>	(axionField, dz, LL, nQcd, fMom, Lx, V, S, precision);
