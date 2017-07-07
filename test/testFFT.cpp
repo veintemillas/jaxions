@@ -1,8 +1,3 @@
-//
-//          RungeKuttaNyström version
-//          created on 20.11.2015
-//          simple gradient to accelerate calculations
-
 #include<cmath>
 #include<chrono>
 
@@ -13,39 +8,23 @@
 #include "propagator/allProp.h"
 #include"enum-field.h"
 #include"utils/utils.h"
+#include"utils/misc.h"
+#include"utils/logger.h"
 #include"io/readWrite.h"
 #include"comms/comms.h"
 
 using namespace std;
 
-/*	TODO
-
-	2. Generate configurations
-*/
-
-
 #ifdef	USE_XEON
 	__declspec(target(mic)) char *mX, *vX, *m2X;
 #endif
 
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  }	\
-}	while (0)
-
-
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
+	initAxions(argc, argv);
 
-	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
-
-	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
+	LogOut("\n-------------------------------------------------\n");
+	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS       
@@ -66,60 +45,60 @@ int	main (int argc, char *argv[])
 	double dz = (zFinl - zInit)/((double) nSteps);
 	double delta = sizeL/sizeN;
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           INITIAL CONDITIONS                     \n\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	printMpi("Length =  %2.5f\n", sizeL);
-	printMpi("N      =  %d\n",    sizeN);
-	printMpi("Nz     =  %d\n",    sizeZ);
-	printMpi("zGrid  =  %d\n",    zGrid);
-	printMpi("dx     =  %2.5f\n", delta);  
-	printMpi("dz     =  %2.5f\n", dz);
-	printMpi("LL     =  %2.5f\n", LL);
-	printMpi("--------------------------------------------------\n");
+	LogOut("Length =  %2.5f\n", sizeL);
+	LogOut("N      =  %d\n",    sizeN);
+	LogOut("Nz     =  %d\n",    sizeZ);
+	LogOut("zGrid  =  %d\n",    zGrid);
+	LogOut("dx     =  %2.5f\n", delta);  
+	LogOut("dz     =  %2.5f\n", dz);
+	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("--------------------------------------------------\n");
 
 	const int S0 = sizeN*sizeN;
 	const int SF = sizeN*sizeN*(sizeZ+1)-1;
 	const int V0 = 0;
 	const int VF = axion->Size()-1;
 
-	printMpi("INITIAL CONDITIONS LOADED\n");
+	LogOut("INITIAL CONDITIONS LOADED\n");
 	if (sPrec != FIELD_DOUBLE)
 	{
-		printMpi("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real()/zInit, ((complex<float> *) axion->mCpu())[S0].imag()/zInit,
+		LogOut("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real()/zInit, ((complex<float> *) axion->mCpu())[S0].imag()/zInit,
 									        ((complex<float> *) axion->mCpu())[SF].real()/zInit, ((complex<float> *) axion->mCpu())[SF].imag()/zInit);
-		printMpi("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
+		LogOut("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
 									        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
 	}
 	else
 	{
-		printMpi("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real()/zInit, ((complex<double> *) axion->mCpu())[S0].imag()/zInit,
+		LogOut("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real()/zInit, ((complex<double> *) axion->mCpu())[S0].imag()/zInit,
 										    ((complex<double> *) axion->mCpu())[SF].real()/zInit, ((complex<double> *) axion->mCpu())[SF].imag()/zInit);
-		printMpi("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
+		LogOut("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
 										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
 	}
 
-	printMpi("Ez     =  %d\n",    axion->eDepth());
+	LogOut("Ez     =  %d\n",    axion->eDepth());
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
 	//--------------------------------------------------  
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           STARTING COMPUTATION                   \n");
-	printMpi("--------------------------------------------------\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           STARTING COMPUTATION                   \n");
+	LogOut("--------------------------------------------------\n");
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 
 	int counter = 0;
 	int index = 0;
 
-	//printMpi ("Dumping configuration %05d...\n", index);
+	//LogOut ("Dumping configuration %05d...\n", index);
 	//fflush (stdout);
 	//writeConf(axion, index);
 
 
-	printMpi ("Start FFT\n");
+	LogOut ("Start FFT\n");
 	fflush (stdout);
 
 	commSync();
@@ -136,30 +115,30 @@ int	main (int argc, char *argv[])
 	index++;
 	writeConf(axion, index);
 
-	printMpi("\n PROGRAMM FINISHED\n");
+	LogOut("\n PROGRAMM FINISHED\n");
 
 	if (sPrec == FIELD_DOUBLE)
 	{
-		printMpi("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
+		LogOut("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
 		 								  ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
+		LogOut("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
 									 	  ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
 	}
 	else
 	{
-		printMpi("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
+		LogOut("\n Examples m: m[0]= %f + %f*I, m[N3-1]= %f + %f*I\n",  ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
 										  ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
-		printMpi("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
+		LogOut("\n Examples v: v[0]= %f + %f*I, v[N3-1]= %f + %f*I\n\n",((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
 										  ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
 	}
 
-	printMpi("z_final = %f\n", *axion->zV());
-	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
-	printMpi("--------------------------------------------------\n");
+	LogOut("z_final = %f\n", *axion->zV());
+	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
+	LogOut("--------------------------------------------------\n");
 
 	delete fCount;
 
-	endComms();
+	endAxions();
     
 	return 0;
 }

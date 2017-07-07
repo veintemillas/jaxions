@@ -1258,9 +1258,10 @@ void	writeEDens (Scalar *axion, int index)
 	if (!status)
 		group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
-		if (status > 0)
+		if (status > 0) {
 			group_id = H5Gopen2(file_id, "/energy", H5P_DEFAULT);		// Group exists
-		else {
+			LogMsg (VERB_HIGH, "Group /energy exists");
+		} else {
 			LogError ("Error: can't check whether group /energy exists");
 			prof.stop();
 			return;

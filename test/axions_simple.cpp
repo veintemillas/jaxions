@@ -10,6 +10,8 @@
 #include "energy/energy.h"
 #include "enum-field.h"
 #include "utils/utils.h"
+#include "utils/misc.h"
+#include "utils/logger.h"
 #include "comms/comms.h"
 #include "io/readWrite.h"
 #include "map/map.h"
@@ -22,25 +24,12 @@ using namespace std;
 	__declspec(target(mic)) char *mX, *vX, *m2X;
 #endif
 
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  	\
-	  fflush(stdout); }		\
-}	while (0)
-
-
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
+	initAxions(argc, argv);
 
-	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
-
-	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
+	LogOut("\n-------------------------------------------------\n");
+	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -51,8 +40,8 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
-		printMpi("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
+	if ((fIndex == -1) && (cType == CONF_NONE))
+		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
 		if (fIndex == -1)
@@ -64,7 +53,7 @@ int	main (int argc, char *argv[])
 			readConf(&axion, fIndex);
 			if (axion == NULL)
 			{
-				printMpi ("Error reading HDF5 file\n");
+				LogOut ("Error reading HDF5 file\n");
 				exit (0);
 			}
 		}
@@ -129,18 +118,18 @@ int	main (int argc, char *argv[])
 	else
 		dz = (zFinl - zInit)/((double) nSteps);
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           INITIAL CONDITIONS                     \n\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	printMpi("Length =  %2.5f\n", sizeL);
-	printMpi("N      =  %ld\n",   sizeN);
-	printMpi("Nz     =  %ld\n",   sizeZ);
-	printMpi("zGrid  =  %ld\n",   zGrid);
-	printMpi("dx     =  %2.5f\n", delta);
-	printMpi("dz     =  %2.5f\n", dz);
-	printMpi("LL     =  %2.5f\n", LL);
-	printMpi("Ng     =  %d  \n", Ng);
-	printMpi("--------------------------------------------------\n");
+	LogOut("Length =  %2.5f\n", sizeL);
+	LogOut("N      =  %ld\n",   sizeN);
+	LogOut("Nz     =  %ld\n",   sizeZ);
+	LogOut("zGrid  =  %ld\n",   zGrid);
+	LogOut("dx     =  %2.5f\n", delta);
+	LogOut("dz     =  %2.5f\n", dz);
+	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("Ng     =  %d  \n", Ng);
+	LogOut("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
@@ -151,9 +140,9 @@ int	main (int argc, char *argv[])
 	//   THE TIME ITERATION LOOP
 	//--------------------------------------------------
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           STARTING COMPUTATION                   \n");
-	printMpi("--------------------------------------------------\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           STARTING COMPUTATION                   \n");
+	LogOut("--------------------------------------------------\n");
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -179,9 +168,9 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		printMpi ("Dumping configuration %05d ...", index);
+		LogOut ("Dumping configuration %05d ...", index);
 		writeConf(axion, index);
-		printMpi ("Done!\n");
+		LogOut ("Done!\n");
 		fflush (stdout);
 	}
 	else
@@ -189,7 +178,7 @@ int	main (int argc, char *argv[])
 
 	if (cDev != DEV_CPU)
 	{
-		printMpi ("Transferring configuration to device\n");
+		LogOut ("Transferring configuration to device\n");
 		axion->transferDev(FIELD_MV);
 	}
 
@@ -205,10 +194,10 @@ int	main (int argc, char *argv[])
 
 		if (cDev != DEV_GPU)
 		{
-			//printMpi("Strings...");
+			//LogOut("Strings...");
 			//analyzeStrFolded(axion, index);
 			//analyzeStrUNFolded(axion, index);
-			//printMpi(" Done!");
+			//LogOut(" Done!");
 			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 			writeMap (axion, index);
 			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
@@ -217,7 +206,7 @@ int	main (int argc, char *argv[])
 			printf("%d/%d | z = %lf | st = %d | Vr %+lf Vt %+lf Kr %+lf Kt %+lf Grz %+lf Gtz %+lf\n", index, nLoops, (*axion->zV()), nstrings, Vr, Vt, Kr, Kt, Grz, Gtz);
 		}
 
-	printMpi ("Start redshift loop\n\n");
+	LogOut ("Start redshift loop\n\n");
 	fflush (stdout);
 
 	commSync();
@@ -272,7 +261,7 @@ int	main (int argc, char *argv[])
 			//if (axion->Precision() == FIELD_DOUBLE)
 			if ((*axion->zV()) > 0.4 )
 			{
-				//printMpi("Strings (if %f>0.4) ... ", (*axion->zV()));
+				//LogOut("Strings (if %f>0.4) ... ", (*axion->zV()));
 				fflush (stdout);
 				//analyzeStrFolded(axion, index);
 				nstrings = analyzeStrUNFolded(axion, index);
@@ -308,18 +297,18 @@ int	main (int argc, char *argv[])
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 
-	printMpi("\n PROGRAMM FINISHED\n");
+	LogOut("\n PROGRAMM FINISHED\n");
 
 	if (nSteps > 0)
 		writeConf(axion, index);
 
-	printMpi("z_final = %f\n", *axion->zV());
-	printMpi("#_steps = %i\n", counter);
-	printMpi("#_prints = %i\n", index);
-	printMpi("Total time: %2.3f s\n", elapsed.count()*1.e-3);
-	printMpi("GFlops: %.3f\n", fCount->GFlops());
-	printMpi("GBytes: %.3f\n", fCount->GBytes());
-	printMpi("--------------------------------------------------\n");
+	LogOut("z_final = %f\n", *axion->zV());
+	LogOut("#_steps = %i\n", counter);
+	LogOut("#_prints = %i\n", index);
+	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
+	LogOut("GFlops: %.3f\n", fCount->GFlops());
+	LogOut("GBytes: %.3f\n", fCount->GBytes());
+	LogOut("--------------------------------------------------\n");
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
@@ -330,9 +319,7 @@ int	main (int argc, char *argv[])
 	delete fCount;
 	delete axion;
 
-	endComms();
-
-	printMemStats();
+	endAxions();
 
 	//JAVIER
 	if (commRank() == 0)

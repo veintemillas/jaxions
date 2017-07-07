@@ -164,6 +164,7 @@
 						case	LOG_ERROR:
 						{
 							// We add a message to the stack and immediately flush the whole message stack
+							// FIXME The way this is done, this alawy prints this file as __FILE__ and the next line as __LINE__
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), "Error in file %s line %d", __FILE__, __LINE__)));
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), format, vars...)));
 							flushStack();

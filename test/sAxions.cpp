@@ -188,26 +188,13 @@ int	main (int argc, char *argv[])
 		index++;
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-		{
-			//axion->exchangeGhosts(FIELD_M);
-			//maximumtheta = axion->thetaDIST(100, spectrumK);
-
-			old = std::chrono::high_resolution_clock::now();
-
-			propagate (axion, dz, delta, nQcd, LL, VQCD_1);
-
-/*			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-
-			fCount->addTime(elapsed.count()*1.e-3);
-*/
-		} // zsubloop
+			sPropagate (axion, dz, nQcd, LL, VQCD_1);
 
 		auto strDen = strings(axion, str);
 
 		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
-		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
+		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Spectral Saxion"));
 
 		createMeas(axion, index);
 		writeString(str, strDen);

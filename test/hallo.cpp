@@ -9,6 +9,8 @@
 #include "energy/energy.h"
 #include "enum-field.h"
 #include "utils/utils.h"
+#include "utils/misc.h"
+#include "utils/logger.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
 #include "map/map.h"
@@ -17,8 +19,8 @@
 #include "scalar/scalar.h"
 
 #include <fftw3.h>
-#include<omp.h>
-#include<mpi.h>
+#include <omp.h>
+#include <mpi.h>
 
 using namespace std;
 
@@ -30,13 +32,7 @@ using namespace std;
 
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
-
-	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
+	initAxions(argc, argv);
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -591,11 +587,7 @@ for (int sliceprint = 0; sliceprint<cubeside; sliceprint++)
 
 	delete axion;
 
-	endComms();
-
-	printMemStats();
-
-
+	endAxions();
 
 	return 0;
 }

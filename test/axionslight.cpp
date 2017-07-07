@@ -17,6 +17,7 @@
 #include "scalar/scalar.h"
 #include "utils/profiler.h"
 #include "utils/logger.h"
+#include "utils/misc.h"
 
 #include<mpi.h>
 
@@ -28,13 +29,7 @@ using namespace std;
 
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
-
-	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
+	initAxions(argc, argv);
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -59,7 +54,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
+	if ((fIndex == -1) && (cType == CONF_NONE))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
@@ -293,11 +288,10 @@ int	main (int argc, char *argv[])
 		LogOut ("Dumping configuration %05d ...", index);
 		writeConf(axion, index);
 		LogOut ("Done!\n");
-		LogOut ("Bypass configuration writting!\n");
-		fflush (stdout);
+		//LogOut ("Bypass configuration writting!\n");
 	}
 	else
-		index = fIndex + 1;
+		index = fIndex;
 
 	//JAVIER commented next
 	//printf ("Process %d reached syncing point\n", commRank());
@@ -855,9 +849,7 @@ int	main (int argc, char *argv[])
 	delete fCount;
 	delete axion;
 
-	endComms();
-
-	printMemStats();
+	endAxions();
 
 	//JAVIER
 	if (commRank() == 0)

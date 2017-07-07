@@ -18,6 +18,7 @@
 #include "scalar/scalar.h"
 #include "utils/logger.h"
 #include "utils/profiler.h"
+#include "utils/misc.h"
 
 
 #include<mpi.h>
@@ -30,13 +31,7 @@ using namespace std;
 
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
-
-	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
+	initAxions(argc, argv);
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -58,7 +53,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
+	if ((fIndex == -1) && (cType == CONF_NONE))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{

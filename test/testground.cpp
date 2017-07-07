@@ -9,6 +9,8 @@
 #include "energy/energy.h"
 #include "enum-field.h"
 #include "utils/utils.h"
+#include "utils/misc.h"
+#include "utils/logger.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
 #include "map/map.h"
@@ -24,13 +26,6 @@ using namespace std;
 	__declspec(target(mic)) char *mX, *vX, *m2X;
 #endif
 
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  	\
-	  fflush(stdout); }		\
-}	while (0)
-
-
 int	main (int argc, char *argv[])
 {
 	parseArgs(argc, argv);
@@ -44,8 +39,8 @@ int	main (int argc, char *argv[])
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
-	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n          CREATING MINICLUSTERS!                \n\n");
+	LogOut("\n-------------------------------------------------\n");
+	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -58,16 +53,16 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
-		printMpi("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
+	if ((fIndex == -1) && (cType == CONF_NONE))
+		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
 		if (fIndex == -1)
 		{
 			//This generates initial conditions
-			printMpi("Generating scalar ... ");
+			LogOut("Generating scalar ... ");
 			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
-			printMpi("Done! \n");
+			LogOut("Done! \n");
 		}
 		else
 		{
@@ -75,7 +70,7 @@ int	main (int argc, char *argv[])
 			readConf(&axion, fIndex);
 			if (axion == NULL)
 			{
-				printMpi ("Error reading HDF5 file\n");
+				LogOut ("Error reading HDF5 file\n");
 				exit (0);
 			}
 		}
@@ -83,7 +78,7 @@ int	main (int argc, char *argv[])
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printMpi("ICtime %f min\n",elapsed.count()*1.e-3/60.);
+	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
 
 	//--------------------------------------------------
 	//          OUTPUTS FOR CHECKING
@@ -123,7 +118,7 @@ int	main (int argc, char *argv[])
 		file_thetabin = fopen("out/thetabin.txt","w+");
 		file_contbin = fopen("out/contbin.txt","w+");
 	}
-	printMpi("Files prepared! \n");
+	LogOut("Files prepared! \n");
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	size_t nstrings = 0 ;
@@ -146,7 +141,7 @@ int	main (int argc, char *argv[])
 	trackAlloc((void**) (&spectrumG), 8*powmax);
 	trackAlloc((void**) (&spectrumV), 8*powmax);
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
-	printMpi("Bins allocated! \n");
+	LogOut("Bins allocated! \n");
 
 	// double *sK = static_cast<double *> (spectrumK);
 	// double *sG = static_cast<double *> (spectrumG);
@@ -176,17 +171,17 @@ int	main (int argc, char *argv[])
 	else
 		dz = (zFinl - zInit)/((double) nSteps);
 
-	printMpi("--------------------------------------------------\n");
-	printMpi("           BASE INITIAL CONDITIONS                \n\n");
+	LogOut("--------------------------------------------------\n");
+	LogOut("           BASE INITIAL CONDITIONS                \n\n");
 
-	printMpi("Length =  %2.5f\n", sizeL);
-	printMpi("N      =  %ld\n",   sizeN);
-	printMpi("Nz     =  %ld\n",   sizeZ);
-	printMpi("zGrid  =  %ld\n",   zGrid);
-	printMpi("dx     =  %2.5f\n", delta);
-	printMpi("dz     =  %2.5f\n", dz);
-	printMpi("LL     =  %2.5f\n", LL);
-	printMpi("--------------------------------------------------\n");
+	LogOut("Length =  %2.5f\n", sizeL);
+	LogOut("N      =  %ld\n",   sizeN);
+	LogOut("Nz     =  %ld\n",   sizeZ);
+	LogOut("zGrid  =  %ld\n",   zGrid);
+	LogOut("dx     =  %2.5f\n", delta);
+	LogOut("dz     =  %2.5f\n", dz);
+	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
@@ -222,27 +217,27 @@ int	main (int argc, char *argv[])
 	Folder munge(axion);
 
 
-	printMpi("\n");
-  printMpi("--------------------------------------------------\n");
-  printMpi("              TRANSITION TO THETA \n");
+	LogOut("\n");
+  LogOut("--------------------------------------------------\n");
+  LogOut("              TRANSITION TO THETA \n");
   cmplxToTheta (axion, fCount);
 	fflush(stdout);
-  printMpi("--------------------------------------------------\n");
+  LogOut("--------------------------------------------------\n");
 
 	if (cDev != DEV_GPU)
 	{
-		printMpi ("Folding configuration ... ");
+		LogOut ("Folding configuration ... ");
 		munge(UNFOLD_ALL);
 	}
 
 
-		printMpi("nSpec ... ");
+		LogOut("nSpec ... ");
 		//NUMBER SPECTRUM
 		//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
 		spectrumUNFOLDED(axion);
 
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-		printMpi("| ");
+		LogOut("| ");
 		if (commRank() == 0)
 		{
 		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
@@ -253,7 +248,7 @@ int	main (int argc, char *argv[])
 		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sV[i]);} fprintf(file_spectrum, "\n");
 		//axion->foldField();
 		}
-		printMpi("LINE\n");
+		LogOut("LINE\n");
 		for (int ris = 0; ris <commSize(); ris++)
 		{
 				if (commRank() == ris)
@@ -294,9 +289,7 @@ int	main (int argc, char *argv[])
 	delete fCount;
 	delete axion;
 
-	endComms();
-
-	printMemStats();
+	endAxions();
 
 	//JAVIER
 	if (commRank() == 0)
