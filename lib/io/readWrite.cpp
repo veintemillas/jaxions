@@ -1322,6 +1322,7 @@ void	writeEDens (Scalar *axion, int index)
 	H5Sclose (totalSpace);
 	H5Pclose (chunk_id);
 	H5Pclose (plist_id);
+	H5Gclose (group_id);
 	H5Fclose (file_id);
 
         prof.stop();
