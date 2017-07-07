@@ -42,7 +42,6 @@ size_t parm1 = 0;
 ConfType  cType = CONF_NONE;
 FieldType fType = FIELD_SAXION;
 
-char *initFile = NULL;
 char outName[128] = "axion\0";
 
 FieldPrecision	sPrec = FIELD_DOUBLE;
@@ -461,28 +460,6 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--load"))
-		{
-			if (i+1 == argc)
-			{
-				LogOut("Error: I need a file to load.\n");
-				exit(1);
-			}
-
-			initFile = argv[i+1];
-
-			if (fIndex != -1)
-			{
-				LogOut("Error: You must use either --load or --index, they are mutually exclusive.\n");
-				exit(1);
-			}
-
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
-		}
-
 		if (!strcmp(argv[i], "--name"))
 		{
 			if (i+1 == argc)
@@ -562,12 +539,6 @@ int	parseArgs (int argc, char *argv[])
 			if (fIndex < 0)
 			{
 				LogOut("Error: Filename index must be equal or greater than zero.\n");
-				exit(1);
-			}
-
-			if (initFile != NULL)
-			{
-				LogOut("Error: You must use either --load or --index, they are mutually exclusive.\n");
 				exit(1);
 			}
 
