@@ -578,7 +578,7 @@ void	createMeas (Scalar *axion, int index)
 
 	char base[256];
 
-	sprintf(base, "%s.m.%05d", outName, index);
+	sprintf(base, "out/m/%s.m.%05d", outName, index);
 
 	/*	Create the file and release the plist	*/
 	if ((meas_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)) < 0)	//plist_id)) < 0)
@@ -1522,7 +1522,7 @@ void	writeMapHdf5	(Scalar *axion)
 	/*	Write raw data	*/
 	H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM);
 	H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV);
-	
+
 
 	/*	Close the dataset	*/
 
@@ -1752,7 +1752,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 				hsize_t offIn  = zDim*slab*dataSize;
 				hsize_t offOut = zDim*nSlb*dataSize;
 				memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
-			} 
+			}
 
 			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
 			planDoubleBackward = fftw_mpi_plan_dft_c2r_3d(newLz, newLx, newLx, static_cast<fftw_complex*>(axionOut),  static_cast<double*>(axionIn),  MPI_COMM_WORLD, FFTW_MEASURE);
@@ -1781,7 +1781,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 				hsize_t offIn  = zDim*slab*dataSize;
 				hsize_t offOut = zDim*nSlb*dataSize;
 				memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
-			} 
+			}
 
 			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
 			planSingleBackward = fftwf_mpi_plan_dft_c2r_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionOut), static_cast<float*>(axionIn),  MPI_COMM_WORLD, FFTW_MEASURE);
@@ -1937,4 +1937,3 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes", nSlb*newLz*dataSize + 78);
 }
-

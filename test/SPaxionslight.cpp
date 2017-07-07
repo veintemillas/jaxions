@@ -290,10 +290,10 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		//LogOut ("Dumping configuration %05d ...", index);
-		//writeConf(axion, index);
-		//LogOut ("Done!\n");
-		LogOut ("Bypass configuration writting!\n");
+		LogOut ("Dumping configuration %05d ...", index);
+		writeConf(axion, index);
+		LogOut ("Done!\n");
+		// LogOut ("Bypass configuration writting!\n");
 		fflush (stdout);
 	}
 	else

@@ -201,6 +201,7 @@ void	ConfGenerator::runCpu	()
 		case CONF_SMOOTH:
 		randConf (axionField);
 		smoothXeon (axionField, sIter, alpha);
+		normaliseField(axionField, FIELD_M, fCount);
 		normCoreField (axionField, fCount);
 		break;
 	}

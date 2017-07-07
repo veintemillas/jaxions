@@ -6,6 +6,7 @@
 #include "energy/energy.h"
 #include "scalar/varNQCD.h"
 #include <omp.h>
+#include "utils/logger.h"
 
 #include <fftw3-mpi.h>
 #include "comms/comms.h"
@@ -463,6 +464,180 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 
 		case FIELD_SINGLE:
 		BinSpectrum<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
+		break;
+
+		default:
+		printf ("Not a valid precision.\n");
+		break;
+	}
+}
+
+//----------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------
+// BINS EXP[iTHETA] FIELD TO CHECK INITIAL SPECTRUM
+//--------------------------------------------------
+
+template<typename Float>
+void	BinFT2expitheta (const complex<Float> *ft, double *binarray, size_t n1, size_t Lz, size_t Tz, size_t powmax, int kmax, double mass2)
+{
+	//printf("sizeL=%f , ",sizeL);fflush(stdout);
+	const size_t n2 = n1*n1 ;
+	const size_t n3 = n1*n1*Lz ;
+
+	double norma = 1/(pow((double) n1,6.)) ;
+
+	// MPI FFT STUFF
+	int rank = commRank();
+	size_t local_1_start = rank*Lz;
+	// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	// ptrdiff_t alloc_local, local_n0, local_0_start, local_n1, local_1_start;
+	//
+	// alloc_local = fftw_mpi_local_size_3d_transposed(
+	// 						 Tz, n1, n1, MPI_COMM_WORLD,
+	// 						 &local_n0, &local_0_start,
+	// 						 &local_n1, &local_1_start);
+
+	//printf ("BIN rank=%d - transpo - local_ny_start=%lld \n", rank,  local_1_start);
+	fflush(stdout);
+
+	#pragma omp parallel
+	{
+
+		int tid = omp_get_thread_num();
+		// LOCAL THREAD BINS
+		double spectrum_private[powmax];
+
+		for (int i=0; i < powmax; i++)
+		{
+			spectrum_private[i] = 0.0;
+		}
+
+		size_t kdx;
+		int bin;
+		size_t iz, iy, ix;
+		int kz, ky, kx;
+		double k2, w;
+
+	  #pragma omp barrier
+
+		#pragma omp for schedule(static)
+		for (size_t kdx = 0; kdx< n3; kdx++)
+		{
+			// ASSUMED TRANSPOSED
+			iy = kdx/n2 + local_1_start;
+			iz = (kdx%n2)/n1 ;
+			ix = kdx%n1 ;
+			ky = (int) iy;
+			kz = (int) iz;
+			kx = (int) ix;
+			if (kz>n1/2) {kz = kz-n1; }
+			if (ky>n1/2) {ky = ky-n1; }
+			if (kx>n1/2) {kx = kx-n1; }
+
+			k2 = kz*kz + ky*ky + kx*kx;
+			bin  = (int) floor(sqrt(k2)) 	;
+
+			spectrum_private[bin] += pow(abs(ft[kdx]),2);
+
+		}// END LOOP
+
+
+		#pragma omp critical
+		{
+			for(int n=0; n<powmax; n++)
+			{
+				//binarray[n] += spectrumK_private[n];
+				binarray[powmax + n] += spectrum_private[n];
+      }
+		}
+
+	}//parallel
+
+	for(int n=0; n<powmax; n++)
+	{
+		////binarray[n] *= norma;
+		// binarray[powmax   + n] = (double) powmax   + n;
+		// binarray[powmax*2 + n] = (double) 2*powmax   + n;
+		 binarray[powmax + n] *= norma;
+	}
+
+	MPI_Reduce(&binarray[powmax], &binarray[0], powmax, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+}
+
+void	powerspectrumexpitheta(Scalar *axion)
+{
+
+	const size_t n1 = axion->Length();
+	const size_t Lz = axion->Depth();
+	const size_t Tz = axion->TotalSize();
+	const int kmax = n1/2 -1;
+	int powmax = floor(1.733*kmax)+2 ;
+	const double delta = sizeL/sizeN;
+	const int fSize = axion->DataSize();
+	// SETS 1 ARRAY TO ZERO AT THE BEGGINING OF M
+	//memset (axion->mCpu(), 0, 2*fSize*powmax);
+	for(size_t dix=0; dix < 2*fSize*powmax; dix++)
+	{
+		static_cast<double*> (axion->mCpu())[dix] = 0. ;
+	}
+
+	double mass2 = axionmass2((*axion->zV()), nQcd, zthres, zrestore)*(*axion->zV())*(*axion->zV());
+	double eRes[10];
+	size_t n3 = axion->Size();
+	size_t n2 = axion->Surf();
+	double z_now  = (*axion->zV())	;
+	// COPIES Exp[iTheta] into M2 without ghost
+
+	if (axion->Precision() == FIELD_SINGLE)
+	{
+			if ( axion->Field() == FIELD_SAXION)
+			{
+					if (!(axion->LowMem()))
+					{
+						complex<float> *mIn  = static_cast<complex<float>*> (axion->mCpu());
+						complex<float> *mOut = static_cast<complex<float>*> (axion->m2Cpu());
+						#pragma omp parallel for default(shared) schedule(static)
+						for (size_t idx=0; idx < n3; idx++)
+						{
+							mOut[idx] = mIn[idx + n2]/abs(mIn[idx + n2])	;
+						}
+					}
+					else
+					{
+						LogError("No m2 in lowmem ... stop\n");
+						return;
+					}
+			}
+			else // ( axion->Field() == FIELD_AXION)
+			{
+				float *mIn  = static_cast<float*> (axion->mCpu());
+				complex<float> *mOut = static_cast<complex<float>*> (axion->m2Cpu());
+				#pragma omp parallel for default(shared) schedule(static)
+				for (size_t idx=0; idx < n3; idx++)
+				{
+					float theta = mIn[idx + n2]/z_now ;
+					mOut[idx] = std::complex<float>(cos(theta), sin(theta))	;
+				}
+			}
+			//	FFT m2 inplace ->
+			axion->fftCpuSpectrum(1);
+	}
+	else {LogError("No double precision yet!\n");return ;  }
+
+	switch(axion->Precision())
+	{
+		case FIELD_DOUBLE:
+		BinFT2expitheta<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
+		break;
+
+		case FIELD_SINGLE:
+		BinFT2expitheta<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 

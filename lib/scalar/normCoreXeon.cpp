@@ -39,7 +39,7 @@ void normCoreKernelXeon (Scalar *field)
 		size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
 		indexXeon::idx2Vec (idx, X, n1);
 
-		Float gradx, grady, gradz, sss, sss2, sss4, rhof;
+		Float gradtot, gradx, grady, gradz, sss, sss2, sss4, rhof;
 
 		if (X[0] == 0)
 		{
@@ -74,14 +74,24 @@ void normCoreKernelXeon (Scalar *field)
 		iPz = idx + n2;
 		iMz = idx - n2;
 
-		gradx = imag((mCp[iPx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
-		grady = imag((mCp[iPy+n2] - mCp[iMy+n2])/mCp[idx+n2]);
-		gradz = imag((mCp[iPz+n2] - mCp[iMz+n2])/mCp[idx+n2]);
+		gradx = imag((mCp[iPx+n2] - mCp[idx+n2])/mCp[idx+n2]);
+		gradtot = gradx*gradx ;
+		gradx = imag((mCp[idx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
+		gradtot += gradx*gradx ;
+		grady = imag((mCp[iPy+n2] - mCp[idx+n2])/mCp[idx+n2]);
+		gradtot += grady*grady ;
+		grady = imag((mCp[idx+n2] - mCp[iMy+n2])/mCp[idx+n2]);
+		gradtot += grady*grady ;
+		gradz = imag((mCp[iPz+n2] - mCp[idx+n2])/mCp[idx+n2]);
+		gradtot += gradz*gradz ;
+		gradz = imag((mCp[idx+n2] - mCp[iMz+n2])/mCp[idx+n2]);
+		gradtot += gradz*gradz ;
+
 		//JAVIER added an artificial factor of 1.0, can be changed
-		gradx = gradx*gradx + grady*grady + gradz*gradz;
-		if (gradx > 0.0000001)
+
+		if (gradtot > 0.0000001)
 		{
-			sss  = sqrt(LLa)*zia*deltaa/sqrt(gradx);
+			sss  = sqrt(LLa)*zia*deltaa/sqrt(gradtot);
 			//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
 			sss2 = sss*sss;
 			sss4 = sss2*sss2;

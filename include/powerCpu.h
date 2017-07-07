@@ -7,3 +7,5 @@ void	spectrumUNFOLDED(Scalar *field);
 
 void powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount);
 //void powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, FlopCounter *fCount);
+
+void powerspectrumexpitheta(Scalar *axion);

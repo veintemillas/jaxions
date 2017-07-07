@@ -16,10 +16,24 @@ using namespace std;
 template<typename Float>
 void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Float kCrit, const size_t Lx, const size_t Lz, const size_t Tz, const size_t S, const size_t V)
 {
-	const Float Twop = 2.0*M_PI;
+	long long kmax ;
+	int adp = 0;
+	if (kMax > Lx/2 - 1)
+	{
+	kmax = Lx/2 -1 ;
+	adp = 1 ;
+	}
+	else {
+		kmax = kMax ;
+	}
+	size_t kmax2 = kmax*kmax;
 
+	const Float Twop = 2.0*M_PI;
+	printf("momconf with Lx = %d Lz = %d Tz = %d kMax=%d and kCrit=%f \n",Lx,Lz,Tz, kmax,kCrit);
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
+
+
 
 	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
 
@@ -44,20 +58,24 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 
 			long long pz = oz - (oz/(Tz >> 1))*Tz;
 
-			for(long long py = -kMax; py <= kMax; py++)
+			for(long long py = -kmax  ; py <= kmax + adp; py++)
 			{
-				for(long long px = -kMax; px <= kMax; px++)
+				for(long long px = -kmax ; px <= kmax + adp; px++)
 				{
 					size_t idx  = ((px + Lx)%Lx) + ((py+Lx)%Lx)*Lx + ((pz+Tz)%Tz)*S - commRank()*V;
 					size_t modP = px*px + py*py + pz*pz;
 
-					if (modP <= kMax)
+					if (modP <= 3*(kmax2 + adp*(1+Lx)))
 					{
-						Float mP = sqrt(((Float) modP))/((Float) kCrit);
 						Float vl = Twop*(uni(mt64));
-						Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
+
+						// Float mP = sqrt(((Float) modP))/((Float) (kCrit));
+						// Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
+						 Float mP = ((Float) modP)/((Float) (kCrit*kCrit));
+						 Float sc = (modP == 0) ? 1.0 : exp(-mP*mP);
 
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
+						//printf("mom (%d,%d,%d) = %f %f*I\n",pz,py,px,fM[idx].real(),fM[idx].imag());
 					}
 				} // END  px loop
 			} // END  py loop
