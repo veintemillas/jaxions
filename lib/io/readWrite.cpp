@@ -1740,7 +1740,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.double");
                 	}
 
-			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+			fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 
 			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
 			planDoubleForward  = fftw_mpi_plan_dft_r2c_3d(totlZ, sizeN, sizeN, static_cast<double*>(axionIn),  static_cast<fftw_complex*>(axionOut), MPI_COMM_WORLD, FFTW_MEASURE);
@@ -1749,10 +1749,13 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 			fftw_execute (planDoubleForward);
 
 			LogMsg (VERB_HIGH, "  Remove high modes");
+			#pragma omp parallel for schedule(static)
 			for (hsize_t zDim = 0; zDim < sizeZ; zDim++) {
-				hsize_t offIn  = zDim*slab*dataSize;
-				hsize_t offOut = zDim*nSlb*dataSize;
-				memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+				for (hsize_t yDim = 0; yDim < newLx; yDim++) {
+					hsize_t offIn  = (zDim*slab + yDim*sizeN)*dataSize;
+					hsize_t offOut = (zDim*nSlb + yDim*newLx)*dataSize;
+					memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+				}
 			}
 
 			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
@@ -1778,10 +1781,13 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 			fftwf_execute (planSingleForward);
 
 			LogMsg (VERB_HIGH, "  Remove high modes");
+			#pragma omp parallel for schedule(static)
 			for (hsize_t zDim = 0; zDim < sizeZ; zDim++) {
-				hsize_t offIn  = zDim*slab*dataSize;
-				hsize_t offOut = zDim*nSlb*dataSize;
-				memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+				for (hsize_t yDim = 0; yDim < newLx; yDim++) {
+					hsize_t offIn  = (zDim*slab + yDim*sizeN)*dataSize;
+					hsize_t offOut = (zDim*nSlb + yDim*newLx)*dataSize;
+					memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+				}
 			}
 
 			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
