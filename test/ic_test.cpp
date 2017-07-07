@@ -16,6 +16,7 @@
 #include "powerCpu.h"
 #include "scalar/scalar.h"
 #include "utils/logger.h"
+#include "utils/misc.h"
 
 #include<mpi.h>
 
@@ -25,32 +26,19 @@ using namespace std;
 	__declspec(target(mic)) char *mX, *vX, *m2X;
 #endif
 
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  	\
-	  fflush(stdout); }		\
-}	while (0)
-
-
 int	main (int argc, char *argv[])
 {
-	parseArgs(argc, argv);
-
-	if (initComms(argc, argv, zGrid, cDev, verb) == -1)
-	{
-		printf ("Error initializing devices and Mpi\n");
-		return 1;
-	}
+	initAxions(argc, argv);
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
 	commSync();
-	printMpi("\n-------------------------------------------------\n");
-	printMpi("\n   IC TEST !(%d)           \n",fIndex);
-	printMpi("\n-------------------------------------------------\n");
+	LogOut("\n-------------------------------------------------\n");
+	LogOut("\n   IC TEST !(%d)           \n",fIndex);
+	LogOut("\n-------------------------------------------------\n");
 
-	printMpi("\n-------------------------------------------------\n");
+	LogOut("\n-------------------------------------------------\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -63,7 +51,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((initFile == NULL) && (fIndex == -1) && (cType == CONF_NONE))
+	if ((fIndex == -1) && (cType == CONF_NONE))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
@@ -88,7 +76,7 @@ int	main (int argc, char *argv[])
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printMpi("Reading/Creating time %f min\n",elapsed.count()*1.e-3/60.);
+	LogOut("Reading/Creating time %f min\n",elapsed.count()*1.e-3/60.);
 
 	void *eRes, *str;			// Para guardar la energia
 	trackAlloc(&eRes, 128);
@@ -122,9 +110,9 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 
-	printMpi("ene \n");
+	LogOut("ene \n");
 
-	printMpi("%f %f %f %f \n",
+	LogOut("%f %f %f %f \n",
 	z_now,
 	axionmass(z_now,nQcd,zthres, zrestore),
 	static_cast<float*> (axion->mCpu())[sizeN*sizeN],
@@ -140,9 +128,9 @@ int	main (int argc, char *argv[])
 	writeMap (axion, 0);
 	}
 
-	printMpi("spexth \n");
+	LogOut("spexth \n");
 	powerspectrumexpitheta(axion) ;
-	printMpi("write \n");
+	LogOut("write \n");
 	if (commRank() == 0)
 	{
 	fprintf(file_thetis,  "%lf ", (*axion->zV()));
@@ -160,12 +148,9 @@ int	main (int argc, char *argv[])
 	delete fCount;
 	delete axion;
 
-	endComms();
+	endAxions();
 
-	printMemStats();
 
-	fclose (file_thetis);
-
-	printMpi("\n End \n");
+	LogOut("\n End \n");
 	return 0;
 }
