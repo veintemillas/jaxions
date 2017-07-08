@@ -12,7 +12,9 @@
 	void	writeString	(void *strData, StringData strDat);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, int index);
-	void	reduceEDens (int index, uint newLx, uint newLz);
+
+	void  reduceEDens	(int index, uint newLx, uint newLz);
+
 	void	writePoint	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
 	void    writeArray	(Scalar *axion, void *array, size_t aSize, const char *group, const char *dataName);
