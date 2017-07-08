@@ -425,20 +425,27 @@ void	spropThetaCpu	(Scalar *axionField, const double dz, const double delta2, co
 	const double ood2 = 1./delta2;
 	double *z = axionField->zV();
 
-	// NEED TO RETOUCH THE BOUNDARIES
-	// FFT M TO M2, LAPLACIAN IN M2, iFFT2 to M2
-	// SINCE IT MIGTH NOT WORK ON MPI... USE REAL TO REAL?
+	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
+	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
+	char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axion->Depth()))+1)*axionField->DataSize();
+
+	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), static_cast<void *>(mS3), Lx, axionField->TotalDepth(), precision);
+
 	// spropThetaKernelXeon uses Laplacian from M2
 	// saves evolved M in M
+	axionField->laplacian();
 	spropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, ood2, nQcd, Lx, V, V+S, precision);
 	*z += dz*D1;
 
+	axionField->laplacian();
 	spropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C2, D2, ood2, nQcd, Lx, V, V+S, precision);
 	*z += dz*D2;
 
+	axionField->laplacian();
 	spropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, ood2, nQcd, Lx, V, V+S, precision);
 	*z += dz*D3;
 
+	axionField->laplacian();
 	spropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, ood2, nQcd, Lx, V, V+S, precision);
 	*z += dz*D4;
 }

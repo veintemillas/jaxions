@@ -376,7 +376,14 @@ inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, 
 
 void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, const VqcdType VQcd)
 {
-	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->Depth(), precision);
+//	initFFTspec(axionField->mCpu(), axionField->m2Cpu(), Lx, axionField->Depth(), precision);
+
+	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
+	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
+// Not used in SAXION MODE
+	char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axionField->Depth())+1)*axionField->DataSize();
+
+	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), static_cast<void *>(mS3), Lx, axionField->TotalDepth(), precision);
 
 	const double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
@@ -435,7 +442,10 @@ void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const do
 	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
 	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
 
-	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
+	// Not used in SAXION MODE
+	char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axionField->Depth())+1)*axionField->DataSize();
+
+	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), static_cast<void *>(mS3), Lx, axionField->TotalDepth(), precision);
 
 	const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 

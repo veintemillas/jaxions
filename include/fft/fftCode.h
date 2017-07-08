@@ -16,7 +16,10 @@
 	void	runFFThalo	(int sign);
 	void	closeFFThalo	();
 
-	void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecision prec);
+	void	initFFTspec	(void *m, void *m2, void *m3, const size_t n1, const size_t Lz, FieldPrecision prec);
 	void	runFFTspec	(int sign);
 	void	closeFFTspec	();
+
+	void	runFFTspecTheta	(int sign);
+
 #endif

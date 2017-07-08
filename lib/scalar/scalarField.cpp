@@ -2230,21 +2230,19 @@ void	Scalar::autodenstom2()//int *window)
 }
 
 //----------------------------------------------------------------------
-//		BUILD LAPLACIAN IN M2
+//		BUILD LAPLACIAN IN M2 [after ghost slice]
 //----------------------------------------------------------------------
 
 template<typename Float>
 void	Scalar::laplacianm2()
 {
-	// VERSION FOR COMPLEX_SCALAR // NO LOW MEM //FLOAT
-	// NO MPI!
-	runFFTspec(FFTW_FORWARD);
-	// MULTIPLY BY K^2/N
-	// (A,B,C), (-A,B,C) ... 6 MODES HAVE SAME K^2
-	// CHOSE A,B,C IN (0,n1/2)
+	// NO LOW MEM //FLOAT
+	// NO MPI! ?
 
 	if(fieldType == FIELD_SAXION)
 	{
+		runFFTspec(FFTW_FORWARD);
+
 		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
 		int n12 = n1/2 ;
 
@@ -2279,13 +2277,56 @@ void	Scalar::laplacianm2()
 			}
 		}
 
+			runFFTspec(FFTW_BACKWARD);
 	}
 	else //FIELD_AXION
 	{
+		// THIS FFT IS REAL TO COMPLEX, OUTPUTS TO M3 (TRANSPOSED, HALFCOMPLEX!!!)
+		// WHICH IS DEFINED IN sPropXeon.cpp
+		// char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axion->Depth()))+1)*axionField->DataSize();
+			runFFTspecTheta(FFTW_FORWARD);
+
+		// NOW MULTIPLY BY THE CORRECT FACTOR OF K^2
+
+		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
+		int n12 = n1/2 ;
+
+		#pragma omp parallel for schedule(static) default(shared)
+		for (size_t kz = 0; kz < n1; kz++)
+		{
+			int kkz = (int) kz ;
+
+			if (kz > n12)
+				kkz = ((int) kz)-n1;
+
+			for (size_t ky = 0; ky < n1; ky++)
+			{
+				int kky = ky ;
+				if (ky > n12)
+					kky = ((int) ky)-n1;
+
+				int kk2 = kkz*kkz + kky*kky ;
+				size_t iidx = n1*ky + n2*kz ;
+
+				for (size_t kx = 0; kx < n1; kx++)
+				{
+					size_t idx = iidx + kx ;
+					int kkx = (int) kx ;
+					if (kx > n12)
+						kkx = ((int) kx)-n1;
+
+					size_t k2 = kk2 + kkx*kkx;
+					//printMpi("(%d,%d,%d) %ld\n",kkz,kky,kkx,idx);
+					mTRANS[idx + n2] *= (Float) k2;
+				}
+			}
+		}
+
+			runFFTspecTheta(FFTW_BACKWARD);
 	}
 
 
-	runFFTspec(FFTW_BACKWARD);
+
 
 	// if(fieldType == FIELD_SAXION)
 	// {

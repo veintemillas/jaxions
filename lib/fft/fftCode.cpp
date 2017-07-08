@@ -462,10 +462,13 @@ void	closeFFThalo()
 fftw_plan  pS,  pSb;
 fftwf_plan pfS, pfSb;
 
+// FOR THETA
+fftw_plan  pSTh,  pSbTh;
+fftwf_plan pfSTh, pfSbTh;
 
 static bool iFFTspec = false;
 
-void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrecision prec)
+void	initFFTspec	(void *m, void *m2, void *m3, const size_t n1, const size_t Tz, FieldPrecision prec)
 {
 	if (!iFFT)
 	{
@@ -500,6 +503,9 @@ void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrec
 			pS  = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m),  static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT);
 			pSb = fftw_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftw_complex*>(m2), static_cast<fftw_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN);
 
+			pSTh  = fftw_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<double*>(m),  static_cast<fftw_complex*>(m3), MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT);
+			pSbTh = fftw_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftw_complex*>(m3), static_cast<double*>(m2), MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN);
+
 			fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
 			if (rank == 0) { fftw_export_wisdom_to_filename("../fftWisdom.double"); }
 			printMpi ("  Wisdom saved\n");
@@ -518,6 +524,10 @@ void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrec
 			single = true;
 			pfS  = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m),  static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT);
 			pfSb = fftwf_mpi_plan_dft_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m2), static_cast<fftwf_complex*>(m2), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN);
+
+			pfSTh  = fftwf_mpi_plan_dft_r2c_3d(Tz, n1, n1, static_cast<float*>(m),  static_cast<fftwf_complex*>(m3), MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT);
+			pfSbTh = fftwf_mpi_plan_dft_c2r_3d(Tz, n1, n1, static_cast<fftwf_complex*>(m3), static_cast<float*>(m2), MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN);
+
 
 			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 			if (rank == 0) fftwf_export_wisdom_to_filename("../fftWisdom.single");
@@ -562,6 +572,33 @@ void	runFFTspec(int sign)
 	// fflush (stdout);
 }
 
+void	runFFTspecTheta(int sign)
+{
+	// printf ("Spec FFT...");
+	// fflush (stdout);
+
+	switch (sign)
+	{
+		case FFTW_FORWARD:
+
+		if (single)
+			fftwf_execute(pfSTh);
+		else
+			fftw_execute(pSTh);
+		break;
+
+		case FFTW_BACKWARD:
+
+		if (single)
+			fftwf_execute(pfSbTh);
+		else
+			fftw_execute(pSbTh);
+		break;
+	}
+	// printf ("Done!\n");
+	// fflush (stdout);
+}
+
 void	closeFFTspec()
 {
 	if (!iFFTspec)
@@ -571,10 +608,14 @@ void	closeFFTspec()
 	{
 		fftwf_destroy_plan(pfS);
 		fftwf_destroy_plan(pfSb);
+		fftwf_destroy_plan(pfSTh);
+		fftwf_destroy_plan(pfSbTh);
 	}
 	else
 	{
 		fftw_destroy_plan(pS);
 		fftw_destroy_plan(pSb);
+		fftw_destroy_plan(pSTh);
+		fftw_destroy_plan(pSbTh);
 	}
 }
