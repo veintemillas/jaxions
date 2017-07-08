@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <complex>
 #include <hdf5.h>
 
 #include <fftw3-mpi.h>
@@ -24,6 +25,7 @@ bool	mDisabled = true;
 H5E_auto2_t eFunc;
 void	   *cData;
 
+using namespace std;
 using namespace profiler;
 
 /*	TODO	Añade excepciones para salir limpiamente del programa	*/
@@ -1561,7 +1563,6 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	int myRank = commRank();
 
 	void *axionIn  = nullptr;
-	void *axionOut = nullptr;
 
 	LogMsg (VERB_NORMAL, "Reading Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
@@ -1672,8 +1673,59 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	total = nSlb*newSz;
 
-	trackAlloc(&axionIn,  (slab+1)*sizeZ*dataSize);	// The extra-slab is for FFTW with MPI, just in case
-	trackAlloc(&axionOut, (slab+1)*sizeZ*dataSize*2);
+	trackAlloc(&axionIn,  (slab+1)*sizeZ*dataSize*2);	// The extra-slab is for FFTW with MPI, just in case
+
+	/*	Init FFT	*/
+
+	initFFT(precision);
+
+	fftw_plan		planDoubleForward, planDoubleBackward;
+	fftwf_plan	planSingleForward, planSingleBackward;
+
+	switch (precision) {
+		case	FIELD_SINGLE:
+			if (myRank == 0) {
+				if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0)
+				LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.single");
+			}
+
+			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%llu x %llu x %llu)", sizeN, sizeN, totlZ);
+			planSingleForward  = fftwf_mpi_plan_dft_3d(totlZ, sizeN, sizeN, static_cast<fftwf_complex*>(axionIn),  static_cast<fftwf_complex*>(axionIn), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE);
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%u x %u x %u)", newLx, newLx, newLz);
+			planSingleBackward = fftwf_mpi_plan_dft_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionIn),  static_cast<fftwf_complex*>(axionIn),  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+
+			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
+			if (myRank == 0) { fftwf_export_wisdom_to_filename("../fftWisdom.single"); }
+			LogMsg (VERB_HIGH, "  Wisdom saved\n");
+			break;
+
+		case	FIELD_DOUBLE:
+			if (myRank == 0) {
+				if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0)
+				LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.double");
+			}
+
+			fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%llu x %llu x %llu)", sizeN, sizeN, totlZ);
+			planDoubleForward  = fftw_mpi_plan_dft_3d(totlZ, sizeN, sizeN, static_cast<fftw_complex*>(axionIn),  static_cast<fftw_complex*>(axionIn), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE);
+
+			fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
+			if (myRank == 0) { fftw_export_wisdom_to_filename("../fftWisdom.double"); }
+			LogMsg (VERB_HIGH, "  Wisdom saved\n");
+
+			LogMsg (VERB_HIGH, "  Plan 3d (%u x %u x %u)", newLx, newLx, newLz);
+			planDoubleBackward = fftw_mpi_plan_dft_3d(newLz, newLx, newLx, static_cast<fftw_complex*>(axionIn),  static_cast<fftw_complex*>(axionIn),  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			break;
+
+		default:
+			LogError ("Error: precision not recognized");
+			prof.stop();
+			return;
+	}
 
 	/*	Create plist for collective read	*/
 
@@ -1722,96 +1774,185 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 //	prof.add(std::string("Read data"), 0, (dataSize*totlZ*slab + 77.)*1.e-9);
 
-	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab + 77);
+	LogMsg (VERB_NORMAL, "Read %llu bytes", (((size_t) totlZ)*slab + 77)*dataSize);
 
 	/*	FFT		*/
 	LogMsg (VERB_HIGH, "Creating FFT plans");
 
-	initFFT(precision);
-
-	fftw_plan	planDoubleForward, planDoubleBackward;
-	fftwf_plan	planSingleForward, planSingleBackward;
 
 	switch (precision)
 	{
-		case FIELD_DOUBLE:
-			if (myRank == 0) {
-				if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0)
-					LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.double");
-                	}
+		case FIELD_DOUBLE: {
+			complex<double> * cAxion = static_cast<complex<double>*>(axionIn);
+			double 		* rAxion = static_cast<double*>(axionIn);
 
-			fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
-
-			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
-			planDoubleForward  = fftw_mpi_plan_dft_r2c_3d(totlZ, sizeN, sizeN, static_cast<double*>(axionIn),  static_cast<fftw_complex*>(axionOut), MPI_COMM_WORLD, FFTW_MEASURE);
+			for (hssize_t idx = slab*sizeZ-1; idx >= 0; idx--)
+				cAxion[idx] = complex<double>(rAxion[idx], 0.);
 
 			LogMsg (VERB_HIGH, "  Execute");
 			fftw_execute (planDoubleForward);
 
 			LogMsg (VERB_HIGH, "  Remove high modes");
-			#pragma omp parallel for schedule(static)
-			for (hsize_t zDim = 0; zDim < sizeZ; zDim++) {
-				for (hsize_t yDim = 0; yDim < newLx; yDim++) {
-					hsize_t offIn  = (zDim*slab + yDim*sizeN)*dataSize;
-					hsize_t offOut = (zDim*nSlb + yDim*newLx)*dataSize;
-					memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
-				}
+			for (hsize_t idx = 0; idx < sizeZ*slab; idx++) {
+				int xC = idx % sizeN;
+				int zC = idx / slab;
+				int yC = (idx - zC*slab)/sizeN;
+
+				zC += myRank*sizeZ;
+
+				if (xC > sizeN/2) { xC -= sizeN/2; }
+				if (yC > sizeN/2) { yC -= sizeN/2; }
+				if (zC > sizeZ/2) { zC -= sizeZ/2; }
+
+				if (xC >= newLx/2 || xC < newLx/2) { continue; }
+				if (yC >= newLx/2 || yC < newLx/2) { continue; }
+				if (zC >= newLz/2 || zC < newLz/2) { continue; }
+
+				hsize_t odx = ((xC + newLx) % newLx) + newLx*(((yC + newLx) % newLx) + newLz*((zC + newLz) % newLz));
+				static_cast<complex<double>*> (axionIn)[odx] = static_cast<complex<double>*> (axionIn)[idx];
 			}
 
-			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
-			planDoubleBackward = fftw_mpi_plan_dft_c2r_3d(newLz, newLx, newLx, static_cast<fftw_complex*>(axionOut),  static_cast<double*>(axionIn),  MPI_COMM_WORLD, FFTW_MEASURE);
+			static_cast<double*> (axionIn)[newLx*( 1 + newLx + newLz*newLz)] = 0.;
 
 			LogMsg (VERB_HIGH, "  Execute");
 			fftw_execute (planDoubleBackward);
 
+			for (hsize_t idx = 0; idx < total; idx++)
+				static_cast<double*>(axionIn)[idx] = static_cast<complex<double>*>(axionIn)[idx].real();
+
 			break;
+		}
 
-		case FIELD_SINGLE:
-			if (myRank == 0) {
-				if (fftw_import_wisdom_from_filename("../fftWisdom.single") == 0)
-					LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.single");
-                	}
+		case FIELD_SINGLE: {
+			complex<float>	* cAxion = static_cast<complex<float>*>(axionIn);
+			float		* rAxion = static_cast<float*>(axionIn);
 
-			fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
-
-			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
-			planSingleForward  = fftwf_mpi_plan_dft_r2c_3d(totlZ, sizeN, sizeN, static_cast<float*>(axionIn),  static_cast<fftwf_complex*>(axionOut), MPI_COMM_WORLD, FFTW_MEASURE);
+			for (hssize_t idx = slab*sizeZ-1; idx >= 0; idx--)
+				cAxion[idx] = complex<float>(rAxion[idx], 0.);
 
 			LogMsg (VERB_HIGH, "  Execute");
 			fftwf_execute (planSingleForward);
 
+			//for (hssize_t ix = 0; ix < sizeN; ix++)
+			//	LogOut ("ix %ld %f %f\n", ix, static_cast<complex<float>*> (axionIn)[ix].real(), static_cast<complex<float>*> (axionIn)[ix].imag());
+			//fflush(stdout);
+
+/*
+			for (hssize_t pz1 = 0; pz1 < sizeZ/2; pz1++) {
+				hssize_t pz2 = (sizeZ - pz1) % sizeZ;
+
+				for (hssize_t py1 = 0; py1 < sizeN; py1++) {
+					hssize_t py2 = (sizeN - py1) % sizeN;
+
+					for (hssize_t px1 = 0; px1 < sizeN; px1++) {
+						hssize_t px2 = (sizeN - px1) % sizeN;
+
+						size_t idx1 = px1 + sizeN*(py1 + sizeZ*pz1);
+						size_t idx2 = px2 + sizeN*(py2 + sizeZ*pz2);
+
+						float md1 = fabs(cAxion[idx1].imag() + cAxion[idx2].imag());
+						float md2 = fabs(cAxion[idx1].imag());
+
+						if (md1 > md2*1e-4) {
+							LogOut ("Gran cagada monumental %llu (%lld %lld %lld) <---> %llu (%lld %lld %lld) %f %f\n", idx1, px1, py1, pz1, idx2, px2, py2, pz2, idx1, cAxion[idx1].imag(), cAxion[idx2].imag());
+							fflush(stdout);
+						}
+					}
+				}
+			}
+*/
+
+			int nLx = newLx;
+			int nLz = newLz;
+
 			LogMsg (VERB_HIGH, "  Remove high modes");
-			#pragma omp parallel for schedule(static)
-			for (hsize_t zDim = 0; zDim < sizeZ; zDim++) {
-				for (hsize_t yDim = 0; yDim < newLx; yDim++) {
-					hsize_t offIn  = (zDim*slab + yDim*sizeN)*dataSize;
-					hsize_t offOut = (zDim*nSlb + yDim*newLx)*dataSize;
-					memcpy (static_cast<char*> (axionIn) + offOut, static_cast<char*> (axionOut) + offIn, nSlb*dataSize);
+			for (hsize_t idx = 0; idx < sizeZ*slab; idx++) {
+				int xC = idx % sizeN;
+				int zC = idx / slab;
+				int yC = (idx - zC*slab)/sizeN;
+
+				if (xC > sizeN/2) { xC -= sizeN; }
+				if (yC > sizeN/2) { yC -= sizeN; }
+				if (zC > sizeZ/2) { zC -= sizeZ; }
+
+//				LogOut ("%llu (%d %d %d) <---> ", idx, xC, yC, zC);
+				if ((xC >= nLx/2) || (xC < -nLx/2)) { continue; }
+				if ((yC >= nLx/2) || (yC < -nLx/2)) { continue; }
+				if ((zC >= nLz/2) || (zC < -nLz/2)) { continue; }
+
+				hsize_t odx = (size_t) ((xC + nLx) % nLx) + ((size_t) nLx)*((size_t) ((yC + nLx) % nLx) + (size_t) (nLz*((zC + nLz) % nLz)));
+//				LogOut ("%llu (%d %d %d) %f %f\n", odx, xC, yC, zC, cAxion[idx].real(), cAxion[idx].imag());
+//				fflush(stdout);
+				cAxion[odx] = cAxion[idx];
+
+				if (xC == -nLx/2 || yC == -nLx/2 || zC == -nLz/2)
+					cAxion[odx] = complex<float>(cAxion[odx].real(), 0.);
+			}
+
+			for (hssize_t pz1 = 0; pz1 < newLz/2; pz1++) {
+				hssize_t pz2 = (newLz - pz1) % newLz;
+
+				for (hssize_t py1 = 0; py1 < newLx; py1++) {
+					hssize_t py2 = (newLx - py1) % newLx;
+
+					for (hssize_t px1 = 0; px1 < newLx; px1++) {
+						hssize_t px2 = (newLx - px1) % newLx;
+
+						size_t idx1 = px1 + newLx*(py1 + newLz*pz1);
+						size_t idx2 = px2 + newLx*(py2 + newLz*pz2);
+
+						float md1 = fabs(cAxion[idx1].imag() + cAxion[idx2].imag());
+						float md2 = fabs(cAxion[idx1].imag());
+
+						if (md1 > md2*1e-5) {
+							LogOut ("Cagada monumental %llu (%lld %lld %lld) <---> %llu (%lld %lld %lld) %f %f\n", idx1, px1, py1, pz1, idx2, px2, py2, pz2, cAxion[idx1].imag(), cAxion[idx2].imag());
+							fflush(stdout);
+						}
+					}
 				}
 			}
 
-			LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
-			planSingleBackward = fftwf_mpi_plan_dft_c2r_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionOut), static_cast<float*>(axionIn),  MPI_COMM_WORLD, FFTW_MEASURE);
 
 			LogMsg (VERB_HIGH, "  Execute");
 			fftwf_execute (planSingleBackward);
 
+			for (int ar=0; ar<newLz; ar++)
+				LogOut ("Array feo real %f %f\n", static_cast<complex<float>*>(axionIn)[nSlb*ar].real(), static_cast<complex<float>*>(axionIn)[nSlb*ar].imag());
+
+			{
+				const float vl = 1.f/((float) (nSlb*sizeZ));
+
+				for (hsize_t idx = 0; idx < total; idx++)
+					static_cast<float*>(axionIn)[idx] = static_cast<complex<float>*>(axionIn)[idx].real()*vl;
+			}
 			break;
+		}
+
+		default:
+			LogError ("Error: precision not recognized");
+			prof.stop();
+			return;
 	}
 
 	/*	Open the file again and release the plist	*/
-	sprintf(baseOut, "%s.r.%05d", outName, index);
+	plist_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	if ((file_id = H5Fopen (baseOut, H5F_ACC_RDONLY, plist_id)) < 0)
+	sprintf(baseOut, "%s.r.%05d", outName, index);
+	LogMsg(VERB_HIGH, "Opening file %s", baseOut);
+
+	if ((file_id = H5Fcreate (baseOut, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
 	{
 		LogError ("Error opening file %s", baseOut);
 		return;
 	}
 
 	H5Pclose(plist_id);
+	LogMsg(VERB_HIGH, "File %s opened", baseOut);
 
 	/*	Write header	*/
 	/*	Attributes	*/
+	LogMsg(VERB_HIGH, "Writing header");
 
 	attr_type = H5Tcopy(H5T_C_S1);
 	H5Tset_size   (attr_type, length);
@@ -1866,21 +2007,12 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	}
 
 	/*	Create a group for string data if it doesn't exist	*/
-	auto status = H5Lexists (file_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
+	LogMsg(VERB_HIGH, "Creating /energy group");
 
-	if (!status)
-		group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	else {
-		if (status > 0)
-			group_id = H5Gopen2(file_id, "/energy", H5P_DEFAULT);		// Group exists
-		else {
-			LogError ("Error: can't check whether group /energy exists");
-			prof.stop();
-			return;
-		}
-	}
+	group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	/*	Create a dataset for the whole axion data	*/
+	LogMsg(VERB_HIGH, "Creating dataset");
 
 	char mCh[24] = "/energy/density";
 
@@ -1923,6 +2055,8 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 		//commSync();
 	}
 
+	LogMsg (VERB_HIGH, "Write successful, closing dataset");
+
 	/*	Close the dataset	*/
 
 	H5Dclose (eset_id);
@@ -1934,9 +2068,9 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	H5Sclose (totalSpace);
 	H5Pclose (chunk_id);
 	H5Pclose (plist_id);
+	H5Gclose (group_id);
 	H5Fclose (file_id);
 
-	trackFree (&axionOut, ALLOC_TRACK);
 	trackFree (&axionIn,  ALLOC_TRACK);
 
         prof.stop();
