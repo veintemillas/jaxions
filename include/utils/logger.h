@@ -137,7 +137,7 @@
 				~Logger() { flushStack(); flushDisk(); oFile.close(); }
 
 				template<typename... Fargs>
-				void	operator()(LogLevel level, const char * format, Fargs... vars)
+				void	operator()(LogLevel level, const char * file, const int line, const char * format, Fargs... vars)
 				{
 					switch	(level) {
 
@@ -164,8 +164,7 @@
 						case	LOG_ERROR:
 						{
 							// We add a message to the stack and immediately flush the whole message stack
-							// FIXME The way this is done, this alawy prints this file as __FILE__ and the next line as __LINE__
-							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), "Error in file %s line %d", __FILE__, __LINE__)));
+							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), "Error in file %s line %d", file, line)));
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), format, vars...)));
 							flushStack();
 							flushDisk();
@@ -175,7 +174,7 @@
 				}
 
 				void	banner		() {
-					(*this)(LOG_DEBUG, "JAxions logger started");
+					(*this)(LOG_MSG, nullptr, 0, "JAxions logger started");
 				}
 
 				const VerbosityLevel	Verbosity	() const { return	verbose; }
@@ -186,9 +185,9 @@
 
 	void	createLogger(const int index, const LogMpi logMpi, const VerbosityLevel verb);
 
-	#define	LogAll(logType, ...)	((*(AxionsLog::myLog))(logType,   __VA_ARGS__))
-	#define	LogDebug(...)		((*(AxionsLog::myLog))(LOG_DEBUG, __VA_ARGS__))
-	#define	LogError(...)		((*(AxionsLog::myLog))(LOG_ERROR, __VA_ARGS__))
-	#define	LogMsg(verb, ...)	do { if (AxionsLog::myLog->Verbosity() >= verb) { ((*(AxionsLog::myLog))(LOG_MSG,   __VA_ARGS__)); } } while(0)
+	#define	LogAll(logType, ...)	((*(AxionsLog::myLog))(logType,   __FILE__, __LINE__, __VA_ARGS__))
+	#define	LogDebug(...)		((*(AxionsLog::myLog))(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__))
+	#define	LogError(...)		((*(AxionsLog::myLog))(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__))
+	#define	LogMsg(verb, ...)	do { if (AxionsLog::myLog->Verbosity() >= verb) { ((*(AxionsLog::myLog))(LOG_MSG, __FILE__, __LINE__, __VA_ARGS__)); } } while(0)
 	#define LogOut(...) 		do { if (!commRank()) { printf(__VA_ARGS__); fflush(stdout); } } while(0)
 #endif
