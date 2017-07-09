@@ -427,9 +427,9 @@ void	spropThetaCpu	(Scalar *axionField, const double dz, const double delta2, co
 
 	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
 	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
-	char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axion->Depth()))+1)*axionField->DataSize();
+	char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*(axion->Depth()+1)*axionField->DataSize();
 
-	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), static_cast<void *>(mS3), Lx, axionField->TotalDepth(), precision);
+	initFFTspAx(static_cast<void *>(mS), static_cast<void *>(mS2), static_cast<void *>(mS3), Lx, axionField->TotalDepth(), precision);
 
 	// spropThetaKernelXeon uses Laplacian from M2
 	// saves evolved M in M

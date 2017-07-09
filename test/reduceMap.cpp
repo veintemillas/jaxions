@@ -5,20 +5,8 @@
 #include <complex>
 #include <vector>
 
-#include "propagator/allProp.h"
-#include "energy/energy.h"
-#include "enum-field.h"
 #include "utils/utils.h"
-#include "utils/misc.h"
-#include "utils/logger.h"
 #include "io/readWrite.h"
-#include "comms/comms.h"
-#include "map/map.h"
-#include "strings/strings.h"
-#include "powerCpu.h"
-#include "scalar/scalar.h"
-
-#include<mpi.h>
 
 using namespace std;
 
@@ -28,7 +16,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n   REDUCING CONTRAST MAP FROM ?? TO 128          \n",fIndex);
+	LogOut("\n           REDUCING CONTRAST MAP TO %d           \n", sizeN);
 	LogOut("\n-------------------------------------------------\n");
 
 	LogOut("\n-------------------------------------------------\n");
@@ -45,6 +33,8 @@ int	main (int argc, char *argv[])
 	}
 
 	reduceEDens(fIndex, 128, 128);
+
+	LogOut ("Map reduced\n");
 
 	endAxions();
 

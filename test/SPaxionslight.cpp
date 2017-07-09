@@ -7,18 +7,13 @@
 
 #include "propagator/allProp.h"
 #include "energy/energy.h"
-#include "enum-field.h"
 #include "utils/utils.h"
-#include "utils/misc.h"
-#include "utils/logger.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
 #include "map/map.h"
 #include "strings/strings.h"
 #include "powerCpu.h"
 #include "scalar/scalar.h"
-#include "utils/profiler.h"
-#include "utils/logger.h"
 
 #include<mpi.h>
 

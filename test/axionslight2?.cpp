@@ -7,8 +7,6 @@
 
 #include "propagator/allProp.h"
 #include "energy/energy.h"
-#include "energy/energyMap.h"
-#include "enum-field.h"
 #include "utils/utils.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"

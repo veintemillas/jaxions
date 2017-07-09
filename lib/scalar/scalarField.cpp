@@ -2277,14 +2277,14 @@ void	Scalar::laplacianm2()
 			}
 		}
 
-			runFFTspec(FFTW_BACKWARD);
+		runFFTspec(FFTW_BACKWARD);
 	}
 	else //FIELD_AXION
 	{
 		// THIS FFT IS REAL TO COMPLEX, OUTPUTS TO M3 (TRANSPOSED, HALFCOMPLEX!!!)
 		// WHICH IS DEFINED IN sPropXeon.cpp
 		// char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axion->Depth()))+1)*axionField->DataSize();
-			runFFTspecTheta(FFTW_FORWARD);
+		runFFTspAx(FFTW_FORWARD);
 
 		// NOW MULTIPLY BY THE CORRECT FACTOR OF K^2
 
@@ -2322,7 +2322,7 @@ void	Scalar::laplacianm2()
 			}
 		}
 
-			runFFTspecTheta(FFTW_BACKWARD);
+		runFFTspAx(FFTW_BACKWARD);
 	}
 
 

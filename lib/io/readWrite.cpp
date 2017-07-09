@@ -1563,6 +1563,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	int myRank = commRank();
 
 	void *axionIn  = nullptr;
+	void *axionOut = nullptr;
 
 	LogMsg (VERB_NORMAL, "Reading Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
@@ -1674,10 +1675,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	total = nSlb*newSz;
 
 	trackAlloc(&axionIn,  (slab+1)*sizeZ*dataSize*2);	// The extra-slab is for FFTW with MPI, just in case
-<<<<<<< HEAD
-=======
 	trackAlloc(&axionOut, (nSlb+1)*newLx*dataSize*2);	// The extra-slab is for FFTW with MPI, just in case
->>>>>>> 240fe7096c2e987e15e2dcf2cb137b1e71826f66
 
 	/*	Init FFT	*/
 
@@ -1688,50 +1686,6 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	switch (precision) {
 		case	FIELD_SINGLE:
-<<<<<<< HEAD
-		if (myRank == 0) {
-			if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0)
-				LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.single");
-								}
-
-		fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
-
-		LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
-		planSingleForward  = fftwf_mpi_plan_dft_3d(totlZ, sizeN, sizeN, static_cast<fftwf_complex*>(axionIn),  static_cast<fftwf_complex*>(axionIn), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE);
-
-		LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
-		planSingleBackward = fftwf_mpi_plan_dft_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionIn),  static_cast<fftwf_complex*>(axionIn),  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
-
-		fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-		if (myRank == 0) { fftwf_export_wisdom_to_filename("../fftWisdom.single"); }
-		LogMsg (VERB_HIGH, "  Wisdom saved\n");
-		break;
-
-		case	FIELD_DOUBLE:
-		if (myRank == 0) {
-			if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0)
-				LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.double");
-								}
-
-		fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
-
-		LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", sizeN, sizeN, totlZ);
-		planDoubleForward  = fftw_mpi_plan_dft_3d(totlZ, sizeN, sizeN, static_cast<fftw_complex*>(axionIn),  static_cast<fftw_complex*>(axionIn), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE);
-
-		fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-		if (myRank == 0) { fftw_export_wisdom_to_filename("../fftWisdom.double"); }
-		LogMsg (VERB_HIGH, "  Wisdom saved\n");
-
-		LogMsg (VERB_HIGH, "  Plan 3d (%lld x %lld x %lld)", newLx, newLx, newLz);
-		planDoubleBackward = fftw_mpi_plan_dft_3d(newLz, newLx, newLx, static_cast<fftw_complex*>(axionIn),  static_cast<fftw_complex*>(axionIn),  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
-		break;
-
-		default:
-				LogError ("Error: precision not recognized");
-				prof.stop();
-				return;
-				break;
-=======
 			if (myRank == 0) {
 				if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0)
 				LogMsg (VERB_HIGH, "  Warning: could not import wisdom from fftWisdom.single");
@@ -1743,7 +1697,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 			planSingleForward  = fftwf_mpi_plan_dft_3d(totlZ, sizeN, sizeN, static_cast<fftwf_complex*>(axionIn),  static_cast<fftwf_complex*>(axionIn), MPI_COMM_WORLD, FFTW_FORWARD, FFTW_MEASURE);
 
 			LogMsg (VERB_HIGH, "  Plan 3d (%u x %u x %u)", newLx, newLx, newLz);
-			planSingleBackward = fftwf_mpi_plan_dft_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionIn),  static_cast<fftwf_complex*>(axionIn),  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
+			planSingleBackward = fftwf_mpi_plan_dft_3d(newLz, newLx, newLx, static_cast<fftwf_complex*>(axionOut),  static_cast<fftwf_complex*>(axionOut),  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE);
 
 			fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
 			if (myRank == 0) { fftwf_export_wisdom_to_filename("../fftWisdom.single"); }
@@ -1774,7 +1728,6 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 			LogError ("Error: precision not recognized");
 			prof.stop();
 			return;
->>>>>>> 240fe7096c2e987e15e2dcf2cb137b1e71826f66
 	}
 
 	/*	Create plist for collective read	*/
@@ -1841,124 +1794,214 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 			for (hssize_t idx = slab*sizeZ-1; idx >= 0; idx--)
 				cAxion[idx] = complex<double>(rAxion[idx], 0.);
 
-			LogMsg (VERB_HIGH, "  Execute");
+			LogMsg (VERB_HIGH, "Executing FFT");
 			fftw_execute (planDoubleForward);
 
 			int nLx = newLx;
 			int nLz = newLz;
 
-			LogMsg (VERB_HIGH, "  Remove high modes");
+			LogMsg (VERB_HIGH, "Removing high modes");
 			for (hsize_t idx = 0; idx < sizeZ*slab; idx++) {
 				int xC = idx % sizeN;
 				int zC = idx / slab;
 				int yC = (idx - zC*slab)/sizeN;
 
-				int oX = xC;
-				int oY = yC;
-				int oZ = zC;
-
-				bool feo = false;
-
 				if (xC > nLx/2) {
 					xC = nLx - sizeN + xC;
 
-					if (xC <= nLx/2)
+					if (xC < nLx/2)
 						continue;
 					else
 						xC %= nLx;
 				}
-
+ 
 				if (yC > nLx/2) {
 					yC = nLx - sizeN + yC;
 
-					if (yC <= nLx/2)
+					if (yC < nLx/2)
 						continue;
 					else
 						yC %= nLx;
 				}
-
+ 
 				if (zC > nLz/2) {
 					zC = nLz - sizeN + zC;
 
-					if (zC <= nLx/2)
+					if (zC < nLx/2)
 						continue;
 					else
 						zC %= nLz;
 				}
-
+ 
 				hsize_t odx = ((size_t) xC) + ((size_t) nLx)*(((size_t) yC) + ((size_t) nLx*((size_t) zC)));
 				oAxion[odx] = cAxion[idx];
+			}
 
-				if (fabs(cAxion[idx].imag()) < 1e-6)
-					LogOut ("%d %d %d / %d %d %d ==> %lf %lf\n", oX, oY, oZ, xC, yC, zC, cAxion[idx].real(), cAxion[idx].imag());
-/*
-				if (xC == nLx/2 || yC == nLx/2 || zC == nLz/2) {
-					if (xC == nLx/2) {
-						oY = (sizeN - oY) % sizeN;
-						oZ = (sizeN - oZ) % sizeN;
-					} else if (yC == nLx/2) {
-						oX = (sizeN - oX) % sizeN;
-						oZ = (sizeN - oZ) % sizeN;
-					} else if (zC == nLz/2) {
-						oX = (sizeN - oX) % sizeN;
-						oY = (sizeN - oY) % sizeN;
-					}
+			/*	Boundaries	*/
 
-					hsize_t ix2 = ((size_t) oX) + sizeN*(((size_t) oY) + sizeZ*((size_t) oZ));
-					oAxion[odx] += cAxion[ix2];
-					oAxion[odx] *= 0.5;
+			for (int c1=0; c1<nLx/2; c1++) {
+				for (int c2=0; c2<nLx/2; c2++) {
+
+					/*	Fixed x plane	*/
+					hsize_t id1 = ((size_t) nLx/2)           + sizeN*(((size_t) c1)          + sizeN*((size_t) c2));
+					hsize_t id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) c1)          + sizeN*((size_t) c2));
+					hsize_t odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) c1) + ((size_t) nLx)*((size_t) c2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((size_t) c2));
+					id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((size_t) c2));
+					odx = ((size_t) nLx/2)           + ((size_t) nLx)*((((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*((size_t) c2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((size_t) nLx/2)           + sizeN*(((size_t) c1)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) c1)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) c1) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = ((size_t) nLx/2)           + ((size_t) nLx)*((((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					/*	Fixed y plane	*/
+					id1 = ((size_t) c1) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) c2));
+					id2 = ((size_t) c1) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) c2));
+					odx = ((size_t) c1) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) c2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) c2));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) c2));
+					odx = (((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) c2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((size_t) c1) + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = ((size_t) c1) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = ((size_t) c1) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = (((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					/*	Fixed z plane	*/
+					id1 = ((size_t) c1) + sizeN*(((size_t) c2)          + sizeN*((size_t) nLz/2));
+					id2 = ((size_t) c1) + sizeN*(((size_t) c2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = ((size_t) c1) + ((size_t) nLx)*(((size_t) c2) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) c2)          + sizeN*((size_t) nLz/2));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) c2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = (((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) c2) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((size_t) c1) + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*((size_t) nLz/2));
+					id2 = ((size_t) c1) + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = ((size_t) c1) + ((size_t) nLx)*((((size_t) (nLx - c2))%((size_t) nLx)) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)          + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*((size_t) nLz/2));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)          + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = ((((size_t) (nLx - c1)))%((size_t) nLx)) + ((size_t) nLx)*((((size_t) (nLx - c2))%((size_t) nLx)) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5;
 				}
-*/
+			}
+
+			for (int cd=0; cd<nLx/2; cd++) {
+				/*	Fixed xy line	*/
+				hsize_t id1 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) cd));
+				hsize_t id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) cd));
+				hsize_t id3 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) cd));
+				hsize_t id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) cd));
+				hsize_t odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) cd));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25;
+
+				id1 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				id3 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*(((size_t) (nLz - cd))%((size_t) nLz)));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25;
+
+				/*	Fixed yz line	*/
+				id1 = ((size_t) cd) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				id2 = ((size_t) cd) + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id3 = ((size_t) cd) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				id4 = ((size_t) cd) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = ((size_t) cd) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25;
+
+				id1 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				id2 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id3 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				id4 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = (((size_t) (nLx - cd))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25;
+
+				/*	Fixed zx line	*/
+				id1 = ((size_t) nLx/2)           + sizeN*(((size_t) cd)          + sizeN*((size_t) nLz/2));
+				id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) cd)          + sizeN*((size_t) nLz/2));
+				id3 = ((size_t) nLx/2)           + sizeN*(((size_t) cd)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) cd)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) cd) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25;
+
+				id1 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*((size_t) nLz/2));
+				id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*((size_t) nLz/2));
+				id3 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = ((size_t) nLx/2)           + ((size_t) nLx)*((((size_t) (nLx - cd))%((size_t) nLx)) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25;
+			}
+
+			{
+				/*	Fixed xyz point	*/
+				hsize_t id1 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				hsize_t id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				hsize_t id3 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t id5 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				hsize_t id6 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				hsize_t id7 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t id8 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4] + cAxion[id5] + cAxion[id6] + cAxion[id7] + cAxion[id8])*0.125;
 			}
 
 			/*	Now we force the imaginary parts of the points that should be real to be zero	*/
 
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", nLx/2, 0, 0, oAxion[nLx/2].imag(), cAxion[nLx/2].imag(), cAxion[sizeN - nLx/2].imag(), sAxion[nLx+1]);
 			sAxion[nLx+1]		 = 0.;
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", 0, nLx/2, 0, oAxion[nSlb/2].imag(), cAxion[sizeN*nLx/2].imag(), cAxion[(sizeN - nLx/2)*sizeN].imag(), sAxion[nSlb+1]);
 			sAxion[nSlb+1]		 = 0.;
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", 0, 0, nLz/2, oAxion[total/2].imag(), cAxion[slab*nLz/2].imag(), cAxion[slab*(sizeZ - nLz/2)].imag(), sAxion[total+1]);
 			sAxion[total+1]		 = 0.;
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", nLx/2, nLx/2, 0, oAxion[(nSlb + nLx)/2].imag(), cAxion[(sizeN + 1)*nLx/2].imag(), cAxion[(sizeN - nLx/2)*sizeN + sizeN - nLx/2].imag(), sAxion[nSlb+nLx+1]);
 			sAxion[nSlb+nLx+1]	 = 0.;
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", nLx/2, 0, nLz/2, oAxion[(total + nLx)/2].imag(), cAxion[(slab*nLz + nLx)/2].imag(), cAxion[slab*(sizeZ - nLz/2) + sizeN - nLx/2].imag(), sAxion[total+nLx+1]);
 			sAxion[total+nLx+1]	 = 0.;
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", 0, nLx/2, nLz/2, oAxion[(total + nSlb)/2].imag(), cAxion[(slab*nLz + sizeN*nLx)/2].imag(), cAxion[slab*(sizeZ - nLz/2) + sizeN*(sizeN - nLx/2)].imag(), sAxion[total+nSlb+1]);
 			sAxion[total+nSlb+1]	 = 0.;
-			LogOut ("Mira! (%d %d %d) %lf %lf %lf %lf\n", nLx/2, nLx/2, nLz/2, oAxion[(total + nSlb + nLx)/2].imag(), cAxion[(slab*nLz + (sizeN + 1)*nLx)/2].imag(), cAxion[slab*(sizeZ - nLz/2) + (sizeN + 1)*(sizeN - nLx/2)].imag(), sAxion[total+nSlb+nLx+1]);
 			sAxion[total+nSlb+nLx+1] = 0.;
 
-			for (hssize_t pz1 = 0; pz1 < nLz/2; pz1++) {
-				hssize_t pz2 = (nLz - pz1) % nLz;
-
-				for (hssize_t py1 = 0; py1 < nLx; py1++) {
-					hssize_t py2 = (nLx - py1) % nLx;
-
-					for (hssize_t px1 = 0; px1 < nLx; px1++) {
-						hssize_t px2 = (nLx - px1) % nLx;
-
-						size_t idx1 = px1 + nLx*(py1 + nLx*pz1);
-						size_t idx2 = px2 + nLx*(py2 + nLx*pz2);
-
-						float md1 = fabs(oAxion[idx1].imag() + oAxion[idx2].imag());
-						float md2 = fabs(oAxion[idx1].imag());
-
-						if (md1 > md2*1e-9) {
-							LogOut ("Gran cagada monumental %llu (%lld %lld %lld) <---> %llu (%lld %lld %lld) %f %f\n", idx1, px1, py1, pz1, idx2, px2, py2, pz2, idx1, oAxion[idx1].imag(), oAxion[idx2].imag());
-							fflush(stdout);
-						}
-					}
-				}
-			}
-
-			LogMsg (VERB_HIGH, "  Execute");
+			LogMsg (VERB_HIGH, "Executing FFT");
 			fftw_execute (planDoubleBackward);
 
-			for (int ar=0; ar<newLz; ar++)
-				LogOut ("Array real %lf %lf (%.2lf\%)\n", oAxion[nSlb*ar].real(), oAxion[nSlb*ar].imag(), 100.f*fabs(oAxion[nSlb*ar].imag()/oAxion[nSlb*ar].real()));
-
 			{
-				const double vl = 1./((double) (nSlb*sizeZ));
+				const double vl = 1./((double) (slab*sizeZ));
 
 				for (hsize_t idx = 0; idx < total; idx++)
 					sAxion[idx] = oAxion[idx].real()*vl;
@@ -1970,61 +2013,25 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 		case FIELD_SINGLE: {
 			complex<float>	* cAxion = static_cast<complex<float>*>(axionIn);
 			float		* rAxion = static_cast<float*>(axionIn);
+			complex<float>  * oAxion = static_cast<complex<float>*>(axionOut);
+			float 		* sAxion = static_cast<float*>(axionOut);
 
 			for (hssize_t idx = slab*sizeZ-1; idx >= 0; idx--)
 				cAxion[idx] = complex<float>(rAxion[idx], 0.);
 
+			LogMsg (VERB_HIGH, "Executing FFT");
+			fftwf_execute (planSingleForward);
 
-			//for (hssize_t ix = 0; ix < sizeN; ix++)
-			//	LogOut ("ix %ld %f %f\n", ix, static_cast<complex<float>*> (axionIn)[ix].real(), static_cast<complex<float>*> (axionIn)[ix].imag());
-			//fflush(stdout);
-
-/*
-			for (hssize_t pz1 = 0; pz1 < sizeZ/2; pz1++) {
-				hssize_t pz2 = (sizeZ - pz1) % sizeZ;
-
-				for (hssize_t py1 = 0; py1 < sizeN; py1++) {
-					hssize_t py2 = (sizeN - py1) % sizeN;
-
-					for (hssize_t px1 = 0; px1 < sizeN; px1++) {
-						hssize_t px2 = (sizeN - px1) % sizeN;
-
-						size_t idx1 = px1 + sizeN*(py1 + sizeZ*pz1);
-						size_t idx2 = px2 + sizeN*(py2 + sizeZ*pz2);
-
-						float md1 = fabs(cAxion[idx1].imag() + cAxion[idx2].imag());
-						float md2 = fabs(cAxion[idx1].imag());
-
-						if (md1 > md2*1e-3) {
-							LogOut ("Gran cagada monumental %llu (%lld %lld %lld) <---> %llu (%lld %lld %lld) %f %f\n", idx1, px1, py1, pz1, idx2, px2, py2, pz2, idx1, cAxion[idx1].imag(), cAxion[idx2].imag());
-							fflush(stdout);
-						}
-					}
-				}
-			}
-*/
 			int nLx = newLx;
 			int nLz = newLz;
-/*
-			size_t tmp1 = 1+sizeN*(1+sizeZ);
-			size_t tmp2 = (sizeN-1)+sizeN*(sizeN-1+sizeZ*(sizeZ-1));
 
-			LogOut ("Pojemplo %llu (%lld %lld %lld) <---> %llu (%lld %lld %lld) %f %f\n", tmp1, 1, 1, 1, tmp2, sizeN-1, sizeN-1, sizeZ-1, cAxion[tmp1].imag(), cAxion[tmp2].imag());
-*/
-			LogMsg (VERB_HIGH, "  Remove high modes");
+			LogMsg (VERB_HIGH, "Removing high modes");
 			for (hsize_t idx = 0; idx < sizeZ*slab; idx++) {
 				int xC = idx % sizeN;
 				int zC = idx / slab;
 				int yC = (idx - zC*slab)/sizeN;
 
-				bool feo = false;
-/*
-				if (yC >= 192 || xC == 64) {
-					feo = true;
-					LogOut ("Comprimo %llu (%d %d %d) <---> ", idx, xC, yC, zC);
-				}
-*/
-				if (xC >= nLx/2) {
+				if (xC > nLx/2) {
 					xC = nLx - sizeN + xC;
 
 					if (xC < nLx/2)
@@ -2032,8 +2039,8 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						xC %= nLx;
 				}
-
-				if (yC >= nLx/2) {
+ 
+				if (yC > nLx/2) {
 					yC = nLx - sizeN + yC;
 
 					if (yC < nLx/2)
@@ -2041,8 +2048,8 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						yC %= nLx;
 				}
-
-				if (zC >= nLz/2) {
+ 
+				if (zC > nLz/2) {
 					zC = nLz - sizeN + zC;
 
 					if (zC < nLx/2)
@@ -2050,62 +2057,179 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						zC %= nLz;
 				}
-
-				hsize_t odx = ((size_t) xC) + ((size_t) nLx)*(((size_t) yC) + ((size_t) nLz*((size_t) zC)));
-				if (feo) {
-					feo = false;
-					LogOut ("%llu (%d %d %d)\n", odx, xC, yC, zC);
-				}
-//				LogOut ("%llu (%d %d %d) %f %f\n", odx, xC, yC, zC, cAxion[idx].real(), cAxion[idx].imag());
-//				fflush(stdout);
-				cAxion[odx] = cAxion[idx];
-
-				if (xC == nLx/2 || yC == nLx/2 || zC == nLz/2)
-					cAxion[odx] = complex<float>(cAxion[odx].real(), 0.);
+ 
+				hsize_t odx = ((size_t) xC) + ((size_t) nLx)*(((size_t) yC) + ((size_t) nLx*((size_t) zC)));
+				oAxion[odx] = cAxion[idx];
 			}
 
-			for (hssize_t pz1 = 0; pz1 < newLz/2; pz1++) {
-				hssize_t pz2 = (newLz - pz1) % newLz;
+			/*	Boundaries	*/
 
-				for (hssize_t py1 = 0; py1 < newLx; py1++) {
-					hssize_t py2 = (newLx - py1) % newLx;
+			for (int c1=0; c1<nLx/2; c1++) {
+				for (int c2=0; c2<nLx/2; c2++) {
 
-					for (hssize_t px1 = 0; px1 < newLx; px1++) {
-						hssize_t px2 = (newLx - px1) % newLx;
+					/*	Fixed x plane	*/
+					hsize_t id1 = ((size_t) nLx/2)           + sizeN*(((size_t) c1)          + sizeN*((size_t) c2));
+					hsize_t id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) c1)          + sizeN*((size_t) c2));
+					hsize_t odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) c1) + ((size_t) nLx)*((size_t) c2));
 
-						size_t idx1 = px1 + newLx*(py1 + newLz*pz1);
-						size_t idx2 = px2 + newLx*(py2 + newLz*pz2);
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
 
-						float md1 = fabs(cAxion[idx1].imag() + cAxion[idx2].imag());
-						float md2 = fabs(cAxion[idx1].imag());
+					id1 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((size_t) c2));
+					id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((size_t) c2));
+					odx = ((size_t) nLx/2)           + ((size_t) nLx)*((((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*((size_t) c2));
 
-						if (md1 > md2*1e-3) {
-							LogOut ("Cagada monumental %llu (%lld %lld %lld) <---> %llu (%lld %lld %lld) %f %f\n", idx1, px1, py1, pz1, idx2, px2, py2, pz2, cAxion[idx1].imag(), cAxion[idx2].imag());
-							fflush(stdout);
-						}
-					}
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((size_t) nLx/2)           + sizeN*(((size_t) c1)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) c1)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) c1) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) c1))%sizeN)                 + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = ((size_t) nLx/2)           + ((size_t) nLx)*((((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					/*	Fixed y plane	*/
+					id1 = ((size_t) c1) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) c2));
+					id2 = ((size_t) c1) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) c2));
+					odx = ((size_t) c1) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) c2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) c2));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) c2));
+					odx = (((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) c2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((size_t) c1) + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = ((size_t) c1) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = ((size_t) c1) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) c2))%sizeZ));
+					odx = (((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*(((size_t) (nLz - c2))%((size_t) nLz)));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					/*	Fixed z plane	*/
+					id1 = ((size_t) c1) + sizeN*(((size_t) c2)          + sizeN*((size_t) nLz/2));
+					id2 = ((size_t) c1) + sizeN*(((size_t) c2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = ((size_t) c1) + ((size_t) nLx)*(((size_t) c2) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) c2)          + sizeN*((size_t) nLz/2));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)        + sizeN*(((size_t) c2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = (((size_t) (nLx - c1))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) c2) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((size_t) c1) + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*((size_t) nLz/2));
+					id2 = ((size_t) c1) + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = ((size_t) c1) + ((size_t) nLx)*((((size_t) (nLx - c2))%((size_t) nLx)) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
+
+					id1 = ((sizeN - ((size_t) c1))%sizeN)          + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*((size_t) nLz/2));
+					id2 = ((sizeN - ((size_t) c1))%sizeN)          + sizeN*(((sizeN - ((size_t) c2))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+					odx = ((((size_t) (nLx - c1)))%((size_t) nLx)) + ((size_t) nLx)*((((size_t) (nLx - c2))%((size_t) nLx)) + ((size_t) nLx)*((size_t) nLz/2));
+
+					oAxion[odx] = (cAxion[id1] + cAxion[id2])*0.5f;
 				}
 			}
-		}
 
+			for (int cd=0; cd<nLx/2; cd++) {
+				/*	Fixed xy line	*/
+				hsize_t id1 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) cd));
+				hsize_t id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) cd));
+				hsize_t id3 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) cd));
+				hsize_t id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) cd));
+				hsize_t odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) cd));
 
-		LogMsg (VERB_HIGH, "  Execute");
-		fftwf_execute (planSingleBackward);
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25f;
 
-				for (int ar=0; ar<newLz; ar++)
-					LogOut ("Array feo real %f %f\n", static_cast<complex<float>*>(axionIn)[nSlb*ar].real(), static_cast<complex<float>*>(axionIn)[nSlb*ar].imag());
+				id1 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				id3 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((sizeZ - ((size_t) cd))%sizeZ));
+				odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*(((size_t) (nLz - cd))%((size_t) nLz)));
 
-		{
-		  const float vl = 1.f/((float) (nSlb*sizeZ));
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25f;
 
-			for (int ar=0; ar<newLz; ar++)
-				LogOut ("Array feo real %f %f (%.2f\%)\n", cAxion[nSlb*ar].real(), cAxion[nSlb*ar].imag(), 100.f*fabs(cAxion[nSlb*ar].imag()/cAxion[nSlb*ar].real()));
+				/*	Fixed yz line	*/
+				id1 = ((size_t) cd) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				id2 = ((size_t) cd) + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id3 = ((size_t) cd) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				id4 = ((size_t) cd) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = ((size_t) cd) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25f;
+
+				id1 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				id2 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id3 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				id4 = ((sizeN - ((size_t) cd))%sizeN)        + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = (((size_t) (nLx - cd))%((size_t) nLx)) + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25f;
+
+				/*	Fixed zx line	*/
+				id1 = ((size_t) nLx/2)           + sizeN*(((size_t) cd)          + sizeN*((size_t) nLz/2));
+				id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) cd)          + sizeN*((size_t) nLz/2));
+				id3 = ((size_t) nLx/2)           + sizeN*(((size_t) cd)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) cd)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) cd) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25f;
+
+				id1 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*((size_t) nLz/2));
+				id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*((size_t) nLz/2));
+				id3 = ((size_t) nLx/2)           + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+				id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(((sizeN - ((size_t) cd))%sizeN)                 + sizeN*(sizeZ - ((size_t) nLz/2)));
+				odx = ((size_t) nLx/2)           + ((size_t) nLx)*((((size_t) (nLx - cd))%((size_t) nLx)) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4])*0.25f;
+			}
 
 			{
-				const float vl = 1.f/((float) (nSlb*sizeZ));
+				/*	Fixed xyz point	*/
+				hsize_t id1 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				hsize_t id2 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*((size_t) nLz/2));
+				hsize_t id3 = ((size_t) nLx/2)           + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t id4 = (sizeN - ((size_t) nLx/2)) + sizeN*(((size_t) nLx/2)          + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t id5 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				hsize_t id6 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*((size_t) nLz/2));
+				hsize_t id7 = ((size_t) nLx/2)           + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t id8 = (sizeN - ((size_t) nLx/2)) + sizeN*(sizeN - ((size_t) nLx/2)  + sizeN*(sizeZ - ((size_t) nLz/2)));
+				hsize_t odx = ((size_t) nLx/2)           + ((size_t) nLx)*(((size_t) nLx/2) + ((size_t) nLx)*((size_t) nLz/2));
+
+				oAxion[odx] = (cAxion[id1] + cAxion[id2] + cAxion[id3] + cAxion[id4] + cAxion[id5] + cAxion[id6] + cAxion[id7] + cAxion[id8])*0.125f;
+			}
+
+			/*	Now we force the imaginary parts of the points that should be real to be zero	*/
+
+			sAxion[nLx+1]		 = 0.;
+			sAxion[nSlb+1]		 = 0.;
+			sAxion[total+1]		 = 0.;
+			sAxion[nSlb+nLx+1]	 = 0.;
+			sAxion[total+nLx+1]	 = 0.;
+			sAxion[total+nSlb+1]	 = 0.;
+			sAxion[total+nSlb+nLx+1] = 0.;
+
+			LogMsg (VERB_HIGH, "Executing FFT");
+			fftwf_execute (planSingleBackward);
+
+			{
+				const float vl = 1.f/((float) (slab*sizeZ));
 
 				for (hsize_t idx = 0; idx < total; idx++)
-					static_cast<float*>(axionIn)[idx] = static_cast<complex<float>*>(axionIn)[idx].real()*vl;
+					sAxion[idx] = oAxion[idx].real()*vl;
 			}
 			break;
 		}
@@ -2115,6 +2239,8 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 			prof.stop();
 			return;
 	}
+
+	LogMsg (VERB_HIGH, "Map successfully reduced");
 
 	/*	Open the file again and release the plist	*/
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);

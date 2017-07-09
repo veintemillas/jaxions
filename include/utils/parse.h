@@ -1,3 +1,5 @@
+#include "enum-field.h"
+
 extern uint sizeN;
 extern uint sizeZ;
 extern uint zGrid;

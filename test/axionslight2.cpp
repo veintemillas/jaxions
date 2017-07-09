@@ -8,7 +8,6 @@
 #include "propagator/allProp.h"
 #include "energy/energy.h"
 #include "energy/energyMap.h"
-#include "enum-field.h"
 #include "utils/utils.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
@@ -16,10 +15,6 @@
 #include "strings/strings.h"
 #include "powerCpu.h"
 #include "scalar/scalar.h"
-#include "utils/logger.h"
-#include "utils/profiler.h"
-#include "utils/misc.h"
-
 
 #include<mpi.h>
 

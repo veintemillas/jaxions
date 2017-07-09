@@ -5,11 +5,8 @@
 #include<vector>
 
 #include"scalar/scalar.h"
-#include "propagator/allProp.h"
-#include"enum-field.h"
+#include"propagator/allProp.h"
 #include"utils/utils.h"
-#include"utils/misc.h"
-#include"utils/logger.h"
 #include"io/readWrite.h"
 #include"comms/comms.h"
 
