@@ -10,13 +10,7 @@
 #endif
 
 #include"scalar/folder.h"
-#include"enum-field.h"
-
-#define printMpi(...) do {		\
-	if (!commRank()) {		\
-	  printf(__VA_ARGS__);  	\
-	  fflush(stdout); }		\
-}	while (0)
+#include"utils/utils.h"
 
 using namespace std;
 
@@ -29,22 +23,21 @@ void	Folder::foldField()
 {
 	if (field->Folded() || field->Device() == DEV_GPU)
 		return;
-	// WHY THE FOLLOWING DEFINITIONS WERE CONSTANTS?
-	fSize = field->DataSize();
-	shift = field->DataAlign()/fSize;
-	printMpi("Foldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... ", field->DataAlign(), fSize, shift, n2);
+
+	LogMsg (VERB_HIGH, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift, n2);
 
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
  	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
+
 	for (size_t iz=0; iz < Lz; iz++)
 	{
-		//printf("slice %d ",iz);fflush(stdout);
 		memcpy (m,           m + n2*(1+iz), fSize*n2);
-		//printf("slice %d ",iz);fflush(stdout);
 		memcpy (m + (n3+n2), v + n2*iz,     fSize*n2);
 
-	#pragma omp parallel for schedule(static)
+		#pragma omp parallel for schedule(static)
 		for (size_t iy=0; iy < n1/shift; iy++)
 			for (size_t ix=0; ix < n1; ix++)
 				for (size_t sy=0; sy<shift; sy++)
@@ -56,10 +49,10 @@ void	Folder::foldField()
 					v[dIdx]    = m[oIdx+n2+n3];
 				}
 	}
-	//printf("setFolded ");fflush(stdout);
-		field->setFolded(true);
 
-	//printf("Done from inside Folder!\n");
+	field->setFolded(true);
+	LogMsg (VERB_HIGH, "Field folded");
+
 	return;
 }
 
@@ -69,13 +62,13 @@ void	Folder::unfoldField()
 	if (!field->Folded() || field->Device() == DEV_GPU)
 		return;
 
+	LogMsg (VERB_HIGH, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift, n2);
+
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
-
-	//printf("Unfoldfield mAlign=%d, fSize=%d, shift=%d, n2=%d ... \n", field->DataAlign(), field->DataSize(),shift,n2);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -96,7 +89,8 @@ void	Folder::unfoldField()
 	}
 
 	field->setFolded(false);
-	//printf("Done!\n");
+	LogMsg (VERB_HIGH, "Field unfolded");
+
 	return;
 }
 
@@ -105,6 +99,8 @@ void	Folder::unfoldField2D (const size_t sZ)
 {
 	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
 		return;
+
+	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift, n2);
 
 	cFloat *m = static_cast<cFloat *> (field->mCpu());
 	cFloat *v = static_cast<cFloat *> (field->vCpu());
@@ -119,10 +115,6 @@ void	Folder::unfoldField2D (const size_t sZ)
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	//unfolds m(slice[sZ]]) into buffer 1 and v(slice[sZ]) into buffer2
-	//printf("MAP: Unfold-2D mAlign=%d, fSize=%d, shift=%d \n", field->DataAlign(), field->DataSize(),shift);
-	//fflush(stdout);
-
 	#pragma omp parallel for schedule(static)
 	for (size_t iy=0; iy < n1/shift; iy++)
 		for (size_t ix=0; ix < n1; ix++)
@@ -135,6 +127,9 @@ void	Folder::unfoldField2D (const size_t sZ)
 				//this copies v into buffer last
 				m[dIdx+n3+n2]	= v[oIdx];
 			}
+
+	LogMsg (VERB_HIGH, "Slice unfolded");
+
 	return;
 }
 
@@ -143,9 +138,21 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 	if (field->Device() == DEV_GPU)
 		return;
 
+	LogMsg  (VERB_HIGH, "Called folder");
+	profiler::Profiler &prof = profiler::getProfiler(PROF_FOLD);
+
+	std::string name;
+
+	size_t nPoints = 0;
+
+	prof.start();
+
 	switch (fType)
 	{
 		case	FOLD_ALL:
+
+			name.assign("Fold");
+			nPoints = field->Size();
 
 			switch(field->Precision())
 			{
@@ -190,6 +197,9 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 		case	UNFOLD_ALL:
 
+			name.assign("Unfold");
+			nPoints = field->Size();
+
 			switch(field->Precision())
 			{
 				case	FIELD_DOUBLE:
@@ -232,6 +242,9 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 			break;
 
 		case	UNFOLD_SLICE:
+
+			name.assign("Unfold slice");
+			nPoints = field->Surf();
 
 			switch(field->Precision())
 			{
@@ -278,4 +291,10 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 			printf ("Unrecognized option\n");
 			break;
 	}
+
+	prof.stop();
+
+	prof.add(name, 0., (nPoints*field->DataSize()*2)*1.e-9);	// In truth is x4 because we move data to the ghost slices before foldig/unfolding
+
+	LogMsg  (VERB_HIGH, "Folder %s reporting %lf GFlops %lf GBytes", name.c_str(), prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
 }

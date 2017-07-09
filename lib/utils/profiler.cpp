@@ -17,7 +17,9 @@ namespace profiler {
 	        {
 			std::string	name   = data->first;
 		        FlopCounter	fCount = data->second;
-		        LogMsg (VERB_NORMAL, "\tFunction %s\tGFlops %lf\tGBytes %lf", name.c_str(), fCount.GFlops(), fCount.GBytes());
+
+			if (fCount.Started() == true)
+			        LogMsg (VERB_NORMAL, "\tFunction %s\tGFlops %lf\tGBytes %lf", name.c_str(), fCount.GFlops(), fCount.GBytes());
         	}
 	}
 

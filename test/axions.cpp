@@ -216,8 +216,7 @@ int	main (int argc, char *argv[])
 
 	LogOut("\n PROGRAMM FINISHED\n");
 
-	munge(UNFOLD_ALL);
-
+//	munge(UNFOLD_ALL);
 //	writeConf(axion, index);
 
 	LogOut("z_final = %f\n", *axion->zV());
