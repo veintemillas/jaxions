@@ -134,8 +134,14 @@ namespace profiler {
 		FlopCounter	wEmapfCounter;
 		folderProfiler.insert(std::string("Write energy map"), wEmapfCounter);
 
+		FlopCounter	wMapfCounter;
+		folderProfiler.insert(std::string("Write Map"), wMapfCounter);
+
 		FlopCounter	wArrayfCounter;
 		folderProfiler.insert(std::string("Write array"), wArrayfCounter);
+
+		FlopCounter	wSpectrumfCounter;
+		folderProfiler.insert(std::string("Write spectrum"), wSpectrumfCounter);
 
 		profs.insert(std::make_pair(PROF_HDF5, hdf5Profiler));
 	}
