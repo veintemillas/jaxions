@@ -141,18 +141,14 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 	LogMsg  (VERB_HIGH, "Called folder");
 	profiler::Profiler &prof = profiler::getProfiler(PROF_FOLD);
 
-	std::string name;
-
-	size_t nPoints = 0;
-
 	prof.start();
 
 	switch (fType)
 	{
 		case	FOLD_ALL:
 
-			name.assign("Fold");
-			nPoints = field->Size();
+			setName("Fold");
+			add(0., field->Size()*field->DataSize()*2.e-9);
 
 			switch(field->Precision())
 			{
@@ -197,8 +193,8 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 		case	UNFOLD_ALL:
 
-			name.assign("Unfold");
-			nPoints = field->Size();
+			setName("Unfold");
+			add(0., field->Size()*field->DataSize()*2.e-9);
 
 			switch(field->Precision())
 			{
@@ -243,8 +239,8 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 		case	UNFOLD_SLICE:
 
-			name.assign("Unfold slice");
-			nPoints = field->Surf();
+			setName("Unfold slice");
+			add(0., field->Surf()*field->DataSize()*2.e-9);
 
 			switch(field->Precision())
 			{
@@ -288,13 +284,15 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 			break;
 
 		default:
-			printf ("Unrecognized option\n");
+			LogError ("Unrecognized folding option");
 			break;
 	}
 
 	prof.stop();
 
-	prof.add(name, 0., (nPoints*field->DataSize()*2)*1.e-9);	// In truth is x4 because we move data to the ghost slices before foldig/unfolding
+	prof.add(Name(), GFlops(), GBytes());	// In truth is x4 because we move data to the ghost slices before folding/unfolding
 
-	LogMsg  (VERB_HIGH, "Folder %s reporting %lf GFlops %lf GBytes", name.c_str(), prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
+	LogMsg  (VERB_HIGH, "Folder %s reporting %lf GFlops %lf GBytes", Name().c_str(), prof.Prof()[Name()].GFlops(), prof.Prof()[Name()].GBytes());
+
+	reset();
 }

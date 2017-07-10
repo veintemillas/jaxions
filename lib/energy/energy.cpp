@@ -13,12 +13,11 @@
 	#include "energy/energyGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
+#include "utils/utils.h"
 
 #include <mpi.h>
 
-class	Energy
+class	Energy : public Tunable
 {
 	private:
 
@@ -55,25 +54,20 @@ void	Energy::runGpu	()
 
 	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 	double *z = field->zV();
-	int st;
 
 	field->exchangeGhosts(FIELD_M);
 
-	if (fType == FIELD_SAXION)
+	if (fType == FIELD_SAXION) {
+		setName		("Energy Saxion");
 		energyGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
-	else
+	} else {
+		setName		("Energy Axion");
 		energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
-
-	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
-
-	if (st != 0)
-	{
-		printf("Gpu error computing energy.");
-		exit(1);
 	}
 
+	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 #else
-	printf("Gpu support not built");
+	LogError ("Gpu support not built");
 	exit(1);
 #endif
 }
@@ -81,8 +75,10 @@ void	Energy::runGpu	()
 void	Energy::runCpu	()
 {
 	if (fType == FIELD_SAXION) {
+		setName		("Energy Saxion");
 		energyCpu	(field, delta2, LL, nQcd, Lx, V, S, eRes, shift, pot, map);
 	} else {
+		setName		("Energy Axion");
 		energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map);
 	}
 }
@@ -91,23 +87,30 @@ void	Energy::runXeon	()
 {
 #ifdef	USE_XEON
 	if (fType == FIELD_SAXION) {
+		setName		("Energy Saxion");
 		energyXeon	(field, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot, map);
 	} else {
+		setName		("Energy Axion");
 		energyThetaXeon	(field, delta2, nQcd, Lx, V, S, eRes, map);
 	}
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Xeon Phi support not built");
 	exit(1);
 #endif
 }
+
+using namespace profiler;
 
 void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
 {
 	if (map && (field->Field() == FIELD_SAXION) && field->LowMem())
 	{
-		printf	("Can't compute energy map for saxion wit lowmem kernels\n");
+		LogError ("Can't compute energy map for saxion wit lowmem kernels\n");
 		return;
 	}
+
+	LogMsg  (VERB_HIGH, "Called energy");
+	Profiler &prof = getProfiler(PROF_ENERGY);
 
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
@@ -135,11 +138,11 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 			break;
 
 		default:
-			printf ("Not a valid device\n");
-			break;
+			LogError ("Not a valid device");
+			delete eDark;
+			trackFree(&eTmp, ALLOC_TRACK);
+			return;
 	}
-
-	delete	eDark;
 
 	const int size = field->Field() == FIELD_SAXION ? 10 : 5;
 
@@ -155,7 +158,17 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 	double flops = (field->Field() == FIELD_SAXION ? (pot == VQCD_1 ? 111 : 112) : 25)*field->Size()*1e-9;
 	double bytes = 8.*field->DataSize()*field->Size()*1e-9;
 
-	fCount->addFlops(flops, bytes);
+	if (map) {
+		eDark->appendName(" Map");
+		bytes *= 9./8;
+	}
+
+	eDark->add(flops, bytes);		// Flops are not exact
+	prof.add(eDark->Name(), flops, bytes);
+
+	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", eDark->Name().c_str(), prof.Prof()[eDark->Name()].GFlops(), prof.Prof()[eDark->Name()].GBytes());
+
+	delete	eDark;
 
 	return;
 }

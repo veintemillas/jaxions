@@ -17,10 +17,9 @@
 	#include "propagator/propThetaGpu.h"
 #endif
 
-#include "utils/logger.h"
-#include "utils/profiler.h"
+#include "utils/utils.h"
 
-class	Propagator
+class	Propagator : public Tunable
 {
 	private:
 
@@ -266,85 +265,99 @@ void	propagate	(Scalar *field, const double dz, const double delta, const double
 
 	prof.start();
 
-	std::string	name;
+	switch (field->Field()) {
+		case FIELD_AXION:
+			prop->setName("RKN4 Axion");
 
-	switch (field->Device())
-	{
-		case DEV_CPU:
-			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem()) {
-					name.assign("RKN4 Saxion Lowmem");
-					prop->lowCpu ();
-				} else {
-					name.assign("RKN4 Saxion");
-					prop->sRunCpu ();
-				}
-			} else {
-				name.assign("RKN4 Axion");
-				prop->tRunCpu ();
+			switch (field->Device()) {
+				case DEV_GPU:
+					prop->tRunGpu ();
+					break;
+				case DEV_CPU:
+					prop->tRunCpu ();
+					break;
+				case DEV_XEON:
+					prop->tRunXeon ();
+					break;
+				default:
+					LogError ("Not a valid device");
+					prof.stop();
+					delete prop;
+					return;
 			}
+
+			prop->add(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+
 			break;
 
-		case DEV_GPU:
-			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem()) {
-					name.assign("RKN4 Saxion Lowmem");
-					prop->lowGpu ();
-				} else {
-					name.assign("RKN4 Saxion");
-					prop->sRunGpu ();
+		case FIELD_SAXION:
+			if (field->LowMem()) {
+				prop->setName("RKN4 Saxion Lowmem");
+
+				switch (field->Device()) {
+					case DEV_GPU:
+						prop->lowGpu ();
+						break;
+					case DEV_CPU:
+						prop->lowCpu ();
+						break;
+					case DEV_XEON:
+						prop->lowXeon ();
+						break;
+					default:
+						LogError ("Not a valid device");
+						prof.stop();
+						delete prop;
+						return;
 				}
 			} else {
-				name.assign("RKN4 Axion");
-				prop->tRunGpu ();
+				prop->setName("RKN4 Saxion");
+
+				switch (field->Device()) {
+					case DEV_GPU:
+						prop->sRunGpu ();
+						break;
+					case DEV_CPU:
+						prop->sRunCpu ();
+						break;
+					case DEV_XEON:
+						prop->sRunXeon ();
+						break;
+					default:
+						LogError ("Not a valid device");
+						prof.stop();
+						delete prop;
+						return;
+				}
+
+			}
+
+			switch (pot)
+			{
+				case VQCD_1:
+					prop->add((32.*4.+30.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);
+					break;
+
+				case VQCD_2:
+					prop->add((35.*4.+33.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);
+					break;
 			}
 			break;
-
-		case	DEV_XEON:
-			if (field->Field() == FIELD_SAXION) {
-				if (field->LowMem()) {
-					name.assign("RKN4 Saxion Lowmem");
-					prop->lowXeon();
-				} else {
-					name.assign("RKN4 Saxion");
-					prop->sRunXeon();
-				}
-				break;
-			} else {
-				name.assign("RKN4 Axion");
-				prop->tRunXeon ();
-			}
 
 		default:
-			LogError ("Not a valid device\n");
-			break;
+			LogError ("Invalid field type");
+			prof.stop();
+			delete prop;
+			return;
 	}
-
-	delete	prop;
 
 	prof.stop();
 
-	if (field->Field() == FIELD_SAXION) {
-		switch (pot)
-		{
-			case VQCD_1:
-				prof.add(name, (32.*4.+30.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);
-				//fCount->addFlops(32.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
-				//fCount->addFlops((32.*4.+30.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);	//Omelyan
-				break;
+	prof.add(prop->Name(), prop->GFlops(), prop->GBytes());
 
-			case VQCD_2:
-				prof.add(name, (35.*4.+33.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);
-				//fCount->addFlops(35.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
-				//fCount->addFlops((35.*4.+33.)*field->Size()*1.e-9, (10.*4.+9.)*field->DataSize()*field->Size()*1.e-9);	//Omelyan
-				break;
-		}
-	} else {
-		prof.add(name, 16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
-		//fCount->addFlops(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
-	}
+	LogMsg	(VERB_HIGH, "Propagator %s reporting %lf GFlops %lf GBytes", prop->Name().c_str(), prof.Prof()[prop->Name()].GFlops(), prof.Prof()[prop->Name()].GBytes());
 
-	LogMsg	(VERB_HIGH, "Propagator %s reporting %lf GFlops %lf GBytes", name.c_str(), prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
+	delete	prop;
 
 	return;
 }

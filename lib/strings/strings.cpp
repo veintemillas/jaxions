@@ -14,17 +14,14 @@
 	#include "strings/stringGpu.h"
 #endif
 
-//#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
-#include "utils/logger.h"
-#include "utils/profiler.h"
+#include "utils/utils.h"
 
 #include <vector>
 #include "utils/index.h"
 
 #include <mpi.h>
 
-class	Strings
+class	Strings	: public Tunable
 {
 	private:
 
@@ -37,8 +34,7 @@ class	Strings
 
 	public:
 
-		 Strings(Scalar *field, void *str);
-		~Strings() {};
+			Strings	(Scalar *field, void *str);
 
 	StringData	runCpu	();
 	StringData	runGpu	();
@@ -47,6 +43,7 @@ class	Strings
 
 	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
 {
+	setName("Strings and walls");
 	memset(strData, 0, V);
 }
 
@@ -93,7 +90,6 @@ StringData	strings	(Scalar *field, void *strData)
 {
 	LogMsg	(VERB_HIGH, "Called strings");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
-	const std::string name("Strings and walls");
 
 	prof.start();
 
@@ -123,10 +119,10 @@ StringData	strings	(Scalar *field, void *strData)
 
 		default:
 			LogError ("Not a valid device\n");
-			break;
+			prof.stop();
+			delete eStr;
+			return strDen;
 	}
-
-	delete	eStr;
 
 	MPI_Allreduce(&(strTmp.strDen), &(strDen.strDen), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(&(strTmp.strChr), &(strDen.strChr), 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
@@ -134,10 +130,12 @@ StringData	strings	(Scalar *field, void *strData)
 
 	prof.stop();
 
-//	fCount->addFlops((15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
-	prof.add(name, (15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
+	eStr->add((15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
+	prof.add(eStr->Name(), eStr->GFlops(), eStr->GBytes());
 
-	LogMsg	(VERB_HIGH, "Strings reporting %lf GFlops %lf GBytes", prof.Prof()[name].GFlops(), prof.Prof()[name].GBytes());
+	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", eStr->Name().c_str(), prof.Prof()[eStr->Name()].GFlops(), prof.Prof()[eStr->Name()].GBytes());
+
+	delete	eStr;
 
 	return	strDen;
 }

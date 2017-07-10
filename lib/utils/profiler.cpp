@@ -96,10 +96,10 @@ namespace profiler {
 		energyProfiler.insert(std::string("Energy Axion"),  energyAxionfCounter);
 
 		FlopCounter	energySaxionMapfCounter;
-		energyProfiler.insert(std::string("EnergyMap Saxion"), energySaxionMapfCounter);
+		energyProfiler.insert(std::string("Energy Saxion Map"), energySaxionMapfCounter);
 
 		FlopCounter	energyAxionMapfCounter;
-		energyProfiler.insert(std::string("EnergyMap Axion"),  energyAxionMapfCounter);
+		energyProfiler.insert(std::string("Energy Axion Map"),  energyAxionMapfCounter);
 
 		profs.insert(std::make_pair(PROF_ENERGY, energyProfiler));
 

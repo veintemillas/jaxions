@@ -1,9 +1,10 @@
-#include "scalarField.h"
-
 #ifndef	_FOLDER_CLASS_
 	#define _FOLDER_CLASS_
 
-	class	Folder
+	#include "scalarField.h"
+	#include "utils/tunable.h"
+
+	class	Folder : public Tunable
 	{
 		private:
 
