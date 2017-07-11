@@ -4,7 +4,7 @@
 
 #include "enum-field.h"
 #include "scalar/scalarField.h"
-#include "utils/parse.h"
+#include "utils/utils.h"
 
 using namespace gpuCu;
 using namespace indexHelper;
@@ -85,7 +85,7 @@ void	toThetaGpu (Scalar *sField, const double shift)
 
 		default:
 
-			printf("Wrong precision\n");
+			LogError ("Wrong precision");
 			exit  (1);
 			break;
 	}

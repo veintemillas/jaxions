@@ -3,7 +3,6 @@
 #include <cstring>
 
 #include "enum-field.h"
-#include "utils/logger.h"
 
 size_t sizeN = 128;
 size_t sizeZ = 128;
@@ -51,39 +50,39 @@ VerbosityLevel	verb = VERB_NORMAL;
 
 void	printUsage(char *name)
 {
-	LogOut("\nUsage: %s [Options]\n\n", name);
+	printf("\nUsage: %s [Options]\n\n", name);
 
-	LogOut("\nOptions:\n\n");
+	printf("\nOptions:\n\n");
 
-	LogOut("--size  [int]                   Number of lattice points along x and y (Lx). Local size is Lx^2 x Lz (default 128).\n");
-	LogOut("--depth [int]                   Number of lattice points of depth (Lz) (default 128).\n");
-	LogOut("--zgrid [int]                   Number of gpus involved in the computation (default 1).\n");
-	LogOut("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
-	LogOut("--prec  double/single           Precision of the axion field simulation (default double)\n");
-	LogOut("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
+	printf("--size  [int]                   Number of lattice points along x and y (Lx). Local size is Lx^2 x Lz (default 128).\n");
+	printf("--depth [int]                   Number of lattice points of depth (Lz) (default 128).\n");
+	printf("--zgrid [int]                   Number of gpus involved in the computation (default 1).\n");
+	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
+	printf("--prec  double/single           Precision of the axion field simulation (default double)\n");
+	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
 
-	LogOut("--qcd   [float]                 Exponent of topological susceptibility (default 7).\n");
-	LogOut("--lsize [float]                 Physical size of the system (default 4.0).\n");
-	LogOut("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
-	LogOut("--zf    [float]                 Final value of the redshift (default 1.0).\n");
-	LogOut("--llcf  [float]                 Lagrangian coefficient (default 15000).\n");
-	LogOut("--msa   [float]                 Spacing to core ratio (Moore parameter) [laxion3D].\n");
-	LogOut("--wDz   [float]                 Adaptive time step dz = wDz/frequency [laxion3D].\n");
-	LogOut("--steps [int]                   Number of steps of the simulation (default 500).\n");
-	LogOut("--ctype smooth/kmax/tkachev     Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	LogOut("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
-	LogOut("--kcr   [float]                 kritical kappa (default 1.0).\n");
-	LogOut("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
-	LogOut("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
-	LogOut("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
-	LogOut("--dump  [int]                   frequency of the output (default 100).\n");
-	LogOut("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
-	LogOut("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
-	LogOut("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
-	LogOut("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
-	LogOut("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
-	LogOut("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n");
-	LogOut("--help                          Prints this message.\n");
+	printf("--qcd   [float]                 Exponent of topological susceptibility (default 7).\n");
+	printf("--lsize [float]                 Physical size of the system (default 4.0).\n");
+	printf("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
+	printf("--zf    [float]                 Final value of the redshift (default 1.0).\n");
+	printf("--llcf  [float]                 Lagrangian coefficient (default 15000).\n");
+	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [laxion3D].\n");
+	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [laxion3D].\n");
+	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
+	printf("--ctype smooth/kmax/tkachev     Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
+	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
+	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
+	printf("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
+	printf("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
+	printf("--dump  [int]                   frequency of the output (default 100).\n");
+	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
+	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
+	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
+	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
+	printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
+	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n");
+	printf("--help                          Prints this message.\n");
 
 	return;
 }
@@ -108,7 +107,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a verbosity level.\n");
+				printf("Error: I need a verbosity level.\n");
 				exit(1);
 			}
 
@@ -136,7 +135,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a size.\n");
+				printf("Error: I need a size.\n");
 				exit(1);
 			}
 
@@ -144,7 +143,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (sizeN < 2)
 			{
-				LogOut("Error: Size must be larger than 2.\n");
+				printf("Error: Size must be larger than 2.\n");
 				exit(1);
 			}
 
@@ -158,7 +157,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a size.\n");
+				printf("Error: I need a size.\n");
 				exit(1);
 			}
 
@@ -166,7 +165,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (sizeZ < 2)
 			{
-				LogOut("Error: Size must be larger than 2.\n");
+				printf("Error: Size must be larger than 2.\n");
 				exit(1);
 			}
 
@@ -180,7 +179,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a number of gpus.\n");
+				printf("Error: I need a number of gpus.\n");
 				exit(1);
 			}
 
@@ -188,7 +187,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zGrid < 1)
 			{
-				LogOut("Error: The number of gpus must be larger than 0.\n");
+				printf("Error: The number of gpus must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -202,7 +201,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the critical kappa.\n");
+				printf("Error: I need a value for the critical kappa.\n");
 				exit(1);
 			}
 
@@ -210,7 +209,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (kCrit < 0.)
 			{
-				LogOut("Error: Critical kappa must be larger than or equal to 0.\n");
+				printf("Error: Critical kappa must be larger than or equal to 0.\n");
 				exit(1);
 			}
 
@@ -224,7 +223,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for alpha.\n");
+				printf("Error: I need a value for alpha.\n");
 				exit(1);
 			}
 
@@ -232,7 +231,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if ((alpha < 0.) || (alpha > 1.))
 			{
-				LogOut("Error: Alpha parameter must belong to the [0,1] interval.\n");
+				printf("Error: Alpha parameter must belong to the [0,1] interval.\n");
 				exit(1);
 			}
 
@@ -246,7 +245,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the initial redshift.\n");
+				printf("Error: I need a value for the initial redshift.\n");
 				exit(1);
 			}
 
@@ -254,7 +253,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zInit < 0.)
 			{
-				LogOut("Error: Initial redshift must be larger than 0.\n");
+				printf("Error: Initial redshift must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -268,7 +267,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the Final redshift.\n");
+				printf("Error: I need a value for the Final redshift.\n");
 				exit(1);
 			}
 
@@ -276,7 +275,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zFinl < 0.)
 			{
-				LogOut("Error: Final redshift must be larger than 0.\n");
+				printf("Error: Final redshift must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -290,7 +289,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the physical size of the universe.\n");
+				printf("Error: I need a value for the physical size of the universe.\n");
 				exit(1);
 			}
 
@@ -298,7 +297,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (sizeL <= 0.)
 			{
-				LogOut("Error: Physical size must be greater than zero.\n");
+				printf("Error: Physical size must be greater than zero.\n");
 				exit(1);
 			}
 
@@ -312,7 +311,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the lagrangian coefficient.\n");
+				printf("Error: I need a value for the lagrangian coefficient.\n");
 				exit(1);
 			}
 
@@ -320,7 +319,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (LL <= 0.)
 			{
-				LogOut("Error: The lagrangian coefficient must be greater than zero.\n");
+				printf("Error: The lagrangian coefficient must be greater than zero.\n");
 				exit(1);
 			}
 
@@ -335,7 +334,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for Spacing-to-core ratio msa.\n");
+				printf("Error: I need a value for Spacing-to-core ratio msa.\n");
 				exit(1);
 			}
 
@@ -343,7 +342,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (msa <= 0.)
 			{
-				LogOut("Error: The Spacing-to-core must be greater than zero.\n");
+				printf("Error: The Spacing-to-core must be greater than zero.\n");
 				exit(1);
 			}
 
@@ -357,7 +356,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the adaptive time step.\n");
+				printf("Error: I need a value for the adaptive time step.\n");
 				exit(1);
 			}
 
@@ -365,7 +364,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (wDz <= 0.)
 			{
-				LogOut("Error: backwards propagation?\n");
+				printf("Error: backwards propagation?\n");
 				exit(1);
 			}
 
@@ -380,7 +379,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the axion zero mode.\n");
+				printf("Error: I need a value for the axion zero mode.\n");
 				exit(1);
 			}
 
@@ -398,7 +397,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need an exponent for the susceptibility nQcd!.\n");
+				printf("Error: I need an exponent for the susceptibility nQcd!.\n");
 				exit(1);
 			}
 
@@ -406,7 +405,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (nQcd < 0)
 			{
-				LogOut("Error: The exponent of the top. susceptibility nQcd must be equal or greater than 0.\n");
+				printf("Error: The exponent of the top. susceptibility nQcd must be equal or greater than 0.\n");
 				exit(1);
 			}
 
@@ -420,7 +419,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a number of steps.\n");
+				printf("Error: I need a number of steps.\n");
 				exit(1);
 			}
 
@@ -428,7 +427,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (nSteps < 0)
 			{
-				LogOut("Error: Number of steps must be greater than or equal to zero.\n");
+				printf("Error: Number of steps must be greater than or equal to zero.\n");
 				exit(1);
 			}
 
@@ -442,7 +441,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a print rate.\n");
+				printf("Error: I need a print rate.\n");
 				exit(1);
 			}
 
@@ -450,7 +449,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (dump < 0)
 			{
-				LogOut("Error: Print rate must be equal or greater than zero.\n");
+				printf("Error: Print rate must be equal or greater than zero.\n");
 				exit(1);
 			}
 
@@ -464,13 +463,13 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a name for the files.\n");
+				printf("Error: I need a name for the files.\n");
 				exit(1);
 			}
 
 			if (strlen(argv[i+1]) > 96)
 			{
-				LogOut("Error: Name too long, keep it under 96 characters\n");
+				printf("Error: Name too long, keep it under 96 characters\n");
 				exit(1);
 			}
 
@@ -486,7 +485,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need an integer value for the maximum momentum.\n");
+				printf("Error: I need an integer value for the maximum momentum.\n");
 				exit(1);
 			}
 
@@ -494,7 +493,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (kMax < 0)
 			{
-				LogOut("Error: The maximum momentum must be equal or greater than zero.\n");
+				printf("Error: The maximum momentum must be equal or greater than zero.\n");
 				exit(1);
 			}
 
@@ -508,7 +507,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a number of iterations for the smoothing.\n");
+				printf("Error: I need a number of iterations for the smoothing.\n");
 				exit(1);
 			}
 
@@ -516,7 +515,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (iter < 0)
 			{
-				LogOut("Error: Number of iterations must be equal or greater than zero.\n");
+				printf("Error: Number of iterations must be equal or greater than zero.\n");
 				exit(1);
 			}
 
@@ -530,7 +529,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need an index for the file.\n");
+				printf("Error: I need an index for the file.\n");
 				exit(1);
 			}
 
@@ -538,7 +537,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (fIndex < 0)
 			{
-				LogOut("Error: Filename index must be equal or greater than zero.\n");
+				printf("Error: Filename index must be equal or greater than zero.\n");
 				exit(1);
 			}
 
@@ -552,7 +551,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the configuration type (smooth/kmax/tkachev).\n");
+				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev).\n");
 				exit(1);
 			}
 
@@ -570,7 +569,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 			else
 			{
-				LogOut("Error: Unrecognized configuration type %s\n", argv[i+1]);
+				printf("Error: Unrecognized configuration type %s\n", argv[i+1]);
 				exit(1);
 			}
 
@@ -586,7 +585,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a value for the precision (double/single/mixed).\n");
+				printf("Error: I need a value for the precision (double/single/mixed).\n");
 				exit(1);
 			}
 
@@ -600,7 +599,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 			else
 			{
-				LogOut("Error: Unrecognized precision %s\n", argv[i+1]);
+				printf("Error: Unrecognized precision %s\n", argv[i+1]);
 				exit(1);
 			}
 
@@ -614,7 +613,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a device name (cpu/gpu/xeon).\n");
+				printf("Error: I need a device name (cpu/gpu/xeon).\n");
 				exit(1);
 			}
 
@@ -632,7 +631,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 			else
 			{
-				LogOut("Error: Unrecognized device %s\n", argv[i+1]);
+				printf("Error: Unrecognized device %s\n", argv[i+1]);
 				exit(1);
 			}
 
@@ -647,7 +646,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				LogOut("Error: I need a number of neighbours.\n");
+				printf("Error: I need a number of neighbours.\n");
 				exit(1);
 			}
 
@@ -655,7 +654,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (Ng < 0 || Ng > 4 )
 			{
-				LogOut("Error: The number of neighbours must be 0,1,2,3. Set to 1.\n");
+				printf("Error: The number of neighbours must be 0,1,2,3. Set to 1.\n");
 				//exit(1);
 			}
 
@@ -670,7 +669,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!passed)
 		{
 			printUsage(argv[0]);
-			LogOut("\n\nUnrecognized option %s\n", argv[i]);
+			printf("\n\nUnrecognized option %s\n", argv[i]);
 			exit(1);
 		}
 

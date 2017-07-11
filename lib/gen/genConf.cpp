@@ -21,10 +21,7 @@
 	#include "gen/smoothGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
-
-//#include <mpi.h>
+#include "utils/utils.h"
 
 class	ConfGenerator
 {
@@ -41,12 +38,11 @@ class	ConfGenerator
 	int	index;
 
 	Scalar	*axionField;
-	FlopCounter *fCount;
 
 	public:
 
-		 ConfGenerator(Scalar *field, ConfType type, FlopCounter *fCount);
-		 ConfGenerator(Scalar *field, ConfType type, size_t parm1, double parm2, FlopCounter *fCount);
+		 ConfGenerator(Scalar *field, ConfType type);
+		 ConfGenerator(Scalar *field, ConfType type, size_t parm1, double parm2);
 		~ConfGenerator() {};
 
 	void	runCpu	();
@@ -54,7 +50,7 @@ class	ConfGenerator
 	void	runXeon	();
 };
 
-	ConfGenerator::ConfGenerator(Scalar *field, ConfType type, size_t parm1, double parm2, FlopCounter *fCount) : axionField(field), cType(type), fCount(fCount)
+	ConfGenerator::ConfGenerator(Scalar *field, ConfType type, size_t parm1, double parm2) : axionField(field), cType(type)
 {
 	switch (type)
 	{
@@ -83,7 +79,7 @@ class	ConfGenerator
 	}
 }
 
-	ConfGenerator::ConfGenerator(Scalar *field, ConfType type, FlopCounter *fCount) : axionField(field), cType(type), fCount(fCount)
+	ConfGenerator::ConfGenerator(Scalar *field, ConfType type) : axionField(field), cType(type)
 {
 	switch (type)
 	{
@@ -115,8 +111,7 @@ class	ConfGenerator
 void	ConfGenerator::runGpu	()
 {
 #ifdef	USE_GPU
-	printf("The configuration will be generated on host\n");
-	fflush(stdout);
+	LogMsg (VERB_HIGH, "Random numbers will be generated on host");
 
 	switch (cType)
 	{
@@ -128,53 +123,73 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_TKACHEV:
+		prof.start()
 		momConf(axionField, kMax, kCrt);
+		prof.stop();
+		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 		axionField->fftCpu(1);
 		axionField->sendGhosts(FIELD_M, COMM_SDRV);
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
 
 		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 		axionField->transferDev(FIELD_MV);
-		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+		scaleField (axionField, FIELD_M, *axionField->zV());
 
 		break;
 
 		case CONF_KMAX:
+		prof.start()
 		momConf(axionField, kMax, kCrt);
+		prof.stop();
+		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 		axionField->fftCpu(1);
 
 		axionField->sendGhosts(FIELD_M, COMM_SDRV);
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
 		axionField->transferDev(FIELD_M);
 
-		normaliseField(axionField, FIELD_M, fCount);
-		normCoreField (axionField, fCount);
-		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+		normaliseField(axionField, FIELD_M);
+		normCoreField (axionField);
+		scaleField (axionField, FIELD_M, *axionField->zV());
 
 		axionField->transferCpu(FIELD_MV);
 		break;
 
 		case CONF_SMOOTH:
+		prof.start()
 		randConf (axionField);
+		prof.stop();
+		prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 		axionField->transferDev(FIELD_M);
-		//randGpu (axionField);
 
+		prof.start()
 		smoothGpu (axionField, sIter, alpha);
-		normCoreField (axionField, fCount);
-		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+		prof.stop();
+		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
+		normCoreField (axionField);
+		scaleField (axionField, FIELD_M, *axionField->zV());
 
 		axionField->transferCpu(FIELD_MV);
 		break;
 	}
 
 #else
-	printf("Gpu support not built");
+	LogError ("Gpu support not built");
 	exit(1);
 #endif
 }
 
+using namespace std;
+using namespace profiler;
+
 void	ConfGenerator::runCpu	()
 {
+	Profiler &prof = getProfiler(PROF_GENCONF);
+
+	string	momName ("MomConf");
+	string	randName("Random");
+	string	smthName("Smoother");
+
 	switch (cType)
 	{
 		case CONF_NONE:
@@ -185,31 +200,43 @@ void	ConfGenerator::runCpu	()
 		break;
 
 		case CONF_TKACHEV:
+		prof.start();
 		momConf(axionField, kMax, kCrt);
+		prof.stop();
+		prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 		axionField->fftCpu(1);
 		axionField->exchangeGhosts(FIELD_M);
 		break;
 
 		case CONF_KMAX:
+		prof.start();
 		momConf(axionField, kMax, kCrt);
+		prof.stop();
+		prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 		axionField->fftCpu(1);
 		axionField->exchangeGhosts(FIELD_M);
-		normaliseField(axionField, FIELD_M, fCount);
-		normCoreField (axionField, fCount);
+		normaliseField(axionField, FIELD_M);
+		normCoreField (axionField);
 		break;
 
 		case CONF_SMOOTH:
+		prof.start();
 		randConf (axionField);
+		prof.stop();
+		prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
+		prof.start();
 		smoothXeon (axionField, sIter, alpha);
-		normaliseField(axionField, FIELD_M, fCount);
-		normCoreField (axionField, fCount);
+		prof.stop();
+		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
+		normaliseField(axionField, FIELD_M);
+		normCoreField (axionField);
 		break;
 	}
 
 	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
 	{
 		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
-		scaleField (axionField, FIELD_M, *axionField->zV(), fCount);
+		scaleField (axionField, FIELD_M, *axionField->zV());
 	}
 
 }
@@ -217,17 +244,19 @@ void	ConfGenerator::runCpu	()
 void	ConfGenerator::runXeon	()
 {
 #ifdef	USE_XEON
-	printf("The configuration will be generated on host");
+	LogMsg (VERB_HIGH, "The configuration will be generated on host");
 	runCpu();
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	genConf	(Scalar *field, ConfType cType, FlopCounter *fCount)
+void	genConf	(Scalar *field, ConfType cType)
 {
-	ConfGenerator *cGen = new ConfGenerator(field, cType, fCount);
+	LogMsg  (VERB_HIGH, "Called configurator generator");
+
+	ConfGenerator *cGen = new ConfGenerator(field, cType);
 
 	switch (field->Device())
 	{
@@ -247,7 +276,7 @@ void	genConf	(Scalar *field, ConfType cType, FlopCounter *fCount)
 			break;
 
 		default:
-			printf ("Not a valid device\n");
+			LogError ("Not a valid device");
 			break;
 	}
 
@@ -256,9 +285,11 @@ void	genConf	(Scalar *field, ConfType cType, FlopCounter *fCount)
 	return;
 }
 
-void	genConf	(Scalar *field, ConfType cType, size_t parm1, double parm2, FlopCounter *fCount)
+void	genConf	(Scalar *field, ConfType cType, size_t parm1, double parm2)
 {
-	ConfGenerator *cGen = new ConfGenerator(field, cType, parm1, parm2, fCount);
+	LogMsg  (VERB_HIGH, "Called configurator generator");
+
+	ConfGenerator *cGen = new ConfGenerator(field, cType, parm1, parm2);
 
 	switch (field->Device())
 	{
@@ -278,7 +309,7 @@ void	genConf	(Scalar *field, ConfType cType, size_t parm1, double parm2, FlopCou
 			break;
 
 		default:
-			printf ("Not a valid device\n");
+			LogError ("Not a valid device");
 			break;
 	}
 

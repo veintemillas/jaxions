@@ -36,6 +36,9 @@ namespace profiler {
 		FlopCounter		normFieldScalarfCounter;
 		scalarProfiler.insert(std::move(std::string("Normalise")), normFieldScalarfCounter);
 
+		FlopCounter		scaleFieldScalarfCounter;
+		scalarProfiler.insert(std::move(std::string("Scale")), scaleFieldScalarfCounter);
+
 		profs.insert(std::make_pair(PROF_SCALAR, scalarProfiler));
 
 
@@ -46,6 +49,9 @@ namespace profiler {
 
 		FlopCounter		randfCounter;
 		genConfProfiler.insert(std::string("Random"), randfCounter);
+
+		FlopCounter		momConffCounter;
+		genConfProfiler.insert(std::string("MomConf"), momConffCounter);
 
 		profs.insert(std::make_pair(PROF_GENCONF, genConfProfiler));
 

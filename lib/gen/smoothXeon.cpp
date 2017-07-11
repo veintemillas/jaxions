@@ -3,6 +3,7 @@
 
 #include "scalar/scalarField.h"
 #include "utils/index.h"
+#include "utils/utils.h"
 
 using namespace std;
 
@@ -82,7 +83,7 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		break;
 
 		default:
-		printf("Unrecognized precision\n");
+		LogError ("Unrecognized precision");
 		exit(1);
 		break;
 	}

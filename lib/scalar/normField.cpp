@@ -12,10 +12,9 @@
 	#include "scalar/normGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
+#include "utils/utils.h"
 
-class	NormaliseField
+class	NormaliseField : public Tunable
 {
 	private:
 
@@ -42,7 +41,7 @@ void	NormaliseField::runGpu	()
 #ifdef	USE_GPU
 	normGpu(axionField, fIdx);
 #else
-	printf("Gpu support not built");
+	LogError ("Gpu support not built");
 	exit(1);
 #endif
 }
@@ -57,14 +56,22 @@ void	NormaliseField::runXeon	()
 #ifdef	USE_XEON
 	normXeon(axionField, fIdx);
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	normaliseField	(Scalar *field, const FieldIndex fIdx, FlopCounter *fCount)
+using namespace profiler;
+
+void	normaliseField	(Scalar *field, const FieldIndex fIdx)
 {
+	LogMsg  (VERB_HIGH, "Called normalise field");
+	Profiler &prof = getProfiler(PROF_SCALAR);
+
 	NormaliseField *nField = new NormaliseField(field, fIdx);
+
+	prof.start();
+	nField->setName("Normalise");
 
 	switch (field->Device())
 	{
@@ -81,13 +88,19 @@ void	normaliseField	(Scalar *field, const FieldIndex fIdx, FlopCounter *fCount)
 			break;
 
 		default:
-			printf ("Not a valid device\n");
-			break;
+			LogError ("Not a valid device");
+			prof.stop();
+			delete nField;
+			return;
 	}
 
-	delete	nField;
+	nField->add(field->Size()*5.e-9, field->DataSize()*field->Size()*1.e-9);
+	prof.stop();
+	prof.add(nField->Name(), nField->GFlops(), nField->GBytes());
 
-	fCount->addFlops(field->Size()*5.e-9, field->DataSize()*field->Size()*1.e-9);
+	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", nField->Name().c_str(), prof.Prof()[nField->Name()].GFlops(), prof.Prof()[nField->Name()].GBytes());
+
+	delete	nField;
 
 	return;
 }

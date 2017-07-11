@@ -283,7 +283,7 @@ const std::complex<float> If(0.,1.);
 
 			printMpi("Entering GEN_CONF\n");
 			start = std::chrono::high_resolution_clock::now();
-			genConf	(this, cType, parm1, parm2, fCount);
+			genConf	(this, cType, parm1, parm2);
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 			printMpi("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);

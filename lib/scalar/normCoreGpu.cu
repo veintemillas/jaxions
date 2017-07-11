@@ -4,7 +4,7 @@
 
 #include "enum-field.h"
 #include "scalar/scalarField.h"
-#include "utils/parse.h"
+#include "utils/utils.h"
 
 using namespace gpuCu;
 using namespace indexHelper;
@@ -117,7 +117,7 @@ void	normCoreGpu (Scalar *sField)
 
 		default:
 
-		printf("Unrecognized precision\n");
+		LogError ("Unrecognized precision");
 		exit(1);
 		break;
 	}

@@ -13,10 +13,9 @@
 	#include "scalar/normCoreGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
+#include "utils/utils.h"
 
-class	NormCoreField
+class	NormCoreField : public Tunable
 {
 	private:
 
@@ -41,7 +40,7 @@ void	NormCoreField::runGpu	()
 #ifdef	USE_GPU
 	normCoreGpu(axionField);
 #else
-	printf("Gpu support not built");
+	LogError ("Gpu support not built");
 	exit(1);
 #endif
 }
@@ -56,14 +55,22 @@ void	NormCoreField::runXeon	()
 #ifdef	USE_XEON
 	normCoreXeon(axionField);
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	normCoreField	(Scalar *field, FlopCounter *fCount)
+using namespace profiler;
+
+void	normCoreField	(Scalar *field)
 {
+	LogMsg  (VERB_HIGH, "Called normalise for string cores");
+	Profiler &prof = getProfiler(PROF_SCALAR);
+
 	NormCoreField *nField = new NormCoreField(field);
+
+	prof.start();
+	nField->setName("Normalise Core");
 
 	switch (field->Device())
 	{
@@ -80,13 +87,17 @@ void	normCoreField	(Scalar *field, FlopCounter *fCount)
 			break;
 
 		default:
-			printf ("Not a valid device\n");
+			LogError ("Not a valid device");
 			break;
 	}
 
-	delete	nField;
+	nField->add(field->Size()*106.e-9, field->DataSize()*field->Size()*8.e-9);	// Assumes gradient^2 > 0.001 always
+	prof.stop();
+	prof.add(nField->Name(), nField->GFlops(), nField->GBytes());
 
-//	fCount->addFlops(field->Size()*5.e-9, field->dataSize()*field->Size()*1.e-9);
+	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", nField->Name().c_str(), prof.Prof()[nField->Name()].GFlops(), prof.Prof()[nField->Name()].GBytes());
+
+	delete	nField;
 
 	return;
 }

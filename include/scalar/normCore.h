@@ -3,7 +3,6 @@
 
 	#include "scalar/scalarField.h"
 	#include "enum-field.h"
-	#include "utils/flopCounter.h"
 
-	void	normCoreField	(Scalar *field, FlopCounter *fCount);
+	void	normCoreField	(Scalar *field);
 #endif

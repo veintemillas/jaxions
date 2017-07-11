@@ -20,8 +20,8 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 	int adp = 0;
 	if (kMax > Lx/2 - 1)
 	{
-	kmax = Lx/2 -1 ;
-	adp = 1 ;
+		kmax = Lx/2 -1 ;
+		adp = 1 ;
 	}
 	else {
 		kmax = kMax ;
@@ -29,7 +29,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 	size_t kmax2 = kmax*kmax;
 
 	const Float Twop = 2.0*M_PI;
-	printf("momconf with Lx = %d Lz = %d Tz = %d kMax=%d and kCrit=%f \n",Lx,Lz,Tz, kmax,kCrit);
+
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
@@ -99,8 +99,6 @@ void	momConf (Scalar *field, const size_t kMax, const double kCrt)
 	const size_t Tz = field->TotalDepth();
 
 	const size_t offset = field->DataSize()*n2;
-
-	printf ("%lu %lu %lu %lu %lu %lu %f %lu\n", n1, n2, n3, Lz, Tz, offset, kCrt, kMax);
 
 	switch (field->Precision())
 	{

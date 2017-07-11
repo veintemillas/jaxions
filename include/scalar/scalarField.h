@@ -2,13 +2,14 @@
 	#define	_SCALAR_CLASS_
 
 	#include"enum-field.h"
-	#include"utils/flopCounter.h"
+	#include"utils/utils.h"
+	#include"utils/tunable.h"
 
 	#ifdef	USE_XEON
 		#include "utils/xeonDefs.h"
 	#endif
 
-	class	Scalar
+	class	Scalar : public Tunable
 	{
 		private:
 

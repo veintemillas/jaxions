@@ -12,10 +12,9 @@
 	#include "scalar/scaleGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
+#include "utils/utils.h"
 
-class	ScaleField
+class	ScaleField : public Tunable
 {
 	private:
 
@@ -44,7 +43,7 @@ void	ScaleField::runGpu	()
 #ifdef	USE_GPU
 	scaleGpu(axionField, fIdx, factor);
 #else
-	printf("Gpu support not built");
+	LogError ("Gpu support not built");
 	exit(1);
 #endif
 }
@@ -59,14 +58,22 @@ void	ScaleField::runXeon	()
 #ifdef	USE_XEON
 	scaleXeon(axionField, fIdx, factor);
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Xeon Phi support not built");
 	exit(1);
 #endif
 }
 
-void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor, FlopCounter *fCount)
+using namespace profiler;
+
+void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor)
 {
+	LogMsg  (VERB_HIGH, "Called scale field");
+	Profiler &prof = getProfiler(PROF_SCALAR);
+
 	ScaleField *scale = new ScaleField(field, fIdx, factor);
+
+	prof.start();
+	scale->setName("Scale");
 
 	switch (field->Device())
 	{
@@ -83,13 +90,20 @@ void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor, Flop
 			break;
 
 		default:
-			printf ("Not a valid device\n");
-			break;
+			LogError ("Not a valid device");
+			prof.stop();
+			delete scale;
+			return;
 	}
 
-	delete	scale;
+	scale->add(field->Size()*2.e-9, field->DataSize()*field->Size()*1.e-9);
 
-	fCount->addFlops(field->Size()*2.e-9, field->DataSize()*field->Size()*1.e-9);
+	prof.stop();
+	prof.add(scale->Name(), scale->GFlops(), scale->GBytes());
+
+	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", scale->Name().c_str(), prof.Prof()[scale->Name()].GFlops(), prof.Prof()[scale->Name()].GBytes());
+
+	delete	scale;
 
 	return;
 }

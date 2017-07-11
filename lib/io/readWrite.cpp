@@ -529,7 +529,7 @@ void	readConf (Scalar **axion, int index)
 	H5Fclose (file_id);
 
 	prof.stop();
-	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab + 77.)*1.e-9);
+	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
 
 	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 
