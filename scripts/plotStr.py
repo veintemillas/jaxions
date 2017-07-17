@@ -48,8 +48,6 @@ class	GLViewWithText(gl.GLViewWidget):
 
 class	Plot3D():
 	def	__init__(self):
-		self.traces = dict()
-
 		fileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 
 		fileHdf5 = h5py.File(fileMeas[0], "r")

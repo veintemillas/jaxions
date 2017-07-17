@@ -70,8 +70,8 @@ namespace AxionFFT {
 
 			case	FIELD_SINGLE:
 			{
-				fftwf_complex *m  = static_cast<fftwf_complex*>(axion->mCpu());
-				fftwf_complex *m2 = static_cast<fftwf_complex*>(axion->m2Cpu());
+				fftwf_complex *m  = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
+				fftwf_complex *m2 = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -134,8 +134,8 @@ namespace AxionFFT {
 			
 			case	FIELD_DOUBLE:
 			{
-				fftw_complex *m  = static_cast<fftw_complex*>(axion->mCpu());
-				fftw_complex *m2 = static_cast<fftw_complex*>(axion->m2Cpu());
+				fftw_complex *m  = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
+				fftw_complex *m2 = static_cast<fftw_complex*>(axion->m2Cpu()) + axion->Surf();
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
