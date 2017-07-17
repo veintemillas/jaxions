@@ -204,8 +204,10 @@ int	main (int argc, char *argv[])
 		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
 
 		createMeas(axion, index);
+		writeEDens(axion, index);
 		writeString(str, strDen);
 		writeEnergy(axion, eRes);
+		writeMapHdf5(axion);
 		writePoint(axion);
 		destroyMeas();
 

@@ -29,7 +29,7 @@
 				Profiler&	operator=(const Profiler &p) = default;
 
 				void		start() { sTime = std::chrono::high_resolution_clock::now(); }
-				void		stop()  { dTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - sTime).count()*1e-3; }
+				void		stop()  { dTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - sTime).count()*1e-6; }
 				void		add(std::string str, double gFlops, double gBytes) { prof[str].addTime(dTime); prof[str].addFlops(gFlops, gBytes); }
 
 				void		insert(std::string mName, FlopCounter fCount) { prof.insert(std::make_pair(mName, fCount)); };

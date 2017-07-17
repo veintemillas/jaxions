@@ -24,13 +24,13 @@ void	Folder::foldField()
 	if (field->Folded() || field->Device() == DEV_GPU)
 		return;
 
-	LogMsg (VERB_HIGH, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift, n2);
-
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
  	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
+
+	LogMsg (VERB_HIGH, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -62,13 +62,13 @@ void	Folder::unfoldField()
 	if (!field->Folded() || field->Device() == DEV_GPU)
 		return;
 
-	LogMsg (VERB_HIGH, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift, n2);
-
 	cFloat *m = static_cast<cFloat *> ((void *) field->mCpu());
 	cFloat *v = static_cast<cFloat *> ((void *) field->vCpu());
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
+
+	LogMsg (VERB_HIGH, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -100,13 +100,12 @@ void	Folder::unfoldField2D (const size_t sZ)
 	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
 		return;
 
-	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift, n2);
-
 	cFloat *m = static_cast<cFloat *> (field->mCpu());
 	cFloat *v = static_cast<cFloat *> (field->vCpu());
 
 	if (!field->Folded())
 	{
+		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying data to ghost zone");
 		memcpy ( m,        &m[(sZ+1)*n2], sizeof(cFloat)*n2);
 		memcpy (&m[n2+n3], &v[sZ*n2],     sizeof(cFloat)*n2);
 		return;
@@ -114,6 +113,8 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
+
+	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
 	#pragma omp parallel for schedule(static)
 	for (size_t iy=0; iy < n1/shift; iy++)

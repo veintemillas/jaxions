@@ -4,6 +4,7 @@
 	#include<string>
 	#include<sstream>
 	#include<fstream>
+	#include<iomanip>
 	#include<vector>
 	#include<chrono>
 	#include<memory>
@@ -36,7 +37,7 @@
 						char buffer[256];
 						va_list args;
 						va_start (args, format);
-						size = vsnprintf (buffer, 255, format, args) + 1;
+						size = vsnprintf (buffer, 255, format, args);
 						va_end (args);
 
 						data.assign(buffer, size);
@@ -78,7 +79,7 @@
 				const VerbosityLevel	verbose;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
-					oFile << myMsg.time(logStart) << "ms: Logger level[" << levelTable[myMsg.level()] << "] Rank " << commRank() << "/" << commSize()
+					oFile << std::setw(11) << myMsg.time(logStart) << "ms: Logger level[" << levelTable[myMsg.level()] << "] Rank " << commRank() << "/" << commSize()
 					      << " - Thread " << myMsg.thread() << "/" << omp_get_num_threads() << " ==> " << myMsg.msg() << std::endl;
 				}
 

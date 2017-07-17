@@ -2,14 +2,14 @@
 
 #include "scalar/scalarField.h"
 #include "utils/index.h"
-#include "utils/parse.h"
 #include "energy/energy.h"
 #include "scalar/varNQCD.h"
 #include <omp.h>
-#include "utils/logger.h"
 
 #include <fftw3-mpi.h>
 #include "comms/comms.h"
+#include "utils/utils.h"
+#include "fft/fftCode.h"
 
 //#include<mpi.h>
 
@@ -281,13 +281,14 @@ void	spectrumUNFOLDED(Scalar *axion)
 
 	double mass2 = axionmass2((*axion->zV()), nQcd, zthres, zrestore)*(*axion->zV())*(*axion->zV());
 
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
 	// 	2 STEP SCHEME FOR MPI // OUTPUTS TO M
 
 	// 	FIRST G AND V
 	//	COPIES c_theta into RE[m2], IM[m2] = 0
 			axion->theta2m2();
 	//	FFT m2 inplace ->
-			axion->fftCpuSpectrum(1);
+	myPlan.run(FFT_BCK);
 
 	switch(axion->Precision())
 	{
@@ -310,7 +311,7 @@ void	spectrumUNFOLDED(Scalar *axion)
 	//	COPIES vheta into RE[m2], IM[m2] = 0
 			axion->vheta2m2();
 	//	FFT m2 inplace ->
-			axion->fftCpuSpectrum(1);
+	myPlan.run(FFT_BCK);
 
 	switch(axion->Precision())
 	{
@@ -453,7 +454,8 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 			//which is already normalised by the average density
 			}
 	//	FFT m2 inplace ->
-			axion->fftCpuSpectrum(1);
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
+	myPlan.run(FFT_BCK);
 
 	switch(axion->Precision())
 	{
@@ -625,7 +627,8 @@ void	powerspectrumexpitheta(Scalar *axion)
 				}
 			}
 			//	FFT m2 inplace ->
-			axion->fftCpuSpectrum(1);
+		auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
+		myPlan.run(FFT_BCK);
 	}
 	else {LogError("No double precision yet!\n");return ;  }
 

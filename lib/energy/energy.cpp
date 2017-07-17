@@ -123,6 +123,8 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 		munge(FOLD_ALL);
 	}
 
+	prof.start();
+
 	switch (field->Device())
 	{
 		case DEV_CPU:
@@ -139,6 +141,7 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 
 		default:
 			LogError ("Not a valid device");
+			prof.stop();
 			delete eDark;
 			trackFree(&eTmp, ALLOC_TRACK);
 			return;
@@ -154,6 +157,8 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 	#pragma unroll
 	for (int i=0; i<size; i++)
 		static_cast<double*>(eRes)[i] *= Vt;
+
+	prof.stop();
 
 	double flops = (field->Field() == FIELD_SAXION ? (pot == VQCD_1 ? 111 : 112) : 25)*field->Size()*1e-9;
 	double bytes = 8.*field->DataSize()*field->Size()*1e-9;

@@ -3,10 +3,10 @@
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 #include"propagator/RKParms.h"
+#include"propagator/laplacian.h"
 #include"scalar/varNQCD.h"
-#include "utils/parse.h"
-#include "utils/logger.h"
-#include "fft/fftCode.h"
+#include"utils/utils.h"
+#include"fft/fftCode.h"
 
 #ifdef USE_XEON
 	#include"comms/comms.h"
@@ -379,7 +379,8 @@ void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const d
 	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
 	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
 
-	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
+	AxionFFT::initPlan (axionField, FFT_SPSX, FFT_FWDBCK, "SpSx");
+//	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
 
 	const double fMom = (4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
@@ -401,33 +402,34 @@ inline	void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, c
 	double lambda = LL;
 
 	if (axionField->Lambda() != LAMBDA_FIXED) {
-		axionField->laplacian();
+//		axionField->laplacian();
+		applyLaplacian(axionField);
 		lambda = LL/((*z)*(*z));
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D1;
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		lambda = LL/((*z)*(*z));
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C2, D2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D2;
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		lambda = LL/((*z)*(*z));
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D3;
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		lambda = LL/((*z)*(*z));
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D4;
 	} else {
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C1, D1, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D1;
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C2, D2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D2;
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C3, D3, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D3;
-		axionField->laplacian();
+		applyLaplacian(axionField);
 		propSpecKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, C4, D4, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		*z += dz*D4;
 	}
@@ -438,7 +440,8 @@ void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const do
 	char *mS  = static_cast<char *>(axionField->mCpu())  + S*axionField->DataSize();
 	char *mS2 = static_cast<char *>(axionField->m2Cpu()) + S*axionField->DataSize();
 
-	initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
+	//initFFTspec(static_cast<void *>(mS), static_cast<void *>(mS2), Lx, axionField->TotalDepth(), precision);
+	AxionFFT::initPlan (axionField, FFT_SPSX, FFT_FWDBCK, "SpSx");
 
 	const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 

@@ -1,11 +1,11 @@
 #include <cstdio>
 #include <cstdlib>
-#include <map>
+#include <unordered_map>
 #include <errno.h>
 #include "enum-field.h"
 #include "utils/logger.h"
 
-static std::map<void *, size_t> allocTable[2];
+static std::unordered_map<void *, size_t> allocTable[2];
 static size_t trackAlignMem = 0;
 static size_t trackAllocMem = 0;
 
@@ -78,22 +78,21 @@ void	printMemStats	()
 	LogMsg (VERB_NORMAL, "Current pointers in memory:");
 	LogMsg (VERB_NORMAL, "\tAligned");
 
-	std::map<void *, size_t>::iterator data;
+//	std::map<void *, size_t>::iterator data;
 
-	for (data = allocTable[ALLOC_ALIGN].begin(); data != allocTable[ALLOC_ALIGN].end(); data++)
-	{
-		void *ptr   = data->first;
-		size_t size = data->second;
+	for (auto &data : allocTable[ALLOC_ALIGN]) {
+		void *ptr   = data.first;
+		size_t size = data.second;
 		LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
 	}
 
 	LogMsg (VERB_NORMAL, "");
 	LogMsg (VERB_NORMAL, "\tUnaligned");
 
-	for (data = allocTable[ALLOC_TRACK].begin(); data != allocTable[ALLOC_TRACK].end(); data++)
-	{
-		void *ptr   = data->first;
-		size_t size = data->second;
+	//for (data = allocTable[ALLOC_TRACK].begin(); data != allocTable[ALLOC_TRACK].end(); data++)
+	for (auto &data : allocTable[ALLOC_TRACK]) {
+		void *ptr   = data.first;
+		size_t size = data.second;
 		LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
 	}
 }

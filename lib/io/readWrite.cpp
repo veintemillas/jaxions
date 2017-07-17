@@ -673,7 +673,9 @@ void	createMeas (Scalar *axion, int index)
 
 	header = true;
 
-	LogMsg (VERB_NORMAL, "Measurement file %s successfuly openend", base);
+	LogMsg (VERB_NORMAL, "Measurement file %s successfuly opened", base);
+
+	commSync();
 
 	return;
 }
@@ -687,7 +689,7 @@ void	destroyMeas ()
 	/*	Closes the currently opened file for measurements	*/
 
 	if (opened) {
-		H5Pclose (mlist_id);
+//		H5Pclose (mlist_id);
 		H5Fclose (meas_id);
 	}
 
@@ -1088,13 +1090,9 @@ void	writeEDens (Scalar *axion, int index)
 		return;
 	}
 
-	/*	Set up parallel access with Hdf5	*/
-	plist_id = H5Pcreate (H5P_FILE_ACCESS);
-	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
-
 	char base[256];
 
-	sprintf(base, "%s.m.%05d", outName, index);
+	sprintf(base, "out/m/%s.m.%05d", outName, index);
 
 	/*	Broadcast the values of opened/header	*/
 	MPI_Bcast(&opened, sizeof(opened), MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -1103,7 +1101,21 @@ void	writeEDens (Scalar *axion, int index)
 	/*	If the measurement file is opened, we reopen it with parallel access	*/
 	if (opened == true)
 	{
-		destroyMeas();
+		if (commRank() == 0) {
+
+			/*	Closes the currently opened file for measurements	*/
+
+//			H5Pclose (mlist_id);
+			H5Fclose (meas_id);
+
+			meas_id = -1;
+		}
+
+		commSync();
+
+		/*	Set up parallel access with Hdf5	*/
+		plist_id = H5Pcreate (H5P_FILE_ACCESS);
+		H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
 		if ((file_id = H5Fopen (base, H5F_ACC_RDWR, plist_id)) < 0)
 		{
@@ -1113,6 +1125,9 @@ void	writeEDens (Scalar *axion, int index)
 		}
 	} else {
 		/*	Else we create the file		*/
+		plist_id = H5Pcreate (H5P_FILE_ACCESS);
+		H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
 		if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
 		{
 			LogError ("Error creating file %s", base);
@@ -1301,7 +1316,6 @@ void	writeEDens (Scalar *axion, int index)
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
-		// CAMBIAR A mCpu!!!
 		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->m2Cpu())+slab*zDim*dataSize));
 
 		if (mErr < 0)
@@ -1632,7 +1646,7 @@ void	writeMapHdf5	(Scalar *axion)
 	H5Gclose (group_id);
 	prof.stop();
 
-	prof.add(std::string("Write Map"), 0, slb*dataSize*2);
+	prof.add(std::string("Write Map"), 0, 2.e-9*slb*dataSize);
 	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize*2);
 }
 
@@ -1772,9 +1786,9 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	/*	Init FFT	*/
 
-	initFFT(precision);
+	AxionFFT::initFFT(precision);
 
-	fftw_plan		planDoubleForward, planDoubleBackward;
+	fftw_plan	planDoubleForward, planDoubleBackward;
 	fftwf_plan	planSingleForward, planSingleBackward;
 
 	switch (precision) {

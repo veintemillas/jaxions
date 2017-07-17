@@ -22,6 +22,7 @@
 #endif
 
 #include "utils/utils.h"
+#include "fft/fftCode.h"
 
 class	ConfGenerator
 {
@@ -113,6 +114,13 @@ void	ConfGenerator::runGpu	()
 #ifdef	USE_GPU
 	LogMsg (VERB_HIGH, "Random numbers will be generated on host");
 
+	Profiler &prof = getProfiler(PROF_GENCONF);
+	auto &myPlan = AxionFFT::fetchPlan("Init");
+
+	string	momName ("MomConf");
+	string	randName("Random");
+	string	smthName("Smoother");
+
 	switch (cType)
 	{
 		case CONF_NONE:
@@ -127,7 +135,7 @@ void	ConfGenerator::runGpu	()
 		momConf(axionField, kMax, kCrt);
 		prof.stop();
 		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		axionField->fftCpu(1);
+		myPlan.run(FFT_BCK);
 		axionField->sendGhosts(FIELD_M, COMM_SDRV);
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
 
@@ -142,7 +150,7 @@ void	ConfGenerator::runGpu	()
 		momConf(axionField, kMax, kCrt);
 		prof.stop();
 		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		axionField->fftCpu(1);
+		myPlan.run(FFT_BCK);
 
 		axionField->sendGhosts(FIELD_M, COMM_SDRV);
 		axionField->sendGhosts(FIELD_M, COMM_WAIT);
@@ -185,6 +193,7 @@ using namespace profiler;
 void	ConfGenerator::runCpu	()
 {
 	Profiler &prof = getProfiler(PROF_GENCONF);
+	auto &myPlan = AxionFFT::fetchPlan("Init");
 
 	string	momName ("MomConf");
 	string	randName("Random");
@@ -204,7 +213,7 @@ void	ConfGenerator::runCpu	()
 		momConf(axionField, kMax, kCrt);
 		prof.stop();
 		prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		axionField->fftCpu(1);
+		myPlan.run(FFT_BCK);
 		axionField->exchangeGhosts(FIELD_M);
 		break;
 
@@ -213,7 +222,7 @@ void	ConfGenerator::runCpu	()
 		momConf(axionField, kMax, kCrt);
 		prof.stop();
 		prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		axionField->fftCpu(1);
+		myPlan.run(FFT_BCK);
 		axionField->exchangeGhosts(FIELD_M);
 		normaliseField(axionField, FIELD_M);
 		normCoreField (axionField);

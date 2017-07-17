@@ -6,8 +6,9 @@
 
 #include "scalar/scalarField.h"
 #include "utils/index.h"
-#include "utils/parse.h"
+#include "utils/utils.h"
 #include "energy/energyMap.h"
+#include "fft/fftCode.h"
 
 using namespace std;
 
@@ -274,7 +275,8 @@ WKB<Float>::WKB(Scalar* axion, void* spectrumK, double zend, const double nnQCD,
 
 	//	FFT m2 inplace ->
 
-  axion->fftCpuSpectrum(1);
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
+	myPlan.run(FFT_BCK);
 
   switch(axion->Precision())
     {
@@ -296,7 +298,7 @@ WKB<Float>::WKB(Scalar* axion, void* spectrumK, double zend, const double nnQCD,
 
     }
 
- axion->fftCpuSpectrum(1);
+	myPlan.run(FFT_BCK);
 
 }
 

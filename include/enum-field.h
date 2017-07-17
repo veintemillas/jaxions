@@ -155,4 +155,20 @@
 		size_t	strChr;
 		size_t	wallDn;
 	}	StringData;
+
+	typedef	enum	FFTtype_s {
+		FFT_CtoC_MtoM,
+		FFT_CtoC_M2toM2,
+		FFT_CtoC_MtoM2,
+		FFT_SPSX,
+		FFT_SPAX,
+		FFT_NOTYPE,
+	}	FFTtype;
+
+	typedef	enum	FFTdir_s {
+		FFT_NONE   = 0,
+		FFT_FWD    = 1,
+		FFT_BCK    = 2,
+		FFT_FWDBCK = 3,
+	}	FFTdir;
 #endif

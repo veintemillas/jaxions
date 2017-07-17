@@ -1,6 +1,7 @@
 #include <complex>
 
 #include "scalar/scalarField.h"
+#include "utils/utils.h"
 
 using namespace std;
 
@@ -26,7 +27,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 
 				case FIELD_M2:
 				if (sField->LowMem()) {
-					printf ("Wrong field. Lowmem forbids the use of m2");
+					LogError ("Error: can't scale m2 with lowmem");
 					return;
 				}
 
@@ -35,7 +36,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 				break;
 
 				default:
-				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
+				LogError ("Error: unrecognized field type");
 				return;
 				break;
 			}
@@ -66,7 +67,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 
 				case FIELD_M2:
 				if (sField->LowMem()) {
-					printf ("Wrong field. Lowmem forbids the use of m2");
+					LogError ("Error: can't scale m2 with lowmem");
 					return;
 				}
 
@@ -75,7 +76,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 				break;
 
 				default:
-				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
+				LogError ("Error: unrecognized field type");
 				break;
 			}
 
@@ -87,7 +88,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 		}
 
 		default:
-		printf("Unrecognized precision\n");
+		LogError ("Invalid precision");
 		exit(1);
 		break;
 	}

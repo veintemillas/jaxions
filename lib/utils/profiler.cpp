@@ -1,11 +1,8 @@
 #include<string>
 #include<vector>
 #include<map>
-#include"utils/flopCounter.h"
-#include"utils/logger.h"
+#include"utils/utils.h"
 #include"enum-field.h"
-
-#include"utils/profiler.h"
 
 
 namespace profiler {
@@ -19,7 +16,7 @@ namespace profiler {
 		        FlopCounter	fCount = data->second;
 
 			if (fCount.Started() == true)
-			        LogMsg (VERB_NORMAL, "\tFunction %s\tGFlops %lf\tGBytes %lf", name.c_str(), fCount.GFlops(), fCount.GBytes());
+			        LogMsg (VERB_NORMAL, "\tFunction %-20s GFlops %lf\tGBytes %lf", name.c_str(), fCount.GFlops(), fCount.GBytes());
         	}
 	}
 
@@ -81,6 +78,12 @@ namespace profiler {
 
 		FlopCounter		rkn4sAxionfCounter;
 		propProfiler.insert(std::string("RKN4 Spectral Axion"),  rkn4sAxionfCounter);
+
+		FlopCounter		lapsAxionfCounter;
+		propProfiler.insert(std::string("Laplacian Saxion"),  lapsAxionfCounter);
+
+		FlopCounter		lapAxionfCounter;
+		propProfiler.insert(std::string("Laplacian Axion"),  lapAxionfCounter);
 
 		profs.insert(std::make_pair(PROF_PROP, propProfiler));
 

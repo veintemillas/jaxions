@@ -9,6 +9,7 @@
 #include"utils/utils.h"
 #include"io/readWrite.h"
 #include"comms/comms.h"
+#include"fft/fftCode.h"
 
 using namespace std;
 
@@ -104,7 +105,8 @@ int	main (int argc, char *argv[])
 	old = start;
 	std::chrono::milliseconds elapsed;
 
-	axion->fftCpu(1);
+	auto &myPlan = AxionFFT::fetchPlan("Init");
+	myPlan.run(FFT_FWD);
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);

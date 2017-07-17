@@ -1,27 +1,52 @@
-#ifndef	_FFT_CPU_
-	#define	_FFT_CPU_
+#ifndef	_FFT_CLASS_
+	#define	_FFT_CLASS_
 
-	void	initFFT		(const FieldPrecision &prec);
-	void	closeFFT	();
+	#include <string>
 
-	void	initFFTPlans	(void *m, void *m2, const size_t n1, const size_t Tz, FieldPrecision prec, bool lowmem);
-	void	runFFT		(int sign);
-	void	closeFFTPlans	();
+	#include "enum-field.h"
+	#include "scalar/scalarField.h"
+	#include "utils/utils.h"
+	#include "utils/tunable.h"
 
-	void	initFFTSpectrum	(void *m2, const size_t n1, const size_t Tz, FieldPrecision prec, bool lowmem);
-	void	runFFTSpectrum	(int sign);
-	void	closeFFTSpectrum();
+	namespace AxionFFT {
 
-	void	initFFThalo	(void *m, void *v, const size_t n1, const size_t Lz, FieldPrecision prec);
-	void	runFFThalo	(int sign);
-	void	closeFFThalo	();
+		class	FFTplan	: public Tunable
+		{
+			private:
 
-	void	initFFTspec	(void *m, void *m2, const size_t n1, const size_t Lz, FieldPrecision prec);
-	void	runFFTspec	(int sign);
-	void	closeFFTspec	();
+			void *		planForward;
+			void *		planBackward;
 
-	void	initFFTspAx	(void *m, void *m2, void *m3, const size_t n1, const size_t Lz, FieldPrecision prec);
-	void	runFFTspAx	(int sign);
-	void	closeFFTspAx	();
+			FFTtype		type;
+			FFTdir		dFft;
+			FieldPrecision	prec;
 
+			size_t		Lx, Lz;
+
+			void		importWisdom();
+			void		exportWisdom();
+
+			public:
+
+					 FFTplan() : planForward(nullptr), planBackward(nullptr), Lx(0), Lz(0), dFft(FFT_NONE), type(FFT_NOTYPE) {}
+					 FFTplan(Scalar * axion, FFTtype type, FFTdir dFft);
+//					~FFTplan() {};
+
+			void		run	(FFTdir cDir);
+
+			inline	void		SetDir (FFTdir  newDFFT) { if (dFft == FFT_NONE)   dFft = newDFFT; }
+			inline	void		SetType(FFTtype newType) { if (type == FFT_NOTYPE) type = newType; }
+
+			inline	FieldPrecision	Precision() { return prec; }
+			inline	FFTdir		Direction() { return dFft; }
+			inline	void *		PlanFwd  () { return planForward; }
+			inline	void *		PlanBack () { return planBackward; }
+		};
+
+		void		initFFT		(FieldPrecision prec);
+		void		initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name);
+		FFTplan&	fetchPlan       (std::string name);
+		void		removetPlan	(std::string name);
+		void		closeFFT	();
+	}
 #endif

@@ -46,6 +46,8 @@
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
+		/* Eliminar */
+
 		template<typename Float>
 		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
         	template<typename Float>
@@ -54,14 +56,17 @@
         	template<typename Float>
 	        void energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
 
-					template<typename Float>
+		template<typename Float>
 	        void contrastbin(const Float zz, const int index, void *contbin, int numbins); // TEST
 
-					template<typename Float>
-					void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
+		template<typename Float>
+		void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
 
-					template<typename Float>
-					void	laplacianm2();
+		template<typename Float>
+		void	laplacianm2();
+
+		/* Fin eliminar */
+		/* Faltan: axitonfinder/contrastmap */
 
 		public:
 
@@ -131,10 +136,13 @@
 		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
-		void	fftCpu(int sign);			// Fast Fourier Transform in the Cpu
-		void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
-		void	fftCpuSpectrum(int sign);			// Fast Fourier Transform in m2 [axion spectrum usage]
-		void	fftCpuHalo(int sign);					// Fast Fourier Transform in the Cpu for m -> [halo search usage]
+//		void	fftCpu(FFTdir sign);			// Fast Fourier Transform in the Cpu
+//		void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
+//		void	fftCpuSpectrum(FFTdir sign);			// Fast Fourier Transform in m2 [axion spectrum usage]
+//		void	fftCpuHalo(FFTdir sign);					// Fast Fourier Transform in the Cpu for m -> [halo search usage]
+
+		/*	Eliminar	*/
+
 		void  loadHalo();										// LOADS HALO UTILITIES
 
 		void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
@@ -157,6 +165,9 @@
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
 		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
+
+		/*	Fin eliminar	*/
+		/* Faltan: halos, maxtheta y thetaDIST, esas funciones raras de m, mira los writes */
 
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }

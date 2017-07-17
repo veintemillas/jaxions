@@ -115,7 +115,7 @@ void	Propagator::sRunGpu	()
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 	*z += dz*d4;
 #else
-	printf("Gpu support not built");
+	LogError ("Error: gpu support not built");
 	exit(1);
 #endif
 }
@@ -144,7 +144,7 @@ void	Propagator::propLowGpu	(const double c, const double d)
 
 	cudaDeviceSynchronize();
 #else
-	printf("Gpu support not built");
+	LogError ("Error: gpu support not built");
 	exit(1);
 #endif
 }
@@ -173,7 +173,7 @@ void	Propagator::sRunXeon	()
 #ifdef	USE_XEON
 	propagateXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Error: Xeon Phi support not built");
 	exit(1);
 #endif
 }
@@ -183,7 +183,7 @@ void	Propagator::lowXeon	()
 #ifdef	USE_XEON
 	propLowMemXeon	(axionField, dz, delta2, LL, nQcd, Lx, V, S, precision, pot);
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Error: Xeon Phi support not built");
 	exit(1);
 #endif
 }
@@ -227,7 +227,7 @@ void    Propagator::tRunGpu	()
 	cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 	*z += dz*d4;
 #else
-	printf("Gpu support not built");
+	LogError ("Error: gpu support not built");
 	exit(1);
 #endif
 }
@@ -242,7 +242,7 @@ void    Propagator::tRunXeon	()
 #ifdef  USE_XEON
 	propThetaXeon(axionField, dz, delta2, nQcd, Lx, V, S, precision);
 #else
-	printf("Xeon Phi support not built");
+	LogError ("Error: Xeon Phi support not built");
 	exit(1);
 #endif
 }

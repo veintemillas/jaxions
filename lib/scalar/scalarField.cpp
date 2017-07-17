@@ -256,26 +256,27 @@ const std::complex<float> If(0.,1.);
 //		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 //	}
 
-	initFFT(prec);
+	AxionFFT::initFFT(prec);
 
 	*z = zI;
 
 	/*	If present, read fileName	*/
 
-	if (cType == CONF_NONE)
-	{
+	if (cType == CONF_NONE) {
+		LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
 	} else {
-		if (fieldType == FIELD_AXION)
-		{
-			printMpi("Configuration generation not supported for Axion fields... yet\n");
-		}
-		else
-		{
+		if (fieldType == FIELD_AXION) {
+			LogError ("Configuration generation for axion fields not supported");
+		} else {
 			start = std::chrono::high_resolution_clock::now();
 			printMpi("Entering initFFT\n");
 
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
-				initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+				if (lowmem)
+					AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
+				else
+					AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
+				//initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
@@ -313,11 +314,12 @@ const std::complex<float> If(0.,1.);
 	// THIS MIGHT NOT BE NEEDED, CHECK OUT
 	if(!lowmem)
 	{
-		printMpi("FFTing m2 if no lowmem\n");
-		initFFTSpectrum(m2, n1, Tz, precision, lowmem);
-			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-		printMpi("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
+		AxionFFT::initPlan (this, FFT_CtoC_M2toM2,  FFT_FWD, "pSpectrum");
+//		printMpi("FFTing m2 if no lowmem\n");
+//		initFFTSpectrum(m2, n1, Tz, precision, lowmem);
+//			current = std::chrono::high_resolution_clock::now();
+//			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+//		printMpi("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
 	}
 
 }
@@ -327,18 +329,18 @@ const std::complex<float> If(0.,1.);
 	Scalar::~Scalar()
 {
 	commSync();
-	printf ("Rank %d Calling destructor...\n",commRank());
-	fflush (stdout);
-	if (m != NULL)
+	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
+
+	if (m != nullptr)
 		trackFree(&m, ALLOC_ALIGN);
 
-	if (v != NULL && fieldType == FIELD_SAXION)
+	if (v != nullptr && fieldType == FIELD_SAXION)
 		trackFree(&v, ALLOC_ALIGN);
 
-	if (m2 != NULL)
+	if (m2 != nullptr)
 		trackFree(&m2, ALLOC_ALIGN);
 
-	if (z != NULL)
+	if (z != nullptr)
 		trackFree((void **) &z, ALLOC_ALIGN);
 
 	if (device == DEV_GPU)
@@ -347,31 +349,31 @@ const std::complex<float> If(0.,1.);
 			printf ("Gpu support not built\n");
 			exit   (1);
 		#else
-			if (m_d != NULL)
+			if (m_d != nullptr)
 				cudaFree(m_d);
 
-			if (v_d != NULL)
+			if (v_d != nullptr)
 				cudaFree(v_d);
 
-			if (m2_d != NULL)
+			if (m2_d != nullptr)
 				cudaFree(m2_d);
 
 			cudaStreamDestroy(((cudaStream_t *)sStreams)[2]);
 			cudaStreamDestroy(((cudaStream_t *)sStreams)[1]);
 			cudaStreamDestroy(((cudaStream_t *)sStreams)[0]);
 
-			if (sStreams != NULL)
+			if (sStreams != nullptr)
 				free(sStreams);
 
 //			if (!lowmem)
 //				closeCudaFFT();
-			closeFFTPlans();
-			closeFFT();
+			//closeFFTPlans();
+			AxionFFT::closeFFT();
 		#endif
 	} else {
 //		if (!lowmem)
-		closeFFTPlans();
-		closeFFT();
+//		closeFFTPlans();
+		AxionFFT::closeFFT();
 	}
 
 	if (device == DEV_XEON)
@@ -944,17 +946,21 @@ void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
 	}
 }
 */
-
-void	Scalar::fftCpu	(int sign)
+/*
+void	Scalar::fftCpu	(FFTdir sign)
 {
-	runFFT(sign);
+	auto &myPlan = AxionFFT::fetchPlan("Init");
+	myPlan.run(sign);
+//	runFFT(sign);
 }
 
-void	Scalar::fftCpuSpectrum	(int sign)
+void	Scalar::fftCpuSpectrum	(FFTdir sign)
 {
-	runFFTSpectrum(sign);
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
+	myPlan.run(sign);
+//	runFFTSpectrum(sign);
 }
-
+*/
 
 
 /*	CODIGO VIEJO INUTIL, IGUAL PARA FFT GPU...
@@ -1026,13 +1032,13 @@ void	Scalar::fftCpu	(int sign)
 */
 
 // ESTO YA NO SE USA, LA FFT ES SIEMPRE EN LA CPU
-void	Scalar::fftGpu	(int sign)
+/*void	Scalar::fftGpu	(int sign)
 {
 #ifdef	USE_GPU
 	runCudaFFT(m2_d, sign);
 #endif
 }
-
+*/
 void	Scalar::setField (FieldType fType)
 {
 	switch (fType)
@@ -1080,7 +1086,7 @@ void	Scalar::setField (FieldType fType)
 				// IF low mem was used before, it creates m2 COMPLEX
 				if (lowmem)
 				{
-					closeFFTSpectrum();
+					//closeFFTSpectrum();	// This line canb e ignored
 					#ifdef	USE_XEON
 					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
 					m2  = m2X;
@@ -1088,7 +1094,8 @@ void	Scalar::setField (FieldType fType)
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 					#endif
 
-					initFFTSpectrum(m2, n1, Tz, precision, 0);
+					AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWD, "pSpectrum");
+					//initFFTSpectrum(m2, n1, Tz, precision, 0);
 
 					#ifdef	USE_GPU
 					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
@@ -1100,19 +1107,19 @@ void	Scalar::setField (FieldType fType)
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 				#ifdef	USE_XEON
-					closeFFTSpectrum();
+					//closeFFTSpectrum();
 					trackFree(&m2X, ALLOC_ALIGN);
 					m2 = m2X = NULL;
 					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
 					m2  = m2X;
 				#else
-					closeFFTSpectrum();
+					//closeFFTSpectrum();
 					printf ("%p %f\n", m2, static_cast<float *>(m2)[0]); fflush(stdout);
 					trackFree(&m2, ALLOC_ALIGN);
 					m2 = NULL;
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 				#endif
-					initFFTSpectrum(m2, n1, Tz, precision, 0);
+					//initFFTSpectrum(m2, n1, Tz, precision, 0);
 
 				#ifdef	USE_GPU
 					cudaFree(m2_d);
@@ -2232,7 +2239,7 @@ void	Scalar::autodenstom2()//int *window)
 //----------------------------------------------------------------------
 //		BUILD LAPLACIAN IN M2 [after ghost slice]
 //----------------------------------------------------------------------
-
+/*
 template<typename Float>
 void	Scalar::laplacianm2()
 {
@@ -2241,7 +2248,8 @@ void	Scalar::laplacianm2()
 
 	if(fieldType == FIELD_SAXION)
 	{
-		runFFTspec(FFTW_FORWARD);
+		auto &planFFT = AxionFFT::fetchPlan("SpSx");
+		planFFT.run(FFT_FWD);
 
 		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
 		int n12 = n1/2 ;
@@ -2277,14 +2285,15 @@ void	Scalar::laplacianm2()
 			}
 		}
 
-		runFFTspec(FFTW_BACKWARD);
+		planFFT.run(FFT_BCK);
 	}
 	else //FIELD_AXION
 	{
 		// THIS FFT IS REAL TO COMPLEX, OUTPUTS TO M3 (TRANSPOSED, HALFCOMPLEX!!!)
 		// WHICH IS DEFINED IN sPropXeon.cpp
 		// char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axion->Depth()))+1)*axionField->DataSize();
-		runFFTspAx(FFTW_FORWARD);
+		auto &planFFT = AxionFFT::fetchPlan("SpAx");
+		planFFT.run(FFT_FWD);
 
 		// NOW MULTIPLY BY THE CORRECT FACTOR OF K^2
 
@@ -2322,7 +2331,7 @@ void	Scalar::laplacianm2()
 			}
 		}
 
-		runFFTspAx(FFTW_BACKWARD);
+		planFFT.run(FFT_BCK);
 	}
 
 
@@ -2351,7 +2360,7 @@ void	Scalar::laplacian()
 			break;
 	}
 }
-
+*/
 //----------------------------------------------------------------------
 //		CHECK JUMPS
 //----------------------------------------------------------------------
@@ -2667,11 +2676,13 @@ void	Scalar::loadHalo()
  // 	printf("| realoc m2 ");
 	// v = (fftwf_complex*) fftwf_malloc(sizeN*sizeN*(sizeN/2+1) * sizeof(fftwf_complex));
 	//
-	initFFThalo(static_cast<void *>(static_cast<char *> (m) + n2*fSize), v, n1, Tz, precision);
+
+//	initFFThalo(static_cast<void *>(static_cast<char *> (m) + n2*fSize), v, n1, Tz, precision);
 
 }
-
-void	Scalar::fftCpuHalo	(int sign)
+/*
+void	Scalar::fftCpuHalo	(FFTdir sign)
 {
-	runFFThalo(sign);
-}
+
+//	runFFThalo(sign);
+}*/
