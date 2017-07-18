@@ -109,6 +109,9 @@ class	ConfGenerator
 	}
 }
 
+using namespace std;
+using namespace profiler;
+
 void	ConfGenerator::runGpu	()
 {
 #ifdef	USE_GPU
@@ -131,7 +134,7 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_TKACHEV:
-		prof.start()
+		prof.start();
 		momConf(axionField, kMax, kCrt);
 		prof.stop();
 		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
@@ -146,7 +149,7 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_KMAX:
-		prof.start()
+		prof.start();
 		momConf(axionField, kMax, kCrt);
 		prof.stop();
 		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
@@ -164,13 +167,13 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_SMOOTH:
-		prof.start()
+		prof.start();
 		randConf (axionField);
 		prof.stop();
 		prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 		axionField->transferDev(FIELD_M);
 
-		prof.start()
+		prof.start();
 		smoothGpu (axionField, sIter, alpha);
 		prof.stop();
 		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
