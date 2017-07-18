@@ -71,7 +71,7 @@ namespace AxionFFT {
 			case	FIELD_SINGLE:
 			{
 				fftwf_complex *m  = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
-				fftwf_complex *m2 = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
+				fftwf_complex *m2 = static_cast<fftwf_complex*>(axion->m2Cpu());
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -135,7 +135,7 @@ namespace AxionFFT {
 			case	FIELD_DOUBLE:
 			{
 				fftw_complex *m  = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
-				fftw_complex *m2 = static_cast<fftw_complex*>(axion->m2Cpu()) + axion->Surf();
+				fftw_complex *m2 = static_cast<fftw_complex*>(axion->m2Cpu());
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -183,8 +183,8 @@ namespace AxionFFT {
 							exit(0);
 						}
 
-						planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m + axion->Surf(),  m2 + axion->Surf(), MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2 + axion->Surf(), m2 + axion->Surf(), MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_SPAX:
