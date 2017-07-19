@@ -675,8 +675,6 @@ void	createMeas (Scalar *axion, int index)
 
 	LogMsg (VERB_NORMAL, "Measurement file %s successfuly opened", base);
 
-	commSync();
-
 	return;
 }
 
