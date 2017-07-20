@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os,re,sys
 
@@ -104,7 +104,7 @@ class	Plot3D():
 				self.size = self.size + 1
 
 			fp = gzip.open("Strings.PyDat", "wb")
-			pickle.dump(self.allData, fp, protocol=2)
+			pickle.dump(self.allData, fp, protocol=4)
 			fp.close()
 
 		pg.setConfigOptions(antialias=True)
