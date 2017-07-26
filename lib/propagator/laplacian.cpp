@@ -23,7 +23,7 @@ class	Laplacian : public Tunable
 	const size_t		Lz;
 	const size_t		Sf;
 
-	void			*m;
+	Scalar			*field;
 
 	template<class cFloat>
 	void			lapCpu(std::string name);
@@ -36,7 +36,7 @@ class	Laplacian : public Tunable
 
 	public:
 
-		Laplacian (Scalar *field) : precision(field->Precision()), Lx(field->Length()), Lz(field->Depth()), Sf(field->Surf()), m(field->m2Cpu()) {
+		Laplacian (Scalar *field) : precision(field->Precision()), Lx(field->Length()), Lz(field->Depth()), Sf(field->Surf()), field(field) {
 		if (field->LowMem()) {
 			LogError ("Error: laplacian not supported in lowmem runs");
 			exit(0);
@@ -73,7 +73,7 @@ void	Laplacian::lapCpu	(std::string name)
 	auto &planFFT = AxionFFT::fetchPlan(name);
 	planFFT.run(FFT_FWD);
 
-	cFloat *mData = static_cast<cFloat*> (m);
+	cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
 
@@ -97,7 +97,7 @@ void	Laplacian::lapCpu	(std::string name)
 			size_t py2 = py*py;
 			size_t idy = py*Lx;
 
-			for (size_t ox = 0; ox < Lx; ox++)
+			for (int ox = 0; ox < Lx; ox++)
 			{
 				size_t idx = ox + idy + idz;
 
@@ -151,11 +151,11 @@ void    Laplacian::tRunCpu	()
 {
 	switch (precision) {
 		case FIELD_SINGLE:
-			lapCpu<float> (std::string("SpAx"));
+			//lapCpu<float> (std::string("SpAx"));
 			break;
 
 		case FIELD_DOUBLE:
-			lapCpu<double>(std::string("SpAx"));
+			//lapCpu<double>(std::string("SpAx"));
 			break;
 	}
 }

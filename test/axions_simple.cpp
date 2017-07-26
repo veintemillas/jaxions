@@ -232,7 +232,6 @@ int	main (int argc, char *argv[])
 			}
 
 			old = std::chrono::high_resolution_clock::now();
-//			propagate (axion, dz, LL, nQcd, delta, cDev, fCount);
 			propagateSimple (axion, dz, LL, nQcd, delta, Ng);
 
 			current = std::chrono::high_resolution_clock::now();

@@ -25,7 +25,7 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 
 	const Float z = static_cast<Float>(sField->zV()[0]);
 
-		for (size_t cZ = 1; cZ < Lz+1; cZ++)
+	for (size_t cZ = 1; cZ < Lz+1; cZ++)
 	{
 		const size_t Vo = cZ*S;
 		#pragma omp parallel for default(shared) schedule(static)

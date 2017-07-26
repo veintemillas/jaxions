@@ -22,7 +22,6 @@ int	initAxions(int argc, char *argv[]) {
 void	endAxions() {
 	printMemStats();
 	printProfStats();
-	destroyProfilers();
 	endComms();
 
 	return;

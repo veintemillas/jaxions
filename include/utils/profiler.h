@@ -26,6 +26,8 @@
 						Profiler(const Profiler &p) : nameProf(p.nameProf), prof(p.prof) {};
 						Profiler(Profiler &&p) : nameProf(std::move(p.nameProf)), prof(std::move(p.prof)) {};
 
+						~Profiler() {};
+
 				Profiler&	operator=(const Profiler &p) = default;
 
 				void		start() { sTime = std::chrono::high_resolution_clock::now(); }

@@ -2,6 +2,7 @@
 #include<cmath>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
+#include"propagator/RKParms.h"
 #include"scalar/varNQCD.h"
 #include "utils/parse.h"
 
@@ -26,7 +27,7 @@
 	#endif
 #endif
 
-inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
 			    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
@@ -51,9 +52,10 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const double dzc = dz*c;
 		const double dzd = dz*d;
 		const double zR = *z;
+		const double iZ = 1./zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
-		const double iz = 1.0/zR;
+		const double tV	= 2.*M_PI*zR;
 
 #ifdef	__AVX512F__
 		const size_t XC = (Lx<<3);
@@ -68,11 +70,12 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 #endif
+		const _MData_ tpVec  = opCode(set1_pd, tV);
 		const _MData_ zQVec  = opCode(set1_pd, zQ);
+		const _MData_ izVec  = opCode(set1_pd, iZ);
 		const _MData_ d2Vec  = opCode(set1_pd, ood2);
 		const _MData_ dzcVec = opCode(set1_pd, dzc);
 		const _MData_ dzdVec = opCode(set1_pd, dzd);
-		const _MData_ izVec  = opCode(set1_pd, iz);
 
 #ifdef	__AVX512F__
 		const auto vShRg  = opCode(load_si512, shfRg);
@@ -157,30 +160,59 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				idxPz = idx+Sf;
 				idxMz = idx-Sf;
 
-				acu = opCode(sub_pd,
-					opCode(mul_pd, d2Vec,
-						opCode(add_pd,
-							opCode(add_pd,
-								opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])),
-								opCode(add_pd,
-									opCode(add_pd, mPy, mMy),
-									opCode(add_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz])))),
-							opCode(mul_pd, opCode(set1_pd, -6.), mel))),
+				/*	idxPx	*/
+
+				vel = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
+				acu = opCode(mod_pd, vel, tpVec);
+
+				/*	idxMx	*/
+
+				vel = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
+				acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+				/*	idxPz	*/
+
+				vel = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
+				acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+				/*	idxMz	*/
+
+				vel = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
+				acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+				/*	idxPy	*/
+
+				vel = opCode(sub_pd, mPy, mel);
+				acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+				/*	idxMy	*/
+
+				vel = opCode(sub_pd, mMy, mel);
+				acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+				/*	Dv	*/
+
+				vel = opCode(sub_pd,
+					opCode(mul_pd, acu, d2Vec),
 					opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
-				vel = opCode(load_pd, &v[idxMz]);
+				mPy = opCode(load_pd, &v[idxMz]);
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, acu, dzcVec, vel);
+				tmp = opCode(fmadd_pd, vel, dzcVec, mPy);
 				mMy = opCode(fmadd_pd, tmp, dzdVec, mel);
 #else
-				tmp = opCode(add_pd, vel, opCode(mul_pd, acu, dzcVec));
+				tmp = opCode(add_pd, mPy, opCode(mul_pd, vel, dzcVec));
 				mMy = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
 #endif
+
+				/*	Make sure the result is between -pi and pi	*/
+
+				acu = opCode(mod_pd, mMy, tpVec);
 
 				/*	Store	*/
 
 				opCode(store_pd, &v[idxMz], tmp);
-				opCode(store_pd, &m2[idx],  mMy);
+				opCode(store_pd, &m2[idx],  acu);
 			}
 		}
 #undef	_MData_
@@ -206,9 +238,10 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float dzc = dz*c;
 		const float dzd = dz*d;
 		const float zR = *z;
+		const float iZ = 1./zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
-		const float iz = 1.f/zR;
+		const float tV	= 2.*M_PI*zR;
 #ifdef	__AVX512F__
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
@@ -225,15 +258,16 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 #endif
+		const _MData_ tpVec  = opCode(set1_ps, tV);
 		const _MData_ zQVec  = opCode(set1_ps, zQ);
+		const _MData_ izVec  = opCode(set1_ps, iZ);
 		const _MData_ d2Vec  = opCode(set1_ps, ood2);
 		const _MData_ dzcVec = opCode(set1_ps, dzc);
 		const _MData_ dzdVec = opCode(set1_ps, dzd);
-		const _MData_ izVec  = opCode(set1_ps, iz);
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ tmp, mel, vel, mPy, mMy, acu;
+			_MData_ tmp, mel, vel, tpP, mPy, tpM, mMy, v2p, acu, tP2, tM2, sel;
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -309,29 +343,57 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				idxPz = idx+Sf;
 				idxMz = idx-Sf;
 
-				acu = opCode(sub_ps,
-					opCode(mul_ps, d2Vec,
-						opCode(add_ps,
-							opCode(add_ps,
-								opCode(add_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx])),
-								opCode(add_ps,
-									opCode(add_ps, mPy, mMy),
-									opCode(add_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz])))),
-							opCode(mul_ps, opCode(set1_ps, -6.), mel))),
+				/*	idxPx	*/
+
+				vel = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
+				acu = opCode(mod_ps, vel, tpVec);
+				/*	idxMx	*/
+
+				vel = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
+				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+
+				/*	idxPz	*/
+
+				vel = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
+				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+
+				/*	idxMz	*/
+
+				vel = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
+				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+
+				/*	idxPy	*/
+
+				vel = opCode(sub_ps, mPy, mel);
+				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+
+				/*	idxMy	*/
+
+				vel = opCode(sub_ps, mMy, mel);
+				acu = opCode(add_ps, acu, opCode(mod_ps, vel, tpVec));
+
+				/*	Dv	*/
+
+				tpM = opCode(sub_ps,
+					opCode(mul_ps, acu, d2Vec),
 					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
-				vel = opCode(load_ps, &v[idxMz]);
+
+				mPy = opCode(load_ps, &v[idxMz]);
 
 #if	defined(__MIC__) || defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, acu, dzcVec, vel);
-				mMy = opCode(fmadd_ps, tmp, dzdVec, mel);
+				tmp = opCode(fmadd_ps, tpM, dzcVec, mPy);
+				tpP = opCode(fmadd_ps, tmp, dzdVec, mel);
 #else
-				tmp = opCode(add_ps, vel, opCode(mul_ps, acu, dzcVec));
-				mMy = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
+				tmp = opCode(add_ps, mPy, opCode(mul_ps, tpM, dzcVec));
+				tpP = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
+				/*	Make sure the result is between -pi and pi	*/
+				acu = opCode(mod_ps, tpP, tpVec);
+
 				/*	Store	*/
 
 				opCode(store_ps, &v[idxMz], tmp);
-				opCode(store_ps, &m2[idx],  mMy);
+				opCode(store_ps, &m2[idx],  acu);
 			}
 		}
 #undef	_MData_

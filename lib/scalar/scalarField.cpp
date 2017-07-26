@@ -264,6 +264,9 @@ const std::complex<float> If(0.,1.);
 
 	if (cType == CONF_NONE) {
 		LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
+
+		if (pType & PROP_SPEC)
+			AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
 	} else {
 		if (fieldType == FIELD_AXION) {
 			LogError ("Configuration generation for axion fields not supported");
@@ -277,6 +280,9 @@ const std::complex<float> If(0.,1.);
 				else
 					AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
 				//initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
+
+			if (pType & PROP_SPEC)
+				AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);

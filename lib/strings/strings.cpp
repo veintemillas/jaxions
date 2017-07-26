@@ -91,11 +91,24 @@ StringData	strings	(Scalar *field, void *strData)
 	LogMsg	(VERB_HIGH, "Called strings");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
 
+
 	prof.start();
 
 	Strings *eStr = new Strings(field, strData);
 
 	StringData	strTmp, strDen;
+
+	if (field->Field() == FIELD_AXION) {
+		strDen.strDen = 0;
+		strDen.strChr = 0;
+		strDen.wallDn = 0;
+
+		delete eStr;
+
+		prof.stop();
+
+		return strDen;
+	}
 
 	if	(!field->Folded())
 	{

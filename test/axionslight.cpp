@@ -358,6 +358,8 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
+	initPropagator (pType, axion, nQcd, delta, llconstantZ2, VQCD_1);
+
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
@@ -487,7 +489,7 @@ int	main (int argc, char *argv[])
 			//LogOut("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
 //			if (axion->Field() == FIELD_SAXION)
 //			{
-				propagate (axion, dzaux, delta, nQcd, llaux, VQCD_1);
+				propagate (axion, dzaux);
 			if (axion->Field() == FIELD_SAXION)
 			{
 

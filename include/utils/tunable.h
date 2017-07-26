@@ -3,7 +3,7 @@
 	#include <string>
 
 	class	Tunable {
-		private:
+		protected:
 
 		std::string	name;
 

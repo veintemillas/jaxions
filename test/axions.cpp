@@ -153,8 +153,10 @@ int	main (int argc, char *argv[])
 	LogOut ("Folding configuration\n");
 	munge(FOLD_ALL);
 
-	LogOut ("Transferring configuration to device\n");
-	axion->transferDev(FIELD_MV);
+	if (cDev != DEV_CPU) {
+		LogOut ("Transferring configuration to device\n");
+		axion->transferDev(FIELD_MV);
+	}
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -173,6 +175,8 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
+	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		//--------------------------------------------------
@@ -182,26 +186,16 @@ int	main (int argc, char *argv[])
 		index++;
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-		{
-			//axion->exchangeGhosts(FIELD_M);
-			//maximumtheta = axion->thetaDIST(100, spectrumK);
-
-			old = std::chrono::high_resolution_clock::now();
-
-			propagate (axion, dz, delta, nQcd, LL, VQCD_1);
-
-/*			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-
-			fCount->addTime(elapsed.count()*1.e-3);
-*/
-		} // zsubloop
+			propagate (axion, dz);
 
 		auto strDen = strings(axion, str);
 
 		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
-		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
+		if (axion->LowMem())
+			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
+		else
+			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
 
 		createMeas(axion, index);
 		writeEDens(axion, index);
@@ -218,15 +212,13 @@ int	main (int argc, char *argv[])
 
 	LogOut("\n PROGRAMM FINISHED\n");
 
-//	munge(UNFOLD_ALL);
-//	writeConf(axion, index);
+	munge(UNFOLD_ALL);
+	writeConf(axion, index);
 
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);
 	LogOut("#_prints = %i\n", index);
 	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
-	LogOut("GFlops: %.3f\n", fCount->GFlops());
-	LogOut("GBytes: %.3f\n", fCount->GBytes());
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);

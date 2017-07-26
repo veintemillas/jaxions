@@ -1,3 +1,6 @@
+#ifndef	_INTRINSICS_
+#define	_INTRINSICS_
+
 #include<cmath>
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
@@ -6,12 +9,17 @@
 
 #include <immintrin.h>
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#ifdef	__AVX512F__
 	#define _MData_ __m512d
+	#define	_MInt_  __m512i
+	#define	_MHnt_  __m256i
 #elif   defined(__AVX__)
 	#define _MData_ __m256d
+	#define	_MInt_  __m256i
+	#define	_MHnt_  __m128i
 #else
 	#define _MData_ __m128d
+	#define	_MInt_  __m128i
 #endif
 
 #if	defined(__MIC__) || defined(__AVX512F__)
@@ -21,6 +29,8 @@
 		#define	_PREFIX_ _mm
 	#else
 		#define	_PREFIX_ _mm256
+		#define	_PREFXL_ _mm
+		#define opCodl(x,...) opCode_N(_PREFXL_, x, __VA_ARGS__)
 	#endif
 #endif
 
@@ -28,6 +38,388 @@
 #define	M_PI4	(M_PI2*M_PI2)
 #define	M_PI6	(M_PI4*M_PI2)
 
+
+constexpr float Inf_d = __builtin_inf();
+constexpr float Nan_d = __builtin_nan("0xFFFFF");
+
+constexpr float PiA_d = -3.1415926218032836914;
+constexpr float PiB_d = -3.1786509424591713469e-08;
+constexpr float PiC_d = -1.2246467864107188502e-16;
+constexpr float PiD_d = -1.2736634327021899816e-24;
+
+constexpr float s0_d  = -7.97255955009037868891952e-18;
+constexpr float s1_d  =  2.81009972710863200091251e-15;
+constexpr float s2_d  = -7.64712219118158833288484e-13;
+constexpr float s3_d  =  1.60590430605664501629054e-10;
+constexpr float s4_d  = -2.50521083763502045810755e-08;
+constexpr float s5_d  =  2.75573192239198747630416e-06;
+constexpr float s6_d  = -0.000198412698412696162806809;
+constexpr float s7_d  =  0.00833333333333332974823815;
+constexpr float s8_d  = -0.166666666666666657414808;
+#ifdef	__AVX512F__
+constexpr _MData_ rPid	    = {      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),
+				     1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),
+				     1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),
+				     1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.) };
+constexpr _MData_ rCte      = {   16777216.,   16777216.,   16777216.,   16777216.,   16777216.,   16777216.,   16777216.,   16777216.,
+				  16777216.,   16777216.,   16777216.,   16777216.,   16777216.,   16777216.,   16777216.,   16777216. };
+constexpr _MData_ oPid      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,
+				    1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
+constexpr _MData_ zeroNegd  = {        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,
+				       -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0 };
+constexpr _MData_ dHlf      = {         0.5,         0.5,         0.5,         0.5,         0.5,         0.5,         0.5,         0.5,
+				        0.5,         0.5,         0.5,         0.5,         0.5,         0.5,         0.5,         0.5 };
+constexpr _MData_ TriMaxd   = {        1e15,        1e15,        1e15,        1e15,        1e15,        1e15,        1e15,        1e15,
+				       1e15,        1e15,        1e15,        1e15,        1e15,        1e15,        1e15,        1e15 };
+constexpr _MData_ dInf      = {       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,
+				      Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d };
+constexpr _MData_ dNan      = {       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,
+				      Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d };
+constexpr _MData_ PiAd      = {       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,
+				      PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d,       PiA_d };
+constexpr _MData_ PiBd      = {       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,
+				      PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d,       PiB_d };
+constexpr _MData_ PiCd      = {       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,
+				      PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d,       PiC_d };
+constexpr _MData_ PiDd      = {       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,
+				      PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d,       PiD_d };
+constexpr _MData_ hPiAd     = {   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,
+				  0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d };
+constexpr _MData_ hPiBd     = {   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,
+				  0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d };
+constexpr _MData_ hPiCd     = {   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,
+				  0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d };
+constexpr _MData_ hPiDd     = {   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,
+				  0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d };
+constexpr _MData_ s0d       = {        s0_d,        s0_d,        s0_d,        s0_d,        s0_d,        s0_d,        s0_d,        s0_d,
+				       s0_d,        s0_d,        s0_d,        s0_d,        s0_d,        s0_d,        s0_d,        s0_d };
+constexpr _MData_ s1d       = {        s1_d,        s1_d,        s1_d,        s1_d,        s1_d,        s1_d,        s1_d,        s1_d,
+				       s1_d,        s1_d,        s1_d,        s1_d,        s1_d,        s1_d,        s1_d,        s1_d };
+constexpr _MData_ s2d       = {        s2_d,        s2_d,        s2_d,        s2_d,        s2_d,        s2_d,        s2_d,        s2_d,
+				       s2_d,        s2_d,        s2_d,        s2_d,        s2_d,        s2_d,        s2_d,        s2_d };
+constexpr _MData_ s3d       = {        s3_d,        s3_d,        s3_d,        s3_d,        s3_d,        s3_d,        s3_d,        s3_d,
+				       s3_d,        s3_d,        s3_d,        s3_d,        s3_d,        s3_d,        s3_d,        s3_d };
+constexpr _MData_ s4d       = {        s4_d,        s4_d,        s4_d,        s4_d,        s4_d,        s4_d,        s4_d,        s4_d,
+				       s4_d,        s4_d,        s4_d,        s4_d,        s4_d,        s4_d,        s4_d,        s4_d };
+constexpr _MData_ s5d       = {        s5_d,        s5_d,        s5_d,        s5_d,        s5_d,        s5_d,        s5_d,        s5_d,
+				       s5_d,        s5_d,        s5_d,        s5_d,        s5_d,        s5_d,        s5_d,        s5_d };
+constexpr _MData_ s6d       = {        s6_d,        s6_d,        s6_d,        s6_d,        s6_d,        s6_d,        s6_d,        s6_d,
+				       s6_d,        s6_d,        s6_d,        s6_d,        s6_d,        s6_d,        s6_d,        s6_d };
+constexpr _MData_ s7d       = {        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,
+				       s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d };
+constexpr _MData_ s8d       = {        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,
+				       s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d };
+constexpr _MInt_  iZero     = {           0,           0,           0,           0,           0,           0,           0,           0 };
+constexpr _MInt_  one       = {  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297 };
+constexpr _MInt_  two       = {  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594 };
+constexpr _MHnt_  iZerh     = {           0,           0,           0,           0 };
+constexpr _MHnt_  hOne      = {  4294967297,  4294967297,  4294967297,  4294967297 };
+constexpr _MHnt_  hTwo      = {  8589934594,  8589934594,  8589934594,  8589934594 };
+#elif   defined(__AVX__)
+constexpr _MData_ rPid	    = { M_1_PI/(1<<24), M_1_PI/(1<<24), M_1_PI/(1<<24), M_1_PI/(1<<24) };
+constexpr _MData_ dPid	    = { M_1_PI/(1<<23), M_1_PI/(1<<23), M_1_PI/(1<<23), M_1_PI/(1<<23) };
+constexpr _MData_ rCte      = {     (1<<24),     (1<<24),     (1<<24),     (1<<24) };
+constexpr _MData_ dCte      = {     (1<<23),     (1<<23),     (1<<23),     (1<<23) };
+constexpr _MData_ oPid      = {      M_1_PI,      M_1_PI,      M_1_PI,      M_1_PI };
+constexpr _MData_ zeroNegd  = {        -0.0,        -0.0,        -0.0,        -0.0 };
+constexpr _MData_ dHlf      = {         0.5,         0.5,         0.5,         0.5 };
+constexpr _MData_ dOne      = {         1.0,         1.0,         1.0,         1.0 };
+#ifdef	__FMA__
+#else
+#endif
+constexpr _MData_ TriMaxd   = {        1e15,        1e15,        1e15,        1e15 };
+constexpr _MData_ dInf      = {       Inf_d,       Inf_d,       Inf_d,       Inf_d };
+constexpr _MData_ dNan      = {       Nan_d,       Nan_d,       Nan_d,       Nan_d };
+constexpr _MData_ PiAd      = {       PiA_d,       PiA_d,       PiA_d,       PiA_d };
+constexpr _MData_ PiBd      = {       PiB_d,       PiB_d,       PiB_d,       PiB_d };
+constexpr _MData_ PiCd      = {       PiC_d,       PiC_d,       PiC_d,       PiC_d };
+constexpr _MData_ PiDd      = {       PiD_d,       PiD_d,       PiD_d,       PiD_d };
+constexpr _MData_ hPiAd     = {   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d,   0.5*PiA_d };
+constexpr _MData_ hPiBd     = {   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d,   0.5*PiB_d };
+constexpr _MData_ hPiCd     = {   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d,   0.5*PiC_d };
+constexpr _MData_ hPiDd     = {   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d,   0.5*PiD_d };
+constexpr _MData_ s0d       = {        s0_d,        s0_d,        s0_d,        s0_d };
+constexpr _MData_ s1d       = {        s1_d,        s1_d,        s1_d,        s1_d };
+constexpr _MData_ s2d       = {        s2_d,        s2_d,        s2_d,        s2_d };
+constexpr _MData_ s3d       = {        s3_d,        s3_d,        s3_d,        s3_d };
+constexpr _MData_ s4d       = {        s4_d,        s4_d,        s4_d,        s4_d };
+constexpr _MData_ s5d       = {        s5_d,        s5_d,        s5_d,        s5_d };
+constexpr _MData_ s6d       = {        s6_d,        s6_d,        s6_d,        s6_d };
+constexpr _MData_ s7d       = {        s7_d,        s7_d,        s7_d,        s7_d };
+constexpr _MData_ s8d       = {        s8_d,        s8_d,        s8_d,        s8_d };
+constexpr _MInt_  iZero     = {           0,           0,           0,           0 };
+constexpr _MInt_  one       = {  4294967297,  4294967297,  4294967297,  4294967297 };
+constexpr _MInt_  two       = {  8589934594,  8589934594,  8589934594,  8589934594 };
+constexpr _MHnt_  iZerh     = {           0,           0 };
+constexpr _MHnt_  hOne      = {  4294967297,  4294967297 };
+constexpr _MHnt_  hTwo      = {  8589934594,  8589934594 };
+#else
+constexpr _MData_ rPid	    = { M_1_PI/(1<<24), M_1_PI/(1<<24) };
+constexpr _MData_ dPid	    = { M_1_PI/(1<<23), M_1_PI/(1<<23) };
+constexpr _MData_ rCte      = {   (1 << 24),   (1 << 24) };
+constexpr _MData_ dCte      = {   (1 << 23),   (1 << 23) };
+constexpr _MData_ oPid      = {      M_1_PI,      M_1_PI };
+constexpr _MData_ zeroNegd  = {        -0.0,        -0.0 };
+constexpr _MData_ dHlf      = {         0.5,         0.5 };
+constexpr _MData_ dOne      = {         1.0,         1.0 };
+constexpr _MData_ TriMaxd   = {        1e15,        1e15 };
+constexpr _MData_ dInf      = {       Inf_d,       Inf_d };
+constexpr _MData_ dNan      = {       Nan_d,       Nan_d };
+constexpr _MData_ PiAd      = {       PiA_d,       PiA_d };
+constexpr _MData_ PiBd      = {       PiB_d,       PiB_d };
+constexpr _MData_ PiCd      = {       PiC_d,       PiC_d };
+constexpr _MData_ PiDd      = {       PiD_d,       PiD_d };
+constexpr _MData_ hPiAd     = {   0.5*PiA_d,   0.5*PiA_d };
+constexpr _MData_ hPiBd     = {   0.5*PiB_d,   0.5*PiB_d };
+constexpr _MData_ hPiCd     = {   0.5*PiC_d,   0.5*PiC_d };
+constexpr _MData_ hPiDd     = {   0.5*PiD_d,   0.5*PiD_d };
+constexpr _MData_ s0d       = {        s0_d,        s0_d };
+constexpr _MData_ s1d       = {        s1_d,        s1_d };
+constexpr _MData_ s2d       = {        s2_d,        s2_d };
+constexpr _MData_ s3d       = {        s3_d,        s3_d };
+constexpr _MData_ s4d       = {        s4_d,        s4_d };
+constexpr _MData_ s5d       = {        s5_d,        s5_d };
+constexpr _MData_ s6d       = {        s6_d,        s6_d };
+constexpr _MData_ s7d       = {        s7_d,        s7_d };
+constexpr _MData_ s8d       = {        s8_d,        s8_d };
+constexpr _MInt_  iZero     = {           0,           0 };
+constexpr _MInt_  one       = {  4294967297,  4294967297 };
+constexpr _MInt_  two       = {  8589934594,  8589934594 };
+#endif
+
+/*	Sleef	*/
+
+inline _MData_	opCode(sin_pd, _MData_ x)
+{
+	_MData_ u, d, s, uh, ul;
+#ifndef	__AVX__
+	_MInt_  qi;
+#else
+	_MHnt_  qi;
+#endif
+
+	uh = opCode(mul_pd, opCode(round_pd, opCode(mul_pd, x, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC), rCte);
+#if	defined(__AVX512F__) || defined(__FMA__)
+	ul = opCode(round_pd, opCode(fmsub_pd, x, oPid, uh), _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
+#else
+	ul = opCode(round_pd, opCode(sub_pd, opCode(mul_pd, x, oPid), uh), _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
+#endif 
+#if	defined(__AVX__)
+	qi = opCode(cvtpd_epi32, ul);	// Igual hay que downcast para SSE
+#else
+	auto tmp = opCode(cvtpd_epi32, ul);
+	qi = opCode(shuffle_epi32, tmp, 0b01010000);
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	d = opCode(fmadd_pd, uh, PiDd, x);
+	d = opCode(fmadd_pd, ul, PiDd, d);
+	d = opCode(fmadd_pd, uh, PiCd, d);
+	d = opCode(fmadd_pd, ul, PiCd, d);
+	d = opCode(fmadd_pd, uh, PiBd, d);
+	d = opCode(fmadd_pd, ul, PiBd, d);
+	d = opCode(fmadd_pd, opCode(add_pd, uh, ul), PiAd, d);
+#else
+	d = opCode(add_pd, opCode(mul_pd, ul, PiDd), x);
+	d = opCode(add_pd, opCode(mul_pd, uh, PiDd), d);
+	d = opCode(add_pd, opCode(mul_pd, ul, PiCd), d);
+	d = opCode(add_pd, opCode(mul_pd, uh, PiCd), d);
+	d = opCode(add_pd, opCode(mul_pd, ul, PiBd), d);
+	d = opCode(add_pd, opCode(mul_pd, uh, PiBd), d);
+	d = opCode(add_pd, opCode(mul_pd, opCode(add_pd, uh, ul), PiAd), d);
+#endif
+
+	s = opCode(mul_pd, d, d);
+
+#ifdef	__AVX512F__
+	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32, one, opCode(and_epi32, q, one)), d, zeroNegf);
+#elif	defined(__AVX2__)
+	d = opCode(xor_pd, d,
+		opCode(and_pd, zeroNegd,
+			opCode(castsi256_pd,
+				opCode(permutevar8x32_epi32,
+					opCode(castsi128_si256, opCodl(cmpeq_epi32, hOne, opCodl(and_si128, qi, hOne))),
+					opCode(set_epi32, 3, 3, 2, 2, 1, 1, 0, 0)))));
+#elif	defined(__AVX__)
+	d = opCode(xor_pd, d,
+		opCode(and_pd, zeroNegd,
+			opCode(cmp_pd,
+				opCode(cvtepi32_pd, opCodl(cmpeq_epi32, hOne, opCodl(and_si128, qi, hOne))),
+				opCode(set1_pd, -1.0),
+				_CMP_EQ_UQ)));
+#else
+	d = opCode(xor_pd, d,
+		opCode(and_pd, zeroNegd,
+			opCode(castsi128_pd, opCode(cmpeq_epi32, one, opCode(and_si128, qi, one)))));
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	u = opCode(fmadd_pd, s0d, s, s1d); 
+	u = opCode(fmadd_pd, u,   s, s2d); 
+	u = opCode(fmadd_pd, u,   s, s3d); 
+	u = opCode(fmadd_pd, u,   s, s4d); 
+	u = opCode(fmadd_pd, u,   s, s5d); 
+	u = opCode(fmadd_pd, u,   s, s6d); 
+	u = opCode(fmadd_pd, u,   s, s7d); 
+	u = opCode(fmadd_pd, u,   s, s8d); 
+	u = opCode(fmadd_pd, s, opCode(mul_pd, u, d), d);
+#else
+	u = opCode(add_pd, opCode(mul_pd, s0d, s), s1d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s2d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s3d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s4d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s5d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s6d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s7d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s8d); 
+	u = opCode(add_pd, d, opCode(mul_pd, s, opCode(mul_pd, u, d)));
+#endif
+
+#ifdef	__AVX512F__
+	u = opCode(mask_blend_ps,
+		opCode(cmp_ps, x, zeroNegf, _CMP_EQ_UQ) | opCode(cmp_ps, opCode(abs_ps, x), TriMaxf, _CMP_GT_OQ),
+		u, zeroNegf);
+#elif	defined(__AVX__)
+	u = opCode(blendv_pd, u,
+		zeroNegd,
+		opCode(andnot_pd, opCode(cmp_pd, x, dInf, _CMP_EQ_UQ),
+			opCode(or_pd,
+				opCode(cmp_pd, x, zeroNegd, _CMP_EQ_UQ),
+				opCode(cmp_pd,
+					opCode(andnot_pd, x, zeroNegd),
+					TriMaxd,
+					_CMP_GT_OQ))));
+#else
+	u = opCode(blendv_pd, u,
+		zeroNegd,
+		opCode(andnot_pd, opCode(cmpeq_pd, x, dInf),
+			opCode(or_pd,
+				opCode(cmpeq_pd, x, zeroNegd),
+				opCode(cmpgt_pd,
+					opCode(andnot_pd, x, zeroNegd),
+					TriMaxd))));
+#endif
+	return	u;
+}
+
+inline _MData_	opCode(cos_pd, _MData_ x)
+{
+	_MData_ u, d, s, uh, ul;
+#ifndef	__AVX__
+	_MInt_  qi;
+#else
+	_MHnt_  qi;
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	uh = opCode(round_pd, opCode(fmsub_pd, x, dPid, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+	qi = opCode(cvtpd_epi32, opCode(fmadd_pd, x, oPid, opCode(fnmsub_pd, uh, dPid, dHlf)));
+#else
+	uh = opCode(round_pd, opCode(sub_pd, opCode(mul_pd, x, dPid), rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+	qi = opCode(cvtpd_epi32, opCode(sub_pd, opCode(mul_pd, x, oPid), opCode(add_pd, opCode(mul_pd, uh, dPid), dHlf)));
+#endif
+	uh = opCode(mul_pd, uh, rCte);
+#if	defined(__AVX__)
+	qi = opCodl(add_epi32, opCodl(add_epi32, qi, qi), hOne);
+	ul = opCode(cvtepi32_pd, qi);
+#else
+	qi = opCode(add_epi32, opCode(add_epi32, qi, qi), one);
+	ul = opCode(cvtepi32_pd, qi);
+	qi = opCode(shuffle_epi32, qi, 0b01010000);
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	d = opCode(fmadd_pd, uh, hPiDd, x);
+	d = opCode(fmadd_pd, ul, hPiDd, d);
+	d = opCode(fmadd_pd, uh, hPiCd, d);
+	d = opCode(fmadd_pd, ul, hPiCd, d);
+	d = opCode(fmadd_pd, uh, hPiBd, d);
+	d = opCode(fmadd_pd, ul, hPiBd, d);
+	d = opCode(fmadd_pd, opCode(add_pd, uh, ul), hPiAd, d);
+#else
+	d = opCode(add_pd, opCode(mul_pd, ul, hPiDd), x);
+	d = opCode(add_pd, opCode(mul_pd, uh, hPiDd), d);
+	d = opCode(add_pd, opCode(mul_pd, ul, hPiCd), d);
+	d = opCode(add_pd, opCode(mul_pd, uh, hPiCd), d);
+	d = opCode(add_pd, opCode(mul_pd, ul, hPiBd), d);
+	d = opCode(add_pd, opCode(mul_pd, uh, hPiBd), d);
+	d = opCode(add_pd, opCode(mul_pd, opCode(add_pd, uh, ul), hPiAd), d);
+#endif
+
+	s = opCode(mul_pd, d, d);
+
+#ifdef	__AVX512F__
+	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32, one, opCode(and_epi32, q, one)), d, zeroNegf);
+#elif	defined(__AVX2__)
+	d = opCode(xor_pd, d,
+		opCode(and_pd, zeroNegd,
+			opCode(castsi256_pd,
+				opCode(permutevar8x32_epi32,
+					opCode(castsi128_si256, opCodl(cmpeq_epi32, iZerh, opCodl(and_si128, qi, hTwo))),
+					opCode(set_epi32, 3, 3, 2, 2, 1, 1, 0, 0)))));
+#elif	defined(__AVX__)
+	d = opCode(xor_pd, d,
+		opCode(and_pd, zeroNegd,
+			opCode(cmp_pd,
+				opCode(cvtepi32_pd, opCodl(cmpeq_epi32, iZerh, opCodl(and_si128, qi, hTwo))),
+				opCode(set1_pd, -1.0),
+				_CMP_EQ_UQ)));
+#else
+	d = opCode(xor_pd, d,
+		opCode(and_pd, zeroNegd,
+			opCode(castsi128_pd, opCode(cmpeq_epi32, iZero, opCode(and_si128, qi, two)))));
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	u = opCode(fmadd_pd, s0d, s, s1d); 
+	u = opCode(fmadd_pd, u,   s, s2d); 
+	u = opCode(fmadd_pd, u,   s, s3d); 
+	u = opCode(fmadd_pd, u,   s, s4d); 
+	u = opCode(fmadd_pd, u,   s, s5d); 
+	u = opCode(fmadd_pd, u,   s, s6d); 
+	u = opCode(fmadd_pd, u,   s, s7d); 
+	u = opCode(fmadd_pd, u,   s, s8d); 
+	u = opCode(fmadd_pd, s, opCode(mul_pd, u, d), d);
+#else
+	u = opCode(add_pd, opCode(mul_pd, s0d, s), s1d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s2d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s3d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s4d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s5d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s6d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s7d); 
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s8d); 
+	u = opCode(add_pd, d, opCode(mul_pd, s, opCode(mul_pd, u, d)));
+#endif
+
+#ifdef	__AVX512F__
+	u = opCode(mask_blend_ps,
+		opCode(cmp_ps, x, zeroNegf, _CMP_EQ_UQ) | opCode(cmp_ps, opCode(abs_ps, x), TriMaxf, _CMP_GT_OQ),
+		u, zeroNegf);
+#elif	defined(__AVX__)
+	u = opCode(blendv_pd, u,
+		dOne,
+		opCode(andnot_pd, opCode(cmp_pd, x, dInf, _CMP_EQ_UQ),
+			opCode(or_pd,
+				opCode(cmp_pd, x, zeroNegd, _CMP_EQ_UQ),
+				opCode(cmp_pd,
+					opCode(andnot_pd, x, zeroNegd),
+					TriMaxd,
+					_CMP_GT_OQ))));
+#else
+	u = opCode(blendv_pd, u,
+		dOne,
+		opCode(andnot_pd, opCode(cmpeq_pd, x, dInf),
+			opCode(or_pd,
+				opCode(cmpeq_pd, x, zeroNegd),
+				opCode(cmpgt_pd,
+					opCode(andnot_pd, x, zeroNegd),
+					TriMaxd))));
+#endif
+	return	u;
+}
+
+/*
 inline _MData_	opCode(sin_pd, _MData_ x)
 {
 	_MData_ tmp2, tmp3, tmp5, a, b, c;
@@ -69,6 +461,7 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 					opCode(mul_pd, tmp6, b)),
 				opCode(mul_pd, c, opCode(mul_pd, tmp4, tmp4)))));
 }
+*/
 
 inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 {
@@ -131,6 +524,273 @@ inline _MData_	opCode(md2_pd, const _MData_ &x)
 	#define	_MData_ __m128
 #endif 
 
+constexpr float Inf_f = __builtin_inff();
+constexpr float Nan_f = __builtin_nanf("0xFFFFF");
+
+constexpr float PiA_f = -3.140625f;
+constexpr float PiB_f = -0.0009670257568359375f;
+constexpr float PiC_f = -6.2771141529083251953e-07f;
+constexpr float PiD_f = -1.2154201256553420762e-10f;
+
+constexpr float s0_f  =  2.6083159809786593541503e-06f;
+constexpr float s1_f  = -0.0001981069071916863322258f;
+constexpr float s2_f  =  0.00833307858556509017944336f;
+constexpr float s3_f  = -0.166666597127914428710938f;
+#ifdef	__AVX512F__
+constexpr _MData_ oPif      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,
+				    1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
+constexpr _MData_ zeroNegf  = {       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,
+				      -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f };
+constexpr _MData_ fHlf      = {        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,
+				       0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f };
+constexpr _MData_ TriMaxf   = {         1e7,         1e7,         1e7,         1e7,         1e7,         1e7,         1e7,         1e7,
+					1e7,         1e7,         1e7,         1e7,         1e7,         1e7,         1e7,         1e7 };
+constexpr _MData_ fInf      = {       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,
+				      Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f };
+constexpr _MData_ fNan      = {       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,
+				      Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f };
+constexpr _MData_ PiAf      = {       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,
+				      PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f };
+constexpr _MData_ PiBf      = {       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,
+				      PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f };
+constexpr _MData_ PiCf      = {       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,
+				      PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f };
+constexpr _MData_ PiDf      = {       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,
+				      PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f };
+constexpr _MData_ hPiAf     = {  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,
+				 0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f };
+constexpr _MData_ hPiBf     = {  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,
+				 0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f };
+constexpr _MData_ hPiCf     = {  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,
+				 0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f };
+constexpr _MData_ hPiDf     = {  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,
+				 0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f };
+constexpr _MData_ s0f       = {        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,
+				       s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f };
+constexpr _MData_ s1f       = {        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,
+				       s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f };
+constexpr _MData_ s2f       = {        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,
+				       s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f };
+constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,
+				       s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f };
+#elif   defined(__AVX__)
+constexpr _MData_ oPif      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
+constexpr _MData_ zeroNegf  = {       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f };
+constexpr _MData_ fHlf       = {        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f,        0.5f };
+#ifdef	__FMA__
+constexpr _MData_ TriMaxf   = {         1e7,         1e7,         1e7,         1e7,         1e7,         1e7,         1e7,         1e7 };
+#else
+constexpr _MData_ TriMaxf   = {         1e5,         1e5,         1e5,         1e5,         1e5,         1e5,         1e5,         1e5 };
+#endif
+constexpr _MData_ fInf      = {       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f,       Inf_f };
+constexpr _MData_ fNan      = {       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f,       Nan_f };
+constexpr _MData_ PiAf      = {       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f,       PiA_f };
+constexpr _MData_ PiBf      = {       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f,       PiB_f };
+constexpr _MData_ PiCf      = {       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f,       PiC_f };
+constexpr _MData_ PiDf      = {       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f,       PiD_f };
+constexpr _MData_ hPiAf     = {  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f };
+constexpr _MData_ hPiBf     = {  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f };
+constexpr _MData_ hPiCf     = {  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f };
+constexpr _MData_ hPiDf     = {  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f };
+constexpr _MData_ s0f       = {        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f,        s0_f };
+constexpr _MData_ s1f       = {        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f };
+constexpr _MData_ s2f       = {        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f };
+constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f };
+#else
+constexpr _MData_ oPif      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
+constexpr _MData_ zeroNegf  = {       -0.0f,       -0.0f,       -0.0f,       -0.0f };
+constexpr _MData_ fHlf       = {        0.5f,        0.5f,        0.5f,        0.5f };
+constexpr _MData_ TriMaxf   = {         1e5,         1e5,         1e5,         1e5 };
+constexpr _MData_ fInf      = {       Inf_f,       Inf_f,       Inf_f,       Inf_f };
+constexpr _MData_ PiAf      = {       PiA_f,       PiA_f,       PiA_f,       PiA_f };
+constexpr _MData_ PiBf      = {       PiB_f,       PiB_f,       PiB_f,       PiB_f };
+constexpr _MData_ PiCf      = {       PiC_f,       PiC_f,       PiC_f,       PiC_f };
+constexpr _MData_ PiDf      = {       PiD_f,       PiD_f,       PiD_f,       PiD_f };
+constexpr _MData_ hPiAf     = {  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f,  0.5f*PiA_f };
+constexpr _MData_ hPiBf     = {  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f,  0.5f*PiB_f };
+constexpr _MData_ hPiCf     = {  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f,  0.5f*PiC_f };
+constexpr _MData_ hPiDf     = {  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f,  0.5f*PiD_f };
+constexpr _MData_ s0f       = {        s0_f,        s0_f,        s0_f,        s0_f };
+constexpr _MData_ s1f       = {        s1_f,        s1_f,        s1_f,        s1_f };
+constexpr _MData_ s2f       = {        s2_f,        s2_f,        s2_f,        s2_f };
+constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3_f };
+#endif
+
+/*	Sleef	*/
+
+inline _MData_	opCode(sin_ps, _MData_ x)
+{
+	_MData_ u, d, s;
+	_MInt_  q;
+
+	q = opCode(cvtps_epi32, opCode(mul_ps, x, oPif));
+	u = opCode(cvtepi32_ps, q);
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	d = opCode(fmadd_ps, u, PiAf, x);
+	d = opCode(fmadd_ps, u, PiBf, d);
+	d = opCode(fmadd_ps, u, PiCf, d);
+	d = opCode(fmadd_ps, u, PiDf, d);
+#else
+	d = opCode(add_ps, opCode(mul_ps, u, PiAf), x);	// REVISAR
+	d = opCode(add_ps, opCode(mul_ps, u, PiBf), d);
+	d = opCode(add_ps, opCode(mul_ps, u, PiCf), d);
+	d = opCode(add_ps, opCode(mul_ps, u, PiDf), d);
+#endif
+
+	s = opCode(mul_ps, d, d);
+
+#ifdef	__AVX512F__
+	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32, one, opCode(and_epi32, q, one)), d, zeroNegf);
+#elif	defined(__AVX2__)
+	d = opCode(xor_ps, d,
+		opCode(and_ps, zeroNegf,
+			opCode(castsi256_ps, opCode(cmpeq_epi32, one,
+				opCode(castps_si256, opCode(and_ps, opCode(castsi256_ps, q), opCode(castsi256_ps, one)))))));
+#elif	defined(__AVX__)
+	d = opCode(xor_ps, d,
+		opCode(and_ps, zeroNegf,
+			opCode(cmp_ps,
+				opCode(and_ps, opCode(castsi256_ps, q), opCode(castsi256_ps, one)),
+				opCode(castsi256_ps, one),
+				_CMP_EQ_UQ)));
+#else
+	d = opCode(xor_ps, d,
+		opCode(and_ps, zeroNegf,
+			opCode(castsi128_ps, opCode(cmpeq_epi32, one, opCode(and_si128, q, one)))));
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	u = opCode(fmadd_ps, s0f, s, s1f); 
+	u = opCode(fmadd_ps, u,   s, s2f); 
+	u = opCode(fmadd_ps, u,   s, s3f); 
+	u = opCode(fmadd_ps, s, opCode(mul_ps, u, d), d);
+#else
+	u = opCode(add_ps, opCode(mul_ps, s0f, s), s1f); 
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s2f); 
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s3f); 
+	u = opCode(add_ps, d, opCode(mul_ps, s, opCode(mul_ps, u, d)));
+#endif
+
+#ifdef	__AVX512F__
+	u = opCode(mask_blend_ps,
+		opCode(cmp_ps, x, zeroNegf, _CMP_EQ_UQ) | opCode(cmp_ps, opCode(abs_ps, x), TriMaxf, _CMP_GT_OQ),
+		u, zeroNegf);
+#elif	defined(__AVX__)
+	u = opCode(blendv_ps, u,
+		zeroNegf,
+		opCode(or_ps,
+			opCode(cmp_ps, x, zeroNegf, _CMP_EQ_UQ),
+			opCode(cmp_ps,
+				opCode(andnot_ps, x, zeroNegf),
+				TriMaxf,
+				_CMP_GT_OQ)));
+
+	u = opCode(or_ps, u, opCode(cmp_ps, d, fInf, _CMP_EQ_UQ));
+#else
+	u = opCode(blendv_ps, u,
+		zeroNegf,
+		opCode(or_ps,
+			opCode(cmpeq_ps, x, zeroNegf),
+			opCode(cmpgt_ps,
+				opCode(andnot_ps, x, zeroNegf),
+				TriMaxf)));
+	u = opCode(or_ps, u, opCode(cmpeq_ps, d, fInf));
+#endif
+
+
+	return	u;
+}
+
+inline _MData_	opCode(cos_ps, _MData_ x)
+{
+	_MData_ u, d, s;
+	_MInt_  q;
+
+	q = opCode(cvtps_epi32, opCode(sub_ps, opCode(mul_ps, x, oPif), fHlf));
+#if	defined(__AVX__) && (not defined(__AVX2__) && not defined(__AVX512F__))
+	auto uq = opCode(extractf128_si256, q, 1);
+
+	uq = opCodl(add_epi32, opCodl(add_epi32, uq, uq), opCode(castsi256_si128, one));
+
+	q = opCode(castsi128_si256, opCodl(add_epi32, opCodl(add_epi32, opCode(castsi256_si128, q), opCode(castsi256_si128, q)), opCode(castsi256_si128, one)));
+	q = opCode(insertf128_si256, q, uq, 1);
+#else
+	q = opCode(add_epi32, opCode(add_epi32, q, q), one);
+#endif
+	u = opCode(cvtepi32_ps, q);
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	d = opCode(fmadd_ps, u, hPiAf, x);
+	d = opCode(fmadd_ps, u, hPiBf, d);
+	d = opCode(fmadd_ps, u, hPiCf, d);
+	d = opCode(fmadd_ps, u, hPiDf, d);
+#else
+	d = opCode(add_ps, opCode(mul_ps, u, hPiAf), x);
+	d = opCode(add_ps, opCode(mul_ps, u, hPiBf), d);
+	d = opCode(add_ps, opCode(mul_ps, u, hPiCf), d);
+	d = opCode(add_ps, opCode(mul_ps, u, hPiDf), d);
+#endif
+
+	s = opCode(mul_ps, d, d);
+
+#ifdef	__AVX512F__
+	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32, iZero, opCode(and_epi32, q, two)), d, zeroNegf);
+#elif	defined(__AVX2__)
+	d = opCode(xor_ps, d,
+		opCode(and_ps, zeroNegf,
+			opCode(castsi256_ps, opCode(cmpeq_epi32, iZero,
+				opCode(castps_si256, opCode(and_ps, opCode(castsi256_ps, q), opCode(castsi256_ps, two)))))));
+#elif	defined(__AVX__)
+	d = opCode(xor_ps, d,
+		opCode(and_ps, zeroNegf,
+			opCode(cmp_ps,
+				opCode(and_ps, opCode(castsi256_ps, q), opCode(castsi256_ps, two)),
+				opCode(castsi256_ps, iZero),
+				_CMP_EQ_UQ)));
+#else
+	d = opCode(xor_ps, d,
+		opCode(and_ps, zeroNegf,
+			opCode(castsi128_ps, opCode(cmpeq_epi32, iZero, opCode(and_si128, q, two)))));
+#endif
+
+#if	defined(__AVX512F__) || defined(__FMA__)
+	u = opCode(fmadd_ps, s0f, s, s1f); 
+	u = opCode(fmadd_ps, u,   s, s2f); 
+	u = opCode(fmadd_ps, u,   s, s3f); 
+	u = opCode(fmadd_ps, s, opCode(mul_ps, u, d), d);
+#else
+	u = opCode(add_ps, opCode(mul_ps, s0f, s), s1f); 
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s2f); 
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s3f); 
+	u = opCode(add_ps, d, opCode(mul_ps, s, opCode(mul_ps, u, d)));
+#endif
+
+#ifdef	__AVX512F__
+	u = opCode(mask_blend_ps, opCode(cmp_ps, opCode(abs_ps, x), TriMaxf, _CMP_GT_OQ), u, fNan);
+#elif	defined(__AVX__)
+	u = opCode(andnot_ps,
+		opCode(cmp_ps,
+			opCode(andnot_ps, x, zeroNegf),
+			TriMaxf,
+			_CMP_GT_OQ),
+		u);
+
+	u = opCode(or_ps, u, opCode(cmp_ps, d, fInf, _CMP_EQ_UQ));
+#else
+	u = opCode(andnot_ps,
+		opCode(cmpgt_ps,
+			opCode(andnot_ps, x, zeroNegf),
+			TriMaxf),
+		u);
+	u = opCode(or_ps, u, opCode(cmpeq_ps, d, fInf));
+#endif
+
+	return	u;
+}
+
+
+/*
 inline _MData_	opCode(sin_ps, _MData_ x)
 {
 	_MData_ tmp2, tmp3, tmp5, a, b, c;
@@ -172,7 +832,7 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 					opCode(mul_ps, tmp6, b)),
 				opCode(mul_ps, c, opCode(mul_ps, tmp4, tmp4)))));
 }
-
+*/
 inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 {
 	_MData_	min, ret;
@@ -239,3 +899,5 @@ inline _MData_	opCode(md2_ps, const _MData_ &x)
 #undef opCode_P
 #undef opCode_N
 #undef opCode
+
+#endif

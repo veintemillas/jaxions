@@ -72,6 +72,7 @@
 	{
 		VQCD_1,
 		VQCD_2,
+		VQCD_NONE,
 	}	VqcdType;
 
 	typedef enum	ConfType_s
@@ -171,4 +172,23 @@
 		FFT_BCK    = 2,
 		FFT_FWDBCK = 3,
 	}	FFTdir;
+
+	typedef	enum	PropType_s {
+		PROP_NONE	= 0,		// For parsing
+		PROP_SPEC	= 1,		// Spectral flag
+		PROP_LEAP	= 2,
+		PROP_OMELYAN2	= 4,
+		PROP_OMELYAN4	= 8,
+		PROP_RKN4	= 16,
+		PROP_MASK	= 30,		// So far... Masks the integrator type, removing the spectral flag
+		PROP_SLEAP	= 3,
+		PROP_SOMELYAN2	= 5,
+		PROP_SOMELYAN4	= 9,
+		PROP_SRKN4	= 17,
+	}	PropType;
+
+	inline PropType		operator &  (PropType  lhs, const PropType rhs) { return static_cast<PropType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
+	inline PropType&	operator &= (PropType &lhs, const PropType rhs) { lhs  = static_cast<PropType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
+	inline PropType		operator |  (PropType  lhs, const PropType rhs) { return static_cast<PropType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
+	inline PropType&	operator |= (PropType &lhs, const PropType rhs) { lhs  = static_cast<PropType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
 #endif

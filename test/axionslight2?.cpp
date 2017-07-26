@@ -357,6 +357,9 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
+	auto llTmp = 0.5/pow(delta/msa,2.);
+	initPropagator (pType, axion, nQcd, delta, llTmp, VQCD_1);
+
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
@@ -460,7 +463,7 @@ int	main (int argc, char *argv[])
 			//printMpi("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
 			if (axion->Field() == FIELD_SAXION)
 			{
-				propagate (axion, dzaux, llaux, nQcd, delta, cDev, VQCD_1);
+				propagate (axion, dzaux);
 
                 if (nstrings_global < 500)
                 {

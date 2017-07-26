@@ -30,14 +30,16 @@ double LL = 15000.;
 double parm2 = 0.;
 
 
-bool lowmem = false;
-bool uPrec  = false;
+bool lowmem   = false;
+bool uPrec    = false;
+bool spectral = false;
 
 size_t kMax  = 2;
 //JAVIER played with the following number
 size_t iter  = 40;
 size_t parm1 = 0;
 
+PropType  pType = PROP_NONE;
 ConfType  cType = CONF_NONE;
 FieldType fType = FIELD_SAXION;
 
@@ -81,6 +83,8 @@ void	printUsage(char *name)
 	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
 	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
 	printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
+	printf("--prop  leap/rkn4/om2/om4       Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
+	printf("--spec                          Enables the spectral propagator for the laplacian (default, disabled) \n");
 	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n");
 	printf("--help                          Prints this message.\n");
 
@@ -469,7 +473,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (strlen(argv[i+1]) > 96)
 			{
-				printf("Error: Name too long, keep it under 96 characters\n");
+				printf("Error: name too long, keep it under 96 characters\n");
 				exit(1);
 			}
 
@@ -493,7 +497,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (kMax < 0)
 			{
-				printf("Error: The maximum momentum must be equal or greater than zero.\n");
+				printf("Error: the maximum momentum must be equal or greater than zero.\n");
 				exit(1);
 			}
 
@@ -641,6 +645,56 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--prop"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a propagator class (leap/rkn4/om2/om4).\n");
+				exit(1);
+			}
+
+			if (!strcmp(argv[i+1], "leap"))
+			{
+				pType |= PROP_LEAP;
+			} 
+			else if (!strcmp(argv[i+1], "rkn4"))
+			{
+				pType |= PROP_RKN4;
+			}
+			else if (!strcmp(argv[i+1], "om2"))
+			{
+				pType |= PROP_OMELYAN2;
+			}
+			else if (!strcmp(argv[i+1], "om4"))
+			{
+				pType |= PROP_OMELYAN4;
+			}
+			else
+			{
+				printf("Error: unrecognized propagator %s\n", argv[i+1]);
+				exit(1);
+			}
+
+			if (spectral)
+				pType |= PROP_SPEC;
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--spec"))
+		{
+			spectral = true;
+
+			pType |= PROP_SPEC;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		//JAVIER added gradient
 		if (!strcmp(argv[i], "--lapla"))
 		{
@@ -683,6 +737,9 @@ int	parseArgs (int argc, char *argv[])
 		parm1 = kMax;
 		parm2 = kCrit;
 	}
+
+	if ((pType & PROP_MASK) == PROP_NONE)
+		pType |= PROP_RKN4;
 
 	return	procArgs;
 }

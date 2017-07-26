@@ -153,8 +153,10 @@ int	main (int argc, char *argv[])
 	LogOut ("Folding configuration\n");
 	munge(FOLD_ALL);
 
-	LogOut ("Transferring configuration to device\n");
-	axion->transferDev(FIELD_MV);
+	if (cDev != DEV_CPU) {
+		LogOut ("Transferring configuration to device\n");
+		axion->transferDev(FIELD_MV);
+	}
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -170,6 +172,8 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
+	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
@@ -182,20 +186,41 @@ int	main (int argc, char *argv[])
 		index++;
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-			sPropagate (axion, dz, nQcd, LL, VQCD_1);
+			propagate (axion, dz);
 
 		auto strDen = strings(axion, str);
 
 		energy(axion, fCount, eRes, false, delta, nQcd, LL);
 
-		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Spectral Saxion"));
+		if (axion->LowMem())
+			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("Lowmem RKN4 Saxion"));
+		else
+			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
 
 		createMeas(axion, index);
-		writeString(str, strDen);
+		writeEDens(axion, index);
+
+		if (axion->Field() == FIELD_SAXION) {
+			writeString(str, strDen);
+		}
+
+		writeMapHdf5(axion);
 		writeEnergy(axion, eRes);
 		writePoint(axion);
 		destroyMeas();
 
+		if (strDen.strDen == 0 && axion->Field() == FIELD_SAXION) {
+			LogOut("--------------------------------------------------\n");
+			LogOut("              TRANSITION TO THETA \n");
+			LogOut("--------------------------------------------------\n");
+
+			munge(UNFOLD_ALL);
+			writeConf(axion, index);
+
+			double saskia = 0.0;
+
+			cmplxToTheta (axion, fCount, saskia);
+		}
 	} // zloop
 
 	current = std::chrono::high_resolution_clock::now();
@@ -204,15 +229,12 @@ int	main (int argc, char *argv[])
 	LogOut("\n PROGRAMM FINISHED\n");
 
 	munge(UNFOLD_ALL);
-
-//	writeConf(axion, index);
+	writeConf(axion, index);
 
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);
 	LogOut("#_prints = %i\n", index);
 	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
-	LogOut("GFlops: %.3f\n", fCount->GFlops());
-	LogOut("GBytes: %.3f\n", fCount->GBytes());
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);

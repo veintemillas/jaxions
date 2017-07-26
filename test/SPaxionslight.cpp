@@ -356,6 +356,8 @@ int	main (int argc, char *argv[])
 	LogOut ("Start redshift loop\n\n");
 	fflush (stdout);
 
+	initPropagator (pType | PROP_SPEC, axion, nQcd, delta, llconstantZ2, VQCD_1);
+
 	commSync();
 
 	start = std::chrono::high_resolution_clock::now();
@@ -485,12 +487,9 @@ int	main (int argc, char *argv[])
 			//--------------------------------------------------
 
 			//LogOut("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
-//			if (axion->Field() == FIELD_SAXION)
-//			{
-				//propagate (axion, dzaux, delta, nQcd, llaux, VQCD_1);
 			if (axion->Field() == FIELD_SAXION)
 			{
-				sPropagate (axion, dzaux, nQcd, llaux, VQCD_1);
+				propagate (axion, dzaux);
 				if (nstrings_global < 500)
 				{
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
@@ -557,7 +556,7 @@ int	main (int argc, char *argv[])
 	    }
 			else
 			{
-				propagate (axion, dzaux, delta, nQcd, llaux, VQCD_1);
+				propagate (axion, dzaux);
 			}
 
 
