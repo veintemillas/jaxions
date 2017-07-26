@@ -179,7 +179,7 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 #endif
 
 #ifdef	USE_XEON
-		float 	    * m			= (float	* )		m_;
+		float 	    *		   m	= (float	* )		m_;
 		float 	    * __restrict__ v	= (float	* __restrict__) v_;
 		const float * __restrict__ m2	= (const float  * __restrict__) m2_;
 
@@ -287,6 +287,28 @@ inline	void	propSpecKernelXeon(void * m_, void * __restrict__ v_, const void * _
 #undef	step
 	}
 }
+
+
+void    propSpecKernelXeon(void * m, void * __restrict__ v, const void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double LL, const double nQcd,
+			   const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, const VqcdType VQcd) {
+
+	switch (VQcd) {
+		case VQCD_1:
+			propSpecKernelXeon<VQCD_1> (m, v, m2, z, dz, c, d, LL, nQcd, fMom, Lx, Vo, Vf, precision);
+			break;
+
+		case VQCD_2:
+			propSpecKernelXeon<VQCD_2> (m, v, m2, z, dz, c, d, LL, nQcd, fMom, Lx, Vo, Vf, precision);
+			break;
+
+		case VQCD_NONE:
+			LogError ("Error: saxion propagator requires a potential");
+			exit(1);
+			break;
+	}
+}
+
+/*
 
 template<const VqcdType VQcd>
 inline	void	propSpecXeon	(Scalar *axionField, const double dz, const double LL, const double nQcd, const double fMom, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision)
@@ -455,3 +477,4 @@ void	propSpecCpu	(Scalar *axionField, const double dz, const double LL, const do
 			break;
 	}
 }
+*/
