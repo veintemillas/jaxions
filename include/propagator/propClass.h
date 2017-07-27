@@ -3,6 +3,7 @@
 
 	#include <cmath>
 	#include <string>
+	#include <functional>
 	#include "propagator/propBase.h"
 	#include "scalar/scalarField.h"
 	#include "utils/utils.h"
