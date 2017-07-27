@@ -4,8 +4,19 @@
 #include <complex>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
-#include "propagator/RKParms.h"
 #include "utils/index.h"
+
+	/*	Runge-Kutta-Nystrom 4th order	*/
+
+	#define C1  0.1344961992774310892
+	#define D1  0.5153528374311229364
+	#define C2  -0.2248198030794208058
+	#define D2  -0.085782019412973646
+	#define C3  0.7563200005156682911
+	#define D3  0.4415830236164665242
+	#define C4  0.3340036032863214255
+	#define D4  0.1288461583653841854
+
 
 using namespace std;
 

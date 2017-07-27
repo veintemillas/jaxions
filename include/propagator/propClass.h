@@ -345,7 +345,6 @@
 	void	PropClass<nStages, lastStage, VQcd>::tSpecCpu	(const double dz) {
 
 		double *z = axionField->zV();
-		double lambda = LL;
 
 		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
@@ -354,7 +353,7 @@
 			const double	c0 = c[s], d0 = d[s];
 
 			applyLaplacian(axionField);
-			propSpecThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, nQcd, fMom, Lx, S, V+S, precision);
+			sPropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, nQcd, fMom, Lx, S, V+S, precision);
 			*z += dz*d[s];
 		}
 
@@ -364,7 +363,7 @@
 			const double	c0 = c[nStages];
 
 			applyLaplacian(axionField);
-			propSpecThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0.0, nQcd, fMom, Lx, S, V+S, precision);
+			sPropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0.0, nQcd, fMom, Lx, S, V+S, precision);
 		}
 	}
 	// Generic saxion propagator
@@ -477,7 +476,7 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			propSpecKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, lambda, nQcd, fMom, Lx, S, V+S, precision, VQcd);
+			sPropKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, lambda, nQcd, fMom, Lx, S, V+S, precision);
 			*z += dz*d[s];
 		}
 
@@ -491,7 +490,7 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			propSpecKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision,VQcd);
+			sPropKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 	}
 
