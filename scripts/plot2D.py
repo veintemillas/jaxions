@@ -51,15 +51,34 @@ class	Plot2D():
 			Lz = fileHdf5["/"].attrs.get("Depth")
 			zR = fileHdf5["/"].attrs.get("z")
 
+			fl = fileHdf5["/"].attrs.get("Field type")
+
 			if self.Lx != Lx or self.Ly != Ly or self.Lz != Lz:
 				print("Error: Size mismatch (%d %d %d) vs (%d %d %d)\nAre you mixing files?\n" % (Lx, Ly, Lz, self.Lx, self.Ly, self.Lz))
 				exit()
 
-			mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
-			rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
-			rMax  = np.amax(rData)
-			rData = rData/rMax
-			aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + np.pi)/(2.*np.pi)
+			if fl == "Saxion":
+				mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+				rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+				rMax  = np.amax(rData)
+				rData = rData/rMax
+				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + np.pi)/(2.*np.pi)
+			elif fl == "Axion":
+				aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+				pm = np.amax(aData)
+				print ("BMax %f" % pm)
+				rData = np.ones(aData.shape)
+				pData = np.ones(aData.shape)*np.pi
+				aData = aData + pData
+				iData = np.trunc(aData/(2*np.pi))
+				aData = aData - iData*(2*np.pi)
+				aData = aData - pData
+				pm = np.amax(aData)
+				print ("AMax %f" % pm)
+				rMax  = zR
+			else:
+				print("Unrecognized field type %s" % fl)
+				exit()
 
 			self.allData.append([rData, aData, zR, rMax])
 			fileHdf5.close()
