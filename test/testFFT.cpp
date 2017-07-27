@@ -33,7 +33,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, FIELD_SAXION, CONF_NONE, 0, 0, NULL);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, FIELD_SAXION, CONF_NONE, 0, 0);
 	readConf(&axion, 0);
 
 	//--------------------------------------------------

@@ -1,5 +1,4 @@
-#include <cstdio>
-#include <cstdlib>
+#include <memory>
 #include <cstring>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
@@ -73,28 +72,16 @@ StringData	Strings::runCpu	()
 	return	stringCpu(axionField, Lx, V, S, precision, strData);
 }
 
-StringData	Strings::runXeon	()
-{
-#ifdef	USE_XEON
-	return	stringXeon(axionField, Lx, V, S, precision, strData);
-#else
-	LogError("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 using namespace profiler;
 
-//StringData	strings	(Scalar *field, void *strData, FlopCounter *fCount)
 StringData	strings	(Scalar *field, void *strData)
 {
 	LogMsg	(VERB_HIGH, "Called strings");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
 
-
 	prof.start();
 
-	Strings *eStr = new Strings(field, strData);
+	auto	eStr = std::make_unique<Strings> (field, strData);
 
 	StringData	strTmp, strDen;
 
@@ -102,8 +89,6 @@ StringData	strings	(Scalar *field, void *strData)
 		strDen.strDen = 0;
 		strDen.strChr = 0;
 		strDen.wallDn = 0;
-
-		delete eStr;
 
 		prof.stop();
 
@@ -126,14 +111,9 @@ StringData	strings	(Scalar *field, void *strData)
 			strTmp = eStr->runGpu ();
 			break;
 
-		case	DEV_XEON:
-			strTmp = eStr->runXeon();
-			break;
-
 		default:
-			LogError ("Not a valid device\n");
+			LogError ("Error: invalid device\n");
 			prof.stop();
-			delete eStr;
 			return strDen;
 	}
 
@@ -147,8 +127,6 @@ StringData	strings	(Scalar *field, void *strData)
 	prof.add(eStr->Name(), eStr->GFlops(), eStr->GBytes());
 
 	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", eStr->Name().c_str(), prof.Prof()[eStr->Name()].GFlops(), prof.Prof()[eStr->Name()].GBytes());
-
-	delete	eStr;
 
 	return	strDen;
 }

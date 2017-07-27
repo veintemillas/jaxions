@@ -33,8 +33,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	Scalar *axion;
 	char fileName[256];
 
@@ -43,7 +41,7 @@ int	main (int argc, char *argv[])
 	} else {
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 		else
 		{
 			//This reads from an Axion.$fIndex file
@@ -190,7 +188,7 @@ int	main (int argc, char *argv[])
 
 		auto strDen = strings(axion, str);
 
-		energy(axion, fCount, eRes, false, delta, nQcd, LL);
+		energy(axion, eRes, false, delta, nQcd, LL);
 
 		if (axion->LowMem())
 			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
@@ -223,7 +221,6 @@ int	main (int argc, char *argv[])
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
 
-	delete fCount;
 	delete axion;
 
 	endAxions();

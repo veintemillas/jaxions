@@ -7,22 +7,32 @@
 
 namespace profiler {
 
-	static	std::map<ProfType,Profiler>	profs;
+	static	std::map<ProfType,Profiler>			profs;
+	static	std::chrono::high_resolution_clock::time_point	stPt;
 
-	void	Profiler::printStats	() {
-        	for (auto data = prof.cbegin(); data != prof.cend(); data++)
+	static	double tTime = 0.;
+
+	double	Profiler::printStats	() {
+		double	aTime = 0.;
+
+		for (auto data = prof.cbegin(); data != prof.cend(); data++)
 	        {
 			std::string	name   = data->first;
 		        FlopCounter	fCount = data->second;
 
-//			if (fCount.Started() == true)
-			        LogMsg (VERB_NORMAL, "\tFunction %-20s GFlops %lf\tGBytes %lf", name.c_str(), fCount.GFlops(), fCount.GBytes());
+			aTime += fCount.DTime();
+
+			LogMsg (VERB_NORMAL, "\tFunction %-20s GFlops %.4lf\tGBytes %.4lf\tTotal time %.2lfs (%.2lf\%)", name.c_str(), fCount.GFlops(), fCount.GBytes(), fCount.DTime(), 100.*fCount.DTime()/tTime);
         	}
+
+		return	aTime;
 	}
 
 	void	initProfilers() {
 
-		Profiler	scalarProfiler("Scalar class");
+		stPt = std::chrono::high_resolution_clock::now();
+
+		Profiler	scalarProfiler("Scalar");
 		profs.insert(std::make_pair(PROF_SCALAR, scalarProfiler));
 
 
@@ -57,12 +67,17 @@ namespace profiler {
 	}
 
 	void	printProfStats() {
+		double	aTime = 0.;
+
+		tTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - stPt).count()*1e-6;
+
 		for (auto &data : profs) {
 			auto &cProf = data.second;
 			LogMsg(VERB_NORMAL, "Profiler %s:", cProf.name().c_str());
-			cProf.printStats();
+			aTime += cProf.printStats();
 			LogMsg(VERB_NORMAL, "");
 		}
+		LogMsg (VERB_NORMAL, "Unaccounted time %.2lfs of %.2lfs (%.2lf\%)", tTime - aTime, tTime, 100.*(1. - aTime/tTime));
 	}
 
 	Profiler&	getProfiler(ProfType pType) {

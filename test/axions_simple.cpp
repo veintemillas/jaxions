@@ -43,7 +43,7 @@ int	main (int argc, char *argv[])
 	{
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 		else
 		{
 			//This reads from an Axion.00000 file
@@ -197,7 +197,7 @@ int	main (int argc, char *argv[])
 			//LogOut(" Done!");
 			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 			writeMap (axion, index);
-			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			//energy(axion, LL, nQcd, delta, cDev, eRes);
 			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %d\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz, nstrings);
 			printf("%d/%d | z = %lf | st = %d | Vr %+lf Vt %+lf Kr %+lf Kt %+lf Grz %+lf Gtz %+lf\n", index, nLoops, (*axion->zV()), nstrings, Vr, Vt, Kr, Kt, Grz, Gtz);
@@ -265,7 +265,7 @@ int	main (int argc, char *argv[])
 
 			memcpy   (axion->mCpu(), static_cast<char *> (axion->mCpu()) + S0*sizeZ*axion->DataSize(), S0*axion->DataSize());
 			writeMap (axion, index);
-			//energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			//energy(axion, LL, nQcd, delta, cDev, eRes);
 			axion->writeENERGY ((*(axion->zV() )),file_energy, Grz, Gtz, Vr, Vt, Kr, Kt);
 			fprintf(file_energy2,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %d\n", (*axion->zV()), Vr, Vt, Kr, Kt, Grz, Gtz, nstrings);
 			printf("%d/%d | z = %lf | st = %d | Vr %+lf Vt %+lf Kr %+lf Kt %+lf Grz %+lf Gtz %+lf\n", index, nLoops, (*axion->zV()), nstrings, Vr, Vt, Kr, Kt, Grz, Gtz);

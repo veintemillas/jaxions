@@ -51,16 +51,6 @@ void	NormaliseField::runCpu	()
 	normXeon(axionField, fIdx);
 }
 
-void	NormaliseField::runXeon	()
-{
-#ifdef	USE_XEON
-	normXeon(axionField, fIdx);
-#else
-	LogError ("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 using namespace profiler;
 
 void	normaliseField	(Scalar *field, const FieldIndex fIdx)
@@ -81,10 +71,6 @@ void	normaliseField	(Scalar *field, const FieldIndex fIdx)
 
 		case DEV_GPU:
 			nField->runGpu ();
-			break;
-
-		case	DEV_XEON:
-			nField->runXeon();
 			break;
 
 		default:

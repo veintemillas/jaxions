@@ -26,9 +26,6 @@
 	#endif
 #endif
 
-#ifdef USE_XEON
-__attribute__((target(mic)))
-#endif
 void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
 			     const double nQcd, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
@@ -132,7 +129,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float tV	= 2.*M_PI*zR;
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
 

@@ -1,5 +1,4 @@
-#include <cstdio>
-#include <cstdlib>
+#include <memory>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
 
@@ -53,16 +52,6 @@ void	ScaleField::runCpu	()
 	scaleXeon(axionField, fIdx, factor);
 }
 
-void	ScaleField::runXeon	()
-{
-#ifdef	USE_XEON
-	scaleXeon(axionField, fIdx, factor);
-#else
-	LogError ("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 using namespace profiler;
 
 void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor)
@@ -70,7 +59,7 @@ void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor)
 	LogMsg  (VERB_HIGH, "Called scale field");
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
-	ScaleField *scale = new ScaleField(field, fIdx, factor);
+	auto	scale = std::make_unique<ScaleField>    (field, fIdx, factor);
 
 	prof.start();
 	scale->setName("Scale");
@@ -85,14 +74,9 @@ void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor)
 			scale->runGpu ();
 			break;
 
-		case	DEV_XEON:
-			scale->runXeon();
-			break;
-
 		default:
-			LogError ("Not a valid device");
+			LogError ("Error: invalid device");
 			prof.stop();
-			delete scale;
 			return;
 	}
 
@@ -102,8 +86,6 @@ void	scaleField	(Scalar *field, const FieldIndex fIdx, const double factor)
 	prof.add(scale->Name(), scale->GFlops(), scale->GBytes());
 
 	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", scale->Name().c_str(), prof.Prof()[scale->Name()].GFlops(), prof.Prof()[scale->Name()].GBytes());
-
-	delete	scale;
 
 	return;
 }

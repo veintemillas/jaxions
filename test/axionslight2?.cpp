@@ -54,8 +54,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
@@ -69,7 +67,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			printMpi("Generating scalar ... ");
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 			printMpi("Done! \n");
 		}
 		else
@@ -469,7 +467,7 @@ int	main (int argc, char *argv[])
                 {
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-									nstrings_global = strings(axion, cDev, str, fCount);
+									nstrings_global = strings(axion, cDev, str);
 									maximumtheta = axion->maxtheta();
 									printMpi("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //printMpi("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
@@ -485,23 +483,14 @@ int	main (int argc, char *argv[])
 											printMpi("\n");
 	                    printMpi("--------------------------------------------------\n");
 	                    printMpi("              TRANSITION TO THETA \n");
-	                    cmplxToTheta (axion, fCount);
+	                    cmplxToTheta (axion);
 											fflush(stdout);
 											zrestore = z_now;
 	                    printMpi("--------------------------------------------------\n");
 										 }
                 }
 			}
-			else
-			{
-				propTheta	(axion, dzaux,     nQcd, delta, cDev, fCount);
-			}
 
-
-			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-
-			fCount->addTime(elapsed.count()*1.e-3);
 
 			counter++;
 
@@ -512,7 +501,7 @@ int	main (int argc, char *argv[])
 			}
 
 			//ENERGY EVERY TIME STEP
-			// energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			// energy(axion, LL, nQcd, delta, cDev, eRes);
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
 
@@ -524,7 +513,7 @@ int	main (int argc, char *argv[])
 
       printMpi("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 			fflush(stdout);
-			energy(axion, LL, nQcd, delta, cDev, eRes, fCount);
+			energy(axion, LL, nQcd, delta, cDev, eRes);
 			fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			(*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
 			fflush(file_energy);
@@ -534,7 +523,7 @@ int	main (int argc, char *argv[])
 				printMpi("%d/%d | z=%f | dz=%.3e | LLaux=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 				printMpi("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
-										//nstrings_global = strings(axion, cDev, str, fCount);
+										//nstrings_global = strings(axion, cDev, str);
 										nstrings_global =	analyzeStrFolded(axion, index);
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
@@ -564,7 +553,7 @@ int	main (int argc, char *argv[])
 
 
 				//IF USING DENSITY FROM ALEX
-				//energyMap(axion, LL, nQcd, delta, cDev, fCount, VQCD_1, 0.);
+				//energyMap(axion, LL, nQcd, delta, cDev, VQCD_1, 0.);
 				//printMpi("bineando\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				//fflush(stdout);
 				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
@@ -682,7 +671,7 @@ int	main (int argc, char *argv[])
 
 		printMpi("pSpec ... ");
 
-		powerspectrumUNFOLDED(axion, fCount);
+		powerspectrumUNFOLDED(axion);
 		if (commRank() == 0)
 		{
 		printf("sp %f ...\n", sK[0]);
@@ -735,8 +724,6 @@ int	main (int argc, char *argv[])
 	printMpi("#_prints = %i\n", index);
 	printMpi("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	printMpi("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
-	printMpi("GFlops: %.3f\n", fCount->GFlops());
-	printMpi("GBytes: %.3f\n", fCount->GBytes());
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
@@ -745,7 +732,6 @@ int	main (int argc, char *argv[])
 	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 
-	delete fCount;
 	delete axion;
 
 	endComms();

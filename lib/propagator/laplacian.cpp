@@ -128,16 +128,6 @@ void	Laplacian::sRunCpu	()
 	}
 }
 
-void	Laplacian::sRunXeon	()
-{
-#ifdef	USE_XEON
-	sRunCpu();
-#else
-	LogError ("Error: Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 void    Laplacian::tRunGpu	()
 {
 #ifdef  USE_GPU
@@ -158,16 +148,6 @@ void    Laplacian::tRunCpu	()
 			//lapCpu<double>(std::string("SpAx"));
 			break;
 	}
-}
-
-void    Laplacian::tRunXeon	()
-{
-#ifdef  USE_XEON
-	tRunCpu();
-#else
-	LogError ("Error: Xeon Phi support not built");
-	exit(1);
-#endif
 }
 
 using	namespace profiler;
@@ -198,9 +178,6 @@ void	applyLaplacian	(Scalar *field)
 				case DEV_CPU:
 					lap->tRunCpu ();
 					break;
-				case DEV_XEON:
-					lap->tRunXeon ();
-					break;
 				default:
 					LogError ("Not a valid device");
 					prof.stop();
@@ -221,9 +198,6 @@ void	applyLaplacian	(Scalar *field)
 					break;
 				case DEV_CPU:
 					lap->sRunCpu ();
-					break;
-				case DEV_XEON:
-					lap->sRunXeon ();
 					break;
 				default:
 					LogError ("Not a valid device");

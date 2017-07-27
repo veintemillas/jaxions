@@ -1,9 +1,9 @@
 #include<cstdlib>
 #include<cstring>
 #include<complex>
-#include <chrono>
+#include<chrono>
 
-#include"square.h"
+#include"enum-field.h"
 #include"fft/fftCuda.h"
 #include"fft/fftCode.h"
 
@@ -18,17 +18,14 @@
 	#include "cudaErrors.h"
 #endif
 
-#include "utils/memAlloc.h"
-#include "utils/parse.h"
-
 #include<mpi.h>
 #include<omp.h>
-#include <fftw3-mpi.h>
 
-#include "utils/index.h"
+#include "utils/utils.h"
 #include "gen/genConf.h"
 
 using namespace std;
+using namespace profiler;
 
 #define printMpi(...) do {		\
 	if (!commRank()) {		\
@@ -39,15 +36,14 @@ using namespace std;
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
+
 	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType fType, ConfType cType,
-		       const size_t parm1, const double parm2, FlopCounter *fCount) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)), fieldType(fType),
-		       precision(prec), device(dev), lowmem(lowmem)
+		       const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
+		       fieldType(fType), precision(prec), device(dev), lowmem(lowmem)
 {
+	Profiler &prof = getProfiler(PROF_SCALAR);
 
-	std::chrono::high_resolution_clock::time_point start, current, old;
-	std::chrono::milliseconds elapsed;
-
-	start = std::chrono::high_resolution_clock::now();
+	prof.start();
 
 	size_t nData;
 
@@ -65,7 +61,7 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		default:
-			printf("Unrecognized field type\n");
+			LogError("Error: unrecognized field type");
 			exit(1);
 			break;
 	}
@@ -81,32 +77,28 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		default:
-			printf("Unrecognized precision\n");
+			LogError("Error: unrecognized precision");
 			exit(1);
 			break;
 	}
 
 	switch	(dev)
 	{
-		case DEV_XEON:
-			printMpi("Using Xeon Phi 64 bytes alignment\n");
-			mAlign = 64;
-			break;
-
 		case DEV_CPU:
 			#ifdef	__AVX512F__
-			printMpi("Using AVX-512 64 bytes alignment\n");
+			LogMsg(VERB_NORMAL, "Using AVX-512 64 bytes alignment");
 			mAlign = 64;
 			#elif	defined(__AVX__) || defined(__AVX2__)
-			printMpi("Using AVX 32 bytes alignment\n");
+			LogMsg(VERB_NORMAL, "Using AVX 32 bytes alignment");
 			mAlign = 32;
 			#else
-			printMpi("Using SSE 16 bytes alignment\n");
+			LogMsg(VERB_NORMAL, "Using SSE 16 bytes alignment");
 			mAlign = 16;
 			#endif
 			break;
 
 		case DEV_GPU:
+			LogMsg(VERB_NORMAL, "Using 16 bytes alignment for the Gpu");
 			mAlign = 16;
 			break;
 	}
@@ -115,31 +107,22 @@ const std::complex<float> If(0.,1.);
 
 	if (n2*fSize % mAlign)
 	{
-		printf("Error: misaligned memory. Are you using an odd dimension?\n");
+		LogError("Error: misaligned memory. Are you using an odd dimension?");
 		exit(1);
 	}
 
 	const size_t	mBytes = v3*fSize;
-	//JAVIER ADDED 2 SLICES TO V FOR REAL TO COMPLEX FTT in HALO
 	const size_t	vBytes = n3*fSize;
 
-#ifdef	USE_XEON
-	alignAlloc ((void**) &mX, mAlign, mBytes);
-	alignAlloc ((void**) &vX, mAlign, vBytes);
-
-	if (!lowmem)
-		alignAlloc ((void**) &m2X, mAlign, mBytes);
-
-	m = mX;
-	v = vX;
-
-	if (!lowmem)
-		m2 = m2X;
-	else
-		m2 = m2X = NULL;
-#else
 	alignAlloc ((void**) &m, mAlign, mBytes);
 	alignAlloc ((void**) &v, mAlign, vBytes);
+
+	/*	This MUST be revised, otherwise
+		simulations can segfault after
+		the transition to theta due to
+		lack of memory. The difference
+		is small (a ghost region), but
+		it must be taken into account.	*/
 
 	//  M2 issue ;; we always allocate a complex m2 in theta mode!
 	//	EVEN IF WE DO NOT SPECIFY lowmem
@@ -160,27 +143,20 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		default:
-			printf("Unrecognized field type\n");
+			LogError("Error: unrecognized field type");
 			exit(1);
 			break;
 	}
 
-#endif
-
-	// current = std::chrono::high_resolution_clock::now();
-	// elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	// printMpi("ARRAY ALLOCATION TIME %f min\n",elapsed.count()*1.e-3/60.);
-	start = std::chrono::high_resolution_clock::now();
-
 	if (m == NULL)
 	{
-		printf("\n\nError: Couldn't allocate %lu bytes on host for the m field\n", mBytes);
+		LogError ("Error: couldn't allocate %lu bytes on host for the m field", mBytes);
 		exit(1);
 	}
 
 	if (v == NULL)
 	{
-		printf("\n\nError: Couldn't allocate %lu bytes on host for the v field\n", vBytes);
+		LogError ("Error: couldn't allocate %lu bytes on host for the v field", vBytes);
 		exit(1);
 	}
 
@@ -188,12 +164,11 @@ const std::complex<float> If(0.,1.);
 	{
 		if (m2 == NULL)
 		{
-			printf("\n\nError: Couldn't allocate %lu bytes on host for the m2 field\n", mBytes);
+			LogError ("Error: couldn't allocate %lu bytes on host for the m2 field", mBytes);
 			exit(1);
 		}
 	}
 
-	printMpi("set m,v=0, fSize=%d m[%ld] v[%ld]\n",fSize,v3,n3); fflush(stdout);
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*n3);
 
@@ -201,60 +176,51 @@ const std::complex<float> If(0.,1.);
 		memset (m2, 0, fSize*v3);
 
 	commSync();
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	printMpi("zeroing TIME %f min\n",elapsed.count()*1.e-3/60.);
-	start = std::chrono::high_resolution_clock::now();
 
-	alignAlloc ((void **) &z, mAlign, mAlign);//sizeof(double));
+	alignAlloc ((void **) &z, mAlign, mAlign);
 
 	if (z == NULL)
 	{
-		printf("\n\nError: Couldn't allocate %d bytes on host for the z field\n", sizeof(double));
+		LogError ("Error: couldn't allocate %d bytes on host for the z field", sizeof(double));
 		exit(1);
 	}
 
 	if (device == DEV_GPU)
 	{
 #ifndef	USE_GPU
-		printf ("Gpu support not built\n");
+		LogError ("Error: gpu support not built\n");
 		exit   (1);
 #else
 		if (cudaMalloc(&m_d,  mBytes) != cudaSuccess)
 		{
-			printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m\n", mBytes);
+			LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
 			exit(1);
 		}
 
 		if (cudaMalloc(&v_d,  vBytes) != cudaSuccess)
 		{
-			printf("\n\nError: Couldn't allocate %lu bytes for the gpu field v\n", vBytes);
+			LogError ("Error: couldn't allocate %lu bytes for the gpu field v", vBytes);
 			exit(1);
 		}
 
 		if (!lowmem)
 			if (cudaMalloc(&m2_d, mBytes) != cudaSuccess)
 			{
-				printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", mBytes);
+				LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", mBytes);
 				exit(1);
 			}
 
 		if ((sStreams = malloc(sizeof(cudaStream_t)*3)) == NULL)
 		{
-			printf("\n\nError: Couldn't allocate %lu bytes on host for the gpu streams\n", sizeof(cudaStream_t)*3);
+			LogError ("Error: couldn't allocate %lu bytes on host for the gpu streams", sizeof(cudaStream_t)*3);
 			exit(1);
 		}
 
 		cudaStreamCreate(&((cudaStream_t *)sStreams)[0]);
 		cudaStreamCreate(&((cudaStream_t *)sStreams)[1]);
 		cudaStreamCreate(&((cudaStream_t *)sStreams)[2]);
-
-//		if (!lowmem)
-//			initCudaFFT(n1, Lz, prec);
 #endif
-	}// else {
-//		initFFT(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
-//	}
+	}
 
 	AxionFFT::initFFT(prec);
 
@@ -265,69 +231,37 @@ const std::complex<float> If(0.,1.);
 	if (cType == CONF_NONE) {
 		LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
 
+		if (fIndex == -1) {
+			LogError ("Error: neither file nor initial configuration specified");
+			exit(2);
+		}
+
 		if (pType & PROP_SPEC)
 			AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
 	} else {
 		if (fieldType == FIELD_AXION) {
 			LogError ("Configuration generation for axion fields not supported");
 		} else {
-			start = std::chrono::high_resolution_clock::now();
-			printMpi("Entering initFFT\n");
-
 			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
 				if (lowmem)
 					AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 				else
 					AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
-				//initFFTPlans(static_cast<void *>(static_cast<char *> (m) + n2*fSize), m2, n1, Tz, precision, lowmem);
 
 			if (pType & PROP_SPEC)
 				AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
 
-			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-			printMpi("Initialisation FFT TIME %f min\n",elapsed.count()*1.e-3/60.);
-
-			printMpi("Entering GEN_CONF\n");
-			start = std::chrono::high_resolution_clock::now();
 			genConf	(this, cType, parm1, parm2);
-			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-			printMpi("GEN-CONF TIME %f min\n",elapsed.count()*1.e-3/60.);
 		}
 	}
 
-	if (dev == DEV_XEON)
-	{
-#ifndef	USE_XEON
-		printf ("Xeon Phi support not built\n");
-		exit   (1);
-#else
-		const int micIdx = commAcc();
-
-		#pragma offload_transfer target(mic:micIdx) nocopy(mX : length(fSize*v3) AllocX)
-		#pragma offload_transfer target(mic:micIdx) nocopy(vX : length(fSize*n3) AllocX)
-
-		if (!lowmem)
-		{
-			#pragma offload_transfer target(mic:micIdx) nocopy(m2X : length(fSize*v3) AllocX)
-		}
-#endif
-	}
-	//
-
-		start = std::chrono::high_resolution_clock::now();
-	// THIS MIGHT NOT BE NEEDED, CHECK OUT
-	if(!lowmem)
-	{
-		AxionFFT::initPlan (this, FFT_CtoC_M2toM2,  FFT_FWD, "pSpectrum");
-//		printMpi("FFTing m2 if no lowmem\n");
-//		initFFTSpectrum(m2, n1, Tz, precision, lowmem);
-//			current = std::chrono::high_resolution_clock::now();
-//			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-//		printMpi("Initialisation FFT m2 TIME %f min\n",elapsed.count()*1.e-3/60.);
-	}
-
+	// Move this initialization to the analysis, not here
+	//if(!lowmem)
+	//{
+	//	AxionFFT::initPlan (this, FFT_CtoC_M2toM2,  FFT_FWD, "pSpectrum");
+	//}
+	prof.stop();
+	prof.add(std::string("Init"), 0.0, (lowmem ? 2*mBytes+vBytes : mBytes+vBytes)*1e-9);
 }
 
 // END SCALAR
@@ -352,7 +286,7 @@ const std::complex<float> If(0.,1.);
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
-			printf ("Gpu support not built\n");
+			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
 			if (m_d != nullptr)
@@ -371,33 +305,10 @@ const std::complex<float> If(0.,1.);
 			if (sStreams != nullptr)
 				free(sStreams);
 
-//			if (!lowmem)
-//				closeCudaFFT();
-			//closeFFTPlans();
 			AxionFFT::closeFFT();
 		#endif
 	} else {
-//		if (!lowmem)
-//		closeFFTPlans();
 		AxionFFT::closeFFT();
-	}
-
-	if (device == DEV_XEON)
-	{
-		#ifndef	USE_XEON
-			printf ("Xeon Phi support not built\n");
-			exit   (1);
-		#else
-			const int micIdx = commAcc();
-
-			#pragma offload_transfer target(mic:micIdx) nocopy(mX : length(fSize*v3) FreeX)
-			#pragma offload_transfer target(mic:micIdx) nocopy(vX : length(fSize*n3) FreeX)
-
-			if (!lowmem)
-			{
-				#pragma offload_transfer target(mic:micIdx) nocopy(m2X : length(fSize*v3) FreeX)
-			}
-		#endif
 	}
 }
 
@@ -406,7 +317,7 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
-			printf ("Gpu support not built\n");
+			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
 			if (fIdx & 1)
@@ -418,28 +329,6 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			if ((fIdx & 4) && (!lowmem))
 				cudaMemcpy((((char *) m2_d) + n2*fSize), (((char *) m2) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
-	} else if (device == DEV_XEON) {
-		#ifndef	USE_XEON
-			printf ("Xeon Phi support not built\n");
-			exit   (1);
-		#else
-			const int micIdx = commAcc();
-
-			if (fIdx & 1)
-			{
-				#pragma offload_transfer target(mic:micIdx) in(mX : length(v3*fSize) ReUseX)
-			}
-
-			if (fIdx & 2)
-			{
-				#pragma offload_transfer target(mic:micIdx) in(vX : length(n3*fSize) ReUseX)
-			}
-
-			if ((fIdx & 4) && (!lowmem))
-			{
-				#pragma offload_transfer target(mic:micIdx) in(m2X : length(v3*fSize) ReUseX)
-			}
-		#endif
 	}
 }
 
@@ -448,7 +337,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
-			printf ("Gpu support not built\n");
+			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
 			if (fIdx & 1)
@@ -460,28 +349,6 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 			if ((fIdx & 4) && (!lowmem))
 				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
 		#endif
-	} else if (device == DEV_XEON) {
-		#ifndef	USE_XEON
-			printf ("Xeon Phi support not built\n");
-			exit   (1);
-		#else
-			const int micIdx = commAcc();
-
-			if (fIdx & 1)
-			{
-				#pragma offload_transfer target(mic:micIdx) out(mX : length(v3*fSize) ReUseX)
-			}
-
-			if (fIdx & 2)
-			{
-				#pragma offload_transfer target(mic:micIdx) out(vX : length(n3*fSize) ReUseX)
-			}
-
-			if ((fIdx & 4) && (!lowmem))
-			{
-				#pragma offload_transfer target(mic:micIdx) out(m2X : length(v3*fSize) ReUseX)
-			}
-		#endif
 	}
 }
 
@@ -490,7 +357,7 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
-			printf ("Gpu support not built\n");
+			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M)
@@ -507,22 +374,6 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[1]);
 		#endif
-	} else if (device == DEV_XEON) {
-		#ifndef	USE_XEON
-			printf ("Xeon Phi support not built\n");
-			exit   (1);
-		#else
-			const int micIdx = commAcc();
-
-			if (fIdx & FIELD_M)
-			{
-				#pragma offload_transfer target(mic:micIdx) out(mX[n2*fSize:n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) out(mX[n3*fSize:n2*fSize] : ReUseX)
-			} else {
-				#pragma offload_transfer target(mic:micIdx) out(m2X[n2*fSize:n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) out(m2X[n3*fSize:n2*fSize] : ReUseX)
-			}
-		#endif
 	}
 }
 
@@ -531,7 +382,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
-			printf ("Gpu support not built\n");
+			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M)
@@ -545,22 +396,6 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[1]);
-		#endif
-	} else if (device == DEV_XEON) {
-		#ifndef	USE_XEON
-			printf ("Xeon Phi support not built\n");
-			exit   (1);
-		#else
-			const int micIdx = commAcc();
-
-			if (fIdx & FIELD_M)
-			{
-				#pragma offload_transfer target(mic:micIdx) in(mX[0:n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) in(mX[(n2+n3)*fSize:n2*fSize] : ReUseX)
-			} else {
-				#pragma offload_transfer target(mic:micIdx) in(m2X[0:n2*fSize] : ReUseX)
-				#pragma offload_transfer target(mic:micIdx) in(m2X[(n2+n3)*fSize:n2*fSize] : ReUseX)
-			}
 		#endif
 	}
 }
@@ -656,6 +491,7 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 }
 
 //	USA M2, ARREGLAR LOWMEM
+/*
 void	Scalar::prepareCpu(int *window)
 {
 	if (precision == FIELD_DOUBLE)
@@ -671,29 +507,247 @@ void	Scalar::prepareCpu(int *window)
 			((complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag()*((float) window[i]);
 	}
 }
+*/
 
-// EN TEORIA USA M2, ARREGLAR LOWMEM
-void	Scalar::squareGpu()
+
+void	Scalar::setField (FieldType fType)
 {
-//	square(m2_d, n1, Lz, n3, precision);
+	switch (fType)
+	{
+		case FIELD_AXION:
+			if (fieldType == FIELD_SAXION)
+			{
+				trackFree(&v, ALLOC_ALIGN);
+
+				switch (precision)
+				{
+					case FIELD_SINGLE:
+					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
+
+					#ifdef	USE_GPU
+					if (device == DEV_GPU)
+						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
+					#endif
+
+					break;
+
+					case FIELD_DOUBLE:
+					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
+
+					#ifdef	USE_GPU
+					if (device == DEV_GPU)
+						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
+					#endif
+
+					break;
+				}
+
+				fSize /= 2;
+
+				if (device != DEV_GPU)
+					shift *= 2;
+
+				const size_t	mBytes = v3*fSize;
+				// IF low mem was used before, it creates m2 COMPLEX
+				if (lowmem)
+				{
+					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+
+					// Move this to the analysis
+					// AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWD, "pSpectrum");
+
+					#ifdef	USE_GPU
+					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
+					{
+						LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", 2*mBytes);
+						exit(1);
+					}
+					#endif
+				} else {
+				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
+					trackFree(&m2, ALLOC_ALIGN);
+					m2 = nullptr;
+					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+
+				#ifdef	USE_GPU
+					cudaFree(m2_d);
+				#endif
+
+				#ifdef	USE_GPU
+					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
+					{
+						LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", 2*mBytes);
+						exit(1);
+					}
+				#endif
+				}
+			}
+			break;
+
+		case	FIELD_SAXION:
+			if (fieldType == FIELD_AXION)
+			{
+				if (commRank() == 0)
+					printf ("Not supported\n");
+			} else {
+				fieldType = FIELD_SAXION;
+			}
+			break;
+	}
+	fieldType = fType;
 }
 
-// USA M2, ARREGLAR LOWMEM
-void	Scalar::squareCpu()
+void	Scalar::setFolded (bool foli)
 {
-	if (precision == FIELD_DOUBLE)
+	folded = foli ;
+}
+
+/*	These next two functions are to be
+	removed, the only reason to keep them
+	is because the code inside might be
+	useful for a future gpu FFT
+	implementation, but the chances of
+	that happening are pretty slim		*/
+/*	The problem of the theta spectral
+	propagator might renew the interest
+	in these functions			*/
+ 
+/*	ARREGLAR PARA DIFERENTES PRECISIONES	*/
+/*
+void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
+{
+	int zDiff = pz - oPz;
+	int zBase = commRank()*Lz;
+
+	if (zDiff == 0)
+		return;
+
+	switch (precision)
 	{
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
-			((std::complex<double> *) m2)[i] = pow(abs(((std::complex<double> *) m2)[i]/((double) n3)),2);
-	}
-	else
-	{
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
-			((std::complex<float> *) m2)[i] = pow(abs(((std::complex<float> *) m2)[i]/((float) n3)),2);
+		case FIELD_DOUBLE:
+		{
+			complex<double> phase[Lz];
+			double sg = sign;
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int zc = 0; zc < Lz; zc++)
+			{
+				int zTot = zBase + zc;
+				phase[zc] = exp(I*(sg*(pz*zTot)));
+			}
+
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int idx = 0; idx < n2; idx++)
+				for (int zc = 0; zc < Lz; zc++)
+					((complex<double> *) data)[n2*(zc+1)+idx] *= phase[zc];
+		}
+
+		break;
+
+		case FIELD_SINGLE:
+		{
+			complex<float> phase[Lz];
+			float sg = sign;
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int zc = 0; zc < Lz; zc++)
+			{
+				int zTot = zBase + zc;
+				phase[zc] = exp(If*(sg*(pz*zTot)));
+			}
+
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int idx = 0; idx < n2; idx++)
+				for (int zc = 0; zc < Lz; zc++)
+					((complex<float> *) data)[n2*(zc+1)+idx] *= phase[zc];
+		}
+
+		break;
 	}
 }
+*/
+
+/*	CODIGO VIEJO INUTIL, IGUAL PARA FFT GPU...
+void	Scalar::fftCpu	(int sign)
+{
+	int	  oldPz = 0;
+
+	runFFT(sign);
+
+	switch (precision)
+	{
+		case FIELD_DOUBLE:
+
+		for (int cz = 0; cz < Tz; cz++)
+		{
+			int pz = cz - (cz/(Tz >> 1))*Tz;
+			int rk = cz/Lz;
+			int vk = cz%Lz;
+
+			double *mDs = (((double *) m) + (2*n2*(vk+1)));
+
+			addZmom (pz, oldPz, m2, sign);
+
+			oldPz = pz;
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int idx = 0; idx < n2; idx++)
+			{
+				((complex<double> *) m)[idx] = complex<double>(0.,0.);
+
+				for (int mz = 0; mz < Lz; mz++)
+					((complex<double> *) m)[idx] += ((complex<double> *) m2)[idx + (mz+1)*n2];
+			}
+
+			MPI_Reduce(m, mDs, 2*n2, MPI_DOUBLE, MPI_SUM, rk, MPI_COMM_WORLD);
+		}
+
+		break;
+
+		case FIELD_SINGLE:
+
+		for (int cz = 0; cz < Tz; cz++)
+		{
+			int pz = cz - (cz/(Tz >> 1))*Tz;
+			int rk = cz/Lz;
+			int vk = cz%Lz;
+
+			float *mDs = (((float *) m) + (n2*(vk+1)));
+
+			addZmom (pz, oldPz, m2, sign);
+
+			oldPz = pz;
+
+			#pragma omp parallel for default(shared) schedule(static)
+			for (int idx = 0; idx < n2; idx++)
+			{
+				((complex<float> *) m)[idx] = complex<float>(0.,0.);
+
+				for (int mz = 0; mz < Lz; mz++)
+					((complex<float> *) m)[idx] += ((complex<float> *) m2)[idx + (mz+1)*n2];
+			}
+
+			MPI_Reduce(m, mDs, 2*n2, MPI_FLOAT, MPI_SUM, rk, MPI_COMM_WORLD);
+		}
+
+		break;
+	}
+}
+*/
+
+
+
+
+
+
+/*	Follow all the functions written by Javier	*/
+/*	These should be rewritten following the
+	standards of the library, including logger,
+	profiler, vector code, gpu support and
+	outside the Scalar class, so it doesn't
+	become a massively cluttered object		*/
 
 //	USA M2, ARREGLAR LOWMEM
 // void	Scalar::thetaz2m2(int *window)
@@ -718,6 +772,8 @@ void	Scalar::squareCpu()
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::theta2m2()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function theta2m2 marked for future optimization or removal");
+
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
@@ -769,6 +825,8 @@ void	Scalar::theta2m2()//int *window)
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::vheta2m2()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function vheta2m2 marked for future optimization or removal");
+
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
@@ -820,6 +878,8 @@ void	Scalar::vheta2m2()//int *window)
 // SUPERSEEDED BY theta2m2 and vheta2m2 to work with MPI
 void	Scalar::thetav2m2()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function thetav2m2 marked for future optimization or removal");
+
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
@@ -896,276 +956,12 @@ void	Scalar::thetav2m2()//int *window)
 // }
 
 
-/*	ARREGLAR PARA DIFERENTES PRECISIONES	*/
-/*
-void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
-{
-	int zDiff = pz - oPz;
-	int zBase = commRank()*Lz;
-
-	if (zDiff == 0)
-		return;
-
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-		{
-			complex<double> phase[Lz];
-			double sg = sign;
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int zc = 0; zc < Lz; zc++)
-			{
-				int zTot = zBase + zc;
-				phase[zc] = exp(I*(sg*(pz*zTot)));
-			}
-
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int idx = 0; idx < n2; idx++)
-				for (int zc = 0; zc < Lz; zc++)
-					((complex<double> *) data)[n2*(zc+1)+idx] *= phase[zc];
-		}
-
-		break;
-
-		case FIELD_SINGLE:
-		{
-			complex<float> phase[Lz];
-			float sg = sign;
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int zc = 0; zc < Lz; zc++)
-			{
-				int zTot = zBase + zc;
-				phase[zc] = exp(If*(sg*(pz*zTot)));
-			}
-
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int idx = 0; idx < n2; idx++)
-				for (int zc = 0; zc < Lz; zc++)
-					((complex<float> *) data)[n2*(zc+1)+idx] *= phase[zc];
-		}
-
-		break;
-	}
-}
-*/
-/*
-void	Scalar::fftCpu	(FFTdir sign)
-{
-	auto &myPlan = AxionFFT::fetchPlan("Init");
-	myPlan.run(sign);
-//	runFFT(sign);
-}
-
-void	Scalar::fftCpuSpectrum	(FFTdir sign)
-{
-	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
-	myPlan.run(sign);
-//	runFFTSpectrum(sign);
-}
-*/
-
-
-/*	CODIGO VIEJO INUTIL, IGUAL PARA FFT GPU...
-void	Scalar::fftCpu	(int sign)
-{
-	int	  oldPz = 0;
-
-	runFFT(sign);
-
-	switch (precision)
-	{
-		case FIELD_DOUBLE:
-
-		for (int cz = 0; cz < Tz; cz++)
-		{
-			int pz = cz - (cz/(Tz >> 1))*Tz;
-			int rk = cz/Lz;
-			int vk = cz%Lz;
-
-			double *mDs = (((double *) m) + (2*n2*(vk+1)));
-
-			addZmom (pz, oldPz, m2, sign);
-
-			oldPz = pz;
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int idx = 0; idx < n2; idx++)
-			{
-				((complex<double> *) m)[idx] = complex<double>(0.,0.);
-
-				for (int mz = 0; mz < Lz; mz++)
-					((complex<double> *) m)[idx] += ((complex<double> *) m2)[idx + (mz+1)*n2];
-			}
-
-			MPI_Reduce(m, mDs, 2*n2, MPI_DOUBLE, MPI_SUM, rk, MPI_COMM_WORLD);
-		}
-
-		break;
-
-		case FIELD_SINGLE:
-
-		for (int cz = 0; cz < Tz; cz++)
-		{
-			int pz = cz - (cz/(Tz >> 1))*Tz;
-			int rk = cz/Lz;
-			int vk = cz%Lz;
-
-			float *mDs = (((float *) m) + (n2*(vk+1)));
-
-			addZmom (pz, oldPz, m2, sign);
-
-			oldPz = pz;
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (int idx = 0; idx < n2; idx++)
-			{
-				((complex<float> *) m)[idx] = complex<float>(0.,0.);
-
-				for (int mz = 0; mz < Lz; mz++)
-					((complex<float> *) m)[idx] += ((complex<float> *) m2)[idx + (mz+1)*n2];
-			}
-
-			MPI_Reduce(m, mDs, 2*n2, MPI_FLOAT, MPI_SUM, rk, MPI_COMM_WORLD);
-		}
-
-		break;
-	}
-}
-*/
-
-// ESTO YA NO SE USA, LA FFT ES SIEMPRE EN LA CPU
-/*void	Scalar::fftGpu	(int sign)
-{
-#ifdef	USE_GPU
-	runCudaFFT(m2_d, sign);
-#endif
-}
-*/
-void	Scalar::setField (FieldType fType)
-{
-	switch (fType)
-	{
-		case FIELD_AXION:
-			if (fieldType == FIELD_SAXION)
-			{
-				printMpi("| free v ");fflush(stdout);
-				trackFree(&v, ALLOC_ALIGN);
-				printMpi("| s_cast v ");fflush(stdout);
-
-				switch (precision)
-				{
-					case FIELD_SINGLE:
-					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
-					#endif
-
-					break;
-
-					case FIELD_DOUBLE:
-					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
-					#endif
-
-					break;
-				}
-
-				printMpi("| resize %d->",fSize);fflush(stdout);
-				fSize /= 2;
-
-				if (device != DEV_GPU)
-					shift *= 2;
-
-				printMpi("%d ",fSize);fflush(stdout);
-
-				const size_t	mBytes = v3*fSize;
-				printMpi("| alloc m2 ");
-				// IF low mem was used before, it creates m2 COMPLEX
-				if (lowmem)
-				{
-					//closeFFTSpectrum();	// This line canb e ignored
-					#ifdef	USE_XEON
-					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
-					m2  = m2X;
-					#else
-					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-					#endif
-
-					AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWD, "pSpectrum");
-					//initFFTSpectrum(m2, n1, Tz, precision, 0);
-
-					#ifdef	USE_GPU
-					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
-					{
-						printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", 2*mBytes);
-						exit(1);
-					}
-					#endif
-				} else {
-				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
-				#ifdef	USE_XEON
-					//closeFFTSpectrum();
-					trackFree(&m2X, ALLOC_ALIGN);
-					m2 = m2X = NULL;
-					alignAlloc ((void**) &m2X, mAlign, 2*mBytes);
-					m2  = m2X;
-				#else
-					//closeFFTSpectrum();
-					printf ("%p %f\n", m2, static_cast<float *>(m2)[0]); fflush(stdout);
-					trackFree(&m2, ALLOC_ALIGN);
-					m2 = NULL;
-					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-				#endif
-					//initFFTSpectrum(m2, n1, Tz, precision, 0);
-
-				#ifdef	USE_GPU
-					cudaFree(m2_d);
-				#endif
-
-				#ifdef	USE_GPU
-					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
-					{
-						printf("\n\nError: Couldn't allocate %lu bytes for the gpu field m2\n", 2*mBytes);
-						exit(1);
-					}
-				#endif
-				}
-			}
-			break;
-
-		case	FIELD_SAXION:
-			if (fieldType == FIELD_AXION)
-			{
-				if (commRank() == 0)
-					printf ("Not supported\n");
-			} else {
-				fieldType = FIELD_SAXION;
-			}
-			break;
-	}
-	printMpi("| fType ");fflush(stdout);
-	fieldType = fType;
-	printMpi("| ");fflush(stdout);
-}
-
-void	Scalar::setFolded (bool foli)
-{
-	folded = foli ;
-}
-
-
 //void	Scalar::writeENERGY (double zzz, FILE *enwrite)
 void	Scalar::writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
 {
+	LogError ("Function writeENERGY has been deprecated, use writeEnergy instead");
+	LogOut   ("Function writeENERGY has been deprecated and is marked for removal, use writeEnergy instead\n");
+
 	switch	(precision)
 	{
 		case	FIELD_DOUBLE:
@@ -1205,6 +1001,9 @@ template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::ENERGY(const Float zz, FILE *enWrite, Float &Grho, Float &Gtheta, Float &Vrho, Float &Vtheta, Float &Krho, Float &Ktheta) // TEST
 {
+	LogError ("Function ENERGY has been deprecated, use energy instead");
+	LogOut   ("Function ENERGY has been deprecated and is marked for removal, use energy instead\n");
+
 	const Float deltaa2 = pow(sizeL/sizeN,2) ;
 
 	exchangeGhosts(FIELD_M);
@@ -1289,6 +1088,9 @@ template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta, double &Vrho, double &Vtheta, double &Krho, double &Ktheta) // TEST
 {
+	LogError ("Function ENERGY2 has been deprecated, use energy instead");
+	LogOut   ("Function ENERGY2 has been deprecated and is marked for removal, use energy instead\n");
+
 	const Float deltaa2 = pow(sizeL/sizeN,2) ;
 
 	exchangeGhosts(FIELD_M);
@@ -1372,6 +1174,8 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 // ----------------------------------------------------------------------
 void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numbins)//, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
 {
+	LogMsg (VERB_HIGH, "Function writeMAPTHETA marked for optimization or removal");
+
 	double maxcontrast ;
 	switch	(precision)
 	{
@@ -1407,6 +1211,8 @@ template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
+	LogMsg (VERB_HIGH, "Function energymapTheta marked for optimization or removal, please use energy instead");
+
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
 	if (folded)
 		{
@@ -1713,6 +1519,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
+	LogMsg (VERB_HIGH, "Function contrastbin marked for optimization or removal");
 	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
 
 	//	AUX VARIABLES
@@ -1906,6 +1713,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 double	Scalar::maxtheta()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function maxtheta marked for optimization or removal");
 	double mymaxd = 0.;
 	double mymaxd_global = 0.;
 	if (precision == FIELD_DOUBLE)
@@ -2062,6 +1870,7 @@ double	Scalar::maxtheta()//int *window)
 
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
+	LogMsg (VERB_HIGH, "Function thetaDIST marked for optimization or removal");
 	double thetamaxi = maxtheta();
 	printMpi("MAXTHETA=%f\n",thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -2154,6 +1963,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 
 void	Scalar::denstom()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function denstom marked for optimization or removal");
 	//double thetamaxi = maxtheta();
 
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -2202,6 +2012,7 @@ void	Scalar::denstom()//int *window)
 
 void	Scalar::autodenstom2()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function autodenstom marked for optimization or removal");
 	//double thetamaxi = maxtheta();
 
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -2243,131 +2054,6 @@ void	Scalar::autodenstom2()//int *window)
 }
 
 //----------------------------------------------------------------------
-//		BUILD LAPLACIAN IN M2 [after ghost slice]
-//----------------------------------------------------------------------
-/*
-template<typename Float>
-void	Scalar::laplacianm2()
-{
-	// NO LOW MEM //FLOAT
-	// NO MPI! ?
-
-	if(fieldType == FIELD_SAXION)
-	{
-		auto &planFFT = AxionFFT::fetchPlan("SpSx");
-		planFFT.run(FFT_FWD);
-
-		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
-		int n12 = n1/2 ;
-
-		#pragma omp parallel for schedule(static) default(shared)
-		for (size_t kz = 0; kz < n1; kz++)
-		{
-			int kkz = (int) kz ;
-
-			if (kz > n12)
-				kkz = ((int) kz)-n1;
-
-			for (size_t ky = 0; ky < n1; ky++)
-			{
-				int kky = ky ;
-				if (ky > n12)
-					kky = ((int) ky)-n1;
-
-				int kk2 = kkz*kkz + kky*kky ;
-				size_t iidx = n1*ky + n2*kz ;
-
-				for (size_t kx = 0; kx < n1; kx++)
-				{
-					size_t idx = iidx + kx ;
-					int kkx = (int) kx ;
-					if (kx > n12)
-						kkx = ((int) kx)-n1;
-
-					size_t k2 = kk2 + kkx*kkx;
-					//printMpi("(%d,%d,%d) %ld\n",kkz,kky,kkx,idx);
-					mTRANS[idx + n2] *= (Float) k2;
-				}
-			}
-		}
-
-		planFFT.run(FFT_BCK);
-	}
-	else //FIELD_AXION
-	{
-		// THIS FFT IS REAL TO COMPLEX, OUTPUTS TO M3 (TRANSPOSED, HALFCOMPLEX!!!)
-		// WHICH IS DEFINED IN sPropXeon.cpp
-		// char *mS3 = static_cast<char *>(axionField->m2Cpu()) + S*((axion->Depth()))+1)*axionField->DataSize();
-		auto &planFFT = AxionFFT::fetchPlan("SpAx");
-		planFFT.run(FFT_FWD);
-
-		// NOW MULTIPLY BY THE CORRECT FACTOR OF K^2
-
-		complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
-		int n12 = n1/2 ;
-
-		#pragma omp parallel for schedule(static) default(shared)
-		for (size_t kz = 0; kz < n1; kz++)
-		{
-			int kkz = (int) kz ;
-
-			if (kz > n12)
-				kkz = ((int) kz)-n1;
-
-			for (size_t ky = 0; ky < n1; ky++)
-			{
-				int kky = ky ;
-				if (ky > n12)
-					kky = ((int) ky)-n1;
-
-				int kk2 = kkz*kkz + kky*kky ;
-				size_t iidx = n1*ky + n2*kz ;
-
-				for (size_t kx = 0; kx < n1; kx++)
-				{
-					size_t idx = iidx + kx ;
-					int kkx = (int) kx ;
-					if (kx > n12)
-						kkx = ((int) kx)-n1;
-
-					size_t k2 = kk2 + kkx*kkx;
-					//printMpi("(%d,%d,%d) %ld\n",kkz,kky,kkx,idx);
-					mTRANS[idx + n2] *= (Float) k2;
-				}
-			}
-		}
-
-		planFFT.run(FFT_BCK);
-	}
-
-
-
-
-	// if(fieldType == FIELD_SAXION)
-	// {
-	// 	complex<Float> *mTRANS = static_cast<complex<Float>*> (m2);
-	// 	printMpi("tiempo loco ");
-	// 	for (size_t idx = 0; idx < 10; idx++)
-	// 	{
-	// 		printMpi("%f-%f ",mTRANS[idx + n2].real(),mTRANS[idx + n2].imag());
-	// 	}
-	// }
-}
-
-void	Scalar::laplacian()
-{
-	switch (precision) {
-		case	FIELD_DOUBLE:
-			laplacianm2<double>();
-			break;
-
-		case	FIELD_SINGLE:
-			laplacianm2<float>();
-			break;
-	}
-}
-*/
-//----------------------------------------------------------------------
 //		CHECK JUMPS
 //----------------------------------------------------------------------
 
@@ -2377,6 +2063,7 @@ void	Scalar::laplacian()
 
 void	Scalar::mendtheta()//int *window)
 {
+	LogMsg (VERB_HIGH, "Function mendtheta marked for optimization or removal");
 //	make sure field unfolded
 // 	make sure ghosts sent
 
@@ -2494,6 +2181,7 @@ else
 //----------------------------------------------------------------------
 void	Scalar::writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons)
 {
+	LogMsg (VERB_HIGH, "Function writeAXITONlist marked for optimization or removal");
 	switch	(precision)
 	{
 		case	FIELD_DOUBLE:
@@ -2526,6 +2214,7 @@ void	Scalar::writeAXITONlist (double contrastthreshold, void *idxbin, int numaxi
 template<typename Float>
 void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 {
+	LogMsg (VERB_HIGH, "Function axitonfinder marked for optimization or removal");
 
 	//array for idx
 	size_t ar_local[numaxitons] ;
@@ -2674,6 +2363,9 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 
 void	Scalar::loadHalo()
 {
+	LogOut   ("Deprecated function loadHalo(), marked for removal\n");
+	LogError ("Deprecated function loadHalo(), marked for removal");
+
 	printf("initFFThalo sending fSize=%d, n1=%d, Tz=%d\n", fSize, n1, Tz);
 	// printf("| free v ");fflush(stdout);
 	// trackFree(&v, ALLOC_ALIGN);

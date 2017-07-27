@@ -7,7 +7,6 @@
 
 #include "propagator/allProp.h"
 #include "energy/energy.h"
-#include "energy/energyMap.h"
 #include "utils/utils.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
@@ -41,8 +40,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
@@ -56,7 +53,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 			LogOut("Done! \n");
 		}
 		else
@@ -479,7 +476,7 @@ int	main (int argc, char *argv[])
                 {
                   //nstrings_global = analyzeStrFoldedNP(axion, index);
                   //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-									//nstrings_global = strings(axion, str, fCount);
+									//nstrings_global = strings(axion, str);
 									maximumtheta = axion->maxtheta();
 									LogOut("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
                   //LogOut("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
@@ -502,22 +499,14 @@ int	main (int argc, char *argv[])
 
 											saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 
-	                    cmplxToTheta (axion, fCount, saskia);
+	                    cmplxToTheta (axion, saskia);
 											zrestore = z_now;
 	                    LogOut("--------------------------------------------------\n");
 										 }
                 }
-//			}
-//			else
-//			{
-//				propTheta	(axion, dzaux, nQcd, delta, fCount);
-//			}
-
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-
-			fCount->addTime(elapsed.count()*1.e-3);
 
 			counter++;
 
@@ -528,7 +517,7 @@ int	main (int argc, char *argv[])
 			}
 
 			//ENERGY EVERY TIME STEP
-			// energy(axion, fCount, eRes, delta, nQcd, LL);
+			// energy(axion, eRes, delta, nQcd, LL);
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
 
@@ -547,7 +536,7 @@ int	main (int argc, char *argv[])
 
 			saskia = z_now*saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			// ENERGY NEEDS, axion, llaux (autocorrectes Z2 mode), nQCD?, delta, ..., shift of conformal field = z*shift_physical)
-			energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
+			energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 
 			// fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
 			// (*axion->zV()), eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], nstrings, maximumtheta);
@@ -594,7 +583,7 @@ int	main (int argc, char *argv[])
 
 
 				//IF USING DENSITY FROM ALEX
-				//energyMap(axion, LL, nQcd, delta, fCount, VQCD_1, 0.);
+				//energyMap(axion, LL, nQcd, delta, VQCD_1, 0.);
 				//LogOut("bineando\n", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				//fflush(stdout);
 				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
@@ -712,7 +701,7 @@ int	main (int argc, char *argv[])
 
 		LogOut("pSpec ... ");
 
-		powerspectrumUNFOLDED(axion, fCount);
+		powerspectrumUNFOLDED(axion);
 		if (commRank() == 0)
 		{
 		printf("sp %f ...\n", sK[0]);
@@ -765,8 +754,6 @@ int	main (int argc, char *argv[])
 	LogOut("#_prints = %i\n", index);
 	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
-	LogOut("GFlops: %.3f\n", fCount->GFlops());
-	LogOut("GBytes: %.3f\n", fCount->GBytes());
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
@@ -775,7 +762,6 @@ int	main (int argc, char *argv[])
 	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 
-	delete fCount;
 	delete axion;
 
 	endComms();

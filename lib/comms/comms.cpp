@@ -110,10 +110,6 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel 
 			break;
 		}
 
-		case DEV_XEON:
-			nAccs = 2;	//EVIL
-			break;
-
 		default:
 		case DEV_CPU:
 			nAccs = 0;
@@ -164,22 +160,6 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel 
 #endif
 		LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: Found %d accelerators, using accelerator %d", rank, hostname, nAccs, idxAcc);
 	}
-
-#ifdef	USE_XEON
-	if (dev == DEV_XEON)
-	{
-		int nprocs, nthreads;
-
-		#pragma offload target(mic)
-		#pragma omp parallel
-		{
-			nprocs = omp_get_num_procs();
-			nthreads = omp_get_num_threads();
-		}
-
-		LogMsg (VERB_NORMAL, "Rank %d Xeon Phi will use %d threads for %d processors", rank, nthreads, nprocs);
-	}
-#endif
 
 	if (dev == DEV_CPU)
 	{

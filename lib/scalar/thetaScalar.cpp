@@ -1,5 +1,4 @@
-#include <cstdio>
-#include <cstdlib>
+#include <memory>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -13,10 +12,11 @@
 	#include "scalar/thetaGpu.h"
 #endif
 
-#include "utils/flopCounter.h"
-#include "utils/memAlloc.h"
+#include "utils/utils.h"
 
-class	CmplxToTheta
+using namespace profiler;
+
+class	CmplxToTheta : public Tunable
 {
 	private:
 
@@ -42,7 +42,7 @@ void	CmplxToTheta::runGpu	()
 #ifdef	USE_GPU
 	toThetaGpu(axionField,shift);
 #else
-	printf("Gpu support not built");
+	LogError ("Error: gpu support not built");
 	exit(1);
 #endif
 }
@@ -52,22 +52,17 @@ void	CmplxToTheta::runCpu	()
 	toThetaXeon(axionField,shift);
 }
 
-void	CmplxToTheta::runXeon	()
+void	cmplxToTheta	(Scalar *field, const double shift)
 {
-#ifdef	USE_XEON
-	toThetaXeon(axionField,shift);
-#else
-	printf("Xeon Phi support not built");
-	exit(1);
-#endif
-}
+	auto	theta = std::make_unique<CmplxToTheta>    (field, shift);
+	Profiler &prof = getProfiler(PROF_SCALAR);
 
-void	cmplxToTheta	(Scalar *field, FlopCounter *fCount, const double shift)
-{
-	CmplxToTheta *theta = new CmplxToTheta(field, shift);
-	Folder	     munge(field);
+	Folder munge(field);
 
 	munge(UNFOLD_ALL);
+
+	theta->setName("Complex to Theta");
+	prof.start();
 
 	switch (field->Device())
 	{
@@ -79,22 +74,22 @@ void	cmplxToTheta	(Scalar *field, FlopCounter *fCount, const double shift)
 			theta->runGpu ();
 			break;
 
-		case	DEV_XEON:
-			theta->runXeon();
-			break;
-
 		default:
-			printf ("Not a valid device\n");
+			LogError ("Error: invalid device");
+			exit(1);
 			break;
 	}
 
-	delete	theta;
-
 	field->setField(FIELD_AXION);
 
-	munge(FOLD_ALL);
+	theta->add(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
 
-	//fCount->addFlops(field->Size()*12.e-9, field->DataSize()*field->Size()*6.e-9);
+	prof.stop();
+	prof.add(theta->Name(), theta->GFlops(), theta->GBytes());
+
+	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", theta->Name().c_str(), prof.Prof()[theta->Name()].GFlops(), prof.Prof()[theta->Name()].GBytes());
+
+	munge(FOLD_ALL);
 
 	return;
 }

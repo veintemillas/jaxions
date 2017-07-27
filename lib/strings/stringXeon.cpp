@@ -3,12 +3,6 @@
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 
-#ifdef USE_XEON
-	#include"comms/comms.h"
-	#include"utils/xeonDefs.h"
-#endif
-
-
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
 #define opCode(x,...) opCode_N(_PREFIX_, x, __VA_ARGS__)
@@ -16,7 +10,7 @@
 #include <immintrin.h>
 
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	Align 64
 	#define	_PREFIX_ _mm512
 #else
@@ -31,10 +25,7 @@
 
 // FUSIONA OPERACIONES
 
-#if	defined(__MIC__) || defined(__AVX512F__)
-#ifdef USE_XEON
-__attribute__((target(mic)))
-#endif
+#if	defined(__AVX512F__)
 inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 {
 	__m512d zero = { 0., 0., 0., 0., 0., 0., 0., 0. };
@@ -65,9 +56,6 @@ inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 	return;
 }
 
-#ifdef USE_XEON
-__attribute__((target(mic)))
-#endif
 inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 {
 	__m512 zero = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
@@ -81,15 +69,9 @@ inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 	tmp &= 0b1010101010101010;
 
 	tp3 = opCode(mul_ps, s2, conj);
-#ifdef	__MIC__
-	tp2 = opCode(swizzle_ps, tp3, _MM_SWIZ_REG_CDAB);
-	tp3 = opCode(mul_ps, s1,  tp2);
-	tp2 = opCode(add_ps, tp3, opCode(swizzle_ps, tp3, _MM_SWIZ_REG_CDAB));
-#elif	defined(__AVX512F__)
 	tp2 = opCode(permute_ps, tp3, 0b10110001);
 	tp3 = opCode(mul_ps, s1,  tp2);
 	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
-#endif
 	tpm = opCode(cmp_ps_mask, tp2, zero, _CMP_GT_OS);
 	tmm = opCode(cmp_ps_mask, tp2, zero, _CMP_LE_OS);
 
@@ -397,9 +379,6 @@ inline	void	stringWallS(const __m128 s1, const __m128 s2, int *hand, int *wHand)
 }
 #endif
 
-#ifdef USE_XEON
-__attribute__((target(mic)))
-#endif
 StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ strg)
 {
 	const size_t	Sf = Lx*Lx;
@@ -409,7 +388,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 
 	if (precision == FIELD_DOUBLE)
 	{
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
 #elif	defined(__AVX__)
@@ -420,14 +399,9 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	#define	step 1
 #endif
 
-#ifdef	USE_XEON
-		const double * __restrict__ m	= (const double * __restrict__) m_;
-		__assume_aligned(m, Align);
-#else
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
-#endif
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
@@ -490,11 +464,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 					mPx = opCode(load_pd, &m[idxPx]);
 					mPz = opCode(load_pd, &m[idxPz]);
 					mZX = opCode(load_pd, &m[idxZX]);
-#ifdef	__MIC__
-					mPy = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxPy])), _MM_PERM_ADCB));
-					mXY = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxXY])), _MM_PERM_ADCB));
-					mYZ = opCode(castps_pd, opCode(permute4f128_ps, opCode(castpd_ps, opCode(load_pd, &m[idxYZ])), _MM_PERM_ADCB));
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 					mPy = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00111001);
 					mXY = opCode(permute_pd, opCode(load_pd, &m[idxXY]), 0b00111001);
 					mYZ = opCode(permute_pd, opCode(load_pd, &m[idxYZ]), 0b00111001);
@@ -678,7 +648,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 8
 #elif	defined(__AVX__)
@@ -689,14 +659,9 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	#define	step 2
 #endif
 
-#ifdef	USE_XEON
-		const float * __restrict__ m	= (const float * __restrict__) m_;
-		__assume_aligned(m, Align);
-#else
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
-#endif
 
-#ifdef	__MIC__
+#if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
@@ -760,14 +725,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 					mPx = opCode(load_ps, &m[idxPx]);
 					mPz = opCode(load_ps, &m[idxPz]);
 					mZX = opCode(load_ps, &m[idxZX]);
-#ifdef	__MIC__
-					tmp = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_BADC);
-					str = opCode(swizzle_ps, opCode(load_ps, &m[idxXY]), _MM_SWIZ_REG_BADC);
-					mPy = opCode(swizzle_ps, opCode(load_ps, &m[idxYZ]), _MM_SWIZ_REG_BADC);
-					mYZ = opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), mPy, opCode(permute4f128_ps, mPy, _MM_PERM_ADCB));
-					mXY = opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), str, opCode(permute4f128_ps, str, _MM_PERM_ADCB));
-					mPy = opCode(mask_blend_ps, opCode(int2mask, 0b1100110011001100), tmp, opCode(permute4f128_ps, tmp, _MM_PERM_ADCB));
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 					mPy = opCode(permutexvar_ps, opCode(setr_epi32, 2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1), opCode(load_ps, &m[idxPy]));
 					mXY = opCode(permutexvar_ps, opCode(setr_epi32, 2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1), opCode(load_ps, &m[idxXY]));
 					mYZ = opCode(permutexvar_ps, opCode(setr_epi32, 2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1), opCode(load_ps, &m[idxYZ]));
@@ -818,8 +776,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 					mYZ = opCode(load_ps, &m[idxYZ]);
 				}
 
-				// Tienes los 7 puntos que definen las 3 plaquetas
-
 				// Plaqueta XY
 
 				stringWallS (mel, mPx, hand, wHand);
@@ -841,8 +797,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 							static_cast<char *>(strg)[tIdx] |= STRING_XY_POSITIVE;
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
 						}
 						break;
 
@@ -851,8 +805,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 							static_cast<char *>(strg)[tIdx] |= STRING_XY_NEGATIVE;
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 0\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
 						}
 						break;
 
@@ -882,8 +834,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 							static_cast<char *>(strg)[tIdx] |= STRING_YZ_POSITIVE;
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
 						}
 						break;
 
@@ -892,8 +842,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 							static_cast<char *>(strg)[tIdx] |= STRING_YZ_NEGATIVE;
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 1\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
 						}
 						break;
 
@@ -923,8 +871,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 							static_cast<char *>(strg)[tIdx] |= STRING_ZX_POSITIVE;
 							nStrings++;
 							nChiral++;
-							//printf ("Positive string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
 						}
 						break;
 
@@ -933,8 +879,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 							static_cast<char *>(strg)[tIdx] |= STRING_ZX_NEGATIVE;
 							nStrings++;
 							nChiral--;
-							//printf ("Negative string %d %d %d, 2\n", X[0]/step, X[1]+ih*Lx/step, idx/(XC*YC)-1);
-							//fflush (stdout);
 						}
 						break;
 
@@ -957,10 +901,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 #undef	step
 	}
 
-	//printf ("Chirality of configuration %lf (%lld chiral points)\n", ((double) nChiral)/((double) (Vf-Vo)), nChiral);
-	//printf ("Density of configuration %lf (%llu string points)\n", ((double) nStrings)/((double) (Vf-Vo)), nStrings);
-	//fflush (stdout);
-
 	StringData	strDat;
 
 	strDat.strDen = nStrings;
@@ -968,22 +908,6 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	strDat.wallDn = nWalls;
 
 	return	strDat;
-}
-
-StringData	stringXeon	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
-{
-	StringData	  strDen;
-#ifdef USE_XEON
-	const int    micIdx = commAcc();
-	char *str = static_cast<char*>(strg);
-
-	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) out(str : length(V) UseX) nocopy(mX : ReUseX)
-	{
-		strDen = stringKernelXeon(mX, Lx, S, V+S, precision, str);
-	}
-#endif
-	return	strDen;
 }
 
 StringData	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)

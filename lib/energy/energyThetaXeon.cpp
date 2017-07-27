@@ -4,11 +4,6 @@
 #include "enum-field.h"
 #include "scalar/varNQCD.h"
 
-#ifdef USE_XEON
-	#include "comms/comms.h"
-	#include "utils/xeonDefs.h"
-#endif
-
 #include"utils/triSimd.h"
 #include"utils/parse.h"
 
@@ -18,7 +13,7 @@
 
 #include <immintrin.h>
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	Align 64
 	#define	_PREFIX_ _mm512
 #else
@@ -31,9 +26,6 @@
 	#endif
 #endif
 
-#ifdef USE_XEON
-__attribute__((target(mic)))
-#endif
 template<const bool map>
 void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double ood2, const double nQcd,
 			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
@@ -45,7 +37,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 	if (precision == FIELD_DOUBLE)
 	{
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 8
 #elif	defined(__AVX__)
@@ -56,32 +48,17 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	#define	step 2
 #endif
 
-#ifdef	USE_XEON
-		const double * __restrict__ m	= (const double * __restrict__) m_;
-		const double * __restrict__ v	= (const double * __restrict__) v_;
-		double * __restrict__ m2	= (double * __restrict__) m2_;
-
-		__assume_aligned(m, Align);
-		__assume_aligned(v, Align);
-		__assume_aligned(m2,Align);
-#else
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
 		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_, Align);
 		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_,Align);
-#endif
+
 		const double zR  = *z;
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
 		const double zQ  = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;
 		const double o2  = ood2*iz2;
 		const double tV  = 2.*M_PI*zR;
-#ifdef	__MIC__
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
-
-		const int    __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-		const int    __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
@@ -95,7 +72,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const size_t YC = (Lx>>1);
 #endif
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 		const auto vShRg  = opCode(load_si512, shfRg);
 		const auto vShLf  = opCode(load_si512, shfLf);
 #endif
@@ -142,9 +119,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					idxMy = idx + Sf - XC;
 					idxPy = idx + XC;
 					mPy = opCode(load_pd, &m[idxPy]);
-#ifdef	__MIC__
-					mMy = opCode(castsi512_pd, opCode(permutevar_epi32, vShRg, opCode(castpd_si512, opCode(load_pd, &m[idxMy]))));
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 					mMy = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
 #elif	defined(__AVX2__)       //AVX2
 					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
@@ -165,9 +140,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					if (X[1] == YC-1)
 					{
 						idxPy = idx - Sf + XC;
-#ifdef	__MIC__
-						mPy = opCode(castsi512_pd, opCode(permutevar_epi32, vShLf, opCode(castpd_si512, opCode(load_pd, &m[idxPy]))));
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 						mPy = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
 #elif	defined(__AVX2__)       //AVX2
 						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
@@ -263,7 +236,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 16
 #elif	defined(__AVX__)
@@ -274,26 +247,17 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	#define	step 4
 #endif
 
-#ifdef	USE_XEON
-		const float * __restrict__ m	= (const float * __restrict__) m_;
-		const float * __restrict__ v	= (const float * __restrict__) v_;
-		float * __restrict__ m2		= (float * __restrict__) m2_;
-
-		__assume_aligned(m, Align);
-		__assume_aligned(v, Align);
-		__assume_aligned(m2,Align);
-#else
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
 		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_, Align);
 		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_,Align);
-#endif
+
 		const float zR  = *z;
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 		const float o2 = ood2*iz2;
 		const float tV = 2.f*M_PI*zR;
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
 
@@ -352,15 +316,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					idxMy = idx + Sf - XC;
 					idxPy = idx + XC;
 					mPy = opCode(load_ps, &m[idxPy]);
-#ifdef	__MIC__
-					mel = opCode(swizzle_ps, opCode(load_ps, &m[idxMy]), _MM_SWIZ_REG_CBAD);
-					vel = opCode(permute4f128_ps, mel, _MM_PERM_CBAD);
-					mMy = opCode(mask_blend_ps, opCode(int2mask, 0b0001000100010001), mel, vel);
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 					mMy = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
-#elif	defined(__AVX2__)	//AVX2
+#elif	defined(__AVX2__)
 					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
-#elif	defined(__AVX__)	//AVX
+#elif	defined(__AVX__)
 					mel = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
 					vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
 					mMy = opCode(blend_ps, mel, vel, 0b00010001);
@@ -377,15 +337,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					if (X[1] == YC-1)
 					{
 						idxPy = idx - Sf + XC;
-#ifdef	__MIC__
-						mel = opCode(swizzle_ps, opCode(load_ps, &m[idxPy]), _MM_SWIZ_REG_ADCB);
-						vel = opCode(permute4f128_ps, mel, _MM_PERM_ADCB);
-						mPy = opCode(mask_blend_ps, opCode(int2mask, 0b1110111011101110), mel, vel);
-#elif	defined(__AVX512F__)
+#if	defined(__AVX512F__)
 						mPy = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
-#elif	defined(__AVX2__)	//AVX2
+#elif	defined(__AVX2__)
 						mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
-#elif	defined(__AVX__)	//AVX
+#elif	defined(__AVX__)
 						mel = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
 						vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
 						mPy = opCode(blend_ps, mel, vel, 0b10001000);
@@ -501,30 +457,6 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	eRes[TH_GRZ] = gzC;
 	eRes[TH_KIN] = ktC;
 	eRes[TH_POT] = ptC;
-}
-
-void	energyThetaXeon	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map)
-{
-#ifdef USE_XEON
-	const int  micIdx = commAcc();
-	const double ood2 = 0.25./delta2;
-	double *z  = axionField->zV();
-	const FieldPrecision precision = axionField->Precision();
-
-	axionField->exchangeGhosts(FIELD_M);
-	#pragma offload target(mic:micIdx) in(z:length(8) UseX) nocopy(mX, vX, m2X : ReUseX)
-	{
-		switch	(map) {
-			case	true:
-				energyThetaKernelXeon<true>(mX, vX, m2X, z, ood2, nQcd, Lx, S, V+S, precision, eRes);
-				break;
-
-			case	false:
-				energyThetaKernelXeon<true>(mX, vX, m2X, z, ood2, nQcd, Lx, S, V+S, precision, eRes);
-				break;
-		}
-	}
-#endif
 }
 
 void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map)

@@ -41,8 +41,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
@@ -56,7 +54,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("No file selected!");
-			//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 			//LogOut("Done! \n");
 		}
 		else
@@ -102,7 +100,7 @@ int	main (int argc, char *argv[])
 	static_cast<float*> (axion->vCpu())[0]
 	);
 
-	energy(axion, fCount, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+	energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 	// bins density
 	LogOut("bin \n");
 	axion->writeMAPTHETA( (*(axion->zV() )) , indexa, binarray, 10000)		;
@@ -120,7 +118,6 @@ int	main (int argc, char *argv[])
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 
-	delete fCount;
 	delete axion;
 
 	endAxions();

@@ -30,7 +30,6 @@ project("AXIONS")
 
 # build options
 set(USE_GPU OFF CACHE BOOL "builds nVidia gpu support")
-set(USE_XEON OFF CACHE BOOL "builds Xeon Phi support")
 set(USE_AVX OFF CACHE BOOL "builds Avx support")
 set(USE_AVX2 OFF CACHE BOOL "builds Avx2 support")
 set(USE_AVX512 OFF CACHE BOOL "builds Avx-512 support")
@@ -75,10 +74,6 @@ if(${USE_GPU})
     "Flags used by the C++ compiler during release builds." FORCE )
   set(CUDA_NVCC_FLAGS_HOSTDEBUG "-g -G" CACHE STRING
       "Flags used by the C++ compiler during debug builds." FORCE )
-endif()
-
-if(${USE_XEON})
-  add_definitions(-DUSE_XEON)
 endif()
 
 #if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")

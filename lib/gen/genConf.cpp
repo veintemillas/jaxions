@@ -253,22 +253,11 @@ void	ConfGenerator::runCpu	()
 
 }
 
-void	ConfGenerator::runXeon	()
-{
-#ifdef	USE_XEON
-	LogMsg (VERB_HIGH, "The configuration will be generated on host");
-	runCpu();
-#else
-	LogError ("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 void	genConf	(Scalar *field, ConfType cType)
 {
 	LogMsg  (VERB_HIGH, "Called configurator generator");
 
-	ConfGenerator *cGen = new ConfGenerator(field, cType);
+	auto	cGen = std::make_unique<ConfGenerator> (field, cType);
 
 	switch (field->Device())
 	{
@@ -282,17 +271,10 @@ void	genConf	(Scalar *field, ConfType cType)
 			field->exchangeGhosts(FIELD_M);
 			break;
 
-		case DEV_XEON:
-			cGen->runXeon();
-			field->exchangeGhosts(FIELD_M);
-			break;
-
 		default:
 			LogError ("Not a valid device");
 			break;
 	}
-
-	delete	cGen;
 
 	return;
 }
@@ -301,7 +283,7 @@ void	genConf	(Scalar *field, ConfType cType, size_t parm1, double parm2)
 {
 	LogMsg  (VERB_HIGH, "Called configurator generator");
 
-	ConfGenerator *cGen = new ConfGenerator(field, cType, parm1, parm2);
+	auto	cGen = std::make_unique<ConfGenerator> (field, cType, parm1, parm2);
 
 	switch (field->Device())
 	{
@@ -315,17 +297,10 @@ void	genConf	(Scalar *field, ConfType cType, size_t parm1, double parm2)
 			field->exchangeGhosts(FIELD_M);
 			break;
 
-		case DEV_XEON:
-			cGen->runXeon();
-			field->exchangeGhosts(FIELD_M);
-			break;
-
 		default:
 			LogError ("Not a valid device");
 			break;
 	}
-
-	delete	cGen;
 
 	return;
 }

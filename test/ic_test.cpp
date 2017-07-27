@@ -19,10 +19,6 @@
 
 using namespace std;
 
-#ifdef	USE_XEON
-	__declspec(target(mic)) char *mX, *vX, *m2X;
-#endif
-
 int	main (int argc, char *argv[])
 {
 	initAxions(argc, argv);
@@ -41,8 +37,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
@@ -56,7 +50,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 			LogOut("Done! \n");
 		}
 		else
@@ -142,7 +136,6 @@ int	main (int argc, char *argv[])
 	}
 
 
-	delete fCount;
 	delete axion;
 
 	endAxions();

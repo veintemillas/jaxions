@@ -350,7 +350,7 @@ void	pSpectrumUNFOLDED (const complex<Float> *ft, void *spectrumT, void *spectru
 	//printf(" ... power spectrum printed (L=%f, norma = %f)\n",sizeL,norma);
 }
 
-void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, FlopCounter *fCount)
+void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV)
 {
 	const int n1 = axion->Length();
 	const int kmax = n1/2 -1;
@@ -362,12 +362,11 @@ void	powerspectrumUNFOLDED(Scalar *axion, void *spectrumK, void *spectrumG, void
 	// 	New scheme
 
 	//  Copies energy_theta + I potential_energy_theta into m2
-	// 	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, DeviceType dev, FlopCounter *fCount)
 
 			//PATCH
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
+				//energyMap	(axion, nQcd, delta, axion->Device(), fCount); ////// CHECKKKK!!!!
 			}
 			else
 			{

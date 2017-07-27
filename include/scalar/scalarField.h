@@ -5,10 +5,6 @@
 	#include"utils/utils.h"
 	#include"utils/tunable.h"
 
-	#ifdef	USE_XEON
-		#include "utils/xeonDefs.h"
-	#endif
-
 	class	Scalar : public Tunable
 	{
 		private:
@@ -71,7 +67,7 @@
 		public:
 
 				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
-					FieldType fType, ConfType cType, const size_t parm1, const double parm2, FlopCounter *fCount);
+					FieldType fType, ConfType cType, const size_t parm1, const double parm2);
 				~Scalar();
 
 		void		*mCpu() { return m; }
@@ -80,15 +76,6 @@
 		const void	*vCpu() const { return v; }
 		void		*m2Cpu() { return m2; }
 		const void	*m2Cpu() const { return m2; }
-
-#ifdef	USE_XEON
-		__attribute__((target(mic))) void	*mXeon() { return mX; }
-		__attribute__((target(mic))) const void	*mXeon() const { return mX; }
-		__attribute__((target(mic))) void	*vXeon() { return vX; }
-		__attribute__((target(mic))) const void	*vXeon() const { return vX; }
-		__attribute__((target(mic))) void	*m2Xeon() { return m2X; }
-		__attribute__((target(mic))) const void	*m2Xeon() const { return m2X; }
-#endif
 
 #ifdef	USE_GPU
 		void		*mGpu() { return m_d; }
@@ -136,11 +123,6 @@
 		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
-//		void	fftCpu(FFTdir sign);			// Fast Fourier Transform in the Cpu
-//		void	fftGpu(int sign);			// Fast Fourier Transform in the Gpu
-//		void	fftCpuSpectrum(FFTdir sign);			// Fast Fourier Transform in m2 [axion spectrum usage]
-//		void	fftCpuHalo(FFTdir sign);					// Fast Fourier Transform in the Cpu for m -> [halo search usage]
-
 		/*	Eliminar	*/
 
 		void  loadHalo();										// LOADS HALO UTILITIES
@@ -156,9 +138,6 @@
 		void	denstom(); 	//
 		void	autodenstom2(); 	//
 		void	mendtheta(); 	//
-
-		void	squareGpu();				// Squares the m2 field in the Gpu
-		void	squareCpu();				// Squares the m2 field in the Cpu
 
 		void	laplacian();
 

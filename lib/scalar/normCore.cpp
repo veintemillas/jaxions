@@ -50,16 +50,6 @@ void	NormCoreField::runCpu	()
 	normCoreXeon(axionField);
 }
 
-void	NormCoreField::runXeon	()
-{
-#ifdef	USE_XEON
-	normCoreXeon(axionField);
-#else
-	LogError ("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 using namespace profiler;
 
 void	normCoreField	(Scalar *field)
@@ -80,10 +70,6 @@ void	normCoreField	(Scalar *field)
 
 		case DEV_GPU:
 			nField->runGpu ();
-			break;
-
-		case	DEV_XEON:
-			nField->runXeon();
 			break;
 
 		default:

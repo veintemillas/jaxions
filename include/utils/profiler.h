@@ -39,7 +39,7 @@
 				std::string	name() { return nameProf; };
 				void		name(const char *pName) { nameProf.assign(pName); };
 
-				void    	printStats();
+				double    	printStats();
 
 				std::map<std::string,FlopCounter>& Prof() { return prof; }
 		};

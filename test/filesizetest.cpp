@@ -39,15 +39,13 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
 	char fileName[256];
 
 	LogOut("Generating scalar ... ");
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 	LogOut("Done! \n");
 
 	current = std::chrono::high_resolution_clock::now();
@@ -57,7 +55,7 @@ int	main (int argc, char *argv[])
 
 	old = std::chrono::high_resolution_clock::now();
 	LogOut("Comlex to theta\n");
-	cmplxToTheta (axion, fCount);
+	cmplxToTheta (axion);
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 	LogOut("Complex2Theta time %f min\n",elapsed.count()*1.e-3/60.);
@@ -69,7 +67,6 @@ int	main (int argc, char *argv[])
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 	LogOut("Write time time %f min\n",elapsed.count()*1.e-3/60.);
 
-	delete fCount;
 	delete axion;
 
 	endAxions();

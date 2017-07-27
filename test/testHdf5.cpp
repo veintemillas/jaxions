@@ -39,8 +39,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
@@ -49,7 +47,7 @@ int	main (int argc, char *argv[])
 	if (fIndex == -1) {
 		//This generates initial conditions
 		LogOut("Generating scalar... ");
-		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 		LogOut("Done! \n");
 	} else {
 		//This reads from an Axion.$fIndex file
@@ -139,17 +137,14 @@ int	main (int argc, char *argv[])
 
 	auto strDen = strings(axion, str);
 
-	fCount->addTime(elapsed.count()*1.e-3);
-
 	if (axion->LowMem())
-		energy(axion, fCount, eRes, false, delta, nQcd, LL);
+		energy(axion, eRes, false, delta, nQcd, LL);
 	else
-		energy(axion, fCount, eRes, true,  delta, nQcd, LL);
+		energy(axion, eRes, true,  delta, nQcd, LL);
 
 	LogOut("Nstrings %lu\n", strDen.strDen);
 	LogOut("Chiral   %ld\n", strDen.strChr);
 	LogOut("Nwalls   %lu\n", strDen.wallDn);
-	LogOut("GFlops %lf\tGBytes %lf\n", fCount->GFlops(), fCount->GBytes());
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
@@ -174,14 +169,14 @@ int	main (int argc, char *argv[])
 /*
 	LogOut("--------------------------------------------------\n");
 	LogOut("TO THETA\n");
-	cmplxToTheta (axion, fCount);
+	cmplxToTheta (axion);
 	fflush(stdout);
 	LogOut("--------------------------------------------------\n");
 	index++;
 
 	writeConf(axion, index);
 
-	energy(axion, fCount, eRes, true, delta);
+	energy(axion, eRes, true, delta);
 
 	createMeas(axion, index);
 	writeEnergy(axion, eRes);
@@ -191,7 +186,6 @@ int	main (int argc, char *argv[])
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
 
-	delete fCount;
 	delete axion;
 
 	endAxions();

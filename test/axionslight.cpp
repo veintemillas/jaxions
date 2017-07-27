@@ -43,8 +43,6 @@ int	main (int argc, char *argv[])
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	FlopCounter *fCount = new FlopCounter;
-
 	start = std::chrono::high_resolution_clock::now();
 
 	Scalar *axion;
@@ -58,7 +56,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2, fCount);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
 			LogOut("Done! \n");
 		}
 		else
@@ -542,7 +540,7 @@ int	main (int argc, char *argv[])
 					//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 					 munge(UNFOLD_SLICE, sliceprint);
 					  	writeMap (axion, 100000);
-					cmplxToTheta (axion, fCount, saskia);
+					cmplxToTheta (axion, saskia);
 
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
@@ -559,17 +557,9 @@ int	main (int argc, char *argv[])
 				}
 			}
 	    }
-//			}
-//			else
-//			{
-//				propTheta	(axion, dzaux, nQcd, delta, fCount);
-//			}
-
 
 			current = std::chrono::high_resolution_clock::now();
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
-
-			fCount->addTime(elapsed.count()*1.e-3);
 
 			counter++;
 
@@ -600,7 +590,7 @@ int	main (int argc, char *argv[])
 				else
 					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
 
-				energy(axion, fCount, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
+				energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 
 				double maa = 40*axionmass(z_now,nQcd,zthres, zrestore)/(2*llaux);
 				if (axion->Lambda() == LAMBDA_Z2 )
@@ -609,7 +599,7 @@ int	main (int argc, char *argv[])
 				LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux, maa );
 				LogOut("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 
-										//nstrings_global = strings(axion, str, fCount);
+										//nstrings_global = strings(axion, str);
 										//nstrings_global =	analyzeStrFolded(axion, index);
 										rts = strings(axion, str);
 										nstrings_global = rts.strDen ;
@@ -647,7 +637,7 @@ int	main (int argc, char *argv[])
 
 				// NEW VERSION
 				// computes energy and creates map
-				energy(axion, fCount, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 				//bins density
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
@@ -762,7 +752,7 @@ int	main (int argc, char *argv[])
 
 		LogOut("DensMap ... ");
 
-		energy(axion, fCount, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		LogOut("| ");
 
@@ -782,7 +772,7 @@ int	main (int argc, char *argv[])
 
 		LogOut("pSpec ... ");
 
-		powerspectrumUNFOLDED(axion, fCount);
+		powerspectrumUNFOLDED(axion);
 		if (commRank() == 0)
 		{
 		printf("sp %f ...\n", sK[0]);
@@ -833,8 +823,6 @@ int	main (int argc, char *argv[])
 	LogOut("#_prints = %i\n", index);
 	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
-	LogOut("GFlops: %.3f\n", fCount->GFlops());
-	LogOut("GBytes: %.3f\n", fCount->GBytes());
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
@@ -844,7 +832,6 @@ int	main (int argc, char *argv[])
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 	trackFree((void**) (&axitonarray),  ALLOC_TRACK);
 
-	delete fCount;
 	delete axion;
 
 	endAxions();

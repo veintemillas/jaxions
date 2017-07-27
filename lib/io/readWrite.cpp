@@ -469,10 +469,10 @@ void	readConf (Scalar **axion, int index)
 
 	if (!strcmp(fStr, "Saxion"))
 	{
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,  CONF_NONE, 0, 0, NULL);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,  CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
 	} else if (!strcmp(fStr, "Axion")) {
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION, CONF_NONE, 0, 0, NULL);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
 		LogError ("Input error: Invalid field type");

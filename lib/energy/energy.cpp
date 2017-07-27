@@ -1,5 +1,4 @@
-#include <cstdio>
-#include <cstdlib>
+#include <memory>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -83,25 +82,9 @@ void	Energy::runCpu	()
 	}
 }
 
-void	Energy::runXeon	()
-{
-#ifdef	USE_XEON
-	if (fType == FIELD_SAXION) {
-		setName		("Energy Saxion");
-		energyXeon	(field, delta2, LL, nQcd, Lx, V, S, precision, eRes, shift, pot, map);
-	} else {
-		setName		("Energy Axion");
-		energyThetaXeon	(field, delta2, nQcd, Lx, V, S, eRes, map);
-	}
-#else
-	LogError ("Xeon Phi support not built");
-	exit(1);
-#endif
-}
-
 using namespace profiler;
 
-void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
+void	energy	(Scalar *field, void *eRes, const bool map, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
 {
 	if (map && (field->Field() == FIELD_SAXION) && field->LowMem())
 	{
@@ -115,7 +98,7 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
-	Energy *eDark = new Energy(field, LL, nQcd, delta, eTmp, pot, shift, map);
+	auto	eDark = std::make_unique<Energy>(field, LL, nQcd, delta, eTmp, pot, shift, map);
 
 	if	(!field->Folded())
 	{
@@ -135,14 +118,9 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 			eDark->runGpu ();
 			break;
 
-		case	DEV_XEON:
-			eDark->runXeon();
-			break;
-
 		default:
-			LogError ("Not a valid device");
+			LogError ("Error: invalid device");
 			prof.stop();
-			delete eDark;
 			trackFree(&eTmp, ALLOC_TRACK);
 			return;
 	}
@@ -172,8 +150,6 @@ void	energy	(Scalar *field, FlopCounter *fCount, void *eRes, const bool map, con
 	prof.add(eDark->Name(), flops, bytes);
 
 	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", eDark->Name().c_str(), prof.Prof()[eDark->Name()].GFlops(), prof.Prof()[eDark->Name()].GBytes());
-
-	delete	eDark;
 
 	return;
 }

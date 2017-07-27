@@ -631,11 +631,12 @@ int	parseArgs (int argc, char *argv[])
 			}
 			else if (!strcmp(argv[i+1], "xeon"))
 			{
-				cDev = DEV_XEON;
+				printf("Error: Knights Corner support has been removed\n");
+				exit(1);
 			}
 			else
 			{
-				printf("Error: Unrecognized device %s\n", argv[i+1]);
+				printf("Error: unrecognized device %s\n", argv[i+1]);
 				exit(1);
 			}
 

@@ -13,7 +13,7 @@
 
 #include <immintrin.h>
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	Align 64
 	#define	_PREFIX_ _mm512
 #else
@@ -26,9 +26,6 @@
 	#endif
 #endif
 
-#ifdef USE_XEON
-__attribute__((target(mic)))
-#endif
 template<const VqcdType VQcd>
 inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
 				const double LL, const double nQcd, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
@@ -37,7 +34,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 
 	if (precision == FIELD_DOUBLE)
 	{
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
 #elif	defined(__AVX__)
@@ -59,7 +56,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
@@ -216,9 +213,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 				mel = opCode(load_ps, &m[idxP0]);
 				mPy = opCode(mul_ps, mel, mel);
 
-#if	defined(__MIC__)
-				mPx = opCode(add_ps, opCode(swizzle_ps, mPy, _MM_SWIZ_REG_CDAB), mPy);
-#elif	defined(__AVX__) || defined(__AVX512F__)
+#if	defined(__AVX__)// || defined(__AVX512F__)
 				mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);

@@ -7,7 +7,7 @@
 #include "scalar/scalarField.h"
 #include "utils/index.h"
 #include "utils/utils.h"
-#include "energy/energyMap.h"
+#include "energy/energy.h"
 #include "fft/fftCode.h"
 
 using namespace std;

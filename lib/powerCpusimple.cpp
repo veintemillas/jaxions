@@ -419,7 +419,7 @@ void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t 
 
 
 
-void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
+void	powerspectrumUNFOLDED(Scalar *axion)
 {
 
 	const size_t n1 = axion->Length();
@@ -441,12 +441,11 @@ void	powerspectrumUNFOLDED(Scalar *axion, FlopCounter *fCount)
 	// 	New scheme
 
 	//  Copies energy_theta + I potential_energy_theta into m2
-	// 	energyMap	(Scalar *field, const double LL, const double nQcd, const double delta, FlopCounter *fCount)
 
 			//PATCH
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				energy	(axion, fCount, eRes, true, delta, nQcd, LL); ////// CHECKKKK!!!!
+				energy	(axion, eRes, true, delta, nQcd, LL); ////// CHECKKKK!!!!
 			}
 			else
 			{
