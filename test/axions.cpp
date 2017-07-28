@@ -190,10 +190,12 @@ int	main (int argc, char *argv[])
 
 		energy(axion, eRes, false, delta, nQcd, LL);
 
-		if (axion->LowMem())
-			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
-		else
-			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
+		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
+
+		auto pFler = prof.Prof().cbegin();
+		auto pName = pFler->first;
+
+		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
 		createMeas(axion, index);
 		writeEDens(axion, index);
