@@ -1,5 +1,6 @@
 #include <string>
 #include <complex>
+#include <memory>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -25,14 +26,11 @@ class	Laplacian : public Tunable
 
 	Scalar			*field;
 
-	template<class cFloat>
+	template<class cFloat, const bool hCmplx>
 	void			lapCpu(std::string name);
 
-	template<class cFloat>
+	template<class cFloat, const bool hCmplx>
 	void			lapGpu(std::string name);
-
-	template<class cFloat>
-	void			lapXeon(std::string name);
 
 	public:
 
@@ -50,11 +48,9 @@ class	Laplacian : public Tunable
 
 	void	sRunCpu	();	// Saxion laplacian
 	void	sRunGpu	();
-	void	sRunXeon();
 
 	void	tRunCpu	();	// Axion laplacian
 	void	tRunGpu	();
-	void	tRunXeon();
 };
 
 void	Laplacian::sRunGpu	()
@@ -77,7 +73,7 @@ void	Laplacian::lapCpu	(std::string name)
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
 
-	const int maxLx = (hCmplx ++ true) ? (Lx>>1)+1 : Lx;
+	const int maxLx = (hCmplx == true) ? (Lx>>1)+1 : Lx;
 
 	#pragma omp parallel for schedule(static) default(shared)
 	for (int oz = 0; oz < Lz; oz++)
@@ -159,7 +155,7 @@ void	applyLaplacian	(Scalar *field)
 	LogMsg	(VERB_HIGH, "Called laplacian");
 	profiler::Profiler &prof = getProfiler(PROF_PROP);
 
-	Laplacian *lap = new Laplacian(field);
+	auto lap = std::make_unique<Laplacian>(field);
 
 	if	(field->Folded())
 	{
@@ -181,9 +177,8 @@ void	applyLaplacian	(Scalar *field)
 					lap->tRunCpu ();
 					break;
 				default:
-					LogError ("Not a valid device");
+					LogError ("Error: invalid device");
 					prof.stop();
-					delete lap;
 					return;
 			}
 
@@ -202,17 +197,15 @@ void	applyLaplacian	(Scalar *field)
 					lap->sRunCpu ();
 					break;
 				default:
-					LogError ("Not a valid device");
+					LogError ("Error: invalid device");
 					prof.stop();
-					delete lap;
 					return;
 			}
 			break;
 
 		default:
-			LogError ("Invalid field type");
+			LogError ("Error: invalid field type");
 			prof.stop();
-			delete lap;
 			return;
 	}
 
@@ -221,8 +214,6 @@ void	applyLaplacian	(Scalar *field)
 	prof.add(lap->Name(), lap->GFlops(), lap->GBytes());
 
 	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", lap->Name().c_str(), prof.Prof()[lap->Name()].GFlops(), prof.Prof()[lap->Name()].GBytes());
-
-	delete	lap;
 
 	return;
 }

@@ -3,6 +3,7 @@
 
 	#include <cmath>
 	#include <string>
+	#include <cstring>
 	#include <functional>
 	#include "propagator/propBase.h"
 	#include "scalar/scalarField.h"
@@ -354,9 +355,9 @@
 
 		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
-		if	(field->Folded())
+		if	(axionField->Folded())
 		{
-			Folder	munge(field);
+			Folder	munge(axionField);
 			munge(UNFOLD_ALL);
 		}
 

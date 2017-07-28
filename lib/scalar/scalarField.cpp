@@ -490,26 +490,6 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 	transferGhosts(fIdx);
 }
 
-//	USA M2, ARREGLAR LOWMEM
-/*
-void	Scalar::prepareCpu(int *window)
-{
-	if (precision == FIELD_DOUBLE)
-	{
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
-			((complex<double> *) m2)[i] = I*(((std::complex<double> *) v)[i]/((std::complex<double> *) m)[i]).imag()*((double) window[i]);
-	}
-	else
-	{
-		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
-			((complex<float> *) m2)[i] = If*(((std::complex<float> *) v)[i]/((std::complex<float> *) m)[i]).imag()*((float) window[i]);
-	}
-}
-*/
-
-
 void	Scalar::setField (FieldType fType)
 {
 	switch (fType)
@@ -517,7 +497,19 @@ void	Scalar::setField (FieldType fType)
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
-				trackFree(&v, ALLOC_ALIGN);
+				if (!lowmem) {
+					trackFree(&m2, ALLOC_ALIGN);
+
+					if (device == DEV_GPU)
+						cudaFree(m2_d);
+				}
+
+				m2 = v;
+
+				if (device == DEV_GPU)
+					m2_d = v_d;
+
+				//trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
 				{
@@ -549,7 +541,7 @@ void	Scalar::setField (FieldType fType)
 
 				const size_t	mBytes = v3*fSize;
 				// IF low mem was used before, it creates m2 COMPLEX
-				if (lowmem)
+/*				if (lowmem)
 				{
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 
@@ -563,6 +555,7 @@ void	Scalar::setField (FieldType fType)
 						exit(1);
 					}
 					#endif
+
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
 					trackFree(&m2, ALLOC_ALIGN);
@@ -581,6 +574,7 @@ void	Scalar::setField (FieldType fType)
 					}
 				#endif
 				}
+*/
 			}
 			break;
 
@@ -588,7 +582,7 @@ void	Scalar::setField (FieldType fType)
 			if (fieldType == FIELD_AXION)
 			{
 				if (commRank() == 0)
-					printf ("Not supported\n");
+					LogError ("Error: transformation from axion to saxion not supported");
 			} else {
 				fieldType = FIELD_SAXION;
 			}
