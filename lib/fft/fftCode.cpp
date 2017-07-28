@@ -73,7 +73,9 @@ namespace AxionFFT {
 				fftwf_complex *m  = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
 				fftwf_complex *m2 = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
 				float	      *mR = static_cast<float *>       (axion->vCpu())  + axion->Surf();
-				fftwf_complex *oR = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
+				fftwf_complex *oR = static_cast<fftwf_complex*>(static_cast<void*>(mR));
+				//fftwf_complex *oR = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
+				//float	      *mR = static_cast<float *>(static_cast<void *>(oR));
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -127,6 +129,7 @@ namespace AxionFFT {
 						break;
 					
 					case	FFT_SPAX:
+						printf ("Original %p %p\n", mR, oR);
 						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR,  oR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR,  mR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;

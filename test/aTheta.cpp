@@ -17,11 +17,6 @@
 
 using namespace std;
 
-#ifdef	USE_XEON
-	__declspec(target(mic)) char *mX, *vX, *m2X;
-#endif
-
-
 int	main (int argc, char *argv[])
 {
 	initAxions(argc, argv);
@@ -175,6 +170,8 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
+	int cnt = 0;
+
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		//--------------------------------------------------
@@ -190,10 +187,12 @@ int	main (int argc, char *argv[])
 
 		energy(axion, eRes, false, delta, nQcd, LL);
 
-		if (axion->LowMem())
-			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("Lowmem RKN4 Saxion"));
-		else
-			profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, std::string("RKN4 Saxion"));
+		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
+
+		auto pFler = prof.Prof().cbegin();
+		auto pName = pFler->first;
+
+		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
 		createMeas(axion, index);
 		writeEDens(axion, index);
@@ -207,7 +206,12 @@ int	main (int argc, char *argv[])
 		writePoint(axion);
 		destroyMeas();
 
-		if (strDen.strDen == 0 && axion->Field() == FIELD_SAXION) {
+		if (strDen.strDen == 0 && axion->Field() == FIELD_SAXION && strDen.wallDn == 0)
+			cnt++;
+		else
+			cnt = 0;
+
+		if (cnt == 40) {
 			LogOut("--------------------------------------------------\n");
 			LogOut("              TRANSITION TO THETA \n");
 			LogOut("--------------------------------------------------\n");

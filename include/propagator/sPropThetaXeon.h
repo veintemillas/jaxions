@@ -80,7 +80,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			{
 				size_t idxMz = idx-Sf, idxM2;
 
-				idxM2 = (idx%Lx) + (idx/Lx)*(Lx+2);
+				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2) + Sf;
 
 				mel = opCode(load_pd, &m[idx]);
 				vel = opCode(load_pd, &v[idxMz]);
@@ -94,7 +94,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 				tmp = opCode(fmadd_pd, acu, dzcVec, vel);
 				m2l = opCode(fmadd_pd, tmp, dzdVec, mel);
 #else
-				acu = opCode(sub_pd, opCode(mul_pd, fMVec, opCode(load_pd, &m2[idx])), opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
+				acu = opCode(sub_pd, opCode(mul_pd, fMVec, opCode(load_pd, &m2[idxM2])), opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
 				tmp = opCode(add_pd, vel, opCode(mul_pd, acu, dzcVec));
 				m2l = opCode(add_pd, mel, opCode(mul_pd, tmp, dzdVec));
 #endif
@@ -161,18 +161,18 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			{
 				size_t idxMz = idx - Sf, idxM2;
 
-				idxM2 = (idx%Lx) + (idx/Lx)*(Lx+2);
+				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2) + Sf;
 
 				mel = opCode(load_ps, &m[idx]);
 				vel = opCode(load_ps, &v[idxMz]);
 
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-				acu = opCode(fnmadd_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, iZ), opCode(mul_ps, opCode(load_ps, &m2[idxM2]), fMVec)));
+				acu = opCode(fnmadd_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec)), opCode(mul_ps, fMVec, opCode(load_ps, &m2[idxM2])));
 				tmp = opCode(fmadd_ps, acu, dzcVec, vel);
 				m2l = opCode(fmadd_ps, tmp, dzdVec, mel);
 #else
-				acu = opCode(sub_ps, opCode(mul_ps, fMVec, opCode(load_ps, &m2[idx])), opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+				acu = opCode(sub_ps, opCode(mul_ps, fMVec, opCode(load_ps, &m2[idxM2])), opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
 				tmp = opCode(add_ps, vel, opCode(mul_ps, acu, dzcVec));
 				m2l = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
