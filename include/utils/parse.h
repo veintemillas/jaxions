@@ -32,6 +32,8 @@ extern char *initFile;
 extern char outName[128];
 extern bool lowmem;
 extern bool uPrec;
+extern bool uQcd;
+extern bool uLambda;
 
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;

@@ -389,7 +389,7 @@ void	readConf (Scalar **axion, int index)
 
 	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
 	{
-		*axion == NULL;
+		*axion == nullptr;
 		LogError ("Error opening file %s", base);
 		return;
 	}
@@ -409,8 +409,13 @@ void	readConf (Scalar **axion, int index)
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-	readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
+
+	if (uQcd == false)
+		readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
+
+	if (uLambda == false)
+		readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
+
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &zTin,  "zInitial",     H5T_NATIVE_DOUBLE);

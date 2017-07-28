@@ -32,6 +32,8 @@ double parm2 = 0.;
 
 bool lowmem   = false;
 bool uPrec    = false;
+bool uQcd     = false;
+bool uLambda  = false;
 bool spectral = false;
 
 size_t kMax  = 2;
@@ -327,6 +329,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			uLambda = true;
+
 			i++;
 			procArgs++;
 			passed = true;
@@ -412,6 +416,8 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: The exponent of the top. susceptibility nQcd must be equal or greater than 0.\n");
 				exit(1);
 			}
+
+			uQcd = true;
 
 			i++;
 			procArgs++;
