@@ -236,8 +236,10 @@ const std::complex<float> If(0.,1.);
 			exit(2);
 		}
 
-		if (pType & PROP_SPEC)
+		if (pType & PROP_SPEC) {
 			AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
+			AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
+		}
 	} else {
 		if (fieldType == FIELD_AXION) {
 			LogError ("Configuration generation for axion fields not supported");
@@ -500,15 +502,17 @@ void	Scalar::setField (FieldType fType)
 				if (!lowmem) {
 					trackFree(&m2, ALLOC_ALIGN);
 
+					#ifdef	USE_GPU
 					if (device == DEV_GPU)
 						cudaFree(m2_d);
+					#endif
 				}
 
 				m2 = v;
-
+				#ifdef	USE_GPU
 				if (device == DEV_GPU)
 					m2_d = v_d;
-
+				#endif
 				//trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
