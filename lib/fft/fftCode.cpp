@@ -125,8 +125,8 @@ namespace AxionFFT {
 						break;
 					
 					case	FFT_SPAX:
-						//planForward  = ; 
-						//planBackward = ;
+						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2,  m2, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2,  m2, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 				}
 			}

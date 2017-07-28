@@ -3,6 +3,7 @@
 
 	#include <cmath>
 	#include <string>
+	#include <functional>
 	#include "propagator/propBase.h"
 	#include "scalar/scalarField.h"
 	#include "utils/utils.h"
@@ -52,19 +53,16 @@
 
 		inline void	sRunCpu	(const double)	override;	// Saxion propagator
 		inline void	sRunGpu	(const double)	override;
-//		inline void	sRunXeon()	override;
 
 		inline void	sSpecCpu(const double)	override;	// Saxion spectral propagator
 
 		inline void	tRunCpu	(const double)	override;	// Axion propagator
 		inline void	tRunGpu	(const double)	override;
-//		inline void	tRunXeon()	override;
 
 		inline void	tSpecCpu(const double)	override;	// Axion spectral propagator
 
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
-//		inline void	lowXeon	()	override;
 
 		inline double	cFlops	(const bool)	override;
 		inline double	cBytes	(const bool)	override;
@@ -345,12 +343,33 @@
 	void	PropClass<nStages, lastStage, VQcd>::tSpecCpu	(const double dz) {
 
 		double *z = axionField->zV();
+		auto	Lz = axionField->Depth();
+		auto	Lx = axionField->Length();
+
+		auto	Sf = Lz*Lx;
+		auto	dataLine = axionField->DataSize()*Lx;
+
+		char	*mO = static_cast<char *>(axionField->mCpu())  + axionField->Surf()*axionField->DataSize();
+		char	*mF = static_cast<char *>(axionField->m2Cpu()) + axionField->Surf()*axionField->DataSize();
 
 		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+
+		if	(field->Folded())
+		{
+			Folder	munge(field);
+			munge(UNFOLD_ALL);
+		}
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 			const double	c0 = c[s], d0 = d[s];
+
+			#pragma omp parallel for schedule(static)
+			for (int sl=0; sl<Sf; sl++) {
+				auto	oOff = sl*axionField->DataSize()*Lx;
+				auto	fOff = sl*axionField->DataSize()*(Lx+2);
+				memcpy (mF+fOff, mO+oOff, dataLine);
+			}
 
 			applyLaplacian(axionField);
 			sPropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, nQcd, fMom, Lx, S, V+S, precision);
@@ -361,6 +380,13 @@
 			LogMsg (VERB_HIGH, "Warning: spectral propagator not optimized yet for odd propagators, performance might be reduced");
 
 			const double	c0 = c[nStages];
+
+			#pragma omp parallel for schedule(static)
+			for (int sl=0; sl<Sf; sl++) {
+				auto	oOff = sl*axionField->DataSize()*Lx;
+				auto	fOff = sl*axionField->DataSize()*(Lx+2);
+				memcpy (mF+fOff, mO+oOff, dataLine);
+			}
 
 			applyLaplacian(axionField);
 			sPropThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0.0, nQcd, fMom, Lx, S, V+S, precision);

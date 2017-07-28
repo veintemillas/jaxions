@@ -78,7 +78,9 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t idxMz = idx-Sf;
+				size_t idxMz = idx-Sf, idxM2;
+
+				idxM2 = (idx%Lx) + (idx/Lx)*(Lx+2);
 
 				mel = opCode(load_pd, &m[idx]);
 				vel = opCode(load_pd, &v[idxMz]);
@@ -88,7 +90,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 					opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-				acu = opCode(fnmadd_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec)), opCode(mul_pd, fMVec, opCode(load_pd, &m2[idx])));
+				acu = opCode(fnmadd_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec)), opCode(mul_pd, fMVec, opCode(load_pd, &m2[idxM2])));
 				tmp = opCode(fmadd_pd, acu, dzcVec, vel);
 				m2l = opCode(fmadd_pd, tmp, dzdVec, mel);
 #else
@@ -128,7 +130,6 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 		const float iZ = 1./zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
-		const float tV	= 2.*M_PI*zR;
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
@@ -158,14 +159,16 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t idxMz = idx - Sf;
+				size_t idxMz = idx - Sf, idxM2;
+
+				idxM2 = (idx%Lx) + (idx/Lx)*(Lx+2);
 
 				mel = opCode(load_ps, &m[idx]);
 				vel = opCode(load_ps, &v[idxMz]);
 
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-				acu = opCode(fnmadd_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, iZ), opCode(mul_ps, opCode(load_ps, &m2[idx]), fMVec)));
+				acu = opCode(fnmadd_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, iZ), opCode(mul_ps, opCode(load_ps, &m2[idxM2]), fMVec)));
 				tmp = opCode(fmadd_ps, acu, dzcVec, vel);
 				m2l = opCode(fmadd_ps, tmp, dzdVec, mel);
 #else

@@ -67,7 +67,7 @@ void	Laplacian::sRunGpu	()
 }
 
 
-template<class cFloat>
+template<class cFloat, const bool hCmplx>
 void	Laplacian::lapCpu	(std::string name)
 {
 	auto &planFFT = AxionFFT::fetchPlan(name);
@@ -76,6 +76,8 @@ void	Laplacian::lapCpu	(std::string name)
 	cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
+
+	const int maxLx = (hCmplx ++ true) ? (Lx>>1)+1 : Lx;
 
 	#pragma omp parallel for schedule(static) default(shared)
 	for (int oz = 0; oz < Lz; oz++)
@@ -97,7 +99,7 @@ void	Laplacian::lapCpu	(std::string name)
 			size_t py2 = py*py;
 			size_t idy = py*Lx;
 
-			for (int ox = 0; ox < Lx; ox++)
+			for (int ox = 0; ox < maxLx; ox++)
 			{
 				size_t idx = ox + idy + idz;
 
@@ -119,11 +121,11 @@ void	Laplacian::sRunCpu	()
 {
 	switch (precision) {
 		case FIELD_SINGLE:
-			lapCpu<std::complex<float>> (std::string("SpSx"));
+			lapCpu<std::complex<float>, false>(std::string("SpSx"));
 			break;
 
 		case FIELD_DOUBLE:
-			lapCpu<std::complex<double>>(std::string("SpSx"));
+			lapCpu<std::complex<double>,false>(std::string("SpSx"));
 			break;
 	}
 }
@@ -141,11 +143,11 @@ void    Laplacian::tRunCpu	()
 {
 	switch (precision) {
 		case FIELD_SINGLE:
-			//lapCpu<float> (std::string("SpAx"));
+			lapCpu<float, true>(std::string("SpAx"));
 			break;
 
 		case FIELD_DOUBLE:
-			//lapCpu<double>(std::string("SpAx"));
+			lapCpu<double,true>(std::string("SpAx"));
 			break;
 	}
 }
