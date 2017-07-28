@@ -656,7 +656,7 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_INT);
+	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
