@@ -349,7 +349,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					#pragma unroll
 					for (int ih=0; ih<step; ih++)
 					{
-						int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf)<<1);
+						int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf)<<1);
 						m2[iNx]   = tmpS[(ih<<1)];
 						m2[iNx+1] = tmpS[(ih<<1)+1];
 					}
@@ -783,7 +783,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					#pragma unroll
 					for (int ih=0; ih<step; ih++)
 					{
-						int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + (X[2]-1)*Sf)<<1);
+						int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf)<<1);
 						m2[iNx]   = tmpS[(ih<<1)];
 						m2[iNx+1] = tmpS[(ih<<1)+1];
 					}

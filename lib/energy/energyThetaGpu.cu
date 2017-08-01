@@ -81,7 +81,7 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 	tR[TH_POT] = (double) Vt;
 
 	if (map == true)
-		m2[idx - Sf] = (aX+aY+aZ)*o2 + Vt*zQ + Kt*izh;
+		m2[idx] = (aX+aY+aZ)*o2 + Vt*zQ + Kt*izh;
 }
 
 template<typename Float, const bool map>

@@ -93,7 +93,7 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
         tR[TH_KIN] = (double) tKin;
 
 	if (map == true) {
-		m2[idxMz] = complex<Float>(o2*(rGrx + rGry + rGrz) + 0.5*rKin + lZ*rPot, o2*(tGrx + tGry + tGrz) + 0.5*tKin + zQ*tPot);
+		m2[idx] = complex<Float>(o2*(rGrx + rGry + rGrz) + 0.5*rKin + lZ*rPot, o2*(tGrx + tGry + tGrz) + 0.5*tKin + zQ*tPot);
 	}
 }
 
