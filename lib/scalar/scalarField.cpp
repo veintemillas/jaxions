@@ -608,7 +608,7 @@ void	Scalar::setFolded (bool foli)
 /*	The problem of the theta spectral
 	propagator might renew the interest
 	in these functions			*/
- 
+
 /*	ARREGLAR PARA DIFERENTES PRECISIONES	*/
 /*
 void	Scalar::addZmom(int pz, int oPz, void *data, int sign)
@@ -782,7 +782,7 @@ void	Scalar::theta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-					((complex<double> *) m2)[i] = thetaaux*za + I*0.;
+					((complex<double> *) m2)[i+n2] = thetaaux*za + I*0.;
 				}
 			}
 			else // FIELD_SINGLE
@@ -793,7 +793,7 @@ void	Scalar::theta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
-					((complex<float> *) m2)[i] = thetaauxf*zaf + If*0.f;
+					((complex<float> *) m2)[i+n2] = thetaauxf*zaf + If*0.f;
 				}
 			}
 		break;
@@ -804,14 +804,14 @@ void	Scalar::theta2m2()//int *window)
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2]) + I*0.;
+					((complex<double> *) m2)[i+n2] = ((static_cast<double*> (m))[i+n2]) + I*0.;
 			}
 			else	// FIELD_SINGLE
 			{
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2]) + If*0.f;
+					((complex<float> *) m2)[i+n2] = ((static_cast<float*> (m))[i+n2]) + If*0.f;
 			}
 		break;
 	}
@@ -835,7 +835,7 @@ void	Scalar::vheta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-					((complex<double> *) m2)[i] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+					((complex<double> *) m2)[i+n2] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
 				}
 			}
 			else // FIELD_SINGLE
@@ -846,7 +846,7 @@ void	Scalar::vheta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
-					((complex<float> *) m2)[i] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+					((complex<float> *) m2)[i+n2] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
 				}
 			}
 		break;
@@ -857,14 +857,14 @@ void	Scalar::vheta2m2()//int *window)
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<double> *) m2)[i] = 0.0 + I*((static_cast<double*> (v))[i]);
+					((complex<double> *) m2)[i+n2] = 0.0 + I*((static_cast<double*> (v))[i]);
 			}
 			else	// FIELD_SINGLE
 			{
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<float> *) m2)[i] = 0.f + If*((static_cast<float*> (v))[i]);
+					((complex<float> *) m2)[i+n2] = 0.f + If*((static_cast<float*> (v))[i]);
 			}
 		break;
 	}	// END FIELDTYPE
@@ -890,7 +890,7 @@ void	Scalar::thetav2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-					((complex<double> *) m2)[i] = thetaaux*massfactor*za + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+					((complex<double> *) m2)[i+n2] = thetaaux*massfactor*za + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
 				}
 			} else {
 				float zaf = *z ;
@@ -901,7 +901,7 @@ void	Scalar::thetav2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
-					((complex<float> *) m2)[i] = thetaauxf*massfactor*zaf + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+					((complex<float> *) m2)[i+n2] = thetaauxf*massfactor*zaf + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
 				}
 			}
 		break;
@@ -914,7 +914,7 @@ void	Scalar::thetav2m2()//int *window)
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<double> *) m2)[i] = ((static_cast<double*> (m))[i+n2])*massfactor + I*((static_cast<double*> (v))[i]);
+					((complex<double> *) m2)[i+n2] = ((static_cast<double*> (m))[i+n2])*massfactor + I*((static_cast<double*> (v))[i]);
 			}
 			else
 			{
@@ -924,7 +924,7 @@ void	Scalar::thetav2m2()//int *window)
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<float> *) m2)[i] = ((static_cast<float*> (m))[i+n2])*massfactor + If*((static_cast<float*> (v))[i]);
+					((complex<float> *) m2)[i+n2] = ((static_cast<float*> (m))[i+n2])*massfactor + If*((static_cast<float*> (v))[i]);
 			}
 		break;
 
