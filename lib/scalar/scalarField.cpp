@@ -224,6 +224,11 @@ const std::complex<float> If(0.,1.);
 
 	AxionFFT::initFFT(prec);
 
+	if (pType & PROP_SPEC) {
+		AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
+		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
+	}
+
 	*z = zI;
 
 	/*	If present, read fileName	*/
@@ -236,10 +241,6 @@ const std::complex<float> If(0.,1.);
 			exit(2);
 		}
 
-		if (pType & PROP_SPEC) {
-			AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
-			AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
-		}
 	} else {
 		if (fieldType == FIELD_AXION) {
 			LogError ("Configuration generation for axion fields not supported");
@@ -249,15 +250,13 @@ const std::complex<float> If(0.,1.);
 					AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 				else
 					AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
-
-			if (pType & PROP_SPEC)
-				AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
-
+			prof.stop();
 			genConf	(this, cType, parm1, parm2);
+			prof.start();
 		}
 	}
 
-	// Move this initialization to the analysis, not here
+	// Move this initialization to the analysis, not here (OR NOT!! FIELDS ARE DESTROYED UPON PLAN INITIALIZATION!!!)
 	//if(!lowmem)
 	//{
 	//	AxionFFT::initPlan (this, FFT_CtoC_M2toM2,  FFT_FWD, "pSpectrum");

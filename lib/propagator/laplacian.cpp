@@ -69,11 +69,15 @@ void	Laplacian::lapCpu	(std::string name)
 	auto &planFFT = AxionFFT::fetchPlan(name);
 	planFFT.run(FFT_FWD);
 
-	cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
+	cFloat *mData = static_cast<cFloat*> (field->m2Cpu()) + field->Surf();
+
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
 
-	const int maxLx = (hCmplx == true) ? (Lx>>1)+1 : Lx;
+	const int    maxLx = (hCmplx == true) ? (Lx>>1)+1 : Lx;
+	const size_t maxSf = (hCmplx == true) ?  maxLx*Lx : Sf;
+
+	const size_t total = maxSf*Lz*2;
 
 	#pragma omp parallel for schedule(static) default(shared)
 	for (int oz = 0; oz < Lz; oz++)
@@ -84,7 +88,7 @@ void	Laplacian::lapCpu	(std::string name)
         		pz = oz - Lz;
 
 		size_t pz2 = pz*pz;
-		size_t idz = (oz+1)*Sf;
+		size_t idz = oz*maxSf;
 
 		for (int oy = 0; oy < Lx; oy++)
         	{
@@ -93,7 +97,7 @@ void	Laplacian::lapCpu	(std::string name)
 				py = oy - Lx;
 
 			size_t py2 = py*py;
-			size_t idy = oy*Lx;
+			size_t idy = oy*maxLx;
 
 			for (int ox = 0; ox < maxLx; ox++)
 			{
@@ -106,6 +110,10 @@ void	Laplacian::lapCpu	(std::string name)
 				size_t p2 = pz2 + py2 + px*px;
 
 				mData[idx] *= (cFloat) (p2);
+
+				if (hCmplx)
+					if (idx != total - idx)
+						mData[total-idx] *= (cFloat) (p2);
 			}
 	        }
 	}
@@ -163,11 +171,11 @@ void	applyLaplacian	(Scalar *field)
 		munge(UNFOLD_ALL);
 	}
 
-	prof.start();
+	//prof.start();
 
 	switch (field->Field()) {
 		case FIELD_AXION:
-			lap->setName("Laplacian Axion");
+			//lap->setName("Laplacian Axion");
 
 			switch (field->Device()) {
 				case DEV_GPU:
@@ -182,12 +190,12 @@ void	applyLaplacian	(Scalar *field)
 					return;
 			}
 
-			lap->add(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
+			//lap->add(16.*4.*field->Size()*1.e-9, 10.*4.*field->DataSize()*field->Size()*1.e-9);
 
 			break;
 
 		case FIELD_SAXION:
-			lap->setName("Laplacian Saxion");
+			//lap->setName("Laplacian Saxion");
 
 			switch (field->Device()) {
 				case DEV_GPU:
@@ -198,22 +206,22 @@ void	applyLaplacian	(Scalar *field)
 					break;
 				default:
 					LogError ("Error: invalid device");
-					prof.stop();
+					//prof.stop();
 					return;
 			}
 			break;
 
 		default:
 			LogError ("Error: invalid field type");
-			prof.stop();
+			//prof.stop();
 			return;
 	}
 
-	prof.stop();
+	//prof.stop();
 
-	prof.add(lap->Name(), lap->GFlops(), lap->GBytes());
+	//prof.add(lap->Name(), lap->GFlops(), lap->GBytes());
 
-	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", lap->Name().c_str(), prof.Prof()[lap->Name()].GFlops(), prof.Prof()[lap->Name()].GBytes());
+	//LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", lap->Name().c_str(), prof.Prof()[lap->Name()].GFlops(), prof.Prof()[lap->Name()].GBytes());
 
 	return;
 }

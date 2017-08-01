@@ -369,6 +369,7 @@
 			for (int sl=0; sl<Sf; sl++) {
 				auto	oOff = sl*axionField->DataSize()*Lx;
 				auto	fOff = sl*axionField->DataSize()*(Lx+2);
+
 				memcpy (mF+fOff, mO+oOff, dataLine);
 			}
 
@@ -548,12 +549,12 @@
 				case FIELD_SAXION:
 					switch (VQcd) {
 						case VQCD_1:
-							return	(1e-9 * ((double) axionField->Size()) * (26. * ((double) nStages) + (lastStage ? 22. : 0.) 
+							return	(1e-9 * ((double) axionField->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.) 
 								+ 5.*1.44695*log(((double) axionField->Size()))));
 							break;
 
 						case VQCD_2:
-							return	(1e-9 * ((double) axionField->Size()) * (29. * ((double) nStages) + (lastStage ? 25. : 0.)
+							return	(1e-9 * ((double) axionField->Size()) * ((29. + 1.) * ((double) nStages) + (lastStage ? 25. + 1. : 0.)
 								+ 5.*1.44695*log(((double) axionField->Size()))));
 							break;
 					}
@@ -570,9 +571,9 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const bool spec) {
 		if (!spec) {
-			return	(1e-9 * ((double) (axionField->Size()*axionField->DataSize())) * (10. * ((double) nStages) + (lastStage ? 9. : 0.)));
+			return	(1e-9 * ((double) (axionField->Size()*axionField->DataSize())) * (   10.    * ((double) nStages) + (lastStage ? 9. : 0.)));
 		} else {
-			return	(1e-9 * ((double) (axionField->Size()*axionField->DataSize())) * ( 4. * ((double) nStages) + (lastStage ? 3. : 0.) + 2.));
+			return	(1e-9 * ((double) (axionField->Size()*axionField->DataSize())) * ((6. + 4.) * ((double) nStages) + (lastStage ? 6. + 3. : 0.) + 2.));
 		}
 	}
 #endif

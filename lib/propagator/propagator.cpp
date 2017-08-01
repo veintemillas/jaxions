@@ -227,7 +227,7 @@ void	propagate	(Scalar *field, const double dz)
 	auto mFlops = prop->cFlops((pType & PROP_SPEC) ? true : false);
 	auto mBytes = prop->cBytes((pType & PROP_SPEC) ? true : false);
 
-	prop->add(prop->cFlops((pType & PROP_SPEC) ? true : false), prop->cBytes((pType & PROP_SPEC) ? true : false));
+	prop->add(mFlops, mBytes);
 
 	prof.stop();
 
