@@ -158,9 +158,9 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 	#define	step 2
 #endif
 
-		float	    * __restrict__ m	= (float * __restrict__) __builtin_assume_aligned (m_,  Align);
-		float	    * __restrict__ v	= (float * __restrict__) __builtin_assume_aligned (v_,  Align);
-		const float * __restrict__ m2	= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
+		float	    * __restrict__ m	= (      float * __restrict__) __builtin_assume_aligned (m_,  Align);
+		float	    * __restrict__ v	= (      float * __restrict__) __builtin_assume_aligned (v_,  Align);
+		const float * __restrict__ m2	= (const float * __restrict__) __builtin_assume_aligned (m2_, Align);
 
 		const float dzc = dz*c;
 		const float dzd = dz*d;

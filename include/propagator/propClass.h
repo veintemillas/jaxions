@@ -504,7 +504,7 @@
 				lambda = LL/((*z)*(*z));
 
 			sPropKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, lambda, nQcd, fMom, Lx, S, V+S, precision);
-			*z += dz*d[s];
+			*z += dz*d0;
 		}
 
 		if (lastStage) {

@@ -93,7 +93,7 @@ void	Laplacian::lapCpu	(std::string name)
 				py = oy - Lx;
 
 			size_t py2 = py*py;
-			size_t idy = py*Lx;
+			size_t idy = oy*Lx;
 
 			for (int ox = 0; ox < maxLx; ox++)
 			{
