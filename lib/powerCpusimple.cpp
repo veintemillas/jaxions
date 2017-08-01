@@ -293,12 +293,12 @@ void	spectrumUNFOLDED(Scalar *axion)
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinSpectrumGV<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		BinSpectrumGV<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinSpectrumGV<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		BinSpectrumGV<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
@@ -316,12 +316,12 @@ void	spectrumUNFOLDED(Scalar *axion)
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinSpectrumK<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		BinSpectrumK<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinSpectrumK<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		BinSpectrumK<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
@@ -337,7 +337,7 @@ void	spectrumUNFOLDED(Scalar *axion)
 //--------------------------------------------------------------------------------
 //					POWER SPECTRUM
 //--------------------------------------------------------------------------------
-//		pSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
+//		pSpectrumUNFOLDED<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(), spectrumK, spectrumG, spectrumV, n1, powmax, kmax);
 
 template<typename Float>
 void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t Lz, size_t Tz, size_t powmax, int kmax, double mass2)
@@ -459,12 +459,12 @@ void	powerspectrumUNFOLDED(Scalar *axion)
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinSpectrum<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		BinSpectrum<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinSpectrum<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		BinSpectrum<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
@@ -600,12 +600,12 @@ void	powerspectrumexpitheta(Scalar *axion)
 			{
 					if (!(axion->LowMem()))
 					{
-						complex<float> *mIn  = static_cast<complex<float>*> (axion->mCpu());
-						complex<float> *mOut = static_cast<complex<float>*> (axion->m2Cpu());
+						complex<float> *mIn  = static_cast<complex<float>*> (axion->mCpu())  + axion->Surf();
+						complex<float> *mOut = static_cast<complex<float>*> (axion->m2Cpu()) + axion->Surf();
 						#pragma omp parallel for default(shared) schedule(static)
 						for (size_t idx=0; idx < n3; idx++)
 						{
-							mOut[idx] = mIn[idx + n2]/abs(mIn[idx + n2])	;
+							mOut[idx] = mIn[idx]/abs(mIn[idx]);
 						}
 					}
 					else
@@ -616,12 +616,12 @@ void	powerspectrumexpitheta(Scalar *axion)
 			}
 			else // ( axion->Field() == FIELD_AXION)
 			{
-				float *mIn  = static_cast<float*> (axion->mCpu());
-				complex<float> *mOut = static_cast<complex<float>*> (axion->m2Cpu());
+				float *mIn  = static_cast<float*> (axion->mCpu()) + axion->Surf();
+				complex<float> *mOut = static_cast<complex<float>*> (axion->m2Cpu()) + axion->Surf();
 				#pragma omp parallel for default(shared) schedule(static)
 				for (size_t idx=0; idx < n3; idx++)
 				{
-					float theta = mIn[idx + n2]/z_now ;
+					float theta = mIn[idx]/z_now ;
 					mOut[idx] = std::complex<float>(cos(theta), sin(theta))	;
 				}
 			}
@@ -634,12 +634,12 @@ void	powerspectrumexpitheta(Scalar *axion)
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinFT2expitheta<double>(static_cast<const complex<double>*>(axion->m2Cpu()),
+		BinFT2expitheta<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinFT2expitheta<float>(static_cast<const complex<float>*>(axion->m2Cpu()),
+		BinFT2expitheta<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
