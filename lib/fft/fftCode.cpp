@@ -13,13 +13,13 @@ namespace AxionFFT {
 
 		auto	myRank = commRank();
 
-		LogMsg (VERB_HIGH, "Importing wisdom");
+		LogMsg (VERB_NORMAL, "Importing wisdom");
 
 		switch (prec) {
 			case	FIELD_SINGLE:
 				if (myRank == 0) {
 				        if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0) {
-				                LogMsg (VERB_HIGH, "Warning: could not import wisdom from fftWisdom.single");
+				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from fftWisdom.single");
 						return;
 					}
 				}
@@ -30,7 +30,7 @@ namespace AxionFFT {
 			case	FIELD_DOUBLE:
 				if (myRank == 0) {
 				        if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0) {
-				                LogMsg (VERB_HIGH, "Warning: could not import wisdom from fftWisdom.double");
+				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from fftWisdom.double");
 						return;
 					}
 				}
@@ -38,12 +38,12 @@ namespace AxionFFT {
 				fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 				break;
 		}
-		LogMsg (VERB_HIGH, "Wisdom successfully imported");
+		LogMsg (VERB_NORMAL, "Wisdom successfully imported");
 	}
 
 	void	FFTplan::exportWisdom() {
 
-		LogMsg (VERB_HIGH, "Importing wisdom");
+		LogMsg (VERB_NORMAL, "Importing wisdom");
 
 		auto	myRank = commRank();
 
@@ -58,7 +58,7 @@ namespace AxionFFT {
 				if (myRank == 0) fftw_export_wisdom_to_filename("../fftWisdom.double");
 				break;
 		}
-		LogMsg (VERB_HIGH, "Wisdom successfully exported");
+		LogMsg (VERB_NORMAL, "Wisdom successfully exported");
 	}
 
 		FFTplan::FFTplan	(Scalar * axion, FFTtype type, FFTdir dFft) : type(type), dFft(dFft), prec(axion->Precision()), Lx(axion->Length()), Lz(axion->TotalDepth()) {
@@ -129,7 +129,6 @@ namespace AxionFFT {
 						break;
 					
 					case	FFT_SPAX:
-						printf ("Original %p %p\n", mR, oR);
 						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR,  oR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR,  mR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
@@ -202,6 +201,10 @@ namespace AxionFFT {
 			}
 			break;
 		}
+
+		/*	Export wisdom	*/
+		exportWisdom();
+
 	}
 
 //		FFTplan::~FFTplan() {
@@ -332,14 +335,14 @@ namespace AxionFFT {
 
 				if (!fftwf_init_threads())
 				{
-					printf ("  Error initializing FFT with threads\n");
+					LogError ("Error initializing FFT with threads");
+					LogError ("FFT will use one thread");
 					fflush (stdout);
 					useThreads = false;
 					fftwf_mpi_init();
 				} else {
 					int nThreads = omp_get_max_threads();
-					LogOut ("  Using %d threads for the FFTW\n", nThreads);
-					fflush (stdout);
+					LogMsg (VERB_NORMAL, "Using %d threads for the FFT", nThreads);
 					fftwf_mpi_init();
 					fftwf_plan_with_nthreads(nThreads);
 				}
@@ -355,12 +358,12 @@ namespace AxionFFT {
 
 	void	initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name) {
 
-		LogMsg (VERB_HIGH, "Creating FFT plan %s", name.c_str());
+		LogMsg (VERB_NORMAL, "Creating FFT plan %s", name.c_str());
 
 		FFTplan myPlan(axion, type, dFft);
 		fftPlans.insert(std::make_pair(name, std::move(myPlan)));
 
-		LogMsg (VERB_HIGH, "Plan %s successfully inserted", name.c_str());
+		LogMsg (VERB_NORMAL, "Plan %s successfully inserted", name.c_str());
 	}
 
 	FFTplan&	fetchPlan	(std::string name) {
@@ -377,7 +380,7 @@ namespace AxionFFT {
 		auto &myPlan = fftPlans[name];
 		auto dFft    = myPlan.Direction();
 
-		LogMsg (VERB_HIGH, "Removing plan %s", name.c_str());
+		LogMsg (VERB_NORMAL, "Removing plan %s", name.c_str());
 
 		switch (myPlan.Precision()) {
 
@@ -403,7 +406,7 @@ namespace AxionFFT {
 		}
 
 		fftPlans.erase(name);
-		LogMsg (VERB_HIGH, "Plan %s removed", name.c_str());
+		LogMsg (VERB_NORMAL, "Plan %s removed", name.c_str());
 	}
 
 
@@ -418,7 +421,7 @@ namespace AxionFFT {
 			auto plan = fft.second;
 			prec = plan.Precision();
 			removePlan(name);
-			LogMsg (VERB_HIGH, "Plan %s closed", name.c_str());
+			LogMsg (VERB_NORMAL, "Plan %s closed", name.c_str());
 		}
 
 		switch (prec) {

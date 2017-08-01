@@ -46,7 +46,7 @@
 		void		initFFT		(FieldPrecision prec);
 		void		initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name);
 		FFTplan&	fetchPlan       (std::string name);
-		void		removetPlan	(std::string name);
+		void		removePlan	(std::string name);
 		void		closeFFT	();
 	}
 #endif
