@@ -85,6 +85,14 @@ void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_
 		// kdx = iX + iZ*n1 + iY*n2 (iZ < Lz)
 		// K = (iZ, iY+rank*Lz, iX) or (iZ-n1, iY++rank*Lz-n1, iX-n1) [the smallest]
 
+		//PADDING
+		// As for the complex transforms, improved performance can be obtained by
+		// specifying that the output is the transpose of the input or vice versa
+		// (see Section 6.4.3 [Transposed distributions],page58).In our L×M×N r2c example,
+		// including FFTW_TRANSPOSED_OUT inthe  ags means that
+		// the input would be a padded L×M×2(N/2+1) real array distributed over the L dimension,
+		// the output would be a M × L × N/2 + 1 complex array distributed over the M dimension.
+
 		size_t kdx;
 		int bin;
 		size_t iz, iy, ix;
@@ -286,7 +294,7 @@ void	spectrumUNFOLDED(Scalar *axion)
 
 	// 	FIRST G AND V
 	//	COPIES c_theta into RE[m2], IM[m2] = 0
-			axion->theta2m2();
+	axion->theta2m2();
 	//	FFT m2 inplace ->
 	myPlan.run(FFT_BCK);
 
@@ -309,7 +317,7 @@ void	spectrumUNFOLDED(Scalar *axion)
 
 	// 	SECOND KIN
 	//	COPIES vheta into RE[m2], IM[m2] = 0
-			axion->vheta2m2();
+	axion->vheta2m2();
 	//	FFT m2 inplace ->
 	myPlan.run(FFT_BCK);
 

@@ -70,10 +70,11 @@ namespace AxionFFT {
 
 			case	FIELD_SINGLE:
 			{
-				fftwf_complex *m  = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
-				fftwf_complex *m2 = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
-				float	      *mR = static_cast<float *>       (axion->vCpu())  + axion->Surf();
-				fftwf_complex *oR = static_cast<fftwf_complex*>(static_cast<void*>(mR));
+				fftwf_complex *m   = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
+				fftwf_complex *m2  = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
+				float 				*m2f = static_cast<float*>			  (axion->m2Cpu()) + axion->Surf();
+				float	      	*mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
+				fftwf_complex *oR  = static_cast<fftwf_complex*>(static_cast<void*>(mR));
 				//fftwf_complex *oR = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
 				//float	      *mR = static_cast<float *>(static_cast<void *>(oR));
 
@@ -117,6 +118,21 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
 						break;
 
+					//NEW for SPECTRUM
+					case	FFT_RtoC_M2toM2:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create R->C plan with m2 in lowmem runs");
+							exit(0);
+						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2f,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+
 					case	FFT_SPSX:
 
 						if (axion->LowMem()) {
@@ -127,7 +143,7 @@ namespace AxionFFT {
 						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
-					
+
 					case	FFT_SPAX:
 						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR,  oR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR,  mR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
@@ -135,13 +151,14 @@ namespace AxionFFT {
 				}
 			}
 			break;
-			
+
 			case	FIELD_DOUBLE:
 			{
-				fftw_complex *m  = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
-				fftw_complex *m2 = static_cast<fftw_complex*>(axion->m2Cpu()) + axion->Surf();
-				double	     *mR = static_cast<double *>     (axion->vCpu())  + axion->Surf();
-				fftw_complex *oR = static_cast<fftw_complex*>(axion->vCpu())  + axion->Surf();
+				fftw_complex *m   = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
+				fftw_complex *m2  = static_cast<fftw_complex*>(axion->m2Cpu()) + axion->Surf();
+				double 			 *m2d = static_cast<double*>		 (axion->m2Cpu()) + axion->Surf();
+				double	     *mR  = static_cast<double *>     (axion->vCpu())  + axion->Surf();
+				fftw_complex *oR  = static_cast<fftw_complex*>(axion->vCpu())  + axion->Surf();
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -180,6 +197,21 @@ namespace AxionFFT {
 
 						if (dFft & FFT_BCK)
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+						break;
+
+					//NEW for SPECTRUM
+					case	FFT_RtoC_M2toM2:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create R->C plan with m2 in lowmem runs");
+							exit(0);
+						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2d, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2d,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_SPSX:

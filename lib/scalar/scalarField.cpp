@@ -224,6 +224,9 @@ const std::complex<float> If(0.,1.);
 
 	AxionFFT::initFFT(prec);
 
+	if (!lowmem)
+	AxionFFT::initPlan (this, FFT_RtoC_M2toM2,  FFT_FWD, "pSpectrum");
+
 	if (pType & PROP_SPEC) {
 		AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
 		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
@@ -543,6 +546,10 @@ void	Scalar::setField (FieldType fType)
 					shift *= 2;
 
 				const size_t	mBytes = v3*fSize;
+
+				if (lowmem)
+				AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
+
 				// IF low mem was used before, it creates m2 COMPLEX
 /*				if (lowmem)
 				{
@@ -578,6 +585,9 @@ void	Scalar::setField (FieldType fType)
 				#endif
 				}
 */
+
+			//FFT for spectrums
+
 			}
 			break;
 
@@ -734,11 +744,6 @@ void	Scalar::fftCpu	(int sign)
 }
 */
 
-
-
-
-
-
 /*	Follow all the functions written by Javier	*/
 /*	These should be rewritten following the
 	standards of the library, including logger,
@@ -764,12 +769,20 @@ void	Scalar::fftCpu	(int sign)
 // }
 
 
-//	COPIES c_theta into m2
-// 	M2 IS NOT SHIFTED BY S,N2
+//	COPIES c_theta into m2 AS PADDED REAL ARRAY
+// 	M2 IS SHIFTED BY GHOSTS
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::theta2m2()//int *window)
 {
 	LogMsg (VERB_HIGH, "Function theta2m2 marked for future optimization or removal");
+
+	// PADDING idx  = N*N *iz + N *iy + ix
+	// 			TO idx' = N*N'*iz + N'*iy + ix = idx + 2*( iy + N*iz )
+	//			where N'= 2(N/2+1) = N+2 (because our N's are always even)
+	//			interestingly iy+N*iz is idx/N
+	// 			THEREFORE PADDING IS JUST
+	//			idx -> idx + 2(idx/N)
+	size_t idx;
 
 	switch (fieldType)
 	{
@@ -779,10 +792,10 @@ void	Scalar::theta2m2()//int *window)
 				double za = (*z);
 
 				#pragma omp parallel for default(shared) schedule(static)
-				for(size_t i=0; i < n3; i++)
+				for(size_t i=0; i <n3; i++)
 				{
 					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-					((complex<double> *) m2)[i+n2] = thetaaux*za + I*0.;
+					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = thetaaux*za ;
 				}
 			}
 			else // FIELD_SINGLE
@@ -793,7 +806,7 @@ void	Scalar::theta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
-					((complex<float> *) m2)[i+n2] = thetaauxf*zaf + If*0.f;
+					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = thetaauxf*zaf;
 				}
 			}
 		break;
@@ -804,21 +817,21 @@ void	Scalar::theta2m2()//int *window)
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<double> *) m2)[i+n2] = ((static_cast<double*> (m))[i+n2]) + I*0.;
+					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<double*> (m))[n2+i]) ;
 			}
 			else	// FIELD_SINGLE
 			{
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<float> *) m2)[i+n2] = ((static_cast<float*> (m))[i+n2]) + If*0.f;
+					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<float*> (m))[n2+i]) ;
 			}
 		break;
 	}
 }
 
-//	COPIES c_theta_v (vtheta) into m2
-// 	M2 IS NOT SHIFTED BY S,N2
+//	COPIES c_theta_v (vtheta) into m2 AS PADDED REAL ARRAY
+// 	M2 IS SHIFTED BY N2
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::vheta2m2()//int *window)
 {
@@ -835,7 +848,8 @@ void	Scalar::vheta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-					((complex<double> *) m2)[i+n2] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+					//((complex<double> *) m2)[i+n2] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = (((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
 				}
 			}
 			else // FIELD_SINGLE
@@ -846,7 +860,8 @@ void	Scalar::vheta2m2()//int *window)
 				for(size_t i=0; i < n3; i++)
 				{
 					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
-					((complex<float> *) m2)[i+n2] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+					//((complex<float> *) m2)[i+n2] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = (((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
 				}
 			}
 		break;
@@ -857,18 +872,46 @@ void	Scalar::vheta2m2()//int *window)
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<double> *) m2)[i+n2] = 0.0 + I*((static_cast<double*> (v))[i]);
+					//((complex<double> *) m2)[i+n2] = 0.0 + I*((static_cast<double*> (v))[i]);
+					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<double*> (v))[i]);
 			}
 			else	// FIELD_SINGLE
 			{
 
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((complex<float> *) m2)[i+n2] = 0.f + If*((static_cast<float*> (v))[i]);
+					//((complex<float> *) m2)[i+n2] = 0.f + If*((static_cast<float*> (v))[i]);
+					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<float*> (v))[i]);
 			}
 		break;
 	}	// END FIELDTYPE
 }		// END vheta2m2
+
+//	energy is copied in m2 after the ghost AS REAL
+// 	the fourier transform R2C takes a real array padded
+//	USA M2, ARREGLAR LOWMEM
+// void	Scalar::padenergym2()//int *window)
+// {
+// 	LogMsg (VERB_HIGH, "Function padenergym2 marked for future optimization or removal");
+//
+// 	if (precision == FIELD_DOUBLE)
+// 	{
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t i=0; i < n3; i++)
+// 		{
+// 			((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = (((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+// 		}
+// 	}
+// 	else // FIELD_SINGLE
+// 	{
+// 		#pragma omp parallel for default(shared) schedule(static)
+// 		for(size_t i=0; i < n3; i++)
+// 		{
+// 			float thetaauxf = arg(((complex<float> *) m)[i+n2]);
+// 			//((complex<float> *) m2)[i+n2] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+// 			((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = (((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+// 		}
+// 	}		// END padenergym2
 
 
 // LEGACY FUNCTION COPYING c_theta*mass + I c_theta_z in m2 for the number spectrum
@@ -2269,7 +2312,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 						fidx = idx;
 					}
 
-					if (abs(mTheta[n2+fidx]/(*z)) > 3.14)
+					if (abs(mTheta[n2+fidx]/(*z)) < 3.14)
 					continue;
 
 					ixyzAux = (ix+1)%n1;
