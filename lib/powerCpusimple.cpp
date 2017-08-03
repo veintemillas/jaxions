@@ -11,6 +11,7 @@
 #include "utils/utils.h"
 #include "fft/fftCode.h"
 
+
 //#include<mpi.h>
 
 using namespace std;
@@ -91,7 +92,7 @@ void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_
 		// (see Section 6.4.3 [Transposed distributions],page58).In our L×M×N r2c example,
 		// including FFTW_TRANSPOSED_OUT inthe  ags means that
 		// the input would be a padded L×M×2(N/2+1) real array distributed over the L dimension,
-		// the output would be a M × L × N/2 + 1 complex array distributed over the M dimension.
+		// the output would be a M × L × (N/2 + 1) complex array distributed over the M dimension.
 
 		size_t kdx;
 		int bin;
@@ -99,15 +100,24 @@ void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_
 		int kz, ky, kx;
 		double k2, w;
 
+		size_t n1pad = n1/2;
+		size_t n2pad = n1*n1pad;
+
 	  #pragma omp barrier
 
 		#pragma omp for schedule(static)
 		for (size_t kdx = 0; kdx< n3; kdx++)
 		{
 			// ASSUMED TRANSPOSED
-			iy = kdx/n2 + local_1_start;
-			iz = (kdx%n2)/n1 ;
-			ix = kdx%n1 ;
+			// COMPLEX WITHOUT REDUNDANCY
+			// I.E. ix does not belong to (0, Lx-1)
+			// but to (0, Lx/2)
+			// point has already the n2 ghost into account
+			// therefore
+			// idx = ix + (Lx/2)*iz + Lx*(Lx/2)*iy
+			iy = kdx/n2pad + local_1_start;
+			iz = (kdx%n2pad)/n1pad ;
+			ix = kdx%n1pad ;
 			ky = (int) iy;
 			kz = (int) iz;
 			kx = (int) ix;
@@ -118,14 +128,17 @@ void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_
 			k2 = kz*kz + ky*ky + kx*kx;
 			bin  = (int) floor(sqrt(k2)) 	;
 
-			//CONTINUUM DEFINITION
-			//k2 =	(39.47842/(sizeL*sizeL)) * k2;
-			//double w = (double) sqrt(k2 + mass2);
-			//LATICE DEFINITION
-			//this first instance of w is aux
-			k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+			if (spectral) //CONTINUUM DEFINITION
+			{
+				k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
+			}
+			else //LATICE DEFINITION
+			{
+				k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+			}
+
 			w = sqrt(k2 + mass2);
-			//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
+
 
 			spectrumG_private[bin] += pow(abs(ft[kdx]),2)*k2/(w);
 			spectrumV_private[bin] += pow(abs(ft[kdx]),2)*mass2/w;
@@ -183,15 +196,6 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 	int rank = commRank();
 	size_t local_1_start = rank*Lz;
 
-	// MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	// ptrdiff_t alloc_local, local_n0, local_0_start, local_n1, local_1_start;
-	//
-	// alloc_local = fftw_mpi_local_size_3d_transposed(
-	// 						 Tz, n1, n1, MPI_COMM_WORLD,
-	// 						 &local_n0, &local_0_start,
-	// 						 &local_n1, &local_1_start);
-	//printf ("BIN rank=%d - transpo - local_ny_start=%lld \n", rank, local_1_start);
-
 	#pragma omp parallel default(shared)
 	{
 
@@ -210,16 +214,35 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 		size_t iz, iy, ix;
 		int kz, ky, kx;
 		double k2, w;
+		size_t n1pad = n1/2;
+		size_t n2pad = n1*n1pad;
 
 		#pragma omp barrier
 
 		#pragma omp for schedule(static)
 		for (size_t kdx = 0; kdx< n3; kdx++)
 		{
+			// // ASSUMED TRANSPOSED
+			// iy = kdx/n2 + local_1_start;
+			// iz = (kdx%n2)/n1 ;
+			// ix = kdx%n1 ;
+			// ky = (int) iy;
+			// kz = (int) iz;
+			// kx = (int) ix;
+			// if (kz>n1/2) {kz = kz-n1; }
+			// if (ky>n1/2) {ky = ky-n1; }
+			// if (kx>n1/2) {kx = kx-n1; }
+
 			// ASSUMED TRANSPOSED
-			iy = kdx/n2 + local_1_start;
-			iz = (kdx%n2)/n1 ;
-			ix = kdx%n1 ;
+			// COMPLEX WITHOUT REDUNDANCY
+			// I.E. ix does not belong to (0, Lx-1)
+			// but to (0, Lx/2)
+			// point has already the n2 ghost into account
+			// therefore
+			// idx = ix + (Lx/2)*iz + Lx*(Lx/2)*iy
+			iy = kdx/n2pad + local_1_start;
+			iz = (kdx%n2pad)/n1pad ;
+			ix = kdx%n1pad ;
 			ky = (int) iy;
 			kz = (int) iz;
 			kx = (int) ix;
@@ -227,17 +250,20 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 			if (ky>n1/2) {ky = ky-n1; }
 			if (kx>n1/2) {kx = kx-n1; }
 
+
 			k2 = kz*kz + ky*ky + kx*kx;
 			bin  = (int) floor(sqrt(k2)) 	;
 
-			//CONTINUUM DEFINITION
-			//k2 =	(39.47842/(sizeL*sizeL)) * k2;
-			//double w = (double) sqrt(k2 + mass2);
-			//LATICE DEFINITION
-			//this first instance of w is aux
-			k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+			if (spectral) //CONTINUUM DEFINITION
+			{
+
+				k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
+			}
+			else //LATICE DEFINITION
+			{
+				k2 =	(minus1costab[abs(kx)]+minus1costab[abs(ky)]+minus1costab[abs(kz)]);
+			}
 			w = sqrt(k2 + mass2);
-			//k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 
 			spectrumK_private[bin] += pow(abs(ft[kdx]),2)/(w);
 
@@ -380,6 +406,8 @@ void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t 
 		size_t iz, iy, ix;
 		int kz, ky, kx;
 		double k2, w;
+		size_t n1pad = n1/2;
+		size_t n2pad = n1*n1pad;
 
 		#pragma omp barrier
 
@@ -387,9 +415,15 @@ void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t 
 		for (size_t kdx = 0; kdx< n3; kdx++)
 		{
 			// ASSUMED TRANSPOSED
-			iy = kdx/n2 + local_1_start;
-			iz = (kdx%n2)/n1 ;
-			ix = kdx%n1 ;
+			// COMPLEX WITHOUT REDUNDANCY
+			// I.E. ix does not belong to (0, Lx-1)
+			// but to (0, Lx/2)
+			// point has already the n2 ghost into account
+			// therefore
+			// idx = ix + (Lx/2)*iz + Lx*(Lx/2)*iy
+			iy = kdx/n2pad + local_1_start;
+			iz = (kdx%n2pad)/n1pad ;
+			ix = kdx%n1pad ;
 			ky = (int) iy;
 			kz = (int) iz;
 			kx = (int) ix;
@@ -448,9 +482,8 @@ void	powerspectrumUNFOLDED(Scalar *axion)
 	double eRes[10];
 	// 	New scheme
 
-	//  Copies energy_theta + I potential_energy_theta into m2
+	//  Copies energy_theta + m2
 
-			//PATCH
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				energy	(axion, eRes, true, delta, nQcd, LL); ////// CHECKKKK!!!!
