@@ -224,13 +224,24 @@ const std::complex<float> If(0.,1.);
 
 	AxionFFT::initFFT(prec);
 
-	if (!lowmem)
-	AxionFFT::initPlan (this, FFT_RtoC_M2toM2,  FFT_FWD, "pSpectrum");
+	// if (!lowmem)
+	// AxionFFT::initPlan (this, FFT_RtoC_M2toM2,  FFT_FWD, "pSpectrum");
+
 
 	if (pType & PROP_SPEC) {
 		AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
 		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
 	}
+
+	if (pType & PROP_SPEC) {
+		AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
+		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
+	}
+
+
+	AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION,  FFT_FWD, "pSpectrum_ax");
+	if (!lowmem)
+	AxionFFT::initPlan (this, FFT_RtoC_M2toM2_SAXION,  FFT_FWD, "pSpectrum_sax");
 
 	*z = zI;
 
@@ -547,8 +558,8 @@ void	Scalar::setField (FieldType fType)
 
 				const size_t	mBytes = v3*fSize;
 
-				if (lowmem)
-				AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
+				//if (lowmem)
+				//AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
 
 				// IF low mem was used before, it creates m2 COMPLEX
 /*				if (lowmem)
@@ -770,7 +781,7 @@ void	Scalar::fftCpu	(int sign)
 
 
 //	COPIES c_theta into m2 AS PADDED REAL ARRAY
-// 	M2 IS SHIFTED BY GHOSTS
+// 	M2 IS SHIFTED BY GHOSTS? check ...
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::theta2m2()//int *window)
 {
@@ -794,8 +805,8 @@ void	Scalar::theta2m2()//int *window)
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i <n3; i++)
 				{
-					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
-					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = thetaaux*za ;
+					double thetaaux = arg(((std::complex<double> *) m)[n2+i]);
+					(static_cast<double*> (m2))[i + 2*(i/n1)] = thetaaux*za ;
 				}
 			}
 			else // FIELD_SINGLE
@@ -805,8 +816,8 @@ void	Scalar::theta2m2()//int *window)
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
 				{
-					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
-					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = thetaauxf*zaf;
+					float thetaauxf = arg(((complex<float> *) m)[n2+i]);
+					(static_cast<float*> (m2))[i + 2*(i/n1)] = thetaauxf*zaf;
 				}
 			}
 		break;
@@ -814,17 +825,15 @@ void	Scalar::theta2m2()//int *window)
 		case FIELD_AXION:
 			if (precision == FIELD_DOUBLE)
 			{
-
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<double*> (m))[n2+i]) ;
+					(static_cast<double*> (m2))[ i + 2*(i/n1)] = ((static_cast<double*> (m))[n2+i]) ;
 			}
 			else	// FIELD_SINGLE
 			{
-
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
-					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<float*> (m))[n2+i]) ;
+					(static_cast<float*> (m2))[ i + 2*(i/n1)] = ((static_cast<float*> (m))[n2+i]) ;
 			}
 		break;
 	}
@@ -847,9 +856,9 @@ void	Scalar::vheta2m2()//int *window)
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
 				{
-					double thetaaux = arg(((std::complex<double> *) m)[i+n2]);
+					double thetaaux = arg(((std::complex<double> *) m)[n2+i]);
 					//((complex<double> *) m2)[i+n2] = 0.0 + I*( ((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
-					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = (((((complex<double>*) v)[i]/((complex<double>*) m)[i+n2]).imag())*za + thetaaux);
+					(static_cast<double*> (m2))[ i + 2*(i/n1)] = (((((complex<double>*) v)[i]/((complex<double>*) m)[n2+i]).imag())*za + thetaaux);
 				}
 			}
 			else // FIELD_SINGLE
@@ -861,7 +870,7 @@ void	Scalar::vheta2m2()//int *window)
 				{
 					float thetaauxf = arg(((complex<float> *) m)[i+n2]);
 					//((complex<float> *) m2)[i+n2] = 0.f + If*(((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
-					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = (((((complex<float>*) v)[i]/((complex<float>*) m)[i+n2]).imag())*zaf + thetaauxf);
+					(static_cast<float*> (m2))[ i + 2*(i/n1)] = (((((complex<float>*) v)[i]/((complex<float>*) m)[n2+i]).imag())*zaf + thetaauxf);
 				}
 			}
 		break;
@@ -873,7 +882,7 @@ void	Scalar::vheta2m2()//int *window)
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
 					//((complex<double> *) m2)[i+n2] = 0.0 + I*((static_cast<double*> (v))[i]);
-					((static_cast<double*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<double*> (v))[i]);
+					(static_cast<double*> (m2))[ i + 2*(i/n1)] = ((static_cast<double*> (v))[i]);
 			}
 			else	// FIELD_SINGLE
 			{
@@ -881,7 +890,7 @@ void	Scalar::vheta2m2()//int *window)
 				#pragma omp parallel for default(shared) schedule(static)
 				for(size_t i=0; i < n3; i++)
 					//((complex<float> *) m2)[i+n2] = 0.f + If*((static_cast<float*> (v))[i]);
-					((static_cast<float*> (m2))[n2 + i + 2*(i/n1)] = ((static_cast<float*> (v))[i]);
+					(static_cast<float*> (m2))[ i + 2*(i/n1)] = ((static_cast<float*> (v))[i]);
 			}
 		break;
 	}	// END FIELDTYPE
@@ -1215,6 +1224,7 @@ void	Scalar::ENERGY2(const Float zz, FILE *enWrite, double &Grho, double &Gtheta
 void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numbins)//, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft) // TEST
 {
 	LogMsg (VERB_HIGH, "Function writeMAPTHETA marked for optimization or removal");
+	LogMsg (VERB_NORMAL, "writeMAPTHETA");
 
 	double maxcontrast ;
 	switch	(precision)
@@ -1230,7 +1240,7 @@ void	Scalar::writeMAPTHETA (double zzz, const int index, void *contbin, int numb
 			//energymapTheta (static_cast<float>(zzz), index, contbin, numbins); // TEST
 
 			//USES WHATEVER IS IN M2, COMPUTES CONTRAST AND BINS []
-			// USE WITH ALEX'FUNCTION
+			// USE AFTER ALEX'FUNCTION
 			contrastbin(static_cast<float>(zzz), index, contbin, numbins);
 		}
 		break;
@@ -1252,6 +1262,7 @@ template<typename Float>
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
 	LogMsg (VERB_HIGH, "Function energymapTheta marked for optimization or removal, please use energy instead");
+	LogMsg (VERB_NORMAL, "energymapTheta");
 
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
 	if (folded)
@@ -1560,6 +1571,7 @@ template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
 	LogMsg (VERB_HIGH, "Function contrastbin marked for optimization or removal");
+	LogMsg (VERB_NORMAL, "contrastbin()");
 	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
 
 	//	AUX VARIABLES
@@ -1582,15 +1594,18 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		Float *mTheta = static_cast<Float*> (m);
 		Float *mVeloc = static_cast<Float*> (v);
 
-		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+		//OLD VERSION energy was saved as complex
+		//complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+		//new version notice no padding
+		Float *mCONT = static_cast<Float*> (m2);
 		//printMpi("COMP-");
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
-		for (size_t idx=n2; idx < n3+n2; idx++)
+		for (size_t idx=0; idx < n3; idx++)
 		{
-				toti += (double) mCONT[idx].real() ;
-				if (mCONT[idx].real() > maxi)
+				toti += (double) mCONT[idx] ;
+				if (mCONT[idx] > maxi)
 				{
-					maxi = mCONT[idx].real() ;
+					maxi = mCONT[idx] ;
 				}
 		}
 		// compute local average density
@@ -1598,7 +1613,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		// pointer for the maximum density in double
 		maxid = (double) maxi;
 
-		//printMpi("RED-");
+		LogOut("RED-");
 		//SUMS THE DENSITIES OF ALL RANGES
 		MPI_Allreduce(&toti, &toti_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 		//GLOBAL MAXIMUM DENSITY
@@ -1615,7 +1630,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		//printMpi("NORM-");
 		//DENSITIES ARE CONVERTED INTO DENSITY CONTRAST
 		#pragma omp parallel for default(shared) schedule(static)
-		for (size_t idx=n2; idx < n3+n2; idx++)
+		for (size_t idx=0; idx < n3; idx++)
 			{
 				mCONT[idx] = mCONT[idx]/(averagedens)	;
 				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
@@ -1628,28 +1643,28 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		//printMpi("(MG %f,maxbinlog %f)BIN-",maxi_global,maxibin);
 
 		//BIN delta from 0 to maxi+1
-		size_t auxintarray[numbins] ;
+		//size_t auxintarray[numbins] ;
 		#pragma omp parallel for default(shared) schedule(static)
 		for(size_t bin = 0; bin < numbins ; bin++)
 		{
 		(static_cast<double *> (contbin_local))[bin] = 0.;
-		auxintarray[bin] = 0;
+		//auxintarray[bin] = 0;
 		}
 
-		Float norma = (Float) ((maxibin + 5.)/(numbins-3)) ;
+		Float minbinfloat = (Float) 5.	;
+		Float norma = (Float) ((maxibin + minbinfloat)/(numbins-3)) ;
 
 		//printMpi("BIN2-(%f) ",norma);
 		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=n2; i < n3+n2; i++)
+		for(size_t i=0; i < n3; i++)
 		{
-			int bin = ((log10(mCONT[i].real()) + 5.)/norma)	;
-			//(static_cast<double *> (contbin))[bin+2] += 1. ;
-			if (0<=bin<numbins-4)
+			Float caca = (log10(mCONT[i]) + minbinfloat)/norma	;
+			int bin = caca	;
+			if ( (bin>0) && (bin < numbins-4))
 			{
-				//printMpi("b%d-",bin);
-			#pragma omp atomic
-				(static_cast<double *> (contbin_local))[bin+3] += 1.;
 				//auxintarray[bin] +=1;
+				#pragma omp atomic
+				(static_cast<double *> (contbin_local))[bin+3] += 1.;
 			}
 		}
 		// printMpi("BIN3-");
@@ -1682,7 +1697,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 						{
 							size_t ix, iy, iz;
 							size_t sy, iiy, fidx ;
-								if (mCONT[idx+n2].real() > 100.)
+								if (mCONT[idx] > 100.)
 								{
 									iz = idx/n2 ;
 									iy = (idx%n2)/n1 ;
@@ -1706,7 +1721,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 										// mCONT[idx].real(), mCONT[idx].imag(),
 										// 0., 0., 0.) ;
 										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
-										mCONT[idx+n2].real(), mCONT[idx+n2].imag(),
+										mCONT[idx], 0.,
 										mVeloc[fidx]*mVeloc[fidx]/(2.f*toti_global) ,
 										z9QCD2*(1.f-cos(mTheta[fidx+n2]/zz))/toti_global,
 										mTheta[fidx+n2]/zz ) ;
@@ -1745,6 +1760,16 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 
 
+void	Scalar::padder()
+{
+		LogMsg (VERB_HIGH, "Function maxtheta marked for optimization or removal");
+		LogMsg (VERB_NORMAL, "PADDER");
+		// idx goes into idx + 2(idx/Lx)
+		// copy same iz,ix, i.e. by same value of idx/Lx = fresa
+		for (size_t fresa = Lz*n1-1; fresa >-1; fresa--)
+		memcpy (m2 + (n1+2)*fresa , m2 + n1*fresa, fSize*n1);
+
+}
 
 
 // ----------------------------------------------------------------------
@@ -1754,6 +1779,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 double	Scalar::maxtheta()//int *window)
 {
 	LogMsg (VERB_HIGH, "Function maxtheta marked for optimization or removal");
+	//LogMsg (VERB_NORMAL, "maxtheta()");
 	double mymaxd = 0.;
 	double mymaxd_global = 0.;
 	if (precision == FIELD_DOUBLE)
@@ -2273,7 +2299,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	if(fieldType == FIELD_AXION)
 	{
 		//mCONT assumed normalised // i.e. contrastbin was called before
-		complex<Float> *mCONT = static_cast<complex<Float>*> (m2);
+		Float *mCONT = static_cast<Float*> (m2);
 		Float *mTheta = static_cast<Float*> (m);
 		//float *mVeloc = static_cast<float*> (v);
 
@@ -2289,13 +2315,13 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 			//size_t ix, iy, iz;
 			// ONE CAN USE DENSITY CONTRAST BUT HF FLUCTUATIONS MASK THE AXITONS
 			// IT IS PERHAPS GOOD TO USE THE THETA FIELD INSTEAD
-				if (mCONT[idx+n2].real() > contrastthreshold)
+				if (mCONT[idx]> contrastthreshold)
 				{
 					// iz = idx/n2 ;
 					// iy = (idx%n2)/n1 ;
 					// ix = (idx%n2)%n1 ;
 
-					Float val = mCONT[idx+n2].real();
+					Float val = mCONT[idx];
 
 					iz = idx/n2 ;
 					iy = (idx%n2)/n1 ;
@@ -2317,22 +2343,22 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 
 					ixyzAux = (ix+1)%n1;
 					idaux = ixyzAux + iy*n1+(iz)*n2 ;
-					if (mCONT[idaux+n2].real() - val > 0)
+					if (mCONT[idaux] - val < 0)
 					continue;
 
 					ixyzAux = (ix-1+n1)%n1;
 					idaux = ixyzAux + iy*n1+(iz)*n2 ;
-					if (mCONT[idaux+n2].real() - val > 0)
+					if (mCONT[idaux] - val < 0)
 					continue;
 
 					ixyzAux = (iy+1)%n1;
 					idaux = ix + ixyzAux*n1+(iz)*n2 ;
-					if (mCONT[idaux+n2].real() - val > 0)
+					if (mCONT[idaux] - val < 0)
 					continue;
 
 					ixyzAux = (iy-1+n1)%n1;
 					idaux = ix + ixyzAux*n1+(iz)*n2 ;
-					if (mCONT[idaux+n2].real() - val > 0)
+					if (mCONT[idaux] - val < 0)
 					continue;
 
 					// I CANNOT CHECK THE Z DIRECTION BECAUSE I DO NOT HAVE GHOSTS
@@ -2342,12 +2368,12 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 
 					ixyzAux = (iz+1)%Lz;
 					idaux = ix + iy*n1+(ixyzAux)*n2 ;
-					if (mCONT[idaux+n2].real() - val > 0)
+					if (mCONT[idaux] - val > 0)
 					continue;
 
 					ixyzAux = (iz-1+Lz)%Lz;
 					idaux = ix + iy*n1+(ixyzAux)*n2 ;
-					if (mCONT[idaux+n2].real() - val > 0)
+					if (mCONT[idaux] - val > 0)
 					continue;
 
 					// IF IT REACHED HERE IT IS REALLY A MAXIMUM OF DENSITY

@@ -69,7 +69,10 @@ void	Laplacian::lapCpu	(std::string name)
 	auto &planFFT = AxionFFT::fetchPlan(name);
 	planFFT.run(FFT_FWD);
 
-	cFloat *mData = static_cast<cFloat*> (field->m2Cpu()) + field->Surf();
+	int adj ;
+	if (hCmplx) {adj = 2; } else {adj = 1 ; }
+
+	cFloat *mData = static_cast<cFloat*> (field->m2Cpu()) + field->Surf()/adj;
 
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
@@ -79,19 +82,20 @@ void	Laplacian::lapCpu	(std::string name)
 
 	const size_t total = maxSf*Lz*2;
 
+
 	#pragma omp parallel for schedule(static) default(shared)
 	for (int oz = 0; oz < Lz; oz++)
 	{
-        	int pz = oz;
+		int pz = oz;
 
 		if (oz > hLz)
-        		pz = oz - Lz;
+			pz = oz - Lz;
 
 		size_t pz2 = pz*pz;
 		size_t idz = oz*maxSf;
 
 		for (int oy = 0; oy < Lx; oy++)
-        	{
+					{
 			int py = oy ;
 			if (oy > hLx)
 				py = oy - Lx;
@@ -111,12 +115,65 @@ void	Laplacian::lapCpu	(std::string name)
 
 				mData[idx] *= (cFloat) (p2);
 
-				if (hCmplx)
-					if (idx != total - idx)
-						mData[total-idx] *= (cFloat) (p2);
 			}
-	        }
+					}
 	}
+
+	// // ADAPDT FOR MPI! NOT DIFFICULT
+	// //IT IS TRANSPOSED!
+	// size_t kdx;
+	// int bin;
+	// size_t iz, iy, ix;
+	// int kz, ky, kx;
+	// double k2, w;
+	// size_t n1pad = Lx/2 + 1;
+	// size_t n2pad = Lx*n1pad;
+	// size_t n3pad = Lz*n2pad;
+	//
+	//
+	// int rank = commRank();
+	// size_t local_1_start = rank*Lz;
+	//
+	// #pragma omp parallel for schedule(static)
+	// for (size_t kdx = 0; kdx< n3pad; kdx++)
+	// {
+	// 	// // ASSUMED TRANSPOSED
+	// 	// iy = kdx/n2 + local_1_start;
+	// 	// iz = (kdx%n2)/n1 ;
+	// 	// ix = kdx%n1 ;
+	// 	// ky = (int) iy;
+	// 	// kz = (int) iz;
+	// 	// kx = (int) ix;
+	// 	// if (kz>n1/2) {kz = kz-n1; }
+	// 	// if (ky>n1/2) {ky = ky-n1; }
+	// 	// if (kx>n1/2) {kx = kx-n1; }
+	//
+	// 	// ASSUMED TRANSPOSED
+	// 	// COMPLEX WITHOUT REDUNDANCY
+	// 	// I.E. ix does not belong to (0, Lx-1)
+	// 	// but to (0, Lx/2)
+	// 	// point has already the n2 ghost into account
+	// 	// therefore
+	// 	// idx = ix + (Lx/2)*iz + Lx*(Lx/2)*iy
+	// 	iy = kdx/n2pad + local_1_start;
+	// 	iz = (kdx%n2pad)/n1pad ;
+	// 	ix = kdx%n1pad ;
+	// 	ky = (int) iy;
+	// 	kz = (int) iz;
+	// 	kx = (int) ix;
+	// 	if (kz>Lx/2) {kz = kz-Lx; }
+	// 	if (ky>Lx/2) {ky = ky-Lx; }
+	// 	if (kx>Lx/2) {kx = kx-Lx; }
+	//
+	//
+	// 	k2 = kz*kz + ky*ky + kx*kx;
+	//
+	// 	mData[kdx] *= (cFloat) (k2);
+	//
+	// 			if (hCmplx)
+	// 				if (kdx != total - kdx)
+	// 					mData[total-kdx] *= (cFloat) (k2);
+	// 		}
 
 	planFFT.run(FFT_BCK);
 }
@@ -147,11 +204,12 @@ void    Laplacian::tRunCpu	()
 {
 	switch (precision) {
 		case FIELD_SINGLE:
-			lapCpu<float, true>(std::string("SpAx"));
+			//lapCpu<float, true>(std::string("SpAx"));
+			lapCpu<std::complex<float>, true>(std::string("SpAx"));
 			break;
 
 		case FIELD_DOUBLE:
-			lapCpu<double,true>(std::string("SpAx"));
+			lapCpu<std::complex<double>,true>(std::string("SpAx"));
 			break;
 	}
 }

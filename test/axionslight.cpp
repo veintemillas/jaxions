@@ -605,14 +605,14 @@ int	main (int argc, char *argv[])
 										nstrings_global = rts.strDen ;
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
+										createMeas(axion, index);
 										 if ((*axion->zV()) > 0.6)
 										 {
-										  createMeas(axion, index);
 										  writeString	( str , rts);
-										  destroyMeas();
 										 }
 										LogOut("(G)= %ld \n", nstrings_global);
-
+										writeMapHdf5(axion);
+										destroyMeas();
 			}
 			else
 			{
@@ -681,10 +681,14 @@ int	main (int argc, char *argv[])
 
 			}
 
+			createMeas(axion, index);
+			writeMapHdf5(axion);
+			destroyMeas();
+
 			 if (commRank() == 0)
 			 {
-			 munge(UNFOLD_SLICE, sliceprint);
-			 writeMap (axion, index);
+			 //munge(UNFOLD_SLICE, sliceprint);
+			 //writeMap (axion, index);
 
 			 //Prints energy computed before
 			 fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
@@ -700,6 +704,7 @@ int	main (int argc, char *argv[])
 			 }
 
 			// SAVE FILE OUTPUT
+
 
 			if ((*axion->zV()) > zFinl)
 			{
@@ -738,12 +743,12 @@ int	main (int argc, char *argv[])
 		LogOut("| ");
 		if (commRank() == 0)
 		{
-		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sK[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sG[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%lf ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%lf ", sV[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%e ", sK[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%e ", sG[i]);} fprintf(file_spectrum, "\n");
+		fprintf(file_spectrum,  "%f ", (*axion->zV()));
+		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%e ", sV[i]);} fprintf(file_spectrum, "\n");
 		//axion->foldField();
 		}
 		commSync();
@@ -777,7 +782,7 @@ int	main (int argc, char *argv[])
 		{
 		printf("sp %f ...\n", sK[0]);
 		fprintf(file_power,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%f ", sK[i]);} fprintf(file_power, "\n");
+		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%e ", sK[i]);} fprintf(file_power, "\n");
 		}
 		LogOut("| ");
 

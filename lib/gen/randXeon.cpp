@@ -76,10 +76,10 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 
 			//	ONE MODE
 
-			// size_t pidx = idx-Vo;
-			// size_t iz = pidx/Vo + local_z_start;
-			// size_t iy = (pidx%Vo)/sizeN ;
-			// size_t ix = (pidx%Vo)%sizeN ;
+			//  size_t pidx = idx-Vo;
+			//  size_t iz = pidx/Vo + local_z_start;
+			//  size_t iy = (pidx%Vo)/sizeN ;
+			//  size_t ix = (pidx%Vo)%sizeN ;
 			//
 			// Float theta = ((Float) 0.0001*cos(3.14159*2.*iz*3/ene)+0.0*cos(3.14159*2.*ix*5/ene));
 			// m[idx] = std::complex<Float>(cos(theta), sin(theta));

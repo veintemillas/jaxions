@@ -439,9 +439,13 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					// Saves map
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						//NEEDS TO BE SAVED AS A COMPLEX FIELD!
-						m2[2*iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
-						m2[2*iNx+1] = 0.f;
+						//SAVED AS A COMPLEX FIELD!
+						//m2[2*iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
+						//m2[2*iNx+1] = 0.f;
+						//SAVED AS AN UNFOLDED UNPADDED REAL FIELD WITHOUT ghostBytes!
+						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
+						//SAVED AS AN UNFOLDED PADDED REAL FIELD WITH ghostBytes!
+						//m2[Sf + iNx + 2*(iNx/Lx)] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
 					}
 				}
 			}

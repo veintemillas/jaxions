@@ -92,7 +92,7 @@ void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_
 		// (see Section 6.4.3 [Transposed distributions],page58).In our L×M×N r2c example,
 		// including FFTW_TRANSPOSED_OUT inthe  ags means that
 		// the input would be a padded L×M×2(N/2+1) real array distributed over the L dimension,
-		// the output would be a M × L × (N/2 + 1) complex array distributed over the M dimension.
+		// the output would be a M×L×(N/2 + 1) complex array distributed over the M dimension.
 
 		size_t kdx;
 		int bin;
@@ -100,13 +100,14 @@ void	BinSpectrumGV (const complex<Float> *ft, double *binarray, size_t n1, size_
 		int kz, ky, kx;
 		double k2, w;
 
-		size_t n1pad = n1/2;
+		size_t n1pad = n1/2 + 1;
 		size_t n2pad = n1*n1pad;
+		size_t n3pad = Lz*n2pad;
 
 	  #pragma omp barrier
 
 		#pragma omp for schedule(static)
-		for (size_t kdx = 0; kdx< n3; kdx++)
+		for (size_t kdx = 0; kdx< n3pad; kdx++)
 		{
 			// ASSUMED TRANSPOSED
 			// COMPLEX WITHOUT REDUNDANCY
@@ -196,7 +197,7 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 	int rank = commRank();
 	size_t local_1_start = rank*Lz;
 
-	#pragma omp parallel default(shared)
+	#pragma omp parallel
 	{
 
 		int tid = omp_get_thread_num();
@@ -214,13 +215,14 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 		size_t iz, iy, ix;
 		int kz, ky, kx;
 		double k2, w;
-		size_t n1pad = n1/2;
+		size_t n1pad = n1/2 + 1;
 		size_t n2pad = n1*n1pad;
+		size_t n3pad = Lz*n2pad;
 
 		#pragma omp barrier
 
 		#pragma omp for schedule(static)
-		for (size_t kdx = 0; kdx< n3; kdx++)
+		for (size_t kdx = 0; kdx< n3pad; kdx++)
 		{
 			// // ASSUMED TRANSPOSED
 			// iy = kdx/n2 + local_1_start;
@@ -256,7 +258,6 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 
 			if (spectral) //CONTINUUM DEFINITION
 			{
-
 				k2 =	(39.47841760435743/(sizeL*sizeL)) * k2;
 			}
 			else //LATICE DEFINITION
@@ -315,24 +316,24 @@ void	spectrumUNFOLDED(Scalar *axion)
 
 	double mass2 = axionmass2((*axion->zV()), nQcd, zthres, zrestore)*(*axion->zV())*(*axion->zV());
 
-	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
 	// 	2 STEP SCHEME FOR MPI // OUTPUTS TO M
 
 	// 	FIRST G AND V
 	//	COPIES c_theta into RE[m2], IM[m2] = 0
 	axion->theta2m2();
 	//	FFT m2 inplace ->
-	myPlan.run(FFT_BCK);
+	myPlan.run(FFT_FWD);
 
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinSpectrumGV<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
+		BinSpectrumGV<double>(static_cast<const complex<double>*>(axion->m2Cpu()) ,
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinSpectrumGV<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
+		BinSpectrumGV<float>(static_cast<const complex<float>*>(axion->m2Cpu()) ,
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
@@ -345,17 +346,17 @@ void	spectrumUNFOLDED(Scalar *axion)
 	//	COPIES vheta into RE[m2], IM[m2] = 0
 	axion->vheta2m2();
 	//	FFT m2 inplace ->
-	myPlan.run(FFT_BCK);
+	myPlan.run(FFT_FWD);
 
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinSpectrumK<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
+		BinSpectrumK<double>(static_cast<const complex<double>*>(axion->m2Cpu()) ,
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinSpectrumK<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
+		BinSpectrumK<float>(static_cast<const complex<float>*>(axion->m2Cpu()) ,
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
@@ -406,13 +407,14 @@ void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t 
 		size_t iz, iy, ix;
 		int kz, ky, kx;
 		double k2, w;
-		size_t n1pad = n1/2;
+		size_t n1pad = n1/2 + 1;
 		size_t n2pad = n1*n1pad;
+		size_t n3pad = Lz*n2pad;
 
 		#pragma omp barrier
 
 		#pragma omp for schedule(static)
-		for (size_t kdx = 0; kdx< n3; kdx++)
+		for (size_t kdx = 0; kdx< n3pad; kdx++)
 		{
 			// ASSUMED TRANSPOSED
 			// COMPLEX WITHOUT REDUNDANCY
@@ -434,6 +436,7 @@ void	BinSpectrum (const complex<Float> *ft, double *binarray, size_t n1, size_t 
 			k2 = kz*kz + ky*ky + kx*kx;
 			bin  = (int) floor(sqrt(k2)) 	;
 
+			//spectrumK_private[bin] += 1.0 ;
 			spectrumK_private[bin] += pow(abs(ft[kdx]),2);
 
 		}// END LOOP
@@ -482,30 +485,23 @@ void	powerspectrumUNFOLDED(Scalar *axion)
 	double eRes[10];
 	// 	New scheme
 
-	//  Copies energy_theta + m2
+	// ASSUMES THAT ENERGY M2 FIELD WAS ALREADY CREATED BY THE DENSITY ANALYSIS PART
+	// pads the data for the r2c
+	axion->padder();
 
-			if ( axion->Field() == FIELD_SAXION)
-			{
-				energy	(axion, eRes, true, delta, nQcd, LL); ////// CHECKKKK!!!!
-			}
-			else
-			{
-			//ASSUMES THAT M2 FIELD WAS ALREADY CREATED BY THE DENSITY ANALYSIS PART
-			//which is already normalised by the average density
-			}
 	//	FFT m2 inplace ->
-	auto &myPlan = AxionFFT::fetchPlan("pSpectrum");
-	myPlan.run(FFT_BCK);
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
+	myPlan.run(FFT_FWD);
 
 	switch(axion->Precision())
 	{
 		case FIELD_DOUBLE:
-		BinSpectrum<double>(static_cast<const complex<double>*>(axion->m2Cpu()) + axion->Surf(),
+		BinSpectrum<double>(static_cast<const complex<double>*>(axion->m2Cpu()) ,
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 
 		case FIELD_SINGLE:
-		BinSpectrum<float>(static_cast<const complex<float>*>(axion->m2Cpu()) + axion->Surf(),
+		BinSpectrum<float>(static_cast<const complex<float>*>(axion->m2Cpu())  ,
 		static_cast<double*>(axion->mCpu()), n1, Lz, Tz, powmax, kmax, mass2);
 		break;
 

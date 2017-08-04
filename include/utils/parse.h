@@ -34,6 +34,7 @@ extern bool lowmem;
 extern bool uPrec;
 extern bool uQcd;
 extern bool uLambda;
+extern bool spectral;
 
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
@@ -41,5 +42,6 @@ extern ConfType	      cType;
 extern FieldType      fType;
 extern PropType       pType;
 extern VerbosityLevel verb;
+
 
 int	parseArgs (int argc, char *argv[]);

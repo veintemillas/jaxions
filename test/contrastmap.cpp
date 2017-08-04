@@ -104,9 +104,11 @@ int	main (int argc, char *argv[])
 	// bins density
 	LogOut("bin \n");
 	axion->writeMAPTHETA( (*(axion->zV() )) , indexa, binarray, 10000)		;
-	// complex to real
-	LogOut("auto \n");
-	axion->autodenstom2() ;
+
+	// complex to real NOT NEEDED ANYMORE // output of energy is real and unpadded
+	//LogOut("auto \n");
+	//axion->autodenstom2() ;
+
 	// Writes contrast map
 	LogOut("write \n");
 	writeEDens (axion, indexa) ;

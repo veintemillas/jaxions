@@ -160,7 +160,8 @@
 	typedef	enum	FFTtype_s {
 		FFT_CtoC_MtoM,
 		FFT_CtoC_M2toM2,
-		FFT_RtoC_M2toM2,
+		FFT_RtoC_M2toM2_AXION,
+		FFT_RtoC_M2toM2_SAXION,
 		FFT_CtoC_MtoM2,
 		FFT_SPSX,
 		FFT_SPAX,

@@ -72,9 +72,18 @@ namespace AxionFFT {
 			{
 				fftwf_complex *m   = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
 				fftwf_complex *m2  = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
-				float 				*m2f = static_cast<float*>			  (axion->m2Cpu()) + axion->Surf();
 				float	      	*mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
 				fftwf_complex *oR  = static_cast<fftwf_complex*>(static_cast<void*>(mR));
+				// FOR SPECTRUM GOES WITHOUT GHOSTS
+				// CASE AXION WILL USE M2 (WHICH IS INITIATED AS v)
+				// THIS MUST BE PLANNED AT THE BEGGINING OF SCALAR
+				float	      	*mA2  = static_cast<float *>       (axion->vCpu())  ;
+				fftwf_complex *oA2  = static_cast<fftwf_complex*>(static_cast<void*>(mA2));
+				// CASE SAXION WILL USE M2 ONLY WORKING IN !lowmem
+				// THIS MUST BE PLANNED AT THE BEGGINING OF SCALAR and will become useless after because m2 is deleted
+				float	      	*mS2  = static_cast<float *>       (axion->m2Cpu())  ;
+				fftwf_complex *oS2  = static_cast<fftwf_complex*>(static_cast<void*>(mS2));
+
 				//fftwf_complex *oR = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
 				//float	      *mR = static_cast<float *>(static_cast<void *>(oR));
 
@@ -119,19 +128,25 @@ namespace AxionFFT {
 						break;
 
 					//NEW for SPECTRUM
-					case	FFT_RtoC_M2toM2:
-
-						if (axion->m2Cpu() == nullptr) {
-							LogError ("Can't create R->C plan with m2 in lowmem runs");
-							exit(0);
-						}
+					case	FFT_RtoC_M2toM2_AXION:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2f,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA2, oA2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						//if (dFft & FFT_BCK)
+						//	planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oA2, mA2,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
+
+						case	FFT_RtoC_M2toM2_SAXION:
+
+							if (axion->m2Cpu() == nullptr) {
+								LogError ("Can't create R->C plan with m2 in lowmem runs");
+								exit(0);
+							}
+
+							if (dFft & FFT_FWD)
+								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mS2, oS2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+
+							break;
 
 					case	FFT_SPSX:
 
@@ -140,13 +155,13 @@ namespace AxionFFT {
 							exit(0);
 						}
 
-						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_EXHAUSTIVE | FFTW_MPI_TRANSPOSED_OUT));
+						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_EXHAUSTIVE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_SPAX:
-						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR,  oR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR,  mR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR,  oR, MPI_COMM_WORLD,  FFTW_EXHAUSTIVE | FFTW_MPI_TRANSPOSED_OUT));
+						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR,  mR, MPI_COMM_WORLD,  FFTW_EXHAUSTIVE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 				}
 			}
@@ -156,7 +171,6 @@ namespace AxionFFT {
 			{
 				fftw_complex *m   = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
 				fftw_complex *m2  = static_cast<fftw_complex*>(axion->m2Cpu()) + axion->Surf();
-				double 			 *m2d = static_cast<double*>		 (axion->m2Cpu()) + axion->Surf();
 				double	     *mR  = static_cast<double *>     (axion->vCpu())  + axion->Surf();
 				fftw_complex *oR  = static_cast<fftw_complex*>(axion->vCpu())  + axion->Surf();
 
@@ -199,20 +213,6 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
 						break;
 
-					//NEW for SPECTRUM
-					case	FFT_RtoC_M2toM2:
-
-						if (axion->m2Cpu() == nullptr) {
-							LogError ("Can't create R->C plan with m2 in lowmem runs");
-							exit(0);
-						}
-
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2d, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2d,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						break;
 
 					case	FFT_SPSX:
 
