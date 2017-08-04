@@ -51,7 +51,7 @@ class	Plot2D():
 			Lz = fileHdf5["/"].attrs.get("Depth")
 			zR = fileHdf5["/"].attrs.get("z")
 
-			fl = fileHdf5["/"].attrs.get("Field type")
+			fl = fileHdf5["/"].attrs.get("Field type").decode()
 
 			if self.Lx != Lx or self.Ly != Ly or self.Lz != Lz:
 				print("Error: Size mismatch (%d %d %d) vs (%d %d %d)\nAre you mixing files?\n" % (Lx, Ly, Lz, self.Lx, self.Ly, self.Lz))
