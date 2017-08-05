@@ -101,6 +101,7 @@ int	main (int argc, char *argv[])
 	);
 
 	energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+	
 	// bins density
 	LogOut("bin \n");
 	axion->writeMAPTHETA( (*(axion->zV() )) , indexa, binarray, 10000)		;

@@ -582,7 +582,7 @@ int	main (int argc, char *argv[])
 			llprint = llaux/(z_now*z_now); //physical value
 			saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 
-
+			createMeas(axion, index);
 			if ( axion->Field() == FIELD_SAXION)
 			{
 				if (axion->LowMem())
@@ -605,14 +605,13 @@ int	main (int argc, char *argv[])
 										nstrings_global = rts.strDen ;
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
-										createMeas(axion, index);
-										 if ((*axion->zV()) > 0.6)
+
+										 if ((*axion->zV()) > 0.3)
 										 {
 										  writeString	( str , rts);
 										 }
 										LogOut("(G)= %ld \n", nstrings_global);
-										writeMapHdf5(axion);
-										destroyMeas();
+
 			}
 			else
 			{
@@ -681,7 +680,7 @@ int	main (int argc, char *argv[])
 
 			}
 
-			createMeas(axion, index);
+			
 			writeMapHdf5(axion);
 			destroyMeas();
 
@@ -733,6 +732,7 @@ int	main (int argc, char *argv[])
 	if (axion->Field() == FIELD_AXION)
 	{
 		createMeas(axion, index+1);
+		writeMapHdf5(axion);
 
 		LogOut("nSpec ... ");
 		//NUMBER SPECTRUM
