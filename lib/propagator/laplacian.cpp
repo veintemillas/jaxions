@@ -69,39 +69,36 @@ void	Laplacian::lapCpu	(std::string name)
 	auto &planFFT = AxionFFT::fetchPlan(name);
 	planFFT.run(FFT_FWD);
 
-	int adj ;
-	if (hCmplx) {adj = 2; } else {adj = 1 ; }
-
-	cFloat *mData = static_cast<cFloat*> (field->m2Cpu()) + field->Surf()/adj;
+	cFloat *mData = (hCmplx == true) ? static_cast<cFloat*> (field->m2Cpu()) + (field->Surf() >> 1) : static_cast<cFloat*> (field->m2Cpu()) + field->Surf();
 
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
 
 	const int    maxLx = (hCmplx == true) ? (Lx>>1)+1 : Lx;
-	const size_t maxSf = (hCmplx == true) ?  maxLx*Lx : Sf;
+	const size_t maxSf = (hCmplx == true) ?  maxLx*Lz : Lx*Lz;
 
 	const size_t total = maxSf*Lz*2;
 
 
 	#pragma omp parallel for schedule(static) default(shared)
-	for (int oz = 0; oz < Lz; oz++)
+	for (int oy = 0; oy < Lx; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
 	{
-		int pz = oz;
+		int py = oy;
 
-		if (oz > hLz)
-			pz = oz - Lz;
+		if (oy > hLx)
+			py = oy - Lx;
 
-		size_t pz2 = pz*pz;
-		size_t idz = oz*maxSf;
+		size_t py2 = py*py;
+		size_t idy = oy*maxSf;
 
-		for (int oy = 0; oy < Lx; oy++)
-					{
-			int py = oy ;
-			if (oy > hLx)
-				py = oy - Lx;
+		for (int oz = 0; oz < Lz; oz++)
+		{
+			int pz = oz ;
+			if (oz > hLz)
+				pz = oz - Lz;
 
-			size_t py2 = py*py;
-			size_t idy = oy*maxLx;
+			size_t pz2 = pz*pz;
+			size_t idz = oz*maxLx;
 
 			for (int ox = 0; ox < maxLx; ox++)
 			{
@@ -116,7 +113,7 @@ void	Laplacian::lapCpu	(std::string name)
 				mData[idx] *= (cFloat) (p2);
 
 			}
-					}
+		}
 	}
 
 	// // ADAPDT FOR MPI! NOT DIFFICULT
