@@ -21,9 +21,10 @@
 	#define HOST_NAME_MAX   128
 #endif
 
-static int rank = -1;
-static int idxAcc = -1;
-static int commSz = 0;
+static int rank     = -1;
+static int nThreads =  1;
+static int idxAcc   = -1;
+static int commSz   =  0;
 static char hostname[HOST_NAME_MAX];
 
 static size_t gpuMem = 0;
@@ -36,6 +37,11 @@ int	commRank()
 int	commSize()
 {
 	return commSz;
+}
+
+int	commThreads()
+{
+	return nThreads;
 }
 
 int	commAcc()
@@ -163,16 +169,16 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel 
 
 	if (dev == DEV_CPU)
 	{
-		int nprocs, nthreads, mthreads;
+		int nProcs, mThreads;
 
 		#pragma omp parallel
 		{
-			nprocs = omp_get_num_procs();
-			nthreads = omp_get_num_threads();
-			mthreads = omp_get_max_threads();
+			nProcs = omp_get_num_procs();
+			nThreads = omp_get_num_threads();
+			mThreads = omp_get_max_threads();
 		}
 
-		LogMsg (VERB_NORMAL, "Rank %d Cpu will use %d threads for %d processors (max %d)", rank, nthreads, nprocs, mthreads);
+		LogMsg (VERB_NORMAL, "Rank %d Cpu will use %d threads for %d processors (max %d)", rank, nThreads, nProcs, mThreads);
 	}
 
 	return nAccs;

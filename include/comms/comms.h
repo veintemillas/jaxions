@@ -6,6 +6,7 @@
 	int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel verb);
 	void	endComms();
 	int	commRank();
+	int	commThreads();
 	int	commSize();
 	int	commAcc();
 	void	commSync();
