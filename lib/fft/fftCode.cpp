@@ -72,7 +72,7 @@ namespace AxionFFT {
 			{
 				fftwf_complex *m   = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
 				fftwf_complex *m2  = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
-				float	      	*mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
+				float	      *mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
 				fftwf_complex *oR  = static_cast<fftwf_complex*>(static_cast<void*>(mR));
 				// FOR SPECTRUM GOES WITHOUT GHOSTS
 				// CASE AXION WILL USE M2 (WHICH IS INITIATED AS v)
