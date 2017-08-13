@@ -52,6 +52,8 @@ void	SpecBin::fillBins	() {
 
 	const double fc   = ((fType == FIELD_SAXION) ? 1.0 : 2.0);
 
+	LogOut ("Loop\n");
+
 	#pragma omp parallel
 	{
 		int tIdx = omp_get_thread_num ();
@@ -73,15 +75,17 @@ void	SpecBin::fillBins	() {
 			double k2    = kx*kx + ky*ky + kz*kz;
 			size_t myBin = floor(sqrt(k2));
 
+			if (myBin > powMax)
+				LogOut ("Vaya mierda %llu %llu\n", myBin, powMax);
 
-			if (spectral)	// Includes norm sizeL^3/(2 volume^2)
+			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
 			else
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
 
 			double		w  = sqrt(k2 + mass);
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
-			double		m2 = m*m;
+			double		m2 = fc*m*m;
 			double		mw = m2/w;
 
 			switch	(sType) {
@@ -102,6 +106,7 @@ void	SpecBin::fillBins	() {
 
 		#pragma omp single
 		if (fType == FIELD_AXION) {
+	LogOut ("LoopDone\n");
 			if (zBase == 0) {
 				double w  = sqrt(mass);
 				double m  = abs(static_cast<cFloat *>(field->m2Cpu())[0]);
@@ -114,7 +119,7 @@ void	SpecBin::fillBins	() {
 						break;
 
 					case	SPECTRUM_P:
-						tBinK[0] -= m2;
+						tBinP[0] -= m2;
 						break;
 
 					default:
@@ -127,6 +132,8 @@ void	SpecBin::fillBins	() {
 					double k2    = 2*hLy*hLy + hLz*hLz;
 					size_t myBin = floor(sqrt(k2));
 
+			if (myBin > powMax)
+				LogOut ("Vaya mierda %llu %llu\n", myBin, powMax);
 					if (spectral)
 						k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
 					else
@@ -143,7 +150,7 @@ void	SpecBin::fillBins	() {
 							break;
 
 						case	SPECTRUM_P:
-							tBinK[myBin] -= m2;
+							tBinP[myBin] -= m2;
 							break;
 
 						default:
@@ -153,12 +160,14 @@ void	SpecBin::fillBins	() {
 					}
 				}
 			}
+	LogOut ("SecondLoop\n");
 		}
 
+		const double norm = (sizeL*sizeL*sizeL)/(2.*(field->TotalSize()*field->TotalSize()));
+
 		#pragma omp for schedule(static)
-		for (int j=0; j<powMax; j++)
+		for (int j=0; j<powMax; j++) {
 			for (int i=0; i<mIdx; i++) {
-				const double norm = (sizeL*sizeL*sizeL)/(2.*field->TotalSize());
 
 				switch	(sType) {
 					case	SPECTRUM_K:
@@ -175,7 +184,9 @@ void	SpecBin::fillBins	() {
 						break;
 				}
 			}
+		}
 	}
+	LogOut ("Reduction\n");
 
 	switch	(sType) {
 		case	SPECTRUM_K:
@@ -220,14 +231,16 @@ void	SpecBin::nRun	() {
 
 				case	FIELD_AXION:
 				{
-					auto &myPlan = AxionFFT::fetchPlan("nSpecAx");
+					auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
 
-					float *mO = static_cast<float *>(field->mCpu())  + field->Surf(); 
-					float *vO = static_cast<float *>(field->vCpu()); 
-					float *mF = static_cast<float *>(field->m2Cpu()) + field->Surf(); 
+					char *mO = static_cast<char *>(field->mCpu())  + field->Surf()*field->DataSize(); 
+					char *vO = static_cast<char *>(field->vCpu()); 
+					char *mF = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize(); 
 
 					size_t dataLine = field->DataSize()*Lx;
 					size_t Sf	= field->Surf();
+
+					LogOut("Adding padding\n");
 
 					// Copy m -> m2 with padding
 					#pragma omp parallel for schedule(static)
@@ -237,12 +250,15 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
 
+					LogOut("FFT\n");
 					myPlan.run(FFT_FWD);
+					LogOut("fillBins\n");
 					if (spec)
 						fillBins<float, SPECTRUM_GV, true> ();
 					else
 						fillBins<float, SPECTRUM_GV, false>();
 
+					LogOut("Padding 2\n");
 					// Copy m -> m2 with padding
 					#pragma omp parallel for schedule(static)
 					for (int sl=0; sl<Sf; sl++) {
@@ -251,7 +267,9 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, vO+oOff, dataLine);
 					}
 
+					LogOut("FFT\n");
 					myPlan.run(FFT_FWD);
+					LogOut("fillBins\n");
 					if (spec)
 						fillBins<float, SPECTRUM_K, true> ();
 					else
@@ -282,7 +300,7 @@ void	SpecBin::nRun	() {
 
 				case	FIELD_AXION:
 				{
-					auto &myPlan = AxionFFT::fetchPlan("nSpecAx");
+					auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
 
 					double *mO = static_cast<double *>(field->mCpu())  + field->Surf(); 
 					double *vO = static_cast<double *>(field->vCpu()); 
@@ -326,7 +344,7 @@ void	SpecBin::nRun	() {
 }
 
 void	SpecBin::pRun	() {
-	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+	auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
 
 	size_t dataLine = field->DataSize()*Lx;
 	size_t Sf	= field->Surf();
@@ -340,7 +358,7 @@ void	SpecBin::pRun	() {
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
 
-	myPlan.run(FFT_FWD);
+	myPlan.run(FFT_BCK);
 
 	switch (fPrec) {
 		case	FIELD_SINGLE:

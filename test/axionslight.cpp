@@ -774,13 +774,17 @@ int	main (int argc, char *argv[])
 		writeArray(bA, 10000, "/bins", "cont");
 
 		/*	Test		*/
-
+		LogOut("Constructor\n");
 		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false); 
+		LogOut("Run\n");
 		specAna.nRun();
-
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_K)), powmax, "/bins", "testK");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_G)), powmax, "/bins", "testG");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_V)), powmax, "/bins", "testV");
+		LogOut("Write\n");
+		printf("Sp %lf %p\n", specAna.data(SPECTRUM_K)[0], specAna.data(SPECTRUM_K));
+		LogOut("Write\n");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_K)), specAna.PowMax(), "/bins", "testK");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_G)), specAna.PowMax(), "/bins", "testG");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_V)), specAna.PowMax(), "/bins", "testV");
+		LogOut("Done\n");
 
 		/*	Fin test	*/
 
@@ -810,13 +814,18 @@ int	main (int argc, char *argv[])
 
 		/*	Test		*/
 
+		LogOut("pRun\n");
 		specAna.pRun();
 
+		LogOut("CBinner\n");
 		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()), axion->Size(), -7., 7.);
 
+		LogOut("bRun\n");
 		thBin.run();
 
+		LogOut("Write1\n");
 		writeArray(static_cast<void *>(specAna.data(SPECTRUM_P)), powmax, "/bins", "testP");
+		LogOut("Write2\n");
 		writeArray(static_cast<void *>(thBin.data()), 100, "/bins", "testTh");
 
 		/*	Fin test	*/
@@ -858,11 +867,14 @@ int	main (int argc, char *argv[])
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 	trackFree((void**) (&axitonarray),  ALLOC_TRACK);
 
+	LogOut("Test1\n");
 	delete axion;
 
+	LogOut("Test2\n");
 	endAxions();
 
 	//JAVIER
+	LogOut("Test3\n");
 	if (commRank() == 0)
 	{
 		fclose (file_sample);

@@ -1004,6 +1004,7 @@ void	writeArray (void *aData, size_t aSize, const char *group, const char *dataN
 	if (commRank() != 0)
 		return;
 
+	LogOut("Pa\n\n");
 	LogMsg (VERB_NORMAL, "Writing array to measurement file");
 
 	if (header == false || opened == false)
@@ -1012,6 +1013,7 @@ void	writeArray (void *aData, size_t aSize, const char *group, const char *dataN
 		return;
 	}
 
+	LogOut("Pe\n\n");
 	/*	Start profiling		*/
 
 	Profiler &prof = getProfiler(PROF_HDF5);
@@ -1020,6 +1022,7 @@ void	writeArray (void *aData, size_t aSize, const char *group, const char *dataN
 	/*	Create the group for the data if it doesn't exist	*/
 	auto status = H5Lexists (meas_id, group, H5P_DEFAULT);	// Create group if it doesn't exists
 
+	LogOut("Pi\n\n");
 	if (!status)
 		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
@@ -1040,10 +1043,13 @@ void	writeArray (void *aData, size_t aSize, const char *group, const char *dataN
 
 	enableErrorStack();
 */
+	LogOut("Po\n\n");
 	/*	Create dataset	*/
 	dataSpace = H5Screate_simple(1, dims, NULL);
 	dataSet   = H5Dcreate(group_id, dataName, H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	sSpace	  = H5Dget_space (dataSet);
+
+	LogOut("Escribo\n\n");
 
 	/*	Write spectrum data	*/
 	if (H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, dataSpace, sSpace, H5P_DEFAULT, aData) < 0) {
@@ -1052,6 +1058,7 @@ void	writeArray (void *aData, size_t aSize, const char *group, const char *dataN
 		return;
 	}
 
+	LogOut("Oki\n\n");
 	/*	Close everything		*/
 	H5Sclose (sSpace);
 	H5Dclose (dataSet);

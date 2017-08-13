@@ -239,6 +239,8 @@ const std::complex<float> If(0.,1.);
 	}
 
 
+	AxionFFT::initPlan (this, FFT_CtoC_MtoM2,  FFT_FWD, "nSpecSxM");
+	AxionFFT::initPlan (this, FFT_CtoC_VtoM2,  FFT_FWD, "nSpecSxV");
 	AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION,  FFT_FWD, "pSpectrum_ax");
 	if (!lowmem)
 	AxionFFT::initPlan (this, FFT_RtoC_M2toM2_SAXION,  FFT_FWD, "pSpectrum_sax");
@@ -286,15 +288,20 @@ const std::complex<float> If(0.,1.);
 	commSync();
 	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
 
+	LogDebug ("Free m");
 	if (m != nullptr)
 		trackFree(&m, ALLOC_ALIGN);
 
-	if (v != nullptr && fieldType == FIELD_SAXION)
+	if (v != nullptr && fieldType == FIELD_SAXION) {
+		LogDebug ("Free v");
 		trackFree(&v, ALLOC_ALIGN);
+	}
 
+	LogDebug ("Free m2");
 	if (m2 != nullptr)
 		trackFree(&m2, ALLOC_ALIGN);
 
+	LogDebug ("Free z");
 	if (z != nullptr)
 		trackFree((void **) &z, ALLOC_ALIGN);
 

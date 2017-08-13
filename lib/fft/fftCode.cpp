@@ -71,8 +71,10 @@ namespace AxionFFT {
 			case	FIELD_SINGLE:
 			{
 				fftwf_complex *m   = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
+				fftwf_complex *v   = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
 				fftwf_complex *m2  = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
 				float	      *mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
+				float	      *mS  = static_cast<float *>       (axion->m2Cpu()) + (axion->Surf()>>1);
 				fftwf_complex *oR  = static_cast<fftwf_complex*>(static_cast<void*>(mR));
 				// FOR SPECTRUM GOES WITHOUT GHOSTS
 				// CASE AXION WILL USE M2 (WHICH IS INITIATED AS v)
@@ -127,26 +129,42 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
 						break;
 
-					//NEW for SPECTRUM
-					case	FFT_RtoC_M2toM2_AXION:
+					case	FFT_CtoC_VtoM2:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create C->C plan with m2 in lowmem runs");
+							exit(0);
+						}
 
 						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+						break;
+
+					//NEW for SPECTRUM
+					case	FFT_RtoC_M2toM2_AXION:
+									/* For test, the backward plan requires ghosts	*/
+						//if (dFft & FFT_FWD)
 							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA2, oA2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						//if (dFft & FFT_BCK)
 						//	planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oA2, mA2,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
-						case	FFT_RtoC_M2toM2_SAXION:
+					case	FFT_RtoC_M2toM2_SAXION:
 
-							if (axion->m2Cpu() == nullptr) {
-								LogError ("Can't create R->C plan with m2 in lowmem runs");
-								exit(0);
-							}
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create R->C plan with m2 in lowmem runs");
+							exit(0);
+						}
+									/* For test, the backward plan requires ghosts	*/
+						//if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mS2, oS2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mS, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mS2, oS2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-
-							break;
+						break;
 
 					case	FFT_SPSX:
 
@@ -413,6 +431,8 @@ namespace AxionFFT {
 		auto dFft    = myPlan.Direction();
 
 		LogMsg (VERB_NORMAL, "Removing plan %s", name.c_str());
+
+		LogOut ("Plan %s, F%d %p B%d %p\n", name.c_str(), dFft & FFT_FWD, myPlan.PlanFwd(), dFft & FFT_BCK, myPlan.PlanBack());
 
 		switch (myPlan.Precision()) {
 

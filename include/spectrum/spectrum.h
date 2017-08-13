@@ -66,6 +66,7 @@
 			}
 
 
+		inline const size_t	PowMax() const { return powMax; }
 
 		inline double		operator()(size_t idx, SpectrumType sType)	const;
 		inline double&		operator()(size_t idx, SpectrumType sType);

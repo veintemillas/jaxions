@@ -118,7 +118,6 @@ void	ConfGenerator::runGpu	()
 	LogMsg (VERB_HIGH, "Random numbers will be generated on host");
 
 	Profiler &prof = getProfiler(PROF_GENCONF);
-	auto &myPlan = AxionFFT::fetchPlan("Init");
 
 	string	momName ("MomConf");
 	string	randName("Random");
@@ -133,37 +132,40 @@ void	ConfGenerator::runGpu	()
 		readConf (&axionField, index);
 		break;
 
-		case CONF_TKACHEV:
-		prof.start();
-		momConf(axionField, kMax, kCrt);
-		prof.stop();
-		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		myPlan.run(FFT_BCK);
-		axionField->sendGhosts(FIELD_M, COMM_SDRV);
-		axionField->sendGhosts(FIELD_M, COMM_WAIT);
+		case CONF_TKACHEV: {
+			auto &myPlan = AxionFFT::fetchPlan("Init");
+			prof.start();
+			momConf(axionField, kMax, kCrt);
+			prof.stop();
+			prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			myPlan.run(FFT_BCK);
+			axionField->sendGhosts(FIELD_M, COMM_SDRV);
+			axionField->sendGhosts(FIELD_M, COMM_WAIT);
 
-		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-		axionField->transferDev(FIELD_MV);
-		scaleField (axionField, FIELD_M, *axionField->zV());
-
+			cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+			axionField->transferDev(FIELD_MV);
+			scaleField (axionField, FIELD_M, *axionField->zV());
+		}
 		break;
 
-		case CONF_KMAX:
-		prof.start();
-		momConf(axionField, kMax, kCrt);
-		prof.stop();
-		prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		myPlan.run(FFT_BCK);
+		case CONF_KMAX: {
+			auto &myPlan = AxionFFT::fetchPlan("Init");
+			prof.start();
+			momConf(axionField, kMax, kCrt);
+			prof.stop();
+			prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			myPlan.run(FFT_BCK);
 
-		axionField->sendGhosts(FIELD_M, COMM_SDRV);
-		axionField->sendGhosts(FIELD_M, COMM_WAIT);
-		axionField->transferDev(FIELD_M);
+			axionField->sendGhosts(FIELD_M, COMM_SDRV);
+			axionField->sendGhosts(FIELD_M, COMM_WAIT);
+			axionField->transferDev(FIELD_M);
 
-		normaliseField(axionField, FIELD_M);
-		normCoreField (axionField);
-		scaleField (axionField, FIELD_M, *axionField->zV());
+			normaliseField(axionField, FIELD_M);
+			normCoreField (axionField);
+			scaleField (axionField, FIELD_M, *axionField->zV());
 
-		axionField->transferCpu(FIELD_MV);
+			axionField->transferCpu(FIELD_MV);
+		}
 		break;
 
 		case CONF_SMOOTH:
@@ -196,7 +198,6 @@ using namespace profiler;
 void	ConfGenerator::runCpu	()
 {
 	Profiler &prof = getProfiler(PROF_GENCONF);
-	auto &myPlan = AxionFFT::fetchPlan("Init");
 
 	string	momName ("MomConf");
 	string	randName("Random");
@@ -211,24 +212,28 @@ void	ConfGenerator::runCpu	()
 		readConf (&axionField, index);
 		break;
 
-		case CONF_TKACHEV:
-		prof.start();
-		momConf(axionField, kMax, kCrt);
-		prof.stop();
-		prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		myPlan.run(FFT_BCK);
-		axionField->exchangeGhosts(FIELD_M);
+		case CONF_TKACHEV: {
+			auto &myPlan = AxionFFT::fetchPlan("Init");
+			prof.start();
+			momConf(axionField, kMax, kCrt);
+			prof.stop();
+			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			myPlan.run(FFT_BCK);
+			axionField->exchangeGhosts(FIELD_M);
+		}
 		break;
 
-		case CONF_KMAX:
-		prof.start();
-		momConf(axionField, kMax, kCrt);
-		prof.stop();
-		prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		myPlan.run(FFT_BCK);
-		axionField->exchangeGhosts(FIELD_M);
-		normaliseField(axionField, FIELD_M);
-		normCoreField (axionField);
+		case CONF_KMAX: {
+			auto &myPlan = AxionFFT::fetchPlan("Init");
+			prof.start();
+			momConf(axionField, kMax, kCrt);
+			prof.stop();
+			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			myPlan.run(FFT_BCK);
+			axionField->exchangeGhosts(FIELD_M);
+			normaliseField(axionField, FIELD_M);
+			normCoreField (axionField);
+		}
 		break;
 
 		case CONF_SMOOTH:
