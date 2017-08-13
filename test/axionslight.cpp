@@ -14,6 +14,7 @@
 #include "strings/strings.h"
 #include "powerCpu.h"
 #include "scalar/scalar.h"
+#include "spectrum/spectrum.h"
 
 //#include<mpi.h>
 
@@ -770,8 +771,18 @@ int	main (int argc, char *argv[])
 		fflush(file_contbin);
 		}
 		commSync();
-		writeArray(axion, bA, 10000, "/bins", "cont");
+		writeArray(bA, 10000, "/bins", "cont");
 
+		/*	Test		*/
+
+		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false); 
+		specAna.nRun();
+
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_K)), powmax, "/bins", "testK");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_G)), powmax, "/bins", "testG");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_V)), powmax, "/bins", "testV");
+
+		/*	Fin test	*/
 
 		//POWER SPECTRUM
 
@@ -786,9 +797,6 @@ int	main (int argc, char *argv[])
 		}
 		LogOut("| ");
 
-		//writeArray(axion, bA, 10000, "/bins", "cont");
-		//writeSpectrum(axion, sK, sG, sV, powmax, true);
-
 		// BIN THETA
 		maximumtheta = axion->thetaDIST(100, binarray);
 		if (commRank() == 0)
@@ -798,7 +806,20 @@ int	main (int argc, char *argv[])
 		}
 
 
-		writeArray(axion, sK, 100, "/bins", "theta");
+		writeArray(sK, 100, "/bins", "theta");
+
+		/*	Test		*/
+
+		specAna.pRun();
+
+		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()), axion->Size(), -7., 7.);
+
+		thBin.run();
+
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_P)), powmax, "/bins", "testP");
+		writeArray(static_cast<void *>(thBin.data()), 100, "/bins", "testTh");
+
+		/*	Fin test	*/
 
 		// LogOut("dens2m ... ");
 		// axion->denstom();

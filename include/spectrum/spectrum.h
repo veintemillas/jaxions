@@ -1,11 +1,14 @@
 #ifndef	_CLASS_SPECTRUM_
 	#define	_CLASS_SPECTRUM_
 
+	#include <vector>
+	#include <cmath>
+
 	#include "enum-field.h"
 	#include "scalar/scalarField.h"
-	#include "scalar/varQCD.h"
+	#include "scalar/varNQCD.h"
 
-	class	SpecBin : public Tunable {
+	class	SpecBin {
 
 		private:
 
@@ -18,24 +21,26 @@
 
 		Scalar			*field;
 
-		size_t			Lx, Ly, Lz, Tz, nPts, kMax;
-		double			powMax, mass;
+		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
+		double			mass;
 
 		void			fillCosTable ();
 
 		const bool		spec;
+		FieldPrecision		fPrec;
+		FieldType		fType;
 
 		public:
 
-				SpecBin (Scalar *field, const bool spectral) : field(field), Lx(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), fSize(field->DataSize()),
+				SpecBin (Scalar *field, const bool spectral) : field(field), Lx(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
 									       fPrec(field->Precision()), nPts(field->Size()), fType(field->Field()), spec(spectral) {
 				kMax   = (Lx>>1)-1;
 				powMax = floor(sqrt(3.)*kMax)+2;
 
-				binK.resize(powMax); binK.fill(0.);
-				binG.resize(powMax); binG.fill(0.);
-				binV.resize(powMax); binV.fill(0.);
-				binP.resize(powMax); binP.fill(0.);
+				binK.resize(powMax); binK.assign(powMax, 0.);
+				binG.resize(powMax); binG.assign(powMax, 0.);
+				binV.resize(powMax); binV.assign(powMax, 0.);
+				binP.resize(powMax); binP.assign(powMax, 0.);
 
 				mass   = axionmass2((*field->zV()), nQcd, zthres, zrestore)*(*field->zV())*(*field->zV());
 
@@ -44,7 +49,8 @@
 				Ly = Lx;
 
 				hLy = Ly >> 1;
-				hLz = Tz >> 1;
+				hLz = Lz >> 1;
+				hTz = Tz >> 1;
 
 				switch (fType) {
 					case	FIELD_AXION:
@@ -61,11 +67,17 @@
 
 
 
-		inline double	SpecBin::operator()(size_t idx, SpectrumType sType)	const;
-		inline double&	SpecBin::operator()(size_t idx, SpectrumType sType);
+		inline double		operator()(size_t idx, SpectrumType sType)	const;
+		inline double&		operator()(size_t idx, SpectrumType sType);
 
-		void		run	();
-	}
+		inline const double*	data(SpectrumType sType)	const;
+		inline	     double*	data(SpectrumType sType);
+
+		template<typename cFloat, const SpectrumType sType, const bool spectral>
+		void		fillBins	();
+		void		nRun		();
+		void		pRun		();
+	};
 
 
 	inline double	SpecBin::operator()(size_t idx, SpectrumType sType)	const	{
@@ -89,7 +101,7 @@
 		}
 	}
 
-	inline Float&	SpecBin::operator()(size_t idx, SpectrumType rType)		{
+	inline double&	SpecBin::operator()(size_t idx, SpectrumType rType)		{
 
 		switch(rType) {
 			case	SPECTRUM_K:
@@ -106,6 +118,48 @@
 
 			case	SPECTRUM_P:
 				return binP[idx];
+				break;
+		}
+	}
+
+	inline double*	SpecBin::data(SpectrumType sType) {
+
+		switch(sType) {
+			case	SPECTRUM_K:
+				return binK.data();
+				break;
+
+			case	SPECTRUM_G:
+				return binG.data();
+				break;
+
+			case	SPECTRUM_V:
+				return binV.data();
+				break;
+
+			case	SPECTRUM_P:
+				return binP.data();
+				break;
+		}
+	}
+
+	inline const double*	SpecBin::data(SpectrumType sType)	const	{
+
+		switch(sType) {
+			case	SPECTRUM_K:
+				return binK.data();
+				break;
+
+			case	SPECTRUM_G:
+				return binG.data();
+				break;
+
+			case	SPECTRUM_V:
+				return binV.data();
+				break;
+
+			case	SPECTRUM_P:
+				return binP.data();
 				break;
 		}
 	}

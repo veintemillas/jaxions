@@ -8,3 +8,4 @@
 #include "utils/logger.h"
 #include "utils/misc.h"
 #include "utils/memAlloc.h"
+#include "utils/binner.h"

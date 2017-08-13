@@ -1,6 +1,8 @@
 #ifndef	_CLASS_BINNER_
 	#define	_CLASS_BINNER_
 
+	#include <array>
+
 	template<typename DType, size_t N>
 	class	Binner {
 
@@ -8,69 +10,53 @@
 
 		std::array<size_t,N>	bins;
 
-		DType	max;
-		DType	min;
+		DType	maxVal;
+		DType	minVal;
 		DType	step;
 
-		DType	*data;
+		DType	*inData;
 		size_t	dSize;
-
-		DeviceType	dev;
 
 		public:
 
-			Binner	(DType min=0, DType max=1, DeviceType dev=DEV_CPU) : max(max), min(min), step((max-min)/((DType) N)), dev(dev) { bins.fill(0); }
-			Binner	(DType *data, size_t dSize, DType min=0, DType max=1, DeviceType dev=DEV_CPU) : max(max), min(min), step((max-min)/((DType) N)), dev(dev), data(data) { bins.fill(0) }
+			Binner	(DType minVal=0, DType maxVal=1) : maxVal(maxVal), minVal(minVal), step((maxVal-minVal)/((DType) N)) { bins.fill(0); }
+			Binner	(DType *inData, size_t dSize, DType minVal=0, DType maxVal=1) : maxVal(maxVal), minVal(minVal), step((maxVal-minVal)/((DType) N)), inData(inData) { bins.fill(0); }
 
-		void	setData	(DType *myData, size_t mySize)	{ data = myData; dSize = mySize; }
-		DType*	getData	() const			{ return data;   }
+		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize; }
+		DType*	getData	() const			{ return inData;   }
+
+		inline       size_t*	data	()		{ return bins.data();   }
+		inline const size_t*	data	() const	{ return bins.data();   }
 
 		void	run	();
 
 		inline size_t	operator()(size_t idx)	const	{ return bins[idx]; }
 		inline size_t&	operator()(size_t idx)		{ return bins[idx]; }
-	}
+	};
 
-	void	Binner::run	() {
-		switch	(dev) {
-			case	DEV_GPU:
-				//	Although I'm leaving this possibility open, I don't think it's worth to write a GPU wrapper for this (the code is already there in cub)
-				#ifndef	USE_GPU
-				if	(dev == DEV_GPU) {
-					LogError ("Error: gpu support not built");
-					exit(1);
-				}
-				#endif
-				break;
+	template<typename DType, size_t N>
+	void	Binner<DType,N>::run	() {
+		int mIdx = commThreads();
+		std::vector<size_t>	tBins(N*mIdx);
+		tBins.assign(N*mIdx, 0);
 
-			case	DEV_CPU:
+		#pragma omp parallel
+		{
+			int tIdx = omp_get_thread_num ();
 
-				int mIdx;
-				#pragma omp parallel
-				{ mIdx = omp_num_threads(); }
+			DType base = minVal;
 
-				std:array<size_t,N*mIdx>	tBins;
-				tBins.fill(0);
+			#pragma omp for schedule(static)
+			for (int i=0; i<dSize; i++) {
+				size_t myBin = floor((inData[i] - minVal)/step);
 
-				#pragma omp parallel
-				{
-					int tIdx = omp_get_thread_num ();
+				tBins[myBin + N*tIdx]++;
+			}
 
-					DType base = min;
-
-					#pragma omp for schedule(static)
-					for (int i=0; i<dSize; i++) {
-						size_t myBin = floor((data[i] - min)/step);
-
-						tBins[myBin + N*tIdx]++;
-					}
-
-					#pragma omp for schedule(static)
-					for (int j=0; j<N; j++)
-						for (int i=0; i<mIdx; i++)
-							bins[j] += tBins[j + i*N];
-				}
-				break;	
+			#pragma omp for schedule(static)
+			for (int j=0; j<N; j++)
+				for (int i=0; i<mIdx; i++)
+					bins[j] += tBins[j + i*N];
 		}
 	}
 

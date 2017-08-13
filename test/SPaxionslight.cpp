@@ -765,7 +765,7 @@ int	main (int argc, char *argv[])
 		fflush(file_contbin);
 		}
 		commSync();
-		writeArray(axion, bA, 10000, "/bins", "cont");
+		writeArray(bA, 10000, "/bins", "cont");
 
 
 		//POWER SPECTRUM
@@ -781,8 +781,8 @@ int	main (int argc, char *argv[])
 		}
 		LogOut("| ");
 
-		//writeArray(axion, bA, 10000, "/bins", "cont");
-		//writeSpectrum(axion, sK, sG, sV, powmax, true);
+		//writeArray(bA, 10000, "/bins", "cont");
+		//writeSpectrum(sK, sG, sV, powmax, true);
 
 		// BIN THETA
 		maximumtheta = axion->thetaDIST(100, binarray);
@@ -793,7 +793,7 @@ int	main (int argc, char *argv[])
 		}
 
 
-		writeArray(axion, sK, 100, "/bins", "theta");
+		writeArray(sK, 100, "/bins", "theta");
 
 		// LogOut("dens2m ... ");
 		// axion->denstom();

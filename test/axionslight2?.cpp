@@ -664,7 +664,7 @@ int	main (int argc, char *argv[])
 		fflush(file_contbin);
 		}
 		commSync();
-		writeArray(axion, bA, 10000, "/bins", "cont");
+		writeArray(bA, 10000, "/bins", "cont");
 
 
 		//POWER SPECTRUM
@@ -680,8 +680,8 @@ int	main (int argc, char *argv[])
 		}
 		printMpi("| ");
 
-		//writeArray(axion, bA, 10000, "/bins", "cont");
-		//writeSpectrum(axion, sK, sG, sV, powmax, true);
+		//writeArray(bA, 10000, "/bins", "cont");
+		//writeSpectrum(sK, sG, sV, powmax, true);
 
 
 
@@ -694,7 +694,7 @@ int	main (int argc, char *argv[])
 		}
 
 
-		writeArray(axion, binarray, 100, "/bins", "theta");
+		writeArray(binarray, 100, "/bins", "theta");
 
 		// printMpi("dens2m ... ");
 		// axion->denstom();

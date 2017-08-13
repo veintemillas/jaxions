@@ -175,6 +175,11 @@
 		FFT_FWDBCK = 3,
 	}	FFTdir;
 
+	inline FFTdir	operator &  (FFTdir  lhs, const FFTdir rhs) { return static_cast<FFTdir>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
+	inline FFTdir&	operator &= (FFTdir &lhs, const FFTdir rhs) { lhs  = static_cast<FFTdir>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
+	inline FFTdir	operator |  (FFTdir  lhs, const FFTdir rhs) { return static_cast<FFTdir>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
+	inline FFTdir&	operator |= (FFTdir &lhs, const FFTdir rhs) { lhs  = static_cast<FFTdir>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
+
 	typedef	enum	PropType_s {
 		PROP_NONE	= 0,		// For parsing
 		PROP_SPEC	= 1,		// Spectral flag
@@ -193,4 +198,18 @@
 	inline PropType&	operator &= (PropType &lhs, const PropType rhs) { lhs  = static_cast<PropType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
 	inline PropType		operator |  (PropType  lhs, const PropType rhs) { return static_cast<PropType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
 	inline PropType&	operator |= (PropType &lhs, const PropType rhs) { lhs  = static_cast<PropType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
+
+
+	typedef	enum	SpectrumType_s {
+		SPECTRUM_K	= 1,
+		SPECTRUM_G	= 2,
+		SPECTRUM_V	= 4,
+		SPECTRUM_GV	= 6,
+		SPECTRUM_P	= 8,
+	}	SpectrumType;
+
+	inline SpectrumType	operator &  (SpectrumType  lhs, const FFTdir rhs) { return static_cast<SpectrumType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
+	inline SpectrumType&	operator &= (SpectrumType &lhs, const FFTdir rhs) { lhs  = static_cast<SpectrumType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
+	inline SpectrumType	operator |  (SpectrumType  lhs, const FFTdir rhs) { return static_cast<SpectrumType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
+	inline SpectrumType&	operator |= (SpectrumType &lhs, const FFTdir rhs) { lhs  = static_cast<SpectrumType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
 #endif
