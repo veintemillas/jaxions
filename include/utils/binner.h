@@ -5,6 +5,45 @@
 	#include <algorithm>
 	#include <mpi.h>
 
+	template<FindType fType, typename cFloat, bool sign>
+	cFloat	find	(cFloat *data, size_t size) {
+
+		if ((data == nullptr) || (size == 0))
+			return cFloat(0);
+
+		auto	cur = (sign ? data[0] : abs(data[0]));
+
+		switch (fType) {
+			case	FIND_MAX: {
+				#pragma omp parallel for reduction(max:cur) schedule(static)
+				for (int idx=1; idx<size; idx++)
+					if (sign) {
+						if (cur < data[idx])
+							cur = data[idx];
+					} else {
+						if (abs(cur) < abs(data[idx]))
+							cur = data[idx];
+					}
+			}
+			break;
+
+			case	FIND_MIN: {
+				#pragma omp parallel for reduction(min:cur) schedule(static)
+				for (int idx=1; idx<size; idx++)
+					if (sign) {
+						if (cur > data[idx])
+							cur = data[idx];
+					} else {
+						if (abs(cur) > abs(data[idx]))
+							cur = data[idx];
+					}
+			}
+			break;
+		}
+
+		return	cur;
+	}
+
 	template<typename DType, size_t N>
 	class	Binner {
 
@@ -21,19 +60,27 @@
 
 		public:
 
-			Binner	(DType minVal=0, DType maxVal=1) : maxVal(maxVal), minVal(minVal), step((maxVal-minVal)/((DType) N)) { bins.fill(0.); }
-			Binner	(DType *inData, size_t dSize, DType minVal=0, DType maxVal=1) : maxVal(maxVal), minVal(minVal), dSize(dSize), step((maxVal-minVal)/((DType) N)), inData(inData) { bins.fill(0.); }
+			Binner	() { bins.fill(0.); }
+			Binner	(DType *inData, size_t dSize) : dSize(dSize), step((maxVal-minVal)/((DType) N)), inData(inData) {
+			bins.fill(0.);
+			maxVal = find<FIND_MAX,DType,false> (inData, dSize);
+			minVal = find<FIND_MIN,DType,false> (inData, dSize);
+		}
 
-		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize; }
 		DType*	getData	() const			{ return inData;   }
+		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize;
+								  maxVal = find<FIND_MAX,DType,false> (inData, dSize);
+								  minVal = find<FIND_MIN,DType,false> (inData, dSize); }
 
 		inline       double*	data	()		{ return bins.data();   }
 		inline const double*	data	() const	{ return bins.data();   }
 
 		void	run	();
 
-		inline double	operator()(size_t idx)	const	{ return bins[idx]; }
-		inline double&	operator()(size_t idx)		{ return bins[idx]; }
+		inline double	operator()(DType  val)	const	{ size_t idx = (val - minVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator()(DType  val)		{ size_t idx = (val - minVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
+		inline double	operator[](size_t idx)	const	{ return bins[idx]; }
+		inline double&	operator[](size_t idx)		{ return bins[idx]; }
 	};
 
 	template<typename DType, size_t N>

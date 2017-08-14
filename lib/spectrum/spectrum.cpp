@@ -11,7 +11,7 @@
 void	SpecBin::fillCosTable () {
 
 	const double	ooLx   = 1./Lx;
-	const double	factor = 2./(sizeL*sizeL*ooLx*ooLx);
+	const double	factor = (2.*Lx*Lx)/(sizeL*sizeL);
 
 	cosTable.resize(kMax+2);
 
@@ -52,8 +52,6 @@ void	SpecBin::fillBins	() {
 
 	const double fc   = ((fType == FIELD_SAXION) ? 1.0 : 2.0);
 
-	LogOut ("Loop\n");
-
 	#pragma omp parallel
 	{
 		int tIdx = omp_get_thread_num ();
@@ -74,9 +72,6 @@ void	SpecBin::fillBins	() {
 
 			double k2    = kx*kx + ky*ky + kz*kz;
 			size_t myBin = floor(sqrt(k2));
-
-			if (myBin > powMax)
-				LogOut ("Vaya mierda %llu %llu\n", myBin, powMax);
 
 			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
@@ -106,7 +101,6 @@ void	SpecBin::fillBins	() {
 
 		#pragma omp single
 		if (fType == FIELD_AXION) {
-	LogOut ("LoopDone\n");
 			if (zBase == 0) {
 				double w  = sqrt(mass);
 				double m  = abs(static_cast<cFloat *>(field->m2Cpu())[0]);
@@ -132,8 +126,6 @@ void	SpecBin::fillBins	() {
 					double k2    = 2*hLy*hLy + hLz*hLz;
 					size_t myBin = floor(sqrt(k2));
 
-			if (myBin > powMax)
-				LogOut ("Vaya mierda %llu %llu\n", myBin, powMax);
 					if (spectral)
 						k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
 					else
@@ -160,7 +152,6 @@ void	SpecBin::fillBins	() {
 					}
 				}
 			}
-	LogOut ("SecondLoop\n");
 		}
 
 		const double norm = (sizeL*sizeL*sizeL)/(2.*(field->TotalSize()*field->TotalSize()));
@@ -186,7 +177,6 @@ void	SpecBin::fillBins	() {
 			}
 		}
 	}
-	LogOut ("Reduction\n");
 
 	switch	(sType) {
 		case	SPECTRUM_K:
@@ -240,8 +230,6 @@ void	SpecBin::nRun	() {
 					size_t dataLine = field->DataSize()*Lx;
 					size_t Sf	= field->Surf();
 
-					LogOut("Adding padding\n");
-
 					// Copy m -> m2 with padding
 					#pragma omp parallel for schedule(static)
 					for (int sl=0; sl<Sf; sl++) {
@@ -250,16 +238,13 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
 
-					LogOut("FFT\n");
 					myPlan.run(FFT_FWD);
-					LogOut("fillBins\n");
 					if (spec)
 						fillBins<float, SPECTRUM_GV, true> ();
 					else
 						fillBins<float, SPECTRUM_GV, false>();
 
-					LogOut("Padding 2\n");
-					// Copy m -> m2 with padding
+					// Copy v -> m2 with padding
 					#pragma omp parallel for schedule(static)
 					for (int sl=0; sl<Sf; sl++) {
 						auto	oOff = sl*field->DataSize()*Lx;
@@ -267,9 +252,7 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, vO+oOff, dataLine);
 					}
 
-					LogOut("FFT\n");
 					myPlan.run(FFT_FWD);
-					LogOut("fillBins\n");
 					if (spec)
 						fillBins<float, SPECTRUM_K, true> ();
 					else

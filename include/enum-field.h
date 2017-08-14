@@ -213,4 +213,9 @@
 	inline SpectrumType&	operator &= (SpectrumType &lhs, const FFTdir rhs) { lhs  = static_cast<SpectrumType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
 	inline SpectrumType	operator |  (SpectrumType  lhs, const FFTdir rhs) { return static_cast<SpectrumType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
 	inline SpectrumType&	operator |= (SpectrumType &lhs, const FFTdir rhs) { lhs  = static_cast<SpectrumType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
+
+	typedef	enum	FindType_s {
+		FIND_MAX,
+		FIND_MIN,
+	}	FindType;
 #endif

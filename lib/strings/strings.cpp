@@ -37,7 +37,6 @@ class	Strings	: public Tunable
 
 	StringData	runCpu	();
 	StringData	runGpu	();
-	StringData	runXeon	();
 };
 
 	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
