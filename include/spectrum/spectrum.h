@@ -32,10 +32,10 @@
 
 		public:
 
-				SpecBin (Scalar *field, const bool spectral) : field(field), Lx(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
+				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
 									       fPrec(field->Precision()), nPts(field->Size()), fType(field->Field()), spec(spectral) {
-				kMax   = (Lx>>1)-1;
-				powMax = floor(sqrt(3.)*kMax)+2;
+				kMax   = (Ly>>1);
+				powMax = floor(sqrt(3.)*kMax)+1;
 
 				binK.resize(powMax); binK.assign(powMax, 0.);
 				binG.resize(powMax); binG.assign(powMax, 0.);
@@ -46,23 +46,23 @@
 
 				fillCosTable();
 
-				Ly = Lx;
-
 				hLy = Ly >> 1;
 				hLz = Lz >> 1;
 				hTz = Tz >> 1;
 
 				switch (fType) {
 					case	FIELD_AXION:
-						Lx   = (Lx >> 1)+1;
-						nPts = Lx*Ly*Lz;
+						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;
 						break;
 
 					case	FIELD_SAXION:
-						hLx  = Lx >> 1;
+						Lx   = Ly;
+						hLx  = Ly >> 1;
 						break;
 				}
+
+				nPts = Lx*Ly*Lz;
 			}
 
 
@@ -75,9 +75,10 @@
 		inline	     double*	data(SpectrumType sType);
 
 		template<typename cFloat, const SpectrumType sType, const bool spectral>
-		void		fillBins	();
-		void		nRun		();
-		void		pRun		();
+		void	fillBins	();
+
+		void	nRun		();
+		void	pRun		();
 	};
 
 

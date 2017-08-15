@@ -134,7 +134,7 @@ const std::complex<float> If(0.,1.);
 					alignAlloc ((void**) &m2, mAlign, mBytes);
 				}
 			else
-				m2 = NULL;
+				m2 = nullptr;
 
 			break;
 
@@ -162,7 +162,7 @@ const std::complex<float> If(0.,1.);
 
 	if (!lowmem)
 	{
-		if (m2 == NULL)
+		if (m2 == nullptr)
 		{
 			LogError ("Error: couldn't allocate %lu bytes on host for the m2 field", mBytes);
 			exit(1);
@@ -288,20 +288,16 @@ const std::complex<float> If(0.,1.);
 	commSync();
 	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
 
-	LogDebug ("Free m");
 	if (m != nullptr)
 		trackFree(&m, ALLOC_ALIGN);
 
 	if (v != nullptr && fieldType == FIELD_SAXION) {
-		LogDebug ("Free v");
 		trackFree(&v, ALLOC_ALIGN);
 	}
 
-	LogDebug ("Free m2");
 	if (m2 != nullptr)
 		trackFree(&m2, ALLOC_ALIGN);
 
-	LogDebug ("Free z");
 	if (z != nullptr)
 		trackFree((void **) &z, ALLOC_ALIGN);
 
@@ -533,7 +529,6 @@ void	Scalar::setField (FieldType fType)
 				if (device == DEV_GPU)
 					m2_d = v_d;
 				#endif
-				//trackFree(&v, ALLOC_ALIGN);
 
 				switch (precision)
 				{
@@ -1769,13 +1764,15 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 void	Scalar::padder()
 {
-		LogMsg (VERB_HIGH, "Function maxtheta marked for optimization or removal");
+		LogMsg (VERB_NORMAL, "Function padder is deprecated and has been marked for removal");
 		LogMsg (VERB_NORMAL, "PADDER");
 		// idx goes into idx + 2(idx/Lx)
 		// copy same iz,ix, i.e. by same value of idx/Lx = fresa
-		for (size_t fresa = Lz*n1-1; fresa >-1; fresa--)
-		memcpy (m2 + (n1+2)*fresa , m2 + n1*fresa, fSize*n1);
 
+		char *mB = static_cast<char *>(m2);
+
+		for (int fresa = n1*n1-1; fresa >=0; fresa--)
+			memcpy (mB + fSize*fresa*(n1+2), mB + fSize*fresa*n1, fSize*n1);
 }
 
 
@@ -1785,7 +1782,7 @@ void	Scalar::padder()
 
 double	Scalar::maxtheta()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function maxtheta marked for optimization or removal");
+	LogMsg (VERB_HIGH, "Function maxtheta is deprecated and has been marked for removal, use find in utils/binner.h instead");
 	//LogMsg (VERB_NORMAL, "maxtheta()");
 	double mymaxd = 0.;
 	double mymaxd_global = 0.;
@@ -1943,7 +1940,7 @@ double	Scalar::maxtheta()//int *window)
 
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
-	LogMsg (VERB_HIGH, "Function thetaDIST marked for optimization or removal");
+	LogMsg (VERB_HIGH, "Function thetaDIST has been deprecated, use the Binner class instead");
 	double thetamaxi = maxtheta();
 	printMpi("MAXTHETA=%f\n",thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -1952,9 +1949,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 	double thetabin_local[2*numbins];
 
 	for(size_t i = 0; i < 2*numbins ; i++)
-	{
-	(static_cast<double *> (thetabin_local))[i] = 0.;
-	}
+		thetabin_local[i] = 0.;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -1978,7 +1973,10 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 				{
 					int bin;
 					bin = n2p*abs(((double *) m)[i+n2]/(*z));
-					(static_cast<double *> (thetabin_local))[bin] += 1. ;
+					if ((bin > 2*numbins) || (bin < 0))
+						LogOut ("Warning: bin outside aceptable range\n");
+					else
+						thetabin_local[bin] += 1. ;
 				}
 			}
 	}
@@ -2007,7 +2005,11 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 			{
 				int bin;
 				bin = n2pf*abs(((float *) m)[i+n2]/(*z));
-				(static_cast<double *> (thetabin_local))[bin] += 1. ;
+
+				if ((bin > 2*numbins) || (bin < 0))
+					LogOut ("Warning: bin outside aceptable range\n");
+				else
+					thetabin_local[bin] += 1. ;
 			}
 		}
 	}

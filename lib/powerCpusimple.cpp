@@ -252,7 +252,6 @@ void	BinSpectrumK (const complex<Float> *ft, double *binarray, size_t n1, size_t
 			if (ky>n1/2) {ky = ky-n1; }
 			if (kx>n1/2) {kx = kx-n1; }
 
-
 			k2 = kz*kz + ky*ky + kx*kx;
 			bin  = (int) floor(sqrt(k2)) 	;
 
@@ -322,6 +321,7 @@ void	spectrumUNFOLDED(Scalar *axion)
 	// 	FIRST G AND V
 	//	COPIES c_theta into RE[m2], IM[m2] = 0
 	axion->theta2m2();
+
 	//	FFT m2 inplace ->
 	myPlan.run(FFT_FWD);
 
@@ -491,6 +491,7 @@ void	powerspectrumUNFOLDED(Scalar *axion)
 
 	//	FFT m2 inplace ->
 	auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
+
 	myPlan.run(FFT_FWD);
 
 	switch(axion->Precision())

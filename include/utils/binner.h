@@ -11,12 +11,12 @@
 		if ((data == nullptr) || (size == 0))
 			return cFloat(0);
 
-		auto	cur = (sign ? data[0] : abs(data[0]));
+		auto	cur = ((sign == true) ? data[0] : abs(data[0]));
 
 		switch (fType) {
 			case	FIND_MAX: {
 				#pragma omp parallel for reduction(max:cur) schedule(static)
-				for (int idx=1; idx<size; idx++)
+				for (int idx=1; idx<size; idx++) {
 					if (sign) {
 						if (cur < data[idx])
 							cur = data[idx];
@@ -24,12 +24,13 @@
 						if (abs(cur) < abs(data[idx]))
 							cur = data[idx];
 					}
+				}
 			}
 			break;
 
 			case	FIND_MIN: {
 				#pragma omp parallel for reduction(min:cur) schedule(static)
-				for (int idx=1; idx<size; idx++)
+				for (int idx=1; idx<size; idx++) {
 					if (sign) {
 						if (cur > data[idx])
 							cur = data[idx];
@@ -37,6 +38,7 @@
 						if (abs(cur) > abs(data[idx]))
 							cur = data[idx];
 					}
+				}
 			}
 			break;
 		}
@@ -54,23 +56,30 @@
 		DType	maxVal;
 		DType	minVal;
 		DType	step;
+		double	zVal;
 
 		DType	*inData;
 		size_t	dSize;
 
 		public:
 
-			Binner	() { bins.fill(0.); }
-			Binner	(DType *inData, size_t dSize) : dSize(dSize), step((maxVal-minVal)/((DType) N)), inData(inData) {
+			Binner	() { bins.fill(0.); zVal = 1.0; }
+			Binner	(DType *inData, size_t dSize, double zIn) : dSize(dSize), inData(inData), zVal(zIn) {
 			bins.fill(0.);
-			maxVal = find<FIND_MAX,DType,false> (inData, dSize);
-			minVal = find<FIND_MIN,DType,false> (inData, dSize);
+			maxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
+			minVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+			step   = (maxVal-minVal)/((DType) N);
+			if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; }
 		}
+
+		void	setZ	(DType zIn)			{ maxVal *= zVal/zIn; minVal *= zVal/zIn; zVal = zIn; }
 
 		DType*	getData	() const			{ return inData;   }
 		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize;
-								  maxVal = find<FIND_MAX,DType,false> (inData, dSize);
-								  minVal = find<FIND_MIN,DType,false> (inData, dSize); }
+								  maxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
+								  minVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+								  step   = (maxVal-minVal)/((DType) N);
+								  if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; } }
 
 		inline       double*	data	()		{ return bins.data();   }
 		inline const double*	data	() const	{ return bins.data();   }
@@ -89,7 +98,9 @@
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
 
-		double	tSize = static_cast<double>(dSize*commSize());
+		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max @ z %lf", mIdx, N, step, minVal, maxVal, zVal);
+
+		double	tSize = static_cast<double>(dSize*commSize())*step;
 
 		#pragma omp parallel
 		{
@@ -99,12 +110,18 @@
 
 			#pragma omp for schedule(static)
 			for (size_t i=0; i<dSize; i++) {
-				if ((inData[i] < minVal) || (inData[i] >= maxVal))
-					continue;
+				auto cVal = inData[i]/zVal;
 
-				size_t myBin = floor((inData[i] - minVal)/step);
+				if (fabs(cVal - minVal) < step/100.) {
+					tBins[N*tIdx]++;
+				} else {
+					size_t myBin = floor((cVal - minVal)/step);
 
-				tBins[myBin + N*tIdx]++;
+					if (myBin > N)
+						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f])", cVal, minVal, maxVal);
+					else
+						tBins[myBin + N*tIdx]++;
+				}
 			}
 
 			#pragma omp for schedule(static)

@@ -542,13 +542,11 @@ int	main (int argc, char *argv[])
 					 munge(UNFOLD_SLICE, sliceprint);
 					  	writeMap (axion, 100000);
 					cmplxToTheta (axion, saskia);
-
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
 					munge(UNFOLD_ALL);
 					axion->mendtheta();
 					munge(FOLD_ALL);
-
 					//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 					munge(UNFOLD_SLICE, sliceprint);
 					writeMap (axion, 100001);
@@ -642,6 +640,7 @@ int	main (int argc, char *argv[])
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
 				 LogOut("| ");
+				fflush(stdout);
 
 				 if (commRank() == 0)
 					{
@@ -735,13 +734,35 @@ int	main (int argc, char *argv[])
 		createMeas(axion, index+1);
 		writeMapHdf5(axion);
 
-		LogOut("nSpec ... ");
+		LogOut("Spectrum ... ");
+
+		/*	Test		*/
+		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false); 
+		specAna.nRun();
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_K)), specAna.PowMax(), "/nSpectrum", "sK");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_G)), specAna.PowMax(), "/nSpectrum", "sG");
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_V)), specAna.PowMax(), "/nSpectrum", "sV");
+
+		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		specAna.pRun();
+
+		double zNow = *axion->zV();
+		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
+
+		thBin.run();
+
+		writeArray(static_cast<void *>(specAna.data(SPECTRUM_P)), powmax, "/pSpectrum", "sP");
+		writeArray(static_cast<void *>(thBin.data()), 100, "/bins", "testTh");
+
+		/*	Fin test	*/
+
 		//NUMBER SPECTRUM
 		//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-		spectrumUNFOLDED(axion);
+//		spectrumUNFOLDED(axion);
 
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
 		LogOut("| ");
+/*
 		if (commRank() == 0)
 		{
 		fprintf(file_spectrum,  "%f ", (*axion->zV()));
@@ -754,12 +775,21 @@ int	main (int argc, char *argv[])
 		}
 		commSync();
 
-		writeSpectrum(axion, sK, sG, sV, powmax, false);
 
+
+					printf("Check\n");
+					for (int sl=0; sl<axion->Length(); sl++)
+						printf ("%+.2e ", static_cast<float *>(axion->mCpu())[axion->Surf()+sl]);
+					printf("\n");
+
+		writeSpectrum(axion, sK, sG, sV, powmax, false);
+*/
 		LogOut("DensMap ... ");
 
 		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		auto Sf = axion->Surf();
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+
 		LogOut("| ");
 
 		if (commRank() == 0)
@@ -773,25 +803,10 @@ int	main (int argc, char *argv[])
 		commSync();
 		writeArray(bA, 10000, "/bins", "cont");
 
-		/*	Test		*/
-		LogOut("Constructor\n");
-		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false); 
-		LogOut("Run\n");
-		specAna.nRun();
-		LogOut("Write\n");
-		printf("Sp %lf %p\n", specAna.data(SPECTRUM_K)[0], specAna.data(SPECTRUM_K));
-		LogOut("Write\n");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_K)), specAna.PowMax(), "/bins", "testK");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_G)), specAna.PowMax(), "/bins", "testG");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_V)), specAna.PowMax(), "/bins", "testV");
-		LogOut("Done\n");
-
-		/*	Fin test	*/
-
 		//POWER SPECTRUM
-
-		LogOut("pSpec ... ");
-
+/*
+		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		LogOut("pSpec ... %f\n", static_cast<float *>(axion->m2Cpu())[Sf*3]);
 		powerspectrumUNFOLDED(axion);
 		if (commRank() == 0)
 		{
@@ -811,24 +826,7 @@ int	main (int argc, char *argv[])
 
 
 		writeArray(sK, 100, "/bins", "theta");
-
-		/*	Test		*/
-
-		LogOut("pRun\n");
-		specAna.pRun();
-
-		LogOut("CBinner\n");
-		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()), axion->Size(), -7., 7.);
-
-		LogOut("bRun\n");
-		thBin.run();
-
-		LogOut("Write1\n");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_P)), powmax, "/bins", "testP");
-		LogOut("Write2\n");
-		writeArray(static_cast<void *>(thBin.data()), 100, "/bins", "testTh");
-
-		/*	Fin test	*/
+*/
 
 		// LogOut("dens2m ... ");
 		// axion->denstom();
@@ -867,14 +865,11 @@ int	main (int argc, char *argv[])
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 	trackFree((void**) (&axitonarray),  ALLOC_TRACK);
 
-	LogOut("Test1\n");
 	delete axion;
 
-	LogOut("Test2\n");
 	endAxions();
 
 	//JAVIER
-	LogOut("Test3\n");
 	if (commRank() == 0)
 	{
 		fclose (file_sample);
