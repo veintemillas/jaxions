@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <complex>
+#include <cstring>
 
 #include <omp.h>
 #include <mpi.h>

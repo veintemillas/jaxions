@@ -71,7 +71,7 @@ namespace AxionFFT {
 			case	FIELD_SINGLE:
 			{
 				fftwf_complex *m   = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
-				fftwf_complex *v   = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
+				fftwf_complex *v   = static_cast<fftwf_complex*>(axion->vCpu());
 				fftwf_complex *m2  = static_cast<fftwf_complex*>(axion->m2Cpu()) + axion->Surf();
 				float	      *mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
 				float	      *mS  = static_cast<float *>       (axion->m2Cpu()) + (axion->Surf()>>1);
@@ -85,9 +85,6 @@ namespace AxionFFT {
 				// THIS MUST BE PLANNED AT THE BEGGINING OF SCALAR and will become useless after because m2 is deleted
 				float	      	*mS2  = static_cast<float *>       (axion->m2Cpu())  ;
 				fftwf_complex *oS2  = static_cast<fftwf_complex*>(static_cast<void*>(mS2));
-
-				//fftwf_complex *oR = static_cast<fftwf_complex*>(axion->vCpu())  + axion->Surf();
-				//float	      *mR = static_cast<float *>(static_cast<void *>(oR));
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -186,6 +183,7 @@ namespace AxionFFT {
 			case	FIELD_DOUBLE:
 			{
 				fftw_complex *m   = static_cast<fftw_complex*>(axion->mCpu())  +  axion->Surf();
+				fftw_complex *v   = static_cast<fftw_complex*>(axion->vCpu());
 				fftw_complex *m2  = static_cast<fftw_complex*>(axion->m2Cpu()) +  axion->Surf();
 				double	     *mR  = static_cast<double *>     (axion->vCpu())  +  axion->Surf();
 				double	     *mS  = static_cast<double *>     (axion->m2Cpu()) + (axion->Surf()>>1);
@@ -253,7 +251,7 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						break;
 
-					case	FFT_RtoC_M2toM2_AXION:
+					case	FFT_RtoC_M2toM2_SAXION:
 
 						if (axion->m2Cpu() == nullptr) {
 							LogError ("Can't create R->C plan with m2 in lowmem runs");
