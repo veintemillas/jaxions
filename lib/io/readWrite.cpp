@@ -594,7 +594,7 @@ void	createMeas (Scalar *axion, int index)
 		return;
 	}
 
-	H5Pclose(plist_id);
+//	H5Pclose(plist_id);
 
 	opened = true;
 
@@ -692,7 +692,7 @@ void	destroyMeas ()
 	/*	Closes the currently opened file for measurements	*/
 
 	if (opened) {
-//		H5Pclose (mlist_id);
+/*		H5Pclose (mlist_id);	*/
 		H5Fclose (meas_id);
 	}
 
