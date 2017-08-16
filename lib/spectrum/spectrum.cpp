@@ -271,9 +271,7 @@ void	SpecBin::nRun	() {
 					}
 
 					myPlan.run(FFT_BCK);
-//					for (int k=0; k<Lx; k++) {
-//						printf("(%d) %d %.3e %.3e\n", commRank(), k, static_cast<float*>(field->m2Cpu())[field->Surf()+k], static_cast<float*>(field->m2Cpu())[field->Surf()+k+(Lx*Ly*Lz)]);
-//					}
+
 					if (spec)
 						fillBins<float, SPECTRUM_K, true> ();
 					else
@@ -356,13 +354,6 @@ void	SpecBin::pRun	() {
 	size_t Sm	= Ly*Lz;
 
 	char *mA = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize(); 
-commSync();
-	fflush(stdout);
-		LogOut ("BTest\n\n\n\n");
-	for (int i=0; i<Ly; i++) {
-		LogOut ("%.3e %.3e | ", static_cast<float*>(field->m2Cpu())[i], static_cast<float*>(field->m2Cpu())[i+Sf]);
-	}
-	fflush(stdout);
 
 	// Add the f@*&#ng padding plus ghost region, no parallelization
 	for (int sl=Sm-1; sl>=0; sl--) {
@@ -370,12 +361,6 @@ commSync();
 		auto	fOff = sl*field->DataSize()*(Ly+2);
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
-
-		LogOut ("\n\n\nATest\n");
-	for (int i=0; i<Ly; i++) {
-		LogOut ("%.3e %.3e | ", static_cast<float*>(field->m2Cpu())[Sf+i], static_cast<float*>(field->m2Cpu())[Sf+i+Ly*(2*Lx)]);
-	}
-	fflush(stdout);
 
 	myPlan.run(FFT_BCK);
 

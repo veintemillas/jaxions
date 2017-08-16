@@ -172,34 +172,41 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				// Calculo los gradientes con módulo
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
-				tmp = opCode(mod_pd, grd, tpVec);
-				mPx = opCode(mul_pd, tmp, tmp);
+				//tmp = opCode(mod_pd, grd, tpVec);
+				//mPx = opCode(mul_pd, tmp, tmp);
+				mPx = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
-				tmp = opCode(mod_pd, grd, tpVec);
-				mMx = opCode(mul_pd, tmp, tmp);
+				//tmp = opCode(mod_pd, grd, tpVec);
+				//mMx = opCode(mul_pd, tmp, tmp);
+				mMx = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, mPy, mel);
-				tmp = opCode(mod_pd, grd, tpVec);
-				mPy = opCode(mul_pd, tmp, tmp);
+				//tmp = opCode(mod_pd, grd, tpVec);
+				//mPy = opCode(mul_pd, tmp, tmp);
+				mPy = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, mMy, mel);
-				tmp = opCode(mod_pd, grd, tpVec);
-				mMy = opCode(mul_pd, tmp, tmp);
+				//tmp = opCode(mod_pd, grd, tpVec);
+				//mMy = opCode(mul_pd, tmp, tmp);
+				mMy = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
-				tmp = opCode(mod_pd, grd, tpVec);
-				mPz = opCode(mul_pd, tmp, tmp);
+				//tmp = opCode(mod_pd, grd, tpVec);
+				//mPz = opCode(mul_pd, tmp, tmp);
+				mPz = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
-				tmp = opCode(mod_pd, grd, tpVec);
-				mMz = opCode(mul_pd, tmp, tmp);
+				//tmp = opCode(mod_pd, grd, tpVec);
+				//mMz = opCode(mul_pd, tmp, tmp);
+				mMz = opCode(mul_pd, grd, grd);
 
 				grd = opCode(add_pd, mPx, mMx);
 				mMx = opCode(add_pd, mPy, mMy);
 				mMy = opCode(add_pd, mPz, mMz);
 
-				mPx = opCode(mul_pd, vel, vel);
+				mPz = opCode(sub_pd, vel, opCode(mul_pd, mel, izVec));
+				mPx = opCode(mul_pd, mPz, mPz);
 
 				mPy = opCode(sub_pd,
 					one,
@@ -357,8 +364,6 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					}
 				}
 
-				// Tienes mMy y los puntos para mMx y mMz. Calcula todo ya!!!
-
 				idxPz = idx+Sf;
 				idxMz = idx-Sf;
 				idxP0 = idx;
@@ -408,17 +413,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPx = opCode(mul_ps, tmp, tmp);
 
 				// POTENTIAL
-				// vectorised version, assuming -pi,pi
-				// mPy = opCode(sub_ps,
-				// 	one,
-				// 	opCode(cos_ps, opCode(mul_ps, izVec, mel)));
-
-				// Full cosine no vectorised , no assumption
 				tmp = opCode(cos_ps, opCode(mul_ps, mel, izVec));
-//				for (int ih=0; ih<step; ih++)
-//				{
-//					tmp[ih] = cos(tmp[ih]);
-//				}
 				mPy = opCode(sub_ps, one, tmp);
 
 				opCode(store_ps, tmpGx, grd);
@@ -439,18 +434,17 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					// Saves map
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						//SAVED AS A COMPLEX FIELD!
-						//m2[2*iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
-						//m2[2*iNx+1] = 0.f;
 						//SAVED AS AN UNFOLDED UNPADDED REAL FIELD WITHOUT ghostBytes!
+						/***** Note: this version HAS ghostBytes *****/
 						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
 						//SAVED AS AN UNFOLDED PADDED REAL FIELD WITH ghostBytes!
+						/***** Note: this version is wrong, it counts twice the ghosts *****/
 						//m2[Sf + iNx + 2*(iNx/Lx)] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
 					}
 				}
 			}
 		}
-		//
+
 		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= 0.5*iz2; ptC *= zQ;
 #undef	_MData_
 #undef	step
