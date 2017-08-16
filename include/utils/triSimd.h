@@ -39,23 +39,23 @@
 #define	M_PI6	(M_PI4*M_PI2)
 
 
-constexpr float Inf_d = __builtin_inf();
-constexpr float Nan_d = __builtin_nan("0xFFFFF");
+constexpr double Inf_d = __builtin_inf();
+constexpr double Nan_d = __builtin_nan("");//0xFFFFF");
 
-constexpr float PiA_d = -3.1415926218032836914;
-constexpr float PiB_d = -3.1786509424591713469e-08;
-constexpr float PiC_d = -1.2246467864107188502e-16;
-constexpr float PiD_d = -1.2736634327021899816e-24;
+constexpr double PiA_d = -3.1415926218032836914;
+constexpr double PiB_d = -3.1786509424591713469e-08;
+constexpr double PiC_d = -1.2246467864107188502e-16;
+constexpr double PiD_d = -1.2736634327021899816e-24;
 
-constexpr float s0_d  = -7.97255955009037868891952e-18;
-constexpr float s1_d  =  2.81009972710863200091251e-15;
-constexpr float s2_d  = -7.64712219118158833288484e-13;
-constexpr float s3_d  =  1.60590430605664501629054e-10;
-constexpr float s4_d  = -2.50521083763502045810755e-08;
-constexpr float s5_d  =  2.75573192239198747630416e-06;
-constexpr float s6_d  = -0.000198412698412696162806809;
-constexpr float s7_d  =  0.00833333333333332974823815;
-constexpr float s8_d  = -0.166666666666666657414808;
+constexpr double s0_d  = -7.97255955009037868891952e-18;
+constexpr double s1_d  =  2.81009972710863200091251e-15;
+constexpr double s2_d  = -7.64712219118158833288484e-13;
+constexpr double s3_d  =  1.60590430605664501629054e-10;
+constexpr double s4_d  = -2.50521083763502045810755e-08;
+constexpr double s5_d  =  2.75573192239198747630416e-06;
+constexpr double s6_d  = -0.000198412698412696162806809;
+constexpr double s7_d  =  0.00833333333333332974823815;
+constexpr double s8_d  = -0.166666666666666657414808;
 #ifdef	__AVX512F__
 constexpr _MData_ rPid	    = {      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),
 				     1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),      1./(M_PI*16777216.),

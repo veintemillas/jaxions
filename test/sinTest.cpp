@@ -36,7 +36,7 @@
 	#define stpd 2
 #endif 
 
-#define	KMAX 10000
+#define	KMAX 100000
 #define	Tol  1.0e-6
 #define	Tld  1.0e-4
 
@@ -61,6 +61,9 @@ int	main(int argc, char *argv[])
 #endif
 	x = sX; worse = 0.;
 
+	printf ("Single precision test\n");
+	printf ("Sine\n");
+
 	for (int k=0; k<KMAX; k++)
 	{
 #if	defined(__AVX512F__)
@@ -84,10 +87,10 @@ int	main(int argc, char *argv[])
 
 			auto dif = fabsf(res - sSlf[i]);
 
-			if (dif > Tol) {
-				printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", y, sSlf[i], res, dif);
-				fflush(stdout);
-			}
+	//		if (dif > Tol) {
+	//			printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", y, sSlf[i], res, dif);
+	//			fflush(stdout);
+	//		}
 
 			if (dif > worse)
 				worse = dif;
@@ -99,6 +102,8 @@ int	main(int argc, char *argv[])
 
 	vTime = 0., cTime = 0.;
 	x = sX; worse = 0.;
+
+	printf ("Cosine\n");
 
 	for (int k=0; k<KMAX; k++)
 	{
@@ -121,10 +126,10 @@ int	main(int argc, char *argv[])
 
 			auto dif = fabsf(res - cSlf[i]);
 
-			if (dif > Tol) {
-				printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", y, cSlf[i], res, dif);
-				fflush(stdout);
-			}
+			//if (dif > Tol) {
+			//	printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", y, cSlf[i], res, dif);
+			//	fflush(stdout);
+			//}
 
 			if (dif > worse)
 				worse = dif;
@@ -137,6 +142,9 @@ int	main(int argc, char *argv[])
 	double y, sY = 0.0*3.14159, dWorse;
 
 	y = sY; dWorse = 0.;
+
+	printf ("Double precision test\n");
+	printf ("Sine\n");
 
 	for (int k=0; k<KMAX; k++)
 	{
@@ -158,10 +166,10 @@ int	main(int argc, char *argv[])
 
 			auto dif = fabs(res - sSlf[i]);
 
-			if (dif > Tld) {
-				printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", z, sSlf[i], res, dif);
-				fflush(stdout);
-			}
+			//if (dif > Tld) {
+			//	printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", z, sSlf[i], res, dif);
+			//	fflush(stdout);
+			//}
 
 			if (dif > dWorse)
 				dWorse = dif;
@@ -173,6 +181,8 @@ int	main(int argc, char *argv[])
 
 	vTime = 0., cTime = 0.;
 	y = sY; dWorse = 0.;
+
+	printf ("Cosine\n");
 
 	for (int k=0; k<KMAX; k++)
 	{
@@ -194,10 +204,10 @@ int	main(int argc, char *argv[])
 
 			auto dif = fabs(res - cSlf[i]);
 
-			if (dif > 0.) {//Tld) {
-				printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", z, cSlf[i], res, dif);
-				fflush(stdout);
-			}
+			//if (dif > 0.) {//Tld) {
+			//	printf("Cagada %.4e Sleef %f vs Cmath %f (dif %e)\n", z, cSlf[i], res, dif);
+			//	fflush(stdout);
+			//}
 			if (dif > dWorse)
 				dWorse = dif;
 		}
