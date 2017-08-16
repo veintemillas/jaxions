@@ -57,6 +57,7 @@ void	SpecBin::fillBins	() {
 
 	const double fc   = 1.0;//((fType == FIELD_SAXION) ? 1.0 : 2.0);
 
+commSync();
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
@@ -65,12 +66,12 @@ void	SpecBin::fillBins	() {
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
 
-			int kz = idx/Lx;	// FFTW outputs a transpose array Ly x Lz x Lx with Lx = Ly
+			int kz = idx/Lx;
 			int kx = idx - kz*Lx;
-			int ky = kz/Lz;
+			int ky = kz/Tz;
 
-			kz -= ky*Lz;
-			kz += zBase;	// For MPI
+			kz -= ky*Tz;
+			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
 			if (kx > hLx) kx -= static_cast<int>(Lx);
 			if (ky > hLy) ky -= static_cast<int>(Ly);
@@ -78,6 +79,9 @@ void	SpecBin::fillBins	() {
 
 			double k2    = kx*kx + ky*ky + kz*kz;
 			size_t myBin = floor(sqrt(k2));
+
+			if (myBin > powMax)
+				printf ("Vaya bin!! %d %d %d ==> %llu\n", kx, ky, kz, myBin);
 
 			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
@@ -241,11 +245,11 @@ void	SpecBin::nRun	() {
 					char *mF = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize(); 
 
 					size_t dataLine = field->DataSize()*Ly;
-					size_t Sf	= field->Surf();
+					size_t Sm	= Ly*Lz;
 
 					// Copy m -> m2 with padding
 					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sf; sl++) {
+					for (int sl=0; sl<Sm; sl++) {
 						auto	oOff = sl*field->DataSize()*Ly;
 						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(mF+fOff, mO+oOff, dataLine);
@@ -260,14 +264,16 @@ void	SpecBin::nRun	() {
 
 					// Copy v -> m2 with padding
 					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sf; sl++) {
+					for (int sl=0; sl<Sm; sl++) {
 						auto	oOff = sl*field->DataSize()*Ly;
 						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(mF+fOff, vO+oOff, dataLine);
 					}
 
 					myPlan.run(FFT_BCK);
-
+//					for (int k=0; k<Lx; k++) {
+//						printf("(%d) %d %.3e %.3e\n", commRank(), k, static_cast<float*>(field->m2Cpu())[field->Surf()+k], static_cast<float*>(field->m2Cpu())[field->Surf()+k+(Lx*Ly*Lz)]);
+//					}
 					if (spec)
 						fillBins<float, SPECTRUM_K, true> ();
 					else
@@ -304,18 +310,19 @@ void	SpecBin::nRun	() {
 					double *vO = static_cast<double *>(field->vCpu()); 
 					double *mF = static_cast<double *>(field->m2Cpu()) + field->Surf(); 
 
-					size_t dataLine = field->DataSize()*Lx;
-					size_t Sf	= field->Surf();
+					size_t dataLine = field->DataSize()*Ly;
+					size_t Sm	= Ly*Lz;
 
 					// Copy m -> m2 with padding
 					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sf; sl++) {
-						auto	oOff = sl*field->DataSize()*Lx;
-						auto	fOff = sl*field->DataSize()*(Lx+2);
+					for (int sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*field->DataSize()*Ly;
+						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
 
 					myPlan.run(FFT_BCK);	//FIXME BCK for tests
+
 					if (spec)
 						fillBins<double, SPECTRUM_GV, true> ();
 					else
@@ -323,9 +330,9 @@ void	SpecBin::nRun	() {
 
 					// Copy m -> m2 with padding
 					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sf; sl++) {
-						auto	oOff = sl*field->DataSize()*Lx;
-						auto	fOff = sl*field->DataSize()*(Lx+2);
+					for (int sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*field->DataSize()*Ly;
+						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(mF+fOff, vO+oOff, dataLine);
 					}
 
@@ -346,15 +353,29 @@ void	SpecBin::pRun	() {
 
 	size_t dataLine = field->DataSize()*Ly;
 	size_t Sf	= field->Surf();
+	size_t Sm	= Ly*Lz;
 
-	char *mA = static_cast<char *>(field->m2Cpu());// + field->Surf()*field->DataSize(); 
+	char *mA = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize(); 
+commSync();
+	fflush(stdout);
+		LogOut ("BTest\n\n\n\n");
+	for (int i=0; i<Ly; i++) {
+		LogOut ("%.3e %.3e | ", static_cast<float*>(field->m2Cpu())[i], static_cast<float*>(field->m2Cpu())[i+Sf]);
+	}
+	fflush(stdout);
 
 	// Add the f@*&#ng padding plus ghost region, no parallelization
-	for (int sl=Sf-1; sl>=0; sl--) {
-		auto	oOff = field->DataSize()*(sl*(Ly));
-		auto	fOff = field->DataSize()*(sl*(Ly+2) + Sf);
+	for (int sl=Sm-1; sl>=0; sl--) {
+		auto	oOff = sl*field->DataSize()*(Ly);
+		auto	fOff = sl*field->DataSize()*(Ly+2);
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
+
+		LogOut ("\n\n\nATest\n");
+	for (int i=0; i<Ly; i++) {
+		LogOut ("%.3e %.3e | ", static_cast<float*>(field->m2Cpu())[Sf+i], static_cast<float*>(field->m2Cpu())[Sf+i+Ly*(2*Lx)]);
+	}
+	fflush(stdout);
 
 	myPlan.run(FFT_BCK);
 

@@ -1771,7 +1771,7 @@ void	Scalar::padder()
 
 		char *mB = static_cast<char *>(m2);
 
-		for (int fresa = n1*n1-1; fresa >=0; fresa--)
+		for (int fresa = n1*Lz-1; fresa >=0; fresa--)
 			memcpy (mB + fSize*fresa*(n1+2), mB + fSize*fresa*n1, fSize*n1);
 }
 
@@ -1974,7 +1974,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 					int bin;
 					bin = n2p*abs(((double *) m)[i+n2]/(*z));
 					if ((bin > 2*numbins) || (bin < 0))
-						LogOut ("Warning: bin outside aceptable range\n");
+						LogOut ("Warning: bin outside acceptable range\n");
 					else
 						thetabin_local[bin] += 1. ;
 				}
@@ -2007,7 +2007,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 				bin = n2pf*abs(((float *) m)[i+n2]/(*z));
 
 				if ((bin > 2*numbins) || (bin < 0))
-					LogOut ("Warning: bin outside aceptable range\n");
+					LogOut ("Warning: bin outside acceptable range\n");
 				else
 					thetabin_local[bin] += 1. ;
 			}

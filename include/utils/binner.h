@@ -66,8 +66,15 @@
 			Binner	() { bins.fill(0.); zVal = 1.0; }
 			Binner	(DType *inData, size_t dSize, double zIn) : dSize(dSize), inData(inData), zVal(zIn) {
 			bins.fill(0.);
-			maxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
-			minVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+			double tMaxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
+			double tMinVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+
+			double t1 = 0., t2 = 0.;
+
+			MPI_Allreduce (&tMaxVal, &t1, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+			MPI_Allreduce (&tMinVal, &t2, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+
+			maxVal = t1; minVal = t2;
 			step   = (maxVal-minVal)/((DType) N);
 			if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; }
 		}
@@ -76,8 +83,16 @@
 
 		DType*	getData	() const			{ return inData;   }
 		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize;
-								  maxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
-								  minVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+								  double tMaxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
+								  double tMinVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+
+								  double t1, t2;
+
+								  MPI_Allreduce (&t1, &tMaxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+								  MPI_Allreduce (&t2, &tMinVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+
+								  maxVal = t1; minVal = t2;
+
 								  step   = (maxVal-minVal)/((DType) N);
 								  if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; } }
 

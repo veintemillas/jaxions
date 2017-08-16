@@ -414,11 +414,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				// 	opCode(cos_ps, opCode(mul_ps, izVec, mel)));
 
 				// Full cosine no vectorised , no assumption
-				tmp = opCode(mul_ps, mel, izVec);
-				for (int ih=0; ih<step; ih++)
-				{
-					tmp[ih] = cos(tmp[ih]);
-				}
+				tmp = opCode(cos_ps, opCode(mul_ps, mel, izVec));
+//				for (int ih=0; ih<step; ih++)
+//				{
+//					tmp[ih] = cos(tmp[ih]);
+//				}
 				mPy = opCode(sub_ps, one, tmp);
 
 				opCode(store_ps, tmpGx, grd);

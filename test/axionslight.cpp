@@ -667,16 +667,16 @@ int	main (int argc, char *argv[])
 					coA = 0 ;
 				}
 				LogOut("\n");
-				// if (!coA)
-				// {
-				// 	fprintf(file_axiton,"%f ", z_now);
-				// 	for (int i =0; i <10 ; i++)
-				// 	{		// IF FOLDED!!
-				// 			fprintf(file_axiton,"%f ", static_cast<float*> (axion->mCpu())[axitonarray[i] + S0]);
-				// 	}
-				// 	fprintf(file_axiton,"\n ");
-				// 	fflush(file_axiton);
-				// }
+				if (!coA)
+				{
+					fprintf(file_axiton,"%f ", z_now);
+					for (int i =0; i <10 ; i++)
+					{		// IF FOLDED!!
+							fprintf(file_axiton,"%f ", static_cast<float*> (axion->mCpu())[axitonarray[i] + S0]);
+					}
+					fprintf(file_axiton,"\n ");
+					fflush(file_axiton);
+				}
 
 			}
 
@@ -734,25 +734,25 @@ int	main (int argc, char *argv[])
 		createMeas(axion, index+1);
 		writeMapHdf5(axion);
 
-		LogOut("Spectrum ... ");
+		printf("Spectrum ... %d", commRank());
 
 		/*	Test		*/
 		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false); 
 		specAna.nRun();
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_K)), specAna.PowMax(), "/nSpectrum", "sK");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_G)), specAna.PowMax(), "/nSpectrum", "sG");
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_V)), specAna.PowMax(), "/nSpectrum", "sV");
+		writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+
+		double *eR = static_cast<double *>(eRes);
 
 		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 		specAna.pRun();
+		writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
 
 		double zNow = *axion->zV();
 		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
-
 		thBin.run();
-
-		writeArray(static_cast<void *>(specAna.data(SPECTRUM_P)), powmax, "/pSpectrum", "sP");
-		writeArray(static_cast<void *>(thBin.data()), 100, "/bins", "testTh");
+		writeArray(thBin.data(), 100, "/bins", "testTh");
 
 		/*	Fin test	*/
 
@@ -775,13 +775,6 @@ int	main (int argc, char *argv[])
 		}
 		commSync();
 
-
-
-					printf("Check\n");
-					for (int sl=0; sl<axion->Length(); sl++)
-						printf ("%+.2e ", static_cast<float *>(axion->mCpu())[axion->Surf()+sl]);
-					printf("\n");
-
 		writeSpectrum(axion, sK, sG, sV, powmax, false);
 */
 		LogOut("DensMap ... ");
@@ -795,12 +788,11 @@ int	main (int argc, char *argv[])
 		if (commRank() == 0)
 		{
 		fprintf(file_contbin,"%f ", (*(axion->zV() )));
-		// first three numbers are dens average, max contrast and maximum of the binning
+      		// first three numbers are dens average, max contrast and maximum of the binning
 		for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
 		fprintf(file_contbin, "\n");
 		fflush(file_contbin);
 		}
-		commSync();
 		writeArray(bA, 10000, "/bins", "cont");
 
 		//POWER SPECTRUM
@@ -835,8 +827,10 @@ int	main (int argc, char *argv[])
 		destroyMeas();
 
 		//munge(FOLD_ALL);
-		fflush(file_power);
-		fflush(file_spectrum);
+		if (commRank() == 0) {
+			fflush(file_power);
+			fflush(file_spectrum);
+		}
 	}
 
 	if (cDev != DEV_GPU)

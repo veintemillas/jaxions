@@ -18,5 +18,5 @@
 
 	void	writePoint	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
-	void    writeArray	(void *array, size_t aSize, const char *group, const char *dataName);
+	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName);
 #endif

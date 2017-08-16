@@ -21,7 +21,7 @@
 	#define HOST_NAME_MAX   128
 #endif
 
-static int rank     = -1;
+static int rank     =  0;
 static int nThreads =  1;
 static int idxAcc   = -1;
 static int commSz   =  0;

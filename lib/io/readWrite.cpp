@@ -994,7 +994,7 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	LogMsg (VERB_NORMAL, "Written %lu bytes", dataSize);
 }
 
-void	writeArray (void *aData, size_t aSize, const char *group, const char *dataName)
+void	writeArray (double *aData, size_t aSize, const char *group, const char *dataName)
 {
 	hid_t	group_id, dataSpace, sSpace, dataSet;
 	hsize_t dims[1] = { aSize };
