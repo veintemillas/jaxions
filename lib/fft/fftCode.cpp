@@ -467,7 +467,7 @@ namespace AxionFFT {
 
 		LogMsg (VERB_NORMAL, "Removing plan %s", name.c_str());
 
-		LogOut ("Plan %s, F%d %p B%d %p\n", name.c_str(), dFft & FFT_FWD, myPlan.PlanFwd(), dFft & FFT_BCK, myPlan.PlanBack());
+//		LogOut ("Plan %s, F%d %p B%d %p\n", name.c_str(), dFft & FFT_FWD, myPlan.PlanFwd(), dFft & FFT_BCK, myPlan.PlanBack());
 
 		switch (myPlan.Precision()) {
 
@@ -478,7 +478,6 @@ namespace AxionFFT {
 
 				if (dFft & FFT_BCK)
 					fftwf_destroy_plan(static_cast<fftwf_plan>(myPlan.PlanBack()));
-
 				break;
 
 			case FIELD_DOUBLE:
@@ -492,8 +491,7 @@ namespace AxionFFT {
 				break;
 		}
 
-		fftPlans.erase(name);
-		LogMsg (VERB_NORMAL, "Plan %s removed", name.c_str());
+		return;
 	}
 
 
@@ -503,11 +501,14 @@ namespace AxionFFT {
 
 		FieldPrecision	prec;
 
-		for (auto &fft : fftPlans) {
-			auto name = fft.first;
-			auto plan = fft.second;
+		for (auto fft = fftPlans.cbegin(); fft != fftPlans.cend(); ) {
+			auto name = (*fft).first;
+			auto plan = (*fft).second;
+
 			prec = plan.Precision();
 			removePlan(name);
+			fft = fftPlans.erase(fft);	//name
+
 			LogMsg (VERB_NORMAL, "Plan %s closed", name.c_str());
 		}
 
