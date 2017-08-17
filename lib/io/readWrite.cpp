@@ -1865,7 +1865,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 		/*	Read raw data	*/
 
-		auto eErr = H5Dread (eset_id, dataType, memSpace, eSpace, plist_id, static_cast<char *> (axionIn+slab*zDim*dataSize));
+		auto eErr = H5Dread (eset_id, dataType, memSpace, eSpace, plist_id, static_cast<char *> (axionIn)+slab*zDim*dataSize);
 
 		if (eErr < 0) {
 			LogError ("Error reading dataset from file");
