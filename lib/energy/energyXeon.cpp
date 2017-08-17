@@ -469,7 +469,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 // Usa constexpr y setr_epi64
 		const float __attribute__((aligned(Align))) cjgAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[16]  = { iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0. };
-		const float __attribute__((aligned(Align))) shfAux[16]  = {sh, 0., sh, 0., sh, 0., shift, 0., shift, 0., shift, 0., shift, 0., shift, 0. };
+		const float __attribute__((aligned(Align))) shfAux[16]  = { sh, 0., sh, 0., sh, 0., sh, 0., sh, 0., sh, 0., sh, 0., sh, 0. };
 		const float __attribute__((aligned(Align))) lzQAux[16]  = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
 		const int   __attribute__((aligned(Align))) shfRg[16]   = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 		const int   __attribute__((aligned(Align))) shfLf[16]   = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
@@ -482,7 +482,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 		const float __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 		const float __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
-		const float __attribute__((aligned(Align))) shfAux[8]  = {shift, 0., shift, 0., shift, 0., shift, 0.};
+		const float __attribute__((aligned(Align))) shfAux[8]  = { sh, 0., sh, 0., sh, 0., sh, 0.};
 		const float __attribute__((aligned(Align))) lzQAux[8]  = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
 #else
 		const size_t XC = (Lx<<1);
