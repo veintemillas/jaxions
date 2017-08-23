@@ -233,12 +233,6 @@ const std::complex<float> If(0.,1.);
 		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
 	}
 
-	if (pType & PROP_SPEC) {
-		AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
-		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
-	}
-
-
 	AxionFFT::initPlan (this, FFT_CtoC_MtoM2,  FFT_FWD, "nSpecSxM");
 	AxionFFT::initPlan (this, FFT_CtoC_VtoM2,  FFT_FWD, "nSpecSxV");
 	AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION,  FFT_FWD, "pSpectrum_ax");
