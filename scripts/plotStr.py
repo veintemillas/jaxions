@@ -96,17 +96,18 @@ class	Plot3D():
 					print("Error: Size mismatch (%d %d %d) vs (%d %d %d)\nAre you mixing files?\n" % (Lx, Ly, Lz, self.Lx, self.Ly, self.Lz))
 					exit()
 
-				strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
+				if "/string/data" in fileHdf5:
+					strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
 
-				z, y, x = strData.nonzero()
+					z, y, x = strData.nonzero()
 
-				pos = np.array([z,y,x]).transpose()
-				color = np.array([col[strData[tuple(p)]] for p in pos])
+					pos = np.array([z,y,x]).transpose()
+					color = np.array([col[strData[tuple(p)]] for p in pos])
 
-				self.allData.append([pos, color, zR])
+					self.allData.append([pos, color, zR])
+					self.size = self.size + 1
 
 				fileHdf5.close()
-				self.size = self.size + 1
 
 			fp = gzip.open("Strings.PyDat", "wb")
 			pickle.dump(self.allData, fp, protocol=4)
