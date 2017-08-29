@@ -102,10 +102,10 @@ class	Plot3D():
 					exit()
 
 				if "/string/data" in fileHdf5:
-					if noWalls == True:
+					if noWalls == False:
 						strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
 					else:
-						strData  = np.logical_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 191)
+						strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 63)
 
 					z, y, x = strData.nonzero()
 
@@ -205,10 +205,11 @@ class	Plot3D():
 
 if	__name__ == '__main__':
 
-	try:
-		noWalls
-	except NameError:
-		noWalls = False
+	noWalls = False
+
+	for arg in sys.argv[1:]:
+		if arg == "noWalls":
+			noWalls = True
 
 	p = Plot3D()
 	p.start()
