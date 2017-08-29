@@ -50,16 +50,6 @@ class	Plot3D():
 	def	__init__(self):
 		fileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 
-		fileHdf5 = h5py.File(fileMeas[0], "r")
-
-		self.Lx = fileHdf5["/"].attrs.get("Size")
-		self.Ly = fileHdf5["/"].attrs.get("Size")
-		self.Lz = fileHdf5["/"].attrs.get("Depth")
-
-		self.z = fileHdf5["/"].attrs.get("z")
-
-		fileHdf5.close()
-
 		self.allData = []
 
 		self.step  = 1
@@ -74,11 +64,26 @@ class	Plot3D():
 		self.size = 0
 
 		if os.path.exists("./Strings.PyDat"):
+			print("Using pickle file")
 			fp = gzip.open("./Strings.PyDat", "rb")
+			self.Lx = pickle.load(fp)
+			self.Ly = pickle.load(fp)
+			self.Lz = pickle.load(fp)
 			self.allData = pickle.load(fp)
 			fp.close()
 			self.size = len(self.allData)
 		else:
+			print("Reading measurement files")
+			fileHdf5 = h5py.File(fileMeas[0], "r")
+
+			self.Lx = fileHdf5["/"].attrs.get("Size")
+			self.Ly = fileHdf5["/"].attrs.get("Size")
+			self.Lz = fileHdf5["/"].attrs.get("Depth")
+
+			self.z = fileHdf5["/"].attrs.get("z")
+
+			fileHdf5.close()
+
 			for meas in fileMeas:
 				fileHdf5 = h5py.File(meas, "r")
 
@@ -97,7 +102,10 @@ class	Plot3D():
 					exit()
 
 				if "/string/data" in fileHdf5:
-					strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
+					if noWalls == True:
+						strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
+					else:
+						strData  = np.logical_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 191)
 
 					z, y, x = strData.nonzero()
 
@@ -110,6 +118,9 @@ class	Plot3D():
 				fileHdf5.close()
 
 			fp = gzip.open("Strings.PyDat", "wb")
+			pickle.dump(Lx, fp, protocol=4)
+			pickle.dump(Ly, fp, protocol=4)
+			pickle.dump(Lz, fp, protocol=4)
 			pickle.dump(self.allData, fp, protocol=4)
 			fp.close()
 
@@ -193,6 +204,11 @@ class	Plot3D():
 # Plot 3D
 
 if	__name__ == '__main__':
+
+	try:
+		noWalls
+	except NameError:
+		noWalls = False
 
 	p = Plot3D()
 	p.start()
