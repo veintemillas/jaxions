@@ -160,6 +160,8 @@ void	SpecBin::fillBins	() {
 						break;
 
 					default:
+						tBinG[m0Bin] -= mw0*k20;
+						tBinG[mmBin] -= mwm*k2m;
 						tBinV[m0Bin] -= mw0*mass;
 						tBinV[mmBin] -= mwm*mass;
 						break;
