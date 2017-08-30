@@ -126,8 +126,8 @@ void	SpecBin::fillBins	() {
 
 				double k20   = ky*ky + kz*kz;			// We compute both momenta at the same time
 				double k2m   = ky*ky + kz*kz + hLx*hLx;
-				size_t m0Bin = floor(sqrt(k2));
-				size_t mmBin = floor(sqrt(k2));
+				size_t m0Bin = floor(sqrt(k20));
+				size_t mmBin = floor(sqrt(k2m));
 
 				if (spectral) {
 					const double fSpc = (4.*M_PI*M_PI)/(sizeL*sizeL);
