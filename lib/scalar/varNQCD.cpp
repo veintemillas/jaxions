@@ -49,7 +49,7 @@ double	axionmass2(double z, double nQcd, double zth, double zres)
 double	saxionshift(double z, double nQcd, double zth, double zres, double LLL)
 {
  	double alpha = axionmass2(z, nQcd, zth, zres)/LLL;
- 	double morsa = ((2./sqrt(3.))*cos(atan2(sqrt(4./3.-9.*alpha*alpha),3.0*alpha)/3.0)-1.);
- 	return morsa;
+ 	double discr = 4./3.-9.*alpha*alpha;
 
+	return	((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
 }
