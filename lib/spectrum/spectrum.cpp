@@ -56,13 +56,13 @@ void	SpecBin::fillBins	() {
 			break;
 	}
 
-	const double fc   = 1.0;//((fType == FIELD_SAXION) ? 1.0 : 2.0);
+	const double fc   = ((fType == FIELD_SAXION) ? 1.0 : 2.0);
 
-commSync();
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
-		auto Sf   = (field->Surf() >> 1);
+		auto hSf  = (field->Surf() >> 1);
+		auto Sf   =  field->Surf();
 
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
@@ -90,7 +90,7 @@ commSync();
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
 
 			double		w  = sqrt(k2 + mass);
-			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx+Sf]);
+			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx+hSf]);
 			double		m2 = fc*m*m;
 			double		mw = m2/w;
 
@@ -109,62 +109,64 @@ commSync();
 					break;
 			}
 		}
-/*
-		#pragma omp single
+
 		if (fType == FIELD_AXION) {
-			if (zBase == 0) {
-				double w  = sqrt(mass);
-				double m  = abs(static_cast<cFloat *>(field->m2Cpu())[Sf]);
-				double m2 = m*m;
-				double mw = m*m/w;
+			#pragma omp for schedule(static)
+			for (size_t idx=0; idx<Sf; idx++) {	// Two surfaces, kx = 0 and kx = hLx
+				size_t eIdx = idx*Lx;		// Strided access in the YZ plane
+
+				int kz = idx;
+				int ky = kz/Tz;
+
+				kz -= ky*Tz;
+				ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
+
+				if (ky > hLy) ky -= static_cast<int>(Ly);
+				if (kz > hTz) kz -= static_cast<int>(Tz);
+
+				double k20   = ky*ky + kz*kz;			// We compute both momenta at the same time
+				double k2m   = ky*ky + kz*kz + hLx*hLx;
+				size_t m0Bin = floor(sqrt(k2));
+				size_t mmBin = floor(sqrt(k2));
+
+				if (spectral) {
+					const double fSpc = (4.*M_PI*M_PI)/(sizeL*sizeL);
+
+					k20 *= fSpc;
+					k2m *= fSpc;
+				} else {
+					k20 = cosTable[0]   + cosTable[abs(ky)] + cosTable[abs(kz)];
+					k2m = cosTable[hLx] + cosTable[abs(ky)] + cosTable[abs(kz)];
+				}
+
+				double w0  = sqrt(k20 + mass);
+				double wm  = sqrt(k2m + mass);
+				double m0  = abs(static_cast<cFloat *>(field->m2Cpu())[eIdx+hSf]);
+				double mm  = abs(static_cast<cFloat *>(field->m2Cpu())[eIdx+hSf+hLx]);
+				double m20 = m0*m0;
+				double mw0 = m0*m0/w0;
+				double m2m = mm*mm;
+				double mwm = mm*mm/wm;
 
 				switch	(sType) {
 					case	SPECTRUM_K:
-						tBinK[0] -= mw;
+						tBinK[m0Bin] -= mw0;
+						tBinK[mmBin] -= mwm;
 						break;
 
 					case	SPECTRUM_P:
-						tBinP[0] -= m2;
+						tBinP[m0Bin] -= m20;
+						tBinP[mmBin] -= m2m;
 						break;
 
 					default:
-						tBinV[0] -= mw*mass;
+						tBinV[m0Bin] -= mw0*mass;
+						tBinV[mmBin] -= mwm*mass;
 						break;
-				}
-			} else {
-				if (zBase == (Lz*(commSize()>>1))) {
-					size_t idx   = hLx + Lx*(hLz + Lz*hLy) + Sf;
-					double k2    = 2*hLy*hLy + hLz*hLz;
-					size_t myBin = floor(sqrt(k2));
-
-					if (spectral)
-						k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
-					else
-						k2  = cosTable[hLy] + cosTable[hLy] + cosTable[hLz];
-
-					double w  = sqrt(k2 + mass);
-					double m  = abs(static_cast<cFloat *>(field->m2Cpu())[Sf+idx]);
-					double m2 = m*m;
-					double mw = m2/w;
-
-					switch	(sType) {
-						case	SPECTRUM_K:
-							tBinK[myBin] -= mw;
-							break;
-
-						case	SPECTRUM_P:
-							tBinP[myBin] -= m2;
-							break;
-
-						default:
-							tBinG[myBin] -= mw*k2;
-							tBinV[myBin] -= mw*mass;
-							break;
-					}
 				}
 			}
 		}
-*/
+
 		const double norm = (sizeL*sizeL*sizeL)/(2.*(field->TotalSize()*field->TotalSize()));
 
 		#pragma omp for schedule(static)
