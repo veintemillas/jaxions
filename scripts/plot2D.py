@@ -44,8 +44,9 @@ class	Plot2D():
 #			self.size = len(self.allData)
 #		else:
 		for meas in fileMeas:
+#			print(meas)	
 			fileHdf5 = h5py.File(meas, "r")
-
+				
 			Lx = fileHdf5["/"].attrs.get("Size")
 			Ly = fileHdf5["/"].attrs.get("Size")
 			Lz = fileHdf5["/"].attrs.get("Depth")
@@ -60,21 +61,22 @@ class	Plot2D():
 			if fl == "Saxion":
 				mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
 				rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
-				rMax  = np.amax(rData)
-				rData = rData/rMax
-				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + np.pi)/(2.*np.pi)
+				rMax = np.amax(rData)
+				rData = rData/zR
+				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
 			elif fl == "Axion":
 				aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
-				pm = np.amax(aData)
-				print ("BMax %f" % pm)
+#				pm = np.amax(aData)
+#				print ("BMax %f" % pm)
+				aData = aData/zR
 				rData = np.ones(aData.shape)
-				pData = np.ones(aData.shape)*np.pi
-				aData = aData + pData
-				iData = np.trunc(aData/(2*np.pi))
-				aData = aData - iData*(2*np.pi)
-				aData = aData - pData
-				pm = np.amax(aData)
-				print ("AMax %f" % pm)
+				pData = np.ones(aData.shape)*(2*np.pi)
+				aData = (aData + pData)/(4.*np.pi)
+#				iData = np.trunc(aData/(2*np.pi))
+#				aData = aData - iData*(2*np.pi)
+#				aData = aData - pData
+#				pm = np.amax(aData)
+#				print ("AMax %f" % pm)
 				rMax  = zR
 			else:
 				print("Unrecognized field type %s" % fl)
@@ -108,8 +110,8 @@ class	Plot2D():
 
 		data = self.allData[0]
 
-		aPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
-		aCol = ['w', 'r', 'k', 'b', 'w']
+		aPos = np.array([0.00, 0.10, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9, 1.0 ])
+		aCol = ['#006600', 'b', 'w', 'r', 'k', 'b', 'w', 'r', '#006600']
 
 		vb = self.aPlot.getViewBox()
 
@@ -131,7 +133,8 @@ class	Plot2D():
 		self.aPlot.addItem(self.aImg)
 		self.aPlot.addItem(self.zAtxt)
 
-		sPos = np.linspace(0.0, data[3], 5)
+#		sPos = np.linspace(0.0, data[3], 5)
+		sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
 		sLab = ["%.2f" % mod for mod in sPos] 
 		sCol = ['w', 'r', 'y', 'c', 'k']
 
@@ -140,7 +143,7 @@ class	Plot2D():
 		sSzeX = vs.size().width()*0.96
 		sSzeY = vs.size().height()*0.8
 
-		self.sMap  = pg.ColorMap(aPos, np.array([pg.colorTuple(pg.Color(c)) for c in sCol]))
+		self.sMap  = pg.ColorMap(sPos, np.array([pg.colorTuple(pg.Color(c)) for c in sCol]))
 		self.sLut  = self.sMap.getLookupTable()
 		self.sLeg  = pg.GradientLegend((sSzeX/20, sSzeY), (aSzeX/0.96 + sSzeX, sSzeY/12.))
 		self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
@@ -156,8 +159,8 @@ class	Plot2D():
 		self.sPlot.addItem(self.zStxt)
 
 
-		self.sImg.setImage(data[0])
-		self.aImg.setImage(data[1])
+		self.sImg.setImage(data[0], levels=(0.,1.))
+		self.aImg.setImage(data[1], levels=(0.,1.))
 
 		self.pWin.show()
 		self.pWin.resize(800,1600)
@@ -166,8 +169,8 @@ class	Plot2D():
 
 	def	update(self):
 		data = self.allData[self.i]
-		self.sImg.setImage(data[0])
-		self.aImg.setImage(data[1])
+		self.sImg.setImage(data[0], levels=(0.,1.))
+		self.aImg.setImage(data[1], levels=(0.,1.))
 		self.zStxt.setText("z = %f" % data[2])
 		self.zAtxt.setText("z = %f" % data[2])
 
