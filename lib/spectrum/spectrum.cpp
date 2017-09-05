@@ -76,7 +76,7 @@ void	SpecBin::fillBins	() {
 			double fcc = 2.0 ;
 			if( kx == 0 )
 			fcc = 1.0;
-			if( kx == hLx )
+			if( kx == hLx - 1 )
 			fcc = 1.0;
 
 			kz -= ky*Tz;
