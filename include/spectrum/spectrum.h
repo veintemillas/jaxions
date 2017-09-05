@@ -55,7 +55,7 @@
 						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;
 						break;
-
+					// THIS CASE IS ILL DEFINED, WILL NEVER BE USED
 					case	FIELD_SAXION:
 						Lx   = Ly;
 						hLx  = Ly >> 1;
