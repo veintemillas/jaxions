@@ -1597,7 +1597,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		Float *mCONT = static_cast<Float*> (m2);
 		//printMpi("COMP-");
 		#pragma omp parallel for default(shared) schedule(static) reduction(max:maxi), reduction(+:toti)
-		for (size_t idx=0; idx < n3; idx++)
+		for (size_t idx=n2; idx < n3+n2; idx++)
 		{
 				toti += (double) mCONT[idx] ;
 				if (mCONT[idx] > maxi)
@@ -1627,7 +1627,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 		//printMpi("NORM-");
 		//DENSITIES ARE CONVERTED INTO DENSITY CONTRAST
 		#pragma omp parallel for default(shared) schedule(static)
-		for (size_t idx=0; idx < n3; idx++)
+		for (size_t idx=n2; idx < n3+n2; idx++)
 			{
 				mCONT[idx] = mCONT[idx]/(averagedens)	;
 				//printf("check im=0 %f %f\n", mCONT[idx].real(), mCONT[idx].imag());
@@ -1653,7 +1653,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 
 		//printMpi("BIN2-(%f) ",norma);
 		#pragma omp parallel for default(shared) schedule(static)
-		for(size_t i=0; i < n3; i++)
+		for(size_t i=n2; i < n3+n2; i++)
 		{
 			Float caca = (log10(mCONT[i]) + minbinfloat)/norma	;
 			int bin = caca	;
@@ -1694,7 +1694,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 						{
 							size_t ix, iy, iz;
 							size_t sy, iiy, fidx ;
-								if (mCONT[idx] > 100.)
+								if (mCONT[idx+n2] > 100.)
 								{
 									iz = idx/n2 ;
 									iy = (idx%n2)/n1 ;
@@ -1718,7 +1718,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 										// mCONT[idx].real(), mCONT[idx].imag(),
 										// 0., 0., 0.) ;
 										fprintf(file_con,   "%d %d %d %f %f %f %f %f \n", ix, iy, iz,
-										mCONT[idx], 0.,
+										mCONT[idx+n2], 0.,
 										mVeloc[fidx]*mVeloc[fidx]/(2.f*toti_global) ,
 										z9QCD2*(1.f-cos(mTheta[fidx+n2]/zz))/toti_global,
 										mTheta[fidx+n2]/zz ) ;
