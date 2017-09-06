@@ -78,8 +78,8 @@ int	main (int argc, char *argv[])
 	LogOut("t1     =  %2.2f\n", zInit);
 	LogOut("wDz    =  %2.2f\n", wDz);
 	LogOut("---------------\n", wDz);
-	LogOut("msa_I  =  %2.2f\n", sqrt(2.*LL)*zInit);
-	LogOut("msa_3  =  %2.2f\n", sqrt(2.*LL)*3.0);
+	LogOut("msa_I  =  %2.2f\n", sqrt(2.*LL)*zInit*delta);
+	LogOut("msa_3  =  %2.2f\n", sqrt(2.*LL)*3.0*delta);
 	LogOut("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
