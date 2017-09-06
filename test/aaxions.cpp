@@ -67,38 +67,25 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	LogOut("--------------------------------------------------\n");
-	LogOut("           INITIAL CONDITIONS                     \n\n");
+	LogOut("           PARAMETERS                             \n\n");
 
-	LogOut("Length =  %2.5f\n", sizeL);
+	LogOut("Length =  %2.1f\n", sizeL);
 	LogOut("N      =  %ld\n",   sizeN);
 	LogOut("Nz     =  %ld\n",   sizeZ);
 	LogOut("zGrid  =  %ld\n",   zGrid);
 	LogOut("dx     =  %2.5f\n", delta);
-	LogOut("dz     =  %2.5f\n", dz);
-	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("LL     =  %2.1f\n", LL);
+	LogOut("t1     =  %2.2f\n", zInit);
+	LogOut("wDz    =  %2.2f\n", wDz);
+	LogOut("---------------\n", wDz);
+	LogOut("msa_I  =  %2.2f\n", sqrt(2.*LL)*zInit);
+	LogOut("msa_3  =  %2.2f\n", sqrt(2.*LL)*3.0);
 	LogOut("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
 	const size_t V0 = 0;
 	const size_t VF = axion->Size()-1;
-
-
-	LogOut("INITIAL CONDITIONS LOADED\n");
-	if (sPrec != FIELD_DOUBLE)
-	{
-		LogOut("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
-									        ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
-		LogOut("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
-									        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
-	}
-	else
-	{
-		LogOut("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
-										    ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
-		LogOut("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
-										    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
-	}
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
@@ -139,7 +126,7 @@ int	main (int argc, char *argv[])
 	else
 		index = fIndex;
 
-	axion->SetLambda(LAMBDA_Z2);
+	axion->SetLambda(LAMBDA_FIXED);
 
 	if (LAMBDA_FIXED == axion->Lambda())
 		LogOut ("Lambda in FIXED mode\n");
@@ -166,6 +153,13 @@ int	main (int argc, char *argv[])
 	else
 		nLoops = (int)(nSteps/dump);
 
+		double masi ;
+		double mfreA ;
+		double mfreS ;
+		double mfre ;
+		double dzaux ;
+		double z_now ;
+
 	LogOut ("Start redshift loop\n");
 
 	commSync();
@@ -186,19 +180,20 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
         {
-            z_now = (*axion->zV());
-           	//--------------------------------------------------
-			// DYAMICAL deltaz
-			//--------------------------------------------------
+      	z_now = (*axion->zV());
 
-  			//Set dz to gradients and axion mass
-			//dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
-			 double masi = z_now*axionmass(z_now,nQcd,zthres, zrestore);
-			 double mfre = sqrt(masi*masi + 12./(delta*delta));
-			 double dzaux = wDz/mfre ;
+	      //--------------------------------------------------
+				// DYAMICAL deltaz
+				//--------------------------------------------------
+	  		//Set dz to gradients and axion mass or scalar mass
+				 masi = z_now*axionmass(z_now,nQcd,zthres, zrestore);
+				 mfreA = sqrt(masi*masi + 12./(delta*delta));
+				 masi = sqrt(2.*LL)*z_now ;
+				 mfreS = sqrt(masi*masi + 12./(delta*delta));
+				 mfre = min(mfreA,mfreS);
+				 dzaux = wDz/mfre ;
 
-            
-			propagate (axion, dz);
+				 propagate (axion, dz);
         }
 		auto strDen = strings(axion, str);
 
