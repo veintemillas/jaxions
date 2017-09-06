@@ -32,7 +32,7 @@ int	main (int argc, char *argv[])
 		return 0 ;
 	}
 
-	reduceEDens(fIndex, 128, 128);
+	reduceEDens(fIndex, sizeN, sizeZ);
 
 	LogOut ("Map reduced\n");
 
