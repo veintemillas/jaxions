@@ -635,6 +635,8 @@ int	main (int argc, char *argv[])
 				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 				//bins density
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				//write binned distribution
+				writeArray(bA, 10000, "/bins", "cont");
 				//computes power spectrum
 				specAna.pRun();
 				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
@@ -689,7 +691,7 @@ int	main (int argc, char *argv[])
 
 
 			writeMapHdf5(axion);
-			destroyMeas();
+
 
 			 if (commRank() == 0)
 			 {
@@ -705,9 +707,11 @@ int	main (int argc, char *argv[])
 			 eR[RH_POT], eR[RH_KIN],
 			 nstrings_global, maximumtheta);
 			 fflush(file_energy);
-
-
 			 }
+
+			 writeEnergy(axion, eRes);
+
+			 destroyMeas();
 
 			// SAVE FILE OUTPUT
 
