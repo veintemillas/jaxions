@@ -646,10 +646,6 @@ int	main (int argc, char *argv[])
 
 				//double *eR = static_cast<double *>(eRes);
 
-				specAna.pRun();
-				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
-
-
 				 LogOut("| ");
 				fflush(stdout);
 
