@@ -88,6 +88,23 @@ int	main (int argc, char *argv[])
 	const size_t VF = axion->Size()-1;
 
 	//--------------------------------------------------
+	//   FILES
+	//--------------------------------------------------
+
+	FILE *file_sample ;
+	file_sample = NULL;
+	if (commRank() == 0)
+	{
+		file_sample = fopen("out/sample.txt","w+");
+	}
+	LogOut("Files prepared! \n");
+
+	size_t nstrings_global = 0 ;
+	double maximumtheta = 3.141597;
+	double saskia;
+	StringData rts ;
+
+	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
 	//--------------------------------------------------
 
@@ -182,6 +199,61 @@ int	main (int argc, char *argv[])
         {
       	z_now = (*axion->zV());
 
+				size_t idxprint = 0 ;
+
+				if (commRank() == 0)
+					{
+						if (axion->Field() == FIELD_SAXION)
+						{
+							saskia = saxionshift(z_now, nQcd, zthres, zrestore, LL);
+
+							if (sPrec == FIELD_DOUBLE) {
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %e\n",
+								z_now,
+								axionmass(z_now,nQcd,zthres, zrestore),
+								LL,
+								static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].real(),
+								static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].imag(),
+								static_cast<complex<double> *> (axion->vCpu())[idxprint].real(),
+								static_cast<complex<double> *> (axion->vCpu())[idxprint].imag(),
+								nstrings_global,
+								maximumtheta,
+								saskia );
+							} else {
+								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %e\n",
+								z_now,
+								axionmass(z_now,nQcd,zthres, zrestore),
+								LL,
+								static_cast<complex<float>  *> (axion->mCpu())[idxprint + S0].real(),
+								static_cast<complex<float>  *> (axion->mCpu())[idxprint + S0].imag(),
+								static_cast<complex<float>  *> (axion->vCpu())[idxprint].real(),
+								static_cast<complex<float>  *> (axion->vCpu())[idxprint].imag(),
+								nstrings_global, maximumtheta, saskia);
+							}
+						}
+						else
+						{
+							if (sPrec == FIELD_DOUBLE) {
+								fprintf(file_sample,"%f %f %f %f %f\n",
+								z_now,
+								axionmass(z_now,nQcd,zthres, zrestore),
+								static_cast<double*> (axion->mCpu())[idxprint + S0],
+								static_cast<double*> (axion->vCpu())[idxprint],
+								maximumtheta);
+							} else {
+								fprintf(file_sample,"%f %f %f %f %f\n",
+								z_now,
+								axionmass(z_now,nQcd,zthres, zrestore),
+								static_cast<float*> (axion->mCpu())[idxprint + S0],
+								static_cast<float*> (axion->vCpu())[idxprint],
+								maximumtheta);
+								// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
+								// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
+							}
+						}
+						fflush(file_sample);
+					}
+
 	      //--------------------------------------------------
 				// DYAMICAL deltaz
 				//--------------------------------------------------
@@ -196,6 +268,8 @@ int	main (int argc, char *argv[])
 				 propagate (axion, dz);
         }
 		auto strDen = strings(axion, str);
+		nstrings_global = rts.strDen ;
+		maximumtheta = axion->maxtheta();
 
 		energy(axion, eRes, false, delta, nQcd, LL);
 

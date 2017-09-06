@@ -629,15 +629,26 @@ int	main (int argc, char *argv[])
 
 				LogOut("DensMap ... ");
 
-				//OLD VERSION, NEEDS UNFOLD
-				//munge(UNFOLD_ALL);
-				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
-				// NEW VERSION
 				// computes energy and creates map
 				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 				//bins density
 				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				//computes power spectrum
+				specAna.pRun();
+				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+
+				specAna.nRun();
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+
+				//double *eR = static_cast<double *>(eRes);
+
+				specAna.pRun();
+				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+
 
 				 LogOut("| ");
 				fflush(stdout);
@@ -680,7 +691,7 @@ int	main (int argc, char *argv[])
 
 			}
 
-			
+
 			writeMapHdf5(axion);
 			destroyMeas();
 
@@ -737,13 +748,13 @@ int	main (int argc, char *argv[])
 		printf("Spectrum ... %d", commRank());
 
 		/*	Test		*/
-		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false); 
+		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 		specAna.nRun();
 		writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
-		double *eR = static_cast<double *>(eRes);
+		//double *eR = static_cast<double *>(eRes);
 
 		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 		specAna.pRun();
