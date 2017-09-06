@@ -745,7 +745,7 @@ int	main (int argc, char *argv[])
 		createMeas(axion, index+1);
 		writeMapHdf5(axion);
 
-		printf("Spectrum ... %d", commRank());
+		printf("n Spectrum ... %d", commRank());
 
 		/*	Test		*/
 		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
@@ -756,9 +756,31 @@ int	main (int argc, char *argv[])
 
 		//double *eR = static_cast<double *>(eRes);
 
+		LogOut("|  ");
+		LogOut("DensMap ... ");
+
 		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		//bins density
+		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+		//write binned distribution
+		writeArray(bA, 10000, "/bins", "cont");
+
+		if (commRank() == 0)
+		{
+		fprintf(file_contbin,"%f ", (*(axion->zV() )));
+      		// first three numbers are dens average, max contrast and maximum of the binning
+		for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
+		fprintf(file_contbin, "\n");
+		fflush(file_contbin);
+		}
+
+		printf("p Spectrum ... %d", commRank());
 		specAna.pRun();
 		writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+
+		LogOut("|  ");
+		LogOut("Theta bin ... ");
+
 
 		double zNow = *axion->zV();
 		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
@@ -772,7 +794,7 @@ int	main (int argc, char *argv[])
 //		spectrumUNFOLDED(axion);
 
 		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-		LogOut("| ");
+		//LogOut("| ");
 /*
 		if (commRank() == 0)
 		{
@@ -788,23 +810,23 @@ int	main (int argc, char *argv[])
 
 		writeSpectrum(axion, sK, sG, sV, powmax, false);
 */
-		LogOut("DensMap ... ");
+		//LogOut("DensMap ... ");
 
-		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-		auto Sf = axion->Surf();
-		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+		//energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		//auto Sf = axion->Surf();
+		//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 
-		LogOut("| ");
+		//LogOut("| ");
 
-		if (commRank() == 0)
-		{
-		fprintf(file_contbin,"%f ", (*(axion->zV() )));
-      		// first three numbers are dens average, max contrast and maximum of the binning
-		for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
-		fprintf(file_contbin, "\n");
-		fflush(file_contbin);
-		}
-		writeArray(bA, 10000, "/bins", "cont");
+		// if (commRank() == 0)
+		// {
+		// fprintf(file_contbin,"%f ", (*(axion->zV() )));
+    //   		// first three numbers are dens average, max contrast and maximum of the binning
+		// for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
+		// fprintf(file_contbin, "\n");
+		// fflush(file_contbin);
+		// }
+		// writeArray(bA, 10000, "/bins", "cont");
 
 		//POWER SPECTRUM
 /*
