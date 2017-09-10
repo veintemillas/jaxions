@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
-import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
 import math
 import re, os
 import h5py
@@ -19,7 +21,7 @@ rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-# HDF5 DATASETS 
+# HDF5 DATASETS
 fileMeas = sorted([x for x in [y for y in os.listdir("./m/")] if re.search("axion.m.[0-9]{5}$", x)])
 f = h5py.File('./m/'+fileMeas[0], 'r')
 
@@ -43,20 +45,20 @@ for item in f.attrs.keys():
 with open('./sample.txt') as f:
     lines=f.readlines()
     l10 = 0
-    l5 = 0 
+    l5 = 0
     for line in lines:
         myarray = np.fromstring(line, dtype=float, sep=' ')
         l = len(myarray)
         if l==10:
             l10 = l10 +1
-        elif l==5:    
+        elif l==5:
             l5 = l5 +1
-    
+
     arrayA = np.genfromtxt('./sample.txt',skip_header=l10)
     arrayS = np.genfromtxt('./sample.txt',skip_footer=l5)
 
-axiondata = len(arrayA) >0    
-    
+axiondata = len(arrayA) >0
+
 ztab1 = arrayS[:,0]
 Thtab1 = np.arctan2(arrayS[:,4],arrayS[:,3])
 Rhtab1 = np.sqrt(arrayS[:,3]**2 + arrayS[:,4]**2)/ztab1
@@ -64,40 +66,40 @@ VThtab1 = Thtab1 + (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(ztab1*Rhta
 if axiondata:
     ztab2 = arrayA[:,0]
     Thtab2 = arrayA[:,2]/ztab2
-    VThtab2 = arrayA[:,3]    
-    
-# CREATE DIR FOR PICS    
+    VThtab2 = arrayA[:,3]
+
+# CREATE DIR FOR PICS
 if not os.path.exists('./pics'):
     os.makedirs('./pics')
 
 # THETA EVOLUTION
-plt.clf()   
+plt.clf()
 plt.plot(ztab1,Thtab1)
 if axiondata:
     plt.plot(ztab2,Thtab2)
 plt.ylim([-3.15,3.15])
-plt.ylabel(r"\theta")
-plt.xlabel(r'\tau')
+plt.ylabel(r'$\theta$'')
+plt.xlabel(r'$\tau$')
 plt.title(ups)
 plt.savefig("pics/point_theta.pdf")
-#plt.show()    
+#plt.show()
 
 # RHO EVOLUTION
-plt.clf() 
+plt.clf()
 plt.plot(ztab1,Rhtab1-1-arrayS[:,9],linewidth=0.7)
 plt.plot(ztab1,Rhtab1-1,linewidth=0.1)
-plt.xlabel(r'\rho/v-1')
-plt.xlabel(r'\tau')
+plt.xlabel(r'$\rho/v-1$')
+plt.xlabel(r'$\tau$')
 plt.savefig("pics/point_rho.pdf")
-#plt.show()    
+#plt.show()
 
 # THETA VELOCITY EVOLUTION
 plt.clf()
 plt.plot(ztab1,VThtab1,linewidth=0.2,marker='.',markersize=0.1)
 if axiondata:
     plt.plot(ztab2,VThtab2,linewidth=0.2)
-plt.ylabel(r"\rho/v-1")
-plt.xlabel(r'\tau')
+plt.ylabel(r'$\rho/v-1$')
+plt.xlabel(r'$\tau$')
 plt.title(ups)
 plt.savefig("pics/point_vel.pdf")
 #plt.show()
@@ -115,13 +117,13 @@ stringo = np.asarray(fix)
 co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
 plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,linewidth=0.5,marker='.',markersize=0.1)
 plt.ylabel("String density [Length/Volume adm U.]")
-plt.xlabel(r'\tau')
+plt.xlabel(r'$\tau$')
 plt.title(ups)
 plt.savefig("pics/string.pdf")
 #plt.show()
 
 # ENERGY EVOLUTION
-# FORMAT : 
+# FORMAT :
 # ENERGY  gtx gty gtz Vt Kt  gRx gRy gRz VR KR ...
 # ENERGY    1   2   3  4  5    6   7   8  9 10
 
@@ -147,8 +149,8 @@ plt.semilogy(en[:ik,0],sca[:ik]*(en[:ik,6:11].sum(axis=1))/16.82,  '--',c='k',la
 plt.ylim([0.01,1000])
 plt.grid(axis='y')
 plt.title(ups)
-plt.ylabel("Energy[misalignment U.]")
-plt.xlabel(r'\tau')
+plt.ylabel('Energy[misalignment U.]'')
+plt.xlabel(r'$\tau$')
 plt.legend(loc='lower left')
 plt.savefig("pics/energy.pdf")
 #plt.show()
@@ -163,8 +165,8 @@ print()
 f = h5py.File('./m/'+fileMeas[-1], 'r')
 for item in f.attrs.keys():
     print(item + ":", f.attrs[item])
-        
-print('contains ' + str(list(f)))    
+
+print('contains ' + str(list(f)))
 
 an_cont = False
 an_nspec = False
@@ -176,12 +178,12 @@ for item in list(f):
         an_cont = True
     if item == 'nSpectrum':
         print('nSpec bin posible')
-        an_nspec = True    
+        an_nspec = True
     if item == 'pSpectrum':
         print('pSpec bin posible')
-        an_pspec = True        
+        an_pspec = True
 
-if an_cont:    
+if an_cont:
     tc = np.reshape(f['bins/cont'],(10000))
     avdens, maxcon, logmaxcon = tc[0:3]
     bino = tc[3:]
@@ -216,7 +218,7 @@ if an_cont:
         if parsum < 10:
             sum += 1
         else:
-            enbin = bin    
+            enbin = bin
             # rebin and reweight
             # bin corresponds to i0 + Dbin to contrast 10**((logmaxcon+5)*(<bin,bin+1>)/numbins - 5)
             # so one can just compute initial and final and divide
@@ -236,8 +238,8 @@ if an_cont:
     plt.clf()
     #plt.loglog(contab,auxtab,       c='b',linewidth=0.3,marker='.',markersize=0.1)
     plt.loglog(lis[:,0],lis[:,1]/N3,c='green',linewidth=0.6,marker='.',markersize=0.1)
-    plt.ylabel(r'dP/d\delta')
-    plt.xlabel(r'\delta')
+    plt.ylabel(r'$dP/d\delta$')
+    plt.xlabel(r'$\delta$')
     plt.title(ups)
     plt.savefig("pics/contrastbin.pdf")
     #plt.show()
@@ -245,7 +247,7 @@ if an_cont:
 
 # NUMBER SPECTRUM
 if an_nspec:
-    from scipy.optimize import curve_fit    
+    from scipy.optimize import curve_fit
     n2=int(sizeN/2)
 
     f = h5py.File('./m/'+fileMeas[-1], 'r')
@@ -273,12 +275,12 @@ if an_nspec:
             a2 = rR**2-2
             a = math.sqrt(a2)
             b = 8*a - 4*(3*rR**2 -1)*(atan(a)-atan(1/a))
-            return b - (8/3)*(rR**3)*atan2(a*(6*rR + 4*rR**3 -2*rR**5),6*rR**4-2-12*rR**2) 
+            return b - (8/3)*(rR**3)*atan2(a*(6*rR + 4*rR**3 -2*rR**5),6*rR**4-2-12*rR**2)
 
         elif  math.sqrt(3) < rR:
             return 8.
 
-    vecvolu=np.vectorize(volu)  
+    vecvolu=np.vectorize(volu)
 
     foca = np.arange(0,powmax)/n2
     foca2 = np.arange(1,powmax+1)/n2
@@ -329,14 +331,3 @@ if an_pspec:
     plt.legend(loc='lower left',title=r'$\tau$={%.1f}'%(time))
     plt.savefig("pics/powerspectrum.pdf")
     #plt.show()
-
-
-
-
-
-
-
-
-
-
-
