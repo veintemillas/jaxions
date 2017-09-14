@@ -1746,7 +1746,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	(static_cast<double *> (contbin))[2] = (double) maxibin;
 
 	if (commRank() ==0)
-	printMpi("%(Edens = %f delta_max = %f) ", toti_global, maxi_global);
+	printMpi("%(Edens = %.0f delta_max = %.0f) ", toti_global, maxi_global);
 	fflush (stdout);
 	commRank();
 	return ;

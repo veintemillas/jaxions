@@ -44,9 +44,9 @@ class	Plot2D():
 #			self.size = len(self.allData)
 #		else:
 		for meas in fileMeas:
-#			print(meas)	
+#			print(meas)
 			fileHdf5 = h5py.File(meas, "r")
-				
+
 			Lx = fileHdf5["/"].attrs.get("Size")
 			Ly = fileHdf5["/"].attrs.get("Size")
 			Lz = fileHdf5["/"].attrs.get("Depth")
@@ -135,7 +135,7 @@ class	Plot2D():
 
 #		sPos = np.linspace(0.0, data[3], 5)
 		sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
-		sLab = ["%.2f" % mod for mod in sPos] 
+		sLab = ["%.2f" % mod for mod in sPos]
 		sCol = ['w', 'r', 'y', 'c', 'k']
 
 		vs = self.sPlot.getViewBox()
@@ -191,7 +191,7 @@ class	Plot2D():
 		self.sLeg.offset = (aSzeX/0.96 + sSzeX, sSzeY/12.)
 
 		sPos = np.linspace(0.0, data[3], 5)
-		sLab = ["%.2f" % mod for mod in sPos] 
+		sLab = ["%.2f" % mod for mod in sPos]
 		self.sLeg.gradient.setColorAt(0.00, QtGui.QColor(255,255,255))
 		self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
 		self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(255,255,  0))
@@ -217,7 +217,7 @@ class	Plot2D():
 
 		self.baseKeyPress(event)
 
-		if key == QtCore.Qt.Key_Space : 
+		if key == QtCore.Qt.Key_Space :
 			if self.pause:
 				self.pause = False
 				self.timer.start(self.tStep)
@@ -244,4 +244,3 @@ if	__name__ == '__main__':
 
 	p = Plot2D()
 	p.start()
-

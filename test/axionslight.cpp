@@ -605,7 +605,8 @@ int	main (int argc, char *argv[])
 										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 										//nstrings = (int) nstringsd_global ;
 
-										 if ((*axion->zV()) > 0.3)
+										 //if ((*axion->zV()) > 0.3)
+										 if (nstrings_global < 20000)
 										 {
 										  writeString	( str , rts);
 										 }

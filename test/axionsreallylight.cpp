@@ -240,15 +240,7 @@ int	main (int argc, char *argv[])
 	}
 
 //	if (cDev != DEV_GPU)
-	{
 		double	strDen;
-
-		if (commRank() == 0)
-		{
-		munge(UNFOLD_SLICE, sliceprint);
-		writeMap (axion, index);
-		}
-	}
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -332,8 +324,7 @@ int	main (int argc, char *argv[])
 				{
 					rts = strings(axion, str);
 					nstrings_global = rts.strDen ;
-					maximumtheta = axion->maxtheta();
-					LogOut("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
+					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 				}
 
 				//--------------------------------------------------
@@ -350,8 +341,7 @@ int	main (int argc, char *argv[])
 
 								createMeas(axion, 10000);
 								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-										munge(UNFOLD_SLICE, sliceprint);
-								  	writeMapHdf5 (axion);
+								  	writeMapHdf5s (axion,sliceprint);
 								//ENERGY
 							  		energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 										writeEnergy(axion, eRes);
@@ -376,14 +366,14 @@ int	main (int argc, char *argv[])
 
 								createMeas(axion, 10001);
 								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-										munge(UNFOLD_SLICE, sliceprint);
-								  	writeMapHdf5 (axion);
+								  	writeMapHdf5s (axion,sliceprint);
 								//ENERGY
 										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
 										writeEnergy(axion, eRes);
 								// BIN THETA
-										thBin.run();
-										writeArray(thBin.data(), 100, "/bins", "testTh");
+										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+										thBin2.run();
+										writeArray(thBin2.data(), 100, "/bins", "testTh");
 								destroyMeas();
 
 
@@ -422,10 +412,6 @@ int	main (int argc, char *argv[])
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
-								// if (axion->LowMem())
-								// 	profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
-								// else
-								// 	profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
 					//ENERGY
 						energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
 					//DOMAIN WALL KILLER NUMBER
@@ -441,12 +427,16 @@ int	main (int argc, char *argv[])
 			}
 			else
 			{
-									profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Axion"));
 
+				//BIN THETA
+				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+				thBin2.run();
+				writeArray(thBin2.data(), 100, "/bins", "testTh");
+				// maximumtheta = thBin2.t1	???? ;
 				LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
 
-				LogOut("DensMap ... ");
+				LogOut("DensMap");
 
 				SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
@@ -465,14 +455,13 @@ int	main (int argc, char *argv[])
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
-				//double *eR = static_cast<double *>(eRes);
 
-				 LogOut("| \N");
+				 LogOut("| \n");
 				fflush(stdout);
 
 			}
 
-			writeMapHdf5(axion);
+			writeMapHdf5s(axion,sliceprint);
 			writeEnergy(axion, eRes);
 			destroyMeas();
 
@@ -503,12 +492,14 @@ int	main (int argc, char *argv[])
 	munge(UNFOLD_ALL);
 	LogOut("| ");
 
+	index++	;
 	writeConf(axion, index);
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		createMeas(axion, index+1);
-		writeMapHdf5(axion);
+		createMeas(axion, index);
+
+		writeMapHdf5s(axion,sliceprint);
 
 		printf("n Spectrum ... %d", commRank());
 		/*	Test		*/
@@ -528,6 +519,8 @@ int	main (int argc, char *argv[])
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		//write binned distribution
 		writeArray(bA, 10000, "/bins", "cont");
+		writeEDens(axion, index);
+		writeEnergy(axion, eRes);
 
 		printf("p Spectrum ... %d", commRank());
 		specAna.pRun();
@@ -537,9 +530,9 @@ int	main (int argc, char *argv[])
 		LogOut("Theta bin ... ");
 
 		double zNow = *axion->zV();
-		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
-		thBin.run();
-		writeArray(thBin.data(), 100, "/bins", "testTh");
+		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
+		thBin2.run();
+		writeArray(thBin2.data(), 100, "/bins", "testTh");
 
 		/*	Fin test	*/
 

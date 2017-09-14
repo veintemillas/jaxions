@@ -1497,7 +1497,9 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 	LogMsg (VERB_NORMAL, "Written %lu bytes", powMax*24);
 }
 
-void	writeMapHdf5	(Scalar *axion)
+
+
+void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 {
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -1537,12 +1539,18 @@ void	writeMapHdf5	(Scalar *axion)
 		slb *= 2;
 
 	/*	Unfold field before writing configuration	*/
-	if (axion->Folded())
-	{
+	//if (axion->Folded())
+	//{
+		int slicenumber = slicenumbertoprint ;
+		if (slicenumbertoprint > axion->Depth())
+		{
+			LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
+			slicenumber = 0;
+		}
 		Folder	munge(axion);
-		LogMsg (VERB_HIGH, "Folded configuration, unfolding 2D slice");
-		munge(UNFOLD_SLICE);
-	}
+		LogMsg (VERB_NORMAL, "Folded configuration, unfolding 2D slice");
+		munge(UNFOLD_SLICE, slicenumber);
+	//}
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
 	if ((mapSpace = H5Screate_simple(1, &slb, NULL)) < 0)	// Whole data
@@ -1652,6 +1660,12 @@ void	writeMapHdf5	(Scalar *axion)
 	prof.add(std::string("Write Map"), 0, 2.e-9*slb*dataSize);
 	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize*2);
 }
+
+void	writeMapHdf5	(Scalar *axion)
+{
+	writeMapHdf5s	(axion, 0);
+}
+
 
 void	reduceEDens (int index, uint newLx, uint newLz)
 {
@@ -1924,7 +1938,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						xC %= nLx;
 				}
- 
+
 				if (yC > nLx/2) {
 					yC = nLx - sizeN + yC;
 
@@ -1933,7 +1947,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						yC %= nLx;
 				}
- 
+
 				if (zC > nLz/2) {
 					zC = nLz - sizeN + zC;
 
@@ -1942,7 +1956,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						zC %= nLz;
 				}
- 
+
 				hsize_t odx = ((size_t) xC) + ((size_t) nLx)*(((size_t) yC) + ((size_t) nLx*((size_t) zC)));
 				oAxion[odx] = cAxion[idx];
 			}
@@ -2149,7 +2163,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						xC %= nLx;
 				}
- 
+
 				if (yC > nLx/2) {
 					yC = nLx - sizeN + yC;
 
@@ -2158,7 +2172,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						yC %= nLx;
 				}
- 
+
 				if (zC > nLz/2) {
 					zC = nLz - sizeN + zC;
 
@@ -2167,7 +2181,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 					else
 						zC %= nLz;
 				}
- 
+
 				hsize_t odx = ((size_t) xC) + ((size_t) nLx)*(((size_t) yC) + ((size_t) nLx*((size_t) zC)));
 				oAxion[odx] = cAxion[idx];
 			}
