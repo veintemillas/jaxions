@@ -39,6 +39,7 @@ extern bool spectral;
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
 extern ConfType	      cType;
+extern ConfsubType	  smvarType;
 extern FieldType      fType;
 extern PropType       pType;
 extern VerbosityLevel verb;

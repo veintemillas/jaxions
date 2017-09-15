@@ -43,6 +43,7 @@ size_t parm1 = 0;
 
 PropType  pType = PROP_NONE;
 ConfType  cType = CONF_NONE;
+ConfsubType  smvarType = CONF_RAND;
 FieldType fType = FIELD_SAXION;
 
 char outName[128] = "axion\0";
@@ -73,7 +74,8 @@ void	printUsage(char *name)
 	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [laxion3D].\n");
 	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [laxion3D].\n");
 	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
-	printf("--ctype smooth/kmax/tkachev     Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--ctype smooth/kmax/tkachev			Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--smvar stXY/stYZ/mc0/mc     	  [smooth variant] string or mc initial conditions\n");
 	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
 	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
@@ -589,6 +591,45 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--smvar"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the configuration type (stXY/stYZ/mc0/mc).\n");
+				exit(1);
+			}
+
+			smvarType = CONF_RAND ;
+
+			if (!strcmp(argv[i+1], "stXY"))
+			{
+				smvarType = CONF_STRINGXY;
+			}
+			else if (!strcmp(argv[i+1], "stYZ"))
+			{
+				smvarType = CONF_STRINGYZ;
+			}
+			else if (!strcmp(argv[i+1], "mc0"))
+			{
+				smvarType = CONF_MINICLUSTER0;
+			}
+			else if (!strcmp(argv[i+1], "mc"))
+			{
+				smvarType = CONF_MINICLUSTER;
+			}
+			else
+			{
+				printf("Error: Unrecognized configuration type %s, using [random]\n", argv[i+1]);
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+
 		if (!strcmp(argv[i], "--prec"))
 		{
 			uPrec = true;
@@ -663,7 +704,7 @@ int	parseArgs (int argc, char *argv[])
 			if (!strcmp(argv[i+1], "leap"))
 			{
 				pType |= PROP_LEAP;
-			} 
+			}
 			else if (!strcmp(argv[i+1], "rkn4"))
 			{
 				pType |= PROP_RKN4;

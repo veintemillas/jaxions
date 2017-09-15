@@ -84,6 +84,15 @@
 		CONF_NONE,
 	}	ConfType;
 
+	typedef enum	ConfsubType_s
+	{
+		CONF_RAND = 0,
+		CONF_STRINGXY = 1,
+		CONF_STRINGYZ = 2,
+		CONF_MINICLUSTER0 = 3,
+		CONF_MINICLUSTER = 4,
+	}	ConfsubType;
+
 	typedef enum	DeviceType_s
 	{
 		DEV_CPU,
