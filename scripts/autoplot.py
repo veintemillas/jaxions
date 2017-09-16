@@ -172,7 +172,7 @@ fileMeas = sorted([x for x in [y for y in os.listdir("./m/")] if re.search("axio
 
 ene = []
 enlen = 0
-
+sl = 0
 for meas in fileMeas:
     an_energy = False
     an_string = False
@@ -195,6 +195,7 @@ for meas in fileMeas:
         av  = fileHdf5['energy'].attrs[u'Axion Potential']
         #print(fileHdf5.attrs['Field type'])
         if fileHdf5.attrs[u'Field type'] == b'Saxion':
+            sl = sl + 1
             sgx = fileHdf5['energy'].attrs[u'Saxion Gr X']
             sgy = fileHdf5['energy'].attrs[u'Saxion Gr Y']
             sgz = fileHdf5['energy'].attrs[u'Saxion Gr Z']
@@ -204,21 +205,24 @@ for meas in fileMeas:
         elif fileHdf5.attrs[u'Field type'] == b'Axion':
             ene.append([zz, agx,agy,agz,av,ak,0,0,0,0,0])
 
+print('en length', enlen, '| saxion length ', sl)
+
 # RESCALING
 if enlen > 0:
     en = np.array(ene)
     del ene
     sca = en[:,0]**(1-nqcd/2)
-
     plt.clf()
-    plt.semilogy(en[:,0],sca*(en[:,1:4].sum(axis=1))/16.82,   c='b',label=r'$G_\theta$',linewidth=1,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,4])/16.82,                 c='k',label=r'$V_\theta$',linewidth=1,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,5])/16.82,                 c='r',label=r'$K_\theta$',linewidth=1,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,1:6].sum(axis=1))/16.82,   c='k',label=r'$\theta$',linewidth=1,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,6:9].sum(axis=1))/16.82,   '--',c='b',label=r'$G_\rho$',linewidth=0.5,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
-    plt.semilogy(en[:,0],sca*(en[:,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
+    if enlen-sl>0:
+        plt.semilogy(en[:,0],sca*(en[:,1:4].sum(axis=1))/16.82,   c='b',label=r'$G_\theta$',linewidth=1,marker='.',markersize=0.1)
+        plt.semilogy(en[:,0],sca*(en[:,4])/16.82,                 c='k',label=r'$V_\theta$',linewidth=1,marker='.',markersize=0.1)
+        plt.semilogy(en[:,0],sca*(en[:,5])/16.82,                 c='r',label=r'$K_\theta$',linewidth=1,marker='.',markersize=0.1)
+        plt.semilogy(en[:,0],sca*(en[:,1:6].sum(axis=1))/16.82,   c='k',label=r'$\theta$',linewidth=1,marker='.',markersize=0.1)
+    if sl > 0:
+        plt.semilogy(en[:sl,0],sca*(en[:sl,6:9].sum(axis=1))/16.82,   '--',c='b',label=r'$G_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca*(en[:sl,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca*(en[:sl,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca*(en[:sl,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
     plt.ylim([0.01,1000])
     plt.grid(axis='y')
     plt.title(ups)
