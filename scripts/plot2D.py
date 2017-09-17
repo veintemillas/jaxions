@@ -95,6 +95,7 @@ class	Plot2D():
 		self.app  = QtGui.QApplication([])
 		self.pWin = pg.GraphicsLayoutWidget()
 		self.pWin.setWindowTitle('Axion / Saxion evolution')
+		self.pWin.resize(1600,1600)
 		pg.setConfigOptions(antialias=True)
 
 		self.aPlot = self.pWin.addPlot(row=0, col=0)
@@ -163,7 +164,7 @@ class	Plot2D():
 		self.aImg.setImage(data[1], levels=(0.,1.))
 
 		self.pWin.show()
-		self.pWin.resize(800,1600)
+
 
 		self.baseKeyPress = self.pWin.keyPressEvent
 

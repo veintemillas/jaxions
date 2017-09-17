@@ -152,7 +152,7 @@ class	Plot3D():
 
 		data = self.allData[0]
 		self.view.updateZ(data[2])
-		self.plt = gl.GLScatterPlotItem(pos=data[0], color=data[1])
+		self.plt = gl.GLScatterPlotItem(pos=data[0], color=data[1], size=1)
 		self.view.addItem(self.plt)
 		self.plt.scale(2./float(self.Lx), 2./float(self.Ly), 2./float(self.Lz))
 		self.plt.translate(-1.0,-1.0,-1.0)
@@ -180,7 +180,7 @@ class	Plot3D():
 
 		self.baseKeyPress(event)
 
-		if key == QtCore.Qt.Key_Space : 
+		if key == QtCore.Qt.Key_Space :
 			if self.pause:
 				self.pause = False
 				self.timer.start(self.tStep)
@@ -213,4 +213,3 @@ if	__name__ == '__main__':
 
 	p = Plot3D()
 	p.start()
-

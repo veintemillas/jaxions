@@ -181,7 +181,8 @@ for meas in fileMeas:
 
     for item in list(fileHdf5):
         if item == 'energy':
-            an_energy = True
+            #an_energy = True
+            an_energy = 'energy/Axion Gr X' in fileHdf5
         if item == 'stringda':
             an_string = True
     #print(fileHdf5, list(fileHdf5), an_energy)
