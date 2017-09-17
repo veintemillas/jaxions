@@ -175,6 +175,8 @@
 		FFT_SPAX,
 		FFT_RtoC_M2toM2_AXION,
 		FFT_RtoC_M2toM2_SAXION,
+		FFT_RtoC_MtoM_WKB,
+		FFT_RtoC_VtoV_WKB,
 		FFT_NOTYPE,
 	}	FFTtype;
 

@@ -76,15 +76,25 @@ namespace AxionFFT {
 				float	      *mR  = static_cast<float *>       (axion->vCpu())  + axion->Surf();
 				float	      *mS  = static_cast<float *>       (axion->m2Cpu()) + (axion->Surf()>>1);
 				fftwf_complex *oR  = static_cast<fftwf_complex*>(static_cast<void*>(mR));
+
 				// FOR SPECTRUM GOES WITHOUT GHOSTS
 				// CASE AXION WILL USE M2 (WHICH IS INITIATED AS v)
 				// THIS MUST BE PLANNED AT THE BEGGINING OF SCALAR
 				float	      	*mA2  = static_cast<float *>       (axion->vCpu())  ;
 				fftwf_complex *oA2  = static_cast<fftwf_complex*>(static_cast<void*>(mA2));
+
 				// CASE SAXION WILL USE M2 ONLY WORKING IN !lowmem
 				// THIS MUST BE PLANNED AT THE BEGGINING OF SCALAR and will become useless after because m2 is deleted
 				float	      	*mS2  = static_cast<float *>       (axion->m2Cpu())  ;
 				fftwf_complex *oS2  = static_cast<fftwf_complex*>(static_cast<void*>(mS2));
+
+				// WKB pointers // ONLY USED IN AXION MODE knowing what you do
+				// the whole M+V space of (n3+2n2) + n3 [+2n2 extras that I add] floats is divided into
+				// (n3+2n2)+(n3+2n2) to host the padded data
+				float	      	*mWKBf  = static_cast<float *>       (axion->mCpu())  ;
+				float	      	*vWKBf  = static_cast<float *>       (axion->mCpu()+axion->eSize())  ;
+				fftwf_complex *mftWKBf  = static_cast<fftwf_complex*>(static_cast<void*>(mWKBf));
+				fftwf_complex *vftWKBf  = static_cast<fftwf_complex*>(static_cast<void*>(vWKBf));
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -159,6 +169,16 @@ namespace AxionFFT {
 							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mS2, oS2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mS, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 
+						break;
+
+					//FOR WKB PROGRAM
+					case	FFT_RtoC_MtoM_WKB:
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mWKBf, mftWKBf, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mftWKBf, mWKBf, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						break;
+					case	FFT_RtoC_VtoV_WKB:
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, vWKBf, vftWKBf, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, vftWKBf, vWKBf, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						break;
 
 					case	FFT_SPSX:

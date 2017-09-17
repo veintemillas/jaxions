@@ -114,8 +114,53 @@ const std::complex<float> If(0.,1.);
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = n3*fSize;
 
-	alignAlloc ((void**) &m, mAlign, mBytes);
-	alignAlloc ((void**) &v, mAlign, vBytes);
+	// MODIFIED BY JAVI
+	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
+
+	switch (fieldType)
+	{
+		case FIELD_SAXION:
+			alignAlloc ((void**) &m, mAlign, mBytes);
+			alignAlloc ((void**) &v, mAlign, vBytes);
+			break;
+
+		case FIELD_AXION:
+			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
+			//note that I allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
+			alignAlloc ((void**) &m, mAlign, mBytes+mBytes);
+
+			switch (precision)
+			{
+				case FIELD_SINGLE:
+				v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
+
+				// #ifdef	USE_GPU
+				// if (device == DEV_GPU)
+				// 	v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
+				// #endif
+
+				break;
+
+				case FIELD_DOUBLE:
+				v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
+
+				// #ifdef	USE_GPU
+				// if (device == DEV_GPU)
+				// 	v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
+				// #endif
+
+				break;
+			}
+			break;
+
+		default:
+			LogError("Error: unrecognized field type");
+			exit(1);
+			break;
+	}
+	// MODIFICATION UNTIL HERE
+	// NOTE THAT DOES NOT AFFECT CREATION IN SAXION MODE
+
 
 	/*	This MUST be revised, otherwise
 		simulations can segfault after

@@ -139,7 +139,7 @@
 		void	autodenstom2(); 	//
 		void	mendtheta(); 	//
 		void  padder();
-		
+
 		void	laplacian();
 
 		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
