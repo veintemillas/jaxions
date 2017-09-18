@@ -243,12 +243,15 @@ void	writeConf (Scalar *axion, int index)
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
+	double maa = axionmass(zR, nQcd, zthres, zrestore);
+
 	writeAttribute(file_id, fStr,   "Field type",    attr_type);
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
 	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
 	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
 	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &lType, "Lambda type",   attr_type);
 	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
@@ -702,12 +705,15 @@ void	createMeas (Scalar *axion, int index)
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
+	double maa = axionmass(zR, nQcd, zthres, zrestore);
+
 	writeAttribute(meas_id, fStr,   "Field type",    attr_type);
 	writeAttribute(meas_id, prec,   "Precision",     attr_type);
 	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
