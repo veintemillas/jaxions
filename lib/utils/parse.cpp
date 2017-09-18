@@ -5,18 +5,18 @@
 
 #include "enum-field.h"
 
-size_t sizeN = 128;
-size_t sizeZ = 128;
-int  zGrid = 1;
-int  nSteps = 500;
-int  dump = 100;
-double  nQcd = 7.0;
+size_t sizeN  = 128;
+size_t sizeZ  = 128;
+int    zGrid  = 1;
+int    nSteps = 500;
+int    dump   = 100;
+double nQcd   = 7.0;
 //JAVIER
 int  Ng = 1 ;
 double indi3 = 1.0;
-double msa  = 1.5;
-double wDz  = 0.8;
-int  fIndex = -1;
+double msa   = 1.5;
+double wDz   = 0.8;
+int  fIndex  = -1;
 
 double sizeL = 4.;
 double zInit = 0.5;
