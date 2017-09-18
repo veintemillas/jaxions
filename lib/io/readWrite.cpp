@@ -704,12 +704,13 @@ void	destroyMeas ()
 	LogMsg (VERB_NORMAL, "Measurement file successfuly closed");
 }
 
-void	writeString	(void *str, StringData strDat)
+void	writeString	(void *str, StringData strDat, const bool rData)
 {
 	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
 	hid_t	datum;
 
 	bool	mpiCheck = true;
+	size_t	sBytes	 = 0;
 
 	int myRank = commRank();
 
@@ -733,44 +734,6 @@ void	writeString	(void *str, StringData strDat)
 			goto bCastAndExit;		// HELL
 		}
 
-		/*	Create space for writing the raw data to disk with chunked access	*/
-		totalSpace = H5Screate_simple(1, &tSize, maxD);	// Whole data
-
-		if (totalSpace < 0)
-		{
-			LogError ("Fatal error H5Screate_simple");
-			mpiCheck = false;
-			goto bCastAndExit;		// Hurts my eyes
-		}
-
-		/*	Set chunked access and dynamical compression	*/
-		if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0) {
-			LogError ("Fatal error H5Pcreate");
-			mpiCheck = false;
-			goto bCastAndExit;		// Really?
-		}
-
-		if (H5Pset_chunk (chunk_id, 1, &slabSz) < 0) {
-			LogError ("Fatal error H5Pset_chunk");
-			mpiCheck = false;
-			goto bCastAndExit;		// You MUST be kidding
-		}
-
-		if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression
-		{
-			LogError ("Error: couldn't set compression level to 9");
-			mpiCheck = false;
-			goto bCastAndExit;		// NOOOOOO
-		}
-
-		/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
-		if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
-		{
-			LogError ("Fatal error H5Pset_alloc_time");
-			mpiCheck = false;
-			goto bCastAndExit;		// Aaaaaaaaaaarrggggggghhhh
-		}
-
 		/*	Create a group for string data		*/
 		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
 
@@ -791,80 +754,121 @@ void	writeString	(void *str, StringData strDat)
 		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
 		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
 
-		/*	Create a dataset for string data	*/
-		sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		if	(rData) {
+			/*	Create space for writing the raw data to disk with chunked access	*/
+			totalSpace = H5Screate_simple(1, &tSize, maxD);	// Whole data
 
-		if (sSet_id < 0)
-		{
-			LogError ("Fatal error creating dataset");
-			mpiCheck = false;
-			goto bCastAndExit;		// adslfkjñasldkñkja
-		}
-
-		/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
-
-		sSpace = H5Dget_space (sSet_id);
-		memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
-	}
-
-	bCastAndExit:
-
-	MPI_Bcast(&mpiCheck, sizeof(mpiCheck), MPI_CHAR, 0, MPI_COMM_WORLD);
-
-	if (mpiCheck == false) {	// Prevent non-zero ranks deadlock in case there is an error with rank 0. MPI would force exit anyway..
-		if (myRank == 0)
-			prof.stop();
-		return;
-	}
-
-	int tSz = commSize(), test = myRank;
-
-	commSync();
-
-	for (int rank=0; rank<tSz; rank++)
-	{
-		for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
-		{
-			if (myRank != 0)
-			{
-				if (myRank == rank) {
-					LogMsg (VERB_HIGH, "Sending %lu bytes to rank 0", slabSz);
-					MPI_Send(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
-				}
-			} else {
-				if (rank != 0) {
-					LogMsg (VERB_HIGH, "Receiving %lu bytes from rank %d", slabSz, rank);
-					MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, NULL);
-				}
-
-				/*	Select the slab in the file	*/
-				hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;
-				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
-
-				/*	Write raw data	*/
-				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
+			if (totalSpace < 0) {
+				LogError ("Fatal error H5Screate_simple");
+				mpiCheck = false;
+				goto bCastAndExit;		// Hurts my eyes
 			}
 
-			commSync();
+			/*	Set chunked access and dynamical compression	*/
+			if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0) {
+				LogError ("Fatal error H5Pcreate");
+				mpiCheck = false;
+				goto bCastAndExit;		// Really?
+			}
+
+			if (H5Pset_chunk (chunk_id, 1, &slabSz) < 0) {
+				LogError ("Fatal error H5Pset_chunk");
+				mpiCheck = false;
+				goto bCastAndExit;		// You MUST be kidding
+			}
+
+			if (H5Pset_deflate (chunk_id, 9) < 0) {	// Maximum compression
+				LogError ("Error: couldn't set compression level to 9");
+				mpiCheck = false;
+				goto bCastAndExit;		// NOOOOOO
+			}
+
+			/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+			if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0) {
+				LogError ("Fatal error H5Pset_alloc_time");
+				mpiCheck = false;
+				goto bCastAndExit;		// Aaaaaaaaaaarrggggggghhhh
+			}
+
+			/*	Create a dataset for string data	*/
+			sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+			if (sSet_id < 0) {
+				LogError ("Fatal error creating dataset");
+				mpiCheck = false;
+				goto bCastAndExit;		// adslfkjñasldkñkja
+			}
+
+			/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+			sSpace = H5Dget_space (sSet_id);
+			memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
 		}
-	}
 
-	/*	Close the dataset	*/
+		bCastAndExit:
 
-	if (myRank == 0) {
-		H5Dclose (sSet_id);
-		H5Sclose (sSpace);
-		H5Sclose (memSpace);
+		MPI_Bcast(&mpiCheck, sizeof(mpiCheck), MPI_CHAR, 0, MPI_COMM_WORLD);
 
-		H5Sclose (totalSpace);
-		H5Pclose (chunk_id);
+		if (mpiCheck == false) {	// Prevent non-zero ranks deadlock in case there is an error with rank 0. MPI would force exit anyway..
+			if (myRank == 0)
+				prof.stop();
+			return;
+		}
+
+		int tSz = commSize(), test = myRank;
+
+		commSync();
+
+		for (int rank=0; rank<tSz; rank++)
+		{
+			for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
+			{
+				if (myRank != 0)
+				{
+					if (myRank == rank) {
+						LogMsg (VERB_HIGH, "Sending %lu bytes to rank 0", slabSz);
+						MPI_Send(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+					}
+				} else {
+					if (rank != 0) {
+						LogMsg (VERB_HIGH, "Receiving %lu bytes from rank %d", slabSz, rank);
+						MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, NULL);
+					}
+
+					/*	Select the slab in the file	*/
+					hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;
+					H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+
+					/*	Write raw data	*/
+					H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
+				}
+
+				commSync();
+			}
+		}
+
+		/*	Close the dataset	*/
+
+		if (myRank == 0) {
+			H5Dclose (sSet_id);
+			H5Sclose (sSpace);
+			H5Sclose (memSpace);
+
+			H5Sclose (totalSpace);
+			H5Pclose (chunk_id);
+		}
+
+		sBytes = slabSz*sLz + 24;
+	} else
+		sBytes = 24;
+
+	if (myRank == 0)
 		H5Gclose (group_id);
 
-		prof.stop();
-		prof.add(std::string("Write strings"), 0, 1e-9*(slabSz*sLz));
-	}
+	prof.stop();
+	prof.add(std::string("Write strings"), 0, 1e-9*sBytes);
 
-	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", slabSz*sLz);
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 
 	commSync();
 }
