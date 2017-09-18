@@ -13,8 +13,8 @@ WKB::WKB(Scalar* axion, Scalar* axion2, double zendo):
   kmax(n1/2-1), delta(sizeL/n1)
 {
   powmax = floor(1.733*kmax)+2;
-  gg1 = gsl_sf_gamma(1./2.-1./(nQcd+2.))*gsl_sf_gamma(1.+1./(nQcd+2.))/gsl_sf_gamma(1./2.);
-  //gg1 = 1.;
+  //gg1 = gsl_sf_gamma(1./2.-1./(nQcd+2.))*gsl_sf_gamma(1.+1./(nQcd+2.))/gsl_sf_gamma(1./2.);
+  gg1 = 1.;
 
 
   LogOut ("gg1 = %f\n",gg1);
@@ -59,15 +59,22 @@ WKB::WKB(Scalar* axion, Scalar* axion2, double zendo):
 
   auto &myPlanm2 = AxionFFT::fetchPlan("fftWKB_axion2_m");
   auto &myPlanv2 = AxionFFT::fetchPlan("fftWKB_axion2_v");
-	myPlanm2.run(FFT_BCK);
+
+  auto &myPlanm1 = AxionFFT::fetchPlan("fftWKB_axion1_m");
+  auto &myPlanv1 = AxionFFT::fetchPlan("fftWKB_axion1_v");
+
+  LogOut ("FFTWing m,v in axion1 ... ");
+  myPlanm1.run(FFT_BCK);
+  myPlanv1.run(FFT_BCK);
+  LogOut ("done!!\n ");
 
 
   LogOut ("FFTWing m,v in axion2 ... ");
   myPlanm2.run(FFT_FWD);
   myPlanv2.run(FFT_FWD);
   LogOut ("done!!\n ");
-
-  LogOut ("ready to WKB! \n");
+  //
+  // LogOut ("ready to WKB! \n");
 
 };
 

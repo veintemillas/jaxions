@@ -181,11 +181,11 @@ for meas in fileMeas:
 
     for item in list(fileHdf5):
         if item == 'energy':
-            #an_energy = True
-            an_energy = 'energy/Axion Gr X' in fileHdf5
+            an_energy = True
+            #an_energy = 'energy/Axion Gr X' in fileHdf5
         if item == 'stringda':
             an_string = True
-    #print(fileHdf5, list(fileHdf5), an_energy)
+    print(fileHdf5, list(fileHdf5), an_energy)
     if an_energy:
         enlen = enlen + 1
         zz  = fileHdf5.attrs[u'z']
@@ -214,7 +214,7 @@ if enlen > 0:
     del ene
     sca = en[:,0]**(1-nqcd/2)
     plt.clf()
-    if enlen-sl>0:
+    if enlen >0:
         plt.semilogy(en[:,0],sca*(en[:,1:4].sum(axis=1))/16.82,   c='b',label=r'$G_\theta$',linewidth=1,marker='.',markersize=0.1)
         plt.semilogy(en[:,0],sca*(en[:,4])/16.82,                 c='k',label=r'$V_\theta$',linewidth=1,marker='.',markersize=0.1)
         plt.semilogy(en[:,0],sca*(en[:,5])/16.82,                 c='r',label=r'$K_\theta$',linewidth=1,marker='.',markersize=0.1)
