@@ -458,6 +458,11 @@ void	readConf (Scalar **axion, int index)
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
 
+	double	maa = 0.;
+	readAttribute (file_id, &maa,   "Axion mass",   H5T_NATIVE_DOUBLE);
+
+	indi3 = maa/pow(zTmp, nQcd*0.5);	// Set the right indi3 for the given axion mass
+
 	H5Tclose (attr_type);
 
 	if (!uPrec)
