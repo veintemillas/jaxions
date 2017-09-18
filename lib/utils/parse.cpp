@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 
 #include "enum-field.h"
 
@@ -34,6 +35,7 @@ bool lowmem   = false;
 bool uPrec    = false;
 bool uQcd     = false;
 bool uLambda  = false;
+bool uMsa     = false;
 bool spectral = false;
 
 size_t kMax  = 2;
@@ -41,17 +43,17 @@ size_t kMax  = 2;
 size_t iter  = 40;
 size_t parm1 = 0;
 
-PropType  pType = PROP_NONE;
-ConfType  cType = CONF_NONE;
+PropType     pType     = PROP_NONE;
+ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
-FieldType fType = FIELD_SAXION;
+FieldType    fType     = FIELD_SAXION;
+LambdaType   lType     = LAMBDA_FIXED;
 
 char outName[128] = "axion\0";
 
 FieldPrecision	sPrec = FIELD_DOUBLE;
 DeviceType	cDev  = DEV_CPU;
-
-VerbosityLevel	verb = VERB_NORMAL;
+VerbosityLevel	verb  = VERB_NORMAL;
 
 void	printUsage(char *name)
 {
@@ -74,8 +76,8 @@ void	printUsage(char *name)
 	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [laxion3D].\n");
 	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [laxion3D].\n");
 	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
-	printf("--ctype smooth/kmax/tkachev			Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("--smvar stXY/stYZ/mc0/mc     	  [smooth variant] string or mc initial conditions\n");
+	printf("--ctype smooth/kmax/tkachev	Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("--smvar stXY/stYZ/mc0/mc        [smooth variant] string or mc initial conditions\n");
 	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
 	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
@@ -332,6 +334,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			uLambda = true;
+			lType   = LAMBDA_FIXED;
 
 			i++;
 			procArgs++;
@@ -355,6 +358,9 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: The Spacing-to-core must be greater than zero.\n");
 				exit(1);
 			}
+
+			uMsa  = true;
+			lType = LAMBDA_Z2;
 
 			i++;
 			procArgs++;
@@ -788,6 +794,20 @@ int	parseArgs (int argc, char *argv[])
 
 	if ((pType & PROP_MASK) == PROP_NONE)
 		pType |= PROP_RKN4;
+
+	if (uMsa) {
+		if (uLambda)
+			printf("Error: Conflicting options --llcf and --msa. Using msa\n");
+
+		double tmp = (msa*sizeN)/sizeL;
+
+		LL    = 0.5*tmp*tmp;
+		lType = LAMBDA_Z2;
+	} else {
+		double tmp = sizeL/sizeN;
+
+		msa = sqrt(2*LL)*tmp;
+	}
 
 	return	procArgs;
 }

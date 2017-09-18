@@ -105,7 +105,7 @@ void	writeConf (Scalar *axion, int index)
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
-	char	prec[16], fStr[16];
+	char	prec[16], fStr[16], lStr[16];
 	int	length = 8;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -218,6 +218,22 @@ void	writeConf (Scalar *axion, int index)
 		break;
 	}
 
+	switch (axion->Lambda())
+	{
+		case 	LAMBDA_Z2:
+			sprintf(lStr, "z2");
+			break;
+
+		case	LAMBDA_FIXED:
+			sprintf(lStr, "Fixed");
+			break;
+
+		default:
+
+			LogError ("Error: Invalid lambda type. How did you get this far?");
+			exit(1);
+			break;
+	}
 	/*	Write header	*/
 	hid_t attr_type;
 
@@ -232,6 +248,8 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
 	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
 	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &lType, "Lambda type",   attr_type);
 	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
@@ -359,7 +377,7 @@ void	readConf (Scalar **axion, int index)
 
 	FieldPrecision	precision;
 
-	char	prec[16], fStr[16];
+	char	prec[16], fStr[16], lStr[16];
 	int	length = 8;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -413,8 +431,20 @@ void	readConf (Scalar **axion, int index)
 	if (uQcd == false)
 		readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
 
-	if (uLambda == false)
+	if ((uLambda == false) && (msa == false)) {
 		readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
+		readAttribute (file_id, &msa,   "Saxion mass",  H5T_NATIVE_DOUBLE);
+		readAttribute (file_id, &lStr,  "Lambda type",  attr_type);
+
+		if (!strcmp(lStr, "z2"))
+			lType = LAMBDA_Z2;
+		else if (!strcmp(lStr, "Fixed"))
+			lType = LAMBDA_FIXED;
+		else {
+			LogError ("Error reading file %s: Invalid lambda type %s", base, lStr);
+			exit(1);
+		}
+	}
 
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
@@ -474,10 +504,10 @@ void	readConf (Scalar **axion, int index)
 
 	if (!strcmp(fStr, "Saxion"))
 	{
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,  CONF_NONE, 0, 0);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION, lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
 	} else if (!strcmp(fStr, "Axion")) {
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION, CONF_NONE, 0, 0);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,  lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
 		LogError ("Input error: Invalid field type");
@@ -549,7 +579,7 @@ void	createMeas (Scalar *axion, int index)
 {
 	hid_t	plist_id, dataType;
 
-	char	prec[16], fStr[16];
+	char	prec[16], fStr[16], lStr[16];
 	int	length = 8;
 
 //	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -646,6 +676,22 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
+	switch (axion->Lambda())
+	{
+		case 	LAMBDA_Z2:
+			sprintf(lStr, "z2");
+			break;
+
+		case	LAMBDA_FIXED:
+			sprintf(lStr, "Fixed");
+			break;
+
+		default:
+			LogError ("Error: Invalid field type. How did you get this far?");
+			exit(1);
+			break;
+	}
+
 	/*	Write header	*/
 
 	hid_t attr_type;
@@ -661,6 +707,8 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
@@ -730,8 +778,8 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 		if (header == false || opened == false)
 		{
 			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
-			mpiCheck = false;
-			goto bCastAndExit;		// HELL
+			prof.stop();
+			return;
 		}
 
 		/*	Create a group for string data		*/

@@ -37,9 +37,9 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType fType, ConfType cType,
-		       const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
-		       fieldType(fType), precision(prec), device(dev), lowmem(lowmem)
+	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType fType, LambdaType lType,
+		       ConfType cType, const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
+		       fieldType(fType), lambdaType(lType), precision(prec), device(dev), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -47,7 +47,6 @@ const std::complex<float> If(0.,1.);
 
 	size_t nData;
 
-	lambdaType = LAMBDA_Z2;
 	folded 	   = false;
 
 	switch (fieldType)

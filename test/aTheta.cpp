@@ -36,7 +36,7 @@ int	main (int argc, char *argv[])
 	} else {
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
+			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, lType, cType, parm1, parm2);
 		else
 		{
 			//This reads from an Axion.$fIndex file
