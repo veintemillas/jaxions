@@ -126,31 +126,11 @@ const std::complex<float> If(0.,1.);
 
 		case FIELD_AXION:
 			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
-			//note that I allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
-			alignAlloc ((void**) &m, mAlign, mBytes+mBytes);
-
-			switch (precision)
-			{
-				case FIELD_SINGLE:
-				v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
-
-				// #ifdef	USE_GPU
-				// if (device == DEV_GPU)
-				// 	v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
-				// #endif
-
-				break;
-
-				case FIELD_DOUBLE:
-				v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
-
-				// #ifdef	USE_GPU
-				// if (device == DEV_GPU)
-				// 	v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
-				// #endif
-
-				break;
-			}
+			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
+			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
+			//this allocates a slightly larger v to host FFTs in place
+			alignAlloc ((void**) &m, mAlign, mBytes);
+			alignAlloc ((void**) &v, mAlign, mBytes);
 			break;
 
 		default:
@@ -185,6 +165,7 @@ const std::complex<float> If(0.,1.);
 
 		case FIELD_AXION:
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+			memset (m2, 0, 2*fSize*v3);
 			break;
 
 		default:
@@ -215,7 +196,8 @@ const std::complex<float> If(0.,1.);
 	}
 
 	memset (m, 0, fSize*v3);
-	memset (v, 0, fSize*n3);
+	// changed from memset (v, 0, fSize*n3);
+	memset (v, 0, fSize*v3);
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);

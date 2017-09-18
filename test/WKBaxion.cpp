@@ -5,9 +5,17 @@
 #include <complex>
 #include <vector>
 
+#include "propagator/allProp.h"
+#include "energy/energy.h"
 #include "utils/utils.h"
 #include "io/readWrite.h"
+#include "comms/comms.h"
+#include "map/map.h"
+#include "strings/strings.h"
+#include "powerCpu.h"
 #include "scalar/scalar.h"
+#include "spectrum/spectrum.h"
+
 #include "WKB/WKB.h"
 
 using namespace std;
@@ -68,9 +76,13 @@ int	main (int argc, char *argv[])
 	LogOut("Nz     =  %ld\n",   sizeZ);
 	LogOut("zGrid  =  %ld\n",   zGrid);
 	LogOut("z      =  %2.2f\n", z_now);
-	LogOut("zthres   =  %3.3f\n", zthres);
-	LogOut("zthres   =  %3.3f\n", zrestore);
-	LogOut("mass   =  %3.3f\n", axionmass(z_now, nQcd, zthres, zrestore));
+	LogOut("zthr   =  %3.3f\n", zthres);
+	LogOut("zres   =  %3.3f\n", zrestore);
+	LogOut("mass   =  %3.3f\n\n", axionmass(z_now, nQcd, zthres, zrestore));
+	if (axion->Precision() == FIELD_SINGLE)
+	LogOut("precis = SINGLE(%d)\n",sPrec);
+		else
+	LogOut("precis = DOUBLE(%d)\n",sPrec);
 	LogOut("--------------------------------------------------\n");
 
 	//--------------------------------------------------
@@ -78,14 +90,17 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 	LogOut ("creating new axion ... %d", fType );
-	// the new axion is always prepared in lowmem
+// the new axion is always prepared in lowmem
 	Scalar *axion2;
-//axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
-	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, 1 , zGrid, FIELD_AXION, CONF_NONE, parm1, parm2);
+	// force lowmem in scalar mode -> to be done!
+	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, 1 , zGrid, FIELD_AXION, CONF_NONE, 0. , 0. );
 	LogOut ("done !\n");
 
 	WKB* wonka;
-	wonka = new WKB(axion, axion2, zendWKB);
+	wonka = new WKB(axion, axion2);
+
+	wonka.doWKB(10.);
+
 
 	endAxions();
 
