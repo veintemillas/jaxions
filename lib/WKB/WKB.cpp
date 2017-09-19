@@ -9,14 +9,21 @@
 
 //----------CONSTUCTOR----------
 WKB::WKB(Scalar* axion, Scalar* axion2):
-  Ly(axion->Length()), Lz(axion->Depth()), n3(axion->TotalSize()), v3(axion->eSize()), zini((*axion->zV())),
+  Ly(axion->Length()), Lz(axion->Depth()),  Sm(Ly*Lz), n3(axion->TotalSize()), v3(axion->eSize()), zini((*axion->zV())),
   delta(sizeL/Ly), fPrec(axion->Precision()), Tz(axion->TotalDepth()),
   nModes(axion->Size()), fType(axion->Field()), hLy(Ly >> 1), hLz (Lz >> 1), hTz(Tz >>1) , rLx (Ly >> 1 + 1),
-  zBase (Lz*commRank())
+  zBase (Lz*commRank()), dataLine(axion->DataSize()*Ly), dataLineC(axion->DataSize()*(Ly+2)), datavol(axion->DataSize()*v3)
 {
   // THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
   // PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
   // THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
+
+  mIn   = static_cast<void*>(axion->mCpu()) ;
+  vIn   = static_cast<void*>(axion->mvCpu()) ;
+  m2In 	= static_cast<void*>(axion->m2Cpu()) ;
+  mAux	= static_cast<void*>(axion2->mCpu()) ;
+  vAux  = static_cast<void*>(axion2->vCpu()) ;
+
 
   LogOut ("Planning in axion2 ... ");
   // plans in axionAUX
@@ -56,7 +63,7 @@ WKB::WKB(Scalar* axion, Scalar* axion2):
 
   LogOut ("Planning IN AXION1_M2 ");
   AxionFFT::initPlan (axion, FFT_RtoC_M2toM2_WKB,  FFT_BCK, "fftWKB_axion_m2");
-  auto &myPlanm21 = AxionFFT::fetchPlan("fftWKB_axion_m2");
+  myPlanm21 = AxionFFT::fetchPlan("fftWKB_axion_m2");
   LogOut ("done!!\n");
 
 

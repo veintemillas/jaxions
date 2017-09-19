@@ -4,6 +4,7 @@
   #include <complex>
   #include <cstring>
 
+	#include "fft/fftCode.h"
   #include "scalar/scalarField.h"
   #include "scalar/varNQCD.h"
   #include "utils/index.h"
@@ -25,7 +26,8 @@
 
     const size_t n3;
 		const size_t v3;
-		const size_t rLx, Ly, Lz, hLy, hLz, hTz, Tz, nModes, zBase ;
+		const size_t rLx, Ly, Lz, Sm, hLy, hLz, hTz, Tz, nModes, zBase ;
+		const size_t dataLine , dataLineC, datavol;
 
     const double zini ;
 		const double delta ;
@@ -34,7 +36,18 @@
 		FieldPrecision fPrec ;
 		FieldType fType ;
 
-		FFTplan myplanm21 ;
+		void *myplanm21 ;
+
+		// pointers for the axion matrices
+		// I need :
+		// axion1 m+surf, v, m2
+		// axion2 m, v
+		void *mIn  	 ;
+		void *vIn    ;
+		void *m2In 	 ;
+		void *mAux	 ;
+		void *vAux  ;
+
 
   public:
 		// constructor?
@@ -63,24 +76,49 @@
 
 			if (fPrec = FIELD_SINGLE)
 			{
+				// OLD STUFF
+				// // las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
+				// float	      	 *mA2  = static_cast<float *>      (axion2->mCpu()) ;
+				// float	      	 *vA2  = static_cast<float *>      (axion2->vCpu()) ;
+				// // las FT[newz] las mando a axion[m2] y v
+				// //
+				// complex<float> *m2A1C = static_cast<complex<float>*>(axion->m2Cpu());
+				// complex<float> *vA1C  = static_cast<complex<float>*>(axion->vCpu());
+				// //
+				// // tambien necesitare punteros float a m y v de axion1
+				// // para copiar el resultado final
+				// float	      	 *mA1  = static_cast<float *>      (axion->mCpu()+axion->Surf()) ;
+				// float	      	 *vA1  = static_cast<float *>      (axion->vCpu()) ;
+				// float	      	 *m2A1  = static_cast<float *>     (axion->m2Cpu()) ;
+				//
+				// // pointers for padding
+				// char *mchar1 = static_cast<char *>(axion->mCpu())  + axion->Surf()*axion->DataSize();
+				// char *vchar1 = static_cast<char *>(axion->vCpu());
+				// char *m2char1 = static_cast<char *>(axion->m2Cpu());
+
+
+
+
 				// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
-				float	      	 *mA2  = static_cast<float *>      (axion2->mCpu()) ;
-				float	      	 *vA2  = static_cast<float *>      (axion2->vCpu()) ;
+				float	      	 *mA2  = static_cast<float *>(mAux) ;
+				float	      	 *vA2  = static_cast<float *>(vAux) ;
 				// las FT[newz] las mando a axion[m2] y v
 				//
-				complex<float> *m2A1C = static_cast<complex<float>*>(axion->m2Cpu());
-				complex<float> *vA1C  = static_cast<complex<float>*>(axion->vCpu());
+				complex<float> *m2A1C = static_cast<complex<float>*>(m2In);
+				complex<float> *vA1C  = static_cast<complex<float>*>(vIn);
 				//
 				// tambien necesitare punteros float a m y v de axion1
 				// para copiar el resultado final
-				float	      	 *mA1  = static_cast<float *>      (axion->mCpu()+axion->Surf()) ;
-				float	      	 *vA1  = static_cast<float *>      (axion->vCpu()) ;
-				float	      	 *m2A1  = static_cast<float *>     (axion->m2Cpu()) ;
+				float	      	 *mA1  = static_cast<float *>(mIn) + Ly*Ly;
+				float	      	 *vA1  = static_cast<float *>(vIn) ;
+				float	      	 *m2A1 = static_cast<float *>(m2In) ;
 
-				// pointers for padding
-				char *mchar1 = static_cast<char *>(axion->mCpu())  + axion->Surf()*axion->DataSize();
-				char *vchar1 = static_cast<char *>(axion->vCpu());
-				char *m2char1 = static_cast<char *>(axion->m2Cpu());
+				// pointers for padding ... maybe these are not needed? we can use the void pointers?
+				char *mchar1 = static_cast<char *>(static_cast<void*>(mA1));
+				char *vchar1 = static_cast<char *>(vIn);
+				char *m2char1 = static_cast<char *>(m2In);
+
+
 
 				size_t	zBase = Lz*commRank();
 
@@ -154,44 +192,42 @@
 
 					}
 				}
+
+				// FFT in place in m2 of axion1
+				myPlanm21.run(FFT_BCK);
+
+						LogOut ("copying psi m2 unpadded -> m padded ");
+						#pragma omp parallel for schedule(static)
+						for (int sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*dataLine;
+						auto	fOff = sl*dataLineC;
+						memcpy	(mchar1+oOff ,  m2char1+fOff, dataLine);
+						}
+						LogOut ("and FT(psi_z) v->m2 ");
+						memcpy	(m2char1, vchar1, datavol);
+						LogOut ("done!\n");
+
+				// FFT in place in m2 of axion1
+				myPlanm21.run(FFT_BCK);
+
+				// transfer m2 into v
+						LogOut ("copying psi_z m2 padded -> v unpadded ");
+						//Copy m,v -> m2,v2 with padding
+						#pragma omp parallel for schedule(static)
+						for (int sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*dataLine;
+						auto	fOff = sl*dataLineC;
+						memcpy	(vchar1+oOff ,  m2char1+fOff, dataLine);
+						}
+						LogOut ("done!\n");
+
 			}
 			else
 			{
 				//precision double not supported yet
 			}
 
-			// FFT in place in m2 of axion1
-			myPlanm21.run(FFT_BCK);
 
-			size_t Lz = axion->Depth();
-		  size_t dataLine = axion->DataSize()*(Ly);
-			size_t dataLineC = axion->DataSize()*(Ly+2);
-		  size_t Sm	= Ly*Lz;
-
-					LogOut ("copying psi m2 unpadded -> m padded ");
-  				#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sm; sl++) {
-					auto	oOff = sl*axion->DataSize()*Ly;
-					auto	fOff = sl*axion->DataSize()*(Ly+2);
-					memcpy	(mchar1+oOff ,  m2char1+fOff, dataLine);
-					}
-					LogOut ("and FT(psi_z) v->m2 ");
-					memcpy	(m2char1, vchar1, axion->DataSize()*v3);
-					LogOut ("done!\n");
-
-			// FFT in place in m2 of axion1
-			myPlanm21.run(FFT_BCK);
-
-			// transfer m2 into v
-					LogOut ("copying psi_z m2 padded -> v unpadded ");
-					//Copy m,v -> m2,v2 with padding
-					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sm; sl++) {
-					auto	oOff = sl*axion->DataSize()*Ly;
-					auto	fOff = sl*axion->DataSize()*(Ly+2);
-					memcpy	(vchar1+oOff ,  m2char1+fOff, dataLine);
-					}
-					LogOut ("done!\n");
 
 			printf("Transfermatrix build completed from %f until %f\n", zini, zend);
 
