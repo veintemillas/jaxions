@@ -101,6 +101,11 @@ int	main (int argc, char *argv[])
 
 	wonka.doWKB(10.);
 
+	index++ ;
+	
+	LogOut ("Dumping configuration %05d ...", index);
+	writeConf(axion, index);
+	LogOut ("Done!\n");
 
 	endAxions();
 
