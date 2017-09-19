@@ -16,7 +16,7 @@
 #include "scalar/scalar.h"
 #include "spectrum/spectrum.h"
 
-#include "WKB/WKB.h"
+//#include "WKB/WKB.h"
 
 using namespace std;
 
