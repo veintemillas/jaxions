@@ -19,7 +19,7 @@ WKB::WKB(Scalar* axion, Scalar* axion2):
   // THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
 
   mIn   = static_cast<void*>(axion->mCpu()) ;
-  vIn   = static_cast<void*>(axion->mvCpu()) ;
+  vIn   = static_cast<void*>(axion->vCpu()) ;
   m2In 	= static_cast<void*>(axion->m2Cpu()) ;
   mAux	= static_cast<void*>(axion2->mCpu()) ;
   vAux  = static_cast<void*>(axion2->vCpu()) ;
@@ -63,7 +63,6 @@ WKB::WKB(Scalar* axion, Scalar* axion2):
 
   LogOut ("Planning IN AXION1_M2 ");
   AxionFFT::initPlan (axion, FFT_RtoC_M2toM2_WKB,  FFT_BCK, "fftWKB_axion_m2");
-  myPlanm21 = AxionFFT::fetchPlan("fftWKB_axion_m2");
   LogOut ("done!!\n");
 
 

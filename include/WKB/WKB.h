@@ -36,8 +36,6 @@
 		FieldPrecision fPrec ;
 		FieldType fType ;
 
-		void *myplanm21 ;
-
 		// pointers for the axion matrices
 		// I need :
 		// axion1 m+surf, v, m2
@@ -118,7 +116,7 @@
 				char *vchar1 = static_cast<char *>(vIn);
 				char *m2char1 = static_cast<char *>(m2In);
 
-
+				auto &myPlanm21 = AxionFFT::fetchPlan("fftWKB_axion_m2");
 
 				size_t	zBase = Lz*commRank();
 
@@ -167,13 +165,13 @@
 									      -phibase1*w1*(1.+n2p1*gsl_sf_hyperg_2F1(1., nn1, nn2, -amass2zini2/k2 ));
 								}
 							// phasor
-							double pha = exp(I*phi)	;
+							complex<double> pha = exp(i*phi)	;
 
 							// initial conditions of the mode
 							// in principle this could be done only once...
 							complex<double> M0, D0, ap, am ;
 							M0 = (complex<double>) mA2[idx]	;
-							D0 = (complex<double>) vA2[idx]/(I*w1)	;
+							D0 = (complex<double>) vA2[idx]/(i*w1)	;
 
 							// we could save these
 							ap = 0.5*(M0*(1.,-zeta1)+D0)	;
@@ -183,12 +181,12 @@
 							ap *= ooI*pha 			;
 							am *= ooI*conj(pha) ;
 							M0 = ap + am	;
-							D0 = ap - am + I*zeta2*M0
+							D0 = ap - am + i*zeta2*M0
 
 							// save in axion1 m2
 							m2A1C[idx] = (complex<float>) M0 ;
 							// save in axion1 v
-							vA1[idx]   = (complex<float>) I*w2*D0 ;
+							vA1[idx]   = (complex<float>) i*w2*D0 ;
 
 					}
 				}
@@ -198,7 +196,7 @@
 
 						LogOut ("copying psi m2 unpadded -> m padded ");
 						#pragma omp parallel for schedule(static)
-						for (int sl=0; sl<Sm; sl++) {
+						for (size_t sl=0; sl<Sm; sl++) {
 						auto	oOff = sl*dataLine;
 						auto	fOff = sl*dataLineC;
 						memcpy	(mchar1+oOff ,  m2char1+fOff, dataLine);
@@ -214,7 +212,7 @@
 						LogOut ("copying psi_z m2 padded -> v unpadded ");
 						//Copy m,v -> m2,v2 with padding
 						#pragma omp parallel for schedule(static)
-						for (int sl=0; sl<Sm; sl++) {
+						for (size_t sl=0; sl<Sm; sl++) {
 						auto	oOff = sl*dataLine;
 						auto	fOff = sl*dataLineC;
 						memcpy	(vchar1+oOff ,  m2char1+fOff, dataLine);
