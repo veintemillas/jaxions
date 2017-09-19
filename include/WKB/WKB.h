@@ -15,6 +15,7 @@
   #include <gsl/gsl_sf_gamma.h>
 
   using namespace std;
+  const auto im = 1i;
 
   //--------------------------------------------------
   // WKB CLASS
@@ -165,13 +166,13 @@
 									      -phibase1*w1*(1.+n2p1*gsl_sf_hyperg_2F1(1., nn1, nn2, -amass2zini2/k2 ));
 								}
 							// phasor
-							complex<double> pha = exp(i*phi)	;
+							complex<double> pha = exp(im*phi)	;
 
 							// initial conditions of the mode
 							// in principle this could be done only once...
 							complex<double> M0, D0, ap, am ;
 							M0 = (complex<double>) mA2[idx]	;
-							D0 = (complex<double>) vA2[idx]/(i*w1)	;
+							D0 = (complex<double>) vA2[idx]/(im*w1)	;
 
 							// we could save these
 							ap = 0.5*(M0*(1.,-zeta1)+D0)	;
@@ -181,12 +182,12 @@
 							ap *= ooI*pha 			;
 							am *= ooI*conj(pha) ;
 							M0 = ap + am	;
-							D0 = ap - am + i*zeta2*M0
+							D0 = ap - am + im*zeta2*M0;
 
 							// save in axion1 m2
-							m2A1C[idx] = (complex<float>) M0 ;
+							m2A1C[idx] = (complex<float>) (M0) ;
 							// save in axion1 v
-							vA1[idx]   = (complex<float>) i*w2*D0 ;
+							vA1C[idx]   = (complex<float>) (im*w2*D0) ;
 
 					}
 				}
