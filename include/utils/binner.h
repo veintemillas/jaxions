@@ -3,26 +3,34 @@
 
 	#include <array>
 	#include <algorithm>
+	#include <string>
 	#include <mpi.h>
 
 	template<FindType fType, typename cFloat, bool sign>
 	cFloat	find	(cFloat *data, size_t size) {
+		LogMsg (VERB_NORMAL, "Called Find");
 
-		if ((data == nullptr) || (size == 0))
+		if ((data == nullptr) || (size == 0)) {
+			LogError ("Binner reports pointer %p has size %lu", data, size);
 			return cFloat(0);
+		}
 
 		auto	cur = ((sign == true) ? data[0] : abs(data[0]));
+		LogMsg (VERB_NORMAL, "Sign is %s and cur is %le", (sign ? std::string("true").c_str() : std::string("false").c_str()), cur);
 
 		switch (fType) {
 			case	FIND_MAX: {
 				#pragma omp parallel for reduction(max:cur) schedule(static)
-				for (int idx=1; idx<size; idx++) {
+				for (size_t idx=1; idx<size; idx++) {
 					if (sign) {
-						if (cur < data[idx])
+						if (cur < data[idx]) {
+							LogOut("Max %le vs %le --> ", cur, data[idx]);
 							cur = data[idx];
+							LogOut("%le", cur);
+						}
 					} else {
-						if (abs(cur) < abs(data[idx]))
-							cur = data[idx];
+						if (cur < abs(data[idx]))
+							cur = abs(data[idx]);
 					}
 				}
 			}
@@ -30,13 +38,16 @@
 
 			case	FIND_MIN: {
 				#pragma omp parallel for reduction(min:cur) schedule(static)
-				for (int idx=1; idx<size; idx++) {
+				for (size_t idx=1; idx<size; idx++) {
 					if (sign) {
-						if (cur > data[idx])
+						if (cur > data[idx]) {
+							LogOut("Min %le vs %le --> ", cur, data[idx]);
 							cur = data[idx];
+							LogOut("%le", cur);
+						}
 					} else {
-						if (abs(cur) > abs(data[idx]))
-							cur = data[idx];
+						if (cur > abs(data[idx]))
+							cur = abs(data[idx]);
 					}
 				}
 			}
@@ -105,6 +116,9 @@
 		inline double&	operator()(DType  val)		{ size_t idx = (val - minVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
 		inline double	operator[](size_t idx)	const	{ return bins[idx]; }
 		inline double&	operator[](size_t idx)		{ return bins[idx]; }
+
+		inline double	max()			const	{ return maxVal; }
+		inline double	min()			const	{ return minVal; }
 	};
 
 	template<typename DType, size_t N>
