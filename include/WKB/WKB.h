@@ -1,12 +1,3 @@
-//#include "scalar/scalarField.h"
-
-// void	WKBUNFOLDED(Scalar *axion, void *spectrumK, double zend, const double nnQCD, const double length);
-// //this function takes evolves theta by an WKB approximation until zend;
-// //the reult is stored in m2 in the format ma(zend)*pis + i*psi'
-// //where psi=theta*z
-// //the number spectrum resulting from the WKB is stored in spectrumK
-// //it is up to a factor t_1^2/f_a^2
-
 #ifndef	_WKB_CLASS_
 	#define	_WKB_CLASS_
   #include <cmath>
@@ -14,6 +5,7 @@
   #include <cstring>
 
   #include "scalar/scalarField.h"
+  #include "scalar/varNQCD.h"
   #include "utils/index.h"
   #include "utils/utils.h"
   #include "energy/energy.h"
@@ -30,148 +22,46 @@
   {
   private:
 
-    const size_t n1;
+
     const size_t n3;
-		const size_t rLx, Ly, Lz, hLy, hLz, hTz, Tz, nModes, kMax, powMax;
+		const size_t v3;
+		const size_t rLx, Ly, Lz, hLy, hLz, hTz, Tz, nModes, zBase ;
 
     const double zini ;
-		const double amasszini2 = axionmass2(zini, nQcd, zthres, zrestore)*zini*zini ;
-
-    double gg1 ;
-    double delta ;
-
-
-
-    double mass2z ;
-    double mass2M ;
-
-		double mass2M ;
+		const double delta ;
+		const double amass2zini2 = axionmass2(zini, nQcd, zthres, zrestore)*zini*zini ;
 
 		FieldPrecision fPrec ;
+		FieldType fType ;
 
-    int powmax;
-    const int kmax;
-
-    template <typename Float>
-    void propP(const complex<Float> m2, const complex<Float> v2, complex<Float> &m, complex<Float> &v, double k2, double zend)
-    {
-			//alarm
-			double amasszend2 = axionmass2(zini, nQcd, zthres, zrestore)*zend*zend ;
-			double omgI   = sqrt(k2 + amasszini2);
-			double omega  = sqrt(k2 + amasszend2);
-      //alarm
-
-			// old stuff
-      // double omgPrI = 9./2.*(2.+nQcd)*pow(zini,nQcd+1.)/omgI;
-      // double omgPr  = 9./2.*(2.+nQcd)*pow(zend,nQcd+1.)/omega;
-      // double ooI = sqrt(omgI/omega);
-      // double ooPr = omgPr/(2.*omega);
-			// // these are essentially the derivatives of omega = sqrt{k2+axionmass2*z^2} -> (d axionmass2*z^2/dz )1/omega
-		  double omgPrI = 0.5*(2.+nQcd)*amasszini2/(omgI*zini);
-	    double omgPr  = 0.5*(2.+nQcd)*amasszend2/(omega*zend);
-			// useful variables?
-			double ooI = sqrt(omgI/omega);
-      double ooPr = omgPr/(2.*omega);
-
-			double mRe = double real(m2)	;
-			double mIm = double imag(m2)	;
-			double vRe = double real(v2)	;
-			double vIm = double imag(v2)	;
-
-      double tan1 = -1./omgI*(vRe/mRe + 0.5*omgPrI/omgI);
-      double tan2 =  1./omgI*(vIm/mIm + 0.5*omgPrI/omgI);
-
-      //this is a dummy version to test without gsl available
-      //it does not produce the right physics!!
-      //once GSL is available remove the next two lines & uncomment the next block
-      //you also need to change gg1 in the constructor!!
-      // Float phi;
-      // phi = 6./(4.+nQCD)*(pow(zz, 2.+nQCD/2.) - pow(zM, 2.+nQCD/2.));
-
-
-      //THIS IS THE RIGHT STUFF
-      // the phase is the integral of omega
-			// if k2 = 0 is analitical
-			// integral of mass*z -> (mass*z^2)/(nQcd/2+2)
-      Float phi;
-      if (mom == 0.)
-        {
-        //phi = 6./(4.+nQcd)*(pow(zend, 2.+nQcd/2.) - pow(zini, 2.+nQcd/2.));
-				phi = (axionmass(zend, nQcd, zthres, zrestore)*zend*zend - axionmass(zini, nQcd, zthres, zrestore)*zend*zend )/(2.+nQcd/2.)
-        }
-
-      else
-        {
-        //alarm
-        //Float argi = 9.*pow(zini,nQcd+2.)/mom;
-        //Float argz = 9.*pow(zend,nQcd+2.)/mom;
-				double argi = amasszini2/k2 ;
-        double argz = amasszend2/k2 ;
-
-        Float f21zi, f21zz;
-        //alarm indi
-        if(argi< 1.)
-          f21zi = gsl_sf_hyperg_2F1(1./2., 1./(2.+nQcd), 1.+1./(2.+nQcd), -1.*argi );
-        else
-          f21zi = -2./pow(argi+1.,0.5)/nQcd*gsl_sf_hyperg_2F1(0.5, 1., 3./2.-1./(2.+nQcd), 1./(argi+1.))
-            +1./pow(argi+1., 1./(nQcd+2.))*gg1*gsl_sf_hyperg_2F1(1./(2.+nQcd), 0.5+1./(2.+nQcd), 0.5+1./(2.+nQcd),1./(argi+1));
-
-        if(argz< 1.)
-          f21zz = gsl_sf_hyperg_2F1(1./2., 1./(2.+nQcd), 1.+1./(2.+nQcd), -1.*argz );
-        else
-          f21zz = -2./pow(argz+1.,0.5)/nQcd*gsl_sf_hyperg_2F1(0.5, 1., 3./2.-1./(2.+nQcd), 1./(argz+1.))
-            +1./pow(argz+1., 1./(nQcd+2.))*gg1*gsl_sf_hyperg_2F1(1./(2.+nQcd), 0.5+1./(2.+nQcd), 0.5+1./(2.+nQcd),1./(argz+1));
-
-        phi = 2./(4.+nQcd)*(zend*sqrt(9.*pow(zend,nQcd+2.)+mom) - zini*sqrt(9.*pow(zini,nQcd+2.)+mom))
-          +(nQcd+2.)/(nQcd+4.)*sqrt(mom)*(zend*f21zz - zini*f21zi);
-
-        }
-
-      //transfere functions
-      Float t1re = ooI*(cos(phi) - tan1*sin(phi));
-      Float t1im = ooI*(cos(phi) + tan2*sin(phi));
-      Float t2re = -1.*ooI*(cos(phi)*(omega*tan1+ooPr) + sin(phi)*(omega-ooPr*tan1));
-      Float t2im =     ooI*(cos(phi)*(omega*tan2-ooPr) - sin(phi)*(omega+ooPr*tan2));
-
-      //save real part
-      if(mRe == 0.)
-        {
-    mRe = vRe/sqrt(omega*omgI)*sin(phi)/static_cast<Float>(n3);
-    vRe = vRe/sqrt(omega*omgI)*(omega*cos(phi) - ooPr*sin(phi))/static_cast<Float>(n3);
-        }
-      else{
-        mRe = t1re*mRe/static_cast<Float>(n3);
-        vRe = t2re*mRe/static_cast<Float>(n3);
-      }
-
-      //save imaginary part
-      if(mIm==0.)
-        {
-    mIm = vIm/sqrt(omega*omgI)*sin(phi)/static_cast<Float>(n3);
-    vIm = vIm/sqrt(omega*omgI)*(omega*cos(phi) - ooPr*sin(phi))/static_cast<Float>(n3);
-        }
-      else{
-        mIm = t1im*mIm/static_cast<Float>(n3);
-        vIm = t2im*mIm/static_cast<Float>(n3);
-      }
-  };
-
+		FFTplan myplanm21 ;
 
   public:
 		// constructor?
     WKB(Scalar* axion, Scalar* axion2);
 
-
 		// THIS FUNCTION COMPUTES THE FFT COEFFICIENTS AT A TIME newz > zini
 		// hay que definir cFloat, aunque se usa poco, casi todas las operaciones son en double, por si acaso
 		// de momento curro la version float
-    void doWKB(double newz)
+    void doWKB(double zend)
     {
       printf("WKBing... ");
 
-			double amasszend2 = axionmass2(zend, nQcd, zthres, zrestore)
+			// label 1 for ini, 2 for end
+			double amass2zend2 = axionmass2(zend, nQcd, zthres, zrestore)	;
+			double amass2zini1 = amass2zini2/zend ;
+			double amass2zend1 = amass2zend2/zini ;
+			double zetabase1   = 0.25*(nQcd+2.)*amass2zini1 ;
+			double zetabase2   = 0.25*(nQcd+2.)*amass2zend1 ;
+			double phibase1    = 2.*zini/(4.+nQcd) 	;
+			double phibase2    = 2.*zend/(4.+nQcd) 	;
+			double n2p1    		 = 1.+nQcd/2. 	;
+			double nn1   		 	 = 1./(2.+nQcd)+0.5 	;
+			double nn2   		   = nn1 + 0.5						;
 
-			if (precision = FIELD_SINGLE)
+
+
+			if (fPrec = FIELD_SINGLE)
 			{
 				// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
 				float	      	 *mA2  = static_cast<float *>      (axion2->mCpu()) ;
@@ -185,6 +75,12 @@
 				// para copiar el resultado final
 				float	      	 *mA1  = static_cast<float *>      (axion->mCpu()+axion->Surf()) ;
 				float	      	 *vA1  = static_cast<float *>      (axion->vCpu()) ;
+				float	      	 *m2A1  = static_cast<float *>     (axion->m2Cpu()) ;
+
+				// pointers for padding
+				char *mchar1 = static_cast<char *>(axion->mCpu())  + axion->Surf()*axion->DataSize();
+				char *vchar1 = static_cast<char *>(axion->vCpu());
+				char *m2char1 = static_cast<char *>(axion->m2Cpu());
 
 				size_t	zBase = Lz*commRank();
 
@@ -201,104 +97,60 @@
 							kz -= ky*Tz;
 							ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
-							if (kx > hLx) kx -= static_cast<int>(Lx);
+							// kx can never be that large
+							//if (kx > hLx) kx -= static_cast<int>(Lx);
 							if (ky > hLy) ky -= static_cast<int>(Ly);
 							if (kz > hTz) kz -= static_cast<int>(Tz);
 
-							double k2    = kx*kx + ky*ky + kz*kz;
+							// momentum2
+							int mom = kx*kx + ky*ky + kz*kz	;
+							double k2    =  (double) mom		;
+							k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
 
-							//if (spectral)
-								k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
-							//else
-							//	k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
-
-							// initial conditions for a given mode
-							// psi  mA2[idx];
-							// psi' vA2[idx];
-
-							//
-
-							double amasszend2 = axionmass2(zini, nQcd, zthres, zrestore)*zend*zend ;
-							double omgI   = sqrt(k2 + amasszini2);
-							double omega  = sqrt(k2 + amasszend2);
-
-							double omgPrI = 0.5*(2.+nQcd)*amasszini2/(omgI*zini);
-							double omgPr  = 0.5*(2.+nQcd)*amasszend2/(omega*zend);
+							// frequencies
+							double w1  = sqrt(k2 + amass2zini2);
+							double w2  = sqrt(k2 + amass2zend2);
+							// adiabatic parameters
+							double zeta1 = zetabase1/(w1*w1*w1);
+							double zeta2  = zetabase2/(w2*w2*w2);
 
 							// useful variables?
-							double ooI = sqrt(omgI/omega);
-							double ooPr = omgPr/(2.*omega);
+							double ooI = sqrt(w1/w2);
 
-							double mRe = double real(m2)	;
-							double mIm = double imag(m2)	;
-							double vRe = double real(v2)	;
-							double vIm = double imag(v2)	;
+							double phi ;
+							// WKB phase
+							if (k2 == 0.)
+								{
+									phi = phibase2*w2-phibase2*w1 ;
+								}
+								else
+								{
+									phi =  phibase2*w2*(1.+n2p1*gsl_sf_hyperg_2F1(1., nn1, nn2, -amass2zend2/k2 ))
+									      -phibase1*w1*(1.+n2p1*gsl_sf_hyperg_2F1(1., nn1, nn2, -amass2zini2/k2 ));
+								}
+							// phasor
+							double pha = exp(I*phi)	;
 
-							double tan1 = -1./omgI*(vRe/mRe + 0.5*omgPrI/omgI);
-							double tan2 =  1./omgI*(vIm/mIm + 0.5*omgPrI/omgI);
+							// initial conditions of the mode
+							// in principle this could be done only once...
+							complex<double> M0, D0, ap, am ;
+							M0 = (complex<double>) mA2[idx]	;
+							D0 = (complex<double>) vA2[idx]/(I*w1)	;
 
-											Float phi;
-											if (mom == 0.)
-												{
-												//phi = 6./(4.+nQcd)*(pow(zend, 2.+nQcd/2.) - pow(zini, 2.+nQcd/2.));
-												phi = (axionmass(zend, nQcd, zthres, zrestore)*zend*zend - axionmass(zini, nQcd, zthres, zrestore)*zend*zend )/(2.+nQcd/2.)
-												}
+							// we could save these
+							ap = 0.5*(M0*(1.,-zeta1)+D0)	;
+							am = 0.5*(M0*(1., zeta1)-D0)	;
 
-											else
-												{
-												//alarm
-												//Float argi = 9.*pow(zini,nQcd+2.)/mom;
-												//Float argz = 9.*pow(zend,nQcd+2.)/mom;
-												double argi = amasszini2/k2 ;
-												double argz = amasszend2/k2 ;
+							// propagate
+							ap *= ooI*pha 			;
+							am *= ooI*conj(pha) ;
+							M0 = ap + am	;
+							D0 = ap - am + I*zeta2*M0
 
-												Float f21zi, f21zz;
-												//alarm indi
-												if(argi< 1.)
-													f21zi = gsl_sf_hyperg_2F1(1./2., 1./(2.+nQcd), 1.+1./(2.+nQcd), -1.*argi );
-												else
-													f21zi = -2./pow(argi+1.,0.5)/nQcd*gsl_sf_hyperg_2F1(0.5, 1., 3./2.-1./(2.+nQcd), 1./(argi+1.))
-														+1./pow(argi+1., 1./(nQcd+2.))*gg1*gsl_sf_hyperg_2F1(1./(2.+nQcd), 0.5+1./(2.+nQcd), 0.5+1./(2.+nQcd),1./(argi+1));
-
-												if(argz< 1.)
-													f21zz = gsl_sf_hyperg_2F1(1./2., 1./(2.+nQcd), 1.+1./(2.+nQcd), -1.*argz );
-												else
-													f21zz = -2./pow(argz+1.,0.5)/nQcd*gsl_sf_hyperg_2F1(0.5, 1., 3./2.-1./(2.+nQcd), 1./(argz+1.))
-														+1./pow(argz+1., 1./(nQcd+2.))*gg1*gsl_sf_hyperg_2F1(1./(2.+nQcd), 0.5+1./(2.+nQcd), 0.5+1./(2.+nQcd),1./(argz+1));
-
-												phi = 2./(4.+nQcd)*(zend*sqrt(9.*pow(zend,nQcd+2.)+mom) - zini*sqrt(9.*pow(zini,nQcd+2.)+mom))
-													+(nQcd+2.)/(nQcd+4.)*sqrt(mom)*(zend*f21zz - zini*f21zi);
-
-												}
-
-
-												//transfere functions
-												Float t1re = ooI*(cos(phi) - tan1*sin(phi));
-												Float t1im = ooI*(cos(phi) + tan2*sin(phi));
-												Float t2re = -1.*ooI*(cos(phi)*(omega*tan1+ooPr) + sin(phi)*(omega-ooPr*tan1));
-												Float t2im =     ooI*(cos(phi)*(omega*tan2-ooPr) - sin(phi)*(omega+ooPr*tan2));
-
-												//save real part
-												if(mRe == 0.)
-													{
-											mRe = vRe/sqrt(omega*omgI)*sin(phi)/static_cast<Float>(n3);
-											vRe = vRe/sqrt(omega*omgI)*(omega*cos(phi) - ooPr*sin(phi))/static_cast<Float>(n3);
-													}
-												else{
-													mRe = t1re*mRe/static_cast<Float>(n3);
-													vRe = t2re*mRe/static_cast<Float>(n3);
-												}
-
-												//save imaginary part
-												if(mIm==0.)
-													{
-											mIm = vIm/sqrt(omega*omgI)*sin(phi)/static_cast<Float>(n3);
-											vIm = vIm/sqrt(omega*omgI)*(omega*cos(phi) - ooPr*sin(phi))/static_cast<Float>(n3);
-													}
-												else{
-													mIm = t1im*mIm/static_cast<Float>(n3);
-													vIm = t2im*mIm/static_cast<Float>(n3);
-												}
+							// save in axion1 m2
+							m2A1C[idx] = (complex<float>) M0 ;
+							// save in axion1 v
+							vA1[idx]   = (complex<float>) I*w2*D0 ;
 
 					}
 				}
@@ -307,16 +159,52 @@
 			{
 				//precision double not supported yet
 			}
-		  printf("Transfermatrix build completed from %f until %f\n", zini, zend);
+
+			// FFT in place in m2 of axion1
+			myPlanm21.run(FFT_BCK);
+
+			size_t Lz = axion->Depth();
+		  size_t dataLine = axion->DataSize()*(Ly);
+			size_t dataLineC = axion->DataSize()*(Ly+2);
+		  size_t Sm	= Ly*Lz;
+
+					LogOut ("copying psi m2 unpadded -> m padded ");
+  				#pragma omp parallel for schedule(static)
+					for (int sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*axion->DataSize()*Ly;
+					auto	fOff = sl*axion->DataSize()*(Ly+2);
+					memcpy	(mchar1+oOff ,  m2char1+fOff, dataLine);
+					}
+					LogOut ("and FT(psi_z) v->m2 ");
+					memcpy	(m2char1, vchar1, axion->DataSize()*v3);
+					LogOut ("done!\n");
+
+			// FFT in place in m2 of axion1
+			myPlanm21.run(FFT_BCK);
+
+			// transfer m2 into v
+					LogOut ("copying psi_z m2 padded -> v unpadded ");
+					//Copy m,v -> m2,v2 with padding
+					#pragma omp parallel for schedule(static)
+					for (int sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*axion->DataSize()*Ly;
+					auto	fOff = sl*axion->DataSize()*(Ly+2);
+					memcpy	(vchar1+oOff ,  m2char1+fOff, dataLine);
+					}
+					LogOut ("done!\n");
+
+			printf("Transfermatrix build completed from %f until %f\n", zini, zend);
+
+
+
 		} // END DOWKB
 
 
 
 
 
-  }
-
-
   };
+
+
 
 #endif

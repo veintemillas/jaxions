@@ -9,29 +9,15 @@
 
 //----------CONSTUCTOR----------
 WKB::WKB(Scalar* axion, Scalar* axion2):
-  Ly(axion->Length()), Lz(axion->Depth()), n3(axion->TotalSize()), zini((*axion->zV())),
-  kmax(n1/2-1), delta(sizeL/n1), fPrec(axion->Precision()), Tz(axion->TotalDepth()),
-  nModes(axion->Size()), fType(axion->Field())
+  Ly(axion->Length()), Lz(axion->Depth()), n3(axion->TotalSize()), v3(axion->eSize()), zini((*axion->zV())),
+  delta(sizeL/Ly), fPrec(axion->Precision()), Tz(axion->TotalDepth()),
+  nModes(axion->Size()), fType(axion->Field()), hLy(Ly >> 1), hLz (Lz >> 1), hTz(Tz >>1) , rLx (Ly >> 1 + 1),
+  zBase (Lz*commRank())
 {
   // THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
   // PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
   // THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
 
-  hLy = Ly >> 1;
-  hLz = Lz >> 1;
-  hTz = Tz >> 1;
-
-  rLx = Ly >> 1 + 1 ;
-
-  nModes = rLx*Ly*Lz;
-
-  size_t	zBase = Lz*commRank();
-
-  powmax = floor(1.733*kmax)+2;
-  //gg1 = gsl_sf_gamma(1./2.-1./(nQcd+2.))*gsl_sf_gamma(1.+1./(nQcd+2.))/gsl_sf_gamma(1./2.);
-  gg1 = 1.;
-
-  LogOut ("gg1 = %f\n",gg1);
   LogOut ("Planning in axion2 ... ");
   // plans in axionAUX
   // destroys m2 but nothing is in there
@@ -47,16 +33,15 @@ WKB::WKB(Scalar* axion, Scalar* axion2):
   char *va2 = static_cast<char *>(axion2->vCpu())  ;
 
   // note Lz can be different from n1 if running MPI
-  size_t Lz = axion->Depth();
-  size_t dataLine = axion->DataSize()*n1;
-  size_t Sm	= n1*Lz;
+  size_t dataLine = axion->DataSize()*Ly;
+  size_t Sm	= Ly*Lz;
 
   LogOut ("copying 1->2 ");
   //Copy m,v -> m2,v2 with padding
   #pragma omp parallel for schedule(static)
   for (int sl=0; sl<Sm; sl++) {
-  auto	oOff = sl*axion->DataSize()*n1;
-  auto	fOff = sl*axion->DataSize()*(n1+2);
+  auto	oOff = sl*axion->DataSize()*Ly;
+  auto	fOff = sl*axion->DataSize()*(Ly+2);
   memcpy	(ma2+fOff, ma1+oOff, dataLine);
   memcpy	(va2+fOff, va1+oOff, dataLine);
   }
@@ -84,9 +69,6 @@ WKB::WKB(Scalar* axion, Scalar* axion2):
   LogOut ("done!!\n ");
   //
   LogOut ("ready to WKB! \n");
-
-
-
 
  //  // THIS IS OLD CODE, JUST IN CASE
  //  // USING M2 MODE
