@@ -196,7 +196,7 @@ const std::complex<float> If(0.,1.);
 
 	memset (m, 0, fSize*v3);
 	// changed from memset (v, 0, fSize*n3);
-	memset (v, 0, fSize*v3);
+	memset (v, 0, fSize*n3);
 
 	if (!lowmem)
 		memset (m2, 0, fSize*v3);
