@@ -22,38 +22,26 @@ namespace AxionWKB {
 		}
 	}
 
-
-  //calculates v2*2F1 in the physical region
+	//calculates v2*2F1 in the physical region
 	double v2h2F1 (double a, double b, double c, double z) {
-    if (abs(z) < 1) {
-      // if (v2 < some interesting small value limit) {
-		// 	return	simplified formula
-		// }
-    // else
-    //{
+		if (abs(z) < 1) {
+			// if (v2 < some interesting small value limit) {
+			// 	return	simplified formula
+		// } else {
 			return z*gsl_sf_hyperg_2F1(a, b, c, 1.0-z) ;
+		} else {
+			return 0. ;
 		}
-    else
-    {
-      return 0. ;
-    }
 	}
 
-	// WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), Sm(Ly*Lz), zIni((*field->zV())), fPrec(field->Precision()),
-	// 				      Tz(field->TotalDepth()), nModes(field->Size()), hLy(Ly/2), hLz(Lz/2), hTz(Tz/2) , rLx(Ly/2 + 1)
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), zIni((*field->zV())), fPrec(field->Precision()),
-	Tz(field->TotalDepth()), nModes(field->eSize()), Sm(field->Length()*field->Depth()), hLy(field->Length()/2), hLz(field->Depth()/2),
-	hTz(field->TotalDepth()/2), rLx(field->Length()/2+1)
+					      Tz(field->TotalDepth()), nModes(field->eSize()), hLy(field->Length()/2), hLz(field->Depth()/2), hTz(field->TotalDepth()/2),
+					      rLx(field->Length()/2 + 1), Sm(field->Length()*field->Depth())
 	{
 		if (field->Field() == FIELD_SAXION) {
 			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
 			return;
 		}
-
-		// hLy = Ly/2	;
-		// hLz = Lz/2		;
-		// hTz = Tz/2 ;
-		// rLx = Ly/2 +1 ;
 
 		// THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
 		// PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
@@ -185,9 +173,9 @@ namespace AxionWKB {
 		LogOut("hTz %d\n",hTz) ;
 
 
-    LogOut ("start mode calculation! \n");
+		LogOut ("start mode calculation! \n");
 		//#pragma omp parallel for schedule(static)
-    for (size_t idx=0; idx<nModes; idx++)
+		for (size_t idx=0; idx<nModes; idx++)
 		{
 			//rLx is n1/2+1, reduced number of modes for r2c
 			int kz = idx/rLx;
@@ -282,17 +270,21 @@ namespace AxionWKB {
 
 			D0 *= im*w2	;
 
+			/*	BASURA A BORRAR		*/
+
 			cFloat rere, imim ;
 			rere = (cFloat) real(M0)	;
 			imim = (cFloat) imag(M0)	;
 			// save in axion1 m2
-			m2IC[idx] = (rere, imim);
+			//m2IC[idx] = (rere, imim);
+			m2IC[idx] = M0;
 
 			rere = (cFloat) real(D0)	;
 			imim = (cFloat) imag(D0)	;
 			// save in axion1 v
 			//Daux = (rere , imim	);
-			vInC[idx] = rere +imim*(0.f,1.f);
+			//vInC[idx] = rere + imim*(0.f,1.f);
+			vInC[idx] = D0;
 
 			if ( idx%(Sm+5) == 0 )
 			{
@@ -301,10 +293,12 @@ namespace AxionWKB {
 				LogOut("fumpare[%.2f,%.2f]-[%.2f,%.2f]\n", real(D0), imag(D0), rere, imim) ;
 			}
 
+			/*	FIN BASURA A BORRAR	*/
+
 			// save in axion1 m2
-			//m2IC[idx] = (complex<cFloat>) (M0);
+			m2IC[idx] = (complex<cFloat>) (M0);
 			// save in axion1 v
-			//vInC[idx] = (complex<cFloat>) (im*w2*D0);
+			vInC[idx] = (complex<cFloat>) (im*w2*D0);
 
 
 		}
