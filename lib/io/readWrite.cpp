@@ -868,17 +868,19 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 			sSpace = H5Dget_space (sSet_id);
 			memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
 		}
+	}
 
-		bCastAndExit:
+	bCastAndExit:
 
-		MPI_Bcast(&mpiCheck, sizeof(mpiCheck), MPI_CHAR, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&mpiCheck, sizeof(mpiCheck), MPI_CHAR, 0, MPI_COMM_WORLD);
 
-		if (mpiCheck == false) {	// Prevent non-zero ranks deadlock in case there is an error with rank 0. MPI would force exit anyway..
-			if (myRank == 0)
-				prof.stop();
-			return;
-		}
+	if (mpiCheck == false) {	// Prevent non-zero ranks deadlock in case there is an error with rank 0. MPI would force exit anyway..
+		if (myRank == 0)
+			prof.stop();
+		return;
+	}
 
+	if (rData) {
 		int tSz = commSize(), test = myRank;
 
 		commSync();

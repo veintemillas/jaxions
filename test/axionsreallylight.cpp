@@ -420,12 +420,11 @@ int	main (int argc, char *argv[])
 						maa = maa*z_now*z_now;
 					//STRINGS
 						rts = strings(axion, str);
-						nstrings_global = rts.strDen ;
+						nstrings_global = rts.strDen;
 						if (nstrings_global < 10000)
 							writeString(str, rts, true);
-							else
+						else
 							writeString(str, rts, false);
-
 						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux, maa );
 						LogOut("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
 						LogOut("(G)= %ld \n", nstrings_global);
