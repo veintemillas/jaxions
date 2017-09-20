@@ -236,6 +236,7 @@ void	writeConf (Scalar *axion, int index)
 			exit(1);
 			break;
 	}
+
 	/*	Write header	*/
 	hid_t attr_type;
 
@@ -252,9 +253,9 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
 	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
 	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(file_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
-	writeAttribute(file_id, &lType, "Lambda type",   attr_type);
 	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
@@ -719,9 +720,9 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(meas_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
-	writeAttribute(meas_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
