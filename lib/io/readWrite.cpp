@@ -204,6 +204,7 @@ void	writeConf (Scalar *axion, int index)
 		break;
 
 		case	FIELD_AXION:
+		case	FIELD_WKB:
 		{
 			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
 			slab  = (hsize_t) axion->Surf();
@@ -476,7 +477,7 @@ void	readConf (Scalar **axion, int index)
 			dataSize  = sizeof(double);
 		} else if (!strcmp(prec, "Single")) {
 			precision = FIELD_SINGLE;
-			sPrec	  = FIELD_DOUBLE;
+			sPrec	  = FIELD_SINGLE;
 			dataType  = H5T_NATIVE_FLOAT;
 			dataSize  = sizeof(float);
 		} else {
@@ -680,6 +681,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 
 		case	FIELD_AXION:
+		case	FIELD_WKB:
 			sprintf(fStr, "Axion");
 			break;
 
@@ -1267,6 +1269,13 @@ void	writeEDens (Scalar *axion, int index)
 
 			sprintf(fStr, "Axion");
 		}
+		break;
+
+		case	FIELD_WKB:
+
+		LogError ("Error: WKB field not supported");
+		exit(1);
+
 		break;
 
 		default:

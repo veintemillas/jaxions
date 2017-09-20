@@ -292,6 +292,11 @@ void	SpecBin::nRun	() {
 						fillBins<float, SPECTRUM_K, false>();
 				}
 				break;
+
+				case	FIELD_WKB:
+				LogError ("Error: WKB field not supported");
+				return;
+				break;
 			}
 			break;
 
@@ -354,6 +359,11 @@ void	SpecBin::nRun	() {
 					else
 						fillBins<double, SPECTRUM_K, false>();
 				}
+				break;
+
+				case	FIELD_WKB:
+				LogError ("Error: WKB field not supported");
+				return;
 				break;
 			}
 			break;

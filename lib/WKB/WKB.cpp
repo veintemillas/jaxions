@@ -45,6 +45,10 @@ namespace AxionWKB {
 	Tz(field->TotalDepth()), nModes(field->eSize()), Sm(field->Length()*field->Depth()), hLy(field->Length()/2), hLz(field->Depth()/2),
 	hTz(field->TotalDepth()/2), rLx(field->Length()/2+1)
 	{
+		if (field->Field() == FIELD_SAXION) {
+			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
+			return;
+		}
 
 		// hLy = Ly/2	;
 		// hLz = Lz/2		;
@@ -101,6 +105,10 @@ namespace AxionWKB {
 
 	// THIS FUNCTION COMPUTES THE FFT COEFFICIENTS AT A TIME newz > zini
 	void WKB::operator()(double zEnd) {
+		if (field->Field() == FIELD_SAXION) {
+			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
+			return;
+		}
 
 		switch (fPrec) {
 			case FIELD_SINGLE:
