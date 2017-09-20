@@ -39,9 +39,17 @@ namespace AxionWKB {
     }
 	}
 
-	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), Sm(Ly*Lz), zIni((*field->zV())), fPrec(field->Precision()),
-					      Tz(field->TotalDepth()), nModes(field->Size()), hLy(Ly >> 1), hLz (Lz >> 1), hTz(Tz >>1) , rLx((Ly >> 1) + 1)
+	// WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), Sm(Ly*Lz), zIni((*field->zV())), fPrec(field->Precision()),
+	// 				      Tz(field->TotalDepth()), nModes(field->Size()), hLy(Ly/2), hLz(Lz/2), hTz(Tz/2) , rLx(Ly/2 + 1)
+	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), zIni((*field->zV())), fPrec(field->Precision()),
+	Tz(field->TotalDepth()), nModes(field->eSize()), Sm(field->Length()*field->Depth()), hLy(field->Length()/2), hLz(field->Depth()/2),
+	hTz(field->TotalDepth()/2), rLx(field->Length()/2+1)
 	{
+
+		// hLy = Ly/2	;
+		// hLz = Lz/2		;
+		// hTz = Tz/2 ;
+		// rLx = Ly/2 +1 ;
 
 		// THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
 		// PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
@@ -72,9 +80,6 @@ namespace AxionWKB {
 			memcpy	(vDt+fOff, vOr+oOff, dataLine);
 		}
 		LogOut ("done!\n");
-
-
-
 
 		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
@@ -117,10 +122,6 @@ namespace AxionWKB {
 	template<typename cFloat>
 	void	WKB::doWKB(double zEnd) {
 
-
-
-
-
 		// label 1 for ini, 2 for end
 		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
 		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
@@ -135,31 +136,49 @@ namespace AxionWKB {
 		double nn2         = 1./(2.+nQcd)+1.0;
 
 		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
-		cFloat	 *mAux = static_cast<cFloat *>(tmp->mCpu());
-		cFloat	 *vAux = static_cast<cFloat *>(tmp->vCpu());
+		//cFloat	 *mAux = static_cast<cFloat *>(tmp->mCpu());
+		//cFloat	 *vAux = static_cast<cFloat *>(tmp->vCpu());
+		std::complex<cFloat> *mAux  = static_cast<std::complex<cFloat>*>(tmp->mCpu());
+		std::complex<cFloat> *vAux  = static_cast<std::complex<cFloat>*>(tmp->vCpu());
+
 		// las FT[newz] las mando a axion[m2] y v
-		//
-		complex<cFloat> *m2IC  = static_cast<complex<cFloat>*>(field->m2Cpu());
-		complex<cFloat> *vInC  = static_cast<complex<cFloat>*>(field->vCpu());
+		std::complex<cFloat> *m2IC  = static_cast<std::complex<cFloat>*>(field->m2Cpu());
+		std::complex<cFloat> *vInC  = static_cast<std::complex<cFloat>*>(field->vCpu());
 		//
 		// tambien necesitare punteros float a m y v de axion1
-		// para copiar el resultado final
 		cFloat	      	 *mIn  = static_cast<cFloat *>(field->mCpu()) + field->Surf();	// Theta ghosts
 		cFloat	      	 *vIn  = static_cast<cFloat *>(field->vCpu());
 		cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
 
-		// TODO ARREGLA ESTOS PUNTEROS FEOS
-		// pointers for padding ... maybe these are not needed? we can use the void pointers?
+		// pointers for padding ...
 		char *mTf  = static_cast<char *>(static_cast<void*>(mIn));
 		char *vTf  = static_cast<char *>(static_cast<void*>(vIn));
 		char *m2Tf = static_cast<char *>(static_cast<void*>(m2In));
 
 		auto &myPlanP = AxionFFT::fetchPlan("WKB p");
-
 		size_t	zBase = Lz*commRank();
 
+		LogOut("test suite \n") ;
+		LogOut("------------\n") ;
+		LogOut("aMass2zIni2 %f\n",aMass2zIni2) ;
+		LogOut("aMass2zEnd2 %f\n",aMass2zEnd2) ;
+		LogOut("aMass2zIni1 %f\n",aMass2zEnd2) ;
+		LogOut("zBase1 %f\n",zBase1) ;
+		LogOut("phiBase1 %f\n",phiBase1) ;
+		LogOut("nn1 %f\n",nn1) ;
+		LogOut("nn2 %f\n",nn2) ;
+		LogOut("------------\n") ;
+		LogOut("nModes %d\n",nModes) ;
+		LogOut("Ly %d\n",Ly) ;
+		LogOut("rLx %d\n",rLx) ;
+		LogOut("Tz %d\n",Tz) ;
+		LogOut("zBase %d\n",zBase) ;
+		LogOut("hLy %d\n",hLy) ;
+		LogOut("hTz %d\n",hTz) ;
+
+
     LogOut ("start mode calculation! \n");
-		#pragma omp parallel for schedule(static)
+		//#pragma omp parallel for schedule(static)
     for (size_t idx=0; idx<nModes; idx++)
 		{
 			//rLx is n1/2+1, reduced number of modes for r2c
@@ -184,8 +203,8 @@ namespace AxionWKB {
 			double w1 = sqrt(k2 + aMass2zIni2);
 			double w2 = sqrt(k2 + aMass2zEnd2);
 			// adiabatic parameters
-			double z1 = zBase1/(w1*w1*w1);
-			double z2 = zBase2/(w2*w2*w2);
+			double zeta1 = zBase1/(w1*w1*w1);
+			double zeta2 = zBase2/(w2*w2*w2);
 
 			// useful variables?
 			double ooI = sqrt(w1/w2);
@@ -209,24 +228,77 @@ namespace AxionWKB {
 
 			// initial conditions of the mode
 			// in principle this could be done only once...
-			complex<double> M0, D0, ap, am;
-			M0 = (complex<double>) mAux[idx];
-			D0 = (complex<double>) vAux[idx]/(im*w1);
+			std::complex<cFloat> Maux, Daux ;
+			Maux = mAux[idx];
+			Daux = vAux[idx];
+
+			std::complex<double> M0, D0, ap, am;
+			double ra, ia ;
+			// M0 = (complex<double>) mAux[idx];
+			// D0 = (complex<double>) vAux[idx]/(im*w1);
+			//M0 = (real(Maux),imag(Maux)) ;
+			ra = (double) real(Maux) ;
+			ia = (double) imag(Maux) ;
+			M0 = ra + im*ia	;
+			ra = (double) real(Daux) ;
+			ia = (double) imag(Daux) ;
+			D0 = (ra + im*ia)/(im*w1)	;
+			//D0 = Daux.real() + ( im * Daux.imag() ) ;
 
 			// we could save these
-			ap = 0.5*(M0*(1.,-z1)+D0);
-			am = 0.5*(M0*(1., z1)-D0);
+			// ap = 0.5*(M0*(1.,-zeta1)+D0);
+			// am = 0.5*(M0*(1., zeta1)-D0);
+			ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
+			am = 0.5*(M0*(1.0 + im*zeta1) - D0);
+
+			if ( idx%(Sm+5) == 0 )
+			{
+				LogOut("idx %d ",idx) ;
+				LogOut("(%d,%d,%d) ",kx, ky, kz) ;
+				LogOut("%d %.2f \n",mom, k2) ;
+				LogOut("w1 %.2f z1 %.2e ooI %.2f Rpha %.2f M0[%.2f,%.2f] D0[%.2f,%.2f] ap[%.2f,%.2f] am[%.2f,%.2f]\n",
+								w1,     zeta1,   ooI,   real(pha),real(M0),imag(M0),real(D0),imag(D0),real(ap),imag(ap),real(am),imag(am)) ;
+			}
 
 			// propagate
 			ap *= ooI*pha;
 			am *= ooI*conj(pha);
 			M0 = ap + am;
-			D0 = ap - am + im*z2*M0;
+			D0 = ap - am + im*zeta2*M0;
+
+			if ( idx%(Sm+5) == 0 )
+			{
+				LogOut("w2 %.2f z2 %.2e phi %.2f Ipha %.2f M0[%.2f,%.2f] D0[%.2f,%.2f] ap[%.2f,%.2f] am[%.2f,%.2f]\n",
+								w2,   zeta2,   phi,   imag(pha),real(M0),imag(M0),real(D0),imag(D0),real(ap),imag(ap),real(am),imag(am)) ;
+			}
+
+			D0 *= im*w2	;
+
+			cFloat rere, imim ;
+			rere = (cFloat) real(M0)	;
+			imim = (cFloat) imag(M0)	;
+			// save in axion1 m2
+			m2IC[idx] = (rere, imim);
+
+			rere = (cFloat) real(D0)	;
+			imim = (cFloat) imag(D0)	;
+			// save in axion1 v
+			//Daux = (rere , imim	);
+			vInC[idx] = rere +imim*(0.f,1.f);
+
+			if ( idx%(Sm+5) == 0 )
+			{
+				//LogOut("compare[%.2f,%.2f]-[%.2f,%.2f]\n", Daux.real(), Daux.imag(), vInC[idx].real(), vInC[idx].imag() ) ;
+				LogOut("compare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Daux), imag(Daux), real(vInC[idx]), imag(vInC[idx]) ) ;
+				LogOut("fumpare[%.2f,%.2f]-[%.2f,%.2f]\n", real(D0), imag(D0), rere, imim) ;
+			}
 
 			// save in axion1 m2
-			m2IC[idx] = (complex<cFloat>) (M0);
+			//m2IC[idx] = (complex<cFloat>) (M0);
 			// save in axion1 v
-			vInC[idx] = (complex<cFloat>) (im*w2*D0);
+			//vInC[idx] = (complex<cFloat>) (im*w2*D0);
+
+
 		}
 
     LogOut (" invFFTWing AXION m2 inplace ... ");

@@ -8,7 +8,7 @@
 size_t sizeN  = 128;
 size_t sizeZ  = 128;
 int    zGrid  = 1;
-int    nSteps = 500;
+int    nSteps = 5;
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER

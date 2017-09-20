@@ -121,7 +121,7 @@ int	main (int argc, char *argv[])
 // the new axion is always prepared in lowmem
 	Scalar *axion2;
 	// force lowmem in scalar mode -> to be done!
-	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_AXION, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
+	axion2 = new Scalar (sizeN, sizeZ, axion->Precision(), cDev, z_now, true, zGrid, FIELD_AXION, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
 	LogOut ("done !\n");
 
 	//--------------------------------------------------
@@ -146,19 +146,58 @@ int	main (int argc, char *argv[])
 	// for (int i = axion->Size()-1; i > axion->Size()-10; i--)
 	// LogOut("%f %f %f vs %f %f %f\n", mm[i], vv[i], aa[i], mm2[i], vv2[i], aa2[i]);
 
-	wonka(10.);
 
+	int index = fIndex ;
+
+	if (zFinl < z_now)
+		zFinl = z_now	;
+
+	LogOut("from z1=%f to z2=%f in %d time steps\n",z_now,zFinl,nSteps);
+
+	for (int i = 0; i < nSteps; i++)
+	{
+
+		double zco = z_now + i*(zFinl-z_now)/nSteps	;
+		wonka(zco) 	;
+		index++			;
+
+		createMeas(axion, index);
+								SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+								// computes energy and creates map
+								LogOut ("en ");
+								energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+								//bins density
+								LogOut ("con ");
+								axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+								//write binned distribution
+								LogOut ("bin ");
+								writeArray(bA, 10000, "/bins", "cont");
+								LogOut ("tot ");
+								writeEnergy(axion, eRes);
+								//computes power spectrum
+								LogOut ("pow ");
+								specAna.pRun();
+								writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+								LogOut ("spec ");
+								specAna.nRun();
+								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+								LogOut ("2D ");
+								writeMapHdf5s(axion,sliceprint);
+								LogOut ("Done!\n");
+		destroyMeas();
+	}
 	//--------------------------------------------------
 	//       SAVE DATA
 	//--------------------------------------------------
 
 
-
-	auto index = fIndex + 1;
-
+	LogOut ("\n\n", index);
 	LogOut ("Dumping configuration %05d ...", index);
 	writeConf(axion, index);
 	LogOut ("Done!\n");
+	LogOut ("\n", index);
 
 			LogOut ("Printing measurement file %05d ... ", index);
 
