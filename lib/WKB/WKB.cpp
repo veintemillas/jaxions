@@ -76,20 +76,20 @@ namespace AxionWKB {
 
 
 
-    auto &myPlanM = AxionFFT::fetchPlan("WKB m");
-    auto &myPlanV = AxionFFT::fetchPlan("WKB v");
+		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
+		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
-    LogOut (" FFTWing AXION2 m inplace ... ");
-    myPlanM.run(FFT_FWD);
-    LogOut ("done!!\n");
+		LogOut (" FFTWing AXION2 m inplace ... ");
+		myPlanM.run(FFT_FWD);
+		LogOut ("done!!\n");
 
-    LogOut (" FFTWing AXION2 v inplace ... ");
-    myPlanV.run(FFT_FWD);
-    LogOut ("done!!\n ");
+		LogOut (" FFTWing AXION2 v inplace ... ");
+		myPlanV.run(FFT_FWD);
+		LogOut ("done!!\n ");
 
-    LogOut ("Planning IN axion1 m2 ");
-    AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
-    LogOut ("done!!\n");
+		LogOut ("Planning IN axion1 m2 ");
+		AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
+		LogOut ("done!!\n");
 
 		LogOut (" ready to WKB! \n");
 	};

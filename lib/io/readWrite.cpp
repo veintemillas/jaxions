@@ -471,10 +471,12 @@ void	readConf (Scalar **axion, int index)
 		if (!strcmp(prec, "Double"))
 		{
 			precision = FIELD_DOUBLE;
+			sPrec	  = FIELD_DOUBLE;
 			dataType  = H5T_NATIVE_DOUBLE;
 			dataSize  = sizeof(double);
 		} else if (!strcmp(prec, "Single")) {
 			precision = FIELD_SINGLE;
+			sPrec	  = FIELD_DOUBLE;
 			dataType  = H5T_NATIVE_FLOAT;
 			dataSize  = sizeof(float);
 		} else {
