@@ -42,6 +42,10 @@ namespace AxionWKB {
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), Sm(Ly*Lz), zIni((*field->zV())), fPrec(field->Precision()),
 					      Tz(field->TotalDepth()), nModes(field->Size()), hLy(Ly >> 1), hLz (Lz >> 1), hTz(Tz >>1) , rLx((Ly >> 1) + 1)
 	{
+		if (field->Field() == FIELD_SAXION) {
+			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
+			return;
+		}
 
 		// THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
 		// PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
@@ -96,6 +100,10 @@ namespace AxionWKB {
 
 	// THIS FUNCTION COMPUTES THE FFT COEFFICIENTS AT A TIME newz > zini
 	void WKB::operator()(double zEnd) {
+		if (field->Field() == FIELD_SAXION) {
+			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
+			return;
+		}
 
 		switch (fPrec) {
 			case FIELD_SINGLE:
@@ -116,10 +124,6 @@ namespace AxionWKB {
 
 	template<typename cFloat>
 	void	WKB::doWKB(double zEnd) {
-
-
-
-
 
 		// label 1 for ini, 2 for end
 		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
