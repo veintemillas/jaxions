@@ -162,6 +162,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 
 						case	FIELD_AXION:
+						case	FIELD_WKB:
 							foldField<double>();
 							break;
 
@@ -180,6 +181,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 
 						case	FIELD_AXION:
+						case	FIELD_WKB:
 							foldField<float>();
 							break;
 
@@ -208,6 +210,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 
 						case	FIELD_AXION:
+						case	FIELD_WKB:
 							unfoldField<double>();
 							break;
 
@@ -226,6 +229,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 
 						case	FIELD_AXION:
+						case	FIELD_WKB:
 							unfoldField<float>();
 							break;
 
@@ -254,6 +258,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 
 						case	FIELD_AXION:
+						case	FIELD_WKB:
 							unfoldField2D<double>(cZ);
 							break;
 
@@ -272,6 +277,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 
 						case	FIELD_AXION:
+						case	FIELD_WKB:
 							unfoldField2D<float>(cZ);
 							break;
 

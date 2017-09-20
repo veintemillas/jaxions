@@ -56,6 +56,7 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		case FIELD_AXION:
+		case FIELD_WKB:
 			nData = 1;
 			break;
 
@@ -124,6 +125,7 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		case FIELD_AXION:
+		case FIELD_WKB:
 			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
 			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
@@ -162,6 +164,10 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION:
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
+			break;
+
+		case FIELD_WKB:
+			m2 = nullptr;
 			break;
 
 		default:
@@ -245,55 +251,57 @@ const std::complex<float> If(0.,1.);
 #endif
 	}
 
-	AxionFFT::initFFT(prec);
-
-	if (pType & PROP_SPEC) {
-		AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
-		AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
-	}
-
-	AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION,  FFT_FWD, "pSpectrum_ax");
-
-	if (!lowmem) {
-		AxionFFT::initPlan (this, FFT_CtoC_MtoM2,	   FFT_FWD, "nSpecSxM");
-		AxionFFT::initPlan (this, FFT_CtoC_VtoM2,	   FFT_FWD, "nSpecSxV");
-		AxionFFT::initPlan (this, FFT_RtoC_M2toM2_SAXION,  FFT_FWD, "pSpectrum_sax");
-	}
-
 	*z = zI;
 
-	/*	If present, read fileName	*/
+	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
-	if (cType == CONF_NONE) {
-		LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
+	if (fieldType != FIELD_WKB) {
 
-		if (fIndex == -1) {
-			LogError ("Error: neither file nor initial configuration specified");
-			exit(2);
+		AxionFFT::initFFT(prec);
+
+		if (pType & PROP_SPEC) {
+			AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
+			AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
 		}
 
-	} else {
-		if (fieldType == FIELD_AXION) {
-			LogError ("Configuration generation for axion fields not supported");
+		AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION,  FFT_FWD, "pSpectrum_ax");
+
+		if (!lowmem) {
+			AxionFFT::initPlan (this, FFT_CtoC_MtoM2,	   FFT_FWD, "nSpecSxM");
+			AxionFFT::initPlan (this, FFT_CtoC_VtoM2,	   FFT_FWD, "nSpecSxV");
+			AxionFFT::initPlan (this, FFT_RtoC_M2toM2_SAXION,  FFT_FWD, "pSpectrum_sax");
+		}
+
+		/*	If present, read fileName	*/
+
+		if (cType == CONF_NONE) {
+			LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
+
+			if (fIndex == -1) {
+				LogError ("Error: neither file nor initial configuration specified");
+				exit(2);
+			}
+
 		} else {
-			if (cType == CONF_KMAX || cType == CONF_TKACHEV)
-				if (lowmem)
-					AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
-				else
-					AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
-			prof.stop();
-			genConf	(this, cType, parm1, parm2);
-			prof.start();
+			if (fieldType == FIELD_AXION) {
+				LogError ("Configuration generation for axion fields not supported");
+			} else {
+				if (cType == CONF_KMAX || cType == CONF_TKACHEV)
+					if (lowmem)
+						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
+					else
+						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
+				prof.stop();
+				genConf	(this, cType, parm1, parm2);
+				prof.start();
+			}
 		}
+		prof.stop();
+		prof.add(std::string("Init"), 0.0, (lowmem ? 2*mBytes+vBytes : mBytes+vBytes)*1e-9);
+	} else {
+		prof.stop();
+		prof.add(std::string("Init"), 0.0, 2.e-9*mBytes);
 	}
-
-	// Move this initialization to the analysis, not here (OR NOT!! FIELDS ARE DESTROYED UPON PLAN INITIALIZATION!!!)
-	//if(!lowmem)
-	//{
-	//	AxionFFT::initPlan (this, FFT_CtoC_M2toM2,  FFT_FWD, "pSpectrum");
-	//}
-	prof.stop();
-	prof.add(std::string("Init"), 0.0, (lowmem ? 2*mBytes+vBytes : mBytes+vBytes)*1e-9);
 }
 
 // END SCALAR
@@ -525,6 +533,11 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 
 void	Scalar::setField (FieldType fType)
 {
+	if (fieldType == FIELD_WKB) {
+		LogError("Warning: conversion from WKB field not supported");
+		return;
+	}
+
 	switch (fType)
 	{
 		case FIELD_AXION:

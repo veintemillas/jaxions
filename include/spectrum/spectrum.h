@@ -60,6 +60,12 @@
 						Lx   = Ly;
 						hLx  = Ly >> 1;
 						break;
+
+					case	FIELD_WKB:
+						LogError("Warning: WKB fields not supported for analysis");
+						Lx = 0; Ly = 0; hLx = 0; nPts = 0;
+						return;
+						break;
 				}
 
 				nPts = Lx*Ly*Lz;

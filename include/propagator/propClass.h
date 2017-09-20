@@ -542,6 +542,10 @@
 				case FIELD_AXION:
 					return	(1e-9 * ((double) axionField->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
 					break;
+
+				case FIELD_WKB:
+					return	0.;
+					break;
 			}
 		} else {
 			switch (axionField->Field()) {
@@ -563,6 +567,10 @@
 				case FIELD_AXION:
 					return	(1e-9 * ((double) axionField->Size()) * (21. * ((double) nStages) + (lastStage ? 13. : 0.)
 						+ 2.5*1.44695*log(((double) axionField->Size()))));
+					break;
+
+				case FIELD_WKB:
+					return	0.;
 					break;
 			}
 		}

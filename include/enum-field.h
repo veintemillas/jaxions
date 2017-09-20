@@ -7,6 +7,7 @@
 	{
 		FIELD_SAXION,
 		FIELD_AXION,
+		FIELD_WKB,
 	}	FieldType;
 
 	typedef	enum	FieldIndex_s

@@ -121,7 +121,7 @@ int	main (int argc, char *argv[])
 // the new axion is always prepared in lowmem
 	Scalar *axion2;
 	// force lowmem in scalar mode -> to be done!
-	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_AXION, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
+	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
 	LogOut ("done !\n");
 
 	//--------------------------------------------------

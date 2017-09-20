@@ -379,8 +379,7 @@ namespace AxionFFT {
 	void	initFFT		(FieldPrecision prec) {
 		LogMsg (VERB_NORMAL, "Initializing FFT using %d MPI ranks...", commSize());
 
-		if (init == true)
-		{
+		if (init == true) {
 			LogMsg (VERB_HIGH, "FFT already initialized");
 			return;
 		}
@@ -462,9 +461,12 @@ namespace AxionFFT {
 
 			default:
 				LogError ("Invalid precision");
+				return;
 				break;
 
 		}
+
+		init = true;
 	}
 
 	void	initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name) {
@@ -529,6 +531,11 @@ namespace AxionFFT {
 
 		LogMsg (VERB_NORMAL, "Closing FFT plans");
 
+		if (init == false) {
+			LogMsg (VERB_HIGH, "FFT already closed or not initialized");
+			return;
+		}
+
 		FieldPrecision	prec;
 
 		for (auto fft = fftPlans.cbegin(); fft != fftPlans.cend(); ) {
@@ -564,5 +571,6 @@ namespace AxionFFT {
 		}
 
 		LogMsg (VERB_NORMAL, "FFT successfully closed");
+		init = false;
 	}
 }
