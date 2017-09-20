@@ -185,7 +185,7 @@ for meas in fileMeas:
     for item in list(fileHdf5):
         if item == 'energy':
             #an_energy = True
-            an_energy = 'energy/Axion Gr X' in fileHdf5
+            an_energy = 'Axion Gr X' in fileHdf5['energy'].attrs
         if item == 'string':
             an_string = True
     #print(fileHdf5, list(fileHdf5), an_energy)
@@ -229,10 +229,10 @@ if enlen > 0:
         plt.semilogy(en[:,0],sca*(en[:,5])/16.82,                 c='r',label=r'$K_\theta$',linewidth=1,marker='.',markersize=0.1)
         plt.semilogy(en[:,0],sca*(en[:,1:6].sum(axis=1))/16.82,   c='k',label=r'$\theta$',linewidth=1,marker='.',markersize=0.1)
     if sl > 0:
-        plt.semilogy(en[:sl,0],sca*(en[:sl,6:9].sum(axis=1))/16.82,   '--',c='b',label=r'$G_\rho$',linewidth=0.5,marker='.',markersize=0.1)
-        plt.semilogy(en[:sl,0],sca*(en[:sl,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
-        plt.semilogy(en[:sl,0],sca*(en[:sl,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
-        plt.semilogy(en[:sl,0],sca*(en[:sl,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,6:9].sum(axis=1))/16.82,   '--',c='b',label=r'$G_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
     plt.ylim([0.01,1000])
     plt.grid(axis='y')
     plt.title(ups)
@@ -268,6 +268,7 @@ for item in f.attrs.keys():
 
 print('contains ' + str(list(f)))
 
+time = f.attrs[u'z']
 an_cont = False
 an_nspec = False
 an_pspec = False
@@ -337,10 +338,11 @@ if an_cont:
 
     plt.clf()
     #plt.loglog(contab,auxtab,       c='b',linewidth=0.3,marker='.',markersize=0.1)
-    plt.loglog(lis[:,0],lis[:,1]/N3,c='green',linewidth=0.6,marker='.',markersize=0.1)
+    plt.loglog(lis[:,0],lis[:,1]/N3,c='green',label=r'$\tau=%.1f$' % time, linewidth=0.6,marker='.',markersize=0.1)
     plt.ylabel(r'$dP/d\delta$')
     plt.xlabel(r'$\delta$')
     plt.title(ups)
+    plt.legend(loc='lower left',title='- -')
     plt.savefig("pics/contrastbin.pdf")
     #plt.show()
 

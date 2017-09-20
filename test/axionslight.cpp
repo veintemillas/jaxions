@@ -201,7 +201,7 @@ int	main (int argc, char *argv[])
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
-		LL = pow(msa/(delta*zthres),2.)/2. ;
+		//LL = pow(msa/(delta*z),2.)/2. ;
 		LogOut ("llconstantZ2 = %f - LL will be set to llconstantZ2/Z^2 \n", llconstantZ2);
 
 		bool coZ = 1;
