@@ -154,17 +154,14 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 			if (!lowmem)
-				{
-					alignAlloc ((void**) &m2, mAlign, mBytes);
-				}
+				alignAlloc ((void**) &m2, mAlign, mBytes);
 			else
 				m2 = nullptr;
-
 			break;
 
 		case FIELD_AXION:
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-			memset (m2, 0, 2*fSize*v3);
+			memset (m2, 0, 2*fSize*n3);
 			break;
 
 		default:

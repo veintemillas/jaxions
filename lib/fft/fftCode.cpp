@@ -471,10 +471,14 @@ namespace AxionFFT {
 
 		LogMsg (VERB_NORMAL, "Creating FFT plan %s", name.c_str());
 
-		FFTplan myPlan(axion, type, dFft);
-		fftPlans.insert(std::make_pair(name, std::move(myPlan)));
+		if (fftPlans.find(name) == fftPlans.end()) {
+			FFTplan myPlan(axion, type, dFft);
+			fftPlans.insert(std::make_pair(name, std::move(myPlan)));
 
-		LogMsg (VERB_NORMAL, "Plan %s successfully inserted", name.c_str());
+			LogMsg (VERB_NORMAL, "Plan %s successfully inserted", name.c_str());
+		} else {
+			LogMsg (VERB_NORMAL, "Plan %s already exists, ommitted", name.c_str());
+		}
 	}
 
 	FFTplan&	fetchPlan	(std::string name) {

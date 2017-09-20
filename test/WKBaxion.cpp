@@ -16,9 +16,10 @@
 #include "scalar/scalar.h"
 #include "spectrum/spectrum.h"
 
-//#include "WKB/WKB.h"
+#include "WKB/WKB.h"
 
 using namespace std;
+using namespace AxionWKB;
 
 int	main (int argc, char *argv[])
 {
@@ -93,15 +94,14 @@ int	main (int argc, char *argv[])
 // the new axion is always prepared in lowmem
 	Scalar *axion2;
 	// force lowmem in scalar mode -> to be done!
-	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, 1 , zGrid, FIELD_AXION, CONF_NONE, 0. , 0. );
+	axion2 = new Scalar (sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_AXION, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
 	LogOut ("done !\n");
 
-	WKB* wonka;
-	wonka = new WKB(axion, axion2);
+	WKB wonka(axion, axion2);
 
-	wonka.doWKB(10.);
+	wonka(10.);
 
-	index++ ;
+	auto index = fIndex + 1;
 	
 	LogOut ("Dumping configuration %05d ...", index);
 	writeConf(axion, index);

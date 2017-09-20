@@ -211,7 +211,7 @@ int	main (int argc, char *argv[])
 		else
 			cnt = 0;
 
-		if (cnt == 40) {
+		if (cnt == 10) {
 			LogOut("--------------------------------------------------\n");
 			LogOut("              TRANSITION TO THETA \n");
 			LogOut("--------------------------------------------------\n");
