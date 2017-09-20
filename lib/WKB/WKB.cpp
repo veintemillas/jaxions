@@ -22,6 +22,23 @@ namespace AxionWKB {
 		}
 	}
 
+
+  //calculates v2*2F1 in the physical region
+	double v2h2F1 (double a, double b, double c, double z) {
+    if (abs(z) < 1) {
+      // if (v2 < some interesting small value limit) {
+		// 	return	simplified formula
+		// }
+    // else
+    //{
+			return z*gsl_sf_hyperg_2F1(a, b, c, 1.0-z) ;
+		}
+    else
+    {
+      return 0. ;
+    }
+	}
+
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), Sm(Ly*Lz), zIni((*field->zV())), fPrec(field->Precision()),
 					      Tz(field->TotalDepth()), nModes(field->Size()), hLy(Ly >> 1), hLz (Lz >> 1), hTz(Tz >>1) , rLx((Ly >> 1) + 1)
 	{
@@ -31,8 +48,6 @@ namespace AxionWKB {
 		// THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
 
 		LogOut ("Planning in axion2 ... ");
-		// plans in axionAUX
-		// destroys m2 but nothing is in there
 		AxionFFT::initPlan (tmp, FFT_RtoC_MtoM_WKB,  FFT_FWD, "WKB m");
 		AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWD, "WKB v");
 		LogOut ("done!\n");
@@ -58,27 +73,25 @@ namespace AxionWKB {
 		}
 		LogOut ("done!\n");
 
-		// LogOut ("Planning 1 ... [warning!!! this destroys original input!!]... ");
-		// // plans in axionIN§
-		// // destroy input but is safely copied
-		// AxionFFT::initPlan (axion, FFT_RtoC_MtoM_WKB,  FFT_BCK, "fftWKB_axion1_m");
-		// AxionFFT::initPlan (axion, FFT_RtoC_VtoV_WKB,  FFT_BCK, "fftWKB_axion1_v");
-		// LogOut ("done!!\n");
-
-		LogOut ("Planning IN AXION1_M2 ");
-		AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB,  FFT_BCK, "WKB p");	// Momenta coefficients
-		LogOut ("done!!\n");
 
 
-		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
-		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
-		LogOut ("FFTWing m, v inplace ... ");
-		myPlanM.run(FFT_FWD);
-		myPlanV.run(FFT_FWD);
-		LogOut ("done!!\n ");
+    auto &myPlanM = AxionFFT::fetchPlan("WKB m");
+    auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
-		LogOut ("ready to WKB! \n");
+    LogOut (" FFTWing AXION2 m inplace ... ");
+    myPlanM.run(FFT_FWD);
+    LogOut ("done!!\n");
+
+    LogOut (" FFTWing AXION2 v inplace ... ");
+    myPlanV.run(FFT_FWD);
+    LogOut ("done!!\n ");
+
+    LogOut ("Planning IN axion1 m2 ");
+    AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
+    LogOut ("done!!\n");
+
+		LogOut (" ready to WKB! \n");
 	};
 
 	// THIS FUNCTION COMPUTES THE FFT COEFFICIENTS AT A TIME newz > zini
@@ -103,9 +116,14 @@ namespace AxionWKB {
 
 	template<typename cFloat>
 	void	WKB::doWKB(double zEnd) {
+
+
+
+
+
 		// label 1 for ini, 2 for end
-		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore);//*zIni*zIni;
-		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore);
+		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
+		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
 		double aMass2zIni1 = aMass2zIni2/zEnd;
 		double aMass2zEnd1 = aMass2zEnd2/zIni;
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
@@ -114,11 +132,11 @@ namespace AxionWKB {
 		double phiBase2	   = 2.*zEnd/(4.+nQcd);
 		double n2p1        = 1.+nQcd/2.;
 		double nn1         = 1./(2.+nQcd)+0.5;
-		double nn2         = nn1 + 0.5;
+		double nn2         = 1./(2.+nQcd)+1.0;
 
 		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
-		cFloat	      	 *mAux = static_cast<cFloat *>(tmp->mCpu());
-		cFloat	      	 *vAux = static_cast<cFloat *>(tmp->vCpu());
+		cFloat	 *mAux = static_cast<cFloat *>(tmp->mCpu());
+		cFloat	 *vAux = static_cast<cFloat *>(tmp->vCpu());
 		// las FT[newz] las mando a axion[m2] y v
 		//
 		complex<cFloat> *m2IC  = static_cast<complex<cFloat>*>(field->m2Cpu());
@@ -140,8 +158,9 @@ namespace AxionWKB {
 
 		size_t	zBase = Lz*commRank();
 
+    LogOut ("start mode calculation! \n");
 		#pragma omp parallel for schedule(static)
-		for (size_t idx=0; idx<nModes; idx++)
+    for (size_t idx=0; idx<nModes; idx++)
 		{
 			//rLx is n1/2+1, reduced number of modes for r2c
 			int kz = idx/rLx;
@@ -176,8 +195,13 @@ namespace AxionWKB {
 			if (mom == 0)
 				phi = phiBase2*w2 - phiBase1*w1; // I think this was wrong...
 			else {
-				phi =  phiBase2*w2*(1.+n2p1*h2F1(1., nn1, nn2, -aMass2zEnd2/k2))
-				      -phiBase1*w1*(1.+n2p1*h2F1(1., nn1, nn2, -aMass2zIni2/k2));
+      // old Javi Alex implementation
+			//	phi =  phiBase2*w2*(1.+n2p1*h2F1(1., nn1, nn2, -aMass2zEnd2/k2))
+			//	      -phiBase1*w1*(1.+n2p1*h2F1(1., nn1, nn2, -aMass2zIni2/k2));
+      // new Javi implementation to avoid negative arguments
+      // note that the last argument is v2, but the 2F1 funciton shoul have the 1-v2
+				phi =  phiBase2*w2*(1.+n2p1*v2h2F1(0.5, 1., nn2, k2/(w2*w2)))
+				      -phiBase1*w1*(1.+n2p1*v2h2F1(0.5, 1., nn2, k2/(w1*w1)));
 			}
 
 			// phasor
@@ -205,8 +229,10 @@ namespace AxionWKB {
 			vInC[idx] = (complex<cFloat>) (im*w2*D0);
 		}
 
+    LogOut (" invFFTWing AXION m2 inplace ... ");
 		// FFT in place in m2 of axion1
 		myPlanP.run(FFT_BCK);
+    LogOut ("done!!\n ");
 
 		const size_t	dataLine = field->DataSize()*Ly;
 		const size_t	padLine  = field->DataSize()*(Ly+2);
@@ -223,8 +249,10 @@ namespace AxionWKB {
 		memcpy	(m2Tf, vTf, field->eSize()*field->DataSize());
 		LogOut ("done!\n");
 
+    LogOut (" invFFTWing AXION m2 inplace ... ");
 		// FFT in place in m2 of axion1
 		myPlanP.run(FFT_BCK);
+    LogOut ("done!!\n ");
 
 		// transfer m2 into v
 		LogOut ("copying psi_z m2 padded -> v unpadded ");
@@ -236,6 +264,21 @@ namespace AxionWKB {
 			memcpy	(vTf+oOff ,  m2Tf+fOff, dataLine);
 		}
 		LogOut ("done!\n");
+
+    *field->zV() = zEnd ;
+    LogOut ("set z=%f done\n", (*field->zV()) );
+
+
+    double toton = 1/((double) field->TotalSize()) ;
+    LogOut ("scale x%2.2e ",toton);
+    #pragma omp parallel for schedule(static)
+    for (size_t idx=0; idx<field->Size(); idx++)
+    {
+      mIn[idx] *= toton   ;
+      vIn[idx] *= toton   ;
+		}
+    LogOut ("done!\n ");
+
 	}
 }
 
@@ -298,7 +341,3 @@ namespace AxionWKB {
  //  LogOut ("done!!\n ");
  //  //
  //  LogOut ("ready to WKB! \n");
-
-
-
-

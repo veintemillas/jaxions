@@ -4,9 +4,10 @@
 	#include <cmath>
 	#include <complex>
 	#include <cstring>
-	
+
 	#include "fft/fftCode.h"
 	#include "scalar/scalarField.h"
+	#include "scalar/scaleField.h"
 	#include "scalar/varNQCD.h"
 	#include "utils/index.h"
 	#include "utils/utils.h"

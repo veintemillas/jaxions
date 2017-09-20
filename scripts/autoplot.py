@@ -173,6 +173,9 @@ fileMeas = sorted([x for x in [y for y in os.listdir("./m/")] if re.search("axio
 ene = []
 enlen = 0
 sl = 0
+stringdata = []
+co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+
 for meas in fileMeas:
     an_energy = False
     an_string = False
@@ -181,11 +184,11 @@ for meas in fileMeas:
 
     for item in list(fileHdf5):
         if item == 'energy':
-            an_energy = True
-            #an_energy = 'energy/Axion Gr X' in fileHdf5
-        if item == 'stringda':
+            #an_energy = True
+            an_energy = 'energy/Axion Gr X' in fileHdf5
+        if item == 'string':
             an_string = True
-    print(fileHdf5, list(fileHdf5), an_energy)
+    #print(fileHdf5, list(fileHdf5), an_energy)
     if an_energy:
         enlen = enlen + 1
         zz  = fileHdf5.attrs[u'z']
@@ -205,8 +208,14 @@ for meas in fileMeas:
             ene.append([zz, agx,agy,agz,av,ak,sgx,sgy,sgz,sv,sk])
         elif fileHdf5.attrs[u'Field type'] == b'Axion':
             ene.append([zz, agx,agy,agz,av,ak,0,0,0,0,0])
+    if an_string:
+        zz  = fileHdf5.attrs[u'z']
+        st = fileHdf5['string'].attrs[u'String number']
+        wl = fileHdf5['string'].attrs[u'Wall number']
+        stringdata.append([zz, st, wl])
 
-print('en length', enlen, '| saxion length ', sl)
+print('en length', enlen, '| saxion length ', sl, 'strings length ', len(stringdata))
+
 
 # RESCALING
 if enlen > 0:
@@ -233,10 +242,22 @@ if enlen > 0:
     plt.savefig("pics/energy2.pdf")
     #plt.show()
 
+    plt.clf()
+
+    # STRING EVOLUTION
+if len(stringdata) > 0:
+    stringo = np.array(stringdata)
+    co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+
+    plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,label=r'length/vol',linewidth=0.5,marker='.',markersize=0.1)
+    plt.ylabel("String density [Length/Volume adm U.]")
+    plt.xlabel(r'$\tau$')
+    plt.title(ups)
+    plt.legend(loc='lower left',title=r'$\tau_{\rm end}$={%.1f}'%(stringo[-1,0]))
+    plt.savefig("pics/string2.pdf")
+    plt.clf()
 
 ## FINAL ANAL
-
-
 N3 = sizeN*sizeN*sizeN
 print()
 print('final file analysis for '+ fileMeas[-1])
