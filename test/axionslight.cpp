@@ -463,23 +463,7 @@ int	main (int argc, char *argv[])
 			// DYAMICAL deltaz
 			//--------------------------------------------------
 
-			//Set dz to gradients and axion mass
-			//dzaux = min(delta,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
-			 double masi = z_now*axionmass(z_now,nQcd,zthres, zrestore);
-			 double mfre = sqrt(masi*masi + 12./(delta*delta));
-			 dzaux = wDz/mfre ;
-
-			//If SAXION_MODE
-			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
-			{
-				llaux = llconstantZ2;
-				llprint = llaux/(z_now*z_now); //physical value
-				// dzaux = min(dzaux,delta/1.5);
-				double mfre = sqrt( msa*msa + 12.)/delta;
-				dzaux = min(dzaux,wDz/mfre)  ;
-			}
-
-      //dzaux = dzaux/1.5 ;
+			dzaux = dzSize(z_now, axion->Field(), axion->Lambda());
 
 			//--------------------------------------------------
 			// PROPAGATOR

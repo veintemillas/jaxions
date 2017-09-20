@@ -387,16 +387,6 @@ int	main (int argc, char *argv[])
 
 			z_now = (*axion->zV());
 
-			//dzaux = min(delta,1./(3.*pow((*axion->zV()),1.+nQcd/2.)));
-			dzaux = min(delta/1.5,1./(z_now*axionmass(z_now,nQcd,zthres, zrestore)));
-			if (axion->Field() == FIELD_SAXION && coZ)  // IF SAXION and Z2 MODE
-			{
-				// llaux is the (ARGUMENT) I have to feed the propagator that uses LL=(ARGUMENT)/z^2 IN LAMBDA_Z2 mode
-				llaux = llconstantZ2;
-				llprint = llaux/(z_now*z_now); //physical value
-				dzaux = min(dzaux,delta);
-			}
-
 			//LogOut("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
 			// HERE I CHANGE THE SAXION MASS ABOVE z_thres
 			// NOTE THAT I DEFINED zthr as LL = llconstantZ2/pow(zthr,2.)
@@ -407,18 +397,7 @@ int	main (int argc, char *argv[])
 				coZ = 0;
 			}
 
-			if ( axion->Field() == FIELD_SAXION && (!coZ) ) // IF SAXION and LAMBDA MODE
-			{
-				// llaux is the (ARGUMENT) I have to feed the propagator that uses LL=(ARGUMENT) IN LAMBDA_FIXED mode
-				llaux = LL;
-				llprint = LL; //physical value
-        dzaux = min(dzaux,1./(sqrt(2.*LL)*z_now));
-				LogOut("*");
-			}
-        dzaux = dzaux/2.0;
-
-
-
+			dzaux = min(delta/1.5,dzSize(z_now, axion->Field(), axion->Lambda()))/2.;
 
 				//--------------------------------------------------
 				// PRINT POINT

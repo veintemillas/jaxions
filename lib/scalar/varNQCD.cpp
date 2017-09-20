@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
-#include <math.h>       /* pow */
+#include <math.h>	/* pow */
+#include <algorithm>	/* max */
 #include "enum-field.h"
 #include "utils/parse.h"
 
@@ -52,4 +53,29 @@ double	saxionshift(double z, double nQcd, double zth, double zres, double LLL)
  	double discr = 4./3.-9.*alpha*alpha;
 
 	return	((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
+}
+
+double	dzSize	(double z, FieldType fType, LambdaType lType) {
+	double oodl = ((double) sizeN)/sizeL;
+	double mAx2 = axionmass2(z, nQcd, 0., 0.);
+	double mAfq = 0.;
+
+	if ((fType == FIELD_AXION) || (fType == FIELD_WKB))
+		return	wDz/sqrt(mAx2*(z*z) + 12.*(oodl*oodl));
+	 else
+		mAfq = sqrt(mAx2*(z*z) + 12.*oodl*oodl);
+
+	double mSfq = 0.;
+
+	switch (lType) {
+		case	LAMBDA_Z2:
+			mSfq = sqrt(msa*msa + 12.)*oodl;
+			break;
+
+		case	LAMBDA_FIXED:
+			mSfq = sqrt(2.*LL   + 12.*oodl);
+			break;
+	}
+
+	return	wDz/std::max(mSfq,mAfq);
 }
