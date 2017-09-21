@@ -40,7 +40,7 @@ bool spectral = false;
 
 size_t kMax  = 2;
 //JAVIER played with the following number
-size_t iter  = 40;
+size_t iter  = 0;
 size_t parm1 = 0;
 
 PropType     pType     = PROP_NONE;

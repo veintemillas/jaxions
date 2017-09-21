@@ -57,7 +57,7 @@ double	saxionshift(double z, double nQcd, double zth, double zres, double LLL)
 
 double	dzSize	(double z, FieldType fType, LambdaType lType) {
 	double oodl = ((double) sizeN)/sizeL;
-	double mAx2 = axionmass2(z, nQcd, 0., 0.);
+	double mAx2 = axionmass2(z, nQcd, zthres, zrestore);
 	double mAfq = 0.;
 
 	if ((fType == FIELD_AXION) || (fType == FIELD_WKB))
@@ -73,7 +73,7 @@ double	dzSize	(double z, FieldType fType, LambdaType lType) {
 			break;
 
 		case	LAMBDA_FIXED:
-			mSfq = sqrt(2.*LL   + 12.*oodl);
+			mSfq = sqrt(2.*LL*(z*z)   + 12.*oodl);
 			break;
 	}
 

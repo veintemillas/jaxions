@@ -8,6 +8,8 @@ using namespace std;
 template<typename Float>
 void	toThetaKernelXeon (Scalar *sField, const Float shift)
 {
+	//LogMsg(VERB_NORMAL, "To theta Xeon ... ");
+
 	const size_t V  = sField->Size();
 	const size_t S  = sField->Surf();
 	const size_t Lz = sField->Depth();
@@ -24,6 +26,8 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 	complex<Float> *cvField  = static_cast<complex<Float>*>(sField->vCpu());
 
 	const Float z = static_cast<Float>(sField->zV()[0]);
+
+	//LogMsg("mv[%f,%f] !\n ", mField[S], vField[0]);
 
 	for (size_t cZ = 1; cZ < Lz+1; cZ++)
 	{
@@ -53,7 +57,7 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 	// copies v from auxiliary position to final position in second half of complex m
 	memcpy (vField, vFieldaux, sizeof(Float)*V);
 
-
+	//LogMsg(VERB_NORMAL, " ... size of float %f mv[%f,%f] done!\n ", sizeof(Float), mField[S], vField[0]);
 }
 
 void	toThetaXeon (Scalar *sField, const double shift)

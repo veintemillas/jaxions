@@ -59,6 +59,9 @@ namespace AxionWKB {
 		char *mDt = static_cast<char *>(tmp->mCpu());
 		char *vDt = static_cast<char *>(tmp->vCpu());
 
+		float	*mIn  = static_cast<float *>(field->mCpu()) + field->Surf();
+		LogOut ("points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
+
 		// note Lz can be different from n1 if running MPI
 		size_t dataLine = field->DataSize()*Ly;
 
@@ -131,6 +134,33 @@ namespace AxionWKB {
 		double nn1         = 1./(2.+nQcd)+0.5;
 		double nn2         = 1./(2.+nQcd)+1.0;
 
+		double minmom2 		 = (4.*M_PI*M_PI)/(sizeL*sizeL)	;
+
+		if (firsttime)
+		{
+			// if (commRank() == 0)
+			// {
+				double amass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
+				double k2 = minmom2*(Ly*Ly) ;
+				double v2 = k2/(k2 + amass2zEnd2)	;
+				LogOut("firsttime check with am2 = %e, v2 max = %1.3f\n", amass2zEnd2, 0., v2);
+				FILE *file_samp ;
+				file_samp = NULL;
+				file_samp = fopen("out/WKBgammatest.txt","w+");
+				int kmax = Ly ; // in earnest is (N/2-1)*sqrt(3) but more or less...
+				for (int i = 1 ; i< kmax ; i++ )
+				{
+					double k2 = minmom2*(i*i) ;
+					double v2 = k2/(k2 + amass2zEnd2)	;
+					double fs = v2h2F1(0.5, 1., nn2, v2 )	;
+					fprintf(file_samp,"%e %e\n", v2, fs);
+				}
+				fflush(file_samp);
+				fclose(file_samp);
+				firsttime = false ;
+		}
+
+
 		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
 		//cFloat	 *mAux = static_cast<cFloat *>(tmp->mCpu());
 		//cFloat	 *vAux = static_cast<cFloat *>(tmp->vCpu());
@@ -155,22 +185,22 @@ namespace AxionWKB {
 		size_t	zBase = Lz*commRank();
 
 		LogOut("test suite \n") ;
-		LogOut("------------\n") ;
-		LogOut("aMass2zIni2 %f\n",aMass2zIni2) ;
-		LogOut("aMass2zEnd2 %f\n",aMass2zEnd2) ;
-		LogOut("aMass2zIni1 %f\n",aMass2zEnd2) ;
-		LogOut("zBase1 %f\n",zBase1) ;
-		LogOut("phiBase1 %f\n",phiBase1) ;
-		LogOut("nn1 %f\n",nn1) ;
-		LogOut("nn2 %f\n",nn2) ;
-		LogOut("------------\n") ;
-		LogOut("nModes %d\n",nModes) ;
-		LogOut("Ly %d\n",Ly) ;
-		LogOut("rLx %d\n",rLx) ;
-		LogOut("Tz %d\n",Tz) ;
-		LogOut("zBase %d\n",zBase) ;
-		LogOut("hLy %d\n",hLy) ;
-		LogOut("hTz %d\n",hTz) ;
+				LogOut("------------\n") ;
+				LogOut("aMass2zIni2 %f\n",aMass2zIni2) ;
+				LogOut("aMass2zEnd2 %f\n",aMass2zEnd2) ;
+				LogOut("aMass2zIni1 %f\n",aMass2zEnd2) ;
+				LogOut("zBase1 %f\n",zBase1) ;
+				LogOut("phiBase1 %f\n",phiBase1) ;
+				LogOut("nn1 %f\n",nn1) ;
+				LogOut("nn2 %f\n",nn2) ;
+				LogOut("------------\n") ;
+				LogOut("nModes %d\n",nModes) ;
+				LogOut("Ly %d\n",Ly) ;
+				LogOut("rLx %d\n",rLx) ;
+				LogOut("Tz %d\n",Tz) ;
+				LogOut("zBase %d\n",zBase) ;
+				LogOut("hLy %d\n",hLy) ;
+				LogOut("hTz %d\n",hTz) ;
 
 
 		LogOut ("start mode calculation! \n");
@@ -193,7 +223,7 @@ namespace AxionWKB {
 			// momentum2
 			size_t mom = kx*kx + ky*ky + kz*kz;
 			double k2  = mom;
-			k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
+			k2 *= minmom2;
 
 			// frequencies
 			double w1 = sqrt(k2 + aMass2zIni2);
@@ -247,14 +277,15 @@ namespace AxionWKB {
 			ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
 			am = 0.5*(M0*(1.0 + im*zeta1) - D0);
 
-			if ( idx%(Sm+5) == 0 )
-			{
-				LogOut("idx %d ",idx) ;
-				LogOut("(%d,%d,%d) ",kx, ky, kz) ;
-				LogOut("%d %.2f \n",mom, k2) ;
-				LogOut("w1 %.2f z1 %.2e ooI %.2f Rpha %.2f M0[%.2f,%.2f] D0[%.2f,%.2f] ap[%.2f,%.2f] am[%.2f,%.2f]\n",
-								w1,     zeta1,   ooI,   real(pha),real(M0),imag(M0),real(D0),imag(D0),real(ap),imag(ap),real(am),imag(am)) ;
-			}
+			// // output check
+			// if ( idx%(Sm+5) == 0 )
+			// {
+			// 	LogOut("idx %d ",idx) ;
+			// 	LogOut("(%d,%d,%d) ",kx, ky, kz) ;
+			// 	LogOut("%d %.2f \n",mom, k2) ;
+			// 	LogOut("w1 %.2f z1 %.2e ooI %.2f Rpha %.2f M0[%.2f,%.2f] D0[%.2f,%.2f] ap[%.2f,%.2f] am[%.2f,%.2f]\n",
+			// 					w1,     zeta1,   ooI,   real(pha),real(M0),imag(M0),real(D0),imag(D0),real(ap),imag(ap),real(am),imag(am)) ;
+			// }
 
 			// propagate
 			ap *= ooI*pha;
@@ -262,38 +293,39 @@ namespace AxionWKB {
 			M0 = ap + am;
 			D0 = ap - am + im*zeta2*M0;
 
-			if ( idx%(Sm+5) == 0 )
-			{
-				LogOut("w2 %.2f z2 %.2e phi %.2f Ipha %.2f M0[%.2f,%.2f] D0[%.2f,%.2f] ap[%.2f,%.2f] am[%.2f,%.2f]\n",
-								w2,   zeta2,   phi,   imag(pha),real(M0),imag(M0),real(D0),imag(D0),real(ap),imag(ap),real(am),imag(am)) ;
-			}
+			//output check
+			// if ( idx%(Sm+5) == 0 )
+			// {
+			// 	LogOut("w2 %.2f z2 %.2e phi %.2f Ipha %.2f M0[%.2f,%.2f] D0[%.2f,%.2f] ap[%.2f,%.2f] am[%.2f,%.2f]\n",
+			// 					w2,   zeta2,   phi,   imag(pha),real(M0),imag(M0),real(D0),imag(D0),real(ap),imag(ap),real(am),imag(am)) ;
+			// }
 
 			D0 *= im*w2	;
 
 			/*	BASURA A BORRAR		*/
 
-			cFloat rere, imim ;
-			rere = (cFloat) real(M0)	;
-			imim = (cFloat) imag(M0)	;
+			//cFloat rere, imim ;
+			//rere = (cFloat) real(M0)	;
+			//imim = (cFloat) imag(M0)	;
 			// save in axion1 m2
 			//m2IC[idx] = (rere, imim);
 			m2IC[idx] = M0;
 
-			rere = (cFloat) real(D0)	;
-			imim = (cFloat) imag(D0)	;
+			//rere = (cFloat) real(D0)	;
+			//imim = (cFloat) imag(D0)	;
 			// save in axion1 v
 			//Daux = (rere , imim	);
 			//vInC[idx] = rere + imim*(0.f,1.f);
 			vInC[idx] = D0;
 
-			if ( idx%(Sm+5) == 0 )
-			{
-				//LogOut("compare[%.2f,%.2f]-[%.2f,%.2f]\n", Daux.real(), Daux.imag(), vInC[idx].real(), vInC[idx].imag() ) ;
-				LogOut("compare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Daux), imag(Daux), real(vInC[idx]), imag(vInC[idx]) ) ;
-				LogOut("fumpare[%.2f,%.2f]-[%.2f,%.2f]\n", real(D0), imag(D0), rere, imim) ;
-			}
-
-			/*	FIN BASURA A BORRAR	*/
+			// check if the modes are properly copied by zEnd=zIni and uncommenting this line
+			// if ( idx%(Sm+5) == 0 )
+			// {
+			// 	//LogOut("compare[%.2f,%.2f]-[%.2f,%.2f]\n", Daux.real(), Daux.imag(), vInC[idx].real(), vInC[idx].imag() ) ;
+			// 	LogOut("Mumpare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Maux), imag(Maux), real(m2IC[idx]), imag(m2IC[idx])) ;
+			// 	LogOut("Dompare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Daux), imag(Daux), real(vInC[idx]), imag(vInC[idx]) ) ;
+			//
+			// }
 
 			// save in axion1 m2
 			m2IC[idx] = (complex<cFloat>) (M0);
@@ -311,7 +343,6 @@ namespace AxionWKB {
 		const size_t	dataLine = field->DataSize()*Ly;
 		const size_t	padLine  = field->DataSize()*(Ly+2);
 
-		// TODO Define dataLine y dataLineC
 		LogOut ("copying psi m2 unpadded -> m padded ");
 		#pragma omp parallel for schedule(static)
 		for (size_t sl=0; sl<Sm; sl++) {
@@ -319,6 +350,23 @@ namespace AxionWKB {
 			auto	fOff = sl*padLine;
 			memcpy	(mTf+oOff ,  m2Tf+fOff, dataLine);
 		}
+		LogOut ("done!\n\n ");
+
+		cFloat toton = (cFloat) field->TotalSize() ;
+
+		LogOut ("points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
+
+		LogOut ("scale x%2.2e ",toton);
+		#pragma omp parallel for schedule(static)
+		for (size_t idx=0; idx<field->Size(); idx++)
+		{
+			mIn[idx] /= toton   ;
+		}
+		LogOut ("done!\n");
+
+		LogOut ("points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
+
+
 		LogOut ("and FT(psi_z) v->m2 ");
 		memcpy	(m2Tf, vTf, field->eSize()*field->DataSize());
 		LogOut ("done!\n");
@@ -343,15 +391,11 @@ namespace AxionWKB {
     LogOut ("set z=%f done\n", (*field->zV()) );
 
 
-    double toton = 1/((double) field->TotalSize()) ;
-    LogOut ("scale x%2.2e ",toton);
-    #pragma omp parallel for schedule(static)
-    for (size_t idx=0; idx<field->Size(); idx++)
-    {
-      mIn[idx] *= toton   ;
-      vIn[idx] *= toton   ;
-		}
-    LogOut ("done!\n ");
+
+
+		LogOut ("WKB complete!\n\n ");
+
+
 
 	}
 }

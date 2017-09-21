@@ -72,10 +72,11 @@ if os.path.exists('./sample.txt'):
 
     axiondata = len(arrayA) >0
 
-    ztab1 = arrayS[:,0]
-    Thtab1 = np.arctan2(arrayS[:,4],arrayS[:,3])
-    Rhtab1 = np.sqrt(arrayS[:,3]**2 + arrayS[:,4]**2)/ztab1
-    VThtab1 = Thtab1 + (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(ztab1*Rhtab1**2)
+    if l10 >1 :
+        ztab1 = arrayS[:,0]
+        Thtab1 = np.arctan2(arrayS[:,4],arrayS[:,3])
+        Rhtab1 = np.sqrt(arrayS[:,3]**2 + arrayS[:,4]**2)/ztab1
+        VThtab1 = Thtab1 + (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(ztab1*Rhtab1**2)
     if axiondata:
         ztab2 = arrayA[:,0]
         Thtab2 = arrayA[:,2]/ztab2
@@ -83,7 +84,8 @@ if os.path.exists('./sample.txt'):
 
     # THETA EVOLUTION
     plt.clf()
-    plt.plot(ztab1,Thtab1)
+    if l10 >1 :
+        plt.plot(ztab1,Thtab1)
     if axiondata:
         plt.plot(ztab2,Thtab2)
     plt.ylim([-3.15,3.15])
@@ -95,16 +97,18 @@ if os.path.exists('./sample.txt'):
 
     # RHO EVOLUTION
     plt.clf()
-    plt.plot(ztab1,Rhtab1-1-arrayS[:,9],linewidth=0.7)
-    plt.plot(ztab1,Rhtab1-1,linewidth=0.1)
-    plt.xlabel(r'$\rho/v-1$')
-    plt.xlabel(r'$\tau$')
-    plt.savefig("pics/point_rho.pdf")
-    #plt.show()
+    if l10 >1 :
+        plt.plot(ztab1,Rhtab1-1-arrayS[:,9],linewidth=0.7)
+        plt.plot(ztab1,Rhtab1-1,linewidth=0.1)
+        plt.xlabel(r'$\rho/v-1$')
+        plt.xlabel(r'$\tau$')
+        plt.savefig("pics/point_rho.pdf")
+        #plt.show()
 
     # THETA VELOCITY EVOLUTION
     plt.clf()
-    plt.plot(ztab1,VThtab1,linewidth=0.2,marker='.',markersize=0.1)
+    if l10 >1 :
+        plt.plot(ztab1,VThtab1,linewidth=0.2,marker='.',markersize=0.1)
     if axiondata:
         plt.plot(ztab2,VThtab2,linewidth=0.2)
     plt.ylabel(r'$\rho/v-1$')
@@ -115,21 +119,22 @@ if os.path.exists('./sample.txt'):
 
     # STRING EVOLUTION
     plt.clf()
-    strings = arrayS[:,7]
-    fix = [[ztab1[0],strings[0]]]
-    i = 0
-    for i in range(0, len(ztab1)-1):
-        if strings[i] != strings[i+1]:
-            fix.append([ztab1[i+1],strings[i+1]])
-    stringo = np.asarray(fix)
+    if l10 >1 :
+        strings = arrayS[:,7]
+        fix = [[ztab1[0],strings[0]]]
+        i = 0
+        for i in range(0, len(ztab1)-1):
+            if strings[i] != strings[i+1]:
+                fix.append([ztab1[i+1],strings[i+1]])
+        stringo = np.asarray(fix)
 
-    co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
-    plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,linewidth=0.5,marker='.',markersize=0.1)
-    plt.ylabel("String density [Length/Volume adm U.]")
-    plt.xlabel(r'$\tau$')
-    plt.title(ups)
-    plt.savefig("pics/string.pdf")
-    #plt.show()
+        co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+        plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,linewidth=0.5,marker='.',markersize=0.1)
+        plt.ylabel("String density [Length/Volume adm U.]")
+        plt.xlabel(r'$\tau$')
+        plt.title(ups)
+        plt.savefig("pics/string.pdf")
+        #plt.show()
 
 # ENERGY EVOLUTION
 # FORMAT :

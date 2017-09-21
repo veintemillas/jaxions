@@ -93,27 +93,23 @@ int	main (int argc, char *argv[])
 	const int kmax = axion->Length()/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
 
-	double  *spectrumK ;
-	double  *spectrumG ;
-	double  *spectrumV ;
 	double  *binarray	 ;
-	size_t  *axitonarray	 ;
-	trackAlloc((void**) (&spectrumK), 8*powmax);
-	trackAlloc((void**) (&spectrumG), 8*powmax);
-	trackAlloc((void**) (&spectrumV), 8*powmax);
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
-	trackAlloc((void**) (&axitonarray),  100*sizeof(size_t));
+	double *bA = static_cast<double *> (binarray);
+
+	complex<float> *mC = static_cast<complex<float> *> (axion->mCpu());
+	complex<float> *vC = static_cast<complex<float> *> (axion->mCpu());
+	float *m = static_cast<float *> (axion->mCpu());
+	float *v = static_cast<float *> (axion->vCpu());
+
+	FILE *file_samp ;
+	file_samp = NULL;
+	file_samp = fopen("out/sample.txt","w+");
+	size_t idxprint = 0 ;
+
 	LogOut("Bins allocated! \n");
 
-	// double *sK = static_cast<double *> (spectrumK);
-	// double *sG = static_cast<double *> (spectrumG);
-	// double *sV = static_cast<double *> (spectrumV);
-	double *bA = static_cast<double *> (binarray);
-	//double *bAd = static_cast<double *> (binarray);
 
-	double *sK = static_cast<double *> (axion->mCpu());
-	double *sG = static_cast<double *> (axion->mCpu())+powmax;
-	double *sV = static_cast<double *> (axion->mCpu())+2*powmax;
 
 
 	double z_now ;
@@ -125,8 +121,7 @@ int	main (int argc, char *argv[])
 	double delta = sizeL/sizeN;
 	double dz;
 	double dzaux;
-	double llaux;
-	double llprint;
+	double llphys;
 
 	if (nSteps == 0)
 		dz = 0.;
@@ -161,8 +156,7 @@ int	main (int argc, char *argv[])
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
-		LL = pow(msa/(delta*zthres),2.)/2. ;
-		LogOut ("llconstantZ2 = %f - LL will be set to llconstantZ2/Z^2 \n", llconstantZ2);
+		LogOut ("llconstantZ2 = %f - LL will be set to llphys=llconstantZ2/Z^2 \n", llconstantZ2);
 
 		bool coZ = 1;
 	  bool coS = 1;
@@ -291,9 +285,24 @@ int	main (int argc, char *argv[])
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 		{
 
+			z_now = (*axion->zV());
+
+			if (commRank() == 0 && sPrec == FIELD_SINGLE) {
+					if (axion->Field() == FIELD_SAXION) {
+						// LAMBDA_Z2 MODE assumed!
+							llphys = llconstantZ2/(z_now*z_now);
+							saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+							fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axionmass(z_now,nQcd,zthres, zrestore), llphys,
+							mC[idxprint + S0].real(), mC[idxprint + S0].imag(), vC[idxprint].real(), vC[idxprint].imag(), nstrings_global, maximumtheta, saskia);
+					} else {
+							fprintf(file_samp,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
+							m[idxprint + S0], v[idxprint], maximumtheta);
+						} fflush(file_samp);}
+
+
 			old = std::chrono::high_resolution_clock::now();
 
-			z_now = (*axion->zV());
+
 			//--------------------------------------------------
 			// DYAMICAL deltaz
 			//--------------------------------------------------
@@ -325,14 +334,14 @@ int	main (int argc, char *argv[])
 				{
 
 					z_now = (*axion->zV());
-					llprint = llaux/(z_now*z_now); //physical value
-					saskia = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+					llphys = llconstantZ2/(z_now*z_now); //physical value
+					saskia = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 
 								createMeas(axion, 10000);
 								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 								  	writeMapHdf5s (axion,sliceprint);
 								//ENERGY
-							  		energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
+							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, saskia);
 										writeEnergy(axion, eRes);
 								// BIN THETA
 										Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
@@ -343,6 +352,7 @@ int	main (int argc, char *argv[])
 					// TRANSITION TO THETA
 					LogOut("--------------------------------------------------\n");
 					LogOut("              TRANSITION TO THETA \n");
+					LogOut("              shift = %f 			\n", saskia);
 					cmplxToTheta (axion, saskia);
 
 					// SHIFTS THETA TO A CONTINUOUS FIELD
@@ -393,20 +403,23 @@ int	main (int argc, char *argv[])
 //      LogOut("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 
 
+			// z_now = (*axion->zV());
+			// llprint = llaux/(z_now*z_now); //physical value
+			// saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			z_now = (*axion->zV());
-			llprint = llaux/(z_now*z_now); //physical value
-			saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+			llphys = llconstantZ2/(z_now*z_now); //physical value
+			saskia = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 
 			createMeas(axion, index);
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
 					//ENERGY
-						energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
+						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, saskia);
 					//DOMAIN WALL KILLER NUMBER
-						double maa = 40*axionmass(z_now,nQcd,zthres, zrestore)/(2*llaux);
+						double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*llphys);
 						if (axion->Lambda() == LAMBDA_Z2 )
-						maa = maa*z_now*z_now;
+							maa = maa*z_now*z_now;
 					//STRINGS
 						rts = strings(axion, str);
 						nstrings_global = rts.strDen;
@@ -414,17 +427,16 @@ int	main (int argc, char *argv[])
 							writeString(str, rts, true);
 						else
 							writeString(str, rts, false);
-						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux, maa );
-						LogOut("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-						LogOut("(G)= %ld \n", nstrings_global);
+						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
+						LogOut("strings %ld \n", nstrings_global);
 			}
 			else
 			{
-
+				//temp comment
 				//BIN THETA
-				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
-				thBin2.run();
-				writeArray(thBin2.data(), 100, "/bins", "testTh");
+				//Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+				//thBin2.run();
+				//writeArray(thBin2.data(), 100, "/bins", "testTh");
 				// maximumtheta = thBin2.t1	???? ;
 				LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
@@ -547,11 +559,9 @@ int	main (int argc, char *argv[])
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
-	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
-	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
-	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
-	trackFree((void**) (&axitonarray),  ALLOC_TRACK);
+	fclose(file_samp);
+
 
 	delete axion;
 

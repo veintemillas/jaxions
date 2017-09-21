@@ -38,6 +38,8 @@
 			const double zIni;
 //			const double amass2zini2 = axionmass2(zini, nQcd, zthres, zrestore)*zini*zini ;
 
+			bool firsttime = true;
+
 			FieldPrecision fPrec ;
 //			FieldType fType ;
 

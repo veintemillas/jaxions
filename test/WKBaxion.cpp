@@ -103,9 +103,9 @@ int	main (int argc, char *argv[])
 	LogOut("zres   =  %3.3f\n", zrestore);
 	LogOut("mass   =  %3.3f\n\n", axionmass(z_now, nQcd, zthres, zrestore));
 	if (axion->Precision() == FIELD_SINGLE)
-	LogOut("precis = SINGLE(%d)\n",sPrec);
+	LogOut("precis = SINGLE(%d)\n",FIELD_SINGLE);
 		else
-	LogOut("precis = DOUBLE(%d)\n",sPrec);
+	LogOut("precis = DOUBLE(%d)\n",FIELD_DOUBLE);
 	LogOut("--------------------------------------------------\n");
 
 	//--------------------------------------------------
@@ -117,7 +117,7 @@ int	main (int argc, char *argv[])
 			return 0;
 	}
 
-	LogOut ("creating new axion2 ... %d", fType );
+	LogOut ("creating new axion2 ... FIELD_TYPE(%d) ", FIELD_WKB );
 // the new axion is always prepared in lowmem
 	Scalar *axion2;
 	// force lowmem in scalar mode -> to be done!
