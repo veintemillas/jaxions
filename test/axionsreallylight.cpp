@@ -453,7 +453,7 @@ int	main (int argc, char *argv[])
 				writeArray(bA, 10000, "/bins", "cont");
 				//computes power spectrum
 				specAna.pRun();
-				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 
 				specAna.nRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
@@ -529,7 +529,7 @@ int	main (int argc, char *argv[])
 
 		printf("p Spectrum ... %d", commRank());
 		specAna.pRun();
-		writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 
 		LogOut("|  ");
 		LogOut("Theta bin ... ");

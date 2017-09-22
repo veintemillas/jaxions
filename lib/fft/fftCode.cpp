@@ -80,7 +80,7 @@ namespace AxionFFT {
 				// FOR SPECTRUM
 				// CASE AXION WILL USE M2 (WHICH IS INITIATED AS v)
 				// THIS MUST BE PLANNED AT THE BEGGINING OF SCALAR
-				float	      	*mA2  = static_cast<float *>       (axion->vCpu())  ;
+				float	      	*mA2  = static_cast<float *>  (axion->m2Cpu()) + axion->Surf() ;
 				fftwf_complex *oA2  = static_cast<fftwf_complex*>(static_cast<void*>(mA2));
 
 				// CASE SAXION WILL USE M2 ONLY WORKING IN !lowmem
@@ -150,14 +150,23 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
 						break;
 
-					//NEW for SPECTRUM
+					// //NEW for SPECTRUM
+					// OLD VERSION
+
+					// case	FFT_RtoC_M2toM2_AXION:
+					// 		planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA2, oA2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+					// 		planBackward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+					// 	break;
+
+					// IF AXION IS INITIALISED AS AXION
 					case	FFT_RtoC_M2toM2_AXION:
-									/* For test, the backward plan requires ghosts	*/
-						//if (dFft & FFT_FWD)
 							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA2, oA2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						//if (dFft & FFT_BCK)
-						//	planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oA2, mA2,  MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							//planBackward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						break;
+					// IF AXION IS INITIALISED AS SAXION
+					case	FFT_RtoC_M2toM2_SAXION_AXION:
+								planForward = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								//planBackward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA2, oA2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						break;
 
 					case	FFT_RtoC_M2toM2_SAXION:

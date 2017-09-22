@@ -46,7 +46,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n           WKB EVOLUTION to %f                   \n", zendWKB);
+	LogOut("\n           WKB EVOLUTION to %f                   \n", zFinl);
 	LogOut("\n-------------------------------------------------\n");
 
 	LogOut("\n-------------------------------------------------\n");
@@ -111,11 +111,13 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	//       NEW AXION
 	//--------------------------------------------------
-	if (axion->Field()==FIELD_SAXION)
-	{
-			LogOut ("Not ready for SAXION!");
-			return 0;
-	}
+	// if (axion->Field() == FIELD_SAXION)
+	// {
+	// 		LogOut ("Not ready for SAXION!");
+	// 		return 0;
+	// }
+
+  LogOut("dsimv %d %d %d %d\n\n", axion->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
 
 	LogOut ("creating new axion2 ... FIELD_TYPE(%d) ", FIELD_WKB );
 // the new axion is always prepared in lowmem
@@ -176,7 +178,7 @@ int	main (int argc, char *argv[])
 								//computes power spectrum
 								LogOut ("pow ");
 								specAna.pRun();
-								writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 								LogOut ("spec ");
 								specAna.nRun();
 								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
@@ -221,7 +223,7 @@ int	main (int argc, char *argv[])
 				//computes power spectrum
 				LogOut ("pow ");
 				specAna.pRun();
-				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 				LogOut ("spec ");
 				specAna.nRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");

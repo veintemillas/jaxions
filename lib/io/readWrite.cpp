@@ -520,7 +520,7 @@ void	readConf (Scalar **axion, int index)
 	{
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION, lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
-	} else if (!strcmp(fStr, "Axion")) {
+	} else if (!strcmp(fStr, "Axion")) { 
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,  lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {

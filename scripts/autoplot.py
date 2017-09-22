@@ -426,7 +426,13 @@ if an_pspec:
     ktab2 = (0.5+np.arange(powmax2))*2*math.pi/sizeL
     f['pSpectrum/sP'] , powmax2 , (sizeN/2)*math.sqrt(3)
     larvaP = np.reshape(f['pSpectrum/sP'],(powmax2))
-    av = larvaP/nmodes2
+    if powmax2 == powmax:
+        av = larvaP/nmodes2
+    else :
+        pfoca = np.arange(0,powmax2)/n2
+        pfoca2 = np.arange(1,powmax2+1)/n2
+        pnmodes2 = (n2**3)*(vecvolu(pfoca2)-vecvolu(pfoca))
+        av = larvaP/pnmodes2
 
     plt.clf()
     plt.loglog(ktab2,(ktab2**3)*av/(math.pi**2),label=r'$\tau$={%.1f}'%(time))

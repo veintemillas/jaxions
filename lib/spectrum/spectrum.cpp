@@ -379,6 +379,7 @@ void	SpecBin::pRun	() {
 
 	char *mA = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize();
 
+	// contrast bin is assumed in m2 (with ghost bytes)
 	// Add the f@*&#ng padding plus ghost region, no parallelization
 	for (int sl=Sm-1; sl>=0; sl--) {
 		auto	oOff = sl*field->DataSize()*(Ly);
@@ -386,7 +387,9 @@ void	SpecBin::pRun	() {
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
 
-	myPlan.run(FFT_BCK);
+	// correction! 
+	//myPlan.run(FFT_BCK);
+	myPlan.run(FFT_FWD);
 
 	switch (fPrec) {
 		case	FIELD_SINGLE:
