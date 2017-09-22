@@ -128,6 +128,7 @@ int	main (int argc, char *argv[])
 	//       WKB
 	//--------------------------------------------------
 
+	
 	WKB wonka(axion, axion2);
 
 	// float *mm = static_cast<float *> (axion->mCpu())+axion->Surf();
@@ -152,15 +153,12 @@ int	main (int argc, char *argv[])
 	if (zFinl < z_now)
 		zFinl = z_now	;
 
-	LogOut("from z1=%f to z2=%f in %d time steps\n",z_now,zFinl,nSteps);
+	LogOut("from z1=%f to z2=%f in %d time steps\n\n",z_now,zFinl,nSteps);
 
 	for (int i = 0; i < nSteps; i++)
 	{
 
-		double zco = z_now + i*(zFinl-z_now)/nSteps	;
-		wonka(zco) 	;
-		index++			;
-
+		LogOut ("Printing measurement file %05d ... ", index);
 		createMeas(axion, index);
 								SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 								// computes energy and creates map
@@ -187,21 +185,23 @@ int	main (int argc, char *argv[])
 								writeMapHdf5s(axion,sliceprint);
 								LogOut ("Done!\n");
 		destroyMeas();
+
+		double zco = z_now + i*(zFinl-z_now)/nSteps	;
+		wonka(zco) 	;
+		index++			;
 	}
 	//--------------------------------------------------
 	//       SAVE DATA
 	//--------------------------------------------------
 
 
-	LogOut ("\n\n", index);
-	LogOut ("Dumping configuration %05d ...", index);
-	writeConf(axion, index);
-	LogOut ("Done!\n");
-	LogOut ("\n", index);
+		LogOut ("\n\n Dumping configuration %05d ...", index);
+		writeConf(axion, index);
+		LogOut ("Done!\n\n");
 
-			LogOut ("Printing measurement file %05d ... ", index);
 
-			createMeas(axion, index);
+		LogOut ("Printing measurement file %05d ... ", index);
+		createMeas(axion, index);
 				SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 				// computes energy and creates map
 				LogOut ("en ");
@@ -212,7 +212,7 @@ int	main (int argc, char *argv[])
 				//write binned distribution
 				LogOut ("bin ");
 				writeArray(bA, 10000, "/bins", "cont");
-				LogOut ("map ");
+				LogOut ("MAP ");
 				writeEDens(axion, index);
 				LogOut ("tot ");
 				writeEnergy(axion, eRes);

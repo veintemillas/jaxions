@@ -5,6 +5,8 @@
 #include <gsl/gsl_sf_gamma.h>
 
 #include "WKB/WKB.h"
+#include "scalar/folder.h"
+#include "scalar/scalar.h"
 
 namespace AxionWKB {
 
@@ -35,7 +37,7 @@ namespace AxionWKB {
 	}
 
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), zIni((*field->zV())), fPrec(field->Precision()),
-					      Tz(field->TotalDepth()), nModes(field->eSize()), hLy(field->Length()/2), hLz(field->Depth()/2), hTz(field->TotalDepth()/2),
+					      Tz(field->TotalDepth()), nModes(field->eSize()/2), hLy(field->Length()/2), hLz(field->Depth()/2), hTz(field->TotalDepth()/2),
 					      rLx(field->Length()/2 + 1), Sm(field->Length()*field->Depth())
 	{
 		if (field->Field() == FIELD_SAXION) {
@@ -43,14 +45,25 @@ namespace AxionWKB {
 			return;
 		}
 
+		bool	wasFolded = field->Folded();
+
+		Folder	*munge;
+
+		if (wasFolded)
+		{
+			LogMsg (VERB_HIGH, "Folded configuration, will unfold at the end");
+			munge	= new Folder(field);
+			(*munge)(UNFOLD_ALL);
+		}
+
 		// THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
 		// PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
 		// THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
 
-		LogOut ("Planning in axion2 ... ");
+		LogMsg(VERB_NORMAL, "Planning in axion2 ... ");
 		AxionFFT::initPlan (tmp, FFT_RtoC_MtoM_WKB,  FFT_FWD, "WKB m");
 		AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWD, "WKB v");
-		LogOut ("done!\n");
+		LogMsg(VERB_NORMAL, "done!\n");
 
 		// pointers for copying 1->2
 		char *mOr = static_cast<char *>(field->mCpu()) + field->Surf()*field->DataSize();
@@ -59,13 +72,18 @@ namespace AxionWKB {
 		char *mDt = static_cast<char *>(tmp->mCpu());
 		char *vDt = static_cast<char *>(tmp->vCpu());
 
-		float	*mIn  = static_cast<float *>(field->mCpu()) + field->Surf();
-		LogOut ("points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
+					// // input=output check
+					// float	*mIno  = static_cast<float *>(field->mCpu()) + field->Surf();
+					// float	*vIno  = static_cast<float *>(field->vCpu()) ;
+					// LogOut ("\n  --> points %e %e %e !\n ", mIno[0],mIno[1],mIno[2]);
+					// LogOut ("  --> points %e %e %e !\n\n", mIno[field->Size()-1],mIno[field->Size()-2],mIno[field->Size()-3]);
+					// LogOut ("  --> voints %e %e %e !\n ",  vIno[0],vIno[1],vIno[2]);
+					// LogOut ("  --> voints %e %e %e !\n\n", vIno[field->Size()-1],vIno[field->Size()-2],vIno[field->Size()-3]);
 
 		// note Lz can be different from n1 if running MPI
 		size_t dataLine = field->DataSize()*Ly;
 
-		LogOut ("copying 1->2 ");
+		LogMsg(VERB_NORMAL, "copying 1->2 ");
 		//Copy m,v -> m2,v2 with padding
 		#pragma omp parallel for schedule(static)
 		for (int sl=0; sl<Sm; sl++) {
@@ -74,24 +92,24 @@ namespace AxionWKB {
 			memcpy	(mDt+fOff, mOr+oOff, dataLine);
 			memcpy	(vDt+fOff, vOr+oOff, dataLine);
 		}
-		LogOut ("done!\n");
+		LogMsg(VERB_NORMAL, "done!\n");
 
 		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
-		LogOut (" FFTWing AXION2 m inplace ... ");
+		LogMsg(VERB_NORMAL," FFTWing AXION2 m inplace ... ");
 		myPlanM.run(FFT_FWD);
 		LogOut ("done!!\n");
 
-		LogOut (" FFTWing AXION2 v inplace ... ");
+		LogMsg(VERB_NORMAL," FFTWing AXION2 v inplace ... ");
 		myPlanV.run(FFT_FWD);
-		LogOut ("done!!\n ");
+		LogMsg(VERB_NORMAL,"done!!\n ");
 
-		LogOut ("Planning IN axion1 m2 ");
+		LogMsg(VERB_NORMAL,"Planning IN axion1 m2 ");
 		AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
-		LogOut ("done!!\n");
+		LogMsg(VERB_NORMAL,"done!!\n");
 
-		LogOut (" ready to WKB! \n");
+		LogOut ("\n\n      - - ->   ready to WKB! \n\n");
 	};
 
 	// THIS FUNCTION COMPUTES THE FFT COEFFICIENTS AT A TIME newz > zini
@@ -136,34 +154,32 @@ namespace AxionWKB {
 
 		double minmom2 		 = (4.*M_PI*M_PI)/(sizeL*sizeL)	;
 
-		if (firsttime)
-		{
-			// if (commRank() == 0)
-			// {
-				double amass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
-				double k2 = minmom2*(Ly*Ly) ;
-				double v2 = k2/(k2 + amass2zEnd2)	;
-				LogOut("firsttime check with am2 = %e, v2 max = %1.3f\n", amass2zEnd2, 0., v2);
-				FILE *file_samp ;
-				file_samp = NULL;
-				file_samp = fopen("out/WKBgammatest.txt","w+");
-				int kmax = Ly ; // in earnest is (N/2-1)*sqrt(3) but more or less...
-				for (int i = 1 ; i< kmax ; i++ )
-				{
-					double k2 = minmom2*(i*i) ;
-					double v2 = k2/(k2 + amass2zEnd2)	;
-					double fs = v2h2F1(0.5, 1., nn2, v2 )	;
-					fprintf(file_samp,"%e %e\n", v2, fs);
-				}
-				fflush(file_samp);
-				fclose(file_samp);
-				firsttime = false ;
-		}
+									// if (firsttime)
+									// {
+									// 	// if (commRank() == 0)
+									// 	// {
+									// 		double amass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
+									// 		double k2 = minmom2*(Ly*Ly) ;
+									// 		double v2 = k2/(k2 + amass2zEnd2)	;
+									// 		LogOut("firsttime check with am2 = %e, v2 max = %1.f\n", amass2zEnd2, 0., v2);
+									// 		FILE *file_samp ;
+									// 		file_samp = NULL;
+									// 		file_samp = fopen("out/WKBgammatest.txt","w+");
+									// 		int kmax = Ly ; // in earnest is (N/2-1)*sqrt(3) but more or less...
+									// 		for (int i = 1 ; i< kmax ; i++ )
+									// 		{
+									// 			double k2 = minmom2*(i*i) ;
+									// 			double v2 = k2/(k2 + amass2zEnd2)	;
+									// 			double fs = v2h2F1(0.5, 1., nn2, v2 )	;
+									// 			fprintf(file_samp,"%e %e\n", v2, fs);
+									// 		}
+									// 		fflush(file_samp);
+									// 		fclose(file_samp);
+									// 		firsttime = false ;
+									// }
 
 
 		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
-		//cFloat	 *mAux = static_cast<cFloat *>(tmp->mCpu());
-		//cFloat	 *vAux = static_cast<cFloat *>(tmp->vCpu());
 		std::complex<cFloat> *mAux  = static_cast<std::complex<cFloat>*>(tmp->mCpu());
 		std::complex<cFloat> *vAux  = static_cast<std::complex<cFloat>*>(tmp->vCpu());
 
@@ -184,27 +200,27 @@ namespace AxionWKB {
 		auto &myPlanP = AxionFFT::fetchPlan("WKB p");
 		size_t	zBase = Lz*commRank();
 
-		LogOut("test suite \n") ;
-				LogOut("------------\n") ;
-				LogOut("aMass2zIni2 %f\n",aMass2zIni2) ;
-				LogOut("aMass2zEnd2 %f\n",aMass2zEnd2) ;
-				LogOut("aMass2zIni1 %f\n",aMass2zEnd2) ;
-				LogOut("zBase1 %f\n",zBase1) ;
-				LogOut("phiBase1 %f\n",phiBase1) ;
-				LogOut("nn1 %f\n",nn1) ;
-				LogOut("nn2 %f\n",nn2) ;
-				LogOut("------------\n") ;
-				LogOut("nModes %d\n",nModes) ;
-				LogOut("Ly %d\n",Ly) ;
-				LogOut("rLx %d\n",rLx) ;
-				LogOut("Tz %d\n",Tz) ;
-				LogOut("zBase %d\n",zBase) ;
-				LogOut("hLy %d\n",hLy) ;
-				LogOut("hTz %d\n",hTz) ;
+		// LogOut("test suite \n") ;
+		// 		LogOut("------------\n") ;
+		// 		LogOut("aMass2zIni2 %f\n",aMass2zIni2) ;
+		// 		LogOut("aMass2zEnd2 %f\n",aMass2zEnd2) ;
+		// 		LogOut("aMass2zIni1 %f\n",aMass2zEnd2) ;
+		// 		LogOut("zBase1 %f\n",zBase1) ;
+		// 		LogOut("phiBase1 %f\n",phiBase1) ;
+		// 		LogOut("nn1 %f\n",nn1) ;
+		// 		LogOut("nn2 %f\n",nn2) ;
+		// 		LogOut("------------\n") ;
+		// 		LogOut("nModes %d\n",nModes) ;
+		// 		LogOut("Ly %d\n",Ly) ;
+		// 		LogOut("rLx %d\n",rLx) ;
+		// 		LogOut("Tz %d\n",Tz) ;
+		// 		LogOut("zBase %d\n",zBase) ;
+		// 		LogOut("hLy %d\n",hLy) ;
+		// 		LogOut("hTz %d\n",hTz) ;
 
 
-		LogOut ("start mode calculation! \n");
-		//#pragma omp parallel for schedule(static)
+		LogMsg(VERB_NORMAL,"start mode calculation! \n");
+		#pragma omp parallel for schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
 			//rLx is n1/2+1, reduced number of modes for r2c
@@ -277,7 +293,7 @@ namespace AxionWKB {
 			ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
 			am = 0.5*(M0*(1.0 + im*zeta1) - D0);
 
-			// // output check
+			//output check
 			// if ( idx%(Sm+5) == 0 )
 			// {
 			// 	LogOut("idx %d ",idx) ;
@@ -302,22 +318,6 @@ namespace AxionWKB {
 
 			D0 *= im*w2	;
 
-			/*	BASURA A BORRAR		*/
-
-			//cFloat rere, imim ;
-			//rere = (cFloat) real(M0)	;
-			//imim = (cFloat) imag(M0)	;
-			// save in axion1 m2
-			//m2IC[idx] = (rere, imim);
-			m2IC[idx] = M0;
-
-			//rere = (cFloat) real(D0)	;
-			//imim = (cFloat) imag(D0)	;
-			// save in axion1 v
-			//Daux = (rere , imim	);
-			//vInC[idx] = rere + imim*(0.f,1.f);
-			vInC[idx] = D0;
-
 			// check if the modes are properly copied by zEnd=zIni and uncommenting this line
 			// if ( idx%(Sm+5) == 0 )
 			// {
@@ -326,136 +326,72 @@ namespace AxionWKB {
 			// 	LogOut("Dompare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Daux), imag(Daux), real(vInC[idx]), imag(vInC[idx]) ) ;
 			//
 			// }
+			m2IC[idx] = M0;
 
-			// save in axion1 m2
-			m2IC[idx] = (complex<cFloat>) (M0);
-			// save in axion1 v
-			vInC[idx] = (complex<cFloat>) (im*w2*D0);
-
+			vInC[idx] = D0;
 
 		}
 
-    LogOut (" invFFTWing AXION m2 inplace ... ");
+    LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
 		// FFT in place in m2 of axion1
 		myPlanP.run(FFT_BCK);
-    LogOut ("done!!\n ");
+    LogMsg(VERB_NORMAL,"done!!\n ");
 
-		const size_t	dataLine = field->DataSize()*Ly;
-		const size_t	padLine  = field->DataSize()*(Ly+2);
+				const size_t	dataLine = field->DataSize()*Ly;
+				const size_t	padLine  = field->DataSize()*(Ly+2);
 
-		LogOut ("copying psi m2 unpadded -> m padded ");
-		#pragma omp parallel for schedule(static)
-		for (size_t sl=0; sl<Sm; sl++) {
-			auto	oOff = sl*dataLine;
-			auto	fOff = sl*padLine;
-			memcpy	(mTf+oOff ,  m2Tf+fOff, dataLine);
-		}
-		LogOut ("done!\n\n ");
+						LogMsg(VERB_NORMAL,"copying psi m2 padded -> m unpadded ");
+						#pragma omp parallel for schedule(static)
+						for (size_t sl=0; sl<Sm; sl++) {
+							auto	oOff = sl*dataLine;
+							auto	fOff = sl*padLine;
+							memcpy	(mTf+oOff ,  m2Tf+fOff, dataLine);
+						}
+						LogMsg(VERB_NORMAL,"done!\n\n ");
 
-		cFloat toton = (cFloat) field->TotalSize() ;
-
-		LogOut ("points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
-
-		LogOut ("scale x%2.2e ",toton);
-		#pragma omp parallel for schedule(static)
-		for (size_t idx=0; idx<field->Size(); idx++)
-		{
-			mIn[idx] /= toton   ;
-		}
-		LogOut ("done!\n");
-
-		LogOut ("points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
-
-
-		LogOut ("and FT(psi_z) v->m2 ");
+		LogMsg(VERB_NORMAL,"and FT(psi_z) v->m2 ");
 		memcpy	(m2Tf, vTf, field->eSize()*field->DataSize());
-		LogOut ("done!\n");
+		LogMsg(VERB_NORMAL,"done!\n");
 
-    LogOut (" invFFTWing AXION m2 inplace ... ");
-		// FFT in place in m2 of axion1
-		myPlanP.run(FFT_BCK);
-    LogOut ("done!!\n ");
+		    LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
+				// FFT in place in m2 of axion1
+				myPlanP.run(FFT_BCK);
+		    LogMsg(VERB_NORMAL,"done!!\n ");
 
-		// transfer m2 into v
-		LogOut ("copying psi_z m2 padded -> v unpadded ");
-		//Copy m,v -> m2,v2 with padding
-		#pragma omp parallel for schedule(static)
-		for (size_t sl=0; sl<Sm; sl++) {
-			auto	oOff = sl*dataLine;
-			auto	fOff = sl*padLine;
-			memcpy	(vTf+oOff ,  m2Tf+fOff, dataLine);
-		}
-		LogOut ("done!\n");
+						// transfer m2 into v
+						LogMsg(VERB_NORMAL,"copying psi_z m2 padded -> v unpadded ");
+						//Copy m,v -> m2,v2 with padding
+						#pragma omp parallel for schedule(static)
+						for (size_t sl=0; sl<Sm; sl++) {
+							auto	oOff = sl*dataLine;
+							auto	fOff = sl*padLine;
+							memcpy	(vTf+oOff ,  m2Tf+fOff, dataLine);
+						}
+						LogMsg(VERB_NORMAL,"done!\n");
+
+										cFloat toton = (cFloat) field->TotalSize();
+
+										LogMsg(VERB_NORMAL,"scale x%2.2e ",toton);
+										#pragma omp parallel for schedule(static)
+										for (size_t idx=0; idx<field->Size(); idx++)
+										{
+											mIn[idx] /= toton   ;
+											vIn[idx] /= toton   ;
+										}
+										LogMsg(VERB_NORMAL,"done!\n");
+
+
+		// LogOut ("  --> points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
+		// LogOut ("  --> points %e %e %e !\n ", mIn[field->Size()-1],mIn[field->Size()-2],mIn[field->Size()-3]);
+		// LogOut ("  --> voints %e %e %e !\n ", vIn[0],vIn[1],vIn[2]);
+		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
     *field->zV() = zEnd ;
-    LogOut ("set z=%f done\n", (*field->zV()) );
+    LogMsg(VERB_NORMAL,"set z=%f done\n", (*field->zV()) );
 
-
-
-
-		LogOut ("WKB complete!\n\n ");
+		LogMsg(VERB_NORMAL,"WKB complete!\n\n ");
 
 
 
 	}
 }
-
- //  // THIS IS OLD CODE, JUST IN CASE
- //  // USING M2 MODE
- //  powmax = floor(1.733*kmax)+2;
- //  //gg1 = gsl_sf_gamma(1./2.-1./(nQcd+2.))*gsl_sf_gamma(1.+1./(nQcd+2.))/gsl_sf_gamma(1./2.);
- //  gg1 = 1.;
- //
- //  // OLD CODE, DO NOT KNOW WHY IT FAILS for 128
- //  LogOut ("gg1 = %f\n",gg1);
- //  LogOut ("Planning 2 ... ");
- //  // plans in axionAUX
- //  // destroys m2 but nothing is in there
- //  AxionFFT::initPlan (axion, FFT_RtoC_M2toM2_WKB,  FFT_FWD, "fftWKB_axion_m2");
- //  AxionFFT::initPlan (axion, FFT_RtoC_V2toV2_WKB,  FFT_FWD, "fftWKB_axion_v2");
- //  LogOut ("done!\n");
- //
- //  // pointers for copying 1->2
- //  char *ma1 = static_cast<char *>(axion->mCpu())  + axion->Surf()*axion->DataSize();
- //  char *va1 = static_cast<char *>(axion->vCpu());
- //
- //  char *ma2 = static_cast<char *>(axion->m2Cpu())  ;
- //  char *va2 = static_cast<char *>(axion->m2Cpu())  + axion->eSize()*axion->DataSize();
- //
- //  // note Lz can be different from n1 if running MPI
- //  size_t Lz = axion->Depth();
- //  size_t dataLine = axion->DataSize()*n1;
- //  size_t Sm	= n1*Lz;
- //
- //  LogOut ("copying 1->2 ");
- //  //Copy m,v -> m2,v2 with padding
- //  #pragma omp parallel for schedule(static)
- //  for (int sl=0; sl<Sm; sl++) {
- //  auto	oOff = sl*axion->DataSize()*n1;
- //  auto	fOff = sl*axion->DataSize()*(n1+2);
- //  memcpy	(ma2+fOff, ma1+oOff, dataLine);
- //  memcpy	(va2+fOff, va1+oOff, dataLine);
- //  }
- // LogOut ("done!\n");
- //
- //
- //  LogOut ("Planning 1 ... [warning!!! this destroys original input!!]... ");
- //  // plans in axionIN§
- //  // destroy input but is safely copied
- //  AxionFFT::initPlan (axion, FFT_RtoC_MtoM_WKB,  FFT_BCK, "fftWKB_axion_m1");
- //  AxionFFT::initPlan (axion, FFT_RtoC_VtoV_WKB,  FFT_BCK, "fftWKB_axion_v1");
- //  LogOut ("done!!\n");
- //
- //
- //  auto &myPlanm2 = AxionFFT::fetchPlan("fftWKB_axion_m2");
- //  auto &myPlanv2 = AxionFFT::fetchPlan("fftWKB_axion_v2");
- //
- //  // auto &myPlanm1 = AxionFFT::fetchPlan("fftWKB_axion1_m");
- //  // auto &myPlanv1 = AxionFFT::fetchPlan("fftWKB_axion1_v");
- //
- //  LogOut ("FFTWing m2,v2 inplace ... ");
- //  myPlanm2.run(FFT_FWD);
- //  myPlanv2.run(FFT_FWD);
- //  LogOut ("done!!\n ");
- //  //
- //  LogOut ("ready to WKB! \n");
