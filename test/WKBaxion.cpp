@@ -128,7 +128,7 @@ int	main (int argc, char *argv[])
 	//       WKB
 	//--------------------------------------------------
 
-	
+
 	WKB wonka(axion, axion2);
 
 	// float *mm = static_cast<float *> (axion->mCpu())+axion->Surf();
@@ -155,8 +155,9 @@ int	main (int argc, char *argv[])
 
 	LogOut("from z1=%f to z2=%f in %d time steps\n\n",z_now,zFinl,nSteps);
 
-	for (int i = 0; i < nSteps; i++)
+	for (int i = 1; i < nSteps; i++)
 	{
+		index++			;
 
 		LogOut ("Printing measurement file %05d ... ", index);
 		createMeas(axion, index);
@@ -188,12 +189,13 @@ int	main (int argc, char *argv[])
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
 		wonka(zco) 	;
-		index++			;
+
 	}
 	//--------------------------------------------------
 	//       SAVE DATA
 	//--------------------------------------------------
 
+		index++			;
 
 		LogOut ("\n\n Dumping configuration %05d ...", index);
 		writeConf(axion, index);

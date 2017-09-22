@@ -16,13 +16,18 @@ if os.path.exists('./axion.m.10000'):
 if os.path.exists('./axion.m.10001'):
     os.rename('./axion.m.10001','./../axion.m.10001')
 
-fileMeasM = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
-fileMeasR = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.r.[0-9]{5}$", x)])
 
-if len(fileMeasR) > 0:
-	fileHdf5 = h5py.File(fileMeasR[-1], "r")
-else:
-	fileHdf5 = h5py.File(fileMeasM[-1], "r")
+# fileMeasM = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
+# fileMeasR = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.r.[0-9]{5}$", x)])
+#
+# if len(fileMeasR) > 0:
+# 	fileHdf5 = h5py.File(fileMeasR[-1], "r")
+# else:
+# 	fileHdf5 = h5py.File(fileMeasM[-1], "r")
+
+
+fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
+
 
 an_contrastmap = 'energy/density' in fileHdf5
 
