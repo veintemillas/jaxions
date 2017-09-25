@@ -125,7 +125,6 @@ int	main (int argc, char *argv[])
 	// 		LogOut ("Not ready for SAXION!");
 	// 		return 0;
 	// }
-  LogOut("dsimv %d SAXION/AXION/WKB=%d/%d/%d\n\n", axion->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
 
 	LogOut ("creating new axion2 ... FIELD_TYPE(%d) ", FIELD_WKB );
 // the new axion is always prepared in lowmem
@@ -165,7 +164,7 @@ int	main (int argc, char *argv[])
 
 	LogOut("from z1=%f to z2=%f in %d time steps\n\n",z_now,zFinl,nSteps);
 
-	for (int i = 1; i < nSteps; i++)
+	for (int i = 0; i < nSteps+1; i++)
 	{
 		index++			;
 
@@ -198,8 +197,9 @@ int	main (int argc, char *argv[])
 		destroyMeas();
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
+		LogOut ("WKBing to %.4f ... ", zco);
 		wonka(zco) 	;
-
+		LogOut ("done!\n");
 	}
 	//--------------------------------------------------
 	//       SAVE DATA
