@@ -70,9 +70,18 @@ int	main (int argc, char *argv[])
 	// LogOut("--------------------------------------------------\n");
 
 
+
+
+
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
+
+	/* avoid it being parsed wrong*/
+	LogOut ("parsing a field  %d ...", fTypeP);
+	fTypeP = FIELD_AXION ;
+	LogOut ("but now we set fType= %d \n", fTypeP);
+
 	Scalar *axion;
 
 	LogOut ("reading conf %d ...", fIndex);
@@ -116,8 +125,7 @@ int	main (int argc, char *argv[])
 	// 		LogOut ("Not ready for SAXION!");
 	// 		return 0;
 	// }
-
-  LogOut("dsimv %d %d %d %d\n\n", axion->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
+  LogOut("dsimv %d SAXION/AXION/WKB=%d/%d/%d\n\n", axion->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
 
 	LogOut ("creating new axion2 ... FIELD_TYPE(%d) ", FIELD_WKB );
 // the new axion is always prepared in lowmem

@@ -43,7 +43,7 @@ namespace AxionWKB {
 		if (field->Field() == FIELD_SAXION) {
 			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
 			return;
-		}
+		 }
 
 		bool	wasFolded = field->Folded();
 

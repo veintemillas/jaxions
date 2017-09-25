@@ -269,7 +269,8 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
 
-					myPlan.run(FFT_BCK);
+					//myPlan.run(FFT_BCK);
+					myPlan.run(FFT_FWD);
 
 					if (spec)
 						fillBins<float, SPECTRUM_GV, true> ();
@@ -284,7 +285,8 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, vO+oOff, dataLine);
 					}
 
-					myPlan.run(FFT_BCK);
+					//myPlan.run(FFT_BCK);
+					myPlan.run(FFT_FWD);
 
 					if (spec)
 						fillBins<float, SPECTRUM_K, true> ();
@@ -337,8 +339,8 @@ void	SpecBin::nRun	() {
 						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
-
-					myPlan.run(FFT_BCK);	//FIXME BCK for tests
+					//myPlan.run(FFT_BCK);
+					myPlan.run(FFT_FWD);	//FIXME BCK for tests
 
 					if (spec)
 						fillBins<double, SPECTRUM_GV, true> ();
@@ -352,8 +354,8 @@ void	SpecBin::nRun	() {
 						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(mF+fOff, vO+oOff, dataLine);
 					}
-
-					myPlan.run(FFT_BCK);	//FIXME BCK for tests
+					//FFT_FWD
+					myPlan.run(FFT_FWD);	//FIXME BCK for tests
 					if (spec)
 						fillBins<double, SPECTRUM_K, true> ();
 					else
@@ -387,7 +389,7 @@ void	SpecBin::pRun	() {
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
 
-	// correction! 
+	// correction!
 	//myPlan.run(FFT_BCK);
 	myPlan.run(FFT_FWD);
 

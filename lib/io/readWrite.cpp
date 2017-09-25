@@ -434,6 +434,10 @@ void	readConf (Scalar **axion, int index)
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
+	if (!strcmp(fStr, "Saxion"))
+	LogOut("its a SAXION! ");
+	else
+	LogOut("its an AXION! ");
 
 	if (uQcd == false)
 		readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
@@ -520,7 +524,7 @@ void	readConf (Scalar **axion, int index)
 	{
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION, lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
-	} else if (!strcmp(fStr, "Axion")) { 
+	} else if (!strcmp(fStr, "Axion")) {
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,  lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
@@ -583,10 +587,20 @@ void	readConf (Scalar **axion, int index)
 	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 
 	/*	Fold the field		*/
-
+	LogOut("dsimv %d SAXION/AXION/WKB=%d/%d/%d\n\n", (*axion)->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
 	Folder munge(*axion);
 	munge(FOLD_ALL);
+	LogOut("dsimv %d SAXION/AXION/WKB=%d/%d/%d\n\n", (*axion)->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
 }
+
+
+
+//
+//
+//
+
+
+
 
 /*	Creates a hdf5 file to write all the measurements	*/
 void	createMeas (Scalar *axion, int index)
