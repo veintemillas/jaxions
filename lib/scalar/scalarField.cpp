@@ -41,6 +41,7 @@ const std::complex<float> If(0.,1.);
 		       ConfType cType, const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
 		       fieldType(newType), lambdaType(lType), precision(prec), device(dev), lowmem(lowmem)
 {
+LogOut("0");
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	prof.start();
@@ -113,7 +114,7 @@ const std::complex<float> If(0.,1.);
 
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = n3*fSize;
-
+LogOut("1");
 	// MODIFIED BY JAVI
 	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
 
@@ -155,9 +156,10 @@ const std::complex<float> If(0.,1.);
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
-			if (!lowmem)
+			if (!lowmem) {
 				alignAlloc ((void**) &m2, mAlign, mBytes);
-			else
+				memset (m2, 0, fSize*v3);
+			} else
 				m2 = nullptr;
 			break;
 
@@ -176,6 +178,7 @@ const std::complex<float> If(0.,1.);
 			break;
 	}
 
+LogOut("2");
 	if (m == NULL)
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the m field", mBytes);
@@ -197,12 +200,10 @@ const std::complex<float> If(0.,1.);
 		}
 	}
 
+LogOut("3");
 	memset (m, 0, fSize*v3);
 	// changed from memset (v, 0, fSize*n3);
 	memset (v, 0, fSize*n3);
-
-	if (!lowmem)
-		memset (m2, 0, fSize*v3);
 
 	commSync();
 

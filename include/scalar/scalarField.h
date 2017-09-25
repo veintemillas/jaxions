@@ -67,7 +67,7 @@
 		public:
 
 				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
-					FieldType fType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
+					FieldType newType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
 				~Scalar();
 
 		void		*mCpu() { return m; }
