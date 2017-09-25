@@ -130,8 +130,16 @@ const std::complex<float> If(0.,1.);
 			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
 			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
 			//this allocates a slightly larger v to host FFTs in place
-			alignAlloc ((void**) &m, mAlign, mBytes);
-			alignAlloc ((void**) &v, mAlign, mBytes);
+			alignAlloc ((void**) &m, mAlign, 2*mBytes);
+			switch (prec) {
+				case FIELD_DOUBLE:
+				v = static_cast<void *>(static_cast<double *>(m) + 2*n2 + n3);
+				break;
+
+				case FIELD_SINGLE:
+				v = static_cast<void *>(static_cast<float  *>(m) + 2*n2 + n3);
+				break;
+			}
 			break;
 
 		default:
@@ -218,19 +226,29 @@ const std::complex<float> If(0.,1.);
 		LogError ("Error: gpu support not built\n");
 		exit   (1);
 #else
-		if (cudaMalloc(&m_d,  mBytes) != cudaSuccess)
-		{
-			LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
-			exit(1);
+		if (fieldType == FIELD_SAXION) {
+			if (cudaMalloc(&m_d,  mBytes) != cudaSuccess)
+			{
+				LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
+				exit(1);
+			}
+
+			if (cudaMalloc(&v_d,  vBytes) != cudaSuccess)
+			{
+				LogError ("Error: couldn't allocate %lu bytes for the gpu field v", vBytes);
+				exit(1);
+			}
+		} else {
+			if (cudaMalloc(&m_d, 2*mBytes) != cudaSuccess)
+			{
+				LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
+				exit(1);
+			}
+
+			v_d = static_cast<void *>(static_cast<(prec == FIELD_DOUBLE) ? double * : float *>(m_d) + 2*n2 + n3);
 		}
 
-		if (cudaMalloc(&v_d,  vBytes) != cudaSuccess)
-		{
-			LogError ("Error: couldn't allocate %lu bytes for the gpu field v", vBytes);
-			exit(1);
-		}
-
-		if (!lowmem)
+		if (!lowmem || fieldType == FIELD_AXION)
 			if (cudaMalloc(&m2_d, mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", mBytes);
