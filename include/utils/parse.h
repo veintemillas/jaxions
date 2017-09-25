@@ -40,7 +40,7 @@ extern FieldPrecision sPrec;
 extern DeviceType     cDev;
 extern ConfType	      cType;
 extern ConfsubType    smvarType;
-extern FieldType      fType;
+extern FieldType      fTypeP;
 extern LambdaType     lType;
 extern PropType       pType;
 extern VerbosityLevel verb;

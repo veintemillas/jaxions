@@ -46,7 +46,7 @@ size_t parm1 = 0;
 PropType     pType     = PROP_NONE;
 ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
-FieldType    fType     = FIELD_SAXION;
+FieldType    fTypeP    = FIELD_SAXION;
 LambdaType   lType     = LAMBDA_FIXED;
 
 char outName[128] = "axion\0";
@@ -66,7 +66,7 @@ void	printUsage(char *name)
 	printf("--zgrid [int]                   Number of gpus involved in the computation (default 1).\n");
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
 	printf("--prec  double/single           Precision of the axion field simulation (default double)\n");
-	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)\n");
+	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)(not parsed yet)\n");
 
 	printf("--qcd   [float]                 Exponent of topological susceptibility (default 7).\n");
 	printf("--lsize [float]                 Physical size of the system (default 4.0).\n");

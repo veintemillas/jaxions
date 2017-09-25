@@ -25,7 +25,7 @@ int	main (int argc, char *argv[])
 	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
 
 	//--------------------------------------------------
-	//       READING INITIAL CONDITIONS       
+	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
 	FlopCounter *fCount = new FlopCounter;
@@ -33,12 +33,12 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, FIELD_SAXION, LAMBDA_FIXED, CONF_NONE, 0, 0);
+	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, LAMBDA_FIXED, CONF_NONE, 0, 0);
 	readConf(&axion, 0);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
-	//-------------------------------------------------- 
+	//--------------------------------------------------
 
 	double dz = (zFinl - zInit)/((double) nSteps);
 	double delta = sizeL/sizeN;
@@ -50,7 +50,7 @@ int	main (int argc, char *argv[])
 	LogOut("N      =  %d\n",    sizeN);
 	LogOut("Nz     =  %d\n",    sizeZ);
 	LogOut("zGrid  =  %d\n",    zGrid);
-	LogOut("dx     =  %2.5f\n", delta);  
+	LogOut("dx     =  %2.5f\n", delta);
 	LogOut("dz     =  %2.5f\n", dz);
 	LogOut("LL     =  %2.5f\n", LL);
 	LogOut("--------------------------------------------------\n");
@@ -80,7 +80,7 @@ int	main (int argc, char *argv[])
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
-	//--------------------------------------------------  
+	//--------------------------------------------------
 
 	LogOut("--------------------------------------------------\n");
 	LogOut("           STARTING COMPUTATION                   \n");
@@ -138,6 +138,6 @@ int	main (int argc, char *argv[])
 	delete fCount;
 
 	endAxions();
-    
+
 	return 0;
 }
