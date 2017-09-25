@@ -37,9 +37,9 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType fType, LambdaType lType,
+	Scalar::Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
 		       ConfType cType, const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
-		       fieldType(fType), lambdaType(lType), precision(prec), device(dev), lowmem(lowmem)
+		       fieldType(newType), lambdaType(lType), precision(prec), device(dev), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -537,14 +537,14 @@ void	Scalar::exchangeGhosts(FieldIndex fIdx)
 	transferGhosts(fIdx);
 }
 
-void	Scalar::setField (FieldType fType)
+void	Scalar::setField (FieldType newType)
 {
 	if (fieldType == FIELD_WKB) {
 		LogError("Warning: conversion from WKB field not supported");
 		return;
 	}
 
-	switch (fType)
+	switch (newType)
 	{
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
@@ -648,7 +648,7 @@ void	Scalar::setField (FieldType fType)
 			}
 			break;
 	}
-	fieldType = fType;
+	fieldType = newType;
 }
 
 void	Scalar::setFolded (bool foli)
