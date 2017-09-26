@@ -2603,3 +2603,30 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes", nSlb*newLz*dataSize + 78);
 }
+
+void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
+{
+	hid_t	group_id;
+
+	if (commRank() != 0)
+		return;
+
+	LogMsg (VERB_HIGH, "Writing binner metadata to measurement file");
+
+	if (header == false || opened == false)
+	{
+		LogError ("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);		// Group exists, but it shouldn't
+
+	writeAttribute(group_id, &max, "Maximum", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &min, "Minimum", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &N,   "Size",    H5T_NATIVE_HSIZE);
+
+	/*	Close everything		*/
+	H5Gclose (group_id);
+
+	LogMsg (VERB_HIGH, "Metadata written");
+}

@@ -21,4 +21,29 @@
 	void	writePoint	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
 	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName);
+
+
+
+	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
+
+	template<typename cFloat, const size_t N>
+	void	writeBinner	(const Binner<cFloat,N> bins, const char *group, const char *dataName) {
+
+		if (sizeof(cFloat) == 4) {
+			std::array<double,N> data;
+
+			#pragma omp parallel for schedule(static)	// Data conversion, I'm not accepting complex datatypes
+			for (size_t i=0; i<N; i++) {
+				data[i] = bins[i];
+			}
+			writeArray (data.data(), N, group, dataName);
+		} else {
+			writeArray (bins.data(), N, group, dataName);
+		}
+
+		double max = bins.max();
+		double min = bins.min();
+
+		writeBinnerMetadata (max, min, N, group);
+	}
 #endif

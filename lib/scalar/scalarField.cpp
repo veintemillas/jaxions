@@ -131,15 +131,7 @@ const std::complex<float> If(0.,1.);
 			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
 			//this allocates a slightly larger v to host FFTs in place
 			alignAlloc ((void**) &m, mAlign, 2*mBytes);
-			switch (prec) {
-				case FIELD_DOUBLE:
-				v = static_cast<void *>(static_cast<double *>(m) + 2*n2 + n3);
-				break;
-
-				case FIELD_SINGLE:
-				v = static_cast<void *>(static_cast<float  *>(m) + 2*n2 + n3);
-				break;
-			}
+			v = static_cast<void *>(static_cast<char *>(m) + fSize*(2*n2 + n3));
 			break;
 
 		default:
@@ -245,7 +237,16 @@ const std::complex<float> If(0.,1.);
 				exit(1);
 			}
 
-			v_d = static_cast<void *>(static_cast<(prec == FIELD_DOUBLE) ? double * : float *>(m_d) + 2*n2 + n3);
+			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*(2*n2 + n3));
+/*			switch (prec) {
+				case FIELD_DOUBLE:
+				v_d = static_cast<void *>(static_cast<double *>(m_d) + 2*n2 + n3);
+				break;
+
+				case FIELD_SINGLE:
+				v_d = static_cast<void *>(static_cast<float  *>(m_d) + 2*n2 + n3);
+				break;
+			}*/
 		}
 
 		if (!lowmem || fieldType == FIELD_AXION)
