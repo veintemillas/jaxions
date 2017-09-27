@@ -110,7 +110,7 @@ if os.path.exists('./sample.txt'):
     if l10 >1 :
         plt.plot(ztab1,VThtab1,linewidth=0.2,marker='.',markersize=0.1)
     if axiondata:
-        plt.plot(ztab2,VThtab2,linewidth=0.2)
+        plt.plot(ztab2,VThtab2,linewidth=0.2,marker='.',markersize=0.1)
     plt.ylabel(r'$\rho/v-1$')
     plt.xlabel(r'$\tau$')
     plt.title(ups)
