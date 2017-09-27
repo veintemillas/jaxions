@@ -71,6 +71,7 @@ void	SpecBin::fillBins	() {
 			int kx = idx - kz*Lx;
 			int ky = kz/Tz;
 
+			// TODO Saxion WRONG, fcc ---> 1 para SAXION
 			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
 			double fcc = 2.0 ;
@@ -252,7 +253,7 @@ void	SpecBin::nRun	() {
 
 				case	FIELD_AXION:
 				{
-					auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
+					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 
 					char *mO = static_cast<char *>(field->mCpu())  + field->Surf()*field->DataSize();
 					char *vO = static_cast<char *>(field->vCpu());
@@ -269,7 +270,6 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
 
-					//myPlan.run(FFT_BCK);
 					myPlan.run(FFT_FWD);
 
 					if (spec)
@@ -323,7 +323,7 @@ void	SpecBin::nRun	() {
 
 				case	FIELD_AXION:
 				{
-					auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
+					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 
 					double *mO = static_cast<double *>(field->mCpu())  + field->Surf();
 					double *vO = static_cast<double *>(field->vCpu());
@@ -373,7 +373,6 @@ void	SpecBin::nRun	() {
 }
 
 void	SpecBin::pRun	() {
-	auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
 
 	size_t dataLine = field->DataSize()*Ly;
 	size_t Sf	= field->Surf();
@@ -389,9 +388,13 @@ void	SpecBin::pRun	() {
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
 
-	// correction!
-	//myPlan.run(FFT_BCK);
-	myPlan.run(FFT_FWD);
+	if (field->Field() == FIELD_SAXION) {
+		auto &myPlan = AxionFFT::fetchPlan("pSpecSxP");
+		myPlan.run(FFT_FWD);
+	} else {
+		auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+		myPlan.run(FFT_FWD);
+	}
 
 	switch (fPrec) {
 		case	FIELD_SINGLE:
