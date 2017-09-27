@@ -260,6 +260,16 @@ int	main (int argc, char *argv[])
 	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n", llconstantZ2, msa);
 	LogOut("--------------------------------------------------\n");
 
+
+	createMeas(axion, index);
+			writeMapHdf5s (axion,index);
+							maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+							writeArray(bA, 100, "/bins", "theta");
+							writeArray(bA+100, 100, "/bins", "rho");
+							writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+	destroyMeas();
+
+
 	LogOut ("Start redshift loop\n\n");
 	fflush (stdout);
 
@@ -344,11 +354,18 @@ int	main (int argc, char *argv[])
 							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, saskia);
 										writeEnergy(axion, eRes);
 								// BIN THETA
-										Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
-										thBin.run();
-										//writeArray(thBin.data(), 100, "/bins", "testTh");
-										writeBinner(thBin, "/bins", "testTh");
-								destroyMeas();
+														// new program to be adapted
+
+														//Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+														//thBin.run();
+																//writeArray(thBin.data(), 100, "/bins", "testTh");
+														//writeBinner(thBin, "/bins", "testTh");
+														// old shit still works
+														maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+														writeArray(bA, 100, "/bins", "theta");
+														writeArray(bA+100, 100, "/bins", "rho");
+														writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+										destroyMeas();
 
 					// TRANSITION TO THETA
 					LogOut("--------------------------------------------------\n");
@@ -416,6 +433,11 @@ int	main (int argc, char *argv[])
 
 			if ( axion->Field() == FIELD_SAXION)
 			{
+					//THETA
+						maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+						writeArray(bA, 100, "/bins", "theta");
+						writeArray(bA+100, 100, "/bins", "rho");
+						writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 					//ENERGY
 						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, saskia);
 					//DOMAIN WALL KILLER NUMBER
@@ -436,10 +458,12 @@ int	main (int argc, char *argv[])
 			{
 				//temp comment
 				//BIN THETA
-				//Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
-				//thBin2.run();
+				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+				thBin2.run();
 				//writeArray(thBin2.data(), 100, "/bins", "testTh");
-				// maximumtheta = thBin2.t1	???? ;
+				writeBinner(thBin2, "/bins", "testTh");
+				maximumtheta = max(abs(thBin2.min()),thBin2.max());
+
 				LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
 
