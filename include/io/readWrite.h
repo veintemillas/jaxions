@@ -27,7 +27,7 @@
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
 	template<typename cFloat, const size_t N>
-	void	writeBinner	(const Binner<cFloat,N> bins, const char *group, const char *dataName) {
+	void	writeBinner	(Binner<cFloat,N> bins, const char *group, const char *dataName) {
 
 		if (sizeof(cFloat) == 4) {
 			std::array<double,N> data;

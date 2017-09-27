@@ -346,7 +346,8 @@ int	main (int argc, char *argv[])
 								// BIN THETA
 										Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
 										thBin.run();
-										writeArray(thBin.data(), 100, "/bins", "testTh");
+										//writeArray(thBin.data(), 100, "/bins", "testTh");
+										writeBinner(thBin, "/bins", "testTh");
 								destroyMeas();
 
 					// TRANSITION TO THETA
@@ -372,7 +373,8 @@ int	main (int argc, char *argv[])
 								// BIN THETA
 										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
 										thBin2.run();
-										writeArray(thBin2.data(), 100, "/bins", "testTh");
+										//writeArray(thBin2.data(), 100, "/bins", "testTh");
+										writeBinner(thBin2, "/bins", "testTh");
 								destroyMeas();
 
 
@@ -537,7 +539,8 @@ int	main (int argc, char *argv[])
 		double zNow = *axion->zV();
 		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
 		thBin2.run();
-		writeArray(thBin2.data(), 100, "/bins", "testTh");
+		//writeArray(thBin2.data(), 100, "/bins", "testTh");
+		writeBinner(thBin2, "/bins", "testTh");
 
 		/*	Fin test	*/
 
