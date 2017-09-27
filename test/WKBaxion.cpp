@@ -27,6 +27,8 @@ int	main (int argc, char *argv[])
 	double zendWKB = 10. ;
 	initAxions(argc, argv);
 
+	if (nSteps==0)
+	return 0 ;
 
 	//--------------------------------------------------
 	//       AUX STUFF
@@ -76,11 +78,6 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
-
-	/* avoid it being parsed wrong*/
-	LogOut ("parsing a field  %d ...", fTypeP);
-	fTypeP = FIELD_AXION ;
-	LogOut ("but now we set fType= %d \n", fTypeP);
 
 	Scalar *axion;
 
@@ -137,7 +134,6 @@ int	main (int argc, char *argv[])
 	//       WKB
 	//--------------------------------------------------
 
-
 	WKB wonka(axion, axion2);
 
 	// float *mm = static_cast<float *> (axion->mCpu())+axion->Surf();
@@ -164,7 +160,7 @@ int	main (int argc, char *argv[])
 
 	LogOut("from z1=%f to z2=%f in %d time steps\n\n",z_now,zFinl,nSteps);
 
-	for (int i = 0; i < nSteps+1; i++)
+	for (int i = 1; i < nSteps+1; i++)
 	{
 		index++			;
 
@@ -193,6 +189,10 @@ int	main (int argc, char *argv[])
 								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 								LogOut ("2D ");
 								writeMapHdf5s(axion,sliceprint);
+								// Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+								// thBin.run();
+								// //writeArray(thBin.data(), 100, "/bins", "testTh");
+								// writeBinner(thBin, "/bins", "testTh");
 								LogOut ("Done!\n");
 		destroyMeas();
 
