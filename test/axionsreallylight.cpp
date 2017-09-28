@@ -98,9 +98,11 @@ int	main (int argc, char *argv[])
 	double *bA = static_cast<double *> (binarray);
 
 	complex<float> *mC = static_cast<complex<float> *> (axion->mCpu());
-	complex<float> *vC = static_cast<complex<float> *> (axion->mCpu());
+	complex<float> *vC = static_cast<complex<float> *> (axion->vCpu());
+	//Pointers
 	float *m = static_cast<float *> (axion->mCpu());
-	float *v = static_cast<float *> (axion->vCpu());
+	float *v = static_cast<float *> (axion->mCpu())+axion->eSize();
+
 
 	FILE *file_samp ;
 	file_samp = NULL;
@@ -214,6 +216,7 @@ int	main (int argc, char *argv[])
 		index = fIndex;
 
 	double saskia;
+	double shiftz;
 
 //	--------------------------------------------------
 //	--------------------------------------------------
@@ -257,7 +260,7 @@ int	main (int argc, char *argv[])
 	LogOut("dx     =  %2.5f\n", delta);
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
 	LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa);
-	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n", llconstantZ2, msa);
+	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n");
 	LogOut("--------------------------------------------------\n");
 
 
@@ -297,19 +300,6 @@ int	main (int argc, char *argv[])
 
 			z_now = (*axion->zV());
 
-			if (commRank() == 0 && sPrec == FIELD_SINGLE) {
-					if (axion->Field() == FIELD_SAXION) {
-						// LAMBDA_Z2 MODE assumed!
-							llphys = llconstantZ2/(z_now*z_now);
-							saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
-							fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axionmass(z_now,nQcd,zthres, zrestore), llphys,
-							mC[idxprint + S0].real(), mC[idxprint + S0].imag(), vC[idxprint].real(), vC[idxprint].imag(), nstrings_global, maximumtheta, saskia);
-					} else {
-							fprintf(file_samp,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
-							m[idxprint + S0], v[idxprint], maximumtheta);
-						} fflush(file_samp);}
-
-
 			old = std::chrono::high_resolution_clock::now();
 
 
@@ -324,6 +314,18 @@ int	main (int argc, char *argv[])
 			//--------------------------------------------------
 
 				propagate (axion, dzaux);
+
+				if (commRank() == 0 && sPrec == FIELD_SINGLE) {
+						if (axion->Field() == FIELD_SAXION) {
+							// LAMBDA_Z2 MODE assumed!
+								llphys = llconstantZ2/(z_now*z_now);
+								saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+								fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axionmass(z_now,nQcd,zthres, zrestore), llphys,
+								mC[idxprint + S0].real(), mC[idxprint + S0].imag(), vC[idxprint].real(), vC[idxprint].imag(), nstrings_global, maximumtheta, saskia);
+						} else {
+								fprintf(file_samp,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
+								m[idxprint + S0], v[idxprint], maximumtheta);
+							} fflush(file_samp);}
 
 			if (axion->Field() == FIELD_SAXION)
 			{
@@ -345,13 +347,14 @@ int	main (int argc, char *argv[])
 
 					z_now = (*axion->zV());
 					llphys = llconstantZ2/(z_now*z_now); //physical value
-					saskia = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+					saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+					double shiftz = z_now * saskia;
 
 								createMeas(axion, 10000);
 								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 								  	writeMapHdf5s (axion,sliceprint);
 								//ENERGY
-							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, saskia);
+							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
 										writeEnergy(axion, eRes);
 								// BIN THETA
 														// new program to be adapted
@@ -371,13 +374,14 @@ int	main (int argc, char *argv[])
 					LogOut("--------------------------------------------------\n");
 					LogOut("              TRANSITION TO THETA \n");
 					LogOut("              shift = %f 			\n", saskia);
-					cmplxToTheta (axion, saskia);
+					cmplxToTheta (axion, shiftz);
 
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
 					munge(UNFOLD_ALL);
 					axion->mendtheta();
 					munge(FOLD_ALL);
+
 
 								//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 
@@ -427,7 +431,7 @@ int	main (int argc, char *argv[])
 			// saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			z_now = (*axion->zV());
 			llphys = llconstantZ2/(z_now*z_now); //physical value
-			saskia = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+			shiftz = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 
 			createMeas(axion, index);
 
@@ -439,7 +443,7 @@ int	main (int argc, char *argv[])
 						writeArray(bA+100, 100, "/bins", "rho");
 						writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 					//ENERGY
-						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, saskia);
+						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
 					//DOMAIN WALL KILLER NUMBER
 						double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*llphys);
 						if (axion->Lambda() == LAMBDA_Z2 )

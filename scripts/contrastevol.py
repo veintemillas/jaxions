@@ -44,7 +44,7 @@ for meas in fileMeas:
 # LOOK FOR ARGUMENTS OF THE FUNCTION TO COMPLETE THE SETS PLOTTED
 if len(sys.argv) == 1:
     mylist = [mylist[0],mylist[-1]]
-else:    
+else:
     for input in sys.argv[1:]:
         if input == 'all':
             sel = False
@@ -99,8 +99,8 @@ for meas in mylist:
     sizeN = f.attrs[u'Size']
     N3 = sizeN*sizeN*sizeN
 
-    numBIN = len(f['bins/cont'])
-    tc = np.reshape(f['bins/cont'],(numBIN))
+    numBIN = len(f['bins/cont/data'])
+    tc = np.reshape(f['bins/cont/data'],(numBIN))
     avdens, maxcon, logmaxcon = tc[0:3]
     bino = tc[3:]
     numbins=numBIN-3
