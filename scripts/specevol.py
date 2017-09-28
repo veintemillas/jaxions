@@ -87,7 +87,7 @@ if not os.path.exists('./pics'):
 
 # CALCULATE NUMBER OF MODES
 n2=int(sizeN/2)
-powmax = f['nSpectrum/sK'].size
+powmax = f['nSpectrum/sK/data/'].size
 ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
 
 def funi(x,a,b):
@@ -133,9 +133,9 @@ for meas in mylist:
     #
     # plt.loglog(ktab,(ktab**3)*av/(math.pi**2),label=r'$\tau$={%.2f}'%(time))
 
-    larvaK = np.reshape(f['nSpectrum/sK'],(powmax))
-    larvaG = np.reshape(f['nSpectrum/sG'],(powmax))
-    larvaV = np.reshape(f['nSpectrum/sV'],(powmax))
+    larvaK = np.reshape(f['nSpectrum/sK/data/'],(powmax))
+    larvaG = np.reshape(f['nSpectrum/sG/data/'],(powmax))
+    larvaV = np.reshape(f['nSpectrum/sV/data/'],(powmax))
 
     #OCUPATION NUMBER is more interesting D.9 of notes
     nK = larvaK/nmodes2

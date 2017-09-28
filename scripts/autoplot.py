@@ -278,19 +278,19 @@ an_cont = False
 an_nspec = False
 an_pspec = False
 
-for item in list(f):
-    if item == 'bins':
-        print('contrast bin posible')
-        an_cont = True
-    if item == 'nSpectrum':
-        print('nSpec bin posible')
-        an_nspec = True
-    if item == 'pSpectrum':
-        print('pSpec bin posible')
-        an_pspec = True
+
+an_cont  = 'bins/cont' in f
+an_nspec = 'nSpectrum' in f
+an_pspec = 'pSpectrum' in f
+if an_cont:
+    print('nSpec bin posible')
+if an_pspec:
+    print('pSpec bin posible')
+if an_cont:
+    print('contrast bin posible')
 
 if an_cont:
-    tc = np.reshape(f['bins/cont'],(10000))
+    tc = np.reshape(f['bins/cont/data'],(10000))
     avdens, maxcon, logmaxcon = tc[0:3]
     bino = tc[3:]
     numbins=10000-3
@@ -359,12 +359,12 @@ if an_nspec:
 
     f = h5py.File('./m/'+fileMeas[-1], 'r')
     time = f.attrs[u'z']
-    powmax = f['nSpectrum/sK'].size
+    powmax = f['nSpectrum/sK/data'].size
     ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
 
-    larvaK = np.reshape(f['nSpectrum/sK'],(powmax))
-    larvaG = np.reshape(f['nSpectrum/sG'],(powmax))
-    larvaV = np.reshape(f['nSpectrum/sV'],(powmax))
+    larvaK = np.reshape(f['nSpectrum/sK/data'],(powmax))
+    larvaG = np.reshape(f['nSpectrum/sG/data'],(powmax))
+    larvaV = np.reshape(f['nSpectrum/sV/data'],(powmax))
 
     def funi(x,a,b):
         return a + b*x
@@ -422,10 +422,10 @@ if an_nspec:
 
 # POWER SPECTRUM
 if an_pspec:
-    powmax2 = f['pSpectrum/sP'].size
+    powmax2 = f['pSpectrum/sP/data'].size
     ktab2 = (0.5+np.arange(powmax2))*2*math.pi/sizeL
     f['pSpectrum/sP'] , powmax2 , (sizeN/2)*math.sqrt(3)
-    larvaP = np.reshape(f['pSpectrum/sP'],(powmax2))
+    larvaP = np.reshape(f['pSpectrum/sP/data'],(powmax2))
     if powmax2 == powmax:
         av = larvaP/nmodes2
     else :

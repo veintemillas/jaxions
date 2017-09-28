@@ -1082,7 +1082,7 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 
 void	writeArray (double *aData, size_t aSize, const char *group, const char *dataName)
 {
-	hid_t	group_id, dataSpace, sSpace, dataSet;
+	hid_t	group_id, base_id, dataSpace, sSpace, dataSet;
 	hsize_t dims[1] = { aSize };
 
 	size_t	dataSize;
@@ -1107,16 +1107,30 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 	auto status = H5Lexists (meas_id, group, H5P_DEFAULT);	// Create group if it doesn't exists
 
 	if (!status)
-		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		base_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
-		if (status > 0) {
-			group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);		// Group exists, but it shouldn't
-			LogMsg(VERB_NORMAL, "Warning: group %s exists!", group);	// Since this is weird, log it
-		} else {
+		if (status > 0)
+			base_id = H5Gopen2(meas_id, group, H5P_DEFAULT);		// Group exists
+		else {
 			LogError ("Error: can't check whether group %s exists", group);
 			return;
 		}
 	}
+
+	status = H5Lexists (base_id, dataName, H5P_DEFAULT);	// Create group if it doesn't exists
+
+	if (!status)
+		group_id = H5Gcreate2(base_id, dataName, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(base_id, dataName, H5P_DEFAULT);		// Group exists, but it shouldn't
+			LogMsg(VERB_NORMAL, "Warning: group %s exists!", dataName);	// Since this is weird, log it
+		} else {
+			LogError ("Error: can't check whether group %s exists", dataName);
+			return;
+		}
+	}
+/*	disableErrorStack();
 /*	disableErrorStack();
 
 	if (H5Gget_objinfo (meas_id, group, 0, NULL) < 0)	// Create group if it doesn't exists
@@ -1128,7 +1142,7 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 */
 	/*	Create dataset	*/
 	dataSpace = H5Screate_simple(1, dims, NULL);
-	dataSet   = H5Dcreate(group_id, dataName, H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	dataSet   = H5Dcreate(group_id, "data", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	sSpace	  = H5Dget_space (dataSet);
 
 	/*	Write spectrum data	*/
@@ -1143,6 +1157,7 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 	H5Dclose (dataSet);
 	H5Sclose (dataSpace);
 	H5Gclose (group_id);
+	H5Gclose (base_id);
 
 	prof.stop();
 	prof.add(std::string("Write array"), 0, 1e-9*(aSize*8));
@@ -2619,11 +2634,13 @@ void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 		return;
 	}
 
-	group_id = H5Gopen2(meas_id, group, H5P_DEFAULT);		// Group exists, but it shouldn't
-
-	writeAttribute(group_id, &max, "Maximum", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &min, "Minimum", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &N,   "Size",    H5T_NATIVE_HSIZE);
+	if ((group_id = H5Gopen2(meas_id, group, H5P_DEFAULT)) < 0)
+		LogError ("Error: couldn't open group %s in measurement file.\n", group);
+	else {
+		writeAttribute(group_id, &max, "Maximum", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &min, "Minimum", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &N,   "Size",    H5T_NATIVE_HSIZE);
+	}
 
 	/*	Close everything		*/
 	H5Gclose (group_id);

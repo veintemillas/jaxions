@@ -56,8 +56,6 @@ void	SpecBin::fillBins	() {
 			break;
 	}
 
-	const double fc   = ((fType == FIELD_SAXION) ? 1.0 : 2.0);
-
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
@@ -71,6 +69,7 @@ void	SpecBin::fillBins	() {
 			int kx = idx - kz*Lx;
 			int ky = kz/Tz;
 
+			// TODO Saxion WRONG, fcc ---> 1 para SAXION
 			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
 			double fcc = 2.0 ;
@@ -99,8 +98,17 @@ void	SpecBin::fillBins	() {
 
 			double		w  = sqrt(k2 + mass);
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx+hSf]);
-			//double		m2 = fc*m*m;
-			double		m2 = fcc*m*m;
+			double		m2 = 0.;
+
+			if (fType == FIELD_AXION) {
+				if ((kx == 0) || (kx == hLx - 1))
+					m2 = m*m;
+				else
+					m2 = 2.*m*m;
+			} else {
+				m2 = m*m;
+			}
+
 			double		mw = m2/w;
 
 			switch	(sType) {
@@ -252,7 +260,7 @@ void	SpecBin::nRun	() {
 
 				case	FIELD_AXION:
 				{
-					auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
+					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 
 					char *mO = static_cast<char *>(field->mCpu())  + field->Surf()*field->DataSize();
 					char *vO = static_cast<char *>(field->vCpu());
@@ -269,7 +277,6 @@ void	SpecBin::nRun	() {
 						memcpy	(mF+fOff, mO+oOff, dataLine);
 					}
 
-					//myPlan.run(FFT_BCK);
 					myPlan.run(FFT_FWD);
 
 					if (spec)
@@ -323,7 +330,7 @@ void	SpecBin::nRun	() {
 
 				case	FIELD_AXION:
 				{
-					auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
+					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 
 					double *mO = static_cast<double *>(field->mCpu())  + field->Surf();
 					double *vO = static_cast<double *>(field->vCpu());
@@ -373,7 +380,6 @@ void	SpecBin::nRun	() {
 }
 
 void	SpecBin::pRun	() {
-	auto &myPlan = AxionFFT::fetchPlan("pSpectrum_ax");
 
 	size_t dataLine = field->DataSize()*Ly;
 	size_t Sf	= field->Surf();
@@ -389,9 +395,13 @@ void	SpecBin::pRun	() {
 		memcpy	(mA+fOff, mA+oOff, dataLine);
 	}
 
-	// correction!
-	//myPlan.run(FFT_BCK);
-	myPlan.run(FFT_FWD);
+	if (field->Field() == FIELD_SAXION) {
+		auto &myPlan = AxionFFT::fetchPlan("pSpecSxP");
+		myPlan.run(FFT_FWD);
+	} else {
+		auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+		myPlan.run(FFT_FWD);
+	}
 
 	switch (fPrec) {
 		case	FIELD_SINGLE:

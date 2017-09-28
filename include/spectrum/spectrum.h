@@ -27,8 +27,8 @@
 		void			fillCosTable ();
 
 		const bool		spec;
-		FieldPrecision		fPrec;
-		FieldType		fType;
+		const FieldPrecision	fPrec;
+		const FieldType		fType;
 
 		public:
 

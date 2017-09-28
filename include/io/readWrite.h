@@ -44,6 +44,10 @@
 		double max = bins.max();
 		double min = bins.min();
 
-		writeBinnerMetadata (max, min, N, group);
+		std::string	baseName(group);
+
+		baseName += std::string("/") + std::string(dataName);
+
+		writeBinnerMetadata (max, min, N, baseName.c_str());
 	}
 #endif
