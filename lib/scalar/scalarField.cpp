@@ -281,17 +281,16 @@ const std::complex<float> If(0.,1.);
 			AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
 		}
 
+		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWD, "pSpecAx");		// Spectrum for axion
+
 		if (fieldType == FIELD_SAXION) {
 
-			AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION,  FFT_FWD, "pSpecAx");		// Spectrum for axion after the transition
 
 			if (!lowmem) {
-				AxionFFT::initPlan (this, FFT_CtoC_MtoM2,	  FFT_FWD, "nSpecSxM");	// Only possible if lowmem == false
-				AxionFFT::initPlan (this, FFT_CtoC_VtoM2,	  FFT_FWD, "nSpecSxV");
-				AxionFFT::initPlan (this, FFT_RtoC_M2toM2_SAXION, FFT_FWD, "pSpecSxP");
+				AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWD, "nSpecSxM");	// Only possible if lowmem == false
+				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD, "nSpecSxV");
+				AxionFFT::initPlan (this, FFT_PSPEC_SX,   FFT_FWD, "pSpecSxP");
 			}
-		} else	{
-			AxionFFT::initPlan (this, FFT_RtoC_M2toM2_AXION, FFT_FWD, "pSpecAx");
 		}
 
 

@@ -56,8 +56,6 @@ void	SpecBin::fillBins	() {
 			break;
 	}
 
-	const double fc   = ((fType == FIELD_SAXION) ? 1.0 : 2.0);
-
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
@@ -100,8 +98,17 @@ void	SpecBin::fillBins	() {
 
 			double		w  = sqrt(k2 + mass);
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx+hSf]);
-			//double		m2 = fc*m*m;
-			double		m2 = fcc*m*m;
+			double		m2 = 0.;
+
+			if (fType == FIELD_AXION) {
+				if ((kx == 0) || (kx == hLx - 1))
+					m2 = m*m;
+				else
+					m2 = 2.*m*m;
+			} else {
+				m2 = m*m;
+			}
+
 			double		mw = m2/w;
 
 			switch	(sType) {
