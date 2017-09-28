@@ -83,7 +83,7 @@ if not os.path.exists('./pics'):
 
 # CALCULATE NUMBER OF MODES
 n2=int(sizeN/2)
-powmax = f['pSpectrum/sP'].size
+powmax = f['pSpectrum/sP/data'].size
 ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
 
 def funi(x,a,b):
@@ -122,7 +122,7 @@ for meas in mylist:
     f = h5py.File('./m/'+ meas, 'r')
     time = f.attrs[u'z']
 
-    larvaP = np.reshape(f['pSpectrum/sP'],(powmax))
+    larvaP = np.reshape(f['pSpectrum/sP/data'],(powmax))
     av = larvaP/nmodes2
 
     plt.loglog(ktab,(ktab**3)*av/(math.pi**2),label=r'$\tau$={%.2f}'%(time))
