@@ -1991,7 +1991,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
 	LogMsg (VERB_HIGH, "Function thetaDIST has been deprecated, use the Binner class instead");
 	double thetamaxi = maxtheta();
-	printMpi("MAXTHETA=%f\n",thetamaxi);fflush(stdout);
+	LogMsg (VERB_HIGH, "MAXTHETA=%f\n",thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
 
 	double n2p = numbins/thetamaxi;
