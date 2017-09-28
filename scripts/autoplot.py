@@ -85,9 +85,9 @@ if os.path.exists('./sample.txt'):
     # THETA EVOLUTION
     plt.clf()
     if l10 >1 :
-        plt.plot(ztab1,Thtab1)
+        plt.plot(ztab1,Thtab1,linewidth=0.1,marker='.',markersize=0.1)
     if axiondata:
-        plt.plot(ztab2,Thtab2)
+        plt.plot(ztab2,Thtab2,linewidth=0.1,marker='.',markersize=0.1)
     plt.ylim([-3.15,3.15])
     plt.ylabel(r'$\theta$')
     plt.xlabel(r'$\tau$')
@@ -98,8 +98,8 @@ if os.path.exists('./sample.txt'):
     # RHO EVOLUTION
     plt.clf()
     if l10 >1 :
-        plt.plot(ztab1,Rhtab1-1-arrayS[:,9],linewidth=0.7)
-        plt.plot(ztab1,Rhtab1-1,linewidth=0.1)
+        plt.plot(ztab1,Rhtab1-1-arrayS[:,9],linewidth=0.1,marker='.',markersize=0.1)
+        plt.plot(ztab1,Rhtab1-1,linewidth=0.1,marker='.',markersize=0.1)
         plt.xlabel(r'$\rho/v-1$')
         plt.xlabel(r'$\tau$')
         plt.savefig("pics/point_rho.pdf")
@@ -108,9 +108,9 @@ if os.path.exists('./sample.txt'):
     # THETA VELOCITY EVOLUTION
     plt.clf()
     if l10 >1 :
-        plt.plot(ztab1,VThtab1,linewidth=0.2,marker='.',markersize=0.1)
+        plt.plot(ztab1,VThtab1,linewidth=0.1,marker='.',markersize=0.1)
     if axiondata:
-        plt.plot(ztab2,VThtab2,linewidth=0.2,marker='.',markersize=0.1)
+        plt.plot(ztab2,VThtab2,linewidth=0.1,marker='.',markersize=0.1)
     plt.ylabel(r'$\rho/v-1$')
     plt.xlabel(r'$\tau$')
     plt.title(ups)

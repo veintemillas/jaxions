@@ -50,6 +50,14 @@ class	Plot3D():
 	def	__init__(self):
 		fileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 
+		cucu = []
+		print('files with strings? ... ',end='')
+		for morsa in fileMeas:
+			fileHdf5 = h5py.File(morsa, "r")
+			if "/string/data" in fileHdf5:
+				cucu.append(morsa)
+		print('from ', cucu[0], ' to ', cucu[-1])
+		
 		self.allData = []
 
 		self.step  = 1
@@ -74,8 +82,8 @@ class	Plot3D():
 			self.size = len(self.allData)
 		else:
 			print("Reading measurement files")
-			fileHdf5 = h5py.File(fileMeas[0], "r")
 
+			fileHdf5 = h5py.File(fileMeas[0], "r")
 			self.Lx = fileHdf5["/"].attrs.get("Size")
 			self.Ly = fileHdf5["/"].attrs.get("Size")
 			self.Lz = fileHdf5["/"].attrs.get("Depth")
@@ -104,9 +112,10 @@ class	Plot3D():
 				if "/string/data" in fileHdf5:
 					if noWalls == False:
 						strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
+						print(meas + ' + walls')
 					else:
 						strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 63)
-
+						print(meas + ' nowalls')
 					z, y, x = strData.nonzero()
 
 					pos = np.array([z,y,x]).transpose()
@@ -123,6 +132,7 @@ class	Plot3D():
 			pickle.dump(Lz, fp, protocol=4)
 			pickle.dump(self.allData, fp, protocol=4)
 			fp.close()
+		print('data loaded')
 
 		pg.setConfigOptions(antialias=True)
 
@@ -158,6 +168,7 @@ class	Plot3D():
 		self.plt.translate(-1.0,-1.0,-1.0)
 
 		self.baseKeyPress = self.view.keyPressEvent
+		print('shot!')
 
 	def	update(self):
 		data = self.allData[self.i]
