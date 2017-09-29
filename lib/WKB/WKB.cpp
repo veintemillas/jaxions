@@ -56,60 +56,161 @@ namespace AxionWKB {
 			(*munge)(UNFOLD_ALL);
 		}
 
-		// THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
-		// PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
-		// THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
 
-		LogMsg(VERB_NORMAL, "Planning in axion2 ... ");
-		AxionFFT::initPlan (tmp, FFT_RtoC_MtoM_WKB,  FFT_FWD, "WKB m");
-		AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWD, "WKB v");
-		LogMsg(VERB_NORMAL, "done!\n");
 
-		// pointers for copying 1->2
-		char *mOr = static_cast<char *>(field->mCpu()) + field->Surf()*field->DataSize();
-		char *vOr = static_cast<char *>(field->vCpu());
+		if (field == tmp)
+			{
+			// THIS 1-field CONSTRUCTOR does:
+			 	// copies m to m2 padded
+				// plans FB in m r2C
+				// returns m2 to m padded
+				// copies v into m2 padded
+				// plans FB in v r2C
+				// returns m2 to v padded
+				// FFT forward in m and v
+				// WKB evolution in m and v
+				// FFT backward
+				// unpads in place
 
-		char *mDt = static_cast<char *>(tmp->mCpu());
-		char *vDt = static_cast<char *>(tmp->vCpu());
+					// simpler alternative?
 
-					// // input=output check
-					// float	*mIno  = static_cast<float *>(field->mCpu()) + field->Surf();
-					// float	*vIno  = static_cast<float *>(field->vCpu()) ;
-					// LogOut ("\n  --> points %e %e %e !\n ", mIno[0],mIno[1],mIno[2]);
-					// LogOut ("  --> points %e %e %e !\n\n", mIno[field->Size()-1],mIno[field->Size()-2],mIno[field->Size()-3]);
-					// LogOut ("  --> voints %e %e %e !\n ",  vIno[0],vIno[1],vIno[2]);
-					// LogOut ("  --> voints %e %e %e !\n\n", vIno[field->Size()-1],vIno[field->Size()-2],vIno[field->Size()-3]);
+					// plans r2c in place FWDBCK in m2
+					// copies m into m2 padded (otherwise info is destroyed)
+					// FFTS and return
 
-		// note Lz can be different from n1 if running MPI
-		size_t dataLine = field->DataSize()*Ly;
+				LogMsg(VERB_NORMAL, "WKB in self-destruction mode!\n");
 
-		LogMsg(VERB_NORMAL, "copying 1->2 ");
-		//Copy m,v -> m2,v2 with padding
-		#pragma omp parallel for schedule(static)
-		for (int sl=0; sl<Sm; sl++) {
-			auto	oOff = sl*field->DataSize()*Ly;
-			auto	fOff = sl*field->DataSize()*(Ly+2);
-			memcpy	(mDt+fOff, mOr+oOff, dataLine);
-			memcpy	(vDt+fOff, vOr+oOff, dataLine);
-		}
-		LogMsg(VERB_NORMAL, "done!\n");
+				char *mOr = static_cast<char *>(field->mCpu()) + field->Surf()*field->DataSize();
+				char *vOr = static_cast<char *>(field->vCpu());
 
-		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
-		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
+				char *mDt = static_cast<char *>(field->mCpu());
+				char *vDt = static_cast<char *>(field->vCpu());     /*note that it is the same*/
 
-		LogMsg(VERB_NORMAL," FFTWing AXION2 m inplace ... ");
-		myPlanM.run(FFT_FWD);
-		LogOut ("done!!\n");
+				char *m2 = static_cast<char *>(field->m2Cpu());
 
-		LogMsg(VERB_NORMAL," FFTWing AXION2 v inplace ... ");
-		myPlanV.run(FFT_FWD);
-		LogMsg(VERB_NORMAL,"done!!\n ");
+				const size_t	dataLine = field->DataSize()*Ly;
+				const size_t	padLine  = field->DataSize()*(Ly+2);
 
-		LogMsg(VERB_NORMAL,"Planning IN axion1 m2 ");
-		AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
-		LogMsg(VERB_NORMAL,"done!!\n");
+				LogMsg(VERB_NORMAL, "copying m -> m2 ");
+				//Copy m -> m2 with padding
+				#pragma omp parallel for schedule(static)
+				for (int sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*field->DataSize()*Ly;
+					auto	fOff = sl*field->DataSize()*(Ly+2);
+					memcpy	(m2+fOff, mOr+oOff, dataLine);
+				}
+				LogMsg(VERB_NORMAL, "done!\n");
 
-		LogOut ("\n\n      - - ->   ready to WKB! \n\n");
+							LogMsg(VERB_NORMAL, "Planning in m ... ");
+							AxionFFT::initPlan (field, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "WKB m");
+							LogMsg(VERB_NORMAL, "done!\n");
+
+									LogMsg(VERB_NORMAL, "copying m2 -> m ");
+									//Copy m2 -> m with padding
+									#pragma omp parallel for schedule(static)
+									for (int sl=0; sl<Sm; sl++) {
+										auto	fOff = sl*field->DataSize()*(Ly+2);
+										memcpy	(mDt+fOff, m2+fOff, dataLine);
+									}
+									LogMsg(VERB_NORMAL, "done!\n");
+
+				LogMsg(VERB_NORMAL, "copying v -> m2 ");
+				//Copy m -> m2 with padding
+				#pragma omp parallel for schedule(static)
+				for (int sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*field->DataSize()*Ly;
+					auto	fOff = sl*field->DataSize()*(Ly+2);
+					memcpy	(m2+fOff, vOr+oOff, dataLine);
+				}
+				LogMsg(VERB_NORMAL, "done!\n");
+
+							LogMsg(VERB_NORMAL, "Planning in v ... ");
+							AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "WKB v");
+							LogMsg(VERB_NORMAL, "done!\n");
+
+									LogMsg(VERB_NORMAL, "copying m2 -> v ");
+									//Copy m2 -> m with padding
+									#pragma omp parallel for schedule(static)
+									for (int sl=0; sl<Sm; sl++) {
+										auto	fOff = sl*field->DataSize()*(Ly+2);
+										memcpy	(vDt+fOff, m2+fOff, dataLine);
+									}
+									LogMsg(VERB_NORMAL, "done!\n");
+
+				auto &myPlanM = AxionFFT::fetchPlan("WKB m");
+				auto &myPlanV = AxionFFT::fetchPlan("WKB v");
+
+				LogMsg(VERB_NORMAL," FFTWing AXION m inplace ... ");
+				myPlanM.run(FFT_FWD);
+				LogOut ("done!!\n");
+
+				LogMsg(VERB_NORMAL," FFTWing AXION v inplace ... ");
+				myPlanV.run(FFT_FWD);
+				LogMsg(VERB_NORMAL,"done!!\n ");
+
+				LogOut ("\n\n      - - ->   ready to WKB! \n\n");
+
+			}
+			else
+			{
+				// THIS CONSTRUCTOR COPIES M1, V1 INTO M2, V2 OF AN AXION 2 AND COMPUTES FFT INPLACE TRASPOSED_OUT
+				// PREPARES THE FFT IN AXION2 TO BUILD THE FIELD AT ANY OTHER TIME
+				// THIS IS DONE WITH THE FUNCITONS DEFINED IN WKB.h
+
+				LogMsg(VERB_NORMAL, "Planning in axion2 ... ");
+				AxionFFT::initPlan (tmp, FFT_RtoC_MtoM_WKB,  FFT_FWD, "WKB m");
+				AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWD, "WKB v");
+				LogMsg(VERB_NORMAL, "done!\n");
+
+				// pointers for copying 1->2
+				char *mOr = static_cast<char *>(field->mCpu()) + field->Surf()*field->DataSize();
+				char *vOr = static_cast<char *>(field->vCpu());
+
+				char *mDt = static_cast<char *>(tmp->mCpu());
+				char *vDt = static_cast<char *>(tmp->vCpu());
+
+							// // input=output check
+							// float	*mIno  = static_cast<float *>(field->mCpu()) + field->Surf();
+							// float	*vIno  = static_cast<float *>(field->vCpu()) ;
+							// LogOut ("\n  --> points %e %e %e !\n ", mIno[0],mIno[1],mIno[2]);
+							// LogOut ("  --> points %e %e %e !\n\n", mIno[field->Size()-1],mIno[field->Size()-2],mIno[field->Size()-3]);
+							// LogOut ("  --> voints %e %e %e !\n ",  vIno[0],vIno[1],vIno[2]);
+							// LogOut ("  --> voints %e %e %e !\n\n", vIno[field->Size()-1],vIno[field->Size()-2],vIno[field->Size()-3]);
+
+				// note Lz can be different from n1 if running MPI
+				size_t dataLine = field->DataSize()*Ly;
+
+				LogMsg(VERB_NORMAL, "copying 1->2 ");
+				//Copy m,v -> m2,v2 with padding
+				#pragma omp parallel for schedule(static)
+				for (int sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*field->DataSize()*Ly;
+					auto	fOff = sl*field->DataSize()*(Ly+2);
+					memcpy	(mDt+fOff, mOr+oOff, dataLine);
+					memcpy	(vDt+fOff, vOr+oOff, dataLine);
+				}
+				LogMsg(VERB_NORMAL, "done!\n");
+
+				auto &myPlanM = AxionFFT::fetchPlan("WKB m");
+				auto &myPlanV = AxionFFT::fetchPlan("WKB v");
+
+				LogMsg(VERB_NORMAL," FFTWing AXION2 m inplace ... ");
+				myPlanM.run(FFT_FWD);
+				LogOut ("done!!\n");
+
+				LogMsg(VERB_NORMAL," FFTWing AXION2 v inplace ... ");
+				myPlanV.run(FFT_FWD);
+				LogMsg(VERB_NORMAL,"done!!\n ");
+
+				LogMsg(VERB_NORMAL,"Planning IN axion1 m2 ");
+				AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
+				LogMsg(VERB_NORMAL,"done!!\n");
+
+				LogOut ("\n\n      - - ->   ready to WKB! \n\n");
+
+			}
+
+
 	};
 
 	// THIS FUNCTION COMPUTES THE FFT COEFFICIENTS AT A TIME newz > zini
@@ -121,7 +222,12 @@ namespace AxionWKB {
 
 		switch (fPrec) {
 			case FIELD_SINGLE:
-			doWKB<float> (zEnd);
+			if (field=tmp) {
+				doWKBinplace<float> (zEnd);
+			}
+			else{
+				doWKB<float> (zEnd);
+			}
 			break;
 
 			case FIELD_DOUBLE:
@@ -379,6 +485,178 @@ namespace AxionWKB {
 											vIn[idx] /= toton   ;
 										}
 										LogMsg(VERB_NORMAL,"done!\n");
+
+
+		// LogOut ("  --> points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
+		// LogOut ("  --> points %e %e %e !\n ", mIn[field->Size()-1],mIn[field->Size()-2],mIn[field->Size()-3]);
+		// LogOut ("  --> voints %e %e %e !\n ", vIn[0],vIn[1],vIn[2]);
+		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
+
+    *field->zV() = zEnd ;
+    LogMsg(VERB_NORMAL,"set z=%f done\n", (*field->zV()) );
+
+		LogMsg(VERB_NORMAL,"WKB complete!\n\n ");
+
+
+
+	}
+
+	template<typename cFloat>
+	void	WKB::doWKBinplace(double zEnd) {
+
+		// label 1 for ini, 2 for end
+		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
+		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
+		double aMass2zIni1 = aMass2zIni2/zEnd;
+		double aMass2zEnd1 = aMass2zEnd2/zIni;
+		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
+		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
+		double phiBase1	   = 2.*zIni/(4.+nQcd);
+		double phiBase2	   = 2.*zEnd/(4.+nQcd);
+		double n2p1        = 1.+nQcd/2.;
+		double nn1         = 1./(2.+nQcd)+0.5;
+		double nn2         = 1./(2.+nQcd)+1.0;
+
+		double minmom2 		 = (4.*M_PI*M_PI)/(sizeL*sizeL)	;
+
+		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
+		std::complex<cFloat> *mC  = static_cast<std::complex<cFloat>*>(field->mCpu());
+		std::complex<cFloat> *vC  = static_cast<std::complex<cFloat>*>(field->vCpu());
+
+		// tambien necesitare punteros float a m y v de axion1
+		cFloat	      	 *mIn  = static_cast<cFloat *>(field->mCpu()) + field->Surf();	// Theta ghosts
+		cFloat	      	 *vIn  = static_cast<cFloat *>(field->vCpu());
+		cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
+
+		// pointers for padding ...
+		char *mTf  = static_cast<char *>(static_cast<void*>(mIn));
+		char *vTf  = static_cast<char *>(static_cast<void*>(vIn));
+		char *m2Tf = static_cast<char *>(static_cast<void*>(m2In));
+
+		size_t	zBase = Lz*commRank();
+
+		LogMsg(VERB_NORMAL,"start mode calculation! \n");
+		#pragma omp parallel for schedule(static)
+		for (size_t idx=0; idx<nModes; idx++)
+		{
+			//rLx is n1/2+1, reduced number of modes for r2c
+			int kz = idx/rLx;
+			int kx = idx - kz*rLx;
+			int ky = kz/Tz;
+
+			kz -= ky*Tz;
+			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
+
+			// kx can never be that large
+			//if (kx > hLx) kx -= static_cast<int>(Lx);
+			if (ky > hLy) ky -= static_cast<int>(Ly);
+			if (kz > hTz) kz -= static_cast<int>(Tz);
+
+			// momentum2
+			size_t mom = kx*kx + ky*ky + kz*kz;
+			double k2  = mom;
+			k2 *= minmom2;
+
+			// frequencies
+			double w1 = sqrt(k2 + aMass2zIni2);
+			double w2 = sqrt(k2 + aMass2zEnd2);
+			// adiabatic parameters
+			double zeta1 = zBase1/(w1*w1*w1);
+			double zeta2 = zBase2/(w2*w2*w2);
+
+			// useful variables?
+			double ooI = sqrt(w1/w2);
+
+			double phi ;
+			// WKB phase
+			if (mom == 0)
+				phi = phiBase2*w2 - phiBase1*w1; // I think this was wrong...
+			else {
+
+				phi =  phiBase2*w2*(1.+n2p1*v2h2F1(0.5, 1., nn2, k2/(w2*w2)))
+				      -phiBase1*w1*(1.+n2p1*v2h2F1(0.5, 1., nn2, k2/(w1*w1)));
+			}
+
+			// phasor
+			complex<double> pha = exp(im*phi);
+
+			// initial conditions of the mode
+			// in principle this could be done only once...
+			std::complex<cFloat> Maux, Daux ;
+			Maux = mC[idx];
+			Daux = vC[idx];
+
+			std::complex<double> M0, D0, ap, am;
+			double ra, ia ;
+
+			ra = (double) real(Maux) ;
+			ia = (double) imag(Maux) ;
+			M0 = ra + im*ia	;
+			ra = (double) real(Daux) ;
+			ia = (double) imag(Daux) ;
+			D0 = (ra + im*ia)/(im*w1)	;
+
+			ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
+			am = 0.5*(M0*(1.0 + im*zeta1) - D0);
+
+			// propagate
+			ap *= ooI*pha;
+			am *= ooI*conj(pha);
+			M0 = ap + am;
+			D0 = ap - am + im*zeta2*M0;
+
+			D0 *= im*w2	;
+
+			mC[idx] = M0;
+
+			vC[idx] = D0;
+
+		}
+
+		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
+		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
+
+		LogMsg(VERB_NORMAL," FFTWing AXION m inplace ... ");
+		myPlanM.run(FFT_BCK);
+		LogOut ("done!!\n");
+
+		LogMsg(VERB_NORMAL," FFTWing AXION v inplace ... ");
+		myPlanV.run(FFT_BCK);
+		LogMsg(VERB_NORMAL,"done!!\n ");
+
+		const size_t	dataLine = field->DataSize()*Ly;
+		const size_t	padLine  = field->DataSize()*(Ly+2);
+
+							LogMsg(VERB_NORMAL," padding back IN PLACE!... ");
+
+							for (int sl=0; sl<Sm; sl++) {
+								auto	oOff = sl*field->DataSize()*(Ly);
+								auto	fOff = sl*field->DataSize()*(Ly+2);
+								memcpy	(mTf+oOff, mTf+fOff, dataLine);
+								memcpy	(vTf+oOff, vTf+fOff, dataLine);
+							}
+
+							// LogMsg(VERB_NORMAL, "copying 1->2 ");
+							// //Copy m,v -> m2,v2 with padding
+							// #pragma omp parallel for schedule(static)
+							// for (int sl=0; sl<Sm; sl++) {
+							// 	auto	oOff = sl*field->DataSize()*Ly;
+							// 	auto	fOff = sl*field->DataSize()*(Ly+2);
+							// 	memcpy	(mDt+fOff, mOr+oOff, dataLine);
+							// 	memcpy	(vDt+fOff, vOr+oOff, dataLine);
+							// }
+							// LogMsg(VERB_NORMAL, "done!\n");
+
+	  cFloat toton = (cFloat) field->TotalSize();
+
+		LogMsg(VERB_NORMAL,"scale x%2.2e ",toton);
+		#pragma omp parallel for schedule(static)
+		for (size_t idx=0; idx<field->Size(); idx++)
+		{
+			mIn[idx] /= toton   ;
+			vIn[idx] /= toton   ;
+		}
+		LogMsg(VERB_NORMAL,"done!\n");
 
 
 		// LogOut ("  --> points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);

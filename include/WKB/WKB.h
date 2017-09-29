@@ -51,6 +51,9 @@
 			template<typename cFloat>
 			void	doWKB     (double zEnd);
 
+			template<typename cFloat>
+			void	doWKBinplace     (double zEnd);
+
 			public:
 
 				WKB       (Scalar* axion, Scalar* axion2);
