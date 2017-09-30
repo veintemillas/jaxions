@@ -519,17 +519,18 @@ namespace AxionWKB {
 
 		double minmom2 		 = (4.*M_PI*M_PI)/(sizeL*sizeL)	;
 
-		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
+		// las FT estan en Axion [COMPLEX & TRANSPOSED_OUT], defino punteros
 		std::complex<cFloat> *mC  = static_cast<std::complex<cFloat>*>(field->mCpu());
 		std::complex<cFloat> *vC  = static_cast<std::complex<cFloat>*>(field->vCpu());
 
-		// tambien necesitare punteros float a m y v de axion1
+		// tambien necesitare punteros float m y v de axion
 		cFloat	      	 *mIn  = static_cast<cFloat *>(field->mCpu()) + field->Surf();	// Theta ghosts
 		cFloat	      	 *vIn  = static_cast<cFloat *>(field->vCpu());
 		cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
 
 		// pointers for padding ...
 		char *mTf  = static_cast<char *>(static_cast<void*>(mIn));
+		char *m0Tf  = static_cast<char *>(static_cast<void*>(mC));
 		char *vTf  = static_cast<char *>(static_cast<void*>(vIn));
 		char *m2Tf = static_cast<char *>(static_cast<void*>(m2In));
 
@@ -627,25 +628,29 @@ namespace AxionWKB {
 		const size_t	dataLine = field->DataSize()*Ly;
 		const size_t	padLine  = field->DataSize()*(Ly+2);
 
-							LogMsg(VERB_NORMAL," padding back IN PLACE!... ");
+							/* esto se puede mejorar de varias maneras */
+							/* padding back in place, or swapping m and v*/
 
-							for (int sl=0; sl<Sm; sl++) {
-								auto	oOff = sl*field->DataSize()*(Ly);
-								auto	fOff = sl*field->DataSize()*(Ly+2);
-								memcpy	(mTf+oOff, mTf+fOff, dataLine);
-								memcpy	(vTf+oOff, vTf+fOff, dataLine);
-							}
-
-							// LogMsg(VERB_NORMAL, "copying 1->2 ");
-							// //Copy m,v -> m2,v2 with padding
-							// #pragma omp parallel for schedule(static)
-							// for (int sl=0; sl<Sm; sl++) {
-							// 	auto	oOff = sl*field->DataSize()*Ly;
-							// 	auto	fOff = sl*field->DataSize()*(Ly+2);
-							// 	memcpy	(mDt+fOff, mOr+oOff, dataLine);
-							// 	memcpy	(vDt+fOff, vOr+oOff, dataLine);
-							// }
-							// LogMsg(VERB_NORMAL, "done!\n");
+							LogMsg(VERB_NORMAL," padding out back moving to m2!... ");
+							LogMsg(VERB_NORMAL," m0->m2 ");
+									for (int sl=0; sl<Sm; sl++) {
+										auto	oOff = sl*field->DataSize()*(Ly);
+										auto	fOff = sl*field->DataSize()*(Ly+2);
+										memcpy	(m2Tf+oOff, m0Tf+fOff, dataLine);
+									}
+							LogMsg(VERB_NORMAL," m2->m, v->m2 ");
+									for (int sl=0; sl<Sm; sl++) {
+										auto	oOff = sl*field->DataSize()*(Ly);
+										auto	fOff = sl*field->DataSize()*(Ly+2);
+										memcpy	(mTf+oOff, m2Tf+oOff, dataLine);
+										memcpy	(m2Tf+oOff, vTf+fOff, dataLine);
+									}
+							LogMsg(VERB_NORMAL," m2->v ");
+									for (int sl=0; sl<Sm; sl++) {
+										auto	oOff = sl*field->DataSize()*(Ly);
+										memcpy	(vTf+oOff, m2Tf+oOff, dataLine);
+									}
+									LogMsg(VERB_NORMAL,"done!\n");
 
 	  cFloat toton = (cFloat) field->TotalSize();
 

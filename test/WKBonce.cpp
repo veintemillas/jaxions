@@ -132,7 +132,9 @@ int	main (int argc, char *argv[])
 	int index = fIndex ;
 
 	LogOut ("WKBing %d to %.4f ... ", index, zFinl);
+
 	wonka(zFinl) 	;
+
 	LogOut (" done!\n", zFinl);
 
 	index++			;
