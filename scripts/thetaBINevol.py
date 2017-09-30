@@ -36,7 +36,7 @@ firstnumber = 1
 
 for meas in fileMeas:
     f = h5py.File('./m/'+ meas, 'r')
-    if 'bins/testTh'or 'bins/theta' in f:
+    if 'bins/testTh' or 'bins/theta' in f:
         mylist.append(meas)
 
 # LOOK FOR ARGUMENTS OF THE FUNCTION TO COMPLETE THE SETS PLOTTED
@@ -93,17 +93,36 @@ mylist = sorted(mylist)
 for meas in mylist:
     f = h5py.File('./m/'+ meas, 'r')
     time = f.attrs[u'z']
-    Thmax = f['bins/'].attrs[u'Maximum']
-    Thmin = f['bins/'].attrs[u'Minimum']
-    siza = f['bins/'].attrs[u'Size']
 
-    thbin = np.linspace(Thmin,Thmax,siza)
-    norma = siza/(N3*(Thmax-Thmin))
     if 'bins/testTh' in f :
-        dat = np.reshape(f['bins/testTh'],(siza))
+        if 'bins/testTh/data' in f:
+
+            Thmax = f['bins/testTh'].attrs[u'Maximum']
+            Thmin = f['bins/testTh'].attrs[u'Minimum']
+            siza = f['bins/testTh'].attrs[u'Size']
+
+            dat = np.reshape(f['bins/testTh/data'],(siza))
+
+        else:
+
+            Thmax = f['bins/'].attrs[u'Maximum']
+            Thmin = f['bins/'].attrs[u'Minimum']
+            siza = f['bins/'].attrs[u'Size']
+
+            dat = np.reshape(f['bins/testTh'],(siza))
+
+        thbin = np.linspace(Thmin,Thmax,siza)
         plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
     elif 'bins/theta' in f :
-        dat = np.reshape(f['bins/theta'],(siza))
+
+        Thmax = f['bins/'].attrs[u'Maximum']
+        Thmin = f['bins/'].attrs[u'Minimum']
+        siza = f['bins/'].attrs[u'Size']
+
+        dat = np.reshape(f['bins/theta/data'],(siza))
+
+        thbin = np.linspace(Thmin,Thmax,siza)
+        norma = siza/(N3*(Thmax-Thmin))
         plt.semilogy(thbin,dat*norma,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
 
 
@@ -124,22 +143,57 @@ if os.path.exists('./axion.m.10001'):
 if os.path.exists('./axion.m.10001'):
     mylist.append('axion.m.10001')
 
+# for meas in mylist:
+#     f = h5py.File('./'+ meas, 'r')
+#     time = f.attrs[u'z']
+#     Thmax = f['bins/'].attrs[u'Maximum']
+#     Thmin = f['bins/'].attrs[u'Minimum']
+#     siza = f['bins/'].attrs[u'Size']
+#
+#     # dat = np.reshape(f['bins/testTh'],(siza))
+#     thbin = np.linspace(Thmin,Thmax,siza)
+#     # plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
+#     norma = siza/(N3*(Thmax-Thmin))
+#     if 'bins/testTh' in f :
+#         dat = np.reshape(f['bins/testTh'],(siza))
+#         plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
+#     elif 'bins/theta' in f :
+#         dat = np.reshape(f['bins/theta/data'],(siza))
+#         plt.semilogy(thbin,dat*norma,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
+
 for meas in mylist:
     f = h5py.File('./'+ meas, 'r')
     time = f.attrs[u'z']
-    Thmax = f['bins/'].attrs[u'Maximum']
-    Thmin = f['bins/'].attrs[u'Minimum']
-    siza = f['bins/'].attrs[u'Size']
 
-    # dat = np.reshape(f['bins/testTh'],(siza))
-    thbin = np.linspace(Thmin,Thmax,siza)
-    # plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
-    norma = siza/(N3*(Thmax-Thmin))
     if 'bins/testTh' in f :
-        dat = np.reshape(f['bins/testTh'],(siza))
+        if 'bins/testTh/data' in f:
+
+            Thmax = f['bins/testTh'].attrs[u'Maximum']
+            Thmin = f['bins/testTh'].attrs[u'Minimum']
+            siza = f['bins/testTh'].attrs[u'Size']
+
+            dat = np.reshape(f['bins/testTh/data'],(siza))
+
+        else:
+
+            Thmax = f['bins/'].attrs[u'Maximum']
+            Thmin = f['bins/'].attrs[u'Minimum']
+            siza = f['bins/'].attrs[u'Size']
+
+            dat = np.reshape(f['bins/testTh'],(siza))
+
+        thbin = np.linspace(Thmin,Thmax,siza)
         plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
     elif 'bins/theta' in f :
-        dat = np.reshape(f['bins/theta'],(siza))
+
+        Thmax = f['bins/'].attrs[u'Maximum']
+        Thmin = f['bins/'].attrs[u'Minimum']
+        siza = f['bins/'].attrs[u'Size']
+
+        dat = np.reshape(f['bins/theta/data'],(siza))
+
+        thbin = np.linspace(Thmin,Thmax,siza)
+        norma = siza/(N3*(Thmax-Thmin))
         plt.semilogy(thbin,dat*norma,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
 
 plt.title(ups)

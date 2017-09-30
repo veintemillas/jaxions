@@ -25,11 +25,11 @@ if os.path.exists('./m/axion.m.10000'):
 if os.path.exists('./m/axion.m.10001'):
     os.rename('./m/axion.m.10001','./axion.m.10001')
 
+
 # HDF5 DATASETS TO INCLUDE FIRST AND LAST
 fileMeas = sorted([x for x in [y for y in os.listdir("./m/")] if re.search("axion.m.[0-9]{5}$", x)])
 
 mylist = []
-sel = True
 sel = True
 firstlast = True
 firstnumber = 1

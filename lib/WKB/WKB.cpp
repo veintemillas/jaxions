@@ -68,15 +68,24 @@ namespace AxionWKB {
 				// plans FB in v r2C
 				// returns m2 to v padded
 				// FFT forward in m and v
+				// ... all ready for the next steps ...
 				// WKB evolution in m and v
 				// FFT backward
 				// unpads in place
 
-					// simpler alternative?
-
-					// plans r2c in place FWDBCK in m2
-					// copies m into m2 padded (otherwise info is destroyed)
-					// FFTS and return
+					// simpler alternative using only FFT in m2
+					// plans FB in m2 r2C
+					// copies m to m2 padded
+					// FFT -> in m2
+					// copies ft(m) to m
+					// copies v to m2 padded
+					// FFT -> in m2
+					// WKB (ft(m) in m and ft(v) in m2)
+					// FFT <- in m2
+					// copies m2 into v unpadded [this makes v finally ok]
+					// copies ft(m) to m2
+					// FFT <- in m2
+					// copies m2 into m unpadded [this makes m finally ok]
 
 				LogMsg(VERB_NORMAL, "WKB in self-destruction mode!\n");
 
@@ -125,7 +134,7 @@ namespace AxionWKB {
 				LogMsg(VERB_NORMAL, "done!\n");
 
 							LogMsg(VERB_NORMAL, "Planning in v ... ");
-							AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "WKB v");
+							AxionFFT::initPlan (field, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "WKB v");
 							LogMsg(VERB_NORMAL, "done!\n");
 
 									LogMsg(VERB_NORMAL, "copying m2 -> v ");
@@ -148,7 +157,7 @@ namespace AxionWKB {
 				myPlanV.run(FFT_FWD);
 				LogMsg(VERB_NORMAL,"done!!\n ");
 
-				LogOut ("\n\n      - - ->   ready to WKB! \n\n");
+				LogOut ("\n\n      - - ->   ready to WKBonce! \n\n");
 
 			}
 			else
@@ -231,7 +240,12 @@ namespace AxionWKB {
 			break;
 
 			case FIELD_DOUBLE:
-			doWKB<double> (zEnd);
+			if (field == tmp) {
+				doWKBinplace<double> (zEnd);
+				}
+			else{
+				doWKB<double> (zEnd);
+			}
 			break;
 
 			default:
