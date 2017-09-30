@@ -587,10 +587,10 @@ void	readConf (Scalar **axion, int index)
 	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 
 	/*	Fold the field		*/
-	LogOut("dsimv %d SAXION/AXION/WKB=%d/%d/%d\n\n", (*axion)->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
+
 	Folder munge(*axion);
 	munge(FOLD_ALL);
-	LogOut("dsimv %d SAXION/AXION/WKB=%d/%d/%d\n\n", (*axion)->Field(), FIELD_SAXION, FIELD_AXION, FIELD_WKB) ;
+	
 }
 
 
