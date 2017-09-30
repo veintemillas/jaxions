@@ -222,9 +222,9 @@ namespace AxionWKB {
 
 		switch (fPrec) {
 			case FIELD_SINGLE:
-			if (field=tmp) {
+			if (field == tmp) {
 				doWKBinplace<float> (zEnd);
-			}
+				}
 			else{
 				doWKB<float> (zEnd);
 			}
@@ -617,11 +617,11 @@ namespace AxionWKB {
 		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
-		LogMsg(VERB_NORMAL," FFTWing AXION m inplace ... ");
+		LogMsg(VERB_NORMAL," FFTWing back AXION m inplace ... ");
 		myPlanM.run(FFT_BCK);
 		LogOut ("done!!\n");
 
-		LogMsg(VERB_NORMAL," FFTWing AXION v inplace ... ");
+		LogMsg(VERB_NORMAL," FFTWing back AXION v inplace ... ");
 		myPlanV.run(FFT_BCK);
 		LogMsg(VERB_NORMAL,"done!!\n ");
 
