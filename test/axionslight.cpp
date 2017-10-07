@@ -80,46 +80,6 @@ int	main (int argc, char *argv[])
 	//          OUTPUTS FOR CHECKING
 	//--------------------------------------------------
 
-	FILE *file_sample ;
-	file_sample = NULL;
-
-	FILE *file_energy ;
-	file_energy = NULL;
-
-	//energy 2//	FILE *file_energy2 ;
-	//energy 2//	file_energy2 = NULL;
-
-	FILE *file_spectrum ;
-	file_spectrum = NULL;
-
-	FILE *file_power ;
-	file_power = NULL;
-
-	FILE *file_thetabin ;
-	file_thetabin = NULL;
-
-	FILE *file_contbin ;
-	file_contbin = NULL;
-
-	FILE *file_axiton ;
-	file_axiton = NULL;
-
-
-	if (commRank() == 0)
-	{
-		file_sample = fopen("out/sample.txt","w+");
-		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
-		file_energy = fopen("out/energy.txt","w+");
-		//fprintf(file_sample,"%f %f %f\n",z, creal(m[0]), cimag(m[0]));
-		//energy 2//	file_energy2 = fopen("out/energy2.txt","w+");
-		file_spectrum = fopen("out/spectrum.txt","w+");
-		file_power = fopen("out/power.txt","w+");
-		file_thetabin = fopen("out/thetabin.txt","w+");
-		file_contbin = fopen("out/contbin.txt","w+");
-		file_axiton = fopen("out/axiton.txt","w+");
-	}
-	LogOut("Files prepared! \n");
-
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
 	size_t nstrings = 0 ;
 	size_t nstrings_global = 0 ;
@@ -133,27 +93,25 @@ int	main (int argc, char *argv[])
 	const int kmax = axion->Length()/2 -1;
 	int powmax = floor(1.733*kmax)+2 ;
 
-	double  *spectrumK ;
-	double  *spectrumG ;
-	double  *spectrumV ;
 	double  *binarray	 ;
-	size_t  *axitonarray	 ;
-	trackAlloc((void**) (&spectrumK), 8*powmax);
-	trackAlloc((void**) (&spectrumG), 8*powmax);
-	trackAlloc((void**) (&spectrumV), 8*powmax);
 	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
-	trackAlloc((void**) (&axitonarray),  100*sizeof(size_t));
+	double *bA = static_cast<double *> (binarray);
+
+	complex<float> *mC = static_cast<complex<float> *> (axion->mCpu());
+	complex<float> *vC = static_cast<complex<float> *> (axion->vCpu());
+	//Pointers
+	float *m = static_cast<float *> (axion->mCpu());
+	float *v = static_cast<float *> (axion->mCpu())+axion->eSize();
+
+
+	FILE *file_samp ;
+	file_samp = NULL;
+	file_samp = fopen("out/sample.txt","w+");
+	size_t idxprint = 0 ;
+
 	LogOut("Bins allocated! \n");
 
-	// double *sK = static_cast<double *> (spectrumK);
-	// double *sG = static_cast<double *> (spectrumG);
-	// double *sV = static_cast<double *> (spectrumV);
-	double *bA = static_cast<double *> (binarray);
-	//double *bAd = static_cast<double *> (binarray);
 
-	double *sK = static_cast<double *> (axion->mCpu());
-	double *sG = static_cast<double *> (axion->mCpu())+powmax;
-	double *sV = static_cast<double *> (axion->mCpu())+2*powmax;
 
 
 	double z_now ;
@@ -165,8 +123,7 @@ int	main (int argc, char *argv[])
 	double delta = sizeL/sizeN;
 	double dz;
 	double dzaux;
-	double llaux;
-	double llprint;
+	double llphys;
 
 	if (nSteps == 0)
 		dz = 0.;
@@ -201,8 +158,7 @@ int	main (int argc, char *argv[])
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
-		//LL = pow(msa/(delta*z),2.)/2. ;
-		LogOut ("llconstantZ2 = %f - LL will be set to llconstantZ2/Z^2 \n", llconstantZ2);
+		LogOut ("llconstantZ2 = %f - LL will be set to llphys=llconstantZ2/Z^2 \n", llconstantZ2);
 
 		bool coZ = 1;
 	  bool coS = 1;
@@ -218,41 +174,12 @@ int	main (int argc, char *argv[])
 		else
 		{		LogOut ("Lambda in Z2 mode\n"); 		}
 
-
-
-
-	// LogOut("INITIAL CONDITIONS LOADED\n");
-	// if (sPrec != FIELD_DOUBLE)
-	// {
-	// 	LogOut("Example mu: m[0] = %f + %f*I, m[N3-1] = %f + %f*I\n", ((complex<float> *) axion->mCpu())[S0].real(), ((complex<float> *) axion->mCpu())[S0].imag(),
-	// 								        ((complex<float> *) axion->mCpu())[SF].real(), ((complex<float> *) axion->mCpu())[SF].imag());
-	// 	LogOut("Example  v: v[0] = %f + %f*I, v[N3-1] = %f + %f*I\n", ((complex<float> *) axion->vCpu())[V0].real(), ((complex<float> *) axion->vCpu())[V0].imag(),
-	// 								        ((complex<float> *) axion->vCpu())[VF].real(), ((complex<float> *) axion->vCpu())[VF].imag());
-	// }
-	// else
-	// {
-	// 	LogOut("Example mu: m[0] = %lf + %lf*I, m[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->mCpu())[S0].real(), ((complex<double> *) axion->mCpu())[S0].imag(),
-	// 									    ((complex<double> *) axion->mCpu())[SF].real(), ((complex<double> *) axion->mCpu())[SF].imag());
-	// 	LogOut("Example  v: v[0] = %lf + %lf*I, v[N3-1] = %lf + %lf*I\n", ((complex<double> *) axion->vCpu())[V0].real(), ((complex<double> *) axion->vCpu())[V0].imag(),
-	// 									    ((complex<double> *) axion->vCpu())[VF].real(), ((complex<double> *) axion->vCpu())[VF].imag());
-	// }
-
-	//JAVIER commented next
-	//LogOut("Ez     =  %ld\n",    axion->eDepth());
-
-
-	// for (i=0; i<100;i++)
-	// {
-	// 	LogOut("%f",saxionshift(z_now, nQcd, 0, 3., LL);)
-	// }
-
-
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
 	//--------------------------------------------------
 
 	LogOut("--------------------------------------------------\n");
-	LogOut("           STARTING COMPUTATION                   \n");
+	LogOut("           STARTING REALLIGHT COMPUTATION         \n");
 	LogOut("--------------------------------------------------\n");
 
 
@@ -280,27 +207,19 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		LogOut ("Dumping configuration %05d ...", index);
-		writeConf(axion, index);
-		LogOut ("Done!\n");
-		//LogOut ("Bypass configuration writting!\n");
+		// LogOut ("Dumping configuration %05d ...", index);
+		// writeConf(axion, index);
+		// LogOut ("Done!\n");
+		LogOut ("Bypass configuration writting!\n");
 	}
 	else
 		index = fIndex;
 
-	//JAVIER commented next
-	//printf ("Process %d reached syncing point\n", commRank());
-	//fflush (stdout);
-//	commSync();
-
 	double saskia;
-
-
-
+	double shiftz;
 
 //	--------------------------------------------------
 //	--------------------------------------------------
-
 
 	Folder munge(axion);
 
@@ -318,15 +237,7 @@ int	main (int argc, char *argv[])
 	}
 
 //	if (cDev != DEV_GPU)
-	{
 		double	strDen;
-
-		if (commRank() == 0)
-		{
-		munge(UNFOLD_SLICE, sliceprint);
-		writeMap (axion, index);
-		}
-	}
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -349,8 +260,18 @@ int	main (int argc, char *argv[])
 	LogOut("dx     =  %2.5f\n", delta);
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
 	LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa);
-	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n", llconstantZ2, msa);
+	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n");
 	LogOut("--------------------------------------------------\n");
+
+
+	createMeas(axion, index);
+			writeMapHdf5s (axion,index);
+							maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+							writeArray(bA, 100, "/bins", "theta");
+							writeArray(bA+100, 100, "/bins", "rho");
+							writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+	destroyMeas();
+
 
 	LogOut ("Start redshift loop\n\n");
 	fflush (stdout);
@@ -377,88 +298,11 @@ int	main (int argc, char *argv[])
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 		{
 
-			old = std::chrono::high_resolution_clock::now();
-
 			z_now = (*axion->zV());
 
-				//--------------------------------------------------
-				// PRINT POINT
-				//--------------------------------------------------
-
-				// give idx folded! NOW SHIT
-				//size_t idxprint = sliceprint*S0  + (sizeN/2)*sizeN + sizeN/2 ;
-				size_t idxprint = 0 ;
-
-				if (commRank() == 0)
-					{
-
-						if (axion->Field() == FIELD_SAXION)
-						{
-
-							llprint = max(LL , llaux/pow(z_now,2.));
-							saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
-
-							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %e\n",
-								z_now,
-								axionmass(z_now,nQcd,zthres, zrestore),
-								llprint,
-								static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].real(),
-								static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].imag(),
-								static_cast<complex<double> *> (axion->vCpu())[idxprint].real(),
-								static_cast<complex<double> *> (axion->vCpu())[idxprint].imag(),
-								nstrings_global,
-								maximumtheta,
-								saskia );
-							} else {
-								fprintf(file_sample,"%f %f %f %f %f %f %f %ld %f %e\n",
-								z_now,
-								axionmass(z_now,nQcd,zthres, zrestore),
-								llprint,
-								static_cast<complex<float>  *> (axion->mCpu())[idxprint + S0].real(),
-								static_cast<complex<float>  *> (axion->mCpu())[idxprint + S0].imag(),
-								static_cast<complex<float>  *> (axion->vCpu())[idxprint].real(),
-								static_cast<complex<float>  *> (axion->vCpu())[idxprint].imag(),
-								nstrings_global, maximumtheta, saskia);
-							}
-						}
-						else
-						{
-							if (sPrec == FIELD_DOUBLE) {
-								fprintf(file_sample,"%f %f %f %f %f\n",
-								z_now,
-								axionmass(z_now,nQcd,zthres, zrestore),
-								static_cast<double*> (axion->mCpu())[idxprint + S0],
-								static_cast<double*> (axion->vCpu())[idxprint],
-								maximumtheta);
-							} else {
-								fprintf(file_sample,"%f %f %f %f %f\n",
-								z_now,
-								axionmass(z_now,nQcd,zthres, zrestore),
-								static_cast<float*> (axion->mCpu())[idxprint + S0],
-								static_cast<float*> (axion->vCpu())[idxprint],
-								maximumtheta);
-								// fprintf(file_sample,"%f %f ",static_cast<float*> (axion->mCpu())[S0+1], static_cast<float*> (axion->vCpu())[S0+1]);
-								// fprintf(file_sample,"%f %f\n", static_cast<float*> (axion->mCpu())[S0+2], static_cast<float*> (axion->vCpu())[S0+2]);
-							}
-						}
-						fflush(file_sample);
-
-						// AXITONS
-
-						if (!coA)
-						{
-							fprintf(file_axiton,"%f ", z_now);
-							for (int i =0; i <numaxiprint ; i++)
-							{		// IF FOLDED!!
-									fprintf(file_axiton,"%f ", static_cast<float*> (axion->mCpu())[axitonarray[i] + S0]);
-							}
-							fprintf(file_axiton,"\n ");
-							fflush(file_axiton);
-						}
+			old = std::chrono::high_resolution_clock::now();
 
 
-					}
 			//--------------------------------------------------
 			// DYAMICAL deltaz
 			//--------------------------------------------------
@@ -469,76 +313,97 @@ int	main (int argc, char *argv[])
 			// PROPAGATOR
 			//--------------------------------------------------
 
-			//LogOut("dzaux, dz= %f, %f | llaux, LL = %f, %f\n", dzaux, dz, llaux*pow((*axion->zV()),2.), LL );
-//			if (axion->Field() == FIELD_SAXION)
-//			{
 				propagate (axion, dzaux);
+
+				if (commRank() == 0 && sPrec == FIELD_SINGLE) {
+						if (axion->Field() == FIELD_SAXION) {
+							// LAMBDA_Z2 MODE assumed!
+								llphys = llconstantZ2/(z_now*z_now);
+								saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+								fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axionmass(z_now,nQcd,zthres, zrestore), llphys,
+								mC[idxprint + S0].real(), mC[idxprint + S0].imag(), vC[idxprint].real(), vC[idxprint].imag(), nstrings_global, maximumtheta, saskia);
+						} else {
+								fprintf(file_samp,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
+								m[idxprint + S0], v[idxprint], maximumtheta);
+							} fflush(file_samp);}
+
 			if (axion->Field() == FIELD_SAXION)
 			{
-
+				// compute this 500 qith an educated guess
 				if (nstrings_global < 500)
 				{
-                  //nstrings_global = analyzeStrFoldedNP(axion, index);
-                  //MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 					rts = strings(axion, str);
 					nstrings_global = rts.strDen ;
-					maximumtheta = axion->maxtheta();
-					LogOut("  str extra check (%d) (maxth = %f)\n",nstrings_global,maximumtheta);
-                  //LogOut("%ld (%d) %ld - ", nstrings, coS, nstrings_global); fflush(stdout);
+					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 				}
-								//LogOut("%d (%d) %f -> %d", nstrings, coS, (*axion->zV()),
-								//( (nstrings <1) && (!coS) && ((*axion->zV()) > 0.6))); fflush(stdout);
-				if ( (nstrings_global == 0) && ((*axion->zV()) > 0.2) )
+
+				//--------------------------------------------------
+				// TRANSITION TO THETA
+				//--------------------------------------------------
+
+
+				if (nstrings_global == 0)
 				{
-					 strcount += 1;
-					 LogOut("  str countdown (%d/20) (maxth = %f)\n",strcount,maximumtheta);
-
-					 // BIN THETA
- 					maximumtheta = axion->thetaDIST(100, binarray);
- 					if (commRank() == 0)
- 					{
- 						fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
- 						for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
- 						fflush(file_thetabin);
- 					}
-
-
-				if ((strcount >10 ) )
-				{
-
-
-
-					LogOut("\n");
 
 					z_now = (*axion->zV());
-					llprint = llaux/(z_now*z_now); //physical value
-					saskia = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+					llphys = llconstantZ2/(z_now*z_now); //physical value
+					saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+					double shiftz = z_now * saskia;
+
+								createMeas(axion, 10000);
+								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
+								  	writeMapHdf5s (axion,sliceprint);
+								//ENERGY
+							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
+										writeEnergy(axion, eRes);
+								// BIN THETA
+														// new program to be adapted
+
+														//Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+														//thBin.run();
+																//writeArray(thBin.data(), 100, "/bins", "testTh");
+														//writeBinner(thBin, "/bins", "testTh");
+														// old shit still works
+														maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+														writeArray(bA, 100, "/bins", "theta");
+														writeArray(bA+100, 100, "/bins", "rho");
+														writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+										destroyMeas();
+
+					// TRANSITION TO THETA
 					LogOut("--------------------------------------------------\n");
 					LogOut("              TRANSITION TO THETA \n");
-					// BIN THETA
-					maximumtheta = axion->thetaDIST(100, binarray);
-					if (commRank() == 0)
-					{
-						fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
-						for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
-					}
-					//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-					 munge(UNFOLD_SLICE, sliceprint);
-					  	writeMap (axion, 100000);
-					cmplxToTheta (axion, saskia);
+					LogOut("              shift = %f 			\n", saskia);
+					cmplxToTheta (axion, shiftz);
+
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
 					munge(UNFOLD_ALL);
 					axion->mendtheta();
 					munge(FOLD_ALL);
-					//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-					munge(UNFOLD_SLICE, sliceprint);
-					writeMap (axion, 100001);
 
 
-					LogOut("--------------------------------------------------\n");
+								//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
+
+								createMeas(axion, 10001);
+								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
+								  	writeMapHdf5s (axion,sliceprint);
+								//ENERGY
+										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
+										writeEnergy(axion, eRes);
+								// BIN THETA
+										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+										thBin2.run();
+										//writeArray(thBin2.data(), 100, "/bins", "testTh");
+										writeBinner(thBin2, "/bins", "testTh");
+								destroyMeas();
+
+
+								LogOut("--------------------------------------------------\n");
+
+								destroyMeas();
 				}
-			}
+
 	    }
 
 			current = std::chrono::high_resolution_clock::now();
@@ -561,58 +426,52 @@ int	main (int argc, char *argv[])
 //      LogOut("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
 
 
+			// z_now = (*axion->zV());
+			// llprint = llaux/(z_now*z_now); //physical value
+			// saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			z_now = (*axion->zV());
-			llprint = llaux/(z_now*z_now); //physical value
-			saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
+			llphys = llconstantZ2/(z_now*z_now); //physical value
+			shiftz = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 
 			createMeas(axion, index);
+
 			if ( axion->Field() == FIELD_SAXION)
 			{
-				if (axion->LowMem())
-					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion Lowmem"));
-				else
-					profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Saxion"));
-
-				energy(axion, eRes, false, delta, nQcd, llaux, VQCD_1, saskia);
-
-				double maa = 40*axionmass(z_now,nQcd,zthres, zrestore)/(2*llaux);
-				if (axion->Lambda() == LAMBDA_Z2 )
-				maa = maa*z_now*z_now;
-
-				LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llaux, maa );
-				LogOut("strings ", zloop, nLoops, (*axion->zV()), dzaux, llaux);
-
-										//nstrings_global = strings(axion, str);
-										//nstrings_global =	analyzeStrFolded(axion, index);
-										rts = strings(axion, str);
-										nstrings_global = rts.strDen ;
-										//MPI_Allreduce(&nstrings, &nstrings_global, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-										//nstrings = (int) nstringsd_global ;
-
-										 //if ((*axion->zV()) > 0.3)
-										 if (nstrings_global < 20000)
-										 {
-										  writeString	( str , rts);
-										 }
-										LogOut("(G)= %ld \n", nstrings_global);
-
+					//THETA
+						maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+						writeArray(bA, 100, "/bins", "theta");
+						writeArray(bA+100, 100, "/bins", "rho");
+						writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+					//ENERGY
+						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
+					//DOMAIN WALL KILLER NUMBER
+						double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*llphys);
+						if (axion->Lambda() == LAMBDA_Z2 )
+							maa = maa*z_now*z_now;
+					//STRINGS
+						rts = strings(axion, str);
+						nstrings_global = rts.strDen;
+						if (nstrings_global < 10000)
+							writeString(str, rts, true);
+						else
+							writeString(str, rts, false);
+						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
+						LogOut("strings %ld \n", nstrings_global);
 			}
 			else
 			{
-				profiler::printMiniStats(*static_cast<double*>(axion->zV()), rts, PROF_PROP, std::string("RKN4 Axion"));
-				//BINS THETA
-				maximumtheta = axion->thetaDIST(100, binarray);
-				if (commRank() == 0)
-				{
-					fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
-					for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
-					fflush(file_thetabin);
-				}
+				//temp comment
+				//BIN THETA
+				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+				thBin2.run();
+				//writeArray(thBin2.data(), 100, "/bins", "testTh");
+				writeBinner(thBin2, "/bins", "testTh");
+				maximumtheta = max(abs(thBin2.min()),thBin2.max());
 
 				LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
 				fflush(stdout);
 
-				LogOut("DensMap ... ");
+				LogOut("DensMap");
 
 				SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
@@ -624,81 +483,24 @@ int	main (int argc, char *argv[])
 				writeArray(bA, 10000, "/bins", "cont");
 				//computes power spectrum
 				specAna.pRun();
-				writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 
 				specAna.nRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
-				//double *eR = static_cast<double *>(eRes);
 
-				 LogOut("| ");
+				 LogOut("| \n");
 				fflush(stdout);
-
-				 if (commRank() == 0)
-					{
-					fprintf(file_contbin,"%f ", (*(axion->zV() )));
-					// first three numbers are dens average, max contrast and maximum of the binning
-					for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
-					fprintf(file_contbin, "\n");
-					fflush(file_contbin);
-					}
-
-				// writeConf(axion, index);
-				//munge(FOLD_ALL);
-
-				if (coA && maximumtheta > 3.14 && z_now > 3.0)
-				{
-					// threshold ; pointer ; number of axitons
-					axion->writeAXITONlist(100. , axitonarray, numaxiprint) ;
-					for(int i = 0; i<numaxiprint; i++)
-					{
-						LogOut("(%ld)", axitonarray[i]);
-					}
-					LogOut("\n");
-					if (axitonarray[numaxiprint-1]>0)
-					coA = 0 ;
-				}
-				LogOut("\n");
-				if (!coA)
-				{
-					fprintf(file_axiton,"%f ", z_now);
-					for (int i =0; i <10 ; i++)
-					{		// IF FOLDED!!
-							fprintf(file_axiton,"%f ", static_cast<float*> (axion->mCpu())[axitonarray[i] + S0]);
-					}
-					fprintf(file_axiton,"\n ");
-					fflush(file_axiton);
-				}
 
 			}
 
+			writeMapHdf5s(axion,sliceprint);
+			writeEnergy(axion, eRes);
+			destroyMeas();
 
-			writeMapHdf5(axion);
 
-
-			 if (commRank() == 0)
-			 {
-			 //munge(UNFOLD_SLICE, sliceprint);
-			 //writeMap (axion, index);
-
-			 //Prints energy computed before
-			 fprintf(file_energy,  "%+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %+lf %d %+lf\n",
-			 (*axion->zV()),
-			 eR[TH_GRX], eR[TH_GRY], eR[TH_GRZ],
-			 eR[TH_POT], eR[TH_KIN],
-			 eR[RH_GRX], eR[RH_GRY], eR[RH_GRZ],
-			 eR[RH_POT], eR[RH_KIN],
-			 nstrings_global, maximumtheta);
-			 fflush(file_energy);
-			 }
-
-			 writeEnergy(axion, eRes);
-
-			 destroyMeas();
-
-			// SAVE FILE OUTPUT
 
 
 			if ((*axion->zV()) > zFinl)
@@ -725,13 +527,16 @@ int	main (int argc, char *argv[])
 	munge(UNFOLD_ALL);
 	LogOut("| ");
 
+	index++	;
+	writeConf(axion, index);
+
 	if (axion->Field() == FIELD_AXION)
 	{
-		createMeas(axion, index+1);
-		writeMapHdf5(axion);
+		createMeas(axion, index);
+
+		writeMapHdf5s(axion,sliceprint);
 
 		printf("n Spectrum ... %d", commRank());
-
 		/*	Test		*/
 		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 		specAna.nRun();
@@ -749,118 +554,32 @@ int	main (int argc, char *argv[])
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		//write binned distribution
 		writeArray(bA, 10000, "/bins", "cont");
-
-		if (commRank() == 0)
-		{
-		fprintf(file_contbin,"%f ", (*(axion->zV() )));
-      		// first three numbers are dens average, max contrast and maximum of the binning
-		for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
-		fprintf(file_contbin, "\n");
-		fflush(file_contbin);
-		}
+		writeEDens(axion, index);
+		writeEnergy(axion, eRes);
 
 		printf("p Spectrum ... %d", commRank());
 		specAna.pRun();
-		writeArray(specAna.data(SPECTRUM_P), powmax, "/pSpectrum", "sP");
+		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 
 		LogOut("|  ");
 		LogOut("Theta bin ... ");
 
-
 		double zNow = *axion->zV();
-		Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
-		thBin.run();
-		writeArray(thBin.data(), 100, "/bins", "testTh");
+		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
+		thBin2.run();
+		//writeArray(thBin2.data(), 100, "/bins", "testTh");
+		writeBinner(thBin2, "/bins", "testTh");
 
 		/*	Fin test	*/
 
-		//NUMBER SPECTRUM
-		//spectrumUNFOLDED(axion, spectrumK, spectrumG, spectrumV);
-//		spectrumUNFOLDED(axion);
-
-		//printf("sp %f %f %f ...\n", (float) sK[0]+sG[0]+sV[0], (float) sK[1]+sG[1]+sV[1], (float) sK[2]+sG[2]+sV[2]);
-		//LogOut("| ");
-/*
-		if (commRank() == 0)
-		{
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%e ", sK[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%e ", sG[i]);} fprintf(file_spectrum, "\n");
-		fprintf(file_spectrum,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_spectrum, "%e ", sV[i]);} fprintf(file_spectrum, "\n");
-		//axion->foldField();
-		}
-		commSync();
-
-		writeSpectrum(axion, sK, sG, sV, powmax, false);
-*/
-		//LogOut("DensMap ... ");
-
-		//energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-		//auto Sf = axion->Surf();
-		//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-
-		//LogOut("| ");
-
-		// if (commRank() == 0)
-		// {
-		// fprintf(file_contbin,"%f ", (*(axion->zV() )));
-    //   		// first three numbers are dens average, max contrast and maximum of the binning
-		// for(int i = 0; i<10000; i++) {	fprintf(file_contbin, "%f ", (float) bA[i]);}
-		// fprintf(file_contbin, "\n");
-		// fflush(file_contbin);
-		// }
-		// writeArray(bA, 10000, "/bins", "cont");
-
-		//POWER SPECTRUM
-/*
-		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-		LogOut("pSpec ... %f\n", static_cast<float *>(axion->m2Cpu())[Sf*3]);
-		powerspectrumUNFOLDED(axion);
-		if (commRank() == 0)
-		{
-		printf("sp %f ...\n", sK[0]);
-		fprintf(file_power,  "%f ", (*axion->zV()));
-		for(int i = 0; i<powmax; i++) {	fprintf(file_power, "%e ", sK[i]);} fprintf(file_power, "\n");
-		}
-		LogOut("| ");
-
-		// BIN THETA
-		maximumtheta = axion->thetaDIST(100, binarray);
-		if (commRank() == 0)
-		{
-			fprintf(file_thetabin,"%f %f ", (*(axion->zV() )), maximumtheta );
-			for(int i = 0; i<200; i++) {	fprintf(file_thetabin, "%f ", bA[i]);} fprintf(file_thetabin, "\n");
-		}
-
-
-		writeArray(sK, 100, "/bins", "theta");
-*/
-
-		// LogOut("dens2m ... ");
-		// axion->denstom();
-		// LogOut("| ");
-
 		destroyMeas();
 
-		//munge(FOLD_ALL);
-		if (commRank() == 0) {
-			fflush(file_power);
-			fflush(file_spectrum);
-		}
 	}
 
 	if (cDev != DEV_GPU)
 	{
 		//axion->unfoldField();
 		//munge(UNFOLD_ALL);
-	}
-
-	if (axion->Field() == FIELD_AXION)
-	{
-	if (nSteps > 0)
-	writeConf(axion, index);
 	}
 
 	LogOut("z_final = %f\n", *axion->zV());
@@ -871,28 +590,13 @@ int	main (int argc, char *argv[])
 
 	trackFree(&eRes, ALLOC_TRACK);
 	trackFree(&str,  ALLOC_ALIGN);
-	trackFree((void**) (&spectrumK),  ALLOC_TRACK);
-	trackFree((void**) (&spectrumG),  ALLOC_TRACK);
-	trackFree((void**) (&spectrumV),  ALLOC_TRACK);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
-	trackFree((void**) (&axitonarray),  ALLOC_TRACK);
+	fclose(file_samp);
+
 
 	delete axion;
 
 	endAxions();
-
-	//JAVIER
-	if (commRank() == 0)
-	{
-		fclose (file_sample);
-		fclose (file_energy);
-		fclose (file_spectrum);
-		fclose (file_power);
-		fclose (file_thetabin);
-		fclose (file_contbin);
-		fclose (file_axiton);
-		//energy 2//	fclose (file_energy2);
-	}
 
 	return 0;
 }
