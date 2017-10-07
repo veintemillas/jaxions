@@ -32,6 +32,7 @@ print('')
 
 # UNION functio function
 # function
+
 def sex (labels,labels2):
 
     npo = len(labels)
@@ -90,16 +91,26 @@ def sex (labels,labels2):
             # if the point labels two clusters, group them
             if labels2[posi] > -1 :
                 mask = np.logical_or(parla1,parla2)
-                # any of the points is already labelled?
+                # some of the points in mask could be already assotiated to a cluster x
+                # actually different points could be assotiated to different clusters x0, x1, etc...
+                # all these clusters are thus the same
+                # set of newlabels in mask
                 seta = np.array(list(set(newlabels[mask])))
-                if max(seta) > -1:
-                    ll = max(seta[seta > -1])
-                    print('ojo')
+                # set of mc labels
+                seta = seta[seta > -1]
+
+                if len(seta) > 1:
+                    for lset in seta:
+                        minimask = (newlabels == lset)
+                        mask = np.logical_or(mask,minimask)
+                    ll = min(seta)
+                    print(labels[posi], ' ojo ',seta, 'in newlabels assotiated to label',ll)
 
                 newlabels[mask] = ll
                 labels11[mask] = -2
                 labels22[mask] = -2
 
+            # if the point labels noise [do not take all the noise!]
             elif labels2[posi] == -1 :
                 mask = parla1
                 newlabels[mask] = ll
