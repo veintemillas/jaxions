@@ -27,6 +27,8 @@ extern double wDz;
 extern double zthres;
 extern double zrestore;
 
+extern double wkb2z ;
+extern int endredmap ;
 
 extern char *initFile;
 extern char outName[128];
