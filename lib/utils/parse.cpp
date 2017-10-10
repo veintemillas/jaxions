@@ -30,6 +30,8 @@ double zrestore = 1.0;
 double LL = 15000.;
 double parm2 = 0.;
 
+double wkb2z  = -1.0;
+int endredmap = -1;
 
 bool lowmem   = false;
 bool uPrec    = false;
@@ -73,8 +75,8 @@ void	printUsage(char *name)
 	printf("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
 	printf("--zf    [float]                 Final value of the redshift (default 1.0).\n");
 	printf("--llcf  [float]                 Lagrangian coefficient (default 15000).\n");
-	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [laxion3D].\n");
-	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [laxion3D].\n");
+	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
+	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
 	printf("--ctype smooth/kmax/tkachev	Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("--smvar stXY/stYZ/mc0/mc        [smooth variant] string or mc initial conditions\n");
@@ -83,12 +85,14 @@ void	printUsage(char *name)
 	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
 	printf("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
+	printf("--wkb   [float]                 WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
+	printf("--redmp [fint]                  reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
 	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
-	printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
+	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
 	printf("--prop  leap/rkn4/om2/om4       Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
 	printf("--spec                          Enables the spectral propagator for the laplacian (default, disabled) \n");
 	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n");
@@ -250,6 +254,54 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--wkb"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for z_WKB!.\n");
+				exit(1);
+			}
+
+			wkb2z = atof(argv[i+1]);
+
+			if (wkb2z < zFinl)
+			{
+				printf("Error: z_wkb must be > zf. No WKB will be done!\n");
+				wkb2z = -1.0	;
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--redmp"))
+		{
+			if (i+1 == argc)
+			{
+				printf("No new sizeN input for final reducemap. Set to default = 256\n");
+				endredmap = 256 ;
+				exit(1);
+			}
+
+			endredmap = atof(argv[i+1]);
+
+			if ((endredmap > sizeN) || (endredmap < 0))
+			{
+				printf("Error: reducedN should be in the interval [0 < size]. Set to 256\n");
+				endredmap = 256	;
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 
 		if (!strcmp(argv[i], "--zi"))
 		{

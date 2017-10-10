@@ -586,63 +586,79 @@ int	main (int argc, char *argv[])
 		destroyMeas();
 
 
-		/////////////// FINAL WKB
-		{
-			
-		WKB wonka(axion, axion);
 
-		LogOut ("WKBing %d to %.4f ... ", index, 6.0);
+			//--------------------------------------------------
+			// FINAL WKB
+			//--------------------------------------------------
 
-		wonka(6.0) 	;
+			if (wkb2z > zFinl)
+			{
+						WKB wonka(axion, axion);
 
-		LogOut (" done!\n", zFinl);
+						LogOut ("WKBing %d to %.4f ... ", index, wkb2z);
 
-		index++			;
+						wonka(wkb2z) 	;
 
-		LogOut ("\n\n Dumping configuration %05d ...", index);
-		writeConf(axion, index);
-		LogOut ("Done!\n\n");
+						LogOut (" done!\n", zFinl);
+
+						index++			;
+
+						LogOut ("\n\n Dumping configuration %05d ...", index);
+						writeConf(axion, index);
+						LogOut ("Done!\n\n");
 
 
-			LogOut ("Printing measurement file %05d ... ", index);
-			createMeas(axion, index);
-					SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
-					// computes energy and creates map
-					LogOut ("en ");
-					energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-					//bins density
-					LogOut ("con ");
-					axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-					//write binned distribution
-					LogOut ("bin ");
-					writeArray(bA, 10000, "/bins", "cont");
-					LogOut ("MAP ");
-					writeEDens(axion, index);
-					LogOut ("tot ");
-					writeEnergy(axion, eRes);
-					//computes power spectrum
-					LogOut ("pow ");
-					specAna.pRun();
-					writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-					LogOut ("spec ");
-					specAna.nRun();
-					writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
-					writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
-					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
-					LogOut ("2D ");
-					writeMapHdf5s(axion,sliceprint);
-					LogOut ("Done!\n");
+							LogOut ("Printing measurement file %05d ... ", index);
+							createMeas(axion, index);
+									SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+									// computes energy and creates map
+									LogOut ("en ");
+									energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+									//bins density
+									LogOut ("con ");
+									axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+									//write binned distribution
+									LogOut ("bin ");
+									writeArray(bA, 10000, "/bins", "cont");
+									LogOut ("MAP ");
+									writeEDens(axion, index);
+									LogOut ("tot ");
+									writeEnergy(axion, eRes);
+									//computes power spectrum
+									LogOut ("pow ");
+									specAna.pRun();
+									writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+									LogOut ("spec ");
+									specAna.nRun();
+									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+									writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+									LogOut ("2D ");
+									writeMapHdf5s(axion,sliceprint);
+									LogOut ("Done!\n");
 
-				destroyMeas();
+								destroyMeas();
 			}
 
 
-	}
+			//--------------------------------------------------
+			// FINAL REDUCE MAP (note it reads from file)
+			//--------------------------------------------------
 
+			if ( endredmap > 0)
+			{
+				LogOut ("Reducing map %d to %d^3 ... ", index, endredmap);
+				char mirraa[128] ;
+				strcpy (mirraa, outName);
+				strcpy (outName, "./out/m/axion\0");
 
+				reduceEDens(index, endredmap, endredmap) ;
 
+				strcpy (outName, mirraa);
+				LogOut ("Done!\n");
+			}
 
-
+  }
 
 
 
