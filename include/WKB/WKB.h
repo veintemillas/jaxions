@@ -21,7 +21,7 @@
 
 	namespace AxionWKB {
 
-		const auto im = complex<double>(1i);
+		const auto im = complex<double>(1.0i);
 
 		//--------------------------------------------------
 		// WKB CLASS
