@@ -467,7 +467,7 @@ int	main (int argc, char *argv[])
 						else
 							writeString(str, rts, false);
 						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
-						LogOut("strings %ld \n", nstrings_global);
+						LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 1.5*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
 			}
 			else
 			{
