@@ -5,125 +5,145 @@
 #include <complex>
 #include <vector>
 
-#include "propagator/allProp.h"
-#include "energy/energy.h"
 #include "utils/utils.h"
 #include "io/readWrite.h"
-#include "comms/comms.h"
-#include "map/map.h"
-#include "strings/strings.h"
-#include "powerCpu.h"
-#include "scalar/scalar.h"
-
-#include<mpi.h>
+#include "spectrum/spectrum.h"
+#include "energy/energy.h"
 
 using namespace std;
-
-#ifdef	USE_XEON
-	__declspec(target(mic)) char *mX, *vX, *m2X;
-#endif
 
 int	main (int argc, char *argv[])
 {
 	initAxions(argc, argv);
 
-	std::chrono::high_resolution_clock::time_point start, current, old;
-	std::chrono::milliseconds elapsed;
-
 	commSync();
-	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n   CREATING DENSITY CONTRAST MAP!(%d)           \n",fIndex);
-	LogOut("\n-------------------------------------------------\n");
 
+	//--------------------------------------------------
+	//       AUX STUFF
+	//--------------------------------------------------
+
+	void *eRes, *str;			// Para guardar la energia
+	trackAlloc(&eRes, 128);
+	memset(eRes, 0, 128);
+	double *eR = static_cast<double *> (eRes);
+
+	double  *binarray	 ;
+	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
+	double *bA = static_cast<double *> (binarray);
+	size_t sliceprint = 0 ; // sizeN/2;
+
+
+	LogOut("\n-------------------------------------------------\n");
+	LogOut("\n          GEN CONTRAST MAP FROM FILE             \n", sizeN);
 	LogOut("\n-------------------------------------------------\n");
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
 
-	start = std::chrono::high_resolution_clock::now();
-
 	Scalar *axion;
-	char fileName[256];
 
-	if ((fIndex == -1) && (cType == CONF_NONE))
-		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
-	else
+	LogOut ("reading conf %d ...", fIndex);
+	readConf(&axion, fIndex);
+	if (axion == NULL)
 	{
-		if (fIndex == -1)
-		{
-			//This generates initial conditions
-			LogOut("No file selected!");
-			//axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fType, cType, parm1, parm2);
-			//LogOut("Done! \n");
-		}
-		else
-		{
-			//This reads from an Axion.00000 file
-			LogOut ("reading conf %d ...", fIndex);
-			readConf(&axion, fIndex);
-			if (axion == NULL)
-			{
-				LogOut ("Error reading HDF5 file\n");
-				exit (0);
-			}
-			else{
-			LogOut ("Done!\n", fIndex);
-			}
-		}
+		LogOut ("Error reading HDF5 file\n");
+		exit (0);
 	}
+	LogOut ("\n");
 
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
-	LogOut("Reading time %f min\n",elapsed.count()*1.e-3/60.);
-
-	void *eRes, *str;			// Para guardar la energia
-	trackAlloc(&eRes, 128);
-	memset(eRes, 0, 128);
-	double *eR = static_cast<double *> (eRes);
-	double  *binarray	 ;
-	trackAlloc((void**) (&binarray),  10000*sizeof(size_t));
-	double *bA = static_cast<double *> (binarray);
-
+	// Axion spectrum
+	const int kmax = axion->Length()/2 -1;
+	int powmax = floor(1.733*kmax)+2 ;
 	double delta = sizeL/sizeN;
 	double z_now = (*(axion->zV() ));
-	int indexa = 10901 ;
-	// creates energy map
-	// posible problems with zthreshold, etc... but if mass was simple powerlaw, ok
-	// version for theta only
-	LogOut("ene \n");
 
-	LogOut("%f %f %f %f \n",
-	z_now,
-	axionmass(z_now,nQcd,zthres, zrestore),
-	static_cast<float*> (axion->mCpu())[sizeN*sizeN],
-	static_cast<float*> (axion->vCpu())[0]
-	);
+	LogOut("--------------------------------------------------\n");
+	LogOut(" PARAMETERS READ in file index = %d               \n\n");
 
-	energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-	
-	// bins density
-	LogOut("bin \n");
-	axion->writeMAPTHETA( (*(axion->zV() )) , indexa, binarray, 10000)		;
+	LogOut("Length =  %2.2f\n", sizeL);
+	LogOut("nQCD   =  %2.2f\n", nQcd);
+	LogOut("N      =  %ld\n",   sizeN);
+	LogOut("Nz     =  %ld\n",   sizeZ);
+	LogOut("zGrid  =  %ld\n",   zGrid);
+	LogOut("z      =  %2.2f\n", z_now);
+	LogOut("zthr   =  %3.3f\n", zthres);
+	LogOut("zres   =  %3.3f\n", zrestore);
+	LogOut("mass   =  %3.3f\n\n", axionmass(z_now, nQcd, zthres, zrestore));
+	if (axion->Precision() == FIELD_SINGLE)
+	LogOut("precis = SINGLE(%d)\n",FIELD_SINGLE);
+		else
+	LogOut("precis = DOUBLE(%d)\n",FIELD_DOUBLE);
+	LogOut("--------------------------------------------------\n\n");
 
-	// complex to real NOT NEEDED ANYMORE // output of energy is real and unpadded
-	//LogOut("auto \n");
-	//axion->autodenstom2() ;
+	int index = fIndex;
 
-	// Writes contrast map
-	LogOut("write \n");
-	writeEDens (axion, indexa) ;
+	if ( (endredmap > 0) )
+	{
+	LogOut ("REDUCED map %d will be generated in out/m/redaxion.m.%05d\n\n", index, index);
+		char mirraa[128] ;
+		strcpy (mirraa, outName);
+		strcpy (outName, "redaxion\0");
+		//reduceEDens(index, endredmap, endredmap) ;
+		//strcpy (outName, mirraa);
+	}
+	else
+	{
+		LogOut ("CONTRAST map %d will be generated in out/m/axion.m.%5d\n\n", index, index+1);
+		index += 1 ;
+	}
 
-	LogOut("z_final = %f\n", *axion->zV());
-	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
-	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
+	LogOut ("Printing measurement file %05d ... ", index);
+	createMeas(axion, index);
+			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
-	trackFree(&eRes, ALLOC_TRACK);
-	trackFree((void**) (&binarray),  ALLOC_TRACK);
+			LogOut ("spec ");
+			specAna.nRun();
+			writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+			writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+			writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
-	delete axion;
+			// computes energy and creates map
+			LogOut ("en ");
+			energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+			//bins density
+			LogOut ("con ");
+			axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+			//write binned distribution
+			LogOut ("bin ");
+			writeArray(bA, 10000, "/bins", "cont");
+
+			if ( (endredmap <= 0) || (endredmap >= sizeN) )
+			{
+				LogOut ("MAP ");
+				writeEDens(axion, index);
+			}
+			LogOut ("tot ");
+			writeEnergy(axion, eRes);
+
+			//computes power spectrum
+			LogOut ("pow ");
+			specAna.pRun();
+			writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
+			if ( endredmap > 0)
+			{
+				LogOut("redmap ");
+				int nena = sizeN/endredmap ;
+				specAna.filter(nena);
+				// this must be called immediately after pRun
+				writeEDensReduced(axion, index, endredmap, endredmap/zGrid);
+			}
+			LogOut("Done! ");
+
+
+		destroyMeas();
+		LogOut("and closed file!\n\n ");
+
+
 
 	endAxions();
+
 
 	return 0;
 }

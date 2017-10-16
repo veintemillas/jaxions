@@ -12,6 +12,7 @@
 	void	writeString	(void *strData, StringData strDat, const bool rData=true);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, int index);
+	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);
 
 	void	writeMapHdf5	(Scalar *axion);
 	void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint);

@@ -230,6 +230,8 @@ void	SpecBin::fillBins	() {
 	}
 }
 
+
+
 void	SpecBin::nRun	() {
 
 	if	(field->Folded())
@@ -418,4 +420,124 @@ void	SpecBin::pRun	() {
 				fillBins<double,  SPECTRUM_P, false>();
 			break;
 	}
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+template<typename Float>
+void	SpecBin::filterFFT	(int neigh) {
+
+	using cFloat = std::complex<Float>;
+
+	const int mIdx = commThreads();
+
+	size_t	zBase = Lz*commRank();
+
+	//prefactor is (2 pi^2 neigh^2/N^2)
+	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;
+	double prefac = 0.5*M_PI*M_PI*neigh*neigh/field->Surf() ;
+
+	LogMsg (VERB_NORMAL, "filterBins with %d neighbours, prefa = %f", neigh, prefac);
+
+	//complex<Float> * m2ft = static_cast<complex<Float>*>(axion->m2Cpu());
+
+	const double normn3 = field->TotalSize();
+
+	#pragma omp parallel
+	{
+		int  tIdx = omp_get_thread_num ();
+		auto hSf  = (field->Surf() >> 1);
+		auto Sf   =  field->Surf();
+
+		#pragma omp for schedule(static)
+		for (size_t idx=0; idx<nPts; idx++) {
+
+			int kz = idx/Lx;
+			int kx = idx - kz*Lx;
+			int ky = kz/Tz;
+
+			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
+			//and thus always in reduced format with half+1 of the elements in x
+			double fcc = 2.0 ;
+			if( kx == 0 )
+			fcc = 1.0;
+			if( kx == hLx - 1 )
+			fcc = 1.0;
+
+			kz -= ky*Tz;
+			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
+
+			if (kx > hLx) kx -= static_cast<int>(Lx);
+			if (ky > hLy) ky -= static_cast<int>(Ly);
+			if (kz > hTz) kz -= static_cast<int>(Tz);
+
+			double k2    = kx*kx + ky*ky + kz*kz;
+
+			static_cast<cFloat *>(field->m2Cpu())[idx+hSf] *= exp(-prefac*k2)/normn3 ;
+		}
+
+	}
+}
+
+void	SpecBin::filter (int neigh) {
+
+	LogMsg (VERB_NORMAL, "Filter assumes m2 contains FFT r2c");
+	// FFT of contrast bin is assumed in m2 (with ghost bytes)
+	// filter with a Gaussian over n neighbours
+	// exp(- ksigma^2/2)
+	// k = 2Pi* n/ L    [n labels mode number]
+	// sigma = delta* number of neighbours
+	// ksigma^2/2 = 2 pi^2 [n^2]/N^2 * (neighbour)^2
+
+
+	switch (fPrec) {
+		case	FIELD_SINGLE:
+				filterFFT<float> (neigh);
+			break;
+
+		case	FIELD_DOUBLE:
+				filterFFT<double> (neigh);
+			break;
+	}
+
+	LogMsg (VERB_NORMAL, "FFT m2 inplace -> ");
+	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+	myPlan.run(FFT_BCK);
+	LogMsg (VERB_NORMAL, "-> filtered density map in m2!");
+
+	LogMsg (VERB_NORMAL, "reducing map [cherrypicking]");
+	// reducemap consists on reorganising items of the filtered density map
+	// we outputthem as a bin to use print bin
+	// or as a reduced density map ?
+
+	char *mA = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize();
+	float	*mCon = static_cast<float *>(static_cast<void*>(mA));
+
+	size_t seta = (size_t) neigh ;
+	size_t newNx = Ly/seta ;
+	size_t newNz = Lz/seta ;
+	size_t topa = newNx*newNx*newNz ;
+
+	// we have T = N^2*Depth points
+	// we will be writting t = newN^2*NewDepth, T = seta^3 t
+	// possible race condition we do it secuential
+									// for (size_t idx=0; idx < topa; idx++) {
+									// 	mCon[idx] = mCon[seta*idx] ;
+									// 	}
+		for (size_t iz=0; iz < newNz; iz++) {
+			size_t laz = Ly*(Ly+2)*iz*seta ;
+			size_t sz = newNx*newNx*iz ;
+			for (size_t iy=0; iy < newNx; iy++) {
+				size_t lay = (Ly+2)*iy*seta ;
+				size_t sy = newNx*iy ;
+				for (size_t ix=0; ix < newNx; ix++) {
+					size_t idx = ix + sy + sz ;
+					size_t odx = ix*seta + lay + laz ;
+					mCon[idx] = mCon[odx] ;
+				}
+			}
+		}
+	// that is too conservative ...
+
 }

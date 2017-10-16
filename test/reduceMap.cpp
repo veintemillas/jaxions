@@ -17,6 +17,7 @@ int	main (int argc, char *argv[])
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n           REDUCING CONTRAST MAP TO %d           \n", sizeN);
+	LogOut("\n             (CUTTING MODES OF FFT)              \n");
 	LogOut("\n-------------------------------------------------\n");
 
 	LogOut("\n-------------------------------------------------\n");

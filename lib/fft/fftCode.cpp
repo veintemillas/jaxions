@@ -78,7 +78,7 @@ namespace AxionFFT {
 				float	      *mR     = static_cast<float *>       (axion->vCpu())  + axion->Surf();
 				fftwf_complex *oR     = static_cast<fftwf_complex*>(static_cast<void*>(mR));
 
-				// Power spectrum in saxion and the other axion cases 
+				// Power spectrum in saxion and the other axion cases
 				float	      *mA     = static_cast<float *>       (axion->m2Cpu()) + axion->Surf();
 				fftwf_complex *oA     = static_cast<fftwf_complex*>(static_cast<void*>(mA));
 
@@ -147,17 +147,17 @@ namespace AxionFFT {
 
 					case	FFT_PSPEC_AX:
 						if (axion->Field() == FIELD_SAXION) {
-		
+
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						} else {
-		
+
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, oA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oA, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oA, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						}
 						break;
 
@@ -234,7 +234,7 @@ namespace AxionFFT {
 				double	     *mR     = static_cast<double *>     (axion->vCpu())  +  axion->Surf();
 				fftw_complex *oR     = static_cast<fftw_complex*>(axion->vCpu())  +  axion->Surf();
 
-				// Power spectrum in saxion and the other axion cases 
+				// Power spectrum in saxion and the other axion cases
 				double	      *mA    = static_cast<double *>     (axion->m2Cpu()) + axion->Surf();
 				fftw_complex  *oA    = static_cast<fftw_complex*>(static_cast<void*>(mA));
 
@@ -300,13 +300,13 @@ namespace AxionFFT {
 
 					case	FFT_PSPEC_AX:
 						if (axion->Field() == FIELD_SAXION) {
-		
+
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, oR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
 								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oR, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						} else {
-		
+
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, oA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)

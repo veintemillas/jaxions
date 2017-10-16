@@ -590,7 +590,7 @@ void	readConf (Scalar **axion, int index)
 
 	Folder munge(*axion);
 	munge(FOLD_ALL);
-	
+
 }
 
 
@@ -1166,6 +1166,10 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", aSize*8);
 }
 
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
 void	writeEDens (Scalar *axion, int index)
 {
 	hid_t	file_id, group_id, mset_id, plist_id, chunk_id;
@@ -1491,6 +1495,347 @@ void	writeEDens (Scalar *axion, int index)
 		H5Pclose(plist_id);
 	}
 }
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void	writeEDensReduced (Scalar *axion, int index, int newNx, int newNz)
+{
+	hid_t	file_id, group_id, mset_id, plist_id, chunk_id;
+	hid_t	mSpace, memSpace, dataType, totalSpace;
+	hsize_t	total, slice, slab, newslab, offset;
+
+	char	prec[16], fStr[16];
+	int	length = 8;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+
+	size_t	dataSize;
+
+	int myRank = commRank();
+
+	LogMsg (VERB_NORMAL, "Writing energy density REDUCED to Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "");
+
+	/*      Start profiling         */
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	if (axion->m2Cpu() == nullptr) {
+		LogError ("You seem to be using the lowmem option");
+		prof.stop();
+		return;
+	}
+
+	char base[256];
+
+	sprintf(base, "out/m/%s.m.%05d", outName, index);
+
+	/*	Broadcast the values of opened/header	*/
+	MPI_Bcast(&opened, sizeof(opened), MPI_BYTE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&header, sizeof(header), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+	/*	If the measurement file is opened, we reopen it with parallel access	*/
+	if (opened == true)
+	{
+		if (commRank() == 0) {
+
+			/*	Closes the currently opened file for measurements	*/
+
+//			H5Pclose (mlist_id);
+			H5Fclose (meas_id);
+
+			meas_id = -1;
+		}
+
+		commSync();
+
+		/*	Set up parallel access with Hdf5	*/
+		plist_id = H5Pcreate (H5P_FILE_ACCESS);
+		H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+		if ((file_id = H5Fopen (base, H5F_ACC_RDWR, plist_id)) < 0)
+		{
+			LogError ("Error opening file %s", base);
+			prof.stop();
+			return;
+		}
+	} else {
+		/*	Else we create the file		*/
+		plist_id = H5Pcreate (H5P_FILE_ACCESS);
+		H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+		if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
+		{
+			LogError ("Error creating file %s", base);
+			prof.stop();
+			return;
+		}
+	}
+
+	H5Pclose(plist_id);
+
+	commSync();
+
+	switch (axion->Precision())
+	{
+		case FIELD_SINGLE:
+		{
+			dataType = H5T_NATIVE_FLOAT;
+			dataSize = sizeof(float);
+
+			sprintf(prec, "Single");
+//			length = strlen(prec)+1;
+		}
+
+		break;
+
+		case FIELD_DOUBLE:
+		{
+			dataType = H5T_NATIVE_DOUBLE;
+			dataSize = sizeof(double);
+
+			sprintf(prec, "Double");
+//			length = strlen(prec)+1;
+		}
+
+		break;
+
+		default:
+
+		LogError ("Error: Invalid precision. How did you get this far?");
+		exit(1);
+
+		break;
+	}
+
+	// int cSteps = dump*index;
+	// uint totlZ = sizeZ*zGrid;
+	// uint tmpS  = sizeN;
+
+	int cSteps = dump*index;
+	uint totlZ = newNz*zGrid;
+	uint tmpS  = newNx;
+
+
+	switch (axion->Field())
+	{
+		case 	FIELD_SAXION:
+		case	FIELD_AXION:
+		{
+			//* energy is always a scalar field *//
+			//* correct above! *//
+			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
+			slab  = (hsize_t) axion->Surf();
+			newslab  = (hsize_t) newNx * newNx;
+
+			sprintf(fStr, "Axion");
+		}
+		break;
+
+		case	FIELD_WKB:
+
+		LogError ("Error: WKB field not supported");
+		exit(1);
+
+		break;
+
+		default:
+
+		LogError ("Error: Invalid field type. How did you get this far?");
+		exit(1);
+
+		break;
+	}
+
+	if (header == false)
+	{
+		/*	Write header	*/
+		hid_t attr_type;
+
+		/*	Attributes	*/
+		attr_type = H5Tcopy(H5T_C_S1);
+		H5Tset_size   (attr_type, length);
+		H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+		writeAttribute(file_id, fStr,   "Field type",    attr_type);
+		writeAttribute(file_id, prec,   "Precision",     attr_type);
+		writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
+		writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
+		writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+		writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
+		writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
+		writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
+		writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
+		writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
+		writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
+		writeAttribute(file_id, &cSteps,"Current step",  H5T_NATIVE_INT);
+
+		H5Tclose (attr_type);
+
+		header = true;
+	}
+
+	commSync();
+
+	/*	Create plist for collective write	*/
+	plist_id = H5Pcreate(H5P_DATASET_XFER);
+	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	if ((totalSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
+	{
+		LogError ("Fatal error H5Screate_simple");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Set chunked access	*/
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (chunk_id, 1, &slab) < 0)
+	{
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Fatal error H5Pset_alloc_time");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Create a group for energy data if it doesn't exist	*/
+	auto status = H5Lexists (file_id, "/energy", H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(file_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(file_id, "/energy", H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "Group /energy exists");
+		} else {
+			LogError ("Error: can't check whether group /energy exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create a dataset for the whole reduced contrast data	*/
+
+	char mCh[24] = "/energy/redensity";
+
+	mset_id = H5Dcreate (file_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	commSync();
+
+	if (mset_id < 0)
+	{
+		LogError("Error creating dataset");
+		prof.stop();
+		exit (0);
+	}
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	mSpace = H5Dget_space (mset_id);
+	memSpace = H5Screate_simple(1, &newslab, NULL);	// Slab
+
+	commSync();
+
+	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
+
+	//for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
+	for (hsize_t zDim=0; zDim<((hsize_t) newNz); zDim++)
+	{
+		/*	Select the slab in the file	*/
+		offset = (((hsize_t) (myRank*newNz)) + zDim)*newslab;
+		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &newslab, NULL);
+
+		/*	Write raw data	*/
+		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id,(static_cast<char *> (axion->m2Cpu())+slab*dataSize + newslab*(zDim)*dataSize));
+			//                    m2Cpu          + ghost bytes  +
+		if (mErr < 0)
+		{
+			LogError ("Error writing dataset");
+			prof.stop();
+			exit(0);
+		}
+
+		//commSync();
+	}
+
+	LogMsg (VERB_HIGH, "Write reduced contrast map successful");
+
+	/*	Close the dataset	*/
+
+	H5Dclose (mset_id);
+	H5Sclose (mSpace);
+	H5Sclose (memSpace);
+
+	/*	Close the file		*/
+
+	H5Sclose (totalSpace);
+	H5Pclose (chunk_id);
+	H5Pclose (plist_id);
+	H5Gclose (group_id);
+	H5Fclose (file_id);
+
+        prof.stop();
+	prof.add(std::string("Write energy map"), 0., (2.*total*dataSize + 78.)*1e-9);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes", total*dataSize*2 + 78);
+
+	/*	If there was a file opened for measurements, open it again	*/
+
+	if (opened == true)
+	{
+		hid_t	plist_id;
+
+		if (myRank != 0)	// Only rank 0 writes measurement data
+			return;
+
+		LogMsg (VERB_NORMAL, "Opening measurement file");
+
+		/*	This would be weird indeed	*/
+
+		if (meas_id >= 0)
+		{
+			LogError ("Error, a hdf5 file is already opened");
+			return;
+		}
+
+		/*	Open the file and release the plist	*/
+
+		if ((meas_id = H5Fopen (base, H5F_ACC_RDWR, H5P_DEFAULT)) < 0)
+		{
+			LogError ("Error opening file %s", base);
+			return;
+		}
+
+		H5Pclose(plist_id);
+	}
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
 
 void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power)
 {
@@ -2619,6 +2964,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes", nSlb*newLz*dataSize + 78);
 }
+
 
 void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 {

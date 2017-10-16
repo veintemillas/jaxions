@@ -83,8 +83,15 @@
 		template<typename cFloat, const SpectrumType sType, const bool spectral>
 		void	fillBins	();
 
+		template<typename cFloat>
+		void	filterFFT	(int neigh);
+
 		void	nRun		();
 		void	pRun		();
+
+
+		void	filter	(int neigh);
+
 	};
 
 

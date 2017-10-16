@@ -126,7 +126,7 @@ int	main (int argc, char *argv[])
 	double delta = sizeL/sizeN;
 	double dz;
 	double dzaux;
-	double llphys;
+	double llphys = LL ;
 
 	if (nSteps == 0)
 		dz = 0.;
@@ -160,8 +160,6 @@ int	main (int argc, char *argv[])
 		//msa = 1.7 ;
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
-	  double llconstantZ2 = 0.5/pow(delta/msa,2.);
-		LogOut ("llconstantZ2 = %f - LL will be set to llphys=llconstantZ2/Z^2 \n", llconstantZ2);
 
 		bool coZ = 1;
 	  bool coS = 1;
@@ -171,11 +169,18 @@ int	main (int argc, char *argv[])
 		int numaxiprint = 10 ;
 		StringData rts ;
 
-		axion->SetLambda(LAMBDA_Z2)	;
+		//double llconstantZ2 = 0.5/pow(delta/msa,2.);
+		//axion->SetLambda(LAMBDA_Z2)	;
+
+		// in Z2 mode LL = 0.5/pow(delta/msa,2.);
+		double llconstantZ2 = LL ;
+
 		if (LAMBDA_FIXED == axion->Lambda())
 		{ 	LogOut ("Lambda in FIXED mode\n"); 	}
 		else
-		{		LogOut ("Lambda in Z2 mode\n"); 		}
+		{		LogOut ("Lambda in Z2 mode\n");
+		LogOut ("llconstantZ2 = %f - LL = llconstantZ2/Z^2 \n", llconstantZ2);
+		}
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
@@ -210,9 +215,9 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		// LogOut ("Dumping configuration %05d ...", index);
-		// writeConf(axion, index);
-		// LogOut ("Done!\n");
+		LogOut ("Dumping configuration %05d ...", index);
+		writeConf(axion, index);
+		LogOut ("Done!\n");
 		LogOut ("Bypass configuration writting!\n");
 	}
 	else
@@ -262,7 +267,10 @@ int	main (int argc, char *argv[])
 	LogOut("zGrid  =  %ld\n",   zGrid);
 	LogOut("dx     =  %2.5f\n", delta);
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
-	LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa);
+	if (LAMBDA_FIXED == axion->Lambda()){
+	LogOut("LL     =  %f \n\n", LL);	}
+	else {
+	LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa); }
 	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n\n");
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("           ESTIMATES  						                \n\n");
@@ -289,7 +297,9 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	initPropagator (pType, axion, nQcd, delta, llconstantZ2, VQCD_1);
+	// LL is LL      in FIXED MODE
+	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
+	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -329,7 +339,8 @@ int	main (int argc, char *argv[])
 				if (commRank() == 0 && sPrec == FIELD_SINGLE) {
 						if (axion->Field() == FIELD_SAXION) {
 							// LAMBDA_Z2 MODE assumed!
-								llphys = llconstantZ2/(z_now*z_now);
+								if (axion->Lambda() == LAMBDA_Z2)
+									llphys = llconstantZ2/(z_now*z_now);
 								saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 								fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axionmass(z_now,nQcd,zthres, zrestore), llphys,
 								mC[idxprint + S0].real(), mC[idxprint + S0].imag(), vC[idxprint].real(), vC[idxprint].imag(), nstrings_global, maximumtheta, saskia);
@@ -357,7 +368,8 @@ int	main (int argc, char *argv[])
 				{
 
 					z_now = (*axion->zV());
-					llphys = llconstantZ2/(z_now*z_now); //physical value
+					if (axion->Lambda() == LAMBDA_Z2)
+						llphys = llconstantZ2/(z_now*z_now);
 					saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 					double shiftz = z_now * saskia;
 
@@ -441,7 +453,8 @@ int	main (int argc, char *argv[])
 			// llprint = llaux/(z_now*z_now); //physical value
 			// saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			z_now = (*axion->zV());
-			llphys = llconstantZ2/(z_now*z_now); //physical value
+			if (axion->Lambda() == LAMBDA_Z2)
+				llphys = llconstantZ2/(z_now*z_now);
 			shiftz = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
 
 			createMeas(axion, index);
@@ -568,9 +581,16 @@ int	main (int argc, char *argv[])
 		writeEDens(axion, index);
 		writeEnergy(axion, eRes);
 
-		printf("p Spectrum ... %d", commRank());
+		LogOut("p Spectrum ... ");
 		specAna.pRun();
 		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
+		if ( endredmap > 0){
+			LogOut("filtering to reduce map with %d neighbours ... ", sizeN/endredmap);
+			int nena = sizeN/endredmap ;
+			specAna.filter(nena);
+			writeEDensReduced(axion, index, endredmap, endredmap/zGrid);
+		}
 
 		LogOut("|  ");
 		LogOut("Theta bin ... ");
@@ -591,7 +611,7 @@ int	main (int argc, char *argv[])
 			// FINAL WKB
 			//--------------------------------------------------
 
-			if (wkb2z > zFinl)
+			if (wkb2z >= zFinl)
 			{
 						WKB wonka(axion, axion);
 
@@ -611,6 +631,16 @@ int	main (int argc, char *argv[])
 							LogOut ("Printing measurement file %05d ... ", index);
 							createMeas(axion, index);
 									SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+
+									LogOut ("spec ");
+									specAna.nRun();
+									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+									writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+									LogOut ("2D ");
+									writeMapHdf5s(axion,sliceprint);
+									LogOut ("Done!\n");
+
 									// computes energy and creates map
 									LogOut ("en ");
 									energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
@@ -628,34 +658,37 @@ int	main (int argc, char *argv[])
 									LogOut ("pow ");
 									specAna.pRun();
 									writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-									LogOut ("spec ");
-									specAna.nRun();
-									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
-									writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
-									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
-									LogOut ("2D ");
-									writeMapHdf5s(axion,sliceprint);
-									LogOut ("Done!\n");
+
+									if ( endredmap > 0 ){
+										LogOut("redmap ");
+										int nena = sizeN/endredmap ;
+										specAna.filter(nena);
+										writeEDensReduced(axion, index, endredmap, endredmap/zGrid);
+									}
+
 
 								destroyMeas();
 			}
 
 
-			//--------------------------------------------------
+			// --------------------------------------------------
 			// FINAL REDUCE MAP (note it reads from file)
-			//--------------------------------------------------
-
+			// --------------------------------------------------
+			//
 			if ( endredmap > 0)
 			{
-				LogOut ("Reducing map %d to %d^3 ... ", index, endredmap);
-				char mirraa[128] ;
-				strcpy (mirraa, outName);
-				strcpy (outName, "./out/m/axion\0");
+				// LogOut ("Reducing map %d to %d^3 ... ", index, endredmap);
+				// 	char mirraa[128] ;
+				// 	strcpy (mirraa, outName);
+				// 	strcpy (outName, "./out/m/axion\0");
+				// 	reduceEDens(index, endredmap, endredmap) ;
+				// 	strcpy (outName, mirraa);
+				// LogOut ("Done!\n");
 
-				reduceEDens(index, endredmap, endredmap) ;
+				createMeas(axion, index+1);
+				writeEDensReduced(axion, index+1, endredmap, endredmap/zGrid);
+				destroyMeas();
 
-				strcpy (outName, mirraa);
-				LogOut ("Done!\n");
 			}
 
   }
