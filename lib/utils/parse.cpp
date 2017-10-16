@@ -284,17 +284,27 @@ int	parseArgs (int argc, char *argv[])
 			{
 				printf("No new sizeN input for final reducemap. Set to default = 256\n");
 				endredmap = 256 ;
-				exit(1);
 			}
 
 			endredmap = atof(argv[i+1]);
 
-			if ((endredmap > sizeN) || (endredmap < 0))
-			{
-				printf("Error: reducedN should be in the interval [0 < size]. Set to 256\n");
-				endredmap = 256	;
-				exit(1);
-			}
+			// if ((endredmap == sizeN))
+			// {
+			// 	printf("Warning: reducedN == sizeN, Gaussian filtering at most\n");
+			// }
+			//
+			// if (endredmap < 0)
+			// {
+			// 	printf("Error: reducedN should be in the interval [0 < size]. Set to 256\n");
+			// 	endredmap = 256	;
+			// }
+			//
+			// if ((endredmap > sizeN))
+			// {
+			// 	printf("Error: reducedN should be in the interval [0 < size]. Set to sizeN\n");
+			// 	endredmap = sizeN	;
+			// }
+
 
 			i++;
 			procArgs++;
