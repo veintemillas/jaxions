@@ -3,29 +3,27 @@
 
 	#include <array>
 	#include <algorithm>
+	#include <functional>
 	#include <string>
 	#include <mpi.h>
 
-	template<FindType fType, typename cFloat, bool sign>
-	cFloat	find	(cFloat *data, size_t size) {
+	template<FindType fType, typename cFloat, typename Float>
+	float	find	(Float *data, size_t size, std::function<Float(const cFloat &)> filter) {
 		LogMsg (VERB_NORMAL, "Called Find");
 
 		if ((data == nullptr) || (size == 0))
-			return cFloat(0);
+			return Float(0);
 
-		auto	cur = ((sign == true) ? data[0] : abs(data[0]));
+		auto	cur = filter(data[0]);
 
 		switch (fType) {
 			case	FIND_MAX: {
 				#pragma omp parallel for reduction(max:cur) schedule(static)
 				for (size_t idx=1; idx<size; idx++) {
-					if (sign) {
-						if (cur < data[idx])
-							cur = data[idx];
-					} else {
-						if (cur < abs(data[idx]))
-							cur = abs(data[idx]);
-					}
+					auto tmp = filter(data[idx]);
+
+					if (cur < tmp)
+						cur = tmp;
 				}
 			}
 			break;
@@ -33,13 +31,10 @@
 			case	FIND_MIN: {
 				#pragma omp parallel for reduction(min:cur) schedule(static)
 				for (size_t idx=1; idx<size; idx++) {
-					if (sign) {
-						if (cur > data[idx])
-							cur = data[idx];
-					} else {
-						if (cur > abs(data[idx]))
-							cur = abs(data[idx]);
-					}
+					auto tmp = filter(data[idx]);
+
+					if (cur > tmp)
+						cur = tmp;
 				}
 			}
 			break;
@@ -48,12 +43,13 @@
 		return	cur;
 	}
 
-	template<typename DType, size_t N>
+	template<typename DType, size_t N, typename CType = DType>
 	class	Binner {
 
 		private:
 
-		std::array<double,N>	bins;
+		std::array<double,N> bins;
+		std::function<DType(const CType &)> filter;
 
 		DType	maxVal;
 		DType	minVal;
@@ -66,10 +62,11 @@
 		public:
 
 			Binner	() { bins.fill(0.); zVal = 1.0; }
-			Binner	(DType *inData, size_t dSize, double zIn) : dSize(dSize), inData(inData), zVal(zIn) {
+			Binner	(DType *inData, size_t dSize, double zIn, std::function<DType(const CType &)> myFilter = [] (CType x) -> DType { return (DType) x; }) :
+				 dSize(dSize), inData(inData), zVal(zIn), filter(myFilter) {
 			bins.fill(0.);
-			double tMaxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
-			double tMinVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+			double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter))/zVal;
+			double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter))/zVal;
 
 			double t1 = 0., t2 = 0.;
 
@@ -85,8 +82,8 @@
 
 		DType*	getData	() const			{ return inData;   }
 		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize;
-								  double tMaxVal = (find<FIND_MAX,DType,true> (inData, dSize))/zVal;
-								  double tMinVal = (find<FIND_MIN,DType,true> (inData, dSize))/zVal;
+								  double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter))/zVal;
+								  double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter))/zVal;
 
 								  double t1, t2;
 
@@ -112,8 +109,8 @@
 		inline double	min()			const	{ return minVal; }
 	};
 
-	template<typename DType, size_t N>
-	void	Binner<DType,N>::run	() {
+	template<typename DType, size_t N, typename CType>
+	void	Binner<DType,N,CType>::run	() {
 		int mIdx = commThreads();
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
@@ -130,7 +127,7 @@
 
 			#pragma omp for schedule(static)
 			for (size_t i=0; i<dSize; i++) {
-				auto cVal = inData[i]/zVal;
+				auto cVal = filter(inData[i])/zVal;
 
 				if (fabs(cVal - minVal) < step/100.) {
 					tBins[N*tIdx]++;
