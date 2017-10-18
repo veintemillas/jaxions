@@ -51,6 +51,7 @@
 				hTz = Tz >> 1;
 
 				switch (fType) {
+					case	FIELD_AXION_MOD:
 					case	FIELD_AXION:
 						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;

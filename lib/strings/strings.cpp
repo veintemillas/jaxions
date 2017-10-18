@@ -84,7 +84,7 @@ StringData	strings	(Scalar *field, void *strData)
 
 	StringData	strTmp, strDen;
 
-	if ((field->Field() == FIELD_AXION) || (field->Field() == FIELD_WKB)) {
+	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB)) {
 		strDen.strDen = 0;
 		strDen.strChr = 0;
 		strDen.wallDn = 0;

@@ -100,7 +100,7 @@ void	SpecBin::fillBins	() {
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx+hSf]);
 			double		m2 = 0.;
 
-			if (fType == FIELD_AXION) {
+			if (fType & FIELD_AXION) {
 				if ((kx == 0) || (kx == hLx - 1))
 					m2 = m*m;
 				else
@@ -260,6 +260,7 @@ void	SpecBin::nRun	() {
 				}
 				break;
 
+				case	FIELD_AXION_MOD:
 				case	FIELD_AXION:
 				{
 					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
@@ -330,6 +331,7 @@ void	SpecBin::nRun	() {
 				}
 				break;
 
+				case	FIELD_AXION_MOD:
 				case	FIELD_AXION:
 				{
 					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");

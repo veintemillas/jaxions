@@ -143,7 +143,7 @@ int	main (int argc, char *argv[])
 	else
 		index = fIndex;
 
-	axion->SetLambda(LAMBDA_FIXED);
+	axion->setLambda(LAMBDA_FIXED);
 
 	if (LAMBDA_FIXED == axion->Lambda())
 		LogOut ("Lambda in FIXED mode\n");

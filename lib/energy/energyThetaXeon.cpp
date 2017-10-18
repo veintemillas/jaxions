@@ -26,7 +26,7 @@
 	#endif
 #endif
 
-template<const bool map>
+template<const bool map, const bool wMod>
 void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double ood2, const double nQcd,
 			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
 {
@@ -76,7 +76,6 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const auto vShRg  = opCode(load_si512, shfRg);
 		const auto vShLf  = opCode(load_si512, shfLf);
 #endif
-
 		const _MData_ tpVec = opCode(set1_pd, tV);
 		const _MData_ izVec = opCode(set1_pd, iz);
 		const _MData_ one   = opCode(set1_pd, 1.0);
@@ -172,33 +171,45 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				// Calculo los gradientes con módulo
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
-				//tmp = opCode(mod_pd, grd, tpVec);
-				//mPx = opCode(mul_pd, tmp, tmp);
-				mPx = opCode(mul_pd, grd, grd);
+				if (wMod) {
+					tmp = opCode(mod_pd, grd, tpVec);
+					mPx = opCode(mul_pd, tmp, tmp);
+				} else
+					mPx = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
-				//tmp = opCode(mod_pd, grd, tpVec);
-				//mMx = opCode(mul_pd, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_pd, grd, tpVec);
+					mMx = opCode(mul_pd, tmp, tmp);
+				} else
 				mMx = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, mPy, mel);
-				//tmp = opCode(mod_pd, grd, tpVec);
-				//mPy = opCode(mul_pd, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_pd, grd, tpVec);
+					mPy = opCode(mul_pd, tmp, tmp);
+				} else
 				mPy = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, mMy, mel);
-				//tmp = opCode(mod_pd, grd, tpVec);
-				//mMy = opCode(mul_pd, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_pd, grd, tpVec);
+					mMy = opCode(mul_pd, tmp, tmp);
+				} else
 				mMy = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
-				//tmp = opCode(mod_pd, grd, tpVec);
-				//mPz = opCode(mul_pd, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_pd, grd, tpVec);
+					mPz = opCode(mul_pd, tmp, tmp);
+				} else
 				mPz = opCode(mul_pd, grd, grd);
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
-				//tmp = opCode(mod_pd, grd, tpVec);
-				//mMz = opCode(mul_pd, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_pd, grd, tpVec);
+					mMz = opCode(mul_pd, tmp, tmp);
+				} else
 				mMz = opCode(mul_pd, grd, grd);
 
 				grd = opCode(add_pd, mPx, mMx);
@@ -374,33 +385,45 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				// Calculo los gradientes con módulo
 				// Version sin módulo ; descomentar si modulo necesario ; assumes continuous field
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
-				// tmp = opCode(mod_ps, grd, tpVec);
-				// mPx = opCode(mul_ps, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_ps, grd, tpVec);
+					mPx = opCode(mul_ps, tmp, tmp);
+				} else
 				mPx = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
-				//tmp = opCode(mod_ps, grd, tpVec);
-				//mMx = opCode(mul_ps, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_ps, grd, tpVec);
+					mMx = opCode(mul_ps, tmp, tmp);
+				} else
 				mMx = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, mPy, mel);
-				//tmp = opCode(mod_ps, grd, tpVec);
-				//mPy = opCode(mul_ps, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_ps, grd, tpVec);
+					mPy = opCode(mul_ps, tmp, tmp);
+				} else
 				mPy = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, mMy, mel);
-				//tmp = opCode(mod_ps, grd, tpVec);
-				//mMy = opCode(mul_ps, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_ps, grd, tpVec);
+					mMy = opCode(mul_ps, tmp, tmp);
+				} else
 				mMy = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
-				// tmp = opCode(mod_ps, grd, tpVec);
-				// mPz = opCode(mul_ps, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_ps, grd, tpVec);
+					mPz = opCode(mul_ps, tmp, tmp);
+				} else
 				mPz = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
-				//tmp = opCode(mod_ps, grd, tpVec);
-				//mMz = opCode(mul_ps, tmp, tmp);
+				if (wMod) {
+					tmp = opCode(mod_ps, grd, tpVec);
+					mMz = opCode(mul_ps, tmp, tmp);
+				} else
 				mMz = opCode(mul_ps, grd, grd);
 
 				grd = opCode(add_ps, mPx, mMx);
@@ -457,6 +480,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	eRes[TH_POT] = ptC;
 }
 
+template<const bool mod>
 void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map)
 {
 	const double ood2 = 0.25/delta2;
@@ -467,11 +491,25 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd,
 
 	switch	(map) {
 		case	true:
-			energyThetaKernelXeon<true> (axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
+			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
 			break;
 
 		case	false:
-			energyThetaKernelXeon<false>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
+			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
 			break;
 	}
 }
+
+void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map, const bool mod)
+{
+	switch	(mod) {
+		case	true:
+			energyThetaCpu<true> (axionField, delta2, nQcd, Lx, V, S, eRes, map);
+			break;
+
+		case	false:
+			energyThetaCpu<false>(axionField, delta2, nQcd, Lx, V, S, eRes, map);
+			break;
+	}
+}
+

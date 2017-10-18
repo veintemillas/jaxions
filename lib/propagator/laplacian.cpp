@@ -229,6 +229,7 @@ void	applyLaplacian	(Scalar *field)
 	//prof.start();
 
 	switch (field->Field()) {
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 			//lap->setName("Laplacian Axion");
 

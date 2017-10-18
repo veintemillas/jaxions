@@ -5,9 +5,10 @@
 
 	typedef enum	FieldType_s
 	{
-		FIELD_SAXION,
-		FIELD_AXION,
-		FIELD_WKB,
+		FIELD_SAXION	= 1,
+		FIELD_AXION	= 2,
+		FIELD_AXION_MOD	= 130,
+		FIELD_WKB	= 6,
 	}	FieldType;
 
 	typedef	enum	FieldIndex_s

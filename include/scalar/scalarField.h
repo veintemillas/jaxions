@@ -19,7 +19,6 @@
 		const size_t v3;
 
 		const int  nSplit;
-		const bool lowmem;
 
 		DeviceType	device;
 		FieldPrecision	precision;
@@ -30,6 +29,7 @@
 		size_t	mAlign;
 		int	shift;
 		bool	folded;
+		bool	lowmem;
 
 		double	*z;
 
@@ -85,7 +85,8 @@
 		void		*m2Gpu() { return m2_d; }
 		const void	*m2Gpu() const { return m2_d; }
 #endif
-		bool		LowMem()  { return lowmem; }
+		bool		LowMem()    		  { return lowmem; }
+		void		setLowMem(const bool nLm) { lowmem = nLm; }
 
 		size_t		TotalSize() { return n3*nSplit; }
 		size_t		Size()      { return n3; }
@@ -101,7 +102,7 @@
 		LambdaType	Lambda()    { return lambdaType; }
 		FieldType	Field()     { return fieldType; }
 
-		void		SetLambda(LambdaType newLambda) { lambdaType = newLambda; }
+		void		setLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize () { return fSize; }
 		size_t		DataAlign() { return mAlign; }

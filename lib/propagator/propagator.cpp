@@ -213,6 +213,11 @@ void	propagate	(Scalar *field, const double dz)
 			(prop->propAxion)(dz);
 			break;
 
+		case FIELD_AXION_MOD:
+			prop->appendName("Axion Mod");
+			(prop->propAxion)(dz);
+			break;
+
 		case FIELD_SAXION:
 			prop->appendName("Saxion");
 			(prop->propSaxion)(dz);

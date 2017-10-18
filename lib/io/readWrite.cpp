@@ -203,6 +203,15 @@ void	writeConf (Scalar *axion, int index)
 		}
 		break;
 
+		case	FIELD_AXION_MOD:
+		{
+			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
+			slab  = (hsize_t) axion->Surf();
+
+			sprintf(fStr, "Axion Mod");
+		}
+		break;
+
 		case	FIELD_AXION:
 		case	FIELD_WKB:
 		{
@@ -522,10 +531,13 @@ void	readConf (Scalar **axion, int index)
 
 	if (!strcmp(fStr, "Saxion"))
 	{
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION, lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
 	} else if (!strcmp(fStr, "Axion")) {
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,  lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType, CONF_NONE, 0, 0);
+		slab   = (hsize_t) ((*axion)->Surf());
+	} else if (!strcmp(fStr, "Axion Mod")) {
+		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
 		LogError ("Input error: Invalid field type");
@@ -692,6 +704,10 @@ void	createMeas (Scalar *axion, int index)
 	{
 		case 	FIELD_SAXION:
 			sprintf(fStr, "Saxion");
+			break;
+
+		case	FIELD_AXION_MOD:
+			sprintf(fStr, "Axion Mod");
 			break;
 
 		case	FIELD_AXION:
@@ -1296,6 +1312,14 @@ void	writeEDens (Scalar *axion, int index)
 		}
 		break;
 
+		case	FIELD_AXION_MOD:
+		{
+			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
+			slab  = (hsize_t) axion->Surf();
+
+			sprintf(fStr, "Axion Mod");
+		}
+
 		case	FIELD_AXION:
 		{
 			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
@@ -1624,35 +1648,35 @@ void	writeEDensReduced (Scalar *axion, int index, int newNx, int newNz)
 	uint totlZ = newNz*zGrid;
 	uint tmpS  = newNx;
 
+	total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
+	slab  = (hsize_t) axion->Surf();
+	newslab  = (hsize_t) newNx * newNx;
 
 	switch (axion->Field())
 	{
 		case 	FIELD_SAXION:
+			sprintf(fStr, "Saxion");
+			break;
+
+		case	FIELD_AXION_MOD:
+			sprintf(fStr, "Axion Mod");
+			break;
+
 		case	FIELD_AXION:
-		{
 			//* energy is always a scalar field *//
 			//* correct above! *//
-			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
-			slab  = (hsize_t) axion->Surf();
-			newslab  = (hsize_t) newNx * newNx;
-
 			sprintf(fStr, "Axion");
-		}
-		break;
+			break;
 
 		case	FIELD_WKB:
-
-		LogError ("Error: WKB field not supported");
-		exit(1);
-
-		break;
+			LogError ("Error: WKB field not supported");
+			exit(1);
+			break;
 
 		default:
-
-		LogError ("Error: Invalid field type. How did you get this far?");
-		exit(1);
-
-		break;
+			LogError ("Error: Invalid field type. How did you get this far?");
+			exit(1);
+			break;
 	}
 
 	if (header == false)

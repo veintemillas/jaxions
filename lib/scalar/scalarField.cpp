@@ -55,6 +55,7 @@ const std::complex<float> If(0.,1.);
 			nData = 2;
 			break;
 
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 		case FIELD_WKB:
 			nData = 1;
@@ -124,6 +125,7 @@ const std::complex<float> If(0.,1.);
 			alignAlloc ((void**) &v, mAlign, vBytes);
 			break;
 
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 		case FIELD_WKB:
 			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
@@ -162,6 +164,7 @@ const std::complex<float> If(0.,1.);
 				m2 = nullptr;
 			break;
 
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
@@ -249,7 +252,7 @@ const std::complex<float> If(0.,1.);
 			}*/
 		}
 
-		if (!lowmem || fieldType == FIELD_AXION)
+		if (!lowmem || (fieldType & FIELD_AXION))
 			if (cudaMalloc(&m2_d, mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", mBytes);
@@ -306,7 +309,7 @@ const std::complex<float> If(0.,1.);
 			}
 
 		} else {
-			if (fieldType == FIELD_AXION) {
+			if (fieldType & FIELD_AXION) {
 				LogError ("Configuration generation for axion fields not supported");
 			} else {
 				if (cType == CONF_KMAX || cType == CONF_TKACHEV)
@@ -563,6 +566,7 @@ void	Scalar::setField (FieldType newType)
 
 	switch (newType)
 	{
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 			if (fieldType == FIELD_SAXION)
 			{
@@ -656,7 +660,7 @@ void	Scalar::setField (FieldType newType)
 			break;
 
 		case	FIELD_SAXION:
-			if (fieldType == FIELD_AXION)
+			if (fieldType & FIELD_AXION)
 			{
 				if (commRank() == 0)
 					LogError ("Error: transformation from axion to saxion not supported");
@@ -875,6 +879,7 @@ void	Scalar::theta2m2()//int *window)
 			}
 		break;
 
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 			if (precision == FIELD_DOUBLE)
 			{
@@ -928,6 +933,7 @@ void	Scalar::vheta2m2()//int *window)
 			}
 		break;
 
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 			if (precision == FIELD_DOUBLE)
 			{
@@ -1011,6 +1017,7 @@ void	Scalar::thetav2m2()//int *window)
 			}
 		break;
 
+		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 			if (precision == FIELD_DOUBLE)
 			{
@@ -1349,7 +1356,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 	double maxi_global;
 
 	//printf("\n q1-%d",commRank());fflush(stdout);
-	if(fieldType == FIELD_AXION)
+	if(fieldType & FIELD_AXION)
 	{
 		Float *mTheta = static_cast<Float*> (m);
 		Float *mVeloc = static_cast<Float*> (v);
@@ -1642,7 +1649,7 @@ void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int num
 	//COMPUTES AVERAGE AND MAX
 	//IF M2 IS ALREADY CONTRAST DOES NOT CHANGE ANYTHING
 
-	if(fieldType == FIELD_AXION)
+	if(fieldType & FIELD_AXION)
 	{
 		Float *mTheta = static_cast<Float*> (m);
 		Float *mVeloc = static_cast<Float*> (v);
@@ -2094,7 +2101,7 @@ void	Scalar::denstom()//int *window)
 
 //	printf("hallo von inside %f\n", thetamaxi);
 
-	if(fieldType == FIELD_AXION)
+	if(fieldType & FIELD_AXION)
 	{
 		if (precision == FIELD_SINGLE)
 		{
@@ -2143,7 +2150,7 @@ void	Scalar::autodenstom2()//int *window)
 
 //	printf("hallo von inside %f\n", thetamaxi);
 
-	if(fieldType == FIELD_AXION)
+	if(fieldType & FIELD_AXION)
 	{
 		if (precision == FIELD_SINGLE)
 		{
@@ -2193,7 +2200,7 @@ void	Scalar::mendtheta()//int *window)
 //	make sure field unfolded
 // 	make sure ghosts sent
 
-if(fieldType == FIELD_AXION)
+if(fieldType & FIELD_AXION)
 {
 
 	int counter = 0;
@@ -2356,7 +2363,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		ct_local[i] = 0. ;
 	}
 
-	if(fieldType == FIELD_AXION)
+	if(fieldType & FIELD_AXION)
 	{
 		//mCONT assumed normalised // i.e. contrastbin was called before
 		Float *mCONT = static_cast<Float*> (m2);

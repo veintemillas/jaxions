@@ -27,7 +27,7 @@
 		#pragma GCC optimize ("unroll-loops")
 	#endif
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const bool lastStage, VqcdType VQcd = false>
 	class	PropClass : public PropBase
 	{
 		protected:
@@ -140,27 +140,29 @@
 		const uint ext = uV + uS;
 		double *z = axionField->zV();
 
+		const bool wMod = (axionField->Field() == FIELD_AXION_MOD) ? true : false;
+
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
 			propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, 2*uS, uV, precision,
-				    ((cudaStream_t *)axionField->Streams())[2]);
+				    ((cudaStream_t *)axionField->Streams())[2], wMod);
 			axionField->exchangeGhosts(FIELD_M);
 			propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uS, 2*uS, precision,
-				    ((cudaStream_t *)axionField->Streams())[0]);
+				    ((cudaStream_t *)axionField->Streams())[0], wMod);
 			propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uV,  ext, precision,
-				    ((cudaStream_t *)axionField->Streams())[1]);
+				    ((cudaStream_t *)axionField->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 			*z += dz*d1;
 
 			propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, 2*uS, uV, precision,
-				    ((cudaStream_t *)axionField->Streams())[2]);
+				    ((cudaStream_t *)axionField->Streams())[2], wMod);
 			axionField->exchangeGhosts(FIELD_M2);
 			propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uS, 2*uS, precision,
-				    ((cudaStream_t *)axionField->Streams())[0]);
+				    ((cudaStream_t *)axionField->Streams())[0], wMod);
 			propThetaGpu(axionField->m2Gpu(), axionField->vGpu(), axionField->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uV,  ext, precision,
-				    ((cudaStream_t *)axionField->Streams())[1]);
+				    ((cudaStream_t *)axionField->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 			*z += dz*d2;
 		}
@@ -171,12 +173,12 @@
 			const double	c0 = c[nStages];
 
 			propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, 2*uS, uV, precision,
-				    ((cudaStream_t *)axionField->Streams())[2]);
+				    ((cudaStream_t *)axionField->Streams())[2], wMod);
 			axionField->exchangeGhosts(FIELD_M);
 			propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, uS, 2*uS, precision,
-				    ((cudaStream_t *)axionField->Streams())[0]);
+				    ((cudaStream_t *)axionField->Streams())[0], wMod);
 			propThetaGpu(axionField->mGpu(), axionField->vGpu(), axionField->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, uV,  ext, precision,
-				    ((cudaStream_t *)axionField->Streams())[1]);
+				    ((cudaStream_t *)axionField->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 		}
 	#else
@@ -540,6 +542,7 @@
 					break;
 
 				case FIELD_AXION:
+				case FIELD_AXION_MOD:	// Seguro??
 					return	(1e-9 * ((double) axionField->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
 					break;
 
@@ -565,6 +568,7 @@
 					break;
 
 				case FIELD_AXION:
+				case FIELD_AXION_MOD:	// Seguro??
 					return	(1e-9 * ((double) axionField->Size()) * (21. * ((double) nStages) + (lastStage ? 13. : 0.)
 						+ 2.5*1.44695*log(((double) axionField->Size()))));
 					break;

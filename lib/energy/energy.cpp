@@ -56,12 +56,21 @@ void	Energy::runGpu	()
 
 	field->exchangeGhosts(FIELD_M);
 
-	if (fType == FIELD_SAXION) {
-		setName		("Energy Saxion");
-		energyGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
-	} else {
-		setName		("Energy Axion");
-		energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
+	switch (fType) {
+		case	FIELD_SAXION:
+			setName		("Energy Saxion");
+			energyGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
+			break;
+
+		case	FIELD_AXION:
+			setName		("Energy Axion");
+			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, false);
+			break;
+
+		case	FIELD_AXION_MOD:
+			setName		("Energy Axion (mod)");
+			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
+			break;
 	}
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -73,12 +82,21 @@ void	Energy::runGpu	()
 
 void	Energy::runCpu	()
 {
-	if (fType == FIELD_SAXION) {
-		setName		("Energy Saxion");
-		energyCpu	(field, delta2, LL, nQcd, Lx, V, S, eRes, shift, pot, map);
-	} else {
-		setName		("Energy Axion");
-		energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map);
+	switch (fType) {
+		case	FIELD_SAXION:
+			setName		("Energy Saxion");
+			energyCpu	(field, delta2, LL, nQcd, Lx, V, S, eRes, shift, pot, map);
+			break;
+
+		case	FIELD_AXION:
+			setName		("Energy Axion");
+			energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map, false);
+			break;
+
+		case	FIELD_AXION_MOD:
+			setName		("Energy Axion (mod)");
+			energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map, true);
+			break;
 	}
 }
 

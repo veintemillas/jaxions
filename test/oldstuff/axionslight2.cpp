@@ -293,7 +293,7 @@ int	main (int argc, char *argv[])
 	int strcount = 0;
 	StringData rts ;
 
-	axion->SetLambda(LAMBDA_Z2)	;
+	axion->setLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{ 	LogOut ("Lambda in FIXED mode\n"); 	}
 	else
@@ -392,7 +392,7 @@ int	main (int argc, char *argv[])
 			// NOTE THAT I DEFINED zthr as LL = llconstantZ2/pow(zthr,2.)
 			if ((axion->Field() == FIELD_SAXION) && (z_now > zthres) && coZ )
 			{
-				axion->SetLambda(LAMBDA_FIXED)	;
+				axion->setLambda(LAMBDA_FIXED)	;
 				LogOut("Lambda Fixed transition at %f \n", (*axion->zV()));
 				coZ = 0;
 			}

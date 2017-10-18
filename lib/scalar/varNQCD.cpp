@@ -60,7 +60,7 @@ double	dzSize	(double z, FieldType fType, LambdaType lType) {
 	double mAx2 = axionmass2(z, nQcd, zthres, zrestore);
 	double mAfq = 0.;
 
-	if ((fType == FIELD_AXION) || (fType == FIELD_WKB))
+	if ((fType & FIELD_AXION) || (fType == FIELD_WKB))
 		return	wDz/sqrt(mAx2*(z*z) + 12.*(oodl*oodl));
 	 else
 		mAfq = sqrt(mAx2*(z*z) + 12.*oodl*oodl);

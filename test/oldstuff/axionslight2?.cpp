@@ -290,7 +290,7 @@ int	main (int argc, char *argv[])
 	int strcount = 0;
 
 
-	axion->SetLambda(LAMBDA_Z2)	;
+	axion->setLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 	{ 	printMpi ("Lambda in FIXED mode\n"); 	}
 	else
@@ -396,7 +396,7 @@ int	main (int argc, char *argv[])
 			//printMpi("(dz0,dz1,dz2)= (%f,%f,%f) ", delta, 1./(sqrt(LL)*(*axion->zV())) ,1./(9.*pow((*axion->zV()),nQcd)));
 			if (axion->Field() == FIELD_SAXION && LL*pow(z_now,2.) > llaux && coZ )
 			{
-				axion->SetLambda(LAMBDA_FIXED)	;
+				axion->setLambda(LAMBDA_FIXED)	;
 				printMpi("Lambda Fixed transition at %f \n", (*axion->zV()));
 				coZ = 0;
 			}

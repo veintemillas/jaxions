@@ -27,7 +27,7 @@ static __device__ __forceinline__ Float modPi (const Float x, const Float OneOvP
 	return x;
 }
 
-template<typename Float, const bool map>
+template<typename Float, const bool map, const bool wMod>
 static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const Float * __restrict__ m, const Float * __restrict__ v, Float * __restrict__ m2, const uint Lx, const uint Sf,
 							   const Float iZ, const Float zP, const Float tPz, double *tR, const Float o2=0., const Float zQ=0., const Float izh=0.)
 {
@@ -60,12 +60,21 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 	mel = m[idx];
 	vel = v[idx-Sf];
 
-	tmpPx = modPi(m[idxPx]    - mel, zP, tPz); 
-	tmpPy = modPi(m[idxPy]    - mel, zP, tPz); 
-	tmpPz = modPi(m[idx + Sf] - mel, zP, tPz); 
-	tmpMx = modPi(m[idxMx]    - mel, zP, tPz); 
-	tmpMy = modPi(m[idxMy]    - mel, zP, tPz); 
-	tmpMz = modPi(m[idx - Sf] - mel, zP, tPz); 
+	if (wMod) {
+		tmpPx = modPi(m[idxPx]    - mel, zP, tPz); 
+		tmpPy = modPi(m[idxPy]    - mel, zP, tPz); 
+		tmpPz = modPi(m[idx + Sf] - mel, zP, tPz); 
+		tmpMx = modPi(m[idxMx]    - mel, zP, tPz); 
+		tmpMy = modPi(m[idxMy]    - mel, zP, tPz); 
+		tmpMz = modPi(m[idx - Sf] - mel, zP, tPz); 
+	} else {
+		tmpPx = m[idxPx]    - mel; 
+		tmpPy = m[idxPy]    - mel; 
+		tmpPz = m[idx + Sf] - mel; 
+		tmpMx = m[idxMx]    - mel; 
+		tmpMy = m[idxMy]    - mel; 
+		tmpMz = m[idx - Sf] - mel; 
+	}
 
 	aX = tmpPx*tmpPx + tmpMx*tmpMx;
 	aY = tmpPy*tmpPy + tmpMy*tmpMy;
@@ -84,7 +93,7 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 		m2[idx] = (aX+aY+aZ)*o2 + Vt*zQ + Kt*izh;
 }
 
-template<typename Float, const bool map>
+template<typename Float, const bool map, const bool wMod>
 __global__ void	energyThetaKernel(const Float * __restrict__ m, const Float * __restrict__ v, Float * __restrict__ m2, const uint Lx, const uint Sf, const uint V, const Float iZ,
 				  const Float zP, const Float tPz, double *eR, double *partial, const Float o2 = 0., const Float zQ = 0., const Float izh = 0.)
 {
@@ -93,11 +102,12 @@ __global__ void	energyThetaKernel(const Float * __restrict__ m, const Float * __
 	double tmp[5] = { 0., 0., 0., 0., 0. };
 
 	if	(idx < V)
-		energyThetaCoreGpu<Float, map> (idx, m, v, m2, Lx, Sf, iZ, zP, tPz, tmp, o2, zQ, izh);
+		energyThetaCoreGpu<Float, map, wMod> (idx, m, v, m2, Lx, Sf, iZ, zP, tPz, tmp, o2, zQ, izh);
 
 	reduction<BLSIZE,double,5>   (eR, tmp, partial);
 }
 
+template<const bool wMod>
 int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
 			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map)
 {
@@ -125,18 +135,18 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 		const double zP  = M_1_PI*iZ;
 		const double tPz = 2.0*M_PI*zR;
 		if (map == true)
-			energyThetaKernel<double,true> <<<gridSize,blockSize,0,stream>>> (static_cast<const double*>(m), static_cast<const double*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial, o2, zQ, iz2*.5);
+			energyThetaKernel<double,true, wMod><<<gridSize,blockSize,0,stream>>> (static_cast<const double*>(m), static_cast<const double*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial, o2, zQ, iz2*.5);
 		else
-			energyThetaKernel<double,false><<<gridSize,blockSize,0,stream>>> (static_cast<const double*>(m), static_cast<const double*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial);
+			energyThetaKernel<double,false,wMod><<<gridSize,blockSize,0,stream>>> (static_cast<const double*>(m), static_cast<const double*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float zP  = M_1_PI*iZ;
 		const float tPz = 2.f*M_PI*zR;
 		if (map == true)
-			energyThetaKernel<float, true> <<<gridSize,blockSize,0,stream>>> (static_cast<const float* >(m), static_cast<const float* >(v), static_cast<float* >(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial, o2, zQ, iz2*.5);
+			energyThetaKernel<float, true, wMod><<<gridSize,blockSize,0,stream>>> (static_cast<const float* >(m), static_cast<const float* >(v), static_cast<float* >(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial, o2, zQ, iz2*.5);
 		else
-			energyThetaKernel<float, false><<<gridSize,blockSize,0,stream>>> (static_cast<const float* >(m), static_cast<const float* >(v), static_cast<float* >(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial);
+			energyThetaKernel<float, false,wMod><<<gridSize,blockSize,0,stream>>> (static_cast<const float* >(m), static_cast<const float* >(v), static_cast<float* >(m2), Lx, S, Vm, iZ, zP, tPz, tR, partial);
 	}
 
 	cudaDeviceSynchronize();
@@ -153,3 +163,18 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 	return	0;
 }
 
+int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
+			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map, const bool wMod)
+{
+	switch (wMod) {
+		case true:
+			return	energyThetaGpu<true>(m, v, m2, z, delta2, nQcd, Lx, Lz, V, S, precision, eR, stream, map);
+			break;
+		case false:
+			return	energyThetaGpu<true>(m, v, m2, z, delta2, nQcd, Lx, Lz, V, S, precision, eR, stream, map);
+			break;
+	}
+
+	return	-1;
+}
+			

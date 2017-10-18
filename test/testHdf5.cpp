@@ -127,7 +127,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	axion->SetLambda(LAMBDA_Z2)	;
+	axion->setLambda(LAMBDA_Z2)	;
 	if (LAMBDA_FIXED == axion->Lambda())
 		LogOut ("Lambda in FIXED mode\n");
 	else
