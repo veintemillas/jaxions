@@ -308,22 +308,24 @@
 		const double ood2 = 1./delta2;
 		double *z = axionField->zV();
 
+		const bool wMod = (axionField->Field() == FIELD_AXION_MOD) ? true : false;
+
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
 			axionField->sendGhosts(FIELD_M, COMM_SDRV);
-			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c1, d1, ood2, nQcd, Lx, 2*S, V, precision);
+			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c1, d1, ood2, nQcd, Lx, 2*S, V, precision, wMod);
 			axionField->sendGhosts(FIELD_M, COMM_WAIT);
-			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c1, d1, ood2, nQcd, Lx, S, 2*S, precision);
-			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c1, d1, ood2, nQcd, Lx, V, V+S, precision);
+			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c1, d1, ood2, nQcd, Lx, S, 2*S, precision, wMod);
+			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c1, d1, ood2, nQcd, Lx, V, V+S, precision, wMod);
 			*z += dz*d1;
 
 			axionField->sendGhosts(FIELD_M2, COMM_SDRV);
-			propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c2, d2, ood2, nQcd, Lx, 2*S, V, precision);
+			propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c2, d2, ood2, nQcd, Lx, 2*S, V, precision, wMod);
 			axionField->sendGhosts(FIELD_M2, COMM_WAIT);
-			propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c2, d2, ood2, nQcd, Lx, S, 2*S, precision);
-			propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c2, d2, ood2, nQcd, Lx, V, V+S, precision);
+			propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c2, d2, ood2, nQcd, Lx, S, 2*S, precision, wMod);
+			propThetaKernelXeon(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c2, d2, ood2, nQcd, Lx, V, V+S, precision, wMod);
 			*z += dz*d2;
 		}
 
@@ -333,10 +335,10 @@
 			const double	c0 = c[nStages];
 
 			axionField->sendGhosts(FIELD_M, COMM_SDRV);
-			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0., ood2, nQcd, Lx, 2*S, V, precision);
+			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0., ood2, nQcd, Lx, 2*S, V, precision, wMod);
 			axionField->sendGhosts(FIELD_M, COMM_WAIT);
-			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0., ood2, nQcd, Lx, S, 2*S, precision);
-			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0., ood2, nQcd, Lx, V, V+S, precision);
+			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0., ood2, nQcd, Lx, S, 2*S, precision, wMod);
+			propThetaKernelXeon(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0., ood2, nQcd, Lx, V, V+S, precision, wMod);
 		}
 	}
 

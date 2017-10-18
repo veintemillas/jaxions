@@ -1,11 +1,11 @@
-#include<cstdio>
-#include<cmath>
-#include"scalar/scalarField.h"
-#include"enum-field.h"
-#include"scalar/varNQCD.h"
+#include <cstdio>
+#include <cmath>
+#include "scalar/scalarField.h"
+#include "enum-field.h"
+#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
-#include"utils/triSimd.h"
+#include "utils/triSimd.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
 #define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
@@ -26,8 +26,9 @@
 	#endif
 #endif
 
+template<const bool wMod>
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-			    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+				    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -54,6 +55,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double iz = 1.0/zR;
+		const double tV	= 2.*M_PI*zR;
 
 #ifdef	__AVX512F__
 		const size_t XC = (Lx<<3);
@@ -68,6 +70,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 #endif
+		const _MData_ tpVec  = opCode(set1_pd, tV);
 		const _MData_ zQVec  = opCode(set1_pd, zQ);
 		const _MData_ d2Vec  = opCode(set1_pd, ood2);
 		const _MData_ dzcVec = opCode(set1_pd, dzc);
@@ -157,16 +160,55 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				idxPz = idx+Sf;
 				idxMz = idx-Sf;
 
-				acu = opCode(sub_pd,
-					opCode(mul_pd, d2Vec,
-						opCode(add_pd,
+				if (wMod) {
+					/*	idxPx	*/
+
+					vel = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
+					acu = opCode(mod_pd, vel, tpVec);
+
+					/*	idxMx	*/
+
+					vel = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
+					acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+					/*	idxPz	*/
+
+					vel = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
+					acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+					/*	idxMz	*/
+
+					vel = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
+					acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+					/*	idxPy	*/
+
+					vel = opCode(sub_pd, mPy, mel);
+					acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+					/*	idxMy	*/
+
+					vel = opCode(sub_pd, mMy, mel);
+					acu = opCode(add_pd, opCode(mod_pd, vel, tpVec), acu);
+
+					/*	Dv	*/
+
+					acu = opCode(sub_pd,
+						opCode(mul_pd, acu, d2Vec),
+						opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
+				} else {
+					acu = opCode(sub_pd,
+						opCode(mul_pd, d2Vec,
 							opCode(add_pd,
-								opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])),
 								opCode(add_pd,
-									opCode(add_pd, mPy, mMy),
-									opCode(add_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz])))),
-							opCode(mul_pd, opCode(set1_pd, -6.), mel))),
-					opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
+									opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])),
+									opCode(add_pd,
+										opCode(add_pd, mPy, mMy),
+										opCode(add_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz])))),
+								opCode(mul_pd, opCode(set1_pd, -6.), mel))),
+						opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
+				}
+
 				vel = opCode(load_pd, &v[idxMz]);
 
 #if	defined(__AVX512F__) || defined(__FMA__)
@@ -178,6 +220,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 #endif
 
 				/*	Store	*/
+
+				if (wMod)
+					mMy = opCode(mod_pd, mMy, tpVec);
 
 				opCode(store_pd, &v[idxMz], tmp);
 				opCode(store_pd, &m2[idx],  mMy);
@@ -344,3 +389,19 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 #undef	opCode_P
 #undef	Align
 #undef	_PREFIX_
+
+inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+				    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, const bool wMod)
+{
+	switch (wMod)
+	{
+		case	true:
+			propThetaKernelXeon<true> (m_, v_, m2_, z, dz, c, d, ood2, nQcd, Lx, Vo, Vf, precision);
+			break;
+
+		case	false:
+			propThetaKernelXeon<false>(m_, v_, m2_, z, dz, c, d, ood2, nQcd, Lx, Vo, Vf, precision);
+			break;
+	}
+}
+
