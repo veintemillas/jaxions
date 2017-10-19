@@ -47,5 +47,10 @@ extern LambdaType     lType;
 extern PropType       pType;
 extern VerbosityLevel verb;
 
+//for output
+extern PrintConf      prinoconfo;
+extern bool           p2dmapo;
+extern bool           pconfinal;
+extern bool           pconfinalwkb ;
 
 int	parseArgs (int argc, char *argv[]);

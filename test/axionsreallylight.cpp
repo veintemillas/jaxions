@@ -215,10 +215,14 @@ int	main (int argc, char *argv[])
 
 	if (fIndex == -1)
 	{
-		LogOut ("Dumping configuration %05d ...", index);
-		writeConf(axion, index);
-		LogOut ("Done!\n");
-		LogOut ("Bypass configuration writting!\n");
+		if (prinoconfo%2 == 1 ){
+					LogOut ("Dumping configuration %05d ...", index);
+					writeConf(axion, index);
+					LogOut ("Done!\n");
+			}
+			else{
+					LogOut ("Bypass configuration writting!\n");
+			}
 	}
 	else
 		index = fIndex;
@@ -284,7 +288,8 @@ int	main (int argc, char *argv[])
 
 
 	createMeas(axion, index);
-			writeMapHdf5s (axion,index);
+							if(p2dmapo)
+								writeMapHdf5s (axion,sliceprint);
 							maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
 							writeArray(bA, 100, "/bins", "theta");
 							writeArray(bA+100, 100, "/bins", "rho");
@@ -375,7 +380,8 @@ int	main (int argc, char *argv[])
 
 								createMeas(axion, 10000);
 								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-								  	writeMapHdf5s (axion,sliceprint);
+									if(p2dmapo)
+										writeMapHdf5s (axion,sliceprint);
 								//ENERGY
 							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
 										writeEnergy(axion, eRes);
@@ -410,7 +416,8 @@ int	main (int argc, char *argv[])
 
 								createMeas(axion, 10001);
 								// IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-								  	writeMapHdf5s (axion,sliceprint);
+									if(p2dmapo)
+									  	writeMapHdf5s (axion,sliceprint);
 								//ENERGY
 										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
 										writeEnergy(axion, eRes);
@@ -519,8 +526,8 @@ int	main (int argc, char *argv[])
 				fflush(stdout);
 
 			}
-
-			writeMapHdf5s(axion,sliceprint);
+			if(p2dmapo)
+				writeMapHdf5s(axion,sliceprint);
 			writeEnergy(axion, eRes);
 			destroyMeas();
 
@@ -552,13 +559,17 @@ int	main (int argc, char *argv[])
 	LogOut("| ");
 
 	index++	;
-	// writeConf(axion, index);
+	if ( (prinoconfo >= 2) && (wkb2z < 0)  ){
+				LogOut ("Dumping final configuration %05d ...", index);
+				writeConf(axion, index);
+				LogOut ("Done!\n");
+		}
 
 	if (axion->Field() == FIELD_AXION)
 	{
 		createMeas(axion, index);
-
-		writeMapHdf5s(axion,sliceprint);
+		if(p2dmapo)
+			writeMapHdf5s(axion,sliceprint);
 
 		printf("n Spectrum ... %d", commRank());
 		/*	Test		*/
@@ -578,7 +589,8 @@ int	main (int argc, char *argv[])
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		//write binned distribution
 		writeArray(bA, 10000, "/bins", "cont");
-		writeEDens(axion, index);
+		if (pconfinal)
+			writeEDens(axion, index);
 		writeEnergy(axion, eRes);
 
 		LogOut("p Spectrum ... ");
@@ -622,10 +634,11 @@ int	main (int argc, char *argv[])
 						LogOut (" done!\n", zFinl);
 
 						index++			;
-
-						LogOut ("\n\n Dumping configuration %05d ...", index);
-						writeConf(axion, index);
-						LogOut ("Done!\n\n");
+						if ( (prinoconfo >= 2) ){
+									LogOut ("Dumping final WKBed configuration %05d ...", index);
+									writeConf(axion, index);
+									LogOut ("Done!\n");
+							}
 
 
 							LogOut ("Printing measurement file %05d ... ", index);
@@ -637,9 +650,10 @@ int	main (int argc, char *argv[])
 									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 									writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
-									LogOut ("2D ");
-									writeMapHdf5s(axion,sliceprint);
-									LogOut ("Done!\n");
+									if(p2dmapo){
+										LogOut ("2D ");
+										writeMapHdf5s(axion,sliceprint);
+										LogOut ("Done!\n");}
 
 									// computes energy and creates map
 									LogOut ("en ");
@@ -650,8 +664,10 @@ int	main (int argc, char *argv[])
 									//write binned distribution
 									LogOut ("bin ");
 									writeArray(bA, 10000, "/bins", "cont");
-									LogOut ("MAP ");
-									writeEDens(axion, index);
+									if (pconfinalwkb) {
+										LogOut ("MAP ");
+										writeEDens(axion, index);}
+
 									LogOut ("tot ");
 									writeEnergy(axion, eRes);
 									//computes power spectrum

@@ -35,149 +35,122 @@ print('')
 
 def sex (labels,labels2):
 
-    npo = len(labels)
+   npo = len(labels)
 
-    #aux label matrices
-    newlabels = np.zeros(npo,dtype=int) -2
-    labels11 = np.zeros(npo,dtype=int)
-    labels22 = np.zeros(npo,dtype=int)
+   # 1. create auxilliary label arrays
+   # conventions: points already visited are -2 in labels11, labels22
+   #              points not visited yet are -2 in newlabels
+   newlabels = np.zeros(npo,dtype=int) -2
+   labels11 = np.zeros(npo,dtype=int)
+   labels22 = np.zeros(npo,dtype=int)
 
-    labels11[:] = labels
-    labels22[:] = labels2
+   labels11[:] = labels
+   labels22[:] = labels2
 
+   # account for all points which are marked as noise in both datasets
+   parla1 = (labels  == -1)
+   parla2 = (labels2 == -1)
 
-    # list of 1st points
-    m1 = max(labels)
-    jta = np.arange(0,npo,dtype=int)
+   newlabels[parla1*parla2]   = -1
+   labels11[parla1*parla2] = -2
+   labels22[parla1*parla2] = -2
 
-    po1 = []
-    for j in set(labels):
-        if j > -1:
-            parla1 = (labels  == j)
-            po1.append(jta[parla1][0])
-    po1 = np.array(po1)
+   # 2. create a list with the first index at which a label appears
+   m1 = max(labels)
+   jta = np.arange(0,npo,dtype=int)
 
-    # list of 1st points
-    m2 = max(labels2)
+   po1 = []
+   for j in set(labels):
+       if j > -1:
+           parla1 = (labels  == j)
+           po1.append(jta[parla1][0])
+   po1 = np.array(po1)
 
-#     po2 = []
-#     for j in range(0,m2):
-#         parla2 = (labels2  == j)
-#         po2.append(jta[parla2][0])
-#     po2 = np.array(po2)
+   # 3. loop over all clusters found in set1
+   dicta = []
+   for i in set(labels):
+       if i > -1:
+           # reference point
+           posi = po1[i]
+           ll = labels[posi]
 
-    # NOISE intersection
-    parla1 = (labels  == -1)
-    parla2 = (labels2 == -1)
+           # get the cluster of this point in both labeling systems
+           parla1 = (labels  == ll)
+           parla2 = (labels2 == labels2[posi])
 
-    newlabels[parla1*parla2]   = -1
-    labels11[parla1*parla2] = -2
-    labels22[parla1*parla2] = -2
+           # if the point labels two clusters, group them
+           if labels2[posi] > -1 :
+               mask = np.logical_or(parla1,parla2)
+               seta = np.array(list(set(newlabels[mask])))
+               seta = seta[seta > -1]
 
-    dicta = []
-    # clusters UNION
-    for i in set(labels):
-        if i > -1:
-            # reference point
-            posi = po1[i]
-            ll = labels[posi]
+               # actually some of the points found may already be part of a cluster
+               # account for all points in that cluster
+               # changed from Javiers original code
+               # if len(seta) > 1:
+               if len(seta) > 0:
+                   for lset in seta:
+                       minimask = (newlabels == lset)
+                       mask = np.logical_or(mask,minimask)
+                   ll = min(seta)
 
-            # all the neightbours of my point in the two labeling systems
-            parla1 = (labels  == ll)
-            parla2 = (labels2 == labels2[posi])
+               newlabels[mask] = ll
+               labels11[mask] = -2
+               labels22[mask] = -2
 
-    #       print(ll,labels[posi],labels2[posi],len(labels[parla1]),len(labels2[parla2]))
+           # if the point belongs to a mc in case 1 but not in case 2:
+           # only take the points from case 1 & edit in newlabels
+           # the opposite case is accounted for below
+           elif labels2[posi] == -1 :
+               mask = parla1
+               newlabels[mask] = ll
+               labels11[mask] = -2
 
-            # if the point labels two clusters, group them
-            if labels2[posi] > -1 :
-                mask = np.logical_or(parla1,parla2)
-                # some of the points in mask could be already assotiated to a cluster x
-                # actually different points could be assotiated to different clusters x0, x1, etc...
-                # all these clusters are thus the same
-                # set of newlabels in mask
-                seta = np.array(list(set(newlabels[mask])))
-                # set of mc labels
-                seta = seta[seta > -1]
-
-                if len(seta) > 1:
-                    for lset in seta:
-                        minimask = (newlabels == lset)
-                        mask = np.logical_or(mask,minimask)
-                    ll = min(seta)
-                    print(labels[posi], ' ojo ',seta, 'in newlabels assotiated to label',ll)
-
-                newlabels[mask] = ll
-                labels11[mask] = -2
-                labels22[mask] = -2
-
-            # if the point labels noise [do not take all the noise!]
-            elif labels2[posi] == -1 :
-                mask = parla1
-                newlabels[mask] = ll
-                labels11[mask] = -2
-
-            dicta.append([labels[posi],labels2[posi]])
+           # store information about which labels have been grouped together
+           dicta.append([labels[posi],labels2[posi],ll])
 
 
-    maxrelab = max(newlabels)
+   maxrelab = max(newlabels)
 
-    # list of labels of clusters in 2, which are noise in 1
-    #
-    rela2 = np.array(list(set(labels22)))
-    # oldstuff
-    # add them to newlabels
-    # remove them from labels_aux
-#     counter = 0
-#     for j in rela2:
-#         if j > -1 :
-#             parla22 = (labels22  == j)
+   # 4. account for points which are noise in set1 but belong to a cluster in set2
+   rela2 = np.array(list(set(labels22)))
 
-#             ll2 = j
+   counter = 0
 
-#             newlabels[parla22] = maxrelab + counter
-#             dicta.append([-1,ll2])
-#             counter += 1
+   for j in rela2:
+       if j > -1 :
+           # must anypoint of this MC need be asssotiated with a mc already present in newlabels?
+           # changed from Javiers initial code
+           # asolabel = np.array(list(set(labels2[parla22])))
+           # parla22 = (labels22  == j)
+           parla22 = (labels2 == j)
+           asolabel = np.array(list(set(newlabels[parla22])))
+           asolabel = asolabel[asolabel > -1]
 
-#             labels11[parla22] = -2
-#             labels22[parla22] = -2
-    # however
-    counter = 0
+           ll2 = j
 
-    print('rela2',rela2)
-    for j in rela2:
-        if j > -1 :
-            parla22 = (labels22  == j)
-            # must anypoint of this MC need be asssotiated with a mc already present in newlabels?
-            asolabel = np.array(list(set(labels2[parla22])))
-            print(j, asolabel)
-            asolabel = asolabel[asolabel > -1]
+           # changed from Javiers original code:
+           #if asolabel == []
+           if not asolabel:
+               newlabels[parla22] = maxrelab + counter
+               counter +=1
+               dicta.append([-1,ll2, maxrelab + counter])
 
-            ll2 = j
+           elif len(asolabel) > 0:
+               lala = min(asolabel)
 
-            if asolabel == []:
-                newlabels[parla22] = maxrelab + counter
-                counter +=1
-                dicta.append([-1,ll2])
-            elif len(asolabel) > 0:
-                lala = min(asolabel)
+               for l in asolabel:
+                   para = (newlabels == l)
+                   newlabels[para] = lala
+                   dicta.append([-1,j, lala])
+               newlabels[parla22] = lala
 
-                for l in asolabel:
-                    para = (newlabels == l)
-                    newlabels[para] = lala
-                    dicta.append([lala,j])
-                newlabels[parla22] = lala
+           labels11[parla22] = -2
+           labels22[parla22] = -2
 
-            labels11[parla22] = -2
-            labels22[parla22] = -2
-
-
-    if len(labels[labels11 != -2])>0:
-        print('warning1',labels[labels11 != -2])
-    if len(labels[labels11 != -2])>0:
-        print('warning2',labels2[labels22 != -2])
-        print('continue with l2')
-
-    return newlabels #, list(dicta)
+   print('crosscheck: # of points not visited by the function: %d' %(sum(newlabels==-2)))
+   print('final number of clusters found: %d' %(len(set(newlabels))))
+   return newlabels #, list(dicta)
 
 
 ## RELABEL ACCORDING TO MASS -> masslabels
@@ -262,16 +235,24 @@ if len(sys.argv) > 1:
 
     if 'energy/density' in f:
         print('Reading ',sys.argv[1])
+        n     = f.attrs[u'Size']
+        n2 = n*n
+        n3 = n2*n
+        data = f['energy/density'].value.reshape(n3)
+    elif 'energy/redensity' in f:
+        print('Reading reducedCon from ',sys.argv[1])
+        n =256
+        n2 = n*n
+        n3 = n2*n
+        data = f['energy/redensity'].value.reshape(n3)
     else:
         sys.exit()
 
-    n     = f.attrs[u'Size']
+
     sizeL = f.attrs[u'Physical size']
 
-    n2 = n*n
-    n3 = n2*n
 
-    data = f['energy/density'].value.reshape(n3)
+
 
     maxi = max(data)
     print('max contrast = %.2f' %(maxi))

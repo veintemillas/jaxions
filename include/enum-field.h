@@ -161,6 +161,15 @@
 		VERB_HIGH=2,
 	}	VerbosityLevel;
 
+	typedef	enum	PrintConf_s
+	{
+		PRINTCONF_NONE=0,
+		PRINTCONF_INITIAL=1,
+		PRINTCONF_FINAL=2,
+		PRINTCONF_BOTH=3,
+	}	PrintConf;
+
+
 	typedef	struct	StringData_v
 	{
 		size_t	strDen;
