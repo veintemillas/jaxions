@@ -559,14 +559,16 @@ int	main (int argc, char *argv[])
 	LogOut("| ");
 
 	index++	;
-	if ( (prinoconfo >= 2) && (wkb2z < 0)  ){
-				LogOut ("Dumping final configuration %05d ...", index);
-				writeConf(axion, index);
-				LogOut ("Done!\n");
-		}
 
 	if (axion->Field() == FIELD_AXION)
 	{
+
+		if ( (prinoconfo >= 2) && (wkb2z < 0)  ){
+					LogOut ("Dumping final configuration %05d ...", index);
+					writeConf(axion, index);
+					LogOut ("Done!\n");
+			}
+
 		createMeas(axion, index);
 		if(p2dmapo)
 			writeMapHdf5s(axion,sliceprint);
@@ -708,6 +710,7 @@ int	main (int argc, char *argv[])
 			}
 
   }
+	//else{} if field is saxion
 
 
 

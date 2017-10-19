@@ -153,23 +153,23 @@ int	parseArgs (int argc, char *argv[])
 			{
 				printf("Warning: p3D set by default to 0 [no 00000 and final configuration files].\n");
 				prinoconfo = PRINTCONF_NONE ;
+				procArgs++;
+				passed = true;
 				goto endFor;
 			}
 
 			sscanf(argv[i+1], "%d", &prinoconfo);
-			printf("p3D set to %d \n", prinoconfo);
+			//printf("p3D set to %d \n", prinoconfo);
 
 			i++;
 			procArgs++;
 			passed = true;
-
 			goto endFor;
 		}
 
 		if (!strcmp(argv[i], "--p2Dmap"))
 		{
 			p2dmapo = true ;
-			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -178,7 +178,6 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--pcon"))
 		{
 			pconfinal = true ;
-			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -187,7 +186,6 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--pcon"))
 		{
 			pconfinal = true ;
-			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -196,7 +194,6 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--pconwkb"))
 		{
 			pconfinalwkb = true ;
-			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
