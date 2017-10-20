@@ -117,7 +117,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 					idxPy = idx + XC;
 					mPy = opCode(load_pd, &m[idxPy]);
 #ifdef	__AVX512F__
-					mMy = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
+					mMy = opCode(opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX2__)
 					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
@@ -138,7 +138,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 					{
 						idxPy = idx - Sf + XC;
 #ifdef	__AVX512F__
-						mPy = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
+						mPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
 #elif	defined(__AVX2__)	//AVX2
 						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif	defined(__AVX__)
@@ -254,6 +254,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float iz = 1.f/zR;
+		const double tV	= 2.*M_PI*zR;
 #ifdef	__AVX512F__
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
@@ -270,6 +271,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 #endif
+		const _MData_ tpVec  = opCode(set1_ps, tV);
 		const _MData_ zQVec  = opCode(set1_ps, zQ);
 		const _MData_ d2Vec  = opCode(set1_ps, ood2);
 		const _MData_ dzcVec = opCode(set1_ps, dzc);
@@ -354,16 +356,55 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				idxPz = idx+Sf;
 				idxMz = idx-Sf;
 
-				acu = opCode(sub_ps,
-					opCode(mul_ps, d2Vec,
-						opCode(add_ps,
+				if (wMod) {
+					/*	idxPx	*/
+
+					vel = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
+					acu = opCode(mod_ps, vel, tpVec);
+
+					/*	idxMx	*/
+
+					vel = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
+					acu = opCode(add_ps, opCode(mod_ps, vel, tpVec), acu);
+
+					/*	idxPz	*/
+
+					vel = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
+					acu = opCode(add_ps, opCode(mod_ps, vel, tpVec), acu);
+
+					/*	idxMz	*/
+
+					vel = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
+					acu = opCode(add_ps, opCode(mod_ps, vel, tpVec), acu);
+
+					/*	idxPy	*/
+
+					vel = opCode(sub_ps, mPy, mel);
+					acu = opCode(add_ps, opCode(mod_ps, vel, tpVec), acu);
+
+					/*	idxMy	*/
+
+					vel = opCode(sub_ps, mMy, mel);
+					acu = opCode(add_ps, opCode(mod_ps, vel, tpVec), acu);
+
+					/*	Dv	*/
+
+					acu = opCode(sub_ps,
+						opCode(mul_ps, acu, d2Vec),
+						opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+				} else {
+					acu = opCode(sub_ps,
+						opCode(mul_ps, d2Vec,
 							opCode(add_ps,
-								opCode(add_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx])),
 								opCode(add_ps,
-									opCode(add_ps, mPy, mMy),
-									opCode(add_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz])))),
-							opCode(mul_ps, opCode(set1_ps, -6.), mel))),
-					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+									opCode(add_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx])),
+									opCode(add_ps,
+										opCode(add_ps, mPy, mMy),
+										opCode(add_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz])))),
+								opCode(mul_ps, opCode(set1_ps, -6.), mel))),
+						opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+				}
+
 				vel = opCode(load_ps, &v[idxMz]);
 
 #if	defined(__MIC__) || defined(__AVX512F__) || defined(__FMA__)
@@ -374,6 +415,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				mMy = opCode(add_ps, mel, opCode(mul_ps, tmp, dzdVec));
 #endif
 				/*	Store	*/
+
+				if (wMod)
+					mMy = opCode(mod_ps, mMy, tpVec);
 
 				opCode(store_ps, &v[idxMz], tmp);
 				opCode(store_ps, &m2[idx],  mMy);

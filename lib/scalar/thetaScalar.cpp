@@ -4,6 +4,7 @@
 #include "enum-field.h"
 
 #include "scalar/thetaXeon.h"
+#include "scalar/mendTheta.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -22,6 +23,7 @@ class	CmplxToTheta : public Tunable
 
 	Scalar	*axionField;
 	const double shift;
+
 
 	public:
 
@@ -80,11 +82,10 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 			break;
 	}
 
-	if (wMod == true)
+	if (wMod == true) {
 		field->setField(FIELD_AXION_MOD);
-	else {
+	} else {
 		field->setField(FIELD_AXION);
-		// Call MendTheta here!!
 	}
 
 	field->setLowMem(false);
@@ -97,6 +98,9 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", theta->Name().c_str(), prof.Prof()[theta->Name()].GFlops(), prof.Prof()[theta->Name()].GBytes());
 
 	munge(FOLD_ALL);
+
+	if (wMod == false)
+		mendTheta (field);
 
 	return;
 }
