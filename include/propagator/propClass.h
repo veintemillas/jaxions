@@ -27,7 +27,7 @@
 		#pragma GCC optimize ("unroll-loops")
 	#endif
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd = false>
+	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	class	PropClass : public PropBase
 	{
 		protected:

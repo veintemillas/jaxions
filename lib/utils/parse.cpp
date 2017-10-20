@@ -57,6 +57,11 @@ FieldPrecision	sPrec = FIELD_DOUBLE;
 DeviceType	cDev  = DEV_CPU;
 VerbosityLevel	verb  = VERB_NORMAL;
 
+PrintConf prinoconfo  = PRINTCONF_NONE;
+bool p2dmapo  		= false ;
+bool pconfinal 		= false ;
+bool pconfinalwkb = true ;
+
 void	printUsage(char *name)
 {
 	printf("\nUsage: %s [Options]\n\n", name);
@@ -86,7 +91,6 @@ void	printUsage(char *name)
 	printf("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
 	printf("--wkb   [float]                 WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
-	printf("--redmp [fint]                  reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
@@ -95,7 +99,13 @@ void	printUsage(char *name)
 	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
 	printf("--prop  leap/rkn4/om2/om4       Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
 	printf("--spec                          Enables the spectral propagator for the laplacian (default, disabled) \n");
-	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n");
+	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
+	printf("--p3D 0/1/2                     Print initial/final configurations (default 0 = no) 1=final 2=both \n");
+	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
+	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
+	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
+	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
+	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
 	printf("--help                          Prints this message.\n");
 
 	return;
@@ -136,6 +146,59 @@ int	parseArgs (int argc, char *argv[])
 
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--p3D"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Warning: p3D set by default to 0 [no 00000 and final configuration files].\n");
+				prinoconfo = PRINTCONF_NONE ;
+				procArgs++;
+				passed = true;
+				goto endFor;
+			}
+
+			sscanf(argv[i+1], "%d", &prinoconfo);
+			//printf("p3D set to %d \n", prinoconfo);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2Dmap"))
+		{
+			p2dmapo = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--pcon"))
+		{
+			pconfinal = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--pcon"))
+		{
+			pconfinal = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--pconwkb"))
+		{
+			pconfinalwkb = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 
 		if (!strcmp(argv[i], "--lowmem"))
 		{
@@ -282,11 +345,13 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("No new sizeN input for final reducemap. Set to default = 256\n");
 				endredmap = 256 ;
+				printf("No new sizeN input for final reducemap. Set to default = 256\n");
+			}
+			else{
+			endredmap = atof(argv[i+1]);
 			}
 
-			endredmap = atof(argv[i+1]);
 
 			// if ((endredmap == sizeN))
 			// {
