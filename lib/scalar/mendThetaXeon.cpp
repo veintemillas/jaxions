@@ -134,8 +134,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 				mel = opCode(load_pd, &m[idx]);
 				mPx = opCode(load_pd, &m[idxPx]);
-				mPz = opCode(load_pd, &v[idxPz]);
-				vPx = opCode(load_pd, &m[idxVx]);
+				mPz = opCode(load_pd, &m[idxPz]);
+				vPx = opCode(load_pd, &v[idxVx]);
 				vPz = opCode(load_pd, &v[idxVz]);
 
 				/*	X-Direction	*/
@@ -163,12 +163,12 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 				mDp = opCode(cmpge_pd, mDf, pVec);
 				mDm = opCode(cmplt_pd, mDf, mVec);
 #endif
-				mPx = opCode(add_pd, mPx,
+				mPx = opCode(sub_pd, mPx,
 					opCode(sub_pd,
 						opCode(and_pd, mDp, cVec),
 						opCode(and_pd, mDm, cVec)));
 
-				vPx = opCode(add_pd, vPx,
+				vPx = opCode(sub_pd, vPx,
 					opCode(sub_pd,
 						opCode(and_pd, mDp, vVec),
 						opCode(and_pd, mDm, vVec)));
@@ -204,12 +204,12 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 				mDp = opCode(cmpge_pd, mDf, pVec);
 				mDm = opCode(cmplt_pd, mDf, mVec);
 #endif
-				mPy = opCode(add_pd, mPy,
+				mPy = opCode(sub_pd, mPy,
 					opCode(sub_pd,
 						opCode(and_pd, mDp, cVec),
 						opCode(and_pd, mDm, cVec)));
 
-				vPy = opCode(add_pd, vPy,
+				vPy = opCode(sub_pd, vPy,
 					opCode(sub_pd,
 						opCode(and_pd, mDp, vVec),
 						opCode(and_pd, mDm, vVec)));
@@ -245,12 +245,12 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 				mDp = opCode(cmpge_pd, mDf, pVec);
 				mDm = opCode(cmplt_pd, mDf, mVec);
 #endif
-				mPz = opCode(add_pd, mPz,
+				mPz = opCode(sub_pd, mPz,
 					opCode(sub_pd,
 						opCode(and_pd, mDp, cVec),
 						opCode(and_pd, mDm, cVec)));
 
-				vPz = opCode(add_pd, vPz,
+				vPz = opCode(sub_pd, vPz,
 					opCode(sub_pd,
 						opCode(and_pd, mDp, vVec),
 						opCode(and_pd, mDm, vVec)));
@@ -261,11 +261,33 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 					count += reinterpret_cast<size_t&>(mDp[k]) & 1;
 #endif	// AVX and SSE4.1
 				opCode(store_pd, &v[idxVx], vPx);
-				opCode(store_pd, &v[idxVy], vPy);
 				opCode(store_pd, &v[idxVz], vPz);
 				opCode(store_pd, &m[idxPx], mPx);
-				opCode(store_pd, &m[idxPy], mPy);
 				opCode(store_pd, &m[idxPz], mPz);
+
+				if (X[1] == YC-1)
+				{
+#ifdef  __AVX512F__
+					mPy = opCode(permutexvar_pd, vShRg, mPy);
+					vPy = opCode(permutexvar_pd, vShRg, vPy);
+#elif   defined(__AVX2__)
+					mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, mPy), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+					vPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, vPy), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+#elif   defined(__AVX__)
+					mPx = opCode(permute_pd, mPy, 0b00000101);
+					vPx = opCode(permute_pd, vPy, 0b00000101);
+					mPz = opCode(permute2f128_pd, mPx, mPx, 0b00000001);
+					vPz = opCode(permute2f128_pd, vPx, vPx, 0b00000001);
+					mPy = opCode(blend_pd, mPx, mPz, 0b00000101);
+					vPy = opCode(blend_pd, vPx, vPz, 0b00000101);
+#else
+					mPy = opCode(shuffle_pd, mPy, mPy, 0x00000001);
+					vPy = opCode(shuffle_pd, vPy, vPy, 0x00000001);
+#endif
+				}
+
+				opCode(store_pd, &v[idxVy], vPy);
+				opCode(store_pd, &m[idxPy], mPy);
 			}
 		}
 #undef  _MData_
@@ -306,11 +328,11 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 		const _MData_ vVec  = opCode(set1_ps, 2.*M_PI);
 		const _MData_ cVec  = opCode(set1_ps, zP*2.);
 
-		#pragma omp parallel default(shared) reduction(+:count)
+//		#pragma omp parallel default(shared) reduction(+:count)
 		{
                         _MData_ mel, mDf, mDp, mDm, mPx, mPy, mPz, vPx, vPy, vPz;
 
-			#pragma omp for schedule(static)
+//			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 				size_t X[2], idxPx, idxPy, idxPz = idx + Sf, idxVx, idxVy, idxVz = idx;
@@ -364,8 +386,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 				mel = opCode(load_ps, &m[idx]);
 				mPx = opCode(load_ps, &m[idxPx]);
-				mPz = opCode(load_ps, &v[idxPz]);
-				vPx = opCode(load_ps, &m[idxVx]);
+				mPz = opCode(load_ps, &m[idxPz]);
+				vPx = opCode(load_ps, &v[idxVx]);
 				vPz = opCode(load_ps, &v[idxVz]);
 
 				/*	X-Direction	*/
@@ -393,12 +415,12 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 				mDp = opCode(cmpge_ps, mDf, pVec);
 				mDm = opCode(cmplt_ps, mDf, mVec);
 #endif
-				mPx = opCode(add_ps, mPx,
+				mPx = opCode(sub_ps, mPx,
 					opCode(sub_ps,
 						opCode(and_ps, mDp, cVec),
 						opCode(and_ps, mDm, cVec)));
 
-				vPx = opCode(add_ps, vPx,
+				vPx = opCode(sub_ps, vPx,
 					opCode(sub_ps,
 						opCode(and_ps, mDp, vVec),
 						opCode(and_ps, mDm, vVec)));
@@ -434,12 +456,12 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 				mDp = opCode(cmpge_ps, mDf, pVec);
 				mDm = opCode(cmplt_ps, mDf, mVec);
 #endif
-				mPy = opCode(add_ps, mPy,
+				mPy = opCode(sub_ps, mPy,
 					opCode(sub_ps,
 						opCode(and_ps, mDp, cVec),
 						opCode(and_ps, mDm, cVec)));
 
-				vPy = opCode(add_ps, vPy,
+				vPy = opCode(sub_ps, vPy,
 					opCode(sub_ps,
 						opCode(and_ps, mDp, vVec),
 						opCode(and_ps, mDm, vVec)));
@@ -475,12 +497,12 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 				mDp = opCode(cmpge_ps, mDf, pVec);
 				mDm = opCode(cmplt_ps, mDf, mVec);
 #endif
-				mPz = opCode(add_ps, mPz,
+				mPz = opCode(sub_ps, mPz,
 					opCode(sub_ps,
 						opCode(and_ps, mDp, cVec),
 						opCode(and_ps, mDm, cVec)));
 
-				vPz = opCode(add_ps, vPz,
+				vPz = opCode(sub_ps, vPz,
 					opCode(sub_ps,
 						opCode(and_ps, mDp, vVec),
 						opCode(and_ps, mDm, vVec)));
@@ -491,11 +513,33 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 					count += reinterpret_cast<int&>(mDp[k]) & 1;
 #endif	// AVX and SSE4.1
 				opCode(store_ps, &v[idxVx], vPx);
-				opCode(store_ps, &v[idxVy], vPy);
 				opCode(store_ps, &v[idxVz], vPz);
 				opCode(store_ps, &m[idxPx], mPx);
-				opCode(store_ps, &m[idxPy], mPy);
 				opCode(store_ps, &m[idxPz], mPz);
+
+				if (X[1] == YC-1)
+				{
+#ifdef  __AVX512F__
+					mPy = opCode(permutexvar_ps, vShRg, mPy);
+					vPy = opCode(permutexvar_ps, vShRg, vPy);
+#elif   defined(__AVX2__)
+					mPy = opCode(permutevar8x32_ps, mPy, opCode(setr_epi32, 7,0,1,2,3,4,5,6));
+					vPy = opCode(permutevar8x32_ps, vPy, opCode(setr_epi32, 7,0,1,2,3,4,5,6));
+#elif   defined(__AVX__)
+					mPx = opCode(permute_ps, mPy, 0b10010011);
+					vPx = opCode(permute_ps, vPy, 0b10010011);
+					mPz = opCode(permute2f128_ps, mPx, mPx, 0b00000001);
+					vPz = opCode(permute2f128_ps, vPx, vPx, 0b00000001);
+					mPy = opCode(blend_ps, mPx, mPz, 0b00010001);
+					vPy = opCode(blend_ps, vPx, vPz, 0b00010001);
+#else
+					mPy = opCode(shuffle_ps, mPy, mPy, 0b10010011);
+					vPy = opCode(shuffle_ps, vPy, vPy, 0b10010011);
+#endif
+				}
+
+				opCode(store_ps, &v[idxVy], vPy);
+				opCode(store_ps, &m[idxPy], mPy);
 			}
 		}
 #undef  _MData_
@@ -582,13 +626,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			if (mDf > zP) {
 				mPx[i] -= zP;
 				vPx[i] -= 2.*M_PI;
-				memcpy (&m[idxPx], &mPx[0], step*sizeof(Float));
-				memcpy (&v[idxVx], &vPx[0], step*sizeof(Float));
+				m[idxPx + i] = mPx[i];
+				v[idxVx + i] = vPx[i];
 			} else if (mDf < -zP) {
 				mPx[i] += zP;
 				vPx[i] += 2.*M_PI;
-				memcpy (&m[idxPx], &mPx[0], step*sizeof(Float));
-				memcpy (&v[idxVx], &vPx[0], step*sizeof(Float));
+				m[idxPx + i] = mPx[i];
+				v[idxVx + i] = vPx[i];
 			}
 
 			/*	Y-Direction	*/
@@ -598,13 +642,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			if (mDf > zP) {
 				mPy[i] -= zP;
 				vPy[i] -= 2.*M_PI;
-				memcpy (&m[idxPy], &mPy[0], step*sizeof(Float));
-				memcpy (&v[idxVy], &vPy[0], step*sizeof(Float));
+				m[idxPy + i] = mPy[i];
+				v[idxVy + i] = vPy[i];
 			} else if (mDf < -zP) {
 				mPy[i] += zP;
 				vPy[i] += 2.*M_PI;
-				memcpy (&m[idxPy], &mPy[0], step*sizeof(Float));
-				memcpy (&v[idxVy], &vPy[0], step*sizeof(Float));
+				m[idxPy + i] = mPy[i];
+				v[idxVy + i] = vPy[i];
 			}
 
 			/*	Z-Direction	*/
@@ -614,14 +658,29 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			if (mDf > zP) {
 				mPz[i] -= zP;
 				vPz[i] -= 2.*M_PI;
-				memcpy (&m[idxPz], &mPz[0], step*sizeof(Float));
-				memcpy (&v[idxVz], &vPz[0], step*sizeof(Float));
+				m[idxPz + i] = mPz[i];
+				v[idxVz + i] = vPz[i];
 			} else if (mDf < -zP) {
 				mPz[i] += zP;
 				vPz[i] += 2.*M_PI;
-				memcpy (&m[idxPz], &mPz[0], step*sizeof(Float));
-				memcpy (&v[idxVz], &vPz[0], step*sizeof(Float));
+				m[idxPz + i] = mPz[i];
+				v[idxVz + i] = vPz[i];
 			}
+
+		}
+
+		if (X[1] == YC-1)
+		{
+			Float mSave = mPy[step-1];
+			Float vSave = vPy[step-1];
+
+			for (int i = 1; i < step; i++) {
+				m[idxPy + i] = mPy[i-1];
+				v[idxVy + i] = vPy[i-1];
+			}
+
+			m[idxPy] = mSave;
+			v[idxVy] = vSave;
 		}
 	}
 }
@@ -676,11 +735,10 @@ bool	mendThetaXeon (Scalar *field)
 
 	// Parallelize and vectorize over subsequent slices
 
-	for (size_t i = 0; i<field->Depth()-1; i++) {
+	for (size_t i=0; i<field->Depth()-1; i++) {
 		cIdx += field->Surf();
-	
+
 		do {
-			field->exchangeGhosts(FIELD_M);
 			tJmps = mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), cIdx, cIdx + field->Surf(), field->Precision());
 
 			if (tJmps)

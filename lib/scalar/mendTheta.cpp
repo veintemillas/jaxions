@@ -42,15 +42,18 @@ int	MendTheta::runGpu	()
 
 	const double zVar = *(axionField->zV());
 
+	axionField->exchangeGhosts(FIELD_M);
 	auto wJmp = mendSliceXeon (axionField, 0);	// After exchanging ghosts, operate on slice 0 (ghost), so we go up to Lz-1
 
-	for (uint i=0; i<(uLz-1); i++) {
-		do {
+	do {
+		count = 0;
+		for (uint i=0; i<(uLz-1); i++) {
 			axionField->exchangeGhosts(FIELD_M);
-			count = mendThetaGpu(axionField->mGpu(), axionField->vGpu(), zVar, uLx, (i+1)*uS, i*uS, axionField->Precision(), ((cudaStream_t *)axionField->Streams())[0]);
+			count += mendThetaGpu(axionField->mGpu(), axionField->vGpu(), zVar, uLx, i*uS, (i+1)*uS, axionField->Precision(), ((cudaStream_t *)axionField->Streams())[0]);
 			mIter++;
-		}	while (count != 0);
-	}
+			printf ("Slice %u mIter %d, count %u\n", i, mIter, count);
+		}
+	}	while (count != 0);
 
 	return	mIter/uLz;
 #else

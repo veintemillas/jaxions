@@ -134,7 +134,7 @@
 				} else {
 					size_t myBin = floor((cVal - minVal)/step);
 
-					if (myBin > N)
+					if (myBin >= N)
 						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f])", cVal, minVal, maxVal);
 					else
 						tBins[myBin + N*tIdx]++;
