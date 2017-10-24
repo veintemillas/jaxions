@@ -522,7 +522,7 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 
 	for (size_t idx = Vo; idx < Vf; idx += step)
 	{
-		memcpy (mel, &m[idx], step*sizeof(Float));
+		memcpy (&mel[0], &m[idx], step*sizeof(Float));
 
 		size_t X[2], idxPx, idxPy, idxPz = idx + Sf, idxVx, idxVy, idxVz = idx;
 
@@ -546,8 +546,8 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			idxPy = idx - Sf + XC;
 			idxVy = idxPy - Sf;
 
-			memcpy (mPy, &m[idxPy], step*sizeof(Float));
-			memcpy (vPy, &v[idxVy], step*sizeof(Float));
+			memcpy (&mPy[0], &m[idxPy], step*sizeof(Float));
+			memcpy (&vPy[0], &v[idxVy], step*sizeof(Float));
 
 			Float mSave = mPy[0];
 			Float vSave = vPy[0];
@@ -563,14 +563,14 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			idxPy = idx + XC;
 			idxVy = idxPy - Sf;
 
-			memcpy (mPy, &m[idxPy], step*sizeof(Float));
-			memcpy (vPy, &v[idxVy], step*sizeof(Float));
+			memcpy (&mPy[0], &m[idxPy], step*sizeof(Float));
+			memcpy (&vPy[0], &v[idxVy], step*sizeof(Float));
 		}
 
-		memcpy (mPx, &m[idxPx], step*sizeof(Float));
-		memcpy (vPx, &v[idxVx], step*sizeof(Float));
-		memcpy (mPz, &m[idxPz], step*sizeof(Float));
-		memcpy (vPz, &v[idxVz], step*sizeof(Float));
+		memcpy (&mPx[0], &m[idxPx], step*sizeof(Float));
+		memcpy (&vPx[0], &v[idxVx], step*sizeof(Float));
+		memcpy (&mPz[0], &m[idxPz], step*sizeof(Float));
+		memcpy (&vPz[0], &v[idxVz], step*sizeof(Float));
 
 		/*	Vector loop	*/
 		for (int i=0; i<step; i++) {
@@ -582,13 +582,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			if (mDf > zP) {
 				mPx[i] -= zP;
 				vPx[i] -= 2.*M_PI;
-				memcpy (&m[idxPx], mPx, step*sizeof(Float));
-				memcpy (&v[idxVx], vPx, step*sizeof(Float));
+				memcpy (&m[idxPx], &mPx[0], step*sizeof(Float));
+				memcpy (&v[idxVx], &vPx[0], step*sizeof(Float));
 			} else if (mDf < -zP) {
 				mPx[i] += zP;
 				vPx[i] += 2.*M_PI;
-				memcpy (&m[idxPx], mPx, step*sizeof(Float));
-				memcpy (&v[idxVx], vPx, step*sizeof(Float));
+				memcpy (&m[idxPx], &mPx[0], step*sizeof(Float));
+				memcpy (&v[idxVx], &vPx[0], step*sizeof(Float));
 			}
 
 			/*	Y-Direction	*/
@@ -598,13 +598,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			if (mDf > zP) {
 				mPy[i] -= zP;
 				vPy[i] -= 2.*M_PI;
-				memcpy (&m[idxPy], mPy, step*sizeof(Float));
-				memcpy (&v[idxVy], vPy, step*sizeof(Float));
+				memcpy (&m[idxPy], &mPy[0], step*sizeof(Float));
+				memcpy (&v[idxVy], &vPy[0], step*sizeof(Float));
 			} else if (mDf < -zP) {
 				mPy[i] += zP;
 				vPy[i] += 2.*M_PI;
-				memcpy (&m[idxPy], mPy, step*sizeof(Float));
-				memcpy (&v[idxVy], vPy, step*sizeof(Float));
+				memcpy (&m[idxPy], &mPy[0], step*sizeof(Float));
+				memcpy (&v[idxVy], &vPy[0], step*sizeof(Float));
 			}
 
 			/*	Z-Direction	*/
@@ -614,13 +614,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 			if (mDf > zP) {
 				mPz[i] -= zP;
 				vPz[i] -= 2.*M_PI;
-				memcpy (&m[idxPz], mPz, step*sizeof(Float));
-				memcpy (&v[idxVz], vPz, step*sizeof(Float));
+				memcpy (&m[idxPz], &mPz[0], step*sizeof(Float));
+				memcpy (&v[idxVz], &vPz[0], step*sizeof(Float));
 			} else if (mDf < -zP) {
 				mPz[i] += zP;
 				vPz[i] += 2.*M_PI;
-				memcpy (&m[idxPz], mPz, step*sizeof(Float));
-				memcpy (&v[idxVz], vPz, step*sizeof(Float));
+				memcpy (&m[idxPz], &mPz[0], step*sizeof(Float));
+				memcpy (&v[idxVz], &vPz[0], step*sizeof(Float));
 			}
 		}
 	}
@@ -669,14 +669,14 @@ bool	mendThetaXeon (Scalar *field)
 {
 	const double	z     = *(field->zV());
 	size_t		tJmps = 0;
-	size_t		cIdx  = field->Surf();
+	size_t		cIdx  = 0;
 	bool		wJmp  = false;
 
-	wJmp = mendSliceXeon (field, 1);	// Slice 0 belongs to the ghosts, only the GPU will use that
+	wJmp = mendSliceXeon (field, 0);	// Slice 0 belongs to the ghosts, it updates the first usable slice and we won't about the last boundary
 
 	// Parallelize and vectorize over subsequent slices
 
-	for (size_t i = 0; i<field->Depth(); i++) {
+	for (size_t i = 0; i<field->Depth()-1; i++) {
 		cIdx += field->Surf();
 	
 		do {

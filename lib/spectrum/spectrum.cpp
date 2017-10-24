@@ -66,10 +66,11 @@ void	SpecBin::fillBins	() {
 		for (size_t idx=0; idx<nPts; idx++) {
 
 			size_t tmp = idx/Lx;
-			int    kx = idx - tmp*Lx;
-			int    ky = tmp/Tz;
+			int    kx  = idx - tmp*Lx;
+			int    ky  = tmp/Tz;
 
-			kz  = tmp - ((size_t) ky)*Tz;
+			int    kz  = tmp - ((size_t) ky)*Tz;
+
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
 			// TODO Saxion WRONG, fcc ---> 1 para SAXION
