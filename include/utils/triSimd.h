@@ -23,7 +23,7 @@
 	#define	_MInt_  __m128i
 #endif
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_PREFIX_ _mm512
 	#define	_PREFXL_ _mm256
 	#define opCodl(x,...) opCode_N(_PREFXL_, x, __VA_ARGS__)
@@ -458,26 +458,19 @@ inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 	_MData_ x2  = opCode(mul_pd, x,   x);
 	_MData_ xP2 = opCode(mul_pd, xP, xP);
 	_MData_ xM2 = opCode(mul_pd, xM, xM);
-#if	defined(__MIC__) || defined(__AVX512F__)
-#ifdef	__MIC__
-	min = opCode(gmin_pd, opCode(gmin_pd, xM2, xP2), x2);
-#elif	defined(__AVX512F__)
-	min = opCode(min_pd,  opCode(min_pd,  xM2, xP2), x2);
-#endif
+
+	min = opCode(min_pd, opCode(min_pd, xP2, xM2), x2);
+#ifdef	__AVX512F__
 	ret = opCode(mask_add_pd, opCode(setzero_pd), opCode(cmp_pd_mask, min, xP2, _CMP_EQ_OQ), opCode(setzero_pd), xP);
 	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd_mask, min, xM2, _CMP_EQ_OQ), ret,   xM);
 	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd_mask, min, x2,  _CMP_EQ_OQ), ret,   x);
 #elif   defined(__AVX__)
-//	ret = opCode(setzero_pd);
-	min = opCode(min_pd, opCode(min_pd, xP2, xM2), x2);
 	ret = opCode(add_pd,
 		opCode(add_pd,
 			opCode(and_pd, opCode(cmp_pd, min, xP2, _CMP_EQ_OS), xP),
 			opCode(and_pd, opCode(cmp_pd, min, xM2, _CMP_EQ_OS), xM)),
 		opCode(and_pd, opCode(cmp_pd, min, x2, _CMP_EQ_OS), x));
 #else
-//	ret = opCode(setzero_pd);
-	min = opCode(min_pd, opCode(min_pd, xP2, xM2), x2);
 	ret = opCode(add_pd,
 		opCode(add_pd,
 			opCode(and_pd, opCode(cmpeq_pd, min, xP2), xP),
@@ -489,9 +482,7 @@ inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 
 inline _MData_	opCode(md2_pd, const _MData_ &x)
 {
-#ifdef	__MIC__
-	return	opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, x), _MM_PERM_BADC)), x);
-#elif	defined(__AVX512F__)
+#ifdef	__AVX512F__
 	return	opCode(add_pd, opCode(permute_pd, x, 0b01010101), x);
 #elif defined(__AVX__)
 	return	opCode(add_pd, opCode(permute_pd, x, 0b00000101), x);
@@ -502,7 +493,7 @@ inline _MData_	opCode(md2_pd, const _MData_ &x)
 
 #undef	_MData_
 
-#if	defined(__MIC__) || defined(__AVX512F__)
+#if	defined(__AVX512F__)
 	#define	_MData_ __m512
 #elif	defined(__AVX__)
 	#define	_MData_ __m256
@@ -837,26 +828,19 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 	_MData_ x2  = opCode(mul_ps, x,   x);
 	_MData_ xP2 = opCode(mul_ps, xP, xP);
 	_MData_ xM2 = opCode(mul_ps, xM, xM);
-#if	defined(__MIC__) || defined(__AVX512F__)
-#ifdef	__MIC__
-	min = opCode(gmin_ps, opCode(gmin_ps, xM2, xP2), x2);
-#elif	defined(__AVX512F__)
-	min = opCode(min_ps,  opCode(min_ps,  xM2, xP2), x2);
-#endif
+
+	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
+#if	defined(__AVX512F__)
 	ret = opCode(mask_add_ps, opCode(setzero_ps), opCode(cmp_ps_mask, min, xP2, _CMP_EQ_OQ), opCode(setzero_ps), xP);
 	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps_mask, min, xM2, _CMP_EQ_OQ), ret,                xM);
 	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps_mask, min, x2,  _CMP_EQ_OQ), ret,                x);
 #elif   defined(__AVX__)
-//	ret = opCode(setzero_ps);
-	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
 	ret = opCode(add_ps,
 		opCode(add_ps,
 			opCode(and_ps, opCode(cmp_ps, min, xP2, _CMP_EQ_OQ), xP),
 			opCode(and_ps, opCode(cmp_ps, min, xM2, _CMP_EQ_OQ), xM)),
 		opCode(and_ps, opCode(cmp_ps, min, x2, _CMP_EQ_OQ), x));
 #else
-//	ret = opCode(setzero_ps);
-	min = opCode(min_ps, opCode(min_ps, xP2, xM2), x2);
 	ret = opCode(add_ps,
 		opCode(add_ps,
 			opCode(and_ps, opCode(cmpeq_ps, min, xP2), xP),
@@ -869,10 +853,8 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 
 inline _MData_	opCode(md2_ps, const _MData_ &x)
 {
-#ifdef	__MIC__
-	return	opCode(add_ps, opCode(swizzle_ps, x, _MM_SWIZ_REG_CDAB), x);
-#elif	defined(__AVX512F__)
-	return	opCode(add_ps, opCode(permute_ps, x, 0b11100001), x);
+#ifdef	__AVX512F__
+	return	opCode(add_ps, opCode(permute_ps, x, 0b10110001), x);
 #elif defined(__AVX__)
 	return	opCode(add_ps, opCode(permute_ps, x, 0b10110001), x);
 #else

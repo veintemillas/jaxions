@@ -65,9 +65,13 @@ void	SpecBin::fillBins	() {
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
 
-			int kz = idx/Lx;
-			int kx = idx - kz*Lx;
-			int ky = kz/Tz;
+			size_t tmp = idx/Lx;
+			int    kx  = idx - tmp*Lx;
+			int    ky  = tmp/Tz;
+
+			int    kz  = tmp - ((size_t) ky)*Tz;
+
+			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
 			// TODO Saxion WRONG, fcc ---> 1 para SAXION
 			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
@@ -77,9 +81,6 @@ void	SpecBin::fillBins	() {
 			fcc = 1.0;
 			if( kx == hLx - 1 )
 			fcc = 1.0;
-
-			kz -= ky*Tz;
-			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
 			if (kx > hLx) kx -= static_cast<int>(Lx);
 			if (ky > hLy) ky -= static_cast<int>(Ly);
@@ -186,7 +187,7 @@ void	SpecBin::fillBins	() {
 		// 	}
 		// }
 
-		const double norm = (sizeL*sizeL*sizeL)/(2.*(field->TotalSize()*field->TotalSize()));
+		const double norm = (sizeL*sizeL*sizeL)/(2.*(((double) field->TotalSize())*((double) field->TotalSize())));
 
 		#pragma omp for schedule(static)
 		for (int j=0; j<powMax; j++) {
