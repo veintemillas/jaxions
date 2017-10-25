@@ -35,27 +35,17 @@ class	MendTheta : public Tunable
 int	MendTheta::runGpu	()
 {
 #ifdef	USE_GPU
-	const uint uLx = axionField->Length(), uS = axionField->Surf(), uV = axionField->Size(), uLz = axionField->Depth();
+	LogMsg	 (VERB_NORMAL, "MendTheta gpu kernel not available, will run on CPU");
 
-	uint	count = 0;
-	int	mIter = 0;
+	Folder	munge(axionField);
 
-	const double zVar = *(axionField->zV());
+	axionField->transferCpu(FIELD_MV);
+	munge(FOLD_ALL);
+	int mIter = runCpu();
+	munge(UNFOLD_ALL);
+	axionField->transferDev(FIELD_MV);
 
-	axionField->exchangeGhosts(FIELD_M);
-	auto wJmp = mendSliceXeon (axionField, 0);	// After exchanging ghosts, operate on slice 0 (ghost), so we go up to Lz-1
-
-	do {
-		count = 0;
-		for (uint i=0; i<(uLz-1); i++) {
-			axionField->exchangeGhosts(FIELD_M);
-			count += mendThetaGpu(axionField->mGpu(), axionField->vGpu(), zVar, uLx, i*uS, (i+1)*uS, axionField->Precision(), ((cudaStream_t *)axionField->Streams())[0]);
-			mIter++;
-			printf ("Slice %u mIter %d, count %u\n", i, mIter, count);
-		}
-	}	while (count != 0);
-
-	return	mIter/uLz;
+	return	mIter;
 #else
 	LogError ("Error: gpu support not built");
 	exit(1);

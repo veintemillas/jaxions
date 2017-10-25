@@ -83,9 +83,9 @@ const std::complex<float> If(0.,1.);
 			break;
 	}
 
-	switch	(dev)
-	{
-		case DEV_CPU:
+//	switch	(dev)
+//	{
+//		case DEV_CPU:
 			#ifdef	__AVX512F__
 			LogMsg(VERB_NORMAL, "Using AVX-512 64 bytes alignment");
 			mAlign = 64;
@@ -96,13 +96,13 @@ const std::complex<float> If(0.,1.);
 			LogMsg(VERB_NORMAL, "Using SSE 16 bytes alignment");
 			mAlign = 16;
 			#endif
-			break;
+//			break;
 
-		case DEV_GPU:
-			LogMsg(VERB_NORMAL, "Using 16 bytes alignment for the Gpu");
-			mAlign = 16;
-			break;
-	}
+//		case DEV_GPU:
+//			LogMsg(VERB_NORMAL, "Using 16 bytes alignment for the Gpu");
+//			mAlign = 16;
+//			break;
+//	}
 
 	shift = mAlign/fSize;
 

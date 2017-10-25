@@ -34,7 +34,8 @@
 //  MARKS THEM DOWN INTO THE ST BIN ARRAY AS POSSIBLE PROBLEMATIC POINTS WITH GRADIENTS
 //  TRIES TO MEND THE THETA DISTRIBUTION INTO MANY RIEMMAN SHEETS TO HAVE A CONTINUOUS FIELD
 
-inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const double z, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+template<const bool zDir>
+inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const double z, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
         const size_t Sf = Lx*Lx;
 	size_t count = 0;
@@ -78,217 +79,193 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
                 const auto vShLf  = opCode(load_si512, shfLf);
 #endif
 
-                #pragma omp parallel default(shared)
-                {
-                        _MData_ mel, mDf, mDp, mDm, mPx, mPy, mPz, vPx, vPy, vPz;
+		_MData_ mel, mDf, mDp, mDm, mPx, vPx;
 
-                        #pragma omp for schedule(static)
-                        for (size_t idx = Vo; idx < Vf; idx += step)
-                        {
-				size_t X[2], idxPx, idxPy, idxPz = idx + Sf, idxVx, idxVy, idxVz = idx;
+		for (size_t idx = Vo; idx < Vf; idx += step)
+		{
+			size_t X[2], idxPx, idxVx;
 
-				{
-					size_t tmi = idx/XC, tpi;
+			{
+				size_t tmi = idx/XC, tpi;
 
-				        tpi = tmi/YC;
-					X[1] = tmi - tpi*YC;
-					X[0] = idx - tmi*XC;
-				}
-
-				if (X[0] == XC-step)
-					idxPx = idx - XC + step;
-				else
-					idxPx = idx + step;
-
-				idxVx = idxPx - Sf;
-
-				if (X[1] == YC-1)
-				{
-					idxPy = idx - Sf + XC;
-					idxVy = idxPy - Sf;
-#ifdef  __AVX512F__
-					mPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
-					vPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxVy]));
-#elif   defined(__AVX2__)
-					mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
-					vPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxVy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
-#elif   defined(__AVX__)
-					mPx = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
-					vPx = opCode(permute_pd, opCode(load_pd, &v[idxVy]), 0b00000101);
-					mPz = opCode(permute2f128_pd, mPx, mPx, 0b00000001);
-					vPz = opCode(permute2f128_pd, vPx, vPx, 0b00000001);
-					mPy = opCode(blend_pd, mPx, mPz, 0b00001010);
-					vPy = opCode(blend_pd, vPx, vPz, 0b00001010);
-#else
-					mPx = opCode(load_pd, &m[idxPy]);
-					vPx = opCode(load_pd, &v[idxVy]);
-					mPy = opCode(shuffle_pd, mPx, mPx, 0x00000001);
-					vPy = opCode(shuffle_pd, vPx, vPx, 0x00000001);
-#endif
-				} else {
-					idxPy = idx + XC;
-					idxVy = idxPy - Sf;
-					mPy = opCode(load_pd, &m[idxPy]);
-					vPy = opCode(load_pd, &v[idxVy]);
-				}
-
-				mel = opCode(load_pd, &m[idx]);
-				mPx = opCode(load_pd, &m[idxPx]);
-				mPz = opCode(load_pd, &m[idxPz]);
-				vPx = opCode(load_pd, &v[idxVx]);
-				vPz = opCode(load_pd, &v[idxVz]);
-
-				/*	X-Direction	*/
-
-				mDf = opCode(sub_pd, mPx, mel);
-#ifdef	__AVX512__
-				auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-				auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
-
-				mPx = opCode(mask_sub_pd, mPx, pMask, mPx, cVec);
-				mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
-				vPx = opCode(mask_sub_pd, vPx, pMask, vPx, vVec);
-				vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
-
-				pMask |= mMask;
-
-				for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-				mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
-				mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
-#else
-				mDp = opCode(cmpge_pd, mDf, pVec);
-				mDm = opCode(cmplt_pd, mDf, mVec);
-#endif
-				mPx = opCode(sub_pd, mPx,
-					opCode(sub_pd,
-						opCode(and_pd, mDp, cVec),
-						opCode(and_pd, mDm, cVec)));
-
-				vPx = opCode(sub_pd, vPx,
-					opCode(sub_pd,
-						opCode(and_pd, mDp, vVec),
-						opCode(and_pd, mDm, vVec)));
-
-				mDp = opCode(or_pd, mDp, mDm);
-
-				for (int k=0; k<step; k++)
-					count += reinterpret_cast<size_t&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-
-				/*	Y-Direction	*/
-
-				mDf = opCode(sub_pd, mPy, mel);
-#ifdef	__AVX512__
-				pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-				mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
-
-				mPy = opCode(mask_sub_pd, mPy, pMask, mPy, cVec);
-				mPy = opCode(mask_add_pd, mPy, mMask, mPy, cVec);
-				vPy = opCode(mask_sub_pd, vPy, pMask, vPy, vVec);
-				vPy = opCode(mask_add_pd, vPy, mMask, vPy, vVec);
-
-				pMask |= mMask;
-
-				for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-				mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
-				mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
-#else
-				mDp = opCode(cmpge_pd, mDf, pVec);
-				mDm = opCode(cmplt_pd, mDf, mVec);
-#endif
-				mPy = opCode(sub_pd, mPy,
-					opCode(sub_pd,
-						opCode(and_pd, mDp, cVec),
-						opCode(and_pd, mDm, cVec)));
-
-				vPy = opCode(sub_pd, vPy,
-					opCode(sub_pd,
-						opCode(and_pd, mDp, vVec),
-						opCode(and_pd, mDm, vVec)));
-
-				mDp = opCode(or_pd, mDp, mDm);
-
-				for (int k=0; k<step; k++)
-					count += reinterpret_cast<size_t&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-
-				/*	Z-Direction	*/
-
-				mDf = opCode(sub_pd, mPz, mel);
-#ifdef	__AVX512__
-				pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-				mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
-
-				mPz = opCode(mask_sub_pd, mPz, pMask, mPz, cVec);
-				mPz = opCode(mask_add_pd, mPz, mMask, mPz, cVec);
-				vPz = opCode(mask_sub_pd, vPz, pMask, vPz, vVec);
-				vPz = opCode(mask_add_pd, vPz, mMask, vPz, vVec);
-
-				pMask |= mMask;
-
-				for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-				mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
-				mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
-#else
-				mDp = opCode(cmpge_pd, mDf, pVec);
-				mDm = opCode(cmplt_pd, mDf, mVec);
-#endif
-				mPz = opCode(sub_pd, mPz,
-					opCode(sub_pd,
-						opCode(and_pd, mDp, cVec),
-						opCode(and_pd, mDm, cVec)));
-
-				vPz = opCode(sub_pd, vPz,
-					opCode(sub_pd,
-						opCode(and_pd, mDp, vVec),
-						opCode(and_pd, mDm, vVec)));
-
-				mDp = opCode(or_pd, mDp, mDm);
-
-				for (int k=0; k<step; k++)
-					count += reinterpret_cast<size_t&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-				opCode(store_pd, &v[idxVx], vPx);
-				opCode(store_pd, &v[idxVz], vPz);
-				opCode(store_pd, &m[idxPx], mPx);
-				opCode(store_pd, &m[idxPz], mPz);
-
-				if (X[1] == YC-1)
-				{
-#ifdef  __AVX512F__
-					mPy = opCode(permutexvar_pd, vShRg, mPy);
-					vPy = opCode(permutexvar_pd, vShRg, vPy);
-#elif   defined(__AVX2__)
-					mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, mPy), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
-					vPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, vPy), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
-#elif   defined(__AVX__)
-					mPx = opCode(permute_pd, mPy, 0b00000101);
-					vPx = opCode(permute_pd, vPy, 0b00000101);
-					mPz = opCode(permute2f128_pd, mPx, mPx, 0b00000001);
-					vPz = opCode(permute2f128_pd, vPx, vPx, 0b00000001);
-					mPy = opCode(blend_pd, mPx, mPz, 0b00000101);
-					vPy = opCode(blend_pd, vPx, vPz, 0b00000101);
-#else
-					mPy = opCode(shuffle_pd, mPy, mPy, 0x00000001);
-					vPy = opCode(shuffle_pd, vPy, vPy, 0x00000001);
-#endif
-				}
-
-				opCode(store_pd, &v[idxVy], vPy);
-				opCode(store_pd, &m[idxPy], mPy);
+			        tpi = tmi/YC;
+				X[1] = tmi - tpi*YC;
+				X[0] = idx - tmi*XC;
 			}
+
+			if (X[0] == XC-step)
+				idxPx = idx - XC + step;
+			else
+				idxPx = idx + step;
+
+			idxVx = idxPx - Sf;
+
+			mel = opCode(load_pd, &m[idx]);
+			mPx = opCode(load_pd, &m[idxPx]);
+			vPx = opCode(load_pd, &v[idxVx]);
+
+			/*	X-Direction	*/
+
+			mDf = opCode(sub_pd, mPx, mel);
+#ifdef	__AVX512__
+			auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
+			auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+
+			mPx = opCode(mask_sub_pd, mPx, pMask, mPx, cVec);
+			mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
+			vPx = opCode(mask_sub_pd, vPx, pMask, vPx, vVec);
+			vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
+
+			pMask |= mMask;
+
+			for (int i=1, int k=0; k<step; i<<=1, k++)
+				count += (pMask & i) >> k;
+#else	// AVX and SSE4.1
+
+#ifdef	__AVX__
+			mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
+			mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
+#else
+			mDp = opCode(cmpge_pd, mDf, pVec);
+			mDm = opCode(cmplt_pd, mDf, mVec);
+#endif
+			mPx = opCode(sub_pd, mPx,
+				opCode(sub_pd,
+					opCode(and_pd, mDp, cVec),
+					opCode(and_pd, mDm, cVec)));
+
+			vPx = opCode(sub_pd, vPx,
+				opCode(sub_pd,
+					opCode(and_pd, mDp, vVec),
+					opCode(and_pd, mDm, vVec)));
+
+			mDp = opCode(or_pd, mDp, mDm);
+
+			for (int k=0; k<step; k++)
+				count += reinterpret_cast<size_t&>(mDp[k]) & 1;
+#endif	// AVX and SSE4.1
+		}
+
+		/*	Move forward in z	*/
+
+		size_t idxPz = Vo + Sf, idxVz = Vo;
+
+		mPx = opCode(load_pd, &m[idxPz]);
+
+		const int nSplit  = commSize();
+
+		if (zDir == false) {
+			if (nSplit > 1) {
+				// Exchange ghosts to get the right v
+				const int rank    = commRank();
+				const int nSplit  = commSize();
+				const int fwdNeig = (rank + 1) % nSplit;
+				const int bckNeig = (rank - 1 + nSplit) % nSplit;
+				MPI_Request rSendBck, rRecvFwd;
+
+				double tmp[step];
+
+				MPI_Send_init(v,   step, MPI_DOUBLE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &rSendBck);
+				MPI_Recv_init(tmp, step, MPI_DOUBLE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
+			
+				MPI_Start(&rRecvFwd);
+				MPI_Start(&rSendBck);
+
+				MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
+				MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
+
+				MPI_Request_free(&rSendBck);
+				MPI_Request_free(&rRecvFwd);
+
+				vPx = opCode(load_pd, tmp);
+			} else {
+				vPx = opCode(load_pd, &v[0]);
+			}
+		} else {
+			vPx = opCode(load_pd, &v[idxVz]);
+		}
+
+		mDf = opCode(sub_pd, mPx, mel);
+#ifdef	__AVX512__
+		pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
+		mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+
+		mPx = opCode(mask_sub_pd, mPx, pMask, mPx, cVec);
+		mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
+		vPx = opCode(mask_sub_pd, vPx, pMask, vPx, vVec);
+		vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
+
+		pMask |= mMask;
+
+		for (int i=1, int k=0; k<step; i<<=1, k++)
+					count += (pMask & i) >> k;
+#else	// AVX and SSE4.1
+
+#ifdef	__AVX__
+		mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
+		mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
+#else
+		mDp = opCode(cmpge_pd, mDf, pVec);
+		mDm = opCode(cmplt_pd, mDf, mVec);
+#endif
+		mPx = opCode(sub_pd, mPx,
+			opCode(sub_pd,
+				opCode(and_pd, mDp, cVec),
+				opCode(and_pd, mDm, cVec)));
+
+		vPx = opCode(sub_pd, vPx,
+			opCode(sub_pd,
+				opCode(and_pd, mDp, vVec),
+				opCode(and_pd, mDm, vVec)));
+
+		mDp = opCode(or_pd, mDp, mDm);
+
+		for (int k=0; k<step; k++)
+			count += reinterpret_cast<size_t&>(mDp[k]) & 1;
+#endif	// AVX and SSE4.1
+
+		if (zDir == false) {
+			if (nSplit > 1 ) {
+				// Exchange ghosts to store the right m/v
+				const int rank    = commRank();
+				const int fwdNeig = (rank + 1) % nSplit;
+				const int bckNeig = (rank - 1 + nSplit) % nSplit;
+				MPI_Request rSendFwd, rRecvBck;
+
+				double mTmp[step], vTmp[step];
+				opCode(store_pd, mTmp, mPx);
+				opCode(store_pd, vTmp, vPx);
+
+				MPI_Send_init(mTmp, step, MPI_DOUBLE, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
+				MPI_Recv_init(m,    step, MPI_DOUBLE, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
+
+				MPI_Start(&rRecvBck);
+				MPI_Start(&rSendFwd);
+
+				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+
+				MPI_Request_free(&rSendFwd);
+				MPI_Request_free(&rRecvBck);
+
+				MPI_Send_init(vTmp, step, MPI_DOUBLE, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
+				MPI_Recv_init(v,    step, MPI_DOUBLE, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
+
+				MPI_Start(&rRecvBck);
+				MPI_Start(&rSendFwd);
+
+				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+
+				MPI_Request_free(&rSendFwd);
+				MPI_Request_free(&rRecvBck);
+			} else {
+				opCode(store_pd, &m[Sf], mPx);
+				opCode(store_pd, &v[0],  vPx);
+			}
+		} else {
+			opCode(store_pd, &m[idxPz], mPx);
+			opCode(store_pd, &v[idxVz], vPx);
 		}
 #undef  _MData_
 #undef  step
@@ -328,220 +305,199 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 		const _MData_ vVec  = opCode(set1_ps, 2.*M_PI);
 		const _MData_ cVec  = opCode(set1_ps, zP*2.);
 
-//		#pragma omp parallel default(shared) reduction(+:count)
+                _MData_ mel, mDf, mDp, mDm, mPx, vPx;
+
+		for (size_t idx = Vo; idx < Vf; idx += step)
 		{
-                        _MData_ mel, mDf, mDp, mDm, mPx, mPy, mPz, vPx, vPy, vPz;
+			size_t X[2], idxPx, idxVx;
 
-//			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[2], idxPx, idxPy, idxPz = idx + Sf, idxVx, idxVy, idxVz = idx;
+				size_t tmi = idx/XC, tpi;
 
-				{
-					size_t tmi = idx/XC, tpi;
-
-				        tpi = tmi/YC;
-					X[1] = tmi - tpi*YC;
-					X[0] = idx - tmi*XC;
-				}
-
-				if (X[0] == XC-step)
-					idxPx = idx - XC + step;
-				else
-					idxPx = idx + step;
-
-				idxVx = idxPx - Sf;
-
-				if (X[1] == YC-1)
-				{
-					idxPy = idx - Sf + XC;
-					idxVy = idxPy - Sf;
-#ifdef  __AVX512F__
-					mPy = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
-					vPy = opCode(permutexvar_ps, vShLf, opCode(load_ps, &v[idxVy]));
-#elif   defined(__AVX2__)
-					mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
-					vPy = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxVy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
-#elif   defined(__AVX__)
-					mPx = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
-					vPx = opCode(permute_ps, opCode(load_ps, &v[idxVy]), 0b00111001);
-					mPz = opCode(permute2f128_ps, mPx, mPx, 0b00000001);
-					vPz = opCode(permute2f128_ps, vPx, vPx, 0b00000001);
-					mPy = opCode(blend_ps, mPx, mPz, 0b10001000);
-					vPy = opCode(blend_ps, vPx, vPz, 0b10001000);
-#else
-					mPx = opCode(load_ps, &m[idxPy]);
-					vPx = opCode(load_ps, &m[idxVy]);
-					mPy = opCode(shuffle_ps, mPx, mPx, 0b00111001);
-					vPy = opCode(shuffle_ps, vPx, vPx, 0b00111001);
-#endif
-				}
-				else
-				{
-					idxPy = idx + XC;
-					idxVy = idxPy - Sf;
-					mPy = opCode(load_ps, &m[idxPy]);
-					vPy = opCode(load_ps, &m[idxVy]);
-				}
-
-				mel = opCode(load_ps, &m[idx]);
-				mPx = opCode(load_ps, &m[idxPx]);
-				mPz = opCode(load_ps, &m[idxPz]);
-				vPx = opCode(load_ps, &v[idxVx]);
-				vPz = opCode(load_ps, &v[idxVz]);
-
-				/*	X-Direction	*/
-
-				mDf = opCode(sub_ps, mPx, mel);
-#ifdef	__AVX512__
-				auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-				auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
-
-				mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
-				mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
-				vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
-				vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
-
-				pMask |= mMask;
-
-				for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-				mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
-				mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
-#else
-				mDp = opCode(cmpge_ps, mDf, pVec);
-				mDm = opCode(cmplt_ps, mDf, mVec);
-#endif
-				mPx = opCode(sub_ps, mPx,
-					opCode(sub_ps,
-						opCode(and_ps, mDp, cVec),
-						opCode(and_ps, mDm, cVec)));
-
-				vPx = opCode(sub_ps, vPx,
-					opCode(sub_ps,
-						opCode(and_ps, mDp, vVec),
-						opCode(and_ps, mDm, vVec)));
-
-				mDp = opCode(or_ps, mDp, mDm);
-
-				for (int k=0; k<step; k++)
-					count += reinterpret_cast<int&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-
-				/*	Y-Direction	*/
-
-				mDf = opCode(sub_ps, mPy, mel);
-#ifdef	__AVX512__
-				pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
-				mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
-
-				mPy = opCode(mask_sub_ps, mPy, pMask, mPy, cVec);
-				mPy = opCode(mask_add_ps, mPy, mMask, mPy, cVec);
-				vPy = opCode(mask_sub_ps, vPy, pMask, vPy, vVec);
-				vPy = opCode(mask_add_ps, vPy, mMask, vPy, vVec);
-
-				pMask |= mMask;
-
-				for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-				mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
-				mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
-#else
-				mDp = opCode(cmpge_ps, mDf, pVec);
-				mDm = opCode(cmplt_ps, mDf, mVec);
-#endif
-				mPy = opCode(sub_ps, mPy,
-					opCode(sub_ps,
-						opCode(and_ps, mDp, cVec),
-						opCode(and_ps, mDm, cVec)));
-
-				vPy = opCode(sub_ps, vPy,
-					opCode(sub_ps,
-						opCode(and_ps, mDp, vVec),
-						opCode(and_ps, mDm, vVec)));
-
-				mDp = opCode(or_ps, mDp, mDm);
-
-				for (int k=0; k<step; k++)
-					count += reinterpret_cast<int&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-
-				/*	Z-Direction	*/
-
-				mDf = opCode(sub_ps, mPz, mel);
-#ifdef	__AVX512__
-				pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
-				mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
-
-				mPz = opCode(mask_sub_ps, mPz, pMask, mPz, cVec);
-				mPz = opCode(mask_add_ps, mPz, mMask, mPz, cVec);
-				vPz = opCode(mask_sub_ps, vPz, pMask, vPz, vVec);
-				vPz = opCode(mask_add_ps, vPz, mMask, vPz, vVec);
-
-				pMask |= mMask;
-
-				for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-				mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
-				mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
-#else
-				mDp = opCode(cmpge_ps, mDf, pVec);
-				mDm = opCode(cmplt_ps, mDf, mVec);
-#endif
-				mPz = opCode(sub_ps, mPz,
-					opCode(sub_ps,
-						opCode(and_ps, mDp, cVec),
-						opCode(and_ps, mDm, cVec)));
-
-				vPz = opCode(sub_ps, vPz,
-					opCode(sub_ps,
-						opCode(and_ps, mDp, vVec),
-						opCode(and_ps, mDm, vVec)));
-
-				mDp = opCode(or_ps, mDp, mDm);
-
-				for (int k=0; k<step; k++)
-					count += reinterpret_cast<int&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-				opCode(store_ps, &v[idxVx], vPx);
-				opCode(store_ps, &v[idxVz], vPz);
-				opCode(store_ps, &m[idxPx], mPx);
-				opCode(store_ps, &m[idxPz], mPz);
-
-				if (X[1] == YC-1)
-				{
-#ifdef  __AVX512F__
-					mPy = opCode(permutexvar_ps, vShRg, mPy);
-					vPy = opCode(permutexvar_ps, vShRg, vPy);
-#elif   defined(__AVX2__)
-					mPy = opCode(permutevar8x32_ps, mPy, opCode(setr_epi32, 7,0,1,2,3,4,5,6));
-					vPy = opCode(permutevar8x32_ps, vPy, opCode(setr_epi32, 7,0,1,2,3,4,5,6));
-#elif   defined(__AVX__)
-					mPx = opCode(permute_ps, mPy, 0b10010011);
-					vPx = opCode(permute_ps, vPy, 0b10010011);
-					mPz = opCode(permute2f128_ps, mPx, mPx, 0b00000001);
-					vPz = opCode(permute2f128_ps, vPx, vPx, 0b00000001);
-					mPy = opCode(blend_ps, mPx, mPz, 0b00010001);
-					vPy = opCode(blend_ps, vPx, vPz, 0b00010001);
-#else
-					mPy = opCode(shuffle_ps, mPy, mPy, 0b10010011);
-					vPy = opCode(shuffle_ps, vPy, vPy, 0b10010011);
-#endif
-				}
-
-				opCode(store_ps, &v[idxVy], vPy);
-				opCode(store_ps, &m[idxPy], mPy);
+			        tpi = tmi/YC;
+				X[1] = tmi - tpi*YC;
+				X[0] = idx - tmi*XC;
 			}
+
+			if (X[0] == XC-step)
+				idxPx = idx - XC + step;
+			else
+				idxPx = idx + step;
+
+			idxVx = idxPx - Sf;
+
+			mel = opCode(load_ps, &m[idx]);
+			mPx = opCode(load_ps, &m[idxPx]);
+			vPx = opCode(load_ps, &v[idxVx]);
+
+			/*	X-Direction	*/
+
+			mDf = opCode(sub_ps, mPx, mel);
+#ifdef	__AVX512__
+			auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
+			auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+
+			mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
+			mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
+			vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
+			vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
+
+			pMask |= mMask;
+
+			for (int i=1, int k=0; k<step; i<<=1, k++)
+				count += (pMask & i) >> k;
+#else	// AVX and SSE4.1
+
+#ifdef	__AVX__
+			mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
+			mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
+#else
+			mDp = opCode(cmpge_ps, mDf, pVec);
+			mDm = opCode(cmplt_ps, mDf, mVec);
+#endif
+			mPx = opCode(sub_ps, mPx,
+				opCode(sub_ps,
+					opCode(and_ps, mDp, cVec),
+					opCode(and_ps, mDm, cVec)));
+
+			vPx = opCode(sub_ps, vPx,
+				opCode(sub_ps,
+					opCode(and_ps, mDp, vVec),
+					opCode(and_ps, mDm, vVec)));
+
+			mDp = opCode(or_ps, mDp, mDm);
+
+			for (int k=0; k<step; k++)
+				count += reinterpret_cast<int&>(mDp[k]) & 1;
+#endif	// AVX and SSE4.1
+			opCode(store_ps, &v[idxVx], vPx);
+			opCode(store_ps, &m[idxPx], mPx);
 		}
+
+		/*	Move forward in z	*/
+
+		size_t idxPz = Vo + Sf, idxVz = Vo;
+
+		mPx = opCode(load_ps, &m[idxPz]);
+
+		const int nSplit  = commSize();
+
+		if (zDir == false) {
+			if (nSplit > 1) {
+				// Exchange ghosts to get the right v
+				const int rank    = commRank();
+				const int nSplit  = commSize();
+				const int fwdNeig = (rank + 1) % nSplit;
+				const int bckNeig = (rank - 1 + nSplit) % nSplit;
+				MPI_Request rSendBck, rRecvFwd;
+
+				float tmp[step];
+
+				MPI_Send_init(v,   step, MPI_FLOAT, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &rSendBck);
+				MPI_Recv_init(tmp, step, MPI_FLOAT, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
+			
+				MPI_Start(&rRecvFwd);
+				MPI_Start(&rSendBck);
+
+				MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
+				MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
+
+				MPI_Request_free(&rSendBck);
+				MPI_Request_free(&rRecvFwd);
+
+				vPx = opCode(load_ps, tmp);
+			} else {
+				vPx = opCode(load_ps, &v[0]);
+			}
+		} else {
+			vPx = opCode(load_ps, &v[idxVz]);
+		}
+
+		mPx = opCode(load_ps, &m[idxPz]);
+
+		mDf = opCode(sub_ps, mPx, mel);
+#ifdef	__AVX512__
+		pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
+		mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
+
+		mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
+		mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
+		vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
+		vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
+
+		pMask |= mMask;
+
+		for (int i=1, int k=0; k<step; i<<=1, k++)
+			count += (pMask & i) >> k;
+#else	// AVX and SSE4.1
+
+#ifdef	__AVX__
+		mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
+		mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
+#else
+		mDp = opCode(cmpge_ps, mDf, pVec);
+		mDm = opCode(cmplt_ps, mDf, mVec);
+#endif
+		mPx = opCode(sub_ps, mPx,
+			opCode(sub_ps,
+				opCode(and_ps, mDp, cVec),
+				opCode(and_ps, mDm, cVec)));
+
+		vPx = opCode(sub_ps, vPx,
+			opCode(sub_ps,
+				opCode(and_ps, mDp, vVec),
+				opCode(and_ps, mDm, vVec)));
+
+		mDp = opCode(or_ps, mDp, mDm);
+
+		for (int k=0; k<step; k++)
+			count += reinterpret_cast<int&>(mDp[k]) & 1;
+#endif	// AVX and SSE4.1
+
+		if (zDir == false) {
+			if (nSplit > 1 ) {
+				// Exchange ghosts to store the right m/v
+				const int rank    = commRank();
+				const int fwdNeig = (rank + 1) % nSplit;
+				const int bckNeig = (rank - 1 + nSplit) % nSplit;
+				MPI_Request rSendFwd, rRecvBck;
+
+				float mTmp[step], vTmp[step];
+				opCode(store_ps, mTmp, mPx);
+				opCode(store_ps, vTmp, vPx);
+
+				MPI_Send_init(mTmp, step, MPI_FLOAT, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
+				MPI_Recv_init(m,    step, MPI_FLOAT, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
+
+				MPI_Start(&rRecvBck);
+				MPI_Start(&rSendFwd);
+
+				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+
+				MPI_Request_free(&rSendFwd);
+				MPI_Request_free(&rRecvBck);
+
+				MPI_Send_init(vTmp, step, MPI_FLOAT, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
+				MPI_Recv_init(v,    step, MPI_FLOAT, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
+
+				MPI_Start(&rRecvBck);
+				MPI_Start(&rSendFwd);
+
+				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+
+				MPI_Request_free(&rSendFwd);
+				MPI_Request_free(&rRecvBck);
+			} else {
+				opCode(store_ps, &m[Sf], mPx);
+				opCode(store_ps, &v[0],  vPx);
+			}
+		} else {
+			opCode(store_ps, &m[idxPz], mPx);
+			opCode(store_ps, &v[idxVz], vPx);
+		}
+
 #undef  _MData_
 #undef  step
 	}
@@ -551,6 +507,7 @@ template<typename Float>
 inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Sf, const size_t Vo, const size_t Vf, const int step)
 {
 	const double zP = M_PI*z;
+	size_t count = 0;
 
 	Float mDf, mel[step], mPx[step], vPx[step], mPy[step], vPy[step], mPz[step], vPz[step];
 
@@ -628,11 +585,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 				vPx[i] -= 2.*M_PI;
 				m[idxPx + i] = mPx[i];
 				v[idxVx + i] = vPx[i];
+				count++;
 			} else if (mDf < -zP) {
 				mPx[i] += zP;
 				vPx[i] += 2.*M_PI;
 				m[idxPx + i] = mPx[i];
 				v[idxVx + i] = vPx[i];
+				count++;
 			}
 
 			/*	Y-Direction	*/
@@ -644,11 +603,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 				vPy[i] -= 2.*M_PI;
 				m[idxPy + i] = mPy[i];
 				v[idxVy + i] = vPy[i];
+				count++;
 			} else if (mDf < -zP) {
 				mPy[i] += zP;
 				vPy[i] += 2.*M_PI;
 				m[idxPy + i] = mPy[i];
 				v[idxVy + i] = vPy[i];
+				count++;
 			}
 
 			/*	Z-Direction	*/
@@ -660,11 +621,13 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 				vPz[i] -= 2.*M_PI;
 				m[idxPz + i] = mPz[i];
 				v[idxVz + i] = vPz[i];
+				count++;
 			} else if (mDf < -zP) {
 				mPz[i] += zP;
 				vPz[i] += 2.*M_PI;
 				m[idxPz + i] = mPz[i];
 				v[idxVz + i] = vPz[i];
+				count++;
 			}
 
 		}
@@ -685,43 +648,111 @@ inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, c
 	}
 }
 
-bool	mendSliceXeon (Scalar *field, size_t slice)
+template<typename Float>
+inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Sf, const size_t slice, const int step)
+{
+	const double zP = M_PI*z;
+	size_t count = 0;
+
+	Float mDf, mel, mPy, vPy;
+
+	int shf = 0, cnt = step;
+
+	while (cnt != 1) {
+		cnt >>= 1;
+		shf++;
+	}
+		
+	const size_t XC = (Lx<<shf);
+	const size_t YC = (Lx>>shf);
+
+	size_t cIdx, idxPy, idxVy, idx = slice*Sf;
+
+	/*	Vector loop	*/
+	for (int i=0; i<step; i++) {
+		for (size_t lPos = 0; lPos < YC-1; lPos++) {
+			size_t cIdx = idx + lPos*XC;
+
+			mel = m[cIdx + i];
+
+			idxPy = cIdx + XC;
+			idxVy = idxPy - Sf;
+
+			mPy = m[idxPy + i];
+			vPy = v[idxVy + i];
+
+			/*	Y-Direction	*/
+
+			mDf = mPy - mel;
+
+			if (mDf > zP) {
+				mPy -= 2.*zP;
+				vPy -= 2.*M_PI;
+				m[idxPy + i] = mPy;
+				v[idxVy + i] = vPy;
+				count++;
+			} else if (mDf < -zP) {
+				mPy += 2.*zP;
+				vPy += 2.*M_PI;
+				m[idxPy + i] = mPy;
+				v[idxVy + i] = vPy;
+				count++;
+			}
+		}
+
+		cIdx  = idx + Sf - XC;
+		idxPy = idx;
+		idxVy = idxPy - Sf;
+
+		mPy = m[idxPy + ((i + 1)%step)];
+		vPy = v[idxVy + ((i + 1)%step)];
+
+		if (slice == 1) {
+			printf ("(%lu --> %lu) %d (%d) %f %f %f\n", cIdx, idxPy, i, ((i+1)%step), mel, mPy, vPy);
+		}
+
+		/*	Y-Direction	*/
+
+		mDf = mPy - mel;
+
+		if (mDf > zP) {
+			mPy -= 2.*zP;
+			vPy -= 2.*M_PI;
+			m[idxPy + ((i + 1)%step)] = mPy;
+			v[idxVy + ((i + 1)%step)] = vPy;
+			count++;
+		} else if (mDf < -zP) {
+			mPy += 2.*zP;
+			vPy += 2.*M_PI;
+			m[idxPy + ((i + 1)%step)] = mPy;
+			v[idxVy + ((i + 1)%step)] = vPy;
+			count++;
+		}
+	}
+
+	return	count;
+}
+
+size_t	mendSliceXeon (Scalar *field, size_t slice)
 {
 	const double z  = *(field->zV());
 	const size_t Sf =   field->Surf();
 
 	size_t tJmps = 0;
-	bool   wJmp  = false;
 
 	switch (field->Precision()) {
 		case FIELD_DOUBLE:
-
-		// Run the first slice single core, no vectorization, until it's uniform
-		do {
-			field->exchangeGhosts(FIELD_M);
-			tJmps = mendThetaSingle<double>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), Sf, slice*Sf, (slice+1)*Sf, Align/sizeof(double));
-
-			if (tJmps)
-				wJmp = true;
-		}	while	(tJmps != 0);
-
+		field->exchangeGhosts(FIELD_M);
+		tJmps  = mendThetaLine  <double>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), Sf, slice, Align/sizeof(double));
 		break;
 
 		case FIELD_SINGLE:
-
-		// Run the first slice single core, no vectorization, until it's uniform
-		do {
-			field->exchangeGhosts(FIELD_M);
-			tJmps = mendThetaSingle<float> (static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), Sf, slice*Sf, (slice+1)*Sf, Align/sizeof(float));
-
-			if (tJmps)
-				wJmp = true;
-		}	while	(tJmps != 0);
-
+		field->exchangeGhosts(FIELD_M);
+		tJmps  = mendThetaLine  <float> (static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), Sf, slice, Align/sizeof(float));
 		break;
 	}
 
-	return	wJmp;
+	return	tJmps;
 }
 
 bool	mendThetaXeon (Scalar *field)
@@ -731,20 +762,26 @@ bool	mendThetaXeon (Scalar *field)
 	size_t		cIdx  = 0;
 	bool		wJmp  = false;
 
-	wJmp = mendSliceXeon (field, 0);	// Slice 0 belongs to the ghosts, it updates the first usable slice and we won't about the last boundary
-
-	// Parallelize and vectorize over subsequent slices
-
-	for (size_t i=0; i<field->Depth()-1; i++) {
-		cIdx += field->Surf();
-
+	for (size_t i=0; i<field->Depth(); i++) {
 		do {
-			tJmps = mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), cIdx, cIdx + field->Surf(), field->Precision());
+			tJmps  = mendSliceXeon(field, i);	// Updates the x=cte,z=cte line, so we can vectorize
+			tJmps += mendThetaKernelXeon<true>(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), cIdx, cIdx + field->Surf(), field->Precision());
 
 			if (tJmps)
 				wJmp = true;
 		}	while	(tJmps != 0);
+
+		cIdx += field->Surf();
 	}
+
+	do {
+		tJmps  = mendSliceXeon(field, field->Depth());
+		field->exchangeGhosts(FIELD_M);
+		tJmps += mendThetaKernelXeon<false>(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), cIdx, cIdx + field->Surf(), field->Precision());
+
+		if (tJmps)
+			wJmp = true;
+	}	while	(tJmps != 0);
 
 	return	wJmp;
 }
