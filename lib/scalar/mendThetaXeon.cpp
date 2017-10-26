@@ -380,101 +380,66 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 	const int fwdNeig = (rank + 1) % nSplit;
 	const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	/*	Get the ghosts for slice 0							*/
-	/*	It's cumbersome but we avoid exchanging the whole slice to get one point	*/
 
-	if (commSize() == 1) {
-		m[0] = m[Sf*Lz];
-	} else {
-		MPI_Status status;
-		MPI_Send(&m[Sf*Lz], sizeof(Float), MPI_CHAR, fwdNeig, rank,    MPI_COMM_WORLD);
-		MPI_Recv(m,         sizeof(Float), MPI_CHAR, bckNeig, bckNeig, MPI_COMM_WORLD, &status);
-	}
+	for (int cRank = 0; cRank < commSize(); cRank++) {
 
-	printf ("Zero %f %f\n", m[0], m[Sf*Lz]);
+		commSync();
 
-	/*	Bulk loop	*/
-	for (size_t idx=0,i=1; i<Lz; i++,idx+=Sf) {
+		const int cFwdNeig = (cRank + 1) % nSplit;
+		const int cBckNeig = (cRank - 1 + nSplit) % nSplit;
 
-		idxPz = idx + Sf;
-		idxVz = idx;
+		/*	Get the ghosts for slice 0							*/
+		/*	It's cumbersome but we avoid exchanging the whole slice to get one point	*/
 
-		mel = m[idx];
-
-		mPz = m[idxPz];
-		vPz = v[idxVz];
-
-		/*	Z-Direction	*/
-
-		mDf = mPz - mel;
-
-		while (abs(mDf) > zP) {
-			if (mDf > zP) {
-				mPz -= 2.*zP;
-				vPz -= 2.*M_PI;
-				count++;
-			} else {
-				mPz += 2.*zP;
-				vPz += 2.*M_PI;
-				count++;
+		if (commSize() == 1) {
+			m[0] = m[Sf*Lz];
+		} else {
+			if (rank == cBckNeig) {
+				MPI_Send(&m[Sf*Lz], sizeof(Float), MPI_CHAR, cRank,   cRank, MPI_COMM_WORLD);
 			}
 
-			mDf = mPz - mel;
+			if (rank == cRank) {
+				MPI_Status status;
+				MPI_Recv(m,         sizeof(Float), MPI_CHAR, bckNeig, cRank, MPI_COMM_WORLD, &status);
+			}
 		}
 
-		m[idxPz] = mPz;
-		v[idxVz] = vPz;
-	}
+		/*	We run only one rank at a time, otherwise we can enter an infinite	*/
+		/*	loop where one rank undoes what another did				*/
+	
+		if (rank == cRank) {
+			for (size_t idx=0,i=1; i<Lz; i++,idx+=Sf) {
 
-	/*	MPI case	*/
+				idxPz = idx + Sf;
+				idxVz = idx;
 
-	size_t idx = Sf*Lz;
+				mel = m[idx];
 
-	idxPz = idx + Sf;
+				mPz = m[idxPz];
+				vPz = v[idxVz];
 
-	mel = m[idx];
+				/*	Z-Direction	*/
 
-	/*	We don't want to exchange ghost just because of one point	*/
-	if (commSize() == 1) {
-		mPz = m[Sf];
-		vPz = v[0];
-	} else {
-		MPI_Status status;
-		MPI_Send(&(m[Sf]), sizeof(Float), MPI_CHAR, bckNeig, rank,    MPI_COMM_WORLD);
-		MPI_Recv(&mPz,     sizeof(Float), MPI_CHAR, fwdNeig, fwdNeig, MPI_COMM_WORLD, &status);
-		MPI_Send(v,        sizeof(Float), MPI_CHAR, bckNeig, rank,    MPI_COMM_WORLD);
-		MPI_Recv(&vPz,     sizeof(Float), MPI_CHAR, fwdNeig, fwdNeig, MPI_COMM_WORLD, &status);
-	}
+				mDf = mPz - mel;
 
-	printf ("End  %f %f\n", m[Sf], mPz);
+				while (abs(mDf) > zP) {
+					if (mDf > zP) {
+						mPz -= 2.*zP;
+						vPz -= 2.*M_PI;
+						count++;
+					} else {
+						mPz += 2.*zP;
+						vPz += 2.*M_PI;
+						count++;
+					}
 
-	/*	Z-Direction	*/
+					mDf = mPz - mel;
+				}
 
-	mDf = mPz - mel;
-
-	while (abs(mDf) > zP) {
-		if (mDf > zP) {
-			mPz -= 2.*zP;
-			vPz -= 2.*M_PI;
-			count++;
-		} else {
-			mPz += 2.*zP;
-			vPz += 2.*M_PI;
-			count++;
+				m[idxPz] = mPz;
+				v[idxVz] = vPz;
+			}
 		}
-
-		mDf = mPz - mel;
-	}
-
-	if (commSize() == 1) {
-		m[Sf] = mPz;
-		v[0]  = vPz;
-	} else {
-		MPI_Status status;
-		MPI_Send(&mPz,     sizeof(Float), MPI_CHAR, fwdNeig, rank,    MPI_COMM_WORLD);
-		MPI_Recv(&(m[Sf]), sizeof(Float), MPI_CHAR, bckNeig, bckNeig, MPI_COMM_WORLD, &status);
-		MPI_Send(&vPz, sizeof(Float), MPI_CHAR, fwdNeig, rank,    MPI_COMM_WORLD);
-		MPI_Recv(v,    sizeof(Float), MPI_CHAR, bckNeig, bckNeig, MPI_COMM_WORLD, &status);
 	}
 
 	return	count;
@@ -487,21 +452,15 @@ void	mendThetaXeon (Scalar *field)
 
 	switch (field->Precision()) {
 		case	FIELD_DOUBLE:
-		do {
-			tJmps = mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
-		}	while	(tJmps != 0);
-
+		mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
 		mendThetaSlice<double, Align/sizeof(double)>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
-		mendThetaKernelXeon			    (                     field->mCpu(),                       field->vCpu(),  z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		case	FIELD_SINGLE:
-		do {
-			tJmps = mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
-		}	while	(tJmps != 0);
-
+		mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
 		mendThetaSlice<float, Align/sizeof(float)>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
-		mendThetaKernelXeon			  (                     field->mCpu(),                       field->vCpu(),  z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 	}
 

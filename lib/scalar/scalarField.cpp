@@ -841,7 +841,7 @@ void	Scalar::fftCpu	(int sign)
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::theta2m2()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function theta2m2 marked for future optimization or removal");
+	LogMsg (VERB_NORMAL, "Function theta2m2 marked for future optimization or removal");
 
 	// PADDING idx  = N*N *iz + N *iy + ix
 	// 			TO idx' = N*N'*iz + N'*iy + ix = idx + 2*( iy + N*iz )
@@ -901,7 +901,7 @@ void	Scalar::theta2m2()//int *window)
 //	USA M2, ARREGLAR LOWMEM
 void	Scalar::vheta2m2()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function vheta2m2 marked for future optimization or removal");
+	LogMsg (VERB_NORMAL, "Function vheta2m2 marked for future optimization or removal");
 
 	switch (fieldType)
 	{
@@ -985,7 +985,7 @@ void	Scalar::vheta2m2()//int *window)
 // SUPERSEEDED BY theta2m2 and vheta2m2 to work with MPI
 void	Scalar::thetav2m2()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function thetav2m2 marked for future optimization or removal");
+	LogMsg (VERB_NORMAL, "Function thetav2m2 marked for future optimization or removal");
 
 	switch (fieldType)
 	{
@@ -1320,7 +1320,7 @@ template<typename Float>
 //void	Scalar::ENERGY(const Float zz, FILE *enWrite)
 void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int numbins)
 {
-	LogMsg (VERB_HIGH, "Function energymapTheta marked for optimization or removal, please use energy instead");
+	LogMsg (VERB_NORMAL, "Function energymapTheta marked for optimization or removal, please use energy instead and/or Binner with filters instead\n");
 	LogMsg (VERB_NORMAL, "energymapTheta");
 
 	// THIS TEMPLATE IS TO BE CALLED UNFOLDED
@@ -1629,7 +1629,8 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
-	LogMsg (VERB_HIGH, "Function contrastbin marked for removal, use Binner with filters");
+	LogOut ("Function contrastbin has been deprecated, use Binner class with filters");
+	LogMsg (VERB_NORMAL, "Function contrastbin has been deprecated and is marked for removal, use Binner class with filters");
 	LogMsg (VERB_NORMAL, "contrastbin()");
 	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
 
@@ -1839,7 +1840,8 @@ void	Scalar::padder()
 
 double	Scalar::maxtheta()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function maxtheta is deprecated and has been marked for removal, use find in utils/binner.h instead");
+	LogOut ("Function maxtheta is deprecated and has been marked for removal, use find in utils/binner.h instead\n");
+	LogMsg (VERB_NORMAL, "Function maxtheta is deprecated and has been marked for removal, use find in utils/binner.h instead");
 	//LogMsg (VERB_NORMAL, "maxtheta()");
 	double mymaxd = 0.;
 	double mymaxd_global = 0.;
@@ -1997,7 +1999,8 @@ double	Scalar::maxtheta()//int *window)
 
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
-	LogMsg (VERB_HIGH, "Function thetaDIST has been deprecated, use the Binner class instead");
+	LogOut ("Function thetaDIST has been deprecated, use the Binner class instead\n");
+	LogMsg (VERB_NORMAL, "Function thetaDIST has been deprecated, use the Binner class instead");
 	double thetamaxi = maxtheta();
 	LogMsg (VERB_HIGH, "MAXTHETA=%f\n",thetamaxi);fflush(stdout);
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -2095,7 +2098,7 @@ double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 
 void	Scalar::denstom()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function denstom marked for optimization or removal");
+	LogMsg (VERB_NORMAL, "Function denstom marked for optimization or removal");
 	//double thetamaxi = maxtheta();
 
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -2144,7 +2147,7 @@ void	Scalar::denstom()//int *window)
 
 void	Scalar::autodenstom2()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function autodenstom marked for optimization or removal");
+	LogMsg (VERB_NORMAL, "Function autodenstom marked for optimization or removal");
 	//double thetamaxi = maxtheta();
 
 //	printf("hallo von inside %f\n", thetamaxi);
@@ -2195,7 +2198,9 @@ void	Scalar::autodenstom2()//int *window)
 
 void	Scalar::mendtheta()//int *window)
 {
-	LogMsg (VERB_HIGH, "Function mendtheta marked for optimization or removal");
+	LogOut ("WARNING: CmplxToTheta now automatically mends theta for axion fields!!\n");
+	LogOut ("Function mendtheta is deprecated and has been marked for removal");
+	LogMsg (VERB_NORMAL, "Function mendtheta is deprecated and has been marked for removal");
 //	make sure field unfolded
 // 	make sure ghosts sent
 

@@ -20,12 +20,11 @@ class	MendTheta : public Tunable
 		 MendTheta(Scalar *field) : axionField(field) {};
 		~MendTheta() {};
 
-	int	runCpu	();
-	int	runGpu	();
-	int	runXeon	();
+	void	runCpu	();
+	void	runGpu	();
 };
 
-int	MendTheta::runGpu	()
+void	MendTheta::runGpu	()
 {
 #ifdef	USE_GPU
 	LogMsg	 (VERB_NORMAL, "MendTheta gpu kernel not available, will run on CPU");
@@ -34,29 +33,21 @@ int	MendTheta::runGpu	()
 
 	axionField->transferCpu(FIELD_MV);
 	munge(FOLD_ALL);
-	int mIter = runCpu();
+	runCpu();
 	munge(UNFOLD_ALL);
 	axionField->transferDev(FIELD_MV);
 
-	return	mIter;
+	return;
 #else
 	LogError ("Error: gpu support not built");
 	exit(1);
 #endif
 }
 
-int	MendTheta::runCpu	()
+void	MendTheta::runCpu	()
 {
-	bool	wJmp  = false;
-	int	mIter = 0;
-
-	do {
-		axionField->exchangeGhosts(FIELD_M);
-		wJmp = mendThetaXeon(axionField);
-		mIter++;
-	}	while (wJmp);
-
-	return	mIter;
+	mendThetaXeon(axionField);
+	return;
 }
 
 void	mendTheta	(Scalar *field)
@@ -77,11 +68,11 @@ void	mendTheta	(Scalar *field)
 	switch (field->Device())
 	{
 		case DEV_CPU:
-			mIter = theta->runCpu ();
+			theta->runCpu ();
 			break;
 
 		case DEV_GPU:
-			mIter = theta->runGpu ();
+			theta->runGpu ();
 			break;
 
 		default:
@@ -90,12 +81,12 @@ void	mendTheta	(Scalar *field)
 			break;
 	}
 
-	theta->add(field->Size()*6.e-9*mIter, field->DataSize()*field->Size()*7.e-9*mIter);
+	theta->add(field->Size()*6.e-9, field->DataSize()*field->Size()*7.e-9);
 
 	prof.stop();
 	prof.add(theta->Name(), theta->GFlops(), theta->GBytes());
 
-	LogMsg(VERB_NORMAL, "%s finished in %d iterations", theta->Name().c_str(), mIter);
+	LogMsg(VERB_NORMAL, "%s finished", theta->Name().c_str());
 	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", theta->Name().c_str(), prof.Prof()[theta->Name()].GFlops(), prof.Prof()[theta->Name()].GBytes());
 
 	return;
