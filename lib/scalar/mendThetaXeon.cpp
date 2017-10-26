@@ -26,18 +26,11 @@
 	#endif
 #endif
 
-//----------------------------------------------------------------------
-//		CHECK JUMPS
-//----------------------------------------------------------------------
+/*	Connects all the points in a ZY plane with the whole volume	*/
+/*	Parallelizes on ZY and vectorizes on Y				*/
 
-//	THIS FUNCTION CHECKS THETA IN ORDER AND NOTES DOWN POSITIONS WITH JUMPS OF 2 PI
-//  MARKS THEM DOWN INTO THE ST BIN ARRAY AS POSSIBLE PROBLEMATIC POINTS WITH GRADIENTS
-//  TRIES TO MEND THE THETA DISTRIBUTION INTO MANY RIEMMAN SHEETS TO HAVE A CONTINUOUS FIELD
-
-template<const bool zDir>
-inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const double z, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision)
+inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const double z, const size_t Lx, const size_t Lz, const size_t Sf, FieldPrecision precision)
 {
-        const size_t Sf = Lx*Lx;
 	size_t count = 0;
 
         if (precision == FIELD_DOUBLE)
@@ -61,8 +54,6 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 #ifdef  __AVX512F__
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
-
-		const long long int __attribute__((aligned(Align))) shfLf[8] = { 1, 2, 3, 4, 5, 6, 7, 0 };
 #elif   defined(__AVX__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -75,198 +66,96 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 		const _MData_ vVec  = opCode(set1_pd, 2.*M_PI);
 		const _MData_ cVec  = opCode(set1_pd, zP*2.);
 
-#ifdef  __AVX512F__
-                const auto vShLf  = opCode(load_si512, shfLf);
-#endif
-
-		_MData_ mel, mDf, mDp, mDm, mPx, vPx;
-
-		for (size_t idx = Vo; idx < Vf; idx += step)
+		#pragma omp parallel default(shared) reduction(+:count)
 		{
-			size_t X[2], idxPx, idxVx;
+			size_t	idx, idxPx, idxVx;
+			_MData_ mel, mDf, mDc, mDp, mDm, mPx, vPx;
 
-			{
-				size_t tmi = idx/XC, tpi;
+			/*	Collapse loops so OpenMP handles the plane YZ	*/
+			#pragma omp for collapse(2) schedule(static)
+			for (size_t zSl = 1; zSl <= Lz; zSl++)
+				for (size_t yLn = 0; yLn < YC; yLn++) {
+					/*	Bulk loop in X	*/
+					for(size_t xPt = 0; xPt < XC-step; xPt += step) {
+						idx   = zSl*Sf + yLn*XC + xPt;
+						idxPx = idx + step;
+						idxVx = idxPx - Sf;
 
-			        tpi = tmi/YC;
-				X[1] = tmi - tpi*YC;
-				X[0] = idx - tmi*XC;
-			}
+						mel = opCode(load_pd, &m[idx]);
+						mPx = opCode(load_pd, &m[idxPx]);
+						vPx = opCode(load_pd, &v[idxVx]);
 
-			if (X[0] == XC-step)
-				idxPx = idx - XC + step;
-			else
-				idxPx = idx + step;
+						/*	X-Direction	*/
 
-			idxVx = idxPx - Sf;
-
-			mel = opCode(load_pd, &m[idx]);
-			mPx = opCode(load_pd, &m[idxPx]);
-			vPx = opCode(load_pd, &v[idxVx]);
-
-			/*	X-Direction	*/
-
-			mDf = opCode(sub_pd, mPx, mel);
+						mDf  = opCode(sub_pd, mPx, mel);
 #ifdef	__AVX512__
-			auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-			auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+						auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
+						auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+						auto mask = pMask | mMask;
 
-			mPx = opCode(mask_sub_pd, mPx, pMask, mPx, cVec);
-			mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
-			vPx = opCode(mask_sub_pd, vPx, pMask, vPx, vVec);
-			vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
+						while	(mask != 0) {
+							mPx = opCode(mask_sub_pd, mPx, pMask, mPx, cVec);
+							vPx = opCode(mask_sub_pd, vPx, pMask, vPx, vVec);
+							mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
+							vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
 
-			pMask |= mMask;
+							for (int i=1, int k=0; k<step; i<<=1, k++)
+								count += (mask & i) >> k;
 
-			for (int i=1, int k=0; k<step; i<<=1, k++)
-				count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
+							mDf  = opCode(sub_pd, mPx, mel);
 
-#ifdef	__AVX__
-			mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
-			mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
+							auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
+							auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+							mask = pMask | mMask;
+						}
 #else
-			mDp = opCode(cmpge_pd, mDf, pVec);
-			mDm = opCode(cmplt_pd, mDf, mVec);
-#endif
-			mPx = opCode(sub_pd, mPx,
-				opCode(sub_pd,
-					opCode(and_pd, mDp, cVec),
-					opCode(and_pd, mDm, cVec)));
+	#ifdef	__AVX__
+						mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
+						mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
+	#else
+						mDp = opCode(cmpge_pd, mDf, pVec);
+						mDm = opCode(cmplt_pd, mDf, mVec);
+	#endif
+						mDc = opCode(or_pd, mDp, mDm);
+						size_t mask = 0;
 
-			vPx = opCode(sub_pd, vPx,
-				opCode(sub_pd,
-					opCode(and_pd, mDp, vVec),
-					opCode(and_pd, mDm, vVec)));
+						for (int k=0; k<step; k++)
+							mask += reinterpret_cast<size_t&>(mDc[k]) & 1;
 
-			mDp = opCode(or_pd, mDp, mDm);
+						while	(mask != 0) {
+							mPx = opCode(sub_pd, mPx, opCode(and_pd, mDp, cVec));
+							vPx = opCode(sub_pd, vPx, opCode(and_pd, mDp, vVec));
+							mPx = opCode(add_pd, mPx, opCode(and_pd, mDm, cVec));
+							vPx = opCode(add_pd, vPx, opCode(and_pd, mDm, vVec));
 
-			for (int k=0; k<step; k++)
-				count += reinterpret_cast<size_t&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-		}
+							count += mask;
 
-		/*	Move forward in z	*/
+							mDf = opCode(sub_pd, mPx, mel);
+	#ifdef	__AVX__
+							mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
+							mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
+	#else
+							mDp = opCode(cmpge_pd, mDf, pVec);
+							mDm = opCode(cmplt_pd, mDf, mVec);
+	#endif
+							mDc = opCode(or_pd, mDp, mDm);
 
-		size_t idxPz = Vo + Sf, idxVz = Vo;
+							mask = 0;
 
-		mPx = opCode(load_pd, &m[idxPz]);
-
-		const int nSplit  = commSize();
-
-		if (zDir == false) {
-			if (nSplit > 1) {
-				// Exchange ghosts to get the right v
-				const int rank    = commRank();
-				const int nSplit  = commSize();
-				const int fwdNeig = (rank + 1) % nSplit;
-				const int bckNeig = (rank - 1 + nSplit) % nSplit;
-				MPI_Request rSendBck, rRecvFwd;
-
-				double tmp[step];
-
-				MPI_Send_init(v,   step, MPI_DOUBLE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &rSendBck);
-				MPI_Recv_init(tmp, step, MPI_DOUBLE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			
-				MPI_Start(&rRecvFwd);
-				MPI_Start(&rSendBck);
-
-				MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
-				MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
-
-				MPI_Request_free(&rSendBck);
-				MPI_Request_free(&rRecvFwd);
-
-				vPx = opCode(load_pd, tmp);
-			} else {
-				vPx = opCode(load_pd, &v[0]);
-			}
-		} else {
-			vPx = opCode(load_pd, &v[idxVz]);
-		}
-
-		mDf = opCode(sub_pd, mPx, mel);
-#ifdef	__AVX512__
-		pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-		mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
-
-		mPx = opCode(mask_sub_pd, mPx, pMask, mPx, cVec);
-		mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
-		vPx = opCode(mask_sub_pd, vPx, pMask, vPx, vVec);
-		vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
-
-		pMask |= mMask;
-
-		for (int i=1, int k=0; k<step; i<<=1, k++)
-					count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-		mDp = opCode(cmp_pd, mDf, pVec, _CMP_GE_OQ);
-		mDm = opCode(cmp_pd, mDf, mVec, _CMP_LT_OQ);
-#else
-		mDp = opCode(cmpge_pd, mDf, pVec);
-		mDm = opCode(cmplt_pd, mDf, mVec);
-#endif
-		mPx = opCode(sub_pd, mPx,
-			opCode(sub_pd,
-				opCode(and_pd, mDp, cVec),
-				opCode(and_pd, mDm, cVec)));
-
-		vPx = opCode(sub_pd, vPx,
-			opCode(sub_pd,
-				opCode(and_pd, mDp, vVec),
-				opCode(and_pd, mDm, vVec)));
-
-		mDp = opCode(or_pd, mDp, mDm);
-
-		for (int k=0; k<step; k++)
-			count += reinterpret_cast<size_t&>(mDp[k]) & 1;
+							for (int k=0; k<step; k++)
+								mask += reinterpret_cast<size_t&>(mDc[k]) & 1;
+						}
 #endif	// AVX and SSE4.1
 
-		if (zDir == false) {
-			if (nSplit > 1 ) {
-				// Exchange ghosts to store the right m/v
-				const int rank    = commRank();
-				const int fwdNeig = (rank + 1) % nSplit;
-				const int bckNeig = (rank - 1 + nSplit) % nSplit;
-				MPI_Request rSendFwd, rRecvBck;
+						opCode(store_pd, &m[idxPx], mPx);
+						opCode(store_pd, &v[idxVx], vPx);
+					}
 
-				double mTmp[step], vTmp[step];
-				opCode(store_pd, mTmp, mPx);
-				opCode(store_pd, vTmp, vPx);
+					/*	Boundary	*/
+					// I don't think the boundary is necessary
+				}
+		}	// End of parallel region
 
-				MPI_Send_init(mTmp, step, MPI_DOUBLE, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
-				MPI_Recv_init(m,    step, MPI_DOUBLE, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
-
-				MPI_Start(&rRecvBck);
-				MPI_Start(&rSendFwd);
-
-				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
-
-				MPI_Request_free(&rSendFwd);
-				MPI_Request_free(&rRecvBck);
-
-				MPI_Send_init(vTmp, step, MPI_DOUBLE, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
-				MPI_Recv_init(v,    step, MPI_DOUBLE, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
-
-				MPI_Start(&rRecvBck);
-				MPI_Start(&rSendFwd);
-
-				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
-
-				MPI_Request_free(&rSendFwd);
-				MPI_Request_free(&rRecvBck);
-			} else {
-				opCode(store_pd, &m[Sf], mPx);
-				opCode(store_pd, &v[0],  vPx);
-			}
-		} else {
-			opCode(store_pd, &m[idxPz], mPx);
-			opCode(store_pd, &v[idxVz], vPx);
-		}
 #undef  _MData_
 #undef  step
 	}
@@ -289,10 +178,6 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 #ifdef  __AVX512F__
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
-
-		const int    __attribute__((aligned(Align))) shfLf[16] = { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,  0};
-
-		const auto vShLf  = opCode(load_si512, shfLf);
 #elif   defined(__AVX__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -305,355 +190,105 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 		const _MData_ vVec  = opCode(set1_ps, 2.*M_PI);
 		const _MData_ cVec  = opCode(set1_ps, zP*2.);
 
-                _MData_ mel, mDf, mDp, mDm, mPx, vPx;
-
-		for (size_t idx = Vo; idx < Vf; idx += step)
+		#pragma omp parallel default(shared) reduction(+:count)
 		{
-			size_t X[2], idxPx, idxVx;
+			size_t	idx, idxPx, idxVx;
+			_MData_ mel, mDf, mDc, mDp, mDm, mPx, vPx;
 
-			{
-				size_t tmi = idx/XC, tpi;
+			/*	Collapse loops so OpenMP handles the plane YZ	*/
+			#pragma omp for collapse(2) schedule(static)
+			for (size_t zSl = 1; zSl <= Lz; zSl++)
+				for (size_t yLn = 0; yLn < YC; yLn++) {
+					/*	Bulk loop in X	*/
+					for(size_t xPt = 0; xPt < XC-step; xPt += step) {
+						idx   = zSl*Sf + yLn*XC + xPt;
+						idxPx = idx + step;
+						idxVx = idxPx - Sf;
 
-			        tpi = tmi/YC;
-				X[1] = tmi - tpi*YC;
-				X[0] = idx - tmi*XC;
-			}
+						mel = opCode(load_ps, &m[idx]);
+						mPx = opCode(load_ps, &m[idxPx]);
+						vPx = opCode(load_ps, &v[idxVx]);
 
-			if (X[0] == XC-step)
-				idxPx = idx - XC + step;
-			else
-				idxPx = idx + step;
-
-			idxVx = idxPx - Sf;
-
-			mel = opCode(load_ps, &m[idx]);
-			mPx = opCode(load_ps, &m[idxPx]);
-			vPx = opCode(load_ps, &v[idxVx]);
-
-			/*	X-Direction	*/
-
-			mDf = opCode(sub_ps, mPx, mel);
+						/*	X-Direction	*/
+						mDf  = opCode(sub_ps, mPx, mel);
 #ifdef	__AVX512__
-			auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
-			auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
+						auto pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
+						auto mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
+						auto mask = pMask | mMask;
 
-			mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
-			mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
-			vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
-			vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
+						while	(mask != 0) {
+							mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
+							vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
+							mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
+							vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
 
-			pMask |= mMask;
+							for (int i=1, int k=0; k<step; i<<=1, k++)
+								count += (mask & i) >> k;
 
-			for (int i=1, int k=0; k<step; i<<=1, k++)
-				count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
+							mDf  = opCode(sub_ps, mPx, mel);
 
-#ifdef	__AVX__
-			mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
-			mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
+							auto pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
+							auto mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
+							mask = pMask | mMask;
+						}
 #else
-			mDp = opCode(cmpge_ps, mDf, pVec);
-			mDm = opCode(cmplt_ps, mDf, mVec);
+	#ifdef	__AVX__
+						mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
+						mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
+	#else
+						mDp = opCode(cmpge_ps, mDf, pVec);
+						mDm = opCode(cmplt_ps, mDf, mVec);
+	#endif
+						mDc = opCode(or_ps, mDp, mDm);
+						size_t mask = 0;
+
+						for (int k=0; k<step; k++)
+							mask += reinterpret_cast<int&>(mDc[k]) & 1;
+
+						while	(mask != 0) {
+							mPx = opCode(sub_ps, mPx, opCode(and_ps, mDp, cVec));
+							vPx = opCode(sub_ps, vPx, opCode(and_ps, mDp, vVec));
+							mPx = opCode(add_ps, mPx, opCode(and_ps, mDm, cVec));
+							vPx = opCode(add_ps, vPx, opCode(and_ps, mDm, vVec));
+
+							count += mask;
+
+							mDf = opCode(sub_ps, mPx, mel);
+	#ifdef	__AVX__
+							mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
+							mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
+	#else
+							mDp = opCode(cmpge_ps, mDf, pVec);
+							mDm = opCode(cmplt_ps, mDf, mVec);
+	#endif
+							mDc = opCode(or_ps, mDp, mDm);
+
+							mask = 0;
+
+							for (int k=0; k<step; k++)
+								mask += reinterpret_cast<size_t&>(mDc[k]) & 1;
+						}
 #endif
-			mPx = opCode(sub_ps, mPx,
-				opCode(sub_ps,
-					opCode(and_ps, mDp, cVec),
-					opCode(and_ps, mDm, cVec)));
-
-			vPx = opCode(sub_ps, vPx,
-				opCode(sub_ps,
-					opCode(and_ps, mDp, vVec),
-					opCode(and_ps, mDm, vVec)));
-
-			mDp = opCode(or_ps, mDp, mDm);
-
-			for (int k=0; k<step; k++)
-				count += reinterpret_cast<int&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-			opCode(store_ps, &v[idxVx], vPx);
-			opCode(store_ps, &m[idxPx], mPx);
+						opCode(store_ps, &m[idxPx], mPx);
+						opCode(store_ps, &v[idxVx], vPx);
+					}
+				}
 		}
-
-		/*	Move forward in z	*/
-
-		size_t idxPz = Vo + Sf, idxVz = Vo;
-
-		mPx = opCode(load_ps, &m[idxPz]);
-
-		const int nSplit  = commSize();
-
-		if (zDir == false) {
-			if (nSplit > 1) {
-				// Exchange ghosts to get the right v
-				const int rank    = commRank();
-				const int nSplit  = commSize();
-				const int fwdNeig = (rank + 1) % nSplit;
-				const int bckNeig = (rank - 1 + nSplit) % nSplit;
-				MPI_Request rSendBck, rRecvFwd;
-
-				float tmp[step];
-
-				MPI_Send_init(v,   step, MPI_FLOAT, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &rSendBck);
-				MPI_Recv_init(tmp, step, MPI_FLOAT, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			
-				MPI_Start(&rRecvFwd);
-				MPI_Start(&rSendBck);
-
-				MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
-				MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
-
-				MPI_Request_free(&rSendBck);
-				MPI_Request_free(&rRecvFwd);
-
-				vPx = opCode(load_ps, tmp);
-			} else {
-				vPx = opCode(load_ps, &v[0]);
-			}
-		} else {
-			vPx = opCode(load_ps, &v[idxVz]);
-		}
-
-		mPx = opCode(load_ps, &m[idxPz]);
-
-		mDf = opCode(sub_ps, mPx, mel);
-#ifdef	__AVX512__
-		pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
-		mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
-
-		mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
-		mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
-		vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
-		vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
-
-		pMask |= mMask;
-
-		for (int i=1, int k=0; k<step; i<<=1, k++)
-			count += (pMask & i) >> k;
-#else	// AVX and SSE4.1
-
-#ifdef	__AVX__
-		mDp = opCode(cmp_ps, mDf, pVec, _CMP_GE_OQ);
-		mDm = opCode(cmp_ps, mDf, mVec, _CMP_LT_OQ);
-#else
-		mDp = opCode(cmpge_ps, mDf, pVec);
-		mDm = opCode(cmplt_ps, mDf, mVec);
-#endif
-		mPx = opCode(sub_ps, mPx,
-			opCode(sub_ps,
-				opCode(and_ps, mDp, cVec),
-				opCode(and_ps, mDm, cVec)));
-
-		vPx = opCode(sub_ps, vPx,
-			opCode(sub_ps,
-				opCode(and_ps, mDp, vVec),
-				opCode(and_ps, mDm, vVec)));
-
-		mDp = opCode(or_ps, mDp, mDm);
-
-		for (int k=0; k<step; k++)
-			count += reinterpret_cast<int&>(mDp[k]) & 1;
-#endif	// AVX and SSE4.1
-
-		if (zDir == false) {
-			if (nSplit > 1 ) {
-				// Exchange ghosts to store the right m/v
-				const int rank    = commRank();
-				const int fwdNeig = (rank + 1) % nSplit;
-				const int bckNeig = (rank - 1 + nSplit) % nSplit;
-				MPI_Request rSendFwd, rRecvBck;
-
-				float mTmp[step], vTmp[step];
-				opCode(store_ps, mTmp, mPx);
-				opCode(store_ps, vTmp, vPx);
-
-				MPI_Send_init(mTmp, step, MPI_FLOAT, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
-				MPI_Recv_init(m,    step, MPI_FLOAT, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
-
-				MPI_Start(&rRecvBck);
-				MPI_Start(&rSendFwd);
-
-				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
-
-				MPI_Request_free(&rSendFwd);
-				MPI_Request_free(&rRecvBck);
-
-				MPI_Send_init(vTmp, step, MPI_FLOAT, fwdNeig, 2*rank,    MPI_COMM_WORLD, &rSendFwd);
-				MPI_Recv_init(v,    step, MPI_FLOAT, bckNeig, 2*bckNeig, MPI_COMM_WORLD, &rRecvBck);
-
-				MPI_Start(&rRecvBck);
-				MPI_Start(&rSendFwd);
-
-				MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-				MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
-
-				MPI_Request_free(&rSendFwd);
-				MPI_Request_free(&rRecvBck);
-			} else {
-				opCode(store_ps, &m[Sf], mPx);
-				opCode(store_ps, &v[0],  vPx);
-			}
-		} else {
-			opCode(store_ps, &m[idxPz], mPx);
-			opCode(store_ps, &v[idxVz], vPx);
-		}
-
 #undef  _MData_
 #undef  step
 	}
 }
 
-template<typename Float>
-inline  size_t	mendThetaSingle(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Sf, const size_t Vo, const size_t Vf, const int step)
+/*	Connects all the points in a Z line with the whole ZY plane	*/
+/*	Parallelizes on Z						*/
+
+template<typename Float, const int step>
+inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Lz, const size_t Sf)
 {
 	const double zP = M_PI*z;
 	size_t count = 0;
 
-	Float mDf, mel[step], mPx[step], vPx[step], mPy[step], vPy[step], mPz[step], vPz[step];
-
-	int shf = 0, cnt = step;
-
-	while (cnt != 1) {
-		cnt >>= 1;
-		shf++;
-	}
-		
-	const size_t XC = (Lx<<shf);
-	const size_t YC = (Lx>>shf);
-
-	for (size_t idx = Vo; idx < Vf; idx += step)
-	{
-		memcpy (&mel[0], &m[idx], step*sizeof(Float));
-
-		size_t X[2], idxPx, idxPy, idxPz = idx + Sf, idxVx, idxVy, idxVz = idx;
-
-		{
-			size_t tmi = idx/XC, tpi;
-
-		        tpi = tmi/YC;
-			X[1] = tmi - tpi*YC;
-			X[0] = idx - tmi*XC;
-		}
-
-		if (X[0] == XC-step)
-			idxPx = idx - XC + step;
-		else
-			idxPx = idx + step;
-
-		idxVx = idxPx - Sf;
-
-		if (X[1] == YC-1)
-		{
-			idxPy = idx - Sf + XC;
-			idxVy = idxPy - Sf;
-
-			memcpy (&mPy[0], &m[idxPy], step*sizeof(Float));
-			memcpy (&vPy[0], &v[idxVy], step*sizeof(Float));
-
-			Float mSave = mPy[0];
-			Float vSave = vPy[0];
-
-			for (int i = 0; i < step-1; i++) {
-				mPy[i] = mPy[i+1];
-				vPy[i] = vPy[i+1];
-			}
-
-			mPy[step-1] = mSave;
-			vPy[step-1] = vSave;
-		} else {
-			idxPy = idx + XC;
-			idxVy = idxPy - Sf;
-
-			memcpy (&mPy[0], &m[idxPy], step*sizeof(Float));
-			memcpy (&vPy[0], &v[idxVy], step*sizeof(Float));
-		}
-
-		memcpy (&mPx[0], &m[idxPx], step*sizeof(Float));
-		memcpy (&vPx[0], &v[idxVx], step*sizeof(Float));
-		memcpy (&mPz[0], &m[idxPz], step*sizeof(Float));
-		memcpy (&vPz[0], &v[idxVz], step*sizeof(Float));
-
-		/*	Vector loop	*/
-		for (int i=0; i<step; i++) {
-
-			/*	X-Direction	*/
-
-			mDf = mPx[i] - mel[i];
-
-			if (mDf > zP) {
-				mPx[i] -= zP;
-				vPx[i] -= 2.*M_PI;
-				m[idxPx + i] = mPx[i];
-				v[idxVx + i] = vPx[i];
-				count++;
-			} else if (mDf < -zP) {
-				mPx[i] += zP;
-				vPx[i] += 2.*M_PI;
-				m[idxPx + i] = mPx[i];
-				v[idxVx + i] = vPx[i];
-				count++;
-			}
-
-			/*	Y-Direction	*/
-
-			mDf = mPy[i] - mel[i];
-
-			if (mDf > zP) {
-				mPy[i] -= zP;
-				vPy[i] -= 2.*M_PI;
-				m[idxPy + i] = mPy[i];
-				v[idxVy + i] = vPy[i];
-				count++;
-			} else if (mDf < -zP) {
-				mPy[i] += zP;
-				vPy[i] += 2.*M_PI;
-				m[idxPy + i] = mPy[i];
-				v[idxVy + i] = vPy[i];
-				count++;
-			}
-
-			/*	Z-Direction	*/
-
-			mDf = mPz[i] - mel[i];
-
-			if (mDf > zP) {
-				mPz[i] -= zP;
-				vPz[i] -= 2.*M_PI;
-				m[idxPz + i] = mPz[i];
-				v[idxVz + i] = vPz[i];
-				count++;
-			} else if (mDf < -zP) {
-				mPz[i] += zP;
-				vPz[i] += 2.*M_PI;
-				m[idxPz + i] = mPz[i];
-				v[idxVz + i] = vPz[i];
-				count++;
-			}
-
-		}
-
-		if (X[1] == YC-1)
-		{
-			Float mSave = mPy[step-1];
-			Float vSave = vPy[step-1];
-
-			for (int i = 1; i < step; i++) {
-				m[idxPy + i] = mPy[i-1];
-				v[idxVy + i] = vPy[i-1];
-			}
-
-			m[idxPy] = mSave;
-			v[idxVy] = vSave;
-		}
-	}
-}
-
-template<typename Float>
-inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Sf, const size_t slice, const int step)
-{
-	const double zP = M_PI*z;
-	size_t count = 0;
-
+	size_t idx, idxPy, idxVy;
 	Float mDf, mel, mPy, vPy;
 
 	int shf = 0, cnt = step;
@@ -666,123 +301,210 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 	const size_t XC = (Lx<<shf);
 	const size_t YC = (Lx>>shf);
 
-	size_t cIdx, idxPy, idxVy, idx = slice*Sf;
+	/*	We go parallel on Z	*/
+	#pragma omp parallel for private(idx,idxPy,idxVy,mDf,mel,mPy,vPy) reduction(+:count) schedule(static)
+	for (size_t zSl = 1; zSl <= Lz; zSl++) {
+		/*	Vectorization goes serial	*/
+		for (int vIdx = 0; vIdx < step; vIdx++) {
+			/*	Bulk Y, X=0 always	*/
+			for (size_t yPt = 0; yPt < YC - 1; yPt++) {
+				idx   = zSl*Sf + yPt*XC + vIdx;
+				idxPy = idx + XC;
+				idxVy = idxPy - Sf;
 
-	/*	Vector loop	*/
-	for (int i=0; i<step; i++) {
-		for (size_t lPos = 0; lPos < YC-1; lPos++) {
-			size_t cIdx = idx + lPos*XC;
+				mel = m[idx];
+				mPy = m[idxPy];
+				vPy = v[idxVy];
 
-			mel = m[cIdx + i];
+				mDf = mPy - mel;
 
-			idxPy = cIdx + XC;
-			idxVy = idxPy - Sf;
+				while (abs(mDf) > zP)
+				{
+					if (mDf > zP) {
+						mPy -= 2.*zP;
+						vPy -= 2.*M_PI;
+						count++;
+					} else if (mDf < zP) {
+						mPy += 2.*zP;
+						vPy += 2.*M_PI;
+						count++;
+					}
 
-			mPy = m[idxPy + i];
-			vPy = v[idxVy + i];
+					mDf = mPy - mel;
+				}
 
-			/*	Y-Direction	*/
+				m[idxPy] = mPy;
+				v[idxVy] = vPy;
+			}
+#if 0
+			/*	Border, needs shifts	*/
+			idx    = zSl*Sf;
+			idxPy  = idx + ((vIdx+1) % step);
+			idxVy  = idxPy - Sf;
+			idx   += Sf - XC + vIdx;
+
+			mel = m[idx];
+			mPy = m[idxPy];
+			vPy = v[idxVy];
 
 			mDf = mPy - mel;
 
-			if (mDf > zP) {
-				mPy -= 2.*zP;
-				vPy -= 2.*M_PI;
-				m[idxPy + i] = mPy;
-				v[idxVy + i] = vPy;
-				count++;
-			} else if (mDf < -zP) {
-				mPy += 2.*zP;
-				vPy += 2.*M_PI;
-				m[idxPy + i] = mPy;
-				v[idxVy + i] = vPy;
+			int dAng = (mDf/(2.*zP)) + 1;
+
+			if (abs(mDf) > zP) {
+				mPy -= 2.*zP*dAng;
+				vPy -= 2.*M_PI*dAng;
+				m[idxPy] = mPy;
+				v[idxVy] = vPy;
 				count++;
 			}
-		}
-
-		cIdx  = idx + Sf - XC;
-		idxPy = idx;
-		idxVy = idxPy - Sf;
-
-		mPy = m[idxPy + ((i + 1)%step)];
-		vPy = v[idxVy + ((i + 1)%step)];
-
-		if (slice == 1) {
-			printf ("(%lu --> %lu) %d (%d) %f %f %f\n", cIdx, idxPy, i, ((i+1)%step), mel, mPy, vPy);
-		}
-
-		/*	Y-Direction	*/
-
-		mDf = mPy - mel;
-
-		if (mDf > zP) {
-			mPy -= 2.*zP;
-			vPy -= 2.*M_PI;
-			m[idxPy + ((i + 1)%step)] = mPy;
-			v[idxVy + ((i + 1)%step)] = vPy;
-			count++;
-		} else if (mDf < -zP) {
-			mPy += 2.*zP;
-			vPy += 2.*M_PI;
-			m[idxPy + ((i + 1)%step)] = mPy;
-			v[idxVy + ((i + 1)%step)] = vPy;
-			count++;
+#endif
 		}
 	}
 
 	return	count;
 }
 
-size_t	mendSliceXeon (Scalar *field, size_t slice)
+template<typename Float>
+inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lz, const size_t Sf)
 {
-	const double z  = *(field->zV());
-	const size_t Sf =   field->Surf();
+	const double zP = M_PI*z;
+	size_t count = 0;
 
-	size_t tJmps = 0;
+	Float mDf, mel, mPz, vPz;
+	size_t idxPz, idxVz;
 
-	switch (field->Precision()) {
-		case FIELD_DOUBLE:
-		field->exchangeGhosts(FIELD_M);
-		tJmps  = mendThetaLine  <double>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), Sf, slice, Align/sizeof(double));
-		break;
+	/*	For MPI		*/
+	const int nSplit  = commSize();
+	const int rank    = commRank();
+	const int fwdNeig = (rank + 1) % nSplit;
+	const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-		case FIELD_SINGLE:
-		field->exchangeGhosts(FIELD_M);
-		tJmps  = mendThetaLine  <float> (static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), Sf, slice, Align/sizeof(float));
-		break;
+	/*	Get the ghosts for slice 0							*/
+	/*	It's cumbersome but we avoid exchanging the whole slice to get one point	*/
+
+	if (commSize() == 1) {
+		m[0] = m[Sf*Lz];
+	} else {
+		MPI_Status status;
+		MPI_Send(&m[Sf*Lz], sizeof(Float), MPI_CHAR, fwdNeig, rank,    MPI_COMM_WORLD);
+		MPI_Recv(m,         sizeof(Float), MPI_CHAR, bckNeig, bckNeig, MPI_COMM_WORLD, &status);
 	}
 
-	return	tJmps;
+	printf ("Zero %f %f\n", m[0], m[Sf*Lz]);
+
+	/*	Bulk loop	*/
+	for (size_t idx=0,i=1; i<Lz; i++,idx+=Sf) {
+
+		idxPz = idx + Sf;
+		idxVz = idx;
+
+		mel = m[idx];
+
+		mPz = m[idxPz];
+		vPz = v[idxVz];
+
+		/*	Z-Direction	*/
+
+		mDf = mPz - mel;
+
+		while (abs(mDf) > zP) {
+			if (mDf > zP) {
+				mPz -= 2.*zP;
+				vPz -= 2.*M_PI;
+				count++;
+			} else {
+				mPz += 2.*zP;
+				vPz += 2.*M_PI;
+				count++;
+			}
+
+			mDf = mPz - mel;
+		}
+
+		m[idxPz] = mPz;
+		v[idxVz] = vPz;
+	}
+
+	/*	MPI case	*/
+
+	size_t idx = Sf*Lz;
+
+	idxPz = idx + Sf;
+
+	mel = m[idx];
+
+	/*	We don't want to exchange ghost just because of one point	*/
+	if (commSize() == 1) {
+		mPz = m[Sf];
+		vPz = v[0];
+	} else {
+		MPI_Status status;
+		MPI_Send(&(m[Sf]), sizeof(Float), MPI_CHAR, bckNeig, rank,    MPI_COMM_WORLD);
+		MPI_Recv(&mPz,     sizeof(Float), MPI_CHAR, fwdNeig, fwdNeig, MPI_COMM_WORLD, &status);
+		MPI_Send(v,        sizeof(Float), MPI_CHAR, bckNeig, rank,    MPI_COMM_WORLD);
+		MPI_Recv(&vPz,     sizeof(Float), MPI_CHAR, fwdNeig, fwdNeig, MPI_COMM_WORLD, &status);
+	}
+
+	printf ("End  %f %f\n", m[Sf], mPz);
+
+	/*	Z-Direction	*/
+
+	mDf = mPz - mel;
+
+	while (abs(mDf) > zP) {
+		if (mDf > zP) {
+			mPz -= 2.*zP;
+			vPz -= 2.*M_PI;
+			count++;
+		} else {
+			mPz += 2.*zP;
+			vPz += 2.*M_PI;
+			count++;
+		}
+
+		mDf = mPz - mel;
+	}
+
+	if (commSize() == 1) {
+		m[Sf] = mPz;
+		v[0]  = vPz;
+	} else {
+		MPI_Status status;
+		MPI_Send(&mPz,     sizeof(Float), MPI_CHAR, fwdNeig, rank,    MPI_COMM_WORLD);
+		MPI_Recv(&(m[Sf]), sizeof(Float), MPI_CHAR, bckNeig, bckNeig, MPI_COMM_WORLD, &status);
+		MPI_Send(&vPz, sizeof(Float), MPI_CHAR, fwdNeig, rank,    MPI_COMM_WORLD);
+		MPI_Recv(v,    sizeof(Float), MPI_CHAR, bckNeig, bckNeig, MPI_COMM_WORLD, &status);
+	}
+
+	return	count;
 }
 
-bool	mendThetaXeon (Scalar *field)
+void	mendThetaXeon (Scalar *field)
 {
 	const double	z     = *(field->zV());
 	size_t		tJmps = 0;
-	size_t		cIdx  = 0;
-	bool		wJmp  = false;
 
-	for (size_t i=0; i<field->Depth(); i++) {
+	switch (field->Precision()) {
+		case	FIELD_DOUBLE:
 		do {
-			tJmps  = mendSliceXeon(field, i);	// Updates the x=cte,z=cte line, so we can vectorize
-			tJmps += mendThetaKernelXeon<true>(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), cIdx, cIdx + field->Surf(), field->Precision());
-
-			if (tJmps)
-				wJmp = true;
+			tJmps = mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
 		}	while	(tJmps != 0);
 
-		cIdx += field->Surf();
+		mendThetaSlice<double, Align/sizeof(double)>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		mendThetaKernelXeon			    (                     field->mCpu(),                       field->vCpu(),  z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		break;
+
+		case	FIELD_SINGLE:
+		do {
+			tJmps = mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
+		}	while	(tJmps != 0);
+
+		mendThetaSlice<float, Align/sizeof(float)>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		mendThetaKernelXeon			  (                     field->mCpu(),                       field->vCpu(),  z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		break;
 	}
 
-	do {
-		tJmps  = mendSliceXeon(field, field->Depth());
-		field->exchangeGhosts(FIELD_M);
-		tJmps += mendThetaKernelXeon<false>(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), cIdx, cIdx + field->Surf(), field->Precision());
-
-		if (tJmps)
-			wJmp = true;
-	}	while	(tJmps != 0);
-
-	return	wJmp;
+	return;
 }
 
