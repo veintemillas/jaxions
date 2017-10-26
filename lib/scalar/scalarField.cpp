@@ -297,7 +297,6 @@ const std::complex<float> If(0.,1.);
 			}
 		}
 
-
 		/*	If present, read fileName	*/
 
 		if (cType == CONF_NONE) {
@@ -1630,7 +1629,7 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
-	LogMsg (VERB_HIGH, "Function contrastbin marked for optimization or removal");
+	LogMsg (VERB_HIGH, "Function contrastbin marked for removal, use Binner with filters");
 	LogMsg (VERB_NORMAL, "contrastbin()");
 	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
 
