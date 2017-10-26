@@ -54,19 +54,18 @@
 		DType	maxVal;
 		DType	minVal;
 		DType	step;
-		double	zVal;
 
 		DType	*inData;
 		size_t	dSize;
 
 		public:
 
-			Binner	() { bins.fill(0.); zVal = 1.0; }
-			Binner	(DType *inData, size_t dSize, double zIn, std::function<DType(const CType &)> myFilter = [] (CType x) -> DType { return (DType) x; }) :
-				 dSize(dSize), inData(inData), zVal(zIn), filter(myFilter) {
+			Binner	() { bins.fill(0.); }
+			Binner	(DType *inData, size_t dSize, std::function<DType(const CType &)> myFilter = [] (CType x) -> DType { return (DType) x; }) :
+				 dSize(dSize), inData(inData), filter(myFilter) {
 			bins.fill(0.);
-			double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter))/zVal;
-			double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter))/zVal;
+			double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter));
+			double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter));
 
 			double t1 = 0., t2 = 0.;
 
@@ -78,12 +77,10 @@
 			if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; }
 		}
 
-		void	setZ	(DType zIn)			{ maxVal *= zVal/zIn; minVal *= zVal/zIn; zVal = zIn; }
-
 		DType*	getData	() const			{ return inData;   }
 		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize;
-								  double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter))/zVal;
-								  double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter))/zVal;
+								  double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter));
+								  double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter));
 
 								  double t1, t2;
 
@@ -115,7 +112,7 @@
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
 
-		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max @ z %lf", mIdx, N, step, minVal, maxVal, zVal);
+		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
 
 		double	tSize = static_cast<double>(dSize*commSize())*step;
 
@@ -127,7 +124,7 @@
 
 			#pragma omp for schedule(static)
 			for (size_t i=0; i<dSize; i++) {
-				auto cVal = filter(inData[i])/zVal;
+				auto cVal = filter(inData[i]);
 
 				if (fabs(cVal - minVal) < step/100.) {
 					tBins[N*tIdx]++;
