@@ -5,13 +5,6 @@
 
 #include "scalar/mendThetaXeon.h"
 
-#ifdef	USE_GPU
-	#include <cuda.h>
-	#include <cuda_runtime.h>
-	#include <cuda_device_runtime_api.h>
-	#include "scalar/mendThetaGpu.h"
-#endif
-
 #include "utils/utils.h"
 
 using namespace profiler;
