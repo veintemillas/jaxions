@@ -403,13 +403,20 @@ int	main (int argc, char *argv[])
 					LogOut("--------------------------------------------------\n");
 					LogOut("              TRANSITION TO THETA \n");
 					LogOut("              shift = %f 			\n", saskia);
+					writeConf(axion, index);
+					createMeas(axion, index);
+					auto dummy = strings(axion, str);
+					writeString(str, dummy);
+					destroyMeas();
 					cmplxToTheta (axion, shiftz);
-
+					writeConf(axion, index+1);
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
 					munge(UNFOLD_ALL);
 					axion->mendtheta();
 					munge(FOLD_ALL);
+					writeConf(axion, index+2);
+					return 0;
 
 
 								//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
@@ -422,7 +429,8 @@ int	main (int argc, char *argv[])
 										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
 										writeEnergy(axion, eRes);
 								// BIN THETA
-										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+													 { [z=z_now] (float x) -> float { return (float) (x/z); }});
 										thBin2.run();
 										//writeArray(thBin2.data(), 100, "/bins", "testTh");
 										writeBinner(thBin2, "/bins", "testTh");
@@ -493,7 +501,8 @@ int	main (int argc, char *argv[])
 			{
 				//temp comment
 				//BIN THETA
-				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+							 { [z=z_now] (float x) -> float { return (float) (x/z);} });
 				thBin2.run();
 				//writeArray(thBin2.data(), 100, "/bins", "testTh");
 				writeBinner(thBin2, "/bins", "testTh");
@@ -610,7 +619,8 @@ int	main (int argc, char *argv[])
 		LogOut("Theta bin ... ");
 
 		double zNow = *axion->zV();
-		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), zNow);
+		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+					 { [z=z_now] (float x) -> float { return (float) (x/z); }});
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");
 		writeBinner(thBin2, "/bins", "testTh");
