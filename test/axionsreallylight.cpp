@@ -15,6 +15,7 @@
 #include "powerCpu.h"
 #include "scalar/scalar.h"
 #include "spectrum/spectrum.h"
+#include "scalar/mendTheta.h"
 
 #include "WKB/WKB.h"
 
@@ -34,14 +35,9 @@ int	main (int argc, char *argv[])
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
-	//msa = 1.7 ;
-	//wDz = 0.8 ;
-
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
-
-
 
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
@@ -114,9 +110,6 @@ int	main (int argc, char *argv[])
 
 	LogOut("Bins allocated! \n");
 
-
-
-
 	double z_now ;
 
 	//--------------------------------------------------
@@ -133,18 +126,6 @@ int	main (int argc, char *argv[])
 	else
 		dz = (zFinl - zInit)/((double) nSteps);
 
-	// LogOut("--------------------------------------------------\n");
-	// LogOut("           BASE INITIAL CONDITIONS                \n\n");
-	//
-	// LogOut("Length =  %2.5f\n", sizeL);
-	// LogOut("N      =  %ld\n",   sizeN);
-	// LogOut("Nz     =  %ld\n",   sizeZ);
-	// LogOut("zGrid  =  %ld\n",   zGrid);
-	// LogOut("dx     =  %2.5f\n", delta);
-	// LogOut("dz     =  %2.5f\n", dz);
-	// LogOut("LL     =  %2.5f\n", LL);
-	// LogOut("--------------------------------------------------\n");
-
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
 	const size_t V0 = 0;
@@ -154,10 +135,6 @@ int	main (int argc, char *argv[])
 	//	TRICK PARAMETERS TO RESPECT STRINGS
 	//	--------------------------------------------------
 
-		// WE USE LAMDA_Z2 WITH msa = 1.5 so
-		// zthres = z at which we reach ma^2/ms^2 =1/80=1/9*9
-
-		//msa = 1.7 ;
 		zthres 	 = 100.0 ;
 		zrestore = 100.0 ;
 
@@ -169,10 +146,6 @@ int	main (int argc, char *argv[])
 		int numaxiprint = 10 ;
 		StringData rts ;
 
-		//double llconstantZ2 = 0.5/pow(delta/msa,2.);
-		//axion->SetLambda(LAMBDA_Z2)	;
-
-		// in Z2 mode LL = 0.5/pow(delta/msa,2.);
 		double llconstantZ2 = LL ;
 
 		if (LAMBDA_FIXED == axion->Lambda())
@@ -304,12 +277,11 @@ int	main (int argc, char *argv[])
 								writeBinner(thBin, "/bins", "thetaB");
 							}
 
-							maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
-							writeArray(bA, 100, "/bins", "theta");
-							writeArray(bA+100, 100, "/bins", "rho");
-							writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+							// maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+							// writeArray(bA, 100, "/bins", "theta");
+							// writeArray(bA+100, 100, "/bins", "rho");
+							// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 	destroyMeas();
-
 
 	LogOut ("Start redshift loop\n\n");
 	fflush (stdout);
@@ -415,10 +387,10 @@ int	main (int argc, char *argv[])
 										writeBinner(thBin, "/bins", "thetaB");
 									}
 														// old shit still works
-														maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
-														writeArray(bA, 100, "/bins", "theta");
-														writeArray(bA+100, 100, "/bins", "rho");
-														writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+														// maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+														// writeArray(bA, 100, "/bins", "theta");
+														// writeArray(bA+100, 100, "/bins", "rho");
+														// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 
 										destroyMeas();
 
@@ -426,21 +398,18 @@ int	main (int argc, char *argv[])
 					LogOut("--------------------------------------------------\n");
 					LogOut("              TRANSITION TO THETA \n");
 					LogOut("              shift = %f 			\n", saskia);
-					writeConf(axion, index);
-					createMeas(axion, index);
-					auto dummy = strings(axion, str);
-					writeString(str, dummy);
-					destroyMeas();
+
 					cmplxToTheta (axion, shiftz);
-					writeConf(axion, index+1);
+
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
 			/* Commented to use the new mendTheta	*/
-			//		munge(UNFOLD_ALL);
-			//		axion->mendtheta();
-			//		munge(FOLD_ALL);
-					writeConf(axion, index+2);
-
+					writeConf(axion, 10000);
+					// munge(UNFOLD_ALL);
+					// axion->mendtheta();
+					// munge(FOLD_ALL);
+						mendTheta (axion);
+					writeConf(axion, 10001);
 
 								//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 
@@ -456,13 +425,12 @@ int	main (int argc, char *argv[])
 													 [z=z_now] (float x) -> float { return (float) (x/z); });
 										thBin2.run();
 										//writeArray(thBin2.data(), 100, "/bins", "testTh");
-										writeBinner(thBin2, "/bins", "testTh");
+										writeBinner(thBin2, "/bins", "thetaB");
 								destroyMeas();
 
+					LogOut("--------------------------------------------------\n");
 
-								LogOut("--------------------------------------------------\n");
 
-								destroyMeas();
 				}
 
 	    }
@@ -484,12 +452,6 @@ int	main (int argc, char *argv[])
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
 
-//      LogOut("1IT %.3fs ETA %.3fh ",elapsed.count()*1.e-3,((nLoops-index)*dump)*elapsed.count()/(1000*60*60.));
-
-
-			// z_now = (*axion->zV());
-			// llprint = llaux/(z_now*z_now); //physical value
-			// saskia = saxionshift(z_now, nQcd, zthres, zrestore, llprint);
 			z_now = (*axion->zV());
 			if (axion->Lambda() == LAMBDA_Z2)
 				llphys = llconstantZ2/(z_now*z_now);
@@ -512,10 +474,10 @@ int	main (int argc, char *argv[])
 							thBin.run();
 							writeBinner(thBin, "/bins", "thetaB");
 						}
-						maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
-						writeArray(bA, 100, "/bins", "theta");
-						writeArray(bA+100, 100, "/bins", "rho");
-						writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+						// maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
+						// writeArray(bA, 100, "/bins", "theta");
+						// writeArray(bA+100, 100, "/bins", "rho");
+						// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 														// old shit still works
 					//ENERGY
 						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
@@ -533,7 +495,7 @@ int	main (int argc, char *argv[])
 						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 						LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 1.5*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
 			}
-			else
+			else //( axion->Field() == FIELD_AXION)
 			{
 				//temp comment
 				//BIN THETA
@@ -541,7 +503,7 @@ int	main (int argc, char *argv[])
 							 [z=z_now] (float x) -> float { return (float) (x/z);});
 				thBin2.run();
 				//writeArray(thBin2.data(), 100, "/bins", "testTh");
-				writeBinner(thBin2, "/bins", "testTh");
+				writeBinner(thBin2, "/bins", "thetaB");
 				maximumtheta = max(abs(thBin2.min()),thBin2.max());
 
 				LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
@@ -555,16 +517,16 @@ int	main (int argc, char *argv[])
 				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 				{
 					double *eR = static_cast<double*>(eRes);
-					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4])/axion->TotalSize();
-					Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
-								    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) + 5.f);});
+					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+					Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+								    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 					contBin.run();
 					writeBinner(contBin, "/bins", "contB");
 				}
 				//bins density
-				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000);
+				//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000);
 				//write binned distribution
-				writeArray(bA, 10000, "/bins", "cont");
+				//writeArray(bA, 10000, "/bins", "cont");
 				//computes power spectrum
 				specAna.pRun();
 				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
@@ -626,7 +588,7 @@ int	main (int argc, char *argv[])
 		if(p2dmapo)
 			writeMapHdf5s(axion,sliceprint);
 
-		printf("n Spectrum ... %d", commRank());
+		LogOut("n Spectrum ... ");
 		/*	Test		*/
 		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 		specAna.nRun();
@@ -634,23 +596,20 @@ int	main (int argc, char *argv[])
 		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
-		//double *eR = static_cast<double *>(eRes);
-
-		LogOut("|  ");
 		LogOut("DensMap ... ");
 
 		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 		{
-			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4])/axion->TotalSize();
-			Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
-						    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) + 5.f);});
+			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+						    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 			contBin.run();
 			writeBinner(contBin, "/bins", "contB");
 		}
 		//bins density
-		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+		//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		//write binned distribution
-		writeArray(bA, 10000, "/bins", "cont");
+		//writeArray(bA, 10000, "/bins", "cont");
 		if (pconfinal)
 			writeEDens(axion, index);
 		writeEnergy(axion, eRes);
@@ -674,7 +633,7 @@ int	main (int argc, char *argv[])
 					 [z=z_now] (float x) -> float { return (float) (x/z); });
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");
-		writeBinner(thBin2, "/bins", "testTh");
+		writeBinner(thBin2, "/bins", "thetaB");
 
 		/*	Fin test	*/
 
@@ -708,6 +667,13 @@ int	main (int argc, char *argv[])
 							createMeas(axion, index);
 									SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
+									LogOut("theta ");
+									Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+												 [z=z_now] (float x) -> float { return (float) (x/z);});
+									thBin2.run();
+									//writeArray(thBin2.data(), 100, "/bins", "testTh");
+									writeBinner(thBin2, "/bins", "thetaB");
+
 									LogOut ("spec ");
 									specAna.nRun();
 									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
@@ -722,18 +688,18 @@ int	main (int argc, char *argv[])
 									LogOut ("en ");
 									energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 									{
-										float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4])/axion->TotalSize();
-										Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
-													    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) + 5.f);});
+										float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+										Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+													    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 										contBin.run();
 										writeBinner(contBin, "/bins", "contB");
 									}
 									//bins density
-									LogOut ("con ");
-									axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+									//LogOut ("con ");
+									//axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 									//write binned distribution
-									LogOut ("bin ");
-									writeArray(bA, 10000, "/bins", "cont");
+									//LogOut ("bin ");
+									//writeArray(bA, 3000, "/bins", "cont");
 									if (pconfinalwkb) {
 										LogOut ("MAP ");
 										writeEDens(axion, index);}
@@ -751,6 +717,7 @@ int	main (int argc, char *argv[])
 										specAna.filter(nena);
 										writeEDensReduced(axion, index, endredmap, endredmap/zGrid);
 									}
+
 
 
 								destroyMeas();
@@ -772,6 +739,7 @@ int	main (int argc, char *argv[])
 				// LogOut ("Done!\n");
 
 				createMeas(axion, index+1);
+				writeEnergy(axion, eRes);
 				writeEDensReduced(axion, index+1, endredmap, endredmap/zGrid);
 				destroyMeas();
 
