@@ -27,20 +27,10 @@
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
-	template<typename cFloat, const size_t N>
-	void	writeBinner	(Binner<cFloat,N> bins, const char *group, const char *dataName) {
+	template<const size_t N, typename cFloat>
+	void	writeBinner	(Binner<N,cFloat> bins, const char *group, const char *dataName) {
 
-		if (sizeof(cFloat) == 4) {
-			std::array<double,N> data;
-
-			#pragma omp parallel for schedule(static)	// Data conversion, I'm not accepting complex datatypes
-			for (size_t i=0; i<N; i++) {
-				data[i] = bins[i];
-			}
-			writeArray (data.data(), N, group, dataName);
-		} else {
-			writeArray (bins.data(), N, group, dataName);
-		}
+		writeArray (bins.data(), N, group, dataName);
 
 		double max = bins.max();
 		double min = bins.min();

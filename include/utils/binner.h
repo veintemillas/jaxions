@@ -7,12 +7,12 @@
 	#include <string>
 	#include <mpi.h>
 
-	template<FindType fType, typename cFloat, typename Float>
-	float	find	(Float *data, size_t size, std::function<Float(const cFloat &)> filter) {
+	template<FindType fType, typename cFloat>
+	double	find	(cFloat *data, size_t size, std::function<double(cFloat)> filter) {
 		LogMsg (VERB_NORMAL, "Called Find");
 
 		if ((data == nullptr) || (size == 0))
-			return Float(0);
+			return 0.0;
 
 		auto	cur = filter(data[0]);
 
@@ -43,17 +43,19 @@
 		return	cur;
 	}
 
-	template<typename DType, size_t N, typename CType = DType>
+	template<size_t N, typename DType>
 	class	Binner {
 
 		private:
 
 		std::array<double,N> bins;
-		std::function<DType(const CType &)> filter;
+		std::function<double(DType)> filter;
 
-		DType	maxVal;
-		DType	minVal;
-		DType	step;
+		double	maxVal;
+		double	minVal;
+		double	step;
+
+		double	baseVal;
 
 		DType	*inData;
 		size_t	dSize;
@@ -61,44 +63,39 @@
 		public:
 
 			Binner	() { bins.fill(0.); }
-			Binner	(DType *inData, size_t dSize, std::function<DType(const CType &)> myFilter = [] (CType x) -> DType { return (DType) x; }) :
+			Binner	(DType *inData, size_t dSize, std::function<double(DType)> myFilter = [] (DType x) -> double { return (double) x; }) :
 				 dSize(dSize), inData(inData), filter(myFilter) {
 			bins.fill(0.);
-			double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter));
-			double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter));
+			double tMaxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
+			double tMinVal = (find<FIND_MIN,DType> (inData, dSize, filter));
 
-			double t1 = 0., t2 = 0.;
+			MPI_Allreduce (&tMaxVal, &maxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+			MPI_Allreduce (&tMinVal, &minVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 
-			MPI_Allreduce (&tMaxVal, &t1, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-			MPI_Allreduce (&tMinVal, &t2, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-
-			maxVal = t1; minVal = t2;
-			step   = (maxVal-minVal)/((DType) N);
-			if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; }
+			step    = (maxVal-minVal)/((double) (N-1));
+			baseVal = minVal - step*0.5;
+			if (maxVal <= minVal) { LogError ("Error: max value can't be lower or equal than min"); return; }
 		}
 
 		DType*	getData	() const			{ return inData;   }
 		void	setData	(DType *myData, size_t mySize)	{ inData = myData; dSize = mySize;
-								  double tMaxVal = (find<FIND_MAX,CType,DType> (inData, dSize, filter));
-								  double tMinVal = (find<FIND_MIN,CType,DType> (inData, dSize, filter));
+								  double tMaxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
+								  double tMinVal = (find<FIND_MIN,DType> (inData, dSize, filter));
 
-								  double t1, t2;
+								  MPI_Allreduce (&maxVal, &tMaxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+								  MPI_Allreduce (&minVal, &tMinVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 
-								  MPI_Allreduce (&t1, &tMaxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-								  MPI_Allreduce (&t2, &tMinVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-
-								  maxVal = t1; minVal = t2;
-
-								  step   = (maxVal-minVal)/((DType) N);
-								  if (maxVal < minVal) { LogError ("Error: max value can't be lower than min"); return; } }
+								  step    = (maxVal-minVal)/((double) (N-1));
+								  baseVal = minVal - step*0.5;
+								  if (maxVal <= minVal) { LogError ("Error: max value can't be lower or equal than min"); return; } }
 
 		inline       double*	data	()		{ return bins.data();   }
 		inline const double*	data	() const	{ return bins.data();   }
 
 		void	run	();
 
-		inline double	operator()(DType  val)	const	{ size_t idx = (val - minVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return 0; } }
-		inline double&	operator()(DType  val)		{ size_t idx = (val - minVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
+		inline double	operator()(DType  val)	const	{ size_t idx = (filter(val) - baseVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
 		inline double	operator[](size_t idx)	const	{ return bins[idx]; }
 		inline double&	operator[](size_t idx)		{ return bins[idx]; }
 
@@ -106,8 +103,8 @@
 		inline double	min()			const	{ return minVal; }
 	};
 
-	template<typename DType, size_t N, typename CType>
-	void	Binner<DType,N,CType>::run	() {
+	template<size_t N, typename DType>
+	void	Binner<N,DType>::run	() {
 		int mIdx = commThreads();
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
@@ -120,19 +117,17 @@
 		{
 			int tIdx = omp_get_thread_num ();
 
-			DType base = minVal;
-
 			#pragma omp for schedule(static)
 			for (size_t i=0; i<dSize; i++) {
 				auto cVal = filter(inData[i]);
 
-				if (fabs(cVal - minVal) < step/100.) {
+				if (fabs(cVal - baseVal) < step/100.) {
 					tBins[N*tIdx]++;
 				} else {
-					size_t myBin = floor((cVal - minVal)/step);
+					size_t myBin = floor((cVal - baseVal)/step);
 
 					if (myBin >= N)
-						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f])", cVal, minVal, maxVal);
+						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f], assigned bin %lu of %lu)", cVal, baseVal, maxVal+0.5*step, myBin, N);
 					else
 						tBins[myBin + N*tIdx]++;
 				}

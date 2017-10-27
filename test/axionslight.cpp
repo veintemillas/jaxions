@@ -359,7 +359,7 @@ int	main (int argc, char *argv[])
 								// BIN THETA
 														// new program to be adapted
 
-														//Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
+														//Binner<100,float> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
 														//thBin.run();
 																//writeArray(thBin.data(), 100, "/bins", "testTh");
 														//writeBinner(thBin, "/bins", "testTh");
@@ -392,7 +392,7 @@ int	main (int argc, char *argv[])
 										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
 										writeEnergy(axion, eRes);
 								// BIN THETA
-										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+										Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 													 { [z=z_now] (float x) -> float { return (float) (x/z); }});
 										thBin2.run();
 										//writeArray(thBin2.data(), 100, "/bins", "testTh");
@@ -463,7 +463,7 @@ int	main (int argc, char *argv[])
 			{
 				//temp comment
 				//BIN THETA
-				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+				Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							 { [z=z_now] (float x) -> float { return (float) (x/z); }});
 				thBin2.run();
 				//writeArray(thBin2.data(), 100, "/bins", "testTh");
@@ -567,7 +567,7 @@ int	main (int argc, char *argv[])
 		LogOut("Theta bin ... ");
 
 		double zNow = *axion->zV();
-		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+		Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 					 { [z=zNow] (float x) -> float { return (float) (x/z); }});
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");

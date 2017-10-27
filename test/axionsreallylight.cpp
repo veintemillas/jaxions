@@ -290,6 +290,20 @@ int	main (int argc, char *argv[])
 	createMeas(axion, index);
 							if(p2dmapo)
 								writeMapHdf5s (axion,sliceprint);
+
+							{
+								float z_now = *axion->zV();
+								Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+												  [z=z_now] (complex<float> x) { return (double) abs(x)/z; } );
+								rhoBin.run();
+								writeBinner(rhoBin, "/bins", "rhoB");
+
+								Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+												 [] (complex<float> x) { return (double) arg(x); });
+								thBin.run();
+								writeBinner(thBin, "/bins", "thetaB");
+							}
+
 							maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
 							writeArray(bA, 100, "/bins", "theta");
 							writeArray(bA+100, 100, "/bins", "rho");
@@ -388,15 +402,24 @@ int	main (int argc, char *argv[])
 								// BIN THETA
 														// new program to be adapted
 
-														//Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
-														//thBin.run();
-																//writeArray(thBin.data(), 100, "/bins", "testTh");
-														//writeBinner(thBin, "/bins", "testTh");
+									{
+										float z_now = *axion->zV();
+										Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+														  [z=z_now] (complex<float> x) { return (double) abs(x)/z; });
+										rhoBin.run();
+										writeBinner(rhoBin, "/bins", "rhoB");
+
+										Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+														 [] (complex<float> x) { return (double) arg(x); });
+										thBin.run();
+										writeBinner(thBin, "/bins", "thetaB");
+									}
 														// old shit still works
 														maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
 														writeArray(bA, 100, "/bins", "theta");
 														writeArray(bA+100, 100, "/bins", "rho");
 														writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+
 										destroyMeas();
 
 					// TRANSITION TO THETA
@@ -412,11 +435,11 @@ int	main (int argc, char *argv[])
 					writeConf(axion, index+1);
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
-					munge(UNFOLD_ALL);
-					axion->mendtheta();
-					munge(FOLD_ALL);
+			/* Commented to use the new mendTheta	*/
+			//		munge(UNFOLD_ALL);
+			//		axion->mendtheta();
+			//		munge(FOLD_ALL);
 					writeConf(axion, index+2);
-					return 0;
 
 
 								//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
@@ -429,8 +452,8 @@ int	main (int argc, char *argv[])
 										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
 										writeEnergy(axion, eRes);
 								// BIN THETA
-										Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-													 { [z=z_now] (float x) -> float { return (float) (x/z); }});
+										Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+													 [z=z_now] (float x) -> float { return (float) (x/z); });
 										thBin2.run();
 										//writeArray(thBin2.data(), 100, "/bins", "testTh");
 										writeBinner(thBin2, "/bins", "testTh");
@@ -477,10 +500,23 @@ int	main (int argc, char *argv[])
 			if ( axion->Field() == FIELD_SAXION)
 			{
 					//THETA
+						{
+							float z_now = *axion->zV();
+							Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+											  [z=z_now] (complex<float> x) -> float { return (float) abs(x)/z; });
+							rhoBin.run();
+							writeBinner(rhoBin, "/bins", "rhoB");
+
+							Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+											 [] (complex<float> x) -> float { return (float) arg(x); });
+							thBin.run();
+							writeBinner(thBin, "/bins", "thetaB");
+						}
 						maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
 						writeArray(bA, 100, "/bins", "theta");
 						writeArray(bA+100, 100, "/bins", "rho");
 						writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
+														// old shit still works
 					//ENERGY
 						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
 					//DOMAIN WALL KILLER NUMBER
@@ -501,8 +537,8 @@ int	main (int argc, char *argv[])
 			{
 				//temp comment
 				//BIN THETA
-				Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-							 { [z=z_now] (float x) -> float { return (float) (x/z);} });
+				Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+							 [z=z_now] (float x) -> float { return (float) (x/z);});
 				thBin2.run();
 				//writeArray(thBin2.data(), 100, "/bins", "testTh");
 				writeBinner(thBin2, "/bins", "testTh");
@@ -517,8 +553,16 @@ int	main (int argc, char *argv[])
 
 				// computes energy and creates map
 				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+				{
+					double *eR = static_cast<double*>(eRes);
+					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4])/axion->TotalSize();
+					Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+								    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) + 5.f);});
+					contBin.run();
+					writeBinner(contBin, "/bins", "contB");
+				}
 				//bins density
-				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000);
 				//write binned distribution
 				writeArray(bA, 10000, "/bins", "cont");
 				//computes power spectrum
@@ -596,6 +640,13 @@ int	main (int argc, char *argv[])
 		LogOut("DensMap ... ");
 
 		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		{
+			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4])/axion->TotalSize();
+			Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+						    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) + 5.f);});
+			contBin.run();
+			writeBinner(contBin, "/bins", "contB");
+		}
 		//bins density
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		//write binned distribution
@@ -619,8 +670,8 @@ int	main (int argc, char *argv[])
 		LogOut("Theta bin ... ");
 
 		double zNow = *axion->zV();
-		Binner<float,100> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-					 { [z=z_now] (float x) -> float { return (float) (x/z); }});
+		Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+					 [z=z_now] (float x) -> float { return (float) (x/z); });
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");
 		writeBinner(thBin2, "/bins", "testTh");
@@ -670,6 +721,13 @@ int	main (int argc, char *argv[])
 									// computes energy and creates map
 									LogOut ("en ");
 									energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+									{
+										float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4])/axion->TotalSize();
+										Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+													    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) + 5.f);});
+										contBin.run();
+										writeBinner(contBin, "/bins", "contB");
+									}
 									//bins density
 									LogOut ("con ");
 									axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
