@@ -161,7 +161,7 @@ if os.path.exists('./energy.txt'):
     plt.semilogy(en[:ik,0],sca[:ik]*(en[:ik,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
     plt.semilogy(en[:ik,0],sca[:ik]*(en[:ik,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
     plt.semilogy(en[:ik,0],sca[:ik]*(en[:ik,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
-    plt.ylim([0.01,1000])
+    plt.ylim([0.01,10000])
     plt.grid(axis='y')
     plt.title(ups)
     plt.ylabel('Energy[misalignment U.]')
@@ -238,7 +238,7 @@ if enlen > 0:
         plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
         plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
         plt.semilogy(en[:sl,0],sca[:sl]*(en[:sl,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
-    plt.ylim([0.01,1000])
+    plt.ylim([0.01,10000])
     plt.grid(axis='y')
     plt.title(ups)
     plt.ylabel('Energy[misalignment U.]')
@@ -279,7 +279,7 @@ an_nspec = False
 an_pspec = False
 
 
-an_cont  = 'bins/cont' in f
+an_cont  = 'bins/contB' in f
 an_nspec = 'nSpectrum' in f
 an_pspec = 'pSpectrum' in f
 if an_cont:
@@ -294,46 +294,52 @@ if an_cont:
     avdens, maxcon, logmaxcon = tc[0:3]
     bino = tc[3:]
     numbins=10000-3
-    #binsizecons = numbins/(N3*math.log(10)*(logmaxcon+5))
-    #print(avdens, maxcon, logmaxcon , numbins, binsizecons)
-    #contab=10**((logmaxcon+5)*(np.arange(numbins)+0.5)/numbins - 5)
-    #auxtab=binsizecons*bino/contab
 
-    # PROCESS IT
-    # BINS SELECTED BY  bin = int[(5+log10[d])*numbins/(logmaxcon+5)]
-    # DISCARD SMALL BINS AT BEGGINNING
-    # JOIN BINS AT THE END
+    numBIN = f['bins/contB'].attrs[u'Size']
+    tc = np.reshape(f['bins/contB/data'],(numBIN))
+
+    avdens = f['energy'].attrs[u'Axion Gr X']
+    avdens += f['energy'].attrs[u'Axion Gr Y']
+    avdens += f['energy'].attrs[u'Axion Gr Z']
+    avdens += f['energy'].attrs[u'Axion Kinetic']
+    avdens += f['energy'].attrs[u'Axion Potential']
+
+    maxcon = f['bins/contB'].attrs[u'Maximum']
+    mincon = f['bins/contB'].attrs[u'Minimum']
+
+    bino = tc*N3*(maxcon-mincon)/numBIN
+    numbins = numBIN
+
     i0 = 0
     while bino[i0] < 1.99:
             i0 = i0 + 1
-    #print(i0)
-
     bino = bino[i0:]
-    #contab = contab[i0:]
 
     sum = 0
     parsum = 0
     nsubbin = 0
     minimum = 10
     lista=[]
+
+
+    # JOIN BINS ALL ALONG to have a minimum of 10 points
     for bin in range(0,len(bino)):
+        # adds bin value to partial bin
         parsum += bino[bin]
         nsubbin += 1
-        if nsubbin ==1:
+        if nsubbin == 1:
+                # records starting bin
                 inbin = bin
         if parsum < 10:
+            # if parsum if smaller than 10 we will continue
+            # adding bins
             sum += 1
         else:
             enbin = bin
-            # rebin and reweight
-            # bin corresponds to i0 + Dbin to contrast 10**((logmaxcon+5)*(<bin,bin+1>)/numbins - 5)
-            # so one can just compute initial and final and divide
-            ## binsizecons = numbins/(N3*math.log(10)*(logmaxcon+5))
-            ## contab=10**((logmaxcon+5)*(np.arange(numbins)+0.5)/numbins - 5)
-            ## auxtab=binsizecons*bino/contab
-            low = 10**((logmaxcon+5)*(i0+inbin)/numbins - 5)
-            med = 10**((logmaxcon+5)*(i0+(inbin+enbin+1)/2)/numbins - 5)
-            sup = 10**((logmaxcon+5)*(i0+enbin+1)/numbins - 5)
+
+            low = 10**((maxcon-mincon)*(i0+inbin)/numbins + mincon)
+            med = 10**((maxcon-mincon)*(i0+(inbin+enbin+1)/2)/numbins + mincon)
+            sup = 10**((maxcon-mincon)*(i0+enbin+1)/numbins + mincon)
             lista.append([med,parsum/(sup-low)])
 
             parsum = 0
@@ -423,16 +429,24 @@ if an_nspec:
 # POWER SPECTRUM
 if an_pspec:
     powmax2 = f['pSpectrum/sP/data'].size
+    avdens = f['energy'].attrs[u'Axion Gr X']
+    avdens += f['energy'].attrs[u'Axion Gr Y']
+    avdens += f['energy'].attrs[u'Axion Gr Z']
+    avdens += f['energy'].attrs[u'Axion Kinetic']
+    avdens += f['energy'].attrs[u'Axion Potential']
+
     ktab2 = (0.5+np.arange(powmax2))*2*math.pi/sizeL
     f['pSpectrum/sP'] , powmax2 , (sizeN/2)*math.sqrt(3)
     larvaP = np.reshape(f['pSpectrum/sP/data'],(powmax2))
     if powmax2 == powmax:
         av = larvaP/nmodes2
+        av = av/(avdens**2)
     else :
         pfoca = np.arange(0,powmax2)/n2
         pfoca2 = np.arange(1,powmax2+1)/n2
         pnmodes2 = (n2**3)*(vecvolu(pfoca2)-vecvolu(pfoca))
         av = larvaP/pnmodes2
+        av = av/(avdens**2)
 
     plt.clf()
     plt.loglog(ktab2,(ktab2**3)*av/(math.pi**2),label=r'$\tau$={%.1f}'%(time))

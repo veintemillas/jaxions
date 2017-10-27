@@ -44,19 +44,23 @@ if an_contrastmap:
 re_contrastmap = 'energy/redensity' in fileHdf5
 
 if re_contrastmap:
-	print('Reduced Contrast found')
-	Lx    = 256 # fileHdf5["/"].attrs.get("Size")
-	Ly    = 256 # fileHdf5["/"].attrs.get("Size")
-	Lz    = 256 # fileHdf5["/"].attrs.get("Depth")
-    # need to adjust to other sizes
-	sizeL = fileHdf5["/"].attrs.get("Physical size")
-	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
-	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
+    temp3=fileHdf5['energy/redensity'].size
+    print('Reduced Contrast found')
+    sizeL = fileHdf5["/"].attrs.get("Physical size")
+    z = fileHdf5["/"].attrs.get("z")
+    if temp3 == 16777216:
+        Lx    = 256
+        Ly    = Lx
+        Lz    = Lx
+    elif temp3 == 134217728:
+        Lx    = 512
+        Ly    = Lx
+        Lz    = Lx
+    con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
+    print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
 
 print('Max contrast = ', con.max())
-
 
 L2 = 1
 

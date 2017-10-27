@@ -36,7 +36,7 @@ firstnumber = 1
 
 for meas in fileMeas:
     f = h5py.File('./m/'+ meas, 'r')
-    if 'bins/cont' in f:
+    if 'bins/contB' in f:
         mylist.append(meas)
 
 
@@ -60,7 +60,7 @@ else:
             mylist = []
         for input in sys.argv[firstnumber:]:
             f = h5py.File('./m/axion.m.'+ input.zfill(5), 'r')
-            if 'bins/cont' in f:
+            if 'bins/contB' in f:
                 mylist.append('axion.m.' + input.zfill(5))
 
 
@@ -99,16 +99,21 @@ for meas in mylist:
     sizeN = f.attrs[u'Size']
     N3 = sizeN*sizeN*sizeN
 
-    numBIN = len(f['bins/cont/data'])
-    tc = np.reshape(f['bins/cont/data'],(numBIN))
-    avdens, maxcon, logmaxcon = tc[0:3]
-    bino = tc[3:]
-    numbins=numBIN-3
+    numBIN = f['bins/contB'].attrs[u'Size']
+    tc = np.reshape(f['bins/contB/data'],(numBIN))
 
-    # PROCESS IT
-    # BINS SELECTED BY  bin = int[(5+log10[d])*numbins/(logmaxcon+5)]
+    avdens = f['energy'].attrs[u'Axion Gr X']
+    avdens += f['energy'].attrs[u'Axion Gr Y']
+    avdens += f['energy'].attrs[u'Axion Gr Z']
+    avdens += f['energy'].attrs[u'Axion Kinetic']
+    avdens += f['energy'].attrs[u'Axion Potential']
 
-    # DISCARD SMALL BINS AT THE BEGGINNING
+    maxcon = f['bins/contB'].attrs[u'Maximum']
+    mincon = f['bins/contB'].attrs[u'Minimum']
+
+    bino = tc*N3*(maxcon-mincon)/numBIN
+    numbins = numBIN
+
     i0 = 0
     while bino[i0] < 1.99:
             i0 = i0 + 1
@@ -119,6 +124,7 @@ for meas in mylist:
     nsubbin = 0
     minimum = 10
     lista=[]
+
 
     # JOIN BINS ALL ALONG to have a minimum of 10 points
     for bin in range(0,len(bino)):
@@ -134,16 +140,10 @@ for meas in mylist:
             sum += 1
         else:
             enbin = bin
-            # we have already added enough bins so it is time to ...
-            # rebin and reweight
-            # bin corresponds to i0 + Dbin to contrast 10**((logmaxcon+5)*(<bin,bin+1>)/numbins - 5)
-            # so one can just compute initial and final and divide
-            ## binsizecons = numbins/(N3*math.log(10)*(logmaxcon+5))
-            ## contab=10**((logmaxcon+5)*(np.arange(numbins)+0.5)/numbins - 5)
-            ## auxtab=binsizecons*bino/contab
-            low = 10**((logmaxcon+5)*(i0+inbin)/numbins - 5)
-            med = 10**((logmaxcon+5)*(i0+(inbin+enbin+1)/2)/numbins - 5)
-            sup = 10**((logmaxcon+5)*(i0+enbin+1)/numbins - 5)
+
+            low = 10**((maxcon-mincon)*(i0+inbin)/numbins + mincon)
+            med = 10**((maxcon-mincon)*(i0+(inbin+enbin+1)/2)/numbins + mincon)
+            sup = 10**((maxcon-mincon)*(i0+enbin+1)/numbins + mincon)
             lista.append([med,parsum/(sup-low)])
 
             parsum = 0
