@@ -231,15 +231,14 @@ n_jobs=-1
 #data_file = 'axion.r.00046'
 
 if len(sys.argv) > 1:
-    f         = h5py.File('./' + sys.argv[1], "r")
-
-    if 'energy/density' in f:
+    f = h5py.File('./' + sys.argv[1], "r")
+    if sys.argv[2]=='dens':
         print('Reading ',sys.argv[1])
         n     = f.attrs[u'Size']
         n2 = n*n
         n3 = n2*n
         data = f['energy/density'].value.reshape(n3)
-    elif 'energy/redensity' in f:
+    elif sys.argv[2]=='red':
         print('Reading reducedCon from ',sys.argv[1])
         n =256
         n2 = n*n
@@ -253,17 +252,18 @@ if len(sys.argv) > 1:
 
 
 
-
+    mean = np.mean(data)
+    data = data/mean
     maxi = max(data)
     print('max contrast = %.2f' %(maxi))
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 4:
     print('insuficient arguments!')
     print('enter a h5 axion.x.XXXXX file name and a density contrast')
     sys.exit()
 
 
-dens_th   = float(sys.argv[2])
+dens_th   = float(sys.argv[3])
 print('proceeding with contrast threshold = ',dens_th)
 
 

@@ -1629,7 +1629,6 @@ void	Scalar::energymapTheta(const Float zz, const int index, void *contbin, int 
 template<typename Float>
 void	Scalar::contrastbin(const Float zz, const int index, void *contbin, int numbins)
 {
-	LogOut ("Function contrastbin has been deprecated, use Binner class with filters");
 	LogMsg (VERB_NORMAL, "Function contrastbin has been deprecated and is marked for removal, use Binner class with filters");
 	LogMsg (VERB_NORMAL, "contrastbin()");
 	// THIS TEMPLATE DOES NO NEED TO BE CALLED FOLDED
@@ -1840,7 +1839,6 @@ void	Scalar::padder()
 
 double	Scalar::maxtheta()//int *window)
 {
-	LogOut ("Function maxtheta is deprecated and has been marked for removal, use find in utils/binner.h instead\n");
 	LogMsg (VERB_NORMAL, "Function maxtheta is deprecated and has been marked for removal, use find in utils/binner.h instead");
 	//LogMsg (VERB_NORMAL, "maxtheta()");
 	double mymaxd = 0.;
@@ -1999,7 +1997,6 @@ double	Scalar::maxtheta()//int *window)
 
 double	Scalar::thetaDIST(int numbins, void * thetabin)//int *window)
 {
-	LogOut ("Function thetaDIST has been deprecated, use the Binner class instead\n");
 	LogMsg (VERB_NORMAL, "Function thetaDIST has been deprecated, use the Binner class instead");
 	double thetamaxi = maxtheta();
 	LogMsg (VERB_HIGH, "MAXTHETA=%f\n",thetamaxi);fflush(stdout);
