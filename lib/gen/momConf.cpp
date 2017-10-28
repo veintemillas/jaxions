@@ -68,12 +68,10 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 					if (modP <= 3*(kmax2 + adp*(1+Lx)))
 					{
 						Float vl = Twop*(uni(mt64));
-
 						// Float mP = sqrt(((Float) modP))/((Float) (kCrit));
 						// Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 						 Float mP = ((Float) modP)/((Float) (kCrit*kCrit));
 						 Float sc = (modP == 0) ? 1.0 : exp(-mP);
-
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
 						//printf("mom (%d,%d,%d) = %f %f*I\n",pz,py,px,fM[idx].real(),fM[idx].imag());
 					}

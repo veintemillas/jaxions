@@ -111,6 +111,7 @@ int	main (int argc, char *argv[])
 	LogOut("Bins allocated! \n");
 
 	double z_now ;
+	double axmass_now;
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
@@ -200,8 +201,8 @@ int	main (int argc, char *argv[])
 	else
 		index = fIndex;
 
-	double saskia;
-	double shiftz;
+	double saskia = 0.0;
+	double shiftz = 0.0;
 
 //	--------------------------------------------------
 //	--------------------------------------------------
@@ -248,7 +249,12 @@ int	main (int argc, char *argv[])
 	LogOut("LL     =  %f \n\n", LL);	}
 	else {
 	LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa); }
-	LogOut("VQCD1,shift,con_thres=100, continuous theta  \n\n");
+	if (vqcdType==VQCD_1){
+	LogOut("VQCD1PQ1,shift,continuous theta  \n\n");}
+		else if(vqcdType==VQCD_2){
+	LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");}
+		else if(vqcdType==VQCD_1_PQ_2){
+	LogOut("VQCD1PQ2,shift, continuous theta  \n\n");}
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("           ESTIMATES  						                \n\n");
 	double z_doom = pow(0.1588*msa/delta,2./(nQcd+2.))	;
@@ -290,12 +296,12 @@ int	main (int argc, char *argv[])
 
 	// LL is LL      in FIXED MODE
 	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
-	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+	initPropagator (pType, axion, nQcd, delta, LL, vqcdType);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
-    	//--------------------------------------------------
+    //--------------------------------------------------
 		// THE TIME ITERATION LOOP
 		//--------------------------------------------------
 
@@ -332,8 +338,11 @@ int	main (int argc, char *argv[])
 							// LAMBDA_Z2 MODE assumed!
 								if (axion->Lambda() == LAMBDA_Z2)
 									llphys = llconstantZ2/(z_now*z_now);
-								saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
-								fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axionmass(z_now,nQcd,zthres, zrestore), llphys,
+								//if (vqcdType == VQCD_1 || vqcdType == VQCD_1_PQ_2)
+								//	saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+								axmass_now = axionmass(z_now,nQcd,zthres, zrestore);
+								saskia = saxionshift(axmass_now, llphys, vqcdType);
+								fprintf(file_samp,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
 								mC[idxprint + S0].real(), mC[idxprint + S0].imag(), vC[idxprint].real(), vC[idxprint].imag(), nstrings_global, maximumtheta, saskia);
 						} else {
 								fprintf(file_samp,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
@@ -354,14 +363,21 @@ int	main (int argc, char *argv[])
 				// TRANSITION TO THETA
 				//--------------------------------------------------
 
-
 				if (nstrings_global == 0)
+					{LogOut("  no st counter %d\n", strcount);
+					strcount++;}
+
+				if (smvarType != CONF_SAXNOISE)
+				if (nstrings_global == 0 && strcount > 20)
 				{
 
 					z_now = (*axion->zV());
 					if (axion->Lambda() == LAMBDA_Z2)
 						llphys = llconstantZ2/(z_now*z_now);
-					saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+					// if (vqcdType == VQCD_1 || vqcdType == VQCD_1_PQ_2)
+					// 	saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+					axmass_now = axionmass(z_now,nQcd,zthres, zrestore);
+					saskia = saxionshift(axmass_now, llphys, vqcdType);
 					double shiftz = z_now * saskia;
 
 								createMeas(axion, 10000);
@@ -369,7 +385,7 @@ int	main (int argc, char *argv[])
 									if(p2dmapo)
 										writeMapHdf5s (axion,sliceprint);
 								//ENERGY
-							  		energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
+							  		energy(axion, eRes, false, delta, nQcd, llphys, vqcdType, shiftz);
 										writeEnergy(axion, eRes);
 								// BIN THETA
 														// new program to be adapted
@@ -386,11 +402,6 @@ int	main (int argc, char *argv[])
 										thBin.run();
 										writeBinner(thBin, "/bins", "thetaB");
 									}
-														// old shit still works
-														// maximumtheta = axion->thetaDIST(100, binarray); // note that bins rho 100-200
-														// writeArray(bA, 100, "/bins", "theta");
-														// writeArray(bA+100, 100, "/bins", "rho");
-														// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 
 										destroyMeas();
 
@@ -404,12 +415,12 @@ int	main (int argc, char *argv[])
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
 			/* Commented to use the new mendTheta	*/
-					writeConf(axion, 10000);
+					// writeConf(axion, 10000);
 					// munge(UNFOLD_ALL);
 					// axion->mendtheta();
 					// munge(FOLD_ALL);
-						mendTheta (axion);
-					writeConf(axion, 10001);
+					// mendTheta (axion);
+					// writeConf(axion, 10001);
 
 								//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 
@@ -418,7 +429,7 @@ int	main (int argc, char *argv[])
 									if(p2dmapo)
 									  	writeMapHdf5s (axion,sliceprint);
 								//ENERGY
-										energy(axion, eRes, false, delta, nQcd, 0., VQCD_1, 0.);
+										energy(axion, eRes, false, delta, nQcd, 0., vqcdType, 0.);
 										writeEnergy(axion, eRes);
 								// BIN THETA
 										Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
@@ -480,7 +491,7 @@ int	main (int argc, char *argv[])
 						// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 														// old shit still works
 					//ENERGY
-						energy(axion, eRes, false, delta, nQcd, llphys, VQCD_1, shiftz);
+						energy(axion, eRes, false, delta, nQcd, llphys, vqcdType, shiftz);
 					//DOMAIN WALL KILLER NUMBER
 						double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*llphys);
 						if (axion->Lambda() == LAMBDA_Z2 )
@@ -488,7 +499,7 @@ int	main (int argc, char *argv[])
 					//STRINGS
 						rts = strings(axion, str);
 						nstrings_global = rts.strDen;
-						if (nstrings_global < 10000)
+						if (nstrings_global < 100000)
 							writeString(str, rts, true);
 						else
 							writeString(str, rts, false);
@@ -514,7 +525,7 @@ int	main (int argc, char *argv[])
 				SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 				// computes energy and creates map
-				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+				energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 				{
 					double *eR = static_cast<double*>(eRes);
 					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
@@ -598,7 +609,7 @@ int	main (int argc, char *argv[])
 
 		LogOut("DensMap ... ");
 
-		energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+		energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
@@ -628,7 +639,7 @@ int	main (int argc, char *argv[])
 		LogOut("|  ");
 		LogOut("Theta bin ... ");
 
-		double zNow = *axion->zV();
+		double z_now = *axion->zV();
 		Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 					 [z=z_now] (float x) -> float { return (float) (x/z); });
 		thBin2.run();
@@ -686,7 +697,7 @@ int	main (int argc, char *argv[])
 
 									// computes energy and creates map
 									LogOut ("en ");
-									energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+									energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 									{
 										float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 										Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),

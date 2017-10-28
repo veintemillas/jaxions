@@ -27,8 +27,9 @@ double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1.0;
 double zrestore = 1.0;
-double LL = 15000.;
+double LL = 25000.;
 double parm2 = 0.;
+double gammo = 0.;
 
 double wkb2z  = -1.0;
 int endredmap = -1;
@@ -41,7 +42,6 @@ bool uMsa     = false;
 bool spectral = false;
 
 size_t kMax  = 2;
-//JAVIER played with the following number
 size_t iter  = 0;
 size_t parm1 = 0;
 
@@ -50,10 +50,11 @@ ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
 LambdaType   lType     = LAMBDA_FIXED;
+VqcdType		 vqcdType  = VQCD_1;
 
 char outName[128] = "axion\0";
 
-FieldPrecision	sPrec  = FIELD_DOUBLE;
+FieldPrecision	sPrec  = FIELD_SINGLE;
 DeviceType	cDev   = DEV_CPU;
 
 VerbosityLevel	verb   = VERB_NORMAL;
@@ -73,13 +74,13 @@ void	printUsage(char *name)
 	printf("\nSize of the grid:\n");
 	printf("  --size  [int]                 Number of lattice points along x and y (Lx). Local size is Lx^2 x Lz (default 128).\n");
 	printf("  --depth [int]                 Number of lattice points of depth (Lz) (default 128).\n");
-	printf("  --zgrid [int]                 Number of gpus involved in the computation (default 1).\n");
+	printf("  --zgrid [int]                 Number of mpi processed involved in the computation (default 1).\n");
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
 
 	printf("\nSimulation parameters:\n");
 	printf("  --lowmem                      Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
-	printf("  --prec  double/single         Precision of the axion field simulation (default double)\n");
-	printf("  --device cpu/gpu/xeon         Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
+	printf("  --prec  double/single         Precision of the axion field simulation (default single)\n");
+	printf("  --device cpu/gpu              Uses nVidia Gpus to accelerate the computations (default, use cpu).\n");
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled) \n");
@@ -93,10 +94,13 @@ void	printUsage(char *name)
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
 	printf("  --msa   [float]               Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
+	printf("  --vqcd2                       Variant of QCD potential (default, disabled) \n");
+	printf("  --vPQ2                        Variant of PQ potential (default, disabled) \n");
 
 	printf("\nInitial conditions:\n");
+	printf("  --icinfo                      Prints more info about initial conditions.\n");
 	printf("  --ctype smooth/kmax/tkachev   Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("  --smvar stXY/stYZ/mc0/mc      [smooth variant] string or mc initial conditions\n");
+	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions\n");
 	printf("\n");
 	printf("  --kmax  [int]                 Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("  --kcr   [float]               kritical kappa (default 1.0).\n");
@@ -117,15 +121,48 @@ void	printUsage(char *name)
 	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
 	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
-	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
+
 	printf("\nLogging:\n");
 	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
 	printf("--nologmpi                      Disable logging over MPI so only rank 0 logs (default, all ranks log)\n\n");
 	printf("--help                          Prints this message.\n");
 
+	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
+
 	return;
 }
 
+void	printICoptions()
+{
+	printf("\Options for Initial conditions\n\n");
+
+	printf("--ctype smooth/kmax/tkachev               			   Main IC selector.\n\n");
+
+	printf(" [smooth]                                          Point based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  Random phase at each point (default).\n");
+	printf("  --smvar [string]                                 Spectial initial distributions .\n");
+	printf("  --smvar axnoise  --mode0 [float] --kcr [float]   theta = mode0+random{-1,1}*kcr .\n");
+	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr .\n");
+	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n\n");
+
+	printf("  --smvar mc   --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x-N/2)^2).\n");
+	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n\n");
+
+	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4\n");
+	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4\n\n");
+
+	printf(" [kmax]                                            Saxion momentum based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT  .\n");
+	printf("                                                   for 3D k < kmax = min(kmax, N/2-1) .\n");
+	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2) .\n");
+	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0) \n");
+
+	printf(" [tkachev]                                         Axion momentum based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	return;
+}
 
 int	parseArgs (int argc, char *argv[])
 {
@@ -139,6 +176,12 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--help"))
 		{
 			printUsage(argv[0]);
+			exit(0);
+		}
+
+		if (!strcmp(argv[i], "--icinfo"))
+		{
+			printICoptions();
 			exit(0);
 		}
 
@@ -214,6 +257,21 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--vqcd2"))
+		{
+			vqcdType = VQCD_2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--vPQ2"))
+		{
+			vqcdType = VQCD_1_PQ_2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
 		if (!strcmp(argv[i], "--lowmem"))
 		{
@@ -271,7 +329,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a number of gpus.\n");
+				printf("Error: I need a number of mpi ranks.\n");
 				exit(1);
 			}
 
@@ -279,7 +337,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zGrid < 1)
 			{
-				printf("Error: The number of gpus must be larger than 0.\n");
+				printf("Error: The number of mpi ranks must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -385,6 +443,28 @@ int	parseArgs (int argc, char *argv[])
 			// 	endredmap = sizeN	;
 			// }
 
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--gam"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the damping factor.\n");
+				exit(1);
+			}
+
+			gammo = atof(argv[i+1]);
+
+			if (gammo < 0.)
+			{
+				printf("Error: Initial redshift must be larger than 0.\n");
+				exit(1);
+			}
 
 			i++;
 			procArgs++;
@@ -765,6 +845,18 @@ int	parseArgs (int argc, char *argv[])
 			{
 				smvarType = CONF_MINICLUSTER;
 			}
+			else if (!strcmp(argv[i+1], "axnoise"))
+			{
+				smvarType = CONF_AXNOISE;
+			}
+			else if (!strcmp(argv[i+1], "saxnoise"))
+			{
+				smvarType = CONF_SAXNOISE;
+			}
+			else if (!strcmp(argv[i+1], "ax1mode"))
+			{
+				smvarType = CONF_AX1MODE;
+			}
 			else
 			{
 				printf("Error: Unrecognized configuration type %s, using [random]\n", argv[i+1]);
@@ -812,7 +904,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a device name (cpu/gpu/xeon).\n");
+				printf("Error: I need a device name (cpu/gpu).\n");
 				exit(1);
 			}
 
