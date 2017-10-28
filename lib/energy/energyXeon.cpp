@@ -463,6 +463,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
 		const float lZ = 0.25f*LL*zR*zR;
 		const float sh = shift;				// Makes clang happy
+
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
@@ -752,18 +753,25 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				Grx = opCode(sub_ps, mel, shVc);  // Aplica shift
 				Gry = opCode(mul_ps, Grx, Grx);
-				Grz = opCode(md2_ps, Gry);
-				Gry = opCode(mul_ps, Grz, ivZ2);
-
-				mSg = opCode(sub_ps, Gry, one);
-				mod = opCode(mul_ps, mSg, mSg);
+				Grz = opCode(md2_ps, Gry);				// |crho|^2
+				Gry = opCode(mul_ps, Grz, ivZ2);  // |rho|^2
 
 				switch	(VQcd) {
 					case	VQCD_1:
+						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
+						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
+						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
+						break;
+
+					case	VQCD_1_PQ_2:
+						mSg =	opCode(sub_ps, opCode(mul_ps, Gry, Gry), one);   // |rho|^4-1
+						mod = opCode(mul_ps, mSg, mSg);   											// (|rho|^4-1)^2
 						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
 						break;
 
 					case	VQCD_2:
+						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
+						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
 						mTp = opCode(sub_ps, one, opCode(mul_ps, Grx, ivZ));
 						mCg = opCode(mul_ps, mTp, mTp);
 						break;
@@ -894,6 +902,12 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 				energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			else
 				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+			break;
+		case	VQCD_1_PQ_2:
+			if (map == true)
+				energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+			else
+				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			break;
 
 		case	VQCD_2:

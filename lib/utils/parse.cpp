@@ -27,8 +27,9 @@ double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1.0;
 double zrestore = 1.0;
-double LL = 15000.;
+double LL = 25000.;
 double parm2 = 0.;
+double gammo = 0.;
 
 double wkb2z  = -1.0;
 int endredmap = -1;
@@ -41,7 +42,6 @@ bool uMsa     = false;
 bool spectral = false;
 
 size_t kMax  = 2;
-//JAVIER played with the following number
 size_t iter  = 0;
 size_t parm1 = 0;
 
@@ -50,6 +50,7 @@ ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
 LambdaType   lType     = LAMBDA_FIXED;
+VqcdType		 vqcdType  = VQCD_1;
 
 char outName[128] = "axion\0";
 
@@ -99,6 +100,8 @@ void	printUsage(char *name)
 	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
 	printf("--prop  leap/rkn4/om2/om4       Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
 	printf("--spec                          Enables the spectral propagator for the laplacian (default, disabled) \n");
+	printf("--vqcd2                         Variant of QCD potential (default, disabled) \n");
+	printf("--vPQ2                          Variant of PQ potential (default, disabled) \n");
 	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
 	printf("--p3D 0/1/2                     Print initial/final configurations (default 0 = no) 1=final 2=both \n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
@@ -199,6 +202,21 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--vqcd2"))
+		{
+			vqcdType = VQCD_2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--vPQ2"))
+		{
+			vqcdType = VQCD_1_PQ_2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
 		if (!strcmp(argv[i], "--lowmem"))
 		{
@@ -370,6 +388,28 @@ int	parseArgs (int argc, char *argv[])
 			// 	endredmap = sizeN	;
 			// }
 
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--gam"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the damping factor.\n");
+				exit(1);
+			}
+
+			gammo = atof(argv[i+1]);
+
+			if (gammo < 0.)
+			{
+				printf("Error: Initial redshift must be larger than 0.\n");
+				exit(1);
+			}
 
 			i++;
 			procArgs++;

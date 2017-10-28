@@ -119,6 +119,15 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 									opCode(set1_pd, LL)))));
 						break;
 
+				case	VQCD_1_PQ_2:
+					mPx = opCode(add_pd, tmp,
+						opCode(sub_pd, zQVec,
+						opCode(mul_pd, mel,
+							opCode(mul_pd,
+								opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+								opCode(set1_pd, LL)))));
+					break;
+
 					case	VQCD_2:
 						mPx = opCode(add_pd, tmp,
 							opCode(sub_pd,
@@ -228,6 +237,15 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 										opCode(set1_ps, LL)))));
 						break;
 
+					case	VQCD_1_PQ_2:
+						mMx = opCode(add_ps, tmp,
+							opCode(sub_ps, zQVec,
+								opCode(mul_ps, mel,
+									opCode(mul_ps,
+										opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+										opCode(set1_ps, LL)))));
+						break;
+
 					case	VQCD_2:
 						mMx = opCode(sub_ps,
 							opCode(sub_ps, tmp, opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
@@ -255,4 +273,3 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 #undef	step
 	}
 }
-

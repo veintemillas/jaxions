@@ -540,6 +540,10 @@
 						case VQCD_2:
 							return	(1e-9 * ((double) axionField->Size()) * (45. * ((double) nStages) + (lastStage ? 41. : 0.)));
 							break;
+
+						case VQCD_1_PQ_2:
+							return	(1e-9 * ((double) axionField->Size()) * (44. * ((double) nStages) + (lastStage ? 40. : 0.)));
+							break;
 					}
 					break;
 
@@ -558,7 +562,7 @@
 				case FIELD_SAXION:
 					switch (VQcd) {
 						case VQCD_1:
-							return	(1e-9 * ((double) axionField->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.) 
+							return	(1e-9 * ((double) axionField->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
 								+ 5.*1.44695*log(((double) axionField->Size()))));
 							break;
 
@@ -566,6 +570,12 @@
 							return	(1e-9 * ((double) axionField->Size()) * ((29. + 1.) * ((double) nStages) + (lastStage ? 25. + 1. : 0.)
 								+ 5.*1.44695*log(((double) axionField->Size()))));
 							break;
+
+						case VQCD_1_PQ_2:
+							return	(1e-9 * ((double) axionField->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
+								+ 5.*1.44695*log(((double) axionField->Size()))));
+							break;
+
 					}
 					break;
 

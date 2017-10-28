@@ -232,7 +232,7 @@ void	ConfGenerator::runCpu	()
 			myPlan.run(FFT_BCK);
 			axionField->exchangeGhosts(FIELD_M);
 			normaliseField(axionField, FIELD_M);
-			normCoreField (axionField);
+			//normCoreField (axionField);
 		}
 		break;
 

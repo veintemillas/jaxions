@@ -16,6 +16,7 @@ extern double mode0;
 extern double alpha;
 extern double kCrit;
 extern double parm2;
+extern double gammo;
 
 extern int kMax;
 extern int iter;
@@ -44,6 +45,7 @@ extern ConfType	      cType;
 extern ConfsubType    smvarType;
 extern FieldType      fTypeP;
 extern LambdaType     lType;
+extern VqcdType		    vqcdType;
 extern PropType       pType;
 extern VerbosityLevel verb;
 
