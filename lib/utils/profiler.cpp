@@ -3,6 +3,7 @@
 #include<map>
 #include"utils/utils.h"
 #include"enum-field.h"
+#include"comms/comms.h"
 
 
 namespace profiler {
@@ -22,7 +23,7 @@ namespace profiler {
 
 			aTime += fCount.DTime();
 
-			LogMsg (VERB_NORMAL, "\tFunction %-20s GFlops %.4lf\tGBytes %.4lf\tTotal time %.2lfs (%.2lf\%)", name.c_str(), fCount.GFlops(), fCount.GBytes(), fCount.DTime(), 100.*fCount.DTime()/tTime);
+			LogMsg (VERB_SILENT, "\tFunction %-20s GFlops %.4lf\tGBytes %.4lf\tTotal time %.2lfs (%.2lf\%)", name.c_str(), fCount.GFlops(), fCount.GBytes(), fCount.DTime(), 100.*fCount.DTime()/tTime);
         	}
 
 		return	aTime;
@@ -67,17 +68,22 @@ namespace profiler {
 	}
 
 	void	printProfStats() {
+		if (commRank() != 0)
+			return;
+
 		double	aTime = 0.;
 
 		tTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - stPt).count()*1e-6;
 
 		for (auto &data : profs) {
 			auto &cProf = data.second;
-			LogMsg(VERB_NORMAL, "Profiler %s:", cProf.name().c_str());
-			aTime += cProf.printStats();
-			LogMsg(VERB_NORMAL, "");
+			LogMsg(VERB_SILENT, "Profiler %s:", cProf.name().c_str());
+			auto cTime = cProf.printStats();
+			aTime += cTime;
+			LogMsg(VERB_SILENT, "Total %s: %.2lf", cProf.name().c_str(), cTime);
+			LogMsg(VERB_SILENT, "");
 		}
-		LogMsg (VERB_NORMAL, "Unaccounted time %.2lfs of %.2lfs (%.2lf\%)", tTime - aTime, tTime, 100.*(1. - aTime/tTime));
+		LogMsg (VERB_SILENT, "Unaccounted time %.2lfs of %.2lfs (%.2lf\%)", tTime - aTime, tTime, 100.*(1. - aTime/tTime));
 	}
 
 	Profiler&	getProfiler(ProfType pType) {
