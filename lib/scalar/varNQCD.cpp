@@ -60,16 +60,20 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ)
 		double alpha = 0.;
 		double shift = 0.;
 		double discr = 4./3.;
+
 	switch	(VqcdPQ) {
 		case	VQCD_1:
- 		alpha = axmass*axmass/LLL;
-		discr = 4./3.-9.*alpha*alpha;
-		shift = ((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
-		break;
+			alpha = axmass*axmass/(LLL);
+			discr = 4./3.-9.*alpha*alpha;
+			shift = ((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
+		 break;
 		case	VQCD_1_PQ_2:
-		alpha = axmass*axmass/(4.*LLL);
- 		shift = (sqrt(16.+9.*alpha)-4.)/36.;
-		break;
+			alpha = axmass*axmass/(LLL);
+	 		shift = (sqrt(4.+9.*alpha)-2.)/18.;
+		 break;
+		case	VQCD_2:
+				shift = 0.;
+			break;
 		}
 
 	return	shift;

@@ -94,6 +94,9 @@
 		CONF_STRINGYZ = 2,
 		CONF_MINICLUSTER0 = 3,
 		CONF_MINICLUSTER = 4,
+		CONF_AXNOISE = 5,
+		CONF_SAXNOISE = 6,
+		CONF_AX1MODE = 7,
 	}	ConfsubType;
 
 	typedef enum	DeviceType_s

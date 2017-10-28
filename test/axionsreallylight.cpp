@@ -367,7 +367,7 @@ int	main (int argc, char *argv[])
 					{LogOut("  no st counter %d\n", strcount);
 					strcount++;}
 
-
+				if (smvarType != CONF_SAXNOISE)
 				if (nstrings_global == 0 && strcount > 20)
 				{
 

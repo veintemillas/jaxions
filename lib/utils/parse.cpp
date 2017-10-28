@@ -85,7 +85,8 @@ void	printUsage(char *name)
 	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
 	printf("--ctype smooth/kmax/tkachev	Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("--smvar stXY/stYZ/mc0/mc        [smooth variant] string or mc initial conditions\n");
+	printf("--smvar stXY/stYZ/mc0/mc/...    [smooth variants] string, mc's, pure mode, noise... initial conditions\n");
+	printf("--icinfo                        Prints more info about initial conditions.\n");
 	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
 	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
@@ -110,10 +111,42 @@ void	printUsage(char *name)
 	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
 	printf("--help                          Prints this message.\n");
+	printf("--icinfo                        Prints more info about initial conditions.\n");
 
 	return;
 }
 
+void	printICoptions()
+{
+	printf("\Options for Initial conditions\n\n");
+
+	printf("--ctype smooth/kmax/tkachev               			   Main IC selector.\n\n");
+
+	printf(" [smooth]                                          Point based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  Random phase at each point (default).\n");
+	printf("  --smvar [string]                                 Spectial initial distributions .\n");
+	printf("  --smvar axnoise  --mode0 [float] --kcr [float]   theta = mode0+random{-1,1}*kcr .\n");
+	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr .\n");
+	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n\n");
+
+	printf("  --smvar mc   --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x-N/2)^2).\n");
+	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n\n");
+
+	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4\n");
+	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4\n\n");
+
+	printf(" [kmax]                                            Saxion momentum based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT  .\n");
+	printf("                                                   for 3D k < kmax = min(kmax, N/2-1) .\n");
+	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2) .\n");
+	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0) \n");
+
+	printf(" [tkachev]                                         Axion momentum based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	return;
+}
 
 int	parseArgs (int argc, char *argv[])
 {
@@ -127,6 +160,12 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--help"))
 		{
 			printUsage(argv[0]);
+			exit(0);
+		}
+
+		if (!strcmp(argv[i], "--icinfo"))
+		{
+			printICoptions();
 			exit(0);
 		}
 
@@ -789,6 +828,18 @@ int	parseArgs (int argc, char *argv[])
 			else if (!strcmp(argv[i+1], "mc"))
 			{
 				smvarType = CONF_MINICLUSTER;
+			}
+			else if (!strcmp(argv[i+1], "axnoise"))
+			{
+				smvarType = CONF_AXNOISE;
+			}
+			else if (!strcmp(argv[i+1], "saxnoise"))
+			{
+				smvarType = CONF_SAXNOISE;
+			}
+			else if (!strcmp(argv[i+1], "ax1mode"))
+			{
+				smvarType = CONF_AX1MODE;
 			}
 			else
 			{

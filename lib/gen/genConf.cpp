@@ -245,8 +245,9 @@ void	ConfGenerator::runCpu	()
 		smoothXeon (axionField, sIter, alpha);
 		prof.stop();
 		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
-		normaliseField(axionField, FIELD_M);
-		normCoreField (axionField);
+		if (smvarType != CONF_SAXNOISE)
+			normaliseField(axionField, FIELD_M);
+		//normCoreField (axionField);
 		break;
 	}
 
