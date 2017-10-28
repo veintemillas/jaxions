@@ -930,8 +930,8 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 				} else {
 					if (rank != 0) {
 						LogMsg (VERB_HIGH, "Receiving %lu bytes from rank %d", slabSz, rank);
-						MPI_Status caka ;
-						MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, &caka);
+						MPI_Status status;
+						MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, &status);
 					}
 
 					/*	Select the slab in the file	*/

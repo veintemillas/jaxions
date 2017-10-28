@@ -66,7 +66,6 @@ if re_contrastmap:
 
 print('Max contrast = ', con.max())
 
-
 L2 = 1
 
 x = np.linspace(-L2, L2, Lx).reshape(Lx,1,1)

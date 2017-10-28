@@ -121,9 +121,14 @@ for meas in mylist:
     #print(meas)
     f = h5py.File('./m/'+ meas, 'r')
     time = f.attrs[u'z']
-
+    avdens = f['energy'].attrs[u'Axion Gr X']
+    avdens += f['energy'].attrs[u'Axion Gr Y']
+    avdens += f['energy'].attrs[u'Axion Gr Z']
+    avdens += f['energy'].attrs[u'Axion Kinetic']
+    avdens += f['energy'].attrs[u'Axion Potential']
     larvaP = np.reshape(f['pSpectrum/sP/data'],(powmax))
     av = larvaP/nmodes2
+    av = av/(avdens**2)
 
     plt.loglog(ktab,(ktab**3)*av/(math.pi**2),label=r'$\tau$={%.2f}'%(time))
 

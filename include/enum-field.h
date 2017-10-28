@@ -133,9 +133,9 @@
 
 	typedef	enum	LogLevel_s
 	{
-		LOG_MSG   = 0,
-		LOG_DEBUG = 1,
-		LOG_ERROR = 2,
+		LOG_MSG   = 1048576,
+		LOG_DEBUG = 2097152,
+		LOG_ERROR = 4194304,
 	}	LogLevel;
 
 	typedef	enum	LogMpi_s

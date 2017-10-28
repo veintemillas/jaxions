@@ -12,7 +12,12 @@ import pyqtgraph.opengl as gl
 
 class	Plot2D():
 	def	__init__(self):
-		fileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
+		prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
+		fileMeas = []
+		for maes in prefileMeas:
+			f = h5py.File(maes, 'r')
+			if 'map' in f:
+				fileMeas.append(maes)
 
 		fileHdf5 = h5py.File(fileMeas[0], "r")
 
