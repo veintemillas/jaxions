@@ -64,7 +64,7 @@ size_t	gpuMemAvail()
 	return	gpuMem;
 }
 
-int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel verb)
+int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, VerbosityLevel verb)
 {
 	int nAccs = 0;
 	int realSize = 1;
@@ -94,7 +94,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, VerbosityLevel 
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	createLogger	(0, ZERO_RANK, verb);
+	createLogger	(0, logMpi, verb);
 
 	switch (dev)
 	{

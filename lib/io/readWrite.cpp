@@ -819,9 +819,8 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 	if (myRank == 0)
 	{
 		/*	Start profiling		*/
-		prof.start();
-
 		LogMsg (VERB_NORMAL, "Writing string data");
+		prof.start();
 
 		if (header == false || opened == false)
 		{
@@ -923,16 +922,11 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 			{
 				if (myRank != 0)
 				{
-					if (myRank == rank) {
-						LogMsg (VERB_HIGH, "Sending %lu bytes to rank 0", slabSz);
+					if (myRank == rank)
 						MPI_Send(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
-					}
 				} else {
-					if (rank != 0) {
-						LogMsg (VERB_HIGH, "Receiving %lu bytes from rank %d", slabSz, rank);
-						MPI_Status status;
-						MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, &status);
-					}
+					if (rank != 0)
+						MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 					/*	Select the slab in the file	*/
 					hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;

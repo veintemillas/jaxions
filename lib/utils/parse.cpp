@@ -53,9 +53,11 @@ LambdaType   lType     = LAMBDA_FIXED;
 
 char outName[128] = "axion\0";
 
-FieldPrecision	sPrec = FIELD_DOUBLE;
-DeviceType	cDev  = DEV_CPU;
-VerbosityLevel	verb  = VERB_NORMAL;
+FieldPrecision	sPrec  = FIELD_DOUBLE;
+DeviceType	cDev   = DEV_CPU;
+
+VerbosityLevel	verb   = VERB_NORMAL;
+LogMpi		logMpi = ALL_RANKS;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
 bool p2dmapo  		= false ;
@@ -66,46 +68,59 @@ void	printUsage(char *name)
 {
 	printf("\nUsage: %s [Options]\n\n", name);
 
-	printf("\nOptions:\n\n");
+	printf("\nOptions:\n");
 
-	printf("--size  [int]                   Number of lattice points along x and y (Lx). Local size is Lx^2 x Lz (default 128).\n");
-	printf("--depth [int]                   Number of lattice points of depth (Lz) (default 128).\n");
-	printf("--zgrid [int]                   Number of gpus involved in the computation (default 1).\n");
+	printf("\nSize of the grid:\n");
+	printf("  --size  [int]                 Number of lattice points along x and y (Lx). Local size is Lx^2 x Lz (default 128).\n");
+	printf("  --depth [int]                 Number of lattice points of depth (Lz) (default 128).\n");
+	printf("  --zgrid [int]                 Number of gpus involved in the computation (default 1).\n");
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
-	printf("--prec  double/single           Precision of the axion field simulation (default double)\n");
-	printf("--ftype saxion/axion            Type of field to be simulated, either saxion + axion or lone axion (default saxion)(not parsed yet)\n");
 
-	printf("--qcd   [float]                 Exponent of topological susceptibility (default 7).\n");
-	printf("--lsize [float]                 Physical size of the system (default 4.0).\n");
-	printf("--zi    [float]                 Initial value of the redshift (default 0.5).\n");
-	printf("--zf    [float]                 Final value of the redshift (default 1.0).\n");
-	printf("--llcf  [float]                 Lagrangian coefficient (default 15000).\n");
-	printf("--msa   [float]                 Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
-	printf("--wDz   [float]                 Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
-	printf("--steps [int]                   Number of steps of the simulation (default 500).\n");
-	printf("--ctype smooth/kmax/tkachev	Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("--smvar stXY/stYZ/mc0/mc        [smooth variant] string or mc initial conditions\n");
-	printf("--kmax  [int]                   Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
-	printf("--kcr   [float]                 kritical kappa (default 1.0).\n");
-	printf("--mode0 [float]               	Value of axion zero mode [rad] (default random).\n");
-	printf("--sIter [int]                   Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
-	printf("--alpha [float]                 alpha parameter for the smoothing (default 0.143).\n");
-	printf("--wkb   [float]                 WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
-	printf("--dump  [int]                   frequency of the output (default 100).\n");
+	printf("\nSimulation parameters:\n");
+	printf("  --lowmem                      Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
+	printf("  --prec  double/single         Precision of the axion field simulation (default double)\n");
+	printf("  --device cpu/gpu/xeon         Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
+	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
+	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
+	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled) \n");
+	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
+
+	printf("\nPhysical parameters:\n");
+	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion)(not parsed yet)\n");
+	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
+	printf("  --zf    [float]               Final value of the redshift (default 1.0).\n");
+	printf("  --lsize [float]               Physical size of the system (default 4.0).\n");
+	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
+	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
+	printf("  --msa   [float]               Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
+
+	printf("\nInitial conditions:\n");
+	printf("  --ctype smooth/kmax/tkachev   Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("  --smvar stXY/stYZ/mc0/mc      [smooth variant] string or mc initial conditions\n");
+	printf("\n");
+	printf("  --kmax  [int]                 Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
+	printf("  --kcr   [float]               kritical kappa (default 1.0).\n");
+	printf("  --mode0 [float]               Value of axion zero mode [rad] (default random).\n");
+	printf("\n");
+	printf("  --sIter [int]                 Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
+	printf("  --alpha [float]               alpha parameter for the smoothing (default 0.143).\n");
+	printf("  --wkb   [float]               WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
+	printf("\n");
+	printf("  --index [idx]                 Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
+
+	printf("\nOutput:\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
-	printf("--index [idx]                   Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
-	printf("--lowmem                        Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
-	printf("--device cpu/gpu/xeon           Uses nVidia Gpus or Intel Xeon Phi to accelerate the computations (default, use cpu).\n");
-	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
-	printf("--prop  leap/rkn4/om2/om4       Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
-	printf("--spec                          Enables the spectral propagator for the laplacian (default, disabled) \n");
-	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
+	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--p3D 0/1/2                     Print initial/final configurations (default 0 = no) 1=final 2=both \n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
 	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
 	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
 	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
+	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
+	printf("\nLogging:\n");
+	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
+	printf("--nologmpi                      Disable logging over MPI so only rank 0 logs (default, all ranks log)\n\n");
 	printf("--help                          Prints this message.\n");
 
 	return;
@@ -876,6 +891,14 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--nologmpi"))
+		{
+			logMpi = ZERO_RANK;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 		//JAVIER added gradient
 		if (!strcmp(argv[i], "--lapla"))
 		{

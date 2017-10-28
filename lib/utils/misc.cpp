@@ -8,7 +8,7 @@ using namespace profiler;
 int	initAxions(int argc, char *argv[]) {
 	parseArgs	(argc, argv);
 
-        if (initComms(argc, argv, zGrid, cDev, verb) == -1)
+        if (initComms(argc, argv, zGrid, cDev, logMpi, verb) == -1)
 	{
         	LogOut ("Error initializing devices and Mpi\n");
                 return	1;

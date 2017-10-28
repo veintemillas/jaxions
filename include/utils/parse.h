@@ -45,6 +45,8 @@ extern ConfsubType    smvarType;
 extern FieldType      fTypeP;
 extern LambdaType     lType;
 extern PropType       pType;
+
+extern LogMpi	      logMpi;
 extern VerbosityLevel verb;
 
 //for output
