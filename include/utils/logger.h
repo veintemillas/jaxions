@@ -13,6 +13,7 @@
 	#include<algorithm>
 
 	#include<cstdarg>
+	#include<cstring>
 	#include<sys/stat.h>
 	#include<unistd.h>
 
