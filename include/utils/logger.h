@@ -2,6 +2,7 @@
 	#define	__LOGGER__
 
 	#include<string>
+	#include<cstring>
 	#include<sstream>
 	#include<fstream>
 	#include<iomanip>
@@ -284,7 +285,7 @@
 									}
 								}
 							}
-								
+
 						}
 					}
 
