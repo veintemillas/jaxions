@@ -99,8 +99,8 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 
 	munge(FOLD_ALL);
 
-	if (wMod == false)
-		mendTheta (field);
+	// if (wMod == false)
+	// 	mendTheta (field);
 
 	return;
 }
