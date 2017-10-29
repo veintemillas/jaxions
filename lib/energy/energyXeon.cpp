@@ -904,6 +904,7 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			break;
 		case	VQCD_1_PQ_2:
+		case	VQCD_1_PQ_2_RHO:
 			if (map == true)
 				energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			else

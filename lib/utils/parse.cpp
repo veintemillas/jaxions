@@ -33,6 +33,7 @@ double gammo = 0.;
 
 double wkb2z  = -1.0;
 int endredmap = -1;
+int safest0   = 20;
 
 bool lowmem   = false;
 bool uPrec    = false;
@@ -85,6 +86,7 @@ void	printUsage(char *name)
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled) \n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
+	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion)(not parsed yet)\n");
@@ -268,6 +270,14 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
 			vqcdType = VQCD_1_PQ_2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--onlyrho"))
+		{
+			vqcdType = VQCD_1_PQ_2_RHO ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -662,13 +672,33 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: I need a number of steps.\n");
 				exit(1);
 			}
-
 			nSteps = atoi(argv[i+1]);
 
 			if (nSteps < 0)
 			{
-				printf("Error: Number of steps must be greater than or equal to zero.\n");
+				printf("Error: Number of steps must be > 0.\n");
 				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--sst0"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of steps of st=0 before switching to theta-mode.\n");
+				exit(1);
+			}
+
+			safest0 = atoi(argv[i+1]);
+
+			if (safest0 < 0)
+			{
+				printf("WARNING: sst0 < 0 won't switch to theta-mode.\n");
 			}
 
 			i++;
