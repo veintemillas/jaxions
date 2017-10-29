@@ -58,16 +58,31 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				}
 
 				//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
-				//m[idx]   = std::complex<Float>(0.2, uni(mt64)/10.);
-				//RANDOM AXIONS AROUND CP CONSERVING MINIMUM WITH A LITTLE 0 MODE
-				//m[idx]   = std::complex<Float>(1.0, 0.1+uni(mt64)/1.);
-				//MORE AXIONS
-				//m[idx]   = std::complex<Float>(0.0+0.7*uni(mt64), 1.0);
-				//LARGE AMPLITUDE AXIONS ZERO MODE
-				//m[idx]   = std::complex<Float>(0.0, 1.000001);
-				//to produce only SAXIONS for testing
-				//m[idx]   = std::complex<Float>(1.2+uni(mt64)/20., 0.0);
+				case CONF_AXNOISE:
+				{
+					Float theta  = mode0 + uni(mt64)*kCrit ;
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
+				}
 
+				case CONF_SAXNOISE:
+				{
+					Float theta  = uni(mt64)*kCrit + 1.;
+					m[idx] = std::complex<Float>(theta*cos(mode0), theta*sin(mode0));
+					break;
+				}
+
+				//	ONE MODE
+				case CONF_AX1MODE:
+				{
+					pidx = idx-Vo;
+					iz = pidx/Vo + local_z_start;
+					iy = (pidx%Vo)/sizeN ;
+					ix = (pidx%Vo)%sizeN ;
+					Float theta = ((Float) mode0*cos(6.2831853*(ix*kMax + iy)/ene));
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
+				}
 
 				case CONF_MINICLUSTER:
 				//	MINICLUSTER CENTERED AT GRID
@@ -102,15 +117,6 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				m[idx] = std::complex<Float>(cos(theta), sin(theta));
 				break;
 				}
-				//	ONE MODE
-
-				//  size_t pidx = idx-Vo;
-				//  size_t iz = pidx/Vo + local_z_start;
-				//  size_t iy = (pidx%Vo)/sizeN ;
-				//  size_t ix = (pidx%Vo)%sizeN ;
-				//
-				// Float theta = ((Float) 0.0001*cos(3.14159*2.*iz*3/ene)+0.0*cos(3.14159*2.*ix*5/ene));
-				// m[idx] = std::complex<Float>(cos(theta), sin(theta));
 
 
 				//// if(ix<2)
