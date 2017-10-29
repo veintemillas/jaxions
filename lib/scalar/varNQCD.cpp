@@ -47,6 +47,17 @@ double	axionmass2(double z, double nQcd, double zth, double zres)
 	return morsa;
 }
 
+double rsvPQ2 (double a)
+{
+	double a2 = a*a;
+	double a3 = a2*a;
+	double a4 = a2*a2;
+	// return (1 + 3.141589*alpha + 3.1645839*a2 + 1.1045853*a3 + 0.089438*a4)/
+  //                (1 + 3.016589*alpha + 2.8578228*a2 + 0.89696*a3 + 0.0564027*a4);
+	return (0.125*a + 0.30676113886283973*a2 + 0.20762392505082639*a3 + 0.03303541390146716*a4)/
+   (1 + 3.0165891109027165*a + 2.857822775289389*a2 + 0.8969613324856603*a3 + 0.05640260585369341*a4);
+}
+
 double	saxionshift(double z, double nQcd, double zth, double zres, double LLL)
 {
  	double alpha = axionmass2(z, nQcd, zth, zres)/LLL;
@@ -69,7 +80,8 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ)
 		 break;
 		case	VQCD_1_PQ_2:
 			alpha = axmass*axmass/(LLL);
-	 		shift = (sqrt(4.+9.*alpha)-2.)/18.;
+	 		//shift = (sqrt(4.+9.*alpha)-2.)/18.;
+			shift = rsvPQ2(alpha);
 		 break;
 		case	VQCD_2:
 				shift = 0.;
@@ -78,6 +90,7 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ)
 
 	return	shift;
 }
+
 
 double	dzSize	(double z, FieldType fType, LambdaType lType) {
 	double oodl = ((double) sizeN)/sizeL;
