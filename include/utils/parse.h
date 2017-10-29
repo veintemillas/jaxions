@@ -47,6 +47,8 @@ extern FieldType      fTypeP;
 extern LambdaType     lType;
 extern VqcdType		    vqcdType;
 extern PropType       pType;
+
+extern LogMpi	      logMpi;
 extern VerbosityLevel verb;
 
 //for output

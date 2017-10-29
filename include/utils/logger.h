@@ -25,7 +25,7 @@
 
 	namespace AxionsLog {
 
-		constexpr long long int	logFreq	= 500;
+		constexpr long long int	logFreq	= 5000;
 		constexpr size_t 	basePack = sizeof(ptrdiff_t)*5;
 
 		extern	const char	levelTable[3][16];
@@ -45,7 +45,7 @@
 				mutable MPI_Request req;
 
 			public:
-					 Msg(LogLevel logLevel, const int tIdx, const char * format, ...) noexcept : logLevel(logLevel), tIdx(tIdx) {
+					Msg(LogLevel logLevel, const int tIdx, const char * format, ...) noexcept : logLevel(logLevel), tIdx(tIdx) {
 					char buffer[1024 - basePack];
 					va_list args;
 					va_start (args, format);
@@ -113,9 +113,8 @@
 			private:
 				std::chrono::time_point<std::chrono::high_resolution_clock> logStart;
 				std::ofstream		oFile;
-
+				const LogMpi		mpiType;
 				std::vector<Msg>	msgStack;
-				LogMpi			mpiType;
 				const VerbosityLevel	verbose;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
@@ -123,8 +122,8 @@
 					      << "/" << commSize() << " - Thread " << myMsg.thread() << "/" << omp_get_num_threads() << " ==> " << myMsg.msg() << std::endl;
 				}
 
-				/* We only allow thread 0 to write to disk, but any other thread can put messages in the stack	 */
-				/* The stack will be if there is an error on any thread because the variable mustFlush is shared */
+				/* We only allow thread 0 to write to disk, but any other thread can put messages in the stack		*/
+				/* The stack is flushed if there is an error on any thread because the variable mustFlush is shared	*/
 				void	flushMsg	() noexcept {
 					if (omp_get_thread_num() != 0)
 						return;
@@ -156,21 +155,10 @@
 
 					bool			test;
 					struct stat		buffer;
-					std::string		base;
+					std::string		base("axion.log.");
 					std::stringstream	ss;
 
 					int			idx = index - 1;
-
-					switch	(mpiType) {
-						case	ALL_RANKS:
-							ss << "axion.log.MpiR" << commRank() << ".";
-							base = ss.str();
-							break;
-
-						case	ZERO_RANK:
-							base.assign("axion.log.");
-							break;
-					}
 
 					logStart = std::chrono::high_resolution_clock::now();
 
@@ -193,9 +181,13 @@
 				template<typename... Fargs>
 				void	operator()(LogLevel level, const char * file, const int line, const char * format, Fargs... vars)
 				{
-					static bool      mustFlush = false;
-					static const int myRank    = commRank();
-					static const int nSplit    = commSize();
+					static bool       mustFlush = false;
+					static const int  myRank    = commRank();
+					static const int  nSplit    = commSize();
+					static const bool mpiLogger = ((nSplit > 1) && (mpiType == ALL_RANKS));
+
+					if (mpiType == ZERO_RANK && myRank != 0)
+						return;
 
 					switch	(level) {
 
@@ -228,7 +220,7 @@
 						}
 					}
 
-					if (nSplit > 1) {	// If we are using MPI
+					if (mpiLogger) {	// If we are using MPI
 						if (myRank == 0) {
 							if (omp_get_thread_num() == 0) {	// We don't want several threads probing the same message
 								int flag = 0;
@@ -255,9 +247,9 @@
 								}	while (flag);
 							}
 						} else {
-							Msg msg(level, omp_get_thread_num(), format, vars...);
+							//Msg msg(level, omp_get_thread_num(), format, vars...);
 							//if (level == LOG_ERROR)	// FIXME always send
-							msgStack.push_back(std::move(msg));
+							//msgStack.push_back(std::move(msg));
 							/* If loglevel is ERROR, we block comms until all the pending messages are sent and  we clear the stack */
 							if (level == LOG_ERROR) {
 								for (auto it = msgStack.begin(); it != msgStack.end();) {
@@ -291,7 +283,7 @@
 					}
 
 					if (mustFlush && myRank == 0) {
-						if (nSplit > 1 && omp_get_thread_num() == 0) {	// If we are using MPI
+						if (mpiLogger && omp_get_thread_num() == 0) {	// If we are using MPI
 							int flag = 0;
 							MPI_Status status;
 							// Get the standard messages
