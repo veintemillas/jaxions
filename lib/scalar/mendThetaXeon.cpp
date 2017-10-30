@@ -452,7 +452,7 @@ size_t	mendThetaXeon (Scalar *field)
 	constexpr int	dStep = Align/sizeof(double); 
 	constexpr int	fStep = Align/sizeof(float); 
 	const double	z     = *(field->zV());
-	size_t		tJmps = 0;
+	size_t		tJmp = 0;
 
 	switch (field->Precision()) {
 		case	FIELD_DOUBLE:

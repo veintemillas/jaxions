@@ -4,7 +4,6 @@
 	#include "enum-field.h"
 	#include "utils/utils.h"
 
-
 	class	PropBase : public Tunable
 	{
 		protected:

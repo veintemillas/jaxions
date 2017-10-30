@@ -55,7 +55,7 @@ size_t	mendTheta	(Scalar *field)
 
 	if (!(field->Field() & FIELD_AXION)) {
 		LogError ("Error: mendTheta can only be applied to axion fields");
-		return;
+		return	0;
 	}
 
 	auto	theta = std::make_unique<MendTheta>    (field);

@@ -55,6 +55,14 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
 
+		const double z4 = z2*z2;
+		const double LaLa = LL*2./z4;
+		const double GGGG = pow(ood2,0.5)*gammo;
+		const double mola = GGGG*dzc/2.;
+		const double damp1 = 1./(1.f+mola);
+		const double damp2 = (1.-mola)*damp1;
+		const double epsi = mola/(1.f+mola);
+
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -159,7 +167,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 #else
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
 					case	VQCD_1:
 						mMx = opCode(sub_pd,
 							opCode(add_pd,
@@ -181,6 +189,28 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 									opCode(set1_pd, LL)),
 								mel));
 						break;
+
+					case	VQCD_1_PQ_2:
+						mMx = opCode(sub_pd,
+							opCode(add_pd,
+								opCode(mul_pd,
+									opCode(add_pd,
+										opCode(add_pd,
+											opCode(load_pd, &m[idxMz]),
+											opCode(add_pd,
+												opCode(add_pd,
+													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+													opCode(load_pd, &m[idxMx])),
+												opCode(load_pd, &m[idxPz]))),
+										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+									opCode(set1_pd, ood2)),
+								zQVec),
+							opCode(mul_pd,
+								opCode(mul_pd,
+									opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
+									opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
+								mel));
+						 break;
 
 					case	VQCD_2:
 						mMx = opCode(sub_pd,
@@ -207,11 +237,64 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				mPy = opCode(load_pd, &v[idxMz]);
 
+				switch	(VQcd & VQCD_DAMP) {
+					case	VQCD_NONE:
 #if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
+						tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
+#else
+						tmp = opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc)));
+#endif
+						break;
+
+					case	VQCD_DAMP_RHO:
+						tmp = opCode(mul_pd, mel, mPy);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+						// FIXME Add FMA support/change those permutes/shuffles
+						vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b10110001), tmp);
+#else
+						vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b10110001), tmp);
+#endif
+
+						tmp = opCode(mul_pd, mel, mMx);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+						// FIXME Add FMA support/change those permutes/shuffles
+						vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b10110001), tmp);
+#else
+						vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b10110001), tmp);
+#endif
+						// FIXME Remove division (performed at each point)
+						veca = opCode(add_pd, mMx, opCode(mul_ps, mel, opCode(set1_pd, GGGG/zR) ) ) ;
+
+						// FIXME Add FMA support
+						tmp = opCode(sub_pd,
+							opCode(add_pd, mPy, opCode(mul_pd, veca, opCode(set1_pd, dzc))),
+							opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+								opCode(add_pd,
+									opCode(mul_ps,vecmv,opCode(set1_pd, 2.)),
+									opCode(mul_ps,vecma,opCode(set1_pd, dzc)))));
+						break;
+
+					case	VQCD_DAMP_ALL:
+						// FIXME Add FMA support
+						tmp = opCode(add_pd, opCode(mul_pd, mPy, opCode(set1_ps,damp2)), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
+						break;
+				}
+
+				if (VQcd & VQCD_EVOL_RHO)
+				{
+					// FIXME Add FMA support
+					vecmv = opCode(mul_pd, mel, tmp);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+					vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b10110001), vecmv);
+#else
+					vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b10110001), vecmv);
+#endif
+					tmp   = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
+				}
+
+#if	defined(__AVX512F__) || defined(__FMA__)
 				mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
 #else
-				tmp = opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc)));
 				mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
 #endif
 				opCode(store_pd,  &v[idxMz], tmp);
@@ -244,13 +327,13 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
-		//new stuff
+
 		const float z4 = z2*z2;
 		const float LaLa = LL*2./z4;
 		const float GGGG = pow(ood2,0.5)*gammo;
 		const float mola = GGGG*dzc/2.;
-		// const float damp1 = 1.f/(1.f+mola);
-		// const float damp2 = (1.f-mola)*damp1;
+		const float damp1 = 1.f/(1.f+mola);
+		const float damp2 = (1.f-mola)*damp1;
 		const float epsi = mola/(1.f+mola);
 
 #if	defined(__AVX512F__)
@@ -364,7 +447,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
 						case	VQCD_1:
 							mMx = opCode(sub_ps,
 								opCode(add_ps,
@@ -388,7 +471,6 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 							break;
 
 						case	VQCD_1_PQ_2:
-						case	VQCD_1_PQ_2_RHO:
 						 mMx = opCode(sub_ps,
 							 opCode(add_ps,
 								 opCode(mul_ps,
@@ -436,63 +518,69 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				mPy = opCode(load_ps, &v[idxMz]);
 
-				// compute mv = m1v1+m2v2
-				// vecmv
-				tmp = opCode(mul_ps, mel, mPy);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-				vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
+				switch (VQcd & VQCD_DAMP) {
+
+					case	VQCD_NONE:
+#if	defined(__AVX512F__) || defined(__FMA__)
+						tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
 #else
-				vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
+				 		tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
+#endif
+						break;
+
+					case	VQCD_DAMP_RHO:
+						// compute mv = m1v1+m2v2
+						// vecmv
+						tmp = opCode(mul_ps, mel, mPy);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+						vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
+#else
+						vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
 
-				// vecma
-				tmp = opCode(mul_ps, mel, mMx);
+						// vecma
+						tmp = opCode(mul_ps, mel, mMx);
 #if	defined(__AVX__)// || defined(__AVX512F__)
-				vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
+						vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
 #else
-				vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
+						vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
+						// damping rho direction
+						// add GGGG term to acceleration
+						veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGGG/zR) ) ) ;
 
+						// mPy=V veca=A mPx=|M|^2
+						// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt)
+						tmp = opCode(sub_ps,
+							opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
+							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
+								opCode(add_ps,
+									opCode(mul_ps,vecmv,opCode(set1_ps, 2.)),
+									opCode(mul_ps,vecma,opCode(set1_ps, dzc)))));
+						break;
+
+					case	VQCD_DAMP_ALL:
+						// damping all directions implementation
+						tmp = opCode(add_ps, opCode(mul_ps,mPy,opCode(set1_ps,damp2)), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
+						break;
+				}
+
+				// if only evolution along r is desired project v into rho (m) direction in complex space
+				// we use vecma = m*v_update
+				if (VQcd & VQCD_EVOL_RHO)
+				{
+					vecmv = opCode(mul_ps, mel, tmp);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+					vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
+#else
+					vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
+#endif
+					tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
+				}
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
 				mPx = opCode(fmadd_ps, tmp, opCode(set1_ps, dzd), mel);
 #else
-				// damping rho direction
-				// add GGGG term to acceleration
-			  veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGGG/zR) ) ) ;
-
-				// mPy=V veca=A mPx=|M|^2
-				// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt)
-				tmp = opCode(sub_ps,
-								opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
-								opCode(mul_ps,
-										opCode(mul_ps, opCode(set1_ps, epsi),opCode(div_ps, mel, mPx)) ,
-										opCode(add_ps, opCode(mul_ps,vecmv,opCode(set1_ps, 2.)),
-																	 opCode(mul_ps,vecma,opCode(set1_ps, dzc)))   )
-								);
-
-				// damping all directions implementation
-				//tmp = opCode(add_ps, opCode(mul_ps,mPy,opCode(set1_ps,damp2)), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
-
-				// no damping expression
-				// tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
-
-// if only evolution along r is desired project v into rho (m) direction in complex space
-// ************************************************************************************
-// we use vecma = m*v_update
-if (VQcd == VQCD_1_PQ_2_RHO)
-{
-        vecmv = opCode(mul_ps, mel, tmp);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-				vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
-#else
-				vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
-#endif
-				tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
-}
-// ************************************************************************************
-
 				mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
 #endif
 				opCode(store_ps,  &v[idxMz], tmp);
