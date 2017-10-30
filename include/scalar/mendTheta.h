@@ -3,5 +3,5 @@
 
 	#include "scalar/scalarField.h"
 
-	void    mendTheta       (Scalar *field);
+	size_t	mendTheta       (Scalar *field);
 #endif

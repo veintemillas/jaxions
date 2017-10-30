@@ -277,6 +277,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 #undef  _MData_
 #undef  step
 	}
+
+	return	count;
 }
 
 /*	Connects all the points in a Z line with the whole ZY plane	*/
@@ -445,25 +447,27 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 	return	count;
 }
 
-void	mendThetaXeon (Scalar *field)
+size_t	mendThetaXeon (Scalar *field)
 {
+	constexpr int	dStep = Align/sizeof(double); 
+	constexpr int	fStep = Align/sizeof(float); 
 	const double	z     = *(field->zV());
 	size_t		tJmps = 0;
 
 	switch (field->Precision()) {
 		case	FIELD_DOUBLE:
-		mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
-		mendThetaSlice<double, Align/sizeof(double)>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
-		mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		tJmp += mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
+		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		tJmp += mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		case	FIELD_SINGLE:
-		mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
-		mendThetaSlice<float, Align/sizeof(float)>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
-		mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		tJmp += mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
+		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		tJmp += mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 	}
 
-	return;
+	return	tJmp;
 }
 
