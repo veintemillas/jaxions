@@ -75,6 +75,7 @@
 		VQCD_1,
 		VQCD_2,
 		VQCD_1_PQ_2,
+		VQCD_1_PQ_2_RHO,
 		VQCD_NONE,
 	}	VqcdType;
 

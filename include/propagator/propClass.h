@@ -544,6 +544,11 @@
 						case VQCD_1_PQ_2:
 							return	(1e-9 * ((double) axionField->Size()) * (44. * ((double) nStages) + (lastStage ? 40. : 0.)));
 							break;
+
+						case VQCD_1_PQ_2_RHO:
+							return	(1e-9 * ((double) axionField->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
+							break;
+
 					}
 					break;
 

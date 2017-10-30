@@ -388,6 +388,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 							break;
 
 						case	VQCD_1_PQ_2:
+						case	VQCD_1_PQ_2_RHO:
 						 mMx = opCode(sub_ps,
 							 opCode(add_ps,
 								 opCode(mul_ps,
@@ -476,6 +477,21 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				// no damping expression
 				// tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
+
+// if only evolution along r is desired project v into rho (m) direction in complex space
+// ************************************************************************************
+// we use vecma = m*v_update
+if (VQcd == VQCD_1_PQ_2_RHO)
+{
+        vecmv = opCode(mul_ps, mel, tmp);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+				vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
+#else
+				vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
+#endif
+				tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
+}
+// ************************************************************************************
 
 				mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
 #endif
@@ -938,6 +954,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 						break;
 
 					case	VQCD_1_PQ_2:
+					case	VQCD_1_PQ_2_RHO:
 					 mMx = opCode(sub_ps,
 						 opCode(add_ps,
 							 opCode(mul_ps,
@@ -1024,6 +1041,22 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 				// no damping expression
 				// tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
+
+// if only evolution along r is desired project v into rho (m) direction in complex space
+// ************************************************************************************
+// we use vecma = m*v_update
+if (VQcd == VQCD_1_PQ_2_RHO)
+{
+        vecmv = opCode(mul_ps, mel, tmp);
+#if	defined(__AVX__)// || defined(__AVX512F__)
+				vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
+#else
+				vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
+#endif
+				tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
+}
+// ************************************************************************************
+
 
 #endif
 				opCode(store_ps,  &v[idxMz], tmp);

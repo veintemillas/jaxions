@@ -30,6 +30,7 @@ extern double zrestore;
 
 extern double wkb2z ;
 extern int endredmap ;
+extern int safest0 ;
 
 extern char *initFile;
 extern char outName[128];
