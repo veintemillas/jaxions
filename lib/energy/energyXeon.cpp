@@ -317,15 +317,22 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Grz = opCode(md2_pd, Gry);
 				Gry = opCode(mul_pd, Grz, ivZ2);
 
-				mSg = opCode(sub_pd, Gry, one);
-				mod = opCode(mul_pd, mSg, mSg);
-
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
 					case	VQCD_1:
+						mSg = opCode(sub_pd, Gry, one);
+						mod = opCode(mul_pd, mSg, mSg);
+						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
+						break;
+
+					case	VQCD_1_PQ_2:
+						mSg = opCode(sub_pd, opCode(mul_pd, Gry, Gry), one);   // |rho|^4-1
+						mod = opCode(mul_pd, mSg, mSg);   											// (|rho|^4-1)^2
 						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
 						break;
 
 					case	VQCD_2:
+						mSg = opCode(sub_pd, Gry, one);
+						mod = opCode(mul_pd, mSg, mSg);
 						mTp = opCode(sub_pd, one, opCode(mul_pd, Grx, ivZ));
 						mCg = opCode(mul_pd, mTp, mTp);
 						break;
@@ -752,11 +759,11 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				tKp = opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod);
 
 				Grx = opCode(sub_ps, mel, shVc);  // Aplica shift
-				Gry = opCode(mul_ps, Grx, Grx);
-				Grz = opCode(md2_ps, Gry);				// |crho|^2
+				Gry = opCode(mul_ps, Grx, Grx);	
+				Grz = opCode(md2_ps, Gry);	  // |crho|^2
 				Gry = opCode(mul_ps, Grz, ivZ2);  // |rho|^2
 
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
 					case	VQCD_1:
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
@@ -764,7 +771,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						break;
 
 					case	VQCD_1_PQ_2:
-						mSg =	opCode(sub_ps, opCode(mul_ps, Gry, Gry), one);   // |rho|^4-1
+						mSg = opCode(sub_ps, opCode(mul_ps, Gry, Gry), one);   // |rho|^4-1
 						mod = opCode(mul_ps, mSg, mSg);   											// (|rho|^4-1)^2
 						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
 						break;
@@ -777,7 +784,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						break;
 				}
 #if	defined(__AVX512F__)
-				tVp = opCode(mask_blend_ps, opCode(kmov,     0b1010101010101010), mod, opCode(permute_ps, mCg, 0b10110001));
+				tVp = opCode(mask_blend_ps, opCode(kmov, 0b1010101010101010), mod, opCode(permute_ps, mCg, 0b10110001));
 #elif	defined(__AVX__)
 				tVp = opCode(blend_ps, mod, opCode(permute_ps, mCg, 0b10110001), 0b10101010);
 #else
@@ -896,7 +903,7 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 
 	field->exchangeGhosts(FIELD_M);
 
-	switch (VQcd) {
+	switch (VQcd & VQCD_TYPE) {
 		case	VQCD_1:
 			if (map == true)
 				energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
@@ -904,7 +911,6 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			break;
 		case	VQCD_1_PQ_2:
-		case	VQCD_1_PQ_2_RHO:
 			if (map == true)
 				energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
 			else
