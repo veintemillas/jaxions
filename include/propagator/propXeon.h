@@ -942,8 +942,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 							opCode(add_pd, mPy, opCode(mul_pd, veca, opCode(set1_pd, dzc))),
 							opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
 								opCode(add_pd,
-									opCode(mul_ps,vecmv,opCode(set1_pd, 2.)),
-									opCode(mul_ps,vecma,opCode(set1_pd, dzc)))));
+									opCode(mul_pd,vecmv,opCode(set1_pd, 2.)),
+									opCode(mul_pd,vecma,opCode(set1_pd, dzc)))));
 #endif
 						break;
 					}
@@ -952,7 +952,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #if	defined(__AVX512F__) || defined(__FMA__)
 						tmp = opCode(fmadd_pd, mPy, opCode(set1_pd, damp2), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
 #else
-						tmp = opCode(add_pd, opCode(mul_pd, mPy, opCode(set1_ps,damp2)), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
+						tmp = opCode(add_pd, opCode(mul_pd, mPy, opCode(set1_pd,damp2)), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
 #endif
 						break;
 				}
