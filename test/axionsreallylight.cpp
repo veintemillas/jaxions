@@ -249,12 +249,13 @@ int	main (int argc, char *argv[])
 	LogOut("LL     =  %f \n\n", LL);	}
 	else {
 	LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", llconstantZ2, msa); }
-	if (vqcdType==VQCD_1){
-	LogOut("VQCD1PQ1,shift,continuous theta  \n\n");}
-		else if(vqcdType==VQCD_2){
-	LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");}
-		else if(vqcdType==VQCD_1_PQ_2){
-	LogOut("VQCD1PQ2,shift, continuous theta  \n\n");}
+	if ((vqcdType & VQCD_TYPE) == VQCD_1)
+		LogOut("VQCD1PQ1,shift,continuous theta  \n\n");
+	else if((vqcdType & VQCD_TYPE) == VQCD_2)
+		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
+	else if((vqcdType & VQCD_TYPE) == VQCD_1_PQ_2)
+		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
+
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("           ESTIMATES  						                \n\n");
 	double z_doom = pow(0.1588*msa/delta,2./(nQcd+2.))	;
