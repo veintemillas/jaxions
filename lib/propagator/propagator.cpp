@@ -115,7 +115,7 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
-			switch (pot) {
+			switch (pot & VQCD_TYPE) {
 				case VQCD_1:
 					prop = std::make_unique<PropOmelyan2<VQCD_1> >    (field, LL, nQcd, delta, spec);
 					break;
@@ -181,7 +181,7 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 			break;
 
 		case PROP_RKN4:
-			switch (pot) {
+			switch (pot & VQCD_TYPE) {
 				case VQCD_1:
 					prop = std::make_unique<PropRKN4<VQCD_1> >    (field, LL, nQcd, delta, spec);
 					break;
@@ -191,7 +191,9 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 				case VQCD_1_PQ_2_RHO:
 					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO> > (field, LL, nQcd, delta, spec);
 					break;
-
+				case VQCD_1_PQ_2_DRHO:
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO> > (field, LL, nQcd, delta, spec);
+					break;			
 				case VQCD_2:
 					prop = std::make_unique<PropRKN4<VQCD_2> >    (field, LL, nQcd, delta, spec);
 					break;

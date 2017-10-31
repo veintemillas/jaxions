@@ -52,6 +52,8 @@ ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
 LambdaType   lType     = LAMBDA_FIXED;
 VqcdType		 vqcdType  = VQCD_1;
+VqcdType		 vqcdTypeDamp  = VQCD_NONE;
+VqcdType		 vqcdTypeRhoevol  = VQCD_NONE;
 
 char outName[128] = "axion\0";
 
@@ -277,7 +279,8 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
-			vqcdType = VQCD_1_PQ_2_RHO ;
+			//vqcdType = VQCD_1_PQ_2_RHO ;
+			vqcdTypeRhoevol = VQCD_EVOL_RHO;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -469,10 +472,11 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			gammo = atof(argv[i+1]);
+			vqcdTypeDamp = VQCD_DAMP_RHO ;
 
 			if (gammo < 0.)
 			{
-				printf("Error: Initial redshift must be larger than 0.\n");
+				printf("Error: Damping factor should be larger than 0.\n");
 				exit(1);
 			}
 
@@ -1080,6 +1084,8 @@ int	parseArgs (int argc, char *argv[])
 
 		msa = sqrt(2*LL)*tmp;
 	}
+
+ 	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol) ;
 
 	return	procArgs;
 }

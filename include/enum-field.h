@@ -83,9 +83,11 @@
 			VQCD_1_RHO		= 8193,		// First version QCD potential, only rho evolution
 			VQCD_2_RHO		= 8194,		// Second version QCD potential, only rho evolution
 			VQCD_1_PQ_2_RHO		= 8196,		// PQ version QCD potential, only rho evolution
+
 			VQCD_1_DRHO		= 16385,	// First version QCD potential, rho damping
 			VQCD_2_DRHO		= 16386,	// Second version QCD potential, rho damping
 			VQCD_1_PQ_2_DRHO	= 16388,	// PQ version QCD potential, rho damping
+
 			VQCD_1_DALL		= 32769,	// First version QCD potential, full damping
 			VQCD_2_DALL		= 32770,	// Second version QCD potential, full damping
 			VQCD_1_PQ_2_DALL	= 32772,	// PQ version QCD potential, full damping
