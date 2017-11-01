@@ -177,7 +177,8 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__)
-	uh = opCode(mul_pd, opCode(roundscale_round_pd, opCode(mul_pd, x, rPid), 83, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC), rCte);
+	//uh = opCode(mul_pd, opCode(roundscale_round_pd, opCode(mul_pd, x, rPid), 83, _MM_FROUND_NO_EXC | _MM_FROUND_TO_ZERO), rCte);
+	uh = opCode(mul_pd, opCode(roundscale_pd, opCode(mul_pd, x, rPid), 83), rCte);
 	ul = opCode(roundscale_round_pd, opCode(fmsub_pd, x, oPid, uh), 83, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
 #elif	defined(__FMA__)
 	uh = opCode(mul_pd, opCode(round_pd, opCode(mul_pd, x, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC), rCte);
@@ -215,7 +216,7 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 	s = opCode(mul_pd, d, d);
 
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castpd_si512, d), opCodl(cmpeq_epi32_mask, hOne, opCodl(and_epi32, qi, hOne)), d, zeroNegd);
+	d = opCode(mask_xor_epi32, opCode(castpd_si512, d), opCodl(cmpeq_epi32_mask, hOne, opCodl(and_si256, qi, hOne)), d, zeroNegd);
 #elif	defined(__AVX2__)
 	d = opCode(xor_pd, d,
 		opCode(and_pd, zeroNegd,
@@ -295,7 +296,8 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__)
-	uh = opCode(roundscale_round_pd, opCode(fmsub_pd, x, dPid, rPid), 83, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+	//uh = opCode(roundscale_round_pd, opCode(fmsub_pd, x, dPid, rPid), 83, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+	uh = opCode(roundscale_pd, opCode(fmsub_pd, x, dPid, rPid), 83);
 	qi = opCode(cvtpd_epi32, opCode(fmadd_pd, x, oPid, opCode(fnmsub_pd, uh, dPid, dHlf)));
 #elif	defined(__FMA__)
 	uh = opCode(round_pd, opCode(fmsub_pd, x, dPid, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
@@ -335,7 +337,7 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 	s = opCode(mul_pd, d, d);
 
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castpd_si512, d), opCodl(cmpeq_epi32_mask, hOne, opCodl(and_epi32, qi, hOne)), d, zeroNegd);
+	d = opCode(mask_xor_epi32, opCode(castpd_si512, d), opCodl(cmpeq_epi32_mask, hOne, opCodl(and_si256, qi, hOne)), d, zeroNegd);
 #elif	defined(__AVX2__)
 	d = opCode(xor_pd, d,
 		opCode(and_pd, zeroNegd,
@@ -853,9 +855,7 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 
 inline _MData_	opCode(md2_ps, const _MData_ &x)
 {
-#ifdef	__AVX512F__
-	return	opCode(add_ps, opCode(permute_ps, x, 0b10110001), x);
-#elif defined(__AVX__)
+#if defined(__AVX__)
 	return	opCode(add_ps, opCode(permute_ps, x, 0b10110001), x);
 #else
 	return	opCode(add_ps, opCode(shuffle_ps, x, x, 0b10110001), x);

@@ -90,6 +90,104 @@ inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 	return;
 }
 
+inline	void	stringWallD(const __m512d s1, const __m512d s2, int *hand, int *wHand)
+{
+	__m512d zero = { 0., 0., 0., 0., 0., 0., 0., 0. };
+	__m512d conj = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+	__m512d tp2, tp3;
+	__mmask16 tpm, tmm, tmp, wll, msk;
+
+	tp2 = opCode(mul_pd, s1, s2);
+	tmp = opCode(cmp_pd_mask, tp2, zero, _CMP_LT_OS);
+
+	tmp &= 0b10101010;
+
+	tp3 = opCode(mul_pd, s2, conj);
+	tp2 = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tp3), _MM_PERM_BADC));
+	tp3 = opCode(mul_pd, s1,  tp2);
+	tp2 = opCode(add_pd, tp3, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tp3), _MM_PERM_BADC)));
+	tp3 = opCode(mul_pd, tp2, opCode(sub_pd, s1, s2));
+
+	/*	Walls		*/
+
+	msk  = opCode(cmp_pd_mask, tp3, opCode(setzero_pd), _CMP_LT_OS);
+	msk &= 0b10101010;
+	wll  = msk & tmp;
+
+	wHand[0] |= (wll&2)  >> 1;
+	wHand[1] |= (wll&4)  >> 2;
+	wHand[2] |= (wll&8)  >> 3;
+	wHand[3] |= (wll&16) >> 4;
+
+	/*	Strings		*/
+
+	tpm = opCode(cmp_pd_mask, tp2, zero, _CMP_GT_OS);
+	tmm = opCode(cmp_pd_mask, tp2, zero, _CMP_LE_OS);
+
+	tpm &= tmp;
+	tmm &= tmp;
+
+	hand[0] += ((tpm &  2) >> 1) - ((tmm &  2) >> 1);
+	hand[1] += ((tpm &  8) >> 3) - ((tmm &  8) >> 3);
+	hand[2] += ((tpm & 32) >> 5) - ((tmm & 32) >> 5);
+	hand[3] += ((tpm &128) >> 7) - ((tmm &128) >> 7);
+
+	return;
+}
+
+inline	void	stringWallS(const __m512 s1, const __m512 s2, int *hand, int *wHand)
+{
+	__m512 zero = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+	__m512 conj = { 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f };
+	__m512 tp2, tp3;
+	__mmask16 tpm, tmm, tmp, wll, msk;
+
+	tp2 = opCode(mul_ps, s1, s2);
+	tmp = opCode(cmp_ps_mask, tp2, zero, _CMP_LT_OS);
+
+	tmp &= 0b1010101010101010;
+
+	tp3 = opCode(mul_ps, s2, conj);
+	tp2 = opCode(permute_ps, tp3, 0b10110001);
+	tp3 = opCode(mul_ps, s1,  tp2);
+	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
+	tp3 = opCode(mul_ps, tp3, opCode(sub_ps, s1, s2));
+
+	/*	Walls		*/
+
+	msk  = opCode(cmp_ps_mask, tp3, opCode(setzero_pd), _CMP_LT_OS);
+	msk &= 0b1010101010101010;
+	wll  = msk & tmp;
+
+	wHand[0] |= (wll & 2)   >> 1;
+	wHand[1] |= (wll & 4)   >> 2;
+	wHand[2] |= (wll & 8)   >> 3;
+	wHand[3] |= (wll & 16)  >> 4;
+	wHand[4] |= (wll & 32)  >> 5;
+	wHand[5] |= (wll & 64)  >> 6;
+	wHand[6] |= (wll & 128) >> 7;
+	wHand[7] |= (wll & 256) >> 8;
+
+	/*	Strings		*/
+
+	tpm = opCode(cmp_ps_mask, tp2, zero, _CMP_GT_OS);
+	tmm = opCode(cmp_ps_mask, tp2, zero, _CMP_LE_OS);
+
+	tpm &= tmp;
+	tmm &= tmp;
+
+	hand[0] += ((tpm &    2) >> 1) - ((tmm &    2) >> 1);
+	hand[1] += ((tpm &    8) >> 3) - ((tmm &    8) >> 3);
+	hand[2] += ((tpm &   32) >> 5) - ((tmm &   32) >> 5);
+	hand[3] += ((tpm &  128) >> 7) - ((tmm &  128) >> 7);
+	hand[4] += ((tpm &  512) >> 9) - ((tmm &  512) >> 9);
+	hand[5] += ((tpm & 2048) >>11) - ((tmm & 2048) >>11);
+	hand[6] += ((tpm & 8192) >>13) - ((tmm & 8192) >>13);
+	hand[7] += ((tpm &32768) >>15) - ((tmm &32768) >>15);
+
+	return;
+}
+
 #elif defined(__AVX__)
 inline	void	stringHandD(const __m256d s1, const __m256d s2, int *hand)
 {

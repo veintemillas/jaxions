@@ -149,7 +149,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 						mPy = opCode(blend_pd, mel, vel, 0b00001010);
 #else
 						vel = opCode(load_pd, &m[idxPy]);
-						mPy = opCode(shuffle_pd, vel, vel, 0x00000001);
+						mPy = opCode(shuffle_pd, vel, vel, 0b00000001);
 #endif
 					}
 					else
@@ -389,42 +389,42 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					tmp = opCode(mod_ps, grd, tpVec);
 					mPx = opCode(mul_ps, tmp, tmp);
 				} else
-				mPx = opCode(mul_ps, grd, grd);
+					mPx = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
 				if (wMod) {
 					tmp = opCode(mod_ps, grd, tpVec);
 					mMx = opCode(mul_ps, tmp, tmp);
 				} else
-				mMx = opCode(mul_ps, grd, grd);
+					mMx = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, mPy, mel);
 				if (wMod) {
 					tmp = opCode(mod_ps, grd, tpVec);
 					mPy = opCode(mul_ps, tmp, tmp);
 				} else
-				mPy = opCode(mul_ps, grd, grd);
+					mPy = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, mMy, mel);
 				if (wMod) {
 					tmp = opCode(mod_ps, grd, tpVec);
 					mMy = opCode(mul_ps, tmp, tmp);
 				} else
-				mMy = opCode(mul_ps, grd, grd);
+					mMy = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
 				if (wMod) {
 					tmp = opCode(mod_ps, grd, tpVec);
 					mPz = opCode(mul_ps, tmp, tmp);
 				} else
-				mPz = opCode(mul_ps, grd, grd);
+					mPz = opCode(mul_ps, grd, grd);
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
 				if (wMod) {
 					tmp = opCode(mod_ps, grd, tpVec);
 					mMz = opCode(mul_ps, tmp, tmp);
 				} else
-				mMz = opCode(mul_ps, grd, grd);
+					mMz = opCode(mul_ps, grd, grd);
 
 				grd = opCode(add_ps, mPx, mMx);
 				mMx = opCode(add_ps, mPy, mMy);

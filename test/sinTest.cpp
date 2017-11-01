@@ -67,6 +67,7 @@ int	main(int argc, char *argv[])
 	for (int k=0; k<KMAX; k++)
 	{
 #if	defined(__AVX512F__)
+		_MData_	v = { x, x+0.01f, x+0.02f, x+0.03f, x+0.04f, x+0.05f, x+0.06f, x+0.07f, x+0.08f, x+0.09f, x+0.10f, x+0.11f, x+0.12f, x+0.13f, x+0.14f, x+0.15f };
 #elif	defined(__AVX__)
 		_MData_	v = { x, x+0.01f, x+0.02f, x+0.03f, x+0.04f, x+0.05f, x+0.06f, x+0.07f };
 #else
@@ -108,6 +109,7 @@ int	main(int argc, char *argv[])
 	for (int k=0; k<KMAX; k++)
 	{
 #if	defined(__AVX512F__)
+		_MData_	v = { x, x+0.01f, x+0.02f, x+0.03f, x+0.04f, x+0.05f, x+0.06f, x+0.07f, x+0.08f, x+0.09f, x+0.10f, x+0.11f, x+0.12f, x+0.13f, x+0.14f, x+0.15f };
 #elif	defined(__AVX__)
 		_MData_	v = { x, x+0.01f, x+0.02f, x+0.03f, x+0.04f, x+0.05f, x+0.06f, x+0.07f };
 #else
@@ -149,6 +151,7 @@ int	main(int argc, char *argv[])
 	for (int k=0; k<KMAX; k++)
 	{
 #if	defined(__AVX512F__)
+		_MDatd_	v = { y, y+0.01, y+0.02, y+0.03, y+0.04, y+0.05, y+0.06, y+0.07 };
 #elif	defined(__AVX__)
 		_MDatd_	v = { y, y+0.01, y+0.02, y+0.03 };
 #else
@@ -187,6 +190,7 @@ int	main(int argc, char *argv[])
 	for (int k=0; k<KMAX; k++)
 	{
 #if	defined(__AVX512F__)
+		_MDatd_	v = { y, y+0.01, y+0.02, y+0.03, y+0.04, y+0.05, y+0.06, y+0.07 };
 #elif	defined(__AVX__)
 		_MDatd_	v = { y, y+0.01, y+0.02, y+0.03 };
 #else

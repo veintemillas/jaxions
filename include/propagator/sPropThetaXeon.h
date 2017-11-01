@@ -44,8 +44,8 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 	#define	step 2
 #endif
 
-		double * __restrict__ m		= (double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned (v_, Align);
+		double * __restrict__ m		= (      double * __restrict__) __builtin_assume_aligned (m_, Align);
+		double * __restrict__ v		= (      double * __restrict__) __builtin_assume_aligned (v_, Align);
 		const double * __restrict__ m2	= (const double * __restrict__) __builtin_assume_aligned (m2_, Align);
 
 		const double dzc = dz*c;
@@ -84,10 +84,6 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 
 				mel = opCode(load_pd, &m[idx]);
 				vel = opCode(load_pd, &v[idxMz]);
-
-				acu = opCode(sub_pd,
-					opCode(load_pd, &m2[idx]),
-					opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
 
 #if	defined(__AVX512F__) || defined(__FMA__)
 				acu = opCode(fnmadd_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec)), opCode(mul_pd, fMVec, opCode(load_pd, &m2[idxM2])));

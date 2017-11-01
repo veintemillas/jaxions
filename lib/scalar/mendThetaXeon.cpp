@@ -88,7 +88,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						/*	X-Direction	*/
 
 						mDf  = opCode(sub_pd, mPx, mel);
-#ifdef	__AVX512__
+#ifdef	__AVX512F__
 						auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
 						auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
 						auto mask = pMask | mMask;
@@ -99,8 +99,11 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							mPx = opCode(mask_add_pd, mPx, mMask, mPx, cVec);
 							vPx = opCode(mask_add_pd, vPx, mMask, vPx, vVec);
 
-							for (int i=1, int k=0; k<step; i<<=1, k++)
+							int i=1;
+							for (int k=0; k<step; k++) {
 								count += (mask & i) >> k;
+								i<<=1;
+							}
 
 							mDf  = opCode(sub_pd, mPx, mel);
 
@@ -211,7 +214,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 						/*	X-Direction	*/
 						mDf  = opCode(sub_ps, mPx, mel);
-#ifdef	__AVX512__
+#ifdef	__AVX512F__
 						auto pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
 						auto mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
 						auto mask = pMask | mMask;
@@ -222,8 +225,11 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
 							vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
 
-							for (int i=1, int k=0; k<step; i<<=1, k++)
+							int i=1;
+							for (int k=0; k<step; k++) {
 								count += (mask & i) >> k;
+								i<<=1;
+							}
 
 							mDf  = opCode(sub_ps, mPx, mel);
 

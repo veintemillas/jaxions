@@ -30,6 +30,7 @@ template<const bool wMod>
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
 				    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
+
 	const size_t Sf = Lx*Lx;
 
 	if (precision == FIELD_DOUBLE)
@@ -117,7 +118,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 					idxPy = idx + XC;
 					mPy = opCode(load_pd, &m[idxPy]);
 #ifdef	__AVX512F__
-					mMy = opCode(opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
+					mMy = opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX2__)
 					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
@@ -254,7 +255,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float iz = 1.f/zR;
-		const double tV	= 2.*M_PI*zR;
+		const float tV = 2.*M_PI*zR;
 #ifdef	__AVX512F__
 		const size_t XC = (Lx<<4);
 		const size_t YC = (Lx>>4);
