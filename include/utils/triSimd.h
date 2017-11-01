@@ -87,11 +87,20 @@ constexpr _MData_ s6d       = {        s6_d,        s6_d,        s6_d,        s6
 constexpr _MData_ s7d       = {        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d };
 constexpr _MData_ s8d       = {        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d };
 constexpr _MInt_  iZero     = {           0,           0,           0,           0,           0,           0,           0,           0 };
+#ifdef	__INTEL_COMPILER
+constexpr _MInt_  one       = {           1,           1,           1,           1,           1,           1,           1,           1,
+				          1,           1,           1,           1,           1,           1,           1,           1 };
+constexpr _MInt_  two       = {           2,           2,           2,           2,           2,           2,           2,           2,
+				          2,           2,           2,           2,           2,           2,           2,           2 };
+//constexpr _MHnt_  hOne      = {           1,           1,           1,           1,           1,           1,           1,           1 };
+//constexpr _MHnt_  hTwo      = {           2,           2,           2,           2,           2,           2,           2,           2 };
+#else
 constexpr _MInt_  one       = {  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297 };
 constexpr _MInt_  two       = {  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594 };
-constexpr _MHnt_  iZerh     = {           0,           0,           0,           0 };
+#endif
 constexpr _MHnt_  hOne      = {  4294967297,  4294967297,  4294967297,  4294967297 };
 constexpr _MHnt_  hTwo      = {  8589934594,  8589934594,  8589934594,  8589934594 };
+constexpr _MHnt_  iZerh     = {           0,           0,           0,           0 };
 #elif   defined(__AVX__)
 constexpr _MData_ rPid	    = { M_1_PI/(1<<24), M_1_PI/(1<<24), M_1_PI/(1<<24), M_1_PI/(1<<24) };
 constexpr _MData_ dPid	    = { M_1_PI/(1<<23), M_1_PI/(1<<23), M_1_PI/(1<<23), M_1_PI/(1<<23) };
@@ -165,6 +174,40 @@ constexpr _MInt_  one       = {  4294967297,  4294967297 };
 constexpr _MInt_  two       = {  8589934594,  8589934594 };
 #endif
 
+inline void printhVar(_MHnt_ d, const char *name) {
+
+	printf ("%s", name);
+#if	defined(__AVX512F__)
+	int r[8] __attribute((aligned(32)));
+	opCodl(store_si256, ((_MHnt_ *)r), d);
+	for (int i=0; i<8; i++)
+#elif	defined(__AVX__)
+	int r[4] __attribute((aligned(16)));
+	opCodl(store_si128, ((_MHnt_ *)r), d);
+	for (int i=0; i<4; i++)
+#else
+	int r[4] __attribute((aligned(16)));
+	opCodl(store_si128, ((_MInt_ *)r), d);
+	for (int i=0; i<4; i++)
+#endif
+		printf(" %d", r[i]);
+	printf("\n");
+}
+
+inline void printdVar(_MData_ d, const char *name) {
+
+	printf ("%s", name);
+#if	defined(__AVX512F__)
+	for (int i=0; i<8; i++)
+#elif	defined(__AVX__)
+	for (int i=0; i<4; i++)
+#else
+	for (int i=0; i<2; i++)
+#endif
+		printf(" %+lf", d[i]);
+	printf("\n");
+}
+
 /*	Sleef	*/
 
 inline _MData_	opCode(sin_pd, _MData_ x)
@@ -177,9 +220,8 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__)
-	//uh = opCode(mul_pd, opCode(roundscale_round_pd, opCode(mul_pd, x, rPid), 83, _MM_FROUND_NO_EXC | _MM_FROUND_TO_ZERO), rCte);
-	uh = opCode(mul_pd, opCode(roundscale_pd, opCode(mul_pd, x, rPid), 83), rCte);
-	ul = opCode(roundscale_round_pd, opCode(fmsub_pd, x, oPid, uh), 83, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
+	uh = opCode(mul_pd, opCode(roundscale_pd, opCode(mul_pd, x, rPid), 0x03), rCte);
+	ul = opCode(roundscale_round_pd, opCode(fmsub_pd, x, oPid, uh), 0x04, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
 #elif	defined(__FMA__)
 	uh = opCode(mul_pd, opCode(round_pd, opCode(mul_pd, x, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC), rCte);
 	ul = opCode(round_pd, opCode(fmsub_pd, x, oPid, uh), _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
@@ -187,7 +229,6 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 	uh = opCode(mul_pd, opCode(round_pd, opCode(mul_pd, x, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC), rCte);
 	ul = opCode(round_pd, opCode(sub_pd, opCode(mul_pd, x, oPid), uh), _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
 #endif 
-
 #if	defined(__AVX__)
 	qi = opCode(cvtpd_epi32, ul);
 #else
@@ -214,9 +255,12 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 #endif
 
 	s = opCode(mul_pd, d, d);
-
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castpd_si512, d), opCodl(cmpeq_epi32_mask, hOne, opCodl(and_si256, qi, hOne)), d, zeroNegd);
+	d = opCode(mask_xor_epi64, opCode(castpd_si512, d),
+		opCode(cmpeq_epi64_mask,
+			opCode(cvtepi32_epi64, opCodl(and_si256, hOne, opCodl(and_si256, qi, hOne))),
+			opCode(set1_epi64, 1)),
+		opCode(castpd_si512, d), opCode(castpd_si512, zeroNegd));
 #elif	defined(__AVX2__)
 	d = opCode(xor_pd, d,
 		opCode(and_pd, zeroNegd,
@@ -261,7 +305,9 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 
 #ifdef	__AVX512F__
 	u = opCode(mask_blend_pd,
-		opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ) | opCode(cmp_pd_mask, opCode(abs_pd, x), TriMaxd, _CMP_GT_OQ),
+		opCode(kor,
+			opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ),
+			opCode(cmp_pd_mask, opCode(abs_pd, x), TriMaxd, _CMP_GT_OQ)),
 		u, zeroNegd);
 #elif	defined(__AVX__)
 	u = opCode(blendv_pd, u,
@@ -296,8 +342,7 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__)
-	//uh = opCode(roundscale_round_pd, opCode(fmsub_pd, x, dPid, rPid), 83, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-	uh = opCode(roundscale_pd, opCode(fmsub_pd, x, dPid, rPid), 83);
+	uh = opCode(roundscale_pd, opCode(fmsub_pd, x, dPid, rPid), 0x03);
 	qi = opCode(cvtpd_epi32, opCode(fmadd_pd, x, oPid, opCode(fnmsub_pd, uh, dPid, dHlf)));
 #elif	defined(__FMA__)
 	uh = opCode(round_pd, opCode(fmsub_pd, x, dPid, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
@@ -337,7 +382,11 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 	s = opCode(mul_pd, d, d);
 
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castpd_si512, d), opCodl(cmpeq_epi32_mask, hOne, opCodl(and_si256, qi, hOne)), d, zeroNegd);
+	d = opCode(mask_xor_epi64, opCode(castpd_si512, d),
+		opCode(cmpneq_epi64_mask,
+			opCode(cvtepi32_epi64, opCodl(and_si256, qi, hTwo)),
+			opCode(set1_epi64, 2)),
+		opCode(castpd_si512, d), opCode(castpd_si512, zeroNegd));
 #elif	defined(__AVX2__)
 	d = opCode(xor_pd, d,
 		opCode(and_pd, zeroNegd,
@@ -504,7 +553,7 @@ inline _MData_	opCode(md2_pd, const _MData_ &x)
 #endif 
 
 constexpr float Inf_f = __builtin_inff();
-constexpr float Nan_f = __builtin_nanf("0xFFFFF");
+constexpr float Nan_f = __builtin_nanf("0x7FFFFF");
 
 constexpr float PiA_f = -3.140625f;
 constexpr float PiB_f = -0.0009670257568359375f;
@@ -596,6 +645,39 @@ constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3
 #endif
 
 /*	Sleef	*/
+inline void printiVar(_MInt_ d, const char *name) {
+
+	printf ("%s", name);
+#if	defined(__AVX512F__)
+	int r[16] __attribute((aligned(64)));
+	opCode(store_si512, r, d);
+	for (int i=0; i<16; i++)
+#elif	defined(__AVX__)
+	int r[8] __attribute((aligned(32)));
+	opCode(store_si256, ((_MInt_ *)r), d);
+	for (int i=0; i<8; i++)
+#else
+	int r[4] __attribute((aligned(16)));
+	opCode(store_si128, ((_MInt_ *)r), d);
+	for (int i=0; i<4; i++)
+#endif
+		printf(" %d", r[i]);
+	printf("\n");
+}
+
+inline void printsVar(_MData_ d, const char *name) {
+
+	printf ("%s", name);
+#if	defined(__AVX512F__)
+	for (int i=0; i<16; i++)
+#elif	defined(__AVX__)
+	for (int i=0; i<8; i++)
+#else
+	for (int i=0; i<4; i++)
+#endif
+		printf(" %f", d[i]);
+	printf("\n");
+}
 
 inline _MData_	opCode(sin_ps, _MData_ x)
 {
@@ -620,7 +702,7 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 	s = opCode(mul_ps, d, d);
 
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, one, opCode(and_epi32, q, one)), d, zeroNegf);
+	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, one, opCode(and_epi32, q, one)), opCode(castps_si512, d), opCode(castps_si512, zeroNegf));
 #elif	defined(__AVX2__)
 	d = opCode(xor_ps, d,
 		opCode(and_ps, zeroNegf,
@@ -653,7 +735,9 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 
 #ifdef	__AVX512F__
 	u = opCode(mask_blend_ps,
-		opCode(cmp_ps_mask, x, zeroNegf, _CMP_EQ_UQ) | opCode(cmp_ps_mask, opCode(abs_ps, x), TriMaxf, _CMP_GT_OQ),
+		opCode(kor,
+			opCode(cmp_ps_mask, x, zeroNegf, _CMP_EQ_UQ),
+			opCode(cmp_ps_mask, opCode(andnot_si512, opCode(castps_si512, x), opCode(castps_si512, zeroNegf)), TriMaxf, _CMP_GT_OQ)),
 		u, zeroNegf);
 #elif	defined(__AVX__)
 	u = opCode(blendv_ps, u,
@@ -676,7 +760,6 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 				TriMaxf)));
 	u = opCode(or_ps, u, opCode(cmpeq_ps, d, fInf));
 #endif
-
 
 	return	u;
 }
@@ -712,9 +795,9 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 #endif
 
 	s = opCode(mul_ps, d, d);
-
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, iZero, opCode(and_epi32, q, two)), d, zeroNegf);
+	d = opCode(castsi512_ps, 
+		opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, iZero, opCode(and_epi32, q, two)), opCode(castps_si512, d), opCode(castps_si512, zeroNegf)));
 #elif	defined(__AVX2__)
 	d = opCode(xor_ps, d,
 		opCode(and_ps, zeroNegf,
@@ -746,7 +829,10 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 #endif
 
 #ifdef	__AVX512F__
-	u = opCode(mask_blend_ps, opCode(cmp_ps_mask, opCode(abs_ps, x), TriMaxf, _CMP_GT_OQ), u, fNan);
+	u = opCode(mask_blend_ps, opCode(cmp_ps_mask, d, fInf, _CMP_EQ_UQ),
+		opCode(mask_blend_ps, opCode(knot, opCode(cmp_ps_mask, opCode(andnot_si512, opCode(castps_si512, x), opCode(castps_si512, zeroNegf)), TriMaxf, _CMP_GT_OQ)),
+			zeroNegf, u),
+		fInf);
 #elif	defined(__AVX__)
 	u = opCode(andnot_ps,
 		opCode(cmp_ps,

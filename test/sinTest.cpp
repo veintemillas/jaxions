@@ -100,6 +100,7 @@ int	main(int argc, char *argv[])
 	}
 
 	printf ("Total sin time %d evaluations ==> %s %lf vs CMath %lf\nMax argument %lf\nWorse precision %e\nSpeedup %.2lfx\n", KMAX, name.c_str(), vTime, cTime, x, worse, cTime/vTime);
+	fflush (stdout);
 
 	vTime = 0., cTime = 0.;
 	x = sX; worse = 0.;
@@ -140,6 +141,7 @@ int	main(int argc, char *argv[])
 	}
 
 	printf ("Total cos time %d evaluations ==> %s %lf vs CMath %lf\nMax argument %lf\nWorse precision %e\nSpeedup %.2lfx\n", KMAX, name.c_str(), vTime, cTime, x, worse, cTime/vTime);
+	fflush (stdout);
 
 	double y, sY = 0.0*3.14159, dWorse;
 
