@@ -1984,7 +1984,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	hsize_t slb  = slabSz;
 	char *dataM  = static_cast<char *>(axion->mCpu());
-	char *dataV  = static_cast<char *>(axion->vCpu());
+	char *dataV  = static_cast<char *>(axion->mCpu());
 	char mCh[16] = "/map/m";
 	char vCh[16] = "/map/v";
 
@@ -2002,13 +2002,16 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
 
-	if (axion->Precision() == FIELD_DOUBLE)
-		dataType = H5T_NATIVE_DOUBLE;
-	else
-		dataType = H5T_NATIVE_FLOAT;
-
 	if (axion->Field() == FIELD_SAXION)
 		slb *= 2;
+
+	if (axion->Precision() == FIELD_DOUBLE) {
+		dataV += slb*(field->Depth()+1)*sizeof(double);
+		dataType = H5T_NATIVE_DOUBLE;
+	} else {
+		dataV += slb*(field->Depth()+1)*sizeof(float);
+		dataType = H5T_NATIVE_FLOAT;
+	}
 
 	/*	Unfold field before writing configuration	*/
 	//if (axion->Folded())
