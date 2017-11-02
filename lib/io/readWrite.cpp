@@ -2006,10 +2006,10 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		slb *= 2;
 
 	if (axion->Precision() == FIELD_DOUBLE) {
-		dataV += slb*(field->Depth()+1)*sizeof(double);
+		dataV += slb*(axion->Depth()+1)*sizeof(double);
 		dataType = H5T_NATIVE_DOUBLE;
 	} else {
-		dataV += slb*(field->Depth()+1)*sizeof(float);
+		dataV += slb*(axion->Depth()+1)*sizeof(float);
 		dataType = H5T_NATIVE_FLOAT;
 	}
 
