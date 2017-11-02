@@ -58,10 +58,10 @@ inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 
 inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 {
-	__m512 zero = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
-	__m512 conj = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+	__m512 zero = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+	__m512 conj = { 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f };
 	__m512 tp2, tp3;
-	__mmask16 tpm, tmm, tmp, str;
+	__mmask16 tpm, tmm, tmp;
 
 	tp2 = opCode(mul_ps, s1, s2);
 	tmp = opCode(cmp_ps_mask, tp2, zero, _CMP_LT_OS);
@@ -114,10 +114,10 @@ inline	void	stringWallD(const __m512d s1, const __m512d s2, int *hand, int *wHan
 	msk &= 0b10101010;
 	wll  = msk & tmp;
 
-	wHand[0] |= (wll&2)  >> 1;
-	wHand[1] |= (wll&4)  >> 2;
-	wHand[2] |= (wll&8)  >> 3;
-	wHand[3] |= (wll&16) >> 4;
+	wHand[0] |= (wll & 2)   >> 1;
+	wHand[1] |= (wll & 8)   >> 3;
+	wHand[2] |= (wll & 32)  >> 5;
+	wHand[3] |= (wll & 128) >> 7;
 
 	/*	Strings		*/
 
@@ -140,7 +140,7 @@ inline	void	stringWallS(const __m512 s1, const __m512 s2, int *hand, int *wHand)
 	__m512 zero = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
 	__m512 conj = { 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f };
 	__m512 tp2, tp3;
-	__mmask16 tpm, tmm, tmp, wll, msk;
+	__mmask16 tpm, tmm, tmp, msk;
 
 	tp2 = opCode(mul_ps, s1, s2);
 	tmp = opCode(cmp_ps_mask, tp2, zero, _CMP_LT_OS);
@@ -151,22 +151,20 @@ inline	void	stringWallS(const __m512 s1, const __m512 s2, int *hand, int *wHand)
 	tp2 = opCode(permute_ps, tp3, 0b10110001);
 	tp3 = opCode(mul_ps, s1,  tp2);
 	tp2 = opCode(add_ps, tp3, opCode(permute_ps, tp3, 0b10110001));
-	tp3 = opCode(mul_ps, tp3, opCode(sub_ps, s1, s2));
+	tp3 = opCode(mul_ps, tp2, opCode(sub_ps, s1, s2));
 
 	/*	Walls		*/
 
-	msk  = opCode(cmp_ps_mask, tp3, opCode(setzero_pd), _CMP_LT_OS);
-	msk &= 0b1010101010101010;
-	wll  = msk & tmp;
+	msk  = opCode(kand, opCode(kand, opCode(cmp_ps_mask, tp3, opCode(setzero_pd), _CMP_LT_OS), 0b1010101010101010), tmp);
 
-	wHand[0] |= (wll & 2)   >> 1;
-	wHand[1] |= (wll & 4)   >> 2;
-	wHand[2] |= (wll & 8)   >> 3;
-	wHand[3] |= (wll & 16)  >> 4;
-	wHand[4] |= (wll & 32)  >> 5;
-	wHand[5] |= (wll & 64)  >> 6;
-	wHand[6] |= (wll & 128) >> 7;
-	wHand[7] |= (wll & 256) >> 8;
+	wHand[0] |= (msk & 2)     >> 1;
+	wHand[1] |= (msk & 8)     >> 3;
+	wHand[2] |= (msk & 32)    >> 5;
+	wHand[3] |= (msk & 128)   >> 7;
+	wHand[4] |= (msk & 512)   >> 9;
+	wHand[5] |= (msk & 2048)  >> 11;
+	wHand[6] |= (msk & 8192)  >> 13;
+	wHand[7] |= (msk & 32768) >> 15;
 
 	/*	Strings		*/
 
@@ -518,7 +516,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		int wHand[1] = { 0 };
 		int  hand[1] = { 0 };
 #endif
-		#pragma omp parallel default(shared) private(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
+		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
 			_MData_ str, tmp;
@@ -779,7 +777,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		int wHand[2] = { 0, 0 };
 #endif
 
-		#pragma omp parallel default(shared) private(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
+		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
 			_MData_ str, tmp;
