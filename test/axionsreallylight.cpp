@@ -255,7 +255,8 @@ int	main (int argc, char *argv[])
 		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
 	else if((vqcdType & VQCD_TYPE) == VQCD_1_PQ_2)
 		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
-
+	LogOut("Vqcd flag %d\n", vqcdType);
+	LogOut("Damping %d gam = %f\n", vqcdType & VQCD_DAMP, gammo);
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("           ESTIMATES  						                \n\n");
 	double z_doom = pow(0.1588*msa/delta,2./(nQcd+2.))	;

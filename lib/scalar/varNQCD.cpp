@@ -71,15 +71,23 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ)
 		double alpha = 0.;
 		double shift = 0.;
 		double discr = 4./3.;
+//		double beta  = 1+gammo/delta;
 
 	switch	(VqcdPQ & VQCD_TYPE) {
 		case	VQCD_1:
 			alpha = axmass*axmass/(LLL);
 			discr = 4./3.-9.*alpha*alpha;
 			shift = ((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
-		 break;
+		break;
+		// case	VQCD_1_DRHO:
+		// 	alpha = axmass*axmass/(LLL);
+		// 	beta  = axmass*axmass/(LLL);
+		// 	discr = 4.*beta/3.-9.*alpha*alpha;
+		// 	shift = ...
+		//  make a model independent shift?
+		// break;
 		case	VQCD_1_PQ_2:
-		case	VQCD_1_PQ_2_RHO:
+		case	VQCD_1_PQ_2_DRHO:
 			alpha = axmass*axmass/(LLL);
 	 		//shift = (sqrt(4.+9.*alpha)-2.)/18.;
 			shift = rsvPQ2(alpha);

@@ -336,10 +336,10 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 
 		const float z4 = z2*z2;
-		const float LaLa = LL*2./z4;
+		const float LaLa = LL*2.f/z4;
 		const float GGGG = pow(ood2,0.5)*gammo;
 		const float GGiZ = GGGG/zR;
-		const float mola = GGGG*dzc/2.;
+		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
 		const float epsi = mola/(1.f+mola);
@@ -562,7 +562,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 							opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
 							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 								opCode(add_ps,
-									opCode(mul_ps,vecmv,opCode(set1_ps, 2.)),
+									opCode(mul_ps,vecmv,opCode(set1_ps, 2.f)),
 									opCode(mul_ps,vecma,opCode(set1_ps, dzc)))));
 						break;
 					}
@@ -837,7 +837,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #else
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
 					case	VQCD_1:
 						mMx = opCode(sub_pd,
 							opCode(add_pd,
@@ -1116,7 +1116,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
 					case	VQCD_1:
 						mMx = opCode(sub_ps,
 							opCode(add_ps,
