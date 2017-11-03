@@ -141,7 +141,7 @@ void	ConfGenerator::runGpu	()
 			myPlan.run(FFT_BCK);
 			axionField->sendGhosts(FIELD_M, COMM_SDRV);
 			axionField->sendGhosts(FIELD_M, COMM_WAIT);
-
+			// Is this right????
 			cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			axionField->transferDev(FIELD_MV);
 			scaleField (axionField, FIELD_M, *axionField->zV());
@@ -179,7 +179,8 @@ void	ConfGenerator::runGpu	()
 		smoothGpu (axionField, sIter, alpha);
 		prof.stop();
 		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
-		normCoreField (axionField);
+		if (smvarType != CONF_SAXNOISE)
+			normCoreField (axionField);
 		scaleField (axionField, FIELD_M, *axionField->zV());
 
 		axionField->transferCpu(FIELD_MV);

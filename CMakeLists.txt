@@ -34,6 +34,7 @@ set(USE_AVX OFF CACHE BOOL "builds Avx support")
 set(USE_AVX2 OFF CACHE BOOL "builds Avx2 support")
 set(USE_AVX512 OFF CACHE BOOL "builds Avx-512 support")
 set(USE_FMA OFF CACHE BOOL "builds Fma support")
+set(HDF5_PARALLEL_COMPRESSION OFF CACHE BOOL "uses experimental parallel compression, requires Hdf5 1.11.0")
 
 # do all the build definitions
 #
