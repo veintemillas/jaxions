@@ -136,6 +136,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 void	Folder::operator()(FoldType fType, size_t cZ)
 {
+	// Careful here, GPUS might want to call CPU routines
 	if (field->Device() == DEV_GPU)
 		return;
 

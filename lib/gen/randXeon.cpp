@@ -53,8 +53,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				case CONF_RAND:
 				//RANDOM INITIAL CONDITIONS
 				{
-				m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
-				break;
+					m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+					break;
 				}
 
 				//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
@@ -87,35 +87,36 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				case CONF_MINICLUSTER:
 				//	MINICLUSTER CENTERED AT GRID
 				{
-				pidx = idx-Vo;
-				iz = pidx/Vo + local_z_start;
-				iy = (pidx%Vo)/sizeN ;
-				ix = (pidx%Vo)%sizeN ;
-				z = iz;
-				y = iy;
-				x = ix;
-				Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
-				theta = exp(-theta*kCrit)*mode0;
-			  m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					pidx = idx-Vo;
+					iz = pidx/Vo + local_z_start;
+					iy = (pidx%Vo)/sizeN ;
+					ix = (pidx%Vo)%sizeN ;
+					z = iz;
+					y = iy;
+					x = ix;
+					Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
+					theta = exp(-theta*kCrit)*mode0;
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 				break;
 				}
 
-				case CONF_MINICLUSTER0:
 				//	MINICLUSTER CENTERED AT ZERO
-				{pidx = idx-Vo;
-				iz = pidx/Vo + local_z_start;
-				iy = (pidx%Vo)/sizeN ;
-				ix = (pidx%Vo)%sizeN ;
-				z = iz;
-				y = iy;
-				x = ix;
-				if (z>sizeN/2) {z = z-sizeN; }
-				if (y>sizeN/2) {y = y-sizeN; }
-				if (x>sizeN/2) {x = x-sizeN; }
-				Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
-				theta = exp(-theta*kCrit)*mode0;
-				m[idx] = std::complex<Float>(cos(theta), sin(theta));
-				break;
+				case CONF_MINICLUSTER0:
+				{
+					pidx = idx-Vo;
+					iz = pidx/Vo + local_z_start;
+					iy = (pidx%Vo)/sizeN ;
+					ix = (pidx%Vo)%sizeN ;
+					z = iz;
+					y = iy;
+					x = ix;
+					if (z>sizeN/2) {z = z-sizeN; }
+					if (y>sizeN/2) {y = y-sizeN; }
+					if (x>sizeN/2) {x = x-sizeN; }
+					Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
+					theta = exp(-theta*kCrit)*mode0;
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
 				}
 
 
@@ -123,61 +124,63 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				//// {
 				//// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (pidx%Vo)%sizeN, ix,iy,iz,m[idx].real(),m[idx].imag());
 				//// }
-				case CONF_STRINGXY:
 				//	STRING XY
-				{pidx = idx-Vo;
-				iz = pidx/Vo + local_z_start;
-				iy = (pidx%Vo)/sizeN ;
-				ix = (pidx%Vo)%sizeN ;
-				z = iz;
-				y = iy;
-				x = ix;
-				//CENTERED AT GRID, z=0
-				if (z>sizeN/2) {z = z-sizeN; }
-				Float aL = ((Float) sizeN)/4.01;	//RADIUS
-				rho2 = (x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2);
-				Float rho = sqrt((Float) rho2)	;
-				Float z2 = ((Float) z*z) ;
-				Float d12 = (rho + aL)*(rho + aL) + z2 ;
-				Float d22 = (rho - aL)*(rho - aL) + z2 ;
-				// d12 /= ((Float) Vo) ;
-				// d22 /= ((Float) Vo) ;
-				Float zis = (Float) z ;
-				Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.5 + zis)/abs(-0.5 + zis)	;
-				m[idx] = std::complex<Float>(cos(theta), sin(theta));
-				break;
+				case CONF_STRINGXY:
+				{
+					pidx = idx-Vo;
+					iz = pidx/Vo + local_z_start;
+					iy = (pidx%Vo)/sizeN ;
+					ix = (pidx%Vo)%sizeN ;
+					z = iz;
+					y = iy;
+					x = ix;
+					//CENTERED AT GRID, z=0
+					if (z>sizeN/2) {z = z-sizeN; }
+					Float aL = ((Float) sizeN)/4.01;	//RADIUS
+					rho2 = (x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2);
+					Float rho = sqrt((Float) rho2)	;
+					Float z2 = ((Float) z*z) ;
+					Float d12 = (rho + aL)*(rho + aL) + z2 ;
+					Float d22 = (rho - aL)*(rho - aL) + z2 ;
+					// d12 /= ((Float) Vo) ;
+					// d22 /= ((Float) Vo) ;
+					Float zis = (Float) z ;
+					Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.5 + zis)/abs(-0.5 + zis)	;
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
 				}
 
+				//	STRING YZ
 				case CONF_STRINGYZ:
-				//	STRING yZ
-				{pidx = idx-Vo;
-				iz = pidx/Vo + local_z_start;
-				iy = (pidx%Vo)/sizeN ;
-				ix = (pidx%Vo)%sizeN ;
-				z = iz;
-				y = iy;
-				x = ix;
-				//CENTERED AT GRID, z=0
-				if (z>sizeN/2) {z = z-sizeN; }
-				Float aL = ((Float) sizeN)/4.01;	//RADIUS
-				rho2 = (z)*(z)+(y-sizeN/2)*(y-sizeN/2);
-				Float rho = sqrt((Float) rho2)	;
-				Float z2 = ((Float) ((x-sizeN/2)*(x-sizeN/2))) ;
-				Float d12 = (rho + aL)*(rho + aL) + z2 ;
-				Float d22 = (rho - aL)*(rho - aL) + z2 ;
-				// d12 /= ((Float) Vo) ;
-				// d22 /= ((Float) Vo) ;
-				Float zis = (Float) x ;
-				Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
-				theta = 3.14159265*theta*theta	;
-				if (x>sizeN/2)
-				theta *= -1 ;
+				{
+					pidx = idx-Vo;
+					iz = pidx/Vo + local_z_start;
+					iy = (pidx%Vo)/sizeN ;
+					ix = (pidx%Vo)%sizeN ;
+					z = iz;
+					y = iy;
+					x = ix;
+					//CENTERED AT GRID, z=0
+					if (z>sizeN/2) {z = z-sizeN; }
+					Float aL = ((Float) sizeN)/4.01;	//RADIUS
+					rho2 = (z)*(z)+(y-sizeN/2)*(y-sizeN/2);
+					Float rho = sqrt((Float) rho2)	;
+					Float z2 = ((Float) ((x-sizeN/2)*(x-sizeN/2))) ;
+					Float d12 = (rho + aL)*(rho + aL) + z2 ;
+					Float d22 = (rho - aL)*(rho - aL) + z2 ;
+					// d12 /= ((Float) Vo) ;
+					// d22 /= ((Float) Vo) ;
+					Float zis = (Float) x ;
+					Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
+					theta = 3.14159265*theta*theta	;
+					if (x>sizeN/2)
+						theta *= -1 ;
 
-				m[idx] = std::complex<Float>(cos(theta), sin(theta));
-				break;
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
 				}
+			}
 		}
-	}
 	}
 
 	trackFree((void **) &sd, ALLOC_TRACK);
