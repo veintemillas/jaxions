@@ -1648,7 +1648,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	hsize_t slb  = slabSz;
 	hsize_t lSz  = sizeN;
 	char *dataM  = static_cast<char *>(axion->mCpu());
-	char *dataV  = static_cast<char *>(axion->vCpu());
+	char *dataV  = static_cast<char *>(axion->mCpu());
 	char mCh[16] = "/map/m";
 	char vCh[16] = "/map/v";
 
