@@ -1737,12 +1737,12 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		exit (1);
 	}
 
-	if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression, hoping that the map is a bunch of zeroes
-	{
-		LogError ("Fatal error H5Pset_deflate");
-		prof.stop();
-		exit (1);
-	}
+//	if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression, hoping that the map is a bunch of zeroes
+//	{
+//		LogError ("Fatal error H5Pset_deflate");
+//		prof.stop();
+//		exit (1);
+//	}
 
 	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
 	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)

@@ -558,12 +558,19 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 						// mPy=V veca=A mPx=|M|^2
 						// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt)
+#if	defined(__AVX512F__) || defined(__FMA__)
+						tmp = opCode(sub_ps,
+							opCode(fmadd_ps, veca, opCode(set1_pd, dzc), mPy),
+							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
+								opCode(fmadd_ps, vecmv, opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+#else
 						tmp = opCode(sub_ps,
 							opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
 							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 								opCode(add_ps,
-									opCode(mul_ps,vecmv,opCode(set1_ps, 2.f)),
-									opCode(mul_ps,vecma,opCode(set1_ps, dzc)))));
+									opCode(mul_ps, vecmv, opCode(set1_ps, 2.f)),
+									opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+#endif
 						break;
 					}
 

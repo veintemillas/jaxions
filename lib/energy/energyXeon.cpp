@@ -852,11 +852,6 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Krho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
 				Kth   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 #else
-/*
-				opCode(store_ps, tmpS, tGp);
-				Grho += tmpS[0] + tmpS[2];
-				Gth  += tmpS[1] + tmpS[3];
-*/
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2]);
 				Gxth  += (double) (tmpS[1] + tmpS[3]);
