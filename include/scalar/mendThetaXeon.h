@@ -3,6 +3,6 @@
 
 	#include "scalar/scalarField.h"
 
-	bool	mendSliceXeon (Scalar *field, size_t slice);
-	bool	mendThetaXeon (Scalar *field);
+	size_t	mendSliceXeon (Scalar *field, size_t slice);
+	size_t	mendThetaXeon (Scalar *field);
 #endif
