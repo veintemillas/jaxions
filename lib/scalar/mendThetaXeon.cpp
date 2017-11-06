@@ -272,7 +272,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							mask = 0;
 
 							for (int k=0; k<step; k++)
-								mask += reinterpret_cast<size_t&>(mDc[k]) & 1;
+								mask += reinterpret_cast<int&>(mDc[k]) & 1;
 						}
 #endif
 						opCode(store_ps, &m[idxPx], mPx);
