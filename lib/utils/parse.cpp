@@ -1085,7 +1085,7 @@ int	parseArgs (int argc, char *argv[])
 		msa = sqrt(2*LL)*tmp;
 	}
 
- 	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol) ;
+ 	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
 
 	return	procArgs;
 }

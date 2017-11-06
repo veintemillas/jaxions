@@ -532,7 +532,7 @@
 			switch (axionField->Field()) {
 
 				case FIELD_SAXION:
-					switch (VQcd) {
+					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
 						case VQCD_1:
 							return	(1e-9 * ((double) axionField->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
 							break;
@@ -565,7 +565,7 @@
 			switch (axionField->Field()) {
 
 				case FIELD_SAXION:
-					switch (VQcd) {
+					switch (VQcd & VQC_TYPE) {	//FIXME Wrong for damping/only rho
 						case VQCD_1:
 							return	(1e-9 * ((double) axionField->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
 								+ 5.*1.44695*log(((double) axionField->Size()))));

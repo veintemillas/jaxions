@@ -183,24 +183,36 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 		case PROP_RKN4:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropRKN4<VQCD_1> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1> >	     (field, LL, nQcd, delta, spec);
+					break;
+				case VQCD_1_RHO:
+					prop = std::make_unique<PropRKN4<VQCD_1_RHO> >	     (field, LL, nQcd, delta, spec);
+					break;
+				case VQCD_1_DRHO:
+					prop = std::make_unique<PropRKN4<VQCD_1_DRHO> >	     (field, LL, nQcd, delta, spec);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2> >	     (field, LL, nQcd, delta, spec);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO> >  (field, LL, nQcd, delta, spec);
 					break;
 				case VQCD_1_PQ_2_DRHO:
 					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO> > (field, LL, nQcd, delta, spec);
 					break;
 				case VQCD_2:
-					prop = std::make_unique<PropRKN4<VQCD_2> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2> >	     (field, LL, nQcd, delta, spec);
+					break;
+				case VQCD_2_RHO:
+					prop = std::make_unique<PropRKN4<VQCD_2_RHO> >	     (field, LL, nQcd, delta, spec);
+					break;
+				case VQCD_2_DRHO:
+					prop = std::make_unique<PropRKN4<VQCD_2_DRHO> >	     (field, LL, nQcd, delta, spec);
 					break;
 
 
 				case VQCD_NONE:
-					prop = std::make_unique<PropRKN4<VQCD_NONE> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_NONE> >	     (field, LL, nQcd, delta, spec);
 					break;
 			}
 

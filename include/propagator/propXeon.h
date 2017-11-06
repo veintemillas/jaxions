@@ -560,7 +560,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 						// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt)
 #if	defined(__AVX512F__) || defined(__FMA__)
 						tmp = opCode(sub_ps,
-							opCode(fmadd_ps, veca, opCode(set1_pd, dzc), mPy),
+							opCode(fmadd_ps, veca, opCode(set1_ps, dzc), mPy),
 							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 								opCode(fmadd_ps, vecmv, opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #else
@@ -935,7 +935,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #if	defined(__AVX__)// || defined(__AVX512F__)
 						auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
 #else
-						vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
+						auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
 #endif
 						auto veca = opCode(add_pd, mMx, opCode(mul_pd, mel, opCode(set1_pd, GGiZ)));
 
@@ -970,7 +970,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #if	defined(__AVX__)// || defined(__AVX512F__)
 					auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b00000101), vecmv);
 #else
-					vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
+					auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
 #endif
 					tmp   = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
 				}
@@ -1124,6 +1124,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
 				switch	(VQcd & VQCD_TYPE) {
+					default:
 					case	VQCD_1:
 						mMx = opCode(sub_ps,
 							opCode(add_ps,
@@ -1210,14 +1211,14 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #if	defined(__AVX__)// || defined(__AVX512F__)
 						auto vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
 #else
-						vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
+						auto vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
 
 						tmp = opCode(mul_ps, mel, mMx);
 #if	defined(__AVX__)// || defined(__AVX512F__)
 						auto vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
 #else
-						vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
+						auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
 						auto veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGiZ)));
 
@@ -1241,7 +1242,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 #if	defined(__AVX__)// || defined(__AVX512F__)
 					auto vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
 #else
-					vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
+					auto vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
 #endif
 					tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
 				}
