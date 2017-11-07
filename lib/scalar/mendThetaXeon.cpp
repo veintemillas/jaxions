@@ -408,7 +408,7 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 
 		/*	We run only one rank at a time, otherwise we can enter an infinite	*/
 		/*	loop where one rank undoes what another did				*/
-	
+
 		if (rank == cRank) {
 			for (size_t idx=0,i=1; i<Lz; i++,idx+=Sf) {
 
@@ -449,8 +449,8 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 
 size_t	mendThetaXeon (Scalar *field)
 {
-	constexpr int	dStep = Align/sizeof(double); 
-	constexpr int	fStep = Align/sizeof(float); 
+	constexpr int	dStep = Align/sizeof(double);
+	constexpr int	fStep = Align/sizeof(float);
 	const double	z     = *(field->zV());
 	size_t		tJmp = 0;
 
@@ -467,7 +467,6 @@ size_t	mendThetaXeon (Scalar *field)
 		tJmp += mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 	}
-
+	LogOut("mendTheta done mends = %lu\n",tJmp);
 	return	tJmp;
 }
-
