@@ -343,6 +343,7 @@ int	main (int argc, char *argv[])
 				propagate (axion, dzaux);
 
 				if (commRank() == 0 && sPrec == FIELD_SINGLE) {
+					z_now = (*axion->zV());
 						if (axion->Field() == FIELD_SAXION) {
 							// LAMBDA_Z2 MODE assumed!
 								if (axion->Lambda() == LAMBDA_Z2)
@@ -594,6 +595,7 @@ int	main (int argc, char *argv[])
 	LogOut("| ");
 
 	index++	;
+	z_now = (*axion->zV());
 
 	if (axion->Field() == FIELD_AXION)
 	{
@@ -672,8 +674,8 @@ int	main (int argc, char *argv[])
 						LogOut ("WKBing %d to %.4f ... ", index, wkb2z);
 
 						wonka(wkb2z) 	;
-
-						LogOut (" done!\n", zFinl);
+						z_now = (*axion->zV());
+						LogOut (" done! (z=%.4f)\n", z_now);
 
 						index++			;
 						if ( (prinoconfo >= 2) ){
