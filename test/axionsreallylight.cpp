@@ -259,7 +259,11 @@ int	main (int argc, char *argv[])
 	LogOut("Damping %d gam = %f\n", vqcdType & VQCD_DAMP, gammo);
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("           ESTIMATES  						                \n\n");
-	double z_doom = pow(0.1588*msa/delta,2./(nQcd+2.))	;
+	double z_doom;
+	if ((vqcdType & VQCD_TYPE) == VQCD_1_PQ_2)
+	z_doom = pow(0.1588*2.0*msa/delta,2./(nQcd+2.))	;
+	else
+	z_doom = pow(0.1588*msa/delta,2./(nQcd+2.))	;
 	double z_axiq = pow(1./delta,2./(nQcd+2.))					;
 	double z_NR   = pow(3.46/delta,2./(nQcd+2.))					;
 	LogOut("z_doomsday %f \n", z_doom);
@@ -298,6 +302,9 @@ int	main (int argc, char *argv[])
 
 	// LL is LL      in FIXED MODE
 	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
+	// damping only from doomsday
+	// VqcdType vqcdType_save = vqcdType ;
+	// vqcdType |= vqcdType
 	initPropagator (pType, axion, nQcd, delta, LL, vqcdType);
 
 	start = std::chrono::high_resolution_clock::now();
