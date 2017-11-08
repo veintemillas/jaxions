@@ -276,6 +276,13 @@
 			FIND_MIN,
 		}	FindType;
 
+		typedef	enum	MapType_s {
+			MAP_RHO   = 1,
+			MAP_THETA = 2,
+			MAP_ALL   = 3,
+			MAP_NONE  = 0,
+		}	MapType;
+
 		template<typename enumFlag>
 		inline constexpr enumFlag  operator &  (enumFlag  lhs, const enumFlag rhs) { return static_cast<enumFlag>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
 		template<typename enumFlag>
@@ -284,6 +291,10 @@
 		inline constexpr enumFlag  operator |  (enumFlag  lhs, const enumFlag rhs) { return static_cast<enumFlag>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
 		template<typename enumFlag>
 		inline constexpr enumFlag& operator |= (enumFlag &lhs, const enumFlag rhs) { lhs  = static_cast<enumFlag>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
+		template<typename enumFlag>
+		inline constexpr enumFlag  operator ^  (enumFlag  lhs, const enumFlag rhs) { return static_cast<enumFlag>(static_cast<int>(lhs) ^ static_cast<const int>(rhs)); }
+		template<typename enumFlag>
+		inline constexpr enumFlag& operator ^= (enumFlag &lhs, const enumFlag rhs) { lhs  = static_cast<enumFlag>(static_cast<int>(lhs) ^ static_cast<const int>(rhs)); return lhs; }
 	}	// End namespace
 
 	using namespace AxionEnum;

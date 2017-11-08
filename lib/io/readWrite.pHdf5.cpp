@@ -1125,10 +1125,10 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-void	writeEDens (Scalar *axion, int index)
+void	writeEDens (Scalar *axion, int index, MapType fMap)
 {
-	hid_t	group_id, mset_id, plist_id, chunk_id;
-	hid_t	mSpace, memSpace, dataType, totalSpace;
+	hid_t	eGrp_id, group_id, rset_id, tset_id, plist_id, chunk_id;
+	hid_t	rSpace, tSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
 	char	prec[16], fStr[16];
@@ -1142,6 +1142,16 @@ void	writeEDens (Scalar *axion, int index)
 
 	LogMsg (VERB_NORMAL, "Writing energy density to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
+
+	if ((fMap & MAP_RHO) && (axion->Field() & FIELD_AXION)) {
+	        LogMsg (VERB_NORMAL, "Requested MAP_RHO with axion field. Request will be ignored");
+	        fMap ^= MAP_RHO;
+	}
+
+	if ((fMap & MAP_ALL) == MAP_NONE) {
+	        LogMsg (VERB_NORMAL, "Nothing to map. Skipping writeEDens");
+	        return;
+	}
 
 	/*      Start profiling         */
 
@@ -1190,36 +1200,13 @@ void	writeEDens (Scalar *axion, int index)
 	uint totlZ = sizeZ*zGrid;
 	uint tmpS  = sizeN;
 
-	switch (axion->Field())
-	{
-		case 	FIELD_SAXION:
-		{
-			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ*2));
-			slab  = (hsize_t) (axion->Surf()*2);
-		}
-		break;
+	total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ));
+	slab  = (hsize_t) axion->Surf();
 
-		case	FIELD_AXION_MOD:
-		case	FIELD_AXION:
-		{
-			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
-			slab  = (hsize_t) axion->Surf();
-		}
-		break;
-
-		case	FIELD_WKB:
-
+	if (axion->Field() == FIELD_WKB) {
 		LogError ("Error: WKB field not supported");
+		prof.stop();
 		exit(1);
-
-		break;
-
-		default:
-
-		LogError ("Error: Invalid field type. How did you get this far?");
-		exit(1);
-
-		break;
 	}
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
@@ -1257,10 +1244,10 @@ void	writeEDens (Scalar *axion, int index)
 	auto status = H5Lexists (meas_id, "/energy", H5P_DEFAULT);
 
 	if (!status)
-		group_id = H5Gcreate2(meas_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		eGrp_id = H5Gcreate2(meas_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
 		if (status > 0) {
-			group_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);		// Group exists
+			eGrp_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);		// Group exists
 		} else {
 			LogError ("Error: can't check whether group /energy exists");
 			prof.stop();
@@ -1268,53 +1255,123 @@ void	writeEDens (Scalar *axion, int index)
 		}
 	}
 
+	/*	Create a group for energy density if it doesn't exist	*/
+	status = H5Lexists (eGrp_id, "density", H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(eGrp_id, "density", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(eGrp_id, "density", H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "Group /energy/density exists");
+		} else {
+			LogError ("Error: can't check whether group /energy/density exists");
+			prof.stop();
+			return;
+		}
+	}
+
 	/*	Create a dataset for the whole axion data	*/
 
-	char mCh[24] = "/energy/density";
+	char rhoCh[24] = "/energy/density/rho";
+	char thCh[24]  = "/energy/density/theta";
 
-	mset_id = H5Dcreate (meas_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	if (fMap & MAP_RHO) {
+		rset_id = H5Dcreate (meas_id, rhoCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
-	commSync();
+		if (rset_id < 0)
+		{
+			LogError("Error creating rho dataset");
+			prof.stop();
+			exit (0);
+		}
 
-	if (mset_id < 0)
-	{
-		LogError("Error creating dataset");
-		prof.stop();
-		exit (0);
+		rSpace = H5Dget_space (rset_id);
+	}
+
+	if (fMap & MAP_THETA) {
+		tset_id = H5Dcreate (meas_id, thCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+		if (tset_id < 0)
+		{
+			LogError("Error creating theta dataset");
+			prof.stop();
+			exit (0);
+		}
+
+		tSpace = H5Dget_space (tset_id);
 	}
 
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
-	mSpace = H5Dget_space (mset_id);
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 
 	commSync();
 
 	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
 
-	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
-	{
-		/*	Select the slab in the file	*/
-		offset = (((hsize_t) (myRank*axion->Depth())) + zDim)*slab;
-		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+	const hsize_t Lz = axion->Depth();
 
-		/*	Write raw data	*/
-		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(zDim+1)*dataSize));
-
-		if (mErr < 0)
+	if (fMap & MAP_RHO) {
+		for (hsize_t zDim = 0; zDim < Lz; zDim++)
 		{
-			LogError ("Error writing dataset");
-			prof.stop();
-			exit(0);
+			/*	Select the slab in the file	*/
+			offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+			H5Sselect_hyperslab(rSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+			/*	Write raw data	*/
+			auto rErr = H5Dwrite (rset_id, dataType, memSpace, rSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(Lz+zDim+1)*dataSize));
+
+			if (rErr < 0)
+			{
+				LogError ("Error writing rho dataset");
+				prof.stop();
+				exit(0);
+			}
 		}
+
+		commSync();
+	}
+
+	if (fMap & MAP_THETA) {
+		for (hsize_t zDim = 0; zDim < Lz; zDim++)
+		{
+			/*	Select the slab in the file	*/
+			offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+			H5Sselect_hyperslab(tSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+			/*	Write raw data	*/
+			auto tErr = H5Dwrite (tset_id, dataType, memSpace, tSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(zDim+1)*dataSize));
+
+			if (tErr < 0)
+			{
+				LogError ("Error writing theta dataset");
+				prof.stop();
+				exit(0);
+			}
+		}
+
+		commSync();
 	}
 
 	LogMsg (VERB_HIGH, "Write energy map successful");
 
+	size_t bytes = 0;
+
 	/*	Close the dataset	*/
 
-	H5Dclose (mset_id);
-	H5Sclose (mSpace);
+	if (fMap & MAP_RHO) {
+		H5Dclose (rset_id);
+		H5Sclose (rSpace);
+		bytes += total*dataSize;
+	}
+
+	if (fMap & MAP_THETA) {
+		H5Dclose (tset_id);
+		H5Sclose (tSpace);
+		bytes += total*dataSize;
+	}
+
 	H5Sclose (memSpace);
 
 	/*	Close the file		*/
@@ -1322,11 +1379,12 @@ void	writeEDens (Scalar *axion, int index)
 	H5Sclose (totalSpace);
 	H5Pclose (chunk_id);
 	H5Gclose (group_id);
+	H5Gclose (eGrp_id);
 
         prof.stop();
-	prof.add(std::string("Write energy map"), 0., (2.*total*dataSize + 78.)*1e-9);
+	prof.add(std::string("Write energy map"), 0., ((double) bytes)*1e-9);
 
-	LogMsg (VERB_NORMAL, "Written %lu bytes", total*dataSize*2 + 78);
+	LogMsg (VERB_NORMAL, "Written %lu bytes", bytes);
 }
 
 //------------------------------------------------------------------------------
