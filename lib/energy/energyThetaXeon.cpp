@@ -463,11 +463,6 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 						//SAVED AS AN UNFOLDED UNPADDED REAL FIELD WITH ghostBytes!
 						/***** Note: this version HAS ghostBytes *****/
 						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
-						if (iNx == 22887 + Sf) {
-							printf("Punto 22887 (%d %d %d) %fx(%f + %f + %f) + %fx%f + %fx%f --> %f\n", X[0]/step, X[1]+ih*YC, X[2]-1, o2,
-								tmpGx[ih], tmpGy[ih], tmpGz[ih], iz2*0.5, tmpK[ih], zQ, tmpV[ih], m2[iNx]);
-							printf("z %f mel %f cos %e 1.-cos %e\n", zR, tMel[ih], tCos[ih], 1.f - tCos[ih]);
-						}
 						//SAVED AS AN UNFOLDED PADDED REAL FIELD WITH ghostBytes!
 						/***** Note: this version is wrong, it counts twice the ghosts *****/
 						//m2[Sf + iNx + 2*(iNx/Lx)] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
@@ -520,4 +515,3 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd,
 			break;
 	}
 }
-
