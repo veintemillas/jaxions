@@ -103,6 +103,34 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ)
 	return	shift;
 }
 
+double	dzSize	(double z, FieldType fType, LambdaType lType, VqcdType poti) {
+	double oodl = ((double) sizeN)/sizeL;
+	double mAx2 = axionmass2(z, nQcd, zthres, zrestore);
+	double mAfq = 0.;
+
+	if ((fType & FIELD_AXION) || (fType == FIELD_WKB))
+		return	wDz/sqrt(mAx2*(z*z) + 12.*(oodl*oodl));
+	 else
+		mAfq = sqrt(mAx2*(z*z) + 12.*oodl*oodl);
+
+	double mSfq = 0.;
+
+	double facto = 1.;
+	if (poti & VQCD_TYPE == VQCD_1_PQ_2)
+	facto = 2. ;
+
+	switch (lType) {
+		case	LAMBDA_Z2:
+			mSfq = sqrt(facto*facto*msa*msa + 12.)*oodl;
+			break;
+
+		case	LAMBDA_FIXED:
+			mSfq = sqrt(2.*LL*(z*z)*facto*facto   + 12.*oodl);
+			break;
+	}
+
+	return	wDz/std::max(mSfq,mAfq);
+}
 
 double	dzSize	(double z, FieldType fType, LambdaType lType) {
 	double oodl = ((double) sizeN)/sizeL;
