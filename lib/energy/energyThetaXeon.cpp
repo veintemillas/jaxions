@@ -219,10 +219,8 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPz = opCode(sub_pd, vel, opCode(mul_pd, mel, izVec));
 				mPx = opCode(mul_pd, mPz, mPz);
 
-				mPy = opCode(sub_pd,
-					one,
-					opCode(cos_pd,
-						opCode(mul_pd, izVec, mel)));
+				tmp = opCode(sin_pd, opCode(mul_pd, opCode(set1_pd, 0.5), opCode(mul_pd, mel, izVec)));
+				mPy = opCode(mul_pd, opCode(mul_pd, tmp, tmp), opCode(set1_pd, 2.));
 
 				opCode(store_pd, tmpGx, grd);
 				opCode(store_pd, tmpGy, mMx);
@@ -436,14 +434,19 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPx = opCode(mul_ps, tmp, tmp);
 
 				// POTENTIAL
-				tmp = opCode(cos_ps, opCode(mul_ps, mel, izVec));
-				mPy = opCode(sub_ps, one, tmp);
+				tmp = opCode(sin_ps, opCode(mul_ps, opCode(set1_ps, .5f), opCode(mul_ps, mel, izVec)));
+				mPy = opCode(mul_ps, opCode(mul_ps, tmp, tmp), opCode(set1_ps, 2.f));
 
 				opCode(store_ps, tmpGx, grd);
 				opCode(store_ps, tmpGy, mMx);
 				opCode(store_ps, tmpGz, mMy);
 				opCode(store_ps, tmpK,  mPx);
 				opCode(store_ps, tmpV,  mPy);
+
+			float tMel [step] __attribute__((aligned(Align)));
+			float tCos [step] __attribute__((aligned(Align)));
+				opCode(store_ps, tMel,  opCode(mul_ps, mel, izVec));
+				opCode(store_ps, tCos,  opCode(cos_ps, opCode(mul_ps, mel, izVec)));
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -512,4 +515,3 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd,
 			break;
 	}
 }
-

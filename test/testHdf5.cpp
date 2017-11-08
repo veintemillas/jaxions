@@ -116,54 +116,65 @@ int	main (int argc, char *argv[])
 	void	*eRes, *str;
 	trackAlloc(&eRes, 256);
 	memset(eRes, 0, 256);
+
+	if (axion->Field() == FIELD_SAXION) {
 #if	defined(__MIC__) || defined(__AVX512F__)
-	alignAlloc(&str, 64, (axion->Size()));
+		alignAlloc(&str, 64, (axion->Size()));
 #elif	defined(__AVX__)
-	alignAlloc(&str, 32, (axion->Size()));
+		alignAlloc(&str, 32, (axion->Size()));
 #else
-	alignAlloc(&str, 16, (axion->Size()));
+		alignAlloc(&str, 16, (axion->Size()));
 #endif
-	memset(str, 0, axion->Size());
+		memset(str, 0, axion->Size());
+
+		axion->setLambda(LAMBDA_Z2)	;
+		if (LAMBDA_FIXED == axion->Lambda())
+			LogOut ("Lambda in FIXED mode\n");
+		else
+			LogOut ("Lambda in Z2 mode\n");
+	}
 
 	commSync();
 
-	axion->setLambda(LAMBDA_Z2)	;
-	if (LAMBDA_FIXED == axion->Lambda())
-		LogOut ("Lambda in FIXED mode\n");
-	else
-		LogOut ("Lambda in Z2 mode\n");
-
 //	writeConf(axion, index);
-
-	auto strDen = strings(axion, str);
 
 	if (axion->LowMem())
 		energy(axion, eRes, false, delta, nQcd, LL);
 	else
 		energy(axion, eRes, true,  delta, nQcd, LL);
 
-	LogOut("Nstrings %lu\n", strDen.strDen);
-	LogOut("Chiral   %ld\n", strDen.strChr);
-	LogOut("Nwalls   %lu\n", strDen.wallDn);
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
 
-	if	(axion->Precision() == FIELD_SINGLE) {
-		double *eR = static_cast<double *>(eRes);
+	double *eR = static_cast<double *>(eRes);
+	if (axion->Field() == FIELD_SAXION)
 		LogOut("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9]);
+	else
+		LogOut("Energy: %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4]);
+
+	if	(axion->Precision() == FIELD_SINGLE) {
 		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*S], static_cast<float *>(axion->mCpu())[2*S+1]);
 		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*(V+S)-2], static_cast<float *>(axion->mCpu())[2*(V+S)-1]);
-	}	else	{
-		double *eR = static_cast<double *>(eRes);
-		LogOut("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9]);
+	} else {
 		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*S], static_cast<double *>(axion->mCpu())[2*S+1]);
 		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*(V+S)-2], static_cast<double *>(axion->mCpu())[2*(V+S)-1]);
 	}
 
 	createMeas(axion, index);
-	writeString(str, strDen);
+
+	if (axion->Field() == FIELD_SAXION) {
+		auto strDen = strings(axion, str);
+
+		LogOut("Nstrings %lu\n", strDen.strDen);
+		LogOut("Chiral   %ld\n", strDen.strChr);
+		LogOut("Nwalls   %lu\n", strDen.wallDn);
+
+		writeString(str, strDen);
+	}
+
 	writeEnergy(axion, eRes);
+	writeEDens(axion, index);
 	writePoint(axion);
 	destroyMeas();
 /*
@@ -184,7 +195,9 @@ int	main (int argc, char *argv[])
 	destroyMeas();
 */
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
+
+	if (axion->Field() == FIELD_SAXION)
+		trackFree(&str,  ALLOC_ALIGN);
 
 	delete axion;
 
