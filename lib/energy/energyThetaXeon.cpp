@@ -514,4 +514,3 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd,
 			break;
 	}
 }
-

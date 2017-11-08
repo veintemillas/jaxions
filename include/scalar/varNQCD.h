@@ -10,3 +10,5 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ);
 double rsvPQ2 (double a);
 
 double	dzSize	(double z, FieldType fType, LambdaType lType);
+
+double	dzSize	(double z, FieldType fType, LambdaType lType, VqcdType poti);

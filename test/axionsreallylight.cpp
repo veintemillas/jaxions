@@ -334,7 +334,7 @@ int	main (int argc, char *argv[])
 			// DYAMICAL deltaz
 			//--------------------------------------------------
 
-			dzaux = dzSize(z_now, axion->Field(), axion->Lambda());
+			dzaux = dzSize(z_now, axion->Field(), axion->Lambda(),vqcdType);
 
 			//--------------------------------------------------
 			// PROPAGATOR
@@ -417,7 +417,7 @@ int	main (int argc, char *argv[])
 
 					// TRANSITION TO THETA
 					LogOut("--------------------------------------------------\n");
-					LogOut("              TRANSITION TO THETA \n");
+					LogOut("              TRANSITION TO THETA (z=%.4f)\n",z_now);
 					LogOut("              shift = %f 			\n", saskia);
 
 					cmplxToTheta (axion, shiftz);
