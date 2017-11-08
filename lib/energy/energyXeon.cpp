@@ -363,8 +363,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						// m2[iNx+1] = tmpS[(ih<<1)+1];
 						// real format unpadded
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx]    = tmpS[(ih<<1)];   // Rho field
-						m2[iNx+Vt] = tmpS[(ih<<1)+1]; // Theta field
+						m2[iNx]    = tmpS[(ih<<1)+1]; // Theta field
+						m2[iNx+Vt] = tmpS[(ih<<1)];   // Rho field
 					}
 				}
 
@@ -809,8 +809,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						// m2[iNx]   = tmpS[(ih<<1)];
 						// m2[iNx+1] = tmpS[(ih<<1)+1];
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx]    = tmpS[(ih<<1)];   // Rho field
-						m2[iNx+Vt] = tmpS[(ih<<1)+1]; // Theta field
+						m2[iNx]    = tmpS[(ih<<1)+1]; // Theta field
+						m2[iNx+Vt] = tmpS[(ih<<1)];   // Rho field
 					}
 				}
 

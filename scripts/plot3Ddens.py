@@ -29,7 +29,7 @@ if os.path.exists('./axion.m.10001'):
 fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
 
 
-an_contrastmap = 'energy/density' in fileHdf5
+an_contrastmap = 'energy/density/theta' in fileHdf5
 
 if an_contrastmap:
 	print('Contrast found')
@@ -38,7 +38,7 @@ if an_contrastmap:
 	Lz    = fileHdf5["/"].attrs.get("Depth")
 	sizeL = fileHdf5["/"].attrs.get("Physical size")
 	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy']['density'].value.reshape(Ly,Lx,Lz)
+	con = fileHdf5['energy/density']['theta'].value.reshape(Ly,Lx,Lz)
 	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
 

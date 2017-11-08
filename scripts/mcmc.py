@@ -237,7 +237,7 @@ if len(sys.argv) > 1:
         n     = f.attrs[u'Size']
         n2 = n*n
         n3 = n2*n
-        data = f['energy/density'].value.reshape(n3)
+        data = f['energy/density/theta'].value.reshape(n3)
     elif sys.argv[2]=='red':
         print('Reading reducedCon from ',sys.argv[1])
         n =256
