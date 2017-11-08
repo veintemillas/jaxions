@@ -22,7 +22,7 @@ class	Energy : public Tunable
 
 	const double delta2;
 	const double nQcd, LL, shift;
-	const size_t Lx, Lz, V, S, Vt;
+	const size_t Vt;
 	const bool   map;
 
 	FieldType	fType;
@@ -41,9 +41,9 @@ class	Energy : public Tunable
 	void	runXeon	();
 };
 
-	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field), Lx(field->Length()), Lz(field->eDepth()),
-	V(field->Size()), S(field->Surf()), Vt(field->TotalSize()), delta2(delta*delta), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()),
-	shift(sh), LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL), map(map)
+	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field),
+	Vt(field->TotalSize()), delta2(delta*delta), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
+	LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL), map(map)
 {
 }
 
@@ -51,7 +51,10 @@ void	Energy::runGpu	()
 {
 #ifdef	USE_GPU
 
-	const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
+	const uint uLx = field->Length();
+	const uint uLz = field->Depth();
+	const uint uS  = field->Surf();
+	const uint uV  = field->Size();
 	double *z = field->zV();
 
 	field->exchangeGhosts(FIELD_M);
@@ -85,17 +88,17 @@ void	Energy::runCpu	()
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
-			energyCpu	(field, delta2, LL, nQcd, Lx, V, S, eRes, shift, pot, map);
+			energyCpu	(field, delta2, LL, nQcd, eRes, shift, pot, map);
 			break;
 
 		case	FIELD_AXION:
 			setName		("Energy Axion");
-			energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map, false);
+			energyThetaCpu	(field, delta2, nQcd, eRes, map, false);
 			break;
 
 		case	FIELD_AXION_MOD:
 			setName		("Energy Axion (mod)");
-			energyThetaCpu	(field, delta2, nQcd, Lx, V, S, eRes, map, true);
+			energyThetaCpu	(field, delta2, nQcd, eRes, map, true);
 			break;
 	}
 }

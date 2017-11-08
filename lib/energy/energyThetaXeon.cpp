@@ -483,34 +483,37 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 }
 
 template<const bool mod>
-void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map)
+void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map)
 {
 	const double ood2 = 0.25/delta2;
 	double *z = axionField->zV();
 	const FieldPrecision precision = axionField->Precision();
+	const size_t Lx = axionField->Length();
+	const size_t Vo = axionField->Surf();
+	const size_t Vf = Vo + axionField->Size();
 
 	axionField->exchangeGhosts(FIELD_M);
 
 	switch	(map) {
 		case	true:
-			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
+			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, Vo, Vf, precision, eRes);
 			break;
 
 		case	false:
-			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
+			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, Vo, Vf, precision, eRes);
 			break;
 	}
 }
 
-void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map, const bool mod)
+void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map, const bool mod)
 {
 	switch	(mod) {
 		case	true:
-			energyThetaCpu<true> (axionField, delta2, nQcd, Lx, V, S, eRes, map);
+			energyThetaCpu<true> (axionField, delta2, nQcd, eRes, map);
 			break;
 
 		case	false:
-			energyThetaCpu<false>(axionField, delta2, nQcd, Lx, V, S, eRes, map);
+			energyThetaCpu<false>(axionField, delta2, nQcd, eRes, map);
 			break;
 	}
 }
