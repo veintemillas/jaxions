@@ -76,9 +76,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const auto vShRg  = opCode(load_si512, shfRg);
 		const auto vShLf  = opCode(load_si512, shfLf);
 #endif
+		const _MData_ hlf   = opCode(set1_pd, 0.5);
+		const _MData_ one   = opCode(set1_pd, 1.0);
+		const _MData_ two   = opCode(set1_pd, 2.0);
 		const _MData_ tpVec = opCode(set1_pd, tV);
 		const _MData_ izVec = opCode(set1_pd, iz);
-		const _MData_ one   = opCode(set1_pd, 1.0);
 
 		#pragma omp parallel default(shared) reduction(+:gxC,gyC,gzC,ktC,ptC)
 		{
@@ -219,8 +221,8 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPz = opCode(sub_pd, vel, opCode(mul_pd, mel, izVec));
 				mPx = opCode(mul_pd, mPz, mPz);
 
-				tmp = opCode(sin_pd, opCode(mul_pd, opCode(set1_pd, 0.5), opCode(mul_pd, mel, izVec)));
-				mPy = opCode(mul_pd, opCode(mul_pd, tmp, tmp), opCode(set1_pd, 2.));
+				tmp = opCode(sin_pd, opCode(mul_pd, hlf, opCode(mul_pd, mel, izVec)));
+				mPy = opCode(mul_pd, opCode(mul_pd, tmp, tmp), two);
 
 				opCode(store_pd, tmpGx, grd);
 				opCode(store_pd, tmpGy, mMx);
@@ -290,7 +292,9 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const size_t YC = (Lx>>2);
 #endif
 
+		const _MData_ hlf   = opCode(set1_ps, .5f);
 		const _MData_ one   = opCode(set1_ps, 1.f);
+		const _MData_ two   = opCode(set1_ps, 2.f);
 		const _MData_ izVec = opCode(set1_ps, iz);
 		const _MData_ tpVec = opCode(set1_ps, tV);
 
@@ -434,19 +438,14 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPx = opCode(mul_ps, tmp, tmp);
 
 				// POTENTIAL
-				tmp = opCode(sin_ps, opCode(mul_ps, opCode(set1_ps, .5f), opCode(mul_ps, mel, izVec)));
-				mPy = opCode(mul_ps, opCode(mul_ps, tmp, tmp), opCode(set1_ps, 2.f));
+				tmp = opCode(sin_ps, opCode(mul_ps, hlf, opCode(mul_ps, mel, izVec)));
+				mPy = opCode(mul_ps, opCode(mul_ps, tmp, tmp), two);
 
 				opCode(store_ps, tmpGx, grd);
 				opCode(store_ps, tmpGy, mMx);
 				opCode(store_ps, tmpGz, mMy);
 				opCode(store_ps, tmpK,  mPx);
 				opCode(store_ps, tmpV,  mPy);
-
-			float tMel [step] __attribute__((aligned(Align)));
-			float tCos [step] __attribute__((aligned(Align)));
-				opCode(store_ps, tMel,  opCode(mul_ps, mel, izVec));
-				opCode(store_ps, tCos,  opCode(cos_ps, opCode(mul_ps, mel, izVec)));
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -463,11 +462,6 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 						//SAVED AS AN UNFOLDED UNPADDED REAL FIELD WITH ghostBytes!
 						/***** Note: this version HAS ghostBytes *****/
 						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
-						if (iNx == 22887 + Sf) {
-							printf("Punto 22887 (%d %d %d) %fx(%f + %f + %f) + %fx%f + %fx%f --> %f\n", X[0]/step, X[1]+ih*YC, X[2]-1, o2,
-								tmpGx[ih], tmpGy[ih], tmpGz[ih], iz2*0.5, tmpK[ih], zQ, tmpV[ih], m2[iNx]);
-							printf("z %f mel %f cos %e 1.-cos %e\n", zR, tMel[ih], tCos[ih], 1.f - tCos[ih]);
-						}
 						//SAVED AS AN UNFOLDED PADDED REAL FIELD WITH ghostBytes!
 						/***** Note: this version is wrong, it counts twice the ghosts *****/
 						//m2[Sf + iNx + 2*(iNx/Lx)] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
