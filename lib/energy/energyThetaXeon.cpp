@@ -76,9 +76,11 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const auto vShRg  = opCode(load_si512, shfRg);
 		const auto vShLf  = opCode(load_si512, shfLf);
 #endif
+		const _MData_ hlf   = opCode(set1_pd, 0.5);
+		const _MData_ one   = opCode(set1_pd, 1.0);
+		const _MData_ two   = opCode(set1_pd, 2.0);
 		const _MData_ tpVec = opCode(set1_pd, tV);
 		const _MData_ izVec = opCode(set1_pd, iz);
-		const _MData_ one   = opCode(set1_pd, 1.0);
 
 		#pragma omp parallel default(shared) reduction(+:gxC,gyC,gzC,ktC,ptC)
 		{
@@ -219,8 +221,8 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPz = opCode(sub_pd, vel, opCode(mul_pd, mel, izVec));
 				mPx = opCode(mul_pd, mPz, mPz);
 
-				tmp = opCode(sin_pd, opCode(mul_pd, opCode(set1_pd, 0.5), opCode(mul_pd, mel, izVec)));
-				mPy = opCode(mul_pd, opCode(mul_pd, tmp, tmp), opCode(set1_pd, 2.));
+				tmp = opCode(sin_pd, opCode(mul_pd, hlf, opCode(mul_pd, mel, izVec)));
+				mPy = opCode(mul_pd, opCode(mul_pd, tmp, tmp), two);
 
 				opCode(store_pd, tmpGx, grd);
 				opCode(store_pd, tmpGy, mMx);
@@ -290,7 +292,9 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const size_t YC = (Lx>>2);
 #endif
 
+		const _MData_ hlf   = opCode(set1_ps, .5f);
 		const _MData_ one   = opCode(set1_ps, 1.f);
+		const _MData_ two   = opCode(set1_ps, 2.f);
 		const _MData_ izVec = opCode(set1_ps, iz);
 		const _MData_ tpVec = opCode(set1_ps, tV);
 
@@ -434,19 +438,14 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mPx = opCode(mul_ps, tmp, tmp);
 
 				// POTENTIAL
-				tmp = opCode(sin_ps, opCode(mul_ps, opCode(set1_ps, .5f), opCode(mul_ps, mel, izVec)));
-				mPy = opCode(mul_ps, opCode(mul_ps, tmp, tmp), opCode(set1_ps, 2.f));
+				tmp = opCode(sin_ps, opCode(mul_ps, hlf, opCode(mul_ps, mel, izVec)));
+				mPy = opCode(mul_ps, opCode(mul_ps, tmp, tmp), two);
 
 				opCode(store_ps, tmpGx, grd);
 				opCode(store_ps, tmpGy, mMx);
 				opCode(store_ps, tmpGz, mMy);
 				opCode(store_ps, tmpK,  mPx);
 				opCode(store_ps, tmpV,  mPy);
-
-			float tMel [step] __attribute__((aligned(Align)));
-			float tCos [step] __attribute__((aligned(Align)));
-				opCode(store_ps, tMel,  opCode(mul_ps, mel, izVec));
-				opCode(store_ps, tCos,  opCode(cos_ps, opCode(mul_ps, mel, izVec)));
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
@@ -484,34 +483,37 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 }
 
 template<const bool mod>
-void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map)
+void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map)
 {
 	const double ood2 = 0.25/delta2;
 	double *z = axionField->zV();
 	const FieldPrecision precision = axionField->Precision();
+	const size_t Lx = axionField->Length();
+	const size_t Vo = axionField->Surf();
+	const size_t Vf = Vo + axionField->Size();
 
 	axionField->exchangeGhosts(FIELD_M);
 
 	switch	(map) {
 		case	true:
-			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
+			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, Vo, Vf, precision, eRes);
 			break;
 
 		case	false:
-			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, S, V+S, precision, eRes);
+			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, ood2, nQcd, Lx, Vo, Vf, precision, eRes);
 			break;
 	}
 }
 
-void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const bool map, const bool mod)
+void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map, const bool mod)
 {
 	switch	(mod) {
 		case	true:
-			energyThetaCpu<true> (axionField, delta2, nQcd, Lx, V, S, eRes, map);
+			energyThetaCpu<true> (axionField, delta2, nQcd, eRes, map);
 			break;
 
 		case	false:
-			energyThetaCpu<false>(axionField, delta2, nQcd, Lx, V, S, eRes, map);
+			energyThetaCpu<false>(axionField, delta2, nQcd, eRes, map);
 			break;
 	}
 }

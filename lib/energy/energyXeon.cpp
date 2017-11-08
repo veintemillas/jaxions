@@ -29,9 +29,10 @@
 
 template<const VqcdType VQcd, const bool map>
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double o2, const double LL,
-			 const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
+			 const double nQcd, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
 	const size_t Sf = Lx*Lx;
+	const size_t Vt = Sf*Lz;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -362,7 +363,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						// m2[iNx+1] = tmpS[(ih<<1)+1];
 						// real format unpadded
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx]   = tmpS[(ih<<1)];
+						m2[iNx]    = tmpS[(ih<<1)+1]; // Theta field
+						m2[iNx+Vt] = tmpS[(ih<<1)];   // Rho field
 					}
 				}
 
@@ -807,7 +809,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						// m2[iNx]   = tmpS[(ih<<1)];
 						// m2[iNx+1] = tmpS[(ih<<1)+1];
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx]   = tmpS[(ih<<1)];
+						m2[iNx]    = tmpS[(ih<<1)+1]; // Theta field
+						m2[iNx+Vt] = tmpS[(ih<<1)];   // Rho field
 					}
 				}
 
@@ -891,32 +894,36 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	}
 }
 
-void	energyCpu	(Scalar *field, const double delta2, const double LL, const double nQcd, const size_t Lx, const size_t V, const size_t S, void *eRes, const double shift, const VqcdType VQcd, const bool map)
+void	energyCpu	(Scalar *field, const double delta2, const double LL, const double nQcd, void *eRes, const double shift, const VqcdType VQcd, const bool map)
 {
 	const double ood2 = 0.25/delta2;
 	double *z = field->zV();
+	const size_t Lx = field->Length();
+	const size_t Lz = field->Depth();
+	const size_t Vo = field->Surf();
+	const size_t Vf = Vo + field->Size();
 
 	field->exchangeGhosts(FIELD_M);
 
 	switch (VQcd & VQCD_TYPE) {
 		case	VQCD_1:
 			if (map == true)
-				energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			else
-				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			break;
 		case	VQCD_1_PQ_2:
 			if (map == true)
-				energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
-			else
-				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+			else                                                                                                                       
+				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			break;
 
 		case	VQCD_2:
 			if (map == true)
-				energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
-			else
-				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, S, V+S, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+			else                                                                                                                  
+				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			break;
 	}
 }

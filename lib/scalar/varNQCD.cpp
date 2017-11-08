@@ -116,9 +116,9 @@ double	dzSize	(double z, FieldType fType, LambdaType lType, VqcdType poti) {
 	double mSfq = 0.;
 
 	double facto = 1.;
-	if (poti & VQCD_TYPE == VQCD_1_PQ_2)
-	facto = 2. ;
-
+	if ( (poti & VQCD_TYPE) == VQCD_1_PQ_2)
+		facto = 2. ;
+		
 	switch (lType) {
 		case	LAMBDA_Z2:
 			mSfq = sqrt(facto*facto*msa*msa + 12.)*oodl;

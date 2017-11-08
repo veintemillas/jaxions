@@ -28,13 +28,13 @@ if os.path.exists('./axion.m.10001'):
 print("you can type dens/redens after the file to choose map if possible")
 if len(sys.argv) == 2:
     fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
-    an_contrastmap = 'energy/density' in fileHdf5
+    an_contrastmap = 'energy/density/theta' in fileHdf5
     re_contrastmap = 'energy/redensity' in fileHdf5
 elif len(sys.argv) == 3:
     fileHdf5 = h5py.File('./' + sys.argv[-2], "r")
     dens0redens = sys.argv[-1]
     if dens0redens == 'dens':
-        an_contrastmap = 'energy/density' in fileHdf5
+        an_contrastmap = 'energy/density/theta' in fileHdf5
         re_contrastmap = False
     elif dens0redens == 'redens':
         re_contrastmap = 'energy/redensity' in fileHdf5
@@ -47,7 +47,7 @@ if an_contrastmap:
 	Lz    = fileHdf5["/"].attrs.get("Depth")
 	sizeL = fileHdf5["/"].attrs.get("Physical size")
 	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy']['density'].value.reshape(Ly,Lx,Lz)
+	con = fileHdf5['energy/density']['theta'].value.reshape(Ly,Lx,Lz)
 	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
 if re_contrastmap:
