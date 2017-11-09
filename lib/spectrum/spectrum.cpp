@@ -397,7 +397,7 @@ void	SpecBin::pRun	() {
 	for (int sl=Sm-1; sl>=0; sl--) {
 		auto	oOff = sl*field->DataSize()*(Ly);
 		auto	fOff = sl*field->DataSize()*(Ly+2);
-		memcpy	(mA+fOff, mA+oOff, dataLine);
+		memmove	(mA+fOff, mA+oOff, dataLine);
 	}
 
 	if (field->Field() == FIELD_SAXION) {
@@ -477,7 +477,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 			double k2    = kx*kx + ky*ky + kz*kz;
 
-			static_cast<cFloat *>(field->m2Cpu())[idx+hSf] *= exp(-prefac*k2)/normn3 ;
+			static_cast<cFloat *>(field->m2Cpu())[idx+hSf] *= 1/normn3;//exp(-prefac*k2)/normn3 ;
 		}
 
 	}

@@ -1787,7 +1787,7 @@ void	writeEDensReduced (Scalar *axion, int index, int newNx, int newNz)
 		exit (1);
 	}
 
-	if (H5Pset_chunk (chunk_id, 1, &slab) < 0)
+	if (H5Pset_chunk (chunk_id, 1, &newslab) < 0)
 	{
 		LogError ("Fatal error H5Pset_chunk");
 		prof.stop();
