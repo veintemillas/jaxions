@@ -196,11 +196,11 @@ int	main (int argc, char *argv[])
 		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
 		createMeas(axion, index);
-		writeEDens(axion, index);
-		writeString(str, strDen);
-		writeEnergy(axion, eRes);
 		writeMapHdf5(axion);
-		writePoint(axion);
+//		writeEDens(axion, index);
+		writeString(str, strDen);
+//		writeEnergy(axion, eRes);
+//		writePoint(axion);
 		destroyMeas();
 
 	} // zloop
