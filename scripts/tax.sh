@@ -2,11 +2,11 @@
 
 
 if [ ! "$SAA" ]
-then 
-	echo Error: Environmental variable SAA needs to be defined! 
+then
+	echo Error: Environmental variable SAA needs to be defined!
 	echo        export SAA=user@machine:/path/to/output
 	exit
-fi	
+fi
 
 CURDIR=$(pwd)
 echo current dir is $CURDIR
@@ -14,26 +14,26 @@ echo current dir is $CURDIR
 # prepare labels
 
 if [ "$1" ]
-then 
+then
 	PASS=1
 	MA=$1
 else
 	PASS=0
-fi 
+fi
 
 if [ "$PASS" -eq 0 ]
 then
 NUSH=$(ls *.sh | wc -l)
 
  if [ "$NUSH" -eq 1 ]
- then 
+ then
  	echo anda1
 	PASS=1
 	MA=$(ls *.sh)
-	MA=${MA%.sh}	
- fi 
+	MA=${MA%.sh}
+ fi
 
- if [ "$NUSH" -gt 1 ] 
+ if [ "$NUSH" -gt 1 ]
  then
         echo 'no script selected to use as label!'
         echo "which did you use?"
@@ -41,14 +41,14 @@ NUSH=$(ls *.sh | wc -l)
         exit
  fi
  if [ "$NUSH" -eq 0 ]
- then 
-	echo 'no .sh script found in current directory!' 
+ then
+	echo 'no .sh script found in current directory!'
 	echo "enter a label name"
 	exit
- fi 
+ fi
 fi
 
-echo " " 1 - $MA selected as label! 
+echo " " 1 - $MA selected as label!
 
 echo " " 2 - Locating files:
 LOCFIL=$(echo $(ls $MA* 2>/dev/null ) $(ls *.txt 2>/dev/null ) $(ls axion.log.*  | tail -1))
@@ -58,8 +58,8 @@ if [ ! -d "./out" ]; then
    exit
 fi
 #if [ -d "./$MA.sh" ]; then
-	 #cp $MA out/ 
-#fi  
+	 #cp $MA out/
+#fi
 
 cd $CURDIR/out
 OUTFIL=$(ls *.txt 2>/dev/null)
@@ -69,12 +69,12 @@ echo "    [./out]  "   $OUTFIL $OUTMEASFIL
 if [ ! -d $CURDIR/out/m ]; then
  echo Warning: no out/m folder!
  MFOLDER=0
-else 
+else
  MFOLDER=1
-fi                     
+fi
 
 if [ "$MFOLDER" -eq 1 ]
-then 
+then
  cd m
  if [  -d "./axion.m.10000" ]; then
 	mv axion.m.10000 ../
@@ -85,51 +85,72 @@ then
 	mv axion.m.10001 ../
 	echo axion.m.10001 moved
 	OUTMEASFIL=$(ls $CURDIR/out/axion.m.* 2>/dev/null)
- fi	
+ fi
  shopt -s extglob
  MMFIL=$(ls axion.m.+([0-9]))
  #echo $MMFIL
+
+ read -r -p ' Input file limit in Mb:' LIMITMB
+ echo " " find . -type f -size +"$LIMITMB"
+ HHFIL=$(find . -type f -size +"$LIMITMB"M)
+ echo ' Posponed files:' $HHFIL
+ read -r -p 'Continue [y/n]:' CONT
+ if [[ "$CONT" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
+ 	echo '  your call!'
+ else
+	 exit 1
+ fi
+
  PUR=($MMFIL)
  CUR=${PUR[0]}
  NUM0=${CUR#*axion.m.}
  #MEASLIST="out/m/"$CUR
  MEASLIST=$CUR
+ GORDLIST=""
  for j in $MMFIL; do
-	 if [[ $j -nt $CUR ]];  
-	 then 
+	 if [[ $j -nt $CUR ]];
+	 then
 		# echo $j "is newer (modification date) than" $CUR "-- PASSED!"
 		# size control?
 		#echo $(du -k "$j" | cut -f1)
 		CUR=$j
 		#MEASLIST=${MEASLIST}" out/m/"$CUR
-                MEASLIST=${MEASLIST}" "$CUR  
-		NUM=${j#*axion.m.}           # get the number			 
+		SIZEMB=$(du -m "$j" | cut -f1)
+		# echo $SIZEMB "$SIZEMB" $LIMITMB
+		if [ "$SIZEMB" -ge "$LIMITMB" ]; then
+		GORDLIST=${GORDLIST}" "$CUR
+		else
+		MEASLIST=${MEASLIST}" "$CUR
+		NUM=${j#*axion.m.}           # get the number
+		fi
 	 fi
 	 #NUM=${NUM#*/dens-}	# get the part after the rh- (number)
- done	 
+ done
  # echo $MEASLIST
 fi
 
 echo "    [./out/m]"    $NUM0-$NUM
-
-echo " " 3 - Copying files: $LOCFIL to ./out/ 
+echo "     ... with exceptions" $GORDLIST
+#echo " " 3 - Copying files: $LOCFIL to ./out/
 cd $CURDIR
 #cp $LOCFIL $CURDIR/out/
-echo " " 4 - Creating symbolic link: $CURDIR/out/ "->" $CURDIR/out_$MA
+#echo " " 4 - Creating symbolic link: $CURDIR/out/ "->" $CURDIR/out_$MA
 #ln -s $CURDIR/out $CURDIR/out_$MA
-echo " " 5 - Transfer files to maturino
+#echo " " 5 - Transfer files to maturino
 
 
 
 AUXDIR=$CURDIR/out_$MA
+echo " " 3 - Create aux dir $AUXDIR
 mkdir $AUXDIR
 mkdir $AUXDIR/m
 
+echo " " 4 - Create simlinks in $AUXDIR
 #TRAN=""
 for j in $LOCFIL; do
 	#TRAN=${TRAN}" out_$MA/"$j
 	ln -s $CURDIR/$j $AUXDIR/$j
-done	
+done
 for j in $OUTFIL; do
         #TRAN=${TRAN}" out_$MA/"$j
 	ln -s $CURDIR/out/$j $AUXDIR/$j
@@ -138,22 +159,13 @@ for j in $OUTMEASFIL; do
 	#TRAN=${TRAN}" out_$MA/"$j
 	ln -s $CURDIR/out/$j $AUXDIR/$j
 done
-echo $MEASLIST
+#echo $MEASLIST
 for j in $MEASLIST; do
 	#TRAN=${TRAN}" out_$MA/"$j
 	ln -s $CURDIR/out/m/$j $AUXDIR/m/$j
 done
 
-
+echo " " 5 - Transfer files to $SAA
 scp -r $AUXDIR $SAA
+echo " " 6 - remove aux directory $AUXDIR
 rm -r $AUXDIR
-
-
-
-
-
-
-
-
-
-
