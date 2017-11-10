@@ -17,7 +17,7 @@ extern double alpha;
 extern double kCrit;
 extern double parm2;
 extern double gammo;
-
+extern double p3DthresholdMB;
 extern int kMax;
 extern int iter;
 extern int parm1;
@@ -55,6 +55,8 @@ extern VerbosityLevel verb;
 //for output
 extern PrintConf      prinoconfo;
 extern bool           p2dmapo;
+extern bool           p3dstrings;
+extern bool           p3dwalls;
 extern bool           pconfinal;
 extern bool           pconfinalwkb ;
 

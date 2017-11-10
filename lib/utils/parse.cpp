@@ -30,7 +30,7 @@ double zrestore = 1.0;
 double LL = 25000.;
 double parm2 = 0.;
 double gammo = 0.;
-
+double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
 int endredmap = -1;
 int safest0   = 20;
@@ -65,6 +65,8 @@ LogMpi		logMpi = ALL_RANKS;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
 bool p2dmapo  		= false ;
+bool p3dstrings		= false ;
+bool p3dwalls		  = false ;
 bool pconfinal 		= false ;
 bool pconfinalwkb = true ;
 
@@ -121,6 +123,7 @@ void	printUsage(char *name)
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--p3D 0/1/2                     Print initial/final configurations (default 0 = no) 1=final 2=both \n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
+	printf("--p3Dstr  [Mb]                  Include 3D string/Wall maps axion.m.files always or if expected size below [Mbs] (default no)\n");
 	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
 	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
 	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
@@ -232,6 +235,28 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--p2Dmap"))
 		{
 			p2dmapo = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p3Dstr"))
+		{
+			p3dstrings = true ;
+
+			// p3DthresholdMB=1.8e+21;
+			p3DthresholdMB = atof(argv[i+1]);
+			i++;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p3Dwal"))
+		{
+			p3dwalls = true ;
+
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -485,7 +510,6 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
-
 
 		if (!strcmp(argv[i], "--zi"))
 		{

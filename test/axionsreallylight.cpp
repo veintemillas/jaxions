@@ -142,6 +142,7 @@ int	main (int argc, char *argv[])
 		bool coZ = 1;
 	  bool coS = 1;
 		bool coA = 1;
+		bool coD = true;
 		int strcount = 0;
 
 		int numaxiprint = 10 ;
@@ -170,7 +171,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	void *eRes, *str;			// Para guardar la energia
+	void *eRes, *str;			// Para guardar la energia y las cuerdas
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 	double *eR = static_cast<double *> (eRes);
@@ -302,10 +303,8 @@ int	main (int argc, char *argv[])
 
 	// LL is LL      in FIXED MODE
 	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
-	// damping only from doomsday
-	// VqcdType vqcdType_save = vqcdType ;
-	// vqcdType |= vqcdType
-	initPropagator (pType, axion, nQcd, delta, LL, vqcdType);
+	// damping only from zst1000
+	initPropagator (pType, axion, nQcd, delta, LL, vqcdType & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -362,11 +361,22 @@ int	main (int argc, char *argv[])
 			if (axion->Field() == FIELD_SAXION)
 			{
 				// compute this 500 qith an educated guess
-				if (nstrings_global < 500)
+
+				if (nstrings_global < 1000)
 				{
 					rts = strings(axion, str);
 					nstrings_global = rts.strDen ;
 					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
+				}
+
+				// if ( (z_now > 2.0) && (coD) && (vqcdType | VQCD_DAMP) )
+				if ( (nstrings_global < 1000) && (coD) && (vqcdType | VQCD_DAMP) )
+				{
+					LogOut("---------------------------------------\n");
+					LogOut("              DAMPING! G = %f    			\n", gammo);
+					LogOut("---------------------------------------\n");
+					initPropagator (pType, axion, nQcd, delta, LL, vqcdType );
+					coD = false ;
 				}
 
 				//--------------------------------------------------
@@ -509,12 +519,12 @@ int	main (int argc, char *argv[])
 					//STRINGS
 						rts = strings(axion, str);
 						nstrings_global = rts.strDen;
-						if (nstrings_global < 100000)
+						if (p3DthresholdMB/((double) nstrings_global) > 1.)
 							writeString(str, rts, true);
 						else
 							writeString(str, rts, false);
 						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
-						LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 1.5*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
+						LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
 			}
 			else //( axion->Field() == FIELD_AXION)
 			{
