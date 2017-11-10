@@ -66,10 +66,13 @@ void	Laplacian::sRunGpu	()
 template<class cFloat, const bool hCmplx>
 void	Laplacian::lapCpu	(std::string name)
 {
+cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 	auto &planFFT = AxionFFT::fetchPlan(name);
+printf("Caca! %e %e\n", mData[2097151].real(), mData[2097151].imag());
 	planFFT.run(FFT_FWD);
+printf("Papa! %e %e\n", mData[2097151].real(), mData[2097151].imag());
 
-	cFloat *mData = (hCmplx == true) ? static_cast<cFloat*> (field->m2Cpu()) + (field->Surf() >> 1) : static_cast<cFloat*> (field->m2Cpu()) + field->Surf();
+	//cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 
 	const int hLx = Lx>>1;
 	const int hLz = Lz>>1;
@@ -109,8 +112,11 @@ void	Laplacian::lapCpu	(std::string name)
 					px = ox - Lx;
 
 				size_t p2 = pz2 + py2 + px*px;
-
+if (idx == 2097151)
+	printf("Eo! %e %e x p(%e %e)\n", mData[idx].real(), mData[idx].imag(), ((cFloat)(p2)).real(), ((cFloat)(p2)).imag());
 				mData[idx] *= (cFloat) (p2);
+if (idx == 2097151)
+	printf("Oe! %e %e\n", mData[idx].real(), mData[idx].imag());
 
 			}
 		}
@@ -173,6 +179,7 @@ void	Laplacian::lapCpu	(std::string name)
 	// 		}
 
 	planFFT.run(FFT_BCK);
+printf("Popo! %e %e\n", mData[2097151].real(), mData[2097151].imag());
 }
 
 void	Laplacian::sRunCpu	()
@@ -201,7 +208,6 @@ void    Laplacian::tRunCpu	()
 {
 	switch (precision) {
 		case FIELD_SINGLE:
-			//lapCpu<float, true>(std::string("SpAx"));
 			lapCpu<std::complex<float>, true>(std::string("SpAx"));
 			break;
 

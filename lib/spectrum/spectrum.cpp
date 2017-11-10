@@ -59,8 +59,6 @@ void	SpecBin::fillBins	() {
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
-		auto hSf  = (field->Surf() >> 1);
-		auto Sf   =  field->Surf();
 
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
@@ -89,8 +87,10 @@ void	SpecBin::fillBins	() {
 			double k2    = kx*kx + ky*ky + kz*kz;
 			size_t myBin = floor(sqrt(k2));
 
-			if (myBin > powMax)
-				printf ("Vaya bin!! %d %d %d ==> %llu\n", kx, ky, kz, myBin);
+			if (myBin > powMax) {
+				LogError ("Error: point %lu bin out of range %lu > %lu\n", idx, myBin, powMax);
+				continue;
+			}
 
 			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
@@ -98,7 +98,7 @@ void	SpecBin::fillBins	() {
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
 
 			double		w  = sqrt(k2 + mass);
-			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx+hSf]);
+			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 			double		m2 = 0.;
 
 			if (fType & FIELD_AXION) {
@@ -159,8 +159,8 @@ void	SpecBin::fillBins	() {
 		//
 		// 		double w0  = sqrt(k20 + mass);
 		// 		double wm  = sqrt(k2m + mass);
-		// 		double m0  = abs(static_cast<cFloat *>(field->m2Cpu())[eIdx+hSf]);
-		// 		double mm  = abs(static_cast<cFloat *>(field->m2Cpu())[eIdx+hSf+hLx]);
+		// 		double m0  = abs(static_cast<cFloat *>(field->m2Cpu())[eIdx]);
+		// 		double mm  = abs(static_cast<cFloat *>(field->m2Cpu())[eIdx+hLx]);
 		// 		double m20 = m0*m0;
 		// 		double mw0 = m0*m0/w0;
 		// 		double m2m = mm*mm;
@@ -241,156 +241,113 @@ void	SpecBin::nRun	() {
 		munge(UNFOLD_ALL);
 	}
 
-	switch (fPrec) {
-		case	FIELD_SINGLE:
-			switch (fType) {
-				case	FIELD_SAXION:
-				{
-					auto &planM = AxionFFT::fetchPlan("nSpecSxM");
-					planM.run(FFT_FWD);
-					if (spec)
-						fillBins<float, SPECTRUM_GV, true> ();
-					else
-						fillBins<float, SPECTRUM_GV, false>();
-					auto &planV = AxionFFT::fetchPlan("nSpecSxV");
-					planV.run(FFT_FWD);
-					if (spec)
-						fillBins<float, SPECTRUM_K, true> ();
-					else
-						fillBins<float, SPECTRUM_K, false>();
-				}
-				break;
+	switch (fType) {
+		case	FIELD_SAXION:
+		{
+			auto &planM = AxionFFT::fetchPlan("nSpecSxM");
+			auto &planV = AxionFFT::fetchPlan("nSpecSxV");
 
-				case	FIELD_AXION_MOD:
-				case	FIELD_AXION:
-				{
-					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+			planM.run(FFT_FWD);
 
-					char *mO = static_cast<char *>(field->mCpu())  + field->Surf()*field->DataSize();
-					char *vO = static_cast<char *>(field->vCpu());
-					char *mF = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize();
-
-					size_t dataLine = field->DataSize()*Ly;
-					size_t Sm	= Ly*Lz;
-
-					// Copy m -> m2 with padding
-					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sm; sl++) {
-						auto	oOff = sl*field->DataSize()*Ly;
-						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(mF+fOff, mO+oOff, dataLine);
-					}
-
-					myPlan.run(FFT_FWD);
-
-					if (spec)
-						fillBins<float, SPECTRUM_GV, true> ();
-					else
-						fillBins<float, SPECTRUM_GV, false>();
-
-					// Copy v -> m2 with padding
-					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sm; sl++) {
-						auto	oOff = sl*field->DataSize()*Ly;
-						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(mF+fOff, vO+oOff, dataLine);
-					}
-
-					//myPlan.run(FFT_BCK);
-					myPlan.run(FFT_FWD);
-
-					if (spec)
-						fillBins<float, SPECTRUM_K, true> ();
-					else
-						fillBins<float, SPECTRUM_K, false>();
-				}
-				break;
-
-				case	FIELD_WKB:
-				LogError ("Error: WKB field not supported");
-				return;
-				break;
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_GV, true> ();
+				else
+					fillBins<float,  SPECTRUM_GV, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_GV, true> ();
+				else
+					fillBins<double, SPECTRUM_GV, false>();
 			}
-			break;
 
-		case	FIELD_DOUBLE:
-			switch (fType) {
-				case	FIELD_SAXION:
-				{
-					auto &planM = AxionFFT::fetchPlan("nSpecSxM");
-					planM.run(FFT_FWD);
-					if (spec)
-						fillBins<double, SPECTRUM_GV, true> ();
-					else
-						fillBins<double, SPECTRUM_GV, false>();
-					auto &planV = AxionFFT::fetchPlan("nSpecSxV");
-					planV.run(FFT_FWD);
-					if (spec)
-						fillBins<double, SPECTRUM_K, true> ();
-					else
-						fillBins<double, SPECTRUM_K, false>();
-				}
-				break;
+			planV.run(FFT_FWD);
 
-				case	FIELD_AXION_MOD:
-				case	FIELD_AXION:
-				{
-					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-
-					double *mO = static_cast<double *>(field->mCpu())  + field->Surf();
-					double *vO = static_cast<double *>(field->vCpu());
-					double *mF = static_cast<double *>(field->m2Cpu()) + field->Surf();
-
-					size_t dataLine = field->DataSize()*Ly;
-					size_t Sm	= Ly*Lz;
-
-					// Copy m -> m2 with padding
-					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sm; sl++) {
-						auto	oOff = sl*field->DataSize()*Ly;
-						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(mF+fOff, mO+oOff, dataLine);
-					}
-					//myPlan.run(FFT_BCK);
-					myPlan.run(FFT_FWD);	//FIXME BCK for tests
-
-					if (spec)
-						fillBins<double, SPECTRUM_GV, true> ();
-					else
-						fillBins<double, SPECTRUM_GV, false>();
-
-					// Copy m -> m2 with padding
-					#pragma omp parallel for schedule(static)
-					for (int sl=0; sl<Sm; sl++) {
-						auto	oOff = sl*field->DataSize()*Ly;
-						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(mF+fOff, vO+oOff, dataLine);
-					}
-					//FFT_FWD
-					myPlan.run(FFT_FWD);	//FIXME BCK for tests
-					if (spec)
-						fillBins<double, SPECTRUM_K, true> ();
-					else
-						fillBins<double, SPECTRUM_K, false>();
-				}
-				break;
-
-				case	FIELD_WKB:
-				LogError ("Error: WKB field not supported");
-				return;
-				break;
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_K, true> ();
+				else
+					fillBins<float,  SPECTRUM_K, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_K, true> ();
+				else
+					fillBins<double, SPECTRUM_K, false>();
 			}
-			break;
+		}
+		break;
+
+		case	FIELD_AXION_MOD:
+		case	FIELD_AXION:
+		{
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+
+			char *mO = static_cast<char *>(field->mCpu())  + field->Surf()*field->DataSize();
+			char *vO = static_cast<char *>(field->vCpu());
+			char *mF = static_cast<char *>(field->m2Cpu());
+
+			size_t dataLine = field->DataSize()*Ly;
+			size_t Sm	= Ly*Lz;
+
+			// Copy m -> m2 with padding
+			#pragma omp parallel for schedule(static)
+			for (int sl=0; sl<Sm; sl++) {
+				auto	oOff = sl*field->DataSize()* Ly;
+				auto	fOff = sl*field->DataSize()*(Ly+2);
+				memcpy	(mF+fOff, mO+oOff, dataLine);
+			}
+
+			myPlan.run(FFT_FWD);
+
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_GV, true> ();
+				else
+					fillBins<float,  SPECTRUM_GV, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_GV, true> ();
+				else
+					fillBins<double, SPECTRUM_GV, false>();
+			}
+
+			// Copy v -> m2 with padding
+			#pragma omp parallel for schedule(static)
+			for (int sl=0; sl<Sm; sl++) {
+				auto	oOff = sl*field->DataSize()* Ly;
+				auto	fOff = sl*field->DataSize()*(Ly+2);
+				memcpy	(mF+fOff, vO+oOff, dataLine);
+			}
+
+			myPlan.run(FFT_FWD);
+
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_K, true> ();
+				else
+					fillBins<float,  SPECTRUM_K, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_K, true> ();
+				else
+					fillBins<double, SPECTRUM_K, false>();
+			}
+		}
+		break;
+
+		case	FIELD_WKB:
+		LogError ("Error: WKB field not supported");
+		return;
+		break;
 	}
 }
 
 void	SpecBin::pRun	() {
 
 	size_t dataLine = field->DataSize()*Ly;
-	size_t Sf	= field->Surf();
 	size_t Sm	= Ly*Lz;
 
-	char *mA = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize();
+	char *mA = static_cast<char *>(field->m2Cpu());
 
 	// contrast bin is assumed in m2 (with ghost bytes)
 	// Add the f@*&#ng padding plus ghost region, no parallelization
@@ -450,8 +407,6 @@ void	SpecBin::filterFFT	(int neigh) {
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
-		auto hSf  = (field->Surf() >> 1);
-		auto Sf   =  field->Surf();
 
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
@@ -477,7 +432,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 			double k2    = kx*kx + ky*ky + kz*kz;
 
-			static_cast<cFloat *>(field->m2Cpu())[idx+hSf] *= 1/normn3;//exp(-prefac*k2)/normn3 ;
+			static_cast<cFloat *>(field->m2Cpu())[idx] *= 1/normn3;//exp(-prefac*k2)/normn3 ;
 		}
 
 	}
@@ -514,33 +469,23 @@ void	SpecBin::filter (int neigh) {
 	// we outputthem as a bin to use print bin
 	// or as a reduced density map ?
 
-	char *mA = static_cast<char *>(field->m2Cpu()) + field->Surf()*field->DataSize();
-	float	*mCon = static_cast<float *>(static_cast<void*>(mA));
-
+	float *mCon = static_cast<float *>(static_cast<void*>(field->m2Cpu()));	// FIXME breaks for double precision
 	size_t seta = (size_t) neigh ;
 	size_t newNx = Ly/seta ;
 	size_t newNz = Lz/seta ;
 	size_t topa = newNx*newNx*newNz ;
 
-	// we have T = N^2*Depth points
-	// we will be writting t = newN^2*NewDepth, T = seta^3 t
-	// possible race condition we do it secuential
-									// for (size_t idx=0; idx < topa; idx++) {
-									// 	mCon[idx] = mCon[seta*idx] ;
-									// 	}
-		for (size_t iz=0; iz < newNz; iz++) {
-			size_t laz = Ly*(Ly+2)*iz*seta ;
-			size_t sz = newNx*newNx*iz ;
-			for (size_t iy=0; iy < newNx; iy++) {
-				size_t lay = (Ly+2)*iy*seta ;
-				size_t sy = newNx*iy ;
-				for (size_t ix=0; ix < newNx; ix++) {
-					size_t idx = ix + sy + sz ;
-					size_t odx = ix*seta + lay + laz ;
-					mCon[idx] = mCon[odx] ;
-				}
+	for (size_t iz=0; iz < newNz; iz++) {
+		size_t laz = Ly*(Ly+2)*iz*seta ;
+		size_t sz = newNx*newNx*iz ;
+		for (size_t iy=0; iy < newNx; iy++) {
+			size_t lay = (Ly+2)*iy*seta ;
+			size_t sy = newNx*iy ;
+			for (size_t ix=0; ix < newNx; ix++) {
+				size_t idx = ix + sy + sz ;
+				size_t odx = ix*seta + lay + laz ;
+				mCon[idx] = mCon[odx] ;
 			}
 		}
-	// that is too conservative ...
-
+	}
 }

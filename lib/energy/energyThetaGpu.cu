@@ -31,7 +31,7 @@ template<typename Float, const bool map, const bool wMod>
 static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const Float * __restrict__ m, const Float * __restrict__ v, Float * __restrict__ m2, const uint Lx, const uint Sf,
 							   const Float iZ, const Float zP, const Float tPz, double *tR, const Float o2=0., const Float zQ=0., const Float izh=0.)
 {
-	uint X[3], idxPx, idxPy, idxMx, idxMy;
+	uint X[3], idxPx, idxPy, idxMx, idxMy, idxPz, idxMz;
 
 	Float mel, vel, tmpPx, tmpPy, tmpPz, tmpMx, tmpMy, tmpMz, aX, aY, aZ, Kt, Vt;
 
@@ -57,23 +57,26 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 	else
 		idxMy = idx - Lx;
 
+	idxPz = idx + Sf;
+	idxMz = idx - Sf;
+
 	mel = m[idx];
-	vel = v[idx-Sf];
+	vel = v[idxMz];
 
 	if (wMod) {
-		tmpPx = modPi(m[idxPx]    - mel, zP, tPz); 
-		tmpPy = modPi(m[idxPy]    - mel, zP, tPz); 
-		tmpPz = modPi(m[idx + Sf] - mel, zP, tPz); 
-		tmpMx = modPi(m[idxMx]    - mel, zP, tPz); 
-		tmpMy = modPi(m[idxMy]    - mel, zP, tPz); 
-		tmpMz = modPi(m[idx - Sf] - mel, zP, tPz); 
+		tmpPx = modPi(m[idxPx] - mel, zP, tPz); 
+		tmpPy = modPi(m[idxPy] - mel, zP, tPz); 
+		tmpPz = modPi(m[idxPz] - mel, zP, tPz); 
+		tmpMx = modPi(m[idxMx] - mel, zP, tPz); 
+		tmpMy = modPi(m[idxMy] - mel, zP, tPz); 
+		tmpMz = modPi(m[idxMz] - mel, zP, tPz); 
 	} else {
-		tmpPx = m[idxPx]    - mel; 
-		tmpPy = m[idxPy]    - mel; 
-		tmpPz = m[idx + Sf] - mel; 
-		tmpMx = m[idxMx]    - mel; 
-		tmpMy = m[idxMy]    - mel; 
-		tmpMz = m[idx - Sf] - mel; 
+		tmpPx = m[idxPx] - mel; 
+		tmpPy = m[idxPy] - mel; 
+		tmpPz = m[idxPz] - mel; 
+		tmpMx = m[idxMx] - mel; 
+		tmpMy = m[idxMy] - mel; 
+		tmpMz = m[idxMz] - mel; 
 	}
 
 	aX = tmpPx*tmpPx + tmpMx*tmpMx;
@@ -90,7 +93,7 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 	tR[TH_POT] = (double) Vt;
 
 	if (map == true)
-		m2[idx] = (aX+aY+aZ)*o2 + Vt*zQ + Kt*izh;
+		m2[idxMz] = (aX+aY+aZ)*o2 + Vt*zQ + Kt*izh;
 }
 
 template<typename Float, const bool map, const bool wMod>

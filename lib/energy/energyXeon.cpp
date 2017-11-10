@@ -32,7 +32,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			 const double nQcd, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
 	const size_t Sf = Lx*Lx;
-	const size_t Vt = Sf*Lz;
+	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -119,6 +119,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
+					X[2]--;	// Removes ghost zone
 				}
 
 				idxPz = ((idx+Sf) << 1);
@@ -537,6 +538,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
+					X[2]--;	// Removes ghost zone
 				}
 
 				if (X[0] == XC-step)

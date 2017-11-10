@@ -347,7 +347,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tSpecCpu	(const double dz) {
 
-		double *z = axionField->zV();
+		double *z  = axionField->zV();
 		auto	Lz = axionField->Depth();
 		auto	Lx = axionField->Length();
 
@@ -355,7 +355,7 @@
 		auto	dataLine = axionField->DataSize()*Lx;
 
 		char	*mO = static_cast<char *>(axionField->mCpu())  + axionField->Surf()*axionField->DataSize();
-		char	*mF = static_cast<char *>(axionField->m2Cpu()) + axionField->Surf()*axionField->DataSize();
+		char	*mF = static_cast<char *>(axionField->m2Cpu());
 
 		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
 
@@ -490,7 +490,8 @@
 	}
 
 	// Generic saxion spectral propagator
-
+#include<complex>
+using namespace std;
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
 
@@ -503,12 +504,27 @@
 		for (int s = 0; s<nStages; s++) {
 			const double	c0 = c[s], d0 = d[s];
 
+if (axionField->Precision()==FIELD_SINGLE) {
+printf("A --> %e %e %e %e\n", static_cast<complex<float>*>(axionField->m2Cpu())[0].real(), static_cast<complex<float>*>(axionField->m2Cpu())[0].imag(), static_cast<complex<float>*>(axionField->m2Cpu())[2097151].real(), static_cast<complex<float>*>(axionField->m2Cpu())[2097151].imag());
+} else {
+printf("A --> %e %e %e %e\n", static_cast<complex<double>*>(axionField->m2Cpu())[0].real(), static_cast<complex<double>*>(axionField->m2Cpu())[0].imag(), static_cast<complex<double>*>(axionField->m2Cpu())[2097151].real(), static_cast<complex<double>*>(axionField->m2Cpu())[2097151].imag());
+}
 			applyLaplacian(axionField);
+if (axionField->Precision()==FIELD_SINGLE) {
+printf("B --> %e %e %e %e\n", static_cast<complex<float>*>(axionField->m2Cpu())[0].real(), static_cast<complex<float>*>(axionField->m2Cpu())[0].imag(), static_cast<complex<float>*>(axionField->m2Cpu())[2097151].real(), static_cast<complex<float>*>(axionField->m2Cpu())[2097151].imag());
+} else {
+printf("B --> %e %e %e %e\n", static_cast<complex<double>*>(axionField->m2Cpu())[0].real(), static_cast<complex<double>*>(axionField->m2Cpu())[0].imag(), static_cast<complex<double>*>(axionField->m2Cpu())[2097151].real(), static_cast<complex<double>*>(axionField->m2Cpu())[2097151].imag());
+}
 
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
 			sPropKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, d0, lambda, nQcd, fMom, Lx, S, V+S, precision);
+if (axionField->Precision()==FIELD_SINGLE) {
+printf("C --> %e %e %e %e\n", static_cast<complex<float>*>(axionField->m2Cpu())[0].real(), static_cast<complex<float>*>(axionField->m2Cpu())[0].imag(), static_cast<complex<float>*>(axionField->m2Cpu())[2097151].real(), static_cast<complex<float>*>(axionField->m2Cpu())[2097151].imag());
+} else {
+printf("C --> %e %e %e %e\n", static_cast<complex<double>*>(axionField->m2Cpu())[0].real(), static_cast<complex<double>*>(axionField->m2Cpu())[0].imag(), static_cast<complex<double>*>(axionField->m2Cpu())[2097151].real(), static_cast<complex<double>*>(axionField->m2Cpu())[2097151].imag());
+}
 			*z += dz*d0;
 		}
 
@@ -522,7 +538,7 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			sPropKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 	}
 

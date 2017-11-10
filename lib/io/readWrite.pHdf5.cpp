@@ -1320,7 +1320,7 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 			H5Sselect_hyperslab(rSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 			/*	Write raw data	*/
-			auto rErr = H5Dwrite (rset_id, dataType, memSpace, rSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(Lz+zDim+1)*dataSize));
+			auto rErr = H5Dwrite (rset_id, dataType, memSpace, rSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(Lz+zDim+2)*dataSize));
 
 			if (rErr < 0)
 			{
@@ -1341,7 +1341,7 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 			H5Sselect_hyperslab(tSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 			/*	Write raw data	*/
-			auto tErr = H5Dwrite (tset_id, dataType, memSpace, tSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(zDim+1)*dataSize));
+			auto tErr = H5Dwrite (tset_id, dataType, memSpace, tSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*zDim*dataSize));
 
 			if (tErr < 0)
 			{

@@ -103,6 +103,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
+					X[2]--;	// Removes ghosts
 				}
 
 				if (X[0] == XC-step)
@@ -319,6 +320,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
+					X[2]--;	// Removes ghosts
 				}
 
 				if (X[0] == XC-step)
@@ -459,12 +461,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					// Saves map
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						//SAVED AS AN UNFOLDED UNPADDED REAL FIELD WITH ghostBytes!
-						/***** Note: this version HAS ghostBytes *****/
 						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
-						//SAVED AS AN UNFOLDED PADDED REAL FIELD WITH ghostBytes!
-						/***** Note: this version is wrong, it counts twice the ghosts *****/
-						//m2[Sf + iNx + 2*(iNx/Lx)] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
 					}
 				}
 			}

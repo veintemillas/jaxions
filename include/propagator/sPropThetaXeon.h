@@ -80,7 +80,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			{
 				size_t idxMz = idx-Sf, idxM2;
 
-				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2) + Sf;
+				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2);
 
 				mel = opCode(load_pd, &m[idx]);
 				vel = opCode(load_pd, &v[idxMz]);
@@ -157,7 +157,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			{
 				size_t idxMz = idx - Sf, idxM2;
 
-				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2) + Sf;
+				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2);
 
 				mel = opCode(load_ps, &m[idx]);
 				vel = opCode(load_ps, &v[idxMz]);
