@@ -183,7 +183,7 @@ int	main (int argc, char *argv[])
 
 		auto strDen = strings(axion, str);
 
-		energy(axion, eRes, false, delta, nQcd, LL);
+		energy(axion, eRes, true, delta, nQcd, LL);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
@@ -193,7 +193,7 @@ int	main (int argc, char *argv[])
 		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
 		createMeas(axion, index);
-		writeEDens(axion, index);
+		writeEDens(axion, index, MAP_ALL);
 
 		if (axion->Field() == FIELD_SAXION) {
 			writeString(str, strDen);
@@ -202,17 +202,57 @@ int	main (int argc, char *argv[])
 		writeMapHdf5(axion);
 		writeEnergy(axion, eRes);
 		writePoint(axion);
+
+		double max, min;
+
+		/*	Theta histogram	*/
+		if (axion->Field() & FIELD_AXION) {
+			double zNow = *axion->zV();
+			if (axion->Precision() == FIELD_SINGLE) {
+				Binner<100,float> thBin(static_cast<float*>(axion->mCpu()) + axion->Surf(), axion->Size(), //z_now);
+				{[z = zNow] (float x) -> double { return (double) (x/z); }});
+				thBin.run();
+				writeBinner(thBin, "/bins", "testTh");
+			} else {
+				Binner<100,double> thBin(static_cast<double*>(axion->mCpu()) + axion->Surf(), axion->Size(), //z_now);
+				{ [z = zNow] (double x) -> double { return (double) (x/z); }});
+				thBin.run();
+				writeBinner(thBin, "/bins", "testTh");
+			}
+		} else {
+			double zNow = *axion->zV();
+			if (axion->Precision() == FIELD_SINGLE) {
+				Binner<100,complex<float>> rhoBin(static_cast<complex<float>*>(axion->mCpu()) + axion->Surf(), axion->Size(), //z_now);
+				{[z = zNow] (complex<float> x) -> double { return (double) (abs(x)/z); }});
+				rhoBin.run();
+				writeBinner(rhoBin, "/bins", "testRho");
+				max = rhoBin.max();
+				min = rhoBin.min();
+			} else {
+				Binner<100,complex<double>> rhoBin(static_cast<complex<double>*>(axion->mCpu()) + axion->Surf(), axion->Size(), //z_now);
+				{ [z = zNow] (complex<double> x) -> double { return (double) (abs(x)/z); }});
+				rhoBin.run();
+				writeBinner(rhoBin, "/bins", "testRho");
+				max = rhoBin.max();
+				min = rhoBin.min();
+			}
+
+			if ((max - min) < 0.4)
+				cnt++;
+		}
+
 		destroyMeas();
 
-		if (strDen.strDen == 0 && axion->Field() == FIELD_SAXION && strDen.wallDn == 0)
+		if (((strDen.strDen == 0) && (axion->Field() == FIELD_SAXION)) && ((strDen.wallDn == 0) && (cnt != 0)))
 			cnt++;
 		else
 			cnt = 0;
 
-		if (cnt == 10) {
+		if (cnt != 0) {
 			LogOut("--------------------------------------------------\n");
 			LogOut("              TRANSITION TO THETA \n");
 			LogOut("--------------------------------------------------\n");
+			LogOut("Rho max %lf min %lf\n", max, min);
 
 			munge(UNFOLD_ALL);
 			writeConf(axion, index);
@@ -220,7 +260,14 @@ int	main (int argc, char *argv[])
 			double saskia = 0.0;
 
 			cmplxToTheta (axion, saskia);
+			energy(axion, eRes, true, delta, nQcd);
+			createMeas(axion, index+1);
+			writeEnergy(axion, eRes);
+			writeEDens(axion, index+1, MAP_THETA);
+			destroyMeas();
+			zloop += 100.;
 		}
+
 	} // zloop
 
 	current = std::chrono::high_resolution_clock::now();

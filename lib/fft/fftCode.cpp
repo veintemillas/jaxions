@@ -167,10 +167,10 @@ namespace AxionFFT {
 							LogError ("Can't create R->C plan with m2 in lowmem runs");
 							exit(0);
 						}
-									/* For test, the backward plan requires ghosts	*/
+
 						if (dFft & FFT_FWD)
 							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, oA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)	// Es correcto el c2r bck? No se usa de todos modos...
+						if (dFft & FFT_BCK)
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, oA, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 
 						break;

@@ -10,6 +10,7 @@
 			FIELD_AXION	= 2,
 			FIELD_AXION_MOD	= 130,
 			FIELD_WKB	= 6,
+			FIELD_MOD	= 128,
 		}	FieldType;
 
 		typedef	enum	FieldIndex_s
