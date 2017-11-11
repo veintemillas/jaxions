@@ -340,6 +340,14 @@ namespace AxionFFT {
 							exit(0);
 						}
 
+{
+ptrdiff_t alloc_local, local_n0, local_0_start;
+
+alloc_local = fftw_mpi_local_size_3d(Lz, Lx, Lx, MPI_COMM_WORLD, &local_n0, &local_0_start);
+
+printf ("\n\n\nAlloc %ld N0 %ld Start %ld\n\n\n", alloc_local, local_n0, local_0_start);
+}
+
 						if (dFft & FFT_FWD)
 							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)

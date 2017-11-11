@@ -186,7 +186,7 @@ int	main (int argc, char *argv[])
 
 		auto strDen = strings(axion, str);
 
-		energy(axion, eRes, false, delta, nQcd, LL);
+		energy(axion, eRes, true, delta, nQcd, LL);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
@@ -197,10 +197,10 @@ int	main (int argc, char *argv[])
 
 		createMeas(axion, index);
 		writeMapHdf5(axion);
-//		writeEDens(axion, index);
+		writeEDens(axion, index, MAP_ALL);
 		writeString(str, strDen);
-//		writeEnergy(axion, eRes);
-//		writePoint(axion);
+		writeEnergy(axion, eRes);
+		writePoint(axion);
 		destroyMeas();
 
 	} // zloop

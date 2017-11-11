@@ -22,6 +22,7 @@ class	Laplacian : public Tunable
 	const FieldPrecision	precision;
 	const size_t		Lx;
 	const size_t		Lz;
+	const size_t		Tz;
 	const size_t		Sf;
 
 	Scalar			*field;
@@ -34,16 +35,16 @@ class	Laplacian : public Tunable
 
 	public:
 
-		Laplacian (Scalar *field) : precision(field->Precision()), Lx(field->Length()), Lz(field->Depth()), Sf(field->Surf()), field(field) {
+		Laplacian (Scalar *field) : precision(field->Precision()), Lx(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), Sf(field->Surf()), field(field) {
 		if (field->LowMem()) {
 			LogError ("Error: laplacian not supported in lowmem runs");
 			exit(0);
 		}
 
-		if (commSize() > 1) {
-			LogError ("Error: laplacian not supported in MPI runs");
-			exit(0);
-		}
+//		if (commSize() > 1) {
+//			LogError ("Error: laplacian not supported in MPI runs");
+//			exit(0);
+//		}
 	}
 
 	void	sRunCpu	();	// Saxion laplacian
@@ -66,120 +67,44 @@ void	Laplacian::sRunGpu	()
 template<class cFloat, const bool hCmplx>
 void	Laplacian::lapCpu	(std::string name)
 {
-cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 	auto &planFFT = AxionFFT::fetchPlan(name);
-printf("Caca! %e %e\n", mData[2097151].real(), mData[2097151].imag());
 	planFFT.run(FFT_FWD);
-printf("Papa! %e %e\n", mData[2097151].real(), mData[2097151].imag());
+	cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 
-	//cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
+	const size_t zBase = Lz*commRank();
 
 	const int hLx = Lx>>1;
-	const int hLz = Lz>>1;
+	const int hTz = Tz>>1;
 
 	const int    maxLx = (hCmplx == true) ? (Lx>>1)+1 : Lx;
-	const size_t maxSf = (hCmplx == true) ?  maxLx*Lz : Lx*Lz;
+	const size_t maxSf = maxLx*Tz;
 
-	const size_t total = maxSf*Lz*2;
-
-
-	#pragma omp parallel for schedule(static) default(shared)
-	for (int oy = 0; oy < Lx; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
-	{
-		int py = oy;
-
-		if (oy > hLx)
-			py = oy - Lx;
-
-		size_t py2 = py*py;
-		size_t idy = oy*maxSf;
-
-		for (int oz = 0; oz < Lz; oz++)
-		{
-			int pz = oz ;
-			if (oz > hLz)
-				pz = oz - Lz;
-
-			size_t pz2 = pz*pz;
-			size_t idz = oz*maxLx;
-
+	#pragma omp parallel for collapse(3) schedule(static) default(shared)
+	for (int oy = 0; oy < Lz; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
+		for (int oz = 0; oz < Tz; oz++)
 			for (int ox = 0; ox < maxLx; ox++)
 			{
-				size_t idx = ox + idy + idz;
+				size_t idx = ox + oy*maxSf + oz*maxLx;
 
 				int px = ox;
+				int py = oy + zBase;
+				int pz = oz ;
+
 				if (ox > hLx)
 					px = ox - Lx;
 
-				size_t p2 = pz2 + py2 + px*px;
-if (idx == 2097151)
-	printf("Eo! %e %e x p(%e %e)\n", mData[idx].real(), mData[idx].imag(), ((cFloat)(p2)).real(), ((cFloat)(p2)).imag());
+				if (py > hLx)
+					py -= Lx;
+
+				if (oz > hTz)
+					pz = oz - Tz;
+
+				size_t p2 = pz*pz + py*py + px*px;
+
 				mData[idx] *= (cFloat) (p2);
-if (idx == 2097151)
-	printf("Oe! %e %e\n", mData[idx].real(), mData[idx].imag());
-
 			}
-		}
-	}
-
-	// // ADAPDT FOR MPI! NOT DIFFICULT
-	// //IT IS TRANSPOSED!
-	// size_t kdx;
-	// int bin;
-	// size_t iz, iy, ix;
-	// int kz, ky, kx;
-	// double k2, w;
-	// size_t n1pad = Lx/2 + 1;
-	// size_t n2pad = Lx*n1pad;
-	// size_t n3pad = Lz*n2pad;
-	//
-	//
-	// int rank = commRank();
-	// size_t local_1_start = rank*Lz;
-	//
-	// #pragma omp parallel for schedule(static)
-	// for (size_t kdx = 0; kdx< n3pad; kdx++)
-	// {
-	// 	// // ASSUMED TRANSPOSED
-	// 	// iy = kdx/n2 + local_1_start;
-	// 	// iz = (kdx%n2)/n1 ;
-	// 	// ix = kdx%n1 ;
-	// 	// ky = (int) iy;
-	// 	// kz = (int) iz;
-	// 	// kx = (int) ix;
-	// 	// if (kz>n1/2) {kz = kz-n1; }
-	// 	// if (ky>n1/2) {ky = ky-n1; }
-	// 	// if (kx>n1/2) {kx = kx-n1; }
-	//
-	// 	// ASSUMED TRANSPOSED
-	// 	// COMPLEX WITHOUT REDUNDANCY
-	// 	// I.E. ix does not belong to (0, Lx-1)
-	// 	// but to (0, Lx/2)
-	// 	// point has already the n2 ghost into account
-	// 	// therefore
-	// 	// idx = ix + (Lx/2)*iz + Lx*(Lx/2)*iy
-	// 	iy = kdx/n2pad + local_1_start;
-	// 	iz = (kdx%n2pad)/n1pad ;
-	// 	ix = kdx%n1pad ;
-	// 	ky = (int) iy;
-	// 	kz = (int) iz;
-	// 	kx = (int) ix;
-	// 	if (kz>Lx/2) {kz = kz-Lx; }
-	// 	if (ky>Lx/2) {ky = ky-Lx; }
-	// 	if (kx>Lx/2) {kx = kx-Lx; }
-	//
-	//
-	// 	k2 = kz*kz + ky*ky + kx*kx;
-	//
-	// 	mData[kdx] *= (cFloat) (k2);
-	//
-	// 			if (hCmplx)
-	// 				if (kdx != total - kdx)
-	// 					mData[total-kdx] *= (cFloat) (k2);
-	// 		}
 
 	planFFT.run(FFT_BCK);
-printf("Popo! %e %e\n", mData[2097151].real(), mData[2097151].imag());
 }
 
 void	Laplacian::sRunCpu	()
