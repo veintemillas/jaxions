@@ -347,7 +347,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tSpecCpu	(const double dz) {
 
-		double *z = axionField->zV();
+		double *z  = axionField->zV();
 		auto	Lz = axionField->Depth();
 		auto	Lx = axionField->Length();
 
@@ -355,9 +355,9 @@
 		auto	dataLine = axionField->DataSize()*Lx;
 
 		char	*mO = static_cast<char *>(axionField->mCpu())  + axionField->Surf()*axionField->DataSize();
-		char	*mF = static_cast<char *>(axionField->m2Cpu()) + axionField->Surf()*axionField->DataSize();
+		char	*mF = static_cast<char *>(axionField->m2Cpu());
 
-		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->TotalSize()));
 
 		if	(axionField->Folded())
 		{
@@ -490,14 +490,13 @@
 	}
 
 	// Generic saxion spectral propagator
-
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
 
 		double *z = axionField->zV();
 		double lambda = LL;
 
-		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->Size()));
+		const double fMom = -(4.*M_PI*M_PI)/(sizeL*sizeL*((double) axionField->TotalSize()));
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
@@ -522,7 +521,7 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			sPropKernelXeon<VQcd>(axionField->m2Cpu(), axionField->vCpu(), axionField->mCpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 	}
 

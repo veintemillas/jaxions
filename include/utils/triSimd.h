@@ -174,8 +174,12 @@ constexpr _MInt_  one       = {  4294967297,  4294967297 };
 constexpr _MInt_  two       = {  8589934594,  8589934594 };
 #endif
 
-inline void printhVar(_MHnt_ d, const char *name) {
-
+#ifdef	__AVX__
+inline void printhVar(_MHnt_ d, const char *name)
+#else
+inline void printhVar(_MInt_ d, const char *name)
+#endif
+{
 	printf ("%s", name);
 #if	defined(__AVX512F__)
 	int r[8] __attribute((aligned(32)));
@@ -187,7 +191,7 @@ inline void printhVar(_MHnt_ d, const char *name) {
 	for (int i=0; i<4; i++)
 #else
 	int r[4] __attribute((aligned(16)));
-	opCodl(store_si128, ((_MInt_ *)r), d);
+	opCode(store_si128, ((_MInt_ *)r), d);
 	for (int i=0; i<4; i++)
 #endif
 		printf(" %d", r[i]);

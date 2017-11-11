@@ -8,6 +8,7 @@
 #include "propagator/allProp.h"
 #include "energy/energy.h"
 #include "utils/utils.h"
+#include "spectrum/spectrum.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
 #include "map/map.h"
@@ -208,6 +209,16 @@ int	main (int argc, char *argv[])
 		/*	Theta histogram	*/
 		if (axion->Field() & FIELD_AXION) {
 			double zNow = *axion->zV();
+
+			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+			specAna.pRun();
+			writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
+			specAna.nRun();
+			writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+			writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+			writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+
 			if (axion->Precision() == FIELD_SINGLE) {
 				Binner<100,float> thBin(static_cast<float*>(axion->mCpu()) + axion->Surf(), axion->Size(), //z_now);
 				{[z = zNow] (float x) -> double { return (double) (x/z); }});
@@ -237,7 +248,7 @@ int	main (int argc, char *argv[])
 				min = rhoBin.min();
 			}
 
-			if ((max - min) < 0.4)
+			if ((max - min) < 0.8)
 				cnt++;
 		}
 
@@ -260,12 +271,12 @@ int	main (int argc, char *argv[])
 			double saskia = 0.0;
 
 			cmplxToTheta (axion, saskia);
-			energy(axion, eRes, true, delta, nQcd);
-			createMeas(axion, index+1);
-			writeEnergy(axion, eRes);
-			writeEDens(axion, index+1, MAP_THETA);
-			destroyMeas();
-			zloop += 100.;
+//			energy(axion, eRes, true, delta, nQcd);
+//			createMeas(axion, index+1);
+//			writeEnergy(axion, eRes);
+//			writeEDens(axion, index+1, MAP_THETA);
+//			destroyMeas();
+//			zloop += 100.;
 		}
 
 	} // zloop
