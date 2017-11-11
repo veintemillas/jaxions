@@ -41,6 +41,7 @@
 #define	M_PI4	(M_PI2*M_PI2)
 #define	M_PI6	(M_PI4*M_PI2)
 
+#ifndef	__INTEL_COMPILER
 
 constexpr double Inf_d = __builtin_inf();
 constexpr double Nan_d = __builtin_nan("");//0xFFFFF");
@@ -66,6 +67,7 @@ constexpr _MData_ rCte      = {   16777216.,   16777216.,   16777216.,   1677721
 constexpr _MData_ oPid      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
 constexpr _MData_ zeroNegd  = {        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0,        -0.0 };
 constexpr _MData_ dHlf      = {         0.5,         0.5,         0.5,         0.5,         0.5,         0.5,         0.5,         0.5 };
+constexpr _MData_ dOne      = {         1.0,         1.0,         1.0,         1.0,         1.0,         1.0,         1.0,         1.0 };
 constexpr _MData_ TriMaxd   = {        1e15,        1e15,        1e15,        1e15,        1e15,        1e15,        1e15,        1e15 };
 constexpr _MData_ dInf      = {       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d,       Inf_d };
 constexpr _MData_ dNan      = {       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d,       Nan_d };
@@ -87,17 +89,8 @@ constexpr _MData_ s6d       = {        s6_d,        s6_d,        s6_d,        s6
 constexpr _MData_ s7d       = {        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d,        s7_d };
 constexpr _MData_ s8d       = {        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d,        s8_d };
 constexpr _MInt_  iZero     = {           0,           0,           0,           0,           0,           0,           0,           0 };
-#ifdef	__INTEL_COMPILER
-constexpr _MInt_  one       = {           1,           1,           1,           1,           1,           1,           1,           1,
-				          1,           1,           1,           1,           1,           1,           1,           1 };
-constexpr _MInt_  two       = {           2,           2,           2,           2,           2,           2,           2,           2,
-				          2,           2,           2,           2,           2,           2,           2,           2 };
-//constexpr _MHnt_  hOne      = {           1,           1,           1,           1,           1,           1,           1,           1 };
-//constexpr _MHnt_  hTwo      = {           2,           2,           2,           2,           2,           2,           2,           2 };
-#else
 constexpr _MInt_  one       = {  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297,  4294967297 };
 constexpr _MInt_  two       = {  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594,  8589934594 };
-#endif
 constexpr _MHnt_  hOne      = {  4294967297,  4294967297,  4294967297,  4294967297 };
 constexpr _MHnt_  hTwo      = {  8589934594,  8589934594,  8589934594,  8589934594 };
 constexpr _MHnt_  iZerh     = {           0,           0,           0,           0 };
@@ -309,9 +302,13 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 
 #ifdef	__AVX512F__
 	u = opCode(mask_blend_pd,
-		opCode(kor,
-			opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ),
-			opCode(cmp_pd_mask, opCode(abs_pd, x), TriMaxd, _CMP_GT_OQ)),
+		opCode(kandn,
+			opCode(cmp_pd_mask, x, dInf, _CMP_EQ_UQ),
+			opCode(kor,
+				opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ),
+				opCode(cmp_pd_mask,
+					opCode(castpd_si512, opCode(andnot_si512, opCode(castsi512_pd, x), opCode(castsi512_pd, zeroNegd))),
+					TriMaxd, _CMP_GT_OQ))),
 		u, zeroNegd);
 #elif	defined(__AVX__)
 	u = opCode(blendv_pd, u,
@@ -435,8 +432,12 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 
 #ifdef	__AVX512F__
 	u = opCode(mask_blend_pd,
-		opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ) | opCode(cmp_pd_mask, opCode(abs_pd, x), TriMaxd, _CMP_GT_OQ),
-		u, zeroNegd);
+		opCode(kandn,
+			opCode(cmp_pd_mask, x, dInf, _CMP_EQ_UQ),
+			opCode(kor,
+				opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ),
+				opCode(cmp_pd_mask, opCode(castsi512_pd, opCode(andnot_si512, opCode(castpd_si512, x), opCode(castpd_si512, zeroNegd))), TriMaxd, _CMP_GT_OQ))),
+		u, dOne);
 #elif	defined(__AVX__)
 	u = opCode(blendv_pd, u,
 		dOne,
@@ -460,49 +461,7 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 	return	u;
 }
 
-/*
-inline _MData_	opCode(sin_pd, _MData_ x)
-{
-	_MData_ tmp2, tmp3, tmp5, a, b, c;
-	static const double a_s = -0.0415758*4., b_s = 0.00134813*6., c_s = -(1+M_PI2*a_s+M_PI4*b_s)/(M_PI6);
-
-	a = opCode(set1_pd, a_s);
-	b = opCode(set1_pd, b_s);
-	c = opCode(set1_pd, c_s);
-
-	tmp2 = opCode(mul_pd, x, x);
-	tmp3 = opCode(mul_pd, tmp2, x);
-	tmp5 = opCode(mul_pd, tmp3, tmp2);
-	return opCode(add_pd, x, opCode(add_pd,
-		opCode(add_pd,
-			opCode(mul_pd, tmp3, a),
-			opCode(mul_pd, tmp5, b)),
-		opCode(mul_pd, c, opCode(mul_pd, tmp2, tmp5))));
-}
-
-
-
-inline _MData_	opCode(cos_pd, _MData_ x)
-{
-	_MData_ tmp2, tmp4, tmp6, a, b, c;
-	static const double a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4.*M_PI2*a_s+6.*M_PI4*b_s)/(8.*M_PI6);
-
-	a = opCode(set1_pd, a_s);
-	b = opCode(set1_pd, b_s);
-	c = opCode(set1_pd, c_s);
-
-	tmp2 = opCode(mul_pd, x, x);
-	tmp4 = opCode(mul_pd, tmp2, tmp2);
-	tmp6 = opCode(mul_pd, tmp2, tmp4);
-	return opCode(sub_pd, opCode(set1_pd, 1.),
-		opCode(add_pd, opCode(mul_pd, opCode(set1_pd, 0.5), tmp2),
-			opCode(add_pd,
-				opCode(add_pd,
-					opCode(mul_pd, tmp4, a),
-					opCode(mul_pd, tmp6, b)),
-				opCode(mul_pd, c, opCode(mul_pd, tmp4, tmp4)))));
-}
-*/
+#endif
 
 inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 {
@@ -556,8 +515,10 @@ inline _MData_	opCode(md2_pd, const _MData_ &x)
 	#define	_MData_ __m128
 #endif 
 
+#ifndef	__INTEL_COMPILER
+
 constexpr float Inf_f = __builtin_inff();
-constexpr float Nan_f = __builtin_nanf("0x7FFFFF");
+constexpr float Nan_f = __builtin_nanf("0x3FFFFF");
 
 constexpr float PiA_f = -3.140625f;
 constexpr float PiB_f = -0.0009670257568359375f;
@@ -704,7 +665,6 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 #endif
 
 	s = opCode(mul_ps, d, d);
-
 #ifdef	__AVX512F__
 	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, one, opCode(and_epi32, q, one)), opCode(castps_si512, d), opCode(castps_si512, zeroNegf));
 #elif	defined(__AVX2__)
@@ -716,8 +676,8 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 	d = opCode(xor_ps, d,
 		opCode(and_ps, zeroNegf,
 			opCode(cmp_ps,
-				opCode(and_ps, opCode(castsi256_ps, q), opCode(castsi256_ps, one)),
 				opCode(castsi256_ps, one),
+				opCode(and_ps, opCode(castsi256_ps, q), opCode(castsi256_ps, one)),
 				_CMP_EQ_UQ)));
 #else
 	d = opCode(xor_ps, d,
@@ -858,63 +818,12 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 	return	u;
 }
 
+#endif
 
-/*
-inline _MData_	opCode(sin_ps, _MData_ x)
-{
-	_MData_ tmp2, tmp3, tmp5, a, b, c;
-	static const float a_s = -0.0415758f*4.f, b_s = 0.00134813f*6.f, c_s = -(1+M_PI2*a_s+M_PI4*b_s)/(M_PI6);
-
-	a = opCode(set1_ps, a_s);
-	b = opCode(set1_ps, b_s);
-	c = opCode(set1_ps, c_s);
-
-	tmp2 = opCode(mul_ps, x, x);
-	tmp3 = opCode(mul_ps, tmp2, x);
-	tmp5 = opCode(mul_ps, tmp3, tmp2);
-	return opCode(add_ps, x, opCode(add_ps,
-		opCode(add_ps,
-			opCode(mul_ps, tmp3, a),
-			opCode(mul_ps, tmp5, b)),
-		opCode(mul_ps, c, opCode(mul_ps, tmp2, tmp5))));
-}
-
-inline _MData_	opCode(cos_ps, _MData_ x)
-{
-	_MData_ tmp2, tmp4, tmp6;
-	static constexpr double a_s = -0.0415758, b_s = 0.00134813, c_s = -(1+4.*M_PI2*a_s+6.*M_PI4*b_s)/(8.*M_PI6);
-
-	const _MData_ a = opCode(set1_ps, a_s);
-	const _MData_ b = opCode(set1_ps, b_s);
-	const _MData_ c = opCode(set1_ps, c_s);
-	const _MData_ o = opCode(set1_ps, 1.0);
-	const _MData_ h = opCode(set1_ps, 0.5);
-
-	tmp2 = opCode(mul_ps, x, x);
-	tmp4 = opCode(mul_ps, tmp2, tmp2);
-	tmp6 = opCode(mul_ps, tmp2, tmp4);
-	return opCode(sub_ps, o,
-		opCode(add_ps, opCode(mul_ps, h, tmp2),
-			opCode(add_ps,
-				opCode(add_ps,
-					opCode(mul_ps, tmp4, a),
-					opCode(mul_ps, tmp6, b)),
-				opCode(mul_ps, c, opCode(mul_ps, tmp4, tmp4)))));
-}
-*/
 inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 {
 	_MData_	min, ret;
-/*
-	x2 = opCode(div_ps, x, md);
-	auto di = opCode(cvtps_epi32, x2);
-	auto dv = opCode(cvtepi32_ps, di);
-#ifdef	__FMA__
-	ret = opCode(fnmadd_ps, dv, md, x);
-#else
-	ret = opCode(sub_ps, x, opCode(mul_ps, dv, md));
-#endif
-*/
+
 	_MData_ xP  = opCode(add_ps, x,  md);
 	_MData_ xM  = opCode(sub_ps, x,  md);
 	_MData_ x2  = opCode(mul_ps, x,   x);
