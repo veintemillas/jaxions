@@ -28,15 +28,15 @@
 #if	defined(__AVX512F__)
 inline	void	stringHandD(const __m512d s1, const __m512d s2, int *hand)
 {
-	__m512d zero = { 0., 0., 0., 0., 0., 0., 0., 0. };
-	__m512d conj = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+	__m512d zero = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+	__m512d conj = { 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f };
 	__m512d tp2, tp3;
-	__mmask16 tpm, tmm, tmp, str;
+	__mmask8 tpm, tmm, tmp, str;
 
 	tp2 = opCode(mul_pd, s1, s2);
 	tmp = opCode(cmp_pd_mask, tp2, zero, _CMP_LT_OS);
 
-	tmp &= 0b1010101010101010;
+	tmp &= 0b10101010;
 
 	tp3 = opCode(mul_pd, s2, conj);
 	tp2 = opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tp3), _MM_PERM_BADC));
@@ -92,10 +92,10 @@ inline	void	stringHandS(const __m512 s1, const __m512 s2, int *hand)
 
 inline	void	stringWallD(const __m512d s1, const __m512d s2, int *hand, int *wHand)
 {
-	__m512d zero = { 0., 0., 0., 0., 0., 0., 0., 0. };
-	__m512d conj = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+	__m512d zero = { 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f };
+	__m512d conj = { 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f };
 	__m512d tp2, tp3;
-	__mmask16 tpm, tmm, tmp, wll, msk;
+	__mmask8 tpm, tmm, tmp, wll, msk;
 
 	tp2 = opCode(mul_pd, s1, s2);
 	tmp = opCode(cmp_pd_mask, tp2, zero, _CMP_LT_OS);
@@ -110,14 +110,12 @@ inline	void	stringWallD(const __m512d s1, const __m512d s2, int *hand, int *wHan
 
 	/*	Walls		*/
 
-	msk  = opCode(cmp_pd_mask, tp3, opCode(setzero_pd), _CMP_LT_OS);
-	msk &= 0b10101010;
-	wll  = msk & tmp;
+	msk  = opCode(kand, opCode(kand, opCode(cmp_pd_mask, tp3, opCode(setzero_pd), _CMP_LT_OS), 0b10101010), tmp);
 
-	wHand[0] |= (wll & 2)   >> 1;
-	wHand[1] |= (wll & 8)   >> 3;
-	wHand[2] |= (wll & 32)  >> 5;
-	wHand[3] |= (wll & 128) >> 7;
+	wHand[0] |= (msk & 2)   >> 1;
+	wHand[1] |= (msk & 8)   >> 3;
+	wHand[2] |= (msk & 32)  >> 5;
+	wHand[3] |= (msk & 128) >> 7;
 
 	/*	Strings		*/
 
