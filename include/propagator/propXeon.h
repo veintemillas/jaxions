@@ -333,7 +333,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float zR = *z;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
@@ -1002,7 +1002,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const float zR = *z;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = (float) axionmass2( (double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float dzc = dz*c;
 
 		const float z4 = z2*z2;
@@ -1227,7 +1227,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 							opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
 							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 								opCode(add_ps,
-									opCode(mul_ps, vecmv, opCode(set1_ps, 2.)),
+									opCode(mul_ps, vecmv, opCode(set1_ps, 2.f)),
 									opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 					}
 					break;
