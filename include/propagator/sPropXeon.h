@@ -176,14 +176,14 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const float zR = *z;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
 
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
 		const size_t YC = (Lx>>3);
 
-		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0., zQ, 0.};
-		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0., zR, 0.};
+		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
 		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
 
@@ -193,14 +193,14 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
 
-		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0., zR, 0., zR, 0., zR, 0. };
+		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };
+		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
 #endif
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
