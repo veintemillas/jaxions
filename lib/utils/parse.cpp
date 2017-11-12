@@ -51,9 +51,9 @@ ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
 LambdaType   lType     = LAMBDA_FIXED;
-VqcdType		 vqcdType  = VQCD_1;
-VqcdType		 vqcdTypeDamp  = VQCD_NONE;
-VqcdType		 vqcdTypeRhoevol  = VQCD_NONE;
+VqcdType     vqcdType  = VQCD_1;
+VqcdType     vqcdTypeDamp    = VQCD_NONE;
+VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 char outName[128] = "axion\0";
 
@@ -64,10 +64,10 @@ VerbosityLevel	verb   = VERB_NORMAL;
 LogMpi		logMpi = ALL_RANKS;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
-bool p2dmapo  		= false ;
-bool p3dstrings		= false ;
-bool p3dwalls		  = false ;
-bool pconfinal 		= false ;
+bool p2dmapo  	  = false ;
+bool p3dstrings	  = false ;
+bool p3dwalls	  = false ;
+bool pconfinal 	  = false ;
 bool pconfinalwkb = true ;
 
 void	printUsage(char *name)
@@ -304,7 +304,6 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
-			//vqcdType = VQCD_1_PQ_2_RHO ;
 			vqcdTypeRhoevol = VQCD_EVOL_RHO;
 			procArgs++;
 			passed = true;
@@ -460,7 +459,7 @@ int	parseArgs (int argc, char *argv[])
 				printf("No new sizeN input for final reducemap. Set to default = 256\n");
 			}
 			else{
-			endredmap = atof(argv[i+1]);
+				endredmap = atof(argv[i+1]);
 			}
 
 

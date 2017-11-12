@@ -10,7 +10,6 @@
 #include <immintrin.h>
 
 #ifdef	__AVX512F__
-	#include <zmmintrin.h>
 	#define _MData_ __m512d
 	#define	_MInt_  __m512i
 	#define	_MHnt_  __m256i
