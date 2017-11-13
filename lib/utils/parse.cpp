@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <sys/stat.h>
 
 #include "enum-field.h"
 
@@ -56,6 +57,7 @@ VqcdType     vqcdTypeDamp    = VQCD_NONE;
 VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 char outName[128] = "axion\0";
+char outDir[1024] = "out/m\0";
 
 FieldPrecision	sPrec  = FIELD_SINGLE;
 DeviceType	cDev   = DEV_CPU;
@@ -69,6 +71,26 @@ bool p3dstrings	  = false ;
 bool p3dwalls	  = false ;
 bool pconfinal 	  = false ;
 bool pconfinalwkb = true ;
+
+void	createOutput() {
+	struct stat tStat;
+
+	if (stat("out", &tStat) != 0) {
+		auto  dErr = mkdir("out", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		if (dErr == -1) {
+			printf("Error: can't write on filesystem\n");
+			exit(1);
+		}
+	}
+
+	if (stat("out/m", &tStat) != 0) {
+		auto  dErr = mkdir("out/m", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		if (dErr == -1) {
+			printf("Error: can't write on filesystem\n");
+			exit(1);
+		}
+	}
+}
 
 void	printUsage(char *name)
 {
@@ -1109,6 +1131,23 @@ int	parseArgs (int argc, char *argv[])
 	}
 
  	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
+
+	/*	Set the output directory, according to an environmental variable	*/
+
+	if (const char *outPath = std::getenv("AXIONS_OUTPUT")) {
+		if (strlen(outPath) < 1022) {
+			struct stat tStat;
+			if (stat(outPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
+				strcpy(outDir, outPath);
+				printf("Output folder set to %s\n", outDir);
+			} else {
+				printf("%s doesn't exists, using default\n", outPath);
+				createOutput();
+			}				
+		}
+	} else {
+		createOutput();
+	}
 
 	return	procArgs;
 }

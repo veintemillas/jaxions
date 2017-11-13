@@ -143,7 +143,7 @@ void	writeConf (Scalar *axion, int index)
 
 	char base[256];
 
-	sprintf(base, "%s.%05d", outName, index);
+	sprintf(base, "%s/%s.%05d", outDir, outName, index);
 
 	/*	Create the file and release the plist	*/
 	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
@@ -417,7 +417,7 @@ void	readConf (Scalar **axion, int index)
 
 	char base[256];
 
-	sprintf(base, "%s.%05d", outName, index);
+	sprintf(base, "%s/%s.%05d", outDir, outName, index);
 
 	/*	Open the file and release the plist	*/
 
@@ -646,7 +646,7 @@ void	createMeas (Scalar *axion, int index)
 
 	char base[256];
 
-	sprintf(base, "out/m/%s.m.%05d", outName, index);
+	sprintf(base, "%s/%s.m.%05d", outDir, outName, index);
 
 	/*	Create the file and release the plist	*/
 	if ((meas_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
@@ -1924,7 +1924,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 
 	char baseIn[256], baseOut[256];
 
-	sprintf(baseIn, "%s.m.%05d", outName, index);
+	sprintf(baseIn, "%s/%s.m.%05d", outDir, outName, index);
 
 	/*	Open the file and release the plist	*/
 
@@ -2590,7 +2590,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	sprintf(baseOut, "%s.r.%05d", outName, index);
+	sprintf(baseOut, "%s/%s.r.%05d", outDir, outName, index);
 	LogMsg(VERB_HIGH, "Opening file %s", baseOut);
 
 	if ((file_id = H5Fcreate (baseOut, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
