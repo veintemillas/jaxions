@@ -1851,7 +1851,7 @@ void	writeEDensReduced (Scalar *axion, int index, int newNx, int newNz)
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &newslab, NULL);
 
 		/*	Write raw data	*/
-		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id,(static_cast<char *> (axion->m2Cpu())+slab*dataSize + newslab*(zDim)*dataSize));
+		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id,(static_cast<char *> (axion->m2Cpu()) + newslab*(zDim)*dataSize));
 			//                    m2Cpu          + ghost bytes  +
 		if (mErr < 0)
 		{
