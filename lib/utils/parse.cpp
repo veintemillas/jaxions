@@ -58,6 +58,7 @@ VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
+char wisDir[1024] = "./\0";
 
 FieldPrecision	sPrec  = FIELD_SINGLE;
 DeviceType	cDev   = DEV_CPU;
@@ -1139,14 +1140,26 @@ int	parseArgs (int argc, char *argv[])
 			struct stat tStat;
 			if (stat(outPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
 				strcpy(outDir, outPath);
-				printf("Output folder set to %s\n", outDir);
 			} else {
-				printf("%s doesn't exists, using default\n", outPath);
+				printf("Path %s doesn't exists, using default\n", outPath);
 				createOutput();
 			}				
 		}
 	} else {
 		createOutput();
+	}
+
+	/*	Set the directory where the FFTW wisdom is/will be stored		*/
+
+	if (const char *wisPath = std::getenv("AXIONS_WISDOM")) {
+		if (strlen(wisPath) < 1022) {
+			struct stat tStat;
+			if (stat(wisPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
+				strcpy(wisDir, wisPath);
+			} else {
+				printf("Path %s doesn't exists, using default\n", wisPath);
+			}				
+		}
 	}
 
 	return	procArgs;

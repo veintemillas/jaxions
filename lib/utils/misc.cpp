@@ -14,6 +14,9 @@ int	initAxions(int argc, char *argv[]) {
                 return	1;
 	}
 
+	LogMsg (VERB_NORMAL, "Output folder set to %s", outDir);
+	LogMsg (VERB_NORMAL, "FFTW wisdom folder set to %s", wisDir);
+
 	initProfilers();
 
 	return	0;

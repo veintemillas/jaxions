@@ -35,6 +35,7 @@ extern int safest0 ;
 extern char *initFile;
 extern char outName[128];
 extern char outDir[1024];
+extern char wisDir[1024];
 extern bool lowmem;
 extern bool uPrec;
 extern bool uQcd;

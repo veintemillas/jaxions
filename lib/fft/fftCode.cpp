@@ -2,6 +2,7 @@
 #include <map>
 #include <fftw3-mpi.h>
 #include "fft/fftCode.h"
+#include "utils/parse.h"
 
 namespace AxionFFT {
 
@@ -18,8 +19,10 @@ namespace AxionFFT {
 		switch (prec) {
 			case	FIELD_SINGLE:
 				if (myRank == 0) {
-				        if (fftwf_import_wisdom_from_filename("../fftWisdom.single") == 0) {
-				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from fftWisdom.single");
+					char wisName[2048];
+					sprintf (wisName, "%s/fftWisdom.single", wisDir);
+				        if (fftwf_import_wisdom_from_filename(wisName) == 0) {
+				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from %s/fftWisdom.single", wisDir);
 						return;
 					}
 				}
@@ -29,8 +32,10 @@ namespace AxionFFT {
 
 			case	FIELD_DOUBLE:
 				if (myRank == 0) {
-				        if (fftw_import_wisdom_from_filename("../fftWisdom.double") == 0) {
-				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from fftWisdom.double");
+					char wisName[2048];
+					sprintf (wisName, "%s/fftWisdom.double", wisDir);
+				        if (fftw_import_wisdom_from_filename(wisName) == 0) {
+				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from %s/fftWisdom.double", wisDir);
 						return;
 					}
 				}
@@ -43,19 +48,23 @@ namespace AxionFFT {
 
 	void	FFTplan::exportWisdom() {
 
-		LogMsg (VERB_NORMAL, "Importing wisdom");
+		LogMsg (VERB_NORMAL, "Exporting wisdom");
 
 		auto	myRank = commRank();
 
+		char wisName[2048];
+
 		switch (prec) {
 			case	FIELD_SINGLE:
+				sprintf (wisName, "%s/fftWisdom.single", wisDir);
 				fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-				if (myRank == 0) fftwf_export_wisdom_to_filename("../fftWisdom.single");
+				if (myRank == 0) fftwf_export_wisdom_to_filename(wisName);
 				break;
 
 			case	FIELD_DOUBLE:
+				sprintf (wisName, "%s/fftWisdom.double", wisDir);
 				fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
-				if (myRank == 0) fftw_export_wisdom_to_filename("../fftWisdom.double");
+				if (myRank == 0) fftw_export_wisdom_to_filename(wisName);
 				break;
 		}
 		LogMsg (VERB_NORMAL, "Wisdom successfully exported");
