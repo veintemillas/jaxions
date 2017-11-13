@@ -184,8 +184,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 		const _MData_ pVec  = opCode(set1_ps, +zP);
 		const _MData_ mVec  = opCode(set1_ps, -zP);
-		const _MData_ vVec  = opCode(set1_ps, 2.*M_PI);
-		const _MData_ cVec  = opCode(set1_ps, zP*2.);
+		const _MData_ vVec  = opCode(set1_ps, 2.f*M_PI);
+		const _MData_ cVec  = opCode(set1_ps, zP*2.f);
 
 		#pragma omp parallel default(shared) reduction(+:count)
 		{
@@ -211,22 +211,29 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 #ifdef	__AVX512F__
 						auto pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
 						auto mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
-						auto mask = pMask | mMask;
+						auto mask  = opCode(kor, pMask, mMask);
 
-						while	(mask != 0) {
+						int  nChg = 0;
+						for (int k=0,i=1; k<step; k++,i<<=1)
+							nChg += (mask & i) >> k;
+
+						while	(nChg != 0) {
 							mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
 							vPx = opCode(mask_sub_ps, vPx, pMask, vPx, vVec);
 							mPx = opCode(mask_add_ps, mPx, mMask, mPx, cVec);
 							vPx = opCode(mask_add_ps, vPx, mMask, vPx, vVec);
 
-							for (int k=0,i=1; k<step; k++,i<<=1)
-								count += (mask & i) >> k;
+							count += nChg;
 
 							mDf  = opCode(sub_ps, mPx, mel);
 
-							auto pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
-							auto mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
-							mask = pMask | mMask;
+							pMask = opCode(cmp_ps_mask, mDf, pVec, _CMP_GE_OQ);
+							mMask = opCode(cmp_ps_mask, mDf, mVec, _CMP_LT_OQ);
+							mask  = opCode(kor, pMask, mMask);
+
+							nChg = 0;
+							for (int k=0,i=1; k<step; k++,i<<=1)
+								nChg += (mask & i) >> k;
 						}
 #else
 						int mask = 0;
