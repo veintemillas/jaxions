@@ -284,7 +284,7 @@ const std::complex<float> If(0.,1.);
 			AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
 		}
 
-		//* backward needed for reduce-filter-map /**
+		/* Backward needed for reduce-filter-map */
 		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");		// Spectrum for axion
 
 		if (fieldType == FIELD_SAXION) {

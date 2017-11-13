@@ -346,7 +346,7 @@ inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, co
 				m[idxPy] = mPy;
 				v[idxVy] = vPy;
 			}
-#if 0
+#if 1
 			/*	Border, needs shifts	*/
 			idx    = zSl*Sf;
 			idxPy  = idx + ((vIdx+1) % step);
@@ -359,15 +359,23 @@ inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, co
 
 			mDf = mPy - mel;
 
-			int dAng = (mDf/(2.*zP)) + 1;
+			while (abs(mDf) > zP)
+			{
+				if (mDf > zP) {
+					mPy -= 2.*zP;
+					vPy -= 2.*M_PI;
+					count++;
+				} else if (mDf < zP) {
+					mPy += 2.*zP;
+					vPy += 2.*M_PI;
+					count++;
+				}
 
-			if (abs(mDf) > zP) {
-				mPy -= 2.*zP*dAng;
-				vPy -= 2.*M_PI*dAng;
-				m[idxPy] = mPy;
-				v[idxVy] = vPy;
-				count++;
+				mDf = mPy - mel;
 			}
+
+			m[idxPy] = mPy;
+			v[idxVy] = vPy;
 #endif
 		}
 	}
@@ -417,7 +425,7 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 		/*	loop where one rank undoes what another did				*/
 
 		if (rank == cRank) {
-			for (size_t idx=0,i=1; i<Lz; i++,idx+=Sf) {
+			for (size_t idx=0,i=0; i<Lz; i++,idx+=Sf) {
 
 				idxPz = idx + Sf;
 				idxVz = idx;

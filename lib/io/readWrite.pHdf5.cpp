@@ -528,7 +528,6 @@ void	readConf (Scalar **axion, int index)
 	else
 		sizeZ = totlZ/zGrid;
 
-
 	if (!strcmp(fStr, "Saxion"))
 	{
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
@@ -543,6 +542,8 @@ void	readConf (Scalar **axion, int index)
 		LogError ("Input error: Invalid field type");
 		exit(1);
 	}
+
+	commSync();
 
 	/*	Create plist for collective read	*/
 
