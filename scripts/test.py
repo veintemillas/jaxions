@@ -111,7 +111,7 @@ if os.path.exists('./sample.txt'):
                 fix.append([ztab1[i+1],strings[i+1]])
         stringo = np.asarray(fix)
 
-        co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+        co = (sizeL/sizeN)*(3/4)*(1/sizeL)**3
 
 
 from pyqtgraph.Qt import QtGui, QtCore

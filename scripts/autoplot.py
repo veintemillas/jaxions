@@ -128,7 +128,7 @@ if os.path.exists('./sample.txt'):
                 fix.append([ztab1[i+1],strings[i+1]])
         stringo = np.asarray(fix)
 
-        co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+        co = (sizeL/sizeN)*(3/4)*(1/sizeL)**3
         plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,linewidth=0.5,marker='.',markersize=0.1)
         plt.ylabel("String density [Length/Volume adm U.]")
         plt.xlabel(r'$\tau$')
@@ -179,7 +179,7 @@ ene = []
 enlen = 0
 sl = 0
 stringdata = []
-co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+co = (sizeL/sizeN)*(3/4)*(1/sizeL)**3
 
 for meas in fileMeas:
     an_energy = False
@@ -253,7 +253,7 @@ if enlen > 0:
     # STRING EVOLUTION
 if len(stringdata) > 0:
     stringo = np.array(stringdata)
-    co = (sizeL/sizeN)*(3/2)*(1/sizeL)**3
+    co = (sizeL/sizeN)*(3/4)*(1/sizeL)**3
 
     plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,label=r'length/vol',linewidth=0.5,marker='.',markersize=0.1)
     plt.ylabel("String density [Length/Volume adm U.]")
