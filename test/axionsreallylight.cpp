@@ -127,6 +127,21 @@ int	main (int argc, char *argv[])
 	else
 		dz = (zFinl - zInit)/((double) nSteps);
 
+	if (endredmap > sizeN)
+	{
+		endredmap = sizeN;
+		LogOut("[Error:1] Reduced map dimensions set to %d\n ", endredmap);
+	}
+
+	LogOut("nena %d moda %d\n", sizeN/endredmap, sizeN%endredmap);
+	if (sizeN%endredmap != 0 )
+	{
+		int schei =  sizeN/endredmap;
+		endredmap = sizeN/schei;
+		LogOut("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
+	}
+
+
 	const size_t S0 = sizeN*sizeN;
 	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
 	const size_t V0 = 0;
@@ -301,13 +316,44 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
+
+	//--------------------------------------------------
+	// prepropagator
+	//--------------------------------------------------
+
+	LogOut("pppp Preprocessing ... %d \n\n", (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+	double *zaza = axion->zV();
+	initPropagator (pType, axion, nQcd, delta, LL, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+	double dzcontrol = 0.0;
+	double strdensn ;
+	for (int zloop = 0; zloop < nLoops; zloop++)
+	{
+		dzaux = dzSize( zInit, axion->Field(), axion->Lambda(),vqcdType);
+		propagate (axion, dzaux);
+		*zaza = zInit;
+		dzcontrol += dzaux;
+		rts = strings(axion, str);
+		nstrings_global = rts.strDen;
+		strdensn = 0.75*delta*nstrings_global*zInit*zInit/(sizeL*sizeL*sizeL);
+		LogOut("dzcontrol %f strings %ld [Lt^2/V] %f\n", dzcontrol, nstrings_global, strdensn);
+		if (strdensn < 5.0)
+		{
+			LogOut("                   ...  done!\n\n");
+			break;
+		}
+
+	}
+
 	// LL is LL      in FIXED MODE
 	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
 	// damping only from zst1000
+	LogOut("Running ... \n\n");
 	initPropagator (pType, axion, nQcd, delta, LL, vqcdType & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
+
+
 
     //--------------------------------------------------
 		// THE TIME ITERATION LOOP
@@ -369,11 +415,11 @@ int	main (int argc, char *argv[])
 					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 				}
 
-				// if ( (z_now > 2.0) && (coD) && (vqcdType | VQCD_DAMP) )
-				if ( (nstrings_global < 1000) && (coD) && (vqcdType | VQCD_DAMP) )
+				//if ( (nstrings_global < 1000) && (coD) && (vqcdType | VQCD_DAMP) )
+				if ( (z_now > z_doom*0.95) && (coD) && (vqcdType | VQCD_DAMP) )
 				{
 					LogOut("---------------------------------------\n");
-					LogOut("              DAMPING! G = %f    			\n", gammo);
+					LogOut("  DAMPING! G = %f (95% z_doom %f)   	\n", gammo, 0.95*z_doom);
 					LogOut("---------------------------------------\n");
 					initPropagator (pType, axion, nQcd, delta, LL, vqcdType );
 					coD = false ;
@@ -549,7 +595,7 @@ int	main (int argc, char *argv[])
 				{
 					double *eR = static_cast<double*>(eRes);
 					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
-					Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+					Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
 								    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 					contBin.run();
 					writeBinner(contBin, "/bins", "contB");
@@ -633,7 +679,7 @@ int	main (int argc, char *argv[])
 		energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
-			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
 						    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 			contBin.run();
 			writeBinner(contBin, "/bins", "contB");
@@ -721,7 +767,7 @@ int	main (int argc, char *argv[])
 									energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 									{
 										float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
-										Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()) + axion->Surf(), axion->Size(),
+										Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
 													    [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 										contBin.run();
 										writeBinner(contBin, "/bins", "contB");
