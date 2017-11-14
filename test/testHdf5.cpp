@@ -12,7 +12,7 @@
 #include "comms/comms.h"
 #include "map/map.h"
 #include "strings/strings.h"
-#include "powerCpu.h"
+#include "spectrum/spectrum.h"
 #include "scalar/scalar.h"
 
 #include<mpi.h>
@@ -147,11 +147,18 @@ int	main (int argc, char *argv[])
 	auto S = axion->Surf();
 	auto V = axion->Size();
 
+	double eMean = 0.;
 	double *eR = static_cast<double *>(eRes);
+
+	eMean += eR[0] + eR[1] + eR[2] + eR[3] + eR[4];
+
 	if (axion->Field() == FIELD_SAXION)
-		LogOut("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9]);
+		eMean += eR[5] + eR[6] + eR[7] + eR[8] + eR[9];
+
+	if (axion->Field() == FIELD_SAXION)
+		LogOut("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf --> %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], eMean);
 	else
-		LogOut("Energy: %lf %lf %lf %lf %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4]);
+		LogOut("Energy: %lf %lf %lf %lf %lf -- > %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eMean);
 
 	if	(axion->Precision() == FIELD_SINGLE) {
 		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*S], static_cast<float *>(axion->mCpu())[2*S+1]);
@@ -176,6 +183,20 @@ int	main (int argc, char *argv[])
 	writeEnergy(axion, eRes);
 	writeEDens(axion, index);
 	writePoint(axion);
+
+	Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+				   [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
+	contBin.run();
+	writeBinner(contBin, "/bins", "contB");
+
+	SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+	specAna.pRun();
+	writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+	specAna.nRun();
+	writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+	writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+
 	destroyMeas();
 /*
 	LogOut("--------------------------------------------------\n");
