@@ -14,6 +14,7 @@
 #include "strings/strings.h"
 #include "spectrum/spectrum.h"
 #include "scalar/scalar.h"
+#include "reducer/reducer.h"
 
 #include<mpi.h>
 #include<omp.h>
@@ -141,16 +142,15 @@ int	main (int argc, char *argv[])
 	if (axion->LowMem())
 		energy(axion, eRes, false, delta, nQcd, LL);
 	else
-		energy(axion, eRes, true,  delta, nQcd, LL);
+		energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
 
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
 
-	double eMean = 0.;
 	double *eR = static_cast<double *>(eRes);
 
-	eMean += eR[0] + eR[1] + eR[2] + eR[3] + eR[4];
+	double eMean = eR[0] + eR[1] + eR[2] + eR[3] + eR[4];
 
 	if (axion->Field() == FIELD_SAXION)
 		eMean += eR[5] + eR[6] + eR[7] + eR[8] + eR[9];
@@ -181,40 +181,85 @@ int	main (int argc, char *argv[])
 	}
 
 	writeEnergy(axion, eRes);
-	writeEDens(axion, index);
+	writeEDens(axion, index, MAP_ALL);
 	writePoint(axion);
 
-	Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
-				   [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
-	contBin.run();
-	writeBinner(contBin, "/bins", "contB");
+	if (!axion->LowMem()) {
+		Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+					   [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
+		contBin.run();
+		writeBinner(contBin, "/bins", "contB");
 
-	SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
-	specAna.pRun();
-	writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-	specAna.nRun();
-	writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
-	writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
-	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+		specAna.pRun();
+		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+		specAna.nRun();
+		writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+	}
 
 	destroyMeas();
-/*
-	LogOut("--------------------------------------------------\n");
-	LogOut("TO THETA\n");
-	cmplxToTheta (axion);
-	fflush(stdout);
-	LogOut("--------------------------------------------------\n");
-	index++;
 
-	writeConf(axion, index);
+//	LogOut("--------------------------------------------------\n");
+//	LogOut("TO THETA\n");
+//	cmplxToTheta (axion);
+//	fflush(stdout);
+//	LogOut("--------------------------------------------------\n");
+//	index++;
+//
+//	writeConf(axion, index);
+//
+//	energy(axion, eRes, true, delta);
+//
+//	createMeas(axion, index);
+//	writeEnergy(axion, eRes);
+//	writePoint(axion);
+//	destroyMeas();
 
-	energy(axion, eRes, true, delta);
+	Scalar *reduced;
 
-	createMeas(axion, index);
+	double eFc = 1./M_PI;
+
+	if (!axion->LowMem() && axion->Depth()/2 > 16) {
+		if (axion->Precision() == FIELD_DOUBLE) {
+			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
+			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
+				  [] (int px, int py, int pz, complex<double> x) -> complex<double> { return x; }, false);
+		} else {
+			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
+			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
+				  [] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x; }, false);
+		}
+	}
+
+	writeConf(reduced, index+100);
+
+	delete reduced;
+
+	if (!axion->LowMem() && axion->Depth()/2 > 16) {
+		energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
+
+		if (axion->Precision() == FIELD_DOUBLE) {
+			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
+			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
+				  [] (int px, int py, int pz, complex<double> x) -> complex<double> { return x; });
+		} else {
+			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
+			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
+				  [] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x; });
+		}
+	}
+
+	createMeas(axion, index+100);
 	writeEnergy(axion, eRes);
-	writePoint(axion);
+	writeEDens(axion, index+100, MAP_ALL);
 	destroyMeas();
-*/
+
 	trackFree(&eRes, ALLOC_TRACK);
 
 	if (axion->Field() == FIELD_SAXION)

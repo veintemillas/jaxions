@@ -1130,7 +1130,7 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 {
 	hid_t	eGrp_id, group_id, rset_id, tset_id, plist_id, chunk_id;
 	hid_t	rSpace, tSpace, memSpace, dataType, totalSpace;
-	hsize_t	total, slice, slab, offset;
+	hsize_t	total, slice, slab, offset, rOff;
 
 	char	prec[16], fStr[16];
 	int	length = 8;
@@ -1198,11 +1198,19 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 	}
 
 	int cSteps = dump*index;
-	uint totlZ = sizeZ*zGrid;
-	uint tmpS  = sizeN;
+	//uint totlZ = sizeZ*zGrid;
+	//uint tmpS  = sizeN;
 
-	total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ));
-	slab  = (hsize_t) axion->Surf();
+	//total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ));
+	//slab  = (hsize_t) axion->Surf();
+	uint totlZ = axion->TotalDepth();
+	uint totlX = axion->Length();
+	uint redlZ = axion->rTotalDepth();
+	uint redlX = axion->rLength();
+
+	total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	slab  = ((hsize_t) redlX)*((hsize_t) redlX);
+	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(axion->Depth()+2);
 
 	if (axion->Field() == FIELD_WKB) {
 		LogError ("Error: WKB field not supported");
@@ -1272,6 +1280,10 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 		}
 	}
 
+	/*	Might be reduced	*/
+	writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
+	writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
 	/*	Create a dataset for the whole axion data	*/
 
 	char rhoCh[24] = "/energy/density/rho";
@@ -1311,7 +1323,7 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 
 	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
 
-	const hsize_t Lz = axion->Depth();
+	const hsize_t Lz = axion->rDepth();
 
 	if (fMap & MAP_RHO) {
 		for (hsize_t zDim = 0; zDim < Lz; zDim++)
@@ -1321,7 +1333,7 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 			H5Sselect_hyperslab(rSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 			/*	Write raw data	*/
-			auto rErr = H5Dwrite (rset_id, dataType, memSpace, rSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*(Lz+zDim+2)*dataSize));
+			auto rErr = H5Dwrite (rset_id, dataType, memSpace, rSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+(slab*zDim+rOff)*dataSize));
 
 			if (rErr < 0)
 			{

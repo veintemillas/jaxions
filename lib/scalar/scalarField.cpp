@@ -48,15 +48,19 @@ const std::complex<float> If(0.,1.);
 	size_t nData;
 
 	folded 	   = false;
+	eReduced   = false;
 
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
+		case FIELD_SX_RD:
 			nData = 2;
 			break;
 
 		case FIELD_AXION_MOD:
+		case FIELD_AX_MOD_RD:
 		case FIELD_AXION:
+		case FIELD_AX_RD:
 		case FIELD_WKB:
 			nData = 1;
 			break;
@@ -121,12 +125,15 @@ const std::complex<float> If(0.,1.);
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
+		case FIELD_SX_RD:
 			alignAlloc ((void**) &m, mAlign, mBytes);
 			alignAlloc ((void**) &v, mAlign, vBytes);
 			break;
 
 		case FIELD_AXION_MOD:
+		case FIELD_AX_MOD_RD:
 		case FIELD_AXION:
+		case FIELD_AX_RD:
 		case FIELD_WKB:
 			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
@@ -170,6 +177,9 @@ const std::complex<float> If(0.,1.);
 			memset (m2, 0, 2*fSize*n3);
 			break;
 
+		case FIELD_SX_RD:
+		case FIELD_AX_MOD_RD:
+		case FIELD_AX_RD:
 		case FIELD_WKB:
 			m2 = nullptr;
 			break;
@@ -275,27 +285,25 @@ const std::complex<float> If(0.,1.);
 
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
-	if (fieldType != FIELD_WKB) {
+	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
 
 		AxionFFT::initFFT(prec);
-
-		if (pType & PROP_SPEC) {
-			AxionFFT::initPlan (this, FFT_SPSX,  FFT_FWDBCK, "SpSx");
-			AxionFFT::initPlan (this, FFT_SPAX,  FFT_FWDBCK, "SpAx");
-		}
 
 		/* Backward needed for reduce-filter-map */
 		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");		// Spectrum for axion
 
 		if (fieldType == FIELD_SAXION) {
-
-
 			if (!lowmem) {
-				AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWD, "nSpecSxM");	// Only possible if lowmem == false
-				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD, "nSpecSxV");
-				AxionFFT::initPlan (this, FFT_PSPEC_SX,   FFT_FWD, "pSpecSxP");
+				AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
+				AxionFFT::initPlan (this, FFT_PSPEC_SX,   FFT_FWDBCK,  "pSpecSx");
+				AxionFFT::initPlan (this, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
+				AxionFFT::initPlan (this, FFT_RHO_SX,     FFT_FWDBCK,    "RhoSx");
+				AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWD,    "nSpecSxM");	// Only possible if lowmem == false
+				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD,    "nSpecSxV");
 			}
 		}
+
+		AxionFFT::initPlan (this, FFT_SPAX,       FFT_FWDBCK,  "SpAx");
 
 		/*	If present, read fileName	*/
 
@@ -371,10 +379,12 @@ const std::complex<float> If(0.,1.);
 			if (sStreams != nullptr)
 				free(sStreams);
 
-			AxionFFT::closeFFT();
+			if ((fieldType & FIELD_REDUCED) == false)
+				AxionFFT::closeFFT();
 		#endif
 	} else {
-		AxionFFT::closeFFT();
+		if ((fieldType & FIELD_REDUCED) == false)
+			AxionFFT::closeFFT();
 	}
 }
 
@@ -673,7 +683,14 @@ void	Scalar::setField (FieldType newType)
 
 void	Scalar::setFolded (bool foli)
 {
-	folded = foli ;
+	folded = foli;
+}
+
+void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
+{
+	rLx = nLx;
+	rLz = nLz;
+	eReduced = eRed;
 }
 
 /*	These next two functions are to be

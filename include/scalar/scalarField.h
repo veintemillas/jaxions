@@ -18,6 +18,11 @@
 		const size_t Ez;
 		const size_t v3;
 
+		bool eReduced;
+		size_t rLx;
+		size_t rLz;
+		size_t rTz;
+
 		const int  nSplit;
 
 		DeviceType	device;
@@ -88,35 +93,40 @@
 		bool		LowMem()    		  { return lowmem; }
 		void		setLowMem(const bool nLm) { lowmem = nLm; }
 
-		size_t		TotalSize() { return n3*nSplit; }
-		size_t		Size()      { return n3; }
-		size_t		Surf()      { return n2; }
-		size_t		Length()    { return n1; }
-		size_t		TotalDepth(){ return Lz*nSplit; }
-		size_t		Depth()     { return Lz; }
-		size_t		eDepth()    { return Ez; }
-		size_t		eSize()     { return v3; }
+		size_t		TotalSize()  { return n3*nSplit; }
+		size_t		Size()       { return n3; }
+		size_t		Surf()       { return n2; }
+		size_t		Length()     { return n1; }
+		size_t		TotalDepth() { return Lz*nSplit; }
+		size_t		Depth()      { return Lz; }
+		size_t		rLength()    { return eReduced ? rLx : n1; }
+		size_t		rTotalDepth(){ return eReduced ? rLz*nSplit : Lz*nSplit; }
+		size_t		rDepth()     { return eReduced ? rLz : Lz; }
+		size_t		eDepth()     { return Ez; }
+		size_t		eSize()      { return v3; }
 
-		FieldPrecision	Precision() { return precision; }
-		DeviceType	Device()    { return device; }
-		LambdaType	Lambda()    { return lambdaType; }
-		FieldType	Field()     { return fieldType; }
+		FieldPrecision	Precision()  { return precision; }
+		DeviceType	Device()     { return device; }
+		LambdaType	Lambda()     { return lambdaType; }
+		FieldType	Field()      { return fieldType; }
 
 		void		setLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
-		size_t		DataSize () { return fSize; }
-		size_t		DataAlign() { return mAlign; }
-		int		Shift()     { return shift; }
-		bool		Folded()    { return folded; }
+		size_t		DataSize ()  { return fSize; }
+		size_t		DataAlign()  { return mAlign; }
+		int		Shift()      { return shift; }
+		bool		Folded()     { return folded; }
+		bool		Reduced()    { return eReduced; }
 
 
-		double		*zV() { return z; }
-		const double	*zV() const { return z; }
+		double		*zV()        { return z; }
+		const double	*zV() const  { return z; }
 
 		void		setZ(const double newZ) { *z = newZ; }
 
 		void	setField	(FieldType field);
 		void	setFolded	(bool foli);
+		void	setReduced	(bool eRed, size_t nLx = 0, size_t nLz = 0);
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu

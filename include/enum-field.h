@@ -11,6 +11,10 @@
 			FIELD_AXION_MOD	= 130,
 			FIELD_WKB	= 6,
 			FIELD_MOD	= 128,
+			FIELD_SX_RD	= 257,
+			FIELD_AX_RD	= 258,
+			FIELD_AX_MOD_RD	= 386,
+			FIELD_REDUCED	= 256,
 		}	FieldType;
 
 		typedef	enum	FieldIndex_s
@@ -188,6 +192,7 @@
 			PROF_ENERGY,
 			PROF_FOLD,
 			PROF_HDF5,
+			PROF_REDUCER,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -222,6 +227,9 @@
 			FFT_SPAX,
 			FFT_PSPEC_SX,
 			FFT_PSPEC_AX,
+			FFT_RDSX_M,
+			FFT_RDSX_V,
+			FFT_RHO_SX,
 			FFT_RtoC_MtoM_WKB,
 			FFT_RtoC_VtoV_WKB,
 			FFT_RtoC_M2toM2_WKB,

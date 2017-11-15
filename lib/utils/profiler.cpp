@@ -58,6 +58,9 @@ namespace profiler {
 
 		Profiler	hdf5Profiler("Hdf5 I/O");
 		profs.insert(std::make_pair(PROF_HDF5, hdf5Profiler));
+
+		Profiler	redcProfiler("Reducer");
+		profs.insert(std::make_pair(PROF_REDUCER, redcProfiler));
 	}
 
 	void	printMiniStats(double z, StringData strDen, ProfType prof, std::string counter) {

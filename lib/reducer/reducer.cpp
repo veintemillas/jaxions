@@ -1,10 +1,14 @@
 #include <memory>
+#include <complex>
+#include <functional>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
 
+#include "fft/fftCode.h"
 #include "utils/utils.h"
 
+using namespace std;
 using namespace profiler;
 
 template<typename Float>
@@ -14,24 +18,27 @@ class	Reducer : public Tunable
 
 	Scalar	     *axionField;
 
-	const int  oldLx, oldLz;
 	const int  newLx, newLz;
 	const bool inPlace;
 	FieldIndex fType;
 
 	std::function<complex<Float>(int, int, int, complex<Float>)> filter;
 
+	template<typename Field1, typename Field2, typename Field3, const bool pad>
+	void	transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan);
+
 	public:
 
 		 Reducer(Scalar *field, int newLx, int newLz, FieldIndex fType, std::function<complex<Float>(int, int, int, complex<Float>)> myFilter, bool isInPlace=false) :
-			axionField(field), fType(fType), filter(myFilter), newLx(newLx), newLz(newLz), oldLx(field->Length()), oldLz(field->TotalDepth()), inPlace(isInPlace) {};
+			axionField(field), fType(fType), filter(myFilter), newLx(newLx), newLz(newLz), inPlace(isInPlace) {};
 		~Reducer() {};
 
-	void	runCpu	();
-	void	runGpu	();
+	Scalar*	runCpu	();
+	Scalar*	runGpu	();
 };
 
-void	Reducer::runGpu	()
+template<typename Float>
+Scalar*	Reducer<Float>::runGpu	()
 {
 #ifdef	USE_GPU
 	LogMsg	 (VERB_NORMAL, "Reducer runs on cpu");
@@ -47,144 +54,263 @@ void	Reducer::runGpu	()
 #endif
 }
 
-void	Reducer::runCpu	()
-{
-	if (newLz % commSize() != 0) {
-		LogError ("Error: with MPI the new Lz dimension must be divisible by the number of ranks");
-		return;
+template<typename Float>
+template<typename Field1, typename Field2, typename Field3, const bool pad>
+void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan) {
+	auto &myPlan = AxionFFT::fetchPlan(plan);
+	int Lx  = axionField->Length();
+	int Lz  = axionField->Depth();
+	int Tz  = axionField->TotalDepth();
+
+	int hLx = Lx >> 1;
+	int hLz = Lz >> 1;
+	int hTz = Tz >> 1;
+
+	Float  nrm   = 1./((double) (axionField->TotalDepth()*axionField->Surf()));
+	size_t zBase = Lz*commRank();
+
+	/*	m2 has always the energy, we won't distinguish between	*/
+	/*	axion and saxion. This means only theta energy can be	*/
+	/*	reduced in the current version of the code. Also the	*/
+	/*	FFT with MPI and the padding will spoil the rho energy 	*/
+
+	size_t Sm       = Lx*Lz;
+
+	/*	Pad f1 into f2 for the horrible r2c transform			*/
+	if (pad) {
+		if (static_cast<void*>(f1) == static_cast<void*>(f2)) {
+			for (size_t sl=Sm-1; sl>0; sl--) {
+				auto    oOff = sl* Lx;
+				auto    fOff = sl*(Lx+2);
+				memmove (f1+fOff, f1+oOff, sizeof(Field1)*Lx);
+			}
+		} else {
+			#pragma omp parallel for schedule(static)
+			for (size_t sl=0; sl<Sm; sl++) {
+				auto    oOff = sl* Lx;
+				auto    fOff = sl*(Lx+2);
+				memcpy  (f2+fOff, f1+oOff, sizeof(Field1)*Lx);
+			}
+		}
+	}
+std::cout << "m2[0] = " << f1[0] << std::endl;
+std::cout << "M2[0] = " << f2[0] << std::endl;
+	myPlan.run(FFT_FWD);
+
+	int dX = (pad == true) ? hLx+1 : Lx;
+
+	#pragma omp parallel for collapse(3) schedule(static)
+	for (int py = 0; py<Lz; py++)
+		for (int pz = 0; pz<Tz; pz++)
+			for (int px = 0; px<dX; px++) {
+				int kx = px;
+				int ky = py + zBase;
+				int kz = pz;
+
+				if (kx > hLx) kx -= Lx;
+				if (ky > hLx) ky -= Lx;
+				if (kz > hTz) kz -= Tz;
+
+				size_t idx = px + dX*(pz + Tz*py);
+
+				auto x = f2[idx];
+				f2[idx] = filter(kx, ky, kz, x)*nrm;
+			}
+
+	myPlan.run(FFT_BCK);
+
+	/*	Unpad f3 if necessary					*/
+	if (pad) {
+		for (size_t sl=1; sl<Sm; sl++) {
+			auto    oOff = sl*(Lx+2);
+			auto    fOff = sl* Lx;
+			memmove  (f3+fOff, f3+oOff, sizeof(Field1)*Lx);
+		}
 	}
 
-	size_t	splitLz = newLz / commSize();
+	double iX = ((double) Lx)/((double) newLx);
+	double iY = ((double) Lx)/((double) newLx);
+	double iZ = ((double) Lz)/((double) newLz);
+
+	double fX = 0., fY = 0., fZ = 0.;
+
+	for (size_t iz = 0; iz < newLz; fZ += iZ, iz++) {
+		size_t zMax = ceil (fZ);
+		size_t zMin = floor(fZ);
+
+		double  rZ = fZ - zMin;
+
+		for (size_t iy=0; iy < newLx; fY += iY, iy++) {
+			size_t yMax = ceil (fY);
+			size_t yMin = floor(fY);
+
+			double  rY = fY - yMin;
+
+			for (size_t ix=0; ix < newLx; fX += iX, ix++) {
+				size_t xMax = ceil (fX);
+				size_t xMin = floor(fX);
+
+				double  rX = fX - xMin;
+
+				size_t idx = ix + newLx*(iy + newLx*iz);
+
+				size_t xyz = xMin + Lx*(yMin + Lx*zMin);
+				size_t Xyz = xMax + Lx*(yMin + Lx*zMin);
+				size_t xYz = xMin + Lx*(yMax + Lx*zMin);
+				size_t XYz = xMax + Lx*(yMax + Lx*zMin);
+				size_t xyZ = xMin + Lx*(yMin + Lx*zMax);
+				size_t XyZ = xMax + Lx*(yMin + Lx*zMax);
+				size_t xYZ = xMin + Lx*(yMax + Lx*zMax);
+				size_t XYZ = xMax + Lx*(yMax + Lx*zMax);
+
+				// Averages over the eight points involved in the reduction
+if (idx == newLx*newLx*newLz-1 || idx == 0)
+std::cout << std::endl << "I " << idx << " X " << xyz << " f3 " << f3[xyz] << std::endl;
+				f3[idx] = f3[xyz];//f3[xyz]*((Float)((1.-rX)*(1.-rY)*(1.-rZ))) + f3[Xyz]*((Float)(rX*(1.-rY)*(1.-rZ))) +
+					  //f3[xYz]*((Float)((1.-rX)*    rY *(1.-rZ))) + f3[XYz]*((Float)(rX*    rY *(1.-rZ))) +
+					  //f3[xyZ]*((Float)((1.-rX)*(1.-rY)*    rZ )) + f3[XyZ]*((Float)(rX*(1.-rY)*    rZ )) +
+                                          //f3[xYZ]*((Float)((1.-rX)*    rY *    rZ )) + f3[XYZ]*((Float)(rX*    rY *    rZ ));
+			}
+
+			fX = 0.;
+		}
+
+		fY = 0.;
+	}
+std::cout << "af3[0] = " << f3[0] << std::endl;
+}	
+
+template<typename Float>
+Scalar*	Reducer<Float>::runCpu	()
+{
+	if (axionField->TotalDepth()%(newLz * commSize()) != 0) {
+		LogError ("Error: with MPI the new Lz dimension must be divisible by the number of ranks");
+		return	nullptr;
+	}
+
+	Scalar	*outField = nullptr;
+
+	if (!inPlace) {
+		// Make sure you don't screw up the FFTs!!
+		outField = new Scalar(newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(), axionField->Field() | FIELD_REDUCED,
+				      axionField->Lambda(), CONF_NONE, 0, 0.);
+	} else {
+		outField = axionField;
+	}
 
 	if (fType & FIELD_MV) {
 		/*	Unfold field	*/
 		Folder	munge(axionField);
 		munge(UNFOLD_ALL);
 
-		if (field->Field() == FIELD_SAXION) {
-			LogError ("Error: reducer not implemented yet for saxion fields");
-			return;
+		if (axionField->Field() == FIELD_SAXION) {
+			complex<Float> *mIn  = static_cast<complex<Float>*>(axionField->mCpu()) + axionField->Surf();
+			complex<Float> *vIn  = static_cast<complex<Float>*>(axionField->vCpu());
+			complex<Float> *fOut = static_cast<complex<Float>*>(axionField->m2Cpu());
+
+			transformField<complex<Float>,complex<Float>,complex<Float>,false>(mIn, fOut, fOut, "SpSx");
+
+			if (inPlace) {
+				// Reduce memory of m AND copy new axionField
+				// FIXME DO IT!!
+			} else {
+				complex<Float> *mD = static_cast<complex<Float>*>(outField->mCpu()) + outField->Surf();
+				size_t volData     = outField->Size()*sizeof(complex<Float>);
+
+				// Copy m to the second axionField
+				memcpy(mD, fOut, volData);
+			}
+
+			transformField<complex<Float>,complex<Float>,complex<Float>,false>(vIn, fOut, fOut, "RdSxV");
+
+			if (inPlace) {
+				// Reduce memory of v AND copy new axionField
+				// Then, reduce the memory of m2
+				// FIXME DO IT!!
+			} else {
+				complex<Float> *vD = static_cast<complex<Float>*>(outField->vCpu());
+				size_t volData     = outField->Size()*sizeof(complex<Float>);
+
+				// Copy v to the second axionField
+				memcpy(vD, fOut, volData);
+			}
 		} else {
-			auto &myPlan = AxionFFT::fetchPlan("");
-		}
-	} else {
-		int Lz  = field->Depth();
-		int hLx = oldLx >> 1;
-		int hLz = oldLz >> 1;
+			Float          *mIn  = static_cast<Float*>         (axionField->mCpu()) + axionField->Surf();
+			Float          *vIn  = static_cast<Float*>         (axionField->vCpu());
+			Float          *fOut = static_cast<Float*>         (axionField->m2Cpu());
+			complex<Float> *fMid = static_cast<complex<Float>*>(axionField->m2Cpu());
 
-		Float	       *mR, *mD;
-		complex<Float> *mC;
+			transformField<Float,complex<Float>,Float,true>(mIn, fMid, fOut, "pSpecAx");
 
-		if (field->Field() == FIELD_SAXION) {
-			mR = static_cast<Float *>(field->m2Cpu());
-			mC = static_cast<complex<Float> *>(field->m2Cpu());
-			memmove  (mR, mR + field->Surf()*2, sizeof(Float)*oldLx*oldLX*oldLZ);	// Remove ghosts
-		} else {
-			mR = static_cast<Float *>(field->m2Cpu()) + field->Surf();
-			mC = static_cast<complex<Float> *>(field->m2Cpu()) + (field->Surf() >> 1);
-		}
+			if (inPlace) {
+				// Copy new axionField to m2
+				// FIXME DO IT!!
+			} else {
+				Float *mD      = static_cast<Float*>(outField->mCpu()) + outField->Surf();
+				size_t volData = outField->Size()*sizeof(Float);
 
-		/*	m2 has always the energy, we won't distinguish between	*/
-		/*	axion and saxion. This means only theta energy can be	*/
-		/*	reduced in the current version of the code. Also the	*/
-		/*	FFT with MPI and the padding will spoil the rho energy 	*/
+				// Copy m to the second axionField
+				memcpy(mD, fOut, volData);
+			}
 
-		auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+			transformField<Float,complex<Float>,Float,true>(vIn, fMid, fOut, "pSpecAx");
 
-		size_t Sm       = oldLx*Lz;
+			if (inPlace) {
+				// Copy new axionField to last part of m2 without overwriting m
+				// Then, reduce the memory of m/v and m2(v)
+				// Copy stuff back
+				// FIXME DO IT!!
+			} else {
+				Float *vD      = static_cast<Float*>(outField->vCpu());
+				size_t volData = outField->Size()*sizeof(Float);
 
-		/*	Pad m2. For the saxion, theta energy, we'll need to	*/
-		/*	remove the ghosts. Rho energy is all right		*/
-		for (size_t sl=Sm-1; sl>0; sl--) {
-			auto    oOff = sl*oldLx;
-			auto    fOff = sl*(oldLx+2);
-			memmove  (mR+fOff, mR+oOff, sizeof(Float)*oldLx);
-		}
-
-		myPlan.run(FFT_FWD);
-
-		for (int py = 0; py<Lz; py++)
-			for (int pz = 0; pz<oldLx; pz++)
-				for (int px = 0; py<oldLx; px++) {
-					int kx = px;
-					int ky = py + zBase;
-					int kz = pz;
-
-					if (kx > hLx) kx -= oldLx;
-					if (ky > hLx) ky -= oldLx;
-					if (kz > hTz) kz -= oldLz;
-
-					size_t idx = px + oldLx*(pz + oldLz*py);
-
-					auto x = mC[idx];
-					mC[idx] = filter(kx, ky, kz, x);
-				}
-
-		myPlan.run(FFT_BCK);
-
-		double iX = ((double) oldLx)/((double) newLx);
-		double iY = ((double) oldLy)/((double) newLx);
-		double iZ = ((double) oldLz)/((double) newLz);
-
-		for (double fZ=0., size_t iz = 0; iz < splitLz; fZ += iZ, iz++) {
-			size_t zMax = ceil (fZ);
-			size_t zMin = floor(fZ);
-
-			double  rZ = fZ - zMin;
-
-			for (double fY=0., size_t iy=0; iy < newNx; fY += iY, iy++) {
-				size_t yMax = ceil (fY);
-				size_t yMin = floor(fY);
-
-				double  rY = fY - yMin;
-
-				for (double fX=0., size_t ix=0; ix < newNx; fX += iX, ix++) {
-					size_t xMax = ceil (fX);
-					size_t xMin = floor(fX);
-
-					double  rX = fX - xMin;
-
-					size_t idx = ix + newLx*(iy + newLx*sz);
-
-					size_t xyz = xMin + oldLx*(yMin + oldLx*zMin);
-					size_t Xyz = xMax + oldLx*(yMin + oldLx*zMin);
-					size_t xYz = xMin + oldLx*(yMax + oldLx*zMin);
-					size_t XYz = xMax + oldLx*(yMax + oldLx*zMin);
-					size_t xyZ = xMin + oldLx*(yMin + oldLx*zMax);
-					size_t XyZ = xMax + oldLx*(yMin + oldLx*zMax);
-					size_t xYZ = xMin + oldLx*(yMax + oldLx*zMax);
-					size_t XYZ = xMax + oldLx*(yMax + oldLx*zMax);
-
-					// Averages over the eight points involved in the reduction
-					mR[idx] = mR[xyz]*(1.-rX)*(1.-rY)*(1.-rZ) + mR[Xyz]*rX*(1.-rY)*(1.-rZ) +
-						  mR[xYz]*(1.-rX)*    rY *(1.-rZ) + mR[XYz]*rX*    rY *(1.-rZ) +
-						  mR[xyZ]*(1.-rX)*(1.-rY)*    rZ  + mR[XyZ]*rX*(1.-rY)*    rZ  +
-                                                  mR[xYZ]*(1.-rX)*    rY *    rZ  + mR[XYZ]*rX*    rY *    rZ;
-				}
+				// Copy v to the second axionField
+				memcpy(vD, fOut, volData);
 			}
 		}
+	} else {
+		/*	Reduce m2 means reduce energy, so it's always real	*/
+		/*	and ALWAYS in place					*/
+		Float          *mR = static_cast<Float *>(axionField->m2Cpu());
+		complex<Float> *mC = static_cast<complex<Float>*>(axionField->m2Cpu());
+
+		/*	Reduce rho energy as well, needs new FFT		*/
+		if (axionField->Field() == FIELD_SAXION) {
+			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+			mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
+			mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
+			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
+		} else {
+			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
+		}
+		// Signal the axionfield that it contains a reduced energy
+		axionField->setReduced(true, newLx, newLz);
 	}
 
-	return;
+	return	outField;
 }
 
-void	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<double(int, int, int)> myFilter, bool isInPlace=false)
+template<typename Float>
+Scalar*	redField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<complex<Float>(int, int, int, complex<Float>)> myFilter, bool isInPlace)
 {
-	if (!isInPlace && field->Lowmem()) {
-		LogError("Error: lowmem requires in place reduction");
-		return;
+	if (field->LowMem()) {
+		LogError("Error: lowmem not supported yet");
+		return	nullptr;
 	}
 
-	if ((fType & FIELD_M2) && field->Lowmem()) {
+	if (!isInPlace && field->LowMem()) {
+		LogError("Error: lowmem requires in place reduction");
+		return	nullptr;
+	}
+
+	if ((fType & FIELD_M2) && field->LowMem()) {
 		LogError("Error: can't reduce m2 with lowmem");
-		return;
+		return	nullptr;
 	}
 
 	// If we reduce m or v, we reduce both, for we want to store the configuration
 
 	if ((fType & FIELD_M) || (fType & FIELD_V)) {
-		LogError ("Error: reducer implemented only for m2");
-		return;
 		fType |= FIELD_MV;
 		if (fType & FIELD_M2) {
 			LogMsg (VERB_HIGH, "Reduction called for m, v and m2");
@@ -193,43 +319,65 @@ void	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, s
 		}
 	} else {
 		fType |= FIELD_M2;
-		LogMsg (VERB_HIGH, "Reduction called for m2");
+		LogMsg (VERB_HIGH, "Reduction called for m2, will be performed in place");
+		isInPlace = true;
 	}
 
-	auto	reducer = std::make_unique<Reducer> (field, newLx, newLz, myFilter, isInPlace);
+	auto	reducer = std::make_unique<Reducer<Float>> (field, newLx, newLz, fType, myFilter, isInPlace);
 	Profiler &prof = getProfiler(PROF_REDUCER);
 
 	std::stringstream ss;
-	ss << "Reduce " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " to " << newLx << "x" << newLx << "x" << newLz; 
+	ss << "Reduce " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " to " << newLx << "x" << newLx << "x" << newLz*commSize(); 
 
 	size_t oldVol = field->Size();
 
-	reducer->setName(ss.c_str());
+	reducer->setName(ss.str().c_str());
 	prof.start();
+
+	Scalar	*outField = nullptr;
 
 	switch (field->Device())
 	{
 		case DEV_CPU:
-			reducer->runCpu ();
+			outField = reducer->runCpu ();
 			break;
 
 		case DEV_GPU:
-			reducer->runGpu ();
+			outField = reducer->runGpu ();
 			break;
 
 		default:
-			LogError ("Error: invalid device");
-			exit(1);
+			LogError ("Error: invalid device, reduction ignored");
+			prof.stop();
+			return	nullptr;
 			break;
 	}
 
-	reducer->add(0., field->DataSize()*(field->Size() + oldSize)*7.e-9);
+	reducer->add(0., field->DataSize()*(field->Size() + outField->Size())*7.e-9);
 
 	prof.stop();
 	prof.add(reducer->Name(), reducer->GFlops(), reducer->GBytes());
 
-	LogMsg(VERB_NORMAL, "%s finished with %lu jumps", theta->Name().c_str(), nJmps);
-	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", theta->Name().c_str(), prof.Prof()[theta->Name()].GFlops(), prof.Prof()[theta->Name()].GBytes());
+	LogMsg(VERB_NORMAL, "%s finished", reducer->Name().c_str());
+	LogMsg  (VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", reducer->Name().c_str(), prof.Prof()[reducer->Name()].GFlops(), prof.Prof()[reducer->Name()].GBytes());
 
-	return	nJmps;
+	return	outField;
+}
+
+Scalar*	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<complex<float>(int, int, int, complex<float>)> myFilter, bool isInPlace) {
+	if (field->Precision() != FIELD_SINGLE) {
+		LogError("Error: double precision filter for single precision configuration");
+		return	nullptr;
+	}
+	
+	return	redField<float>(field, newLx, newLz, fType, myFilter, isInPlace);
+}
+
+Scalar*	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<complex<double>(int, int, int, complex<double>)> myFilter, bool isInPlace) {
+	if (field->Precision() != FIELD_DOUBLE) {
+		LogError("Error: single precision filter for double precision configuration");
+		return	nullptr;
+	}
+	
+	return	redField(field, newLx, newLz, fType, myFilter, isInPlace);
 }
