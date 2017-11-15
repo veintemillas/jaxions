@@ -79,22 +79,23 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 	/*	Pad f1 into f2 for the horrible r2c transform			*/
 	if (pad) {
 		if (static_cast<void*>(f1) == static_cast<void*>(f2)) {
+			// Energy
 			for (size_t sl=Sm-1; sl>0; sl--) {
 				auto    oOff = sl* Lx;
 				auto    fOff = sl*(Lx+2);
 				memmove (f1+fOff, f1+oOff, sizeof(Field1)*Lx);
 			}
 		} else {
+			// Axion
 			#pragma omp parallel for schedule(static)
 			for (size_t sl=0; sl<Sm; sl++) {
 				auto    oOff = sl* Lx;
 				auto    fOff = sl*(Lx+2);
-				memcpy  (f2+fOff, f1+oOff, sizeof(Field1)*Lx);
+				memcpy  (f3+fOff, f1+oOff, sizeof(Field1)*Lx);
 			}
 		}
 	}
-std::cout << "m2[0] = " << f1[0] << std::endl;
-std::cout << "M2[0] = " << f2[0] << std::endl;
+
 	myPlan.run(FFT_FWD);
 
 	int dX = (pad == true) ? hLx+1 : Lx;
@@ -138,17 +139,23 @@ std::cout << "M2[0] = " << f2[0] << std::endl;
 		size_t zMax = ceil (fZ);
 		size_t zMin = floor(fZ);
 
+		if (zMax >= Lz) zMax = Lz-1;
+
 		double  rZ = fZ - zMin;
 
 		for (size_t iy=0; iy < newLx; fY += iY, iy++) {
 			size_t yMax = ceil (fY);
 			size_t yMin = floor(fY);
 
+			if (yMax >= Lx) yMax = Lx-1;
+
 			double  rY = fY - yMin;
 
 			for (size_t ix=0; ix < newLx; fX += iX, ix++) {
 				size_t xMax = ceil (fX);
 				size_t xMin = floor(fX);
+
+				if (xMax >= Lx) xMax = Lx-1;
 
 				double  rX = fX - xMin;
 
@@ -164,12 +171,10 @@ std::cout << "M2[0] = " << f2[0] << std::endl;
 				size_t XYZ = xMax + Lx*(yMax + Lx*zMax);
 
 				// Averages over the eight points involved in the reduction
-if (idx == newLx*newLx*newLz-1 || idx == 0)
-std::cout << std::endl << "I " << idx << " X " << xyz << " f3 " << f3[xyz] << std::endl;
-				f3[idx] = f3[xyz];//f3[xyz]*((Float)((1.-rX)*(1.-rY)*(1.-rZ))) + f3[Xyz]*((Float)(rX*(1.-rY)*(1.-rZ))) +
-					  //f3[xYz]*((Float)((1.-rX)*    rY *(1.-rZ))) + f3[XYz]*((Float)(rX*    rY *(1.-rZ))) +
-					  //f3[xyZ]*((Float)((1.-rX)*(1.-rY)*    rZ )) + f3[XyZ]*((Float)(rX*(1.-rY)*    rZ )) +
-                                          //f3[xYZ]*((Float)((1.-rX)*    rY *    rZ )) + f3[XYZ]*((Float)(rX*    rY *    rZ ));
+				f3[idx] = f3[xyz]*((Float)((1.-rX)*(1.-rY)*(1.-rZ))) + f3[Xyz]*((Float)(rX*(1.-rY)*(1.-rZ))) +
+					  f3[xYz]*((Float)((1.-rX)*    rY *(1.-rZ))) + f3[XYz]*((Float)(rX*    rY *(1.-rZ))) +
+					  f3[xyZ]*((Float)((1.-rX)*(1.-rY)*    rZ )) + f3[XyZ]*((Float)(rX*(1.-rY)*    rZ )) +
+                                          f3[xYZ]*((Float)((1.-rX)*    rY *    rZ )) + f3[XYZ]*((Float)(rX*    rY *    rZ ));
 			}
 
 			fX = 0.;
@@ -177,7 +182,6 @@ std::cout << std::endl << "I " << idx << " X " << xyz << " f3 " << f3[xyz] << st
 
 		fY = 0.;
 	}
-std::cout << "af3[0] = " << f3[0] << std::endl;
 }	
 
 template<typename Float>

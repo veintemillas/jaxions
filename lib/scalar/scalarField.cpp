@@ -161,6 +161,7 @@ const std::complex<float> If(0.,1.);
 
 	//  M2 issue ;; we always allocate a complex m2 in theta mode!
 	//	EVEN IF WE DO NOT SPECIFY lowmem
+
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
@@ -190,13 +191,13 @@ const std::complex<float> If(0.,1.);
 			break;
 	}
 
-	if (m == NULL)
+	if (m == nullptr)
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the m field", mBytes);
 		exit(1);
 	}
 
-	if (v == NULL)
+	if (v == nullptr)
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the v field", vBytes);
 		exit(1);
@@ -219,7 +220,7 @@ const std::complex<float> If(0.,1.);
 
 	alignAlloc ((void **) &z, mAlign, mAlign);
 
-	if (z == NULL)
+	if (z == nullptr)
 	{
 		LogError ("Error: couldn't allocate %d bytes on host for the z field", sizeof(double));
 		exit(1);
@@ -347,7 +348,7 @@ const std::complex<float> If(0.,1.);
 	if (m != nullptr)
 		trackFree(&m, ALLOC_ALIGN);
 
-	if (v != nullptr && fieldType == FIELD_SAXION) {
+	if (v != nullptr && (fieldType & FIELD_SAXION)) {
 		trackFree(&v, ALLOC_ALIGN);
 	}
 

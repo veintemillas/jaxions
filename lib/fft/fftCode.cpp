@@ -75,19 +75,21 @@ namespace AxionFFT {
 		/*	Import wisdom	*/
 		importWisdom();
 
-		switch (prec) {
+		switch (prec) {//FIXME double precision con reducer
 
 			case	FIELD_SINGLE:
 			{
 				fftwf_complex *m     = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
 				fftwf_complex *v     = static_cast<fftwf_complex*>(axion->vCpu());
 				fftwf_complex *m2    = static_cast<fftwf_complex*>(axion->m2Cpu());
+				fftwf_complex *m2R   = static_cast<fftwf_complex*>(axion->m2Cpu()) + (axion->Size()>>1) + axion->Surf();
 
 				// Power spectrum/spectral propagator in axion when the field was created as saxion
 				float	      *mR    = static_cast<float *>       (axion->vCpu());
 
 				// Power spectrum in saxion and the other axion cases
 				float	      *mA    = static_cast<float *>       (axion->m2Cpu());
+				float	      *mAR   = static_cast<float *>       (axion->m2Cpu()) +  axion->Size()     + axion->Surf()*2;
 
 				// WKB
 				float	      *mNoGr = static_cast<float *>       (axion->mCpu());
@@ -145,6 +147,21 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
 						break;
 
+					case	FFT_RDSX_V:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create C->C plan with m2 in lowmem runs");
+							exit(0);
+						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+						break;
+
+					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
 						if (axion->Field() == FIELD_SAXION) {
 
@@ -161,40 +178,8 @@ namespace AxionFFT {
 						}
 						break;
 
-					case	FFT_PSPEC_SX:
-
-						if (axion->m2Cpu() == nullptr) {
-							LogError ("Can't create R->C plan with m2 in lowmem runs");
-							exit(0);
-						}
-
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-
-						break;
-
-					case	FFT_RtoC_MtoM_WKB:
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						break;
-					case	FFT_RtoC_VtoV_WKB:
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						break;
-					case	FFT_RtoC_M2toM2_WKB:
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						break;
-
 					case	FFT_SPSX:
+					case	FFT_RDSX_M:
 
 						if (axion->LowMem()) {
 							LogError ("The spectral propagator doesn't work with lowmem");
@@ -207,18 +192,54 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
-					case	FFT_SPAX:
-						if (axion->Field() == FIELD_SAXION) {
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						} else {
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+					case	FFT_PSPEC_SX:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create R->C plan with m2 in lowmem runs");
+							exit(0);
 						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+
+					case	FFT_RHO_SX:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create R->C plan with m2 in lowmem runs");
+							exit(0);
+						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mAR, m2R, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2R, mAR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+
+					case	FFT_RtoC_MtoM_WKB:
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+
+					case	FFT_RtoC_VtoV_WKB:
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+
+					case	FFT_RtoC_M2toM2_WKB:
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 				}
 			}
@@ -229,15 +250,17 @@ namespace AxionFFT {
 				fftw_complex *m     = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
 				fftw_complex *v     = static_cast<fftw_complex*>(axion->vCpu());
 				fftw_complex *m2    = static_cast<fftw_complex*>(axion->m2Cpu());
+				fftw_complex *m2R   = static_cast<fftw_complex*>(axion->m2Cpu()) + (axion->Size()>>1) + axion->Surf();
 
 				// Power spectrum/spectral propagator in axion when the field was created as saxion
-				double	      *mR   = static_cast<double*>       (axion->vCpu());
+				double	      *mR   = static_cast<double*>      (axion->vCpu());
 
 				// Power spectrum in saxion and the other axion cases
-				double	      *mA   = static_cast<double*>       (axion->m2Cpu());
+				double	      *mA   = static_cast<double*>      (axion->m2Cpu());
+				double	      *mAR  = static_cast<double*>      (axion->m2Cpu()) +  axion->Size()     + axion->Surf()*2;
 
 				// WKB
-				double	     *mNoGr = static_cast<double*>       (axion->mCpu());
+				double	     *mNoGr = static_cast<double*>      (axion->mCpu());
 				fftw_complex *mNoGc = static_cast<fftw_complex*>(axion->mCpu());
 
 				switch	(type) {
@@ -292,20 +315,49 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
 						break;
 
+					case	FFT_RDSX_V:
+
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create C->C plan with m2 in lowmem runs");
+							exit(0);
+						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+						break;
+
+					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
 						if (axion->Field() == FIELD_SAXION) {
 
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						} else {
 
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						}
+						break;
+
+					case	FFT_SPSX:
+                                        case    FFT_RDSX_M:
+
+						if (axion->LowMem()) {
+							LogError ("The spectral propagator doesn't work with lowmem");
+							exit(0);
+						}
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_PSPEC_SX:
@@ -314,68 +366,48 @@ namespace AxionFFT {
 							LogError ("Can't create R->C plan with m2 in lowmem runs");
 							exit(0);
 						}
-									/* For test, the backward plan requires ghosts	*/
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 
-						break;
-
-					case	FFT_RtoC_MtoM_WKB:
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						break;
-					case	FFT_RtoC_VtoV_WKB:
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						break;
-					case	FFT_RtoC_M2toM2_WKB:
 						if (dFft & FFT_FWD)
 							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
+					case    FFT_RHO_SX:
 
-					case	FFT_SPSX:
-
-						if (axion->LowMem()) {
-							LogError ("The spectral propagator doesn't work with lowmem");
+						if (axion->m2Cpu() == nullptr) {
+							LogError ("Can't create R->C plan with m2 in lowmem runs");
 							exit(0);
 						}
 
-{
-ptrdiff_t alloc_local, local_n0, local_0_start;
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mAR, m2R, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2R, mAR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
 
-alloc_local = fftw_mpi_local_size_3d(Lz, Lx, Lx, MPI_COMM_WORLD, &local_n0, &local_0_start);
-
-printf ("\n\n\nAlloc %ld N0 %ld Start %ld\n\n\n", alloc_local, local_n0, local_0_start);
-}
+					case	FFT_RtoC_MtoM_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+					case	FFT_RtoC_VtoV_WKB:
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+						break;
+					case	FFT_RtoC_M2toM2_WKB:
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
-					case	FFT_SPAX:
-						if (axion->Field() == FIELD_SAXION) {
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						} else {
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-						}
-						break;
 				}
 			}
 			break;
@@ -383,36 +415,7 @@ printf ("\n\n\nAlloc %ld N0 %ld Start %ld\n\n\n", alloc_local, local_n0, local_0
 
 		/*	Export wisdom	*/
 		exportWisdom();
-
 	}
-
-//		FFTplan::~FFTplan() {
-//			LogError ("Calling destructor");	// Forces flush
-//			printf("Destructor!!\n"); fflush(stdout);
-/*		switch (axion->Precision()) {
-			case	FIELD_SINGLE:
-				if (dFft & FFT_FWD) {
-//				if (planForward != nullptr) {
-					printf ("Pointer %p %p %p\n", planForward, nullptr, NULL); fflush(stdout);
-					fftwf_destroy_plan (static_cast<fftwf_plan>(planForward));
-				}
-
-//				if (planBackward != nullptr) {
-				if (dFft & FFT_BCK) {
-					printf ("Pointer %p %p %p\n", planBackward, nullptr, NULL); fflush(stdout);
-					fftwf_destroy_plan (static_cast<fftwf_plan>(planBackward));
-				}
-				break;
-
-			case	FIELD_DOUBLE:
-				if (dFft & FFT_FWD)
-					fftw_destroy_plan (static_cast<fftw_plan>(planForward));
-
-				if (dFft & FFT_BCK)
-					fftw_destroy_plan (static_cast<fftw_plan>(planBackward));
-				break;
-		}*/
-//	}
 
 	void	FFTplan::run	(FFTdir cDir)
 	{
@@ -566,8 +569,6 @@ printf ("\n\n\nAlloc %ld N0 %ld Start %ld\n\n\n", alloc_local, local_n0, local_0
 		auto dFft    = myPlan.Direction();
 
 		LogMsg (VERB_NORMAL, "Removing plan %s", name.c_str());
-
-//		LogOut ("Plan %s, F%d %p B%d %p\n", name.c_str(), dFft & FFT_FWD, myPlan.PlanFwd(), dFft & FFT_BCK, myPlan.PlanBack());
 
 		switch (myPlan.Precision()) {
 

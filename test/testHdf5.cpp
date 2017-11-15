@@ -160,13 +160,13 @@ int	main (int argc, char *argv[])
 	else
 		LogOut("Energy: %lf %lf %lf %lf %lf -- > %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eMean);
 
-	if	(axion->Precision() == FIELD_SINGLE) {
-		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*S], static_cast<float *>(axion->mCpu())[2*S+1]);
-		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*(V+S)-2], static_cast<float *>(axion->mCpu())[2*(V+S)-1]);
-	} else {
-		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*S], static_cast<double *>(axion->mCpu())[2*S+1]);
-		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*(V+S)-2], static_cast<double *>(axion->mCpu())[2*(V+S)-1]);
-	}
+//	if	(axion->Precision() == FIELD_SINGLE) {
+//		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*S], static_cast<float *>(axion->mCpu())[2*S+1]);
+//		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*(V+S)-2], static_cast<float *>(axion->mCpu())[2*(V+S)-1]);
+//	} else {
+//		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*S], static_cast<double *>(axion->mCpu())[2*S+1]);
+//		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*(V+S)-2], static_cast<double *>(axion->mCpu())[2*(V+S)-1]);
+//	}
 
 	createMeas(axion, index);
 
@@ -185,10 +185,17 @@ int	main (int argc, char *argv[])
 	writePoint(axion);
 
 	if (!axion->LowMem()) {
-		Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
-					   [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
-		contBin.run();
-		writeBinner(contBin, "/bins", "contB");
+		if (axion->Precision() == FIELD_DOUBLE) {
+			Binner<3000,double>contBin(static_cast<double*>(axion->m2Cpu()), axion->Size(),
+						   [eMean = eMean] (double x) -> double { return (double) (log10(x/eMean) );});
+			contBin.run();
+			writeBinner(contBin, "/bins", "contB");
+		} else {
+			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+						   [eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
+			contBin.run();
+			writeBinner(contBin, "/bins", "contB");
+		}
 
 		SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 		specAna.pRun();
@@ -219,16 +226,16 @@ int	main (int argc, char *argv[])
 
 	Scalar *reduced;
 
-	double eFc = 1./M_PI;
+	double eFc = 32.*M_PI*M_PI/((double) axion->Surf());
 
-	if (!axion->LowMem() && axion->Depth()/2 > 16) {
+	if (!axion->LowMem() && axion->Depth()/2 >= 16) {
 		if (axion->Precision() == FIELD_DOUBLE) {
-			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
+			//reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
 			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); }, false);
 			reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
 				  [] (int px, int py, int pz, complex<double> x) -> complex<double> { return x; }, false);
 		} else {
-			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
+			//reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
 			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); }, false);
 			reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
 				  [] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x; }, false);
@@ -239,17 +246,17 @@ int	main (int argc, char *argv[])
 
 	delete reduced;
 
-	if (!axion->LowMem() && axion->Depth()/2 > 16) {
+	if (!axion->LowMem() && axion->Depth()/2 >= 16) {
 		energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
 
 		if (axion->Precision() == FIELD_DOUBLE) {
-			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
-			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			//reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
+			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); });
 			reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
 				  [] (int px, int py, int pz, complex<double> x) -> complex<double> { return x; });
 		} else {
-			//reduced = reduceField(axion, axion->Length()/2, axion->TotalDepth()/2, FIELD_MV,
-			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			//reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
+			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); });
 			reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
 				  [] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x; });
 		}
