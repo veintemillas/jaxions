@@ -1832,6 +1832,9 @@ void	writeEDensReduced (Scalar *axion, int index, int newNx, int newNz)
 		}
 	}
 
+	writeAttribute(group_id, &newNx, "Size",  H5T_NATIVE_UINT);
+	writeAttribute(group_id, &newNz, "Depth", H5T_NATIVE_UINT);
+
 	/*	Create a dataset for the whole reduced contrast data	*/
 
 	char mCh[24] = "/energy/redensity";
