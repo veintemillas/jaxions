@@ -66,13 +66,10 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 	int hLz = Lz >> 1;
 	int hTz = Tz >> 1;
 
-	Float  nrm   = 1./((double) (axionField->TotalDepth()*axionField->Surf()));
+	Float  nrm   = 1./((double) (axionField->TotalSize()));
 	size_t zBase = Lz*commRank();
 
-	/*	m2 has always the energy, we won't distinguish between	*/
-	/*	axion and saxion. This means only theta energy can be	*/
-	/*	reduced in the current version of the code. Also the	*/
-	/*	FFT with MPI and the padding will spoil the rho energy 	*/
+	/*	m2 has always the energy, whether it's axion or saxion	*/
 
 	size_t Sm       = Lx*Lz;
 
