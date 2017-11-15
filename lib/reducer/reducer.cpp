@@ -71,7 +71,7 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 
 	/*	m2 has always the energy, whether it's axion or saxion	*/
 
-	size_t Sm       = Lx*Lz;
+	size_t Sm = Lx*Lz;
 
 	/*	Pad f1 into f2 for the horrible r2c transform			*/
 	if (pad) {
@@ -184,10 +184,10 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 template<typename Float>
 Scalar*	Reducer<Float>::runCpu	()
 {
-	if (axionField->TotalDepth()%(newLz * commSize()) != 0) {
-		LogError ("Error: with MPI the new Lz dimension must be divisible by the number of ranks");
-		return	nullptr;
-	}
+//	if (axionField->TotalDepth()%(newLz * commSize()) != 0) {
+//		LogError ("Error: with MPI the new Lz dimension must be divisible by the number of ranks");
+//		return	nullptr;
+//	}
 
 	Scalar	*outField = nullptr;
 

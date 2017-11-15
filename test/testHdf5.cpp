@@ -19,6 +19,8 @@
 #include<mpi.h>
 #include<omp.h>
 
+#define	ScaleSize 2
+
 using namespace std;
 
 #ifdef	USE_XEON
@@ -137,13 +139,10 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-//	writeConf(axion, index);
-
 	if (axion->LowMem())
 		energy(axion, eRes, false, delta, nQcd, LL);
 	else
 		energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
-
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
@@ -159,14 +158,6 @@ int	main (int argc, char *argv[])
 		LogOut("Energy: %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf --> %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eR[5], eR[6], eR[7], eR[8], eR[9], eMean);
 	else
 		LogOut("Energy: %lf %lf %lf %lf %lf -- > %lf\n", eR[0], eR[1], eR[2], eR[3], eR[4], eMean);
-
-//	if	(axion->Precision() == FIELD_SINGLE) {
-//		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*S], static_cast<float *>(axion->mCpu())[2*S+1]);
-//		LogOut("Punto: %lf %lf\n", static_cast<float *>(axion->mCpu())[2*(V+S)-2], static_cast<float *>(axion->mCpu())[2*(V+S)-1]);
-//	} else {
-//		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*S], static_cast<double *>(axion->mCpu())[2*S+1]);
-//		LogOut("Punto: %lf %lf\n", static_cast<double *>(axion->mCpu())[2*(V+S)-2], static_cast<double *>(axion->mCpu())[2*(V+S)-1]);
-//	}
 
 	createMeas(axion, index);
 
@@ -226,46 +217,42 @@ int	main (int argc, char *argv[])
 
 	Scalar *reduced;
 
-	double eFc = 32.*M_PI*M_PI/((double) axion->Surf());
+	// This is equivalent to Javi's filter
+	double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
+	double nFc  = 1.;
+	int    kMax = axion->Length()/ScaleSize; 
 
-	if (!axion->LowMem() && axion->Depth()/2 >= 16) {
+
+	if (!axion->LowMem() && axion->Depth()/ScaleSize >= 2) {
 		if (axion->Precision() == FIELD_DOUBLE) {
-			//reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
-			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); }, false);
-			reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
-				  [] (int px, int py, int pz, complex<double> x) -> complex<double> { return x; }, false);
+			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
+				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
+			energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
+			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
+			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); });
+			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
+				  [kMax = kMax] (int px, int py, int pz, complex<double> x) -> complex<double> { return ((px*px + py*py + pz*pz) <= kMax*kMax) ? x : complex<double>(0.,0.); });
 		} else {
-			//reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
-			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); }, false);
-			reduced = reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_MV,
-				  [] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x; }, false);
+			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
+				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
+			energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
+			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
+			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); });
+			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
+				  [kMax = kMax] (int px, int py, int pz, complex<float> x) -> complex<float> { return ((px*px + py*py + pz*pz) <= kMax*kMax) ? x : complex<float>(0.,0.); });
 		}
+
+		writeConf(reduced, index+100);
+		delete reduced;
+
+		createMeas(axion, index+100);
+		writeEnergy(axion, eRes);
+		writeEDens(axion, index+100, MAP_ALL);
+		destroyMeas();
+
+	} else {
+		LogOut ("MPI z dimension too small, skipping reduction...\n");
 	}
-
-	writeConf(reduced, index+100);
-
-	delete reduced;
-
-	if (!axion->LowMem() && axion->Depth()/2 >= 16) {
-		energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
-
-		if (axion->Precision() == FIELD_DOUBLE) {
-			//reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
-			//	  [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) exp(-eFc*(px*px + py*py + pz*pz))); });
-			reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
-				  [] (int px, int py, int pz, complex<double> x) -> complex<double> { return x; });
-		} else {
-			//reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
-			//	  [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  exp(-eFc*(px*px + py*py + pz*pz))); });
-			reduceField(axion, axion->Length()/2, axion->Depth()/2, FIELD_M2,
-				  [] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x; });
-		}
-	}
-
-	createMeas(axion, index+100);
-	writeEnergy(axion, eRes);
-	writeEDens(axion, index+100, MAP_ALL);
-	destroyMeas();
 
 	trackFree(&eRes, ALLOC_TRACK);
 
