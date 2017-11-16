@@ -24,7 +24,7 @@ double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
-double mode0 = 10.0;
+double mode0 = 0.0;
 double alpha = 0.143;
 double zthres   = 1.0;
 double zrestore = 1.0;
@@ -41,6 +41,10 @@ bool uPrec    = false;
 bool uQcd     = false;
 bool uLambda  = false;
 bool uMsa     = false;
+bool uPot     = false;
+bool uGamma   = false;
+bool uZin     = false;
+bool uZfn     = false;
 bool spectral = false;
 
 size_t kMax  = 2;
@@ -311,6 +315,7 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--vqcd2"))
 		{
+			uPot = true;
 			vqcdType = VQCD_2 ;
 			procArgs++;
 			passed = true;
@@ -319,6 +324,7 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
+			uPot = true;
 			vqcdType = VQCD_1_PQ_2 ;
 			procArgs++;
 			passed = true;
@@ -327,6 +333,7 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
+			uPot = true;
 			vqcdTypeRhoevol = VQCD_EVOL_RHO;
 			procArgs++;
 			passed = true;
@@ -521,6 +528,9 @@ int	parseArgs (int argc, char *argv[])
 			gammo = atof(argv[i+1]);
 			vqcdTypeDamp = VQCD_DAMP_RHO ;
 
+			uPot  = true;
+			uGamma = true;
+
 			if (gammo < 0.)
 			{
 				printf("Error: Damping factor should be larger than 0.\n");
@@ -549,6 +559,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			uZin = true;
+
 			i++;
 			procArgs++;
 			passed = true;
@@ -570,6 +582,8 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Final redshift must be larger than 0.\n");
 				exit(1);
 			}
+
+			uZfn = true;
 
 			i++;
 			procArgs++;

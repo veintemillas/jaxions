@@ -40,6 +40,10 @@ extern bool lowmem;
 extern bool uPrec;
 extern bool uQcd;
 extern bool uLambda;
+extern bool uGamma;
+extern bool uPot;
+extern bool uZin;
+extern bool uZfn;
 extern bool spectral;
 
 extern FieldPrecision sPrec;
@@ -48,7 +52,9 @@ extern ConfType	      cType;
 extern ConfsubType    smvarType;
 extern FieldType      fTypeP;
 extern LambdaType     lType;
-extern VqcdType		    vqcdType;
+extern VqcdType       vqcdType;
+extern VqcdType       vqcdTypeDamp;
+extern VqcdType       vqcdTypeRhoevol;
 extern PropType       pType;
 
 extern LogMpi	      logMpi;
