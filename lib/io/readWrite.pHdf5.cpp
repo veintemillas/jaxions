@@ -189,11 +189,12 @@ void	writeConf (Scalar *axion, int index)
 	}
 
 	int cSteps = dump*index;
-	uint totlZ = sizeZ*zGrid;
-	uint tmpS  = sizeN;
+	uint totlZ = axion->TotalDepth();
+	uint tmpS  = axion->Length();
 
 	switch (axion->Field())
 	{
+		case 	FIELD_SX_RD:
 		case 	FIELD_SAXION:
 		{
 			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ*2));
@@ -203,6 +204,7 @@ void	writeConf (Scalar *axion, int index)
 		}
 		break;
 
+		case 	FIELD_AX_MOD_RD:
 		case	FIELD_AXION_MOD:
 		{
 			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
@@ -212,6 +214,7 @@ void	writeConf (Scalar *axion, int index)
 		}
 		break;
 
+		case 	FIELD_AX_RD:
 		case	FIELD_AXION:
 		case	FIELD_WKB:
 		{
@@ -333,11 +336,11 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &gammo, "Gamma" ,        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &shift, "Shift" ,        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &indi3, "Indi3" ,        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zthres,"z Threshold" ,  H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zrestore,"z Restore" ,  H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gammo, "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zrestore,"z Restore",   H5T_NATIVE_DOUBLE);
 
 	H5Gclose(vGrp_id);
 
@@ -587,6 +590,9 @@ void	readConf (Scalar **axion, int index)
 
 	if (!uZin) {
 		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
+		if (zTmp < zInit)
+			zInit = zTmp;
+	} else {
 		zTmp = zInit;
 	}
 
@@ -727,7 +733,7 @@ void	readConf (Scalar **axion, int index)
 			LogError("Error: unrecognized configuration type %s", icStr);
 			exit(1);
 		}
-		
+		H5Gclose(icGrp_id);
 	} 
 
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
@@ -857,6 +863,7 @@ void	readConf (Scalar **axion, int index)
 
 	/*	Fold the field		*/
 
+printf("G");fflush(stdout);
 	Folder munge(*axion);
 	munge(FOLD_ALL);
 
@@ -896,7 +903,6 @@ void	createMeas (Scalar *axion, int index)
 
 	/*	Set up parallel access with Hdf5	*/
 
-//	We give up pHdf5 for the measurements because compression is not supported
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
@@ -1031,6 +1037,7 @@ void	createMeas (Scalar *axion, int index)
 			sprintf(rStr, "Full");
 			break;
 	}
+
 	/*	Write header	*/
 
 	hid_t attr_type;
@@ -1068,11 +1075,11 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &gammo, "Gamma" ,        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &shift, "Shift" ,        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &indi3, "Indi3" ,        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zthres,"z Threshold" ,  H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zrestore,"z Restore" ,  H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gammo, "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zrestore,"z Restore",   H5T_NATIVE_DOUBLE);
 
 	H5Gclose(vGrp_id);
 
@@ -1520,7 +1527,7 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-void	writeEDens (Scalar *axion, int index, MapType fMap)
+void	writeEDens (Scalar *axion, MapType fMap)
 {
 	hid_t	eGrp_id, group_id, rset_id, tset_id, plist_id, chunk_id;
 	hid_t	rSpace, tSpace, memSpace, dataType, totalSpace;
@@ -1591,7 +1598,6 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 		break;
 	}
 
-	int cSteps = dump*index;
 	//uint totlZ = sizeZ*zGrid;
 	//uint tmpS  = sizeN;
 

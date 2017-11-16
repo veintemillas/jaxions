@@ -194,7 +194,7 @@ int	main (int argc, char *argv[])
 		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
 		createMeas(axion, index);
-		writeEDens(axion, index, MAP_ALL);
+		writeEDens(axion, MAP_ALL);
 
 		if (axion->Field() == FIELD_SAXION) {
 			writeString(str, strDen);
@@ -274,7 +274,7 @@ int	main (int argc, char *argv[])
 //			energy(axion, eRes, true, delta, nQcd);
 //			createMeas(axion, index+1);
 //			writeEnergy(axion, eRes);
-//			writeEDens(axion, index+1, MAP_THETA);
+//			writeEDens(axion, MAP_THETA);
 //			destroyMeas();
 //			zloop += 100.;
 		}

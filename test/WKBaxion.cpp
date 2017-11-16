@@ -225,7 +225,7 @@ int	main (int argc, char *argv[])
 				LogOut ("bin ");
 				writeArray(bA, 10000, "/bins", "cont");
 				LogOut ("MAP ");
-				writeEDens(axion, index);
+				writeEDens(axion);
 				LogOut ("tot ");
 				writeEnergy(axion, eRes);
 				//computes power spectrum

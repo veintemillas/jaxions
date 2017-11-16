@@ -55,7 +55,7 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 	hid_t	attr;
 	herr_t	status;
 
-	if ((attr   = H5Aopen_by_name (file_id, "/", name, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0)
 		LogError ("Error opening attribute %s");
 	if ((status = H5Aread (attr, h5_type, data)) < 0)
 		LogError ("Error reading attribute %s");
@@ -107,8 +107,8 @@ void	writeConf (Scalar *axion, int index)
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
-	char	prec[16], fStr[16], lStr[16];
-	int	length = 8;
+	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], icStr[16], smStr[16];
+	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 
@@ -233,10 +233,13 @@ void	writeConf (Scalar *axion, int index)
 		break;
 	}
 
+	double  llPhys = LL;
+
 	switch (axion->Lambda())
 	{
-		case 	LAMBDA_Z2:
+		case	LAMBDA_Z2:
 			sprintf(lStr, "z2");
+			llPhys /= (*axion->zV())*(*axion->zV());
 			break;
 
 		case	LAMBDA_FIXED:
@@ -247,6 +250,53 @@ void	writeConf (Scalar *axion, int index)
 
 			LogError ("Error: Invalid lambda type. How did you get this far?");
 			exit(1);
+			break;
+	}
+
+	switch (vqcdType)
+	{
+		case	VQCD_1:
+			sprintf(vStr, "VQcd 1");
+			break;
+
+		case	VQCD_2:
+			sprintf(vStr, "VQcd 2");
+			break;
+
+		case	VQCD_1_PQ_2:
+			sprintf(vStr, "VQcd 1 Peccei-Quinn");
+			break;
+
+		default:
+			sprintf(vStr, "None");
+			break;
+	}
+
+	switch (vqcdTypeDamp)
+	{
+		case	VQCD_DAMP_RHO:
+			sprintf(dStr, "Rho");
+			break;
+
+		case	VQCD_DAMP_ALL:
+			sprintf(dStr, "All");
+			break;
+
+		default:
+		case	VQCD_NONE:
+			sprintf(dStr, "None");
+			break;
+	}
+
+	switch (vqcdTypeRhoevol)
+	{
+		case	VQCD_EVOL_RHO:
+			sprintf(rStr, "Only Rho");
+			break;
+
+		default:
+		case	VQCD_NONE:
+			sprintf(rStr, "Full");
 			break;
 	}
 
@@ -265,17 +315,106 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
 	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
 	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
-	writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-	writeAttribute(file_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(file_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
-	writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
 	writeAttribute(file_id, &cSteps,"Current step",  H5T_NATIVE_INT);
+
+	/*	Create a group for specific header data	*/
+	hid_t vGrp_id = H5Gcreate2(file_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	double shift = saxionshift(maa, llPhys, vqcdType);
+	indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+
+	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
+	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
+	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
+	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
+	writeAttribute(vGrp_id, &nQcd,  "nQcd",	         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gammo, "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zrestore,"z Restore",   H5T_NATIVE_DOUBLE);
+
+	H5Gclose(vGrp_id);
+
+	hid_t icGrp_id = H5Gcreate2(file_id, "/ic", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	switch (cType) {
+		case	CONF_SMOOTH:
+			sprintf(icStr, "Smooth");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_KMAX:
+			sprintf(icStr, "kMax");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_TKACHEV:
+			sprintf(icStr, "Tkachev");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		default:
+		case	CONF_NONE:
+			sprintf(icStr, "None");
+	}
+
+	switch (smvarType) {
+		case	CONF_RAND:
+			sprintf(smStr, "Random");
+			break;
+
+		case	CONF_STRINGXY:
+			sprintf(smStr, "String XY");
+			break;
+
+		case	CONF_STRINGYZ:
+			sprintf(smStr, "String YZ");
+			break;
+
+		case	CONF_MINICLUSTER:
+			sprintf(smStr, "Minicluster");
+			break;
+
+		case	CONF_MINICLUSTER0:
+			sprintf(smStr, "Minicluster 0");
+			break;
+
+		case	CONF_AXNOISE:
+			sprintf(smStr, "Axion noise");
+			break;
+
+		case	CONF_SAXNOISE:
+			sprintf(smStr, "Saxion noise");
+			break;
+
+		case	CONF_AX1MODE:
+			sprintf(smStr, "Axion one mode");
+			break;
+
+		default:
+			sprintf(smStr, "None");
+			break;
+	}
+
+	writeAttribute(icGrp_id, &mode0, "Axion zero mode",    H5T_NATIVE_DOUBLE);
+	writeAttribute(icGrp_id, &smStr, "Configuration type", attr_type);
+
+	H5Gclose(icGrp_id);
 
 	H5Tclose (attr_type);
 
@@ -396,8 +535,8 @@ void	readConf (Scalar **axion, int index)
 
 	FieldPrecision	precision;
 
-	char	prec[16], fStr[16], lStr[16];
-	int	length = 8;
+	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], smStr[16];
+	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 
@@ -439,47 +578,167 @@ void	readConf (Scalar **axion, int index)
 	H5Tset_size (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double	zTmp, zTfl, zTin;
+	double	zTmp;
 	uint	tStep, cStep, totlZ;
 
 	readAttribute (file_id, fStr,   "Field type",   attr_type);
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-	if (!strcmp(fStr, "Saxion"))
-	LogOut("its a SAXION! ");
-	else
-	LogOut("its an AXION! ");
 
-	if (uQcd == false)
-		readAttribute (file_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
 
-	if ((uLambda == false) && (msa == false)) {
-		readAttribute (file_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
-		readAttribute (file_id, &msa,   "Saxion mass",  H5T_NATIVE_DOUBLE);
-		readAttribute (file_id, &lStr,  "Lambda type",  attr_type);
+	if (!uZin) {
+		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
+		if (zTmp < zInit)
+			zInit = zTmp;
+	} else {
+		zTmp = zInit;
+	}
 
-		if (!strcmp(lStr, "z2"))
-			lType = LAMBDA_Z2;
-		else if (!strcmp(lStr, "Fixed"))
-			lType = LAMBDA_FIXED;
-		else {
-			LogError ("Error reading file %s: Invalid lambda type %s", base, lStr);
+	if (!uZfn) {
+		readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
+	}
+
+//	if (zInit > zTmp)
+//		zTmp = zInit;
+
+	/*	Read potential data	*/
+	auto status = H5Lexists (file_id, "/potential", H5P_DEFAULT);
+
+	if (status <= 0)
+		LogMsg(VERB_NORMAL, "Potential data not available, using defaults");
+	else {
+		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
+
+		if (uQcd == false)
+			readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
+
+		if ((uLambda == false) && (msa == false)) {
+			readAttribute (vGrp_id, &LL,    "Lambda", H5T_NATIVE_DOUBLE);
+			readAttribute (file_id, &msa,   "Saxion mass",  H5T_NATIVE_DOUBLE);
+			readAttribute (vGrp_id, &lStr,  "Lambda type",  attr_type);
+
+			if (!strcmp(lStr, "z2"))
+				lType = LAMBDA_Z2;
+			else if (!strcmp(lStr, "Fixed"))
+				lType = LAMBDA_FIXED;
+			else {
+				LogError ("Error reading file %s: invalid lambda type %s", base, lStr);
+				exit(1);
+			}
+		}
+
+		double  maa = 0., maaR;
+		readAttribute (file_id, &maa,   "Axion mass",   H5T_NATIVE_DOUBLE);
+		readAttribute (vGrp_id, &zthres,"z Threshold",  H5T_NATIVE_DOUBLE);
+		readAttribute (vGrp_id, &zrestore,"z Restore",  H5T_NATIVE_DOUBLE);
+		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
+		readAttribute (vGrp_id, &indi3, "Indi3",        H5T_NATIVE_DOUBLE);
+
+		maa = axionmass(zTmp, nQcd, zthres, zrestore);
+		LogMsg(VERB_HIGH, "Chaging axion mass from %e to %e", maaR, maa);
+		indi3 =  maa/pow(zTmp, nQcd*0.5);
+
+		if (uGamma == false)
+			readAttribute (vGrp_id, &gammo,  "Gamma",       H5T_NATIVE_DOUBLE);
+
+		if (uPot == false) {
+			readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
+
+			if (!strcmp(vStr, "VQcd 1"))
+				vqcdType = VQCD_1;
+			else if (!strcmp(vStr, "VQcd 2"))
+				vqcdType = VQCD_2;
+			else if (!strcmp(vStr, "VQcd 1 Peccei-Quinn"))
+				vqcdType = VQCD_1_PQ_2;
+			else {
+				LogError ("Error reading file %s: invalid potential type %s", base, vStr);
+				exit(1);
+			}
+
+			readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
+
+			if (!strcmp(vStr, "Rho"))
+				vqcdTypeDamp = VQCD_DAMP_RHO;
+			else if (!strcmp(vStr, "All"))
+				vqcdTypeDamp = VQCD_DAMP_ALL;
+			else if (!strcmp(vStr, "None"))
+				vqcdTypeDamp = VQCD_NONE;
+			else {
+				LogError ("Error reading file %s: invalid damping type %s", base, vStr);
+				exit(1);
+			}
+
+			readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
+
+			if (!strcmp(vStr, "Only Rho"))
+				vqcdTypeRhoevol = VQCD_EVOL_RHO;
+			else if (!strcmp(vStr, "Full"))
+				vqcdTypeRhoevol = VQCD_NONE;
+			else {
+				LogError ("Error reading file %s: invalid rho evolution type %s", base, vStr);
+				exit(1);
+			}
+
+			vqcdType |= vqcdTypeDamp | vqcdTypeRhoevol;
+		}
+
+		H5Gclose(vGrp_id);
+	}
+
+	/*	Read IC data	*/
+	status = H5Lexists (file_id, "/ic", H5P_DEFAULT);
+
+	if (status <= 0)
+		LogMsg(VERB_NORMAL, "IC data not available");
+	else {
+		hid_t icGrp_id = H5Gopen2(file_id, "/ic", H5P_DEFAULT);
+		readAttribute(icGrp_id, &mode0, "Axion zero mode", H5T_NATIVE_DOUBLE);
+		readAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+
+		if (!strcmp(icStr, "Smooth")) {
+			cType = CONF_SMOOTH;
+			readAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "kMax")) {
+			cType = CONF_KMAX;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Tkachev")) {
+			cType = CONF_TKACHEV;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		}
+
+		readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
+
+		if (!strcmp(icStr, "Random")) {
+			smvarType = CONF_RAND;
+		} else if (!strcmp(icStr, "String XY")) {
+			smvarType = CONF_STRINGXY;
+		} else if (!strcmp(icStr, "String YZ")) {
+			smvarType = CONF_STRINGYZ;
+		} else if (!strcmp(icStr, "Minicluster")) {
+			smvarType = CONF_MINICLUSTER;
+		} else if (!strcmp(icStr, "Minicluster 0")) {
+			smvarType = CONF_MINICLUSTER0;
+		} else if (!strcmp(icStr, "Axion noise")) {
+			smvarType = CONF_AXNOISE;
+		} else if (!strcmp(icStr, "Saxion noise")) {
+			smvarType = CONF_SAXNOISE;
+		} else if (!strcmp(icStr, "Axion one mode")) {
+			smvarType = CONF_AX1MODE;
+		} else {
+			LogError("Error: unrecognized configuration type %s", icStr);
 			exit(1);
 		}
+		H5Gclose(icGrp_id);
 	}
 
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &zTin,  "zInitial",     H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &zTfl,  "zFinal",       H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
-
-	double	maa = 0.;
-	readAttribute (file_id, &maa,   "Axion mass",   H5T_NATIVE_DOUBLE);
-
-	indi3 = maa/pow(zTmp, nQcd*0.5);	// Set the right indi3 for the given axion mass
 
 	H5Tclose (attr_type);
 
@@ -611,20 +870,13 @@ void	readConf (Scalar **axion, int index)
 
 
 
-//
-//
-//
-
-
-
-
 /*	Creates a hdf5 file to write all the measurements	*/
 void	createMeas (Scalar *axion, int index)
 {
 	hid_t	plist_id, dataType;
 
-	char	prec[16], fStr[16], lStr[16];
-	int	length = 8;
+	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], smStr[16], dStr[16], rStr[16];
+	int	length = 32;
 
 //	const hsize_t maxD[1] = { H5S_UNLIMITED };
 
@@ -725,10 +977,13 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
+	double  llPhys = LL;
+
 	switch (axion->Lambda())
 	{
 		case 	LAMBDA_Z2:
 			sprintf(lStr, "z2");
+			llPhys /= (*axion->zV())*(*axion->zV());
 			break;
 
 		case	LAMBDA_FIXED:
@@ -738,6 +993,53 @@ void	createMeas (Scalar *axion, int index)
 		default:
 			LogError ("Error: Invalid field type. How did you get this far?");
 			exit(1);
+			break;
+	}
+
+	switch (vqcdType)
+	{
+		case	VQCD_1:
+			sprintf(vStr, "VQcd 1");
+			break;
+
+		case	VQCD_2:
+			sprintf(vStr, "VQcd 2");
+			break;
+
+		case	VQCD_1_PQ_2:
+			sprintf(vStr, "VQcd 1 Peccei-Quinn");
+			break;
+
+		default:
+			sprintf(vStr, "None");
+			break;
+	}
+
+	switch (vqcdTypeDamp)
+	{
+		case	VQCD_DAMP_RHO:
+			sprintf(dStr, "Rho");
+			break;
+
+		case	VQCD_DAMP_ALL:
+			sprintf(dStr, "All");
+			break;
+
+		default:
+		case	VQCD_NONE:
+			sprintf(dStr, "None");
+			break;
+	}
+
+	switch (vqcdTypeRhoevol)
+	{
+		case	VQCD_EVOL_RHO:
+			sprintf(rStr, "Only Rho");
+			break;
+
+		default:
+		case	VQCD_NONE:
+			sprintf(rStr, "Full");
 			break;
 	}
 
@@ -757,17 +1059,106 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, prec,   "Precision",     attr_type);
 	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
-	writeAttribute(meas_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-	writeAttribute(meas_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(meas_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
-	writeAttribute(meas_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
 	writeAttribute(meas_id, &cSteps,"Current step",  H5T_NATIVE_INT);
+
+	/*	Create a group for specific header data	*/
+	hid_t vGrp_id = H5Gcreate2(meas_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	double shift = saxionshift(maa, llPhys, vqcdType);
+	indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+
+	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
+	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
+	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
+	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
+	writeAttribute(vGrp_id, &nQcd,  "nQcd",	         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gammo, "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zrestore,"z Restore",   H5T_NATIVE_DOUBLE);
+
+	H5Gclose(vGrp_id);
+
+	hid_t icGrp_id = H5Gcreate2(meas_id, "/ic", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	switch (cType) {
+		case	CONF_SMOOTH:
+			sprintf(icStr, "Smooth");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_KMAX:
+			sprintf(icStr, "kMax");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_TKACHEV:
+			sprintf(icStr, "Tkachev");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		default:
+		case	CONF_NONE:
+			sprintf(icStr, "None");
+	}
+
+	switch (smvarType) {
+		case	CONF_RAND:
+			sprintf(smStr, "Random");
+			break;
+
+		case	CONF_STRINGXY:
+			sprintf(smStr, "String XY");
+			break;
+
+		case	CONF_STRINGYZ:
+			sprintf(smStr, "String YZ");
+			break;
+
+		case	CONF_MINICLUSTER:
+			sprintf(smStr, "Minicluster");
+			break;
+
+		case	CONF_MINICLUSTER0:
+			sprintf(smStr, "Minicluster 0");
+			break;
+
+		case	CONF_AXNOISE:
+			sprintf(smStr, "Axion noise");
+			break;
+
+		case	CONF_SAXNOISE:
+			sprintf(smStr, "Saxion noise");
+			break;
+
+		case	CONF_AX1MODE:
+			sprintf(smStr, "Axion one mode");
+			break;
+
+		default:
+			sprintf(smStr, "None");
+			break;
+	}
+
+	writeAttribute(icGrp_id, &mode0, "Axion zero mode",    H5T_NATIVE_DOUBLE);
+	writeAttribute(icGrp_id, &smStr, "Configuration type", attr_type);
+
+	H5Gclose(icGrp_id);
 
 	H5Tclose (attr_type);
 
@@ -1146,7 +1537,6 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 		}
 	}
 /*	disableErrorStack();
-/*	disableErrorStack();
 
 	if (H5Gget_objinfo (meas_id, group, 0, NULL) < 0)	// Create group if it doesn't exists
 		group_id = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -1184,7 +1574,7 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-void	writeEDens (Scalar *axion, int index, MapType fMap)
+void	writeEDens (Scalar *axion, MapType fMap)
 {
 	hid_t	file_id, eGrp_id, group_id, rset_id, tset_id, plist_id, chunk_id;
 	hid_t	rSpace, tSpace, memSpace, dataType, totalSpace;
@@ -1223,50 +1613,44 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 		return;
 	}
 
-	char base[256];
-
-	sprintf(base, "%s/%s.m.%05d", outDir, outName, index);
-
 	/*	Broadcast the values of opened/header	*/
 	MPI_Bcast(&opened, sizeof(opened), MPI_BYTE, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&header, sizeof(header), MPI_BYTE, 0, MPI_COMM_WORLD);
 
-	/*	If the measurement file is opened, we reopen it with parallel access	*/
-	if (opened == true)
+	if (header == false || opened == false)
 	{
-		if (commRank() == 0) {
+		LogError ("Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
 
-			/*	Closes the currently opened file for measurements	*/
+	char base[256];
 
-//			H5Pclose (mlist_id);
-			H5Fclose (meas_id);
+	/*	If the measurement file is opened, we reopen it with parallel access	*/
+	if (commRank() == 0) {
 
-			meas_id = -1;
-		}
+		/*	Closes the currently opened file for measurements	*/
+		H5Fget_name(meas_id, base, 255);
 
-		commSync();
+//		H5Pclose (mlist_id);
+		H5Fclose (meas_id);
 
-		/*	Set up parallel access with Hdf5	*/
-		plist_id = H5Pcreate (H5P_FILE_ACCESS);
-		H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+		meas_id = -1;
+	}
 
-		if ((file_id = H5Fopen (base, H5F_ACC_RDWR, plist_id)) < 0)
-		{
-			LogError ("Error opening file %s", base);
-			prof.stop();
-			return;
-		}
-	} else {
-		/*	Else we create the file		*/
-		plist_id = H5Pcreate (H5P_FILE_ACCESS);
-		H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+	/*	Broadcast filename	*/
+	MPI_Bcast(&base, 256, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-		if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
-		{
-			LogError ("Error creating file %s", base);
-			prof.stop();
-			return;
-		}
+	commSync();
+
+	/*	Set up parallel access with Hdf5	*/
+	plist_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+	if ((file_id = H5Fopen (base, H5F_ACC_RDWR, plist_id)) < 0)
+	{
+		LogError ("Error opening file %s", base);
+		prof.stop();
+		return;
 	}
 
 	H5Pclose(plist_id);
@@ -1279,9 +1663,6 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 		{
 			dataType = H5T_NATIVE_FLOAT;
 			dataSize = sizeof(float);
-
-			sprintf(prec, "Single");
-//			length = strlen(prec)+1;
 		}
 
 		break;
@@ -1290,9 +1671,6 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 		{
 			dataType = H5T_NATIVE_DOUBLE;
 			dataSize = sizeof(double);
-
-			sprintf(prec, "Double");
-//			length = strlen(prec)+1;
 		}
 
 		break;
@@ -1305,7 +1683,6 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 		break;
 	}
 
-	int cSteps = dump*index;
 	//uint totlZ; = sizeZ*zGrid;
 	//uint tmpS;  = sizeN;
 
@@ -1317,61 +1694,6 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 	total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
 	slab  = ((hsize_t) redlX)*((hsize_t) redlX);
 	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(axion->Depth()+2);
-
-	switch (axion->Field())
-	{
-		case 	FIELD_SAXION:
-		sprintf(fStr, "Saxion");
-		break;
-
-		case	FIELD_AXION_MOD:
-		sprintf(fStr, "Axion Mod");
-		break;
-
-		case	FIELD_AXION:
-		sprintf(fStr, "Axion");
-		break;
-
-		case	FIELD_WKB:
-		LogError ("Error: WKB field not supported");
-		exit(1);
-		break;
-
-		default:
-		LogError ("Error: Invalid field type. How did you get this far?");
-		exit(1);
-		break;
-	}
-
-	if (header == false)
-	{
-		/*	Write header	*/
-		hid_t attr_type;
-
-		/*	Attributes	*/
-		attr_type = H5Tcopy(H5T_C_S1);
-		H5Tset_size   (attr_type, length);
-		H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
-
-		writeAttribute(file_id, fStr,   "Field type",    attr_type);
-		writeAttribute(file_id, prec,   "Precision",     attr_type);
-		writeAttribute(file_id, &totlX, "Size",          H5T_NATIVE_UINT);
-		writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
-		writeAttribute(file_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-		writeAttribute(file_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-		writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
-		writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
-		writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
-		writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
-		writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
-		writeAttribute(file_id, &cSteps,"Current step",  H5T_NATIVE_INT);
-
-		H5Tclose (attr_type);
-
-		header = true;
-	}
-
-	commSync();
 
 	/*	Create plist for collective write	*/
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -1563,32 +1885,25 @@ void	writeEDens (Scalar *axion, int index, MapType fMap)
 
 	/*	If there was a file opened for measurements, open it again	*/
 
-	if (opened == true)
+	if (myRank != 0)	// Only rank 0 writes measurement data
+		return;
+
+	LogMsg (VERB_NORMAL, "Opening measurement file");
+
+	/*	This would be weird indeed	*/
+
+	if (meas_id >= 0)
 	{
-		hid_t	plist_id;
+		LogError ("Error, a hdf5 file is already opened");
+		return;
+	}
 
-		if (myRank != 0)	// Only rank 0 writes measurement data
-			return;
+	/*	Open the file and release the plist	*/
 
-		LogMsg (VERB_NORMAL, "Opening measurement file");
-
-		/*	This would be weird indeed	*/
-
-		if (meas_id >= 0)
-		{
-			LogError ("Error, a hdf5 file is already opened");
-			return;
-		}
-
-		/*	Open the file and release the plist	*/
-
-		if ((meas_id = H5Fopen (base, H5F_ACC_RDWR, H5P_DEFAULT)) < 0)
-		{
-			LogError ("Error opening file %s", base);
-			return;
-		}
-
-		H5Pclose(plist_id);
+	if ((meas_id = H5Fopen (base, H5F_ACC_RDWR, H5P_DEFAULT)) < 0)
+	{
+		LogError ("Error opening file %s", base);
+		return;
 	}
 }
 

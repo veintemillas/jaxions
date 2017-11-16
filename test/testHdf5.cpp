@@ -46,6 +46,7 @@ int	main (int argc, char *argv[])
 
 	Scalar *axion;
 	char fileName[256];
+	int index = 0;
 
 	if (fIndex == -1) {
 		//This generates initial conditions
@@ -56,12 +57,14 @@ int	main (int argc, char *argv[])
 		//This reads from an Axion.$fIndex file
 		LogOut("Reading from file... ");
 		readConf(&axion, fIndex);
-		if (axion == NULL)
+		if (axion == nullptr)
 		{
 			LogOut ("Error reading HDF5 file\n");
 			exit (0);
 		}
 		LogOut("Done! \n");
+
+		index = fIndex + 1000;
 	}
 
 	axion->transferDev(FIELD_MV);
@@ -112,9 +115,10 @@ int	main (int argc, char *argv[])
 
 
 	int counter = 0;
-	int index = 0;
 
 	commSync();
+
+	writeConf(axion, index);
 
 	void	*eRes, *str;
 	trackAlloc(&eRes, 256);
@@ -130,7 +134,6 @@ int	main (int argc, char *argv[])
 #endif
 		memset(str, 0, axion->Size());
 
-		axion->setLambda(LAMBDA_Z2)	;
 		if (LAMBDA_FIXED == axion->Lambda())
 			LogOut ("Lambda in FIXED mode\n");
 		else
@@ -172,10 +175,10 @@ int	main (int argc, char *argv[])
 	}
 
 	writeEnergy(axion, eRes);
-	writeEDens(axion, index, MAP_ALL);
 	writePoint(axion);
 
 	if (!axion->LowMem()) {
+		writeEDens(axion, MAP_ALL);
 		if (axion->Precision() == FIELD_DOUBLE) {
 			Binner<3000,double>contBin(static_cast<double*>(axion->m2Cpu()), axion->Size(),
 						   [eMean = eMean] (double x) -> double { return (double) (log10(x/eMean) );});
@@ -247,7 +250,7 @@ int	main (int argc, char *argv[])
 
 		createMeas(axion, index+100);
 		writeEnergy(axion, eRes);
-		writeEDens(axion, index+100, MAP_ALL);
+		writeEDens(axion, MAP_ALL);
 		destroyMeas();
 
 	} else {

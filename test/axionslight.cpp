@@ -556,7 +556,7 @@ int	main (int argc, char *argv[])
 		axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 		//write binned distribution
 		writeArray(bA, 10000, "/bins", "cont");
-		writeEDens(axion, index);
+		writeEDens(axion);
 		writeEnergy(axion, eRes);
 
 		printf("p Spectrum ... %d", commRank());

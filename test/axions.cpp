@@ -197,7 +197,7 @@ int	main (int argc, char *argv[])
 
 		createMeas(axion, index);
 		writeMapHdf5(axion);
-		writeEDens(axion, index, MAP_ALL);
+		writeEDens(axion, MAP_ALL);
 		writeString(str, strDen);
 		writeEnergy(axion, eRes);
 		writePoint(axion);

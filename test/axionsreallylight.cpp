@@ -689,7 +689,7 @@ int	main (int argc, char *argv[])
 		//write binned distribution
 		//writeArray(bA, 10000, "/bins", "cont");
 		if (pconfinal)
-			writeEDens(axion, index);
+			writeEDens(axion);
 		writeEnergy(axion, eRes);
 
 		LogOut("p Spectrum ... ");
@@ -780,7 +780,7 @@ int	main (int argc, char *argv[])
 									//writeArray(bA, 3000, "/bins", "cont");
 									if (pconfinalwkb) {
 										LogOut ("MAP ");
-										writeEDens(axion, index);}
+										writeEDens(axion);}
 
 									LogOut ("tot ");
 									writeEnergy(axion, eRes);

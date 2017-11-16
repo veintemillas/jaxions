@@ -116,7 +116,7 @@ int	main (int argc, char *argv[])
 			if ( (endredmap <= 0) || (endredmap >= sizeN) )
 			{
 				LogOut ("MAP ");
-				writeEDens(axion, index);
+				writeEDens(axion);
 			}
 			LogOut ("tot ");
 			writeEnergy(axion, eRes);
