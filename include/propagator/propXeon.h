@@ -25,6 +25,10 @@
 	#endif
 #endif
 
+#define	bSizeX	1024
+#define	bSizeY	64
+#define	bSizeZ	2
+
 template<const VqcdType VQcd>
 inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
 				    const double ood2, const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
@@ -371,21 +375,38 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
 
+		const uint z0 = Vo/(Lx*Lx);
+		const uint zF = Vf/(Lx*Lx);
+		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
+		const uint bX = (XC + bSizeX - 1)/bSizeX;
+		const uint bY = (YC + bSizeY - 1)/bSizeY;
+
+		for (uint zT = 0; zT < zM; zT++)
+		for (uint yT = 0; yT < bY; yT++)
+		for (uint xT = 0; xT < bX; xT++) {
 		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mPy, mMx;
-
-			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
-			{
+		#pragma omp for collapse(3) schedule(static)
+		for (uint zz = 0; zz < bSizeZ; zz++) {
+			for (int yy = 0; yy < bSizeY; yy++) {
+			for (int xx = 0; xx < bSizeX; xx+=step) {
+				uint zC = zz + bSizeZ*zT + z0;
+				uint yC = yy + bSizeY*yT;
+				uint xC = xx + bSizeX*xT;
 				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
-
+				size_t idx = zC*(YC*XC) + yC*XC + xC;
+				if (idx >= Vf)
+					continue;
 				{
-					size_t tmi = idx/XC, itp;
+					//size_t tmi = idx/XC, itp;
 
-					itp = tmi/YC;
-					X[1] = tmi - itp*YC;
-					X[0] = idx - tmi*XC;
+					//itp = tmi/YC;
+					//X[1] = tmi - itp*YC;
+					//X[0] = idx - tmi*XC;
+					X[0] = xC;
+					X[1] = yC;
+
 				}
 
 				if (X[0] == XC-step)
@@ -600,9 +621,9 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 				mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
 #endif
 				opCode(store_ps,  &v[idxMz], tmp);
-				opCode(store_ps, &m2[idxP0], mPx);
-			}
-		}
+				opCode(stream_ps, &m2[idxP0], mPx);	// Avoids cache thrashing
+			}}
+		}}}
 #undef	_MData_
 #undef	step
 	}
