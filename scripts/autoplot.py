@@ -28,7 +28,14 @@ f = h5py.File('./m/'+fileMeas[0], 'r')
 # SIMULATION DATA
 sizeN = f.attrs[u'Size']
 sizeL = f.attrs[u'Physical size']
-nqcd = f.attrs[u'nQcd']
+if 'nQcd' in f['/potential/'].attrs:
+    nqcd = f['/potential/'].attrs[u'nQcd']
+    print('new format!')
+elif 'nQcd' in f:
+    nqcd = f.attrs[u'nQcd']
+    print('old format')
+else :
+    nqcd = 7.0
 
 # ID
 ups = 'N'+str(sizeN)+' L'+str(sizeL)+' n'+str(nqcd)+' ('+mark+')'+str(mac)
@@ -36,6 +43,10 @@ print('ID = '+ups)
 print()
 for item in f.attrs.keys():
     print(item + ":", f.attrs[item])
+for item in f['/ic/'].attrs.keys():
+    print(item + ":", f['/ic/'].attrs[item])
+for item in f['/potential/'].attrs.keys():
+    print(item + ":", f['/potential/'].attrs[item])
 
 # SAMPLE POINT EVOLUTION (+THETA, NSTRINGS...)
 # FORMAT :
