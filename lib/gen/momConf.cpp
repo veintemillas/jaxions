@@ -1,4 +1,7 @@
+#include<cstdio>
 #include<cstdlib>
+#include<cstdlib>
+#include<math.h>	/* pow */
 #include<cstring>
 #include<complex>
 #include<random>
@@ -81,9 +84,19 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 	}
 
 	// zero mode
-
-	if (mode0 < 3.141597)
-	fM[0] = complex<Float>(cos(mode0), sin(mode0));
+	if (commRank() == 0)
+	{
+		if ( mode0 < 3.141597 )
+		{
+			LogMsg (VERB_NORMAL, "mode0 set to %f in rank %d", mode0, commRank());
+			fM[0] = complex<Float>(cos(mode0), sin(mode0));
+		}
+		else
+		{
+			mode0 = atan2(fM[0].imag(),fM[0].real());
+			LogMsg (VERB_NORMAL, "mode0 is been randomly set to %f by rank %d", mode0, commRank());
+		}
+	}
 
 	trackFree((void **) &sd, ALLOC_TRACK);
 }
