@@ -25,7 +25,7 @@
 
 	namespace AxionsLog {
 
-		constexpr long long int	logFreq	= 5000;
+		constexpr long long int	logFreq	= 5000000;
 		constexpr size_t 	basePack = sizeof(ptrdiff_t)*5;
 
 		extern	const char	levelTable[3][16];
@@ -65,7 +65,7 @@
 					 Msg(void *vPack)      noexcept : tIdx(static_cast<ptrdiff_t*>(vPack)[1]), size(static_cast<ptrdiff_t*>(vPack)[3]),
 									  logLevel((LogLevel) static_cast<ptrdiff_t*>(vPack)[2]), mRnk(static_cast<ptrdiff_t*>(vPack)[4]) {
 					auto mTime = static_cast<ptrdiff_t*>(vPack)[0];
-					timestamp  = std::chrono::time_point<std::chrono::high_resolution_clock>(std::chrono::milliseconds(mTime));
+					timestamp  = std::chrono::time_point<std::chrono::high_resolution_clock>(std::chrono::microseconds(mTime));
 
 					req = MPI_REQUEST_NULL;
 					char *msgData = static_cast<char*>(vPack) + basePack;
@@ -85,7 +85,7 @@
 				}
 
 				inline	long long int	time(std::chrono::time_point<std::chrono::high_resolution_clock> start) const {
-					return std::chrono::duration_cast<std::chrono::milliseconds> (timestamp - start).count();
+					return std::chrono::duration_cast<std::chrono::microseconds> (timestamp - start).count();
 				}
 
 				inline	int		thread() const { return tIdx; }
@@ -95,7 +95,7 @@
 
 				inline	char*		pack() {
 					ptrdiff_t *sPack = static_cast<ptrdiff_t*>(static_cast<void*>(packed));
-					sPack[0] = std::chrono::time_point_cast<std::chrono::milliseconds> (timestamp).time_since_epoch().count();
+					sPack[0] = std::chrono::time_point_cast<std::chrono::microseconds> (timestamp).time_since_epoch().count();
 					sPack[1] = tIdx;
 					sPack[2] = (ptrdiff_t) logLevel;
 					sPack[3] = data.length();
@@ -118,7 +118,7 @@
 				const VerbosityLevel	verbose;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
-					oFile << std::setw(11) << myMsg.time(logStart) << "ms: Logger level[" << levelTable[myMsg.level()>>21] << "] Rank " << myMsg.rank()
+					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << levelTable[myMsg.level()>>21] << "] Rank " << myMsg.rank()
 					      << "/" << commSize() << " - Thread " << myMsg.thread() << "/" << omp_get_num_threads() << " ==> " << myMsg.msg() << std::endl;
 				}
 
@@ -196,7 +196,7 @@
 							// We push the messages in the stack and we flush them later
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), format, vars...)));
 
-							if	(std::chrono::duration_cast<std::chrono::milliseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
+							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
 								mustFlush = true;
 							break;
 						}
