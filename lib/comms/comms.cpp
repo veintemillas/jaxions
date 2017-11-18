@@ -8,6 +8,7 @@
 #include "enum-field.h"
 #include "utils/memAlloc.h"
 #include "utils/logger.h"
+#include "utils/misc.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -111,6 +112,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 			}
 #else
 			LogError ("Gpu support not built");
+			endAxions();
 			exit   (1);
 #endif
 			break;
