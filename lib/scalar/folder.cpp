@@ -51,7 +51,7 @@ void	Folder::foldField()
 	}
 
 	field->setFolded(true);
-	LogMsg (VERB_HIGH, "Field folded");
+	LogMsg (VERB_HIGH, "[Folder] Field folded");
 
 	return;
 }
@@ -105,7 +105,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 	if (!field->Folded())
 	{
-		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying data to ghost zone");
+		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying data to ghost zones");
 		memcpy ( m,        &m[(sZ+1)*n2], sizeof(cFloat)*n2);
 		memcpy (&m[n2+n3], &v[sZ*n2],     sizeof(cFloat)*n2);
 		return;
