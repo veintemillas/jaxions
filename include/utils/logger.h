@@ -150,6 +150,37 @@
 					oFile.flush();
 				}
 
+				bool	getMpiMsg	(const LogLevel level) {
+					if (omp_get_thread_num() != 0)
+						return	false;
+
+					bool msgPending = false;
+
+					int flag = 0;
+					MPI_Status status;
+
+					// Get all the messages of a particular log level
+					do {
+						MPI_Iprobe(MPI_ANY_SOURCE, level, MPI_COMM_WORLD, &flag, &status);
+
+						if (flag) {
+							char packed[1024];
+							int  mSize;
+							auto srcRank = status.MPI_SOURCE;
+
+							// Get message
+							MPI_Get_count(&status, MPI_CHAR, &mSize);
+							MPI_Recv(packed, mSize, MPI_CHAR, srcRank, level, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+							Msg msg(static_cast<void*>(packed));
+							// Put the message in the stack
+							msgStack.push_back(std::move(msg));
+							msgPending = true;
+						}
+					}	while (flag);
+
+					return	msgPending;
+				}
+
 			public:
 				 Logger(const int index, const LogMpi mpiType, const VerbosityLevel verbosity) : mpiType(mpiType), verbose(verbosity) {
 
@@ -176,7 +207,18 @@
 
 				}
 
-				~Logger() { flushStack(); flushDisk(); if (commRank()==0) { oFile.close(); } }
+				// Receives pending MPI messages and flushes them to disk
+				void	flushLog	() {
+					if (omp_get_thread_num() != 0)
+						return;
+
+					// Get all the messages
+					getMpiMsg (LOG_ANY);
+					flushStack();
+					flushDisk();
+				}
+
+				~Logger() { flushLog(); if (commRank()==0) { oFile.close(); } }
 
 				template<typename... Fargs>
 				void	operator()(LogLevel level, const char * file, const int line, const char * format, Fargs... vars)
@@ -222,34 +264,10 @@
 
 					if (mpiLogger) {	// If we are using MPI
 						if (myRank == 0) {
-							if (omp_get_thread_num() == 0) {	// We don't want several threads probing the same message
-								int flag = 0;
-								MPI_Status status;
-
-								// Get all the error messages
-								do {
-									MPI_Iprobe(MPI_ANY_SOURCE, LOG_ERROR, MPI_COMM_WORLD, &flag, &status);
-
-									if (flag) {
-										char packed[1024];
-										int  mSize;
-										auto srcRank = status.MPI_SOURCE;
-
-										// Get message
-										MPI_Get_count(&status, MPI_CHAR, &mSize);
-										MPI_Recv(packed, mSize, MPI_CHAR, srcRank, LOG_ERROR, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-										Msg msg(static_cast<void*>(packed));
-										// Prepare to flush the stack
-										mustFlush = true;
-										// Put the message in the stack
-										msgStack.push_back(std::move(msg));
-									}
-								}	while (flag);
-							}
+							// Get all the pending error messages. If found any, prepare to flush the stack
+							if (getMpiMsg (LOG_ERROR))	// We use this if not to overwrite mustFlush
+								mustFlush = true;
 						} else {
-							//Msg msg(level, omp_get_thread_num(), format, vars...);
-							//if (level == LOG_ERROR)	// FIXME always send
-							//msgStack.push_back(std::move(msg));
 							/* If loglevel is ERROR, we block comms until all the pending messages are sent and  we clear the stack */
 							if (level == LOG_ERROR) {
 								for (auto it = msgStack.begin(); it != msgStack.end();) {
@@ -283,26 +301,9 @@
 					}
 
 					if (mustFlush && myRank == 0) {
-						if (mpiLogger && omp_get_thread_num() == 0) {	// If we are using MPI
-							int flag = 0;
-							MPI_Status status;
-							// Get the standard messages
-							do {
-								MPI_Iprobe(MPI_ANY_SOURCE, LOG_MSG, MPI_COMM_WORLD, &flag, &status);
-
-								if (flag) {
-									char packed[1024];
-									int  mSize;
-									auto srcRank = status.MPI_SOURCE;
-
-									// Get message
-									MPI_Get_count(&status, MPI_CHAR, &mSize);
-									MPI_Recv(packed, mSize, MPI_CHAR, srcRank, LOG_MSG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-									Msg msg(static_cast<void*>(packed));
-									// Put the message in the stack
-									msgStack.push_back(std::move(msg));
-								}
-							}	while (flag);
+						if (mpiLogger) {	// If we are using MPI
+							// Get all the standard messages
+							getMpiMsg(LOG_MSG);
 						}
 
 						flushStack();
