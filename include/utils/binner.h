@@ -94,10 +94,10 @@
 
 		void	run	();
 
-		inline double	operator()(DType  val)	const	{ size_t idx = (filter(val) - baseVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return 0; } }
-		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx > 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
-		inline double	operator[](size_t idx)	const	{ return bins[idx]; }
-		inline double&	operator[](size_t idx)		{ return bins[idx]; }
+		inline double	operator()(DType  val)	const	{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double	operator[](size_t idx)	const	{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator[](size_t idx)		{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
 
 		inline double	max()			const	{ return maxVal; }
 		inline double	min()			const	{ return minVal; }
@@ -126,10 +126,10 @@
 				} else {
 					size_t myBin = floor((cVal - baseVal)/step);
 
-					if (myBin >= N)
-						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f], assigned bin %lu of %lu)", cVal, baseVal, maxVal+0.5*step, myBin, N);
-					else
+					if (myBin < N)	// Comparison with NaN will always return false
 						tBins[myBin + N*tIdx]++;
+					else
+						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f], assigned bin %lu of %lu)", cVal, baseVal, maxVal+0.5*step, myBin, N);
 				}
 			}
 

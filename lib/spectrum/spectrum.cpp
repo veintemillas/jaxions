@@ -75,10 +75,9 @@ void	SpecBin::fillBins	() {
 			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
 			double fcc = 2.0 ;
-			if( kx == 0 )
-			fcc = 1.0;
-			if( kx == hLx - 1 )
-			fcc = 1.0;
+
+			if (kx == 0)       fcc = 1.0;
+			if (kx == hLx - 1) fcc = 1.0;
 
 			if (kx > hLx) kx -= static_cast<int>(Lx);
 			if (ky > hLy) ky -= static_cast<int>(Ly);
