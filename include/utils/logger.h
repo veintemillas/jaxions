@@ -213,7 +213,9 @@
 						return;
 
 					// Get all the messages
-					getMpiMsg (LOG_ANY);
+					if (mpiType == ALL_RANKS)
+						getMpiMsg (LOG_ANY);
+
 					flushStack();
 					flushDisk();
 				}
