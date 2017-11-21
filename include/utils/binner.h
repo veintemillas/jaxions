@@ -15,6 +15,7 @@
 			return 0.0;
 
 		auto	cur = filter(data[0]);
+		auto	ret = cur;
 
 		switch (fType) {
 			case	FIND_MAX: {
@@ -25,6 +26,7 @@
 					if (cur < tmp)
 						cur = tmp;
 				}
+				MPI_Allreduce (&cur, &ret, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 			}
 			break;
 
@@ -36,11 +38,13 @@
 					if (cur > tmp)
 						cur = tmp;
 				}
+				MPI_Allreduce (&cur, &ret, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 			}
 			break;
 		}
 
-		return	cur;
+
+		return	ret;
 	}
 
 	template<size_t N, typename DType>
@@ -66,11 +70,13 @@
 			Binner	(DType *inData, size_t dSize, std::function<double(DType)> myFilter = [] (DType x) -> double { return (double) x; }) :
 				 dSize(dSize), inData(inData), filter(myFilter) {
 			bins.fill(0.);
-			double tMaxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
-			double tMinVal = (find<FIND_MIN,DType> (inData, dSize, filter));
+			maxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
+			minVal = (find<FIND_MIN,DType> (inData, dSize, filter));
+			//double tMaxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
+			//double tMinVal = (find<FIND_MIN,DType> (inData, dSize, filter));
 
-			MPI_Allreduce (&tMaxVal, &maxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-			MPI_Allreduce (&tMinVal, &minVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+			//MPI_Allreduce (&tMaxVal, &maxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+			//MPI_Allreduce (&tMinVal, &minVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 
 			step    = (maxVal-minVal)/((double) (N-1));
 			baseVal = minVal - step*0.5;

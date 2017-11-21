@@ -134,7 +134,7 @@ int	main (int argc, char *argv[])
 
 	Folder munge(axion);
 
-	LogOut ("Folding configuration ... ");
+	LogOut ("Folding configuration ... \n");
 	munge(FOLD_ALL);
 
 	if (cDev != DEV_CPU)
@@ -152,6 +152,7 @@ int	main (int argc, char *argv[])
 	if (dump != 0)
 		nLoops = (int)(nSteps/dump);
 
+	LogOut("\n");
 	LogOut("-------------------------------------------------\n");
 	LogOut("             Simulation parameters               \n");
 	LogOut("-------------------------------------------------\n");
@@ -316,7 +317,7 @@ int	main (int argc, char *argv[])
 				zShift    = zNow * saskia;
 
 				/*	If there are a few strings, we compute them every small step		*/
-				if (curStrings < fineStrings) {
+				if (curStrings < 1000) {//fineStrings) {
 					rts   = strings(axion, str);
 					curStrings = rts.strDen;
 				}
@@ -336,16 +337,16 @@ int	main (int argc, char *argv[])
 					if (axion->Precision() == FIELD_DOUBLE) {
 						m = static_cast<complex<double>*>(axion->mCpu())[axion->Surf()];
 						v = static_cast<complex<double>*>(axion->vCpu())[0];
-						maxTheta = find<FIND_MAX,complex<double>>(static_cast<complex<double>*>(axion->mCpu()) + axion->Surf(), axion->Size(),
-											 [] (complex<double> x) { return (double) abs(arg(x)); });
+//						maxTheta = find<FIND_MAX,complex<double>>(static_cast<complex<double>*>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//											 [] (complex<double> x) { return (double) abs(arg(x)); });
 					} else {
 						m = static_cast<complex<float>*> (axion->mCpu())[axion->Surf()];
 						v = static_cast<complex<float>*> (axion->vCpu())[0];
-						maxTheta = find<FIND_MAX,complex<float>> (static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-											 [] (complex<float>  x) { return (double) abs(arg(x)); });
+//						maxTheta = find<FIND_MAX,complex<float>> (static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//											 [] (complex<float>  x) { return (double) abs(arg(x)); });
 					}
 					if (history != nullptr) {
-						fprintf (history, "%f %f %f %f %f %f %f %f %lu %f %e\n", zNow, axMassNow, llPhys, m.real(), m.imag(), v.real(), v.imag(),
+						fprintf (history, "%f %f %f %f %f %f %f %lu %f %e\n", zNow, axMassNow, llPhys, m.real(), m.imag(), v.real(), v.imag(),
 							 curStrings, maxTheta, saskia);
 						fflush  (history);
 					}
@@ -430,13 +431,13 @@ int	main (int argc, char *argv[])
 					if (axion->Precision() == FIELD_DOUBLE) {
 						m = static_cast<double*>(axion->mCpu())[axion->Surf()];
 						v = static_cast<double*>(axion->vCpu())[0];
-						maxTheta = find<FIND_MAX, double>(static_cast<double*>(axion->mCpu()) + axion->Surf(), axion->Size(),
-										 [] (double x) { return (double) abs(x); });
+//						maxTheta = find<FIND_MAX, double>(static_cast<double*>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//										 [] (double x) { return (double) abs(x); });
 					} else {
 						m = static_cast<float *>(axion->mCpu())[axion->Surf()];
 						v = static_cast<float *>(axion->vCpu())[0];
-						maxTheta = find<FIND_MAX, float> (static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-										 [] (float x) { return (double) abs(x); });
+//						maxTheta = find<FIND_MAX, float> (static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//										 [] (float x) { return (double) abs(x); });
 					}
 
 					if (history != nullptr) {
@@ -506,7 +507,7 @@ int	main (int argc, char *argv[])
 			else
 				writeString(str, rts, false);
 
-			LogOut("%05d | z %.3f\tdz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\n", zLoop, zNow, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
+			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
 			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
 			auto pFler = prof.Prof().cbegin();
@@ -543,7 +544,7 @@ int	main (int argc, char *argv[])
 				writeBinner(thBin,   "/bins", "theta");
 			}
 
-			LogOut("%05d | z %.3f\tdz %.3e\tMaxTheta %f\n", zLoop, zNow, dzAux, maxTheta);
+			LogOut("%05d | dz %.3e\tMaxTheta %f\t\t", zLoop, dzAux, maxTheta);
 			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 			auto pFler = prof.Prof().cbegin();
 			auto pName = pFler->first;
@@ -582,7 +583,7 @@ int	main (int argc, char *argv[])
 
 	munge(UNFOLD_ALL);
 
-	index++	;
+//	index++	;
 	if (axion->Field() == FIELD_AXION) {
 		if (pconfinal)
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
