@@ -523,8 +523,8 @@ namespace AxionWKB {
 		// label 1 for ini, 2 for end
 		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
 		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
-		double aMass2zIni1 = aMass2zIni2/zEnd;
-		double aMass2zEnd1 = aMass2zEnd2/zIni;
+		double aMass2zIni1 = aMass2zIni2/zIni;
+		double aMass2zEnd1 = aMass2zEnd2/zEnd;
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
