@@ -12,8 +12,11 @@
 #include "comms/comms.h"
 #include "strings/strings.h"
 #include "scalar/scalar.h"
+#include "reducer/reducer.h"
 #include "spectrum/spectrum.h"
 #include "WKB/WKB.h"
+
+#include "utils/parse.h"
 
 #define	StrFrac 4e-08
 
@@ -131,7 +134,7 @@ int	main (int argc, char *argv[])
 
 	Folder munge(axion);
 
-	LogOut ("Folding configuration ... ");
+	LogOut ("Folding configuration ... \n");
 	munge(FOLD_ALL);
 
 	if (cDev != DEV_CPU)
@@ -149,6 +152,7 @@ int	main (int argc, char *argv[])
 	if (dump != 0)
 		nLoops = (int)(nSteps/dump);
 
+	LogOut("\n");
 	LogOut("-------------------------------------------------\n");
 	LogOut("             Simulation parameters               \n");
 	LogOut("-------------------------------------------------\n");
@@ -163,7 +167,7 @@ int	main (int argc, char *argv[])
 	if (axion->Lambda() == LAMBDA_FIXED)
 		LogOut("  LL     =  %f \n\n", LL);
 	else
-		LogOut("  LL     =  %1.3e/z^2 Set to make ms*delta =%f\n\n", llConstZ2, msa); }
+		LogOut("  LL     =  %1.3e/z^2 Set to make ms*delta =%f\n\n", llConstZ2, msa);
 
 	switch (vqcdType & VQCD_TYPE) {
 		case	VQCD_1:
@@ -185,6 +189,8 @@ int	main (int argc, char *argv[])
 	LogOut("-------------------------------------------------\n");
 	LogOut("                   Estimates                     \n");
 	LogOut("-------------------------------------------------\n");
+
+	double axMassNow = 0.;
 
 	double zNow  = *(axion->zV());
 	double zDoom = 0.;
@@ -256,10 +262,10 @@ int	main (int argc, char *argv[])
 		dzControl += dzAux;
 
 		auto   rts     = strings(axion, str);
-		curStrings     = str.strDen;
+		curStrings     = rts.strDen;
 		double strDens = 0.75*delta*curStrings*zInit*zInit/(sizeL*sizeL*sizeL);
 
-		LogOut("dzControl %f nStrings %lu [Lt^2/V] %f\n", dzControl, strDens.strDen, strDens);
+		LogOut("dzControl %f nStrings %lu [Lt^2/V] %f\n", dzControl, rts.strDen, strDens);
 
 		if (strDens < 5.0)
 			break;
@@ -271,6 +277,11 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
+	FILE *history = nullptr;
+
+	if ((history = fopen("sample.txt", "w+")) == nullptr)
+		LogError ("Couldn't open history file");
+
 	LogOut ("Start redshift loop\n\n");
 
 	commSync();
@@ -278,8 +289,11 @@ int	main (int argc, char *argv[])
 	/*	These vectors store data that will be written to a file at the end	*/
 	/*	of the simulation. We keep z, axion mass, zRestore, m, v, and the	*/
 	/*	maximum value of theta							*/
-	std::vector<std::tuple<double, double, double, complex<double>, complex<double>, double> sxPoints;
-	std::vector<std::tuple<double, double, double, double,          double,          double> axPoints;
+	std::vector<std::tuple<double, double, double, complex<double>, complex<double>, double>> sxPoints;
+	std::vector<std::tuple<double, double, double, double,          double,          double>> axPoints;
+
+	int strCount = 0;
+	StringData rts;
 
 	for (int zLoop = 0; zLoop < nLoops; zLoop++) {
 
@@ -299,23 +313,12 @@ int	main (int argc, char *argv[])
 				llPhys = (axion->Lambda() == LAMBDA_Z2) ? llConstZ2/(zNow*zNow) : llConstZ2;
 
 				axMassNow = axionmass(zNow, nQcd, zthres, zrestore);
-
-				if (commRank() == 0) {
-					complex<double> m = complex<double>(0.,0.);
-					complex<double> v = complex<double>(0.,0.);
-					if (axion->Precision() == FIELD_DOUBLE) {
-						m = static_cast<complex<double>>(axion->mCpu())[axion->Surf()];
-						v = static_cast<complex<double>>(axion->vCpu())[0];
-					} else {
-						m = static_cast<complex<float>> (axion->mCpu())[axion->Surf()];
-						v = static_cast<complex<float>> (axion->vCpu())[0];
-					}
-					sxPoints.emplace_back(make_tuple(zNow, axMassNow, zrestore, m[idxprint + S0], v[idxprint], maxTheta));
-				}
+				saskia    = saxionshift(axMassNow, llPhys, vqcdType);
+				zShift    = zNow * saskia;
 
 				/*	If there are a few strings, we compute them every small step		*/
-				if (curStrings < fineStrings) {
-					auto rts   = strings(axion, str);
+				if (curStrings < 1000) {//fineStrings) {
+					rts   = strings(axion, str);
 					curStrings = rts.strDen;
 				}
 
@@ -328,20 +331,39 @@ int	main (int argc, char *argv[])
 					dampSet = true;
 				}
 
+				if (commRank() == 0) {
+					complex<double> m = complex<double>(0.,0.);
+					complex<double> v = complex<double>(0.,0.);
+					if (axion->Precision() == FIELD_DOUBLE) {
+						m = static_cast<complex<double>*>(axion->mCpu())[axion->Surf()];
+						v = static_cast<complex<double>*>(axion->vCpu())[0];
+//						maxTheta = find<FIND_MAX,complex<double>>(static_cast<complex<double>*>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//											 [] (complex<double> x) { return (double) abs(arg(x)); });
+					} else {
+						m = static_cast<complex<float>*> (axion->mCpu())[axion->Surf()];
+						v = static_cast<complex<float>*> (axion->vCpu())[0];
+//						maxTheta = find<FIND_MAX,complex<float>> (static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//											 [] (complex<float>  x) { return (double) abs(arg(x)); });
+					}
+					if (history != nullptr) {
+						fprintf (history, "%f %f %f %f %f %f %f %lu %f %e\n", zNow, axMassNow, llPhys, m.real(), m.imag(), v.real(), v.imag(),
+							 curStrings, maxTheta, saskia);
+						fflush  (history);
+					}
+					sxPoints.emplace_back(make_tuple(zNow, axMassNow, zrestore, m, v, maxTheta));
+				}
+
 				/*	If we didn't see strings for a while, go to axion mode			*/
 				if (curStrings == 0) {
 					strCount++;
 
 					/*	CONF_SAXNOISE	will keep the saxion field forever		*/
 					if (strCount > safest0 && smvarType != CONF_SAXNOISE) {
-						saskia    = saxionshift(axMassNow, llPhys, vqcdType);
-
-						double zShift = zNow * saskia;
 
 						createMeas(axion, 10000);
 
 						if(p2dmapo)
-							writeMapHdf5s (axion, slicePrint);
+							writeMapHdf5 (axion);
 
 				  		energy(axion, eRes, false, delta, nQcd, llPhys, vqcdType, zShift);
 						writeEnergy(axion, eRes);
@@ -371,8 +393,6 @@ int	main (int argc, char *argv[])
 							writeBinner(thBin, "/bins", "theta");
 						}
 
-// TODO write sxPoints!!! y clean sxPoints
-
 						destroyMeas();
 
 						LogOut("--------------------------------------------------\n");
@@ -385,7 +405,7 @@ int	main (int argc, char *argv[])
 						createMeas(axion, 10001);
 
 						if(p2dmapo)
-						  	writeMapHdf5s (axion,slicePrint);
+						  	writeMapHdf5 (axion);
 
 						energy(axion, eRes, false, delta, nQcd, 0., vqcdType, 0.);
 						writeEnergy(axion, eRes);
@@ -411,12 +431,21 @@ int	main (int argc, char *argv[])
 					if (axion->Precision() == FIELD_DOUBLE) {
 						m = static_cast<double*>(axion->mCpu())[axion->Surf()];
 						v = static_cast<double*>(axion->vCpu())[0];
+//						maxTheta = find<FIND_MAX, double>(static_cast<double*>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//										 [] (double x) { return (double) abs(x); });
 					} else {
 						m = static_cast<float *>(axion->mCpu())[axion->Surf()];
 						v = static_cast<float *>(axion->vCpu())[0];
+//						maxTheta = find<FIND_MAX, float> (static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+//										 [] (float x) { return (double) abs(x); });
 					}
 
-					axPoints.emplace_back(make_tuple(zNow, axMassNow, zrestore, m[idxprint + S0], v[idxprint], maxTheta));
+					if (history != nullptr) {
+						fprintf (history, "%f %f %f %f %f\n", zNow, axMassNow, m, v, maxTheta);
+						fflush  (history);
+					}
+
+					axPoints.emplace_back(make_tuple(zNow, axMassNow, zrestore, m, v, maxTheta));
 				}
 			}
 
@@ -434,8 +463,6 @@ int	main (int argc, char *argv[])
 		} // zSubloop iteration
 
 		/*	We perform now an online analysis	*/
-
-		zShift = zNow * saxionshift(zNow, nQcd, zthres, zrestore, llPhys);
 
 		createMeas(axion, index);
 
@@ -465,14 +492,14 @@ int	main (int argc, char *argv[])
 				writeBinner(thBin,  "/bins", "theta");
 			}
 
-			energy(axion, eRes, false, delta, nQcd, llphys, vqcdType, shiftz);
+			energy(axion, eRes, false, delta, nQcd, llPhys, vqcdType, zShift);
 
 			double maa = 40.*axionmass2(zNow, nQcd, zthres, zrestore)/(2*llPhys);
 
 			if (axion->Lambda() == LAMBDA_Z2)
 				maa = maa*zNow*zNow;
 
-			auto rts   = strings(axion, str);
+			rts   = strings(axion, str);
 			curStrings = rts.strDen;
 
 			if (p3DthresholdMB/((double) curStrings) > 1.)
@@ -480,15 +507,18 @@ int	main (int argc, char *argv[])
 			else
 				writeString(str, rts, false);
 
-// TODO REPORT THIS DATA
-LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
-LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
+			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
+			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
+
+			auto pFler = prof.Prof().cbegin();
+			auto pName = pFler->first;
+			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 		} else {
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 
 			if (axion->Precision() == FIELD_SINGLE) {
 				Binner<100, float> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-							 [z=z_now] (float x)  -> double { return (double) (x/z);});
+							 [z = zNow] (float x)  -> double { return (double) (x/z);});
 				thBin.run();
 				maxTheta = max(abs(thBin.min()),thBin.max());
 
@@ -501,7 +531,7 @@ LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*delta*nstrings_global*
 				writeBinner(thBin,   "/bins", "theta");
 			} else {
 				Binner<100, double>thBin(static_cast<double*>(axion->mCpu()) + axion->Surf(), axion->Size(),
-							 [z=z_now] (double x) -> double { return (double) (x/z);});
+							 [z = zNow] (double x) -> double { return (double) (x/z);});
 				thBin.run();
 				maxTheta = max(abs(thBin.min()),thBin.max());
 
@@ -514,8 +544,11 @@ LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*delta*nstrings_global*
 				writeBinner(thBin,   "/bins", "theta");
 			}
 
-// TODO REPORT THIS DATA
-LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zLoop, nLoops, (*axion->zV()), dzaux, maximumtheta);
+			LogOut("%05d | dz %.3e\tMaxTheta %f\t\t", zLoop, dzAux, maxTheta);
+			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
+			auto pFler = prof.Prof().cbegin();
+			auto pName = pFler->first;
+			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 			specAna.pRun();
@@ -528,7 +561,7 @@ LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zLoop, nLoops, (*axion->zV()),
 		}
 	
 		if(p2dmapo)
-			writeMapHdf5s(axion,sliceprint);
+			writeMapHdf5(axion);
 
 		writeEnergy(axion, eRes);
 
@@ -541,7 +574,7 @@ LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zLoop, nLoops, (*axion->zV()),
 		}
 	} // zLoop
 
-// TODO write axPoints or sxPoints if it was not written before
+	fclose (history);
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
@@ -550,22 +583,27 @@ LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zLoop, nLoops, (*axion->zV()),
 
 	munge(UNFOLD_ALL);
 
-	index++	;
+//	index++	;
 	if (axion->Field() == FIELD_AXION) {
-		if (pconfinal) {
-			LogOut("Writing energy map...................");
+		if (pconfinal)
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
-			writeEDens(axion);
-			LogOut ("Done!\n");
-		}
 
-// TODO CAMBIAR
-		if (endredmap > 0) {
-			LogOut("Writing reduced energy map ..........");
-			int nena = sizeN/endredmap ;
-			specAna.filter(nena);
-			writeEDensReduced(axion, index, endredmap, endredmap/zGrid);
-			LogOut ("Done!\n");
+		if (pconfinal) {
+			if (endredmap > 0) {
+				double ScaleSize = ((double) axion->Length())/((double) endredmap);
+				double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
+				size_t nLz = endredmap / commSize();
+
+				if (axion->Precision() == FIELD_DOUBLE) {
+					reduceField(axion, endredmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
+						   { return x*exp(-eFc*(px*px + py*py + pz*pz)); });
+				} else {
+					reduceField(axion, endredmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>
+						   { return x*((float) exp(-eFc*(px*px + py*py + pz*pz))); });
+				}
+			}
+
+			writeEDens (axion);
 		}
 
 		destroyMeas();
@@ -601,7 +639,7 @@ LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zLoop, nLoops, (*axion->zV()),
 			createMeas(axion, index);
 
 			if (p2dmapo)
-				writeMapHdf5s(axion, slicePrint);
+				writeMapHdf5(axion);
 
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 			specAna.nRun();
@@ -637,45 +675,53 @@ LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zLoop, nLoops, (*axion->zV()),
 				writeBinner(thBin,   "/bins", "theta");
 			}
 
-			if (pconfinalwkb)
-				writeEDens(axion);
-
 			writeEnergy(axion, eRes);
+
+			if (pconfinalwkb) {
+				if (endredmap > 0) {
+					double ScaleSize = ((double) axion->Length())/((double) endredmap);
+					double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
+					size_t nLz = endredmap / commSize();
+
+					if (axion->Precision() == FIELD_DOUBLE) {
+						reduceField(axion, endredmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
+							   { return x*exp(-eFc*(px*px + py*py + pz*pz)); });
+					} else {
+						reduceField(axion, endredmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>
+							   { return x*((float) exp(-eFc*(px*px + py*py + pz*pz))); });
+					}
+				}
+
+				writeEDens (axion);
+			}
 
 			specAna.pRun();
 			writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-
-// TODO CAMBIAR
-			if (endredmap > 0) {
-				LogOut("redmap ");
-				int nena = sizeN/endredmap ;
-				specAna.filter(nena);
-				writeEDensReduced(axion, index, endredmap, endredmap/zGrid);
-			}
 
 			destroyMeas();
 		}  // End WKB stuff
 
 
-/* TODO ARREGLAR ---> ESTO ES PARA JENS!!!
-			if ( endredmap > 0)
-			{
-				// LogOut ("Reducing map %d to %d^3 ... ", index, endredmap);
-				// 	char mirraa[128] ;
-				// 	strcpy (mirraa, outName);
-				// 	strcpy (outName, "./out/m/axion\0");
-				// 	reduceEDens(index, endredmap, endredmap) ;
-				// 	strcpy (outName, mirraa);
-				// LogOut ("Done!\n");
+		/*	For Jens	*/
+		if (endredmap > 0) {
+			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+			double ScaleSize = ((double) axion->Length())/((double) endredmap);
+			double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
+			size_t nLz = endredmap / commSize();
 
-				createMeas(axion, index+1);
-				writeEnergy(axion, eRes);
-				writeEDensReduced(axion, index+1, endredmap, endredmap/zGrid);
-				destroyMeas();
-
+			if (axion->Precision() == FIELD_DOUBLE) {
+				reduceField(axion, endredmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
+					   { return x*exp(-eFc*(px*px + py*py + pz*pz)); });
+			} else {
+				reduceField(axion, endredmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>
+					   { return x*((float) exp(-eFc*(px*px + py*py + pz*pz))); });
 			}
-*/
 
+			createMeas(axion, index+1);
+			writeEnergy(axion, eRes);
+			writeEDens (axion);
+			destroyMeas();
+		}
 	}  // End axion stuff, for the saxion it seems we don't care
 
 	LogOut("z Final = %f\n", *axion->zV());

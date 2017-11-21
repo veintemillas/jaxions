@@ -1176,5 +1176,8 @@ int	parseArgs (int argc, char *argv[])
 		}
 	}
 
+	if (zGrid == 1)
+		logMpi = ZERO_RANK;
+
 	return	procArgs;
 }
