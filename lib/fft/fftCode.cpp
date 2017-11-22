@@ -169,15 +169,12 @@ namespace AxionFFT {
 
 					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
-LogOut("Muahahaha2\n");
 						if (axion->Field() == FIELD_SAXION) {
 
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
-LogOut("Muahahaha3\n");
 							if (dFft & FFT_BCK)
 								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
-LogOut("Muahahaha4\n");
 						} else {
 
 							if (dFft & FFT_FWD)
