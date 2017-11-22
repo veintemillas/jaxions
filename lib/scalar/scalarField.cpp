@@ -287,7 +287,7 @@ const std::complex<float> If(0.,1.);
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
 	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
-#if 0
+
 		AxionFFT::initFFT(prec);
 
 		/* Backward needed for reduce-filter-map */
@@ -305,7 +305,7 @@ const std::complex<float> If(0.,1.);
 		}
 
 		AxionFFT::initPlan (this, FFT_SPAX,       FFT_FWDBCK,  "SpAx");
-#endif
+
 		/*	If present, read fileName	*/
 
 		if (cType == CONF_NONE) {
