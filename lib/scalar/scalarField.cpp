@@ -326,12 +326,10 @@ const std::complex<float> If(0.,1.);
 					else
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
 				prof.stop();
+				prof.add(std::string("Init"), 0.0, (lowmem ? 2*mBytes+vBytes : mBytes+vBytes)*1e-9);
 				genConf	(this, cType, parm1, parm2);
-				prof.start();
 			}
 		}
-		prof.stop();
-		prof.add(std::string("Init"), 0.0, (lowmem ? 2*mBytes+vBytes : mBytes+vBytes)*1e-9);
 	} else {
 		prof.stop();
 		prof.add(std::string("Init"), 0.0, 2.e-9*mBytes);
