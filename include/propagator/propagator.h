@@ -5,4 +5,5 @@
 
 	void	initPropagator	(PropType pType, Scalar *field, const double nQcd=7., const double delta=0.0, const double LL=15000., VqcdType pot=VQCD_1);
 	void	propagate	(Scalar *field, const double dz);
+	void	tunePropagator	(Scalar *field);
 #endif

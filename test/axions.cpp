@@ -173,6 +173,12 @@ int	main (int argc, char *argv[])
 
 	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
 
+	LogOut("--------------------------------------------------\n");
+	LogOut("            TUNING PROPAGATOR                     \n");
+	LogOut("--------------------------------------------------\n");
+
+	tunePropagator (axion);
+
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		//--------------------------------------------------

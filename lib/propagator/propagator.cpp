@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <chrono>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -282,4 +283,66 @@ void	propagate	(Scalar *field, const double dz)
 	LogMsg	(VERB_HIGH, "Propagator %s reporting %lf GFlops %lf GBytes", prop->Name().c_str(), prof.Prof()[prop->Name()].GFlops(), prof.Prof()[prop->Name()].GBytes());
 
 	return;
+}
+
+void	tunePropagator (Scalar *field) {
+	// TODO Add profiler for tuner, so we measure the tuning time
+	// TODO Return if prop is nullptr
+	std::chrono::high_resolution_clock::time_point start, end;
+	std::chrono::nanoseconds bestTime, lastTime;
+
+	LogMsg (VERB_HIGH, "Started tuner");
+	prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
+
+	start = std::chrono::high_resolution_clock::now();
+	propagate(field, 0.);
+	end   = std::chrono::high_resolution_clock::now();
+
+	bestTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start);
+
+	LogMsg (VERB_HIGH, "Block %u x %u done in %lu ns", prop->BlockY(), prop->BlockZ(), bestTime.count());
+
+	while (!prop->IsTuned()) {
+		prop->AdvanceBlockSize();
+
+		start = std::chrono::high_resolution_clock::now();
+		propagate(field, 0.);
+		end   = std::chrono::high_resolution_clock::now();
+
+		lastTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start);
+
+		LogMsg (VERB_HIGH, "Block %u x %u done in %lu ns", prop->BlockY(), prop->BlockZ(), lastTime.count());
+
+		if (lastTime < bestTime) {
+			bestTime = lastTime;
+			prop->UpdateBestBlock();
+			LogMsg (VERB_HIGH, "Best block updated");
+		}
+	}
+
+	prop->getBaseName();
+
+	switch (field->Field()) {
+		case FIELD_AXION:
+			prop->appendName("Axion");
+			break;
+
+		case FIELD_AXION_MOD:
+			prop->appendName("Axion Mod");
+			break;
+
+		case FIELD_SAXION:
+			prop->appendName("Saxion");
+			break;
+
+		default:
+			LogError ("Error: invalid field type");
+			return;
+	}
+
+	Profiler &prof = getProfiler(PROF_PROP);
+
+	prof.reset(prop->Name());
+
+	prop->SetBestBlock();
 }

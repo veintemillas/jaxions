@@ -33,6 +33,7 @@
 				void		start() { sTime = std::chrono::high_resolution_clock::now(); }
 				void		stop()  { dTime = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - sTime).count()*1e-6; }
 				void		add(std::string str, double gFlops, double gBytes) { prof[str].addTime(dTime); prof[str].addFlops(gFlops, gBytes); }
+				void		reset(std::string str) { prof[str].reset(); }
 
 				void		insert(std::string mName, FlopCounter fCount) { prof.insert(std::make_pair(mName, fCount)); };
 
