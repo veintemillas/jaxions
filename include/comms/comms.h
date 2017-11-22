@@ -6,6 +6,7 @@
 	int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, VerbosityLevel verb);
 	void	endComms();
 	int	commRank();
+	int	commRanksPerNode();
 	int	commThreads();
 	int	commSize();
 	int	commAcc();

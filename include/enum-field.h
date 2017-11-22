@@ -1,5 +1,6 @@
 #ifndef	_ENUM_FIELD_
 	#define _ENUM_FIELD_
+	#include<mpi.h>
 
 	typedef	unsigned int uint;
 
@@ -175,6 +176,7 @@
 			LOG_MSG   = 1048576,
 			LOG_DEBUG = 2097152,
 			LOG_ERROR = 4194304,
+			LOG_ANY   = MPI_ANY_TAG,
 		}	LogLevel;
 
 		typedef	enum	LogMpi_s
@@ -182,6 +184,13 @@
 			ALL_RANKS,
 			ZERO_RANK,
 		}	LogMpi;
+
+		typedef	enum	ProcessorBrand_s
+		{
+			GENUINE_INTEL,
+			AUTHENTIC_AMD,
+			UNKNOWN_BRAND,
+		}	ProcessorBrand;
 
 		typedef	enum	ProfType_s
 		{
