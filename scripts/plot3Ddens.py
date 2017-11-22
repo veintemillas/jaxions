@@ -56,6 +56,9 @@ if re_contrastmap:
 	print('Size =  (',256,'x',256,'x',256,') in file ',fileHdf5)
 
 
+mena = np.mean(con)
+con  = con/mena
+
 # data = con-1
 #
 # d2 = np.empty(data.shape + (4,), dtype=np.ubyte)

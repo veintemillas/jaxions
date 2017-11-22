@@ -148,7 +148,7 @@ void	printUsage(char *name)
 	printf("\nOutput:\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
-	printf("--p3D 0/1/2                     Print initial/final configurations (default 0 = no) 1=final 2=both \n");
+	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
 	printf("--p3Dstr  [Mb]                  Include 3D string/Wall maps axion.m.files always or if expected size below [Mbs] (default no)\n");
 	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
@@ -1157,7 +1157,7 @@ int	parseArgs (int argc, char *argv[])
 			} else {
 				printf("Path %s doesn't exists, using default\n", outPath);
 				createOutput();
-			}				
+			}
 		}
 	} else {
 		createOutput();
@@ -1172,9 +1172,12 @@ int	parseArgs (int argc, char *argv[])
 				strcpy(wisDir, wisPath);
 			} else {
 				printf("Path %s doesn't exists, using default\n", wisPath);
-			}				
+			}
 		}
 	}
+
+	if (zGrid == 1)
+		logMpi = ZERO_RANK;
 
 	return	procArgs;
 }

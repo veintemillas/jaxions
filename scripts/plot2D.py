@@ -74,7 +74,7 @@ class	Plot2D():
 #				pm = np.amax(aData)
 #				print ("BMax %f" % pm)
 				aData = aData/zR
-#				rData = np.ones(aData.shape)
+				rData = np.ones(aData.shape)
 				pData = np.ones(aData.shape)*(2*np.pi)
 				aData = (aData + pData)/(4.*np.pi)
 #				iData = np.trunc(aData/(2*np.pi))

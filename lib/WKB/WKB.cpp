@@ -44,6 +44,8 @@ namespace AxionWKB {
 			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
 			return;
 		 }
+		LogMsg (VERB_NORMAL, "\n");
+		LogMsg (VERB_NORMAL, "[WKB] Constructor");
 
 		bool	wasFolded = field->Folded();
 
@@ -51,7 +53,7 @@ namespace AxionWKB {
 
 		if (wasFolded)
 		{
-			LogMsg (VERB_HIGH, "Folded configuration, will unfold at the end");
+			LogMsg (VERB_HIGH, "[WKB] Unfolding configuration!");
 			munge	= new Folder(field);
 			(*munge)(UNFOLD_ALL);
 		}
@@ -87,7 +89,7 @@ namespace AxionWKB {
 					// FFT <- in m2
 					// copies m2 into m unpadded [this makes m finally ok]
 
-				LogMsg(VERB_NORMAL, "WKB in self-destruction mode!\n");
+				LogMsg(VERB_NORMAL, "[WKB] WKB in self-destruction mode!");
 
 				char *mOr = static_cast<char *>(field->mCpu()) + field->Surf()*field->DataSize();
 				char *vOr = static_cast<char *>(field->vCpu());
@@ -108,11 +110,11 @@ namespace AxionWKB {
 					auto	fOff = sl*field->DataSize()*(Ly+2);
 					memcpy	(m2+fOff, mOr+oOff, dataLine);
 				}
-				LogMsg(VERB_NORMAL, "done!\n");
+				LogMsg(VERB_NORMAL, "done!");
 
 							LogMsg(VERB_NORMAL, "Planning in m ... ");
 							AxionFFT::initPlan (field, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "WKB m");
-							LogMsg(VERB_NORMAL, "done!\n");
+							LogMsg(VERB_NORMAL, "done!");
 
 									LogMsg(VERB_NORMAL, "copying m2 -> m ");
 									//Copy m2 -> m with padding
@@ -121,7 +123,7 @@ namespace AxionWKB {
 										auto	fOff = sl*field->DataSize()*(Ly+2);
 										memcpy	(mDt+fOff, m2+fOff, dataLine);
 									}
-									LogMsg(VERB_NORMAL, "done!\n");
+									LogMsg(VERB_NORMAL, "done!");
 
 				LogMsg(VERB_NORMAL, "copying v -> m2 ");
 				//Copy m -> m2 with padding
@@ -131,11 +133,11 @@ namespace AxionWKB {
 					auto	fOff = sl*field->DataSize()*(Ly+2);
 					memcpy	(m2+fOff, vOr+oOff, dataLine);
 				}
-				LogMsg(VERB_NORMAL, "done!\n");
+				LogMsg(VERB_NORMAL, "done!");
 
 							LogMsg(VERB_NORMAL, "Planning in v ... ");
 							AxionFFT::initPlan (field, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "WKB v");
-							LogMsg(VERB_NORMAL, "done!\n");
+							LogMsg(VERB_NORMAL, "done!");
 
 									LogMsg(VERB_NORMAL, "copying m2 -> v ");
 									//Copy m2 -> m with padding
@@ -144,20 +146,20 @@ namespace AxionWKB {
 										auto	fOff = sl*field->DataSize()*(Ly+2);
 										memcpy	(vDt+fOff, m2+fOff, dataLine);
 									}
-									LogMsg(VERB_NORMAL, "done!\n");
+									LogMsg(VERB_NORMAL, "done!");
 
 				auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 				auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
 				LogMsg(VERB_NORMAL," FFTWing AXION m inplace ... ");
 				myPlanM.run(FFT_FWD);
-				LogOut ("done!!\n");
+				LogOut ("done!!");
 
 				LogMsg(VERB_NORMAL," FFTWing AXION v inplace ... ");
 				myPlanV.run(FFT_FWD);
-				LogMsg(VERB_NORMAL,"done!!\n ");
+				LogMsg(VERB_NORMAL,"done!! ");
 
-				LogOut ("\n\n      - - ->   ready to WKBonce! \n\n");
+				LogOut ("      - - ->   ready to WKBonce! \n");
 
 			}
 			else
@@ -169,7 +171,7 @@ namespace AxionWKB {
 				LogMsg(VERB_NORMAL, "Planning in axion2 ... ");
 				AxionFFT::initPlan (tmp, FFT_RtoC_MtoM_WKB,  FFT_FWD, "WKB m");
 				AxionFFT::initPlan (tmp, FFT_RtoC_VtoV_WKB,  FFT_FWD, "WKB v");
-				LogMsg(VERB_NORMAL, "done!\n");
+				LogMsg(VERB_NORMAL, "done!");
 
 				// pointers for copying 1->2
 				char *mOr = static_cast<char *>(field->mCpu()) + field->Surf()*field->DataSize();
@@ -198,24 +200,24 @@ namespace AxionWKB {
 					memcpy	(mDt+fOff, mOr+oOff, dataLine);
 					memcpy	(vDt+fOff, vOr+oOff, dataLine);
 				}
-				LogMsg(VERB_NORMAL, "done!\n");
+				LogMsg(VERB_NORMAL, "done!");
 
 				auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 				auto &myPlanV = AxionFFT::fetchPlan("WKB v");
 
 				LogMsg(VERB_NORMAL," FFTWing AXION2 m inplace ... ");
 				myPlanM.run(FFT_FWD);
-				LogOut ("done!!\n");
+				LogOut ("done!!");
 
 				LogMsg(VERB_NORMAL," FFTWing AXION2 v inplace ... ");
 				myPlanV.run(FFT_FWD);
-				LogMsg(VERB_NORMAL,"done!!\n ");
+				LogMsg(VERB_NORMAL,"done!! ");
 
 				LogMsg(VERB_NORMAL,"Planning IN axion1 m2 ");
 				AxionFFT::initPlan (field, FFT_RtoC_M2toM2_WKB, FFT_BCK, "WKB p");	// Momenta coefficients
-				LogMsg(VERB_NORMAL,"done!!\n");
+				LogMsg(VERB_NORMAL,"done!!");
 
-				LogOut ("\n\n      - - ->   ready to WKB! \n\n");
+				LogOut ("      - - ->   ready to WKB! \n");
 
 			}
 
@@ -262,8 +264,8 @@ namespace AxionWKB {
 		// label 1 for ini, 2 for end
 		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
 		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
-		double aMass2zIni1 = aMass2zIni2/zEnd;
-		double aMass2zEnd1 = aMass2zEnd2/zIni;
+		double aMass2zIni1 = aMass2zIni2/zIni;
+		double aMass2zEnd1 = aMass2zEnd2/zEnd;
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
@@ -324,7 +326,7 @@ namespace AxionWKB {
 		// 		LogOut("------------\n") ;
 		// 		LogOut("aMass2zIni2 %f\n",aMass2zIni2) ;
 		// 		LogOut("aMass2zEnd2 %f\n",aMass2zEnd2) ;
-		// 		LogOut("aMass2zIni1 %f\n",aMass2zEnd2) ;
+		// 		LogOut("aMass2zIni1 %f\n",aMass2zIni1) ;
 		// 		LogOut("zBase1 %f\n",zBase1) ;
 		// 		LogOut("phiBase1 %f\n",phiBase1) ;
 		// 		LogOut("nn1 %f\n",nn1) ;
@@ -339,7 +341,7 @@ namespace AxionWKB {
 		// 		LogOut("hTz %d\n",hTz) ;
 
 
-		LogMsg(VERB_NORMAL,"start mode calculation! \n");
+		LogMsg(VERB_NORMAL,"[WKB] start mode calculation! \n");
 		#pragma omp parallel for schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
@@ -438,20 +440,20 @@ namespace AxionWKB {
 
 			D0 *= im*w2	;
 
-			// check if the modes are properly copied by zEnd=zIni and uncommenting this line
+			m2IC[idx] = M0;
+			vInC[idx] = D0;
+
+			// // check if the modes are properly copied by zEnd=zIni and uncommenting this line
 			// if ( idx%(Sm+5) == 0 )
 			// {
 			// 	//LogOut("compare[%.2f,%.2f]-[%.2f,%.2f]\n", Daux.real(), Daux.imag(), vInC[idx].real(), vInC[idx].imag() ) ;
 			// 	LogOut("Mumpare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Maux), imag(Maux), real(m2IC[idx]), imag(m2IC[idx])) ;
 			// 	LogOut("Dompare[%.2f,%.2f]-[%.2f,%.2f]\n", real(Daux), imag(Daux), real(vInC[idx]), imag(vInC[idx]) ) ;
-			//
+      //
 			// }
-			m2IC[idx] = M0;
-
-			vInC[idx] = D0;
 
 		}
-
+		LogMsg(VERB_NORMAL," modes evolved and copied into v and m2 ... ");
     LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
 		// FFT in place in m2 of axion1
 		myPlanP.run(FFT_BCK);
@@ -506,11 +508,11 @@ namespace AxionWKB {
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[0],vIn[1],vIn[2]);
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
-    *field->zV() = zEnd ;
-    LogMsg(VERB_NORMAL,"set z=%f done\n", (*field->zV()) );
-
-		LogMsg(VERB_NORMAL,"WKB complete!\n\n ");
-
+		*field->zV() = zEnd ;
+    LogMsg(VERB_NORMAL,"[WKB] set z=%f done", (*field->zV()) );
+		field->setFolded(false);
+		LogMsg(VERB_NORMAL,"[WKB] m,v, set unfolded!");
+		LogMsg(VERB_NORMAL,"[WKB] Complete!\n ");
 
 
 	}
@@ -521,8 +523,8 @@ namespace AxionWKB {
 		// label 1 for ini, 2 for end
 		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
 		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
-		double aMass2zIni1 = aMass2zIni2/zEnd;
-		double aMass2zEnd1 = aMass2zEnd2/zIni;
+		double aMass2zIni1 = aMass2zIni2/zIni;
+		double aMass2zEnd1 = aMass2zEnd2/zEnd;
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
@@ -684,9 +686,10 @@ namespace AxionWKB {
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
     *field->zV() = zEnd ;
-    LogMsg(VERB_NORMAL,"set z=%f done\n", (*field->zV()) );
-
-		LogMsg(VERB_NORMAL,"WKB complete!\n\n ");
+    LogMsg(VERB_NORMAL,"[WKB] set z=%f done", (*field->zV()) );
+		field->setFolded(false);
+		LogMsg(VERB_NORMAL,"[WKB] m,v, set unfolded!");
+		LogMsg(VERB_NORMAL,"[WKB] Complete!\n ");
 
 
 

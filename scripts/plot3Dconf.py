@@ -10,72 +10,20 @@ import os,re,sys
 
 import h5py
 
-# MOVE TRANSITION FILES
-if os.path.exists('./axion.m.10000'):
-    os.rename('./axion.m.10000','./../axion.m.10000')
-if os.path.exists('./axion.m.10001'):
-    os.rename('./axion.m.10001','./../axion.m.10001')
 
+fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
 
-# fileMeasM = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
-# fileMeasR = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.r.[0-9]{5}$", x)])
-#
-# if len(fileMeasR) > 0:
-# 	fileHdf5 = h5py.File(fileMeasR[-1], "r")
-# else:
-# 	fileHdf5 = h5py.File(fileMeasM[-1], "r")
+an_m = 'm' in fileHdf5
 
-print("you can type dens/redens after the file to choose map if possible")
-if len(sys.argv) == 2:
-    fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
-    an_contrastmap = 'energy/density' in fileHdf5
-    re_contrastmap = 'energy/redensity' in fileHdf5
-elif len(sys.argv) == 3:
-    fileHdf5 = h5py.File('./' + sys.argv[-2], "r")
-    dens0redens = sys.argv[-1]
-    if dens0redens == 'dens':
-        an_contrastmap = 'energy/density' in fileHdf5
-        re_contrastmap = False
-    elif dens0redens == 'redens':
-        re_contrastmap = 'energy/redensity' in fileHdf5
-        an_contrastmap = False
+Lx    = fileHdf5["/"].attrs.get("Size")
+Ly    = fileHdf5["/"].attrs.get("Size")
+Lz    = fileHdf5["/"].attrs.get("Depth")
+sizeL = fileHdf5["/"].attrs.get("Physical size")
+z     = fileHdf5["/"].attrs.get("z")
+con   = fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz)
+print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
-if an_contrastmap:
-	print('Contrast found')
-	Lx    = fileHdf5["/"].attrs.get("Size")
-	Ly    = fileHdf5["/"].attrs.get("Size")
-	Lz    = fileHdf5["/"].attrs.get("Depth")
-	sizeL = fileHdf5["/"].attrs.get("Physical size")
-	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy/density'].value.reshape(Ly,Lx,Lz)
-	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
-
-if re_contrastmap:
-	# sizeL = fileHdf5["/"].attrs.get("Physical size")
-    # z = fileHdf5["/"].attrs.get("z")
-    print('Reduced Contrast found')
-    temp3 = fileHdf5['energy']['redensity'].size
-    print(temp3)
-
-    if temp3 == 16777216:
-        Lx = 256
-        Ly = Lx
-        Lz = Lx
-    elif temp3 == 134217728:
-        Lx = 512
-        Ly = Lx
-        Lz = Lx
-
-    # need to adjust to other sizes
-    con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
-    print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
-
-mena = np.mean(con)
-con  = con/mena
-
-print('Average density  = ', mena)
-print('Maximum contrast = ', con.max())
-
+print('range is',con.min(),con.max())
 L2 = 1
 
 x = np.linspace(-L2, L2, Lx).reshape(Lx,1,1)
@@ -86,7 +34,7 @@ rh2 = 1-np.clip(np.sqrt(x**2 + y**2 +z**2),0,1)
 d2 = np.empty(con.shape + (4,), dtype=np.ubyte)
 positive = np.clip(con, 0, 10)**2
 
-d2[..., 0] = positive * (255./positive.max())
+d2[..., 0] = con * (255./con.max())
 d2[..., 1] = d2[..., 0]
 d2[..., 2] = d2[..., 0]
 d2[..., 3] = d2[..., 0]

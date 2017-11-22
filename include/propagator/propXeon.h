@@ -309,7 +309,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 				mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
 #endif
 				opCode(store_pd,  &v[idxMz], tmp);
-				opCode(store_pd, &m2[idxP0], mPx);
+				opCode(stream_pd, &m2[idxP0], mPx);
 			}
 		}
 #undef	_MData_

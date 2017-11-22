@@ -167,33 +167,33 @@ int	main (int argc, char *argv[])
 		LogOut ("Printing measurement file %05d ... ", index);
 		createMeas(axion, index);
 								SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+								// computes spectrum
+								LogOut ("spec ");
+								specAna.nRun();
+								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+								if(p2dmapo){
+									LogOut ("2D ");
+									writeMapHdf5s(axion,sliceprint);}
 								// computes energy and creates map
 								LogOut ("en ");
-								energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-								//bins density
-								LogOut ("con ");
-								axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-								//write binned distribution
-								LogOut ("bin ");
-								writeArray(bA, 10000, "/bins", "cont");
+								energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+								{
+									float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+									Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+														[eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
+									contBin.run();
+									writeBinner(contBin, "/bins", "contB");
+								}
 								LogOut ("tot ");
 								writeEnergy(axion, eRes);
 								//computes power spectrum
 								LogOut ("pow ");
 								specAna.pRun();
 								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-								LogOut ("spec ");
-								specAna.nRun();
-								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
-								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
-								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
-								LogOut ("2D ");
-								writeMapHdf5s(axion,sliceprint);
-								// Binner<float,100> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(), z_now);
-								// thBin.run();
-								// //writeArray(thBin.data(), 100, "/bins", "testTh");
-								// writeBinner(thBin, "/bins", "testTh");
 								LogOut ("Done!\n");
+
 		destroyMeas();
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
@@ -212,34 +212,70 @@ int	main (int argc, char *argv[])
 		LogOut ("Done!\n\n");
 
 
-		LogOut ("Printing measurement file %05d ... ", index);
+		LogOut ("Printing FINAL measurement file %05d ... ", index);
 		createMeas(axion, index);
+				// SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
+				// // computes energy and creates map
+				// LogOut ("en ");
+				// energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+				// //bins density
+				// LogOut ("con ");
+				// axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
+				// //write binned distribution
+				// LogOut ("bin ");
+				// writeArray(bA, 10000, "/bins", "cont");
+				// LogOut ("MAP ");
+				// writeEDens(axion);
+				// LogOut ("tot ");
+				// writeEnergy(axion, eRes);
+				// //computes power spectrum
+				// LogOut ("pow ");
+				// specAna.pRun();
+				// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+				// LogOut ("spec ");
+				// specAna.nRun();
+				// writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+				// writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+				// writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+				// LogOut ("2D ");
+				// writeMapHdf5s(axion,sliceprint);
+				// LogOut ("Done!\n");
+				if	(axion->Folded())
+				{
+					LogOut ("GAFF! unfold! ");
+					Folder	munge(axion);
+					munge(UNFOLD_ALL);
+				}
 				SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 				// computes energy and creates map
+
+				LogOut ("spec ");
+				specAna.nRun();
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+				if(p2dmapo){
+					LogOut ("2D ");
+					writeMapHdf5s(axion,sliceprint);
+					LogOut ("Done!\n");}
+				// computes energy and creates map
 				LogOut ("en ");
-				energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
-				//bins density
-				LogOut ("con ");
-				axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
-				//write binned distribution
-				LogOut ("bin ");
-				writeArray(bA, 10000, "/bins", "cont");
-				LogOut ("MAP ");
-				writeEDens(axion);
+				energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+				{
+					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+					Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+										[eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
+					contBin.run();
+					writeBinner(contBin, "/bins", "contB");
+				}
 				LogOut ("tot ");
 				writeEnergy(axion, eRes);
 				//computes power spectrum
 				LogOut ("pow ");
 				specAna.pRun();
 				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-				LogOut ("spec ");
-				specAna.nRun();
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
-				LogOut ("2D ");
-				writeMapHdf5s(axion,sliceprint);
 				LogOut ("Done!\n");
+
 
 			destroyMeas();
 

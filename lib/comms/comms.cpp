@@ -197,6 +197,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 
 void	endComms()
 {
+	AxionsLog::myLog->flushLog();
 	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Finalize();
 }
