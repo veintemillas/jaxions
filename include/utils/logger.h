@@ -220,7 +220,7 @@
 					flushDisk();
 				}
 
-				~Logger() { flushLog(); if (commRank()==0) { oFile.close(); } }
+				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { oFile.close(); } }
 
 				template<typename... Fargs>
 				void	operator()(LogLevel level, const char * file, const int line, const char * format, Fargs... vars)
