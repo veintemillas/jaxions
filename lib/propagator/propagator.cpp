@@ -287,11 +287,19 @@ void	propagate	(Scalar *field, const double dz)
 
 void	tunePropagator (Scalar *field) {
 	// TODO Add profiler for tuner, so we measure the tuning time
-	// TODO Return if prop is nullptr
+	if (prop == nullptr) {
+		LogError("Error: propagator not initialized, can't be tuned.");
+		return;
+	}
+
+	Profiler &prof = getProfiler(PROF_TUNER);
+
 	std::chrono::high_resolution_clock::time_point start, end;
 	std::chrono::nanoseconds bestTime, lastTime;
 
 	LogMsg (VERB_HIGH, "Started tuner");
+	prof.start();
+
 	prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
 
 	start = std::chrono::high_resolution_clock::now();
@@ -340,9 +348,11 @@ void	tunePropagator (Scalar *field) {
 			return;
 	}
 
-	Profiler &prof = getProfiler(PROF_PROP);
-
-	prof.reset(prop->Name());
+	Profiler &propProf = getProfiler(PROF_PROP);
+	propProf.reset(prop->Name());
 
 	prop->SetBestBlock();
+
+	prof.stop();
+	prof.add(prop->Name(), 0., 0.);
 }
