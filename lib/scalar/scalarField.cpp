@@ -122,10 +122,6 @@ const std::complex<float> If(0.,1.);
 	// MODIFIED BY JAVI
 	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
 
-	prof.stop();
-	prof.add(std::string("Init"), 0.0, 0.0);
-	prof.start();
-
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
