@@ -596,6 +596,8 @@ void	readConf (Scalar **axion, int index)
 		zTmp = zInit;
 	}
 
+	readAttribute (file_id, &zInit,  "z",            H5T_NATIVE_DOUBLE);
+
 	if (!uZfn) {
 		readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
 	}
