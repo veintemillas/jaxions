@@ -170,6 +170,7 @@ def gm(address,something='help'):
         print('mapvC       2D slice map of conformal PQ velocity field')
         print('         ')
         print('maptheta    2D slice map of THETA')
+        print('mapvheta    2D slice map of THETA_v')
         print('mapEdens    2D slice map of ENERGY in THETA [currentlt only Axion]')
         return ;
 
@@ -369,6 +370,9 @@ def gm(address,something='help'):
         if (something == 'maptheta') and (ftype == 'Axion'):
             temp = np.array(f['map']['m'].value.reshape(N,N))
             return temp/ct ;
+        if (something == 'mapvheta') and (ftype == 'Axion'):
+            temp = np.array(f['map']['v'].value.reshape(N,N))
+            return temp ;
         if (something == 'mapEdens') and (ftype == 'Axion'):
             theta = np.array(f['map']['m'].value.reshape(N,N))/ct
             massA2 = f.attrs[u'Axion mass']
