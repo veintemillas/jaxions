@@ -71,6 +71,7 @@ int	main (int argc, char *argv[])
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 
+	LogFlush();
 	LogOut ("Field set up in %lu ms\n", elapsed.count());
 
 	complex<float> *mC = static_cast<complex<float> *> (axion->mCpu());
@@ -242,11 +243,15 @@ int	main (int argc, char *argv[])
 	destroyMeas();
 
 	commSync();
-
+	LogFlush();
 
 	/*	We run a few iterations with damping too smooth the rho field	*/
 
 	initPropagator (pType, axion, nQcd, delta, LL, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+
+	LogOut ("Tuning propagator...\n");
+	tunePropagator(axion);
+	LogOut ("Tuned\n");
 
 	double dzControl = 0.0;
 
@@ -282,6 +287,7 @@ int	main (int argc, char *argv[])
 	if ((history = fopen("sample.txt", "w+")) == nullptr)
 		LogError ("Couldn't open history file");
 
+	LogFlush();
 	LogOut ("Start redshift loop\n\n");
 
 	commSync();
@@ -572,6 +578,7 @@ int	main (int argc, char *argv[])
 		} else {
 			destroyMeas();
 		}
+		LogFlush();
 	} // zLoop
 
 	fclose (history);
@@ -617,6 +624,8 @@ int	main (int argc, char *argv[])
 			writeConf(axion, index);
 			LogOut ("Done!\n");
 		}
+
+		LogFlush();
 
 		/*	If needed, go on with the WKB approximation	*/
 		if (wkb2z >= zFinl) {
@@ -722,6 +731,7 @@ int	main (int argc, char *argv[])
 			writeEDens (axion);
 			destroyMeas();
 		}
+		LogFlush();
 	}  // End axion stuff, for the saxion it seems we don't care
 
 	LogOut("z Final = %f\n", *axion->zV());
