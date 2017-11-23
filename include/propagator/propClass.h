@@ -82,9 +82,9 @@
 			tmp >>= 1;
 		}
 
-		xBest = Lx << shift;
-		yBest = Lx >> shift;
-		zBest = Lz;
+		xBest = xBlock = Lx << shift;
+		yBest = yBlock = Lx >> shift;
+		zBest = zBlock = Lz;
 
 		if (spec) {
 			switch (field->Device()) {

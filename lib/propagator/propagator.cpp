@@ -112,7 +112,17 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 
 	LogMsg	(VERB_HIGH, "Initializing propagator");
 
-	bool	spec = (pType & PROP_SPEC) ? true : false;
+	bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
+
+	unsigned int xBlock, yBlock, zBlock;
+
+	if (prop != nullptr)
+		if (prop->IsTuned()) {
+			wasTuned = true;
+			xBlock = prop->TunedBlockX();
+			yBlock = prop->TunedBlockY();
+			zBlock = prop->TunedBlockZ();
+		}		
 
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
@@ -227,6 +237,13 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 
 	prop->getBaseName();
 
+	if (wasTuned) {
+		prop->SetBlockX(xBlock);
+		prop->SetBlockY(yBlock);
+		prop->SetBlockZ(zBlock);
+		prop->UpdateBestBlock();
+	}
+
 	LogMsg	(VERB_HIGH, "Propagator %ssuccessfully initialized", prop->Name().c_str());
 }
 
@@ -286,7 +303,10 @@ void	propagate	(Scalar *field, const double dz)
 }
 
 void	tunePropagator (Scalar *field) {
-	// TODO Add profiler for tuner, so we measure the tuning time
+	// TODO Add cache
+	// Hash CPU model, add MPI ranks and volume
+	// Write block for complex/real
+
 	if (prop == nullptr) {
 		LogError("Error: propagator not initialized, can't be tuned.");
 		return;
@@ -352,6 +372,7 @@ void	tunePropagator (Scalar *field) {
 	propProf.reset(prop->Name());
 
 	prop->SetBestBlock();
+	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime.count());
 
 	prof.stop();
 	prof.add(prop->Name(), 0., 0.);

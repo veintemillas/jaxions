@@ -791,6 +791,9 @@ void	readConf (Scalar **axion, int index)
 	else
 		sizeZ = totlZ/zGrid;
 
+	prof.stop();
+	prof.add(std::string("Read configuration"), 0, 0);
+
 	if (!strcmp(fStr, "Saxion"))
 	{
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
@@ -806,6 +809,7 @@ void	readConf (Scalar **axion, int index)
 		exit(1);
 	}
 
+	prof.start();
 	commSync();
 
 	/*	Create plist for collective read	*/
