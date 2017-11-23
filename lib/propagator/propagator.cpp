@@ -303,7 +303,10 @@ void	propagate	(Scalar *field, const double dz)
 }
 
 void	tunePropagator (Scalar *field) {
-	// TODO Add profiler for tuner, so we measure the tuning time
+	// TODO Add cache
+	// Hash CPU model, add MPI ranks and volume
+	// Write block for complex/real
+
 	if (prop == nullptr) {
 		LogError("Error: propagator not initialized, can't be tuned.");
 		return;
@@ -369,6 +372,7 @@ void	tunePropagator (Scalar *field) {
 	propProf.reset(prop->Name());
 
 	prop->SetBestBlock();
+	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime.count());
 
 	prof.stop();
 	prof.add(prop->Name(), 0., 0.);
