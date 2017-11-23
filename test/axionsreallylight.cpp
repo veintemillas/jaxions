@@ -326,6 +326,13 @@ int	main (int argc, char *argv[])
 	initPropagator (pType, axion, nQcd, delta, LL, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
 	double dzcontrol = 0.0;
 	double strdensn ;
+
+	LogOut("--------------------------------------------------\n");
+	LogOut("            TUNING PROPAGATOR                     \n");
+	LogOut("--------------------------------------------------\n");
+
+	tunePropagator (axion);
+
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		dzaux = dzSize( zInit, axion->Field(), axion->Lambda(),vqcdType);

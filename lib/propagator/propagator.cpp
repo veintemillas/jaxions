@@ -112,7 +112,17 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 
 	LogMsg	(VERB_HIGH, "Initializing propagator");
 
-	bool	spec = (pType & PROP_SPEC) ? true : false;
+	bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
+
+	unsigned int xBlock, yBlock, zBlock;
+
+	if (prop != nullptr)
+		if (prop->IsTuned()) {
+			wasTuned = true;
+			xBlock = prop->TunedBlockX();
+			yBlock = prop->TunedBlockY();
+			zBlock = prop->TunedBlockZ();
+		}		
 
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
@@ -226,6 +236,13 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 	}
 
 	prop->getBaseName();
+
+	if (wasTuned) {
+		prop->SetBlockX(xBlock);
+		prop->SetBlockY(yBlock);
+		prop->SetBlockZ(zBlock);
+		prop->UpdateBestBlock();
+	}
 
 	LogMsg	(VERB_HIGH, "Propagator %ssuccessfully initialized", prop->Name().c_str());
 }

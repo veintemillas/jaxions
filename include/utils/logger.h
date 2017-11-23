@@ -331,4 +331,5 @@
 	#define	LogError(...)		((*(AxionsLog::myLog))(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__))
 	#define	LogMsg(verb, ...)	do { if (AxionsLog::myLog->Verbosity() >= verb) { ((*(AxionsLog::myLog))(LOG_MSG, __FILE__, __LINE__, __VA_ARGS__)); } } while(0)
 	#define LogOut(...) 		do { if (!commRank()) { printf(__VA_ARGS__); fflush(stdout); } } while(0)
+	#define	LogFlush()		(AxionsLog::myLog->flushLog())
 #endif
