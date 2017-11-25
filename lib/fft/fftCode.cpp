@@ -12,7 +12,13 @@ namespace AxionFFT {
 
 	void	FFTplan::importWisdom() {
 
+		static	bool imported = false;
+		bool	     noFile   = false;
+
 		auto	myRank = commRank();
+
+		if (imported)
+			return;
 
 		LogMsg (VERB_NORMAL, "Importing wisdom");
 
@@ -23,11 +29,14 @@ namespace AxionFFT {
 					sprintf (wisName, "%s/fftWisdom.single", wisDir);
 				        if (fftwf_import_wisdom_from_filename(wisName) == 0) {
 				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from %s/fftWisdom.single", wisDir);
-						return;
+						noFile = true;
 					}
 				}
 
-				fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+				MPI_Bcast(&noFile, sizeof(noFile), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+				if (!noFile)
+					fftwf_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 				break;
 
 			case	FIELD_DOUBLE:
@@ -36,14 +45,18 @@ namespace AxionFFT {
 					sprintf (wisName, "%s/fftWisdom.double", wisDir);
 				        if (fftw_import_wisdom_from_filename(wisName) == 0) {
 				                LogMsg (VERB_NORMAL, "Warning: could not import wisdom from %s/fftWisdom.double", wisDir);
-						return;
+						noFile = true;
 					}
 				}
 
-				fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
+				MPI_Bcast(&noFile, sizeof(noFile), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+				if (!noFile)
+					fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 				break;
 		}
 		LogMsg (VERB_NORMAL, "Wisdom successfully imported");
+		imported = true;
 	}
 
 	void	FFTplan::exportWisdom() {
@@ -75,7 +88,7 @@ namespace AxionFFT {
 		/*	Import wisdom	*/
 		importWisdom();
 
-		switch (prec) {//FIXME double precision con reducer
+		switch (prec) {
 
 			case	FIELD_SINGLE:
 			{
