@@ -253,7 +253,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdType | VQCD_TYPE)
+	switch (vqcdType & VQCD_TYPE)
 	{
 		case	VQCD_1:
 			sprintf(vStr, "VQcd 1");

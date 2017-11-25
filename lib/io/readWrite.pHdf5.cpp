@@ -253,7 +253,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdType | VQCD_TYPE)
+	switch (vqcdType & VQCD_TYPE)
 	{
 		case	VQCD_1:
 			sprintf(vStr, "VQcd 1");
@@ -654,7 +654,8 @@ void	readConf (Scalar **axion, int index)
 				vqcdType = VQCD_1_PQ_2;
 			else {
 				LogError ("Error reading file %s: invalid potential type %s", base, vStr);
-				exit(1);
+				vqcdType = VQCD_1;
+				//exit(1);
 			}
 
 			readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
