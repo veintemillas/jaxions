@@ -158,7 +158,7 @@
 
 					int flag = 0;
 					MPI_Status status;
-
+i
 					// Get all the messages of a particular log level
 					do {
 						MPI_Iprobe(MPI_ANY_SOURCE, level, MPI_COMM_WORLD, &flag, &status);
@@ -213,8 +213,10 @@
 						return;
 
 					// Get all the messages
-					if (mpiType == ALL_RANKS)
-						getMpiMsg (LOG_ANY);
+					if (mpiType == ALL_RANKS) {
+						getMpiMsg (LOG_MSG);
+						getMpiMsg (LOG_ERROR);
+					}
 
 					flushStack();
 					flushDisk();

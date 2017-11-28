@@ -176,7 +176,6 @@
 			LOG_MSG   = 1048576,
 			LOG_DEBUG = 2097152,
 			LOG_ERROR = 4194304,
-			LOG_ANY   = MPI_ANY_TAG,
 		}	LogLevel;
 
 		typedef	enum	LogMpi_s
