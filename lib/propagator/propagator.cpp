@@ -8,6 +8,8 @@
 #include "propagator/propClass.h"
 #include "utils/utils.h"
 
+#include <omp.h>
+
 std::unique_ptr<PropBase> prop;
 
 template<VqcdType pot>
@@ -303,9 +305,11 @@ void	propagate	(Scalar *field, const double dz)
 }
 
 void	tunePropagator (Scalar *field) {
-	// TODO Add cache
-	// Hash CPU model, add MPI ranks and volume
-	// Write block for complex/real
+	// Hash CPU model so we don't mix different cache files
+
+	int myRank   = commRank();
+	int nThreads = 1;
+	bool newFile = false, found = false;
 
 	if (prop == nullptr) {
 		LogError("Error: propagator not initialized, can't be tuned.");
@@ -321,6 +325,70 @@ void	tunePropagator (Scalar *field) {
 	prof.start();
 
 	prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
+
+	/*	Check for a cache file	*/
+
+	if (myRank == 0) {
+		FILE *cacheFile;
+		char tuneName[2048];
+		sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
+			LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
+			newFile = true;
+		} else {
+			size_t       rMpi, rThreads, rLx, rLz;
+			unsigned int rBx, rBy, rBz, fType, myField = (field->Field() == FIELD_SAXION) ? 0 : 1;
+
+			do {
+				fscanf (cacheFile, "%lu %lu %lu %lu %u %u %u %u\n", &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
+
+				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField) {
+					if (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth()) {
+						found = true;
+						prop->SetBlockX(rBx);
+						prop->SetBlockY(rBy);
+						prop->SetBlockZ(rBz);
+						prop->UpdateBestBlock();
+					}
+				}
+			}	while(!feof(cacheFile) && !found);
+			fclose (cacheFile);
+		}
+	}
+
+	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+	commSync();
+
+	// If a cache file was found, we broadcast the best block and exit
+	if (found) {
+		unsigned int block[3];
+
+		if (myRank == 0) {
+			block[0] = prop->TunedBlockX();
+			block[1] = prop->TunedBlockY();
+			block[2] = prop->TunedBlockZ();
+printf ("Sending %u %u %u\n", block[0], block[1], block[2]); fflush(stdout);
+		}
+
+		MPI_Bcast (&block, sizeof(int)*3, MPI_BYTE, 0, MPI_COMM_WORLD);
+		commSync();
+
+		if (myRank != 0) {
+printf ("Receiving %u %u %u\n", block[0], block[1], block[2]); fflush(stdout);
+			prop->SetBlockX(block[0]);
+			prop->SetBlockY(block[1]);
+			prop->SetBlockZ(block[2]);
+			prop->UpdateBestBlock();
+		}
+
+		LogMsg (VERB_NORMAL, "Tuned values read from cache file. Best block %u x %u x %u", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+		prof.stop();
+		prof.add(prop->Name(), 0., 0.);
+		return;
+	}
+
+	// Otherwise we start tuning
 
 	start = std::chrono::high_resolution_clock::now();
 	propagate(field, 0.);
@@ -374,6 +442,37 @@ void	tunePropagator (Scalar *field) {
 	prop->SetBestBlock();
 	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime.count());
 
+	/*	Write cache file if necessary, block of rank 0 prevails		*/
+
+	if (myRank == 0) {
+		FILE *cacheFile;
+		char tuneName[2048];
+		sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+
+		// We distinguish between opening and appending a new line
+		if (!newFile) {
+			if ((cacheFile = fopen(tuneName, "a")) == nullptr) {
+				LogError ("Error: can't open cache file, can't save tuning results");
+				commSync();
+				prof.stop();
+				prof.add(prop->Name(), 0., 0.);
+			}
+		} else {
+			if ((cacheFile = fopen(tuneName, "w")) == nullptr) {
+				LogError ("Error: can't create cache file, can't save tuning results");
+				commSync();
+				prof.stop();
+				prof.add(prop->Name(), 0., 0.);
+			}
+		}
+
+		unsigned int fType = (field->Field() == FIELD_SAXION) ? 0 : 1;
+		fprintf (cacheFile, "%lu %lu %lu %lu %u %u %u %u\n", commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
+								     fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+		fclose  (cacheFile);
+	}
+
+	commSync();
 	prof.stop();
 	prof.add(prop->Name(), 0., 0.);
 }
