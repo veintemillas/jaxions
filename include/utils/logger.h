@@ -158,7 +158,7 @@
 
 					int flag = 0;
 					MPI_Status status;
-i
+
 					// Get all the messages of a particular log level
 					do {
 						MPI_Iprobe(MPI_ANY_SOURCE, level, MPI_COMM_WORLD, &flag, &status);
