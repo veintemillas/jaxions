@@ -118,8 +118,9 @@
 				const VerbosityLevel	verbose;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
-					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << levelTable[myMsg.level()>>21] << "] Rank " << myMsg.rank()
-					      << "/" << commSize() << " - Thread " << myMsg.thread() << "/" << omp_get_num_threads() << " ==> " << myMsg.msg() << std::endl;
+					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << "]"
+					      << " Rank " << std::setw(4)  << myMsg.rank()+1 << "/" << commSize() << " - Thread " << std::setw(3) << myMsg.thread()+1 << "/"
+					      << omp_get_num_threads() << " ==> " << myMsg.msg() << std::endl;
 				}
 
 				/* We only allow thread 0 to write to disk, but any other thread can put messages in the stack		*/
@@ -191,6 +192,8 @@
 
 					int			idx = index - 1;
 
+					// Let's force a sync before recording the starting time, so all the ranks more or less agree on this
+					commSync();
 					logStart = std::chrono::high_resolution_clock::now();
 
 					if (commRank() == 0) {
