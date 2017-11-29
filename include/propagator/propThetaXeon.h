@@ -117,6 +117,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				X[1] = yC;
 			}
 
+			mel = opCode(load_pd, &m[idx]);
+
 /*
 		#pragma omp parallel default(shared)
 		{
@@ -348,6 +350,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				X[0] = xC;
 				X[1] = yC;
 			}
+
+			mel = opCode(load_ps, &m[idx]);
+
 /*
 		#pragma omp parallel default(shared)
 		{
