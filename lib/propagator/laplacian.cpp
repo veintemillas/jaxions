@@ -21,6 +21,7 @@ class	Laplacian : public Tunable
 
 	const FieldPrecision	precision;
 	const size_t		Lx;
+	const size_t		Ly;
 	const size_t		Lz;
 	const size_t		Tz;
 	const size_t		Sf;
@@ -35,7 +36,8 @@ class	Laplacian : public Tunable
 
 	public:
 
-		Laplacian (Scalar *field) : precision(field->Precision()), Lx(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), Sf(field->Surf()), field(field) {
+		Laplacian (Scalar *field) : precision(field->Precision()), Lx(field->Length()), Ly(field->Length()/commSize()), Lz(field->Depth()), Tz(field->TotalDepth()),
+					    Sf(field->Surf()), field(field) {
 		if (field->LowMem()) {
 			LogError ("Error: laplacian not supported in lowmem runs");
 			exit(0);
@@ -71,7 +73,7 @@ void	Laplacian::lapCpu	(std::string name)
 	planFFT.run(FFT_FWD);
 	cFloat *mData = static_cast<cFloat*> (field->m2Cpu());
 
-	const size_t zBase = Lz*commRank();
+	const size_t zBase = Ly*commRank();
 
 	const int hLx = Lx>>1;
 	const int hTz = Tz>>1;
@@ -80,7 +82,7 @@ void	Laplacian::lapCpu	(std::string name)
 	const size_t maxSf = maxLx*Tz;
 
 	#pragma omp parallel for collapse(3) schedule(static) default(shared)
-	for (int oy = 0; oy < Lz; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
+	for (int oy = 0; oy < Ly; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
 		for (int oz = 0; oz < Tz; oz++)
 			for (int ox = 0; ox < maxLx; ox++)
 			{

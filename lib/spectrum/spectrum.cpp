@@ -30,7 +30,7 @@ void	SpecBin::fillBins	() {
 
 	const int mIdx = commThreads();
 
-	size_t	zBase = Lz*commRank();
+	size_t	zBase = (Lx/commSize())*commRank();
 
 	std::vector<double>	tBinK;
 	std::vector<double>	tBinG;
@@ -390,7 +390,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 	const int mIdx = commThreads();
 
-	size_t	zBase = Lz*commRank();
+	size_t	zBase = (Lx/commSize())*commRank();
 
 	//prefactor is (2 pi^2 neigh^2/N^2)
 	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;
