@@ -62,7 +62,6 @@ void	SpecBin::fillBins	() {
 
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
-
 			size_t tmp = idx/Lx;
 			int    kx  = idx - tmp*Lx;
 			int    ky  = tmp/Tz;
@@ -87,7 +86,7 @@ void	SpecBin::fillBins	() {
 			size_t myBin = floor(sqrt(k2));
 
 			if (myBin > powMax) {
-				LogError ("Error: point %lu bin out of range %lu > %lu\n", idx, myBin, powMax);
+				LogError ("Error: point %lu (%d %d %d) bin out of range %lu > %lu\n", idx, kx, ky, kz, myBin, powMax);
 				continue;
 			}
 

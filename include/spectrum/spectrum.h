@@ -34,8 +34,8 @@
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
 									       fPrec(field->Precision()), nPts(field->Size()), fType(field->Field()), spec(spectral) {
-				kMax   = (Ly>>1);
-				powMax = floor(sqrt(3.)*kMax)+1;
+				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
+				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 
 				binK.resize(powMax); binK.assign(powMax, 0.);
 				binG.resize(powMax); binG.assign(powMax, 0.);
