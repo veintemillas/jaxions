@@ -35,7 +35,8 @@
 		unsigned int	BlockY () const noexcept { return yBlock; }
 		unsigned int	BlockZ () const noexcept { return zBlock; }
 
-		bool		IsTuned() const noexcept { return isTuned; }
+		bool		IsTuned() const noexcept { return isTuned;  }
+		void		UnTune ()       noexcept { isTuned = false; }
 
 		unsigned int	TunedBlockX () const noexcept { return xBest; }
 		unsigned int	TunedBlockY () const noexcept { return yBest; }
@@ -90,6 +91,8 @@
 			xBest = xBlock = (Lx << shift);
 			yBest = yBlock = 4;
 			zBest = zBlock = 1;
+
+			isTuned = false;
 		}
 	};
 

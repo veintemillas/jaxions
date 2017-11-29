@@ -304,6 +304,25 @@ void	propagate	(Scalar *field, const double dz)
 	return;
 }
 
+void	resetPropagator(Scalar *field) {
+	/*	Default block size gives just one block	*/
+	int tmp   = field->DataAlign()/field->DataSize();
+	int shift = 0;
+
+	while (tmp != 1) {
+		shift++;
+		tmp >>= 1;
+	}
+
+	prop->SetBlockX(field->Length() << shift);
+	prop->SetBlockY(field->Length() >> shift);
+	prop->SetBlockZ(field->Depth ());
+	prop->UpdateBestBlock();
+
+	prop->UnTune();
+}
+
+
 void	tunePropagator (Scalar *field) {
 	// Hash CPU model so we don't mix different cache files
 
@@ -368,14 +387,12 @@ void	tunePropagator (Scalar *field) {
 			block[0] = prop->TunedBlockX();
 			block[1] = prop->TunedBlockY();
 			block[2] = prop->TunedBlockZ();
-printf ("Sending %u %u %u\n", block[0], block[1], block[2]); fflush(stdout);
 		}
 
 		MPI_Bcast (&block, sizeof(int)*3, MPI_BYTE, 0, MPI_COMM_WORLD);
 		commSync();
 
 		if (myRank != 0) {
-printf ("Receiving %u %u %u\n", block[0], block[1], block[2]); fflush(stdout);
 			prop->SetBlockX(block[0]);
 			prop->SetBlockY(block[1]);
 			prop->SetBlockZ(block[2]);

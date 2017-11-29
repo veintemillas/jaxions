@@ -428,6 +428,10 @@ int	main (int argc, char *argv[])
 							writeBinner(thBin, "/bins", "theta");
 						}
 						destroyMeas();
+
+						LogOut ("Tuning propagator...\n");
+						tunePropagator(axion);
+						LogOut ("Tuned\n");
 					}
 				}
 			} else {
