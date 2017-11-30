@@ -3,7 +3,7 @@
 
 namespace AxionsLog {
 	std::shared_ptr<Logger> myLog;
-	const char	levelTable[3][16] = { "Msg", "Debug", "Error" };
+	const char	levelTable[3][16] = { " Msg ", "Debug", "Error" };
 }
 
 void	createLogger(const int index, const LogMpi logMpi, const VerbosityLevel verbosity) {

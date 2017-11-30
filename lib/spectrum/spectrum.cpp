@@ -30,7 +30,7 @@ void	SpecBin::fillBins	() {
 
 	const int mIdx = commThreads();
 
-	size_t	zBase = Lz*commRank();
+	size_t	zBase = (Lx/commSize())*commRank();
 
 	std::vector<double>	tBinK;
 	std::vector<double>	tBinG;
@@ -62,7 +62,6 @@ void	SpecBin::fillBins	() {
 
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
-
 			size_t tmp = idx/Lx;
 			int    kx  = idx - tmp*Lx;
 			int    ky  = tmp/Tz;
@@ -87,7 +86,7 @@ void	SpecBin::fillBins	() {
 			size_t myBin = floor(sqrt(k2));
 
 			if (myBin > powMax) {
-				LogError ("Error: point %lu bin out of range %lu > %lu\n", idx, myBin, powMax);
+				LogError ("Error: point %lu (%d %d %d) bin out of range %lu > %lu\n", idx, kx, ky, kz, myBin, powMax);
 				continue;
 			}
 
@@ -391,7 +390,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 	const int mIdx = commThreads();
 
-	size_t	zBase = Lz*commRank();
+	size_t	zBase = (Lx/commSize())*commRank();
 
 	//prefactor is (2 pi^2 neigh^2/N^2)
 	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;

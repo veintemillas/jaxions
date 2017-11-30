@@ -160,11 +160,15 @@ int	main (int argc, char *argv[])
 	else
 		nLoops = (int)(nSteps/dump);
 
-	LogOut ("Start redshift loop\n");
-
 	commSync();
 
 	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+
+	LogOut ("Tuning propagator\n");
+
+	tunePropagator (axion);
+
+	LogOut ("Start redshift loop\n");
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -277,6 +281,8 @@ int	main (int argc, char *argv[])
 //			writeEDens(axion, MAP_THETA);
 //			destroyMeas();
 //			zloop += 100.;
+			LogOut ("Tuning propagator\n");
+			tunePropagator (axion);
 		}
 
 	} // zloop

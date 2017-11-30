@@ -268,7 +268,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 
 		default:
-			sprintf(vStr, "None");
+			sprintf(vStr, "VQcd 1");
 			break;
 	}
 

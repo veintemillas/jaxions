@@ -1011,7 +1011,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 
 		default:
-			sprintf(vStr, "None");
+			sprintf(vStr, "VQCD_1");
 			break;
 	}
 
