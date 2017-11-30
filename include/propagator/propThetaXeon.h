@@ -86,8 +86,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const uint z0 = Vo/(Lx*Lx);
 		const uint zF = Vf/(Lx*Lx);
-		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
-		const uint bY = (YC + bSizeY - 1)/bSizeY;
+		const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
+		const uint bY = (YC      + bSizeY - 1)/bSizeY;
 
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
@@ -320,8 +320,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const uint z0 = Vo/(Lx*Lx);
 		const uint zF = Vf/(Lx*Lx);
-		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
-		const uint bY = (YC + bSizeY - 1)/bSizeY;
+		const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
+		const uint bY = (YC      + bSizeY - 1)/bSizeY;
 
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
