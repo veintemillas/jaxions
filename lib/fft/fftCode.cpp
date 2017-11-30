@@ -55,7 +55,11 @@ namespace AxionFFT {
 					fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 				break;
 		}
-		LogMsg (VERB_NORMAL, "Wisdom successfully imported");
+
+		if (!noFile)
+			LogMsg (VERB_NORMAL, "Wisdom successfully imported");
+		else
+			LogMsg (VERB_NORMAL, "Wisdom will be generated");
 		imported = true;
 	}
 
