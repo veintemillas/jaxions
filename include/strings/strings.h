@@ -5,8 +5,7 @@
 	#include "utils/flopCounter.h"
 	#include <vector>
 
-	//StringData	strings	(Scalar *field, void *string, FlopCounter *fCount);
-	StringData	strings	(Scalar *field, void *string);
+	StringData	strings	(Scalar *field);
 	std::vector<std::vector<size_t>>  strToCoords     (char *strData, size_t Lx, size_t V);
 
 	int	analyzeStrFolded	(Scalar *axion, const int index);

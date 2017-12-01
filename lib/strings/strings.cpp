@@ -24,36 +24,32 @@ class	Strings	: public Tunable
 {
 	private:
 
-	const size_t Lx, V, S;
-
-	FieldPrecision	precision;
-
-	void    *strData;
 	Scalar	*axionField;
 
 	public:
 
-			Strings	(Scalar *field, void *str);
+			Strings	(Scalar *field);
 
 	StringData	runCpu	();
 	StringData	runGpu	();
 };
 
-	Strings::Strings(Scalar *field, void *str) : axionField(field), Lx(field->Length()), V(field->Size()), S(field->Surf()), precision(field->Precision()), strData(str)
+	Strings::Strings(Scalar *field) : axionField(field)
 {
 	setName("Strings and walls");
-	memset(strData, 0, V);
+	memset(field->sData(), 0, field->rSize());
 }
 
 StringData	Strings::runGpu	()
 {
 #ifdef	USE_GPU
-	const uint uLx = Lx, uS = S, uV = V;
+	const uint uLx = axionField->Length(),  uLz = axionField->Depth(),  uS = axionField->Surf();
+	const uint rLx = axionField->rLength(), rLz = axionField->rDepth(), uV = axionField->Size();
 	uint3		tmpData;
 	StringData	ret;
 
 	axionField->exchangeGhosts(FIELD_M);
-	tmpData = stringGpu(axionField->mGpu(), uLx, uV, uS, precision, strData, ((cudaStream_t *)axionField->Streams())[0]);
+	tmpData = stringGpu(axionField->mGpu(), uLx, uLz, rLx, rLz, uS, uV, precision, axionField->sData(), ((cudaStream_t *)axionField->Streams())[0]);
 
 	ret.strDen = tmpData.x;
 	ret.strChr = tmpData.y;
@@ -62,25 +58,26 @@ StringData	Strings::runGpu	()
 	return	ret;
 #else
 	LogError("Gpu support not built");
-	exit(1);
+	StringData	ret;
+	return	ret;
 #endif
 }
 
 StringData	Strings::runCpu	()
 {
-	return	stringCpu(axionField, Lx, V, S, precision, strData);
+	return	stringCpu(axionField);
 }
 
 using namespace profiler;
 
-StringData	strings	(Scalar *field, void *strData)
+StringData	strings	(Scalar *field)
 {
 	LogMsg	(VERB_HIGH, "Called strings");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
 
 	prof.start();
 
-	auto	eStr = std::make_unique<Strings> (field, strData);
+	auto	eStr = std::make_unique<Strings> (field);
 
 	StringData	strTmp, strDen;
 
@@ -122,7 +119,7 @@ StringData	strings	(Scalar *field, void *strData)
 
 	prof.stop();
 
-	eStr->add((15.*strDen.wallDn + 6.*field->Size())*1.e-9, (7.*field->DataSize() + 1.)*field->Size()*1.e-9);	// Flops are not exact
+	eStr->add((15.*strDen.wallDn + 6.*field->rSize())*1.e-9, (7.*field->DataSize() + 1.)*field->rSize()*1.e-9);	// Flops are not exact
 	prof.add(eStr->Name(), eStr->GFlops(), eStr->GBytes());
 
 	LogMsg	(VERB_HIGH, "%s reporting %lf GFlops %lf GBytes", eStr->Name().c_str(), prof.Prof()[eStr->Name()].GFlops(), prof.Prof()[eStr->Name()].GBytes());

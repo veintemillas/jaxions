@@ -115,13 +115,10 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	void *eRes, *str;			// Para guardar la energia y las cuerdas
+	void *eRes;			// Para guardar la energia y las cuerdas
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 	double *eR = static_cast<double *> (eRes);
-
-	alignAlloc(&str, axion->DataAlign(), (axion->Size()));
-	memset(str, 0, axion->Size());
 
 	commSync();
 
@@ -266,7 +263,7 @@ int	main (int argc, char *argv[])
 		axion->setZ(zInit);
 		dzControl += dzAux;
 
-		auto   rts     = strings(axion, str);
+		auto   rts     = strings(axion);
 		curStrings     = rts.strDen;
 		double strDens = 0.75*delta*curStrings*zInit*zInit/(sizeL*sizeL*sizeL);
 
@@ -324,7 +321,7 @@ int	main (int argc, char *argv[])
 
 				/*	If there are a few strings, we compute them every small step		*/
 				if (curStrings < 1000) {//fineStrings) {
-					rts   = strings(axion, str);
+					rts   = strings(axion);
 					curStrings = rts.strDen;
 				}
 
@@ -509,13 +506,13 @@ int	main (int argc, char *argv[])
 			if (axion->Lambda() == LAMBDA_Z2)
 				maa = maa*zNow*zNow;
 
-			rts   = strings(axion, str);
+			rts   = strings(axion);
 			curStrings = rts.strDen;
 
 			if (p3DthresholdMB/((double) curStrings) > 1.)
-				writeString(str, rts, true);
+				writeString(axion, rts, true);
 			else
-				writeString(str, rts, false);
+				writeString(axion, rts, false);
 
 			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
 			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
@@ -746,7 +743,6 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
 
 	delete axion;
 

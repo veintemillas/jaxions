@@ -38,9 +38,9 @@
 
 		double	*z;
 
-		void	*m,   *v,   *m2;			// Cpu data
+		void	*m,   *v,   *m2,   *str;			// Cpu data
 #ifdef	USE_GPU
-		void	*m_d, *v_d, *m2_d;			// Gpu data
+		void	*m_d, *v_d, *m2_d;				// Gpu data
 
 		void	*sStreams;
 #endif
@@ -75,13 +75,15 @@
 					FieldType newType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
 				~Scalar();
 
-		void		*mCpu() { return m; }
-		const void	*mCpu() const { return m; }
-		void		*vCpu() { return v; }
-		const void	*vCpu() const { return v; }
+		void		*mCpu()  { return m; }
+		const void	*mCpu()  const { return m; }
+		void		*vCpu()  { return v; }
+		const void	*vCpu()  const { return v; }
 		void		*m2Cpu() { return m2; }
 		const void	*m2Cpu() const { return m2; }
 
+		void		*sData() { return str; }
+		const void	*sData() const { return str; }
 #ifdef	USE_GPU
 		void		*mGpu() { return m_d; }
 		const void	*mGpu() const { return m_d; }
@@ -102,6 +104,7 @@
 		size_t		rLength()    { return eReduced ? rLx : n1; }
 		size_t		rTotalDepth(){ return eReduced ? rLz*nSplit : Lz*nSplit; }
 		size_t		rDepth()     { return eReduced ? rLz : Lz; }
+		size_t		rSize()      { return eReduced ? (rLx*rLx*rLz) : n3; }
 		size_t		eDepth()     { return Ez; }
 		size_t		eSize()      { return v3; }
 

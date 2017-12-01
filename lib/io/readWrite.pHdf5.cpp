@@ -1192,7 +1192,7 @@ void	destroyMeas ()
 	LogMsg (VERB_NORMAL, "Measurement file successfuly closed");
 }
 
-void	writeString	(void *str, StringData strDat, const bool rData)
+void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 {
 	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
 	hid_t	datum;
@@ -1202,7 +1202,7 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	char *strData = static_cast<char *>(str);
+	char *strData = static_cast<char *>(axion->sData());
 	char sCh[16] = "/string/data";
 
 	Profiler &prof = getProfiler(PROF_HDF5);
@@ -1234,13 +1234,25 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 		}
 	}
 
+	uint rLz   = axion->rDepth();
+	uint redlZ = axion->rTotalDepth();
+	uint redlX = axion->rLength();
+
+	hsize_t total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	hsize_t slab  = ((hsize_t) redlX)*((hsize_t) redlX);
+
+	/*	Might be reduced	*/
+	writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
+	writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
+	/*	String metadata		*/
 	writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
 	writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
 	writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
 
 	if	(rData) {
 		/*	Create space for writing the raw data to disk with chunked access	*/
-		if((totalSpace = H5Screate_simple(1, &tSize, maxD)) < 0) {	// Whole data
+		if((totalSpace = H5Screate_simple(1, &total, maxD)) < 0) {	// Whole data
 			LogError ("Fatal error H5Screate_simple");
 			prof.stop();
 			return;
@@ -1253,7 +1265,7 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 			return;
 		}
 
-		if (H5Pset_chunk (chunk_id, 1, &slabSz) < 0) {
+		if (H5Pset_chunk (chunk_id, 1, &slab) < 0) {
 			LogError ("Fatal error H5Pset_chunk");
 			prof.stop();
 			return;
@@ -1284,18 +1296,18 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 		/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
 		sSpace = H5Dget_space (sSet_id);
-		memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
+		memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 
 		commSync();
 
-		for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
+		for (hsize_t zDim=0; zDim < rLz; zDim++)
 		{
 			/*	Select the slab in the file	*/
-			hsize_t offset = ((hsize_t) (myRank*sLz) + zDim)*slabSz;
-			H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+			hsize_t offset = ((hsize_t) (myRank*rLz) + zDim)*slab;
+			H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 			/*	Write raw data	*/
-			auto mErr = H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (strData)+slabSz*zDim);
+			auto mErr = H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (strData)+slab*zDim);
 
 			if (mErr < 0)
 			{
@@ -1315,7 +1327,7 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 		H5Sclose (totalSpace);
 		H5Pclose (chunk_id);
 
-		sBytes = slabSz*sLz + 24;
+		sBytes = slab*rLz + 24;
 	} else
 		sBytes = 24;
 

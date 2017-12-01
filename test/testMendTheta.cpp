@@ -176,7 +176,7 @@ int	main (int argc, char *argv[])
 		// THE TIME ITERATION SUB-LOOP
 		//--------------------------------------------------
 
-		auto strDen = strings(axion, str);
+		auto strDen = strings(axion);
 
 		if (strDen.strDen == 0 && axion->Field() == FIELD_SAXION) {
 			LogOut("--------------------------------------------------\n");
@@ -188,10 +188,9 @@ int	main (int argc, char *argv[])
 			}
 
 			munge(UNFOLD_ALL);
-			writeConf(axion, index);
-
-			createMeas(axion, index);
-			writeString(str, strDen);
+			writeConf  (axion, index);
+			createMeas (axion, index);
+			writeString(axion, strDen);
 			destroyMeas();
 
 			double saskia = 0.0;

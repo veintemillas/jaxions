@@ -126,8 +126,9 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
-			alignAlloc ((void**) &m, mAlign, mBytes);
-			alignAlloc ((void**) &v, mAlign, vBytes);
+			alignAlloc ((void**) &m,   mAlign, mBytes);
+			alignAlloc ((void**) &v,   mAlign, vBytes);
+			alignAlloc ((void**) &str, mAlign, n3);
 			break;
 
 		case FIELD_AXION_MOD:
@@ -200,6 +201,12 @@ const std::complex<float> If(0.,1.);
 	if (v == nullptr)
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the v field", vBytes);
+		exit(1);
+	}
+
+	if (str == nullptr)
+	{
+		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
 		exit(1);
 	}
 
@@ -348,14 +355,16 @@ const std::complex<float> If(0.,1.);
 	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
 
 	if (m != nullptr)
-		trackFree(&m, ALLOC_ALIGN);
+		trackFree(&m,   ALLOC_ALIGN);
 
-	if (v != nullptr && (fieldType & FIELD_SAXION)) {
-		trackFree(&v, ALLOC_ALIGN);
-	}
+	if (v != nullptr && (fieldType & FIELD_SAXION))
+		trackFree(&v,   ALLOC_ALIGN);
 
 	if (m2 != nullptr)
-		trackFree(&m2, ALLOC_ALIGN);
+		trackFree(&m2,  ALLOC_ALIGN);
+
+	if (str != nullptr)
+		trackFree(&str, ALLOC_ALIGN);
 
 	if (z != nullptr)
 		trackFree((void **) &z, ALLOC_ALIGN);
@@ -591,6 +600,7 @@ void	Scalar::setField (FieldType newType)
 					#endif
 				}
 
+				trackFree(&str, ALLOC_TRACK);
 				m2 = v;
 				#ifdef	USE_GPU
 				if (device == DEV_GPU)
@@ -691,9 +701,15 @@ void	Scalar::setFolded (bool foli)
 
 void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 {
-	rLx = nLx;
-	rLz = nLz;
 	eReduced = eRed;
+
+	if (eRed == true) {
+		rLx = nLx;
+		rLz = nLz;
+	} else {
+		rLx = n1;
+		rLz = Lz;
+	}
 }
 
 /*	These next two functions are to be

@@ -186,19 +186,10 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	void *eRes, *str;			// Para guardar la energia y las cuerdas
+	void *eRes;			// Para guardar la energia y las cuerdas
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 	double *eR = static_cast<double *> (eRes);
-
-#ifdef	__MIC__
-	alignAlloc(&str, 64, (axion->Size()));
-#elif defined(__AVX__)
-	alignAlloc(&str, 32, (axion->Size()));
-#else
-	alignAlloc(&str, 16, (axion->Size()));
-#endif
-	memset(str, 0, axion->Size()/2);
 
 	commSync();
 
@@ -339,7 +330,7 @@ int	main (int argc, char *argv[])
 		propagate (axion, dzaux);
 		*zaza = zInit;
 		dzcontrol += dzaux;
-		rts = strings(axion, str);
+		rts = strings(axion);
 		nstrings_global = rts.strDen;
 		strdensn = 0.75*delta*nstrings_global*zInit*zInit/(sizeL*sizeL*sizeL);
 		LogOut("dzcontrol %f strings %ld [Lt^2/V] %f\n", dzcontrol, nstrings_global, strdensn);
@@ -417,7 +408,7 @@ int	main (int argc, char *argv[])
 
 				if (nstrings_global < 1000)
 				{
-					rts = strings(axion, str);
+					rts = strings(axion);
 					nstrings_global = rts.strDen ;
 					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 				}
@@ -576,12 +567,12 @@ int	main (int argc, char *argv[])
 						if (axion->Lambda() == LAMBDA_Z2 )
 							maa = maa*z_now*z_now;
 					//STRINGS
-						rts = strings(axion, str);
+						rts = strings(axion);
 						nstrings_global = rts.strDen;
 						if (p3DthresholdMB/((double) nstrings_global) > 1.)
-							writeString(str, rts, true);
+							writeString(axion, rts, true);
 						else
-							writeString(str, rts, false);
+							writeString(axion, rts, false);
 						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 						LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
 			}
@@ -855,7 +846,6 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 	fclose(file_samp);
 

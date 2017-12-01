@@ -473,7 +473,8 @@ inline	void	stringWallS(const __m128 s1, const __m128 s2, int *hand, int *wHand)
 }
 #endif
 
-StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ strg)
+StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, const size_t rLx, const size_t rLz,
+				 FieldPrecision precision, void * __restrict__ strg)
 {
 	const size_t	Sf = Lx*Lx;
 	size_t		nStrings = 0;
@@ -496,24 +497,34 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+		const size_t  XC = ( Lx<<2);
+		const size_t  YC = ( Lx>>2);
+		const size_t rXC = (rLx<<2);
+		const size_t rYC = (rLx>>2);
 
 		int wHand[4] = { 0, 0, 0, 0 };
 		int  hand[4] = { 0, 0, 0, 0 };
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+		const size_t  XC = ( Lx<<1);
+		const size_t  YC = ( Lx>>1);
+		const size_t rXC = (rLx<<1);
+		const size_t rYC = (rLx>>1);
 
 		int wHand[2] = { 0, 0 };
 		int  hand[2] = { 0, 0 };
 #else
-		const size_t XC = Lx;
-		const size_t YC = Lx;
+		const size_t  XC = Lx;
+		const size_t  YC = Lx;
+		const size_t rXC = rLx;
+		const size_t rYC = rLx;
 
 		int wHand[1] = { 0 };
 		int  hand[1] = { 0 };
 #endif
+		double	   ratio = ((double) rLx)/((double) Lx);
+		double	   datio = ((double) rLz)/((double) Lz);
+		const size_t rSf = rLx*rLx;
+
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
@@ -604,7 +615,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 
 				// Tienes los 7 puntos que definen las 3 plaquetas
 
-				size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+				//size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+				size_t nIdx = (((size_t)(((double) X[0])*ratio))/step + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-1))*datio))*rSf);
 
 				// Plaqueta XY
 
@@ -616,7 +628,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					size_t tIdx = nIdx + ih*YC*Lx;
+					//size_t tIdx = nIdx + ih*YC*Lx;
+					size_t tIdx = nIdx + ((size_t) (((double) ih)*ratio))*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -657,7 +670,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					size_t tIdx = nIdx + ih*YC*Lx;
+					//size_t tIdx = nIdx + ih*YC*Lx;
+					size_t tIdx = nIdx + ((size_t) (((double) ih)*ratio))*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -698,7 +712,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					size_t tIdx = nIdx + ih*YC*Lx;
+					//size_t tIdx = nIdx + ih*YC*Lx;
+					size_t tIdx = nIdx + ((size_t) (((double) ih)*ratio))*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -756,24 +771,34 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
+		const size_t  XC = ( Lx<<3);
+		const size_t  YC = ( Lx>>3);
+		const size_t rXC = (rLx<<3);
+		const size_t rYC = (rLx>>3);
 
 		int  hand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 		int wHand[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+		const size_t  XC = ( Lx<<2);
+		const size_t  YC = ( Lx>>2);
+		const size_t rXC = (rLx<<2);
+		const size_t rYC = (rLx>>2);
 
 		int  hand[4] = { 0, 0, 0, 0 };
 		int wHand[4] = { 0, 0, 0, 0 };
 #else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+		const size_t  XC = ( Lx<<1);
+		const size_t  YC = ( Lx>>1);
+		const size_t rXC = (rLx<<1);
+		const size_t rYC = (rLx>>1);
 
 		int  hand[2] = { 0, 0 };
 		int wHand[2] = { 0, 0 };
 #endif
+
+		double	   ratio = ((double) rLx)/((double) Lx);
+		double	   datio = ((double) rLz)/((double) Lz);
+		const size_t rSf = rLx*rLx;
 
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
@@ -877,12 +902,14 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				stringHandS (mXY, mPy, hand);
 				stringHandS (mPy, mel, hand);
 
-				size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+				//size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
+				size_t nIdx = (((size_t)(((double) (X[0]/step))*ratio)) + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-1))*datio))*rSf);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					size_t tIdx = nIdx + ih*YC*Lx;
+					//size_t tIdx = nIdx + ih*YC*Lx;
+					size_t tIdx = nIdx + ih*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -919,7 +946,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					size_t tIdx = nIdx + ih*YC*Lx;
+					//size_t tIdx = nIdx + ih*YC*Lx;
+					size_t tIdx = nIdx + ih*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -956,7 +984,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
 				{
-					size_t tIdx = nIdx + ih*YC*Lx;
+					//size_t tIdx = nIdx + ih*YC*Lx;
+					size_t tIdx = nIdx + ih*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -1004,8 +1033,10 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	return	strDat;
 }
 
-StringData	stringCpu	(Scalar *axionField, const size_t Lx, const size_t V, const size_t S, FieldPrecision precision, void *strg)
+StringData	stringCpu	(Scalar *field)
 {
-	axionField->exchangeGhosts(FIELD_M);
-	return	(stringKernelXeon(axionField->mCpu(), Lx, S, V+S, precision, strg));
+	const size_t S = field->Surf();
+	const size_t V = field->Size();
+	field->exchangeGhosts(FIELD_M);
+	return	(stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
 }

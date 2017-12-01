@@ -115,14 +115,6 @@ int	main (int argc, char *argv[])
 	void *eRes, *str;			// Para guardar la energia
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
-#ifdef	__MIC__
-	alignAlloc(&str, 64, (axion->Size()));
-#elif defined(__AVX__)
-	alignAlloc(&str, 32, (axion->Size()));
-#else
-	alignAlloc(&str, 16, (axion->Size()));
-#endif
-	memset(str, 0, axion->Size());
 
 	commSync();
 
@@ -186,7 +178,7 @@ int	main (int argc, char *argv[])
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 			propagate (axion, dz);
 
-		auto strDen = strings(axion, str);
+		auto strDen = strings(axion);
 
 		energy(axion, eRes, true, delta, nQcd, LL);
 
@@ -201,7 +193,7 @@ int	main (int argc, char *argv[])
 		writeEDens(axion, MAP_ALL);
 
 		if (axion->Field() == FIELD_SAXION) {
-			writeString(str, strDen);
+			writeString(axion, strDen);
 		}
 
 		writeMapHdf5(axion);
@@ -301,7 +293,6 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
 
 	delete axion;
 
