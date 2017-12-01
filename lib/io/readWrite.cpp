@@ -1217,6 +1217,13 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 	char *strData = static_cast<char *>(axion->sData());
 	char sCh[16] = "/string/data";
 
+	rLz   = axion->rDepth();
+	redlZ = axion->rTotalDepth();
+	redlX = axion->rLength();
+
+	total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	slab  = ((hsize_t) redlX)*((hsize_t) redlX);
+
 	Profiler &prof = getProfiler(PROF_HDF5);
 
 	if (myRank == 0)
@@ -1247,13 +1254,6 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 				goto bCastAndExit;
 			}
 		}
-
-		rLz   = axion->rDepth();
-		redlZ = axion->rTotalDepth();
-		redlX = axion->rLength();
-
-		total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
-		slab  = ((hsize_t) redlX)*((hsize_t) redlX);
 
 		/*	Might be reduced	*/
 		writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);

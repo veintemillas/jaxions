@@ -49,7 +49,7 @@ StringData	Strings::runGpu	()
 	StringData	ret;
 
 	axionField->exchangeGhosts(FIELD_M);
-	tmpData = stringGpu(axionField->mGpu(), uLx, uLz, rLx, rLz, uS, uV, precision, axionField->sData(), ((cudaStream_t *)axionField->Streams())[0]);
+	tmpData = stringGpu(axionField->mGpu(), uLx, uLz, rLx, rLz, uS, uV, axionField->Precision(), axionField->sData(), ((cudaStream_t *)axionField->Streams())[0]);
 
 	ret.strDen = tmpData.x;
 	ret.strChr = tmpData.y;

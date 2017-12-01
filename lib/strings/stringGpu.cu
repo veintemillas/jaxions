@@ -47,7 +47,7 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	complex<Float> mel, mPx, mXY, mPy, mYZ, mPz, mZX;
 	uint sIdx = idx-Sf;
 	int  hand = 0;
-	char strDf = 0;
+	int  strDf = 0;
 
 	idx2Vec(idx, X, Lx);
 
@@ -148,9 +148,14 @@ static __device__ __forceinline__ void	stringCoreGpu(const uint idx, const compl
 	tStr[2] += nWall;
 	strDf   |= nWall << 6;	// STRING_WALL = 64 = 2^6, and we don't distinguish the wall direction (lack of bits) 
 
-	uint oIdx = ((uint)(((Float) X[0])*ratio)) + ((uint)(((Float) (X[1]*rLx))*ratio)) + ((uint)(((Float) ((X[2]-1)*rSf))*datio));
-
-	static_cast<char *>(str)[oIdx] = strDf;
+	uint oIdx = ((uint)(((Float) X[0])*ratio)) + ((uint)(((Float) X[1])*ratio))*rLx + ((uint)((Float) (X[2]-1)*datio))*rSf;
+	uint bIdx = oIdx>>2;
+	uint rIdx = oIdx - (bIdx<<2);
+	strDf <<= rIdx*8;
+// Several threads can write in the same place
+// There is a problem here
+//	static_cast<char *>(str)[oIdx] |= strDf;
+	atomicOr(static_cast<int *>(str) + bIdx, strDf);
 
 	return;
 }
@@ -183,7 +188,7 @@ uint3	stringGpu	(const void * __restrict__ m, const uint Lx, const uint Lz, cons
 	uint  rSf = rLx*rLx;
 	uint  rV  = rSf*rLz;
 
-	if (cudaMalloc(&strg, sizeof(char)*rV) != cudaSuccess)
+	if (cudaMalloc(&strg, sizeof(char)*rV+4) != cudaSuccess)
 		return	make_uint3(-1,-1,-1);
 
 	if ((cudaMalloc(&d_str, sizeof(uint)*3) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
@@ -193,9 +198,9 @@ uint3	stringGpu	(const void * __restrict__ m, const uint Lx, const uint Lz, cons
 	double	datio = ((double) rLz)/((double) Lz);
 
 	if (precision == FIELD_DOUBLE)
-		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, rLx, rSf, Vm, ratio, datio, d_str, partial);
+		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<double>*>(m), Lx, S, rLx, rSf, Vm,         ratio,         datio, d_str, partial);
 	else if (precision == FIELD_SINGLE)
-		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<float>*>(m),  Lx, S, rLx, rSf, Vm, ratio, datio, d_str, partial);
+		stringKernel<<<gridSize,blockSize,0,stream>>> (strg, static_cast<const complex<float> *>(m), Lx, S, rLx, rSf, Vm, (float) ratio, (float) datio, d_str, partial);
 
 	cudaDeviceSynchronize();
 	cudaMemcpy(str,   strg, sizeof(char)*rV, cudaMemcpyDeviceToHost);
