@@ -101,9 +101,9 @@
 		void	run	();
 
 		inline double	operator()(DType  val)	const	{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
-		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
 		inline double	operator[](size_t idx)	const	{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
-		inline double&	operator[](size_t idx)		{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator[](size_t idx)		{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
 
 		inline double	max()			const	{ return maxVal; }
 		inline double	min()			const	{ return minVal; }
