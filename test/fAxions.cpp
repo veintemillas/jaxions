@@ -97,8 +97,8 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	if (endredmap > axion->Length()) {
-		endredmap = axion->Length();
 		LogError ("Error: can't reduce from %lu to %lu, will reduce to %lu", endredmap, axion->Length(), axion->Length());
+		endredmap = axion->Length();
 	}
 
 	zthres 	 = 100.0 ;
@@ -132,15 +132,17 @@ int	main (int argc, char *argv[])
 
 	Folder munge(axion);
 
-	LogOut ("Folding configuration ... \n");
-	munge(FOLD_ALL);
-
+	if (cDev == DEV_CPU) {
+		LogOut ("Folding configuration ... \n");
+		munge(FOLD_ALL);
+	}
+/*
 	if (cDev != DEV_CPU)
 	{
 		LogOut ("Transferring configuration to device\n");
 		axion->transferDev(FIELD_MV);
 	}
-
+*/
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -210,6 +212,9 @@ int	main (int argc, char *argv[])
 	size_t       curStrings  = 0;
 	const size_t fineStrings = (size_t) (floor(((double) axion->TotalSize())*StrFrac));
 
+	if (axion->Device() == DEV_GPU)
+		axion->transferCpu(FIELD_MV);
+
 	createMeas(axion, index);
 
 	if(p2dmapo)
@@ -236,6 +241,11 @@ int	main (int argc, char *argv[])
 		thBin.run();
 		writeBinner(thBin,  "/bins", "theta");
 	}
+
+	axion->setReduced(true, endredmap, endredmap);
+	auto strTmp = strings(axion);
+	writeString(axion, strTmp, true);
+	axion->setReduced(false);
 
 	destroyMeas();
 

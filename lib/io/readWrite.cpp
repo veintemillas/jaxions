@@ -1,4 +1,4 @@
-#include <cstdio>
+einclude <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <complex>
@@ -588,6 +588,9 @@ void	readConf (Scalar **axion, int index)
 
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
 
+	if (endredmap == -1)	// No reduction unless specified
+		endredmap = sizeN;
+
 	if (!uZin) {
 		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
 		if (zTmp < zInit)
@@ -861,6 +864,9 @@ void	readConf (Scalar **axion, int index)
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 
+	if (cDev == DEV_GPU)
+		(*axion)->transferDev(FIELD_MV);
+
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
 
@@ -870,7 +876,6 @@ void	readConf (Scalar **axion, int index)
 
 	Folder munge(*axion);
 	munge(FOLD_ALL);
-
 }
 
 

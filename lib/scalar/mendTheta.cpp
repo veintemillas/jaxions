@@ -5,6 +5,13 @@
 
 #include "scalar/mendThetaXeon.h"
 
+#ifdef	USE_GPU
+	#include <cuda.h>
+	#include <cuda_runtime.h>
+	#include <cuda_device_runtime_api.h>
+	#include "scalar/mendThetaGpu.h"
+#endif
+
 #include "utils/utils.h"
 
 using namespace profiler;
@@ -27,17 +34,15 @@ class	MendTheta : public Tunable
 size_t	MendTheta::runGpu	()
 {
 #ifdef	USE_GPU
-	LogMsg	 (VERB_NORMAL, "MendTheta gpu kernel not available, will run on CPU");
-
-	Folder	munge(axionField);
-
+	LogMsg (VERB_NORMAL, "Using cpu for mendTheta");
 	axionField->transferCpu(FIELD_MV);
+	Folder munge(axionField);
 	munge(FOLD_ALL);
 	auto nJmps = runCpu();
 	munge(UNFOLD_ALL);
 	axionField->transferDev(FIELD_MV);
-
 	return	nJmps;
+//	return	mendThetaGpu(axionField);
 #else
 	LogError ("Error: gpu support not built");
 	exit(1);

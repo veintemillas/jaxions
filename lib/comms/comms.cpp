@@ -176,19 +176,16 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 			ranksPerNode++;
 	}
 
-	if (dev == DEV_CPU)
+	int nProcs, mThreads;
+
+	#pragma omp parallel
 	{
-		int nProcs, mThreads;
-
-		#pragma omp parallel
-		{
-			nProcs   = omp_get_num_procs();
-			nThreads = omp_get_num_threads();
-			mThreads = omp_get_max_threads();
-		}
-
-		LogMsg (VERB_NORMAL, "Rank %d Cpu will use %d threads for %d processors (max %d)", rank, nThreads, nProcs, mThreads);
+		nProcs   = omp_get_num_procs();
+		nThreads = omp_get_num_threads();
+		mThreads = omp_get_max_threads();
 	}
+
+	LogMsg (VERB_NORMAL, "Rank %d Cpu will use %d threads for %d processors (max %d)", rank, nThreads, nProcs, mThreads);
 
 	trackFree((void **) &allHosts, ALLOC_TRACK);
 

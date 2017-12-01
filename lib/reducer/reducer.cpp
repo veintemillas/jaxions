@@ -44,10 +44,9 @@ Scalar*	Reducer<Float>::runGpu	()
 	LogMsg	 (VERB_NORMAL, "Reducer runs on cpu");
 
 	axionField->transferCpu(FIELD_MV);
-	runCpu();
-	/*	Restore State to GPU	*/
-	//...
-	return;
+	Scalar *reduced = runCpu();
+	reduced->transferDev(FIELD_MV);
+	return	reduced;
 #else
 	LogError ("Error: gpu support not built");
 	exit(1);
