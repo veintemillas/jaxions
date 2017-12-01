@@ -868,7 +868,6 @@ void	readConf (Scalar **axion, int index)
 
 	/*	Fold the field		*/
 
-printf("G");fflush(stdout);
 	Folder munge(*axion);
 	munge(FOLD_ALL);
 
@@ -1408,6 +1407,8 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 
 	size_t	dataSize = axion->DataSize(), S0 = axion->Surf();
 
+	auto myRank = commRank();
+
 	LogMsg (VERB_NORMAL, "Writing single point data to measurement file");
 
 	if (header == false || opened == false)
@@ -1444,6 +1445,14 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	dataSpace = H5Screate_simple(1, dims, NULL);
 	dataSet	  = H5Dcreate(group_id, "value", dataType, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	sSpace	  = H5Dget_space (dataSet);
+
+	if (myRank == 0) {
+		hsize_t offset = 0;
+		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, dims, NULL);
+	} else {
+		H5Sselect_none(dataSpace);
+		H5Sselect_none(sSpace);
+	}
 
 	/*	Write point data	*/
 	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize) < 0)
@@ -1519,22 +1528,19 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 */
 	/*	Create dataset	*/
 	dataSpace = H5Screate_simple(1, dims, NULL);
-
-	if (myRank != 0)
-		H5Sselect_none(dataSpace);
-
 	dataSet   = H5Dcreate(group_id, "data", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	sSpace	  = H5Dget_space (dataSet);
 
 	if (myRank == 0) {
-		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, NULL, NULL, dims, NULL);
+		hsize_t offset = 0;
+		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, dims, NULL);
 	} else {
+		H5Sselect_none(dataSpace);
 		H5Sselect_none(sSpace);
-		//dataV = NULL;
 	}
 
 	/*	Write spectrum data	*/
-	if (H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, dataSpace, sSpace, mlist_id, aData) < 0) {
+	if (H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, dataSpace, sSpace, H5P_DEFAULT, aData) < 0) {
 		LogError ("Error writing %lu bytes to dataset", aSize*8);
 		prof.stop();
 		return;
@@ -2285,7 +2291,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	}
 
 	/*	Write raw data	*/
-	if (H5Dwrite (mSet_id, dataType, mapSpace, mSpace, mlist_id, dataM) < 0)
+	if (H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM) < 0)
 	{
 		LogError ("Error writing dataset /map/m");
 		prof.stop();
@@ -2299,7 +2305,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		//dataV = NULL;
 	}
 
-	if (H5Dwrite (vSet_id, dataType, mapSpace, vSpace, mlist_id, dataV) < 0)
+	if (H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV) < 0)
 	{
 		LogError ("Error writing dataset /map/v");
 		prof.stop();
