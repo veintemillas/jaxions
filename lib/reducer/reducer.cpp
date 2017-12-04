@@ -45,9 +45,8 @@ Scalar*	Reducer<Float>::runGpu	()
 
 	axionField->transferCpu(FIELD_MV);
 	Scalar *reduced = runCpu();
-	/*	Restore State to GPU	*/
-	//...
-	return reduced;
+	reduced->transferDev(FIELD_MV);
+	return	reduced;
 #else
 	LogError ("Error: gpu support not built");
 	exit(1);
@@ -62,12 +61,14 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 	int Lz  = axionField->Depth();
 	int Tz  = axionField->TotalDepth();
 
+	int Ly  = Lx/commSize();
+
 	int hLx = Lx >> 1;
 	int hLz = Lz >> 1;
 	int hTz = Tz >> 1;
 
 	Float  nrm   = 1./((double) (axionField->TotalSize()));
-	size_t zBase = Lz*commRank();
+	size_t zBase = Ly*commRank();
 
 	/*	m2 has always the energy, whether it's axion or saxion	*/
 
@@ -98,7 +99,7 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 	int dX = (pad == true) ? hLx+1 : Lx;
 
 	#pragma omp parallel for collapse(3) schedule(static)
-	for (int py = 0; py<Lz; py++)
+	for (int py = 0; py<Ly; py++)
 		for (int pz = 0; pz<Tz; pz++)
 			for (int px = 0; px<dX; px++) {
 				int kx = px;

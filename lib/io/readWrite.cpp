@@ -253,7 +253,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdType | VQCD_TYPE)
+	switch (vqcdType & VQCD_TYPE)
 	{
 		case	VQCD_1:
 			sprintf(vStr, "VQcd 1");
@@ -268,7 +268,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 
 		default:
-			sprintf(vStr, "None");
+			sprintf(vStr, "VQcd 1");
 			break;
 	}
 
@@ -588,6 +588,9 @@ void	readConf (Scalar **axion, int index)
 
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
 
+	if (endredmap == -1)	// No reduction unless specified
+		endredmap = sizeN;
+
 	if (!uZin) {
 		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
 		if (zTmp < zInit)
@@ -793,6 +796,9 @@ void	readConf (Scalar **axion, int index)
 	else
 		sizeZ = totlZ/zGrid;
 
+	prof.stop();
+	prof.add(std::string("Read configuration"), 0, 0);
+
 	if (!strcmp(fStr, "Saxion"))
 	{
 		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
@@ -808,6 +814,7 @@ void	readConf (Scalar **axion, int index)
 		exit(1);
 	}
 
+	prof.start();
 	commSync();
 
 	/*	Create plist for collective read	*/
@@ -859,6 +866,9 @@ void	readConf (Scalar **axion, int index)
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 
+	if (cDev == DEV_GPU)
+		(*axion)->transferDev(FIELD_MV);
+
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
 
@@ -868,7 +878,6 @@ void	readConf (Scalar **axion, int index)
 
 	Folder munge(*axion);
 	munge(FOLD_ALL);
-
 }
 
 
@@ -1198,10 +1207,13 @@ void	destroyMeas ()
 	LogMsg (VERB_NORMAL, "Measurement file successfuly closed");
 }
 
-void	writeString	(void *str, StringData strDat, const bool rData)
+void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 {
 	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
 	hid_t	datum;
+
+	uint rLz, redlZ, redlX;
+	hsize_t total, slab;
 
 	bool	mpiCheck = true;
 	size_t	sBytes	 = 0;
@@ -1209,8 +1221,15 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	char *strData = static_cast<char *>(str);
+	char *strData = static_cast<char *>(axion->sData());
 	char sCh[16] = "/string/data";
+
+	rLz   = axion->rDepth();
+	redlZ = axion->rTotalDepth();
+	redlX = axion->rLength();
+
+	total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	slab  = ((hsize_t) redlX)*((hsize_t) redlX);
 
 	Profiler &prof = getProfiler(PROF_HDF5);
 
@@ -1238,18 +1257,23 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 				LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
 			} else {
 				LogError ("Error: can't check whether group /string exists");
-				mpiCheck - false;
+				mpiCheck = false;
 				goto bCastAndExit;
 			}
 		}
 
+		/*	Might be reduced	*/
+		writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
+		writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
+		/*	String metadata		*/
 		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
 		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
 		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
 
 		if	(rData) {
 			/*	Create space for writing the raw data to disk with chunked access	*/
-			totalSpace = H5Screate_simple(1, &tSize, maxD);	// Whole data
+			totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
 
 			if (totalSpace < 0) {
 				LogError ("Fatal error H5Screate_simple");
@@ -1264,7 +1288,7 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 				goto bCastAndExit;		// Really?
 			}
 
-			if (H5Pset_chunk (chunk_id, 1, &slabSz) < 0) {
+			if (H5Pset_chunk (chunk_id, 1, &slab) < 0) {
 				LogError ("Fatal error H5Pset_chunk");
 				mpiCheck = false;
 				goto bCastAndExit;		// You MUST be kidding
@@ -1295,7 +1319,7 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 			/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
 			sSpace = H5Dget_space (sSet_id);
-			memSpace = H5Screate_simple(1, &slabSz, NULL);	// Slab
+			memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 		}
 	}
 
@@ -1316,22 +1340,22 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 
 		for (int rank=0; rank<tSz; rank++)
 		{
-			for (hsize_t zDim=0; zDim<((hsize_t) sLz); zDim++)
+			for (hsize_t zDim=0; zDim < rLz; zDim++)
 			{
 				if (myRank != 0)
 				{
 					if (myRank == rank)
-						MPI_Send(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+						MPI_Send(&(strData[0]) + slab*zDim, slab, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
 				} else {
 					if (rank != 0)
-						MPI_Recv(&(strData[0]) + slabSz*zDim, slabSz, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+						MPI_Recv(&(strData[0]) + slab*zDim, slab, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 					/*	Select the slab in the file	*/
-					hsize_t offset = (((hsize_t) (rank*sLz))+zDim)*slabSz;
-					H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slabSz, NULL);
+					hsize_t offset = (((hsize_t) (rank*rLz))+zDim)*slab;
+					H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 					/*	Write raw data	*/
-					H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slabSz*zDim);
+					H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (strData)+slab*zDim);
 				}
 
 				commSync();
@@ -1349,7 +1373,7 @@ void	writeString	(void *str, StringData strDat, const bool rData)
 			H5Pclose (chunk_id);
 		}
 
-		sBytes = slabSz*sLz + 24;
+		sBytes = slab*rLz + 24;
 	} else
 		sBytes = 24;
 

@@ -52,12 +52,12 @@ void	trackFree (void **ptr, AllocType aType)
 		trackAllocMem -= bytes;
 
 	allocTable[aType].erase(*ptr);
-	ptr = NULL;
+	ptr = nullptr;
 }
 
 void	trackAlloc (void **ptr, size_t size)
 {
-	if (((*ptr) = malloc(size)) == NULL)
+	if (((*ptr) = malloc(size)) == nullptr)
 	{
 		LogError ("Error allocating %lu bytes of unaligned memory", size);
 		exit (1);

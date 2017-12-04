@@ -6,6 +6,8 @@
 #include "scalar/thetaXeon.h"
 #include "scalar/mendTheta.h"
 
+#include "propagator/propagator.h"
+
 #ifdef	USE_GPU
 	#include <cuda.h>
 	#include <cuda_runtime.h>
@@ -101,6 +103,9 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 
 	if (wMod == false)
 		mendTheta (field);
+
+	// Reset tuning for theta
+	resetPropagator(field);
 
 	return;
 }

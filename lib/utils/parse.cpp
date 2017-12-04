@@ -366,6 +366,9 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			if (endredmap == -1)
+				endredmap = sizeN;
+
 			i++;
 			procArgs++;
 			passed = true;

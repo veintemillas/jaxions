@@ -84,9 +84,9 @@ class	Plot3D():
 			print("Reading measurement files")
 
 			fileHdf5 = h5py.File(fileMeas[0], "r")
-			self.Lx = fileHdf5["/"].attrs.get("Size")
-			self.Ly = fileHdf5["/"].attrs.get("Size")
-			self.Lz = fileHdf5["/"].attrs.get("Depth")
+			self.Lx = fileHdf5["/string"].attrs.get("Size")
+			self.Ly = fileHdf5["/string"].attrs.get("Size")
+			self.Lz = fileHdf5["/string"].attrs.get("Depth")
 
 			self.z = fileHdf5["/"].attrs.get("z")
 
@@ -95,9 +95,9 @@ class	Plot3D():
 			for meas in fileMeas:
 				fileHdf5 = h5py.File(meas, "r")
 
-				Lx = fileHdf5["/"].attrs.get("Size")
-				Ly = fileHdf5["/"].attrs.get("Size")
-				Lz = fileHdf5["/"].attrs.get("Depth")
+				Lx = fileHdf5["/string"].attrs.get("Size")
+				Ly = fileHdf5["/string"].attrs.get("Size")
+				Lz = fileHdf5["/string"].attrs.get("Depth")
 				zR = fileHdf5["/"].attrs.get("z")
 
 				fl = fileHdf5["/"].attrs.get("Field type").decode()

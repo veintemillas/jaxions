@@ -120,20 +120,11 @@ int	main (int argc, char *argv[])
 
 	writeConf(axion, index);
 
-	void	*eRes, *str;
+	void	*eRes;
 	trackAlloc(&eRes, 256);
 	memset(eRes, 0, 256);
 
 	if (axion->Field() == FIELD_SAXION) {
-#if	defined(__MIC__) || defined(__AVX512F__)
-		alignAlloc(&str, 64, (axion->Size()));
-#elif	defined(__AVX__)
-		alignAlloc(&str, 32, (axion->Size()));
-#else
-		alignAlloc(&str, 16, (axion->Size()));
-#endif
-		memset(str, 0, axion->Size());
-
 		if (LAMBDA_FIXED == axion->Lambda())
 			LogOut ("Lambda in FIXED mode\n");
 		else
@@ -165,13 +156,13 @@ int	main (int argc, char *argv[])
 	createMeas(axion, index);
 
 	if (axion->Field() == FIELD_SAXION) {
-		auto strDen = strings(axion, str);
+		auto strDen = strings(axion);
 
 		LogOut("Nstrings %lu\n", strDen.strDen);
 		LogOut("Chiral   %ld\n", strDen.strChr);
 		LogOut("Nwalls   %lu\n", strDen.wallDn);
 
-		writeString(str, strDen);
+		writeString(axion, strDen);
 	}
 
 	writeEnergy(axion, eRes);
@@ -248,9 +239,11 @@ int	main (int argc, char *argv[])
 		writeConf(reduced, index+100);
 		delete reduced;
 
-		createMeas(axion, index+100);
+		auto str = strings(axion);
+		createMeas (axion, index+100);
 		writeEnergy(axion, eRes);
-		writeEDens(axion, MAP_ALL);
+		writeString(axion, str);
+		writeEDens (axion, MAP_ALL);
 		destroyMeas();
 
 	} else {
@@ -258,9 +251,6 @@ int	main (int argc, char *argv[])
 	}
 
 	trackFree(&eRes, ALLOC_TRACK);
-
-	if (axion->Field() == FIELD_SAXION)
-		trackFree(&str,  ALLOC_ALIGN);
 
 	delete axion;
 

@@ -71,6 +71,7 @@ int	main (int argc, char *argv[])
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 
+	LogFlush();
 	LogOut ("Field set up in %lu ms\n", elapsed.count());
 
 	complex<float> *mC = static_cast<complex<float> *> (axion->mCpu());
@@ -96,8 +97,8 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	if (endredmap > axion->Length()) {
-		endredmap = axion->Length();
 		LogError ("Error: can't reduce from %lu to %lu, will reduce to %lu", endredmap, axion->Length(), axion->Length());
+		endredmap = axion->Length();
 	}
 
 	zthres 	 = 100.0 ;
@@ -114,13 +115,10 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	void *eRes, *str;			// Para guardar la energia y las cuerdas
+	void *eRes;			// Para guardar la energia y las cuerdas
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 	double *eR = static_cast<double *> (eRes);
-
-	alignAlloc(&str, axion->DataAlign(), (axion->Size()));
-	memset(str, 0, axion->Size());
 
 	commSync();
 
@@ -134,15 +132,17 @@ int	main (int argc, char *argv[])
 
 	Folder munge(axion);
 
-	LogOut ("Folding configuration ... \n");
-	munge(FOLD_ALL);
-
+	if (cDev == DEV_CPU) {
+		LogOut ("Folding configuration ... \n");
+		munge(FOLD_ALL);
+	}
+/*
 	if (cDev != DEV_CPU)
 	{
 		LogOut ("Transferring configuration to device\n");
 		axion->transferDev(FIELD_MV);
 	}
-
+*/
 
 	if (dump > nSteps)
 		dump = nSteps;
@@ -212,6 +212,9 @@ int	main (int argc, char *argv[])
 	size_t       curStrings  = 0;
 	const size_t fineStrings = (size_t) (floor(((double) axion->TotalSize())*StrFrac));
 
+	if (axion->Device() == DEV_GPU)
+		axion->transferCpu(FIELD_MV);
+
 	createMeas(axion, index);
 
 	if(p2dmapo)
@@ -239,14 +242,23 @@ int	main (int argc, char *argv[])
 		writeBinner(thBin,  "/bins", "theta");
 	}
 
+	axion->setReduced(true, endredmap, endredmap);
+	auto strTmp = strings(axion);
+	writeString(axion, strTmp, true);
+	axion->setReduced(false);
+
 	destroyMeas();
 
 	commSync();
-
+	LogFlush();
 
 	/*	We run a few iterations with damping too smooth the rho field	*/
 
-	initPropagator (pType, axion, nQcd, delta, LL, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+
+	LogOut ("Tuning propagator...\n");
+	tunePropagator(axion);
+	LogOut ("Tuned\n");
 
 	double dzControl = 0.0;
 
@@ -261,7 +273,7 @@ int	main (int argc, char *argv[])
 		axion->setZ(zInit);
 		dzControl += dzAux;
 
-		auto   rts     = strings(axion, str);
+		auto   rts     = strings(axion);
 		curStrings     = rts.strDen;
 		double strDens = 0.75*delta*curStrings*zInit*zInit/(sizeL*sizeL*sizeL);
 
@@ -272,7 +284,7 @@ int	main (int argc, char *argv[])
 
 	}
 
-	initPropagator (pType, axion, nQcd, delta, LL, vqcdType & VQCD_TYPE);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -282,6 +294,7 @@ int	main (int argc, char *argv[])
 	if ((history = fopen("sample.txt", "w+")) == nullptr)
 		LogError ("Couldn't open history file");
 
+	LogFlush();
 	LogOut ("Start redshift loop\n\n");
 
 	commSync();
@@ -318,7 +331,7 @@ int	main (int argc, char *argv[])
 
 				/*	If there are a few strings, we compute them every small step		*/
 				if (curStrings < 1000) {//fineStrings) {
-					rts   = strings(axion, str);
+					rts   = strings(axion);
 					curStrings = rts.strDen;
 				}
 
@@ -327,11 +340,11 @@ int	main (int argc, char *argv[])
 				if ((zNow > zDoom*0.95) && !dampSet && ((vqcdType & VQCD_DAMP) != VQCD_NONE)) {
 					LogOut("Reaching doomsday (z %.3f, zDoom %.3f)\n", zNow, zDoom);
 					LogOut("Enabling damping with gamma %.4f\n\n", gammo);
-					initPropagator (pType, axion, nQcd, delta, LL, vqcdType );
+					initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType);
 					dampSet = true;
 				}
 
-				if (commRank() == 0) {
+				if (commRank() == 0 && cDev != DEV_GPU) {
 					complex<double> m = complex<double>(0.,0.);
 					complex<double> v = complex<double>(0.,0.);
 					if (axion->Precision() == FIELD_DOUBLE) {
@@ -366,6 +379,10 @@ int	main (int argc, char *argv[])
 							writeMapHdf5 (axion);
 
 				  		energy(axion, eRes, false, delta, nQcd, llPhys, vqcdType, zShift);
+
+						if (axion->Device() == DEV_GPU)
+							axion->transferCpu(FIELD_MM2);
+
 						writeEnergy(axion, eRes);
 
 						if (axion->Precision() == FIELD_SINGLE) {
@@ -407,6 +424,9 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 						  	writeMapHdf5 (axion);
 
+						if (axion->Device() == DEV_GPU)
+							axion->transferCpu(FIELD_MM2);
+
 						energy(axion, eRes, false, delta, nQcd, 0., vqcdType, 0.);
 						writeEnergy(axion, eRes);
 
@@ -422,10 +442,14 @@ int	main (int argc, char *argv[])
 							writeBinner(thBin, "/bins", "theta");
 						}
 						destroyMeas();
+
+						LogOut ("Tuning propagator...\n");
+						tunePropagator(axion);
+						LogOut ("Tuned\n");
 					}
 				}
 			} else {
-				if (commRank() == 0) {
+				if (commRank() == 0 && cDev != DEV_GPU) {
 					double m = 0., v = 0.;
 
 					if (axion->Precision() == FIELD_DOUBLE) {
@@ -464,6 +488,9 @@ int	main (int argc, char *argv[])
 
 		/*	We perform now an online analysis	*/
 
+		if (axion->Device() == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
+
 		createMeas(axion, index);
 
 		if (axion->Field() == FIELD_SAXION) {
@@ -499,13 +526,16 @@ int	main (int argc, char *argv[])
 			if (axion->Lambda() == LAMBDA_Z2)
 				maa = maa*zNow*zNow;
 
-			rts   = strings(axion, str);
-			curStrings = rts.strDen;
+			axion->setReduced(true, endredmap, endredmap);
+			rts = strings(axion);
 
 			if (p3DthresholdMB/((double) curStrings) > 1.)
-				writeString(str, rts, true);
+				writeString(axion, rts, true);
 			else
-				writeString(str, rts, false);
+				writeString(axion, rts, false);
+			axion->setReduced(false);
+
+			curStrings = rts.strDen;
 
 			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
 			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
@@ -550,6 +580,9 @@ int	main (int argc, char *argv[])
 			auto pName = pFler->first;
 			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 
+			if (axion->Device() == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 			specAna.pRun();
 			writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
@@ -572,6 +605,7 @@ int	main (int argc, char *argv[])
 		} else {
 			destroyMeas();
 		}
+		LogFlush();
 	} // zLoop
 
 	fclose (history);
@@ -585,10 +619,12 @@ int	main (int argc, char *argv[])
 
 //	index++	;
 	if (axion->Field() == FIELD_AXION) {
-		if (pconfinal)
+		if (pconfinal) {
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 
-		if (pconfinal) {
+			if (axion->Device() == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			if (endredmap > 0) {
 				double ScaleSize = ((double) axion->Length())/((double) endredmap);
 				double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
@@ -608,15 +644,17 @@ int	main (int argc, char *argv[])
 
 		destroyMeas();
 
+		if (cDev == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
+
 		if ((prinoconfo >= 2) && (wkb2z < 0)) {
 			LogOut ("Dumping final configuration %05d ...", index);
-
-			if (cDev == DEV_GPU)
-				axion->transferCpu(FIELD_MV);
 
 			writeConf(axion, index);
 			LogOut ("Done!\n");
 		}
+
+		LogFlush();
 
 		/*	If needed, go on with the WKB approximation	*/
 		if (wkb2z >= zFinl) {
@@ -647,7 +685,13 @@ int	main (int argc, char *argv[])
 			writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 			writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
+			if (cDev == DEV_GPU)
+				axion->transferDev(FIELD_MV);
+
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+
+			if (cDev == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
 
 			if (axion->Precision() == FIELD_SINGLE) {
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
@@ -705,6 +749,10 @@ int	main (int argc, char *argv[])
 		/*	For Jens	*/
 		if (endredmap > 0) {
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+
+			if (cDev == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			double ScaleSize = ((double) axion->Length())/((double) endredmap);
 			double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
 			size_t nLz = endredmap / commSize();
@@ -722,6 +770,7 @@ int	main (int argc, char *argv[])
 			writeEDens (axion);
 			destroyMeas();
 		}
+		LogFlush();
 	}  // End axion stuff, for the saxion it seems we don't care
 
 	LogOut("z Final = %f\n", *axion->zV());
@@ -730,9 +779,7 @@ int	main (int argc, char *argv[])
 
 	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
-
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
 
 	delete axion;
 

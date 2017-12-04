@@ -36,22 +36,20 @@ namespace profiler {
 		Profiler	scalarProfiler("Scalar");
 		profs.insert(std::make_pair(PROF_SCALAR, scalarProfiler));
 
-
 		Profiler	genConfProfiler("Genconf");
 		profs.insert(std::make_pair(PROF_GENCONF, genConfProfiler));
-
 
 		Profiler	propProfiler("Propagator");
 		profs.insert(std::make_pair(PROF_PROP, propProfiler));
 
+		Profiler	tunerProfiler("Tuner");
+		profs.insert(std::make_pair(PROF_TUNER, tunerProfiler));
 
 		Profiler	stringsProfiler("Strings");
 		profs.insert(std::make_pair(PROF_STRING, stringsProfiler));
 
-
 		Profiler	energyProfiler("Energy");
 		profs.insert(std::make_pair(PROF_ENERGY, energyProfiler));
-
 
 		Profiler	folderProfiler("Folder");
 		profs.insert(std::make_pair(PROF_FOLD, folderProfiler));

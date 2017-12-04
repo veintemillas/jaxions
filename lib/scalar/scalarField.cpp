@@ -126,8 +126,9 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
-			alignAlloc ((void**) &m, mAlign, mBytes);
-			alignAlloc ((void**) &v, mAlign, vBytes);
+			alignAlloc ((void**) &m,   mAlign, mBytes);
+			alignAlloc ((void**) &v,   mAlign, vBytes);
+			trackAlloc ((void**) &str, n3);
 			break;
 
 		case FIELD_AXION_MOD:
@@ -200,6 +201,12 @@ const std::complex<float> If(0.,1.);
 	if (v == nullptr)
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the v field", vBytes);
+		exit(1);
+	}
+
+	if (str == nullptr)
+	{
+		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
 		exit(1);
 	}
 
@@ -284,10 +291,13 @@ const std::complex<float> If(0.,1.);
 
 	*z = zI;
 
+	prof.stop();
+	prof.add(std::string("Init Allocation"), 0.0, 0.0);
+
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
 	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
-
+		prof.start();
 		AxionFFT::initFFT(prec);
 
 		/* Backward needed for reduce-filter-map */
@@ -316,9 +326,13 @@ const std::complex<float> If(0.,1.);
 				exit(2);
 			}
 
+			prof.stop();
+			prof.add(std::string("Init FFT"), 0.0, 0.0);
 		} else {
 			if (fieldType & FIELD_AXION) {
 				LogError ("Configuration generation for axion fields not supported");
+				prof.stop();
+				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
 				if (cType == CONF_KMAX || cType == CONF_TKACHEV)
 					if (lowmem)
@@ -326,13 +340,11 @@ const std::complex<float> If(0.,1.);
 					else
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
 				prof.stop();
-				prof.add(std::string("Init"), 0.0, (lowmem ? 2*mBytes+vBytes : mBytes+vBytes)*1e-9);
+
+				prof.add(std::string("Init FFT"), 0.0, 0.0);
 				genConf	(this, cType, parm1, parm2);
 			}
 		}
-	} else {
-		prof.stop();
-		prof.add(std::string("Init"), 0.0, 2.e-9*mBytes);
 	}
 }
 
@@ -344,14 +356,16 @@ const std::complex<float> If(0.,1.);
 	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
 
 	if (m != nullptr)
-		trackFree(&m, ALLOC_ALIGN);
+		trackFree(&m,   ALLOC_ALIGN);
 
-	if (v != nullptr && (fieldType & FIELD_SAXION)) {
-		trackFree(&v, ALLOC_ALIGN);
-	}
+	if (v != nullptr && (fieldType & FIELD_SAXION))
+		trackFree(&v,   ALLOC_ALIGN);
 
 	if (m2 != nullptr)
-		trackFree(&m2, ALLOC_ALIGN);
+		trackFree(&m2,  ALLOC_ALIGN);
+
+	if (str != nullptr && (fieldType & FIELD_SAXION))
+		trackFree(&str, ALLOC_TRACK);
 
 	if (z != nullptr)
 		trackFree((void **) &z, ALLOC_ALIGN);
@@ -587,6 +601,7 @@ void	Scalar::setField (FieldType newType)
 					#endif
 				}
 
+				trackFree(&str, ALLOC_TRACK);
 				m2 = v;
 				#ifdef	USE_GPU
 				if (device == DEV_GPU)
@@ -687,9 +702,15 @@ void	Scalar::setFolded (bool foli)
 
 void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 {
-	rLx = nLx;
-	rLz = nLz;
 	eReduced = eRed;
+
+	if (eRed == true) {
+		rLx = nLx;
+		rLz = nLz;
+	} else {
+		rLx = n1;
+		rLz = Lz;
+	}
 }
 
 /*	These next two functions are to be

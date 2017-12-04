@@ -188,19 +188,10 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	void *eRes, *str;			// Para guardar la energia
+	void *eRes;			// Para guardar la energia
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
 	double *eR = static_cast<double *> (eRes);
-
-#ifdef	__MIC__
-	alignAlloc(&str, 64, (axion->Size()));
-#elif defined(__AVX__)
-	alignAlloc(&str, 32, (axion->Size()));
-#else
-	alignAlloc(&str, 16, (axion->Size()));
-#endif
-	memset(str, 0, axion->Size()/2);
 
 	commSync();
 
@@ -278,7 +269,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	initPropagator (pType, axion, nQcd, delta, llconstantZ2, VQCD_1);
+	initPropagator (pType, axion, nQcd, delta, llconstantZ2, gammo, VQCD_1);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -332,7 +323,7 @@ int	main (int argc, char *argv[])
 				// compute this 500 qith an educated guess
 				if (nstrings_global < 500)
 				{
-					rts = strings(axion, str);
+					rts = strings(axion);
 					nstrings_global = rts.strDen ;
 					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 				}
@@ -450,12 +441,12 @@ int	main (int argc, char *argv[])
 						if (axion->Lambda() == LAMBDA_Z2 )
 							maa = maa*z_now*z_now;
 					//STRINGS
-						rts = strings(axion, str);
+						rts = strings(axion);
 						nstrings_global = rts.strDen;
 						if (nstrings_global < 10000)
-							writeString(str, rts, true);
+							writeString(axion, rts, true);
 						else
-							writeString(str, rts, false);
+							writeString(axion, rts, false);
 						LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 						LogOut("strings %ld \n", nstrings_global);
 			}
@@ -592,7 +583,6 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
 	trackFree((void**) (&binarray),  ALLOC_TRACK);
 	fclose(file_samp);
 

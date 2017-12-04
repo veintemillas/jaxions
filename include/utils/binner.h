@@ -72,15 +72,11 @@
 			bins.fill(0.);
 			maxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
 			minVal = (find<FIND_MIN,DType> (inData, dSize, filter));
-			//double tMaxVal = (find<FIND_MAX,DType> (inData, dSize, filter));
-			//double tMinVal = (find<FIND_MIN,DType> (inData, dSize, filter));
 
-			//MPI_Allreduce (&tMaxVal, &maxVal, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-			//MPI_Allreduce (&tMinVal, &minVal, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+			if (abs(maxVal - minVal) < 1e-10) { LogError ("Error: max value can't be lower or equal than min"); bins.fill(maxVal); return; }
 
 			step    = (maxVal-minVal)/((double) (N-1));
 			baseVal = minVal - step*0.5;
-			if (maxVal <= minVal) { LogError ("Error: max value can't be lower or equal than min"); return; }
 		}
 
 		DType*	getData	() const			{ return inData;   }
@@ -101,9 +97,9 @@
 		void	run	();
 
 		inline double	operator()(DType  val)	const	{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
-		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator()(DType  val)		{ size_t idx = (filter(val) - baseVal)/step; if (idx >= 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
 		inline double	operator[](size_t idx)	const	{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
-		inline double&	operator[](size_t idx)		{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return 0; } }
+		inline double&	operator[](size_t idx)		{ if (idx >= 0 || idx < N) { return bins[idx]; } else { return bins[0]; } }
 
 		inline double	max()			const	{ return maxVal; }
 		inline double	min()			const	{ return minVal; }
@@ -115,8 +111,9 @@
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
 
-		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
+		if (abs(maxVal - minVal) < 1e-10) { LogError ("Error: max value can't be lower or equal than min"); bins.fill(maxVal); return; }
 
+		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
 		double	tSize = static_cast<double>(dSize*commSize())*step;
 
 		#pragma omp parallel

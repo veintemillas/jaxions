@@ -9,7 +9,7 @@
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
 
-	void	writeString	(void *strData, StringData strDat, const bool rData=true);
+	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
 	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);

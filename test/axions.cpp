@@ -15,6 +15,8 @@
 #include "powerCpu.h"
 #include "scalar/scalar.h"
 
+#define	ScaleFactor 1.5
+
 using namespace std;
 
 #ifdef	USE_XEON
@@ -119,14 +121,6 @@ int	main (int argc, char *argv[])
 	void *eRes, *str;			// Para guardar la energia
 	trackAlloc(&eRes, 128);
 	memset(eRes, 0, 128);
-#ifdef	__MIC__
-	alignAlloc(&str, 64, (axion->Size()));
-#elif defined(__AVX__)
-	alignAlloc(&str, 32, (axion->Size()));
-#else
-	alignAlloc(&str, 16, (axion->Size()));
-#endif
-	memset(str, 0, axion->Size());
 
 	commSync();
 
@@ -171,7 +165,13 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
-	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, VQCD_1);
+
+	LogOut("--------------------------------------------------\n");
+	LogOut("            TUNING PROPAGATOR                     \n");
+	LogOut("--------------------------------------------------\n");
+
+	tunePropagator (axion);
 
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
@@ -184,7 +184,7 @@ int	main (int argc, char *argv[])
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 			propagate (axion, dz);
 
-		auto strDen = strings(axion, str);
+		auto strDen = strings(axion);
 
 		energy(axion, eRes, true, delta, nQcd, LL);
 
@@ -195,14 +195,21 @@ int	main (int argc, char *argv[])
 
 		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
-		createMeas(axion, index);
+		createMeas  (axion, index);
 		writeMapHdf5(axion);
-		writeEDens(axion, MAP_ALL);
-		writeString(str, strDen);
-		writeEnergy(axion, eRes);
-		writePoint(axion);
-		destroyMeas();
+		writeEDens  (axion, MAP_ALL);
+		writeString (axion, strDen);
+		writeEnergy (axion, eRes);
+		writePoint  (axion);
+		destroyMeas ();
 
+		// Test reduced strings
+		createMeas  (axion, index+20000);
+		axion->setReduced(true, axion->Length()/ScaleFactor, axion->Depth()/ScaleFactor);
+		strDen = strings(axion);
+		writeString (axion, strDen);
+		axion->setReduced(false);
+		destroyMeas ();
 	} // zloop
 
 	current = std::chrono::high_resolution_clock::now();
@@ -219,7 +226,6 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 
 	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
 
 	delete axion;
 
