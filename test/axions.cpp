@@ -165,7 +165,7 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
-	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, VQCD_1);
 
 	LogOut("--------------------------------------------------\n");
 	LogOut("            TUNING PROPAGATOR                     \n");

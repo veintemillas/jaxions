@@ -154,7 +154,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	initPropagator (pType, axion, nQcd, delta, LL, VQCD_1);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, VQCD_1);
 
 	LogOut ("Tuning propagator\n");
 

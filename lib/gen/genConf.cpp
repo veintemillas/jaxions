@@ -137,14 +137,12 @@ void	ConfGenerator::runGpu	()
 			prof.start();
 			momConf(axionField, kMax, kCrt);
 			prof.stop();
-			prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
-			axionField->sendGhosts(FIELD_M, COMM_SDRV);
-			axionField->sendGhosts(FIELD_M, COMM_WAIT);
-			// Is this right????
+			axionField->transferDev(FIELD_M);
 			cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-			axionField->transferDev(FIELD_MV);
 			scaleField (axionField, FIELD_M, *axionField->zV());
+			axionField->transferCpu(FIELD_MV);
 		}
 		break;
 
@@ -153,17 +151,13 @@ void	ConfGenerator::runGpu	()
 			prof.start();
 			momConf(axionField, kMax, kCrt);
 			prof.stop();
-			prof.add(momName, 9e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 
-			axionField->sendGhosts(FIELD_M, COMM_SDRV);
-			axionField->sendGhosts(FIELD_M, COMM_WAIT);
 			axionField->transferDev(FIELD_M);
-
 			normaliseField(axionField, FIELD_M);
-			normCoreField (axionField);
+			cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			scaleField (axionField, FIELD_M, *axionField->zV());
-
 			axionField->transferCpu(FIELD_MV);
 		}
 		break;
@@ -179,10 +173,12 @@ void	ConfGenerator::runGpu	()
 		smoothGpu (axionField, sIter, alpha);
 		prof.stop();
 		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
-		if (smvarType != CONF_SAXNOISE)
-			normCoreField (axionField);
-		scaleField (axionField, FIELD_M, *axionField->zV());
 
+		if (smvarType != CONF_SAXNOISE)
+			normaliseField(axionField, FIELD_M);
+
+		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+		scaleField (axionField, FIELD_M, *axionField->zV());
 		axionField->transferCpu(FIELD_MV);
 		break;
 	}
@@ -220,7 +216,6 @@ void	ConfGenerator::runCpu	()
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
-			axionField->exchangeGhosts(FIELD_M);
 		}
 		break;
 
@@ -231,9 +226,7 @@ void	ConfGenerator::runCpu	()
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
-			axionField->exchangeGhosts(FIELD_M);
 			normaliseField(axionField, FIELD_M);
-			//normCoreField (axionField);
 		}
 		break;
 
@@ -248,7 +241,6 @@ void	ConfGenerator::runCpu	()
 		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
 		if (smvarType != CONF_SAXNOISE)
 			normaliseField(axionField, FIELD_M);
-		//normCoreField (axionField);
 		break;
 	}
 

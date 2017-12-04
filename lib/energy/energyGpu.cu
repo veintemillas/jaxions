@@ -68,19 +68,29 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	Float tGry = ((Float) (mFac*(mPy.imag()*mPy.imag() + mMy.imag()*mMy.imag())));
 	Float rGrz = ((Float) (mFac*(mPz.real()*mPz.real() + mMz.real()*mMz.real())));
 	Float tGrz = ((Float) (mFac*(mPz.imag()*mPz.imag() + mMz.imag()*mMz.imag())));
-	Float rPot = ((Float) (mFc2 - 1.)*(mFc2 - 1.));
 	Float rKin = ((Float) (mFac*vOm.real()*vOm.real()));
 	Float tKin = ((Float) (mFac*vOm.imag()*vOm.imag()));
 
-	Float tPot;
+	Float tPot, rPot;
 
-	switch (VQcd) {
+	switch (VQcd & VQCD_TYPE) {
 		case	VQCD_1:
-			tPot = (((Float) 1.) - tp2.real()/sqrt(md2));
+			rPot  = ((Float) (mFc2 - 1.)*(mFc2 - 1.));
+			tPot  = (((Float) 1.) - tp2.real()/sqrt(md2));
 			break;
+
+		case	VQCD_1_PQ_2:
+			rPot  = ((Float) (mFc2*mFc2 - 1.));
+			rPot *= rPot;
+			tPot  = (((Float) 1.) - tp2.real()/sqrt(md2));
+			break;
+
 		case	VQCD_2:
+		{
+			rPot  = ((Float) (mFc2 - 1.)*(mFc2 - 1.));
 			double smp = (((Float) 1.) - tp2.real()*iZ);
-			tPot = smp*smp;
+			tPot  = smp*smp;
+		}
 	}
 
 	tR[RH_GRX] = (double) rGrx;
@@ -140,12 +150,19 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 		const double iZ  = 1./zR;
 		const double iZ2 = iZ*iZ;
 
-		switch (VQcd) {
+		switch (VQcd & VQCD_TYPE) {
 			case	VQCD_1:
 				if (map == true)
 					energyKernel<true, VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
 				else
 					energyKernel<false,VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
+				break;
+
+			case	VQCD_1_PQ_2:
+				if (map == true)
+					energyKernel<true, VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
+				else
+					energyKernel<false,VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
 				break;
 
 			case	VQCD_2:
@@ -167,6 +184,13 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 					energyKernel<true, VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
 				else
 					energyKernel<false,VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
+				break;
+
+			case	VQCD_1_PQ_2:
+				if (map == true)
+					energyKernel<true, VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
+				else
+					energyKernel<false,VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
 				break;
 
 			case	VQCD_2:

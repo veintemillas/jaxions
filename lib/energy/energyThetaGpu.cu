@@ -83,8 +83,11 @@ static __device__ __forceinline__ void	energyThetaCoreGpu(const uint idx, const 
 	aY = tmpPy*tmpPy + tmpMy*tmpMy;
 	aZ = tmpPz*tmpPz + tmpMz*tmpMz;
 
-	Kt = vel*vel;
-	Vt = 1.0f - cos(mel*iZ);
+	Float tmp = mel*iZ;
+
+	Kt  = vel - tmp;
+	Kt *= Kt;
+	Vt = 1.0f - cos(tmp);
 
 	tR[TH_GRX] = (double) aX;
 	tR[TH_GRY] = (double) aY;

@@ -35,7 +35,7 @@
 		double	c[nStages + (lastStage == true ? 1 : 0)];
 		double	d[nStages];
 		const double delta2;
-		const double nQcd, LL;
+		const double nQcd, LL, gamma;
 		const size_t Lx, Lz, V, S;
 
 		FieldPrecision precision;
@@ -45,7 +45,7 @@
 
 		public:
 
-		inline	 PropClass(Scalar *field, const double LL, const double nQcd, const double delta, const bool spec);
+		inline	 PropClass(Scalar *field, const double LL, const double nQcd, const double delta, const double gm, const bool spec);
 		inline	~PropClass() override {};
 
 		inline void	setCoeff(const double * __restrict__ nC, const double * __restrict__ nD) {
@@ -70,9 +70,10 @@
 	};
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
-		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, const double LL, const double nQcd, const double delta, const bool spec) : axion(field),
-		Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), lType(field->Lambda())
-	{
+		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, const double LL, const double nQcd, const double delta, const double gm, const bool spec) : axion(field),
+		Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()), delta2(delta*delta), precision(field->Precision()), LL(LL), nQcd(nQcd), gamma(gm),
+		lType(field->Lambda()) {
+
 		/*	Default block size gives just one block	*/
 		int tmp   = field->DataAlign()/field->DataSize();
 		int shift = 0;
@@ -217,12 +218,12 @@
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
-		        propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, lambda, nQcd, gamma, uLx, uLz, 2*uS, uV, VQcd, precision,
 				    ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-	        	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, lambda, nQcd, uLx, uLz, uS, 2*uS, precision,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, lambda, nQcd, gamma, uLx, uLz, uS, 2*uS, VQcd, precision,
 				    ((cudaStream_t *)axion->Streams())[0]);
-	        	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, lambda, nQcd, uLx, uLz, uV,  ext, precision,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, lambda, nQcd, gamma, uLx, uLz, uV,  ext, VQcd, precision,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -231,12 +232,12 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-		        propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, gamma, uLx, uLz, 2*uS, uV, VQcd, precision,
 				    ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M2);
-	        	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, uLx, uLz, uS, 2*uS, precision,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, gamma, uLx, uLz, uS, 2*uS, VQcd, precision,
 				    ((cudaStream_t *)axion->Streams())[0]);
-	        	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, uLx, uLz, uV,  ext, precision,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, lambda, nQcd, gamma, uLx, uLz, uV,  ext, VQcd, precision,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -249,12 +250,12 @@
 
 			const double	c0 = c[nStages];
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uS*2, uV, precision,
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uS*2, uV, VQcd, precision,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uS, uS*2, precision,
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uS, uS*2, VQcd, precision,
 				  ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uV,  ext, precision,
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uV,  ext, VQcd, precision,
 				  ((cudaStream_t *)axion->Streams())[1]);
 		}
 	#else
@@ -281,10 +282,10 @@
 
 			const double c0 = c[s], d0 = d[s];
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axion->Streams())[2]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uV,  ext, precision, ((cudaStream_t *)axion->Streams())[1]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, ((cudaStream_t *)axion->Streams())[0]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uV,  ext, VQcd, precision, ((cudaStream_t *)axion->Streams())[1]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[0]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[1]);
 			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, Lx, uS, ext, precision, ((cudaStream_t *)axion->Streams())[2]);
@@ -300,10 +301,10 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, 2*uS, uV, precision, ((cudaStream_t *)axion->Streams())[2]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uS, 2*uS, precision, ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, uLx, uLz, uV,  ext, precision, ((cudaStream_t *)axion->Streams())[1]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, ((cudaStream_t *)axion->Streams())[0]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, delta2, lambda, nQcd, gamma, uLx, uLz, uV,  ext, VQcd, precision, ((cudaStream_t *)axion->Streams())[1]);
 			cudaDeviceSynchronize();
 		}
 	#else

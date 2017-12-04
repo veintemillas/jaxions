@@ -128,7 +128,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_SX_RD:
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
-			alignAlloc ((void**) &str, mAlign, n3);
+			trackAlloc ((void**) &str, n3);
 			break;
 
 		case FIELD_AXION_MOD:
@@ -363,8 +363,8 @@ const std::complex<float> If(0.,1.);
 	if (m2 != nullptr)
 		trackFree(&m2,  ALLOC_ALIGN);
 
-	if (str != nullptr)
-		trackFree(&str, ALLOC_ALIGN);
+	if (str != nullptr && (fieldType & FIELD_SAXION))
+		trackFree(&str, ALLOC_TRACK);
 
 	if (z != nullptr)
 		trackFree((void **) &z, ALLOC_ALIGN);

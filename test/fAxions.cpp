@@ -254,7 +254,7 @@ int	main (int argc, char *argv[])
 
 	/*	We run a few iterations with damping too smooth the rho field	*/
 
-	initPropagator (pType, axion, nQcd, delta, LL, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
 
 	LogOut ("Tuning propagator...\n");
 	tunePropagator(axion);
@@ -284,7 +284,7 @@ int	main (int argc, char *argv[])
 
 	}
 
-	initPropagator (pType, axion, nQcd, delta, LL, vqcdType & VQCD_TYPE);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -340,11 +340,11 @@ int	main (int argc, char *argv[])
 				if ((zNow > zDoom*0.95) && !dampSet && ((vqcdType & VQCD_DAMP) != VQCD_NONE)) {
 					LogOut("Reaching doomsday (z %.3f, zDoom %.3f)\n", zNow, zDoom);
 					LogOut("Enabling damping with gamma %.4f\n\n", gammo);
-					initPropagator (pType, axion, nQcd, delta, LL, vqcdType );
+					initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType);
 					dampSet = true;
 				}
 
-				if (commRank() == 0) {
+				if (commRank() == 0 && cDev != DEV_GPU) {
 					complex<double> m = complex<double>(0.,0.);
 					complex<double> v = complex<double>(0.,0.);
 					if (axion->Precision() == FIELD_DOUBLE) {
@@ -379,6 +379,10 @@ int	main (int argc, char *argv[])
 							writeMapHdf5 (axion);
 
 				  		energy(axion, eRes, false, delta, nQcd, llPhys, vqcdType, zShift);
+
+						if (axion->Device() == DEV_GPU)
+							axion->transferCpu(FIELD_MM2);
+
 						writeEnergy(axion, eRes);
 
 						if (axion->Precision() == FIELD_SINGLE) {
@@ -420,6 +424,9 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 						  	writeMapHdf5 (axion);
 
+						if (axion->Device() == DEV_GPU)
+							axion->transferCpu(FIELD_MM2);
+
 						energy(axion, eRes, false, delta, nQcd, 0., vqcdType, 0.);
 						writeEnergy(axion, eRes);
 
@@ -442,7 +449,7 @@ int	main (int argc, char *argv[])
 					}
 				}
 			} else {
-				if (commRank() == 0) {
+				if (commRank() == 0 && cDev != DEV_GPU) {
 					double m = 0., v = 0.;
 
 					if (axion->Precision() == FIELD_DOUBLE) {
@@ -480,6 +487,9 @@ int	main (int argc, char *argv[])
 		} // zSubloop iteration
 
 		/*	We perform now an online analysis	*/
+
+		if (axion->Device() == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
 
 		createMeas(axion, index);
 
@@ -570,6 +580,9 @@ int	main (int argc, char *argv[])
 			auto pName = pFler->first;
 			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 
+			if (axion->Device() == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 			specAna.pRun();
 			writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
@@ -606,10 +619,12 @@ int	main (int argc, char *argv[])
 
 //	index++	;
 	if (axion->Field() == FIELD_AXION) {
-		if (pconfinal)
+		if (pconfinal) {
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 
-		if (pconfinal) {
+			if (axion->Device() == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			if (endredmap > 0) {
 				double ScaleSize = ((double) axion->Length())/((double) endredmap);
 				double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
@@ -629,11 +644,11 @@ int	main (int argc, char *argv[])
 
 		destroyMeas();
 
+		if (cDev == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
+
 		if ((prinoconfo >= 2) && (wkb2z < 0)) {
 			LogOut ("Dumping final configuration %05d ...", index);
-
-			if (cDev == DEV_GPU)
-				axion->transferCpu(FIELD_MV);
 
 			writeConf(axion, index);
 			LogOut ("Done!\n");
@@ -670,7 +685,13 @@ int	main (int argc, char *argv[])
 			writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 			writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 
+			if (cDev == DEV_GPU)
+				axion->transferDev(FIELD_MV);
+
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+
+			if (cDev == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
 
 			if (axion->Precision() == FIELD_SINGLE) {
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
@@ -728,6 +749,10 @@ int	main (int argc, char *argv[])
 		/*	For Jens	*/
 		if (endredmap > 0) {
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+
+			if (cDev == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			double ScaleSize = ((double) axion->Length())/((double) endredmap);
 			double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
 			size_t nLz = endredmap / commSize();
@@ -754,7 +779,6 @@ int	main (int argc, char *argv[])
 
 	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
-
 	trackFree(&eRes, ALLOC_TRACK);
 
 	delete axion;

@@ -109,7 +109,7 @@ void    normGpu (Scalar *sField, FieldIndex fIdx)
 				break;
 			}
 
-			normKernel<float><<<gridSize, blockSize, 0, ((cudaStream_t *)sField->Streams())[0]>>> (field, V);
+			normKernel<float> <<<gridSize, blockSize, 0, ((cudaStream_t *)sField->Streams())[0]>>> (field, V);
 
 			break;
 		}

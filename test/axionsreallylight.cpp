@@ -314,7 +314,7 @@ int	main (int argc, char *argv[])
 
 	LogOut("pppp Preprocessing ... %d \n\n", (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
 	double *zaza = axion->zV();
-	initPropagator (pType, axion, nQcd, delta, LL, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
 	double dzcontrol = 0.0;
 	double strdensn ;
 
@@ -346,7 +346,7 @@ int	main (int argc, char *argv[])
 	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
 	// damping only from zst1000
 	LogOut("Running ... \n\n");
-	initPropagator (pType, axion, nQcd, delta, LL, vqcdType & VQCD_TYPE);
+	initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -419,7 +419,7 @@ int	main (int argc, char *argv[])
 					LogOut("---------------------------------------\n");
 					LogOut("  DAMPING! G = %f (95% z_doom %f)   	\n", gammo, 0.95*z_doom);
 					LogOut("---------------------------------------\n");
-					initPropagator (pType, axion, nQcd, delta, LL, vqcdType );
+					initPropagator (pType, axion, nQcd, delta, gammo, LL, vqcdType );
 					coD = false ;
 				}
 
