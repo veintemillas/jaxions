@@ -37,6 +37,7 @@
 
 		bool		IsTuned() const noexcept { return isTuned;  }
 		void		UnTune ()       noexcept { isTuned = false; }
+		void		Tune   ()       noexcept { isTuned = true;  }
 
 		unsigned int	TunedBlockX () const noexcept { return xBest; }
 		unsigned int	TunedBlockY () const noexcept { return yBest; }
