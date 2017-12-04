@@ -281,14 +281,15 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 #else
 					auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
 #endif
-					auto veca = opCode(add_pd, mMx, opCode(mul_pd, mel, opCode(set1_pd, GGiZ)));
 
 #if	defined(__AVX512F__) || defined(__FMA__)
+					auto veca = opCode(fmadd_pd, mel, opCode(set1_pd, GGiZ), mMx);
 					tmp = opCode(sub_pd,
 						opCode(fmadd_pd, veca, opCode(set1_pd, dzc), mPy),
 						opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
 							opCode(fmadd_pd, vecmv, opCode(set1_pd, 2.), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #else
+					auto veca = opCode(add_pd, mMx, opCode(mul_pd, mel, opCode(set1_pd, GGiZ)));
 					tmp = opCode(sub_pd,
 						opCode(add_pd, mPy, opCode(mul_pd, veca, opCode(set1_pd, dzc))),
 						opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
@@ -588,18 +589,22 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 #else
 					auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
-					// damping rho direction
-					// add GGGG term to acceleration
-					auto veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGiZ)));
-
 					// mPy=V veca=A mPx=|M|^2
 					// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt)
 #if	defined(__AVX512F__) || defined(__FMA__)
+					// damping rho direction
+					// add GGGG term to acceleration
+					auto veca = opCode(fmadd_ps, mel, opCode(set1_ps, GGiZ), mMx);
+
 					tmp = opCode(sub_ps,
 						opCode(fmadd_ps, veca, opCode(set1_ps, dzc), mPy),
 						opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 							opCode(fmadd_ps, vecmv, opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #else
+					// damping rho direction
+					// add GGGG term to acceleration
+					auto veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGiZ)));
+
 					tmp = opCode(sub_ps,
 						opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
 						opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
@@ -612,7 +617,11 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				case	VQCD_DAMP_ALL:
 				// damping all directions implementation
-				tmp = opCode(add_ps, opCode(mul_ps,mPy,opCode(set1_ps,damp2)), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
+#if	defined(__AVX512F__) || defined(__FMA__)
+				tmp = opCode(fmadd_ps, mPy, opCode(set1_ps, damp2), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
+#else
+				tmp = opCode(add_ps, opCode(mul_ps, mPy, opCode(set1_ps, damp2)), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
+#endif
 				break;
 			}
 
