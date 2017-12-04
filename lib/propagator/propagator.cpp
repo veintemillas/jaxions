@@ -16,7 +16,8 @@ template<VqcdType pot>
 class	PropLeap : public PropClass<1, true, pot> {
 
 	public:
-		PropLeap(Scalar *field, const double LL, const double nQcd, const double delta, const bool spec) : PropClass<1, true, pot>(field, LL, nQcd, delta, spec) {
+		PropLeap(Scalar *field, const double LL, const double nQcd, const double delta, const double gm, const bool spec) : 
+		PropClass<1, true, pot>(field, LL, nQcd, delta, gm, spec) {
 		//	Set up Leapfrog parameters
 
 		double nC[2] = { 0.5, 0.5 };
@@ -39,7 +40,8 @@ template<VqcdType pot>
 class	PropOmelyan2 : public PropClass<2, true, pot> {
 
 	public:
-		PropOmelyan2(Scalar *field, const double LL, const double nQcd, const double delta, const bool spec) : PropClass<2, true, pot>(field, LL, nQcd, delta, spec) {
+		PropOmelyan2(Scalar *field, const double LL, const double nQcd, const double delta, const double gm, const bool spec) :
+		PropClass<2, true, pot>(field, LL, nQcd, delta, gm, spec) {
 		constexpr double chi = +0.19318332750378360;
 
 		//	Set up Omelyan parameters for BABAB
@@ -64,7 +66,8 @@ template<VqcdType pot>
 class	PropOmelyan4 : public PropClass<4, true, pot> {
 
 	public:
-		PropOmelyan4(Scalar *field, const double LL, const double nQcd, const double delta, const bool spec) : PropClass<4, true, pot>(field, LL, nQcd, delta, spec) {
+		PropOmelyan4(Scalar *field, const double LL, const double nQcd, const double delta, const double gm, const bool spec) :
+		PropClass<4, true, pot>(field, LL, nQcd, delta, gm, spec) {
 		constexpr double xi  = +0.16449865155757600;
 		constexpr double lb  = -0.02094333910398989;
 		constexpr double chi = +1.23569265113891700;
@@ -91,7 +94,8 @@ template<VqcdType pot>
 class	PropRKN4 : public PropClass<4, false, pot> {
 
 	public:
-		PropRKN4(Scalar *field, const double LL, const double nQcd, const double delta, const bool spec) : PropClass<4, false, pot>(field, LL, nQcd, delta, spec) {
+		PropRKN4(Scalar *field, const double LL, const double nQcd, const double delta, const double gm, const bool spec) :
+		PropClass<4, false, pot>(field, LL, nQcd, delta, gm, spec) {
 		//	Set up RKN parameters for BABABABA
 
 		const double nC[4] = { +0.1344961992774310892, -0.2248198030794208058, +0.7563200005156682911, +0.3340036032863214255 };
@@ -110,7 +114,7 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 	}
 };
 
-void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const double delta, const double LL, VqcdType pot) {
+void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const double delta, const double LL, const double gm, VqcdType pot) {
 
 	LogMsg	(VERB_HIGH, "Initializing propagator");
 
@@ -130,21 +134,21 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 		case PROP_OMELYAN2:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropOmelyan2<VQCD_1> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_1>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2> >(field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2_RHO> >(field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2_RHO>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 
 				case VQCD_2:
-					prop = std::make_unique<PropOmelyan2<VQCD_2> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 
 				case VQCD_NONE:
-					prop = std::make_unique<PropOmelyan2<VQCD_NONE> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 			}
 			break;
@@ -152,21 +156,20 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 		case PROP_OMELYAN4:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropOmelyan4<VQCD_1> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_1>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2_RHO> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2_RHO>>	(field, LL, nQcd, delta, gm, spec);
 					break;
-
 				case VQCD_2:
-					prop = std::make_unique<PropOmelyan4<VQCD_2> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_2>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 
 				case VQCD_NONE:
-					prop = std::make_unique<PropOmelyan4<VQCD_NONE> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 			}
 			break;
@@ -174,21 +177,20 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 		case PROP_LEAP:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropLeap<VQCD_1> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropLeap<VQCD_1>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropLeap<VQCD_1_PQ_2> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropLeap<VQCD_1_PQ_2>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropLeap<VQCD_1_PQ_2_RHO> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropLeap<VQCD_1_PQ_2_RHO>>	(field, LL, nQcd, delta, gm, spec);
 					break;
-
 				case VQCD_2:
-					prop = std::make_unique<PropLeap<VQCD_2> >    (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropLeap<VQCD_2>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 
 				case VQCD_NONE:
-					prop = std::make_unique<PropLeap<VQCD_NONE> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropLeap<VQCD_NONE>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 			}
 			break;
@@ -196,36 +198,34 @@ void	initPropagator	(PropType pType, Scalar *field, const double nQcd, const dou
 		case PROP_RKN4:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropRKN4<VQCD_1> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_RHO> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_RHO>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_DRHO> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_DRHO>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO> >  (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_1_PQ_2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO> > (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO>>	(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_2:
-					prop = std::make_unique<PropRKN4<VQCD_2> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_2_RHO> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2_RHO>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 				case VQCD_2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_2_DRHO> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2_DRHO>>		(field, LL, nQcd, delta, gm, spec);
 					break;
-
-
 				case VQCD_NONE:
-					prop = std::make_unique<PropRKN4<VQCD_NONE> >	     (field, LL, nQcd, delta, spec);
+					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, LL, nQcd, delta, gm, spec);
 					break;
 			}
 
@@ -400,6 +400,8 @@ void	tunePropagator (Scalar *field) {
 		}
 
 		LogMsg (VERB_NORMAL, "Tuned values read from cache file. Best block %u x %u x %u", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+		LogMsg (VERB_HIGH,   "Chosen block %u x %u x %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+		prop->Tune();
 		prof.stop();
 		prof.add(prop->Name(), 0., 0.);
 		return;
