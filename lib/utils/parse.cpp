@@ -127,8 +127,10 @@ void	printUsage(char *name)
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
 	printf("  --msa   [float]               Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
+	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1) \n");
 	printf("  --vqcd2                       Variant of QCD potential (default, disabled) \n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled) \n");
+
 
 	printf("\nInitial conditions:\n");
 	printf("  --icinfo                      Prints more info about initial conditions.\n");
@@ -666,6 +668,30 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		//NEW
+		if (!strcmp(argv[i], "--ind3"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for axion mass ind3.\n");
+				exit(1);
+			}
+
+			indi3 = atof(argv[i+1]);
+
+			if (msa <= 0.)
+			{
+				printf("Error: The Spacing-to-core must be greater than zero.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 
 		if (!strcmp(argv[i], "--wDz"))
 		{
