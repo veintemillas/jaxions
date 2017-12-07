@@ -24,14 +24,18 @@
 
 // TODO Compute ranks per processor with hwloc (total cache size)
 
-static int rank         =  0;
-static int ranksPerNode =  0;
-static int nThreads     =  1;
-static int idxAcc       = -1;
-static int commSz       =  0;
+static int rank          =  0;
+static int ranksPerNode  =  0;
+static int nThreads      =  1;
+static int idxAcc        = -1;
+static int commSz        =  0;
 static char hostname[HOST_NAME_MAX];
 
-static size_t gpuMem = 0;
+static int tPerBlock	 = 0;
+static int maxThreads[3] = { 0, 0, 0 };
+static int maxGrid[3]    = { 0, 0, 0 };
+
+static size_t gpuMem     = 0;
 
 int	commRank()
 {
@@ -56,6 +60,18 @@ int	commThreads()
 int	commAcc()
 {
 	return idxAcc;
+}
+
+int	maxThreadsPerBlock() {
+	return	tPerBlock;
+}
+
+int	maxThreadsPerDim(const int dim) {
+	return	(dim < 3) ? maxThreads[dim] : 0;
+}
+
+int	maxGridSize(const int dim) {
+	return	(dim < 3) ? maxGrid[dim] : 0;
 }
 
 char	*commHost()
@@ -166,7 +182,14 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 		cudaGetDeviceProperties(&gpuProp, idxAcc);
 
 		LogMsg (VERB_NORMAL, "  Peak Memory Bandwidth of Gpu %d (GB/s): %f", idxAcc, 2.0*gpuProp.memoryClockRate*(gpuProp.memoryBusWidth/8)/1.0e6);
-		gpuMem = gpuProp.totalGlobalMem;
+		gpuMem	      = gpuProp.totalGlobalMem;
+		tPerBlock     = gpuProp.maxThreadsPerBlock;
+		maxThreads[0] = gpuProp.maxThreadsDim[0];
+		maxThreads[1] = gpuProp.maxThreadsDim[1];
+		maxThreads[2] = gpuProp.maxThreadsDim[2];
+		maxGrid[0]    = gpuProp.maxGridSize[0];
+		maxGrid[1]    = gpuProp.maxGridSize[1];
+		maxGrid[2]    = gpuProp.maxGridSize[2];
 	}
 	LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: Found %d accelerators, using accelerator %d", rank, hostname, nAccs, idxAcc);
 #endif

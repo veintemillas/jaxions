@@ -12,4 +12,7 @@
 	int	commAcc();
 	void	commSync();
 	size_t	gpuMemAvail();
+	int	maxThreadsPerBlock();
+	int	maxThreadsPerDim(const int dim);
+	int	maxGridSize(const int dim);
 #endif

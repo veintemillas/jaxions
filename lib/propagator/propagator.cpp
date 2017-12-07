@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <memory>
 #include <chrono>
+#include <string>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -343,7 +344,10 @@ void	tunePropagator (Scalar *field) {
 	LogMsg (VERB_HIGH, "Started tuner");
 	prof.start();
 
-	prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
+	if (field->Device() == DEV_CPU)
+		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
+	else
+		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign(), true);
 
 	/*	Check for a cache file	*/
 
@@ -357,11 +361,16 @@ void	tunePropagator (Scalar *field) {
 		} else {
 			size_t       rMpi, rThreads, rLx, rLz;
 			unsigned int rBx, rBy, rBz, fType, myField = (field->Field() == FIELD_SAXION) ? 0 : 1;
+			char	     mDev[8];
+
+			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 
 			do {
-				fscanf (cacheFile, "%lu %lu %lu %lu %u %u %u %u\n", &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
+				fscanf (cacheFile, "%s %lu %lu %lu %lu %u %u %u %u\n", &mDev, &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
 
-				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField) {
+				std::string fDev(mDev);
+
+				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev) {
 					if (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth()) {
 						found = true;
 						prop->SetBlockX(rBx);
@@ -415,10 +424,11 @@ void	tunePropagator (Scalar *field) {
 
 	bestTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start);
 
-	LogMsg (VERB_HIGH, "Block %u x %u done in %lu ns", prop->BlockY(), prop->BlockZ(), bestTime.count());
+	LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime.count());
+
+	prop->AdvanceBlockSize();
 
 	while (!prop->IsTuned()) {
-		prop->AdvanceBlockSize();
 
 		start = std::chrono::high_resolution_clock::now();
 		propagate(field, 0.);
@@ -426,13 +436,15 @@ void	tunePropagator (Scalar *field) {
 
 		lastTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start);
 
-		LogMsg (VERB_HIGH, "Block %u x %u done in %lu ns", prop->BlockY(), prop->BlockZ(), lastTime.count());
+		LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), lastTime.count());
 
 		if (lastTime < bestTime) {
 			bestTime = lastTime;
 			prop->UpdateBestBlock();
 			LogMsg (VERB_HIGH, "Best block updated");
 		}
+
+		prop->AdvanceBlockSize();
 	}
 
 	prop->getBaseName();
@@ -486,8 +498,9 @@ void	tunePropagator (Scalar *field) {
 		}
 
 		unsigned int fType = (field->Field() == FIELD_SAXION) ? 0 : 1;
-		fprintf (cacheFile, "%lu %lu %lu %lu %u %u %u %u\n", commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
-								     fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
+		fprintf (cacheFile, "%s %lu %lu %lu %lu %u %u %u %u\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
+									fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
 		fclose  (cacheFile);
 	}
 

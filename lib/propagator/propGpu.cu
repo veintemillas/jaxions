@@ -104,7 +104,8 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float ood2, const Float LL,
 				const uint Lx, const uint Sf, const uint Vo, const uint Vf)
 {
-	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Lx*(threadIdx.y + blockDim.y*blockIdx.y) + Sf*(threadIdx.z + blockDim.z*blockIdx.z);
 
 	if	(idx >= Vf)
 		return;
@@ -114,11 +115,16 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
 		     const double LL, const double nQcd, const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
-		     cudaStream_t &stream)
+		     const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+/*
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
+*/
+	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
+	dim3	  gridSize((Lx+xBlock-1)/xBlock, (Lx+yBlock-1)/yBlock, (Lz2+zBlock-1)/zBlock);
+	dim3	  blockSize(xBlock, yBlock, zBlock);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -432,9 +438,10 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 }
 
 template<typename Float>
-__global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Vo, const uint Vf, const uint Sf)
+__global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf)
 {
-	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Lx*(threadIdx.y + blockDim.y*blockIdx.y) + Sf*(threadIdx.z + blockDim.z*blockIdx.z);
 
 	if	(idx >= Vf)
 		return;
@@ -447,7 +454,8 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 			      const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
 			      const uint Vf)
 {
-	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Lx*(threadIdx.y + blockDim.y*blockIdx.y) + Sf*(threadIdx.z + blockDim.z*blockIdx.z);
 
 	if	(idx >= Vf)
 		return;
@@ -455,30 +463,42 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, LL, Lx, Sf);
 }
 
-void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
+void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision,
+		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+/*
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
+*/
+	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
+	dim3	  gridSize((Lx+xBlock-1)/xBlock, (Lx+yBlock-1)/yBlock, (Lz2+zBlock-1)/zBlock);
+	dim3	  blockSize(xBlock, yBlock, zBlock);
 
 	if (precision == FIELD_DOUBLE)
 	{
 		const double dzd  = dz*d;
-		updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<double> *) m, (const complex<double> *) v, dzd, Vo, Vf, Lx*Lx);
+		updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<double>*) m, (const complex<double>*) v, dzd, Lx, Lx*Lx, Vo, Vf);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float dzd  = dz*d;
-		updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<float> *) m, (const complex<float> *) v, dzd, Vo, Vf, Lx*Lx);
+		updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<float> *) m, (const complex<float> *) v, dzd, Lx, Lx*Lx, Vo, Vf);
 	}
 }
 
 void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c, const double delta2, const double LL, const double nQcd,
-		   const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision, cudaStream_t &stream)
+		   const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
+		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+/*
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
+*/
+	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
+	dim3	  gridSize((Lx+xBlock-1)/xBlock, (Lx+yBlock-1)/yBlock, (Lz2+zBlock-1)/zBlock);
+	dim3	  blockSize(xBlock, yBlock, zBlock);
 
 	if (precision == FIELD_DOUBLE)
 	{
