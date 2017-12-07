@@ -37,7 +37,7 @@ class	Strings	: public Tunable
 	Strings::Strings(Scalar *field) : axionField(field)
 {
 	setName("Strings and walls");
-	memset(field->sData(), 0, field->rSize());
+	memset(field->sData(), 0, field->Size());
 }
 
 StringData	Strings::runGpu	()
@@ -91,7 +91,7 @@ StringData	strings	(Scalar *field)
 		return strDen;
 	}
 
-	if	(!field->Folded())
+	if	(!field->Folded() && field->Device() == DEV_CPU)
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
@@ -114,7 +114,7 @@ StringData	strings	(Scalar *field)
 	}
 
 	MPI_Allreduce(&(strTmp.strDen), &(strDen.strDen), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(strTmp.strChr), &(strDen.strChr), 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&(strTmp.strChr), &(strDen.strChr), 1, MPI_LONG,          MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(&(strTmp.wallDn), &(strDen.wallDn), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
 	prof.stop();

@@ -242,7 +242,7 @@ int	main (int argc, char *argv[])
 		writeBinner(thBin,  "/bins", "theta");
 	}
 
-	axion->setReduced(true, endredmap, endredmap);
+	axion->setReduced(true, endredmap, endredmap/zGrid);
 	auto strTmp = strings(axion);
 	writeString(axion, strTmp, true);
 	axion->setReduced(false);
@@ -526,7 +526,7 @@ int	main (int argc, char *argv[])
 			if (axion->Lambda() == LAMBDA_Z2)
 				maa = maa*zNow*zNow;
 
-			axion->setReduced(true, endredmap, endredmap);
+			axion->setReduced(true, endredmap, endredmap/zGrid);
 			rts = strings(axion);
 
 			if (p3DthresholdMB/((double) curStrings) > 1.)

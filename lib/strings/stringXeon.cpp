@@ -616,7 +616,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				// Tienes los 7 puntos que definen las 3 plaquetas
 
 				//size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
-				size_t nIdx = (((size_t)(((double) X[0])*ratio))/step + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-1))*datio))*rSf);
+				size_t nIdx = (((size_t)(((double) (X[0]/step))*ratio)) + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-1))*datio))*rSf);
 
 				// Plaqueta XY
 
@@ -629,7 +629,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				for (int ih=0; ih<step; ih++)
 				{
 					//size_t tIdx = nIdx + ih*YC*Lx;
-					size_t tIdx = nIdx + ((size_t) (((double) ih)*ratio))*rYC*rLx;
+					size_t tIdx = nIdx + ih*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -671,7 +671,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				for (int ih=0; ih<step; ih++)
 				{
 					//size_t tIdx = nIdx + ih*YC*Lx;
-					size_t tIdx = nIdx + ((size_t) (((double) ih)*ratio))*rYC*rLx;
+					size_t tIdx = nIdx + ih*rYC*rLx;
 
 					switch (hand[ih])
 					{
@@ -713,7 +713,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				for (int ih=0; ih<step; ih++)
 				{
 					//size_t tIdx = nIdx + ih*YC*Lx;
-					size_t tIdx = nIdx + ((size_t) (((double) ih)*ratio))*rYC*rLx;
+					size_t tIdx = nIdx + ih*rYC*rLx;
 
 					switch (hand[ih])
 					{

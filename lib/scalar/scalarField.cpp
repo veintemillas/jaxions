@@ -136,6 +136,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION:
 		case FIELD_AX_RD:
 		case FIELD_WKB:
+			str = nullptr;
 			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
 			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
@@ -204,7 +205,7 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
-	if (str == nullptr)
+	if (str == nullptr && (fieldType & FIELD_SAXION != 0))
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
 		exit(1);
@@ -259,15 +260,6 @@ const std::complex<float> If(0.,1.);
 			}
 
 			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*(2*n2 + n3));
-/*			switch (prec) {
-				case FIELD_DOUBLE:
-				v_d = static_cast<void *>(static_cast<double *>(m_d) + 2*n2 + n3);
-				break;
-
-				case FIELD_SINGLE:
-				v_d = static_cast<void *>(static_cast<float  *>(m_d) + 2*n2 + n3);
-				break;
-			}*/
 		}
 
 		if (!lowmem || (fieldType & FIELD_AXION))
@@ -391,14 +383,11 @@ const std::complex<float> If(0.,1.);
 
 			if (sStreams != nullptr)
 				free(sStreams);
-
-			if ((fieldType & FIELD_REDUCED) == false)
-				AxionFFT::closeFFT();
 		#endif
-	} else {
-		if ((fieldType & FIELD_REDUCED) == false)
-			AxionFFT::closeFFT();
 	}
+
+	if ((fieldType & FIELD_REDUCED) == false)
+		AxionFFT::closeFFT();
 }
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
