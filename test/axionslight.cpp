@@ -582,8 +582,8 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
-	trackFree(&eRes, ALLOC_TRACK);
-	trackFree((void**) (&binarray),  ALLOC_TRACK);
+	trackFree(eRes);
+	trackFree((void*) binarray);
 	fclose(file_samp);
 
 

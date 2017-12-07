@@ -3401,7 +3401,7 @@ void	reduceEDens (int index, uint newLx, uint newLz)
 	H5Gclose (group_id);
 	H5Fclose (file_id);
 
-	trackFree (&axionIn,  ALLOC_TRACK);
+	trackFree (axionIn);
 
         prof.stop();
 //	prof.add(std::string("Reduced energy map"), 0., (2.*total*dataSize + 78.)*1e-9);

@@ -237,8 +237,8 @@ int	main (int argc, char *argv[])
 	LogOut("#_prints = %i\n", index);
 	LogOut("Total time: %2.3f s\n", elapsed.count()*1.e-3);
 
-	trackFree(&eRes, ALLOC_TRACK);
-	trackFree(&str,  ALLOC_ALIGN);
+	trackFree(eRes);
+	trackFree(str);
 
 	delete axion;
 

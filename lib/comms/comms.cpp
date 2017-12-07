@@ -187,7 +187,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 
 	LogMsg (VERB_NORMAL, "Rank %d Cpu will use %d threads for %d processors (max %d)", rank, nThreads, nProcs, mThreads);
 
-	trackFree((void **) &allHosts, ALLOC_TRACK);
+	trackFree((void **) allHosts);
 
 	return nAccs;
 }

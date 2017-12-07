@@ -5,7 +5,7 @@
 #include "enum-field.h"
 #include "utils/logger.h"
 
-static std::unordered_map<void *, size_t> allocTable[2];
+static std::unordered_map<void *, std::pair<AllocType, size_t>> allocTable;
 static size_t trackAlignMem = 0;
 static size_t trackAllocMem = 0;
 
@@ -18,7 +18,7 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 		case 0:
 		LogMsg (VERB_HIGH, "Memory allocated correctly (%lu bytes, %lu align). Registering pointer %p", size, align, *ptr);
 		trackAlignMem += size;
-		allocTable[ALLOC_ALIGN].insert(std::make_pair(*ptr, size));
+		allocTable.insert(std::make_pair(*ptr, std::make_pair(ALLOC_ALIGN, size)));
 		break;
 
 		case EINVAL:
@@ -39,19 +39,20 @@ void	alignAlloc (void **ptr, size_t align, size_t size)
 
 }
 
-void	trackFree (void **ptr, AllocType aType)
+void	trackFree (void *ptr)
 {
-	size_t bytes = allocTable[aType][*ptr];
-	free (*ptr);
+	AllocType aType = allocTable[ptr].first;
+	size_t    bytes = allocTable[ptr].second;
+	free (ptr);
 
-	LogMsg (VERB_HIGH, "Memory freed correctly (%lu bytes). Deregistering pointer %p", bytes, *ptr);
+	LogMsg (VERB_HIGH, "Memory freed correctly (%lu bytes). Deregistering pointer %p", bytes, ptr);
 
 	if (aType == ALLOC_ALIGN)
 		trackAlignMem -= bytes;
 	else
 		trackAllocMem -= bytes;
 
-	allocTable[aType].erase(*ptr);
+	allocTable.erase(ptr);
 	ptr = nullptr;
 }
 
@@ -65,7 +66,7 @@ void	trackAlloc (void **ptr, size_t size)
 
 	LogMsg (VERB_HIGH, "Memory allocated correctly (%lu bytes). Registering pointer %p", size, *ptr);
 
-	allocTable[ALLOC_TRACK].insert(std::make_pair(*ptr, size));
+	allocTable.insert(std::make_pair(*ptr, std::make_pair(ALLOC_TRACK, size)));
 	trackAllocMem += size;
 }
 
@@ -78,21 +79,21 @@ void	printMemStats	()
 	LogMsg (VERB_NORMAL, "Current pointers in memory:");
 	LogMsg (VERB_NORMAL, "\tAligned");
 
-//	std::map<void *, size_t>::iterator data;
-
-	for (auto &data : allocTable[ALLOC_ALIGN]) {
+	for (auto &data : allocTable) {
 		void *ptr   = data.first;
-		size_t size = data.second;
-		LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
+		size_t size = data.second.second;
+		if (data.second.first == ALLOC_ALIGN)
+			LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
 	}
 
 	LogMsg (VERB_NORMAL, "");
 	LogMsg (VERB_NORMAL, "\tUnaligned");
 
 	//for (data = allocTable[ALLOC_TRACK].begin(); data != allocTable[ALLOC_TRACK].end(); data++)
-	for (auto &data : allocTable[ALLOC_TRACK]) {
+	for (auto &data : allocTable) {
 		void *ptr   = data.first;
-		size_t size = data.second;
+		size_t size = data.second.second;
+		if (data.second.first == ALLOC_TRACK)
 		LogMsg (VERB_NORMAL, "Pointer %p\tSize %lu", ptr, size);
 	}
 }

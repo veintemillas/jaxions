@@ -98,7 +98,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 		}
 	}
 
-	trackFree((void **) &sd, ALLOC_TRACK);
+	trackFree((void *) sd);
 }
 
 void	momConf (Scalar *field, const size_t kMax, const double kCrt)

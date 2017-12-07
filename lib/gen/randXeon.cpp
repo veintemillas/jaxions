@@ -183,7 +183,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 		}
 	}
 
-	trackFree((void **) &sd, ALLOC_TRACK);
+	trackFree((void *) sd);
 }
 
 void	randConf (Scalar *field)

@@ -142,14 +142,14 @@ void	energy	(Scalar *field, void *eRes, const bool map, const double delta, cons
 		default:
 			LogError ("Error: invalid device");
 			prof.stop();
-			trackFree(&eTmp, ALLOC_TRACK);
+			trackFree(eTmp);
 			return;
 	}
 
 	const int size = field->Field() == FIELD_SAXION ? 10 : 5;
 
 	MPI_Allreduce(eTmp, eRes, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	trackFree(&eTmp, ALLOC_TRACK);
+	trackFree(eTmp);
 
 	const double Vt = 1./(field->TotalSize());
 

@@ -250,7 +250,7 @@ int	main (int argc, char *argv[])
 		LogOut ("MPI z dimension too small, skipping reduction...\n");
 	}
 
-	trackFree(&eRes, ALLOC_TRACK);
+	trackFree(eRes);
 
 	delete axion;
 

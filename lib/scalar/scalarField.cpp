@@ -356,19 +356,19 @@ const std::complex<float> If(0.,1.);
 	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
 
 	if (m != nullptr)
-		trackFree(&m,   ALLOC_ALIGN);
+		trackFree(m);
 
 	if (v != nullptr && (fieldType & FIELD_SAXION))
-		trackFree(&v,   ALLOC_ALIGN);
+		trackFree(v);
 
 	if (m2 != nullptr)
-		trackFree(&m2,  ALLOC_ALIGN);
+		trackFree(m2);
 
 	if (str != nullptr && (fieldType & FIELD_SAXION))
-		trackFree(&str, ALLOC_TRACK);
+		trackFree(str);
 
 	if (z != nullptr)
-		trackFree((void **) &z, ALLOC_ALIGN);
+		trackFree((void *) z);
 
 	if (device == DEV_GPU)
 	{
@@ -593,7 +593,7 @@ void	Scalar::setField (FieldType newType)
 			if (fieldType == FIELD_SAXION)
 			{
 				if (!lowmem) {
-					trackFree(&m2, ALLOC_ALIGN);
+					trackFree(m2);
 
 					#ifdef	USE_GPU
 					if (device == DEV_GPU)
@@ -601,7 +601,7 @@ void	Scalar::setField (FieldType newType)
 					#endif
 				}
 
-				trackFree(&str, ALLOC_TRACK);
+				trackFree(str);
 				m2 = v;
 				#ifdef	USE_GPU
 				if (device == DEV_GPU)
@@ -659,7 +659,7 @@ void	Scalar::setField (FieldType newType)
 
 				} else {
 				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
-					trackFree(&m2, ALLOC_ALIGN);
+					trackFree(m2);
 					m2 = nullptr;
 					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 
@@ -2539,7 +2539,7 @@ void	Scalar::loadHalo()
 
 	printf("initFFThalo sending fSize=%d, n1=%d, Tz=%d\n", fSize, n1, Tz);
 	// printf("| free v ");fflush(stdout);
-	// trackFree(&v, ALLOC_ALIGN);
+	// trackFree(v);
 	//
  // 	const size_t	mBytes = v3*fSize;
  // 	printf("| realoc m2 ");
