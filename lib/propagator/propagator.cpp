@@ -339,7 +339,7 @@ void	tunePropagator (Scalar *field) {
 	Profiler &prof = getProfiler(PROF_TUNER);
 
 	std::chrono::high_resolution_clock::time_point start, end;
-	std::chrono::nanoseconds bestTime, lastTime;
+	size_t bestTime, lastTime, cTime;
 
 	LogMsg (VERB_HIGH, "Started tuner");
 	prof.start();
@@ -371,7 +371,8 @@ void	tunePropagator (Scalar *field) {
 				std::string fDev(mDev);
 
 				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev) {
-					if (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth()) {
+					if ((field->Device() == DEV_CPU && (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth())) ||
+					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
 						found = true;
 						prop->SetBlockX(rBx);
 						prop->SetBlockY(rBy);
@@ -422,9 +423,11 @@ void	tunePropagator (Scalar *field) {
 	propagate(field, 0.);
 	end   = std::chrono::high_resolution_clock::now();
 
-	bestTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start);
+	cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
-	LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime.count());
+	MPI_Allreduce(&cTime, &bestTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+
+	LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime);
 
 	prop->AdvanceBlockSize();
 
@@ -434,9 +437,10 @@ void	tunePropagator (Scalar *field) {
 		propagate(field, 0.);
 		end   = std::chrono::high_resolution_clock::now();
 
-		lastTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start);
+		cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+		MPI_Allreduce(&cTime, &lastTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
 
-		LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), lastTime.count());
+		LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), lastTime);
 
 		if (lastTime < bestTime) {
 			bestTime = lastTime;
@@ -471,7 +475,7 @@ void	tunePropagator (Scalar *field) {
 	propProf.reset(prop->Name());
 
 	prop->SetBestBlock();
-	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime.count());
+	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
 
 	/*	Write cache file if necessary, block of rank 0 prevails		*/
 

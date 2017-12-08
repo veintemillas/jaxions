@@ -68,10 +68,12 @@
 
 			if (isGpu) {
 				do {
-					if (xBlock+16 <= xMax) {
-						xBlock += 16;
+					if (xBlock < xMax) {
+						do {
+							xBlock++;
+						}	while ((xSize % xBlock) != 0);
 					} else {
-						xBlock = 32;
+						xBlock = 8;
 
 						if (yBlock < yMax) {
 							do {
@@ -151,7 +153,7 @@
 				if (yTmp*maxGridSize(2) < Lz)
 					LogError("Error: not enough threads on gpu to accomodate z-dimension");
 
-				xBest = xBlock = 32;
+				xBest = xBlock = 8;
 				yBest = yBlock = 1;
 				zBest = zBlock = 1;
 			}

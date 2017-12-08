@@ -438,13 +438,10 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			if (fIdx & FIELD_M)
-			{
+			if (fIdx & FIELD_M) {
 				cudaMemcpyAsync(static_cast<char *> (m) + n2*fSize, static_cast<char *> (m_d) + n2*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m) + n3*fSize, static_cast<char *> (m_d) + n3*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
-			}
-			else
-			{
+			} else {
 				cudaMemcpyAsync(static_cast<char *> (m2) + n2*fSize, static_cast<char *> (m2_d) + n2*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m2) + n3*fSize, static_cast<char *> (m2_d) + n3*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			}
@@ -463,8 +460,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			if (fIdx & FIELD_M)
-			{
+			if (fIdx & FIELD_M) {
 				cudaMemcpyAsync(static_cast<char *> (m_d),                 static_cast<char *> (m),                 n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m_d) + (n3+n2)*fSize, static_cast<char *> (m) + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			} else {

@@ -105,7 +105,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 				const uint Lx, const uint Sf, const uint Vo, const uint Vf)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
-	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Lx*(threadIdx.y + blockDim.y*blockIdx.y) + Sf*(threadIdx.z + blockDim.z*blockIdx.z);
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 
 	if	(idx >= Vf)
 		return;
@@ -122,9 +122,10 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
 */
-	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3	  gridSize((Lx+xBlock-1)/xBlock, (Lx+yBlock-1)/yBlock, (Lz2+zBlock-1)/zBlock);
-	dim3	  blockSize(xBlock, yBlock, zBlock);
+	const uint Sf  = Lx*Lx;
+	const uint Lz2 = (Vf-Vo)/Sf;
+	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
+	dim3 blockSize(xBlock, yBlock, 1);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -145,92 +146,92 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		switch (VQcd) {
 			case	VQCD_1:
 			propagateKernel<double, VQCD_1>		<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2:
 			propagateKernel<double, VQCD_1_PQ_2>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2:
 			propagateKernel<double, VQCD_2>		<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_RHO:
 			propagateKernel<double, VQCD_1_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_RHO:
 			propagateKernel<double, VQCD_1_PQ_2_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_RHO:
 			propagateKernel<double, VQCD_2_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO:
 			propagateKernel<double, VQCD_1_DRHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO:
 			propagateKernel<double, VQCD_1_PQ_2_DRHO><<<gridSize,blockSize,0,stream>>>((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO:
 			propagateKernel<double, VQCD_2_DRHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL:
 			propagateKernel<double, VQCD_1_DALL>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL:
 			propagateKernel<double, VQCD_1_PQ_2_DALL><<<gridSize,blockSize,0,stream>>>((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL:
 			propagateKernel<double, VQCD_2_DALL>	<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO_RHO:
 			propagateKernel<double, VQCD_1_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO_RHO:
 			propagateKernel<double, VQCD_1_PQ_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>>((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO_RHO:
 			propagateKernel<double, VQCD_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL_RHO:
 			propagateKernel<double, VQCD_1_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL_RHO:
 			propagateKernel<double, VQCD_1_PQ_2_DALL_RHO><<<gridSize,blockSize,0,stream>>>((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL_RHO:
 			propagateKernel<double, VQCD_2_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			default:
@@ -254,92 +255,92 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		switch (VQcd) {
 			case	VQCD_1:
 			propagateKernel<float, VQCD_1>		<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2:
 			propagateKernel<float, VQCD_1_PQ_2>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2:
 			propagateKernel<float, VQCD_2>		<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_RHO:
 			propagateKernel<float, VQCD_1_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_RHO:
 			propagateKernel<float, VQCD_1_PQ_2_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_RHO:
 			propagateKernel<float, VQCD_2_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO:
 			propagateKernel<float, VQCD_1_DRHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO:
 			propagateKernel<float, VQCD_1_PQ_2_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO:
 			propagateKernel<float, VQCD_2_DRHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL:
 			propagateKernel<float, VQCD_1_DALL>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL:
 			propagateKernel<float, VQCD_1_PQ_2_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL:
 			propagateKernel<float, VQCD_2_DALL>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO_RHO:
 			propagateKernel<float, VQCD_1_DRHO_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO_RHO:
 			propagateKernel<float, VQCD_1_PQ_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO_RHO:
 			propagateKernel<float, VQCD_2_DRHO_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL_RHO:
 			propagateKernel<float, VQCD_1_DALL_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL_RHO:
 			propagateKernel<float, VQCD_1_PQ_2_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL_RHO:
 			propagateKernel<float, VQCD_2_DALL_RHO>	<<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, (complex<float> *) m2,
-												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			default:
@@ -441,7 +442,7 @@ template<typename Float>
 __global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
-	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Lx*(threadIdx.y + blockDim.y*blockIdx.y) + Sf*(threadIdx.z + blockDim.z*blockIdx.z);
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 
 	if	(idx >= Vf)
 		return;
@@ -455,7 +456,7 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 			      const uint Vf)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
-	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Lx*(threadIdx.y + blockDim.y*blockIdx.y) + Sf*(threadIdx.z + blockDim.z*blockIdx.z);
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 
 	if	(idx >= Vf)
 		return;
@@ -472,8 +473,8 @@ void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double
 	dim3	blockSize(BSSIZE,1,1);
 */
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3	  gridSize((Lx+xBlock-1)/xBlock, (Lx+yBlock-1)/yBlock, (Lz2+zBlock-1)/zBlock);
-	dim3	  blockSize(xBlock, yBlock, zBlock);
+	dim3 gridSize((Lx*Lx+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
+	dim3 blockSize(xBlock, yBlock, 1);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -496,9 +497,10 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
 */
-	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3	  gridSize((Lx+xBlock-1)/xBlock, (Lx+yBlock-1)/yBlock, (Lz2+zBlock-1)/zBlock);
-	dim3	  blockSize(xBlock, yBlock, zBlock);
+	const uint Sf  = Lx*Lx;
+	const uint Lz2 = (Vf-Vo)/Sf;
+	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
+	dim3 blockSize(xBlock, yBlock, 1);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -518,92 +520,92 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		switch (VQcd) {
 			case	VQCD_1:
 			updateVKernel<double, VQCD_1><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2:
 			updateVKernel<double, VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											     zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,  ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											     zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,  ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2:
 			updateVKernel<double, VQCD_2><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_RHO:
 			updateVKernel<double, VQCD_1_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_RHO:
 			updateVKernel<double, VQCD_1_PQ_2_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_RHO:
 			updateVKernel<double, VQCD_2_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO:
 			updateVKernel<double, VQCD_1_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO:
 			updateVKernel<double, VQCD_1_PQ_2_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO:
 			updateVKernel<double, VQCD_2_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL:
 			updateVKernel<double, VQCD_1_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL:
 			updateVKernel<double, VQCD_1_PQ_2_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL:
 			updateVKernel<double, VQCD_2_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO_RHO:
 			updateVKernel<double, VQCD_1_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO_RHO:
 			updateVKernel<double, VQCD_1_PQ_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO_RHO:
 			updateVKernel<double, VQCD_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL_RHO:
 			updateVKernel<double, VQCD_1_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL_RHO:
 			updateVKernel<double, VQCD_1_PQ_2_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL_RHO:
 			updateVKernel<double, VQCD_2_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
-											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Lx*Lx, Vo, Vf);
+											  	zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			default:
@@ -626,92 +628,92 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		switch (VQcd) {
 			case	VQCD_1:
 			updateVKernel<float, VQCD_1><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,
-											  ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2:
 			updateVKernel<float, VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,
-											       ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											       ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2:
 			updateVKernel<float, VQCD_2><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_RHO:
 			updateVKernel<float, VQCD_1_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_RHO:
 			updateVKernel<float, VQCD_1_PQ_2_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_RHO:
 			updateVKernel<float, VQCD_2_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO:
 			updateVKernel<float, VQCD_1_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO:
 			updateVKernel<float, VQCD_1_PQ_2_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO:
 			updateVKernel<float, VQCD_2_DRHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL:
 			updateVKernel<float, VQCD_1_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL:
 			updateVKernel<float, VQCD_1_PQ_2_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL:
 			updateVKernel<float, VQCD_2_DALL><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DRHO_RHO:
 			updateVKernel<float, VQCD_1_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DRHO_RHO:
 			updateVKernel<float, VQCD_1_PQ_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DRHO_RHO:
 			updateVKernel<float, VQCD_2_DRHO_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_DALL_RHO:
 			updateVKernel<float, VQCD_1_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_1_PQ_2_DALL_RHO:
 			updateVKernel<float, VQCD_1_PQ_2_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			case	VQCD_2_DALL_RHO:
 			updateVKernel<float, VQCD_2_DALL_RHO><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v,
-											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Lx*Lx, Vo, Vf);
+											  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
 			default:
