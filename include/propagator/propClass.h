@@ -160,22 +160,22 @@
 		for (int s = 0; s<nStages; s+=2) {
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, 2*uS, uV, precision,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uS, 2*uS, precision,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uV,  ext, precision,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, delta2, nQcd, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 			*z += dz*d1;
 
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, 2*uS, uV, precision,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M2);
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uS, 2*uS, precision,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uV,  ext, precision,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, delta2, nQcd, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 			*z += dz*d2;
@@ -186,12 +186,12 @@
 
 			const double	c0 = c[nStages];
 
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, 2*uS, uV, precision,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, uS, 2*uS, precision,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, uV,  ext, precision,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., delta2, nQcd, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 		}

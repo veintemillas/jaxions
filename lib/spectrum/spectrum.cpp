@@ -112,16 +112,16 @@ void	SpecBin::fillBins	() {
 
 			switch	(sType) {
 				case	SPECTRUM_K:
-					tBinK[myBin + powMax*tIdx] += mw;
+					tBinK.at(myBin + powMax*tIdx) += mw;
 					break;
 
 				case	SPECTRUM_P:
-					tBinP[myBin + powMax*tIdx] += m2;
+					tBinP.at(myBin + powMax*tIdx) += m2;
 					break;
 
 				default:
-					tBinG[myBin + powMax*tIdx] += mw*k2;
-					tBinV[myBin + powMax*tIdx] += mw*mass;
+					tBinG.at(myBin + powMax*tIdx) += mw*k2;
+					tBinV.at(myBin + powMax*tIdx) += mw*mass;
 					break;
 			}
 		}

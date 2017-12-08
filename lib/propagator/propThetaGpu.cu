@@ -82,7 +82,8 @@ template<typename Float, const bool wMod>
 __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float dzc, const Float dzd,
 				     const Float ood2, const Float iz, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const Float zP=0, const Float tPz=0)
 {
-	uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 
 	if	(idx >= Vf)
 		return;
@@ -91,7 +92,7 @@ __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __res
 }
 
 void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
+		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
@@ -121,11 +122,14 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 }
 
 void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
+		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
-	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3 gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
-	dim3 blockSize(BLSIZE,1,1);
+	const uint Sf  = Lx*Lx;
+	const uint Lz2 = (Vf-Vo)/Sf;
+//	dim3 gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
+//	dim3 blockSize(BLSIZE,1,1);
+	dim3 gridSize((Sf+xBlock-1)/xBlock,(Lz2+yBlock-1)/yBlock,1);
+	dim3 blockSize(xBlock,yBlock,1);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -152,16 +156,17 @@ void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 }
 
 void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream, const bool wMod)
+		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
+		     cudaStream_t &stream, const bool wMod)
 {
 	switch (wMod) {
 	
 		case	true:
-			propThModGpu(m, v, m2, z, dz, c, d, delta2, nQcd, Lx, Lz, Vo, Vf, precision, stream);
+			propThModGpu(m, v, m2, z, dz, c, d, delta2, nQcd, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
 
 		case	false:
-			propThNmdGpu(m, v, m2, z, dz, c, d, delta2, nQcd, Lx, Lz, Vo, Vf, precision, stream);
+			propThNmdGpu(m, v, m2, z, dz, c, d, delta2, nQcd, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
 	}
 

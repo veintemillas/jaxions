@@ -130,7 +130,7 @@
 					size_t myBin = floor((cVal - baseVal)/step);
 
 					if (myBin < N)	// Comparison with NaN will always return false
-						tBins[myBin + N*tIdx]++;
+						tBins.at(myBin + N*tIdx)++;
 					else
 						LogError ("Warning: Binner class found value out of range %f (interval [%f, %f], assigned bin %lu of %lu)", cVal, baseVal, maxVal+0.5*step, myBin, N);
 				}

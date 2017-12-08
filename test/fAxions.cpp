@@ -546,6 +546,9 @@ int	main (int argc, char *argv[])
 		} else {
 			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 
+			if (axion->Device() == DEV_GPU)
+				axion->transferCpu(FIELD_M2);
+
 			if (axion->Precision() == FIELD_SINGLE) {
 				Binner<100, float> thBin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							 [z = zNow] (float x)  -> double { return (double) (x/z);});
