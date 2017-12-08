@@ -474,7 +474,7 @@ int	main (int argc, char *argv[])
 					LogOut("              TRANSITION TO THETA (z=%.4f)\n",z_now);
 					LogOut("              shift = %f 			\n", saskia);
 
-					cmplxToTheta (axion, shiftz);
+					cmplxToTheta (axion, shiftz, aMod);
 
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS

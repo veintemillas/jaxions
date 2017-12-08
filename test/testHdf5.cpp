@@ -195,7 +195,7 @@ int	main (int argc, char *argv[])
 
 //	LogOut("--------------------------------------------------\n");
 //	LogOut("TO THETA\n");
-//	cmplxToTheta (axion);
+//	cmplxToTheta (axion, 0., aMod);
 //	fflush(stdout);
 //	LogOut("--------------------------------------------------\n");
 //	index++;

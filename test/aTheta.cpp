@@ -266,7 +266,7 @@ int	main (int argc, char *argv[])
 
 			double saskia = 0.0;
 
-			cmplxToTheta (axion, saskia);
+			cmplxToTheta (axion, saskia, aMod);
 //			energy(axion, eRes, true, delta, nQcd);
 //			createMeas(axion, index+1);
 //			writeEnergy(axion, eRes);

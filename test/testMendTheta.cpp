@@ -195,7 +195,7 @@ int	main (int argc, char *argv[])
 
 			double saskia = 0.0;
 
-			cmplxToTheta (axion, saskia);
+			cmplxToTheta (axion, saskia, false);
 			index++;
 
 			if (cDev != DEV_CPU) {

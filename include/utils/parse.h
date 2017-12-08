@@ -44,6 +44,7 @@ extern bool uGamma;
 extern bool uPot;
 extern bool uZin;
 extern bool uZfn;
+extern bool aMod;
 extern bool spectral;
 
 extern FieldPrecision sPrec;

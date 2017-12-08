@@ -46,6 +46,7 @@ bool uGamma   = false;
 bool uZin     = false;
 bool uZfn     = false;
 bool spectral = false;
+bool aMod     = false;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -113,29 +114,30 @@ void	printUsage(char *name)
 	printf("  --lowmem                      Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
 	printf("  --prec  double/single         Precision of the axion field simulation (default single)\n");
 	printf("  --device cpu/gpu              Uses nVidia Gpus to accelerate the computations (default, use cpu).\n");
-	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4) \n");
+	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
-	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled) \n");
+	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 
 	printf("\nPhysical parameters:\n");
-	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion)(not parsed yet)\n");
+	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
+	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
 	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
 	printf("  --zf    [float]               Final value of the redshift (default 1.0).\n");
 	printf("  --lsize [float]               Physical size of the system (default 4.0).\n");
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
 	printf("  --msa   [float]               Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
-	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1) \n");
-	printf("  --vqcd2                       Variant of QCD potential (default, disabled) \n");
-	printf("  --vPQ2                        Variant of PQ potential (default, disabled) \n");
+	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
+	printf("  --vqcd2                       Variant of QCD potential (default, disabled).\n");
+	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
 
 
 	printf("\nInitial conditions:\n");
 	printf("  --icinfo                      Prints more info about initial conditions.\n");
 	printf("  --ctype smooth/kmax/tkachev   Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
-	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions\n");
+	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions.\n");
 	printf("\n");
 	printf("  --kmax  [int]                 Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
 	printf("  --kcr   [float]               kritical kappa (default 1.0).\n");
@@ -177,23 +179,23 @@ void	printICoptions()
 	printf(" [smooth]                                          Point based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  Random phase at each point (default).\n");
-	printf("  --smvar [string]                                 Spectial initial distributions .\n");
-	printf("  --smvar axnoise  --mode0 [float] --kcr [float]   theta = mode0+random{-1,1}*kcr .\n");
-	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr .\n");
+	printf("  --smvar [string]                                 Spectial initial distributions.\n");
+	printf("  --smvar axnoise  --mode0 [float] --kcr [float]   theta = mode0+random{-1,1}*kcr.\n");
+	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr.\n");
 	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n\n");
 
 	printf("  --smvar mc   --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x-N/2)^2).\n");
 	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n\n");
 
-	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4\n");
-	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4\n\n");
+	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
+	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n\n");
 
 	printf(" [kmax]                                            Saxion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT  .\n");
-	printf("                                                   for 3D k < kmax = min(kmax, N/2-1) .\n");
-	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2) .\n");
-	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0) \n");
+	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT.\n");
+	printf("                                                   for 3D k < kmax = min(kmax, N/2-1).\n");
+	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
+	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n");
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
@@ -1090,6 +1092,15 @@ int	parseArgs (int argc, char *argv[])
 				pType |= PROP_SPEC;
 
 			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--cax"))
+		{
+			aMod = true;
+
 			procArgs++;
 			passed = true;
 			goto endFor;

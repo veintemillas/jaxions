@@ -55,7 +55,7 @@ int	main (int argc, char *argv[])
 
 	old = std::chrono::high_resolution_clock::now();
 	LogOut("Complex to theta\n");
-	cmplxToTheta (axion);
+	cmplxToTheta (axion, 0., aMod);
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
 	LogOut("Complex2Theta time %f min\n",elapsed.count()*1.e-3/60.);

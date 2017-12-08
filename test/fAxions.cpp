@@ -417,7 +417,7 @@ int	main (int argc, char *argv[])
 						LogOut("                  shift = %f                      \n", saskia);
 						LogOut("--------------------------------------------------\n");
 
-						cmplxToTheta (axion, zShift);
+						cmplxToTheta (axion, zShift, aMod);
 
 						createMeas(axion, 10001);
 
