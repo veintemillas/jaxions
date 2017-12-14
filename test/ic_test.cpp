@@ -120,7 +120,7 @@ int	main (int argc, char *argv[])
 	}
 
 	LogOut("spexth \n");
-	powerspectrumexpitheta(axion) ;
+	//powerspectrumexpitheta(axion) ;	DEPRECATED, USE SPECTRUM INSTEAD
 	LogOut("write \n");
 	if (commRank() == 0)
 	{

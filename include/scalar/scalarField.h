@@ -50,24 +50,13 @@
 		/* Eliminar */
 
 		template<typename Float>
-		void	ENERGY(const Float zz, FILE *enWrite, Float &Grho1, Float &Gtheta1, Float &Vrho1, Float &Vtheta1, Float &Krho1, Float &Ktheta1); // TEST
-        	template<typename Float>
-	        void ENERGY2(const Float zz, FILE *enWrite, double &Grho1, double &Gtheta1, double &Vrho1, double &Vtheta1, double &Krho1, double &Ktheta1); // TEST
-
-        	template<typename Float>
-	        void energymapTheta(const Float zz, const int index, void *contbin, int numbins); // TEST
-
-		template<typename Float>
 	        void contrastbin(const Float zz, const int index, void *contbin, int numbins); // TEST
 
 		template<typename Float>
 		void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
 
-		template<typename Float>
-		void	laplacianm2();
-
 		/* Fin eliminar */
-		/* Faltan: axitonfinder/contrastmap */
+		/* Falta: axitonfinder */
 
 		public:
 
@@ -139,29 +128,12 @@
 
 		/*	Eliminar	*/
 
-		void  loadHalo();										// LOADS HALO UTILITIES
-
-		void	prepareCpu(int *window);		// Sets the field for a FFT, prior to analysis
-
-		void	theta2m2();//int *window);		// COPIES c_THETA     					into m2
-		void	vheta2m2();//int *window);		// COPIES c_THETA_z (vheta)   	into m2
-		void	thetav2m2();//int *window);		// COPIES c_THETA + I*vheta   	into m2
-
-		double	maxtheta();									// RETURNS THE MAX VALUE OF THETA [OR IM m]
 		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
-		void	denstom(); 	//
-		void	autodenstom2(); 	//
-		void	mendtheta(); 	//
-		void  padder();
 
-		void	laplacian();
-
-		void	writeENERGY (double zzz, FILE *enwrite, double &Gfr, double &Gft, double &Vfr, double &Vft, double &Kfr, double &Kft); // TEST
-		void	writeMAPTHETA (double zzz, int index, void *contbin , int numbins);
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
+		void	writeMAPTHETA (double zzz, const int index, void *contbin, int numbins);
 
 		/*	Fin eliminar	*/
-		/* Faltan: halos, maxtheta y thetaDIST, esas funciones raras de m, mira los writes */
 
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
