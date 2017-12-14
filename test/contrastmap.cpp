@@ -108,10 +108,24 @@ int	main (int argc, char *argv[])
 			energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
 			//bins density
 			LogOut ("con ");
-			axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;
 			//write binned distribution
 			LogOut ("bin ");
-			writeArray(bA, 10000, "/bins", "cont");
+			{
+				double *eR = static_cast<double*>(eRes);
+				if (axion->Precision() == FIELD_SINGLE) {
+					float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+					Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+								    [eMean = eMean] (double x) -> double { return (double) (log10(x/eMean) );});
+					contBin.run();
+					writeBinner(contBin, "/bins", "contB");
+				} else {
+					double eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
+					Binner<10000,double>contBin(static_cast<double*>(axion->m2Cpu()), axion->Size(),
+								    [eMean = eMean] (double x) -> double { return (double) (log10(x/eMean) );});
+					contBin.run();
+					writeBinner(contBin, "/bins", "contB");
+				}
+			}
 
 			if ( (endredmap <= 0) || (endredmap >= sizeN) )
 			{

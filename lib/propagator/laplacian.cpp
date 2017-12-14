@@ -42,11 +42,6 @@ class	Laplacian : public Tunable
 			LogError ("Error: laplacian not supported in lowmem runs");
 			exit(0);
 		}
-
-//		if (commSize() > 1) {
-//			LogError ("Error: laplacian not supported in MPI runs");
-//			exit(0);
-//		}
 	}
 
 	void	sRunCpu	();	// Saxion laplacian

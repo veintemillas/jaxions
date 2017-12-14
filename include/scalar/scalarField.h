@@ -50,9 +50,6 @@
 		/* Eliminar */
 
 		template<typename Float>
-	        void contrastbin(const Float zz, const int index, void *contbin, int numbins); // TEST
-
-		template<typename Float>
 		void axitonfinder(const Float contrastthreshold, void *idxbin, const int numaxitons); // TEST
 
 		/* Fin eliminar */
@@ -128,10 +125,7 @@
 
 		/*	Eliminar	*/
 
-		double	thetaDIST(int numbins, void *thetabin);	// RETURNS (MAX THETA) AND BINNED DATA FOR THETA DISTRIBUTION
-
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
-		void	writeMAPTHETA (double zzz, const int index, void *contbin, int numbins);
 
 		/*	Fin eliminar	*/
 

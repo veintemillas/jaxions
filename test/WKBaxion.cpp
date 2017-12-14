@@ -181,7 +181,7 @@ int	main (int argc, char *argv[])
 								energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
 								{
 									float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
-									Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
+									Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
 														[eMean = eMean] (float x) -> float { return (double) (log10(x/eMean) );});
 									contBin.run();
 									writeBinner(contBin, "/bins", "contB");
