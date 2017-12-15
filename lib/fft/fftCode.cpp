@@ -464,6 +464,80 @@ namespace AxionFFT {
 		}
 	}
 
+	double	FFTplan::GFlops	(FFTdir cDir) {
+		double totalFlops = 0., add, mul, fma;
+
+		switch	(prec) {
+			case	FIELD_DOUBLE:
+			if (cDir & FFT_FWD) {
+				fftw_flops(static_cast<fftw_plan>(planForward), &add, &mul, &fma);
+				totalFlops += (add + mul + 2.*fma)*1.e-9;
+			}
+
+			if (cDir & FFT_BCK) {
+				fftw_flops(static_cast<fftw_plan>(planBackward), &add, &mul, &fma);
+				totalFlops += (add + mul + 2.*fma)*1.e-9;
+			}
+			break;
+
+			case	FIELD_SINGLE:
+			if (cDir & FFT_FWD) {
+				fftw_flops(static_cast<fftw_plan>(planForward), &add, &mul, &fma);
+				totalFlops += (add + mul + 2.*fma)*1.e-9;
+			}
+
+			if (cDir & FFT_BCK) {
+				fftw_flops(static_cast<fftw_plan>(planBackward), &add, &mul, &fma);
+				totalFlops += (add + mul + 2.*fma)*1.e-9;
+			}
+			break;
+		}
+
+		return	totalFlops;
+	}
+
+
+	void	initFFT		(FieldPrecision prec) {
+		LogMsg (VERB_NORMAL, "Initializing FFT using %d MPI ranks...", commSize());
+
+		if (init == true) {
+			LogMsg (VERB_HIGH, "FFT already initialized");
+			return;
+		}
+/*
+		int  *fftInitThreads;
+		void *fftPlanThreads;
+		void *fftInitMpi;
+
+		switch (prec)
+		{
+			case FIELD_DOUBLE:
+				fftInitThreads = &fftw_init_threads;
+				fftPlanThreads = &fftw_plan_with_nthreads;
+				fftInitMpi     = &fftw_mpi_init;
+				break;
+
+			case FIELD_SINGLE:
+				fftInitThreads = &fftwf_init_threads;
+				fftPlanThreads = &fftwf_plan_with_nthreads;
+				fftInitMpi     = &fftwf_mpi_init;
+				break;
+
+			default:
+				LogError ("Invalid precision");
+				return;
+				break;
+		}
+
+		if (!(*fftInitThreads()))
+		{
+			LogError ("Error initializing FFT with threads");
+			LogError ("FFT will use one thread");
+			useThreads = false;
+			*fftInitMpi();
+		} else {
+			int nThreads = omp_get_max_threads();
+
 	void	initFFT		(FieldPrecision prec) {
 		LogMsg (VERB_NORMAL, "Initializing FFT using %d MPI ranks...", commSize());
 

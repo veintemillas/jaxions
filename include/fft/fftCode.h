@@ -33,6 +33,7 @@
 //					~FFTplan() {};
 
 			void		run	(FFTdir cDir);
+			double		GFlops	(FFTdir cDir);
 
 			inline	void		SetDir (FFTdir  newDFFT) { if (dFft == FFT_NONE)   dFft = newDFFT; }
 			inline	void		SetType(FFTtype newType) { if (type == FFT_NOTYPE) type = newType; }

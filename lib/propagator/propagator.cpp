@@ -327,6 +327,9 @@ void	resetPropagator(Scalar *field) {
 void	tunePropagator (Scalar *field) {
 	// Hash CPU model so we don't mix different cache files
 
+	if (pType & PROP_SPEC)
+		return;
+
 	int myRank   = commRank();
 	int nThreads = 1;
 	bool newFile = false, found = false;

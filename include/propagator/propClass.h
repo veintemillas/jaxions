@@ -513,6 +513,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
 
+		const double ood2 = 1./delta2;
 		double *z = axion->zV();
 		double lambda = LL;
 
@@ -527,7 +528,7 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, d0, lambda, nQcd, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, d0, ood2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 			*z += dz*d0;
 		}
 
@@ -541,7 +542,7 @@
 			if (lType != LAMBDA_FIXED)
 				lambda = LL/((*z)*(*z));
 
-			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0.0, lambda, nQcd, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0.0, ood2, lambda, nQcd, fMom, Lx, S, V+S, precision);
 		}
 	}
 
@@ -583,35 +584,41 @@
 		} else {
 			switch (axion->Field()) {
 
-				case FIELD_SAXION:
+				case FIELD_SAXION: {
+					auto &planFFT   = AxionFFT::fetchPlan("SpSx");
+					double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
 					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
 						case VQCD_1:
 							return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
-								+ 5.*1.44695*log(((double) axion->Size()))));
+								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
 							break;
 
 						case VQCD_2:
 							return	(1e-9 * ((double) axion->Size()) * ((29. + 1.) * ((double) nStages) + (lastStage ? 25. + 1. : 0.)
-								+ 5.*1.44695*log(((double) axion->Size()))));
+								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
 							break;
 
 						case VQCD_1_PQ_2:
 							return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
-								+ 5.*1.44695*log(((double) axion->Size()))));
+								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
 							break;
 
 					}
-					break;
+				}
+				break;
 
 				case FIELD_AXION:
-				case FIELD_AXION_MOD:	// Seguro??
+				case FIELD_AXION_MOD: {	// Seguro??
+					auto &planFFT   = AxionFFT::fetchPlan("SpSx");
+					double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
 					return	(1e-9 * ((double) axion->Size()) * (21. * ((double) nStages) + (lastStage ? 13. : 0.)
-						+ 2.5*1.44695*log(((double) axion->Size()))));
-					break;
+						) + fftFlops);//+ 2.5*1.44695*log(((double) axion->Size()))));
+				}
+				break;
 
 				case FIELD_WKB:
-					return	0.;
-					break;
+				return	0.;
+				break;
 			}
 		}
 	}
