@@ -528,14 +528,13 @@ int	main (int argc, char *argv[])
 
 			axion->setReduced(true, endredmap, endredmap/zGrid);
 			rts = strings(axion);
+			curStrings = rts.strDen;
 
 			if (p3DthresholdMB/((double) curStrings) > 1.)
 				writeString(axion, rts, true);
 			else
 				writeString(axion, rts, false);
 			axion->setReduced(false);
-
-			curStrings = rts.strDen;
 
 			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
 			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
