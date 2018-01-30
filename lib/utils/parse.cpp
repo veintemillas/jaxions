@@ -76,7 +76,7 @@ bool p2dmapo  	  = false ;
 bool p3dstrings	  = false ;
 bool p3dwalls	  = false ;
 bool pconfinal 	  = false ;
-bool pconfinalwkb = true ;
+bool pconfinalwkb = false ;
 
 void	createOutput() {
 	struct stat tStat;

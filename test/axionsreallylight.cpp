@@ -474,7 +474,7 @@ int	main (int argc, char *argv[])
 					LogOut("              TRANSITION TO THETA (z=%.4f)\n",z_now);
 					LogOut("              shift = %f 			\n", saskia);
 
-					cmplxToTheta (axion, shiftz, aMod);
+					cmplxToTheta (axion, shiftz);
 
 					// SHIFTS THETA TO A CONTINUOUS FIELD
 					// REQUIRED UNFOLDED FIELDS
@@ -537,6 +537,14 @@ int	main (int argc, char *argv[])
 			if (axion->Lambda() == LAMBDA_Z2)
 				llphys = llconstantZ2/(z_now*z_now);
 			shiftz = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+
+
+			if ((*axion->zV()) > zFinl)
+			{
+				// THE LAST MEASURE IS DONE AT THE END
+				LogOut("zf reached! ENDING FINALLY... \n");
+				break;
+			}
 
 			createMeas(axion, index);
 
@@ -630,11 +638,11 @@ int	main (int argc, char *argv[])
 
 
 
-			if ((*axion->zV()) > zFinl)
-			{
-				LogOut("zf reached! ENDING FINALLY... \n");
-				break;
-			}
+			// if ((*axion->zV()) > zFinl)
+			// {
+			// 	LogOut("zf reached! ENDING FINALLY... \n");
+			// 	break;
+			// }
 
 
 
@@ -650,11 +658,12 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n");
 	fflush(stdout);
 
+	LogOut ("Final measurement file is: %05d \n", index);
 	LogOut("Unfold ... ");
 	munge(UNFOLD_ALL);
 	LogOut("| ");
 
-	index++	;
+	//index++	; // LAST MEASUREMENT IS NOT PRINTED INSIDE THE LOOP, IT IS DONE HERE INSTEAD
 	z_now = (*axion->zV());
 
 	if (axion->Field() == FIELD_AXION)
@@ -665,6 +674,7 @@ int	main (int argc, char *argv[])
 					writeConf(axion, index);
 					LogOut ("Done!\n");
 			}
+
 
 		createMeas(axion, index);
 		if(p2dmapo)
@@ -731,7 +741,7 @@ int	main (int argc, char *argv[])
 			{
 						WKB wonka(axion, axion);
 
-						LogOut ("WKBing %d to %.4f ... ", index, wkb2z);
+						LogOut ("WKBing %d (z=%.4f) to %d (%.4f) ... ", index, z_now, index+1, wkb2z);
 
 						wonka(wkb2z) 	;
 						z_now = (*axion->zV());
@@ -808,24 +818,25 @@ int	main (int argc, char *argv[])
 
 			// --------------------------------------------------
 			// FINAL REDUCE MAP (note it reads from file)
+			// THIS IS REDUNDANT
 			// --------------------------------------------------
 			//
-			if ( endredmap > 0)
-			{
-				// LogOut ("Reducing map %d to %d^3 ... ", index, endredmap);
-				// 	char mirraa[128] ;
-				// 	strcpy (mirraa, outName);
-				// 	strcpy (outName, "./out/m/axion\0");
-				// 	reduceEDens(index, endredmap, endredmap) ;
-				// 	strcpy (outName, mirraa);
-				// LogOut ("Done!\n");
-
-				createMeas(axion, index+1);
-				writeEnergy(axion, eRes);
-				writeEDensReduced(axion, index+1, endredmap, endredmap/zGrid);
-				destroyMeas();
-
-			}
+			// if ( endredmap > 0)
+			// {
+			// 	// LogOut ("Reducing map %d to %d^3 ... ", index, endredmap);
+			// 	// 	char mirraa[128] ;
+			// 	// 	strcpy (mirraa, outName);
+			// 	// 	strcpy (outName, "./out/m/axion\0");
+			// 	// 	reduceEDens(index, endredmap, endredmap) ;
+			// 	// 	strcpy (outName, mirraa);
+			// 	// LogOut ("Done!\n");
+      //
+			// 	createMeas(axion, index+1);
+			// 	writeEnergy(axion, eRes);
+			// 	writeEDensReduced(axion, index+1, endredmap, endredmap/zGrid);
+			// 	destroyMeas();
+      //
+			// }
 
   }
 	//else{} if field is saxion
