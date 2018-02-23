@@ -25,7 +25,7 @@ class	Reducer : public Tunable
 	std::function<complex<Float>(int, int, int, complex<Float>)> filter;
 
 	template<typename Field1, typename Field2, typename Field3, const bool pad>
-	void	transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan);
+	void	transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan, FFTdir = FFT_FWDBCK);
 
 	public:
 
@@ -44,8 +44,10 @@ Scalar*	Reducer<Float>::runGpu	()
 	LogMsg	 (VERB_NORMAL, "Reducer runs on cpu");
 
 	axionField->transferCpu(FIELD_MV);
+	axionField->transferCpu(FIELD_M2);
 	Scalar *reduced = runCpu();
 	reduced->transferDev(FIELD_MV);
+	reduced->transferDev(FIELD_M2);
 	return	reduced;
 #else
 	LogError ("Error: gpu support not built");
@@ -55,7 +57,7 @@ Scalar*	Reducer<Float>::runGpu	()
 
 template<typename Float>
 template<typename Field1, typename Field2, typename Field3, const bool pad>
-void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan) {
+void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan, FFTdir fDir) {
 	auto &myPlan = AxionFFT::fetchPlan(plan);
 	int Lx  = axionField->Length();
 	int Lz  = axionField->Depth();
@@ -74,27 +76,29 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 
 	size_t Sm = Lx*Lz;
 
-	/*	Pad f1 into f2 for the horrible r2c transform			*/
-	if (pad) {
-		if (static_cast<void*>(f1) == static_cast<void*>(f2)) {
-			// Energy
-			for (size_t sl=Sm-1; sl>0; sl--) {
-				auto    oOff = sl* Lx;
-				auto    fOff = sl*(Lx+2);
-				memmove (f1+fOff, f1+oOff, sizeof(Field1)*Lx);
-			}
-		} else {
-			// Axion
-			#pragma omp parallel for schedule(static)
-			for (size_t sl=0; sl<Sm; sl++) {
-				auto    oOff = sl* Lx;
-				auto    fOff = sl*(Lx+2);
-				memcpy  (f3+fOff, f1+oOff, sizeof(Field1)*Lx);
+	if (fDir != FFT_NONE) {
+		/*	Pad f1 into f2 for the horrible r2c transform			*/
+		if (pad) {
+			if (static_cast<void*>(f1) == static_cast<void*>(f2)) {
+				// Energy
+				for (size_t sl=Sm-1; sl>0; sl--) {
+					auto    oOff = sl* Lx;
+					auto    fOff = sl*(Lx+2);
+					memmove (f1+fOff, f1+oOff, sizeof(Field1)*Lx);
+				}
+			} else {
+				// Axion
+				#pragma omp parallel for schedule(static)
+				for (size_t sl=0; sl<Sm; sl++) {
+					auto    oOff = sl* Lx;
+					auto    fOff = sl*(Lx+2);
+					memcpy  (f3+fOff, f1+oOff, sizeof(Field1)*Lx);
+				}
 			}
 		}
-	}
 
-	myPlan.run(FFT_FWD);
+		myPlan.run(FFT_FWD);
+	}
 
 	int dX = (pad == true) ? hLx+1 : Lx;
 
@@ -185,11 +189,6 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 template<typename Float>
 Scalar*	Reducer<Float>::runCpu	()
 {
-//	if (axionField->TotalDepth()%(newLz * commSize()) != 0) {
-//		LogError ("Error: with MPI the new Lz dimension must be divisible by the number of ranks");
-//		return	nullptr;
-//	}
-
 	Scalar	*outField = nullptr;
 
 	if (!inPlace) {
@@ -270,6 +269,8 @@ Scalar*	Reducer<Float>::runCpu	()
 				memcpy(vD, fOut, volData);
 			}
 		}
+
+		axionField->setM2 (M2_DIRTY);
 	} else {
 		/*	Reduce m2 means reduce energy, so it's always real	*/
 		/*	and ALWAYS in place					*/
@@ -278,16 +279,31 @@ Scalar*	Reducer<Float>::runCpu	()
 
 		/*	Reduce rho energy as well, needs new FFT		*/
 		if (axionField->Field() == FIELD_SAXION) {
+			if (axionField->m2Status() != M2_ENERGY) {
+				LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
+				return	outField;
+			}
 			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
 			mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 			mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
 			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
 		} else {
-			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
+			if ((axionField->m2Status() != M2_ENERGY) && (axionField->m2Status() != M2_ENERGY_FFT)) {
+				LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
+				return	outField;
+			}
+
+			if (axionField->m2Status() == M2_ENERGY_FFT) {
+				LogMsg (VERB_HIGH, "Reusing FFT from previous computation");
+				transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx", FFT_NONE);
+			} else
+				transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
 		}
 		// Signal the axionfield that it contains a reduced energy
 		axionField->setReduced(true, newLx, newLz);
+		axionField->setM2 (M2_ENERGY);
 	}
+
 
 	return	outField;
 }

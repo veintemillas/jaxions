@@ -30,7 +30,7 @@ void	SpecBin::fillBins	() {
 
 	const int mIdx = commThreads();
 
-	size_t	zBase = (Lx/commSize())*commRank();
+	size_t	zBase = (Ly/commSize())*commRank();
 
 	std::vector<double>	tBinK;
 	std::vector<double>	tBinG;
@@ -213,6 +213,8 @@ void	SpecBin::nRun	() {
 				else
 					fillBins<double, SPECTRUM_K, false>();
 			}
+
+			field->setM2     (M2_DIRTY);
 		}
 		break;
 
@@ -271,6 +273,8 @@ void	SpecBin::nRun	() {
 				else
 					fillBins<double, SPECTRUM_K, false>();
 			}
+
+			field->setM2     (M2_DIRTY);
 		}
 		break;
 
@@ -288,20 +292,27 @@ void	SpecBin::pRun	() {
 
 	char *mA = static_cast<char *>(field->m2Cpu());
 
-	// contrast bin is assumed in m2 (with ghost bytes)
-	// Add the f@*&#ng padding plus ghost region, no parallelization
-	for (int sl=Sm-1; sl>=0; sl--) {
-		auto	oOff = sl*field->DataSize()*(Ly);
-		auto	fOff = sl*field->DataSize()*(Ly+2);
-		memmove	(mA+fOff, mA+oOff, dataLine);
+	if ((field->m2Status() != M2_ENERGY) && (field->m2Status() != M2_ENERGY_FFT)) {
+		LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
+		return;
 	}
 
-	if (field->Field() == FIELD_SAXION) {
-		auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
-		myPlan.run(FFT_FWD);
-	} else {
-		auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-		myPlan.run(FFT_FWD);
+	if (field->m2Status() == M2_ENERGY) {
+		// contrast bin is assumed in m2 (with ghost bytes)
+		// Add the f@*&#ng padding plus ghost region, no parallelization
+		for (int sl=Sm-1; sl>=0; sl--) {
+			auto	oOff = sl*field->DataSize()*(Ly);
+			auto	fOff = sl*field->DataSize()*(Ly+2);
+			memmove	(mA+fOff, mA+oOff, dataLine);
+		}
+
+		if (field->Field() == FIELD_SAXION) {
+			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			myPlan.run(FFT_FWD);
+		} else {
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+			myPlan.run(FFT_FWD);
+		}
 	}
 
 	switch (fPrec) {
@@ -319,6 +330,8 @@ void	SpecBin::pRun	() {
 				fillBins<double,  SPECTRUM_P, false>();
 			break;
 	}
+
+	field->setM2     (M2_ENERGY_FFT);
 }
 
 //------------------------------------------------------------------------------
@@ -331,7 +344,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 	const int mIdx = commThreads();
 
-	size_t	zBase = (Lx/commSize())*commRank();
+	size_t	zBase = (Ly/commSize())*commRank();
 
 	//prefactor is (2 pi^2 neigh^2/N^2)
 	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;

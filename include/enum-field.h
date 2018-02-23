@@ -246,16 +246,11 @@
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {
-		FFT_NONE   = 0,
-		FFT_FWD    = 1,
-		FFT_BCK    = 2,
-		FFT_FWDBCK = 3,
+			FFT_NONE   = 0,
+			FFT_FWD    = 1,
+			FFT_BCK    = 2,
+			FFT_FWDBCK = 3,
 		}	FFTdir;
-
-//		inline FFTdir	operator &  (FFTdir  lhs, const FFTdir rhs) { return static_cast<FFTdir>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
-//		inline FFTdir&	operator &= (FFTdir &lhs, const FFTdir rhs) { lhs  = static_cast<FFTdir>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
-//		inline FFTdir	operator |  (FFTdir  lhs, const FFTdir rhs) { return static_cast<FFTdir>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
-//		inline FFTdir&	operator |= (FFTdir &lhs, const FFTdir rhs) { lhs  = static_cast<FFTdir>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
 
 		typedef	enum	PropType_s {
 			PROP_NONE	= 0,		// For parsing
@@ -271,11 +266,6 @@
 			PROP_SRKN4	= 17,
 		}	PropType;
 
-//		inline PropType		operator &  (PropType  lhs, const PropType rhs) { return static_cast<PropType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
-//		inline PropType&	operator &= (PropType &lhs, const PropType rhs) { lhs  = static_cast<PropType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
-//		inline PropType		operator |  (PropType  lhs, const PropType rhs) { return static_cast<PropType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
-//		inline PropType&	operator |= (PropType &lhs, const PropType rhs) { lhs  = static_cast<PropType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
-
 		typedef	enum	SpectrumType_s {
 			SPECTRUM_K	= 1,
 			SPECTRUM_G	= 2,
@@ -283,11 +273,6 @@
 			SPECTRUM_GV	= 6,
 			SPECTRUM_P	= 8,
 		}	SpectrumType;
-
-//		inline SpectrumType	operator &  (SpectrumType  lhs, const FFTdir rhs) { return static_cast<SpectrumType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); }
-//		inline SpectrumType&	operator &= (SpectrumType &lhs, const FFTdir rhs) { lhs  = static_cast<SpectrumType>(static_cast<int>(lhs) & static_cast<const int>(rhs)); return lhs; }
-//		inline SpectrumType	operator |  (SpectrumType  lhs, const FFTdir rhs) { return static_cast<SpectrumType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); }
-//		inline SpectrumType&	operator |= (SpectrumType &lhs, const FFTdir rhs) { lhs  = static_cast<SpectrumType>(static_cast<int>(lhs) | static_cast<const int>(rhs)); return lhs; }
 
 		typedef	enum	FindType_s {
 			FIND_MAX,
@@ -300,6 +285,13 @@
 			MAP_ALL   = 3,
 			MAP_NONE  = 0,
 		}	MapType;
+
+		typedef	enum	StatusM2_s {
+			M2_ENERGY,
+			M2_ENERGY_FFT,
+			M2_STRINGMAP,
+			M2_DIRTY,
+		}	StatusM2;
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__
