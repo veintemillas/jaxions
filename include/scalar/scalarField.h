@@ -29,6 +29,7 @@
 		FieldPrecision	precision;
 		FieldType	fieldType;
 		LambdaType	lambdaType;
+		StatusM2	statusM2;
 
 		size_t	fSize;
 		size_t	mAlign;
@@ -98,6 +99,7 @@
 		DeviceType	Device()     { return device; }
 		LambdaType	Lambda()     { return lambdaType; }
 		FieldType	Field()      { return fieldType; }
+		StatusM2	m2Status()   { return statusM2; }
 
 		void		setLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
@@ -111,7 +113,9 @@
 		double		*zV()        { return z; }
 		const double	*zV() const  { return z; }
 
-		void		setZ(const double newZ) { *z = newZ; }
+
+		void	setZ (const double newZ)    { *z = newZ; }
+		void	setM2(const StatusM2 newM2) { statusM2 = newM2; }
 
 		void	setField	(FieldType field);
 		void	setFolded	(bool foli);
