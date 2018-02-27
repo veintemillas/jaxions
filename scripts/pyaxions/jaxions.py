@@ -190,12 +190,12 @@ def gm(address,something='help'):
     if something == 'L':
         return f.attrs[u'Physical size'] ;
     if something == 'nqcd':
-        if 'nQcd' in f['/potential/'].attrs:
-            nqcd = f['/potential/'].attrs[u'nQcd']
-            #print('new format!')
-        elif 'nQcd' in f:
+        if 'nQcd' in f:
             nqcd = f.attrs[u'nQcd']
-            #print('old format')
+        elif '/potential/' in f:
+            if 'nQcd' in f['/potential/'].attrs:
+                nqcd = f['/potential/'].attrs[u'nQcd']
+            #print('new format!')
         else :
             nqcd = 7.0
         return nqcd ;
