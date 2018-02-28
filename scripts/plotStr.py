@@ -57,7 +57,7 @@ class	Plot3D():
 			if "/string/data" in fileHdf5:
 				cucu.append(morsa)
 		print('from ', cucu[0], ' to ', cucu[-1])
-		
+
 		self.allData = []
 
 		self.step  = 1
@@ -83,7 +83,7 @@ class	Plot3D():
 		else:
 			print("Reading measurement files")
 
-			fileHdf5 = h5py.File(fileMeas[0], "r")
+			fileHdf5 = h5py.File(cucu[0], "r")
 			self.Lx = fileHdf5["/string"].attrs.get("Size")
 			self.Ly = fileHdf5["/string"].attrs.get("Size")
 			self.Lz = fileHdf5["/string"].attrs.get("Depth")
@@ -92,7 +92,7 @@ class	Plot3D():
 
 			fileHdf5.close()
 
-			for meas in fileMeas:
+			for meas in cucu:
 				fileHdf5 = h5py.File(meas, "r")
 
 				Lx = fileHdf5["/string"].attrs.get("Size")
@@ -116,6 +116,7 @@ class	Plot3D():
 					else:
 						strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 63)
 						print(meas + ' nowalls')
+
 					z, y, x = strData.nonzero()
 
 					pos = np.array([z,y,x]).transpose()
