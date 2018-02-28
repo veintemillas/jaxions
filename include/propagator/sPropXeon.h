@@ -132,8 +132,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 							opCode(sub_pd, zQVec,
 							opCode(mul_pd, mel,
 								opCode(mul_pd,
-									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-									opCode(set1_pd, LL)))));
+									opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
+									opCode(set1_pd, LaLa)))));
 						break;
 
 					case	VQCD_2:
@@ -247,13 +247,13 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const float z4 = z2*z2;
 		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
 
-		const float LaLa = LL*2./z4;
-		const float GGGG = pow(ood2,0.5)*gammo;
+		const float LaLa = LL*2.f/z4;
+		const float GGGG = pow(ood2,0.5f)*gammo;
 		const float GGiZ = GGGG/zR;
-		const float mola = GGGG*dzc/2.;
-		const float damp1 = 1./(1.+mola);
-		const float damp2 = (1.-mola)*damp1;
-		const float epsi = mola/(1.+mola);
+		const float mola = GGGG*dzc/2.f;
+		const float damp1 = 1.f/(1.f+mola);
+		const float damp2 = (1.f-mola)*damp1;
+		const float epsi = mola/(1.f+mola);
 
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
@@ -304,7 +304,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				switch	(VQcd) {
+				switch	(VQcd & VQCD_TYPE) {
+					default:
 					case	VQCD_1:
 						mMx = opCode(add_ps, tmp,
 							opCode(sub_ps, zQVec,
@@ -319,8 +320,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 							opCode(sub_ps, zQVec,
 								opCode(mul_ps, mel,
 									opCode(mul_ps,
-										opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-										opCode(set1_ps, LL)))));
+										opCode(sub_ps, opCode(mul_ps, mPx, mPx), opCode(set1_ps, z4)),
+										opCode(set1_ps, LaLa)))));
 						break;
 
 					case	VQCD_2:

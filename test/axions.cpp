@@ -19,11 +19,6 @@
 
 using namespace std;
 
-#ifdef	USE_XEON
-	__declspec(target(mic)) char *mX, *vX, *m2X;
-#endif
-
-
 int	main (int argc, char *argv[])
 {
 	initAxions(argc, argv);

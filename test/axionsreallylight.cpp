@@ -24,10 +24,6 @@
 using namespace std;
 using namespace AxionWKB;
 
-#ifdef	USE_XEON
-	__declspec(target(mic)) char *mX, *vX, *m2X;
-#endif
-
 int	main (int argc, char *argv[])
 {
 	initAxions(argc, argv);
@@ -80,8 +76,8 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 	double Vr, Vt, Kr, Kt, Grz, Gtz;
-	size_t nstrings = 0 ;
-	size_t nstrings_global = 0 ;
+	size_t nstrings = 0;
+	size_t nstrings_global = 0;
 
   double nstringsd = 0. ;
 	double nstringsd_global = 0. ;
@@ -221,13 +217,13 @@ int	main (int argc, char *argv[])
 		LogOut ("Folding configuration ... ");
 		munge(FOLD_ALL);
 	}
-	LogOut ("Done! \n");
 
 	if (cDev != DEV_CPU)
 	{
 		LogOut ("Transferring configuration to device\n");
 		axion->transferDev(FIELD_MV);
 	}
+	LogOut ("Done! \n");
 
 //	if (cDev != DEV_GPU)
 		double	strDen;
@@ -427,9 +423,10 @@ int	main (int argc, char *argv[])
 				// TRANSITION TO THETA
 				//--------------------------------------------------
 
-				if (nstrings_global == 0)
-					{LogOut("  no st counter %d\n", strcount);
-					strcount++;}
+				if (nstrings_global == 0) {
+					LogOut("  no st counter %d\n", strcount);
+					strcount++;
+				}
 
 				if (smvarType != CONF_SAXNOISE) // IF CONF_SAXNOISE we do not ever switch to theta to follow the evolution of saxion field
 				if (nstrings_global == 0 && strcount > safest0)

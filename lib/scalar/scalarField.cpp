@@ -193,6 +193,8 @@ const std::complex<float> If(0.,1.);
 			break;
 	}
 
+	statusM2 = M2_DIRTY;
+
 	if (m == nullptr)
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the m field", mBytes);

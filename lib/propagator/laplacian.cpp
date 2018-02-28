@@ -73,7 +73,7 @@ void	Laplacian::lapCpu	(std::string name)
 	const int hLx = Lx>>1;
 	const int hTz = Tz>>1;
 
-	const int    maxLx = (hCmplx == true) ? (Lx>>1)+1 : Lx;
+	const int    maxLx = (hCmplx == true) ? hLx+1 : Lx;
 	const size_t maxSf = maxLx*Tz;
 
 	#pragma omp parallel for collapse(3) schedule(static) default(shared)

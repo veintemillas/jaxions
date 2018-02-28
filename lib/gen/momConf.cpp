@@ -31,7 +31,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 	}
 	size_t kmax2 = kmax*kmax;
 
-	const Float Twop = 2.0*M_PI;
+	constexpr Float Twop = 2.0*M_PI;
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
@@ -61,7 +61,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 
 			long long pz = oz - (oz/(Tz >> 1))*Tz;
 
-			for(long long py = -kmax  ; py <= kmax + adp; py++)
+			for(long long py = -kmax; py <= kmax + adp; py++)
 			{
 				for(long long px = -kmax ; px <= kmax + adp; px++)
 				{
