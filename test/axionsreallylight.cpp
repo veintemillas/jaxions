@@ -415,7 +415,7 @@ int	main (int argc, char *argv[])
 					LogOut("---------------------------------------\n");
 					LogOut("  DAMPING! G = %f (0.95*z_doom %f)   	\n", gammo, 0.95*z_doom);
 					LogOut("---------------------------------------\n");
-					initPropagator (pType, axion, nQcd, delta, gammo, LL, vqcdType );
+					initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType );
 					coD = false ;
 				}
 
@@ -533,7 +533,9 @@ int	main (int argc, char *argv[])
 			z_now = (*axion->zV());
 			if (axion->Lambda() == LAMBDA_Z2)
 				llphys = llconstantZ2/(z_now*z_now);
-			shiftz = z_now * saxionshift(z_now, nQcd, zthres, zrestore, llphys);
+			axmass_now = axionmass(z_now,nQcd,zthres, zrestore);
+			saskia = saxionshift(axmass_now, llphys, vqcdType);
+
 
 
 			if ((*axion->zV()) > zFinl)
