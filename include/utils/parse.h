@@ -39,6 +39,7 @@ extern char wisDir[1024];
 extern bool lowmem;
 extern bool uPrec;
 extern bool uQcd;
+extern bool uMsa;
 extern bool uLambda;
 extern bool uGamma;
 extern bool uPot;

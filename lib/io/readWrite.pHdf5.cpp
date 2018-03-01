@@ -588,6 +588,10 @@ void	readConf (Scalar **axion, int index)
 
 	readAttribute (file_id, &zTmp,  "z",        H5T_NATIVE_DOUBLE);
 
+	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
+	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
+
 	if (endredmap == -1)	// No reduction unless specified
 		endredmap = sizeN;
 
@@ -629,6 +633,14 @@ void	readConf (Scalar **axion, int index)
 			else {
 				LogError ("Error reading file %s: invalid lambda type %s", base, lStr);
 				exit(1);
+			}
+		} else {
+			if (uMsa) {
+				double tmp = (msa*sizeN)/sizeL;
+				LL    = 0.5*tmp*tmp;
+			} else {
+				double tmp = sizeL/sizeN;
+				msa = sqrt(2*LL)*tmp;
 			}
 		}
 
@@ -739,10 +751,6 @@ void	readConf (Scalar **axion, int index)
 		}
 		H5Gclose(icGrp_id);
 	}
-
-	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
-	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
 
 	H5Tclose (attr_type);
 
