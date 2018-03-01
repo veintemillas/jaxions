@@ -410,10 +410,10 @@ int	main (int argc, char *argv[])
 				}
 
 				//if ( (nstrings_global < 1000) && (coD) && (vqcdType | VQCD_DAMP) )
-				if ( (z_now > z_doom*0.95) && (coD) && (vqcdType | VQCD_DAMP) )
+				if ( (z_now > z_doom*0.95) && (coD) && ( (vqcdType & VQCD_DAMP) != VQCD_NONE ) )
 				{
 					LogOut("---------------------------------------\n");
-					LogOut("  DAMPING! G = %f (95% z_doom %f)   	\n", gammo, 0.95*z_doom);
+					LogOut("  DAMPING! G = %f (0.95*z_doom %f)   	\n", gammo, 0.95*z_doom);
 					LogOut("---------------------------------------\n");
 					initPropagator (pType, axion, nQcd, delta, gammo, LL, vqcdType );
 					coD = false ;
