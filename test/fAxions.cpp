@@ -253,7 +253,6 @@ int	main (int argc, char *argv[])
 	LogFlush();
 
 	/*	We run a few iterations with damping too smooth the rho field	*/
-
 	initPropagator (pType, axion, nQcd, delta, LL, gammo, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
 
 	LogOut ("Tuning propagator...\n");

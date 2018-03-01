@@ -341,7 +341,7 @@ int	main (int argc, char *argv[])
 	// LL is LL      in FIXED MODE
 	// LL is LL(z=1) in Z2 MODE (computed from msa in parse.cpp)
 	// damping only from zst1000
-	LogOut("Running ... \n\n");
+	LogOut("Running ...\n\n");
 	initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
@@ -415,7 +415,7 @@ int	main (int argc, char *argv[])
 					LogOut("---------------------------------------\n");
 					LogOut("  DAMPING! G = %f (0.95*z_doom %f)   	\n", gammo, 0.95*z_doom);
 					LogOut("---------------------------------------\n");
-					initPropagator (pType, axion, nQcd, delta, gammo, LL, vqcdType );
+					initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType );
 					coD = false ;
 				}
 
