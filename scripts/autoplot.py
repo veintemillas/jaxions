@@ -8,6 +8,8 @@ import math
 import re, os
 import h5py
 import datetime
+from pyaxions import jaxions as pa
+import importlib
 mark=f"{datetime.datetime.now():%Y-%m-%d}"
 from uuid import getnode as get_mac
 mac = get_mac()
@@ -277,9 +279,10 @@ if len(stringdata) > 0:
 ## FINAL ANAL
 N3 = sizeN*sizeN*sizeN
 print()
-print('final file analysis for '+ fileMeas[-1])
+analfilename='./m/'+fileMeas[-1]
+print('final file analysis for '+ analfilename)
 print()
-f = h5py.File('./m/'+fileMeas[-1], 'r')
+f = h5py.File(analfilename, 'r')
 for item in f.attrs.keys():
     print(item + ":", f.attrs[item])
 
@@ -302,66 +305,11 @@ if an_cont:
     print('contrast bin posible')
 
 if an_cont:
-    tc = np.reshape(f['bins/cont/data'],(10000))
-    avdens, maxcon, logmaxcon = tc[0:3]
-    bino = tc[3:]
-    numbins=10000-3
-
-    numBIN = f['bins/contB'].attrs[u'Size']
-    tc = np.reshape(f['bins/contB/data'],(numBIN))
-
-    avdens = f['energy'].attrs[u'Axion Gr X']
-    avdens += f['energy'].attrs[u'Axion Gr Y']
-    avdens += f['energy'].attrs[u'Axion Gr Z']
-    avdens += f['energy'].attrs[u'Axion Kinetic']
-    avdens += f['energy'].attrs[u'Axion Potential']
-
-    maxcon = f['bins/contB'].attrs[u'Maximum']
-    mincon = f['bins/contB'].attrs[u'Minimum']
-
-    bino = tc*N3*(maxcon-mincon)/numBIN
-    numbins = numBIN
-
-    i0 = 0
-    while bino[i0] < 1.99:
-            i0 = i0 + 1
-    bino = bino[i0:]
-
-    sum = 0
-    parsum = 0
-    nsubbin = 0
-    minimum = 10
-    lista=[]
-
-
-    # JOIN BINS ALL ALONG to have a minimum of 10 points
-    for bin in range(0,len(bino)):
-        # adds bin value to partial bin
-        parsum += bino[bin]
-        nsubbin += 1
-        if nsubbin == 1:
-                # records starting bin
-                inbin = bin
-        if parsum < 10:
-            # if parsum if smaller than 10 we will continue
-            # adding bins
-            sum += 1
-        else:
-            enbin = bin
-
-            low = 10**((maxcon-mincon)*(i0+inbin)/numbins + mincon)
-            med = 10**((maxcon-mincon)*(i0+(inbin+enbin+1)/2)/numbins + mincon)
-            sup = 10**((maxcon-mincon)*(i0+enbin+1)/numbins + mincon)
-            lista.append([med,parsum/(sup-low)])
-
-            parsum = 0
-            nsubbin = 0
-
-    lis = np.array(lista)
+    lis = pa.conbin(analfilename,10)
 
     plt.clf()
     #plt.loglog(contab,auxtab,       c='b',linewidth=0.3,marker='.',markersize=0.1)
-    plt.loglog(lis[:,0],lis[:,1]/N3,c='green',label=r'$\tau=%.1f$' % time, linewidth=0.6,marker='.',markersize=0.1)
+    plt.loglog(lis[:,0],lis[:,1],c='green',label=r'$\tau=%.1f$' % time, linewidth=0.6,marker='.',markersize=0.1)
     plt.ylabel(r'$dP/d\delta$')
     plt.xlabel(r'$\delta$')
     plt.title(ups)
@@ -372,101 +320,51 @@ if an_cont:
 
 # NUMBER SPECTRUM
 if an_nspec:
-    from scipy.optimize import curve_fit
-    n2=int(sizeN/2)
+    sizeN = pa.gm(analfilename,'Size')
+    nmodes = pa.phasespacedensityBOX(sizeN)
+    sizeL = pa.gm(analfilename,'L')
+    kmax = len(nmodes)
+    klist  = (0.5+np.arange(kmax))*2*math.pi/sizeL
+    klist[0]=0
 
-    f = h5py.File('./m/'+fileMeas[-1], 'r')
-    time = f.attrs[u'z']
-    powmax = f['nSpectrum/sK/data'].size
-    ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
 
-    larvaK = np.reshape(f['nSpectrum/sK/data'],(powmax))
-    larvaG = np.reshape(f['nSpectrum/sG/data'],(powmax))
-    larvaV = np.reshape(f['nSpectrum/sV/data'],(powmax))
+    ctime= pa.gm(analfilename,'ct')
 
-    def funi(x,a,b):
-        return a + b*x
+    #Spectrum summed over modes
+    occnumber = pa.gm(analfilename,'nsp')
+    occnumberk = pa.gm(analfilename,'nspK')
+    occnumberg = pa.gm(analfilename,'nspG')
+    occnumberv = pa.gm(analfilename,'nspV')
 
-    from math import exp, log10, fabs, atan, log, atan2
-
-    def volu( rR ):
-        if rR <= 1.0:
-            return (4*math.pi/3)*rR**3
-
-        elif 1.0 < rR <= math.sqrt(2.):
-            return (2*math.pi/3)*(9*rR**2-4*rR**3-3)
-
-        elif math.sqrt(2.) < rR < math.sqrt(3.):
-            a2 = rR**2-2
-            a = math.sqrt(a2)
-            b = 8*a - 4*(3*rR**2 -1)*(atan(a)-atan(1/a))
-            return b - (8/3)*(rR**3)*atan2(a*(6*rR + 4*rR**3 -2*rR**5),6*rR**4-2-12*rR**2)
-
-        elif  math.sqrt(3) < rR:
-            return 8.
-
-    vecvolu=np.vectorize(volu)
-
-    foca = np.arange(0,powmax)/n2
-    foca2 = np.arange(1,powmax+1)/n2
-    nmodes2 = (n2**3)*(vecvolu(foca2)-vecvolu(foca))
-
-    #OCUPATION NUMBER is more interesting D.9 of notes
-    nK = larvaK/nmodes2
-    nG = larvaG/nmodes2
-    nV = larvaV/nmodes2
-
-    lima = int(sizeN/2)
-    popt, pcov = curve_fit(funi, np.log10(ktab[:lima]),np.log10(nK+nV+nG)[:lima])
-    popt[0]
-    koni = 10**popt[0]
-    indi = popt[1]
-    #print(koni, indi)
-    '%.1f k^%.1f'%(koni,indi)
-
+    #plots (k/k1)^3 n_k where n_k is the occupation number
     plt.clf()
-    plt.loglog(ktab[:lima],koni*ktab[:lima]**indi,c='gray',linewidth=1,label=r'$%.1f\, k^{%.1f}$' % (koni,indi))
-    plt.loglog(ktab[:-2],nK[:-2],c='r',linewidth=0.6,marker='.',markersize=0.1,label='K')
-    plt.loglog(ktab[:-2],nG[:-2],c='b',linewidth=0.6,marker='.',markersize=0.1,label='G')
-    plt.loglog(ktab[:-2],nV[:-2],c='k',linewidth=0.6,marker='.',markersize=0.1,label='V')
-    plt.loglog(ktab[:-2],(nK+nV+nG)[:-2],c='k',linewidth=1,label='K+V+G')
+    plt.loglog(klist,(klist**3)*occnumberk/nmodes,c='r',linewidth=0.6,marker='.',markersize=0.1,label='K')
+    plt.loglog(klist,(klist**3)*occnumberg/nmodes,c='b',linewidth=0.6,marker='.',markersize=0.1,label='G')
+    plt.loglog(klist,(klist**3)*occnumberv/nmodes,c='k',linewidth=0.6,marker='.',markersize=0.1,label='V')
+    plt.loglog(klist,(klist**3)*occnumber/nmodes,c='k',linewidth=1,label='K+V+G')
     plt.title(ups)
     #plt.ylim([0.00000001,100])
-    plt.ylabel(r'$n_k$')
+    plt.ylabel(r'$(k/k_1)^3n_k$')
     plt.xlabel(r'comoving {$k [1/R_1 H_1]$}')
     plt.legend(loc='lower left',title=r'$\tau$={%.1f}'%(time))
-    plt.savefig("pics/occnumber.pdf")
+    plt.savefig("pics/numberspec.pdf")
     #plt.show()
 
 # POWER SPECTRUM
 if an_pspec:
-    powmax2 = f['pSpectrum/sP/data'].size
-    avdens = f['energy'].attrs[u'Axion Gr X']
-    avdens += f['energy'].attrs[u'Axion Gr Y']
-    avdens += f['energy'].attrs[u'Axion Gr Z']
-    avdens += f['energy'].attrs[u'Axion Kinetic']
-    avdens += f['energy'].attrs[u'Axion Potential']
 
-    ktab2 = (0.5+np.arange(powmax2))*2*math.pi/sizeL
-    f['pSpectrum/sP'] , powmax2 , (sizeN/2)*math.sqrt(3)
-    larvaP = np.reshape(f['pSpectrum/sP/data'],(powmax2))
-    if powmax2 == powmax:
-        av = larvaP/nmodes2
-        av = av/(avdens**2)
-    else :
-        pfoca = np.arange(0,powmax2)/n2
-        pfoca2 = np.arange(1,powmax2+1)/n2
-        pnmodes2 = (n2**3)*(vecvolu(pfoca2)-vecvolu(pfoca))
-        av = larvaP/pnmodes2
-        av = av/(avdens**2)
+    avdens = pa.gm(analfilename,'eA')
+    powerSpec = pa.gm(analfilename,'psp')
+    # dimensionless variance
+    powerSpec = (klist**3)*powerSpec/nmodes
 
     plt.clf()
-    plt.loglog(ktab2,(ktab2**3)*av/(math.pi**2),label=r'$\tau$={%.1f}'%(time))
-    plt.loglog(ktab2,np.ones(powmax2))
+    plt.loglog(klist,powerSpec/((avdens**2)*(math.pi**2)),label=r'$\tau$={%.1f}'%(time))
+    plt.loglog(klist,np.ones(len(klist)))
     plt.title(ups)
     #plt.ylim([0.00000001,100])
     plt.ylabel(r'$\Delta^2_k$')
     plt.xlabel(r'comoving {$k [1/R_1 H_1]$}')
     plt.legend(loc='lower left',title=r'$\tau$={%.1f}'%(time))
-    plt.savefig("pics/powerspectrum.pdf")
+    plt.savefig("pics/powerspectrumP.pdf")
     #plt.show()

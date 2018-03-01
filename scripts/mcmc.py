@@ -240,7 +240,7 @@ if len(sys.argv) > 1:
         data = f['energy/density/theta'].value.reshape(n3)
     elif sys.argv[2]=='red':
         print('Reading reducedCon from ',sys.argv[1])
-        n =256
+        n = 512
         n2 = n*n
         n3 = n2*n
         data = f['energy/redensity'].value.reshape(n3)

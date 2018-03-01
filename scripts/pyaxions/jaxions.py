@@ -224,7 +224,7 @@ def gm(address,something='help'):
             if ftype == 'Saxion':
                 fis = 'Sa'
             else:
-                print('[gm] Warning: file contains no Saxion energy!, set to 0.')
+                # print('[gm] Warning: file contains no Saxion energy!, set to 0.')
                 return 0. ;
         else :
             print('[gm] what field Energy you wants?')
@@ -253,7 +253,7 @@ def gm(address,something='help'):
             eni += f['energy'].attrs[fis+'xion Potential']
             return eni ;
     elif (something[0] == 'e') and not en_check :
-        print('[gm] No energy in the file!')
+        print('[gm] No energy in the file ',address )
         return 0. ;
 
     # strings
@@ -296,12 +296,12 @@ def gm(address,something='help'):
             if (something == 'binconBmin'):
                 return f['bins/contB'].attrs[u'Minimum'] ;
 
-        # contrast bin
+        # theta bin
         bintheB_check = 'bins/thetaB' in f
-        if (something[0:4] == 'bint') and not binconB_check :
+        if (something[0:4] == 'bint') and not bintheB_check :
             #print('[gm] Warning: No bins/thetaB in file. Returning []')
             return ;
-        if (something[0:4] == 'bint') and binconB_check :
+        if (something[0:4] == 'bint') and bintheB_check :
             if (something == 'binthetaB'):
                 numBIN = f['bins/thetaB'].attrs[u'Size']
                 return np.reshape(f['bins/thetaB/data'],(numBIN)) ;
@@ -309,6 +309,24 @@ def gm(address,something='help'):
                 return f['bins/thetaB'].attrs[u'Maximum'] ;
             if (something == 'binthetaBmin'):
                 return f['bins/thetaB'].attrs[u'Minimum'] ;
+
+        # rho bin
+        binrhoB_check = 'bins/rhoB' in f
+        if (something[0:4] == 'binr') and not binrhoB_check :
+            if ftype == 'Axion' :
+                print('[gm] Warning: Axion mode, no rho!')
+                return ;
+            elif ftype == 'Axion' :
+                print('[gm] Warning: No bins/thetaB in file. Returning []')
+                return ;
+        if (something[0:4] == 'binr') and binrhoB_check :
+            if (something == 'binrhoB'):
+                numBIN = f['bins/rhoB'].attrs[u'Size']
+                return np.reshape(f['bins/rhoB/data'],(numBIN)) ;
+            if (something == 'binrhoBmax'):
+                return f['bins/rhoB'].attrs[u'Maximum'] ;
+            if (something == 'binrhoBmin'):
+                return f['bins/rhoB'].attrs[u'Minimum'] ;
 
 
     if (something == 'kmax'):
@@ -664,6 +682,19 @@ def stringo(mfiles):
         if gm(f,'ftype') == 'Saxion':
             stringo.append([gm(f,'ct'),gm(f,'stDens')])
     return np.array(stringo) ;
+
+
+
+
+
+
+#   outputs the energy evolution
+
+def energo(mfiles):
+    eevol = []
+    for f in mfiles:
+        eevol.append([gm(f,'ct'),gm(f,'eA'),gm(f,'eS')])
+    return np.array(eevol) ;
 
 # ------------------------------------------------------------------------------
 #   load and manage sample.txt files
