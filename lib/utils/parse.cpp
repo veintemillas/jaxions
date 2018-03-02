@@ -33,6 +33,7 @@ double parm2 = 0.;
 double gammo = 0.;
 double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
+double prepstL = 5.0 ;
 int endredmap = -1;
 int safest0   = 20;
 
@@ -47,6 +48,8 @@ bool uZin     = false;
 bool uZfn     = false;
 bool spectral = false;
 bool aMod     = false;
+bool icstudy  = true ;
+bool preprop  = true ;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -148,6 +151,11 @@ void	printUsage(char *name)
 	printf("  --wkb   [float]               WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
 	printf("\n");
 	printf("  --index [idx]                 Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
+
+	printf("\nPrepropagator:\n");
+	printf("  --Nopreprop                   turns off prepropagator -propagates IC-RHO-damping-fixed zi- for zi or given scaling stL (default yes).\n");
+	printf("  --prepstL [float]             string length/volume at which prepropagator stops (default 5).\n");
+	printf("  --icstudy                     Allows printing maps/energy during preprop (default no).\n");
 
 	printf("\nOutput:\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
@@ -1112,6 +1120,44 @@ int	parseArgs (int argc, char *argv[])
 
 			pType |= PROP_SPEC;
 
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--Nopreprop"))
+		{
+			preprop = false ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--icstudy"))
+		{
+			icstudy = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--prepstL"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the physical size of the universe.\n");
+				exit(1);
+			}
+
+			prepstL = atof(argv[i+1]);
+
+			if (prepstL <= 0.)
+			{
+				printf("Error: Scaling limit must be a positive number.\n");
+				exit(1);
+			}
+
+			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;

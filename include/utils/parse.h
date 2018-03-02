@@ -29,6 +29,7 @@ extern double zthres;
 extern double zrestore;
 
 extern double wkb2z ;
+extern double prepstL;
 extern int endredmap ;
 extern int safest0 ;
 
@@ -47,6 +48,8 @@ extern bool uZin;
 extern bool uZfn;
 extern bool aMod;
 extern bool spectral;
+extern bool icstudy;
+extern bool preprop;
 
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
