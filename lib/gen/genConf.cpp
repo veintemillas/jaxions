@@ -227,6 +227,7 @@ void	ConfGenerator::runCpu	()
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 			normaliseField(axionField, FIELD_M);
+			normCoreField	(axionField);
 		}
 		break;
 
