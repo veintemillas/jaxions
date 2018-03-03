@@ -40,7 +40,7 @@ def findmfiles(address='./'):
     for filename in glob.iglob(address+'**/axion.m.*', recursive=True):
           list.append(filename)
           #print(filename)
-    return list ;
+    return sorted(list) ;
 
 
 
@@ -207,6 +207,13 @@ def gm(address,something='help'):
         return f.attrs[u'Axion mass'] ;
     if something == 'msa':
         return f.attrs[u'Saxion mass'] ;
+    if something == 'lambda':
+        typeL = f['/potential/'].attrs['Lambda type']
+        if typeL == b'z2' :
+            z = f.attrs[u'z']
+            return f['/potential/'].attrs[u'Lambda']/(z**2) ;
+        else :
+            return f['/potential/'].attrs[u'Lambda'] ;
     if something == 'massS':
         L = f.attrs[u'Physical size']
         N = f.attrs[u'Size']
