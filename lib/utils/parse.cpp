@@ -48,7 +48,7 @@ bool uZin     = false;
 bool uZfn     = false;
 bool spectral = false;
 bool aMod     = false;
-bool icstudy  = true ;
+bool icstudy  = false ;
 bool preprop  = true ;
 
 size_t kMax  = 2;
