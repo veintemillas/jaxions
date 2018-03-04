@@ -30,6 +30,7 @@ extern double zrestore;
 
 extern double wkb2z ;
 extern double prepstL;
+extern double prepcoe;
 extern int endredmap ;
 extern int safest0 ;
 
