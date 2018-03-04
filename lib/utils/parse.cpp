@@ -34,6 +34,7 @@ double gammo = 0.;
 double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
 double prepstL = 5.0 ;
+double prepcoe = 3.0 ;
 int endredmap = -1;
 int safest0   = 20;
 
@@ -49,7 +50,7 @@ bool uZfn     = false;
 bool spectral = false;
 bool aMod     = false;
 bool icstudy  = false ;
-bool preprop  = true ;
+bool preprop  = false ;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -153,8 +154,9 @@ void	printUsage(char *name)
 	printf("  --index [idx]                 Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 
 	printf("\nPrepropagator:\n");
-	printf("  --Nopreprop                   turns off prepropagator -propagates IC-RHO-damping-fixed zi- for zi or given scaling stL (default yes).\n");
-	printf("  --prepstL [float]             string length/volume at which prepropagator stops (default 5).\n");
+	printf("  --preprop                     turns on prepropagator -propagates IC-RHO-damping-fixed zi- for zi or given scaling stL (default yes).\n");
+	printf("  --prepcoe [float]             prepropagator starts at zi/prepcoe (default 3.0).\n");
+	printf("  --prepstL [float]             string length/volume at which prepropagator stops [raxion3d?] (default 5).\n");
 	printf("  --icstudy                     Allows printing maps/energy during preprop (default no).\n");
 
 	printf("\nOutput:\n");
@@ -1125,9 +1127,9 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--Nopreprop"))
+		if (!strcmp(argv[i], "--preprop"))
 		{
-			preprop = false ;
+			preprop = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1143,9 +1145,10 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--prepstL"))
 		{
+			printf("Warning: th prepstL parameter does nothing at the moment.\n");
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the physical size of the universe.\n");
+				printf("Error: I need a value for the Scaling limit.\n");
 				exit(1);
 			}
 
@@ -1154,6 +1157,28 @@ int	parseArgs (int argc, char *argv[])
 			if (prepstL <= 0.)
 			{
 				printf("Error: Scaling limit must be a positive number.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--prepcoe"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the prepropagator time coefficient.\n");
+				exit(1);
+			}
+
+			prepcoe = atof(argv[i+1]);
+
+			if (prepcoe <= 1.)
+			{
+				printf("Error: The prepropagator time coefficient must be larger than 1.\n");			
 				exit(1);
 			}
 
