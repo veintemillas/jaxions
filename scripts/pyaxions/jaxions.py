@@ -703,6 +703,35 @@ def energo(mfiles):
         eevol.append([gm(f,'ct'),gm(f,'eA'),gm(f,'eS')])
     return np.array(eevol) ;
 
+
+
+
+
+
+#   outputs the energy evolution of axion components
+
+def energoA(mfiles):
+    eevol = []
+    for f in mfiles:
+        eevol.append([gm(f,'ct'),gm(f,'eKA'),gm(f,'eGA'),gm(f,'eVA'),gm(f,'eA')])
+    return np.array(eevol) ;
+
+
+
+
+
+
+#   outputs the energy evolution of Saxion components
+
+def energoS(mfiles):
+    eevol = []
+    for f in mfiles:
+        eevol.append([gm(f,'ct'),gm(f,'eKS'),gm(f,'eGS'),gm(f,'eVS'),gm(f,'eS')])
+    return np.array(eevol) ;
+
+
+
+
 # ------------------------------------------------------------------------------
 #   load and manage sample.txt files
 # ------------------------------------------------------------------------------
