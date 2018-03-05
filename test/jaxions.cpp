@@ -37,6 +37,7 @@ int	main (int argc, char *argv[])
 	std::chrono::milliseconds elapsed;
 
 	commSync();
+
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n          JAXION 3D!                             \n\n");
 
@@ -400,14 +401,10 @@ int	main (int argc, char *argv[])
 
 		// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
 		//DOMAIN WALL KILLER NUMBER
-			double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*LL1);
-			if (axion->Lambda() == LAMBDA_Z2 )
-				maa = maa*z_now*z_now;
-		if ( ((*axion->zV()) > z_doom*0.95) && (coD) && ( (vqcdType & VQCD_DAMP) != VQCD_NONE ) )
-		if (maa > 0.9)
+		if ( ((*axion->zV()) > z_doom2*0.95) && (coD) && ( (vqcdType & VQCD_DAMP) != VQCD_NONE ) )
 		{
 			LogOut("-----------------------------------------\n");
-			LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", gammo, 0.95*z_doom);
+			LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", gammo, 0.95*z_doom2);
 			LogOut("-----------------------------------------\n");
 			initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType );
 			coD = false ;
