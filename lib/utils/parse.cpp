@@ -26,8 +26,8 @@ double kCrit = 1.0;
 //JAVIER
 double mode0 = 10.0;
 double alpha = 0.143;
-double zthres   = 1.0;
-double zrestore = 1.0;
+double zthres   = 1000.0;
+double zrestore = 1000.0;
 double LL = 25000.;
 double parm2 = 0.;
 double gammo = 0.;
@@ -655,6 +655,38 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--zswitch1"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the switch-off z.\n");
+				exit(1);
+			}
+
+			zthres = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--zswitch2"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the re-switch-on z.\n");
+				exit(1);
+			}
+
+			zrestore = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		//NEW
 		if (!strcmp(argv[i], "--msa"))
 		{
@@ -1178,7 +1210,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (prepcoe <= 1.)
 			{
-				printf("Error: The prepropagator time coefficient must be larger than 1.\n");			
+				printf("Error: The prepropagator time coefficient must be larger than 1.\n");
 				exit(1);
 			}
 
@@ -1257,6 +1289,12 @@ int	parseArgs (int argc, char *argv[])
 	}
 
  	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
+
+	if (zrestore < zthres) {
+		printf("Error: zrestore = %f < zthres %f. Switch-off disabled with zrestore=zthres=100 !!\n", zrestore, zthres);
+		zthres = 100.;
+		zrestore = 100.;
+	}
 
 	/*	Set the output directory, according to an environmental variable	*/
 
