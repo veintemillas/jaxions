@@ -1,0 +1,129 @@
+\documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}				% Use pdf, png, jpg, or eps§ with pdflatex; use eps in DVI mode
+								% TeX will automatically convert eps --> pdf in pdflatex		
+\usepackage{amssymb}
+
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  language=bash,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+
+\title{Summary of a simulation}
+\author{The Author}
+%\date{}							% Activate to display a given date or no date
+
+\topmargin-2.8cm
+\oddsidemargin-1cm
+\evensidemargin-1cm
+\textwidth18.5cm
+\textheight25.0cm
+
+\begin{document}
+\maketitle
+%\section{}
+%\subsection{}
+
+\section{Code.sh}
+\ifdefined\simlabel
+\lstinputlisting{../\simlabel}
+\else
+No code provided!
+\fi
+\section{Fgs}
+
+
+\IfFileExists{pics/energy22.pdf}{
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=0.45\textwidth]{pics/energy22.pdf} \includegraphics[width=0.45\textwidth]{pics/energy22loglog.pdf} 
+\caption{Energy evolution normalised to the adiabatic scaling $\tau^{n/2-1}$ (left), and 
+with a double powerlaw interpolating $\tau^{-2}$ to $\tau^{n/2-1}$. }
+\label{default}
+\end{center}
+\end{figure}
+}{No energy22.pdf provided} 
+
+\IfFileExists{pics/theta_all.pdf}{
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=0.45\textwidth]{pics/theta_all.pdf} \includegraphics[width=0.45\textwidth]{pics/theta_trans.pdf}
+\caption{Evolution of the distribution of values of $\theta$ for the simulation and across the totheta and mendtheta transition (right)}
+\label{default}
+\end{center}
+\end{figure}
+}{No energy22.pdf provided} 
+
+\IfFileExists{pics/numberspec.pdf}{
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=0.45\textwidth]{pics/numberspec.pdf} \includegraphics[width=0.45\textwidth]{pics/occnumber_all.pdf}
+\caption{Axion spectrum times $k$ (left) and occupation number evolution (right). }
+\label{default}
+\end{center}
+\end{figure}
+}{No string2.pdf provided} 
+
+\IfFileExists{pics/contrastbin.pdf}{
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=0.45\textwidth]{pics/contrastbin.pdf} \includegraphics[width=0.45\textwidth]{pics/contrastbin_all.pdf}
+\caption{Probability if density contrast $\delta$ in the last file (left) and throughout the evolution (right). }
+\label{default}
+\end{center}
+\end{figure}
+}{No string2.pdf provided} 
+
+\IfFileExists{pics/powerspectrumP.pdf}{
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=0.45\textwidth]{pics/powerspectrumP.pdf} \includegraphics[width=0.45\textwidth]{pics/powerspectrum_all.pdf}
+\caption{Dimensionless variance of the density contrast in the last file (left) and throughout the evolution (right).}
+\label{default}
+\end{center}
+\end{figure}
+}{No string2.pdf provided} 
+
+\IfFileExists{pics/string.pdf}{
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=0.45\textwidth]{pics/string.pdf} \includegraphics[width=0.45\textwidth]{pics/string2.pdf}
+\caption{String length evolution}
+\label{default}
+\end{center}
+\end{figure}
+}{No string2.pdf provided} 
+
+\newpage
+\section{luera.txt}
+
+\lstinputlisting[basicstyle=\tiny]{../luera.txt}
+
+
+%contrastbin_all.pdf%contrastbin.pdf%energy2.pdf%energy22.pdf%numberspec.pdf%occnumber_all.pdf%point_rho.pdf%point_theta.pdf%point_vel.pdf%powerspectrum_all.pdf%powerspectrumP.pdf%string.pdf%string2.pdf%theta_all.pdf%theta_trans.pdf
+
+
+\end{document}  

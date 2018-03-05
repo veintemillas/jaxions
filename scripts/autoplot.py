@@ -181,6 +181,8 @@ if os.path.exists('./energy.txt'):
     plt.xlabel(r'$\tau$')
     plt.legend(loc='lower left')
     plt.savefig("pics/energy.pdf")
+
+
     #plt.show()
 
     plt.clf()
@@ -259,6 +261,29 @@ if enlen > 0:
     plt.savefig("pics/energy2.pdf")
     plt.ylim([0.01,10000])
     plt.savefig("pics/energy22.pdf")
+
+    indexi = 2
+    indexf = (nqcd/2-1)
+    indexp = indexi+(nqcd/2-1)
+    sca = (en[:,0]**2)/(2.2**indexp + en[:,0]**indexp)
+    plt.clf()
+    if enlen >0:
+        plt.loglog(en[:,0],sca*(en[:,1:4].sum(axis=1))/16.82,   c='b',label=r'$G_\theta$',linewidth=1,marker='.',markersize=0.1)
+        plt.loglog(en[:,0],sca*(en[:,4])/16.82,                 c='k',label=r'$V_\theta$',linewidth=1,marker='.',markersize=0.1)
+        plt.loglog(en[:,0],sca*(en[:,5])/16.82,                 c='r',label=r'$K_\theta$',linewidth=1,marker='.',markersize=0.1)
+        plt.loglog(en[:,0],sca*(en[:,1:6].sum(axis=1))/16.82,   c='k',label=r'$\theta$',linewidth=1,marker='.',markersize=0.1)
+    if sl > 0:
+        plt.loglog(en[:sl,0],sca[:sl]*(en[:sl,6:9].sum(axis=1))/16.82,   '--',c='b',label=r'$G_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.loglog(en[:sl,0],sca[:sl]*(en[:sl,9])/16.82,                 '--',c='k',label=r'$V_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.loglog(en[:sl,0],sca[:sl]*(en[:sl,10])/16.82,                '--',c='r',label=r'$K_\rho$',linewidth=0.5,marker='.',markersize=0.1)
+        plt.loglog(en[:sl,0],sca[:sl]*(en[:sl,6:11].sum(axis=1))/16.82,  '--',c='k',label=r'$\rho$',linewidth=0.5,marker='.',markersize=0.1)
+    plt.grid(axis='y')
+    plt.title(ups)
+    plt.ylabel('Energy[misalignment U.]')
+    plt.xlabel(r'$\tau$')
+    plt.legend(loc='lower left')
+    plt.ylim([0.001,10])
+    plt.savefig("pics/energy22loglog.pdf")
     #plt.show()
 
     plt.clf()
