@@ -328,7 +328,7 @@ void	writeConf (Scalar *axion, int index)
 	hid_t vGrp_id = H5Gcreate2(file_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	double shift = saxionshift(maa, llPhys, vqcdType);
-	indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+	//indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
 
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
@@ -658,7 +658,7 @@ void	readConf (Scalar **axion, int index)
 
 		maa = axionmass(zTmp, nQcd, zthres, zrestore);
 		LogMsg(VERB_HIGH, "Chaging axion mass from %e to %e", maaR, maa);
-		indi3 =  maa/pow(zTmp, nQcd*0.5);
+		//indi3 =  maa/pow(zTmp, nQcd*0.5);
 
 		if (uGamma == false)
 			readAttribute (vGrp_id, &gammo,  "Gamma",       H5T_NATIVE_DOUBLE);
@@ -1095,7 +1095,7 @@ void	createMeas (Scalar *axion, int index)
 	hid_t vGrp_id = H5Gcreate2(meas_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	double shift = saxionshift(maa, llPhys, vqcdType);
-	indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+	//indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
 
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
