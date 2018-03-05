@@ -11,7 +11,7 @@ double	axionmass(double z, double nQcd, double zth, double zres)
 	double morsa;
 	//double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
 	double expo = nQcd;
-	if (z > zth &&  zth < zres )
+	if ((z > zth) &&  (zth < zres) )
 	{
 		morsa = indi3*pow(zth,expo/2.);
 		if (z > zres)
@@ -32,7 +32,7 @@ double	axionmass2(double z, double nQcd, double zth, double zres)
 	double morsa;
 	//double expo = (8.+4.212*z*z)/(1.+0.5817*z*z);
 	double expo = nQcd;
-	if (z > zth &&  zth < zres)
+	if ( (z > zth) &&  (zth < zres))
 	{
 		morsa = indi3*indi3*pow(zth,expo);
 		if (z > zres)
@@ -118,7 +118,7 @@ double	dzSize	(double z, FieldType fType, LambdaType lType, VqcdType poti) {
 	double facto = 1.;
 	if ( (poti & VQCD_TYPE) == VQCD_1_PQ_2)
 		facto = 2. ;
-		
+
 	switch (lType) {
 		case	LAMBDA_Z2:
 			mSfq = sqrt(facto*facto*msa*msa + 12.)*oodl;
