@@ -655,7 +655,7 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--zswitch1"))
+		if (!strcmp(argv[i], "--zswitchOn"))
 		{
 			if (i+1 == argc)
 			{
@@ -671,7 +671,7 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--zswitch2"))
+		if (!strcmp(argv[i], "--zswitchOff"))
 		{
 			if (i+1 == argc)
 			{
