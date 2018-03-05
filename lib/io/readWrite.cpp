@@ -585,9 +585,6 @@ void	readConf (Scalar **axion, int index)
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-
-	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
-
 	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
@@ -595,15 +592,21 @@ void	readConf (Scalar **axion, int index)
 	if (endredmap == -1)	// No reduction unless specified
 		endredmap = sizeN;
 
-	if (!uZin) {
-		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
-		if (zTmp < zInit)
-			zInit = zTmp;
-	} else {
-		zTmp = zInit;
-	}
-
-	readAttribute (file_id, &zInit,  "z",            H5T_NATIVE_DOUBLE);
+		//initial time; axion will be created with z=zTmp
+		readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
+		//if no zInit is given in command line, decide from file
+		if (!uZin) {
+			//by default chose "zInitial"
+			readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
+			//unless zTmp is before [Im not sure in which case this is relevant]
+			if (zTmp < zInit)
+				zInit = zTmp;
+		//if zInit is given in command line, start axions at zInit
+		} else {
+			zTmp = zInit;
+		}
+		//but a record of the true z of the read confifuration is kept in zInit
+		readAttribute (file_id, &zInit,  "z",            H5T_NATIVE_DOUBLE);
 
 	if (!uZfn) {
 		readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
