@@ -68,9 +68,14 @@ else:
 f = h5py.File('./m/'+ mylist[0], 'r')
 sizeL = f.attrs[u'Physical size']
 sizeN = f.attrs[u'Size']
-sizeL = f.attrs[u'Physical size']
-nqcd = f.attrs[u'nQcd']
-
+if 'nQcd' in f['/potential/'].attrs:
+    nqcd = f['/potential/'].attrs[u'nQcd']
+    print('new format!')
+elif 'nQcd' in f:
+    nqcd = f.attrs[u'nQcd']
+    print('old format')
+else :
+    nqcd = 7.0
 
 # ID
 ups = 'N'+str(sizeN)+' L'+str(sizeL)+' n'+str(nqcd)+' ('+mark+')'+str(mac)
@@ -117,7 +122,7 @@ plt.savefig("pics/theta_all.pdf")
 mylist =[]
 plt.clf()
 
-if os.path.exists('./axion.m.10001'):
+if os.path.exists('./axion.m.10000'):
     mylist.append('axion.m.10000')
 if os.path.exists('./axion.m.10001'):
     mylist.append('axion.m.10001')

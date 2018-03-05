@@ -6,6 +6,8 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 import numpy as np
 
+from sympy import integer_nthroot
+
 import os,re,sys
 
 import h5py
@@ -28,8 +30,20 @@ if os.path.exists('./axion.m.10001'):
 
 fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
 
-
-an_contrastmap = 'energy/density/theta' in fileHdf5
+print("you can type dens/redens after the file to choose map if possible")
+if len(sys.argv) == 2:
+    fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
+    an_contrastmap = 'energy/density' in fileHdf5
+    re_contrastmap = 'energy/redensity' in fileHdf5
+elif len(sys.argv) == 3:
+    fileHdf5 = h5py.File('./' + sys.argv[-2], "r")
+    dens0redens = sys.argv[-1]
+    if dens0redens == 'dens':
+        an_contrastmap = 'energy/density' in fileHdf5
+        re_contrastmap = False
+    elif dens0redens == 'redens':
+        re_contrastmap = 'energy/redensity' in fileHdf5
+        an_contrastmap = False
 
 if an_contrastmap:
 	print('Contrast found')
@@ -38,23 +52,25 @@ if an_contrastmap:
 	Lz    = fileHdf5["/"].attrs.get("Depth")
 	sizeL = fileHdf5["/"].attrs.get("Physical size")
 	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy/density']['theta'].value.reshape(Ly,Lx,Lz)
+	con = fileHdf5['energy/density'].value.reshape(Ly,Lx,Lz)
 	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
-
-re_contrastmap = 'energy/redensity' in fileHdf5
+def thirdrdroot(x): return integer_nthroot(x, 3)[0]
 
 if re_contrastmap:
-	print('Reduced Contrast found')
-	Lx    = fileHdf5["/"].attrs.get("Size")
-	Ly    = fileHdf5["/"].attrs.get("Size")
-	Lz    = fileHdf5["/"].attrs.get("Depth")
-    # need to adjust to other sizes
-	sizeL = fileHdf5["/"].attrs.get("Physical size")
-	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy']['redensity'].value.reshape(256,256,256)
-	print('Size =  (',256,'x',256,'x',256,') in file ',fileHdf5)
+	# sizeL = fileHdf5["/"].attrs.get("Physical size")
+    # z = fileHdf5["/"].attrs.get("z")
+    print('Reduced Contrast found')
+    temp3 = fileHdf5['energy']['redensity'].size
+    temp = thirdrdroot(temp3)
+    print(temp3, '-->',temp)
+    Lx = temp
+    Ly = temp
+    Lz = temp
 
+    # need to adjust to other sizes
+    con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
+    print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
 mena = np.mean(con)
 con  = con/mena

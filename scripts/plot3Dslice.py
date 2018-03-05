@@ -6,6 +6,8 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 import numpy as np
 
+from sympy import integer_nthroot
+
 import os,re,sys
 
 import h5py
@@ -50,21 +52,28 @@ if an_contrastmap:
 	con = fileHdf5['energy/density'].value.reshape(Ly,Lx,Lz)
 	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
+def thirdrdroot(x): return integer_nthroot(x, 3)[0]
+
 if re_contrastmap:
 	# sizeL = fileHdf5["/"].attrs.get("Physical size")
     # z = fileHdf5["/"].attrs.get("z")
     print('Reduced Contrast found')
     temp3 = fileHdf5['energy']['redensity'].size
-    print(temp3)
+    temp = thirdrdroot(temp3)
+    print(temp3, '-->',temp)
+    Lx = temp
+    Ly = temp
+    Lz = temp
 
-    if temp3 == 16777216:
-        Lx = 256
-        Ly = Lx
-        Lz = Lx
-    elif temp3 == 134217728:
-        Lx = 512
-        Ly = Lx
-        Lz = Lx
+    # if temp3 == 16777216:
+    #     Lx = 256
+    #     Ly = Lx
+    #     Lz = Lx
+    # elif temp3 == 134217728:
+    #     Lx = 512
+    #     Ly = Lx
+    #     Lz = Lx
+
 
     # need to adjust to other sizes
     con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
