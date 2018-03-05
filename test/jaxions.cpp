@@ -27,6 +27,7 @@ using namespace AxionWKB;
 
 void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 void printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+double findzdoom(Scalar *axion);
 
 int	main (int argc, char *argv[])
 {
@@ -141,10 +142,6 @@ int	main (int argc, char *argv[])
 		LogOut("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
 	}
 
-	//-conformal time at which axion mass is switched off and on again
-	zthres 	 = 100.0 ;
-	zrestore = 100.0 ;
-
 	//-control flag to activate damping only once
 	bool coD = true;
 
@@ -231,6 +228,8 @@ int	main (int argc, char *argv[])
 	LogOut("           PARAMETERS  						                \n\n");
 	LogOut("Length =  %2.2f\n", sizeL);
 	LogOut("nQCD   =  %2.2f\n", nQcd);
+	if (zrestore>zthres)
+	LogOut("       =  0 in (%3.3f, %3.3f)   \n", zthres, zrestore);
 	LogOut("N      =  %ld\n",   sizeN);
 	LogOut("Nz     =  %ld\n",   sizeZ);
 	LogOut("zGrid  =  %ld\n",   zGrid);
@@ -255,9 +254,11 @@ int	main (int argc, char *argv[])
 	z_doom = pow(0.1588*2.0*msa/delta,2./(nQcd+2.))	;
 	else
 	z_doom = pow(0.1588*msa/delta,2./(nQcd+2.))	;
+	double z_doom2 = findzdoom(axion);
+
 	double z_axiq = pow(1./delta,2./(nQcd+2.))					;
 	double z_NR   = pow(3.46/delta,2./(nQcd+2.))					;
-	LogOut("z_doomsday %f \n", z_doom);
+	LogOut("z_doomsday %f(%f) \n", z_doom,z_doom2);
 	LogOut("z_axiquenc %f \n", z_axiq);
 	LogOut("z_NR       %f \n", z_NR);
 	LogOut("--------------------------------------------------\n\n");
@@ -270,7 +271,7 @@ int	main (int argc, char *argv[])
 	// only if preprop and if z smaller or equal than zInit
 	// When z>zInit, it is understood that prepropagation was done
 	if (preprop && ((*axion->zV()) < zInit)) {
-		LogOut("pppp Preprocessing ... z=%.f->%.f (VQCDTYPE %d, gam=%.f) \n\n", (*axion->zV()), zInit,
+		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.f) \n\n", (*axion->zV()), zInit,
 					(vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO, gammo);
 		double gammo_save = gammo ;
 		double *zaza = axion->zV();
@@ -319,7 +320,7 @@ int	main (int argc, char *argv[])
 
 		}
 
-	gammo = gammo_save = gammo ;
+	gammo = gammo_save ;
 
 	}
 
@@ -398,7 +399,12 @@ int	main (int argc, char *argv[])
 		}
 
 		// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
+		//DOMAIN WALL KILLER NUMBER
+			double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*LL1);
+			if (axion->Lambda() == LAMBDA_Z2 )
+				maa = maa*z_now*z_now;
 		if ( ((*axion->zV()) > z_doom*0.95) && (coD) && ( (vqcdType & VQCD_DAMP) != VQCD_NONE ) )
+		if (maa > 0.9)
 		{
 			LogOut("-----------------------------------------\n");
 			LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", gammo, 0.95*z_doom);
@@ -777,31 +783,61 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 				} fflush(fichero);}
 }
 
-// void printmeasure(int index, Scalar *axion)
-// {
-//
-// }
-
-void printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta)
+double findzdoom(Scalar *axion)
 {
-	double z_now = (*axion->zV());
-	double llphys = LLL;
-	if (axion->Lambda() == LAMBDA_Z2)
-		llphys = LLL/(z_now*z_now);
-	size_t S0 = sizeN*sizeN ;
-	if (commRank() == 0 && sPrec == FIELD_SINGLE) {
-			if (axion->Field() == FIELD_SAXION) {
-					double axmass_now = axionmass(z_now,nQcd,zthres, zrestore);
-					double saskia = saxionshift(axmass_now, llphys, vqcdType);
-					fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", zz, axmass_now, llphys,
-					static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].real()*zz/z_now,
-					static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].imag()*zz/z_now,
-					static_cast<complex<float> *> (axion->vCpu())[idxprint].real()*zz/z_now,
-					static_cast<complex<float> *> (axion->vCpu())[idxprint].imag()*zz/z_now,
-					nstrings_global, maximumtheta, saskia);
-			} else {
-					fprintf(fichero,"%f %f %f %f %f\n", z_now, axionmass(z_now,nQcd,zthres, zrestore),
-					static_cast<float *> (axion->mCpu())[idxprint + S0],
-					static_cast<float *> (axion->vCpu())[idxprint], maximumtheta);
-				} fflush(fichero);}
+	double ct = zInit ;
+	double DWfun;
+	double meas ;
+	while (meas < 0.001)
+	{
+		DWfun = 40*axionmass2(ct,nQcd,zthres,zrestore)/(2*LL) ;
+		if (axion->Lambda() == LAMBDA_Z2)
+			DWfun *= ct*ct;
+		meas = DWfun - 1 ;
+		ct += 0.001 ;
+	}
+	LogOut("Real z_doom %f ", ct );
+	return ct ;
 }
+
+// void printMeasSaxion(int index, Scalar *axion)
+// {
+// 	createMeas(axion, index);
+// 	//calculate shifts
+// 	// z_now, llphys, shiftzf,  axmass_now, saskia, shiftz ... are LOCAL
+// 	// LL, zthres, zrestore are GLOBAL
+// 	double z_now = *axion->zV() ;
+// 	if (axion->Lambda() == LAMBDA_Z2)
+// 		double llphys = LL/(z_now*z_now);
+// 	double axmass_now = axionmass(*axion->zV(),nQcd, zthres, zrestore);
+// 	double saskia = saxionshift(axmass_now, llphys, vqcdType);
+// 	double shiftz = z_now * saskia;
+// 	// BIN RHO +THETA
+// 	float shiftzf = shiftz ;
+// 	Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+// 						[z=z_now,ss=shiftzf] (complex<float> x) { return (double) abs(x-ss)/z; });
+// 	rhoBin.run();
+// 	writeBinner(rhoBin, "/bins", "rhoB");
+//
+// 	Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+// 					 [ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
+// 	thBin.run();
+// 	writeBinner(thBin, "/bins", "thetaB");
+// //ENERGY
+// 	energy(axion, eRes, false, delta, nQcd, LL, vqcdType, shiftz);
+// //DOMAIN WALL KILLER NUMBER
+// 	double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*llphys);
+// 	if (axion->Lambda() == LAMBDA_Z2 )
+// 		maa = maa*z_now*z_now;
+// //STRINGS
+// 	rts = strings(axion);
+// 	nstrings_global = rts.strDen;
+// 	if (p3DthresholdMB/((double) nstrings_global) > 1.)
+// 		writeString(axion, rts, true);
+// 	else
+// 		writeString(axion, rts, false);
+//
+// 	LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
+// 	LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*delta*nstrings_global*z_now*z_now/(sizeL*sizeL*sizeL));
+// 	destroyMeas();
+// }
