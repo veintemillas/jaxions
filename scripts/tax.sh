@@ -51,7 +51,7 @@ fi
 echo " " 1 - $MA selected as label!
 
 echo " " 2 - Locating files:
-LOCFIL=$(echo $(ls $MA* 2>/dev/null ) $(ls *.txt 2>/dev/null ) $(ls axion.log.*  | tail -1))
+LOCFIL=$(echo $(ls $MA* 2>/dev/null ) $(ls *.sh 2>/dev/null )  $(ls *.txt 2>/dev/null ) $(ls axion.log.*  | tail -1))
 echo "    [./]     "     $LOCFIL
 if [ ! -d "./out" ]; then
    echo Error: no out/folder!
