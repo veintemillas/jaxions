@@ -7,6 +7,7 @@ import math
 import re, os, sys
 import h5py
 import datetime
+from pyaxions import jaxions as pa
 mark=f"{datetime.datetime.now():%Y-%m-%d}"
 from uuid import getnode as get_mac
 mac = get_mac()
@@ -18,16 +19,14 @@ rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-
 # MOVE TRANSITION FILES
 if os.path.exists('./m/axion.m.10000'):
     os.rename('./m/axion.m.10000','./axion.m.10000')
 if os.path.exists('./m/axion.m.10001'):
     os.rename('./m/axion.m.10001','./axion.m.10001')
 
-
 # HDF5 DATASETS TO INCLUDE FIRST AND LAST
-fileMeas = sorted([x for x in [y for y in os.listdir("./m/")] if re.search("axion.m.[0-9]{5}$", x)])
+fileMeas = pa.findmfiles('./m/')
 
 mylist = []
 sel = True
@@ -35,18 +34,31 @@ firstlast = True
 firstnumber = 1
 
 for meas in fileMeas:
-    f = h5py.File('./m/'+ meas, 'r')
-    if 'nSpectrum' in f:
+    if pa.gm(meas,'nsp?'):
         mylist.append(meas)
-
+if len(mylist)==0:
+    print('No single file with nSpecrum!')
+    sys.exit()
 
 # LOOK FOR ARGUMENTS OF THE FUNCTION TO COMPLETE THE SETS PLOTTED
 if len(sys.argv) == 1:
-    mylist = [mylist[0],mylist[-1]]
+    if len(mylist) == 1:
+        mylist = [ mylist[0] ]
+    elif len(mylist) > 1:
+        mylist = [ mylist[0], mylist[-1] ]
 else:
     for input in sys.argv[1:]:
         if input == 'all':
             sel = False
+        if input == 'every10':
+            sel = False
+            freqout = len(mylist)//10
+            if freqout ==0 :
+                freqout +=1
+            mylistaux = mylist[::freqout]
+            if mylistaux[-1] != mylist[-1]:
+                mylistaux=mylistaux + [mylist[-1]]
+            mylist = mylistaux
 
     if sys.argv[1] == 'only':
             firstlast = False
@@ -58,108 +70,50 @@ else:
         else:
             mylist = []
         for input in sys.argv[firstnumber:]:
-            f = h5py.File('./m/axion.m.'+ input.zfill(5), 'r')
-            if 'nSpectrum' in f:
-                mylist.append('axion.m.' + input.zfill(5))
+            filename = './m/axion.m.'+ input.zfill(5)
+            if pa.gm(filename,'nsp?'):
+                mylist.append(filename)
 
+# SIMULATION DATA
+sizeN = pa.gm(mylist[0],'N')
+sizeL = pa.gm(mylist[0],'L')
+nqcd  = pa.gm(mylist[0],'nqcd')
 
-
-# SIMULATION DATA FROM FIRST ENTRY
-f = h5py.File('./m/'+ mylist[0], 'r')
-
-sizeN = f.attrs[u'Size']
-sizeL = f.attrs[u'Physical size']
-if 'nQcd' in f['/potential/'].attrs:
-    nqcd = f['/potential/'].attrs[u'nQcd']
-    print('new format!')
-elif 'nQcd' in f:
-    nqcd = f.attrs[u'nQcd']
-    print('old format')
-else :
-    nqcd = 7.0
-
-
+# SIMULATION NAME?
+simname = ''
+dirpath = os.getcwd()
+foldername = os.path.basename(dirpath)
+if len(foldername) > 4:
+    simname = foldername[4:]
 # ID
-ups = 'N'+str(sizeN)+' L'+str(sizeL)+' n'+str(nqcd)+' ('+mark+')'+str(mac)
+ups = simname+' : N'+str(sizeN)+' L'+str(sizeL)+' n'+str(nqcd)+' ('+mark+')'
 print('ID = '+ups)
-print()
-for item in f.attrs.keys():
-    print(item + ":", f.attrs[item])
-
 
 # CREATE DIR FOR PICS
 if not os.path.exists('./pics'):
     os.makedirs('./pics')
 
-
 # CALCULATE NUMBER OF MODES
-n2=int(sizeN/2)
-powmax = f['nSpectrum/sK/data/'].size
-ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
+nmodes = pa.phasespacedensityBOX(sizeN)
+nmax = len(nmodes)
+klist  = (0.5+np.arange(nmax))*2*math.pi/sizeL
+#klist[0]=0
 
-def funi(x,a,b):
-    return a + b*x
-
-from math import exp, log10, fabs, atan, log, atan2
-
-def volu( rR ):
-    if rR <= 1.0:
-        return (4*math.pi/3)*rR**3
-
-    elif 1.0 < rR <= math.sqrt(2.):
-        return (2*math.pi/3)*(9*rR**2-4*rR**3-3)
-
-    elif math.sqrt(2.) < rR < math.sqrt(3.):
-        a2 = rR**2-2
-        a = math.sqrt(a2)
-        b = 8*a - 4*(3*rR**2 -1)*(atan(a)-atan(1/a))
-        return b - (8/3)*(rR**3)*atan2(a*(6*rR + 4*rR**3 -2*rR**5),6*rR**4-2-12*rR**2)
-
-    elif  math.sqrt(3) < rR:
-        return 8.
-vecvolu=np.vectorize(volu)
-foca = np.arange(0,powmax)/n2
-foca2 = np.arange(1,powmax+1)/n2
-nmodes2 = (n2**3)*(vecvolu(foca2)-vecvolu(foca))
-
-
-## FINAL PLOT
-N3 = sizeN*sizeN*sizeN
 plt.clf()
 
-mylist = sorted(mylist)
-
-
 for meas in mylist:
-    #print(meas)
-    f = h5py.File('./m/'+ meas, 'r')
-    time = f.attrs[u'z']
+    nT = (klist**3)*pa.gm(meas,'nsp')/nmodes
+    # nG = pa.gm(meas,'nspG')/nmodes
+    # nV = pa.gm(meas,'nspV')/nmodes
 
-    # larvaP = np.reshape(f['pSpectrum/sP'],(powmax))
-    # av = larvaP/nmodes2
-    #
-    # plt.loglog(ktab,(ktab**3)*av/(math.pi**2),label=r'$\tau$={%.2f}'%(time))
+    plt.loglog(klist,nT,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'time')))
 
-    larvaK = np.reshape(f['nSpectrum/sK/data/'],(powmax))
-    larvaG = np.reshape(f['nSpectrum/sG/data/'],(powmax))
-    larvaV = np.reshape(f['nSpectrum/sV/data/'],(powmax))
-
-    #OCUPATION NUMBER is more interesting D.9 of notes
-    nK = larvaK/nmodes2
-    nG = larvaG/nmodes2
-    nV = larvaV/nmodes2
-
-
-#        plt.loglog(ktab[:lima],koni*ktab[:lima]**indi,c='gray',linewidth=1,label=r'$%.1f\, k^{%.1f}$' % (koni,indi))
-    # plt.loglog(ktab[:-2],nK[:-2],c='r',linewidth=0.6,marker='.',markersize=0.1,label='K')
-    # plt.loglog(ktab[:-2],nG[:-2],c='b',linewidth=0.6,marker='.',markersize=0.1,label='G')
-    # plt.loglog(ktab[:-2],nV[:-2],c='k',linewidth=0.6,marker='.',markersize=0.1,label='V')
-    plt.loglog(ktab[:-2],(nK+nV+nG)[:-2],linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
-
-
+rc('text', usetex=False)
 plt.title(ups)
+rc('text', usetex=True)
 #plt.ylim([0.00000001,100])
-plt.ylabel(r'$n_k$')
+plt.ylabel(r'$(k/k_1)^3 n_k$')
 plt.xlabel(r'comoving {$k [1/R_1 H_1]$}')
-plt.legend(loc='lower left',title=r'$\tau$={%.1f}'%(time))
+plt.legend(loc='lower left')
 plt.savefig("pics/occnumber_all.pdf")
+print("->pics/occnumber_all.pdf")
