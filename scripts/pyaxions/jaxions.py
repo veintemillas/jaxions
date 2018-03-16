@@ -1177,6 +1177,63 @@ def axev(address='./'):
 
 
 
+def axevS(address='./sample.txt'):
+    with open(address) as f:
+        lines=f.readlines()
+        l10 = 0
+        l5 = 0
+        for line in lines:
+            myarray = np.fromstring(line, dtype=float, sep=' ')
+            l = len(myarray)
+            if l==10:
+                l10 = l10 +1
+            elif l==5:
+                l5 = l5 +1
+    arrayA = np.genfromtxt(address,skip_header=l10)
+    arrayS = np.genfromtxt(address,skip_footer=l5)
+
+    lS = len(arrayS)
+    lA = len(arrayA)
+    ou = 0
+    if lS >1 :
+        ztab1 = arrayS[:,0]
+        Thtab1 = np.arctan2(arrayS[:,4],arrayS[:,3])
+        Rhtab1 = np.sqrt(arrayS[:,3]**2 + arrayS[:,4]**2)/ztab1
+        # note that this is unshifted velocity!
+        VThtab1 = Thtab1 + (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(ztab1*Rhtab1**2)
+        #
+        strings = arrayS[:,7]
+        fix = [[ztab1[0],strings[0]]]
+        i = 0
+        for i in range(0, len(ztab1)-1):
+            if strings[i] != strings[i+1]:
+                fix.append([ztab1[i+1],strings[i+1]])
+        stringo = np.asarray(fix)
+
+        ou += 1
+    if len(arrayA) >0 :
+        ztab2 = arrayA[:,0]
+        Thtab2 = arrayA[:,2]/ztab2
+        VThtab2 = arrayA[:,3]
+        ou += 2
+
+    if   ou == 3 :
+        print('Saxion + Axion (ztab1, Thtab1, Rhtab1, VThtab1, stringo, ztab2, Thtab2, VThtab2)')
+        return ztab1, Thtab1, Rhtab1, VThtab1, stringo, ztab2, Thtab2, VThtab2 ;
+    elif ou == 1 :
+        print('Saxion  (ztab1, Thtab1, Rhtab1, VThtab1, stringo)')
+        return ztab1, Thtab1, Rhtab1, VThtab1, stringo ;
+    elif ou == 2 :
+        print('Axion (ztab2, Thtab2, VThtab2)')
+        return ztab2, Thtab2, VThtab2 ;
+    else :
+        return ;
+
+
+
+
+
+
 #   qt plot!
 
 # def axevplot(arrayS, arrayA):
