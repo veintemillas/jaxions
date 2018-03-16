@@ -52,6 +52,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 
 		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
+		std::normal_distribution<Float> distri(0.0,1.0);
 
 		#pragma omp for schedule(static)
 		for (size_t oz = 0; oz < Tz; oz++)
@@ -71,11 +72,12 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 					if (modP <= 3*(kmax2 + adp*(1+Lx)))
 					{
 						Float vl = Twop*(uni(mt64));
+						Float al = distri(mt64);
 						// Float mP = sqrt(((Float) modP))/((Float) (kCrit));
 						// Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 						 Float mP = ((Float) modP)/((Float) (kCrit*kCrit));
 						 Float sc = (modP == 0) ? 1.0 : exp(-mP);
-						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc;
+						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc*al;
 						//printf("mom (%d,%d,%d) = %f %f*I\n",pz,py,px,fM[idx].real(),fM[idx].imag());
 					}
 				} // END  px loop

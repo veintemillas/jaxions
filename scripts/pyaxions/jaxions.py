@@ -129,7 +129,7 @@ def aximcontent(address='./'):
 #   main function to extract data from axion.m.XXXXX files by concept
 #
 
-def gm(address,something='help'):
+def gm(address,something='help',printerror=False):
 
     # the help
     if something == 'help':
@@ -137,8 +137,8 @@ def gm(address,something='help'):
         print('gm help           ')
         print('---------------------------------------------')
         print('ftype       Saxion/Axion      ')
-        print('ct/z        conformal time    ')
-        print('Size        Number of lattice points along 1D ')
+        print('ct/z/time   conformal time    ')
+        print('N/Size      Number of lattice points along 1D ')
         print('L           Phyiscal Box Length [ADM u.]     ')
         print('massA       Axion mass    [ADM u.]     ')
         print('massS       Saxion mass   [ADM u.]    ')
@@ -157,14 +157,19 @@ def gm(address,something='help'):
         print('binconBmin  maximum log10(contrast)         ')
         print('binthetaB   binned normalised theta value        ')
         print('binthetaBmax, binthetaBmin...   ')
+        print('bincon?     True/False')
+        print('binrho?     True/False')
+        print('bintheta?   True/False')
         print('kmax        maximum momentum [int] in the 3D grid ')
         print('         ')
         print('nsp         binned number spectrum [total]')
         print('nspK        binned number spectrum [Kinetic energy part]')
         print('nspG        binned number spectrum [Gradient energy part]')
         print('nspV        binned number spectrum [Potential energy part]')
+        print('nsp?        True/False')
         print('         ')
         print('psp         binned power spectrum')
+        print('psp?        True/False')
         print('         ')
         print('mapmC       2D slice map of conformal PQ field')
         print('mapvC       2D slice map of conformal PQ velocity field')
@@ -172,6 +177,7 @@ def gm(address,something='help'):
         print('maptheta    2D slice map of THETA')
         print('mapvheta    2D slice map of THETA_v')
         print('mapEdens    2D slice map of ENERGY in THETA [currentlt only Axion]')
+        print('         ')
         return ;
 
     f = h5py.File(address, 'r')
@@ -183,9 +189,9 @@ def gm(address,something='help'):
     if (something == 'ftype'):
         return ftype ;
 
-    if (something == 'ct') or (something == 'z'):
+    if (something == 'ct') or (something == 'z') or (something == 'time'):
         return f.attrs[u'z'] ;
-    if something == 'Size':
+    if (something == 'Size') or (something == 'N') or (something == 'sizeN'):
         return f.attrs[u'Size'] ;
     if something == 'L':
         return f.attrs[u'Physical size'] ;
@@ -231,10 +237,12 @@ def gm(address,something='help'):
             if ftype == 'Saxion':
                 fis = 'Sa'
             else:
-                # print('[gm] Warning: file contains no Saxion energy!, set to 0.')
+                if printerror :
+                     print('[gm] Warning: file contains no Saxion energy!, set to 0.')
                 return 0. ;
         else :
-            print('[gm] what field Energy you wants?')
+            if printerror :
+                print('[gm] what field Energy you wants?')
             return 0. ;
 
         if (something == 'eGx'+fi):
@@ -260,7 +268,8 @@ def gm(address,something='help'):
             eni += f['energy'].attrs[fis+'xion Potential']
             return eni ;
     elif (something[0] == 'e') and not en_check :
-        print('[gm] No energy in the file ',address )
+        if printerror :
+            print('[gm] No energy in the file ',address )
         return 0. ;
 
     # strings
@@ -278,74 +287,129 @@ def gm(address,something='help'):
             N = f.attrs[u'Size']
             ct = f.attrs[u'z']
             delta = L/N
-            return  (3*delta/4)*stringN*ct*ct/(L**3) ;
+            return  (3*delta/8)*stringN*ct*ct/(L**3) ;
     elif (something[0:2] == 'st') and not st_check :
-        print('[gm] No string info in the file! Use 0.')
+        if printerror :
+            print('[gm] No string info in the file! Use 0.')
         return 0. ;
 
+    ##########
     # the bins
+    ##########
+
     bin_check = 'bins' in f
+
     if (something[0:2] == 'bi') and not bin_check :
-        #print('[gm] Warning: No bins in file. Returning []')
+        if printerror :
+            print('[gm] Warning: No bins in file. Returning []')
         return ;
+
     if (something[0:2] == 'bi') and  bin_check :
-        # contrast bin
-        binconB_check = 'bins/contB' in f
+
+        #### contrast bin
+
+        binconB_check = False
+
+        if ('bins/contB' in f):
+            binconB_check = True
+            bincon_string = 'bins/contB'
+        elif ('bins/cont' in f) :
+            binconB_check = True
+            bincon_string = 'bins/cont'
+
+        if (something == 'bincon?'):
+            return binconB_check
+
         if (something[0:4] == 'binc') and not binconB_check :
-            #print('[gm] Warning: No bins/contB in file. Returning []')
+            if printerror :
+                print(""" [gm] Warning: No contrast bin in file (bins/cont or bins/contB). Returning 'None' """)
             return ;
         if (something[0:4] == 'binc') and binconB_check :
             if (something == 'binconB'):
-                numBIN = f['bins/contB'].attrs[u'Size']
-                return np.reshape(f['bins/contB/data'],(numBIN)) ;
+                numBIN = f[bincon_string].attrs[u'Size']
+                return np.reshape(f[bincon_string+'/data'],(numBIN)) ;
             if (something == 'binconBmax'):
-                return f['bins/contB'].attrs[u'Maximum'] ;
+                return f[bincon_string].attrs[u'Maximum'] ;
             if (something == 'binconBmin'):
-                return f['bins/contB'].attrs[u'Minimum'] ;
+                return f[bincon_string].attrs[u'Minimum'] ;
 
-        # theta bin
-        bintheB_check = 'bins/thetaB' in f
+        #### theta bin
+
+        bintheB_check = False
+
+        if ('bins/thetaB' in f):
+            bintheB_check = True
+            bintheta_string = 'bins/thetaB'
+        elif ('bins/theta' in f) :
+            bintheB_check = True
+            bintheta_string = 'bins/theta'
+
+        if (something == 'bintheta?'):
+            return bintheB_check
+
         if (something[0:4] == 'bint') and not bintheB_check :
-            #print('[gm] Warning: No bins/thetaB in file. Returning []')
+            if printerror :
+                print(""" [gm] Warning: No bins/thetaB in file. Returning 'None' """)
             return ;
         if (something[0:4] == 'bint') and bintheB_check :
             if (something == 'binthetaB'):
-                numBIN = f['bins/thetaB'].attrs[u'Size']
-                return np.reshape(f['bins/thetaB/data'],(numBIN)) ;
+                numBIN = f[bintheta_string].attrs[u'Size']
+                return np.reshape(f[bintheta_string+'/data'],(numBIN)) ;
             if (something == 'binthetaBmax'):
-                return f['bins/thetaB'].attrs[u'Maximum'] ;
+                return f[bintheta_string].attrs[u'Maximum'] ;
             if (something == 'binthetaBmin'):
-                return f['bins/thetaB'].attrs[u'Minimum'] ;
+                return f[bintheta_string].attrs[u'Minimum'] ;
 
-        # rho bin
-        binrhoB_check = 'bins/rhoB' in f
+        #### rho bin
+
+        binrhoB_check = False
+        if ('bins/rhoB' in f):
+            binrhoB_check = True
+            binrho_string = 'bins/rhoB'
+        elif ('bins/rho' in f) :
+            binrhoB_check = True
+            binrho_string = 'bins/rho'
+
+        if (something == 'binrho?'):
+            return binrhoB_check
+
         if (something[0:4] == 'binr') and not binrhoB_check :
             if ftype == 'Axion' :
-                print('[gm] Warning: Axion mode, no rho!')
+                if printerror :
+                    print('[gm] Warning: Axion mode, no rho!')
                 return ;
             elif ftype == 'Axion' :
-                print('[gm] Warning: No bins/thetaB in file. Returning []')
+                if printerror :
+                    print('[gm] Warning: No bins/thetaB in file. Returning []')
                 return ;
         if (something[0:4] == 'binr') and binrhoB_check :
             if (something == 'binrhoB'):
-                numBIN = f['bins/rhoB'].attrs[u'Size']
-                return np.reshape(f['bins/rhoB/data'],(numBIN)) ;
+                numBIN = f[binrho_string].attrs[u'Size']
+                return np.reshape(f[binrho_string+'/data'],(numBIN)) ;
             if (something == 'binrhoBmax'):
-                return f['bins/rhoB'].attrs[u'Maximum'] ;
+                return f[binrho_string].attrs[u'Maximum'] ;
             if (something == 'binrhoBmin'):
-                return f['bins/rhoB'].attrs[u'Minimum'] ;
+                return f[binrho_string].attrs[u'Minimum'] ;
 
 
     if (something == 'kmax'):
         N = f.attrs[u'Size']
         return math.floor((N//2)*np.sqrt(3)+1) ;
 
+    ##############
     # the spectra
+    ##############
 
     # number spectra
+
     nsp_check = 'nSpectrum' in f
+
+    if (something == 'nsp?') :
+        return nsp_check
+
     if (something[0:3] == 'nsp') and not nsp_check :
-        print('[gm] Warning: No nSpec in file. Returning []')
+        if printerror :
+            print(""" [gm] Warning: No nSpec in file. Returning 'None' """)
         return ;
     if (something[0:3] == 'nsp') and  nsp_check :
         powmax = f['nSpectrum/sK/data/'].size
@@ -364,8 +428,13 @@ def gm(address,something='help'):
 
     # power spectra
     psp_check = 'pSpectrum' in f
+
+    if (something == 'psp?') :
+        return psp_check
+
     if (something[0:3] == 'psp') and not psp_check :
-        print('[gm] Warning: No pSpec in file. ')
+        if printerror :
+            print('[gm] Warning: No pSpec in file. ')
         return ;
     if (something[0:3] == 'psp') and  psp_check :
         powmax = f['pSpectrum/sP/data/'].size
@@ -375,7 +444,8 @@ def gm(address,something='help'):
     # maps
     map_check = 'map' in f
     if (something[0:3] == 'map') and not map_check :
-        print('[gm] Warning: No map in file!. ')
+        if printerror :
+            print('[gm] Warning: No map in file!. ')
         return ;
     if (something[0:3] == 'map') and  map_check :
         N = f.attrs[u'Size']
@@ -410,6 +480,10 @@ def gm(address,something='help'):
     # the irrelevants
     if something == 'Depth':
         return f.attrs[u'Depth'] ;
+    if something == 'zi':
+        return f.attrs[u'zInitial'] ;
+    if something == 'zf':
+        return f.attrs[u'zFinal'] ;
 
     print('Argument not recognised/found!')
     return ;
@@ -527,7 +601,7 @@ def phasespacedensityBOX ( sizeN ):
         if approx[i] > 10000:
             sli = i
             break
-    print(sli)
+    # print(sli)
     exact = phasespacedensityBOXexact ( 2*sli )
     for i in range(0,sli):
         approx[i] = exact[i]
@@ -663,7 +737,7 @@ def contrastbin(logbins, mincon, maxcon, N, X):
 
 def normalisePspectrum(psp, nmodes, avdens, N, L):
     kmax   = len(psp)
-    klist  = (0.5+np.arange(kmax))*math.pi/L
+    klist  = (0.5+np.arange(kmax))*2*math.pi/L
     norma  = 1/((math.pi**2)*(avdens**2))
     return norma*(klist**3)*psp/nmodes;
 
@@ -728,6 +802,267 @@ def energoS(mfiles):
     for f in mfiles:
         eevol.append([gm(f,'ct'),gm(f,'eKS'),gm(f,'eGS'),gm(f,'eVS'),gm(f,'eS')])
     return np.array(eevol) ;
+
+
+
+
+
+# ------------------------------------------------------------------------------
+#   ANALYSIS TOOLS simulation class + averager
+# ------------------------------------------------------------------------------
+
+
+
+
+
+
+
+class simgen:
+    def __init__(self, N):
+        self.N = N
+        self.nmax = math.floor((self.N//2)*np.sqrt(3)+1)
+        self.nmodes = phasespacedensityBOX(self.N)
+
+
+
+
+class simu:
+    def __init__(self, dirname):
+        self.dirname = dirname
+        self.mfiles = findmfiles(self.dirname)
+
+        self.N = gm(self.mfiles[0],'Size')
+        self.nqcd = gm(self.mfiles[0],'nqcd')
+        self.msa = gm(self.mfiles[0],'msa')
+        self.L = gm(self.mfiles[0],'L')
+        self.zI = gm(self.mfiles[0],'zi')
+        self.zF = gm(self.mfiles[0],'zf')
+        self.zi = gm(self.mfiles[0],'z')
+        self.zf = gm(self.mfiles[-1],'z')
+
+        self.finished = False
+        self.wkb = False
+        self.preprop = False
+
+        if self.zf > self.zF :
+            self.finished = True
+        if self.zi < self.zI :
+            self.preprop = True
+
+        # danger flag
+        self.safe = True
+
+        # mode list
+        self.mora = simgen(self.N)
+        self.klist=(6.28318/self.L)*(np.arange(self.mora.nmax)+0.5)
+
+        ################
+        # power spectrum
+        # dim variance
+        ################
+
+        self.mfilesp = []
+
+        # flag in case there is no spectrum?
+        self.anypsp = False
+
+        for mf in self.mfiles:
+            if gm(mf,'psp?') :
+                self.mfilesp.append(mf)
+                self.anypsp = True
+
+        # last spectrum
+        self.psp = None
+        if self.anypsp :
+            for mf in reversed(self.mfilesp):
+                self.lastfilep = mf
+                self.psp = gm(self.lastfilep,'psp')
+                if self.psp != None:
+    #                 print(self.dirname,self.lastfilep,self.N,len(self.psp),len(self.klist))
+                    self.avdens = gm(self.lastfilep,'eA')
+                    self.norma = 1/((math.pi**2)*(self.avdens**2))
+                    self.pspt = gm(self.lastfilep,'ct')
+                    self.psp = (self.norma)*self.psp*(self.klist**3)/(self.mora.nmodes)
+    #                 print(self.lastfilep)
+                    break
+
+        # checks
+
+        self.spok = False
+
+        if self.psp != None:
+            self.spok = True
+            if self.psp.max() > 500. :
+                self.spok = False
+
+
+        #################
+        # number spectrum
+        #################
+
+        self.mfilesn = []
+
+        # flag in case there is no spectrum?
+        self.anynsp = False
+
+        for mf in self.mfiles:
+            if gm(mf,'nsp?') :
+                self.mfilesn.append(mf)
+                self.anynsp = True
+
+        # last spectrum
+        self.nsp = None
+        self.nspK = None
+        self.nspG = None
+        self.nspV = None
+
+        if self.anynsp :
+            for mf in reversed(self.mfilesn):
+                self.lastfilen = mf
+                self.nsp = gm(self.lastfilep,'nsp')
+
+        if self.nsp != None:
+            self.nsp = (self.klist**3)*self.nsp/(self.mora.nmodes)
+            self.nspK = (self.klist**3)*gm(self.lastfilen,'nspK')/(self.mora.nmodes)
+            self.nspG = (self.klist**3)*gm(self.lastfilen,'nspG')/(self.mora.nmodes)
+            self.nspV = (self.klist**3)*gm(self.lastfilen,'nspV')/(self.mora.nmodes)
+            if self.nsp.max() > 1000. :
+                self.spok = False
+
+        #################
+        # CONT bins
+        #################
+
+        self.mfilesc = []
+
+        # flag in case there is no contrast bin at all?
+        self.anycon = False
+
+        for mf in self.mfiles:
+            if gm(mf, 'bincon?') :
+                self.mfilesc.append(mf)
+                self.anycon = True
+
+
+    def listpspct (self, time):
+        timetab=[]
+        for mf in self.mfilesp:
+            timetab.append(gm(mf,'ct'))
+        timetab=np.array(timetab)
+        pos=np.abs(timetab-time).argmin()
+
+        tmppsp = gm(self.mfilesp[pos],'psp')
+        if tmppsp != None:
+            tmpavdens = gm(self.mfilesp[pos],'eA')
+            tmpnorma = 1/((math.pi**2)*(tmpavdens**2))
+            tmppspt = gm(self.mfilesp[pos],'ct')
+            tmppsp = (tmpnorma)*tmppsp*(self.klist**3)/(self.mora.nmodes)
+            return tmppspt, self.klist, tmppsp
+
+    def listnspct (self, time):
+        timetab=[]
+        for mf in self.mfilesn:
+            timetab.append(gm(mf,'ct'))
+        timetab=np.array(timetab)
+        pos=np.abs(timetab-time).argmin()
+
+        tmpnsp = gm(self.mfilesn[pos],'nsp')
+        if tmpnsp != None:
+            tmpnspt = gm(self.mfilesn[pos],'ct')
+            tmpnsp = tmpnsp*(self.klist**3)/(self.mora.nmodes)
+            return tmpnspt, self.klist, tmpnsp
+
+    def listcont (self, time):
+        timetab=[]
+        for mf in self.mfilesc:
+            timetab.append(gm(mf,'ct'))
+        timetab=np.array(timetab)
+        pos=np.abs(timetab-time).argmin()
+
+        tmpcon = conbin(self.mfilesc[pos],100)
+        if tmpcon != None:
+            tmpt = gm(self.mfilesc[pos],'ct')
+            return tmpt, tmpcon[:,0], tmpcon[:,1]
+
+    def addpspplot (self):
+        if self.spok == True :
+            return plt.loglog(self.klist,self.psp,label='t=%.1f N=%d L=%.1f'%(self.pspt,self.N,self.L))
+
+    def addpspplott (self, time):
+        timetab=[]
+        for mf in self.mfiles:
+            timetab.append(gm(mf,'ct'))
+
+        timetab=np.array(timetab)
+        pos=np.abs(timetab-time).argmin()
+        self.tmppsp = gm(self.mfiles[pos],'psp')
+        if self.tmppsp != None:
+            self.tmpavdens = gm(self.mfiles[pos],'eA')
+            self.tmpnorma = 1/((math.pi**2)*(self.tmpavdens**2))
+            self.tmppspt = gm(self.mfiles[pos],'ct')
+            self.tmppsp = (self.tmpnorma)*self.tmppsp*(self.klist**3)/(self.mora.nmodes)
+            return plt.loglog(self.klist,self.tmppsp,label='t=%.1f N=%d L=%.1f'%(self.tmppspt,self.N,self.L))
+
+
+
+
+
+# stores different files for a given observable and presents interpolated averages and variance
+class averager:
+    def __init__(self,name):
+        self.name = name
+        self.xlist = []
+        self.ylist = []
+        self.xmislist = []
+        self.xmisloglist = []
+        self.xmaslist = []
+        self.xgrid = []
+        self.yave = []
+        self.ystd = []
+        self.number = 0
+        self.pbase = []
+        self.npoints = 0
+        self.labels = []
+
+    def adds(self,x, y,lab=''):
+        self.xlist.append(x)
+        self.ylist.append(y)
+        self.xmislist.append(x.min())
+        self.xmisloglist.append(np.min(x[x>0.0]))
+        self.xmaslist.append(x.max())
+        self.number += 1
+        self.labels.append(lab)
+
+    # this calculates averages in log
+    # would be nice to have it for linear, in that case, one would like to have mislog and mis
+    # at the moment, cannot handle 0.0 in xlist[i]
+    # if a point x=0.0 is present, like in the powerspectra, they have to be dropped in the call
+    def calculateave(self,n_points):
+        self.npoints=n_points
+        mis = min(self.xmisloglist)*1.01
+        mas = max(self.xmaslist)*0.99
+        print(mis,mas,n_points,'points in log space')
+        self.xgrid = np.logspace(np.log10(mis),np.log10(mas),n_points)
+        xbase = np.log10(self.xgrid)
+        ybase = np.zeros(n_points)
+        y2base = np.zeros(n_points)
+        self.pbase = np.zeros(n_points)
+        for i in range(0,self.number) :
+            templist = np.array(self.xlist[i])
+#             inte = interp1d(np.log10(self.xlist[i]),np.log10(self.ylist[i]),fill_value=(1,1))
+#             mask = (self.xmisloglist[i] < self.xgrid) * (self.xgrid < self.xmaslist[i])
+#             pimp = np.power(10.,inte(xbase))
+            mask = (self.xmisloglist[i] < self.xgrid) * (self.xgrid < self.xmaslist[i])
+            pimp = np.power(10.,np.interp(xbase,np.log10(self.xlist[i]),np.log10(self.ylist[i]),left=1,right=1))
+            ybase += pimp*mask
+            y2base += (pimp**2)*mask
+            self.pbase += mask
+        self.yave = ybase/self.pbase
+        self.ystd = np.sqrt((y2base/self.pbase)-(self.yave)**2)
+
+
+
+
 
 
 
@@ -800,6 +1135,63 @@ def loadsample(address='./'):
 
 def axev(address='./'):
     arrayS, arrayA = loadsample(address)
+    lS = len(arrayS)
+    lA = len(arrayA)
+    ou = 0
+    if lS >1 :
+        ztab1 = arrayS[:,0]
+        Thtab1 = np.arctan2(arrayS[:,4],arrayS[:,3])
+        Rhtab1 = np.sqrt(arrayS[:,3]**2 + arrayS[:,4]**2)/ztab1
+        # note that this is unshifted velocity!
+        VThtab1 = Thtab1 + (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(ztab1*Rhtab1**2)
+        #
+        strings = arrayS[:,7]
+        fix = [[ztab1[0],strings[0]]]
+        i = 0
+        for i in range(0, len(ztab1)-1):
+            if strings[i] != strings[i+1]:
+                fix.append([ztab1[i+1],strings[i+1]])
+        stringo = np.asarray(fix)
+
+        ou += 1
+    if len(arrayA) >0 :
+        ztab2 = arrayA[:,0]
+        Thtab2 = arrayA[:,2]/ztab2
+        VThtab2 = arrayA[:,3]
+        ou += 2
+
+    if   ou == 3 :
+        print('Saxion + Axion (ztab1, Thtab1, Rhtab1, VThtab1, stringo, ztab2, Thtab2, VThtab2)')
+        return ztab1, Thtab1, Rhtab1, VThtab1, stringo, ztab2, Thtab2, VThtab2 ;
+    elif ou == 1 :
+        print('Saxion  (ztab1, Thtab1, Rhtab1, VThtab1, stringo)')
+        return ztab1, Thtab1, Rhtab1, VThtab1, stringo ;
+    elif ou == 2 :
+        print('Axion (ztab2, Thtab2, VThtab2)')
+        return ztab2, Thtab2, VThtab2 ;
+    else :
+        return ;
+
+
+
+
+
+
+def axevS(address='./sample.txt'):
+    with open(address) as f:
+        lines=f.readlines()
+        l10 = 0
+        l5 = 0
+        for line in lines:
+            myarray = np.fromstring(line, dtype=float, sep=' ')
+            l = len(myarray)
+            if l==10:
+                l10 = l10 +1
+            elif l==5:
+                l5 = l5 +1
+    arrayA = np.genfromtxt(address,skip_header=l10)
+    arrayS = np.genfromtxt(address,skip_footer=l5)
+
     lS = len(arrayS)
     lA = len(arrayA)
     ou = 0
