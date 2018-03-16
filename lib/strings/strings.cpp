@@ -77,8 +77,6 @@ StringData	strings	(Scalar *field)
 
 	prof.start();
 
-	auto	eStr = std::make_unique<Strings> (field);
-
 	StringData	strTmp, strDen;
 
 	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB)) {
@@ -90,6 +88,8 @@ StringData	strings	(Scalar *field)
 
 		return strDen;
 	}
+
+	auto	eStr = std::make_unique<Strings> (field);
 
 	if	(!field->Folded() && field->Device() == DEV_CPU)
 	{

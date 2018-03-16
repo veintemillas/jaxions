@@ -2,7 +2,7 @@
 #include<cmath>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
-#include"scalar/varNQCD.h"
+//#include"scalar/varNQCD.h"
 
 #include "utils/triSimd.h"
 #include "utils/parse.h"
@@ -29,7 +29,7 @@
 
 template<const VqcdType VQcd, const bool map>
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *z, const double o2, const double LL,
-			 const double nQcd, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
+			 const double aMass2, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
 {
 	const size_t Sf = Lx*Lx;
 	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
@@ -59,7 +59,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
 		//const double zQ = 9.*pow(zR, nQcd+2.);
-		const double zQ = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR;
+		const double zQ = aMass2*zR*zR;
 		const double lZ = 0.25*LL*zR*zR;
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
@@ -470,7 +470,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float iz  = 1./zR;
 		const float iz2 = iz*iz;
 		//const float zQ = 9.f*powf(zR, nQcd+2.);
-		const float zQ = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
+		const float zQ = aMass2*zR*zR;
 		const float lZ = 0.25f*LL*zR*zR;
 		const float sh = shift;				// Makes clang happy
 
@@ -896,7 +896,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	}
 }
 
-void	energyCpu	(Scalar *field, const double delta2, const double LL, const double nQcd, void *eRes, const double shift, const VqcdType VQcd, const bool map)
+void	energyCpu	(Scalar *field, const double delta2, const double LL, const double aMass2, void *eRes, const double shift, const VqcdType VQcd, const bool map)
 {
 	const double ood2 = 0.25/delta2;
 	double *z = field->zV();
@@ -912,26 +912,26 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 			if (map == true) {
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 				} else {
-					energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 				}
 			} else {
-				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			}
 			break;
 		case	VQCD_1_PQ_2:
 			if (map == true) {
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf,
+					energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf,
 									    field->Precision(), eRes, shift);
 				} else {
-					energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf,
+					energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf,
 									    field->Precision(), eRes, shift);
 				}
 			} else {
-				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			}
 			break;
 
@@ -939,12 +939,12 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 			if (map == true) {
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 				} else {
-					energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 				}
 			} else {
-				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, nQcd, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), z, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
 			}
 			break;
 	}

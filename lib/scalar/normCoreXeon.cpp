@@ -15,14 +15,14 @@ void normCoreKernelXeon (Scalar *field)
 	//printf("Entering CORE smoothing ");
 	//fflush (stdout);
 
-	const Float deltaa = sizeL/sizeN;
+	const Float deltaa = field->Delta();
 	const Float zia = static_cast<Float>(*field->zV());
 	Float LLa ;
 
 	if (field->Lambda() == LAMBDA_FIXED)
-			LLa = LL ;
+			LLa = field->BckGnd()->Lambda();
 	else
-			LLa = 0.5*pow(msa/(deltaa*zia),2.);
+			LLa = 0.5*pow(field->Msa()/(deltaa*zia),2.);
 
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();

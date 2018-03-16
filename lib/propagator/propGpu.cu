@@ -5,7 +5,7 @@
 #include "enum-field.h"
 
 #include "utils/parse.h"
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 
 #define	BLSIZE 256
 #define	BSSIZE 256
@@ -114,7 +114,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 }
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double LL, const double nQcd, const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
+		     const double LL, const double aMass2, const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
 		     const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 /*
@@ -134,7 +134,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double zR   = *z;
 		const double z2   = zR*zR;
 		const double z4   = z2*z2;
-		const double zQ   = axionmass2(*z, nQcd, zthres, zrestore)*z2*zR;
+		const double zQ   = aMass2*z2*zR;
 		const double ood2 = 1./delta2;
 		const double gFp1 = sqrt(ood2)*gamma;
 		const double gFac = gFp1/zR;
@@ -243,7 +243,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float zR   = *z;
 		const float z2   = zR*zR;
 		const float z4   = z2*z2;
-		const float zQ   = (float) axionmass2(*z, nQcd, zthres, zrestore)*z2*zR;
+		const float zQ   = aMass2*z2*zR;//(float) axionmass2(*z, nQcd, zthres, zrestore)*z2*zR;
 		const float ood2 = 1./delta2;
 		const float gFp1 = sqrt(ood2)*gamma;
 		const float gFac = gFp1/zR;
@@ -488,7 +488,7 @@ void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double
 	}
 }
 
-void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c, const double delta2, const double LL, const double nQcd,
+void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c, const double delta2, const double LL, const double aMass2,
 		   const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
 		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
@@ -507,7 +507,7 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		const double zR   = *z;
 		const double z2   = zR*zR;
 		const double z4   = z2*z2;
-		const double zQ = axionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
+		const double zQ   = aMass2*z2*zR;
 		const double dzc  = dz*c;
 		const double ood2 = 1./delta2;
 		const double gFp1 = sqrt(ood2)*gamma;
@@ -615,7 +615,7 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		const float zR   = *z;
 		const float z2   = zR*zR;
 		const float z4   = z2*z2;
-		const float zQ = axionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
+		const float zQ   = aMass2*z2*zR;//xionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
 		const float dzc  = dz*c;
 		const float ood2 = 1./delta2;
 		const float gFp1 = sqrt(ood2)*gamma;

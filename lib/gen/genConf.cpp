@@ -38,12 +38,13 @@ class	ConfGenerator
 
 	int	index;
 
+	Cosmos	*myCosmos;
 	Scalar	*axionField;
 
 	public:
 
-		 ConfGenerator(Scalar *field, ConfType type);
-		 ConfGenerator(Scalar *field, ConfType type, size_t parm1, double parm2);
+		 ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type);
+		 ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type, size_t parm1, double parm2);
 		~ConfGenerator() {};
 
 	void	runCpu	();
@@ -51,7 +52,7 @@ class	ConfGenerator
 	void	runXeon	();
 };
 
-	ConfGenerator::ConfGenerator(Scalar *field, ConfType type, size_t parm1, double parm2) : axionField(field), cType(type)
+	ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type, size_t parm1, double parm2) : myCosmos(myCosmos), axionField(field), cType(type)
 {
 	switch (type)
 	{
@@ -80,7 +81,7 @@ class	ConfGenerator
 	}
 }
 
-	ConfGenerator::ConfGenerator(Scalar *field, ConfType type) : axionField(field), cType(type)
+	ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type) : myCosmos(myCosmos), axionField(field), cType(type)
 {
 	switch (type)
 	{
@@ -129,7 +130,7 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_READ:
-		readConf (&axionField, index);
+		readConf (myCosmos, &axionField, index);
 		break;
 
 		case CONF_TKACHEV: {
@@ -206,7 +207,7 @@ void	ConfGenerator::runCpu	()
 		break;
 
 		case CONF_READ:
-		readConf (&axionField, index);
+		readConf (myCosmos, &axionField, index);
 		break;
 
 		case CONF_TKACHEV: {
@@ -253,11 +254,11 @@ void	ConfGenerator::runCpu	()
 
 }
 
-void	genConf	(Scalar *field, ConfType cType)
+void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType)
 {
 	LogMsg  (VERB_HIGH, "Called configurator generator");
 
-	auto	cGen = std::make_unique<ConfGenerator> (field, cType);
+	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType);
 
 	switch (field->Device())
 	{
@@ -279,11 +280,11 @@ void	genConf	(Scalar *field, ConfType cType)
 	return;
 }
 
-void	genConf	(Scalar *field, ConfType cType, size_t parm1, double parm2)
+void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType, size_t parm1, double parm2)
 {
 	LogMsg  (VERB_HIGH, "Called configurator generator");
 
-	auto	cGen = std::make_unique<ConfGenerator> (field, cType, parm1, parm2);
+	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType, parm1, parm2);
 
 	switch (field->Device())
 	{

@@ -2,7 +2,7 @@
 #include <cmath>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
 #include "utils/triSimd.h"
@@ -28,7 +28,7 @@
 
 template<const bool wMod>
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-				    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
+				    const double ood2, const double aMass2, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
 
@@ -55,7 +55,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const double dzd = dz*d;
 		const double zR = *z;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ = aMass2*zR*zR*zR;
 		const double iz = 1.0/zR;
 		const double tV	= 2.*M_PI*zR;
 
@@ -292,7 +292,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float dzd = dz*d;
 		const float zR = *z;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*zR*zR*zR);
 		const float iz = 1.f/zR;
 		const float tV = 2.*M_PI*zR;
 #ifdef	__AVX512F__
@@ -513,17 +513,17 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 #undef	_PREFIX_
 
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-				    const double ood2, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
+				    const double ood2, const double aMass2, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod)
 {
 	switch (wMod)
 	{
 		case	true:
-			propThetaKernelXeon<true> (m_, v_, m2_, z, dz, c, d, ood2, nQcd, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+			propThetaKernelXeon<true> (m_, v_, m2_, z, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 			break;
 
 		case	false:
-			propThetaKernelXeon<false>(m_, v_, m2_, z, dz, c, d, ood2, nQcd, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+			propThetaKernelXeon<false>(m_, v_, m2_, z, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 			break;
 	}
 }

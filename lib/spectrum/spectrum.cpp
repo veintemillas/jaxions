@@ -13,7 +13,7 @@
 void	SpecBin::fillCosTable () {
 
 	const double	ooLx   = 1./Ly;
-	const double	factor = (2.*Ly*Ly)/(sizeL*sizeL);
+	const double	factor = (2.*Ly*Ly)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 
 	cosTable.resize(kMax+1);
 
@@ -28,6 +28,8 @@ void	SpecBin::fillBins	() {
 
 	using cFloat = std::complex<Float>;
 
+	const double norm = (field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()) /
+			    (2.*(((double) field->TotalSize())*((double) field->TotalSize())));
 	const int mIdx = commThreads();
 
 	size_t	zBase = (Ly/commSize())*commRank();
@@ -91,7 +93,7 @@ void	SpecBin::fillBins	() {
 			}
 
 			if (spectral)
-				k2 *= (4.*M_PI*M_PI)/(sizeL*sizeL);
+				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 			else
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
 
@@ -125,8 +127,6 @@ void	SpecBin::fillBins	() {
 					break;
 			}
 		}
-
-		const double norm = (sizeL*sizeL*sizeL)/(2.*(((double) field->TotalSize())*((double) field->TotalSize())));
 
 		#pragma omp for schedule(static)
 		for (int j=0; j<powMax; j++) {

@@ -25,7 +25,7 @@ using namespace AxionWKB;
 
 int	main (int argc, char *argv[])
 {
-	initAxions(argc, argv);
+	Cosmos myCosmos = initAxions(argc, argv);
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -49,7 +49,7 @@ int	main (int argc, char *argv[])
 	} else {
 		if (fIndex == -1) {
 			LogOut("Generating axion field (this might take a while) ... ");
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
 			if (axion == nullptr) {
 				LogError("Error: couldn't generate axion field\n");
 				endAxions();
@@ -58,7 +58,7 @@ int	main (int argc, char *argv[])
 			LogOut("Success!\n\n");
 		} else {
 			LogOut("Reading file index %d ... ", fIndex);
-			readConf(&axion, fIndex);
+			readConf(&myCosmos, &axion, fIndex);
 			if (axion == nullptr) {
 				LogError ("Error: can't read HDF5 file\n");
 				endAxions();
@@ -81,11 +81,11 @@ int	main (int argc, char *argv[])
 
 	const size_t S0  = axion->Surf();
 
-	double delta     = sizeL/axion->Length();
+	double delta     = axion->Delta();
 	double dz        = 0.;
 	double dzAux     = 0.;
-	double llPhys    = LL;
-	double llConstZ2 = LL;
+	double llPhys    = myCosmos.Lambda();
+	double llConstZ2 = myCosmos.Lambda();
 
 	double saskia    = 0.;
 	double zShift    = 0.;
@@ -100,9 +100,6 @@ int	main (int argc, char *argv[])
 		LogError ("Error: can't reduce from %lu to %lu, will reduce to %lu", endredmap, axion->Length(), axion->Length());
 		endredmap = axion->Length();
 	}
-
-	zthres 	 = 100.0 ;
-	zrestore = 100.0 ;
 
 	LogOut("Lambda is in %s mode\n", (axion->Lambda() == LAMBDA_FIXED) ? "fixed" : "z2");
 
@@ -156,33 +153,33 @@ int	main (int argc, char *argv[])
 	LogOut("-------------------------------------------------\n");
 	LogOut("             Simulation parameters               \n");
 	LogOut("-------------------------------------------------\n");
-	LogOut("  Length =  %2.2f\n", sizeL);
-	LogOut("  nQCD   =  %2.2f\n", nQcd);
+	LogOut("  Length =  %2.2f\n", myCosmos.PhysSize());
+	LogOut("  nQCD   =  %2.2f\n", myCosmos.QcdExp());
 	LogOut("  N      =  %ld\n",   axion->Length());
 	LogOut("  Nz     =  %ld\n",   axion->Depth());
 	LogOut("  zGrid  =  %ld\n",   zGrid);
-	LogOut("  dx     =  %2.5f\n", delta);
+	LogOut("  dx     =  %2.5f\n", axion->Delta());
 	LogOut("  dz     =  %2.2f/FREQ\n", wDz);
 
 	if (axion->Lambda() == LAMBDA_FIXED)
-		LogOut("  LL     =  %f \n\n", LL);
+		LogOut("  LL     =  %f \n\n", myCosmos.PhysSize());
 	else
-		LogOut("  LL     =  %1.3e/z^2 Set to make ms*delta =%f\n\n", llConstZ2, msa);
+		LogOut("  LL     =  %1.3e/z^2 Set to make ms*delta =%f\n\n", llConstZ2, axion->Msa());
 
-	switch (vqcdType & VQCD_TYPE) {
+	switch (myCosmos.QcdPot() & VQCD_TYPE) {
 		case	VQCD_1:
-			LogOut("  VQcd 1 PQ 1, shift, continuous theta, flag %d\n\n", vqcdType);
+			LogOut("  VQcd 1 PQ 1, shift, continuous theta, flag %d\n\n", myCosmos.QcdPot());
 			break;
 		case	VQCD_2:
-			LogOut("  VQcd 2 PQ 1, no shift, continuous theta, flag %d\n\n", vqcdType);
+			LogOut("  VQcd 2 PQ 1, no shift, continuous theta, flag %d\n\n", myCosmos.QcdPot());
 			break;
 		case	VQCD_1_PQ_2:
-			LogOut("  VQcd 1 PQ 2, shift, continuous theta, flag %d\n\n", vqcdType);
+			LogOut("  VQcd 1 PQ 2, shift, continuous theta, flag %d\n\n", myCosmos.QcdPot());
 			break;
 	}
 
-	if ((vqcdType & VQCD_DAMP) != 0)
-		LogOut("  Damping enabled with friction constant %e\n\n", gammo);
+	if ((myCosmos.QcdPot() & VQCD_DAMP) != 0)
+		LogOut("  Damping enabled with friction constant %e\n\n", myCosmos.Gamma());
 
 	LogOut("-------------------------------------------------\n\n\n\n");
 
@@ -195,13 +192,13 @@ int	main (int argc, char *argv[])
 	double zNow  = *(axion->zV());
 	double zDoom = 0.;
 
-	if ((vqcdType & VQCD_TYPE) == VQCD_1_PQ_2)
-		zDoom = pow(0.1588*msa/delta*2., 2./(nQcd+2.));
+	if ((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
+		zDoom = pow(0.1588*axion->Msa()/axion->Delta()*2., 2./(myCosmos.QcdExp()+2.));
 	else
-		zDoom = pow(0.1588*msa/delta,    2./(nQcd+2.));
+		zDoom = pow(0.1588*axion->Msa()/axion->Delta(),    2./(myCosmos.QcdExp()+2.));
 
-	double zAxiq  = pow(1.00/delta, 2./(nQcd+2.));
-	double zNR    = pow(3.46/delta, 2./(nQcd+2.));
+	double zAxiq  = pow(1.00/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
+	double zNR    = pow(3.46/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
 
 	LogOut("  z Doomsday %f \n", zDoom);
 	LogOut("  z Axiquenc %f \n", zAxiq);
@@ -253,7 +250,7 @@ int	main (int argc, char *argv[])
 	LogFlush();
 
 	/*	We run a few iterations with damping too smooth the rho field	*/
-	initPropagator (pType, axion, nQcd, delta, LL, gammo, (vqcdType & VQCD_TYPE) | VQCD_DAMP_RHO);
+	initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 
 	LogOut ("Tuning propagator...\n");
 	tunePropagator(axion);
@@ -265,7 +262,7 @@ int	main (int argc, char *argv[])
 
 	for (int zLoop = 0; zLoop < nLoops; zLoop++)
 	{
-		dzAux = dzSize(zInit, axion->Field(), axion->Lambda(), vqcdType);
+		dzAux = axion->dzSize(zInit);
 
 		propagate (axion, dzAux);
 
@@ -274,7 +271,7 @@ int	main (int argc, char *argv[])
 
 		auto   rts     = strings(axion);
 		curStrings     = rts.strDen;
-		double strDens = 0.75*delta*curStrings*zInit*zInit/(sizeL*sizeL*sizeL);
+		double strDens = 0.75*axion->Delta()*curStrings*zInit*zInit/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
 
 		LogOut("dzControl %f nStrings %lu [Lt^2/V] %f\n", dzControl, rts.strDen, strDens);
 
@@ -283,7 +280,7 @@ int	main (int argc, char *argv[])
 
 	}
 
-	initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType & VQCD_TYPE);
+	initPropagator (pType, axion, myCosmos.QcdPot() & VQCD_TYPE);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
@@ -315,7 +312,7 @@ int	main (int argc, char *argv[])
 
 			zNow = (*axion->zV());
 			old  = std::chrono::high_resolution_clock::now();
-			dzAux = dzSize(zNow, axion->Field(), axion->Lambda(), vqcdType);
+			dzAux = axion->dzSize();
 
 			propagate (axion, dzAux);
 
@@ -324,8 +321,8 @@ int	main (int argc, char *argv[])
 			if (axion->Field() == FIELD_SAXION) {
 				llPhys = (axion->Lambda() == LAMBDA_Z2) ? llConstZ2/(zNow*zNow) : llConstZ2;
 
-				axMassNow = axionmass(zNow, nQcd, zthres, zrestore);
-				saskia    = saxionshift(axMassNow, llPhys, vqcdType);
+				axMassNow = axion->AxionMass();
+				saskia    = axion->Saskia();
 				zShift    = zNow * saskia;
 
 				/*	If there are a few strings, we compute them every small step		*/
@@ -336,10 +333,10 @@ int	main (int argc, char *argv[])
 
 				/*	Enable damping given the right conditions. We only do this once,	*/
 				/*	and it's controlled by zDomm and the dampSet boolean			*/
-				if ((zNow > zDoom*0.95) && !dampSet && ((vqcdType & VQCD_DAMP) != VQCD_NONE)) {
+				if ((zNow > zDoom*0.95) && !dampSet && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE)) {
 					LogOut("Reaching doomsday (z %.3f, zDoom %.3f)\n", zNow, zDoom);
-					LogOut("Enabling damping with gamma %.4f\n\n", gammo);
-					initPropagator (pType, axion, nQcd, delta, LL, gammo, vqcdType);
+					LogOut("Enabling damping with gamma %.4f\n\n", myCosmos.Gamma());
+					initPropagator (pType, axion, myCosmos.QcdPot());
 					dampSet = true;
 				}
 
@@ -362,7 +359,7 @@ int	main (int argc, char *argv[])
 							 curStrings, maxTheta, saskia);
 						fflush  (history);
 					}
-					sxPoints.emplace_back(make_tuple(zNow, axMassNow, zrestore, m, v, maxTheta));
+					sxPoints.emplace_back(make_tuple(zNow, axion->AxionMass(), myCosmos.ZRestore(), m, v, maxTheta));
 				}
 
 				/*	If we didn't see strings for a while, go to axion mode			*/
@@ -377,7 +374,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5 (axion);
 
-				  		energy(axion, eRes, false, delta, nQcd, llPhys, vqcdType, zShift);
+				  		energy(axion, eRes, false, zShift);
 
 						if (axion->Device() == DEV_GPU)
 							axion->transferCpu(FIELD_MM2);
@@ -426,7 +423,7 @@ int	main (int argc, char *argv[])
 						if (axion->Device() == DEV_GPU)
 							axion->transferCpu(FIELD_MM2);
 
-						energy(axion, eRes, false, delta, nQcd, 0., vqcdType, 0.);
+						energy(axion, eRes, false, 0.);
 						writeEnergy(axion, eRes);
 
 						if (axion->Precision() == FIELD_SINGLE) {
@@ -468,7 +465,7 @@ int	main (int argc, char *argv[])
 						fflush  (history);
 					}
 
-					axPoints.emplace_back(make_tuple(zNow, axMassNow, zrestore, m, v, maxTheta));
+					axPoints.emplace_back(make_tuple(zNow, axMassNow, myCosmos.ZRestore(), m, v, maxTheta));
 				}
 			}
 
@@ -518,9 +515,9 @@ int	main (int argc, char *argv[])
 				writeBinner(thBin,  "/bins", "theta");
 			}
 
-			energy(axion, eRes, false, delta, nQcd, llPhys, vqcdType, zShift);
+			energy(axion, eRes, false, zShift);
 
-			double maa = 40.*axionmass2(zNow, nQcd, zthres, zrestore)/(2*llPhys);
+			double maa = 40.*axion->AxionMassSq()/(2*llPhys);
 
 			if (axion->Lambda() == LAMBDA_Z2)
 				maa = maa*zNow*zNow;
@@ -535,14 +532,14 @@ int	main (int argc, char *argv[])
 				writeString(axion, rts, false);
 			axion->setReduced(false);
 
-			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*delta*curStrings*zNow*zNow/(sizeL*sizeL*sizeL));
+			LogOut("%05d | dz %.3e\tLambda %.3e\t40ma2/ms2 %.3e\t[Lt^2/V] %.3f\t\t", zLoop, dzAux, llPhys, maa, 0.75*axion->Delta()*curStrings*zNow*zNow/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
 			profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
 			auto pFler = prof.Prof().cbegin();
 			auto pName = pFler->first;
 			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 		} else {
-			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+			energy(axion, eRes, true, 0.);
 
 			if (axion->Device() == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -621,7 +618,7 @@ int	main (int argc, char *argv[])
 //	index++	;
 	if (axion->Field() == FIELD_AXION) {
 		if (pconfinal) {
-			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+			energy(axion, eRes, true, 0.);
 
 			if (axion->Device() == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -689,7 +686,7 @@ int	main (int argc, char *argv[])
 			if (cDev == DEV_GPU)
 				axion->transferDev(FIELD_MV);
 
-			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+			energy(axion, eRes, true, 0.);
 
 			if (cDev == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -749,7 +746,7 @@ int	main (int argc, char *argv[])
 
 		/*	For Jens	*/
 		if (endredmap > 0) {
-			energy(axion, eRes, true, delta, nQcd, 0., vqcdType, 0.);
+			energy(axion, eRes, true, 0.);
 
 			if (cDev == DEV_GPU)
 				axion->transferCpu(FIELD_M2);

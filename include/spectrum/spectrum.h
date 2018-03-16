@@ -6,7 +6,7 @@
 
 	#include "enum-field.h"
 	#include "scalar/scalarField.h"
-	#include "scalar/varNQCD.h"
+//	#include "scalar/varNQCD.h"
 
 	class	SpecBin {
 
@@ -42,7 +42,7 @@
 				binV.resize(powMax); binV.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
 
-				mass   = axionmass2((*field->zV()), nQcd, zthres, zrestore)*(*field->zV())*(*field->zV());
+				mass   = field->AxionMassSq()*(*field->zV())*(*field->zV());
 
 				fillCosTable();
 

@@ -4,7 +4,7 @@
 
 #include "enum-field.h"
 
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
 using namespace gpuCu;
@@ -112,7 +112,7 @@ __global__ void	propThetaModKernel(const Float * __restrict__ m, Float * __restr
 }
 
 void	propThetaModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-			const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
+			const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, cudaStream_t &stream)
 {
 	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
@@ -125,7 +125,7 @@ void	propThetaModGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		const double dzd  = dz*d;
 		const double zR   = *z;
 		const double iz   = 1./zR;
-		const double zQ   = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ   = aMass2*zR*zR*zR;//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double ood2 = 1./delta2;
 		const double tPz  = 2.*M_PI*zR;
 		propThetaModKernel<<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, M_1_PI*iz, tPz, iz, zQ, dzc, dzd, ood2, Lx, Lx*Lx, Vo, Vf);
@@ -136,7 +136,7 @@ void	propThetaModGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		const float dzd = dz*d;
 		const float zR = *z;
 		const float iz = 1./zR;
-		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*zR*zR*zR);//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float ood2 = 1./delta2;
 		const float tPz  = 2.*M_PI*zR;
 		propThetaModKernel<<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, (float) (M_1_PI*iz), tPz, iz, zQ, dzc, dzd, ood2, Lx, Lx*Lx, Vo, Vf);

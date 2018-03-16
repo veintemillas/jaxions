@@ -29,7 +29,7 @@ using namespace std;
 
 int	main (int argc, char *argv[])
 {
-	initAxions(argc, argv);
+	Cosmos myCosmos = initAxions(argc, argv);
 
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
@@ -51,12 +51,12 @@ int	main (int argc, char *argv[])
 	if (fIndex == -1) {
 		//This generates initial conditions
 		LogOut("Generating scalar... ");
-		axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+		axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
 		LogOut("Done! \n");
 	} else {
 		//This reads from an Axion.$fIndex file
 		LogOut("Reading from file... ");
-		readConf(&axion, fIndex);
+		readConf(&myCosmos, &axion, fIndex);
 		if (axion == nullptr)
 		{
 			LogOut ("Error reading HDF5 file\n");
@@ -77,7 +77,6 @@ int	main (int argc, char *argv[])
 	//          SETTING BASE PARAMETERS
 	//--------------------------------------------------
 
-	double delta = sizeL/sizeN;
 	double dz;
 	double dzaux;
 	double llaux;
@@ -91,17 +90,17 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n");
 	LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	LogOut("Length =  %2.5f\n", sizeL);
-	LogOut("N      =  %ld\n",   sizeN);
-	LogOut("Nz     =  %ld\n",   sizeZ);
+	LogOut("Length =  %2.5f\n", myCosmos.PhysSize());
+	LogOut("N      =  %ld\n",   axion->Length());
+	LogOut("Nz     =  %ld\n",   axion->Depth());
 	LogOut("zGrid  =  %ld\n",   zGrid);
-	LogOut("dx     =  %2.5f\n", delta);
+	LogOut("dx     =  %2.5f\n", axion->Delta());
 	LogOut("dz     =  %2.5f\n", dz);
-	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("LL     =  %2.5f\n", myCosmos.Lambda());
 	LogOut("--------------------------------------------------\n");
 
-	const size_t S0 = sizeN*sizeN;
-	const size_t SF = sizeN*sizeN*(sizeZ+1)-1;
+	const size_t S0 = axion->Surf();
+	const size_t SF = axion->Size()-1+S0;
 	const size_t V0 = 0;
 	const size_t VF = axion->Size()-1;
 
@@ -134,9 +133,9 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	if (axion->LowMem())
-		energy(axion, eRes, false, delta, nQcd, LL);
+		energy(axion, eRes, false);
 	else
-		energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
+		energy(axion, eRes, true);
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
@@ -221,7 +220,7 @@ int	main (int argc, char *argv[])
 		if (axion->Precision() == FIELD_DOUBLE) {
 			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
-			energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
+			energy(axion, eRes, true);
 			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
 			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); });
 			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
@@ -229,7 +228,7 @@ int	main (int argc, char *argv[])
 		} else {
 			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
-			energy(axion, eRes, true,  delta, nQcd, LL, VQCD_1);
+			energy(axion, eRes, true);
 			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
 			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); });
 			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,

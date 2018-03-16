@@ -2,7 +2,7 @@
 #include<cmath>
 #include"scalar/scalarField.h"
 #include"enum-field.h"
-#include"scalar/varNQCD.h"
+//#include"scalar/varNQCD.h"
 #include "utils/parse.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
@@ -31,7 +31,7 @@
 */
 template<const VqcdType VQcd>
 inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-				    const double ood2, const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
+				    const double ood2, const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
 	const size_t Sf = Lx*Lx;
@@ -58,11 +58,11 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const double zR = *z;
 		const double z2 = zR*zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ = aMass2*z2*zR;
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gammo;
+		const double GGGG = pow(ood2,0.5)*gamma;
 		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
@@ -354,11 +354,11 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float zR = *z;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*z2*zR);
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
-		const float GGGG = pow(ood2,0.5)*gammo;
+		const float GGGG = pow(ood2,0.5)*gamma;
 		const float GGiZ = GGGG/zR;
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
@@ -755,7 +755,7 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 
 template<const VqcdType VQcd>
 inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z, const double dz, const double c, const double ood2,
-			    const double LL, const double nQcd, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
+			    const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
 	{
@@ -776,12 +776,12 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const double zR = *z;
 		const double z2 = zR*zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ = aMass2*z2*zR;
 		const double dzc = dz*c;
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gammo;
+		const double GGGG = pow(ood2,0.5)*gamma;
 		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
@@ -1048,12 +1048,12 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const float zR = *z;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*z2*zR);
 		const float dzc = dz*c;
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2./z4;
-		const float GGGG = pow(ood2, 0.5)*gammo;
+		const float GGGG = pow(ood2, 0.5)*gamma;
 		const float GGiZ = GGGG/zR;
 		const float mola = GGGG*dzc/2.;
 		const float damp1 = 1.f/(1.f+mola);

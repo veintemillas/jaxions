@@ -91,9 +91,9 @@ void	normCoreGpu (Scalar *sField)
 	{
 		case FIELD_DOUBLE:
 		{
-			const double deltaA = sizeL/sizeN;
+			const double deltaA = sField->Delta();
 			const double zia = (*sField->zV());
-			const double LLa = (sField->Lambda() == LAMBDA_FIXED) ? LL : 1.125/(pow(deltaA*zia,2.));
+			const double LLa = (sField->Lambda() == LAMBDA_FIXED) ? sField->BckGnd()->Lambda() : 1.125/(pow(deltaA*zia,2.));
 
 			const double sqLzd = sqrt(LLa)*zia*deltaA;
 
@@ -104,9 +104,9 @@ void	normCoreGpu (Scalar *sField)
 
 		case FIELD_SINGLE:
 		{
-			const float deltaA = sizeL/sizeN;
+			const float deltaA = sField->Delta();
 			const float zia = (*sField->zV());
-			const float LLa = (sField->Lambda() == LAMBDA_FIXED) ? LL : 1.125f/(powf(deltaA*zia,2.f));
+			const float LLa = (sField->Lambda() == LAMBDA_FIXED) ? sField->BckGnd()->Lambda() : 1.125f/(powf(deltaA*zia,2.f));
 
 			const float sqLzd = sqrt(LLa)*zia*deltaA;
 

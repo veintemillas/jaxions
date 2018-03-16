@@ -21,7 +21,7 @@ class	Energy : public Tunable
 	private:
 
 	const double delta2;
-	const double nQcd, LL, shift;
+	const double LL, shift, aMass2;
 	const size_t Vt;
 	const bool   map;
 
@@ -33,7 +33,7 @@ class	Energy : public Tunable
 
 	public:
 
-		 Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh, const bool map);
+		 Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const bool map);
 		~Energy() {};
 
 	void	runCpu	();
@@ -41,8 +41,8 @@ class	Energy : public Tunable
 	void	runXeon	();
 };
 
-	Energy::Energy(Scalar *field, const double LL, const double nQcd, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field),
-	Vt(field->TotalSize()), delta2(delta*delta), nQcd(nQcd), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
+	Energy::Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field),
+	Vt(field->TotalSize()), delta2(delta*delta), aMass2(field->AxionMassSq()), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
 	LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL), map(map)
 {
 }
@@ -62,17 +62,17 @@ void	Energy::runGpu	()
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
-			energyGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, LL, nQcd, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
+			energyGpu     (field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, LL, aMass2, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
 			break;
 
 		case	FIELD_AXION:
 			setName		("Energy Axion");
-			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, false);
+			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, false);
 			break;
 
 		case	FIELD_AXION_MOD:
 			setName		("Energy Axion (mod)");
-			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, nQcd, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
+			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
 			break;
 	}
 
@@ -88,28 +88,28 @@ void	Energy::runCpu	()
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
-			energyCpu	(field, delta2, LL, nQcd, eRes, shift, pot, map);
+			energyCpu	(field, delta2, LL, aMass2, eRes, shift, pot, map);
 			break;
 
 		case	FIELD_AXION:
 			setName		("Energy Axion");
-			energyThetaCpu	(field, delta2, nQcd, eRes, map, false);
+			energyThetaCpu	(field, delta2, aMass2, eRes, map, false);
 			break;
 
 		case	FIELD_AXION_MOD:
 			setName		("Energy Axion (mod)");
-			energyThetaCpu	(field, delta2, nQcd, eRes, map, true);
+			energyThetaCpu	(field, delta2, aMass2, eRes, map, true);
 			break;
 	}
 }
 
 using namespace profiler;
 
-void	energy	(Scalar *field, void *eRes, const bool map, const double delta, const double nQcd, const double LL, VqcdType pot, const double shift)
+void	energy	(Scalar *field, void *eRes, const bool map, const double shift)
 {
 	if (map && (field->Field() == FIELD_SAXION) && field->LowMem())
 	{
-		LogError ("Can't compute energy map for saxion wit lowmem kernels\n");
+		LogError ("Error: Can't compute energy map for saxion with lowmem kernels\n");
 		return;
 	}
 
@@ -119,7 +119,11 @@ void	energy	(Scalar *field, void *eRes, const bool map, const double delta, cons
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
-	auto	eDark = std::make_unique<Energy>(field, LL, nQcd, delta, eTmp, pot, shift, map);
+	auto LL   = field->BckGnd()->Lambda();
+	auto pot  = field->BckGnd()->QcdPot();
+	auto dlta = field->Delta();
+
+	auto	eDark = std::make_unique<Energy>(field, LL, dlta, eTmp, pot, shift, map);
 
 	if	(!field->Folded())
 	{

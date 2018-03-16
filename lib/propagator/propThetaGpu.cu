@@ -4,7 +4,7 @@
 
 #include "enum-field.h"
 
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
 using namespace gpuCu;
@@ -91,8 +91,8 @@ __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __res
 	propagateThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, iz, dzc, dzd, ood2, Lx, Sf, zP, tPz);
 }
 
-void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
+void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
+		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
@@ -104,9 +104,8 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dzc  = dz*c;
 		const double dzd  = dz*d;
 		const double zR   = *z;
-		const double zQ   = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ   = aMass2*zR*zR*zR;//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double iZ   = 1./zR;
-		const double ood2 = 1./delta2;
 		propagateThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf);
 	}
 	else if (precision == FIELD_SINGLE)
@@ -114,15 +113,14 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dzc = dz*c;
 		const float dzd = dz*d;
 		const float zR = *z;
-		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*zR*zR*zR);//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float iZ   = 1./zR;
-		const float ood2 = 1./delta2;
-		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf);
+		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, (float) ood2, iZ, Lx, Lx*Lx, Vo, Vf);
 	}
 }
 
-void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
+void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
+		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
@@ -136,9 +134,8 @@ void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dzc  = dz*c;
 		const double dzd  = dz*d;
 		const double zR   = *z;
-		const double zQ   = axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ   = aMass2*zR*zR*zR;//xionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const double iZ   = 1./zR;
-		const double ood2 = 1./delta2;
 		const double tPz  = 2.*M_PI*zR;
 		propagateThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, M_1_PI*iZ, tPz);
 	}
@@ -147,26 +144,25 @@ void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dzc = dz*c;
 		const float dzd = dz*d;
 		const float zR = *z;
-		const float zQ = (float) axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*zR*zR*zR);//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
 		const float iZ   = 1./zR;
-		const float ood2 = 1./delta2;
 		const float tPz  = 2.*M_PI*zR;
 		propagateThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, M_1_PI*iZ, tPz);
 	}
 }
 
-void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
-		     const double nQcd, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
+void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
+		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
 		     cudaStream_t &stream, const bool wMod)
 {
 	switch (wMod) {
 	
 		case	true:
-			propThModGpu(m, v, m2, z, dz, c, d, delta2, nQcd, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
+			propThModGpu(m, v, m2, z, dz, c, d, ood2, aMass2, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
 
 		case	false:
-			propThNmdGpu(m, v, m2, z, dz, c, d, delta2, nQcd, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
+			propThNmdGpu(m, v, m2, z, dz, c, d, ood2, aMass2, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
 	}
 

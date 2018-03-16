@@ -3,7 +3,7 @@
 
 #include "enum-field.h"
 
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
 #include "utils/reduceGpu.cuh"
@@ -124,7 +124,7 @@ __global__ void	energyKernel(const complex<Float> * __restrict__ m, const comple
 	reduction<BLSIZE,double,10>   (eR, tmp, partial);
 }
 
-int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double LL, const double nQcd, const double shift,
+int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double LL, const double aMass2, const double shift,
 			 const VqcdType VQcd, const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map)
 {
 	const uint Vm = V+S;
@@ -135,7 +135,7 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 
 	const double zR   = *z;
 	const double o2  = 0.25/delta2;
-	const double zQ  = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR;
+	const double zQ  = aMass2*zR*zR;
 	const double lZ  = 0.25*LL*zR*zR;
 
 	double *tR, *partial;

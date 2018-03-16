@@ -19,7 +19,7 @@ using namespace std;
 
 int	main (int argc, char *argv[])
 {
-	initAxions(argc, argv);
+	Cosmos myCosmos = initAxions(argc, argv);
 
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
@@ -36,11 +36,11 @@ int	main (int argc, char *argv[])
 	} else {
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
 		else
 		{
 			//This reads from an Axion.$fIndex file
-			readConf(&axion, fIndex);
+			readConf(&myCosmos, &axion, fIndex);
 			if (axion == nullptr)
 			{
 				LogOut ("Error reading HDF5 file\n");
@@ -53,7 +53,7 @@ int	main (int argc, char *argv[])
 	//          SETTING BASE PARAMETERS
 	//--------------------------------------------------
 
-	double delta = sizeL/sizeN;
+	double delta = axion->Delta();
 	double dz;
 
 	if (nSteps == 0)
@@ -64,13 +64,13 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n");
 	LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	LogOut("Length =  %2.5f\n", sizeL);
-	LogOut("N      =  %ld\n",   sizeN);
-	LogOut("Nz     =  %ld\n",   sizeZ);
+	LogOut("Length =  %2.5f\n", myCosmos.PhysSize());
+	LogOut("N      =  %ld\n",   axion->Length());
+	LogOut("Nz     =  %ld\n",   axion->Depth());
 	LogOut("zGrid  =  %ld\n",   zGrid);
 	LogOut("dx     =  %2.5f\n", delta);
 	LogOut("dz     =  %2.5f\n", dz);
-	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("LL     =  %2.5f\n", myCosmos.Lambda());
 	LogOut("--------------------------------------------------\n");
 
 	const size_t S0 = sizeN*sizeN;
@@ -163,7 +163,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	initPropagator (pType, axion, nQcd, delta, LL, 0.0, VQCD_1);
+	initPropagator (pType, axion, VQCD_1);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;

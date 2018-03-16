@@ -2,11 +2,14 @@
 	#define	_SCALAR_CLASS_
 
 	#include"enum-field.h"
+	#include"cosmos/cosmos.h"
 	#include"utils/utils.h"
 
 	class	Scalar : public Tunable
 	{
 		private:
+
+		Cosmos	*bckgnd;
 
 		const size_t n1;
 		const size_t n2;
@@ -36,6 +39,7 @@
 		bool	folded;
 		bool	lowmem;
 
+		double	msa;
 		double	*z;
 
 		void	*m,   *v,   *m2,   *str;			// Cpu data
@@ -47,6 +51,9 @@
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
+		double	 rsvPQ2	    (const double z) { auto z2 = z*z; auto z3 = z2*z; auto z4 = z2*z2;
+						       return (0.125*z + 0.30676113886283973*z2 + 0.20762392505082639*z3 + 0.03303541390146716*z4)/
+						       (1 + 3.0165891109027165*z + 2.857822775289389*z2 + 0.8969613324856603*z3 + 0.05640260585369341*z4); }
 		/* Eliminar */
 
 		template<typename Float>
@@ -57,9 +64,11 @@
 
 		public:
 
-				 Scalar(const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
+				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
 					FieldType newType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
 				~Scalar();
+
+		Cosmos		*BckGnd(){ return bckgnd; }
 
 		void		*mCpu()  { return m; }
 		const void	*mCpu()  const { return m; }
@@ -100,7 +109,7 @@
 		FieldType	Field()      { return fieldType; }
 		StatusM2	m2Status()   { return statusM2; }
 
-		void		setLambda(LambdaType newLambda) { lambdaType = newLambda; }
+		void		setLambda      (LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize ()  { return fSize; }
 		size_t		DataAlign()  { return mAlign; }
@@ -109,9 +118,23 @@
 		bool		Reduced()    { return eReduced; }
 
 
+		double		Delta()      { return bckgnd->PhysSize()/((double) n1); }
+		double		Msa()        { return msa; } //sqrt(2.*bckgnd->Lambda())*Delta(); }
+
+		/*	Overloading	*/
+		double		AxionMass  ();
+		double		AxionMassSq();
+		double		SaxionShift();
+		double		Saskia     ();
+		double		dzSize     ();
+		double		AxionMass  (const double zNow);
+		double		AxionMassSq(const double zNow);
+		double		SaxionShift(const double zNow);
+		double		Saskia     (const double zNow);
+		double		dzSize     (const double zNow);
+
 		double		*zV()        { return z; }
 		const double	*zV() const  { return z; }
-
 
 		void	setZ (const double newZ)    { *z = newZ; }
 		void	setM2(const StatusM2 newM2) { statusM2 = newM2; }

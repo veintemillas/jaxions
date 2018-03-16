@@ -4,7 +4,7 @@
 	#include "scalar/scalarField.h"
 
 	void	writeConf	(Scalar  *axion, int index);
-	void	readConf	(Scalar **axion, int index);
+	void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
 
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
@@ -12,6 +12,7 @@
 	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
+	void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin);
 	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);
 
 	void	writeMapHdf5	(Scalar *axion);

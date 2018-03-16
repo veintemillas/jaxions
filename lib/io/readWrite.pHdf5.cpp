@@ -17,7 +17,7 @@
 
 #include "fft/fftCode.h"
 
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 
 hid_t	meas_id = -1, mlist_id;
 hsize_t	tSize, slabSz, sLz;
@@ -127,7 +127,7 @@ void	writeConf (Scalar *axion, int index)
 
 	if (wasFolded)
 	{
-		LogMsg (VERB_HIGH, "Folded configuration, will unfold at the end");
+		LogMsg (VERB_HIGH, "Folded configuration, will unfold and fold back at the end");
 		munge	= new Folder(axion);
 		(*munge)(UNFOLD_ALL);
 	}
@@ -233,7 +233,7 @@ void	writeConf (Scalar *axion, int index)
 		break;
 	}
 
-	double	llPhys = LL;
+	double	llPhys = axion->BckGnd()->Lambda();
 
 	switch (axion->Lambda())
 	{
@@ -252,6 +252,12 @@ void	writeConf (Scalar *axion, int index)
 			exit(1);
 			break;
 	}
+
+	auto lSize    = axion->BckGnd()->PhysSize();
+	auto vqcdType = axion->BckGnd()->QcdPot  ();
+	auto nQcd     = axion->BckGnd()->QcdExp  ();
+	auto gamma    = axion->BckGnd()->Gamma   ();
+	auto LL       = axion->BckGnd()->Lambda  ();
 
 	switch (vqcdType & VQCD_TYPE)
 	{
@@ -272,7 +278,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdTypeDamp)
+	switch (vqcdType & VQCD_DAMP)
 	{
 		case	VQCD_DAMP_RHO:
 			sprintf(dStr, "Rho");
@@ -288,7 +294,7 @@ void	writeConf (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdTypeRhoevol)
+	switch (vqcdType & VQCD_EVOL_RHO)
 	{
 		case	VQCD_EVOL_RHO:
 			sprintf(rStr, "Only Rho");
@@ -309,7 +315,8 @@ void	writeConf (Scalar *axion, int index)
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double maa = axionmass((*axion->zV()), nQcd, zthres, zrestore);
+	double maa = axion->AxionMass(); //axionmass((*axion->zV()), nQcd, zthres, zrestore);
+	double msa = axion->Msa();
 
 	writeAttribute(file_id, fStr,   "Field type",    attr_type);
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
@@ -317,7 +324,7 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(file_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
 	writeAttribute(file_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
-	writeAttribute(file_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
@@ -327,8 +334,11 @@ void	writeConf (Scalar *axion, int index)
 	/*	Create a group for specific header data	*/
 	hid_t vGrp_id = H5Gcreate2(file_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-	double shift = saxionshift(maa, llPhys, vqcdType);
+	double shift = axion->Saskia();//axionshift(maa, llPhys, vqcdType);
 	//indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+	double indi3    = axion->BckGnd()->Indi3();
+	double zthres   = axion->BckGnd()->ZThRes();
+	double zrestore = axion->BckGnd()->ZRestore();
 
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
@@ -336,7 +346,7 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &gammo, "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gamma, "Gamma",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
@@ -525,7 +535,7 @@ void	writeConf (Scalar *axion, int index)
 }
 
 
-void	readConf (Scalar **axion, int index)
+void	readConf (Cosmos *myCosmos, Scalar **axion, int index)
 {
 	hid_t	file_id, mset_id, vset_id, plist_id;
 	hid_t	mSpace, vSpace, memSpace, dataType;
@@ -578,7 +588,7 @@ void	readConf (Scalar **axion, int index)
 	H5Tset_size (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double	zTmp;
+	double	zTmp, maaR;
 	uint	tStep, cStep, totlZ;
 
 	readAttribute (file_id, fStr,   "Field type",   attr_type);
@@ -588,9 +598,14 @@ void	readConf (Scalar **axion, int index)
 
 	readAttribute (file_id, &zTmp,  "z",        H5T_NATIVE_DOUBLE);
 
-	readAttribute (file_id, &sizeL, "Physical size",H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
+
+	if (myCosmos->PhysSize() == 0.0) {
+		double lSize;
+		readAttribute (file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
+		myCosmos->SetPhysSize(lSize);
+	}
 
 	if (endredmap == -1)	// No reduction unless specified
 		endredmap = sizeN;
@@ -618,13 +633,18 @@ void	readConf (Scalar **axion, int index)
 	else {
 		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
 
-		if (uQcd == false)
-			readAttribute (vGrp_id, &nQcd,  "nQcd",         H5T_NATIVE_DOUBLE);
+		if (myCosmos->QcdExp() == -1.e8) {
+			double qExp;
+			readAttribute (vGrp_id, &qExp, "nQcd", H5T_NATIVE_DOUBLE);
+			myCosmos->SetQcdExp(qExp);
+		}
 
-		if ((uLambda == false) && (msa == false)) {
-			readAttribute (vGrp_id, &LL,    "Lambda",       H5T_NATIVE_DOUBLE);
-			readAttribute (file_id, &msa,   "Saxion mass",  H5T_NATIVE_DOUBLE);
-			readAttribute (vGrp_id, &lStr,  "Lambda type",  attr_type);
+		if (myCosmos->Lambda() == -1.e8) {
+			double lda;
+			readAttribute (vGrp_id, &lda,  "Lambda",      H5T_NATIVE_DOUBLE);
+			// Lambda prevails, we assume they are consistent
+			//readAttribute (file_id, &msa,  "Saxion mass", H5T_NATIVE_DOUBLE);
+			readAttribute (vGrp_id, &lStr, "Lambda type", attr_type);
 
 			if (!strcmp(lStr, "z2"))
 				lType = LAMBDA_Z2;
@@ -634,7 +654,9 @@ void	readConf (Scalar **axion, int index)
 				LogError ("Error reading file %s: invalid lambda type %s", base, lStr);
 				exit(1);
 			}
-		} else {
+
+			myCosmos->SetLambda(lda);
+		}/* else {
 			if (uMsa) {
 				double tmp = (msa*sizeN)/sizeL;
 				LL    = 0.5*tmp*tmp;
@@ -643,24 +665,39 @@ void	readConf (Scalar **axion, int index)
 				msa = sqrt(2*LL)*tmp;
 			}
 		}
+*/
+		readAttribute (file_id, &maaR, "Axion mass", H5T_NATIVE_DOUBLE);
 
-		double	maa = 0., maaR;
-		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
-		readAttribute (vGrp_id, &indi3, "Indi3",        H5T_NATIVE_DOUBLE);
-		readAttribute (vGrp_id, &zthres,"z Threshold",  H5T_NATIVE_DOUBLE);
-		readAttribute (vGrp_id, &zrestore,"z Restore",  H5T_NATIVE_DOUBLE);
+		if (myCosmos->Indi3() == -1.e8) {
+			double indi3;
+			readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
+			myCosmos->SetIndi3(indi3);
+		}
 
-		maa = axionmass(zTmp, nQcd, zthres, zrestore);
+		if (myCosmos->ZThRes() == -1.e8) {
+			double zthrs;
+			readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
+			myCosmos->SetZThRes(zthrs);
+		}
 
-		if (maa != maaR)
-			LogMsg(VERB_HIGH, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
+		if (myCosmos->ZRestore() == -1.e8) {
+			double zrest;
+			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
+			myCosmos->SetZThRes(zrest);
+		}
+
 		//indi3 =  maa/pow(zTmp, nQcd*0.5);
 
-		if (uGamma == false)
-			readAttribute (vGrp_id, &gammo,  "Gamma",       H5T_NATIVE_DOUBLE);
+		if (myCosmos->Gamma() == -1.e8) {
+			double gm;
+			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
+			myCosmos->SetGamma(gm);
+		}
 
-		if (uPot == false) {
-			readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
+		if (myCosmos->QcdPot() == VQCD_NONE) {
+			VqcdType vqcdType = VQCD_NONE;
+
+			readAttribute (vGrp_id, &vStr, "VQcd type", attr_type);
 
 			if (!strcmp(vStr, "VQcd 1"))
 				vqcdType = VQCD_1;
@@ -677,28 +714,27 @@ void	readConf (Scalar **axion, int index)
 			readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
 
 			if (!strcmp(vStr, "Rho"))
-				vqcdTypeDamp = VQCD_DAMP_RHO;
+				vqcdType |= VQCD_DAMP_RHO;
 			else if (!strcmp(vStr, "All"))
-				vqcdTypeDamp = VQCD_DAMP_ALL;
+				vqcdType |= VQCD_DAMP_ALL;
 			else if (!strcmp(vStr, "None"))
-				vqcdTypeDamp = VQCD_NONE;
+				vqcdType |= VQCD_NONE;
 			else {
-				LogError ("Error reading file %s: invalid damping type %s", base, vStr);
-				exit(1);
+				LogError ("Error reading file %s: invalid damping type %s. Ignoring damping", base, vStr);
 			}
 
 			readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
 
 			if (!strcmp(vStr, "Only Rho"))
-				vqcdTypeRhoevol = VQCD_EVOL_RHO;
+				vqcdType |= VQCD_EVOL_RHO;
 			else if (!strcmp(vStr, "Full"))
-				vqcdTypeRhoevol = VQCD_NONE;
+				vqcdType |= VQCD_NONE;
 			else {
-				LogError ("Error reading file %s: invalid rho evolution type %s", base, vStr);
+				LogError ("Error reading file %s: invalid rho evolution type %s. Ignoring rho evolution", base, vStr);
 				exit(1);
 			}
 
-			vqcdType |= vqcdTypeDamp | vqcdTypeRhoevol;
+			myCosmos->SetQcdPot(vqcdType);
 		}
 
 		H5Gclose(vGrp_id);
@@ -808,18 +844,23 @@ void	readConf (Scalar **axion, int index)
 
 	if (!strcmp(fStr, "Saxion"))
 	{
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
 	} else if (!strcmp(fStr, "Axion")) {
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else if (!strcmp(fStr, "Axion Mod")) {
-		*axion = new Scalar(sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, CONF_NONE, 0, 0);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
 		LogError ("Input error: Invalid field type");
 		exit(1);
 	}
+
+	double maa = (*axion)->AxionMass();
+
+	if (fabs((maa - maaR)/std::max(maaR,maa)) > 1e-5)
+		LogMsg(VERB_HIGH, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
 
 	prof.start();
 	commSync();
@@ -991,7 +1032,12 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
-	double	llPhys = LL;
+	auto lSize    = axion->BckGnd()->PhysSize();
+	auto llPhys   = axion->BckGnd()->Lambda  ();
+	auto LL       = axion->BckGnd()->Lambda  ();
+	auto nQcd     = axion->BckGnd()->QcdExp  ();
+	auto gamma    = axion->BckGnd()->Gamma   ();
+	auto vqcdType = axion->BckGnd()->QcdPot  ();
 
 	switch (axion->Lambda())
 	{
@@ -1010,7 +1056,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdType)
+	switch (vqcdType & VQCD_TYPE)
 	{
 		case	VQCD_1:
 			sprintf(vStr, "VQcd 1");
@@ -1029,7 +1075,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdTypeDamp)
+	switch (vqcdType & VQCD_DAMP)
 	{
 		case	VQCD_DAMP_RHO:
 			sprintf(dStr, "Rho");
@@ -1045,7 +1091,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdTypeRhoevol)
+	switch (vqcdType & VQCD_EVOL_RHO)
 	{
 		case	VQCD_EVOL_RHO:
 			sprintf(rStr, "Only Rho");
@@ -1067,7 +1113,8 @@ void	createMeas (Scalar *axion, int index)
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double maa = axionmass((*axion->zV()), nQcd, zthres, zrestore);
+	double maa = axion->AxionMass();//axionmass((*axion->zV()), nQcd, zthres, zrestore);
+	double msa = axion->Msa();
 
 	writeAttribute(meas_id, fStr,   "Field type",    attr_type);
 	writeAttribute(meas_id, prec,   "Precision",     attr_type);
@@ -1075,7 +1122,7 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_UINT);
 	writeAttribute(meas_id, &msa,   "Saxion mass",   H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
-	writeAttribute(meas_id, &sizeL, "Physical size", H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
@@ -1085,8 +1132,11 @@ void	createMeas (Scalar *axion, int index)
 	/*	Create a group for specific header data	*/
 	hid_t vGrp_id = H5Gcreate2(meas_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-	double shift = saxionshift(maa, llPhys, vqcdType);
+	double shift    = axion->Saskia();//saxionshift(maa, llPhys, vqcdType);
 	//indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+	double indi3    = axion->BckGnd()->Indi3();
+	double zthres   = axion->BckGnd()->ZThRes();
+	double zrestore = axion->BckGnd()->ZRestore();
 
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
@@ -1094,7 +1144,7 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &gammo, "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gamma, "Gamma",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
@@ -1204,6 +1254,164 @@ void	destroyMeas ()
 	meas_id = -1;
 
 	LogMsg (VERB_NORMAL, "Measurement file successfuly closed");
+}
+
+void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
+{
+	hid_t	totalSpace, chunk_id, group_id, sSet_id, sSpace, memSpace;
+	hid_t	grp_id, datum;
+
+	size_t	sBytes	 = 0;
+
+	int myRank = commRank();
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	char *eData = static_cast<char *>(axion->sData());
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	/*	Start profiling		*/
+	LogMsg (VERB_NORMAL, "Writing density contrast data");
+	prof.start();
+
+	if (header == false || opened == false)
+	{
+		LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+		prof.stop();
+		return;
+	}
+
+	/*	Create a group for density contrast data		*/
+	auto status = H5Lexists (meas_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
+
+	if (!status)
+		group_id = H5Gcreate2(meas_id, "/energy", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/energy", H5P_DEFAULT);	// Group exists
+		} else {
+			LogError ("Error: can't check whether group /energy/density exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	status = H5Lexists (meas_id, "/energy/density", H5P_DEFAULT);	// Create group if it doesn't exists
+
+	if (!status)
+		grp_id = H5Gcreate2(meas_id, "/energy/density", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			grp_id = H5Gopen2(meas_id, "/energy/density", H5P_DEFAULT);	// Group exists
+		} else {
+			LogError ("Error: can't check whether group /energy/density exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	uint rLz   = axion->rDepth();
+	uint redlZ = axion->rTotalDepth();
+	uint redlX = axion->rLength();
+
+	hsize_t total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	hsize_t slab  = ((hsize_t) redlX)*((hsize_t) redlX);
+
+	/*	Might be reduced	*/
+	writeAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT);
+	writeAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
+	/*	String metadata		*/
+	writeAttribute(grp_id, &eMin, "Minimum energy", H5T_NATIVE_DOUBLE);
+	writeAttribute(grp_id, &eMax, "Maximum energy", H5T_NATIVE_DOUBLE);
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	if((totalSpace = H5Screate_simple(1, &total, maxD)) < 0) {	// Whole data
+		LogError ("Fatal error H5Screate_simple");
+		prof.stop();
+		return;
+	}
+
+	/*	Set chunked access and dynamical compression	*/
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0) {
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		return;
+	}
+
+	if (H5Pset_chunk (chunk_id, 1, &slab) < 0) {
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		return;
+	}
+
+	if (H5Pset_deflate (chunk_id, 9) < 0) {	// Maximum compression
+		LogError ("Error: couldn't set compression level to 9");
+		prof.stop();
+		return;
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0) {
+		LogError ("Fatal error H5Pset_alloc_time");
+		prof.stop();
+		return;
+	}
+
+	/*	Create a dataset for string data	*/
+	if (fMap == MAP_RHO)
+		sSet_id = H5Dcreate (grp_id, "cRho",   H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	else
+		sSet_id = H5Dcreate (grp_id, "cTheta", H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	if (sSet_id < 0) {
+		LogError ("Fatal error creating dataset");
+		prof.stop();
+		return;
+	}
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	sSpace = H5Dget_space (sSet_id);
+	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+
+	commSync();
+
+	for (hsize_t zDim=0; zDim < rLz; zDim++)
+	{
+		/*	Select the slab in the file	*/
+		hsize_t offset = ((hsize_t) (myRank*rLz) + zDim)*slab;
+		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+		/*	Write raw data	*/
+		auto mErr = H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (eData)+slab*zDim);
+
+		if (mErr < 0)
+		{
+			LogError ("Error writing dataset");
+			prof.stop();
+			exit(0);
+		}
+	}
+
+
+	/*	Close the dataset	*/
+
+	H5Dclose (sSet_id);
+	H5Sclose (sSpace);
+	H5Sclose (memSpace);
+
+	H5Sclose (totalSpace);
+	H5Pclose (chunk_id);
+
+	sBytes = slab*rLz + 24;
+
+	H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write density contrast"), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 }
 
 void	writeString	(Scalar *axion, StringData strDat, const bool rData)

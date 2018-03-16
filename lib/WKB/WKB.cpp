@@ -262,10 +262,11 @@ namespace AxionWKB {
 	void	WKB::doWKB(double zEnd) {
 
 		// label 1 for ini, 2 for end
-		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
-		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
+		double aMass2zIni2 = field->AxionMassSq(zIni)*zIni*zIni ;
+		double aMass2zEnd2 = field->AxionMassSq(zEnd)*zEnd*zEnd ;
 		double aMass2zIni1 = aMass2zIni2/zIni;
 		double aMass2zEnd1 = aMass2zEnd2/zEnd;
+		double nQcd	   = field->BckGnd()->QcdExp();
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
@@ -274,7 +275,8 @@ namespace AxionWKB {
 		double nn1         = 1./(2.+nQcd)+0.5;
 		double nn2         = 1./(2.+nQcd)+1.0;
 
-		double minmom2 		 = (4.*M_PI*M_PI)/(sizeL*sizeL)	;
+		double lSize	   = field->BckGnd()->PhysSize();
+		double minmom2	   = (4.*M_PI*M_PI)/(lSize*lSize);
 
 									// if (firsttime)
 									// {
@@ -453,54 +455,55 @@ namespace AxionWKB {
 			// }
 
 		}
+
 		LogMsg(VERB_NORMAL," modes evolved and copied into v and m2 ... ");
-    LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
+		LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
 		// FFT in place in m2 of axion1
 		myPlanP.run(FFT_BCK);
-    LogMsg(VERB_NORMAL,"done!!\n ");
+		LogMsg(VERB_NORMAL,"done!!\n ");
 
-				const size_t	dataLine = field->DataSize()*Ly;
-				const size_t	padLine  = field->DataSize()*(Ly+2);
+		const size_t	dataLine = field->DataSize()*Ly;
+		const size_t	padLine  = field->DataSize()*(Ly+2);
 
-						LogMsg(VERB_NORMAL,"copying psi m2 padded -> m unpadded ");
-						#pragma omp parallel for schedule(static)
-						for (size_t sl=0; sl<Sm; sl++) {
-							auto	oOff = sl*dataLine;
-							auto	fOff = sl*padLine;
-							memcpy	(mTf+oOff ,  m2Tf+fOff, dataLine);
-						}
-						LogMsg(VERB_NORMAL,"done!\n\n ");
+		LogMsg(VERB_NORMAL,"copying psi m2 padded -> m unpadded ");
+		#pragma omp parallel for schedule(static)
+		for (size_t sl=0; sl<Sm; sl++) {
+			auto	oOff = sl*dataLine;
+			auto	fOff = sl*padLine;
+			memcpy	(mTf+oOff ,  m2Tf+fOff, dataLine);
+		}
+		LogMsg(VERB_NORMAL,"done!\n\n ");
 
 		LogMsg(VERB_NORMAL,"and FT(psi_z) v->m2 ");
 		memcpy	(m2Tf, vTf, field->eSize()*field->DataSize());
 		LogMsg(VERB_NORMAL,"done!\n");
 
-		    LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
-				// FFT in place in m2 of axion1
-				myPlanP.run(FFT_BCK);
-		    LogMsg(VERB_NORMAL,"done!!\n ");
+		LogMsg(VERB_NORMAL," invFFTWing AXION m2 inplace ... ");
+		// FFT in place in m2 of axion1
+		myPlanP.run(FFT_BCK);
+		LogMsg(VERB_NORMAL,"done!!\n ");
 
-						// transfer m2 into v
-						LogMsg(VERB_NORMAL,"copying psi_z m2 padded -> v unpadded ");
-						//Copy m,v -> m2,v2 with padding
-						#pragma omp parallel for schedule(static)
-						for (size_t sl=0; sl<Sm; sl++) {
-							auto	oOff = sl*dataLine;
-							auto	fOff = sl*padLine;
-							memcpy	(vTf+oOff ,  m2Tf+fOff, dataLine);
-						}
-						LogMsg(VERB_NORMAL,"done!\n");
+		// transfer m2 into v
+		LogMsg(VERB_NORMAL,"copying psi_z m2 padded -> v unpadded ");
+		//Copy m,v -> m2,v2 with padding
+		#pragma omp parallel for schedule(static)
+		for (size_t sl=0; sl<Sm; sl++) {
+			auto	oOff = sl*dataLine;
+			auto	fOff = sl*padLine;
+			memcpy	(vTf+oOff ,  m2Tf+fOff, dataLine);
+		}
+		LogMsg(VERB_NORMAL,"done!\n");
 
-										cFloat toton = (cFloat) field->TotalSize();
+		cFloat toton = (cFloat) field->TotalSize();
 
-										LogMsg(VERB_NORMAL,"scale x%2.2e ",toton);
-										#pragma omp parallel for schedule(static)
-										for (size_t idx=0; idx<field->Size(); idx++)
-										{
-											mIn[idx] /= toton   ;
-											vIn[idx] /= toton   ;
-										}
-										LogMsg(VERB_NORMAL,"done!\n");
+		LogMsg(VERB_NORMAL,"scale x%2.2e ",toton);
+		#pragma omp parallel for schedule(static)
+		for (size_t idx=0; idx<field->Size(); idx++)
+		{
+			mIn[idx] /= toton   ;
+			vIn[idx] /= toton   ;
+		}
+		LogMsg(VERB_NORMAL,"done!\n");
 
 
 		// LogOut ("  --> points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
@@ -509,22 +512,21 @@ namespace AxionWKB {
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
 		*field->zV() = zEnd ;
-    LogMsg(VERB_NORMAL,"[WKB] set z=%f done", (*field->zV()) );
+		LogMsg(VERB_NORMAL,"[WKB] set z=%f done", (*field->zV()) );
 		field->setFolded(false);
 		LogMsg(VERB_NORMAL,"[WKB] m,v, set unfolded!");
 		LogMsg(VERB_NORMAL,"[WKB] Complete!\n ");
-
-
 	}
 
 	template<typename cFloat>
 	void	WKB::doWKBinplace(double zEnd) {
 
 		// label 1 for ini, 2 for end
-		double aMass2zIni2 = axionmass2(zIni, nQcd, zthres, zrestore)*zIni*zIni ;
-		double aMass2zEnd2 = axionmass2(zEnd, nQcd, zthres, zrestore)*zEnd*zEnd ;
+		double aMass2zIni2 = field->AxionMassSq(zIni)*zIni*zIni ;
+		double aMass2zEnd2 = field->AxionMassSq(zEnd)*zEnd*zEnd ;
 		double aMass2zIni1 = aMass2zIni2/zIni;
 		double aMass2zEnd1 = aMass2zEnd2/zEnd;
+		double nQcd	   = field->BckGnd()->QcdExp();
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
@@ -533,7 +535,8 @@ namespace AxionWKB {
 		double nn1         = 1./(2.+nQcd)+0.5;
 		double nn2         = 1./(2.+nQcd)+1.0;
 
-		double minmom2 		 = (4.*M_PI*M_PI)/(sizeL*sizeL)	;
+		double lSize	   = field->BckGnd()->PhysSize();
+		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
 
 		// las FT estan en Axion [COMPLEX & TRANSPOSED_OUT], defino punteros
 		std::complex<cFloat> *mC  = static_cast<std::complex<cFloat>*>(field->mCpu());

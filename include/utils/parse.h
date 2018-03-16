@@ -1,4 +1,5 @@
 #include "enum-field.h"
+#include "cosmos/cosmos.h"
 
 extern uint sizeN;
 extern uint sizeZ;
@@ -7,26 +8,26 @@ extern int  nSteps;
 extern int  dump;
 extern int  fIndex;
 
-extern double nQcd;
-extern double sizeL;
+//extern double nQcd;
+//extern double sizeL;
 extern double zInit;
 extern double zFinl;
-extern double LL;
+//extern double LL;
 extern double mode0;
 extern double alpha;
 extern double kCrit;
 extern double parm2;
-extern double gammo;
+//extern double gammo;
 extern double p3DthresholdMB;
 extern int kMax;
 extern int iter;
 extern int parm1;
 extern int Ng;
-extern double indi3;
-extern double msa;
+//extern double indi3;
+//extern double msa;
 extern double wDz;
-extern double zthres;
-extern double zrestore;
+//extern double zthres;
+//extern double zrestore;
 
 extern double wkb2z ;
 extern double prepstL;
@@ -40,11 +41,11 @@ extern char outDir[1024];
 extern char wisDir[1024];
 extern bool lowmem;
 extern bool uPrec;
-extern bool uQcd;
-extern bool uMsa;
-extern bool uLambda;
-extern bool uGamma;
-extern bool uPot;
+//extern bool uQcd;
+//extern bool uMsa;
+//extern bool uLambda;
+//extern bool uGamma;
+//extern bool uPot;
 extern bool uZin;
 extern bool uZfn;
 extern bool aMod;
@@ -58,9 +59,9 @@ extern ConfType	      cType;
 extern ConfsubType    smvarType;
 extern FieldType      fTypeP;
 extern LambdaType     lType;
-extern VqcdType       vqcdType;
-extern VqcdType       vqcdTypeDamp;
-extern VqcdType       vqcdTypeRhoevol;
+//extern VqcdType       vqcdType;
+//extern VqcdType       vqcdTypeDamp;
+//extern VqcdType       vqcdTypeRhoevol;
 extern PropType       pType;
 
 extern LogMpi	      logMpi;
@@ -75,3 +76,5 @@ extern bool           pconfinal;
 extern bool           pconfinalwkb ;
 
 int	parseArgs (int argc, char *argv[]);
+Cosmos	createCosmos();
+void	createOutput();

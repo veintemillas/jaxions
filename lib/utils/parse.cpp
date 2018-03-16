@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include "enum-field.h"
+#include "cosmos/cosmos.h"
 
 size_t sizeN  = 128;
 size_t sizeZ  = 128;
@@ -40,11 +41,15 @@ int safest0   = 20;
 
 bool lowmem   = false;
 bool uPrec    = false;
+bool uSize    = false;
 bool uQcd     = false;
 bool uLambda  = false;
 bool uMsa     = false;
+bool uI3      = false;
 bool uPot     = false;
 bool uGamma   = false;
+bool uZth     = false;
+bool uZrs     = false;
 bool uZin     = false;
 bool uZfn     = false;
 bool spectral = false;
@@ -76,14 +81,19 @@ VerbosityLevel	verb   = VERB_NORMAL;
 LogMpi		logMpi = ALL_RANKS;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
-bool p2dmapo  	  = false ;
-bool p3dstrings	  = false ;
-bool p3dwalls	  = false ;
-bool pconfinal 	  = false ;
-bool pconfinalwkb = false ;
+bool p2dmapo  	  = false;
+bool p3dstrings	  = false;
+bool p3dwalls	  = false;
+bool pconfinal 	  = false;
+bool pconfinalwkb = false;
+
+bool mCreateOut = false;
 
 void	createOutput() {
 	struct stat tStat;
+
+	if (mCreateOut == false)
+		return;
 
 	if (stat("out", &tStat) != 0) {
 		auto  dErr = mkdir("out", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -102,7 +112,7 @@ void	createOutput() {
 	}
 }
 
-void	printUsage(char *name)
+void	PrintUsage(char *name)
 {
 	printf("\nUsage: %s [Options]\n\n", name);
 
@@ -180,7 +190,7 @@ void	printUsage(char *name)
 	return;
 }
 
-void	printICoptions()
+void	PrintICoptions()
 {
 	printf("\Options for Initial conditions\n\n");
 
@@ -223,13 +233,13 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--help"))
 		{
-			printUsage(argv[0]);
+			PrintUsage(argv[0]);
 			exit(0);
 		}
 
 		if (!strcmp(argv[i], "--icinfo"))
 		{
-			printICoptions();
+			PrintICoptions();
 			exit(0);
 		}
 
@@ -624,6 +634,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			uSize = true;
+
 			i++;
 			procArgs++;
 			passed = true;
@@ -665,6 +677,14 @@ int	parseArgs (int argc, char *argv[])
 
 			zthres = atof(argv[i+1]);
 
+			if (zthres <= 0.)
+			{
+				printf("Error: The z switch-off must happen at nonzero redshift.\n");
+				exit(1);
+			}
+
+			uZth   = true;
+
 			i++;
 			procArgs++;
 			passed = true;
@@ -680,6 +700,14 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			zrestore = atof(argv[i+1]);
+
+			if (zrestore <= 0.)
+			{
+				printf("Error: The z re-switch must happen at nonzero redshift.\n");
+				exit(1);
+			}
+
+			uZrs   = true;
 
 			i++;
 			procArgs++;
@@ -723,10 +751,11 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			indi3 = atof(argv[i+1]);
+			uI3   = true;
 
-			if (msa <= 0.)
+			if (indi3 < 0.)
 			{
-				printf("Error: The Spacing-to-core must be greater than zero.\n");
+				printf("Error: Indi3 must be greater than or equal to zero.\n");
 				exit(1);
 			}
 
@@ -1255,7 +1284,7 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!passed)
 		{
-			printUsage(argv[0]);
+			PrintUsage(argv[0]);
 			printf("\n\nUnrecognized option %s\n", argv[i]);
 			exit(1);
 		}
@@ -1291,7 +1320,7 @@ int	parseArgs (int argc, char *argv[])
  	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
 
 	if (zrestore < zthres) {
-		printf("Error: zrestore = %f < zthres %f. Switch-off disabled with zrestore=zthres=100 !!\n", zrestore, zthres);
+		printf("Warning: zrestore = %f < zthres %f. Switch-off disabled.\n", zrestore, zthres);
 		zthres = 100.;
 		zrestore = 100.;
 	}
@@ -1305,11 +1334,11 @@ int	parseArgs (int argc, char *argv[])
 				strcpy(outDir, outPath);
 			} else {
 				printf("Path %s doesn't exists, using default\n", outPath);
-				createOutput();
+				mCreateOut = true;
 			}
 		}
 	} else {
-		createOutput();
+		mCreateOut = true;
 	}
 
 	/*	Set the directory where the FFTW wisdom is/will be stored		*/
@@ -1329,4 +1358,47 @@ int	parseArgs (int argc, char *argv[])
 		logMpi = ZERO_RANK;
 
 	return	procArgs;
+}
+
+Cosmos	createCosmos()
+{
+	Cosmos myCosmos;
+
+	/*	I'm reading from disk	*/
+	if (fIndex >= 0.) {
+		if (uMsa || uLambda)
+			myCosmos.SetLambda(LL);
+
+		if (uQcd)
+			myCosmos.SetQcdExp(nQcd);
+
+		if (uGamma)
+			myCosmos.SetGamma(gammo);
+
+		if (uPot)
+			myCosmos.SetQcdPot(vqcdType);
+
+		if (uSize)
+			myCosmos.SetPhysSize(sizeL);
+
+		if (uZth)
+			myCosmos.SetZThRes  (zthres);
+
+		if (uZrs)
+			myCosmos.SetZRestore(zrestore);
+
+		if (uI3)
+			myCosmos.SetZRestore(zrestore);
+	} else {
+		myCosmos.SetLambda  (LL);
+		myCosmos.SetQcdExp  (nQcd);
+		myCosmos.SetGamma   (gammo);
+		myCosmos.SetQcdPot  (vqcdType);
+		myCosmos.SetPhysSize(sizeL);
+		myCosmos.SetZThRes  (zthres);
+		myCosmos.SetZRestore(zrestore);
+		myCosmos.SetIndi3   (indi3);
+	}
+
+	return	myCosmos;
 }

@@ -57,9 +57,10 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 	const size_t n1     = axion->Length();
 	const size_t n2     = axion->Surf();
 	const size_t shift  = axion->Shift();
-	const size_t Lz     = axion->Depth()	;
+	const size_t Lz     = axion->Depth();
 	size_t 	     Nshift = n1/shift;
 	const size_t fSize  = axion->DataSize();
+	auto         lSize  = axion->BckGnd()->PhysSize();
 
 //	const int myRank = commRank();
 	int hand;
@@ -71,7 +72,7 @@ int	analyzeStrFolded	(Scalar *axion, const int index)
 	FILE *file_strings ;
 	file_strings = NULL;
 	file_strings = fopen(stoStr,"w+");
-	fprintf(file_strings,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, (*axion->zV()) );
+	fprintf(file_strings,  "# %d %f %f %f \n", sizeN, lSize, axion->Delta(), (*axion->zV()) );
 	//printf("TEST+ %d \n", stringHand( complex<double> (0.1,0.1), complex<double>(0.1,-0.1), complex<double>(-0.1,-0.1), complex<double>(-0.1,0.1)));
 	//printf("TEST- %d \n", stringHand( complex<double> (0.1,0.1), complex<double>(0.1,-0.1), complex<double>(0.1,0.1), complex<double> (0.1,0.1)));
 
@@ -543,9 +544,10 @@ int	analyzeStrUNFolded	(Scalar *axion, const int index)
 	const size_t n1     = axion->Length();
 	const size_t n2     = axion->Surf();
 	const size_t shift  = axion->Shift();
-	const size_t Lz     = axion->Depth()	;
+	const size_t Lz     = axion->Depth();
 	size_t       Nshift = n1/shift;
 	const size_t fSize  = axion->DataSize();
+	auto         lSize  = axion->BckGnd()->PhysSize();
 
 //	const int myRank = commRank();
 	int hand;
@@ -557,7 +559,7 @@ int	analyzeStrUNFolded	(Scalar *axion, const int index)
 	FILE *file_strings ;
 	file_strings = NULL;
 	file_strings = fopen(stoStr,"w+");
-	fprintf(file_strings,  "# %d %f %f %f \n", sizeN, sizeL, sizeL/sizeN, (*axion->zV()) );
+	fprintf(file_strings,  "# %d %f %f %f \n", sizeN, lSize, axion->Delta(), (*axion->zV()) );
 	//printf("TEST+ %d \n", stringHand( complex<double> (0.1,0.1), complex<double>(0.1,-0.1), complex<double>(-0.1,-0.1), complex<double>(-0.1,0.1)));
 	//printf("TEST- %d \n", stringHand( complex<double> (0.1,0.1), complex<double>(0.1,-0.1), complex<double>(0.1,0.1), complex<double> (0.1,0.1)));
 

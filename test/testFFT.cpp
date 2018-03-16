@@ -19,7 +19,7 @@ using namespace std;
 
 int	main (int argc, char *argv[])
 {
-	initAxions(argc, argv);
+	Cosmos myCosmos = initAxions(argc, argv);
 
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n          CREATING MINICLUSTERS!                \n\n");
@@ -33,26 +33,26 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	axion = new Scalar (sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, LAMBDA_FIXED, CONF_NONE, 0, 0);
-	readConf(&axion, 0);
+	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, LAMBDA_FIXED, CONF_NONE, 0, 0);
+	readConf(&myCosmos, &axion, 0);
 
 	//--------------------------------------------------
 	//          SETTING BASE PARAMETERS
 	//--------------------------------------------------
 
 	double dz = (zFinl - zInit)/((double) nSteps);
-	double delta = sizeL/sizeN;
+	double delta = axion->Delta();
 
 	LogOut("--------------------------------------------------\n");
 	LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	LogOut("Length =  %2.5f\n", sizeL);
-	LogOut("N      =  %d\n",    sizeN);
-	LogOut("Nz     =  %d\n",    sizeZ);
+	LogOut("Length =  %2.5f\n", myCosmos.PhysSize());
+	LogOut("N      =  %d\n",    axion->Length());
+	LogOut("Nz     =  %d\n",    axion->Depth());
 	LogOut("zGrid  =  %d\n",    zGrid);
 	LogOut("dx     =  %2.5f\n", delta);
 	LogOut("dz     =  %2.5f\n", dz);
-	LogOut("LL     =  %2.5f\n", LL);
+	LogOut("LL     =  %2.5f\n", myCosmos.Lambda());
 	LogOut("--------------------------------------------------\n");
 
 	const int S0 = sizeN*sizeN;

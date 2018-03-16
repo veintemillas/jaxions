@@ -3,7 +3,7 @@
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 #include"propagator/laplacian.h"
-#include"scalar/varNQCD.h"
+//#include"scalar/varNQCD.h"
 #include"utils/utils.h"
 #include"fft/fftCode.h"
 
@@ -28,7 +28,7 @@
 
 template<const VqcdType VQcd>
 inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
-				const double ood2, const double LL, const double nQcd, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+				const double ood2, const double LL, const double aMass2, const double gamma, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -54,10 +54,10 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const double zR = *z;
 		const double z2 = zR*zR;
 		const double z4 = z2*z2;
-		const double zQ = axionmass2(zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zQ = aMass2*z2*zR;
 
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gammo;
+		const double GGGG = pow(ood2,0.5)*gamma;
 		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
@@ -245,10 +245,10 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const float zR = *z;
 		const float z2 = zR*zR;
 		const float z4 = z2*z2;
-		const float zQ = (float) axionmass2(*z, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zQ = (float) (aMass2*z2*zR);
 
 		const float LaLa = LL*2.f/z4;
-		const float GGGG = pow(ood2,0.5f)*gammo;
+		const float GGGG = pow(ood2,0.5f)*gamma;
 		const float GGiZ = GGGG/zR;
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);

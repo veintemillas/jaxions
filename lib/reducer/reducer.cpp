@@ -193,8 +193,8 @@ Scalar*	Reducer<Float>::runCpu	()
 
 	if (!inPlace) {
 		// Make sure you don't screw up the FFTs!!
-		outField = new Scalar(newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(), axionField->Field() | FIELD_REDUCED,
-				      axionField->Lambda(), CONF_NONE, 0, 0.);
+		outField = new Scalar(axionField->BckGnd(), newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
+				      axionField->Field() | FIELD_REDUCED, axionField->Lambda(), CONF_NONE, 0, 0.);
 	} else {
 		outField = axionField;
 	}

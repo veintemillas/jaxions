@@ -2,7 +2,7 @@
 #include <cmath>
 #include "scalar/scalarField.h"
 #include "enum-field.h"
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
 #include "utils/triSimd.h"

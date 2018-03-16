@@ -3,7 +3,7 @@
 
 #include "enum-field.h"
 
-#include "scalar/varNQCD.h"
+//#include "scalar/varNQCD.h"
 #include "utils/parse.h"
 
 #include "utils/reduceGpu.cuh"
@@ -114,7 +114,7 @@ __global__ void	energyThetaKernel(const Float * __restrict__ m, const Float * __
 }
 
 template<const bool wMod>
-int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
+int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double aMass2,
 			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map)
 {
 	const uint Vm = V+S;
@@ -126,7 +126,7 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 	const double zR   = *z;
 	double *tR, *partial;
 
-	const double zQ  = axionmass2((float) zR, nQcd, zthres, zrestore)*zR*zR;
+	const double zQ  = aMass2*zR*zR;
 	const double iZ  = 1./zR;
 	const double iz2 = iZ*iZ;
 	const double o2  = 0.25/delta2*iz2;
@@ -169,15 +169,15 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 	return	0;
 }
 
-int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double nQcd,
+int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *z, const double delta2, const double aMass2,
 			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map, const bool wMod)
 {
 	switch (wMod) {
 		case true:
-			return	energyThetaGpu<true>(m, v, m2, z, delta2, nQcd, Lx, Lz, V, S, precision, eR, stream, map);
+			return	energyThetaGpu<true>(m, v, m2, z, delta2, aMass2, Lx, Lz, V, S, precision, eR, stream, map);
 			break;
 		case false:
-			return	energyThetaGpu<true>(m, v, m2, z, delta2, nQcd, Lx, Lz, V, S, precision, eR, stream, map);
+			return	energyThetaGpu<true>(m, v, m2, z, delta2, aMass2, Lx, Lz, V, S, precision, eR, stream, map);
 			break;
 	}
 
