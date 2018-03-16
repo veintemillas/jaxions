@@ -10,7 +10,7 @@ cp $JAXIONS_DIR/plotaxion.py m/
 cp $JAXIONS_DIR/test.py ./
 cp $JAXIONS_DIR/autoplot.py ./autoplot.py
 
-cp $JAXIONS_DIR/analise.sh ./analise.py
+cp $JAXIONS_DIR/analise.sh ./analise.sh
 cp $JAXIONS_DIR/summaryplot.py ./summaryplot.py
 cp $JAXIONS_DIR//specevol.py ./
 cp $JAXIONS_DIR/pspecevol.py ./
