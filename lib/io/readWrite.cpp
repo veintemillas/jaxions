@@ -1461,7 +1461,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	char *eData = static_cast<char *>(axion->sData());
+	unsigned char *eData = static_cast<unsigned char *>(axion->sData());
 
 	rLz   = axion->rDepth();
 	redlZ = axion->rTotalDepth();
@@ -1521,8 +1521,11 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 		}
 
 		/*	Might be reduced	*/
-		writeAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT);
-		writeAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+		if (readAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT) < 0)
+			writeAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT);
+
+		if (readAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT) < 0)
+			writeAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT);
 
 		/*	Density contrast metadata		*/
 		writeAttribute(grp_id, &eMin, "Minimum energy", H5T_NATIVE_DOUBLE);
@@ -1565,9 +1568,9 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 
 		/*	Create a dataset for string data	*/
 		if (fMap == MAP_RHO)
-			sSet_id = H5Dcreate (grp_id, "cRho",   H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+			sSet_id = H5Dcreate (grp_id, "cRho",   H5T_NATIVE_UCHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 		else
-			sSet_id = H5Dcreate (grp_id, "cTheta", H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+			sSet_id = H5Dcreate (grp_id, "cTheta", H5T_NATIVE_UCHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
 		if (sSet_id < 0) {
 			LogError ("Fatal error creating dataset");
@@ -1613,7 +1616,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 				/*	Write raw data	*/
-				H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, H5P_DEFAULT, (eData)+slab*zDim);
+				H5Dwrite (sSet_id, H5T_NATIVE_UCHAR, memSpace, sSpace, H5P_DEFAULT, (eData)+slab*zDim);
 			}
 
 			commSync();

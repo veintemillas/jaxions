@@ -55,10 +55,16 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 	hid_t	attr;
 	herr_t	status;
 
-	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0) {
 		LogError ("Error opening attribute %s");
-	if ((status = H5Aread (attr, h5_type, data)) < 0)
+		return	attr;
+	}
+
+	if ((status = H5Aread (attr, h5_type, data)) < 0) {
 		LogError ("Error reading attribute %s");
+		return	status;
+	}
+
 	status = H5Aclose(attr);
 
 	LogMsg (VERB_HIGH, "Read attribute %s", name);
@@ -926,7 +932,6 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index)
 
 	Folder munge(*axion);
 	munge(FOLD_ALL);
-
 }
 
 
@@ -1266,7 +1271,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	char *eData = static_cast<char *>(axion->sData());
+	unsigned char *eData = static_cast<unsigned char *>(axion->sData());
 
 	Profiler &prof = getProfiler(PROF_HDF5);
 
@@ -1318,8 +1323,12 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 	hsize_t slab  = ((hsize_t) redlX)*((hsize_t) redlX);
 
 	/*	Might be reduced	*/
-	writeAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT);
-	writeAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
+	if (readAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT) < 0)
+		writeAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT);
+
+	if (readAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT) < 0)
+		writeAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT);
 
 	/*	String metadata		*/
 	writeAttribute(grp_id, &eMin, "Minimum energy", H5T_NATIVE_DOUBLE);
@@ -1344,13 +1353,13 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 		prof.stop();
 		return;
 	}
-
+/*	Disabled, until it works properly
 	if (H5Pset_deflate (chunk_id, 9) < 0) {	// Maximum compression
 		LogError ("Error: couldn't set compression level to 9");
 		prof.stop();
 		return;
 	}
-
+*/
 	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
 	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0) {
 		LogError ("Fatal error H5Pset_alloc_time");
@@ -1360,9 +1369,9 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 
 	/*	Create a dataset for string data	*/
 	if (fMap == MAP_RHO)
-		sSet_id = H5Dcreate (grp_id, "cRho",   H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		sSet_id = H5Dcreate (grp_id, "cRho",   H5T_NATIVE_UCHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 	else
-		sSet_id = H5Dcreate (grp_id, "cTheta", H5T_NATIVE_CHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		sSet_id = H5Dcreate (grp_id, "cTheta", H5T_NATIVE_UCHAR, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
 	if (sSet_id < 0) {
 		LogError ("Fatal error creating dataset");
@@ -1384,7 +1393,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
-		auto mErr = H5Dwrite (sSet_id, H5T_NATIVE_CHAR, memSpace, sSpace, mlist_id, (eData)+slab*zDim);
+		auto mErr = H5Dwrite (sSet_id, H5T_NATIVE_UCHAR, memSpace, sSpace, mlist_id, (eData)+slab*zDim);
 
 		if (mErr < 0)
 		{
@@ -1406,6 +1415,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 
 	sBytes = slab*rLz + 24;
 
+	H5Gclose (grp_id);
 	H5Gclose (group_id);
 
 	prof.stop();

@@ -7,12 +7,11 @@
 
 #include "propagator/allProp.h"
 #include "energy/energy.h"
+#include "energy/dContrast.h"
 #include "utils/utils.h"
 #include "io/readWrite.h"
 #include "comms/comms.h"
-#include "map/map.h"
 #include "strings/strings.h"
-#include "powerCpu.h"
 #include "scalar/scalar.h"
 
 #include <iostream>
@@ -200,6 +199,7 @@ int	main (int argc, char *argv[])
 		writeString (axion, strDen);
 		writeEnergy (axion, eRes);
 		writePoint  (axion);
+		cDensityMap (axion);
 		destroyMeas ();
 
 		// Test reduced strings
