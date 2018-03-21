@@ -106,7 +106,7 @@ void	cDensityMap	(Scalar *axion, size_t rSize, bool rhoMap) {
 			break;
 
 		case	FIELD_DOUBLE:
-			dContrast<float> (axion, rSize, rhoMap);
+			dContrast<double>(axion, rSize, rhoMap);
 			break;
 
 		default:
