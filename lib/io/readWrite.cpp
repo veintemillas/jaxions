@@ -1526,10 +1526,18 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 		}
 
 		/*	Might be reduced	*/
-		if (readAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT) < 0)
+		status = H5Aexists_by_name(grp_id, ".", "Size",  H5P_DEFAULT);
+
+		if (status < 0)
+			LogError ("Error: can't check attribute \"Size\" in file");
+		else if (status == 0)
 			writeAttribute(grp_id, &redlX, "Size",  H5T_NATIVE_UINT);
 
-		if (readAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT) < 0)
+		status = H5Aexists_by_name(grp_id, ".", "Depth",  H5P_DEFAULT);
+
+		if (status < 0)
+			LogError ("Error: can't check attribute \"Depth\" in file");
+		else if (status == 0)
 			writeAttribute(grp_id, &redlZ, "Depth", H5T_NATIVE_UINT);
 
 		/*	Density contrast metadata		*/
@@ -1647,7 +1655,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 	}
 
 	prof.stop();
-	prof.add(std::string("Write density contrast"), 0, 1e-9*sBytes);
+	prof.add(std::string("Write density"), 0, 1e-9*sBytes);
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 
