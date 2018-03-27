@@ -8,6 +8,7 @@ import re, os
 import h5py
 import datetime
 import glob
+from sympy import integer_nthroot
 
 # mark=f"{datetime.datetime.now():%Y-%m-%d}"
 # from uuid import getnode as get_mac
@@ -170,6 +171,9 @@ def gm(address,something='help',printerror=False):
         print('         ')
         print('psp         binned power spectrum')
         print('psp?        True/False')
+        print('         ')
+        print('3Dmape      3D map of axion energy density')
+        print('3Dmape?     Do we have energy density 3D map?')
         print('         ')
         print('mapmC       2D slice map of conformal PQ field')
         print('mapvC       2D slice map of conformal PQ velocity field')
@@ -476,6 +480,42 @@ def gm(address,something='help',printerror=False):
             kine = np.array(f['map']['v'].value.reshape(N,N))
             mapa += ((kine - theta/ct)**2)/(2*ct*ct)
             return mapa ;
+
+    # 3D density maps
+    if something == '3Dmape?':
+        if ('energy/density' in f) or ('energy/redensity' in f):
+            return True
+        else :
+            return False
+
+    if something == '3Dmape':
+    # three options:
+    # 1-legacy ... (I do not remember)
+    # 2-energy/density/theta/
+    # 3-energy/redensity/data
+    # assume it is either one or the other, favour redensity in case there is only one
+        if 'energy/redensity' in f:
+            redN3 = f['energy']['redensity'].size
+            redN = integer_nthroot(redN3, 3)[0]
+            if printerror:
+                print('reduced ',redN)
+            return f['energy/redensity'].value.reshape(redN,redN,redN)
+        if 'energy/density/theta' in f:
+            redN = f['energy/density'].attrs[u'Size']
+            redZ = f['energy/density'].attrs[u'Depth']
+            if printerror:
+                print('Reduced ',redN)
+            return f['energy/density/theta'].value.reshape(redN,redN,redZ)
+
+    if something == '3Dmapefull':
+            if 'energy/density/theta' in f:
+                redN = f['energy/density'].attrs[u'Size']
+                redZ = f['energy/density'].attrs[u'Depth']
+                if printerror:
+                    print('Giving you the fullest N=',redN,redZ)
+
+                return f['energy/density/theta'].value.reshape(redN,redN,redZ)
+
 
     # the irrelevants
     if something == 'Depth':

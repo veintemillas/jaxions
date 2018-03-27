@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-
+from pyaxions import jaxions as pa
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -18,52 +18,43 @@ if os.path.exists('./axion.m.10000'):
 if os.path.exists('./axion.m.10001'):
     os.rename('./axion.m.10001','./../axion.m.10001')
 
-
-# fileMeasM = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
-# fileMeasR = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.r.[0-9]{5}$", x)])
+# print("you can type dens/redens after the file to choose map if possible")
+# if len(sys.argv) == 2:
+#     fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
+#     an_contrastmap = 'energy/density' in fileHdf5
+#     re_contrastmap = 'energy/redensity' in fileHdf5
+# elif len(sys.argv) == 3:
+#     fileHdf5 = h5py.File('./' + sys.argv[-2], "r")
+#     dens0redens = sys.argv[-1]
+#     if dens0redens == 'dens':
+#         an_contrastmap = 'energy/density' in fileHdf5
+#         re_contrastmap = False
+#     elif dens0redens == 'redens':
+#         re_contrastmap = 'energy/redensity' in fileHdf5
+#         an_contrastmap = False
 #
-# if len(fileMeasR) > 0:
-# 	fileHdf5 = h5py.File(fileMeasR[-1], "r")
-# else:
-# 	fileHdf5 = h5py.File(fileMeasM[-1], "r")
-
-print("you can type dens/redens after the file to choose map if possible")
-if len(sys.argv) == 2:
-    fileHdf5 = h5py.File('./' + sys.argv[-1], "r")
-    an_contrastmap = 'energy/density' in fileHdf5
-    re_contrastmap = 'energy/redensity' in fileHdf5
-elif len(sys.argv) == 3:
-    fileHdf5 = h5py.File('./' + sys.argv[-2], "r")
-    dens0redens = sys.argv[-1]
-    if dens0redens == 'dens':
-        an_contrastmap = 'energy/density' in fileHdf5
-        re_contrastmap = False
-    elif dens0redens == 'redens':
-        re_contrastmap = 'energy/redensity' in fileHdf5
-        an_contrastmap = False
-
-if an_contrastmap:
-	print('Contrast found')
-	Lx    = fileHdf5["/"].attrs.get("Size")
-	Ly    = fileHdf5["/"].attrs.get("Size")
-	Lz    = fileHdf5["/"].attrs.get("Depth")
-	sizeL = fileHdf5["/"].attrs.get("Physical size")
-	z = fileHdf5["/"].attrs.get("z")
-	con = fileHdf5['energy/density'].value.reshape(Ly,Lx,Lz)
-	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
-
-def thirdrdroot(x): return integer_nthroot(x, 3)[0]
-
-if re_contrastmap:
-	# sizeL = fileHdf5["/"].attrs.get("Physical size")
-    # z = fileHdf5["/"].attrs.get("z")
-    print('Reduced Contrast found')
-    temp3 = fileHdf5['energy']['redensity'].size
-    temp = thirdrdroot(temp3)
-    print(temp3, '-->',temp)
-    Lx = temp
-    Ly = temp
-    Lz = temp
+# if an_contrastmap:
+# 	print('Contrast found')
+# 	Lx    = fileHdf5["/"].attrs.get("Size")
+# 	Ly    = fileHdf5["/"].attrs.get("Size")
+# 	Lz    = fileHdf5["/"].attrs.get("Depth")
+# 	sizeL = fileHdf5["/"].attrs.get("Physical size")
+# 	z = fileHdf5["/"].attrs.get("z")
+# 	con = fileHdf5['energy/density'].value.reshape(Ly,Lx,Lz)
+# 	print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
+#
+# def thirdrdroot(x): return integer_nthroot(x, 3)[0]
+#
+# if re_contrastmap:
+# 	# sizeL = fileHdf5["/"].attrs.get("Physical size")
+#     # z = fileHdf5["/"].attrs.get("z")
+#     print('Reduced Contrast found')
+#     temp3 = fileHdf5['energy']['redensity'].size
+#     temp = thirdrdroot(temp3)
+#     print(temp3, '-->',temp)
+#     Lx = temp
+#     Ly = temp
+#     Lz = temp
 
     # if temp3 == 16777216:
     #     Lx = 256
@@ -75,12 +66,59 @@ if re_contrastmap:
     #     Lz = Lx
 
 
-    # need to adjust to other sizes
-    con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
-    print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
+    # # need to adjust to other sizes
+    # con = fileHdf5['energy']['redensity'].value.reshape(Ly,Lx,Lz)
+    # print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
+
+# mena = np.mean(con)
+# con  = con/mena
+
+filename = './' + sys.argv[-1]
+fileHdf5 = h5py.File(filename, "r")
+
+
+print("you can type dens/redens after the file to choose map if possible")
+if len(sys.argv) == 2:
+    filename = './' + sys.argv[-1]
+    fileHdf5 = h5py.File(filename, "r")
+    an_contrastmap = 'energy/density' in fileHdf5
+    re_contrastmap = 'energy/redensity' in fileHdf5
+    if re_contrastmap :
+        an_contrastmap = False
+elif len(sys.argv) == 3:
+    filename = './' + sys.argv[-2]
+    fileHdf5 = h5py.File(filename, "r")
+    dens0redens = sys.argv[-1]
+    if dens0redens == 'dens':
+        an_contrastmap = 'energy/density' in fileHdf5
+        re_contrastmap = False
+    elif dens0redens == 'redens':
+        re_contrastmap = 'energy/redensity' in fileHdf5
+        an_contrastmap = False
+
+if an_contrastmap:
+    print('Contrast found')
+    con = pa.gm(filename,'3Dmapefull',True)
+    Lx    = len(con)
+    Ly    = len(con)
+    Lz    = len(con)
+    sizeL = pa.gm(filename,'L')
+    z     = pa.gm(filename,'z')
+    print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',filename)
+
+if re_contrastmap:
+    print('Reduced Contrast found')
+    con = pa.gm(filename,'3Dmape')
+    Lx    = len(con)
+    Ly    = len(con)
+    Lz    = len(con)
+    sizeL = pa.gm(filename,'L')
+    z     = pa.gm(filename,'z')
+    print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',filename)
 
 mena = np.mean(con)
 con  = con/mena
+
 
 print('Average density  = ', mena)
 print('Maximum contrast = ', con.max())
