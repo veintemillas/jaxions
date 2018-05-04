@@ -1,12 +1,12 @@
 #include "enum-field.h"
 #include "cosmos/cosmos.h"
 
-extern uint sizeN;
-extern uint sizeZ;
-extern uint zGrid;
-extern int  nSteps;
-extern int  dump;
-extern int  fIndex;
+extern size_t sizeN;
+extern size_t sizeZ;
+extern int    zGrid;
+extern int    nSteps;
+extern int    dump;
+extern int    fIndex;
 
 //extern double nQcd;
 //extern double sizeL;
@@ -19,10 +19,11 @@ extern double kCrit;
 extern double parm2;
 //extern double gammo;
 extern double p3DthresholdMB;
-extern int kMax;
-extern int iter;
-extern int parm1;
-extern int Ng;
+extern size_t kMax;
+extern size_t iter;
+extern size_t parm1;
+extern size_t wTime;
+extern int    Ng;
 //extern double indi3;
 //extern double msa;
 extern double wDz;

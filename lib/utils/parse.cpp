@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <limits>
 #include <sys/stat.h>
 
 #include "enum-field.h"
@@ -14,11 +15,11 @@ int    nSteps = 5;
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER
-int  Ng = 1 ;
-double indi3 = 1.0;
-double msa   = 1.5;
-double wDz   = 0.8;
-int  fIndex  = -1;
+int    Ng     = 1 ;
+double indi3  = 1.0;
+double msa    = 1.5;
+double wDz    = 0.8;
+int    fIndex = -1;
 
 double sizeL = 4.;
 double zInit = 0.5;
@@ -60,6 +61,7 @@ bool preprop  = false ;
 size_t kMax  = 2;
 size_t iter  = 0;
 size_t parm1 = 0;
+size_t wTime = std::numeric_limits<std::size_t>::max();
 
 PropType     pType     = PROP_NONE;
 ConfType     cType     = CONF_NONE;
@@ -173,6 +175,7 @@ void	PrintUsage(char *name)
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
+	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
 	printf("--p3Dstr  [Mb]                  Include 3D string/Wall maps axion.m.files always or if expected size below [Mbs] (default no)\n");
 	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
@@ -321,17 +324,35 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--pcon"))
+		if (!strcmp(argv[i], "--pconwkb"))
 		{
-			pconfinal = true ;
+			pconfinalwkb = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--pconwkb"))
+		if (!strcmp(argv[i], "--wTime"))
 		{
-			pconfinalwkb = true ;
+			double	tTime = 0.;
+
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the walltime.\n");
+				exit(1);
+			}
+
+			tTime = atof(argv[i+1]);
+
+			if (tTime < 0.)
+			{
+				printf("Error: Walltime must be larger than or equal to 0.\n");
+				exit(1);
+			}
+
+			wTime = tTime*3600000000;	// Walltime is processed in microseconds, but the expected precision is much worse
+
+			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
