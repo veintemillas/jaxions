@@ -51,15 +51,17 @@
 				hTz = Tz >> 1;
 
 				switch (fType) {
+					// THIS CASE IS ILL DEFINED, WILL NEVER BE USED
+					// well... I am starting to use it!
+					// I assume the saxion mode will be analised also in real components
+					case	FIELD_SAXION:
+						// Lx   = Ly;
+						// hLx  = Ly >> 1;
+						// break;
 					case	FIELD_AXION_MOD:
 					case	FIELD_AXION:
 						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;
-						break;
-					// THIS CASE IS ILL DEFINED, WILL NEVER BE USED
-					case	FIELD_SAXION:
-						Lx   = Ly;
-						hLx  = Ly >> 1;
 						break;
 
 					case	FIELD_WKB:
