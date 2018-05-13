@@ -374,6 +374,7 @@
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0., ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0., ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
 		}
+
 	}
 
 	// Generic axion spectral propagator
@@ -432,6 +433,7 @@
 			applyLaplacian(axion);
 			sPropThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0.0, maa, fMom, Lx, S, V+S, precision);
 		}
+		axion->setM2     (M2_DIRTY);
 	}
 	// Generic saxion propagator
 
@@ -485,6 +487,7 @@
 			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
 			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
+		axion->setM2     (M2_DIRTY);
 	}
 
 	// Generic saxion lowmem propagator
@@ -536,6 +539,13 @@
 
 		const double fMom = -(4.*M_PI*M_PI)/(lSize*lSize*((double) axion->TotalSize()));
 
+		//debug
+		if	(axion->Folded())
+		{
+			Folder	munge(axion);
+			munge(UNFOLD_ALL);
+		}
+
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 			const double	c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
@@ -561,6 +571,7 @@
 
 			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0.0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 		}
+		axion->setM2     (M2_DIRTY);
 	}
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
