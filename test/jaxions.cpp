@@ -330,7 +330,7 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	//--------------------------------------------------
-	// prepropagator with relaxing strong damping
+	// prepropagator with relaxing strong damping [RELAXATION DOES NOT WORK]
 	//--------------------------------------------------
 	// only if preprop and if z smaller or equal than zInit
 	// When z>zInit, it is understood that prepropagation was done
@@ -582,13 +582,11 @@ int	main (int argc, char *argv[])
 							[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
-			//ENERGY
-			energy(axion, eRes, false, shiftz);
 			//DOMAIN WALL KILLER NUMBER
 			double maa = 40*axion->AxionMassSq()/(2.*llphys);
 			if (axion->Lambda() == LAMBDA_Z2 )
 				maa = maa*z_now*z_now;
-			//STRINGS
+			//STRINGS //debug
 			rts = strings(axion);
 			nstrings_global = rts.strDen;
 
@@ -596,6 +594,20 @@ int	main (int argc, char *argv[])
 				writeString(axion, rts, true);
 			else
 				writeString(axion, rts, false);
+
+//
+					SpecBin specSAna(axion, (pType & PROP_SPEC) ? true : false);
+
+					//ENERGY //JAVI added true for power spectrum
+					energy(axion, eRes, true, shiftz);
+					writeEDens(axion);
+					//computes power spectrum
+					specSAna.pRun();
+					writeArray(specSAna.data(SPECTRUM_P), specSAna.PowMax(), "/pSpectrum", "sP");
+
+					specSAna.nRun();
+					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sK");
+//
 
 			LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 			LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*axion->Delta()*nstrings_global*z_now*z_now/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
@@ -792,7 +804,14 @@ int	main (int argc, char *argv[])
 			destroyMeas();
 		}
 	}
-
+	else
+	{
+		if ((prinoconfo >= 2)) {
+			LogOut ("Dumping final Saxion onfiguration %05d ...", index);
+			writeConf(axion, index);
+			LogOut ("Done!\n");
+		}
+	}
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);
 	LogOut("#_prints = %i\n", index);
