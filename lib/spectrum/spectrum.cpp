@@ -95,7 +95,11 @@ void	SpecBin::fillBins	() {
 			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 			else
+				#ifdef	KSPECTRAL
+				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
+				#else
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
+				#endif
 
 			double		w  = sqrt(k2 + mass);
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
@@ -383,7 +387,8 @@ void	SpecBin::nRun	() {
 
 void	SpecBin::pRun	() {
 
-	size_t dataLine = field->DataSize()*Ly;
+	size_t dSize    = (size_t) (field->Precision());
+	size_t dataLine = dSize*Ly;
 	size_t Sm	= Ly*Lz;
 
 	char *mA = static_cast<char *>(field->m2Cpu());
@@ -397,8 +402,8 @@ void	SpecBin::pRun	() {
 		// contrast bin is assumed in m2 (without ghost bytes)
 		// Add the f@*&#ng padding plus ghost region, no parallelization
 		for (int sl=Sm-1; sl>=0; sl--) {
-			auto	oOff = sl*field->DataSize()*(Ly);
-			auto	fOff = sl*field->DataSize()*(Ly+2);
+			auto	oOff = sl*dSize*(Ly);
+			auto	fOff = sl*dSize*(Ly+2);
 			memmove	(mA+fOff, mA+oOff, dataLine);
 		}
 

@@ -43,8 +43,8 @@
 
 		typedef enum	FieldPrecision_s
 		{
-			FIELD_DOUBLE,
-			FIELD_SINGLE,
+			FIELD_DOUBLE = 8,
+			FIELD_SINGLE = 4,
 	//		FIELD_HALF,
 		}	FieldPrecision;
 
