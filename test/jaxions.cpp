@@ -27,6 +27,54 @@ void	printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t i
 void	printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double	findzdoom(Scalar *axion);
 
+void	checkTime (Scalar *axion, int index) {
+
+	auto	cTime = Timer();
+	int	cSize = commSize();
+	int	flag  = 0;
+	std::vector<int> allFlags(cSize);
+
+	bool	done  = false;
+
+	if (wTime <= cTime)
+		flag = 1;
+
+	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+	for (const int &val : allFlags) {
+		if (val == 1) {
+			done = true;
+			break;
+		}
+	}
+
+	if (done) {
+		if (cDev == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
+
+		LogOut ("Walltime reached, dumping configuration...");
+		writeConf(axion, index, 1);
+		LogOut ("Done!\n");
+
+		LogOut("z Final = %f\n", *axion->zV());
+		LogOut("nPrints = %i\n", index);
+
+		LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+		LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+//		trackFree(eRes);	FIXME!!!!
+
+		delete axion;
+
+		endAxions();
+
+		exit(0);
+	}
+	// else
+	// {
+	// 	LogOut("Total time: %2.3f min (wTime=%2.3f)\n", cTime*1.e-6/60.,wTime*1.e-6/60.);
+	// }
+}
+
 int	main (int argc, char *argv[])
 {
 	Cosmos myCosmos = initAxions(argc, argv);
@@ -59,7 +107,7 @@ int	main (int argc, char *argv[])
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
-		if (fIndex == -1)
+		if ( (fIndex == -1) && !restart_flag )
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
@@ -69,8 +117,10 @@ int	main (int argc, char *argv[])
 		}
 		else
 		{
+
 			//This reads from an axion.00000 file
-			readConf(&myCosmos, &axion, fIndex);
+			readConf(&myCosmos, &axion, fIndex, restart_flag);
+
 			if (axion == NULL)
 			{
 				LogOut ("Error reading HDF5 file\n");
@@ -79,7 +129,7 @@ int	main (int argc, char *argv[])
 			// prepropagation tends to mess up reading initial conditions
 			// configurations are saved before prepropagation and have z<zInit, which readConf reverses
 			// the following line fixes the issue, but a more elegant solution could be devised
-			if(preprop) {
+			if( (preprop) && !restart_flag) {
 				zInit = zInit_save;
 				*axion->zV() = zpreInit;
 			}
@@ -102,7 +152,10 @@ int	main (int argc, char *argv[])
 	//-output txt file
 	FILE *file_samp ;
 	file_samp = NULL;
-	file_samp = fopen("out/sample.txt","w+");
+	if (!restart_flag)
+		file_samp = fopen("out/sample.txt","w+");
+		else
+		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
 
 	//-point to print
 	size_t idxprint = 0 ;
@@ -157,7 +210,10 @@ int	main (int argc, char *argv[])
 	double LL1 = myCosmos.Lambda();
 
 	LogOut("--------------------------------------------------\n");
+	if (!restart_flag)
 	LogOut("           STARTING COMPUTATION                   \n");
+	else
+	LogOut("           CONTINUE COMPUTATION                   \n");
 	LogOut("--------------------------------------------------\n");
 
 	//--------------------------------------------------
@@ -190,6 +246,7 @@ int	main (int argc, char *argv[])
 	}
 	else
 		index = fIndex;
+
 
 	//-stores shift in real part of PQ and cPQ (conformal field) [obs? move up]
 	double saskia = 0.0;
@@ -488,6 +545,7 @@ int	main (int argc, char *argv[])
 				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
 				break;
 			}
+			checkTime(axion, index);
 		} // ZSUBLOOP
 
 		//--------------------------------------------------
@@ -582,6 +640,8 @@ int	main (int argc, char *argv[])
 			writeMapHdf5s(axion,sliceprint);
 		writeEnergy(axion, eRes);
 		destroyMeas();
+
+		checkTime(axion, index);
 	} // ZLOOP
 
 	current = std::chrono::high_resolution_clock::now();

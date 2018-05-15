@@ -75,6 +75,7 @@ extern bool           p3dstrings;
 extern bool           p3dwalls;
 extern bool           pconfinal;
 extern bool           pconfinalwkb ;
+extern bool           restart_flag ;
 
 int	parseArgs (int argc, char *argv[]);
 Cosmos	createCosmos();

@@ -88,6 +88,7 @@ bool p3dstrings	  = false;
 bool p3dwalls	  = false;
 bool pconfinal 	  = false;
 bool pconfinalwkb = false;
+bool restart_flag = false;
 
 bool mCreateOut = false;
 
@@ -135,6 +136,7 @@ void	PrintUsage(char *name)
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
+	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
@@ -1208,6 +1210,16 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--restart"))
+		{
+			restart_flag = true;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 
 		if (!strcmp(argv[i], "--preprop"))
 		{

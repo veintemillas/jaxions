@@ -101,7 +101,7 @@ void	enableErrorStack	()
 	mDisabled = false;
 }
 
-void	writeConf (Scalar *axion, int index)
+void	writeConf (Scalar *axion, int index, const bool restart)
 {
 	hid_t	file_id, mset_id, vset_id, plist_id, chunk_id;
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
@@ -147,8 +147,11 @@ void	writeConf (Scalar *axion, int index)
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
 	char base[256];
-
-	sprintf(base, "%s/%s.%05d", outDir, outName, index);
+	/* JAVI if restart do not write number for simplicity */
+	if (!restart)
+		sprintf(base, "%s/%s.%05d", outDir, outName, index);
+	else
+		sprintf(base, "%s/%s.restart", outDir, outName);
 
 	/*	Create the file and release the plist	*/
 	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
@@ -335,6 +338,10 @@ void	writeConf (Scalar *axion, int index)
 	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
 	writeAttribute(file_id, &cSteps,"Current step",  H5T_NATIVE_INT);
+
+	/* JAVI index...*/
+	if (restart)
+		writeAttribute(file_id, &index, "index", H5T_NATIVE_INT);
 
 	/*	Create a group for specific header data	*/
 	hid_t vGrp_id = H5Gcreate2(file_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -539,8 +546,8 @@ void	writeConf (Scalar *axion, int index)
 	}
 }
 
-
-void	readConf (Cosmos *myCosmos, Scalar **axion, int index)
+/* JAVI ADDED THAT */
+void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 {
 	hid_t	file_id, mset_id, vset_id, plist_id;
 	hid_t	mSpace, vSpace, memSpace, dataType;
@@ -574,7 +581,11 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index)
 
 	char base[256];
 
-	sprintf(base, "%s/%s.%05d", outDir, outName, index);
+	/* JAVI if restart flag, do not read index number for simplicity */
+	if (!restart)
+		sprintf(base, "%s/%s.%05d", outDir, outName, index);
+	else
+		sprintf(base, "%s/%s.restart", outDir, outName);
 
 	/*	Open the file and release the plist	*/
 
@@ -636,6 +647,17 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index)
 
 //	if (zInit > zTmp)
 //		zTmp = zInit;
+	if (restart)
+	{
+		readAttribute (file_id, &fIndex, "index", H5T_NATIVE_INT);
+		LogOut("Reading index is %d\n",fIndex);
+		/* It is very easy, we keep zInit and take z=zTmp we trust everything was properly specified in the file */
+		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
+		readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
+		LogOut("Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+
+	}
+
 
 	/*	Read potential data	*/
 	auto status = H5Lexists (file_id, "/potential", H5P_DEFAULT);
@@ -1600,7 +1622,7 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 
 		sSpace = H5Dget_space (sSet_id);
 		memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
-		
+
 	}
 
 	bCastAndExit:
