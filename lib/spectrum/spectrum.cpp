@@ -95,11 +95,7 @@ void	SpecBin::fillBins	() {
 			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 			else
-				#ifdef	KSPECTRAL
-				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
-				#else
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
-				#endif
 
 			double		w  = sqrt(k2 + mass);
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);

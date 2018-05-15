@@ -103,11 +103,11 @@ int	main (int argc, char *argv[])
 	if(preprop)
 		zpreInit = zInit/prepcoe;
 
-	if ((fIndex == -1) && (cType == CONF_NONE))
+	if ((fIndex == -1) && (cType == CONF_NONE) && (!restart_flag))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
-		if ( (fIndex == -1) && !restart_flag )
+		if ( (fIndex == -1) && !restart_flag)
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
