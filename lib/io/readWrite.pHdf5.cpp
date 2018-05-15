@@ -139,6 +139,10 @@ void	writeConf (Scalar *axion, int index)
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
 
+	/*      If needed, transfer data to host        */
+	if (axion->Device() == DEV_GPU)
+		axion->transferCpu(FIELD_MV);
+
 	/*	Set up parallel access with Hdf5	*/
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
@@ -1832,6 +1836,10 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
+
+	/*      If needed, transfer data to host        */
+	if (axion->Device() == DEV_GPU)
+		axion->transferCpu(FIELD_M2);
 
 	if (axion->m2Cpu() == nullptr) {
 		LogError ("You seem to be using the lowmem option");

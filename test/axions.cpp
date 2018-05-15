@@ -217,6 +217,12 @@ int	main (int argc, char *argv[])
 	LogOut("\n PROGRAMM FINISHED\n");
 
 	munge(UNFOLD_ALL);
+
+	if (cDev != DEV_CPU) {
+		LogOut ("Transferring configuration to host\n");
+		axion->transferCpu(FIELD_MV);
+	}
+
 	writeConf(axion, index);
 
 	LogOut("z_final = %f\n", *axion->zV());
