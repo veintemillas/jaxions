@@ -163,11 +163,17 @@ def gm(address,something='help',printerror=False):
         print('bintheta?   True/False')
         print('kmax        maximum momentum [int] in the 3D grid ')
         print('         ')
+        print('AXION SPECTRUM         ')
         print('nsp         binned number spectrum [total]')
         print('nspK        binned number spectrum [Kinetic energy part]')
         print('nspG        binned number spectrum [Gradient energy part]')
         print('nspV        binned number spectrum [Potential energy part]')
         print('nsp?        True/False')
+        print('SAXION SPECTRUM         ')
+        print('sspK        binned number spectrum [Kinetic energy part]')
+        print('sspG        binned number spectrum [Gradient energy part]')
+        print('sspV        binned number spectrum [Potential energy part]')
+        print('ssp?       True/False')
         print('         ')
         print('psp         binned power spectrum')
         print('psp?        True/False')
@@ -429,6 +435,28 @@ def gm(address,something='help',printerror=False):
             spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
             spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
             return spec ;
+
+    ssp_check = 'nSpectrum/ssK' in f
+
+    if (something == 'ssp?') :
+        return ssp_check
+
+
+    if (something[0:3] == 'ssp') and  ssp_check :
+        powmax = f['nSpectrum/ssK/data/'].size
+        #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
+        if (something == 'sspK'):
+            return np.reshape(f['nSpectrum/ssK/data/'],(powmax)) ;
+        if (something == 'sspG'):
+            return np.reshape(f['nSpectrum/ssG/data/'],(powmax)) ;
+        if (something == 'sspV'):
+            return np.reshape(f['nSpectrum/ssV/data/'],(powmax)) ;
+        if (something == 'ssp'):
+            spec = np.reshape(f['nSpectrum/ssV/data/'],(powmax)) ;
+            spec += np.reshape(f['nSpectrum/ssG/data/'],(powmax)) ;
+            spec += np.reshape(f['nSpectrum/ssK/data/'],(powmax)) ;
+            return spec ;
+
 
     # power spectra
     psp_check = 'pSpectrum' in f
