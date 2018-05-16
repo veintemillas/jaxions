@@ -753,6 +753,39 @@ double	Scalar::AxionMassSq() {
         return aMass;
 }
 
+// Saxion mass squared, perhaps the following functions could be rewriten to use this one
+double  Scalar::SaxionMassSq  ()
+{
+
+	double lbd   = bckgnd->Lambda();
+	//a bit confusing that scalar->Lambda() is a MODE or type of Lambda, instead of the value
+	if (Lambda() == LAMBDA_Z2)
+		lbd /= (*zV())*(*zV());
+
+	auto   &pot = bckgnd->QcdPot();
+
+	switch  (pot & VQCD_TYPE) {
+		case    VQCD_1:
+			return 2.*lbd;
+			break;
+
+		case    VQCD_1_PQ_2:
+		case    VQCD_1_PQ_2_DRHO:
+			return  8.*lbd;
+			break;
+
+		case    VQCD_2:
+			return  0.;
+			break;
+
+		default :
+			return  0;
+			break;
+	}
+
+	return  0.;
+}
+
 double	Scalar::dzSize	   () {
 	double zNow = *zV();
         double oodl = ((double) n1)/bckgnd->PhysSize();
@@ -824,8 +857,8 @@ double  Scalar::Saskia  ()
 
 		default :
 			return  0;
-			break;  
-	}       
+			break;
+	}
 
 	return  0.;
 }
@@ -868,6 +901,38 @@ double	Scalar::AxionMassSq(const double zNow) {
                 aMass = indi3*indi3*pow(zNow, nQcd);
 
         return aMass;
+}
+
+// Saxion mass squared, perhaps the following functions could be rewriten to use this one
+double  Scalar::SaxionMassSq  (const double zNow)
+{
+
+	double lbd   = bckgnd->Lambda();
+	if (Lambda() == LAMBDA_Z2)
+		lbd /= (zNow)*(zNow);
+
+	auto   &pot = bckgnd->QcdPot();
+
+	switch  (pot & VQCD_TYPE) {
+		case    VQCD_1:
+			return 2.*lbd;
+			break;
+
+		case    VQCD_1_PQ_2:
+		case    VQCD_1_PQ_2_DRHO:
+			return  8.*lbd;
+			break;
+
+		case    VQCD_2:
+			return  0.;
+			break;
+
+		default :
+			return  0;
+			break;
+	}
+
+	return  0.;
 }
 
 double	Scalar::dzSize	   (const double zNow) {
@@ -931,8 +996,8 @@ double  Scalar::Saskia  (const double zNow)
 
 		default :
 			return  0;
-			break;  
-	}       
+			break;
+	}
 
 	return  0.;
 }
@@ -1123,4 +1188,3 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	}
 	return ;
 }
-
