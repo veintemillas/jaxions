@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-
+from pyaxions import jaxions as pa
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
