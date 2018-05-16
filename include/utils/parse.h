@@ -17,7 +17,7 @@ extern double mode0;
 extern double alpha;
 extern double kCrit;
 extern double parm2;
-//extern double gammo;
+extern double pregammo;
 extern double p3DthresholdMB;
 extern size_t kMax;
 extern size_t iter;

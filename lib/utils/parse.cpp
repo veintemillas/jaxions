@@ -32,6 +32,7 @@ double zthres   = 1000.0;
 double zrestore = 1000.0;
 double LL = 25000.;
 double parm2 = 0.;
+double pregammo = 0.;
 double gammo = 0.;
 double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
@@ -560,6 +561,32 @@ int	parseArgs (int argc, char *argv[])
 			// 	endredmap = sizeN	;
 			// }
 
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--pregam"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the prepropagator/string destructor damping factor.\n");
+				exit(1);
+			}
+
+			pregammo = atof(argv[i+1]);
+			//vqcdTypeDamp = VQCD_DAMP_RHO ;
+
+			//uPot  = true;
+			//uGamma = true;
+
+			if (pregammo < 0.)
+			{
+				printf("Error: pre-Damping factor should be larger than 0.\n");
+				exit(1);
+			}
 
 			i++;
 			procArgs++;
