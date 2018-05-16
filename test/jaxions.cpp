@@ -296,7 +296,10 @@ int	main (int argc, char *argv[])
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
 
 	if (LAMBDA_FIXED == axion->Lambda())
-		LogOut("LL     =  %.0f \n\n", myCosmos.Lambda());
+	{
+		LogOut("LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", myCosmos.Lambda(),
+		sqrt(2.*myCosmos.Lambda())*zInit*axion->Delta(),sqrt(2.*myCosmos.Lambda())*3*axion->Delta());
+	}
 	else
 		LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%.2f \n\n", myCosmos.Lambda(), axion->Msa());
 
@@ -330,22 +333,31 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	//--------------------------------------------------
-	// prepropagator with relaxing strong damping [RELAXATION DOES NOT WORK]
+	// prepropagator with relaxing strong damping [RELAXATION of GAMMA DOES NOT WORK]
 	//--------------------------------------------------
 	// only if preprop and if z smaller or equal than zInit
 	// When z>zInit, it is understood that prepropagation was done
+	// NEW it takes the pregam value (if is > 0, otherwise gam )
 	if (preprop && ((*axion->zV()) < zInit)) {
-		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.f) \n\n", (*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma());
+		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.f pregam=%.f) \n\n",
+			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo);
+		// gammo is reserved for long-time damping
+		// use pregammo for prepropagation damping
 		double gammo_save = myCosmos.Gamma();
 		double *zaza = axion->zV();
 		double strdensn;
+
+		if (pregammo > 0)
+			myCosmos.SetGamma(pregammo);
+
+		// prepropagation is always with rho-damping
 		initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 		tunePropagator (axion);
 
 		while (*zaza < zInit)
 		{
 			dzaux = axion->dzSize(zInit)/2.;
-			myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
+			//myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
 
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_global, maximumtheta);
 
@@ -387,32 +399,34 @@ int	main (int argc, char *argv[])
 
 	LogOut("First measurement file %d \n",index);
 	createMeas(axion, index);
-	rts = strings(axion);
-	nstrings_global = rts.strDen;
-	writeString(axion, rts, false);
-	energy(axion, eRes, false, shiftz);
-	writeEnergy(axion, eRes);
+		rts = strings(axion);
+		nstrings_global = rts.strDen;
+		writeString(axion, rts, false);
+		energy(axion, eRes, false, shiftz);
+		writeEnergy(axion, eRes);
 
-	if(p2dmapo)
-		writeMapHdf5s (axion,sliceprint);
-	{
-		float z_now = *axion->zV();
-		Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-							[z=z_now] (complex<float> x) { return (double) abs(x)/z; } );
-		rhoBin.run();
-		writeBinner(rhoBin, "/bins", "rhoB");
+		if(p2dmapo)
+			writeMapHdf5s (axion,sliceprint);
+		{
+			float z_now = *axion->zV();
+			Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+								[z=z_now] (complex<float> x) { return (double) abs(x)/z; } );
+			rhoBin.run();
+			writeBinner(rhoBin, "/bins", "rhoB");
 
-		Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						 [] (complex<float> x) { return (double) arg(x); });
-		thBin.run();
-		writeBinner(thBin, "/bins", "thetaB");
-	}
+			Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+							 [] (complex<float> x) { return (double) arg(x); });
+			thBin.run();
+			writeBinner(thBin, "/bins", "thetaB");
+		}
 	destroyMeas();
 
-
-	// damping only from zst1000
 	LogOut("Running ...\n\n");
-	initPropagator (pType, axion, myCosmos.QcdPot() & VQCD_TYPE);
+	// damping only from zst1000
+	// initPropagator (pType, axion, myCosmos.QcdPot() & VQCD_TYPE);
+	// tunePropagator (axion);
+	// damping as specified in run
+	initPropagator (pType, axion, myCosmos.QcdPot());
 	tunePropagator (axion);
 
 	LogOut ("Start redshift loop\n\n");
@@ -600,14 +614,21 @@ int	main (int argc, char *argv[])
 
 					//ENERGY //JAVI added true for power spectrum
 					energy(axion, eRes, true, shiftz);
-					writeEDens(axion);
+					//writeEDens(axion);
 					//computes power spectrum
 					specSAna.pRun();
 					writeArray(specSAna.data(SPECTRUM_P), specSAna.PowMax(), "/pSpectrum", "sP");
 
 					specSAna.nRun();
 					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sK");
+
+					specSAna.nSRun();
+					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "ssK");
+					writeArray(specSAna.data(SPECTRUM_G), specSAna.PowMax(), "/nSpectrum", "ssG");
+					writeArray(specSAna.data(SPECTRUM_V), specSAna.PowMax(), "/nSpectrum", "ssV");
+
 //
+
 
 			LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 			LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*axion->Delta()*nstrings_global*z_now*z_now/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
