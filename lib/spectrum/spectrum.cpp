@@ -92,11 +92,7 @@ void	SpecBin::fillBins	() {
 			if (spectral)
 				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 			else
-				#ifdef	KSPECTRAL
-				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
-				#else
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
-				#endif
 
 			double		w = 1.0;
 

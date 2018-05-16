@@ -412,13 +412,13 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			if (fIdx & 1)
+			if (fIdx & FIELD_M)
 				cudaMemcpy((((char *) m_d) + n2*fSize), (((char *) m) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 
-			if (fIdx & 2)
+			if (fIdx & FIELD_V)
 				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
 
-			if ((fIdx & 4) && (!lowmem))
+			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy((((char *) m2_d) + n2*fSize), (((char *) m2) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
 	}
@@ -432,13 +432,13 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			if (fIdx & 1)
+			if (fIdx & FIELD_M)
 				cudaMemcpy(m,  m_d,  v3*fSize, cudaMemcpyDeviceToHost);
 
-			if (fIdx & 2)
+			if (fIdx & FIELD_V)
 				cudaMemcpy(v,  v_d,  n3*fSize, cudaMemcpyDeviceToHost);
 
-			if ((fIdx & 4) && (!lowmem))
+			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
 		#endif
 	}
