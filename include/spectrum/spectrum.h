@@ -22,7 +22,8 @@
 		Scalar			*field;
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
-		double			mass;
+		double			mass, massSax; // squared masses (comoving)
+		double 			ztime;
 
 		void			fillCosTable ();
 
@@ -42,8 +43,9 @@
 				binV.resize(powMax); binV.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
 
-				mass   = field->AxionMassSq()*(*field->zV())*(*field->zV());
-
+				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
+				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
+				ztime   = *field->zV();
 				fillCosTable();
 
 				hLy = Ly >> 1;
@@ -90,6 +92,7 @@
 		void	filterFFT	(int neigh);
 
 		void	nRun		();
+		void	nSRun		();
 		void	pRun		();
 
 

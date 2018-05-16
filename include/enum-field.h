@@ -272,6 +272,11 @@
 			SPECTRUM_V	= 4,
 			SPECTRUM_GV	= 6,
 			SPECTRUM_P	= 8,
+			SPECTRUM_KS	= 17,
+			SPECTRUM_GS	= 18,
+			SPECTRUM_VS	= 20,
+			SPECTRUM_GVS	= 22,
+			SPECTRUM_PS	= 24,
 		}	SpectrumType;
 
 		typedef	enum	FindType_s {
