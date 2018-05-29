@@ -103,7 +103,7 @@ void	enableErrorStack	()
 	mDisabled = false;
 }
 
-void	writeConf (Scalar *axion, int index)
+void	writeConf (Scalar *axion, int index, bool rs) // Dummy bool
 {
 	hid_t	file_id, mset_id, vset_id, plist_id, chunk_id;
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
@@ -513,16 +513,16 @@ void	writeConf (Scalar *axion, int index)
 
 	/*	Close the dataset	*/
 
-	H5Dclose (mset_id);
-	H5Dclose (vset_id);
 	H5Sclose (mSpace);
 	H5Sclose (vSpace);
+	H5Dclose (mset_id);
+	H5Dclose (vset_id);
 	H5Sclose (memSpace);
 
 	/*	Close the file		*/
 
-	H5Sclose (totalSpace);
 	H5Pclose (chunk_id);
+	H5Sclose (totalSpace);
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 
@@ -541,7 +541,7 @@ void	writeConf (Scalar *axion, int index)
 }
 
 
-void	readConf (Cosmos *myCosmos, Scalar **axion, int index)
+void	readConf (Cosmos *myCosmos, Scalar **axion, int index, bool rs)	// Bool dummy to accomodate Javi's mods
 {
 	hid_t	file_id, mset_id, vset_id, plist_id;
 	hid_t	mSpace, vSpace, memSpace, dataType;
