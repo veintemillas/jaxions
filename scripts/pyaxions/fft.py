@@ -152,6 +152,21 @@ def filtera(coma, auxd,con):
     return coma[mask]#, auxd[mask]
 
 # to randomize points
+def addrandn(coma, n, sig=1):
+    print('[addrand] adds random noise to a collection of points')
+    start=time.time()
+    comar = coma + 0.5*sig*np.random.randn(len(coma),3)
+    comar[comar[:,0] < 0] = comar[comar[:,0] < 0]+[n,0,0]
+    comar[comar[:,1] < 0] = comar[comar[:,1] < 0]+[0,n,0]
+    comar[comar[:,2] < 0] = comar[comar[:,2] < 0]+[0,0,n]
+    comar[comar[:,0] > n] = comar[comar[:,0] > n]-[n,0,0]
+    comar[comar[:,1] > n] = comar[comar[:,1] > n]-[0,n,0]
+    comar[comar[:,2] > n] = comar[comar[:,2] > n]-[0,0,n]
+    end=time.time()
+    print('add rand took %f sec'%(end-start))
+    return comar
+
+# to randomize points OLD... note that auxd does not do a thing
 def addrand(coma, auxd, n, sig=1):
     print('[addrand] adds random noise to a collection of points')
     start=time.time()
