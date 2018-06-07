@@ -479,6 +479,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 									opCode(add_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz])))),
 							opCode(mul_ps, opCode(set1_ps, -6.), mel))),
 					opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+					// this line kills axion self-interactions STERILE MODE!!
+					//opCode(mul_ps, zQVec, opCode(mul_ps, mel, izVec)));
 			}
 
 			vel = opCode(load_ps, &v[idxMz]);
@@ -527,4 +529,3 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			break;
 	}
 }
-
