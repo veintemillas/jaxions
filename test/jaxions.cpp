@@ -410,12 +410,12 @@ int	main (int argc, char *argv[])
 			writeMapHdf5s (axion,sliceprint);
 		{
 			float z_now = *axion->zV();
-			Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 								[z=z_now] (complex<float> x) { return (double) abs(x)/z; } );
 			rhoBin.run();
 			writeBinner(rhoBin, "/bins", "rhoB");
 
-			Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							 [] (complex<float> x) { return (double) arg(x); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
@@ -516,12 +516,12 @@ int	main (int argc, char *argv[])
 						writeEnergy(axion, eRes);
 						// BIN RHO+THETA
 						float shiftzf = shiftz ;
-						Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 										 [z=z_now,ss=shiftzf] (complex<float> x) { return (double) abs(x-ss)/z; });
 						rhoBin.run();
 						writeBinner(rhoBin, "/bins", "rhoB");
 
-						Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 										[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 						thBin.run();
 						writeBinner(thBin, "/bins", "thetaB");
@@ -543,7 +543,7 @@ int	main (int argc, char *argv[])
 						energy(axion, eRes, false, 0.);
 						writeEnergy(axion, eRes);
 						// BIN THETA
-						Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 									[z=z_now] (float x) -> float { return (float) (x/z); });
 						thBin2.run();
 						writeBinner(thBin2, "/bins", "thetaB");
@@ -593,12 +593,12 @@ int	main (int argc, char *argv[])
 			// BIN RHO+THETA
 			float z_now = *axion->zV();
 			float shiftzf = shiftz ;
-			Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							 [z=z_now,ss=shiftzf] (complex<float> x) { return (double) abs(x-ss)/z; });
 			rhoBin.run();
 			writeBinner(rhoBin, "/bins", "rhoB");
 
-			Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
@@ -624,14 +624,15 @@ int	main (int argc, char *argv[])
 					//computes power spectrum
 					specSAna.pRun();
 					writeArray(specSAna.data(SPECTRUM_P), specSAna.PowMax(), "/pSpectrum", "sP");
+					writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
 
 					specSAna.nRun();
 					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sK");
 
 					specSAna.nSRun();
-					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "ssK");
-					writeArray(specSAna.data(SPECTRUM_G), specSAna.PowMax(), "/nSpectrum", "ssG");
-					writeArray(specSAna.data(SPECTRUM_V), specSAna.PowMax(), "/nSpectrum", "ssV");
+					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sKS");
+					writeArray(specSAna.data(SPECTRUM_G), specSAna.PowMax(), "/nSpectrum", "sGS");
+					writeArray(specSAna.data(SPECTRUM_V), specSAna.PowMax(), "/nSpectrum", "sVS");
 
 //
 
@@ -640,7 +641,7 @@ int	main (int argc, char *argv[])
 			LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*axion->Delta()*nstrings_global*z_now*z_now/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
 		} else {
 			//BIN THETA
-			Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 						[z=z_now] (float x) -> float { return (float) (x/z);});
 			thBin2.run();
 			writeBinner(thBin2, "/bins", "thetaB");
@@ -746,7 +747,7 @@ int	main (int argc, char *argv[])
 		LogOut("Theta bin ... ");
 
 		double z_now = *axion->zV();
-		Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+		Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 					 [z=z_now] (float x) -> float { return (float) (x/z); });
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");
@@ -781,7 +782,7 @@ int	main (int argc, char *argv[])
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 			LogOut("theta ");
-			Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 						[z=z_now] (float x) -> float { return (float) (x/z);});
 			thBin2.run();
 			//writeArray(thBin2.data(), 100, "/bins", "testTh");
