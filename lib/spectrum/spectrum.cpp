@@ -275,6 +275,7 @@ void	SpecBin::pRun	() {
 			auto	oOff = sl*dSize*(Ly) + dSize*(Lz+2)*Ly*Ly;
 			auto	fOff = sl*dSize*(Ly+2);
 			memmove	(mA+fOff, mA+oOff, dataLine);
+		}
 
 		auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 		myPlan.run(FFT_FWD);
