@@ -17,7 +17,7 @@ template<VqcdType pot>
 class	PropLeap : public PropClass<1, true, pot> {
 
 	public:
-		PropLeap(Scalar *field, const bool spec) : 
+		PropLeap(Scalar *field, const bool spec) :
 		PropClass<1, true, pot>(field, spec) {
 		//	Set up Leapfrog parameters
 
@@ -129,7 +129,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 			xBlock = prop->TunedBlockX();
 			yBlock = prop->TunedBlockY();
 			zBlock = prop->TunedBlockZ();
-		}		
+		}
 
 	//auto pot  = field->BckGnd()->QcdPot();
 	//auto gm   = field->BckGnd()->Gamma ();
@@ -432,12 +432,14 @@ void	tunePropagator (Scalar *field) {
 	cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
 	// If there is an error in GPU propagation, we set the time to an absurd value
+	#ifdef USE_GPU
 	if (field->Device() == DEV_GPU) {
 		auto gErr = cudaGetLastError();
 
 		if (gErr != cudaSuccess)
 			cTime = std::numeric_limits<std::size_t>::max();
 	}
+	#endif
 
 	MPI_Allreduce(&cTime, &bestTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
 
@@ -456,13 +458,15 @@ void	tunePropagator (Scalar *field) {
 
 		cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
+		#ifdef USE_GPU
 		if (field->Device() == DEV_GPU) {
 			auto gErr = cudaGetLastError();
 
 			if (gErr != cudaSuccess)
 				cTime = std::numeric_limits<std::size_t>::max();
 		}
-
+		#endif
+		
 		MPI_Allreduce(&cTime, &lastTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
 
 		if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
