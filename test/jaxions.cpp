@@ -351,6 +351,7 @@ int	main (int argc, char *argv[])
 			myCosmos.SetGamma(pregammo);
 
 		// prepropagation is always with rho-damping
+		LogOut("Prepropagator always with damping Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 		initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 		tunePropagator (axion);
 
@@ -425,7 +426,8 @@ int	main (int argc, char *argv[])
 	// damping only from zst1000
 	// initPropagator (pType, axion, myCosmos.QcdPot() & VQCD_TYPE);
 	// tunePropagator (axion);
-	// damping as specified in run
+	// damping as specified in run with the flag --gam
+	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
 	initPropagator (pType, axion, myCosmos.QcdPot());
 	tunePropagator (axion);
 
@@ -474,14 +476,18 @@ int	main (int argc, char *argv[])
 
 				// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
 				// DOMAIN WALL KILLER NUMBER
-				if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
+				//if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
+				if (((*axion->zV()) > z_doom2*0.95) && (coD) && pregammo > 0.)
 				{
 					LogOut("-----------------------------------------\n");
 					LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", myCosmos.Gamma(), 0.95*z_doom2);
 					LogOut("-----------------------------------------\n");
-
-					initPropagator (pType, axion, myCosmos.QcdPot());
+					myCosmos.SetGamma(pregammo);
+					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
+					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
+					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 					coD = false ;
+					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}
 
 				// TRANSITION TO THETA COUNTER
