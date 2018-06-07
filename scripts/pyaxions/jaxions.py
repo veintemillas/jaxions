@@ -170,10 +170,10 @@ def gm(address,something='help',printerror=False):
         print('nspV        binned number spectrum [Potential energy part]')
         print('nsp?        True/False')
         print('SAXION SPECTRUM         ')
-        print('sspK        binned number spectrum [Kinetic energy part]')
-        print('sspG        binned number spectrum [Gradient energy part]')
-        print('sspV        binned number spectrum [Potential energy part]')
-        print('ssp?       True/False')
+        print('nspKS        binned number spectrum [Kinetic energy part]')
+        print('nspGS        binned number spectrum [Gradient energy part]')
+        print('nspVS        binned number spectrum [Potential energy part]')
+        print('nspS?       True/False')
         print('         ')
         print('psp         binned power spectrum')
         print('psp?        True/False')
@@ -436,25 +436,26 @@ def gm(address,something='help',printerror=False):
             spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
             return spec ;
 
-    ssp_check = 'nSpectrum/ssK' in f
+    # ssp_check = 'nSpectrum/ssK' in f
+    ssp_check = 'nSpectrum/sKS' in f
 
-    if (something == 'ssp?') :
+    if (something == 'nspS?') :
         return ssp_check
 
 
-    if (something[0:3] == 'ssp') and  ssp_check :
-        powmax = f['nSpectrum/ssK/data/'].size
+    if (something[0:3] == 'nspS') and  ssp_check :
+        powmax = f['nSpectrum/sKS/data/'].size
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
         if (something == 'sspK'):
-            return np.reshape(f['nSpectrum/ssK/data/'],(powmax)) ;
+            return np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
         if (something == 'sspG'):
-            return np.reshape(f['nSpectrum/ssG/data/'],(powmax)) ;
+            return np.reshape(f['nSpectrum/sGS/data/'],(powmax)) ;
         if (something == 'sspV'):
-            return np.reshape(f['nSpectrum/ssV/data/'],(powmax)) ;
+            return np.reshape(f['nSpectrum/sVS/data/'],(powmax)) ;
         if (something == 'ssp'):
-            spec = np.reshape(f['nSpectrum/ssV/data/'],(powmax)) ;
-            spec += np.reshape(f['nSpectrum/ssG/data/'],(powmax)) ;
-            spec += np.reshape(f['nSpectrum/ssK/data/'],(powmax)) ;
+            spec = np.reshape(f['nSpectrum/sVS/data/'],(powmax)) ;
+            spec += np.reshape(f['nSpectrum/sGS/data/'],(powmax)) ;
+            spec += np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
             return spec ;
 
 
