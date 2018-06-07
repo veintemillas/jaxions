@@ -775,7 +775,7 @@ double  Scalar::SaxionMassSq  ()
 			break;
 
 		case    VQCD_2:
-			return  0.;
+			return  2.*lbd;
 			break;
 
 		default :
@@ -924,7 +924,7 @@ double  Scalar::SaxionMassSq  (const double zNow)
 			break;
 
 		case    VQCD_2:
-			return  0.;
+			return  2.*lbd;
 			break;
 
 		default :
