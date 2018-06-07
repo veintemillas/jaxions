@@ -466,8 +466,8 @@ void	tunePropagator (Scalar *field) {
 				cTime = std::numeric_limits<std::size_t>::max();
 		}
 		#endif
-		
-		MPI_Allreduce(&cTime, &lastTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+
+    MPI_Allreduce(&cTime, &lastTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
 
 		if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
 			LogMsg (VERB_HIGH, "Block %u x %u x %u gave an error and couldn't run on the GPU", prop->BlockX(), prop->BlockY(), prop->BlockZ());

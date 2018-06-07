@@ -137,7 +137,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
 
-	/*	If needed, transfer field from device	*/
+	/*      If needed, transfer data to host        */
 	if (axion->Device() == DEV_GPU)
 		axion->transferCpu(FIELD_MV);
 
@@ -392,6 +392,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		default:
 		case	CONF_NONE:
 			sprintf(icStr, "None");
+			break;
 	}
 
 	switch (smvarType) {
@@ -1934,7 +1935,7 @@ void	writeEDens (Scalar *axion, MapType fMap)
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
 
-	/*	If needed, transfer data to host	*/
+	/*      If needed, transfer data to host        */
 	if (axion->Device() == DEV_GPU)
 		axion->transferCpu(FIELD_M2);
 
