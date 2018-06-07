@@ -38,6 +38,7 @@ void	SpecBin::fillBins	() {
 	std::vector<double>	tBinG;
 	std::vector<double>	tBinV;
 	std::vector<double>	tBinP;
+	std::vector<double>	tBinPS;
 
 	switch (sType) {
 		case	SPECTRUM_K:
@@ -47,9 +48,12 @@ void	SpecBin::fillBins	() {
 			break;
 
 		case	SPECTRUM_P:
-		case	SPECTRUM_PS:
 			tBinP.resize(powMax*mIdx);
 			tBinP.assign(powMax*mIdx, 0);
+			break;
+		case	SPECTRUM_PS:
+			tBinPS.resize(powMax*mIdx);
+			tBinPS.assign(powMax*mIdx, 0);
 			break;
 
 		default:
@@ -133,8 +137,10 @@ void	SpecBin::fillBins	() {
 					break;
 
 				case	SPECTRUM_P:
-				case	SPECTRUM_PS:
 					tBinP.at(myBin + powMax*tIdx) += m2;
+					break;
+				case	SPECTRUM_PS:
+					tBinPS.at(myBin + powMax*tIdx) += m2;
 					break;
 
 				case	SPECTRUM_G:
@@ -173,8 +179,10 @@ void	SpecBin::fillBins	() {
 						break;
 
 					case	SPECTRUM_P:
-					case	SPECTRUM_PS:
 						binP[j] += tBinP[j + i*powMax]*norm;
+						break;
+					case	SPECTRUM_PS:
+						binPS[j] += tBinPS[j + i*powMax]*norm;
 						break;
 
 					default:
@@ -194,9 +202,12 @@ void	SpecBin::fillBins	() {
 			break;
 
 		case	SPECTRUM_P:
-		case	SPECTRUM_PS:
 			std::copy_n(binP.begin(), powMax, tBinP.begin());
 			MPI_Allreduce(tBinP.data(), binP.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
+		case	SPECTRUM_PS:
+			std::copy_n(binPS.begin(), powMax, tBinPS.begin());
+			MPI_Allreduce(tBinPS.data(), binPS.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
 		default:
@@ -258,6 +269,33 @@ void	SpecBin::pRun	() {
 	}
 
 	field->setM2     (M2_ENERGY_FFT);
+
+	if (field->Field() == FIELD_SAXION) {
+		for (int sl=Sm-1; sl>=0; sl--) {
+			auto	oOff = sl*dSize*(Ly) + dSize*(Lz+2)*Ly*Ly;
+			auto	fOff = sl*dSize*(Ly+2);
+			memmove	(mA+fOff, mA+oOff, dataLine);
+
+		auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+		myPlan.run(FFT_FWD);
+
+		switch (fPrec) {
+			case	FIELD_SINGLE:
+				if (spec)
+					fillBins<float,  SPECTRUM_PS, true> ();
+				else
+					fillBins<float,  SPECTRUM_PS, false>();
+				break;
+
+			case	FIELD_DOUBLE:
+				if (spec)
+					fillBins<double,  SPECTRUM_PS, true> ();
+				else
+					fillBins<double,  SPECTRUM_PS, false>();
+				break;
+		}
+	}
+
 }
 
 // axion number spectrum
@@ -317,7 +355,7 @@ void	SpecBin::nRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 
-								m2sa[odx] = ztime*imag(va[idx]/ma[idx]) ;
+								m2sa[odx] = ztime*imag(va[idx]/ma[idx])+arg(ma[idx]) ;
 							}
 						}
 					}
