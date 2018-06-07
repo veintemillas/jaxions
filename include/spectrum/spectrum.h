@@ -16,6 +16,7 @@
 		std::vector<double>	binG;
 		std::vector<double>	binV;
 		std::vector<double>	binP;
+		std::vector<double>	binPS;
 
 		std::vector<double>	cosTable;
 
@@ -42,6 +43,7 @@
 				binG.resize(powMax); binG.assign(powMax, 0.);
 				binV.resize(powMax); binV.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
+				binPS.resize(powMax); binPS.assign(powMax, 0.);
 
 				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
 				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
@@ -105,20 +107,28 @@
 
 		switch(sType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK[idx];
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG[idx];
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV[idx];
 				break;
 
 			case	SPECTRUM_P:
 				return binP[idx];
 				break;
+
+			case	SPECTRUM_PS:
+				return binPS[idx];
+				break;
+
 		}
 	}
 
@@ -126,20 +136,28 @@
 
 		switch(rType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK[idx];
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG[idx];
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV[idx];
 				break;
 
 			case	SPECTRUM_P:
 				return binP[idx];
 				break;
+
+			case	SPECTRUM_PS:
+				return binPS[idx];
+				break;
+
 		}
 	}
 
@@ -147,20 +165,28 @@
 
 		switch(sType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK.data();
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG.data();
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV.data();
 				break;
 
 			case	SPECTRUM_P:
 				return binP.data();
 				break;
+
+			case	SPECTRUM_PS:
+				return binPS.data();
+				break;
+
 		}
 	}
 
@@ -168,19 +194,26 @@
 
 		switch(sType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK.data();
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG.data();
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV.data();
 				break;
 
 			case	SPECTRUM_P:
 				return binP.data();
+				break;
+
+			case	SPECTRUM_PS:
+				return binPS.data();
 				break;
 		}
 	}
