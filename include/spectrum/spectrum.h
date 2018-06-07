@@ -16,13 +16,15 @@
 		std::vector<double>	binG;
 		std::vector<double>	binV;
 		std::vector<double>	binP;
+		std::vector<double>	binPS;
 
 		std::vector<double>	cosTable;
 
 		Scalar			*field;
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
-		double			mass;
+		double			mass, massSax; // squared masses (comoving)
+		double 			ztime;
 
 		void			fillCosTable ();
 
@@ -41,9 +43,11 @@
 				binG.resize(powMax); binG.assign(powMax, 0.);
 				binV.resize(powMax); binV.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
+				binPS.resize(powMax); binPS.assign(powMax, 0.);
 
-				mass   = field->AxionMassSq()*(*field->zV())*(*field->zV());
-
+				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
+				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
+				ztime   = *field->zV();
 				fillCosTable();
 
 				hLy = Ly >> 1;
@@ -51,15 +55,17 @@
 				hTz = Tz >> 1;
 
 				switch (fType) {
+					// THIS CASE IS ILL DEFINED, WILL NEVER BE USED
+					// well... I am starting to use it!
+					// I assume the saxion mode will be analised also in real components
+					case	FIELD_SAXION:
+						// Lx   = Ly;
+						// hLx  = Ly >> 1;
+						// break;
 					case	FIELD_AXION_MOD:
 					case	FIELD_AXION:
 						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;
-						break;
-					// THIS CASE IS ILL DEFINED, WILL NEVER BE USED
-					case	FIELD_SAXION:
-						Lx   = Ly;
-						hLx  = Ly >> 1;
 						break;
 
 					case	FIELD_WKB:
@@ -88,6 +94,7 @@
 		void	filterFFT	(int neigh);
 
 		void	nRun		();
+		void	nSRun		();
 		void	pRun		();
 
 
@@ -100,20 +107,28 @@
 
 		switch(sType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK[idx];
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG[idx];
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV[idx];
 				break;
 
 			case	SPECTRUM_P:
 				return binP[idx];
 				break;
+
+			case	SPECTRUM_PS:
+				return binPS[idx];
+				break;
+
 		}
 	}
 
@@ -121,20 +136,28 @@
 
 		switch(rType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK[idx];
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG[idx];
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV[idx];
 				break;
 
 			case	SPECTRUM_P:
 				return binP[idx];
 				break;
+
+			case	SPECTRUM_PS:
+				return binPS[idx];
+				break;
+
 		}
 	}
 
@@ -142,20 +165,28 @@
 
 		switch(sType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK.data();
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG.data();
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV.data();
 				break;
 
 			case	SPECTRUM_P:
 				return binP.data();
 				break;
+
+			case	SPECTRUM_PS:
+				return binPS.data();
+				break;
+
 		}
 	}
 
@@ -163,19 +194,26 @@
 
 		switch(sType) {
 			case	SPECTRUM_K:
+			case	SPECTRUM_KS:
 				return binK.data();
 				break;
 
 			case	SPECTRUM_G:
+			case	SPECTRUM_GS:
 				return binG.data();
 				break;
 
 			case	SPECTRUM_V:
+			case	SPECTRUM_VS:
 				return binV.data();
 				break;
 
 			case	SPECTRUM_P:
 				return binP.data();
+				break;
+
+			case	SPECTRUM_PS:
+				return binPS.data();
 				break;
 		}
 	}

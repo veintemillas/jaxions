@@ -101,12 +101,33 @@ klist  = (0.5+np.arange(nmax))*2*math.pi/sizeL
 
 plt.clf()
 
+# for large lists, it is a pain in the arse to have too many thick lines and long legends
+# I wants at most 10 thick lines
+it = 0
+ll = len(mylist)//10
+if ll == 0:
+    ll = 1
+
 for meas in mylist:
-    nT = (klist**3)*pa.gm(meas,'nsp')/nmodes
+    if pa.gm(meas,'ftype') == 'Axion':
+        nT = (klist**3)*pa.gm(meas,'nsp')/nmodes
+    else:
+        nT = (klist**3)*pa.gm(meas,'sspK')/nmodes
     # nG = pa.gm(meas,'nspG')/nmodes
     # nV = pa.gm(meas,'nspV')/nmodes
+    time = pa.gm(meas,'time')
+    if pa.gm(meas,'ftype') == 'Saxion':
+        typ='s'
+    else:
+        typ=' '
+    if it%ll == 0 or it > len(mylist)-2 :
+        plt.loglog(klist,nT,linewidth=0.8,label=typ+r'{%.2f}'%(time))
+    else:
+        plt.loglog(klist,nT,linewidth=0.1,c='k',alpha=0.5)
+    it += 1
 
-    plt.loglog(klist,nT,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'time')))
+    # plt.loglog(klist,nT,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'time')))
+    # plt.loglog(klist,nT,linewidth=0.1,label=r'{%.1f}'%(pa.gm(meas,'time')))
 
 rc('text', usetex=False)
 plt.title(ups)
@@ -114,6 +135,7 @@ rc('text', usetex=True)
 #plt.ylim([0.00000001,100])
 plt.ylabel(r'$(k/k_1)^3 n_k$')
 plt.xlabel(r'comoving {$k [1/R_1 H_1]$}')
-plt.legend(loc='lower left')
+plt.legend(loc='lower right',prop={'size': 6})
+#plt.legend(loc='center left', bbox_to_anchor=(1, 0.))
 plt.savefig("pics/occnumber_all.pdf")
 print("->pics/occnumber_all.pdf")

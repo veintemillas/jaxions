@@ -38,9 +38,11 @@ void	SpecBin::fillBins	() {
 	std::vector<double>	tBinG;
 	std::vector<double>	tBinV;
 	std::vector<double>	tBinP;
+	std::vector<double>	tBinPS;
 
 	switch (sType) {
 		case	SPECTRUM_K:
+		case	SPECTRUM_KS:
 			tBinK.resize(powMax*mIdx);
 			tBinK.assign(powMax*mIdx, 0);
 			break;
@@ -48,6 +50,10 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_P:
 			tBinP.resize(powMax*mIdx);
 			tBinP.assign(powMax*mIdx, 0);
+			break;
+		case	SPECTRUM_PS:
+			tBinPS.resize(powMax*mIdx);
+			tBinPS.assign(powMax*mIdx, 0);
 			break;
 
 		default:
@@ -72,13 +78,8 @@ void	SpecBin::fillBins	() {
 
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
-			// TODO Saxion WRONG, fcc ---> 1 para SAXION
-			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
+			//ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
-			double fcc = 2.0 ;
-
-			if (kx == 0)       fcc = 1.0;
-			if (kx == hLx - 1) fcc = 1.0;
 
 			if (kx > hLx) kx -= static_cast<int>(Lx);
 			if (ky > hLy) ky -= static_cast<int>(Ly);
@@ -97,34 +98,73 @@ void	SpecBin::fillBins	() {
 			else
 				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
 
-			double		w  = sqrt(k2 + mass);
+			double		w = 1.0;
+
+			switch	(sType) {
+				case	SPECTRUM_K:
+				case	SPECTRUM_G:
+				case 	SPECTRUM_V:
+				case 	SPECTRUM_GV:
+					w  = sqrt(k2 + mass);
+					break;
+
+				case	SPECTRUM_KS:
+				case	SPECTRUM_GS:
+				case 	SPECTRUM_VS:
+				case 	SPECTRUM_GVS:
+					w  = sqrt(k2 + massSax);
+					break;
+			}
+			//double		w  = sqrt(k2 + mass);
+
 			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 			double		m2 = 0.;
 
-			if (fType & FIELD_AXION) {
-				if ((kx == 0) || (kx == hLx - 1))
-					m2 = m*m;
-				else
-					m2 = 2.*m*m;
-			} else {
+			// FFTS are assumed outcome of FFT r2c
+			// if c2c this needs some changes
+
+			if ((kx == 0) || (kx == hLx - 1))
 				m2 = m*m;
-			}
+			else
+				m2 = 2.*m*m;
 
 			double		mw = m2/w;
 
 			switch	(sType) {
 				case	SPECTRUM_K:
+				case	SPECTRUM_KS:
 					tBinK.at(myBin + powMax*tIdx) += mw;
 					break;
 
 				case	SPECTRUM_P:
 					tBinP.at(myBin + powMax*tIdx) += m2;
 					break;
+				case	SPECTRUM_PS:
+					tBinPS.at(myBin + powMax*tIdx) += m2;
+					break;
 
-				default:
+				case	SPECTRUM_G:
+				case	SPECTRUM_GS:
+					tBinG.at(myBin + powMax*tIdx) += mw*k2;
+					break;
+
+				case	SPECTRUM_V:
+					tBinV.at(myBin + powMax*tIdx) += mw*mass;
+					break;
+				case	SPECTRUM_VS:
+					tBinV.at(myBin + powMax*tIdx) += mw*massSax;
+					break;
+
+				case	SPECTRUM_GVS:
+					tBinG.at(myBin + powMax*tIdx) += mw*k2;
+					tBinV.at(myBin + powMax*tIdx) += mw*massSax;
+					break;
+
+				case	SPECTRUM_GV:
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
 					tBinV.at(myBin + powMax*tIdx) += mw*mass;
 					break;
+
 			}
 		}
 
@@ -134,11 +174,15 @@ void	SpecBin::fillBins	() {
 
 				switch	(sType) {
 					case	SPECTRUM_K:
+					case	SPECTRUM_KS:
 						binK[j] += tBinK[j + i*powMax]*norm;
 						break;
 
 					case	SPECTRUM_P:
 						binP[j] += tBinP[j + i*powMax]*norm;
+						break;
+					case	SPECTRUM_PS:
+						binPS[j] += tBinPS[j + i*powMax]*norm;
 						break;
 
 					default:
@@ -152,6 +196,7 @@ void	SpecBin::fillBins	() {
 
 	switch	(sType) {
 		case	SPECTRUM_K:
+		case	SPECTRUM_KS:
 			std::copy_n(binK.begin(), powMax, tBinK.begin());
 			MPI_Allreduce(tBinK.data(), binK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
@@ -159,6 +204,10 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_P:
 			std::copy_n(binP.begin(), powMax, tBinP.begin());
 			MPI_Allreduce(tBinP.data(), binP.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
+		case	SPECTRUM_PS:
+			std::copy_n(binPS.begin(), powMax, tBinPS.begin());
+			MPI_Allreduce(tBinPS.data(), binPS.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
 		default:
@@ -170,8 +219,86 @@ void	SpecBin::fillBins	() {
 	}
 }
 
+void	SpecBin::pRun	() {
+
+	size_t dSize    = (size_t) (field->Precision());
+	size_t dataLine = dSize*Ly;
+	size_t Sm	= Ly*Lz;
+
+	char *mA = static_cast<char *>(field->m2Cpu());
+
+	if ((field->m2Status() != M2_ENERGY) && (field->m2Status() != M2_ENERGY_FFT)) {
+		LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
+		return;
+	}
+
+	if (field->m2Status() == M2_ENERGY) {
+		// contrast bin is assumed in m2 (without ghost bytes)
+		// Add the f@*&#ng padding plus ghost region, no parallelization
+		for (int sl=Sm-1; sl>=0; sl--) {
+			auto	oOff = sl*dSize*(Ly);
+			auto	fOff = sl*dSize*(Ly+2);
+			memmove	(mA+fOff, mA+oOff, dataLine);
+		}
 
 
+
+		if (field->Field() == FIELD_SAXION) {
+			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			myPlan.run(FFT_FWD);
+		} else {
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+			myPlan.run(FFT_FWD);
+		}
+	}
+
+	switch (fPrec) {
+		case	FIELD_SINGLE:
+			if (spec)
+				fillBins<float,  SPECTRUM_P, true> ();
+			else
+				fillBins<float,  SPECTRUM_P, false>();
+			break;
+
+		case	FIELD_DOUBLE:
+			if (spec)
+				fillBins<double,  SPECTRUM_P, true> ();
+			else
+				fillBins<double,  SPECTRUM_P, false>();
+			break;
+	}
+
+	field->setM2     (M2_ENERGY_FFT);
+
+	if (field->Field() == FIELD_SAXION) {
+		for (int sl=Sm-1; sl>=0; sl--) {
+			auto	oOff = sl*dSize*(Ly) + dSize*(Lz+2)*Ly*Ly;
+			auto	fOff = sl*dSize*(Ly+2);
+			memmove	(mA+fOff, mA+oOff, dataLine);
+
+		auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+		myPlan.run(FFT_FWD);
+
+		switch (fPrec) {
+			case	FIELD_SINGLE:
+				if (spec)
+					fillBins<float,  SPECTRUM_PS, true> ();
+				else
+					fillBins<float,  SPECTRUM_PS, false>();
+				break;
+
+			case	FIELD_DOUBLE:
+				if (spec)
+					fillBins<double,  SPECTRUM_PS, true> ();
+				else
+					fillBins<double,  SPECTRUM_PS, false>();
+				break;
+		}
+	}
+
+}
+
+// axion number spectrum
 void	SpecBin::nRun	() {
 
 	if	(field->Folded())
@@ -183,25 +310,64 @@ void	SpecBin::nRun	() {
 	switch (fType) {
 		case	FIELD_SAXION:
 		{
-			auto &planM = AxionFFT::fetchPlan("nSpecSxM");
-			auto &planV = AxionFFT::fetchPlan("nSpecSxV");
 
-			planM.run(FFT_FWD);
+			switch (fPrec) {
+				case FIELD_SINGLE:
+				{
+					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu())  + field->Surf();
+					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
+					float *m2sa                 = static_cast<float *>(field->m2Cpu());
+					//DEBUG float *m2sa =           static_cast<float *>(static_cast<void*>(field->m2Cpu()));
+					//DEBUG LogOut("Saxion spectrum single Lx %d Ly %d Lz %d ",Lx, Ly, Lz);
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo;
+								size_t idx = ix + yi + zi;
+								// misses a factor of conformal time to be K
+								m2sa[odx] = ztime*imag(va[idx]/ma[idx])+arg(ma[idx]) ;
+							}
+						}
+					}
+				}
+				break;
 
-			if (fPrec == FIELD_SINGLE) {
-				if (spec)
-					fillBins<float,  SPECTRUM_GV, true> ();
-				else
-					fillBins<float,  SPECTRUM_GV, false>();
-			} else {
-				if (spec)
-					fillBins<double, SPECTRUM_GV, true> ();
-				else
-					fillBins<double, SPECTRUM_GV, false>();
-			}
+				case FIELD_DOUBLE:
+				{
+					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())  + field->Surf();
+					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
+					double *m2sa            = static_cast<double *>(field->m2Cpu());
+					//float *m2sa =           static_cast<float *>(static_cast<void*>(field->m2Cpu()));
 
-			planV.run(FFT_FWD);
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo;
+								size_t idx = ix + yi + zi;
 
+								m2sa[odx] = ztime*imag(va[idx]/ma[idx])+arg(ma[idx]) ;
+							}
+						}
+					}
+				}
+				break;
+			}//End prec switch
+
+			// r2c FFT in m2
+			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			myPlan.run(FFT_FWD);
+
+			// for the moment it fills K bins only
 			if (fPrec == FIELD_SINGLE) {
 				if (spec)
 					fillBins<float,  SPECTRUM_K, true> ();
@@ -285,53 +451,135 @@ void	SpecBin::nRun	() {
 	}
 }
 
-void	SpecBin::pRun	() {
 
-	size_t dataLine = field->DataSize()*Ly;
-	size_t Sm	= Ly*Lz;
+void	SpecBin::nSRun	() {
+	// saxion spectrum
 
-	char *mA = static_cast<char *>(field->m2Cpu());
-
-	if ((field->m2Status() != M2_ENERGY) && (field->m2Status() != M2_ENERGY_FFT)) {
-		LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
-		return;
+	if	(field->Folded())
+	{
+		Folder	munge(field);
+		munge(UNFOLD_ALL);
 	}
 
-	if (field->m2Status() == M2_ENERGY) {
-		// contrast bin is assumed in m2 (with ghost bytes)
-		// Add the f@*&#ng padding plus ghost region, no parallelization
-		for (int sl=Sm-1; sl>=0; sl--) {
-			auto	oOff = sl*field->DataSize()*(Ly);
-			auto	fOff = sl*field->DataSize()*(Ly+2);
-			memmove	(mA+fOff, mA+oOff, dataLine);
-		}
+	switch (fType) {
+		case FIELD_AXION:
+		case FIELD_AXION_MOD:
+		case FIELD_WKB:
+				LogError ("Error: Wrong field called to numberSaxionSpectrum: no Saxion information!!");
+		return;
+		break;
 
-		if (field->Field() == FIELD_SAXION) {
+		case	FIELD_SAXION:
+		{
+			// nPts = Lx*Ly*Lz;
+			switch (fPrec) {
+				case FIELD_SINGLE:
+				{
+					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu())  + field->Surf();
+					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
+					float *m2sa                 = static_cast<float *>(field->m2Cpu());
+					float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo;
+								size_t idx = ix + yi + zi;
+
+								float modu = std::abs(ma[idx]);
+								m2sa[odx] = real(va[idx]*modu/ma[idx]) ;
+								m2sax[odx] = modu - ztime ;
+							}
+						}
+					}
+					// LogOut("[debug] 0 and 0 %f %f \n", m2sa[0], m2sax[0]);
+					// LogOut("[debug] -1 and -1 %f %f \n", m2sa[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1], m2sax[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1]);
+				}
+				break;
+
+				case FIELD_DOUBLE:
+				{
+					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())  + field->Surf();
+					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
+					double *m2sa            = static_cast<double *>(field->m2Cpu());
+					double *m2sax            = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
+
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo;
+								size_t idx = ix + yi + zi;
+
+								double modu = abs(ma[idx]);
+								m2sa[odx] = real(va[idx]*modu/ma[idx]) ;
+								m2sax[odx] = modu - ztime ;
+							}
+						}
+					}
+				}
+				break;
+			}//End prec switch
+
+
+			// r2c FFT in m2
+
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 			myPlan.run(FFT_FWD);
-		} else {
-			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+
+
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_KS, true> ();
+				else
+					fillBins<float,  SPECTRUM_KS, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_KS, true> ();
+				else
+					fillBins<double, SPECTRUM_KS, false>();
+			}
+
+
+
+			// Copy m2aux -> m2
+			size_t dSize    = (size_t) (field->Precision());
+			size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
+			char *mA = static_cast<char *>(field->m2Cpu());
+			memmove	(mA, mA+dataTotalSize, dataTotalSize);
+
+			// float *m2sa                 = static_cast<float *>(field->m2Cpu());
+			// float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+			// LogOut("[debug] 0 and 0 %f %f \n", m2sa[0], m2sax[0]);
+			// LogOut("[debug] -1 and -1 %f %f \n", m2sa[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1], m2sax[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1]);
+
 			myPlan.run(FFT_FWD);
+
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_GVS, true> ();
+				else
+					fillBins<float,  SPECTRUM_GVS, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_GVS, true> ();
+				else
+					fillBins<double, SPECTRUM_GVS, false>();
+			}
+
+			field->setM2     (M2_DIRTY);
 		}
+		break;
 	}
-
-	switch (fPrec) {
-		case	FIELD_SINGLE:
-			if (spec)
-				fillBins<float,  SPECTRUM_P, true> ();
-			else
-				fillBins<float,  SPECTRUM_P, false>();
-			break;
-
-		case	FIELD_DOUBLE:
-			if (spec)
-				fillBins<double,  SPECTRUM_P, true> ();
-			else
-				fillBins<double,  SPECTRUM_P, false>();
-			break;
-	}
-
-	field->setM2     (M2_ENERGY_FFT);
 }
 
 //------------------------------------------------------------------------------
@@ -369,11 +617,6 @@ void	SpecBin::filterFFT	(int neigh) {
 
 			//JAVI ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
-			double fcc = 2.0 ;
-			if( kx == 0 )
-			fcc = 1.0;
-			if( kx == hLx - 1 )
-			fcc = 1.0;
 
 			kz -= ky*Tz;
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
