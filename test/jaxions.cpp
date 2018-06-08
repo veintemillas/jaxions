@@ -27,6 +27,54 @@ void	printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t i
 void	printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double	findzdoom(Scalar *axion);
 
+void	checkTime (Scalar *axion, int index) {
+
+	auto	cTime = Timer();
+	int	cSize = commSize();
+	int	flag  = 0;
+	std::vector<int> allFlags(cSize);
+
+	bool	done  = false;
+
+	if (wTime <= cTime)
+		flag = 1;
+
+	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+	for (const int &val : allFlags) {
+		if (val == 1) {
+			done = true;
+			break;
+		}
+	}
+
+	if (done) {
+		if (cDev == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
+
+		LogOut ("Walltime reached, dumping configuration...");
+		writeConf(axion, index, 1);
+		LogOut ("Done!\n");
+
+		LogOut("z Final = %f\n", *axion->zV());
+		LogOut("nPrints = %i\n", index);
+
+		LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+		LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+//		trackFree(eRes);	FIXME!!!!
+
+		delete axion;
+
+		endAxions();
+
+		exit(0);
+	}
+	// else
+	// {
+	// 	LogOut("Total time: %2.3f min (wTime=%2.3f)\n", cTime*1.e-6/60.,wTime*1.e-6/60.);
+	// }
+}
+
 int	main (int argc, char *argv[])
 {
 	Cosmos myCosmos = initAxions(argc, argv);
@@ -55,11 +103,11 @@ int	main (int argc, char *argv[])
 	if(preprop)
 		zpreInit = zInit/prepcoe;
 
-	if ((fIndex == -1) && (cType == CONF_NONE))
+	if ((fIndex == -1) && (cType == CONF_NONE) && (!restart_flag))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
-		if (fIndex == -1)
+		if ( (fIndex == -1) && !restart_flag)
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
@@ -69,8 +117,10 @@ int	main (int argc, char *argv[])
 		}
 		else
 		{
+
 			//This reads from an axion.00000 file
-			readConf(&myCosmos, &axion, fIndex);
+			readConf(&myCosmos, &axion, fIndex, restart_flag);
+
 			if (axion == NULL)
 			{
 				LogOut ("Error reading HDF5 file\n");
@@ -79,7 +129,7 @@ int	main (int argc, char *argv[])
 			// prepropagation tends to mess up reading initial conditions
 			// configurations are saved before prepropagation and have z<zInit, which readConf reverses
 			// the following line fixes the issue, but a more elegant solution could be devised
-			if(preprop) {
+			if( (preprop) && !restart_flag) {
 				zInit = zInit_save;
 				*axion->zV() = zpreInit;
 			}
@@ -102,7 +152,10 @@ int	main (int argc, char *argv[])
 	//-output txt file
 	FILE *file_samp ;
 	file_samp = NULL;
-	file_samp = fopen("out/sample.txt","w+");
+	if (!restart_flag)
+		file_samp = fopen("out/sample.txt","w+");
+		else
+		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
 
 	//-point to print
 	size_t idxprint = 0 ;
@@ -157,7 +210,10 @@ int	main (int argc, char *argv[])
 	double LL1 = myCosmos.Lambda();
 
 	LogOut("--------------------------------------------------\n");
+	if (!restart_flag)
 	LogOut("           STARTING COMPUTATION                   \n");
+	else
+	LogOut("           CONTINUE COMPUTATION                   \n");
 	LogOut("--------------------------------------------------\n");
 
 	//--------------------------------------------------
@@ -190,6 +246,7 @@ int	main (int argc, char *argv[])
 	}
 	else
 		index = fIndex;
+
 
 	//-stores shift in real part of PQ and cPQ (conformal field) [obs? move up]
 	double saskia = 0.0;
@@ -239,7 +296,10 @@ int	main (int argc, char *argv[])
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
 
 	if (LAMBDA_FIXED == axion->Lambda())
-		LogOut("LL     =  %.0f \n\n", myCosmos.Lambda());
+	{
+		LogOut("LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", myCosmos.Lambda(),
+		sqrt(2.*myCosmos.Lambda())*zInit*axion->Delta(),sqrt(2.*myCosmos.Lambda())*3*axion->Delta());
+	}
 	else
 		LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%.2f \n\n", myCosmos.Lambda(), axion->Msa());
 
@@ -273,22 +333,32 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	//--------------------------------------------------
-	// prepropagator with relaxing strong damping
+	// prepropagator with relaxing strong damping [RELAXATION of GAMMA DOES NOT WORK]
 	//--------------------------------------------------
 	// only if preprop and if z smaller or equal than zInit
 	// When z>zInit, it is understood that prepropagation was done
+	// NEW it takes the pregam value (if is > 0, otherwise gam )
 	if (preprop && ((*axion->zV()) < zInit)) {
-		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.f) \n\n", (*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma());
+		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.f pregam=%.f) \n\n",
+			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo);
+		// gammo is reserved for long-time damping
+		// use pregammo for prepropagation damping
 		double gammo_save = myCosmos.Gamma();
 		double *zaza = axion->zV();
 		double strdensn;
+
+		if (pregammo > 0)
+			myCosmos.SetGamma(pregammo);
+
+		// prepropagation is always with rho-damping
+		LogOut("Prepropagator always with damping Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 		initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 		tunePropagator (axion);
 
 		while (*zaza < zInit)
 		{
 			dzaux = axion->dzSize(zInit)/2.;
-			myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
+			//myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
 
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_global, maximumtheta);
 
@@ -330,32 +400,35 @@ int	main (int argc, char *argv[])
 
 	LogOut("First measurement file %d \n",index);
 	createMeas(axion, index);
-	rts = strings(axion);
-	nstrings_global = rts.strDen;
-	writeString(axion, rts, false);
-	energy(axion, eRes, false, shiftz);
-	writeEnergy(axion, eRes);
+		rts = strings(axion);
+		nstrings_global = rts.strDen;
+		writeString(axion, rts, false);
+		energy(axion, eRes, false, shiftz);
+		writeEnergy(axion, eRes);
 
-	if(p2dmapo)
-		writeMapHdf5s (axion,sliceprint);
-	{
-		float z_now = *axion->zV();
-		Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-							[z=z_now] (complex<float> x) { return (double) abs(x)/z; } );
-		rhoBin.run();
-		writeBinner(rhoBin, "/bins", "rhoB");
+		if(p2dmapo)
+			writeMapHdf5s (axion,sliceprint);
+		{
+			float z_now = *axion->zV();
+			Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+								[z=z_now] (complex<float> x) { return (double) abs(x)/z; } );
+			rhoBin.run();
+			writeBinner(rhoBin, "/bins", "rhoB");
 
-		Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						 [] (complex<float> x) { return (double) arg(x); });
-		thBin.run();
-		writeBinner(thBin, "/bins", "thetaB");
-	}
+			Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+							 [] (complex<float> x) { return (double) arg(x); });
+			thBin.run();
+			writeBinner(thBin, "/bins", "thetaB");
+		}
 	destroyMeas();
 
-
-	// damping only from zst1000
 	LogOut("Running ...\n\n");
-	initPropagator (pType, axion, myCosmos.QcdPot() & VQCD_TYPE);
+	// damping only from zst1000
+	// initPropagator (pType, axion, myCosmos.QcdPot() & VQCD_TYPE);
+	// tunePropagator (axion);
+	// damping as specified in run with the flag --gam
+	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
+	initPropagator (pType, axion, myCosmos.QcdPot());
 	tunePropagator (axion);
 
 	LogOut ("Start redshift loop\n\n");
@@ -403,14 +476,18 @@ int	main (int argc, char *argv[])
 
 				// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
 				// DOMAIN WALL KILLER NUMBER
-				if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
+				//if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
+				if (((*axion->zV()) > z_doom2*0.95) && (coD) && pregammo > 0.)
 				{
 					LogOut("-----------------------------------------\n");
 					LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", myCosmos.Gamma(), 0.95*z_doom2);
 					LogOut("-----------------------------------------\n");
-
-					initPropagator (pType, axion, myCosmos.QcdPot());
+					myCosmos.SetGamma(pregammo);
+					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
+					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
+					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 					coD = false ;
+					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}
 
 				// TRANSITION TO THETA COUNTER
@@ -439,12 +516,12 @@ int	main (int argc, char *argv[])
 						writeEnergy(axion, eRes);
 						// BIN RHO+THETA
 						float shiftzf = shiftz ;
-						Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 										 [z=z_now,ss=shiftzf] (complex<float> x) { return (double) abs(x-ss)/z; });
 						rhoBin.run();
 						writeBinner(rhoBin, "/bins", "rhoB");
 
-						Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 										[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 						thBin.run();
 						writeBinner(thBin, "/bins", "thetaB");
@@ -466,7 +543,7 @@ int	main (int argc, char *argv[])
 						energy(axion, eRes, false, 0.);
 						writeEnergy(axion, eRes);
 						// BIN THETA
-						Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 									[z=z_now] (float x) -> float { return (float) (x/z); });
 						thBin2.run();
 						writeBinner(thBin2, "/bins", "thetaB");
@@ -488,6 +565,7 @@ int	main (int argc, char *argv[])
 				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
 				break;
 			}
+			checkTime(axion, index);
 		} // ZSUBLOOP
 
 		//--------------------------------------------------
@@ -515,22 +593,20 @@ int	main (int argc, char *argv[])
 			// BIN RHO+THETA
 			float z_now = *axion->zV();
 			float shiftzf = shiftz ;
-			Binner<100,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							 [z=z_now,ss=shiftzf] (complex<float> x) { return (double) abs(x-ss)/z; });
 			rhoBin.run();
 			writeBinner(rhoBin, "/bins", "rhoB");
 
-			Binner<100,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 							[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
-			//ENERGY
-			energy(axion, eRes, false, shiftz);
 			//DOMAIN WALL KILLER NUMBER
 			double maa = 40*axion->AxionMassSq()/(2.*llphys);
 			if (axion->Lambda() == LAMBDA_Z2 )
 				maa = maa*z_now*z_now;
-			//STRINGS
+			//STRINGS //debug
 			rts = strings(axion);
 			nstrings_global = rts.strDen;
 
@@ -539,11 +615,33 @@ int	main (int argc, char *argv[])
 			else
 				writeString(axion, rts, false);
 
+//
+					SpecBin specSAna(axion, (pType & PROP_SPEC) ? true : false);
+
+					//ENERGY //JAVI added true for power spectrum
+					energy(axion, eRes, true, shiftz);
+					//writeEDens(axion);
+					//computes power spectrum
+					specSAna.pRun();
+					writeArray(specSAna.data(SPECTRUM_P), specSAna.PowMax(), "/pSpectrum", "sP");
+					writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
+
+					specSAna.nRun();
+					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sK");
+
+					specSAna.nSRun();
+					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sKS");
+					writeArray(specSAna.data(SPECTRUM_G), specSAna.PowMax(), "/nSpectrum", "sGS");
+					writeArray(specSAna.data(SPECTRUM_V), specSAna.PowMax(), "/nSpectrum", "sVS");
+
+//
+
+
 			LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 			LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*axion->Delta()*nstrings_global*z_now*z_now/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
 		} else {
 			//BIN THETA
-			Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 						[z=z_now] (float x) -> float { return (float) (x/z);});
 			thBin2.run();
 			writeBinner(thBin2, "/bins", "thetaB");
@@ -582,6 +680,8 @@ int	main (int argc, char *argv[])
 			writeMapHdf5s(axion,sliceprint);
 		writeEnergy(axion, eRes);
 		destroyMeas();
+
+		checkTime(axion, index);
 	} // ZLOOP
 
 	current = std::chrono::high_resolution_clock::now();
@@ -647,7 +747,7 @@ int	main (int argc, char *argv[])
 		LogOut("Theta bin ... ");
 
 		double z_now = *axion->zV();
-		Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+		Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 					 [z=z_now] (float x) -> float { return (float) (x/z); });
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");
@@ -682,7 +782,7 @@ int	main (int argc, char *argv[])
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 			LogOut("theta ");
-			Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+			Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 						[z=z_now] (float x) -> float { return (float) (x/z);});
 			thBin2.run();
 			//writeArray(thBin2.data(), 100, "/bins", "testTh");
@@ -732,7 +832,14 @@ int	main (int argc, char *argv[])
 			destroyMeas();
 		}
 	}
-
+	else
+	{
+		if ((prinoconfo >= 2)) {
+			LogOut ("Dumping final Saxion onfiguration %05d ...", index);
+			writeConf(axion, index);
+			LogOut ("Done!\n");
+		}
+	}
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);
 	LogOut("#_prints = %i\n", index);

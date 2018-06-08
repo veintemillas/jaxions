@@ -163,11 +163,17 @@ def gm(address,something='help',printerror=False):
         print('bintheta?   True/False')
         print('kmax        maximum momentum [int] in the 3D grid ')
         print('         ')
+        print('AXION SPECTRUM         ')
         print('nsp         binned number spectrum [total]')
         print('nspK        binned number spectrum [Kinetic energy part]')
         print('nspG        binned number spectrum [Gradient energy part]')
         print('nspV        binned number spectrum [Potential energy part]')
         print('nsp?        True/False')
+        print('SAXION SPECTRUM         ')
+        print('nspKS        binned number spectrum [Kinetic energy part]')
+        print('nspGS        binned number spectrum [Gradient energy part]')
+        print('nspVS        binned number spectrum [Potential energy part]')
+        print('nspS?       True/False')
         print('         ')
         print('psp         binned power spectrum')
         print('psp?        True/False')
@@ -429,6 +435,29 @@ def gm(address,something='help',printerror=False):
             spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
             spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
             return spec ;
+
+    # ssp_check = 'nSpectrum/ssK' in f
+    ssp_check = 'nSpectrum/sKS' in f
+
+    if (something == 'nspS?') :
+        return ssp_check
+
+
+    if (something[0:3] == 'nspS') and  ssp_check :
+        powmax = f['nSpectrum/sKS/data/'].size
+        #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
+        if (something == 'sspK'):
+            return np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
+        if (something == 'sspG'):
+            return np.reshape(f['nSpectrum/sGS/data/'],(powmax)) ;
+        if (something == 'sspV'):
+            return np.reshape(f['nSpectrum/sVS/data/'],(powmax)) ;
+        if (something == 'ssp'):
+            spec = np.reshape(f['nSpectrum/sVS/data/'],(powmax)) ;
+            spec += np.reshape(f['nSpectrum/sGS/data/'],(powmax)) ;
+            spec += np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
+            return spec ;
+
 
     # power spectra
     psp_check = 'pSpectrum' in f
@@ -917,7 +946,7 @@ class simu:
             for mf in reversed(self.mfilesp):
                 self.lastfilep = mf
                 self.psp = gm(self.lastfilep,'psp')
-                if self.psp != None:
+                if self.psp is not None:
     #                 print(self.dirname,self.lastfilep,self.N,len(self.psp),len(self.klist))
                     self.avdens = gm(self.lastfilep,'eA')
                     self.norma = 1/((math.pi**2)*(self.avdens**2))
@@ -930,7 +959,7 @@ class simu:
 
         self.spok = False
 
-        if self.psp != None:
+        if self.psp is not None:
             self.spok = True
             if self.psp.max() > 500. :
                 self.spok = False
@@ -961,7 +990,7 @@ class simu:
                 self.lastfilen = mf
                 self.nsp = gm(self.lastfilep,'nsp')
 
-        if self.nsp != None:
+        if self.nsp is not None:
             self.nsp = (self.klist**3)*self.nsp/(self.mora.nmodes)
             self.nspK = (self.klist**3)*gm(self.lastfilen,'nspK')/(self.mora.nmodes)
             self.nspG = (self.klist**3)*gm(self.lastfilen,'nspG')/(self.mora.nmodes)
@@ -992,7 +1021,7 @@ class simu:
         pos=np.abs(timetab-time).argmin()
 
         tmppsp = gm(self.mfilesp[pos],'psp')
-        if tmppsp != None:
+        if tmppsp is not None:
             tmpavdens = gm(self.mfilesp[pos],'eA')
             tmpnorma = 1/((math.pi**2)*(tmpavdens**2))
             tmppspt = gm(self.mfilesp[pos],'ct')
@@ -1007,7 +1036,7 @@ class simu:
         pos=np.abs(timetab-time).argmin()
 
         tmpnsp = gm(self.mfilesn[pos],'nsp')
-        if tmpnsp != None:
+        if tmpnsp is not None:
             tmpnspt = gm(self.mfilesn[pos],'ct')
             tmpnsp = tmpnsp*(self.klist**3)/(self.mora.nmodes)
             return tmpnspt, self.klist, tmpnsp
@@ -1020,7 +1049,7 @@ class simu:
         pos=np.abs(timetab-time).argmin()
 
         tmpcon = conbin(self.mfilesc[pos],100)
-        if tmpcon != None:
+        if tmpcon is not None:
             tmpt = gm(self.mfilesc[pos],'ct')
             return tmpt, tmpcon[:,0], tmpcon[:,1]
 
@@ -1036,7 +1065,7 @@ class simu:
         timetab=np.array(timetab)
         pos=np.abs(timetab-time).argmin()
         self.tmppsp = gm(self.mfiles[pos],'psp')
-        if self.tmppsp != None:
+        if self.tmppsp is not None:
             self.tmpavdens = gm(self.mfiles[pos],'eA')
             self.tmpnorma = 1/((math.pi**2)*(self.tmpavdens**2))
             self.tmppspt = gm(self.mfiles[pos],'ct')

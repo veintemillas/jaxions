@@ -227,6 +227,13 @@
 
 				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { oFile.close(); } }
 
+				auto	runTime() {
+					auto	cTime = std::chrono::high_resolution_clock::now();
+					auto	dTime = std::chrono::duration_cast<std::chrono::microseconds> (cTime - logStart).count();
+
+					return	dTime;
+				}
+
 				template<typename... Fargs>
 				void	operator()(LogLevel level, const char * file, const int line, const char * format, Fargs... vars)
 				{
@@ -337,4 +344,5 @@
 	#define	LogMsg(verb, ...)	do { if (AxionsLog::myLog->Verbosity() >= verb) { ((*(AxionsLog::myLog))(LOG_MSG, __FILE__, __LINE__, __VA_ARGS__)); } } while(0)
 	#define LogOut(...) 		do { if (!commRank()) { printf(__VA_ARGS__); fflush(stdout); } } while(0)
 	#define	LogFlush()		(AxionsLog::myLog->flushLog())
+	#define	Timer()			(AxionsLog::myLog->runTime())
 #endif

@@ -78,7 +78,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 			Float vec  = tmp.real()*mel.real() + tmp.imag()*mel.imag();
 			Float vea  = tmp.real()*a.real()   + tmp.imag()*a.imag();
 			a   += tmp*gFac;
-			mel += a*dzc - (mel/pot)*eps*(((Float) 2.)*vec + vea*dzc);
+			mel += a*dzc - (tmp/pot)*eps*(((Float) 2.)*vec + vea*dzc);
 		}
 		break;
 
@@ -113,7 +113,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 	propagateCoreGpu<Float, VQcd>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Sf);
 }
 
-void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double delta2,
+void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
 		     const double LL, const double aMass2, const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
 		     const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
@@ -135,7 +135,6 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double z2   = zR*zR;
 		const double z4   = z2*z2;
 		const double zQ   = aMass2*z2*zR;
-		const double ood2 = 1./delta2;
 		const double gFp1 = sqrt(ood2)*gamma;
 		const double gFac = gFp1/zR;
 		const double gFp2 = gFp1*dzc/2.;
@@ -244,7 +243,6 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float z2   = zR*zR;
 		const float z4   = z2*z2;
 		const float zQ   = aMass2*z2*zR;//(float) axionmass2(*z, nQcd, zthres, zrestore)*z2*zR;
-		const float ood2 = 1./delta2;
 		const float gFp1 = sqrt(ood2)*gamma;
 		const float gFac = gFp1/zR;
 		const float gFp2 = gFp1*dzc/2.;
@@ -488,7 +486,7 @@ void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double
 	}
 }
 
-void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c, const double delta2, const double LL, const double aMass2,
+void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, const double dz, const double c, const double ood2, const double LL, const double aMass2,
 		   const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
 		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
@@ -509,7 +507,6 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		const double z4   = z2*z2;
 		const double zQ   = aMass2*z2*zR;
 		const double dzc  = dz*c;
-		const double ood2 = 1./delta2;
 		const double gFp1 = sqrt(ood2)*gamma;
 		const double gFac = gFp1/zR;
 		const double gFp2 = gFp1*dzc/2.;
@@ -617,7 +614,6 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		const float z4   = z2*z2;
 		const float zQ   = aMass2*z2*zR;//xionmass2((double) zR, nQcd, 1.5 , 3.)*zR*zR*zR;
 		const float dzc  = dz*c;
-		const float ood2 = 1./delta2;
 		const float gFp1 = sqrt(ood2)*gamma;
 		const float gFac = gFp1/zR;
 		const float gFp2 = gFp1*dzc/2.;

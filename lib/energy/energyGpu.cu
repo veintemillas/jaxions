@@ -105,8 +105,8 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
         tR[TH_KIN] = (double) tKin;
 
 	if (map == true) {
-		m2[idxMz]    = o2*(tGrx + tGry + tGrz) + 0.5*tKin + zQ*tPot;
-		m2[idxPz+Vf] = o2*(rGrx + rGry + rGrz) + 0.5*rKin + lZ*rPot;
+		m2[idxMz]  = o2*(tGrx + tGry + tGrz) + 0.5*tKin + zQ*tPot;
+		m2[idx+Vf] = o2*(rGrx + rGry + rGrz) + 0.5*rKin + lZ*rPot;
 	}
 }
 
@@ -141,9 +141,7 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 	double *tR, *partial;
 
 	if ((cudaMalloc(&tR, sizeof(double)*10) != cudaSuccess) || (cudaMalloc(&partial, sizeof(double)*10*nBlocks*4) != cudaSuccess))
-	{
 		return -1;
-	}
 
 	if (precision == FIELD_DOUBLE)
 	{

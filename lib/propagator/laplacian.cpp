@@ -102,6 +102,7 @@ void	Laplacian::lapCpu	(std::string name)
 			}
 
 	planFFT.run(FFT_BCK);
+	field->setM2     (M2_DIRTY);
 }
 
 void	Laplacian::sRunCpu	()

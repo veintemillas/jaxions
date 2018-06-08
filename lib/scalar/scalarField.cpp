@@ -412,13 +412,13 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			if (fIdx & 1)
+			if (fIdx & FIELD_M)
 				cudaMemcpy((((char *) m_d) + n2*fSize), (((char *) m) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 
-			if (fIdx & 2)
+			if (fIdx & FIELD_V)
 				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
 
-			if ((fIdx & 4) && (!lowmem))
+			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy((((char *) m2_d) + n2*fSize), (((char *) m2) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
 	}
@@ -432,13 +432,13 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			if (fIdx & 1)
+			if (fIdx & FIELD_M)
 				cudaMemcpy(m,  m_d,  v3*fSize, cudaMemcpyDeviceToHost);
 
-			if (fIdx & 2)
+			if (fIdx & FIELD_V)
 				cudaMemcpy(v,  v_d,  n3*fSize, cudaMemcpyDeviceToHost);
 
-			if ((fIdx & 4) && (!lowmem))
+			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
 		#endif
 	}
@@ -753,6 +753,39 @@ double	Scalar::AxionMassSq() {
         return aMass;
 }
 
+// Saxion mass squared, perhaps the following functions could be rewriten to use this one
+double  Scalar::SaxionMassSq  ()
+{
+
+	double lbd   = bckgnd->Lambda();
+	//a bit confusing that scalar->Lambda() is a MODE or type of Lambda, instead of the value
+	if (Lambda() == LAMBDA_Z2)
+		lbd /= (*zV())*(*zV());
+
+	auto   &pot = bckgnd->QcdPot();
+
+	switch  (pot & VQCD_TYPE) {
+		case    VQCD_1:
+			return 2.*lbd;
+			break;
+
+		case    VQCD_1_PQ_2:
+		case    VQCD_1_PQ_2_DRHO:
+			return  8.*lbd;
+			break;
+
+		case    VQCD_2:
+			return  2.*lbd;
+			break;
+
+		default :
+			return  0;
+			break;
+	}
+
+	return  0.;
+}
+
 double	Scalar::dzSize	   () {
 	double zNow = *zV();
         double oodl = ((double) n1)/bckgnd->PhysSize();
@@ -824,8 +857,8 @@ double  Scalar::Saskia  ()
 
 		default :
 			return  0;
-			break;  
-	}       
+			break;
+	}
 
 	return  0.;
 }
@@ -868,6 +901,38 @@ double	Scalar::AxionMassSq(const double zNow) {
                 aMass = indi3*indi3*pow(zNow, nQcd);
 
         return aMass;
+}
+
+// Saxion mass squared, perhaps the following functions could be rewriten to use this one
+double  Scalar::SaxionMassSq  (const double zNow)
+{
+
+	double lbd   = bckgnd->Lambda();
+	if (Lambda() == LAMBDA_Z2)
+		lbd /= (zNow)*(zNow);
+
+	auto   &pot = bckgnd->QcdPot();
+
+	switch  (pot & VQCD_TYPE) {
+		case    VQCD_1:
+			return 2.*lbd;
+			break;
+
+		case    VQCD_1_PQ_2:
+		case    VQCD_1_PQ_2_DRHO:
+			return  8.*lbd;
+			break;
+
+		case    VQCD_2:
+			return  2.*lbd;
+			break;
+
+		default :
+			return  0;
+			break;
+	}
+
+	return  0.;
 }
 
 double	Scalar::dzSize	   (const double zNow) {
@@ -931,8 +996,8 @@ double  Scalar::Saskia  (const double zNow)
 
 		default :
 			return  0;
-			break;  
-	}       
+			break;
+	}
 
 	return  0.;
 }
@@ -1123,4 +1188,3 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	}
 	return ;
 }
-

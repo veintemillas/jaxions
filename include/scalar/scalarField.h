@@ -124,11 +124,13 @@
 		/*	Overloading	*/
 		double		AxionMass  ();
 		double		AxionMassSq();
+		double		SaxionMassSq();
 		double		SaxionShift();
 		double		Saskia     ();
 		double		dzSize     ();
 		double		AxionMass  (const double zNow);
 		double		AxionMassSq(const double zNow);
+		double		SaxionMassSq(const double zNow);
 		double		SaxionShift(const double zNow);
 		double		Saskia     (const double zNow);
 		double		dzSize     (const double zNow);

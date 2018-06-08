@@ -23,6 +23,50 @@
 using namespace std;
 using namespace AxionWKB;
 
+void	checkTime (Scalar *axion, int index) {
+
+	auto	cTime = Timer();
+	int	cSize = commSize();
+	int	flag  = 0;
+	std::vector<int> allFlags(cSize);
+
+	bool	done  = false;
+
+	if (wTime <= cTime)
+		flag = 1;
+
+	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+	for (const int &val : allFlags) {
+		if (val == 1) {
+			done = true;
+			break;
+		}
+	}
+
+	if (done) {
+		if (cDev == DEV_GPU)
+			axion->transferCpu(FIELD_MV);
+
+		LogOut ("Walltime reached, dumping configuration...");
+		writeConf(axion, index);
+		LogOut ("Done!\n");
+
+		LogOut("z Final = %f\n", *axion->zV());
+		LogOut("nPrints = %i\n", index);
+
+		LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+		LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+//		trackFree(eRes);	FIXME!!!!
+
+		delete axion;
+
+		endAxions();
+
+		exit(0);
+	}
+}
+
 int	main (int argc, char *argv[])
 {
 	Cosmos myCosmos = initAxions(argc, argv);
@@ -304,6 +348,7 @@ int	main (int argc, char *argv[])
 	int strCount = 0;
 	StringData rts;
 
+
 	for (int zLoop = 0; zLoop < nLoops; zLoop++) {
 
 		index++;
@@ -326,7 +371,7 @@ int	main (int argc, char *argv[])
 				zShift    = zNow * saskia;
 
 				/*	If there are a few strings, we compute them every small step		*/
-				if (curStrings < 1000) {//fineStrings) {
+				if (curStrings < 1000) {	//fineStrings) {
 					rts   = strings(axion);
 					curStrings = rts.strDen;
 				}
@@ -480,6 +525,8 @@ int	main (int argc, char *argv[])
 				break;
 			}
 
+			checkTime(axion, index);
+			LogFlush();
 		} // zSubloop iteration
 
 		/*	We perform now an online analysis	*/
@@ -604,6 +651,8 @@ int	main (int argc, char *argv[])
 			destroyMeas();
 		}
 		LogFlush();
+
+		checkTime(axion, index);
 	} // zLoop
 
 	fclose (history);
