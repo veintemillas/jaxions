@@ -130,7 +130,7 @@ def aximcontent(address='./'):
 #   main function to extract data from axion.m.XXXXX files by concept
 #
 
-def gm(address,something='help',printerror=False):
+def gm(address,something='summary',printerror=False):
 
     # the help
     if something == 'help':
@@ -370,6 +370,30 @@ def gm(address,something='help',printerror=False):
             if (something == 'binthetaBmin'):
                 return f[bintheta_string].attrs[u'Minimum'] ;
 
+        #### logtheta2 bin
+
+        binlt2B_check = False
+
+        if ('bins/logtheta2B' in f):
+            binlt2B_check = True
+
+        if (something == 'binlt2?'):
+            return binlt2B_check
+
+        if (something[0:4] == 'binl') and not binlt2B_check :
+            if printerror :
+                print(""" [gm] Warning: No bins/logtheta2 in file. Returning 'None' """)
+            return ;
+        if (something[0:4] == 'binl') and bintheB_check :
+            if (something == 'binlt2B') or (something == 'binlogtheta2B'):
+                numBIN = f['bins/logtheta2B'].attrs[u'Size']
+                return np.reshape(f['bins/logtheta2B/data'],(numBIN)) ;
+            if (something == 'binlt2Bmax') or (something == 'binthetaBmax'):
+                return f['bins/logtheta2B'].attrs[u'Maximum'] ;
+            if (something == 'binlt2Bmin') or (something == 'binthetaBmin'):
+                return f['bins/logtheta2B'].attrs[u'Minimum'] ;
+
+
         #### rho bin
 
         binrhoB_check = False
@@ -412,7 +436,7 @@ def gm(address,something='help',printerror=False):
 
     # number spectra
 
-    nsp_check = 'nSpectrum' in f
+    nsp_check = 'nSpectrum/sK' in f
 
     if (something == 'nsp?') :
         return nsp_check
@@ -424,17 +448,31 @@ def gm(address,something='help',printerror=False):
     if (something[0:3] == 'nsp') and  nsp_check :
         powmax = f['nSpectrum/sK/data/'].size
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
-        if (something == 'nspK'):
-            return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
-        if (something == 'nspG'):
-            return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-        if (something == 'nspV'):
-            return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
-        if (something == 'nsp'):
-            spec = np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
-            spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-            spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
-            return spec ;
+        if ftype == 'Axion':
+            if (something == 'nspK'):
+                return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+            if (something == 'nspG'):
+                return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
+            if (something == 'nspV'):
+                return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
+            if (something == 'nsp'):
+                spec = np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
+                spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
+                spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+                return spec ;
+        if ftype == 'Saxion':
+            if (something == 'nspK'):
+                return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+            if (something == 'nspG') and ('nSpectrum/sG' in f):
+                return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
+            # if (something == 'nspV'):
+            #     return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
+            if (something == 'nsp'):
+                spec = np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+                if ('nSpectrum/sG' in f):
+                    spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
+                # spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+                return spec ;
 
     # ssp_check = 'nSpectrum/ssK' in f
     ssp_check = 'nSpectrum/sKS' in f
@@ -442,17 +480,16 @@ def gm(address,something='help',printerror=False):
     if (something == 'nspS?') :
         return ssp_check
 
-
     if (something[0:3] == 'nspS') and  ssp_check :
         powmax = f['nSpectrum/sKS/data/'].size
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
-        if (something == 'sspK'):
+        if (something == 'nspKS'):
             return np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
-        if (something == 'sspG'):
+        if (something == 'nspGS'):
             return np.reshape(f['nSpectrum/sGS/data/'],(powmax)) ;
-        if (something == 'sspV'):
+        if (something == 'nspVS'):
             return np.reshape(f['nSpectrum/sVS/data/'],(powmax)) ;
-        if (something == 'ssp'):
+        if (something == 'nspS'):
             spec = np.reshape(f['nSpectrum/sVS/data/'],(powmax)) ;
             spec += np.reshape(f['nSpectrum/sGS/data/'],(powmax)) ;
             spec += np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
@@ -553,6 +590,59 @@ def gm(address,something='help',printerror=False):
         return f.attrs[u'zInitial'] ;
     if something == 'zf':
         return f.attrs[u'zFinal'] ;
+
+    if something == 'summary':
+        nqcd = gm(address,'nqcd')
+        ct = f.attrs[u'z']
+        print('---------------------Summary---------------------')
+        print('file: %s (%s - mode)'%(address,ftype))
+        print('-------------------------------------------------')
+        print('N=%d    L=%.2f    ct=%.5f'%(f.attrs[u'Size'],f.attrs[u'Physical size'],f.attrs[u'z']))
+        print('massA= %.5e, (nqcd = %.2f, ct^n/2=%.5e)'%(f.attrs[u'Axion mass'],gm(address,'nqcd'),ct**(nqcd/2)))
+        print()
+        if map_check:
+            print('2Dmap', end=' - ')
+        if en_check:
+            print('Energy', end=' - ')
+        if ('energy/density' in f) or ('energy/redensity' in f):
+            print('Energy 3D', end=' - ')
+        if st_check:
+            print('String', end=' - ')
+        if 'string/data' in f :
+            print('strings 3D', end=' - ')
+        print() ; print()
+        print('Partic Spectra:',end=' ')
+        if 'nSpectrum/sK' in f:
+            print('Axion K', end=' - ')
+        if 'nSpectrum/sG' in f:
+            print('Axion G', end=' - ')
+        if 'nSpectrum/sV' in f:
+            print('Axion V', end=' - ')
+        if 'nSpectrum/sKS' in f:
+            print('Saxion K', end=' - ')
+        if 'nSpectrum/sGS' in f:
+            print('Saxion G', end=' - ')
+        if 'nSpectrum/sVS' in f:
+            print('Saxion V', end=' - ')
+        print()
+        print('Energy Spectra:',end=' ')
+        if 'pSpectrum/sP' in f:
+            print('Axion ', end=' - ')
+        if 'pSpectrum/sPS' in f:
+            print('Saxion', end=' ')
+        print()
+        print('Binned data   :',end=' ')
+
+        if ('bins/contB' in f) :
+            print('E-contrast', end=' - ')
+        if ('bins/thetaB' in f) or ('bins/contB' in f):
+            print('theta', end=' - ')
+        if ('bins/logtheta2B' in f):
+            print('log theta^2', end=' - ')
+        if ('bins/rhoB' in f) or ('bins/rho' in f):
+            print('rho', end=' ')
+        print()
+        return ;
 
     print('Argument not recognised/found!')
     return ;
@@ -718,7 +808,100 @@ def modelist ( sizeN ):
 #   variable size bins
 
 def conbin(file, X=10):
-    return contrastbin(gm(file,'binconB'), gm(file,'binconBmin'), gm(file,'binconBmax'), gm(file,'Size'), X) ;
+    return logbin(gm(file,'binconB'), gm(file,'binconBmin'), gm(file,'binconBmax'), gm(file,'Size'), X) ;
+
+def lt2bin(file, X=10):
+    return logbin(gm(file,'binlt2B'), gm(file,'binlt2Bmin'), gm(file,'binlt2Bmax'), gm(file,'Size'), X) ;
+
+
+
+
+#   returns a list of logarithmic bins and bin heights from a list
+#   a minimum log, maximum log, N (N3 is the original number of points)
+#   and a minimum X of points in the bin
+
+# normalise contbin with variable width bins of minimum X points
+def logbin(logbins, mincon, maxcon, N, X):
+    numBIN = len(logbins)
+    N3 = N*N*N
+    bw = (maxcon-mincon)/numBIN
+    bino = logbins*N3*bw
+    numbins = numBIN
+
+    # removes first points until first bin with X points
+    i0 = 0
+    # while bino[i0] < X:
+    #         i0 = i0 + 1
+    # bino = bino[i0:]
+
+    sum = 0
+    parsum = 0
+    nsubbin = 0
+    minimum = 10
+    lista=[]
+
+    weigthedaverage = 0.0
+
+    # JOIN BINS ALL ALONG to have a minimum of X points
+    for bin in range(0,len(bino)):
+        # adds bin value to partial bin
+        parsum += bino[bin]
+        # adds bin value times position (corrected for bias)
+        weigthedaverage += bino[bin]*10**(mincon + bw*(i0+ bin + 0.5))
+        # number of bins added to parsum
+        nsubbin += 1
+        # adds bin value to partial bin
+
+        if nsubbin == 1:
+                # records starting bin
+                inbin = bin
+        if parsum < X:
+            # if parsum if smaller than X we will continue
+            # adding bins
+            sum += 1
+        else:
+            enbin = bin
+
+            low = 10**(mincon + bw*(i0+inbin))
+            # med = 10**(mincon + bw*(i0+(inbin+enbin+1)/2))
+            ave = weigthedaverage/parsum
+            sup = 10**(mincon + bw*(i0+enbin+1))
+            lista.append([ave,parsum/(N3*(sup-low))])
+
+            parsum = 0
+            nsubbin = 0
+            weigthedaverage = 0.0
+
+    return np.array(lista)         ;
+
+
+
+
+
+
+#   builds the cumulative distribution
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
+#   contrast bins
+# ------------------------------------------------------------------------------
+
+
+
+
+
+
+#   returns a list of logarithmic bins and bin heights from a axion.m.XXXXX file
+#   and a mimumum number of X points per bin by grouping
+#   variable size bins
+
+def thetabin(file, X=10):
+    return linbin(gm(file,'binthetaB'), gm(file,'binthetaBmin'), gm(file,'binthetaBmax'), gm(file,'Size'), X) ;
 
 
 
@@ -730,17 +913,18 @@ def conbin(file, X=10):
 #   and a minimum X of points in the bin
 
 # normalise contbin with variable width bins of minimum X points
-def contrastbin(logbins, mincon, maxcon, N, X):
-    numBIN = len(logbins)
+def linbin(bins, min, max, N, X):
+    numbins = len(bins)
     N3 = N*N*N
-    bino = logbins*N3*(maxcon-mincon)/numBIN
-    numbins = numBIN
+    bw = (max-min)/numbins
+    # PDF
+    bino = bins*N3*bw
 
     # removes first points until first bin with X points
     i0 = 0
-    while bino[i0] < X:
-            i0 = i0 + 1
-    bino = bino[i0:]
+    # while bino[i0] < X:
+    #         i0 = i0 + 1
+    # bino = bino[i0:]
 
     sum = 0
     parsum = 0
@@ -748,28 +932,41 @@ def contrastbin(logbins, mincon, maxcon, N, X):
     minimum = 10
     lista=[]
 
+    weigthedaverage = 0.0
+
     # JOIN BINS ALL ALONG to have a minimum of X points
     for bin in range(0,len(bino)):
         # adds bin value to partial bin
         parsum += bino[bin]
+
+        # adds bin value times position (corrected for bias)
+        weigthedaverage += bino[bin]*(i0 + bin + 0.5)
+
+        # number of bins added to parsum
         nsubbin += 1
+
         if nsubbin == 1:
-                # records starting bin
-                inbin = bin
-        if parsum < X:
+                # records starting bin lower boundary
+                inbinB = bin
+        if (parsum < X) and (bin < len(bino)-1):
             # if parsum if smaller than X we will continue
             # adding bins
             sum += 1
         else:
-            enbin = bin
+            # records ending upper boundary
+            enbinB = bin + 1
 
-            low = 10**((maxcon-mincon)*(i0+inbin)/numbins + mincon)
-            med = 10**((maxcon-mincon)*(i0+(inbin+enbin+1)/2)/numbins + mincon)
-            sup = 10**((maxcon-mincon)*(i0+enbin+1)/numbins + mincon)
-            lista.append([med,parsum/(N3*(sup-low))])
+            low = min + bw*(i0+inbinB)
+            # med = min + bw*(i0+(inbinB+enbinB)/2)
+            avposition = min + bw*weigthedaverage/parsum
+            sup = min + bw*(i0+enbinB)
+            lista.append([avposition,parsum/(N3*(sup-low))])
+            # if bins are desired change to this output
+            #lista.append([avposition,parsum/(N3*(sup-low)),low,sup])
 
             parsum = 0
             nsubbin = 0
+            weigthedaverage = 0.0
 
     return np.array(lista)         ;
 
