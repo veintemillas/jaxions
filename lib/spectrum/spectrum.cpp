@@ -28,6 +28,7 @@ void	SpecBin::fillBins	() {
 
 	using cFloat = std::complex<Float>;
 
+	/* The factor that will multiply the |ft|^2, taken to be L^3/(2 N^6) */
 	const double norm = (field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()) /
 			    (2.*(((double) field->TotalSize())*((double) field->TotalSize())));
 	const int mIdx = commThreads();
@@ -54,6 +55,15 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_PS:
 			tBinPS.resize(powMax*mIdx);
 			tBinPS.assign(powMax*mIdx, 0);
+			break;
+		// case  SPECTRUM_GaS: 					//uses PS to add to G
+		// tBinPS.resize(powMax*mIdx);
+		// tBinPS.assign(powMax*mIdx, 0);
+		// 	break;
+		case	SPECTRUM_G:
+		case	SPECTRUM_GaS:
+			tBinG.resize(powMax*mIdx);
+			tBinG.assign(powMax*mIdx, 0);
 			break;
 
 		default:
@@ -93,10 +103,13 @@ void	SpecBin::fillBins	() {
 				continue;
 			}
 
-			if (spectral)
-				k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
-			else
-				k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
+			// JAVI CHANGED for easiness of interpretation
+			// if (spectral)
+			// 	k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
+			// else
+			// 	k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
+
+			k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 
 			double		w = 1.0;
 
@@ -105,6 +118,7 @@ void	SpecBin::fillBins	() {
 				case	SPECTRUM_G:
 				case 	SPECTRUM_V:
 				case 	SPECTRUM_GV:
+				case 	SPECTRUM_GaS:
 					w  = sqrt(k2 + mass);
 					break;
 
@@ -142,10 +156,14 @@ void	SpecBin::fillBins	() {
 				case	SPECTRUM_PS:
 					tBinPS.at(myBin + powMax*tIdx) += m2;
 					break;
-
 				case	SPECTRUM_G:
 				case	SPECTRUM_GS:
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
+					break;
+				// the gradient is already included in m2
+				// so I do not need to include the k2 factor here!
+				case  SPECTRUM_GaS:
+					tBinG.at(myBin + powMax*tIdx) += mw;
 					break;
 
 				case	SPECTRUM_V:
@@ -177,14 +195,16 @@ void	SpecBin::fillBins	() {
 					case	SPECTRUM_KS:
 						binK[j] += tBinK[j + i*powMax]*norm;
 						break;
-
 					case	SPECTRUM_P:
 						binP[j] += tBinP[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_PS:
 						binPS[j] += tBinPS[j + i*powMax]*norm;
 						break;
-
+					case	SPECTRUM_G:
+					case	SPECTRUM_GaS:
+						binG[j] += tBinG[j + i*powMax]*norm;
+						break;
 					default:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						binV[j] += tBinV[j + i*powMax]*norm;
@@ -209,7 +229,11 @@ void	SpecBin::fillBins	() {
 			std::copy_n(binPS.begin(), powMax, tBinPS.begin());
 			MPI_Allreduce(tBinPS.data(), binPS.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
-
+		case	SPECTRUM_G:
+		case	SPECTRUM_GaS:
+			std::copy_n(binG.begin(), powMax, tBinG.begin());
+			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
 		default:
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -311,13 +335,14 @@ void	SpecBin::nRun	() {
 	switch (fType) {
 		case	FIELD_SAXION:
 		{
-
+			// JAVI PROPOSAL I think would be easy to modify propkernel Xeon to do the loops vectorised
 			switch (fPrec) {
 				case FIELD_SINGLE:
 				{
 					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu())  + field->Surf();
 					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
 					float *m2sa                 = static_cast<float *>(field->m2Cpu());
+					float *m2sax                = static_cast<float *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
 					//DEBUG float *m2sa =           static_cast<float *>(static_cast<void*>(field->m2Cpu()));
 					//DEBUG LogOut("Saxion spectrum single Lx %d Ly %d Lz %d ",Lx, Ly, Lz);
 					#pragma omp parallel for schedule(static)
@@ -331,7 +356,11 @@ void	SpecBin::nRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 								// misses a factor of conformal time to be K
-								m2sa[odx] = ztime*imag(va[idx]/ma[idx])+arg(ma[idx]) ;
+								m2sa[odx] = ztime*imag(va[idx]/(ma[idx]-zaskaf))+arg(ma[idx]) ;
+								// m2sa[odx] = ztime*imag(va[idx]/(ma[idx]))+arg(ma[idx]) ;
+								size_t ixM = ((ix + 1) % Ly) + yi + zi;
+								m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
+								// m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]));
 							}
 						}
 					}
@@ -342,7 +371,8 @@ void	SpecBin::nRun	() {
 				{
 					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())  + field->Surf();
 					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
-					double *m2sa            = static_cast<double *>(field->m2Cpu());
+					double *m2sa                 = static_cast<double *>(field->m2Cpu());
+					double *m2sax                = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
 					//float *m2sa =           static_cast<float *>(static_cast<void*>(field->m2Cpu()));
 
 					#pragma omp parallel for schedule(static)
@@ -356,7 +386,12 @@ void	SpecBin::nRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 
-								m2sa[odx] = ztime*imag(va[idx]/ma[idx])+arg(ma[idx]) ;
+								m2sa[odx] = ztime*imag(va[idx]/(ma[idx]-zaska))+arg(ma[idx]) ;
+								// m2sa[odx] = ztime*imag(va[idx]/(ma[idx]))+arg(ma[idx]) ;
+								size_t ixM = ((ix + 1) % Ly) + yi + zi;
+								m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
+								// m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]));
+
 							}
 						}
 					}
@@ -368,7 +403,7 @@ void	SpecBin::nRun	() {
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 			myPlan.run(FFT_FWD);
 
-			// for the moment it fills K bins only
+		// KINETIC PART
 			if (fPrec == FIELD_SINGLE) {
 				if (spec)
 					fillBins<float,  SPECTRUM_K, true> ();
@@ -380,6 +415,143 @@ void	SpecBin::nRun	() {
 				else
 					fillBins<double, SPECTRUM_K, false>();
 			}
+
+		// GRADIENT X
+			// Copy m2aux -> m2
+			size_t dSize    = (size_t) (field->Precision());
+			size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
+			char *mA = static_cast<char *>(field->m2Cpu());
+			memmove	(mA, mA+dataTotalSize, dataTotalSize);
+
+			// r2c FFT in m2
+			// auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			myPlan.run(FFT_FWD);
+
+			// This inits G bin and fills GX bins
+			if (fPrec == FIELD_SINGLE) {
+				if (spec)
+					fillBins<float,  SPECTRUM_GaS, true> ();
+				else
+					fillBins<float,  SPECTRUM_GaS, false>();
+			} else {
+				if (spec)
+					fillBins<double, SPECTRUM_GaS, true> ();
+				else
+					fillBins<double, SPECTRUM_GaS, false>();
+			}
+
+			// make sure ghosts are passed!
+			// Gy and Gz
+			field->exchangeGhosts(FIELD_M);
+
+			switch (fPrec) {
+				case FIELD_SINGLE:
+				{
+					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu()) + field->Surf();
+					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
+					float *m2sa                 = static_cast<float *>(field->m2Cpu());
+					float *m2sax                = static_cast<float *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
+					// printf("check ghost");
+					// size_t vo = field->Size();
+					// size_t so = field->Surf();
+					// for (size_t i = 0; i<10; i++){
+					// 	LogOut("-> %g, %g - %g, %g \n",imag(ma[i]),imag(ma[i+so]),imag(ma[i+vo]),imag(ma[i+so+vo])) ;
+					// 	// LogOut("<- %g, %g - %g, %g \n ",imag(ma[i-so]),imag(ma[vo-so+i]));
+					// }
+					// ma     =  ma + field->Surf();
+
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						// size_t zp = Ly*Ly*(iz+1) ; 				//it has ghosts with the right value! ...  I hope
+						size_t zp = Ly*Ly*((iz+1)%Lz) ; 			//valid only without MPI
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							size_t yp = Ly*((iy+1)%Ly) ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo;
+								size_t idx = ix + yi + zi;
+
+								size_t iyM = ix + yp + zi;
+								m2sa[odx] = (2.f*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
+								// m2sa[odx] = (2*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]));
+								size_t izM = ix + yi + zp;
+								m2sax[odx] = (2.f*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
+								// m2sax[odx] = (2*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]));
+							}
+						}
+					}
+				}
+				break;
+
+				case FIELD_DOUBLE:
+				{
+					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())  + field->Surf();
+					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
+					double *m2sa                 = static_cast<double *>(field->m2Cpu());
+					double *m2sax                = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
+					//float *m2sa =           static_cast<float *>(static_cast<void*>(field->m2Cpu()));
+
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						size_t zp = Ly*Ly*(iz+1) ; //it has ghosts with the right value! ...  I hope
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							size_t yp = Ly*((iy+1)%Ly) ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo;
+								size_t idx = ix + yi + zi;
+
+								size_t iyM = ix + yp + zi;
+								m2sa[odx] = (2*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
+								// m2sa[odx] = (2*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]));
+								size_t izM = ix + yi + zp;
+								m2sax[odx] = (2*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
+								// m2sax[odx] = (2*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]));
+							}
+						}
+					}
+				}
+				break;
+			}//End prec switch
+
+			// GRADIENT Y
+				myPlan.run(FFT_FWD);
+				// This inits copies into binG using binPS
+				if (fPrec == FIELD_SINGLE) {
+					if (spec)
+						fillBins<float,  SPECTRUM_GaS, true> ();
+					else
+						fillBins<float,  SPECTRUM_GaS, false>();
+				} else {
+					if (spec)
+						fillBins<double, SPECTRUM_GaS, true> ();
+					else
+						fillBins<double, SPECTRUM_GaS, false>();
+				}
+			// GRADIENT Z
+				// Copy m2aux -> m2
+				memmove	(mA, mA+dataTotalSize, dataTotalSize);
+
+				myPlan.run(FFT_FWD);
+
+				// This inits G bin and fills GX bins
+				if (fPrec == FIELD_SINGLE) {
+					if (spec)
+						fillBins<float,  SPECTRUM_GaS, true> ();
+					else
+						fillBins<float,  SPECTRUM_GaS, false>();
+				} else {
+					if (spec)
+						fillBins<double, SPECTRUM_GaS, true> ();
+					else
+						fillBins<double, SPECTRUM_GaS, false>();
+				}
 
 			field->setM2     (M2_DIRTY);
 		}
@@ -492,8 +664,10 @@ void	SpecBin::nSRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 
-								float modu = std::abs(ma[idx]);
-								m2sa[odx] = real(va[idx]*modu/ma[idx]) ;
+								float modu = std::abs(ma[idx]-zaskaf);
+								// float modu = std::abs(ma[idx]);
+								m2sa[odx] = real(va[idx]*modu/(ma[idx]-zaskaf)) ;
+								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
 								m2sax[odx] = modu - ztime ;
 							}
 						}
@@ -521,8 +695,10 @@ void	SpecBin::nSRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 
-								double modu = abs(ma[idx]);
-								m2sa[odx] = real(va[idx]*modu/ma[idx]) ;
+								double modu = abs(ma[idx]-zaska);
+								// double modu = abs(ma[idx]);
+								m2sa[odx] = real(va[idx]*modu/(ma[idx]-zaska)) ;
+								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
 								m2sax[odx] = modu - ztime ;
 							}
 						}

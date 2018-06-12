@@ -2,7 +2,9 @@
 	#define	_CLASS_SPECTRUM_
 
 	#include <vector>
+	#include <complex>
 	#include <cmath>
+
 
 	#include "enum-field.h"
 	#include "scalar/scalarField.h"
@@ -24,7 +26,11 @@
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
 		double			mass, massSax; // squared masses (comoving)
-		double 			ztime;
+		double 			ztime, depta;
+		double 			zaskar ;
+		float				zaskarf ;
+		std::complex<double> zaska ;
+		std::complex<float> zaskaf ;
 
 		void			fillCosTable ();
 
@@ -48,6 +54,13 @@
 				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
 				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
 				ztime   = *field->zV();
+				depta   = field->BckGnd()->PhysSize()/Ly;
+
+				zaskar  = field->Saskia()*ztime;
+				zaskarf = (float) zaskar ;
+				zaska   = std::complex<double>(zaskar,0.);
+				zaskaf  = std::complex<float>(zaskarf,0.f);
+
 				fillCosTable();
 
 				hLy = Ly >> 1;
@@ -76,7 +89,8 @@
 				}
 
 				nPts = Lx*Ly*Lz;
-			}
+
+		}
 
 
 		inline const size_t	PowMax() const { return powMax; }

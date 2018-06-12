@@ -63,7 +63,8 @@
 			STRING_XY_NEGATIVE = 8,
 			STRING_YZ_NEGATIVE = 16,
 			STRING_ZX_NEGATIVE = 32,
-			STRING_WALL	   = 64,
+			STRING_WALL	       = 64,
+			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
 		}	StringType;
 
 		typedef	enum	LambdaType_s
@@ -272,11 +273,12 @@
 			SPECTRUM_V	= 4,
 			SPECTRUM_GV	= 6,
 			SPECTRUM_P	= 8,
-			SPECTRUM_KS	= 17,
-			SPECTRUM_GS	= 18,
-			SPECTRUM_VS	= 20,
-			SPECTRUM_GVS	= 22,
-			SPECTRUM_PS	= 24,
+			SPECTRUM_GaS= 16,
+			SPECTRUM_KS	= 65,
+			SPECTRUM_GS	= 66,
+			SPECTRUM_VS	= 68,
+			SPECTRUM_GVS= 70,
+			SPECTRUM_PS	= 72,
 		}	SpectrumType;
 
 		typedef	enum	FindType_s {

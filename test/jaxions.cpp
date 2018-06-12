@@ -398,6 +398,7 @@ int	main (int argc, char *argv[])
 		myCosmos.SetGamma(gammo_save);
 	}
 
+	if (!restart_flag){
 	LogOut("First measurement file %d \n",index);
 	createMeas(axion, index);
 		rts = strings(axion);
@@ -419,8 +420,17 @@ int	main (int argc, char *argv[])
 							 [] (complex<float> x) { return (double) arg(x); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
+
+			Binner<3000,complex<float>> logth2Bin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+							 [] (complex<float> x) { return (double) log10(1.0e-10+pow(arg(x),2)); });
+			logth2Bin.run();
+			writeBinner(logth2Bin, "/bins", "logtheta2B");
 		}
 	destroyMeas();
+	}
+	else{
+	LogOut("last measurement file was %d \n",index);
+	}
 
 	LogOut("Running ...\n\n");
 	// damping only from zst1000
@@ -479,10 +489,11 @@ int	main (int argc, char *argv[])
 				//if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
 				if (((*axion->zV()) > z_doom2*0.95) && (coD) && pregammo > 0.)
 				{
+					myCosmos.SetGamma(pregammo);
 					LogOut("-----------------------------------------\n");
 					LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", myCosmos.Gamma(), 0.95*z_doom2);
 					LogOut("-----------------------------------------\n");
-					myCosmos.SetGamma(pregammo);
+
 					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
 					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
 					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
@@ -525,6 +536,12 @@ int	main (int argc, char *argv[])
 										[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 						thBin.run();
 						writeBinner(thBin, "/bins", "thetaB");
+
+						Binner<3000,complex<float>> logth2Bin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+										 [] (complex<float> x) { return (double) log10(1.0e-10 + pow(arg(x),2)); });
+						logth2Bin.run();
+						writeBinner(logth2Bin, "/bins", "logtheta2B");
+
 						destroyMeas();
 
 						LogOut("--------------------------------------------------\n");
@@ -547,6 +564,12 @@ int	main (int argc, char *argv[])
 									[z=z_now] (float x) -> float { return (float) (x/z); });
 						thBin2.run();
 						writeBinner(thBin2, "/bins", "thetaB");
+
+						Binner<3000,float> logth2Bin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+									[z=z_now] (float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
+						logth2Bin2.run();
+						writeBinner(logth2Bin, "/bins", "logtheta2B");
+
 						destroyMeas();
 
 						LogOut("--------------------------------------------------\n");
@@ -590,6 +613,11 @@ int	main (int argc, char *argv[])
 
 		if ( axion->Field() == FIELD_SAXION)
 		{
+			//DOMAIN WALL KILLER NUMBER
+			double maa = 40*axion->AxionMassSq()/(2.*llphys);
+			if (axion->Lambda() == LAMBDA_Z2 )
+				maa = maa*z_now*z_now;
+			LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ...", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 			// BIN RHO+THETA
 			float z_now = *axion->zV();
 			float shiftzf = shiftz ;
@@ -602,10 +630,7 @@ int	main (int argc, char *argv[])
 							[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
-			//DOMAIN WALL KILLER NUMBER
-			double maa = 40*axion->AxionMassSq()/(2.*llphys);
-			if (axion->Lambda() == LAMBDA_Z2 )
-				maa = maa*z_now*z_now;
+
 			//STRINGS //debug
 			rts = strings(axion);
 			nstrings_global = rts.strDen;
@@ -628,18 +653,17 @@ int	main (int argc, char *argv[])
 
 					specSAna.nRun();
 					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sK");
+					writeArray(specSAna.data(SPECTRUM_G), specSAna.PowMax(), "/nSpectrum", "sG");
 
 					specSAna.nSRun();
 					writeArray(specSAna.data(SPECTRUM_K), specSAna.PowMax(), "/nSpectrum", "sKS");
 					writeArray(specSAna.data(SPECTRUM_G), specSAna.PowMax(), "/nSpectrum", "sGS");
 					writeArray(specSAna.data(SPECTRUM_V), specSAna.PowMax(), "/nSpectrum", "sVS");
 
-//
-
-
-			LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 			LogOut("strings %ld [Lt^2/V] %f\n", nstrings_global, 0.75*axion->Delta()*nstrings_global*z_now*z_now/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
 		} else {
+			LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
+
 			//BIN THETA
 			Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
 						[z=z_now] (float x) -> float { return (float) (x/z);});
@@ -647,8 +671,10 @@ int	main (int argc, char *argv[])
 			writeBinner(thBin2, "/bins", "thetaB");
 			maximumtheta = max(abs(thBin2.min()),thBin2.max());
 
-			LogOut("%d/%d | z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
-			fflush(stdout);
+			Binner<3000,float> logth2Bin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						[z=z_now] (float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
+			logth2Bin.run();
+			writeBinner(logth2Bin, "/bins", "logtheta2B");
 
 			LogOut("DensMap");
 
@@ -748,10 +774,16 @@ int	main (int argc, char *argv[])
 
 		double z_now = *axion->zV();
 		Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-					 [z=z_now] (float x) -> float { return (float) (x/z); });
+					 [z=z_now] (float x) -> float { return (double) (x/z); });
 		thBin2.run();
 		//writeArray(thBin2.data(), 100, "/bins", "testTh");
 		writeBinner(thBin2, "/bins", "thetaB");
+
+		Binner<3000,float> logth2Bin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+					[z=z_now] (float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
+		logth2Bin.run();
+		writeBinner(logth2Bin, "/bins", "logtheta2B");
+
 
 		destroyMeas();
 
@@ -783,10 +815,16 @@ int	main (int argc, char *argv[])
 
 			LogOut("theta ");
 			Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						[z=z_now] (float x) -> float { return (float) (x/z);});
+						[z=z_now] (float x) -> float { return (double) (x/z);});
 			thBin2.run();
 			//writeArray(thBin2.data(), 100, "/bins", "testTh");
 			writeBinner(thBin2, "/bins", "thetaB");
+
+			Binner<3000,float> logth2Bin(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
+						[z=z_now] (float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
+			logth2Bin.run();
+			writeBinner(logth2Bin, "/bins", "logtheta2B");
+
 
 			LogOut ("spec ");
 			specAna.nRun();
