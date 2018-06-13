@@ -294,32 +294,33 @@ void	SpecBin::pRun	() {
 
 	field->setM2     (M2_ENERGY_FFT);
 
-	if (field->Field() == FIELD_SAXION) {
-		for (int sl=Sm-1; sl>=0; sl--) {
-			auto	oOff = sl*dSize*(Ly) + dSize*(Lz+2)*Ly*Ly;
-			auto	fOff = sl*dSize*(Ly+2);
-			memmove	(mA+fOff, mA+oOff, dataLine);
-		}
-
-		auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
-		myPlan.run(FFT_FWD);
-
-		switch (fPrec) {
-			case	FIELD_SINGLE:
-				if (spec)
-					fillBins<float,  SPECTRUM_PS, true> ();
-				else
-					fillBins<float,  SPECTRUM_PS, false>();
-				break;
-
-			case	FIELD_DOUBLE:
-				if (spec)
-					fillBins<double,  SPECTRUM_PS, true> ();
-				else
-					fillBins<double,  SPECTRUM_PS, false>();
-				break;
-		}
-	}
+	//JAVI -> move it to a different function!
+	// if (field->Field() == FIELD_SAXION) {
+	// 	for (int sl=Sm-1; sl>=0; sl--) {
+	// 		auto	oOff = sl*dSize*(Ly) + dSize*(Lz+2)*Ly*Ly;
+	// 		auto	fOff = sl*dSize*(Ly+2);
+	// 		memmove	(mA+fOff, mA+oOff, dataLine);
+	// 	}
+	//
+	// 	auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+	// 	myPlan.run(FFT_FWD);
+	//
+	// 	switch (fPrec) {
+	// 		case	FIELD_SINGLE:
+	// 			if (spec)
+	// 				fillBins<float,  SPECTRUM_PS, true> ();
+	// 			else
+	// 				fillBins<float,  SPECTRUM_PS, false>();
+	// 			break;
+	//
+	// 		case	FIELD_DOUBLE:
+	// 			if (spec)
+	// 				fillBins<double,  SPECTRUM_PS, true> ();
+	// 			else
+	// 				fillBins<double,  SPECTRUM_PS, false>();
+	// 			break;
+	// 	}
+	// }
 
 }
 

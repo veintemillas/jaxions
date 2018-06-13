@@ -40,6 +40,7 @@ double prepstL = 5.0 ;
 double prepcoe = 3.0 ;
 int endredmap = -1;
 int safest0   = 20;
+size_t nstrings_globale ;
 
 bool lowmem   = false;
 bool uPrec    = false;

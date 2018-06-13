@@ -29,6 +29,8 @@ extern int    Ng;
 extern double wDz;
 //extern double zthres;
 //extern double zrestore;
+extern size_t nstrings_globale;
+
 
 extern double wkb2z ;
 extern double prepstL;

@@ -281,6 +281,58 @@
 			SPECTRUM_PS	= 72,
 		}	SpectrumType;
 
+// 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
+
+		typedef	enum	MeasurementType_s {
+			// MEAS_BINTHETA			= 1,
+			// MEAS_BINRHO				= 2,
+			// MEAS_BINLOGTHETA2	= 4,
+			// // MEAS_BIN...	= 16,
+			// // MEAS_BIN...	= 32,
+			// MEAS_STRING				= 64,
+			// MEAS_STRINGMAP		= 192,  	// 128 + 64
+			// MEAS_ENERGY				= 256,
+			// MEAS_ENERGY3DMAP	= 768,		// 512 + 256
+			// MEAS_REDENE3DMAP  = 1792, 	// 1024 + 512 + 256
+			// MEAS_2DMAP				= 2048,
+			// MEAS_3DMAP				= 4096,
+			// //                  8192
+			// MEAS_PSP_A				= 17152, 	// 16384+768 (requires calculation of energy map  = 768)
+			// MEAS_PSP_S				= 49920, 	// 32768+16384+768 ... requires also the previous
+			// MEAS_NSP_A				= 65536,
+			// MEAS_NSP_S				= 131072,
+			// MEAS_SPECTRUM 		= 245760 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			// MEAS_BINDELTA 		= 262400, // 262144 + 256 (requires energy)
+			// // MASK for those that require energy saved in m2 MEAS_ENERGY3DMAP MEAS_REDENE3DMAP MEAS_PSP_A MEAS_PSP_S MEAS_BINDELTA
+			// MEAS_NEEDENERGYM2 = 313088,				// 256 + 512 + 1024 + 16384 + 32768 + 262144
+			MEAS_BINTHETA			= 1,
+			MEAS_BINRHO				= 2,
+			MEAS_BINLOGTHETA2	= 4,
+			MEAS_BINDELTA   	= 8,
+			MEAS_ALLBIN       = 15,
+			// MEAS_BIN...	= 16,
+			// MEAS_BIN...	= 32,
+			MEAS_STRING				= 64,
+			MEAS_STRINGMAP		= 128,  	// 128 + 64
+			MEAS_ENERGY				= 256,
+			MEAS_ENERGY3DMAP	= 512,		// 512 + 256
+			MEAS_REDENE3DMAP  = 1024, 	// 1024 + 512 + 256
+			MEAS_2DMAP				= 2048,
+			MEAS_3DMAP				= 4096,
+			//                  8192
+			MEAS_PSP_A				= 16384, 	// 16384+768 (requires calculation of energy map  = 768)
+			MEAS_PSP_S				= 32768, 	// 32768+16384+768 ... requires also the previous
+			MEAS_NSP_A				= 65536,
+			MEAS_NSP_S				= 131072,
+			// MASK for any spectrum
+			MEAS_SPECTRUM 		= 245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			MEAS_SPECTRUMA 		= 81920, 	// 16384  + 65536  (any of the spectra)
+			// MASK for those that require energy
+			MEAS_NEEDENERGY   = 50952,				// 8 + 256 + 512 + 1024 + 16384 + 32768
+			// MASK for those that require energy saved in m2
+			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
+		}	MeasurementType;
+
 		typedef	enum	FindType_s {
 			FIND_MAX,
 			FIND_MIN,
