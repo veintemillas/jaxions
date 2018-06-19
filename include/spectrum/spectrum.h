@@ -110,6 +110,7 @@
 		void	nRun		();
 		void	nSRun		();
 		void	pRun		();
+		void	nmodRun		();
 
 
 		void	filter	(int neigh);
@@ -198,6 +199,7 @@
 				break;
 
 			case	SPECTRUM_PS:
+			case	SPECTRUM_NN:
 				return binPS.data();
 				break;
 
@@ -227,6 +229,7 @@
 				break;
 
 			case	SPECTRUM_PS:
+			case	SPECTRUM_NN:
 				return binPS.data();
 				break;
 		}

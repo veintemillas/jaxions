@@ -1192,6 +1192,10 @@ int	parseArgs (int argc, char *argv[])
 			{
 				pType |= PROP_LEAP;
 			}
+			else if (!strcmp(argv[i+1], "mleap"))
+			{
+				pType |= PROP_MLEAP;
+			}
 			else if (!strcmp(argv[i+1], "rkn4"))
 			{
 				pType |= PROP_RKN4;

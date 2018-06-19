@@ -260,11 +260,13 @@
 			PROP_OMELYAN2	= 4,
 			PROP_OMELYAN4	= 8,
 			PROP_RKN4	= 16,
-			PROP_MASK	= 30,		// So far... Masks the integrator type, removing the spectral flag
 			PROP_SLEAP	= 3,
 			PROP_SOMELYAN2	= 5,
 			PROP_SOMELYAN4	= 9,
 			PROP_SRKN4	= 17,
+			PROP_MLEAP = 32,
+			PROP_SMLEAP = 33,
+			PROP_MASK	= 62,		// 2+4+8+16+32 So far... Masks the integrator type, removing the spectral flag
 		}	PropType;
 
 		typedef	enum	SpectrumType_s {
@@ -279,32 +281,12 @@
 			SPECTRUM_VS	= 68,
 			SPECTRUM_GVS= 70,
 			SPECTRUM_PS	= 72,
+			SPECTRUM_NN	= 128,
 		}	SpectrumType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 
 		typedef	enum	MeasurementType_s {
-			// MEAS_BINTHETA			= 1,
-			// MEAS_BINRHO				= 2,
-			// MEAS_BINLOGTHETA2	= 4,
-			// // MEAS_BIN...	= 16,
-			// // MEAS_BIN...	= 32,
-			// MEAS_STRING				= 64,
-			// MEAS_STRINGMAP		= 192,  	// 128 + 64
-			// MEAS_ENERGY				= 256,
-			// MEAS_ENERGY3DMAP	= 768,		// 512 + 256
-			// MEAS_REDENE3DMAP  = 1792, 	// 1024 + 512 + 256
-			// MEAS_2DMAP				= 2048,
-			// MEAS_3DMAP				= 4096,
-			// //                  8192
-			// MEAS_PSP_A				= 17152, 	// 16384+768 (requires calculation of energy map  = 768)
-			// MEAS_PSP_S				= 49920, 	// 32768+16384+768 ... requires also the previous
-			// MEAS_NSP_A				= 65536,
-			// MEAS_NSP_S				= 131072,
-			// MEAS_SPECTRUM 		= 245760 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
-			// MEAS_BINDELTA 		= 262400, // 262144 + 256 (requires energy)
-			// // MASK for those that require energy saved in m2 MEAS_ENERGY3DMAP MEAS_REDENE3DMAP MEAS_PSP_A MEAS_PSP_S MEAS_BINDELTA
-			// MEAS_NEEDENERGYM2 = 313088,				// 256 + 512 + 1024 + 16384 + 32768 + 262144
 			MEAS_BINTHETA			= 1,
 			MEAS_BINRHO				= 2,
 			MEAS_BINLOGTHETA2	= 4,
@@ -324,9 +306,10 @@
 			MEAS_PSP_S				= 32768, 	// 32768+16384+768 ... requires also the previous
 			MEAS_NSP_A				= 65536,
 			MEAS_NSP_S				= 131072,
+			MEAS_NNSPEC				= 262144, 	// number of modes per bin for normalisation purposes
 			// MASK for any spectrum
-			MEAS_SPECTRUM 		= 245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
-			MEAS_SPECTRUMA 		= 81920, 	// 16384  + 65536  (any of the spectra)
+			MEAS_SPECTRUM 		= 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			MEAS_SPECTRUMA 		= 81920, 	  // 16384  + 65536  (any of the axion spectra)
 			// MASK for those that require energy
 			MEAS_NEEDENERGY   = 50952,				// 8 + 256 + 512 + 1024 + 16384 + 32768
 			// MASK for those that require energy saved in m2

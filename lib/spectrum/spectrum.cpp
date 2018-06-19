@@ -53,6 +53,7 @@ void	SpecBin::fillBins	() {
 			tBinP.assign(powMax*mIdx, 0);
 			break;
 		case	SPECTRUM_PS:
+		case 	SPECTRUM_NN:
 			tBinPS.resize(powMax*mIdx);
 			tBinPS.assign(powMax*mIdx, 0);
 			break;
@@ -112,6 +113,7 @@ void	SpecBin::fillBins	() {
 			k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 
 			double		w = 1.0;
+			double 		m, m2;
 
 			switch	(sType) {
 				case	SPECTRUM_K:
@@ -120,6 +122,8 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_GV:
 				case 	SPECTRUM_GaS:
 					w  = sqrt(k2 + mass);
+					m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
+					m2 = 0.;
 					break;
 
 				case	SPECTRUM_KS:
@@ -127,12 +131,15 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_VS:
 				case 	SPECTRUM_GVS:
 					w  = sqrt(k2 + massSax);
+					m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
+					m2 = 0.;
+					break;
+				case SPECTRUM_NN:
+					m = 1;
 					break;
 			}
 			//double		w  = sqrt(k2 + mass);
 
-			double		m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
-			double		m2 = 0.;
 
 			// FFTS are assumed outcome of FFT r2c
 			// if c2c this needs some changes
@@ -143,6 +150,7 @@ void	SpecBin::fillBins	() {
 				m2 = 2.*m*m;
 
 			double		mw = m2/w;
+
 
 			switch	(sType) {
 				case	SPECTRUM_K:
@@ -182,7 +190,9 @@ void	SpecBin::fillBins	() {
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
 					tBinV.at(myBin + powMax*tIdx) += mw*mass;
 					break;
-
+				case	SPECTRUM_NN:
+					tBinPS.at(myBin + powMax*tIdx) += m2;
+					break;
 			}
 		}
 
@@ -205,10 +215,14 @@ void	SpecBin::fillBins	() {
 					case	SPECTRUM_GaS:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						break;
+					case	SPECTRUM_NN:
+						binPS[j] += tBinPS[j + i*powMax];
+						break;
 					default:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						binV[j] += tBinV[j + i*powMax]*norm;
 						break;
+
 				}
 			}
 		}
@@ -226,6 +240,7 @@ void	SpecBin::fillBins	() {
 			MPI_Allreduce(tBinP.data(), binP.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 		case	SPECTRUM_PS:
+		case	SPECTRUM_NN:
 			std::copy_n(binPS.begin(), powMax, tBinPS.begin());
 			MPI_Allreduce(tBinPS.data(), binPS.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
@@ -759,6 +774,21 @@ void	SpecBin::nSRun	() {
 		break;
 	}
 }
+
+void	SpecBin::nmodRun	() {
+	if (fPrec == FIELD_SINGLE) {
+		if (spec)
+			fillBins<float,  SPECTRUM_NN, true> ();
+		else
+			fillBins<float,  SPECTRUM_NN, false>();
+	} else {
+		if (spec)
+			fillBins<double, SPECTRUM_NN, true> ();
+		else
+			fillBins<double, SPECTRUM_NN, false>();
+	}
+}
+
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

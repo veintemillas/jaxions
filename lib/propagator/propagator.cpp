@@ -38,6 +38,31 @@ class	PropLeap : public PropClass<1, true, pot> {
 };
 
 template<VqcdType pot>
+class	PropMLeap : public PropClass<4, true, pot> {
+
+	public:
+		PropMLeap(Scalar *field, const bool spec) :
+		PropClass<4, true, pot>(field, spec) {
+		//	Set up Leapfrog parameters
+
+		double nC[5] = { 0.125, 0.25, 0.25, 0.25, 0.125 };
+		double nD[4] = { 0.25,  0.25, 0.25, 0.25 };
+
+		this->setCoeff(nC, nD);
+
+		if (spec && field->Device() == DEV_CPU) {
+			this->setBaseName("Multi-Leapfrog spectral ");
+		} else {
+			if (field->LowMem())
+				this->setBaseName("Lowmem Multi-Leapfrog ");
+			else
+				this->setBaseName("Multi-Leapfrog ");
+		}
+	}
+};
+
+
+template<VqcdType pot>
 class	PropOmelyan2 : public PropClass<2, true, pot> {
 
 	public:
@@ -198,6 +223,27 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					break;
 			}
 			break;
+
+			case PROP_MLEAP:
+				switch (pot) {
+					case VQCD_1:
+						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, spec);
+						break;
+					case VQCD_1_PQ_2:
+						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, spec);
+						break;
+					case VQCD_1_PQ_2_RHO:
+						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, spec);
+						break;
+					case VQCD_2:
+						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
+						break;
+
+					case VQCD_NONE:
+						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
+						break;
+				}
+				break;
 
 		case PROP_RKN4:
 			switch (pot) {

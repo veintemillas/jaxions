@@ -297,7 +297,7 @@ def gm(address,something='summary',printerror=False):
             N = f.attrs[u'Size']
             ct = f.attrs[u'z']
             delta = L/N
-            return  (3*delta/8)*stringN*ct*ct/(L**3) ;
+            return  (delta/6)*stringN*ct*ct/(L**3) ;
     elif (something[0:2] == 'st') and not st_check :
         if printerror :
             print('[gm] No string info in the file! Use 0.')
@@ -495,6 +495,8 @@ def gm(address,something='summary',printerror=False):
             spec += np.reshape(f['nSpectrum/sKS/data/'],(powmax)) ;
             return spec ;
 
+    if (something == 'nmodelist') and ('nSpectrum/nmodes' in f):
+        return np.array(f['nSpectrum/nmodes/data'])
 
     # power spectra
     psp_check = 'pSpectrum' in f
