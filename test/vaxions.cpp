@@ -23,20 +23,34 @@
 using namespace std;
 using namespace AxionWKB;
 
+
+
+// vaxions3d definitions
+
+typedef	struct	MeasData_v{
+	// add everythin you needs!
+	StringData	strings;
+	double	maxtheta;
+}	MeasData;
+
 void	printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 void	printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double	findzdoom(Scalar *axion);
 void	checkTime (Scalar *axion, int index);
 
 template<typename Float>
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa);
+MeasData	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa);
 
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa);
+MeasData	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa);
 
 //-point to print
 size_t idxprint = 0 ;
 //- z-coordinate of the slice that is printed as a 2D map
 size_t sliceprint = 0 ;
+
+
+/* Program */
+
 
 int	main (int argc, char *argv[])
 {
@@ -106,11 +120,15 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	// USEFUL VARIABLES
 	//--------------------------------------------------
+	//- Measurement
+	MeasData lm;
 	//- number of plaquetes pierced by strings
 	nstrings_globale = 0;
+	lm.strings.strDen = 0 ;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = 3.141597;
+	lm.maxtheta = 3.141597 ;
 
 	//-output txt file
 	FILE *file_samp ;
@@ -145,16 +163,17 @@ int	main (int argc, char *argv[])
 		dz = (zFinl - zInit)/((double) nSteps);
 
 	///-for reduced map Redondo version [obs?]
-	if (endredmap > sizeN)
+	int siN = (int) sizeN;
+	if (endredmap > siN)
 	{
-		endredmap = sizeN;
-		LogOut("[Error:1] Reduced map dimensions set to %d\n ", endredmap);
+		LogOut("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
+		endredmap = siN;
 	}
 
-	if (sizeN%endredmap != 0 )
+	if (siN%endredmap != 0 )
 	{
-		int schei =  sizeN/endredmap;
-		endredmap = sizeN/schei;
+		int schei =  siN/endredmap;
+		endredmap = siN/schei;
 		LogOut("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
 	}
 
@@ -164,6 +183,7 @@ int	main (int argc, char *argv[])
 	//-number of iterations with 0 strings; used to switch to theta mode
 	int strcount = 0;
 
+	// obs?
 	//- saves string data
 	StringData rts ;
 	//- obsolete
@@ -322,26 +342,31 @@ int	main (int argc, char *argv[])
 			dzaux = axion->dzSize(zInit)/2.;
 			//myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
 
-			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
-
+			// obs?
+			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.strings.strDen, lm.maxtheta);
+			//printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
 			if (icstudy){
+
 				// string control
-				rts = strings(axion);
-				nstrings_globale = rts.strDen;
-				strdensn = (1/6.)*axion->Delta()*((double) nstrings_globale)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
-				LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, nstrings_globale, strdensn, myCosmos.Gamma());
+				// obs
+				// rts = strings(axion);
+				// nstrings_globale = rts.strDen;
+				lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
+				// lm.strings = strings(axion);
+				// strdensn = (1/6.)*axion->Delta()*((double) nstrings_globale)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
+				// LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.strings.strDen, strdensn, myCosmos.Gamma());
+				strdensn = (1/6.)*axion->Delta()*((double) lm.strings.strDen)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
+				LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.strings.strDen, strdensn, myCosmos.Gamma());
 
-				if (axion->Lambda() == LAMBDA_Z2)
-					llphys = LL1/((*zaza)*(*zaza));
-				axmass_now = axion->AxionMass();
-				saskia = axion->Saskia();
-				shiftz = *zaza * saskia;
-
+				// if (axion->Lambda() == LAMBDA_Z2)
+				// 	llphys = LL1/((*zaza)*(*zaza));
+				// axmass_now = axion->AxionMass();
+				// saskia = axion->Saskia();
+				// shiftz = *zaza * saskia;
 				// Measureme (axion, index, MEAS_BINTHETA | MEAS_BINRHO | MEAS_BINLOGTHETA2 |
 				// MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_ENERGY3DMAP | MEAS_REDENE3DMAP |
 				// MEAS_2DMAP | MEAS_3DMAP |
 				// MEAS_PSP_A | MEAS_PSP_S | MEAS_NSP_A | MEAS_NSP_S);
-
 				// createMeas(axion, index);
 				// if (axion->Field() == FIELD_SAXION) {
 				// 	writeString(axion, rts, false);
@@ -351,8 +376,6 @@ int	main (int argc, char *argv[])
 				// if(p2dmapo)
 				// 	writeMapHdf5s(axion,sliceprint);
 				// destroyMeas();
-
-				Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
 
 				index++;
 			} else
@@ -383,7 +406,7 @@ int	main (int argc, char *argv[])
 
 	if (!restart_flag && (fIndex == -1)){
 		LogOut("First measurement file %d \n",index);
-		Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
+		lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
 	}
 	else{
 		LogOut("last measurement file was %d \n",index);
@@ -424,18 +447,23 @@ int	main (int argc, char *argv[])
 
 			// SIMPLE OUTPUT CHECK
 			z_now = (*axion->zV());
-			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
+			//obs
+			// printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
+			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.strings.strDen, lm.maxtheta);
 
 			// CHECKS IF SAXION
 			if (axion->Field() == FIELD_SAXION)
 			{
 				// IF FEW STRINGS COMPUTES THE NUMBER EVERY ITERATION [obs with damping]
-				if (nstrings_globale < 1000)
+				// if (nstrings_globale < 1000)
+				if (lm.strings.strDen < 1000)
 				{
-					rts = strings(axion);
-					nstrings_globale = rts.strDen ;
+					// rts = strings(axion);
+					// nstrings_globale = rts.strDen ;
+					// LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 
-					LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
+					lm.strings = strings(axion);
+					LogOut("  str extra check (string = %d, wall = %d)\n",lm.strings.strDen, lm.strings.wallDn);
 				}
 
 				// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
@@ -456,14 +484,20 @@ int	main (int argc, char *argv[])
 				}
 
 				// TRANSITION TO THETA COUNTER
-				if (nstrings_globale == 0) {
+				// obs?
+				// if (nstrings_globale == 0) {
+				// 	LogOut("  no st counter %d\n", strcount);
+				// 	strcount++;
+				// }
+				if (lm.strings.strDen == 0) {
 					LogOut("  no st counter %d\n", strcount);
 					strcount++;
 				}
 
 				// IF CONF_SAXNOISE we do not ever switch to theta to follow the evolution of saxion field
 				if (smvarType != CONF_SAXNOISE)
-					if (nstrings_globale == 0 && strcount > safest0)
+					// if (nstrings_globale == 0 && strcount > safest0)
+					if (lm.strings.strDen == 0 && strcount > safest0)
 					{
 						if (axion->Lambda() == LAMBDA_Z2)
 							llphys = myCosmos.Lambda()/(z_now*z_now);
@@ -472,33 +506,10 @@ int	main (int argc, char *argv[])
 						saskia	   = axion->Saskia();
 						shiftz	   = z_now * saskia;
 
-						Measureme (axion, 10000, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
-
-						// createMeas(axion, 10000);
-						// // IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-						// if(p2dmapo)
-						// 	writeMapHdf5s (axion,sliceprint);
-						// //ENERGY
-						// energy(axion, eRes, false, shiftz);
-						// writeEnergy(axion, eRes);
-						// // BIN RHO+THETA
-						// float shiftzf = shiftz ;
-						// Binner<3000,complex<float>> rhoBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						// 				 [z=z_now,ss=shiftzf] (complex<float> x) { return (double) abs(x-ss)/z; });
-						// rhoBin.run();
-						// writeBinner(rhoBin, "/bins", "rhoB");
-						//
-						// Binner<3000,complex<float>> thBin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						// 				[ss=shiftzf] (complex<float> x) { return (double) arg(x-ss); });
-						// thBin.run();
-						// writeBinner(thBin, "/bins", "thetaB");
-						//
-						// Binner<3000,complex<float>> logth2Bin(static_cast<complex<float> *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						// 				 [] (complex<float> x) { return (double) log10(1.0e-10 + pow(arg(x),2)); });
-						// logth2Bin.run();
-						// writeBinner(logth2Bin, "/bins", "logtheta2B");
-						//
-						// destroyMeas();
+						lm = Measureme (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
+						MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+						// lm = Measureme (axion, index, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
+						index++;
 
 						LogOut("--------------------------------------------------\n");
 						LogOut(" TRANSITION TO THETA (z=%.4f)\n",z_now);
@@ -508,28 +519,10 @@ int	main (int argc, char *argv[])
 
 						//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
 
-						Measureme (axion, 10001, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
-
-						// createMeas(axion, 10001);
-						// // IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-						// if(p2dmapo)
-				  	// 		writeMapHdf5s (axion,sliceprint);
-						// //ENERGY
-						// energy(axion, eRes, false, 0.);
-						// writeEnergy(axion, eRes);
-						// // BIN THETA
-						// Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						// 			[z=z_now] (float x) -> float { return (float) (x/z); });
-						// thBin2.run();
-						// writeBinner(thBin2, "/bins", "thetaB");
-						//
-						// Binner<3000,float> logth2Bin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
-						// 			[z=z_now] (float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
-						// logth2Bin2.run();
-						// writeBinner(logth2Bin, "/bins", "logtheta2B");
-						//
-						// destroyMeas();
-
+						lm = Measureme (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
+						MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+						// Measureme (axion, index, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
+						index++;
 						LogOut("--------------------------------------------------\n");
 
 						tunePropagator (axion);
@@ -553,15 +546,6 @@ int	main (int argc, char *argv[])
 		// PARTIAL ANALISIS
 		//--------------------------------------------------
 
-		z_now = (*axion->zV());
-		if (axion->Lambda() == LAMBDA_Z2)
-			llphys = myCosmos.Lambda()/(z_now*z_now);
-		axmass_now = axion->AxionMass();
-		saskia = axion->Saskia();
-		shiftz = z_now * saskia;
-
-		auto	cTime = Timer();
-
 		if ((*axion->zV()) > zFinl)
 		{
 			// THE LAST MEASURE IS DONE AT THE END
@@ -569,20 +553,8 @@ int	main (int argc, char *argv[])
 			break;
 		}
 
-		Measureme (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
+		lm = Measureme (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
 		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
-
-
-		// if ( axion->Field() == FIELD_SAXION)
-		// {
-		// 	double maa = 40*axion->AxionMassSq()/(2.*llphys);
-		// 	if (axion->Lambda() == LAMBDA_Z2 )
-		// 		maa = maa*z_now*z_now;
-		// 		LogOut("z=%f | alpha=%.3e ", zloop, nLoops, (*axion->zV()), maa );
-		// 		LogOut("xi(%f) %f\n", nstrings_globale, (1/6.)*axion->Delta()*((double) nstrings_globale)*z_now*z_now/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize()));
-		// } else {
-		// 	LogOut("z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
- 		// }
 
 		checkTime(axion, index);
 	} // ZLOOP
@@ -614,6 +586,7 @@ int	main (int argc, char *argv[])
 		}
 		if (pconfinal)
 			mesa = mesa | MEAS_ENERGY3DMAP ;
+
 		if ( endredmap > 0)
 			mesa = mesa | MEAS_REDENE3DMAP ;
 
@@ -645,9 +618,6 @@ int	main (int argc, char *argv[])
 			if (pconfinalwkb)
 				mesa = mesa | MEAS_ENERGY3DMAP ;
 			// 	writeEDens(axion);
-
-			if (pconfinal)
-				mesa = mesa | MEAS_ENERGY3DMAP ;
 
 			if ( endredmap > 0)
 				mesa = mesa | MEAS_REDENE3DMAP ;
@@ -737,11 +707,18 @@ void	checkTime (Scalar *axion, int index) {
 	if (wTime <= cTime)
 		flag = 1;
 
+	FILE *capa = NULL;
+	if (!((capa  = fopen("./stop", "r")) == NULL)){
+		flag = 2;
+	}
+	fclose (capa);
+
 	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
 	for (const int &val : allFlags) {
-		if (val == 1) {
+		if (val > 0) {
 			done = true;
+			flag = val;
 			break;
 		}
 	}
@@ -749,8 +726,15 @@ void	checkTime (Scalar *axion, int index) {
 	if (done) {
 		if (cDev == DEV_GPU)
 			axion->transferCpu(FIELD_MV);
+		if (flag ==2){
+			LogMsg(VERB_NORMAL, "[checkTime %d] stop file detected! stopping ... ",index);
+			LogOut ("Interrupted manually with stop file ...");
+		}
+		if (flag ==1){
+			LogMsg(VERB_NORMAL, "[checkTime %d] Walltime reached ",index);
+			LogOut ("Walltime reached, dumping configuration...");
+		}
 
-		LogOut ("Walltime reached, dumping configuration...");
 		writeConf(axion, index, 1);
 		LogOut ("Done!\n");
 
@@ -770,22 +754,28 @@ void	checkTime (Scalar *axion, int index) {
 }
 
 
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
+MeasData	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 {
 	if (axiona->Precision() == FIELD_SINGLE)
 	{
-		Measureme<float> (axiona,  indexa,  measa);
+		return Measureme<float> (axiona,  indexa,  measa);
 	}
 	else
 	{
-		Measureme<double>(axiona,  indexa,  measa);
+		return Measureme<double>(axiona,  indexa,  measa);
 	}
 }
 
 
 template<typename Float>
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
+MeasData	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 {
+
+	MeasData MeasDataOut;
+
+	MeasDataOut.maxtheta       = -1 ;
+	MeasDataOut.strings.strDen = -1 ;
+	MeasDataOut.strings.wallDn = -1 ;
 
 	auto	cTime = Timer();
 
@@ -823,13 +813,13 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_NEEDENERGYM2)
 		{
 			// LogOut("energy (map->m2) ");
-			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2",index);
+			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2",indexa);
 			energy(axiona, eRes, true, shiftz);
 
 			if (measa & MEAS_BINDELTA)
 			{
 				// LogOut("bindelta ");
-				LogMsg(VERB_NORMAL, "[Meas %d] bin energy axion (delta)",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] bin energy axion (delta)",indexa);
 				// JARE possible problem m2 saved as double in _DOUBLE?
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), axiona->Size(),
@@ -840,17 +830,17 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 
 			if (measa & MEAS_ENERGY3DMAP){
 				// LogOut("write eMap ");
-				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",indexa);
 				writeEDens(axiona);
 			}
 		} // no m2 map
 		else{
 			// LogOut("energy (sum)");
-			LogMsg(VERB_NORMAL, "[Meas %d] called energy (no map)",index);
+			LogMsg(VERB_NORMAL, "[Meas %d] called energy (no map)",indexa);
 			energy(axiona, eRes, false, shiftz);
 		}
 
-		LogMsg(VERB_NORMAL, "[Meas %d] write energy",index);
+		LogMsg(VERB_NORMAL, "[Meas %d] write energy",indexa);
 		writeEnergy(axiona, eRes);
 	}
 
@@ -862,7 +852,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_PSP_A)
 		{
 				// LogOut("PSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] PSPA",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
 				// at the moment runs PA and PS if in saxion mode
 				// perhaps we should create another psRun() YYYEEEESSSSS
 				specAna.pRun();
@@ -872,17 +862,17 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_REDENE3DMAP){
 				if ( endredmap > 0){
 					// LogOut("redMap->%d! ",sizeN/endredmap);
-					LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",index,sizeN/endredmap);
+					LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",indexa,sizeN/endredmap);
 					int nena = sizeN/endredmap ;
 					specAna.filter(nena);
 					writeEDensReduced(axiona, indexa, endredmap, endredmap/zGrid);
 				}
 		}
 
-		if ( (measa & MEAS_PSP_S) & (axiona->Field() == FIELD_SAXION))
+		if ( (measa & MEAS_PSP_S) && (axiona->Field() == FIELD_SAXION))
 		{
 				// LogOut("PSPS ");
-				LogMsg(VERB_NORMAL, "[Meas %d] PSPS",index);
+				// LogMsg(VERB_NORMAL, "[Meas %d] PSPS",index);
 				// has been computed before
 				// JAVI : SURE PROBLEM OF PSA PSS FILTER
 				// specAna.pSRun();
@@ -891,7 +881,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_NSP_A)
 		{
 				// LogOut("NSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
 				specAna.nRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
@@ -900,19 +890,21 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		}
 		if (measa & MEAS_NSP_S)
 		{
+				if (axiona->Field() == FIELD_SAXION){
 				// LogOut("NSPS ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
 				specAna.nSRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
+				}
 		}
 		if (measa & MEAS_NNSPEC)
 		{
 				// LogOut("Nmod ");
-				LogMsg(VERB_NORMAL, "[Meas %d] Nmod ",index);
-				specAna.nmodRun();
-				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
+				// LogMsg(VERB_NORMAL, "[Meas %d] Nmod ",index);
+				// specAna.nmodRun();
+				// writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
 		}
 
 	}
@@ -922,16 +914,17 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 			if (measa & MEAS_BINTHETA)
 			{
 				// LogOut("binT ");
-				LogMsg(VERB_NORMAL, "[Meas %d] bin theta",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] bin theta",indexa);
 					Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 									 [] (complex<Float> x) { return (double) arg(x); });
 					thBin.run();
 					writeBinner(thBin, "/bins", "thetaB");
+					MeasDataOut.maxtheta = max(abs(thBin.min()),thBin.max());
 			}
 				if (measa & MEAS_BINRHO)
 				{
 					// LogOut("binR ");
-					LogMsg(VERB_NORMAL, "[Meas %d] bin rho",index);
+					LogMsg(VERB_NORMAL, "[Meas %d] bin rho",indexa);
 					float z_now = *axiona->zV();
 					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 										[z=z_now] (complex<Float> x) { return (double) abs(x)/z; } );
@@ -941,7 +934,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 					if (measa& MEAS_BINLOGTHETA2)
 					{
 						// LogOut("binL ");
-						LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",index);
+						LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",indexa);
 						Binner<3000,complex<Float>> logth2Bin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 										 [] (complex<Float> x) { return (double) log10(1.0e-10+pow(arg(x),2)); });
 						logth2Bin.run();
@@ -951,25 +944,18 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 			if (measa & MEAS_STRING)
 			{
 
-				// this is a local rts
-				StringData rtss ;
-
 				// LogOut("string ");
-				LogMsg(VERB_NORMAL, "[Meas %d] string",index);
-				rtss = strings(axiona);
-				//JAVI check whether outputs a double already!
-				// size_t nstrings_globale = rts.strDen ;
-				nstrings_globale = rtss.strDen ;
-				// LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
+				LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
+				MeasDataOut.strings = strings(axiona);
 
 				if (measa & MEAS_STRINGMAP)
 				{
 					// LogOut("+map ");
-					LogMsg(VERB_NORMAL, "[Meas %d] string map",index);
-					if (p3DthresholdMB/((double) nstrings_globale) > 1.)
-						writeString(axiona, rtss, true);
+					LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
+					if (p3DthresholdMB/((double) MeasDataOut.strings.strDen) > 1.)
+						writeString(axiona, MeasDataOut.strings, true);
 					else
-						writeString(axiona, rtss, false);
+						writeString(axiona, MeasDataOut.strings, false);
 				}
 				else{
 					// LogOut("string alone ");
@@ -981,20 +967,21 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_BINTHETA)
 		{
 			// LogOut("binthetha ");
-			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ",index);
+			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ",indexa);
 				Binner<3000,Float> thBin(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
-								 [z=z_now] (Float x) { return (double) arg(x); });
+								 [z=z_now] (Float x) { return (double) (x/z); });
 				thBin.run();
 				writeBinner(thBin, "/bins", "thetaB");
+				MeasDataOut.maxtheta = max(abs(thBin.min()),thBin.max());
 		}
-			if (measa & MEAS_BINRHO)
-			{
-				LogMsg(VERB_NORMAL, "[Meas %d] bin rho called in axion mode. Ignored.",index);
-			}
+			// if (measa & MEAS_BINRHO)
+			// {
+			// 	LogMsg(VERB_NORMAL, "[Meas %d] bin rho called in axion mode. Ignored.",indexa);
+			// }
 				if (measa& MEAS_BINLOGTHETA2)
 				{
 					// LogOut("bintt2 ");
-					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",index);
+					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",indexa);
 					Binner<3000,Float> logth2Bin2(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 									 [z=z_now] (Float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
 					logth2Bin2.run();
@@ -1002,31 +989,34 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 				}
 	}
 
-	LogOut("z=%2.3f | ",z_now);
+	if ((indexa-1) % 10 == 0)
+		LogOut("ctime  |  index |  cmeas |  wtime  | mass \n");
+
+	LogOut("%2.3f  | ",z_now);
 
 	if (cTime*1.e-6/3600. < 1.0 )
-		LogOut("index %d meas %d wtime %2.3f m ", indexa, measa, cTime*1.e-6/60.);
+		LogOut("  %3d  | %d | %2.3f m | ", indexa, measa, cTime*1.e-6/60.);
 		else
-		LogOut("index %d meas %d wtime %2.3f h ", indexa, measa, cTime*1.e-6/3600.);
+		LogOut("  %3d  | %d | %2.3f h | ", indexa, measa, cTime*1.e-6/3600.);
 
+	double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
+	if (axiona->Lambda() == LAMBDA_Z2)
+		DWfun *= z_now*z_now;
+	LogOut("%.1e %.1e (%.1e) ", axiona->AxionMass(), sqrt(axiona->SaxionMassSq()), DWfun );
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
-		double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
-		if (axiona->Lambda() == LAMBDA_Z2)
-			DWfun *= z_now*z_now;
-
-		// double maa = 40*axiona->AxionMassSq()/(2.*axiona->myCosmos.Lambda());
-		// if (axiona->Lambda() == LAMBDA_Z2 )
-		// 	maa = maa*z_now*z_now;
 		double Le = axiona->BckGnd()->PhysSize();
-			LogOut("alpha=%.3e ", DWfun );
-			LogOut("#_st %ld xi(%f) ", nstrings_globale, (1/6.)*axiona->Delta()*( (double) nstrings_globale)*z_now*z_now/(Le*Le*Le));
+			LogOut("xi(%f) #_st %ld ",
+				(1/6.)*axiona->Delta()*( (double) MeasDataOut.strings.strDen)*z_now*z_now/(Le*Le*Le),
+				MeasDataOut.strings.strDen );
 	} else {
-		// LogOut("z=%f | dz=%.3e | maxtheta=%f | ", zloop, nLoops, (*axion->zV()), dzaux, maximumtheta);
+		LogOut("maxth=%f ", MeasDataOut.maxtheta);
 		LogOut(" ... ");
 	}
 
 	LogOut("\n");
 destroyMeas();
+
+return MeasDataOut;
 }
