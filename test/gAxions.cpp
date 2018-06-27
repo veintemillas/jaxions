@@ -22,8 +22,9 @@
 using namespace std;
 using namespace AxionWKB;
 
-double	findZDoom(Scalar *axion);
-void	checkTime (Scalar *axion, int index);
+double	findZDoom   (Scalar *axion);
+void	checkTime   (Scalar *axion, int index);
+//void	printSample (FILE *aFile, Scalar *axion, double LLL, size_t idxprint, MeasData &meas);
 
 int	main (int argc, char *argv[])
 {
@@ -86,10 +87,23 @@ int	main (int argc, char *argv[])
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
+/*
+	FILE *myFile = nullptr;
 
+	if (!restart_flag)
+		myFile = fopen("out/sample.txt","w+");
+	else
+		myFile = fopen("out/sample.txt","a+");
+
+	if (myFile == nullptr) {
+		LogError ("Couldn't open sample file\n");
+		delete axion;
+		endAxions();
+	}
+*/
 	MeasData mData;
 
-	double zNow ;
+	double zNow;
 	double axMassNow;
 	double delta = axion->Delta();
 	double dz;
@@ -234,7 +248,6 @@ int	main (int argc, char *argv[])
 		// use pregammo for prepropagation damping
 		double gSave = myCosmos.Gamma();
 		double zCur  = *(axion->zV());
-		double strDensn;
 
 		if (pregammo > 0)
 			myCosmos.SetGamma(pregammo);
@@ -246,6 +259,8 @@ int	main (int argc, char *argv[])
 
 		while (zCur < zInit){
 			dzAux = axion->dzSize(zInit)/2.;
+
+//			printSample(myFile, axion, myCosmos.Lambda(), 0, mData);
 
 			if (icstudy){
 				// string control
@@ -309,6 +324,8 @@ int	main (int argc, char *argv[])
 			propagate (axion, dzAux);
 
 			zNow = (*axion->zV());
+
+//			printSample(myFile, axion, myCosmos.Lambda(), 0, mData);
 
 			if (axion->Field() == FIELD_SAXION)
 			{
@@ -461,6 +478,7 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
 	trackFree(eRes);
+//	fclose(myFile);
 
 	delete axion;
 
@@ -468,7 +486,51 @@ int	main (int argc, char *argv[])
 
 	return 0;
 }
+/*
+void printSample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, MeasData &meas)
+{
+	double zNow = (*axion->zV());
+	double llPhys = LLL;
+	if (axion->Lambda() == LAMBDA_Z2)
+		llPhys = LLL/(zNow*zNow);
 
+	size_t S0 = sizeN*sizeN ;
+	if (commRank() == 0 && sPrec == FIELD_SINGLE) {
+		if (axion->Field() == FIELD_SAXION) {
+			double axMassNow = axion->AxionMass();
+			double saskia    = axion->Saskia();
+
+			if (axion->Precision() == FIELD_DOUBLE) {
+				fprintf(fichero,"%lf %lf %lf %lf %lf %lf %lf %ld %lf %e\n", zNow, axMassNow, llPhys,
+				static_cast<complex<double>*> (axion->mCpu())[idxprint + S0].real(),
+				static_cast<complex<double>*> (axion->mCpu())[idxprint + S0].imag(),
+				static_cast<complex<double>*> (axion->vCpu())[idxprint].real(),
+				static_cast<complex<double>*> (axion->vCpu())[idxprint].imag(),
+				meas.str.strDen, meas.maxTheta, saskia);
+			} else {
+				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", zNow, axMassNow, llPhys,
+				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].real(),
+				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].imag(),
+				static_cast<complex<float> *> (axion->vCpu())[idxprint].real(),
+				static_cast<complex<float> *> (axion->vCpu())[idxprint].imag(),
+				meas.str.strDen, meas.maxTheta, saskia);
+			}
+		} else {
+			if (axion->Precision() == FIELD_DOUBLE) {
+				fprintf(fichero,"%f %f %f %f %f\n", zNow, axion->AxionMass(),
+				static_cast<double*> (axion->mCpu())[idxprint + S0],
+				static_cast<double*> (axion->vCpu())[idxprint], meas.maxTheta);
+			} else {
+				fprintf(fichero,"%f %f %f %f %f\n", zNow, axion->AxionMass(),
+				static_cast<float *> (axion->mCpu())[idxprint + S0],
+				static_cast<float *> (axion->vCpu())[idxprint], meas.maxTheta);
+			}
+		}
+
+		fflush(fichero);
+	}
+}
+*/
 double findZDoom(Scalar *axion)
 {
 	double ct = zInit ;

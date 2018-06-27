@@ -1421,18 +1421,16 @@ int	parseArgs (int argc, char *argv[])
 
 	/*	Remove stop files if present	*/
 	
-		FILE *capa = NULL;
-	if (!((capa  = fopen("./stop", "r")) == NULL)){
-		printf("stop file detected! ... ");
+	FILE *capa = nullptr;
+	if (!((capa  = fopen("./stop", "r")) == nullptr)) {
+		fclose (capa);
+		printf("Stop file detected! ... ");
 		if( remove( "./stop" ) != 0 ){
-			printf("and cannot be deleted. exit!\n");
+			printf("and cannot be deleted. Exit!\n");
 			exit(1);
-		}
-		else{
+		} else
 			printf("and deleted!\n ");
-		}
 	}
-	fclose (capa);
 
 
 	if (zGrid == 1)
