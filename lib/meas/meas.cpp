@@ -14,9 +14,13 @@
 using namespace std;
 
 template<typename Float>
-size_t	Measure	(Scalar *axion, int index, MeasureType meas)
+MeasData	Measure	(Scalar *axion, int index, MeasureType meas)
 {
-	size_t	nStrings = 0;
+	MeasData	retMeas;
+
+	retMeas.maxTheta   = -1;
+	retMeas.str.strDen = -1;
+	retMeas.str.wallDn = -1;
 
 	auto	cTime = Timer();
 
@@ -147,6 +151,7 @@ size_t	Measure	(Scalar *axion, int index, MeasureType meas)
 							  [] (complex<Float> x) { return (double) arg(x); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
+			retMeas.maxTheta = max(abs(thBin.min()),thBin.max());
 		}
 
 		if	(meas & MEAS_BINRHO) {
@@ -169,26 +174,18 @@ size_t	Measure	(Scalar *axion, int index, MeasureType meas)
 		}
 
 		if	(meas & MEAS_STRING) {
-
-			// this is a local rts
-			StringData rts ;
-
 			// LogOut("string ");
 //			LogMsg(VERB_NORMAL, "[Meas %d] string",index);
-			rts = strings(axion);
-			//JAVI check whether outputs a double already!
-			// size_t nStrings = rts.strDen ;
-			nStrings = rts.strDen ;
-			// LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
+			retMeas.str = strings(axion);
 
 			if (meas & MEAS_STRINGMAP)
 			{
 				// LogOut("+map ");
 //				LogMsg(VERB_NORMAL, "[Meas %d] string map",index);
-				if (p3DthresholdMB/((double) nStrings) > 1.)
-					writeString(axion, rts, true);
+				if (p3DthresholdMB/((double) retMeas.str.strDen) > 1.)
+					writeString(axion, retMeas.str, true);
 				else
-					writeString(axion, rts, false);
+					writeString(axion, retMeas.str, false);
 			} else {
 				// LogOut("string alone ");
 			}
@@ -203,6 +200,7 @@ size_t	Measure	(Scalar *axion, int index, MeasureType meas)
 						 [z=zNow] (Float x) -> double { return (double) arg(x); });
 			thBin.run();
 			writeBinner(thBin, "/bins", "thetaB");
+			retMeas.maxTheta = max(abs(thBin.min()),thBin.max());
 		}
 
 //		if	(meas & MEAS_BINRHO)
@@ -248,10 +246,10 @@ size_t	Measure	(Scalar *axion, int index, MeasureType meas)
 //	LogOut("\n");
 	destroyMeas();
 
-	return	nStrings;
+	return	retMeas;
 }
 
-size_t	Measure	(Scalar *axion, int index, MeasureType meas)
+MeasData	Measure	(Scalar *axion, int index, MeasureType meas)
 {
 	if	(axion->Precision() == FIELD_SINGLE)
 		return	Measure<float> (axion,  index,  meas);

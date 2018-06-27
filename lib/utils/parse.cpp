@@ -412,9 +412,9 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Size must be larger than 2.\n");
 				exit(1);
 			}
-
-			if (endredmap == -1)
-				endredmap = sizeN;
+			//JARE change
+			// if (endredmap == -1)
+			// 	endredmap = sizeN;
 
 			i++;
 			procArgs++;
@@ -1418,6 +1418,22 @@ int	parseArgs (int argc, char *argv[])
 			}
 		}
 	}
+
+	/*	Remove stop files if present	*/
+	
+		FILE *capa = NULL;
+	if (!((capa  = fopen("./stop", "r")) == NULL)){
+		printf("stop file detected! ... ");
+		if( remove( "./stop" ) != 0 ){
+			printf("and cannot be deleted. exit!\n");
+			exit(1);
+		}
+		else{
+			printf("and deleted!\n ");
+		}
+	}
+	fclose (capa);
+
 
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;

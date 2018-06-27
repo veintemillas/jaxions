@@ -87,9 +87,7 @@ int	main (int argc, char *argv[])
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
 
-	size_t nStrings = 0;
-
-	double maxTheta = M_PI;
+	MeasData mData;
 
 	double zNow ;
 	double axMassNow;
@@ -119,8 +117,6 @@ int	main (int argc, char *argv[])
 	bool coD = true;
 
 	int strCount = 0;
-	StringData rts;
-
 	double LL1 = myCosmos.Lambda();
 
 	LogOut("--------------------------------------------------\n");
@@ -253,17 +249,14 @@ int	main (int argc, char *argv[])
 
 			if (icstudy){
 				// string control
-				rts = strings(axion);
-				nStrings = rts.strDen;
-				auto strDen = (1./6.)*axion->Delta()*((double) nStrings)*zCur*zCur/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
+				mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
 
 				if (axion->Lambda() == LAMBDA_Z2)
 					llPhys = LL1/((zCur)*(zCur));
+
 				axMassNow = axion->AxionMass();
 				saskia    = axion->Saskia();
 				zShift    = zCur * saskia;
-
-				nStrings = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
 
 				index++;
 			} else
@@ -289,7 +282,7 @@ int	main (int argc, char *argv[])
 
 	if (!restart_flag && (fIndex == -1)) {
 		LogOut("First measurement file %d \n",index);
-		nStrings = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
+		mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
 	} else
 		LogOut("last measurement file was %d \n",index);
 
@@ -319,11 +312,8 @@ int	main (int argc, char *argv[])
 
 			if (axion->Field() == FIELD_SAXION)
 			{
-				if (nStrings < 1000)
-				{
-					rts = strings(axion);
-					nStrings = rts.strDen;
-				}
+				if (mData.str.strDen < 1000)
+					mData.str = strings(axion);
 
 				if ((zNow > zDoom2*0.95) && (coD) && pregammo > 0.)
 				{
@@ -337,11 +327,11 @@ int	main (int argc, char *argv[])
 					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}
 
-				if (nStrings == 0)
+				if (mData.str.strDen == 0)
 					strCount++;
 
 				if (smvarType != CONF_SAXNOISE)
-					if (nStrings == 0 && strCount > safest0)
+					if (mData.str.strDen == 0 && strCount > safest0)
 					{
 						if (axion->Lambda() == LAMBDA_Z2)
 							llPhys = myCosmos.Lambda()/(zNow*zNow);
@@ -350,14 +340,14 @@ int	main (int argc, char *argv[])
 						saskia    = axion->Saskia();
 						zShift    = zNow * saskia;
 
-						Measure (axion, 10000, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN);
+						mData = Measure (axion, 10000, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN);
 
 						LogOut("--------------------------------------------------\n");
 						LogOut(" Theta transition @ z %.4f\n",zNow);
 
 						cmplxToTheta (axion, zShift);
 
-						Measure (axion, 10001, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
+						mData = Measure (axion, 10001, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
 
 						LogOut("--------------------------------------------------\n");
 
@@ -391,13 +381,13 @@ int	main (int argc, char *argv[])
 			break;
 		}
 
-		nStrings = Measure (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+		mData = Measure (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
 		auto pFler = prof.Prof().cbegin();
 		auto pName = pFler->first;
-		profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
+		profiler::printMiniStats(zNow, mData.str, PROF_PROP, pName);
 
 		checkTime(axion, index);
 	}
@@ -427,7 +417,7 @@ int	main (int argc, char *argv[])
 		if (endredmap > 0)
 			mesa = mesa | MEAS_REDENE3DMAP ;
 
-		Measure (axion, index, mesa);
+		mData = Measure (axion, index, mesa);
 
 		if (wkb2z >= zFinl) {
 			WKB wonka(axion, axion);
@@ -455,7 +445,7 @@ int	main (int argc, char *argv[])
 			if (endredmap > 0)
 				mesa = mesa | MEAS_REDENE3DMAP;
 
-			Measure (axion, index, mesa);
+			mData = Measure (axion, index, mesa);
 		}
 	} else {
 		if ((prinoconfo >= 2)) {

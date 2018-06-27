@@ -228,6 +228,12 @@
 			size_t	wallDn;
 		}	StringData;
 
+		typedef	struct	MeasData_v
+		{
+			StringData	str;
+			double		maxTheta;
+		}	MeasData;
+
 		typedef	enum	FFTtype_s {
 			FFT_CtoC_MtoM,
 			FFT_CtoC_M2toM2,
@@ -276,6 +282,7 @@
 			SPECTRUM_GV	= 6,
 			SPECTRUM_P	= 8,
 			SPECTRUM_GaS    = 16,
+			SPECTRUM_GaSadd= 32,
 			SPECTRUM_KS	= 65,
 			SPECTRUM_GS	= 66,
 			SPECTRUM_VS	= 68,

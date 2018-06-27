@@ -441,6 +441,9 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nsp?') :
         return nsp_check
 
+    if (something == 'nspG?') :
+        return 'nSpectrum/sG' in f
+
     if (something[0:3] == 'nsp') and not nsp_check :
         if printerror :
             print(""" [gm] Warning: No nSpec in file. Returning 'None' """)
@@ -480,7 +483,7 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nspS?') :
         return ssp_check
 
-    if (something[0:3] == 'nspS') and  ssp_check :
+    if (something[0:3] == 'nsp') and (something[-1] == 'S')and  ssp_check :
         powmax = f['nSpectrum/sKS/data/'].size
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
         if (something == 'nspKS'):

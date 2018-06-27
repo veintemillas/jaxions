@@ -21,6 +21,7 @@
 		std::vector<double>	binPS;
 
 		std::vector<double>	cosTable;
+		std::vector<double>	cosTable2;
 
 		Scalar			*field;
 
