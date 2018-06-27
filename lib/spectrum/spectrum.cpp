@@ -226,7 +226,6 @@ void	SpecBin::fillBins	() {
 					case	SPECTRUM_GaSadd:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						break;
-						break;
 					case	SPECTRUM_NN:
 						binPS[j] += tBinPS[j + i*powMax];
 						break;
