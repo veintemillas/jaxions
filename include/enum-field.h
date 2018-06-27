@@ -38,7 +38,7 @@
 		typedef enum	ParityType_s
 		{
 			PARITY_EVEN = 0,
-			PARITY_ODD = 1,
+			PARITY_ODD  = 1,
 		}	ParityType;
 
 		typedef enum	FieldPrecision_s
@@ -63,8 +63,8 @@
 			STRING_XY_NEGATIVE = 8,
 			STRING_YZ_NEGATIVE = 16,
 			STRING_ZX_NEGATIVE = 32,
-			STRING_WALL	       = 64,
-			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
+			STRING_WALL	   = 64,
+			STRING_MASK	   = 128,     //used to exclude spectra and energy sums
 		}	StringType;
 
 		typedef	enum	LambdaType_s
@@ -82,29 +82,28 @@
 
 		typedef	enum	VqcdType_s
 		{
-			VQCD_1			= 1,		// First version QCD potential
-			VQCD_2			= 2,		// Second version QCD potential
-			VQCD_1_PQ_2		= 4,		// PQ version QCD potential
+			VQCD_1		     = 1,		// First version QCD potential
+			VQCD_2		     = 2,		// Second version QCD potential
+			VQCD_1_PQ_2	     = 4,		// PQ version QCD potential
 
+			VQCD_1_RHO	     = 8193,		// First version QCD potential, only rho evolution
+			VQCD_2_RHO	     = 8194,		// Second version QCD potential, only rho evolution
+			VQCD_1_PQ_2_RHO	     = 8196,		// PQ version QCD potential, only rho evolution
 
-			VQCD_1_RHO		= 8193,		// First version QCD potential, only rho evolution
-			VQCD_2_RHO		= 8194,		// Second version QCD potential, only rho evolution
-			VQCD_1_PQ_2_RHO		= 8196,		// PQ version QCD potential, only rho evolution
+			VQCD_1_DRHO	     = 16385,	// First version QCD potential, rho damping
+			VQCD_2_DRHO	     = 16386,	// Second version QCD potential, rho damping
+			VQCD_1_PQ_2_DRHO     = 16388,	// PQ version QCD potential, rho damping
 
-			VQCD_1_DRHO		= 16385,	// First version QCD potential, rho damping
-			VQCD_2_DRHO		= 16386,	// Second version QCD potential, rho damping
-			VQCD_1_PQ_2_DRHO	= 16388,	// PQ version QCD potential, rho damping
+			VQCD_1_DALL	     = 32769,	// First version QCD potential, full damping
+			VQCD_2_DALL	     = 32770,	// Second version QCD potential, full damping
+			VQCD_1_PQ_2_DALL     = 32772,	// PQ version QCD potential, full damping
 
-			VQCD_1_DALL		= 32769,	// First version QCD potential, full damping
-			VQCD_2_DALL		= 32770,	// Second version QCD potential, full damping
-			VQCD_1_PQ_2_DALL	= 32772,	// PQ version QCD potential, full damping
-
-			VQCD_1_DRHO_RHO		= 24577,	// First version QCD potential, rho damping and only rho evolution
-			VQCD_2_DRHO_RHO		= 24578,	// Second version QCD potential, rho damping and only rho evolution
-			VQCD_1_PQ_2_DRHO_RHO	= 24580,	// PQ version QCD potential, rho damping and only rho evolution
-			VQCD_1_DALL_RHO		= 40961,	// First version QCD potential, full damping and only rho evolution
-			VQCD_2_DALL_RHO		= 40962,	// Second version QCD potential, full damping and only rho evolution
-			VQCD_1_PQ_2_DALL_RHO	= 40964,	// PQ version QCD potential, full damping and only rho evolution
+			VQCD_1_DRHO_RHO	     = 24577,	// First version QCD potential, rho damping and only rho evolution
+			VQCD_2_DRHO_RHO	     = 24578,	// Second version QCD potential, rho damping and only rho evolution
+			VQCD_1_PQ_2_DRHO_RHO = 24580,	// PQ version QCD potential, rho damping and only rho evolution
+			VQCD_1_DALL_RHO	     = 40961,	// First version QCD potential, full damping and only rho evolution
+			VQCD_2_DALL_RHO	     = 40962,	// Second version QCD potential, full damping and only rho evolution
+			VQCD_1_PQ_2_DALL_RHO = 40964,	// PQ version QCD potential, full damping and only rho evolution
 
 			/*	VQCD Masks	*/
 			VQCD_TYPE		= 7,		// Masks base potential
@@ -128,14 +127,15 @@
 
 		typedef enum	ConfsubType_s
 		{
-			CONF_RAND = 0,
-			CONF_STRINGXY = 1,
-			CONF_STRINGYZ = 2,
+		/* Why do we need explicit numbers here??? */
+			CONF_RAND         = 0,
+			CONF_STRINGXY     = 1,
+			CONF_STRINGYZ     = 2,
 			CONF_MINICLUSTER0 = 3,
-			CONF_MINICLUSTER = 4,
-			CONF_AXNOISE = 5,
-			CONF_SAXNOISE = 6,
-			CONF_AX1MODE = 7,
+			CONF_MINICLUSTER  = 4,
+			CONF_AXNOISE      = 5,
+			CONF_SAXNOISE     = 6,
+			CONF_AX1MODE      = 7,
 		}	ConfsubType;
 
 		typedef enum	DeviceType_s
@@ -207,17 +207,17 @@
 
 		typedef	enum	VerbosityLevel_s
 		{
-			VERB_SILENT=0,
-			VERB_NORMAL=1,
-			VERB_HIGH=2,
+			VERB_SILENT = 0,
+			VERB_NORMAL = 1,
+			VERB_HIGH   = 2,
 		}	VerbosityLevel;
 
 		typedef	enum	PrintConf_s
 		{
-			PRINTCONF_NONE=0,
-			PRINTCONF_INITIAL=1,
-			PRINTCONF_FINAL=2,
-			PRINTCONF_BOTH=3,
+			PRINTCONF_NONE    = 0,
+			PRINTCONF_INITIAL = 1,
+			PRINTCONF_FINAL   = 2,
+			PRINTCONF_BOTH    = 3,
 		}	PrintConf;
 
 
@@ -264,8 +264,8 @@
 			PROP_SOMELYAN2	= 5,
 			PROP_SOMELYAN4	= 9,
 			PROP_SRKN4	= 17,
-			PROP_MLEAP = 32,
-			PROP_SMLEAP = 33,
+			PROP_MLEAP      = 32,
+			PROP_SMLEAP     = 33,
 			PROP_MASK	= 62,		// 2+4+8+16+32 So far... Masks the integrator type, removing the spectral flag
 		}	PropType;
 
@@ -275,46 +275,46 @@
 			SPECTRUM_V	= 4,
 			SPECTRUM_GV	= 6,
 			SPECTRUM_P	= 8,
-			SPECTRUM_GaS= 16,
+			SPECTRUM_GaS    = 16,
 			SPECTRUM_KS	= 65,
 			SPECTRUM_GS	= 66,
 			SPECTRUM_VS	= 68,
-			SPECTRUM_GVS= 70,
+			SPECTRUM_GVS    = 70,
 			SPECTRUM_PS	= 72,
 			SPECTRUM_NN	= 128,
 		}	SpectrumType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 
-		typedef	enum	MeasurementType_s {
-			MEAS_BINTHETA			= 1,
-			MEAS_BINRHO				= 2,
-			MEAS_BINLOGTHETA2	= 4,
-			MEAS_BINDELTA   	= 8,
+		typedef	enum	MeasureType_s {
+			MEAS_BINTHETA     = 1,
+			MEAS_BINRHO       = 2,
+			MEAS_BINLOGTHETA2 = 4,
+			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
 			// MEAS_BIN...	= 16,
 			// MEAS_BIN...	= 32,
-			MEAS_STRING				= 64,
-			MEAS_STRINGMAP		= 128,  	// 128 + 64
-			MEAS_ENERGY				= 256,
-			MEAS_ENERGY3DMAP	= 512,		// 512 + 256
+			MEAS_STRING       = 64,
+			MEAS_STRINGMAP    = 128,  	// 128 + 64
+			MEAS_ENERGY       = 256,
+			MEAS_ENERGY3DMAP  = 512,		// 512 + 256
 			MEAS_REDENE3DMAP  = 1024, 	// 1024 + 512 + 256
-			MEAS_2DMAP				= 2048,
-			MEAS_3DMAP				= 4096,
+			MEAS_2DMAP        = 2048,
+			MEAS_3DMAP        = 4096,
 			//                  8192
-			MEAS_PSP_A				= 16384, 	// 16384+768 (requires calculation of energy map  = 768)
-			MEAS_PSP_S				= 32768, 	// 32768+16384+768 ... requires also the previous
-			MEAS_NSP_A				= 65536,
-			MEAS_NSP_S				= 131072,
-			MEAS_NNSPEC				= 262144, 	// number of modes per bin for normalisation purposes
+			MEAS_PSP_A        = 16384, 	// 16384+768 (requires calculation of energy map  = 768)
+			MEAS_PSP_S        = 32768, 	// 32768+16384+768 ... requires also the previous
+			MEAS_NSP_A        = 65536,
+			MEAS_NSP_S        = 131072,
+			MEAS_NNSPEC       = 262144, 	// number of modes per bin for normalisation purposes
 			// MASK for any spectrum
-			MEAS_SPECTRUM 		= 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
-			MEAS_SPECTRUMA 		= 81920, 	  // 16384  + 65536  (any of the axion spectra)
+			MEAS_SPECTRUM     = 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			MEAS_SPECTRUMA    = 81920, 	  // 16384  + 65536  (any of the axion spectra)
 			// MASK for those that require energy
 			MEAS_NEEDENERGY   = 50952,				// 8 + 256 + 512 + 1024 + 16384 + 32768
 			// MASK for those that require energy saved in m2
 			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
-		}	MeasurementType;
+		}	MeasureType;
 
 		typedef	enum	FindType_s {
 			FIND_MAX,

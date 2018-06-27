@@ -29,9 +29,9 @@ double	findzdoom(Scalar *axion);
 void	checkTime (Scalar *axion, int index);
 
 template<typename Float>
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa);
+void	Measureme  (Scalar *axiona,  int indexa, MeasureType measa);
 
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa);
+void	Measureme  (Scalar *axiona,  int indexa, MeasureType measa);
 
 //-point to print
 size_t idxprint = 0 ;
@@ -606,7 +606,7 @@ int	main (int argc, char *argv[])
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		MeasurementType_s mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
+		MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
 
 		if ((prinoconfo >= 2) && (wkb2z < 0)) {
 			LogOut ("Dumping final configuration %05d ...", index);
@@ -635,7 +635,7 @@ int	main (int argc, char *argv[])
 
 			index++;
 
-			MeasurementType_s mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
+			MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
 
 			if (prinoconfo >= 2) {
 				LogOut ("Dumping final WKBed configuration %05d ...", index);
@@ -770,7 +770,7 @@ void	checkTime (Scalar *axion, int index) {
 }
 
 
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
+void	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 {
 	if (axiona->Precision() == FIELD_SINGLE)
 	{
@@ -784,7 +784,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 
 
 template<typename Float>
-void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
+void	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 {
 
 	auto	cTime = Timer();
@@ -823,13 +823,13 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_NEEDENERGYM2)
 		{
 			// LogOut("energy (map->m2) ");
-			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2",index);
+			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2", indexa);
 			energy(axiona, eRes, true, shiftz);
 
 			if (measa & MEAS_BINDELTA)
 			{
 				// LogOut("bindelta ");
-				LogMsg(VERB_NORMAL, "[Meas %d] bin energy axion (delta)",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] bin energy axion (delta)", indexa);
 				// JARE possible problem m2 saved as double in _DOUBLE?
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), axiona->Size(),
@@ -840,17 +840,17 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 
 			if (measa & MEAS_ENERGY3DMAP){
 				// LogOut("write eMap ");
-				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens", indexa);
 				writeEDens(axiona);
 			}
 		} // no m2 map
 		else{
 			// LogOut("energy (sum)");
-			LogMsg(VERB_NORMAL, "[Meas %d] called energy (no map)",index);
+			LogMsg(VERB_NORMAL, "[Meas %d] called energy (no map)", indexa);
 			energy(axiona, eRes, false, shiftz);
 		}
 
-		LogMsg(VERB_NORMAL, "[Meas %d] write energy",index);
+		LogMsg(VERB_NORMAL, "[Meas %d] write energy", indexa);
 		writeEnergy(axiona, eRes);
 	}
 
@@ -862,7 +862,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_PSP_A)
 		{
 				// LogOut("PSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] PSPA",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] PSPA", indexa);
 				// at the moment runs PA and PS if in saxion mode
 				// perhaps we should create another psRun() YYYEEEESSSSS
 				specAna.pRun();
@@ -872,7 +872,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_REDENE3DMAP){
 				if ( endredmap > 0){
 					// LogOut("redMap->%d! ",sizeN/endredmap);
-					LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",index,sizeN/endredmap);
+					LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig", indexa, sizeN/endredmap);
 					int nena = sizeN/endredmap ;
 					specAna.filter(nena);
 					writeEDensReduced(axiona, indexa, endredmap, endredmap/zGrid);
@@ -882,7 +882,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if ( (measa & MEAS_PSP_S) & (axiona->Field() == FIELD_SAXION))
 		{
 				// LogOut("PSPS ");
-				LogMsg(VERB_NORMAL, "[Meas %d] PSPS",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] PSPS", indexa);
 				// has been computed before
 				// JAVI : SURE PROBLEM OF PSA PSS FILTER
 				// specAna.pSRun();
@@ -891,7 +891,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_NSP_A)
 		{
 				// LogOut("NSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA", indexa);
 				specAna.nRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
@@ -901,7 +901,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_NSP_S)
 		{
 				// LogOut("NSPS ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ", indexa);
 				specAna.nSRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
@@ -910,7 +910,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_NNSPEC)
 		{
 				// LogOut("Nmod ");
-				LogMsg(VERB_NORMAL, "[Meas %d] Nmod ",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] Nmod ", indexa);
 				specAna.nmodRun();
 				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
 		}
@@ -922,7 +922,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 			if (measa & MEAS_BINTHETA)
 			{
 				// LogOut("binT ");
-				LogMsg(VERB_NORMAL, "[Meas %d] bin theta",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] bin theta", indexa);
 					Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 									 [] (complex<Float> x) { return (double) arg(x); });
 					thBin.run();
@@ -931,7 +931,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 				if (measa & MEAS_BINRHO)
 				{
 					// LogOut("binR ");
-					LogMsg(VERB_NORMAL, "[Meas %d] bin rho",index);
+					LogMsg(VERB_NORMAL, "[Meas %d] bin rho", indexa);
 					float z_now = *axiona->zV();
 					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 										[z=z_now] (complex<Float> x) { return (double) abs(x)/z; } );
@@ -941,7 +941,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 					if (measa& MEAS_BINLOGTHETA2)
 					{
 						// LogOut("binL ");
-						LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",index);
+						LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ", indexa);
 						Binner<3000,complex<Float>> logth2Bin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 										 [] (complex<Float> x) { return (double) log10(1.0e-10+pow(arg(x),2)); });
 						logth2Bin.run();
@@ -955,7 +955,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 				StringData rtss ;
 
 				// LogOut("string ");
-				LogMsg(VERB_NORMAL, "[Meas %d] string",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] string", indexa);
 				rtss = strings(axiona);
 				//JAVI check whether outputs a double already!
 				// size_t nstrings_globale = rts.strDen ;
@@ -965,7 +965,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 				if (measa & MEAS_STRINGMAP)
 				{
 					// LogOut("+map ");
-					LogMsg(VERB_NORMAL, "[Meas %d] string map",index);
+					LogMsg(VERB_NORMAL, "[Meas %d] string map", indexa);
 					if (p3DthresholdMB/((double) nstrings_globale) > 1.)
 						writeString(axiona, rtss, true);
 					else
@@ -981,7 +981,7 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		if (measa & MEAS_BINTHETA)
 		{
 			// LogOut("binthetha ");
-			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ",index);
+			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ", indexa);
 				Binner<3000,Float> thBin(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 								 [z=z_now] (Float x) { return (double) arg(x); });
 				thBin.run();
@@ -989,12 +989,12 @@ void	Measureme  (Scalar *axiona,  int indexa, MeasurementType_s measa)
 		}
 			if (measa & MEAS_BINRHO)
 			{
-				LogMsg(VERB_NORMAL, "[Meas %d] bin rho called in axion mode. Ignored.",index);
+				LogMsg(VERB_NORMAL, "[Meas %d] bin rho called in axion mode. Ignored.", indexa);
 			}
 				if (measa& MEAS_BINLOGTHETA2)
 				{
 					// LogOut("bintt2 ");
-					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",index);
+					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ", indexa);
 					Binner<3000,Float> logth2Bin2(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 									 [z=z_now] (Float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
 					logth2Bin2.run();
