@@ -1177,7 +1177,7 @@ class simu:
         self.anynsp = False
 
         for mf in self.mfiles:
-            if gm(mf,'nsp?') :
+            if gm(mf,'nsp?') and gm(mf,'ftype') =='Axion':
                 self.mfilesn.append(mf)
                 self.anynsp = True
 
