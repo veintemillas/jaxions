@@ -128,6 +128,8 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_GV:
 				case 	SPECTRUM_GaS:
 				case 	SPECTRUM_GaSadd:
+				case 	SPECTRUM_P:
+				case 	SPECTRUM_PS: 
 					w  = sqrt(k2 + mass);
 					m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
@@ -250,6 +252,7 @@ void	SpecBin::fillBins	() {
 			std::copy_n(binP.begin(), powMax, tBinP.begin());
 			MPI_Allreduce(tBinP.data(), binP.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
+
 		case	SPECTRUM_PS:
 		case	SPECTRUM_NN:
 			std::copy_n(binPS.begin(), powMax, tBinPS.begin());
@@ -267,9 +270,9 @@ void	SpecBin::fillBins	() {
 			break;
 
 		// we sum tBinPS into tBinG and reduce into binG / tBinG remains
-		std::copy_n(binPS.begin(), powMax, tBinG.begin());
-		MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-			break;
+		// std::copy_n(binPS.begin(), powMax, tBinG.begin());
+		// MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		// 	break;
 		default:
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
