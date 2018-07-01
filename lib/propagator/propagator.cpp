@@ -225,9 +225,37 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 			break;
 
 			case PROP_MLEAP:
+				// switch (pot) {
+				// 	case VQCD_1:
+				// 		prop = std::make_unique<PropMLeap<VQCD_1>>		(field, spec);
+				// 		break;
+				// 	case VQCD_1_DRHO:
+				// 		prop = std::make_unique<PropMLeap<VQCD_1_DRHO>>		(field, spec);
+				// 		break;
+				//
+				// 	case VQCD_1_PQ_2:
+				// 		prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, spec);
+				// 		break;
+				// 	case VQCD_1_PQ_2_RHO:
+				// 		prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, spec);
+				// 		break;
+				// 	case VQCD_2:
+				// 		prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
+				// 		break;
+				//
+				// 	case VQCD_NONE:
+				// 		prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
+				// 		break;
+				// }
 				switch (pot) {
 					case VQCD_1:
 						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, spec);
+						break;
+					case VQCD_1_RHO:
+						prop = std::make_unique<PropMLeap<VQCD_1_RHO>>		(field, spec);
+						break;
+					case VQCD_1_DRHO:
+						prop = std::make_unique<PropMLeap<VQCD_1_DRHO>>		(field, spec);
 						break;
 					case VQCD_1_PQ_2:
 						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, spec);
@@ -235,16 +263,23 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					case VQCD_1_PQ_2_RHO:
 						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, spec);
 						break;
+					case VQCD_1_PQ_2_DRHO:
+						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_DRHO>>	(field, spec);
+						break;
 					case VQCD_2:
 						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
 						break;
-
+					case VQCD_2_RHO:
+						prop = std::make_unique<PropMLeap<VQCD_2_RHO>>		(field, spec);
+						break;
+					case VQCD_2_DRHO:
+						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, spec);
+						break;
 					case VQCD_NONE:
 						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
 						break;
-				}
 				break;
-
+			}
 		case PROP_RKN4:
 			switch (pot) {
 				case VQCD_1:
