@@ -1,3 +1,4 @@
+#include <cmath>
 #include <algorithm>
 #include <complex>
 #include <cstring>
@@ -129,9 +130,9 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_GaS:
 				case 	SPECTRUM_GaSadd:
 				case 	SPECTRUM_P:
-				case 	SPECTRUM_PS: 
+				case 	SPECTRUM_PS:
 					w  = sqrt(k2 + mass);
-					m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
+					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
 					break;
 
@@ -140,7 +141,7 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_VS:
 				case 	SPECTRUM_GVS:
 					w  = sqrt(k2 + massSax);
-					m  = abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
+					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
 					break;
 				case SPECTRUM_NN:
@@ -333,34 +334,6 @@ void	SpecBin::pRun	() {
 
 	field->setM2     (M2_ENERGY_FFT);
 
-	//JAVI -> move it to a different function!
-	// if (field->Field() == FIELD_SAXION) {
-	// 	for (int sl=Sm-1; sl>=0; sl--) {
-	// 		auto	oOff = sl*dSize*(Ly) + dSize*(Lz+2)*Ly*Ly;
-	// 		auto	fOff = sl*dSize*(Ly+2);
-	// 		memmove	(mA+fOff, mA+oOff, dataLine);
-	// 	}
-	//
-	// 	auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
-	// 	myPlan.run(FFT_FWD);
-	//
-	// 	switch (fPrec) {
-	// 		case	FIELD_SINGLE:
-	// 			if (spec)
-	// 				fillBins<float,  SPECTRUM_PS, true> ();
-	// 			else
-	// 				fillBins<float,  SPECTRUM_PS, false>();
-	// 			break;
-	//
-	// 		case	FIELD_DOUBLE:
-	// 			if (spec)
-	// 				fillBins<double,  SPECTRUM_PS, true> ();
-	// 			else
-	// 				fillBins<double,  SPECTRUM_PS, false>();
-	// 			break;
-	// 	}
-	// }
-
 }
 
 // axion number spectrum
@@ -401,13 +374,13 @@ void	SpecBin::nRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 								// misses a factor of conformal time to be K
-								m2sa[odx] = ztime*imag(va[idx]/(ma[idx]-zaskaf))+arg(ma[idx]) ;
+								m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
 								// m2sa[odx] = ztime*imag(va[idx]/(ma[idx]))+arg(ma[idx]) ;
 
 								// gradient x
 								size_t ixM = ((ix + 1) % Ly) + yi + zi;
 								// shift and only one neighbur
-								m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
+								m2sax[odx] = (2.f*ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
 								// No shift version
 								// m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]));
 								// 2-neighbor version
@@ -440,13 +413,13 @@ void	SpecBin::nRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 
-								m2sa[odx] = ztime*imag(va[idx]/(ma[idx]-zaska))+arg(ma[idx]) ;
+								m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaska))+arg(ma[idx]) ;
 								// m2sa[odx] = ztime*imag(va[idx]/(ma[idx]))+arg(ma[idx]) ;
 								// gradient x
 
 								size_t ixM = ((ix + 1) % Ly) + yi + zi;
 								// shift and only one neighbur
-								m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
+								m2sax[odx] = (2*ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
 								// No shift version
 								// m2sax[odx] = (2*ztime/depta)*imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]));
 								// 2-neighbor version
@@ -541,7 +514,7 @@ void	SpecBin::nRun	() {
 								// gradient y
 								size_t iyM = ix + yp + zi;
 								// shift and one neighbor
-								m2sa[odx] = (2.f*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
+								m2sa[odx] = (2.f*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
 								// shift and two neighbours
 								// size_t iym = ix + ym + zi;
 								// m2sa[odx] = (ztime/(2.f*depta))*imag((ma[iyM]-ma[iym])/(ma[idx]-zaskaf));
@@ -549,7 +522,7 @@ void	SpecBin::nRun	() {
 								// gradient z
 								size_t izM = ix + yi + zp;
 								// shift and one neighbor
-								m2sax[odx] = (2.f*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
+								m2sax[odx] = (2.f*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
 
 								// shift and two neighbours
 								// size_t izm = ix + yi + zm;
@@ -594,7 +567,7 @@ void	SpecBin::nRun	() {
 								// gradient y
 								size_t iyM = ix + yp + zi;
 								// shift and one neighbor
-								m2sa[odx] = (2.f*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
+								m2sa[odx] = (2.f*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
 								// shift and two neighbours
 								// size_t iym = ix + ym + zi;
 								// m2sa[odx] = (ztime/(2.0*depta))*imag((ma[iyM]-ma[iym])/(ma[idx]-zaska));
@@ -602,7 +575,7 @@ void	SpecBin::nRun	() {
 								// gradient z
 								size_t izM = ix + yi + zp;
 								// shift and one neighbor
-								m2sax[odx] = (2.f*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
+								m2sax[odx] = (2.f*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
 								// shift and two neighbours
 								// size_t izm = ix + yi + zm;
 								// m2sax[odx] = (ztime/(2.0*depta))*imag((ma[izM]-ma[izm])/(ma[idx]-zaska));
@@ -760,7 +733,7 @@ void	SpecBin::nSRun	() {
 
 								float modu = std::abs(ma[idx]-zaskaf);
 								// float modu = std::abs(ma[idx]);
-								m2sa[odx] = real(va[idx]*modu/(ma[idx]-zaskaf)) ;
+								m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaskaf)) ;
 								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
 								m2sax[odx] = modu - ztime ;
 							}
@@ -789,9 +762,9 @@ void	SpecBin::nSRun	() {
 								size_t odx = ix + yo + zo;
 								size_t idx = ix + yi + zi;
 
-								double modu = abs(ma[idx]-zaska);
+								double modu = std::abs(ma[idx]-zaska);
 								// double modu = abs(ma[idx]);
-								m2sa[odx] = real(va[idx]*modu/(ma[idx]-zaska)) ;
+								m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaska)) ;
 								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
 								m2sax[odx] = modu - ztime ;
 							}
