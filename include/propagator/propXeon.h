@@ -269,36 +269,39 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				case	VQCD_DAMP_RHO:
 				{
+					//New implementation
 					tmp = opCode(mul_pd, mel, mPy);
 #if	defined(__AVX__)// || defined(__AVX512F__)
 					auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
 #else
 					auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
 #endif
+
+					// vecma = MA
+					// mel = M, mMx = A
 					tmp = opCode(mul_pd, mel, mMx);
 #if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
+					auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000001), tmp);
 #else
 					auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-					auto veca = opCode(fmadd_pd, mel, opCode(set1_pd, GGiZ), mMx);
-					tmp = opCode(sub_pd,
-						opCode(fmadd_pd, veca, opCode(set1_pd, dzc), mPy),
-						opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-							opCode(fmadd_pd, vecmv, opCode(set1_pd, 2.), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+tmp = opCode(sub_pd,
+	opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
+	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+		opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #else
-					auto veca = opCode(add_pd, mMx, opCode(mul_pd, mel, opCode(set1_pd, GGiZ)));
-					tmp = opCode(sub_pd,
-						opCode(add_pd, mPy, opCode(mul_pd, veca, opCode(set1_pd, dzc))),
-						opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-							opCode(add_pd,
-								opCode(mul_pd, vecmv, opCode(set1_pd, 2.)),
-								opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+tmp = opCode(sub_pd,
+	opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
+	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+		opCode(add_pd,
+			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0)),
+			opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #endif
-					break;
 				}
+				break;
 
 				case	VQCD_DAMP_ALL:
 #if	defined(__AVX512F__) || defined(__FMA__)
@@ -575,6 +578,11 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 				case	VQCD_DAMP_RHO:
 				{
+// NEW implementation
+// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt - 2 |M|^2/t)
+// recall
+// V=mPy     A=mMx    |M|^2=mPx      M=mel
+// vecmv = MV
 					tmp = opCode(mul_ps, mel, mPy);
 #if	defined(__AVX__)// || defined(__AVX512F__)
 					auto vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
@@ -582,35 +590,29 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 					auto vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
 
-					// vecma
+					// vecma = MA
+					// mel = M, mMx = A
 					tmp = opCode(mul_ps, mel, mMx);
 #if	defined(__AVX__)// || defined(__AVX512F__)
 					auto vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
 #else
 					auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
-					// mPy=V veca=A mPx=|M|^2
-					// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt)
+
 #if	defined(__AVX512F__) || defined(__FMA__)
-					// damping rho direction
-					// add GGGG term to acceleration
-					auto veca = opCode(fmadd_ps, mel, opCode(set1_ps, GGiZ), mMx);
-
-					tmp = opCode(sub_ps,
-						opCode(fmadd_ps, veca, opCode(set1_ps, dzc), mPy),
-						opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-							opCode(fmadd_ps, vecmv, opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+tmp = opCode(sub_ps,
+	opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy),
+	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
+		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #else
-					// damping rho direction
-					// add GGGG term to acceleration
-					auto veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGiZ)));
 
-					tmp = opCode(sub_ps,
-						opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
-						opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-							opCode(add_ps,
-								opCode(mul_ps, vecmv, opCode(set1_ps, 2.f)),
-								opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+tmp = opCode(sub_ps,
+	opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc))),
+	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
+		opCode(add_ps,
+			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f)),
+			opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #endif
 				}
 				break;
@@ -973,35 +975,39 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 					case	VQCD_DAMP_RHO:
 					{
+						//New implementation
 						tmp = opCode(mul_pd, mel, mPy);
-#if	defined(__AVX__)// || defined(__AVX512F__)
+	#if	defined(__AVX__)// || defined(__AVX512F__)
 						auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
-#else
+	#else
 						auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
-#endif
-						tmp = opCode(mul_pd, mel, mMx);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-						auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
-#else
-						auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
-#endif
-						auto veca = opCode(add_pd, mMx, opCode(mul_pd, mel, opCode(set1_pd, GGiZ)));
+	#endif
 
-#if	defined(__AVX512F__) || defined(__FMA__)
-						tmp = opCode(sub_pd,
-							opCode(fmadd_pd, veca, opCode(set1_pd, dzc), mPy),
-							opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-								opCode(fmadd_pd, vecmv, opCode(set1_pd, 2.), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
-#else
-						tmp = opCode(sub_pd,
-							opCode(add_pd, mPy, opCode(mul_pd, veca, opCode(set1_pd, dzc))),
-							opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-								opCode(add_pd,
-									opCode(mul_pd,vecmv,opCode(set1_pd, 2.)),
-									opCode(mul_pd,vecma,opCode(set1_pd, dzc)))));
-#endif
-						break;
+						// vecma = MA
+						// mel = M, mMx = A
+						tmp = opCode(mul_pd, mel, mMx);
+	#if	defined(__AVX__)// || defined(__AVX512F__)
+						auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000001), tmp);
+	#else
+						auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
+	#endif
+
+	#if	defined(__AVX512F__) || defined(__FMA__)
+	// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+	tmp = opCode(sub_pd,
+		opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
+		opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+			opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+	#else
+	tmp = opCode(sub_pd,
+		opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
+		opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+			opCode(add_pd,
+				opCode(mul_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0)),
+				opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+	#endif
 					}
+					break;
 
 					case	VQCD_DAMP_ALL:
 #if	defined(__AVX512F__) || defined(__FMA__)
@@ -1254,27 +1260,42 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 					case	VQCD_DAMP_RHO:
 					{
-						tmp = opCode(mul_ps, mel, mPy);
+// NEW implementation
+// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt - 2 |M|^2/t)
+// recall
+// V=mPy     A=mMx    |M|^2=mPx      M=mel
+// vecmv = MV
+					tmp = opCode(mul_ps, mel, mPy);
 #if	defined(__AVX__)// || defined(__AVX512F__)
-						auto vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
+					auto vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
 #else
-						auto vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
+					auto vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
 
-						tmp = opCode(mul_ps, mel, mMx);
+					// vecma = MA
+					// mel = M, mMx = A
+					tmp = opCode(mul_ps, mel, mMx);
 #if	defined(__AVX__)// || defined(__AVX512F__)
-						auto vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
+					auto vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
 #else
-						auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
+					auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
 #endif
-						auto veca = opCode(add_ps, mMx, opCode(mul_ps, mel, opCode(set1_ps, GGiZ)));
 
-						tmp = opCode(sub_ps,
-							opCode(add_ps, mPy, opCode(mul_ps, veca, opCode(set1_ps, dzc))),
-							opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-								opCode(add_ps,
-									opCode(mul_ps, vecmv, opCode(set1_ps, 2.f)),
-									opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+#if	defined(__AVX512F__) || defined(__FMA__)
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+tmp = opCode(sub_ps,
+	opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy),
+	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
+		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+#else
+
+tmp = opCode(sub_ps,
+	opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc))),
+	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
+		opCode(add_ps,
+			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f)),
+			opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+#endif
 					}
 					break;
 
