@@ -934,7 +934,7 @@ MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 					// Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 					// 					[z=z_now,s=shhhs] (complex<Float> x) { return (double) abs(x-s)/z; } );
 					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
-										[z=z_now] (complex<Float> x) { return (double) cabs(x)/z; } );
+										[z=z_now] (complex<Float> x) { return (double) abs(x)/z; } );
 					rhoBin.run();
 					writeBinner(rhoBin, "/bins", "rhoB");
 				}
