@@ -3,6 +3,7 @@
 
 	#include <array>
 	#include <algorithm>
+	#include <cmath>
 	#include <functional>
 	#include <string>
 	#include <mpi.h>
@@ -75,7 +76,7 @@
 
 			LogMsg (VERB_NORMAL, "Binner found %f min, %f max", minVal, maxVal);
 
-			if (abs(maxVal - minVal) < 1e-10) { LogError ("Error: max-min too close! %f min, %f max %f %d ",minVal, maxVal,abs(maxVal - minVal),abs(maxVal - minVal)<1e-10); bins.fill(maxVal); return; }
+			if (fabs(maxVal - minVal) < 1e-10) { LogError ("Error: max-min too close!"); bins.fill(maxVal); return; }
 			step    = (maxVal-minVal)/((double) (N-1));
 			baseVal = minVal - step*0.5;
 
@@ -113,7 +114,7 @@
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
 
-		if (abs(maxVal - minVal) < 1.e-10) {
+		if (fabs(maxVal - minVal) < 1.e-10) {
 			LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
 			LogError ("Error: max value can't be lower or equal than min"); bins.fill(maxVal); return; }
 
