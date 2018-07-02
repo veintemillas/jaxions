@@ -215,6 +215,11 @@ def gm(address,something='summary',printerror=False):
         else :
             nqcd = 7.0
         return nqcd ;
+    if something == 'shift':
+        if '/potential/' in f:
+            return f['/potential/'].attrs[u'Shift'] ;
+        else:
+            return 0.0 ;
     if something == 'delta':
         L = f.attrs[u'Physical size']
         N = f.attrs[u'Size']
@@ -908,7 +913,8 @@ def logbin(logbins, mincon, maxcon, N, X):
 def thetabin(file, X=10):
     return linbin(gm(file,'binthetaB'), gm(file,'binthetaBmin'), gm(file,'binthetaBmax'), gm(file,'Size'), X) ;
 
-
+def rhobin(file, X=10):
+    return linbin(gm(file,'binrhoB'), gm(file,'binrhoBmin'), gm(file,'binrhoBmax'), gm(file,'Size'), X) ;
 
 
 

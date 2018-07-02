@@ -33,12 +33,18 @@ sel = True
 firstlast = True
 firstnumber = 1
 
+zt = []
 for meas in fileMeas:
     if pa.gm(meas,'bintheta?'):
         mylist.append(meas)
+        zt.append(pa.gm(meas,'time'))
 if len(mylist)==0:
     print('No single file with contheta!')
     sys.exit()
+
+ordi = np.argsort(np.array(zt))
+omylist = [mylist[i] for i in ordi]
+mylist = omylist
 
 # LOOK FOR ARGUMENTS OF THE FUNCTION TO COMPLETE THE SETS PLOTTED
 if len(sys.argv) == 1:
@@ -113,13 +119,13 @@ for meas in mylist:
     #
     #     thbin = np.linspace(Thmin,Thmax,siza)
     #     plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(time))
-
-    Thmax = pa.gm(meas,'binthetaBmax')
-    Thmin = pa.gm(meas,'binthetaBmin')
-    dat = pa.gm(meas,'binthetaB')
-    siza = len(dat)
-    thbin = np.linspace(Thmin,Thmax,siza)
-    plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'ct')))
+    bas = pa.thetabin(meas,10)
+    # Thmax = pa.gm(meas,'binthetaBmax')
+    # Thmin = pa.gm(meas,'binthetaBmin')
+    # dat = pa.gm(meas,'binthetaB')
+    # siza = len(dat)
+    # thbin = np.linspace(Thmin,Thmax,siza)
+    plt.semilogy(bas[:,0],bas[:,1],linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'ct')))
 
 rc('text', usetex=False)
 plt.title(ups)
@@ -133,24 +139,27 @@ print('->pics/theta_all.pdf')
 
 # TRANSITION
 
-mylist =[]
 plt.clf()
 
-if os.path.exists('./axion.m.10000'):
-    mylist.append('axion.m.10000')
-if os.path.exists('./axion.m.10001'):
-    mylist.append('axion.m.10001')
+if (pa.gm(omylist[0],'ftype')=='Saxion') and (pa.gm(omylist[-1],'ftype')=='Axion'):
+    lastSax = omylist[0]
+    for meas in fileMeas:
+        if pa.gm(meas,'ftype') =='Saxion':
+            lastSax = meas
+        else:
+            firstAx = meas
+            break
+    print("Saxion (%s)to Axion (%s) transition (%s->%s)"%(fileMeas[0],fileMeas[-1],lastSax,firstAx))
 
-if len(mylist)==0:
-    print('No transition files')
-else :
-    for meas in mylist:
-        Thmax = pa.gm(meas,'binthetaBmax')
-        Thmin = pa.gm(meas,'binthetaBmin')
-        dat = pa.gm(meas,'binthetaB')
-        siza = len(dat)
-        thbin = np.linspace(Thmin,Thmax,siza)
-        plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'ct')))
+    for meas in [lastSax,firstAx]:
+        bas = pa.thetabin(meas,10)
+        plt.semilogy(bas[:,0],bas[:,1],linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'ct')))
+        # Thmax = pa.gm(meas,'binthetaBmax')
+        # Thmin = pa.gm(meas,'binthetaBmin')
+        # dat = pa.gm(meas,'binthetaB')
+        # siza = len(dat)
+        # thbin = np.linspace(Thmin,Thmax,siza)
+        # plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'ct')))
     rc('text', usetex=False)
     plt.title(ups)
     rc('text', usetex=True)
@@ -160,3 +169,37 @@ else :
     plt.legend(loc='upper left')
     plt.savefig("pics/theta_trans.pdf")
     print('->pics/theta_trans.pdf')
+
+
+# if len(mylist)==0:
+#     print('No 10000 files')
+# else :
+#
+#
+# mylist =[]
+# plt.clf()
+#
+# if os.path.exists('./axion.m.10000'):
+#     mylist.append('axion.m.10000')
+# if os.path.exists('./axion.m.10001'):
+#     mylist.append('axion.m.10001')
+#
+# if len(mylist)==0:
+#     print('No 10000 files')
+# else :
+#     for meas in mylist:
+#         Thmax = pa.gm(meas,'binthetaBmax')
+#         Thmin = pa.gm(meas,'binthetaBmin')
+#         dat = pa.gm(meas,'binthetaB')
+#         siza = len(dat)
+#         thbin = np.linspace(Thmin,Thmax,siza)
+#         plt.semilogy(thbin,dat,linewidth=0.1,label=r'$\tau$={%.1f}'%(pa.gm(meas,'ct')))
+#     rc('text', usetex=False)
+#     plt.title(ups)
+#     rc('text', usetex=True)
+#     #plt.ylim([0.00000001,100])
+#     plt.ylabel(r'$dP/d\theta$')
+#     plt.xlabel(r'$\theta$')
+#     plt.legend(loc='upper left')
+#     plt.savefig("pics/theta_trans.pdf")
+#     print('->pics/theta_trans.pdf')
