@@ -76,7 +76,7 @@
 
 			LogMsg (VERB_NORMAL, "Binner found %f min, %f max", minVal, maxVal);
 
-			if (fabs(maxVal - minVal) < 1e-10) { LogError ("Error: max-min too close!"); bins.fill(maxVal); return; }
+			if (std::abs(maxVal - minVal) < 1e-10) { LogError ("Error: max-min too close!"); bins.fill(maxVal); return; }
 			step    = (maxVal-minVal)/((double) (N-1));
 			baseVal = minVal - step*0.5;
 
@@ -114,7 +114,7 @@
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
 
-		if (fabs(maxVal - minVal) < 1.e-10) {
+		if (std::abs(maxVal - minVal) < 1.e-10) {
 			LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
 			LogError ("Error: max value can't be lower or equal than min"); bins.fill(maxVal); return; }
 
@@ -129,7 +129,7 @@
 			for (size_t i=0; i<dSize; i++) {
 				auto cVal = filter(inData[i]);
 
-				if (fabs(cVal - baseVal) < step/100.) {
+				if (std::abs(cVal - baseVal) < step/100.) {
 					tBins[N*tIdx]++;
 				} else {
 					size_t myBin = floor((cVal - baseVal)/step);
