@@ -349,7 +349,7 @@ int	main (int argc, char *argv[])
 				// strdensn = (1/6.)*axion->Delta()*((double) nstrings_globale)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
 				// LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.str.strDen, strdensn, myCosmos.Gamma());
 				strdensn = (1/6.)*axion->Delta()*((double) lm.str.strDen)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
-				LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.str.strDen, strdensn, myCosmos.Gamma());
+				// LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.str.strDen, strdensn, myCosmos.Gamma());
 
 				// if (axion->Lambda() == LAMBDA_Z2)
 				// 	llphys = LL1/((*zaza)*(*zaza));
@@ -371,14 +371,16 @@ int	main (int argc, char *argv[])
 				// destroyMeas();
 
 				index++;
-			} else
-				LogOut("z %f (gamma %f)\n", *zaza, myCosmos.Gamma());
-
+			} else{
+				// LogOut("z %f (gamma %f)\n", *zaza, myCosmos.Gamma());
+				LogOut(".");
+			}
 			propagate (axion, dzaux);
 		}
 
 		myCosmos.SetGamma(gammo_save);
 	}
+	LogOut("\n");
 
 	// if icstudy you might want to save this configuration
 	if (!icstudy)
@@ -445,26 +447,26 @@ int	main (int argc, char *argv[])
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
-			if (axion->Field() == FIELD_SAXION)
+			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
 			{
 				// IF FEW STRINGS COMPUTES THE NUMBER EVERY ITERATION [obs with damping]
 				// if (nstrings_globale < 1000)
-				if (lm.str.strDen < 1000)
+				if (lm.str.strDen < 1000 )
 				{
 					// rts = strings(axion);
 					// nstrings_globale = rts.strDen ;
 					// LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
 
 					lm.str = strings(axion);
-					LogOut("  str extra check (string = %d, wall = %d)\n",lm.str.strDen, lm.str.wallDn);
+					// LogOut("  str extra check (string = %d, wall = %d)\n",lm.str.strDen, lm.str.wallDn);
 				}
 
 				// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
 				// DOMAIN WALL KILLER NUMBER
 				//if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
-				if (((*axion->zV()) > z_doom2*0.95) && (coD) && pregammo > 0.)
+				if (((*axion->zV()) > z_doom2*0.95) && (coD) && dwgammo > 0.)
 				{
-					myCosmos.SetGamma(pregammo);
+					myCosmos.SetGamma(dwgammo);
 					LogOut("-----------------------------------------\n");
 					LogOut("DAMPING ON (gam = %f, z ~ 0.95*z_doom %f)\n", myCosmos.Gamma(), 0.95*z_doom2);
 					LogOut("-----------------------------------------\n");
@@ -490,7 +492,7 @@ int	main (int argc, char *argv[])
 				// IF CONF_SAXNOISE we do not ever switch to theta to follow the evolution of saxion field
 				if (smvarType != CONF_SAXNOISE)
 					// if (nstrings_globale == 0 && strcount > safest0)
-					if (lm.str.strDen == 0 && strcount > safest0)
+					if (lm.str.strDen == 0 && strcount > safest0 && coSwitch2theta)
 					{
 						if (axion->Lambda() == LAMBDA_Z2)
 							llphys = myCosmos.Lambda()/(z_now*z_now);
@@ -504,6 +506,9 @@ int	main (int argc, char *argv[])
 						// lm = Measureme (axion, index, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
 						index++;
 
+						// if (!coD){
+						// 	myCosmos.SetGamma(gammo);
+						// }
 						LogOut("--------------------------------------------------\n");
 						LogOut(" TRANSITION TO THETA (z=%.4f)\n",z_now);
 						LogOut(" shift = %f \n", saskia);
@@ -700,11 +705,12 @@ void	checkTime (Scalar *axion, int index) {
 	if (wTime <= cTime)
 		flag = 1;
 
-	FILE *capa = NULL;
-	if (!((capa  = fopen("./stop", "r")) == NULL)){
+	FILE *capa = nullptr;
+	if (!((capa  = fopen("./stop", "r")) == nullptr)){
 		flag = 2;
+		fclose (capa);
 	}
-	fclose (capa);
+
 
 	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -908,6 +914,10 @@ MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 			{
 				// LogOut("binT ");
 				LogMsg(VERB_NORMAL, "[Meas %d] bin theta",indexa);
+					// Float shs = shiftz;
+					// complex<Float> shhhs = (shs,0.);
+					// Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+					// 				 [s=shhhs] (complex<Float> x) { return (double) arg(x-s); });
 					Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 									 [] (complex<Float> x) { return (double) arg(x); });
 					thBin.run();
@@ -918,7 +928,11 @@ MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 				{
 					// LogOut("binR ");
 					LogMsg(VERB_NORMAL, "[Meas %d] bin rho",indexa);
-					float z_now = *axiona->zV();
+					// Float z_now = *axiona->zV();
+					// Float shs = shiftz;
+					// complex<Float> shhhs = (shs,0.);
+					// Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+					// 					[z=z_now,s=shhhs] (complex<Float> x) { return (double) abs(x-s)/z; } );
 					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 										[z=z_now] (complex<Float> x) { return (double) abs(x)/z; } );
 					rhoBin.run();

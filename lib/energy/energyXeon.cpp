@@ -479,6 +479,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const size_t YC = (Lx>>3);
 // Usa constexpr y setr_epi64
 		const float __attribute__((aligned(Align))) cjgAux[16]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+		const float __attribute__((aligned(Align))) QCD2Aux[16] = { 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0., 1., 0. };
 		const float __attribute__((aligned(Align))) ivZAux[16]  = { iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0., iz, 0. };
 		const float __attribute__((aligned(Align))) shfAux[16]  = { sh, 0., sh, 0., sh, 0., sh, 0., sh, 0., sh, 0., sh, 0., sh, 0. };
 		const float __attribute__((aligned(Align))) lzQAux[16]  = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
@@ -492,6 +493,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const size_t YC = (Lx>>2);
 
 		const float __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
+		const float __attribute__((aligned(Align))) QCD2Aux[8] = { 1., 0., 1., 0., 1., 0., 1., 0. };
 		const float __attribute__((aligned(Align))) ivZAux[8]  = { iz, 0., iz, 0., iz, 0., iz, 0. };	// Only real part
 		const float __attribute__((aligned(Align))) shfAux[8]  = { sh, 0., sh, 0., sh, 0., sh, 0.};
 		const float __attribute__((aligned(Align))) lzQAux[8]  = { lZ, zQ, lZ, zQ, lZ, zQ, lZ, zQ };
@@ -500,6 +502,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const size_t YC = (Lx>>1);
 
 		const float __attribute__((aligned(Align))) cjgAux[4]  = { 1.,-1., 1.,-1. };
+		const float __attribute__((aligned(Align))) QCD2Aux[4] = { 1., 0., 1., 0. };
 		const float __attribute__((aligned(Align))) ivZAux[4]  = { iz, 0., iz, 0. };	// Only real part
 		const float __attribute__((aligned(Align))) shfAux[4]  = { sh, 0., sh, 0. };
 		const float __attribute__((aligned(Align))) lzQAux[4]  = { lZ, zQ, lZ, zQ };
@@ -513,6 +516,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const _MData_ hVec = opCode(set1_ps, 0.5);
 		const _MData_ ivZ2 = opCode(set1_ps, iz2);
 		const _MData_ oVec = opCode(set1_ps, o2);
+		//for VQCD2
+		const _MData_ qcd2 = opCode(load_ps, QCD2Aux);
+		const _MData_ iiiZ = opCode(set1_ps, iz);
 
 		#pragma omp parallel default(shared)
 		{
@@ -762,20 +768,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				tKp = opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod);
 
-				Grx = opCode(sub_ps, mel, shVc);  // Aplica shift
-				Gry = opCode(mul_ps, Grx, Grx);	
-				Grz = opCode(md2_ps, Gry);	  // |crho|^2
-				Gry = opCode(mul_ps, Grz, ivZ2);  // |rho|^2
+				Grx = opCode(sub_ps, mel, shVc);  // RE-S=Re', Im, ...
+				Gry = opCode(mul_ps, Grx, Grx);   // (Re-s)^2,Im^2
+				Grz = opCode(md2_ps, Gry);	  		// (Re-s)^2+Im^2,(Re-s)^2+Im^2
+				Gry = opCode(mul_ps, Grz, ivZ2);  // (Re-s)^2+Im^2/z2,(Re-s)^2+Im^2/z2
 
 				switch	(VQcd & VQCD_TYPE) {
 					case	VQCD_1:
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
+						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|  // 1-Re'/M , 1-Im/M
 						break;
 
 					case	VQCD_1_PQ_2:
-						mSg = opCode(sub_ps, opCode(mul_ps, Gry, Gry), one);   // |rho|^4-1
+						mSg = opCode(sub_ps, opCode(mul_ps, Gry, Gry), one);   	// |rho|^4-1
 						mod = opCode(mul_ps, mSg, mSg);   											// (|rho|^4-1)^2
 						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
 						break;
@@ -783,17 +789,29 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					case	VQCD_2:
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						mTp = opCode(sub_ps, one, opCode(mul_ps, Grx, ivZ));
-						mCg = opCode(mul_ps, mTp, mTp);
+						// mTp = opCode(sub_ps, one, opCode(mul_ps, Grx, ivZ));  // 1-Re'/Z,     0
+						// mCg = opCode(mul_ps, mTp, mTp);												// (1-Re'/Z)^2, 0
+						// opCode(store_ps, tmpS, Grx);
+						// printf("m %f %f %f %f\n",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
+						// mTp = opCode(sub_ps, opCode(mul_ps,ivZ,opCode(set1_ps,zR)), opCode(div_ps, Grx, opCode(set1_ps,zR)));
+						// opCode(store_ps, tmpS, mTp);
+						// printf("a %f %f %f %f\n",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
+						// mCg = opCode(mul_ps, hVec, opCode(md2_ps, opCode(mul_ps,mTp,mTp) ));
+						// opCode(store_ps, tmpS, mCg);
+						// printf("a %f %f %f %f\n\n",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
+						mTp = opCode(sub_ps, qcd2, opCode(mul_ps, Grx, iiiZ));								// (1-Re'/Z), -Im/Z
+						mCg = opCode(mul_ps, hVec, opCode(md2_ps, opCode(mul_ps,mTp,mTp) ));	// 0.5*((1-Re'/Z)^2+(Im/Z)^2), ...2
 						break;
 				}
 #if	defined(__AVX512F__)
 				tVp = opCode(mask_blend_ps, opCode(kmov, 0b1010101010101010), mod, opCode(permute_ps, mCg, 0b10110001));
 #elif	defined(__AVX__)
+				// permute > 1-Im/M , 1-Re'/M
+				// blend   > (|rho|^2-1)^2, 1-Re'/M, ...
 				tVp = opCode(blend_ps, mod, opCode(permute_ps, mCg, 0b10110001), 0b10101010);
 #else
-				mdv = opCode(shuffle_ps, mod, mCg, 0b10001000); //Era 11011000
-				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000);
+				mdv = opCode(shuffle_ps, mod, mCg, 0b10001000); //Era 11011000  //  1-Im/M , 1-Re'/M
+				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000); 								//  (|rho|^2-1)^2, 1-Re'/M, ...
 #endif
 				if (map == true) {
 					mdv = opCode(add_ps,
