@@ -18,7 +18,7 @@ MeasData	Measure	(Scalar *axion, int index, MeasureType meas)
 {
 	MeasData	retMeas;
 
-	retMeas.maxTheta   = -1;
+	retMeas.maxTheta   = M_PI;
 	retMeas.str.strDen = -1;
 	retMeas.str.wallDn = -1;
 
@@ -192,6 +192,9 @@ MeasData	Measure	(Scalar *axion, int index, MeasureType meas)
 		}
 
 	} else { // FIELD_AXION
+		retMeas.str.strDen = 0;
+		retMeas.str.wallDn = 0;
+
 		if	(meas & MEAS_BINTHETA)
 		{
 			// LogOut("binthetha ");
