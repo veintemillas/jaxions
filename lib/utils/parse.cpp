@@ -32,8 +32,9 @@ double zthres   = 1000.0;
 double zrestore = 1000.0;
 double LL = 25000.;
 double parm2 = 0.;
-double pregammo = 0.;
-double gammo = 0.;
+double pregammo = 0.0;
+double dwgammo  = -1.0;
+double gammo    = 0.0;
 double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
 double prepstL = 5.0 ;
@@ -59,6 +60,7 @@ bool spectral = false;
 bool aMod     = false;
 bool icstudy  = false ;
 bool preprop  = false ;
+bool coSwitch2theta  = true ;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -397,6 +399,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--notheta"))
+		{
+			coSwitch2theta = false;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--size"))
 		{
 			if (i+1 == argc)
@@ -573,7 +584,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the prepropagator/string destructor damping factor.\n");
+				printf("Error: I need a value for the prepropagator damping factor.\n");
 				exit(1);
 			}
 
@@ -584,6 +595,28 @@ int	parseArgs (int argc, char *argv[])
 			//uGamma = true;
 
 			if (pregammo < 0.)
+			{
+				printf("Error: pre-Damping factor should be larger than 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--dwgam"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the DW?string destructor damping factor.\n");
+				exit(1);
+			}
+
+			dwgammo = atof(argv[i+1]);
+
+			if (dwgammo < 0.)
 			{
 				printf("Error: pre-Damping factor should be larger than 0.\n");
 				exit(1);
@@ -1420,7 +1453,7 @@ int	parseArgs (int argc, char *argv[])
 	}
 
 	/*	Remove stop files if present	*/
-	
+
 	FILE *capa = nullptr;
 	if (!((capa  = fopen("./stop", "r")) == nullptr)) {
 		fclose (capa);

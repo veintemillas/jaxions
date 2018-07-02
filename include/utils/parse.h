@@ -18,6 +18,7 @@ extern double alpha;
 extern double kCrit;
 extern double parm2;
 extern double pregammo;
+extern double dwgammo;
 extern double p3DthresholdMB;
 extern size_t kMax;
 extern size_t iter;
@@ -55,6 +56,7 @@ extern bool aMod;
 extern bool spectral;
 extern bool icstudy;
 extern bool preprop;
+extern bool coSwitch2theta;
 
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
