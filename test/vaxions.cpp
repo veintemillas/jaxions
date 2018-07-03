@@ -401,7 +401,8 @@ int	main (int argc, char *argv[])
 
 	if (!restart_flag && (fIndex == -1)){
 		LogOut("First measurement file %d \n",index);
-		lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
+		lm = Measureme (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
+		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
 	}
 	else{
 		LogOut("last measurement file was %d \n",index);
