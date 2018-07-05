@@ -2387,8 +2387,6 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 	LogMsg (VERB_NORMAL, "Written %lu bytes", powMax*24);
 }
 
-
-
 void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 {
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
@@ -2577,6 +2575,173 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 void	writeMapHdf5	(Scalar *axion)
 {
 	writeMapHdf5s	(axion, 0);
+}
+
+void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
+{
+	hid_t	mapSpace, chunk_id, group_id, eSet_id, eSpace, dataType;
+	hsize_t	dataSize = axion->DataSize();
+
+	int myRank = commRank();
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	hsize_t slb  = slabSz;
+	hsize_t lSz  = sizeN;
+	char *dataE  = static_cast<char *>(axion->m2Cpu());
+	char eCh[16] = "/map/E";
+
+	LogMsg (VERB_NORMAL, "Writing 2D energy map to Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "");
+
+	if (header == false || opened == false)
+	{
+		LogError ("Error: measurement file not opened. Ignoring write request");
+		return;
+	}
+
+	if (axion->m2Status() != M2_ENERGY) {
+		LogError ("Error: Energy not available in m2. Call energy before calling writeEMapHdf5");
+		return;
+	}
+
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	if (axion->Field() == FIELD_SAXION) {
+		lSz *= 2;
+		slb *= 2;
+	}
+
+	if (axion->Precision() == FIELD_DOUBLE) {
+		dataType = H5T_NATIVE_DOUBLE;
+	} else {
+		dataType = H5T_NATIVE_FLOAT;
+	}
+
+	/*	Unfold field before writing configuration	*/
+	int slicenumber = slicenumbertoprint ;
+	if (slicenumbertoprint > axion->Depth())
+	{
+		LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
+		slicenumber = 0;
+	}
+	Folder	munge(axion);
+	munge(UNFOLD_SLICE, slicenumber);
+
+	/*	Create a group for map data if it doesn't exist	*/
+	auto status = H5Lexists (meas_id, "/map", H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/map", H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "Group /map exists");
+		} else {
+			LogError ("Error: can't check whether group /map exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	if ((mapSpace = H5Screate_simple(1, &slb, maxD)) < 0)	// Whole data
+	{
+		LogError ("Fatal error H5Screate_simple");
+		prof.stop();
+		exit (1);
+	}
+
+	if (myRank != 0) {
+		H5Sselect_none(mapSpace);
+	}
+
+	/*	Set chunked access and dynamical compression	*/
+
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (chunk_id, 1, &lSz) < 0) //slb) < 0)
+	{
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+//	if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression, hoping that the map is a bunch of zeroes
+//	{
+//		LogError ("Fatal error H5Pset_deflate");
+//		prof.stop();
+//		exit (1);
+//	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Fatal error H5Pset_alloc_time");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Create a dataset for map data	*/
+	eSet_id = H5Dcreate (meas_id, eCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	if (eSet_id < 0)
+	{
+		LogError ("Fatal error creating datasets");
+		prof.stop();
+		exit (0);
+	}
+
+	eSpace = H5Dget_space (eSet_id);
+
+	if (eSpace < 0)
+	{
+		LogError ("Fatal error");
+		prof.stop();
+		exit (0);
+	}
+
+	hsize_t offset = 0;
+
+	if (myRank == 0) {
+		H5Sselect_hyperslab(eSpace, H5S_SELECT_SET, &offset, NULL, &slb, NULL);
+	} else {
+		H5Sselect_none(eSpace);
+	}
+
+	/*	Write raw data	*/
+	if (H5Dwrite (eSet_id, dataType, mapSpace, eSpace, H5P_DEFAULT, dataE) < 0)
+	{
+		LogError ("Error writing dataset /map/E");
+		prof.stop();
+		exit(0);
+	}
+
+	LogMsg (VERB_HIGH, "Write energy map successful");
+
+	/*	Close the dataset	*/
+	H5Dclose (eSet_id);
+	H5Sclose (eSpace);
+
+	H5Sclose (mapSpace);
+	H5Pclose (chunk_id);
+	H5Gclose (group_id);
+	prof.stop();
+
+	prof.add(std::string("Write EMap"), 0, 1.e-9*slb*dataSize);
+	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize);
+}
+
+void	writeEMapHdf5	(Scalar *axion)
+{
+	writeEMapHdf5s	(axion, 0);
 }
 
 void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
