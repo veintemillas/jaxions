@@ -2609,11 +2609,6 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
 
-	if (axion->Field() == FIELD_SAXION) {
-		lSz *= 2;
-		slb *= 2;
-	}
-
 	if (axion->Precision() == FIELD_DOUBLE) {
 		dataType = H5T_NATIVE_DOUBLE;
 	} else {
