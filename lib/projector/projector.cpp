@@ -22,9 +22,9 @@ class	Projector : public Tunable
 
 	public:
 
-		 Reducer(Scalar *field, std::function<Float(Float)> myFilter) :
-			axion(field), filter(myFilter) {};
-		~Reducer() {};
+		 Projector(Scalar *field, std::function<Float(Float)> myFilter) :
+			   axion(field), filter(myFilter) {};
+		~Projector() {};
 
 	void	runCpu	();
 	void	runGpu	();
@@ -36,7 +36,7 @@ void	Projector<Float>::runGpu	()
 #ifdef	USE_GPU
 	LogMsg	 (VERB_NORMAL, "FIXME!! Projector runs on cpu");
 
-	axionField->transferCpu(FIELD_M2);
+	axion->transferCpu(FIELD_M2);
 	runCpu();
 	return;
 #else
@@ -53,8 +53,8 @@ void	Projector<Float>::runCpu	() {
 	const auto Tz = axion->TotalDepth();
 
 	Float *inData  = static_cast<Float*>(axion->m2Cpu());
-	Float *medData = static_cast<Float*>(axion->mCpu())[2*(Sz+Sf)];	// Backghosts in m
-	Float *outData = static_cast<Float*>(axion->mCpu());		// Frontghosts in m
+	Float *medData = &(static_cast<Float*>(axion->mCpu())[2*(Sz+Sf)]);	// Backghosts in m
+	Float *outData = static_cast<Float*>(axion->mCpu());			// Frontghosts in m
 
 	#pragma	omp parallel for schedule(static)
 	for (int pt = 0; pt < Sf; pt++) {
@@ -65,13 +65,16 @@ void	Projector<Float>::runCpu	() {
 		}
 	}
 
-	MPI_Reduce (medData, outData, Sf, Float, MPI_SUM, 0, MPI_COMM_WORLD);
+	if (axion->Precision() == FIELD_DOUBLE)
+		MPI_Reduce (medData, outData, Sf, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	else
+		MPI_Reduce (medData, outData, Sf, MPI_FLOAT,  MPI_SUM, 0, MPI_COMM_WORLD);
 
 	Float	oZ = 1./((Float) Tz);
 
 	#pragma	omp parallel for schedule(static)
 	for (int pt = 0; pt < Sf; pt++)
-		outData[pt] *= oz;
+		outData[pt] *= oZ;
 }	
 
 template<typename Float>
@@ -93,7 +96,7 @@ void	projectField	(Scalar *field, std::function<Float(Float)> myFilter)
 	std::stringstream ss;
 	ss << "Project " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " with " << commSize() << "ranks"; 
 
-	reducer->setName(ss.str().c_str());
+	projector->setName(ss.str().c_str());
 	prof.start();
 
 	switch (field->Device())
@@ -127,7 +130,7 @@ void	projectField	(Scalar *field, std::function<Float(Float)> myFilter)
 void	projectField	(Scalar *field, std::function<float(float)> myFilter) {
 	if (field->Precision() != FIELD_SINGLE) {
 		LogError("Error: double precision filter for single precision configuration");
-		return	nullptr;
+		return;
 	}
 	
 	projectField<float>(field, myFilter);

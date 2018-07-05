@@ -203,6 +203,7 @@
 			PROF_FOLD,
 			PROF_HDF5,
 			PROF_REDUCER,
+			PROF_PROJECTOR,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
