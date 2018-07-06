@@ -61,6 +61,7 @@ bool aMod     = false;
 bool icstudy  = false ;
 bool preprop  = false ;
 bool coSwitch2theta  = true ;
+bool WKBtotheend = false;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -88,6 +89,8 @@ LogMpi		logMpi = ALL_RANKS;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
 bool p2dmapo  	  = false;
+bool p2dEmapo  	  = false;
+bool p2dPmapo  	  = false;
 bool p3dstrings	  = false;
 bool p3dwalls	  = false;
 bool pconfinal 	  = false;
@@ -295,6 +298,22 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--p2Dmap"))
 		{
 			p2dmapo = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapE"))
+		{
+			p2dEmapo = true ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapP"))
+		{
+			p2dPmapo = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
