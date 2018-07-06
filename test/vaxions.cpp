@@ -17,6 +17,7 @@
 #include "scalar/scaleField.h"
 #include "spectrum/spectrum.h"
 #include "scalar/mendTheta.h"
+#include "projector/projector.h"
 
 #include "WKB/WKB.h"
 
@@ -823,7 +824,7 @@ MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 				// JARE possible problem m2 saved as double in _DOUBLE?
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), axiona->Size(),
-								[eMean = eMean] (Float x) -> float { return (double) (log10(x/eMean) );});
+								[eMean = eMean] (Float x) -> float { return (double) (log10(x/eMean)) ;});
 				contBin.run();
 				writeBinner(contBin, "/bins", "contB");
 			}
@@ -833,6 +834,27 @@ MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",indexa);
 				writeEDens(axiona);
 			}
+
+			if (measa & MEAS_2DMAP)
+			{
+				if(p2dEmapo){
+					LogMsg(VERB_NORMAL, "[Meas %d] 2D energy map",indexa);
+					writeEMapHdf5s (axiona,sliceprint);
+				}
+
+				if(p2dPmapo){
+					LogMsg(VERB_NORMAL, "[Meas %d] Proyection",indexa);
+					if (axiona->Precision() == FIELD_DOUBLE){
+						projectField	(axiona, [] (double x) -> double { return x ; } );
+					}
+					else{
+						projectField	(axiona, [] (float x) -> float { return x ; } );
+					}
+					writePMapHdf5 (axiona);
+				}
+
+			}
+
 		} // no m2 map
 		else{
 			// LogOut("energy (sum)");

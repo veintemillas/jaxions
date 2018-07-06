@@ -57,7 +57,7 @@ extern bool spectral;
 extern bool icstudy;
 extern bool preprop;
 extern bool coSwitch2theta;
-
+extern bool WKBtotheend;
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
 extern ConfType	      cType;
@@ -75,6 +75,8 @@ extern VerbosityLevel verb;
 //for output
 extern PrintConf      prinoconfo;
 extern bool           p2dmapo;
+extern bool           p2dEmapo;
+extern bool           p2dPmapo;
 extern bool           p3dstrings;
 extern bool           p3dwalls;
 extern bool           pconfinal;

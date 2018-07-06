@@ -9,7 +9,7 @@ import h5py
 import datetime
 import glob
 from sympy import integer_nthroot
-
+import pickle
 # mark=f"{datetime.datetime.now():%Y-%m-%d}"
 # from uuid import getnode as get_mac
 # mac = get_mac()
@@ -180,6 +180,11 @@ def gm(address,something='summary',printerror=False):
         print('         ')
         print('3Dmape      3D map of axion energy density')
         print('3Dmape?     Do we have energy density 3D map?')
+        print('2Dmape      2D slice map of axion energy density')
+        print('2Dmape?     Do we have one?')
+        print('2DmapP      2D proyection map of density^2')
+        print('2DmapP?     Do we have one?')
+
         print('         ')
         print('mapmC       2D slice map of conformal PQ field')
         print('mapvC       2D slice map of conformal PQ velocity field')
@@ -202,7 +207,7 @@ def gm(address,something='summary',printerror=False):
     if (something == 'ct') or (something == 'z') or (something == 'time'):
         return f.attrs[u'z'] ;
     if (something == 'Size') or (something == 'N') or (something == 'sizeN'):
-        return f.attrs[u'Size'] ;
+        return int(f.attrs[u'Size']) ;
     if something == 'L':
         return f.attrs[u'Physical size'] ;
     if something == 'nqcd':
@@ -592,6 +597,28 @@ def gm(address,something='summary',printerror=False):
 
                 return f['energy/density/theta'].value.reshape(redN,redN,redZ)
 
+    if something == '2Dmape?':
+        if ('map/E' in f) :
+            return True
+        else :
+            return False
+
+    if something == '2Dmape':
+        if ('map/E' in f) :
+            sizeN = f.attrs[u'Size']
+            return f['map']['E'].value.reshape(sizeN,sizeN)
+
+    if something == '2DmapP?':
+        if ('map/P' in f) :
+            return True
+        else :
+            return False
+
+    if something == '2DmapP':
+        if ('map/P' in f) :
+            sizeN = f.attrs[u'Size']
+            return f['map']['P'].value.reshape(sizeN,sizeN)
+
 
     # the irrelevants
     if something == 'Depth':
@@ -762,18 +789,48 @@ def phasespacedensityBOXexactHIGH ( sizeN, sizen ):
 #   My 1% approximation to the number of modes binned
 #   using the exact values when the number of modes is small
 
-def phasespacedensityBOX ( sizeN ):
+def phasespacedensityBOX_old ( sizeN, res=0.01 ):
     approx = phasespacedensityBOXapprox ( sizeN ) ;
+    if (approx.max()*res**2 < 0.1):
+        print(exact)
+        return phasespacedensityBOXexact ( sizeN )
+
     # 1% error requires 100^2 modes
+    sli = 0
+    for i in range(0,len(approx)):
+        if approx[i] > int(1/res**2):
+            break
+        sli=sli+1
+
+    # print(sli,approx.max()*res**2 )
+    exact = phasespacedensityBOXexact ( 2*sli )
+    for i in range(0,sli):
+        approx[i] = exact[i]
+
+    exact = phasespacedensityBOXexactHIGH ( sizeN, 2*sli ) ;
+    for i in range(len(exact)-sli,len(exact)):
+        approx[i] = exact[i]
+
+    return approx ;
+
+def phasespacedensityBOX ( sizeN):
+    approx = phasespacedensityBOXapprox ( sizeN ) ;
+
     sli = 0
     for i in range(0,len(approx)):
         if approx[i] > 10000:
             sli = i
             break
-    # print(sli)
-    exact = phasespacedensityBOXexact ( 2*sli )
-    for i in range(0,sli):
-        approx[i] = exact[i]
+
+    dira = os.path.dirname(__file__)
+    # print(sli,approx.max()*res**2
+    dump = pickle.load( open( dira+'/data/512mod.p', "rb" ) )
+    ss = min(sizeN//2,256)
+    print(ss,sizeN//2,256)
+    approx[:ss] = dump[:ss]
+    # exact = phasespacedensityBOXexact ( 2*sli )
+    # for i in range(0,sli):
+    #     approx[i] = exact[i]
 
     exact = phasespacedensityBOXexactHIGH ( sizeN, 2*sli ) ;
     for i in range(len(exact)-sli,len(exact)):
@@ -1341,6 +1398,37 @@ class averager:
 
 
 
+
+
+
+# ------------------------------------------------------------------------------
+#   cuties
+# ------------------------------------------------------------------------------
+
+
+def plotbin(f):
+    plt.figure(figsize=(10,10))
+    plt.suptitle('%s t=%.2f (%s)'%(f,gm(f,'time'),gm(f,'ftype')))
+    buf = thetabin(f,1000)
+    plt.subplot(221,title='theta')
+    plt.semilogy(buf[:,0],buf[:,1],'orange',linewidth=0.6,marker='.',markersize=0.1)
+    # plt.semilogy(bins,np.exp(-np.abs(bins/0.02))+.6e-8/(0.001+bins**2))
+
+    plt.subplot(222,title='log theta^2')
+    buf = lt2bin(f,100)
+    plt.loglog(buf[:,0],buf[:,1],'r',linewidth=0.6,marker='.',markersize=0.1)
+
+    plt.subplot(223,title='contrast')
+    buf = conbin(f,100)
+    plt.loglog(buf[:,0],buf[:,1],'g',linewidth=0.6,marker='.',markersize=0.1)
+
+    plt.subplot(224,title='rho')
+    if gm(f,'ftype')=='Saxion':
+        buf = rhobin(f,100)
+        plt.semilogy(buf[:,0],buf[:,1],linewidth=0.6,marker='.',markersize=0.1) ;
+        plt.axvline(x=1,linewidth=0.2);    plt.axvline(x=1+gm(f,'shift'),linewidth=0.5)
+    plt.show()
+    return;
 
 
 
