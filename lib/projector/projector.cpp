@@ -18,11 +18,11 @@ class	Projector : public Tunable
 
 	Scalar	     *axion;
 
-	std::function<Float(Float)> filter;
+	std::function<double(double)> filter;
 
 	public:
 
-		 Projector(Scalar *field, std::function<Float(Float)> myFilter) :
+		 Projector(Scalar *field, std::function<double(double)> myFilter) :
 			   axion(field), filter(myFilter) {};
 		~Projector() {};
 
@@ -49,19 +49,21 @@ template<typename Float>
 void	Projector<Float>::runCpu	() {
 
 	const auto Sf = axion->Surf();
-	const auto Sz = axion->Size();
 	const auto Tz = axion->TotalDepth();
 
 	Float *inData  = static_cast<Float*>(axion->m2Cpu());
-	Float *medData = &(static_cast<Float*>(axion->mCpu())[2*(Sz+Sf)]);	// Backghosts in m
-	Float *outData = static_cast<Float*>(axion->mCpu());			// Frontghosts in m
+	Float *medData = static_cast<Float*>(axion->mBackGhost ());
+	Float *outData = static_cast<Float*>(axion->mFrontGhost());
 
 	#pragma	omp parallel for schedule(static)
 	for (int pt = 0; pt < Sf; pt++) {
-		outData[pt] = 0.;
+		outData[pt] = (Float) 0.;
+		medData[pt] = (Float) 0.;
 
 		for (int zc = 0; zc < axion->Depth(); zc++) {
-			medData[pt] += filter(inData[pt + Sf*zc]);
+			Float  x = inData[pt + Sf*zc];
+			double y = filter((double) x);
+			medData[pt] += (Float) y;
 		}
 	}
 
@@ -78,7 +80,7 @@ void	Projector<Float>::runCpu	() {
 }	
 
 template<typename Float>
-void	projectField	(Scalar *field, std::function<Float(Float)> myFilter)
+void	projectField	(Scalar *field, std::function<double(double)> myFilter)
 {
 	if (field->LowMem()) {
 		LogError("Error: lowmem not supported");
@@ -116,7 +118,7 @@ void	projectField	(Scalar *field, std::function<Float(Float)> myFilter)
 			break;
 	}
 
-	projector->add(field->Size(), field->DataSize()*(field->Size() + field->Surf()));
+	projector->add(field->Size()*1e-9, field->DataSize()*(field->Size() + field->Surf())*1e-9);
 
 	prof.stop();
 	prof.add(projector->Name(), projector->GFlops(), projector->GBytes());
@@ -127,22 +129,11 @@ void	projectField	(Scalar *field, std::function<Float(Float)> myFilter)
 	return;
 }
 
-void	projectField	(Scalar *field, std::function<float(float)> myFilter) {
-	if (field->Precision() != FIELD_SINGLE) {
-		LogError("Error: double precision filter for single precision configuration");
-		return;
-	}
-	
-	projectField<float>(field, myFilter);
-	return;
-}
-
 void	projectField	(Scalar *field, std::function<double(double)> myFilter) {
-	if (field->Precision() != FIELD_DOUBLE) {
-		LogError("Error: single precision filter for double precision configuration");
-		return;
-	}
+	if (field->Precision() == FIELD_DOUBLE)
+		projectField<double>(field, myFilter);
+	else
+		projectField<float> (field, myFilter);
 	
-	projectField(field, myFilter);
 	return;
 }

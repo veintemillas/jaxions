@@ -3043,14 +3043,8 @@ void	writePMapHdf5	(Scalar *axion)
 	char *dataE  = static_cast<char *>(axion->mCpu());
 	char eCh[16] = "/map/P";
 
-	LogMsg (VERB_NORMAL, "Writing 2D energy PROYECTION map to Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "Writing 2D energy projection map to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
-
-	if (axion->m2Status() != M2_ENERGY)
-	{
-		LogError ("Error: Energy not available in m2. Call energy before calling writeEMapHdf5");
-		return;
-	}
 
 	if (header == false || opened == false)
 	{
@@ -3068,15 +3062,6 @@ void	writePMapHdf5	(Scalar *axion)
 	} else {
 		dataType = H5T_NATIVE_FLOAT;
 	}
-
-	// 	int slicenumber = slicenumbertoprint ;
-	// if (slicenumbertoprint > axion->Depth())
-	// {
-	// 	LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
-	// 	slicenumber = 0;
-	// }
-	// Folder	munge(axion);
-	// munge  (UNFOLD_SLICE, slicenumber);
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
 	if ((mapSpace = H5Screate_simple(1, &slb, NULL)) < 0)	// Whole data

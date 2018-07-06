@@ -77,6 +77,11 @@
 		void		*m2Cpu() { return m2; }
 		const void	*m2Cpu() const { return m2; }
 
+		void		*mFrontGhost () { return m; }
+		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2+n3)); }
+		void		*m2FrontGhost() { return m2; }
+		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
+
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
 #ifdef	USE_GPU
