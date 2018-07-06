@@ -3040,7 +3040,7 @@ void	writePMapHdf5	(Scalar *axion)
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	hsize_t slb  = slabSz;
-	char *dataE  = static_cast<char *>(axion->m2Cpu());
+	char *dataE  = static_cast<char *>(axion->mCpu());
 	char eCh[16] = "/map/P";
 
 	LogMsg (VERB_NORMAL, "Writing 2D energy PROYECTION map to Hdf5 measurement file");
