@@ -310,14 +310,14 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	//--------------------------------------------------
-	// prepropagator with relaxing strong damping [RELAXATION of GAMMA DOES NOT WORK]
+	// prepropagator with relaxing strong damping
 	//--------------------------------------------------
 	// only if preprop and if z smaller or equal than zInit
 	// When z>zInit, it is understood that prepropagation was done
 	// NEW it takes the pregam value (if is > 0, otherwise gam )
 	if (preprop && ((*axion->zV()) < zInit)) {
-		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.f pregam=%.f) \n\n",
-			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo);
+		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
+			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo,dwgammo);
 		// gammo is reserved for long-time damping
 		// use pregammo for prepropagation damping
 		double gammo_save = myCosmos.Gamma();
@@ -341,37 +341,11 @@ int	main (int argc, char *argv[])
 			//printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
 			if (icstudy){
 
-				// string control
-				// obs
-				// rts = strings(axion);
-				// nstrings_globale = rts.strDen;
-				lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
-				// lm.str = strings(axion);
-				// strdensn = (1/6.)*axion->Delta()*((double) nstrings_globale)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
-				// LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.str.strDen, strdensn, myCosmos.Gamma());
-				strdensn = (1/6.)*axion->Delta()*((double) lm.str.strDen)*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
-				// LogOut("z %f strings %d [Lz^2/V] %f (gammo %f)\n", *zaza, lm.str.strDen, strdensn, myCosmos.Gamma());
-
-				// if (axion->Lambda() == LAMBDA_Z2)
-				// 	llphys = LL1/((*zaza)*(*zaza));
-				// axmass_now = axion->AxionMass();
-				// saskia = axion->Saskia();
-				// shiftz = *zaza * saskia;
-				// Measureme (axion, index, MEAS_BINTHETA | MEAS_BINRHO | MEAS_BINLOGTHETA2 |
-				// MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_ENERGY3DMAP | MEAS_REDENE3DMAP |
-				// MEAS_2DMAP | MEAS_3DMAP |
-				// MEAS_PSP_A | MEAS_PSP_S | MEAS_NSP_A | MEAS_NSP_S);
-				// createMeas(axion, index);
-				// if (axion->Field() == FIELD_SAXION) {
-				// 	writeString(axion, rts, false);
-				// 	energy(axion, eRes, false, shiftz);
-				// }
-				// writeEnergy(axion, eRes);
-				// if(p2dmapo)
-				// 	writeMapHdf5s(axion,sliceprint);
-				// destroyMeas();
-
+				// lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
+				lm = Measureme (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
+				MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
 				index++;
+
 			} else{
 				// LogOut("z %f (gamma %f)\n", *zaza, myCosmos.Gamma());
 				LogOut(".");
@@ -845,10 +819,10 @@ MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa)
 				if(p2dPmapo){
 					LogMsg(VERB_NORMAL, "[Meas %d] Proyection",indexa);
 					if (axiona->Precision() == FIELD_DOUBLE){
-						projectField	(axiona, [] (double x) -> double { return x ; } );
+						projectField	(axiona, [] (double x) -> double { return x*x ; } );
 					}
 					else{
-						projectField	(axiona, [] (float x) -> float { return x ; } );
+						projectField	(axiona, [] (float x) -> float { return x*x ; } );
 					}
 					writePMapHdf5 (axiona);
 				}
