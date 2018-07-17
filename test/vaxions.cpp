@@ -316,8 +316,11 @@ int	main (int argc, char *argv[])
 	// When z>zInit, it is understood that prepropagation was done
 	// NEW it takes the pregam value (if is > 0, otherwise gam )
 	if (preprop && ((*axion->zV()) < zInit)) {
+		//
+		// LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
+		// 	(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo,dwgammo);
 		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
-			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo,dwgammo);
+			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO, myCosmos.Gamma(),pregammo,dwgammo);
 		// gammo is reserved for long-time damping
 		// use pregammo for prepropagation damping
 		double gammo_save = myCosmos.Gamma();

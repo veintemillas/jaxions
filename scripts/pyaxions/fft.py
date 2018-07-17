@@ -31,6 +31,26 @@ def mkcmap():
 
 logdensmap = mkcmap()
 
+##### generate custom colormap
+def mkcmap2():
+    white = '#ffffff'
+    yellow = '#FFFF00'
+    turq = '#00868B'
+    black = '#000000'
+    dred = '#b20000'
+    red = '#ff0000'
+    mblue = '#03A89E' #'#0000ff'
+    mmblue = '#0080ff'
+    lblue =  '#00BFFF'
+    dorchid = '#68228B'
+#     light '#BF3EFF'
+    anglemap = col.LinearSegmentedColormap.from_list(
+        'anglemap', [black,dorchid,turq,yellow,yellow,red], N=100, gamma=1)
+    return anglemap
+
+logdensmap2 = mkcmap2()
+
+
 def fft15sec(data):
     start = time.time()
     ou = np.fft.fftn(data)
@@ -66,10 +86,10 @@ def binpsp(pou,moda):
     binoc2=np.zeros(nmax)
     bias2=np.zeros(nmax)
     nmod2=np.zeros(nmax)
-
+    print(nmax)
     start = time.time()
     for nb in range(0,nmax):
-        mask  = (nb< moda) * (moda <= nb+1)
+        mask  = (nb <= moda) * (moda < nb+1)
         fuss  = pou[mask]
         sumin = len(fuss)
         sumi  = np.sum(fuss**2)
@@ -85,8 +105,8 @@ def binpsp(pou,moda):
     return bino2, binostd, bias2, nmod2
 
 def stamode(pou,moda,nb):
-    print('Input [arrays of |delta_k|, and |k|] reshaped as n3 and an Integer')
-    print('Returns array of values of <|delta_k|^2>')
+    # print('Input [arrays of |delta_k|, and |k|] reshaped as n3 and an Integer')
+    # print('Returns array of values of <|delta_k|^2>')
     mask  = (nb< moda) * (moda <= nb+1)
     fuss  = pou[mask]
     return fuss**2

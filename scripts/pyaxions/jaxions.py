@@ -528,6 +528,10 @@ def gm(address,something='summary',printerror=False):
 
     # maps
     map_check = 'map' in f
+
+    if (something == 'map?'):
+        return map_check ;
+
     if (something[0:3] == 'map') and not map_check :
         if printerror :
             print('[gm] Warning: No map in file!. ')
@@ -553,6 +557,11 @@ def gm(address,something='summary',printerror=False):
         if (something == 'mapvheta') and (ftype == 'Axion'):
             temp = np.array(f['map']['v'].value.reshape(N,N))
             return temp ;
+        if (something == 'maprho') and (ftype == 'Saxion'):
+            temp = np.array(f['map']['m'].value.reshape(N,N,2))
+            te = f.attrs[u'z']
+            return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/te
+
         if (something == 'mapEdens') and (ftype == 'Axion'):
             theta = np.array(f['map']['m'].value.reshape(N,N))/ct
             massA2 = f.attrs[u'Axion mass']
@@ -826,7 +835,7 @@ def phasespacedensityBOX ( sizeN):
     # print(sli,approx.max()*res**2
     dump = pickle.load( open( dira+'/data/512mod.p', "rb" ) )
     ss = min(sizeN//2,256)
-    print(ss,sizeN//2,256)
+    # print(ss,sizeN//2,256)
     approx[:ss] = dump[:ss]
     # exact = phasespacedensityBOXexact ( 2*sli )
     # for i in range(0,sli):
@@ -1097,6 +1106,20 @@ def stringo(mfiles):
         if gm(f,'ftype') == 'Saxion':
             stringo.append([gm(f,'ct'),gm(f,'stDens')])
     return np.array(stringo) ;
+
+
+
+
+
+
+#   outputs the Wall evolution
+
+def wallo(mfiles):
+    wallo = []
+    for f in mfiles:
+        if gm(f,'ftype') == 'Saxion':
+            wallo.append([gm(f,'ct'),gm(f,'stwallN')*gm(f,'ct')*gm(f,'delta')**2/gm(f,'L')**3])
+    return np.array(wallo) ;
 
 
 
@@ -1429,7 +1452,6 @@ def plotbin(f):
         plt.axvline(x=1,linewidth=0.2);    plt.axvline(x=1+gm(f,'shift'),linewidth=0.5)
     plt.show()
     return;
-
 
 
 # ------------------------------------------------------------------------------

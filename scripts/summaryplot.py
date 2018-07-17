@@ -143,7 +143,7 @@ if os.path.exists('./sample.txt'):
                 fix.append([ztab1[i+1],strings[i+1]])
         stringo = np.asarray(fix)
 
-        co = (sizeL/sizeN)*(3/8)*(1/sizeL)**3
+        co = (sizeL/sizeN)*(1/6)*(1/sizeL)**3
         plt.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,linewidth=0.5,marker='.',markersize=0.1)
         plt.ylabel("String density [Length/Volume adm U.]")
         plt.xlabel(r'$\tau$')
