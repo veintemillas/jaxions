@@ -153,7 +153,7 @@ inline	void	stringWallS(const __m512 s1, const __m512 s2, int *hand, int *wHand)
 
 	/*	Walls		*/
 
-	msk  = opCode(kand, opCode(kand, opCode(cmp_ps_mask, tp3, opCode(setzero_pd), _CMP_LT_OS), 0b1010101010101010), tmp);
+	msk  = opCode(kand, opCode(kand, opCode(cmp_ps_mask, tp3, opCode(setzero_ps), _CMP_LT_OS), 0b1010101010101010), tmp);
 
 	wHand[0] |= (msk & 2)     >> 1;
 	wHand[1] |= (msk & 8)     >> 3;
