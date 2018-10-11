@@ -228,9 +228,39 @@ void	ConfGenerator::runCpu	()
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 			normaliseField(axionField, FIELD_M);
-			normCoreField	(axionField);
+			// normCoreField	(axionField);
 		}
 		break;
+
+		// case CONF_KMAX2: {
+		// 	auto &myPlan = AxionFFT::fetchPlan("Init");
+		// 	// prepare FModes accordint to exponential distribution
+		// 	prof.start();
+		// 	momConf(axionField, kMax, kCrt);
+		// 	prof.stop();
+		// 	prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+		// 	// FFT into m
+		// 	myPlan.run(FFT_BCK);
+		// 	// normalise it!
+		// 		// scaleField (axionField, FIELD_M, *axionField->zV());
+		// 		// normaliseField(axionField, FIELD_M);
+		// 	// move into v
+		// 	char *mO = static_cast<char *>(axionField->mCpu())  + axionField->Surf()*field->DataSize();
+		// 	char *vO = static_cast<char *>(axionField->vCpu());
+		// 	char *mF = static_cast<char *>(axionField->m2Cpu());
+		// 	size_t volume = axionField->DataSize()*axionField->Size();
+		// 	// Copy m -> v
+		// 	memcpy	(v0, mO, volume);
+		// 	prof.start();
+		// 	momConf(axionField, kMax, kCrt);
+		// 	prof.stop();
+		// 	prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+		//
+		// 	myPlan.run(FFT_BCK);								// FFT into m
+		// 	normaliseField(axionField, FIELD_M);
+		// 	normCoreField	(axionField);
+		// }
+		// break;
 
 		case CONF_SMOOTH:
 		prof.start();
@@ -243,6 +273,7 @@ void	ConfGenerator::runCpu	()
 		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
 		if (smvarType != CONF_SAXNOISE)
 			normaliseField(axionField, FIELD_M);
+		normCoreField	(axionField);
 		break;
 	}
 
