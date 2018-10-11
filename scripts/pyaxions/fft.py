@@ -43,9 +43,10 @@ def mkcmap2():
     mmblue = '#0080ff'
     lblue =  '#00BFFF'
     dorchid = '#68228B'
+    orange= '#FFA500'
 #     light '#BF3EFF'
     anglemap = col.LinearSegmentedColormap.from_list(
-        'anglemap', [black,dorchid,turq,yellow,yellow,red], N=100, gamma=1)
+        'anglemap', [black,black,dorchid,turq,yellow,orange,red], N=100, gamma=1)
     return anglemap
 
 logdensmap2 = mkcmap2()

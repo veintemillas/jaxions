@@ -56,6 +56,9 @@ if len(sys.argv) == 2:
     elif (sys.argv[-1] == 'S'):
         mode = 'S'
         print('Saxion')
+    elif (sys.argv[-1] == 'dens'):
+        mode = 'den'
+        print('Density from m,v')
 
 
 prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
@@ -79,7 +82,7 @@ for meas in fileMeas:
     zR = fileHdf5["/"].attrs.get("z")
     fl = fileHdf5["/"].attrs.get("Field type").decode()
 
-    if (mode == 'theta') and pa.gm(meas,'2Dmap?'):
+    if (mode == 'theta') and pa.gm(meas,'map?'):
         if fl == "Saxion":
             mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
             aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
@@ -87,14 +90,11 @@ for meas in fileMeas:
             # rMax = np.amax(rData)
             # rData = rData/zR
         elif fl == "Axion":
-            if mode == 0:
-                aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
-        #				pm = np.amax(aData)
-        #				print ("BMax %f" % pm)
-                aData = aData/zR
-                rData = np.ones(aData.shape)
-                pData = np.ones(aData.shape)*(2*np.pi)
-                aData = (aData + pData)/(4.*np.pi)
+            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = aData/zR
+            rData = np.ones(aData.shape)
+            pData = np.ones(aData.shape)*(2*np.pi)
+            aData = (aData + pData)/(4.*np.pi)
     elif mode == 'eA' and pa.gm(meas,'2Dmape?'):
             avi = pa.gm(meas,'eA')
             # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
@@ -105,6 +105,19 @@ for meas in fileMeas:
             aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
     elif mode == 'S' and pa.gm(meas,'map?'):
             aData = pa.gm(meas,'maprho')
+    if (mode == 'den') and pa.gm(meas,'map?'):
+        if fl == "Saxion":
+            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            aData = 1-np.arg(mTmp[:,:,0])/np.abs(mTmp[:,:])
+            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+            # rMax = np.amax(rData)
+            # rData = rData/zR
+        elif fl == "Axion":
+            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = aData/zR
+            rData = np.ones(aData.shape)
+            pData = np.ones(aData.shape)*(2*np.pi)
+            aData = (aData + pData)/(4.*np.pi)
 
 
     #				iData = np.trunc(aData/(2*np.pi))
