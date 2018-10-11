@@ -587,15 +587,14 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	else
 		sprintf(base, "%s/%s.restart", outDir, outName);
 
+LogMsg (VERB_NORMAL, "File read: %s",base);
 	/*	Open the file and release the plist	*/
-
 	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
 	{
 		*axion == nullptr;
 		LogError ("Error opening file %s", base);
 		return;
 	}
-
 	H5Pclose(plist_id);
 
 	/*	Attributes	*/
@@ -606,58 +605,68 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 
 	double	zTmp, maaR;
 	uint	tStep, cStep, totlZ;
-
 	readAttribute (file_id, fStr,   "Field type",   attr_type);
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-
 	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);
-
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
+LogMsg (VERB_NORMAL, "Field type: %s",fStr);
+LogMsg (VERB_NORMAL, "Precision: %s",prec);
+LogMsg (VERB_NORMAL, "Size: %d",sizeN);
+LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
+LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
+LogMsg (VERB_NORMAL, "tStep: %d",tStep);
+LogMsg (VERB_NORMAL, "cStep: %d",cStep);
 
+LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
 	if (myCosmos->PhysSize() == 0.0) {
 		double lSize;
 		readAttribute (file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 		myCosmos->SetPhysSize(lSize);
 	}
+LogMsg (VERB_NORMAL, "lSize (read and set to): %f",myCosmos->PhysSize());
 
 	if (endredmap == -1)	// No reduction unless specified
 		endredmap = sizeN;
 
 	//initial time; axion will be created with z=zTmp
-	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);
 	//if no zInit is given in command line, decide from file
 	if (!uZin) {
 		//by default chose "zInitial"
 		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
 		//unless zTmp is before [Im not sure in which case this is relevant]
+LogMsg (VERB_NORMAL, "zInit (read): %f",zInit);
 		if (zTmp < zInit)
 			zInit = zTmp;
+LogMsg (VERB_NORMAL, "zInit (used): %f",zInit);
 	//if zInit is given in command line, start axions at zInit
 	} else {
 		zTmp = zInit;
+LogMsg (VERB_NORMAL, "zTmp (set to): %f",zTmp);
 	}
 	//but a record of the true z of the read confifuration is kept in zInit
 
 	if (!uZfn) {
 		readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
 	}
-
+LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
 //	if (zInit > zTmp)
 //		zTmp = zInit;
 	if (restart)
 	{
 		readAttribute (file_id, &fIndex, "index", H5T_NATIVE_INT);
 		LogOut("Reading index is %d\n",fIndex);
+		LogMsg (VERB_NORMAL, "Reading index is %d\n",fIndex);
 		/* It is very easy, we keep zInit and take z=zTmp we trust everything was properly specified in the file */
 		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
 		readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
 		LogOut("Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+		LogMsg (VERB_NORMAL, "Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
 
 	}
-
 
 	/*	Read potential data	*/
 	auto status = H5Lexists (file_id, "/potential", H5P_DEFAULT);
@@ -667,12 +676,16 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	else {
 		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
 
+LogMsg (VERB_NORMAL, "nQcd = %f\n",myCosmos->QcdExp());
 		if (myCosmos->QcdExp() == -1.e8) {
 			double nQcd;
 			readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
 			myCosmos->SetQcdExp(nQcd);
+			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f\n",myCosmos->QcdExp());
 		}
 
+LogMsg (VERB_NORMAL, "Lambda = %f\n",myCosmos->Lambda());
+LogMsg (VERB_NORMAL, "Lambda Type= %d\n",lType);
 		if (myCosmos->Lambda() == -1.e8) {
 			double	lda;
 			readAttribute (vGrp_id, &lda,   "Lambda",      H5T_NATIVE_DOUBLE);
@@ -689,6 +702,8 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 			}
 
 			myCosmos->SetLambda(lda);
+			LogMsg (VERB_NORMAL, "Lambda (read and set)= %f\n",myCosmos->Lambda());
+
 		} /*else {	// Ya se ha hecho en Cosmos
 			if (uMsa) {
 				double tmp = (msa*sizeN)/sizeL;
@@ -698,35 +713,42 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 				msa = sqrt(2*LL)*tmp;
 			}
 		}*/
-
+LogMsg (VERB_NORMAL, "Indi3 = %f\n",myCosmos->Indi3());
 		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
-
 		if (myCosmos->Indi3() == -1.e8) {
 			double indi3;
 			readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
 			myCosmos->SetIndi3(indi3);
+			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f\n",myCosmos->Indi3());
 		}
 
+LogMsg (VERB_NORMAL, "z Threshold = %f\n",myCosmos->ZThRes());
 		if (myCosmos->ZThRes() == -1.e8) {
 			double zthrs;
 			readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
 			myCosmos->SetZThRes(zthrs);
+			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %f\n",myCosmos->ZThRes());
 		}
 
+LogMsg (VERB_NORMAL, "z Restore = %f\n",myCosmos->ZRestore());
 		if (myCosmos->ZRestore() == -1.e8) {
 			double zrest;
 			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
 			myCosmos->SetZThRes(zrest);
+			LogMsg (VERB_NORMAL, "z Restore (read and set) = %f\n",myCosmos->ZRestore());
 		}
 
 		//indi3 =  maa/pow(zTmp, nQcd*0.5);
 
+LogMsg (VERB_NORMAL, "Gamma = %f\n",myCosmos->Gamma());
 		if (myCosmos->Gamma() == -1.e8) {
 			double gm;
 			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
 			myCosmos->SetGamma(gm);
+			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f\n",myCosmos->Gamma());
 		}
 
+LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
 		if (myCosmos->QcdPot() == VQCD_NONE) {
 			VqcdType vqcdType = VQCD_NONE;
 
@@ -769,6 +791,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 			}
 
 			myCosmos->SetQcdPot(vqcdType);
+			LogMsg (VERB_NORMAL, "QcdPot (read and set)= %d\n",myCosmos->QcdPot());
 		}
 
 		H5Gclose(vGrp_id);
@@ -777,6 +800,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	/*	Read IC data	*/
 	status = H5Lexists (file_id, "/ic", H5P_DEFAULT);
 
+LogMsg (VERB_NORMAL, "Ic... \n");
 	if (status <= 0)
 		LogMsg(VERB_NORMAL, "IC data not available");
 	else {
@@ -851,12 +875,12 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 			dataSize  = sizeof(double);
 
 			if (!strcmp(prec, "Single"))
-				LogMsg (VERB_HIGH, "Reading single precision configuration as double precision");
+				LogMsg (VERB_NORMAL, "Reading single precision configuration as double precision");
 		} else if (sPrec == FIELD_SINGLE) {
 			dataType  = H5T_NATIVE_FLOAT;
 			dataSize  = sizeof(float);
 			if (!strcmp(prec, "Double"))
-				LogMsg (VERB_HIGH, "Reading double precision configuration as single precision");
+				LogMsg (VERB_NORMAL, "Reading double precision configuration as single precision");
 		} else {
 			LogError ("Input error: Invalid precision");
 			exit(1);
@@ -894,11 +918,10 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	double maa = (*axion)->AxionMass();
 
 	if (fabs((maa - maaR)/std::max(maaR,maa)) > 1e-5)
-		LogMsg(VERB_HIGH, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
+		LogMsg(VERB_NORMAL, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
 
 	prof.start();
 	commSync();
-
 	/*	Create plist for collective read	*/
 
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -919,22 +942,18 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	for (hsize_t zDim=0; zDim<((hsize_t) (*axion)->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
-
 		offset = (((hsize_t) (myRank*(*axion)->Depth()))+zDim)*slab;
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-
 		/*	Read raw data	*/
 
 		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
 		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
-
 		if ((mErr < 0) || (vErr < 0)) {
 			LogError ("Error reading dataset from file");
 			return;
 		}
 	}
-
 	/*	Close the dataset	*/
 
 	H5Sclose (mSpace);
