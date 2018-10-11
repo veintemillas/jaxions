@@ -183,6 +183,7 @@ void	PrintUsage(char *name)
 	printf("\nOutput:\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
+	printf("--meas  [int]                   MeasuremeType [default ALLBIN|STRING|STRINGMAP|ENERGY|2DMAP|SPECTRUM].\n");
 	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");

@@ -292,9 +292,12 @@
 			SPECTRUM_NN	= 128,
 		}	SpectrumType;
 
+
+
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 
 		typedef	enum	MeasureType_s {
+			MEAS_NOTHING			= 0,
 			MEAS_BINTHETA     = 1,
 			MEAS_BINRHO       = 2,
 			MEAS_BINLOGTHETA2 = 4,
@@ -342,6 +345,14 @@
 			M2_STRINGMAP,
 			M2_DIRTY,
 		}	StatusM2;
+
+		typedef	struct	MeasInfo_v
+		{
+			int	index;
+			size_t sliceprint	;
+			size_t idxprint	;
+			MeasureType measdata ;
+		}	MeasInfo;
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__
