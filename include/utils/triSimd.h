@@ -252,11 +252,11 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 
 	s = opCode(mul_pd, d, d);
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi64, opCode(castpd_si512, d),
+	d = opCode(castsi512_pd, opCode(mask_xor_epi64, opCode(castpd_si512, d),
 		opCode(cmpeq_epi64_mask,
 			opCode(cvtepi32_epi64, opCodl(and_si256, hOne, opCodl(and_si256, qi, hOne))),
 			opCode(set1_epi64, 1)),
-		opCode(castpd_si512, d), opCode(castpd_si512, zeroNegd));
+		opCode(castpd_si512, d), opCode(castpd_si512, zeroNegd)));
 #elif	defined(__AVX2__)
 	d = opCode(xor_pd, d,
 		opCode(and_pd, zeroNegd,
@@ -306,7 +306,7 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 			opCode(kor,
 				opCode(cmp_pd_mask, x, zeroNegd, _CMP_EQ_UQ),
 				opCode(cmp_pd_mask,
-					opCode(castpd_si512, opCode(andnot_si512, opCode(castsi512_pd, x), opCode(castsi512_pd, zeroNegd))),
+					opCode(castsi512_pd, opCode(andnot_si512, opCode(castpd_si512, x), opCode(castpd_si512, zeroNegd))),
 					TriMaxd, _CMP_GT_OQ))),
 		u, zeroNegd);
 #elif	defined(__AVX__)
@@ -382,11 +382,11 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 	s = opCode(mul_pd, d, d);
 
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi64, opCode(castpd_si512, d),
+	d = opCode(castsi512_pd, opCode(mask_xor_epi64, opCode(castpd_si512, d),
 		opCode(cmpneq_epi64_mask,
 			opCode(cvtepi32_epi64, opCodl(and_si256, qi, hTwo)),
 			opCode(set1_epi64, 2)),
-		opCode(castpd_si512, d), opCode(castpd_si512, zeroNegd));
+		opCode(castpd_si512, d), opCode(castpd_si512, zeroNegd)));
 #elif	defined(__AVX2__)
 	d = opCode(xor_pd, d,
 		opCode(and_pd, zeroNegd,
@@ -665,7 +665,7 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 
 	s = opCode(mul_ps, d, d);
 #ifdef	__AVX512F__
-	d = opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, one, opCode(and_epi32, q, one)), opCode(castps_si512, d), opCode(castps_si512, zeroNegf));
+	d = opCode(castsi512_ps, opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, one, opCode(and_epi32, q, one)), opCode(castps_si512, d), opCode(castps_si512, zeroNegf)));
 #elif	defined(__AVX2__)
 	d = opCode(xor_ps, d,
 		opCode(and_ps, zeroNegf,
@@ -700,7 +700,7 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 	u = opCode(mask_blend_ps,
 		opCode(kor,
 			opCode(cmp_ps_mask, x, zeroNegf, _CMP_EQ_UQ),
-			opCode(cmp_ps_mask, opCode(andnot_si512, opCode(castps_si512, x), opCode(castps_si512, zeroNegf)), TriMaxf, _CMP_GT_OQ)),
+			opCode(cmp_ps_mask, opCode(castsi512_ps, opCode(andnot_si512, opCode(castps_si512, x), opCode(castps_si512, zeroNegf))), TriMaxf, _CMP_GT_OQ)),
 		u, zeroNegf);
 #elif	defined(__AVX__)
 	u = opCode(blendv_ps, u,
@@ -793,7 +793,7 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 
 #ifdef	__AVX512F__
 	u = opCode(mask_blend_ps, opCode(cmp_ps_mask, d, fInf, _CMP_EQ_UQ),
-		opCode(mask_blend_ps, opCode(knot, opCode(cmp_ps_mask, opCode(andnot_si512, opCode(castps_si512, x), opCode(castps_si512, zeroNegf)), TriMaxf, _CMP_GT_OQ)),
+		opCode(mask_blend_ps, opCode(knot, opCode(cmp_ps_mask, opCode(castsi512_ps, opCode(andnot_si512, opCode(castps_si512, x), opCode(castps_si512, zeroNegf))), TriMaxf, _CMP_GT_OQ)),
 			zeroNegf, u),
 		fInf);
 #elif	defined(__AVX__)
