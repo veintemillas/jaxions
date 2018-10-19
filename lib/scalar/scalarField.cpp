@@ -127,7 +127,7 @@ const std::complex<float> If(0.,1.);
 	}
 
 	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = n3*fSize;
+	const size_t	vBytes = v3*fSize;
 
 	// MODIFIED BY JAVI
 	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
@@ -234,7 +234,7 @@ const std::complex<float> If(0.,1.);
 
 	memset (m, 0, fSize*v3);
 	// changed from memset (v, 0, fSize*n3);
-	memset (v, 0, fSize*n3);
+	memset (v, 0, fSize*v3);
 
 	commSync();
 
