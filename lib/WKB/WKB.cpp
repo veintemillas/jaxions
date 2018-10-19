@@ -109,6 +109,7 @@ namespace AxionWKB {
 						myPlan.run(FFT_FWD);
 						LogMsg(VERB_NORMAL,"done!!");
 
+						  LogMsg(VERB_HIGH," chech precision %d and datasize %d %ld",field->Precision(),field->DataSize(), dataTotalSize2);
 							LogMsg(VERB_NORMAL, "copying m2/1 -> m2/2 ");
 							memmove	(m2h, m2, dataTotalSize2);
 							LogMsg(VERB_NORMAL,"done!!");
@@ -131,7 +132,7 @@ namespace AxionWKB {
 						myPlan.run(FFT_FWD);
 						LogMsg(VERB_NORMAL,"done!!");
 
-						LogMsg(VERB_NORMAL, "FTs of m and v (time=%f) set in m2 ",zInit);
+						LogMsg(VERB_NORMAL, "FTs of m and v (time=%f) set in m2 ",zIni);
 						LogMsg(VERB_NORMAL, "      - - ->   ready to WKBonce! \n");
 				LogOut ("      - - ->   ready to WKBonce! \n");
 
@@ -648,6 +649,7 @@ namespace AxionWKB {
 						memcpy	(m0Tf+oOff, m0Tf+fOff, dataLine);
 					}
 			LogMsg(VERB_NORMAL," shifthing to host ghost");
+			LogMsg(VERB_NORMAL," chech precision %f and datasize %f",field->Precision(),field->DataSize());
 					size_t dataTotalSize = (field->Precision())*(field->Size());
 					memcpy	(mTf, m0Tf, dataTotalSize);
 
@@ -676,7 +678,7 @@ namespace AxionWKB {
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
     *field->zV() = zEnd ;
-    LogMsg(VERB_NORMAL,"[WKB] scalar set z=%f done (m2 still in %f)", (*field->zV()), zInit);
+    LogMsg(VERB_NORMAL,"[WKB] scalar set z=%f done (m2 still in %f)", (*field->zV()), zIni);
 		field->setFolded(false);
 		LogMsg(VERB_NORMAL,"[WKB] m,v, set unfolded!");
 		LogMsg(VERB_NORMAL,"[WKB] Complete!\n ");
