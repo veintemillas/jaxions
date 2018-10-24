@@ -161,7 +161,7 @@ void	PrintUsage(char *name)
 
 	printf("\nInitial conditions:\n");
 	printf("  --icinfo                      Prints more info about initial conditions.\n");
-	printf("  --ctype smooth/kmax/tkachev   Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("  --ctype smooth/kmax/vilgor    Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions.\n");
 	printf("\n");
 	printf("  --kmax  [int]                 Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
@@ -228,7 +228,11 @@ void	PrintICoptions()
 	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT.\n");
 	printf("                                                   for 3D k < kmax = min(kmax, N/2-1).\n");
 	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
-	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n");
+	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n\n");
+
+	printf(" [vilgor]                                          Start at log(ms/H)=0 in the attractor solution\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
@@ -1103,6 +1107,10 @@ int	parseArgs (int argc, char *argv[])
 			{
 				cType = CONF_KMAX;
 			}
+			else if (!strcmp(argv[i+1], "vilgor"))
+			{
+				cType = CONF_VILGOR;
+			}
 			else if (!strcmp(argv[i+1], "tkachev"))
 			{
 				cType = CONF_TKACHEV;
@@ -1409,7 +1417,7 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (cType == CONF_SMOOTH)
+	if (cType == CONF_SMOOTH || cType == CONF_VILGOR)
 	{
 		parm1 = iter;
 		parm2 = alpha;

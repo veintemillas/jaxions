@@ -119,6 +119,7 @@
 		typedef enum	ConfType_s
 		{
 			CONF_KMAX,
+			CONF_VILGOR,
 			CONF_TKACHEV,
 			CONF_SMOOTH,
 			CONF_READ,

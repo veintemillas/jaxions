@@ -382,6 +382,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_VILGOR:
+			sprintf(icStr, "VilGor");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
@@ -816,6 +824,10 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			cType = CONF_KMAX;
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "VilGor")) {
+			cType = CONF_VILGOR;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "Tkachev")) {
 			cType = CONF_TKACHEV;
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
@@ -1222,6 +1234,13 @@ void	createMeas (Scalar *axion, int index)
 
 		case	CONF_KMAX:
 			sprintf(icStr, "kMax");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_VILGOR:
+			sprintf(icStr, "VilGor");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);

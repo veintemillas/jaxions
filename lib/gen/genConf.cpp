@@ -58,6 +58,7 @@ class	ConfGenerator
 	{
 		case CONF_KMAX:
 		case CONF_TKACHEV:
+		case CONF_VILGOR:
 
 		kMax = parm1;
 		kCrt = parm2;
@@ -87,6 +88,7 @@ class	ConfGenerator
 	{
 		case CONF_KMAX:
 		case CONF_TKACHEV:
+		case CONF_VILGOR:
 
 		kMax = 2;
 		kCrt = 1.0;
@@ -221,8 +223,10 @@ void	ConfGenerator::runCpu	()
 		break;
 
 		case CONF_KMAX: {
+			LogMsg(VERB_NORMAL,"[GEN] CONF_KMAX started!\n ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
+			LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",kMax,kCrt);
 			momConf(axionField, kMax, kCrt);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
@@ -232,35 +236,51 @@ void	ConfGenerator::runCpu	()
 		}
 		break;
 
-		// case CONF_KMAX2: {
-		// 	auto &myPlan = AxionFFT::fetchPlan("Init");
-		// 	// prepare FModes accordint to exponential distribution
-		// 	prof.start();
-		// 	momConf(axionField, kMax, kCrt);
-		// 	prof.stop();
-		// 	prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		// 	// FFT into m
-		// 	myPlan.run(FFT_BCK);
-		// 	// normalise it!
-		// 		// scaleField (axionField, FIELD_M, *axionField->zV());
-		// 		// normaliseField(axionField, FIELD_M);
-		// 	// move into v
-		// 	char *mO = static_cast<char *>(axionField->mCpu())  + axionField->Surf()*field->DataSize();
-		// 	char *vO = static_cast<char *>(axionField->vCpu());
-		// 	char *mF = static_cast<char *>(axionField->m2Cpu());
-		// 	size_t volume = axionField->DataSize()*axionField->Size();
-		// 	// Copy m -> v
-		// 	memcpy	(v0, mO, volume);
-		// 	prof.start();
-		// 	momConf(axionField, kMax, kCrt);
-		// 	prof.stop();
-		// 	prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
-		//
-		// 	myPlan.run(FFT_BCK);								// FFT into m
-		// 	normaliseField(axionField, FIELD_M);
-		// 	normCoreField	(axionField);
-		// }
-		// break;
+		case CONF_VILGOR:{
+			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORs started!\n ");
+			prof.start();
+			randConf (axionField);
+			prof.stop();
+			prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+
+			// compute k
+			// depending on k, we use momentum or smooth initial conditions
+			// for small k, we use smooth (only option temporarily)
+			// number of iterations needed = 0.8/(#/N^3)
+			// desired 0.8/(#/N^3) is 6*xi(logi)*msa^2*exp(-2logi)
+			double logi = 0;
+			// such a logi and msa give a different initial time! redefine
+			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
+
+			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+			double nN3 = (6.0*xit*axionField->Msa()*axionField->Msa()*exp(-2.0*logi));
+			int niter = (int) (0.8/nN3);
+			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
+
+			LogMsg(VERB_NORMAL,"[GEN] smoothXeon called with %d iterations and alpha = %f!",niter,alpha);
+			if (niter>100){
+					LogOut("WARNING!! More than 100 iterations is not particularly efficient! update VILGOR algorithm to use FFTs!!\n");
+			}
+			prof.start();
+			smoothXeon (axionField, niter, alpha);
+			prof.stop();
+			prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
+
+			normaliseField(axionField, FIELD_M);
+			normCoreField	(axionField);
+
+			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+			scaleField (axionField, FIELD_M, *axionField->zV());
+			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
+			// tunePropagator (axiona);
+			// if (int i ==0; i<10; i++ ){
+			// 	dzaux = axion->dzSize(zInit);
+			// 	propagate (axiona, dzaux);
+			// }
+		}
+		break;
 
 		case CONF_SMOOTH:
 		prof.start();
@@ -277,6 +297,8 @@ void	ConfGenerator::runCpu	()
 		break;
 	}
 
+	axionField->setFolded(false);
+
 	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
 	{
 		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
@@ -287,7 +309,7 @@ void	ConfGenerator::runCpu	()
 
 void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType)
 {
-	LogMsg  (VERB_HIGH, "Called configurator generator");
+	LogMsg  (VERB_NORMAL, "Called configurator generator");
 
 	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType);
 
@@ -313,7 +335,7 @@ void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType)
 
 void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType, size_t parm1, double parm2)
 {
-	LogMsg  (VERB_HIGH, "Called configurator generator");
+	LogMsg  (VERB_NORMAL, "Called configurator generator");
 
 	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType, parm1, parm2);
 
