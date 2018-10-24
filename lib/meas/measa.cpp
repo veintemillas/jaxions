@@ -14,6 +14,8 @@
 
 using namespace std;
 
+double xivilgor(double logi);
+
 template<typename Float>
 MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 {
@@ -279,8 +281,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
+		double loks = log(axiona->Msa()*z_now/axiona->Delta());
 		double Le = axiona->BckGnd()->PhysSize();
-			LogOut("xi(%f) #_st %ld ",
+			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
 				MeasDataOut.str.strDen );
 	} else {
@@ -304,4 +307,8 @@ MeasData	Measureme  (Scalar *axiona,  MeasInfo infa, MeasureType measa)
 	{
 		return Measureme<double>(axiona,  infa,  measa);
 	}
+}
+
+double xivilgor(double logi){
+	return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
 }
