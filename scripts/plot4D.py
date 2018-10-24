@@ -103,7 +103,7 @@ for meas in fileMeas:
             avi = pa.gm(meas,'eA')**2
             # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
             aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
-    elif mode == 'S' and pa.gm(meas,'map?'):
+    elif (mode == 'S') and (fl == "Saxion") and pa.gm(meas,'map?'):
             aData = pa.gm(meas,'maprho')
     if (mode == 'den') and pa.gm(meas,'map?'):
         if fl == "Saxion":
@@ -145,7 +145,7 @@ for meas in fileMeas:
 allData=np.array(allData)
 zData=np.array(zData)
 
-print(aData.shape)
+print(allData[0].shape)
 ## Display the data and assign each frame a time value from 1.0 to 3.0
 # imv.setImage(data, xvals=np.linspace(1., 3., data.shape[0]))
 imv.setImage(allData, xvals=zData)

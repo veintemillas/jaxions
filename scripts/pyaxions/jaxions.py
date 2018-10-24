@@ -247,6 +247,12 @@ def gm(address,something='summary',printerror=False):
         msa = f.attrs[u'Saxion mass'] ;
         return msa/delta ;
 
+    # initial condition stuff
+    if something == 'kc':
+        return f['ic'].attrs[u'Critical kappa'] ;
+    if something == 'sIter':
+        return f['ic'].attrs[u'Smoothing iterations'] ;
+
     # energies or other stuff
     en_check = 'energy' in f
     if (something[0] == 'e') and en_check :
