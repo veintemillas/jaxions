@@ -68,6 +68,7 @@ extern LambdaType     lType;
 //extern VqcdType       vqcdTypeDamp;
 //extern VqcdType       vqcdTypeRhoevol;
 extern PropType       pType;
+extern SpectrumMaskType spmask;
 
 extern LogMpi	      logMpi;
 extern VerbosityLevel verb;

@@ -58,7 +58,8 @@ class	ConfGenerator
 	{
 		case CONF_KMAX:
 		case CONF_TKACHEV:
-		case CONF_VILGOR:
+		case CONF_VILGORK:
+		case CONF_VILGORS:
 
 		kMax = parm1;
 		kCrt = parm2;
@@ -236,20 +237,61 @@ void	ConfGenerator::runCpu	()
 		}
 		break;
 
-		case CONF_VILGOR:{
+		case CONF_VILGOR:
+		case CONF_VILGORK:{
+			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started!\n ");
+			auto &myPlan = AxionFFT::fetchPlan("Init");
+
+			// logi = log ms/H is taken to be zInit (which was input in command line)
+			// depending on k, we use momentum or smooth initial conditions
+			// temperarily we use momentum space by defaul, see below for smooth
+			double logi = *axionField->zV();
+			// such a logi and msa give a different initial time! redefine
+			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			// LogOut("[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
+			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
+
+			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+			double nN3 = (6.0*xit*axionField->Msa()*axionField->Msa()*exp(-2.0*logi));
+			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+
+			prof.start();
+			// LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",sizeN,nc);
+			momConf(axionField, sizeN, nc);
+			prof.stop();
+			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+
+			myPlan.run(FFT_BCK);
+
+			normaliseField(axionField, FIELD_M);
+			normCoreField	(axionField);
+
+			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+			scaleField (axionField, FIELD_M, *axionField->zV());
+			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
+			// tunePropagator (axiona);
+			// if (int i ==0; i<10; i++ ){
+			// 	dzaux = axion->dzSize(zInit);
+			// 	propagate (axiona, dzaux);
+			// }
+		}
+		break;
+
+		case CONF_VILGORS:{
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORs started!\n ");
 			prof.start();
 			randConf (axionField);
 			prof.stop();
 			prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 
-
-			// compute k
+			// logi = log ms/H is taken to be zInit (which was input in command line)
 			// depending on k, we use momentum or smooth initial conditions
-			// for small k, we use smooth (only option temporarily)
+			// in vilgors we use smooth
 			// number of iterations needed = 0.8/(#/N^3)
 			// desired 0.8/(#/N^3) is 6*xi(logi)*msa^2*exp(-2logi)
-			double logi = 0;
+			double logi = *axionField->zV();
 			// such a logi and msa give a different initial time! redefine
 			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);

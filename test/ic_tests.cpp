@@ -58,6 +58,8 @@ int	main (int argc, char *argv[])
 	switch (cType)
 	{
 		case 	CONF_VILGOR:
+		case 	CONF_VILGORK:
+		case 	CONF_VILGORS:
 		case 	CONF_KMAX:{
 					for(int i=0; i<30;i++)
 					{

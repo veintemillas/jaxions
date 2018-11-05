@@ -108,15 +108,24 @@
 		template<typename cFloat>
 		void	filterFFT	(int neigh);
 
-		void	nRun		();
+		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
 		void	nSRun		();
 		void	pRun		();
 		void	nmodRun		();
 
-
 		void	filter	(int neigh);
 
+		void	reset0(){
+				LogMsg(VERB_NORMAL,"Reset SpecAna Bins to zero");
+				binK.assign(powMax, 0.);
+				binG.assign(powMax, 0.);
+				binV.assign(powMax, 0.);
+				binP.assign(powMax, 0.);
+				binPS.assign(powMax, 0.);
+		}
 	};
+
+
 
 
 	inline double	SpecBin::operator()(size_t idx, SpectrumType sType)	const	{

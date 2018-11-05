@@ -382,6 +382,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_VILGORK:
+		case	CONF_VILGORS:
 		case	CONF_VILGOR:
 			sprintf(icStr, "VilGor");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);

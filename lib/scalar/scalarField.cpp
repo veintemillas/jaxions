@@ -338,7 +338,7 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
-				if (cType == CONF_KMAX || cType == CONF_TKACHEV)
+				if (cType == CONF_KMAX || cType == CONF_VILGOR ||cType == CONF_TKACHEV)
 					if (lowmem)
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else
@@ -795,7 +795,7 @@ double	Scalar::dzSize	   () {
 	auto   &pot = bckgnd->QcdPot();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
-                return  wDz/sqrt(mAx2*(zNow*zNow) + 12.*(oodl*oodl));
+                return  std::min(wDz/sqrt(mAx2*(zNow*zNow) + 12.*(oodl*oodl)),zNow/10.);
          else
                 mAfq = sqrt(mAx2*(zNow*zNow) + 12.*oodl*oodl);
 
@@ -815,7 +815,7 @@ double	Scalar::dzSize	   () {
                         break;
         }
 
-        return  wDz/std::max(mSfq,mAfq);
+        return  std::min(wDz/std::max(mSfq,mAfq),zNow/10.);
 }
 
 double Scalar::SaxionShift()

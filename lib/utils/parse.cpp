@@ -69,6 +69,7 @@ size_t parm1 = 0;
 size_t wTime = std::numeric_limits<std::size_t>::max();
 
 PropType     pType     = PROP_NONE;
+SpectrumMaskType spmask= SPMASK_FLAT;
 ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
@@ -1003,6 +1004,30 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		// manual measurement
+
+		if (!strcmp(argv[i], "--spmask"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a spectrum masking type: 1 (flat),2 (Villadoro),3 (Flat+Villadoro), ... .\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%zu", &spmask);
+
+			if (spmask < 0)
+			{
+				printf("Error: Spectrum masking type is a positive integer.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--name"))
 		{
 			if (i+1 == argc)
@@ -1110,6 +1135,14 @@ int	parseArgs (int argc, char *argv[])
 			else if (!strcmp(argv[i+1], "vilgor"))
 			{
 				cType = CONF_VILGOR;
+			}
+			else if (!strcmp(argv[i+1], "vilgork"))
+			{
+				cType = CONF_VILGORK;
+			}
+			else if (!strcmp(argv[i+1], "vilgors"))
+			{
+				cType = CONF_VILGORS;
 			}
 			else if (!strcmp(argv[i+1], "tkachev"))
 			{

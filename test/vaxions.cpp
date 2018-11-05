@@ -107,7 +107,7 @@ int	main (int argc, char *argv[])
 			}
 		}
 	}
-
+	LogOut ("z %f zInit %f zInit_save %f zpreInit %f\n",*axion->zV(),zInit,zInit_save,zpreInit);
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
@@ -127,6 +127,7 @@ int	main (int argc, char *argv[])
 	ninfa.idxprint = 0 ;
 	ninfa.index = 0;
 	ninfa.measdata = MEAS_NOTHING;
+	ninfa.mask = spmask;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
@@ -271,6 +272,7 @@ int	main (int argc, char *argv[])
 	LogOut("           PARAMETERS  						                \n\n");
 	LogOut("Length =  %2.2f\n", myCosmos.PhysSize());
 	LogOut("nQCD   =  %2.2f\n", myCosmos.QcdExp());
+	LogOut("indi3  =  %2.2f\n", myCosmos.Indi3());
 
 	if (myCosmos.ZRestore() > myCosmos.ZThRes())
 		LogOut("       =  0 in (%3.3f, %3.3f)   \n", myCosmos.ZThRes(), myCosmos.ZRestore());
@@ -300,19 +302,23 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("           ESTIMATES\n\n");
 
-	double z_doom;
+	double z_doom2;
 
-	if ((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
-		z_doom = pow(2.0*0.1588*axion->Msa()/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
-	else
-		z_doom = pow(    0.1588*axion->Msa()/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
+	if (myCosmos.Indi3()>0.0 && coSwitch2theta ){
 
-	double z_doom2 = findzdoom(axion);
+	// if ((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
+	// 	z_doom = pow(2.0*0.1588*axion->Msa()/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
+	// else
+	// 	z_doom = pow(    0.1588*axion->Msa()/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
+
+
+	z_doom2 = findzdoom(axion);
 	double z_axiq = pow(1.00/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
 	double z_NR   = pow(3.46/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
-	LogOut("z_doomsday %f(%f) \n", z_doom,z_doom2);
+	LogOut("z_doomsday %f(%f) \n", z_doom2,z_doom2);
 	LogOut("z_axiquenc %f \n", z_axiq);
 	LogOut("z_NR       %f \n", z_NR);
+	;}
 	LogOut("--------------------------------------------------\n\n");
 
 	commSync();

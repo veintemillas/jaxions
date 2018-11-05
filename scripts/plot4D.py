@@ -44,7 +44,7 @@ win.setWindowTitle('pyqtgraph example: ImageView')
 # data += img * decay
 # data += 2
 
-print('modes: theta [default], vtheta, saxion, vsaxion, saxion, eA')
+print('modes: theta [default], vtheta, saxion, vsaxion, saxion, eA, sP, real, imag')
 mode = 'theta'
 if len(sys.argv) == 2:
     if (sys.argv[-1] == 'eA'):
@@ -59,6 +59,12 @@ if len(sys.argv) == 2:
     elif (sys.argv[-1] == 'dens'):
         mode = 'den'
         print('Density from m,v')
+    elif (sys.argv[-1] == 'real'):
+        mode = 'real'
+        print('real part of m/|m|')
+    elif (sys.argv[-1] == 'imag'):
+        mode = 'imag'
+        print('imaginary part of m/|m|')
 
 
 prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
@@ -118,7 +124,16 @@ for meas in fileMeas:
             rData = np.ones(aData.shape)
             pData = np.ones(aData.shape)*(2*np.pi)
             aData = (aData + pData)/(4.*np.pi)
-
+    if (mode == 'real') and pa.gm(meas,'map?'):
+        if fl == "Saxion":
+            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            aData = mTmp[:,:,1]/zR
+            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+            # rMax = np.amax(rData)
+            # rData = rData/zR
+        elif fl == "Axion":
+            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = np.cos(aData/zR)
 
     #				iData = np.trunc(aData/(2*np.pi))
     #				aData = aData - iData*(2*np.pi)

@@ -220,11 +220,19 @@ def gm(address,something='summary',printerror=False):
         else :
             nqcd = 7.0
         return nqcd ;
+
     if something == 'shift':
         if '/potential/' in f:
             return f['/potential/'].attrs[u'Shift'] ;
         else:
             return 0.0 ;
+
+    if something == 'indi3':
+        if '/potential/' in f:
+            return f['/potential/'].attrs[u'Indi3'] ;
+        else:
+            return -1 ;
+
     if something == 'delta':
         L = f.attrs[u'Physical size']
         N = f.attrs[u'Size']
@@ -492,6 +500,10 @@ def gm(address,something='summary',printerror=False):
                     spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
                 # spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
                 return spec ;
+            if (something == 'nspKVi') and ('nSpectrum/sKVi' in f):
+                return np.reshape(f['nSpectrum/sKVi/data/'],(powmax)) ;
+            if (something == 'nspGVi') and ('nSpectrum/sGVi' in f):
+                return np.reshape(f['nSpectrum/sGVi/data/'],(powmax)) ;
 
     # ssp_check = 'nSpectrum/ssK' in f
     ssp_check = 'nSpectrum/sKS' in f

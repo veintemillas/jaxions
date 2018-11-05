@@ -27,6 +27,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
+	SpectrumMaskType mask = info.mask ;
 
 	auto	cTime = Timer();
 
@@ -145,16 +146,38 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 				// specAna.pSRun();
 				// writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
 		}
+
 		if (measa & MEAS_NSP_A)
 		{
+
+			if (mask & SPMASK_FLAT)
+			{
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
-				specAna.nRun();
+				specAna.nRun(SPMASK_FLAT);
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 				if (axiona->Field() == FIELD_AXION)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+			}
+
+			if (mask & SPMASK_VIL)
+			{
+				if (mask & SPMASK_FLAT)
+					specAna.reset0();
+					
+				// LogOut("NSPA ");
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro",indexa);
+				specAna.nRun(SPMASK_VIL);
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKVi");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGVi");
+				if (axiona->Field() == FIELD_AXION)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVVi");
+			}
+
+
 		}
+
 		if (measa & MEAS_NSP_S)
 		{
 				if (axiona->Field() == FIELD_SAXION){
@@ -166,12 +189,13 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
 				}
 		}
+
 		if (measa & MEAS_NNSPEC)
 		{
 				// LogOut("Nmod ");
-				// LogMsg(VERB_NORMAL, "[Meas %d] Nmod ",index);
-				// specAna.nmodRun();
-				// writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
+				LogMsg(VERB_NORMAL, "[Meas %d] Nmod ",index);
+				specAna.nmodRun();
+				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
 		}
 
 	}
