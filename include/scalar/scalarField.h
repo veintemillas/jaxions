@@ -82,7 +82,9 @@
 		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2+n3)); }
 		void		*m2FrontGhost() { return m2; }
 		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
-		void		*m2half () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(v3)); }
+		// fix for saxion mode! eReduced ? rLz*nSplit : Lz*nSplit;
+		void		*m2half      () { return fieldType == FIELD_SAXION ? static_cast<void *>(static_cast<char *>(m2) + (fSize/2)*(v3)) :static_cast<void *>(static_cast<char *>(m2) + fSize*(v3));  }
+		// void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(v3)); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
