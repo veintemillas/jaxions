@@ -113,6 +113,9 @@
 		void	pRun		();
 		void	nmodRun		();
 
+		template<typename Float>
+		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
+
 		void	filter	(int neigh);
 
 		void	reset0(){
