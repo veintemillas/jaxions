@@ -508,6 +508,10 @@ def gm(address,something='summary',printerror=False):
                 return np.reshape(f['nSpectrum/sKVi2/data/'],(powmax)) ;
             if (something == 'nspGVi2') and ('nSpectrum/sGVi2' in f):
                 return np.reshape(f['nSpectrum/sGVi2/data/'],(powmax)) ;
+            if (something == 'nspKRe') and ('nSpectrum/sKRe' in f):
+                return np.reshape(f['nSpectrum/sKRe/data/'],(powmax)) ;
+            if (something == 'nspKImGG') and ('nSpectrum/sKImGG' in f):
+                return np.reshape(f['nSpectrum/sKImGG/data/'],(powmax)) ;
     # ssp_check = 'nSpectrum/ssK' in f
     ssp_check = 'nSpectrum/sKS' in f
 
