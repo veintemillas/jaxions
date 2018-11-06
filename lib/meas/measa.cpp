@@ -165,7 +165,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 			{
 				if (mask & SPMASK_FLAT)
 					specAna.reset0();
-					
+
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro",indexa);
 				specAna.nRun(SPMASK_VIL);
@@ -175,6 +175,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVVi");
 			}
 
+			if (mask & SPMASK_VIL2)
+			{
+				if (mask & SPMASK_FLAT || mask & SPMASK_VIL2)
+					specAna.reset0();
+
+				// LogOut("NSPA ");
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro squared",indexa);
+				specAna.nRun(SPMASK_VIL2);
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKVi2");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGVi2");
+				if (axiona->Field() == FIELD_AXION)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVVi2");
+			}
 
 		}
 

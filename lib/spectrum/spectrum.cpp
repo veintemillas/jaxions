@@ -384,18 +384,22 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 										// m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
 										m2sa[odx] = ztime*std::imag( va[idx]/(ma[idx]-zaskaf) );
 										m2sax[odx] = (2.f*ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
-										// 2-neighbor version
-										// size_t ixm = ((Ly + ix - 1) % Ly) + yi + zi;
-										// m2sax[odx] = (ztime/(2.f*depta))*imag((ma[ixM]-ma[ixm])/ma[idx]);
 									} break;
-
 								case SPMASK_VIL:
 									for (size_t ix=0; ix < Ly; ix++) {
 										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
 										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
-										m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))) ;
-										m2sax[odx] = (2.f*std::abs(ma[idx])/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
+										m2sa[odx] =       std::abs(ma[idx]-zaskaf)      *(std::imag(va[idx]/(ma[idx]-zaskaf))) ;
+										m2sax[odx] = (2.f*std::abs(ma[idx]-zaskaf)/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
 									} break;
+								case SPMASK_VIL2:
+									for (size_t ix=0; ix < Ly; ix++) {
+										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
+										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
+										m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaf),2)/ztime*(std::imag(va[idx]/(ma[idx]-zaskaf))) ;
+										m2sax[odx] = (2.f*std::pow(std::abs(ma[idx]-zaskaf),2)/ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.f*zaskaf));
+									} break;
+
 							} //end mask
 						}
 					}
@@ -418,48 +422,28 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 						for (size_t iy=0; iy < Ly; iy++) {
 							size_t yo = (Ly+2)*iy ;
 							size_t yi = Ly*iy ;
-							// for (size_t ix=0; ix < Ly; ix++) {
-							// 	size_t odx = ix + yo + zo;
-							// 	size_t idx = ix + yi + zi;
-							//
-							// 	// Standard implementation
-							// 	// m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaska))+arg(ma[idx]) ;
-							//
-							// 			// Viladoro's trick ztime -> std::abs(ma[idx])
-							// 			m2sa[odx] = std::abs(ma[idx])*(std::imag(va[idx]/(ma[idx]-zaska))+std::arg(ma[idx])/ztime) ;
-							//
-							// 	// gradient x
-							// 	size_t ixM = ((ix + 1) % Ly) + yi + zi;
-							// 	// shift and only one neighbur
-							// 	// m2sax[odx] = (2*ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
-							//
-							// 			// Viladoro's trick ztime -> std::abs(ma[idx])
-							// 			m2sax[odx] = (2*std::abs(ma[idx])/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
-							//
-							// 			// 2-neighbor version
-							// 			// size_t ixm = ((Ly + ix - 1) % Ly) + yi + zi;
-							// 			// m2sax[odx] = (ztime/(2.0*depta))*imag((ma[ixM]-ma[ixm])/ma[idx]);
-							//}
-
 							switch(mask){
 								case SPMASK_FLAT:
 									for (size_t ix=0; ix < Ly; ix++) {
 										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
-										// m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaska))+std::arg(ma[idx]) ;
 										m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaska)) ;
 										m2sax[odx] = (2.0*ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
-										// 2-neighbor version
-										// size_t ixm = ((Ly + ix - 1) % Ly) + yi + zi;
-										// m2sax[odx] = (ztime/(2.f*depta))*imag((ma[ixM]-ma[ixm])/ma[idx]);
 									} break;
-
 								case SPMASK_VIL:
 									for (size_t ix=0; ix < Ly; ix++) {
 										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
 										m2sa[odx] = std::abs(ma[idx]-zaska)*(std::imag(va[idx]/(ma[idx]-zaska))) ;
 										// m2sa[odx] = std::abs(ma[idx])*(std::imag(va[idx]/(ma[idx]-zaska))+std::arg(ma[idx])/ztime) ;
-										m2sax[odx] = (2.0*std::abs(ma[idx])/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
+										m2sax[odx] = (2.0*std::abs(ma[idx]-zaska)/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
 									} break;
+								case SPMASK_VIL2:
+									for (size_t ix=0; ix < Ly; ix++) {
+										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
+										m2sa[odx] =       std::pow(std::abs(ma[idx]-zaska),2)/ztime*(std::imag(va[idx]/(ma[idx]-zaska))) ;
+										// m2sa[odx] = std::abs(ma[idx])*(std::imag(va[idx]/(ma[idx]-zaska))+std::arg(ma[idx])/ztime) ;
+										m2sax[odx] = (2.0*std::pow(std::abs(ma[idx]-zaska),2)/ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-2.0*zaska));
+									} break;
+
 							} //end mask
 						}
 					}
@@ -520,50 +504,15 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 					// float *m2sax                = static_cast<float *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
 					float *m2sax                = static_cast<float *>(field->m2Cpu()) + field->eSize();
 
-					// printf("check ghost");
-					// size_t vo = field->Size();
-					// size_t so = field->Surf();
-					// for (size_t i = 0; i<10; i++){
-					// 	LogOut("-> %g, %g - %g, %g \n",imag(ma[i]),imag(ma[i+so]),imag(ma[i+vo]),imag(ma[i+so+vo])) ;
-					// 	// LogOut("<- %g, %g - %g, %g \n ",imag(ma[i-so]),imag(ma[vo-so+i]));
-					// }
-					// ma     =  ma + field->Surf();
-					// printf("%d ... m2sa[0] = %f -> m2sa[0] = %f\n " , commRank(), m2sa[0],m2sa[Lz*Ly*(Ly+2)]);
 					#pragma omp parallel for schedule(static)
 					for (size_t iz=0; iz < Lz; iz++) {
 						size_t zo = Ly*(Ly+2)*iz ;
 						size_t zi = Ly*Ly*iz ;
-						size_t zp = Ly*Ly*(iz+1) ; 						//it has ghosts with the right value! ...  I hope
-						// size_t zm = Ly*Ly*(iz-1) ; 				//it has ghosts with the right value! ...  I hope
-						// size_t zp = Ly*Ly*((iz+1)%Lz) ; 		//valid only without MPI [works! even without ghost]
+						size_t zp = Ly*Ly*(iz+1) ;
 						for (size_t iy=0; iy < Ly; iy++) {
 							size_t yo = (Ly+2)*iy ;
 							size_t yi = Ly*iy ;
 							size_t yp = Ly*((iy+1)%Ly) ;
-							// size_t ym = Ly*((Ly+iy-1)%Ly) ;
-							// for (size_t ix=0; ix < Ly; ix++) {
-							// 	size_t odx = ix + yo + zo;
-							// 	size_t idx = ix + yi + zi;
-							// 	// gradient y
-							// 	size_t iyM = ix + yp + zi;
-							// 	// standard implementation - shift and one neighbor
-							// 	// m2sa[odx] = (2.f*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
-							// 			// Villadoro's trick
-							// 			m2sa[odx] = (2.f*std::abs(ma[idx])/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
-							// 			// shift and two neighbours
-							// 			// size_t iym = ix + ym + zi;
-							// 			// m2sa[odx] = (ztime/(2.f*depta))*imag((ma[iyM]-ma[iym])/(ma[idx]-zaskaf));
-							//
-							// 	// gradient z
-							// 	size_t izM = ix + yi + zp;
-							// 	// standard implementation - shift and one neighbor
-							// 	// m2sax[odx] = (2.f*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
-							// 			// Villadoro's trick
-							// 			m2sax[odx] = (2.f*std::abs(ma[idx])/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
-							// 			// shift and two neighbours
-							// 			// size_t izm = ix + yi + zm;
-							// 			// m2sax[odx] = (ztime/(2.f*depta))*imag((ma[izM]-ma[izm])/(ma[idx]-zaskaf));
-							// }
 							switch(mask){
 								case SPMASK_FLAT:
 									for (size_t ix=0; ix < Ly; ix++) {
@@ -572,7 +521,6 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 										m2sa[odx]  = (2.f*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
 										m2sax[odx] = (2.f*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
 									} break;
-
 								case SPMASK_VIL:
 									for (size_t ix=0; ix < Ly; ix++) {
 										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
@@ -580,6 +528,13 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 										m2sa[odx]  = (2.f*std::abs(ma[idx]-zaskaf)/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
 										m2sax[odx] = (2.f*std::abs(ma[idx]-zaskaf)/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
 									} break;
+									case SPMASK_VIL2:
+										for (size_t ix=0; ix < Ly; ix++) {
+											size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+											size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
+											m2sa[odx]  = (2.f*std::pow(std::abs(ma[idx]-zaskaf),2)/ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.f*zaskaf));
+											m2sax[odx] = (2.f*std::pow(std::abs(ma[idx]-zaskaf),2)/ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.f*zaskaf));
+										} break;
 							} //end mask
 							}
 					}
@@ -605,43 +560,6 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 							size_t yo = (Ly+2)*iy ;
 							size_t yi = Ly*iy ;
 							size_t yp = Ly*((iy+1)%Ly) ;
-							// size_t ym = Ly*((Ly+iy-1)%Ly) ;
-							// for (size_t ix=0; ix < Ly; ix++) {
-							// 	size_t odx = ix + yo + zo;
-							// 	size_t idx = ix + yi + zi;
-							//
-							// 	// size_t iyM = ix + yp + zi;
-							// 	// m2sa[odx] = (2*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
-							// 	// // m2sa[odx] = (2*ztime/depta)*imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]));
-							// 	// size_t izM = ix + yi + zp;
-							// 	// m2sax[odx] = (2*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
-							// 	// // m2sax[odx] = (2*ztime/depta)*imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]));
-							//
-							// 	// gradient y
-							// 	size_t iyM = ix + yp + zi;
-							// 	// standard implementation - shift and one neighbor
-							// 	// m2sa[odx] = (2.0*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
-							//
-							// 			// Villadoro's trick
-							// 			m2sa[odx] = (2.0*std::abs(ma[idx])/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
-							//
-							// 			// shift and two neighbours
-							// 			// size_t iym = ix + ym + zi;
-							// 			// m2sa[odx] = (ztime/(2.0*depta))*imag((ma[iyM]-ma[iym])/(ma[idx]-zaska));
-							//
-							// 	// gradient z
-							// 	size_t izM = ix + yi + zp;
-							// 	// standard implementation - shift and one neighbor
-							// 	// m2sax[odx] = (2.0*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
-							//
-							// 			// Villadoro's trick
-							// 			m2sax[odx] = (2.0*std::abs(ma[idx])/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
-							// 			// shift and two neighbours
-							// 			// size_t izm = ix + yi + zm;
-							// 			// m2sax[odx] = (ztime/(2.0*depta))*imag((ma[izM]-ma[izm])/(ma[idx]-zaska));
-							//
-							//
-							// }
 							switch(mask){
 								case SPMASK_FLAT:
 									for (size_t ix=0; ix < Ly; ix++) {
@@ -650,7 +568,6 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 										m2sa[odx]  = (2.0*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
 										m2sax[odx] = (2.0*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
 									} break;
-
 								case SPMASK_VIL:
 									for (size_t ix=0; ix < Ly; ix++) {
 										size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
@@ -658,6 +575,13 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 										m2sa[odx]  = (2.0*std::abs(ma[idx]-zaska)/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
 										m2sax[odx] = (2.0*std::abs(ma[idx]-zaska)/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
 									} break;
+									case SPMASK_VIL2:
+										for (size_t ix=0; ix < Ly; ix++) {
+											size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+											size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
+											m2sa[odx]  = (2.0*std::pow(std::abs(ma[idx]-zaska),2)/ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-2.0*zaska));
+											m2sax[odx] = (2.0*std::pow(std::abs(ma[idx]-zaska),2)/ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-2.0*zaska));
+										} break;
 							} //end mask
 						}
 					}
