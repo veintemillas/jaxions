@@ -177,7 +177,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 			if (mask & SPMASK_VIL2)
 			{
-				if (mask & SPMASK_FLAT || mask & SPMASK_VIL2)
+				if (mask & SPMASK_FLAT || mask & SPMASK_VIL)
 					specAna.reset0();
 
 				// LogOut("NSPA ");
@@ -189,6 +189,17 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVVi2");
 			}
 
+			if (mask & SPMASK_SAXI)
+			{
+				if (mask & SPMASK_FLAT || mask & SPMASK_VIL || mask & SPMASK_VIL2)
+					specAna.reset0();
+
+				// LogOut("NSPA ");
+				LogMsg(VERB_NORMAL, "[Meas %d] NSP real and imaginary",indexa);
+				specAna.nRun(SPMASK_SAXI);
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKRe");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sKImGG");
+			}
 		}
 
 		if (measa & MEAS_NSP_S)
