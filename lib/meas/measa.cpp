@@ -24,6 +24,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 	MeasDataOut.maxTheta       = -1 ;
 	MeasDataOut.str.strDen = -1 ;
 	MeasDataOut.str.wallDn = -1 ;
+	MeasDataOut.eA = 0 ;
+	MeasDataOut.eS = 0 ;
 
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
@@ -62,6 +64,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 			// LogOut("energy (map->m2) ");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2",indexa);
 			energy(axiona, eRes, true, shiftz);
+
+			MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
+			MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
 
 			if (measa & MEAS_BINDELTA)
 			{
@@ -163,8 +168,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 			if (mask & SPMASK_VIL)
 			{
-				if (mask & SPMASK_FLAT)
-					specAna.reset0();
+				// if (mask & SPMASK_FLAT)
+				// 	specAna.reset0();
 
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro",indexa);
@@ -177,8 +182,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 			if (mask & SPMASK_VIL2)
 			{
-				if (mask & SPMASK_FLAT || mask & SPMASK_VIL)
-					specAna.reset0();
+				// if ( (mask & SPMASK_FLAT) || (mask & SPMASK_VIL))
+				// 	specAna.reset0();
 
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro squared",indexa);
@@ -191,14 +196,16 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 			if (mask & SPMASK_SAXI)
 			{
-				if (mask & SPMASK_FLAT || mask & SPMASK_VIL || mask & SPMASK_VIL2)
-					specAna.reset0();
+				// if ( (mask & SPMASK_FLAT) || (mask & SPMASK_VIL) || (mask & SPMASK_VIL2))
+				// 	specAna.reset0();
 
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSP real and imaginary",indexa);
 				specAna.nRun(SPMASK_SAXI);
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKRe");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sKImGG");
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKIm");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sKRe");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGIm");
+				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "sGRe");
 			}
 		}
 
