@@ -356,6 +356,14 @@ void	SpecBin::nRun		(SpectrumMaskType mask){
 template<typename Float>
 void	SpecBin::nRun	(SpectrumMaskType mask) {
 
+	binK.assign(powMax, 0.);
+	binG.assign(powMax, 0.);
+	if (mask == SPMASK_SAXI)
+	{
+		binV.assign(powMax, 0.);
+		binPS.assign(powMax, 0.);
+	}
+
 	// using cFloat = std::complex<Float>;
 	std::complex<Float> zaskaF = ((Float) zaskar, 0.);
 
@@ -412,7 +420,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 							} break;
 						case SPMASK_SAXI:
 							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
+								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 								// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
 								m2sa[odx]  =  std::real(va[idx]) ;
 								m2sax[odx] =  std::imag(va[idx]);
@@ -445,11 +453,18 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 			myPlan.run(FFT_FWD);
 
 			// This inits G bin and fills GX bins but does not reduce
+			// in the saxi case, we need to fill like SPECTRUM_K again
+			if (mask == SPMASK_SAXI) {
+				//SAXI
+				std::copy_n(binK.begin(), powMax, binV.begin());
+				binK.assign(powMax, 0.);
+				fillBins<Float,  SPECTRUM_K, false>();
+			} else {
 			if (spec)
 				fillBins<Float,  SPECTRUM_GaSadd, true> ();
 			else
 				fillBins<Float,  SPECTRUM_GaSadd, false>();
-
+			}
 
 			#pragma omp parallel for schedule(static)
 			for (size_t iz=0; iz < Lz; iz++) {
@@ -484,7 +499,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 								} break;
 							case SPMASK_SAXI:
 								for (size_t ix=0; ix < Ly; ix++) {
-									size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
+									size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 									// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
 									m2sa[odx]  =  std::real(ma[idx]) ;
 									m2sax[odx] =  std::imag(ma[idx]);
@@ -495,11 +510,17 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 
 			// GRADIENT Y:
 				myPlan.run(FFT_FWD);
+
 				// this adds the gradient Y bins into binG
+				if (mask == SPMASK_SAXI) {
+					fillBins<Float,  SPECTRUM_G, false>();
+					std::copy_n(binG.begin(), powMax, binPS.begin());
+				} else {
 				if (spec)
 					fillBins<Float,  SPECTRUM_GaSadd, true> ();
 				else
 					fillBins<Float,  SPECTRUM_GaSadd, false>();
+				}
 
 			// GRADIENT Z:
 				// Copy m2aux -> m2
@@ -507,10 +528,17 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 
 				myPlan.run(FFT_FWD);
 				// this adds the gradient Z bins into binG and reduces the final sum!
+
+				if (mask == SPMASK_SAXI) {
+					binG.assign(powMax, 0.);
+					fillBins<Float,  SPECTRUM_G, false>();
+					std::copy_n(binG.begin(), powMax, binPS.begin());
+				} else {
 				if (spec)
 					fillBins<Float,  SPECTRUM_GaS, true> ();
 				else
 					fillBins<Float,  SPECTRUM_GaS, false>();
+				} 
 
 			field->setM2     (M2_DIRTY);
 		}
