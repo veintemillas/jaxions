@@ -30,7 +30,7 @@
 #define	bSizeZ	2
 */
 template<const VqcdType VQcd>
-inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
 				    const double ood2, const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
@@ -55,7 +55,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const double dzc = dz*c;
 		const double dzd = dz*d;
-		const double zR = *z;
+		const double zR = *R;
 		const double z2 = zR*zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = aMass2*z2*zR;
@@ -354,7 +354,7 @@ tmp = opCode(sub_pd,
 
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *z;
+		const float zR = *R;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*z2*zR);
@@ -756,7 +756,7 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 }
 
 template<const VqcdType VQcd>
-inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *z, const double dz, const double c, const double ood2,
+inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *R, const double dz, const double c, const double ood2,
 			    const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
@@ -775,7 +775,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const double * __restrict__ m = (const double * __restrict__) __builtin_assume_aligned (m_, Align);
 		double * __restrict__ v = (double * __restrict__) __builtin_assume_aligned (v_, Align);
 
-		const double zR = *z;
+		const double zR = *R;
 		const double z2 = zR*zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = aMass2*z2*zR;
@@ -1051,7 +1051,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
 		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
 
-		const float zR = *z;
+		const float zR = *R;
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*z2*zR);

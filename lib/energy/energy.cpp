@@ -43,7 +43,7 @@ class	Energy : public Tunable
 
 	Energy::Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field),
 	Vt(field->TotalSize()), delta2(delta*delta), aMass2(field->AxionMassSq()), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
-	LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->zV())*(*field->zV())) : LL), map(map)
+	LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->RV())*(*field->RV())) : LL), map(map)
 {
 }
 
@@ -56,23 +56,24 @@ void	Energy::runGpu	()
 	const uint uS  = field->Surf();
 	const uint uV  = field->Size();
 	double *z = field->zV();
+	double *R = field->RV();
 
 	field->exchangeGhosts(FIELD_M);
 
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
-			energyGpu     (field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, LL, aMass2, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
+			energyGpu     (field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, LL, aMass2, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
 			break;
 
 		case	FIELD_AXION:
 			setName		("Energy Axion");
-			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, false);
+			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, false);
 			break;
 
 		case	FIELD_AXION_MOD:
 			setName		("Energy Axion (mod)");
-			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), z, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
+			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
 			break;
 	}
 

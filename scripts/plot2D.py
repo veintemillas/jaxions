@@ -26,6 +26,7 @@ class	Plot2D():
 		self.Lz = fileHdf5["/"].attrs.get("Depth")
 
 		self.z = fileHdf5["/"].attrs.get("z")
+		self.R = self.z
 
 		fileHdf5.close()
 
@@ -56,6 +57,9 @@ class	Plot2D():
 			Ly = fileHdf5["/"].attrs.get("Size")
 			Lz = fileHdf5["/"].attrs.get("Depth")
 			zR = fileHdf5["/"].attrs.get("z")
+			R  = zR
+			if 'R' in fileHdf5:
+				R = fileHdf5["/"].attrs.get("R")
 
 			fl = fileHdf5["/"].attrs.get("Field type").decode()
 
@@ -67,13 +71,13 @@ class	Plot2D():
 				mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
 				rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
 				rMax = np.amax(rData)
-				rData = rData/zR
+				rData = rData/R
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
 			elif fl == "Axion":
 				aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
 #				pm = np.amax(aData)
 #				print ("BMax %f" % pm)
-				aData = aData/zR
+				aData = aData/R
 				rData = np.ones(aData.shape)
 				pData = np.ones(aData.shape)*(2*np.pi)
 				aData = (aData + pData)/(4.*np.pi)
@@ -82,7 +86,7 @@ class	Plot2D():
 #				aData = aData - pData
 #				pm = np.amax(aData)
 #				print ("AMax %f" % pm)
-				rMax  = zR
+				rMax  = R
 			else:
 				print("Unrecognized field type %s" % fl)
 				exit()

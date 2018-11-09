@@ -63,8 +63,12 @@
 			STRING_XY_NEGATIVE = 8,
 			STRING_YZ_NEGATIVE = 16,
 			STRING_ZX_NEGATIVE = 32,
-			STRING_WALL	   = 64,
-			STRING_MASK	   = 128,     //used to exclude spectra and energy sums
+			STRING_XY          = 9,
+			STRING_YZ          = 18,
+			STRING_ZX          = 36,
+			STRING_ONLY        = 63, //9+18+36
+			STRING_WALL	       = 64,
+			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
 		}	StringType;
 
 		typedef	enum	LambdaType_s
@@ -214,6 +218,7 @@
 			VERB_SILENT = 0,
 			VERB_NORMAL = 1,
 			VERB_HIGH   = 2,
+			VERB_DEBUG  = 3,
 		}	VerbosityLevel;
 
 		typedef	enum	PrintConf_s
@@ -230,12 +235,18 @@
 			size_t	strDen;
 			size_t	strChr;
 			size_t	wallDn;
+			size_t	strDen_local;
+			size_t	strChr_local;
+			size_t	wallDn_local;
+
 		}	StringData;
 
 		typedef	struct	MeasData_v
 		{
 			StringData	str;
 			double		maxTheta;
+			double eA;
+			double eS;
 		}	MeasData;
 
 		typedef	enum	FFTtype_s {
@@ -312,9 +323,10 @@
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
 			// MEAS_BIN...	= 16,
-			// MEAS_BIN...	= 32,
-			MEAS_STRING       = 64,
-			MEAS_STRINGMAP    = 128,  	// 128 + 64
+			MEAS_STRING	      = 32,
+			MEAS_STRINGMAP    = 64,
+			MEAS_STRINGCOO    = 128,  	// 128 + 64
+
 			MEAS_ENERGY       = 256,
 			MEAS_ENERGY3DMAP  = 512,		// 512 + 256
 			MEAS_REDENE3DMAP  = 1024, 	// 1024 + 512 + 256
@@ -353,6 +365,12 @@
 			M2_STRINGMAP,
 			M2_DIRTY,
 		}	StatusM2;
+
+		typedef	enum	StatusSD_s {
+			SD_STDWMAP,
+			SD_STRINGCOORD,
+			SD_DIRTY,
+		}	StatusSD;
 
 		typedef	struct	MeasInfo_v
 		{

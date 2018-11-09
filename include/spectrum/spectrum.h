@@ -27,7 +27,7 @@
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
 		double			mass, massSax; // squared masses (comoving)
-		double 			ztime, depta;
+		double 			Rscale, depta;
 		double 			zaskar ;
 		float				zaskarf ;
 		std::complex<double> zaska ;
@@ -54,10 +54,10 @@
 
 				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
 				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
-				ztime   = *field->zV();
+				Rscale  = *field->RV();
 				depta   = field->BckGnd()->PhysSize()/Ly;
 
-				zaskar  = field->Saskia()*ztime;
+				zaskar  = field->Saskia()*Rscale;
 				zaskarf = (float) zaskar ;
 				zaska   = std::complex<double>(zaskar,0.);
 				zaskaf  = std::complex<float>(zaskarf,0.f);
@@ -113,8 +113,10 @@
 		void	pRun		();
 		void	nmodRun		();
 
-		template<typename Float>
-		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
+		template<typename Float, SpectrumMaskType mask>
+		void	nRun		();
+
+
 
 		void	filter	(int neigh);
 

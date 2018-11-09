@@ -200,6 +200,12 @@ def gm(address,something='summary',printerror=False):
     #prelim checks
     ftype = f.attrs.get('Field type').decode()
 
+    if 'R' in f.attrs:
+        scaleFactorR = f.attrs[u'R']
+    else:
+        scaleFactorR = f.attrs[u'z']
+    if (something == 'R'):
+        return scaleFactorR ;
     # if loop
     if (something == 'ftype'):
         return ftype ;
@@ -322,6 +328,11 @@ def gm(address,something='summary',printerror=False):
             ct = f.attrs[u'z']
             delta = L/N
             return  (delta/6)*stringN*ct*ct/(L**3) ;
+        if (something == 'stringCoord') and ('string/coords' in f):
+            size = f['string/coords'].size
+            # return np.reshape(f['string/coords'],(size,3)) ;
+            return f['string/coords']
+            
     elif (something[0:2] == 'st') and not st_check :
         if printerror :
             print('[gm] No string info in the file! Use 0.')
@@ -460,7 +471,7 @@ def gm(address,something='summary',printerror=False):
 
     # number spectra
 
-    nsp_check = 'nSpectrum/sK' in f
+    nsp_check = ('nSpectrum/sK' in f) or ('nSpectrum/sKVi' in f)
 
     if (something == 'nsp?') :
         return nsp_check
@@ -473,7 +484,10 @@ def gm(address,something='summary',printerror=False):
             print(""" [gm] Warning: No nSpec in file. Returning 'None' """)
         return ;
     if (something[0:3] == 'nsp') and  nsp_check :
-        powmax = f['nSpectrum/sK/data/'].size
+        if ('nSpectrum/sK' in f):
+            powmax = f['nSpectrum/sK/data/'].size
+        if ('nSpectrum/sKVi' in f):
+            powmax = f['nSpectrum/sKVi/data/'].size
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
         if ftype == 'Axion':
             if (something == 'nspK'):
@@ -583,17 +597,17 @@ def gm(address,something='summary',printerror=False):
             return temp ;
         if (something == 'maptheta') and (ftype == 'Axion'):
             temp = np.array(f['map']['m'].value.reshape(N,N))
-            return temp/ct ;
+            return temp/scaleFactorR ;
         if (something == 'mapvheta') and (ftype == 'Axion'):
             temp = np.array(f['map']['v'].value.reshape(N,N))
             return temp ;
         if (something == 'maprho') and (ftype == 'Saxion'):
             temp = np.array(f['map']['m'].value.reshape(N,N,2))
-            te = f.attrs[u'z']
-            return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/te
+            # te = f.attrs[u'z']
+            return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
 
         if (something == 'mapEdens') and (ftype == 'Axion'):
-            theta = np.array(f['map']['m'].value.reshape(N,N))/ct
+            theta = np.array(f['map']['m'].value.reshape(N,N))/scaleFactorR
             massA2 = f.attrs[u'Axion mass']
             massA2 *= massA2
             mapa = massA2*2*np.sin(theta/2)**2

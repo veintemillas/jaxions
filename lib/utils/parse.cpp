@@ -26,6 +26,7 @@ double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
+double frw = 1.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
@@ -56,7 +57,10 @@ bool uZth     = false;
 bool uZrs     = false;
 bool uZin     = false;
 bool uZfn     = false;
+bool uMI      = false;
+bool uFR      = false;
 bool spectral = false;
+bool mink			= false;
 bool aMod     = false;
 bool icstudy  = false ;
 bool preprop  = false ;
@@ -87,6 +91,7 @@ DeviceType	cDev   = DEV_CPU;
 
 VerbosityLevel	verb   = VERB_NORMAL;
 LogMpi		logMpi = ALL_RANKS;
+bool debug        = false;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
 bool p2dmapo  	  = false;
@@ -148,6 +153,8 @@ void	PrintUsage(char *name)
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
+	printf("  --mink                        Minkowski (No expansion of the Universe)\n");
+	printf("  --frw   [float]               Expansion of the Universe [R~eta^frw] (default frw = 1.0)\n");
 	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
 	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
 	printf("  --zf    [float]               Final value of the redshift (default 1.0).\n");
@@ -278,6 +285,44 @@ int	parseArgs (int argc, char *argv[])
 			procArgs++;
 			passed = true;
 
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--mink"))
+		{
+			mink = true;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--debug"))
+		{
+			debug = true;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--frw"))
+		{
+
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the walltime.\n");
+				exit(1);
+			}
+
+			frw = atof(argv[i+1]);
+
+			if (frw < 0.)
+			{
+				printf("Warning: Contracting Universe?\n");
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
 			goto endFor;
 		}
 
@@ -1561,7 +1606,12 @@ Cosmos	createCosmos()
 			myCosmos.SetZRestore(zrestore);
 
 		if (uI3)
-			myCosmos.SetZRestore(zrestore);
+			myCosmos.SetIndi3(zrestore);
+
+		if (uFR)
+			myCosmos.SetFrw(frw);
+		if (uMI)
+			myCosmos.SetMink(mink);
 	} else {
 		myCosmos.SetLambda  (LL);
 		myCosmos.SetQcdExp  (nQcd);
@@ -1571,6 +1621,8 @@ Cosmos	createCosmos()
 		myCosmos.SetZThRes  (zthres);
 		myCosmos.SetZRestore(zrestore);
 		myCosmos.SetIndi3   (indi3);
+		myCosmos.SetFrw     (frw);
+		myCosmos.SetMink    (mink);
 	}
 
 	return	myCosmos;

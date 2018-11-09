@@ -144,8 +144,10 @@ void	ConfGenerator::runGpu	()
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 			axionField->transferDev(FIELD_M);
-			cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-			scaleField (axionField, FIELD_M, *axionField->zV());
+			if (!myCosmos->Mink()){
+				cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+				scaleField (axionField, FIELD_M, *axionField->zV());
+			}
 			axionField->transferCpu(FIELD_MV);
 		}
 		break;
@@ -160,8 +162,12 @@ void	ConfGenerator::runGpu	()
 
 			axionField->transferDev(FIELD_M);
 			normaliseField(axionField, FIELD_M);
-			cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-			scaleField (axionField, FIELD_M, *axionField->zV());
+
+			if (!myCosmos->Mink()){
+				// possible fix needed
+				cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+				scaleField (axionField, FIELD_M, *axionField->RV());
+			}
 			axionField->transferCpu(FIELD_MV);
 		}
 		break;
@@ -181,8 +187,10 @@ void	ConfGenerator::runGpu	()
 		if (smvarType != CONF_SAXNOISE)
 			normaliseField(axionField, FIELD_M);
 
+		if (!myCosmos->Mink()){
 		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-		scaleField (axionField, FIELD_M, *axionField->zV());
+		scaleField (axionField, FIELD_M, *axionField->zR());
+		}
 		axionField->transferCpu(FIELD_MV);
 		break;
 	}
@@ -233,7 +241,7 @@ void	ConfGenerator::runCpu	()
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 			normaliseField(axionField, FIELD_M);
-			// normCoreField	(axionField);
+			normCoreField	(axionField);
 		}
 		break;
 
@@ -248,6 +256,7 @@ void	ConfGenerator::runCpu	()
 			double logi = *axionField->zV();
 			// such a logi and msa give a different initial time! redefine
 			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			axionField->updateR();
 			// LogOut("[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
@@ -268,8 +277,11 @@ void	ConfGenerator::runCpu	()
 			normaliseField(axionField, FIELD_M);
 			normCoreField	(axionField);
 
+			if (!myCosmos->Mink()){
+				LogOut("rescalo!! con R %f",*axionField->RV());
 			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
-			scaleField (axionField, FIELD_M, *axionField->zV());
+			scaleField (axionField, FIELD_M, *axionField->RV());
+			}
 			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
 			// tunePropagator (axiona);
 			// if (int i ==0; i<10; i++ ){
@@ -294,6 +306,7 @@ void	ConfGenerator::runCpu	()
 			double logi = *axionField->zV();
 			// such a logi and msa give a different initial time! redefine
 			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
 			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
@@ -313,8 +326,10 @@ void	ConfGenerator::runCpu	()
 			normaliseField(axionField, FIELD_M);
 			normCoreField	(axionField);
 
+			if (!myCosmos->Mink()){
 			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
-			scaleField (axionField, FIELD_M, *axionField->zV());
+			scaleField (axionField, FIELD_M, *axionField->RV());
+			}
 			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
 			// tunePropagator (axiona);
 			// if (int i ==0; i<10; i++ ){
@@ -343,8 +358,10 @@ void	ConfGenerator::runCpu	()
 
 	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
 	{
+		if (!myCosmos->Mink()){
 		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
-		scaleField (axionField, FIELD_M, *axionField->zV());
+		scaleField (axionField, FIELD_M, *axionField->RV());
+		}
 	}
 
 }

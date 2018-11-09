@@ -39,10 +39,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 	}
 
 	double z_now     = *axiona->zV();
+	double R_now     = *axiona->RV();
 	double saskia	   = axiona->Saskia();
-	double shiftz	   = z_now * saskia;
+	// fix?
+	double shiftz	   = R_now * saskia;
 
-	if (axiona->Field() == FIELD_SAXION)
+	if (axiona->Field() == FIELD_AXION)
 	 	shiftz = 0.0;
 
 	createMeas(axiona, indexa);
@@ -257,7 +259,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 					// Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 					// 					[z=z_now,s=shhhs] (complex<Float> x) { return (double) abs(x-s)/z; } );
 					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
-										[z=z_now] (complex<Float> x) { return (double) abs(x)/z; } );
+										[z=R_now] (complex<Float> x) { return (double) abs(x)/z; } );
 					rhoBin.run();
 					writeBinner(rhoBin, "/bins", "rhoB");
 				}
@@ -287,8 +289,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 					else
 						writeString(axiona, MeasDataOut.str, false);
 				}
-				else{
-					// LogOut("string alone ");
+				else if (measa & MEAS_STRINGCOO){
+					LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
+					writeString2(axiona, MeasDataOut.str, true);
 				}
 			}
 
@@ -299,7 +302,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 			// LogOut("binthetha ");
 			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ",indexa);
 				Binner<3000,Float> thBin(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
-								 [z=z_now] (Float x) { return (double) (x/z); });
+								 [z=R_now] (Float x) { return (double) (x/z); });
 				thBin.run();
 				writeBinner(thBin, "/bins", "thetaB");
 				MeasDataOut.maxTheta = max(abs(thBin.min()),thBin.max());
@@ -313,7 +316,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 					// LogOut("bintt2 ");
 					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",indexa);
 					Binner<3000,Float> logth2Bin2(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
-									 [z=z_now] (Float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
+									 [z=R_now] (Float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
 					logth2Bin2.run();
 					writeBinner(logth2Bin2, "/bins", "logtheta2B");
 				}
@@ -331,7 +334,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 	double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
 	if (axiona->Lambda() == LAMBDA_Z2)
-		DWfun *= z_now*z_now;
+		DWfun *= R_now*R_now;
 	LogOut("%.1e %.1e (%.1e) ", axiona->AxionMass(), sqrt(axiona->SaxionMassSq()), DWfun );
 
 	if ( axiona->Field() == FIELD_SAXION)

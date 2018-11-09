@@ -345,16 +345,87 @@ void	SpecBin::pRun	() {
 
 // axion number spectrum
 
-void	SpecBin::nRun		(SpectrumMaskType mask){
-	if (fPrec == FIELD_SINGLE) {
-			SpecBin::nRun<float>(mask);
-		} else {
-			SpecBin::nRun<double>(mask);
-		}
+void	SpecBin::nRun	(SpectrumMaskType mask){
+
+	switch (mask)
+	{
+		case SPMASK_FLAT :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nRun<float,SPMASK_FLAT> ();
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nRun<double,SPMASK_FLAT> ();
+					break;
+
+					default :
+					LogError("[Spectrum nRun] precision not reconised.");
+					break;
+				}
+				break;
+
+		case SPMASK_VIL :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nRun<float,SPMASK_VIL> ();
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nRun<double,SPMASK_VIL> ();
+					break;
+
+					default :
+					LogError("[Spectrum nRun] precision not reconised.");
+					break;
+				}
+			break;
+
+			case SPMASK_VIL2 :
+					switch (fPrec)
+					{
+						case FIELD_SINGLE :
+						SpecBin::nRun<float,SPMASK_VIL2> ();
+						break;
+
+						case FIELD_DOUBLE :
+						SpecBin::nRun<double,SPMASK_VIL2> ();
+						break;
+
+						default :
+						LogError("[Spectrum nRun] precision not reconised.");
+						break;
+					}
+		break;
+
+		case SPMASK_SAXI :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nRun<float,SPMASK_SAXI> ();
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nRun<double,SPMASK_SAXI> ();
+					break;
+
+					default :
+					LogError("[Spectrum nRun] precision not reconised.");
+					break;
+				}
+		break;
+
+		default:
+		LogError("[Spectrum nRun] SPMASK not recognised!");
+		break;
+	}
 }
 
-template<typename Float>
-void	SpecBin::nRun	(SpectrumMaskType mask) {
+
+template<typename Float, SpectrumMaskType mask>
+void	SpecBin::nRun	() {
 
 	binK.assign(powMax, 0.);
 	binG.assign(powMax, 0.);
@@ -388,6 +459,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 			// Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + field->eSize();
 			Float *m2sax                = static_cast<Float *>(field->m2half());
 
+			// optimizar!
 			#pragma omp parallel for schedule(static)
 			for (size_t iz=0; iz < Lz; iz++) {
 				size_t zo = Ly*(Ly+2)*iz ;
@@ -395,38 +467,32 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 				for (size_t iy=0; iy < Ly; iy++) {
 					size_t yo = (Ly+2)*iy ;
 					size_t yi = Ly*iy ;
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
 
-					switch(mask){
-						case SPMASK_FLAT:
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
-								// m2sa[odx] = ztime*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
-								m2sa[odx] = ztime*std::imag( va[idx]/(ma[idx]-zaskaF) );
-								m2sax[odx] = (2*ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-							} break;
-						case SPMASK_VIL:
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
-								// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
-								m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
-								m2sax[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-							} break;
-						case SPMASK_VIL2:
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
-								// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
-								m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/ztime*(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
-								m2sax[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/ztime/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-							} break;
-						case SPMASK_SAXI:
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-								// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
-								m2sa[odx]  =  std::real(va[idx]) ;
-								m2sax[odx] =  std::imag(va[idx]);
-							} break;
-
-					} //end mask
+						switch(mask){
+							case SPMASK_FLAT:
+									// m2sa[odx] = Rscale*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
+									m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+									m2sax[odx] = (2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+									break;
+							case SPMASK_VIL:
+									// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
+									m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
+									m2sax[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+									break;
+							case SPMASK_VIL2:
+									// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
+									m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale*(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
+									m2sax[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+									break;
+							case SPMASK_SAXI:
+									// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
+									m2sa[odx]  =  std::real(va[idx]) ;
+									m2sax[odx] =  std::imag(va[idx]);
+							break;
+						} //end mask
+					}
 				}
 			}
 
@@ -434,14 +500,14 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 			myPlan.run(FFT_FWD);
 
-		// KINETIC PART
-		if (spec)
-			fillBins<Float,  SPECTRUM_K, true> ();
-		else
-			fillBins<Float,  SPECTRUM_K, false>();
+			// KINETIC PART
+			if (spec)
+				fillBins<Float,  SPECTRUM_K, true> ();
+			else
+				fillBins<Float,  SPECTRUM_K, false>();
 
 
-		// GRADIENT X
+			// GRADIENT X
 			// Copy m2aux -> m2
 			size_t dSize    = (size_t) (field->Precision());
 			size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
@@ -466,6 +532,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 				fillBins<Float,  SPECTRUM_GaSadd, false>();
 			}
 
+			// optimizar!
 			#pragma omp parallel for schedule(static)
 			for (size_t iz=0; iz < Lz; iz++) {
 				size_t zo = Ly*(Ly+2)*iz ;
@@ -475,36 +542,29 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 					size_t yo = (Ly+2)*iy ;
 					size_t yi = Ly*iy ;
 					size_t yp = Ly*((iy+1)%Ly) ;
-					switch(mask){
-						case SPMASK_FLAT:
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-								size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
-								m2sa[odx]  = (2*ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-								m2sax[odx] = (2*ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-							} break;
-						case SPMASK_VIL:
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-								size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
-								m2sa[odx]  = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-								m2sax[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-							} break;
-							case SPMASK_VIL2:
-								for (size_t ix=0; ix < Ly; ix++) {
-									size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-									size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
-									m2sa[odx]  = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/ztime/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-									m2sax[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/ztime/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-								} break;
-							case SPMASK_SAXI:
-								for (size_t ix=0; ix < Ly; ix++) {
-									size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-									// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/ztime) ;
-									m2sa[odx]  =  std::real(ma[idx]) ;
-									m2sax[odx] =  std::imag(ma[idx]);
-								} break;
-					} //end mask
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+						size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
+
+						switch(mask){
+							case SPMASK_FLAT:
+									m2sa[odx]  = (2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+									m2sax[odx] = (2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+									break;
+							case SPMASK_VIL:
+									m2sa[odx]  = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+									m2sax[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+									break;
+								case SPMASK_VIL2:
+										m2sa[odx]  = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+										m2sax[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_SAXI:
+										m2sa[odx]  =  std::real(ma[idx]) ;
+										m2sax[odx] =  std::imag(ma[idx]);
+										break;
+						} //end mask
+					}
 				}
 			}
 
@@ -538,7 +598,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask) {
 					fillBins<Float,  SPECTRUM_GaS, true> ();
 				else
 					fillBins<Float,  SPECTRUM_GaS, false>();
-				} 
+				}
 
 			field->setM2     (M2_DIRTY);
 		}
@@ -641,7 +701,7 @@ void	SpecBin::nSRun	() {
 								// float modu = std::abs(ma[idx]);
 								m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaskaf)) ;
 								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
-								m2sax[odx] = modu - ztime ;
+								m2sax[odx] = modu - Rscale ;
 							}
 						}
 					}
@@ -672,7 +732,7 @@ void	SpecBin::nSRun	() {
 								// double modu = abs(ma[idx]);
 								m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaska)) ;
 								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
-								m2sax[odx] = modu - ztime ;
+								m2sax[odx] = modu - Rscale ;
 							}
 						}
 					}

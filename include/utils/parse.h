@@ -13,6 +13,7 @@ extern int    fIndex;
 extern double zInit;
 extern double zFinl;
 //extern double LL;
+extern double frw;
 extern double mode0;
 extern double alpha;
 extern double kCrit;
@@ -54,6 +55,7 @@ extern bool uZin;
 extern bool uZfn;
 extern bool aMod;
 extern bool spectral;
+extern bool mink;
 extern bool icstudy;
 extern bool preprop;
 extern bool coSwitch2theta;
@@ -70,7 +72,8 @@ extern LambdaType     lType;
 extern PropType       pType;
 extern SpectrumMaskType spmask;
 
-extern LogMpi	      logMpi;
+extern LogMpi       logMpi;
+extern bool         debug ;
 extern VerbosityLevel verb;
 
 //for output

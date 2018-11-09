@@ -32,6 +32,7 @@
 		FieldType	fieldType;
 		LambdaType	lambdaType;
 		StatusM2	statusM2;
+		StatusSD  statusSD;
 
 		size_t	fSize;
 		size_t	mAlign;
@@ -39,8 +40,12 @@
 		bool	folded;
 		bool	lowmem;
 
-		double	msa;
+		// conformal time
 		double	*z;
+		// scale factor
+		double	*R;
+		// string core parameter
+		double	msa;
 
 		void	*m,   *v,   *m2,   *str;			// Cpu data
 #ifdef	USE_GPU
@@ -83,8 +88,8 @@
 		void		*m2FrontGhost() { return m2; }
 		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
 		// fix for saxion mode! eReduced ? rLz*nSplit : Lz*nSplit;
-		void		*m2half      () { return fieldType == FIELD_SAXION ? static_cast<void *>(static_cast<char *>(m2) + (fSize/2)*(v3)) :static_cast<void *>(static_cast<char *>(m2) + fSize*(v3));  }
-		// void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(v3)); }
+		// void		*m2half      () { return fieldType == FIELD_SAXION ? static_cast<void *>(static_cast<char *>(m2) + (fSize/2)*(v3)) :static_cast<void *>(static_cast<char *>(m2) + fSize*(v3));  }
+		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
@@ -117,7 +122,7 @@
 		LambdaType	Lambda()     { return lambdaType; }
 		FieldType	Field()      { return fieldType; }
 		StatusM2	m2Status()   { return statusM2; }
-
+		StatusSD  sDStatus()   { return statusSD;}
 		void		setLambda      (LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize ()  { return fSize; }
@@ -134,12 +139,14 @@
 		double		AxionMass  ();
 		double		AxionMassSq();
 		double		SaxionMassSq();
+		double		HubbleMassSq();
 		double		SaxionShift();
 		double		Saskia     ();
 		double		dzSize     ();
 		double		AxionMass  (const double zNow);
 		double		AxionMassSq(const double zNow);
 		double		SaxionMassSq(const double zNow);
+		double		HubbleMassSq(const double zNow);
 		double		SaxionShift(const double zNow);
 		double		Saskia     (const double zNow);
 		double		dzSize     (const double zNow);
@@ -147,11 +154,16 @@
 		double		*zV()        { return z; }
 		const double	*zV() const  { return z; }
 
+		double		*RV()        { return R; }
+		const double	*RV() const  { return R; }
+
 		void	setZ (const double newZ)    { *z = newZ; }
 		void	setM2(const StatusM2 newM2) { statusM2 = newM2; }
+		void	setSD(const StatusSD newSD) { statusSD = newSD; }
 
 		void	setField	(FieldType field);
 		void	setFolded	(bool foli);
+		void	updateR ();
 		void	setReduced	(bool eRed, size_t nLx = 0, size_t nLz = 0);
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)

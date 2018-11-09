@@ -68,6 +68,7 @@ int	main (int argc, char *argv[])
 	//-grids
 	Scalar *axion;
 
+
 	//-records time given in the command line
 	double zInit_save = zInit;
 	//-prepropagator initial time (goes from zInit to zpreInit)
@@ -107,7 +108,7 @@ int	main (int argc, char *argv[])
 			}
 		}
 	}
-	LogOut ("z %f zInit %f zInit_save %f zpreInit %f\n",*axion->zV(),zInit,zInit_save,zpreInit);
+	LogOut ("z %f zInit %f zInit_save %f zpreInit %f R %f\n",*axion->zV(),zInit,zInit_save,zpreInit,*axion->RV());
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
@@ -324,19 +325,12 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	//--------------------------------------------------
-	// prepropagator with relaxing strong damping
+	// prepropagator to relax rho without damping
 	//--------------------------------------------------
-	// only if preprop and if z smaller or equal than zInit
-	// When z>zInit, it is understood that prepropagation was done
-	// NEW it takes the pregam value (if is > 0, otherwise gam )
-	if (preprop && ((*axion->zV()) < zInit)) {
-		//
-		// LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
-		// 	(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo,dwgammo);
+	//
+	if (preprop) {
 		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
 			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO, myCosmos.Gamma(),pregammo,dwgammo);
-		// gammo is reserved for long-time damping
-		// use pregammo for prepropagation damping
 		double gammo_save = myCosmos.Gamma();
 		double *zaza = axion->zV();
 		double strdensn;
@@ -344,31 +338,37 @@ int	main (int argc, char *argv[])
 		if (pregammo > 0)
 			myCosmos.SetGamma(pregammo);
 
-		// prepropagation is always with rho-damping
-		LogOut("Prepropagator always with damping Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-		initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
+		// prepropagation with only-rho evolution
+		LogOut("Prepropagator always with damping Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
+		initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
 		tunePropagator (axion);
 
-		while (*zaza < zInit){
-			dzaux = axion->dzSize(zInit)/2.;
-			//myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
+		double eA, eS;
+		void *eRes;
+		trackAlloc(&eRes, 128);
+		memset(eRes, 0, 128);
+		double *eR = static_cast<double *> (eRes);
 
-			// obs?
+		for (int it=0;  it <100 ;it++)
+		{
+			dzaux = axion->dzSize();
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-			//printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
-			if (icstudy){
-
-				// lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
+			if (icstudy && !(it%5)){
 				ninfa.index=index;
-				ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-				MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM ;
-				lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-				MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+				ninfa.measdata              = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM ;
+				lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
 				index++;
-
+				// LogOut("%d %f %f\n",it,lm.eA,lm.eS);
 			} else{
-				// LogOut("z %f (gamma %f)\n", *zaza, myCosmos.Gamma());
-				LogOut(".");
+
+				energy(axion, eRes, true, 0.0);
+				if ((eS < (eR[5] + eR[6] + eR[7] + eR[8] + eR[9])) && it > 3)
+				break;
+				else{
+				eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
+				eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
+				// LogOut("%d %f %f\n",it,lm.eA,lm.eS);
+				}
 			}
 			propagate (axion, dzaux);
 		}
@@ -431,7 +431,7 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 		{
-			z_now = (*axion->zV());
+
 			old = std::chrono::high_resolution_clock::now();
 
 			dzaux = axion->dzSize();
@@ -440,9 +440,6 @@ int	main (int argc, char *argv[])
 			propagate (axion, dzaux);
 
 			// SIMPLE OUTPUT CHECK
-			z_now = (*axion->zV());
-			//obs
-			// printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
@@ -493,12 +490,14 @@ int	main (int argc, char *argv[])
 					// if (nstrings_globale == 0 && strcount > safest0)
 					if (lm.str.strDen == 0 && strcount > safest0 && coSwitch2theta)
 					{
+
 						if (axion->Lambda() == LAMBDA_Z2)
-							llphys = myCosmos.Lambda()/(z_now*z_now);
+							llphys = myCosmos.Lambda()/((*axion->RV())*(*axion->RV()));
 
 						axmass_now = axion->AxionMass();
 						saskia	   = axion->Saskia();
-						shiftz	   = z_now * saskia;
+						// fix?
+						shiftz	   = (*axion->RV()) * saskia;
 
 						ninfa.index=index;
 						ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
@@ -512,7 +511,7 @@ int	main (int argc, char *argv[])
 						// 	myCosmos.SetGamma(gammo);
 						// }
 						LogOut("--------------------------------------------------\n");
-						LogOut(" TRANSITION TO THETA (z=%.4f)\n",z_now);
+						LogOut(" TRANSITION TO THETA (z=%.4f R=%.4f)\n",(*axion->zV()), (*axion->RV()));
 						LogOut(" shift = %f \n", saskia);
 
 						cmplxToTheta (axion, shiftz);
@@ -578,7 +577,6 @@ int	main (int argc, char *argv[])
 	LogOut("| ");
 
 	//index++	; // LAST MEASUREMENT IS NOT PRINTED INSIDE THE LOOP, IT IS DONE HERE INSTEAD
-	z_now = (*axion->zV());
 
 	if (axion->Field() == FIELD_AXION)
 	{
@@ -605,11 +603,10 @@ int	main (int argc, char *argv[])
 		if (wkb2z >= zFinl) {
 			WKB wonka(axion, axion);
 
-			LogOut ("WKBing %d (z=%.4f) to %d (%.4f) ... ", index, z_now, index+1, wkb2z);
+			LogOut ("WKBing %d (z=%.4f) to %d (%.4f) ... ", index, 	(*axion->zV()), index+1, wkb2z);
 
 			wonka(wkb2z);
-			z_now = (*axion->zV());
-			LogOut (" done! (z=%.4f)\n", z_now);
+			LogOut (" done! (z=%.4f)\n", (*axion->zV()));
 
 			index++;
 
@@ -659,10 +656,12 @@ int	main (int argc, char *argv[])
 void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta)
 {
 	double z_now = (*axion->zV());
+	double R_now = (*axion->RV());
 	double llphys = LLL;
 	if (axion->Lambda() == LAMBDA_Z2)
-		llphys = LLL/(z_now*z_now);
+		llphys = LLL/(R_now*R_now);
 
+	// LogOut("z %f R %f\n",z_now, R_now);
 	size_t S0 = sizeN*sizeN ;
 	if (commRank() == 0 && sPrec == FIELD_SINGLE) {
 		if (axion->Field() == FIELD_SAXION) {
@@ -691,11 +690,12 @@ double findzdoom(Scalar *axion)
 	double ct = zInit ;
 	double DWfun;
 	double meas ;
+	double fff = axion->BckGnd()->Frw();
 	while (meas < 0.001)
 	{
 		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
 		if (axion->Lambda() == LAMBDA_Z2)
-			DWfun *= ct*ct;
+			DWfun *= pow(ct,2*fff);
 		meas = DWfun - 1 ;
 		ct += 0.001 ;
 	}

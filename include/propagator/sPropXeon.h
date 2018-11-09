@@ -27,7 +27,7 @@
 #endif
 
 template<const VqcdType VQcd>
-inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
 				const double ood2, const double LL, const double aMass2, const double gamma, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
@@ -51,7 +51,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 
 		const double dzc = dz*c;
 		const double dzd = dz*d;
-		const double zR = *z;
+		const double zR = *R;
 		const double z2 = zR*zR;
 		const double z4 = z2*z2;
 		const double zQ = aMass2*z2*zR;
@@ -242,7 +242,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *z;
+		const float zR = *R;
 		const float z2 = zR*zR;
 		const float z4 = z2*z2;
 		const float zQ = (float) (aMass2*z2*zR);
