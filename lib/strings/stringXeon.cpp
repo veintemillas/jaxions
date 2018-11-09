@@ -1029,6 +1029,9 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	strDat.strDen = nStrings;
 	strDat.strChr = nChiral;
 	strDat.wallDn = nWalls;
+	strDat.strDen_local = nStrings;
+	strDat.strChr_local = nChiral;
+	strDat.wallDn_local = nWalls;
 
 	return	strDat;
 }
@@ -1038,5 +1041,6 @@ StringData	stringCpu	(Scalar *field)
 	const size_t S = field->Surf();
 	const size_t V = field->Size();
 	field->exchangeGhosts(FIELD_M);
-	return	(stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
+	field->setSD(SD_STDWMAP);
+	return (stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
 }
