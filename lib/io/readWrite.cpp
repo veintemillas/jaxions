@@ -333,6 +333,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	writeAttribute(file_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, axion->RV(),  "R",       H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
@@ -575,7 +576,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	size_t	dataSize;
 
 	int myRank = commRank();
-
+	if (debug) LogOut("[db] Reading Hdf5 configuration from disk\n");
 	LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk");
 	LogMsg (VERB_NORMAL, "");
 
@@ -597,7 +598,8 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	else
 		sprintf(base, "%s/%s.restart", outDir, outName);
 
-LogMsg (VERB_NORMAL, "File read: %s",base);
+	if (debug) LogOut("[db] File read: %s\n",base);
+	LogMsg (VERB_NORMAL, "File read: %s",base);
 	/*	Open the file and release the plist	*/
 	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
 	{
@@ -607,19 +609,21 @@ LogMsg (VERB_NORMAL, "File read: %s",base);
 	}
 	H5Pclose(plist_id);
 
+	if (debug) LogOut("[db] close\n");
 	/*	Attributes	*/
 
 	attr_type = H5Tcopy(H5T_C_S1);
 	H5Tset_size (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double	zTmp, maaR;
+	double	zTmp, RTmp, maaR;
 	uint	tStep, cStep, totlZ;
 	readAttribute (file_id, fStr,   "Field type",   attr_type);
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
 	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &RTmp,  "R", H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
 LogMsg (VERB_NORMAL, "Field type: %s",fStr);
@@ -627,6 +631,7 @@ LogMsg (VERB_NORMAL, "Precision: %s",prec);
 LogMsg (VERB_NORMAL, "Size: %d",sizeN);
 LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
 LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
+LogMsg (VERB_NORMAL, "RTmp: %f",RTmp);
 LogMsg (VERB_NORMAL, "tStep: %d",tStep);
 LogMsg (VERB_NORMAL, "cStep: %d",cStep);
 
@@ -911,6 +916,7 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	else
 		sizeZ = totlZ/zGrid;
 
+	if (debug) LogOut("[db] Read start\n");
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, 0);
 
@@ -928,14 +934,17 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 		LogError ("Input error: Invalid field type");
 		exit(1);
 	}
+	if (debug) LogOut("[db] axion created slab defined %d\n",slab);
 
 	double maa = (*axion)->AxionMass();
+	if (debug) LogOut("[db] ma %f\n", maa);
 
 	if (fabs((maa - maaR)/std::max(maaR,maa)) > 1e-5)
 		LogMsg(VERB_NORMAL, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
 
 	prof.start();
 	commSync();
+
 	/*	Create plist for collective read	*/
 
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -953,21 +962,27 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	mSpace   = H5Dget_space (mset_id);
 	vSpace   = H5Dget_space (vset_id);
 
+	if (debug) LogOut("[db] reading slab %d\n",slab);
+
 	for (hsize_t zDim=0; zDim<((hsize_t) (*axion)->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
 		offset = (((hsize_t) (myRank*(*axion)->Depth()))+zDim)*slab;
+		if (debug) printf("[db] rank %d slab %d zDim %d offset werar %d\n",myRank, slab, zDim,offset,slab*(1+zDim)*dataSize);
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		/*	Read raw data	*/
 
 		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
+		if (debug) printf("[db] rank %d mErr %d \n",myRank, mErr);
 		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
 		if ((mErr < 0) || (vErr < 0)) {
+			if (debug) printf("[db] Error reading dataset from file zDim %d, rank %d\n",zDim,myRank);
 			LogError ("Error reading dataset from file");
 			return;
 		}
 	}
+	if (debug) printf("[db] slabs read rank %d\n",myRank);
 	/*	Close the dataset	*/
 
 	H5Sclose (mSpace);
@@ -1196,6 +1211,7 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, &maa,   "Axion mass",    H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
+	writeAttribute(meas_id, axion->RV(),  "R",       H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
@@ -1518,6 +1534,176 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 
 	commSync();
 }
+
+//---------------------------------------------------------------------
+// New writeString FUNCTION
+//---------------------------------------------------------------------
+
+void	writeString2	(Scalar *axion, StringData strDat, const bool rData)
+{
+	hid_t	totalSpace, chunk_id, plist_id, group_id, sSet_id, sSpace, memSpace;
+	hid_t	datum;
+
+	uint rLz, redlZ, redlX;
+	hsize_t total, slab, offset;
+	//changed
+	hsize_t totalbytes;
+
+	bool	mpiCheck = true;
+	size_t	sBytes	 = 0;
+
+	int myRank = commRank();
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	// changed
+	// char *strData = static_cast<char *>(axion->sData());
+	// char sCh[16] = "/string/data";
+	unsigned short *strData = static_cast<unsigned short *>(axion->sData());
+	char sCh[16] = "/string/coords";
+
+	// changed
+	// rLz   = axion->rDepth();
+	// redlZ = axion->rTotalDepth();
+	// redlX = axion->rLength();
+	// total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	// slab  = ((hsize_t) redlX)*((hsize_t) redlX);
+	total = strDat.strDen*3 ; //total number of coordinates * 3 * sizeof(short)
+	slab = 3;
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	if (myRank == 0)
+	{
+		/*	Start profiling		*/
+		LogMsg (VERB_NORMAL, "Writing string data");
+		prof.start();
+
+		if (header == false || opened == false)
+		{
+			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+			prof.stop();
+			return;
+		}
+
+		/*	Create a group for string data		*/
+		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+
+		if (!status)
+			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		else {
+			if (status > 0) {
+				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
+				LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
+			} else {
+				LogError ("Error: can't check whether group /string exists");
+				mpiCheck = false;
+			}
+		}
+
+		//changed
+		// /*	Might be reduced	*/
+		// writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
+		// writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
+		/*	String metadata		*/
+		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
+		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+
+		if (debug) LogOut("[db] lalala\n");
+
+		if	(rData) {
+			/*	Create plist for collective write	*/
+			plist_id = H5Pcreate(H5P_DATASET_XFER);
+			H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+			/*	Create space for writing the raw data to disk with chunked access	*/
+			// totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
+
+			/*	Create space for writing the raw data to disk with chunked access	*/
+			if ((totalSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
+			{
+				LogError ("Error calling H5Screate_simple");
+				exit (1);
+			}
+
+			/*	Set chunked access	*/
+			if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+			{
+				LogError ("Error calling H5Pcreate");
+				exit (1);
+			}
+
+			if (H5Pset_chunk (chunk_id, 1, &slab) < 0)
+			{
+				LogError ("Error setting chunked access");
+				exit (1);
+			}
+
+			/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+			if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+			{
+				LogError ("Error calling H5Pset_alloc_time\n");
+				exit (1);
+			}
+
+			sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_USHORT, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+			commSync();
+
+			if (sSet_id < 0) {
+				LogError ("Fatal error creating dataset");
+				mpiCheck = false;
+			}
+
+			/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+			sSpace = H5Dget_space (sSet_id);
+			memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+
+			commSync();
+
+			LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
+
+			for (hsize_t zDim=0; zDim<((hsize_t) strDat.strDen_local); zDim++)
+			{
+				/*	Select the slab in the file	*/
+				// offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*slab;
+				offset = (hsize_t) slab*zDim;
+				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+				/*	Write raw data	*/
+				H5Dwrite (sSet_id, H5T_NATIVE_USHORT, memSpace, sSpace, plist_id, (static_cast<unsigned short *>(static_cast<void *>(axion->sData()))));
+
+			}
+
+			/*	Close the dataset	*/
+			H5Dclose (sSet_id);
+			H5Sclose (sSpace);
+			H5Sclose (memSpace);
+
+			H5Sclose (totalSpace);
+			H5Pclose (chunk_id);
+
+		}
+	}
+
+	if (myRank == 0)
+		H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write strings"), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
+
+	commSync();
+}
+
+
+
+
+
+
+
 
 void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 {
