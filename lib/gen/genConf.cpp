@@ -189,7 +189,7 @@ void	ConfGenerator::runGpu	()
 
 		if (!myCosmos->Mink()){
 		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-		scaleField (axionField, FIELD_M, *axionField->zR());
+		scaleField (axionField, FIELD_M, *axionField->RV());
 		}
 		axionField->transferCpu(FIELD_MV);
 		break;
