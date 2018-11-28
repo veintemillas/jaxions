@@ -249,14 +249,6 @@
 
 		}	StringData;
 
-		typedef	struct	MeasData_v
-		{
-			StringData	str;
-			double		maxTheta;
-			double eA;
-			double eS;
-		}	MeasData;
-
 		typedef	enum	FFTtype_s {
 			FFT_CtoC_MtoM,
 			FFT_CtoC_M2toM2,
@@ -323,6 +315,39 @@
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 
+		typedef enum	DumpType_s
+		{
+		  DUMP_EVERYN	  = 1,
+		  DUMP_FROMLIST	= 2,
+		  DUMP_LOG	    = 4,	//not yet implemented
+		}	DumpType;
+
+		typedef	enum	FindType_s {
+			FIND_MAX,
+			FIND_MIN,
+		}	FindType;
+
+		typedef	enum	MapType_s {
+			MAP_RHO   = 1,
+			MAP_THETA = 2,
+			MAP_ALL   = 3,
+			MAP_NONE  = 0,
+		}	MapType;
+
+		typedef	enum	StatusM2_s {
+			M2_ENERGY,
+			M2_ENERGY_FFT,
+			M2_STRINGMAP,
+			M2_DIRTY,
+		}	StatusM2;
+
+		typedef	enum	StatusSD_s {
+			SD_STDWMAP,
+			SD_STRINGCOORD,
+			SD_DIRTY,
+		}	StatusSD;
+
+		// analysis functions to be called inside a measurement
 		typedef	enum	MeasureType_s {
 			MEAS_NOTHING			= 0,
 			MEAS_BINTHETA     = 1,
@@ -355,31 +380,7 @@
 			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
 		}	MeasureType;
 
-		typedef	enum	FindType_s {
-			FIND_MAX,
-			FIND_MIN,
-		}	FindType;
-
-		typedef	enum	MapType_s {
-			MAP_RHO   = 1,
-			MAP_THETA = 2,
-			MAP_ALL   = 3,
-			MAP_NONE  = 0,
-		}	MapType;
-
-		typedef	enum	StatusM2_s {
-			M2_ENERGY,
-			M2_ENERGY_FFT,
-			M2_STRINGMAP,
-			M2_DIRTY,
-		}	StatusM2;
-
-		typedef	enum	StatusSD_s {
-			SD_STDWMAP,
-			SD_STRINGCOORD,
-			SD_DIRTY,
-		}	StatusSD;
-
+		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v
 		{
 			int	index;
@@ -388,6 +389,17 @@
 			MeasureType measdata ;
 			SpectrumMaskType mask ;
 		}	MeasInfo;
+
+		// data output by measurement function to program
+		typedef	struct	MeasData_v
+		{
+			StringData	str;
+			double		maxTheta;
+			double eA;
+			double eS;
+		}	MeasData;
+
+
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__

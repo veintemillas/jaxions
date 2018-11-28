@@ -71,8 +71,8 @@ int	main (int argc, char *argv[])
 					// parm2 is also read by it
 					LogOut("par1 %d par2 %f kmax %d kCrit %f cType %d (VILGOR %d) \n",parm1,parm2,kMax,kCrit,cType,CONF_VILGOR);
 					genConf	(&myCosmos, axion, cType, parm1, parm2);
-
-					lm = Measureme (axion, ninfa, MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM);
+					ninfa.measdata = MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM;
+					lm = Measureme (axion, ninfa);
 					ninfa.index += 1;
 					}
 					}
@@ -91,8 +91,8 @@ int	main (int argc, char *argv[])
 							{
 							LogOut("par1 %d par2 %f kmax %d kCrit %f cType %d (SMOOTH %d) \n",parm1,parm2,kMax,kCrit,cType,CONF_SMOOTH);
 							genConf	(&myCosmos, axion, cType, parm1, parm2);
-
-							lm = Measureme (axion, ninfa, MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM);
+							ninfa.measdata = MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM;
+							lm = Measureme (axion, ninfa);
 							ninfa.index += 1;
 							}
 							}

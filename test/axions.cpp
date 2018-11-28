@@ -163,7 +163,7 @@ int	main (int argc, char *argv[])
 	start = std::chrono::high_resolution_clock::now();
 	old = start;
 
-	initPropagator (pType, axion, VQCD_1);
+	initPropagator (pType, axion, myCosmos.QcdPot());
 
 	LogOut("--------------------------------------------------\n");
 	LogOut("            TUNING PROPAGATOR                     \n");

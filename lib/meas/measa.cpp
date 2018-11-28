@@ -17,8 +17,9 @@ using namespace std;
 double xivilgor(double logi);
 
 template<typename Float>
-MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
+MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 {
+	MeasureType measa = info.measdata ;
 	MeasData MeasDataOut;
 
 	MeasDataOut.maxTheta       = -1 ;
@@ -328,9 +329,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 	LogOut("%2.3f  | ",z_now);
 
 	if (cTime*1.e-6/3600. < 1.0 )
-		LogOut("  %3d  | %d | %2.3f m | ", indexa, measa, cTime*1.e-6/60.);
+		LogOut("  %3d  | %6d | %2.3f m | ", indexa, measa, cTime*1.e-6/60.);
 		else
-		LogOut("  %3d  | %d | %2.3f h | ", indexa, measa, cTime*1.e-6/3600.);
+		LogOut("  %3d  | %6d | %2.3f h | ", indexa, measa, cTime*1.e-6/3600.);
 
 	double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
 	if (axiona->Lambda() == LAMBDA_Z2)
@@ -339,11 +340,15 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
+		if ( ((int) MeasDataOut.str.strDen) > 0){
 		double loks = log(axiona->Msa()*z_now/axiona->Delta());
 		double Le = axiona->BckGnd()->PhysSize();
 			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
 				MeasDataOut.str.strDen );
+		} else {
+			LogOut("str not measured ");
+		}
 	} else {
 		LogOut("maxth=%f ", MeasDataOut.maxTheta);
 		LogOut(" ... ");
@@ -355,15 +360,15 @@ destroyMeas();
 return MeasDataOut;
 }
 
-MeasData	Measureme  (Scalar *axiona,  MeasInfo infa, MeasureType measa)
+MeasData	Measureme  (Scalar *axiona,  MeasInfo infa)
 {
 	if (axiona->Precision() == FIELD_SINGLE)
 	{
-		return Measureme<float> (axiona,  infa,  measa);
+		return Measureme<float> (axiona,  infa);
 	}
 	else
 	{
-		return Measureme<double>(axiona,  infa,  measa);
+		return Measureme<double>(axiona,  infa);
 	}
 }
 

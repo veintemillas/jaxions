@@ -235,7 +235,7 @@ void	ConfGenerator::runCpu	()
 			LogMsg(VERB_NORMAL,"[GEN] CONF_KMAX started!\n ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
-			LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",kMax,kCrt);
+			// LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",kMax,kCrt);
 			momConf(axionField, kMax, kCrt);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
@@ -278,7 +278,7 @@ void	ConfGenerator::runCpu	()
 			normCoreField	(axionField);
 
 			if (!myCosmos->Mink()){
-				LogOut("rescalo!! con R %f",*axionField->RV());
+				//LogOut("rescalo!! con R %f",*axionField->RV());
 			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 			scaleField (axionField, FIELD_M, *axionField->RV());
 			}
@@ -316,7 +316,7 @@ void	ConfGenerator::runCpu	()
 
 			LogMsg(VERB_NORMAL,"[GEN] smoothXeon called with %d iterations and alpha = %f!",niter,alpha);
 			if (niter>100){
-					LogOut("WARNING!! More than 100 iterations is not particularly efficient! update VILGOR algorithm to use FFTs!!\n");
+					LogMsg(VERB_NORMAL,"WARNING!! More than 100 iterations is not particularly efficient! update VILGOR algorithm to use FFTs!!\n");
 			}
 			prof.start();
 			smoothXeon (axionField, niter, alpha);
