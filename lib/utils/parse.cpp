@@ -443,6 +443,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--NDW2"))
+		{
+			uPot = true;
+			vqcdType = VQCD_1N2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
 			uPot = true;

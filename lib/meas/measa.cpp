@@ -289,10 +289,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 					else
 						writeString(axiona, MeasDataOut.str, false);
 				}
-				else if (measa & MEAS_STRINGCOO){
-					LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
-					writeString2(axiona, MeasDataOut.str, true);
-				}
+				// else if (measa & MEAS_STRINGCOO){
+				// 	LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
+				// 	writeString2(axiona, MeasDataOut.str, true);
+				// }
 			}
 
 	}

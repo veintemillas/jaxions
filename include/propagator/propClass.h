@@ -620,6 +620,13 @@
 							return	(1e-9 * ((double) axion->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
 							break;
 
+						case VQCD_1N2:
+							return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+							break;
+
+						case VQCD_QUAD:
+							return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+							break;
 					}
 					break;
 

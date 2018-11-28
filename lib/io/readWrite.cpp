@@ -196,16 +196,16 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	}
 
 	int cSteps = dump*index;
-	uint totlZ = axion->TotalDepth();
-	uint tmpS  = axion->Length();
+	hsize_t totlZ = axion->TotalDepth();
+	hsize_t tmpS  = axion->Length();
 
 	switch (axion->Field())
 	{
 		case 	FIELD_SX_RD:
 		case 	FIELD_SAXION:
 		{
-			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) (totlZ*2));
-			slab  = (hsize_t) (axion->Surf()*2);
+			total = tmpS*tmpS*totlZ*2;
+			slab  = axion->Surf()*2;
 
 			sprintf(fStr, "Saxion");
 		}
@@ -214,8 +214,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	FIELD_AX_MOD_RD:
 		case	FIELD_AXION_MOD:
 		{
-			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
-			slab  = (hsize_t) axion->Surf();
+			total = tmpS*tmpS*totlZ;
+			slab  = axion->Surf();
 
 			sprintf(fStr, "Axion Mod");
 		}
@@ -225,8 +225,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	FIELD_AXION:
 		case	FIELD_WKB:
 		{
-			total = ((hsize_t) tmpS)*((hsize_t) tmpS)*((hsize_t) totlZ);
-			slab  = (hsize_t) axion->Surf();
+			total = tmpS*tmpS*totlZ;
+			slab  = axion->Surf();
 
 			sprintf(fStr, "Axion");
 		}
@@ -278,6 +278,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		case	VQCD_1_PQ_2:
 			sprintf(vStr, "VQcd 1 Peccei-Quinn 2");
+			break;
+
+		case	VQCD_1N2:
+			sprintf(vStr, "VQcd 1 N=2");
 			break;
 
 		default:
@@ -379,7 +383,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	CONF_KMAX:
 			sprintf(icStr, "kMax");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
-			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
@@ -388,7 +392,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	CONF_VILGOR:
 			sprintf(icStr, "VilGor");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
-			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
@@ -396,7 +400,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
-			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
@@ -529,17 +533,15 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	}
 
 	/*	Close the dataset	*/
-
-	H5Dclose (mset_id);
-	H5Dclose (vset_id);
 	H5Sclose (mSpace);
 	H5Sclose (vSpace);
+	H5Dclose (mset_id);
+	H5Dclose (vset_id);
 	H5Sclose (memSpace);
 
 	/*	Close the file		*/
-
-	H5Sclose (totalSpace);
 	H5Pclose (chunk_id);
+	H5Sclose (totalSpace);
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 
@@ -622,8 +624,8 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	readAttribute (file_id, prec,   "Precision",    attr_type);
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &RTmp,  "R", H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
 LogMsg (VERB_NORMAL, "Field type: %s",fStr);
@@ -775,6 +777,8 @@ LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
 				vqcdType = VQCD_2;
 			else if (!strcmp(vStr, "VQcd 1 Peccei-Quinn 2"))
 				vqcdType = VQCD_1_PQ_2;
+			else if (!strcmp(vStr, "VQcd 1 N=2"))
+				vqcdType = VQCD_1N2;
 			else {
 				LogError ("Error reading file %s: invalid potential type %s", base, vStr);
 				vqcdType = VQCD_1;
@@ -1027,12 +1031,12 @@ void	createMeas (Scalar *axion, int index)
 	int myRank = commRank();
 
 	int cSteps = dump*index;
-	hsize_t totlZ = sizeZ*zGrid;
-	hsize_t tmpS  = sizeN;
+	hsize_t totlZ = axion->TotalDepth();
+	hsize_t tmpS  = axion->Length();
 
 	tSize  = axion->TotalSize();
 	slabSz = tmpS*tmpS;
-	sLz    = sizeZ;
+	sLz    = axion->Depth();
 
 	if (myRank != 0)	// Only rank 0 writes measurement data
 		return;
@@ -1074,7 +1078,7 @@ void	createMeas (Scalar *axion, int index)
 			dataSize = sizeof(float);
 
 			sprintf(prec, "Single");
-			length = strlen(prec)+1;
+			// length = strlen(prec)+1;
 		}
 
 		break;
@@ -1085,7 +1089,7 @@ void	createMeas (Scalar *axion, int index)
 			dataSize = sizeof(double);
 
 			sprintf(prec, "Double");
-			length = strlen(prec)+1;
+			// length = strlen(prec)+1;
 		}
 
 		break;
@@ -1143,7 +1147,7 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdType & VQCD_TYPE)
+		switch (vqcdType & VQCD_TYPE)
 	{
 		case	VQCD_1:
 			sprintf(vStr, "VQcd 1");
@@ -1155,6 +1159,10 @@ void	createMeas (Scalar *axion, int index)
 
 		case	VQCD_1_PQ_2:
 			sprintf(vStr, "VQcd 1 Peccei-Quinn 2");
+			break;
+
+		case	VQCD_1N2:
+			sprintf(vStr, "VQcd 1 N=2");
 			break;
 
 		default:
@@ -1231,7 +1239,7 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
-	writeAttribute(vGrp_id, &nQcd,  "nQcd",	         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &gamma, "Gamma",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
@@ -1535,168 +1543,7 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 	commSync();
 }
 
-//---------------------------------------------------------------------
-// New writeString FUNCTION
-//---------------------------------------------------------------------
 
-void	writeString2	(Scalar *axion, StringData strDat, const bool rData)
-{
-	hid_t	totalSpace, chunk_id, plist_id, group_id, sSet_id, sSpace, memSpace;
-	hid_t	datum;
-
-	uint rLz, redlZ, redlX;
-	hsize_t total, slab, offset;
-	//changed
-	hsize_t totalbytes;
-
-	bool	mpiCheck = true;
-	size_t	sBytes	 = 0;
-
-	int myRank = commRank();
-
-	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	// changed
-	// char *strData = static_cast<char *>(axion->sData());
-	// char sCh[16] = "/string/data";
-	unsigned short *strData = static_cast<unsigned short *>(axion->sData());
-	char sCh[16] = "/string/coords";
-
-	// changed
-	// rLz   = axion->rDepth();
-	// redlZ = axion->rTotalDepth();
-	// redlX = axion->rLength();
-	// total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
-	// slab  = ((hsize_t) redlX)*((hsize_t) redlX);
-	total = strDat.strDen*3 ; //total number of coordinates * 3 * sizeof(short)
-	slab = 3;
-	Profiler &prof = getProfiler(PROF_HDF5);
-
-	if (myRank == 0)
-	{
-		/*	Start profiling		*/
-		LogMsg (VERB_NORMAL, "Writing string data");
-		prof.start();
-
-		if (header == false || opened == false)
-		{
-			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
-			prof.stop();
-			return;
-		}
-
-		/*	Create a group for string data		*/
-		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
-
-		if (!status)
-			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		else {
-			if (status > 0) {
-				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
-				LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
-			} else {
-				LogError ("Error: can't check whether group /string exists");
-				mpiCheck = false;
-			}
-		}
-
-		//changed
-		// /*	Might be reduced	*/
-		// writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
-		// writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
-
-		/*	String metadata		*/
-		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
-		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
-
-		if (debug) LogOut("[db] lalala\n");
-
-		if	(rData) {
-			/*	Create plist for collective write	*/
-			plist_id = H5Pcreate(H5P_DATASET_XFER);
-			H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-			/*	Create space for writing the raw data to disk with chunked access	*/
-			// totalSpace = H5Screate_simple(1, &total, maxD);	// Whole data
-
-			/*	Create space for writing the raw data to disk with chunked access	*/
-			if ((totalSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
-			{
-				LogError ("Error calling H5Screate_simple");
-				exit (1);
-			}
-
-			/*	Set chunked access	*/
-			if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
-			{
-				LogError ("Error calling H5Pcreate");
-				exit (1);
-			}
-
-			if (H5Pset_chunk (chunk_id, 1, &slab) < 0)
-			{
-				LogError ("Error setting chunked access");
-				exit (1);
-			}
-
-			/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
-			if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
-			{
-				LogError ("Error calling H5Pset_alloc_time\n");
-				exit (1);
-			}
-
-			sSet_id = H5Dcreate (meas_id, sCh, H5T_NATIVE_USHORT, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-
-			commSync();
-
-			if (sSet_id < 0) {
-				LogError ("Fatal error creating dataset");
-				mpiCheck = false;
-			}
-
-			/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
-
-			sSpace = H5Dget_space (sSet_id);
-			memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
-
-			commSync();
-
-			LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
-
-			for (hsize_t zDim=0; zDim<((hsize_t) strDat.strDen_local); zDim++)
-			{
-				/*	Select the slab in the file	*/
-				// offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*slab;
-				offset = (hsize_t) slab*zDim;
-				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-
-				/*	Write raw data	*/
-				H5Dwrite (sSet_id, H5T_NATIVE_USHORT, memSpace, sSpace, plist_id, (static_cast<unsigned short *>(static_cast<void *>(axion->sData()))));
-
-			}
-
-			/*	Close the dataset	*/
-			H5Dclose (sSet_id);
-			H5Sclose (sSpace);
-			H5Sclose (memSpace);
-
-			H5Sclose (totalSpace);
-			H5Pclose (chunk_id);
-
-		}
-	}
-
-	if (myRank == 0)
-		H5Gclose (group_id);
-
-	prof.stop();
-	prof.add(std::string("Write strings"), 0, 1e-9*sBytes);
-
-	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
-
-	commSync();
-}
 
 
 

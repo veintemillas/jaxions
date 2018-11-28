@@ -1,5 +1,5 @@
 #include<cstdio>
-#include<cstdlib>
+// #include<cstdlib>
 #include<cstdlib>
 #include<math.h>	/* pow */
 #include<cstring>

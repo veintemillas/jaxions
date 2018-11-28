@@ -332,7 +332,7 @@ def gm(address,something='summary',printerror=False):
             size = f['string/coords'].size
             # return np.reshape(f['string/coords'],(size,3)) ;
             return f['string/coords']
-            
+
     elif (something[0:2] == 'st') and not st_check :
         if printerror :
             print('[gm] No string info in the file! Use 0.')
@@ -734,7 +734,7 @@ def gm(address,something='summary',printerror=False):
         print()
         return ;
 
-    print('Argument not recognised/found!')
+    print('Argument %s not recognised/found!'%(something))
     return ;
 
 

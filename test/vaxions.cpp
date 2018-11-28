@@ -297,6 +297,8 @@ int	main (int argc, char *argv[])
 		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
 	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
 		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
+	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1N2)
+		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
 
 	LogOut("Vqcd flag %d\n", myCosmos.QcdPot());
 	LogOut("Damping %d gam = %f\n", myCosmos.QcdPot() & VQCD_DAMP, myCosmos.Gamma());
@@ -410,6 +412,7 @@ int	main (int argc, char *argv[])
 	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
 	initPropagator (pType, axion, myCosmos.QcdPot());
 	tunePropagator (axion);
+	if (debug) LogOut("[va] tuned!\n");
 
 	LogOut ("Start redshift loop\n\n");
 	fflush (stdout);

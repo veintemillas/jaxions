@@ -136,7 +136,7 @@
 				yBest = yBlock = 4;
 				zBest = zBlock = 1;
 			} else {
-				auto xTmp = maxThreadsPerDim(0); 
+				auto xTmp = maxThreadsPerDim(0);
 				auto yTmp = maxThreadsPerDim(1);
 				auto zTmp = 1;
 
@@ -162,5 +162,5 @@
 		}
 	};
 
-	
+
 #endif
