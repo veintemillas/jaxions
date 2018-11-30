@@ -175,10 +175,9 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 	switch (wMod) {
 		case true:
 			return	energyThetaGpu<true>(m, v, m2, R, delta2, aMass2, Lx, Lz, V, S, precision, eR, stream, map);
-			break;
+
 		case false:
 			return	energyThetaGpu<true>(m, v, m2, R, delta2, aMass2, Lx, Lz, V, S, precision, eR, stream, map);
-			break;
 	}
 
 	return	-1;

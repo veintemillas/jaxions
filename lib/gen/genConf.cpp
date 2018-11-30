@@ -28,6 +28,9 @@ class	ConfGenerator
 {
 	private:
 
+	Cosmos	*myCosmos;
+	Scalar	*axionField;
+
 	ConfType cType;
 
 	size_t	kMax;
@@ -37,9 +40,6 @@ class	ConfGenerator
 	double	alpha;
 
 	int	index;
-
-	Cosmos	*myCosmos;
-	Scalar	*axionField;
 
 	public:
 
@@ -129,6 +129,7 @@ void	ConfGenerator::runGpu	()
 
 	switch (cType)
 	{
+		default:
 		case CONF_NONE:
 		break;
 
@@ -235,7 +236,7 @@ void	ConfGenerator::runCpu	()
 			LogMsg(VERB_NORMAL,"[GEN] CONF_KMAX started!\n ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
-			// LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",kMax,kCrt);
+			// LogOut("[GEN] momConf with kMax %zu kCrit %f!\n ", kMax, kCrt);
 			momConf(axionField, kMax, kCrt);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);

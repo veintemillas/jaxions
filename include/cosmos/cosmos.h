@@ -21,12 +21,12 @@
 		VqcdType pot;
 
 		double	 frw;
-		bool	   mink;
+		bool	 mink;
 
 		public:
 
 			 //Cosmos() : nSize(0), lSize(0.0), lambda(-1.e8), msa(-1.e8), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), pot(VQCD_NONE), zThRes(-1.e8), zRestore(-1.e8) {}
-			 Cosmos() : lSize(0.0), lambda(-1.e8), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), pot(VQCD_NONE), zThRes(-1.e8), zRestore(-1.e8), frw(1.0), mink(false) {}
+			 Cosmos() : lSize(0.0), lambda(-1.e8), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), zThRes(-1.e8), zRestore(-1.e8), pot(VQCD_NONE), frw(1.0), mink(false) {}
 
 		double&   ZThRes  ()	{ return zThRes;   }
 		double&   ZRestore()	{ return zRestore; }

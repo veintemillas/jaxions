@@ -110,9 +110,9 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 					z = iz;
 					y = iy;
 					x = ix;
-					if (z>sizeN/2) {z = z-sizeN; }
-					if (y>sizeN/2) {y = y-sizeN; }
-					if (x>sizeN/2) {x = x-sizeN; }
+					if (iz>sizeN/2) { z = z-sizeN; }
+					if (iy>sizeN/2) { y = y-sizeN; }
+					if (ix>sizeN/2) { x = x-sizeN; }
 					Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
 					theta = exp(-theta*kCrit)*mode0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
@@ -135,7 +135,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 					y = iy;
 					x = ix;
 					//CENTERED AT GRID, z=0
-					if (z>sizeN/2) {z = z-sizeN; }
+					if (iz>sizeN/2) { z = z-sizeN; }
 					Float aL = ((Float) sizeN)/4.01;	//RADIUS
 					rho2 = (x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2);
 					Float rho = sqrt((Float) rho2)	;
@@ -161,7 +161,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 					y = iy;
 					x = ix;
 					//CENTERED AT GRID, z=0
-					if (z>sizeN/2) {z = z-sizeN; }
+					if (iz>sizeN/2) { z = z-sizeN; }
 					Float aL = ((Float) sizeN)/4.01;	//RADIUS
 					rho2 = (z)*(z)+(y-sizeN/2)*(y-sizeN/2);
 					Float rho = sqrt((Float) rho2)	;
@@ -170,10 +170,10 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 					Float d22 = (rho - aL)*(rho - aL) + z2 ;
 					// d12 /= ((Float) Vo) ;
 					// d22 /= ((Float) Vo) ;
-					Float zis = (Float) x ;
+					//Float zis = (Float) x ;
 					Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
 					theta = 3.14159265*theta*theta	;
-					if (x>sizeN/2)
+					if (ix>sizeN/2)
 						theta *= -1 ;
 
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));

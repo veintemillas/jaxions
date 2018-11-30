@@ -66,7 +66,6 @@ void    normGpu (Scalar *sField, FieldIndex fIdx)
 				default:
 				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
 				return;
-				break;
 			}
 
 			normKernel<double><<<gridSize, blockSize, 0, ((cudaStream_t *)sField->Streams())[0]>>> (field, V);
@@ -106,7 +105,7 @@ void    normGpu (Scalar *sField, FieldIndex fIdx)
 
 				default:
 				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
-				break;
+				return;
 			}
 
 			normKernel<float> <<<gridSize, blockSize, 0, ((cudaStream_t *)sField->Streams())[0]>>> (field, V);

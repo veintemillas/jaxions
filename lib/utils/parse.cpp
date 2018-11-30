@@ -146,7 +146,7 @@ void	PrintUsage(char *name)
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
 
 	printf("\nSimulation parameters:\n");
-	printf("  --lowmem                      Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
+	printf("  --lowmem                      Reduces memory usage by 33%%, but decreases performance as well (default false).\n");
 	printf("  --prec  double/single         Precision of the axion field simulation (default single)\n");
 	printf("  --device cpu/gpu              Uses nVidia Gpus to accelerate the computations (default, use cpu).\n");
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
@@ -218,7 +218,7 @@ void	PrintUsage(char *name)
 
 void	PrintICoptions()
 {
-	printf("\Options for Initial conditions\n\n");
+	printf("\nOptions for Initial conditions\n\n");
 
 	printf("--ctype smooth/kmax/tkachev               			   Main IC selector.\n\n");
 
@@ -281,7 +281,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sscanf(argv[i+1], "%d", &verb);
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&verb));
 
 			if (verb > VERB_HIGH)   verb = VERB_HIGH;
 			if (verb < VERB_SILENT) verb = VERB_SILENT;
@@ -342,7 +342,7 @@ int	parseArgs (int argc, char *argv[])
 				goto endFor;
 			}
 
-			sscanf(argv[i+1], "%d", &prinoconfo);
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&prinoconfo));
 			//printf("p3D set to %d \n", prinoconfo);
 
 			i++;
@@ -1096,7 +1096,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sscanf(argv[i+1], "%zu", &spmask);
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&spmask));
 
 			if (spmask < 0)
 			{

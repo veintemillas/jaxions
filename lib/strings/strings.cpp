@@ -339,7 +339,7 @@ StringData	strings2	(Scalar *field)
 	{
 		LogOut("red   %f\n",red);
 		char *logrono = static_cast<char*>( static_cast<void*>( &eStr->Pos()[0] ));
-		unsigned short *cerda = static_cast<unsigned short *>(static_cast<void *>(field->sData()));
+		//unsigned short *cerda = static_cast<unsigned short *>(static_cast<void *>(field->sData()));
 		size_t carde3 =carde*3*sizeof(eStr->Pos()[0]);
 
 		LogMsg(VERB_HIGH,"[Strings2] copyng %d unsigned-shorts, %d bytes to sData() [%lu bytes]\n",carde*3,carde3,field->Size());

@@ -20,16 +20,17 @@ class	Energy : public Tunable
 {
 	private:
 
-	const double delta2;
-	const double LL, shift, aMass2;
-	const size_t Vt;
-	const bool   map;
-
-	FieldType	fType;
-	VqcdType	pot;
-
-	void    *eRes;
 	Scalar	*field;
+	const size_t Vt;
+
+	const double delta2, aMass2;
+	void    *eRes;
+
+	VqcdType	pot;
+	FieldType	fType;
+
+	const double shift, LL;
+	const bool   map;
 
 	public:
 
@@ -55,7 +56,7 @@ void	Energy::runGpu	()
 	const uint uLz = field->Depth();
 	const uint uS  = field->Surf();
 	const uint uV  = field->Size();
-	double *z = field->zV();
+	//double *z = field->zV();
 	double *R = field->RV();
 
 	field->exchangeGhosts(FIELD_M);
@@ -75,6 +76,10 @@ void	Energy::runGpu	()
 			setName		("Energy Axion (mod)");
 			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
 			break;
+
+		default:
+			LogError ("Energy not supported for this kind of field");
+			return;
 	}
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -101,6 +106,10 @@ void	Energy::runCpu	()
 			setName		("Energy Axion (mod)");
 			energyThetaCpu	(field, delta2, aMass2, eRes, map, true);
 			break;
+
+		default:
+			LogError ("Energy not supported for this kind of field");
+			return;
 	}
 }
 

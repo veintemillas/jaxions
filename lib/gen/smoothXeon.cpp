@@ -65,7 +65,7 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 	switch	(field->Precision())
 	{
 		case	FIELD_DOUBLE:
-		for (int it=0; it<iter; it++)
+		for (size_t it=0; it<iter; it++)
 		{
 			iteraXeon (static_cast<const complex<double>*>(field->mCpu()), static_cast<complex<double>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), alpha);
 			memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*field->Surf(), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
@@ -74,7 +74,7 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		break;
 
 		case	FIELD_SINGLE:
-		for (int it=0; it<iter; it++)
+		for (size_t it=0; it<iter; it++)
 		{
 			iteraXeon (static_cast<const complex<float>*>(field->mCpu()), static_cast<complex<float>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
 			memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*field->Surf(), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());

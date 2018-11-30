@@ -65,8 +65,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const double epsi = mola/(1.+mola);
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+//		const size_t XC = (Lx<<2);
+//		const size_t YC = (Lx>>2);
 
 		const double    __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
 		const double    __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
@@ -76,14 +76,14 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const auto  vShRg = opCode(load_si512, shfRg);
 		const auto  vShLf = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+//		const size_t XC = (Lx<<1);
+//		const size_t YC = (Lx>>1);
 
 		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
 #else
-		const size_t XC = Lx;
-		const size_t YC = Lx;
+//		const size_t XC = Lx;
+//		const size_t YC = Lx;
 
 		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
@@ -118,6 +118,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 #endif
 
 				switch	(VQcd & VQCD_TYPE) {
+
+					default:
 					case	VQCD_1:
 						mMx = opCode(add_pd, tmp,
 							opCode(sub_pd, zQVec,
@@ -150,6 +152,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 				mPy = opCode(load_pd, &v[idxMz]);
 
 				switch  (VQcd & VQCD_DAMP) {
+
+					default:
 					case    VQCD_NONE:
 #if     defined(__AVX512F__) || defined(__FMA__)
 					tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
@@ -256,8 +260,8 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const float epsi = mola/(1.f+mola);
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
+//		const size_t XC = (Lx<<3);
+//		const size_t YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
@@ -267,14 +271,14 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const auto  vShRg  = opCode(load_si512, shfRg);
 		const auto  vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+//		const size_t XC = (Lx<<2);
+//		const size_t YC = (Lx>>2);
 
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
 #else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+//		const size_t XC = (Lx<<1);
+//		const size_t YC = (Lx>>1);
 
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
@@ -305,6 +309,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
 				switch	(VQcd & VQCD_TYPE) {
+
 					default:
 					case	VQCD_1:
 						mMx = opCode(add_ps, tmp,
@@ -338,6 +343,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 
 				switch (VQcd & VQCD_DAMP) {
 
+					default:
 					case    VQCD_NONE:
 #if     defined(__AVX512F__) || defined(__FMA__)
 					tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);

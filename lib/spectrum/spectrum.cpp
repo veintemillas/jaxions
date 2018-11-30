@@ -22,7 +22,7 @@ void	SpecBin::fillCosTable () {
 	cosTable[0] = 0.0;
 	cosTable2[0] = 1.0;
 	#pragma omp parallel for schedule(static)
-	for (int k=1; k<kMax+1; k++){
+	for (size_t k=1; k<kMax+1; k++){
 		cosTable[k] = factor*(1.0 - cos(M_PI*(2*k)*ooLx));
 		cosTable2[k] = 2*(1.0 - cos(M_PI*(2*k)*ooLx))/pow(M_PI*(2*k)*ooLx,2.0);
 	}
@@ -99,9 +99,9 @@ void	SpecBin::fillBins	() {
 			//ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
 
-			if (kx > hLx) kx -= static_cast<int>(Lx);
-			if (ky > hLy) ky -= static_cast<int>(Ly);
-			if (kz > hTz) kz -= static_cast<int>(Tz);
+			if (kx > static_cast<int>(hLx)) kx -= static_cast<int>(Lx);
+			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
+			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
 			double k2    = (double) kx*kx + ky*ky + kz*kz;
 			size_t myBin = floor(sqrt(k2));
@@ -156,7 +156,7 @@ void	SpecBin::fillBins	() {
 			// FFTS are assumed outcome of FFT r2c
 			// if c2c this needs some changes
 			// recall hLx - 1 = N/2
-			if ((kx == 0) || (kx == hLx - 1))
+			if ((kx == 0) || (kx == static_cast<int>(hLx - 1)))
 				m2 = m*m;
 			else
 				m2 = 2*m*m;
@@ -217,7 +217,7 @@ void	SpecBin::fillBins	() {
 		}
 
 		#pragma omp for schedule(static)
-		for (int j=0; j<powMax; j++) {
+		for (uint j=0; j<powMax; j++) {
 			for (int i=0; i<mIdx; i++) {
 
 				switch	(sType) {
@@ -337,6 +337,10 @@ void	SpecBin::pRun	() {
 			else
 				fillBins<double,  SPECTRUM_P, false>();
 			break;
+
+		default:
+			LogError ("Wrong precision");
+			break;
 	}
 
 	field->setM2     (M2_ENERGY_FFT);
@@ -436,7 +440,7 @@ void	SpecBin::nRun	() {
 	}
 
 	// using cFloat = std::complex<Float>;
-	std::complex<Float> zaskaF = ((Float) zaskar, 0.);
+	std::complex<Float> zaskaF((Float) zaskar, 0.);
 
 	if	(field->Folded())
 	{
@@ -510,7 +514,7 @@ void	SpecBin::nRun	() {
 			// GRADIENT X
 			// Copy m2aux -> m2
 			size_t dSize    = (size_t) (field->Precision());
-			size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
+			//size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
 			size_t dataTotalSize2 = dSize*Ly*Ly*(Lz+2);
 			char *mA = static_cast<char *>(field->m2Cpu());
 			memmove	(mA, mA+dataTotalSize2, dataTotalSize2);
@@ -618,7 +622,7 @@ void	SpecBin::nRun	() {
 
 			// Copy m -> m2 with padding
 			#pragma omp parallel for schedule(static)
-			for (int sl=0; sl<Sm; sl++) {
+			for (uint sl=0; sl<Sm; sl++) {
 				auto	oOff = sl*field->DataSize()* Ly;
 				auto	fOff = sl*field->DataSize()*(Ly+2);
 				memcpy	(mF+fOff, mO+oOff, dataLine);
@@ -633,7 +637,7 @@ void	SpecBin::nRun	() {
 
 			// Copy v -> m2 with padding
 			#pragma omp parallel for schedule(static)
-			for (int sl=0; sl<Sm; sl++) {
+			for (uint sl=0; sl<Sm; sl++) {
 				auto	oOff = sl*field->DataSize()* Ly;
 				auto	fOff = sl*field->DataSize()*(Ly+2);
 				memcpy	(mF+fOff, vO+oOff, dataLine);
@@ -651,7 +655,8 @@ void	SpecBin::nRun	() {
 		break;
 
 		case	FIELD_WKB:
-		LogError ("Error: WKB field not supported");
+		default:
+		LogError ("Error: Field not supported");
 		return;
 		break;
 	}
@@ -668,12 +673,12 @@ void	SpecBin::nSRun	() {
 	}
 
 	switch (fType) {
+		default:
 		case FIELD_AXION:
 		case FIELD_AXION_MOD:
 		case FIELD_WKB:
 				LogError ("Error: Wrong field called to numberSaxionSpectrum: no Saxion information!!");
 		return;
-		break;
 
 		case	FIELD_SAXION:
 		{
@@ -738,6 +743,10 @@ void	SpecBin::nSRun	() {
 					}
 				}
 				break;
+
+				default:
+					LogError ("Wrong precision");
+					break;
 			}//End prec switch
 
 
@@ -815,7 +824,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 	using cFloat = std::complex<Float>;
 
-	const int mIdx = commThreads();
+	//const int mIdx = commThreads();
 
 	size_t	zBase = (Ly/commSize())*commRank();
 
@@ -831,7 +840,7 @@ void	SpecBin::filterFFT	(int neigh) {
 
 	#pragma omp parallel
 	{
-		int  tIdx = omp_get_thread_num ();
+		//int  tIdx = omp_get_thread_num ();
 
 		#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
@@ -846,9 +855,9 @@ void	SpecBin::filterFFT	(int neigh) {
 			kz -= ky*Tz;
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
-			if (kx > hLx) kx -= static_cast<int>(Lx);
-			if (ky > hLy) ky -= static_cast<int>(Ly);
-			if (kz > hTz) kz -= static_cast<int>(Tz);
+			if (kx > static_cast<int>(hLx)) kx -= static_cast<int>(Lx);
+			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
+			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
 			double k2    = kx*kx + ky*ky + kz*kz;
 			static_cast<cFloat *>(field->m2Cpu())[idx] *= exp(-prefac*k2)/normn3;
@@ -876,6 +885,10 @@ void	SpecBin::filter (int neigh) {
 		case	FIELD_DOUBLE:
 				filterFFT<double> (neigh);
 			break;
+
+		default:
+			LogError ("Wrong precision");
+			break;
 	}
 
 	LogMsg (VERB_NORMAL, "FFT m2 inplace -> ");
@@ -892,7 +905,7 @@ void	SpecBin::filter (int neigh) {
 	size_t seta = (size_t) neigh ;
 	size_t newNx = Ly/seta ;
 	size_t newNz = Lz/seta ;
-	size_t topa = newNx*newNx*newNz ;
+	//size_t topa = newNx*newNx*newNz ;
 
 	for (size_t iz=0; iz < newNz; iz++) {
 		size_t laz = Ly*(Ly+2)*iz*seta ;

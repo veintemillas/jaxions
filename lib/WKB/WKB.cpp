@@ -36,9 +36,9 @@ namespace AxionWKB {
 		}
 	}
 
-	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), Ly(field->Length()), Lz(field->Depth()), zIni((*field->zV())), fPrec(field->Precision()),
-					      Tz(field->TotalDepth()), nModes(field->eSize()/2), hLy(field->Length()/2), hLz(field->Depth()/2), hTz(field->TotalDepth()/2),
-					      rLx(field->Length()/2 + 1), Sm(field->Length()*field->Depth())
+	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), rLx(field->Length()/2 + 1), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), hLy(field->Length()/2),
+					      hLz(field->Depth()/2), hTz(field->TotalDepth()/2), nModes(field->eSize()/2), Sm(field->Length()*field->Depth()),
+					      zIni((*field->zV())), fPrec(field->Precision())
 	{
 		if (field->Field() == FIELD_SAXION) {
 			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
@@ -79,14 +79,14 @@ namespace AxionWKB {
 				char *mOr = static_cast<char *>(field->mStart());
 				char *vOr = static_cast<char *>(field->vCpu());
 
-				char *mDt = static_cast<char *>(field->mCpu());
-				char *vDt = static_cast<char *>(field->vCpu());     /*note that it is the same*/
+				//char *mDt = static_cast<char *>(field->mCpu());
+				//char *vDt = static_cast<char *>(field->vCpu());     /*note that it is the same*/
 
 				char *m2 = static_cast<char *>(field->m2Cpu());
 				char *m2h = static_cast<char *>(field->m2half());
 
 				const size_t	dataLine = field->DataSize()*Ly;
-				const size_t	padLine  = field->DataSize()*(Ly+2);
+				//const size_t	padLine  = field->DataSize()*(Ly+2);
 
 				size_t dataTotalSize2 = (field->Precision())*(field->eSize());
 
@@ -95,7 +95,7 @@ namespace AxionWKB {
 				LogMsg(VERB_NORMAL, "copying v -> m2/1 ");
 				//Copy m -> m2 with padding
 				#pragma omp parallel for schedule(static)
-				for (int sl=0; sl<Sm; sl++) {
+				for (uint sl=0; sl<Sm; sl++) {
 					auto	oOff = sl*field->DataSize()*Ly;
 					auto	fOff = sl*field->DataSize()*(Ly+2);
 					memcpy	(m2+fOff, vOr+oOff, dataLine);
@@ -117,7 +117,7 @@ namespace AxionWKB {
 				LogMsg(VERB_NORMAL, "copying m -> m2 ");
 				//Copy m -> m2 with padding
 				#pragma omp parallel for schedule(static)
-				for (int sl=0; sl<Sm; sl++) {
+				for (uint sl=0; sl<Sm; sl++) {
 					auto	oOff = sl*field->DataSize()*Ly;
 					auto	fOff = sl*field->DataSize()*(Ly+2);
 					memcpy	(m2+fOff, mOr+oOff, dataLine);
@@ -169,7 +169,7 @@ namespace AxionWKB {
 				LogMsg(VERB_NORMAL, "copying 1->2 ");
 				//Copy m,v -> m2,v2 with padding
 				#pragma omp parallel for schedule(static)
-				for (int sl=0; sl<Sm; sl++) {
+				for (uint sl=0; sl<Sm; sl++) {
 					auto	oOff = sl*field->DataSize()*Ly;
 					auto	fOff = sl*field->DataSize()*(Ly+2);
 					memcpy	(mDt+fOff, mOr+oOff, dataLine);
@@ -247,7 +247,7 @@ namespace AxionWKB {
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
 		double phiBase2	   = 2.*zEnd/(4.+nQcd);
 		double n2p1        = 1.+nQcd/2.;
-		double nn1         = 1./(2.+nQcd)+0.5;
+		//double nn1         = 1./(2.+nQcd)+0.5;
 		double nn2         = 1./(2.+nQcd)+1.0;
 
 		double lSize	   = field->BckGnd()->PhysSize();
@@ -332,8 +332,8 @@ namespace AxionWKB {
 
 			// kx can never be that large
 			//if (kx > hLx) kx -= static_cast<int>(Lx);
-			if (ky > hLy) ky -= static_cast<int>(Ly);
-			if (kz > hTz) kz -= static_cast<int>(Tz);
+			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
+			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
 			// momentum2
 			size_t mom = kx*kx + ky*ky + kz*kz;
@@ -520,7 +520,7 @@ namespace AxionWKB {
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
 		double phiBase2	   = 2.*zEnd/(4.+nQcd);
 		double n2p1        = 1.+nQcd/2.;
-		double nn1         = 1./(2.+nQcd)+0.5;
+		//double nn1         = 1./(2.+nQcd)+0.5;
 		double nn2         = 1./(2.+nQcd)+1.0;
 
 		double lSize	   = field->BckGnd()->PhysSize();
@@ -537,8 +537,7 @@ namespace AxionWKB {
 		// tambien necesitare punteros float m y v de axion
 		cFloat	      	 *mIn  = static_cast<cFloat *>(field->mStart());
 		cFloat	      	 *vIn  = static_cast<cFloat *>(field->vCpu());
-		cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
-
+		//cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
 
 		size_t	zBase = Lz*commRank();
 
@@ -556,8 +555,8 @@ namespace AxionWKB {
 
 			// kx can never be that large
 			//if (kx > hLx) kx -= static_cast<int>(Lx);
-			if (ky > hLy) ky -= static_cast<int>(Ly);
-			if (kz > hTz) kz -= static_cast<int>(Tz);
+			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
+			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
 			// momentum2
 			size_t mom = kx*kx + ky*ky + kz*kz;
@@ -632,18 +631,18 @@ namespace AxionWKB {
 		LogMsg(VERB_NORMAL,"done!!\n ");
 
 		const size_t	dataLine = field->DataSize()*Ly;
-		const size_t	padLine  = field->DataSize()*(Ly+2);
+		//const size_t	padLine  = field->DataSize()*(Ly+2);
 
 		// pointers for padding ...
 
 		char *mTf  = static_cast<char *>(static_cast<void*>(mIn));
 		char *m0Tf  = static_cast<char *>(static_cast<void*>(mC));
 		char *vTf  = static_cast<char *>(static_cast<void*>(vIn));
-		char *m2Tf = static_cast<char *>(static_cast<void*>(m2In));
+		//char *m2Tf = static_cast<char *>(static_cast<void*>(m2In));
 
 			LogMsg(VERB_NORMAL," unpadding m in place ... ");
 			LogMsg(VERB_NORMAL," unpadding (first line is not needed)");
-					for (int sl=1; sl<Sm; sl++) {
+					for (uint sl=1; sl<Sm; sl++) {
 						auto	oOff = sl*field->DataSize()*(Ly);
 						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(m0Tf+oOff, m0Tf+fOff, dataLine);
@@ -654,7 +653,7 @@ namespace AxionWKB {
 					memcpy	(mTf, m0Tf, dataTotalSize);
 
 			LogMsg(VERB_NORMAL," unpadding v in place ... ");
-					for (int sl=0; sl<Sm; sl++) {
+					for (uint sl=0; sl<Sm; sl++) {
 						auto	oOff = sl*field->DataSize()*(Ly);
 						auto	fOff = sl*field->DataSize()*(Ly+2);
 						memcpy	(vTf+oOff, vTf+fOff, dataLine);

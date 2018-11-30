@@ -175,7 +175,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_2:
 					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, spec);
 					break;
-
+				default:
 				case VQCD_NONE:
 					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, spec);
 					break;
@@ -196,7 +196,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_2:
 					prop = std::make_unique<PropOmelyan4<VQCD_2>>		(field, spec);
 					break;
-
+				default:
 				case VQCD_NONE:
 					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, spec);
 					break;
@@ -217,7 +217,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_2:
 					prop = std::make_unique<PropLeap<VQCD_2>>		(field, spec);
 					break;
-
+				default:
 				case VQCD_NONE:
 					prop = std::make_unique<PropLeap<VQCD_NONE>>		(field, spec);
 					break;
@@ -244,6 +244,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					case VQCD_1_PQ_2_DRHO:
 						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_DRHO>>	(field, spec);
 						break;
+
 					case VQCD_2:
 						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
 						break;
@@ -253,16 +254,19 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					case VQCD_2_DRHO:
 						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, spec);
 						break;
+
 					case VQCD_1N2:
 						prop = std::make_unique<PropMLeap<VQCD_1N2>>		(field, spec);
 						break;
 					case VQCD_1N2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1N2_RHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1N2_RHO>>	(field, spec);
 						break;
 					case VQCD_1N2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1N2_DRHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1N2_DRHO>>	(field, spec);
 						break;
+
 					case VQCD_NONE:
+					default:
 						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
 						break;
 				break;
@@ -309,8 +313,8 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					prop = std::make_unique<PropRKN4<VQCD_1N2_DRHO>>		(field, spec);
 					break;
 
-
 				case VQCD_NONE:
+				default:
 					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, spec);
 					break;
 			}
@@ -418,7 +422,7 @@ void	tunePropagator (Scalar *field) {
 		return;
 
 	int  myRank   = commRank();
-	int  nThreads = 1;
+	//int  nThreads = 1;
 	bool newFile  = false, found = false;
 
 	if (prop == nullptr) {
@@ -454,14 +458,15 @@ void	tunePropagator (Scalar *field) {
 			LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
 			newFile = true;
 		} else {
-			size_t       rMpi, rThreads, rLx, rLz;
+			int	     rMpi, rThreads;
+			size_t       rLx, rLz;
 			unsigned int rBx, rBy, rBz, fType, myField = (field->Field() == FIELD_SAXION) ? 0 : 1;
 			char	     mDev[8];
 
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 
 			do {
-				fscanf (cacheFile, "%s %lu %lu %lu %lu %u %u %u %u\n", &mDev, &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
+				fscanf (cacheFile, "%s %d %d %lu %lu %u %u %u %u\n", reinterpret_cast<char*>(&mDev), &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
 if (debug) LogOut("[tp] string?!\n");
 				std::string fDev(mDev);
 if (debug) LogOut("[tp] commi!! %d, %d, (%d,%d) (%d,%d,%d)  \n",rMpi, rThreads, rLx, rLz, rBx, rBy, rBz);
@@ -633,7 +638,7 @@ if (debug) LogOut("[tp] closed!!\n");
 
 		unsigned int fType = (field->Field() == FIELD_SAXION) ? 0 : 1;
 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-		fprintf (cacheFile, "%s %lu %lu %lu %lu %u %u %u %u\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
+		fprintf (cacheFile, "%s %d %d %lu %lu %u %u %u %u\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
 									fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
 		fclose  (cacheFile);
 	}

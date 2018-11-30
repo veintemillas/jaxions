@@ -97,8 +97,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (int yy = 0; yy < bSizeY; yy++) {
-		      for (int xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < bSizeY; yy++) {
+		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
@@ -331,8 +331,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (int yy = 0; yy < bSizeY; yy++) {
-		      for (int xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < bSizeY; yy++) {
+		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 

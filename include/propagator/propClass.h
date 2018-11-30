@@ -32,17 +32,16 @@
 	{
 		protected:
 
+		Scalar		*axion;
+		const size_t	Lx, Lz, V, S;
+		const double	ood2;
+		double		&lambda;
+		FieldPrecision	precision;
+		double		&gamma;
+		LambdaType	lType;
+
 		double	c[nStages + (lastStage == true ? 1 : 0)];
 		double	d[nStages];
-		double	&lambda;
-		double	&gamma;
-		const double ood2;
-		const size_t Lx, Lz, V, S;
-
-		FieldPrecision precision;
-		LambdaType lType;
-
-		Scalar	*axion;
 
 		public:
 
@@ -421,7 +420,7 @@
 			const double	c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
 			#pragma omp parallel for schedule(static)
-			for (int sl=0; sl<Sf; sl++) {
+			for (size_t sl=0; sl<Sf; sl++) {
 				auto	oOff = sl*axion->DataSize()*Lx;
 				auto	fOff = sl*axion->DataSize()*(Lx+2);
 
@@ -440,7 +439,7 @@
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
 			#pragma omp parallel for schedule(static)
-			for (int sl=0; sl<Sf; sl++) {
+			for (size_t sl=0; sl<Sf; sl++) {
 				auto	oOff = sl*axion->DataSize()*Lx;
 				auto	fOff = sl*axion->DataSize()*(Lx+2);
 				memcpy (mF+fOff, mO+oOff, dataLine);
@@ -604,6 +603,8 @@
 
 				case FIELD_SAXION:
 					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+
+						default:
 						case VQCD_1:
 							return	(1e-9 * ((double) axion->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
 							break;
@@ -635,6 +636,7 @@
 					return	(1e-9 * ((double) axion->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
 					break;
 
+				default:
 				case FIELD_WKB:
 					return	0.;
 					break;
@@ -646,6 +648,8 @@
 					auto &planFFT   = AxionFFT::fetchPlan("SpSx");
 					double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
 					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+
+						default:
 						case VQCD_1:
 							return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
 								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
@@ -674,11 +678,13 @@
 				}
 				break;
 
+				default:
 				case FIELD_WKB:
 				return	0.;
-				break;
 			}
 		}
+
+		return	0.;
 	}
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>

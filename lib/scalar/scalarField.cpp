@@ -38,8 +38,8 @@ const std::complex<float> If(0.,1.);
 
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
-		       ConfType cType, const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
-		       fieldType(newType), lambdaType(lType), precision(prec), device(dev), lowmem(lowmem)
+		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp), 
+		       device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -217,7 +217,7 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
-	if (str == nullptr && (fieldType & FIELD_SAXION != 0))
+	if (str == nullptr && (fieldType & (FIELD_SAXION != 0)))
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
 		exit(1);
@@ -349,11 +349,12 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
-				if (cType == CONF_KMAX || cType == CONF_VILGOR ||cType == CONF_TKACHEV)
+				if ((cType == CONF_KMAX) || (((cType == CONF_VILGOR) || (cType == CONF_TKACHEV)))) {
 					if (lowmem)
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
+				}
 				prof.stop();
 
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
@@ -641,6 +642,10 @@ void	Scalar::setField (FieldType newType)
 					#endif
 
 					break;
+
+					default:
+					LogError ("Wrong precision.");
+					return;
 				}
 
 				fSize /= 2;
@@ -648,7 +653,7 @@ void	Scalar::setField (FieldType newType)
 				if (device != DEV_GPU)
 					shift *= 2;
 
-				const size_t	mBytes = v3*fSize;
+//				const size_t	mBytes = v3*fSize;
 
 				//if (lowmem)
 				//AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
@@ -696,13 +701,15 @@ void	Scalar::setField (FieldType newType)
 
 		case	FIELD_SAXION:
 			if (fieldType & FIELD_AXION)
-			{
-				if (commRank() == 0)
-					LogError ("Error: transformation from axion to saxion not supported");
-			} else {
+				LogError ("Error: transformation from axion to saxion not supported");
+			else
 				fieldType = FIELD_SAXION;
-			}
 			break;
+
+		default:
+			LogError ("Error: transformation not supported");
+			break;
+
 	}
 	fieldType = newType;
 }
@@ -1120,7 +1127,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		//float *mVeloc = static_cast<float*> (v);
 
 		int size = 0 ;
-		size_t iyP, iyM, ixP, ixM;
+//		size_t iyP, iyM, ixP, ixM;
 		size_t fidx ;
 		size_t iz, iy, ix ;
 		size_t idaux, ixyzAux	;
@@ -1226,7 +1233,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	printMpi("%d axitons: ", numaxitons );
 	for(int i = 0; i<numaxitons; i++)
 	{
-		printMpi("%f(%d)", ct_local[i], ar_local[i]);
+		printMpi("%f(%zu)", ct_local[i], ar_local[i]);
 	}
 	printMpi("\n");
 

@@ -64,7 +64,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
 		const double GGGG = pow(ood2,0.5)*gamma;
-		const double GGiZ = GGGG/zR;
+//		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
@@ -113,8 +113,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		    _MData_ tmp, mel, mPx, mPy, mMx;
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (int yy = 0; yy < bSizeY; yy++) {
-		      for (int xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < bSizeY; yy++) {
+		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
@@ -194,6 +194,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 			mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
 			switch	(VQcd & VQCD_TYPE) {
+
+				default:
 				case	VQCD_1:
 				mMx = opCode(sub_pd,
 					opCode(add_pd,
@@ -288,6 +290,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 			mPy = opCode(load_pd, &v[idxMz]);
 
 			switch	(VQcd & VQCD_DAMP) {
+
+				default:
 				case	VQCD_NONE:
 #if	defined(__AVX512F__) || defined(__FMA__)
 				tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
@@ -393,7 +397,7 @@ tmp = opCode(sub_pd,
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
 		const float GGGG = pow(ood2,0.5)*gamma;
-		const float GGiZ = GGGG/zR;
+//		const float GGiZ = GGGG/zR;
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
@@ -443,8 +447,8 @@ tmp = opCode(sub_pd,
 		    _MData_ tmp, mel, mPx, mPy, mMx;
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (int yy = 0; yy < bSizeY; yy++) {
-		      for (int xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < bSizeY; yy++) {
+		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
@@ -630,6 +634,7 @@ tmp = opCode(sub_pd,
 
 			switch (VQcd & VQCD_DAMP) {
 
+				default:
 				case	VQCD_NONE:
 #if	defined(__AVX512F__) || defined(__FMA__)
 				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
@@ -781,13 +786,13 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 
 		const float dzd = dz*d;
 #if	defined(__AVX512F__)
-		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd  };
+//		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd  };
 #elif	defined(__AVX__)
-		const float __attribute__((aligned(Align))) dzdAux[8]  = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+//		const float __attribute__((aligned(Align))) dzdAux[8]  = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
 #else
-		const float __attribute__((aligned(Align))) dzdAux[4]  = { dzd, dzd, dzd, dzd };
+//		const float __attribute__((aligned(Align))) dzdAux[4]  = { dzd, dzd, dzd, dzd };
 #endif
-		const _MData_ dzdVec = opCode(load_ps, dzdAux);
+//		const _MData_ dzdVec = opCode(load_ps, dzdAux);
 
 		#pragma omp parallel default(shared)
 		{
@@ -847,7 +852,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
 		const double GGGG = pow(ood2,0.5)*gamma;
-		const double GGiZ = GGGG/zR;
+//		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
@@ -962,6 +967,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
 				switch	(VQcd & VQCD_TYPE) {
+
+					default:
 					case	VQCD_1:
 						mMx = opCode(sub_pd,
 							opCode(add_pd,
@@ -1056,6 +1063,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 				mPy = opCode(load_pd, &v[idxMz]);
 
 				switch	(VQcd & VQCD_DAMP) {
+
+					default:
 					case	VQCD_NONE:
 #if	defined(__AVX512F__) || defined(__FMA__)
 						tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
@@ -1153,7 +1162,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const float z4 = z2*z2;
 		const float LaLa = LL*2./z4;
 		const float GGGG = pow(ood2, 0.5)*gamma;
-		const float GGiZ = GGGG/zR;
+//		const float GGiZ = GGGG/zR;
 		const float mola = GGGG*dzc/2.;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
@@ -1395,6 +1404,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 				switch (VQcd & VQCD_DAMP) {
 
+					default:
 					case	VQCD_NONE:
 #if	defined(__AVX512F__) || defined(__FMA__)
 					tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);

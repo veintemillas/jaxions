@@ -56,11 +56,11 @@ void	Projector<Float>::runCpu	() {
 	Float *outData = static_cast<Float*>(axion->mFrontGhost());
 
 	#pragma	omp parallel for schedule(static)
-	for (int pt = 0; pt < Sf; pt++) {
+	for (size_t pt = 0; pt < Sf; pt++) {
 		outData[pt] = (Float) 0.;
 		medData[pt] = (Float) 0.;
 
-		for (int zc = 0; zc < axion->Depth(); zc++) {
+		for (size_t zc = 0; zc < axion->Depth(); zc++) {
 			Float  x = inData[pt + Sf*zc];
 			double y = filter((double) x);
 			medData[pt] += (Float) y;
@@ -75,7 +75,7 @@ void	Projector<Float>::runCpu	() {
 	Float	oZ = 1./((Float) Tz);
 
 	#pragma	omp parallel for schedule(static)
-	for (int pt = 0; pt < Sf; pt++)
+	for (size_t pt = 0; pt < Sf; pt++)
 		outData[pt] *= oZ;
 }	
 
