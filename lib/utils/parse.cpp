@@ -1570,13 +1570,13 @@ int	parseArgs (int argc, char *argv[])
 	{
 		int siN = (int) sizeN;
 		if (endredmap > siN){
-			LogOut("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
+			printf("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
 			endredmap = siN;
 		}
 		if (siN%endredmap != 0 ){
 			int schei =  siN/endredmap;
 			endredmap = siN/schei;
-			LogOut("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
+			printf("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
 		}
 	}
 
