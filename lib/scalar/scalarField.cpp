@@ -810,16 +810,14 @@ double  Scalar::SaxionMassSq  ()
 
 	switch  (pot & VQCD_TYPE) {
 		case    VQCD_1:
+		case    VQCD_2:
+		case    VQCD_1N2:
 			return 2.*lbd;
 			break;
 
 		case    VQCD_1_PQ_2:
 		case    VQCD_1_PQ_2_DRHO:
 			return  8.*lbd;
-			break;
-
-		case    VQCD_2:
-			return  2.*lbd;
 			break;
 
 		default :
@@ -903,6 +901,11 @@ double  Scalar::Saskia  ()
 			return  0.;
 			break;
 
+		// This is yet to be computed
+		case    VQCD_1N2:
+			return  0.;
+			break;
+
 		default :
 			return  0;
 			break;
@@ -963,16 +966,14 @@ double  Scalar::SaxionMassSq  (const double RNow)
 
 	switch  (pot & VQCD_TYPE) {
 		case    VQCD_1:
+		case    VQCD_2:
+		case    VQCD_1N2:
 			return 2.*lbd;
 			break;
 
 		case    VQCD_1_PQ_2:
 		case    VQCD_1_PQ_2_DRHO:
 			return  8.*lbd;
-			break;
-
-		case    VQCD_2:
-			return  2.*lbd;
 			break;
 
 		default :
@@ -1043,6 +1044,11 @@ double  Scalar::Saskia  (const double RNow)
 		case    VQCD_2:
 			return  0.;
 			break;
+
+		case    VQCD_1N2:
+			return  0.;
+			break;
+
 
 		default :
 			return  0;

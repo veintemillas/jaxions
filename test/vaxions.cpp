@@ -28,15 +28,10 @@ using namespace AxionWKB;
 
 // vaxions3d definitions
 
-void	printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
-void	printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void		printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void		printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double	findzdoom(Scalar *axion);
-void	checkTime (Scalar *axion, int index);
-
-// template<typename Float>
-// MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa);
-//
-// MeasData	Measureme  (Scalar *axiona,  int indexa, MeasureType measa);
+void		checkTime (Scalar *axion, int index);
 
 //-point to print
 size_t idxprint = 0 ;
@@ -45,7 +40,6 @@ size_t sliceprint = 0 ;
 
 
 /* Program */
-
 
 int	main (int argc, char *argv[])
 {
@@ -57,8 +51,8 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n          VAXION 3D!                             \n\n");
-
+	LogOut("\n--               VAXION 3D!                    --\n");
+	LogOut("\n-------------------------------------------------\n\n");
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
@@ -68,47 +62,26 @@ int	main (int argc, char *argv[])
 	//-grids
 	Scalar *axion;
 
-
-	//-records time given in the command line
-	double zInit_save = zInit;
-	//-prepropagator initial time (goes from zInit to zpreInit)
-	double zpreInit = zInit;
-	if(preprop)
-		zpreInit = zInit/prepcoe;
-
 	if ((fIndex == -1) && (cType == CONF_NONE) && (!restart_flag))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
 		if ( (fIndex == -1) && !restart_flag)
 		{
-			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zpreInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
-
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
 			LogOut("Done! \n");
 		}
 		else
 		{
-
-			//This reads from an axion.00000 file
 			readConf(&myCosmos, &axion, fIndex, restart_flag);
-
 			if (axion == NULL)
 			{
 				LogOut ("Error reading HDF5 file\n");
 				exit (0);
 			}
-			// prepropagation tends to mess up reading initial conditions
-			// configurations are saved before prepropagation and have z<zInit, which readConf reverses
-			// the following line fixes the issue, but a more elegant solution could be devised
-			if( (preprop) && !restart_flag) {
-				zInit = zInit_save;
-				*axion->zV() = zpreInit;
-			}
 		}
 	}
-	LogOut ("z %f zInit %f zInit_save %f zpreInit %f R %f\n",*axion->zV(),zInit,zInit_save,zpreInit,*axion->RV());
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
@@ -116,23 +89,6 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	// USEFUL VARIABLES
 	//--------------------------------------------------
-	//- Measurement
-	MeasData lm;
-	//- number of plaquetes pierced by strings
-	nstrings_globale = 0;
-	lm.str.strDen = 0 ;
-	//- Info to measurement
-	MeasInfo ninfa;
-	//- information needs to be passed onto measurement files
-	ninfa.sliceprint = sliceprint;
-	ninfa.idxprint = 0 ;
-	ninfa.index = 0;
-	ninfa.measdata = MEAS_NOTHING;
-	ninfa.mask = spmask;
-
-	//-maximum value of the theta angle in the simulation
-	double maximumtheta = M_PI;
-	lm.maxTheta = M_PI;
 
 	//-output txt file
 	FILE *file_samp ;
@@ -141,11 +97,6 @@ int	main (int argc, char *argv[])
 		file_samp = fopen("out/sample.txt","w+");
 		else
 		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
-
-		// //-point to print
-		// size_t idxprint = 0 ;
-		// //- z-coordinate of the slice that is printed as a 2D map
-		// size_t sliceprint = 0 ;
 
 	//-current conformal time
 	double z_now ;
@@ -183,18 +134,73 @@ int	main (int argc, char *argv[])
 
 	//-control flag to activate damping only once
 	bool coD = true;
-
 	//-number of iterations with 0 strings; used to switch to theta mode
 	int strcount = 0;
 
-	// obs?
-	//- saves string data
-	StringData rts ;
-	//- obsolete
-	double	strDen;
-
 	//-LL at z=1, used for Z2 mode
 	double LL1 = myCosmos.Lambda();
+
+
+	//--------------------------------------------------
+	// MEASUREMENTS
+	//--------------------------------------------------
+
+	//- Measurement
+	MeasData lm;
+	//- number of plaquetes pierced by strings
+	lm.str.strDen = 0 ;
+	//- Info to measurement
+	MeasInfo ninfa;
+	//- information needs to be passed onto measurement files
+	ninfa.sliceprint = sliceprint;
+	ninfa.idxprint = 0 ;
+	ninfa.index = 0;
+
+	// default measurement type is parsed
+	ninfa.measdata = defaultmeasType;
+	ninfa.mask = spmask;
+
+	//-maximum value of the theta angle in the simulation
+	double maximumtheta = M_PI;
+	lm.maxTheta = M_PI;
+
+	// dump decision function
+	DumpType dumpmode = DUMP_EVERYN ;
+	int i_meas = 0;
+	bool measrightnow = false;
+	double mesi;
+	int meastype ;
+	std::vector<double>	meas_zlist;
+	std::vector<int>	meas_typelist;
+
+	{
+			FILE *cacheFile = nullptr;
+			if (((cacheFile  = fopen("./measfile.dat", "r")) == nullptr)){
+				printf("No hay fichero! uso dump mode by defaul (or others specified in command line)");
+			}
+			else
+			{
+				LogOut("\n- . - . - . - . - . - . - . - . - . - . - . - . -\n");
+				LogOut("Measurement list : \n");
+
+				dumpmode = DUMP_FROMLIST;
+				do {
+					fscanf (cacheFile ,"%lf %d\n", &mesi, &meastype);
+					if (meastype < 0)
+						meastype = defaultmeasType;
+					meas_zlist.push_back(mesi);
+					meas_typelist.push_back(meastype);
+					printf("ctime %lf Meastype %d\n", meas_zlist[i_meas], meas_typelist[i_meas]);
+					i_meas++ ;
+				}	while(!feof(cacheFile));
+				printf("List dump mode! number of measurement files = %d %d\n",meas_zlist.size(),i_meas);
+				zFinl = meas_zlist[meas_zlist.size()-1];
+				printf("zFinl overwritten to %lf\n",zFinl);
+				LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
+			}
+	}
+
+	LogOut("\n");
 
 	LogOut("--------------------------------------------------\n");
 	if (!restart_flag)
@@ -212,30 +218,7 @@ int	main (int argc, char *argv[])
 	//-used to label measurement files [~block, but with exceptions]
 	int index = 0;
 
-	//-stores energy [obs? move up]
-	void *eRes;
-	trackAlloc(&eRes, 128);
-	memset(eRes, 0, 128);
-	double *eR = static_cast<double *> (eRes);
-
 	commSync();
-
-	// if icstudy you might want to save this configuration
-	if (icstudy)
-	{
-		if (fIndex == -1){
-			if (prinoconfo%2 == 1 ){
-				LogOut ("Dumping configuration %05d ...", index);
-				writeConf(axion, index);
-				LogOut ("Done!\n");
-			}
-			else{
-				LogOut ("Bypass configuration writting!\n");
-			}
-		}
-		else
-			index = fIndex;
-	}
 
 
 	//-stores shift in real part of PQ and cPQ (conformal field) [obs? move up]
@@ -297,6 +280,8 @@ int	main (int argc, char *argv[])
 		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
 	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
 		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
+	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1N2)
+		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
 
 	LogOut("Vqcd flag %d\n", myCosmos.QcdPot());
 	LogOut("Damping %d gam = %f\n", myCosmos.QcdPot() & VQCD_DAMP, myCosmos.Gamma());
@@ -324,117 +309,62 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
+
+
 	//--------------------------------------------------
-	// prepropagator to relax rho without damping
+	// prepropagator is been moved away
 	//--------------------------------------------------
-	//
-	if (preprop) {
-		LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
-			(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO, myCosmos.Gamma(),pregammo,dwgammo);
-		double gammo_save = myCosmos.Gamma();
-		double *zaza = axion->zV();
-		double strdensn;
 
-		if (pregammo > 0)
-			myCosmos.SetGamma(pregammo);
+	//--------------------------------------------------
+	// FIRST MEASUREMENT
+	//--------------------------------------------------
 
-		// prepropagation with only-rho evolution
-		LogOut("Prepropagator always with damping Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
-		initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
-		tunePropagator (axion);
-
-		double eA, eS;
-		void *eRes;
-		trackAlloc(&eRes, 128);
-		memset(eRes, 0, 128);
-		double *eR = static_cast<double *> (eRes);
-
-		for (int it=0;  it <100 ;it++)
-		{
-			dzaux = axion->dzSize();
-			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-			if (icstudy && !(it%5)){
-				ninfa.index=index;
-				ninfa.measdata              = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM ;
-				lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
-				index++;
-				// LogOut("%d %f %f\n",it,lm.eA,lm.eS);
-			} else{
-
-				energy(axion, eRes, true, 0.0);
-				if ((eS < (eR[5] + eR[6] + eR[7] + eR[8] + eR[9])) && it > 3)
-				break;
-				else{
-				eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
-				eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
-				// LogOut("%d %f %f\n",it,lm.eA,lm.eS);
-				}
-			}
-			propagate (axion, dzaux);
-		}
-
-		myCosmos.SetGamma(gammo_save);
-	}
-	LogOut("\n");
-
-	// if icstudy you might want to save this configuration
-	if (!icstudy)
-	{
-		if (fIndex == -1){
-			if (prinoconfo%2 == 1 ){
-				LogOut ("Dumping configuration (after prep) %05d ...", index);
-				writeConf(axion, index);
-				LogOut ("Done!\n");
-			}
-			else{
-				LogOut ("Bypass configuration writting!\n");
-			}
-		}
-		else
-			index = fIndex;
-	}
 
 	if (!restart_flag && (fIndex == -1)){
 		LogOut("First measurement file %d \n",index);
 		ninfa.index=index;
-		ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
-		lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+		lm = Measureme (axion, ninfa);
 	}
 	else{
 		LogOut("last measurement file was %d \n",index);
 	}
+	index++;
+
+	//--------------------------------------------------
+	// TIME ITERATION LOOP
+	//--------------------------------------------------
 
 	LogOut("Running ...\n\n");
 	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
 	initPropagator (pType, axion, myCosmos.QcdPot());
 	tunePropagator (axion);
 
+
 	LogOut ("Start redshift loop\n\n");
-	fflush (stdout);
-
-	start = std::chrono::high_resolution_clock::now();
-	old = start;
-
-	//--------------------------------------------------
-	// THE TIME ITERATION LOOP
-	//--------------------------------------------------
-
-	for (int zloop = 0; zloop < nLoops; zloop++)
+	for (int iz = 0; iz < nSteps; iz++)
 	{
-		//--------------------------------------------------
-		// THE TIME ITERATION SUB-LOOP
-		//--------------------------------------------------
 
-		index++;
+		// time step
+		dzaux = axion->dzSize();
 
-		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-		{
+		//will we dump? and when?
+		switch(dumpmode)
+			{
+				case DUMP_EVERYN:
+				if (!(iz%dump)){
+					measrightnow = true;
+					// meastype = ninfa.measdata;
+				}
+				break;
 
-			old = std::chrono::high_resolution_clock::now();
-
-			dzaux = axion->dzSize();
+				case DUMP_FROMLIST:
+				if ( (*axion->zV())+dzaux >= meas_zlist[i_meas] && (*axion->zV()) < meas_zlist[i_meas]){
+					dz = meas_zlist[i_meas] - (*axion->zV());
+					measrightnow = true;
+					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
+				}
+				break;
+			}
 
 			// PROPAGATOR
 			propagate (axion, dzaux);
@@ -445,21 +375,10 @@ int	main (int argc, char *argv[])
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
 			{
-				// IF FEW STRINGS COMPUTES THE NUMBER EVERY ITERATION [obs with damping]
-				// if (nstrings_globale < 1000)
 				if (lm.str.strDen < 1000 )
-				{
-					// rts = strings(axion);
-					// nstrings_globale = rts.strDen ;
-					// LogOut("  str extra check (string = %d, wall = %d)\n",rts.strDen, rts.wallDn);
-
 					lm.str = strings(axion);
-					// LogOut("  str extra check (string = %d, wall = %d)\n",lm.str.strDen, lm.str.wallDn);
-				}
 
 				// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
-				// DOMAIN WALL KILLER NUMBER
-				//if (((*axion->zV()) > z_doom2*0.95) && (coD) && ((myCosmos.QcdPot() & VQCD_DAMP) != VQCD_NONE ))
 				if (((*axion->zV()) > z_doom2*0.95) && (coD) && dwgammo > 0.)
 				{
 					myCosmos.SetGamma(dwgammo);
@@ -475,11 +394,6 @@ int	main (int argc, char *argv[])
 				}
 
 				// TRANSITION TO THETA COUNTER
-				// obs?
-				// if (nstrings_globale == 0) {
-				// 	LogOut("  no st counter %d\n", strcount);
-				// 	strcount++;
-				// }
 				if (lm.str.strDen == 0) {
 					LogOut("  no st counter %d\n", strcount);
 					strcount++;
@@ -487,7 +401,6 @@ int	main (int argc, char *argv[])
 
 				// IF CONF_SAXNOISE we do not ever switch to theta to follow the evolution of saxion field
 				if (smvarType != CONF_SAXNOISE)
-					// if (nstrings_globale == 0 && strcount > safest0)
 					if (lm.str.strDen == 0 && strcount > safest0 && coSwitch2theta)
 					{
 
@@ -496,74 +409,49 @@ int	main (int argc, char *argv[])
 
 						axmass_now = axion->AxionMass();
 						saskia	   = axion->Saskia();
-						// fix?
 						shiftz	   = (*axion->RV()) * saskia;
 
-						ninfa.index=index;
-						ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-						MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
-						lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-						MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
-						// lm = Measureme (axion, index, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
-						index++;
+							// Measurement before switching to theta
+							// customize?
+							ninfa.index=i_meas;
+							lm = Measureme (axion, ninfa);
+							i_meas++;
 
-						// if (!coD){
-						// 	myCosmos.SetGamma(gammo);
-						// }
 						LogOut("--------------------------------------------------\n");
 						LogOut(" TRANSITION TO THETA (z=%.4f R=%.4f)\n",(*axion->zV()), (*axion->RV()));
 						LogOut(" shift = %f \n", saskia);
 
 						cmplxToTheta (axion, shiftz);
 
-						//IF YOU WANT A MAP TO CONTROL THE TRANSITION TO THETA UNCOMMENT THIS
-						ninfa.index=index;
-						ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-						MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
-						lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-						MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
-						// Measureme (axion, index, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
-						index++;
+						// Measurement after switching to theta
+						ninfa.index=i_meas;
+						lm = Measureme (axion, ninfa);
+						i_meas++;
 						LogOut("--------------------------------------------------\n");
 
 						tunePropagator (axion);
 					}
 			}
 
-			current = std::chrono::high_resolution_clock::now();
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - old);
+			// Partial analysis
+			if(measrightnow){
+				ninfa.index=i_meas;
+				lm = Measureme (axion, ninfa);
+				i_meas++ ;
+				//reset flag
+				measrightnow = false;
 
-			counter++;
+				// after every measurement we check walltime > need update
+				checkTime(axion, index);
+			}
 
-			if ((*axion->zV()) > zFinl)
-			{
+			// Break the loop when we are done
+			if ((*axion->zV()) > zFinl){
 				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
 				break;
 			}
-			checkTime(axion, index);
-		} // ZSUBLOOP
 
-		//--------------------------------------------------
-		// PARTIAL ANALISIS
-		//--------------------------------------------------
-
-		if ((*axion->zV()) > zFinl)
-		{
-			// THE LAST MEASURE IS DONE AT THE END
-			LogOut("zf reached! ENDING FINALLY... \n");
-			break;
-		}
-		ninfa.index=index;
-		ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
-		lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
-
-		checkTime(axion, index);
-	} // ZLOOP
-
-	current = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+	} // time loop's over
 
 	LogOut("\n");
 	LogOut("--------------------------------------------------\n");
@@ -593,7 +481,7 @@ int	main (int argc, char *argv[])
 			mesa = mesa | MEAS_REDENE3DMAP ;
 		ninfa.index=index;
 		ninfa.measdata=mesa;
-		Measureme (axion, ninfa, mesa);
+		Measureme (axion, ninfa);
 
 
 		//--------------------------------------------------
@@ -626,7 +514,7 @@ int	main (int argc, char *argv[])
 
 			ninfa.index=index;
 			ninfa.measdata=mesa;
-			Measureme (axion, ninfa, mesa);
+			Measureme (axion, ninfa);
 		}
 	}
 	else
@@ -643,7 +531,7 @@ int	main (int argc, char *argv[])
 	LogOut("Total time: %2.3f min\n", elapsed.count()*1.e-3/60.);
 	LogOut("Total time: %2.3f h\n", elapsed.count()*1.e-3/3600.);
 
-	trackFree(eRes);
+
 	fclose(file_samp);
 
 	delete axion;
@@ -751,7 +639,6 @@ void	checkTime (Scalar *axion, int index) {
 
 		LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
 		LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
-//		trackFree(eRes);	FIXME!!!!
 
 		delete axion;
 

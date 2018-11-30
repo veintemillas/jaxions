@@ -158,7 +158,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 
 	//auto pot  = field->BckGnd()->QcdPot();
 	//auto gm   = field->BckGnd()->Gamma ();
-
+	if (debug) LogOut("[ip] Init propagator\n");
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
 			switch (pot) {
@@ -225,28 +225,6 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 			break;
 
 			case PROP_MLEAP:
-				// switch (pot) {
-				// 	case VQCD_1:
-				// 		prop = std::make_unique<PropMLeap<VQCD_1>>		(field, spec);
-				// 		break;
-				// 	case VQCD_1_DRHO:
-				// 		prop = std::make_unique<PropMLeap<VQCD_1_DRHO>>		(field, spec);
-				// 		break;
-				//
-				// 	case VQCD_1_PQ_2:
-				// 		prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, spec);
-				// 		break;
-				// 	case VQCD_1_PQ_2_RHO:
-				// 		prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, spec);
-				// 		break;
-				// 	case VQCD_2:
-				// 		prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
-				// 		break;
-				//	default:
-				// 	case VQCD_NONE:
-				// 		prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
-				// 		break;
-				// }
 				switch (pot) {
 					case VQCD_1:
 						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, spec);
@@ -266,6 +244,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					case VQCD_1_PQ_2_DRHO:
 						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_DRHO>>	(field, spec);
 						break;
+
 					case VQCD_2:
 						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
 						break;
@@ -275,8 +254,19 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					case VQCD_2_DRHO:
 						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, spec);
 						break;
-					default:
+
+					case VQCD_1N2:
+						prop = std::make_unique<PropMLeap<VQCD_1N2>>		(field, spec);
+						break;
+					case VQCD_1N2_RHO:
+						prop = std::make_unique<PropMLeap<VQCD_1N2_RHO>>	(field, spec);
+						break;
+					case VQCD_1N2_DRHO:
+						prop = std::make_unique<PropMLeap<VQCD_1N2_DRHO>>	(field, spec);
+						break;
+
 					case VQCD_NONE:
+					default:
 						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
 						break;
 				break;
@@ -292,6 +282,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_1_DRHO:
 					prop = std::make_unique<PropRKN4<VQCD_1_DRHO>>		(field, spec);
 					break;
+
 				case VQCD_1_PQ_2:
 					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2>>		(field, spec);
 					break;
@@ -301,6 +292,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_1_PQ_2_DRHO:
 					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO>>	(field, spec);
 					break;
+
 				case VQCD_2:
 					prop = std::make_unique<PropRKN4<VQCD_2>>		(field, spec);
 					break;
@@ -310,8 +302,19 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_2_DRHO:
 					prop = std::make_unique<PropRKN4<VQCD_2_DRHO>>		(field, spec);
 					break;
-				default:
+
+				case VQCD_1N2:
+					prop = std::make_unique<PropRKN4<VQCD_1N2>>		(field, spec);
+					break;
+				case VQCD_1N2_RHO:
+					prop = std::make_unique<PropRKN4<VQCD_1N2_RHO>>		(field, spec);
+					break;
+				case VQCD_1N2_DRHO:
+					prop = std::make_unique<PropRKN4<VQCD_1N2_DRHO>>		(field, spec);
+					break;
+
 				case VQCD_NONE:
+				default:
 					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, spec);
 					break;
 			}
@@ -323,8 +326,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 			exit(1);
 			break;
 	}
-
+	if (debug) LogOut("[ip] getBaseName\n");
 	prop->getBaseName();
+	if (debug) LogOut("[ip] set blocks\n");
 
 	if (wasTuned) {
 		prop->SetBlockX(xBlock);
@@ -332,7 +336,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 		prop->SetBlockZ(zBlock);
 		prop->UpdateBestBlock();
 	}
-
+	if (debug) LogOut("[ip] Alright!\n");
 	LogMsg	(VERB_HIGH, "Propagator %ssuccessfully initialized", prop->Name().c_str());
 }
 
@@ -413,6 +417,7 @@ void	resetPropagator(Scalar *field) {
 void	tunePropagator (Scalar *field) {
 	// Hash CPU model so we don't mix different cache files
 
+	if (debug) LogOut("[tp] tunning!\n");
 	if (pType & PROP_SPEC)
 		return;
 
@@ -425,6 +430,7 @@ void	tunePropagator (Scalar *field) {
 		return;
 	}
 
+	if (debug) LogOut("[tp] profi!\n");
 	Profiler &prof = getProfiler(PROF_TUNER);
 
 	std::chrono::high_resolution_clock::time_point start, end;
@@ -433,18 +439,22 @@ void	tunePropagator (Scalar *field) {
 	LogMsg (VERB_HIGH, "Started tuner");
 	prof.start();
 
+	if (debug) LogOut("[tp] start tuna!\n");
+
 	if (field->Device() == DEV_CPU)
 		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
 	else
 		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign(), true);
 
 	/*	Check for a cache file	*/
+	if (debug) LogOut("[tp] cache?!\n");
 
 	if (myRank == 0) {
 		FILE *cacheFile;
 		char tuneName[2048];
 		sprintf (tuneName, "%s/tuneCache.dat", wisDir);
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
+			if (debug) LogOut("[tp] new cache!!\n");
 			LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
 			newFile = true;
 		} else {
@@ -457,23 +467,32 @@ void	tunePropagator (Scalar *field) {
 
 			do {
 				fscanf (cacheFile, "%s %d %d %lu %lu %u %u %u %u\n", reinterpret_cast<char*>(&mDev), &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
-
+if (debug) LogOut("[tp] string?!\n");
 				std::string fDev(mDev);
-
+if (debug) LogOut("[tp] commi!! %d, %d, (%d,%d) (%d,%d,%d)  \n",rMpi, rThreads, rLx, rLz, rBx, rBy, rBz);
 				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev) {
 					if ((field->Device() == DEV_CPU && (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth())) ||
 					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
 						found = true;
+if (debug) LogOut("[tp] X!!\n");
 						prop->SetBlockX(rBx);
+if (debug) LogOut("[tp] Y!!\n");
 						prop->SetBlockY(rBy);
+if (debug) LogOut("[tp] Z!!\n");
 						prop->SetBlockZ(rBz);
+if (debug) LogOut("[tp] ups!!\n");
 						prop->UpdateBestBlock();
 					}
+if (debug) LogOut("[tp] lara!!\n");
 				}
+if (debug) LogOut("[tp] no ups!!\n");
 			}	while(!feof(cacheFile) && !found);
+if (debug) LogOut("[tp] feof!!\n");
 			fclose (cacheFile);
+if (debug) LogOut("[tp] closed!!\n");
 		}
 	}
+	if (debug) printf("[tp] BCAST!\n");
 
 	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
 

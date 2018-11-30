@@ -87,32 +87,40 @@
 
 		typedef	enum	VqcdType_s
 		{
-			VQCD_1		     = 1,		// First version QCD potential
-			VQCD_2		     = 2,		// Second version QCD potential
-			VQCD_1_PQ_2	     = 4,		// PQ version QCD potential
+			VQCD_1		       = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
+			VQCD_2		       = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
+			VQCD_1_PQ_2	     = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
+			VQCD_1N2	       = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_QUAD	       = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
 
 			VQCD_1_RHO	     = 8193,		// First version QCD potential, only rho evolution
 			VQCD_2_RHO	     = 8194,		// Second version QCD potential, only rho evolution
-			VQCD_1_PQ_2_RHO	     = 8196,		// PQ version QCD potential, only rho evolution
+			VQCD_1_PQ_2_RHO	 = 8196,		// PQ version QCD potential, only rho evolution
+			VQCD_1N2_RHO     = 8200,
 
-			VQCD_1_DRHO	     = 16385,	// First version QCD potential, rho damping
-			VQCD_2_DRHO	     = 16386,	// Second version QCD potential, rho damping
-			VQCD_1_PQ_2_DRHO     = 16388,	// PQ version QCD potential, rho damping
+			VQCD_1_DRHO	     = 16385,		// First version QCD potential, rho damping
+			VQCD_2_DRHO	     = 16386,		// Second version QCD potential, rho damping
+			VQCD_1_PQ_2_DRHO = 16388,		// PQ version QCD potential, rho damping
+			VQCD_1N2_DRHO    = 16392,
 
-			VQCD_1_DALL	     = 32769,	// First version QCD potential, full damping
-			VQCD_2_DALL	     = 32770,	// Second version QCD potential, full damping
-			VQCD_1_PQ_2_DALL     = 32772,	// PQ version QCD potential, full damping
+			VQCD_1_DALL	     = 32769,		// First version QCD potential, full damping
+			VQCD_2_DALL	     = 32770,		// Second version QCD potential, full damping
+			VQCD_1_PQ_2_DALL = 32772,		// PQ version QCD potential, full damping
+			VQCD_1N2_DALL    = 32776,		// PQ version QCD potential, full damping
 
 			VQCD_1_DRHO_RHO	     = 24577,	// First version QCD potential, rho damping and only rho evolution
 			VQCD_2_DRHO_RHO	     = 24578,	// Second version QCD potential, rho damping and only rho evolution
 			VQCD_1_PQ_2_DRHO_RHO = 24580,	// PQ version QCD potential, rho damping and only rho evolution
+			VQCD_1N2_DRHO_RHO    = 24584,
+
 			VQCD_1_DALL_RHO	     = 40961,	// First version QCD potential, full damping and only rho evolution
 			VQCD_2_DALL_RHO	     = 40962,	// Second version QCD potential, full damping and only rho evolution
 			VQCD_1_PQ_2_DALL_RHO = 40964,	// PQ version QCD potential, full damping and only rho evolution
+			VQCD_1N2_DALL_RHO    = 40968,
 
 			/*	VQCD Masks	*/
-			VQCD_TYPE		= 7,		// Masks base potential
-			VQCD_DAMP		= 49152,	// Masks damping mode
+			VQCD_TYPE		= 15,		// Masks base potential
+			VQCD_DAMP		= 49152,	// Masks damping mode 16384+32768
 
 			/*	VQCD Flags	*/
 			VQCD_EVOL_RHO		= 8192,
@@ -242,14 +250,6 @@
 
 		}	StringData;
 
-		typedef	struct	MeasData_v
-		{
-			StringData	str;
-			double		maxTheta;
-			double eA;
-			double eS;
-		}	MeasData;
-
 		typedef	enum	FFTtype_s {
 			FFT_CtoC_MtoM,
 			FFT_CtoC_M2toM2,
@@ -316,6 +316,39 @@
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 
+		typedef enum	DumpType_s
+		{
+		  DUMP_EVERYN	  = 1,
+		  DUMP_FROMLIST	= 2,
+		  DUMP_LOG	    = 4,	//not yet implemented
+		}	DumpType;
+
+		typedef	enum	FindType_s {
+			FIND_MAX,
+			FIND_MIN,
+		}	FindType;
+
+		typedef	enum	MapType_s {
+			MAP_RHO   = 1,
+			MAP_THETA = 2,
+			MAP_ALL   = 3,
+			MAP_NONE  = 0,
+		}	MapType;
+
+		typedef	enum	StatusM2_s {
+			M2_ENERGY,
+			M2_ENERGY_FFT,
+			M2_STRINGMAP,
+			M2_DIRTY,
+		}	StatusM2;
+
+		typedef	enum	StatusSD_s {
+			SD_STDWMAP,
+			SD_STRINGCOORD,
+			SD_DIRTY,
+		}	StatusSD;
+
+		// analysis functions to be called inside a measurement
 		typedef	enum	MeasureType_s {
 			MEAS_NOTHING			= 0,
 			MEAS_BINTHETA     = 1,
@@ -348,31 +381,7 @@
 			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
 		}	MeasureType;
 
-		typedef	enum	FindType_s {
-			FIND_MAX,
-			FIND_MIN,
-		}	FindType;
-
-		typedef	enum	MapType_s {
-			MAP_RHO   = 1,
-			MAP_THETA = 2,
-			MAP_ALL   = 3,
-			MAP_NONE  = 0,
-		}	MapType;
-
-		typedef	enum	StatusM2_s {
-			M2_ENERGY,
-			M2_ENERGY_FFT,
-			M2_STRINGMAP,
-			M2_DIRTY,
-		}	StatusM2;
-
-		typedef	enum	StatusSD_s {
-			SD_STDWMAP,
-			SD_STRINGCOORD,
-			SD_DIRTY,
-		}	StatusSD;
-
+		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v
 		{
 			int	index;
@@ -381,6 +390,17 @@
 			MeasureType measdata ;
 			SpectrumMaskType mask ;
 		}	MeasInfo;
+
+		// data output by measurement function to program
+		typedef	struct	MeasData_v
+		{
+			StringData	str;
+			double		maxTheta;
+			double eA;
+			double eS;
+		}	MeasData;
+
+
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__

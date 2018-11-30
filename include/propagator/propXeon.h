@@ -59,6 +59,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const double z2 = zR*zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = aMass2*z2*zR;
+		const double zN = aMass2*z2/2;
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
@@ -74,6 +75,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const size_t YC = (Lx>>2);
 
 		const double    __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
+		const double    __attribute__((aligned(Align))) zNAux[8] = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };	// to complex congugate
 		const double    __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
 		const long long __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
 		const long long __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
@@ -85,15 +87,18 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const size_t YC = (Lx>>1);
 
 		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zNAux[4] = { zN,-zN, zN,-zN };	// to complex congugate
 		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
 		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zNAux[2] = { zN,-zN };	// to complex congugate
 		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
 #endif
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
+		const _MData_ zNVec  = opCode(load_pd, zNAux);
 		const _MData_ zRVec  = opCode(load_pd, zRAux);
 
 		const uint z0 = Vo/(Lx*Lx);
@@ -256,6 +261,30 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 							opCode(set1_pd, LL)),
 						mel));
 				break;
+
+				case	VQCD_1N2:
+				mMx = opCode(sub_pd,
+					opCode(add_pd,
+						opCode(mul_pd,
+							opCode(add_pd,
+								opCode(add_pd,
+									opCode(load_pd, &m[idxMz]),
+									opCode(add_pd,
+										opCode(add_pd,
+											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+											opCode(load_pd, &m[idxMx])),
+										opCode(load_pd, &m[idxPz]))),
+								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+							opCode(set1_pd, ood2)),
+							// 1N2 part
+						opCode(mul_pd,zNVec,mel)),
+					opCode(mul_pd,
+						opCode(mul_pd,
+							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+							opCode(set1_pd, LL)),
+						mel));
+				break;
+
 			}
 
 			mPy = opCode(load_pd, &v[idxMz]);
@@ -362,6 +391,8 @@ tmp = opCode(sub_pd,
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*z2*zR);
+		//For VQCD_1N2
+		const float zN = (float) (aMass2*z2)/2;
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
@@ -377,7 +408,9 @@ tmp = opCode(sub_pd,
 		const size_t YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
+
 		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
 
@@ -388,15 +421,18 @@ tmp = opCode(sub_pd,
 		const size_t YC = (Lx>>2);
 
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zNAux[8]  = { zN, -zN, zN, -zN, zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
-		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
-		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0., zR, 0. };
+		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zQAux[4]  = { zN, -zN, zN, -zN };
+		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
 #endif
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
+		const _MData_ zNVec  = opCode(load_ps, zNAux);
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
 
 		const uint z0 = Vo/(Lx*Lx);
@@ -566,7 +602,33 @@ tmp = opCode(sub_pd,
 	 							opCode(set1_ps, LL)),
 	 						mel));
 	 				break;
+
+					case	VQCD_1N2:
+					mMx = opCode(sub_ps,
+						opCode(add_ps,
+							opCode(mul_ps,
+								opCode(add_ps,
+									opCode(add_ps,
+										opCode(load_ps, &m[idxMz]),
+										opCode(add_ps,
+											opCode(add_ps,
+												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+												opCode(load_ps, &m[idxMx])),
+											opCode(load_ps, &m[idxPz]))),
+									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
+								opCode(set1_ps, ood2)),
+								// 1N2 part
+							opCode(mul_ps,zNVec,mel)),
+						opCode(mul_ps,
+							opCode(mul_ps,
+								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+								opCode(set1_ps, LL)),
+							mel));
+					break;
 			}
+
+
+
 
 			mPy = opCode(load_ps, &v[idxMz]);
 
@@ -784,6 +846,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const double z2 = zR*zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = aMass2*z2*zR;
+		const double zN = aMass2*z2/2;
 		const double dzc = dz*c;
 
 		const double z4 = z2*z2;
@@ -800,6 +863,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const size_t YC = (Lx>>2);
 
 		const double __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zNAux[8] = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };	// to complex congugate
 		const double __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
 		const int    __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
 		const int    __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
@@ -811,15 +875,18 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const size_t YC = (Lx>>1);
 
 		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zNAux[4] = { zN,-zN, zN,-zN };	// to complex congugate
 		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
 #else
 		const size_t XC = Lx;
 		const size_t YC = Lx;
 
 		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zNAux[2] = { zN,-zN };	// to complex congugate
 		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
 #endif
 		const _MData_ zQVec  = opCode(load_pd, zQAux);
+		const _MData_ zNVec  = opCode(load_pd, zNAux);
 		const _MData_ zRVec  = opCode(load_pd, zRAux);
 
 		#pragma omp parallel default(shared)
@@ -967,6 +1034,30 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 									opCode(set1_pd, LL)),
 								mel));
 						break;
+
+					case	VQCD_1N2:
+					mMx = opCode(sub_pd,
+						opCode(add_pd,
+							opCode(mul_pd,
+								opCode(add_pd,
+									opCode(add_pd,
+										opCode(load_pd, &m[idxMz]),
+										opCode(add_pd,
+											opCode(add_pd,
+												opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
+												opCode(load_pd, &m[idxMx])),
+											opCode(load_pd, &m[idxPz]))),
+									opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
+								opCode(set1_pd, ood2)),
+								// 1N2 part
+							opCode(mul_pd,zNVec,mel)),
+						opCode(mul_pd,
+							opCode(mul_pd,
+								opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+								opCode(set1_pd, LL)),
+							mel));
+					break;
+
 				}
 
 				mPy = opCode(load_pd, &v[idxMz]);
@@ -1064,6 +1155,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*z2*zR);
+		//For VQCD_1N2
+		const float zN = (float) (aMass2*z2)/2;
 		const float dzc = dz*c;
 
 		const float z4 = z2*z2;
@@ -1080,6 +1173,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const size_t YC = (Lx>>3);
 
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
 		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };
 		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1 };
@@ -1091,15 +1185,18 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const size_t YC = (Lx>>2);
 
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zNAux[8]  = { zN, -zN, zN, -zN, zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
 #else
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
+		const float __attribute__((aligned(Align))) zQAux[4]  = { zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
 #endif
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
+		const _MData_ zNVec  = opCode(load_ps, zNAux);
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
 
 		#pragma omp parallel default(shared)
@@ -1253,6 +1350,54 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 								opCode(set1_ps, (float) LL)),
 							mel));
 					break;
+
+					case	VQCD_1N2:
+					mMx = opCode(sub_ps,
+						opCode(add_ps,
+							opCode(mul_ps,
+								opCode(add_ps,
+									opCode(add_ps,
+										opCode(load_ps, &m[idxMz]),
+										opCode(add_ps,
+											opCode(add_ps,
+												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+												opCode(load_ps, &m[idxMx])),
+											opCode(load_ps, &m[idxPz]))),
+									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
+								opCode(set1_ps, ood2)),
+								// 1N2 part
+							opCode(mul_ps,zNVec,mel)),
+						opCode(mul_ps,
+							opCode(mul_ps,
+								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+								opCode(set1_ps, LL)),
+							mel));
+					break;
+
+					case	VQCD_QUAD:
+					mMx = opCode(sub_ps,
+						opCode(add_ps,
+							opCode(mul_ps,
+								opCode(add_ps,
+									opCode(add_ps,
+										opCode(load_ps, &m[idxMz]),
+										opCode(add_ps,
+											opCode(add_ps,
+												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+												opCode(load_ps, &m[idxMx])),
+											opCode(load_ps, &m[idxPz]))),
+									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
+								opCode(set1_ps, ood2)),
+								// 1N2 part
+							opCode(mul_ps,zNVec,mel)),
+						opCode(mul_ps,
+							opCode(mul_ps,
+								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+								opCode(set1_ps, LL)),
+							mel));
+					break;
+
+
 				}
 
 				mPy = opCode(load_ps, &v[idxMz]);

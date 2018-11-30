@@ -139,7 +139,6 @@
 				size_t xTmp = maxThreadsPerDim(0); 
 				size_t yTmp = maxThreadsPerDim(1);
 				//auto zTmp = 1;
-
 				//lV = maxThreadsPerBlock();
 
 				xMax = (Lx*Lx > xTmp) ? xTmp : Lx*Lx;
@@ -162,5 +161,5 @@
 		}
 	};
 
-	
+
 #endif

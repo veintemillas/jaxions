@@ -20,7 +20,12 @@ Ly    = fileHdf5["/"].attrs.get("Size")
 Lz    = fileHdf5["/"].attrs.get("Depth")
 sizeL = fileHdf5["/"].attrs.get("Physical size")
 z     = fileHdf5["/"].attrs.get("z")
-con   = fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz)
+ftype = fileHdf5.attrs.get('Field type').decode()
+if ftype == 'Axion':
+    con   = fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz)
+elif ftype == 'Saxion':
+    con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+    con   = np.arctan2(con[:,:,:,0],con[:,:,:,1])
 print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
 print('range is',con.min(),con.max())

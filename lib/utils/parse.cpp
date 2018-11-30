@@ -44,6 +44,7 @@ int endredmap = -1;
 int safest0   = 20;
 size_t nstrings_globale ;
 
+
 bool lowmem   = false;
 bool uPrec    = false;
 bool uSize    = false;
@@ -81,6 +82,10 @@ LambdaType   lType     = LAMBDA_FIXED;
 VqcdType     vqcdType  = VQCD_1;
 VqcdType     vqcdTypeDamp    = VQCD_NONE;
 VqcdType     vqcdTypeRhoevol = VQCD_NONE;
+
+
+// Default measurement type, some options can be chosen with special flags | all with --meas
+MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_SPECTRUM ;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -349,6 +354,8 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--p2Dmap"))
 		{
 			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -357,6 +364,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--p2DmapE"))
 		{
 			p2dEmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -365,6 +373,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--p2DmapP"))
 		{
 			p2dPmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -438,6 +447,15 @@ int	parseArgs (int argc, char *argv[])
 		{
 			uPot = true;
 			vqcdType = VQCD_2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--NDW2"))
+		{
+			uPot = true;
+			vqcdType = VQCD_1N2 ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1049,7 +1067,26 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		// manual measurement
+		if (!strcmp(argv[i], "--meas"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of steps.\n");
+				exit(1);
+			}
+			defaultmeasType = (MeasureType) atoi(argv[i+1]);
+
+			if (defaultmeasType < 0)
+			{
+				printf("Error: Measurement type must be >= 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
 		if (!strcmp(argv[i], "--spmask"))
 		{

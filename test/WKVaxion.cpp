@@ -116,8 +116,7 @@ int	main (int argc, char *argv[])
 	{
 		ninfa.index++;
 
-		Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-		MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+		Measureme (axion, ninfa);
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
 		{
@@ -141,8 +140,7 @@ int	main (int argc, char *argv[])
 
 	LogOut ("Printing FINAL measurement file %05d ... ", ninfa.index);
 
-	Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-	MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+	Measureme (axion, ninfa);
 
 	endAxions();
 
