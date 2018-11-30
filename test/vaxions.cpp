@@ -28,10 +28,11 @@ using namespace AxionWKB;
 
 // vaxions3d definitions
 
-void		printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
-void		printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
-double	findzdoom(Scalar *axion);
-void		checkTime (Scalar *axion, int index);
+void    printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void    printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+double  findzdoom(Scalar *axion);
+void    checkTime (Scalar *axion, int index);
+void    printposter (Scalar *axion);
 
 //-point to print
 size_t idxprint = 0 ;
@@ -53,6 +54,7 @@ int	main (int argc, char *argv[])
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n--               VAXION 3D!                    --\n");
 	LogOut("\n-------------------------------------------------\n\n");
+
 	//--------------------------------------------------
 	//       READING INITIAL CONDITIONS
 	//--------------------------------------------------
@@ -86,6 +88,13 @@ int	main (int argc, char *argv[])
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 	LogOut("ICtime %f min\n",elapsed.count()*1.e-3/60.);
 
+
+	//-------------------------------------------------
+	// PRINT SUMMARY
+	//-------------------------------------------------
+
+	printposter(axion);
+
 	//--------------------------------------------------
 	// USEFUL VARIABLES
 	//--------------------------------------------------
@@ -98,51 +107,22 @@ int	main (int argc, char *argv[])
 		else
 		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
 
-	//-current conformal time
-	double z_now ;
-	//-current axion mass
-	double axmass_now;
-	//-grid spacing [obs?]
-	double delta = axion->Delta();
-	//-time step
-	double dz;
-	//-?? [obs?]
+  //- time when axion mass^2 is 1/40 of saxion mass^2
+	double 	z_doom2 = findzdoom(axion);
+
+	//time intervac
 	double dzaux;
 	//-llphys = LL or LL/z^2 in LAMBDA_Z2 mode
 	double llphys = myCosmos.Lambda();
-
-	//-set default dz [obs?]
-	if (nSteps == 0)
-		dz = 0.;
-	else
-		dz = (zFinl - zInit)/((double) nSteps);
-
 	///-for reduced map Redondo version [obs?]
-	int siN = (int) sizeN;
-	if (endredmap > siN)
-	{
-		LogOut("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
-		endredmap = siN;
-	}
-
-	if (siN%endredmap != 0 )
-	{
-		int schei =  siN/endredmap;
-		endredmap = siN/schei;
-		LogOut("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
-	}
 
 	//-control flag to activate damping only once
 	bool coD = true;
 	//-number of iterations with 0 strings; used to switch to theta mode
 	int strcount = 0;
 
-	//-LL at z=1, used for Z2 mode
-	double LL1 = myCosmos.Lambda();
-
-
 	//--------------------------------------------------
-	// MEASUREMENTS
+	// MEASUREMENTS, DUMP
 	//--------------------------------------------------
 
 	//- Measurement
@@ -184,18 +164,24 @@ int	main (int argc, char *argv[])
 				LogOut("Measurement list : \n");
 
 				dumpmode = DUMP_FROMLIST;
+				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list\n");
 				do {
 					fscanf (cacheFile ,"%lf %d\n", &mesi, &meastype);
 					if (meastype < 0)
 						meastype = defaultmeasType;
-					meas_zlist.push_back(mesi);
-					meas_typelist.push_back(meastype);
-					printf("ctime %lf Meastype %d\n", meas_zlist[i_meas], meas_typelist[i_meas]);
-					i_meas++ ;
+					if (mesi < *axion->zV()){
+						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED\n");
+					}
+					else {
+						meas_zlist.push_back(mesi);
+						meas_typelist.push_back(meastype);
+						LogMsg(VERB_NORMAL,"[VAX] read z=%f meas=%d\n", meas_zlist[i_meas], meas_typelist[i_meas]);
+						i_meas++ ;
+					}
 				}	while(!feof(cacheFile));
-				printf("List dump mode! number of measurement files = %d %d\n",meas_zlist.size(),i_meas);
+				LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
 				zFinl = meas_zlist[meas_zlist.size()-1];
-				printf("zFinl overwritten to %lf\n",zFinl);
+				LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
 				LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
 			}
 	}
@@ -210,24 +196,12 @@ int	main (int argc, char *argv[])
 	LogOut("           CONTINUE COMPUTATION                   \n");
 	LogOut("--------------------------------------------------\n");
 
-	//--------------------------------------------------
-	//   THE TIME ITERATION LOOP
-	//--------------------------------------------------
-
 	//-block counter
 	int counter = 0;
 	//-used to label measurement files [~block, but with exceptions]
 	int index = 0;
 
 	commSync();
-
-
-	//-stores shift in real part of PQ and cPQ (conformal field) [obs? move up]
-	double saskia = 0.0;
-	double shiftz = 0.0;
-
-//	--------------------------------------------------
-//	--------------------------------------------------
 
 	Folder munge(axion);
 
@@ -242,75 +216,8 @@ int	main (int argc, char *argv[])
 	}
 	LogOut ("Done! \n");
 
-	if (dump > nSteps)
-		dump = nSteps;
-
-	int nLoops;
-
-	if (dump == 0)
-		nLoops = 0;
-	else
-		nLoops = (int)(nSteps/dump);
-
-
-	LogOut("--------------------------------------------------\n");
-	LogOut("           PARAMETERS  						                \n\n");
-	LogOut("Length =  %2.2f\n", myCosmos.PhysSize());
-	LogOut("nQCD   =  %2.2f\n", myCosmos.QcdExp());
-	LogOut("indi3  =  %2.2f\n", myCosmos.Indi3());
-
-	if (myCosmos.ZRestore() > myCosmos.ZThRes())
-		LogOut("       =  0 in (%3.3f, %3.3f)   \n", myCosmos.ZThRes(), myCosmos.ZRestore());
-
-	LogOut("N      =  %ld\n",   axion->Length());
-	LogOut("Nz     =  %ld\n",   axion->Depth());
-	LogOut("zGrid  =  %ld\n",   zGrid);
-	LogOut("dx     =  %2.5f\n", axion->Delta());
-	LogOut("dz     =  %2.2f/FREQ\n", wDz);
-
-	if (LAMBDA_FIXED == axion->Lambda()){
-		LogOut("LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", myCosmos.Lambda(),
-		sqrt(2.*myCosmos.Lambda())*zInit*axion->Delta(),sqrt(2.*myCosmos.Lambda())*3*axion->Delta());
-	}
-	else
-		LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%.2f \n\n", myCosmos.Lambda(), axion->Msa());
-
-	if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1)
-		LogOut("VQCD1PQ1,shift,continuous theta  \n\n");
-	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_2)
-		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
-	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
-		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
-	else if	((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1N2)
-		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
-
-	LogOut("Vqcd flag %d\n", myCosmos.QcdPot());
-	LogOut("Damping %d gam = %f\n", myCosmos.QcdPot() & VQCD_DAMP, myCosmos.Gamma());
-	LogOut("--------------------------------------------------\n\n");
-	LogOut("           ESTIMATES\n\n");
-
-	double z_doom2;
-
-	if (myCosmos.Indi3()>0.0 && coSwitch2theta ){
-
-	// if ((myCosmos.QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
-	// 	z_doom = pow(2.0*0.1588*axion->Msa()/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
-	// else
-	// 	z_doom = pow(    0.1588*axion->Msa()/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
-
-
-	z_doom2 = findzdoom(axion);
-	double z_axiq = pow(1.00/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
-	double z_NR   = pow(3.46/axion->Delta(), 2./(myCosmos.QcdExp()+2.));
-	LogOut("z_doomsday %f(%f) \n", z_doom2,z_doom2);
-	LogOut("z_axiquenc %f \n", z_axiq);
-	LogOut("z_NR       %f \n", z_NR);
-	;}
-	LogOut("--------------------------------------------------\n\n");
 
 	commSync();
-
-
 
 	//--------------------------------------------------
 	// prepropagator is been moved away
@@ -344,7 +251,7 @@ int	main (int argc, char *argv[])
 	LogOut ("Start redshift loop\n\n");
 	for (int iz = 0; iz < nSteps; iz++)
 	{
-		
+
 		// time step
 		dzaux = axion->dzSize();
 
@@ -406,24 +313,18 @@ int	main (int argc, char *argv[])
 					if (lm.str.strDen == 0 && strcount > safest0 && coSwitch2theta)
 					{
 
-						if (axion->Lambda() == LAMBDA_Z2)
-							llphys = myCosmos.Lambda()/((*axion->RV())*(*axion->RV()));
-
-						axmass_now = axion->AxionMass();
-						saskia	   = axion->Saskia();
-						shiftz	   = (*axion->RV()) * saskia;
-
 							// Measurement before switching to theta
 							// customize?
 							ninfa.index=index;
 							lm = Measureme (axion, ninfa);
 							index++;
-							
+
 
 						LogOut("--------------------------------------------------\n");
 						LogOut(" TRANSITION TO THETA (z=%.4f R=%.4f)\n",(*axion->zV()), (*axion->RV()));
-						LogOut(" shift = %f \n", saskia);
+						LogOut(" shift = %f \n", axion->Saskia());
 
+						double shiftz = axion->Saskia()*(*axion->RV());
 						cmplxToTheta (axion, shiftz);
 
 						// Measurement after switching to theta
@@ -591,7 +492,7 @@ double findzdoom(Scalar *axion)
 		meas = DWfun - 1 ;
 		ct += 0.001 ;
 	}
-	LogOut("Real z_doom %f ", ct );
+	LogMsg(VERB_NORMAL,"Real z_doom %f ", ct );
 	return ct ;
 }
 
@@ -651,3 +552,122 @@ void	checkTime (Scalar *axion, int index) {
 		exit(0);
 	}
 }
+
+void printposter(Scalar *axion)
+{
+	LogOut("--------------------------------------------------\n");
+	LogOut("        SIMULATION (%d x %d x %d) ", axion->Length(), axion->Length(), axion->Depth());
+	if (zGrid>1)
+		LogOut(" x %d \n\n", zGrid);
+	else
+		LogOut("      \n\n");
+
+	LogOut("Box Length [1/R1H1]      =  %2.2f\n", axion->BckGnd()->PhysSize());
+	LogOut("dx                       =  %2.5f\n", axion->Delta());
+	LogOut("dz                       =  %2.2f/FREQ\n\n", wDz);
+
+	LogOut("FRW scale factor (R)     =  z^%1.2f \n\n", axion->BckGnd()->Frw());
+
+	LogOut("Saxion self-cp. Lambda\n");
+	if (LAMBDA_FIXED == axion->Lambda()){
+	LogOut("LL                       =  %.0f \n        (msa=%1.2f-%1.2f in zInit,3)\n\n", axion->BckGnd()->Lambda(),
+		sqrt(2.0 * axion->BckGnd()->Lambda())*zInit*axion->Delta(),sqrt(2.0 * axion->BckGnd()->Lambda())*3*axion->Delta());
+	}
+	else{
+	LogOut("LL                       =  %1.3e/z^2\n", axion->BckGnd()->Lambda());
+	LogOut("msa                      =  %.2f \n\n", axion->Msa());
+	}
+	if (axion->BckGnd()->Indi3() > 0.0){
+	LogOut("Axion mass^2 [H1^2]      = indi3 x R^nQCD \n");
+	LogOut("indi3                    =  %2.2f\n", axion->BckGnd()->Indi3());
+	LogOut("nQCD                     =  %2.2f\n", axion->BckGnd()->QcdExp());
+	if (axion->BckGnd()->ZRestore() > axion->BckGnd()->ZThRes())
+		LogOut("                       =  0 in (%3.3f, %3.3f) \n", axion->BckGnd()->ZThRes(), axion->BckGnd()->ZRestore());
+
+	if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1)
+		LogOut("VQCD1PQ1,shift,continuous theta  \n\n");
+	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_2)
+		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
+	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
+		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
+	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1N2)
+		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
+
+		LogOut("Vqcd flag %d\n", axion->BckGnd()->QcdPot());
+		LogOut("Damping flag %d 		     \n", axion->BckGnd()->QcdPot() & VQCD_DAMP);
+		LogOut("gam                    = %lf \n", axion->BckGnd()->Gamma());
+		LogOut("--------------------------------------------------\n\n");
+		LogOut("           TIME SCALES ESTIMATES\n\n");
+
+		double 	z_doom2 = findzdoom(axion);
+
+		if (axion->BckGnd()->Indi3()>0.0){
+		// if (myCosmos.Indi3()>0.0 && coSwitch2theta ){
+
+		double z_axiq = pow(1.00/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
+		double z_NR   = pow(3.46/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
+		LogOut("mA^2/mS^2 = 1/40  at ctime %lf \n", z_doom2);
+		LogOut("mA^2 = mS^2       at ctime %lf \n", z_axiq);
+		LogOut("Fastest axions NR at ctime %lf \n", z_NR);
+		;}
+		LogOut("--------------------------------------------------\n\n");
+	} else {
+		LogOut("Massless axion!!!");
+	}
+
+
+}
+
+
+// void printposter(Scalar *axion)
+// {
+// 	LogOut("--------------------------------------------------\n");
+// 	LogOut("           PARAMETERS  						                \n\n");
+// 	LogOut("Length =  %2.2f\n", axion->BckGnd()->PhysSize());
+// 	LogOut("nQCD   =  %2.2f\n", axion->BckGnd()->QcdExp());
+// 	LogOut("indi3  =  %2.2f\n", axion->BckGnd()->Indi3());
+//
+// 	if (axion->BckGnd()->ZRestore() > axion->BckGnd()->ZThRes())
+// 		LogOut("       =  0 in (%3.3f, %3.3f)   \n", axion->BckGnd()->ZThRes(), axion->BckGnd()->ZRestore());
+//
+// 	LogOut("N      =  %ld\n",   axion->Length());
+// 	LogOut("Nz     =  %ld\n",   axion->Depth());
+// 	LogOut("zGrid  =  %ld\n",   zGrid);
+// 	LogOut("dx     =  %2.5f\n", axion->Delta());
+// 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
+//
+// 	if (LAMBDA_FIXED == axion->Lambda()){
+// 		LogOut("LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", axion->BckGnd()->Lambda(),
+// 		sqrt(2.0 * axion->BckGnd()->Lambda())*zInit*axion->Delta(),sqrt(2.0 * axion->BckGnd()->Lambda())*3*axion->Delta());
+// 	}
+// 	else
+// 		LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%.2f \n\n", axion->BckGnd()->Lambda(), axion->Msa());
+//
+// 	if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1)
+// 		LogOut("VQCD1PQ1,shift,continuous theta  \n\n");
+// 	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_2)
+// 		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
+// 	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
+// 		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
+// 	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1N2)
+// 		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
+//
+// 	LogOut("Vqcd flag %d\n", axion->BckGnd()->QcdPot());
+// 	LogOut("Damping %d gam = %f\n", axion->BckGnd()->QcdPot() & VQCD_DAMP, axion->BckGnd()->Gamma());
+// 	LogOut("--------------------------------------------------\n\n");
+// 	LogOut("           ESTIMATES\n\n");
+//
+// 	double 	z_doom2 = findzdoom(axion);
+//
+// 	if (axion->BckGnd()->Indi3()>0.0){
+// 	// if (myCosmos.Indi3()>0.0 && coSwitch2theta ){
+//
+// 	double z_axiq = pow(1.00/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
+// 	double z_NR   = pow(3.46/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
+// 	LogOut("mA^2/mS^2 = 1/40  at ctime %lf \n", z_doom2);
+// 	LogOut("mA^2 = mS^2       at ctime %lf \n", z_axiq);
+// 	LogOut("Fastest axions NR at ctime %lf \n", z_NR);
+// 	;}
+// 	LogOut("--------------------------------------------------\n\n");
+//
+// }
