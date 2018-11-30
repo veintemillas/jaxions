@@ -150,7 +150,7 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	if (!nAccs & dev == DEV_GPU)
+	if (!nAccs & (dev == DEV_GPU))
 	{
 		LogError ("Error: There are no visible accelerators");
 		endAxions();

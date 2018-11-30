@@ -44,7 +44,7 @@ void	dContrast	(Scalar *axion, size_t &rSize, bool &rhoMap) {
 
 	// Portar a GPU
 	#pragma omp parallel for schedule(static)
-	for (int idx = 0; idx<axion->rSize(); idx++) {
+	for (size_t idx = 0; idx<axion->rSize(); idx++) {
 		auto x = m2[idx];
 
 		if (x <= lowCut)
@@ -74,7 +74,7 @@ void	dContrast	(Scalar *axion, size_t &rSize, bool &rhoMap) {
 
 		// Portar a GPU
 		#pragma omp parallel for schedule(static)
-		for (int idx = 0; idx<axion->rSize(); idx++) {
+		for (size_t idx = 0; idx<axion->rSize(); idx++) {
 			auto x = m2[idx];
 
 			if (x <= lowCut)

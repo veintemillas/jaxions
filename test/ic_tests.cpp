@@ -69,7 +69,7 @@ int	main (int argc, char *argv[])
 					{
 					// kCrit changes the variable in the parse.h header read by initial condition generator
 					// parm2 is also read by it
-					LogOut("par1 %d par2 %f kmax %d kCrit %f cType %d (VILGOR %d) \n",parm1,parm2,kMax,kCrit,cType,CONF_VILGOR);
+					LogOut("par1 %zu par2 %f kmax %zu kCrit %f cType %d (VILGOR %d) \n", parm1, parm2, kMax, kCrit, static_cast<int>(cType), static_cast<int>(CONF_VILGOR));
 					genConf	(&myCosmos, axion, cType, parm1, parm2);
 
 					lm = Measureme (axion, ninfa, MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM);
@@ -89,7 +89,7 @@ int	main (int argc, char *argv[])
 							iter = exp(i*log(1000)/30.);
 							for(int j=1; j<3;j++)
 							{
-							LogOut("par1 %d par2 %f kmax %d kCrit %f cType %d (SMOOTH %d) \n",parm1,parm2,kMax,kCrit,cType,CONF_SMOOTH);
+							LogOut("par1 %zu par2 %f kmax %zu kCrit %f cType %d (SMOOTH %d) \n", parm1, parm2, kMax, kCrit, static_cast<int>(cType), static_cast<int>(CONF_SMOOTH));
 							genConf	(&myCosmos, axion, cType, parm1, parm2);
 
 							lm = Measureme (axion, ninfa, MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM);

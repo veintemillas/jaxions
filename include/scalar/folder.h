@@ -8,14 +8,15 @@
 	{
 		private:
 
-		size_t shift;
-		size_t fSize;
+		Scalar *field;
+
 		const size_t Lz;
 		const size_t n1;
 		const size_t n2;
 		const size_t n3;
 
-		Scalar *field;
+		size_t shift;
+		size_t fSize;
 
 		template<typename cFloat>
 		void	foldField();

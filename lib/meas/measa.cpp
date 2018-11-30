@@ -64,7 +64,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 		if (measa & MEAS_NEEDENERGYM2)
 		{
 			// LogOut("energy (map->m2) ");
-			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2",indexa);
+			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2", indexa);
 			energy(axiona, eRes, true, shiftz);
 
 			MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
@@ -213,22 +213,22 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info, MeasureType measa)
 
 		if (measa & MEAS_NSP_S)
 		{
-				if (axiona->Field() == FIELD_SAXION){
+			if (axiona->Field() == FIELD_SAXION){
 				// LogOut("NSPS ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
 				specAna.nSRun();
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
-				}
+			}
 		}
 
 		if (measa & MEAS_NNSPEC)
 		{
-				// LogOut("Nmod ");
-				LogMsg(VERB_NORMAL, "[Meas %d] Nmod ",index);
-				specAna.nmodRun();
-				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
+			// LogOut("Nmod ");
+			LogMsg(VERB_NORMAL, "[Meas %d] Nmod ", indexa);
+			specAna.nmodRun();
+			writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
 		}
 
 	}

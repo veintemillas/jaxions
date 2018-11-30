@@ -16,13 +16,14 @@ class	Reducer : public Tunable
 {
 	private:
 
-	Scalar	     *axionField;
-
-	const int  newLx, newLz;
-	const bool inPlace;
+	Scalar	   *axionField;
 	FieldIndex fType;
 
 	std::function<complex<Float>(int, int, int, complex<Float>)> filter;
+
+	const size_t newLx, newLz;
+	const bool   inPlace;
+
 
 	template<typename Field1, typename Field2, typename Field3, const bool pad>
 	void	transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan, FFTdir = FFT_FWDBCK);
@@ -59,15 +60,15 @@ template<typename Float>
 template<typename Field1, typename Field2, typename Field3, const bool pad>
 void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan, FFTdir fDir) {
 	auto &myPlan = AxionFFT::fetchPlan(plan);
-	int Lx  = axionField->Length();
-	int Lz  = axionField->Depth();
-	int Tz  = axionField->TotalDepth();
+	size_t Lx  = axionField->Length();
+	size_t Lz  = axionField->Depth();
+	size_t Tz  = axionField->TotalDepth();
 
-	int Ly  = Lx/commSize();
+	size_t Ly  = Lx/commSize();
 
-	int hLx = Lx >> 1;
-	int hLz = Lz >> 1;
-	int hTz = Tz >> 1;
+	size_t hLx = Lx >> 1;
+	//size_t hLz = Lz >> 1;
+	size_t hTz = Tz >> 1;
 
 	Float  nrm   = 1./((double) (axionField->TotalSize()));
 	size_t zBase = Ly*commRank();
@@ -100,19 +101,19 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 		myPlan.run(FFT_FWD);
 	}
 
-	int dX = (pad == true) ? hLx+1 : Lx;
+	uint dX = (pad == true) ? hLx+1 : Lx;
 
 	#pragma omp parallel for collapse(3) schedule(static)
-	for (int py = 0; py<Ly; py++)
-		for (int pz = 0; pz<Tz; pz++)
-			for (int px = 0; px<dX; px++) {
+	for (uint py = 0; py<Ly; py++)
+		for (uint pz = 0; pz<Tz; pz++)
+			for (uint px = 0; px<dX; px++) {
 				int kx = px;
 				int ky = py + zBase;
 				int kz = pz;
 
-				if (kx > hLx) kx -= Lx;
-				if (ky > hLx) ky -= Lx;
-				if (kz > hTz) kz -= Tz;
+				if (kx > static_cast<int>(hLx)) kx -= Lx;
+				if (ky > static_cast<int>(hLx)) ky -= Lx;
+				if (kz > static_cast<int>(hTz)) kz -= Tz;
 
 				size_t idx = px + dX*(pz + Tz*py);
 
@@ -347,7 +348,7 @@ Scalar*	redField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, s
 	std::stringstream ss;
 	ss << "Reduce " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " to " << newLx << "x" << newLx << "x" << newLz*commSize(); 
 
-	size_t oldVol = field->Size();
+	//size_t oldVol = field->Size();
 
 	reducer->setName(ss.str().c_str());
 	prof.start();

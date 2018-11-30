@@ -77,7 +77,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const auto vShLf  = opCode(load_si512, shfLf);
 #endif
 		const _MData_ hlf   = opCode(set1_pd, 0.5);
-		const _MData_ one   = opCode(set1_pd, 1.0);
+//		const _MData_ one   = opCode(set1_pd, 1.0);
 		const _MData_ two   = opCode(set1_pd, 2.0);
 		const _MData_ tpVec = opCode(set1_pd, tV);
 		const _MData_ izVec = opCode(set1_pd, iz);
@@ -294,7 +294,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 #endif
 
 		const _MData_ hlf   = opCode(set1_ps, .5f);
-		const _MData_ one   = opCode(set1_ps, 1.f);
+//		const _MData_ one   = opCode(set1_ps, 1.f);
 		const _MData_ two   = opCode(set1_ps, 2.f);
 		const _MData_ izVec = opCode(set1_ps, iz);
 		const _MData_ tpVec = opCode(set1_ps, tV);

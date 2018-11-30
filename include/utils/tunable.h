@@ -33,8 +33,8 @@
 
 		public:
 
-				Tunable() noexcept : gFlops(0.), gBytes(0.), xBlock(0), yBlock(0), zBlock(0), xBest(0), yBest(0), zBest(0),
-						     ySize(0), zSize(0), isTuned(false), isGpu(false), name("") {}
+				Tunable() noexcept : name(""), gFlops(0.), gBytes(0.), xBlock(0), yBlock(0), zBlock(0), xBest(0), yBest(0), zBest(0),
+						     ySize(0), zSize(0), isTuned(false), isGpu(false) {}
 
 		double		GFlops () const noexcept { return gFlops; }
 		double		GBytes () const noexcept { return gBytes; }
@@ -57,9 +57,9 @@
 
 		size_t		TotalThreads() const noexcept { return xBlock*yBlock*zBlock; }
 
-		unsigned int	SetBlockX (unsigned int bSize) noexcept { xBlock = bSize; }
-		unsigned int	SetBlockY (unsigned int bSize) noexcept { yBlock = bSize; }
-		unsigned int	SetBlockZ (unsigned int bSize) noexcept { zBlock = bSize; }
+		void		SetBlockX (unsigned int bSize) noexcept { xBlock = bSize; }
+		void		SetBlockY (unsigned int bSize) noexcept { yBlock = bSize; }
+		void		SetBlockZ (unsigned int bSize) noexcept { zBlock = bSize; }
 
 		void		UpdateBestBlock() noexcept { xBest  = xBlock; yBest  = yBlock; zBest  = zBlock; }
 		void		SetBestBlock()    noexcept { xBlock = xBest;  yBlock = yBest;  zBlock = zBest;  }
@@ -83,7 +83,7 @@
 							isTuned = true;
 						}
 					}
-				}	while (!isTuned && TotalThreads() > maxThreadsPerBlock());
+				}	while (!isTuned && TotalThreads() > ((size_t) maxThreadsPerBlock()));
 			} else {
 				if (yBlock < ySize) {
 					do {
@@ -114,7 +114,7 @@
 		void		InitBlockSize(unsigned int Lx, unsigned int Lz, size_t dataSize, size_t alignSize, bool gpu = false) {
 			int tmp   = alignSize/dataSize;
 			int shift = 0;
-			size_t lV = SIZE_MAX;
+			//size_t lV = SIZE_MAX;
 
 			isGpu = gpu;
 
@@ -136,11 +136,11 @@
 				yBest = yBlock = 4;
 				zBest = zBlock = 1;
 			} else {
-				auto xTmp = maxThreadsPerDim(0); 
-				auto yTmp = maxThreadsPerDim(1);
-				auto zTmp = 1;
+				size_t xTmp = maxThreadsPerDim(0); 
+				size_t yTmp = maxThreadsPerDim(1);
+				//auto zTmp = 1;
 
-				lV = maxThreadsPerBlock();
+				//lV = maxThreadsPerBlock();
 
 				xMax = (Lx*Lx > xTmp) ? xTmp : Lx*Lx;
 				yMax = (Lz > yTmp) ? yTmp : Lz;

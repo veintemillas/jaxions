@@ -320,6 +320,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Gry = opCode(mul_pd, Grz, ivZ2);
 
 				switch	(VQcd & VQCD_TYPE) {
+
+					default:
 					case	VQCD_1:
 						mSg = opCode(sub_pd, Gry, one);
 						mod = opCode(mul_pd, mSg, mSg);
@@ -774,6 +776,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Gry = opCode(mul_ps, Grz, ivZ2);  // (Re-s)^2+Im^2/z2,(Re-s)^2+Im^2/z2
 
 				switch	(VQcd & VQCD_TYPE) {
+
+					default:
 					case	VQCD_1:
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
@@ -926,6 +930,9 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 	field->exchangeGhosts(FIELD_M);
 
 	switch (VQcd & VQCD_TYPE) {
+
+		default:
+			LogError("Potential not recognized, falling back to VQcd1");
 		case	VQCD_1:
 			if (map == true) {
 				if (field->LowMem()) {

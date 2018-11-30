@@ -33,15 +33,15 @@
 			Scalar	*field;
 			Scalar	*tmp;
 
-			const size_t rLx, Ly, Lz, Sm, hLy, hLz, hTz, Tz, nModes;
+			const size_t rLx, Ly, Lz, Tz, hLy, hLz, hTz, nModes, Sm;
 
 			const double zIni;
 //			const double amass2zini2 = axionmass2(zini, nQcd, zthres, zrestore)*zini*zini ;
 
-			bool firsttime = true;
-
 			FieldPrecision fPrec ;
 //			FieldType fType ;
+
+			bool firsttime = true;
 
 			// pointers for the axion matrices
 			// I need :

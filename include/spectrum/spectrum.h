@@ -28,10 +28,10 @@
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
 		double			mass, massSax; // squared masses (comoving)
 		double 			Rscale, depta;
-		double 			zaskar ;
-		float				zaskarf ;
-		std::complex<double> zaska ;
-		std::complex<float> zaskaf ;
+		double 			zaskar;
+		float			zaskarf;
+		std::complex<double>	zaska ;
+		std::complex<float>	zaskaf ;
 
 		void			fillCosTable ();
 
@@ -42,7 +42,7 @@
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
-									       fPrec(field->Precision()), nPts(field->Size()), fType(field->Field()), spec(spectral) {
+									       nPts(field->Size()), spec(spectral), fPrec(field->Precision()), fType(field->Field()) {
 				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 
@@ -86,7 +86,11 @@
 						LogError("Warning: WKB fields not supported for analysis");
 						Lx = 0; Ly = 0; hLx = 0; nPts = 0;
 						return;
-						break;
+
+					default:
+						LogError("Warning: Field not supported for analysis");
+						Lx = 0; Ly = 0; hLx = 0; nPts = 0;
+						return;
 				}
 
 				nPts = Lx*Ly*Lz;
@@ -159,6 +163,8 @@
 				return binPS[idx];
 				break;
 
+			default:
+				return	0.0;
 		}
 	}
 
@@ -188,6 +194,9 @@
 				return binPS[idx];
 				break;
 
+			default:
+				LogError ("Undefined spectrum requested.");
+				return	binK[0];
 		}
 	}
 
@@ -218,6 +227,8 @@
 				return binPS.data();
 				break;
 
+			default:
+				return	nullptr;
 		}
 	}
 
@@ -247,6 +258,9 @@
 			case	SPECTRUM_NN:
 				return binPS.data();
 				break;
+
+			default:
+				return	nullptr;
 		}
 	}
 #endif

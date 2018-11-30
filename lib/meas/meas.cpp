@@ -22,7 +22,7 @@ MeasData	Measure	(Scalar *axion, int index, MeasureType meas)
 	retMeas.str.strDen = -1;
 	retMeas.str.wallDn = -1;
 
-	auto	cTime = Timer();
+//	auto	cTime = Timer();
 
 	if	(meas & MEAS_3DMAP) {
 		LogOut("Dumping configuration to disk\n");
@@ -238,7 +238,7 @@ MeasData	Measure	(Scalar *axion, int index, MeasureType meas)
 		// double maa = 40*axion->AxionMassSq()/(2.*axion->myCosmos.Lambda());
 		// if (axion->Lambda() == LAMBDA_Z2 )
 		// 	maa = maa*zNow*zNow;
-		double Le = axion->BckGnd()->PhysSize();
+//		double Le = axion->BckGnd()->PhysSize();
 //		LogOut("alpha=%.3e ", DWfun );
 //		LogOut("#_st %ld xi(%f) ", nStrings, (1/6.)*axion->Delta()*( (double) nStrings)*zNow*zNow/(Le*Le*Le));
 	} else {

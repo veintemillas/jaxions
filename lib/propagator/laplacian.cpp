@@ -73,13 +73,13 @@ void	Laplacian::lapCpu	(std::string name)
 	const int hLx = Lx>>1;
 	const int hTz = Tz>>1;
 
-	const int    maxLx = (hCmplx == true) ? hLx+1 : Lx;
+	const uint   maxLx = (hCmplx == true) ? hLx+1 : Lx;
 	const size_t maxSf = maxLx*Tz;
 
 	#pragma omp parallel for collapse(3) schedule(static) default(shared)
-	for (int oy = 0; oy < Ly; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
-		for (int oz = 0; oz < Tz; oz++)
-			for (int ox = 0; ox < maxLx; ox++)
+	for (uint oy = 0; oy < Ly; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
+		for (uint oz = 0; oz < Tz; oz++)
+			for (uint ox = 0; ox < maxLx; ox++)
 			{
 				size_t idx = ox + oy*maxSf + oz*maxLx;
 
@@ -87,14 +87,14 @@ void	Laplacian::lapCpu	(std::string name)
 				int py = oy + zBase;
 				int pz = oz ;
 
-				if (ox > hLx)
-					px = ox - Lx;
+				if (px > hLx)
+					px -= Lx;
 
 				if (py > hLx)
 					py -= Lx;
 
-				if (oz > hTz)
-					pz = oz - Tz;
+				if (pz > hTz)
+					pz -= Tz;
 
 				size_t p2 = pz*pz + py*py + px*px;
 
@@ -114,6 +114,10 @@ void	Laplacian::sRunCpu	()
 
 		case FIELD_DOUBLE:
 			lapCpu<std::complex<double>,false>(std::string("SpSx"));
+			break;
+
+		default:
+			LogError ("Couldn't calculate laplacian: Wrong precision");
 			break;
 	}
 }
@@ -136,6 +140,10 @@ void    Laplacian::tRunCpu	()
 
 		case FIELD_DOUBLE:
 			lapCpu<std::complex<double>,true>(std::string("SpAx"));
+			break;
+
+		default:
+			LogError ("Couldn't calculate laplacian: Wrong precision");
 			break;
 	}
 }

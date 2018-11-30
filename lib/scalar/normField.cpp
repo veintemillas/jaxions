@@ -18,9 +18,8 @@ class	NormaliseField : public Tunable
 {
 	private:
 
+	Scalar		*axionField;
 	const FieldIndex fIdx;
-
-	Scalar	*axionField;
 
 	public:
 
