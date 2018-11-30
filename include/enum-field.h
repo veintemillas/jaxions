@@ -355,13 +355,13 @@
 			MEAS_BINLOGTHETA2 = 4,
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
-			// MEAS_BIN...	= 16,
+			// MEAS_BIN...	  = 16,
 			MEAS_STRING	      = 32,
-			MEAS_STRINGMAP    = 64,
-			MEAS_STRINGCOO    = 128,  	// 128 + 64
+			MEAS_STRINGMAP    = 96,		// 64 + 32
+			MEAS_STRINGCOO    = 160,  // 128 + 32
 
 			MEAS_ENERGY       = 256,
-			MEAS_ENERGY3DMAP  = 512,		// 512 + 256
+			MEAS_ENERGY3DMAP  = 512,	// 512 + 256
 			MEAS_REDENE3DMAP  = 1024, 	// 1024 + 512 + 256
 			MEAS_2DMAP        = 2048,
 			MEAS_3DMAP        = 4096,
