@@ -252,6 +252,49 @@ void	PrintICoptions()
 	return;
 }
 
+void	PrintMEoptions()
+{
+	printf("\nOptions for Measurement\n\n");
+
+	printf("--meas [int]                	Sum of integers.\n\n");
+
+	printf("--------------------------------------------------\n");
+	printf("  BINs\n");
+	printf("  Nothing                                  0 \n");
+	printf("  Theta angle binned                       1 \n");
+	printf("  Saxion field/v                           2 \n");
+	printf("  Log theta^2                              4 \n");
+	printf("  Axion density contrast                   8 \n\n");
+
+	printf("  MAPS\n");
+	printf("  String + Wall                           32 \n");
+	printf("  String + Wall 3D map                    96 \n\n");
+	// printf("  String + Wall coord.     160 \n");
+	printf("  Ax. + Sax. Energy                      256 \n");
+	printf("  Ax. Energy 3D map                      768 \n");
+	printf("  Ax. Energy reduced 3D map             1024 \n");
+
+	printf("  2D slice map (Field+Velocity)         2048 \n");
+	printf("  3D configuration                      4096 \n");
+
+
+	printf("  POWER SPECTRA (binned) \n");
+	printf("  Number of modes in each mom. bin    262144 \n");
+	printf("  Axion Energy spectrum                16384 \n");
+	printf("  Sxion Energy spectrum                32768 \n\n");
+
+	printf("  NUMBER SPECTRA (binned) \n");
+	printf("  Axion Number spectrum (K+G+V)        65536 \n");
+	printf("  Saxion Number spectrum (K+G+V)      131072 \n\n");
+  printf("  --spmask [int]              Sum of below integers\n");
+	printf("    Fields unmasked                        1 \n");
+	printf("    Masked with  rho/v                     2 \n");
+	printf("    Masked with (rho/v)^2                  4 \n");
+
+	return;
+}
+
+
 int	parseArgs (int argc, char *argv[])
 {
 	bool	passed;
@@ -270,6 +313,12 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--icinfo"))
 		{
 			PrintICoptions();
+			exit(0);
+		}
+
+		if (!strcmp(argv[i], "--measinfo"))
+		{
+			PrintMEoptions();
 			exit(0);
 		}
 
