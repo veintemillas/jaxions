@@ -199,6 +199,7 @@ int	main (int argc, char *argv[])
 				LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
 			}
 	}
+	i_meas=0;
 
 	LogOut("\n");
 
@@ -316,7 +317,7 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 	//--------------------------------------------------
-	// FIRST MEASUREMENT
+	// INITIAL MEASUREMENT
 	//--------------------------------------------------
 
 
@@ -343,7 +344,7 @@ int	main (int argc, char *argv[])
 	LogOut ("Start redshift loop\n\n");
 	for (int iz = 0; iz < nSteps; iz++)
 	{
-
+		
 		// time step
 		dzaux = axion->dzSize();
 
@@ -359,9 +360,10 @@ int	main (int argc, char *argv[])
 
 				case DUMP_FROMLIST:
 				if ( (*axion->zV())+dzaux >= meas_zlist[i_meas] && (*axion->zV()) < meas_zlist[i_meas]){
-					dz = meas_zlist[i_meas] - (*axion->zV());
+					dzaux = meas_zlist[i_meas] - (*axion->zV());
 					measrightnow = true;
 					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
+
 				}
 				break;
 			}
@@ -413,9 +415,10 @@ int	main (int argc, char *argv[])
 
 							// Measurement before switching to theta
 							// customize?
-							ninfa.index=i_meas;
+							ninfa.index=index;
 							lm = Measureme (axion, ninfa);
-							i_meas++;
+							index++;
+							
 
 						LogOut("--------------------------------------------------\n");
 						LogOut(" TRANSITION TO THETA (z=%.4f R=%.4f)\n",(*axion->zV()), (*axion->RV()));
@@ -424,9 +427,9 @@ int	main (int argc, char *argv[])
 						cmplxToTheta (axion, shiftz);
 
 						// Measurement after switching to theta
-						ninfa.index=i_meas;
+						ninfa.index=index;
 						lm = Measureme (axion, ninfa);
-						i_meas++;
+						index++;
 						LogOut("--------------------------------------------------\n");
 
 						tunePropagator (axion);
@@ -435,8 +438,9 @@ int	main (int argc, char *argv[])
 
 			// Partial analysis
 			if(measrightnow){
-				ninfa.index=i_meas;
+				ninfa.index=index;
 				lm = Measureme (axion, ninfa);
+				index++;
 				i_meas++ ;
 				//reset flag
 				measrightnow = false;
