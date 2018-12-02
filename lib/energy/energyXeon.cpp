@@ -356,10 +356,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					case	VQCD_1N2:		//to be checked
 						mSg = opCode(sub_pd, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^2-1)^2
-						mTp = opCode(mul_pd, Grx, iiiZ);  // [Re/Z,Im/Z][][][]
-						mCg = opCode(mul_pd, mTp, mTp);   // [(Re/Z)^2,(Im/Z)^2][][][]
-						mTp = opCode(sub_pd, mCg, opCode(mul_pd, hVec, Gry));   // 1/2[(Re/Z)^2-(Im/Z)^2, same with -sign][][][]
-						mCg = opCode(mul_pd, hVec,opCode(sub_pd, hVec, mTp));	// 1/4[1 - ((Re/Z)^2-(Im/Z)^2), 1 + (...)][][][]
+						mCg = opCode(mul_pd, hVec, opCode(sub_pd, one, opCode(div_pd, Gry, Grz)));
 					break;
 				}
 #if	defined(__AVX512F__)
@@ -490,7 +487,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		double * __restrict__ eRes	= (double * __restrict__) eRes_;
 
 		const float zR  = *R;
-		const float iz  = 1./zR;
+		const float iz  = (float) (1.f/zR);
 		const float iz2 = iz*iz;
 		//const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float zQ = aMass2*zR*zR;
@@ -535,8 +532,8 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const _MData_ ivZ  = opCode(load_ps, ivZAux);
 		const _MData_ shVc = opCode(load_ps, shfAux);
 		const _MData_ pVec = opCode(load_ps, lzQAux);
-		const _MData_ one  = opCode(set1_ps, 1.0);
-		const _MData_ hVec = opCode(set1_ps, 0.5);
+		const _MData_ one  = opCode(set1_ps, 1.f);
+		const _MData_ hVec = opCode(set1_ps, 0.5f);
 		const _MData_ ivZ2 = opCode(set1_ps, iz2);
 		const _MData_ oVec = opCode(set1_ps, o2);
 		//for VQCD2
@@ -829,24 +826,15 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						break;
 
 					case	VQCD_1N2:		//to be checked
-						// mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
-						// mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						// mTp = opCode(mul_ps, Grx, iiiZ);  // [Re/Z,Im/Z][][][]
-						// mCg = opCode(mul_ps, mTp, mTp);   // [(Re/Z)^2,(Im/Z)^2][][][]
-						// mTp = opCode(sub_ps, mCg, opCode(mul_ps, hVec, Gry));   // 1/2[(Re/Z)^2-(Im/Z)^2, same with -sign][][][]
-						// mCg = opCode(mul_ps, hVec,opCode(sub_ps, hVec, mTp));	// 1/4[1 - ((Re/Z)^2-(Im/Z)^2), 1 + (...)][][][]
-
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
+						// Gry = [Re^2, Im^2]
+						// Grz = Mod^2, Mod^2...
+						// ...   Im^2/Mod^22
+						// ... = (1 - Gry/Grz)/2
+						mCg = opCode(mul_ps, hVec,opCode(sub_ps, one, opCode(div_ps,Gry,Grz)));
 
-						mTp = opCode(mul_ps, Grx, iiiZ);  // [Re/Z,Im/Z][][][]
-						// opCode(store_ps, tmpS, mTp);
-						// printf("a %f %f %f %f > ",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
-						mCg = opCode(mul_ps, hVec,opCode(sub_ps, hVec,
-											opCode(sub_ps, opCode(mul_ps, mTp, mTp),
-													opCode(mul_ps, hVec, Gry))));	// 1/4[1 - ((Re/Z)^2-(Im/Z)^2), 1 + (...)][][][]
-						// opCode(store_ps, tmpS, mTp);
-						// printf("b %f %f %f %f || ",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
+
 					break;
 
 				}
