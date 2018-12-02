@@ -199,7 +199,7 @@ int	main (int argc, char *argv[])
 	//-block counter
 	int counter = 0;
 	//-used to label measurement files [~block, but with exceptions]
-	int index = 0;
+	int index ;
 
 	commSync();
 
@@ -229,11 +229,13 @@ int	main (int argc, char *argv[])
 
 
 	if (!restart_flag && (fIndex == -1)){
+		index = 0;
 		LogOut("First measurement file %d \n",index);
 		ninfa.index=index;
 		lm = Measureme (axion, ninfa);
 	}
 	else{
+		index = fIndex -1 ;
 		LogOut("last measurement file was %d \n",index);
 	}
 	index++;
@@ -277,6 +279,7 @@ int	main (int argc, char *argv[])
 
 			// PROPAGATOR
 			propagate (axion, dzaux);
+			counter++;
 
 			// SIMPLE OUTPUT CHECK
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
