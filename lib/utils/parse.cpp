@@ -268,10 +268,10 @@ void	PrintMEoptions()
 
 	printf("  MAPS\n");
 	printf("  String + Wall                           32 \n");
-	printf("  String + Wall 3D map                    96 \n\n");
+	printf("  String + Wall 3D map                    64 \n\n");
 	// printf("  String + Wall coord.     160 \n");
 	printf("  Ax. + Sax. Energy                      256 \n");
-	printf("  Ax. Energy 3D map                      768 \n");
+	printf("  Ax. Energy 3D map                      512 \n");
 	printf("  Ax. Energy reduced 3D map             1024 \n");
 
 	printf("  2D slice map (Field+Velocity)         2048 \n");
