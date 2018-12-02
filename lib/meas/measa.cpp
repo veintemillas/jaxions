@@ -71,6 +71,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
 			MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
 
+			if (measa & MEAS_ENERGY3DMAP){
+				// LogOut("write eMap ");
+				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",indexa);
+				writeEDens(axiona);
+			}
+
 			if (measa & MEAS_BINDELTA)
 			{
 				// LogOut("bindelta ");
@@ -81,12 +87,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 								[eMean = eMean] (Float x) -> float { return (double) (log10(x/eMean)) ;});
 				contBin.run();
 				writeBinner(contBin, "/bins", "contB");
-			}
-
-			if (measa & MEAS_ENERGY3DMAP){
-				// LogOut("write eMap ");
-				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",indexa);
-				writeEDens(axiona);
 			}
 
 			if (measa & MEAS_2DMAP)
