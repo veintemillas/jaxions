@@ -287,7 +287,7 @@ void	PrintMEoptions()
 	printf("  Axion Number spectrum (K+G+V)        65536 \n");
 	printf("  Saxion Number spectrum (K+G+V)      131072 \n\n");
   printf("  --spmask [int]              Sum of below integers\n");
-	printf("    Fields unmasked                        1 \n");
+	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
 
