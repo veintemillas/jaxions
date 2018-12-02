@@ -56,7 +56,7 @@ void	momGpu (Scalar *field, const uint kMax, const double kCrit)
 	cudaStream_t	&stream = static_cast<cudaStream_t *>(field->Streams())[0];
 
 	curandState_t	*state;
-	if ((cudaMalloc(&state, V*sizeof(curandState))) == NULL) {
+	if ((cudaMalloc(&state, V*sizeof(curandState))) != cudaSuccess) {
 		printf("Error: Couldn't allocate memory in device for random number generator\n");
 		exit (1);
 	}

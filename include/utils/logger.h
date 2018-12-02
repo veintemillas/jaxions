@@ -32,20 +32,20 @@
 
 		class	Msg {
 			private:
-				std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;	// Timestamp
-
 				int		tIdx;							// OMP thread
-				int		mRnk;							// MPI rank
 				int		size;							// Message size
 				std::string	data;							// Log message
 				LogLevel	logLevel;						// Level of logging (info, debug or error)
+				int		mRnk;							// MPI rank
 
-				char		packed[1024];						// For serialization and MPI
+				std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;	// Timestamp
 
 				mutable MPI_Request req;
 
+				char		packed[1024];						// For serialization and MPI
+
 			public:
-					Msg(LogLevel logLevel, const int tIdx, const char * format, ...) noexcept : logLevel(logLevel), tIdx(tIdx) {
+					Msg(LogLevel logLevel, const int tIdx, const char * format, ...) noexcept : tIdx(tIdx), size(0), data(""), logLevel(logLevel) {
 					char buffer[1024 - basePack];
 					va_list args;
 					va_start (args, format);
@@ -60,9 +60,9 @@
 
 					 Msg(const Msg &myMsg) noexcept : tIdx(myMsg.tIdx), size(myMsg.size), data(myMsg.data), logLevel(myMsg.logLevel),
 									  mRnk(myMsg.mRnk), timestamp(myMsg.timestamp), req(MPI_REQUEST_NULL) {};
-					 Msg(Msg &&myMsg)      noexcept : tIdx(std::move(myMsg.tIdx)), size(std::move(myMsg.size)), data(std::move(myMsg.data)), mRnk(std::move(myMsg.mRnk)),
-									  logLevel(std::move(myMsg.logLevel)), timestamp(myMsg.timestamp), req(MPI_REQUEST_NULL) {};
-					 Msg(void *vPack)      noexcept : tIdx(static_cast<ptrdiff_t*>(vPack)[1]), size(static_cast<ptrdiff_t*>(vPack)[3]),
+					 Msg(Msg &&myMsg)      noexcept : tIdx(std::move(myMsg.tIdx)), size(std::move(myMsg.size)), data(std::move(myMsg.data)), logLevel(std::move(myMsg.logLevel)),
+									  mRnk(std::move(myMsg.mRnk)), timestamp(myMsg.timestamp), req(MPI_REQUEST_NULL) {};
+					 Msg(void *vPack)      noexcept : tIdx(static_cast<ptrdiff_t*>(vPack)[1]), size(static_cast<ptrdiff_t*>(vPack)[3]), data(""),
 									  logLevel((LogLevel) static_cast<ptrdiff_t*>(vPack)[2]), mRnk(static_cast<ptrdiff_t*>(vPack)[4]) {
 					auto mTime = static_cast<ptrdiff_t*>(vPack)[0];
 					timestamp  = std::chrono::time_point<std::chrono::high_resolution_clock>(std::chrono::microseconds(mTime));
@@ -82,6 +82,8 @@
 
 					logLevel  = msg.logLevel;
 					timestamp = msg.timestamp;
+
+					return	(*this);
 				}
 
 				inline	long long int	time(std::chrono::time_point<std::chrono::high_resolution_clock> start) const {
@@ -91,7 +93,7 @@
 				inline	int		thread() const { return tIdx; }
 				inline	int		rank()   const { return mRnk; }
 				inline	std::string	msg()    const { return data; }
-				inline	const LogLevel	level()  const { return logLevel; }
+				inline	LogLevel	level()  const { return logLevel; }
 
 				inline	char*		pack() {
 					ptrdiff_t *sPack = static_cast<ptrdiff_t*>(static_cast<void*>(packed));
@@ -330,7 +332,7 @@
 					(*this)(LOG_MSG, nullptr, 0, "JAxions logger started");
 				}
 
-				const VerbosityLevel	Verbosity	() const { return	verbose; }
+				VerbosityLevel	Verbosity	() const { return	verbose; }
 		};
 
 		extern std::shared_ptr<Logger> myLog;

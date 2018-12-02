@@ -59,6 +59,9 @@ namespace profiler {
 
 		Profiler	redcProfiler("Reducer");
 		profs.insert(std::make_pair(PROF_REDUCER, redcProfiler));
+
+		Profiler	projProfiler("Projector");
+		profs.insert(std::make_pair(PROF_PROJECTOR, projProfiler));
 	}
 
 	void	printMiniStats(double z, StringData strDen, ProfType prof, std::string counter) {

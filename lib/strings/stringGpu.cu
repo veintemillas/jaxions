@@ -189,10 +189,10 @@ uint3	stringGpu	(const void * __restrict__ m, const uint Lx, const uint Lz, cons
 	uint  rV  = rSf*rLz;
 
 	if (cudaMalloc(&strg, sizeof(char)*rV+4) != cudaSuccess)
-		return	make_uint3(-1,-1,-1);
+		return	make_uint3(UINT_MAX, UINT_MAX, UINT_MAX);
 
 	if ((cudaMalloc(&d_str, sizeof(uint)*3) != cudaSuccess) || (cudaMalloc(&partial, sizeof(uint)*nBlocks*8) != cudaSuccess))
-		return	make_uint3(-1,-1,-1);
+		return	make_uint3(UINT_MAX, UINT_MAX, UINT_MAX);
 
 	double	ratio = ((double) rLx)/((double) Lx);
 	double	datio = ((double) rLz)/((double) Lz);

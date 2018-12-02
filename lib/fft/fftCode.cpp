@@ -54,6 +54,10 @@ namespace AxionFFT {
 				if (!noFile)
 					fftw_mpi_broadcast_wisdom(MPI_COMM_WORLD);
 				break;
+
+			default:
+				LogError ("Invalid field precision, nothing imported.");
+				return;
 		}
 
 		if (!noFile)
@@ -83,6 +87,10 @@ namespace AxionFFT {
 				fftw_mpi_gather_wisdom(MPI_COMM_WORLD);
 				if (myRank == 0) fftw_export_wisdom_to_filename(wisName);
 				break;
+
+			default:
+				LogError ("Invalid field precision, nothing exported.");
+				return;
 		}
 		LogMsg (VERB_NORMAL, "Wisdom successfully exported");
 	}
@@ -258,6 +266,10 @@ namespace AxionFFT {
 						if (dFft & FFT_BCK)
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
+
+					default:
+						LogError ("No FFT plan selected.");
+						break;
 				}
 			}
 			break;
@@ -425,9 +437,16 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
+					default:
+						LogError ("No FFT plan selected.");
+						break;
 				}
 			}
 			break;
+
+			default:
+				LogError ("Invalid field precision. Plan not created.");
+				return;
 		}
 
 		/*	Export wisdom	*/
@@ -447,6 +466,9 @@ namespace AxionFFT {
 					case	FFT_BCK:
 						fftwf_execute(static_cast<fftwf_plan>(planBackward));
 						break;
+
+					default:
+						break;
 				}
 				break;
 
@@ -459,8 +481,15 @@ namespace AxionFFT {
 					case	FFT_BCK:
 						fftw_execute(static_cast<fftw_plan>(planBackward));
 						break;
+
+					default:
+						break;
 				}
 				break;
+
+			default:
+				LogError ("Invalid field precision, plan not executed.");
+				return;
 		}
 	}
 
@@ -491,6 +520,10 @@ namespace AxionFFT {
 				totalFlops += (add + mul + 2.*fma)*1.e-9;
 			}
 			break;
+
+			default:
+				LogError ("Invalid field precision, can't count flops.");
+				return	totalFlops;
 		}
 
 		return	totalFlops;
@@ -622,10 +655,8 @@ namespace AxionFFT {
 				break;
 
 			default:
-				LogError ("Invalid precision");
+				LogError ("Invalid field precision, can't count flops.");
 				return;
-				break;
-
 		}
 
 		init = true;
@@ -681,6 +712,10 @@ namespace AxionFFT {
 					fftw_destroy_plan(static_cast<fftw_plan>(myPlan.PlanBack()));
 
 				break;
+
+			default:
+				LogError ("Invalid field precision, can't remove plan (probably it doesn't even exist).");
+				return;
 		}
 
 		return;
@@ -724,10 +759,10 @@ namespace AxionFFT {
 					fftw_cleanup();
 				break;
 
+
 			default:
-				LogError ("Invalid precision");
+				LogError ("Invalid field precision.");
 				return;
-				break;
 		}
 
 		LogMsg (VERB_NORMAL, "FFT successfully closed");

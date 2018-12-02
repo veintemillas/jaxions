@@ -12,6 +12,7 @@
 	void	destroyMeas	();
 
 	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
+	// void	writeString2	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
 	void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin);
@@ -19,6 +20,9 @@
 
 	void	writeMapHdf5	(Scalar *axion);
 	void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint);
+	void	writeEMapHdf5	(Scalar *axion);
+	void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint);
+	void	writePMapHdf5	(Scalar *axion);
 
 	void	reduceEDens	(int index, uint newLx, uint newLz);
 

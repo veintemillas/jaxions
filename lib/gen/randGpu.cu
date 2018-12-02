@@ -71,11 +71,11 @@ void	randGpu (Scalar *field)
 
 	curandState_t	*state;
 	if ((cudaMalloc(&state, memGpu*sizeof(curandState_t))) != cudaSuccess) {
-		printf("Error: Couldn't allocate %d bytes in device for random number generator\n", memGpu*sizeof(curandState_t));
+		printf("Error: Couldn't allocate %zu bytes in device for random number generator\n", memGpu*sizeof(curandState_t));
 		exit (1);
 	}
 
-	printf("\nParallel RNG using %d bytes in device\n", memGpu*sizeof(curandState_t));
+	printf("\nParallel RNG using %zu bytes in device\n", memGpu*sizeof(curandState_t));
 	fflush(stdout);
 
 	std::random_device seed;

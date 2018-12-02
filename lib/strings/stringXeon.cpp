@@ -499,7 +499,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 #if	defined(__AVX512F__)
 		const size_t  XC = ( Lx<<2);
 		const size_t  YC = ( Lx>>2);
-		const size_t rXC = (rLx<<2);
+//		const size_t rXC = (rLx<<2);
 		const size_t rYC = (rLx>>2);
 
 		int wHand[4] = { 0, 0, 0, 0 };
@@ -507,7 +507,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 #elif	defined(__AVX__)
 		const size_t  XC = ( Lx<<1);
 		const size_t  YC = ( Lx>>1);
-		const size_t rXC = (rLx<<1);
+//		const size_t rXC = (rLx<<1);
 		const size_t rYC = (rLx>>1);
 
 		int wHand[2] = { 0, 0 };
@@ -515,7 +515,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 #else
 		const size_t  XC = Lx;
 		const size_t  YC = Lx;
-		const size_t rXC = rLx;
+//		const size_t rXC = rLx;
 		const size_t rYC = rLx;
 
 		int wHand[1] = { 0 };
@@ -528,12 +528,14 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
-			_MData_ str, tmp;
+			#if	defined(__AVX__) & !defined(__AVX512F__)
+			_MData_ tmp, str;
+			#endif
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[3], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
+				size_t X[3], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0;//, idxMz;
 
 				{
 					size_t tmi = idx/XC;
@@ -545,7 +547,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
-				idxMz = ((idx - Sf) << 1);
+				//idxMz = ((idx - Sf) << 1);
 
 				if (X[1] == YC-1)
 				{
@@ -781,7 +783,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 #elif	defined(__AVX__)
 		const size_t  XC = ( Lx<<2);
 		const size_t  YC = ( Lx>>2);
-		const size_t rXC = (rLx<<2);
+		//const size_t rXC = (rLx<<2);
 		const size_t rYC = (rLx>>2);
 
 		int  hand[4] = { 0, 0, 0, 0 };
@@ -803,12 +805,14 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
-			_MData_ str, tmp;
+			#if	defined(__AVX__) & !defined(__AVX2__)
+			_MData_ tmp, str;
+			#endif
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[3], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0, idxMz;
+				size_t X[3], idxPx, idxPy, idxPz, idxXY, idxYZ, idxZX, idxP0;//, idxMz;
 
 				{
 					size_t tmi = idx/XC;
@@ -820,7 +824,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 
 				idxP0 = (idx << 1);
 				idxPz = ((idx + Sf) << 1);
-				idxMz = ((idx - Sf) << 1);
+				//idxMz = ((idx - Sf) << 1);
 
 				if (X[1] == YC-1)
 				{
@@ -1029,6 +1033,9 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 	strDat.strDen = nStrings;
 	strDat.strChr = nChiral;
 	strDat.wallDn = nWalls;
+	strDat.strDen_local = nStrings;
+	strDat.strChr_local = nChiral;
+	strDat.wallDn_local = nWalls;
 
 	return	strDat;
 }
@@ -1038,5 +1045,6 @@ StringData	stringCpu	(Scalar *field)
 	const size_t S = field->Surf();
 	const size_t V = field->Size();
 	field->exchangeGhosts(FIELD_M);
-	return	(stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
+	field->setSD(SD_STDWMAP);
+	return (stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
 }

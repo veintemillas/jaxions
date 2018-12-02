@@ -27,7 +27,7 @@
 #endif
 
 template<const bool wMod>
-inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
 				    const double ood2, const double aMass2, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
@@ -53,7 +53,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const double dzc = dz*c;
 		const double dzd = dz*d;
-		const double zR = *z;
+		const double zR = *R;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = aMass2*zR*zR*zR;
 		const double iz = 1.0/zR;
@@ -97,8 +97,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (int yy = 0; yy < bSizeY; yy++) {
-		      for (int xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < bSizeY; yy++) {
+		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
@@ -290,7 +290,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *z;
+		const float zR = *R;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*zR*zR*zR);
 		const float iz = 1.f/zR;
@@ -331,8 +331,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (int yy = 0; yy < bSizeY; yy++) {
-		      for (int xC = 0; xC < XC; xC += step) {
+		     for (uint yy = 0; yy < bSizeY; yy++) {
+		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
@@ -514,18 +514,18 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 #undef	Align
 #undef	_PREFIX_
 
-inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
 				    const double ood2, const double aMass2, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod)
 {
 	switch (wMod)
 	{
 		case	true:
-			propThetaKernelXeon<true> (m_, v_, m2_, z, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+			propThetaKernelXeon<true> (m_, v_, m2_, R, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 			break;
 
 		case	false:
-			propThetaKernelXeon<false>(m_, v_, m2_, z, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+			propThetaKernelXeon<false>(m_, v_, m2_, R, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 			break;
 	}
 }

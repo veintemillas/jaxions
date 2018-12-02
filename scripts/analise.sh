@@ -9,6 +9,7 @@ if [[ "$CONT" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
  ipython specevol.py every10
  ipython contrastevol.py every10
  ipython thetaBINevol.py every10
+ ipython rhoBINevol.py every10
 else
   echo '  menos curro!'
 fi

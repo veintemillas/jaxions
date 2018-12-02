@@ -17,11 +17,9 @@ class	ScaleField : public Tunable
 {
 	private:
 
-	const double factor;
-
+	Scalar		 *axionField;
 	const FieldIndex fIdx;
-
-	Scalar	*axionField;
+	const double	 factor;
 
 	public:
 

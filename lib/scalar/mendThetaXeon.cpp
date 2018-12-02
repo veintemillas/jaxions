@@ -395,7 +395,7 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 	/*	For MPI		*/
 	const int nSplit  = commSize();
 	const int rank    = commRank();
-	const int fwdNeig = (rank + 1) % nSplit;
+	//const int fwdNeig = (rank + 1) % nSplit;
 	const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
 
@@ -403,7 +403,7 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 
 		commSync();
 
-		const int cFwdNeig = (cRank + 1) % nSplit;
+		//const int cFwdNeig = (cRank + 1) % nSplit;
 		const int cBckNeig = (cRank - 1 + nSplit) % nSplit;
 
 		/*	Get the ghosts for slice 0							*/
@@ -480,6 +480,9 @@ size_t	mendThetaXeon (Scalar *field)
 		tJmp += mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
 		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
 		tJmp += mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		break;
+
+		default:
 		break;
 	}
 	LogOut("mendTheta done mends = %lu\n",tJmp);

@@ -2,7 +2,9 @@
 	#define	_CLASS_SPECTRUM_
 
 	#include <vector>
+	#include <complex>
 	#include <cmath>
+
 
 	#include "enum-field.h"
 	#include "scalar/scalarField.h"
@@ -19,12 +21,17 @@
 		std::vector<double>	binPS;
 
 		std::vector<double>	cosTable;
+		std::vector<double>	cosTable2;
 
 		Scalar			*field;
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
 		double			mass, massSax; // squared masses (comoving)
-		double 			ztime;
+		double 			Rscale, depta;
+		double 			zaskar;
+		float			zaskarf;
+		std::complex<double>	zaska ;
+		std::complex<float>	zaskaf ;
 
 		void			fillCosTable ();
 
@@ -35,7 +42,7 @@
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
-									       fPrec(field->Precision()), nPts(field->Size()), fType(field->Field()), spec(spectral) {
+									       nPts(field->Size()), spec(spectral), fPrec(field->Precision()), fType(field->Field()) {
 				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 
@@ -47,7 +54,14 @@
 
 				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
 				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
-				ztime   = *field->zV();
+				Rscale  = *field->RV();
+				depta   = field->BckGnd()->PhysSize()/Ly;
+
+				zaskar  = field->Saskia()*Rscale;
+				zaskarf = (float) zaskar ;
+				zaska   = std::complex<double>(zaskar,0.);
+				zaskaf  = std::complex<float>(zaskarf,0.f);
+
 				fillCosTable();
 
 				hLy = Ly >> 1;
@@ -72,11 +86,16 @@
 						LogError("Warning: WKB fields not supported for analysis");
 						Lx = 0; Ly = 0; hLx = 0; nPts = 0;
 						return;
-						break;
+
+					default:
+						LogError("Warning: Field not supported for analysis");
+						Lx = 0; Ly = 0; hLx = 0; nPts = 0;
+						return;
 				}
 
 				nPts = Lx*Ly*Lz;
-			}
+
+		}
 
 
 		inline const size_t	PowMax() const { return powMax; }
@@ -93,14 +112,29 @@
 		template<typename cFloat>
 		void	filterFFT	(int neigh);
 
-		void	nRun		();
+		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
 		void	nSRun		();
 		void	pRun		();
+		void	nmodRun		();
+
+		template<typename Float, SpectrumMaskType mask>
+		void	nRun		();
+
 
 
 		void	filter	(int neigh);
 
+		void	reset0(){
+				LogMsg(VERB_NORMAL,"Reset SpecAna Bins to zero");
+				binK.assign(powMax, 0.);
+				binG.assign(powMax, 0.);
+				binV.assign(powMax, 0.);
+				binP.assign(powMax, 0.);
+				binPS.assign(powMax, 0.);
+		}
 	};
+
+
 
 
 	inline double	SpecBin::operator()(size_t idx, SpectrumType sType)	const	{
@@ -129,6 +163,8 @@
 				return binPS[idx];
 				break;
 
+			default:
+				return	0.0;
 		}
 	}
 
@@ -158,6 +194,9 @@
 				return binPS[idx];
 				break;
 
+			default:
+				LogError ("Undefined spectrum requested.");
+				return	binK[0];
 		}
 	}
 
@@ -184,9 +223,12 @@
 				break;
 
 			case	SPECTRUM_PS:
+			case	SPECTRUM_NN:
 				return binPS.data();
 				break;
 
+			default:
+				return	nullptr;
 		}
 	}
 
@@ -213,8 +255,12 @@
 				break;
 
 			case	SPECTRUM_PS:
+			case	SPECTRUM_NN:
 				return binPS.data();
 				break;
+
+			default:
+				return	nullptr;
 		}
 	}
 #endif

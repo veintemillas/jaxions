@@ -72,7 +72,7 @@ void	smoothGpu (Scalar *field, const size_t iter, const double alpha)
 	switch	(field->Precision())
 	{
 		case	FIELD_DOUBLE:
-		for (int it=0; it<iter; it++)
+		for (size_t it=0; it<iter; it++)
 		{
 			iteraKernel<<<gridSize,blockSize>>> (static_cast<const complex<double>*>(field->mGpu()), static_cast<complex<double>*>(field->vGpu()), Lx, Sf, Vf, alpha);
 			cudaMemcpy(static_cast<char *>(field->mGpu()) + Sf*field->DataSize(), static_cast<char *>(field->vGpu()),  bytes, cudaMemcpyDeviceToDevice);
@@ -81,7 +81,7 @@ void	smoothGpu (Scalar *field, const size_t iter, const double alpha)
 		break;
 
 		case	FIELD_SINGLE:
-		for (int it=0; it<iter; it++)
+		for (size_t it=0; it<iter; it++)
 		{
 			iteraKernel<<<gridSize,blockSize>>> (static_cast<const complex<float>*>(field->mGpu()), static_cast<complex<float>*>(field->vGpu()), Lx, Sf, Vf, static_cast<float>(alpha));
 			cudaMemcpy(static_cast<char *>(field->mGpu()) + Sf*field->DataSize(), static_cast<char *>(field->vGpu()),  bytes, cudaMemcpyDeviceToDevice);

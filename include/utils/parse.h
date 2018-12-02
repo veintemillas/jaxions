@@ -13,11 +13,13 @@ extern int    fIndex;
 extern double zInit;
 extern double zFinl;
 //extern double LL;
+extern double frw;
 extern double mode0;
 extern double alpha;
 extern double kCrit;
 extern double parm2;
 extern double pregammo;
+extern double dwgammo;
 extern double p3DthresholdMB;
 extern size_t kMax;
 extern size_t iter;
@@ -29,6 +31,8 @@ extern int    Ng;
 extern double wDz;
 //extern double zthres;
 //extern double zrestore;
+extern size_t nstrings_globale;
+
 
 extern double wkb2z ;
 extern double prepstL;
@@ -51,9 +55,11 @@ extern bool uZin;
 extern bool uZfn;
 extern bool aMod;
 extern bool spectral;
+extern bool mink;
 extern bool icstudy;
 extern bool preprop;
-
+extern bool coSwitch2theta;
+extern bool WKBtotheend;
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
 extern ConfType	      cType;
@@ -64,13 +70,18 @@ extern LambdaType     lType;
 //extern VqcdType       vqcdTypeDamp;
 //extern VqcdType       vqcdTypeRhoevol;
 extern PropType       pType;
+extern SpectrumMaskType spmask;
+extern MeasureType  defaultmeasType;
 
-extern LogMpi	      logMpi;
+extern LogMpi       logMpi;
+extern bool         debug ;
 extern VerbosityLevel verb;
 
 //for output
 extern PrintConf      prinoconfo;
 extern bool           p2dmapo;
+extern bool           p2dEmapo;
+extern bool           p2dPmapo;
 extern bool           p3dstrings;
 extern bool           p3dwalls;
 extern bool           pconfinal;

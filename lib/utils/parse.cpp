@@ -26,20 +26,24 @@ double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
+double frw = 1.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
 double zrestore = 1000.0;
 double LL = 25000.;
 double parm2 = 0.;
-double pregammo = 0.;
-double gammo = 0.;
+double pregammo = 0.0;
+double dwgammo  = -1.0;
+double gammo    = 0.0;
 double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
 double prepstL = 5.0 ;
 double prepcoe = 3.0 ;
 int endredmap = -1;
 int safest0   = 20;
+size_t nstrings_globale ;
+
 
 bool lowmem   = false;
 bool uPrec    = false;
@@ -54,10 +58,15 @@ bool uZth     = false;
 bool uZrs     = false;
 bool uZin     = false;
 bool uZfn     = false;
+bool uMI      = false;
+bool uFR      = false;
 bool spectral = false;
+bool mink			= false;
 bool aMod     = false;
 bool icstudy  = false ;
 bool preprop  = false ;
+bool coSwitch2theta  = true ;
+bool WKBtotheend = false;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -65,6 +74,7 @@ size_t parm1 = 0;
 size_t wTime = std::numeric_limits<std::size_t>::max();
 
 PropType     pType     = PROP_NONE;
+SpectrumMaskType spmask= SPMASK_FLAT;
 ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
@@ -72,6 +82,10 @@ LambdaType   lType     = LAMBDA_FIXED;
 VqcdType     vqcdType  = VQCD_1;
 VqcdType     vqcdTypeDamp    = VQCD_NONE;
 VqcdType     vqcdTypeRhoevol = VQCD_NONE;
+
+
+// Default measurement type, some options can be chosen with special flags | all with --meas
+MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_SPECTRUM ;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -82,9 +96,12 @@ DeviceType	cDev   = DEV_CPU;
 
 VerbosityLevel	verb   = VERB_NORMAL;
 LogMpi		logMpi = ALL_RANKS;
+bool debug        = false;
 
 PrintConf prinoconfo  = PRINTCONF_NONE;
 bool p2dmapo  	  = false;
+bool p2dEmapo  	  = false;
+bool p2dPmapo  	  = false;
 bool p3dstrings	  = false;
 bool p3dwalls	  = false;
 bool pconfinal 	  = false;
@@ -129,7 +146,7 @@ void	PrintUsage(char *name)
 	printf("                                Splitting occurs in the z-dimension, so the total lattice is Lx^2 x (zgrid * Lz).\n");
 
 	printf("\nSimulation parameters:\n");
-	printf("  --lowmem                      Reduces memory usage by 33\%, but decreases performance as well (default false).\n");
+	printf("  --lowmem                      Reduces memory usage by 33%%, but decreases performance as well (default false).\n");
 	printf("  --prec  double/single         Precision of the axion field simulation (default single)\n");
 	printf("  --device cpu/gpu              Uses nVidia Gpus to accelerate the computations (default, use cpu).\n");
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
@@ -141,6 +158,8 @@ void	PrintUsage(char *name)
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
+	printf("  --mink                        Minkowski (No expansion of the Universe)\n");
+	printf("  --frw   [float]               Expansion of the Universe [R~eta^frw] (default frw = 1.0)\n");
 	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
 	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
 	printf("  --zf    [float]               Final value of the redshift (default 1.0).\n");
@@ -155,7 +174,7 @@ void	PrintUsage(char *name)
 
 	printf("\nInitial conditions:\n");
 	printf("  --icinfo                      Prints more info about initial conditions.\n");
-	printf("  --ctype smooth/kmax/tkachev   Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
+	printf("  --ctype smooth/kmax/vilgor    Initial configuration, either with smoothing or with FFT and a maximum momentum\n");
 	printf("  --smvar stXY/stYZ/mc0/mc/...  [smooth variants] string, mc's, pure mode, noise... initial conditions.\n");
 	printf("\n");
 	printf("  --kmax  [int]                 Maximum momentum squared for the generation of the configuration with --ctype kmax/tkachev (default 2)\n");
@@ -177,6 +196,7 @@ void	PrintUsage(char *name)
 	printf("\nOutput:\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
+	printf("--meas  [int]                   MeasuremeType [default ALLBIN|STRING|STRINGMAP|ENERGY|2DMAP|SPECTRUM].\n");
 	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
@@ -198,7 +218,7 @@ void	PrintUsage(char *name)
 
 void	PrintICoptions()
 {
-	printf("\Options for Initial conditions\n\n");
+	printf("\nOptions for Initial conditions\n\n");
 
 	printf("--ctype smooth/kmax/tkachev               			   Main IC selector.\n\n");
 
@@ -221,12 +241,59 @@ void	PrintICoptions()
 	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT.\n");
 	printf("                                                   for 3D k < kmax = min(kmax, N/2-1).\n");
 	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
-	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n");
+	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n\n");
+
+	printf(" [vilgor]                                          Start at log(ms/H)=0 in the attractor solution\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	return;
 }
+
+void	PrintMEoptions()
+{
+	printf("\nOptions for Measurement\n\n");
+
+	printf("--meas [int]                	Sum of integers.\n\n");
+
+	printf("--------------------------------------------------\n");
+	printf("  BINs\n");
+	printf("  Nothing                                  0 \n");
+	printf("  Theta angle binned                       1 \n");
+	printf("  Saxion field/v                           2 \n");
+	printf("  Log theta^2                              4 \n");
+	printf("  Axion density contrast                   8 \n\n");
+
+	printf("  MAPS\n");
+	printf("  String + Wall                           32 \n");
+	printf("  String + Wall 3D map                    64 \n\n");
+	// printf("  String + Wall coord.     160 \n");
+	printf("  Ax. + Sax. Energy                      256 \n");
+	printf("  Ax. Energy 3D map                      512 \n");
+	printf("  Ax. Energy reduced 3D map             1024 \n");
+
+	printf("  2D slice map (Field+Velocity)         2048 \n");
+	printf("  3D configuration                      4096 \n");
+
+
+	printf("  POWER SPECTRA (binned) \n");
+	printf("  Number of modes in each mom. bin    262144 \n");
+	printf("  Axion Energy spectrum                16384 \n");
+	printf("  Sxion Energy spectrum                32768 \n\n");
+
+	printf("  NUMBER SPECTRA (binned) \n");
+	printf("  Axion Number spectrum (K+G+V)        65536 \n");
+	printf("  Saxion Number spectrum (K+G+V)      131072 \n\n");
+  printf("  --spmask [int]              Sum of below integers\n");
+	printf("    Fields unmasked                        1 (default	)\n");
+	printf("    Masked with  rho/v                     2 \n");
+	printf("    Masked with (rho/v)^2                  4 \n");
+
+	return;
+}
+
 
 int	parseArgs (int argc, char *argv[])
 {
@@ -249,6 +316,12 @@ int	parseArgs (int argc, char *argv[])
 			exit(0);
 		}
 
+		if (!strcmp(argv[i], "--measinfo"))
+		{
+			PrintMEoptions();
+			exit(0);
+		}
+
 		if (!strcmp(argv[i], "--verbose"))
 		{
 			if (i+1 == argc)
@@ -257,7 +330,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sscanf(argv[i+1], "%d", &verb);
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&verb));
 
 			if (verb > VERB_HIGH)   verb = VERB_HIGH;
 			if (verb < VERB_SILENT) verb = VERB_SILENT;
@@ -266,6 +339,44 @@ int	parseArgs (int argc, char *argv[])
 			procArgs++;
 			passed = true;
 
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--mink"))
+		{
+			mink = true;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--debug"))
+		{
+			debug = true;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--frw"))
+		{
+
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the walltime.\n");
+				exit(1);
+			}
+
+			frw = atof(argv[i+1]);
+
+			if (frw < 0.)
+			{
+				printf("Warning: Contracting Universe?\n");
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
 			goto endFor;
 		}
 
@@ -280,7 +391,7 @@ int	parseArgs (int argc, char *argv[])
 				goto endFor;
 			}
 
-			sscanf(argv[i+1], "%d", &prinoconfo);
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&prinoconfo));
 			//printf("p3D set to %d \n", prinoconfo);
 
 			i++;
@@ -292,6 +403,26 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--p2Dmap"))
 		{
 			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapE"))
+		{
+			p2dEmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapP"))
+		{
+			p2dPmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -370,6 +501,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--NDW2"))
+		{
+			uPot = true;
+			vqcdType = VQCD_1N2 ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
 			uPot = true;
@@ -396,6 +536,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--notheta"))
+		{
+			coSwitch2theta = false;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--size"))
 		{
 			if (i+1 == argc)
@@ -411,9 +560,9 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Size must be larger than 2.\n");
 				exit(1);
 			}
-
-			if (endredmap == -1)
-				endredmap = sizeN;
+			//JARE change
+			// if (endredmap == -1)
+			// 	endredmap = sizeN;
 
 			i++;
 			procArgs++;
@@ -572,7 +721,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the prepropagator/string destructor damping factor.\n");
+				printf("Error: I need a value for the prepropagator damping factor.\n");
 				exit(1);
 			}
 
@@ -583,6 +732,28 @@ int	parseArgs (int argc, char *argv[])
 			//uGamma = true;
 
 			if (pregammo < 0.)
+			{
+				printf("Error: pre-Damping factor should be larger than 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--dwgam"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the DW?string destructor damping factor.\n");
+				exit(1);
+			}
+
+			dwgammo = atof(argv[i+1]);
+
+			if (dwgammo < 0.)
 			{
 				printf("Error: pre-Damping factor should be larger than 0.\n");
 				exit(1);
@@ -945,6 +1116,49 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--meas"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of steps.\n");
+				exit(1);
+			}
+			defaultmeasType = (MeasureType) atoi(argv[i+1]);
+
+			if (defaultmeasType < 0)
+			{
+				printf("Error: Measurement type must be >= 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--spmask"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a spectrum masking type: 1 (flat),2 (Villadoro),3 (Flat+Villadoro), ... .\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&spmask));
+
+			if (spmask < 0)
+			{
+				printf("Error: Spectrum masking type is a positive integer.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--name"))
 		{
 			if (i+1 == argc)
@@ -1048,6 +1262,18 @@ int	parseArgs (int argc, char *argv[])
 			else if (!strcmp(argv[i+1], "kmax"))
 			{
 				cType = CONF_KMAX;
+			}
+			else if (!strcmp(argv[i+1], "vilgor"))
+			{
+				cType = CONF_VILGOR;
+			}
+			else if (!strcmp(argv[i+1], "vilgork"))
+			{
+				cType = CONF_VILGORK;
+			}
+			else if (!strcmp(argv[i+1], "vilgors"))
+			{
+				cType = CONF_VILGORS;
 			}
 			else if (!strcmp(argv[i+1], "tkachev"))
 			{
@@ -1190,6 +1416,10 @@ int	parseArgs (int argc, char *argv[])
 			if (!strcmp(argv[i+1], "leap"))
 			{
 				pType |= PROP_LEAP;
+			}
+			else if (!strcmp(argv[i+1], "mleap"))
+			{
+				pType |= PROP_MLEAP;
 			}
 			else if (!strcmp(argv[i+1], "rkn4"))
 			{
@@ -1351,7 +1581,7 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (cType == CONF_SMOOTH)
+	if (cType == CONF_SMOOTH || cType == CONF_VILGOR)
 	{
 		parm1 = iter;
 		parm2 = alpha;
@@ -1385,6 +1615,20 @@ int	parseArgs (int argc, char *argv[])
 		zrestore = 100.;
 	}
 
+	/* make sure that endredmap makes sense */
+	{
+		int siN = (int) sizeN;
+		if (endredmap > siN){
+			printf("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
+			endredmap = siN;
+		}
+		if (siN%endredmap != 0 ){
+			int schei =  siN/endredmap;
+			endredmap = siN/schei;
+			printf("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
+		}
+	}
+
 	/*	Set the output directory, according to an environmental variable	*/
 
 	if (const char *outPath = std::getenv("AXIONS_OUTPUT")) {
@@ -1413,6 +1657,20 @@ int	parseArgs (int argc, char *argv[])
 			}
 		}
 	}
+
+	/*	Remove stop files if present	*/
+
+	FILE *capa = nullptr;
+	if (!((capa  = fopen("./stop", "r")) == nullptr)) {
+		fclose (capa);
+		printf("Stop file detected! ... ");
+		if( remove( "./stop" ) != 0 ){
+			printf("and cannot be deleted. Exit!\n");
+			exit(1);
+		} else
+			printf("and deleted!\n ");
+	}
+
 
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;
@@ -1448,7 +1706,12 @@ Cosmos	createCosmos()
 			myCosmos.SetZRestore(zrestore);
 
 		if (uI3)
-			myCosmos.SetZRestore(zrestore);
+			myCosmos.SetIndi3(zrestore);
+
+		if (uFR)
+			myCosmos.SetFrw(frw);
+		if (uMI)
+			myCosmos.SetMink(mink);
 	} else {
 		myCosmos.SetLambda  (LL);
 		myCosmos.SetQcdExp  (nQcd);
@@ -1458,6 +1721,8 @@ Cosmos	createCosmos()
 		myCosmos.SetZThRes  (zthres);
 		myCosmos.SetZRestore(zrestore);
 		myCosmos.SetIndi3   (indi3);
+		myCosmos.SetFrw     (frw);
+		myCosmos.SetMink    (mink);
 	}
 
 	return	myCosmos;

@@ -193,6 +193,9 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					}
 
 					break;
+
+				default:
+					break;
 			}
 
 			break;
@@ -243,6 +246,9 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					}
 
 					break;
+
+				default:
+					break;
 			}
 
 			break;
@@ -292,6 +298,9 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 							break;
 					}
 
+					break;
+
+				default:
 					break;
 			}
 

@@ -1,0 +1,191 @@
+# -*- coding: utf-8 -*-
+"""
+This example demonstrates the use of ImageView, which is a high-level widget for
+displaying and analyzing 2D and 3D data. ImageView provides:
+
+  1. A zoomable region (ViewBox) for displaying the image
+  2. A combination histogram and gradient editor (HistogramLUTItem) for
+     controlling the visual appearance of the image
+  3. A timeline for selecting the currently displayed frame (for 3D data only).
+  4. Tools for very basic analysis of image data (see ROI and Norm buttons)
+
+"""
+## Add path to library (just for examples; you do not need this)
+#import initExample
+
+import numpy as np
+from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph as pg
+from pyaxions import jaxions as pa
+
+from matplotlib import cm
+
+import os,re,sys
+import h5py
+
+# Interpret image data as row-major instead of col-major
+pg.setConfigOptions(imageAxisOrder='row-major')
+
+app = QtGui.QApplication([])
+
+## Create window with ImageView widget
+win = QtGui.QMainWindow()
+win.resize(1600,1600)
+imv = pg.ImageView()
+win.setCentralWidget(imv)
+win.show()
+win.setWindowTitle('pyqtgraph example: ImageView')
+
+## Create random 3D data set with noisy signals
+# img = pg.gaussianFilter(np.random.normal(size=(200, 200)), (5, 5)) * 20 + 100
+# img = img[np.newaxis,:,:]
+# decay = np.exp(-np.linspace(0,0.3,100))[:,np.newaxis,np.newaxis]
+# data = np.random.normal(size=(100, 200, 200))
+# data += img * decay
+# data += 2
+
+print('modes: theta [default], vtheta, saxion, vsaxion, saxion, eA, sP, real, imag')
+mode = 'theta'
+if len(sys.argv) == 2:
+    if (sys.argv[-1] == 'eA'):
+        mode = 'eA'
+        print('Axion energy map')
+    elif (sys.argv[-1] == 'eP'):
+        mode = 'eP'
+        print('Axion energy projection map')
+    elif (sys.argv[-1] == 'S'):
+        mode = 'S'
+        print('Saxion')
+    elif (sys.argv[-1] == 'dens'):
+        mode = 'den'
+        print('Density from m,v')
+    elif (sys.argv[-1] == 'real'):
+        mode = 'real'
+        print('real part of m/|m|')
+    elif (sys.argv[-1] == 'imag'):
+        mode = 'imag'
+        print('imaginary part of m/|m|')
+
+
+prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
+fileMeas = []
+for maes in prefileMeas:
+	f = h5py.File(maes, 'r')
+	if 'map' in f:
+		fileMeas.append(maes)
+fileHdf5 = h5py.File(fileMeas[0], "r")
+Lx = fileHdf5["/"].attrs.get("Size")
+Ly = fileHdf5["/"].attrs.get("Size")
+Lz = fileHdf5["/"].attrs.get("Depth")
+# z = fileHdf5["/"].attrs.get("z")
+
+fileHdf5.close()
+allData = []
+zData = []
+for meas in fileMeas:
+#			print(meas)
+    fileHdf5 = h5py.File(meas, "r")
+    zR = fileHdf5["/"].attrs.get("z")
+    fl = fileHdf5["/"].attrs.get("Field type").decode()
+
+    if (mode == 'theta') and pa.gm(meas,'map?'):
+        if fl == "Saxion":
+            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
+            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+            # rMax = np.amax(rData)
+            # rData = rData/zR
+        elif fl == "Axion":
+            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = aData/zR
+            rData = np.ones(aData.shape)
+            pData = np.ones(aData.shape)*(2*np.pi)
+            aData = (aData + pData)/(4.*np.pi)
+    elif mode == 'eA' and pa.gm(meas,'2Dmape?'):
+            avi = pa.gm(meas,'eA')
+            # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
+            aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi
+    elif mode == 'eP' and pa.gm(meas,'2DmapP?'):
+            avi = pa.gm(meas,'eA')**2
+            # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
+            aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
+    elif (mode == 'S') and (fl == "Saxion") and pa.gm(meas,'map?'):
+            aData = pa.gm(meas,'maprho')
+    if (mode == 'den') and pa.gm(meas,'map?'):
+        if fl == "Saxion":
+            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            aData = 1-np.arg(mTmp[:,:,0])/np.abs(mTmp[:,:])
+            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+            # rMax = np.amax(rData)
+            # rData = rData/zR
+        elif fl == "Axion":
+            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = aData/zR
+            rData = np.ones(aData.shape)
+            pData = np.ones(aData.shape)*(2*np.pi)
+            aData = (aData + pData)/(4.*np.pi)
+    if (mode == 'real') and pa.gm(meas,'map?'):
+        if fl == "Saxion":
+            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            aData = mTmp[:,:,1]/zR
+            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+            # rMax = np.amax(rData)
+            # rData = rData/zR
+        elif fl == "Axion":
+            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = np.cos(aData/zR)
+
+    #				iData = np.trunc(aData/(2*np.pi))
+    #				aData = aData - iData*(2*np.pi)
+    #				aData = aData - pData
+    #				pm = np.amax(aData)
+    #				print ("AMax %f" % pm)
+    		# rMax  = zR
+
+    allData.append(aData)
+    zData.append(zR)
+    fileHdf5.close()
+    # size = size + 1
+    # print(meas,zR)
+
+## Add time-varying signal
+# sig = np.zeros(data.shape[0])
+# sig[30:] += np.exp(-np.linspace(1,10, 70))
+# sig[40:] += np.exp(-np.linspace(1,10, 60))
+# sig[70:] += np.exp(-np.linspace(1,10, 30))
+#
+# sig = sig[:,np.newaxis,np.newaxis] * 3
+# data[:,50:60,30:40] += sig
+
+allData=np.array(allData)
+zData=np.array(zData)
+
+print(allData[0].shape)
+## Display the data and assign each frame a time value from 1.0 to 3.0
+# imv.setImage(data, xvals=np.linspace(1., 3., data.shape[0]))
+imv.setImage(allData, xvals=zData)
+
+## Set a custom color map
+if mode == 'Axion':
+    colors = [
+        (255, 255, 255),(255, 200, 200),
+        (255, 0, 0), (0, 0, 0), (0, 0, 255),
+        (200, 200, 255), (255, 255, 255) ]
+    cmap = pg.ColorMap(pos=np.linspace(0.0, 1.0, 7), color=colors)
+    imv.setColorMap(cmap)
+
+# elif mode == 'eA':
+    # colors = []
+    # for a in range(0,7):
+    #     b=1-(a/7)**2
+    #     colors.append((255*b,255*b,255*b))
+    # cmap = pg.ColorMap(pos=np.linspace(0., 1, len(colors)), color=colors)
+    # imv.setColorMap(cmap)
+
+
+
+## Start Qt event loop unless running in interactive mode.
+if __name__ == '__main__':
+    import sys
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+        QtGui.QApplication.instance().exec_()

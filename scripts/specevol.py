@@ -112,7 +112,7 @@ for meas in mylist:
     if pa.gm(meas,'ftype') == 'Axion':
         nT = (klist**3)*pa.gm(meas,'nsp')/nmodes
     else:
-        nT = (klist**3)*pa.gm(meas,'sspK')/nmodes
+        nT = (klist**3)*pa.gm(meas,'nspK')/nmodes
     # nG = pa.gm(meas,'nspG')/nmodes
     # nV = pa.gm(meas,'nspV')/nmodes
     time = pa.gm(meas,'time')

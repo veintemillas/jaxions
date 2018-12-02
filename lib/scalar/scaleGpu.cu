@@ -64,7 +64,6 @@ void    scaleGpu (Scalar *sField, FieldIndex fIdx, double factor)
 				default:
 				printf ("Wrong field. Valid possibilities: FIELD_M, FIELD_M2 and FIELD_V");
 				return;
-				break;
 			}
 
 			scaleKernel<double><<<gridSize, blockSize, 0, ((cudaStream_t *)sField->Streams())[0]>>> (field, V, factor);

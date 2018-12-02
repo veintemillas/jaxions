@@ -26,7 +26,7 @@
 	#endif
 #endif
 
-void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *z, const double dz, const double c, const double d,
+void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
 			     const double aMass2, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
@@ -50,20 +50,20 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 
 		const double dzc = dz*c;
 		const double dzd = dz*d;
-		const double zR = *z;
+		const double zR = *R;
 		const double iZ = 1./zR;
 		//const double zQ = 9.*pow(zR, nQcd+3.);
 		const double zQ = aMass2*zR*zR*zR;
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
+//		const size_t XC = (Lx<<3);
+//		const size_t YC = (Lx>>3);
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+//		const size_t XC = (Lx<<2);
+//		const size_t YC = (Lx>>2);
 #else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+//		const size_t XC = (Lx<<1);
+//		const size_t YC = (Lx>>1);
 #endif
 		const _MData_ zQVec  = opCode(set1_pd, zQ);
 		const _MData_ izVec  = opCode(set1_pd, iZ);
@@ -122,13 +122,13 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *z;
+		const float zR = *R;
 		const float iZ = 1./zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*zR*zR*zR);
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<4);
-		const size_t YC = (Lx>>4);
+//		const size_t XC = (Lx<<4);
+//		const size_t YC = (Lx>>4);
 
 		const int    __attribute__((aligned(Align))) shfRg[16] = {15,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14};
 		const int    __attribute__((aligned(Align))) shfLf[16] = { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,  0};
@@ -136,11 +136,11 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 		const auto vShRg  = opCode(load_si512, shfRg);
 		const auto vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
+//		const size_t XC = (Lx<<3);
+//		const size_t YC = (Lx>>3);
 #else
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+//		const size_t XC = (Lx<<2);
+//		const size_t YC = (Lx>>2);
 #endif
 		const _MData_ zQVec  = opCode(set1_ps, zQ);
 		const _MData_ izVec  = opCode(set1_ps, iZ);
@@ -182,4 +182,3 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 #undef	step
 	}
 }
-

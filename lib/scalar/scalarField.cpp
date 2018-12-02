@@ -38,8 +38,8 @@ const std::complex<float> If(0.,1.);
 
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
-		       ConfType cType, const size_t parm1, const double parm2) : nSplit(nSp), n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Ez(nLz + 2), Tz(Lz*nSp), v3(nLx*nLx*(nLz + 2)),
-		       fieldType(newType), lambdaType(lType), precision(prec), device(dev), lowmem(lowmem)
+		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp), 
+		       device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -127,7 +127,7 @@ const std::complex<float> If(0.,1.);
 	}
 
 	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = n3*fSize;
+	const size_t	vBytes = v3*fSize;
 
 	// MODIFIED BY JAVI
 	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
@@ -217,7 +217,7 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
-	if (str == nullptr && (fieldType & FIELD_SAXION != 0))
+	if (str == nullptr && (fieldType & (FIELD_SAXION != 0)))
 	{
 		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
 		exit(1);
@@ -234,13 +234,21 @@ const std::complex<float> If(0.,1.);
 
 	memset (m, 0, fSize*v3);
 	// changed from memset (v, 0, fSize*n3);
-	memset (v, 0, fSize*n3);
+	memset (v, 0, fSize*v3);
 
 	commSync();
 
+
 	alignAlloc ((void **) &z, mAlign, mAlign);
+	alignAlloc ((void **) &R, mAlign, mAlign);
 
 	if (z == nullptr)
+	{
+		LogError ("Error: couldn't allocate %d bytes on host for the z field", sizeof(double));
+		exit(1);
+	}
+
+	if (R == nullptr)
 	{
 		LogError ("Error: couldn't allocate %d bytes on host for the z field", sizeof(double));
 		exit(1);
@@ -294,6 +302,9 @@ const std::complex<float> If(0.,1.);
 	}
 
 	*z = zI;
+	*R = 1.0;
+	updateR();
+
 
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
@@ -338,11 +349,12 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
-				if (cType == CONF_KMAX || cType == CONF_TKACHEV)
+				if ((cType == CONF_KMAX) || (((cType == CONF_VILGOR) || (cType == CONF_TKACHEV)))) {
 					if (lowmem)
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
+				}
 				prof.stop();
 
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
@@ -375,6 +387,9 @@ const std::complex<float> If(0.,1.);
 
 	if (z != nullptr)
 		trackFree((void *) z);
+
+	if (R != nullptr)
+		trackFree((void *) R);
 
 	if (device == DEV_GPU)
 	{
@@ -627,6 +642,10 @@ void	Scalar::setField (FieldType newType)
 					#endif
 
 					break;
+
+					default:
+					LogError ("Wrong precision.");
+					return;
 				}
 
 				fSize /= 2;
@@ -634,7 +653,7 @@ void	Scalar::setField (FieldType newType)
 				if (device != DEV_GPU)
 					shift *= 2;
 
-				const size_t	mBytes = v3*fSize;
+//				const size_t	mBytes = v3*fSize;
 
 				//if (lowmem)
 				//AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
@@ -682,13 +701,15 @@ void	Scalar::setField (FieldType newType)
 
 		case	FIELD_SAXION:
 			if (fieldType & FIELD_AXION)
-			{
-				if (commRank() == 0)
-					LogError ("Error: transformation from axion to saxion not supported");
-			} else {
+				LogError ("Error: transformation from axion to saxion not supported");
+			else
 				fieldType = FIELD_SAXION;
-			}
 			break;
+
+		default:
+			LogError ("Error: transformation not supported");
+			break;
+
 	}
 	fieldType = newType;
 }
@@ -711,23 +732,44 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 	}
 }
 
+void	Scalar::updateR ()
+{
+	// updates scale factor R = z^frw
+	// Minkowski frw = 0, Radiation frw = 1,
+	// if Minkowski R=1 and there is no need
+	// by default R=z and there is no need (one uses z for all purposes)
+	if (!bckgnd->Mink())
+		*R = pow(*z,frw);
+}
+
+double  Scalar::HubbleMassSq  ()
+{
+	// R''/R = frw(frw-1)/z^2
+	// since we have R=z^frw
+	//except in the case where frw = 0,1
+	int fr = (int) bckgnd->Frw();
+	return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
+}
+
 double	Scalar::AxionMass  () {
 
 	double aMass;
-	double zNow      = *zV();
+	double RNow      = *RV();
+	// ZThRes is applied to R, not z
+	// change the names?
 	double &zThRes   = bckgnd->ZThRes();
 	double &zRestore = bckgnd->ZRestore();
 	double &indi3    = bckgnd->Indi3();
 	double &nQcd     = bckgnd->QcdExp();
 
-        if ((zNow > zThRes) &&  (zThRes < zRestore))
+        if ((RNow > zThRes) &&  (zThRes < zRestore))
         {
                 aMass = indi3*pow(zThRes, nQcd*0.5);
-                if (zNow > zRestore)
-                        aMass *= pow(zNow/zRestore, nQcd*0.5);
+                if (RNow > zRestore)
+                        aMass *= pow(RNow/zRestore, nQcd*0.5);
         }
         else
-                aMass = indi3*pow(zNow, nQcd*0.5);
+                aMass = indi3*pow(RNow, nQcd*0.5);
 
         return aMass;
 }
@@ -735,23 +777,25 @@ double	Scalar::AxionMass  () {
 double	Scalar::AxionMassSq() {
 
 	double aMass;
-	double zNow      = *zV();
+	double RNow      = *RV();
 	double &zThRes   = bckgnd->ZThRes();
 	double &zRestore = bckgnd->ZRestore();
 	double &indi3    = bckgnd->Indi3();
 	double &nQcd     = bckgnd->QcdExp();
 
-        if ((zNow > zThRes) &&  (zThRes < zRestore))
+        if ((RNow > zThRes) &&  (zThRes < zRestore))
         {
                 aMass = indi3*indi3*pow(zThRes, nQcd);
-                if (*z > zRestore)
-                        aMass *= pow(zNow/zRestore, nQcd);
+                if (RNow > zRestore)
+                        aMass *= pow(RNow/zRestore, nQcd);
         }
         else
-                aMass = indi3*indi3*pow(zNow, nQcd);
+                aMass = indi3*indi3*pow(RNow, nQcd);
 
         return aMass;
 }
+
+
 
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  ()
@@ -760,22 +804,20 @@ double  Scalar::SaxionMassSq  ()
 	double lbd   = bckgnd->Lambda();
 	//a bit confusing that scalar->Lambda() is a MODE or type of Lambda, instead of the value
 	if (Lambda() == LAMBDA_Z2)
-		lbd /= (*zV())*(*zV());
+		lbd /= (*RV())*(*RV());
 
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
 		case    VQCD_1:
+		case    VQCD_2:
+		case    VQCD_1N2:
 			return 2.*lbd;
 			break;
 
 		case    VQCD_1_PQ_2:
 		case    VQCD_1_PQ_2_DRHO:
 			return  8.*lbd;
-			break;
-
-		case    VQCD_2:
-			return  2.*lbd;
 			break;
 
 		default :
@@ -788,6 +830,7 @@ double  Scalar::SaxionMassSq  ()
 
 double	Scalar::dzSize	   () {
 	double zNow = *zV();
+	double RNow = *RV();
         double oodl = ((double) n1)/bckgnd->PhysSize();
         double mAx2 = AxionMassSq();
 	double &lbd = bckgnd->Lambda();
@@ -795,13 +838,15 @@ double	Scalar::dzSize	   () {
 	auto   &pot = bckgnd->QcdPot();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
-                return  wDz/sqrt(mAx2*(zNow*zNow) + 12.*(oodl*oodl));
+                return  std::min(wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
          else
-                mAfq = sqrt(mAx2*(zNow*zNow) + 12.*oodl*oodl);
+                mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
 
         double mSfq = 0.;
 
-        double facto = 1.;
+				mAfq = std::max(mAfq,HubbleMassSq());
+
+				double facto = 1.;
         if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
                 facto = 2. ;
 
@@ -811,20 +856,21 @@ double	Scalar::dzSize	   () {
                         break;
 
                 case    LAMBDA_FIXED:
-                        mSfq = sqrt(2.*lbd*(zNow*zNow)*facto*facto + 12.*oodl*oodl);
+                        mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
                         break;
         }
 
-        return  wDz/std::max(mSfq,mAfq);
+        return  std::min(wDz/std::max(mSfq,mAfq),zNow/10.);
 }
 
+// Fix for arbitrary background
 double Scalar::SaxionShift()
 {
 	double lbd   = bckgnd->Lambda();
 	double alpha = AxionMassSq()/lbd;
 
 	if (Lambda() == LAMBDA_Z2)
-		alpha *= (*z)*(*z);
+		alpha *= (*R)*(*R);
 
 	double discr = 4./3.-9.*alpha*alpha;
 
@@ -845,13 +891,18 @@ double  Scalar::Saskia  ()
 		{
 			double  lbd = bckgnd->Lambda();
 			if (Lambda() == LAMBDA_Z2)
-				return  rsvPQ2(AxionMassSq()/lbd*(*z)*(*z));
+				return  rsvPQ2(AxionMassSq()/lbd*(*R)*(*R));
 			else
 				return  rsvPQ2(AxionMassSq()/lbd);
 			break;
 		}
 
 		case    VQCD_2:
+			return  0.;
+			break;
+
+		// This is yet to be computed
+		case    VQCD_1N2:
 			return  0.;
 			break;
 
@@ -863,7 +914,7 @@ double  Scalar::Saskia  ()
 	return  0.;
 }
 
-double	Scalar::AxionMass  (const double zNow) {
+double	Scalar::AxionMass  (const double RNow) {
 
 	double aMass;
 	double &zThRes   = bckgnd->ZThRes();
@@ -871,19 +922,19 @@ double	Scalar::AxionMass  (const double zNow) {
 	double &indi3    = bckgnd->Indi3();
 	double &nQcd     = bckgnd->QcdExp();
 
-        if ((zNow > zThRes) &&  (zThRes < zRestore))
+        if ((RNow > zThRes) &&  (zThRes < zRestore))
         {
                 aMass = indi3*pow(zThRes, nQcd*0.5);
-                if (zNow > zRestore)
-                        aMass *= pow(zNow/zRestore, nQcd*0.5);
+                if (RNow > zRestore)
+                        aMass *= pow(RNow/zRestore, nQcd*0.5);
         }
         else
-                aMass = indi3*pow(zNow, nQcd*0.5);
+                aMass = indi3*pow(RNow, nQcd*0.5);
 
         return aMass;
 }
 
-double	Scalar::AxionMassSq(const double zNow) {
+double	Scalar::AxionMassSq(const double RNow) {
 
 	double aMass;
 	double &zThRes   = bckgnd->ZThRes();
@@ -891,40 +942,38 @@ double	Scalar::AxionMassSq(const double zNow) {
 	double &indi3    = bckgnd->Indi3();
 	double &nQcd     = bckgnd->QcdExp();
 
-        if ((zNow > zThRes) &&  (zThRes < zRestore))
+        if ((RNow > zThRes) &&  (zThRes < zRestore))
         {
                 aMass = indi3*indi3*pow(zThRes, nQcd);
-                if (*z > zRestore)
-                        aMass *= pow(zNow/zRestore, nQcd);
+                if (RNow > zRestore)
+                        aMass *= pow(RNow/zRestore, nQcd);
         }
         else
-                aMass = indi3*indi3*pow(zNow, nQcd);
+                aMass = indi3*indi3*pow(RNow, nQcd);
 
         return aMass;
 }
 
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
-double  Scalar::SaxionMassSq  (const double zNow)
+double  Scalar::SaxionMassSq  (const double RNow)
 {
 
 	double lbd   = bckgnd->Lambda();
 	if (Lambda() == LAMBDA_Z2)
-		lbd /= (zNow)*(zNow);
+		lbd /= (RNow)*(RNow);
 
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
 		case    VQCD_1:
+		case    VQCD_2:
+		case    VQCD_1N2:
 			return 2.*lbd;
 			break;
 
 		case    VQCD_1_PQ_2:
 		case    VQCD_1_PQ_2_DRHO:
 			return  8.*lbd;
-			break;
-
-		case    VQCD_2:
-			return  2.*lbd;
 			break;
 
 		default :
@@ -935,7 +984,7 @@ double  Scalar::SaxionMassSq  (const double zNow)
 	return  0.;
 }
 
-double	Scalar::dzSize	   (const double zNow) {
+double	Scalar::dzSize	   (const double RNow) {
         double oodl = ((double) n1)/bckgnd->PhysSize();
         double mAx2 = AxionMassSq();
 	double &lbd = bckgnd->Lambda();
@@ -943,11 +992,13 @@ double	Scalar::dzSize	   (const double zNow) {
 	auto   &pot = bckgnd->QcdPot();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
-                return  wDz/sqrt(mAx2*(zNow*zNow) + 12.*(oodl*oodl));
+                return  wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
          else
-                mAfq = sqrt(mAx2*(zNow*zNow) + 12.*oodl*oodl);
+                mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
 
         double mSfq = 0.;
+
+				mAfq = std::max(mAfq,HubbleMassSq());
 
         double facto = 1.;
         if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
@@ -959,23 +1010,23 @@ double	Scalar::dzSize	   (const double zNow) {
                         break;
 
                 case    LAMBDA_FIXED:
-                        mSfq = sqrt(2.*lbd*(zNow*zNow)*facto*facto + 12.*oodl*oodl);
+                        mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
                         break;
         }
 
         return  wDz/std::max(mSfq,mAfq);
 }
 
-double Scalar::SaxionShift(const double zNow)
+double Scalar::SaxionShift(const double RNow)
 {
 	double &lbd = bckgnd->Lambda();
-	double alpha = AxionMassSq()/(lbd*zNow*zNow);
+	double alpha = AxionMassSq()/(lbd*RNow*RNow);
 	double discr = 4./3.-9.*alpha*alpha;
 
 	return	((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
 }
 
-double  Scalar::Saskia  (const double zNow)
+double  Scalar::Saskia  (const double RNow)
 {
 	double &lbd = bckgnd->Lambda();
 	auto   &pot = bckgnd->QcdPot();
@@ -987,12 +1038,17 @@ double  Scalar::Saskia  (const double zNow)
 
 		case    VQCD_1_PQ_2:
 		case    VQCD_1_PQ_2_DRHO:
-			return  rsvPQ2(AxionMassSq()/(lbd*zNow*zNow));
+			return  rsvPQ2(AxionMassSq()/(lbd*RNow*RNow));
 			break;
 
 		case    VQCD_2:
 			return  0.;
 			break;
+
+		case    VQCD_1N2:
+			return  0.;
+			break;
+
 
 		default :
 			return  0;
@@ -1071,7 +1127,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		//float *mVeloc = static_cast<float*> (v);
 
 		int size = 0 ;
-		size_t iyP, iyM, ixP, ixM;
+//		size_t iyP, iyM, ixP, ixM;
 		size_t fidx ;
 		size_t iz, iy, ix ;
 		size_t idaux, ixyzAux	;
@@ -1177,7 +1233,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	printMpi("%d axitons: ", numaxitons );
 	for(int i = 0; i<numaxitons; i++)
 	{
-		printMpi("%f(%d)", ct_local[i], ar_local[i]);
+		printMpi("%f(%zu)", ct_local[i], ar_local[i]);
 	}
 	printMpi("\n");
 

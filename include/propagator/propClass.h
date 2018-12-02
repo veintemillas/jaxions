@@ -32,17 +32,16 @@
 	{
 		protected:
 
+		Scalar		*axion;
+		const size_t	Lx, Lz, V, S;
+		const double	ood2;
+		double		&lambda;
+		FieldPrecision	precision;
+		double		&gamma;
+		LambdaType	lType;
+
 		double	c[nStages + (lastStage == true ? 1 : 0)];
 		double	d[nStages];
-		double	&lambda;
-		double	&gamma;
-		const double ood2;
-		const size_t Lx, Lz, V, S;
-
-		FieldPrecision precision;
-		LambdaType lType;
-
-		Scalar	*axion;
 
 		public:
 
@@ -152,7 +151,9 @@
 	#ifdef  USE_GPU
 		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 		const uint ext = uV + uS;
+		// eom only depend on R
 		double *z = axion->zV();
+		double *R = axion->RV();
 
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
@@ -162,27 +163,29 @@
 
 			auto maa = axion->AxionMassSq();
 
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
-			*z += dz*d1;
 
+			*z += dz*d1;
+			axion->updateR();
 			maa = axion->AxionMassSq();
 
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M2);
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 			*z += dz*d2;
+			axion->updateR();
 		}
 
 		if (lastStage) {
@@ -190,12 +193,12 @@
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c0, 0., ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c0, 0., ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c0, 0., ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c0, 0., ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 		}
@@ -212,58 +215,63 @@
 	#ifdef	USE_GPU
 		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 		const uint ext = uV + uS;
+
+		// eom only depend on R
 		double *z = axion->zV();
+		double *R = axion->RV();
 		double cLmbda = lambda;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
 			auto maa = axion->AxionMassSq();
 
-			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0]);
-			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), z, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
-			*z += dz*d1;
 
+			*z += dz*d1;
+			axion->updateR();
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			maa = axion->AxionMassSq();
 
-			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M2);
-			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0]);
-			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), z, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 			*z += dz*d2;
+			axion->updateR();
 		}
 
 		if (lastStage) {
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 		}
 	#else
@@ -280,29 +288,31 @@
 		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 		const uint ext = V + S;
 		double *z = axion->zV();
+		double *R = axion->RV();
 		double cLmbda = lambda;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 
+			axion->updateR();
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[0]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[1]);
 			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, Lx, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
 
 			*z += dz*d0;
-
+			axion->updateR();
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[2]);
 		}
 
@@ -310,14 +320,14 @@
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), z, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 			cudaDeviceSynchronize();
 		}
@@ -334,6 +344,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tRunCpu	(const double dz) {
 		double *z = axion->zV();
+		double *R = axion->RV();
 
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
@@ -345,21 +356,23 @@
 
 			auto maa = axion->AxionMassSq();
 
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c1, d1, ood2, maa, Lx, 2*S, V, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, maa, Lx, 2*S, V, precision, xBlock, yBlock, zBlock, wMod);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c1, d1, ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c1, d1, ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
 			*z += dz*d1;
+			axion->updateR();
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
 			maa = axion->AxionMassSq();
 
-			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), z, dz, c2, d2, ood2, maa, Lx, 2*S, V, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, maa, Lx, 2*S, V, precision, xBlock, yBlock, zBlock, wMod);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), z, dz, c2, d2, ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
-			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), z, dz, c2, d2, ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
 			*z += dz*d2;
+			axion->updateR();
 		}
 
 		if (lastStage) {
@@ -369,10 +382,10 @@
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0., ood2, maa, Lx, 2*S, V, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0., ood2, maa, Lx, 2*S, V, precision, xBlock, yBlock, zBlock, wMod);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0., ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0., ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0., ood2, maa, Lx, S, 2*S, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0., ood2, maa, Lx, V, V+S, precision, xBlock, yBlock, zBlock, wMod);
 		}
 
 	}
@@ -383,6 +396,7 @@
 	void	PropClass<nStages, lastStage, VQcd>::tSpecCpu	(const double dz) {
 
 		double *z     = axion->zV();
+		double *R     = axion->RV();
 		auto	Lz    = axion->Depth();
 		auto	Lx    = axion->Length();
 		auto	lSize = axion->BckGnd()->PhysSize();
@@ -406,7 +420,7 @@
 			const double	c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
 			#pragma omp parallel for schedule(static)
-			for (int sl=0; sl<Sf; sl++) {
+			for (size_t sl=0; sl<Sf; sl++) {
 				auto	oOff = sl*axion->DataSize()*Lx;
 				auto	fOff = sl*axion->DataSize()*(Lx+2);
 
@@ -414,8 +428,9 @@
 			}
 
 			applyLaplacian(axion);
-			sPropThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, d0, maa, fMom, Lx, S, V+S, precision);
+			sPropThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, maa, fMom, Lx, S, V+S, precision);
 			*z += dz*d[s];
+			axion->updateR();
 		}
 
 		if (lastStage) {
@@ -424,14 +439,14 @@
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
 			#pragma omp parallel for schedule(static)
-			for (int sl=0; sl<Sf; sl++) {
+			for (size_t sl=0; sl<Sf; sl++) {
 				auto	oOff = sl*axion->DataSize()*Lx;
 				auto	fOff = sl*axion->DataSize()*(Lx+2);
 				memcpy (mF+fOff, mO+oOff, dataLine);
 			}
 
 			applyLaplacian(axion);
-			sPropThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0.0, maa, fMom, Lx, S, V+S, precision);
+			sPropThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0.0, maa, fMom, Lx, S, V+S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 	}
@@ -440,6 +455,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunCpu	(const double dz) {
 		double *z = axion->zV();
+		double *R = axion->RV();
 		double cLmbda = lambda;
 
 		#pragma unroll
@@ -450,42 +466,44 @@
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			auto maa = axion->AxionMassSq();
 
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
 			*z += dz*d1;
+			axion->updateR();
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			maa = axion->AxionMassSq();
 
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), z, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), z, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), z, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
 			*z += dz*d2;
+			axion->updateR();
 		}
 
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 	}
@@ -495,6 +513,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::lowCpu	(const double dz) {
 		double *z = axion->zV();
+		double *R = axion->RV();
 		double cLmbda = lambda;
 
 		#pragma unroll
@@ -502,16 +521,17 @@
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, S, V + S, S, precision);
 			*z += dz*d0;
+			axion->updateR();
 		}
 
 		if (lastStage) {
@@ -522,10 +542,10 @@
 
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), z, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
 	}
 
@@ -534,6 +554,7 @@
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
 
 		double *z = axion->zV();
+		double *R = axion->RV();
 		double cLmbda = lambda;
 		auto   lSize  = axion->BckGnd()->PhysSize();
 
@@ -553,10 +574,11 @@
 			applyLaplacian(axion);
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
-			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 			*z += dz*d0;
+			axion->updateR();
 		}
 
 		if (lastStage) {
@@ -567,9 +589,9 @@
 			applyLaplacian(axion);
 
 			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+				cLmbda = lambda/((*R)*(*R));
 
-			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), z, dz, c0, 0.0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0.0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 	}
@@ -581,6 +603,8 @@
 
 				case FIELD_SAXION:
 					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+
+						default:
 						case VQCD_1:
 							return	(1e-9 * ((double) axion->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
 							break;
@@ -597,6 +621,13 @@
 							return	(1e-9 * ((double) axion->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
 							break;
 
+						case VQCD_1N2:
+							return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+							break;
+
+						case VQCD_QUAD:
+							return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+							break;
 					}
 					break;
 
@@ -605,6 +636,7 @@
 					return	(1e-9 * ((double) axion->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
 					break;
 
+				default:
 				case FIELD_WKB:
 					return	0.;
 					break;
@@ -616,6 +648,8 @@
 					auto &planFFT   = AxionFFT::fetchPlan("SpSx");
 					double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
 					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+
+						default:
 						case VQCD_1:
 							return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
 								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
@@ -644,11 +678,13 @@
 				}
 				break;
 
+				default:
 				case FIELD_WKB:
 				return	0.;
-				break;
 			}
 		}
+
+		return	0.;
 	}
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>

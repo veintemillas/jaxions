@@ -175,22 +175,20 @@ uint	mendLineGpu	(Float * __restrict__ m, Float * __restrict__ v, const Float zP
 	/*	For MPI		*/
 	const int nSplit  = commSize();
 	const int rank    = commRank();
-	const int fwdNeig = (rank + 1) % nSplit;
+	//const int fwdNeig = (rank + 1) % nSplit;
 	const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
 	uint count = 0;
 	uint *cnt_d;
 
-printf("Alloc\n"); fflush(stdout);
 	if (cudaMalloc(&cnt_d, sizeof(uint)) != cudaSuccess)
 		return  0;
 		
 	for (int cRank = 0; cRank < commSize(); cRank++) {
 
-printf("Loop %d / %d\n", cRank, commSize()); fflush(stdout);
 		commSync();
 
-		const int cFwdNeig = (cRank + 1) % nSplit;
+		//const int cFwdNeig = (cRank + 1) % nSplit;
 		const int cBckNeig = (cRank - 1 + nSplit) % nSplit;
 
 		/*	Get the ghosts for slice 0							*/
@@ -206,7 +204,6 @@ printf("Loop %d / %d\n", cRank, commSize()); fflush(stdout);
 
 			if (cErr != cudaSuccess) {
 				LogError("Error: %s\n", cudaGetErrorString(cErr));
-printf("AAAAHH\n\n\n\n"); fflush(stdout);
 				return	0;
 			}
 
@@ -259,18 +256,14 @@ uint	mendThetaGpu	(Float * __restrict__ m, Float * __restrict__ v, const Float z
 	const Float zP = z*M_PI;
 
 	uint pTmp = 0;
-printf("Line\n"); fflush(stdout);
 	tJmp += mendLineGpu(m, v, zP, Lz, Sf, stream);
-printf("Slice\n"); fflush(stdout);
 	mendSliceGpu<Float><<<gridLn, blockSize, 0, stream>>>(m, v, zP, Lx, Lz, Sf, &pTmp, partial);
 	cudaDeviceSynchronize();
 	tJmp += pTmp;
 	cudaMemset(partial, 0, sizeof(uint)*maxBlock*8);
 	pTmp = 0;
-printf("Bulk\n"); fflush(stdout);
 	mendBulkGpu <Float><<<gridSf, blockSize, 0, stream>>>(m, v, zP, Lx, Sf, &pTmp, partial);
 	cudaDeviceSynchronize();
-printf("Done\n"); fflush(stdout);
 	tJmp += pTmp;
 
 	cudaFree(partial);
@@ -292,9 +285,12 @@ uint	mendThetaGpu(Scalar *field) {
 			tJmp = mendThetaGpu(static_cast<double*>(field->mGpu()), static_cast<double*>(field->vGpu()),         z, field->Length(), field->Depth(),
 								field->Surf(), ((cudaStream_t *) field->Streams())[0]);
 			break;
+		default:
+			tJmp = 0;
+			break;
 	}
 
-	LogOut("mendTheta done mends = %lu\n", tJmp);
+	LogOut("mendTheta done mends = %u\n", tJmp);
 
 	return	tJmp;
 }

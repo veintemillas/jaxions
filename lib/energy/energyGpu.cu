@@ -169,6 +169,9 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 				else
 					energyKernel<false,VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
 				break;
+
+			default:
+				break;
 		}
 	}
 	else if (precision == FIELD_SINGLE)
@@ -196,6 +199,9 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 					energyKernel<true, VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
 				else
 					energyKernel<false,VQCD_2><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
+				break;
+
+			default:
 				break;
 		}
 	}

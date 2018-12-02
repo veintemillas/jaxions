@@ -1,5 +1,5 @@
 #include<cstdio>
-#include<cstdlib>
+// #include<cstdlib>
 #include<cstdlib>
 #include<math.h>	/* pow */
 #include<cstring>
@@ -17,17 +17,18 @@
 using namespace std;
 
 template<typename Float>
-void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Float kCrit, const size_t Lx, const size_t Lz, const size_t Tz, const size_t S, const size_t V)
+void	momXeon (complex<Float> * __restrict__ fM, const size_t kMax, const Float kCrat, const size_t Lx, const size_t Lz, const size_t Tz, const size_t S, const size_t V)
 {
-	long long kmax ;
+	LogMsg(VERB_NORMAL,"[momXeon] Called with kMax %zu kCrit %f (kCrit es %f)", kMax, kCrat, kCrit);
+	long long kmax;
 	int adp = 0;
 	if (kMax > Lx/2 - 1)
 	{
-		kmax = Lx/2 -1 ;
-		adp = 1 ;
+		kmax = Lx/2 - 1;
+		adp = 1;
 	}
 	else {
-		kmax = kMax ;
+		kmax = kMax;
 	}
 	size_t kmax2 = kmax*kmax;
 
@@ -35,8 +36,6 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
-
-
 
 	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
 
@@ -57,7 +56,7 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 		#pragma omp for schedule(static)
 		for (size_t oz = 0; oz < Tz; oz++)
 		{
-			if (oz/Lz != commRank())
+			if (oz/Lz != ((size_t) commRank()))
 				continue;
 
 			long long pz = oz - (oz/(Tz >> 1))*Tz;
@@ -73,10 +72,16 @@ void	momXeon (complex<Float> * __restrict__ fM, const long long kMax, const Floa
 					{
 						Float vl = Twop*(uni(mt64));
 						Float al = distri(mt64);
-						// Float mP = sqrt(((Float) modP))/((Float) (kCrit));
+
+						// Float mP = sqrt(((Float) modP))/((Float) (kCrat));
 						// Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
-						 Float mP = ((Float) modP)/((Float) (kCrit*kCrit));
+
+						 Float mP = ((Float) modP)/((Float) (kCrat*kCrat));
 						 Float sc = (modP == 0) ? 1.0 : exp(-mP);
+
+						 // Float mP = (sqrt((Float) modP))/((Float) (kCrat));
+						 // Float sc = (modP == 0) ? 1.0 : exp(-mP);
+
 						fM[idx] = complex<Float>(cos(vl), sin(vl))*sc*al;
 						//printf("mom (%d,%d,%d) = %f %f*I\n",pz,py,px,fM[idx].real(),fM[idx].imag());
 					}

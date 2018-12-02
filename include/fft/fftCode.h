@@ -28,7 +28,7 @@
 
 			public:
 
-					 FFTplan() : planForward(nullptr), planBackward(nullptr), Lx(0), Lz(0), dFft(FFT_NONE), type(FFT_NOTYPE) {}
+					 FFTplan() : planForward(nullptr), planBackward(nullptr), type(FFT_NOTYPE), dFft(FFT_NONE), prec(FIELD_NONE), Lx(0), Lz(0) {}
 					 FFTplan(Scalar * axion, FFTtype type, FFTdir dFft);
 //					~FFTplan() {};
 
