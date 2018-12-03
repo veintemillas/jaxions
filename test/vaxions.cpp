@@ -107,9 +107,9 @@ int	main (int argc, char *argv[])
 		else
 		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
 
+	LogOut("%f dooooom",1);
   //- time when axion mass^2 is 1/40 of saxion mass^2
 	double 	z_doom2 = findzdoom(axion);
-
 	//time intervac
 	double dzaux;
 	//-llphys = LL or LL/z^2 in LAMBDA_Z2 mode
@@ -291,7 +291,7 @@ int	main (int argc, char *argv[])
 					lm.str = strings(axion);
 
 				// BEFORE UNPPHYSICAL DW DESTRUCTION, ACTIVATES DAMPING TO DAMP SMALL DW'S
-				if (((*axion->zV()) > z_doom2*0.95) && (coD) && dwgammo > 0.)
+				if ((z_doom2 > 0.0) && ((*axion->zV()) > z_doom2*0.95) && (coD) && dwgammo > 0.)
 				{
 					myCosmos.SetGamma(dwgammo);
 					LogOut("-----------------------------------------\n");
@@ -483,6 +483,7 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 
 double findzdoom(Scalar *axion)
 {
+	if (axion->BckGnd()->Indi3() > 0.0){
 	double ct = zInit ;
 	double DWfun;
 	double meas ;
@@ -497,6 +498,8 @@ double findzdoom(Scalar *axion)
 	}
 	LogMsg(VERB_NORMAL,"Real z_doom %f ", ct );
 	return ct ;
+} else {
+	return -1 ; }
 }
 
 void	checkTime (Scalar *axion, int index) {
@@ -603,8 +606,6 @@ void printposter(Scalar *axion)
 		LogOut("           TIME SCALES ESTIMATES\n\n");
 
 		double 	z_doom2 = findzdoom(axion);
-
-		if (axion->BckGnd()->Indi3()>0.0){
 		// if (myCosmos.Indi3()>0.0 && coSwitch2theta ){
 
 		double z_axiq = pow(1.00/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
@@ -612,13 +613,11 @@ void printposter(Scalar *axion)
 		LogOut("mA^2/mS^2 = 1/40  at ctime %lf \n", z_doom2);
 		LogOut("mA^2 = mS^2       at ctime %lf \n", z_axiq);
 		LogOut("Fastest axions NR at ctime %lf \n", z_NR);
-		;}
+		;
 		LogOut("--------------------------------------------------\n\n");
 	} else {
-		LogOut("Massless axion!!!");
+		LogOut("Massless axion!!!\n\n");
 	}
-
-
 }
 
 
