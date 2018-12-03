@@ -156,7 +156,7 @@ int	main (int argc, char *argv[])
 	{
 			FILE *cacheFile = nullptr;
 			if (((cacheFile  = fopen("./measfile.dat", "r")) == nullptr)){
-				printf("No hay fichero! uso dump mode by defaul (or others specified in command line)");
+				LogMsg(VERB_NORMAL,"[VAX] No measfile.dat ! Use linear dump mode by default");
 			}
 			else
 			{
