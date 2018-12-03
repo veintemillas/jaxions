@@ -1581,13 +1581,17 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (cType == CONF_SMOOTH || cType == CONF_VILGOR)
+	if (cType == CONF_SMOOTH )
 	{
 		parm1 = iter;
 		parm2 = alpha;
 	} else if (cType == CONF_KMAX) {
 		parm1 = kMax;
 		parm2 = kCrit;
+	}
+	else if (cType == CONF_VILGOR || cType == CONF_VILGORK || cType == CONF_VILGORS) {
+		parm1 = iter;	 // here taken as a flag to randomised the
+		parm2 = kCrit; // here taken as multiplicative factor for nN3
 	}
 
 	if ((pType & PROP_MASK) == PROP_NONE)

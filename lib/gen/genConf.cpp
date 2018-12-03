@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <random>
 
 #include "enum-field.h"
 #include "scalar/scalarField.h"
@@ -58,12 +59,16 @@ class	ConfGenerator
 	{
 		case CONF_KMAX:
 		case CONF_TKACHEV:
-		case CONF_VILGORK:
-		case CONF_VILGORS:
-
 		kMax = parm1;
 		kCrt = parm2;
 		alpha = 0.143;
+		break;
+
+		case CONF_VILGOR:
+		case CONF_VILGORK:
+		case CONF_VILGORS:
+		kCrit = parm2; // multiplicative factor  to alter nN3 (1+alpha)
+		sIter = parm1; // iif sIter > 0 > make the above multiplicative factor random
 		break;
 
 		case CONF_SMOOTH:
@@ -252,20 +257,34 @@ void	ConfGenerator::runCpu	()
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 
 			// logi = log ms/H is taken to be zInit (which was input in command line)
-			// depending on k, we use momentum or smooth initial conditions
-			// temperarily we use momentum space by defaul, see below for smooth
 			double logi = *axionField->zV();
 			// such a logi and msa give a different initial time! redefine
 			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
 			axionField->updateR();
-			// LogOut("[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
 			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
 			double nN3 = (6.0*xit*axionField->Msa()*axionField->Msa()*exp(-2.0*logi));
 			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
-			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
+
+			if (sIter == 1){
+			nN3 = min(kCrit*nN3,1.0);
+			nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
+		} else if (sIter > 1) {
+			// add random noise in the initial time ~ random in xi (not really)
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			std::uniform_real_distribution<double> dist(-1.0, 1.0);
+			// srand (static_cast <unsigned> (time(0)));
+			double r = dist(mt);
+			nN3 = min(pow(kCrit,r)*nN3,1.0); ;
+			nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+			LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+		}
 
 			prof.start();
 			// LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",sizeN,nc);
@@ -300,12 +319,9 @@ void	ConfGenerator::runCpu	()
 			prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 
 			// logi = log ms/H is taken to be zInit (which was input in command line)
-			// depending on k, we use momentum or smooth initial conditions
-			// in vilgors we use smooth
 			// number of iterations needed = 0.8/(#/N^3)
 			// desired 0.8/(#/N^3) is 6*xi(logi)*msa^2*exp(-2logi)
 			double logi = *axionField->zV();
-			// such a logi and msa give a different initial time! redefine
 			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
@@ -315,10 +331,29 @@ void	ConfGenerator::runCpu	()
 			int niter = (int) (0.8/nN3);
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
 
+			if (sIter == 1){
+			nN3 = min(kCrit*nN3,1.0);
+			int niter = (int) (0.8/nN3);
+			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_iterations = %f!",kCrit, nN3,niter);
+		} else if (sIter > 1) {
+			// add random noise in the initial time ~ random in xi (not really)
+			std::random_device rd;
+			std::mt19937 mt(rd());
+			std::uniform_real_distribution<double> dist(-1.0, 1.0);
+			// srand (static_cast <unsigned> (time(0)));
+			double r = dist(mt);
+			nN3 = min(pow(kCrit,r)*nN3,1.0); ;
+			int niter = (int) (0.8/nN3);
+			LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_iterations = %f!",r, kCrit,pow(kCrit,r), nN3,niter);
+		}
+
 			LogMsg(VERB_NORMAL,"[GEN] smoothXeon called with %d iterations and alpha = %f!",niter,alpha);
 			if (niter>100){
 					LogMsg(VERB_NORMAL,"WARNING!! More than 100 iterations is not particularly efficient! update VILGOR algorithm to use FFTs!!\n");
 			}
+
+
 			prof.start();
 			smoothXeon (axionField, niter, alpha);
 			prof.stop();
