@@ -274,22 +274,26 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
 					}
 
-			if (measa & MEAS_STRING)
+			if (measa & (MEAS_STRING | MEAS_STRINGMAP))
 			{
 
 				// LogOut("string ");
 				LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 				MeasDataOut.str = strings(axiona);
 
-				if (measa & MEAS_STRINGMAP)
+				if ( (measa & MEAS_STRINGMAP) == MEAS_STRINGMAP)
 				{
 					// LogOut("+map ");
-					LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
 					if (p3DthresholdMB/((double) MeasDataOut.str.strDen) > 1.)
+					{
+						LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
 						writeString(axiona, MeasDataOut.str, true);
-					else
-						writeString(axiona, MeasDataOut.str, false);
+					}
 				}
+				else {
+					writeString(axiona, MeasDataOut.str, false);
+				}
+
 				// else if (measa & MEAS_STRINGCOO){
 				// 	LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
 				// 	writeString2(axiona, MeasDataOut.str, true);

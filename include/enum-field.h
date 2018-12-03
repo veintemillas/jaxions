@@ -358,7 +358,7 @@
 			MEAS_ALLBIN       = 15,
 			// MEAS_BIN...	  = 16,
 			MEAS_STRING	      = 32,
-			MEAS_STRINGMAP    = 96,		// 64 + 32
+			MEAS_STRINGMAP    = 64,		// 64 + 32
 			MEAS_STRINGCOO    = 160,  // 128 + 32
 
 			MEAS_ENERGY       = 256,
