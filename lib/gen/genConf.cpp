@@ -276,14 +276,24 @@ void	ConfGenerator::runCpu	()
 			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
 		} else if (sIter > 1) {
 			// add random noise in the initial time ~ random in xi (not really)
-			std::random_device rd;
-			std::mt19937 mt(rd());
-			std::uniform_real_distribution<double> dist(-1.0, 1.0);
-			// srand (static_cast <unsigned> (time(0)));
-			double r = dist(mt);
+			double r = 0 ;
+			int  myRank   = commRank();
+			if (myRank == 0){
+
+				std::random_device rd;
+				std::mt19937 mt(rd());
+				std::uniform_real_distribution<double> dist(-1.0, 1.0);
+				// srand (static_cast <unsigned> (time(0)));
+				r = dist(mt);
+			}
+			MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+			commSync();
+			printf("hello from rank %d, r = %f\n",myRank,r);
+
 			nN3 = min(pow(kCrit,r)*nN3,1.0); ;
 			nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
 			LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+
 		}
 
 			prof.start();
@@ -338,6 +348,7 @@ void	ConfGenerator::runCpu	()
 			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_iterations = %f!",kCrit, nN3,niter);
 		} else if (sIter > 1) {
 			// add random noise in the initial time ~ random in xi (not really)
+
 			std::random_device rd;
 			std::mt19937 mt(rd());
 			std::uniform_real_distribution<double> dist(-1.0, 1.0);
