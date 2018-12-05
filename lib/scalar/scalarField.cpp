@@ -38,7 +38,7 @@ const std::complex<float> If(0.,1.);
 
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
-		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp), 
+		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp),
 		       device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
@@ -349,7 +349,7 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
-				if ((cType == CONF_KMAX) || (((cType == CONF_VILGOR) || (cType == CONF_TKACHEV)))) {
+				if ((cType == CONF_KMAX) || (cType == CONF_VILGOR) || (cType == CONF_VILGOR) || (cType == CONF_TKACHEV)) {
 					if (lowmem)
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else

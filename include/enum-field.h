@@ -154,6 +154,14 @@
 			CONF_AX1MODE      = 7,
 		}	ConfsubType;
 
+		typedef	enum	MomConfType_s
+		{
+			MOM_MFLAT    = 0,  // white noise prepared for M
+			MOM_MSIN     = 1,  // Gaussian with a sinc amplitude
+			MOM_MEXP     = 2,  // Gaussian with exponential ampl
+			MOM_MVSINCOS = 4,  // Tkachev sinc into M and its derivative into V
+		}	MomConfType;
+
 		typedef enum	DeviceType_s
 		{
 			DEV_CPU,
@@ -237,7 +245,6 @@
 			PRINTCONF_FINAL   = 2,
 			PRINTCONF_BOTH    = 3,
 		}	PrintConf;
-
 
 		typedef	struct	StringData_v
 		{

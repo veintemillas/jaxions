@@ -2,12 +2,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <random>
+#include <complex>
 
 #include "enum-field.h"
 #include "scalar/scalarField.h"
 #include "scalar/scaleField.h"
 #include "scalar/normField.h"
 #include "scalar/normCore.h"
+#include "scalar/theta2Cmplx.h"
 #include "gen/momConf.h"
 #include "gen/randXeon.h"
 #include "gen/smoothXeon.h"
@@ -145,7 +147,7 @@ void	ConfGenerator::runGpu	()
 		case CONF_TKACHEV: {
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
-			momConf(axionField, kMax, kCrt);
+			momConf(axionField, kMax, kCrt, MOM_MFLAT);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
@@ -161,7 +163,7 @@ void	ConfGenerator::runGpu	()
 		case CONF_KMAX: {
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
-			momConf(axionField, kMax, kCrt);
+			momConf(axionField, kMax, kCrt, MOM_MEXP);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
@@ -228,12 +230,69 @@ void	ConfGenerator::runCpu	()
 		break;
 
 		case CONF_TKACHEV: {
+
+			std::complex<float> *ma = static_cast<std::complex<float>*>(axionField->mStart());
+			std::complex<float> *va = static_cast<std::complex<float>*> (axionField->vCpu());
+			std::complex<float> *m2 = static_cast<std::complex<float>*> (axionField->m2Cpu());
+
+
+			LogMsg(VERB_NORMAL,"[GEN] CONF_TKACHEV started!\n ");
+			//these initial conditions make sense only for RD
+			if (axionField->BckGnd()->Frw() != 1.0)
+				{
+					LogMsg(VERB_NORMAL,"[GEN] Tkachev Initial conditions only prepared for RD !\n ");
+				}
+			LogMsg(VERB_NORMAL,"[GEN] CONF_TKACHEV started!\n ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");
+			//probably the profiling has to be modified
 			prof.start();
-			momConf(axionField, kMax, kCrt);
+			double kCritz = axionField->BckGnd()->PhysSize()/(6.283185307179586*(*axionField->zV()));
+			LogMsg(VERB_NORMAL,"[GEN] kCrit changed according to initial time %f to kCrit %f !\n ", (*axionField->zV()),kCritz);
+
+			// ft_theta' in M2, ft_theta in V
+			momConf(axionField, kMax, kCritz, MOM_MVSINCOS);
+			// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
+			// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
+			// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
+
+
+			// The normalisation factor is
+			// <theta^2> = pi^2*/3 - we use KCrit as a multiplicicative Factor
+			// <theta^2> = 1/2 sum |~theta|^2 =1/2 4pi/3 nmax^3 <|~theta|^2>
+			// <|~theta|^2> = pi^2*kCrit/3 * (3/2pi nmax^3)
+			// <|~theta|> = sqrt(pi/2 kCrit/nmax^3)
+			// and therefore we need to multiply theta and theta' by this factor (was 1)
+			LogMsg(VERB_NORMAL,"kCrit %e kMax %d \n", kCrit, kMax);
+			double norma = std::sqrt(1.5707963*kCrit/(kMax*kMax*kMax));
+			LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
+			scaleField (axionField, FIELD_V, norma);
+			norma /= (*axionField->zV());
+			scaleField (axionField, FIELD_M2, norma);
+			LogMsg(VERB_NORMAL,"norma2 %e \n",norma);
+
+			// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
+			// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
+			// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
+
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
+			// theta' into M
+
+			// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
+			// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
+			// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
+
+			// FIX FOR LOWMEM!
+			// move theta from V to M2
+			size_t volData = axionField->Size()*axionField->DataSize();
+			memcpy(static_cast<char *>(axionField->m2Cpu()), static_cast<char *>(axionField->vCpu()), volData);
+			// move theta' from M to V
+			memcpy(static_cast<char *>(axionField->vCpu()), static_cast<char *>(axionField->mStart()), volData);
+			myPlan.run(FFT_BCK);
+			// takes only the real parts and builds exp(itheta), ...
+			// it builds
+			theta2Cmplx	(axionField);
 		}
 		break;
 
@@ -242,7 +301,7 @@ void	ConfGenerator::runCpu	()
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
 			// LogOut("[GEN] momConf with kMax %zu kCrit %f!\n ", kMax, kCrt);
-			momConf(axionField, kMax, kCrt);
+			momConf(axionField, kMax, kCrt, MOM_MEXP);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
@@ -298,7 +357,7 @@ void	ConfGenerator::runCpu	()
 
 			prof.start();
 			// LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",sizeN,nc);
-			momConf(axionField, sizeN, nc);
+			momConf(axionField, sizeN, nc, MOM_MEXP);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 
@@ -411,7 +470,7 @@ void	ConfGenerator::runCpu	()
 
 	axionField->setFolded(false);
 
-	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) || (cType == CONF_TKACHEV))
+	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) )
 	{
 		if (!myCosmos->Mink()){
 		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
