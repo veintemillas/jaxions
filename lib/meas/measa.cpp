@@ -344,7 +344,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
-		if ( ((int) MeasDataOut.str.strDen) > 0){
+		if ( measa & MEAS_STRING ){
 		double loks = log(axiona->Msa()*z_now/axiona->Delta());
 		double Le = axiona->BckGnd()->PhysSize();
 			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),

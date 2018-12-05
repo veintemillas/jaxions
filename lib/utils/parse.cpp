@@ -238,7 +238,7 @@ void	PrintICoptions()
 
 	printf(" [kmax]                                            Saxion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-	printf("  --kmax [float] --kcr [float]                     Random modes and inverse FFT.\n");
+	printf("  --kmax [int] --kcr [float]                       Random modes and inverse FFT.\n");
 	printf("                                                   for 3D k < kmax = min(kmax, N/2-1).\n");
 	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
 	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n\n");
@@ -249,6 +249,8 @@ void	PrintICoptions()
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --kmax [int] --kcr [float]                       Axion modes as in Kolb&Tkachev 92 .\n");
+	printf("                                                   <theta^2>=kcr*pi^2/3 \n");
 	return;
 }
 
@@ -1585,7 +1587,7 @@ int	parseArgs (int argc, char *argv[])
 	{
 		parm1 = iter;
 		parm2 = alpha;
-	} else if (cType == CONF_KMAX) {
+	} else if (cType == CONF_KMAX || CONF_TKACHEV) {
 		parm1 = kMax;
 		parm2 = kCrit;
 	}
