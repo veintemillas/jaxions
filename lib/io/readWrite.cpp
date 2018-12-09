@@ -578,7 +578,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	size_t	dataSize;
 
 	int myRank = commRank();
-	if (debug) LogOut("[db] Reading Hdf5 configuration from disk\n");
+	//if (debug) LogOut("[db] Reading Hdf5 configuration from disk\n");
 	LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk");
 	LogMsg (VERB_NORMAL, "");
 
@@ -600,7 +600,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	else
 		sprintf(base, "%s/%s.restart", outDir, outName);
 
-	if (debug) LogOut("[db] File read: %s\n",base);
+	//if (debug) LogOut("[db] File read: %s\n",base);
 	LogMsg (VERB_NORMAL, "File read: %s",base);
 	/*	Open the file and release the plist	*/
 	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
@@ -611,7 +611,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	}
 	H5Pclose(plist_id);
 
-	if (debug) LogOut("[db] close\n");
+	//if (debug) LogOut("[db] close\n");
 	/*	Attributes	*/
 
 	attr_type = H5Tcopy(H5T_C_S1);
@@ -628,23 +628,24 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
-LogMsg (VERB_NORMAL, "Field type: %s",fStr);
-LogMsg (VERB_NORMAL, "Precision: %s",prec);
-LogMsg (VERB_NORMAL, "Size: %d",sizeN);
-LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
-LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
-LogMsg (VERB_NORMAL, "RTmp: %f",RTmp);
-LogMsg (VERB_NORMAL, "tStep: %d",tStep);
-LogMsg (VERB_NORMAL, "cStep: %d",cStep);
+	LogMsg (VERB_NORMAL, "Field type: %s",fStr);
+	LogMsg (VERB_NORMAL, "Precision: %s",prec);
+	LogMsg (VERB_NORMAL, "Size: %d",sizeN);
+	LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
+	LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
+	LogMsg (VERB_NORMAL, "RTmp: %f",RTmp);
+	LogMsg (VERB_NORMAL, "tStep: %d",tStep);
+	LogMsg (VERB_NORMAL, "cStep: %d",cStep);
 
-LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
+LogMsg (VERB_NORMAL, "Physical size (comm-line or default): %f",myCosmos->PhysSize());
 	if (myCosmos->PhysSize() == 0.0) {
 		double lSize;
 		readAttribute (file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 		myCosmos->SetPhysSize(lSize);
 	}
-LogMsg (VERB_NORMAL, "lSize (read and set to): %f",myCosmos->PhysSize());
+LogMsg (VERB_NORMAL, "Physical size (read and set to): %f",myCosmos->PhysSize());
 
+	// issue?
 	if (endredmap == -1)	// No reduction unless specified
 		endredmap = sizeN;
 
@@ -679,8 +680,8 @@ LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
 		LogMsg (VERB_NORMAL, "Reading index is %d\n",fIndex);
 		/* It is very easy, we keep zInit and take z=zTmp we trust everything was properly specified in the file */
 		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
-		readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
-		LogOut("Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+		readAttribute (file_id, &zTmp,  "z",        H5T_NATIVE_DOUBLE);
+		LogOut("Reading zTmp = %f, zInit=%f",zTmp,zInit);
 		LogMsg (VERB_NORMAL, "Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
 
 	}
@@ -693,16 +694,16 @@ LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
 	else {
 		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
 
-LogMsg (VERB_NORMAL, "nQcd = %f\n",myCosmos->QcdExp());
+LogMsg (VERB_NORMAL, "nQcd (comm-line or default) = %f",myCosmos->QcdExp());
 		if (myCosmos->QcdExp() == -1.e8) {
 			double nQcd;
 			readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
 			myCosmos->SetQcdExp(nQcd);
-			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f\n",myCosmos->QcdExp());
+			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f",myCosmos->QcdExp());
 		}
 
-LogMsg (VERB_NORMAL, "Lambda = %f\n",myCosmos->Lambda());
-LogMsg (VERB_NORMAL, "Lambda Type= %d\n",lType);
+LogMsg (VERB_NORMAL, "Lambda (comm-line or default) = %f",myCosmos->Lambda());
+LogMsg (VERB_NORMAL, "Lambda Type= %d",lType);
 		if (myCosmos->Lambda() == -1.e8) {
 			double	lda;
 			readAttribute (vGrp_id, &lda,   "Lambda",      H5T_NATIVE_DOUBLE);
@@ -719,7 +720,7 @@ LogMsg (VERB_NORMAL, "Lambda Type= %d\n",lType);
 			}
 
 			myCosmos->SetLambda(lda);
-			LogMsg (VERB_NORMAL, "Lambda (read and set)= %f\n",myCosmos->Lambda());
+			LogMsg (VERB_NORMAL, "Lambda (read and set)= %f",myCosmos->Lambda());
 
 		} /*else {	// Ya se ha hecho en Cosmos
 			if (uMsa) {
@@ -730,42 +731,45 @@ LogMsg (VERB_NORMAL, "Lambda Type= %d\n",lType);
 				msa = sqrt(2*LL)*tmp;
 			}
 		}*/
-LogMsg (VERB_NORMAL, "Indi3 = %f\n",myCosmos->Indi3());
+		// issue?
 		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
+
+
+LogMsg (VERB_NORMAL, "Indi3 (comm-line or default) = %f",myCosmos->Indi3());
 		if (myCosmos->Indi3() == -1.e8) {
 			double indi3;
 			readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
 			myCosmos->SetIndi3(indi3);
-			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f\n",myCosmos->Indi3());
+			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f",myCosmos->Indi3());
 		}
 
-LogMsg (VERB_NORMAL, "z Threshold = %f\n",myCosmos->ZThRes());
+LogMsg (VERB_NORMAL, "z Threshold (comm-line or default) = %f",myCosmos->ZThRes());
 		if (myCosmos->ZThRes() == -1.e8) {
 			double zthrs;
 			readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
 			myCosmos->SetZThRes(zthrs);
-			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %f\n",myCosmos->ZThRes());
+			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %f",myCosmos->ZThRes());
 		}
 
-LogMsg (VERB_NORMAL, "z Restore = %f\n",myCosmos->ZRestore());
+LogMsg (VERB_NORMAL, "z Restore (comm-line or default) = %f",myCosmos->ZRestore());
 		if (myCosmos->ZRestore() == -1.e8) {
 			double zrest;
 			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
 			myCosmos->SetZThRes(zrest);
-			LogMsg (VERB_NORMAL, "z Restore (read and set) = %f\n",myCosmos->ZRestore());
+			LogMsg (VERB_NORMAL, "z Restore (read and set) = %f",myCosmos->ZRestore());
 		}
 
 		//indi3 =  maa/pow(zTmp, nQcd*0.5);
 
-LogMsg (VERB_NORMAL, "Gamma = %f\n",myCosmos->Gamma());
+LogMsg (VERB_NORMAL, "Gamma (comm-line or default) = %f",myCosmos->Gamma());
 		if (myCosmos->Gamma() == -1.e8) {
 			double gm;
 			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
 			myCosmos->SetGamma(gm);
-			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f\n",myCosmos->Gamma());
+			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f",myCosmos->Gamma());
 		}
 
-LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
+LogMsg (VERB_NORMAL, "QcdPot (comm-line or default) = %d",myCosmos->QcdPot());
 		if (myCosmos->QcdPot() == VQCD_NONE) {
 			VqcdType vqcdType = VQCD_NONE;
 
@@ -836,7 +840,7 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "VilGor")) {
-			cType = CONF_VILGOR;
+			cType = CONF_VILGOR; //improvement
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "Tkachev")) {
@@ -920,7 +924,7 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	else
 		sizeZ = totlZ/zGrid;
 
-	if (debug) LogOut("[db] Read start\n");
+	//if (debug) LogOut("[db] Read start\n");
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, 0);
 
@@ -938,10 +942,10 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 		LogError ("Input error: Invalid field type");
 		exit(1);
 	}
-	if (debug) LogOut("[db] axion created slab defined %d\n",slab);
+	//if (debug) LogOut("[db] axion created slab defined %d\n",slab);
 
 	double maa = (*axion)->AxionMass();
-	if (debug) LogOut("[db] ma %f\n", maa);
+	//if (debug) LogOut("[db] ma %f\n", maa);
 
 	if (fabs((maa - maaR)/std::max(maaR,maa)) > 1e-5)
 		LogMsg(VERB_NORMAL, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
@@ -966,27 +970,27 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	mSpace   = H5Dget_space (mset_id);
 	vSpace   = H5Dget_space (vset_id);
 
-	if (debug) LogOut("[db] reading slab %d\n",slab);
+	//if (debug) LogOut("[db] reading slab %d\n",slab);
 
 	for (hsize_t zDim=0; zDim<((hsize_t) (*axion)->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
 		offset = (((hsize_t) (myRank*(*axion)->Depth()))+zDim)*slab;
-		if (debug) printf("[db] rank %d slab %d zDim %d offset werar %d\n",myRank, slab, zDim,offset,slab*(1+zDim)*dataSize);
+		//if (debug) printf("[db] rank %d slab %d zDim %d offset werar %d\n",myRank, slab, zDim,offset,slab*(1+zDim)*dataSize);
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		/*	Read raw data	*/
 
 		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
-		if (debug) printf("[db] rank %d mErr %d \n",myRank, mErr);
+		//if (debug) printf("[db] rank %d mErr %d \n",myRank, mErr);
 		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
 		if ((mErr < 0) || (vErr < 0)) {
-			if (debug) printf("[db] Error reading dataset from file zDim %d, rank %d\n",zDim,myRank);
+			//if (debug) printf("[db] Error reading dataset from file zDim %d, rank %d\n",zDim,myRank);
 			LogError ("Error reading dataset from file");
 			return;
 		}
 	}
-	if (debug) printf("[db] slabs read rank %d\n",myRank);
+	//if (debug) printf("[db] slabs read rank %d\n",myRank);
 	/*	Close the dataset	*/
 
 	H5Sclose (mSpace);
@@ -1544,9 +1548,189 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 }
 
 
+/* New strings */
 
+void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
+{
+	hid_t       dataset_id, dataspace_id;  /* identifiers */
+	hsize_t     dims[1];
+	herr_t      status;
 
+	size_t	sBytes	 = 0;
 
+	int myRank = commRank();
+
+	uint nmax = 2*axion->Length();
+
+	/* String data, different casts */
+	char *strData;
+
+	if (axion->LowMem())
+		{
+			if (axion->sDStatus() == SD_STRINGCOORD)
+				strData = static_cast<char *>(axion->sData());
+			else{
+				printf("Return!"); // improve
+				return;
+			}
+		}
+	else
+	{
+		if (axion->m2Status() == M2_STRINGCOO)
+				strData = static_cast<char *>(axion->m2Cpu());
+			else{
+				printf("Return!"); // improve
+				return ;
+			}
+	}
+
+	/* Number of strings per rank, initialise = 0 */
+	size_t stringN[commSize()];
+	for (int i=0;i<commSize();i++)
+		stringN[i]=0;
+
+	/*send stringN to rank 0*/
+	MPI_Gather( &strDat.strDen_local , 1, MPI_UNSIGNED_LONG, &stringN, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+	commSync();
+
+	/* Check the total number*/
+	size_t toti = 0;
+	for (int i=0;i<commSize();i++){
+		toti += stringN[i];
+	}
+
+	hid_t sSpace;
+	hid_t memSpace;
+	hid_t group_id;
+	hsize_t slab = 0;
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	if (myRank == 0)
+	{
+		/*	Start profiling		*/
+		LogMsg (VERB_NORMAL, "Writing string coord.");
+		prof.start();
+
+		if (header == false || opened == false)
+		{
+			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+			prof.stop();
+			return;
+		}
+
+		/* Create a group for string data */
+		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+		if (!status)
+			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		else {
+			if (status > 0) {
+				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
+				LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
+			} else {
+				LogError ("Error: can't check whether group /string exists");
+			}
+		}
+
+		/*	Maximum coordinate is 2xN	(to avoid 1/2's)*/
+		writeAttribute(group_id, &nmax, "nmax",  H5T_NATIVE_UINT);
+
+		/*	String metadata		*/
+		status = H5Aexists(group_id,"String number");
+		if (status==0){
+			writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+			writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
+			writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+		}
+
+		/* if rData write the coordinates*/
+		if (rData)
+		{
+			/* Total length of coordinates to write */
+			dims[0] = 3*toti;
+			/* Create the data space for the dataset. */
+			dataspace_id = H5Screate_simple(1, dims, NULL);
+			/* Create the dataset. */
+			dataset_id = H5Dcreate2(meas_id, "/string/codata", H5T_NATIVE_USHORT, dataspace_id,
+			            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+			sSpace = H5Dget_space (dataset_id);
+			memSpace = H5Screate_simple(1, &slab, NULL);
+		}
+	}
+
+	/* perhaps we need some cross-checks */
+	/* Write the dataset. */
+
+	if (rData) {
+		int tSz = commSize(), test = myRank;
+
+		commSync();
+
+		for (int rank=0; rank<tSz; rank++)
+		{
+			/* Each rank selects a slab of its own size*/
+			int tralara =(int) 3*strDat.strDen_local*sizeof(unsigned short);
+
+			if (myRank != 0)
+			{
+				/* Only myRank >0 sends */
+				if (myRank == rank){
+				MPI_Send(&(strData[0]), tralara, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+				}
+			}
+			else
+			{
+				/* Only  myRank 0 receives and writes */
+				slab = 3*stringN[rank];
+				tralara =(int) slab*sizeof(unsigned short);
+
+				if (rank != 0)
+					{
+						MPI_Recv(&(strData[0]), tralara, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+					}
+
+				/*	Select the slab in the file	*/
+				toti=0;
+				for (int i=0;i<rank;i++){
+					toti += stringN[i];
+				}
+				hsize_t offset = ((hsize_t) 3*toti);
+
+				/* update memSpace with new slab size	*/
+				/* here one can partition in less than 2Gb if needed in future */
+				memSpace = H5Screate_simple(1, &slab, NULL);
+				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+				/* write file */
+				H5Dwrite (dataset_id, H5T_NATIVE_USHORT, memSpace, sSpace, H5P_DEFAULT, (void *) &(strData[0]) );
+			}
+
+			commSync();
+		}
+
+		if (myRank == 0)
+		{
+		// H5Dclose(sSpace);
+		// H5Dclose(memSpace);
+		H5Dclose(dataset_id);
+		H5Sclose(dataspace_id);
+		}
+
+	/* the 24 is copied from writeString ... probably a bit less */
+	sBytes = 3*strDat.strDen*sizeof(unsigned short) + 24;
+	} else
+	sBytes = 24;
+
+	if (myRank == 0)
+		H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write string Coord."), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
+	commSync();
+}
 
 
 
