@@ -69,18 +69,17 @@ class	ConfGenerator
 		case CONF_VILGOR:
 		case CONF_VILGORK:
 		case CONF_VILGORS:
-		kCrit = parm2; // multiplicative factor  to alter nN3 (1+alpha)
 		sIter = parm1; // iif sIter > 0 > make the above multiplicative factor random
+		kCrit = parm2; // multiplicative factor  to alter nN3 (1+alpha)
+		alpha = 0.143; // used only for vilgors
 		break;
 
 		case CONF_SMOOTH:
-
 		sIter = parm1;
 		alpha = parm2;
 		break;
 
 		case CONF_READ:
-
 		index = static_cast<int>(parm1);
 		break;
 
@@ -163,7 +162,7 @@ void	ConfGenerator::runGpu	()
 		case CONF_KMAX: {
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
-			momConf(axionField, kMax, kCrt, MOM_MEXP);
+			momConf(axionField, kMax, kCrt, MOM_MEXP2);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
@@ -301,7 +300,7 @@ void	ConfGenerator::runCpu	()
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 			prof.start();
 			// LogOut("[GEN] momConf with kMax %zu kCrit %f!\n ", kMax, kCrt);
-			momConf(axionField, kMax, kCrt, MOM_MEXP);
+			momConf(axionField, kMax, kCrt, MOM_MEXP2);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
@@ -312,7 +311,7 @@ void	ConfGenerator::runCpu	()
 
 		case CONF_VILGOR:
 		case CONF_VILGORK:{
-			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started!\n ");
+			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started! ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 
 			// logi = log ms/H is taken to be zInit (which was input in command line)
@@ -328,36 +327,36 @@ void	ConfGenerator::runCpu	()
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
 
-			if (sIter == 1){
-			nN3 = min(kCrit*nN3,1.0);
-			nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
-			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
-			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
-		} else if (sIter > 1) {
-			// add random noise in the initial time ~ random in xi (not really)
-			double r = 0 ;
-			int  myRank   = commRank();
-			if (myRank == 0){
+					LogMsg(VERB_NORMAL,"[GEN] sIter %d!",sIter);
+					if (sIter == 1){
+						nN3 = min(kCrit*nN3,1.0);
+						nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+						// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+						LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
+					} else if (sIter > 1) {
+					// add random noise in the initial time ~ random in xi (not really)
+						double r = 0 ;
+						int myRank = commRank();
 
-				std::random_device rd;
-				std::mt19937 mt(rd());
-				std::uniform_real_distribution<double> dist(-1.0, 1.0);
-				// srand (static_cast <unsigned> (time(0)));
-				r = dist(mt);
-			}
-			MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
-			commSync();
-			// printf("hello from rank %d, r = %f\n",myRank,r);
+						if (myRank == 0){
+							std::random_device rd;
+							std::mt19937 mt(rd());
+							std::uniform_real_distribution<double> dist(-1.0, 1.0);
+							// srand (static_cast <unsigned> (time(0)));
+							r = dist(mt);
+						}
+						MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+						commSync();
+						// printf("hello from rank %d, r = %f\n",myRank,r);
 
-			nN3 = min(pow(kCrit,r)*nN3,1.0); ;
-			nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
-			LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+						nN3 = min(pow(kCrit,r)*nN3,1.0); ;
+						nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+						LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+				  }
 
-		}
-
+			LogMsg(VERB_NORMAL,"[GEN] momConf with kMax %d kCrit %f!\n ",sizeN,nc);
 			prof.start();
-			// LogOut("[GEN] momConf with kMax %d kCrit %f!\n ",sizeN,nc);
-			momConf(axionField, sizeN, nc, MOM_MEXP);
+			momConf(axionField, sizeN, nc, MOM_MEXP2);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 
@@ -401,30 +400,29 @@ void	ConfGenerator::runCpu	()
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
 
 			if (sIter == 1){
-			nN3 = min(kCrit*nN3,1.0);
-			int niter = (int) (0.8/nN3);
-			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+				nN3 = min(kCrit*nN3,1.0);
+				int niter = (int) (0.8/nN3);
+				// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_iterations = %d!",kCrit, nN3,niter);
-		} else if (sIter > 1) {
-			// add random noise in the initial time ~ random in xi (not really)
+			} else if (sIter > 1) {
+				// add random noise in the initial time ~ random in xi (not really)
+				double r = 0 ;
+				int  myRank   = commRank();
+				if (myRank == 0){
+					std::random_device rd;
+					std::mt19937 mt(rd());
+					std::uniform_real_distribution<double> dist(-1.0, 1.0);
+					// srand (static_cast <unsigned> (time(0)));
+					r = dist(mt);
+				}
+				MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+				commSync();
+				// printf("hello from rank %d, r = %f\n",myRank,r);
 
-			double r = 0 ;
-			int  myRank   = commRank();
-			if (myRank == 0){
-				std::random_device rd;
-				std::mt19937 mt(rd());
-				std::uniform_real_distribution<double> dist(-1.0, 1.0);
-				// srand (static_cast <unsigned> (time(0)));
-				r = dist(mt);
-			}
-			MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
-			commSync();
-			// printf("hello from rank %d, r = %f\n",myRank,r);
-
-			nN3 = min(pow(kCrit,r)*nN3,1.0); ;
-			int niter = (int) (0.8/nN3);
-			LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_iterations = %d!",r, kCrit,pow(kCrit,r), nN3,niter);
-		}
+				nN3 = min(pow(kCrit,r)*nN3,1.0); ;
+				int niter = (int) (0.8/nN3);
+				LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_iterations = %d!",r, kCrit,pow(kCrit,r), nN3,niter);
+				}
 
 			LogMsg(VERB_NORMAL,"[GEN] smoothXeon called with %d iterations and alpha = %f!",niter,alpha);
 			if (niter>100){

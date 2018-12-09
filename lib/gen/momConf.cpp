@@ -74,7 +74,6 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 					{
 						Float vl = Twop*(uni(mt64));
 						Float al = distri(mt64);
-						Float mP = sqrt(((Float) modP))/(kcrit);
 						complex<Float> marsa = exp( complex<Float>(0,vl) )*al;
 
 						switch (Moco)
@@ -86,6 +85,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 
 							case(MOM_MSIN):
 								{
+									Float mP = sqrt(((Float) modP))/(kcrit);
 									Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 								// fM[idx] = complex<Float>(cos(vl), sin(vl))*al*sc;
 								fM[idx] = marsa*sc;
@@ -94,6 +94,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 
 							case(MOM_MVSINCOS):
 								{
+									Float mP = sqrt(((Float) modP))/(kcrit);
 									// v to m2 m to v
 									Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
 									fV[idx] = marsa*sc;
@@ -102,19 +103,23 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 								}
 							break;
 
-							default:
 							case(MOM_MEXP):
 								{
+									Float mP = sqrt(((Float) modP))/(kcrit);
+									Float sc = (modP == 0) ? 1.0 : exp(-mP);
+									fM[idx] = marsa*sc;
+								}
+							break;
+
+							default:
+							case(MOM_MEXP2):
+								{
+									Float mP = ((Float) modP)/(kcrit*kcrit);
 									Float sc = (modP == 0) ? 1.0 : exp(-mP);
 									fM[idx] = marsa*sc;
 								}
 							break;
 						}
-						 // Float mP = (sqrt((Float) modP))/((Float) (kCrat));
-						 // Float sc = (modP == 0) ? 1.0 : exp(-mP);
-
-
-						//printf("mom (%d,%d,%d) = %f %f*I\n",pz,py,px,fM[idx].real(),fM[idx].imag());
 
 					}
 				} // END  px loop
@@ -184,6 +189,9 @@ void	momConf (Scalar *field, const size_t kMax, const double kCrt, MomConfType M
 				case MOM_MEXP:
 				momXeon<double, MOM_MEXP> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
 				break;
+				case MOM_MEXP2:
+				momXeon<double, MOM_MEXP2> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				break;
 			}
 
 		// if (field->LowMem())
@@ -217,6 +225,10 @@ void	momConf (Scalar *field, const size_t kMax, const double kCrt, MomConfType M
 				case MOM_MEXP:
 				momXeon<float, MOM_MEXP> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
 				break;
+				case MOM_MEXP2:
+				momXeon<float, MOM_MEXP2> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				break;
+
 			}
 		// if (field->LowMem())
 		// 	momXeon<float, Moco> (static_cast<complex<float> *> (field->mStart()), static_cast<complex<double>*> (field->vCpu()), kMax, static_cast<float>(kCrt), n1, Lz, Tz, n2, n3);
