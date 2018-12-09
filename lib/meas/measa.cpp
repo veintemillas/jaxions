@@ -20,13 +20,15 @@ template<typename Float>
 MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 {
 	MeasureType measa = info.measdata ;
+
 	MeasData MeasDataOut;
 
-	MeasDataOut.maxTheta       = -1 ;
-	MeasDataOut.str.strDen = -1 ;
-	MeasDataOut.str.wallDn = -1 ;
+	MeasDataOut.maxTheta    = -1 ;
+	MeasDataOut.str.strDen  = 0 ;
+	MeasDataOut.str.wallDn  = 0 ;
 	MeasDataOut.eA = 0 ;
 	MeasDataOut.eS = 0 ;
+
 
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
@@ -37,6 +39,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa & MEAS_3DMAP){
 		LogOut("3D conf ");
 		writeConf(axiona, indexa);
+		MeasureType mesa = measa;
+		measa = measa ^ MEAS_3DMAP ; // removes the map
+		LogOut("mesa %d measa %d MEAS3DMAP %d\n", mesa, measa, MEAS_3DMAP);
 	}
 
 	double z_now     = *axiona->zV();
@@ -47,6 +52,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	if (axiona->Field() == FIELD_AXION)
 	 	shiftz = 0.0;
+
+	if (measa != MEAS_NOTHING)
+	{
 
 	createMeas(axiona, indexa);
 
@@ -274,30 +282,37 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
 					}
 
-			if (measa & (MEAS_STRING | MEAS_STRINGMAP))
+			if (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO))
 			{
 
-				// LogOut("string ");
-				LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
-				MeasDataOut.str = strings(axiona);
+				if ( !(measa & MEAS_STRINGCOO)){
+						LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
+						MeasDataOut.str = strings(axiona);
 
-				if ( (measa & MEAS_STRINGMAP) == MEAS_STRINGMAP)
-				{
-					// LogOut("+map ");
-					if (p3DthresholdMB/((double) MeasDataOut.str.strDen) > 1.)
-					{
-						LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
+						if ( measa & MEAS_STRINGMAP )
+						{
+							// LogOut("+map ");
+							if (p3DthresholdMB/((double) MeasDataOut.str.strDen) > 1.)
+							{
+								LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
+								writeString(axiona, MeasDataOut.str, true);
+							}
+						}
+						else {
+							writeString(axiona, MeasDataOut.str, false);
+						}
+				}
+				else if (measa & MEAS_STRINGCOO){
+					LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
+					MeasDataOut.str = strings2(axiona);
+					if ( measa & MEAS_STRINGMAP ){
+						LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
 						writeString(axiona, MeasDataOut.str, true);
 					}
-				}
-				else {
-					writeString(axiona, MeasDataOut.str, false);
+					LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
+					writeStringCo(axiona, MeasDataOut.str, true);
 				}
 
-				// else if (measa & MEAS_STRINGCOO){
-				// 	LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
-				// 	writeString2(axiona, MeasDataOut.str, true);
-				// }
 			}
 
 	}
@@ -327,6 +342,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				}
 	}
 
+	destroyMeas();
+	}
+
 	if ((indexa-1) % 10 == 0)
 		LogOut("ctime  |  index |  cmeas |  wtime  | mass \n");
 
@@ -344,14 +362,14 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
-		if ( measa & MEAS_STRING ){
+		if ( measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO) ){
 		double loks = log(axiona->Msa()*z_now/axiona->Delta());
 		double Le = axiona->BckGnd()->PhysSize();
 			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
 				MeasDataOut.str.strDen );
 		} else {
-			LogOut("str not measured ");
+			LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
 		}
 	} else {
 		LogOut("maxth=%f ", MeasDataOut.maxTheta);
@@ -359,7 +377,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	}
 
 	LogOut("\n");
-destroyMeas();
+
 
 return MeasDataOut;
 }

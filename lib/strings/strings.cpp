@@ -82,7 +82,7 @@ StringData	Strings::runCpu	()
 
 void Strings::resizePos ()
 {
-	LogMsg(VERB_NORMAL," [Strings] Resized to %d",3*stringdata.strDen);
+	LogMsg(VERB_NORMAL," [Strings] Resized to %d",3*stringdata.strDen_local);
 	pos.resize(3*stringdata.strDen_local);
 	pos.assign(3*stringdata.strDen_local, 0);
 }
@@ -187,7 +187,7 @@ std::vector<std::vector<size_t>>	strToCoords	(char *strData, size_t Lx, size_t V
 
 StringData	strings2	(Scalar *field)
 {
-	LogMsg	(VERB_NORMAL, "Called strings2");
+	LogMsg	(VERB_NORMAL, "[st2] Called strings2");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
 
 	prof.start();
@@ -259,6 +259,7 @@ StringData	strings2	(Scalar *field)
 
 	size_t carde = eStr->StrDat().strDen_local;
 	size_t Lx = field->Length();
+	size_t Lz = field->Depth();
 
 	// printf("[Strings %d] strDen %d strChr %d wallDn %d\n",rank,eStr->StrDat().strDen, eStr->StrDat().strChr, eStr->StrDat().wallDn);
 	// printf("[Ltrings %d] strDen %d strChr %d wallDn %d\n",rank,eStr->StrDat().strDen_local, eStr->StrDat().strChr_local, eStr->StrDat().wallDn_local);
@@ -285,6 +286,7 @@ StringData	strings2	(Scalar *field)
 				x[2] = (tmp/Lx) ;
 				x[1] = (tmp - x[2]*Lx) ;
 				x[0] = (idx - tmp*Lx) ;
+				x[2] += rank*Lz;
 
 				x[2] *= 2 ;
 				x[1] *= 2 ;
@@ -294,22 +296,22 @@ StringData	strings2	(Scalar *field)
 				{
 					#pragma omp atomic capture
 					{ besidefresi = unilab ; unilab += 1 ; }
-					eStr->Pos()[besidefresi*3+2] = x[2]+1;
+					eStr->Pos()[besidefresi*3+2] = x[2];
 					eStr->Pos()[besidefresi*3+1] = x[1]+1;
-					eStr->Pos()[besidefresi*3]   = x[0];
+					eStr->Pos()[besidefresi*3]   = x[0]+1;
 				}
 
 				if (strdaa[idx] & (STRING_YZ))
 				{
 					#pragma omp atomic capture
 					{ besidefresi = unilab ; unilab += 1 ; }
-					eStr->Pos()[besidefresi*3+2] = x[2];
+					eStr->Pos()[besidefresi*3+2] = x[2]+1;
 					eStr->Pos()[besidefresi*3+1] = x[1]+1;
-					eStr->Pos()[besidefresi*3]   = x[0]+1;
+					eStr->Pos()[besidefresi*3]   = x[0];
 				}
 
 				if (strdaa[idx] & (STRING_ZX))
-				{ x[0] += 1; x[2] += 1;
+				{ //x[0] += 1; x[2] += 1;
 					#pragma omp atomic capture
 					{ besidefresi = unilab ; unilab += 1 ; }
 					eStr->Pos()[besidefresi*3+2] = x[2]+1;
@@ -324,30 +326,56 @@ StringData	strings2	(Scalar *field)
 		}
 	}
 
-	printf("[st2] rank %d proyected %lu, done %lu\n", rank, eStr->StrDat().strDen_local, unilab);
+	// printf("[st2] rank %d proyected %lu, done %lu\n", rank, eStr->StrDat().strDen_local, unilab);
 	// LogOut("strda %d, %d\n",  sizeof(strdaa[0]),      field->Size());
 	// LogOut("dasa  %d, %d\n\n",sizeof(eStr->Pos()[0]), sizeof(eStr->Pos()[0])*carde);
+	commSync();
 
 	double red = (double) sizeof(eStr->Pos()[0])*carde/ (double)(sizeof(strdaa[0])*field->Size());
+	LogMsg	(VERB_NORMAL, "[st2] red = %f ", red);
+	// LogOut("pos1   %hu, %hu, %hu\n",eStr->Pos()[0], eStr->Pos()[1], eStr->Pos()[2]);
+	// LogOut("pos2   %hu, %hu, %hu\n",eStr->Pos()[3], eStr->Pos()[4], eStr->Pos()[5]);
+	// LogOut("pos-2   %hu, %hu, %hu\n",eStr->Pos()[3*unilab-3], eStr->Pos()[3*unilab-2], eStr->Pos()[3*unilab-1]);
+	// LogOut("pos-1   %hu, %hu, %hu\n",eStr->Pos()[3*unilab], eStr->Pos()[3*unilab+1], eStr->Pos()[3*unilab+2]);
 
-	// LogOut("pos   %hu, %hu, %hu\n",eStr->Pos()[0], eStr->Pos()[1], eStr->Pos()[2]);
-	// LogOut("pos   %hu, %hu, %hu\n",eStr->Pos()[3], eStr->Pos()[4], eStr->Pos()[5]);
-	// LogOut("pos   %hu, %hu, %hu\n",eStr->Pos()[3*unilab-3], eStr->Pos()[3*unilab-2], eStr->Pos()[3*unilab-1]);
-	// LogOut("pos   %hu, %hu, %hu\n",eStr->Pos()[3*unilab], eStr->Pos()[3*unilab+1], eStr->Pos()[3*unilab+2]);
 
-	if (red < 1.)
-	{
-		LogOut("red   %f\n",red);
-		char *logrono = static_cast<char*>( static_cast<void*>( &eStr->Pos()[0] ));
-		//unsigned short *cerda = static_cast<unsigned short *>(static_cast<void *>(field->sData()));
-		size_t carde3 =carde*3*sizeof(eStr->Pos()[0]);
+	/* make sure that the sData buffer never explotes in lowmem */
+	/* if no lowmem use m2 ! */
+	char *dest ;
+	size_t charmax ;
+	if (field->LowMem()){
+		dest = strdaa;
+		LogOut("can fail!");
+		charmax = field->Size();
+	}
+	else
+		{
+			dest = static_cast<char *>(field->m2Cpu());
+			charmax = field->Size()*field->DataSize ();
+		}
 
-		LogMsg(VERB_HIGH,"[Strings2] copyng %d unsigned-shorts, %d bytes to sData() [%lu bytes]\n",carde*3,carde3,field->Size());
-		memcpy (strdaa, logrono, carde3);
+	size_t carde3 =carde*3*sizeof(eStr->Pos()[0]);
+	size_t trinitrize = (charmax/3)*3;
+	LogMsg	(VERB_NORMAL, "[st2] charmax = %lu (%lu), needed %lu ", charmax,trinitrize,carde3);
+
+	char *orig = static_cast<char*>( static_cast<void*>( &eStr->Pos()[0] ));
+
+	carde3 = std::min(carde3, trinitrize);
+
+	if (field->LowMem()){
+		LogMsg(VERB_HIGH,"[Strings2] copyng %d bytes to sData() [%lu bytes]",carde3,field->Size());
+		memcpy (dest, orig, carde3);
 		field->setSD(SD_STRINGCOORD);
-		// LogOut("+1 %hu %hu %hu\n",cerda[0], cerda[1], cerda[2]);
-		// LogOut("-1 %hu %hu %hu\n",cerda[3*unilab-3], cerda[unilab*3-2], cerda[unilab*3-1]);
+	}
+	else
+	{
+		LogMsg(VERB_HIGH,"[Strings2] copyng %d bytes to m2Cpu() [%lu bytes]",carde3,field->Size());
+		memcpy (dest, orig, carde3);
+		field->setM2(M2_STRINGCOO);
+		// unsigned short *cerda = static_cast<unsigned short *>( static_cast<void*>( &eStr->Pos()[0] ));
+		// printf("strings.cpp rank %d   %hu, %hu, %hu\n", rank, cerda[0],cerda[1],cerda[2]);
 	}
 
+  commSync();
 	return	strDen;
 }

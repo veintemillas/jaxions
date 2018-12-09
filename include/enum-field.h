@@ -158,8 +158,9 @@
 		{
 			MOM_MFLAT    = 0,  // white noise prepared for M
 			MOM_MSIN     = 1,  // Gaussian with a sinc amplitude
-			MOM_MEXP     = 2,  // Gaussian with exponential ampl
-			MOM_MVSINCOS = 4,  // Tkachev sinc into M and its derivative into V
+			MOM_MVSINCOS = 2,  // Tkachev sinc into M and its derivative into V
+			MOM_MEXP     = 4,  // Gaussian with exp(-k/k_c) mean amplitude
+			MOM_MEXP2    = 8,  // Gaussian with exp(-(k/k_c)^2) mean amplitude
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -248,12 +249,12 @@
 
 		typedef	struct	StringData_v
 		{
-			size_t	strDen;
-			size_t	strChr;
-			size_t	wallDn;
-			size_t	strDen_local;
-			size_t	strChr_local;
-			size_t	wallDn_local;
+			size_t				strDen;
+			long long int	strChr;
+			size_t				wallDn;
+			size_t				strDen_local;
+			long long int	strChr_local;
+			size_t				wallDn_local;
 
 		}	StringData;
 
@@ -346,6 +347,7 @@
 			M2_ENERGY,
 			M2_ENERGY_FFT,
 			M2_STRINGMAP,
+			M2_STRINGCOO,
 			M2_DIRTY,
 		}	StatusM2;
 
@@ -365,17 +367,17 @@
 			MEAS_ALLBIN       = 15,
 			// MEAS_BIN...	  = 16,
 			MEAS_STRING	      = 32,
-			MEAS_STRINGMAP    = 64,		// 64 + 32
-			MEAS_STRINGCOO    = 160,  // 128 + 32
+			MEAS_STRINGMAP    = 64,
+			MEAS_STRINGCOO    = 128,
 
 			MEAS_ENERGY       = 256,
-			MEAS_ENERGY3DMAP  = 512,	// 512 + 256
-			MEAS_REDENE3DMAP  = 1024, 	// 1024 + 512 + 256
+			MEAS_ENERGY3DMAP  = 512,
+			MEAS_REDENE3DMAP  = 1024,
 			MEAS_2DMAP        = 2048,
 			MEAS_3DMAP        = 4096,
 			//                  8192
-			MEAS_PSP_A        = 16384, 	// 16384+768 (requires calculation of energy map  = 768)
-			MEAS_PSP_S        = 32768, 	// 32768+16384+768 ... requires also the previous
+			MEAS_PSP_A        = 16384,
+			MEAS_PSP_S        = 32768,
 			MEAS_NSP_A        = 65536,
 			MEAS_NSP_S        = 131072,
 			MEAS_NNSPEC       = 262144, 	// number of modes per bin for normalisation purposes
@@ -402,9 +404,9 @@
 		typedef	struct	MeasData_v
 		{
 			StringData	str;
-			double		maxTheta;
-			double eA;
-			double eS;
+			double			maxTheta;
+			double 			eA;
+			double 			eS;
 		}	MeasData;
 
 

@@ -12,7 +12,7 @@
 	void	destroyMeas	();
 
 	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
-	// void	writeString2	(Scalar *axion, StringData strDat, const bool rData=true);
+	void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeEnergy	(Scalar *axion, void *eData);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
 	void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin);
