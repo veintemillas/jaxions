@@ -204,6 +204,7 @@ def gm(address,something='summary',printerror=False):
         scaleFactorR = f.attrs[u'R']
     else:
         scaleFactorR = f.attrs[u'z']
+
     if (something == 'R'):
         return scaleFactorR ;
     # if loop
@@ -260,6 +261,14 @@ def gm(address,something='summary',printerror=False):
         delta = L/N
         msa = f.attrs[u'Saxion mass'] ;
         return msa/delta ;
+        # change for FRW
+    if something == 'logi':
+        L = f.attrs[u'Physical size']
+        N = f.attrs[u'Size']
+        delta = L/N
+        msa = f.attrs[u'Saxion mass'] ;
+        R = gm(address,'R')
+        return np.log(msa*R/delta) ;
 
     # initial condition stuff
     if something == 'kc':

@@ -1587,11 +1587,11 @@ int	parseArgs (int argc, char *argv[])
 	{
 		parm1 = iter;
 		parm2 = alpha;
-	} else if (cType == CONF_KMAX || CONF_TKACHEV) {
+	} else if ((cType == CONF_KMAX) || (cType == CONF_TKACHEV)) {
 		parm1 = kMax;
 		parm2 = kCrit;
 	}
-	else if (cType == CONF_VILGOR || cType == CONF_VILGORK || cType == CONF_VILGORS) {
+	else if ((cType == CONF_VILGOR) || (cType == CONF_VILGORK) || (cType == CONF_VILGORS)) {
 		parm1 = iter;	 // here taken as a flag to randomised the
 		parm2 = kCrit; // here taken as multiplicative factor for nN3
 	}
@@ -1712,7 +1712,7 @@ Cosmos	createCosmos()
 			myCosmos.SetZRestore(zrestore);
 
 		if (uI3)
-			myCosmos.SetIndi3(zrestore);
+			myCosmos.SetIndi3(indi3);
 
 		if (uFR)
 			myCosmos.SetFrw(frw);

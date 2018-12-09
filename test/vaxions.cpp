@@ -76,12 +76,14 @@ int	main (int argc, char *argv[])
 		}
 		else
 		{
+			LogOut("Reading initial conditions from file ... ");
 			readConf(&myCosmos, &axion, fIndex, restart_flag);
 			if (axion == NULL)
 			{
 				LogOut ("Error reading HDF5 file\n");
 				exit (0);
 			}
+			LogOut("Done! \n");
 		}
 	}
 	current = std::chrono::high_resolution_clock::now();
@@ -107,7 +109,6 @@ int	main (int argc, char *argv[])
 		else
 		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
 
-	LogOut("%f dooooom",1);
   //- time when axion mass^2 is 1/40 of saxion mass^2
 	double 	z_doom2 = findzdoom(axion);
 	//time intervac
@@ -232,11 +233,19 @@ int	main (int argc, char *argv[])
 		index = 0;
 		LogOut("First measurement file %d \n",index);
 		ninfa.index=index;
+		if (prinoconfo & PRINTCONF_INITIAL)
+			ninfa.measdata |= MEAS_3DMAP ;
 		lm = Measureme (axion, ninfa);
 	}
-	else{
+	else if (restart_flag)	{
 		index = fIndex -1 ;
 		LogOut("last measurement file was %d \n",index);
+	}
+	else if (!restart_flag && (fIndex > -1)){
+		index = fIndex;
+		LogOut("First measurement from read file %d \n",index);
+		ninfa.index=index;
+		lm = Measureme (axion, ninfa);
 	}
 	index++;
 
@@ -368,18 +377,17 @@ int	main (int argc, char *argv[])
 	fflush(stdout);
 
 	LogOut ("Final measurement file is: %05d \n", index);
-	LogOut("Unfold ... ");
 	munge(UNFOLD_ALL);
-	LogOut("| ");
 
 	//index++	; // LAST MEASUREMENT IS NOT PRINTED INSIDE THE LOOP, IT IS DONE HERE INSTEAD
+	// migth be a problem here... double measurement?
 
 	if (axion->Field() == FIELD_AXION)
 	{
-		MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
+		MeasureType mesa = defaultmeasType;
 
-		if ((prinoconfo >= 2) && (wkb2z < 0)) {
-			LogOut ("Dumping final configuration %05d ...", index);
+		if ((prinoconfo & PRINTCONF_FINAL) && (wkb2z < 0)) {
+			LogOut ("Will dump final configuration %05d ...", index);
 			mesa = mesa | MEAS_3DMAP  ;
 		}
 		if (pconfinal)
@@ -406,9 +414,10 @@ int	main (int argc, char *argv[])
 
 			index++;
 
-			MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
+			MeasureType mesa = defaultmeasType;
+			// MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
 
-			if (prinoconfo >= 2) {
+			if (prinoconfo & PRINTCONF_FINAL) {
 				LogOut ("Dumping final WKBed configuration %05d ...", index);
 				mesa = mesa | MEAS_3DMAP  ;
 			}
