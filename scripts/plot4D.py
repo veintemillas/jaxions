@@ -23,6 +23,8 @@ from matplotlib import cm
 import os,re,sys
 import h5py
 
+maskthreshold = 0.9
+
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
@@ -56,6 +58,9 @@ if len(sys.argv) == 2:
     elif (sys.argv[-1] == 'S'):
         mode = 'S'
         print('Saxion')
+    elif (sys.argv[-1] == 'M'):
+        mode = 'M'
+        print('Saxion-masked')
     elif (sys.argv[-1] == 'dens'):
         mode = 'den'
         print('Density from m,v')
@@ -111,6 +116,10 @@ for meas in fileMeas:
             aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
     elif (mode == 'S') and (fl == "Saxion") and pa.gm(meas,'map?'):
             aData = pa.gm(meas,'maprho')
+    elif (mode == 'M') and (fl == "Saxion") and pa.gm(meas,'map?'):
+            aData = pa.gm(meas,'maprho')
+            mask = (aData < maskthreshold)
+            aData = (1-mask)        
     if (mode == 'den') and pa.gm(meas,'map?'):
         if fl == "Saxion":
             mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
