@@ -107,9 +107,11 @@ for meas in fileMeas:
             pData = np.ones(aData.shape)*(2*np.pi)
             aData = (aData + pData)/(4.*np.pi)
     elif mode == 'eA' and pa.gm(meas,'2Dmape?'):
-            avi = pa.gm(meas,'eA')
+            # avi = pa.gm(meas,'eA')
             # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
-            aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi
+            # aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi
+            aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)
+            aData = aData/aData.mean()
     elif mode == 'eP' and pa.gm(meas,'2DmapP?'):
             avi = pa.gm(meas,'eA')**2
             # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
@@ -119,7 +121,7 @@ for meas in fileMeas:
     elif (mode == 'M') and (fl == "Saxion") and pa.gm(meas,'map?'):
             aData = pa.gm(meas,'maprho')
             mask = (aData < maskthreshold)
-            aData = (1-mask)        
+            aData = (1-mask)
     if (mode == 'den') and pa.gm(meas,'map?'):
         if fl == "Saxion":
             mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)

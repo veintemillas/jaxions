@@ -564,6 +564,22 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nmodelist') and ('nSpectrum/nmodes' in f):
         return np.array(f['nSpectrum/nmodes/data'])
 
+    # mask spectra
+    msp_check = 'mSpectrum' in f
+
+    if (something == 'msp?') :
+        return msp_check
+
+    if (something[0:3] == 'msp') and not msp_check :
+        if printerror :
+            print('[gm] Warning: No mSpec in file!!! ')
+        return ;
+    if (something[0:3] == 'msp') and  msp_check :
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        return np.array(f['mSpectrum/W/data/']) ;
+
+
     # power spectra
     psp_check = 'pSpectrum' in f
 
@@ -614,6 +630,11 @@ def gm(address,something='summary',printerror=False):
             temp = np.array(f['map']['m'].value.reshape(N,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
+
+        if (something == 'mapE'):
+            if 'map/E' in f:
+                return np.array(f['map']['E'].value.reshape(N,N)) ;
+
 
         if (something == 'mapEdens') and (ftype == 'Axion'):
             theta = np.array(f['map']['m'].value.reshape(N,N))/scaleFactorR

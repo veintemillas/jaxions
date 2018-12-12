@@ -121,7 +121,6 @@
 		void	nRun		();
 
 
-
 		void	filter	(int neigh);
 
 		void	reset0(){
@@ -132,6 +131,12 @@
 				binP.assign(powMax, 0.);
 				binPS.assign(powMax, 0.);
 		}
+
+		void	masker	(int neigh, SpectrumMaskType mask = SPMASK_TEST);
+
+		template<typename Float, SpectrumMaskType mask>
+		void	masker	(int neigh);
+
 	};
 
 

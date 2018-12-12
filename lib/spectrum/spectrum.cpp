@@ -11,6 +11,7 @@
 #include "comms/comms.h"
 #include "fft/fftCode.h"
 
+
 void	SpecBin::fillCosTable () {
 
 	const double	ooLx   = 1./Ly;
@@ -323,6 +324,10 @@ void	SpecBin::pRun	() {
 		}
 	}
 
+	//issue?
+	binP.assign(powMax, 0.);
+
+	// the function gives the same in spectral or !spectral
 	switch (fPrec) {
 		case	FIELD_SINGLE:
 			if (spec)
@@ -901,23 +906,338 @@ void	SpecBin::filter (int neigh) {
 	// we outputthem as a bin to use print bin
 	// or as a reduced density map ?
 
-	float *mCon = static_cast<float *>(static_cast<void*>(field->m2Cpu()));	// FIXME breaks for double precision
+
 	size_t seta = (size_t) neigh ;
 	size_t newNx = Ly/seta ;
 	size_t newNz = Lz/seta ;
-	//size_t topa = newNx*newNx*newNz ;
 
-	for (size_t iz=0; iz < newNz; iz++) {
-		size_t laz = Ly*(Ly+2)*iz*seta ;
-		size_t sz = newNx*newNx*iz ;
-		for (size_t iy=0; iy < newNx; iy++) {
-			size_t lay = (Ly+2)*iy*seta ;
-			size_t sy = newNx*iy ;
-			for (size_t ix=0; ix < newNx; ix++) {
-				size_t idx = ix + sy + sz ;
-				size_t odx = ix*seta + lay + laz ;
-				mCon[idx] = mCon[odx] ;
+	switch (fPrec) {
+		case	FIELD_SINGLE:
+		{
+			float *mCon = static_cast<float *>(static_cast<void*>(field->m2Cpu()));	// FIXME breaks for double precision
+			//size_t topa = newNx*newNx*newNz ;
+
+			for (size_t iz=0; iz < newNz; iz++) {
+				size_t laz = Ly*(Ly+2)*iz*seta ;
+				size_t sz = newNx*newNx*iz ;
+				for (size_t iy=0; iy < newNx; iy++) {
+					size_t lay = (Ly+2)*iy*seta ;
+					size_t sy = newNx*iy ;
+					for (size_t ix=0; ix < newNx; ix++) {
+						size_t idx = ix + sy + sz ;
+						size_t odx = ix*seta + lay + laz ;
+						mCon[idx] = mCon[odx] ;
+					}
+				}
 			}
 		}
+		break;
+
+		case	FIELD_DOUBLE:
+		{
+			double *mCon = static_cast<double *>(static_cast<void*>(field->m2Cpu()));	// FIXME breaks for double precision
+
+			for (size_t iz=0; iz < newNz; iz++) {
+				size_t laz = Ly*(Ly+2)*iz*seta ;
+				size_t sz = newNx*newNx*iz ;
+				for (size_t iy=0; iy < newNx; iy++) {
+					size_t lay = (Ly+2)*iy*seta ;
+					size_t sy = newNx*iy ;
+					for (size_t ix=0; ix < newNx; ix++) {
+						size_t idx = ix + sy + sz ;
+						size_t odx = ix*seta + lay + laz ;
+						mCon[idx] = mCon[odx] ;
+					}
+				}
+			}
+		}
+		break;
+
+	}
+}
+
+
+/* masker functions*/
+
+void	SpecBin::masker	(int neigh, SpectrumMaskType mask){
+
+	switch (mask)
+	{
+		case SPMASK_FLAT :
+		case SPMASK_VIL :
+		case SPMASK_VIL2 :
+		case SPMASK_SAXI :
+			LogError("[Spectrum nRun] These masks are not yet implemented");
+		break;
+
+		case SPMASK_TEST :
+		default:
+			switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::masker<float,SPMASK_TEST> (neigh);
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::masker<double,SPMASK_TEST> (neigh);
+				break;
+
+				default :
+				LogError("[Spectrum nRun] precision not reconised.");
+				break;
+			}
+		break;
+	}
+}
+
+
+
+template<typename Float, SpectrumMaskType mask>
+void	SpecBin::masker	(int neigh) {
+
+	if (field->sDStatus() != SD_STDWMAP){
+			LogOut("[masker] masker called without string map! exit!\n");
+			return;
+	}
+	if (field->LowMem()){
+			LogOut("[masker] masker called in lowmem! exit!\n");
+			return;
+	}
+
+	if	(field->Folded())
+	{
+		Folder	munge(field);
+		munge(UNFOLD_ALL);
+	}
+
+
+	field->sendGhosts(FIELD_M,COMM_SDRV);
+	field->sendGhosts(FIELD_M, COMM_WAIT);
+
+
+
+	switch (fType) {
+
+		case	FIELD_SAXION:
+		{
+			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
+			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+
+			/* set to 0 one ghost region in m2half*/
+			Float *m2sax                = static_cast<Float *>(field->m2half());
+			size_t surfi = Ly*(Ly+2) ;
+			// #pragma omp parallel for schedule(static)
+			// for (size_t odx=0; odx < surfi; odx++) {
+			// 	m2sax[odx] = 0 ;
+			// }
+			memset (field->m2half(), 0, surfi*field->Precision());
+
+
+			/* MPI rank and position of the last slice that we will send to the next rank */
+			int myRank = commRank();
+			int nsplit = (int) (field->TotalDepth()/field->Depth()) ;
+			static const int fwdNeig = (myRank + 1) % nsplit;
+			static const int bckNeig = (myRank - 1 + nsplit) % nsplit;
+
+			size_t voli = Ly*(Ly+2)*(Lz-1) ;
+			const int ghostBytes = (Ly*(Ly+2))*(field->Precision());
+			static MPI_Request 	rSendFwd, rRecvBck;
+			void *sGhostFwd = static_cast<void *>(m2sa + voli);
+			void *rGhostBck = static_cast<void *>(m2sax);
+
+			// memset (field->m2Cpu(), 0, field->eSize()*field->DataSize());
+
+			// optimizar!
+			#pragma omp parallel for schedule(static)
+			for (size_t iiz=0; iiz < Lz; iiz++) {
+				size_t iz = Lz-1-iiz;
+				size_t zo = Ly*(Ly+2)*iz ;
+				size_t zoM = Ly*(Ly+2)*(iz+1) ;
+				size_t zi = Ly*Ly*iz ;
+				// printf("zo %lu zoM %lu zi %lu\n",zo,zoM,zi);
+
+				for (size_t iy=0; iy < Ly; iy++) {
+					size_t yo = (Ly+2)*iy ;
+					size_t yoM = (Ly+2)*((iy+1)%Ly) ;
+					size_t yi = Ly*iy ;
+					// printf("yo %lu yoM %lu yi %lu\n",yo,yoM,yi);
+
+					for (size_t ix=0; ix < Ly; ix++) {
+
+						/* position in the mask (with padded zeros for the FFT) and in the stringData */
+						size_t odx = ix + yo + zo;
+						size_t idx = ix + yi + zi;
+
+						// printf("odx %lu idx %lu yi %lu\n", odx, idx);
+						/* initialise to zero the mask */
+
+						m2sa[odx] = 0;
+
+						switch(mask){
+							case SPMASK_FLAT:
+							case SPMASK_VIL:
+							case SPMASK_VIL2:
+							case SPMASK_SAXI:
+								LogOut("These masks are automatic! why did you run this function??\n");
+								LogMsg(VERB_NORMAL,"These masks are automatic! why did you run this function??");
+							break;
+
+							case SPMASK_TEST:
+									if ( (strdaa[idx] & STRING_ONLY) != 0)
+									{
+										m2sa[odx] = 1;
+										if (strdaa[idx] & (STRING_XY))
+										{
+											m2sa[((ix + 1) % Ly) + yo + zo] = 1;
+											m2sa[ix + yoM + zo] = 1;
+											m2sa[((ix + 1) % Ly) + yoM + zo] = 1;
+										}
+										if (strdaa[idx] & (STRING_YZ))
+										{
+											m2sa[ix + yoM + zo] = 1;
+											m2sa[ix + yo + zoM] = 1;
+											m2sa[ix + yoM + zoM] = 1;
+										}
+										if (strdaa[idx] & (STRING_ZX))
+										{
+											m2sa[ix + yo + zoM] = 1;
+											m2sa[((ix + 1) % Ly) + yo + zo] = 1;
+											m2sa[((ix + 1) % Ly) + yo + zoM] = 1;
+										}
+									}
+							break;
+						}  //end mask
+					}    // end loop x
+				}      // end loop y
+
+				if (iz == Lz-1) //given to one thread only I hope
+				{
+					/* Send ghosts from lastslicem2 -> mhalf */
+					MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, myRank,   MPI_COMM_WORLD, &rSendFwd);
+					MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, bckNeig,   MPI_COMM_WORLD, &rRecvBck);
+					MPI_Start(&rSendFwd);
+					MPI_Start(&rRecvBck);
+				}
+
+			}        // end loop y
+
+			/* makes sure the ghosts have arrived */
+			MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+			MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+
+			/* frees */
+			MPI_Request_free(&rSendFwd);
+			MPI_Request_free(&rRecvBck);
+
+			/* Fuse ghost and local info 1st surfi */
+			#pragma omp parallel for schedule(static)
+			for (size_t odx=0; odx < surfi; odx++) {
+				if (m2sax[odx] == 1)
+					m2sa[odx] = m2sax[odx] ; // if it was 1 still 1, otherwise 1
+			}
+
+			commSync();
+
+			/* Fourier transform */
+			// r2c FFT in m2
+			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			myPlan.run(FFT_FWD);
+
+			/* bin the raw mask function */
+			//issue?
+			LogMsg(VERB_NORMAL,"[masker] filling  bins");
+			binP.assign(powMax, 0.);
+
+			switch (fPrec) {
+				case	FIELD_SINGLE:
+					if (spec)
+						fillBins<float,  SPECTRUM_P, true> ();
+					else
+						fillBins<float,  SPECTRUM_P, false>();
+					break;
+
+				case	FIELD_DOUBLE:
+					if (spec)
+						fillBins<double,  SPECTRUM_P, true> ();
+					else
+						fillBins<double,  SPECTRUM_P, false>();
+					break;
+
+				default:
+					LogError ("Wrong precision");
+					break;
+			}
+
+			/* Filter */
+			switch (fPrec) {
+				case	FIELD_SINGLE:
+						filterFFT<float> (neigh);
+					break;
+
+				case	FIELD_DOUBLE:
+						filterFFT<double> (neigh);
+					break;
+
+				default:
+					LogError ("Wrong precision");
+					break;
+			}
+
+
+
+			/* iFFT */
+			myPlan.run(FFT_BCK);
+
+
+
+			/* we needed it padded for the FFT
+        unpad for plots but save in m22 */
+			{
+				size_t dl = Ly*field->Precision();
+				size_t pl = (Ly+2)*field->Precision();
+				size_t ss	= Ly*Lz;
+				char *mAS = static_cast<char *>(field->m2Cpu());
+				char *mAH = static_cast<char *>(field->m2half());
+
+				size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
+
+				memcpy	(mAH, mAS, dataTotalSize);
+
+				for (size_t sl=1; sl<ss; sl++) {
+					size_t	oOff = sl*dl;
+					size_t	fOff = sl*pl;
+					// LogOut("A %lu ",sl);
+					memcpy	(mAS+oOff, mAS+fOff, dl);
+				}
+			}
+			/* mask in m2 (unpadded) (we can use for plotting reasons) and m2half padded to use with the spectrum */
+			field->setM2(M2_ENERGY);
+
+			/* bin the continuous mask for calibration purposes */
+
+			/* return mask in binary to strData */
+			// {
+			// 	/* first gauge the number of points */
+			// 	for (int i = 0; i<10, i++){
+			// 		double crit =
+			// 		size_t vol = field->Size();
+			//
+			// 		#pragma omp parallel for schedule(static)
+			// 		for (size_t idx=0; idx < vol; idx++) {
+			// 			if ( m2sa[idx] > crit )
+			// 			{
+			// 				strdaa[idx] |= STRING_MASK ;
+			// 			}
+			// 		}
+			//
+			// 	}
+			// }
+
+		}
+		break; //case saxion ends
+
+		default:
+		LogError("[masker] Error: Masker template called with no saxion mode!");
+		break ;
 	}
 }

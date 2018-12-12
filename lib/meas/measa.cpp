@@ -41,7 +41,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		writeConf(axiona, indexa);
 		MeasureType mesa = measa;
 		measa = measa ^ MEAS_3DMAP ; // removes the map
-		LogOut("mesa %d measa %d MEAS3DMAP %d\n", mesa, measa, MEAS_3DMAP);
+		// LogOut("mesa %d measa %d MEAS3DMAP %d\n", mesa, measa, MEAS_3DMAP);
 	}
 
 	double z_now     = *axiona->zV();
@@ -128,6 +128,42 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		writeEnergy(axiona, eRes);
 	}
 
+	if(axiona->Field() == FIELD_SAXION){
+		if (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK))
+		{
+
+			if ( !(measa & MEAS_STRINGCOO)){
+					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
+					MeasDataOut.str = strings(axiona);
+
+					if ( measa & MEAS_STRINGMAP )
+					{
+						// LogOut("+map ");
+						if (p3DthresholdMB/((double) MeasDataOut.str.strDen) > 1.)
+						{
+							LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
+							writeString(axiona, MeasDataOut.str, true);
+						}
+					}
+					else {
+						writeString(axiona, MeasDataOut.str, false);
+					}
+			}
+			else if (measa & MEAS_STRINGCOO){
+				LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
+				MeasDataOut.str = strings2(axiona);
+				if ( measa & MEAS_STRINGMAP ){
+					LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
+					writeString(axiona, MeasDataOut.str, true);
+				}
+				LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
+				writeStringCo(axiona, MeasDataOut.str, true);
+			}
+
+		}
+	}
+
+
 	// if we are computing any spectrum, prepare the instance
 	if (measa & MEAS_SPECTRUM)
 	{
@@ -161,6 +197,17 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				// JAVI : SURE PROBLEM OF PSA PSS FILTER
 				// specAna.pSRun();
 				// writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
+		}
+
+		/* this is an experimental print that uses axion energy plot2D and could use
+		   is absolutely incompatible with a real output of energy density... */
+		if (measa & MEAS_MASK)
+		{
+			LogMsg(VERB_NORMAL, "[Meas %d] producing MASK in m2",indexa);
+				specAna.masker(4,SPMASK_TEST);
+					writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W");
+				writeEMapHdf5s (axiona,sliceprint);
+				writeEDens(axiona);
 		}
 
 		if (measa & MEAS_NSP_A)
@@ -282,38 +329,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
 					}
 
-			if (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO))
-			{
 
-				if ( !(measa & MEAS_STRINGCOO)){
-						LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
-						MeasDataOut.str = strings(axiona);
-
-						if ( measa & MEAS_STRINGMAP )
-						{
-							// LogOut("+map ");
-							if (p3DthresholdMB/((double) MeasDataOut.str.strDen) > 1.)
-							{
-								LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
-								writeString(axiona, MeasDataOut.str, true);
-							}
-						}
-						else {
-							writeString(axiona, MeasDataOut.str, false);
-						}
-				}
-				else if (measa & MEAS_STRINGCOO){
-					LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
-					MeasDataOut.str = strings2(axiona);
-					if ( measa & MEAS_STRINGMAP ){
-						LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
-						writeString(axiona, MeasDataOut.str, true);
-					}
-					LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
-					writeStringCo(axiona, MeasDataOut.str, true);
-				}
-
-			}
 
 	}
 	else{ // FIELD_AXION
@@ -369,7 +385,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
 				MeasDataOut.str.strDen );
 		} else {
-			LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
+			// LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
+			LogOut("str not measured ");
 		}
 	} else {
 		LogOut("maxth=%f ", MeasDataOut.maxTheta);
