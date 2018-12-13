@@ -33,6 +33,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
 	SpectrumMaskType mask = info.mask ;
+	double radius_mask = info.rmask ;
 
 	auto	cTime = Timer();
 
@@ -145,7 +146,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							writeString(axiona, MeasDataOut.str, true);
 						}
 					}
-					else {
+					// else {
+					else if ( !(measa & MEAS_MASK)) {
 						writeString(axiona, MeasDataOut.str, false);
 					}
 			}
@@ -199,15 +201,20 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				// writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
 		}
 
-		/* this is an experimental print that uses axion energy plot2D and could use
-		   is absolutely incompatible with a real output of energy density... */
+		/* this is an experimental print that uses axion energy plot2D and could use plot3D energy
+		   is incompatible with a real output of energy density... */
 		if (measa & MEAS_MASK)
 		{
 			LogMsg(VERB_NORMAL, "[Meas %d] producing MASK in m2",indexa);
-				specAna.masker(4,SPMASK_TEST);
-					writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W");
-				writeEMapHdf5s (axiona,sliceprint);
-				writeEDens(axiona);
+				specAna.masker(radius_mask, SPMASK_TEST);
+					writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
+				/* activate this to print a 2D smooth mask */
+				 	//writeEMapHdf5s (axiona,sliceprint);
+				/* activate this to see the smooth mask */
+					//writeEDens(axiona);
+				/* activate this to see the binary mask */
+					//writeString(axiona, MeasDataOut.str, true);
+					writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/mSpectrum", "W");
 		}
 
 		if (measa & MEAS_NSP_A)

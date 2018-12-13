@@ -574,10 +574,15 @@ def gm(address,something='summary',printerror=False):
         if printerror :
             print('[gm] Warning: No mSpec in file!!! ')
         return ;
-    if (something[0:3] == 'msp') and  msp_check :
+    if (something == 'mspW') and  msp_check and ('mSpectrum/W' in f):
         # powmax = f['mSpectrum/W/data/'].size
         # if (something == 'msp'):
         return np.array(f['mSpectrum/W/data/']) ;
+
+    if (something == 'mspW0') and  msp_check and ('mSpectrum/W0' in f) :
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        return np.array(f['mSpectrum/W0/data/']) ;
 
 
     # power spectra

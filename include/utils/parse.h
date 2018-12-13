@@ -69,9 +69,10 @@ extern LambdaType     lType;
 //extern VqcdType       vqcdType;
 //extern VqcdType       vqcdTypeDamp;
 //extern VqcdType       vqcdTypeRhoevol;
-extern PropType       pType;
+extern PropType         pType;
 extern SpectrumMaskType spmask;
-extern MeasureType  defaultmeasType;
+extern double           rmask;
+extern MeasureType      defaultmeasType;
 
 extern LogMpi       logMpi;
 extern bool         debug ;

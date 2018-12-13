@@ -825,7 +825,7 @@ void	SpecBin::nmodRun	() {
 //------------------------------------------------------------------------------
 
 template<typename Float>
-void	SpecBin::filterFFT	(int neigh) {
+void	SpecBin::filterFFT	(double neigh) {
 
 	using cFloat = std::complex<Float>;
 
@@ -959,7 +959,7 @@ void	SpecBin::filter (int neigh) {
 
 /* masker functions*/
 
-void	SpecBin::masker	(int neigh, SpectrumMaskType mask){
+void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 
 	switch (mask)
 	{
@@ -975,11 +975,11 @@ void	SpecBin::masker	(int neigh, SpectrumMaskType mask){
 			switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_TEST> (neigh);
+				SpecBin::masker<float,SPMASK_TEST> (radius_mask);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_TEST> (neigh);
+				SpecBin::masker<double,SPMASK_TEST> (radius_mask);
 				break;
 
 				default :
@@ -993,7 +993,7 @@ void	SpecBin::masker	(int neigh, SpectrumMaskType mask){
 
 
 template<typename Float, SpectrumMaskType mask>
-void	SpecBin::masker	(int neigh) {
+void	SpecBin::masker	(double radius_mask) {
 
 	if (field->sDStatus() != SD_STDWMAP){
 			LogOut("[masker] masker called without string map! exit!\n");
@@ -1171,11 +1171,11 @@ void	SpecBin::masker	(int neigh) {
 			/* Filter */
 			switch (fPrec) {
 				case	FIELD_SINGLE:
-						filterFFT<float> (neigh);
+						filterFFT<float> (radius_mask);
 					break;
 
 				case	FIELD_DOUBLE:
-						filterFFT<double> (neigh);
+						filterFFT<double> (radius_mask);
 					break;
 
 				default:
@@ -1192,7 +1192,7 @@ void	SpecBin::masker	(int neigh) {
 
 			/* we needed it padded for the FFT
         unpad for plots but save in m22 */
-			{
+
 				size_t dl = Ly*field->Precision();
 				size_t pl = (Ly+2)*field->Precision();
 				size_t ss	= Ly*Lz;
@@ -1209,29 +1209,73 @@ void	SpecBin::masker	(int neigh) {
 					// LogOut("A %lu ",sl);
 					memcpy	(mAS+oOff, mAS+fOff, dl);
 				}
-			}
-			/* mask in m2 (unpadded) (we can use for plotting reasons) and m2half padded to use with the spectrum */
+
+
+			/* mask in m2 (unpadded) (we label M2_ENERGY for plotting reasons)
+			and m2half padded to use with the spectrum */
 			field->setM2(M2_ENERGY);
 
-			/* bin the continuous mask for calibration purposes */
+			/* return mask in binary to strData following a criterion */
+			{
+				// the critical value has been calibrated to be ... (for sigma in 1-8)
+				// min (radius_mask)^2 = 0.42772052 -0.05299264*radius_mask for radius_mask<4
+				// min (radius_mask)^2 = 0.22619714 -0.00363601*radius_mask for radius_mask>4
+					Float maskcut = (Float) std::abs(radius_mask);
+					if (radius_mask < 4)
+						maskcut = (0.42772052 -0.05299264*maskcut)/(maskcut*maskcut);
+					else
+						maskcut = (0.22619714 -0.00363601*maskcut)/(maskcut*maskcut);
 
-			/* return mask in binary to strData */
-			// {
-			// 	/* first gauge the number of points */
-			// 	for (int i = 0; i<10, i++){
-			// 		double crit =
-			// 		size_t vol = field->Size();
-			//
-			// 		#pragma omp parallel for schedule(static)
-			// 		for (size_t idx=0; idx < vol; idx++) {
-			// 			if ( m2sa[idx] > crit )
-			// 			{
-			// 				strdaa[idx] |= STRING_MASK ;
-			// 			}
-			// 		}
-			//
-			// 	}
-			// }
+					if (radius_mask > 8)
+						maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
+
+					size_t vol = field->Size() ;
+					#pragma omp parallel for schedule(static)
+					for (size_t idx=0; idx < vol; idx++) {
+						if ( m2sa[idx] > maskcut ) {
+							strdaa[idx] |= STRING_MASK ; // mask stored M=1-W
+							m2sa[idx] = 0; // in m2 we use W
+						}
+						else {
+							m2sa[idx] = 1;
+						}
+					}
+
+			}
+
+			/* pad m2 inplace */
+			for (size_t sl=1; sl<ss; sl++) {
+				size_t isl = ss-sl;
+				size_t	oOff = isl*dl;
+				size_t	fOff = isl*pl;
+				// LogOut("A %lu ",sl);
+				memcpy	(mAS+fOff, mAS+oOff, dl);
+			}
+
+			/* Calculate the FFT of the mask */
+			myPlan.run(FFT_FWD);
+
+			switch (fPrec) {
+				case	FIELD_SINGLE:
+					if (spec)
+						fillBins<float,  SPECTRUM_PS, true> ();
+					else
+						fillBins<float,  SPECTRUM_PS, false>();
+					break;
+
+				case	FIELD_DOUBLE:
+					if (spec)
+						fillBins<double,  SPECTRUM_PS, true> ();
+					else
+						fillBins<double,  SPECTRUM_PS, false>();
+					break;
+
+				default:
+					LogError ("Wrong precision");
+					break;
+			}
+
+		field->setM2(M2_DIRTY);
 
 		}
 		break; //case saxion ends

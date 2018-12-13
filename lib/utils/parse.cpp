@@ -75,6 +75,7 @@ size_t wTime = std::numeric_limits<std::size_t>::max();
 
 PropType     pType     = PROP_NONE;
 SpectrumMaskType spmask= SPMASK_FLAT;
+double       rmask     = 2.0 ;
 ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
@@ -292,6 +293,8 @@ void	PrintMEoptions()
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
+	printf("    Red-Gauss                              8 \n");
+	printf("  --rmask [float]                          radius in grid u. [default = 2]\n");
 
 	return;
 }
@@ -1154,6 +1157,22 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Spectrum masking type is a positive integer.\n");
 				exit(1);
 			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--rmask"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a radius for string masking!\n");
+				exit(1);
+			}
+
+			rmask = atof(argv[i+1]);
 
 			i++;
 			procArgs++;

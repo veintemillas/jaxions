@@ -23,7 +23,7 @@ from matplotlib import cm
 import os,re,sys
 import h5py
 
-maskthreshold = 0.9
+maskthreshold = 0.5
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')

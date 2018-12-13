@@ -140,6 +140,7 @@ int	main (int argc, char *argv[])
 	// default measurement type is parsed
 	ninfa.measdata = defaultmeasType;
 	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;

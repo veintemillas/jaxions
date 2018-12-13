@@ -403,6 +403,7 @@
 			size_t idxprint	;
 			MeasureType measdata ;
 			SpectrumMaskType mask ;
+			double rmask; 					// a radius to mask
 		}	MeasInfo;
 
 		// data output by measurement function to program

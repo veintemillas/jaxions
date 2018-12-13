@@ -110,7 +110,7 @@
 		void	fillBins	();
 
 		template<typename cFloat>
-		void	filterFFT	(int neigh);
+		void	filterFFT	(double neigh);
 
 		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
 		void	nSRun		();
@@ -132,10 +132,10 @@
 				binPS.assign(powMax, 0.);
 		}
 
-		void	masker	(int neigh, SpectrumMaskType mask = SPMASK_TEST);
+		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_TEST);
 
 		template<typename Float, SpectrumMaskType mask>
-		void	masker	(int neigh);
+		void	masker	(double radius_mask);
 
 	};
 
