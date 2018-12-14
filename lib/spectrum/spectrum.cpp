@@ -1285,3 +1285,250 @@ void	SpecBin::masker	(double radius_mask) {
 		break ;
 	}
 }
+
+/* build correction matrices */
+
+void	SpecBin::matrixbuilder() {
+	switch (fPrec)
+	{
+		case FIELD_SINGLE :
+		SpecBin::matrixbuilder<float>();
+		break;
+
+		case FIELD_DOUBLE :
+		SpecBin::matrixbuilder<double>();
+		break;
+
+		default :
+		LogError("[Spectrum matrixbuilder] precision not recognised.");
+		break;
+	}
+}
+
+template<typename Float>
+void	SpecBin::matrixbuilder() {
+
+	//if (field->sDStatus() != SD_STDWMAP){
+	//		LogOut("[matrixbuilder] matrixbuilder called without string map! exit!\n");
+	//		return;
+	//}
+	if (field->LowMem()){
+			LogOut("[matrixbuilder] matrixbuilder called in lowmem! exit!\n");
+			return;
+	}
+
+	// calculate phase space density (stored in binPS), which will be used below
+	if (spec)
+		fillBins<Float,  SPECTRUM_NN, true> ();
+	else
+		fillBins<Float,  SPECTRUM_NN, false>();
+
+	// extend powmax such that it becomes a multiple of the number of MPI partitions.
+	size_t powMaxPad = powMax/commSize()+1;
+	size_t iBase = powMaxPad*commRank();
+	double vol = field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize();
+	double norm = 1./vol;
+	double coeJ = vol/(8.*M_PI);
+
+	switch (fType) {
+		case	FIELD_SAXION:
+		{
+			Float *m2sa = static_cast<Float *>(field->m2Cpu());
+			// split i direction to MPI processes
+			// resulting matrix M_ij is of the form (powMaxPad*Nrank x powMax)
+			// the exccess part in i should be cut later.
+			#pragma omp parallel for schedule(static)
+			for (size_t i=0; i<powMaxPad; i++) {
+				size_t is = iBase + i;
+				for (size_t j=0; j<powMax; j++) {
+					size_t indM = i*powMax+j;
+					m2sa[indM] = 0;
+					for (size_t k=0; k<powMax; k++) {
+						double J = 0;
+						if (k==0) {
+							if (j==0) {
+								J = (is==0)?vol:0;
+							} else {
+								J = (is==j)?vol/binPS.at(is):0;
+							}
+						} else {
+							if (j==0) {
+								J = (is==k)?vol/binPS.at(k):0;
+							} else {
+								int diffkj = static_cast<int>(j) - static_cast<int>(k);
+								if (is==0) {
+									J = vol/binPS.at(j);
+								} else if (is>=std::abs(diffkj) && is<=j+k && is < powMax) {
+									J = coeJ/(is*j*k);
+								} else {
+									J = 0;
+								}
+							}
+						}
+						//m2sa[indM] += norm*binP.at(k)*J;
+						if(k==1) m2sa[indM] = J;
+					}
+				}
+			}
+			MPI_Allgather(m2sa, powMaxPad*powMax, MPI_DOUBLE, m2sa, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
+		}
+		break; //case saxion ends
+
+		default:
+		LogError("[matrixbuilder] Error: matrixbuilder template called with no saxion mode!");
+		break ;
+	}
+}
+
+/* The following function just calculate power spectrum of |W|^2 and store it in binP. */
+
+void	SpecBin::wRun	(SpectrumMaskType mask){
+
+	switch (mask)
+	{
+		case SPMASK_FLAT :
+			LogError("[Spectrum wRun] Error: we don't need the power spectrum of W in FLAT masking mode.");
+			break;
+
+		case SPMASK_VIL :
+			switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::wRun<float,SPMASK_VIL> ();
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::wRun<double,SPMASK_VIL> ();
+				break;
+
+				default :
+				LogError("[Spectrum wRun] precision not reconised.");
+				break;
+			}
+			break;
+
+		case SPMASK_VIL2 :
+			switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::wRun<float,SPMASK_VIL2> ();
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::wRun<double,SPMASK_VIL2> ();
+					break;
+
+					default :
+					LogError("[Spectrum wRun] precision not reconised.");
+					break;
+				}
+			break;
+
+		case SPMASK_SAXI :
+			LogError("[Spectrum wRun] Error: we don't need the power spectrum of W in SAXI mode.");
+			break;
+
+		case SPMASK_TEST :
+			switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::wRun<float,SPMASK_TEST> ();
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::wRun<double,SPMASK_TEST> ();
+					break;
+
+					default :
+					LogError("[Spectrum wRun] precision not reconised.");
+					break;
+				}
+			break;
+
+		default:
+		LogError("[Spectrum wRun] SPMASK not recognised!");
+		break;
+	}
+}
+
+template<typename Float, SpectrumMaskType mask>
+void	SpecBin::wRun	() {
+
+	binP.assign(powMax, 0.);
+
+  std::complex<Float> zaskaF((Float) zaskar, 0.);
+
+	if	(field->Folded())
+	{
+		Folder	munge(field);
+		munge(UNFOLD_ALL);
+	}
+
+	field->sendGhosts(FIELD_M,COMM_SDRV);
+	field->sendGhosts(FIELD_M, COMM_WAIT);
+
+  switch (fType) {
+		case	FIELD_SAXION:
+		{
+			std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
+			std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
+			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+			// Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + field->eSize();
+			// Float *m2sax                = static_cast<Float *>(field->m2half());
+			Float *sd                   = static_cast<Float *>(field->sData());
+
+			// identify the mask function
+			#pragma omp parallel for schedule(static)
+			for (size_t iz=0; iz < Lz; iz++) {
+				size_t zo = Ly*(Ly+2)*iz ;
+				size_t zi = Ly*Ly*iz ;
+				for (size_t iy=0; iy < Ly; iy++) {
+					size_t yo = (Ly+2)*iy ;
+					size_t yi = Ly*iy ;
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo;
+						size_t idx = ix + yi + zi;
+						//size_t ixM = ((ix + 1) % Ly) + yi + zi;
+						switch(mask){
+							case SPMASK_VIL:
+									m2sa[odx] = std::abs(ma[idx]-zaskaF)/Rscale;
+									break;
+							case SPMASK_VIL2:
+									m2sa[odx] = std::pow(std::abs(ma[idx]-zaskaF)/Rscale,2);
+									break;
+							case SPMASK_TEST:
+									//assume the map of W was already stored in stringdata
+									m2sa[odx] = sd[idx];
+									break;
+							default:
+									m2sa[odx] = 1.;
+									break;
+						} //end mask
+					}
+				}
+			}
+
+			// r2c FFT in m2
+			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			myPlan.run(FFT_FWD);
+
+			if (spec)
+				fillBins<Float,  SPECTRUM_P, true> ();
+			else
+				fillBins<Float,  SPECTRUM_P, false>();
+
+    }
+    break;
+
+    case	FIELD_AXION_MOD:
+		case	FIELD_AXION:
+		LogError ("[Spectrum wRun] Error: Theta only field not supported in wRun.");
+		return;
+		break;
+
+		case	FIELD_WKB:
+		LogError ("[Spectrum wRun] Error: WKB field not supported in wRun.");
+		return;
+		break;
+  }
+}

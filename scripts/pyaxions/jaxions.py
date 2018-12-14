@@ -45,6 +45,14 @@ def findmfiles(address='./'):
 
 
 
+#   finds all XXXXX.m.XXXXX files with a exactly specified neme and address
+
+def findnamedmfilesexact(name='./axion'):
+    list = []
+    for filename in glob.iglob(name+'.m.*', recursive=True):
+          list.append(filename)
+          #print(filename)
+    return sorted(list) ;
 
 
 
@@ -583,6 +591,11 @@ def gm(address,something='summary',printerror=False):
         # powmax = f['mSpectrum/W/data/'].size
         # if (something == 'msp'):
         return np.array(f['mSpectrum/W0/data/']) ;
+
+    if (something == 'mspM') and  msp_check and ('mSpectrum/M' in f):
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        return np.array(f['mSpectrum/M/data/']) ;
 
 
     # power spectra

@@ -116,10 +116,13 @@
 		void	nSRun		();
 		void	pRun		();
 		void	nmodRun		();
+		void  wRun(SpectrumMaskType mask);
 
 		template<typename Float, SpectrumMaskType mask>
 		void	nRun		();
 
+		template<typename Float, SpectrumMaskType mask>
+		void	wRun		();
 
 		void	filter	(int neigh);
 
@@ -136,6 +139,11 @@
 
 		template<typename Float, SpectrumMaskType mask>
 		void	masker	(double radius_mask);
+
+		void	matrixbuilder	();
+
+		template<typename Float>
+		void	matrixbuilder	();
 
 	};
 
