@@ -454,12 +454,21 @@ void	SpecBin::nRun	(SpectrumMaskType mask){
 template<typename Float, SpectrumMaskType mask>
 void	SpecBin::nRun	() {
 
-	if ((mask == SPMASK_TEST) && (field->sDStatus() & SD_MASK))
+	/* test if everything we need is there in the different cases */
+	switch(mask)
 	{
-		LogMsg(VERB_NORMAL,"nRun with SPMASK_TEST ok SPMASK=%d field->statusSD()=%d",SPMASK_TEST,field->sDStatus()) ;
-	} else {
-		LogMsg(VERB_NORMAL,"nRun with SPMASK_TEST but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_TEST,field->sDStatus()) ;
-		return ;
+		case SPMASK_TEST:
+			if ((field->sDStatus() & SD_MASK))
+				LogMsg(VERB_NORMAL,"nRun with SPMASK_TEST ok SPMASK=%d field->statusSD()=%d",SPMASK_TEST,field->sDStatus()) ;
+			else{
+			LogMsg(VERB_NORMAL,"nRun with SPMASK_TEST but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_TEST,field->sDStatus()) ;
+			return ;
+			}
+		break;
+		default:
+		LogMsg(VERB_NORMAL,"nRun with self-contained mask") ;
+		break;
+
 	}
 
 
