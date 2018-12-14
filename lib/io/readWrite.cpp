@@ -3149,7 +3149,7 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	LogMsg (VERB_NORMAL, "Writing 2D energy map to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
 
-	if (axion->m2Status() != M2_ENERGY)
+	if (axion->m2Status() != (M2_ENERGY | M2_MASK_TEST))
 	{
 		LogError ("Error: Energy not available in m2. Call energy before calling writeEMapHdf5");
 		return;

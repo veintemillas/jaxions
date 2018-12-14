@@ -1308,16 +1308,16 @@ void	SpecBin::masker	(double radius_mask) {
 			switch (fPrec) {
 				case	FIELD_SINGLE:
 					if (spec)
-						fillBins<float,  SPECTRUM_PS, true> ();
+						fillBins<float,  SPECTRUM_P, true> ();
 					else
-						fillBins<float,  SPECTRUM_PS, false>();
+						fillBins<float,  SPECTRUM_P, false>();
 					break;
 
 				case	FIELD_DOUBLE:
 					if (spec)
-						fillBins<double,  SPECTRUM_PS, true> ();
+						fillBins<double,  SPECTRUM_P, true> ();
 					else
-						fillBins<double,  SPECTRUM_PS, false>();
+						fillBins<double,  SPECTRUM_P, false>();
 					break;
 
 				default:
@@ -1388,7 +1388,7 @@ void	SpecBin::matrixbuilder() {
 	switch (fType) {
 		case	FIELD_SAXION:
 		{
-			Float *m2sa = static_cast<Float *>(field->m2Cpu());
+			double *m2sa = static_cast<double *>(field->m2Cpu());
 			// split i direction to MPI processes
 			// resulting matrix M_ij is of the form (powMaxPad*Nrank x powMax)
 			// the exccess part in i should be cut later.
@@ -1420,14 +1420,16 @@ void	SpecBin::matrixbuilder() {
 								}
 							}
 						}
-						//m2sa[indM] += norm*binP.at(k)*J;
-						if(k==1) m2sa[indM] = J;
+						m2sa[indM] += norm*binP.at(k)*J;
+						// if(k==1) m2sa[indM] = J;
 					}
 				}
 			}
+
 			void * buf = field->m2Cpu();
 			//MPI_Allgather(m2sa, powMaxPad*powMax, MPI_DOUBLE, m2sa, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
-			MPI_Allgather(buf, powMaxPad*powMax, MPI_DOUBLE, buf, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
+			size_t charlengh = powMaxPad*powMax*sizeof(double);
+			MPI_Allgather(buf, charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
 		}
 		break; //case saxion ends
 

@@ -548,6 +548,23 @@ def gm(address,something='summary',printerror=False):
             if (something == 'nspGIm') and ('nSpectrum/sGIm' in f):
                 return np.reshape(f['nSpectrum/sGIm/data/'],(powmax)) ;
 
+            if (something == 'nspKVi') and ('nSpectrum/sK_Vi' in f):
+                return np.reshape(f['nSpectrum/sK_Vi/data/'],(powmax)) ;
+            if (something == 'nspGVi') and ('nSpectrum/sG_Vi' in f):
+                return np.reshape(f['nSpectrum/sG_Vi/data/'],(powmax)) ;
+            if (something == 'nspKVi2') and ('nSpectrum/sK_Vi2' in f):
+                return np.reshape(f['nSpectrum/sK_Vi2/data/'],(powmax)) ;
+            if (something == 'nspGVi2') and ('nSpectrum/sG_Vi2' in f):
+                return np.reshape(f['nSpectrum/sG_Vi2/data/'],(powmax)) ;
+            if (something == 'nspKRe') and ('nSpectrum/sK_Re' in f):
+                return np.reshape(f['nSpectrum/sK_Re/data/'],(powmax)) ;
+            if (something == 'nspKIm') and ('nSpectrum/sK_Im' in f):
+                return np.reshape(f['nSpectrum/sK_Im/data/'],(powmax)) ;
+            if (something == 'nspGRe') and ('nSpectrum/sG_Re' in f):
+                return np.reshape(f['nSpectrum/sG_Re/data/'],(powmax)) ;
+            if (something == 'nspGIm') and ('nSpectrum/sG_Im' in f):
+                return np.reshape(f['nSpectrum/sG_Im/data/'],(powmax)) ;
+
     # ssp_check = 'nSpectrum/ssK' in f
     ssp_check = 'nSpectrum/sKS' in f
 
@@ -582,21 +599,30 @@ def gm(address,something='summary',printerror=False):
         if printerror :
             print('[gm] Warning: No mSpec in file!!! ')
         return ;
-    if (something == 'mspW') and  msp_check and ('mSpectrum/W' in f):
-        # powmax = f['mSpectrum/W/data/'].size
-        # if (something == 'msp'):
-        return np.array(f['mSpectrum/W/data/']) ;
 
     if (something == 'mspW0') and  msp_check and ('mSpectrum/W0' in f) :
-        # powmax = f['mSpectrum/W/data/'].size
-        # if (something == 'msp'):
         return np.array(f['mSpectrum/W0/data/']) ;
+    if (something == 'mspW_Red') and  msp_check and ('mSpectrum/W_Red' in f):
+        return np.array(f['mSpectrum/W_Red/data/']) ;
+    if (something == 'mspW_Vi') and  msp_check and ('mSpectrum/W_Vi' in f):
+        return np.array(f['mSpectrum/W_Vi/data/']) ;
 
-    if (something == 'mspM') and  msp_check and ('mSpectrum/M' in f):
+    if (something == 'mspM_Red') and  msp_check and ('mSpectrum/M_Red' in f):
         # powmax = f['mSpectrum/W/data/'].size
         # if (something == 'msp'):
-        return np.array(f['mSpectrum/M/data/']) ;
+        kmax = gm(address,'kmax')
+        return np.reshape(np.array(f['mSpectrum/M_Red/data/']),(kmax,kmax)) ;
 
+    if (something == 'mspM_Vi') and  msp_check and ('mSpectrum/M_Vi' in f):
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        kmax = gm(address,'kmax')
+        return np.reshape(np.array(f['mSpectrum/M_Vi/data/']),(kmax,kmax)) ;
+    if (something == 'mspM_Vi2') and  msp_check and ('mSpectrum/M_Vi2' in f):
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        kmax = gm(address,'kmax')
+        return np.reshape(np.array(f['mSpectrum/M_Vi2/data/']),(kmax,kmax)) ;
 
     # power spectra
     psp_check = 'pSpectrum' in f
