@@ -1045,6 +1045,6 @@ StringData	stringCpu	(Scalar *field)
 	const size_t S = field->Surf();
 	const size_t V = field->Size();
 	field->exchangeGhosts(FIELD_M);
-	field->setSD(SD_STDWMAP);
+	field->setSD(SD_MAP);
 	return (stringKernelXeon(field->mCpu(), field->Length(), field->Depth(), S, V+S, field->rLength(), field->rDepth(), field->Precision(), field->sData()));
 }
