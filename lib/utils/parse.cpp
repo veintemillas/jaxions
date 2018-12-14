@@ -86,7 +86,7 @@ VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 
 // Default measurement type, some options can be chosen with special flags | all with --meas
-MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_SPECTRUM ;
+MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_SPECTRUM ;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";

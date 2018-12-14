@@ -1425,7 +1425,9 @@ void	SpecBin::matrixbuilder() {
 					}
 				}
 			}
-			MPI_Allgather(m2sa, powMaxPad*powMax, MPI_DOUBLE, m2sa, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
+			void * buf = field->m2Cpu();
+			//MPI_Allgather(m2sa, powMaxPad*powMax, MPI_DOUBLE, m2sa, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(buf, powMaxPad*powMax, MPI_DOUBLE, buf, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
 		}
 		break; //case saxion ends
 
