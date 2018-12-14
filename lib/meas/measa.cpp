@@ -130,7 +130,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	}
 
 	if(axiona->Field() == FIELD_SAXION){
-		if (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK))
+		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_TEST))
 		{
 
 			if ( !(measa & MEAS_STRINGCOO)){
@@ -205,20 +205,17 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		   is incompatible with a real output of energy density... */
 		if (measa & MEAS_MASK)
 		{
-			LogMsg(VERB_NORMAL, "[Meas %d] producing MASK in m2",indexa);
+			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);
 				specAna.masker(radius_mask, SPMASK_TEST);
-					writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
+				/* activate to export premask -- needs changes in spectrum.cpp too*/
+					// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
 				/* activate this to print a 2D smooth mask */
-				 	//writeEMapHdf5s (axiona,sliceprint);
+				 	// writeEMapHdf5s (axiona,sliceprint);
 				/* activate this to see the smooth mask */
 					//writeEDens(axiona);
 				/* activate this to see the binary mask */
-					//writeString(axiona, MeasDataOut.str, true);
-					writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/mSpectrum", "W");
-					LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
-					specAna.wRun(SPMASK_TEST);
-					specAna.matrixbuilder();
-					writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M");
+				writeString(axiona, MeasDataOut.str, true);
+				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/mSpectrum", "W");
 		}
 
 		if (measa & MEAS_NSP_A)
@@ -229,6 +226,24 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
 				specAna.nRun(SPMASK_FLAT);
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
+				if (axiona->Field() == FIELD_AXION)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+			}
+
+			if (mask & SPMASK_TEST)
+			{
+				// LogOut("NSPA ");
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
+
+				if ( !(measa & (MEAS_MASK)) ){
+						LogMsg(VERB_NORMAL, "[Meas %d] MASK_TEST inside NSPA",indexa);
+						specAna.masker(radius_mask, SPMASK_TEST);
+					  writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/mSpectrum", "W");
+						}
+				LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum",indexa);
+				specAna.nRun(SPMASK_TEST);
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 				if (axiona->Field() == FIELD_AXION)

@@ -310,7 +310,7 @@
 			SPECTRUM_KS	= 65,
 			SPECTRUM_GS	= 66,
 			SPECTRUM_VS	= 68,
-			SPECTRUM_GVS    = 70,
+			SPECTRUM_GVS= 70,
 			SPECTRUM_PS	= 72,
 			SPECTRUM_NN	= 128,
 		}	SpectrumType;
@@ -319,8 +319,8 @@
 			SPMASK_FLAT	= 1,
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
-			SPMASK_SAXI	= 8,
-			SPMASK_TEST	= 16,
+			SPMASK_TEST	= 8,
+			SPMASK_SAXI	= 16,
 		}	SpectrumMaskType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
@@ -348,15 +348,17 @@
 			M2_ENERGY      = 0,
 			M2_ENERGY_FFT  = 1,
 			M2_STRINGMAP   = 2,
-			M2_STRINGCOO   = 3,
-			M2_DIRTY       = 4,
-			M2_MASK_TEST   = 5,
+			M2_STRINGCOO   = 4,
+			M2_DIRTY       = 8,
+			M2_MASK_TEST   = 16,
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
-			SD_STDWMAP        = 0 ,
-			SD_STRINGCOORD    = 1 ,
-			SD_DIRTY          = 2,
+			SD_DIRY        = 0,
+			SD_MAP         = 1,
+			SD_STRINGCOORD = 2,
+			SD_MASK        = 4,
+			SD_MAPMASK     = 5,
 		}	StatusSD;
 
 		// analysis functions to be called inside a measurement
