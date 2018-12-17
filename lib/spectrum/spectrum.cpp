@@ -1421,7 +1421,7 @@ void	SpecBin::matrixbuilder() {
 							} else {
 								int diffkj = static_cast<int>(j) - static_cast<int>(k);
 								if (is==0) {
-									J = vol/binPS.at(j);
+									J = (j==k)?vol/binPS.at(j):0;
 								} else if (is>=std::abs(diffkj) && is<=j+k && is < powMax) {
 									J = coeJ/(is*j*k);
 								} else {
