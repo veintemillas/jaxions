@@ -865,6 +865,9 @@ void	SpecBin::nSRun	() {
 }
 
 void	SpecBin::nmodRun	() {
+	/* clean the bins */
+	binPS.assign(powMax, 0.);
+
 	if (fPrec == FIELD_SINGLE) {
 		if (spec)
 			fillBins<float,  SPECTRUM_NN, true> ();
@@ -1382,6 +1385,7 @@ void	SpecBin::matrixbuilder() {
 	}
 
 	// calculate phase space density (stored in binPS), which will be used below
+	binPS.assign(powMax, 0.);
 	if (spec)
 		fillBins<Float,  SPECTRUM_NN, true> ();
 	else
@@ -1566,6 +1570,7 @@ void	SpecBin::wRun	() {
 									break;
 							case SPMASK_TEST:
 									//assume the map of W was already stored in stringdata
+									// issue!! this will not work!
 									m2sa[odx] = sd[idx];
 									break;
 							default:
