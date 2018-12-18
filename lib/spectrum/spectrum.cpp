@@ -1337,6 +1337,9 @@ void	SpecBin::masker	(double radius_mask) {
 					break;
 			}
 
+			// remove unnecessary factor 1/2 in fillBins
+			for(size_t i=0; i<powMax; i++) binP.at(i) *= 2.;
+
 		field->setSD(SD_MAPMASK);
 		field->setM2(M2_DIRTY); // M2_MASK_FT
 
@@ -1589,6 +1592,9 @@ void	SpecBin::wRun	() {
 				fillBins<Float,  SPECTRUM_P, true> ();
 			else
 				fillBins<Float,  SPECTRUM_P, false>();
+
+			// remove unnecessary factor 1/2 in fillBins
+			for(size_t i=0; i<powMax; i++) binP.at(i) *= 2.;
 
     }
     break;
