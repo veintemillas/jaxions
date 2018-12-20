@@ -317,12 +317,20 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			}
 		}
 
-		if (measa & MEAS_NNSPEC)
+		if ( (indexa == 0) || (measa & MEAS_NNSPEC) )
 		{
 			// LogOut("Nmod ");
 			LogMsg(VERB_NORMAL, "[Meas %d] Nmod ", indexa);
 			specAna.nmodRun();
-			writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "nmodes");
+			writeArray(specAna.data(SPECTRUM_NN), specAna.PowMax(), "/nSpectrum", "nmodes");
+		}
+
+		if ( (indexa == 0) || (measa & MEAS_NNSPEC) )
+		{
+			// LogOut("Nmod ");
+			LogMsg(VERB_NORMAL, "[Meas %d] average K ", indexa);
+			specAna.avekRun();
+			writeArray(specAna.data(SPECTRUM_AK), specAna.PowMax(), "/nSpectrum", "averagek");
 		}
 
 	}
