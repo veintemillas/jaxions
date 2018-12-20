@@ -229,6 +229,10 @@
 			PROF_HDF5,
 			PROF_REDUCER,
 			PROF_PROJECTOR,
+			PROF_SPECTRUM_FILLBINS,
+			PROF_SPECTRUM_NRUNLOOP,
+			PROF_SPECTRUM_FFTM2,
+			PROF_MEAS,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -315,7 +319,7 @@
 			SPECTRUM_NN	= 128,
 			SPECTRUM_AK = 256,
 			SPECTRUM_KK = 512,
-			SPECTRUM_GG = 1024, 
+			SPECTRUM_GG = 1024,
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {

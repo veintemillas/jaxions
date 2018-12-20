@@ -13,6 +13,7 @@
 #include "projector/projector.h"
 
 using namespace std;
+using namespace profiler;
 
 double xivilgor(double logi);
 
@@ -36,6 +37,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	double radius_mask = info.rmask ;
 
 	auto	cTime = Timer();
+
+	Profiler &prof = getProfiler(PROF_MEAS);
+	/* marks the begginin*/
+	LogOut(".");
+
 
 	if (measa & MEAS_3DMAP){
 		LogOut("3D conf ");
@@ -173,21 +179,31 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 		if (measa & MEAS_PSP_A)
 		{
-				// LogOut("PSPA ");
+
+				prof.start();
+
 				LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
 				// at the moment runs PA and PS if in saxion mode
 				// perhaps we should create another psRun() YYYEEEESSSSS
 				specAna.pRun();
 				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
+				prof.stop();
+				prof.add(std::string("PSPA"), 0.0, 0.0);
 		}
 		// move after PSP!
 		if (measa & MEAS_REDENE3DMAP){
 				if ( endredmap > 0){
 					// LogOut("redMap->%d! ",sizeN/endredmap);
+					prof.start();
+
 					LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",indexa,sizeN/endredmap);
 					int nena = sizeN/endredmap ;
 					specAna.filter(nena);
 					writeEDensReduced(axiona, indexa, endredmap, endredmap/zGrid);
+
+					prof.stop();
+					prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
 				}
 		}
 
@@ -206,7 +222,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		if (measa & MEAS_MASK)
 		{
 			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);
+				prof.start();
 				specAna.masker(radius_mask, SPMASK_TEST);
+				prof.stop();
+				prof.add(std::string("Masker"), 0.0, 0.0);
 				/* activate to export premask -- needs changes in spectrum.cpp too*/
 					// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
 				/* activate this to print a 2D smooth mask */
@@ -225,7 +244,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			{
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
+				prof.start();
 				specAna.nRun(SPMASK_FLAT);
+				prof.stop();
+				prof.add(std::string("NSPA_FLAT"), 0.0, 0.0);
+
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 				if (axiona->Field() == FIELD_AXION)
@@ -239,17 +262,29 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 				if ( !(measa & (MEAS_MASK)) ){
 						LogMsg(VERB_NORMAL, "[Meas %d] MASK_TEST inside NSPA",indexa);
+						prof.start();
 						specAna.masker(radius_mask, SPMASK_TEST);
+						prof.stop();
+						prof.add(std::string("Masker"), 0.0, 0.0);
+
 					  writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
 						}
 				LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum",indexa);
+				prof.start();
 				specAna.nRun(SPMASK_TEST);
+				prof.stop();
+				prof.add(std::string("NSPA_M"), 0.0, 0.0);
+
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Red");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Red");
 				if (axiona->Field() == FIELD_AXION)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
 
+				prof.start();
 				specAna.matrixbuilder();
+				prof.stop();
+				prof.add(std::string("Matrix Builder"), 0.0, 0.0);
+
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Red");
 			}
 
@@ -260,15 +295,25 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro",indexa);
+					prof.start();
 				specAna.nRun(SPMASK_VIL);
+					prof.stop();
+					prof.add(std::string("NSPA_Vi"), 0.0, 0.0);
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Vi");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi");
 				if (axiona->Field() == FIELD_AXION)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi");
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
+					prof.start();
 				specAna.wRun(SPMASK_VIL);
-					writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Vi");
+					prof.stop();
+					prof.add(std::string("w Run"), 0.0, 0.0);
+				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Vi");
+
+					prof.start();
 				specAna.matrixbuilder();
+					prof.stop();
+					prof.add(std::string("Matrix Builder"), 0.0, 0.0);
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Vi");
 			}
 
@@ -279,14 +324,28 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA masked-Villadoro squared",indexa);
+					prof.start();
 				specAna.nRun(SPMASK_VIL2);
+					prof.stop();
+					prof.add(std::string("NSPA_Vi2"), 0.0, 0.0);
+
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Vi2");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi2");
 				if (axiona->Field() == FIELD_AXION)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
+
+					prof.start();
 				specAna.wRun(SPMASK_VIL2);
+					prof.stop();
+					prof.add(std::string("w Run"), 0.0, 0.0);
+
+					prof.start();
 				specAna.matrixbuilder();
+					prof.stop();
+					prof.add(std::string("Matrix Builder"), 0.0, 0.0);
+
+
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Vi2");
 			}
 
@@ -321,7 +380,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		{
 			// LogOut("Nmod ");
 			LogMsg(VERB_NORMAL, "[Meas %d] Nmod ", indexa);
+				prof.start();
 			specAna.nmodRun();
+				prof.stop();
+				prof.add(std::string("nmod Run"), 0.0, 0.0);
 			writeArray(specAna.data(SPECTRUM_NN), specAna.PowMax(), "/nSpectrum", "nmodes");
 		}
 
@@ -329,7 +391,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		{
 			// LogOut("Nmod ");
 			LogMsg(VERB_NORMAL, "[Meas %d] average K ", indexa);
+				prof.start();
 			specAna.avekRun();
+				prof.stop();
+				prof.add(std::string("avek Run"), 0.0, 0.0);
+
 			writeArray(specAna.data(SPECTRUM_AK), specAna.PowMax(), "/nSpectrum", "averagek");
 		}
 
@@ -407,8 +473,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	destroyMeas();
 	}
 
-	if ((indexa-1) % 10 == 0)
+	if ((indexa-1) % 10 == 0){
 		LogOut("ctime  |  index |  cmeas |  wtime  | mass \n");
+		LogOut(".");
+		}
 
 	LogOut("%2.3f  | ",z_now);
 

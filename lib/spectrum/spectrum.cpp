@@ -1516,9 +1516,9 @@ void	SpecBin::matrixbuilder() {
 			void * buf = field->m2Cpu();
 			size_t charlengh = powMaxPad*powMax*sizeof(double);
 			//MPI_Allgather(buf, charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
-			MPI_Allgather(sbuf.data(), powMaxPad*powMax, MPI_DOUBLE, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
+			// MPI_Allgather(static_cast<void *>(sbuf.data()[0]), powMaxPad*powMax, MPI_DOUBLE, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
 			//or simply use MPI_Gather ?
-			//MPI_Gather(buf, charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, 0, MPI_COMM_WORLD);
+			MPI_Gather(static_cast<void *>(&sbuf.data()[0]), charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, 0, MPI_COMM_WORLD);
 		}
 		break; //case saxion ends
 
