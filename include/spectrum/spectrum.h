@@ -19,6 +19,8 @@
 		std::vector<double>	binV;
 		std::vector<double>	binP;
 		std::vector<double>	binPS;
+		std::vector<double>	binNN;
+		std::vector<double>	binAK;
 
 		std::vector<double>	cosTable;
 		std::vector<double>	cosTable2;
@@ -116,6 +118,7 @@
 		void	nSRun		();
 		void	pRun		();
 		void	nmodRun		();
+		void	avekRun		();
 		void  wRun(SpectrumMaskType mask);
 
 		template<typename Float, SpectrumMaskType mask>
@@ -176,6 +179,15 @@
 				return binPS[idx];
 				break;
 
+			case	SPECTRUM_NN:
+				return binNN[idx];
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK[idx];
+				break;
+
+
 			default:
 				return	0.0;
 		}
@@ -207,6 +219,14 @@
 				return binPS[idx];
 				break;
 
+			case	SPECTRUM_NN:
+				return binNN[idx];
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK[idx];
+				break;
+
 			default:
 				LogError ("Undefined spectrum requested.");
 				return	binK[0];
@@ -236,8 +256,15 @@
 				break;
 
 			case	SPECTRUM_PS:
-			case	SPECTRUM_NN:
 				return binPS.data();
+				break;
+
+			case	SPECTRUM_NN:
+				return binNN.data();
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK.data();
 				break;
 
 			default:
@@ -268,8 +295,15 @@
 				break;
 
 			case	SPECTRUM_PS:
-			case	SPECTRUM_NN:
 				return binPS.data();
+				break;
+
+			case	SPECTRUM_NN:
+				return binNN.data();
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK.data();
 				break;
 
 			default:

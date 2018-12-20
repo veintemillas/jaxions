@@ -47,10 +47,13 @@ void	SpecBin::fillBins	() {
 	std::vector<double>	tBinV;
 	std::vector<double>	tBinP;
 	std::vector<double>	tBinPS;
+	std::vector<double>	tBinNN;
+	std::vector<double>	tBinAK;
 
 	switch (sType) {
 		case	SPECTRUM_K:
 		case	SPECTRUM_KS:
+		case	SPECTRUM_KK:
 			tBinK.resize(powMax*mIdx);
 			tBinK.assign(powMax*mIdx, 0);
 			break;
@@ -60,17 +63,26 @@ void	SpecBin::fillBins	() {
 			tBinP.assign(powMax*mIdx, 0);
 			break;
 		case	SPECTRUM_PS:
-		case 	SPECTRUM_NN:
 			tBinPS.resize(powMax*mIdx);
 			tBinPS.assign(powMax*mIdx, 0);
 			break;
-		// case  SPECTRUM_GaS: 					//uses PS to add to G
-		// tBinPS.resize(powMax*mIdx);
-		// tBinPS.assign(powMax*mIdx, 0);
-		// 	break;
+
+		case 	SPECTRUM_NN:
+			binNN.resize(powMax); binNN.assign(powMax, 0.);
+			tBinNN.resize(powMax*mIdx);
+			tBinNN.assign(powMax*mIdx, 0);
+			break;
+
+		case 	SPECTRUM_AK:
+			binAK.resize(powMax); binAK.assign(powMax, 0.);
+			tBinAK.resize(powMax*mIdx);
+			tBinAK.assign(powMax*mIdx, 0);
+			break;
+
 		case	SPECTRUM_G:
 		case	SPECTRUM_GaSadd:
 		case	SPECTRUM_GaS:
+		case	SPECTRUM_GG:
 			tBinG.resize(powMax*mIdx);
 			tBinG.assign(powMax*mIdx, 0);
 			break;
@@ -105,7 +117,11 @@ void	SpecBin::fillBins	() {
 			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
 			double k2    = (double) kx*kx + ky*ky + kz*kz;
+
+			//BINOPTION 1
 			size_t myBin = floor(sqrt(k2));
+			//BINOPTION 2
+			// size_t myBin = floor(sqrt(k2)+0.5);
 
 			// LogOut ("Check %lu (%d %d %d) bin out of range %lu > %lu\n", idx, kx, ky, kz, myBin, powMax);
 
@@ -120,20 +136,19 @@ void	SpecBin::fillBins	() {
 			// else
 			// 	k2  = cosTable[abs(kx)] + cosTable[abs(ky)] + cosTable[abs(kz)];
 
-			k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
-
 			double		w = 1.0;
 			double 		m, m2;
 
 			switch	(sType) {
 				case	SPECTRUM_K:
+				case	SPECTRUM_KK:
 				case	SPECTRUM_G:
+				case	SPECTRUM_GG:
 				case 	SPECTRUM_V:
 				case 	SPECTRUM_GV:
 				case 	SPECTRUM_GaS:
 				case 	SPECTRUM_GaSadd:
-				case 	SPECTRUM_P:
-				case 	SPECTRUM_PS:
+					k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 					w  = sqrt(k2 + mass);
 					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
@@ -143,37 +158,44 @@ void	SpecBin::fillBins	() {
 				case	SPECTRUM_GS:
 				case 	SPECTRUM_VS:
 				case 	SPECTRUM_GVS:
+					k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 					w  = sqrt(k2 + massSax);
 					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
 					break;
+
+				case 	SPECTRUM_P:
+				case 	SPECTRUM_PS:
+					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
+					m2 = 0.;
+				break;
+
 				case SPECTRUM_NN:
+				case SPECTRUM_AK:
 					m = 1;
-					break;
+				break;
 			}
-			//double		w  = sqrt(k2 + mass);
 
-
-			// FFTS are assumed outcome of FFT r2c
-			// if c2c this needs some changes
+			/* FFTS are assumed outcome of FFT r2c
+				if c2c this needs some changes */
 			// recall hLx - 1 = N/2
 			if ((kx == 0) || (kx == static_cast<int>(hLx - 1)))
 				m2 = m*m;
 			else
 				m2 = 2*m*m;
 
-			// if ((kx == hLx - 1) || (ky == hLy) || (kz == hLz)){
-			// 	m2=0;
-			// 	LogOut("c ");
-			// }
-
-			double		mw = m2/w;
-
+			double		mw;
 
 			switch	(sType) {
 				case	SPECTRUM_K:
 				case	SPECTRUM_KS:
+				 	mw = m2/w;
 					tBinK.at(myBin + powMax*tIdx) += mw;
+					break;
+
+				/* rebin */
+				case	SPECTRUM_KK:
+					tBinK.at(myBin + powMax*tIdx) += m2;
 					break;
 
 				case	SPECTRUM_P:
@@ -184,6 +206,7 @@ void	SpecBin::fillBins	() {
 					break;
 				case	SPECTRUM_G:
 				case	SPECTRUM_GS:
+					mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
 					break;
 				// the gradient is already included in m2
@@ -192,28 +215,46 @@ void	SpecBin::fillBins	() {
 				case  SPECTRUM_GaSadd:
 					//the cosine correction accounts for the finite difference formula
 					// tBinG.at(myBin + powMax*tIdx) += mw/cosTable2[kx];
-					tBinG.at(myBin + powMax*tIdx) += mw;
+
+					/* rebin */
+							// mw = m2/w;
+							// tBinG.at(myBin + powMax*tIdx) += mw;
+					tBinG.at(myBin + powMax*tIdx) += m2;
 					break;
 
+
+
 				case	SPECTRUM_V:
+					mw = m2/w;
 					tBinV.at(myBin + powMax*tIdx) += mw*mass;
 					break;
 				case	SPECTRUM_VS:
+					mw = m2/w;
 					tBinV.at(myBin + powMax*tIdx) += mw*massSax;
 					break;
 
 				case	SPECTRUM_GVS:
+					mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
 					tBinV.at(myBin + powMax*tIdx) += mw*massSax;
 					break;
 
 				case	SPECTRUM_GV:
+					mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
 					tBinV.at(myBin + powMax*tIdx) += mw*mass;
 					break;
+
+				/* number of modes */
 				case	SPECTRUM_NN:
-					tBinPS.at(myBin + powMax*tIdx) += m2;
+					tBinNN.at(myBin + powMax*tIdx) += m2;
 					break;
+
+				/* averaged k2 in the bin */
+				case	SPECTRUM_AK:
+					tBinAK.at(myBin + powMax*tIdx) += m2*k2;
+					break;
+
 			}
 		}
 
@@ -223,6 +264,7 @@ void	SpecBin::fillBins	() {
 
 				switch	(sType) {
 					case	SPECTRUM_K:
+					case	SPECTRUM_KK:
 					case	SPECTRUM_KS:
 						binK[j] += tBinK[j + i*powMax]*norm;
 						break;
@@ -233,13 +275,18 @@ void	SpecBin::fillBins	() {
 						binPS[j] += tBinPS[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_G:
+					case	SPECTRUM_GG:
 					case	SPECTRUM_GaS:
 					case	SPECTRUM_GaSadd:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_NN:
-						binPS[j] += tBinPS[j + i*powMax];
+						binNN[j] += tBinNN[j + i*powMax];
 						break;
+					case	SPECTRUM_AK:
+						binAK[j] += tBinAK[j + i*powMax];
+						break;
+
 					default:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						binV[j] += tBinV[j + i*powMax]*norm;
@@ -252,6 +299,7 @@ void	SpecBin::fillBins	() {
 
 	switch	(sType) {
 		case	SPECTRUM_K:
+		case	SPECTRUM_KK:
 		case	SPECTRUM_KS:
 			std::copy_n(binK.begin(), powMax, tBinK.begin());
 			MPI_Allreduce(tBinK.data(), binK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -263,12 +311,22 @@ void	SpecBin::fillBins	() {
 			break;
 
 		case	SPECTRUM_PS:
-		case	SPECTRUM_NN:
 			std::copy_n(binPS.begin(), powMax, tBinPS.begin());
 			MPI_Allreduce(tBinPS.data(), binPS.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
+
+		case	SPECTRUM_NN:
+			std::copy_n(binNN.begin(), powMax, tBinNN.begin());
+			MPI_Allreduce(tBinNN.data(), binNN.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
+		case	SPECTRUM_AK:
+			std::copy_n(binAK.begin(), powMax, tBinAK.begin());
+			MPI_Allreduce(tBinAK.data(), binAK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
+
 		case	SPECTRUM_GaSadd:
 		// we do not do anything, just keep each binG with its local sum
+		// only when G or GaS are called we do the MPI reduce
 			break;
 		case	SPECTRUM_G:
 		case	SPECTRUM_GaS:
@@ -278,10 +336,6 @@ void	SpecBin::fillBins	() {
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
-		// we sum tBinPS into tBinG and reduce into binG / tBinG remains
-		// std::copy_n(binPS.begin(), powMax, tBinG.begin());
-		// MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-		// 	break;
 		default:
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -559,9 +613,9 @@ void	SpecBin::nRun	() {
 
 			// KINETIC PART
 			if (spec)
-				fillBins<Float,  SPECTRUM_K, true> ();
+				fillBins<Float,  SPECTRUM_KK, true> ();
 			else
-				fillBins<Float,  SPECTRUM_K, false>();
+				fillBins<Float,  SPECTRUM_KK, false>();
 
 
 			// GRADIENT X
@@ -865,8 +919,6 @@ void	SpecBin::nSRun	() {
 }
 
 void	SpecBin::nmodRun	() {
-	/* clean the bins */
-	binPS.assign(powMax, 0.);
 
 	if (fPrec == FIELD_SINGLE) {
 		if (spec)
@@ -881,6 +933,20 @@ void	SpecBin::nmodRun	() {
 	}
 }
 
+void	SpecBin::avekRun	() {
+
+	if (fPrec == FIELD_SINGLE) {
+		if (spec)
+			fillBins<float,  SPECTRUM_AK, true> ();
+		else
+			fillBins<float,  SPECTRUM_AK, false>();
+	} else {
+		if (spec)
+			fillBins<double, SPECTRUM_AK, true> ();
+		else
+			fillBins<double, SPECTRUM_AK, false>();
+	}
+}
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
@@ -1387,8 +1453,8 @@ void	SpecBin::matrixbuilder() {
 			return;
 	}
 
-	// calculate phase space density (stored in binPS), which will be used below
-	binPS.assign(powMax, 0.);
+	// calculate phase space density (stored in binNN), which will be used below
+	// this only has to be done once in the simulation > can we do it only once?
 	if (spec)
 		fillBins<Float,  SPECTRUM_NN, true> ();
 	else
@@ -1420,15 +1486,15 @@ void	SpecBin::matrixbuilder() {
 							if (j==0) {
 								J = (is==0)?vol:0;
 							} else {
-								J = (is==j)?vol/binPS.at(is):0;
+								J = (is==j)?vol/binNN.at(is):0;
 							}
 						} else {
 							if (j==0) {
-								J = (is==k)?vol/binPS.at(k):0;
+								J = (is==k)?vol/binNN.at(k):0;
 							} else {
 								int diffkj = static_cast<int>(j) - static_cast<int>(k);
 								if (is==0) {
-									J = (j==k)?vol/binPS.at(j):0;
+									J = (j==k)?vol/binNN.at(j):0;
 								} else if (is>=std::abs(diffkj) && is<=j+k && is < powMax) {
 									J = coeJ/(is*j*k);
 								} else {

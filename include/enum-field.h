@@ -313,6 +313,9 @@
 			SPECTRUM_GVS= 70,
 			SPECTRUM_PS	= 72,
 			SPECTRUM_NN	= 128,
+			SPECTRUM_AK = 256,
+			SPECTRUM_KK = 512,
+			SPECTRUM_GG = 1024, 
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
