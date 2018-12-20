@@ -345,6 +345,11 @@ def gm(address,something='summary',printerror=False):
             ct = f.attrs[u'z']
             delta = L/N
             return  (delta/6)*stringN*ct*ct/(L**3) ;
+        if (something == 'nN3'):
+            stringN = f['string'].attrs[u'String number']
+            N = f.attrs[u'Size']
+            return  stringN/N**3 ;
+
         if (something == 'stringCoord') and ('string/coords' in f):
             size = f['string/coords'].size
             # return np.reshape(f['string/coords'],(size,3)) ;
@@ -601,6 +606,9 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'nmodelist') and ('nSpectrum/nmodes' in f):
         return np.array(f['nSpectrum/nmodes/data'])
+
+    if (something == 'aveklist') and ('nSpectrum/averagek' in f):
+        return np.array(f['nSpectrum/averagek/data'])
 
     # mask spectra
     msp_check = 'mSpectrum' in f
