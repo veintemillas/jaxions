@@ -1467,10 +1467,15 @@ void	SpecBin::matrixbuilder() {
 	double norm = 1./vol;
 	double coeJ = vol/(8.*M_PI);
 
+	//As an alternative way, a new vector is used as a send buffer
+	std::vector<double>	sbuf;
+	sbuf.resize(powMaxPad*powMax);
+	sbuf.assign(powMaxPad*powMax,0);
+
 	switch (fType) {
 		case	FIELD_SAXION:
 		{
-			double *m2sa = static_cast<double *>(field->m2Cpu());
+			//double *m2sa = static_cast<double *>(field->m2Cpu());
 			// split i direction to MPI processes
 			// resulting matrix M_ij is of the form (powMaxPad*Nrank x powMax)
 			// the exccess part in i should be cut later.
@@ -1479,7 +1484,7 @@ void	SpecBin::matrixbuilder() {
 				size_t is = iBase + i;
 				for (size_t j=0; j<powMax; j++) {
 					size_t indM = i*powMax+j;
-					m2sa[indM] = 0;
+					//m2sa[indM] = 0;
 					for (size_t k=0; k<powMax; k++) {
 						double J = 0;
 						if (k==0) {
@@ -1502,16 +1507,18 @@ void	SpecBin::matrixbuilder() {
 								}
 							}
 						}
-						m2sa[indM] += norm*binP.at(k)*J;
-						// if(k==1) m2sa[indM] = J;
+						sbuf.at(indM) += norm*binP.at(k)*J;
+						//m2sa[indM] += norm*binP.at(k)*J;
 					}
 				}
 			}
 
 			void * buf = field->m2Cpu();
-			//MPI_Allgather(m2sa, powMaxPad*powMax, MPI_DOUBLE, m2sa, powMaxPad*powMax, MPI_DOUBLE, MPI_COMM_WORLD);
 			size_t charlengh = powMaxPad*powMax*sizeof(double);
-			MPI_Allgather(buf, charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
+			//MPI_Allgather(buf, charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
+			MPI_Allgather(sbuf.data(), powMaxPad*powMax, MPI_DOUBLE, buf, charlengh, MPI_CHAR, MPI_COMM_WORLD);
+			//or simply use MPI_Gather ?
+			//MPI_Gather(buf, charlengh, MPI_CHAR, buf, charlengh, MPI_CHAR, 0, MPI_COMM_WORLD);
 		}
 		break; //case saxion ends
 
