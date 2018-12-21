@@ -167,8 +167,8 @@ int	main (int argc, char *argv[])
 
 				dumpmode = DUMP_FROMLIST;
 				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list");
-				do {
-					fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+				fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+				while(!feof(cacheFile)){
 					if (meastype < 0)
 						meastype = defaultmeasType;
 					if (mesi < *axion->zV()){
@@ -180,7 +180,8 @@ int	main (int argc, char *argv[])
 						LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
 						i_meas++ ;
 					}
-				}	while(!feof(cacheFile));
+					fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+				}
 				LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
 				zFinl = meas_zlist[meas_zlist.size()-1];
 				LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
@@ -282,7 +283,10 @@ int	main (int argc, char *argv[])
 					dzaux = meas_zlist[i_meas] - (*axion->zV());
 					measrightnow = true;
 					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
-
+					// actually, if this is the last measurement, do not measure!
+					if ( (i_meas == meas_zlist.size()-1) ){
+						measrightnow = false;
+					}
 				}
 				break;
 			}
@@ -348,12 +352,6 @@ int	main (int argc, char *argv[])
 
 						tunePropagator (axion);
 					}
-			}
-
-			// Break the loop when we are done
-			if ( (i_meas == meas_zlist.size()-1) ){
-				LogOut("ZF reached! ENDING ... \n"); fflush(stdout);
-				break;
 			}
 
 			// Break the loop when we are done
