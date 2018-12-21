@@ -166,13 +166,13 @@ int	main (int argc, char *argv[])
 				LogOut("Measurement list : \n");
 
 				dumpmode = DUMP_FROMLIST;
-				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list\n");
+				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list");
 				do {
-					fscanf (cacheFile ,"%lf %d\n", &mesi, &meastype);
+					fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
 					if (meastype < 0)
 						meastype = defaultmeasType;
 					if (mesi < *axion->zV()){
-						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED\n");
+						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED");
 					}
 					else {
 						meas_zlist.push_back(mesi);
