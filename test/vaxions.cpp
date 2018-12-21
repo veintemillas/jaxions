@@ -177,7 +177,7 @@ int	main (int argc, char *argv[])
 					else {
 						meas_zlist.push_back(mesi);
 						meas_typelist.push_back(meastype);
-						LogMsg(VERB_NORMAL,"[VAX] read z=%f meas=%d\n", meas_zlist[i_meas], meas_typelist[i_meas]);
+						LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
 						i_meas++ ;
 					}
 				}	while(!feof(cacheFile));
@@ -350,6 +350,18 @@ int	main (int argc, char *argv[])
 					}
 			}
 
+			// Break the loop when we are done
+			if ( (i_meas == meas_zlist.size()-1) ){
+				LogOut("ZF reached! ENDING ... \n"); fflush(stdout);
+				break;
+			}
+
+			// Break the loop when we are done
+			if ( (*axion->zV()) >= zFinl ){
+				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
+				break;
+			}
+
 			// Partial analysis
 			if(measrightnow){
 				ninfa.index=index;
@@ -363,11 +375,6 @@ int	main (int argc, char *argv[])
 				checkTime(axion, index);
 			}
 
-			// Break the loop when we are done
-			if ((*axion->zV()) > zFinl){
-				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
-				break;
-			}
 
 	} // time loop's over
 
@@ -378,29 +385,27 @@ int	main (int argc, char *argv[])
 	fflush(stdout);
 
 	LogOut ("Final measurement file is: %05d \n", index);
-	munge(UNFOLD_ALL);
 
 	//index++	; // LAST MEASUREMENT IS NOT PRINTED INSIDE THE LOOP, IT IS DONE HERE INSTEAD
 	// migth be a problem here... double measurement?
 
+	MeasureType mesa = defaultmeasType;
+
+	if ((prinoconfo & PRINTCONF_FINAL) && (wkb2z < 0)) {
+		LogOut ("Will dump final configuration %05d ...", index);
+		mesa = mesa | MEAS_3DMAP  ;
+	}
+	if (pconfinal)
+		mesa = mesa | MEAS_ENERGY3DMAP ;
+
+	if ( endredmap > 0)
+		mesa = mesa | MEAS_REDENE3DMAP ;
+	ninfa.index=index;
+	ninfa.measdata=mesa;
+	Measureme (axion, ninfa);
+
 	if (axion->Field() == FIELD_AXION)
 	{
-		MeasureType mesa = defaultmeasType;
-
-		if ((prinoconfo & PRINTCONF_FINAL) && (wkb2z < 0)) {
-			LogOut ("Will dump final configuration %05d ...", index);
-			mesa = mesa | MEAS_3DMAP  ;
-		}
-		if (pconfinal)
-			mesa = mesa | MEAS_ENERGY3DMAP ;
-
-		if ( endredmap > 0)
-			mesa = mesa | MEAS_REDENE3DMAP ;
-		ninfa.index=index;
-		ninfa.measdata=mesa;
-		Measureme (axion, ninfa);
-
-
 		//--------------------------------------------------
 		// FINAL WKB
 		//--------------------------------------------------
@@ -415,8 +420,8 @@ int	main (int argc, char *argv[])
 
 			index++;
 
+			/* last measurement after WKB */
 			MeasureType mesa = defaultmeasType;
-			// MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
 
 			if (prinoconfo & PRINTCONF_FINAL) {
 				LogOut ("Dumping final WKBed configuration %05d ...", index);
@@ -435,14 +440,7 @@ int	main (int argc, char *argv[])
 			Measureme (axion, ninfa);
 		}
 	}
-	else
-	{
-		if ((prinoconfo >= 2)) {
-			LogOut ("Dumping final Saxion onfiguration %05d ...", index);
-			writeConf(axion, index);
-			LogOut ("Done!\n");
-		}
-	}
+
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);
 	LogOut("#_prints = %i\n", index);

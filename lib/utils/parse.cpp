@@ -86,7 +86,7 @@ VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 
 // Default measurement type, some options can be chosen with special flags | all with --meas
-MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_SPECTRUM ;
+MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY  ;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -111,6 +111,8 @@ bool restart_flag = false;
 
 bool mCreateOut = false;
 
+bool CreateLogMeas = false;
+
 void	createOutput() {
 	struct stat tStat;
 
@@ -132,6 +134,66 @@ void	createOutput() {
 			exit(1);
 		}
 	}
+}
+
+void	createMeasLogList() {
+
+	FILE *cacheFile = nullptr;
+	if ( !((cacheFile  = fopen("./measfile.dat", "r")) == nullptr) ){
+		printf("[cmll] Error: measfile.dat found. Rename, delete and rerun this generator.\n");
+		exit(0);
+	}
+
+		/* calculates logif */
+		double logf  ;
+		double z0 = 0.0;
+		double fr = 1/((double) dump);
+
+		switch(lType)
+		{
+			case LAMBDA_FIXED:
+				logf = log(msa*zFinl*zFinl*sizeN/sizeL);
+			break;
+			default:
+			case LAMBDA_Z2:
+				logf = log(msa*zFinl*sizeN/sizeL);
+			break;
+		}
+
+		if (uZin)
+			z0 = zInit;
+		printf("[cmll] Generates a measfile.dat file with log-spaced measurements and the default measure.\n");
+		printf("[cmll] Starts at logi = zi = %f (uses zi as logi=kappa as in vilgor ICs)  \n",zInit);
+		printf("[cmll] Ends at logf = log(msa*zi**/delta) = %f \n",logf);
+		printf("[cmll] Warning: Uses --dump %d as number of measurements per log10 interval \n",dump);
+
+		//-output txt file
+
+		FILE *file_te ;
+		file_te = NULL;
+		file_te = fopen("./measfile.dat","w+");
+
+		double zas;
+		printf("logi | z | meastype \n");
+		for (double lo = z0; lo<logf; lo += fr){
+			zas = exp(lo)*sizeL/sizeN/msa;
+			if (lType == LAMBDA_FIXED)
+				zas = sqrt(zas);
+
+			printf("%f %f %d\n",lo, zas,static_cast<int>(defaultmeasType));
+			fprintf(file_te,"%f %d\n",zas, static_cast<int>(defaultmeasType));
+		}
+		/* last measurement */
+		if (zas != zFinl){
+			printf("%f %f %d\n",logf, zFinl,static_cast<int>(defaultmeasType));
+			fprintf(file_te,"%f %d\n",zFinl, static_cast<int>(defaultmeasType));
+		}
+
+
+		fclose(file_te);
+		printf("[cmll] measfile.dat generated. Run vaxion3d at your leisure.");
+		exit(0);
+
 }
 
 void	PrintUsage(char *name)
@@ -259,7 +321,7 @@ void	PrintMEoptions()
 {
 	printf("\nOptions for Measurement\n\n");
 
-	printf("--meas [int]                	Sum of integers.\n\n");
+	printf("--meas [int]                Sum of integers.\n\n");
 
 	printf("--------------------------------------------------\n");
 	printf("  BINs\n");
@@ -289,13 +351,14 @@ void	PrintMEoptions()
 	printf("  NUMBER SPECTRA (binned) \n");
 	printf("  Axion Number spectrum (K+G+V)        65536 \n");
 	printf("  Saxion Number spectrum (K+G+V)      131072 \n\n");
-  printf("  --spmask [int]              Sum of below integers\n");
+  printf("  --spmask [int]            Sum of integers.\n");
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
 	printf("    Red-Gauss                              8 \n");
 	printf("  --rmask [float]                          radius in grid u. [default = 2]\n");
-
+	printf("--------------------------------------------------\n");
+	printf("--measlistlog              Gen measfile log.\n\n");
 	return;
 }
 
@@ -1568,6 +1631,16 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--measlistlog"))
+		{
+			CreateLogMeas = true;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		//JAVIER added gradient
 		if (!strcmp(argv[i], "--lapla"))
 		{
@@ -1696,6 +1769,9 @@ int	parseArgs (int argc, char *argv[])
 			printf("and deleted!\n ");
 	}
 
+	/*	Create measfile.dat if required	*/
+	if (CreateLogMeas)
+		createMeasLogList();
 
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;

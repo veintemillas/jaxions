@@ -136,6 +136,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	}
 
 	if(axiona->Field() == FIELD_SAXION){
+
 		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_TEST))
 		{
 
@@ -233,7 +234,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				/* activate this to see the smooth mask */
 					//writeEDens(axiona);
 				/* activate this to see the binary mask */
-				writeString(axiona, MeasDataOut.str, true);
+				// writeString(axiona, MeasDataOut.str, true);
 				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
 		}
 
