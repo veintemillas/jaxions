@@ -138,6 +138,12 @@ def aximcontent(address='./'):
 #   main function to extract data from axion.m.XXXXX files by concept
 #
 
+def gml(list,something='z'):
+    out=[]
+    for f in list:
+        out.append(gm(f,something))
+    return np.array(out)
+
 def gm(address,something='summary',printerror=False):
 
     # the help
@@ -1755,8 +1761,8 @@ def axevS(address='./sample.txt'):
     else :
         return ;
 
-
-
+def xit(logi):
+    return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)
 
 
 
