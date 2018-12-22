@@ -831,10 +831,11 @@ double  Scalar::SaxionMassSq  ()
 double	Scalar::dzSize	   () {
 	double zNow = *zV();
 	double RNow = *RV();
-        double oodl = ((double) n1)/bckgnd->PhysSize();
-        double mAx2 = AxionMassSq();
+	double oodl = ((double) n1)/bckgnd->PhysSize();
+	double mAx2 = AxionMassSq();
 	double &lbd = bckgnd->Lambda();
-        double mAfq = 0.;
+	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
+	double mAfq = 0.;
 	auto   &pot = bckgnd->QcdPot();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
@@ -852,7 +853,7 @@ double	Scalar::dzSize	   () {
 
         switch (lambdaType) {
                 case    LAMBDA_Z2:
-                        mSfq = sqrt(facto*facto*msa*msa + 12.)*oodl;
+                        mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
                         break;
 
                 case    LAMBDA_FIXED:
@@ -985,10 +986,11 @@ double  Scalar::SaxionMassSq  (const double RNow)
 }
 
 double	Scalar::dzSize	   (const double RNow) {
-        double oodl = ((double) n1)/bckgnd->PhysSize();
-        double mAx2 = AxionMassSq();
+	double oodl = ((double) n1)/bckgnd->PhysSize();
+	double mAx2 = AxionMassSq();
 	double &lbd = bckgnd->Lambda();
-        double mAfq = 0.;
+	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
+	double mAfq = 0.;
 	auto   &pot = bckgnd->QcdPot();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
@@ -1006,7 +1008,7 @@ double	Scalar::dzSize	   (const double RNow) {
 
         switch (lambdaType) {
                 case    LAMBDA_Z2:
-                        mSfq = sqrt(facto*facto*msa*msa + 12.)*oodl;
+                        mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
                         break;
 
                 case    LAMBDA_FIXED:

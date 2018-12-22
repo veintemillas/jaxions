@@ -7,6 +7,7 @@ extern int    zGrid;
 extern int    nSteps;
 extern int    dump;
 extern int    fIndex;
+extern int    fIndex2;
 
 //extern double nQcd;
 //extern double sizeL;

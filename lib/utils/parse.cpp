@@ -20,6 +20,7 @@ double indi3  = 1.0;
 double msa    = 1.5;
 double wDz    = 0.8;
 int    fIndex = -1;
+int    fIndex2 = 0;
 
 double sizeL = 4.;
 double zInit = 0.5;

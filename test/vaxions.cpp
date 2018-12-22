@@ -232,7 +232,7 @@ int	main (int argc, char *argv[])
 
 
 	if (!restart_flag && (fIndex == -1)){
-		index = 0;
+		index = fIndex2;
 		LogOut("First measurement file %d \n",index);
 		ninfa.index=index;
 		if (prinoconfo & PRINTCONF_INITIAL)

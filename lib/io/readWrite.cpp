@@ -1129,7 +1129,7 @@ void	createMeas (Scalar *axion, int index)
 
 	auto lSize    = axion->BckGnd()->PhysSize();
 	auto llPhys   = axion->BckGnd()->Lambda  ();
-	auto LL       = axion->BckGnd()->Lambda  ();
+	auto LLL      = axion->BckGnd()->Lambda  ();
 	auto nQcd     = axion->BckGnd()->QcdExp  ();
 	auto gamma    = axion->BckGnd()->Gamma   ();
 	auto vqcdType = axion->BckGnd()->QcdPot  ();
@@ -1239,7 +1239,7 @@ void	createMeas (Scalar *axion, int index)
 	double zrestore = axion->BckGnd()->ZRestore();
 
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
-	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &LLL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);

@@ -351,7 +351,7 @@ def gm(address,something='summary',printerror=False):
             ct = f.attrs[u'z']
             delta = L/N
             return  (delta/6)*stringN*ct*ct/(L**3) ;
-        if (something == 'nN3'):
+        if (something == 'stnN3'):
             stringN = f['string'].attrs[u'String number']
             N = f.attrs[u'Size']
             return  stringN/N**3 ;
