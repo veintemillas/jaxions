@@ -312,6 +312,7 @@ void	ConfGenerator::runCpu	()
 		axionField->setFolded(false);
 		break;
 
+
 		case CONF_VILGOR:
 		case CONF_VILGORK:{
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started! ");
@@ -319,9 +320,10 @@ void	ConfGenerator::runCpu	()
 
 			double LALA = axionField->BckGnd()->Lambda();
 			if (preprop){
-				axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe);
-				LogOut("[GEN] Mira qe cambio LL %f -> %f\n",LALA,axionField->BckGnd()->Lambda());
+					axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe);
+					LogOut("[GEN] Mira qe cambio LL %f -> %f\n",LALA,axionField->BckGnd()->Lambda());
 			}
+
 			double msafromLL = sqrt(2*axionField->BckGnd()->Lambda())*axionField->Delta();
 			LogMsg(VERB_NORMAL,"[GEN] msa %f and msa = %f",msafromLL,axionField->Msa());
 
@@ -374,6 +376,7 @@ void	ConfGenerator::runCpu	()
 			momConf(axionField, sizeN, nc, MOM_MEXP2);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			axionField->setFolded(false);
 
 			myPlan.run(FFT_BCK);
 
@@ -386,43 +389,48 @@ void	ConfGenerator::runCpu	()
 			scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 
-			axionField->setFolded(false);
-
 			if (preprop){
-				prepropa  (axionField);
-				axionField->BckGnd()->SetLambda(LALA);
-				double zsave = *axionField->zV();
-				double rsave = 1/(*axionField->RV());
+				if (pregammo == 0.0){
+					prepropa  (axionField);
+					axionField->BckGnd()->SetLambda(LALA);
+					double zsave = *axionField->zV();
+					double rsave = 1/(*axionField->RV());
 
-				/* travel back in time to have the originally hoped for value of logi */
-				*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
-				axionField->updateR();
+					/* travel back in time to have the originally hoped for value of logi */
+					*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+					axionField->updateR();
 
-				double ska = *axionField->RV()*rsave;
-				size_t vol = axionField->Size();
-				
-				if (axionField->Precision() == FIELD_DOUBLE){
-					rsave *= (1-ska);
-					std::complex<double> *mi = static_cast<std::complex<double> *>(axionField->mStart());
-					std::complex<double> *vi = static_cast<std::complex<double> *>(axionField->vCpu());
+					double ska = *axionField->RV()*rsave;
+					size_t vol = axionField->Size();
 
-					#pragma omp parallel for schedule(static)
-					for (size_t idx=0; idx < vol; idx++) {
-					vi[idx] = vi[idx]*ska + mi[idx]*rsave;}
-					scaleField (axionField, FIELD_M, ska);
-				}else{
-					float skaf = (float) ska;
-					float rsavef = rsave*(1-skaf);
-					std::complex<float> *mi = static_cast<std::complex<float> *>(axionField->mStart());
-					std::complex<float> *vi = static_cast<std::complex<float> *>(axionField->vCpu());
+					if (axionField->Precision() == FIELD_DOUBLE){
+						rsave *= (1-ska);
+						std::complex<double> *mi = static_cast<std::complex<double> *>(axionField->mStart());
+						std::complex<double> *vi = static_cast<std::complex<double> *>(axionField->vCpu());
 
-					#pragma omp parallel for schedule(static)
-					for (size_t idx=0; idx < vol; idx++) {
-					vi[idx] = vi[idx]*skaf + mi[idx]*rsavef;}
-					scaleField (axionField, FIELD_M, skaf);
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < vol; idx++) {
+						vi[idx] = vi[idx]*ska + mi[idx]*rsave;}
+						scaleField (axionField, FIELD_M, ska);
+					}else{
+						float skaf = (float) ska;
+						float rsavef = rsave*(1-skaf);
+						std::complex<float> *mi = static_cast<std::complex<float> *>(axionField->mStart());
+						std::complex<float> *vi = static_cast<std::complex<float> *>(axionField->vCpu());
+
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < vol; idx++) {
+						vi[idx] = vi[idx]*skaf + mi[idx]*rsavef;}
+						scaleField (axionField, FIELD_M, skaf);
+					}
+				} // end damping-less cases
+				else if (pregammo > 0.0)
+				{
+					axionField->BckGnd()->SetLambda(LALA);
+					relaxrho(axionField);
 				}
-
 			}
+
 		}
 
 		break;
