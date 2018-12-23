@@ -333,6 +333,7 @@ int	main (int argc, char *argv[])
 							// Measurement before switching to theta
 							// customize?
 							ninfa.index=index;
+							ninfa.measdata = rho2thetameasType;
 							lm = Measureme (axion, ninfa);
 							index++;
 
@@ -363,6 +364,7 @@ int	main (int argc, char *argv[])
 			// Partial analysis
 			if(measrightnow){
 				ninfa.index=index;
+				ninfa.measdata = (MeasureType) meas_typelist[i_meas]; // in case theta transitioned
 				lm = Measureme (axion, ninfa);
 				index++;
 				i_meas++ ;
