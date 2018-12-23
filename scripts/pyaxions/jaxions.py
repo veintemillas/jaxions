@@ -1821,6 +1821,8 @@ def axevS(address='./sample.txt'):
 def xit(logi):
     return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)
 
+def xitt(logi):
+    return 0.21738*np.log(1 + 0.1564394*np.exp(logi))
 
 
 #   qt plot!

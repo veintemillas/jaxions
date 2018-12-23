@@ -16,7 +16,7 @@
 #include "scalar/scaleField.h"
 #include "spectrum/spectrum.h"
 
-#include "meas/meas.h"
+#include "meas/measa.h"
 #include "WKB/WKB.h"
 
 using namespace std;
@@ -102,6 +102,7 @@ int	main (int argc, char *argv[])
 	}
 */
 	MeasData mData;
+	MeasInfo ninfa;
 
 	double zNow;
 	double axMassNow;
@@ -264,7 +265,10 @@ int	main (int argc, char *argv[])
 
 			if (icstudy){
 				// string control
-				mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
+				ninfa.index = index;
+				ninfa.measdata = MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP;
+				mData = Measureme (axion, ninfa);
+				// mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
 
 				if (axion->Lambda() == LAMBDA_Z2)
 					llPhys = LL1/((zCur)*(zCur));
@@ -297,7 +301,10 @@ int	main (int argc, char *argv[])
 
 	if (!restart_flag && (fIndex == -1)) {
 		LogOut("First measurement file %d \n",index);
-		mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
+		ninfa.index = index;
+		ninfa.measdata = MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN;
+		mData = Measureme (axion, ninfa);
+		// mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_ALLBIN) ;
 	} else
 		LogOut("last measurement file was %d \n",index);
 
@@ -357,14 +364,20 @@ int	main (int argc, char *argv[])
 						saskia    = axion->Saskia();
 						zShift    = zNow * saskia;
 
-						mData = Measure (axion, 10000, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN);
+						ninfa.index = 10000;
+						ninfa.measdata = MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN;
+						mData = Measureme (axion, ninfa);
+						// mData = Measure (axion, 10000, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN);
 
 						LogOut("--------------------------------------------------\n");
 						LogOut(" Theta transition @ z %.4f\n",zNow);
 
 						cmplxToTheta (axion, zShift);
 
-						mData = Measure (axion, 10001, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
+						ninfa.index = 10001;
+						ninfa.measdata = MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN;
+						mData = Measureme (axion, ninfa);
+						// mData = Measure (axion, 10001, MEAS_2DMAP | MEAS_ENERGY | MEAS_ALLBIN ) ;
 
 						LogOut("--------------------------------------------------\n");
 
@@ -398,7 +411,10 @@ int	main (int argc, char *argv[])
 			break;
 		}
 
-		mData = Measure (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
+		ninfa.index = index;
+		ninfa.measdata = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
+		mData = Measureme (axion, ninfa);
+		// mData = Measure (axion, index, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
@@ -434,7 +450,10 @@ int	main (int argc, char *argv[])
 		if (endredmap > 0)
 			mesa = mesa | MEAS_REDENE3DMAP ;
 
-		mData = Measure (axion, index, mesa);
+		ninfa.index = index;
+		ninfa.measdata = mesa;
+		mData = Measureme (axion, ninfa);
+		// mData = Measure (axion, index, mesa);
 
 		if (wkb2z >= zFinl) {
 			WKB wonka(axion, axion);
@@ -462,7 +481,10 @@ int	main (int argc, char *argv[])
 			if (endredmap > 0)
 				mesa = mesa | MEAS_REDENE3DMAP;
 
-			mData = Measure (axion, index, mesa);
+			ninfa.index = index;
+			ninfa.measdata = mesa;
+			mData = Measureme (axion, ninfa);
+			// mData = Measure (axion, index, mesa);
 		}
 	} else {
 		if ((prinoconfo >= 2)) {
