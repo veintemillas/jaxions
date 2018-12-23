@@ -74,7 +74,7 @@ extern PropType         pType;
 extern SpectrumMaskType spmask;
 extern double           rmask;
 extern MeasureType      defaultmeasType;
-MeasureType      rho2thetameasType;
+extern MeasureType      rho2thetameasType;
 
 extern LogMpi       logMpi;
 extern bool         debug ;
