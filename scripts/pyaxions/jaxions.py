@@ -503,6 +503,16 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'nsp?') :
         return nsp_check
+    if (something == 'nspK?') :
+        return nsp_check
+    if (something == 'nspK_Vi?') :
+        return ('nSpectrum/sK_Vi' in f)
+    if (something == 'nspK_Vi2?') :
+        return ('nSpectrum/sK_Vi2' in f)
+    if (something == 'nsp_Red?') :
+        return ('nSpectrum/sK_Red' in f)
+
+
 
     if (something == 'nspG?') :
         return 'nSpectrum/sG' in f
@@ -525,11 +535,11 @@ def gm(address,something='summary',printerror=False):
 
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
         if ftype == 'Axion':
-            if (something == 'nspK'):
+            if (something[:4] == 'nspK'):
                 return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
-            if (something == 'nspG'):
+            if (something[:4] == 'nspG'):
                 return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-            if (something == 'nspV'):
+            if (something[:4] == 'nspV'):
                 return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
             if (something == 'nsp'):
                 spec = np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
@@ -664,7 +674,7 @@ def gm(address,something='summary',printerror=False):
     if (something[0:3] == 'psp') and  psp_check :
         powmax = f['pSpectrum/sP/data/'].size
         if (something == 'psp'):
-            return np.reshape(f['pSpectrum/sP/data/'],(powmax)) ;
+            return np.array(f['pSpectrum/sP/data/']) ;
 
     # maps
     map_check = 'map' in f

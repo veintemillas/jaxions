@@ -10,6 +10,35 @@
 
 namespace AxionWKB {
 
+
+	// computes phi_0
+	// int dt m
+	// takes into account zThreshold (restore not needed)
+
+	// computes phi_1(k)
+	// int_zo^zend dt k^2/w+m
+	// uses a supertable and interpolation
+	// think about precision
+
+	// creates supertable
+	// int_zo^zend dt k^2/w+m for k = 2pi/L * N hasta powMax
+	// in MPI only stores the required slice
+	// void	fillsuperTable () {
+
+	//
+		// cosTable.resize(kMax+1);
+		// cosTable2.resize(kMax+1);
+
+	// 	cosTable[0] = 0.0;
+	// 	cosTable2[0] = 1.0;
+	// 	#pragma omp parallel for schedule(static)
+	// 	for (size_t k=1; k<kMax+1; k++){
+	// 		cosTable[k] = factor*(1.0 - cos(M_PI*(2*k)*ooLx));
+	// 		cosTable2[k] = 2*(1.0 - cos(M_PI*(2*k)*ooLx))/pow(M_PI*(2*k)*ooLx,2.0);
+	// 	}
+	//
+	// }
+
 	//calculates 2F1 for z < -1
 	double h2F1 (double a, double b, double c, double z) {
 		if (fabs(z) < 1.) {

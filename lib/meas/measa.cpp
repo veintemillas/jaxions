@@ -40,11 +40,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	Profiler &prof = getProfiler(PROF_MEAS);
 	/* marks the begginin*/
-	LogOut(".");
-
+	LogOut("~");
+	LogMsg(VERB_NORMAL, "[Meas %d] Measurement %d", indexa, measa);
 
 	if (measa & MEAS_3DMAP){
-		LogOut("3D conf ");
+		LogMsg(VERB_NORMAL, "[Meas %d] Sav3 3D configuration", indexa);
 		writeConf(axiona, indexa);
 		MeasureType mesa = measa;
 		measa = measa ^ MEAS_3DMAP ; // removes the map
@@ -125,13 +125,14 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			}
 
-			if (measa & (MEAS_PSP_A || MEAS_REDENE3DMAP || MEAS_PSP_A))
+
+			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_A))
 			{
+
 				SpecBin specAna(axiona, (pType & PROP_SPEC) ? true : false);
 
-				if (measa & (MEAS_PSP_A || MEAS_REDENE3DMAP))
+				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
 				{
-
 
 						prof.start();
 
@@ -244,7 +245,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
 		}
 
-		if (measa & MEAS_NSP_A)
+		/* If Axion mode this is the only spectrum. In saxion an option */
+		if ( ((axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_A)) ||
+	 			 ((axiona->Field() == FIELD_AXION) && (measa & (MEAS_NSP_A | SPMASK_VIL| SPMASK_TEST |SPMASK_VIL2 ))))
 		{
 
 			if (mask & SPMASK_FLAT)
@@ -262,7 +265,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 			}
 
-			if (mask & SPMASK_TEST)
+			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_TEST))
 			{
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
@@ -295,7 +298,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Red");
 			}
 
-			if (mask & SPMASK_VIL)
+			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_VIL))
 			{
 				// if (mask & SPMASK_FLAT)
 				// 	specAna.reset0();
@@ -308,7 +311,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					prof.add(std::string("NSPA_Vi"), 0.0, 0.0);
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Vi");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi");
-				if (axiona->Field() == FIELD_AXION)
+
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi");
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
 					prof.start();
@@ -324,7 +327,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Vi");
 			}
 
-			if (mask & SPMASK_VIL2)
+			if ((axiona->Field() == FIELD_SAXION) && (mask & SPMASK_VIL2) )
 			{
 				// if ( (mask & SPMASK_FLAT) || (mask & SPMASK_VIL))
 				// 	specAna.reset0();
@@ -356,7 +359,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Vi2");
 			}
 
-			if (mask & SPMASK_SAXI)
+			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_SAXI) )
 			{
 				// if ( (mask & SPMASK_FLAT) || (mask & SPMASK_VIL) || (mask & SPMASK_VIL2))
 				// 	specAna.reset0();
@@ -371,7 +374,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			}
 		}
 
-		if (measa & MEAS_NSP_S)
+		if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
 		{
 			if (axiona->Field() == FIELD_SAXION){
 				// LogOut("NSPS ");
@@ -488,9 +491,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogOut("%2.3f  | ",z_now);
 
 	if (cTime*1.e-6/3600. < 1.0 )
-		LogOut("  %3d  | %6d | %2.3f m | ", indexa, measa, cTime*1.e-6/60.);
+		LogOut("  %3d  | %6d | %2.3f m | ", indexa, info.measdata, cTime*1.e-6/60.);
 		else
-		LogOut("  %3d  | %6d | %2.3f h | ", indexa, measa, cTime*1.e-6/3600.);
+		LogOut("  %3d  | %6d | %2.3f h | ", indexa, info.measdata, cTime*1.e-6/3600.);
 
 	double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
 	if (axiona->Lambda() == LAMBDA_Z2)
