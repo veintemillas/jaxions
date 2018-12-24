@@ -2375,6 +2375,7 @@ void	writeEDensReduced (Scalar *axion, int index, int newNx, int newNz)
 
 	int myRank = commRank();
 
+	LogMsg (VERB_NORMAL, "[wEDR] Called filter with M2 status %d", axion->m2Status());
 	LogMsg (VERB_NORMAL, "Writing energy density REDUCED to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
 

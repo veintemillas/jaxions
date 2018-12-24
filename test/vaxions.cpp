@@ -136,6 +136,7 @@ int	main (int argc, char *argv[])
 	ninfa.sliceprint = sliceprint;
 	ninfa.idxprint = 0 ;
 	ninfa.index = 0;
+	ninfa.redmap = endredmap;
 
 	// default measurement type is parsed
 	ninfa.measdata = defaultmeasType;

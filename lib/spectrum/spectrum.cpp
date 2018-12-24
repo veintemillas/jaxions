@@ -353,6 +353,8 @@ void	SpecBin::pRun	() {
 
 	char *mA = static_cast<char *>(field->m2Cpu());
 
+	LogMsg(VERB_NORMAL,"[pRun] Called with status field->statusM2()=%d",SPMASK_TEST,field->m2Status()) ;
+
 	if ((field->m2Status() != M2_ENERGY) && (field->m2Status() != M2_ENERGY_FFT)) {
 		LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
 		return;
@@ -953,6 +955,7 @@ void	SpecBin::avekRun	() {
 
 template<typename Float>
 void	SpecBin::filterFFT	(double neigh) {
+	LogMsg (VERB_NORMAL, "[Filter] Called filterFFT with M2 status %d", field->m2Status());
 
 	using cFloat = std::complex<Float>;
 
@@ -964,17 +967,14 @@ void	SpecBin::filterFFT	(double neigh) {
 	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;
 	double prefac = 0.5*M_PI*M_PI*neigh*neigh/field->Surf() ;
 
-	LogMsg (VERB_NORMAL, "filterBins with %d neighbours, prefa = %f", neigh, prefac);
+	LogMsg (VERB_NORMAL, "filterBins with %.3f neighbours, prefa = %f", neigh, prefac);
 
 	//complex<Float> * m2ft = static_cast<complex<Float>*>(axion->m2Cpu());
 
 	const double normn3 = field->TotalSize();
 
 	#pragma omp parallel
-	{
-		//int  tIdx = omp_get_thread_num ();
-
-		#pragma omp for schedule(static)
+	#pragma omp for schedule(static)
 		for (size_t idx=0; idx<nPts; idx++) {
 
 			int kz = idx/Lx;
@@ -992,15 +992,13 @@ void	SpecBin::filterFFT	(double neigh) {
 			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
 			double k2    = kx*kx + ky*ky + kz*kz;
-			static_cast<cFloat *>(field->m2Cpu())[idx] *= exp(-prefac*k2)/normn3;
+			static_cast<cFloat *>(field->m2Cpu())[idx] *= (exp(-prefac*k2)/normn3);
 		}
-
-	}
 }
 
-void	SpecBin::filter (int neigh) {
+void	SpecBin::filter (size_t neigh) {
 
-	LogMsg (VERB_NORMAL, "Filter assumes m2 contains FFT r2c");
+	LogMsg (VERB_NORMAL, "[Filter] Called filter with M2 status %d", field->m2Status());
 	// FFT of contrast bin is assumed in m2 (with ghost bytes)
 	// filter with a Gaussian over n neighbours
 	// exp(- ksigma^2/2)
@@ -1011,24 +1009,24 @@ void	SpecBin::filter (int neigh) {
 
 	switch (fPrec) {
 		case	FIELD_SINGLE:
-				filterFFT<float> (neigh);
+				filterFFT<float> ( (double) neigh);
 			break;
 
 		case	FIELD_DOUBLE:
-				filterFFT<double> (neigh);
+				filterFFT<double> ( (double) neigh);
 			break;
 
 		default:
-			LogError ("Wrong precision");
+			LogError ("[Filter] Wrong precision");
 			break;
 	}
 
-	LogMsg (VERB_NORMAL, "FFT m2 inplace -> ");
+	LogMsg (VERB_NORMAL, "[Filter] FFT m2 inplace -> ");
 	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 	myPlan.run(FFT_BCK);
-	LogMsg (VERB_NORMAL, "-> filtered density map in m2!");
+	LogMsg (VERB_NORMAL, "[Filter] -> filtered density map in m2!");
 
-	LogMsg (VERB_NORMAL, "reducing map [cherrypicking]");
+	LogMsg (VERB_NORMAL, "[Filter] reducing map [cherrypicking]");
 	// reducemap consists on reorganising items of the filtered density map
 	// we outputthem as a bin to use print bin
 	// or as a reduced density map ?
@@ -1038,10 +1036,12 @@ void	SpecBin::filter (int neigh) {
 	size_t newNx = Ly/seta ;
 	size_t newNz = Lz/seta ;
 
+	LogMsg (VERB_NORMAL, "[Filter] seta %d newNx %d newNz %d [cherrypicking]",seta, newNx, newNz);
+
 	switch (fPrec) {
 		case	FIELD_SINGLE:
 		{
-			float *mCon = static_cast<float *>(static_cast<void*>(field->m2Cpu()));	// FIXME breaks for double precision
+			float *mCon = static_cast<float *>(static_cast<void*>(field->m2Cpu()));
 			//size_t topa = newNx*newNx*newNz ;
 
 			for (size_t iz=0; iz < newNz; iz++) {
@@ -1062,7 +1062,7 @@ void	SpecBin::filter (int neigh) {
 
 		case	FIELD_DOUBLE:
 		{
-			double *mCon = static_cast<double *>(static_cast<void*>(field->m2Cpu()));	// FIXME breaks for double precision
+			double *mCon = static_cast<double *>(static_cast<void*>(field->m2Cpu()));
 
 			for (size_t iz=0; iz < newNz; iz++) {
 				size_t laz = Ly*(Ly+2)*iz*seta ;
@@ -1081,6 +1081,7 @@ void	SpecBin::filter (int neigh) {
 		break;
 
 	}
+	field->setM2(M2_ENERGY_RED);
 }
 
 

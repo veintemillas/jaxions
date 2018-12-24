@@ -30,7 +30,7 @@ void	Folder::foldField()
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	LogMsg (VERB_HIGH, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	LogMsg (VERB_NORMAL, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
@@ -68,7 +68,7 @@ void	Folder::unfoldField()
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	LogMsg (VERB_HIGH, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	LogMsg (VERB_NORMAL, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{

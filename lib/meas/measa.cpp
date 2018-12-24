@@ -9,6 +9,7 @@
 #include "map/map.h"
 #include "strings/strings.h"
 #include "scalar/scalar.h"
+#include "reducer/reducer.h"
 #include "spectrum/spectrum.h"
 #include "projector/projector.h"
 
@@ -35,6 +36,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	int indexa = info.index;
 	SpectrumMaskType mask = info.mask ;
 	double radius_mask = info.rmask ;
+	int redmap = info.redmap;
 
 	auto	cTime = Timer();
 
@@ -43,6 +45,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "[Meas %d] Measurement %d", indexa, measa);
 
+	/* Save configuration, placed here to avoid running any test if MEAS_NOTHING
+	but to save the configuration */
 	if (measa & MEAS_3DMAP){
 		LogMsg(VERB_NORMAL, "[Meas %d] Sav3 3D configuration", indexa);
 		writeConf(axiona, indexa);
@@ -125,7 +129,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			}
 
-
 			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_A))
 			{
 
@@ -145,19 +148,28 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						prof.stop();
 						prof.add(std::string("PSPA"), 0.0, 0.0);
 
-						// move after PSP!
+						//FIXME issue with endredmap?
 						if (measa & MEAS_REDENE3DMAP){
-								if ( endredmap > 0){
-									// LogOut("redMap->%d! ",sizeN/endredmap);
-									prof.start();
+								if ( redmap > 0 ){
+									// prof.start();
+									// size_t nena = sizeN/ ((size_t) redmap) ;
+									// LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to N=%d by smoothing %d neig",indexa, redmap, nena);
+									// specAna.filter(nena);
+									// writeEDensReduced(axiona, indexa, redmap, redmap/((int) zGrid));
+									// prof.stop();
+									// prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
+										double ScaleSize = ((double) axiona->Length())/((double) redmap);
+										double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axiona->Surf());
+										size_t nLz = endredmap / commSize();
 
-									LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",indexa,sizeN/endredmap);
-									int nena = sizeN/endredmap ;
-									specAna.filter(nena);
-									writeEDensReduced(axiona, indexa, endredmap, endredmap/zGrid);
-
-									prof.stop();
-									prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
+										if (axiona->Precision() == FIELD_DOUBLE) {
+											reduceField(axiona, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
+													 { return x*exp(-eFc*(px*px + py*py + pz*pz)); });
+										} else {
+											reduceField(axiona, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>
+													 { return x*((float) exp(-eFc*(px*px + py*py + pz*pz))); });
+										}
+									writeEDens (axiona);
 								}
 						}
 				}

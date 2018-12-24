@@ -358,6 +358,7 @@
 			M2_STRINGCOO   = 4,
 			M2_DIRTY       = 8,
 			M2_MASK_TEST   = 16,
+			M2_ENERGY_RED  = 32,
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
@@ -413,6 +414,7 @@
 			MeasureType measdata ;
 			SpectrumMaskType mask ;
 			double rmask; 					// a radius to mask
+			int redmap;
 		}	MeasInfo;
 
 		// data output by measurement function to program
