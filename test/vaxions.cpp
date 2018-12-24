@@ -283,6 +283,7 @@ int	main (int argc, char *argv[])
 					dzaux = meas_zlist[i_meas] - (*axion->zV());
 					measrightnow = true;
 					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
+					defaultmeasType = ninfa.measdata;
 					// actually, if this is the last measurement, do not measure!
 					if ( (i_meas == meas_zlist.size()-1) ){
 						measrightnow = false;
@@ -363,14 +364,15 @@ int	main (int argc, char *argv[])
 
 			// Partial analysis
 			if(measrightnow){
+
 				ninfa.index=index;
-				ninfa.measdata = (MeasureType) meas_typelist[i_meas]; // in case theta transitioned
+				// in case theta transitioned, the meas was saved as the default
+				ninfa.measdata = defaultmeasType;
 				lm = Measureme (axion, ninfa);
 				index++;
 				i_meas++ ;
 				//reset flag
 				measrightnow = false;
-
 				// after every measurement we check walltime > need update
 				checkTime(axion, index);
 			}

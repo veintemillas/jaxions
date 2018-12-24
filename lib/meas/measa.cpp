@@ -63,6 +63,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
+
 	createMeas(axiona, indexa);
 
 	if (measa & MEAS_2DMAP){
@@ -124,6 +125,51 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			}
 
+			if (measa & (MEAS_PSP_A || MEAS_REDENE3DMAP || MEAS_PSP_A))
+			{
+				SpecBin specAna(axiona, (pType & PROP_SPEC) ? true : false);
+
+				if (measa & (MEAS_PSP_A || MEAS_REDENE3DMAP))
+				{
+
+
+						prof.start();
+
+						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
+						// at the moment runs PA and PS if in saxion mode
+						// perhaps we should create another psRun() YYYEEEESSSSS
+						specAna.pRun();
+						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
+						prof.stop();
+						prof.add(std::string("PSPA"), 0.0, 0.0);
+
+						// move after PSP!
+						if (measa & MEAS_REDENE3DMAP){
+								if ( endredmap > 0){
+									// LogOut("redMap->%d! ",sizeN/endredmap);
+									prof.start();
+
+									LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",indexa,sizeN/endredmap);
+									int nena = sizeN/endredmap ;
+									specAna.filter(nena);
+									writeEDensReduced(axiona, indexa, endredmap, endredmap/zGrid);
+
+									prof.stop();
+									prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
+								}
+						}
+				}
+				if ( (measa & MEAS_PSP_S) && (axiona->Field() == FIELD_SAXION))
+				{
+						// LogOut("PSPS ");
+						// LogMsg(VERB_NORMAL, "[Meas %d] PSPS",index);
+						// has been computed before
+						// JAVI : SURE PROBLEM OF PSA PSS FILTER
+						// specAna.pSRun();
+						// writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
+				}
+			}
 		} // no m2 map
 		else{
 			// LogOut("energy (sum)");
@@ -136,7 +182,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	}
 
 	if(axiona->Field() == FIELD_SAXION){
-
 		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_TEST))
 		{
 
@@ -167,6 +212,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				}
 				LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
 				writeStringCo(axiona, MeasDataOut.str, true);
+				//saves strings in m2//problem with energy
 			}
 
 		}
@@ -177,46 +223,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa & MEAS_SPECTRUM)
 	{
 		SpecBin specAna(axiona, (pType & PROP_SPEC) ? true : false);
-
-		if (measa & MEAS_PSP_A)
-		{
-
-				prof.start();
-
-				LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
-				// at the moment runs PA and PS if in saxion mode
-				// perhaps we should create another psRun() YYYEEEESSSSS
-				specAna.pRun();
-				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-
-				prof.stop();
-				prof.add(std::string("PSPA"), 0.0, 0.0);
-		}
-		// move after PSP!
-		if (measa & MEAS_REDENE3DMAP){
-				if ( endredmap > 0){
-					// LogOut("redMap->%d! ",sizeN/endredmap);
-					prof.start();
-
-					LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to %d neig",indexa,sizeN/endredmap);
-					int nena = sizeN/endredmap ;
-					specAna.filter(nena);
-					writeEDensReduced(axiona, indexa, endredmap, endredmap/zGrid);
-
-					prof.stop();
-					prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
-				}
-		}
-
-		if ( (measa & MEAS_PSP_S) && (axiona->Field() == FIELD_SAXION))
-		{
-				// LogOut("PSPS ");
-				// LogMsg(VERB_NORMAL, "[Meas %d] PSPS",index);
-				// has been computed before
-				// JAVI : SURE PROBLEM OF PSA PSS FILTER
-				// specAna.pSRun();
-				// writeArray(specSAna.data(SPECTRUM_PS), specSAna.PowMax(), "/pSpectrum", "sPS");
-		}
 
 		/* this is an experimental print that uses axion energy plot2D and could use plot3D energy
 		   is incompatible with a real output of energy density... */
