@@ -395,7 +395,6 @@ int	main (int argc, char *argv[])
 	MeasureType mesa = defaultmeasType;
 
 	if ((prinoconfo & PRINTCONF_FINAL) && (wkb2z < 0)) {
-		LogOut ("Will dump final configuration %05d ...", index);
 		mesa = mesa | MEAS_3DMAP  ;
 	}
 	if (pconfinal)

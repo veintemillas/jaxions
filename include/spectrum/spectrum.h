@@ -127,7 +127,7 @@
 		template<typename Float, SpectrumMaskType mask>
 		void	wRun		();
 
-		void	filter	(int neigh);
+		void	filter	(size_t neigh);
 
 		void	reset0(){
 				LogMsg(VERB_NORMAL,"Reset SpecAna Bins to zero");
