@@ -1124,11 +1124,11 @@ template<typename Float, SpectrumMaskType mask>
 void	SpecBin::masker	(double radius_mask) {
 
 	if ( !(field->sDStatus() & SD_MAP)){
-			LogOut("[masker] masker called without string map! exit!\n");
+			LogMsg(VERB_NORMAL,"[masker] masker called without string map! exit!\n");
 			return;
 	}
 	if (field->LowMem()){
-			LogOut("[masker] masker called in lowmem! exit!\n");
+			LogMsg(VERB_NORMAL,"[masker] masker called in lowmem! exit!\n");
 			return;
 	}
 

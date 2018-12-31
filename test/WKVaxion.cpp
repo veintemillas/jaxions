@@ -69,6 +69,14 @@ int	main (int argc, char *argv[])
 	}
 	LogOut ("\n");
 
+	if (axion->Field() != FIELD_AXION)
+	{
+		LogOut ("Error: WKV only works in axion mode\n");
+		exit (0);
+	}
+	LogOut ("\n");
+
+
 	double z_now = (*axion->zV())	;
 	LogOut("--------------------------------------------------\n");
 	LogOut("           INITIAL CONDITIONS                     \n\n");
