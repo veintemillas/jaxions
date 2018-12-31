@@ -1,0 +1,19 @@
+
+JAXIONS_DIR=/Users/madomaxo/Salsa/jaxions/jaxions/scripts
+
+if [ "$1" == "" ]; then
+	echo Options: 
+	echo plot2D
+	echo plot3Dconf   m/v axion.xxxxx 
+	echo plot3Dslice  axion.m.xxxxx
+	echo plot4D       axion.m.xxxxx opt
+	echo plotMask      axion.m.xxxxx 
+	echo test	 
+	echo plotStr	
+	echo plotCoStr
+	echo makeVideo3D
+else 
+	echo "jax ipython > rm" 
+	echo $1 $2 $3 
+	ipython $JAXIONS_DIR/$1.py $2 $3
+fi
