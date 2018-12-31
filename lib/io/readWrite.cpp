@@ -3146,13 +3146,17 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	char *dataE  = static_cast<char *>(axion->m2Cpu());
 	char eCh[16] = "/map/E";
 
-	LogMsg (VERB_NORMAL, "Writing 2D energy map to Hdf5 measurement file");
-	LogMsg (VERB_NORMAL, "");
+	LogMsg (VERB_NORMAL, "[wem] Writing 2D energy map to Hdf5 measurement file");
 
-	if (axion->m2Status() != (M2_ENERGY | M2_MASK_TEST))
-	{
-		LogError ("Error: Energy not available in m2. Call energy before calling writeEMapHdf5");
+	switch (axion->m2Status()){
+		case M2_ENERGY:
+		case M2_MASK_TEST:
+			LogMsg (VERB_NORMAL, "[wem] M2 status %d ",axion->m2Status());
+		break;
+		default:
+		LogError ("Error: Energy not available in m2. (status %d) Call energy before calling writeEMapHdf5", axion->m2Status());
 		return;
+		break;
 	}
 
 	if (header == false || opened == false)

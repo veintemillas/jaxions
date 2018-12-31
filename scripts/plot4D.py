@@ -58,6 +58,9 @@ if len(sys.argv) == 2:
     elif (sys.argv[-1] == 'S'):
         mode = 'S'
         print('Saxion')
+    if (sys.argv[-1] == 'vA'):
+        mode = 'vA'
+        print('Axion velocity')
     elif (sys.argv[-1] == 'M'):
         mode = 'M'
         print('Saxion-masked')
@@ -106,6 +109,18 @@ for meas in fileMeas:
             rData = np.ones(aData.shape)
             pData = np.ones(aData.shape)*(2*np.pi)
             aData = (aData + pData)/(4.*np.pi)
+    if (mode == 'vA') and pa.gm(meas,'map?'):
+        if fl == "Saxion":
+            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            mTmp2  = fileHdf5['map']['v'].value.reshape(Ly,Lx,2)
+            aData = ((mTmp2/mTmp))[:,:,1]
+            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+            # rMax = np.amax(rData)
+            # rData = rData/zR
+        elif fl == "Axion":
+            mTmp = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            mTmp2 = fileHdf5['map']['v'].value.reshape(Ly,Lx)
+            aData = (mTmp2-mTmp/zR)/zR
     elif mode == 'eA' and pa.gm(meas,'2Dmape?'):
             # avi = pa.gm(meas,'eA')
             # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
