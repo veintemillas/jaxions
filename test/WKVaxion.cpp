@@ -93,15 +93,24 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	//       MEASUREMENT
 	//--------------------------------------------------
-
+	//- Measurement
+	MeasData lm;
+	//- number of plaquetes pierced by strings
+	lm.str.strDen = 0 ;
+	//- Info to measurement
 	MeasInfo ninfa;
 	//- information needs to be passed onto measurement files
 	ninfa.sliceprint = sliceprint;
 	ninfa.idxprint = 0 ;
-	ninfa.index = fIndex;
-	ninfa.measdata = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
+	ninfa.index = 0;
+	ninfa.redmap = endredmap;
 
-	//--------------------------------------------------
+	// default measurement type is parsed
+	ninfa.measdata = defaultmeasType;
+	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
+
+		//--------------------------------------------------
 	//       WKB
 	//--------------------------------------------------
 
@@ -116,6 +125,8 @@ int	main (int argc, char *argv[])
 	{
 		ninfa.index++;
 
+		ninfa.measdata = rho2thetameasType;
+		lm = Measureme (axion, ninfa);
 		Measureme (axion, ninfa);
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
