@@ -262,7 +262,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	 			 ((axiona->Field() == FIELD_AXION) && (measa & (MEAS_NSP_A | SPMASK_VIL| SPMASK_TEST |SPMASK_VIL2 ))))
 		{
 
-			if (mask & SPMASK_FLAT)
+			if ( ((axiona->Field() == FIELD_SAXION) && (mask & SPMASK_FLAT)) ||
+						(axiona->Field() == FIELD_AXION) )
 			{
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
@@ -384,6 +385,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Im");
 				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "sG_Re");
 			}
+
 		}
 
 		if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
