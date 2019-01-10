@@ -516,6 +516,7 @@ namespace AxionWKB {
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
 		*field->zV() = zEnd ;
+		field->updateR();
 		LogMsg(VERB_NORMAL,"[WKB] set z=%f done", (*field->zV()) );
 		field->setFolded(false);
 		LogMsg(VERB_NORMAL,"[WKB] m,v, set unfolded!");
@@ -706,6 +707,7 @@ namespace AxionWKB {
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[field->Size()-1],vIn[field->Size()-2],vIn[field->Size()-3]);
 
     *field->zV() = zEnd ;
+		field->updateR();
     LogMsg(VERB_NORMAL,"[WKB] scalar set z=%f done (m2 still in %f)", (*field->zV()), zIni);
 		field->setFolded(false);
 		LogMsg(VERB_NORMAL,"[WKB] m,v, set unfolded!");
