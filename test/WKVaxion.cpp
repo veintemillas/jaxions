@@ -110,7 +110,7 @@ int	main (int argc, char *argv[])
 	//- information needs to be passed onto measurement files
 	ninfa.sliceprint = sliceprint;
 	ninfa.idxprint = 0 ;
-	ninfa.index = 0;
+	ninfa.index = fIndex;
 	ninfa.redmap = endredmap;
 
 	// default measurement type is parsed
@@ -135,7 +135,6 @@ int	main (int argc, char *argv[])
 
 		ninfa.measdata = defaultmeasType;
 		lm = Measureme (axion, ninfa);
-		Measureme (axion, ninfa);
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
 		{
