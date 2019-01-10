@@ -133,7 +133,7 @@ int	main (int argc, char *argv[])
 	{
 		ninfa.index++;
 
-		ninfa.measdata = rho2thetameasType;
+		ninfa.measdata = defaultmeasType;
 		lm = Measureme (axion, ninfa);
 		Measureme (axion, ninfa);
 
