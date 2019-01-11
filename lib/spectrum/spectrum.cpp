@@ -530,6 +530,8 @@ void	SpecBin::nRun	() {
 
 	binK.assign(powMax, 0.);
 	binG.assign(powMax, 0.);
+	binV.assign(powMax, 0.);
+
 	if (mask == SPMASK_SAXI)
 	{
 		binV.assign(powMax, 0.);

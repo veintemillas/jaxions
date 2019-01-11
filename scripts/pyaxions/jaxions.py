@@ -517,6 +517,9 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nspG?') :
         return 'nSpectrum/sG' in f
 
+    if (something == 'nspV?') :
+        return 'nSpectrum/sV' in f
+
     if (something[0:3] == 'nsp') and not nsp_check :
         if printerror :
             print(""" [gm] Warning: No nSpec in file. Returning 'None' """)
