@@ -201,6 +201,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			if ( !(measa & MEAS_STRINGCOO)){
 					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 					MeasDataOut.str = strings(axiona);
+					MeasDataOut.str = stringlength(axiona,MeasDataOut.str);
 
 					if ( measa & MEAS_STRINGMAP )
 					{
@@ -219,6 +220,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			else if (measa & MEAS_STRINGCOO){
 				LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
 				MeasDataOut.str = strings2(axiona);
+				MeasDataOut.str = stringlength(axiona,MeasDataOut.str);
 				if ( measa & MEAS_STRINGMAP ){
 					LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
 					writeString(axiona, MeasDataOut.str, true);

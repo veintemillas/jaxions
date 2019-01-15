@@ -166,7 +166,9 @@ def gm(address,something='summary',printerror=False):
         print('eVA         Pot En Axion [ADM u.]   ')
         print('stringN     String #points ')
         print('stwallN     Walls  #points   ')
-        print('stDens      String length/Volume [ADM u.]   ')
+        print('stringL     String Length [lattice u.]')
+        print('stDens      String length/Volume [ADM u.] (statistically)')
+        print('stDensL     String length/Volume [ADM u.] (directly)')
         print('binconB     binned normalised log10 contrast         ')
         print('binconBmax  maximum log10(contrast)         ')
         print('binconBmin  maximum log10(contrast)         ')
@@ -342,6 +344,8 @@ def gm(address,something='summary',printerror=False):
     if (something[0:2] == 'st') and st_check and ftype == 'Saxion':
         if (something == 'stringN'):
             return f['string'].attrs[u'String number'] ;
+        if (something == 'stringL'):
+            return f['string'].attrs[u'String length'] ;
         if (something == 'stwallN'):
             return f['string'].attrs[u'Wall number'] ;
         if (something == 'stDens'):
@@ -355,6 +359,13 @@ def gm(address,something='summary',printerror=False):
             stringN = f['string'].attrs[u'String number']
             N = f.attrs[u'Size']
             return  stringN/N**3 ;
+        if (something == 'stDensL'):
+            stringL = f['string'].attrs[u'String length']
+            L = f.attrs[u'Physical size']
+            N = f.attrs[u'Size']
+            ct = f.attrs[u'z']
+            delta = L/N
+            return  (delta/4)*stringL*ct*ct/(L**3) ;
 
         if (something == 'stringCoord') and ('string/coords' in f):
             size = f['string/coords'].size

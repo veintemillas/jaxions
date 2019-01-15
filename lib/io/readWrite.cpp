@@ -1429,6 +1429,7 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
 		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
 		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strLen), "String length",    H5T_NATIVE_DOUBLE);
 
 		if	(rData) {
 			/*	Create space for writing the raw data to disk with chunked access	*/

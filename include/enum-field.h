@@ -256,10 +256,11 @@
 			size_t				strDen;
 			long long int	strChr;
 			size_t				wallDn;
+			double        strLen;
 			size_t				strDen_local;
 			long long int	strChr_local;
 			size_t				wallDn_local;
-
+			double        strLen_local;
 		}	StringData;
 
 		typedef	enum	FFTtype_s {
