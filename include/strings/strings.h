@@ -46,8 +46,12 @@
 	template<typename Float>
 	StringData	stringlength2	(Scalar *field, StringData strDen);
 
+	template<typename Float>
+	StringEnergyData	stringenergy	(Scalar *field);
+
 	StringData	stringlength	(Scalar *field, StringData strDen);
 	StringData	stringlength2	(Scalar *field, StringData strDen);
+	StringEnergyData	stringenergy	(Scalar *field);
 
 	int	analyzeStrFolded	(Scalar *axion, const int index);
 	int	analyzeStrFoldedNP	(Scalar *axion, const int index);

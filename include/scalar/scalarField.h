@@ -140,6 +140,7 @@
 		double		AxionMassSq();
 		double		SaxionMassSq();
 		double		HubbleMassSq();
+		double    HubbleConformal();
 		double		SaxionShift();
 		double		Saskia     ();
 		double		dzSize     ();
