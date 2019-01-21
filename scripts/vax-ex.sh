@@ -1,5 +1,5 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%# GRID %
-N=256 ; RANKS=1 ; DEPTH=$(echo $N/$RANKS | bc) 
+N=256 ; RANKS=1 ; DEPTH=$(echo $N/$RANKS | bc)
 GRID=" --size $N --depth $DEPTH --zgrid $RANKS"
 #%%%%%%%%%%%%%%%%%%%%%%%%# simulation parameters %
 LOW=" --lowmem"  ; PREC=" --prec single" ; DEVI=" --device cpu"
@@ -37,19 +37,25 @@ echo "         " $OUTP
 export OMP_NUM_THREADS=$(echo 8/$RANKS | bc)
 
 
-if [ $1 == "measfile" ]; then 
-	vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP --dump 8 --measlistlog
-	exit 1
-fi 
-
-if [ "$1" == "wkb" ]; then 
-	echo wkb!
-	AXIONS_OUTPUT="wout/m"
-	mpirun -np $RANKS WKVaxion --index 45 $GRID $SIMU $PHYS $PREP $OUTP --zf 6.0 --steps 20
+if [ $1 == "measfile" ]; then
+        vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP --dump 8 --measlistlog 2>&1 | tee logmeas.txt
+        exit 1
 fi
-
+if [ "$1" == "wkb" ]; then
+        echo wkb!
+        rm wout/m/axion.m.*
+        export AXIONS_OUTPUT="wout/m"
+        echo "AXIONS_OUTPUT=$AXIONS_OUTPUT"
+        mpirun -np $RANKS WKVaxion $GRID $SIMU $PHYS $PREP $OUTP --zf $3 --steps 10 --index $2 2>&1 | tee logwkb.txt
+fi
 if [ "$1" == "run" ]; then
-	rm out/m/axion.*
-	rm axion.log.*
-	mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP 
+        rm out/m/axion.*
+        rm axion.log.*
+        export AXIONS_OUTPUT="out/m"
+        mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP 2>&1 | tee logrun.txt
+fi
+if [ "$1" == "continue" ]; then
+        echo continue!
+        echo "AXIONS_OUTPUT=$AXIONS_OUTPUT"
+        mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $PREP $OUTP --zf $3 --index $2 2>&1 | tee log-continue.txt
 fi
