@@ -985,6 +985,45 @@ class ml:
 
 
 
+def fildic(meas):
+    if (meas in ['MEAS_BINTHETA','BINTHETA','bin theta','bintheta','thetabin','tbin']):
+        return 'MEAS_BINTHETA'
+    if (meas in ['MEAS_BINRHO','BINRHO','bin rho','binrho','rhobin','rbin']):
+        return 'MEAS_BINRHO'
+    if (meas in ['MEAS_BINLOGTHETA2','BINLOGTHETA2','bin logtheta2','bin logtheta','binlogtheta','ltbin']):
+        return 'MEAS_BINLOGTHETA2'
+    if (meas in ['MEAS_BINDELTA','BINDELTA','bin delta','bindelta','bin contrast','delta bin','conbin','deltabin']):
+        return 'MEAS_BINDELTA'
+    if (meas in ['MEAS_STRING','STRING','string','str','string density','string number','string plaquetes']):
+        return 'MEAS_STRING'
+    if (meas in ['MEAS_STRINGMAP','STRINGMAP','string map','str map','string 3D map']):
+        return 'MEAS_STRINGMAP'
+    if (meas in ['MEAS_STRINGCOO','STRINGCOO','string coordinates','strco','string coordinate list']):
+        return 'MEAS_STRINGCOO'
+    if (meas in ['MEAS_ENERGY','ENERGY','energy']):
+        return 'MEAS_ENERGY'
+    if (meas in ['MEAS_ENERGY3DMAP','ENERGY3DMAP','energy 3D map']):
+        return 'MEAS_ENERGY3DMAP'
+    if (meas in ['reduced energy 3D map']):
+        return 'MEAS_REDENE3DMAP'
+    if (meas in ['MEAS_2DMAP','2DMAP','map 2D','plot2D','slice']):
+        return 'MEAS_2DMAP'
+    if (meas in ['MEAS_3DMAP','3DMAP','map 3D','configuration 3D','full configuration 3D']):
+        return 'MEAS_3DMAP'
+    if (meas in ['MEAS_MASK','MASK','spectrum mask','mask']):
+        return 'MEAS_MASK'
+    if (meas in ['MEAS_PSP_A','PSP_A','energy power spectrum','energy power spectrum axion','psp','pspa','power spectrum']):
+        return 'MEAS_PSP_A'
+    if (meas in ['MEAS_NSP_A','NSP_A','axion spectrum','nspa']):
+        return 'MEAS_NSP_A'
+    if (meas in ['MEAS_NSP_S','NSP_S','Saxion spectrum','nspS']):
+        return 'MEAS_NSP_S'
+
+
+
+
+
+
 
 
 
