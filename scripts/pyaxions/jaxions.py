@@ -512,8 +512,6 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nsp_Red?') :
         return ('nSpectrum/sK_Red' in f)
 
-
-
     if (something == 'nspG?') :
         return 'nSpectrum/sG' in f
 
@@ -871,8 +869,9 @@ def meas2human(inte):
     for n in range(0,40):
         s=int(2**n)
         if (inte & s):
-            sa.append(s)
-            print(inv_measdic[s])
+            if (inv_measdic[s] != "MEAS_EMPTY"):
+                sa.append(s)
+                print(s, inv_measdic[s])
     return sa
 
 
@@ -885,6 +884,7 @@ measdic = { "MEAS_NOTHING" : 0,
 "MEAS_BINRHO"       : 2,
 "MEAS_BINLOGTHETA2" : 4,
 "MEAS_BINDELTA"     : 8,
+"MEAS_EMPTY"        : 16,
 "MEAS_STRING"	    : 32,
 "MEAS_STRINGMAP"    : 64,
 "MEAS_STRINGCOO"    : 128,
@@ -902,6 +902,82 @@ measdic = { "MEAS_NOTHING" : 0,
           }
 inv_measdic = {v: k for k, v in measdic.items()}
 
+
+
+
+
+
+
+
+# build a measurement list
+del ml
+class ml:
+    def __init__(self,msa=1.0,L=6.0,N=1024):
+        self.mtab = [] ;
+        self.ctab = [] ;
+        self.me = 0;
+        self.msa = msa;
+        self.L = L;
+        self.N = 1024;
+    def dic (self,):
+        return pa.measdic
+    def nmt (self):
+        self.me = 0;
+    def me_add (self,meas):
+        self.me |= meas
+    def me_adds (self,meass):
+        self.me |= pa.measdic[fildic(meass)]
+        print("adds %s (%d) > me %d"%(fildic(meass),pa.measdic[fildic(meass)],self.me))
+
+    #caca
+    def nmt_rem (self,meas):
+        self.me -= pa.meas2human(meas)
+    def nmt_prt ():
+        pa.meas2human(self.me)
+    def nmt_prt (self,meas):
+        pa.meas2human(meas)
+
+    def addset (self,measN, zi, zf, meastype=0, scale='lin'):
+        if scale=='lin':
+            self.ctab.append(np.linspace(zi,zf,measN))
+        if scale=='logi':
+            temp = np.linspace(zi,zf,measN)
+            # logi = log (msa ct/a)
+            # ct = a exp(temp)*a/msa
+            self.ctab.append(np.exp(temp)*self.L/self.N/self.msa)
+        self.mtab.append(meastype | self.me)
+        print("Set with me %s created"%(meastype | self.me))
+    def give(self):
+        outa = [a for a in self.ctab[0]]
+        outb = [self.mtab[0] for a in self.ctab[0]]
+#         print(outa)
+        print("Printing sets with measures: ",self.mtab)
+        if len(self.mtab) > 0:
+            for imt in range(len(self.mtab)):
+                ctab = self.ctab[imt]
+                mt = self.mtab[imt]
+#                 print(ctab)
+#                 print(mt)
+                for ct in ctab:
+                    i = 0
+                    if ct < outa[i]:
+                        outa.insert(0,ct)
+                        outb.insert(0,mt)
+                        break
+                    if ct > outa[-1]:
+                        outa.append(ct)
+                        outb.append(mt)
+                        break
+                    for i in range(len(outa)):
+                        if outa[i] < ct and ct < outa[i+1]:
+                                outa.insert(i+1,ct)
+                                outb.insert(i+1,mt)
+                                break
+        cap = []
+        for i in range(len(outa)):
+            print("%f %d"%(outa[i],outb[i]))
+            cap.append([outa[i],outb[i]])
+        return cap
 
 
 
