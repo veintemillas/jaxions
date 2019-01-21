@@ -122,7 +122,11 @@ int	main (int argc, char *argv[])
 	//       WKB
 	//--------------------------------------------------
 
-
+	// LogOut ("creating new axion2 ... FIELD_TYPE(%d) ", FIELD_WKB );
+	// Scalar *axion2;
+	// axion2 = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
+	// LogOut ("done !\n");
+	// WKB wonka(axion, axion2);
 
 	if (zFinl < z_now)
 		zFinl = z_now	;
@@ -145,6 +149,7 @@ int	main (int argc, char *argv[])
 		}
 
 	}
+
 	//--------------------------------------------------
 	//       SAVE DATA
 	//--------------------------------------------------

@@ -65,6 +65,29 @@ namespace AxionWKB {
 		}
 	}
 
+	double con2F1 (double a, double b, double c, double m2ow2) {
+		if (abs(m2ow2) < 1) {
+			// if (v2 < some interesting small value limit) {
+			// 	return	simplified formula
+		// } else {
+			return gsl_sf_hyperg_2F1(a, b, c, m2ow2) ;
+		} else {
+			return 0. ;
+		}
+	}
+
+	//calculates Phi(z)
+	// double v2h2F1 (double a, double b, double c, double z) {
+	// 	if (abs(z) < 1) {
+	// 		// if (v2 < some interesting small value limit) {
+	// 		// 	return	simplified formula
+	// 	// } else {
+	// 		return z*gsl_sf_hyperg_2F1(a, b, c, 1.0-z) ;
+	// 	} else {
+	// 		return 0. ;
+	// 	}
+	// }
+
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), rLx(field->Length()/2 + 1), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), hLy(field->Length()/2),
 					      hLz(field->Depth()/2), hTz(field->TotalDepth()/2), nModes(field->eSize()/2), Sm(field->Length()*field->Depth()),
 					      zIni((*field->zV())), fPrec(field->Precision())
@@ -270,7 +293,9 @@ namespace AxionWKB {
 		double aMass2zEnd2 = field->AxionMassSq(zEnd)*zEnd*zEnd ;
 		double aMass2zIni1 = aMass2zIni2/zIni;
 		double aMass2zEnd1 = aMass2zEnd2/zEnd;
-		double nQcd	   = field->BckGnd()->QcdExp();
+		double nQcd				 = field->BckGnd()->QcdExp();
+		if (zEnd > field->BckGnd()->ZRestore() && zIni > field->BckGnd()->ZRestore())
+			nQcd = 0.0;
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
@@ -305,7 +330,6 @@ namespace AxionWKB {
 									// 		fclose(file_samp);
 									// 		firsttime = false ;
 									// }
-
 
 		// las FT estan en Axion2 [COMPLEX & TRANSPOSED_OUT], defino punteros
 		std::complex<cFloat> *mAux  = static_cast<std::complex<cFloat>*>(tmp->mCpu());
@@ -542,6 +566,9 @@ namespace AxionWKB {
 		// label 1 for ini, 2 for end
 		double aMass2zIni2 = field->AxionMassSq(zIni)*zIni*zIni ;
 		double aMass2zEnd2 = field->AxionMassSq(zEnd)*zEnd*zEnd ;
+		double mEnd        = sqrt(aMass2zEnd2) ;
+		double mIni        = sqrt(aMass2zIni2) ;
+
 		double aMass2zIni1 = aMass2zIni2/zIni;
 		double aMass2zEnd1 = aMass2zEnd2/zEnd;
 		double nQcd	   = field->BckGnd()->QcdExp();
@@ -550,8 +577,10 @@ namespace AxionWKB {
 		double phiBase1	   = 2.*zIni/(4.+nQcd);
 		double phiBase2	   = 2.*zEnd/(4.+nQcd);
 		double n2p1        = 1.+nQcd/2.;
-		//double nn1         = 1./(2.+nQcd)+0.5;
 		double nn2         = 1./(2.+nQcd)+1.0;
+
+		double massphase	 = (phiBase2*mEnd - phiBase1*mIni);
+		complex<double> prepha = exp(im*massphase);
 
 		double lSize	   = field->BckGnd()->PhysSize();
 		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
@@ -604,17 +633,25 @@ namespace AxionWKB {
 			double ooI = sqrt(w1/w2);
 
 			double phi ;
+			complex<double> pha ;
 			// WKB phase
 			if (mom == 0)
-				phi = phiBase2*w2 - phiBase1*w1; // I think this was wrong...
+				{
+				phi = 0.0;
+				pha = static_cast<complex<double>>(1.0);
+				}
 			else {
+				double v22 = k2/(k2+aMass2zEnd2);
+				double v12 = k2/(k2+aMass2zIni2);
 
-				phi =  phiBase2*w2*(1.+n2p1*v2h2F1(0.5, 1., nn2, k2/(w2*w2)))
-				      -phiBase1*w1*(1.+n2p1*v2h2F1(0.5, 1., nn2, k2/(w1*w1)));
+				phi =  phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
+				        -phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
+				pha = exp(im*phi);
+							// con2F1
 			}
 
 			// phasor
-			complex<double> pha = exp(im*phi);
+			pha *= prepha;
 
 			// initial conditions of the mode
 			// in principle this could be done only once...
@@ -717,3 +754,11 @@ namespace AxionWKB {
 
 	}
 }
+
+
+// Build phi tables
+// build interpolation
+// Idea is to split int w dt into
+// int m dt (analitical)
+// o int k dt (analitical)
+// int dt w-k-m (numerical)
