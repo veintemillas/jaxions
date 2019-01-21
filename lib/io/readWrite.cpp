@@ -755,7 +755,7 @@ LogMsg (VERB_NORMAL, "z Restore (comm-line or default) = %f",myCosmos->ZRestore(
 		if (myCosmos->ZRestore() == -1.e8) {
 			double zrest;
 			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
-			myCosmos->SetZThRes(zrest);
+			myCosmos->SetZRestore(zrest);
 			LogMsg (VERB_NORMAL, "z Restore (read and set) = %f",myCosmos->ZRestore());
 		}
 
