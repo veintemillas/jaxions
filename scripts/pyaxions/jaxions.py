@@ -910,8 +910,7 @@ inv_measdic = {v: k for k, v in measdic.items()}
 
 
 # build a measurement list
-del ml
-class ml:
+class mli:
     def __init__(self,msa=1.0,L=6.0,N=1024):
         self.mtab = [] ;
         self.ctab = [] ;
@@ -919,23 +918,25 @@ class ml:
         self.msa = msa;
         self.L = L;
         self.N = 1024;
-    def dic (self,):
-        return pa.measdic
+        self.ctend = 1000;
+
+    def dic (self):
+        return measdic
     def nmt (self):
-        self.me = 0;
-    def me_add (self,meas):
+        self.me = 0
+    def me_add (self, meas):
         self.me |= meas
-    def me_adds (self,meass):
-        self.me |= pa.measdic[fildic(meass)]
-        print("adds %s (%d) > me %d"%(fildic(meass),pa.measdic[fildic(meass)],self.me))
+    def me_adds (self, meass):
+        self.me |= measdic[fildic(meass)]
+        print("adds %s (%d) > me %d"%(fildic(meass), measdic[fildic(meass)],self.me))
 
     #caca
     def nmt_rem (self,meas):
-        self.me -= pa.meas2human(meas)
-    def nmt_prt ():
-        pa.meas2human(self.me)
-    def nmt_prt (self,meas):
-        pa.meas2human(meas)
+        self.me -= meas2human(meas)
+    def nmt_prt (self):
+        meas2human(self.me)
+    # def nmt_prt (self,meas):
+    #     pa.meas2human(meas)
 
     def addset (self,measN, zi, zf, meastype=0, scale='lin'):
         if scale=='lin':
@@ -947,7 +948,7 @@ class ml:
             self.ctab.append(np.exp(temp)*self.L/self.N/self.msa)
         self.mtab.append(meastype | self.me)
         print("Set with me %s created"%(meastype | self.me))
-    def give(self):
+    def give(self,name="./measfile.dat"):
         outa = [a for a in self.ctab[0]]
         outb = [self.mtab[0] for a in self.ctab[0]]
 #         print(outa)
@@ -973,10 +974,24 @@ class ml:
                                 outa.insert(i+1,ct)
                                 outb.insert(i+1,mt)
                                 break
+
+        for i in range(len(outa)-1):
+            if outa[i] == outa[i+1]:
+                print("%f merged %d %d > %d"%(outa[i],outb[i],outb[i+1],outb[i]|outb[i+1]))
+                outb[i] |= outb[i+1]
+                outa.pop(i+1)
+                outb.pop(i+1)
+
         cap = []
+        file = open(name,"w")
         for i in range(len(outa)):
-            print("%f %d"%(outa[i],outb[i]))
-            cap.append([outa[i],outb[i]])
+            if outa[i] <= self.ctend :
+                print("%f %d"%(outa[i],outb[i]))
+                file.write("%f %d\n"%(outa[i],outb[i]))
+                cap.append([outa[i],outb[i]])
+        file.close()
+
+
         return cap
 
 
@@ -1004,11 +1019,11 @@ def fildic(meas):
         return 'MEAS_ENERGY'
     if (meas in ['MEAS_ENERGY3DMAP','ENERGY3DMAP','energy 3D map']):
         return 'MEAS_ENERGY3DMAP'
-    if (meas in ['reduced energy 3D map']):
+    if (meas in ['reduced energy 3D map','reduced energy map','redensity']):
         return 'MEAS_REDENE3DMAP'
     if (meas in ['MEAS_2DMAP','2DMAP','map 2D','plot2D','slice']):
         return 'MEAS_2DMAP'
-    if (meas in ['MEAS_3DMAP','3DMAP','map 3D','configuration 3D','full configuration 3D']):
+    if (meas in ['MEAS_3DMAP','3DMAP','map 3D','plot3D','configuration 3D','full configuration 3D']):
         return 'MEAS_3DMAP'
     if (meas in ['MEAS_MASK','MASK','spectrum mask','mask']):
         return 'MEAS_MASK'

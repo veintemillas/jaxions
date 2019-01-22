@@ -1,6 +1,12 @@
 
 JAXIONS_DIR=/Users/maturino/jaxions/jaxions
 
+if [ "$1" == "copy" ]; then
+	cp $JAXIONS_DIR/scripts/vax-ex.sh ./
+	cp $JAXIONS_DIR/scripts/measfile.py ./
+	exit 1
+fi
+
 if [ "$1" == "" ]; then
 	echo Options:
 	echo plot2D
