@@ -966,7 +966,7 @@ class mli:
         outb=np.array(outb)
         self.outa = sorted(list(set(outa)))
         # print(set(outa))
-        print(self.outa)
+        # print(self.outa)
 
         for ct in self.outa:
             mask = (outa == ct)
