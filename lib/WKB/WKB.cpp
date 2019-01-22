@@ -7,37 +7,12 @@
 #include "WKB/WKB.h"
 #include "scalar/folder.h"
 #include "scalar/scalar.h"
+#include <chrono>
 
 namespace AxionWKB {
 
 
-	// computes phi_0
-	// int dt m
-	// takes into account zThreshold (restore not needed)
 
-	// computes phi_1(k)
-	// int_zo^zend dt k^2/w+m
-	// uses a supertable and interpolation
-	// think about precision
-
-	// creates supertable
-	// int_zo^zend dt k^2/w+m for k = 2pi/L * N hasta powMax
-	// in MPI only stores the required slice
-	// void	fillsuperTable () {
-
-	//
-		// cosTable.resize(kMax+1);
-		// cosTable2.resize(kMax+1);
-
-	// 	cosTable[0] = 0.0;
-	// 	cosTable2[0] = 1.0;
-	// 	#pragma omp parallel for schedule(static)
-	// 	for (size_t k=1; k<kMax+1; k++){
-	// 		cosTable[k] = factor*(1.0 - cos(M_PI*(2*k)*ooLx));
-	// 		cosTable2[k] = 2*(1.0 - cos(M_PI*(2*k)*ooLx))/pow(M_PI*(2*k)*ooLx,2.0);
-	// 	}
-	//
-	// }
 
 	//calculates 2F1 for z < -1
 	double h2F1 (double a, double b, double c, double z) {
@@ -76,22 +51,78 @@ namespace AxionWKB {
 		}
 	}
 
-	//calculates Phi(z)
-	// double v2h2F1 (double a, double b, double c, double z) {
-	// 	if (abs(z) < 1) {
-	// 		// if (v2 < some interesting small value limit) {
-	// 		// 	return	simplified formula
-	// 	// } else {
-	// 		return z*gsl_sf_hyperg_2F1(a, b, c, 1.0-z) ;
-	// 	} else {
-	// 		return 0. ;
-	// 	}
-	// }
+	double WKB::calculatePhiexact(double zIni, double zEnd, double k2, double nqcd){
+		// frequencies
+
+		double mIni        = pow(zIni,nqcd/2+1) ;
+		double mEnd        = pow(zEnd,nqcd/2+1) ;
+		double m2Ini       = mIni*mIni ;
+		double m2End       = mEnd*mEnd ;
+		double w1          = sqrt(k2 + m2Ini);
+		double w2          = sqrt(k2 + m2End);
+		double v12         = k2/(k2+m2Ini);
+		double v22         = k2/(k2+m2End);
+		double phiBase1	   = 2.0*zIni/(4.0+nqcd);
+		double phiBase2	   = 2.0*zEnd/(4.0+nqcd);
+		double n2p1        = 1.0+nqcd/2.0;
+		double nn2         = 1.0/(2.0+nqcd)+1.0;
+
+		return phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
+						-phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
+	}
+
+
+
+	void WKB::buildlookuptable(Scalar* axion, double zIni, double zEnd)
+	{
+		// momenta in this rank from nx-ny-nz > (0,n1/2+1),(zBase,zBase+n1/Ranks),(0,n1)
+		// is only a bit more expensive to build it for the whole grid can be MPIed as well
+		superTable.resize(powMax+1);
+		superTable[0] = 0.0;
+		k2Table.resize(powMax+1);
+		k2Table[0] = 0.0;
+
+		double lSize	   = axion->BckGnd()->PhysSize();
+		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
+
+		double zRestore = axion->BckGnd()->ZRestore();
+		double nqcd = axion->BckGnd()->QcdExp();
+
+		if (zRestore < zIni && zRestore < zEnd){
+			#pragma omp parallel for schedule(static)
+			for (size_t ik=1; ik<powMax+1; ik++)
+			{
+				double k2 = minmom2*(ik*ik);
+				k2Table[ik] = k2;
+				superTable[ik] = calculatePhiexact(zIni, zRestore, k2, nqcd) + calculatePhiexact(zRestore, zEnd, k2, 0.0);
+			}
+		}
+		else {
+			if (zRestore < zIni)
+				nqcd = 0.0;
+
+			#pragma omp parallel for schedule(static)
+			for (size_t ik=1; ik<powMax+1; ik++){
+				double k2 = minmom2*(ik*ik);
+				k2Table[ik] = k2;
+				superTable[ik] = calculatePhiexact(zIni, zEnd, k2, nqcd);
+			}
+		}
+
+	}
+
+	double WKB::interpolatephi(double dk, double k2){
+	//dk is simply the double-version of the k-integer
+	size_t in = floor(dk);
+	return superTable[in] + (k2-k2Table[in])*(superTable[in+1]-superTable[in])/(k2Table[in+1]-k2Table[in]);
+	}
 
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), rLx(field->Length()/2 + 1), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), hLy(field->Length()/2),
 					      hLz(field->Depth()/2), hTz(field->TotalDepth()/2), nModes(field->eSize()/2), Sm(field->Length()*field->Depth()),
 					      zIni((*field->zV())), fPrec(field->Precision())
 	{
+		powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+
 		if (field->Field() == FIELD_SAXION) {
 			LogError("Error: WKB only available for axion/WKB fields. Ignoring request");
 			return;
@@ -109,8 +140,6 @@ namespace AxionWKB {
 			munge	= new Folder(field);
 			(*munge)(UNFOLD_ALL);
 		}
-
-
 
 		if (field == tmp)
 			{
@@ -560,50 +589,96 @@ namespace AxionWKB {
 
 
 
-	template<typename cFloat>
+	template<typename Float>
 	void	WKB::doWKBinplace(double zEnd) {
 
-		// label 1 for ini, 2 for end
-		double aMass2zIni2 = field->AxionMassSq(zIni)*zIni*zIni ;
-		double aMass2zEnd2 = field->AxionMassSq(zEnd)*zEnd*zEnd ;
-		double mEnd        = sqrt(aMass2zEnd2) ;
-		double mIni        = sqrt(aMass2zIni2) ;
+		const auto ii = complex<Float>(1.0i);
+		const auto hh = complex<Float>(0.5);
+		double zC = field->BckGnd()->ZRestore();
+		// builds the phase lookup table
+		buildlookuptable(field, zIni, zEnd);
+		LogMsg(VERB_NORMAL,"Lookup table built!");
 
-		double aMass2zIni1 = aMass2zIni2/zIni;
-		double aMass2zEnd1 = aMass2zEnd2/zEnd;
-		double nQcd	   = field->BckGnd()->QcdExp();
-		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
-		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
-		double phiBase1	   = 2.*zIni/(4.+nQcd);
-		double phiBase2	   = 2.*zEnd/(4.+nQcd);
-		double n2p1        = 1.+nQcd/2.;
-		double nn2         = 1./(2.+nQcd)+1.0;
+FILE *file_wk ;
+file_wk = NULL;
+file_wk = fopen("out/lookup.txt","w+");
+for (size_t i=0; i<powMax; i++)
+	fprintf(file_wk,"%f %f\n",k2Table[i], superTable[i]);
+fclose(file_wk);
 
-		double massphase	 = (phiBase2*mEnd - phiBase1*mIni);
-		complex<double> prepha = exp(im*massphase);
+		// use nQcd1 y 2
+		double nQcdI				 = field->BckGnd()->QcdExp();
+		double nQcdE				 = field->BckGnd()->QcdExp();
+
+		if (zEnd > zC )
+			nQcdE = 0.0;
+
+		if (zIni > zC )
+			nQcdI = 0.0;
+
+		Float mIni        = field->AxionMass(zIni)*zIni; //pow(zIni,nQcd/2+1) ;
+		Float mEnd        = field->AxionMass(zEnd)*zEnd; //pow(zEnd,nQcd/2+1) ;
+		Float m2Ini       = mIni*mIni ;
+		Float m2End       = mEnd*mEnd ;
+
+		Float aMass2zIni1 = m2Ini/zIni;
+		Float aMass2zEnd1 = m2End/zEnd;
+
+		Float zBase1      = 0.25*(nQcdI+2.)*aMass2zIni1;
+		Float zBase2      = 0.25*(nQcdE+2.)*aMass2zEnd1;
+		Float phiBase1	   = 2.0*zIni/(4.0+nQcdI);
+		Float phiBase2	   = 2.0*zEnd/(4.0+nQcdE);
+		// Float n2p1        = 1.0+nQcd/2.;
+		// Float nn2         = 1.0/(2.0+nQcd)+1.0;
+
+
+		// double massphase	 = (phiBase2*mEnd - phiBase1*mIni);
+		// In normal situations nQcdE=nQcdI
+		double massphase = (2.0*zEnd/(4.0+nQcdE)*field->AxionMass(zEnd)*zEnd -
+												2.0*zIni/(4.0+nQcdI)*field->AxionMass(zIni)*zIni);
+		if (zIni < zC && zC < zEnd )
+		{
+			massphase	 += ( // 2.0*zEnd/(4.0+nQcdE)*field->AxionMass(zEnd)*zEnd
+										-2.0*zC/(4.0+nQcdE)*field->AxionMass(zC)*zC
+										+2.0*zC/(4.0+nQcdI)*field->AxionMass(zC)*zC
+										 // -2.0*zIni/(4.0+nQcdI)*field->AxionMass(zIni)*zIni
+									 );
+		}
+		// critical systematic is computed only once!
+		complex<double> prephaD = exp(im*massphase);
+		complex<Float> prepha = (complex<Float>) prephaD;
+		// printf("massphase %f (%f,%f) (%f,%f)\n",massphase,real(prephaD),imag(prephaD),real(prepha),imag(prepha));
 
 		double lSize	   = field->BckGnd()->PhysSize();
 		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
 
 		// las FT estan en m2/1 y m2/2 [COMPLEX & TRANSPOSED_OUT], defino punteros
-		std::complex<cFloat> *m2C1  = static_cast<std::complex<cFloat>*>(field->m2Cpu());
-		std::complex<cFloat> *m2C2  = static_cast<std::complex<cFloat>*>(field->m2half());
+		std::complex<Float> *m2C1  = static_cast<std::complex<Float>*>(field->m2Cpu());
+		std::complex<Float> *m2C2  = static_cast<std::complex<Float>*>(field->m2half());
 
 		// las copiaré a m y v
-		std::complex<cFloat> *mC  = static_cast<std::complex<cFloat>*>(field->mCpu());
-		std::complex<cFloat> *vC  = static_cast<std::complex<cFloat>*>(field->vCpu());
+		std::complex<Float> *mC  = static_cast<std::complex<Float>*>(field->mCpu());
+		std::complex<Float> *vC  = static_cast<std::complex<Float>*>(field->vCpu());
 
 		// tambien necesitare punteros float m y v de axion
-		cFloat	      	 *mIn  = static_cast<cFloat *>(field->mStart());
-		cFloat	      	 *vIn  = static_cast<cFloat *>(field->vCpu());
+		Float	      	 *mIn  = static_cast<Float *>(field->mStart());
+		Float	      	 *vIn  = static_cast<Float *>(field->vCpu());
 		//cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
 
 		size_t	zBase = Lz*commRank();
 
+		double time1 = 0.0 ;
+		double time2 = 0.0 ;
+		double time3 = 0.0 ;
+
+		// size_t powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+		double myarray[powMax] = {0.0};
+
 		LogMsg(VERB_NORMAL,"start mode calculation! \n");
-		#pragma omp parallel for schedule(static)
+		#pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
+auto start = std::chrono::steady_clock::now();
 			//rLx is n1/2+1, reduced number of modes for r2c
 			int kz = idx/rLx;
 			int kx = idx - kz*rLx;
@@ -620,71 +695,109 @@ namespace AxionWKB {
 			// momentum2
 			size_t mom = kx*kx + ky*ky + kz*kz;
 			double k2  = mom;
+			double dk  = sqrt(k2);
 			k2 *= minmom2;
 
 			// frequencies
-			double w1 = sqrt(k2 + aMass2zIni2);
-			double w2 = sqrt(k2 + aMass2zEnd2);
+			Float w1 = sqrt(k2 + m2Ini);
+			Float w2 = sqrt(k2 + m2End);
 			// adiabatic parameters
-			double zeta1 = zBase1/(w1*w1*w1);
-			double zeta2 = zBase2/(w2*w2*w2);
-
+			Float zeta1 = zBase1/(w1*w1*w1);
+			Float zeta2 = zBase2/(w2*w2*w2);
 			// useful variables?
-			double ooI = sqrt(w1/w2);
+			Float ooI = sqrt(w1/w2);
+			complex<Float> pha ;
 
-			double phi ;
-			complex<double> pha ;
+auto end = std::chrono::steady_clock::now();
+auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time1 += elapsed.count();
+
+start = std::chrono::steady_clock::now();
 			// WKB phase
-			if (mom == 0)
-				{
-				phi = 0.0;
-				pha = static_cast<complex<double>>(1.0);
-				}
-			else {
-				double v22 = k2/(k2+aMass2zEnd2);
-				double v12 = k2/(k2+aMass2zIni2);
-
-				phi =  phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
-				        -phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
-				pha = exp(im*phi);
-							// con2F1
-			}
-
+			double phase = interpolatephi(dk,k2);
+			// printf("k %f phase %f naive %f \n",sqrt(k2),phase,sqrt(k2)*(zEnd-zIni));
+			pha = exp(im*phase);
+			// printf("phase %f (%f,%f) \n",phase,real(pha),imag(pha));
+			// this cast seems doing well
+							// 	if (mom == 0)
+							// 		{
+							// 		pha = static_cast<complex<Float>>(1.0);
+							// 		}
+							// 	else {
+							// 		// double v22 = k2/(k2+aMass2zEnd2);
+							// 		// double v12 = k2/(k2+aMass2zIni2);
+							// 		// double finstro2 = con2F1(0.5, 1.0, nn2, 1.0-v22);
+							// 		// double finstro1 = con2F1(0.5, 1.0, nn2, 1.0-v12);
+							// 		// phi =  phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
+							// 		//         -phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
+							// 		// phi =  phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*finstro2 )
+							// 		//         -phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*finstro1 );
+							// }
 			// phasor
 			pha *= prepha;
+			//printf("phase %f %f (%f,%f) \n",massphase, phase,real(pha),imag(pha));
+			// ok
+
+end = std::chrono::steady_clock::now();
+elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time2 += elapsed.count();
+size_t mo = floor(sqrt( (double)(mom)));
+myarray[mo] += elapsed.count();
+
+start = std::chrono::steady_clock::now();
 
 			// initial conditions of the mode
-			// in principle this could be done only once...
-			std::complex<cFloat> Maux, Daux ;
-			Maux = m2C1[idx];
-			Daux = m2C2[idx];
+			std::complex<Float> Maux = m2C1[idx];
+			std::complex<Float> Daux = m2C2[idx]/(ii*w1);
+			// printf("M0 (%f,%f)>(%f,%f) \n",real(Maux),imag(Maux),real(Daux),imag(Daux));
+			std::complex<Float> ap = (Maux - Maux*ii*zeta1 + Daux)*hh;
+			std::complex<Float> am = (Maux + Maux*ii*zeta1 - Daux)*hh;
+			// printf("a (%f,%f)>(%f,%f) ii (%f,%f) hh (%f,%f) zeta1 %e \n",real(ap),imag(ap),real(am),imag(am),real(ii),imag(ii),real(hh),imag(hh),zeta1);
+			// printf("aux %e %e (%f,%f) (%f,%f) (%f,%f) \n",zBase1, zeta1, real(Maux),imag(Maux),real(Daux),imag(Daux),real(am),imag(am));
+			// if needed double precision...
+			// std::complex<double> M0, D0, ap, am;
+			// double ra, ia ;
+			// ra = (double) real(Maux) ;
+			// ia = (double) imag(Maux) ;
+			// M0 = ra + im*ia	;
+			// ra = (double) real(Daux) ;
+			// ia = (double) imag(Daux) ;
+			// D0 = (ra + im*ia)/(im*w1)	;
+			// ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
+			// am = 0.5*(M0*(1.0 + im*zeta1) - D0);
 
-			std::complex<double> M0, D0, ap, am;
-			double ra, ia ;
-
-			ra = (double) real(Maux) ;
-			ia = (double) imag(Maux) ;
-			M0 = ra + im*ia	;
-			ra = (double) real(Daux) ;
-			ia = (double) imag(Daux) ;
-			D0 = (ra + im*ia)/(im*w1)	;
-
-			ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
-			am = 0.5*(M0*(1.0 + im*zeta1) - D0);
 
 			// propagate
 			ap *= ooI*pha;
 			am *= ooI*conj(pha);
-			M0 = ap + am;
-			D0 = ap - am + im*zeta2*M0;
+			Maux = ap + am;
+			Daux = ap - am + ii*zeta2*Maux;
 
-			D0 *= im*w2	;
+			// printf("MD (%f,%f)>(%f,%f) \n",real(Maux),imag(Maux),real(Daux),imag(Daux));
+			// printf("aux %e %e > %e %e oi %e (w1 %e)>(w2 %e) \n",zBase1, zeta1, zBase2, zeta2, ooI,w1,w2);
 
-			mC[idx] = M0;
+			Daux *= ii*w2	;
 
-			vC[idx] = D0;
+			mC[idx] = Maux;
+			vC[idx] = Daux;
 
+
+
+end = std::chrono::steady_clock::now();
+elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time3 += elapsed.count();
 		}
+
+// printf("WKB TIEMPO %f,%f,%f\n",time1, time2, time3);
+LogMsg(VERB_NORMAL,"WKB TIEMPO %f,%f,%f\n",time1, time2, time3);
+FILE *file_wkb ;
+file_wkb = NULL;
+file_wkb = fopen("out/wkbtime.txt","w+");
+for (size_t i=0; i<powMax; i++)
+	fprintf(file_wkb,"%f\n",myarray[i]);
+fclose(file_wkb);
+
+
 
 		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
@@ -726,7 +839,7 @@ namespace AxionWKB {
 						memcpy	(vTf+oOff, vTf+fOff, dataLine);
 					}
 
-	  cFloat toton = (cFloat) field->TotalSize();
+	  Float toton = (Float) field->TotalSize();
 
 		LogMsg(VERB_NORMAL,"scale x%2.2e ",toton);
 		#pragma omp parallel for schedule(static)
