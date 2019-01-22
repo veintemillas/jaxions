@@ -919,6 +919,8 @@ class mli:
         self.L = L;
         self.N = 1024;
         self.ctend = 1000;
+        self.outa = []
+        self.outb = []
 
     def dic (self):
         return measdic
@@ -953,42 +955,42 @@ class mli:
         outb = [self.mtab[0] for a in self.ctab[0]]
 #         print(outa)
         print("Printing sets with measures: ",self.mtab)
-        if len(self.mtab) > 0:
-            for imt in range(len(self.mtab)):
-                ctab = self.ctab[imt]
-                mt = self.mtab[imt]
-#                 print(ctab)
-#                 print(mt)
-                for ct in ctab:
-                    i = 0
-                    if ct < outa[i]:
-                        outa.insert(0,ct)
-                        outb.insert(0,mt)
-                        break
-                    if ct > outa[-1]:
-                        outa.append(ct)
-                        outb.append(mt)
-                        break
-                    for i in range(len(outa)):
-                        if outa[i] < ct and ct < outa[i+1]:
-                                outa.insert(i+1,ct)
-                                outb.insert(i+1,mt)
-                                break
+        outa = []
+        outb = []
 
-        for i in range(len(outa)-1):
-            if outa[i] == outa[i+1]:
-                print("%f merged %d %d > %d"%(outa[i],outb[i],outb[i+1],outb[i]|outb[i+1]))
-                outb[i] |= outb[i+1]
-                outa.pop(i+1)
-                outb.pop(i+1)
+        for imt in range(len(self.mtab)):
+            outa += [t for t in list(self.ctab[imt])]
+            outb += [self.mtab[imt] for t in list(self.ctab[imt])]
+
+        outa=np.array(outa)
+        outb=np.array(outb)
+        self.outa = sorted(list(set(outa)))
+        # print(set(outa))
+        print(self.outa)
+
+        for ct in self.outa:
+            mask = (outa == ct)
+            if sum(mask)>1:
+                ii=0
+                print("%f merged "%(ct),end="")
+                for ca in outb[mask]:
+                    ii |= ca
+                    print("%d "%(ca),end="")
+                print(" into %d "%(ii))
+                self.outb.append(ii)
+            else :
+                ii = outb[mask][0]
+                self.outb.append(ii)
+            # print("%f %d"%(ct,ii))
 
         cap = []
         file = open(name,"w")
-        for i in range(len(outa)):
-            if outa[i] <= self.ctend :
-                print("%f %d"%(outa[i],outb[i]))
-                file.write("%f %d\n"%(outa[i],outb[i]))
-                cap.append([outa[i],outb[i]])
+        print(self.outa)
+        for i in range(len(self.outa)):
+            if self.outa[i] <= self.ctend :
+                print("%f %d"%(self.outa[i],self.outb[i]))
+                file.write("%f %d\n"%(self.outa[i],self.outb[i]))
+                cap.append([self.outa[i],self.outb[i]])
         file.close()
 
 
