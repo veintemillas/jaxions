@@ -52,7 +52,28 @@ namespace AxionWKB {
 	}
 
 	double WKB::calculatePhiexact(double zIni, double zEnd, double k2, double nqcd){
-		// frequencies
+		// this calculates the integral
+		// Integrate( sqrt(m^2 + k2) -m , z = (zIni, zEnd))
+		// For m^2 = ct^(nqcd+2) which is the conformal mass
+		// Requires modifications for massless axions
+		// Requires generalisation for an arbitrary mass(R(t)) dependence
+
+		// The integral is analytical for nqcd = 0.0
+		// Can be approximated in Series in the NR and R limits
+		// NR limit m^2Ini >> k2
+		//  R limit m^2End << k2
+		// We need to know the phase with accuracy better than 0.1 or so
+
+		/* Taylor expansion of the integral is
+				k Sum []*/
+
+		/*for large WKBs it is advisable to find the moment when a simple cuadratic
+		  approximaiton is quite good
+			This introduces a zNR which depends on precision sought
+			*/
+
+
+		// At the moment only uses power laws... optimally an arbitrary mass function
 
 		double mIni        = pow(zIni,nqcd/2+1) ;
 		double mEnd        = pow(zEnd,nqcd/2+1) ;
@@ -85,20 +106,20 @@ namespace AxionWKB {
 		double lSize	   = axion->BckGnd()->PhysSize();
 		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
 
-		double zRestore = axion->BckGnd()->ZRestore();
+		double zCri = axion->BckGnd()->ZThRes();
 		double nqcd = axion->BckGnd()->QcdExp();
 
-		if (zRestore < zIni && zRestore < zEnd){
+		if (zIni < zCri && zCri < zEnd){
 			#pragma omp parallel for schedule(static)
 			for (size_t ik=1; ik<powMax+1; ik++)
 			{
 				double k2 = minmom2*(ik*ik);
 				k2Table[ik] = k2;
-				superTable[ik] = calculatePhiexact(zIni, zRestore, k2, nqcd) + calculatePhiexact(zRestore, zEnd, k2, 0.0);
+				superTable[ik] = calculatePhiexact(zIni, zCri, k2, nqcd) + calculatePhiexact(zCri, zEnd, k2, 0.0);
 			}
 		}
 		else {
-			if (zRestore < zIni)
+			if (zCri < zIni)
 				nqcd = 0.0;
 
 			#pragma omp parallel for schedule(static)
@@ -112,6 +133,7 @@ namespace AxionWKB {
 	}
 
 	double WKB::interpolatephi(double dk, double k2){
+	// linear interpolation in k2 (good for small k2 in NR limit... ) to be improved
 	//dk is simply the double-version of the k-integer
 	size_t in = floor(dk);
 	return superTable[in] + (k2-k2Table[in])*(superTable[in+1]-superTable[in])/(k2Table[in+1]-k2Table[in]);
@@ -323,7 +345,7 @@ namespace AxionWKB {
 		double aMass2zIni1 = aMass2zIni2/zIni;
 		double aMass2zEnd1 = aMass2zEnd2/zEnd;
 		double nQcd				 = field->BckGnd()->QcdExp();
-		if (zEnd > field->BckGnd()->ZRestore() && zIni > field->BckGnd()->ZRestore())
+		if (zEnd > field->BckGnd()->ZThRes() && zIni > field->BckGnd()->ZThRes())
 			nQcd = 0.0;
 		double zBase1      = 0.25*(nQcd+2.)*aMass2zIni1;
 		double zBase2      = 0.25*(nQcd+2.)*aMass2zEnd1;
@@ -594,7 +616,7 @@ namespace AxionWKB {
 
 		const auto ii = complex<Float>(1.0i);
 		const auto hh = complex<Float>(0.5);
-		double zC = field->BckGnd()->ZRestore();
+		double zC = field->BckGnd()->ZThRes();
 		// builds the phase lookup table
 		buildlookuptable(field, zIni, zEnd);
 		LogMsg(VERB_NORMAL,"Lookup table built!");
@@ -603,7 +625,7 @@ FILE *file_wk ;
 file_wk = NULL;
 file_wk = fopen("out/lookup.txt","w+");
 for (size_t i=0; i<powMax; i++)
-	fprintf(file_wk,"%f %f\n",k2Table[i], superTable[i]);
+	fprintf(file_wk,"%lf %lf\n",k2Table[i], superTable[i]);
 fclose(file_wk);
 
 		// use nQcd1 y 2
@@ -634,19 +656,25 @@ fclose(file_wk);
 
 		// double massphase	 = (phiBase2*mEnd - phiBase1*mIni);
 		// In normal situations nQcdE=nQcdI
-		double massphase = (2.0*zEnd/(4.0+nQcdE)*field->AxionMass(zEnd)*zEnd -
-												2.0*zIni/(4.0+nQcdI)*field->AxionMass(zIni)*zIni);
+		double massphaseE = 2.0*zEnd/(4.0+nQcdE)*field->AxionMass(zEnd)*zEnd;
+		double massphaseI	=	-2.0*zIni/(4.0+nQcdI)*field->AxionMass(zIni)*zIni;
+		double massphaseC = 0.0;
 		if (zIni < zC && zC < zEnd )
 		{
-			massphase	 += ( // 2.0*zEnd/(4.0+nQcdE)*field->AxionMass(zEnd)*zEnd
-										-2.0*zC/(4.0+nQcdE)*field->AxionMass(zC)*zC
-										+2.0*zC/(4.0+nQcdI)*field->AxionMass(zC)*zC
-										 // -2.0*zIni/(4.0+nQcdI)*field->AxionMass(zIni)*zIni
-									 );
+			massphaseC	= -2.0*zC/(4.0+nQcdE)*field->AxionMass(zC)*zC
+										+2.0*zC/(4.0+nQcdI)*field->AxionMass(zC)*zC;
 		}
-		// critical systematic is computed only once!
-		complex<double> prephaD = exp(im*massphase);
+		LogOut(VERB_NORMAL,"Phases EIC %lf %lf %lf",massphaseE,massphaseI,massphaseC);
+		// critical systematic are computed only once!
+		complex<double> prephaD = exp(im*massphaseE);
 		complex<Float> prepha = (complex<Float>) prephaD;
+
+		prephaD = exp(im*massphaseI);
+		prepha *= (complex<Float>) prephaD;
+
+		prephaD = exp(im*massphaseC);
+		prepha *= (complex<Float>) prephaD;
+
 		// printf("massphase %f (%f,%f) (%f,%f)\n",massphase,real(prephaD),imag(prephaD),real(prepha),imag(prepha));
 
 		double lSize	   = field->BckGnd()->PhysSize();
