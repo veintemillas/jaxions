@@ -145,23 +145,20 @@ namespace AxionWKB {
 		LogMsg(VERB_NORMAL,"Buildlookuptable zIni %f zCri %f zEnd %f nqcd %f indi3 %f",zIni,zCri,zEnd,nqcd,indi3);
 		// LogOut("Buildlookuptable zIni %f zCri %f zEnd %f nqcd %f indi3 %f\n ",zIni,zCri,zEnd,nqcd,indi3);
 
-		if (zIni < zCri && zCri < zEnd){
+		if (zIni <= zCri && zCri < zEnd){
 			indi3aux *= pow(zCri,nqcd/2);
 			LogMsg(VERB_NORMAL,"transition! indi3aux %f ",indi3aux);
 
-			// #pragma omp parallel for schedule(static)
+			#pragma omp parallel for schedule(static)
 			for (size_t ik=1; ik<powMax+1; ik++)
 			{
 				double k = k0*(ik);
 				k2Table[ik] = k*k;
-				superTable[ik] = calculatePhiexact(zIni, zCri, k, nqcd,indi3) ;
-				// LogOut("t %f %f ", k, superTable[ik]);
-				superTable[ik] += calculatePhiexact(zCri, zEnd, k, 0.0,indi3aux);
-				// LogOut("> %f \n ", superTable[ik]);
+				superTable[ik] = calculatePhiexact(zIni, zCri, k, nqcd,indi3) + calculatePhiexact(zCri, zEnd, k, 0.0,indi3aux);
 			}
 		}
 		else {
-			if (zCri < zIni){
+			if (zCri <= zIni){
 				indi3aux *= pow(zCri,nqcd/2);
 				nqcd = 0.0;
 			}
@@ -172,7 +169,6 @@ namespace AxionWKB {
 				double k = k0*(ik);
 				k2Table[ik] = k*k;
 				superTable[ik] = calculatePhiexact(zIni, zEnd, k, nqcd, indi3aux);
-				// LogOut("n %f %f %f %f \n", k, superTable[ik],indi3aux,nqcd);
 			}
 		}
 
@@ -684,7 +680,7 @@ if (commRank() == 0 ){
 		if (zEnd > zC )
 			nQcdE = 0.0;
 
-		if (zIni > zC )
+		if (zIni >= zC )
 			nQcdI = 0.0;
 
 		Float mIni        = field->AxionMass(zIni)*zIni; //pow(zIni,nQcd/2+1) ;
@@ -713,7 +709,8 @@ if (commRank() == 0 ){
 			massphaseC	= -2.0*zC/(4.0+nQcdE)*field->AxionMass(zC)*zC
 										+2.0*zC/(4.0+nQcdI)*field->AxionMass(zC)*zC;
 		}
-		LogMsg(VERB_NORMAL,"Phases EIC %lf %lf %lf",massphaseE,massphaseI,massphaseC);
+		LogMsg(VERB_NORMAL,"Phases EIC %e %lf %lf (nqcdI %f nqcdE %f)",massphaseE,massphaseI,massphaseC,nQcdI, nQcdE);
+		LogMsg(VERB_NORMAL,"Check mIni %f mEnd %f ",mIni, mEnd);
 		// critical systematic are computed only once!
 		complex<double> prephaD = exp(im*massphaseE);
 		complex<Float> prepha = (complex<Float>) prephaD;
@@ -751,7 +748,7 @@ if (commRank() == 0 ){
 		// size_t powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 		double myarray[powMax] = {0.0};
 
-		LogMsg(VERB_NORMAL,"start mode calculation! \n");
+		LogMsg(VERB_NORMAL,"START MODE CALCULATION!");
 		#pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
@@ -905,7 +902,7 @@ fclose(file_wkb);
 						memcpy	(m0Tf+oOff, m0Tf+fOff, dataLine);
 					}
 			LogMsg(VERB_NORMAL," shifthing to host ghost");
-			LogMsg(VERB_NORMAL," chech precision %f and datasize %f",field->Precision(),field->DataSize());
+			LogMsg(VERB_NORMAL," chech precision %lu and datasize %lu",field->Precision(),field->DataSize());
 					size_t dataTotalSize = (field->Precision())*(field->Size());
 					memcpy	(mTf, m0Tf, dataTotalSize);
 

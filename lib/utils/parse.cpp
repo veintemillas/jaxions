@@ -31,7 +31,7 @@ double frw = 1.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
-double zrestore = 1.0e+12;
+double zrestore = 1.0e+20;
 double LL = 25000.;
 double parm2 = 0.;
 double pregammo = 0.0;
@@ -1712,8 +1712,8 @@ int	parseArgs (int argc, char *argv[])
 
 	if (zrestore < zthres) {
 		printf("Warning: zrestore = %f < zthres %f. Switch-off disabled.\n", zrestore, zthres);
-		zthres = 100.;
-		zrestore = 100.;
+		zthres = 1.e+20;
+		zrestore = 1.e+20;
 	}
 
 	/* make sure that endredmap makes sense */
