@@ -695,11 +695,7 @@ if (commRank() == 0 ){
 		Float zBase2      = 0.25*(nQcdE+2.)*aMass2zEnd1;
 		Float phiBase1	   = 2.0*zIni/(4.0+nQcdI);
 		Float phiBase2	   = 2.0*zEnd/(4.0+nQcdE);
-		// Float n2p1        = 1.0+nQcd/2.;
-		// Float nn2         = 1.0/(2.0+nQcd)+1.0;
 
-
-		// double massphase	 = (phiBase2*mEnd - phiBase1*mIni);
 		// In normal situations nQcdE=nQcdI
 		double massphaseE = 2.0*zEnd/(4.0+nQcdE)*field->AxionMass(zEnd)*zEnd;
 		double massphaseI	=	-2.0*zIni/(4.0+nQcdI)*field->AxionMass(zIni)*zIni;
@@ -709,8 +705,10 @@ if (commRank() == 0 ){
 			massphaseC	= -2.0*zC/(4.0+nQcdE)*field->AxionMass(zC)*zC
 										+2.0*zC/(4.0+nQcdI)*field->AxionMass(zC)*zC;
 		}
+
 		LogMsg(VERB_NORMAL,"Phases EIC %e %lf %lf (nqcdI %f nqcdE %f)",massphaseE,massphaseI,massphaseC,nQcdI, nQcdE);
 		LogMsg(VERB_NORMAL,"Check mIni %f mEnd %f ",mIni, mEnd);
+
 		// critical systematic are computed only once!
 		complex<double> prephaD = exp(im*massphaseE);
 		complex<Float> prepha = (complex<Float>) prephaD;
@@ -720,8 +718,6 @@ if (commRank() == 0 ){
 
 		prephaD = exp(im*massphaseC);
 		prepha *= (complex<Float>) prephaD;
-
-		// printf("massphase %f (%f,%f) (%f,%f)\n",massphase,real(prephaD),imag(prephaD),real(prepha),imag(prepha));
 
 		double lSize	   = field->BckGnd()->PhysSize();
 		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
@@ -737,23 +733,22 @@ if (commRank() == 0 ){
 		// tambien necesitare punteros float m y v de axion
 		Float	      	 *mIn  = static_cast<Float *>(field->mStart());
 		Float	      	 *vIn  = static_cast<Float *>(field->vCpu());
-		//cFloat	      	 *m2In = static_cast<cFloat *>(field->m2Cpu());
 
 		size_t	zBase = Lz*commRank();
 
-		double time1 = 0.0 ;
-		double time2 = 0.0 ;
-		double time3 = 0.0 ;
+// double time1 = 0.0 ;
+// double time2 = 0.0 ;
+// double time3 = 0.0 ;
 
-		// size_t powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 		double myarray[powMax] = {0.0};
 
 		LogMsg(VERB_NORMAL,"START MODE CALCULATION!");
-		#pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
+// #pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
+		#pragma omp parallel for schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
-auto start = std::chrono::steady_clock::now();
-			//rLx is n1/2+1, reduced number of modes for r2c
+// auto start = std::chrono::steady_clock::now();
+
 			int kz = idx/rLx;
 			int kx = idx - kz*rLx;
 			int ky = kz/Tz;
@@ -782,96 +777,53 @@ auto start = std::chrono::steady_clock::now();
 			Float ooI = sqrt(w1/w2);
 			complex<Float> pha ;
 
-auto end = std::chrono::steady_clock::now();
-auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-time1 += elapsed.count();
+// auto end = std::chrono::steady_clock::now();
+// auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+// time1 += elapsed.count();
+// start = std::chrono::steady_clock::now();
 
-start = std::chrono::steady_clock::now();
 			// WKB phase
 			double phase = interpolatephi(dk,k2);
-			// printf("k %f phase %f naive %f \n",sqrt(k2),phase,sqrt(k2)*(zEnd-zIni));
 			pha = exp(im*phase);
-			// printf("phase %f (%f,%f) \n",phase,real(pha),imag(pha));
-			// this cast seems doing well
-							// 	if (mom == 0)
-							// 		{
-							// 		pha = static_cast<complex<Float>>(1.0);
-							// 		}
-							// 	else {
-							// 		// double v22 = k2/(k2+aMass2zEnd2);
-							// 		// double v12 = k2/(k2+aMass2zIni2);
-							// 		// double finstro2 = con2F1(0.5, 1.0, nn2, 1.0-v22);
-							// 		// double finstro1 = con2F1(0.5, 1.0, nn2, 1.0-v12);
-							// 		// phi =  phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
-							// 		//         -phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
-							// 		// phi =  phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*finstro2 )
-							// 		//         -phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*finstro1 );
-							// }
-			// phasor
 			pha *= prepha;
-			//printf("phase %f %f (%f,%f) \n",massphase, phase,real(pha),imag(pha));
-			// ok
 
-end = std::chrono::steady_clock::now();
-elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-time2 += elapsed.count();
-size_t mo = floor(sqrt( (double)(mom)));
-myarray[mo] += elapsed.count();
+// end = std::chrono::steady_clock::now();
+// elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+// time2 += elapsed.count();
+// size_t mo = floor(sqrt( (double)(mom)));
+// myarray[mo] += elapsed.count();
 
-start = std::chrono::steady_clock::now();
+// start = std::chrono::steady_clock::now();
 
 			// initial conditions of the mode
 			std::complex<Float> Maux = m2C1[idx];
 			std::complex<Float> Daux = m2C2[idx]/(ii*w1);
-			// printf("M0 (%f,%f)>(%f,%f) \n",real(Maux),imag(Maux),real(Daux),imag(Daux));
+
 			std::complex<Float> ap = (Maux - Maux*ii*zeta1 + Daux)*hh;
 			std::complex<Float> am = (Maux + Maux*ii*zeta1 - Daux)*hh;
-			// printf("a (%f,%f)>(%f,%f) ii (%f,%f) hh (%f,%f) zeta1 %e \n",real(ap),imag(ap),real(am),imag(am),real(ii),imag(ii),real(hh),imag(hh),zeta1);
-			// printf("aux %e %e (%f,%f) (%f,%f) (%f,%f) \n",zBase1, zeta1, real(Maux),imag(Maux),real(Daux),imag(Daux),real(am),imag(am));
-			// if needed double precision...
-			// std::complex<double> M0, D0, ap, am;
-			// double ra, ia ;
-			// ra = (double) real(Maux) ;
-			// ia = (double) imag(Maux) ;
-			// M0 = ra + im*ia	;
-			// ra = (double) real(Daux) ;
-			// ia = (double) imag(Daux) ;
-			// D0 = (ra + im*ia)/(im*w1)	;
-			// ap = 0.5*(M0*(1.0 - im*zeta1) + D0);
-			// am = 0.5*(M0*(1.0 + im*zeta1) - D0);
-
 
 			// propagate
 			ap *= ooI*pha;
 			am *= ooI*conj(pha);
 			Maux = ap + am;
 			Daux = ap - am + ii*zeta2*Maux;
-
-			// printf("MD (%f,%f)>(%f,%f) \n",real(Maux),imag(Maux),real(Daux),imag(Daux));
-			// printf("aux %e %e > %e %e oi %e (w1 %e)>(w2 %e) \n",zBase1, zeta1, zBase2, zeta2, ooI,w1,w2);
-
 			Daux *= ii*w2	;
 
 			mC[idx] = Maux;
 			vC[idx] = Daux;
 
-
-
-end = std::chrono::steady_clock::now();
-elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-time3 += elapsed.count();
+// end = std::chrono::steady_clock::now();
+// elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+// time3 += elapsed.count();
 		}
 
-// printf("WKB TIEMPO %f,%f,%f\n",time1, time2, time3);
-LogMsg(VERB_NORMAL,"WKB TIEMPO %f,%f,%f\n",time1, time2, time3);
-FILE *file_wkb ;
-file_wkb = NULL;
-file_wkb = fopen("out/wkbtime.txt","w+");
-for (size_t i=0; i<powMax; i++)
-	fprintf(file_wkb,"%f\n",myarray[i]);
-fclose(file_wkb);
-
-
+// LogMsg(VERB_NORMAL,"WKB TIEMPO %f,%f,%f\n",time1, time2, time3);
+// FILE *file_wkb ;
+// file_wkb = NULL;
+// file_wkb = fopen("out/wkbtime.txt","w+");
+// for (size_t i=0; i<powMax; i++)
+// 	fprintf(file_wkb,"%f\n",myarray[i]);
+// fclose(file_wkb);
 
 		auto &myPlanM = AxionFFT::fetchPlan("WKB m");
 		auto &myPlanV = AxionFFT::fetchPlan("WKB v");
