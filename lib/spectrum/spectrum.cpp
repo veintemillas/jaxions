@@ -353,7 +353,7 @@ void	SpecBin::pRun	() {
 
 	char *mA = static_cast<char *>(field->m2Cpu());
 
-	LogMsg(VERB_NORMAL,"[pRun] Called with status field->statusM2()=%d",SPMASK_TEST,field->m2Status()) ;
+	LogMsg(VERB_NORMAL,"[pRun] Called with status field->statusM2()=%d",SPMASK_REDO,field->m2Status()) ;
 
 	if ((field->m2Status() != M2_ENERGY) && (field->m2Status() != M2_ENERGY_FFT)) {
 		LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
@@ -482,15 +482,15 @@ void	SpecBin::nRun	(SpectrumMaskType mask){
 				}
 		break;
 
-		case SPMASK_TEST :
+		case SPMASK_REDO :
 				switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::nRun<float,SPMASK_TEST> ();
+					SpecBin::nRun<float,SPMASK_REDO> ();
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::nRun<double,SPMASK_TEST> ();
+					SpecBin::nRun<double,SPMASK_REDO> ();
 					break;
 
 					default :
@@ -513,11 +513,11 @@ void	SpecBin::nRun	() {
 	/* test if everything we need is there in the different cases */
 	switch(mask)
 	{
-		case SPMASK_TEST:
+		case SPMASK_REDO:
 			if ((field->sDStatus() & SD_MASK))
-				LogMsg(VERB_NORMAL,"nRun with SPMASK_TEST ok SPMASK=%d field->statusSD()=%d",SPMASK_TEST,field->sDStatus()) ;
+				LogMsg(VERB_NORMAL,"nRun with SPMASK_REDO ok SPMASK=%d field->statusSD()=%d",SPMASK_REDO,field->sDStatus()) ;
 			else{
-			LogMsg(VERB_NORMAL,"nRun with SPMASK_TEST but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_TEST,field->sDStatus()) ;
+			LogMsg(VERB_NORMAL,"nRun with SPMASK_REDO but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_REDO,field->sDStatus()) ;
 			return ;
 			}
 		break;
@@ -580,7 +580,7 @@ void	SpecBin::nRun	() {
 									m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
 									m2sax[odx] = (2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
 									break;
-							case SPMASK_TEST:
+							case SPMASK_REDO:
 									if (strdaa[idx] & STRING_MASK){
 											m2sa[odx] = 0 ;
 											m2sax[odx] = 0 ;
@@ -666,7 +666,7 @@ void	SpecBin::nRun	() {
 									m2sa[odx]  = (2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
 									m2sax[odx] = (2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
 									break;
-							case SPMASK_TEST:
+							case SPMASK_REDO:
 									if (strdaa[idx] & STRING_MASK){
 											m2sa[odx] = 0 ;
 											m2sax[odx] = 0 ;
@@ -1100,16 +1100,33 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 			LogError("[masker] These masks are not yet implemented");
 		break;
 
-		case SPMASK_TEST :
+		case SPMASK_AXIT :
+		switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::masker<float,SPMASK_AXIT> (radius_mask);
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::masker<double,SPMASK_AXIT> (radius_mask);
+				break;
+
+				default :
+				LogError("[masker] precision not reconised.");
+				break;
+			}
+		break;
+
+		case SPMASK_REDO :
 		default:
 			switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_TEST> (radius_mask);
+				SpecBin::masker<float,SPMASK_REDO> (radius_mask);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_TEST> (radius_mask);
+				SpecBin::masker<double,SPMASK_REDO> (radius_mask);
 				break;
 
 				default :
@@ -1125,10 +1142,29 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 template<typename Float, SpectrumMaskType mask>
 void	SpecBin::masker	(double radius_mask) {
 
-	if ( !(field->sDStatus() & SD_MAP)){
-			LogMsg(VERB_NORMAL,"[masker] masker called without string map! exit!\n");
+	switch (mask)
+	{
+		case SPMASK_REDO:
+			LogMsg(VERB_NORMAL,"[masker] masker REDO (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+			if (field->Field() != FIELD_SAXION || !(field->sDStatus() & SD_MAP)){
+					LogMsg(VERB_NORMAL,"[masker] masker called without string map! (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+					return;
+			}
+		break;
+
+		case SPMASK_AXIT:
+			LogMsg(VERB_NORMAL,"[masker] Axiton M2status %d ! \n",field->m2Status());
+			if ( !(field->m2Status() == M2_ENERGY)){
+					LogMsg(VERB_NORMAL,"[masker] Axiton masker called without energy M2status %d ! exit!\n",field->m2Status());
+					return;
+			}
+		break;
+		default:
+			LogMsg(VERB_NORMAL,"[masker] Mask not available! exit!\n");
 			return;
+		break;
 	}
+
 	if (field->LowMem()){
 			LogMsg(VERB_NORMAL,"[masker] masker called in lowmem! exit!\n");
 			return;
@@ -1210,9 +1246,10 @@ void	SpecBin::masker	(double radius_mask) {
 							case SPMASK_SAXI:
 								LogOut("These masks are automatic! why did you run this function??\n");
 								LogMsg(VERB_NORMAL,"These masks are automatic! why did you run this function??");
+								//exit!
 							break;
 
-							case SPMASK_TEST:
+							case SPMASK_REDO:
 									if ( (strdaa[idx] & STRING_ONLY) != 0)
 									{
 										m2sa[odx] = 1;
@@ -1416,7 +1453,83 @@ void	SpecBin::masker	(double radius_mask) {
 		break; //case saxion ends
 
 		case FIELD_AXION:
-				LogError("[masker] Error: Masker template not available in axion mode (yet)!");
+		{
+			// thinking about axiton finder
+			// energy is required in m2
+			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
+			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+			Float *m2sax                = static_cast<Float *>(field->m2half());
+			char *mA = static_cast<char *>(field->m2Cpu());
+			char *mAS = static_cast<char *>(field->m2half());
+			size_t vola = field->Size() ;
+
+			// makes a copy of the energy density of axions in m2_2
+
+			memcpy (mAS, mA, vola*field->Precision());
+
+			// threshold of the energy density
+			Float RRRRRR = (Float) *field->RV();
+			Float ethres = (Float) field->AxionMassSq()*RRRRRR*RRRRRR;
+
+			#pragma omp parallel for schedule(static)
+			for (size_t idx=0; idx < vola; idx++) {
+
+				switch(mask){
+					case SPMASK_AXIT:
+					if( m2sa[idx] > ethres){
+						strdaa[idx] = 1;
+						m2sa[idx] = 0;
+					}
+					else
+						strdaa[idx] = 0;
+					break;
+					}
+				  //end mask
+			}    // end loop idx
+
+			// pad in place
+			size_t dSize    = (size_t) (field->Precision());
+			size_t dataLine = dSize*Ly;
+			size_t Sm	= Ly*Lz;
+			for (int sl=Sm-1; sl>=0; sl--) {
+				auto	oOff = sl*dSize*(Ly);
+				auto	fOff = sl*dSize*(Ly+2);
+				memmove	(mA+fOff, mA+oOff, dataLine);
+			}
+			/* Fourier transform */
+			// r2c FFT in m2
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+			myPlan.run(FFT_FWD);
+
+			/* bin the axion energy spectrum */
+				LogMsg(VERB_NORMAL,"[masker] filling masked eA spectrum bins (masked)");
+				binP.assign(powMax, 0.);
+
+				switch (fPrec) {
+					case	FIELD_SINGLE:
+						if (spec)
+							fillBins<float,  SPECTRUM_P, true> ();
+						else
+							fillBins<float,  SPECTRUM_P, false>();
+						break;
+
+					case	FIELD_DOUBLE:
+						if (spec)
+							fillBins<double,  SPECTRUM_P, true> ();
+						else
+							fillBins<double,  SPECTRUM_P, false>();
+						break;
+
+					default:
+						LogError ("Wrong precision");
+						break;
+				}
+
+		memcpy (mA, mAS, vola*field->Precision());
+		field->setSD(SD_AXITONMASK);
+		// field->setM2(M2_DIRTY); // M2_MASK_FT
+
+		}
 		break;
 
 		default:
@@ -1579,15 +1692,15 @@ void	SpecBin::wRun	(SpectrumMaskType mask){
 			LogError("[Spectrum wRun] Error: we don't need the power spectrum of W in SAXI mode.");
 			break;
 
-		case SPMASK_TEST :
+		case SPMASK_REDO :
 			switch (fPrec)
 				{
 					case FIELD_SINGLE :
-					SpecBin::wRun<float,SPMASK_TEST> ();
+					SpecBin::wRun<float,SPMASK_REDO> ();
 					break;
 
 					case FIELD_DOUBLE :
-					SpecBin::wRun<double,SPMASK_TEST> ();
+					SpecBin::wRun<double,SPMASK_REDO> ();
 					break;
 
 					default :
@@ -1647,7 +1760,7 @@ void	SpecBin::wRun	() {
 							case SPMASK_VIL2:
 									m2sa[odx] = std::pow(std::abs(ma[idx]-zaskaF)/Rscale,2);
 									break;
-							case SPMASK_TEST:
+							case SPMASK_REDO:
 									//assume the map of W was already stored in stringdata
 									// issue!! this will not work!
 									m2sa[odx] = sd[idx];

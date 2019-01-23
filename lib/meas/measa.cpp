@@ -129,6 +129,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			}
 
+			LogMsg(VERB_NORMAL, "[meas] M2 status %d", axiona->m2Status());
 			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_A))
 			{
 
@@ -137,8 +138,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
 				{
 
+					if(axiona->Field() == FIELD_AXION){
 						prof.start();
+						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons)",indexa);
+						// at the moment runs PA and PS if in saxion mode
+						// perhaps we should create another psRun() YYYEEEESSSSS
+						specAna.masker(radius_mask, SPMASK_AXIT);
+						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked");
 
+						prof.stop();
+						prof.add(std::string("PSPA_mask"), 0.0, 0.0);
+				}
+
+						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
 						// at the moment runs PA and PS if in saxion mode
 						// perhaps we should create another psRun() YYYEEEESSSSS
@@ -160,7 +172,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 									// prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
 										double ScaleSize = ((double) axiona->Length())/((double) redmap);
 										double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axiona->Surf());
-										size_t nLz = endredmap / commSize();
+										size_t nLz = redmap / commSize();
 
 										if (axiona->Precision() == FIELD_DOUBLE) {
 											reduceField(axiona, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
@@ -192,10 +204,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 		LogMsg(VERB_NORMAL, "[Meas %d] write energy",indexa);
 		writeEnergy(axiona, eRes);
+
+		trackFree(eRes);
 	}
 
 	if(axiona->Field() == FIELD_SAXION){
-		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_TEST))
+		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO))
 		{
 
 			if ( !(measa & MEAS_STRINGCOO)){
@@ -243,7 +257,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		{
 			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);
 				prof.start();
-				specAna.masker(radius_mask, SPMASK_TEST);
+				specAna.masker(radius_mask, SPMASK_REDO);
 				prof.stop();
 				prof.add(std::string("Masker"), 0.0, 0.0);
 				/* activate to export premask -- needs changes in spectrum.cpp too*/
@@ -259,7 +273,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 		/* If Axion mode this is the only spectrum. In saxion an option */
 		if ( ((axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_A)) ||
-	 			 ((axiona->Field() == FIELD_AXION) && (measa & (MEAS_NSP_A | SPMASK_VIL| SPMASK_TEST |SPMASK_VIL2 ))))
+	 			 ((axiona->Field() == FIELD_AXION) && (measa & (MEAS_NSP_A | SPMASK_VIL| SPMASK_REDO |SPMASK_VIL2 ))))
 		{
 
 			if ( ((axiona->Field() == FIELD_SAXION) && (mask & SPMASK_FLAT)) ||
@@ -278,7 +292,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 			}
 
-			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_TEST))
+			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_REDO))
 			{
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
@@ -286,7 +300,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				if ( !(measa & (MEAS_MASK)) ){
 						LogMsg(VERB_NORMAL, "[Meas %d] MASK_TEST inside NSPA",indexa);
 						prof.start();
-						specAna.masker(radius_mask, SPMASK_TEST);
+						specAna.masker(radius_mask, SPMASK_REDO);
 						prof.stop();
 						prof.add(std::string("Masker"), 0.0, 0.0);
 
@@ -294,7 +308,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						}
 				LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum",indexa);
 				prof.start();
-				specAna.nRun(SPMASK_TEST);
+				specAna.nRun(SPMASK_REDO);
 				prof.stop();
 				prof.add(std::string("NSPA_M"), 0.0, 0.0);
 

@@ -138,7 +138,7 @@
 				binPS.assign(powMax, 0.);
 		}
 
-		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_TEST);
+		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO);
 
 		template<typename Float, SpectrumMaskType mask>
 		void	masker	(double radius_mask);

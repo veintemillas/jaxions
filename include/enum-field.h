@@ -326,8 +326,9 @@
 			SPMASK_FLAT	= 1,
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
-			SPMASK_TEST	= 8,
+			SPMASK_REDO	= 8,
 			SPMASK_SAXI	= 16,
+			SPMASK_AXIT	= 32,
 		}	SpectrumMaskType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
@@ -367,6 +368,7 @@
 			SD_STRINGCOORD = 2,
 			SD_MASK        = 4,
 			SD_MAPMASK     = 5,
+			SD_AXITONMASK  = 6,
 		}	StatusSD;
 
 		// analysis functions to be called inside a measurement

@@ -676,6 +676,8 @@ def gm(address,something='summary',printerror=False):
         powmax = f['pSpectrum/sP/data/'].size
         if (something == 'psp'):
             return np.array(f['pSpectrum/sP/data/']) ;
+        if (something == 'pspMA'):
+            return np.array(f['pSpectrum/sPmasked/data/']) ;
 
     # maps
     map_check = 'map' in f
