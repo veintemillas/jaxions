@@ -39,6 +39,7 @@ extern double wkb2z ;
 extern double prepstL;
 extern double prepcoe;
 extern int endredmap ;
+extern int endredmapwkb ;
 extern int safest0 ;
 
 extern char *initFile;

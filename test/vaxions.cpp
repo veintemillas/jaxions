@@ -434,8 +434,13 @@ int	main (int argc, char *argv[])
 				mesa = mesa | MEAS_ENERGY3DMAP ;
 			// 	writeEDens(axion);
 
-			if ( endredmap > 0)
+			if ( endredmap > 0 )
 				mesa = mesa | MEAS_REDENE3DMAP ;
+
+			if ( endredmapwkb > 0 ){
+				mesa = mesa | MEAS_REDENE3DMAP ;
+				ninfa.redmap=endredmapwkb;
+			}
 
 			ninfa.index=index;
 			ninfa.measdata=mesa;

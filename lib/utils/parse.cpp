@@ -42,6 +42,7 @@ double wkb2z  = -1.0;
 double prepstL = 5.0 ;
 double prepcoe = 3.0 ;
 int endredmap = -1;
+int endredmapwkb = -1;
 int safest0   = 20;
 size_t nstrings_globale ;
 
@@ -763,24 +764,22 @@ int	parseArgs (int argc, char *argv[])
 				endredmap = atof(argv[i+1]);
 			}
 
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
-			// if ((endredmap == sizeN))
-			// {
-			// 	printf("Warning: reducedN == sizeN, Gaussian filtering at most\n");
-			// }
-			//
-			// if (endredmap < 0)
-			// {
-			// 	printf("Error: reducedN should be in the interval [0 < size]. Set to 256\n");
-			// 	endredmap = 256	;
-			// }
-			//
-			// if ((endredmap > sizeN))
-			// {
-			// 	printf("Error: reducedN should be in the interval [0 < size]. Set to sizeN\n");
-			// 	endredmap = sizeN	;
-			// }
-
+		if (!strcmp(argv[i], "--redmpwkb"))
+		{
+			if (i+1 == argc)
+			{
+				endredmapwkb = 256 ;
+				printf("No new sizeN input for final reducemap (wkb). Set to default = 256\n");
+			}
+			else{
+				endredmapwkb = atof(argv[i+1]);
+			}
 
 			i++;
 			procArgs++;
