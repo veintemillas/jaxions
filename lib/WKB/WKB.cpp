@@ -664,7 +664,7 @@ fclose(file_wk);
 			massphaseC	= -2.0*zC/(4.0+nQcdE)*field->AxionMass(zC)*zC
 										+2.0*zC/(4.0+nQcdI)*field->AxionMass(zC)*zC;
 		}
-		LogOut(VERB_NORMAL,"Phases EIC %lf %lf %lf",massphaseE,massphaseI,massphaseC);
+		LogMsg(VERB_NORMAL,"Phases EIC %lf %lf %lf",massphaseE,massphaseI,massphaseC);
 		// critical systematic are computed only once!
 		complex<double> prephaD = exp(im*massphaseE);
 		complex<Float> prepha = (complex<Float>) prephaD;
