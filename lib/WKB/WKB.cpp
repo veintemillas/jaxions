@@ -51,10 +51,10 @@ namespace AxionWKB {
 		}
 	}
 
-	double WKB::calculatePhiexact(double zIni, double zEnd, double k2, double nqcd){
+	double WKB::calculatePhiexact(double zIni, double zEnd, double k, double nqcd, double indi3){
 		// this calculates the integral
 		// Integrate( sqrt(m^2 + k2) -m , z = (zIni, zEnd))
-		// For m^2 = ct^(nqcd+2) which is the conformal mass
+		// For m^2 = indi3**2 ct^(nqcd+2) which is the conformal mass
 		// Requires modifications for massless axions
 		// Requires generalisation for an arbitrary mass(R(t)) dependence
 
@@ -64,23 +64,52 @@ namespace AxionWKB {
 		//  R limit m^2End << k2
 		// We need to know the phase with accuracy better than 0.1 or so
 
-		/* Taylor expansion of the integral is
-				k Sum []*/
+		if (k == 0.0)
+			return 0.0;
+
+		if (indi3 == 0.0)
+			return k*(zEnd-zIni);
+
+		double k2, mIni, mEnd, m2Ini, m2End, wIni, wEnd;
+
+		k2 = k*k;
+
+		if (nqcd == 0.0){
+				// log result assumes no precision problem
+				mIni        = indi3*zIni ;
+				mEnd        = indi3*zEnd ;
+				m2Ini       = mIni*mIni ;
+				m2End       = mEnd*mEnd ;
+				wIni        = sqrt(k2 + m2Ini);
+				wEnd        = sqrt(k2 + m2End);
+				return 0.5*k*(log((mEnd+wEnd)/(mIni+wIni)) + mEnd/(wEnd+mEnd) - mIni/(wIni+mIni))/indi3;
+				}
+
+		mIni        = indi3*pow(zIni,nqcd/2+1) ;
+		mEnd        = indi3*pow(zEnd,nqcd/2+1) ;
+		m2Ini       = mIni*mIni ;
+		m2End       = mEnd*mEnd ;
+		wIni        = sqrt(k2 + m2Ini);
+		wEnd        = sqrt(k2 + m2End);
+
+		// double Rm = pow(k2,4/(nqcd+4));
+		// int n = 1;
+		// double eps  = 0.1;
+		// double en   = 0.5*(nqcd+2)*(2*n+1) -1.0;
+		// double RNR  = Rm * pow(Rm * eps * en,-1.0/en);
+		//
+		// if (RNR<zEnd)
+		// 	{
+		// 		// split into NR and
+		// 	}
+		// 	// coefficients of 1/(1+sqrt{1+alpha})
+		// double coef = {	0.5,-0.125,	0.0625, -0.0390625, 0.0273438, -0.0205078, 0.0161133, -0.013092, 0.01091, -0.00927353, 0.00800896};
 
 		/*for large WKBs it is advisable to find the moment when a simple cuadratic
 		  approximaiton is quite good
 			This introduces a zNR which depends on precision sought
 			*/
 
-
-		// At the moment only uses power laws... optimally an arbitrary mass function
-
-		double mIni        = pow(zIni,nqcd/2+1) ;
-		double mEnd        = pow(zEnd,nqcd/2+1) ;
-		double m2Ini       = mIni*mIni ;
-		double m2End       = mEnd*mEnd ;
-		double w1          = sqrt(k2 + m2Ini);
-		double w2          = sqrt(k2 + m2End);
 		double v12         = k2/(k2+m2Ini);
 		double v22         = k2/(k2+m2End);
 		double phiBase1	   = 2.0*zIni/(4.0+nqcd);
@@ -88,8 +117,8 @@ namespace AxionWKB {
 		double n2p1        = 1.0+nqcd/2.0;
 		double nn2         = 1.0/(2.0+nqcd)+1.0;
 
-		return phiBase2*w2*v22*( w2/(w2+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
-						-phiBase1*w1*v12*( w1/(w1+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
+		return phiBase2*wEnd*v22*( wEnd/(wEnd+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
+						-phiBase1*wIni*v12*( wIni/(wIni+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
 	}
 
 
@@ -104,29 +133,36 @@ namespace AxionWKB {
 		k2Table[0] = 0.0;
 
 		double lSize	   = axion->BckGnd()->PhysSize();
-		double minmom2 	   = (4.*M_PI*M_PI)/(lSize*lSize);
+		double k0 	     = (2.0*M_PI)/(lSize);
+
 
 		double zCri = axion->BckGnd()->ZThRes();
 		double nqcd = axion->BckGnd()->QcdExp();
+		/* Indi3 is used for adjusting above*/
+		double indi3 		= axion->BckGnd()->Indi3();
+		double indi3aux = indi3;
 
 		if (zIni < zCri && zCri < zEnd){
 			#pragma omp parallel for schedule(static)
 			for (size_t ik=1; ik<powMax+1; ik++)
 			{
-				double k2 = minmom2*(ik*ik);
-				k2Table[ik] = k2;
-				superTable[ik] = calculatePhiexact(zIni, zCri, k2, nqcd) + calculatePhiexact(zCri, zEnd, k2, 0.0);
+				double k = k0*(ik);
+				k2Table[ik] = k*k;
+				indi3aux *= pow(zCri,nqcd/2+1);
+				superTable[ik] = calculatePhiexact(zIni, zCri, k, nqcd,indi3) + calculatePhiexact(zCri, zEnd, k, 0.0,indi3aux);
 			}
 		}
 		else {
-			if (zCri < zIni)
+			if (zCri < zIni){
+				indi3aux *= pow(zCri,nqcd/2+1);
 				nqcd = 0.0;
+			}
 
 			#pragma omp parallel for schedule(static)
 			for (size_t ik=1; ik<powMax+1; ik++){
-				double k2 = minmom2*(ik*ik);
-				k2Table[ik] = k2;
-				superTable[ik] = calculatePhiexact(zIni, zEnd, k2, nqcd);
+				double k = k0*(ik);
+				k2Table[ik] = k*k;
+				superTable[ik] = calculatePhiexact(zIni, zEnd, k, nqcd, indi3aux);
 			}
 		}
 

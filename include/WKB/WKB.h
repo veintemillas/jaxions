@@ -60,7 +60,7 @@
 			void	doWKBinplace     (double zEnd);
 
 			void buildlookuptable(Scalar* axion, double zIni, double zEnd);
-			double calculatePhiexact(double zIni, double zEnd, double k2, double nqcd);
+			double calculatePhiexact(double zIni, double zEnd, double k, double nqcd, double indi3);
 			double interpolatephi(double dk, double k2);
 
 			public:
