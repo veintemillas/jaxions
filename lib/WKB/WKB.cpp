@@ -82,6 +82,7 @@ namespace AxionWKB {
 				m2End       = mEnd*mEnd ;
 				wIni        = sqrt(k2 + m2Ini);
 				wEnd        = sqrt(k2 + m2End);
+				// LogOut("in %f, %f\n",log((mEnd+wEnd)/(mIni+wIni)),mEnd/(wEnd+mEnd) - mIni/(wIni+mIni));
 				return 0.5*k*(log((mEnd+wEnd)/(mIni+wIni)) + mEnd/(wEnd+mEnd) - mIni/(wIni+mIni))/indi3;
 				}
 
@@ -116,7 +117,6 @@ namespace AxionWKB {
 		double phiBase2	   = 2.0*zEnd/(4.0+nqcd);
 		double n2p1        = 1.0+nqcd/2.0;
 		double nn2         = 1.0/(2.0+nqcd)+1.0;
-
 		return phiBase2*wEnd*v22*( wEnd/(wEnd+mEnd) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v22) )
 						-phiBase1*wIni*v12*( wIni/(wIni+mIni) + n2p1*con2F1(0.5, 1.0, nn2, 1.0-v12) );
 	}
@@ -142,27 +142,37 @@ namespace AxionWKB {
 		double indi3 		= axion->BckGnd()->Indi3();
 		double indi3aux = indi3;
 
+		LogMsg(VERB_NORMAL,"Buildlookuptable zIni %f zCri %f zEnd %f nqcd %f indi3 %f",zIni,zCri,zEnd,nqcd,indi3);
+		// LogOut("Buildlookuptable zIni %f zCri %f zEnd %f nqcd %f indi3 %f\n ",zIni,zCri,zEnd,nqcd,indi3);
+
 		if (zIni < zCri && zCri < zEnd){
-			#pragma omp parallel for schedule(static)
+			indi3aux *= pow(zCri,nqcd/2);
+			LogMsg(VERB_NORMAL,"transition! indi3aux %f ",indi3aux);
+
+			// #pragma omp parallel for schedule(static)
 			for (size_t ik=1; ik<powMax+1; ik++)
 			{
 				double k = k0*(ik);
 				k2Table[ik] = k*k;
-				indi3aux *= pow(zCri,nqcd/2+1);
-				superTable[ik] = calculatePhiexact(zIni, zCri, k, nqcd,indi3) + calculatePhiexact(zCri, zEnd, k, 0.0,indi3aux);
+				superTable[ik] = calculatePhiexact(zIni, zCri, k, nqcd,indi3) ;
+				// LogOut("t %f %f ", k, superTable[ik]);
+				superTable[ik] += calculatePhiexact(zCri, zEnd, k, 0.0,indi3aux);
+				// LogOut("> %f \n ", superTable[ik]);
 			}
 		}
 		else {
 			if (zCri < zIni){
-				indi3aux *= pow(zCri,nqcd/2+1);
+				indi3aux *= pow(zCri,nqcd/2);
 				nqcd = 0.0;
 			}
 
+			LogMsg(VERB_NORMAL,"no transition! indi3aux %f nqcd %f ",indi3aux,nqcd);
 			#pragma omp parallel for schedule(static)
 			for (size_t ik=1; ik<powMax+1; ik++){
 				double k = k0*(ik);
 				k2Table[ik] = k*k;
 				superTable[ik] = calculatePhiexact(zIni, zEnd, k, nqcd, indi3aux);
+				// LogOut("n %f %f %f %f \n", k, superTable[ik],indi3aux,nqcd);
 			}
 		}
 
@@ -657,13 +667,16 @@ namespace AxionWKB {
 		buildlookuptable(field, zIni, zEnd);
 		LogMsg(VERB_NORMAL,"Lookup table built!");
 
-FILE *file_wk ;
-file_wk = NULL;
-file_wk = fopen("out/lookup.txt","w+");
-for (size_t i=0; i<powMax; i++)
-	fprintf(file_wk,"%lf %lf\n",k2Table[i], superTable[i]);
-fclose(file_wk);
-
+if (commRank() == 0 ){
+	FILE *file_wk ;
+	file_wk = NULL;
+	char base[256];
+	sprintf(base, "out/lookup-%0.2f>%0.2f.txt", zIni,zEnd);
+	file_wk = fopen(base,"w+");
+	for (size_t i=0; i<powMax; i++)
+		fprintf(file_wk,"%lf %lf\n",k2Table[i], superTable[i]);
+	fclose(file_wk);
+}
 		// use nQcd1 y 2
 		double nQcdI				 = field->BckGnd()->QcdExp();
 		double nQcdE				 = field->BckGnd()->QcdExp();
