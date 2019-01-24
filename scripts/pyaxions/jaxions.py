@@ -668,16 +668,25 @@ def gm(address,something='summary',printerror=False):
     if (something == 'psp?') :
         return psp_check
 
+    if (something == 'pspMA?') :
+        return 'pSpectrum/sPmasked' in f
+
+    if (something == 'pspMA2?') :
+        return 'pSpectrum/sPmasked2' in f
+
     if (something[0:3] == 'psp') and not psp_check :
         if printerror :
             print('[gm] Warning: No pSpec in file. ')
         return ;
     if (something[0:3] == 'psp') and  psp_check :
-        powmax = f['pSpectrum/sP/data/'].size
-        if (something == 'psp'):
+        if (something == 'psp') and 'pSpectrum/sP' in f:
             return np.array(f['pSpectrum/sP/data/']) ;
-        if (something == 'pspMA'):
+
+        if (something == 'pspMA') and 'pSpectrum/sPmasked' in f:
             return np.array(f['pSpectrum/sPmasked/data/']) ;
+
+        if (something == 'pspMA2') and 'pSpectrum/sPmasked2' in f:
+            return np.array(f['pSpectrum/sPmasked2/data/']) ;
 
     # maps
     map_check = 'map' in f

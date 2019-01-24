@@ -138,9 +138,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
 				{
 
+
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT)){
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons)",indexa);
+
 						specAna.masker(radius_mask, SPMASK_AXIT);
 						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked");
 
@@ -151,7 +153,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT2)){
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,radius_mask);
+
 						specAna.masker(radius_mask, SPMASK_AXIT2);
+
 						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked2");
 
 						prof.stop();

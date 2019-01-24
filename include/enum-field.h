@@ -362,6 +362,10 @@
 			M2_DIRTY       = 8,
 			M2_MASK_TEST   = 16,
 			M2_ENERGY_RED  = 32,
+			M2_ENERGY_AXI  = 64,
+			M2_ENERGY_MASK_AXI_FFT = 128,
+			M2_MASK_AXI2_FFT = 256,
+			M2_MASK        = 512,
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
