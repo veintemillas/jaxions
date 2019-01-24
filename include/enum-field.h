@@ -248,6 +248,7 @@
 			PRINTCONF_NONE    = 0,
 			PRINTCONF_INITIAL = 1,
 			PRINTCONF_FINAL   = 2,
+			PRINTCONF_WKB   	= 4,
 			PRINTCONF_BOTH    = 3,
 		}	PrintConf;
 

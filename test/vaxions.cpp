@@ -394,7 +394,7 @@ int	main (int argc, char *argv[])
 
 	MeasureType mesa = defaultmeasType;
 
-	if ((prinoconfo & PRINTCONF_FINAL) && (wkb2z < 0)) {
+	if ((prinoconfo & PRINTCONF_FINAL) ) {
 		mesa = mesa | MEAS_3DMAP  ;
 	}
 	if (pconfinal)
@@ -425,7 +425,7 @@ int	main (int argc, char *argv[])
 			/* last measurement after WKB */
 			MeasureType mesa = defaultmeasType;
 
-			if (prinoconfo & PRINTCONF_FINAL) {
+			if (prinoconfo & PRINTCONF_WKB) {
 				LogOut ("Dumping final WKBed configuration %05d ...", index);
 				mesa = mesa | MEAS_3DMAP  ;
 			}

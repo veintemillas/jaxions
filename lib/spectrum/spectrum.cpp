@@ -1529,141 +1529,146 @@ void	SpecBin::masker	(double radius_mask) {
 			switch (mask)
 			{
 				case SPMASK_AXIT:
-				/* bin the axion energy spectrum */
-				LogMsg(VERB_NORMAL,"[masker] filling masked eA spectrum bins (masked)");
-				binP.assign(powMax, 0.);
+							/* bin the axion energy spectrum */
+							LogMsg(VERB_NORMAL,"[masker] filling masked eA spectrum bins (masked)");
+							binP.assign(powMax, 0.);
 
-				switch (fPrec) {
-					case	FIELD_SINGLE:
-						if (spec)
-							fillBins<float,  SPECTRUM_P, true> ();
-						else
-							fillBins<float,  SPECTRUM_P, false>();
-						break;
+							switch (fPrec) {
+								case	FIELD_SINGLE:
+									if (spec)
+										fillBins<float,  SPECTRUM_P, true> ();
+									else
+										fillBins<float,  SPECTRUM_P, false>();
+									break;
 
-					case	FIELD_DOUBLE:
-						if (spec)
-							fillBins<double,  SPECTRUM_P, true> ();
-						else
-							fillBins<double,  SPECTRUM_P, false>();
-						break;
+								case	FIELD_DOUBLE:
+									if (spec)
+										fillBins<double,  SPECTRUM_P, true> ();
+									else
+										fillBins<double,  SPECTRUM_P, false>();
+									break;
 
-					default:
-						LogError ("Wrong precision");
-						break;
-				}
-			/* copy m2 back into place */
-			memcpy (mA, mAS, vola*field->Precision());
-			field->setSD(SD_AXITONMASK);
-			// field still contains M2_ENERGY
+								default:
+									LogError ("Wrong precision");
+									break;
+							}
+						/* copy m2 back into place */
+						memcpy (mA, mAS, vola*field->Precision());
+						field->setSD(SD_AXITONMASK);
+						// field still contains M2_ENERGY
 			break;
 
 			case SPMASK_AXIT2:
-			/* bin the axion energy spectrum */
-			LogMsg(VERB_NORMAL,"[masker] AXIT2 filter");
-			/* Filter */
-			switch (fPrec) {
-				case	FIELD_SINGLE:
-						filterFFT<float> (radius_mask);
-					break;
-
-				case	FIELD_DOUBLE:
-						filterFFT<double> (radius_mask);
-					break;
-
-				default:
-					LogError ("Wrong precision");
-					break;
-			}
-			/* iFFT */
-			myPlan.run(FFT_BCK);
-			/* Make plots if needed */
-
-			/* unpadd */
-			size_t dl = Ly*field->Precision();
-			size_t pl = (Ly+2)*field->Precision();
-			size_t ss	= Ly*Lz;
-			char *mAS = static_cast<char *>(field->m2Cpu());
-			char *mAH = static_cast<char *>(field->m2half());
-			size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
-			for (size_t sl=1; sl<ss; sl++) {
-				size_t	oOff = sl*dl;
-				size_t	fOff = sl*pl;
-				memcpy	(mAS+oOff, mAS+fOff, dl);
-			}
-
-			/* Generate mask */
 			{
-					Float maskcut = (Float) std::abs(radius_mask);
-					if (radius_mask < 4)
-						maskcut = (0.42772052 -0.05299264*maskcut)/(maskcut*maskcut);
-					else
-						maskcut = (0.22619714 -0.00363601*maskcut)/(maskcut*maskcut);
+						/* bin the axion energy spectrum */
+						LogMsg(VERB_NORMAL,"[masker] AXIT2 filter");
+						/* Filter */
+						switch (fPrec) {
+							case	FIELD_SINGLE:
+									filterFFT<float> (radius_mask);
+								break;
 
-					if (radius_mask > 8)
-						maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
+							case	FIELD_DOUBLE:
+									filterFFT<double> (radius_mask);
+								break;
 
-					/* I apply the cut to the unpadded */
-					size_t vol = field->Size() ;
-					#pragma omp parallel for schedule(static)
-					for (size_t idx=0; idx < vol; idx++) {
-						if ( m2sa[idx] > maskcut ) {
-							strdaa[idx] |= 1 ; // mask stored M=1-W
-							m2sa[idx] = 0;
+							default:
+								LogError ("Wrong precision");
+								break;
 						}
-						else {
-							strdaa[idx] = 0 ;
-							//m2sa[idx] = 1; // use this if you interested in the mask
-							m2sa[idx] = m2sax[idx]; // use this if you interested in the psp directly
+						/* iFFT */
+						myPlan.run(FFT_BCK);
+						/* Make plots if needed */
+
+						/* unpadd */
+						size_t dl = Ly*field->Precision();
+						size_t pl = (Ly+2)*field->Precision();
+						size_t ss	= Ly*Lz;
+						char *mAS = static_cast<char *>(field->m2Cpu());
+						char *mAH = static_cast<char *>(field->m2half());
+						size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
+						for (size_t sl=1; sl<ss; sl++) {
+							size_t	oOff = sl*dl;
+							size_t	fOff = sl*pl;
+							memcpy	(mAS+oOff, mAS+fOff, dl);
 						}
-					}
 
+						/* Generate mask */
+						{
+								Float maskcut = (Float) std::abs(radius_mask);
+								if (radius_mask < 4)
+									maskcut = (0.42772052 -0.05299264*maskcut)/(maskcut*maskcut);
+								else
+									maskcut = (0.22619714 -0.00363601*maskcut)/(maskcut*maskcut);
+
+								if (radius_mask > 8)
+									maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
+
+								/* I apply the cut to the unpadded */
+								size_t vol = field->Size() ;
+								#pragma omp parallel for schedule(static)
+								for (size_t idx=0; idx < vol; idx++) {
+									if ( m2sa[idx] > maskcut ) {
+										strdaa[idx] |= 1 ; // mask stored M=1-W
+										m2sa[idx] = 0;
+									}
+									else {
+										strdaa[idx] = 0 ;
+										//m2sa[idx] = 1; // use this if you interested in the mask
+										m2sa[idx] = m2sax[idx]; // use this if you interested in the psp directly
+									}
+								}
+
+						}
+						/* pad m2 inplace */
+						for (size_t sl=1; sl<ss; sl++) {
+							size_t isl = ss-sl;
+							size_t	oOff = isl*dl;
+							size_t	fOff = isl*pl;
+							memcpy	(mAS+fOff, mAS+oOff, dl);
+						}
+
+						/* Calculate the FFT of the mask */
+						myPlan.run(FFT_FWD);
+
+						switch (fPrec) {
+							case	FIELD_SINGLE:
+								if (spec)
+									fillBins<float,  SPECTRUM_P, true> ();
+								else
+									fillBins<float,  SPECTRUM_P, false>();
+								break;
+
+							case	FIELD_DOUBLE:
+								if (spec)
+									fillBins<double,  SPECTRUM_P, true> ();
+								else
+									fillBins<double,  SPECTRUM_P, false>();
+								break;
+
+							default:
+								LogError ("Wrong precision");
+								break;
+						}
+
+					/* copy m2 back into place */
+					memcpy (mA, mAS, vola*field->Precision());
+					field->setSD(SD_AXITONMASK);
+					// field still contains M2_ENERGY
 			}
-			/* pad m2 inplace */
-			for (size_t sl=1; sl<ss; sl++) {
-				size_t isl = ss-sl;
-				size_t	oOff = isl*dl;
-				size_t	fOff = isl*pl;
-				memcpy	(mAS+fOff, mAS+oOff, dl);
-			}
+			break;
 
-			/* Calculate the FFT of the mask */
-			myPlan.run(FFT_FWD);
-
-			switch (fPrec) {
-				case	FIELD_SINGLE:
-					if (spec)
-						fillBins<float,  SPECTRUM_P, true> ();
-					else
-						fillBins<float,  SPECTRUM_P, false>();
-					break;
-
-				case	FIELD_DOUBLE:
-					if (spec)
-						fillBins<double,  SPECTRUM_P, true> ();
-					else
-						fillBins<double,  SPECTRUM_P, false>();
-					break;
-
-				default:
-					LogError ("Wrong precision");
-					break;
-			}
-
-		/* copy m2 back into place */
-		memcpy (mA, mAS, vola*field->Precision());
-		field->setSD(SD_AXITONMASK);
-		// field still contains M2_ENERGY
-		break;
-
-
+			default:
+			LogError("[masker] Error: Axion mode but no axiton mask!!");
+			break;
+		} // end case mask
 		}
-		break;
+		break ; //ends case axion
 
 		default:
 		LogError("[masker] Error: Masker template called with no saxion mode!");
 		break ;
-	}
+	} // end case saxion-axion
 }
 
 /* build correction matrices */

@@ -146,7 +146,17 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 						prof.stop();
 						prof.add(std::string("PSPA_mask"), 0.0, 0.0);
-				}
+					}
+
+					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT2)){
+						prof.start();
+						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,radius_mask);
+						specAna.masker(radius_mask, SPMASK_AXIT2);
+						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked2");
+
+						prof.stop();
+						prof.add(std::string("PSPA_mask"), 0.0, 0.0);
+					}
 
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
