@@ -249,8 +249,14 @@ int	main (int argc, char *argv[])
 		LogOut("First measurement from read file %d \n",index);
 		ninfa.index=index;
 		lm = Measureme (axion, ninfa);
+
 	}
+
 	index++;
+	if (*axion->zV() == meas_zlist[i_meas])
+			i_meas++;
+
+
 
 	//--------------------------------------------------
 	// TIME ITERATION LOOP
