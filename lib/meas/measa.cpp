@@ -138,11 +138,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
 				{
 
-					if(axiona->Field() == FIELD_AXION){
+					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT)){
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons)",indexa);
-						// at the moment runs PA and PS if in saxion mode
-						// perhaps we should create another psRun() YYYEEEESSSSS
 						specAna.masker(radius_mask, SPMASK_AXIT);
 						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked");
 

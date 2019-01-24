@@ -41,7 +41,7 @@ def findmfiles(address='./'):
     for filename in glob.iglob(address+'**/axion.m.*', recursive=True):
           list.append(filename)
           #print(filename)
-    return sorted(list) ;
+    return np.array(sorted(list)) ;
 
 
 
