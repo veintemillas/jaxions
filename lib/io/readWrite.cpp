@@ -755,7 +755,7 @@ LogMsg (VERB_NORMAL, "z Restore (comm-line or default) = %f",myCosmos->ZRestore(
 		if (myCosmos->ZRestore() == -1.e8) {
 			double zrest;
 			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
-			myCosmos->SetZThRes(zrest);
+			myCosmos->SetZRestore(zrest);
 			LogMsg (VERB_NORMAL, "z Restore (read and set) = %f",myCosmos->ZRestore());
 		}
 
@@ -1129,7 +1129,7 @@ void	createMeas (Scalar *axion, int index)
 
 	auto lSize    = axion->BckGnd()->PhysSize();
 	auto llPhys   = axion->BckGnd()->Lambda  ();
-	auto LL       = axion->BckGnd()->Lambda  ();
+	auto LLL      = axion->BckGnd()->Lambda  ();
 	auto nQcd     = axion->BckGnd()->QcdExp  ();
 	auto gamma    = axion->BckGnd()->Gamma   ();
 	auto vqcdType = axion->BckGnd()->QcdPot  ();
@@ -1239,7 +1239,7 @@ void	createMeas (Scalar *axion, int index)
 	double zrestore = axion->BckGnd()->ZRestore();
 
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
-	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &LLL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
@@ -3146,13 +3146,17 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	char *dataE  = static_cast<char *>(axion->m2Cpu());
 	char eCh[16] = "/map/E";
 
-	LogMsg (VERB_NORMAL, "Writing 2D energy map to Hdf5 measurement file");
-	LogMsg (VERB_NORMAL, "");
+	LogMsg (VERB_NORMAL, "[wem] Writing 2D energy map to Hdf5 measurement file");
 
-	if (axion->m2Status() != M2_ENERGY)
-	{
-		LogError ("Error: Energy not available in m2. Call energy before calling writeEMapHdf5");
+	switch (axion->m2Status()){
+		case M2_ENERGY:
+		case M2_MASK_TEST:
+			LogMsg (VERB_NORMAL, "[wem] M2 status %d ",axion->m2Status());
+		break;
+		default:
+		LogError ("Error: Energy not available in m2. (status %d) Call energy before calling writeEMapHdf5", axion->m2Status());
 		return;
+		break;
 	}
 
 	if (header == false || opened == false)

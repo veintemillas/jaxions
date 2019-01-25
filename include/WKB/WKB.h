@@ -34,6 +34,10 @@
 			Scalar	*tmp;
 
 			const size_t rLx, Ly, Lz, Tz, hLy, hLz, hTz, nModes, Sm;
+			size_t powMax;
+
+			std::vector<double>	superTable;
+			std::vector<double>	k2Table;
 
 			const double zIni;
 //			const double amass2zini2 = axionmass2(zini, nQcd, zthres, zrestore)*zini*zini ;
@@ -48,11 +52,16 @@
 			// axion1 m+surf, v, m2
 			// axion2 m, v
 
+
 			template<typename cFloat>
 			void	doWKB     (double zEnd);
 
 			template<typename cFloat>
 			void	doWKBinplace     (double zEnd);
+
+			void buildlookuptable(Scalar* axion, double zIni, double zEnd);
+			double calculatePhiexact(double zIni, double zEnd, double k, double nqcd, double indi3);
+			double interpolatephi(double dk, double k2);
 
 			public:
 

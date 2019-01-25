@@ -20,6 +20,7 @@ double indi3  = 1.0;
 double msa    = 1.5;
 double wDz    = 0.8;
 int    fIndex = -1;
+int    fIndex2 = 0;
 
 double sizeL = 4.;
 double zInit = 0.5;
@@ -30,7 +31,7 @@ double frw = 1.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
-double zrestore = 1000.0;
+double zrestore = 1.0e+20;
 double LL = 25000.;
 double parm2 = 0.;
 double pregammo = 0.0;
@@ -41,6 +42,7 @@ double wkb2z  = -1.0;
 double prepstL = 5.0 ;
 double prepcoe = 3.0 ;
 int endredmap = -1;
+int endredmapwkb = -1;
 int safest0   = 20;
 size_t nstrings_globale ;
 
@@ -75,6 +77,7 @@ size_t wTime = std::numeric_limits<std::size_t>::max();
 
 PropType     pType     = PROP_NONE;
 SpectrumMaskType spmask= SPMASK_FLAT;
+double       rmask     = 2.0 ;
 ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
 FieldType    fTypeP    = FIELD_SAXION;
@@ -85,7 +88,9 @@ VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 
 // Default measurement type, some options can be chosen with special flags | all with --meas
-MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_SPECTRUM ;
+MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY  ;
+// Default measurement type for the transition to theta
+MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -110,6 +115,8 @@ bool restart_flag = false;
 
 bool mCreateOut = false;
 
+bool CreateLogMeas = false;
+
 void	createOutput() {
 	struct stat tStat;
 
@@ -131,6 +138,66 @@ void	createOutput() {
 			exit(1);
 		}
 	}
+}
+
+void	createMeasLogList() {
+
+	FILE *cacheFile = nullptr;
+	if ( !((cacheFile  = fopen("./measfile.dat", "r")) == nullptr) ){
+		printf("[cmll] Error: measfile.dat found. Rename, delete and rerun this generator.\n");
+		exit(0);
+	}
+
+		/* calculates logif */
+		double logf  ;
+		double z0 = 0.0;
+		double fr = 1/((double) dump);
+
+		switch(lType)
+		{
+			case LAMBDA_FIXED:
+				logf = log(msa*zFinl*zFinl*sizeN/sizeL);
+			break;
+			default:
+			case LAMBDA_Z2:
+				logf = log(msa*zFinl*sizeN/sizeL);
+			break;
+		}
+
+		if (uZin)
+			z0 = zInit;
+		printf("[cmll] Generates a measfile.dat file with log-spaced measurements and the default measure.\n");
+		printf("[cmll] Starts at logi = zi = %f (uses zi as logi=kappa as in vilgor ICs)  \n",zInit);
+		printf("[cmll] Ends at logf = log(msa*zi**/delta) = %f \n",logf);
+		printf("[cmll] Warning: Uses --dump %d as number of measurements per log10 interval \n",dump);
+
+		//-output txt file
+
+		FILE *file_te ;
+		file_te = NULL;
+		file_te = fopen("./measfile.dat","w+");
+
+		double zas;
+		printf("logi | z | meastype \n");
+		for (double lo = z0; lo<logf; lo += fr){
+			zas = exp(lo)*sizeL/sizeN/msa;
+			if (lType == LAMBDA_FIXED)
+				zas = sqrt(zas);
+
+			printf("%f %f %d\n",lo, zas,static_cast<int>(defaultmeasType));
+			fprintf(file_te,"%f %d\n",zas, static_cast<int>(defaultmeasType));
+		}
+		/* last measurement */
+		if (zas != zFinl){
+			printf("%f %f %d\n",logf, zFinl,static_cast<int>(defaultmeasType));
+			fprintf(file_te,"%f %d\n",zFinl, static_cast<int>(defaultmeasType));
+		}
+
+
+		fclose(file_te);
+		printf("[cmll] measfile.dat generated. Run vaxion3d at your leisure.");
+		exit(0);
+
 }
 
 void	PrintUsage(char *name)
@@ -258,7 +325,7 @@ void	PrintMEoptions()
 {
 	printf("\nOptions for Measurement\n\n");
 
-	printf("--meas [int]                	Sum of integers.\n\n");
+	printf("--meas [int]                Sum of integers.\n\n");
 
 	printf("--------------------------------------------------\n");
 	printf("  BINs\n");
@@ -288,11 +355,14 @@ void	PrintMEoptions()
 	printf("  NUMBER SPECTRA (binned) \n");
 	printf("  Axion Number spectrum (K+G+V)        65536 \n");
 	printf("  Saxion Number spectrum (K+G+V)      131072 \n\n");
-  printf("  --spmask [int]              Sum of below integers\n");
+  printf("  --spmask [int]            Sum of integers.\n");
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
-
+	printf("    Red-Gauss                              8 \n");
+	printf("  --rmask [float]                          radius in grid u. [default = 2]\n");
+	printf("--------------------------------------------------\n");
+	printf("--measlistlog              Gen measfile log.\n\n");
 	return;
 }
 
@@ -694,24 +764,22 @@ int	parseArgs (int argc, char *argv[])
 				endredmap = atof(argv[i+1]);
 			}
 
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
-			// if ((endredmap == sizeN))
-			// {
-			// 	printf("Warning: reducedN == sizeN, Gaussian filtering at most\n");
-			// }
-			//
-			// if (endredmap < 0)
-			// {
-			// 	printf("Error: reducedN should be in the interval [0 < size]. Set to 256\n");
-			// 	endredmap = 256	;
-			// }
-			//
-			// if ((endredmap > sizeN))
-			// {
-			// 	printf("Error: reducedN should be in the interval [0 < size]. Set to sizeN\n");
-			// 	endredmap = sizeN	;
-			// }
-
+		if (!strcmp(argv[i], "--redmpwkb"))
+		{
+			if (i+1 == argc)
+			{
+				endredmapwkb = 256 ;
+				printf("No new sizeN input for final reducemap (wkb). Set to default = 256\n");
+			}
+			else{
+				endredmapwkb = atof(argv[i+1]);
+			}
 
 			i++;
 			procArgs++;
@@ -1161,6 +1229,22 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--rmask"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a radius for string masking!\n");
+				exit(1);
+			}
+
+			rmask = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--name"))
 		{
 			if (i+1 == argc)
@@ -1549,6 +1633,16 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--measlistlog"))
+		{
+			CreateLogMeas = true;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		//JAVIER added gradient
 		if (!strcmp(argv[i], "--lapla"))
 		{
@@ -1617,8 +1711,8 @@ int	parseArgs (int argc, char *argv[])
 
 	if (zrestore < zthres) {
 		printf("Warning: zrestore = %f < zthres %f. Switch-off disabled.\n", zrestore, zthres);
-		zthres = 100.;
-		zrestore = 100.;
+		zthres = 1.e+20;
+		zrestore = 1.e+20;
 	}
 
 	/* make sure that endredmap makes sense */
@@ -1677,6 +1771,9 @@ int	parseArgs (int argc, char *argv[])
 			printf("and deleted!\n ");
 	}
 
+	/*	Create measfile.dat if required	*/
+	if (CreateLogMeas)
+		createMeasLogList();
 
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;

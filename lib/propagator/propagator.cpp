@@ -14,15 +14,15 @@
 std::unique_ptr<PropBase> prop;
 
 template<VqcdType pot>
-class	PropLeap : public PropClass<1, true, pot> {
+class	PropLeap : public PropClass<2, true, pot> {
 
 	public:
 		PropLeap(Scalar *field, const bool spec) :
-		PropClass<1, true, pot>(field, spec) {
+		PropClass<2, true, pot>(field, spec) {
 		//	Set up Leapfrog parameters
 
-		double nC[2] = { 0.5, 0.5 };
-		double nD[1] = { 1.0 };
+		double nC[3] = { 0.5, 0.5, 0.0 };
+		double nD[2] = { 1.0, 0.0 };
 
 		this->setCoeff(nC, nD);
 

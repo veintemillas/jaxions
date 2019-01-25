@@ -41,10 +41,18 @@ def findmfiles(address='./'):
     for filename in glob.iglob(address+'**/axion.m.*', recursive=True):
           list.append(filename)
           #print(filename)
+    return np.array(sorted(list)) ;
+
+
+
+#   finds all XXXXX.m.XXXXX files with a exactly specified neme and address
+
+def findnamedmfilesexact(name='./axion'):
+    list = []
+    for filename in glob.iglob(name+'.m.*', recursive=True):
+          list.append(filename)
+          #print(filename)
     return sorted(list) ;
-
-
-
 
 
 
@@ -129,6 +137,12 @@ def aximcontent(address='./'):
 
 #   main function to extract data from axion.m.XXXXX files by concept
 #
+
+def gml(list,something='z'):
+    out=[]
+    for f in list:
+        out.append(gm(f,something))
+    return np.array(out)
 
 def gm(address,something='summary',printerror=False):
 
@@ -337,6 +351,11 @@ def gm(address,something='summary',printerror=False):
             ct = f.attrs[u'z']
             delta = L/N
             return  (delta/6)*stringN*ct*ct/(L**3) ;
+        if (something == 'stnN3'):
+            stringN = f['string'].attrs[u'String number']
+            N = f.attrs[u'Size']
+            return  stringN/N**3 ;
+
         if (something == 'stringCoord') and ('string/coords' in f):
             size = f['string/coords'].size
             # return np.reshape(f['string/coords'],(size,3)) ;
@@ -480,13 +499,24 @@ def gm(address,something='summary',printerror=False):
 
     # number spectra
 
-    nsp_check = ('nSpectrum/sK' in f) or ('nSpectrum/sKVi' in f)
+    nsp_check = ('nSpectrum/sK' in f) or ('nSpectrum/sKVi' in f) or ('nSpectrum/sK_Vi' in f) or ('nSpectrum/sK_Vi2' in f) or ('nSpectrum/sK_Red' in f)
 
     if (something == 'nsp?') :
         return nsp_check
+    if (something == 'nspK?') :
+        return nsp_check
+    if (something == 'nspK_Vi?') :
+        return ('nSpectrum/sK_Vi' in f)
+    if (something == 'nspK_Vi2?') :
+        return ('nSpectrum/sK_Vi2' in f)
+    if (something == 'nsp_Red?') :
+        return ('nSpectrum/sK_Red' in f)
 
     if (something == 'nspG?') :
         return 'nSpectrum/sG' in f
+
+    if (something == 'nspV?') :
+        return 'nSpectrum/sV' in f
 
     if (something[0:3] == 'nsp') and not nsp_check :
         if printerror :
@@ -497,13 +527,20 @@ def gm(address,something='summary',printerror=False):
             powmax = f['nSpectrum/sK/data/'].size
         if ('nSpectrum/sKVi' in f):
             powmax = f['nSpectrum/sKVi/data/'].size
+        if ('nSpectrum/sK_Vi' in f):
+            powmax = f['nSpectrum/sK_Vi/data/'].size
+        if ('nSpectrum/sK_Vi2' in f):
+            powmax = f['nSpectrum/sK_Vi2/data/'].size
+        if ('nSpectrum/sK_Red' in f):
+            powmax = f['nSpectrum/sK_Red/data/'].size
+
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
         if ftype == 'Axion':
-            if (something == 'nspK'):
+            if (something[:4] == 'nspK'):
                 return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
-            if (something == 'nspG'):
+            if (something[:4] == 'nspG'):
                 return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-            if (something == 'nspV'):
+            if (something[:4] == 'nspV'):
                 return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
             if (something == 'nsp'):
                 spec = np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
@@ -540,6 +577,29 @@ def gm(address,something='summary',printerror=False):
             if (something == 'nspGIm') and ('nSpectrum/sGIm' in f):
                 return np.reshape(f['nSpectrum/sGIm/data/'],(powmax)) ;
 
+
+            if (something == 'nspK_Red') and ('nSpectrum/sK_Red' in f):
+                return np.reshape(f['nSpectrum/sK_Red/data/'],(powmax)) ;
+            if (something == 'nspG_Red') and ('nSpectrum/sG_Red' in f):
+                return np.reshape(f['nSpectrum/sG_Red/data/'],(powmax)) ;
+
+            if (something == 'nspK_Vi') and ('nSpectrum/sK_Vi' in f):
+                return np.reshape(f['nSpectrum/sK_Vi/data/'],(powmax)) ;
+            if (something == 'nspG_Vi') and ('nSpectrum/sG_Vi' in f):
+                return np.reshape(f['nSpectrum/sG_Vi/data/'],(powmax)) ;
+            if (something == 'nspK_Vi2') and ('nSpectrum/sK_Vi2' in f):
+                return np.reshape(f['nSpectrum/sK_Vi2/data/'],(powmax)) ;
+            if (something == 'nspG_Vi2') and ('nSpectrum/sG_Vi2' in f):
+                return np.reshape(f['nSpectrum/sG_Vi2/data/'],(powmax)) ;
+            if (something == 'nspK_Re') and ('nSpectrum/sK_Re' in f):
+                return np.reshape(f['nSpectrum/sK_Re/data/'],(powmax)) ;
+            if (something == 'nspK_Im') and ('nSpectrum/sK_Im' in f):
+                return np.reshape(f['nSpectrum/sK_Im/data/'],(powmax)) ;
+            if (something == 'nspG_Re') and ('nSpectrum/sG_Re' in f):
+                return np.reshape(f['nSpectrum/sG_Re/data/'],(powmax)) ;
+            if (something == 'nspG_Im') and ('nSpectrum/sG_Im' in f):
+                return np.reshape(f['nSpectrum/sG_Im/data/'],(powmax)) ;
+
     # ssp_check = 'nSpectrum/ssK' in f
     ssp_check = 'nSpectrum/sKS' in f
 
@@ -564,20 +624,69 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nmodelist') and ('nSpectrum/nmodes' in f):
         return np.array(f['nSpectrum/nmodes/data'])
 
+    if (something == 'aveklist') and ('nSpectrum/averagek' in f):
+        return np.array(f['nSpectrum/averagek/data'])
+
+    # mask spectra
+    msp_check = 'mSpectrum' in f
+
+    if (something == 'msp?') :
+        return msp_check
+
+    if (something[0:3] == 'msp') and not msp_check :
+        if printerror :
+            print('[gm] Warning: No mSpec in file!!! ')
+        return ;
+
+    if (something == 'mspW0') and  msp_check and ('mSpectrum/W0' in f) :
+        return np.array(f['mSpectrum/W0/data/']) ;
+    if (something == 'mspW_Red') and  msp_check and ('mSpectrum/W_Red' in f):
+        return np.array(f['mSpectrum/W_Red/data/']) ;
+    if (something == 'mspW_Vi') and  msp_check and ('mSpectrum/W_Vi' in f):
+        return np.array(f['mSpectrum/W_Vi/data/']) ;
+
+    if (something == 'mspM_Red') and  msp_check and ('mSpectrum/M_Red' in f):
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        kmax = gm(address,'kmax')
+        return np.reshape(np.array(f['mSpectrum/M_Red/data/']),(kmax,kmax)) ;
+
+    if (something == 'mspM_Vi') and  msp_check and ('mSpectrum/M_Vi' in f):
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        kmax = gm(address,'kmax')
+        return np.reshape(np.array(f['mSpectrum/M_Vi/data/']),(kmax,kmax)) ;
+    if (something == 'mspM_Vi2') and  msp_check and ('mSpectrum/M_Vi2' in f):
+        # powmax = f['mSpectrum/W/data/'].size
+        # if (something == 'msp'):
+        kmax = gm(address,'kmax')
+        return np.reshape(np.array(f['mSpectrum/M_Vi2/data/']),(kmax,kmax)) ;
+
     # power spectra
     psp_check = 'pSpectrum' in f
 
     if (something == 'psp?') :
         return psp_check
 
+    if (something == 'pspMA?') :
+        return 'pSpectrum/sPmasked' in f
+
+    if (something == 'pspMA2?') :
+        return 'pSpectrum/sPmasked2' in f
+
     if (something[0:3] == 'psp') and not psp_check :
         if printerror :
             print('[gm] Warning: No pSpec in file. ')
         return ;
     if (something[0:3] == 'psp') and  psp_check :
-        powmax = f['pSpectrum/sP/data/'].size
-        if (something == 'psp'):
-            return np.reshape(f['pSpectrum/sP/data/'],(powmax)) ;
+        if (something == 'psp') and 'pSpectrum/sP' in f:
+            return np.array(f['pSpectrum/sP/data/']) ;
+
+        if (something == 'pspMA') and 'pSpectrum/sPmasked' in f:
+            return np.array(f['pSpectrum/sPmasked/data/']) ;
+
+        if (something == 'pspMA2') and 'pSpectrum/sPmasked2' in f:
+            return np.array(f['pSpectrum/sPmasked2/data/']) ;
 
     # maps
     map_check = 'map' in f
@@ -614,6 +723,11 @@ def gm(address,something='summary',printerror=False):
             temp = np.array(f['map']['m'].value.reshape(N,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
+
+        if (something == 'mapE'):
+            if 'map/E' in f:
+                return np.array(f['map']['E'].value.reshape(N,N)) ;
+
 
         if (something == 'mapEdens') and (ftype == 'Axion'):
             theta = np.array(f['map']['m'].value.reshape(N,N))/scaleFactorR
@@ -745,6 +859,197 @@ def gm(address,something='summary',printerror=False):
 
     print('Argument %s not recognised/found!'%(something))
     return ;
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
+#   utilities
+# ------------------------------------------------------------------------------
+
+
+
+
+
+
+def meas2human(inte):
+    sa=[]
+    for n in range(0,40):
+        s=int(2**n)
+        if (inte & s):
+            if (inv_measdic[s] != "MEAS_EMPTY"):
+                sa.append(s)
+                print(s, inv_measdic[s])
+    return sa
+
+
+
+
+
+
+measdic = { "MEAS_NOTHING" : 0,
+"MEAS_BINTHETA"     : 1,
+"MEAS_BINRHO"       : 2,
+"MEAS_BINLOGTHETA2" : 4,
+"MEAS_BINDELTA"     : 8,
+"MEAS_EMPTY"        : 16,
+"MEAS_STRING"	    : 32,
+"MEAS_STRINGMAP"    : 64,
+"MEAS_STRINGCOO"    : 128,
+"MEAS_ENERGY"       : 256,
+"MEAS_ENERGY3DMAP"  : 512,
+"MEAS_REDENE3DMAP"  : 1024,
+"MEAS_2DMAP"        : 2048,
+"MEAS_3DMAP"        : 4096,
+"MEAS_MASK"         : 8192,
+"MEAS_PSP_A"        : 16384,
+"MEAS_PSP_S"        : 32768,
+"MEAS_NSP_A"        : 65536,
+"MEAS_NSP_S"        : 131072,
+"MEAS_NNSPEC"       : 262144,
+          }
+inv_measdic = {v: k for k, v in measdic.items()}
+
+
+
+
+
+
+
+
+# build a measurement list
+class mli:
+    def __init__(self,msa=1.0,L=6.0,N=1024):
+        self.mtab = [] ;
+        self.ctab = [] ;
+        self.me = 0;
+        self.msa = msa;
+        self.L = L;
+        self.N = 1024;
+        self.ctend = 1000;
+        self.outa = []
+        self.outb = []
+
+    def dic (self):
+        return measdic
+    def nmt (self):
+        self.me = 0
+    def me_add (self, meas):
+        self.me |= meas
+    def me_adds (self, meass):
+        self.me |= measdic[fildic(meass)]
+        print("adds %s (%d) > me %d"%(fildic(meass), measdic[fildic(meass)],self.me))
+
+    #caca
+    def nmt_rem (self,meas):
+        self.me -= meas2human(meas)
+    def nmt_prt (self):
+        meas2human(self.me)
+    # def nmt_prt (self,meas):
+    #     pa.meas2human(meas)
+
+    def addset (self,measN, zi, zf, meastype=0, scale='lin'):
+        if scale=='lin':
+            self.ctab.append(np.linspace(zi,zf,measN))
+        if scale=='logi':
+            temp = np.linspace(zi,zf,measN)
+            # logi = log (msa ct/a)
+            # ct = a exp(temp)*a/msa
+            self.ctab.append(np.exp(temp)*self.L/self.N/self.msa)
+        self.mtab.append(meastype | self.me)
+        print("Set with me %s created"%(meastype | self.me))
+    def give(self,name="./measfile.dat"):
+        outa = [a for a in self.ctab[0]]
+        outb = [self.mtab[0] for a in self.ctab[0]]
+#         print(outa)
+        print("Printing sets with measures: ",self.mtab)
+        outa = []
+        outb = []
+
+        for imt in range(len(self.mtab)):
+            outa += [t for t in list(self.ctab[imt])]
+            outb += [self.mtab[imt] for t in list(self.ctab[imt])]
+
+        outa=np.array(outa)
+        outb=np.array(outb)
+        self.outa = sorted(list(set(outa)))
+        # print(set(outa))
+        # print(self.outa)
+
+        for ct in self.outa:
+            mask = (outa == ct)
+            if sum(mask)>1:
+                ii=0
+                print("%f merged "%(ct),end="")
+                for ca in outb[mask]:
+                    ii |= ca
+                    print("%d "%(ca),end="")
+                print(" into %d "%(ii))
+                self.outb.append(ii)
+            else :
+                ii = outb[mask][0]
+                self.outb.append(ii)
+            # print("%f %d"%(ct,ii))
+
+        cap = []
+        file = open(name,"w")
+        print(self.outa)
+        for i in range(len(self.outa)):
+            if self.outa[i] <= self.ctend :
+                print("%f %d"%(self.outa[i],self.outb[i]))
+                file.write("%f %d\n"%(self.outa[i],self.outb[i]))
+                cap.append([self.outa[i],self.outb[i]])
+        file.close()
+
+
+        return cap
+
+
+
+
+
+
+
+def fildic(meas):
+    if (meas in ['MEAS_BINTHETA','BINTHETA','bin theta','bintheta','thetabin','tbin']):
+        return 'MEAS_BINTHETA'
+    if (meas in ['MEAS_BINRHO','BINRHO','bin rho','binrho','rhobin','rbin']):
+        return 'MEAS_BINRHO'
+    if (meas in ['MEAS_BINLOGTHETA2','BINLOGTHETA2','bin logtheta2','bin logtheta','binlogtheta','ltbin']):
+        return 'MEAS_BINLOGTHETA2'
+    if (meas in ['MEAS_BINDELTA','BINDELTA','bin delta','bindelta','bin contrast','delta bin','conbin','deltabin']):
+        return 'MEAS_BINDELTA'
+    if (meas in ['MEAS_STRING','STRING','string','str','string density','string number','string plaquetes']):
+        return 'MEAS_STRING'
+    if (meas in ['MEAS_STRINGMAP','STRINGMAP','string map','str map','string 3D map']):
+        return 'MEAS_STRINGMAP'
+    if (meas in ['MEAS_STRINGCOO','STRINGCOO','string coordinates','strco','string coordinate list']):
+        return 'MEAS_STRINGCOO'
+    if (meas in ['MEAS_ENERGY','ENERGY','energy']):
+        return 'MEAS_ENERGY'
+    if (meas in ['MEAS_ENERGY3DMAP','ENERGY3DMAP','energy 3D map']):
+        return 'MEAS_ENERGY3DMAP'
+    if (meas in ['reduced energy 3D map','reduced energy map','redensity']):
+        return 'MEAS_REDENE3DMAP'
+    if (meas in ['MEAS_2DMAP','2DMAP','map 2D','plot2D','slice']):
+        return 'MEAS_2DMAP'
+    if (meas in ['MEAS_3DMAP','3DMAP','map 3D','plot3D','configuration 3D','full configuration 3D']):
+        return 'MEAS_3DMAP'
+    if (meas in ['MEAS_MASK','MASK','spectrum mask','mask']):
+        return 'MEAS_MASK'
+    if (meas in ['MEAS_PSP_A','PSP_A','energy power spectrum','energy power spectrum axion','psp','pspa','power spectrum']):
+        return 'MEAS_PSP_A'
+    if (meas in ['MEAS_NSP_A','NSP_A','axion spectrum','nspa']):
+        return 'MEAS_NSP_A'
+    if (meas in ['MEAS_NSP_S','NSP_S','Saxion spectrum','nspS']):
+        return 'MEAS_NSP_S'
+
+
+
+
 
 
 
@@ -1669,9 +1974,11 @@ def axevS(address='./sample.txt'):
     else :
         return ;
 
+def xit(logi):
+    return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)
 
-
-
+def xitt(logi):
+    return 0.21738*np.log(1 + 0.1564394*np.exp(logi))
 
 
 #   qt plot!

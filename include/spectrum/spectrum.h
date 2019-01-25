@@ -19,6 +19,8 @@
 		std::vector<double>	binV;
 		std::vector<double>	binP;
 		std::vector<double>	binPS;
+		std::vector<double>	binNN;
+		std::vector<double>	binAK;
 
 		std::vector<double>	cosTable;
 		std::vector<double>	cosTable2;
@@ -110,19 +112,22 @@
 		void	fillBins	();
 
 		template<typename cFloat>
-		void	filterFFT	(int neigh);
+		void	filterFFT	(double neigh);
 
 		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
 		void	nSRun		();
 		void	pRun		();
 		void	nmodRun		();
+		void	avekRun		();
+		void  wRun(SpectrumMaskType mask);
 
 		template<typename Float, SpectrumMaskType mask>
 		void	nRun		();
 
+		template<typename Float, SpectrumMaskType mask>
+		void	wRun		();
 
-
-		void	filter	(int neigh);
+		void	filter	(size_t neigh);
 
 		void	reset0(){
 				LogMsg(VERB_NORMAL,"Reset SpecAna Bins to zero");
@@ -132,6 +137,17 @@
 				binP.assign(powMax, 0.);
 				binPS.assign(powMax, 0.);
 		}
+
+		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO);
+
+		template<typename Float, SpectrumMaskType mask>
+		void	masker	(double radius_mask);
+
+		void	matrixbuilder	();
+
+		template<typename Float>
+		void	matrixbuilder	();
+
 	};
 
 
@@ -162,6 +178,15 @@
 			case	SPECTRUM_PS:
 				return binPS[idx];
 				break;
+
+			case	SPECTRUM_NN:
+				return binNN[idx];
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK[idx];
+				break;
+
 
 			default:
 				return	0.0;
@@ -194,6 +219,14 @@
 				return binPS[idx];
 				break;
 
+			case	SPECTRUM_NN:
+				return binNN[idx];
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK[idx];
+				break;
+
 			default:
 				LogError ("Undefined spectrum requested.");
 				return	binK[0];
@@ -223,8 +256,15 @@
 				break;
 
 			case	SPECTRUM_PS:
-			case	SPECTRUM_NN:
 				return binPS.data();
+				break;
+
+			case	SPECTRUM_NN:
+				return binNN.data();
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK.data();
 				break;
 
 			default:
@@ -255,8 +295,15 @@
 				break;
 
 			case	SPECTRUM_PS:
-			case	SPECTRUM_NN:
 				return binPS.data();
+				break;
+
+			case	SPECTRUM_NN:
+				return binNN.data();
+				break;
+
+			case	SPECTRUM_AK:
+				return binAK.data();
 				break;
 
 			default:

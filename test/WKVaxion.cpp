@@ -69,6 +69,14 @@ int	main (int argc, char *argv[])
 	}
 	LogOut ("\n");
 
+	if (axion->Field() != FIELD_AXION)
+	{
+		LogOut ("Error: WKV only works in axion mode\n");
+		exit (0);
+	}
+	LogOut ("\n");
+
+
 	double z_now = (*axion->zV())	;
 	LogOut("--------------------------------------------------\n");
 	LogOut("           INITIAL CONDITIONS                     \n\n");
@@ -93,19 +101,32 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	//       MEASUREMENT
 	//--------------------------------------------------
-
+	//- Measurement
+	MeasData lm;
+	//- number of plaquetes pierced by strings
+	lm.str.strDen = 0 ;
+	//- Info to measurement
 	MeasInfo ninfa;
 	//- information needs to be passed onto measurement files
 	ninfa.sliceprint = sliceprint;
 	ninfa.idxprint = 0 ;
 	ninfa.index = fIndex;
-	ninfa.measdata = MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP | MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM;
+	ninfa.redmap = endredmap;
 
-	//--------------------------------------------------
+	// default measurement type is parsed
+	ninfa.measdata = defaultmeasType;
+	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
+
+		//--------------------------------------------------
 	//       WKB
 	//--------------------------------------------------
 
-
+	// LogOut ("creating new axion2 ... FIELD_TYPE(%d) ", FIELD_WKB );
+	// Scalar *axion2;
+	// axion2 = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
+	// LogOut ("done !\n");
+	// WKB wonka(axion, axion2);
 
 	if (zFinl < z_now)
 		zFinl = z_now	;
@@ -116,7 +137,8 @@ int	main (int argc, char *argv[])
 	{
 		ninfa.index++;
 
-		Measureme (axion, ninfa);
+		ninfa.measdata = defaultmeasType;
+		lm = Measureme (axion, ninfa);
 
 		double zco = z_now + i*(zFinl-z_now)/nSteps	;
 		{
@@ -127,6 +149,7 @@ int	main (int argc, char *argv[])
 		}
 
 	}
+
 	//--------------------------------------------------
 	//       SAVE DATA
 	//--------------------------------------------------

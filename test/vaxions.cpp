@@ -136,10 +136,12 @@ int	main (int argc, char *argv[])
 	ninfa.sliceprint = sliceprint;
 	ninfa.idxprint = 0 ;
 	ninfa.index = 0;
+	ninfa.redmap = endredmap;
 
 	// default measurement type is parsed
 	ninfa.measdata = defaultmeasType;
 	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
@@ -165,21 +167,22 @@ int	main (int argc, char *argv[])
 				LogOut("Measurement list : \n");
 
 				dumpmode = DUMP_FROMLIST;
-				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list\n");
-				do {
-					fscanf (cacheFile ,"%lf %d\n", &mesi, &meastype);
+				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list");
+				fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+				while(!feof(cacheFile)){
 					if (meastype < 0)
 						meastype = defaultmeasType;
 					if (mesi < *axion->zV()){
-						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED\n");
+						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED");
 					}
 					else {
 						meas_zlist.push_back(mesi);
 						meas_typelist.push_back(meastype);
-						LogMsg(VERB_NORMAL,"[VAX] read z=%f meas=%d\n", meas_zlist[i_meas], meas_typelist[i_meas]);
+						LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
 						i_meas++ ;
 					}
-				}	while(!feof(cacheFile));
+					fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+				}
 				LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
 				zFinl = meas_zlist[meas_zlist.size()-1];
 				LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
@@ -230,7 +233,7 @@ int	main (int argc, char *argv[])
 
 
 	if (!restart_flag && (fIndex == -1)){
-		index = 0;
+		index = fIndex2;
 		LogOut("First measurement file %d \n",index);
 		ninfa.index=index;
 		if (prinoconfo & PRINTCONF_INITIAL)
@@ -246,8 +249,14 @@ int	main (int argc, char *argv[])
 		LogOut("First measurement from read file %d \n",index);
 		ninfa.index=index;
 		lm = Measureme (axion, ninfa);
+
 	}
+
 	index++;
+	if (*axion->zV() == meas_zlist[i_meas])
+			i_meas++;
+
+
 
 	//--------------------------------------------------
 	// TIME ITERATION LOOP
@@ -281,7 +290,11 @@ int	main (int argc, char *argv[])
 					dzaux = meas_zlist[i_meas] - (*axion->zV());
 					measrightnow = true;
 					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
-
+					defaultmeasType = ninfa.measdata;
+					// actually, if this is the last measurement, do not measure!
+					if ( (i_meas == meas_zlist.size()-1) ){
+						measrightnow = false;
+					}
 				}
 				break;
 			}
@@ -328,6 +341,7 @@ int	main (int argc, char *argv[])
 							// Measurement before switching to theta
 							// customize?
 							ninfa.index=index;
+							ninfa.measdata = rho2thetameasType;
 							lm = Measureme (axion, ninfa);
 							index++;
 
@@ -349,24 +363,27 @@ int	main (int argc, char *argv[])
 					}
 			}
 
+			// Break the loop when we are done
+			if ( (*axion->zV()) >= zFinl ){
+				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
+				break;
+			}
+
 			// Partial analysis
 			if(measrightnow){
+
 				ninfa.index=index;
+				// in case theta transitioned, the meas was saved as the default
+				ninfa.measdata = defaultmeasType;
 				lm = Measureme (axion, ninfa);
 				index++;
 				i_meas++ ;
 				//reset flag
 				measrightnow = false;
-
 				// after every measurement we check walltime > need update
 				checkTime(axion, index);
 			}
 
-			// Break the loop when we are done
-			if ((*axion->zV()) > zFinl){
-				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
-				break;
-			}
 
 	} // time loop's over
 
@@ -377,29 +394,26 @@ int	main (int argc, char *argv[])
 	fflush(stdout);
 
 	LogOut ("Final measurement file is: %05d \n", index);
-	munge(UNFOLD_ALL);
 
 	//index++	; // LAST MEASUREMENT IS NOT PRINTED INSIDE THE LOOP, IT IS DONE HERE INSTEAD
 	// migth be a problem here... double measurement?
 
+	MeasureType mesa = defaultmeasType;
+
+	if ((prinoconfo & PRINTCONF_FINAL) ) {
+		mesa = mesa | MEAS_3DMAP  ;
+	}
+	if (pconfinal)
+		mesa = mesa | MEAS_ENERGY3DMAP ;
+
+	if ( endredmap > 0)
+		mesa = mesa | MEAS_REDENE3DMAP ;
+	ninfa.index=index;
+	ninfa.measdata=mesa;
+	Measureme (axion, ninfa);
+
 	if (axion->Field() == FIELD_AXION)
 	{
-		MeasureType mesa = defaultmeasType;
-
-		if ((prinoconfo & PRINTCONF_FINAL) && (wkb2z < 0)) {
-			LogOut ("Will dump final configuration %05d ...", index);
-			mesa = mesa | MEAS_3DMAP  ;
-		}
-		if (pconfinal)
-			mesa = mesa | MEAS_ENERGY3DMAP ;
-
-		if ( endredmap > 0)
-			mesa = mesa | MEAS_REDENE3DMAP ;
-		ninfa.index=index;
-		ninfa.measdata=mesa;
-		Measureme (axion, ninfa);
-
-
 		//--------------------------------------------------
 		// FINAL WKB
 		//--------------------------------------------------
@@ -414,10 +428,10 @@ int	main (int argc, char *argv[])
 
 			index++;
 
+			/* last measurement after WKB */
 			MeasureType mesa = defaultmeasType;
-			// MeasureType mesa = MEAS_2DMAP | MEAS_ALLBIN | MEAS_SPECTRUM | MEAS_ENERGY;
 
-			if (prinoconfo & PRINTCONF_FINAL) {
+			if (prinoconfo & PRINTCONF_WKB) {
 				LogOut ("Dumping final WKBed configuration %05d ...", index);
 				mesa = mesa | MEAS_3DMAP  ;
 			}
@@ -426,22 +440,20 @@ int	main (int argc, char *argv[])
 				mesa = mesa | MEAS_ENERGY3DMAP ;
 			// 	writeEDens(axion);
 
-			if ( endredmap > 0)
+			if ( endredmap > 0 )
 				mesa = mesa | MEAS_REDENE3DMAP ;
+
+			if ( endredmapwkb > 0 ){
+				mesa = mesa | MEAS_REDENE3DMAP ;
+				ninfa.redmap=endredmapwkb;
+			}
 
 			ninfa.index=index;
 			ninfa.measdata=mesa;
 			Measureme (axion, ninfa);
 		}
 	}
-	else
-	{
-		if ((prinoconfo >= 2)) {
-			LogOut ("Dumping final Saxion onfiguration %05d ...", index);
-			writeConf(axion, index);
-			LogOut ("Done!\n");
-		}
-	}
+
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);
 	LogOut("#_prints = %i\n", index);
@@ -644,57 +656,3 @@ void printposter(Scalar *axion)
 		LogOut("Massless axion!!!\n\n");
 	}
 }
-
-
-// void printposter(Scalar *axion)
-// {
-// 	LogOut("--------------------------------------------------\n");
-// 	LogOut("           PARAMETERS  						                \n\n");
-// 	LogOut("Length =  %2.2f\n", axion->BckGnd()->PhysSize());
-// 	LogOut("nQCD   =  %2.2f\n", axion->BckGnd()->QcdExp());
-// 	LogOut("indi3  =  %2.2f\n", axion->BckGnd()->Indi3());
-//
-// 	if (axion->BckGnd()->ZRestore() > axion->BckGnd()->ZThRes())
-// 		LogOut("       =  0 in (%3.3f, %3.3f)   \n", axion->BckGnd()->ZThRes(), axion->BckGnd()->ZRestore());
-//
-// 	LogOut("N      =  %ld\n",   axion->Length());
-// 	LogOut("Nz     =  %ld\n",   axion->Depth());
-// 	LogOut("zGrid  =  %ld\n",   zGrid);
-// 	LogOut("dx     =  %2.5f\n", axion->Delta());
-// 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
-//
-// 	if (LAMBDA_FIXED == axion->Lambda()){
-// 		LogOut("LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", axion->BckGnd()->Lambda(),
-// 		sqrt(2.0 * axion->BckGnd()->Lambda())*zInit*axion->Delta(),sqrt(2.0 * axion->BckGnd()->Lambda())*3*axion->Delta());
-// 	}
-// 	else
-// 		LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%.2f \n\n", axion->BckGnd()->Lambda(), axion->Msa());
-//
-// 	if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1)
-// 		LogOut("VQCD1PQ1,shift,continuous theta  \n\n");
-// 	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_2)
-// 		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
-// 	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
-// 		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
-// 	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1N2)
-// 		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
-//
-// 	LogOut("Vqcd flag %d\n", axion->BckGnd()->QcdPot());
-// 	LogOut("Damping %d gam = %f\n", axion->BckGnd()->QcdPot() & VQCD_DAMP, axion->BckGnd()->Gamma());
-// 	LogOut("--------------------------------------------------\n\n");
-// 	LogOut("           ESTIMATES\n\n");
-//
-// 	double 	z_doom2 = findzdoom(axion);
-//
-// 	if (axion->BckGnd()->Indi3()>0.0){
-// 	// if (myCosmos.Indi3()>0.0 && coSwitch2theta ){
-//
-// 	double z_axiq = pow(1.00/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
-// 	double z_NR   = pow(3.46/axion->Delta(), 2./(axion->BckGnd()->QcdExp()+2.));
-// 	LogOut("mA^2/mS^2 = 1/40  at ctime %lf \n", z_doom2);
-// 	LogOut("mA^2 = mS^2       at ctime %lf \n", z_axiq);
-// 	LogOut("Fastest axions NR at ctime %lf \n", z_NR);
-// 	;}
-// 	LogOut("--------------------------------------------------\n\n");
-//
-// }

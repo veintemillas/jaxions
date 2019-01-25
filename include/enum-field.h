@@ -229,6 +229,10 @@
 			PROF_HDF5,
 			PROF_REDUCER,
 			PROF_PROJECTOR,
+			PROF_SPECTRUM_FILLBINS,
+			PROF_SPECTRUM_NRUNLOOP,
+			PROF_SPECTRUM_FFTM2,
+			PROF_MEAS,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -244,6 +248,7 @@
 			PRINTCONF_NONE    = 0,
 			PRINTCONF_INITIAL = 1,
 			PRINTCONF_FINAL   = 2,
+			PRINTCONF_WKB   	= 4,
 			PRINTCONF_BOTH    = 3,
 		}	PrintConf;
 
@@ -310,16 +315,22 @@
 			SPECTRUM_KS	= 65,
 			SPECTRUM_GS	= 66,
 			SPECTRUM_VS	= 68,
-			SPECTRUM_GVS    = 70,
+			SPECTRUM_GVS= 70,
 			SPECTRUM_PS	= 72,
 			SPECTRUM_NN	= 128,
+			SPECTRUM_AK = 256,
+			SPECTRUM_KK = 512,
+			SPECTRUM_GG = 1024,
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
 			SPMASK_FLAT	= 1,
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
-			SPMASK_SAXI	= 8,
+			SPMASK_REDO	= 8,
+			SPMASK_SAXI	= 16,
+			SPMASK_AXIT	= 32,
+			SPMASK_AXIT2= 64,
 		}	SpectrumMaskType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
@@ -344,17 +355,26 @@
 		}	MapType;
 
 		typedef	enum	StatusM2_s {
-			M2_ENERGY,
-			M2_ENERGY_FFT,
-			M2_STRINGMAP,
-			M2_STRINGCOO,
-			M2_DIRTY,
+			M2_ENERGY      = 0,
+			M2_ENERGY_FFT  = 1,
+			M2_STRINGMAP   = 2,
+			M2_STRINGCOO   = 4,
+			M2_DIRTY       = 8,
+			M2_MASK_TEST   = 16,
+			M2_ENERGY_RED  = 32,
+			M2_ENERGY_AXI  = 64,
+			M2_ENERGY_MASK_AXI_FFT = 128,
+			M2_MASK_AXI2_FFT = 256,
+			M2_MASK        = 512,
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
-			SD_STDWMAP,
-			SD_STRINGCOORD,
-			SD_DIRTY,
+			SD_DIRY        = 0,
+			SD_MAP         = 1,
+			SD_STRINGCOORD = 2,
+			SD_MASK        = 4,
+			SD_MAPMASK     = 5,
+			SD_AXITONMASK  = 6,
 		}	StatusSD;
 
 		// analysis functions to be called inside a measurement
@@ -375,14 +395,17 @@
 			MEAS_REDENE3DMAP  = 1024,
 			MEAS_2DMAP        = 2048,
 			MEAS_3DMAP        = 4096,
-			//                  8192
+
+			MEAS_MASK         = 8192, // experimental
 			MEAS_PSP_A        = 16384,
 			MEAS_PSP_S        = 32768,
 			MEAS_NSP_A        = 65536,
 			MEAS_NSP_S        = 131072,
 			MEAS_NNSPEC       = 262144, 	// number of modes per bin for normalisation purposes
 			// MASK for any spectrum
-			MEAS_SPECTRUM     = 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			// MEAS_SPECTRUM     = 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			MEAS_SPECTRUM     = 516096, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+
 			MEAS_SPECTRUMA    = 81920, 	  // 16384  + 65536  (any of the axion spectra)
 			// MASK for those that require energy
 			MEAS_NEEDENERGY   = 50952,				// 8 + 256 + 512 + 1024 + 16384 + 32768
@@ -398,6 +421,8 @@
 			size_t idxprint	;
 			MeasureType measdata ;
 			SpectrumMaskType mask ;
+			double rmask; 					// a radius to mask
+			int redmap;
 		}	MeasInfo;
 
 		// data output by measurement function to program

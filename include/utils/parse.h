@@ -7,6 +7,7 @@ extern int    zGrid;
 extern int    nSteps;
 extern int    dump;
 extern int    fIndex;
+extern int    fIndex2;
 
 //extern double nQcd;
 //extern double sizeL;
@@ -38,6 +39,7 @@ extern double wkb2z ;
 extern double prepstL;
 extern double prepcoe;
 extern int endredmap ;
+extern int endredmapwkb ;
 extern int safest0 ;
 
 extern char *initFile;
@@ -69,9 +71,11 @@ extern LambdaType     lType;
 //extern VqcdType       vqcdType;
 //extern VqcdType       vqcdTypeDamp;
 //extern VqcdType       vqcdTypeRhoevol;
-extern PropType       pType;
+extern PropType         pType;
 extern SpectrumMaskType spmask;
-extern MeasureType  defaultmeasType;
+extern double           rmask;
+extern MeasureType      defaultmeasType;
+extern MeasureType      rho2thetameasType;
 
 extern LogMpi       logMpi;
 extern bool         debug ;

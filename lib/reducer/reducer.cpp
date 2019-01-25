@@ -185,7 +185,7 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 
 		fY = 0.;
 	}
-}	
+}
 
 template<typename Float>
 Scalar*	Reducer<Float>::runCpu	()
@@ -280,22 +280,44 @@ Scalar*	Reducer<Float>::runCpu	()
 
 		/*	Reduce rho energy as well, needs new FFT		*/
 		if (axionField->Field() == FIELD_SAXION) {
-			if (axionField->m2Status() != M2_ENERGY) {
-				LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
-				return	outField;
+			switch ( axionField->m2Status() ) {
+				case M2_ENERGY:
+					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+					/* if saxion field is required uncomment this */
+					// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
+					// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
+					// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
+				break;
+				case M2_ENERGY_FFT:
+					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx",FFT_NONE);
+					/* if saxion field is required uncomment this */
+					// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
+					// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
+					// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
+				break;
+				default:
+					LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
+					return	outField;
+				break;
 			}
-			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
-			mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
-			mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
-			transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
-		} else {
+			// if (axionField->m2Status() != M2_ENERGY) {
+			// 	LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
+			// 	return	outField;
+			// }
+			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+			// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
+			// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
+			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
+		}
+			else // FIELD_AXION
+		{
 			if ((axionField->m2Status() != M2_ENERGY) && (axionField->m2Status() != M2_ENERGY_FFT)) {
 				LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
 				return	outField;
 			}
 
 			if (axionField->m2Status() == M2_ENERGY_FFT) {
-				LogMsg (VERB_HIGH, "Reusing FFT from previous computation");
+				LogMsg (VERB_NORMAL, "Reusing FFT from previous computation");
 				transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx", FFT_NONE);
 			} else
 				transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
@@ -346,7 +368,7 @@ Scalar*	redField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, s
 	Profiler &prof = getProfiler(PROF_REDUCER);
 
 	std::stringstream ss;
-	ss << "Reduce " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " to " << newLx << "x" << newLx << "x" << newLz*commSize(); 
+	ss << "Reduce " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " to " << newLx << "x" << newLx << "x" << newLz*commSize();
 
 	//size_t oldVol = field->Size();
 
@@ -388,7 +410,7 @@ Scalar*	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType
 		LogError("Error: double precision filter for single precision configuration");
 		return	nullptr;
 	}
-	
+
 	return	redField<float>(field, newLx, newLz, fType, myFilter, isInPlace);
 }
 
@@ -397,6 +419,6 @@ Scalar*	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType
 		LogError("Error: single precision filter for double precision configuration");
 		return	nullptr;
 	}
-	
+
 	return	redField(field, newLx, newLz, fType, myFilter, isInPlace);
 }

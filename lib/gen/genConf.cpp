@@ -13,6 +13,7 @@
 #include "gen/momConf.h"
 #include "gen/randXeon.h"
 #include "gen/smoothXeon.h"
+#include "gen/prepropa.h"
 #include "io/readWrite.h"
 
 #ifdef	USE_GPU
@@ -293,6 +294,7 @@ void	ConfGenerator::runCpu	()
 			// it builds
 			theta2Cmplx	(axionField);
 		}
+		axionField->setFolded(false);
 		break;
 
 		case CONF_KMAX: {
@@ -307,22 +309,37 @@ void	ConfGenerator::runCpu	()
 			normaliseField(axionField, FIELD_M);
 			normCoreField	(axionField);
 		}
+		axionField->setFolded(false);
 		break;
+
 
 		case CONF_VILGOR:
 		case CONF_VILGORK:{
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started! ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");
 
+			double LALA = axionField->BckGnd()->Lambda();
+			if (preprop){
+					axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe);
+					LogOut("[GEN] Mira qe cambio LL %f -> %f\n",LALA,axionField->BckGnd()->Lambda());
+			}
+
+			double msafromLL = sqrt(2*axionField->BckGnd()->Lambda())*axionField->Delta();
+			LogMsg(VERB_NORMAL,"[GEN] msa %f and msa = %f",msafromLL,axionField->Msa());
+
 			// logi = log ms/H is taken to be zInit (which was input in command line)
+			LogMsg(VERB_NORMAL,"[GEN] zV %f zInit %f ",*axionField->zV(), zInit);
 			double logi = *axionField->zV();
+
 			// such a logi and msa give a different initial time! redefine
-			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
 			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
-			double nN3 = (6.0*xit*axionField->Msa()*axionField->Msa()*exp(-2.0*logi));
+
+			/* if prepropagator this number increases */
+			double nN3 = (6.0*xit*msafromLL*msafromLL*exp(-2.0*logi));
 			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
@@ -359,6 +376,7 @@ void	ConfGenerator::runCpu	()
 			momConf(axionField, sizeN, nc, MOM_MEXP2);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			axionField->setFolded(false);
 
 			myPlan.run(FFT_BCK);
 
@@ -370,13 +388,51 @@ void	ConfGenerator::runCpu	()
 			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 			scaleField (axionField, FIELD_M, *axionField->RV());
 			}
-			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
-			// tunePropagator (axiona);
-			// if (int i ==0; i<10; i++ ){
-			// 	dzaux = axion->dzSize(zInit);
-			// 	propagate (axiona, dzaux);
-			// }
+
+			if (preprop){
+				if (pregammo == 0.0){
+					prepropa  (axionField);
+					axionField->BckGnd()->SetLambda(LALA);
+					double zsave = *axionField->zV();
+					double rsave = 1/(*axionField->RV());
+
+					/* travel back in time to have the originally hoped for value of logi */
+					*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+					axionField->updateR();
+
+					double ska = *axionField->RV()*rsave;
+					size_t vol = axionField->Size();
+
+					if (axionField->Precision() == FIELD_DOUBLE){
+						rsave *= (1-ska);
+						std::complex<double> *mi = static_cast<std::complex<double> *>(axionField->mStart());
+						std::complex<double> *vi = static_cast<std::complex<double> *>(axionField->vCpu());
+
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < vol; idx++) {
+						vi[idx] = vi[idx]*ska + mi[idx]*rsave;}
+						scaleField (axionField, FIELD_M, ska);
+					}else{
+						float skaf = (float) ska;
+						float rsavef = rsave*(1-skaf);
+						std::complex<float> *mi = static_cast<std::complex<float> *>(axionField->mStart());
+						std::complex<float> *vi = static_cast<std::complex<float> *>(axionField->vCpu());
+
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < vol; idx++) {
+						vi[idx] = vi[idx]*skaf + mi[idx]*rsavef;}
+						scaleField (axionField, FIELD_M, skaf);
+					}
+				} // end damping-less cases
+				else if (pregammo > 0.0)
+				{
+					axionField->BckGnd()->SetLambda(LALA);
+					relaxrho(axionField);
+				}
+			}
+
 		}
+
 		break;
 
 		case CONF_VILGORS:{
@@ -449,6 +505,7 @@ void	ConfGenerator::runCpu	()
 			// 	propagate (axiona, dzaux);
 			// }
 		}
+		axionField->setFolded(false);
 		break;
 
 		case CONF_SMOOTH:
@@ -463,10 +520,12 @@ void	ConfGenerator::runCpu	()
 		if (smvarType != CONF_SAXNOISE)
 			normaliseField(axionField, FIELD_M);
 		normCoreField	(axionField);
+
+		axionField->setFolded(false);
 		break;
 	}
 
-	axionField->setFolded(false);
+
 
 	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) )
 	{
