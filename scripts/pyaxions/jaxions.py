@@ -1046,6 +1046,8 @@ def fildic(meas):
         return 'MEAS_NSP_A'
     if (meas in ['MEAS_NSP_S','NSP_S','Saxion spectrum','nspS']):
         return 'MEAS_NSP_S'
+    if (meas in ['MEAS_NNSPEC','nmodelist','nmodes']):
+        return 'MEAS_NNSPEC'
 
 
 
