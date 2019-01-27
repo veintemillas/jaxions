@@ -850,8 +850,10 @@ StringEnergyData stringenergy (Scalar *field)
 	double rhoa = 0.;
 	double rhos = 0.;
 	size_t nout = 0; // # of points outside the core of strings
+	double rhoaV = 0.;
+	double rhosV = 0.;
 
-	#pragma omp parallel for reduction(+:rhotot,rhoa,rhos,nout)
+	#pragma omp parallel for reduction(+:rhotot,rhoa,rhos,rhoaV,rhosV,nout)
 	for (size_t iz=0; iz < Lz; iz++) {
 		size_t zi = Lx*Lx*iz ;
 		size_t zp = Lx*Lx*(iz+1) ;
@@ -870,14 +872,18 @@ StringEnergyData stringenergy (Scalar *field)
 				// NOTE: In the following the PQ1 potential is assumed. It must be modified for PQ2 potential.
 				double rhopot = 0.25*lambda*(std::abs(ma[idx])*std::abs(ma[idx])/(Rscale*Rscale)-1.)*(std::abs(ma[idx])*std::abs(ma[idx])/(Rscale*Rscale)-1.);
 				rhotot += rhokin + rhograd + rhopot;
+				// axion and saxion energies are evaluated only outside the core of strings
+				// axion energy evaluated from kinetic energy
+				double rhoakin = .5*std::imag((va[idx]-Hc*ma[idx])/(ma[idx]-zaskaF))*std::imag((va[idx]-Hc*ma[idx])/(ma[idx]-zaskaF))/(Rscale*Rscale);
+				// saxion kinetic and gradient energy
+				Float modu = std::abs(ma[idx]-zaskaF);
+				double rhoskin = .5*std::real((va[idx]-Hc*ma[idx])*modu/(ma[idx]-zaskaF))*std::real((va[idx]-Hc*ma[idx])*modu/(ma[idx]-zaskaF))/(Rscale*Rscale*Rscale*Rscale);
+				double rhosgrad = .5*((std::abs(ma[ixM]-zaskaF)-modu)*(std::abs(ma[ixM]-zaskaF)-modu)+(std::abs(ma[iyM]-zaskaF)-modu)*(std::abs(ma[iyM]-zaskaF)-modu)+(std::abs(ma[izM]-zaskaF)-modu)*(std::abs(ma[izM]-zaskaF)-modu))/(Rscale*Rscale*Rscale*Rscale*depta*depta);
+				// Villadoro's masking
+				rhoaV += (std::abs(ma[idx]-zaskaF)/Rscale)*2.*rhoakin;
+				rhosV += (std::abs(ma[idx]-zaskaF)/Rscale)*(rhoskin + rhosgrad + rhopot);
 				if (!(strdaa[idx] & STRING_MASK)) {
-					// axion and saxion energies are evaluated only outside the core of strings
-					// axion energy evaluated from kinetic energy
-					double rhoakin = .5*std::imag((va[idx]-Hc*ma[idx])/(ma[idx]-zaskaF))*std::imag((va[idx]-Hc*ma[idx])/(ma[idx]-zaskaF))/(Rscale*Rscale);
-					// saxion kinetic and gradient energy
-					Float modu = std::abs(ma[idx]-zaskaF);
-					double rhoskin = .5*std::real((va[idx]-Hc*ma[idx])*modu/(ma[idx]-zaskaF))*std::real((va[idx]-Hc*ma[idx])*modu/(ma[idx]-zaskaF))/(Rscale*Rscale*Rscale*Rscale);
-					double rhosgrad = .5*((std::abs(ma[ixM]-zaskaF)-modu)*(std::abs(ma[ixM]-zaskaF)-modu)+(std::abs(ma[iyM]-zaskaF)-modu)*(std::abs(ma[iyM]-zaskaF)-modu)+(std::abs(ma[izM]-zaskaF)-modu)*(std::abs(ma[izM]-zaskaF)-modu))/(Rscale*Rscale*Rscale*Rscale*depta*depta);
+					// Redondo's masking
 					rhoa += 2.*rhoakin;
 				  rhos += rhoskin + rhosgrad + rhopot;
 					nout += 1;
@@ -890,18 +896,26 @@ StringEnergyData stringenergy (Scalar *field)
 	double rhoa_sum = 0.;
 	double rhos_sum = 0.;
 	size_t nout_sum = 0;
+	double rhoaV_sum = 0.;
+	double rhosV_sum = 0.;
 
 	MPI_Allreduce(&(rhotot), &(rhotot_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(&(rhoa), &(rhoa_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(&(rhos), &(rhos_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	MPI_Allreduce(&(nout), &(nout_sum), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&(rhoaV), &(rhoaV_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce(&(rhosV), &(rhosV_sum), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 	StringEnergyData strE;
 
 	strE.rho_a   = rhoa_sum/nout_sum;
 	strE.rho_s   = rhos_sum/nout_sum;
 	strE.rho_str = rhotot_sum/(Lx*Lx*Lx) - strE.rho_a - strE.rho_s;
-
+	strE.rho_a_Vil = rhoaV_sum/(Lx*Lx*Lx);
+	strE.rho_s_Vil = rhosV_sum/(Lx*Lx*Lx);
+	strE.rho_str_Vil = rhotot_sum/(Lx*Lx*Lx) - strE.rho_a_Vil - strE.rho_s_Vil;
+	strE.nout = nout_sum;
+	
 	commSync();
 	return strE;
 }

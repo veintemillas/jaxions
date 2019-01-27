@@ -1787,6 +1787,10 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 		writeAttribute(group_id, &(strEDat.rho_str), "String energy density", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &(strEDat.rho_a), "Masked axion energy density", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &(strEDat.rho_s), "Masked saxion energy density", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_str_Vil), "String energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_a_Vil), "Masked axion energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_s_Vil), "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.nout), "nout", H5T_NATIVE_HSIZE);
 	}
 
 	bCastAndExit:
@@ -1799,7 +1803,7 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 		return;
 	}
 
-	sBytes = 24;
+	sBytes = 56;
 
 	if (myRank == 0)
 		H5Gclose (group_id);

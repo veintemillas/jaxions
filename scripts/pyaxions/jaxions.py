@@ -177,6 +177,10 @@ def gm(address,something='summary',printerror=False):
         print('stEDens     String energy density')
         print('stEDensA    Masked axion energy density')
         print('stEDensS    Masked saxion energy density')
+        print('stEDensVil  String energy density (Villadoro masking)')
+        print('stEDensAVil Masked axion energy density (Villadoro masking)')
+        print('stEDensSVil Masked saxion energy density (Villadoro masking)')
+        print('stnout      Number of grid points which are not masked')
         print('binconB     binned normalised log10 contrast         ')
         print('binconBmax  maximum log10(contrast)         ')
         print('binconBmin  maximum log10(contrast)         ')
@@ -396,6 +400,14 @@ def gm(address,something='summary',printerror=False):
             return f['string'].attrs[u'Masked axion energy density'] ;
         if (something == 'stEDensS'):
             return f['string'].attrs[u'Masked saxion energy density'] ;
+        if (something == 'stEDensVil'):
+            return f['string'].attrs[u'String energy density (Vil)'] ;
+        if (something == 'stEDensAVil'):
+            return f['string'].attrs[u'Masked axion energy density (Vil)'] ;
+        if (something == 'stEDensSVil'):
+            return f['string'].attrs[u'Masked saxion energy density (Vil)'] ;
+        if (something == 'stnout'):
+            return f['string'].attrs[u'nout'] ;
 
         if (something == 'stringCoord') and ('string/coords' in f):
             size = f['string/coords'].size
