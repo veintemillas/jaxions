@@ -186,6 +186,8 @@ int	main (int argc, char *argv[])
 				LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
 				zFinl = meas_zlist[meas_zlist.size()-1];
 				LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
+				ninfa.measdata |= (MeasureType) meas_typelist[0];
+				LogOut("First measurement set to %d\n", ninfa.measdata);
 				LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
 			}
 	}

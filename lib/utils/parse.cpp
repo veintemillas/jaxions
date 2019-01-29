@@ -254,11 +254,11 @@ void	PrintUsage(char *name)
 	printf("\n");
 	printf("  --index [idx]                 Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 
-	printf("\nPrepropagator:\n");
-	printf("  --preprop                     turns on prepropagator -propagates IC-RHO-damping-fixed zi- for zi or given scaling stL (default yes).\n");
-	printf("  --prepcoe [float]             prepropagator starts at zi/prepcoe (default 3.0).\n");
-	printf("  --prepstL [float]             string length/volume at which prepropagator stops [raxion3d?] (default 5).\n");
-	printf("  --icstudy                     Allows printing maps/energy during preprop (default no).\n");
+	// printf("\nPrepropagator:\n");
+	// printf("  --preprop                     turns on prepropagator -propagates IC-RHO-damping-fixed zi- for zi or given scaling stL (default yes).\n");
+	// printf("  --prepcoe [float]             prepropagator starts at zi/prepcoe (default 3.0).\n");
+	// printf("  --prepstL [float]             string length/volume at which prepropagator stops [raxion3d?] (default 5).\n");
+	// printf("  --icstudy                     Allows printing maps/energy during preprop (default no).\n");
 
 	printf("\nOutput:\n");
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
@@ -310,14 +310,21 @@ void	PrintICoptions()
 	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
 	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n\n");
 
-	printf(" [vilgor]                                          Start at log(ms/H)=0 in the attractor solution\n");
+	printf(" [vilgor,vilgork,vilgors]                          Start in the VGH attractor solution (or close)\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-
+	printf("  --zi [float]                                     Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
+	printf("  --sIter 2 --kcr [float]                          Network over/underdense by random factor [*kcr,/kcr]. \n");
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --kmax [int] --kcr [float]                       Axion modes as in Kolb&Tkachev 92 .\n");
 	printf("                                                   <theta^2>=kcr*pi^2/3 \n");
+
+	printf(" --preprop                                         prepropagator\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --preprop [int] --kcr [float]                       to be described .\n");
+
 	return;
 }
 

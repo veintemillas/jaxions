@@ -4,6 +4,7 @@
 #include "scalar/folder.h"
 #include "enum-field.h"
 
+#include "strings/strings.h"
 #include "strings/stringXeon.h"
 
 #ifdef	USE_GPU
@@ -20,31 +21,7 @@
 
 #include <mpi.h>
 
-class	Strings	: public Tunable
-{
-	private:
-
-	Scalar	*axionField;
-	StringData stringdata;
-	std::vector<unsigned short>  pos;
-
-	public:
-
-	Strings	(Scalar *field);
-
-	StringData	runCpu	();
-	StringData	runGpu	();
-
-	void SetStrDat (StringData star) {stringdata = star; };
-	void resizePos ();
-	void resizePos (size_t size);
-	// This stores local string data, i.e. in the current rank
-	StringData StrDat() { return stringdata; };
-	std::vector<unsigned short> &Pos() {return pos;};
-
-};
-
-	Strings::Strings(Scalar *field) : axionField(field)
+Strings::Strings(Scalar *field) : axionField(field)
 {
 	setName("Strings and walls");
 	memset(field->sData(), 0, field->Size());
