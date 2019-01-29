@@ -350,6 +350,13 @@
 			SPMASK_AXIT2= 64,
 		}	SpectrumMaskType;
 
+		typedef	enum	StringMeasureType_s {
+			STRMEAS_STRING = 0,
+			STRMEAS_LENGTH = 1,
+			STRMEAS_GAMMA  = 2,
+			STRMEAS_ENERGY = 4,
+		}	StringMeasureType;
+
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 
 		typedef enum	DumpType_s
@@ -440,6 +447,7 @@
 			SpectrumMaskType mask ;
 			double rmask; 					// a radius to mask
 			int redmap;
+			StringMeasureType strmeas;
 		}	MeasInfo;
 
 		// data output by measurement function to program

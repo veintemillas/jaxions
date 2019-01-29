@@ -77,6 +77,7 @@ size_t wTime = std::numeric_limits<std::size_t>::max();
 
 PropType     pType     = PROP_NONE;
 SpectrumMaskType spmask= SPMASK_FLAT;
+StringMeasureType strmeas = STRMEAS_STRING;
 double       rmask     = 2.0 ;
 ConfType     cType     = CONF_NONE;
 ConfsubType  smvarType = CONF_RAND;
@@ -264,6 +265,7 @@ void	PrintUsage(char *name)
 	printf("--name  [filename]              Uses filename to name the output files in out/dump, instead of the default \"axion\"\n");
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--meas  [int]                   MeasuremeType [default ALLBIN|STRING|STRINGMAP|ENERGY|2DMAP|SPECTRUM].\n");
+	printf("--measinfo                      Prints more info about measurement options.\n");
 	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
 	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
@@ -351,8 +353,7 @@ void	PrintMEoptions()
 	printf("  Ax. Energy reduced 3D map             1024 \n");
 
 	printf("  2D slice map (Field+Velocity)         2048 \n");
-	printf("  3D configuration                      4096 \n");
-
+	printf("  3D configuration                      4096 \n\n");
 
 	printf("  POWER SPECTRA (binned) \n");
 	printf("  Number of modes in each mom. bin    262144 \n");
@@ -367,7 +368,14 @@ void	PrintMEoptions()
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
 	printf("    Red-Gauss                              8 \n");
-	printf("  --rmask [float]                          radius in grid u. [default = 2]\n");
+	printf("  --rmask [float]                          radius in grid u. [default = 2]\n\n");
+
+	printf("  Options for String Measurement \n");
+	printf("  --strmeas [int]            Sum of integers.\n");
+	printf("    Statistical measurment only            0 (default	)\n");
+	printf("    String length                          1 \n");
+	printf("    String velocity and gamma              2 \n");
+	printf("    String energy (needs Red-Gauss mask)   4 \n");
 	printf("--------------------------------------------------\n");
 	printf("--measlistlog              Gen measfile log.\n\n");
 	return;
@@ -1245,6 +1253,28 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			rmask = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--strmeas"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a string measurement options: 0 (nothing), 1 (length), 2 (velocity), 4 (energy).\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&strmeas));
+
+			if (strmeas < 0)
+			{
+				printf("Error: String measurement type is a positive integer.\n");
+				exit(1);
+			}
 
 			i++;
 			procArgs++;

@@ -75,7 +75,7 @@ void setCross (std::complex<double> m, std::complex<double> mu, std::complex<dou
 		du = -(Cr*Ai-Ci*Ar)/(Br*Ai-Bi*Ar);
 		dv = -(Cr*Bi-Ci*Br)/(Ar*Bi-Ai*Br);
 	} else {
-		//LogMsg(VERB_HIGH,"[Strings3] string position was not properly identified");
+		//LogMsg(VERB_HIGH,"[stringlength] string position was not properly identified");
 		du = 0.5;
 		dv = 0.5;
 	}
@@ -89,7 +89,7 @@ void setCross (std::complex<double> m, std::complex<double> mu, std::complex<dou
 // -----------------------------------------------------
 
 template<typename Float>
-StringData	stringlength	(Scalar *field, StringData strDen_in)
+StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
 	LogMsg	(VERB_NORMAL, "[stringlength] Called stringlength");
 
@@ -102,14 +102,15 @@ StringData	stringlength	(Scalar *field, StringData strDen_in)
 	strDen.strChr_local = strDen_in.strChr_local;
 	strDen.wallDn_local = strDen_in.wallDn_local;
 
-	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB)) {
-		strDen.strLen = 0.;
-		strDen.strDeng = 0.;
-		strDen.strVel = 0.;
-		strDen.strVel2 = 0.;
-		strDen.strGam = 0.;
-		strDen.strLen_local = 0.;
-		strDen.strDeng_local = 0.;
+	strDen.strLen = 0.;
+	strDen.strDeng = 0.;
+	strDen.strVel = 0.;
+	strDen.strVel2 = 0.;
+	strDen.strGam = 0.;
+	strDen.strLen_local = 0.;
+	strDen.strDeng_local = 0.;
+
+	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB) || !(strmeas & (STRMEAS_LENGTH | STRMEAS_GAMMA))) {
 		return strDen;
 	}
 
@@ -131,288 +132,296 @@ StringData	stringlength	(Scalar *field, StringData strDen_in)
 	char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
 	std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
 
-	double length = 0.;
+	if(strmeas & STRMEAS_LENGTH) {
 
-	#pragma omp parallel for reduction(+:length)
-	for (size_t iz=0; iz < Lz; iz++) {
-		size_t zi = Lx*Lx*iz ;
-		size_t zp = Lx*Lx*(iz+1) ;
-		for (size_t iy=0; iy < Lx; iy++) {
-			size_t yi = Lx*iy ;
-			size_t yp = Lx*((iy+1)%Lx) ;
-			for (size_t ix=0; ix < Lx; ix++) {
-				size_t idx = ix + yi + zi;
-				size_t ixM = ((ix + 1) % Lx) + yi + zi;
-				size_t iyM = ix + yp + zi;
-				size_t izM = ix + yi + zp;
-				size_t ixyM = ((ix + 1) % Lx) + yp + zi;
-				size_t iyzM = ix + yp + zp;
-				size_t izxM = ((ix + 1) % Lx) + yi + zp;
-				size_t ixyzM = ((ix + 1) % Lx) + yp + zp;
+		double length = 0.;
 
-				std::vector<double> pos_x;
-				std::vector<double> pos_y;
-				std::vector<double> pos_z;
-				pos_x.clear();
-				pos_y.clear();
-				pos_z.clear();
+		#pragma omp parallel for reduction(+:length)
+		for (size_t iz=0; iz < Lz; iz++) {
+			size_t zi = Lx*Lx*iz ;
+			size_t zp = Lx*Lx*(iz+1) ;
+			for (size_t iy=0; iy < Lx; iy++) {
+				size_t yi = Lx*iy ;
+				size_t yp = Lx*((iy+1)%Lx) ;
+				for (size_t ix=0; ix < Lx; ix++) {
+					size_t idx = ix + yi + zi;
+					size_t ixM = ((ix + 1) % Lx) + yi + zi;
+					size_t iyM = ix + yp + zi;
+					size_t izM = ix + yi + zp;
+					size_t ixyM = ((ix + 1) % Lx) + yp + zi;
+					size_t iyzM = ix + yp + zp;
+					size_t izxM = ((ix + 1) % Lx) + yi + zp;
+					size_t ixyzM = ((ix + 1) % Lx) + yp + zp;
 
-				if (strdaa[idx] & STRING_XY) {
-					double du[2];
-					setCross(ma[idx],ma[ixM],ma[iyM],ma[ixyM],du);
-					pos_x.push_back(ix + du[0]);
-					pos_y.push_back(iy + du[1]);
-					pos_z.push_back(rank*Lz + iz);
-				}
-				if (strdaa[idx] & STRING_YZ) {
-					double du[2];
-					setCross(ma[idx],ma[iyM],ma[izM],ma[iyzM],du);
-					pos_x.push_back(ix);
-					pos_y.push_back(iy + du[0]);
-					pos_z.push_back(rank*Lz + iz + du[1]);
-				}
-				if (strdaa[idx] & STRING_ZX) {
-					double du[2];
-					setCross(ma[idx],ma[izM],ma[ixM],ma[izxM],du);
-					pos_x.push_back(ix + du[1]);
-					pos_y.push_back(iy);
-					pos_z.push_back(rank*Lz + iz + du[0]);
-				}
-				if (strdaa[ixM] & STRING_YZ) {
-					double du[2];
-					setCross(ma[ixM],ma[ixyM],ma[izxM],ma[ixyzM],du);
-					pos_x.push_back(ix + 1.);
-					pos_y.push_back(iy + du[0]);
-					pos_z.push_back(rank*Lz + iz + du[1]);
-				}
-				if (strdaa[iyM] & STRING_ZX) {
-					double du[2];
-					setCross(ma[iyM],ma[iyzM],ma[ixyM],ma[ixyzM],du);
-					pos_x.push_back(ix + du[1]);
-					pos_y.push_back(iy + 1.);
-					pos_z.push_back(rank*Lz + iz + du[0]);
-				}
-				if (strdaa[izM] & STRING_XY) {
-					double du[2];
-					setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
-					pos_x.push_back(ix + du[0]);
-					pos_y.push_back(iy + du[1]);
-					pos_z.push_back(rank*Lz + iz + 1.);
-				}
+					std::vector<double> pos_x;
+					std::vector<double> pos_y;
+					std::vector<double> pos_z;
+					pos_x.clear();
+					pos_y.clear();
+					pos_z.clear();
 
-				if(pos_x.size() == 2) {
-					// one string is piercing the cube
-					double dl = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)));
-					length += dl;
-				} else if (pos_x.size() == 4) {
-					// two strings are piercing the cube
-					// we consider three possible connection patterns and average over them
-					double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					           + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
-					double dl2 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-					double dl3 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-					length += (dl1 + dl2 + dl3)/3.;
-				} else if (pos_x.size() == 6) {
-					// three strings are piercing the cube
-					// we consider 15 possible connection patterns and average over them
-					double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					           + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
-										 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
-					double dl2 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
-					 					 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
-					double dl3 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
-					 					 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
-				  double dl4 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-										 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-										 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
-					double dl5 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
-					 					 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
-					double dl6 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
-					 					 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
-					double dl7 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-					 					 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
-					double dl8 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
-					 					 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
-					double dl9 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 					 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
-					 					 + sqrt((pos_x.at(2)-pos_x.at(4))*(pos_x.at(2)-pos_x.at(4))+(pos_y.at(2)-pos_y.at(4))*(pos_y.at(2)-pos_y.at(4))+(pos_z.at(2)-pos_z.at(4))*(pos_z.at(2)-pos_z.at(4)));
-					double dl10 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-					 					  + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-					 					  + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
-					double dl11 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-											+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-											+ sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
-					double dl12 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-											+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
-											+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
-					double dl13 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-											+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-											+ sqrt((pos_x.at(4)-pos_x.at(3))*(pos_x.at(4)-pos_x.at(3))+(pos_y.at(4)-pos_y.at(3))*(pos_y.at(4)-pos_y.at(3))+(pos_z.at(4)-pos_z.at(3))*(pos_z.at(4)-pos_z.at(3)));
-					double dl14 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-											+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-										  + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
-					double dl15 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-											+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
-										  + sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
-					length += (dl1 + dl2 + dl3 + dl4 + dl5 + dl6 + dl7 + dl8 + dl9 + dl10 + dl11 + dl12 + dl13 + dl14 + dl15)/15.;
-				}
-				//else if ((pos_x.size() == 1)||(pos_x.size() == 3)||(pos_x.size() == 5)) {
-				//	LogMsg(VERB_HIGH,"[stringlength] length is not calculable: idx = (%d,%d,%d), # of ends = %d",ix,iy,iz,pos_x.size());
-				//}
+					if (strdaa[idx] & STRING_XY) {
+						double du[2];
+						setCross(ma[idx],ma[ixM],ma[iyM],ma[ixyM],du);
+						pos_x.push_back(ix + du[0]);
+						pos_y.push_back(iy + du[1]);
+						pos_z.push_back(rank*Lz + iz);
+					}
+					if (strdaa[idx] & STRING_YZ) {
+						double du[2];
+						setCross(ma[idx],ma[iyM],ma[izM],ma[iyzM],du);
+						pos_x.push_back(ix);
+						pos_y.push_back(iy + du[0]);
+						pos_z.push_back(rank*Lz + iz + du[1]);
+					}
+					if (strdaa[idx] & STRING_ZX) {
+						double du[2];
+						setCross(ma[idx],ma[izM],ma[ixM],ma[izxM],du);
+						pos_x.push_back(ix + du[1]);
+						pos_y.push_back(iy);
+						pos_z.push_back(rank*Lz + iz + du[0]);
+					}
+					if (strdaa[ixM] & STRING_YZ) {
+						double du[2];
+						setCross(ma[ixM],ma[ixyM],ma[izxM],ma[ixyzM],du);
+						pos_x.push_back(ix + 1.);
+						pos_y.push_back(iy + du[0]);
+						pos_z.push_back(rank*Lz + iz + du[1]);
+					}
+					if (strdaa[iyM] & STRING_ZX) {
+						double du[2];
+						setCross(ma[iyM],ma[iyzM],ma[ixyM],ma[ixyzM],du);
+						pos_x.push_back(ix + du[1]);
+						pos_y.push_back(iy + 1.);
+						pos_z.push_back(rank*Lz + iz + du[0]);
+					}
+					if (strdaa[izM] & STRING_XY) {
+						double du[2];
+						setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
+						pos_x.push_back(ix + du[0]);
+						pos_y.push_back(iy + du[1]);
+						pos_z.push_back(rank*Lz + iz + 1.);
+					}
 
+					if(pos_x.size() == 2) {
+						// one string is piercing the cube
+						double dl = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)));
+						length += dl;
+					} else if (pos_x.size() == 4) {
+						// two strings are piercing the cube
+						// we consider three possible connection patterns and average over them
+						double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+                       + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
+						double dl2 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+					 					   + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+					  double dl3 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+					  length += (dl1 + dl2 + dl3)/3.;
+					} else if (pos_x.size() == 6) {
+						// three strings are piercing the cube
+						// we consider 15 possible connection patterns and average over them
+						double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+					             + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
+						  				 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
+					  double dl2 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
+					  double dl3 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+					 		  			 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
+				    double dl4 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+							  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
+					  double dl5 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+					 		  			 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
+					  double dl6 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
+					  double dl7 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+					 		  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
+					  double dl8 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+					 		  			 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+					  double dl9 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(2)-pos_x.at(4))*(pos_x.at(2)-pos_x.at(4))+(pos_y.at(2)-pos_y.at(4))*(pos_y.at(2)-pos_y.at(4))+(pos_z.at(2)-pos_z.at(4))*(pos_z.at(2)-pos_z.at(4)));
+					  double dl10 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
+					 	  				  + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+					 		  			  + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
+					  double dl11 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+					  double dl12 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
+					  double dl13 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(4)-pos_x.at(3))*(pos_x.at(4)-pos_x.at(3))+(pos_y.at(4)-pos_y.at(3))*(pos_y.at(4)-pos_y.at(3))+(pos_z.at(4)-pos_z.at(3))*(pos_z.at(4)-pos_z.at(3)));
+					  double dl14 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+							  			  + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
+					  double dl15 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+						  				  + sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
+					  length += (dl1 + dl2 + dl3 + dl4 + dl5 + dl6 + dl7 + dl8 + dl9 + dl10 + dl11 + dl12 + dl13 + dl14 + dl15)/15.;
+				  }
+				  //else if ((pos_x.size() == 1)||(pos_x.size() == 3)||(pos_x.size() == 5)) {
+					//	LogMsg(VERB_HIGH,"[stringlength] length is not calculable: idx = (%d,%d,%d), # of ends = %d",ix,iy,iz,pos_x.size());
+					//}
+
+				}
 			}
-		}
-	} // end of iz loop
+		} // end of iz loop
 
-	strDen.strLen_local = length;
+		strDen.strLen_local = length;
 
-	MPI_Allreduce(&(strDen.strLen_local), &(strDen.strLen), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&(strDen.strLen_local), &(strDen.strLen), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  commSync();
+  	commSync();
+
+	}
 
 	// next calculate string velocity and gamma factor
 
-	double gamma  = 0.;
-  double gamma2 = 0.;
-  double vel    = 0.;
-  double vel2   = 0.;
+	if(strmeas & STRMEAS_GAMMA) {
 
-	double mssq = field->SaxionMassSq();
-	double c = 0.41238;
+		double gamma  = 0.;
+  	double gamma2 = 0.;
+  	double vel    = 0.;
+  	double vel2   = 0.;
 
-	std::complex<Float> Rscale((Float)*field->RV(),0.);
-	std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+		double mssq = field->SaxionMassSq();
+		double c = 0.41238;
 
-	std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
+		std::complex<Float> Rscale((Float)*field->RV(),0.);
+		std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
 
-	#pragma omp parallel for reduction(+:gamma,gamma2,vel,vel2)
-	for (size_t iz=0; iz < Lz; iz++) {
-		size_t zi = Lx*Lx*iz ;
-		size_t zp = Lx*Lx*(iz+1) ;
-		for (size_t iy=0; iy < Lx; iy++) {
-			size_t yi = Lx*iy ;
-			size_t yp = Lx*((iy+1)%Lx) ;
-			for (size_t ix=0; ix < Lx; ix++) {
-				size_t idx = ix + yi + zi;
-				size_t ixM = ((ix + 1) % Lx) + yi + zi;
-				size_t iyM = ix + yp + zi;
-				size_t izM = ix + yi + zp;
-				size_t ixyM = ((ix + 1) % Lx) + yp + zi;
-				size_t iyzM = ix + yp + zp;
-				size_t izxM = ((ix + 1) % Lx) + yi + zp;
+		std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
 
-				if((strdaa[idx] & STRING_ONLY) != 0)
-				{
-					double g2v2a, g2v2b, g2v2c, g2v2d;
-					std::complex<double> phia = ma[idx]/Rscale;
-					std::complex<double> dphia = (va[idx]-Hc*ma[idx])/(Rscale*Rscale);
-					// Eq. (A.10) of 1509.00026
-					g2v2a = std::abs(dphia)*std::abs(dphia)*(1.+std::abs(phia)*std::abs(phia)/(8.*c*c))/(mssq*c*c)
-				        + std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))*std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))/(16.*mssq*c*c*c*c);
+		#pragma omp parallel for reduction(+:gamma,gamma2,vel,vel2)
+		for (size_t iz=0; iz < Lz; iz++) {
+			size_t zi = Lx*Lx*iz ;
+			size_t zp = Lx*Lx*(iz+1) ;
+			for (size_t iy=0; iy < Lx; iy++) {
+				size_t yi = Lx*iy ;
+				size_t yp = Lx*((iy+1)%Lx) ;
+				for (size_t ix=0; ix < Lx; ix++) {
+					size_t idx = ix + yi + zi;
+					size_t ixM = ((ix + 1) % Lx) + yi + zi;
+					size_t iyM = ix + yp + zi;
+					size_t izM = ix + yi + zp;
+					size_t ixyM = ((ix + 1) % Lx) + yp + zi;
+					size_t iyzM = ix + yp + zp;
+					size_t izxM = ((ix + 1) % Lx) + yi + zp;
 
-					if(strdaa[idx] & STRING_XY) {
-						std::complex<double> phib = ma[ixM]/Rscale;
-						std::complex<double> phic = ma[iyM]/Rscale;
-						std::complex<double> phid = ma[ixyM]/Rscale;
-						std::complex<double> dphib = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
-						std::complex<double> dphic = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
-						std::complex<double> dphid = (va[ixyM]-Hc*ma[ixyM])/(Rscale*Rscale);
-						g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
-					        + std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
-					  g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
-								  + std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
-						g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
-								  + std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
-						double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
-						double g = sqrt(1.+g2v2); // local gamma
-						gamma += g;
-						gamma2 += 1.+g2v2;
-						vel += g*sqrt(g2v2/(1.+g2v2));
-						vel2 += g*g2v2/(1.+g2v2);
+					if((strdaa[idx] & STRING_ONLY) != 0)
+					{
+						double g2v2a, g2v2b, g2v2c, g2v2d;
+						std::complex<double> phia = ma[idx]/Rscale;
+						std::complex<double> dphia = (va[idx]-Hc*ma[idx])/(Rscale*Rscale);
+						// Eq. (A.10) of 1509.00026
+						g2v2a = std::abs(dphia)*std::abs(dphia)*(1.+std::abs(phia)*std::abs(phia)/(8.*c*c))/(mssq*c*c)
+				          + std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))*std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))/(16.*mssq*c*c*c*c);
+
+						if(strdaa[idx] & STRING_XY) {
+							std::complex<double> phib = ma[ixM]/Rscale;
+							std::complex<double> phic = ma[iyM]/Rscale;
+							std::complex<double> phid = ma[ixyM]/Rscale;
+							std::complex<double> dphib = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
+							std::complex<double> dphic = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
+							std::complex<double> dphid = (va[ixyM]-Hc*ma[ixyM])/(Rscale*Rscale);
+							g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
+					          + std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
+					    g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
+							  	  + std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
+						  g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
+							  	  + std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
+							double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
+							double g = sqrt(1.+g2v2); // local gamma
+							gamma += g;
+							gamma2 += 1.+g2v2;
+							vel += g*sqrt(g2v2/(1.+g2v2));
+							vel2 += g*g2v2/(1.+g2v2);
+						}
+						if(strdaa[idx] & STRING_YZ) {
+							std::complex<double> phib = ma[iyM]/Rscale;
+							std::complex<double> phic = ma[izM]/Rscale;
+							std::complex<double> phid = ma[iyzM]/Rscale;
+							std::complex<double> dphib = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
+							std::complex<double> dphic = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
+							std::complex<double> dphid = (va[iyzM]-Hc*ma[iyzM])/(Rscale*Rscale);
+							g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
+					          + std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
+					    g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
+							  	  + std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
+						  g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
+							  	  + std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
+							double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
+							double g = sqrt(1.+g2v2); // local gamma
+							gamma += g;
+							gamma2 += 1.+g2v2;
+							vel += g*sqrt(g2v2/(1.+g2v2));
+							vel2 += g*g2v2/(1.+g2v2);
+						}
+						if(strdaa[idx] & STRING_ZX) {
+							std::complex<double> phib = ma[izM]/Rscale;
+							std::complex<double> phic = ma[ixM]/Rscale;
+							std::complex<double> phid = ma[izxM]/Rscale;
+							std::complex<double> dphib = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
+							std::complex<double> dphic = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
+							std::complex<double> dphid = (va[izxM]-Hc*ma[izxM])/(Rscale*Rscale);
+							g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
+					          + std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
+					    g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
+							  	  + std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
+						  g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
+							  	  + std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
+					    double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
+					    double g = sqrt(1.+g2v2); // local gamma
+					  	gamma += g;
+						  gamma2 += 1.+g2v2;
+						  vel += g*sqrt(g2v2/(1.+g2v2));
+						  vel2 += g*g2v2/(1.+g2v2);
+						}
 					}
-					if(strdaa[idx] & STRING_YZ) {
-						std::complex<double> phib = ma[iyM]/Rscale;
-						std::complex<double> phic = ma[izM]/Rscale;
-						std::complex<double> phid = ma[iyzM]/Rscale;
-						std::complex<double> dphib = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
-						std::complex<double> dphic = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
-						std::complex<double> dphid = (va[iyzM]-Hc*ma[iyzM])/(Rscale*Rscale);
-						g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
-					        + std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
-					  g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
-								  + std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
-						g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
-								  + std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
-						double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
-						double g = sqrt(1.+g2v2); // local gamma
-						gamma += g;
-						gamma2 += 1.+g2v2;
-						vel += g*sqrt(g2v2/(1.+g2v2));
-						vel2 += g*g2v2/(1.+g2v2);
-					}
-					if(strdaa[idx] & STRING_ZX) {
-						std::complex<double> phib = ma[izM]/Rscale;
-						std::complex<double> phic = ma[ixM]/Rscale;
-						std::complex<double> phid = ma[izxM]/Rscale;
-						std::complex<double> dphib = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
-						std::complex<double> dphic = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
-						std::complex<double> dphid = (va[izxM]-Hc*ma[izxM])/(Rscale*Rscale);
-						g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
-					        + std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
-					  g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
-								  + std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
-						g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
-								  + std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
-					  double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
-					  double g = sqrt(1.+g2v2); // local gamma
-						gamma += g;
-						gamma2 += 1.+g2v2;
-						vel += g*sqrt(g2v2/(1.+g2v2));
-						vel2 += g*g2v2/(1.+g2v2);
-					}
+
 				}
-
 			}
-		}
-	} // end of iz loop
+		} // end of iz loop
 
-	double gamma_tot  = 0.;
-  double gamma2_tot = 0.;
-  double vel_tot    = 0.;
-  double vel2_tot   = 0.;
+	  double gamma_tot  = 0.;
+    double gamma2_tot = 0.;
+    double vel_tot    = 0.;
+    double vel2_tot   = 0.;
 
-	MPI_Allreduce(&(gamma), &(gamma_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(gamma2), &(gamma2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(vel), &(vel_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(vel2), &(vel2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	  MPI_Allreduce(&(gamma), &(gamma_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	  MPI_Allreduce(&(gamma2), &(gamma2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	  MPI_Allreduce(&(vel), &(vel_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	  MPI_Allreduce(&(vel2), &(vel2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-	strDen.strDeng = gamma_tot;
-	strDen.strVel = vel_tot/gamma_tot;
-	strDen.strVel2 = vel2_tot/gamma_tot;
-	strDen.strGam = gamma2_tot/gamma_tot;
-	strDen.strDeng_local = gamma;
+	  strDen.strDeng = gamma_tot;
+	  strDen.strVel = vel_tot/gamma_tot;
+	  strDen.strVel2 = vel2_tot/gamma_tot;
+	  strDen.strGam = gamma2_tot/gamma_tot;
+	  strDen.strDeng_local = gamma;
 
-	commSync();
+	  commSync();
+  }
+
 	return	strDen;
 }
 
-StringData stringlength (Scalar *field, StringData strDen_in)
+StringData stringlength (Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
 	if (field->Precision() == FIELD_SINGLE)
 	{
-		return stringlength<float> (field, strDen_in);
+		return stringlength<float> (field, strDen_in, strmeas);
 	}
 	else
 	{
-		return stringlength<double>(field, strDen_in);
+		return stringlength<double>(field, strDen_in, strmeas);
 	}
 }
 
@@ -422,7 +431,7 @@ StringData stringlength (Scalar *field, StringData strDen_in)
 // -----------------------------------------------------
 
 template<typename Float>
-StringData	stringlength2	(Scalar *field, StringData strDen_in)
+StringData	stringlength2	(Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
 	LogMsg	(VERB_NORMAL, "[stringlength2] Called stringlength2");
 
@@ -435,14 +444,15 @@ StringData	stringlength2	(Scalar *field, StringData strDen_in)
 	strDen.strChr_local = strDen_in.strChr_local;
 	strDen.wallDn_local = strDen_in.wallDn_local;
 
-	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB)) {
-		strDen.strLen = 0.;
-		strDen.strDeng = 0.;
-		strDen.strVel = 0.;
-		strDen.strVel2 = 0.;
-		strDen.strGam = 0.;
-		strDen.strLen_local = 0.;
-		strDen.strDeng_local = 0.;
+	strDen.strLen = 0.;
+	strDen.strDeng = 0.;
+	strDen.strVel = 0.;
+	strDen.strVel2 = 0.;
+	strDen.strGam = 0.;
+	strDen.strLen_local = 0.;
+	strDen.strDeng_local = 0.;
+
+	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB) || !(strmeas & (STRMEAS_LENGTH | STRMEAS_GAMMA))) {
 		return strDen;
 	}
 
@@ -465,350 +475,357 @@ StringData	stringlength2	(Scalar *field, StringData strDen_in)
 	field->sendGhosts(FIELD_M,COMM_SDRV);
 	field->sendGhosts(FIELD_M,COMM_WAIT);
 
-	size_t unilab = 0;
 	char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
 	std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
 
-	double length = 0.;
+  if(strmeas & STRMEAS_LENGTH) {
 
-	#pragma omp parallel for shared(unilab) reduction(+:length)
-	for (size_t iz=0; iz < Lz; iz++) {
-		size_t zi = Lx*Lx*iz ;
-		size_t zp = Lx*Lx*(iz+1) ;
-		for (size_t iy=0; iy < Lx; iy++) {
-			size_t yi = Lx*iy ;
-			size_t yp = Lx*((iy+1)%Lx) ;
-			for (size_t ix=0; ix < Lx; ix++) {
-				size_t idx = ix + yi + zi;
-				size_t ixM = ((ix + 1) % Lx) + yi + zi;
-				size_t iyM = ix + yp + zi;
-				size_t izM = ix + yi + zp;
-				size_t ixyM = ((ix + 1) % Lx) + yp + zi;
-				size_t iyzM = ix + yp + zp;
-				size_t izxM = ((ix + 1) % Lx) + yi + zp;
-				size_t ixyzM = ((ix + 1) % Lx) + yp + zp;
+		double length = 0.;
+		size_t unilab = 0;
 
-				std::vector<double> pos_x;
-				std::vector<double> pos_y;
-				std::vector<double> pos_z;
-				pos_x.clear();
-				pos_y.clear();
-				pos_z.clear();
+		#pragma omp parallel for shared(unilab) reduction(+:length)
+		for (size_t iz=0; iz < Lz; iz++) {
+			size_t zi = Lx*Lx*iz ;
+			size_t zp = Lx*Lx*(iz+1) ;
+			for (size_t iy=0; iy < Lx; iy++) {
+				size_t yi = Lx*iy ;
+				size_t yp = Lx*((iy+1)%Lx) ;
+				for (size_t ix=0; ix < Lx; ix++) {
+					size_t idx = ix + yi + zi;
+					size_t ixM = ((ix + 1) % Lx) + yi + zi;
+					size_t iyM = ix + yp + zi;
+					size_t izM = ix + yi + zp;
+					size_t ixyM = ((ix + 1) % Lx) + yp + zi;
+					size_t iyzM = ix + yp + zp;
+					size_t izxM = ((ix + 1) % Lx) + yi + zp;
+					size_t ixyzM = ((ix + 1) % Lx) + yp + zp;
 
-				size_t besidefresi;
+					std::vector<double> pos_x;
+					std::vector<double> pos_y;
+					std::vector<double> pos_z;
+					pos_x.clear();
+					pos_y.clear();
+					pos_z.clear();
 
-				if (strdaa[idx] & STRING_XY) {
-					double du[2];
-					setCross(ma[idx],ma[ixM],ma[iyM],ma[ixyM],du);
-					#pragma omp atomic capture
-					{ besidefresi = unilab ; unilab += 1 ; }
-					eStr->Pos()[besidefresi*3+2] = rank*Lz + iz;
-					eStr->Pos()[besidefresi*3+1] = iy + du[1];
-					eStr->Pos()[besidefresi*3]   = ix + du[0];
-					pos_x.push_back(ix + du[0]);
-					pos_y.push_back(iy + du[1]);
-					pos_z.push_back(rank*Lz + iz);
-				}
-				if (strdaa[idx] & STRING_YZ) {
-					double du[2];
-					setCross(ma[idx],ma[iyM],ma[izM],ma[iyzM],du);
-					#pragma omp atomic capture
-					{ besidefresi = unilab ; unilab += 1 ; }
-					eStr->Pos()[besidefresi*3+2] = rank*Lz + iz + du[1];
-					eStr->Pos()[besidefresi*3+1] = iy + du[0];
-					eStr->Pos()[besidefresi*3]   = ix;
-					pos_x.push_back(ix);
-					pos_y.push_back(iy + du[0]);
-					pos_z.push_back(rank*Lz + iz + du[1]);
-				}
-				if (strdaa[idx] & STRING_ZX) {
-					double du[2];
-					setCross(ma[idx],ma[izM],ma[ixM],ma[izxM],du);
-					#pragma omp atomic capture
-					{ besidefresi = unilab ; unilab += 1 ; }
-					eStr->Pos()[besidefresi*3+2] = rank*Lz + iz + du[0];
-					eStr->Pos()[besidefresi*3+1] = iy;
-					eStr->Pos()[besidefresi*3]   = ix + du[1];
-					pos_x.push_back(ix + du[1]);
-					pos_y.push_back(iy);
-					pos_z.push_back(rank*Lz + iz + du[0]);
-				}
-				if (strdaa[ixM] & STRING_YZ) {
-					double du[2];
-					setCross(ma[ixM],ma[ixyM],ma[izxM],ma[ixyzM],du);
-					pos_x.push_back(ix + 1.);
-					pos_y.push_back(iy + du[0]);
-					pos_z.push_back(rank*Lz + iz + du[1]);
-				}
-				if (strdaa[iyM] & STRING_ZX) {
-					double du[2];
-					setCross(ma[iyM],ma[iyzM],ma[ixyM],ma[ixyzM],du);
-					pos_x.push_back(ix + du[1]);
-					pos_y.push_back(iy + 1.);
-					pos_z.push_back(rank*Lz + iz + du[0]);
-				}
-				if (strdaa[izM] & STRING_XY) {
-					double du[2];
-					setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
-					pos_x.push_back(ix + du[0]);
-					pos_y.push_back(iy + du[1]);
-					pos_z.push_back(rank*Lz + iz + 1.);
-				}
+					size_t besidefresi;
 
-				if(pos_x.size() == 2) {
-					// one string is piercing the cube
-					double dl = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)));
-					length += dl;
-				} else if (pos_x.size() == 4) {
-					// two strings are piercing the cube
-					// we consider three possible connection patterns and average over them
-					double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-										 + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
-					double dl2 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-										 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-					double dl3 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-										 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-					length += (dl1 + dl2 + dl3)/3.;
-				} else if (pos_x.size() == 6) {
-					// three strings are piercing the cube
-					// we consider 15 possible connection patterns and average over them
-					double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-										 + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
-										 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
-					double dl2 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-										 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
-										 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
-					double dl3 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-										 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
-										 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
-					double dl4 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-										 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-										 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
-					double dl5 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-										 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
-										 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
-					double dl6 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-										 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
-										 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
-					double dl7 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-										 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-										 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
-					double dl8 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-										 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
-										 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
-					double dl9 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-										 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
-										 + sqrt((pos_x.at(2)-pos_x.at(4))*(pos_x.at(2)-pos_x.at(4))+(pos_y.at(2)-pos_y.at(4))*(pos_y.at(2)-pos_y.at(4))+(pos_z.at(2)-pos_z.at(4))*(pos_z.at(2)-pos_z.at(4)));
-					double dl10 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-											+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-											+ sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
-					double dl11 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-											+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-											+ sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
-					double dl12 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-											+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
-											+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
-					double dl13 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-											+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
-											+ sqrt((pos_x.at(4)-pos_x.at(3))*(pos_x.at(4)-pos_x.at(3))+(pos_y.at(4)-pos_y.at(3))*(pos_y.at(4)-pos_y.at(3))+(pos_z.at(4)-pos_z.at(3))*(pos_z.at(4)-pos_z.at(3)));
-					double dl14 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-											+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
-											+ sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
-					double dl15 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-											+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
-											+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
-					length += (dl1 + dl2 + dl3 + dl4 + dl5 + dl6 + dl7 + dl8 + dl9 + dl10 + dl11 + dl12 + dl13 + dl14 + dl15)/15.;
-				}
-				//else if (pos_x.size() > 0) {
-				//	LogMsg(VERB_HIGH,"[stringlength2] length is not calculable: idx = (%d,%d,%d), # of ends = %d",ix,iy,iz,pos_x.size());
-				//}
+					if (strdaa[idx] & STRING_XY) {
+						double du[2];
+						setCross(ma[idx],ma[ixM],ma[iyM],ma[ixyM],du);
+						#pragma omp atomic capture
+						{ besidefresi = unilab ; unilab += 1 ; }
+						eStr->Pos()[besidefresi*3+2] = rank*Lz + iz;
+						eStr->Pos()[besidefresi*3+1] = iy + du[1];
+						eStr->Pos()[besidefresi*3]   = ix + du[0];
+						pos_x.push_back(ix + du[0]);
+						pos_y.push_back(iy + du[1]);
+						pos_z.push_back(rank*Lz + iz);
+					}
+					if (strdaa[idx] & STRING_YZ) {
+						double du[2];
+						setCross(ma[idx],ma[iyM],ma[izM],ma[iyzM],du);
+						#pragma omp atomic capture
+						{ besidefresi = unilab ; unilab += 1 ; }
+						eStr->Pos()[besidefresi*3+2] = rank*Lz + iz + du[1];
+						eStr->Pos()[besidefresi*3+1] = iy + du[0];
+						eStr->Pos()[besidefresi*3]   = ix;
+						pos_x.push_back(ix);
+						pos_y.push_back(iy + du[0]);
+						pos_z.push_back(rank*Lz + iz + du[1]);
+					}
+					if (strdaa[idx] & STRING_ZX) {
+						double du[2];
+						setCross(ma[idx],ma[izM],ma[ixM],ma[izxM],du);
+						#pragma omp atomic capture
+						{ besidefresi = unilab ; unilab += 1 ; }
+						eStr->Pos()[besidefresi*3+2] = rank*Lz + iz + du[0];
+						eStr->Pos()[besidefresi*3+1] = iy;
+						eStr->Pos()[besidefresi*3]   = ix + du[1];
+						pos_x.push_back(ix + du[1]);
+						pos_y.push_back(iy);
+						pos_z.push_back(rank*Lz + iz + du[0]);
+					}
+					if (strdaa[ixM] & STRING_YZ) {
+						double du[2];
+						setCross(ma[ixM],ma[ixyM],ma[izxM],ma[ixyzM],du);
+						pos_x.push_back(ix + 1.);
+						pos_y.push_back(iy + du[0]);
+						pos_z.push_back(rank*Lz + iz + du[1]);
+					}
+					if (strdaa[iyM] & STRING_ZX) {
+						double du[2];
+						setCross(ma[iyM],ma[iyzM],ma[ixyM],ma[ixyzM],du);
+						pos_x.push_back(ix + du[1]);
+						pos_y.push_back(iy + 1.);
+						pos_z.push_back(rank*Lz + iz + du[0]);
+					}
+					if (strdaa[izM] & STRING_XY) {
+						double du[2];
+						setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
+						pos_x.push_back(ix + du[0]);
+						pos_y.push_back(iy + du[1]);
+						pos_z.push_back(rank*Lz + iz + 1.);
+					}
 
-			}
-		}
-	} // end of iz loop
+					if(pos_x.size() == 2) {
+						// one string is piercing the cube
+						double dl = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)));
+						length += dl;
+					} else if (pos_x.size() == 4) {
+						// two strings are piercing the cube
+						// we consider three possible connection patterns and average over them
+						double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
+					  double dl2 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+					  double dl3 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+					  length += (dl1 + dl2 + dl3)/3.;
+					} else if (pos_x.size() == 6) {
+						// three strings are piercing the cube
+						// we consider 15 possible connection patterns and average over them
+						double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
+							  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
+					  double dl2 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
+							  			 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
+					  double dl3 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+						  				 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
+					  double dl4 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
+					 double dl5 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+					  					 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
+					  double dl6 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+							  			 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
+					  double dl7 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+							  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
+					  double dl8 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+							  			 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+					  double dl9 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
+						  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+							  			 + sqrt((pos_x.at(2)-pos_x.at(4))*(pos_x.at(2)-pos_x.at(4))+(pos_y.at(2)-pos_y.at(4))*(pos_y.at(2)-pos_y.at(4))+(pos_z.at(2)-pos_z.at(4))*(pos_z.at(2)-pos_z.at(4)));
+					  double dl10 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
+					  double dl11 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+				  	double dl12 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
+					   						+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
+					  double dl13 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(4)-pos_x.at(3))*(pos_x.at(4)-pos_x.at(3))+(pos_y.at(4)-pos_y.at(3))*(pos_y.at(4)-pos_y.at(3))+(pos_z.at(4)-pos_z.at(3))*(pos_z.at(4)-pos_z.at(3)));
+					  double dl14 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
+					  double dl15 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
+						  					+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+							  				+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
+					  length += (dl1 + dl2 + dl3 + dl4 + dl5 + dl6 + dl7 + dl8 + dl9 + dl10 + dl11 + dl12 + dl13 + dl14 + dl15)/15.;
+				  }
+			  	//else if (pos_x.size() > 0) {
+				  //	LogMsg(VERB_HIGH,"[stringlength2] length is not calculable: idx = (%d,%d,%d), # of ends = %d",ix,iy,iz,pos_x.size());
+				  //}
 
-	strDen.strLen_local = length;
+			  }
+		  }
+	  } // end of iz loop
 
-	MPI_Allreduce(&(strDen.strLen_local), &(strDen.strLen), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	  strDen.strLen_local = length;
 
-	double red = (double) sizeof(eStr->Pos()[0])*carde/ (double)(sizeof(strdaa[0])*field->Size());
-	LogMsg	(VERB_NORMAL, "[stringlength2] red = %f ", red);
+	  MPI_Allreduce(&(strDen.strLen_local), &(strDen.strLen), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-	/* make sure that the sData buffer never explotes in lowmem */
-	/* if no lowmem use m2 ! */
-	char *dest ;
-	size_t charmax ;
-	if (field->LowMem()){
-		dest = strdaa;
-		LogOut("can fail!");
-		charmax = field->Size();
-	}
-	else
-		{
-			dest = static_cast<char *>(field->m2Cpu());
-			charmax = field->Size()*field->DataSize ();
-		}
+	  double red = (double) sizeof(eStr->Pos()[0])*carde/ (double)(sizeof(strdaa[0])*field->Size());
+	  LogMsg	(VERB_NORMAL, "[stringlength2] red = %f ", red);
 
-	size_t carde3 =carde*3*sizeof(eStr->Pos()[0]);
-	size_t trinitrize = (charmax/3)*3;
-	LogMsg	(VERB_NORMAL, "[stringlength2] charmax = %lu (%lu), needed %lu ", charmax,trinitrize,carde3);
+	  /* make sure that the sData buffer never explotes in lowmem */
+	  /* if no lowmem use m2 ! */
+	  char *dest ;
+	  size_t charmax ;
+  	if (field->LowMem()){
+	  	dest = strdaa;
+		  LogOut("can fail!");
+		  charmax = field->Size();
+	  }
+	  else
+		  {
+			  dest = static_cast<char *>(field->m2Cpu());
+			  charmax = field->Size()*field->DataSize ();
+		  }
 
-	char *orig = static_cast<char*>( static_cast<void*>( &eStr->Pos()[0] ));
+	  size_t carde3 =carde*3*sizeof(eStr->Pos()[0]);
+  	size_t trinitrize = (charmax/3)*3;
+  	LogMsg	(VERB_NORMAL, "[stringlength2] charmax = %lu (%lu), needed %lu ", charmax,trinitrize,carde3);
 
-	carde3 = std::min(carde3, trinitrize);
+	  char *orig = static_cast<char*>( static_cast<void*>( &eStr->Pos()[0] ));
 
-	if (field->LowMem()){
-		LogMsg(VERB_HIGH,"[stringlength2] copyng %d bytes to sData() [%lu bytes]",carde3,field->Size());
-		memcpy (dest, orig, carde3);
-		field->setSD(SD_STRINGCOORD);
-	}
-	else
-	{
-		LogMsg(VERB_HIGH,"[stringlength2] copyng %d bytes to m2Cpu() [%lu bytes]",carde3,field->Size());
-		memcpy (dest, orig, carde3);
-		field->setM2(M2_STRINGCOO);
-		// unsigned short *cerda = static_cast<unsigned short *>( static_cast<void*>( &eStr->Pos()[0] ));
-		// printf("strings.cpp rank %d   %hu, %hu, %hu\n", rank, cerda[0],cerda[1],cerda[2]);
-	}
+  	carde3 = std::min(carde3, trinitrize);
 
-  commSync();
+	  if (field->LowMem()){
+		  LogMsg(VERB_HIGH,"[stringlength2] copyng %d bytes to sData() [%lu bytes]",carde3,field->Size());
+		  memcpy (dest, orig, carde3);
+		  field->setSD(SD_STRINGCOORD);
+	  }
+	  else
+	  {
+		  LogMsg(VERB_HIGH,"[stringlength2] copyng %d bytes to m2Cpu() [%lu bytes]",carde3,field->Size());
+		  memcpy (dest, orig, carde3);
+		  field->setM2(M2_STRINGCOO);
+		  // unsigned short *cerda = static_cast<unsigned short *>( static_cast<void*>( &eStr->Pos()[0] ));
+		  // printf("strings.cpp rank %d   %hu, %hu, %hu\n", rank, cerda[0],cerda[1],cerda[2]);
+	  }
+
+    commSync();
+
+  }
 
 	// next calculate string velocity and gamma factor
 
-	double gamma  = 0.;
-	double gamma2 = 0.;
-	double vel    = 0.;
-	double vel2   = 0.;
+	if(strmeas & STRMEAS_GAMMA) {
 
-	double mssq = field->SaxionMassSq();
-	double c = 0.41238;
+	  double gamma  = 0.;
+	  double gamma2 = 0.;
+		double vel    = 0.;
+		double vel2   = 0.;
 
-	std::complex<Float> Rscale((Float)*field->RV(),0.);
-	std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+		double mssq = field->SaxionMassSq();
+		double c = 0.41238;
 
-	std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
+		std::complex<Float> Rscale((Float)*field->RV(),0.);
+		std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
 
-	#pragma omp parallel for reduction(+:gamma,gamma2,vel,vel2)
-	for (size_t iz=0; iz < Lz; iz++) {
-		size_t zi = Lx*Lx*iz ;
-		size_t zp = Lx*Lx*(iz+1) ;
-		for (size_t iy=0; iy < Lx; iy++) {
-			size_t yi = Lx*iy ;
-			size_t yp = Lx*((iy+1)%Lx) ;
-			for (size_t ix=0; ix < Lx; ix++) {
-				size_t idx = ix + yi + zi;
-				size_t ixM = ((ix + 1) % Lx) + yi + zi;
-				size_t iyM = ix + yp + zi;
-				size_t izM = ix + yi + zp;
-				size_t ixyM = ((ix + 1) % Lx) + yp + zi;
-				size_t iyzM = ix + yp + zp;
-				size_t izxM = ((ix + 1) % Lx) + yi + zp;
+		std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
 
-				if((strdaa[idx] & STRING_ONLY) != 0)
-				{
-					double g2v2a, g2v2b, g2v2c, g2v2d;
-					std::complex<double> phia = ma[idx]/Rscale;
-					std::complex<double> dphia = (va[idx]-Hc*ma[idx])/(Rscale*Rscale);
-					// Eq. (A.10) of 1509.00026
-					g2v2a = std::abs(dphia)*std::abs(dphia)*(1.+std::abs(phia)*std::abs(phia)/(8.*c*c))/(mssq*c*c)
-								+ std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))*std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))/(16.*mssq*c*c*c*c);
+		#pragma omp parallel for reduction(+:gamma,gamma2,vel,vel2)
+		for (size_t iz=0; iz < Lz; iz++) {
+			size_t zi = Lx*Lx*iz ;
+			size_t zp = Lx*Lx*(iz+1) ;
+			for (size_t iy=0; iy < Lx; iy++) {
+				size_t yi = Lx*iy ;
+				size_t yp = Lx*((iy+1)%Lx) ;
+				for (size_t ix=0; ix < Lx; ix++) {
+					size_t idx = ix + yi + zi;
+					size_t ixM = ((ix + 1) % Lx) + yi + zi;
+				  size_t iyM = ix + yp + zi;
+				  size_t izM = ix + yi + zp;
+				  size_t ixyM = ((ix + 1) % Lx) + yp + zi;
+				  size_t iyzM = ix + yp + zp;
+				  size_t izxM = ((ix + 1) % Lx) + yi + zp;
 
-					if(strdaa[idx] & STRING_XY) {
-						std::complex<double> phib = ma[ixM]/Rscale;
-						std::complex<double> phic = ma[iyM]/Rscale;
-						std::complex<double> phid = ma[ixyM]/Rscale;
-						std::complex<double> dphib = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
-						std::complex<double> dphic = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
-						std::complex<double> dphid = (va[ixyM]-Hc*ma[ixyM])/(Rscale*Rscale);
-						g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
-						g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
-						g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
-						double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
-						double g = sqrt(1.+g2v2); // local gamma
-						gamma += g;
-						gamma2 += 1.+g2v2;
-					  vel += g*sqrt(g2v2/(1.+g2v2));
-						vel2 += g*g2v2/(1.+g2v2);
+				  if((strdaa[idx] & STRING_ONLY) != 0)
+			  	{
+				  	double g2v2a, g2v2b, g2v2c, g2v2d;
+					  std::complex<double> phia = ma[idx]/Rscale;
+						std::complex<double> dphia = (va[idx]-Hc*ma[idx])/(Rscale*Rscale);
+						// Eq. (A.10) of 1509.00026
+						g2v2a = std::abs(dphia)*std::abs(dphia)*(1.+std::abs(phia)*std::abs(phia)/(8.*c*c))/(mssq*c*c)
+						  		+ std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))*std::abs(std::conj(phia)*dphia+phia*std::conj(dphia))/(16.*mssq*c*c*c*c);
+
+						if(strdaa[idx] & STRING_XY) {
+							std::complex<double> phib = ma[ixM]/Rscale;
+							std::complex<double> phic = ma[iyM]/Rscale;
+							std::complex<double> phid = ma[ixyM]/Rscale;
+							std::complex<double> dphib = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
+							std::complex<double> dphic = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
+							std::complex<double> dphid = (va[ixyM]-Hc*ma[ixyM])/(Rscale*Rscale);
+							g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
+										+ std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
+							g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
+						  g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
+							double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
+							double g = sqrt(1.+g2v2); // local gamma
+							gamma += g;
+							gamma2 += 1.+g2v2;
+					  	vel += g*sqrt(g2v2/(1.+g2v2));
+							vel2 += g*g2v2/(1.+g2v2);
+						}
+						if(strdaa[idx] & STRING_YZ) {
+							std::complex<double> phib = ma[iyM]/Rscale;
+							std::complex<double> phic = ma[izM]/Rscale;
+							std::complex<double> phid = ma[iyzM]/Rscale;
+							std::complex<double> dphib = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
+							std::complex<double> dphic = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
+							std::complex<double> dphid = (va[iyzM]-Hc*ma[iyzM])/(Rscale*Rscale);
+						  g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
+						  g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
+						  g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
+						  double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
+							double g = sqrt(1.+g2v2); // local gamma
+							gamma += g;
+							gamma2 += 1.+g2v2;
+							vel += g*sqrt(g2v2/(1.+g2v2));
+							vel2 += g*g2v2/(1.+g2v2);
+						}
+						if(strdaa[idx] & STRING_ZX) {
+							std::complex<double> phib = ma[izM]/Rscale;
+							std::complex<double> phic = ma[ixM]/Rscale;
+							std::complex<double> phid = ma[izxM]/Rscale;
+							std::complex<double> dphib = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
+							std::complex<double> dphic = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
+							std::complex<double> dphid = (va[izxM]-Hc*ma[izxM])/(Rscale*Rscale);
+						  g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
+						  g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
+						  g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
+							  		+ std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
+						  double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
+							double g = sqrt(1.+g2v2); // local gamma
+							gamma += g;
+							gamma2 += 1.+g2v2;
+							vel += g*sqrt(g2v2/(1.+g2v2));
+							vel2 += g*g2v2/(1.+g2v2);
+						}
 					}
-					if(strdaa[idx] & STRING_YZ) {
-						std::complex<double> phib = ma[iyM]/Rscale;
-						std::complex<double> phic = ma[izM]/Rscale;
-						std::complex<double> phid = ma[iyzM]/Rscale;
-						std::complex<double> dphib = (va[iyM]-Hc*ma[iyM])/(Rscale*Rscale);
-						std::complex<double> dphic = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
-						std::complex<double> dphid = (va[iyzM]-Hc*ma[iyzM])/(Rscale*Rscale);
-						g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
-						g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
-						g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
-						double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
-						double g = sqrt(1.+g2v2); // local gamma
-						gamma += g;
-						gamma2 += 1.+g2v2;
-						vel += g*sqrt(g2v2/(1.+g2v2));
-						vel2 += g*g2v2/(1.+g2v2);
-					}
-					if(strdaa[idx] & STRING_ZX) {
-						std::complex<double> phib = ma[izM]/Rscale;
-						std::complex<double> phic = ma[ixM]/Rscale;
-						std::complex<double> phid = ma[izxM]/Rscale;
-						std::complex<double> dphib = (va[izM]-Hc*ma[izM])/(Rscale*Rscale);
-						std::complex<double> dphic = (va[ixM]-Hc*ma[ixM])/(Rscale*Rscale);
-						std::complex<double> dphid = (va[izxM]-Hc*ma[izxM])/(Rscale*Rscale);
-						g2v2b = std::abs(dphib)*std::abs(dphib)*(1.+std::abs(phib)*std::abs(phib)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))*std::abs(std::conj(phib)*dphib+phib*std::conj(dphib))/(16.*mssq*c*c*c*c);
-						g2v2c = std::abs(dphic)*std::abs(dphic)*(1.+std::abs(phic)*std::abs(phic)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))*std::abs(std::conj(phic)*dphic+phic*std::conj(dphic))/(16.*mssq*c*c*c*c);
-						g2v2d = std::abs(dphid)*std::abs(dphid)*(1.+std::abs(phid)*std::abs(phid)/(8.*c*c))/(mssq*c*c)
-									+ std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))*std::abs(std::conj(phid)*dphid+phid*std::conj(dphid))/(16.*mssq*c*c*c*c);
-						double g2v2 = (g2v2a + g2v2b + g2v2c + g2v2d)/4.;
-						double g = sqrt(1.+g2v2); // local gamma
-						gamma += g;
-						gamma2 += 1.+g2v2;
-						vel += g*sqrt(g2v2/(1.+g2v2));
-						vel2 += g*g2v2/(1.+g2v2);
-					}
+
 				}
-
 			}
-		}
-	} // end of iz loop
+		} // end of iz loop
 
-	double gamma_tot  = 0.;
-	double gamma2_tot = 0.;
-	double vel_tot    = 0.;
-	double vel2_tot   = 0.;
+		double gamma_tot  = 0.;
+		double gamma2_tot = 0.;
+		double vel_tot    = 0.;
+		double vel2_tot   = 0.;
 
-	MPI_Allreduce(&(gamma), &(gamma_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(gamma2), &(gamma2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(vel), &(vel_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-	MPI_Allreduce(&(vel2), &(vel2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&(gamma), &(gamma_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&(gamma2), &(gamma2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&(vel), &(vel_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(&(vel2), &(vel2_tot), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-	strDen.strDeng = gamma_tot;
-	strDen.strVel = vel_tot/gamma_tot;
-	strDen.strVel2 = vel2_tot/gamma_tot;
-	strDen.strGam = gamma2_tot/gamma_tot;
-	strDen.strDeng_local = gamma;
+		strDen.strDeng = gamma_tot;
+		strDen.strVel = vel_tot/gamma_tot;
+		strDen.strVel2 = vel2_tot/gamma_tot;
+		strDen.strGam = gamma2_tot/gamma_tot;
+		strDen.strDeng_local = gamma;
 
-	commSync();
+		commSync();
+	}
 
 	return	strDen;
 }
 
-StringData stringlength2 (Scalar *field, StringData strDen_in)
+StringData stringlength2 (Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
 	if (field->Precision() == FIELD_SINGLE)
 	{
-		return stringlength2<float> (field, strDen_in);
+		return stringlength2<float> (field, strDen_in, strmeas);
 	}
 	else
 	{
-		return stringlength2<double>(field, strDen_in);
+		return stringlength2<double>(field, strDen_in, strmeas);
 	}
 }
 
@@ -915,7 +932,7 @@ StringEnergyData stringenergy (Scalar *field)
 	strE.rho_s_Vil = rhosV_sum/(Lx*Lx*Lx);
 	strE.rho_str_Vil = rhotot_sum/(Lx*Lx*Lx) - strE.rho_a_Vil - strE.rho_s_Vil;
 	strE.nout = nout_sum;
-	
+
 	commSync();
 	return strE;
 }

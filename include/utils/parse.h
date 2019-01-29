@@ -76,6 +76,7 @@ extern SpectrumMaskType spmask;
 extern double           rmask;
 extern MeasureType      defaultmeasType;
 extern MeasureType      rho2thetameasType;
+extern StringMeasureType strmeas;
 
 extern LogMpi       logMpi;
 extern bool         debug ;
