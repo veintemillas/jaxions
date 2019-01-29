@@ -751,6 +751,15 @@ double  Scalar::HubbleMassSq  ()
 	return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
 }
 
+double  Scalar::HubbleConformal  ()
+{
+	// R'/R = frw/z
+	// since we have R=z^frw
+	//except in the case where frw = 0,1
+	int fr = (int) bckgnd->Frw();
+	return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())/(*RV()) ;
+}
+
 double	Scalar::AxionMass  () {
 
 	double aMass;

@@ -257,11 +257,28 @@
 			size_t				strDen;
 			long long int	strChr;
 			size_t				wallDn;
+			double        strLen;
+			double        strDeng;
+			double        strVel;
+			double        strVel2;
+			double        strGam;
 			size_t				strDen_local;
 			long long int	strChr_local;
 			size_t				wallDn_local;
-
+			double        strLen_local;
+			double        strDeng_local;
 		}	StringData;
+
+		typedef	struct	StringEnergyData_v
+		{
+			double rho_str;
+			double rho_a;
+			double rho_s;
+			double rho_str_Vil;
+			double rho_a_Vil;
+			double rho_s_Vil;
+			size_t nout;
+		}	StringEnergyData;
 
 		typedef	enum	FFTtype_s {
 			FFT_CtoC_MtoM,
@@ -429,6 +446,7 @@
 		typedef	struct	MeasData_v
 		{
 			StringData	str;
+			StringEnergyData strE;
 			double			maxTheta;
 			double 			eA;
 			double 			eS;

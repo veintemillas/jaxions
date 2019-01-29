@@ -227,6 +227,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			if ( !(measa & MEAS_STRINGCOO)){
 					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 					MeasDataOut.str = strings(axiona);
+					MeasDataOut.str = stringlength(axiona,MeasDataOut.str);
 
 					if ( measa & MEAS_STRINGMAP )
 					{
@@ -245,6 +246,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			else if (measa & MEAS_STRINGCOO){
 				LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
 				MeasDataOut.str = strings2(axiona);
+				MeasDataOut.str = stringlength(axiona,MeasDataOut.str);
 				if ( measa & MEAS_STRINGMAP ){
 					LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
 					writeString(axiona, MeasDataOut.str, true);
@@ -281,6 +283,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				/* activate this to see the binary mask */
 				// writeString(axiona, MeasDataOut.str, true);
 				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
+				// measure the energy density of strings by using masked points
+				MeasDataOut.strE = stringenergy(axiona);
+				writeStringEnergy(axiona,MeasDataOut.strE);
 		}
 
 		/* If Axion mode this is the only spectrum. In saxion an option */
@@ -317,7 +322,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						prof.add(std::string("Masker"), 0.0, 0.0);
 
 					  writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
-						}
+
+						// measure the energy density of strings by using masked points
+						MeasDataOut.strE = stringenergy(axiona);
+						writeStringEnergy(axiona,MeasDataOut.strE);
+				}
 				LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum",indexa);
 				prof.start();
 				specAna.nRun(SPMASK_REDO);

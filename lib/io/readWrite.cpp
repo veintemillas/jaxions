@@ -1426,9 +1426,14 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 		writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
 
 		/*	String metadata		*/
-		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
-		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strDen),  "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
+		writeAttribute(group_id, &(strDat.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
 
 		if	(rData) {
 			/*	Create space for writing the raw data to disk with chunked access	*/
@@ -1532,9 +1537,9 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 			H5Pclose (chunk_id);
 		}
 
-		sBytes = slab*rLz + 24;
+		sBytes = slab*rLz + 64;
 	} else
-		sBytes = 24;
+		sBytes = 64;
 
 	if (myRank == 0)
 		H5Gclose (group_id);
@@ -1638,9 +1643,14 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 		/*	String metadata		*/
 		status = H5Aexists(group_id,"String number");
 		if (status==0){
-			writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-			writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
-			writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+			writeAttribute(group_id, &(strDat.strDen),  "String number",    H5T_NATIVE_HSIZE);
+			writeAttribute(group_id, &(strDat.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
+			writeAttribute(group_id, &(strDat.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
+			writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
 		}
 
 		/* if rData write the coordinates*/
@@ -1717,10 +1727,10 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 		H5Sclose(dataspace_id);
 		}
 
-	/* the 24 is copied from writeString ... probably a bit less */
-	sBytes = 3*strDat.strDen*sizeof(unsigned short) + 24;
+	/* the 64 is copied from writeString ... probably a bit less */
+	sBytes = 3*strDat.strDen*sizeof(unsigned short) + 64;
 	} else
-	sBytes = 24;
+	sBytes = 64;
 
 	if (myRank == 0)
 		H5Gclose (group_id);
@@ -1733,6 +1743,78 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 }
 
 
+
+void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
+{
+	hid_t	group_id;
+
+	bool	mpiCheck = true;
+	size_t	sBytes	 = 0;
+
+	int myRank = commRank();
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	if (myRank == 0)
+	{
+		/*	Start profiling		*/
+		LogMsg (VERB_NORMAL, "Writing string energy");
+		prof.start();
+
+		if (header == false || opened == false)
+		{
+			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+			prof.stop();
+			return;
+		}
+
+		/*	Create a group for string data		*/
+		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+
+		if (!status)
+			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		else {
+			if (status > 0) {
+				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, perhaps already created in writeString(Co)
+			  //LogMsg(VERB_NORMAL, "Warning: group /string exists!");
+			} else {
+				LogError ("Error: can't check whether group /string exists");
+				mpiCheck = false;
+				goto bCastAndExit;
+			}
+		}
+		/*	write string energy density	*/
+		writeAttribute(group_id, &(strEDat.rho_str), "String energy density", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_a), "Masked axion energy density", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_s), "Masked saxion energy density", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_str_Vil), "String energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_a_Vil), "Masked axion energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_s_Vil), "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.nout), "nout", H5T_NATIVE_HSIZE);
+	}
+
+	bCastAndExit:
+
+	MPI_Bcast(&mpiCheck, sizeof(mpiCheck), MPI_CHAR, 0, MPI_COMM_WORLD);
+
+	if (mpiCheck == false) {	// Prevent non-zero ranks deadlock in case there is an error with rank 0. MPI would force exit anyway..
+		if (myRank == 0)
+			prof.stop();
+		return;
+	}
+
+	sBytes = 56;
+
+	if (myRank == 0)
+		H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write string energy density"), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
+
+	commSync();
+}
 
 
 

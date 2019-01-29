@@ -166,7 +166,21 @@ def gm(address,something='summary',printerror=False):
         print('eVA         Pot En Axion [ADM u.]   ')
         print('stringN     String #points ')
         print('stwallN     Walls  #points   ')
-        print('stDens      String length/Volume [ADM u.]   ')
+        print('stringL     String Length [lattice u.]')
+        print('stringNG    String #points weighted by gamma ')
+        print('stVel       String velocity')
+        print('stVel2      String velocity squared')
+        print('stGamma     String gamma')
+        print('stDens      String length/Volume [ADM u.] (statistically)')
+        print('stDensL     String length/Volume [ADM u.] (directly)')
+        print('stDensG     String length/Volume weighted by gamma [ADM u.] (statistically)')
+        print('stEDens     String energy density')
+        print('stEDensA    Masked axion energy density')
+        print('stEDensS    Masked saxion energy density')
+        print('stEDensVil  String energy density (Villadoro masking)')
+        print('stEDensAVil Masked axion energy density (Villadoro masking)')
+        print('stEDensSVil Masked saxion energy density (Villadoro masking)')
+        print('stnout      Number of grid points which are not masked')
         print('binconB     binned normalised log10 contrast         ')
         print('binconBmax  maximum log10(contrast)         ')
         print('binconBmin  maximum log10(contrast)         ')
@@ -342,8 +356,18 @@ def gm(address,something='summary',printerror=False):
     if (something[0:2] == 'st') and st_check and ftype == 'Saxion':
         if (something == 'stringN'):
             return f['string'].attrs[u'String number'] ;
+        if (something == 'stringL'):
+            return f['string'].attrs[u'String length'] ;
         if (something == 'stwallN'):
             return f['string'].attrs[u'Wall number'] ;
+        if (something == 'stringNG'):
+            return f['string'].attrs[u'String number with gamma'] ;
+        if (something == 'stVel'):
+            return f['string'].attrs[u'String velocity'] ;
+        if (something == 'stVel2'):
+            return f['string'].attrs[u'String velocity squared'] ;
+        if (something == 'stGamma'):
+            return f['string'].attrs[u'String gamma'] ;
         if (something == 'stDens'):
             stringN = f['string'].attrs[u'String number']
             L = f.attrs[u'Physical size']
@@ -355,6 +379,35 @@ def gm(address,something='summary',printerror=False):
             stringN = f['string'].attrs[u'String number']
             N = f.attrs[u'Size']
             return  stringN/N**3 ;
+        if (something == 'stDensL'):
+            stringL = f['string'].attrs[u'String length']
+            L = f.attrs[u'Physical size']
+            N = f.attrs[u'Size']
+            ct = f.attrs[u'z']
+            delta = L/N
+            return  (delta/4)*stringL*ct*ct/(L**3) ;
+        if (something == 'stDensG'):
+            stringNG = f['string'].attrs[u'String number with gamma']
+            L = f.attrs[u'Physical size']
+            N = f.attrs[u'Size']
+            ct = f.attrs[u'z']
+            delta = L/N
+            return  (delta/6)*stringNG*ct*ct/(L**3) ;
+
+        if (something == 'stEDens'):
+            return f['string'].attrs[u'String energy density'] ;
+        if (something == 'stEDensA'):
+            return f['string'].attrs[u'Masked axion energy density'] ;
+        if (something == 'stEDensS'):
+            return f['string'].attrs[u'Masked saxion energy density'] ;
+        if (something == 'stEDensVil'):
+            return f['string'].attrs[u'String energy density (Vil)'] ;
+        if (something == 'stEDensAVil'):
+            return f['string'].attrs[u'Masked axion energy density (Vil)'] ;
+        if (something == 'stEDensSVil'):
+            return f['string'].attrs[u'Masked saxion energy density (Vil)'] ;
+        if (something == 'stnout'):
+            return f['string'].attrs[u'nout'] ;
 
         if (something == 'stringCoord') and ('string/coords' in f):
             size = f['string/coords'].size
