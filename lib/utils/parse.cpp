@@ -1752,7 +1752,7 @@ int	parseArgs (int argc, char *argv[])
 		zrestore = 1.e+20;
 	}
 
-	/* make sure that endredmap makes sense */
+	/* make sure that endredmap endredmapwkb makes sense */
 	{
 		int siN = (int) sizeN;
 		if (endredmap > siN){
@@ -1764,8 +1764,17 @@ int	parseArgs (int argc, char *argv[])
 			endredmap = siN/schei;
 			printf("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
 		}
-	}
+		if (endredmapwkb > siN){
+			printf("[Error:1] Reduced wkb map dimensions (%d) set to %d\n ", endredmap,siN);
+			endredmapwkb = siN;
+		}
+		if (siN%endredmapwkb != 0 ){
+			int schei =  siN/endredmapwkb;
+			endredmapwkb = siN/schei;
+			printf("[Error:2] Reduced wkb map dimensions set to %d\n ", endredmap);
+		}
 
+	}
 	/*	Set the output directory, according to an environmental variable	*/
 
 	if (const char *outPath = std::getenv("AXIONS_OUTPUT")) {
