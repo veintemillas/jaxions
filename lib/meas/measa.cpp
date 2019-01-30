@@ -183,6 +183,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 									// writeEDensReduced(axiona, indexa, redmap, redmap/((int) zGrid));
 									// prof.stop();
 									// prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
+										LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to N=%d by smoothing",sizeN, redmap);
 										double ScaleSize = ((double) axiona->Length())/((double) redmap);
 										double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axiona->Surf());
 										size_t nLz = redmap / commSize();
