@@ -184,6 +184,17 @@ int	main (int argc, char *argv[])
 					}
 					fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
 				}
+				/* check for no repetitions */
+				for (int i =i_meas-1; i>0;i--)
+					if (meas_zlist[i] == meas_zlist[i-1]){
+						LogMsg(VERB_NORMAL,"[VAX] merge %d %d at t %f with %d %d > ", i, i-1, meas_zlist[i], meas_typelist[i], meas_typelist[i-1], meas_typelist[i]|meas_typelist[i-0]);
+						meas_typelist[i-1] |= meas_typelist[i];
+						meas_zlist.erase(meas_zlist.begin()+i);
+						meas_typelist.erase(meas_typelist.begin()+i);
+					}
+
+
+
 				LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
 				zFinl = meas_zlist[meas_zlist.size()-1];
 				LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
