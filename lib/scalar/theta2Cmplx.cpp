@@ -3,13 +3,13 @@
 #include "scalar/scalarField.h"
 #include "enum-field.h"
 
-#include "scalar/theta2cmplxXeon.h"
+#include "scalar/theta2CmplxXeon.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-	#include "scalar/theta2cmplxGpu.h"
+	#include "scalar/theta2CmplxGpu.h"
 #endif
 
 #include "utils/utils.h"
