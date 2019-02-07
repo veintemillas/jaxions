@@ -187,7 +187,7 @@ int	main (int argc, char *argv[])
 				/* check for no repetitions */
 				for (int i =i_meas-1; i>0;i--)
 					if (meas_zlist[i] == meas_zlist[i-1]){
-						LogMsg(VERB_NORMAL,"[VAX] merge %d %d at t %f with %d %d > ", i, i-1, meas_zlist[i], meas_typelist[i], meas_typelist[i-1], meas_typelist[i]|meas_typelist[i-0]);
+						LogMsg(VERB_NORMAL,"[VAX] merge %d %d at t %f with %d %d > %d", i, i-1, meas_zlist[i], meas_typelist[i], meas_typelist[i-1], meas_typelist[i]|meas_typelist[i-0]);
 						meas_typelist[i-1] |= meas_typelist[i];
 						meas_zlist.erase(meas_zlist.begin()+i);
 						meas_typelist.erase(meas_typelist.begin()+i);
@@ -307,6 +307,15 @@ int	main (int argc, char *argv[])
 				break;
 
 				case DUMP_FROMLIST:
+				if (*axion->zV() > meas_zlist[i_meas])
+				{
+					for (int i =i_meas; i< meas_zlist.size(); i++){
+						if (*axion->zV() > meas_zlist[i])
+							i_meas++;
+							LogMsg(VERB_NORMAL,"Time jumped over measurement! jumping once!");
+					}
+				}
+
 				if ( (*axion->zV())+dzaux >= meas_zlist[i_meas] && (*axion->zV()) < meas_zlist[i_meas]){
 					dzaux = meas_zlist[i_meas] - (*axion->zV());
 					measrightnow = true;
@@ -317,6 +326,7 @@ int	main (int argc, char *argv[])
 						measrightnow = false;
 					}
 				}
+
 				break;
 			}
 
