@@ -646,9 +646,6 @@ LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
 		myCosmos->SetPhysSize(lSize);
 	}
 
-	if (endredmap == -1)	// No reduction unless specified
-		endredmap = sizeN;
-
 	//initial time; axion will be created with z=zTmp
 	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);
 	//if no zInit is given in command line, decide from file

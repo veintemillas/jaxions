@@ -645,9 +645,6 @@ LogMsg (VERB_NORMAL, "Physical size (comm-line or default): %f",myCosmos->PhysSi
 	}
 LogMsg (VERB_NORMAL, "Physical size (read and set to): %f",myCosmos->PhysSize());
 
-	// issue?
-	if (endredmap == -1)	// No reduction unless specified
-		endredmap = sizeN;
 
 	//initial time; axion will be created with z=zTmp
 	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);

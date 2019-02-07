@@ -647,9 +647,6 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Size must be larger than 2.\n");
 				exit(1);
 			}
-			//JARE change
-			// if (endredmap == -1)
-			// 	endredmap = sizeN;
 
 			i++;
 			procArgs++;
