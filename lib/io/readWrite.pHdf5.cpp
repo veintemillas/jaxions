@@ -1663,8 +1663,11 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 
 /* New strings */
 
-void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
+void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO Terminar
 {
+	LogMsg(VERB_NORMAL, "Not implemented (yet) for parallel HDF5. Ignoring request.");
+	return;
+#if 0
 	hid_t       dataset_id, dataspace_id;  /* identifiers */
 	hsize_t     dims[1];
 	herr_t      status;
@@ -1719,57 +1722,55 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 
 	Profiler &prof = getProfiler(PROF_HDF5);
 
-	if (myRank == 0)
+	/*	Start profiling		*/
+	LogMsg (VERB_NORMAL, "Writing string coord.");
+	prof.start();
+
+	if (header == false || opened == false)
 	{
-		/*	Start profiling		*/
-		LogMsg (VERB_NORMAL, "Writing string coord.");
-		prof.start();
+		LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+		prof.stop();
+		return;
+	}
 
-		if (header == false || opened == false)
-		{
-			LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
-			prof.stop();
-			return;
+	/* Create a group for string data */
+	auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+	if (!status)
+		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
+			LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
+		} else {
+			LogError ("Error: can't check whether group /string exists");
 		}
+	}
 
-		/* Create a group for string data */
-		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
-		if (!status)
-			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		else {
-			if (status > 0) {
-				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
-				LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
-			} else {
-				LogError ("Error: can't check whether group /string exists");
-			}
-		}
+	/*	Maximum coordinate is 2xN	(to avoid 1/2's)*/
+	writeAttribute(group_id, &nmax, "nmax",  H5T_NATIVE_UINT);
 
-		/*	Maximum coordinate is 2xN	(to avoid 1/2's)*/
-		writeAttribute(group_id, &nmax, "nmax",  H5T_NATIVE_UINT);
+	/*	String metadata		*/
+	status = H5Aexists(group_id,"String number");
 
-		/*	String metadata		*/
-		status = H5Aexists(group_id,"String number");
-		if (status==0){
-			writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-			writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
-			writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
-		}
+	if (!status) {
+		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
+		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+	}
 
-		/* if rData write the coordinates*/
-		if (rData)
-		{
-			/* Total length of coordinates to write */
-			dims[0] = 3*toti;
-			/* Create the data space for the dataset. */
-			dataspace_id = H5Screate_simple(1, dims, NULL);
-			/* Create the dataset. */
-			dataset_id = H5Dcreate2(meas_id, "/string/codata", H5T_NATIVE_USHORT, dataspace_id,
-			            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	/* if rData write the coordinates*/
+	if (rData)
+	{
+		/* Total length of coordinates to write */
+		dims[0] = 3*toti;
+		/* Create the data space for the dataset. */
+		dataspace_id = H5Screate_simple(1, dims, NULL);
+		/* Create the dataset. */
+		dataset_id = H5Dcreate2(meas_id, "/string/codata", H5T_NATIVE_USHORT, dataspace_id,
+		            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-			sSpace = H5Dget_space (dataset_id);
-			memSpace = H5Screate_simple(1, &slab, NULL);
-		}
+		sSpace = H5Dget_space (dataset_id);
+		memSpace = H5Screate_simple(1, &slab, NULL);
 	}
 
 	/* perhaps we need some cross-checks */
@@ -1822,29 +1823,82 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 			commSync();
 		}
 
-		if (myRank == 0)
-		{
 		// H5Dclose(sSpace);
 		// H5Dclose(memSpace);
 		H5Dclose(dataset_id);
 		H5Sclose(dataspace_id);
-		}
 
-	/* the 24 is copied from writeString ... probably a bit less */
-	sBytes = 3*strDat.strDen*sizeof(unsigned short) + 24;
+		/* the 24 is copied from writeString ... probably a bit less */
+		sBytes = 3*strDat.strDen*sizeof(unsigned short) + 24;
 	} else
-	sBytes = 24;
+		sBytes = 24;
 
-	if (myRank == 0)
-		H5Gclose (group_id);
+	H5Gclose (group_id);
 
 	prof.stop();
 	prof.add(std::string("Write string Coord."), 0, 1e-9*sBytes);
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 	commSync();
+#endif
 }
 
+void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
+{
+	hid_t	group_id;
+
+	bool	mpiCheck = true;
+	size_t	sBytes	 = 0;
+
+	int myRank = commRank();
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	/*	Start profiling		*/
+	LogMsg (VERB_NORMAL, "Writing string energy");
+	prof.start();
+
+	if (header == false || opened == false)
+	{
+		LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+		prof.stop();
+		return;
+	}
+
+	/*	Create a group for string data		*/
+	auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+
+	if (!status)
+		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, perhaps already created in writeString(Co)
+		  //LogMsg(VERB_NORMAL, "Warning: group /string exists!");
+		} else {
+			LogError ("Error: can't check whether group /string exists");
+			return;
+		}
+	}
+	/*	write string energy density	*/
+	writeAttribute(group_id, &(strEDat.rho_str),     "String energy density",	       H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &(strEDat.rho_a),       "Masked axion energy density",        H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &(strEDat.rho_s),       "Masked saxion energy density",       H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &(strEDat.rho_str_Vil), "String energy density (Vil)",	       H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &(strEDat.rho_a_Vil),   "Masked axion energy density (Vil)",  H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &(strEDat.rho_s_Vil),   "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &(strEDat.nout),        "nout",			       H5T_NATIVE_HSIZE);
+	
+	sBytes = 56;
+
+	H5Gclose (group_id);
+
+	prof.stop();
+	prof.add(std::string("Write string energy density"), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
+
+	commSync();
+}
 
 void	writeEnergy	(Scalar *axion, void *eData_)
 {
