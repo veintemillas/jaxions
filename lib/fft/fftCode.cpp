@@ -4,11 +4,15 @@
 #include "fft/fftCode.h"
 #include "utils/parse.h"
 
+using namespace std;
 namespace AxionFFT {
 
 	static bool init       = false;
 	static bool useThreads = false;
 	static std::map <std::string,FFTplan>   fftPlans;
+
+	char outfftName[2048];
+	char fftplanTypes[2048];
 
 	void	FFTplan::importWisdom() {
 
@@ -455,16 +459,43 @@ namespace AxionFFT {
 
 	void	FFTplan::run	(FFTdir cDir)
 	{
-		LogMsg (VERB_HIGH, "Executing FFT");
+		LogMsg (VERB_NORMAL, "Executing FFT");
+
+		LogFlush();
+		FILE *file_fft ;
+		file_fft = NULL;
+
+		auto	myRank = commRank();
+
+		if (myRank ==0)
+			file_fft = fopen(outfftName,"a+");
+
+		std::chrono::high_resolution_clock::time_point start, current, old;
+		std::chrono::milliseconds elapsed;
+		start = std::chrono::high_resolution_clock::now();
+
 		switch (prec) {
 			case	FIELD_SINGLE:
 				switch (cDir) {
 					case	FFT_FWD:
 						fftwf_execute(static_cast<fftwf_plan>(planForward));
+						current = std::chrono::high_resolution_clock::now();
+						elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+						if (myRank == 0 ){
+							// fprintf(file_fft,"prec(single) dir(forward) plan(%s) type(%d) time(%f)\n", fftplanTypes, type, elapsed.count()*1.0);
+							fprintf(file_fft,"0 0 %d %f\n", type, elapsed.count()*1.0);
+							}
 						break;
 
 					case	FFT_BCK:
 						fftwf_execute(static_cast<fftwf_plan>(planBackward));
+						current = std::chrono::high_resolution_clock::now();
+						elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+						if (myRank == 0 ){
+							// fprintf(file_fft,"prec(single) dir(backwar) plan(%s) type(%d) time(%f)\n", fftplanTypes, type, elapsed.count()*1.0);
+							fprintf(file_fft,"0 1 %d %f\n", type, elapsed.count()*1.0);
+						}
+
 						break;
 
 					default:
@@ -491,6 +522,9 @@ namespace AxionFFT {
 				LogError ("Invalid field precision, plan not executed.");
 				return;
 		}
+
+		if (myRank ==0)
+			fclose(file_fft);
 	}
 
 	double	FFTplan::GFlops	(FFTdir cDir) {
@@ -533,6 +567,7 @@ namespace AxionFFT {
 	void	initFFT		(FieldPrecision prec) {
 		LogMsg (VERB_NORMAL, "Initializing FFT using %d MPI ranks...", commSize());
 
+
 		LogMsg (VERB_HIGH, "FFTW_ESTIMATE = %d ", FFTW_ESTIMATE);
 		LogMsg (VERB_HIGH, "FFTW_MEASURE = %d ", FFTW_MEASURE);
 		LogMsg (VERB_HIGH, "FFTW_PATIENT = %d ", FFTW_PATIENT);
@@ -542,30 +577,44 @@ namespace AxionFFT {
 		switch(fftplanType){
 			case FFTW_ESTIMATE:
 				LogMsg (VERB_NORMAL, "Chosen FFTW_ESTIMATE(%d) = %d ",FFTW_ESTIMATE, fftplanType);
+				sprintf (fftplanTypes, "FFTW_ESTIMATE");
 				break;
 			case FFTW_PATIENT:
 				LogMsg (VERB_NORMAL, "Chosen FFTW_PATIENT(%d) = %d ", FFTW_PATIENT, fftplanType);
+				sprintf (fftplanTypes, "FFTW_PATIENT");
 				break;
 			case FFTW_EXHAUSTIVE:
 				LogMsg (VERB_NORMAL, "Chosen FFTW_EXHAUSTIVE(%d) = %d ", FFTW_EXHAUSTIVE, fftplanType);
+				sprintf (fftplanTypes, "FFTW_EXHAUSTIVE");
 				break;
 			case FFTW_MEASURE:
 			default:
 				LogMsg (VERB_NORMAL, "Chosen FFTW_MEASURE(%d) = %d ", FFTW_MEASURE, fftplanType);
+				sprintf (fftplanTypes, "FFTW_MEASURE");
 				if (fftplanType != FFTW_MEASURE){
 					size_t temp = fftplanType;
 					fftplanType = FFTW_MEASURE;
 					LogMsg (VERB_NORMAL, "Changed fftplanType from %d to FFTW_MEASURE(%d) check(%d) ", temp, FFTW_MEASURE, fftplanType);
 					}
-
 				break;
+		}
 
+		sprintf (outfftName, "out/fft.txt");
+
+		FILE *file_fft ;
+		file_fft = NULL;
+		if (commRank() ==0){
+			file_fft = fopen(outfftName,"w+");
+			fprintf(file_fft, "%s\n",fftplanTypes);
+			fclose(file_fft);
 		}
 
 		if (init == true) {
 			LogMsg (VERB_HIGH, "FFT already initialized");
 			return;
 		}
+
+		LogFlush();
 /*
 		int  *fftInitThreads;
 		void *fftPlanThreads;
@@ -694,7 +743,7 @@ namespace AxionFFT {
 	void	initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name) {
 
 		LogMsg (VERB_NORMAL, "Creating FFT plan %s", name.c_str());
-
+		LogFlush();
 		if (fftPlans.find(name) == fftPlans.end()) {
 			FFTplan myPlan(axion, type, dFft);
 			fftPlans.insert(std::make_pair(name, std::move(myPlan)));

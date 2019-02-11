@@ -281,21 +281,21 @@
 		}	StringEnergyData;
 
 		typedef	enum	FFTtype_s {
-			FFT_CtoC_MtoM,
-			FFT_CtoC_M2toM2,
-			FFT_CtoC_MtoM2,
-			FFT_CtoC_VtoM2,
-			FFT_SPSX,
-			FFT_SPAX,
-			FFT_PSPEC_SX,
-			FFT_PSPEC_AX,
-			FFT_RDSX_M,
-			FFT_RDSX_V,
-			FFT_RHO_SX,
-			FFT_RtoC_MtoM_WKB,
-			FFT_RtoC_VtoV_WKB,
-			FFT_RtoC_M2toM2_WKB,
-			FFT_NOTYPE,
+			FFT_NOTYPE         = 0,
+			FFT_CtoC_MtoM      = 1,
+			FFT_CtoC_M2toM2    = 2,
+			FFT_CtoC_MtoM2     = 3,
+			FFT_CtoC_VtoM2     = 4,
+			FFT_SPSX           = 5,
+			FFT_SPAX           = 6,
+			FFT_PSPEC_SX       = 7,
+			FFT_PSPEC_AX       = 8,
+			FFT_RDSX_M         = 9,
+			FFT_RDSX_V         = 10,
+			FFT_RHO_SX         = 11,
+			FFT_RtoC_MtoM_WKB  = 12,
+			FFT_RtoC_VtoV_WKB  = 13,
+			FFT_RtoC_M2toM2_WKB= 14,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {
