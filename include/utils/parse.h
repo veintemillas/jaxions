@@ -71,6 +71,8 @@ extern LambdaType     lType;
 //extern VqcdType       vqcdType;
 //extern VqcdType       vqcdTypeDamp;
 //extern VqcdType       vqcdTypeRhoevol;
+
+extern size_t         fftplanType;
 extern PropType         pType;
 extern SpectrumMaskType spmask;
 extern double           rmask;

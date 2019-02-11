@@ -75,6 +75,7 @@ size_t iter  = 0;
 size_t parm1 = 0;
 size_t wTime = std::numeric_limits<std::size_t>::max();
 
+size_t       fftplanType = 0; //FFTW_MEASURE = 0
 PropType     pType     = PROP_NONE;
 SpectrumMaskType spmask= SPMASK_FLAT;
 StringMeasureType strmeas = STRMEAS_STRING;
@@ -1234,6 +1235,22 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Spectrum masking type is a positive integer.\n");
 				exit(1);
 			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--fftplan"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a fftw  plan speed: 0 (MEASURE),64 (ESTIMATE),32 (PATIENT), 8 (EXHAUSTIVE)... .\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%lu", reinterpret_cast<size_t*>(&fftplanType));
 
 			i++;
 			procArgs++;

@@ -20,7 +20,7 @@ namespace AxionFFT {
 		if (imported)
 			return;
 
-		LogMsg (VERB_NORMAL, "Importing wisdom");
+		LogMsg (VERB_NORMAL, "Importing wisdom from dir: %s ", wisDir);
 
 		switch (prec) {
 			case	FIELD_SINGLE:
@@ -63,7 +63,7 @@ namespace AxionFFT {
 		if (!noFile)
 			LogMsg (VERB_NORMAL, "Wisdom successfully imported");
 		else
-			LogMsg (VERB_NORMAL, "Wisdom will be generated");
+			LogMsg (VERB_NORMAL, "Wisdom will have to be generated");
 		imported = true;
 	}
 
@@ -124,10 +124,10 @@ namespace AxionFFT {
 					case	FFT_CtoC_MtoM:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_CtoC_M2toM2:
@@ -138,10 +138,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_CtoC_MtoM2:
@@ -152,10 +152,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_CtoC_VtoM2:
@@ -166,10 +166,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_RDSX_V:
@@ -180,10 +180,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_SPAX:
@@ -191,15 +191,15 @@ namespace AxionFFT {
 						if (axion->Field() == FIELD_SAXION) {
 
 							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						} else {
 
 							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						}
 						break;
 
@@ -212,9 +212,9 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_PSPEC_SX:
@@ -225,9 +225,9 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_RHO_SX:
@@ -238,33 +238,33 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mAR, m2R, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mAR, m2R, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2R, mAR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2R, mAR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_RtoC_MtoM_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_RtoC_VtoV_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_RtoC_M2toM2_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					default:
@@ -296,10 +296,10 @@ namespace AxionFFT {
 					case	FFT_CtoC_MtoM:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_CtoC_M2toM2:
@@ -310,10 +310,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_CtoC_MtoM2:
@@ -324,10 +324,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m,  MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_CtoC_VtoM2:
@@ -338,10 +338,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, v,  MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_RDSX_V:
@@ -352,10 +352,10 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
 
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_SPAX:
@@ -363,15 +363,15 @@ namespace AxionFFT {
 						if (axion->Field() == FIELD_SAXION) {
 
 							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						} else {
 
 							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						}
 						break;
 
@@ -384,9 +384,9 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_PSPEC_SX:
@@ -397,9 +397,9 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case    FFT_RHO_SX:
@@ -410,31 +410,31 @@ namespace AxionFFT {
 						}
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mAR, m2R, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mAR, m2R, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2R, mAR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2R, mAR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_RtoC_MtoM_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mNoGr, mNoGc, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, mNoGc, mNoGr, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 					case	FFT_RtoC_VtoV_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 					case	FFT_RtoC_M2toM2_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, FFTW_MEASURE | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					default:
@@ -532,6 +532,35 @@ namespace AxionFFT {
 
 	void	initFFT		(FieldPrecision prec) {
 		LogMsg (VERB_NORMAL, "Initializing FFT using %d MPI ranks...", commSize());
+
+		LogMsg (VERB_HIGH, "FFTW_ESTIMATE = %d ", FFTW_ESTIMATE);
+		LogMsg (VERB_HIGH, "FFTW_MEASURE = %d ", FFTW_MEASURE);
+		LogMsg (VERB_HIGH, "FFTW_PATIENT = %d ", FFTW_PATIENT);
+		LogMsg (VERB_HIGH, "FFTW_EXHAUSTIVE = %d ", FFTW_EXHAUSTIVE);
+		LogMsg (VERB_HIGH, "FFTW_MPI_TRANSPOSED_OUT = %d ", FFTW_MPI_TRANSPOSED_OUT);
+
+		switch(fftplanType){
+			case FFTW_ESTIMATE:
+				LogMsg (VERB_NORMAL, "Chosen FFTW_ESTIMATE(%d) = %d ",FFTW_ESTIMATE, fftplanType);
+				break;
+			case FFTW_PATIENT:
+				LogMsg (VERB_NORMAL, "Chosen FFTW_PATIENT(%d) = %d ", FFTW_PATIENT, fftplanType);
+				break;
+			case FFTW_EXHAUSTIVE:
+				LogMsg (VERB_NORMAL, "Chosen FFTW_EXHAUSTIVE(%d) = %d ", FFTW_EXHAUSTIVE, fftplanType);
+				break;
+			case FFTW_MEASURE:
+			default:
+				LogMsg (VERB_NORMAL, "Chosen FFTW_MEASURE(%d) = %d ", FFTW_MEASURE, fftplanType);
+				if (fftplanType != FFTW_MEASURE){
+					size_t temp = fftplanType;
+					fftplanType = FFTW_MEASURE;
+					LogMsg (VERB_NORMAL, "Changed fftplanType from %d to FFTW_MEASURE(%d) check(%d) ", temp, FFTW_MEASURE, fftplanType);
+					}
+
+				break;
+
+		}
 
 		if (init == true) {
 			LogMsg (VERB_HIGH, "FFT already initialized");
