@@ -11,8 +11,10 @@ namespace AxionFFT {
 	static bool useThreads = false;
 	static std::map <std::string,FFTplan>   fftPlans;
 
-	char outfftName[2048];
-	char fftplanTypes[2048];
+char outfftName[2048];
+char fftplanTypes[2048];
+size_t plancounter = 0 ;
+char currentplanName[2048];
 
 	void	FFTplan::importWisdom() {
 
@@ -78,12 +80,19 @@ namespace AxionFFT {
 		auto	myRank = commRank();
 
 		char wisName[2048];
-
+char wisName2[2048];
 		switch (prec) {
 			case	FIELD_SINGLE:
+sprintf (wisName2, "out/fff/fftWisdom.single-#%d[%s]-r%d", plancounter,currentplanName,commRank());
+LogMsg (VERB_NORMAL, "Exporting wisdom toruru %s",wisName2);
+fftwf_export_wisdom_to_filename(wisName2);
 				sprintf (wisName, "%s/fftWisdom.single", wisDir);
 				fftwf_mpi_gather_wisdom(MPI_COMM_WORLD);
-				if (myRank == 0) fftwf_export_wisdom_to_filename(wisName);
+				if (myRank == 0) {
+					// fftwf_export_wisdom_to_filename(wisName);
+sprintf (wisName2, "out/fff/fftWisdom.single-#%d[%s]-gathered", plancounter,currentplanName);
+					fftwf_export_wisdom_to_filename(wisName2);
+				}
 				break;
 
 			case	FIELD_DOUBLE:
@@ -459,7 +468,7 @@ namespace AxionFFT {
 
 	void	FFTplan::run	(FFTdir cDir)
 	{
-		LogMsg (VERB_NORMAL, "Executing FFT");
+		LogMsg (VERB_NORMAL, "Executing FFT ... ");
 
 		LogFlush();
 		FILE *file_fft ;
@@ -507,10 +516,22 @@ namespace AxionFFT {
 				switch (cDir) {
 					case	FFT_FWD:
 						fftw_execute(static_cast<fftw_plan>(planForward));
+						current = std::chrono::high_resolution_clock::now();
+						elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+						if (myRank == 0 ){
+							// fprintf(file_fft,"prec(single) dir(forward) plan(%s) type(%d) time(%f)\n", fftplanTypes, type, elapsed.count()*1.0);
+							fprintf(file_fft,"1 0 %d %f\n", type, elapsed.count()*1.0);
+							}
 						break;
 
 					case	FFT_BCK:
 						fftw_execute(static_cast<fftw_plan>(planBackward));
+						current = std::chrono::high_resolution_clock::now();
+						elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+						if (myRank == 0 ){
+							// fprintf(file_fft,"prec(single) dir(forward) plan(%s) type(%d) time(%f)\n", fftplanTypes, type, elapsed.count()*1.0);
+							fprintf(file_fft,"1 1 %d %f\n", type, elapsed.count()*1.0);
+							}
 						break;
 
 					default:
@@ -523,6 +544,7 @@ namespace AxionFFT {
 				return;
 		}
 
+		LogMsg (VERB_NORMAL, "... Done (%f ms)",elapsed.count()*1.0);
 		if (myRank ==0)
 			fclose(file_fft);
 	}
@@ -741,10 +763,12 @@ namespace AxionFFT {
 	}
 
 	void	initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name) {
-
-		LogMsg (VERB_NORMAL, "Creating FFT plan %s", name.c_str());
 		LogFlush();
+
+		LogMsg (VERB_NORMAL, "Creating FFT plan %s ... ", name.c_str());
 		if (fftPlans.find(name) == fftPlans.end()) {
+sprintf (currentplanName, "%s", name.c_str());
+plancounter++;
 			FFTplan myPlan(axion, type, dFft);
 			fftPlans.insert(std::make_pair(name, std::move(myPlan)));
 
@@ -752,6 +776,8 @@ namespace AxionFFT {
 		} else {
 			LogMsg (VERB_NORMAL, "Plan %s already exists, ommitted", name.c_str());
 		}
+		LogMsg (VERB_NORMAL, " ... Done", name.c_str());
+		LogFlush();
 	}
 
 	FFTplan&	fetchPlan	(std::string name) {
