@@ -736,7 +736,6 @@ if (commRank() == 0 ){
 
 		LogMsg(VERB_NORMAL,"START MODE CALCULATION!");
 		LogFlush();
-// #pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
 		#pragma omp parallel for schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
