@@ -1392,7 +1392,7 @@ void	SpecBin::masker	(double radius_mask) {
 				for (size_t sl=1; sl<ss; sl++) {
 					size_t	oOff = sl*dl;
 					size_t	fOff = sl*pl;
-					memcpy	(mAS+oOff, mAS+fOff, dl);
+					memmove	(mAS+oOff, mAS+fOff, dl);
 				}
 
 
@@ -1435,7 +1435,7 @@ void	SpecBin::masker	(double radius_mask) {
 				size_t	oOff = isl*dl;
 				size_t	fOff = isl*pl;
 				// LogOut("A %lu ",sl);
-				memcpy	(mAS+fOff, mAS+oOff, dl);
+				memmove	(mAS+fOff, mAS+oOff, dl);
 			}
 
 			/* Calculate the FFT of the mask */
@@ -1606,7 +1606,7 @@ void	SpecBin::masker	(double radius_mask) {
 							for (size_t sl=1; sl<ss; sl++) {
 								size_t	oOff = sl*dl;
 								size_t	fOff = sl*pl;
-								memcpy	(mA+oOff, mA+fOff, dl);
+								memmove	(mA+oOff, mA+fOff, dl);
 							}
 
 							/* Generate mask */
@@ -1642,13 +1642,13 @@ void	SpecBin::masker	(double radius_mask) {
 								size_t isl = ss-sl;
 								size_t	oOff = isl*dl;
 								size_t	fOff = isl*pl;
-								memcpy	(mA+fOff, mA+oOff, dl);
+								memmove	(mA+fOff, mA+oOff, dl);
 							}
 
 							/* Calculate the FFT of the mask */
 							myPlan.run(FFT_FWD);
 							field->setM2(M2_ENERGY_MASK_AXI_FFT);
-							
+
 							binP.assign(powMax, 0.);
 							switch (fPrec) {
 								case	FIELD_SINGLE:

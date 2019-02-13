@@ -823,18 +823,18 @@ if (commRank() == 0 ){
 					for (uint sl=1; sl<Sm; sl++) {
 						auto	oOff = sl*field->DataSize()*(Ly);
 						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(m0Tf+oOff, m0Tf+fOff, dataLine);
+						memmove	(m0Tf+oOff, m0Tf+fOff, dataLine);
 					}
 			LogMsg(VERB_NORMAL," shifthing to host ghost");
 			LogMsg(VERB_NORMAL," chech precision %lu and datasize %lu",field->Precision(),field->DataSize());
 					size_t dataTotalSize = (field->Precision())*(field->Size());
-					memcpy	(mTf, m0Tf, dataTotalSize);
+					memmove	(mTf, m0Tf, dataTotalSize);
 
 			LogMsg(VERB_NORMAL," unpadding v in place ... ");
 					for (uint sl=0; sl<Sm; sl++) {
 						auto	oOff = sl*field->DataSize()*(Ly);
 						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(vTf+oOff, vTf+fOff, dataLine);
+						memmove	(vTf+oOff, vTf+fOff, dataLine);
 					}
 
 	  Float toton = (Float) field->TotalSize();
@@ -848,7 +848,7 @@ if (commRank() == 0 ){
 		}
 		LogMsg(VERB_NORMAL,"done!\n");
 
-
+		field->setM2(M2_DIRTY); // fts of m and v
 		// LogOut ("  --> points %e %e %e !\n ", mIn[0],mIn[1],mIn[2]);
 		// LogOut ("  --> points %e %e %e !\n ", mIn[field->Size()-1],mIn[field->Size()-2],mIn[field->Size()-3]);
 		// LogOut ("  --> voints %e %e %e !\n ", vIn[0],vIn[1],vIn[2]);
