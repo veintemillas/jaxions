@@ -740,8 +740,8 @@ if (commRank() == 0 ){
 
 		size_t	zBase = Lz*commRank();
 
-// double time1 = 0.0 ;
-// double time2 = 0.0 ;
+double time1 = 0.0 ;
+double time2 = 0.0 ;
 // double time3 = 0.0 ;
 
 // check precision interpolation
@@ -755,8 +755,9 @@ if (commRank() == 0 ){
 // }
 
 		LogMsg(VERB_NORMAL,"START MODE CALCULATION!");
+		LogFlush();
 // #pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
-		#pragma omp parallel for schedule(static)
+		#pragma omp parallel for reduction(+:time1,time2) schedule(static)
 		for (size_t idx=0; idx<nModes; idx++)
 		{
 // auto start = std::chrono::steady_clock::now();
@@ -796,13 +797,28 @@ if (commRank() == 0 ){
 
 			// WKB phase
 
+
+auto start = std::chrono::steady_clock::now();
 			double phase = sss(k2);
+auto end = std::chrono::steady_clock::now();
+auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time1 += elapsed.count();
+
+start = std::chrono::steady_clock::now();
+			double phasa = interpolatephi(dk,k2);
+end = std::chrono::steady_clock::now();
+elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time2 += elapsed.count();
+
+
 // check precision interpolation
 // double phasa = interpolatephi(dk,k2);
 // if (commRank()==0)
 // 	fprintf(file_wk,"%.14lf %.14lf %.14lf %e\n",k2, phase, phasa, phasa-phase);
 			pha = exp(im*phase);
 			pha *= prepha;
+
+
 
 // end = std::chrono::steady_clock::now();
 // elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -828,11 +844,11 @@ if (commRank() == 0 ){
 
 			mC[idx] = Maux;
 			vC[idx] = Daux;
-
 // end = std::chrono::steady_clock::now();
 // elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 // time3 += elapsed.count();
 		}
+LogMsg(VERB_NORMAL,"WKB spline/linear %f/%f\n",time1, time2);
 // // check precision interpolation
 // if (commRank()==0)
 // 	fclose(file_wk);
