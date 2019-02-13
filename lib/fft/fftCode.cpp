@@ -525,6 +525,7 @@ namespace AxionFFT {
 
 		if (myRank ==0)
 			fclose(file_fft);
+		LogFlush();
 	}
 
 	double	FFTplan::GFlops	(FFTdir cDir) {
@@ -599,7 +600,7 @@ namespace AxionFFT {
 				break;
 		}
 
-		sprintf (outfftName, "out/fft.txt");
+		sprintf (outfftName, "%s/../fft.txt", outDir);
 
 		FILE *file_fft ;
 		file_fft = NULL;
