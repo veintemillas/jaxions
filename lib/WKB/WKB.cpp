@@ -8,7 +8,7 @@
 #include "scalar/folder.h"
 #include "scalar/scalar.h"
 #include <chrono>
-
+#include <WKB/spline.h>
 namespace AxionWKB {
 
 
@@ -673,6 +673,10 @@ if (commRank() == 0 ){
 		fprintf(file_wk,"%lf %lf\n",k2Table[i], superTable[i]);
 	fclose(file_wk);
 }
+		tk::spline sss;
+		sss.set_points(k2Table,superTable);
+
+		LogMsg(VERB_NORMAL,"Spline built!");
 		// use nQcd1 y 2
 		double nQcdI				 = field->BckGnd()->QcdExp();
 		double nQcdE				 = field->BckGnd()->QcdExp();
@@ -740,7 +744,15 @@ if (commRank() == 0 ){
 // double time2 = 0.0 ;
 // double time3 = 0.0 ;
 
-		double myarray[powMax] = {0.0};
+// check precision interpolation
+// 		double myarray[powMax] = {0.0};
+// FILE *file_wk ;
+// file_wk = NULL;
+// if (commRank() == 0 ){
+// 	char base[256];
+// 	sprintf(base, "out/fullphase.txt", zIni,zEnd);
+// 	file_wk = fopen(base,"w+");
+// }
 
 		LogMsg(VERB_NORMAL,"START MODE CALCULATION!");
 // #pragma omp parallel for reduction(+:time1,time2,time3,myarray[:powMax]) schedule(static)
@@ -783,7 +795,12 @@ if (commRank() == 0 ){
 // start = std::chrono::steady_clock::now();
 
 			// WKB phase
-			double phase = interpolatephi(dk,k2);
+
+			double phase = sss(k2);
+// check precision interpolation
+// double phasa = interpolatephi(dk,k2);
+// if (commRank()==0)
+// 	fprintf(file_wk,"%.14lf %.14lf %.14lf %e\n",k2, phase, phasa, phasa-phase);
 			pha = exp(im*phase);
 			pha *= prepha;
 
@@ -816,6 +833,9 @@ if (commRank() == 0 ){
 // elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 // time3 += elapsed.count();
 		}
+// // check precision interpolation
+// if (commRank()==0)
+// 	fclose(file_wk);
 
 // LogMsg(VERB_NORMAL,"WKB TIEMPO %f,%f,%f\n",time1, time2, time3);
 // FILE *file_wkb ;
