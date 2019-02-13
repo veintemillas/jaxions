@@ -798,17 +798,17 @@ double time2 = 0.0 ;
 			// WKB phase
 
 
-auto start = std::chrono::steady_clock::now();
-			double phase = sss(k2);
-auto end = std::chrono::steady_clock::now();
-auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-time1 += elapsed.count();
+// auto start = std::chrono::steady_clock::now();
+ 			double phase = sss(k2);
+// auto end = std::chrono::steady_clock::now();
+// auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+// time1 += elapsed.count();
 
-start = std::chrono::steady_clock::now();
-			double phasa = interpolatephi(dk,k2);
-end = std::chrono::steady_clock::now();
-elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-time2 += elapsed.count();
+// start = std::chrono::steady_clock::now();
+// 			double phasa = interpolatephi(dk,k2);
+// end = std::chrono::steady_clock::now();
+// elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+// time2 += elapsed.count();
 
 
 // check precision interpolation
@@ -828,6 +828,9 @@ time2 += elapsed.count();
 
 // start = std::chrono::steady_clock::now();
 
+			// Float version
+			{
+auto start = std::chrono::steady_clock::now();
 			// initial conditions of the mode
 			std::complex<Float> Maux = m2C1[idx];
 			std::complex<Float> Daux = m2C2[idx]/(ii*w1);
@@ -844,11 +847,51 @@ time2 += elapsed.count();
 
 			mC[idx] = Maux;
 			vC[idx] = Daux;
+
+auto end = std::chrono::steady_clock::now();
+auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time1 += elapsed.count();
+			}
+			// double version
+			{
+			double w2d = (double) w2;
+			double w1d = (double) w1;
+			double ooId = (double) ooI;
+			double zeta1d = (double) zeta1;
+			double zeta2d = (double) zeta2;
+auto start = std::chrono::steady_clock::now();
+			std::complex<Float> Maux = m2C1[idx];
+			std::complex<Float> Daux = m2C2[idx];
+			std::complex<double> M0, D0, ap, am;
+			double ra, ia ;
+			ra = (double) real(Maux) ;
+			ia = (double) imag(Maux) ;
+			M0 = ra + im*ia	;
+			ra = (double) real(Daux) ;
+			ia = (double) imag(Daux) ;
+			D0 = (ra + im*ia)/(im*w1d)	;
+			ap = 0.5*(M0*(1.0 - im*zeta1d) + D0);
+			am = 0.5*(M0*(1.0 + im*zeta1d) - D0);
+			ap *= ooI*pha;
+			am *= ooI*conj(pha);
+			M0 = ap + am;
+			D0 = ap - am + im*zeta2d*M0;
+			D0 *= im*w2d	;
+
+			mC[idx] = M0;
+			vC[idx] = D0;
+
+auto end = std::chrono::steady_clock::now();
+auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+time2 += elapsed.count();
+			}
+
 // end = std::chrono::steady_clock::now();
 // elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 // time3 += elapsed.count();
 		}
-LogMsg(VERB_NORMAL,"WKB spline/linear %f/%f\n",time1, time2);
+LogMsg(VERB_NORMAL,"WKB float/double %f/%f\n",time1, time2);
+// LogMsg(VERB_NORMAL,"WKB spline/linear %f/%f\n",time1, time2);
 // // check precision interpolation
 // if (commRank()==0)
 // 	fclose(file_wk);
