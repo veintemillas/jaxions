@@ -13,14 +13,14 @@ a.me  = 0
 a.me_adds("string")
 a.me_adds("energy")
 a.nmt_prt()
-a.addset(100,1.0,8.0,0,'logi')
+a.addset(7*4,1.0,8.0,0,'logi')
 
 # Refine close to DM annihilation
 a.me  = 0
 a.me_adds("string")
 a.me_adds("energy")
 a.nmt_prt()
-a.addset(100,1.8,2.8,0,'lin')
+a.addset(1.0*10,1.8,2.8,0,'lin')
 
 # A spectrum from time to time
 a.me  = 0
@@ -29,7 +29,7 @@ a.me_adds("plot2D")
 a.me_adds("NSP_A")
 a.me_adds("PSP_A")
 a.nmt_prt()
-a.addset(4*6,2.0,8.0,0,'logi')
+a.addset(6*2,2.0,8.0,0,'logi')
 
 # Refine spectra during the NR period
 a.me  = 0

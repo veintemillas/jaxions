@@ -1006,9 +1006,9 @@ class mli:
 
     def addset (self,measN, zi, zf, meastype=0, scale='lin'):
         if scale=='lin':
-            self.ctab.append(np.linspace(zi,zf,measN))
+            self.ctab.append(np.linspace(zi,zf,measN+1))
         if scale=='logi':
-            temp = np.linspace(zi,zf,measN)
+            temp = np.linspace(zi,zf,measN+1)
             # logi = log (msa ct/a)
             # ct = a exp(temp)*a/msa
             self.ctab.append(np.exp(temp)*self.L/self.N/self.msa)
