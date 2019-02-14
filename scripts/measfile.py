@@ -6,14 +6,14 @@ a = pa.mli()
 a.N   = 256
 a.L   = 6.0
 a.msa = 1.0
-a.ctend= 4.5
+a.ctend= 4.0
 
 # Scaling measurements
 a.me  = 0
 a.me_adds("string")
 a.me_adds("energy")
 a.nmt_prt()
-a.addset(100,1.0,6.0,0,'logi')
+a.addset(100,1.0,8.0,0,'logi')
 
 # Refine close to DM annihilation
 a.me  = 0
@@ -24,14 +24,16 @@ a.addset(100,1.8,2.8,0,'lin')
 
 # A spectrum from time to time
 a.me  = 0
+a.me_adds("string")
 a.me_adds("plot2D")
 a.me_adds("NSP_A")
 a.me_adds("PSP_A")
 a.nmt_prt()
-a.addset(4*4,2.0,6.0,0,'logi')
+a.addset(4*6,2.0,8.0,0,'logi')
 
 # Refine spectra during the NR period
 a.me  = 0
+a.me_adds("string")
 a.me_adds("plot2D")
 a.me_adds("NSP_A")
 a.me_adds("PSP_A")
@@ -41,12 +43,12 @@ a.addset(20,1.5,4.0,0,'lin')
 # Final dump
 a.me  = 0
 a.me_adds("plot2D")
-a.me_adds("plot3D")
+# a.me_adds("plot3D") # better specify this with --p3D 2 (final) or --p3D 6 (final+wkb)
 a.me_adds("reduced energy map")
 a.me_adds("NSP_A")
 a.me_adds("PSP_A")
 a.nmt_prt()
-a.addset(1,4.5,4.5,0,'lin')
+a.addset(1,a.ctend,a.ctend,0,'lin')
 
 a.give()
 
