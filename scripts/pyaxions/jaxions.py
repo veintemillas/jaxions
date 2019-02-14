@@ -425,6 +425,15 @@ def gm(address,something='summary',printerror=False):
 
     bin_check = 'bins' in f
 
+    if (something == 'bincon?'):
+        return 'bins/contB' in f
+
+    if (something == 'bintheta?'):
+        return 'bins/thetaB' in f
+
+    if (something == 'binlt2?'):
+        return 'bins/logtheta2B' in f
+
     if (something[0:2] == 'bi') and not bin_check :
         if printerror :
             print('[gm] Warning: No bins in file. Returning []')
