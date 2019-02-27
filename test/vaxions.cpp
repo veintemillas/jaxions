@@ -275,6 +275,8 @@ int	main (int argc, char *argv[])
 
 	}
 
+	// SIMPLE OUTPUT CHECK
+	printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 
 

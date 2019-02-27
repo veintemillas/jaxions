@@ -134,6 +134,15 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
+						case	FFT_CtoC_VtoV:
+
+							if (dFft & FFT_FWD)
+								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v, v, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
+
+							if (dFft & FFT_BCK)
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, v, v, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
+							break;
+
 					case	FFT_CtoC_M2toM2:
 
 						if (axion->m2Cpu() == nullptr) {
@@ -304,6 +313,15 @@ namespace AxionFFT {
 
 						if (dFft & FFT_BCK)
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m, m, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
+						break;
+
+					case	FFT_CtoC_VtoV:
+
+						if (dFft & FFT_FWD)
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v, v, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType));
+
+						if (dFft & FFT_BCK)
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, v, v, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType));
 						break;
 
 					case	FFT_CtoC_M2toM2:

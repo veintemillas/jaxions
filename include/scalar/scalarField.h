@@ -37,7 +37,8 @@
 		size_t	fSize;
 		size_t	mAlign;
 		int	shift;
-		bool	folded;
+		bool	mmomspace;
+		bool	vmomspace;
 		bool	lowmem;
 
 		// conformal time
@@ -127,8 +128,10 @@
 
 		size_t		DataSize ()  { return fSize; }
 		size_t		DataAlign()  { return mAlign; }
-		int		Shift()      { return shift; }
+		int			Shift()      { return shift; }
 		bool		Folded()     { return folded; }
+		bool		MMomSpace()     { return mmomspace; }
+		bool		VMomSpace()     { return vmomspace; }
 		bool		Reduced()    { return eReduced; }
 
 
@@ -164,6 +167,8 @@
 
 		void	setField	(FieldType field);
 		void	setFolded	(bool foli);
+		void	setMMomSpace	(bool foli);
+		void	setVMomSpace	(bool foli);
 		void	updateR ();
 		void	setReduced	(bool eRed, size_t nLx = 0, size_t nLz = 0);
 

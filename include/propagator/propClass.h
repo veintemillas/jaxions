@@ -7,7 +7,9 @@
 	#include <functional>
 	#include "propagator/propBase.h"
 	#include "scalar/scalarField.h"
+	#include "scalar/fourier.h"
 	#include "utils/utils.h"
+
 
 	#include "propagator/propXeon.h"
 	#include "propagator/propThetaXeon.h"
@@ -56,11 +58,13 @@
 		inline void	sRunGpu	(const double)	override;
 
 		inline void	sSpecCpu(const double)	override;	// Saxion spectral propagator
+		inline void	fsSpecCpu(const double)	override;	// Saxion spectral propagator
 
 		inline void	tRunCpu	(const double)	override;	// Axion propagator
 		inline void	tRunGpu	(const double)	override;
 
 		inline void	tSpecCpu(const double)	override;	// Axion spectral propagator
+		// inline void	tfsSpecCpu(const double)	override;	// Axion spectral propagator
 
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
@@ -595,6 +599,60 @@
 		}
 		axion->setM2     (M2_DIRTY);
 	}
+
+	// Generic saxion fs_spectral propagator (in Fourier space)
+	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	void	PropClass<nStages, lastStage, VQcd>::fsSpecCpu	(const double dz) {
+
+		double *z = axion->zV();
+		double *R = axion->RV();
+		double cLmbda = lambda;
+		auto   lSize  = axion->BckGnd()->PhysSize();
+
+		const double fMom = -(4.*M_PI*M_PI)/(lSize*lSize*((double) axion->TotalSize()));
+
+		// If field is in configuration space transform to momentum space
+		if	( !axion->MMomSpace() || !axion->VMomSpace() )
+		{
+			FTField pelota(axion);
+			pelota(FIELD_MV, FFT_BCK); // BCK is to send to momentum space
+		}
+
+		#pragma unroll
+		for (int s = 0; s<nStages; s++) {
+			const double	c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
+
+			// computes m into m2 in configuration space
+			FTField pelota(axion);
+			pelota(FIELD_MTOM2, FFT_FWD); // FWD is to send to conf space
+
+			// computes acceleration
+			if (lType != LAMBDA_FIXED)
+				cLmbda = lambda/((*R)*(*R));
+			/* computes the acceleration in configuration space */
+			fsAccKernelXeon<VQcd>(axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+
+			pelota(FIELD_M2TOM2, FFT_BCK); // BCK sends to mom space
+
+			/* kicks in momentum space */
+			fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+
+			*z += dz*d0;
+			axion->updateR();
+		}
+
+		if (lastStage) {
+			LogMsg (VERB_HIGH, "Warning: fspectral propagator not working for odd propagators");
+		}
+
+		axion->setM2     (M2_DIRTY);
+	}
+
+
+
+
+
+
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cFlops	(const bool spec) {

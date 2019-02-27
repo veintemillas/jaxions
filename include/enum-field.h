@@ -27,6 +27,8 @@
 			FIELD_MM2 = 5,
 			FIELD_M2V = 6,
 			FIELD_ALL = 7,
+			FIELD_MTOM2 = 16, // option for FFTs
+			FIELD_M2TOM2 = 32, // option for FFTs
 		}	FieldIndex;
 
 		typedef enum	OrderType_s
@@ -233,6 +235,7 @@
 			PROF_SPECTRUM_NRUNLOOP,
 			PROF_SPECTRUM_FFTM2,
 			PROF_MEAS,
+			PROF_FTFIELD,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -296,6 +299,7 @@
 			FFT_RtoC_MtoM_WKB  = 12,
 			FFT_RtoC_VtoV_WKB  = 13,
 			FFT_RtoC_M2toM2_WKB= 14,
+			FFT_CtoC_VtoV      = 15,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {
@@ -306,19 +310,27 @@
 		}	FFTdir;
 
 		typedef	enum	PropType_s {
-			PROP_NONE	= 0,		// For parsing
-			PROP_SPEC	= 1,		// Spectral flag
-			PROP_LEAP	= 2,
-			PROP_OMELYAN2	= 4,
-			PROP_OMELYAN4	= 8,
-			PROP_RKN4	= 16,
-			PROP_SLEAP	= 3,
-			PROP_SOMELYAN2	= 5,
-			PROP_SOMELYAN4	= 9,
-			PROP_SRKN4	= 17,
-			PROP_MLEAP      = 32,
-			PROP_SMLEAP     = 33,
-			PROP_MASK	= 62,		// 2+4+8+16+32 So far... Masks the integrator type, removing the spectral flag
+			PROP_NONE	    = 0,		// For parsing
+			PROP_SPEC	    = 1,		// Spectral flag
+			PROP_FSPEC    = 2,		// Full Spectral flag
+
+			PROP_LEAP	    = 4,
+			PROP_OMELYAN2	= 8,
+			PROP_OMELYAN4	= 16,
+			PROP_RKN4	    = 32,
+			PROP_MLEAP    = 64,
+			PROP_SLEAP	  = 5,
+			PROP_SOMELYAN2	= 9,
+			PROP_SOMELYAN4	= 17,
+			PROP_SRKN4	    = 33,
+			PROP_SMLEAP     = 65,
+			PROP_FSLEAP	    = 6,
+			PROP_FSOMELYAN2	= 10,
+			PROP_FSOMELYAN4	= 18,
+			PROP_FSRKN4	    = 34,
+			PROP_FSMLEAP    = 66,
+
+			PROP_MASK	= 124,		// 4+8+16+32+64 So far... Masks the integrator type, removing the spectral flag
 		}	PropType;
 
 		typedef	enum	SpectrumType_s {
@@ -338,6 +350,7 @@
 			SPECTRUM_AK = 256,
 			SPECTRUM_KK = 512,
 			SPECTRUM_GG = 1024,
+			SPECTRUM_VV	= 2048,
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
@@ -414,11 +427,11 @@
 			MEAS_STRINGMAP    = 64,
 			MEAS_STRINGCOO    = 128,
 
-			MEAS_ENERGY       = 256,
-			MEAS_ENERGY3DMAP  = 512,
-			MEAS_REDENE3DMAP  = 1024,
-			MEAS_2DMAP        = 2048,
-			MEAS_3DMAP        = 4096,
+			MEAS_ENERGY       = 256,  // energy
+			MEAS_ENERGY3DMAP  = 512,  // 3D energy map to reduced dimensions
+			MEAS_REDENE3DMAP  = 1024, // 3D energy map to reduced dimensions
+			MEAS_2DMAP        = 2048, // slice of m, v
+			MEAS_3DMAP        = 4096, // 3D configuration
 
 			MEAS_MASK         = 8192, // experimental
 			MEAS_PSP_A        = 16384,

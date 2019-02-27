@@ -94,8 +94,9 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 					z = iz;
 					y = iy;
 					x = ix;
-					Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+(z-sizeN/2)*(z-sizeN/2)))/(Vo);
-					theta = exp(-theta*kCrit)*mode0;
+					if (iz>sizeN/2) { z = z-sizeN; }
+					Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+z*z))/(Vo);
+					theta = exp(-theta*kCrit*kCrit)*mode0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 				break;
 				}
@@ -114,7 +115,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 					if (iy>sizeN/2) { y = y-sizeN; }
 					if (ix>sizeN/2) { x = x-sizeN; }
 					Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
-					theta = exp(-theta*kCrit)*mode0;
+					theta = exp(-theta*kCrit*kCrit)*mode0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;
 				}
