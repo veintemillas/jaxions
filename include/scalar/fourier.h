@@ -1,5 +1,5 @@
-#ifndef	_FOLDER_CLASS_
-	#define _FOLDER_CLASS_
+#ifndef	_FFTFIELD_CLASS_
+	#define _FFTFIELD_CLASS_
 
 	#include "scalarField.h"
 	#include "utils/tunable.h"
@@ -25,8 +25,8 @@
 
 		public:
 
-			 FTField(Scalar *scalar);
-			~FTField() {};
+			 FTfield(Scalar *scalar);
+			~FTfield() {};
 
 		void	operator()(FieldIndex mvomv, FFTdir dir);
 	};

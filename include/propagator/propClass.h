@@ -15,7 +15,9 @@
 	#include "propagator/propThetaXeon.h"
 	#include "propagator/laplacian.h"
 	#include "propagator/sPropXeon.h"
+	#include "propagator/fsPropXeon.h"
 	#include "propagator/sPropThetaXeon.h"
+
 
 	#ifdef	USE_GPU
 		#include <cuda.h>
@@ -47,7 +49,7 @@
 
 		public:
 
-		inline	 PropClass(Scalar *field, const bool spec);
+		inline	 PropClass(Scalar *field, const PropcType spec);
 		inline	~PropClass() override {};
 
 		inline void	setCoeff(const double * __restrict__ nC, const double * __restrict__ nD) {
@@ -58,7 +60,7 @@
 		inline void	sRunGpu	(const double)	override;
 
 		inline void	sSpecCpu(const double)	override;	// Saxion spectral propagator
-		inline void	fsSpecCpu(const double)	override;	// Saxion spectral propagator
+		inline void	sFpecCpu(const double)	override;	// Saxion spectral propagator
 
 		inline void	tRunCpu	(const double)	override;	// Axion propagator
 		inline void	tRunGpu	(const double)	override;
@@ -69,12 +71,12 @@
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
 
-		inline double	cFlops	(const bool)	override;
-		inline double	cBytes	(const bool)	override;
+		inline double	cFlops	(const PropcType)	override;
+		inline double	cBytes	(const PropcType)	override;
 	};
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
-		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, const bool spec) : axion(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()),
+		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, PropcType spec) : axion(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()),
 		ood2(1./(field->Delta()*field->Delta())), lambda(field->BckGnd()->Lambda()), precision(field->Precision()), gamma(field->BckGnd()->Gamma()), lType(field->Lambda()) {
 
 		/*	Default block size gives just one block	*/
@@ -90,60 +92,95 @@
 		yBest = yBlock = Lx >> shift;
 		zBest = zBlock = Lz;
 
-		if (spec) {
-			switch (field->Device()) {
-				case	DEV_CPU:
-					if (field->LowMem()) {
-						LogError ("Error: Lowmem not supported with spectral propagators");
-						exit(1);
-					}
+		switch (spec){
+			case PROPC_SPEC:
+				switch (field->Device()) {
+					case	DEV_CPU:
+						if (field->LowMem()) {
+							LogError ("Error: Lowmem not supported with spectral propagators");
+							exit(1);
+						}
 
-					propSaxion = [this](const double dz) { this->sSpecCpu(dz); };
-					propAxion  = [this](const double dz) { this->tSpecCpu(dz); };
-					break;
+						propSaxion = [this](const double dz) { this->sSpecCpu(dz); };
+						propAxion  = [this](const double dz) { this->tSpecCpu(dz); };
+						break;
 
-				case	DEV_GPU:
-					LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, will call standard propagator");
-					if (field->LowMem()) {
-						propSaxion = [this](const double dz) { this->lowGpu(dz); };
-						propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-					} else {
-						propSaxion = [this](const double dz) { this->sRunGpu(dz); };
-						propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-					}
-					break;
+					case	DEV_GPU:
+						LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, will call standard propagator");
+						if (field->LowMem()) {
+							propSaxion = [this](const double dz) { this->lowGpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+						} else {
+							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+						}
+						break;
 
-				default:
-					LogError ("Error: not a valid device");
-					return;
-			}
-		} else {
-			switch (field->Device()) {
-				case	DEV_CPU:
-					if (field->LowMem()) {
-						propSaxion = [this](const double dz) { this->lowCpu(dz); };
-						propAxion  = [this](const double dz) { this->tRunCpu(dz); };
-					} else {
-						propSaxion = [this](const double dz) { this->sRunCpu(dz); };
-						propAxion  = [this](const double dz) { this->tRunCpu(dz); };
+					default:
+						LogError ("Error: not a valid device");
+						return;
 					}
 					break;
 
-				case	DEV_GPU:
-					if (field->LowMem()) {
-						propSaxion = [this](const double dz) { this->lowGpu(dz); };
-						propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-					} else {
-						propSaxion = [this](const double dz) { this->sRunGpu(dz); };
-						propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+			case PROPC_FSPEC:
+				switch (field->Device()) {
+					case	DEV_CPU:
+						if (field->LowMem()) {
+							LogError ("Error: Lowmem not supported with fpectral propagators");
+							exit(1);
+						}
+
+						propSaxion = [this](const double dz) { this->sFpecCpu(dz); };
+						propAxion  = [this](const double dz) { this->tSpecCpu(dz); }; // include new full spectral propagator!
+						break;
+
+					case	DEV_GPU:
+						LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, will call standard propagator");
+						if (field->LowMem()) {
+							propSaxion = [this](const double dz) { this->lowGpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+						} else {
+							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+						}
+						break;
+
+					default:
+						LogError ("Error: not a valid device");
+						return;
 					}
 					break;
 
-				default:
-					LogError ("Error: not a valid device");
-					return;
-			}
+			default:
+			case PROPC_2NEIG:
+				switch (field->Device()) {
+					case	DEV_CPU:
+						if (field->LowMem()) {
+							propSaxion = [this](const double dz) { this->lowCpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunCpu(dz); };
+						} else {
+							propSaxion = [this](const double dz) { this->sRunCpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunCpu(dz); };
+						}
+						break;
+
+					case	DEV_GPU:
+						if (field->LowMem()) {
+							propSaxion = [this](const double dz) { this->lowGpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+						} else {
+							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+						}
+						break;
+
+					default:
+						LogError ("Error: not a valid device");
+						return;
+				}
+				break;
 		}
+
 	}
 
 	/*		GPU PROPAGATORS			*/
@@ -600,21 +637,22 @@
 		axion->setM2     (M2_DIRTY);
 	}
 
-	// Generic saxion fs_spectral propagator (in Fourier space)
+	// Generic saxion full spectral propagator (in Fourier space)
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
-	void	PropClass<nStages, lastStage, VQcd>::fsSpecCpu	(const double dz) {
+	void	PropClass<nStages, lastStage, VQcd>::sFpecCpu	(const double dz) {
 
 		double *z = axion->zV();
 		double *R = axion->RV();
 		double cLmbda = lambda;
 		auto   lSize  = axion->BckGnd()->PhysSize();
+		size_t Tz = axion->TotalSize();
 
-		const double fMom = -(4.*M_PI*M_PI)/(lSize*lSize*((double) axion->TotalSize()));
+		const double fMom1 = (2.*M_PI)/(lSize);
 
 		// If field is in configuration space transform to momentum space
 		if	( !axion->MMomSpace() || !axion->VMomSpace() )
 		{
-			FTField pelota(axion);
+			FTfield pelota(axion);
 			pelota(FIELD_MV, FFT_BCK); // BCK is to send to momentum space
 		}
 
@@ -623,19 +661,19 @@
 			const double	c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
 			// computes m into m2 in configuration space
-			FTField pelota(axion);
+			FTfield pelota(axion);
 			pelota(FIELD_MTOM2, FFT_FWD); // FWD is to send to conf space
 
 			// computes acceleration
 			if (lType != LAMBDA_FIXED)
 				cLmbda = lambda/((*R)*(*R));
 			/* computes the acceleration in configuration space */
-			fsAccKernelXeon<VQcd>(axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+			fsAccKernelXeon<VQcd>(axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom1, Lx, S, V+S, precision);
 
 			pelota(FIELD_M2TOM2, FFT_BCK); // BCK sends M2 to mom space
 
 			/* kicks in momentum space */
-			fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+			fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), dz, c0, d0, fMom1, Lx, Tz, precision);
 
 			*z += dz*d0;
 			axion->updateR();
@@ -655,102 +693,115 @@
 
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
-	double	PropClass<nStages, lastStage, VQcd>::cFlops	(const bool spec) {
-		if (!spec) {
-			switch (axion->Field()) {
+	double	PropClass<nStages, lastStage, VQcd>::cFlops	(const PropcType spec) {
+		switch (spec)
+		{
+			case PROPC_2NEIG:
+			{
+				switch (axion->Field()) {
+					case FIELD_SAXION:
+						switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
 
-				case FIELD_SAXION:
-					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+							default:
+							case VQCD_1:
+								return	(1e-9 * ((double) axion->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
+								break;
 
-						default:
-						case VQCD_1:
-							return	(1e-9 * ((double) axion->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
-							break;
+							case VQCD_2:
+								return	(1e-9 * ((double) axion->Size()) * (45. * ((double) nStages) + (lastStage ? 41. : 0.)));
+								break;
 
-						case VQCD_2:
-							return	(1e-9 * ((double) axion->Size()) * (45. * ((double) nStages) + (lastStage ? 41. : 0.)));
-							break;
+							case VQCD_1_PQ_2:
+								return	(1e-9 * ((double) axion->Size()) * (44. * ((double) nStages) + (lastStage ? 40. : 0.)));
+								break;
 
-						case VQCD_1_PQ_2:
-							return	(1e-9 * ((double) axion->Size()) * (44. * ((double) nStages) + (lastStage ? 40. : 0.)));
-							break;
+							case VQCD_1_PQ_2_RHO:
+								return	(1e-9 * ((double) axion->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
+								break;
 
-						case VQCD_1_PQ_2_RHO:
-							return	(1e-9 * ((double) axion->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
-							break;
+							case VQCD_1N2:
+								return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+								break;
 
-						case VQCD_1N2:
-							return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
-							break;
+							case VQCD_QUAD:
+								return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+								break;
+						}
+						break;
 
-						case VQCD_QUAD:
-							return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
-							break;
+					case FIELD_AXION:
+					case FIELD_AXION_MOD:	// Seguro??
+						return	(1e-9 * ((double) axion->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
+						break;
+
+					default:
+					case FIELD_WKB:
+						return	0.;
+						break;
+				}
+			}
+			break;
+
+			case PROPC_SPEC:
+			case PROPC_FSPEC:
+		 	{
+				switch (axion->Field()) {
+					case FIELD_SAXION: {
+						auto &planFFT   = AxionFFT::fetchPlan("SpSx");
+						double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
+						switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+							default:
+							case VQCD_1:
+								return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
+									) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
+								break;
+
+							case VQCD_2:
+								return	(1e-9 * ((double) axion->Size()) * ((29. + 1.) * ((double) nStages) + (lastStage ? 25. + 1. : 0.)
+									) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
+								break;
+
+							case VQCD_1_PQ_2:
+								return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
+									) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
+								break;
+						}
 					}
 					break;
 
-				case FIELD_AXION:
-				case FIELD_AXION_MOD:	// Seguro??
-					return	(1e-9 * ((double) axion->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
+					case FIELD_AXION:
+					case FIELD_AXION_MOD: {	// Seguro??
+						auto &planFFT   = AxionFFT::fetchPlan("SpSx");
+						double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
+						return	(1e-9 * ((double) axion->Size()) * (21. * ((double) nStages) + (lastStage ? 13. : 0.)
+							) + fftFlops);//+ 2.5*1.44695*log(((double) axion->Size()))));
+					}
 					break;
 
-				default:
-				case FIELD_WKB:
+					default:
+					case FIELD_WKB:
 					return	0.;
-					break;
-			}
-		} else {
-			switch (axion->Field()) {
-
-				case FIELD_SAXION: {
-					auto &planFFT   = AxionFFT::fetchPlan("SpSx");
-					double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
-					switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
-
-						default:
-						case VQCD_1:
-							return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
-								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
-							break;
-
-						case VQCD_2:
-							return	(1e-9 * ((double) axion->Size()) * ((29. + 1.) * ((double) nStages) + (lastStage ? 25. + 1. : 0.)
-								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
-							break;
-
-						case VQCD_1_PQ_2:
-							return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
-								) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
-							break;
-
-					}
+				}
 				}
 				break;
-
-				case FIELD_AXION:
-				case FIELD_AXION_MOD: {	// Seguro??
-					auto &planFFT   = AxionFFT::fetchPlan("SpSx");
-					double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
-					return	(1e-9 * ((double) axion->Size()) * (21. * ((double) nStages) + (lastStage ? 13. : 0.)
-						) + fftFlops);//+ 2.5*1.44695*log(((double) axion->Size()))));
-				}
-				break;
-
-				default:
-				case FIELD_WKB:
-				return	0.;
-			}
-		}
+		} // end final switch
 
 		return	0.;
 	}
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
-	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const bool spec) {
-		if (!spec) {
-			return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   10.    * ((double) nStages) + (lastStage ? 9. : 0.)));
-		} else {
-			return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * ((6. + 4.) * ((double) nStages) + (lastStage ? 6. + 3. : 0.) + 2.));
+	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const PropcType spec) {
+		switch (spec)
+		{
+			case PROPC_2NEIG:
+				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   10.    * ((double) nStages) + (lastStage ? 9. : 0.)));
+			break;
+
+			case PROPC_SPEC:
+			case PROPC_FSPEC:
+				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * ((6. + 4.) * ((double) nStages) + (lastStage ? 6. + 3. : 0.) + 2.));
+			break;
 		}
 	}
+
 #endif

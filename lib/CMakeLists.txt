@@ -4,7 +4,7 @@ propagator/propSimple.cpp propagator/propThetaGpu.cu energy/energy.cpp energy/en
 strings/strings.cpp strings/length.cpp strings/stringCpu.cpp strings/stringXeon.cpp strings/stringGpu.cu utils/memAlloc.cpp gen/genConf.cpp gen/momConf.cpp gen/momGpu.cu gen/randXeon.cpp gen/randGpu.cu
 gen/smoothXeon.cpp gen/prepropa.cpp gen/smoothKernel.cu meas/measa.cpp scalar/scaleField.cpp scalar/scaleXeon.cpp scalar/scaleGpu.cu scalar/theta2Cmplx.cpp scalar/theta2CmplxXeon.cpp scalar/theta2CmplxGpu.cu
 scalar/normField.cpp scalar/normXeon.cpp scalar/normGpu.cu scalar/normCore.cpp scalar/normCoreXeon.cpp scalar/normCoreGpu.cu scalar/thetaGpu.cu scalar/thetaXeon.cpp scalar/thetaScalar.cpp scalar/folder.cpp
-scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu utils/logger.cpp utils/profiler.cpp utils/misc.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
+scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu scalar/fourier.cpp utils/logger.cpp utils/profiler.cpp utils/misc.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
 spectrum/spectrum.cpp WKB/WKB.cpp)
 else()
 	set(OBJS fft/fftCuda.cpp comms/comms.cpp fft/fftCode.cpp utils/parse.cpp io/readWrite.cpp scalar/scalarField.cpp propagator/propagator.cpp propagator/propGpu.cu
@@ -12,7 +12,7 @@ propagator/propSimple.cpp propagator/propThetaGpu.cu energy/energy.cpp energy/en
 strings/strings.cpp strings/length.cpp strings/stringCpu.cpp strings/stringXeon.cpp strings/stringGpu.cu utils/memAlloc.cpp gen/genConf.cpp gen/momConf.cpp gen/momGpu.cu gen/randXeon.cpp gen/randGpu.cu
 gen/smoothXeon.cpp gen/prepropa.cpp gen/smoothKernel.cu meas/measa.cpp scalar/scaleField.cpp scalar/scaleXeon.cpp scalar/scaleGpu.cu scalar/theta2Cmplx.cpp scalar/theta2CmplxXeon.cpp scalar/theta2CmplxGpu.cu
 scalar/normField.cpp scalar/normXeon.cpp scalar/normGpu.cu scalar/normCore.cpp scalar/normCoreXeon.cpp scalar/normCoreGpu.cu scalar/thetaGpu.cu scalar/thetaXeon.cpp scalar/thetaScalar.cpp scalar/folder.cpp
-scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu utils/logger.cpp utils/profiler.cpp utils/misc.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
+scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu scalar/fourier.cpp utils/logger.cpp utils/profiler.cpp utils/misc.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
 spectrum/spectrum.cpp WKB/WKB.cpp)
 endif()
 

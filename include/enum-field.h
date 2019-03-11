@@ -309,6 +309,13 @@
 			FFT_FWDBCK = 3,
 		}	FFTdir;
 
+		typedef	enum	PropcType_s {
+			PROPC_2NEIG	    = 0,		// For parsing
+			PROPC_SPEC	    = 1,		// Spectral flag
+			PROPC_FSPEC     = 2,		// Full Spectral flag
+			PROPC_NNEIG     = 4,		// to be built
+		} PropcType;
+
 		typedef	enum	PropType_s {
 			PROP_NONE	    = 0,		// For parsing
 			PROP_SPEC	    = 1,		// Spectral flag

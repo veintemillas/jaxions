@@ -347,8 +347,8 @@ const std::complex<float> If(0.,1.);
 			AxionFFT::initPlan (this, FFT_CtoC_VtoV, FFT_FWDBCK, "C2CV2V");
 			AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWDBCK, "C2CM22M2");
 			// Axion m/v inplace
-			AxionFFT::initPlan (field, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
-			AxionFFT::initPlan (field, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
+			AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
+			AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
 		}
 		/*	If present, read fileName	*/
 

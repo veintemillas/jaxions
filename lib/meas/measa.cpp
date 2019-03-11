@@ -12,6 +12,7 @@
 #include "reducer/reducer.h"
 #include "spectrum/spectrum.h"
 #include "projector/projector.h"
+#include "scalar/fourier.h"
 
 using namespace std;
 using namespace profiler;
@@ -68,6 +69,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
+	if	( axiona->MMomSpace() || axiona->VMomSpace() )
+	{
+		FTfield pelota(axiona);
+		pelota(FIELD_MV, FFT_FWD); // FWD is to send to POSITION space
+	}
 
 	createMeas(axiona, indexa);
 
@@ -400,7 +406,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				// if (axiona->Field() == FIELD_AXION)
 				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
-				
+
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
 
 					prof.start();

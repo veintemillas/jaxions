@@ -9,7 +9,10 @@
 	#include "cudaErrors.h"
 #endif
 
+#include"scalar/folder.h"
 #include"scalar/fourier.h"
+#include "fft/fftCode.h"
+#include "scalar/scaleField.h"
 #include"utils/utils.h"
 
 using namespace std;
@@ -30,7 +33,7 @@ void	FTfield::ftField(FieldIndex mvomv)
 		munge(UNFOLD_ALL);
 	}
 
-	LogMsg (VERB_NORMAL, "Calling ftField (type=%f) (prec=%d)", field->Field(), field->Precision();
+	LogMsg (VERB_NORMAL, "Calling ftField (type=%f) (prec=%d)", field->Field(), field->Precision());
 
 	switch(field->Field()){
 		case FIELD_SAXION:
@@ -40,7 +43,7 @@ void	FTfield::ftField(FieldIndex mvomv)
 					if (field->MMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("C2CM2M");
 					myPlan.run(FFT_BCK);
-					scaleField	(field, FIELD_M, 1/ ((double) N));
+					scaleField	(field, FIELD_M, 1/ ((double) N) );
 					field->setMMomSpace(true);
 				}
 			if (mvomv & FIELD_V)
@@ -94,7 +97,7 @@ void	FTfield::iftField(FieldIndex mvomv)
 	if (field->Device() == DEV_GPU)
 		return;
 
-	LogMsg (VERB_NORMAL, "Calling inverse-ftField (type=%f) (prec=%d)", field->Field(), field->Precision();
+	LogMsg (VERB_NORMAL, "Calling inverse-ftField (type=%f) (prec=%d)", field->Field(), field->Precision());
 
 	switch(field->Field()){
 		case FIELD_SAXION:
@@ -116,7 +119,7 @@ void	FTfield::iftField(FieldIndex mvomv)
 			if (mvomv & FIELD_MTOM2)
 				{
 					if (!field->MMomSpace()) return;
-					auto &myPlan = AxionFFT::fetchPlan("nSpecSxM);
+					auto &myPlan = AxionFFT::fetchPlan("nSpecSxM");
 					myPlan.run(FFT_FWD);
 					// field->setM2(false);
 				}

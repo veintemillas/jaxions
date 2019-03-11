@@ -39,6 +39,7 @@
 		int	shift;
 		bool	mmomspace;
 		bool	vmomspace;
+		bool folded;
 		bool	lowmem;
 
 		// conformal time
