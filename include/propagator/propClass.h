@@ -632,7 +632,7 @@
 			/* computes the acceleration in configuration space */
 			fsAccKernelXeon<VQcd>(axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 
-			pelota(FIELD_M2TOM2, FFT_BCK); // BCK sends to mom space
+			pelota(FIELD_M2TOM2, FFT_BCK); // BCK sends M2 to mom space
 
 			/* kicks in momentum space */
 			fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
