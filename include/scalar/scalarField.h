@@ -142,6 +142,8 @@
 		/*	Overloading	*/
 		double		AxionMass  ();
 		double		AxionMassSq();
+		double		IIAxionMassSqn(double z0, double z, int nn);
+		double		IAxionMassSqn(double z0, double z, int nn);
 		double		SaxionMassSq();
 		double		HubbleMassSq();
 		double    HubbleConformal();

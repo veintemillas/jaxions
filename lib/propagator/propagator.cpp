@@ -437,7 +437,7 @@ void	propagate	(Scalar *field, const double dz)
 	LogMsg	(VERB_HIGH, "Called propagator");
 	Profiler &prof = getProfiler(PROF_PROP);
 
-	if	(!field->Folded() && !(pType & PROP_SPEC))
+	if	(!field->Folded() && !(pType & PROP_SPEC) && !(pType & PROP_FSPEC) )
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);

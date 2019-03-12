@@ -222,6 +222,9 @@ inline	void	fsAccKernelXeon(void * __restrict__ v_, void * __restrict__ m2_, dou
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
 		const _MData_ fMVec  = opCode(set1_ps, fMom);
 
+
+		// LogOut("[aa] %f %f %f %f \n",m2[0],m2[1],m2[2],m2[3]);
+		// LogOut("[aa] Sf, Vo, Vf, %lu %lu %lu \n",Sf, Vo,Vf);
 		/* begin calculation */
 		#pragma omp parallel default(shared)
 		{
@@ -249,7 +252,7 @@ inline	void	fsAccKernelXeon(void * __restrict__ v_, void * __restrict__ m2_, dou
 #else
 				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
-				/* compute acceleration without laplacian */
+				/* compute acceleration without laplacian and without our friend axion potential */
 				switch	(VQcd & VQCD_TYPE) {
 
 					default:
@@ -281,6 +284,7 @@ inline	void	fsAccKernelXeon(void * __restrict__ v_, void * __restrict__ m2_, dou
 				/* we only store acceleration in m2 in configuration space
 				because m and v are in Fourier space*/
 				opCode(store_ps, &m2[idxMz], mMx);
+				// LogOut("[aa] %lu, (%f,%f), (%f,%f) \n",idxMz, m2[idxMz],m2[idxMz+1],m2[idxMz+2],m2[idxMz+3]);
 			}
 		}
 #undef	_MData_
@@ -299,8 +303,8 @@ inline	void	fsAccKernelXeon(void * __restrict__ v_, void * __restrict__ m2_, dou
 /* vector version*/
 
 template<const VqcdType VQcd>
-inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, const double dz, const double c, const double d,
-				const double fMom1, const size_t Lx, const size_t Tz, FieldPrecision precision)
+inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
+				const double intemas3, const double iintemas3, const double shift, const double fMom1, const size_t Lx, const size_t Tz, FieldPrecision precision)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -321,6 +325,10 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 		float	    * __restrict__ v	= (      float * __restrict__) __builtin_assume_aligned (v_,  Align);
 		const float * __restrict__ m2	= (const float * __restrict__) __builtin_assume_aligned (m2_, Align);
 
+		// const float zR = *R;
+		// const float z2 = zR*zR;
+		// const float zQ = (float) (aMass2*z2*zR);
+
 		const float dzc = dz*c;
 		const float dzd = dz*d;
 		const float twopioverL = (float) (fMom1);
@@ -340,7 +348,7 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 		/* begin calculation */
 		const size_t Ly = Lx/commSize();
 		const size_t zBase = Ly*commRank();
-		const size_t LyLz = Ly*Tz;
+		const size_t LyLz = Lx*Tz;
 		const int hLx = Lx>>1;
 		const int hTz = Tz>>1;
 		const uint   maxLx = Lx;
@@ -349,8 +357,20 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 		_MData_ TPL = opCode(set1_ps,twopioverL);
 		_MData_ DZD = opCode(set1_ps,dzd);
 		_MData_ DZC = opCode(set1_ps,dzc);
+		// if (debug) LogOut("[fsin] Ly %lu Tz %lu zBase %lu \n",Ly,Tz,zBase);
+		// if (debug) LogOut("[fsin] LyLz %lu hLx %d hTz %d maxLx %u maxSf %lu\n",LyLz,hLx,hTz,maxLx,maxSf);
 
-		#pragma omp parallel default(shared)
+		//zero mode issue
+		float savem0, savem1, savev0, savev1;
+		if (commRank() == 0)
+		{
+			savem0 = m[2*Sf];
+			savem1 = m[2*Sf+1];
+			savev0 = v[0];
+			savev1 = v[1];
+		}
+
+		// #pragma omp parallel default(shared)
 		{
 			_MData_ pV, aux, saux, caux, vV, mV, m2V;
 			size_t idxm, idxv ;
@@ -360,7 +380,7 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 
 			// number of local modes, I'd say Lx^2 Lz
 			// start by splitting on z so that Lx^2 always fist an integer 32
-			#pragma omp parallel for schedule(static) default(shared)
+			// #pragma omp parallel for schedule(static) default(shared)
 			for (size_t oy = 0; oy < Ly; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
 			{
 				ky =(int) (oy + zBase);
@@ -374,12 +394,12 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 
 					float pypz2 = (float) ky*ky+kz*kz;
 
-					for (size_t ox = 0; kx < Lx; kx += step)
+					for (size_t ox = 0; ox < Lx; ox += step)
 					{
-						size_t idx = ox + oy*Ly + oz*LyLz;
+						size_t idx = ox + oz*Lx + oy*LyLz;
 						// complex positions ... jump by 2
-						idxv = ((idx-Sf) << 1);
-						idxm = (idx << 1);
+						idxv = (idx << 1);
+						idxm = ((idx+Sf) << 1);
 						// kx
 						kx = (int) ox;
 						if (ox >= hLx)
@@ -402,22 +422,52 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 						caux = opCode(cos_ps,aux);
 						// iterate
 						// v = v + m2 dct
-						// v = v*p
+						// v = v/p
 						// v = v Cos[pdt] - m Sin[pdt]
 						// m = m Cos[pdt] + v Sin[pdt]
-						// v = v/p
-						vV  = opCode(mul_ps,pV,opCode(add_ps,vV,opCode(mul_ps,m2V,DZC)));
+						// v = v*p
+						vV  = opCode(div_ps,opCode(add_ps,vV,opCode(mul_ps,m2V,DZC)),pV);// problem for pV = 0,... solved outside
 						// vV  = opCode(mul_ps,vV,pV);
 						aux = opCode(sub_ps,opCode(mul_ps,vV,caux),opCode(mul_ps,mV,saux));
 						mV  = opCode(add_ps,opCode(mul_ps,mV,caux),opCode(mul_ps,vV,saux));
-						vV  = opCode(div_ps,aux,pV);
+						vV  = opCode(mul_ps,aux,pV);
 						// store
 						opCode(store_ps, &v[idxv], vV);
 						opCode(store_ps, &m[idxm], mV);
+						// LogOut("[aa] (%d,%d,%d) %lu, (%f,%f),(%f,%f) v (%f,%f),(%f,%f) \n",ky,kz,kx,idxv, m[idxm],m[idxm+1],m[idxm+2],m[idxm+3],v[idxv],v[idxv+1],v[idxv+2],v[idxv+3]);
 					}
 				}
 			}
 		}
+		// problem with 000 (division/pV) gives nAn,
+		// it is redone here
+		// VQCD_1 is included here in m2
+		// it can be included exactly if a mass integral formula is given
+		if (commRank() == 0)
+		{
+			// if chi included in m2
+			// v[0] = savev0 + (m2[0]+zQ)*dzc;
+			// v[1] = savev1 + (m2[0])*dzc;
+			// m[2*Sf+0] = savem0 + V[0]*dzd;
+			// m[2*Sf+1] = savem1 + V[1]*dzd;
+
+			// if chi included in p - all orders
+			savev0 = savev0 + m2[0]*dzc;
+			savev1 = savev1 + m2[1]*dzc;
+			// m = m0 + v0*dzd + iintemas3
+			// v = v0 + intemas3
+			m[2*Sf+0] = savem0 + savev0*dzd + iintemas3;
+			m[2*Sf+1] = savem1 + savev1*dzd;
+			v[0] = savev0 + intemas3;
+			v[1] = savev1;
+
+			// if crazy
+			// m[2*Sf+0] = (1.f+shift)*(*R);
+			// m[2*Sf+1] = 0.f;
+			// v[0] = 0.f;
+			// v[1] = 0.f;
+		}
+		// LogOut("[aa] (%d,%d,%d) %lu, (%f,%f),(%f,%f) v (%f,%f),(%f,%f) \n",0,0,0,0, m[2*Sf],m[2*Sf+1],m[2*Sf+2],m[2*Sf+3],v[0],v[1],v[2],v[3]);
 	}
 	else if (precision == FIELD_DOUBLE)
 	{

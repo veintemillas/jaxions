@@ -645,16 +645,21 @@
 		double *R = axion->RV();
 		double cLmbda = lambda;
 		auto   lSize  = axion->BckGnd()->PhysSize();
-		size_t Tz = axion->TotalSize();
+		size_t Tz = axion->TotalDepth();
 
 		const double fMom1 = (2.*M_PI)/(lSize);
 
 		// If field is in configuration space transform to momentum space
 		if	( !axion->MMomSpace() || !axion->VMomSpace() )
 		{
-			FTfield pelota(axion);
-			pelota(FIELD_MV, FFT_BCK); // BCK is to send to momentum space
+			if (debug) LogOut("[fs] FT!\n");
+			FTfield pelotas(axion);
+			pelotas(FIELD_MV, FFT_FWD); // FWD is to send to momentum space transposed out
 		}
+
+		float *mmm = static_cast<float *>(axion->mStart());
+		float *vvv = static_cast<float *>(axion->vCpu());
+		float *mm2 = static_cast<float *>(axion->m2Cpu());
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
@@ -662,21 +667,33 @@
 
 			// computes m into m2 in configuration space
 			FTfield pelota(axion);
-			pelota(FIELD_MTOM2, FFT_FWD); // FWD is to send to conf space
+			pelota(FIELD_MTOM2, FFT_BCK); // BCK is to send to conf space
 
 			// computes acceleration
 			if (lType != LAMBDA_FIXED)
 				cLmbda = lambda/((*R)*(*R));
 			/* computes the acceleration in configuration space */
+
+			// LogOut("[fs] m  values %f %f %f %f \n",mmm[0],mmm[1],mmm[2],mmm[3]);
+			// LogOut("[fs] v  values %f %f %f %f \n",vvv[0],vvv[1],vvv[2],vvv[3]);
+			// LogOut("[fs] m2 values %f %f %f %f \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+			// LogFlush();
 			fsAccKernelXeon<VQcd>(axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom1, Lx, S, V+S, precision);
+			// LogOut("[fs] ac values %f %f %f %f \n",mm2[0],mm2[1],mm2[2],mm2[3]);
 
-			pelota(FIELD_M2TOM2, FFT_BCK); // BCK sends M2 to mom space
-
+			if (debug) LogOut("[fs] accelerated \n");
+			pelota(FIELD_M2TOM2, FFT_FWD); // FWD sends M2 to mom space
+			if (debug) LogOut("[fs] fff \n");
 			/* kicks in momentum space */
-			fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), dz, c0, d0, fMom1, Lx, Tz, precision);
+			// LogOut("[fs] ac momspace %f %f %f %f \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+			const double intemas3  =  axion->IAxionMassSqn(*z,*z + dz*d0,3);
+			const double iintemas3 = axion->IIAxionMassSqn(*z,*z + dz*d0,3);
+			const double shift = axion->Saskia();
+			fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, intemas3, iintemas3, shift, fMom1, Lx, Tz, precision);
 
 			*z += dz*d0;
 			axion->updateR();
+
 		}
 
 		if (lastStage) {

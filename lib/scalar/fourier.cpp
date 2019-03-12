@@ -21,7 +21,7 @@ using namespace std;
 {
 }
 
-/* used to convert configuration into Fourier space */
+/* used to convert configuration into Fourier space (transposed)*/
 void	FTfield::ftField(FieldIndex mvomv)
 {
 	if (field->Device() == DEV_GPU )
@@ -32,8 +32,9 @@ void	FTfield::ftField(FieldIndex mvomv)
 		Folder	munge(field);
 		munge(UNFOLD_ALL);
 	}
+	double scale = 1.0/((double) N);
 
-	LogMsg (VERB_NORMAL, "Calling ftField (type=%f) (prec=%d)", field->Field(), field->Precision());
+	LogMsg (VERB_NORMAL, "Calling ftField (type=%d) (prec=%d) (scale=%e)", field->Field(), field->Precision(),scale);
 
 	switch(field->Field()){
 		case FIELD_SAXION:
@@ -42,23 +43,23 @@ void	FTfield::ftField(FieldIndex mvomv)
 				{
 					if (field->MMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("C2CM2M");
-					myPlan.run(FFT_BCK);
-					scaleField	(field, FIELD_M, 1/ ((double) N) );
+					myPlan.run(FFT_FWD);
+					scaleField	(field, FIELD_M, scale );
 					field->setMMomSpace(true);
 				}
 			if (mvomv & FIELD_V)
 				{
 					if (field->VMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("C2CV2V");
-					myPlan.run(FFT_BCK);
-					scaleField	(field, FIELD_V, 1/ ((double) N));
+					myPlan.run(FFT_FWD);
+					scaleField	(field, FIELD_V, scale);
 					field->setVMomSpace(true);
 				}
 			if (mvomv & FIELD_M2TOM2)
 				{
 					auto &myPlan = AxionFFT::fetchPlan("C2CM22M2");
-					myPlan.run(FFT_BCK);
-					scaleField	(field, FIELD_M2, 1/ ((double) N));
+					myPlan.run(FFT_FWD);
+					scaleField	(field, FIELD_M2, scale);
 				}
 
 		} break;
@@ -68,16 +69,16 @@ void	FTfield::ftField(FieldIndex mvomv)
 				{
 					if (field->MMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("R2CM2M");
-					myPlan.run(FFT_BCK);
-					scaleField	(field, FIELD_M, 1/ ((double) N));
+					myPlan.run(FFT_FWD);
+					scaleField	(field, FIELD_M, scale);
 					field->setMMomSpace(true);
 				}
 			if (mvomv & FIELD_V)
 				{
 					if (field->VMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("R2CV2V");
-					myPlan.run(FFT_BCK);
-					scaleField	(field, FIELD_V, 1/ ((double) N));
+					myPlan.run(FFT_FWD);
+					scaleField	(field, FIELD_V, scale);
 					field->setVMomSpace(true);
 				}
 		}
@@ -91,13 +92,13 @@ void	FTfield::ftField(FieldIndex mvomv)
 	return;
 }
 
-/* used to convert Fourier space into configuration space  */
+/* used to convert Fourier space into configuration space (transposed in) */
 void	FTfield::iftField(FieldIndex mvomv)
 {
 	if (field->Device() == DEV_GPU)
 		return;
 
-	LogMsg (VERB_NORMAL, "Calling inverse-ftField (type=%f) (prec=%d)", field->Field(), field->Precision());
+	LogMsg (VERB_NORMAL, "Calling inverse-ftField (type=%d) (prec=%d)", field->Field(), field->Precision());
 
 	switch(field->Field()){
 		case FIELD_SAXION:
@@ -106,21 +107,21 @@ void	FTfield::iftField(FieldIndex mvomv)
 				{
 					if (!field->MMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("C2CM2M");
-					myPlan.run(FFT_FWD);
+					myPlan.run(FFT_BCK);
 					field->setMMomSpace(false);
 				}
 			if (mvomv & FIELD_V)
 				{
 					if (!field->VMomSpace()) return;
 					auto &myPlan = AxionFFT::fetchPlan("C2CV2V");
-					myPlan.run(FFT_FWD);
+					myPlan.run(FFT_BCK);
 					field->setVMomSpace(false);
 				}
 			if (mvomv & FIELD_MTOM2)
 				{
 					if (!field->MMomSpace()) return;
-					auto &myPlan = AxionFFT::fetchPlan("nSpecSxM");
-					myPlan.run(FFT_FWD);
+					auto &myPlan = AxionFFT::fetchPlan("C2CM22M");
+					myPlan.run(FFT_BCK);
 					// field->setM2(false);
 				}
 		} break;
@@ -175,10 +176,10 @@ void	FTfield::operator()(FieldIndex mvomv, FFTdir dir)
 
 	switch(dir)
 	{
-		case FFT_BCK:
+		case FFT_FWD:
 			ftField(mvomv);
 		break;
-		case FFT_FWD:
+		case FFT_BCK:
 			iftField(mvomv);
 		break;
 		default:

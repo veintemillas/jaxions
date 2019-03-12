@@ -72,7 +72,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if	( axiona->MMomSpace() || axiona->VMomSpace() )
 	{
 		FTfield pelota(axiona);
-		pelota(FIELD_MV, FFT_FWD); // FWD is to send to POSITION space
+		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
 	}
 
 	createMeas(axiona, indexa);

@@ -346,6 +346,7 @@ const std::complex<float> If(0.,1.);
 			// Saxion v inplace
 			AxionFFT::initPlan (this, FFT_CtoC_VtoV, FFT_FWDBCK, "C2CV2V");
 			AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWDBCK, "C2CM22M2");
+			AxionFFT::initPlan(this, FFT_CtoC_M2toM, FFT_FWDBCK, "C2CM22M");
 			// Axion m/v inplace
 			AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
 			AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
@@ -831,8 +832,118 @@ double	Scalar::AxionMassSq() {
         return aMass;
 }
 
+// time integral of the axion mass^2 R^n assuming it is a truncated power law
+// and R = z^frw
+double	Scalar::IAxionMassSqn(double z0, double z, int nn) {
 
+	double aMass;
+	double RNow      = *RV();
+	double &zThRes   = bckgnd->ZThRes();
+	double &zRestore = bckgnd->ZRestore();
+	double &indi3    = bckgnd->Indi3();
+	double &nQcd     = bckgnd->QcdExp();
 
+	// assume zrestore is infty
+	// exponent of the time integral
+	if (z > z0){
+		if (z <= zThRes){
+			double exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			double inte = (pow(z, exponent)-pow(z0, exponent))*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( (z > zThRes) && (z0 < zThRes)){
+			double exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			double inte = (pow(zThRes, exponent)-pow(z0, exponent))*indi3*indi3/(exponent);
+			exponent = (bckgnd->Frw())*(nn) +1;
+			inte += (pow(z, exponent)-pow(zThRes, exponent))*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( z > zThRes && (z0 >= zThRes)){
+			double exponent = (bckgnd->Frw())*(nn) +1;
+			double inte = (pow(z, exponent)-pow(z0, exponent))*indi3*indi3/(exponent);
+			return inte;
+		}
+	} else {
+		if (z0 <= zThRes){
+			double exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			double inte = (pow(z, exponent)-pow(z0, exponent))*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( (z0 > zThRes) && (z < zThRes)){
+			double exponent = (bckgnd->Frw())*(nn) +1;
+			double inte = (pow(zThRes, exponent)-pow(z0, exponent))*indi3*indi3/(exponent);
+			exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			inte += (pow(z, exponent)-pow(zThRes, exponent))*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( z0 > zThRes && (z >= zThRes)){
+			double exponent = (bckgnd->Frw())*(nn) +1;
+			double inte = (pow(z, exponent)-pow(z0, exponent))*indi3*indi3/(exponent);
+			return inte;
+		}
+	}
+}
+
+// 2nd time integral of the axion mass^2 R^n assuming it is a truncated power law
+// and R = z^frw
+double	Scalar::IIAxionMassSqn(double z0, double z, int nn) {
+
+	double aMass;
+	double RNow      = *RV();
+	double &zThRes   = bckgnd->ZThRes();
+	double &zRestore = bckgnd->ZRestore();
+	double &indi3    = bckgnd->Indi3();
+	double &nQcd     = bckgnd->QcdExp();
+
+	// assume zrestore is infty
+	// exponent of the time integral
+	if (z>z0){
+		if (z <= zThRes){
+			double exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			double inte = (pow(z, exponent+1)-pow(z0, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(z0, exponent)*(z-z0)*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( (z > zThRes) && (z0 < zThRes)){
+			double exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			double inte = (pow(zThRes, exponent+1)-pow(z0, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(z0, exponent)*(zThRes-z0)*indi3*indi3/(exponent);
+			exponent = (bckgnd->Frw())*(nn) +1;
+			inte += (pow(z, exponent+1)-pow(zThRes, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(zThRes, exponent)*(z-zThRes)*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( z > zThRes && (z0 >= zThRes)){
+			double exponent = (bckgnd->Frw())*(nn) +1;
+			double inte = (pow(z, exponent+1)-pow(z0, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(z0, exponent)*(z-z0)*indi3*indi3/(exponent);
+			return inte;
+		}
+	} else {
+		if (z0 <= zThRes){
+			double exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			double inte = (pow(z, exponent+1)-pow(z0, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(z0, exponent)*(z-z0)*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( (z0 > zThRes) && (z < zThRes)){
+			double exponent = (bckgnd->Frw())*(nn) +1;
+			double inte = (pow(zThRes, exponent+1)-pow(z0, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(z0, exponent)*(zThRes-z0)*indi3*indi3/(exponent);
+			exponent = (bckgnd->Frw())*(nQcd+nn) +1;
+			inte += (pow(z, exponent+1)-pow(zThRes, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(zThRes, exponent)*(z-zThRes)*indi3*indi3/(exponent);
+			return inte;
+		}
+		if ( z > zThRes && (z0 >= zThRes)){
+			double exponent = (bckgnd->Frw())*(nn) +1;
+			double inte = (pow(z, exponent+1)-pow(z0, exponent+1))*indi3*indi3/(exponent*(exponent+1))
+										- pow(z0, exponent)*(z-z0)*indi3*indi3/(exponent);
+			return inte;
+		}
+	}
+
+}
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  ()
 {
