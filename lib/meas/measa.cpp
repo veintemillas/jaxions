@@ -69,17 +69,27 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
-	if	( axiona->MMomSpace() || axiona->VMomSpace() )
-	{
-		FTfield pelota(axiona);
-		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
-	}
-
 	createMeas(axiona, indexa);
 
 	if (measa & MEAS_2DMAP){
 			if(p2dmapo)
 				writeMapHdf5s (axiona,sliceprint);
+	}
+
+	if	( axiona->MMomSpace() || axiona->VMomSpace() )
+	{
+		{
+			LogMsg(VERB_NORMAL, "[Meas %d] bin FS acceleration",indexa);
+			float *ms = static_cast<float *>(axiona->m2Cpu()) ;
+			LogOut("acceleration %f %f %f %f \n",ms[0],ms[1],ms[2],ms[3]);
+			// JARE possible problem m2 saved as double in _DOUBLE?
+			Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), 2*axiona->Size(),
+							[] (Float x) -> float { return (double) ( x ) ;});
+			contBin.run();
+			writeBinner(contBin, "/bins", "fsacceleration");
+		}
+		FTfield pelota(axiona);
+		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
 	}
 
 	if (measa & MEAS_NEEDENERGY)

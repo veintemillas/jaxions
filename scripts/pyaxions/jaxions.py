@@ -550,6 +550,16 @@ def gm(address,something='summary',printerror=False):
             if (something == 'binrhoBmin'):
                 return f[binrho_string].attrs[u'Minimum'] ;
 
+        #### fsacc bin
+
+        if (something == 'binfaacc') and 'bins/fsacceleration' in f :
+            numBIN = f['bins/fsacceleration'].attrs[u'Size']
+            return np.reshape(f['bins/fsacceleration/data'],(numBIN)) ;
+        if (something == 'binfaaccmax') and 'bins/fsacceleration' in f :
+            return f['bins/fsacceleration'].attrs[u'Maximum'] ;
+        if (something == 'binfaaccmin') and 'bins/fsacceleration' in f :
+            return f['bins/fsacceleration'].attrs[u'Minimum'] ;
+
 
     if (something == 'kmax'):
         N = f.attrs[u'Size']
