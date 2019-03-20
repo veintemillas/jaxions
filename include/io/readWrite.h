@@ -7,6 +7,7 @@
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
 	void	writeConf (Scalar *axion, int index, const bool restart=false);
 	void	readConf	(Cosmos *myCosmos, Scalar **axion, int index, const bool restart=false);
+	double	readEDens	(Cosmos *myCosmos, Scalar **axion, int index);
 
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
@@ -19,15 +20,19 @@
 	void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin);
 	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);
 
+
+
 	void	writeMapHdf5	(Scalar *axion);
 	void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint);
 	void	writeEMapHdf5	(Scalar *axion);
 	void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint);
 	void	writePMapHdf5	(Scalar *axion);
+	void	writeGadget	(Scalar *axion, double eMean, size_t realN, size_t nParts);
 
 	void	reduceEDens	(int index, uint newLx, uint newLz);
 
 	void	writePoint	(Scalar *axion);
+	void	writeGadget	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
 	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName);
 

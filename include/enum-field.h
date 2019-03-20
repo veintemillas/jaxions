@@ -16,6 +16,8 @@
 			FIELD_AX_RD	= 258,
 			FIELD_AX_MOD_RD	= 386,
 			FIELD_REDUCED	= 256,
+			FIELD_JUSTM2	= 1024,
+			FIELD_JUSTM2_REDUCED = 1280,
 		}	FieldType;
 
 		typedef	enum	FieldIndex_s

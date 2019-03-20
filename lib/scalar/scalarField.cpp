@@ -43,6 +43,9 @@ const std::complex<float> If(0.,1.);
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
+	LogMsg(VERB_HIGH, "[sca] Creating axion with N=%lu Z=%lu(%lu) zGrid=%d lowmem=%d",n1,Lz,Tz,nSplit,lowmem);
+	LogFlush();
+
 	prof.start();
 
 	size_t nData;
@@ -53,6 +56,8 @@ const std::complex<float> If(0.,1.);
 		endComms();
 		exit(1);
 	}
+
+LogFlush();
 
 	bckgnd = cm;
 	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
@@ -72,6 +77,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION:
 		case FIELD_AX_RD:
 		case FIELD_WKB:
+		case FIELD_JUSTM2:
 			nData = 1;
 			break;
 
@@ -80,6 +86,8 @@ const std::complex<float> If(0.,1.);
 			exit(1);
 			break;
 	}
+
+LogFlush();
 
 	switch (prec)
 	{
@@ -96,6 +104,8 @@ const std::complex<float> If(0.,1.);
 			exit(1);
 			break;
 	}
+
+LogFlush();
 
 //	switch	(dev)
 //	{
@@ -118,6 +128,7 @@ const std::complex<float> If(0.,1.);
 //			break;
 //	}
 
+
 	shift = mAlign/fSize;
 
 	if (n2*fSize % mAlign)
@@ -128,6 +139,9 @@ const std::complex<float> If(0.,1.);
 
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = v3*fSize;
+
+LogMsg(VERB_NORMAL, "[sca] mBytes %lu vBytes %lu\n",mBytes,vBytes);
+LogFlush();
 
 	// MODIFIED BY JAVI
 	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
@@ -155,11 +169,18 @@ const std::complex<float> If(0.,1.);
 			v = static_cast<void *>(static_cast<char *>(m) + fSize*(2*n2 + n3));
 			break;
 
+	  case FIELD_JUSTM2:
+			m = v = m2 = str = nullptr;
+			break;
+
 		default:
 			LogError("Error: unrecognized field type");
 			exit(1);
 			break;
 	}
+
+LogFlush();
+
 	// MODIFICATION UNTIL HERE
 	// NOTE THAT DOES NOT AFFECT CREATION IN SAXION MODE
 
@@ -180,14 +201,19 @@ const std::complex<float> If(0.,1.);
 			if (!lowmem) {
 				alignAlloc ((void**) &m2, mAlign, mBytes);
 				memset (m2, 0, fSize*v3);
+				LogMsg(VERB_HIGH, "[sca] m2 allocated (saxion)",mBytes,vBytes);
+				LogFlush();
 			} else
 				m2 = nullptr;
 			break;
 
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
+		case FIELD_JUSTM2:
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
+			LogMsg(VERB_HIGH, "[sca] m2 allocated (Axion)",mBytes,vBytes);
+			LogFlush();
 			break;
 
 		case FIELD_SX_RD:
@@ -203,41 +229,58 @@ const std::complex<float> If(0.,1.);
 			break;
 	}
 
+LogFlush();
+
 	statusM2 = M2_DIRTY;
 
-	if (m == nullptr)
+	switch (fieldType)
 	{
-		LogError ("Error: couldn't allocate %lu bytes on host for the m field", mBytes);
-		exit(1);
-	}
+		case FIELD_JUSTM2:
+			if (m2 == nullptr)
+			{
+				LogError ("Error: couldn't allocate %lu bytes on host for the m2 field", mBytes);
+				exit(1);
+			}
+		break;
 
-	if (v == nullptr)
-	{
-		LogError ("Error: couldn't allocate %lu bytes on host for the v field", vBytes);
-		exit(1);
-	}
-
-	if (str == nullptr && (fieldType & (FIELD_SAXION != 0)))
-	{
-		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
-		exit(1);
-	}
-
-	if (!lowmem)
-	{
-		if (m2 == nullptr)
+		default:
 		{
-			LogError ("Error: couldn't allocate %lu bytes on host for the m2 field", mBytes);
-			exit(1);
+			if (m == nullptr)
+				{
+					LogError ("Error: couldn't allocate %lu bytes on host for the m field", mBytes);
+					exit(1);
+				}
+
+				if (v == nullptr)
+				{
+					LogError ("Error: couldn't allocate %lu bytes on host for the v field", vBytes);
+					exit(1);
+				}
+
+				if (str == nullptr && (fieldType & (FIELD_SAXION != 0)))
+				{
+					LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
+					exit(1);
+				}
+
+				if (!lowmem)
+				{
+					if (m2 == nullptr)
+					{
+						LogError ("Error: couldn't allocate %lu bytes on host for the m2 field", mBytes);
+						exit(1);
+					}
+				}
+
+				memset (m, 0, fSize*v3);
+				memset (v, 0, fSize*v3);
 		}
+		break;
 	}
 
-	memset (m, 0, fSize*v3);
-	// changed from memset (v, 0, fSize*n3);
-	memset (v, 0, fSize*v3);
+LogFlush();
 
 	commSync();
-
 
 	alignAlloc ((void **) &z, mAlign, mAlign);
 	alignAlloc ((void **) &R, mAlign, mAlign);
@@ -254,6 +297,7 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
+	//FIXME for FIELD_JUSTM2
 	if (device == DEV_GPU)
 	{
 #ifndef	USE_GPU
@@ -311,12 +355,17 @@ const std::complex<float> If(0.,1.);
 
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
-	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
+LogMsg (VERB_HIGH, "[sca] fieldType %d check1 %d check2 %d check3 %d ",fieldType, fieldType != FIELD_WKB, fieldType & FIELD_REDUCED, ((fieldType & FIELD_REDUCED) != 0));
+LogFlush();
+
+	// if (fieldType != FIELD_WKB && ( (fieldType & FIELD_REDUCED) != 0) && ( (fieldType & FIELD_JUSTM2) != 0)) {
+	if (fieldType != FIELD_WKB && !( (fieldType & FIELD_REDUCED) != 0) ) {
 		prof.start();
 		AxionFFT::initFFT(prec);
 
 		/* Backward needed for reduce-filter-map */
 		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");		// Spectrum for axion
+		AxionFFT::initPlan (this, FFT_SPAX,       FFT_FWDBCK,  "SpAx");
 
 		if (fieldType == FIELD_SAXION) {
 			if (!lowmem) {
@@ -328,8 +377,6 @@ const std::complex<float> If(0.,1.);
 				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD,    "nSpecSxV");
 			}
 		}
-
-		AxionFFT::initPlan (this, FFT_SPAX,       FFT_FWDBCK,  "SpAx");
 
 		/*	If present, read fileName	*/
 
@@ -362,6 +409,10 @@ const std::complex<float> If(0.,1.);
 			}
 		}
 	}
+
+	LogFlush();
+
+
 }
 
 // END SCALAR

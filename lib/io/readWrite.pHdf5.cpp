@@ -4,6 +4,8 @@
 #include <complex>
 #include <hdf5.h>
 
+#include <random>
+
 #include <fftw3-mpi.h>
 
 #include "scalar/scalarField.h"
@@ -1887,7 +1889,7 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 	writeAttribute(group_id, &(strEDat.rho_a_Vil),   "Masked axion energy density (Vil)",  H5T_NATIVE_DOUBLE);
 	writeAttribute(group_id, &(strEDat.rho_s_Vil),   "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
 	writeAttribute(group_id, &(strEDat.nout),        "nout",			       H5T_NATIVE_HSIZE);
-	
+
 	sBytes = 56;
 
 	H5Gclose (group_id);
@@ -3227,4 +3229,1014 @@ void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 	H5Gclose (group_id);
 
 	LogMsg (VERB_HIGH, "Metadata written");
+}
+
+
+
+
+
+
+
+
+
+/* write gadget file */
+
+void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
+{
+	hid_t	file_id, hGrp_id, hGDt_id, attr, plist_id, chunk_id, shunk_id, vhunk_id;
+	hid_t	vSt1_id, vSt2_id, sSts_id, aSpace, status;
+	hid_t	vSpc1, vSpc2, sSpce, memSpace, semSpace, dataType, totalSpace, scalarSpace;
+	hsize_t	total, slice, slab, offset, rOff;
+
+	char	prec[16], fStr[16];
+	int	length = 8;
+
+	size_t	dataSize;
+
+	int myRank = commRank();
+
+	LogMsg (VERB_NORMAL, "Writing Gadget output file");
+	LogMsg (VERB_NORMAL, "");
+
+	/*      Start profiling         */
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	/*      If needed, transfer data to host        */
+	if (axion->Device() == DEV_GPU)
+		axion->transferCpu(FIELD_M2);
+
+	if (axion->m2Cpu() == nullptr) {
+		LogError ("You seem to be using the lowmem option");
+		prof.stop();
+		return;
+	}
+
+	/*	Set up parallel access with Hdf5	*/
+	plist_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+	char base[256];
+	sprintf(base, "%s/ics.hdf5", outDir, outName);
+
+	/*	Create the file and release the plist	*/
+	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
+	{
+		LogError ("Error creating file %s", base);
+		return;
+	}
+
+	H5Pclose(plist_id);
+
+	plist_id = H5Pcreate(H5P_DATASET_XFER);
+	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+	commSync();
+
+	switch (axion->Precision())
+	{
+		case FIELD_SINGLE:
+		{
+			dataType = H5T_NATIVE_FLOAT;
+			dataSize = sizeof(float);
+		}
+
+		break;
+
+		case FIELD_DOUBLE:
+		{
+			dataType = H5T_NATIVE_DOUBLE;
+			dataSize = sizeof(double);
+		}
+
+		break;
+
+		default:
+
+		LogError ("Error: Invalid precision. How did you get this far?");
+		exit(1);
+
+		break;
+	}
+
+	/*	Create header	*/
+	hGrp_id = H5Gcreate2(file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	size_t	iDummy = 0;
+	size_t	oDummy = 1;
+	double	fDummy = 0.0;
+	double	bSize  = axion->BckGnd()->PhysSize() * 7430.0 * 0.7;	// FIXME
+
+	writeAttribute(hGrp_id, &bSize,  "BoxSize",                H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_Cooling",           H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_DoublePrecision",   H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_Feedback",          H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_Metals",            H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_Sfr",               H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_StellarAge",        H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &iDummy, "HubbleParam",            H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &oDummy, "NumFilesPerSnapshot",    H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &fDummy, "Omega0",                 H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, &iDummy, "OmegaLambda",            H5T_NATIVE_HSIZE);
+	writeAttribute(hGrp_id, &fDummy, "Redshift",               H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, &fDummy, "Time",                   H5T_NATIVE_DOUBLE);
+
+	/*	Deal with the attribute arrays	*/
+	/*	Create dataspace		*/
+
+	//changed
+	// size_t	nPrt = axion->Size();
+	size_t	nPrt = nParts;
+	LogOut("[gad] nPart = %lu\n",nPrt);
+
+	//	Total DM density
+	double	Omega0 = 0.3;
+	//	H0 in units of kyear/h
+	double	H0 = 1e15 * M_PI / 3.086e22;
+	//	G in units of AU^3/kyear^2 (1/1e-15 Msun)
+	double	Grav = (6.67408e09 * 1.989e15 * M_PI * M_PI)/(149.6e9*149.6e9*149.6e9);
+
+	//	Total mass in GADGET units
+	double	totalMass = Omega0 * (bSize*bSize*bSize) * (3.0 * H0*H0) / (8 * M_PI * Grav);
+	double	mAx  = totalMass/((double) nPrt);
+
+	hsize_t	dims[1]  = { 6 };
+	double	dAFlt[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+	double	mTab[6]  = { 0.0, mAx, 0.0, 0.0, 0.0, 0.0 };
+	size_t	nPart[6] = {   0, nPrt,  0,   0,   0,   0 };
+
+	aSpace = H5Screate_simple (1, dims, nullptr); //dims, nullptr);
+
+	/*	Create the attributes and write them	*/
+
+	attr   = H5Acreate(hGrp_id, "MassTable",              H5T_NATIVE_DOUBLE, aSpace, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, H5T_NATIVE_DOUBLE, mTab);
+	H5Aclose (attr);
+
+	attr   = H5Acreate(hGrp_id, "NumPart_ThisFile",       H5T_NATIVE_HSIZE,  aSpace, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, H5T_NATIVE_HSIZE, nPart);
+	H5Aclose (attr);
+
+	attr   = H5Acreate(hGrp_id, "NumPart_Total",          H5T_NATIVE_HSIZE,  aSpace, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, H5T_NATIVE_HSIZE, nPart);
+	H5Aclose (attr);
+
+	attr   = H5Acreate(hGrp_id, "NumPart_Total_HighWord", H5T_NATIVE_DOUBLE, aSpace, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Awrite (attr, H5T_NATIVE_DOUBLE, dAFlt);
+	H5Aclose (attr);
+
+	/*	Create datagroup	*/
+	hGDt_id = H5Gcreate2(file_id, "/PartType1", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	// changed FIXME for asymmetric reduced grids?
+	// uint totlZ = axion->TotalDepth();
+	// uint totlX = axion->Length();
+	uint totlZ = realN;
+	uint totlX = realN;
+	uint realDepth = realN/commSize();
+
+	total = ((hsize_t) totlX)*((hsize_t) totlX)*((hsize_t) totlZ);
+	slab  = ((hsize_t) totlX)*((hsize_t) totlX);
+
+	// changed FIXME for asymmetric reduced grids?
+	// rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(axion->Depth());
+	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(realDepth);
+
+	const hsize_t vSlab[2] = { slab, 3 };
+
+	LogOut("[gad] total %lu slab %lu r0ff %lu\n",total, slab, rOff);
+
+	LogOut("[gad] Sum Energy = realN^3 eMean\n");
+	LogOut("[gad] To get %lu particles, multiply by nPrt/realN^3\n",nPrt);
+	double neweMean = eMean*(realN*realN*realN)/nPrt;
+
+	if (dataSize == 4) {
+		float * axArray = static_cast<float *>(axion->m2Cpu());
+
+		#pragma omp parallel for schedule(static)
+		for (size_t idx = 0; idx<rOff; idx++)
+			axArray[idx] /= neweMean;
+	} else { // Assumes double
+		double *axArray = static_cast<double*>(axion->m2Cpu());
+
+		#pragma omp parallel for schedule(static)
+		for (size_t idx = 0; idx<rOff; idx++)
+			axArray[idx] /= neweMean;
+	}
+
+	LogOut("[gad] E normalised to contrast\n");
+
+	if (axion->Field() == FIELD_WKB) {
+		LogError ("Error: WKB field not supported");
+		prof.stop();
+		exit(1);
+	}
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	const hsize_t dDims[2] = { total, 3 };
+	if ((totalSpace = H5Screate_simple(2, dDims, nullptr)) < 0)	// Whole data
+	{
+		LogError ("Fatal error H5Screate_simple");
+		prof.stop();
+		exit (1);
+	}
+
+	if ((scalarSpace = H5Screate_simple(1, &total, nullptr)) < 0)	// Whole data
+	{
+		LogError ("Fatal error H5Screate_simple");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Set chunked access	*/
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (chunk_id, 2, vSlab) < 0)
+	{
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+	if ((vhunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (vhunk_id, 2, vSlab) < 0)
+	{
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+	if ((shunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (shunk_id, 1, &slab) < 0)
+	{
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Fatal error H5Pset_fill_time");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_fill_time (shunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Fatal error H5Pset_fill_time");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	The velocity array is initialized to zero, and it stays that way	*/
+	if (H5Pset_alloc_time (vhunk_id, H5D_ALLOC_TIME_EARLY) < 0)
+	{
+		LogError ("Fatal error H5Pset_alloc_time");
+		prof.stop();
+		exit (1);
+	}
+
+	const double zero = 0.0;
+
+	if (H5Pset_fill_value (vhunk_id, dataType, &zero) < 0)
+	{
+		LogError ("Fatal error H5Pset_fill_value");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_fill_time (vhunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Fatal error H5Pset_fill_time");
+		prof.stop();
+		exit (1);
+	}
+
+
+	/*	Create a dataset for the vectors and another for the scalars	*/
+
+	char vDt1[16] = "Coordinates";
+	char vDt2[16] = "Velocities";
+	char mDts[16] = "Masses";
+	char sDts[16] = "ParticleIDs";
+
+	vSt1_id = H5Dcreate (hGDt_id, vDt1, dataType,         totalSpace,  H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	vSt2_id = H5Dcreate (hGDt_id, vDt2, dataType,         totalSpace,  H5P_DEFAULT, vhunk_id, H5P_DEFAULT);
+	sSts_id = H5Dcreate (hGDt_id, sDts, H5T_NATIVE_HSIZE, scalarSpace, H5P_DEFAULT, shunk_id, H5P_DEFAULT);
+
+	vSpc1 = H5Dget_space (vSt1_id);
+	//vSpc2 = H5Dget_space (vSt2_id);
+	sSpce = H5Dget_space (sSts_id);
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	memSpace = H5Screate_simple(2, vSlab, nullptr);	// Slab
+	semSpace = H5Screate_simple(1, &slab, nullptr);	// Slab
+
+	commSync();
+
+	// changed
+	// const hsize_t Lz = axion->Depth();
+	const hsize_t Lz = realDepth;
+
+	const hsize_t stride[2] = { 1, 1 };
+
+	/*	For the something	*/
+	void *vArray = static_cast<void*>(static_cast<char*>(axion->m2Cpu())+(slab*Lz)*dataSize);
+	//memset(vArray, 0, slab*3*dataSize);
+
+	size_t	tPart = 0, aPart = 0;
+
+	int	*axTmp  = static_cast<int  *>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+(slab*Lz)*dataSize));
+	/*	Horrible code, for float	*/
+	if (dataSize == 4) {
+		float	*axData = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())));
+
+		/*	Set all the particles	*/
+		#pragma omp parallel shared(axData) reduction(+:tPart)
+		{
+			std::random_device rSd;
+			std::mt19937_64 rng(rSd());
+
+			#pragma omp for schedule(static)
+			for (hsize_t idx=0; idx<slab*Lz; idx++) {
+				float	cData = axData[idx];
+				int	nPrti = cData;
+				float	rest  = cData - nPrti;
+
+				std::binomial_distribution<int>	bDt  (1, rest);
+
+				nPrti += bDt(rng);
+
+				axTmp[idx] = nPrti;
+
+				tPart += nPrti;
+			}
+		}
+
+		MPI_Allreduce(&tPart, &aPart, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+
+		std::random_device rSd;
+		std::mt19937_64 rng(rSd());
+		std::uniform_int_distribution<size_t> uni  (0, slab*Lz);
+
+		while (aPart != total)
+		{
+			size_t	nIdx = uni(rng);
+
+			auto	cData = axData[nIdx];
+			int	cPart = axTmp[nIdx];
+			int	pChange = 0;
+			int	tChange = 0;
+
+			if (cData > cPart)
+			{
+				std::binomial_distribution<int> bDt  (1, cData - ((float) cPart));
+				int dPart = bDt(rng);
+				axTmp[nIdx] += dPart;
+				pChange	    += dPart;
+			} else {
+				std::binomial_distribution<int> bDt  (1, ((float) cPart) - cData);
+				int dPart = bDt(rng);
+				axTmp[nIdx] -= dPart;
+				pChange	    -= dPart;
+			}
+
+			tPart += pChange;
+			MPI_Allreduce(&pChange, &tChange, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+			aPart += tChange;
+LogOut("Balancing... %010zu / %010zu\r", aPart, total); fflush(stdout);
+		}
+	} else {
+	}
+LogOut("\nBalanced\n"); fflush(stdout);
+
+	const int cSize = commSize();
+
+	hssize_t excess  = tPart - slab*Lz;
+	void *tmpPointer;
+	trackAlloc (&tmpPointer, sizeof(hssize_t)*cSize);
+	hssize_t *exStat = static_cast<hssize_t*>(tmpPointer);
+
+	int	 remain  = 0;
+	int	 missing = 0;
+	size_t	 lPos    = 0;
+
+	int	rSend = 0, rRecv;
+
+	if (cSize > 1) {
+		MPI_Allgather (&excess, 1, MPI_LONG_LONG, exStat, 1, MPI_LONG_LONG, MPI_COMM_WORLD);
+
+		for (int i=1; i<cSize; i++) {
+			if (exStat[i] > exStat[rSend])
+				rSend = i;
+		}
+
+		for (int i=1; i<cSize; i++) {
+			if (exStat[i] < exStat[rRecv])
+				rRecv = i;
+		}
+	}
+
+	for (hsize_t zDim = 0; zDim < Lz; zDim++)
+	{
+		/*	Select the slab in the file	*/
+		offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+		hsize_t vOffset[2] = { offset , 0 };
+
+		std::random_device rSd;
+		std::mt19937_64 rng(rSd());
+
+		std::normal_distribution<float>	gauss(0.0, 0.7);
+
+		size_t	tPrti = 0;
+
+		size_t	idx = lPos;
+		int	yC  = lPos/totlX;
+		int	zC  = yC  /totlX;
+		int	xC  = lPos - totlX*yC;
+		yC -= zC*totlX;
+
+		if (remain)
+		{
+			int	nZ  = (lPos-1)/totlX;
+			int	nY  = yC  /totlX;
+			int	nX  = (lPos-1) - totlX*zC;
+			nY -= nZ*totlX;
+
+			if (dataSize == 4) {
+				float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
+				for (int i=0; i<remain; i++)
+				{
+					float xO = (nX + gauss(rng) + 0.5)*bSize/((float) totlX);
+					float yO = (nY + gauss(rng) + 0.5)*bSize/((float) totlX);
+					float zO = (nZ + gauss(rng) + 0.5)*bSize/((float) totlZ);
+
+					if (xO < 0.0f) xO += bSize;
+					if (yO < 0.0f) yO += bSize;
+					if (zO < 0.0f) zO += bSize;
+
+					if (xO > bSize) xO -= bSize;
+					if (yO > bSize) yO -= bSize;
+					if (zO > bSize) zO -= bSize;
+
+					axOut[tPrti*3+0] = xO;
+					axOut[tPrti*3+1] = yO;
+					axOut[tPrti*3+2] = zO;
+
+					tPrti++;
+				}
+			} else {
+			}
+
+			remain = 0;
+		}
+
+		while ((idx < slab*Lz) && (tPrti < slab))
+		{
+			int nPrti = axTmp[idx];
+
+			if (dataSize == 4) {
+				float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
+				for (int i=0; i<nPrti; i++)
+				{
+					float xO = (xC + gauss(rng) + 0.5)*bSize/((float) totlX);
+					float yO = (yC + gauss(rng) + 0.5)*bSize/((float) totlX);
+					float zO = (zC + gauss(rng) + 0.5)*bSize/((float) totlZ);
+
+					if (xO < 0.0f) xO += bSize;
+					if (yO < 0.0f) yO += bSize;
+					if (zO < 0.0f) zO += bSize;
+
+					if (xO > bSize) xO -= bSize;
+					if (yO > bSize) yO -= bSize;
+					if (zO > bSize) zO -= bSize;
+
+					axOut[tPrti*3+0] = xO;
+					axOut[tPrti*3+1] = yO;
+					axOut[tPrti*3+2] = zO;
+
+					tPrti++;
+
+					if (tPrti == slab) {
+						remain = nPrti - i - 1;
+						break;
+					}
+				}
+			} else {
+			}
+
+			idx++;
+			lPos = idx;
+
+			xC++;
+
+			if (xC == totlX) { xC = 0; yC++; }
+			if (yC == totlX) { yC = 0; zC++; }
+		};
+
+		if (cSize > 1) {
+			missing = slab - tPrti;
+
+			int    aMiss = 0;
+			size_t cPos  = lPos;
+
+			MPI_Allreduce(&missing, &aMiss, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+			while (aMiss > 0) {
+LogOut("Missing %08d\n", aMiss);
+				if (myRank == rRecv) {
+					int	toRecv = 0;
+					size_t	iPos   = 0, ePos = 0;
+printf("Rank %d requesting %d particles\n", rRecv, missing); fflush(stdout);
+					MPI_Send (&missing, 1, MPI_INT, rSend, 27, MPI_COMM_WORLD);
+					MPI_Recv (&toRecv,  1, MPI_INT, rSend, 28, MPI_COMM_WORLD, nullptr);
+printf("Rank %d will get %d particles\n", rRecv, toRecv); fflush(stdout);
+					MPI_Recv (&iPos, 1, MPI_UNSIGNED_LONG_LONG, rSend, 29, MPI_COMM_WORLD, nullptr);
+					MPI_Recv (&ePos, 1, MPI_UNSIGNED_LONG_LONG, rSend, 30, MPI_COMM_WORLD, nullptr);
+					size_t aLength = ePos - iPos;
+					size_t gAddr = slab*Lz;
+					MPI_Recv (&(axTmp[gAddr]), aLength, MPI_INT, rSend, 26, MPI_COMM_WORLD, nullptr);
+printf("Rank %d data received\n", rRecv); fflush(stdout);
+
+					missing -= toRecv;
+					excess  += toRecv;
+					cPos    += toRecv;
+
+					yC  = iPos/totlX;
+					zC  = yC  /totlX;
+					xC  = iPos - totlX*yC;
+					yC -= zC*totlX;
+
+
+					for (int i=0; i<aLength; i++) {
+if ((i%1024) == 0)
+printf("Rank %d processing site %06d\n", rRecv, i); fflush(stdout);
+						int nPhere = axTmp[gAddr+i];
+
+						if (dataSize == 4) {
+							float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
+
+							for (int j=0; j<nPhere; j++) {
+								float xO = (xC + gauss(rng) + 0.5)*bSize/((float) totlX);
+								float yO = (yC + gauss(rng) + 0.5)*bSize/((float) totlX);
+								float zO = (zC + gauss(rng) + 0.5)*bSize/((float) totlZ);
+
+								if (xO < 0.0f) xO += bSize;
+								if (yO < 0.0f) xO += bSize;
+								if (zO < 0.0f) xO += bSize;
+
+								if (xO > bSize) xO -= bSize;
+								if (yO > bSize) yO -= bSize;
+								if (zO > bSize) zO -= bSize;
+
+								axOut[tPrti*3+0] = xO;
+								axOut[tPrti*3+1] = yO;
+								axOut[tPrti*3+2] = zO;
+								tPrti++;
+							}
+						} else {
+						}
+
+						xC++;
+
+						if (xC == totlX) { xC = 0; yC++; }
+						if (yC == totlX) { yC = 0; zC++; }
+					}
+				}
+
+				if (myRank == rSend) {
+					size_t iPos = lPos;
+					int toSend = 0;
+					int i = 0;
+					MPI_Recv (&toSend, 1, MPI_INT, rRecv, 27, MPI_COMM_WORLD, nullptr);
+printf("Rank %d received request for %d particles\n", rSend, toSend); fflush(stdout);
+
+					if (toSend > excess)
+						toSend = excess;
+
+					size_t gAddr = slab*Lz;
+
+					int pSent = 0;
+
+					if (remain) {
+						iPos = lPos - 1;
+						axTmp[gAddr] = 0;
+						while ((remain > 0) && (pSent < toSend)) {
+							axTmp[gAddr]++;
+							pSent++;
+							remain--;
+						}
+						i++;
+					}
+
+					if (pSent == toSend)
+						break;
+
+printf("Rank %d is preparing the data to be sent\n", rSend); fflush(stdout);
+					do {
+if ((pSent%1024) == 0)
+printf("Rank %d preparing particle %06d\n", rSend, pSent); fflush(stdout);
+						int nPhere = axTmp[lPos];
+						axTmp[gAddr+i] = 0;
+
+						if (nPhere > 0) {
+							while ((nPhere > 0) && (pSent < toSend)) {
+								nPhere--;
+								axTmp[gAddr+i]++;
+								pSent++;
+							}
+							axTmp[lPos] = nPhere;
+						}
+
+						if (pSent < toSend) {
+							i++;
+							lPos++;
+						} else
+							break;
+
+						if (i == slab) {
+							toSend = pSent;
+							break;
+						}
+					}	while(true);
+
+					MPI_Send (&toSend, 1, MPI_INT, rRecv, 28, MPI_COMM_WORLD);
+					size_t ePos = (i==slab) ? lPos : lPos+1;
+					MPI_Send(&iPos, 1, MPI_UNSIGNED_LONG_LONG, rRecv, 29, MPI_COMM_WORLD);
+					MPI_Send(&ePos, 1, MPI_UNSIGNED_LONG_LONG, rRecv, 30, MPI_COMM_WORLD);
+					MPI_Send(&(axTmp[gAddr]), (ePos-iPos), MPI_INT, rRecv, 26, MPI_COMM_WORLD);
+
+					excess -= toSend;
+				}
+
+printf("Rank %d syncing\n", myRank); fflush(stdout);
+				commSync();
+
+				MPI_Allgather (&excess, 1, MPI_LONG_LONG, exStat, 1, MPI_LONG_LONG, MPI_COMM_WORLD);
+LogOut("Excess broadcasted\n");
+				rSend = rRecv = 0;
+
+				for (int i=1; i<cSize; i++) {
+					if (exStat[i] > exStat[rSend])
+						rSend = i;
+				}
+
+				for (int i=1; i<cSize; i++) {
+					if (exStat[i] < exStat[rRecv])
+						rRecv = i;
+				}
+
+				MPI_Allreduce(&missing, &aMiss, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+			}
+		}
+printf("\nSlice completed\n"); fflush(stdout);
+
+		H5Sselect_hyperslab(vSpc1, H5S_SELECT_SET, vOffset, stride, vSlab, nullptr);
+//		H5Sselect_hyperslab(vSpc2, H5S_SELECT_SET, vOffset, stride, vSlab, nullptr);
+
+		/*	Write raw data	*/
+		auto rErr = H5Dwrite (vSt1_id, dataType, memSpace, vSpc1, plist_id, static_cast<char *> (axion->m2Cpu())+(slab*(Lz*2 + 1)*dataSize));
+//		auto vErr = H5Dwrite (vSt2_id, dataType, memSpace, vSpc2, plist_id, vArray);	// Always zero this one
+
+		if ((rErr < 0))// || (vErr < 0))
+		{
+			LogError ("Error writing position/velocity dataset");
+			prof.stop();
+			exit(0);
+		}
+
+		commSync();
+	}
+
+	/*	Now we go with the particle ID	*/
+	for (hsize_t zDim = 0; zDim < Lz; zDim++)
+	{
+		/*	Select the slab in the file	*/
+		offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+
+		H5Sselect_hyperslab(sSpce, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+		hsize_t iBase = slab*(myRank*Lz + zDim);
+		hsize_t *iArray = static_cast<hsize_t*>(vArray);
+		#pragma omp parallel for shared(vArray) schedule(static)
+		for (hsize_t idx = 0; idx < slab; idx++)
+			iArray[idx] = iBase + idx;
+
+		/*	Write raw data	*/
+		auto rErr = H5Dwrite (sSts_id, H5T_NATIVE_HSIZE, semSpace, sSpce, plist_id, (static_cast<char *> (vArray)));
+
+		if (rErr < 0)
+		{
+			LogError ("Error writing particle tag");
+			prof.stop();
+			exit(0);
+		}
+
+		commSync();
+	}
+
+	LogMsg (VERB_HIGH, "Write Gadget file successful");
+
+	size_t bytes = 0;
+
+	/*	Close the dataset	*/
+
+	H5Dclose (vSt1_id);
+	H5Dclose (vSt2_id);
+	H5Dclose (sSts_id);
+	H5Sclose (vSpc1);
+	H5Sclose (sSpce);
+
+	H5Sclose (memSpace);
+	H5Sclose (aSpace);
+
+	/*	Close the file		*/
+
+	H5Sclose (scalarSpace);
+	H5Sclose (totalSpace);
+	H5Pclose (chunk_id);
+	H5Pclose (shunk_id);
+	H5Gclose (hGDt_id);
+	H5Gclose (hGrp_id);
+
+	H5Pclose (plist_id);
+	H5Fclose (file_id);
+
+	trackFree(exStat);
+        prof.stop();
+//	prof.add(std::string("Write gadget map"), 0., ((double) bytes)*1e-9);
+
+//	LogMsg (VERB_NORMAL, "Written %lu bytes", bytes);
+}
+
+
+
+
+
+
+
+/* read edens maps for postprocessing */
+
+double	readEDens (Cosmos *myCosmos, Scalar **axion, int index)
+{
+	hid_t	file_id, mset_id, vset_id, plist_id, grp_id, grp_id2;
+	hid_t	mSpace, vSpace, memSpace, dataType;
+	hid_t	attr_type;
+
+	hsize_t	slab, offset;
+
+	FieldPrecision	precision;
+
+	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], smStr[16];
+	int	length = 32;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+
+	size_t	dataSize;
+
+	int myRank = commRank();
+
+	LogMsg (VERB_NORMAL, "Reading Energy density field from Hdf5 file on disk");
+	LogMsg (VERB_NORMAL, "");
+
+	/*	Start profiling		*/
+
+	// Profiler &prof = getProfiler(PROF_HDF5);
+	// prof.start();
+
+	/*	Set up parallel access with Hdf5	*/
+
+	plist_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+	char base[256];
+
+	sprintf(base, "%s/%s.m.%05d", outDir, outName, index);
+
+	LogMsg (VERB_NORMAL, "File read: %s",base);
+
+	/*	Open the file and release the plist	*/
+	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
+	{
+		*axion == nullptr;
+		LogError ("Error opening file %s", base);
+		return 0.0;
+	}
+	H5Pclose(plist_id);
+
+	/*	Attributes	*/
+	attr_type = H5Tcopy(H5T_C_S1);
+	H5Tset_size (attr_type, length);
+	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+	double	zTmp, RTmp, maaR;
+	uint	tStep, cStep, totlZ;
+	readAttribute (file_id, fStr,   "Field type",   attr_type);
+	readAttribute (file_id, prec,   "Precision",    attr_type);
+	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
+	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
+	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
+
+	LogMsg (VERB_NORMAL, "Field type: %s",fStr);
+	LogMsg (VERB_NORMAL, "Precision: %s",prec);
+	LogMsg (VERB_NORMAL, "Size: %d",sizeN);
+	LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
+	LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
+	LogMsg (VERB_NORMAL, "RTmp: %f",RTmp);
+
+LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
+	if (myCosmos->PhysSize() == 0.0) {
+		double lSize;
+		readAttribute (file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
+		myCosmos->SetPhysSize(lSize);
+		LogMsg (VERB_NORMAL, "read L: %f",lSize);
+	}
+
+	if (!uPrec)
+	{
+		if (!strcmp(prec, "Double"))
+		{
+			precision = FIELD_DOUBLE;
+			sPrec	  = FIELD_DOUBLE;
+			dataType  = H5T_NATIVE_DOUBLE;
+			dataSize  = sizeof(double);
+		} else if (!strcmp(prec, "Single")) {
+			precision = FIELD_SINGLE;
+			sPrec	  = FIELD_SINGLE;
+			dataType  = H5T_NATIVE_FLOAT;
+			dataSize  = sizeof(float);
+		} else {
+			LogError ("Error reading file %s: Invalid precision %s", base, prec);
+			exit(1);
+		}
+	} else {
+		precision = sPrec;
+
+		if (sPrec == FIELD_DOUBLE)
+		{
+			dataType  = H5T_NATIVE_DOUBLE;
+			dataSize  = sizeof(double);
+
+			if (!strcmp(prec, "Single"))
+				LogMsg (VERB_NORMAL, "Reading single precision configuration as double precision");
+		} else if (sPrec == FIELD_SINGLE) {
+			dataType  = H5T_NATIVE_FLOAT;
+			dataSize  = sizeof(float);
+			if (!strcmp(prec, "Double"))
+				LogMsg (VERB_NORMAL, "Reading double precision configuration as single precision");
+		} else {
+			LogError ("Input error: Invalid precision");
+			exit(1);
+		}
+	}
+
+	/* Read mean energy */
+
+
+	grp_id  = H5Gopen( file_id, "energy", H5P_DEFAULT ) ;
+
+	double eMean = 0.0;
+	double eSum = 0.0;
+	readAttribute (grp_id, &eMean, "Axion Gr X", H5T_NATIVE_DOUBLE);
+	eSum += eMean;
+	readAttribute (grp_id, &eMean, "Axion Gr Y", H5T_NATIVE_DOUBLE);
+	eSum += eMean;
+	readAttribute (grp_id, &eMean, "Axion Gr Z", H5T_NATIVE_DOUBLE);
+	eSum += eMean;
+	readAttribute (grp_id, &eMean, "Axion Kinetic", H5T_NATIVE_DOUBLE);
+	eSum += eMean;
+	readAttribute (grp_id, &eMean, "Axion Potential", H5T_NATIVE_DOUBLE);
+	eMean += eSum;
+
+	LogMsg (VERB_NORMAL, "read eMean: %f",eMean);
+
+
+	if (debug) LogOut("[db] Read start\n");
+	// prof.stop();
+
+	// prof.add(std::string("Read Energy"), 0, 0);
+	// prof.start();
+	commSync();
+
+	/*	Create plist for collective read	*/
+
+	plist_id = H5Pcreate(H5P_DATASET_XFER);
+	H5Pset_dxpl_mpio(plist_id,H5FD_MPIO_COLLECTIVE);
+
+	/*	Open a dataset for the whole axion data	*/
+
+	size_t sizeNe = 0;
+	size_t sizeZe = 0;
+	grp_id2 = H5Gopen( file_id, "energy/density", H5P_DEFAULT) ;
+
+	if ((mset_id = H5Dopen (file_id, "/energy/density/theta", H5P_DEFAULT)) < 0)
+	{
+		LogError ("Error opening dataset /energy/density/theta ");
+
+		if ((mset_id = H5Dopen (file_id, "/energy/redensity", H5P_DEFAULT)) < 0)
+		{
+			LogError ("Error opening dataset /energy/redensity");
+		}
+		else{
+			LogMsg(VERB_NORMAL, "[rEd] from energy/redensity ");
+			readAttribute (grp_id, &sizeNe, "Size", H5T_NATIVE_UINT);
+			readAttribute (grp_id, &sizeZe, "Depth", H5T_NATIVE_UINT);
+		}
+	}
+	else{
+		LogMsg(VERB_NORMAL, "[rEd] from energy/density/theta ");
+		readAttribute (grp_id2, &sizeNe, "Size", H5T_NATIVE_UINT);
+		readAttribute (grp_id2, &sizeZe, "Depth", H5T_NATIVE_UINT);
+	}
+
+	LogMsg(VERB_NORMAL, "[rEd] Read N=%lu ",sizeNe);
+	LogMsg(VERB_NORMAL, "[rEd] Read Z=%lu ",sizeZe);
+	LogMsg(VERB_NORMAL, "[rEd] Read zGrid=%d ",zGrid);
+
+	if (sizeZe % zGrid)
+	{
+		LogError ("Error: Geometry not valid. Try a different partitioning");
+		exit (1);
+	}
+	else
+		sizeZe = (size_t) (sizeZe/zGrid);
+
+
+	LogMsg(VERB_HIGH, "Creating axion with N=%lu ",sizeNe);
+	LogMsg(VERB_HIGH, "Creating axion with Z=%lu ",sizeZe);
+	LogMsg(VERB_HIGH, "Creating axion with zGrid=%d",zGrid);
+
+
+	/*	Create axion field	with reduced dimensions! */
+	*axion = new Scalar(myCosmos, sizeNe, sizeZe, precision, cDev, zTmp, false, zGrid, FIELD_JUSTM2, lType, CONF_NONE, 0, 0);
+
+	LogOut("Axion created\n");
+
+	slab   = (hsize_t) ((*axion)->Surf());
+	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+	mSpace   = H5Dget_space (mset_id);
+
+	LogMsg(VERB_HIGH,"check slices %lu slab %lu \n",(*axion)->Depth(),slab);
+	for (hsize_t zDim=0; zDim<((hsize_t) (*axion)->Depth()); zDim++)
+	{
+		/*	Select the slab in the file	*/
+		offset = (((hsize_t) (myRank*(*axion)->Depth()))+zDim)*slab;
+		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+		/*	Read raw data	*/
+		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->m2Cpu())+slab*zDim*dataSize));
+
+		if ((mErr < 0)) {
+			LogError ("Error reading dataset from file");
+			return 0.0;
+		}
+	}
+
+	/*	Close the dataset	*/
+
+	H5Sclose (mSpace);
+	// H5Sclose (vSpace);
+	H5Dclose (mset_id);
+	// H5Dclose (vset_id);
+	H5Sclose (memSpace);
+	H5Gclose (grp_id);
+	H5Gclose (grp_id2);
+
+	/*	Close the file		*/
+
+	H5Pclose (plist_id);
+	H5Fclose (file_id);
+
+	if (cDev == DEV_GPU)
+		(*axion)->transferDev(FIELD_MV);
+
+	// prof.stop();
+	// prof.add(std::string("Read configuration"), 0, (totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
+
+	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
+	(*axion)->setM2(M2_ENERGY);
+	LogMsg (VERB_HIGH, "M2 set to M2_ENERGY");
+	LogFlush();
+
+	return eMean;
 }
