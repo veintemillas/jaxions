@@ -176,8 +176,11 @@ int	main (int argc, char *argv[])
 		index++;
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-			propagate (axion, dz);
+		{
+			auto dzAux = axion->dzSize(*(axion->zV()));
 
+			propagate (axion, dzAux);
+		}
 		auto strDen = strings(axion);
 
 		energy(axion, eRes, true);
@@ -190,19 +193,20 @@ int	main (int argc, char *argv[])
 		profiler::printMiniStats(*static_cast<double*>(axion->zV()), strDen, PROF_PROP, pName);
 
 		createMeas(axion, index);
-		writeEDens(axion, MAP_ALL);
+//		writeEDens(axion, MAP_ALL);
 
-		if (axion->Field() == FIELD_SAXION) {
-			writeString(axion, strDen);
-		}
+//		if (axion->Field() == FIELD_SAXION) {
+//			writeString(axion, strDen);
+//		}
 
 		writeMapHdf5(axion);
 		writeEnergy(axion, eRes);
 		writePoint(axion);
 
-		double max, min;
+//		double max, min;
 
 		/*	Theta histogram	*/
+/*
 		if (axion->Field() & FIELD_AXION) {
 			double zNow = *axion->zV();
 
@@ -247,10 +251,11 @@ int	main (int argc, char *argv[])
 			if ((max - min) < 10.8)
 				cnt++;
 		}
+*/
 
 		destroyMeas();
 
-		if (((strDen.strDen == 0) && (axion->Field() == FIELD_SAXION)) && ((strDen.wallDn == 0) && (cnt != 0)))
+		if (((strDen.strDen == 0) && (axion->Field() == FIELD_SAXION)) && ((strDen.wallDn == 0) ))//&& (cnt != 0)))
 			cnt++;
 		else
 			cnt = 0;
@@ -259,7 +264,7 @@ int	main (int argc, char *argv[])
 			LogOut("--------------------------------------------------\n");
 			LogOut("              TRANSITION TO THETA \n");
 			LogOut("--------------------------------------------------\n");
-			LogOut("Rho max %lf min %lf\n", max, min);
+//			LogOut("Rho max %lf min %lf\n", max, min);
 
 			munge(UNFOLD_ALL);
 			writeConf(axion, index);
@@ -283,6 +288,11 @@ int	main (int argc, char *argv[])
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
 
 	LogOut("\n PROGRAMM FINISHED\n");
+
+	energy(axion, eRes, true);
+	double *eMean = static_cast<double *>(eRes);
+	printf ("Energy %e %e %e\n", eMean[TH_GRX]+eMean[TH_GRY]+eMean[TH_GRZ], eMean[TH_POT], eMean[TH_KIN]);
+	writeGadget(axion, (eMean[TH_GRX]+eMean[TH_GRY]+eMean[TH_GRZ]+eMean[TH_POT]+eMean[TH_KIN]));
 
 	munge(UNFOLD_ALL);
 	writeConf(axion, index);

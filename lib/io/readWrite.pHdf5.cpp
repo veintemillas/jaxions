@@ -3348,6 +3348,8 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 	//changed
 	// size_t	nPrt = axion->Size();
 	size_t	nPrt = nParts;
+	if (nParts == 0)
+		nPrt = axion->TotalSize();
 	LogOut("[gad] nPart = %lu\n",nPrt);
 
 	//	Total DM density
@@ -3396,6 +3398,12 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 	uint totlX = realN;
 	uint realDepth = realN/commSize();
 
+	if (totlX == 0) {
+		totlZ	  = axion->TotalDepth();
+		totlX	  = axion->Length();
+		realDepth = axion->Depth();
+	}
+
 	total = ((hsize_t) totlX)*((hsize_t) totlX)*((hsize_t) totlZ);
 	slab  = ((hsize_t) totlX)*((hsize_t) totlX);
 
@@ -3409,7 +3417,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 
 	LogOut("[gad] Sum Energy = realN^3 eMean\n");
 	LogOut("[gad] To get %lu particles, multiply by nPrt/realN^3\n",nPrt);
-	double neweMean = eMean*(realN*realN*realN)/nPrt;
+	double neweMean = eMean*(totlX*totlX*totlZ)/nPrt;
 
 	if (dataSize == 4) {
 		float * axArray = static_cast<float *>(axion->m2Cpu());
@@ -3628,7 +3636,7 @@ LogOut("Balancing... %010zu / %010zu\r", aPart, total); fflush(stdout);
 		}
 	} else {
 	}
-LogOut("\nBalanced\n"); fflush(stdout);
+LogOut("\nBalanced\n");
 
 	const int cSize = commSize();
 
@@ -3641,8 +3649,9 @@ LogOut("\nBalanced\n"); fflush(stdout);
 	int	 missing = 0;
 	size_t	 lPos    = 0;
 
-	int	rSend = 0, rRecv;
+	int	rSend = 0, rRecv = 0;
 
+LogOut("\nGathering excess\n");
 	if (cSize > 1) {
 		MPI_Allgather (&excess, 1, MPI_LONG_LONG, exStat, 1, MPI_LONG_LONG, MPI_COMM_WORLD);
 
@@ -3657,8 +3666,10 @@ LogOut("\nBalanced\n"); fflush(stdout);
 		}
 	}
 
+LogOut("\nStarting main loop\n");
 	for (hsize_t zDim = 0; zDim < Lz; zDim++)
 	{
+LogOut("zDim %zu\n", zDim);
 		/*	Select the slab in the file	*/
 		offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
 		hsize_t vOffset[2] = { offset , 0 };
@@ -3675,13 +3686,15 @@ LogOut("\nBalanced\n"); fflush(stdout);
 		int	zC  = yC  /totlX;
 		int	xC  = lPos - totlX*yC;
 		yC -= zC*totlX;
+		zC += myRank*Lz;
 
 		if (remain)
 		{
-			int	nZ  = (lPos-1)/totlX;
-			int	nY  = yC  /totlX;
+			int	nY  = (lPos-1)/totlX;
+			int	nZ  = nY  /totlX;
 			int	nX  = (lPos-1) - totlX*zC;
 			nY -= nZ*totlX;
+			nZ += myRank*Lz;
 
 			if (dataSize == 4) {
 				float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
@@ -3785,7 +3798,7 @@ printf("Rank %d data received\n", rRecv); fflush(stdout);
 					zC  = yC  /totlX;
 					xC  = iPos - totlX*yC;
 					yC -= zC*totlX;
-
+					zC += Lz*rSend;
 
 					for (int i=0; i<aLength; i++) {
 if ((i%1024) == 0)
@@ -3987,12 +4000,6 @@ printf("\nSlice completed\n"); fflush(stdout);
 
 //	LogMsg (VERB_NORMAL, "Written %lu bytes", bytes);
 }
-
-
-
-
-
-
 
 /* read edens maps for postprocessing */
 
