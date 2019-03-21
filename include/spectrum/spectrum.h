@@ -28,6 +28,7 @@
 		Scalar			*field;
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
+		size_t			totalSize;
 		double			mass, massSax; // squared masses (comoving)
 		double 			Rscale, depta;
 		double 			zaskar;
@@ -44,15 +45,7 @@
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
-									       nPts(field->Size()), spec(spectral), fPrec(field->Precision()), fType(field->Field()) {
-				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
-				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
-
-				binK.resize(powMax); binK.assign(powMax, 0.);
-				binG.resize(powMax); binG.assign(powMax, 0.);
-				binV.resize(powMax); binV.assign(powMax, 0.);
-				binP.resize(powMax); binP.assign(powMax, 0.);
-				binPS.resize(powMax); binPS.assign(powMax, 0.);
+									       nPts(field->Size()), spec(spectral), fPrec(field->Precision()), fType(field->Field()), totalSize(field->TotalSize()) {
 
 				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
 				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
@@ -64,25 +57,32 @@
 				zaska   = std::complex<double>(zaskar,0.);
 				zaskaf  = std::complex<float>(zaskarf,0.f);
 
-				fillCosTable();
-
-				hLy = Ly >> 1;
-				hLz = Lz >> 1;
-				hTz = Tz >> 1;
-
 				switch (fType) {
 					// THIS CASE IS ILL DEFINED, WILL NEVER BE USED
 					// well... I am starting to use it!
 					// I assume the saxion mode will be analised also in real components
 					case	FIELD_SAXION:
-						// Lx   = Ly;
-						// hLx  = Ly >> 1;
-						// break;
 					case	FIELD_AXION_MOD:
 					case	FIELD_AXION:
 						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;
 						break;
+
+					case	FIELD_JUSTM2:
+					//adopted for JUSTM2 and gadgeting particles
+					if (field->Reduced())
+					{
+						Ly = field->rLength();
+						Lz = field->rDepth();
+						Tz = field->rTotalDepth();
+						// nPts = field->rSize();
+						totalSize = Ly*Ly*Tz;
+						LogMsg(VERB_HIGH,"[spe] reduced M2 field Ly %lu Lz %lu", Ly, Lz);
+					}
+						Lx   = (Ly >> 1)+1;
+						hLx  = Lx;
+						break;
+
 
 					case	FIELD_WKB:
 						LogError("Warning: WKB fields not supported for analysis");
@@ -94,6 +94,27 @@
 						Lx = 0; Ly = 0; hLx = 0; nPts = 0;
 						return;
 				}
+
+				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
+				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+
+				LogMsg(VERB_HIGH,"[spe] Ly %lu Lz %lu Tz %lu", Ly, Lz, Tz);
+				LogMsg(VERB_HIGH,"[spe] Lx %lu hLx %lu", Lx, hLx);
+				LogMsg(VERB_HIGH,"[spe] kMax %lu powMax %lu", kMax, powMax);
+
+				binK.resize(powMax); binK.assign(powMax, 0.);
+				binG.resize(powMax); binG.assign(powMax, 0.);
+				binV.resize(powMax); binV.assign(powMax, 0.);
+				binP.resize(powMax); binP.assign(powMax, 0.);
+				binPS.resize(powMax); binPS.assign(powMax, 0.);
+
+
+				fillCosTable();
+
+				hLy = Ly >> 1;
+				hLz = Lz >> 1;
+				hTz = Tz >> 1;
+
 
 				nPts = Lx*Ly*Lz;
 

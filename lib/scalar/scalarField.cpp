@@ -364,8 +364,11 @@ LogFlush();
 		AxionFFT::initFFT(prec);
 
 		/* Backward needed for reduce-filter-map */
-		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");		// Spectrum for axion
+		AxionFFT::initPlan (this, FFT_PSPEC_AX,   FFT_FWDBCK,  "pSpecAx");		// Spectrum for axion
 		AxionFFT::initPlan (this, FFT_SPAX,       FFT_FWDBCK,  "SpAx");
+
+		if (fieldType == FIELD_JUSTM2)
+			AxionFFT::initPlan (this, FFT_SPAX_REDU,  FFT_FWDBCK,  "m2_r2c_Red");
 
 		if (fieldType == FIELD_SAXION) {
 			if (!lowmem) {

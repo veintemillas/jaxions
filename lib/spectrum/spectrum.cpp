@@ -37,7 +37,7 @@ void	SpecBin::fillBins	() {
 
 	/* The factor that will multiply the |ft|^2, taken to be L^3/(2 N^6) */
 	const double norm = (field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize()) /
-			    (2.*(((double) field->TotalSize())*((double) field->TotalSize())));
+			    (2.*(((double) totalSize)*((double) totalSize)));
 	const int mIdx = commThreads();
 
 	size_t	zBase = (Ly/commSize())*commRank();
@@ -362,22 +362,43 @@ void	SpecBin::pRun	() {
 
 	if (field->m2Status() == M2_ENERGY) {
 		// contrast bin is assumed in m2 (without ghost bytes)
-		// Add the f@*&#ng padding plus ghost region, no parallelization
+		// Add the f@*&#ng padding, no parallelization
 		for (int sl=Sm-1; sl>=0; sl--) {
 			auto	oOff = sl*dSize*(Ly);
 			auto	fOff = sl*dSize*(Ly+2);
 			memmove	(mA+fOff, mA+oOff, dataLine);
 		}
 
+		/* This switch substitutes the if below */
+		switch (field->Field())
+			{
+				case FIELD_SAXION:
+					{
+					auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+					myPlan.run(FFT_FWD);
+					}
+					break;
+				case FIELD_JUSTM2:
+					{
+					auto &myPlan = AxionFFT::fetchPlan("m2_r2c_Red");
+					myPlan.run(FFT_FWD);
+					}
+					break;
+				Default:
+				{
+					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+					myPlan.run(FFT_FWD);
+				}
+				break;
+			}
 
-
-		if (field->Field() == FIELD_SAXION) {
-			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
-			myPlan.run(FFT_FWD);
-		} else {
-			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-			myPlan.run(FFT_FWD);
-		}
+		// if (field->Field() == FIELD_SAXION) {
+		// 	auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+		// 	myPlan.run(FFT_FWD);
+		// } else {
+		// 	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+		// 	myPlan.run(FFT_FWD);
+		// }
 	}
 
 	//issue?

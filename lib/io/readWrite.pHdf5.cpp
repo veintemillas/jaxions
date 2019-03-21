@@ -1103,6 +1103,10 @@ void	createMeas (Scalar *axion, int index)
 			sprintf(fStr, "Axion");
 			break;
 
+		case	FIELD_JUSTM2:
+			sprintf(fStr, "M2");
+			break;
+
 		default:
 			LogError ("Error: Invalid field type. How did you get this far?");
 			exit(1);
@@ -3241,7 +3245,7 @@ void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 
 /* write gadget file */
 
-void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
+void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, double sigma)
 {
 	hid_t	file_id, hGrp_id, hGDt_id, attr, plist_id, chunk_id, shunk_id, vhunk_id;
 	hid_t	vSt1_id, vSt2_id, sSts_id, aSpace, status;
@@ -3329,6 +3333,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 	double	bSize  = axion->BckGnd()->PhysSize() * 7430.0 * 0.7;	// FIXME
 
 	writeAttribute(hGrp_id, &bSize,  "BoxSize",                H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, &iDummy, "Flag_Entropy_ICs",       H5T_NATIVE_UINT);
 	writeAttribute(hGrp_id, &iDummy, "Flag_Cooling",           H5T_NATIVE_HSIZE);
 	writeAttribute(hGrp_id, &iDummy, "Flag_DoublePrecision",   H5T_NATIVE_HSIZE);
 	writeAttribute(hGrp_id, &iDummy, "Flag_Feedback",          H5T_NATIVE_HSIZE);
@@ -3415,9 +3420,87 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 
 	LogOut("[gad] total %lu slab %lu r0ff %lu\n",total, slab, rOff);
 
+	/*	1 - Compute eMean_local
+			2 - Compute eMean_global (again and compare with input eMean)
+			3 - Normalise energy to contrast eMean
+			4 - Set the goal in a rank	= llround(Npart*eMean_local/eMean_global)
+		  5 - Adjust rank 0  */
+
+	// float version
+	// number of down interations
+	LogOut("[gad] Recompute eMean with care \n");
+	int nred = round( log2( (double) rOff));
+	LogOut("[gad] sub-reductions %d (%lu , %lu)\n", nred, rOff, (size_t) round(pow(2,nred)));
+	double eMean_local;
+	double eMean_global;
+
+	double * axArray2 = static_cast<double *> (axion->m2half());
+	// first reduction
+	double eMean_local1 = 0.0;
+	if (dataSize == 4) {
+			float * axArray1 = static_cast<float *>(axion->m2Cpu());
+			#pragma omp parallel for schedule(static) reduction(+:eMean_local1)
+			for (size_t idx =0; idx < rOff/2; idx++)
+			{
+				axArray2[idx] = (double) (axArray1[2*idx] + axArray1[2*idx+1]) ;
+				eMean_local1 += axArray2[idx];
+			}
+	} else {
+			double * axArray1 = static_cast<double *>(axion->m2Cpu());
+			#pragma omp parallel for schedule(static) reduction(+:eMean_local1)
+			for (size_t idx =0; idx < rOff/2; idx++)
+			{
+				axArray2[idx] = axArray1[2*idx] + axArray1[2*idx+1] ;
+				eMean_local1 += axArray2[idx];
+			}
+		}
+	LogOut("[gad] emean_local = %f (eMean/zgrid %f)\n",eMean_local1/rOff,eMean/commSize());
+	eMean_local1 /= rOff;
+
+	MPI_Allreduce(&eMean_local1, &eMean_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	eMean_global /= commSize();
+	LogOut("[gad] New eMean (naive) = %f (eMean %f)\n",eMean_global,eMean);
+
+	// reduction loop
+	size_t ldata = rOff/2;
+	{
+		size_t lldata;
+		/* choose smallest stride */
+		int stride=1;
+		int old_stride=1;
+		int fa ;
+
+		while (ldata > 1)
+		{
+			for (fa = 2; fa<100; fa++){
+				lldata = ldata/fa ;
+				if ( lldata*fa == ldata){
+					stride *= fa;
+					break;}
+			}
+			LogOut("[gad] lData %lu ... stride %d oldstride %d fa %d",ldata,stride,old_stride, fa);
+			/* reduce */
+			#pragma omp parallel for schedule(static)
+			for (size_t idx =0; idx < rOff/2; idx += stride)
+			{
+				for (int ips=1; ips<fa; ips++ ) // 0 is already included
+					axArray2[idx] += axArray2[idx + ips*old_stride] ;
+			}
+			LogOut("[gad] Reduced %lu to %lu stride %d > part buf %f Mean %f\n",ldata,lldata,stride, axArray2[0], axArray2[0]/(2*stride));
+			ldata = lldata;
+			old_stride = stride;
+		} //end while
+	}
+	LogOut("[gad] emean_local = %f (eMean/zgrid %f)\n",axArray2[0]/rOff,eMean/commSize());
+	eMean_local = axArray2[0]/rOff;
+
+	MPI_Allreduce(&eMean_local, &eMean_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	eMean_global /= commSize();
+	LogOut("[gad] New eMean = %lf (input eMean %lf)\n",eMean_global,eMean);
+
 	LogOut("[gad] Sum Energy = realN^3 eMean\n");
 	LogOut("[gad] To get %lu particles, multiply by nPrt/realN^3\n",nPrt);
-	double neweMean = eMean*(totlX*totlX*totlZ)/nPrt;
+	double neweMean = eMean_global*(totlX*totlX*totlZ)/nPrt;
 
 	if (dataSize == 4) {
 		float * axArray = static_cast<float *>(axion->m2Cpu());
@@ -3432,8 +3515,36 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 		for (size_t idx = 0; idx<rOff; idx++)
 			axArray[idx] /= neweMean;
 	}
-
 	LogOut("[gad] E normalised to contrast\n");
+
+	/* Set deterministic goals */
+	// sum axArray now is ~ nPrt
+	// sum local array now is (sum local array before)/neweMean =
+	// (eMean_local*rOff)/neweMean
+	LogOut("[gad] Each rank takes round(eMean_local*rOff/eMean)\n");
+	double localoca = round(eMean_local*rOff/neweMean);
+	size_t nPrt_local = (size_t) localoca;
+	printf("[gad] rank %d should take (%lf) %lu\n",commRank(),localoca,nPrt_local);
+	commSync();
+	size_t nPrt_temp;
+	MPI_Allreduce(&nPrt_local, &nPrt_temp, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+	if (nPrt_temp > nPrt)
+	{
+		LogOut("[gad] sum is %lu, which is %lu too many \n",nPrt_temp,nPrt_temp-nPrt);
+		LogOut("[gad] Rank 0 readjusts itself from %lu to nPart = %lu\n",nPrt_local,nPrt_local + (nPrt-nPrt_temp) );
+		if (commRank()==0)
+			nPrt_local = nPrt_local + (nPrt-nPrt_temp);
+		}
+	else {
+		LogOut("[gad] sum is %lu, which is %lu too few \n",nPrt_temp,nPrt-nPrt_temp);
+		LogOut("[gad] Rank 0 readjusts itself from %lu to nPart = %lu ...",nPrt_local,nPrt_local + (nPrt-nPrt_temp) );
+		if (commRank()==0){
+			nPrt_local = nPrt_local + (nPrt-nPrt_temp);
+			LogOut("Done! \n");
+			}
+
+	}
+
 
 	if (axion->Field() == FIELD_WKB) {
 		LogError ("Error: WKB field not supported");
@@ -3544,7 +3655,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 
 	char vDt1[16] = "Coordinates";
 	char vDt2[16] = "Velocities";
-	char mDts[16] = "Masses";
+	char mDts[16] = "Masses"; // not used
 	char sDts[16] = "ParticleIDs";
 
 	vSt1_id = H5Dcreate (hGDt_id, vDt1, dataType,         totalSpace,  H5P_DEFAULT, chunk_id, H5P_DEFAULT);
@@ -3575,15 +3686,20 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 	size_t	tPart = 0, aPart = 0;
 
 	int	*axTmp  = static_cast<int  *>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+(slab*Lz)*dataSize));
+
 	/*	Horrible code, for float	*/
+	/* Distribute #total particles*/
 	if (dataSize == 4) {
 		float	*axData = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())));
 
-		/*	Set all the particles	*/
+		LogOut("[gad] ... \n");
+		LogOut("[gad] Decide 1st bunch #particles from (int) density + binomial\n");
+		/*	Set all the 1st deterministic bunch of particles according to density contrast	*/
 		#pragma omp parallel shared(axData) reduction(+:tPart)
 		{
 			std::random_device rSd;
 			std::mt19937_64 rng(rSd());
+
 
 			#pragma omp for schedule(static)
 			for (hsize_t idx=0; idx<slab*Lz; idx++) {
@@ -3603,11 +3719,21 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 
 		MPI_Allreduce(&tPart, &aPart, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
+		printf("[gad] Rank %d got %lu (target %lu)\n",commRank(),tPart,nPrt_local);
+
+		commSync();
+
+		LogOut("[gad] Rank sum %lu (target %lu)\n",aPart,nPrt);
+
+		commSync();
+
 		std::random_device rSd;
 		std::mt19937_64 rng(rSd());
 		std::uniform_int_distribution<size_t> uni  (0, slab*Lz);
 
-		while (aPart != total)
+		LogOut("[gad] Balancing locally adding/substracting points...\n",aPart,nPrt);
+		// while (aPart != total)   [old global version]
+		while (tPart != nPrt_local)
 		{
 			size_t	nIdx = uni(rng);
 
@@ -3616,13 +3742,16 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 			int	pChange = 0;
 			int	tChange = 0;
 
-			if (cData > cPart)
+			// if (cData > cPart) [old version adds and substracts]
+			if ( (cData > cPart) && (tPart < nPrt_local) ) // only adds if needed
 			{
 				std::binomial_distribution<int> bDt  (1, cData - ((float) cPart));
 				int dPart = bDt(rng);
 				axTmp[nIdx] += dPart;
 				pChange	    += dPart;
-			} else {
+			}
+			else if ( (cData < cPart) && (tPart > nPrt_local) ) // only substracts if needed
+			{
 				std::binomial_distribution<int> bDt  (1, ((float) cPart) - cData);
 				int dPart = bDt(rng);
 				axTmp[nIdx] -= dPart;
@@ -3630,29 +3759,45 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts)
 			}
 
 			tPart += pChange;
-			MPI_Allreduce(&pChange, &tChange, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-			aPart += tChange;
-LogOut("Balancing... %010zu / %010zu\r", aPart, total); fflush(stdout);
+			// MPI_Allreduce(&pChange, &tChange, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+			// aPart += tChange;
+			// LogOut("Balancing... %010zu / %010zu\r", aPart, total); fflush(stdout);
 		}
-	} else {
+		MPI_Allreduce(&tPart, &aPart, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 	}
-LogOut("\nBalanced\n");
+		else
+	{
+		/*	Horrible code, for double	*/
+	}
+
+
+	LogOut("\nBalanced locally tPart=nPrt_local (globally %lu-%lu=0 too )\n",aPart,nPrt);
+
+	commSync();
 
 	const int cSize = commSize();
 
-	hssize_t excess  = tPart - slab*Lz;
+	/* hssize_t long long integer? */
+	hssize_t excess = tPart - rOff;
+	printf("rankd %d (desired particles - space) %d  \n", commRank(),excess);
+
+	commSync();
+
 	void *tmpPointer;
 	trackAlloc (&tmpPointer, sizeof(hssize_t)*cSize);
 	hssize_t *exStat = static_cast<hssize_t*>(tmpPointer);
 
-	int	 remain  = 0;
-	int	 missing = 0;
-	size_t	 lPos    = 0;
+	int	   remain  = 0;
+	int	   missing = 0;
+	size_t lPos    = 0;
 
 	int	rSend = 0, rRecv = 0;
 
-LogOut("\nGathering excess\n");
+	commSync();
+
 	if (cSize > 1) {
+		LogOut("\nGathering excess (MPI)\n");
+
 		MPI_Allgather (&excess, 1, MPI_LONG_LONG, exStat, 1, MPI_LONG_LONG, MPI_COMM_WORLD);
 
 		for (int i=1; i<cSize; i++) {
@@ -3664,6 +3809,7 @@ LogOut("\nGathering excess\n");
 			if (exStat[i] < exStat[rRecv])
 				rRecv = i;
 		}
+		LogOut("Send %d Receive %d \n",rSend,rRecv);
 	}
 
 LogOut("\nStarting main loop\n");
@@ -3677,10 +3823,9 @@ LogOut("zDim %zu\n", zDim);
 		std::random_device rSd;
 		std::mt19937_64 rng(rSd());
 
-		std::normal_distribution<float>	gauss(0.0, 0.7);
+		std::normal_distribution<float>	gauss(0.0, 0.7*sigma);
 
-		size_t	tPrti = 0;
-
+		/* position of the grid point to convert to particles */
 		size_t	idx = lPos;
 		int	yC  = lPos/totlX;
 		int	zC  = yC  /totlX;
@@ -3688,53 +3833,59 @@ LogOut("zDim %zu\n", zDim);
 		yC -= zC*totlX;
 		zC += myRank*Lz;
 
-		if (remain)
-		{
-			int	nY  = (lPos-1)/totlX;
-			int	nZ  = nY  /totlX;
-			int	nX  = (lPos-1) - totlX*zC;
-			nY -= nZ*totlX;
-			nZ += myRank*Lz;
+		/* number of particles placed in the coordinate list */
+		size_t	tPrti = 0;
 
-			if (dataSize == 4) {
-				float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
-				for (int i=0; i<remain; i++)
-				{
-					float xO = (nX + gauss(rng) + 0.5)*bSize/((float) totlX);
-					float yO = (nY + gauss(rng) + 0.5)*bSize/((float) totlX);
-					float zO = (nZ + gauss(rng) + 0.5)*bSize/((float) totlZ);
+		/* the previous point had still some leftover particles to place? */
+			if (remain)
+			{
+				int	nY  = (lPos-1)/totlX;
+				int	nZ  = nY  /totlX;
+				int	nX  = (lPos-1) - totlX*zC;
+				nY -= nZ*totlX;
+				nZ += myRank*Lz;
 
-					if (xO < 0.0f) xO += bSize;
-					if (yO < 0.0f) yO += bSize;
-					if (zO < 0.0f) zO += bSize;
+				if (dataSize == 4) {
+					float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
+					for (int i=0; i<remain; i++)
+					{
+						float xO = (nX + 0.5 + gauss(rng) )*bSize/((float) totlX);
+						float yO = (nY + 0.5 + gauss(rng) )*bSize/((float) totlX);
+						float zO = (nZ + 0.5 + gauss(rng) )*bSize/((float) totlZ);
 
-					if (xO > bSize) xO -= bSize;
-					if (yO > bSize) yO -= bSize;
-					if (zO > bSize) zO -= bSize;
+						if (xO < 0.0f) xO += bSize;
+						if (yO < 0.0f) yO += bSize;
+						if (zO < 0.0f) zO += bSize;
 
-					axOut[tPrti*3+0] = xO;
-					axOut[tPrti*3+1] = yO;
-					axOut[tPrti*3+2] = zO;
+						if (xO > bSize) xO -= bSize;
+						if (yO > bSize) yO -= bSize;
+						if (zO > bSize) zO -= bSize;
 
-					tPrti++;
+						axOut[tPrti*3+0] = xO;
+						axOut[tPrti*3+1] = yO;
+						axOut[tPrti*3+2] = zO;
+
+						tPrti++;
+					}
+				} else {
 				}
-			} else {
+
+				remain = 0;
 			}
 
-			remain = 0;
-		}
-
+		/* main function */
 		while ((idx < slab*Lz) && (tPrti < slab))
 		{
+			/* number of particles to place from point idx */
 			int nPrti = axTmp[idx];
 
 			if (dataSize == 4) {
 				float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
 				for (int i=0; i<nPrti; i++)
 				{
-					float xO = (xC + gauss(rng) + 0.5)*bSize/((float) totlX);
-					float yO = (yC + gauss(rng) + 0.5)*bSize/((float) totlX);
-					float zO = (zC + gauss(rng) + 0.5)*bSize/((float) totlZ);
+					float xO = (xC + 0.5 + gauss(rng) )*bSize/((float) totlX);
+					float yO = (yC + 0.5 + gauss(rng) )*bSize/((float) totlX);
+					float zO = (zC + 0.5 + gauss(rng) )*bSize/((float) totlZ);
 
 					if (xO < 0.0f) xO += bSize;
 					if (yO < 0.0f) yO += bSize;
@@ -3750,19 +3901,20 @@ LogOut("zDim %zu\n", zDim);
 
 					tPrti++;
 
+					/* when buffer is filled continue */
 					if (tPrti == slab) {
 						remain = nPrti - i - 1;
 						break;
 					}
 				}
 			} else {
+				// double precision version does not make sense
 			}
 
+			/* move to the next point */
 			idx++;
 			lPos = idx;
-
 			xC++;
-
 			if (xC == totlX) { xC = 0; yC++; }
 			if (yC == totlX) { yC = 0; zC++; }
 		};
@@ -3809,9 +3961,9 @@ printf("Rank %d processing site %06d\n", rRecv, i); fflush(stdout);
 							float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
 
 							for (int j=0; j<nPhere; j++) {
-								float xO = (xC + gauss(rng) + 0.5)*bSize/((float) totlX);
-								float yO = (yC + gauss(rng) + 0.5)*bSize/((float) totlX);
-								float zO = (zC + gauss(rng) + 0.5)*bSize/((float) totlZ);
+								float xO = (xC + 0.5 + gauss(rng) )*bSize/((float) totlX);
+								float yO = (yC + 0.5 + gauss(rng) )*bSize/((float) totlX);
+								float zO = (zC + 0.5 + gauss(rng) )*bSize/((float) totlZ);
 
 								if (xO < 0.0f) xO += bSize;
 								if (yO < 0.0f) xO += bSize;
@@ -3920,7 +4072,9 @@ LogOut("Excess broadcasted\n");
 
 				MPI_Allreduce(&missing, &aMiss, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 			}
-		}
+		} // END MPI REDISTRIBUTION
+
+
 printf("\nSlice completed\n"); fflush(stdout);
 
 		H5Sselect_hyperslab(vSpc1, H5S_SELECT_SET, vOffset, stride, vSlab, nullptr);

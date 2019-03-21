@@ -38,9 +38,9 @@ int	main (int argc, char *argv[])
 
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n           GADGET axion.m.%5d                   \n", fIndex);
+	LogOut("\n   GADGET axion.m.%5d > %5d^3      particles     \n", fIndex, sizeN);
 	LogOut("\n-------------------------------------------------\n");
-
+	LogOut(" KCrit   = %5f \n",kCrit);
 	LogOut("\n-------------------------------------------------\n");
 
 
@@ -48,9 +48,9 @@ int	main (int argc, char *argv[])
 
 	double eMean = readEDens	(&myCosmos, &axion, fIndex);
 
-	LogOut("eMean = %f\n",eMean);
-	LogOut("N = %lu\n",axion->Length());
-	LogOut("Z = %lu\n",axion->Depth());
+	LogOut("eMean = %lf\n",eMean);
+	LogOut("N_grid = %lu\n",axion->Length());
+	LogOut("Z_grid = %lu\n",axion->Depth());
 	commSync();
 
 	// for (int i=0; i< 10; i++)
@@ -58,9 +58,11 @@ int	main (int argc, char *argv[])
 
 	size_t sizeNreducedgrid = axion->Length();
 
+	if (sizeN < axion->Length())
+		endredmap = sizeN;
+
 	if (endredmap > 0)
 	{
-		sizeNreducedgrid = endredmap;
 		LogOut("Reduce\n");
 		LogOut("reduced energy map from N=%d to N=%d by smoothing\n",axion->Length(), endredmap);
 		double ScaleSize = ((double) axion->Length())/((double) endredmap);
@@ -86,20 +88,27 @@ int	main (int argc, char *argv[])
 		commSync();
 		MPI_Allreduce(&newmean_local, &eMean, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+		sizeNreducedgrid = endredmap;
 		size_t totalsize = endredmap*endredmap*endredmap;
 		eMean /= (double) totalsize;
 	}
 
 
-
-	LogOut("Ready to Gadget!\n");
-
 	size_t nPart = sizeNreducedgrid*sizeNreducedgrid*sizeNreducedgrid;
 
-	writeGadget(axion,eMean,sizeNreducedgrid,nPart);
+	LogOut("Ready to Gadget!\n");
+	writeGadget(axion,eMean,sizeNreducedgrid,nPart,kCrit);
 
-
-
+	//create measurement spectrum
+	{
+		createMeas(axion, fIndex+1);
+		// writeEDens(axion);
+		SpecBin specAna(axion, false); // no spectral flag
+		specAna.pRun();
+		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+		destroyMeas();
+	}
+	
 	endAxions();
 
 	return 0;

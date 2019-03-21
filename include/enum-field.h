@@ -298,6 +298,7 @@
 			FFT_RtoC_MtoM_WKB  = 12,
 			FFT_RtoC_VtoV_WKB  = 13,
 			FFT_RtoC_M2toM2_WKB= 14,
+			FFT_SPAX_REDU      = 15,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {

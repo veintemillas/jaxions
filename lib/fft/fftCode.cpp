@@ -207,6 +207,22 @@ namespace AxionFFT {
 						}
 						break;
 
+					case	FFT_SPAX_REDU:
+						if (axion->Field() == FIELD_SAXION) {
+							// if (dFft & FFT_FWD)
+							// 	planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+							// if (dFft & FFT_BCK)
+							// 	planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+						} else {
+							size_t rLx = endredmap;
+							size_t rLz = endredmap;
+							if (dFft & FFT_FWD)
+								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(rLz, rLx, rLx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+							if (dFft & FFT_BCK)
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(rLz, rLx, rLx, m2, mA, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+						}
+						break;
+
 					case	FFT_SPSX:
 					case	FFT_RDSX_M:
 
