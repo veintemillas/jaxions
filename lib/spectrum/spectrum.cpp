@@ -380,8 +380,13 @@ void	SpecBin::pRun	() {
 					break;
 				case FIELD_JUSTM2:
 					{
-					auto &myPlan = AxionFFT::fetchPlan("m2_r2c_Red");
-					myPlan.run(FFT_FWD);
+						if (field->Reduced()){
+							auto &myPlan = AxionFFT::fetchPlan("m2_r2c_Red");
+							myPlan.run(FFT_FWD);
+						} else {
+							auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+							myPlan.run(FFT_FWD);						
+						}
 					}
 					break;
 				Default:

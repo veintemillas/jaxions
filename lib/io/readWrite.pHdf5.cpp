@@ -3454,12 +3454,12 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 				eMean_local1 += axArray2[idx];
 			}
 		}
-	LogOut("[gad] emean_local = %f (eMean/zgrid %f)\n",eMean_local1/rOff,eMean/commSize());
+	LogOut("[gad] emean_local = %lf (eMean/zgrid %lf)\n",eMean_local1/rOff,eMean/commSize());
 	eMean_local1 /= rOff;
 
 	MPI_Allreduce(&eMean_local1, &eMean_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	eMean_global /= commSize();
-	LogOut("[gad] New eMean (naive) = %f (eMean %f)\n",eMean_global,eMean);
+	LogOut("[gad] New eMean (naive) = %.20f (eMean %.20lf)\n",eMean_global,eMean);
 
 	// reduction loop
 	size_t ldata = rOff/2;
@@ -3491,12 +3491,12 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 			old_stride = stride;
 		} //end while
 	}
-	LogOut("[gad] emean_local = %f (eMean/zgrid %f)\n",axArray2[0]/rOff,eMean/commSize());
+	LogOut("[gad] emean_local = %lf (eMean/zgrid %lf)\n",axArray2[0]/rOff,eMean/commSize());
 	eMean_local = axArray2[0]/rOff;
 
 	MPI_Allreduce(&eMean_local, &eMean_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	eMean_global /= commSize();
-	LogOut("[gad] New eMean = %lf (input eMean %lf)\n",eMean_global,eMean);
+	LogOut("[gad] New eMean = %.20lf (input eMean %.20lf)\n",eMean_global,eMean);
 
 	LogOut("[gad] Sum Energy = realN^3 eMean\n");
 	LogOut("[gad] To get %lu particles, multiply by nPrt/realN^3\n",nPrt);
@@ -3553,7 +3553,9 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	}
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
-	const hsize_t dDims[2] = { total, 3 };
+	// total is the number of points in the grid //changed
+	hsize_t nPrt_h = (hsize_t)  nPrt;
+	const hsize_t dDims[2] = { nPrt_h , 3 };
 	if ((totalSpace = H5Screate_simple(2, dDims, nullptr)) < 0)	// Whole data
 	{
 		LogError ("Fatal error H5Screate_simple");
@@ -3561,7 +3563,8 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 		exit (1);
 	}
 
-	if ((scalarSpace = H5Screate_simple(1, &total, nullptr)) < 0)	// Whole data
+	// total is the number of points in the grid //changed
+	if ((scalarSpace = H5Screate_simple(1, &nPrt_h, nullptr)) < 0)	// Whole data
 	{
 		LogError ("Fatal error H5Screate_simple");
 		prof.stop();
@@ -3812,8 +3815,13 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 		LogOut("Send %d Receive %d \n",rSend,rRecv);
 	}
 
+
+hsize_t Nslabs = nPrt_h/slab;
+LogOut("\nRecalculated slabs to print %lu \n",Nslabs);
+
 LogOut("\nStarting main loop\n");
-	for (hsize_t zDim = 0; zDim < Lz; zDim++)
+
+	for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
 	{
 LogOut("zDim %zu\n", zDim);
 		/*	Select the slab in the file	*/
@@ -3823,7 +3831,7 @@ LogOut("zDim %zu\n", zDim);
 		std::random_device rSd;
 		std::mt19937_64 rng(rSd());
 
-		std::normal_distribution<float>	gauss(0.0, 0.7*sigma);
+		std::normal_distribution<float>	gauss(0.0, sigma);
 
 		/* position of the grid point to convert to particles */
 		size_t	idx = lPos;

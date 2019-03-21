@@ -27,7 +27,7 @@
 	void	writeEMapHdf5	(Scalar *axion);
 	void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint);
 	void	writePMapHdf5	(Scalar *axion);
-	void	writeGadget	(Scalar *axion, double eMean, size_t realN=0, size_t nParts=0, double sigma = 0.7);
+	void	writeGadget	(Scalar *axion, double eMean, size_t realN=0, size_t nParts=0, double sigma = 1.0);
 
 	void	reduceEDens	(int index, uint newLx, uint newLz);
 

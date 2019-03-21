@@ -36,6 +36,7 @@ int	main (int argc, char *argv[])
 	//       AUX STUFF
 	//--------------------------------------------------
 
+
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
 	LogOut("\n   GADGET axion.m.%5d > %5d^3      particles     \n", fIndex, sizeN);
@@ -43,6 +44,11 @@ int	main (int argc, char *argv[])
 	LogOut(" KCrit   = %5f \n",kCrit);
 	LogOut("\n-------------------------------------------------\n");
 
+	size_t nPart = sizeN*sizeN*sizeN;
+
+	LogOut("(Usage: mpirun -n RANKS gadgetme --index X --zgrid RANKS --nologmpi --size N --redmp n --kcr sigma )\n");
+	LogOut("(Usage: creates N^3 particulas reducing the grid first to n^3  )\n");
+	LogOut("(Usage: sigma in latice units, default = 1, recommended ~ 0.25  )\n");
 
 	Scalar *axion;
 
@@ -56,9 +62,10 @@ int	main (int argc, char *argv[])
 	// for (int i=0; i< 10; i++)
 	// 	printf("energy[%d,%d] = %f\n",commRank(),i,static_cast<float *> (axion->m2Cpu())[i]);
 
-	size_t sizeNreducedgrid = axion->Length();
 
-	if (sizeN < axion->Length())
+	size_t Ngrid = axion->Length();
+
+	if (sizeN < Ngrid)
 		endredmap = sizeN;
 
 	if (endredmap > 0)
@@ -88,19 +95,18 @@ int	main (int argc, char *argv[])
 		commSync();
 		MPI_Allreduce(&newmean_local, &eMean, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-		sizeNreducedgrid = endredmap;
-		size_t totalsize = endredmap*endredmap*endredmap;
+		Ngrid = endredmap;
+		size_t totalsize = Ngrid*Ngrid*Ngrid;
 		eMean /= (double) totalsize;
 	}
 
-
-	size_t nPart = sizeNreducedgrid*sizeNreducedgrid*sizeNreducedgrid;
-
-	LogOut("Ready to Gadget!\n");
-	writeGadget(axion,eMean,sizeNreducedgrid,nPart,kCrit);
+	LogOut("Ready to Gadget %lu!\n",nPart);
+	writeGadget(axion,eMean,Ngrid,nPart,kCrit);
 
 	//create measurement spectrum
+	if ( !(defaultmeasType == MEAS_NOTHING) )
 	{
+		LogOut("Writing axion.m. file with index! %d\n", fIndex+1);
 		createMeas(axion, fIndex+1);
 		// writeEDens(axion);
 		SpecBin specAna(axion, false); // no spectral flag
@@ -108,7 +114,7 @@ int	main (int argc, char *argv[])
 		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
 		destroyMeas();
 	}
-	
+
 	endAxions();
 
 	return 0;
