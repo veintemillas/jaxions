@@ -385,11 +385,11 @@ void	SpecBin::pRun	() {
 							myPlan.run(FFT_FWD);
 						} else {
 							auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-							myPlan.run(FFT_FWD);						
+							myPlan.run(FFT_FWD);
 						}
 					}
 					break;
-				Default:
+				default:
 				{
 					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 					myPlan.run(FFT_FWD);

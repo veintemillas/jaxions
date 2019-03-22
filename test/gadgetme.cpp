@@ -39,12 +39,13 @@ int	main (int argc, char *argv[])
 
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n   GADGET axion.m.%5d > %5d^3      particles     \n", fIndex, sizeN);
+	LogOut("\n   GADGET axion.m.%5d > %5d        particles     \n", fIndex, sizeN);
 	LogOut("\n-------------------------------------------------\n");
+	LogOut(" ~ (%04d)^3                                      \n", pow( (double) sizeN ,1./3.));
 	LogOut(" KCrit   = %5f \n",kCrit);
 	LogOut("\n-------------------------------------------------\n");
 
-	size_t nPart = sizeN*sizeN*sizeN;
+	size_t nPart = sizeN;
 
 	LogOut("(Usage: mpirun -n RANKS gadgetme --index X --zgrid RANKS --nologmpi --size N --redmp n --kcr sigma )\n");
 	LogOut("(Usage: creates N^3 particulas reducing the grid first to n^3  )\n");
