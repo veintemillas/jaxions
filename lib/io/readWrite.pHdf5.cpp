@@ -3466,9 +3466,9 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	{
 		size_t lldata;
 		/* choose smallest stride */
-		int stride=1;
-		int old_stride=1;
-		int fa ;
+		hssize_t stride=1;
+		hssize_t old_stride=1;
+		hssize_t fa ;
 
 		while (ldata > 1)
 		{
@@ -3483,7 +3483,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 			#pragma omp parallel for schedule(static)
 			for (size_t idx =0; idx < rOff/2; idx += stride)
 			{
-				for (int ips=1; ips<fa; ips++ ) // 0 is already included
+				for (hssize_t ips=1; ips<fa; ips++ ) // 0 is already included
 					axArray2[idx] += axArray2[idx + ips*old_stride] ;
 			}
 			LogOut("[gad] Reduced %lu to %lu stride %d > part buf %f Mean %f\n",ldata,lldata,stride, axArray2[0], axArray2[0]/(2*stride));
@@ -3517,7 +3517,10 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	}
 	LogOut("[gad] E normalised to contrast\n");
 
-	/* Set deterministic goals */
+
+
+
+	/* Set deterministic goals for the number of particles in each rank */
 	// sum axArray now is ~ nPrt
 	// sum local array now is (sum local array before)/neweMean =
 	// (eMean_local*rOff)/neweMean
@@ -3525,7 +3528,9 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	double localoca = round(eMean_local*rOff/neweMean);
 	size_t nPrt_local = (size_t) localoca;
 	printf("[gad] rank %d should take (%lf) %lu\n",commRank(),localoca,nPrt_local);
+	fflush(stdout);
 	commSync();
+
 	size_t nPrt_temp;
 	MPI_Allreduce(&nPrt_local, &nPrt_temp, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 	if (nPrt_temp > nPrt)
@@ -3551,6 +3556,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 		prof.stop();
 		exit(1);
 	}
+
 
 	/*	Create space for writing the raw data to disk with chunked access	*/
 	// total is the number of points in the grid //changed
@@ -3686,13 +3692,14 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	void *vArray = static_cast<void*>(static_cast<char*>(axion->m2Cpu())+(slab*Lz)*dataSize);
 	//memset(vArray, 0, slab*3*dataSize);
 
-	size_t	tPart = 0, aPart = 0;
-
+	/*	pointer to the array of integers[exact number of particles per grid site]	*/
 	int	*axTmp  = static_cast<int  *>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+(slab*Lz)*dataSize));
 
-	/*	Horrible code, for float	*/
-	/* Distribute #total particles*/
+	size_t	tPart = 0, aPart = 0;
+
+	/* Distribute #total particles */
 	if (dataSize == 4) {
+		/*	pointer to the array of floats[exact density normalised to particle number/site]	*/
 		float	*axData = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())));
 
 		LogOut("[gad] ... \n");
@@ -3723,6 +3730,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 		MPI_Allreduce(&tPart, &aPart, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
 
 		printf("[gad] Rank %d got %lu (target %lu)\n",commRank(),tPart,nPrt_local);
+		fflush(stdout);
 
 		commSync();
 
@@ -3781,8 +3789,9 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	const int cSize = commSize();
 
 	/* hssize_t long long integer? */
-	hssize_t excess = tPart - rOff;
-	printf("rankd %d (desired particles - space) %d  \n", commRank(),excess);
+	// hssize_t excess = tPart - rOff;
+	hssize_t excess = tPart - nPrt/commSize();
+	printf("rankd %d (desired particles - average per rank) %d  \n", commRank(),excess); fflush(stdout);
 
 	commSync();
 
@@ -3790,8 +3799,8 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	trackAlloc (&tmpPointer, sizeof(hssize_t)*cSize);
 	hssize_t *exStat = static_cast<hssize_t*>(tmpPointer);
 
-	int	   remain  = 0;
-	int	   missing = 0;
+	hssize_t	   remain  = 0;
+	hssize_t	   missing = 0;
 	size_t lPos    = 0;
 
 	int	rSend = 0, rRecv = 0;
@@ -3801,7 +3810,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	if (cSize > 1) {
 		LogOut("\nGathering excess (MPI)\n");
 
-		MPI_Allgather (&excess, 1, MPI_LONG_LONG, exStat, 1, MPI_LONG_LONG, MPI_COMM_WORLD);
+		MPI_Allgather (&excess, 1, MPI_LONG_LONG_INT, exStat, 1, MPI_LONG_LONG_INT, MPI_COMM_WORLD);
 
 		for (int i=1; i<cSize; i++) {
 			if (exStat[i] > exStat[rSend])
@@ -3815,51 +3824,58 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 		LogOut("Send %d Receive %d \n",rSend,rRecv);
 	}
 
+	/*Calculate number of required slabs!*/
 
-hsize_t Nslabs = nPrt_h/slab;
+hsize_t Nslabs = nPrt_h/slab/commSize();
+if (nPrt_h > Nslabs*slab*commSize())
+	LogOut("\nError: Nparticles is not a multiple of the slab size! (we do a few less) blame it on Alex!\n",Nslabs);
 LogOut("\nRecalculated slabs to print %lu \n",Nslabs);
 
-LogOut("\nStarting main loop\n");
+
+	/* Main loop, fills slabs with particles and writes to disk */
+
+	LogOut("\nStarting main loop\n");
 
 	for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
 	{
-LogOut("zDim %zu\n", zDim);
+		LogOut("zDim %zu\n", zDim);
 		/*	Select the slab in the file	*/
-		offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+		offset = (((hsize_t) (myRank*Nslabs)) + zDim)*slab;
 		hsize_t vOffset[2] = { offset , 0 };
 
 		std::random_device rSd;
 		std::mt19937_64 rng(rSd());
 
+		/* initialise random number generator */ //FIXME threads?
 		std::normal_distribution<float>	gauss(0.0, sigma);
 
 		/* position of the grid point to convert to particles */
 		size_t	idx = lPos;
-		int	yC  = lPos/totlX;
-		int	zC  = yC  /totlX;
-		int	xC  = lPos - totlX*yC;
+		hssize_t	yC  = lPos/totlX;
+		hssize_t	zC  = yC  /totlX;
+		hssize_t	xC  = lPos - totlX*yC;
 		yC -= zC*totlX;
 		zC += myRank*Lz;
 
 		/* number of particles placed in the coordinate list */
 		size_t	tPrti = 0;
 
-		/* the previous point had still some leftover particles to place? */
+		/* the last point of the slab had still some leftover particles to place? */
 			if (remain)
 			{
-				int	nY  = (lPos-1)/totlX;
-				int	nZ  = nY  /totlX;
-				int	nX  = (lPos-1) - totlX*zC;
+				hssize_t	nY  = (lPos-1)/totlX;
+				hssize_t	nZ  = nY  /totlX;
+				hssize_t	nX  = (lPos-1) - totlX*nY;  //nY was zC
 				nY -= nZ*totlX;
 				nZ += myRank*Lz;
 
 				if (dataSize == 4) {
 					float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
-					for (int i=0; i<remain; i++)
+					for (hssize_t i=0; i<remain; i++)
 					{
-						float xO = (nX + 0.5 + gauss(rng) )*bSize/((float) totlX);
-						float yO = (nY + 0.5 + gauss(rng) )*bSize/((float) totlX);
-						float zO = (nZ + 0.5 + gauss(rng) )*bSize/((float) totlZ);
+						float xO = (nX + 0.5f + gauss(rng) )*bSize/((float) totlX);
+						float yO = (nY + 0.5f + gauss(rng) )*bSize/((float) totlX);
+						float zO = (nZ + 0.5f + gauss(rng) )*bSize/((float) totlZ);
 
 						if (xO < 0.0f) xO += bSize;
 						if (yO < 0.0f) yO += bSize;
@@ -3876,6 +3892,7 @@ LogOut("zDim %zu\n", zDim);
 						tPrti++;
 					}
 				} else {
+					// no double precision version
 				}
 
 				remain = 0;
@@ -3883,17 +3900,15 @@ LogOut("zDim %zu\n", zDim);
 
 		/* main function */
 		while ((idx < slab*Lz) && (tPrti < slab))
-		{
-			/* number of particles to place from point idx */
+		{/* number of particles to place from point idx */
 			int nPrti = axTmp[idx];
-
 			if (dataSize == 4) {
 				float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
-				for (int i=0; i<nPrti; i++)
+				for (hssize_t i=0; i<nPrti; i++)
 				{
-					float xO = (xC + 0.5 + gauss(rng) )*bSize/((float) totlX);
-					float yO = (yC + 0.5 + gauss(rng) )*bSize/((float) totlX);
-					float zO = (zC + 0.5 + gauss(rng) )*bSize/((float) totlZ);
+					float xO = (xC + 0.5f + gauss(rng) )*bSize/((float) totlX);
+					float yO = (yC + 0.5f + gauss(rng) )*bSize/((float) totlX);
+					float zO = (zC + 0.5f + gauss(rng) )*bSize/((float) totlZ);
 
 					if (xO < 0.0f) xO += bSize;
 					if (yO < 0.0f) yO += bSize;
@@ -3914,10 +3929,7 @@ LogOut("zDim %zu\n", zDim);
 						remain = nPrti - i - 1;
 						break;
 					}
-				}
-			} else {
-				// double precision version does not make sense
-			}
+				} } else { /* double precision version does not make sense */ }
 
 			/* move to the next point */
 			idx++;
@@ -3934,8 +3946,15 @@ LogOut("zDim %zu\n", zDim);
 			size_t cPos  = lPos;
 
 			MPI_Allreduce(&missing, &aMiss, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
+
+
+			/* a rank misses particles > start redistributing loop */
 			while (aMiss > 0) {
 LogOut("Missing %08d\n", aMiss);
+
+
+				/* rank rRecv receives and fills the slab */
 				if (myRank == rRecv) {
 					int	toRecv = 0;
 					size_t	iPos   = 0, ePos = 0;
@@ -3969,13 +3988,13 @@ printf("Rank %d processing site %06d\n", rRecv, i); fflush(stdout);
 							float	*axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
 
 							for (int j=0; j<nPhere; j++) {
-								float xO = (xC + 0.5 + gauss(rng) )*bSize/((float) totlX);
-								float yO = (yC + 0.5 + gauss(rng) )*bSize/((float) totlX);
-								float zO = (zC + 0.5 + gauss(rng) )*bSize/((float) totlZ);
+								float xO = (xC + 0.5f + gauss(rng) )*bSize/((float) totlX);
+								float yO = (yC + 0.5f + gauss(rng) )*bSize/((float) totlX);
+								float zO = (zC + 0.5f + gauss(rng) )*bSize/((float) totlZ);
 
 								if (xO < 0.0f) xO += bSize;
-								if (yO < 0.0f) xO += bSize;
-								if (zO < 0.0f) xO += bSize;
+								if (yO < 0.0f) yO += bSize;
+								if (zO < 0.0f) zO += bSize;
 
 								if (xO > bSize) xO -= bSize;
 								if (yO > bSize) yO -= bSize;
@@ -3986,8 +4005,7 @@ printf("Rank %d processing site %06d\n", rRecv, i); fflush(stdout);
 								axOut[tPrti*3+2] = zO;
 								tPrti++;
 							}
-						} else {
-						}
+						} else { }
 
 						xC++;
 
@@ -3996,6 +4014,8 @@ printf("Rank %d processing site %06d\n", rRecv, i); fflush(stdout);
 					}
 				}
 
+
+				/* the rank with the largest excess of particles sends some away*/
 				if (myRank == rSend) {
 					size_t iPos = lPos;
 					int toSend = 0;
@@ -4064,7 +4084,7 @@ printf("Rank %d preparing particle %06d\n", rSend, pSent); fflush(stdout);
 printf("Rank %d syncing\n", myRank); fflush(stdout);
 				commSync();
 
-				MPI_Allgather (&excess, 1, MPI_LONG_LONG, exStat, 1, MPI_LONG_LONG, MPI_COMM_WORLD);
+				MPI_Allgather (&excess, 1, MPI_LONG_LONG_INT, exStat, 1, MPI_LONG_LONG_INT, MPI_COMM_WORLD);
 LogOut("Excess broadcasted\n");
 				rSend = rRecv = 0;
 
@@ -4078,12 +4098,18 @@ LogOut("Excess broadcasted\n");
 						rRecv = i;
 				}
 
+				LogOut("Excess: ");
+				for (int ii = 0; ii<cSize; ii++){
+					LogOut("%ld ",exStat[ii]);
+				}
+				LogOut("\n");
+
 				MPI_Allreduce(&missing, &aMiss, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-			}
+			} // end aMiss !=0 No rank is missing a particle
 		} // END MPI REDISTRIBUTION
 
 
-printf("\nSlice completed\n"); fflush(stdout);
+// printf("\nSlice completed\n"); fflush(stdout);
 
 		H5Sselect_hyperslab(vSpc1, H5S_SELECT_SET, vOffset, stride, vSlab, nullptr);
 //		H5Sselect_hyperslab(vSpc2, H5S_SELECT_SET, vOffset, stride, vSlab, nullptr);
@@ -4103,14 +4129,14 @@ printf("\nSlice completed\n"); fflush(stdout);
 	}
 
 	/*	Now we go with the particle ID	*/
-	for (hsize_t zDim = 0; zDim < Lz; zDim++)
+	for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
 	{
 		/*	Select the slab in the file	*/
-		offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+		offset = (((hsize_t) (myRank*Nslabs)) + zDim)*slab;
 
 		H5Sselect_hyperslab(sSpce, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
-		hsize_t iBase = slab*(myRank*Lz + zDim);
+		hsize_t iBase = slab*(myRank*Nslabs + zDim);
 		hsize_t *iArray = static_cast<hsize_t*>(vArray);
 		#pragma omp parallel for shared(vArray) schedule(static)
 		for (hsize_t idx = 0; idx < slab; idx++)
@@ -4224,7 +4250,7 @@ double	readEDens (Cosmos *myCosmos, Scalar **axion, int index)
 	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
+	// readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
 
 	LogMsg (VERB_NORMAL, "Field type: %s",fStr);
 	LogMsg (VERB_NORMAL, "Precision: %s",prec);
@@ -4316,7 +4342,7 @@ LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
 
 	size_t sizeNe = 0;
 	size_t sizeZe = 0;
-	grp_id2 = H5Gopen( file_id, "energy/density", H5P_DEFAULT) ;
+
 
 	if ((mset_id = H5Dopen (file_id, "/energy/density/theta", H5P_DEFAULT)) < 0)
 	{
@@ -4328,11 +4354,13 @@ LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
 		}
 		else{
 			LogMsg(VERB_NORMAL, "[rEd] from energy/redensity ");
+			/* assumes sizeN = sizeZ */
 			readAttribute (grp_id, &sizeNe, "Size", H5T_NATIVE_UINT);
-			readAttribute (grp_id, &sizeZe, "Depth", H5T_NATIVE_UINT);
+			readAttribute (grp_id, &sizeZe, "Size", H5T_NATIVE_UINT);
 		}
 	}
 	else{
+		grp_id2 = H5Gopen( file_id, "energy/density", H5P_DEFAULT) ;
 		LogMsg(VERB_NORMAL, "[rEd] from energy/density/theta ");
 		readAttribute (grp_id2, &sizeNe, "Size", H5T_NATIVE_UINT);
 		readAttribute (grp_id2, &sizeZe, "Depth", H5T_NATIVE_UINT);
