@@ -92,7 +92,7 @@ VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 // Default measurement type, some options can be chosen with special flags | all with --meas
 MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY  ;
 // Default measurement type for the transition to theta
-MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
+MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -1237,6 +1237,15 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--printmask"))
+		{
+			defaultmeasType |= MEAS_MASK ;
+
 			procArgs++;
 			passed = true;
 			goto endFor;
