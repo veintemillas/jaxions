@@ -35,9 +35,18 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
 	SpectrumMaskType mask = info.mask ;
-	double radius_mask = info.rmask ;
 	int redmap = info.redmap;
 	StringMeasureType strmeas = info.strmeas;
+	double radius_mask = info.rmask ;
+	/* This is a change with respect to previous behaviour
+	   Changes the definition of mask to be in units of ms^-1 */
+		if (axiona->Lambda() == LAMBDA_Z2)
+		 		radius_mask /= axiona->Msa(); // radius is a/msa in a units
+		if (axiona->Lambda() == LAMBDA_FIXED){
+			double si = sqrt(2.0*axiona->BckGnd()->Lambda())* (*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
+				LogMsg(VERB_HIGH,"msa calaculated %f mask-parameter resized with 1/msa",si);
+				radius_mask /= si;
+		}
 
 	auto	cTime = Timer();
 
