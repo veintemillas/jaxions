@@ -275,7 +275,16 @@ def gm(address,something='summary',printerror=False):
     if something == 'massA':
         return f.attrs[u'Axion mass'] ;
     if something == 'msa':
-        return f.attrs[u'Saxion mass'] ;
+        typeL = f['/potential/'].attrs['Lambda type']
+        z = f.attrs[u'z']
+        L = f.attrs[u'Physical size']
+        N = f.attrs[u'Size']
+        l = f['/potential/'].attrs[u'Lambda']
+        if typeL == b'z2' :
+            return f.attrs[u'Saxion mass'] ;
+        else :
+            return np.sqrt(2.0*l)*z*L/N ;
+
     if something == 'lambda':
         typeL = f['/potential/'].attrs['Lambda type']
         if typeL == b'z2' :
@@ -283,6 +292,9 @@ def gm(address,something='summary',printerror=False):
             return f['/potential/'].attrs[u'Lambda']/(z**2) ;
         else :
             return f['/potential/'].attrs[u'Lambda'] ;
+    # if something == 'msa':
+    #     return f.attrs[u'Saxion mass'] ;
+
     if something == 'massS':
         L = f.attrs[u'Physical size']
         N = f.attrs[u'Size']
