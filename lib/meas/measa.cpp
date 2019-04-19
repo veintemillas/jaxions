@@ -12,6 +12,7 @@
 #include "reducer/reducer.h"
 #include "spectrum/spectrum.h"
 #include "projector/projector.h"
+#include "scalar/fourier.h"
 
 using namespace std;
 using namespace profiler;
@@ -77,12 +78,27 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
-
 	createMeas(axiona, indexa);
 
 	if (measa & MEAS_2DMAP){
 			if(p2dmapo)
 				writeMapHdf5s (axiona,sliceprint);
+	}
+
+	if	( axiona->MMomSpace() || axiona->VMomSpace() )
+	{
+		{
+			LogMsg(VERB_NORMAL, "[Meas %d] bin FS acceleration",indexa);
+			float *ms = static_cast<float *>(axiona->m2Cpu()) ;
+			LogOut("acceleration %f %f %f %f \n",ms[0],ms[1],ms[2],ms[3]);
+			// JARE possible problem m2 saved as double in _DOUBLE?
+			Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), 2*axiona->Size(),
+							[] (Float x) -> float { return (double) ( x ) ;});
+			contBin.run();
+			writeBinner(contBin, "/bins", "fsacceleration");
+		}
+		FTfield pelota(axiona);
+		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
 	}
 
 	if (measa & MEAS_NEEDENERGY)
@@ -310,7 +326,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						(axiona->Field() == FIELD_AXION) )
 			{
 				// LogOut("NSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA UNMAKED",indexa);
 				prof.start();
 				specAna.nRun(SPMASK_FLAT);
 				prof.stop();
@@ -318,14 +334,15 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
-				if (axiona->Field() == FIELD_AXION)
-					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+				// if (axiona->Field() == FIELD_AXION)
+				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 			}
 
 			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_REDO))
 			{
 				// LogOut("NSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPA",indexa);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA MASK_RED",indexa);
 
 				if ( !(measa & (MEAS_MASK)) ){
 						LogMsg(VERB_NORMAL, "[Meas %d] MASK_TEST inside NSPA",indexa);
@@ -350,8 +367,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Red");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Red");
-				if (axiona->Field() == FIELD_AXION)
-					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
+				// if (axiona->Field() == FIELD_AXION)
+				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
 
 				prof.start();
 				specAna.matrixbuilder();
@@ -374,8 +392,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					prof.add(std::string("NSPA_Vi"), 0.0, 0.0);
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Vi");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi");
 
-					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi");
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
 					prof.start();
 				specAna.wRun(SPMASK_VIL);
@@ -404,8 +422,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Vi2");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi2");
-				if (axiona->Field() == FIELD_AXION)
-					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
+				// if (axiona->Field() == FIELD_AXION)
+				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
+
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
 
 					prof.start();

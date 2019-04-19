@@ -17,7 +17,7 @@ template<VqcdType pot>
 class	PropLeap : public PropClass<2, true, pot> {
 
 	public:
-		PropLeap(Scalar *field, const bool spec) :
+		PropLeap(Scalar *field, const PropcType spec) :
 		PropClass<2, true, pot>(field, spec) {
 		//	Set up Leapfrog parameters
 
@@ -26,13 +26,27 @@ class	PropLeap : public PropClass<2, true, pot> {
 
 		this->setCoeff(nC, nD);
 
-		if (spec && field->Device() == DEV_CPU) {
-			this->setBaseName("Leapfrog spectral ");
-		} else {
-			if (field->LowMem())
-				this->setBaseName("Lowmem Leapfrog ");
-			else
-				this->setBaseName("Leapfrog ");
+		switch(spec)
+		{
+			case PROPC_SPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("Leapfrog spectral ");
+				} else
+					this->setBaseName("Leapfrog ");
+			break;
+			case PROPC_FSPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("Leapfrog full spectral ");
+				} else
+					this->setBaseName("Leapfrog ");
+			break;
+			default:
+			case PROPC_2NEIG:
+				if (field->LowMem())
+					this->setBaseName("Lowmem Leapfrog ");
+				else
+					this->setBaseName("Leapfrog ");
+			break;
 		}
 	}
 };
@@ -41,7 +55,7 @@ template<VqcdType pot>
 class	PropMLeap : public PropClass<4, true, pot> {
 
 	public:
-		PropMLeap(Scalar *field, const bool spec) :
+		PropMLeap(Scalar *field, const PropcType spec) :
 		PropClass<4, true, pot>(field, spec) {
 		//	Set up Leapfrog parameters
 
@@ -50,13 +64,37 @@ class	PropMLeap : public PropClass<4, true, pot> {
 
 		this->setCoeff(nC, nD);
 
-		if (spec && field->Device() == DEV_CPU) {
-			this->setBaseName("Multi-Leapfrog spectral ");
-		} else {
-			if (field->LowMem())
-				this->setBaseName("Lowmem Multi-Leapfrog ");
-			else
-				this->setBaseName("Multi-Leapfrog ");
+		// if (spec && field->Device() == DEV_CPU) {
+		// 	this->setBaseName("Multi-Leapfrog spectral ");
+		// } else {
+		// 	if (field->LowMem())
+		// 		this->setBaseName("Lowmem Multi-Leapfrog ");
+		// 	else
+		// 		this->setBaseName("Multi-Leapfrog ");
+		// }
+		//
+
+		switch(spec)
+		{
+			case PROPC_SPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("Multi-Leapfrog spectral ");
+				} else
+					this->setBaseName("Multi-Leapfrog ");
+			break;
+			case PROPC_FSPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("Multi-Leapfrog full spectral ");
+				} else
+					this->setBaseName("Multi-Leapfrog ");
+			break;
+			default:
+			case PROPC_2NEIG:
+				if (field->LowMem())
+					this->setBaseName("Lowmem Multi-Leapfrog ");
+				else
+					this->setBaseName("Multi-Leapfrog ");
+			break;
 		}
 	}
 };
@@ -66,7 +104,7 @@ template<VqcdType pot>
 class	PropOmelyan2 : public PropClass<2, true, pot> {
 
 	public:
-		PropOmelyan2(Scalar *field, const bool spec) :
+		PropOmelyan2(Scalar *field, const PropcType spec) :
 		PropClass<2, true, pot>(field, spec) {
 		constexpr double chi = +0.19318332750378360;
 
@@ -92,7 +130,7 @@ template<VqcdType pot>
 class	PropOmelyan4 : public PropClass<4, true, pot> {
 
 	public:
-		PropOmelyan4(Scalar *field, const bool spec) :
+		PropOmelyan4(Scalar *field, const PropcType spec) :
 		PropClass<4, true, pot>(field, spec) {
 		constexpr double xi  = +0.16449865155757600;
 		constexpr double lb  = -0.02094333910398989;
@@ -105,13 +143,35 @@ class	PropOmelyan4 : public PropClass<4, true, pot> {
 
 		this->setCoeff(nC, nD);
 
-		if (spec && field->Device() == DEV_CPU) {
-			this->setBaseName("Omelyan4 spectral ");
-		} else {
-			if (field->LowMem())
-				this->setBaseName("Lowmem Omelyan4 ");
-			else
-				this->setBaseName("Omelyan4 ");
+		// if (spec && field->Device() == DEV_CPU) {
+		// 	this->setBaseName("Omelyan4 spectral ");
+		// } else {
+		// 	if (field->LowMem())
+		// 		this->setBaseName("Lowmem Omelyan4 ");
+		// 	else
+		// 		this->setBaseName("Omelyan4 ");
+		// }
+		switch(spec)
+		{
+			case PROPC_SPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("Omelyan4 spectral ");
+				} else
+					this->setBaseName("Omelyan4 ");
+			break;
+			case PROPC_FSPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("Omelyan4 full spectral ");
+				} else
+					this->setBaseName("Omelyan4 ");
+			break;
+			default:
+			case PROPC_2NEIG:
+				if (field->LowMem())
+					this->setBaseName("Lowmem Omelyan4 ");
+				else
+					this->setBaseName("Omelyan4 ");
+			break;
 		}
 	}
 };
@@ -120,7 +180,7 @@ template<VqcdType pot>
 class	PropRKN4 : public PropClass<4, false, pot> {
 
 	public:
-		PropRKN4(Scalar *field, const bool spec) :
+		PropRKN4(Scalar *field, const PropcType spec) :
 		PropClass<4, false, pot>(field, spec) {
 		//	Set up RKN parameters for BABABABA
 
@@ -129,13 +189,35 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 
 		this->setCoeff(nC, nD);
 
-		if (spec && field->Device() == DEV_CPU) {
-			this->setBaseName("RKN4 spectral ");
-		} else {
-			if (field->LowMem())
-				this->setBaseName("Lowmem RKN4 ");
-			else
-				this->setBaseName("RKN4 ");
+		// if (spec && field->Device() == DEV_CPU) {
+		// 	this->setBaseName("RKN4 spectral ");
+		// } else {
+		// 	if (field->LowMem())
+		// 		this->setBaseName("Lowmem RKN4 ");
+		// 	else
+		// 		this->setBaseName("RKN4 ");
+		// }
+		switch(spec)
+		{
+			case PROPC_SPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("RKN4 spectral ");
+				} else
+					this->setBaseName("RKN4 ");
+			break;
+			case PROPC_FSPEC:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("RKN4 full spectral ");
+				} else
+					this->setBaseName("RKN4 ");
+			break;
+			default:
+			case PROPC_2NEIG:
+				if (field->LowMem())
+					this->setBaseName("Lowmem RKN4 ");
+				else
+					this->setBaseName("RKN4 ");
+			break;
 		}
 	}
 };
@@ -144,7 +226,15 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 
 	LogMsg	(VERB_HIGH, "Initializing propagator");
 
-	bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
+
+	// bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
+	bool wasTuned = false;
+
+	PropcType spec ;
+	if 	(pType & PROP_FSPEC)
+		spec = PROPC_FSPEC;
+	if 	(pType & PROP_SPEC) // overwritting
+		spec = PROPC_SPEC;
 
 	unsigned int xBlock, yBlock, zBlock;
 
@@ -347,7 +437,7 @@ void	propagate	(Scalar *field, const double dz)
 	LogMsg	(VERB_HIGH, "Called propagator");
 	Profiler &prof = getProfiler(PROF_PROP);
 
-	if	(!field->Folded() && !(pType & PROP_SPEC))
+	if	(!field->Folded() && !(pType & PROP_SPEC) && !(pType & PROP_FSPEC) )
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
@@ -379,8 +469,8 @@ void	propagate	(Scalar *field, const double dz)
 			return;
 	}
 
-	auto mFlops = prop->cFlops((pType & PROP_SPEC) ? true : false);
-	auto mBytes = prop->cBytes((pType & PROP_SPEC) ? true : false);
+	auto mFlops = prop->cFlops((pType & PROP_SPEC) ? PROPC_SPEC : PROPC_2NEIG);
+	auto mBytes = prop->cBytes((pType & PROP_SPEC) ? PROPC_SPEC : PROPC_2NEIG);
 
 	prop->add(mFlops, mBytes);
 
@@ -419,6 +509,8 @@ void	tunePropagator (Scalar *field) {
 
 	if (debug) LogOut("[tp] tunning!\n");
 	if (pType & PROP_SPEC)
+		return;
+	if (pType & PROP_FSPEC)
 		return;
 
 	int  myRank   = commRank();

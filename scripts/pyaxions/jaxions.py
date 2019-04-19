@@ -562,6 +562,16 @@ def gm(address,something='summary',printerror=False):
             if (something == 'binrhoBmin'):
                 return f[binrho_string].attrs[u'Minimum'] ;
 
+        #### fsacc bin
+
+        if (something == 'binfaacc') and 'bins/fsacceleration' in f :
+            numBIN = f['bins/fsacceleration'].attrs[u'Size']
+            return np.reshape(f['bins/fsacceleration/data'],(numBIN)) ;
+        if (something == 'binfaaccmax') and 'bins/fsacceleration' in f :
+            return f['bins/fsacceleration'].attrs[u'Maximum'] ;
+        if (something == 'binfaaccmin') and 'bins/fsacceleration' in f :
+            return f['bins/fsacceleration'].attrs[u'Minimum'] ;
+
 
     if (something == 'kmax'):
         N = f.attrs[u'Size']
@@ -622,26 +632,33 @@ def gm(address,something='summary',printerror=False):
                 spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
                 return spec ;
         if ftype == 'Saxion':
-            if (something == 'nspK'):
+            if (something == 'nspK') and ('nSpectrum/sK' in f):
                 return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
             if (something == 'nspG') and ('nSpectrum/sG' in f):
                 return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-            # if (something == 'nspV'):
-            #     return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
+            if (something == 'nspV') and ('nSpectrum/sV' in f):
+                return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
             if (something == 'nsp'):
                 spec = np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
                 if ('nSpectrum/sG' in f):
                     spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-                # spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+                if ('nSpectrum/sV' in f):
+                    spec += np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
                 return spec ;
             if (something == 'nspKVi') and ('nSpectrum/sKVi' in f):
                 return np.reshape(f['nSpectrum/sKVi/data/'],(powmax)) ;
             if (something == 'nspGVi') and ('nSpectrum/sGVi' in f):
                 return np.reshape(f['nSpectrum/sGVi/data/'],(powmax)) ;
+            if (something == 'nspVVi') and ('nSpectrum/sVVi' in f):
+                return np.reshape(f['nSpectrum/sVVi/data/'],(powmax)) ;
+
             if (something == 'nspKVi2') and ('nSpectrum/sKVi2' in f):
                 return np.reshape(f['nSpectrum/sKVi2/data/'],(powmax)) ;
             if (something == 'nspGVi2') and ('nSpectrum/sGVi2' in f):
                 return np.reshape(f['nSpectrum/sGVi2/data/'],(powmax)) ;
+            if (something == 'nspVVi2') and ('nSpectrum/sVVi2' in f):
+                return np.reshape(f['nSpectrum/sVVi2/data/'],(powmax)) ;
+
             if (something == 'nspKRe') and ('nSpectrum/sKRe' in f):
                 return np.reshape(f['nSpectrum/sKRe/data/'],(powmax)) ;
             if (something == 'nspKIm') and ('nSpectrum/sKIm' in f):
@@ -656,15 +673,23 @@ def gm(address,something='summary',printerror=False):
                 return np.reshape(f['nSpectrum/sK_Red/data/'],(powmax)) ;
             if (something == 'nspG_Red') and ('nSpectrum/sG_Red' in f):
                 return np.reshape(f['nSpectrum/sG_Red/data/'],(powmax)) ;
+            if (something == 'nspV_Red') and ('nSpectrum/sV_Red' in f):
+                return np.reshape(f['nSpectrum/sV_Red/data/'],(powmax)) ;
 
             if (something == 'nspK_Vi') and ('nSpectrum/sK_Vi' in f):
                 return np.reshape(f['nSpectrum/sK_Vi/data/'],(powmax)) ;
             if (something == 'nspG_Vi') and ('nSpectrum/sG_Vi' in f):
                 return np.reshape(f['nSpectrum/sG_Vi/data/'],(powmax)) ;
+            if (something == 'nspV_Vi') and ('nSpectrum/sV_Vi' in f):
+                return np.reshape(f['nSpectrum/sV_Vi/data/'],(powmax)) ;
+
             if (something == 'nspK_Vi2') and ('nSpectrum/sK_Vi2' in f):
                 return np.reshape(f['nSpectrum/sK_Vi2/data/'],(powmax)) ;
             if (something == 'nspG_Vi2') and ('nSpectrum/sG_Vi2' in f):
                 return np.reshape(f['nSpectrum/sG_Vi2/data/'],(powmax)) ;
+            if (something == 'nspV_Vi2') and ('nSpectrum/sV_Vi2' in f):
+                return np.reshape(f['nSpectrum/sV_Vi2/data/'],(powmax)) ;
+
             if (something == 'nspK_Re') and ('nSpectrum/sK_Re' in f):
                 return np.reshape(f['nSpectrum/sK_Re/data/'],(powmax)) ;
             if (something == 'nspK_Im') and ('nSpectrum/sK_Im' in f):

@@ -87,6 +87,11 @@ void	SpecBin::fillBins	() {
 			tBinG.assign(powMax*mIdx, 0);
 			break;
 
+		case	SPECTRUM_VV:
+			tBinV.resize(powMax*mIdx);
+			tBinV.assign(powMax*mIdx, 0);
+			break;
+
 		default:
 			tBinG.resize(powMax*mIdx);
 			tBinV.resize(powMax*mIdx);
@@ -148,8 +153,9 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_GV:
 				case 	SPECTRUM_GaS:
 				case 	SPECTRUM_GaSadd:
+				case 	SPECTRUM_VV:
 					k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
-					w  = sqrt(k2 + mass);
+					w  = sqrt(k2 + mass2);
 					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
 					break;
@@ -159,7 +165,7 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_VS:
 				case 	SPECTRUM_GVS:
 					k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
-					w  = sqrt(k2 + massSax);
+					w  = sqrt(k2 + mass2Sax);
 					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
 					m2 = 0.;
 					break;
@@ -187,62 +193,75 @@ void	SpecBin::fillBins	() {
 			double		mw;
 
 			switch	(sType) {
+
+				/* Saxion mode, the derivative, gradient and mass(top suscep)
+				 are already included and we do not divide by w because it
+				 can be zero; it needs to be done outside the program */
+				case	SPECTRUM_KK:
+					tBinK.at(myBin + powMax*tIdx) += m2;
+					break;
+				case	SPECTRUM_VV:
+					tBinV.at(myBin + powMax*tIdx) += m2;
+					break;
+				case  SPECTRUM_GaS:
+				case  SPECTRUM_GaSadd:
+					switch (controlxyz){
+						// tmp is not used anymore
+						case 1:
+							tmp = (size_t) std::abs(ky);
+							break;
+						case 2:
+							tmp = (size_t) std::abs(kz);
+							break;
+						case 0:
+						default:
+							tmp = kx;
+							break;
+					}
+					tBinG.at(myBin + powMax*tIdx) += m2/cosTable2[tmp];
+					break;
+				/* is possible to account for the finite difference formula
+				by using the folloging line for the gradients
+					// tBinG.at(myBin + powMax*tIdx) += mw/cosTable2[kx];
+					*/
+
+				/* Axion mode or only Saxion*/
 				case	SPECTRUM_K:
 				case	SPECTRUM_KS:
 				 	mw = m2/w;
 					tBinK.at(myBin + powMax*tIdx) += mw;
-					break;
-
-				/* rebin */
-				case	SPECTRUM_KK:
-					tBinK.at(myBin + powMax*tIdx) += m2;
-					break;
-
-				case	SPECTRUM_P:
-					tBinP.at(myBin + powMax*tIdx) += m2;
-					break;
-				case	SPECTRUM_PS:
-					tBinPS.at(myBin + powMax*tIdx) += m2;
 					break;
 				case	SPECTRUM_G:
 				case	SPECTRUM_GS:
 					mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
 					break;
-				// the gradient is already included in m2
-				// so I do not need to include the k2 factor here!
-				case  SPECTRUM_GaS:
-				case  SPECTRUM_GaSadd:
-					//the cosine correction accounts for the finite difference formula
-					// tBinG.at(myBin + powMax*tIdx) += mw/cosTable2[kx];
-
-					/* rebin */
-							// mw = m2/w;
-							// tBinG.at(myBin + powMax*tIdx) += mw;
-					tBinG.at(myBin + powMax*tIdx) += m2;
-					break;
-
-
-
 				case	SPECTRUM_V:
 					mw = m2/w;
-					tBinV.at(myBin + powMax*tIdx) += mw*mass;
+					tBinV.at(myBin + powMax*tIdx) += mw*mass2;
 					break;
 				case	SPECTRUM_VS:
 					mw = m2/w;
-					tBinV.at(myBin + powMax*tIdx) += mw*massSax;
+					tBinV.at(myBin + powMax*tIdx) += mw*mass2Sax;
 					break;
-
 				case	SPECTRUM_GVS:
 					mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
-					tBinV.at(myBin + powMax*tIdx) += mw*massSax;
+					tBinV.at(myBin + powMax*tIdx) += mw*mass2Sax;
 					break;
 
 				case	SPECTRUM_GV:
 					mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += mw*k2;
-					tBinV.at(myBin + powMax*tIdx) += mw*mass;
+					tBinV.at(myBin + powMax*tIdx) += mw*mass2;
+					break;
+
+				/* energy spectra */
+				case	SPECTRUM_P:
+					tBinP.at(myBin + powMax*tIdx) += m2;
+					break;
+				case	SPECTRUM_PS:
+					tBinPS.at(myBin + powMax*tIdx) += m2;
 					break;
 
 				/* number of modes */
@@ -268,17 +287,20 @@ void	SpecBin::fillBins	() {
 					case	SPECTRUM_KS:
 						binK[j] += tBinK[j + i*powMax]*norm;
 						break;
-					case	SPECTRUM_P:
-						binP[j] += tBinP[j + i*powMax]*norm;
-						break;
-					case	SPECTRUM_PS:
-						binPS[j] += tBinPS[j + i*powMax]*norm;
-						break;
 					case	SPECTRUM_G:
 					case	SPECTRUM_GG:
 					case	SPECTRUM_GaS:
 					case	SPECTRUM_GaSadd:
 						binG[j] += tBinG[j + i*powMax]*norm;
+						break;
+					case	SPECTRUM_VV:
+						binV[j] += tBinV[j + i*powMax]*norm;
+						break;
+					case	SPECTRUM_P:
+						binP[j] += tBinP[j + i*powMax]*norm;
+						break;
+					case	SPECTRUM_PS:
+						binPS[j] += tBinPS[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_NN:
 						binNN[j] += tBinNN[j + i*powMax];
@@ -334,6 +356,11 @@ void	SpecBin::fillBins	() {
 		// we can reduce among ranks
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
+
+		case	SPECTRUM_VV:
+			std::copy_n(binV.begin(), powMax, tBinV.begin());
+			MPI_Allreduce(tBinV.data(), binV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
 		default:
@@ -693,37 +720,108 @@ void	SpecBin::nRun	() {
 				}
 			}
 
-			// GRADIENT Y:
-				myPlan.run(FFT_FWD);
 
-				// this adds the gradient Y bins into binG
-				if (mask == SPMASK_SAXI) {
-					fillBins<Float,  SPECTRUM_G, false>();
-					std::copy_n(binG.begin(), powMax, binPS.begin());
-				} else {
-				if (spec)
-					fillBins<Float,  SPECTRUM_GaSadd, true> ();
-				else
-					fillBins<Float,  SPECTRUM_GaSadd, false>();
-				}
+			// GRADIENT Y:
+			myPlan.run(FFT_FWD);
+
+			// this adds the gradient Y bins into binG
+			if (mask == SPMASK_SAXI) {
+				fillBins<Float,  SPECTRUM_G, false>();
+				std::copy_n(binG.begin(), powMax, binPS.begin());
+			} else {
+controlxyz = 1;
+			if (spec)
+				fillBins<Float,  SPECTRUM_GaSadd, true> ();
+			else
+				fillBins<Float,  SPECTRUM_GaSadd, false>();
+			}
 
 			// GRADIENT Z:
-				// Copy m2aux -> m2
-				memmove	(mA, mA+dataTotalSize2, dataTotalSize2);
+			// Copy m2aux -> m2
+			memmove	(mA, mA+dataTotalSize2, dataTotalSize2);
 
-				myPlan.run(FFT_FWD);
-				// this adds the gradient Z bins into binG and reduces the final sum!
+			myPlan.run(FFT_FWD);
+			// this adds the gradient Z bins into binG and reduces the final sum!
 
-				if (mask == SPMASK_SAXI) {
+			if (mask == SPMASK_SAXI) {
 					binG.assign(powMax, 0.);
 					fillBins<Float,  SPECTRUM_G, false>();
 					std::copy_n(binG.begin(), powMax, binPS.begin());
 				} else {
+controlxyz = 2;
 				if (spec)
 					fillBins<Float,  SPECTRUM_GaS, true> ();
 				else
 					fillBins<Float,  SPECTRUM_GaS, false>();
+			}
+
+				// potential!!
+				// experimental!!
+				//potential dependent!
+				// fix
+
+				// conformal mass square root of topological susceptibility
+				// we use a factor of more because by default 1/2 is included in fillbins
+				// because of the kin and grad terms
+			Float mass = (Float) std::sqrt(mass2);
+			Float iR   = (Float) 1/Rscale;
+			Float iR2   = (Float) 1/(Rscale*Rscale);
+
+			#pragma omp parallel for schedule(static)
+			for (size_t iz=0; iz < Lz; iz++) {
+				size_t zo = Ly*(Ly+2)*iz ;
+				size_t zi = Ly*Ly*iz ;
+				size_t zp = Ly*Ly*(iz+1) ;
+				for (size_t iy=0; iy < Ly; iy++) {
+					size_t yo = (Ly+2)*iy ;
+					size_t yi = Ly*iy ;
+					size_t yp = Ly*((iy+1)%Ly) ;
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+						size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
+
+						switch(mask){
+							case SPMASK_FLAT:
+									// cosine version
+									// m2sa[odx] = std::sqrt(2*(1.-std::real( (ma[idx]-zaskaF)/std::abs(ma[idx]-zaskaF)))  );
+									// linear version, matches better with NR axion number although it is not accurate
+									//
+									// m2sa[odx] = mass*std::abs(std::arg(ma[idx]-zaskaF));
+									m2sa[odx] = mass*Rscale*std::arg(ma[idx]-zaskaF);
+									break;
+							case SPMASK_REDO:
+									if (strdaa[idx] & STRING_MASK){
+											m2sa[odx] = 0 ;
+									}
+									else{
+										m2sa[odx]  = mass*Rscale*std::arg(ma[idx]-zaskaF);
+									}
+									break;
+							case SPMASK_VIL:
+									m2sa[odx]  = mass*(std::abs(ma[idx]-zaskaF))*std::arg(ma[idx]-zaskaF);
+									break;
+								case SPMASK_VIL2:
+										m2sa[odx]  = mass*(std::pow(std::abs(ma[idx]-zaskaF),2)*iR)*std::arg(ma[idx]-zaskaF);
+										break;
+								case SPMASK_SAXI:
+								// what do I do here?
+										break;
+						} //end mask
+					}
 				}
+			}
+
+
+			// POTENTIAL:
+			myPlan.run(FFT_FWD);
+
+			// this adds the gradient Y bins into binG
+			if (mask != SPMASK_SAXI) {
+				if (spec)
+					fillBins<Float,  SPECTRUM_VV, true> ();
+				else
+					fillBins<Float,  SPECTRUM_VV, false>();
+			}
 
 			field->setM2     (M2_DIRTY);
 		}

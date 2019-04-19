@@ -27,8 +27,8 @@
 
 		Scalar			*field;
 
-		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax;
-		double			mass, massSax; // squared masses (comoving)
+		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax, controlxyz;
+		double			mass2, mass2Sax; // squared masses (comoving)
 		double 			Rscale, depta;
 		double 			zaskar;
 		float			zaskarf;
@@ -54,15 +54,17 @@
 				binP.resize(powMax); binP.assign(powMax, 0.);
 				binPS.resize(powMax); binPS.assign(powMax, 0.);
 
-				mass    = field->AxionMassSq()*(*field->zV())*(*field->zV());
-				massSax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
-				Rscale  = *field->RV();
-				depta   = field->BckGnd()->PhysSize()/Ly;
+				mass2    = field->AxionMassSq()*(*field->zV())*(*field->zV());
+				mass2Sax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
+				Rscale   = *field->RV();
+				depta    = field->BckGnd()->PhysSize()/Ly;
 
 				zaskar  = field->Saskia()*Rscale;
 				zaskarf = (float) zaskar ;
 				zaska   = std::complex<double>(zaskar,0.);
 				zaskaf  = std::complex<float>(zaskarf,0.f);
+
+				controlxyz = 0;
 
 				fillCosTable();
 

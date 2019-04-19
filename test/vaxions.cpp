@@ -29,6 +29,7 @@ using namespace AxionWKB;
 // vaxions3d definitions
 
 void    printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void    printsampleS  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 void    printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double  findzdoom(Scalar *axion);
 void    checkTime (Scalar *axion, int index);
@@ -103,11 +104,17 @@ int	main (int argc, char *argv[])
 
 	//-output txt file
 	FILE *file_samp ;
+	FILE *file_sams ;
 	file_samp = NULL;
-	if (!restart_flag)
+	file_sams = NULL;
+	if (!restart_flag){
 		file_samp = fopen("out/sample.txt","w+");
-		else
+		file_sams = fopen("out/samplS.txt","w+");
+	} else{
 		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
+		file_sams = fopen("out/samplS.txt","a+"); // if restart append in file
+	}
+
 
   //- time when axion mass^2 is 1/40 of saxion mass^2
 	double 	z_doom2 = findzdoom(axion);
@@ -275,7 +282,9 @@ int	main (int argc, char *argv[])
 
 	}
 
-
+	// SIMPLE OUTPUT CHECK
+	printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
+	printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 
 
@@ -330,12 +339,15 @@ int	main (int argc, char *argv[])
 				break;
 			}
 
+			LogFlush();
 			// PROPAGATOR
 			propagate (axion, dzaux);
 			counter++;
 
+
 			// SIMPLE OUTPUT CHECK
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
+			printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -551,6 +563,59 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 		}
 	}
 }
+
+void printsampleS(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta)
+{
+	double z_now = (*axion->zV());
+	double R_now = (*axion->RV());
+	double llphys = LLL;
+	if (axion->Lambda() == LAMBDA_Z2)
+		llphys = LLL/(R_now*R_now);
+
+	// LogOut("z %f R %f\n",z_now, R_now);
+	size_t S0 = sizeN*sizeN ;
+	if (commRank() == 0){
+		if (sPrec == FIELD_SINGLE) {
+			if (axion->Field() == FIELD_SAXION) {
+				double axmass_now = axion->AxionMass();
+				double saskia = axion->Saskia();
+				double inte = axion->IAxionMassSqn(0,z_now,3);
+				double iinte = axion->IIAxionMassSqn(0,z_now,3);
+
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %f %ld %f %e %f %f\n", z_now, axmass_now, llphys,
+				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].real(),
+				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].imag(),
+				static_cast<complex<float> *> (axion->vCpu())[idxprint].real(),
+				static_cast<complex<float> *> (axion->vCpu())[idxprint].imag(),
+				static_cast<complex<float> *> (axion->m2Cpu())[idxprint].real(),
+				static_cast<complex<float> *> (axion->m2Cpu())[idxprint].imag(),
+				nstrings_global, maximumtheta, saskia, inte, iinte);
+			} else {
+				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
+				static_cast<float *> (axion->mCpu())[idxprint + S0],
+				static_cast<float *> (axion->vCpu())[idxprint], maximumtheta);
+			}
+			fflush(fichero);
+		} else if (sPrec == FIELD_DOUBLE){
+			if (axion->Field() == FIELD_SAXION) {
+				double axmass_now = axion->AxionMass();
+				double saskia = axion->Saskia();
+
+				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
+				static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].real(),
+				static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].imag(),
+				static_cast<complex<double> *> (axion->vCpu())[idxprint].real(),
+				static_cast<complex<double> *> (axion->vCpu())[idxprint].imag(),
+				nstrings_global, maximumtheta, saskia);
+			} else {
+				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
+				static_cast<double *> (axion->mCpu())[idxprint + S0],
+				static_cast<double *> (axion->vCpu())[idxprint], maximumtheta);
+			}
+		}
+	}
+}
+
 
 double findzdoom(Scalar *axion)
 {

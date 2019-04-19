@@ -93,6 +93,7 @@ inline	void	sPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, cons
 		const _MData_ zRVec  = opCode(load_pd, zRAux);
 		const _MData_ fMVec  = opCode(set1_pd, fMom);
 
+		/* begin the calculation */
 		#pragma omp parallel default(shared)
 		{
 			_MData_ tmp, mel, mPx, mMx, mPy;

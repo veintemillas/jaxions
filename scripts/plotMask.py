@@ -13,6 +13,7 @@ import pyqtgraph.opengl as gl
 pString = np.array([255, 0, 0])	# Red for strings+
 nString = np.array([0, 255, 0])	# Green for strings-
 cWalls  = np.array([0, 0, 255])	# Blue for walls
+wColor  = 128
 
 def	makeColor():
 	colTable = []

@@ -37,7 +37,9 @@
 		size_t	fSize;
 		size_t	mAlign;
 		int	shift;
-		bool	folded;
+		bool	mmomspace;
+		bool	vmomspace;
+		bool folded;
 		bool	lowmem;
 
 		// conformal time
@@ -127,8 +129,10 @@
 
 		size_t		DataSize ()  { return fSize; }
 		size_t		DataAlign()  { return mAlign; }
-		int		Shift()      { return shift; }
+		int			Shift()      { return shift; }
 		bool		Folded()     { return folded; }
+		bool		MMomSpace()     { return mmomspace; }
+		bool		VMomSpace()     { return vmomspace; }
 		bool		Reduced()    { return eReduced; }
 
 
@@ -138,6 +142,8 @@
 		/*	Overloading	*/
 		double		AxionMass  ();
 		double		AxionMassSq();
+		double		IIAxionMassSqn(double z0, double z, int nn);
+		double		IAxionMassSqn(double z0, double z, int nn);
 		double		SaxionMassSq();
 		double		HubbleMassSq();
 		double    HubbleConformal();
@@ -164,6 +170,8 @@
 
 		void	setField	(FieldType field);
 		void	setFolded	(bool foli);
+		void	setMMomSpace	(bool foli);
+		void	setVMomSpace	(bool foli);
 		void	updateR ();
 		void	setReduced	(bool eRed, size_t nLx = 0, size_t nLz = 0);
 

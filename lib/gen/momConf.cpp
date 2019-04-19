@@ -20,6 +20,7 @@ template<typename Float, MomConfType Moco>
 void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV, const size_t kMax, const Float kCrat, const size_t Lx, const size_t Lz, const size_t Tz, const size_t S, const size_t V)
 {
 	LogMsg(VERB_NORMAL,"[momXeon] Called with kMax %zu kCrit %f (kCrit es %f)", kMax, kCrat, kCrit);
+	LogMsg(VERB_NORMAL,"[momXeon] Transposed Out", kMax, kCrat, kCrit);
 	long long kmax;
 	int adp = 0;
 	if (kMax > Lx/2 - 1)
@@ -46,6 +47,13 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = seed()*(1 + commRank());
 
+	const size_t LLy = Lx/commSize();
+	const size_t zBase = LLy*commRank();
+	const int hLx = Lx>>1;
+	const int hTz = Tz>>1;
+	const uint   maxLx = Lx;
+	const size_t maxSf = maxLx*Tz;
+
 	#pragma omp parallel default(shared)
 	{
 		int nThread = omp_get_thread_num();
@@ -55,22 +63,29 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 		std::normal_distribution<Float> distri(0.0,1.0);
 
-		#pragma omp for schedule(static)
-		for (size_t oz = 0; oz < Tz; oz++)
-		{
-			if (oz/Lz != ((size_t) commRank()))
-				continue;
-
-			long long pz = oz - (oz/(Tz >> 1))*Tz;
-
-			for(long long py = -kmax; py <= kmax + adp; py++)
-			{
-				for(long long px = -kmax ; px <= kmax + adp; px++)
+		#pragma omp parallel for collapse(3) schedule(static) default(shared)
+		for (uint oy = 0; oy < LLy; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
+			for (uint oz = 0; oz < Tz; oz++)
+				for (uint ox = 0; ox < maxLx; ox++)
 				{
-					size_t idx  = ((px + Lx)%Lx) + ((py+Lx)%Lx)*Lx + ((pz+Tz)%Tz)*S - commRank()*V;
-					size_t modP = px*px + py*py + pz*pz;
+					size_t idx = ox + oy*maxSf + oz*maxLx;
 
-					if (modP <= 3*(kmax2 + adp*(1+Lx)))
+					int px = ox;
+					int py = oy + zBase;
+					int pz = oz ;
+
+					if (px > hLx)
+						px -= Lx;
+
+					if (py > hLx)
+						py -= Lx;
+
+					if (pz > hTz)
+						pz -= Tz;
+
+					size_t modP = pz*pz + py*py + px*px;
+
+					if (modP <= 3*kmax2 )
 					{
 						Float vl = Twop*(uni(mt64));
 						Float al = distri(mt64);
@@ -121,10 +136,8 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 							break;
 						}
 
-					}
-				} // END  px loop
-			} // END  py loop
-		} // END oz FOR
+					} // END if
+		} // END triple loop
 	}
 
 	// zero mode

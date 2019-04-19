@@ -145,7 +145,7 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_TKACHEV: {
-			auto &myPlan = AxionFFT::fetchPlan("Init");
+			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
 			prof.start();
 			momConf(axionField, kMax, kCrt, MOM_MFLAT);
 			prof.stop();
@@ -161,7 +161,7 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_KMAX: {
-			auto &myPlan = AxionFFT::fetchPlan("Init");
+			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
 			prof.start();
 			momConf(axionField, kMax, kCrt, MOM_MEXP2);
 			prof.stop();
@@ -243,7 +243,7 @@ void	ConfGenerator::runCpu	()
 					LogMsg(VERB_NORMAL,"[GEN] Tkachev Initial conditions only prepared for RD !\n ");
 				}
 			LogMsg(VERB_NORMAL,"[GEN] CONF_TKACHEV started!\n ");
-			auto &myPlan = AxionFFT::fetchPlan("Init");
+			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
 			//probably the profiling has to be modified
 			prof.start();
 			double kCritz = axionField->BckGnd()->PhysSize()/(6.283185307179586*(*axionField->zV()));
@@ -299,10 +299,13 @@ void	ConfGenerator::runCpu	()
 
 		case CONF_KMAX: {
 			LogMsg(VERB_NORMAL,"[GEN] CONF_KMAX started!\n ");
-			auto &myPlan = AxionFFT::fetchPlan("Init");
+			LogFlush();
+			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
+			LogFlush();
 			prof.start();
 			// LogOut("[GEN] momConf with kMax %zu kCrit %f!\n ", kMax, kCrt);
 			momConf(axionField, kMax, kCrt, MOM_MEXP2);
+			LogFlush();
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
@@ -316,7 +319,7 @@ void	ConfGenerator::runCpu	()
 		case CONF_VILGOR:
 		case CONF_VILGORK:{
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started! ");
-			auto &myPlan = AxionFFT::fetchPlan("Init");
+			auto &myPlan = AxionFFT::fetchPlan("Init");  // now transposed
 
 			double LALA = axionField->BckGnd()->Lambda();
 			if (preprop){

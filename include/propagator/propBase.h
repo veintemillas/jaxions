@@ -23,6 +23,7 @@
 //		virtual void	sRunXeon() = 0;
 
 		virtual void	sSpecCpu(const double) = 0;	// Saxion spectral propagator
+		virtual void	sFpecCpu(const double) = 0;	// Saxion full spectral propagator
 
 		virtual void	tRunCpu	(const double) = 0;	// Axion propagator
 		virtual void	tRunGpu	(const double) = 0;
@@ -34,8 +35,8 @@
 		virtual void	lowGpu	(const double) = 0;
 //		virtual void	lowXeon	() = 0;
 
-		virtual double	cFlops	(const bool) = 0;
-		virtual double	cBytes	(const bool) = 0;
+		virtual double	cFlops	(const PropcType) = 0;
+		virtual double	cBytes	(const PropcType) = 0;
 
 		std::function<void(const double)>	propAxion;
 		std::function<void(const double)>	propSaxion;

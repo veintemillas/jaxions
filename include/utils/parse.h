@@ -57,6 +57,7 @@ extern bool uZin;
 extern bool uZfn;
 extern bool aMod;
 extern bool spectral;
+extern bool fpectral;
 extern bool mink;
 extern bool icstudy;
 extern bool preprop;

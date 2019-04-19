@@ -63,6 +63,7 @@ bool uZfn     = false;
 bool uMI      = false;
 bool uFR      = false;
 bool spectral = false;
+bool fpectral = false;
 bool mink			= false;
 bool aMod     = false;
 bool icstudy  = false ;
@@ -92,7 +93,8 @@ VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 // Default measurement type, some options can be chosen with special flags | all with --meas
 MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY  ;
 // Default measurement type for the transition to theta
-MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
+// MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
+MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -1588,6 +1590,9 @@ int	parseArgs (int argc, char *argv[])
 			if (spectral)
 				pType |= PROP_SPEC;
 
+			if (fpectral)
+				pType |= PROP_FSPEC;
+
 			i++;
 			procArgs++;
 			passed = true;
@@ -1608,6 +1613,17 @@ int	parseArgs (int argc, char *argv[])
 			spectral = true;
 
 			pType |= PROP_SPEC;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--fspec"))
+		{
+			fpectral = true;
+
+			pType |= PROP_FSPEC;
 
 			procArgs++;
 			passed = true;

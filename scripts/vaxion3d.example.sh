@@ -28,6 +28,7 @@ WTIM=12
 OUTP=" --dump $DUMP --p3D 2 --nologmpi --wTime $WTIM"
 echo
 echo "vaxion3d $PHYS"
+
 echo "         " $GRID
 echo "         " $SIMU
 echo "         " $INCO
