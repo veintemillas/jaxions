@@ -228,13 +228,6 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	Folder munge(axion);
-
-	if (cDev != DEV_GPU){
-		LogOut ("Folding configuration ... ");
-		munge(FOLD_ALL);
-	}
-
 	if (cDev != DEV_CPU){
 		LogOut ("Transferring configuration to device\n");
 		axion->transferDev(FIELD_MV);
@@ -321,7 +314,7 @@ int	main (int argc, char *argv[])
 					for (int i =i_meas; i< meas_zlist.size(); i++){
 						if (*axion->zV() > meas_zlist[i])
 							i_meas++;
-							LogMsg(VERB_NORMAL,"Time jumped over measurement! jumping once!");
+							LogMsg(VERB_NORMAL,"[VAX] Time jumped over measurement! jumping once!");
 					}
 				}
 
@@ -632,7 +625,7 @@ double findzdoom(Scalar *axion)
 		meas = DWfun - 1 ;
 		ct += 0.001 ;
 	}
-	LogMsg(VERB_NORMAL,"Real z_doom %f ", ct );
+	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct );
 	return ct ;
 } else {
 	return -1 ; }
@@ -670,11 +663,11 @@ void	checkTime (Scalar *axion, int index) {
 		if (cDev == DEV_GPU)
 			axion->transferCpu(FIELD_MV);
 		if (flag ==2){
-			LogMsg(VERB_NORMAL, "[checkTime %d] stop file detected! stopping ... ",index);
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] stop file detected! stopping ... ",index);
 			LogOut ("Interrupted manually with stop file ...");
 		}
 		if (flag ==1){
-			LogMsg(VERB_NORMAL, "[checkTime %d] Walltime reached ",index);
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] Walltime reached ",index);
 			LogOut ("Walltime reached, dumping configuration...");
 		}
 
