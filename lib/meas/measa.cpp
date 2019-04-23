@@ -80,17 +80,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	createMeas(axiona, indexa);
 
-	if (measa & MEAS_2DMAP){
-			if(p2dmapo)
-				writeMapHdf5s (axiona,sliceprint);
-	}
-
 	if	( axiona->MMomSpace() || axiona->VMomSpace() )
 	{
 		{
 			LogMsg(VERB_NORMAL, "[Meas %d] bin FS acceleration",indexa);
 			float *ms = static_cast<float *>(axiona->m2Cpu()) ;
-			LogOut("acceleration %f %f %f %f \n",ms[0],ms[1],ms[2],ms[3]);
+			//  LogOut("acceleration %f %f %f %f \n",ms[0],ms[1],ms[2],ms[3]);
 			// JARE possible problem m2 saved as double in _DOUBLE?
 			Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), 2*axiona->Size(),
 							[] (Float x) -> float { return (double) ( x ) ;});
@@ -99,6 +94,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		}
 		FTfield pelota(axiona);
 		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
+	}
+
+	if (measa & MEAS_2DMAP){
+			if(p2dmapo)
+				writeMapHdf5s (axiona,sliceprint);
 	}
 
 	if (measa & MEAS_NEEDENERGY)
@@ -326,7 +326,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						(axiona->Field() == FIELD_AXION) )
 			{
 				// LogOut("NSPA ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPA UNMAKED",indexa);
+				LogMsg(VERB_NORMAL, "[Meas %d] NSPA UNMASKED",indexa);
 				prof.start();
 				specAna.nRun(SPMASK_FLAT);
 				prof.stop();
@@ -336,7 +336,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 				// if (axiona->Field() == FIELD_AXION)
 				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
+				if (axiona->AxionMassSq() > 0.0)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 			}
 
 			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_REDO))
@@ -369,7 +370,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Red");
 				// if (axiona->Field() == FIELD_AXION)
 				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
+				if (axiona->AxionMassSq() > 0.0)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
 
 				prof.start();
 				specAna.matrixbuilder();
@@ -392,7 +394,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					prof.add(std::string("NSPA_Vi"), 0.0, 0.0);
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Vi");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi");
+				if (axiona->AxionMassSq() > 0.0)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi");
 
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
 					prof.start();
@@ -424,7 +427,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Vi2");
 				// if (axiona->Field() == FIELD_AXION)
 				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
+				if (axiona->AxionMassSq() > 0.0)
+					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Vi2");
 
 				LogMsg(VERB_NORMAL, "[Meas %d] producing correction matrix",indexa);
 
@@ -438,7 +442,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					prof.stop();
 					prof.add(std::string("Matrix Builder"), 0.0, 0.0);
 
-
 				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Vi2");
 			}
 
@@ -446,7 +449,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			{
 				// if ( (mask & SPMASK_FLAT) || (mask & SPMASK_VIL) || (mask & SPMASK_VIL2))
 				// 	specAna.reset0();
-
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSP real and imaginary",indexa);
 				specAna.nRun(SPMASK_SAXI);
@@ -492,8 +494,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			writeArray(specAna.data(SPECTRUM_AK), specAna.PowMax(), "/nSpectrum", "averagek");
 		}
-
 	}
+
+
+
 
 	if (axiona->Field() == FIELD_SAXION){
 
@@ -534,9 +538,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						logth2Bin.run();
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
 					}
-
-
-
 	}
 	else{ // FIELD_AXION
 		if (measa & MEAS_BINTHETA)
@@ -564,6 +565,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				}
 	}
 
+	LogMsg(VERB_HIGH, "destroying meas",indexa);
+	LogFlush();
 	destroyMeas();
 	}
 
