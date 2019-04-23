@@ -224,17 +224,21 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 
 void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 
-	LogMsg	(VERB_HIGH, "Initializing propagator");
-
-
+	LogMsg	(VERB_NORMAL, "[ip] Initializing propagator");
+	LogMsg	(VERB_HIGH, "[ip] pType is %d",pType);
 	// bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
 	bool wasTuned = false;
 
-	PropcType spec ;
+	PropcType spec = PROPC_2NEIG;
 	if 	(pType & PROP_FSPEC)
+	{
 		spec = PROPC_FSPEC;
+	}
 	if 	(pType & PROP_SPEC) // overwritting
+	{
 		spec = PROPC_SPEC;
+	}
+	LogMsg	(VERB_HIGH, "[ip] spec set to %d", spec);
 
 	unsigned int xBlock, yBlock, zBlock;
 
