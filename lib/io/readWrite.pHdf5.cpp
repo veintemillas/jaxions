@@ -1329,6 +1329,7 @@ void	createMeas (Scalar *axion, int index)
 void	destroyMeas ()
 {
 	/*	Closes the currently opened file for measurements	*/
+	LogMsg (VERB_NORMAL, "Closing measurement file...");
 
 	if (opened) {
 		H5Pclose (mlist_id);
@@ -1663,11 +1664,192 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 
 /* New strings */
 
-void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO Terminar
+// void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO Terminar
+// {
+// 	LogMsg(VERB_NORMAL, "Not implemented (yet) for parallel HDF5. Ignoring request.");
+// 	return;
+// #if 0
+// 	hid_t       dataset_id, dataspace_id;  /* identifiers */
+// 	hsize_t     dims[1];
+// 	herr_t      status;
+//
+// 	size_t	sBytes	 = 0;
+//
+// 	int myRank = commRank();
+//
+// 	uint nmax = 2*axion->Length();
+//
+// 	/* String data, different casts */
+// 	char *strData;
+//
+// 	if (axion->LowMem())
+// 		{
+// 			if (axion->sDStatus() == SD_STRINGCOORD)
+// 				strData = static_cast<char *>(axion->sData());
+// 			else{
+// 				printf("Return!"); // improve
+// 				return;
+// 			}
+// 		}
+// 	else
+// 	{
+// 		if (axion->m2Status() == M2_STRINGCOO)
+// 				strData = static_cast<char *>(axion->m2Cpu());
+// 			else{
+// 				printf("Return!"); // improve
+// 				return ;
+// 			}
+// 	}
+//
+// 	/* Number of strings per rank, initialise = 0 */
+// 	size_t stringN[commSize()];
+// 	for (int i=0;i<commSize();i++)
+// 		stringN[i]=0;
+//
+// 	/*send stringN to rank 0*/
+// 	MPI_Gather( &strDat.strDen_local , 1, MPI_UNSIGNED_LONG, &stringN, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+// 	commSync();
+//
+// 	/* Check the total number*/
+// 	size_t toti = 0;
+// 	for (int i=0;i<commSize();i++){
+// 		toti += stringN[i];
+// 	}
+//
+// 	hid_t sSpace;
+// 	hid_t memSpace;
+// 	hid_t group_id;
+// 	hsize_t slab = 0;
+//
+// 	Profiler &prof = getProfiler(PROF_HDF5);
+//
+// 	/*	Start profiling		*/
+// 	LogMsg (VERB_NORMAL, "Writing string coord.");
+// 	prof.start();
+//
+// 	if (header == false || opened == false)
+// 	{
+// 		LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+// 		prof.stop();
+// 		return;
+// 	}
+//
+// 	/* Create a group for string data */
+// 	auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+// 	if (!status)
+// 		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+// 	else {
+// 		if (status > 0) {
+// 			group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, WTF
+// 			LogMsg(VERB_NORMAL, "Warning: group /string exists!");	// Since this is weird, log it
+// 		} else {
+// 			LogError ("Error: can't check whether group /string exists");
+// 		}
+// 	}
+//
+// 	/*	Maximum coordinate is 2xN	(to avoid 1/2's)*/
+// 	writeAttribute(group_id, &nmax, "nmax",  H5T_NATIVE_UINT);
+//
+// 	/*	String metadata		*/
+// 	status = H5Aexists(group_id,"String number");
+//
+// 	if (!status) {
+// 		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+// 		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
+// 		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+// 	}
+//
+// 	/* if rData write the coordinates*/
+// 	if (rData)
+// 	{
+// 		/* Total length of coordinates to write */
+// 		dims[0] = 3*toti;
+// 		/* Create the data space for the dataset. */
+// 		dataspace_id = H5Screate_simple(1, dims, NULL);
+// 		/* Create the dataset. */
+// 		dataset_id = H5Dcreate2(meas_id, "/string/codata", H5T_NATIVE_USHORT, dataspace_id,
+// 		            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+//
+// 		sSpace = H5Dget_space (dataset_id);
+// 		memSpace = H5Screate_simple(1, &slab, NULL);
+// 	}
+//
+// 	/* perhaps we need some cross-checks */
+// 	/* Write the dataset. */
+//
+// 	if (rData) {
+// 		int tSz = commSize(), test = myRank;
+//
+// 		commSync();
+//
+// 		for (int rank=0; rank<tSz; rank++)
+// 		{
+// 			/* Each rank selects a slab of its own size*/
+// 			int tralara =(int) 3*strDat.strDen_local*sizeof(unsigned short);
+//
+// 			if (myRank != 0)
+// 			{
+// 				/* Only myRank >0 sends */
+// 				if (myRank == rank){
+// 				MPI_Send(&(strData[0]), tralara, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+// 				}
+// 			}
+// 			else
+// 			{
+// 				/* Only  myRank 0 receives and writes */
+// 				slab = 3*stringN[rank];
+// 				tralara =(int) slab*sizeof(unsigned short);
+//
+// 				if (rank != 0)
+// 					{
+// 						MPI_Recv(&(strData[0]), tralara, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+// 					}
+//
+// 				/*	Select the slab in the file	*/
+// 				toti=0;
+// 				for (int i=0;i<rank;i++){
+// 					toti += stringN[i];
+// 				}
+// 				hsize_t offset = ((hsize_t) 3*toti);
+//
+// 				/* update memSpace with new slab size	*/
+// 				/* here one can partition in less than 2Gb if needed in future */
+// 				memSpace = H5Screate_simple(1, &slab, NULL);
+// 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+//
+// 				/* write file */
+// 				H5Dwrite (dataset_id, H5T_NATIVE_USHORT, memSpace, sSpace, H5P_DEFAULT, (void *) &(strData[0]) );
+// 			}
+//
+// 			commSync();
+// 		}
+//
+// 		// H5Dclose(sSpace);
+// 		// H5Dclose(memSpace);
+// 		H5Dclose(dataset_id);
+// 		H5Sclose(dataspace_id);
+//
+// 		/* the 24 is copied from writeString ... probably a bit less */
+// 		sBytes = 3*strDat.strDen*sizeof(unsigned short) + 24;
+// 	} else
+// 		sBytes = 24;
+//
+// 	H5Gclose (group_id);
+//
+// 	prof.stop();
+// 	prof.add(std::string("Write string Coord."), 0, 1e-9*sBytes);
+//
+// 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
+// 	commSync();
+// #endif
+// }
+
+/* New strings non-parallel version */
+
+void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 {
-	LogMsg(VERB_NORMAL, "Not implemented (yet) for parallel HDF5. Ignoring request.");
-	return;
-#if 0
+	LogMsg(VERB_NORMAL, "[wsco] Not implemented (yet) for parallel HDF5. Continue with sequential HDF5.");
+
 	hid_t       dataset_id, dataspace_id;  /* identifiers */
 	hsize_t     dims[1];
 	herr_t      status;
@@ -1682,22 +1864,20 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 	char *strData;
 
 	if (axion->LowMem())
-		{
-			if (axion->sDStatus() == SD_STRINGCOORD)
-				strData = static_cast<char *>(axion->sData());
-			else{
-				printf("Return!"); // improve
-				return;
-			}
-		}
-	else
 	{
+		if (axion->sDStatus() == SD_STRINGCOORD)
+			strData = static_cast<char *>(axion->sData());
+		else {
+			printf("Return!"); // improve
+			return;
+		}
+	} else {
 		if (axion->m2Status() == M2_STRINGCOO)
-				strData = static_cast<char *>(axion->m2Cpu());
-			else{
-				printf("Return!"); // improve
-				return ;
-			}
+			strData = static_cast<char *>(axion->m2Cpu());
+		else {
+			printf("Return!"); // improve
+			return ;
+		}
 	}
 
 	/* Number of strings per rank, initialise = 0 */
@@ -1706,7 +1886,7 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 		stringN[i]=0;
 
 	/*send stringN to rank 0*/
-	MPI_Gather( &strDat.strDen_local , 1, MPI_UNSIGNED_LONG, &stringN, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+	MPI_Allgather( &strDat.strDen_local , 1, MPI_UNSIGNED_LONG, &stringN, 1, MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
 	commSync();
 
 	/* Check the total number*/
@@ -1719,6 +1899,7 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 	hid_t memSpace;
 	hid_t group_id;
 	hsize_t slab = 0;
+	hsize_t offset = 0;
 
 	Profiler &prof = getProfiler(PROF_HDF5);
 
@@ -1728,13 +1909,13 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 
 	if (header == false || opened == false)
 	{
-		LogError ("Error: measurement file not opened. Ignoring write request. %d %d\n", header, opened);
+		LogError ("Error: measurement file not opened. Ignoring write request. %d %d", header, opened);
 		prof.stop();
 		return;
 	}
 
 	/* Create a group for string data */
-	auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+	status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
 	if (!status)
 		group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
@@ -1750,12 +1931,17 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 	writeAttribute(group_id, &nmax, "nmax",  H5T_NATIVE_UINT);
 
 	/*	String metadata		*/
-	status = H5Aexists(group_id,"String number");
+	status = H5Aexists(group_id, "String number");
 
-	if (!status) {
-		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
-		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+	if (status==0){
+		writeAttribute(group_id, &(strDat.strDen),  "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
+		writeAttribute(group_id, &(strDat.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
 	}
 
 	/* if rData write the coordinates*/
@@ -1763,20 +1949,13 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 	{
 		/* Total length of coordinates to write */
 		dims[0] = 3*toti;
+
 		/* Create the data space for the dataset. */
 		dataspace_id = H5Screate_simple(1, dims, NULL);
 		/* Create the dataset. */
-		dataset_id = H5Dcreate2(meas_id, "/string/codata", H5T_NATIVE_USHORT, dataspace_id,
-		            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
+		dataset_id = H5Dcreate(group_id, "codata", H5T_NATIVE_USHORT, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 		sSpace = H5Dget_space (dataset_id);
-		memSpace = H5Screate_simple(1, &slab, NULL);
-	}
 
-	/* perhaps we need some cross-checks */
-	/* Write the dataset. */
-
-	if (rData) {
 		int tSz = commSize(), test = myRank;
 
 		commSync();
@@ -1790,48 +1969,49 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 			{
 				/* Only myRank >0 sends */
 				if (myRank == rank){
-				MPI_Send(&(strData[0]), tralara, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
+					MPI_Send(&(strData[0]), tralara, MPI_CHAR, 0, rank, MPI_COMM_WORLD);
 				}
 			}
-			else
+			else  /* Only  myRank 0 receives and writes */
 			{
-				/* Only  myRank 0 receives and writes */
 				slab = 3*stringN[rank];
 				tralara =(int) slab*sizeof(unsigned short);
 
 				if (rank != 0)
-					{
-						MPI_Recv(&(strData[0]), tralara, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					}
+					MPI_Recv(&(strData[0]), tralara, MPI_CHAR, rank, rank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 				/*	Select the slab in the file	*/
 				toti=0;
-				for (int i=0;i<rank;i++){
+				for (int i=0;i<rank;i++)
 					toti += stringN[i];
-				}
-				hsize_t offset = ((hsize_t) 3*toti);
 
-				/* update memSpace with new slab size	*/
-				/* here one can partition in less than 2Gb if needed in future */
-				memSpace = H5Screate_simple(1, &slab, NULL);
+				offset = ((hsize_t) 3*toti);
+			}
+			/* update memSpace with new slab size	*/
+			/* here one can partition in less than 2Gb if needed in future */
+
+			memSpace = H5Screate_simple(1, &slab, NULL);
+			if (myRank == 0) {
 				H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-
-				/* write file */
-				H5Dwrite (dataset_id, H5T_NATIVE_USHORT, memSpace, sSpace, H5P_DEFAULT, (void *) &(strData[0]) );
+			} else {
+				H5Sselect_none(memSpace);
+				H5Sselect_none(sSpace);
 			}
 
-			commSync();
+			/* write file */
+			H5Dwrite (dataset_id, H5T_NATIVE_USHORT, memSpace, sSpace, H5P_DEFAULT, (void *) &(strData[0]) );
+			H5Sclose(memSpace);
 		}
 
-		// H5Dclose(sSpace);
-		// H5Dclose(memSpace);
+		commSync();
+
+		H5Sclose(sSpace);
 		H5Dclose(dataset_id);
 		H5Sclose(dataspace_id);
 
-		/* the 24 is copied from writeString ... probably a bit less */
-		sBytes = 3*strDat.strDen*sizeof(unsigned short) + 24;
+		sBytes = 3*strDat.strDen*sizeof(unsigned short) + 64;
 	} else
-		sBytes = 24;
+		sBytes = 64;
 
 	H5Gclose (group_id);
 
@@ -1840,7 +2020,6 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)	// TODO 
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 	commSync();
-#endif
 }
 
 void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
@@ -1887,7 +2066,7 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 	writeAttribute(group_id, &(strEDat.rho_a_Vil),   "Masked axion energy density (Vil)",  H5T_NATIVE_DOUBLE);
 	writeAttribute(group_id, &(strEDat.rho_s_Vil),   "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
 	writeAttribute(group_id, &(strEDat.nout),        "nout",			       H5T_NATIVE_HSIZE);
-	
+
 	sBytes = 56;
 
 	H5Gclose (group_id);
