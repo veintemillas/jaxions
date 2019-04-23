@@ -767,61 +767,64 @@ controlxyz = 2;
 			Float iR   = (Float) 1/Rscale;
 			Float iR2   = (Float) 1/(Rscale*Rscale);
 
-			#pragma omp parallel for schedule(static)
-			for (size_t iz=0; iz < Lz; iz++) {
-				size_t zo = Ly*(Ly+2)*iz ;
-				size_t zi = Ly*Ly*iz ;
-				size_t zp = Ly*Ly*(iz+1) ;
-				for (size_t iy=0; iy < Ly; iy++) {
-					size_t yo = (Ly+2)*iy ;
-					size_t yi = Ly*iy ;
-					size_t yp = Ly*((iy+1)%Ly) ;
-					for (size_t ix=0; ix < Ly; ix++) {
-						size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-						size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
+			if (mass > 0.0)
+			{
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*iz ;
+					size_t zi = Ly*Ly*iz ;
+					size_t zp = Ly*Ly*(iz+1) ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						size_t yp = Ly*((iy+1)%Ly) ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+							size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
 
-						switch(mask){
-							case SPMASK_FLAT:
-									// cosine version
-									// m2sa[odx] = std::sqrt(2*(1.-std::real( (ma[idx]-zaskaF)/std::abs(ma[idx]-zaskaF)))  );
-									// linear version, matches better with NR axion number although it is not accurate
-									//
-									// m2sa[odx] = mass*std::abs(std::arg(ma[idx]-zaskaF));
-									m2sa[odx] = mass*Rscale*std::arg(ma[idx]-zaskaF);
-									break;
-							case SPMASK_REDO:
-									if (strdaa[idx] & STRING_MASK){
-											m2sa[odx] = 0 ;
-									}
-									else{
-										m2sa[odx]  = mass*Rscale*std::arg(ma[idx]-zaskaF);
-									}
-									break;
-							case SPMASK_VIL:
-									m2sa[odx]  = mass*(std::abs(ma[idx]-zaskaF))*std::arg(ma[idx]-zaskaF);
-									break;
-								case SPMASK_VIL2:
-										m2sa[odx]  = mass*(std::pow(std::abs(ma[idx]-zaskaF),2)*iR)*std::arg(ma[idx]-zaskaF);
+							switch(mask){
+								case SPMASK_FLAT:
+										// cosine version
+										// m2sa[odx] = std::sqrt(2*(1.-std::real( (ma[idx]-zaskaF)/std::abs(ma[idx]-zaskaF)))  );
+										// linear version, matches better with NR axion number although it is not accurate
+										//
+										// m2sa[odx] = mass*std::abs(std::arg(ma[idx]-zaskaF));
+										m2sa[odx] = mass*Rscale*std::arg(ma[idx]-zaskaF);
 										break;
-								case SPMASK_SAXI:
-								// what do I do here?
+								case SPMASK_REDO:
+										if (strdaa[idx] & STRING_MASK){
+												m2sa[odx] = 0 ;
+										}
+										else{
+											m2sa[odx]  = mass*Rscale*std::arg(ma[idx]-zaskaF);
+										}
 										break;
-						} //end mask
+								case SPMASK_VIL:
+										m2sa[odx]  = mass*(std::abs(ma[idx]-zaskaF))*std::arg(ma[idx]-zaskaF);
+										break;
+									case SPMASK_VIL2:
+											m2sa[odx]  = mass*(std::pow(std::abs(ma[idx]-zaskaF),2)*iR)*std::arg(ma[idx]-zaskaF);
+											break;
+									case SPMASK_SAXI:
+									// what do I do here?
+											break;
+							} //end mask
+						}
 					}
 				}
-			}
 
 
-			// POTENTIAL:
-			myPlan.run(FFT_FWD);
+				// POTENTIAL:
+				myPlan.run(FFT_FWD);
 
-			// this adds the gradient Y bins into binG
-			if (mask != SPMASK_SAXI) {
-				if (spec)
-					fillBins<Float,  SPECTRUM_VV, true> ();
-				else
-					fillBins<Float,  SPECTRUM_VV, false>();
-			}
+				// this adds the gradient Y bins into binG
+				if (mask != SPMASK_SAXI) {
+					if (spec)
+						fillBins<Float,  SPECTRUM_VV, true> ();
+					else
+						fillBins<Float,  SPECTRUM_VV, false>();
+				}
+			} // potential
 
 			field->setM2     (M2_DIRTY);
 		}
@@ -2026,12 +2029,10 @@ void	SpecBin::wRun	() {
 			// r2c FFT in m2
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 			myPlan.run(FFT_FWD);
-
 			if (spec)
 				fillBins<Float,  SPECTRUM_P, true> ();
 			else
 				fillBins<Float,  SPECTRUM_P, false>();
-
 			// remove unnecessary factor 1/2 in fillBins
 			for(size_t i=0; i<powMax; i++) binP.at(i) *= 2.;
 
