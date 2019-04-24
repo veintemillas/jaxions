@@ -649,6 +649,12 @@
 
 		const double fMom1 = (2.*M_PI)/(lSize);
 
+		if (axion->Folded())
+		{
+			Folder munge(axion);
+			munge(UNFOLD_ALL);
+		}
+
 		// If field is in configuration space transform to momentum space
 		if	( !axion->MMomSpace() || !axion->VMomSpace() )
 		{
