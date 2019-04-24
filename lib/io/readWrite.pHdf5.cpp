@@ -16,6 +16,7 @@
 #include "utils/logger.h"
 
 #include "fft/fftCode.h"
+#include "scalar/fourier.h"
 
 //#include "scalar/varNQCD.h"
 
@@ -134,6 +135,12 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		(*munge)(UNFOLD_ALL);
 	}
 
+	/* Inverse FFT field if in momentum space*/
+	if	( axion->MMomSpace() || axion->VMomSpace() )
+	{
+		FTfield pelota(axion);
+		pelota(FIELD_MV, FFT_BCK); // BCK to send to position space
+	}
 	/*	Start profiling		*/
 
 	Profiler &prof = getProfiler(PROF_HDF5);
@@ -1000,8 +1007,8 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 
 	/*	Fold the field		*/
 
-	Folder munge(*axion);
-	munge(FOLD_ALL);
+	// Folder munge(*axion);
+	// munge(FOLD_ALL);
 }
 
 
@@ -2940,7 +2947,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 			slicenumber = 0;
 		}
 		Folder	munge(axion);
-		LogMsg (VERB_NORMAL, "Folded configuration, unfolding 2D slice");
+		LogMsg (VERB_NORMAL, "If configuration folded, unfold 2D slice");
 		munge(UNFOLD_SLICE, slicenumber);
 	//}
 
