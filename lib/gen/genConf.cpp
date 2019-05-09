@@ -335,11 +335,19 @@ void	ConfGenerator::runCpu	()
 			double logi = *axionField->zV();
 
 			// such a logi and msa give a different initial time! redefine
-			*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
+			*axionField->zV() = sqrt((axionField->Delta())*exp(logi)/msafromLL);
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
-			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+			double xit;
+			switch (axionField->Lambda()) {
+				case	LAMBDA_Z2:
+							xit = (249.48 + 38.8431*logi + 1086.06*logi*logi)/(21775.3 + 3665.11*logi)  ;
+							break;
+				case	LAMBDA_FIXED:
+							xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi)  ;
+							break;
+			}
 
 			/* if prepropagator this number increases */
 			double nN3 = (6.0*xit*msafromLL*msafromLL*exp(-2.0*logi));
@@ -452,8 +460,15 @@ void	ConfGenerator::runCpu	()
 			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
-
-			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+			double xit;
+			switch (axionField->Lambda()) {
+				case	LAMBDA_Z2:
+							xit = (249.48 + 38.8431*logi + 1086.06*logi*logi)/(21775.3 + 3665.11*logi)  ;
+							break;
+				case	LAMBDA_FIXED:
+							xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi)  ;
+							break;
+			}
 			double nN3 = (6.0*xit*axionField->Msa()*axionField->Msa()*exp(-2.0*logi));
 			int niter = (int) (0.8/nN3);
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
