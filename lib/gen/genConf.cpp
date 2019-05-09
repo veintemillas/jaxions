@@ -335,7 +335,7 @@ void	ConfGenerator::runCpu	()
 			double logi = *axionField->zV();
 
 			// such a logi and msa give a different initial time! redefine
-			*axionField->zV() = sqrt((axionField->Delta())*exp(logi)/msafromLL);
+			*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
