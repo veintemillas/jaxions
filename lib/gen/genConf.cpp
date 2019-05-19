@@ -335,7 +335,14 @@ void	ConfGenerator::runCpu	()
 			double logi = *axionField->zV();
 
 			// such a logi and msa give a different initial time! redefine
-			*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
+			switch (axionField->Lambda()) {
+				case	LAMBDA_Z2:
+							*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
+							break;
+				case	LAMBDA_FIXED:
+			        *axionField->zV() = sqrt((axionField->Delta())*exp(logi)/msafromLL);
+							break;
+			}
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
@@ -350,7 +357,14 @@ void	ConfGenerator::runCpu	()
 			}
 
 			/* if prepropagator this number increases */
-			double nN3 = (6.0*xit*msafromLL*msafromLL*exp(-2.0*logi));
+			double nN3;
+			switch (axionField->Lambda()) {
+				case	LAMBDA_Z2:
+							nN3 = 6.0*xit*msafromLL*msafromLL*exp(-2.0*logi);
+							break;
+				case	LAMBDA_FIXED:
+							nN3 = 6.0*xit*axionField->Delta()*msafromLL*exp(-logi);
+			}
 			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
@@ -453,11 +467,21 @@ void	ConfGenerator::runCpu	()
 			prof.stop();
 			prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 
+			double msafromLL = sqrt(2*axionField->BckGnd()->Lambda())*axionField->Delta();
+			LogMsg(VERB_NORMAL,"[GEN] msa %f and msa = %f",msafromLL,axionField->Msa());
+
 			// logi = log ms/H is taken to be zInit (which was input in command line)
 			// number of iterations needed = 0.8/(#/N^3)
 			// desired 0.8/(#/N^3) is 6*xi(logi)*msa^2*exp(-2logi)
 			double logi = *axionField->zV();
-			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			switch (axionField->Lambda()) {
+				case	LAMBDA_Z2:
+							*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
+							break;
+				case	LAMBDA_FIXED:
+			        *axionField->zV() = sqrt((axionField->Delta())*exp(logi)/msafromLL);
+							break;
+			}
 			axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 			double xit;
@@ -469,7 +493,14 @@ void	ConfGenerator::runCpu	()
 							xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi)  ;
 							break;
 			}
-			double nN3 = (6.0*xit*axionField->Msa()*axionField->Msa()*exp(-2.0*logi));
+			double nN3;
+			switch (axionField->Lambda()) {
+				case	LAMBDA_Z2:
+							nN3 = 6.0*xit*msafromLL*msafromLL*exp(-2.0*logi);
+							break;
+				case	LAMBDA_FIXED:
+							nN3 = 6.0*xit*axionField->Delta()*msafromLL*exp(-logi);
+			}
 			int niter = (int) (0.8/nN3);
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
 

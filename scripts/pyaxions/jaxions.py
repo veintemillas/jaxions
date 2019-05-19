@@ -1028,6 +1028,7 @@ class mli:
         self.msa = msa;
         self.L = L;
         self.N = 1024;
+        self.LL = 25000.;
         self.ctend = 1000;
         self.outa = []
         self.outb = []
@@ -1058,6 +1059,11 @@ class mli:
             # logi = log (msa ct/a)
             # ct = a exp(temp)*a/msa
             self.ctab.append(np.exp(temp)*self.L/self.N/self.msa)
+        if scale=='logiphys':
+            temp = np.linspace(zi,zf,measN+1)
+            # logi = log (msa ct^2/a)
+            msafromLL = math.sqrt(2.*self.LL)*self.L/self.N
+            self.ctab.append(np.sqrt(np.exp(temp)*self.L/self.N/msafromLL))
         self.mtab.append(meastype | self.me)
         print("Set with me %s created"%(meastype | self.me))
     def give(self,name="./measfile.dat"):
