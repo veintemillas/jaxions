@@ -364,6 +364,7 @@ void	ConfGenerator::runCpu	()
 							break;
 				case	LAMBDA_FIXED:
 							nN3 = 6.0*xit*axionField->Delta()*msafromLL*exp(-logi);
+							break;
 			}
 			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
@@ -500,6 +501,7 @@ void	ConfGenerator::runCpu	()
 							break;
 				case	LAMBDA_FIXED:
 							nN3 = 6.0*xit*axionField->Delta()*msafromLL*exp(-logi);
+							break;
 			}
 			int niter = (int) (0.8/nN3);
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
