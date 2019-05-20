@@ -18,6 +18,7 @@ using namespace std;
 using namespace profiler;
 
 double xivilgor(double logi);
+double xivilgorphys(double logi);
 
 template<typename Float>
 MeasData	Measureme  (Scalar *axiona, MeasInfo info)
@@ -590,11 +591,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if ( axiona->Field() == FIELD_SAXION)
 	{
 		if ( measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO) ){
+			if (axiona->Lambda() == LAMBDA_Z2) {
 		double loks = log(axiona->Msa()*z_now/axiona->Delta());
 		double Le = axiona->BckGnd()->PhysSize();
 			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
 				MeasDataOut.str.strDen );
+			} else if (axiona->Lambda() == LAMBDA_FIXED) {
+				double loks = log(axiona->Msa()*z_now*z_now/axiona->Delta());
+				double Le = axiona->BckGnd()->PhysSize();
+					LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgorphys(loks),
+						(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
+						MeasDataOut.str.strDen );
+			}
 		} else {
 			// LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
 			LogOut("str not measured ");
@@ -624,4 +633,8 @@ MeasData	Measureme  (Scalar *axiona,  MeasInfo infa)
 
 double xivilgor(double logi){
 	return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+}
+
+double xivilgorphys(double logi){
+	return (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi)  ;
 }
