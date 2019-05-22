@@ -552,7 +552,7 @@ def nspcor(mfile, nm, spmask='Red'):
 #   builds the (masked) axion kinetic spectrum with the correction matrix and outputs the time evolution
 
 class nspevol:
-    def __init__(self, mfiles, spmask='Red'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -615,7 +615,7 @@ class nspevol:
 #   NOTE: The energy density is evaluated just by muptiplying the kinetic energy by 2.
 
 class espevol:
-    def __init__(self, mfiles, spmask='Red'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
