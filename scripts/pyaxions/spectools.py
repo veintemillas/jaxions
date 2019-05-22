@@ -42,10 +42,11 @@ def dfunc(x, a0, a1, a2, a3):
 #     spmask = 'Vi2' -> Masked with (rho/v)^2
 
 class fitP:
-    def __init__(self, mfiles, spmask='Red'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -71,7 +72,10 @@ class fitP:
                 nsptab.append(nsp)
         self.t = np.array(ttab)
         self.nsp = np.array(nsptab)
-        self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
+        if lltype == 'Z2':
+            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
         # cutoff time (chosen as log(ms/H) = 4)
         istart = np.abs(self.log - 4.).argmin()
         self.param = []
@@ -119,11 +123,13 @@ class fitP:
 
 #   calculate instantaneous spectrum based on analytical fit
 class inspA:
-    def __init__(self, mfiles, spmask='Red'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
         fitp = fitP(mfiles,spmask)
+        self.lltype = lltype
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
         self.msa = fitp.msa
+        self.LL = fitp.LL
         self.nm = fitp.nm
         self.avek = fitp.avek
         self.k_below = fitp.k_below
@@ -161,7 +167,10 @@ class inspA:
         self.Fnorm = np.array(self.Fnorm)
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
-        self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL) # log(m_s/H)
+        if lltype == 'Z2':
+            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
 
 
 
@@ -170,10 +179,12 @@ class inspA:
 
 #   calculate instantaneous spectrum based on backward difference
 class inspB:
-    def __init__(self, mfiles, spmask='Red'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+        self.lltype = lltype
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -226,7 +237,10 @@ class inspB:
         self.Fnorm = np.array(self.Fnorm)
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
-        self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL) # log(m_s/H)
+        if lltype == 'Z2':
+            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
 
 
 
@@ -235,10 +249,12 @@ class inspB:
 
 #   calculate instantaneous spectrum based on central difference
 class inspC:
-    def __init__(self, mfiles, spmask='Red'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+        self.lltype = lltype
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -283,7 +299,10 @@ class inspC:
         self.Fnorm = np.array(self.Fnorm)
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
-        self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL) # log(m_s/H)
+        if lltype == 'Z2':
+            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
 
 
 
@@ -294,10 +313,11 @@ class inspC:
 class inspave:
     def __init__(self, insplist):
         Nreal = len(insplist) # number of realizations
+        self.lltype = insplist[0].lltype
         self.sizeN = insplist[0].sizeN
         self.sizeL = insplist[0].sizeL
         self.msa = insplist[0].msa
-        faclog = self.msa*self.sizeN/self.sizeL
+        self.LL = insplist[0].LL
         self.nm = insplist[0].nm
         self.avek = insplist[0].avek
         self.k_below = insplist[0].k_below
@@ -321,7 +341,7 @@ class inspave:
             self.F.append(F)
             self.dF.append(np.sqrt(Fsq))
             self.Fnorm.append(Fnorm)
-            print('\r%d/%d, log = %.2f'%(id+1,len(insplist[0].t),math.log(faclog*insplist[0].t[id])),end="")
+            print('\r%d/%d, log = %.2f'%(id+1,len(insplist[0].t),insplist[0].log[id]),end="")
         print("")
         self.F = np.array(self.F)
         self.dF = np.array(self.dF)
@@ -337,9 +357,11 @@ class inspave:
 #   assuming input as an inspave class object
 class rebinF:
     def __init__(self, inspave, nbin, cmin, cmax):
+        self.lltype = inspave.lltype
         self.sizeN = inspave.sizeN
         self.sizeL = inspave.sizeL
         self.msa = inspave.msa
+        self.LL = inspave.LL
         self.t = inspave.t
         self.log = inspave.log
         self.xbin = []
@@ -349,7 +371,10 @@ class rebinF:
         self.xlim = []
         for id in range(len(inspave.t)):
             print('\r%d/%d, log = %.2f'%(id+1,len(inspave.t),inspave.log[id]),end="")
-            msoverH = inspave.t[id]*inspave.sizeN*inspave.msa/inspave.sizeL
+            if self.lltype == 'Z2':
+                msoverH = inspave.t[id]*inspave.sizeN*inspave.msa/inspave.sizeL
+            elif self.lltype == 'fixed':
+                msoverH = math.sqrt(2.*self.LL)*(inspave.t[id]**2)
             x = inspave.x[id]
             inspmtab = inspave.F[id]
             xmin = cmin
@@ -531,6 +556,7 @@ class nspevol:
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -565,10 +591,17 @@ class nspevol:
                     self.nspcor.append(s1)
                 else:
                     print('Wrong option for spmask!')
-                print('\rbuilt up to log = %.2f'%np.log(t*self.msa*self.sizeN/self.sizeL),end="")
+                if lltype == 'Z2':
+                    logi = math.log(t*self.sizeN*self.msa/self.sizeL)
+                elif lltype == 'fixed':
+                    logi = math.log(math.sqrt(2.*self.LL)*t**2)
+                print('\rbuilt up to log = %.2f'%logi,end="")
         print("")
         self.ttab = np.array(self.ttab)
-        self.logtab = np.log(self.ttab*self.msa*self.sizeN/self.sizeL)
+        if lltype == 'Z2':
+            self.logtab = np.log(self.ttab*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
         self.nsp = np.array(self.nsp)
         self.nspcor = np.array(self.nspcor)
 
@@ -586,6 +619,7 @@ class espevol:
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -627,9 +661,16 @@ class espevol:
                     self.espcor.append(e1)
                 else:
                     print('Wrong option for spmask!')
-                print('\rbuilt up to log = %.2f'%np.log(t*self.msa*self.sizeN/self.sizeL),end="")
+                if lltype == 'Z2':
+                    logi = math.log(t*self.sizeN*self.msa/self.sizeL)
+                elif lltype == 'fixed':
+                    logi = math.log(math.sqrt(2.*self.LL)*t**2)
+                print('\rbuilt up to log = %.2f'%logi,end="")
         print("")
         self.ttab = np.array(self.ttab)
-        self.logtab = np.log(self.ttab*self.msa*self.sizeN/self.sizeL)
+        if lltype == 'Z2':
+            self.logtab = np.log(self.ttab*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
         self.esp = np.array(self.esp)
         self.espcor = np.array(self.espcor)
