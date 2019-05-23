@@ -552,7 +552,7 @@ def nspcor(mfile, nm, spmask='Red'):
 #   builds the (masked) axion kinetic spectrum with the correction matrix and outputs the time evolution
 
 class nspevol:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -573,22 +573,25 @@ class nspevol:
                     self.nsp.append(pa.gm(f,'nspK'))
                 elif spmask == 'Red':
                     s0 = pa.gm(f,'nspK_Red')
-                    m = pa.gm(f,'mspM_Red')
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     self.nsp.append(s0)
-                    self.nspcor.append(s1)
+                    if cor == 'correction':
+                        m = pa.gm(f,'mspM_Red')
+                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        self.nspcor.append(s1)
                 elif spmask == 'Vi':
                     s0 = pa.gm(f,'nspK_Vi')
-                    m = pa.gm(f,'mspM_Vi')
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     self.nsp.append(s0)
-                    self.nspcor.append(s1)
+                    if cor == 'correction':
+                        m = pa.gm(f,'mspM_Vi')
+                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        self.nspcor.append(s1)
                 elif spmask == 'Vi2':
                     s0 = pa.gm(f,'nspK_Vi2')
-                    m = pa.gm(f,'mspM_Vi2')
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     self.nsp.append(s0)
-                    self.nspcor.append(s1)
+                    if cor == 'correction':
+                        m = pa.gm(f,'mspM_Vi2')
+                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        self.nspcor.append(s1)
                 else:
                     print('Wrong option for spmask!')
                 if lltype == 'Z2':
@@ -615,7 +618,7 @@ class nspevol:
 #   NOTE: The energy density is evaluated just by muptiplying the kinetic energy by 2.
 
 class espevol:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', lltype='Z2', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -637,28 +640,31 @@ class espevol:
                     self.esp.append(e0)
                 elif spmask == 'Red':
                     s0 = pa.gm(f,'nspK_Red')
-                    m = pa.gm(f,'mspM_Red')
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
                     self.esp.append(e0)
-                    self.espcor.append(e1)
+                    if cor == 'correction':
+                        m = pa.gm(f,'mspM_Red')
+                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
+                        self.espcor.append(e1)
                 elif spmask == 'Vi':
                     s0 = pa.gm(f,'nspK_Vi')
-                    m = pa.gm(f,'mspM_Vi')
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
                     self.esp.append(e0)
-                    self.espcor.append(e1)
+                    if cor == 'correction':
+                        m = pa.gm(f,'mspM_Vi')
+                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
+                        self.espcor.append(e1)
                 elif spmask == 'Vi2':
                     s0 = pa.gm(f,'nspK_Vi2')
-                    m = pa.gm(f,'mspM_Vi2')
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
                     self.esp.append(e0)
-                    self.espcor.append(e1)
+                    if cor == 'correction':
+                        m = pa.gm(f,'mspM_Vi2')
+                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
+                        self.espcor.append(e1)
                 else:
                     print('Wrong option for spmask!')
                 if lltype == 'Z2':
