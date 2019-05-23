@@ -180,7 +180,10 @@ int	main (int argc, char *argv[])
 				while(!feof(cacheFile)){
 					if (meastype < 0)
 						meastype = defaultmeasType;
-					if (mesi < *axion->zV()){
+					//if (mesi < *axion->zV()){
+					if ((mesi < *axion->zV()) && (abs(1.0 -(*axion->zV())/mesi)>0.0001)){
+					// the initial measurement can be occationally discarded here if we set the first measurement time as the initial time of the simulation. (issue?)
+					// we allow some fluctuation in order to avoid that.
 						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED",mesi,*axion->zV());
 					}
 					else {
