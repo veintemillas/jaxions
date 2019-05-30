@@ -16,7 +16,7 @@
 
 using namespace std;
 
-double findct2(double pre_msa, double msa, double ct0, double delta);
+double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType);
 
 void	prepropa  (Scalar *axiona)
 {
@@ -51,6 +51,8 @@ void	prepropa  (Scalar *axiona)
 		munge(FOLD_ALL);
 	}
 
+	LambdaType lType = axiona->Lambda();
+
 	double dzaux;
 	initPropagator (pType, axiona, VQCD_1);
 	tunePropagator (axiona);
@@ -59,16 +61,37 @@ void	prepropa  (Scalar *axiona)
 	// zInit is the logi we wanted
 	double masa = axiona->Msa();
 	double delto = axiona->Delta();
-	double ct2 = findct2(prepcoe*masa, masa, ct0, delto);
+	double ct2;
+	switch (lType) {
+		case	LAMBDA_Z2:
+			ct2 = findct2(prepcoe*masa, masa, ct0, delto, lType);
+			break;
+		case LAMBDA_FIXED:
+			ct2 = findct2(prepcoe*prepcoe*masa, masa, ct0, delto, lType);
+			break;
+	}
 
 	LogOut("[prep] Started prepropaga %f with msa=%f\n",ct0,masa);
 	LogOut("[prep] We propagate until nN3(logi+log(prepcoe))[ct2] = nN3(logi)[ct0]\n");
 	LogOut("[prep] Since nN3 = 6 xit(logi)*(delta/ct)^2 we find ... ct2 ~ %f\n",ct2);
 
 	double logi = zInit;
-	double xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
-	double cta = delto*exp(logi)/masa;; // corresponds to tthis time
-	double goalnN3 = 6*xit*pow(delto/cta,2);
+	double xit, cta, goalnN3;
+
+	switch (lType) {
+		case	LAMBDA_Z2:
+					cta = delto*exp(logi)/masa; // corresponds to tthis time
+					xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+					goalnN3 = 6*xit*pow(delto/cta,2);
+					break;
+		case	LAMBDA_FIXED:
+					cta = sqrt(delto*exp(logi)/masa); // corresponds to tthis time
+					xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+					goalnN3 = 6*xit*pow(delto/cta,2);
+					break;
+	}
+
+	LogOut("[prep] goalnN3 = %f\n",goalnN3);
 
 	fIndex2 = 0 ;
 	while ( *axiona->zV() < 1.2*ct2 )
@@ -94,22 +117,43 @@ void	prepropa  (Scalar *axiona)
 	}
 }
 
-double findct2(double pre_msa, double msa, double ct0, double delta)
+double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType)
 {
 	double ct2 =ct0;
 	double logi = zInit; // logi as input
-	double cta = delta*exp(logi)/msa;; // corresponds to tthis time
-	double xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
-	double goalnN3 = 6*xit*pow(delta/cta,2);
-	logi = log(pre_msa/delta*ct0);
-	xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
-	double nN3 = 6*xit*pow(delta/ct0,2);
-	printf("Goal nN3 =%f",goalnN3);
+	double cta, xit, goalnN3, nN3;
+	switch (lType) {
+		case	LAMBDA_Z2:
+					cta = delta*exp(logi)/msa; // corresponds to tthis time
+					xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+					goalnN3 = 6*xit*pow(delta/cta,2);
+					logi = log(pre_msa/delta*ct0);
+					xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+					nN3 = 6*xit*pow(delta/ct0,2);
+					break;
+		case	LAMBDA_FIXED:
+					cta = sqrt(delta*exp(logi)/msa); // corresponds to tthis time
+					xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+					goalnN3 = 6*xit*pow(delta/cta,2);
+					logi = log(pre_msa/delta*ct0*ct0);
+					xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+					nN3 = 6*xit*pow(delta/ct0,2);
+					break;
+	}
+	//printf("Goal nN3 =%f",goalnN3);
 	while (goalnN3 < nN3)
 	{
 		ct2 += ct2/20.;
-		logi = log(pre_msa/delta*ct2);
-		xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+		switch (lType) {
+			case	LAMBDA_Z2:
+				logi = log(pre_msa/delta*ct2);
+				xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi);
+				break;
+			case	LAMBDA_FIXED:
+				logi = log(pre_msa/delta*ct2*ct2);
+				xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+				break;
+		}
 		nN3 = 6*xit*pow(delta/ct2,2);
 	}
 	LogMsg(VERB_NORMAL,"ct2 %f ", ct2 );
@@ -143,10 +187,20 @@ void	relaxrho  (Scalar *axiona)
 
 	double masa = axiona->Msa();
 	double logi = zInit;
-	double xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
 	double delto = axiona->Delta() ;
-	double cta = delto*exp(logi)/masa; // time when we want to stop with goal
-	double goalnN3 = 6*xit*pow(delto/cta,2);
+	double xit, cta, goalnN3;
+	switch (axiona->Lambda()) {
+		case	LAMBDA_Z2:
+					cta = delto*exp(logi)/masa; // time when we want to stop with goal
+					xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
+					goalnN3 = 6*xit*pow(delto/cta,2);
+					break;
+		case	LAMBDA_FIXED:
+					cta = sqrt(delto*exp(logi)/masa); // time when we want to stop with goal
+					xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+					goalnN3 = 6*xit*pow(delto/cta,2);
+					break;
+	}
 	if (iter > 0 ) goalnN3 = min(kCrit*goalnN3,1.0);
 
 	LogOut("[prep] goal nN3 = %f \n", goalnN3);

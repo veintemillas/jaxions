@@ -323,7 +323,14 @@ void	ConfGenerator::runCpu	()
 
 			double LALA = axionField->BckGnd()->Lambda();
 			if (preprop){
-					axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe);
+					switch (axionField->Lambda()) {
+						case	LAMBDA_Z2:
+							axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe);
+							break;
+						case LAMBDA_FIXED:
+							axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe*prepcoe*prepcoe);
+							break;
+					}
 					LogOut("[GEN] Mira qe cambio LL %f -> %f\n",LALA,axionField->BckGnd()->Lambda());
 			}
 
@@ -423,7 +430,14 @@ void	ConfGenerator::runCpu	()
 					double rsave = 1/(*axionField->RV());
 
 					/* travel back in time to have the originally hoped for value of logi */
-					*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+					switch (axionField->Lambda()) {
+						case	LAMBDA_Z2:
+									*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+									break;
+						case	LAMBDA_FIXED:
+					        *axionField->zV() = sqrt((axionField->Delta())*exp(logi)/axionField->Msa());
+									break;
+					}
 					axionField->updateR();
 
 					double ska = *axionField->RV()*rsave;
