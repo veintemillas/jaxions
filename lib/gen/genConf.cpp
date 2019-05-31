@@ -466,8 +466,15 @@ void	ConfGenerator::runCpu	()
 				} // end damping-less cases
 				else if (pregammo > 0.0)
 				{
+					// gammo is reserved for long-time damping
+					// use pregammo for prepropagation damping
+					double gammo_save = myCosmos->Gamma();
+					myCosmos->SetGamma(pregammo);
+					LogMsg(VERB_NORMAL,"[GEN] gammo %f -> pregammo %f for prepropagation damping\n ",gammo_save,myCosmos->Gamma());
 					axionField->BckGnd()->SetLambda(LALA);
 					relaxrho(axionField);
+					myCosmos->SetGamma(gammo_save);
+					LogMsg(VERB_NORMAL,"[GEN] rho damping finished. gammo -> %f\n ",myCosmos->Gamma());
 				}
 			}
 
