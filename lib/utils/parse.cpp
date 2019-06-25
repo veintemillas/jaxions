@@ -46,6 +46,8 @@ int endredmapwkb = -1;
 int safest0   = 20;
 size_t nstrings_globale ;
 
+double biasV   = 0.0;
+double biasP   = 0.0;
 
 bool lowmem   = false;
 bool uPrec    = false;
@@ -55,6 +57,8 @@ bool uLambda  = false;
 bool uMsa     = false;
 bool uI3      = false;
 bool uPot     = false;
+bool uBiP     = false;
+bool uBiV     = false;
 bool uGamma   = false;
 bool uZth     = false;
 bool uZrs     = false;
@@ -241,7 +245,7 @@ void	PrintUsage(char *name)
 	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
 	printf("  --vqcd2                       Variant of QCD potential (default, disabled).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
-
+	printf("  --NDW2                        NDW = 2, use biasV/biasP for the bias height and phase (only N=1).\n");
 
 	printf("\nInitial conditions:\n");
 	printf("  --icinfo                      Prints more info about initial conditions.\n");
@@ -599,6 +603,36 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--biasV"))
+		{
+			uBiV  = true;
+			biasV = atof(argv[i+1]);
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--biasP"))
+		{
+			uBiP  = true;
+			biasP = atof(argv[i+1]);
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		// if (!strcmp(argv[i], "--biasN"))
+		// {
+		//
+		// 	biasN = atof(argv[i+1]);
+		// 	i++;
+		// 	procArgs++;
+		// 	passed = true;
+		// 	goto endFor;
+		// }
 
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
@@ -1872,20 +1906,20 @@ Cosmos	createCosmos()
 
 	/*	I'm reading from disk	*/
 	if (fIndex >= 0.) {
+		if (uSize)
+			myCosmos.SetPhysSize(sizeL);
+
 		if (uMsa || uLambda)
 			myCosmos.SetLambda(LL);
-
-		if (uQcd)
-			myCosmos.SetQcdExp(nQcd);
-
-		if (uGamma)
-			myCosmos.SetGamma(gammo);
 
 		if (uPot)
 			myCosmos.SetQcdPot(vqcdType);
 
-		if (uSize)
-			myCosmos.SetPhysSize(sizeL);
+		if (uI3)
+			myCosmos.SetIndi3(indi3);
+
+		if (uQcd)
+			myCosmos.SetQcdExp(nQcd);
 
 		if (uZth)
 			myCosmos.SetZThRes  (zthres);
@@ -1893,22 +1927,30 @@ Cosmos	createCosmos()
 		if (uZrs)
 			myCosmos.SetZRestore(zrestore);
 
-		if (uI3)
-			myCosmos.SetIndi3(indi3);
+		if (uBiV)
+			myCosmos.SetBiasV(biasV);
+
+		if (uBiP)
+			myCosmos.SetBiasP(biasP);
+
+		if (uGamma)
+			myCosmos.SetGamma(gammo);
 
 		if (uFR)
 			myCosmos.SetFrw(frw);
 		if (uMI)
 			myCosmos.SetMink(mink);
 	} else {
-		myCosmos.SetLambda  (LL);
-		myCosmos.SetQcdExp  (nQcd);
-		myCosmos.SetGamma   (gammo);
-		myCosmos.SetQcdPot  (vqcdType);
 		myCosmos.SetPhysSize(sizeL);
+		myCosmos.SetLambda  (LL);
+		myCosmos.SetQcdPot  (vqcdType);
+		myCosmos.SetIndi3   (indi3);
+		myCosmos.SetQcdExp  (nQcd);
 		myCosmos.SetZThRes  (zthres);
 		myCosmos.SetZRestore(zrestore);
-		myCosmos.SetIndi3   (indi3);
+		myCosmos.SetBiasV(biasV);
+		myCosmos.SetBiasP(biasP);
+		myCosmos.SetGamma   (gammo);
 		myCosmos.SetFrw     (frw);
 		myCosmos.SetMink    (mink);
 	}

@@ -31,7 +31,7 @@
 */
 template<const VqcdType VQcd>
 inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
-				    const double ood2, const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
+				    const double ood2, const double LL, const double aMass2, Cosmos myCosme, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
 	const size_t Sf = Lx*Lx;
@@ -63,8 +63,10 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gamma;
-//		const double GGiZ = GGGG/zR;
+		double ga = myCosme.Gamma();
+		const double GGGG = pow(ood2,0.5) * ga;
+		const double b0 = z2*myCosme.BiasV();
+
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
@@ -277,7 +279,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
 							opCode(set1_pd, ood2)),
 							// 1N2 part
-						opCode(mul_pd,zNVec,mel)),
+						opCode(add_pd,opCode(mul_pd,zNVec,mel), // QCD
+													opCode(mul_pd, opCode(set1_pd, b0), opCode(sub_pd, mel, zRVec)))), //BIAS
 					opCode(mul_pd,
 						opCode(mul_pd,
 							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
@@ -396,8 +399,9 @@ tmp = opCode(sub_pd,
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
-		const float GGGG = pow(ood2,0.5)*gamma;
-//		const float GGiZ = GGGG/zR;
+		const float GGGG = pow(ood2,0.5)*myCosme.Gamma();
+		const float b0 = z2*myCosme.BiasV();
+
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
@@ -618,7 +622,8 @@ tmp = opCode(sub_pd,
 									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
 								opCode(set1_ps, ood2)),
 								// 1N2 part
-							opCode(mul_ps,zNVec,mel)),
+							opCode(add_ps,opCode(mul_ps,zNVec,mel), // QCD
+														opCode(mul_ps, opCode(set1_ps, b0), opCode(sub_ps, mel, zRVec)))), //BIAS
 						opCode(mul_ps,
 							opCode(mul_ps,
 								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
@@ -824,7 +829,7 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 
 template<const VqcdType VQcd>
 inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, double *R, const double dz, const double c, const double ood2,
-			    const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
+			    const double LL, const double aMass2, Cosmos myCosme, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
 {
 	if (precision == FIELD_DOUBLE)
 	{
@@ -851,8 +856,9 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gamma;
-//		const double GGiZ = GGGG/zR;
+		const double GGGG = pow(ood2,0.5)*myCosme.Gamma();
+		const double b0 = z2*myCosme.BiasV();
+
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
@@ -1050,7 +1056,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 									opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
 								opCode(set1_pd, ood2)),
 								// 1N2 part
-							opCode(mul_pd,zNVec,mel)),
+							opCode(add_pd,opCode(mul_pd,zNVec,mel), // QCD
+														opCode(mul_pd, opCode(set1_pd, b0), opCode(sub_pd, mel, zRVec)))), //BIAS
 						opCode(mul_pd,
 							opCode(mul_pd,
 								opCode(sub_pd, mPx, opCode(set1_pd, z2)),
@@ -1161,8 +1168,9 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2./z4;
-		const float GGGG = pow(ood2, 0.5)*gamma;
-//		const float GGiZ = GGGG/zR;
+		const float GGGG = pow(ood2, 0.5)*myCosme.Gamma();
+		const float b0 = z2*myCosme.BiasV();
+
 		const float mola = GGGG*dzc/2.;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
@@ -1366,7 +1374,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
 								opCode(set1_ps, ood2)),
 								// 1N2 part
-							opCode(mul_ps,zNVec,mel)),
+							opCode(add_ps,opCode(mul_ps,zNVec,mel), // QCD
+														opCode(mul_ps, opCode(set1_ps, b0), opCode(sub_ps, mel, zRVec)))), //BIAS
 						opCode(mul_ps,
 							opCode(mul_ps,
 								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
