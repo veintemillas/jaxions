@@ -280,7 +280,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 							opCode(set1_pd, ood2)),
 							// 1N2 part
 						opCode(add_pd,opCode(mul_pd,zNVec,mel), // QCD
-													opCode(mul_pd, opCode(set1_pd, b0), opCode(sub_pd, mel, zRVec)))), //BIAS
+													opCode(mul_pd, opCode(set1_pd, b0), opCode(sub_pd, zRVec, mel)))), //BIAS
 					opCode(mul_pd,
 						opCode(mul_pd,
 							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
@@ -623,7 +623,7 @@ tmp = opCode(sub_pd,
 								opCode(set1_ps, ood2)),
 								// 1N2 part
 							opCode(add_ps,opCode(mul_ps,zNVec,mel), // QCD
-														opCode(mul_ps, opCode(set1_ps, b0), opCode(sub_ps, mel, zRVec)))), //BIAS
+														opCode(mul_ps, opCode(set1_ps, b0), opCode(sub_ps, zRVec, mel)))), //BIAS
 						opCode(mul_ps,
 							opCode(mul_ps,
 								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
@@ -1057,7 +1057,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 								opCode(set1_pd, ood2)),
 								// 1N2 part
 							opCode(add_pd,opCode(mul_pd,zNVec,mel), // QCD
-														opCode(mul_pd, opCode(set1_pd, b0), opCode(sub_pd, mel, zRVec)))), //BIAS
+														opCode(mul_pd, opCode(set1_pd, b0), opCode(sub_pd, zRVec, mel)))), //BIAS
 						opCode(mul_pd,
 							opCode(mul_pd,
 								opCode(sub_pd, mPx, opCode(set1_pd, z2)),
@@ -1375,7 +1375,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 								opCode(set1_ps, ood2)),
 								// 1N2 part
 							opCode(add_ps,opCode(mul_ps,zNVec,mel), // QCD
-														opCode(mul_ps, opCode(set1_ps, b0), opCode(sub_ps, mel, zRVec)))), //BIAS
+														opCode(mul_ps, opCode(set1_ps, b0), opCode(sub_ps, zRVec, mel)))), //BIAS
 						opCode(mul_ps,
 							opCode(mul_ps,
 								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
