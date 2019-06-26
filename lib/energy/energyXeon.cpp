@@ -29,7 +29,8 @@
 
 template<const VqcdType VQcd, const bool map>
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *R, const double o2, const double LL,
-			 const double aMass2, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
+			 const double aMass2, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift,
+			 Cosmos myCosme)
 {
 	const size_t Sf = Lx*Lx;
 	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
@@ -61,6 +62,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		//const double zQ = 9.*pow(zR, nQcd+2.);
 		const double zQ = aMass2*zR*zR;
 		const double lZ = 0.25*LL*zR*zR;
+		const double b0 = zR*zR*myCosme.BiasV()/zQ;
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -357,6 +359,11 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						mSg = opCode(sub_pd, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^2-1)^2
 						mCg = opCode(mul_pd, hVec, opCode(sub_pd, one, opCode(div_pd, Gry, Grz)));
+						mTp = opCode(sub_pd, qcd2, opCode(mul_pd, Grx, iiiZ));								  // (1-Re'/Z), -Im/Z
+						mCg = opCode(add_pd,mCg,
+										opCode(mul_pd, opCode(set1_pd,b0),
+											opCode(mul_pd, hVec, opCode(md2_pd, opCode(mul_pd,mTp,mTp)) )));	// 0.5*((1-Re'/Z)^2+(Im/Z)^2), ...2
+
 					break;
 				}
 #if	defined(__AVX512F__)
@@ -493,6 +500,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		const float zQ = aMass2*zR*zR;
 		const float lZ = 0.25f*LL*zR*zR;
 		const float sh = shift;				// Makes clang happy
+		const float b0 = zR*zR*myCosme.BiasV()/zQ;  // divide by zQ because of the last multiplication
 
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
@@ -826,14 +834,23 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						break;
 
 					case	VQCD_1N2:		//to be checked
+						// saxion
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
+						// axion QCD energy is 0.25*chi*(1 - Re^2/mod^2 + Im^2/mod^2)
+						// axion QCD energy is 0.25*chi*(1 - cos 2theta) = 0.5*chi*(Sin^2 theta)
 						// Gry = [Re^2, Im^2]
 						// Grz = Mod^2, Mod^2...
 						// ...   Im^2/Mod^22
 						// ... = (1 - Gry/Grz)/2
 						mCg = opCode(mul_ps, hVec,opCode(sub_ps, one, opCode(div_ps,Gry,Grz)));
-
+						// bias needs to add a term similar to QCD2
+						// b0R^2 0.5*(1 - Re'/Z)^2 + (-Im/Z)^2
+						mTp = opCode(sub_ps, qcd2, opCode(mul_ps, Grx, iiiZ));								  // (1-Re'/Z), -Im/Z
+						mCg = opCode(add_ps,mCg,
+										opCode(mul_ps, opCode(set1_ps,b0),
+											opCode(mul_ps, hVec, opCode(md2_ps, opCode(mul_ps,mTp,mTp)) )));	// 0.5*((1-Re'/Z)^2+(Im/Z)^2), ...2
+						//  can do it all at once
 
 					break;
 
@@ -962,6 +979,7 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 	const size_t Lz = field->Depth();
 	const size_t Vo = field->Surf();
 	const size_t Vf = Vo + field->Size();
+	Cosmos cosmi = *field->BckGnd();
 
 	field->exchangeGhosts(FIELD_M);
 
@@ -973,12 +991,12 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 			if (map == true) {
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 				} else {
-					energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 				}
 			} else {
-				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 			}
 			break;
 		case	VQCD_1_PQ_2:
@@ -986,13 +1004,13 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
 					energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf,
-									    field->Precision(), eRes, shift);
+									    field->Precision(), eRes, shift, cosmi);
 				} else {
 					energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf,
-									    field->Precision(), eRes, shift);
+									    field->Precision(), eRes, shift, cosmi);
 				}
 			} else {
-				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 			}
 			break;
 
@@ -1000,12 +1018,12 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 			if (map == true) {
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 				} else {
-					energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 				}
 			} else {
-				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 			}
 			break;
 
@@ -1013,12 +1031,12 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 			if (map == true) {
 				if (field->LowMem()) {
 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1N2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_1N2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 				} else {
-					energyKernelXeon<VQCD_1N2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+					energyKernelXeon<VQCD_1N2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 				}
 			} else {
-				energyKernelXeon<VQCD_1N2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+				energyKernelXeon<VQCD_1N2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift, cosmi);
 			}
 			break;
 
