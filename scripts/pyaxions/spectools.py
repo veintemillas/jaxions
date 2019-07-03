@@ -1165,3 +1165,228 @@ class espevol:
             self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
         self.esp = np.array(self.esp)
         self.espcor = np.array(self.espcor)
+
+class combiq:
+    def __init__(self, mfiles):
+        self.sizeN = pa.gm(mfiles[0],'sizeN')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.k = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*np.pi/self.sizeL)
+        self.lk   = np.log(self.k)
+        self.ct = pa.gml(mfiles,'ct')
+        self.lct  = np.log(self.ct)
+        self.logi  = pa.gml(mfiles,'logi')
+        self.cmassS  = np.sqrt(2*pa.gml(mf,'lambda')*pa.gml(mf,'ct')**2)
+
+        self.nmax = len(self.nm)
+        self.ntab = np.arange(0,self.nmax+1)
+        self.nv = 4*np.pi*(self.ntab[1:]**3-self.ntab[:-1]**3)/3
+        self.corr = self.nv/self.nm
+
+        self.nsp_tab = []
+        self.lnsp_tab = []
+        self.nsp = 0
+
+        self.F      = 1
+        self.nspI   = 1
+        self.lF   = 1
+
+        self.name_tab  = []
+        self.order   = 0
+
+        self.nsp_rebin= 1
+        self.lnsp_rebin= 1
+        self.F_rebin  = 1
+        self.lF_rebin  = 1
+        self.k_rebin  = 0
+        self.nspI_rebin = 0
+        self.lk_rebin = 0
+
+        self.qtab= 1
+        self.stab= 1
+        self.qsigma = 1
+        self.qfit = 1
+        self.qlogi = 1
+
+        self.qtab_rebin= 1
+        self.stab_rebin= 1
+        self.qsigma_rebin = 1
+        self.qfit_rebin = 1
+        self.qlogi_rebin = 1
+
+    def addsimu(self,mfiles2,setname=''):
+        if setname=='':
+            setname = str(self.order)
+        tempct = pa.gml(mfiles2,'ct')
+
+        tempspe = pa.gml(mfiles2,'nspK_Red')
+        self.nsp_tab.append(tempspe)
+        self.lnsp_tab.append(np.log(tempspe))
+        self.order = self.order+1
+        self.name_tab.append(setname)
+        print("New set %s added"%setname)
+        print("len(nsp_tab)=%d "%len(self.nsp_tab))
+
+#     def rebin(self,bindet):
+        # combines lk's, lnsp's
+
+    def average(self):
+        self.nsp = 0
+        for se in range(len(self.nsp_tab)):
+            self.nsp += self.nsp_tab[se]
+        self.nsp = self.nsp/self.order
+        self.lnsp = np.log(self.nsp)
+
+    def rebin(self,logbinsperdecade=5):
+
+        lkmin = self.lk[1]
+        lkmax = self.lk[-1]
+        nvin = logbinsperdecade*(lkmax-lkmin)/np.log(10.)
+        bins = np.linspace(lkmin,lkmax,int(nvin))
+        lkk = self.lk[1:]
+        his0 = np.histogram(lkk,bins=bins)
+        his = np.histogram(lkk,weights=lkk,bins=bins)
+        mask = his0[0] > 0
+        self.lk_rebin = his[0][mask]/his0[0][mask]
+        self.k_rebin  = np.exp(self.lk_rebin)
+        rSS=[]
+
+        for t in range(len(self.ct)):
+            lsp = self.lnsp[t][1:]
+
+            hiss= np.histogram(lkk,weights=lsp,bins=bins)
+
+            rSS.append(hiss[0][mask]/his0[0][mask])
+
+        self.lnsp_rebin= np.array(rSS)
+        self.nsp_rebin= np.exp(self.lnsp_rebin)
+
+    def computeF(self,array='nsp',Ng=4,p_order=1):
+        self.average()
+        if array == 'nsp':
+            spe = self.lnsp
+            kkk = self.lk
+        elif array == 'nsp_rebin':
+            spe = self.lnsp_rebin
+            kkk = self.lk_rebin
+
+
+        # spectrum
+        sout = []
+        # derivative with respect to ... time or conformal time
+        dout = []
+        mout = []
+        for ct0 in self.ct:
+            cuve = np.argsort((self.ct-ct0)**2)
+            x = self.lct[cuve][:Ng]
+            lis = []
+            der = []
+            mas = []
+            for kc in range(len(kkk)):
+                y = spe[cuve,kc][:Ng]
+                # fit y = x pp[0] + pp[1]
+                p = np.polyfit(x,y,p_order)
+                pp = np.poly1d(p)
+                # evaluate y at the function, not the data point
+                va = np.exp(pp(np.log(ct0)))
+                lis.append(va)
+                # evaluate the derivative as ds/dt = (s/t) (d log s / d log t)
+                # version: conformal time
+#                 der.append((va/ct0)*pp[0])
+                # version: usual time = ctime^2
+                der.append((va/ct0**2)*pp[1]/2)
+                mas.append(pp[1])
+            sout.append(lis)
+            dout.append(der)
+            mout.append(mas)
+
+        if array == 'nsp':
+            self.F = np.array(dout)
+            self.nspI = np.array(sout)
+            self.lF = np.array(mout)
+        elif array == 'nsp_rebin':
+            self.F_rebin = np.array(dout)
+            self.nspI_rebin = np.array(sout)
+            self.lF_rebin = np.array(mout)
+
+    def buildqq(self,array='F',xmin=30,xxmax=1/4,qtab=np.linspace(0.2,1.5,1000)):
+        if array == 'F':
+            spe = self.F
+            kkk = self.k
+        elif array == 'F_rebin':
+            spe = self.F_rebin
+            kkk = self.k_rebin
+
+        tout = []
+        qout = []
+        sigma = []
+        logi = []
+        tabout = []
+        sout = []
+        tabout_full = []
+
+
+        for t in range(len(self.ct)):
+            ct0 = self.ct[t]
+            mask = (kkk*ct0 > xmin ) * (kkk < xxmax * self.cmassS[t] ) * (spe[t] > 0)
+#             print('%s t=%d=%f %d'%(array,t,ct0,mask.sum()))
+            if mask.sum() < 2:
+                continue
+            ta = np.log(spe[t][mask])
+            ka = np.log(kkk[mask])
+            ma = ka**0 # allows reweigthing
+#             print('ta',ta)
+#             print('ka',ka)
+
+            a1 = (ka/ma).sum()/(1/ma).sum()
+            b1 = (ta/ma).sum()/(1/ma).sum()
+            a2 = (ka/ma).sum()/(ka**2/ma).sum()
+            b2 = (ta*ka/ma).sum()/(ka**2/ma).sum()
+            q_min = (b1*a2-b2)/(1-a1*a2)
+
+        #   compute a sensible value of sigma
+            s_min = ((ta + ka*q_min)/ma).sum()/((1/ma).sum())
+            pre = (s_min - ka*q_min - ta)**2/ma
+
+#             print('s =%f q=%f'%(s_min,q_min))
+            prechi2_0 = pre.sum()
+            ksig2 = pre.mean()
+            ksig = np.sqrt(ksig2)
+            chi0 = prechi2_0/ksig2
+
+#             print('prechi2 %f ksig2'%(s_min,q_min))
+            def cacique(q):
+                ss = ((ta + ka*q)/ma).sum()/((1/ma).sum())
+                pre = (ss - ka*q - ta)**2/ma
+                return pre.sum()
+
+            sil = np.array([cacique(q) for q in qtab])
+            chirel=sil/ksig2 - chi0
+            inter =  chirel < 1
+            if inter.sum() <1:
+                print('problem!')
+                print('chirel min %f max %f'%(chirel.min(),chirel.max()))
+                continue
+            CL2 = qtab[inter][-1] - q_min
+            CL1 = q_min - qtab[inter][0]
+            qout.append(q_min)
+            sout.append(s_min)
+
+            sigma.append([CL1,CL2])
+            tout.append(ct0)
+            logi.append(self.logi[t])
+            tabout.append([ka,ta])
+
+        if array == 'F':
+            self.qtab = np.array(qout)
+            self.stab = np.array(sout)
+            self.qsig = np.array(sigma)
+            self.qfit = np.array(tabout)
+            self.qlogi = np.array(logi)
+        elif array == 'F_rebin':
+            self.qtab_rebin = np.array(qout)
+            self.stab_rebin = np.array(sout)
+            self.qsig_rebin = np.array(sigma)
+            self.qfit_rebin = np.array(tabout)
+            self.qlogi_rebin = np.array(logi)
