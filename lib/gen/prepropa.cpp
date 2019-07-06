@@ -32,8 +32,9 @@ void	prepropa  (Scalar *axiona)
 
 	// default measurement type is parsed
 	ninfa.measdata = defaultmeasType;
-	// ninfa.mask = spmask;
-	// ninfa.rmask = rmask;
+	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
+	ninfa.strmeas = strmeas;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
@@ -170,6 +171,9 @@ void	relaxrho  (Scalar *axiona)
 	ninfa.idxprint = 0 ;
 	ninfa.index = 0;
 	ninfa.measdata = defaultmeasType;
+	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
+	ninfa.strmeas = strmeas;
 
 	Folder munge(axiona);
 	if (cDev != DEV_GPU){
