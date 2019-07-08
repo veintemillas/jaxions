@@ -1187,6 +1187,8 @@ class combiq:
         self.nsp_tab = []
         self.lnsp_tab = []
         self.nsp = 0
+        self.xi_tab = []
+        self.xi = 0
 
         self.F      = 1
         self.nspI   = 1
@@ -1223,6 +1225,7 @@ class combiq:
         tempspe = pa.gml(mfiles2,'nspK_Red')
         self.nsp_tab.append(tempspe)
         self.lnsp_tab.append(np.log(tempspe))
+        self.xi_tab.append(pa.gml(mfiles2,'stDens'))
         self.order = self.order+1
         self.name_tab.append(setname)
         print("New set %s added"%setname)
@@ -1233,10 +1236,13 @@ class combiq:
 
     def average(self):
         self.nsp = 0
+        self.xi = 0
         for se in range(len(self.nsp_tab)):
             self.nsp += self.nsp_tab[se]
+            self.xi += self.xi_tab[se]
         self.nsp = self.nsp/self.order
         self.lnsp = np.log(self.nsp)
+        self.xi = self.xi/self.order
 
     def rebin(self,logbinsperdecade=5):
 
