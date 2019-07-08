@@ -1177,7 +1177,7 @@ class combiq:
         self.ct = pa.gml(mfiles,'ct')
         self.lct  = np.log(self.ct)
         self.logi  = pa.gml(mfiles,'logi')
-        self.cmassS  = np.sqrt(2*pa.gml(mf,'lambda')*pa.gml(mf,'ct')**2)
+        self.cmassS  = np.sqrt(2*pa.gml(mfiles,'lambda')*pa.gml(mfiles,'ct')**2)
 
         self.nmax = len(self.nm)
         self.ntab = np.arange(0,self.nmax+1)
@@ -1293,9 +1293,9 @@ class combiq:
                 lis.append(va)
                 # evaluate the derivative as ds/dt = (s/t) (d log s / d log t)
                 # version: conformal time
-#                 der.append((va/ct0)*pp[0])
+                 der.append((va/ct0)*pp[0])
                 # version: usual time = ctime^2
-                der.append((va/ct0**2)*pp[1]/2)
+                # der.append((va/ct0**2)*pp[0]/2)
                 mas.append(pp[1])
             sout.append(lis)
             dout.append(der)
