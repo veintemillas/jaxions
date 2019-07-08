@@ -1187,8 +1187,6 @@ class combiq:
         self.nsp_tab = []
         self.lnsp_tab = []
         self.nsp = 0
-        self.xi_tab = []
-        self.xi = 0
 
         self.F      = 1
         self.nspI   = 1
@@ -1217,6 +1215,12 @@ class combiq:
         self.qfit_rebin = 1
         self.qlogi_rebin = 1
 
+        self.xi_tab = []
+        self.xi = 0
+        self.rc1 = 0
+        self.rc2 = 0
+        self.rc3 = 0
+
     def addsimu(self,mfiles2,setname=''):
         if setname=='':
             setname = str(self.order)
@@ -1243,6 +1247,11 @@ class combiq:
         self.nsp = self.nsp/self.order
         self.lnsp = np.log(self.nsp)
         self.xi = self.xi/self.order
+
+        der = np.gradient(self.xi,self.ct)
+        self.rc1 = -(der/self.xi_tab[0]/self.ct)*self.ct**2/2
+        self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
+        self.rc3 = (1/self.logi*0.5*der/self.xi_tab[0]/self.ct)*self.ct**2/2
 
     def rebin(self,logbinsperdecade=5):
 
