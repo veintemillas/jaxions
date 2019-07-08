@@ -1293,7 +1293,7 @@ class combiq:
                 lis.append(va)
                 # evaluate the derivative as ds/dt = (s/t) (d log s / d log t)
                 # version: conformal time
-                 der.append((va/ct0)*pp[0])
+                der.append((va/ct0)*pp[0])
                 # version: usual time = ctime^2
                 # der.append((va/ct0**2)*pp[0]/2)
                 mas.append(pp[1])
