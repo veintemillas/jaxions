@@ -1249,9 +1249,9 @@ class combiq:
         self.xi = self.xi/self.order
 
         der = np.gradient(self.xi,self.ct)
-        self.rc1 = -(der/self.xi_tab[0]/self.ct)*self.ct**2/2
+        self.rc1 = -(der/self.xi/self.ct**2)*self.ct**2/2
         self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
-        self.rc3 = (1/self.logi*0.5*der/self.xi_tab[0]/self.ct)*self.ct**2/2
+        self.rc3 = (1/self.logi*0.5*der/self.xi/self.ct)*self.ct**2/2
 
     def rebin(self,logbinsperdecade=5):
 
