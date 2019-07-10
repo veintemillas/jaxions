@@ -888,6 +888,10 @@ controlxyz = 2;
 void	SpecBin::nSRun	() {
 	// saxion spectrum
 
+	binK.assign(powMax, 0.);
+	binG.assign(powMax, 0.);
+	binV.assign(powMax, 0.);
+
 	if	(field->Folded())
 	{
 		Folder	munge(field);
