@@ -1187,6 +1187,7 @@ class combiq:
         self.nsp_tab = []
         self.lnsp_tab = []
         self.nsp = 0
+        self.sp = {}
 
         self.F      = 1
         self.nspI   = 1
@@ -1221,37 +1222,74 @@ class combiq:
         self.rc2 = 0
         self.rc3 = 0
 
-    def addsimu(self,mfiles2,setname=''):
+    def addsimu(self,mfiles2,setlisttoadd=['nspK'],mask='_Red',setname=''):
         if setname=='':
             setname = str(self.order)
         tempct = pa.gml(mfiles2,'ct')
 
-        tempspe = pa.gml(mfiles2,'nspK_Red')
-        self.nsp_tab.append(tempspe)
-        self.lnsp_tab.append(np.log(tempspe))
-        self.xi_tab.append(pa.gml(mfiles2,'stDens'))
-        self.order = self.order+1
-        self.name_tab.append(setname)
-        print("New set %s added"%setname)
-        print("len(nsp_tab)=%d "%len(self.nsp_tab))
+        # old legacy
+        # tempspe = pa.gml(mfiles2,'nspK_Red')
+        # self.nsp_tab.append(tempspe)
+        # self.lnsp_tab.append(np.log(tempspe))
+        # self.xi_tab.append(pa.gml(mfiles2,'stDens'))
+        # # self.order = self.order+1
+        # # self.name_tab.append(setname)
+        # print("New set %s added"%setname)
+        # print("len(nsp_tab)=%d "%len(self.nsp_tab))
+
+        # new dic
+        for set in setlisttoadd:
+            # if mask != '':
+            #     sptype = set+'_'+mask+'_tab'
+            # else :
+            #     sptype = set+'_tab'
+            if set[:3] == 'nsp':
+                settab = set+mask+'_tab'
+                setcal = set+mask
+            else :
+                settab = set+'_tab'
+                setcal = set
+
+            if not settab in self.sp:
+                self.sp[settab] = []
+            tempspe = pa.gml(mfiles2,set)
+            self.sp[settab].append(tempspe)
 
 #     def rebin(self,bindet):
         # combines lk's, lnsp's
 
-    def average(self):
-        self.nsp = 0
-        self.xi = 0
-        for se in range(len(self.nsp_tab)):
-            self.nsp += self.nsp_tab[se]
-            self.xi += self.xi_tab[se]
-        self.nsp = self.nsp/self.order
-        self.lnsp = np.log(self.nsp)
-        self.xi = self.xi/self.order
+    def average(self,setlisttoav=['nspK'],mask='_Red',setname=''):
+        #legacy
+        # self.nsp = 0
+        # self.xi = 0
+        # for se in range(len(self.nsp_tab)):
+        #     self.nsp += self.nsp_tab[se]
+        #     self.xi += self.xi_tab[se]
+        # self.nsp = self.nsp/len(self.nsp_tab)
+        # self.lnsp = np.log(self.nsp)
+        # self.xi = self.xi/len(self.nsp_tab)
+        #
+        # der = np.gradient(self.xi,self.ct)
+        # self.rc1 = -(der/self.xi/self.ct**2)*self.ct**2/2
+        # self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
+        # self.rc3 = (1/self.logi*0.5*der/self.xi/self.ct)*self.ct**2/2
+        #new dic
+        for set in setlisttoav:
+            if set[:3] == 'nsp':
+                settab = set+mask+'_tab'
+                setcal = set+mask
+            else :
+                settab = set+'_tab'
+                setcal = set
 
-        der = np.gradient(self.xi,self.ct)
-        self.rc1 = -(der/self.xi/self.ct**2)*self.ct**2/2
-        self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
-        self.rc3 = (1/self.logi*0.5*der/self.xi/self.ct)*self.ct**2/2
+            if not settab in self.sp:
+                print(sptype,' not found, skipping its average')
+            else :
+                self.sp[setcal] = 0
+                for se in range(len(self.sp[settab])):
+                    self.sp[setcal] += self.sp[settab][se]
+                self.sp[setcal] /= len(self.sp[settab])
+
 
     def rebin(self,logbinsperdecade=5):
 
@@ -1267,24 +1305,48 @@ class combiq:
         self.k_rebin  = np.exp(self.lk_rebin)
         rSS=[]
 
-        for t in range(len(self.ct)):
-            lsp = self.lnsp[t][1:]
+        #legacy
+        # for t in range(len(self.ct)):
+        #     lsp = self.lnsp[t][1:]
+        #
+        #     hiss= np.histogram(lkk,weights=lsp,bins=bins)
+        #
+        #     rSS.append(hiss[0][mask]/his0[0][mask])
+        #
+        # self.lnsp_rebin= np.array(rSS)
+        # self.nsp_rebin= np.exp(self.lnsp_rebin)
 
-            hiss= np.histogram(lkk,weights=lsp,bins=bins)
+        for set in setlisttoav:
+            if set[:3] == 'nsp':
+                settab = set+mask+'_tab'
+                setcal = set+mask
+            else :
+                settab = set+'_tab'
+                setcal = set
 
-            rSS.append(hiss[0][mask]/his0[0][mask])
+            if not settab in self.sp:
+                print(sptype,' not found, skipping its average')
+            else :
+                self.sp[setcal] = 0
+                for se in range(len(self.sp[settab])):
+                    self.sp[setcal] += self.sp[settab][se]
+                self.sp[setcal] /= len(self.sp[settab])
 
-        self.lnsp_rebin= np.array(rSS)
-        self.nsp_rebin= np.exp(self.lnsp_rebin)
 
-    def computeF(self,array='nsp',Ng=4,p_order=1):
-        self.average()
-        if array == 'nsp':
-            spe = self.lnsp
-            kkk = self.lk
-        elif array == 'nsp_rebin':
-            spe = self.lnsp_rebin
-            kkk = self.lk_rebin
+
+    def computeF(self,array='nspK_Red',Ng=4):
+        self.average() # do I need this?
+        # if array == 'nspK':
+            # spe = self.lnsp
+        if not array in self.sp:
+            print('No available set!, try average first or input data!')
+            return 0
+
+        spe = np.log(self.sp[array])
+        kkk = self.lk
+        # elif array == 'nsp_rebin':
+        #     spe = self.lnsp_rebin
+        #     kkk = self.lk_rebin
 
 
         # spectrum
