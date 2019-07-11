@@ -93,26 +93,26 @@
 
 		typedef	enum	VqcdType_s
 		{
-			VQCD_1		       = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
-			VQCD_2		       = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
+			VQCD_1		     = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
+			VQCD_2		     = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
 			VQCD_1_PQ_2	     = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
-			VQCD_1N2	       = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_QUAD	       = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_1N2	     = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_QUAD	     = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
 
 			VQCD_1_RHO	     = 8193,		// First version QCD potential, only rho evolution
 			VQCD_2_RHO	     = 8194,		// Second version QCD potential, only rho evolution
-			VQCD_1_PQ_2_RHO	 = 8196,		// PQ version QCD potential, only rho evolution
-			VQCD_1N2_RHO     = 8200,
+			VQCD_1_PQ_2_RHO	     = 8196,		// PQ version QCD potential, only rho evolution
+			VQCD_1N2_RHO         = 8200,
 
 			VQCD_1_DRHO	     = 16385,		// First version QCD potential, rho damping
 			VQCD_2_DRHO	     = 16386,		// Second version QCD potential, rho damping
-			VQCD_1_PQ_2_DRHO = 16388,		// PQ version QCD potential, rho damping
-			VQCD_1N2_DRHO    = 16392,
+			VQCD_1_PQ_2_DRHO     = 16388,		// PQ version QCD potential, rho damping
+			VQCD_1N2_DRHO        = 16392,
 
 			VQCD_1_DALL	     = 32769,		// First version QCD potential, full damping
 			VQCD_2_DALL	     = 32770,		// Second version QCD potential, full damping
-			VQCD_1_PQ_2_DALL = 32772,		// PQ version QCD potential, full damping
-			VQCD_1N2_DALL    = 32776,		// PQ version QCD potential, full damping
+			VQCD_1_PQ_2_DALL     = 32772,		// PQ version QCD potential, full damping
+			VQCD_1N2_DALL	     = 32776,		// PQ version QCD potential, full damping
 
 			VQCD_1_DRHO_RHO	     = 24577,	// First version QCD potential, rho damping and only rho evolution
 			VQCD_2_DRHO_RHO	     = 24578,	// Second version QCD potential, rho damping and only rho evolution
@@ -125,14 +125,14 @@
 			VQCD_1N2_DALL_RHO    = 40968,
 
 			/*	VQCD Masks	*/
-			VQCD_TYPE		= 15,		// Masks base potential
-			VQCD_DAMP		= 49152,	// Masks damping mode 16384+32768
+			VQCD_TYPE	      = 15,		// Masks base potential
+			VQCD_DAMP	      = 49152,	// Masks damping mode 16384+32768
 
 			/*	VQCD Flags	*/
-			VQCD_EVOL_RHO		= 8192,
-			VQCD_DAMP_RHO		= 16384,
-			VQCD_DAMP_ALL		= 32768,
-			VQCD_NONE		= 0,
+			VQCD_EVOL_RHO	      = 8192,
+			VQCD_DAMP_RHO	      = 16384,
+			VQCD_DAMP_ALL	      = 32768,
+			VQCD_NONE	      = 0,
 		}	VqcdType;
 
 		typedef enum	ConfType_s
