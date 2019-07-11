@@ -1186,16 +1186,12 @@ class combiq:
 
         self.nsp_tab  = []
         self.lnsp_tab = []
-        self.nsp_jk   = []
-        self.lnsp_jk  = []
-        self.nsp   = 0
-        self.lnsp  = 0
-        self.ensp  = 0
-        self.elnsp = 0
 
-        self.F    = 1
-        self.eF   = 1
-        self.nspI = 1
+        self.nsp = 0
+        self.sp = {}
+
+        self.F      = 1
+        self.nspI   = 1
         self.lF   = 1
 
         self.name_tab = []
@@ -1229,37 +1225,79 @@ class combiq:
         self.rc2 = 0
         self.rc3 = 0
 
-    def addsimu(self,mfiles2,setname=''):
+    def addsimu(self,mfiles2,setlisttoadd=['nspK'],mask='_Red',setname=''):
         if setname=='':
             setname = str(self.order)
         tempct = pa.gml(mfiles2,'ct')
 
-        tempspe = pa.gml(mfiles2,'nspK_Red')
-        self.nsp_tab.append(tempspe)
-        self.lnsp_tab.append(np.log(tempspe))
-        self.xi_tab.append(pa.gml(mfiles2,'stDens'))
-        self.order = self.order+1
-        self.name_tab.append(setname)
-        print("New set %s added"%setname)
-        print("len(nsp_tab)=%d "%len(self.nsp_tab))
+        # old legacy
+        # tempspe = pa.gml(mfiles2,'nspK_Red')
+        # self.nsp_tab.append(tempspe)
+        # self.lnsp_tab.append(np.log(tempspe))
+        # self.xi_tab.append(pa.gml(mfiles2,'stDens'))
+        # # self.order = self.order+1
+        # # self.name_tab.append(setname)
+        # print("New set %s added"%setname)
+        # print("len(nsp_tab)=%d "%len(self.nsp_tab))
+
+        # new dic
+        for set in setlisttoadd:
+            # if mask != '':
+            #     sptype = set+'_'+mask+'_tab'
+            # else :
+            #     sptype = set+'_tab'
+            if set[:3] == 'nsp':
+                settab = set+mask+'_tab'
+                setcal = set+mask
+            else :
+                settab = set+'_tab'
+                setcal = set
+
+            if not settab in self.sp:
+                self.sp[settab] = []
+            tempspe = pa.gml(mfiles2,set)
+            self.sp[settab].append(tempspe)
 
 #     def rebin(self,bindet):
         # combines lk's, lnsp's
 
-    def average(self):
-        self.nsp = 0
-        self.xi  = 0
-        for se in range(len(self.nsp_tab)):
-            self.nsp += self.nsp_tab[se]
-            self.xi += self.xi_tab[se]
-        self.nsp = self.nsp/self.order
-        self.lnsp = np.log(self.nsp)
-        self.xi = self.xi/self.order
+    def average(self,setlisttoav=['nspK'],mask='_Red',setname=''):
+        #legacy
+        # self.nsp = 0
+        # self.xi = 0
+        # for se in range(len(self.nsp_tab)):
+        #     self.nsp += self.nsp_tab[se]
+        #     self.xi += self.xi_tab[se]
+        # self.nsp = self.nsp/len(self.nsp_tab)
+        # self.lnsp = np.log(self.nsp)
+        # self.xi = self.xi/len(self.nsp_tab)
+        #
+        # der = np.gradient(self.xi,self.ct)
+        # self.rc1 = -(der/self.xi/self.ct**2)*self.ct**2/2
+        # self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
+        # self.rc3 = (1/self.logi*0.5*der/self.xi/self.ct)*self.ct**2/2
 
-        der = np.gradient(self.xi,self.ct)
-        self.rc1 = -(der/self.xi_tab[0]/self.ct)*self.ct**2/2
-        self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
-        self.rc3 = (1/self.logi*0.5*der/self.xi_tab[0]/self.ct)*self.ct**2/2
+        #new dic
+
+        # sonthing like this can select tabs
+        # for l in lis:
+        #     if l[:3] == 'nsp' and l[-4:] == '_tab':
+        #         print(l)
+        for set in setlisttoav:
+            if set[:3] == 'nsp':
+                settab = set+mask+'_tab'
+                setcal = set+mask
+            else :
+                settab = set+'_tab'
+                setcal = set
+
+            if not settab in self.sp:
+                print(settab,' not found, skipping its average')
+            else :
+                self.sp[setcal] = 0
+                for se in range(len(self.sp[settab])):
+                    self.sp[setcal] += self.sp[settab][se]
+                self.sp[setcal] /= len(self.sp[settab])
 
 #        eNsp = 0
 #        eXi  = 0
@@ -1305,24 +1343,48 @@ class combiq:
         self.k_rebin  = np.exp(self.lk_rebin)
         rSS=[]
 
-        for t in range(len(self.ct)):
-            lsp = self.lnsp[t][1:]
+        #legacy
+        # for t in range(len(self.ct)):
+        #     lsp = self.lnsp[t][1:]
+        #
+        #     hiss= np.histogram(lkk,weights=lsp,bins=bins)
+        #
+        #     rSS.append(hiss[0][mask]/his0[0][mask])
+        #
+        # self.lnsp_rebin= np.array(rSS)
+        # self.nsp_rebin= np.exp(self.lnsp_rebin)
 
-            hiss= np.histogram(lkk,weights=lsp,bins=bins)
+        for set in setlisttoav:
+            if set[:3] == 'nsp':
+                settab = set+mask+'_tab'
+                setcal = set+mask
+            else :
+                settab = set+'_tab'
+                setcal = set
 
-            rSS.append(hiss[0][mask]/his0[0][mask])
+            if not settab in self.sp:
+                print(sptype,' not found, skipping its average')
+            else :
+                self.sp[setcal] = 0
+                for se in range(len(self.sp[settab])):
+                    self.sp[setcal] += self.sp[settab][se]
+                self.sp[setcal] /= len(self.sp[settab])
 
-        self.lnsp_rebin= np.array(rSS)
-        self.nsp_rebin= np.exp(self.lnsp_rebin)
 
-    def computeF(self,array='nsp',Ng=4,p_order=1):
-        self.average()
-        if array == 'nsp':
-            spe = self.lnsp
-            kkk = self.lk
-        elif array == 'nsp_rebin':
-            spe = self.lnsp_rebin
-            kkk = self.lk_rebin
+    # It could take an extra array of points instead of self.ct
+    def computeF(self,array='nspK_Red',Ng=4,poliorder=1):
+        self.average() # do I need this?
+        # if array == 'nspK':
+            # spe = self.lnsp
+        if not array in self.sp:
+            print('No available set!, try average first or input data!')
+            return 0
+
+        spe = np.log(self.sp[array])
+        kkk = self.lk
+        # elif array == 'nsp_rebin':
+        #     spe = self.lnsp_rebin
+        #     kkk = self.lk_rebin
 
 
         # spectrum
@@ -1339,37 +1401,54 @@ class combiq:
             for kc in range(len(kkk)):
                 y = spe[cuve,kc][:Ng]
                 # fit y = x pp[0] + pp[1]
-                p = np.polyfit(x,y,p_order)
+                p = np.polyfit(x,y,poliorder)
                 pp = np.poly1d(p)
                 # evaluate y at the function, not the data point
                 va = np.exp(pp(np.log(ct0)))
                 lis.append(va)
                 # evaluate the derivative as ds/dt = (s/t) (d log s / d log t)
                 # version: conformal time
-                der.append((va/ct0)*pp[0])
+                pp2 = np.polyder(pp)
+                logder = pp2(np.log(ct0))
+                der.append((va/ct0)*logder)
                 # version: usual time = ctime^2
                 # der.append((va/ct0**2)*pp[0]/2)
-                mas.append(pp[1])
+                mas.append(pp[-1])
             sout.append(lis)
             dout.append(der)
             mout.append(mas)
 
-        if array == 'nsp':
-            self.F = np.array(dout)
-            self.nspI = np.array(sout)
-            self.lF = np.array(mout)
-        elif array == 'nsp_rebin':
-            self.F_rebin = np.array(dout)
-            self.nspI_rebin = np.array(sout)
-            self.lF_rebin = np.array(mout)
+        # legacy
+        # if array == 'nsp':
+        #     self.F = np.array(dout)
+        #     self.nspI = np.array(sout)
+        #     self.lF = np.array(mout)
+        # elif array == 'nsp_rebin':
+        #     self.F_rebin = np.array(dout)
+        #     self.nspI_rebin = np.array(sout)
+        #     self.lF_rebin = np.array(mout)
 
-    def buildqq(self,array='F',xmin=30,xxmax=1/4,qtab=np.linspace(0.2,1.5,1000)):
-        if array == 'F':
-            spe = self.F
-            kkk = self.k
-        elif array == 'F_rebin':
-            spe = self.F_rebin
+        self.sp[array+'_F'] = np.array(dout)
+        self.sp[array+'_I'] = np.array(sout)
+        self.sp[array+'_lF'] = np.array(mout)
+
+    # computes the exponent of the spectrum as a function of time
+    def buildqq(self,array='nspK_Red_F',xmin=30,xxmax=1/4,qtab=np.linspace(0.2,1.5,1000)):
+        # legacy
+        # if array == 'F':
+        #     spe = self.F
+        #     kkk = self.k
+        # elif array == 'F_rebin':
+        #     spe = self.F_rebin
+        #     kkk = self.k_rebin
+
+        spe = self.sp[array]
+
+        if '_rebin' in array:
             kkk = self.k_rebin
+
+        else:
+            kkk = self.k
 
         tout = []
         qout = []
@@ -1431,15 +1510,22 @@ class combiq:
             logi.append(self.logi[t])
             tabout.append([ka,ta])
 
-        if array == 'F':
-            self.qtab = np.array(qout)
-            self.stab = np.array(sout)
-            self.qsig = np.array(sigma)
-            self.qfit = np.array(tabout)
-            self.qlogi = np.array(logi)
-        elif array == 'F_rebin':
-            self.qtab_rebin = np.array(qout)
-            self.stab_rebin = np.array(sout)
-            self.qsig_rebin = np.array(sigma)
-            self.qfit_rebin = np.array(tabout)
-            self.qlogi_rebin = np.array(logi)
+        # legacy
+        # if array == 'F':
+        #     self.qtab = np.array(qout)
+        #     self.stab = np.array(sout)
+        #     self.qsig = np.array(sigma)
+        #     self.qfit = np.array(tabout)
+        #     self.qlogi = np.array(logi)
+        # elif array == 'F_rebin':
+        #     self.qtab_rebin = np.array(qout)
+        #     self.stab_rebin = np.array(sout)
+        #     self.qsig_rebin = np.array(sigma)
+        #     self.qfit_rebin = np.array(tabout)
+        #     self.qlogi_rebin = np.array(logi)
+        # newps
+        self.sp[array+'_qtab'] = np.array(qout)
+        self.sp[array+'_stab'] = np.array(sout)
+        self.sp[array+'_qsig'] = np.array(sigma)
+        self.sp[array+'_qfit'] = np.array(tabout)
+        self.sp[array+'_qlogi'] = np.array(logi)

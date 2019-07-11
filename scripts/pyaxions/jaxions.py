@@ -362,10 +362,10 @@ def gm(address,something='summary',printerror=False):
         return 0. ;
 
     # strings
-    st_check = 'string' in f
+    st_check = ('string' in f)
     if (something[0:2] == 'st') and ftype == 'Axion':
         return 0. ;
-    if (something[0:2] == 'st') and st_check and ftype == 'Saxion':
+    if (something[0:2] == 'st' or something[0:2] == 'xi') and st_check and ftype == 'Saxion':
         if (something == 'stringN'):
             return f['string'].attrs[u'String number'] ;
         if (something == 'stringL'):
@@ -380,7 +380,7 @@ def gm(address,something='summary',printerror=False):
             return f['string'].attrs[u'String velocity squared'] ;
         if (something == 'stGamma'):
             return f['string'].attrs[u'String gamma'] ;
-        if (something == 'stDens'):
+        if (something == 'stDens') or (something == 'xi'):
             stringN = f['string'].attrs[u'String number']
             L = f.attrs[u'Physical size']
             N = f.attrs[u'Size']
