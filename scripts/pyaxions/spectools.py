@@ -1204,6 +1204,7 @@ class combiq:
         self.k_rebin    = 0
         self.nspI_rebin = 0
         self.lk_rebin   = 0
+        self.lk_rebin_n   = 0
 
         self.qtab   = 1
         self.stab   = 1
@@ -1299,6 +1300,12 @@ class combiq:
                     self.sp[setcal] += self.sp[settab][se]
                 self.sp[setcal] /= len(self.sp[settab])
 
+                self.sp[setcal+'_sigma'] = 0
+                for se in range(len(self.sp[settab])):
+                    self.sp[setcal+'_sigma'] += (self.sp[settab][se] - self.sp[setcal])
+                self.sp[setcal+'_sigma'] /= len(self.sp[settab])
+                self.sp[setcal+'_sigma'] = np.sqrt(self.sp[setcal+'_sigma'])/len(self.sp[settab])
+
 #        eNsp = 0
 #        eXi  = 0
 #
@@ -1309,7 +1316,7 @@ class combiq:
 #        self.lnsp_jk = np.zeros((self.order))
 #        self.xi_jk   = np.zeros((self.order))
 #
-#        for nMeas in range(len(self.nsp_tab)):        
+#        for nMeas in range(len(self.nsp_tab)):
 #            tNsp = 0
 #            tXi  = 0
 #            for se in range(len(self.nsp_tab)):
@@ -1329,7 +1336,7 @@ class combiq:
 #        self.elNsp = np.cov(self.lnsp_jk, rowvar=False, bias=True)*(self.order-1)
 #        self.eXi   = np.cov(self.xi_jk,   rowvar=False, bias=True)*(self.order-1)
 
-    def rebin(self,logbinsperdecade=5):
+    def rebin(self,setlisttorebin=['nspK_Red'],logbinsperdecade=10):
 
         lkmin = self.lk[1]
         lkmax = self.lk[-1]
@@ -1342,6 +1349,8 @@ class combiq:
         self.lk_rebin = his[0][mask]/his0[0][mask]
         self.k_rebin  = np.exp(self.lk_rebin)
         rSS=[]
+        rSS2=[]
+        self.lk_rebin_n = his0[0][mask]
 
         #legacy
         # for t in range(len(self.ct)):
@@ -1353,23 +1362,19 @@ class combiq:
         #
         # self.lnsp_rebin= np.array(rSS)
         # self.nsp_rebin= np.exp(self.lnsp_rebin)
+        for setname in setlisttorebin:
+            for t in range(len(self.ct)):
+                lsp = np.log(self.sp[setname][t][1:])
+                hiss= np.histogram(lkk,weights=lsp,bins=bins)
+                lsp_ave = hiss[0][mask]/his0[0][mask]
+                rSS.append(lsp_ave)
 
-        for set in setlisttoav:
-            if set[:3] == 'nsp':
-                settab = set+mask+'_tab'
-                setcal = set+mask
-            else :
-                settab = set+'_tab'
-                setcal = set
-
-            if not settab in self.sp:
-                print(sptype,' not found, skipping its average')
-            else :
-                self.sp[setcal] = 0
-                for se in range(len(self.sp[settab])):
-                    self.sp[setcal] += self.sp[settab][se]
-                self.sp[setcal] /= len(self.sp[settab])
-
+                hiss2= np.histogram(lkk,weights=lsp**2,bins=bins)
+                lsp2_ave = hiss2[0][mask]/his0[0][mask]
+                rSS2.append( np.sqrt(np.abs(lsp2_ave - lsp_ave**2))/his0[0][mask] )
+            self.sp[setname+'_lrebin'] = np.array(rSS)
+            self.sp[setname+'_lrebin_sigma'] = np.array(rSS2)
+            self.sp[setname+'_rebin'] = np.exp(np.array(rSS))
 
     # It could take an extra array of points instead of self.ct
     def computeF(self,array='nspK_Red',Ng=4,poliorder=1):
