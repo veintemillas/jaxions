@@ -1181,42 +1181,50 @@ class combiq:
 
         self.nmax = len(self.nm)
         self.ntab = np.arange(0,self.nmax+1)
-        self.nv = 4*np.pi*(self.ntab[1:]**3-self.ntab[:-1]**3)/3
+        self.nv   = 4*np.pi*(self.ntab[1:]**3-self.ntab[:-1]**3)/3
         self.corr = self.nv/self.nm
 
-        self.nsp_tab = []
+        self.nsp_tab  = []
         self.lnsp_tab = []
-        self.nsp = 0
+        self.nsp_jk   = []
+        self.lnsp_jk  = []
+        self.nsp   = 0
+        self.lnsp  = 0
+        self.ensp  = 0
+        self.elnsp = 0
 
-        self.F      = 1
-        self.nspI   = 1
+        self.F    = 1
+        self.eF   = 1
+        self.nspI = 1
         self.lF   = 1
 
-        self.name_tab  = []
-        self.order   = 0
+        self.name_tab = []
+        self.order    = 0
 
-        self.nsp_rebin= 1
-        self.lnsp_rebin= 1
-        self.F_rebin  = 1
-        self.lF_rebin  = 1
-        self.k_rebin  = 0
+        self.nsp_rebin  = 1
+        self.lnsp_rebin = 1
+        self.F_rebin    = 1
+        self.lF_rebin   = 1
+        self.k_rebin    = 0
         self.nspI_rebin = 0
-        self.lk_rebin = 0
+        self.lk_rebin   = 0
 
-        self.qtab= 1
-        self.stab= 1
+        self.qtab   = 1
+        self.stab   = 1
         self.qsigma = 1
-        self.qfit = 1
-        self.qlogi = 1
+        self.qfit   = 1
+        self.qlogi  = 1
 
-        self.qtab_rebin= 1
-        self.stab_rebin= 1
+        self.qtab_rebin   = 1
+        self.stab_rebin   = 1
         self.qsigma_rebin = 1
-        self.qfit_rebin = 1
-        self.qlogi_rebin = 1
+        self.qfit_rebin   = 1
+        self.qlogi_rebin  = 1
 
         self.xi_tab = []
-        self.xi = 0
+        self.xi_jk  = []
+        self.xi  = 0
+        self.exi = 0
         self.rc1 = 0
         self.rc2 = 0
         self.rc3 = 0
@@ -1240,7 +1248,7 @@ class combiq:
 
     def average(self):
         self.nsp = 0
-        self.xi = 0
+        self.xi  = 0
         for se in range(len(self.nsp_tab)):
             self.nsp += self.nsp_tab[se]
             self.xi += self.xi_tab[se]
@@ -1252,6 +1260,36 @@ class combiq:
         self.rc1 = -(der/self.xi_tab[0]/self.ct)*self.ct**2/2
         self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
         self.rc3 = (1/self.logi*0.5*der/self.xi_tab[0]/self.ct)*self.ct**2/2
+
+#        eNsp = 0
+#        eXi  = 0
+#
+##        nTaus = self.nsp_tab.shape[0]
+##        nMoms = self.nsp_tab.shape[1]
+#
+#        self.nsp_jk  = np.zeros((self.order))
+#        self.lnsp_jk = np.zeros((self.order))
+#        self.xi_jk   = np.zeros((self.order))
+#
+#        for nMeas in range(len(self.nsp_tab)):        
+#            tNsp = 0
+#            tXi  = 0
+#            for se in range(len(self.nsp_tab)):
+#                if se == nMeas:
+#                    continue
+#                tNsp += self.nsp_tab[se]
+#                tXi  += self.xi_tab[se]
+#            tNsp = (tNsp*(self.order-1))/self.order
+#            tXi  = (tXi *(self.order-1))/self.order
+#
+#            print(tNsp.shape)
+#            self.nsp_jk [nMeas] = tNsp
+#            self.lnsp_jk[nMeas] = np.log(tNsp)
+#            self.xi_jk  [nMeas] = tXi
+#
+#        self.eNsp  = np.cov(self.nsp_jk,  rowvar=False, bias=True)*(self.order-1)
+#        self.elNsp = np.cov(self.lnsp_jk, rowvar=False, bias=True)*(self.order-1)
+#        self.eXi   = np.cov(self.xi_jk,   rowvar=False, bias=True)*(self.order-1)
 
     def rebin(self,logbinsperdecade=5):
 

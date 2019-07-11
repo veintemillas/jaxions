@@ -4,6 +4,10 @@
 
 	typedef	unsigned int uint;
 
+	unsigned int xDefaultBlockGpu = 512;
+	unsigned int yDefaultBlockGpu =   1;
+	unsigned int zDefaultBlockGpu =   1;
+
 	namespace	AxionEnum {
 		typedef enum	FieldType_s
 		{

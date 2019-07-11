@@ -15,6 +15,7 @@
 #include "gen/smoothXeon.h"
 #include "gen/prepropa.h"
 #include "io/readWrite.h"
+#include "propagator/propXeon.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -152,11 +153,13 @@ void	ConfGenerator::runGpu	()
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 			axionField->transferDev(FIELD_M);
+/*			FIXME See below
 			if (!myCosmos->Mink()){
 				cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 				scaleField (axionField, FIELD_M, *axionField->zV());
 			}
 			axionField->transferCpu(FIELD_MV);
+*/
 		}
 		break;
 
@@ -171,12 +174,14 @@ void	ConfGenerator::runGpu	()
 			axionField->transferDev(FIELD_M);
 			normaliseField(axionField, FIELD_M);
 
+/*			FIXME See below
 			if (!myCosmos->Mink()){
 				// possible fix needed
 				cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 				scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 			axionField->transferCpu(FIELD_MV);
+*/
 		}
 		break;
 
@@ -194,15 +199,24 @@ void	ConfGenerator::runGpu	()
 
 		if (smvarType != CONF_SAXNOISE)
 			normaliseField(axionField, FIELD_M);
-
-		if (!myCosmos->Mink()){
-		cudaMemcpy (axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-		scaleField (axionField, FIELD_M, *axionField->RV());
-		}
-		axionField->transferCpu(FIELD_MV);
 		break;
 	}
 
+
+	if ((cType != CONF_READ) && (cType != CONF_NONE)) {
+		// FIXME Problema con lambda!!!
+		if (!myCosmos->Mink()) {
+			double	  rTmp = 0.0;
+			double	  ood2 = 1./(axionField->Delta()*axionField->Delta())
+			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+			axionField->exchangeGhosts(FIELD_M);
+			updateVGpu(axionField->mGpu(), axionField->vGpu(), &rTmp, *axionField->RV(), 1.0, ood2, axionField->BckGnd()->Lambda(), 0.0, 0.0, axionField->Length(), axionField->Depth(), 0, axionField->Size(), axionField->Surf(),
+				   axionField->BckGnd()->QcdPot(), axionField->Precision(), xBlockDefaultGpu, yBlockDefaultGpu, zBlockDefaultGpu, ((cudaStream_t *)axionField->Streams())[2]);
+			scaleField(axionField, FIELD_M, *axionField->RV());
+		}
+
+		axionField->transferCpu(FIELD_MV);
+	}
 #else
 	LogError ("Gpu support not built");
 	exit(1);
@@ -387,9 +401,14 @@ void	ConfGenerator::runCpu	()
 			normCoreField	(axionField);
 
 			if (!myCosmos->Mink()){
+				// FIXME PROBLEMA CON LAMBDA Y Z2
 				//LogOut("rescalo!! con R %f",*axionField->RV());
-			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
-			scaleField (axionField, FIELD_M, *axionField->RV());
+				double	   rTmp = 0.0;
+				double	   ood2 = 1./(axionField->Delta()*axionField->Delta())
+				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+				axionField->exchangeGhosts(FIELD_M);
+				updateVXeon(axionField->mCpu(), axionField->vCpu(), &rTmp, *axionField->RV(), 1.0, ood2, axionField->BckGnd()->Lambda(), 0.0, 0.0, axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+				scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 
 			if (preprop){
@@ -406,24 +425,26 @@ void	ConfGenerator::runCpu	()
 					double ska = *axionField->RV()*rsave;
 					size_t vol = axionField->Size();
 
-					if (axionField->Precision() == FIELD_DOUBLE){
+					if (axionField->Precision() == FIELD_DOUBLE) {
 						rsave *= (1-ska);
 						std::complex<double> *mi = static_cast<std::complex<double> *>(axionField->mStart());
 						std::complex<double> *vi = static_cast<std::complex<double> *>(axionField->vCpu());
 
 						#pragma omp parallel for schedule(static)
-						for (size_t idx=0; idx < vol; idx++) {
-						vi[idx] = vi[idx]*ska + mi[idx]*rsave;}
+						for (size_t idx=0; idx < vol; idx++)
+							vi[idx] = vi[idx]*ska + mi[idx]*rsave;
+						
 						scaleField (axionField, FIELD_M, ska);
-					}else{
+					} else {
 						float skaf = (float) ska;
 						float rsavef = rsave*(1-skaf);
 						std::complex<float> *mi = static_cast<std::complex<float> *>(axionField->mStart());
 						std::complex<float> *vi = static_cast<std::complex<float> *>(axionField->vCpu());
 
 						#pragma omp parallel for schedule(static)
-						for (size_t idx=0; idx < vol; idx++) {
-						vi[idx] = vi[idx]*skaf + mi[idx]*rsavef;}
+						for (size_t idx=0; idx < vol; idx++)
+							vi[idx] = vi[idx]*skaf + mi[idx]*rsavef;
+
 						scaleField (axionField, FIELD_M, skaf);
 					}
 				} // end damping-less cases
@@ -458,7 +479,7 @@ void	ConfGenerator::runCpu	()
 			int niter = (int) (0.8/nN3);
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
 
-			if (sIter == 1){
+			if (sIter == 1) {
 				nN3 = min(kCrit*nN3,1.0);
 				int niter = (int) (0.8/nN3);
 				// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
@@ -467,7 +488,7 @@ void	ConfGenerator::runCpu	()
 				// add random noise in the initial time ~ random in xi (not really)
 				double r = 0 ;
 				int  myRank   = commRank();
-				if (myRank == 0){
+				if (myRank == 0) {
 					std::random_device rd;
 					std::mt19937 mt(rd());
 					std::uniform_real_distribution<double> dist(-1.0, 1.0);
@@ -481,10 +502,10 @@ void	ConfGenerator::runCpu	()
 				nN3 = min(pow(kCrit,r)*nN3,1.0); ;
 				int niter = (int) (0.8/nN3);
 				LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_iterations = %d!",r, kCrit,pow(kCrit,r), nN3,niter);
-				}
+			}
 
 			LogMsg(VERB_NORMAL,"[GEN] smoothXeon called with %d iterations and alpha = %f!",niter,alpha);
-			if (niter>100){
+			if (niter>100) {
 					LogMsg(VERB_NORMAL,"WARNING!! More than 100 iterations is not particularly efficient! update VILGOR algorithm to use FFTs!!\n");
 			}
 
@@ -496,11 +517,13 @@ void	ConfGenerator::runCpu	()
 
 			normaliseField(axionField, FIELD_M);
 			normCoreField	(axionField);
+/*			FIXME	See below
 
 			if (!myCosmos->Mink()){
 			memcpy (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 			scaleField (axionField, FIELD_M, *axionField->RV());
 			}
+*/
 			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
 			// tunePropagator (axiona);
 			// if (int i ==0; i<10; i++ ){
@@ -530,11 +553,15 @@ void	ConfGenerator::runCpu	()
 
 
 
-	if ((cType == CONF_KMAX) || (cType == CONF_SMOOTH) )
-	{
-		if (!myCosmos->Mink()){
-		memcpy (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
-		scaleField (axionField, FIELD_M, *axionField->RV());
+	if (((cType == CONF_KMAX) || (cType == CONF_SMOOTH)) || (cType == CONF_VILGORS)) {
+		// FIXME PROBLEMA CON EL LAMBDA Y Z2
+		if (!myCosmos->Mink()) {
+			double	   rTmp = 0.0;
+			double	   ood2 = 1./(axionField->Delta()*axionField->Delta())
+			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
+			axionField->exchangeGhosts(FIELD_M);
+			updateVXeon(axionField->mCpu(), axionField->vCpu(), &rTmp, *axionField->RV(), 1.0, ood2, axionField->BckGnd()->Lambda(), 0.0, 0.0, axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision())
+			scaleField (axionField, FIELD_M, *axionField->RV());
 		}
 	}
 
