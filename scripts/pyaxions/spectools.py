@@ -1273,7 +1273,13 @@ class combiq:
         # self.rc1 = -(der/self.xi/self.ct**2)*self.ct**2/2
         # self.rc2 = -(1/self.logi*1/self.ct**2)*self.ct**2/2
         # self.rc3 = (1/self.logi*0.5*der/self.xi/self.ct)*self.ct**2/2
+
         #new dic
+
+        # sonthing like this can select tabs
+        # for l in lis:
+        #     if l[:3] == 'nsp' and l[-4:] == '_tab':
+        #         print(l)
         for set in setlisttoav:
             if set[:3] == 'nsp':
                 settab = set+mask+'_tab'
@@ -1283,7 +1289,7 @@ class combiq:
                 setcal = set
 
             if not settab in self.sp:
-                print(sptype,' not found, skipping its average')
+                print(settab,' not found, skipping its average')
             else :
                 self.sp[setcal] = 0
                 for se in range(len(self.sp[settab])):
@@ -1333,8 +1339,8 @@ class combiq:
                 self.sp[setcal] /= len(self.sp[settab])
 
 
-
-    def computeF(self,array='nspK_Red',Ng=4):
+    # It could take an extra array of points instead of self.ct
+    def computeF(self,array='nspK_Red',Ng=4,poliorder=1):
         self.average() # do I need this?
         # if array == 'nspK':
             # spe = self.lnsp
@@ -1363,37 +1369,54 @@ class combiq:
             for kc in range(len(kkk)):
                 y = spe[cuve,kc][:Ng]
                 # fit y = x pp[0] + pp[1]
-                p = np.polyfit(x,y,p_order)
+                p = np.polyfit(x,y,poliorder)
                 pp = np.poly1d(p)
                 # evaluate y at the function, not the data point
                 va = np.exp(pp(np.log(ct0)))
                 lis.append(va)
                 # evaluate the derivative as ds/dt = (s/t) (d log s / d log t)
                 # version: conformal time
-                der.append((va/ct0)*pp[0])
+                pp2 = np.polyder(pp)
+                logder = pp2(np.log(ct0))
+                der.append((va/ct0)*logder)
                 # version: usual time = ctime^2
                 # der.append((va/ct0**2)*pp[0]/2)
-                mas.append(pp[1])
+                mas.append(pp[-1])
             sout.append(lis)
             dout.append(der)
             mout.append(mas)
 
-        if array == 'nsp':
-            self.F = np.array(dout)
-            self.nspI = np.array(sout)
-            self.lF = np.array(mout)
-        elif array == 'nsp_rebin':
-            self.F_rebin = np.array(dout)
-            self.nspI_rebin = np.array(sout)
-            self.lF_rebin = np.array(mout)
+        # legacy
+        # if array == 'nsp':
+        #     self.F = np.array(dout)
+        #     self.nspI = np.array(sout)
+        #     self.lF = np.array(mout)
+        # elif array == 'nsp_rebin':
+        #     self.F_rebin = np.array(dout)
+        #     self.nspI_rebin = np.array(sout)
+        #     self.lF_rebin = np.array(mout)
 
-    def buildqq(self,array='F',xmin=30,xxmax=1/4,qtab=np.linspace(0.2,1.5,1000)):
-        if array == 'F':
-            spe = self.F
-            kkk = self.k
-        elif array == 'F_rebin':
-            spe = self.F_rebin
+        self.sp[array+'_F'] = np.array(dout)
+        self.sp[array+'_I'] = np.array(sout)
+        self.sp[array+'_lF'] = np.array(mout)
+
+    # computes the exponent of the spectrum as a function of time
+    def buildqq(self,array='nspK_Red_F',xmin=30,xxmax=1/4,qtab=np.linspace(0.2,1.5,1000)):
+        # legacy
+        # if array == 'F':
+        #     spe = self.F
+        #     kkk = self.k
+        # elif array == 'F_rebin':
+        #     spe = self.F_rebin
+        #     kkk = self.k_rebin
+
+        spe = self.sp[array]
+
+        if '_rebin' in array:
             kkk = self.k_rebin
+
+        else:
+            kkk = self.k
 
         tout = []
         qout = []
@@ -1455,15 +1478,22 @@ class combiq:
             logi.append(self.logi[t])
             tabout.append([ka,ta])
 
-        if array == 'F':
-            self.qtab = np.array(qout)
-            self.stab = np.array(sout)
-            self.qsig = np.array(sigma)
-            self.qfit = np.array(tabout)
-            self.qlogi = np.array(logi)
-        elif array == 'F_rebin':
-            self.qtab_rebin = np.array(qout)
-            self.stab_rebin = np.array(sout)
-            self.qsig_rebin = np.array(sigma)
-            self.qfit_rebin = np.array(tabout)
-            self.qlogi_rebin = np.array(logi)
+        # legacy
+        # if array == 'F':
+        #     self.qtab = np.array(qout)
+        #     self.stab = np.array(sout)
+        #     self.qsig = np.array(sigma)
+        #     self.qfit = np.array(tabout)
+        #     self.qlogi = np.array(logi)
+        # elif array == 'F_rebin':
+        #     self.qtab_rebin = np.array(qout)
+        #     self.stab_rebin = np.array(sout)
+        #     self.qsig_rebin = np.array(sigma)
+        #     self.qfit_rebin = np.array(tabout)
+        #     self.qlogi_rebin = np.array(logi)
+        # newps
+        self.sp[array+'_qtab'] = np.array(qout)
+        self.sp[array+'_stab'] = np.array(sout)
+        self.sp[array+'_qsig'] = np.array(sigma)
+        self.sp[array+'_qfit'] = np.array(tabout)
+        self.sp[array+'_qlogi'] = np.array(logi)
