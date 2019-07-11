@@ -328,10 +328,16 @@ void	ConfGenerator::runCpu	()
 							axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe);
 							break;
 						case LAMBDA_FIXED:
-							axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe*prepcoe*prepcoe);
+							if (pregammo == 0.0) {
+								// estimate lambda for the fat string case that reproduces the value of msa for physical strings at the initial time
+								double logi = *axionField->zV();
+								axionField->BckGnd()->SetLambda(sqrt(LALA/2.)*exp(logi)*prepcoe*prepcoe);
+							} else if (pregammo > 0.0) {
+								axionField->BckGnd()->SetLambda(LALA*prepcoe*prepcoe*prepcoe*prepcoe);
+							}
 							break;
 					}
-					LogOut("[GEN] Mira qe cambio LL %f -> %f\n",LALA,axionField->BckGnd()->Lambda());
+					LogMsg(VERB_NORMAL,"[GEN] Mira qe cambio LL %f -> %f",LALA,axionField->BckGnd()->Lambda());
 			}
 
 			double msafromLL = sqrt(2*axionField->BckGnd()->Lambda())*axionField->Delta();
@@ -347,7 +353,11 @@ void	ConfGenerator::runCpu	()
 							*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
 							break;
 				case	LAMBDA_FIXED:
-			        *axionField->zV() = sqrt((axionField->Delta())*exp(logi)/msafromLL);
+							if (preprop && (pregammo == 0.0)) {
+								*axionField->zV() = (axionField->Delta())*exp(logi)/msafromLL;
+							} else {
+			        	*axionField->zV() = sqrt((axionField->Delta())*exp(logi)/msafromLL);
+							}
 							break;
 			}
 			axionField->updateR();
@@ -359,7 +369,11 @@ void	ConfGenerator::runCpu	()
 							xit = (249.48 + 38.8431*logi + 1086.06*logi*logi)/(21775.3 + 3665.11*logi)  ;
 							break;
 				case	LAMBDA_FIXED:
-							xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi)  ;
+							if (preprop && (pregammo == 0.0)) {
+								xit = (249.48 + 38.8431*logi + 1086.06*logi*logi)/(21775.3 + 3665.11*logi)  ;
+							} else {
+								xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi)  ;
+							}
 							break;
 			}
 
@@ -370,7 +384,11 @@ void	ConfGenerator::runCpu	()
 							nN3 = 6.0*xit*msafromLL*msafromLL*exp(-2.0*logi);
 							break;
 				case	LAMBDA_FIXED:
-							nN3 = 6.0*xit*axionField->Delta()*msafromLL*exp(-logi);
+							if (preprop && (pregammo == 0.0)) {
+								nN3 = 6.0*xit*msafromLL*msafromLL*exp(-2.0*logi);
+							} else {
+								nN3 = 6.0*xit*axionField->Delta()*msafromLL*exp(-logi);
+							}
 							break;
 			}
 			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
@@ -404,7 +422,7 @@ void	ConfGenerator::runCpu	()
 						LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
 				  }
 
-			LogMsg(VERB_NORMAL,"[GEN] momConf with kMax %d kCrit %f!\n ",sizeN,nc);
+			LogMsg(VERB_NORMAL,"[GEN] momConf with kMax %d kCrit %f!",sizeN,nc);
 			prof.start();
 			momConf(axionField, sizeN, nc, MOM_MEXP2);
 			prof.stop();
@@ -470,11 +488,11 @@ void	ConfGenerator::runCpu	()
 					// use pregammo for prepropagation damping
 					double gammo_save = myCosmos->Gamma();
 					myCosmos->SetGamma(pregammo);
-					LogMsg(VERB_NORMAL,"[GEN] gammo %f -> pregammo %f for prepropagation damping\n ",gammo_save,myCosmos->Gamma());
+					LogMsg(VERB_NORMAL,"[GEN] gammo %f -> pregammo %f for prepropagation damping",gammo_save,myCosmos->Gamma());
 					axionField->BckGnd()->SetLambda(LALA);
 					relaxrho(axionField);
 					myCosmos->SetGamma(gammo_save);
-					LogMsg(VERB_NORMAL,"[GEN] rho damping finished. gammo -> %f\n ",myCosmos->Gamma());
+					LogMsg(VERB_NORMAL,"[GEN] rho damping finished. gammo -> %f",myCosmos->Gamma());
 				}
 			}
 

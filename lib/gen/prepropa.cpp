@@ -48,11 +48,13 @@ void	prepropa  (Scalar *axiona)
 	Folder munge(axiona);
 
 	if (cDev != DEV_GPU){
-		LogOut ("Folding configuration\n");
+		LogMsg (VERB_NORMAL,"[prep] Folding configuration");
 		munge(FOLD_ALL);
 	}
 
 	LambdaType lType = axiona->Lambda();
+	// do preprop in lambda_Z2 mode even for the physical string case
+	if(lType == LAMBDA_FIXED) axiona->setLambda(LAMBDA_Z2);
 
 	double dzaux;
 	initPropagator (pType, axiona, VQCD_1);
@@ -63,18 +65,23 @@ void	prepropa  (Scalar *axiona)
 	double masa = axiona->Msa();
 	double delto = axiona->Delta();
 	double ct2;
+	double prelambda = axiona->BckGnd()->Lambda();
+	double premsa;
+
 	switch (lType) {
 		case	LAMBDA_Z2:
-			ct2 = findct2(prepcoe*masa, masa, ct0, delto, lType);
+			premsa = prepcoe*masa;
+			ct2 = findct2(premsa, masa, ct0, delto, lType);
 			break;
 		case LAMBDA_FIXED:
-			ct2 = findct2(prepcoe*prepcoe*masa, masa, ct0, delto, lType);
+			premsa = sqrt(2*prelambda)*delto;
+			ct2 = findct2(premsa, masa, ct0, delto, lType);
 			break;
 	}
 
-	LogOut("[prep] Started prepropaga %f with msa=%f\n",ct0,masa);
-	LogOut("[prep] We propagate until nN3(logi+log(prepcoe))[ct2] = nN3(logi)[ct0]\n");
-	LogOut("[prep] Since nN3 = 6 xit(logi)*(delta/ct)^2 we find ... ct2 ~ %f\n",ct2);
+	LogMsg(VERB_NORMAL,"[prep] Started prepropaga ct0 = %f with msa = %f and premsa = %f",ct0,masa,premsa);
+	LogMsg(VERB_NORMAL,"[prep] We propagate until nN3(logi+log(prepcoe))[ct2] = nN3(logi)[ct0]");
+	LogMsg(VERB_NORMAL,"[prep] Since nN3 = 6 xit(logi)*(delta/ct)^2 we find ... ct2 ~ %f",ct2);
 
 	double logi = zInit;
 	double xit, cta, goalnN3;
@@ -92,7 +99,8 @@ void	prepropa  (Scalar *axiona)
 					break;
 	}
 
-	LogOut("[prep] goalnN3 = %f\n",goalnN3);
+	LogMsg(VERB_NORMAL,"[prep] goalnN3 = %f",goalnN3);
+	LogOut("\n");
 
 	fIndex2 = 0 ;
 	while ( *axiona->zV() < 1.2*ct2 )
@@ -116,6 +124,7 @@ void	prepropa  (Scalar *axiona)
 		if (trala < goalnN3)
 			break;
 	}
+	if(lType == LAMBDA_FIXED) axiona->setLambda(LAMBDA_FIXED);
 }
 
 double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType)
@@ -136,8 +145,8 @@ double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType 
 					cta = sqrt(delta*exp(logi)/msa); // corresponds to tthis time
 					xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
 					goalnN3 = 6*xit*pow(delta/cta,2);
-					logi = log(pre_msa/delta*ct0*ct0);
-					xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+					logi = log(pre_msa/delta*ct0);
+					xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
 					nN3 = 6*xit*pow(delta/ct0,2);
 					break;
 	}
@@ -145,21 +154,12 @@ double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType 
 	while (goalnN3 < nN3)
 	{
 		ct2 += ct2/20.;
-		switch (lType) {
-			case	LAMBDA_Z2:
-				logi = log(pre_msa/delta*ct2);
-				xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi);
-				break;
-			case	LAMBDA_FIXED:
-				logi = log(pre_msa/delta*ct2*ct2);
-				xit = (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
-				break;
-		}
+		logi = log(pre_msa/delta*ct2);
+		xit =  (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi);
 		nN3 = 6*xit*pow(delta/ct2,2);
 	}
-	LogMsg(VERB_NORMAL,"ct2 %f ", ct2 );
+	LogMsg(VERB_NORMAL,"[prep] ct2 %f", ct2 );
 	return ct2 ;
-
 }
 
 void	relaxrho  (Scalar *axiona)
@@ -177,7 +177,7 @@ void	relaxrho  (Scalar *axiona)
 
 	Folder munge(axiona);
 	if (cDev != DEV_GPU){
-		LogOut ("Folding configuration\n");
+		LogMsg (VERB_NORMAL,"Folding configuration");
 		munge(FOLD_ALL);
 	}
 
@@ -187,7 +187,7 @@ void	relaxrho  (Scalar *axiona)
 
 	double ct0 = *axiona->zV();
 	// zInit is the logi we wanted
-	LogOut("[prep] Started prepropaga %f with damping %f\n", ct0, pregammo);
+	LogMsg(VERB_NORMAL,"[prep] Started prepropaga %f with damping %f", ct0, pregammo);
 
 	double masa = axiona->Msa();
 	double logi = zInit;
@@ -207,7 +207,7 @@ void	relaxrho  (Scalar *axiona)
 	}
 	if (iter > 0 ) goalnN3 = min(kCrit*goalnN3,1.0);
 
-	LogOut("[prep] goal nN3 = %f \n", goalnN3);
+	LogMsg(VERB_NORMAL,"[prep] goal nN3 = %f", goalnN3);
 
 	double trala = 1.;
 	fIndex2 = 0 ;
