@@ -21,6 +21,7 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
+	#include "kernelParms.cuh"
 	#include "gen/momGpu.h"
 	#include "gen/randGpu.h"
 	#include "gen/smoothGpu.h"
