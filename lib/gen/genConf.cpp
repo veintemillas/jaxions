@@ -204,13 +204,13 @@ void	ConfGenerator::runGpu	()
 
 
 	if ((cType != CONF_READ) && (cType != CONF_NONE)) {
-		// FIXME Problema con lambda!!!
+
 		if (!myCosmos->Mink()) {
-			double	  rTmp = 0.0;
+			double	  lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 			double	  ood2 = 1./(axionField->Delta()*axionField->Delta())
 			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			axionField->exchangeGhosts(FIELD_M);
-			updateVGpu(axionField->mGpu(), axionField->vGpu(), &rTmp, *axionField->RV(), 1.0, ood2, axionField->BckGnd()->Lambda(), 0.0, 0.0, axionField->Length(), axionField->Depth(), 0, axionField->Size(), axionField->Surf(),
+			updateVGpu(axionField->mGpu(), axionField->vGpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), 0, axionField->Size(), axionField->Surf(),
 				   axionField->BckGnd()->QcdPot(), axionField->Precision(), xBlockDefaultGpu, yBlockDefaultGpu, zBlockDefaultGpu, ((cudaStream_t *)axionField->Streams())[2]);
 			scaleField(axionField, FIELD_M, *axionField->RV());
 		}
@@ -401,13 +401,13 @@ void	ConfGenerator::runCpu	()
 			normCoreField	(axionField);
 
 			if (!myCosmos->Mink()){
-				// FIXME PROBLEMA CON LAMBDA Y Z2
+
 				//LogOut("rescalo!! con R %f",*axionField->RV());
-				double	   rTmp = 0.0;
+				double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 				double	   ood2 = 1./(axionField->Delta()*axionField->Delta())
 				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 				axionField->exchangeGhosts(FIELD_M);
-				updateVXeon(axionField->mCpu(), axionField->vCpu(), &rTmp, *axionField->RV(), 1.0, ood2, axionField->BckGnd()->Lambda(), 0.0, 0.0, axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+				updateVXeon(axionField->mCpu(), axionField->vCpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
 				scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 
@@ -554,13 +554,13 @@ void	ConfGenerator::runCpu	()
 
 
 	if (((cType == CONF_KMAX) || (cType == CONF_SMOOTH)) || (cType == CONF_VILGORS)) {
-		// FIXME PROBLEMA CON EL LAMBDA Y Z2
+
 		if (!myCosmos->Mink()) {
-			double	   rTmp = 0.0;
+			double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 			double	   ood2 = 1./(axionField->Delta()*axionField->Delta())
 			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
 			axionField->exchangeGhosts(FIELD_M);
-			updateVXeon(axionField->mCpu(), axionField->vCpu(), &rTmp, *axionField->RV(), 1.0, ood2, axionField->BckGnd()->Lambda(), 0.0, 0.0, axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision())
+			updateVXeon(axionField->mCpu(), axionField->vCpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
 			scaleField (axionField, FIELD_M, *axionField->RV());
 		}
 	}
