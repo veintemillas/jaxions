@@ -208,12 +208,16 @@ void	ConfGenerator::runGpu	()
 
 		if (!myCosmos->Mink()) {
 			double	  lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
-			double	  ood2 = 1./(axionField->Delta()*axionField->Delta())
+			double	  ood2 = 1./(axionField->Delta()*axionField->Delta());
+			uint	  S    = axionField->Surf();
+			uint	  V    = axionField->Size();
+			uint	  Vo   = S;
+			uint	  Vf   = V+S;
 			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
-			axionField->exchangeGhosts(FIELD_M);
-			updateVGpu(axionField->mGpu(), axionField->vGpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), 0, axionField->Size(), axionField->Surf(),
-				   axionField->BckGnd()->QcdPot() & VQCD_TYPE, axionField->Precision(), xBlockDefaultGpu, yBlockDefaultGpu, zBlockDefaultGpu, ((cudaStream_t *)axionField->Streams())[2]);
 			scaleField(axionField, FIELD_M, *axionField->RV());
+			axionField->exchangeGhosts(FIELD_M);
+			updateVGpu(axionField->mGpu(), axionField->vGpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), Vo, Vf, S,
+				   axionField->BckGnd()->QcdPot() & VQCD_TYPE, axionField->Precision(), xBlockDefaultGpu, yBlockDefaultGpu, zBlockDefaultGpu, ((cudaStream_t *)axionField->Streams())[2]);
 		}
 
 		axionField->transferCpu(FIELD_MV);
@@ -234,6 +238,8 @@ void	ConfGenerator::runCpu	()
 	string	momName ("MomConf");
 	string	randName("Random");
 	string	smthName("Smoother");
+
+	LogMsg(VERB_NORMAL, "MIERDAS CON PATATAS");
 
 	switch (cType)
 	{
@@ -407,35 +413,39 @@ void	ConfGenerator::runCpu	()
 				//LogOut("rescalo!! con R %f",*axionField->RV());
 				double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 				double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
+				auto	   S  = axionField->Surf();
+				auto	   V  = axionField->Size();
+				auto	   Vo = S;
+				auto	   Vf = V+S;
 				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+				scaleField (axionField, FIELD_M, *axionField->RV());
 				axionField->exchangeGhosts(FIELD_M);
 				switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
 					case	VQCD_1:
 					updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+								 axionField->Length(), Vo, Vf, S, axionField->Precision());
 					break;
 
 					case	VQCD_2:
 					updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+								 axionField->Length(), Vo, Vf, S, axionField->Precision());
 					break;
 
 					case	VQCD_1_PQ_2:
 					updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+								 axionField->Length(), Vo, Vf, S, axionField->Precision());
 					break;
 
 					case	VQCD_1N2:
 					updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+								 axionField->Length(), Vo, Vf, S, axionField->Precision());
 					break;
 
 					case	VQCD_QUAD:
 					updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+								 axionField->Length(), Vo, Vf, S, axionField->Precision());
 					break;
 				}
-				scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 
 			if (preprop) {
@@ -586,34 +596,38 @@ void	ConfGenerator::runCpu	()
 			double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 			double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
 			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
+			scaleField (axionField, FIELD_M, *axionField->RV());
 			axionField->exchangeGhosts(FIELD_M);
+			auto	   S  = axionField->Surf();
+			auto	   V  = axionField->Size();
+			auto	   Vo = S;
+			auto	   Vf = V+S;
 			switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
 				case	VQCD_1:
 				updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+							 axionField->Length(), Vo, Vf, S, axionField->Precision());
 				break;
 
 				case	VQCD_2:
 				updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+							 axionField->Length(), Vo, Vf, S, axionField->Precision());
 				break;
 
 				case	VQCD_1_PQ_2:
 				updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+							 axionField->Length(), Vo, Vf, S, axionField->Precision());
 				break;
 
 				case	VQCD_1N2:
 				updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+							 axionField->Length(), Vo, Vf, S, axionField->Precision());
 				break;
 
 				case	VQCD_QUAD:
 				updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), 0, axionField->Size(), axionField->Surf(), axionField->Precision());
+							 axionField->Length(), Vo, Vf, S, axionField->Precision());
 				break;
 			}
-			scaleField (axionField, FIELD_M, *axionField->RV());
 		}
 	}
 
