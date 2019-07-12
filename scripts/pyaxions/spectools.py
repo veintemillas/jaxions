@@ -1396,7 +1396,12 @@ class combiq:
             return 0
 
         spe = np.log(self.sp[array])
-        kkk = self.lk
+        if '_rebin' in array:
+            kkk = self.lk_rebin
+        else:
+            kkk = self.lk
+
+        # kkk = self.lk
         # elif array == 'nsp_rebin':
         #     spe = self.lnsp_rebin
         #     kkk = self.lk_rebin
@@ -1461,7 +1466,6 @@ class combiq:
 
         if '_rebin' in array:
             kkk = self.k_rebin
-
         else:
             kkk = self.k
 
