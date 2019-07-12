@@ -1256,7 +1256,7 @@ class combiq:
 
             if not settab in self.sp:
                 self.sp[settab] = []
-            tempspe = pa.gml(mfiles2,set)
+            tempspe = pa.gml(mfiles2,setcal)
             self.sp[settab].append(tempspe)
 
 #     def rebin(self,bindet):
