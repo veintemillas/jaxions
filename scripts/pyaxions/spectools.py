@@ -1306,6 +1306,16 @@ class combiq:
                 self.sp[setcal+'_sigma'] /= len(self.sp[settab])
                 self.sp[setcal+'_sigma'] = np.sqrt(self.sp[setcal+'_sigma'])/len(self.sp[settab])
 
+            if set == 'xi':
+                xi = self.sp[setcal]
+                der = np.gradient(xi,self.ct)
+                # -xi_t/xi 2H
+                self.sp[setcal+'_rc1'] = -(der/xi/self.ct**2)*self.ct**2/2
+                # -mu_0/m_eff (H) /2H
+                self.sp[setcal+'_rc2'] = -(1/self.logi*1/self.ct**2)*self.ct**2/2
+                # mu_0/m_eff (xi_t/2xi ) /2H
+                self.sp[setcal+'_rc3'] = (1/self.logi*0.5*der/xi/self.ct)*self.ct**2/2
+
 #        eNsp = 0
 #        eXi  = 0
 #
