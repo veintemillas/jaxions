@@ -1386,6 +1386,36 @@ class combiq:
             self.sp[setname+'_lrebin_sigma'] = np.array(rSS2)
             self.sp[setname+'_rebin'] = np.exp(np.array(rSS))
 
+    def logbin(self,setlisttorebin=['nspK_Red'],logbinsperdecade=10):
+        #
+        lkmin = self.lk[1]
+        lkmax = self.lk[-1]
+        nvin = logbinsperdecade*(lkmax-lkmin)/np.log(10.)
+        bins = np.linspace(lkmin,lkmax,int(nvin))
+        lkk = self.lk[1:]
+        his0 = np.histogram(lkk,bins=bins)
+        his = np.histogram(lkk,weights=lkk,bins=bins)
+        mask = his0[0] > 0
+        self.lk_rebin = his[0][mask]/his0[0][mask]
+        self.k_rebin  = np.exp(self.lk_rebin)
+        rSS=[]
+        rSS2=[]
+        self.lk_rebin_n = his0[0][mask]
+
+        for setname in setlisttorebin:
+            for t in range(len(self.ct)):
+                lsp = np.log(self.sp[setname][t][1:])
+                hiss= np.histogram(lkk,weights=lsp,bins=bins)
+                lsp_ave = hiss[0][mask]/his0[0][mask]
+                rSS.append(lsp_ave)
+
+                hiss2= np.histogram(lkk,weights=lsp**2,bins=bins)
+                lsp2_ave = hiss2[0][mask]/his0[0][mask]
+                rSS2.append( np.sqrt(np.abs(lsp2_ave - lsp_ave**2))/his0[0][mask] )
+            self.sp[setname+'_lrebin'] = np.array(rSS)
+            self.sp[setname+'_lrebin_sigma'] = np.array(rSS2)
+            self.sp[setname+'_rebin'] = np.exp(np.array(rSS))
+
     # It could take an extra array of points instead of self.ct
     def computeF(self,array='nspK_Red',Ng=4,poliorder=1):
         self.average() # do I need this?

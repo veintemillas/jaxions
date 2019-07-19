@@ -16,6 +16,7 @@
 #include "gen/prepropa.h"
 #include "io/readWrite.h"
 #include "propagator/propXeon.h"
+#include "scalar/folder.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -410,42 +411,51 @@ void	ConfGenerator::runCpu	()
 			normCoreField	(axionField);
 
 			if (!myCosmos->Mink()) {
-				//LogOut("rescalo!! con R %f",*axionField->RV());
+
 				double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 				double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
 				auto	   S  = axionField->Surf();
 				auto	   V  = axionField->Size();
 				auto	   Vo = S;
 				auto	   Vf = V+S;
+				double   hzi = *axionField->zV()/2.0;
+
 				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 				scaleField (axionField, FIELD_M, *axionField->RV());
-				axionField->exchangeGhosts(FIELD_M);
-				switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
-					case	VQCD_1:
-					updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), Vo, Vf, S, axionField->Precision());
-					break;
 
-					case	VQCD_2:
-					updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), Vo, Vf, S, axionField->Precision());
-					break;
-
-					case	VQCD_1_PQ_2:
-					updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), Vo, Vf, S, axionField->Precision());
-					break;
-
-					case	VQCD_1N2:
-					updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), Vo, Vf, S, axionField->Precision());
-					break;
-
-					case	VQCD_QUAD:
-					updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-								 axionField->Length(), Vo, Vf, S, axionField->Precision());
-					break;
-				}
+				// LogMsg (VERB_HIGH, "[GEN] Rescale from phi to conformal field (estimates A1=%f A2=%f)", (3.14*hzi)*(3.14*hzi)*ood2, lTmp*hzi*hzi*hzi*hzi);
+				//
+				// Folder	munge(axionField);
+				// munge(FOLD_ALL);
+				// axionField->exchangeGhosts(FIELD_M);
+				//
+				// switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
+				// 	case	VQCD_1:
+				// 	updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+				// 	break;
+				//
+				// 	case	VQCD_2:
+				// 	updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+				// 	break;
+				//
+				// 	case	VQCD_1_PQ_2:
+				// 	updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+				// 	break;
+				//
+				// 	case	VQCD_1N2:
+				// 	updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+				// 	break;
+				//
+				// 	case	VQCD_QUAD:
+				// 	updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+				// 	break;
+				// }
+				// munge(UNFOLD_ALL);
 			}
 
 			if (preprop) {
@@ -470,7 +480,7 @@ void	ConfGenerator::runCpu	()
 						#pragma omp parallel for schedule(static)
 						for (size_t idx=0; idx < vol; idx++)
 							vi[idx] = vi[idx]*ska + mi[idx]*rsave;
-						
+
 						scaleField (axionField, FIELD_M, ska);
 					} else {
 						float skaf = (float) ska;
@@ -597,37 +607,47 @@ void	ConfGenerator::runCpu	()
 			double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
 			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
 			scaleField (axionField, FIELD_M, *axionField->RV());
-			axionField->exchangeGhosts(FIELD_M);
+
 			auto	   S  = axionField->Surf();
 			auto	   V  = axionField->Size();
 			auto	   Vo = S;
 			auto	   Vf = V+S;
-			switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
-				case	VQCD_1:
-				updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				break;
+			double   hzi = *axionField->zV()/2.;
 
-				case	VQCD_2:
-				updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				break;
+			// LogMsg (VERB_HIGH, "[GEN] Rescale from phi to conformal field (estimates A1=%f A2=%f)", (3.14*hzi)*(3.14*hzi)*ood2, lTmp*hzi*hzi*hzi*hzi);
+			//
+			// Folder	munge(axionField);
+			// munge(FOLD_ALL);
+			// axionField->exchangeGhosts(FIELD_M);
+			//
+			// switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
+			// 	case	VQCD_1:
+			// 	updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+			// 	break;
+			//
+			// 	case	VQCD_2:
+			// 	updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+			// 	break;
+			//
+			// 	case	VQCD_1_PQ_2:
+			// 	updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+			// 	break;
+			//
+			// 	case	VQCD_1N2:
+			// 	updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+			// 	break;
+			//
+			// 	case	VQCD_QUAD:
+			// 	updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
+			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
+			// 	break;
+			// }
+			// munge(UNFOLD_ALL);
 
-				case	VQCD_1_PQ_2:
-				updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				break;
-
-				case	VQCD_1N2:
-				updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				break;
-
-				case	VQCD_QUAD:
-				updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-							 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				break;
-			}
 		}
 	}
 
@@ -635,7 +655,7 @@ void	ConfGenerator::runCpu	()
 
 void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType)
 {
-	LogMsg  (VERB_NORMAL, "Called configurator generator");
+	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator");
 
 	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType);
 
@@ -661,7 +681,7 @@ void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType)
 
 void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType, size_t parm1, double parm2)
 {
-	LogMsg  (VERB_NORMAL, "Called configurator generator");
+	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator par-par");
 
 	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType, parm1, parm2);
 

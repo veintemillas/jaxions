@@ -903,6 +903,13 @@ def gm(address,something='summary',printerror=False):
     if something == 'zf':
         return f.attrs[u'zFinal'] ;
 
+    if (something == 'rhovev'):
+        if ssp_check:
+            BV0 = f['nSpectrum/sVS/data/'][0]
+            V = f.attrs[u'Physical size']**3
+            ms = gm(address,'massS')
+            return np.sqrt(BV0*2/ms/V)/scaleFactorR
+            
     if something == 'summary':
         nqcd = gm(address,'nqcd')
         ct = f.attrs[u'z']
