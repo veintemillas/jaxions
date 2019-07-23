@@ -528,65 +528,64 @@ class readF:
 #   xmin            lower limit of the interval used to evaluate q
 #   xmax            upper limit of the interval used to evaluate q
 #   nbin            number of bins (default 30)
-#   qstart          lower limit of q to scan (default 0)
-#   qend            upper limit of q to scan (default 1.5)
-#   qpoints         number of points to scan (default 5000)
 #
 # Output:
-#   self.chi2q      chi^2 as a function of q
-#   self.chi2qc     chi^2 as a function of q (using conservative estimate of sigma based on maximum distance from mean)
 #   self.chi2min    minimum value of chi^2
+#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
 #   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
-#   self.qbestid    index of qbest in qarr = np.linspace(qstart,qend,qpoints)
-#   self.qupper     "1 sigma" upper limit of q
-#   self.qupperc    "1 sigma" upper limit of q (using conservative estimate of sigma based on maximum distance from mean)
-#   self.qlower     "1 sigma" lower limit of q
-#   self.qlowerc    "1 sigma" lower limit of q (using conservative estimate of sigma based on maximum distance from mean)
-#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) and B(x) = x^q*F(x) where x = k/RH
-#   self.Bqbin      array for B(x) = x^q*F(x) with shape [i,j] where i is index of q and j is index of x
-#   self.Bfid       1d array for B(x) = x^qfid*F(x) corresponding to a fiducial value of q
-#   self.Bsigma     "sigma" to define confidence interval based on average of (Bfid-Bfidmean)^2
-#   self.Bsigmac    conservative estimate of "sigma" to define confidence interval based on maximum value of (Bfid-Bfidmean)^2
-#   self.inspmbin   rebinned instantaneous spectrum F(x)
+#   self.mbest      best fit value of m (normalization of the model)
+#   self.sigmaq     "1 sigma" confidence interval of q
+#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
+#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
+#   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
+#   self.sigma      "sigma" to define confidence interval based on the residuals of different bins
+#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
+#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
+#
+#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gamma
+#
 #   self.nmbin      number of modes in each bin (currently not used)
 #   self.xlim       x within the range specified by (xmin,xmax)
 #   self.xwr        flags to identify xlim
 #
 class Setq:
-    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, nbin=30, qstart=0, qend=1.5, qpoints=5000):
-        qarr = np.linspace(qstart,qend,qpoints)
+    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, nbin=30):
+        Deltachisq = 1. # value of Deltachi^2 to define confidence interval
         x = inspx[id]
         inspmtab = inspy[id]
         x_within_range = ((x > xmin) & (x < xmax))
         xlim = x[x_within_range]
         inspmlim = inspmtab[x_within_range]
         # do not calculate chi^2 if there are not enough data points
-        if len(xlim) < 2:
-            #print(r' cannot optimize since number of data points is less than 2! (log = %.2f)'%insplog[id])
-            chi2q = [np.inf for q in qarr]
-            chi2qc = [np.inf for q in qarr]
+        if len(xlim) < 4:
+            #print(r' cannot optimize since number of data points is less than 4! (log = %.2f)'%insplog[id])
             chi2min = np.inf
+            chi2minn = np.inf
             chi2minc = np.inf
             qbest = np.nan
-            qbestid = np.nan
-            qupper = np.nan
-            qupperc = np.nan
-            qlower = np.nan
-            qlowerc = np.nan
+            mbest = np.nan
+            sigmaq = np.nan
+            sigmaqn = np.nan
+            sigmaqc = np.nan
             xbin = xlim
-            Bqbin = [np.nan for ind in range(len(xlim))]
-            Bqfidmean = np.nan
-            Bqfidsigma = np.nan
-            Bqfidsigmac = np.nan
-            inspmbin = inspmlim
+            Fbin = inspmlim
+            sigma = np.nan
+            sigman = np.nan
+            sigmac = np.nan
+            alpha = np.nan
+            beta = np.nan
+            gamma = np.nan
             nmbin = [1 for i in range(len(xlim))]
         else:
             # do not rebin if number of data points is less than nbin
             if len(xlim) < nbin:
                 #print(r' number of data points (%d) is less than nbin (%d)! (log = %.2f)'%(len(xlim),nbin,insplog[id]))
                 xbin = xlim
-                inspmbin = inspmlim
+                Fbin = inspmlim
                 nmbin = [1 for i in range(len(xlim))]
                 nbin = len(xlim)
             else:
@@ -596,7 +595,7 @@ class Setq:
                 maxlnx = np.max(lnx)
                 dlnx = (maxlnx - minlnx)/nbin
                 xbinbuf = []
-                inspmbinbuf = []
+                Fbinbuf = []
                 nmbinbuf = []
                 # rebin
                 for i in range(nbin):
@@ -610,12 +609,12 @@ class Setq:
                     mave = np.mean(inspmlim[x_in_bin])
                     if not np.isnan(xave):
                         xbinbuf.append(xave)
-                        inspmbinbuf.append(mave)
+                        Fbinbuf.append(mave)
                         nmbinbuf.append(len(xlim[x_in_bin]))
                     else:
                         lnxlast = lnxend # save the last boundary of empty bin
                 # if actual number of bins is less than specified value of nbin,
-                # do not use homogeneous log bin for smaller k, and rebin higher k
+                # do not use homogeneous log bin for lower k, and rebin higher k
                 # until number of bin becomes nbin.
                 if not len(xbinbuf) == nbin:
                     #iloop = 0
@@ -624,7 +623,7 @@ class Setq:
                         #iloop = iloop + 1
                         lnxleft = np.array([ele for ele in lnx if ele <= lnxlast])
                         xbinbuf = np.exp(lnxleft)
-                        inspmbinbuf = inspmlim[:len(xbinbuf)]
+                        Fbinbuf = inspmlim[:len(xbinbuf)]
                         nmbinbuf = [1 for ind in range(len(xbinbuf))]
                         naux = len(xbinbuf)
                         lnxlastre = lnxlast
@@ -637,81 +636,58 @@ class Setq:
                             mave = np.mean(inspmlim[x_in_bin])
                             if not np.isnan(xave):
                                 xbinbuf = np.append(xbinbuf,xave)
-                                inspmbinbuf = np.append(inspmbinbuf,mave)
+                                Fbinbuf = np.append(Fbinbuf,mave)
                                 nmbinbuf = np.append(nmbinbuf,len(xlim[x_in_bin]))
                             else:
                                 lnxlast = lnxend # save the last boundary of empty bin
                     #print("homogeneous bin was not possible! (%d/%d, log = %.2f)"%(id+1,len(insplog),insplog[id]))
                     #print("no rebin for x < %f (%d points) and rebin for x > %f (%d points)"%(math.exp(lnxlast),naux,math.exp(lnxlast),nbin-naux))
                 xbin = np.array(xbinbuf)
-                inspmbin = np.array(inspmbinbuf)
+                Fbin = np.array(Fbinbuf)
                 nmbin = np.array(nmbinbuf)
-                # end of rebin
+            # end of rebin
             # next calculate q
-            # Bq is normalized at the centar of specified interval
-            xcenter = math.sqrt(xmax*xmin)
-            ixc = np.abs(xbin - xcenter).argmin()
-            # find a fiducial value of q
-            chi2aux = []
-            for q in qarr:
-                Bqnorm = ((xbin**q)*inspmbin)[ixc]
-                Bq = (xbin**q)*inspmbin/Bqnorm
-                Bqmean = Bq.sum()/nbin
-                Bqsq = np.square(Bq-Bqmean)
-                chi2aux.append(Bqsq.sum())
-            chi2aux = np.array(chi2aux)
-            qfidid = chi2aux.argmin()
-            qfid = np.nan if math.isnan(min(chi2aux)) else qarr[qfidid]
-            Bqfidnorm = ((xbin**qfid)*inspmbin)[ixc]
-            Bqfid = (xbin**qfid)*inspmbin/Bqfidnorm
-            Bqfidmean = Bqfid.sum()/nbin
-            Bqfidsigma = np.sqrt(np.sum(np.square(Bqfid-Bqfidmean))/nbin)
-            Bqfidsigmac = np.max(np.abs(Bqfid-Bqfidmean)) # conservative estimate of sigma based on maximum distance from mean
-            # build chi^2 and identify confidence interval
-            chi2q = []
-            chi2qc = []
-            Bqbin = []
-            for q in qarr:
-                Bqnorm = ((xbin**q)*inspmbin)[ixc]
-                Bq = (xbin**q)*inspmbin/Bqnorm
-                Bqsq = np.square(Bq-Bqfidmean)/((Bqfidsigma**2)*nbin)
-                Bqsqc = np.square(Bq-Bqfidmean)/((Bqfidsigmac**2)*nbin)
-                chi2q.append(Bqsq.sum())
-                chi2qc.append(Bqsqc.sum())
-                Bqbin.append(Bq)
-            chi2q = np.array(chi2q)
-            chi2qc = np.array(chi2qc)
-            chi2min = min(chi2q)
-            chi2minc = min(chi2qc)
-            qbestid = chi2q.argmin()
-            qbest = np.nan if math.isnan(min(chi2q)) else qarr[qbestid]
-            # identify error of q
-            q_CL  = (chi2q - chi2min) <= 1.
-            q_CLc  = (chi2qc - chi2minc) <= 1.
-            q1sigma = qarr[q_CL]
-            q1sigmac = qarr[q_CLc]
-            qupper = np.nanmax(q1sigma)
-            qupperc = np.nanmax(q1sigmac)
-            qlower = np.nanmin(q1sigma)
-            qlowerc = np.nanmin(q1sigmac)
-            Bqbin = np.array(Bqbin)
-        # end of the case len(xlim) >= 2
-        self.chi2q = chi2q
-        self.chi2qc = chi2qc
+            Su = nbin
+            Sl = np.sum(np.log(xbin))
+            Sll = np.sum(np.log(xbin)**2)
+            SL = np.sum(np.log(Fbin))
+            SLL = np.sum(np.log(Fbin)**2)
+            SlL = np.sum(np.log(xbin)*np.log(Fbin))
+            alpha = Sll*(Su*Sll/(Sl**2)-1)
+            beta = (Sll/Sl)*(Su*SlL/Sl-SL)
+            gamma = SLL - 2.*SL*SlL/Sl + Su*((SlL/Sl)**2)
+            qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
+            mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
+            vecone = np.ones(len(xbin))
+            sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))
+            sigmasqn = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/(nbin)
+            sigmasqc = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
+            sigma = math.sqrt(sigmasq)
+            sigman = math.sqrt(sigmasqn)
+            sigmac = math.sqrt(sigmasqc)
+            chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
+            chi2minn = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasqn
+            chi2minc = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasqc
+            sigmaq = math.sqrt(beta**2-alpha*(gamma-sigmasq*(chi2min+Deltachisq)))/alpha
+            sigmaqn = math.sqrt(beta**2-alpha*(gamma-sigmasqn*(chi2minn+Deltachisq)))/alpha
+            sigmaqc = math.sqrt(beta**2-alpha*(gamma-sigmasqc*(chi2minc+Deltachisq)))/alpha
+        # end of the case len(xlim) >= 4
         self.chi2min = chi2min
+        self.chi2minn = chi2minn
         self.chi2minc = chi2minc
         self.qbest = qbest
-        self.qbestid = qbestid
-        self.qupper = qupper
-        self.qupperc = qupperc
-        self.qlower = qlower
-        self.qlowerc = qlowerc
+        self.mbest = mbest
+        self.sigmaq = sigmaq
+        self.sigmaqn = sigmaqn
+        self.sigmaqc = sigmaqc
         self.xbin = xbin
-        self.Bqbin = Bqbin
-        self.Bfid = Bqfidmean
-        self.Bsigma = Bqfidsigma
-        self.Bsigmac = Bqfidsigmac
-        self.inspmbin = inspmbin
+        self.Fbin = Fbin
+        self.sigma = sigma
+        self.sigman = sigman
+        self.sigmac = sigmac
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
         self.nmbin = nmbin
         self.xwr = x_within_range
         self.xlim = xlim
@@ -732,87 +708,87 @@ class Setq:
 #   nbin            number of bins (default 30)
 #   cxmin           lower limit of the interval (default 30)
 #   cxmax           upper limit of the interval specified as cxmax*(m/H) (default 1/6)
-#   qstart          lower limit of q to scan (default 0)
-#   qend            upper limit of q to scan (default 1.5)
-#   qpoints         number of points to scan (default 5000)
 #
 # Output:
-#   self.chi2q      chi^2 as a function of q
-#   self.chi2qc     chi^2 as a function of q (using conservative estimate of sigma based on maximum distance from mean)
 #   self.chi2min    minimum value of chi^2
+#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
 #   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
-#   self.qbestid    index of qbest in qarr = np.linspace(qstart,qend,qpoints)
-#   self.qupper     "1 sigma" upper limit of q
-#   self.qupperc    "1 sigma" upper limit of q (using conservative estimate of sigma based on maximum distance from mean)
-#   self.qlower     "1 sigma" lower limit of q
-#   self.qlowerc    "1 sigma" lower limit of q (using conservative estimate of sigma based on maximum distance from mean)
-#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) and B(x) = x^q*F(x) where x = k/RH
-#   self.Bqbin      array for B(x) = x^q*F(x) with shape [id,i,j] where id is index of time step, i is index of q, and j is index of x
-#   self.Bfid       1d array for B(x) = x^qfid*F(x) corresponding to a fiducial value of q
-#   self.Bsigma     "sigma" to define confidence interval based on average of (Bfid-Bfidmean)^2
-#   self.Bsigmac    conservative estimate of "sigma" to define confidence interval based on maximum value of (Bfid-Bfidmean)^2
-#   self.inspmbin   rebinned instantaneous spectrum F(x)
+#   self.mbest      best fit value of m (normalization of the model)
+#   self.sigmaq     "1 sigma" confidence interval of q
+#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
+#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
+#   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
+#   self.sigma      "sigma" to define confidence interval based on the mean of residuals of different bins
+#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
+#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
+#
+#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gamma
+#
 #   self.nmbin      number of modes in each bin (currently not used)
-#   self.qarr       array for q
-#   self.logtab     array for log(m/H)
+#   self.log     　　array for log(m/H)
 #
 class Scanq:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6., qstart=0, qend=1.5, qpoints=5000):
-        qarr = np.linspace(qstart,qend,qpoints)
-        self.chi2q = []
-        self.chi2qc = []
+    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6.):
         self.chi2min = []
+        self.chi2minn = []
         self.chi2minc = []
         self.qbest = []
-        self.qbestid = []
-        self.qupper = []
-        self.qupperc = []
-        self.qlower = []
-        self.qlowerc = []
+        self.mbest = []
+        self.sigmaq = []
+        self.sigmaqn = []
+        self.sigmaqc = []
         self.xbin = []
-        self.Bqbin = []
-        self.Bfid = []
-        self.Bsigma = []
-        self.Bsigmac = []
-        self.inspmbin = []
+        self.Fbin = []
+        self.sigma = []
+        self.sigman = []
+        self.sigmac = []
+        self.alpha = []
+        self.beta = []
+        self.gamma = []
         self.nmbin = []
         for id in range(len(insplog)):
             print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
-            sqt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin,qstart,qend,qpoints)
-            self.chi2q.append(sqt.chi2q)
-            self.chi2qc.append(sqt.chi2qc)
+            sqt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin)
             self.chi2min.append(sqt.chi2min)
+            self.chi2minn.append(sqt.chi2minn)
             self.chi2minc.append(sqt.chi2minc)
             self.qbest.append(sqt.qbest)
-            self.qbestid.append(sqt.qbestid)
-            self.qupper.append(sqt.qupper)
-            self.qupperc.append(sqt.qupperc)
-            self.qlower.append(sqt.qlower)
-            self.qlowerc.append(sqt.qlowerc)
+            self.mbest.append(sqt.mbest)
+            self.sigmaq.append(sqt.sigmaq)
+            self.sigmaqn.append(sqt.sigmaqn)
+            self.sigmaqc.append(sqt.sigmaqc)
             self.xbin.append(sqt.xbin)
-            self.Bqbin.append(sqt.Bqbin)
-            self.Bfid.append(sqt.Bfid)
-            self.Bsigma.append(sqt.Bsigma)
-            self.Bsigmac.append(sqt.Bsigmac)
-            self.inspmbin.append(sqt.inspmbin)
+            self.Fbin.append(sqt.Fbin)
+            self.sigma.append(sqt.sigma)
+            self.sigman.append(sqt.sigman)
+            self.sigmac.append(sqt.sigmac)
+            self.alpha.append(sqt.alpha)
+            self.beta.append(sqt.beta)
+            self.gamma.append(sqt.gamma)
             self.nmbin.append(sqt.nmbin)
         print("")
         self.chi2min = np.array(self.chi2min)
+        self.chi2minn = np.array(self.chi2minn)
         self.chi2minc = np.array(self.chi2minc)
         self.qbest = np.array(self.qbest)
-        self.qupper = np.array(self.qupper)
-        self.qupperc = np.array(self.qupperc)
-        self.qlower = np.array(self.qlower)
-        self.qlowerc = np.array(self.qlowerc)
-        self.Bfid = np.array(self.Bfid)
-        self.Bsigma = np.array(self.Bsigma)
-        self.Bsigmac = np.array(self.Bsigmac)
-        self.qarr = qarr
-        self.logtab = insplog
+        self.mbest = np.array(self.mbest)
+        self.sigmaq = np.array(self.sigmaq)
+        self.sigmaqn = np.array(self.sigmaqn)
+        self.sigmaqc = np.array(self.sigmaqc)
+        self.sigma = np.array(self.sigma)
+        self.sigman = np.array(self.sigman)
+        self.sigmac = np.array(self.sigmac)
+        self.alpha = np.array(self.alpha)
+        self.beta = np.array(self.beta)
+        self.gamma = np.array(self.gamma)
+        self.log = insplog
         self.cxmaxopt = cxmax
 
 
@@ -835,101 +811,101 @@ class Scanq:
 #   cxmaxstart      lower limit of cxmax to scan (default 0.15)
 #   cxmaxend        upper limit of cxmax to scan (default 0.5)
 #   cxmaxpoints     number of points to scan over cxmax (default 200)
-#   qstart          lower limit of q to scan (default 0)
-#   qend            upper limit of q to scan (default 1.5)
-#   qpoints         number of points to scan (default 5000)
 #
 # Output:
-#   self.chi2q      chi^2 as a function of q
-#   self.chi2qc     chi^2 as a function of q (using conservative estimate of sigma based on maximum distance from mean)
 #   self.chi2min    minimum value of chi^2
+#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
 #   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
-#   self.qbestid    index of qbest in qarr = np.linspace(qstart,qend,qpoints)
-#   self.qupper     "1 sigma" upper limit of q
-#   self.qupperc    "1 sigma" upper limit of q (using conservative estimate of sigma based on maximum distance from mean)
-#   self.qlower     "1 sigma" lower limit of q
-#   self.qlowerc    "1 sigma" lower limit of q (using conservative estimate of sigma based on maximum distance from mean)
-#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) and B(x) = x^q*F(x) where x = k/RH
-#   self.Bqbin      array for B(x) = x^q*F(x) with shape [id,i,j] where id is index of time step, i is index of q, and j is index of x
-#   self.Bfid       1d array for B(x) = x^qfid*F(x) corresponding to a fiducial value of q
-#   self.Bsigma     "sigma" to define confidence interval based on average of (Bfid-Bfidmean)^2
-#   self.Bsigmac    conservative estimate of "sigma" to define confidence interval based on maximum value of (Bfid-Bfidmean)^2
-#   self.inspmbin   rebinned instantaneous spectrum F(x)
+#   self.mbest      best fit value of m (normalization of the model)
+#   self.sigmaq     "1 sigma" confidence interval of q
+#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
+#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
+#   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
+#   self.sigma      "sigma" to define confidence interval based on the mean of residuals of different bins
+#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
+#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
+#
+#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gamma
+#
 #   self.nmbin      number of modes in each bin (currently not used)
-#   self.qarr       array for q
-#   self.logtab     array for log(m/H)
+#   self.log        array for log(m/H)
 #   self.cxmaxopt   array for optimized values of cxmax
 #
 class Scanqopt:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, qstart=0, qend=1.5, qpoints=5000):
-        qarr = np.linspace(qstart,qend,qpoints)
-        self.chi2q = []
-        self.chi2qc = []
+    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200):
         self.chi2min = []
+        self.chi2minn = []
         self.chi2minc = []
         self.qbest = []
-        self.qbestid = []
-        self.qupper = []
-        self.qupperc = []
-        self.qlower = []
-        self.qlowerc = []
+        self.mbest = []
+        self.sigmaq = []
+        self.sigmaqn = []
+        self.sigmaqc = []
         self.xbin = []
-        self.Bqbin = []
-        self.Bfid = []
-        self.Bsigma = []
-        self.Bsigmac = []
-        self.inspmbin = []
+        self.Fbin = []
+        self.sigma = []
+        self.sigman = []
+        self.sigmac = []
+        self.alpha = []
+        self.beta = []
+        self.gamma = []
         self.nmbin = []
         self.cxmaxopt = []
         for id in range(len(insplog)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]))
+            print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
-            sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin,qstart,qend,qpoints)
-            sigmaq = max(sqt.qbest - sqt.qlower,sqt.qupper - sqt.qbest)
+            sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin)
+            sigmaq = sqt.sigmaq
             copt = cxmaxstart
             for c in np.linspace(cxmaxstart,cxmaxend,cxmaxpoints)[1:]:
-                print('\rcxmax = %.3f'%c,end="")
+                #print('\rcxmax = %.3f'%c)
                 xmax = c*msoverH
-                sqtt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin,qstart,qend,qpoints)
-                sigmaqt = max(sqtt.qbest - sqtt.qlower,sqtt.qupper - sqtt.qbest)
+                sqtt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin)
+                sigmaqt = sqtt.sigmaq
                 if sigmaqt < sigmaq:
                     sqt = sqtt
                     sigmaq = sigmaqt
                     copt = c
-            print("")
-            self.chi2q.append(sqt.chi2q)
-            self.chi2qc.append(sqt.chi2qc)
+            #print("")
             self.chi2min.append(sqt.chi2min)
+            self.chi2minn.append(sqt.chi2minn)
             self.chi2minc.append(sqt.chi2minc)
             self.qbest.append(sqt.qbest)
-            self.qbestid.append(sqt.qbestid)
-            self.qupper.append(sqt.qupper)
-            self.qupperc.append(sqt.qupperc)
-            self.qlower.append(sqt.qlower)
-            self.qlowerc.append(sqt.qlowerc)
+            self.mbest.append(sqt.mbest)
+            self.sigmaq.append(sqt.sigmaq)
+            self.sigmaqn.append(sqt.sigmaqn)
+            self.sigmaqc.append(sqt.sigmaqc)
             self.xbin.append(sqt.xbin)
-            self.Bqbin.append(sqt.Bqbin)
-            self.Bfid.append(sqt.Bfid)
-            self.Bsigma.append(sqt.Bsigma)
-            self.Bsigmac.append(sqt.Bsigmac)
-            self.inspmbin.append(sqt.inspmbin)
+            self.Fbin.append(sqt.Fbin)
+            self.sigma.append(sqt.sigma)
+            self.sigman.append(sqt.sigman)
+            self.sigmac.append(sqt.sigmac)
+            self.alpha.append(sqt.alpha)
+            self.beta.append(sqt.beta)
+            self.gamma.append(sqt.gamma)
             self.nmbin.append(sqt.nmbin)
             self.cxmaxopt.append(copt)
-        #print("")
+        print("")
         self.chi2min = np.array(self.chi2min)
+        self.chi2minn = np.array(self.chi2minn)
         self.chi2minc = np.array(self.chi2minc)
         self.qbest = np.array(self.qbest)
-        self.qupper = np.array(self.qupper)
-        self.qupperc = np.array(self.qupperc)
-        self.qlower = np.array(self.qlower)
-        self.qlowerc = np.array(self.qlowerc)
-        self.Bfid = np.array(self.Bfid)
-        self.Bsigma = np.array(self.Bsigma)
-        self.Bsigmac = np.array(self.Bsigmac)
-        self.qarr = qarr
-        self.logtab = insplog
+        self.mbest = np.array(self.mbest)
+        self.sigmaq = np.array(self.sigmaq)
+        self.sigmaqn = np.array(self.sigmaqn)
+        self.sigmaqc = np.array(self.sigmaqc)
+        self.sigma = np.array(self.sigma)
+        self.sigman = np.array(self.sigman)
+        self.sigmac = np.array(self.sigmac)
+        self.alpha = np.array(self.alpha)
+        self.beta = np.array(self.beta)
+        self.gamma = np.array(self.gamma)
+        self.log = insplog
         self.cxmaxopt = np.array(self.cxmaxopt)
 
 
