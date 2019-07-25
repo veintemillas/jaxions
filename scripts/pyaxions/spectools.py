@@ -176,6 +176,62 @@ class inspA:
 
 
 
+#   calculate instantaneous spectrum based on analytical fit
+#   time steps specified in the arguments
+class inspAt:
+    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', lltype='Z2'):
+        fitp = fitP(mfiles,spmask)
+        self.lltype = lltype
+        self.sizeN = fitp.sizeN
+        self.sizeL = fitp.sizeL
+        self.msa = fitp.msa
+        self.LL = fitp.LL
+        self.nm = fitp.nm
+        self.avek = fitp.avek
+        self.k_below = fitp.k_below
+        self.F = [] # instantaneous spectrum F
+        self.Fnorm = [] # normalization factor of F
+        self.x = [] # x-axis (k/RH)
+        self.log = np.linspace(logi,logf,nlog)
+        if lltype == 'Z2':
+            self.t = np.exp(self.log)*self.sizeL/(self.sizeN*self.msa)
+        elif lltype == 'fixed':
+            self.t = np.sqrt(np.exp(self.log)/np.sqrt(2.*self.LL))
+        istart = np.abs(self.log - 4.).argmin()
+        iterkmax = len(self.avek[self.k_below])
+        for id in range(len(self.log)):
+            log = self.log[id]
+            t = self.t[id]
+            print('\rcalc F: %d/%d, log = %.2f'%(id+1,len(self.log),log),end="")
+            if id >= istart:
+                Fbinbuf = []
+                x = []
+                for ik in range(iterkmax):
+                    # calculate only modes inside the horizon
+                    ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # time index corresponding to the horizon crossing
+                    if id >= ihc:
+                        l = fitp.param[ik]
+                        Fval = dfunc(log,*l)/(t**5)
+                        if not np.isnan(Fval):
+                            Fbinbuf.append(Fval)
+                            x.append(self.avek[ik]*t)
+                Fbinbuf = np.array(Fbinbuf)
+                # normalize
+                dx = np.gradient(x)
+                Fdx = Fbinbuf*dx
+                self.F.append(Fbinbuf/Fdx.sum())
+                self.Fnorm.append(Fdx.sum())
+                self.x.append(np.array(x))
+        print("")
+        self.F = np.array(self.F)
+        self.Fnorm = np.array(self.Fnorm)
+        self.x = np.array(self.x) # x = k/RH
+
+
+
+
+
+
 
 #   calculate instantaneous spectrum based on backward difference
 class inspB:
