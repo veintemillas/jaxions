@@ -1029,6 +1029,101 @@ class readq:
 
 
 # ------------------------------------------------------------------------------
+#   String density
+# ------------------------------------------------------------------------------
+
+#   evolution of string density parameter
+class strevol:
+    def __init__(self, mfiles, lltype='Z2'):
+        self.sizeN = pa.gm(mfiles[0],'Size')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
+        self.t = []
+        self.xi = []
+        for ff in mfiles:
+            self.t.append(pa.gm(ff,'ct'))
+            self.xi.append(pa.gm(ff,'stDens'))
+        self.t = np.array(self.t)
+        self.xi = np.array(self.xi)
+        if lltype == 'Z2':
+            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
+        elif lltype == 'fixed':
+            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
+
+
+
+
+
+
+#   take ensemble average of the string density parameter
+#   assuming a list of strevol class objects
+class strave:
+    def __init__(self, strevollist):
+        Nreal = len(strevollist) # number of realizations
+        self.sizeN = strevollist[0].sizeN
+        self.sizeL = strevollist[0].sizeL
+        self.msa = strevollist[0].msa
+        self.LL = strevollist[0].LL
+        self.t = strevollist[0].t
+        self.log = strevollist[0].log
+        xi = [0]*len(strevollist[0].xi)
+        xisq = [0]*len(strevollist[0].xi)
+        for sl in strevollist:
+            xi += sl.xi
+            xisq += sl.xi*sl.xi
+        self.xi = xi/Nreal
+        self.dxi = np.sqrt(xisq/Nreal - self.xi*self.xi)
+
+
+
+
+
+
+#   save the data of string density parameter as pickle files
+#   assuming input as an strave class object
+def savestr(strave, name='./str'):
+    xiname = name + '_xi.pickle'
+    dxiname = name + '_dxi.pickle'
+    tname = name + '_t.pickle'
+    logname = name + '_log.pickle'
+    with open(xiname,'wb') as wxi:
+        pickle.dump(strave.xi, wxi)
+    with open(dxiname,'wb') as wdxi:
+        pickle.dump(strave.dxi, wdxi)
+    with open(tname,'wb') as wt:
+        pickle.dump(strave.t, wt)
+    with open(logname,'wb') as wl:
+        pickle.dump(strave.log, wl)
+
+
+
+
+
+
+#   read the data of string density parameter
+class readstr:
+    def __init__(self, name='./str'):
+        xiname = name + '_xi.pickle'
+        dxiname = name + '_dxi.pickle'
+        tname = name + '_t.pickle'
+        logname = name + '_log.pickle'
+        with open(xiname,'rb') as rxi:
+            self.xi = pickle.load(rxi)
+        with open(dxiname,'rb') as rdxi:
+            self.dxi = pickle.load(rdxi)
+        with open(tname,'rb') as rt:
+            self.t = pickle.load(rt)
+        with open(logname,'rb') as rl:
+            self.log = pickle.load(rl)
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
 #   Spectra with the correction matrix
 # ------------------------------------------------------------------------------
 
@@ -1197,6 +1292,134 @@ class espevol:
             self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
         self.esp = np.array(self.esp)
         self.espcor = np.array(self.espcor)
+
+
+
+
+
+
+#   take ensemble average of the (masked) axion energy spectrum
+#   assuming a list of espevol class objects
+class espave:
+    def __init__(self, esplist, cor='nocorrection'):
+        Nreal = len(esplist) # number of realizations
+        self.sizeN = esplist[0].sizeN
+        self.sizeL = esplist[0].sizeL
+        self.msa = esplist[0].msa
+        self.LL = esplist[0].LL
+        self.nm = esplist[0].nm
+        self.avek = esplist[0].avek
+        self.k_below = esplist[0].k_below
+        self.t = esplist[0].ttab
+        self.log = esplist[0].logtab
+        self.esp = []
+        self.desp = []
+        self.espcor = []
+        self.despcor = []
+        for id in range(len(self.t)):
+            esp = [0]*(len(self.avek))
+            espsq = [0]*(len(self.avek))
+            if cor == 'correction':
+                espcor = [0]*(len(self.avek))
+                espcorsq = [0]*(len(self.avek))
+            for el in esplist:
+                esp += el.esp[id]
+                espsq += np.square(el.esp[id])
+                if cor == 'correction':
+                    espcor += el.espcor[id]
+                    espcorsq += np.square(el.espcor[id])
+            esp = esp/Nreal
+            espsq = espsq/Nreal - esp*esp
+            if cor == 'correction':
+                espcor = espcor/Nreal
+                espcorsq = espcorsq/Nreal - espcor*espcor
+            self.esp.append(esp)
+            self.desp.append(np.sqrt(espsq))
+            if cor == 'correction':
+                self.espcor.append(espcor)
+                self.despcor.append(np.sqrt(espsqcor))
+            print('\r%d/%d, log = %.2f'%(id+1,len(self.t),self.log[id]),end="")
+        print("")
+        self.esp = np.array(self.esp)
+        self.desp = np.array(self.desp)
+        self.espcor = np.array(self.espcor)
+        self.despcor = np.array(self.despcor)
+
+
+
+
+
+
+#   save the data of axion energy spectra as pickle files
+#   assuming input as an espave class object
+def saveesp(espave, name='./esp'):
+    ename = name + '_e.pickle'
+    dename = name + '_de.pickle'
+    ecname = name + '_ec.pickle'
+    decname = name + '_dec.pickle'
+    tname = name + '_t.pickle'
+    logname = name + '_log.pickle'
+    nname = name + '_nm.pickle'
+    kname = name + '_k.pickle'
+    kbname = name + '_kb.pickle'
+    with open(ename,'wb') as we:
+        pickle.dump(espave.esp, we)
+    with open(dename,'wb') as wde:
+        pickle.dump(espave.desp, wde)
+    with open(ecname,'wb') as wec:
+        pickle.dump(espave.espcor, wec)
+    with open(decname,'wb') as wdec:
+        pickle.dump(espave.despcor, wdec)
+    with open(tname,'wb') as wt:
+        pickle.dump(espave.t, wt)
+    with open(logname,'wb') as wl:
+        pickle.dump(espave.log, wl)
+    with open(nname,'wb') as wn:
+        pickle.dump(espave.nm, wn)
+    with open(kname,'wb') as wk:
+        pickle.dump(espave.avek, wk)
+    with open(kbname,'wb') as wkb:
+        pickle.dump(espave.k_below, wkb)
+
+
+
+
+
+
+#   read the data of axion energy spectra
+class readesp:
+    def __init__(self, name='./esp'):
+        ename = name + '_e.pickle'
+        dename = name + '_de.pickle'
+        ecname = name + '_ec.pickle'
+        decname = name + '_dec.pickle'
+        tname = name + '_t.pickle'
+        logname = name + '_log.pickle'
+        nname = name + '_nm.pickle'
+        kname = name + '_k.pickle'
+        kbname = name + '_kb.pickle'
+        with open(ename,'rb') as re:
+            self.esp = pickle.load(re)
+        with open(dename,'rb') as rde:
+            self.desp = pickle.load(rde)
+        with open(ecname,'rb') as rec:
+            self.espcor = pickle.load(rec)
+        with open(decname,'rb') as rdec:
+            self.despcor = pickle.load(rdec)
+        with open(tname,'rb') as rt:
+            self.t = pickle.load(rt)
+        with open(logname,'rb') as rl:
+            self.log = pickle.load(rl)
+        with open(nname,'rb') as rn:
+            self.nm = pickle.load(rn)
+        with open(kname,'rb') as rk:
+            self.avek = pickle.load(rk)
+        with open(kbname,'rb') as rkb:
+            self.k_below = pickle.load(rkb)
+
+
+
+
 
 class combiq:
     def __init__(self, mfiles):
