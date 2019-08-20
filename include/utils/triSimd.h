@@ -504,6 +504,15 @@ inline _MData_	opCode(md2_pd, const _MData_ &x)
 #endif
 }
 
+//returns y^2, xy
+inline _MData_	opCode(vqcd0_pd, const _MData_ &x)
+{
+#if defined(__AVX__)
+	return	opCode(mul_pd, opCode(permute_pd, x, 0b00010001), opCode(permute_pd, x, 0b01010101));  //(y,x)*(y,y)
+#else
+	return	opCode(mul_pd, opCode(shuffle_pd, x, x, 0b0001), opCode(shuffle_pd, x, x, 0b0101));
+#endif
+}
 #undef	_MData_
 
 #if	defined(__AVX512F__)
