@@ -3,6 +3,8 @@
 #include"scalar/scalarField.h"
 #include"enum-field.h"
 //#include"scalar/varNQCD.h"
+
+#include "utils/triSimd.h"
 #include "utils/parse.h"
 
 #define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
@@ -391,8 +393,19 @@ tmp = opCode(sub_pd,
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*z2*zR);
-		//For VQCD_1N2
-		const float zN = (float) (aMass2*z2)/2;
+		float gasa;
+		switch	(VQcd & VQCD_TYPE) {
+				case	VQCD_1N2:
+				gasa = (float) (aMass2*z2)/2;
+				break;
+
+				default:
+				case	VQCD_0:
+				gasa = (float) (aMass2*z2*z2);
+				break;
+		}
+		//For VQCD_1N2 & VQCD0
+		const float zN = gasa;
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
@@ -444,7 +457,7 @@ tmp = opCode(sub_pd,
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
 		  {
-		    _MData_ tmp, mel, mPx, mPy, mMx;
+		    _MData_ tmp, mel, mPx, mPy, mMx, tmp2;
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
 		     for (uint yy = 0; yy < bSizeY; yy++) {
@@ -526,14 +539,15 @@ tmp = opCode(sub_pd,
 			idxMz = ((idx-Sf) << 1);
 			idxP0 = (idx << 1);
 
-			mel = opCode(load_ps, &m[idxP0]);
-			mPy = opCode(mul_ps, mel, mel);
-
+			mel = opCode(load_ps, &m[idxP0]); // M1 M2
+			mPy = opCode(mul_ps, mel, mel);		// M1^2 M2^2
+			// mPx is M1^2+M2^2 M1^2+M2^2
 #if	defined(__AVX__)// || defined(__AVX512F__)
 			mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
 #else
 			mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
 #endif
+
 			switch	(VQcd & VQCD_TYPE) {
 					default:
 					case	VQCD_1:
@@ -602,6 +616,33 @@ tmp = opCode(sub_pd,
 	 							opCode(set1_ps, LL)),
 	 						mel));
 	 				break;
+
+					case	VQCD_0:
+					tmp2 = opCode(div_ps,
+									opCode(vqcd0_ps,mel),
+										opCode(sqrt_ps, opCode(mul_ps, mPy, opCode(mul_ps, mPy, mPy) ) ) ); //
+
+	 				mMx = opCode(sub_ps,
+	 					opCode(sub_ps,
+	 						opCode(mul_ps,
+	 							opCode(add_ps,
+	 								opCode(add_ps,
+	 									opCode(load_ps, &m[idxMz]),
+	 									opCode(add_ps,
+	 										opCode(add_ps,
+	 											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+	 											opCode(load_ps, &m[idxMx])),
+	 										opCode(load_ps, &m[idxPz]))),
+	 								opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
+	 							opCode(set1_ps, ood2)),
+	 						opCode(mul_ps, zNVec, tmp2)), // QCD potential
+	 					opCode(mul_ps,
+	 						opCode(mul_ps,
+	 							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+	 							opCode(set1_ps, LL)),
+	 						mel));
+	 				break;
+
 
 					case	VQCD_1N2:
 					mMx = opCode(sub_ps,
@@ -1155,8 +1196,21 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 		const float z2 = zR*zR;
 		//const float zQ = 9.*powf(zR, nQcd+3.);
 		const float zQ = (float) (aMass2*z2*zR);
+		float gasa;
+		switch	(VQcd & VQCD_TYPE) {
+				case	VQCD_1N2:
+				gasa = (float) (aMass2*z2)/2;
+				break;
+
+				default:
+				case	VQCD_0:
+				gasa = (float) (aMass2*z2*z2);
+				break;
+		}
+		//For VQCD_1N2 & VQCD0
+		const float zN = gasa;
 		//For VQCD_1N2
-		const float zN = (float) (aMass2*z2)/2;
+		// const float zN = (float) (aMass2*z2)/2;
 		const float dzc = dz*c;
 
 		const float z4 = z2*z2;
@@ -1201,7 +1255,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 
 		#pragma omp parallel default(shared)
 		{
-			_MData_ tmp, mel, mPx, mPy, mMx;
+			_MData_ tmp, mel, mPx, mPy, mMx, tmp2;
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -1350,6 +1404,32 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 								opCode(set1_ps, (float) LL)),
 							mel));
 					break;
+
+					case	VQCD_0:
+					tmp2 = opCode(div_ps,
+									opCode(vqcd0_ps,mel),
+										opCode(sqrt_ps, opCode(mul_ps, mPy, opCode(mul_ps, mPy, mPy) ) ) ); //
+
+	 				mMx = opCode(sub_ps,
+	 					opCode(sub_ps,
+	 						opCode(mul_ps,
+	 							opCode(add_ps,
+	 								opCode(add_ps,
+	 									opCode(load_ps, &m[idxMz]),
+	 									opCode(add_ps,
+	 										opCode(add_ps,
+	 											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
+	 											opCode(load_ps, &m[idxMx])),
+	 										opCode(load_ps, &m[idxPz]))),
+	 								opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
+	 							opCode(set1_ps, ood2)),
+	 						opCode(mul_ps, zNVec, tmp2)), // QCD potential
+	 					opCode(mul_ps,
+	 						opCode(mul_ps,
+	 							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+	 							opCode(set1_ps, LL)),
+	 						mel));
+	 				break;
 
 					case	VQCD_1N2:
 					mMx = opCode(sub_ps,

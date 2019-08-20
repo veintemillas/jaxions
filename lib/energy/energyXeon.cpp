@@ -329,6 +329,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 					default:
 					case	VQCD_1:
+					case	VQCD_0:
 						mSg = opCode(sub_pd, Gry, one);
 						mod = opCode(mul_pd, mSg, mSg);
 						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
@@ -797,6 +798,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 					default:
 					case	VQCD_1:
+					case	VQCD_0:
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
 						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|  // 1-Re'/M , 1-Im/M

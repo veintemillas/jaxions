@@ -224,7 +224,7 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 #else
 	uh = opCode(mul_pd, opCode(round_pd, opCode(mul_pd, x, rPid), _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC), rCte);
 	ul = opCode(round_pd, opCode(sub_pd, opCode(mul_pd, x, oPid), uh), _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
-#endif 
+#endif
 #if	defined(__AVX__)
 	qi = opCode(cvtpd_epi32, ul);
 #else
@@ -278,24 +278,24 @@ inline _MData_	opCode(sin_pd, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-	u = opCode(fmadd_pd, s0d, s, s1d); 
-	u = opCode(fmadd_pd, u,   s, s2d); 
-	u = opCode(fmadd_pd, u,   s, s3d); 
-	u = opCode(fmadd_pd, u,   s, s4d); 
-	u = opCode(fmadd_pd, u,   s, s5d); 
-	u = opCode(fmadd_pd, u,   s, s6d); 
-	u = opCode(fmadd_pd, u,   s, s7d); 
-	u = opCode(fmadd_pd, u,   s, s8d); 
+	u = opCode(fmadd_pd, s0d, s, s1d);
+	u = opCode(fmadd_pd, u,   s, s2d);
+	u = opCode(fmadd_pd, u,   s, s3d);
+	u = opCode(fmadd_pd, u,   s, s4d);
+	u = opCode(fmadd_pd, u,   s, s5d);
+	u = opCode(fmadd_pd, u,   s, s6d);
+	u = opCode(fmadd_pd, u,   s, s7d);
+	u = opCode(fmadd_pd, u,   s, s8d);
 	u = opCode(fmadd_pd, s, opCode(mul_pd, u, d), d);
 #else
-	u = opCode(add_pd, opCode(mul_pd, s0d, s), s1d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s2d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s3d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s4d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s5d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s6d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s7d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s8d); 
+	u = opCode(add_pd, opCode(mul_pd, s0d, s), s1d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s2d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s3d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s4d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s5d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s6d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s7d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s8d);
 	u = opCode(add_pd, d, opCode(mul_pd, s, opCode(mul_pd, u, d)));
 #endif
 
@@ -408,24 +408,24 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-	u = opCode(fmadd_pd, s0d, s, s1d); 
-	u = opCode(fmadd_pd, u,   s, s2d); 
-	u = opCode(fmadd_pd, u,   s, s3d); 
-	u = opCode(fmadd_pd, u,   s, s4d); 
-	u = opCode(fmadd_pd, u,   s, s5d); 
-	u = opCode(fmadd_pd, u,   s, s6d); 
-	u = opCode(fmadd_pd, u,   s, s7d); 
-	u = opCode(fmadd_pd, u,   s, s8d); 
+	u = opCode(fmadd_pd, s0d, s, s1d);
+	u = opCode(fmadd_pd, u,   s, s2d);
+	u = opCode(fmadd_pd, u,   s, s3d);
+	u = opCode(fmadd_pd, u,   s, s4d);
+	u = opCode(fmadd_pd, u,   s, s5d);
+	u = opCode(fmadd_pd, u,   s, s6d);
+	u = opCode(fmadd_pd, u,   s, s7d);
+	u = opCode(fmadd_pd, u,   s, s8d);
 	u = opCode(fmadd_pd, s, opCode(mul_pd, u, d), d);
 #else
-	u = opCode(add_pd, opCode(mul_pd, s0d, s), s1d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s2d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s3d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s4d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s5d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s6d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s7d); 
-	u = opCode(add_pd, opCode(mul_pd, u,   s), s8d); 
+	u = opCode(add_pd, opCode(mul_pd, s0d, s), s1d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s2d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s3d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s4d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s5d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s6d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s7d);
+	u = opCode(add_pd, opCode(mul_pd, u,   s), s8d);
 	u = opCode(add_pd, d, opCode(mul_pd, s, opCode(mul_pd, u, d)));
 #endif
 
@@ -512,7 +512,7 @@ inline _MData_	opCode(md2_pd, const _MData_ &x)
 	#define	_MData_ __m256
 #else
 	#define	_MData_ __m128
-#endif 
+#endif
 
 #ifndef	__INTEL_COMPILER
 
@@ -685,14 +685,14 @@ inline _MData_	opCode(sin_ps, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-	u = opCode(fmadd_ps, s0f, s, s1f); 
-	u = opCode(fmadd_ps, u,   s, s2f); 
-	u = opCode(fmadd_ps, u,   s, s3f); 
+	u = opCode(fmadd_ps, s0f, s, s1f);
+	u = opCode(fmadd_ps, u,   s, s2f);
+	u = opCode(fmadd_ps, u,   s, s3f);
 	u = opCode(fmadd_ps, s, opCode(mul_ps, u, d), d);
 #else
-	u = opCode(add_ps, opCode(mul_ps, s0f, s), s1f); 
-	u = opCode(add_ps, opCode(mul_ps, u,   s), s2f); 
-	u = opCode(add_ps, opCode(mul_ps, u,   s), s3f); 
+	u = opCode(add_ps, opCode(mul_ps, s0f, s), s1f);
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s2f);
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s3f);
 	u = opCode(add_ps, d, opCode(mul_ps, s, opCode(mul_ps, u, d)));
 #endif
 
@@ -759,7 +759,7 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 
 	s = opCode(mul_ps, d, d);
 #ifdef	__AVX512F__
-	d = opCode(castsi512_ps, 
+	d = opCode(castsi512_ps,
 		opCode(mask_xor_epi32, opCode(castps_si512, d), opCode(cmpeq_epi32_mask, iZero, opCode(and_epi32, q, two)), opCode(castps_si512, d), opCode(castps_si512, zeroNegf)));
 #elif	defined(__AVX2__)
 	d = opCode(xor_ps, d,
@@ -780,14 +780,14 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-	u = opCode(fmadd_ps, s0f, s, s1f); 
-	u = opCode(fmadd_ps, u,   s, s2f); 
-	u = opCode(fmadd_ps, u,   s, s3f); 
+	u = opCode(fmadd_ps, s0f, s, s1f);
+	u = opCode(fmadd_ps, u,   s, s2f);
+	u = opCode(fmadd_ps, u,   s, s3f);
 	u = opCode(fmadd_ps, s, opCode(mul_ps, u, d), d);
 #else
-	u = opCode(add_ps, opCode(mul_ps, s0f, s), s1f); 
-	u = opCode(add_ps, opCode(mul_ps, u,   s), s2f); 
-	u = opCode(add_ps, opCode(mul_ps, u,   s), s3f); 
+	u = opCode(add_ps, opCode(mul_ps, s0f, s), s1f);
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s2f);
+	u = opCode(add_ps, opCode(mul_ps, u,   s), s3f);
 	u = opCode(add_ps, d, opCode(mul_ps, s, opCode(mul_ps, u, d)));
 #endif
 
@@ -857,6 +857,16 @@ inline _MData_	opCode(md2_ps, const _MData_ &x)
 	return	opCode(add_ps, opCode(permute_ps, x, 0b10110001), x);
 #else
 	return	opCode(add_ps, opCode(shuffle_ps, x, x, 0b10110001), x);
+#endif
+}
+
+//returns y^2, xy
+inline _MData_	opCode(vqcd0_ps, const _MData_ &x)
+{
+#if defined(__AVX__)
+	return	opCode(mul_ps, opCode(permute_ps, x, 0b10110001), opCode(permute_ps, x, 0b11110101));  //(y,x)*(y,y)
+#else
+	return	opCode(mul_ps, opCode(shuffle_ps, x, x, 0b10110001), opCode(shuffle_ps, x, x, 0b11110101));
 #endif
 }
 

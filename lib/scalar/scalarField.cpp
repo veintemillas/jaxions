@@ -1046,6 +1046,7 @@ double  Scalar::Saskia  ()
 		}
 
 		case    VQCD_2:
+		case    VQCD_0:
 			return  0.;
 			break;
 
@@ -1191,6 +1192,7 @@ double  Scalar::Saskia  (const double RNow)
 			break;
 
 		case    VQCD_2:
+		case    VQCD_0:
 			return  0.;
 			break;
 
