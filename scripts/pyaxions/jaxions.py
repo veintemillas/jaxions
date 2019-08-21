@@ -39,7 +39,12 @@ def findmfiles(address='./'):
         address += '/'
     list = []
     for filename in glob.iglob(address+'**/axion.m.*', recursive=True):
-          list.append(filename)
+        try:
+            f = h5py.File(filename, 'r')
+            list.append(filename)
+        except:
+            print('Excluded corrupted file in %s: %s'%(address,filename))
+
           #print(filename)
     return np.array(sorted(list)) ;
 
@@ -141,7 +146,11 @@ def aximcontent(address='./'):
 def gml(list,something='z'):
     out=[]
     for f in list:
-        out.append(gm(f,something))
+        try:
+            out.append(gm(f,something))
+        except:
+            print('Corrupted file: %s'%f)
+
     return np.array(out)
 
 def gm(address,something='summary',printerror=False):
@@ -909,7 +918,7 @@ def gm(address,something='summary',printerror=False):
             V = f.attrs[u'Physical size']**3
             ms = gm(address,'massS')
             return np.sqrt(BV0*2/ms/V)/scaleFactorR
-            
+
     if something == 'summary':
         nqcd = gm(address,'nqcd')
         ct = f.attrs[u'z']

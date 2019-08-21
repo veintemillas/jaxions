@@ -52,10 +52,15 @@ class	Plot3D():
 
 		usableFiles = []
 		print('files with string coordinates? ... ',end='')
+
 		for myFile in fileMeas:
-			fileHdf5 = h5py.File(myFile, "r")
-			if "/string/codata" in fileHdf5:
-				usableFiles.append(myFile)
+			try:
+				with h5py.File(myFile, 'r') as fileHdf5:
+					if "/string/codata" in fileHdf5:
+						usableFiles.append(myFile)
+			except:
+				print('Error opening file: %s'%myFile)
+
 		print('from ', usableFiles[0], ' to ', usableFiles[-1])
 
 		self.allData = []
