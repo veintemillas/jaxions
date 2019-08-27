@@ -395,12 +395,18 @@ void	ConfGenerator::runCpu	()
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
 
+			double kcr = 1.0; // factor used in prepropagation
+
 					LogMsg(VERB_NORMAL,"[GEN] sIter %d!",sIter);
 					if (sIter == 1){
-						nN3 = min(kCrit*nN3,1.0);
-						nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
-						// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
-						LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
+						if (preprop){
+							kcr = kCrit;
+						} else {
+							nN3 = min(kCrit*nN3,1.0);
+							nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+							// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+							LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
+						}
 					} else if (sIter > 1) {
 					// add random noise in the initial time ~ random in xi (not really)
 						double r = 0 ;
@@ -417,9 +423,14 @@ void	ConfGenerator::runCpu	()
 						commSync();
 						// printf("hello from rank %d, r = %f\n",myRank,r);
 
-						nN3 = min(pow(kCrit,r)*nN3,1.0); ;
-						nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
-						LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+						if (preprop){
+							LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > but does not modify nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+							kcr = pow(kCrit,r);
+						} else {
+							nN3 = min(pow(kCrit,r)*nN3,1.0);
+							nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+							LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, kCrit,pow(kCrit,r), nN3,nc);
+						}
 				  }
 
 			LogMsg(VERB_NORMAL,"[GEN] momConf with kMax %d kCrit %f!",sizeN,nc);
@@ -442,7 +453,7 @@ void	ConfGenerator::runCpu	()
 
 			if (preprop){
 				if (pregammo == 0.0){
-					prepropa  (axionField);
+					prepropa  (axionField,kcr);
 					axionField->BckGnd()->SetLambda(LALA);
 					double zsave = *axionField->zV();
 					double rsave = 1/(*axionField->RV());
@@ -490,7 +501,7 @@ void	ConfGenerator::runCpu	()
 					myCosmos->SetGamma(pregammo);
 					LogMsg(VERB_NORMAL,"[GEN] gammo %f -> pregammo %f for prepropagation damping",gammo_save,myCosmos->Gamma());
 					axionField->BckGnd()->SetLambda(LALA);
-					relaxrho(axionField);
+					relaxrho(axionField,kcr);
 					myCosmos->SetGamma(gammo_save);
 					LogMsg(VERB_NORMAL,"[GEN] rho damping finished. gammo -> %f",myCosmos->Gamma());
 				}

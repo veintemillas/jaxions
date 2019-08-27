@@ -16,9 +16,9 @@
 
 using namespace std;
 
-double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType);
+double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType, double kcr);
 
-void	prepropa  (Scalar *axiona)
+void	prepropa  (Scalar *axiona, double kcr)
 {
 	MeasData lm;
 	//- number of plaquetes pierced by strings
@@ -71,11 +71,11 @@ void	prepropa  (Scalar *axiona)
 	switch (lType) {
 		case	LAMBDA_Z2:
 			premsa = prepcoe*masa;
-			ct2 = findct2(premsa, masa, ct0, delto, lType);
+			ct2 = findct2(premsa, masa, ct0, delto, lType, kcr);
 			break;
 		case LAMBDA_FIXED:
 			premsa = sqrt(2*prelambda)*delto;
-			ct2 = findct2(premsa, masa, ct0, delto, lType);
+			ct2 = findct2(premsa, masa, ct0, delto, lType, kcr);
 			break;
 	}
 
@@ -98,6 +98,7 @@ void	prepropa  (Scalar *axiona)
 					goalnN3 = 6*xit*pow(delto/cta,2);
 					break;
 	}
+	if (iter > 0 ) goalnN3 = min(kcr*goalnN3,1.0);
 
 	LogMsg(VERB_NORMAL,"[prep] goalnN3 = %f",goalnN3);
 	LogOut("\n");
@@ -127,7 +128,7 @@ void	prepropa  (Scalar *axiona)
 	if(lType == LAMBDA_FIXED) axiona->setLambda(LAMBDA_FIXED);
 }
 
-double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType)
+double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType lType, double kcr)
 {
 	double ct2 =ct0;
 	double logi = zInit; // logi as input
@@ -150,6 +151,7 @@ double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType 
 					nN3 = 6*xit*pow(delta/ct0,2);
 					break;
 	}
+	if (iter > 0 ) goalnN3 = min(kcr*goalnN3,1.0);
 	//printf("Goal nN3 =%f",goalnN3);
 	while (goalnN3 < nN3)
 	{
@@ -162,7 +164,7 @@ double findct2(double pre_msa, double msa, double ct0, double delta, LambdaType 
 	return ct2 ;
 }
 
-void	relaxrho  (Scalar *axiona)
+void	relaxrho  (Scalar *axiona, double kcr)
 {
 	MeasData lm;
 	lm.str.strDen = 0 ;
@@ -205,7 +207,7 @@ void	relaxrho  (Scalar *axiona)
 					goalnN3 = 6*xit*pow(delto/cta,2);
 					break;
 	}
-	if (iter > 0 ) goalnN3 = min(kCrit*goalnN3,1.0);
+	if (iter > 0 ) goalnN3 = min(kcr*goalnN3,1.0);
 
 	LogMsg(VERB_NORMAL,"[prep] goal nN3 = %f", goalnN3);
 
