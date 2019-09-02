@@ -39,14 +39,9 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 		#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 		for (size_t idx=Vo; idx<Vf; idx++)
 		{
-			size_t pidx ;
-			size_t iz ;
-			size_t iy ;
-			size_t ix	;
-			size_t rho2 ;
-			int z ;
-			int y ;
-			int x ;
+			size_t pidx, rho2;
+			size_t ix, iy, iz;
+			int    x, y, z;
 
 			switch (smvarType)
 			{
@@ -192,11 +187,11 @@ void	randConf (Scalar *field)
 	switch (field->Precision())
 	{
 		case FIELD_DOUBLE:
-		randXeon(static_cast<std::complex<double>*> (field->mCpu()), field->Surf(), field->Size()+field->Surf());
+		randXeon(static_cast<std::complex<double>*> (field->mCpu()), field->nGhost(), field->Size()+field->nGhost());
 		break;
 
 		case FIELD_SINGLE:
-		randXeon(static_cast<std::complex<float> *> (field->mCpu()), field->Surf(), field->Size()+field->Surf());
+		randXeon(static_cast<std::complex<float> *> (field->mCpu()), field->nGhost(), field->Size()+field->nGhost());
 		break;
 
 		default:

@@ -9,37 +9,38 @@
 	{
 		private:
 
-		Cosmos	*bckgnd;
+		Cosmos		*bckgnd;
 
-		const size_t n1;
-		const size_t n2;
-		const size_t n3;
+		const size_t	n1;
+		const size_t	n2;
+		const size_t	n3;
 
-		const size_t Lz;
-		const size_t Tz;
-		const size_t Ez;
-		const size_t v3;
+		const size_t	Lz;
+		const size_t	Tz;
+		const size_t	Ez;
+		const size_t	v3;
 
-		bool eReduced;
-		size_t rLx;
-		size_t rLz;
-		size_t rTz;
+		bool		eReduced;
+		size_t		rLx;
+		size_t		rLz;
+		size_t		rTz;
 
-		const int  nSplit;
+		const int	nSplit;
+		size_t		nNeig;
 
 		DeviceType	device;
 		FieldPrecision	precision;
 		FieldType	fieldType;
 		LambdaType	lambdaType;
 		StatusM2	statusM2;
-		StatusSD  statusSD;
+		StatusSD	statusSD;
 
 		size_t	fSize;
 		size_t	mAlign;
 		int	shift;
 		bool	mmomspace;
 		bool	vmomspace;
-		bool folded;
+		bool	folded;
 		bool	lowmem;
 
 		// conformal time
@@ -71,7 +72,7 @@
 
 		public:
 
-				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
+				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, int nNeig,
 					FieldType newType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
 				~Scalar();
 
@@ -84,14 +85,15 @@
 		void		*m2Cpu() { return m2; }
 		const void	*m2Cpu() const { return m2; }
 
-		void		*mStart () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2)); }
+		void		*mStart	     ()	{ return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2)*nNeig); }
+		void		*mStartGpu   ()	{ return static_cast<void *>(static_cast<char *>(m_d)+ fSize*(n2)*nNeig); }
 		void		*mFrontGhost () { return m; }
-		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2+n3)); }
+		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2*nNeig+n3)); }
 		void		*m2FrontGhost() { return m2; }
-		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
+		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2*nNeig+n3)); }
 		// fix for saxion mode! eReduced ? rLz*nSplit : Lz*nSplit;
 		// void		*m2half      () { return fieldType == FIELD_SAXION ? static_cast<void *>(static_cast<char *>(m2) + (fSize/2)*(v3)) :static_cast<void *>(static_cast<char *>(m2) + fSize*(v3));  }
-		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
+		void		*m2Half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
@@ -118,21 +120,22 @@
 		size_t		rSize()      { return eReduced ? (rLx*rLx*rLz) : n3; }
 		size_t		eDepth()     { return Ez; }
 		size_t		eSize()      { return v3; }
+		size_t		nGhost()     { return nNeig*n2; }
 
 		FieldPrecision	Precision()  { return precision; }
 		DeviceType	Device()     { return device; }
 		LambdaType	Lambda()     { return lambdaType; }
 		FieldType	Field()      { return fieldType; }
 		StatusM2	m2Status()   { return statusM2; }
-		StatusSD  sDStatus()   { return statusSD;}
-		void		setLambda      (LambdaType newLambda) { lambdaType = newLambda; }
+		StatusSD	sDStatus()   { return statusSD;}
+		void		setLambda(LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize ()  { return fSize; }
 		size_t		DataAlign()  { return mAlign; }
-		int			Shift()      { return shift; }
+		int		Shift()      { return shift; }
 		bool		Folded()     { return folded; }
-		bool		MMomSpace()     { return mmomspace; }
-		bool		VMomSpace()     { return vmomspace; }
+		bool		MMomSpace()  { return mmomspace; }
+		bool		VMomSpace()  { return vmomspace; }
 		bool		Reduced()    { return eReduced; }
 
 
@@ -146,7 +149,7 @@
 		double		IAxionMassSqn(double z0, double z, int nn);
 		double		SaxionMassSq();
 		double		HubbleMassSq();
-		double    HubbleConformal();
+		double		HubbleConformal();
 		double		SaxionShift();
 		double		Saskia     ();
 		double		dzSize     ();

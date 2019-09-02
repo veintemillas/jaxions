@@ -521,8 +521,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
-		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+slab*(1+zDim)*dataSize));
-		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+slab*zDim*dataSize));
+		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
+		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())  +slab*zDim*dataSize));
 
 		if ((mErr < 0) || (vErr < 0))
 		{
@@ -667,7 +667,6 @@ LogMsg (VERB_NORMAL, "zTmp (set to): %f",zTmp);
 	if (!uZfn) {
 		readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
 	}
-LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
 //	if (zInit > zTmp)
 //		zTmp = zInit;
 	if (restart)
@@ -691,7 +690,6 @@ LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
 	else {
 		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
 
-LogMsg (VERB_NORMAL, "nQcd (comm-line or default) = %f",myCosmos->QcdExp());
 		if (myCosmos->QcdExp() == -1.e8) {
 			double nQcd;
 			readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
@@ -699,8 +697,6 @@ LogMsg (VERB_NORMAL, "nQcd (comm-line or default) = %f",myCosmos->QcdExp());
 			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f",myCosmos->QcdExp());
 		}
 
-LogMsg (VERB_NORMAL, "Lambda (comm-line or default) = %f",myCosmos->Lambda());
-LogMsg (VERB_NORMAL, "Lambda Type= %d",lType);
 		if (myCosmos->Lambda() == -1.e8) {
 			double	lda;
 			readAttribute (vGrp_id, &lda,   "Lambda",      H5T_NATIVE_DOUBLE);
@@ -732,7 +728,6 @@ LogMsg (VERB_NORMAL, "Lambda Type= %d",lType);
 		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
 
 
-LogMsg (VERB_NORMAL, "Indi3 (comm-line or default) = %f",myCosmos->Indi3());
 		if (myCosmos->Indi3() == -1.e8) {
 			double indi3;
 			readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
@@ -740,7 +735,6 @@ LogMsg (VERB_NORMAL, "Indi3 (comm-line or default) = %f",myCosmos->Indi3());
 			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f",myCosmos->Indi3());
 		}
 
-LogMsg (VERB_NORMAL, "z Threshold (comm-line or default) = %f",myCosmos->ZThRes());
 		if (myCosmos->ZThRes() == -1.e8) {
 			double zthrs;
 			readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
@@ -748,7 +742,6 @@ LogMsg (VERB_NORMAL, "z Threshold (comm-line or default) = %f",myCosmos->ZThRes(
 			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %f",myCosmos->ZThRes());
 		}
 
-LogMsg (VERB_NORMAL, "z Restore (comm-line or default) = %f",myCosmos->ZRestore());
 		if (myCosmos->ZRestore() == -1.e8) {
 			double zrest;
 			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
@@ -758,7 +751,6 @@ LogMsg (VERB_NORMAL, "z Restore (comm-line or default) = %f",myCosmos->ZRestore(
 
 		//indi3 =  maa/pow(zTmp, nQcd*0.5);
 
-LogMsg (VERB_NORMAL, "Gamma (comm-line or default) = %f",myCosmos->Gamma());
 		if (myCosmos->Gamma() == -1.e8) {
 			double gm;
 			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
@@ -766,7 +758,6 @@ LogMsg (VERB_NORMAL, "Gamma (comm-line or default) = %f",myCosmos->Gamma());
 			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f",myCosmos->Gamma());
 		}
 
-LogMsg (VERB_NORMAL, "QcdPot (comm-line or default) = %d",myCosmos->QcdPot());
 		if (myCosmos->QcdPot() == VQCD_NONE) {
 			VqcdType vqcdType = VQCD_NONE;
 
@@ -820,7 +811,6 @@ LogMsg (VERB_NORMAL, "QcdPot (comm-line or default) = %d",myCosmos->QcdPot());
 	/*	Read IC data	*/
 	status = H5Lexists (file_id, "/ic", H5P_DEFAULT);
 
-LogMsg (VERB_NORMAL, "Ic... \n");
 	if (status <= 0)
 		LogMsg(VERB_NORMAL, "IC data not available");
 	else {
@@ -978,9 +968,9 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		/*	Read raw data	*/
 
-		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
+		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
 		//if (debug) printf("[db] rank %d mErr %d \n",myRank, mErr);
-		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
+		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())  +slab*zDim*dataSize));
 		if ((mErr < 0) || (vErr < 0)) {
 			//if (debug) printf("[db] Error reading dataset from file zDim %d, rank %d\n",zDim,myRank);
 			LogError ("Error reading dataset from file");
@@ -2138,7 +2128,7 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	sSpace	  = H5Dget_space (dataSet);
 
 	/*	Write point data	*/
-	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize) < 0)
+	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mStart())) < 0)
 		LogError ("Error: couldn't write point data to file");
 
 	/*	Close everything		*/
@@ -3074,10 +3064,10 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		slb *= 2;
 
 	if (axion->Precision() == FIELD_DOUBLE) {
-		dataV += slb*(axion->Depth()+1)*sizeof(double);
+		dataV += slb*(axion->Depth()+axion->nNeigh())*sizeof(double);
 		dataType = H5T_NATIVE_DOUBLE;
 	} else {
-		dataV += slb*(axion->Depth()+1)*sizeof(float);
+		dataV += slb*(axion->Depth()+axion->nNeigh())*sizeof(float);
 		dataType = H5T_NATIVE_FLOAT;
 	}
 

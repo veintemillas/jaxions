@@ -36,8 +36,8 @@ void	Smoother::operator()
 	{
 		complex<double> *mIn, *mOut, *tmp;
 
-		mIn  = ((complex<double> *) axionField->mGpu()  + Sf;
-		mOut =  (complex<double> *) axionField->m2Gpu() + Sf
+		mIn  = ((complex<double> *) axionField->mStart ();
+		mOut =  (complex<double> *) axionField->m2Start();
 
 		axionField->exchangeGhosts(FIELD_M);
 
@@ -59,8 +59,8 @@ void	Smoother::operator()
 	} else if (prec == FIELD_SINGLE) {
 		complex<float> *mIn, *mOut, *tmp;
 
-		mIn  = ((complex<float> *) axionField->mGpu()  + Sf;
-		mOut =  (complex<float> *) axionField->m2Gpu() + Sf
+		mIn  = ((complex<float> *) axionField->mStart ();
+		mOut =  (complex<float> *) axionField->m2Start();
 
 		axionField->exchangeGhosts(FIELD_M);
 

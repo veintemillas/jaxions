@@ -37,9 +37,9 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
-		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp),
-		       device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, size_t nN, FieldType newType,
+		       LambdaType lType, ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2*nN),
+		       v3(nLx*nLx*(nLz + 2*nN)), nSplit(nSp), nNeig(nN), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -59,8 +59,8 @@ const std::complex<float> If(0.,1.);
 
 	folded 	   = false;
 	eReduced   = false;
-	mmomspace 	 = false;
-	vmomspace 	 = false;
+	mmomspace  = false;
+	vmomspace  = false;
 
 	switch (fieldType)
 	{
@@ -90,7 +90,7 @@ const std::complex<float> If(0.,1.);
 			break;
 
 		case FIELD_SINGLE:
-			fSize = sizeof(float)*nData;
+			fSize = sizeof(float) *nData;
 			break;
 
 		default:
@@ -154,7 +154,7 @@ const std::complex<float> If(0.,1.);
 			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
 			//this allocates a slightly larger v to host FFTs in place
 			alignAlloc ((void**) &m, mAlign, 2*mBytes);
-			v = static_cast<void *>(static_cast<char *>(m) + fSize*(2*n2 + n3));
+			v = static_cast<void *>(static_cast<char *>(m) + fSize*(nNeig*n2 + n3));
 			break;
 
 		default:
@@ -281,7 +281,7 @@ const std::complex<float> If(0.,1.);
 				exit(1);
 			}
 
-			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*(2*n2 + n3));
+			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*(nNeig*n2 + n3));
 		}
 
 		if (!lowmem || (fieldType & FIELD_AXION))
@@ -342,14 +342,14 @@ const std::complex<float> If(0.,1.);
 		if (fpectral) {
 			LogMsg(VERB_NORMAL,"Initialing fspectral plans");
 			// Saxion m inplace
-			AxionFFT::initPlan (this, FFT_CtoC_MtoM, FFT_FWDBCK, "C2CM2M");
+			AxionFFT::initPlan (this, FFT_CtoC_MtoM,     FFT_FWDBCK, "C2CM2M");
 			// Saxion v inplace
-			AxionFFT::initPlan (this, FFT_CtoC_VtoV, FFT_FWDBCK, "C2CV2V");
-			AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWDBCK, "C2CM22M2");
-			AxionFFT::initPlan(this, FFT_CtoC_M2toM, FFT_FWDBCK, "C2CM22M");
+			AxionFFT::initPlan (this, FFT_CtoC_VtoV,     FFT_FWDBCK, "C2CV2V");
+			AxionFFT::initPlan (this, FFT_CtoC_M2toM2,   FFT_FWDBCK, "C2CM22M2");
+			AxionFFT::initPlan (this, FFT_CtoC_M2toM,    FFT_FWDBCK, "C2CM22M");
 			// Axion m/v inplace
-			AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
-			AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
+			AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB, FFT_FWDBCK, "R2CM2M");
+			AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB, FFT_FWDBCK, "R2CV2V");
 		}
 		/*	If present, read fileName	*/
 
@@ -448,13 +448,13 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M)
-				cudaMemcpy((((char *) m_d) + n2*fSize), (((char *) m) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m_d)  + n2*fSize*nNeig), (((char *) m)  + n2*fSize*nNeig),  n3*fSize, cudaMemcpyHostToDevice);
 
 			if (fIdx & FIELD_V)
 				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
 
 			if ((fIdx & FIELD_M2) && (!lowmem))
-				cudaMemcpy((((char *) m2_d) + n2*fSize), (((char *) m2) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m2_d) + n2*fSize*nNeig), (((char *) m2) + n2*fSize*nNeig),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
 	}
 }
@@ -471,7 +471,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 				cudaMemcpy(m,  m_d,  v3*fSize, cudaMemcpyDeviceToHost);
 
 			if (fIdx & FIELD_V)
-				cudaMemcpy(v,  v_d,  n3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(v,  v_d,  v3*fSize, cudaMemcpyDeviceToHost);
 
 			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
@@ -488,11 +488,11 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M) {
-				cudaMemcpyAsync(static_cast<char *> (m) + n2*fSize, static_cast<char *> (m_d) + n2*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m) + n3*fSize, static_cast<char *> (m_d) + n3*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m)  + nNeig*n2*fSize, static_cast<char *> (m_d)  + nNeig*n2*fSize, nNeig*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m)  + n3*fSize,       static_cast<char *> (m_d)  + n3*fSize,       nNeig*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			} else {
-				cudaMemcpyAsync(static_cast<char *> (m2) + n2*fSize, static_cast<char *> (m2_d) + n2*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m2) + n3*fSize, static_cast<char *> (m2_d) + n3*fSize, n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m2) + nNeig*n2*fSize, static_cast<char *> (m2_d) + nNeig*n2*fSize, nNeig*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2) + n3*fSize,       static_cast<char *> (m2_d) + n3*fSize,       nNeig*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			}
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
@@ -510,11 +510,11 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M) {
-				cudaMemcpyAsync(static_cast<char *> (m_d),                 static_cast<char *> (m),                 n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m_d) + (n3+n2)*fSize, static_cast<char *> (m) + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m_d),                        static_cast<char *> (m),                        nNeig*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m_d)  + (n3+nNeig*n2)*fSize, static_cast<char *> (m)  + (n3+nNeig*n2)*fSize, nNeig*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			} else {
-				cudaMemcpyAsync(static_cast<char *> (m2_d),                 static_cast<char *> (m2),                  n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m2_d) + (n3+n2)*fSize, static_cast<char *> (m2)  + (n3+n2)*fSize, n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d),                       static_cast<char *> (m2),                        nNeig*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d) + (n3+nNeig*n2)*fSize, static_cast<char *> (m2)  + (n3+nNeig*n2)*fSize, nNeig*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			}
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
@@ -529,7 +529,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	const int ghostBytes = n2*fSize;
+	const int ghostBytes = nNeig*n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
@@ -539,17 +539,17 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 	if (fIdx & FIELD_M)
 	{
-		sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2);
+		sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2*nNeig);
 		sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n3);
 		rGhostBck = m;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2));
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + nNeig*n2));
 	}
 	else
 	{
-		sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2);
+		sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*nNeig);
 		sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*n3);
 		rGhostBck = m2;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2));
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + nNeig*n2));
 	}
 
 
@@ -644,21 +644,21 @@ void	Scalar::setField (FieldType newType)
 				switch (precision)
 				{
 					case FIELD_SINGLE:
-					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
+					v = static_cast<void*>(static_cast<float*>(m) + 2*nNeig*n2 + n3);
 
 					#ifdef	USE_GPU
 					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
+						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*nNeig*n2 + n3);
 					#endif
 
 					break;
 
 					case FIELD_DOUBLE:
-					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
+					v = static_cast<void*>(static_cast<double*>(m) + 2*nNeig*n2 + n3);
 
 					#ifdef	USE_GPU
 					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
+						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*nNeig*n2 + n3);
 					#endif
 
 					break;

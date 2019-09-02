@@ -56,9 +56,9 @@ void	randGpu (Scalar *field)
 	cudaStream_t	&stream = static_cast<cudaStream_t *>(field->Streams())[0];
 
 	if	(field->LowMem())
-		memGpu -= 2*(V+S)*field->DataSize();
+		memGpu -= (2*V+field->nGhost())*field->DataSize();
 	else
-		memGpu -= (3*V+4*S)*field->DataSize();
+		memGpu -= (3*V+2*field->nGhost())*field->DataSize();
 
 	memGpu	*= 3;		// El factor 0.75 es para dejar hueco por si las moscas
 	memGpu	/= 4*sizeof(curandState_t);

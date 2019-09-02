@@ -522,6 +522,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
 
+	auto	sGhost = axion->nGhost();
+
 	for (hsize_t zDim=0; zDim<((hsize_t) axion->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
@@ -530,8 +532,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
-		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+slab*(1+zDim)*dataSize));
-		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+slab*zDim*dataSize));
+		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
+		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())  +slab*zDim*dataSize));
 
 		if ((mErr < 0) || (vErr < 0))
 		{
@@ -966,6 +968,8 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	mSpace   = H5Dget_space (mset_id);
 	vSpace   = H5Dget_space (vset_id);
 
+	auto	sGhost = axion->nGhost();
+
 	for (hsize_t zDim=0; zDim<((hsize_t) (*axion)->Depth()); zDim++)
 	{
 		/*	Select the slab in the file	*/
@@ -975,7 +979,7 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 
 		/*	Read raw data	*/
 
-		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
+		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
 		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
 
 		if ((mErr < 0) || (vErr < 0)) {
@@ -2208,7 +2212,7 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	}
 
 	/*	Write point data	*/
-	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize) < 0)
+	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mStart())) < 0)
 		LogError ("Error: couldn't write point data to file");
 
 	/*	Close everything		*/
@@ -2935,10 +2939,10 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	}
 
 	if (axion->Precision() == FIELD_DOUBLE) {
-		dataV += slb*(axion->Depth()+1)*sizeof(double);
+		dataV += slb*(axion->Depth()+axion->nNeigh())*sizeof(double);
 		dataType = H5T_NATIVE_DOUBLE;
 	} else {
-		dataV += slb*(axion->Depth()+1)*sizeof(float);
+		dataV += slb*(axion->Depth()+axion->nNeigh())*sizeof(float);
 		dataType = H5T_NATIVE_FLOAT;
 	}
 

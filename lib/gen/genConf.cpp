@@ -214,7 +214,7 @@ void	ConfGenerator::runGpu	()
 			uint	  V    = axionField->Size();
 			uint	  Vo   = S;
 			uint	  Vf   = V+S;
-			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
+			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mStartGpu()), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			scaleField(axionField, FIELD_M, *axionField->RV());
 			axionField->exchangeGhosts(FIELD_M);
 			updateVGpu(axionField->mGpu(), axionField->vGpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), Vo, Vf, S,
@@ -605,7 +605,7 @@ void	ConfGenerator::runCpu	()
 		if (!myCosmos->Mink()) {
 			double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 			double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
-			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
+			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 			scaleField (axionField, FIELD_M, *axionField->RV());
 
 			auto	   S  = axionField->Surf();

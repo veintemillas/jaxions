@@ -108,17 +108,18 @@ namespace AxionFFT {
 
 			case	FIELD_SINGLE:
 			{
-				fftwf_complex *m     = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
+				fftwf_complex *m     = static_cast<fftwf_complex*>(axion->mStart());
 				fftwf_complex *v     = static_cast<fftwf_complex*>(axion->vCpu());
 				fftwf_complex *m2    = static_cast<fftwf_complex*>(axion->m2Cpu());
-				fftwf_complex *m2R   = static_cast<fftwf_complex*>(axion->m2Cpu()) + (axion->Size()>>1) + axion->Surf();
+				fftwf_complex *m2R   = static_cast<fftwf_complex*>(axion->m2Half());
+			       	+ (axion->Size()>>1) + axion->Surf();
 
 				// Power spectrum/spectral propagator in axion when the field was created as saxion
 				float	      *mR    = static_cast<float *>       (axion->vCpu());
 
 				// Power spectrum in saxion and the other axion cases
 				float	      *mA    = static_cast<float *>       (axion->m2Cpu());
-				float	      *mAR   = static_cast<float *>       (axion->m2Cpu()) +  axion->Size()     + axion->Surf()*2;
+				float	      *mAR   = static_cast<float *>       (axion->m2Half());
 
 				// WKB
 				float	      *mNoGr = static_cast<float *>       (axion->mCpu());
@@ -304,17 +305,17 @@ namespace AxionFFT {
 
 			case	FIELD_DOUBLE:
 			{
-				fftw_complex *m     = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
+				fftw_complex *m     = static_cast<fftw_complex*>(axion->mStart());
 				fftw_complex *v     = static_cast<fftw_complex*>(axion->vCpu());
 				fftw_complex *m2    = static_cast<fftw_complex*>(axion->m2Cpu());
-				fftw_complex *m2R   = static_cast<fftw_complex*>(axion->m2Cpu()) + (axion->Size()>>1) + axion->Surf();
+				fftw_complex *m2R   = static_cast<fftw_complex*>(axion->m2Half());
 
 				// Power spectrum/spectral propagator in axion when the field was created as saxion
 				double	      *mR   = static_cast<double*>      (axion->vCpu());
 
 				// Power spectrum in saxion and the other axion cases
 				double	      *mA   = static_cast<double*>      (axion->m2Cpu());
-				double	      *mAR  = static_cast<double*>      (axion->m2Cpu()) +  axion->Size()     + axion->Surf()*2;
+				double	      *mAR  = static_cast<double*>      (axion->m2Half());
 
 				// WKB
 				double	     *mNoGr = static_cast<double*>      (axion->mCpu());
