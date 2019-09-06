@@ -1034,13 +1034,15 @@ class readq:
 
 #   evolution of string density parameter
 class strevol:
-    def __init__(self, mfiles, lltype='Z2'):
+    def __init__(self, mfiles, lltype='Z2', diff='nodiff', sigma=1/4., thresh=0.0001):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
         self.LL = pa.gm(mfiles[0],'lambda')
         self.t = []
         self.xi = []
+        self.dxidl = []
+        self.dxidt = []
         for ff in mfiles:
             self.t.append(pa.gm(ff,'ct'))
             self.xi.append(pa.gm(ff,'stDens'))
@@ -1050,6 +1052,27 @@ class strevol:
             self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
         elif lltype == 'fixed':
             self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
+        # calculate derivative of xi and smooth the result with Gaussian function
+        if diff == 'diff':
+            xref = sigma*np.sqrt(2.0*np.log(1/thresh))
+            dxdl = np.gradient(self.xi)/np.gradient(self.log)
+            dxdt = np.gradient(self.xi)/np.gradient(self.t)
+            for i in range (len(self.t)):
+                xc = self.log[i]
+                dx = self.log - xc
+                above_thresh = np.abs(dx) < xref
+                gaussian = np.exp(-(dx) ** 2 / (2 * sigma ** 2))
+                gaussian2 = gaussian[above_thresh]
+                gaussian2 = gaussian2/gaussian2.sum()
+                dxdl2 = dxdl[above_thresh]
+                dxdt2 = dxdt[above_thresh]
+                smoothed_dxdl = sum(dxdl2 * gaussian2)
+                smoothed_dxdt = sum(dxdt2 * gaussian2)
+                self.dxidl.append(smoothed_dxdl)
+                self.dxidt.append(smoothed_dxdt)
+        self.dxidl = np.array(self.dxidl)
+        self.dxidt = np.array(self.dxidt)
+
 
 
 
@@ -1069,11 +1092,23 @@ class strave:
         self.log = strevollist[0].log
         xi = [0]*len(strevollist[0].xi)
         xisq = [0]*len(strevollist[0].xi)
+        dxdl = [0]*len(strevollist[0].dxidl)
+        dxdlsq = [0]*len(strevollist[0].dxidl)
+        dxdt = [0]*len(strevollist[0].dxidt)
+        dxdtsq = [0]*len(strevollist[0].dxidt)
         for sl in strevollist:
             xi += sl.xi
             xisq += sl.xi*sl.xi
+            dxdl += sl.dxidl
+            dxdlsq += sl.dxidl*sl.dxidl
+            dxdt += sl.dxidt
+            dxdtsq += sl.dxidt*sl.dxidt
         self.xi = xi/Nreal
-        self.dxi = np.sqrt(xisq/Nreal - self.xi*self.xi)
+        self.xierr = np.sqrt(xisq/Nreal - self.xi*self.xi)
+        self.dxidl = dxdl/Nreal
+        self.dxidlerr = np.sqrt(dxdlsq/Nreal - self.dxidl*self.dxidl)
+        self.dxidt = dxdt/Nreal
+        self.dxidterr = np.sqrt(dxdtsq/Nreal - self.dxidt*self.dxidt)
 
 
 
@@ -1084,13 +1119,25 @@ class strave:
 #   assuming input as an strave class object
 def savestr(strave, name='./str'):
     xiname = name + '_xi.pickle'
-    dxiname = name + '_dxi.pickle'
+    xierrname = name + '_xierr.pickle'
+    dxidlname = name + '_dxidl.pickle'
+    dxidlerrname = name + '_dxidlerr.pickle'
+    dxidtname = name + '_dxidt.pickle'
+    dxidterrname = name + '_dxidterr.pickle'
     tname = name + '_t.pickle'
     logname = name + '_log.pickle'
     with open(xiname,'wb') as wxi:
         pickle.dump(strave.xi, wxi)
-    with open(dxiname,'wb') as wdxi:
-        pickle.dump(strave.dxi, wdxi)
+    with open(xierrname,'wb') as wxie:
+        pickle.dump(strave.xierr, wxie)
+    with open(dxidlname,'wb') as wdxdl:
+        pickle.dump(strave.dxidl, wdxdl)
+    with open(dxidlerrname,'wb') as wdxdle:
+        pickle.dump(strave.dxidlerr, wdxdle)
+    with open(dxidtname,'wb') as wdxdt:
+        pickle.dump(strave.dxidt, wdxdt)
+    with open(dxidterrname,'wb') as wdxdte:
+        pickle.dump(strave.dxidterr, wdxdte)
     with open(tname,'wb') as wt:
         pickle.dump(strave.t, wt)
     with open(logname,'wb') as wl:
@@ -1105,13 +1152,25 @@ def savestr(strave, name='./str'):
 class readstr:
     def __init__(self, name='./str'):
         xiname = name + '_xi.pickle'
-        dxiname = name + '_dxi.pickle'
+        xierrname = name + '_xierr.pickle'
+        dxidlname = name + '_dxidl.pickle'
+        dxidlerrname = name + '_dxidlerr.pickle'
+        dxidtname = name + '_dxidt.pickle'
+        dxidterrname = name + '_dxidterr.pickle'
         tname = name + '_t.pickle'
         logname = name + '_log.pickle'
         with open(xiname,'rb') as rxi:
             self.xi = pickle.load(rxi)
-        with open(dxiname,'rb') as rdxi:
-            self.dxi = pickle.load(rdxi)
+        with open(xierrname,'rb') as rxie:
+            self.xierr = pickle.load(rxie)
+        with open(dxidlname,'rb') as rdxdl:
+            self.dxidl = pickle.load(rdxdl)
+        with open(dxidlerrname,'rb') as rdxdle:
+            self.dxidlerr = pickle.load(rdxdle)
+        with open(dxidtname,'rb') as rdxdt:
+            self.dxidt = pickle.load(rdxdt)
+        with open(dxidterrname,'rb') as rdxdte:
+            self.dxidterr = pickle.load(rdxdte)
         with open(tname,'rb') as rt:
             self.t = pickle.load(rt)
         with open(logname,'rb') as rl:
