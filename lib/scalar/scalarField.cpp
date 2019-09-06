@@ -956,6 +956,7 @@ double  Scalar::SaxionMassSq  ()
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_0:
 		case    VQCD_1:
 		case    VQCD_2:
 		case    VQCD_1N2:
@@ -1114,6 +1115,7 @@ double  Scalar::SaxionMassSq  (const double RNow)
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_0:
 		case    VQCD_1:
 		case    VQCD_2:
 		case    VQCD_1N2:

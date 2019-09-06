@@ -93,6 +93,7 @@ double	saxionshift(double axmass, double LLL, VqcdType VqcdPQ)
 			shift = rsvPQ2(alpha);
 		 break;
 		case	VQCD_2:
+		case	VQCD_0:
 				shift = 0.;
 			break;
 		default :

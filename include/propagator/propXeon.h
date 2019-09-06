@@ -620,10 +620,10 @@ tmp = opCode(sub_pd,
 					case	VQCD_0:
 					tmp2 = opCode(div_ps,
 									opCode(vqcd0_ps,mel),
-										opCode(sqrt_ps, opCode(mul_ps, mPy, opCode(mul_ps, mPy, mPy) ) ) ); //
+										opCode(sqrt_ps, opCode(mul_ps, mPx, opCode(mul_ps, mPx, mPx) ) ) ); //
 
 	 				mMx = opCode(sub_ps,
-	 					opCode(sub_ps,
+	 					opCode(add_ps,
 	 						opCode(mul_ps,
 	 							opCode(add_ps,
 	 								opCode(add_ps,
@@ -1408,10 +1408,10 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, do
 					case	VQCD_0:
 					tmp2 = opCode(div_ps,
 									opCode(vqcd0_ps,mel),
-										opCode(sqrt_ps, opCode(mul_ps, mPy, opCode(mul_ps, mPy, mPy) ) ) ); //
+										opCode(sqrt_ps, opCode(mul_ps, mPx, opCode(mul_ps, mPx, mPx) ) ) ); //
 
 	 				mMx = opCode(sub_ps,
-	 					opCode(sub_ps,
+	 					opCode(add_ps,
 	 						opCode(mul_ps,
 	 							opCode(add_ps,
 	 								opCode(add_ps,

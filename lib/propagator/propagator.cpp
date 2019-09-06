@@ -265,10 +265,13 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_1_PQ_2_RHO:
 					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2_RHO>>	(field, spec);
 					break;
-
 				case VQCD_2:
 					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, spec);
 					break;
+				case VQCD_0:
+						prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, spec);
+						break;
+
 				default:
 				case VQCD_NONE:
 					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, spec);
@@ -290,6 +293,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 				case VQCD_2:
 					prop = std::make_unique<PropOmelyan4<VQCD_2>>		(field, spec);
 					break;
+				case VQCD_0:
+					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, spec);
+					break;
 				default:
 				case VQCD_NONE:
 					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, spec);
@@ -310,6 +316,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					break;
 				case VQCD_2:
 					prop = std::make_unique<PropLeap<VQCD_2>>		(field, spec);
+					break;
+				case VQCD_0:
+					prop = std::make_unique<PropLeap<VQCD_0>>		(field, spec);
 					break;
 				default:
 				case VQCD_NONE:
@@ -347,6 +356,16 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 						break;
 					case VQCD_2_DRHO:
 						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, spec);
+						break;
+
+					case VQCD_0:
+						prop = std::make_unique<PropMLeap<VQCD_0>>		(field, spec);
+						break;
+					case VQCD_0_RHO:
+						prop = std::make_unique<PropMLeap<VQCD_0_RHO>>		(field, spec);
+						break;
+					case VQCD_0_DRHO:
+						prop = std::make_unique<PropMLeap<VQCD_0_DRHO>>		(field, spec);
 						break;
 
 					case VQCD_1N2:
@@ -395,6 +414,16 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 					break;
 				case VQCD_2_DRHO:
 					prop = std::make_unique<PropRKN4<VQCD_2_DRHO>>		(field, spec);
+					break;
+
+				case VQCD_0:
+					prop = std::make_unique<PropRKN4<VQCD_0>>		(field, spec);
+					break;
+				case VQCD_0_RHO:
+					prop = std::make_unique<PropRKN4<VQCD_0_RHO>>		(field, spec);
+					break;
+				case VQCD_0_DRHO:
+					prop = std::make_unique<PropRKN4<VQCD_0_DRHO>>		(field, spec);
 					break;
 
 				case VQCD_1N2:
