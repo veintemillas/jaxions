@@ -1,6 +1,7 @@
 #ifndef	_ENUM_FIELD_
 	#define _ENUM_FIELD_
 	#include<mpi.h>
+	#include<vector>
 
 	typedef	unsigned int uint;
 
@@ -473,6 +474,8 @@
 			MeasureType measdata ;
 			SpectrumMaskType mask ;
 			double rmask; 					// a radius to mask
+			std::vector<double> rmask_tab;
+			int i_rmask;
 			int redmap;
 			StringMeasureType strmeas;
 		}	MeasInfo;

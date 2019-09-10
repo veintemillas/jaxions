@@ -38,7 +38,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	SpectrumMaskType mask = info.mask ;
 	int redmap = info.redmap;
 	StringMeasureType strmeas = info.strmeas;
-	double radius_mask = info.rmask ;
+	double radius_mask = info.rmask ; //obsolete?
+	int irmask = info.i_rmask;;
+	std::vector<double> rmasktab = info.rmask_tab ;
+
 	/* This is a change with respect to previous behaviour
 	   Changes the definition of mask to be in units of ms^-1 */
 		if (axiona->Lambda() == LAMBDA_Z2)
@@ -298,7 +301,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		{
 			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);
 				prof.start();
-				specAna.masker(radius_mask, SPMASK_REDO);
+				// the mask saved is rmask_0, which coincides with rmask in commandline
+				specAna.masker(rmasktab[0], SPMASK_REDO);
 				prof.stop();
 				prof.add(std::string("Masker"), 0.0, 0.0);
 				/* activate to export premask -- needs changes in spectrum.cpp too*/
@@ -345,40 +349,52 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPA MASK_RED",indexa);
 
-				if ( !(measa & (MEAS_MASK)) ){
-						LogMsg(VERB_NORMAL, "[Meas %d] MASK_TEST inside NSPA",indexa);
-						prof.start();
-						specAna.masker(radius_mask, SPMASK_REDO);
-						prof.stop();
-						prof.add(std::string("Masker"), 0.0, 0.0);
+				for(int ii=0; ii < irmask; ii++)
+				{
+					char LABEL[256];
+					LogMsg(VERB_NORMAL, "[Meas %d] rmask = %f",indexa,rmasktab[ii]);
+					if ( !(measa & (MEAS_MASK) && (ii == 0) )  ){
+							LogMsg(VERB_NORMAL, "[Meas %d] MASK_TEST inside NSPA (rmask %f)",indexa,rmasktab[ii]);
+							prof.start();
+							specAna.masker(rmasktab[ii], SPMASK_REDO);
+							prof.stop();
+							prof.add(std::string("Masker"), 0.0, 0.0);
 
-					  writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
+							sprintf(LABEL, "W_Red_%.2f", rmasktab[ii]);
+						  writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
 
-						if(strmeas & STRMEAS_ENERGY) {
-							// measure the energy density of strings by using masked points
-							MeasDataOut.strE = stringenergy(axiona);
-							writeStringEnergy(axiona,MeasDataOut.strE);
-						}
+							//FIX THIS!
+							if(strmeas & STRMEAS_ENERGY) {
+								// measure the energy density of strings by using masked points
+								MeasDataOut.strE = stringenergy(axiona);
+								writeStringEnergy(axiona,MeasDataOut.strE);
+							}
+					}
+					LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum (rmask %f)",indexa,rmasktab[ii]);
+					prof.start();
+					specAna.nRun(SPMASK_REDO);
+					prof.stop();
+					prof.add(std::string("NSPA_M"), 0.0, 0.0);
+
+					sprintf(LABEL, "sK_Red_%.2f", rmasktab[ii]);
+					writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+					sprintf(LABEL, "sG_Red_%.2f", rmasktab[ii]);
+					writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+					// if (axiona->Field() == FIELD_AXION)
+					// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
+					if (axiona->AxionMassSq() > 0.0){
+						sprintf(LABEL, "sV_Red_%.2f", rmasktab[ii]);
+						writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+					}
+
+
+					prof.start();
+					specAna.matrixbuilder();
+					prof.stop();
+					prof.add(std::string("Matrix Builder"), 0.0, 0.0);
+					sprintf(LABEL, "M_Red_%.2f", rmasktab[ii]);
+					writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", LABEL);
 				}
-				LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum",indexa);
-				prof.start();
-				specAna.nRun(SPMASK_REDO);
-				prof.stop();
-				prof.add(std::string("NSPA_M"), 0.0, 0.0);
-
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Red");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Red");
-				// if (axiona->Field() == FIELD_AXION)
-				// 	writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
-				if (axiona->AxionMassSq() > 0.0)
-					writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV_Red");
-
-				prof.start();
-				specAna.matrixbuilder();
-				prof.stop();
-				prof.add(std::string("Matrix Builder"), 0.0, 0.0);
-
-				writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", "M_Red");
 			}
 
 			if ( (axiona->Field() == FIELD_SAXION) && (mask & SPMASK_VIL))

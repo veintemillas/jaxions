@@ -1,5 +1,8 @@
 #include "enum-field.h"
 #include "cosmos/cosmos.h"
+#include<vector>
+
+using namespace std;
 
 extern size_t sizeN;
 extern size_t sizeZ;
@@ -33,6 +36,9 @@ extern double wDz;
 //extern double zthres;
 //extern double zrestore;
 extern size_t nstrings_globale;
+
+extern std::vector<double> rmask_tab;
+extern int i_rmask;
 
 
 extern double wkb2z ;

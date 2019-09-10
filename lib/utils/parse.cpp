@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <sys/stat.h>
+#include<vector>
 
 #include "enum-field.h"
 #include "cosmos/cosmos.h"
@@ -46,6 +47,8 @@ int endredmapwkb = -1;
 int safest0   = 20;
 size_t nstrings_globale ;
 
+std::vector<double> rmask_tab;
+int i_rmask = 0;
 
 bool lowmem   = false;
 bool uPrec    = false;
@@ -1286,7 +1289,31 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			if (!strcmp(argv[i+1], "file"))
+			{
+				// "Read the file amd load it in rmask_tab
+				FILE *cacheFile = nullptr;
+				if (((cacheFile  = fopen("./rmasktable.dat", "r")) == nullptr)){
+					printf("No rmasktable.dat ! Exit!");
+					exit(1);
+				}
+				else
+				{					double rmaskaux ;
+									fscanf (cacheFile ,"%lf ", &rmaskaux);
+									while(!feof(cacheFile)){
+											rmask_tab.push_back(rmaskaux);
+											// LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
+											i_rmask++ ;
+											fscanf (cacheFile ,"%lf ", &rmaskaux);
+									}
+				}
+			}
+			else
+			{
 			rmask = atof(argv[i+1]);
+			rmask_tab.push_back(rmask);
+			i_rmask++;
+			}
 
 			i++;
 			procArgs++;
