@@ -972,24 +972,24 @@ class Scanqopt:
 #   assuming input as an Scanqopt class object
 def saveq(scanqopt, name='./qopt'):
     qname = name + '_q.pickle'
-    quppername = name + '_dqu.pickle'
-    qlowername = name + '_dql.pickle'
-    quppercname = name + '_dquc.pickle'
-    qlowercname = name + '_dqlc.pickle'
+    mname = name + '_m.pickle'
+    sqname = name + '_sigmaq.pickle'
+    sqnname = name + '_sigmaqn.pickle'
+    sqcname = name + '_sigmaqc.pickle'
     logname = name + '_log.pickle'
     cxmaxoptname = name + '_cxmax.pickle'
     with open(qname,'wb') as wq:
         pickle.dump(scanqopt.qbest, wq)
-    with open(quppername,'wb') as wqu:
-        pickle.dump(scanqopt.qupper, wqu)
-    with open(qlowername,'wb') as wql:
-        pickle.dump(scanqopt.qlower, wql)
-    with open(quppercname,'wb') as wquc:
-        pickle.dump(scanqopt.qupperc, wquc)
-    with open(qlowercname,'wb') as wqlc:
-        pickle.dump(scanqopt.qlowerc, wqlc)
+    with open(mname,'wb') as wm:
+        pickle.dump(scanqopt.mbest, wm)
+    with open(sqname,'wb') as wsq:
+        pickle.dump(scanqopt.sigmaq, wsq)
+    with open(sqnname,'wb') as wsqn:
+        pickle.dump(scanqopt.sigmaqn, wsqn)
+    with open(sqcname,'wb') as wsqc:
+        pickle.dump(scanqopt.sigmaqc, wsqc)
     with open(logname,'wb') as wl:
-        pickle.dump(scanqopt.logtab, wl)
+        pickle.dump(scanqopt.log, wl)
     with open(cxmaxoptname,'wb') as wc:
         pickle.dump(scanqopt.cxmaxopt, wc)
 
@@ -1002,24 +1002,24 @@ def saveq(scanqopt, name='./qopt'):
 class readq:
     def __init__(self, name='./qopt'):
         qname = name + '_q.pickle'
-        quppername = name + '_dqu.pickle'
-        qlowername = name + '_dql.pickle'
-        quppercname = name + '_dquc.pickle'
-        qlowercname = name + '_dqlc.pickle'
+        mname = name + '_m.pickle'
+        sqname = name + '_sigmaq.pickle'
+        sqnname = name + '_sigmaqn.pickle'
+        sqcname = name + '_sigmaqc.pickle'
         logname = name + '_log.pickle'
         cxmaxoptname = name + '_cxmax.pickle'
         with open(qname,'rb') as rq:
             self.qbest = pickle.load(rq)
-        with open(quppername,'rb') as rqu:
-            self.qupper = pickle.load(rqu)
-        with open(qlowername,'rb') as rql:
-            self.qlower = pickle.load(rql)
-        with open(quppercname,'rb') as rquc:
-            self.qupperc = pickle.load(rquc)
-        with open(qlowercname,'rb') as rqlc:
-            self.qlowerc = pickle.load(rqlc)
+        with open(mname,'rb') as rm:
+            self.mbest = pickle.load(rm)
+        with open(sqname,'rb') as rsq:
+            self.sigmaq = pickle.load(rsq)
+        with open(sqnname,'rb') as rsqn:
+            self.sigmaqn = pickle.load(rsqn)
+        with open(sqcname,'rb') as rsqc:
+            self.sigmaqc = pickle.load(rsqc)
         with open(logname,'rb') as rl:
-            self.logtab = pickle.load(rl)
+            self.log = pickle.load(rl)
         with open(cxmaxoptname,'rb') as rc:
             self.cxmaxopt = pickle.load(rc)
 
