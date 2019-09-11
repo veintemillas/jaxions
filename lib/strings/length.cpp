@@ -111,6 +111,7 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 	strDen.strDeng_local = 0.;
 
 	if ((field->Field() & FIELD_AXION) || (field->Field() == FIELD_WKB) || !(strmeas & (STRMEAS_LENGTH | STRMEAS_GAMMA))) {
+		LogMsg	(VERB_HIGH, "[stringlength] Exit without doing anything");
 		return strDen;
 	}
 
@@ -133,6 +134,7 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 	std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
 
 	if(strmeas & STRMEAS_LENGTH) {
+		LogMsg	(VERB_HIGH, "[stringlength] Measure length");
 
 		double length = 0.;
 
@@ -279,6 +281,7 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 
 		MPI_Allreduce(&(strDen.strLen_local), &(strDen.strLen), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+		LogMsg(VERB_HIGH, "[stringlength] length = %f",strDen.strLen);
   	commSync();
 
 	}
@@ -286,6 +289,7 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 	// next calculate string velocity and gamma factor
 
 	if(strmeas & STRMEAS_GAMMA) {
+		LogMsg	(VERB_HIGH, "[stringlength] Measure Gamma");
 
 		double gamma  = 0.;
   	double gamma2 = 0.;
@@ -406,6 +410,8 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 	  strDen.strVel2 = vel2_tot/gamma_tot;
 	  strDen.strGam = gamma2_tot/gamma_tot;
 	  strDen.strDeng_local = gamma;
+
+		LogMsg(VERB_HIGH, "[stringlength] gamma_tot = %f",strDen.strDeng);
 
 	  commSync();
   }
@@ -896,9 +902,9 @@ StringEnergyData stringenergy (Scalar *field)
 				Float modu = std::abs(ma[idx]-zaskaF);
 				double rhoskin = .5*std::real((va[idx]-Hc*ma[idx])*modu/(ma[idx]-zaskaF))*std::real((va[idx]-Hc*ma[idx])*modu/(ma[idx]-zaskaF))/(Rscale*Rscale*Rscale*Rscale);
 				double rhosgrad = .5*((std::abs(ma[ixM]-zaskaF)-modu)*(std::abs(ma[ixM]-zaskaF)-modu)+(std::abs(ma[iyM]-zaskaF)-modu)*(std::abs(ma[iyM]-zaskaF)-modu)+(std::abs(ma[izM]-zaskaF)-modu)*(std::abs(ma[izM]-zaskaF)-modu))/(Rscale*Rscale*Rscale*Rscale*depta*depta);
-				// Villadoro's masking
-				rhoaV += (std::abs(ma[idx]-zaskaF)/Rscale)*2.*rhoakin;
-				rhosV += (std::abs(ma[idx]-zaskaF)/Rscale)*(rhoskin + rhosgrad + rhopot);
+				// Villadoro's masking squared coincides with the real definition of energy
+				rhoaV += pow(std::abs(ma[idx]-zaskaF)/Rscale,2)*2.*rhoakin;
+				rhosV += pow(std::abs(ma[idx]-zaskaF)/Rscale,2)*(rhoskin + rhosgrad + rhopot);
 				if (!(strdaa[idx] & STRING_MASK)) {
 					// Redondo's masking
 					rhoa += 2.*rhoakin;
