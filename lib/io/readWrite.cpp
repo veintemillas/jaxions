@@ -1776,13 +1776,17 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 		}
 
 		/*	Create a group for string data		*/
-		auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);	// Create group if it doesn't exists
+		char LABEL[256];
+		sprintf(LABEL, "string/rmask_%.2f", strEDat.rmask);
 
+		auto status = H5Lexists (meas_id, LABEL, H5P_DEFAULT);	// Create group if it doesn't exists
 		if (!status)
-			group_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		{
+			group_id = H5Gcreate2(meas_id, LABEL, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		}
 		else {
 			if (status > 0) {
-				group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);	// Group exists, perhaps already created in writeString(Co)
+				group_id = H5Gopen2(meas_id, LABEL, H5P_DEFAULT);	// Group exists, perhaps already created in writeString(Co)
 			  //LogMsg(VERB_NORMAL, "Warning: group /string exists!");
 			} else {
 				LogError ("Error: can't check whether group /string exists");
@@ -1798,6 +1802,7 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 		writeAttribute(group_id, &(strEDat.rho_a_Vil), "Masked axion energy density (Vil)", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &(strEDat.rho_s_Vil), "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &(strEDat.nout), "nout", H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strEDat.rmask),       "rmask",			       H5T_NATIVE_DOUBLE);		
 	}
 
 	bCastAndExit:
