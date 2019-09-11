@@ -153,7 +153,7 @@ int	main (int argc, char *argv[])
 	ninfa.i_rmask = i_rmask;
 	ninfa.rmask_tab = rmask_tab;
 	for (int ii = 0; ii < i_rmask ; ii++ )
-		LogOut("rmask %f\n",ninfa.rmask_tab[ii]);
+		LogMsg(VERB_NORMAL,"[VAX] read rmask %f",ninfa.rmask_tab[ii]);
 
 
 	//-maximum value of the theta angle in the simulation
