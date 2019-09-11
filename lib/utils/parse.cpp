@@ -1299,12 +1299,11 @@ int	parseArgs (int argc, char *argv[])
 				}
 				else
 				{					double rmaskaux ;
-									fscanf (cacheFile ,"%lf ", &rmaskaux);
 									while(!feof(cacheFile)){
+											fscanf (cacheFile ,"%lf ", &rmaskaux);
 											rmask_tab.push_back(rmaskaux);
 											// LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
 											i_rmask++ ;
-											fscanf (cacheFile ,"%lf ", &rmaskaux);
 									}
 				}
 			}
