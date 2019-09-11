@@ -57,7 +57,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	Profiler &prof = getProfiler(PROF_MEAS);
 	/* marks the begginin*/
 	LogOut("~");
-	LogMsg(VERB_NORMAL, "[Meas %d] Measurement %d", indexa, measa);
+	LogMsg(VERB_NORMAL, "\n ", indexa, measa);
+	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d \n", indexa, measa);
 
 	/* Save configuration, placed here to avoid running any test if MEAS_NOTHING
 	but to save the configuration */
@@ -317,6 +318,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				if(strmeas & STRMEAS_ENERGY) {
 					// measure the energy density of strings by using masked points
 					MeasDataOut.strE = stringenergy(axiona);
+					MeasDataOut.strE.rmask = rmasktab[0]; // this is not written by stringenergy();
 					writeStringEnergy(axiona,MeasDataOut.strE);
 				}
 		}
@@ -367,6 +369,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							if(strmeas & STRMEAS_ENERGY) {
 								// measure the energy density of strings by using masked points
 								MeasDataOut.strE = stringenergy(axiona);
+								MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
 								writeStringEnergy(axiona,MeasDataOut.strE);
 							}
 					}
