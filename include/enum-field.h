@@ -288,6 +288,7 @@
 			double rho_a_Vil;
 			double rho_s_Vil;
 			size_t nout;
+			double rmask;
 		}	StringEnergyData;
 
 		typedef	enum	FFTtype_s {
