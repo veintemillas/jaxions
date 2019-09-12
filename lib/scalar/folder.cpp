@@ -89,8 +89,8 @@ void	Folder::unfoldField()
 	}
 
 	field->setFolded(false);
-	LogMsg (VERB_HIGH, "Field unfolded");
-
+ 	LogMsg (VERB_HIGH, "[Folder] Field unfolded");
+	
 	return;
 }
 
