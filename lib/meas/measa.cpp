@@ -58,7 +58,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	/* marks the begginin*/
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "\n ", indexa, measa);
-	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d \n", indexa, measa);
+	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", indexa, measa, *axiona->zV());
 
 	/* Save configuration, placed here to avoid running any test if MEAS_NOTHING
 	but to save the configuration */
@@ -163,7 +163,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_A))
 			{
 
-				SpecBin specAna(axiona, (pType & PROP_SPEC) ? true : false);
+ 				SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
 
 				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
 				{
@@ -294,8 +294,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	// if we are computing any spectrum, prepare the instance
 	if (measa & MEAS_SPECTRUM)
 	{
-		SpecBin specAna(axiona, (pType & PROP_SPEC) ? true : false);
-
+ 		SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
 		/* this is an experimental print that uses axion energy plot2D and could use plot3D energy
 		   is incompatible with a real output of energy density... */
 		if (measa & MEAS_MASK)
