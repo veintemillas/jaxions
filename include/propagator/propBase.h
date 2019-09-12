@@ -35,6 +35,9 @@
 		virtual void	lowGpu	(const double) = 0;
 //		virtual void	lowXeon	() = 0;
 
+		virtual void	sNNRunCpu	(const double) = 0;		// Saxion Vectorised multi Ng laplacian propagator
+		// virtual void	tNNRunCpu	(const double)	= 0;	// Axion Vectorised multi Ng laplacian propagator (not yet)
+
 		virtual double	cFlops	(const PropcType) = 0;
 		virtual double	cBytes	(const PropcType) = 0;
 
