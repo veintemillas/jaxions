@@ -76,7 +76,9 @@
 
 			LogMsg (VERB_NORMAL, "Binner found %f min, %f max", minVal, maxVal);
 
-			if (std::abs(maxVal - minVal) < 1e-10) { LogError ("Error: max-min too close!"); bins.fill(maxVal); return; }
+			if (std::isinf(maxVal) || std::isinf(minVal))	{ LogError ("Error: infinite value found");			 return; }
+			if (std::isnan(maxVal) || std::isnan(minVal))	{ LogError ("Error: NaN found");				 return; }
+			if (std::abs(maxVal - minVal) < 1e-10)		{ LogError ("Error: max-min too close!");   bins.fill(maxVal);   return; }
 			step    = (maxVal-minVal)/((double) (N-1));
 			baseVal = minVal - step*0.5;
 
@@ -92,7 +94,10 @@
 
 								  step    = (maxVal-minVal)/((double) (N-1));
 								  baseVal = minVal - step*0.5;
-								  if (maxVal <= minVal) { LogError ("Error: max value can't be lower or equal than min"); return; } }
+									if (std::isinf(maxVal) || std::isinf(minVal))	{ LogError ("Error: infinite value found");			 return; }
+								  if (std::isnan(maxVal) || std::isnan(minVal))	{ LogError ("Error: NaN found");				 return; }
+								  if (std::abs(maxVal - minVal) < 1e-10)	{ LogError ("Error: max-min too close!");   bins.fill(maxVal);   return; }
+									if (maxVal <= minVal) { LogError ("Error: max value can't be lower or equal than min"); return; } }
 
 		inline       double*	data	()		{ return bins.data();   }
 		inline const double*	data	() const	{ return bins.data();   }
@@ -115,6 +120,9 @@
 		std::vector<size_t>	tBins(N*mIdx);
 		tBins.assign(N*mIdx, 0);
 
+		if (std::isinf(maxVal) || std::isinf(minVal))	{ LogError ("Error: can't run binner with infinities");	 return; }
+		if (std::isnan(maxVal) || std::isnan(minVal))	{ LogError ("Error: cen't run binner with Nan values");	 return; }
+		
 		if (std::abs(maxVal - minVal) < 1.e-10) {
 			LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
 			LogError ("Error: max value can't be lower or equal than min"); bins.fill(maxVal); return; }

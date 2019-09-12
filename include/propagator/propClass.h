@@ -12,6 +12,7 @@
 
 
 	#include "propagator/propXeon.h"
+	#include "propagator/propXeonNN.h"
 	#include "propagator/propThetaXeon.h"
 	#include "propagator/laplacian.h"
 	#include "propagator/sPropXeon.h"
@@ -66,10 +67,14 @@
 		inline void	tRunGpu	(const double)	override;
 
 		inline void	tSpecCpu(const double)	override;	// Axion spectral propagator
-		// inline void	tfsSpecCpu(const double)	override;	// Axion spectral propagator
+		// inline void	tfsSpecCpu(const double)	override;	// Axion spectral propagator FIX IT!
 
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
+
+		inline void	sNNRunCpu	(const double)	override;	// Saxion Vectorised multi Ng laplacian propagator
+		// inline void	tNNRunCpu	(const double)	override;	// Axion Vectorised multi Ng laplacian propagator (not yet)
+
 
 		inline double	cFlops	(const PropcType)	override;
 		inline double	cBytes	(const PropcType)	override;
@@ -106,15 +111,9 @@
 						break;
 
 					case	DEV_GPU:
-						LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, will call standard propagator");
-						if (field->LowMem()) {
-							propSaxion = [this](const double dz) { this->lowGpu(dz); };
-							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-						} else {
-							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
-							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-						}
-						break;
+					LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, Exit");
+					exit(1);
+					break;
 
 					default:
 						LogError ("Error: not a valid device");
@@ -134,15 +133,9 @@
 						propAxion  = [this](const double dz) { this->tSpecCpu(dz); }; // include new full spectral propagator!
 						break;
 
-					case	DEV_GPU:
-						LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, will call standard propagator");
-						if (field->LowMem()) {
-							propSaxion = [this](const double dz) { this->lowGpu(dz); };
-							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-						} else {
-							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
-							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
-						}
+						case	DEV_GPU:
+						LogMsg	(VERB_HIGH, "Warning: spectral propagators not supported in gpus, Exit");
+						exit(1);
 						break;
 
 					default:
@@ -151,8 +144,31 @@
 					}
 					break;
 
+			case PROPC_NNEIG:
+				switch (field->Device()) {
+					case	DEV_CPU:
+						if (field->LowMem()) {
+							LogError ("Error: Lowmem not supported with NNeighbour propagators");
+							exit(1);
+						} else {
+							propSaxion = [this](const double dz) { this->sNNRunCpu(dz); };
+							propAxion  = [this](const double dz) { this->tRunCpu(dz); }; //FIX this when tNN is implemented!!!
+						}
+						break;
+
+					case	DEV_GPU:
+						LogError ("Error: GPU not supported with NNeighbour propagators");
+						exit(1);
+						break;
+
+					default:
+						LogError ("Error: not a valid device");
+						return;
+				}
+				break;
+
 			default:
-			case PROPC_2NEIG:
+			case PROPC_BASE:
 				switch (field->Device()) {
 					case	DEV_CPU:
 						if (field->LowMem()) {
@@ -549,6 +565,184 @@
 		axion->setM2     (M2_DIRTY);
 	}
 
+	// Generic saxion propagator N neighbour
+
+	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	void	PropClass<nStages, lastStage, VQcd>::sNNRunCpu	(const double dz) {
+
+		double *z = axion->zV();
+		double *R = axion->RV();
+		double cLmbda = lambda;
+
+		axion->exchangeGhosts(FIELD_M);
+
+		#pragma unroll
+		for (int s = 0; s<nStages; s+=2) {
+
+			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
+			if (lType != LAMBDA_FIXED)
+				cLmbda = lambda/((*R)*(*R));
+			auto maa = axion->AxionMassSq();
+
+			size_t bsl = 0, csl = 0;  // bsl is current boundary slice
+			bool sent = false;
+			int loopnumber = 0;
+			axion->gReset();
+// LogOut("loop1 (%d/%d,%d) \n",axion->gSent(),sent,axion->gRecv());
+LogMsg(VERB_DEBUG, "* * * * LOOP1 * * * * (%d/%d,%d)",axion->gSent(),sent,axion->gRecv());
+			while ( (csl < sizeZ-2*Ng) || (bsl < Ng) ) // while the number of slices computed is smaller than Lz
+			{
+				axion->sendGhosts(FIELD_M, COMM_TESTR);
+				axion->sendGhosts(FIELD_M, COMM_TESTS);
+// LogOut("  >> z %d csl %d bsl %d csl + 2*(bsl) %d (%d/%d,%d)\n",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
+LogMsg(VERB_DEBUG,"  >> Z %d csl %d bsl %d csl+2*(bsl) %d (%d/%d,%d)",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
+				if (bsl < Ng){ // if there are boundary slices prepare and send
+
+					if ( !sent ){
+						prepareGhostKernelXeon<VQcd>(axion->mCpu(), axion->vGhost(), ood2, Lx, bsl, precision);
+						axion->sendGhosts(FIELD_M, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
+						sent = true ;
+// LogOut("  bsl %d sent (gs %d/%d)\n",bsl,axion->gSent(),sent);
+LogMsg(VERB_DEBUG,"  >>>> not send >>>> bsl %d prepared and sent (gs %d/%d)",bsl,axion->gSent(),sent);
+LogMsg(VERB_DEBUG,"---> info for slice bsl %d SENT",bsl);
+					}
+
+					axion->sendGhosts(FIELD_M, COMM_TESTR);
+					if ( axion->gRecv() ){
+LogMsg(VERB_DEBUG,"---> info for slice bsl %d RECEIVED",bsl);
+// LogOut("  bsl %d received; computing os0 %d os1 %d\n",bsl,bsl,sizeZ-1-bsl);
+LogMsg(VERB_DEBUG,"  >>>> RECEIVED >>>> bsl %d received; computing os0 %d os1 %d",bsl,bsl,sizeZ-1-bsl);
+						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
+// LogOut(">>>>> bsl %d\n",bsl);
+						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock, yBlock, zBlock);
+// LogOut(">>>>> bsl %d\n",sizeZ-bsl-1);
+						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock, yBlock, zBlock);
+// LogOut("  bsl %d %d done (%d)\n",bsl,sizeZ-bsl);
+LogMsg(VERB_DEBUG,"       bsl %d %d calculated; sent = false",bsl,sizeZ-bsl);
+						bsl++ ; // mark next boundary slice for next round
+						sent = false;
+				}}
+
+				if (csl < sizeZ-2*Ng) {
+					size_t SC = S*(csl+Ng+1);
+// LogOut(">>>>> csl %d\n",csl+Ng);
+LogMsg(VERB_DEBUG,"  >> CORE UNFINISHED, CALCULATE csl %d",csl+Ng);
+					propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
+// LogOut("  csl %d done (slice %d)\n",csl,csl+Ng);
+LogMsg(VERB_DEBUG,"                                csl %d done (slice %d)",csl,csl+Ng);
+					csl ++;
+				} else { if (sent) {
+										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, Waiting for bsl %d... (%d/%d,%d)",bsl,axion->gSent(),sent,axion->gRecv());
+										axion->sendGhosts(FIELD_M, COMM_WAIT,0); }
+										// else
+										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, nothing to wait for ... continue");
+								}
+LogMsg(VERB_DEBUG,"L1-RANK %d loop %d (bsl/csl,%d/%d)",commRank(),loopnumber,bsl,csl);
+loopnumber++;
+LogFlush();
+			}
+
+LogMsg(VERB_DEBUG,"CommSync");
+commSync();
+LogMsg(VERB_DEBUG,"CommSync done");
+
+
+			*z += dz*d1;
+			axion->updateR();
+
+			if (lType != LAMBDA_FIXED)
+				cLmbda = lambda/((*R)*(*R));
+
+			maa = axion->AxionMassSq();
+
+			bsl = 0; csl = 0;
+			sent = false;
+			loopnumber = 0;
+			axion->gReset();
+// LogOut("loop2\n");
+LogMsg(VERB_DEBUG, "* * * * LOOP2 * * * * (%d/%d,%d)",axion->gSent(),sent,axion->gRecv());
+			while ( (csl < sizeZ-2*Ng) || (bsl < Ng) )
+			{
+				axion->sendGhosts(FIELD_M2, COMM_TESTR);
+				axion->sendGhosts(FIELD_M2, COMM_TESTS);
+// LogOut("  >> z %d csl %d bsl %d csl + 2*(bsl) %d (%d/%d,%d)\n",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
+LogMsg(VERB_DEBUG,"  >> Z %d csl %d bsl %d csl+2*(bsl) %d (%d/%d,%d)",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
+				if (bsl < Ng){ // if there are boundary slices prepare and send
+
+					if ( !sent ){
+					prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
+						axion->sendGhosts(FIELD_M2, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
+						sent = true ;
+// LogOut("  bsl %d sent (gs %d/%d)\n",bsl,axion->gSent(),sent);
+LogMsg(VERB_DEBUG,"  >>>> not send >>>> bsl %d prepared and sent (gs %d/%d)",bsl,axion->gSent(),sent);
+LogMsg(VERB_DEBUG,"---> info for slice bsl %d SENT",bsl);
+					}
+
+					axion->sendGhosts(FIELD_M2, COMM_TESTR);
+					if ( axion->gRecv() ){
+// LogMsg(VERB_DEBUG,"---> info for slice bsl %d RECEIVED",bsl);
+// LogOut("  bsl %d received; computing os0 %d os1 %d\n",bsl,bsl,sizeZ-1-bsl);
+LogMsg(VERB_DEBUG,"  >>>> RECEIVED >>>> bsl %d received; computing os0 %d os1 %d",bsl,bsl,sizeZ-1-bsl);
+						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
+// LogOut(">>>>> bsl %d\n",bsl);
+						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock, yBlock, zBlock);
+// LogOut(">>>>> bsl %d\n",sizeZ-bsl-1);
+						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock, yBlock, zBlock);
+// LogOut("  bsl %d %d done (%d)\n",bsl,sizeZ-bsl);
+LogMsg(VERB_DEBUG,"       bsl %d %d calculated; sent = false",bsl,sizeZ-bsl);
+						bsl++ ; // mark next boundary slice for next round
+						sent = false;
+				}}
+
+				if (csl < sizeZ-2*Ng) {
+					size_t SC = S*(csl+Ng+1);
+// LogOut(">>>>> csl %d\n",csl+Ng);
+LogMsg(VERB_DEBUG,"  >> CORE UNFINISHED, CALCULATE csl %d",csl+Ng);
+					propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
+// LogOut("  csl %d done (slice %d)\n",csl,csl+Ng);
+LogMsg(VERB_DEBUG,"  csl %d done (slice %d)",csl,csl+Ng);
+					csl ++;
+				} else { if (sent) {
+										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, Waiting for bsl %d... (%d/%d,%d)",bsl,axion->gSent(),sent,axion->gRecv());
+										axion->sendGhosts(FIELD_M2, COMM_WAIT,0); }
+										// else
+										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, nothing to wait for ... continue");
+								}
+LogMsg(VERB_DEBUG,"L1-RANK %d loop %d (bsl/csl,%d/%d)",commRank(),loopnumber,bsl,csl);
+loopnumber++;
+
+LogFlush();
+			}
+
+LogMsg(VERB_DEBUG,"CommSync");
+commSync();
+LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
+
+
+
+			*z += dz*d2;
+			axion->updateR();
+
+		}
+
+// LogOut("->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n");
+		// this is done with lap1
+		if (lastStage) {
+			axion->sendGhosts(FIELD_M, COMM_SDRV);
+
+			if (lType != LAMBDA_FIXED)
+				cLmbda = lambda/((*R)*(*R));
+
+			const double	c0 = c[nStages], maa = axion->AxionMassSq();
+
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+		}
+		axion->setM2     (M2_DIRTY);
+}
+
 	// Generic saxion lowmem propagator
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
@@ -719,7 +913,8 @@
 	double	PropClass<nStages, lastStage, VQcd>::cFlops	(const PropcType spec) {
 		switch (spec)
 		{
-			case PROPC_2NEIG:
+			case PROPC_BASE:
+			case PROPC_NNEIG: // FIXME
 			{
 				switch (axion->Field()) {
 					case FIELD_SAXION:
@@ -816,7 +1011,8 @@
 	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const PropcType spec) {
 		switch (spec)
 		{
-			case PROPC_2NEIG:
+			case PROPC_BASE:
+			case PROPC_NNEIG: //FIX ME!
 				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   10.    * ((double) nStages) + (lastStage ? 9. : 0.)));
 			break;
 

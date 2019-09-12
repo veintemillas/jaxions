@@ -27,7 +27,7 @@
 #endif
 
 void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const void * __restrict__ m2_, double *R, const double dz, const double c, const double d,
-			     const double aMass2, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision)
+			     const double aMass2, const double fMom, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, const size_t pad=2)
 {
 	const size_t Sf = Lx*Lx;
 
@@ -80,7 +80,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			{
 				size_t idxMz = idx-Sf, idxM2;
 
-				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2);
+				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+pad);
 
 				mel = opCode(load_pd, &m[idx]);
 				vel = opCode(load_pd, &v[idxMz]);
@@ -157,7 +157,7 @@ void	sPropThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const 
 			{
 				size_t idxMz = idx - Sf, idxM2;
 
-				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+2);
+				idxM2 = (idxMz%Lx) + (idxMz/Lx)*(Lx+pad);
 
 				mel = opCode(load_ps, &m[idx]);
 				vel = opCode(load_ps, &v[idxMz]);

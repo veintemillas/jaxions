@@ -40,6 +40,7 @@ extern size_t nstrings_globale;
 extern std::vector<double> rmask_tab;
 extern int i_rmask;
 
+extern int    slicepp;
 
 extern double wkb2z ;
 extern double prepstL;

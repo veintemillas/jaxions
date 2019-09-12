@@ -16,12 +16,14 @@ int    nSteps = 5;
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER
-int    Ng     = 1 ;
+int    Ng     = -1 ;
 double indi3  = 1.0;
 double msa    = 1.5;
 double wDz    = 0.8;
 int    fIndex = -1;
 int    fIndex2 = 0;
+
+int    slicepp = 0;
 
 double sizeL = 4.;
 double zInit = 0.5;
@@ -121,6 +123,7 @@ bool pconfinalwkb = false;
 bool restart_flag = false;
 
 bool mCreateOut = false;
+bool bopt = true;
 
 bool CreateLogMeas = false;
 
@@ -226,6 +229,7 @@ void	PrintUsage(char *name)
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
+ 	printf("  --lapla 1/2/3/4             	Number of Neighbours in the underoptimised laplacian [super-optimised default is 1 and requires no --lapla 1 flag]\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
@@ -426,6 +430,7 @@ int	parseArgs (int argc, char *argv[])
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&verb));
 
 			if (verb > VERB_HIGH)   verb = VERB_HIGH;
+ 			if (verb > VERB_DEBUG)   verb = VERB_DEBUG;
 			if (verb < VERB_SILENT) verb = VERB_SILENT;
 
 			i++;
@@ -498,6 +503,18 @@ int	parseArgs (int argc, char *argv[])
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
 
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2Dslice"))
+		{
+			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
+			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1764,11 +1781,12 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			Ng = atoi(argv[i+1]);
+			bopt = false;
 
-			if (Ng < 0 || Ng > 4 )
+ 			if (Ng < 0 || Ng > 6)
 			{
-				printf("Error: The number of neighbours must be 0,1,2,3. Set to 1.\n");
-				//exit(1);
+				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
+				exit(1);				//exit(1);
 			}
 
 			i++;
@@ -1788,6 +1806,12 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
+	if (Ng*2 > (int) sizeZ) {
+		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Ng%d,sizeZ%d,%d,%d)\n",Ng,sizeZ,Ng*2, Ng*2> sizeZ);
+		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
+		exit(1);
+	}
+
 	if (cType == CONF_SMOOTH )
 	{
 		parm1 = iter;
@@ -1803,6 +1827,29 @@ int	parseArgs (int argc, char *argv[])
 
 	if ((pType & PROP_MASK) == PROP_NONE)
 		pType |= PROP_RKN4;
+
+// if lapla is chosen
+	if (Ng > 0)
+	{
+		if ( ((pType & PROP_LAPMASK) & PROP_FSPEC) || ((pType & PROP_LAPMASK) & PROP_SPEC))
+		{
+			printf("Error: Selected spectral propagator and Ng=%d\n",Ng);
+			exit(1);
+		} else {
+			// UNDO
+			if (bopt)
+				pType |= PROP_BASE; // 1 neighbour optimised. Only if no --lapla was invoqued
+				else
+				pType |= PROP_NNEIG; // Ng underoptimised. Ff no --lapla was invoqued, even if it was Ng=1
+		}
+	}
+
+	// if no laplacian type is been chosen chose optimised BASE
+	if ((pType & PROP_LAPMASK) == PROP_NONE)
+		pType |= PROP_BASE;
+
+
+
 
 	if (uMsa) {
 		if (uLambda)

@@ -140,7 +140,7 @@ int	main (int argc, char *argv[])
 	//- Info to measurement
 	MeasInfo ninfa;
 	//- information needs to be passed onto measurement files
-	ninfa.sliceprint = sliceprint;
+ 	ninfa.sliceprint = slicepp;
 	ninfa.idxprint = 0 ;
 	ninfa.index = 0;
 	ninfa.redmap = endredmap;
@@ -292,7 +292,10 @@ int	main (int argc, char *argv[])
 
 	LogOut("Running ...\n\n");
 	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
-	initPropagator (pType, axion, myCosmos.QcdPot());
+	if (Ng>0)
+		LogOut(" Ng(%d)",Ng);
+	LogOut("\n");
+	initPropagator (pType, axion, myCosmos.QcdPot(),Ng);
 	tunePropagator (axion);
 
 
@@ -342,6 +345,7 @@ int	main (int argc, char *argv[])
 			propagate (axion, dzaux);
 			counter++;
 
+ 			LogFlush();
 
 			// SIMPLE OUTPUT CHECK
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
@@ -363,7 +367,7 @@ int	main (int argc, char *argv[])
 
 					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
 					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
+					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, Ng);
 					coD = false ;
 					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}

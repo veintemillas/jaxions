@@ -240,8 +240,6 @@ void	ConfGenerator::runCpu	()
 	string	randName("Random");
 	string	smthName("Smoother");
 
-	LogMsg(VERB_NORMAL, "MIERDAS CON PATATAS");
-
 	switch (cType)
 	{
 		case CONF_NONE:

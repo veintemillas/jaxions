@@ -180,10 +180,13 @@
 
 		typedef enum	CommOperation_s
 		{
-			COMM_SEND,
-			COMM_RECV,
-			COMM_SDRV,
-			COMM_WAIT,
+			COMM_SEND = 1 ,
+			COMM_RECV = 2,
+			COMM_SDRV = 4,
+			COMM_TESTS = 8,
+			COMM_TESTR = 16,
+			COMM_TEST  = 24,
+			COMM_WAIT = 32,
 		}	CommOperation;
 
 		typedef enum	AllocType_s
@@ -319,34 +322,52 @@
 		}	FFTdir;
 
 		typedef	enum	PropcType_s {
-			PROPC_2NEIG	    = 0,		// For parsing
-			PROPC_SPEC	    = 1,		// Spectral flag
-			PROPC_FSPEC     = 2,		// Full Spectral flag
-			PROPC_NNEIG     = 4,		// to be built
+			PROPC_NONE	    = 0,		// For parsing
+			PROPC_BASE	    = 1,		// Optimised proppagator 1 neighbour
+			PROPC_SPEC	    = 2,		// Spectral flag
+			PROPC_FSPEC     = 4,		// Full Spectral flag
+			PROPC_NNEIG     = 8,		// vectorised multi Ng laplacian propagator
 		} PropcType;
 
 		typedef	enum	PropType_s {
 			PROP_NONE	    = 0,		// For parsing
-			PROP_SPEC	    = 1,		// Spectral flag
-			PROP_FSPEC    = 2,		// Full Spectral flag
+			PROP_BASE     = 1,    // Optimised propagator 1 neighbour
+			PROP_SPEC	    = 2,		// Spectral flag
+			PROP_FSPEC    = 4,		// Full Spectral flag
+			PROP_NNEIG    = 8,		// vectorised multi Ng laplacian propagator
 
-			PROP_LEAP	    = 4,
-			PROP_OMELYAN2	= 8,
-			PROP_OMELYAN4	= 16,
-			PROP_RKN4	    = 32,
-			PROP_MLEAP    = 64,
-			PROP_SLEAP	  = 5,
-			PROP_SOMELYAN2	= 9,
-			PROP_SOMELYAN4	= 17,
-			PROP_SRKN4	    = 33,
-			PROP_SMLEAP     = 65,
-			PROP_FSLEAP	    = 6,
-			PROP_FSOMELYAN2	= 10,
-			PROP_FSOMELYAN4	= 18,
-			PROP_FSRKN4	    = 34,
-			PROP_FSMLEAP    = 66,
+			PROP_LEAP	    = 16,
+			PROP_OMELYAN2	= 32,
+			PROP_OMELYAN4	= 64,
+			PROP_RKN4	    = 128,
+			PROP_MLEAP    = 256,
 
-			PROP_MASK	= 124,		// 4+8+16+32+64 So far... Masks the integrator type, removing the spectral flag
+			PROP_BLEAP	    = 17,
+			PROP_BOMELYAN2	= 33,
+			PROP_BOMELYAN4	= 65,
+			PROP_BRKN4	    = 129,
+			PROP_BMLEAP    = 257,
+
+			PROP_SLEAP	    = 18,
+			PROP_SOMELYAN2	= 34,
+			PROP_SOMELYAN4	= 66,
+			PROP_SRKN4	    = 130,
+			PROP_SMLEAP     = 258,
+
+			PROP_FSLEAP	    = 20,
+			PROP_FSOMELYAN2	= 36,
+			PROP_FSOMELYAN4	= 68,
+			PROP_FSRKN4	    = 132,
+			PROP_FSMLEAP    = 260,
+
+			PROP_NLEAP	    = 24,
+			PROP_NOMELYAN2	= 40,
+			PROP_NOMELYAN4	= 72,
+			PROP_NRKN4	    = 136,
+			PROP_NMLEAP     = 264,
+
+			PROP_MASK	      = 496,		// 16+32+64+128+256 So far... Masks the integrator type, removing the spectral/N flags flag
+			PROP_LAPMASK	  = 15,			// Masks the laplacian type, removing the integrator time			
 		}	PropType;
 
 		typedef	enum	SpectrumType_s {

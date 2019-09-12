@@ -1802,7 +1802,7 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 		writeAttribute(group_id, &(strEDat.rho_a_Vil), "Masked axion energy density (Vil)", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &(strEDat.rho_s_Vil), "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &(strEDat.nout), "nout", H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strEDat.rmask),       "rmask",			       H5T_NATIVE_DOUBLE);		
+		writeAttribute(group_id, &(strEDat.rmask),       "rmask",			       H5T_NATIVE_DOUBLE);
 	}
 
 	bCastAndExit:

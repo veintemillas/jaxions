@@ -41,6 +41,10 @@
 		bool	vmomspace;
 		bool folded;
 		bool	lowmem;
+		int Ng;
+
+		bool	gsent;
+		bool	grecv;
 
 		// conformal time
 		double	*z;
@@ -89,6 +93,7 @@
 		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2+n3)); }
 		void		*m2FrontGhost() { return m2; }
 		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
+ 		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(n3)); }
 		// fix for saxion mode! eReduced ? rLz*nSplit : Lz*nSplit;
 		// void		*m2half      () { return fieldType == FIELD_SAXION ? static_cast<void *>(static_cast<char *>(m2) + (fSize/2)*(v3)) :static_cast<void *>(static_cast<char *>(m2) + fSize*(v3));  }
 		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
@@ -178,9 +183,14 @@
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
-		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
+ 		void	sendGhosts(FieldIndex fIdx, CommOperation cOp, size_t Nng=1);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
+		bool	gSent() { return gsent; }
+		bool	gRecv() { return grecv; }
+		void	gReset() { gsent = false ; grecv = false; }
 
+		int  getNg() {return Ng;}
+		int  setNg(const int nn) { Ng = nn;}
 		/*	Eliminar	*/
 
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);

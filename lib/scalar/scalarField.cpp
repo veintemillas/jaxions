@@ -61,6 +61,9 @@ const std::complex<float> If(0.,1.);
 	eReduced   = false;
 	mmomspace 	 = false;
 	vmomspace 	 = false;
+	gsent = false;
+	grecv = false;
+	Ng = -1;
 
 	switch (fieldType)
 	{
@@ -523,7 +526,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 	}
 }
 
-void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
+void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 {
 	static const int rank = commRank();
 	static const int fwdNeig = (rank + 1) % nSplit;
@@ -534,20 +537,31 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
 	/* Assign receive buffers to the right parts of m, v */
-
+LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) with Ng=%lu (value of scalar %d)",opComm, Nng, Ng);LogFlush();
 	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
 
 	if (fIdx & FIELD_M)
 	{
-		sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2);
-		sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n3);
+		if (Nng > 0){
+			sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2*Nng); 				//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n2*(Lz+1-Nng));	//slice to be send forw
+LogMsg(VERB_DEBUG,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
+		} else {
+			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
+		}
 		rGhostBck = m;
 		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2));
 	}
 	else
 	{
-		sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2);
-		sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*n3);
+		if (Nng > 0){
+			sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*Nng);
+			sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*(Lz+1-Nng));
+		} else {
+			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
+		}
 		rGhostBck = m2;
 		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2));
 	}
@@ -556,27 +570,28 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	switch	(opComm)
 	{
 		case	COMM_SEND:
-
+LogMsg(VERB_DEBUG,"[COMM_TESTS] SEND");
 			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
 			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 
 			MPI_Start(&rSendFwd);
 			MPI_Start(&rSendBck);
+ 			gsent = false;
 
 			break;
 
 		case	COMM_RECV:
-
+LogMsg(VERB_DEBUG,"[COMM_TESTS] RECV");
 			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
 			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
 
 			MPI_Start(&rRecvBck);
 			MPI_Start(&rRecvFwd);
-
+ 			grecv = false;
 			break;
 
 		case	COMM_SDRV:
-
+LogMsg(VERB_DEBUG,"[COMM_TESTS] SDRV");
 			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
 			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
@@ -586,27 +601,55 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 			MPI_Start(&rRecvFwd);
 			MPI_Start(&rSendFwd);
 			MPI_Start(&rSendBck);
-
+			gsent = false;
+			grecv = false;
 			break;
 
-		case	COMM_WAIT:
+		case	COMM_TESTS:
+		{
+		int flag1 = 0, flag2 = 0;
+		int pest1 = MPI_Test(&rSendBck, &flag1, MPI_STATUS_IGNORE);
+		int pest2 = MPI_Test(&rSendFwd, &flag2, MPI_STATUS_IGNORE);
+		if (flag1 * flag2)
+			gsent = true;
+		else  gsent = false ;
+LogMsg(VERB_DEBUG,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
+		}
+		break;
 
-			MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-			MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
-			MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
-			MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+	case	COMM_TESTR:
+		{
+		int flag1 = 0, flag2 = 0;
+		int pest1 = MPI_Test(&rRecvFwd, &flag1, MPI_STATUS_IGNORE);
+		int pest2 = MPI_Test(&rRecvBck, &flag2, MPI_STATUS_IGNORE);
+		if (flag1 * flag2)
+			grecv = true;
+		else  grecv = false;
+LogMsg(VERB_DEBUG,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
+		}
+		break;
 
-			MPI_Request_free(&rSendFwd);
-			MPI_Request_free(&rSendBck);
-			MPI_Request_free(&rRecvFwd);
-			MPI_Request_free(&rRecvBck);
+	case	COMM_WAIT:
+LogMsg(VERB_DEBUG,"[COMM_TESTS] WAIT");
+		MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+		MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
+		MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
+		MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+		gsent = true;
+		grecv = true;
+		MPI_Request_free(&rSendFwd);
+		MPI_Request_free(&rSendBck);
+		MPI_Request_free(&rRecvFwd);
+		MPI_Request_free(&rRecvBck);
+LogMsg(VERB_DEBUG,"[COMM_TESTS] FREE");
+		break;
 
-			break;
 	}
 }
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
+LogMsg(VERB_DEBUG,"[sca] Exchange Ghosts");LogFlush();
 	recallGhosts(fIdx);
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);
