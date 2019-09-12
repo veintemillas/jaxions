@@ -17,8 +17,8 @@ template<VqcdType pot>
 class	PropLeap : public PropClass<2, true, pot> {
 
 	public:
-		PropLeap(Scalar *field, const PropcType spec) :
-		PropClass<2, true, pot>(field, spec) {
+		PropLeap(Scalar *field, const PropcType propclass) :
+		PropClass<2, true, pot>(field, propclass) {
 		//	Set up Leapfrog parameters
 
 		double nC[3] = { 0.5, 0.5, 0.0 };
@@ -26,7 +26,7 @@ class	PropLeap : public PropClass<2, true, pot> {
 
 		this->setCoeff(nC, nD);
 
-		switch(spec)
+		switch(propclass)
 		{
 			case PROPC_SPEC:
 				if (field->Device() == DEV_CPU) {
@@ -40,8 +40,12 @@ class	PropLeap : public PropClass<2, true, pot> {
 				} else
 					this->setBaseName("Leapfrog ");
 			break;
+			case PROPC_NNEIG:
+				LogError("Error: propagator N-neighbour not supported with leapfrog yet");
+				exit(1);
+			break;
 			default:
-			case PROPC_2NEIG:
+			case PROPC_BASE:
 				if (field->LowMem())
 					this->setBaseName("Lowmem Leapfrog ");
 				else
@@ -55,8 +59,8 @@ template<VqcdType pot>
 class	PropMLeap : public PropClass<4, true, pot> {
 
 	public:
-		PropMLeap(Scalar *field, const PropcType spec) :
-		PropClass<4, true, pot>(field, spec) {
+		PropMLeap(Scalar *field, const PropcType propclass) :
+		PropClass<4, true, pot>(field, propclass) {
 		//	Set up Leapfrog parameters
 
 		double nC[5] = { 0.125, 0.25, 0.25, 0.25, 0.125 };
@@ -74,7 +78,7 @@ class	PropMLeap : public PropClass<4, true, pot> {
 		// }
 		//
 
-		switch(spec)
+		switch(propclass)
 		{
 			case PROPC_SPEC:
 				if (field->Device() == DEV_CPU) {
@@ -88,8 +92,13 @@ class	PropMLeap : public PropClass<4, true, pot> {
 				} else
 					this->setBaseName("Multi-Leapfrog ");
 			break;
+			case PROPC_NNEIG:
+				LogError("Error: propagator N-neighbour not supported with Multi-leapfrog yet");
+				exit(1);
+			break;
+
 			default:
-			case PROPC_2NEIG:
+			case PROPC_BASE:
 				if (field->LowMem())
 					this->setBaseName("Lowmem Multi-Leapfrog ");
 				else
@@ -104,8 +113,8 @@ template<VqcdType pot>
 class	PropOmelyan2 : public PropClass<2, true, pot> {
 
 	public:
-		PropOmelyan2(Scalar *field, const PropcType spec) :
-		PropClass<2, true, pot>(field, spec) {
+		PropOmelyan2(Scalar *field, const PropcType propclass) :
+		PropClass<2, true, pot>(field, propclass) {
 		constexpr double chi = +0.19318332750378360;
 
 		//	Set up Omelyan parameters for BABAB
@@ -115,7 +124,7 @@ class	PropOmelyan2 : public PropClass<2, true, pot> {
 
 		this->setCoeff(nC, nD);
 
-		if (spec && field->Device() == DEV_CPU) {
+		if (propclass && field->Device() == DEV_CPU) {
 			this->setBaseName("Omelyan2 spectral ");
 		} else {
 			if (field->LowMem())
@@ -130,8 +139,8 @@ template<VqcdType pot>
 class	PropOmelyan4 : public PropClass<4, true, pot> {
 
 	public:
-		PropOmelyan4(Scalar *field, const PropcType spec) :
-		PropClass<4, true, pot>(field, spec) {
+		PropOmelyan4(Scalar *field, const PropcType propclass) :
+		PropClass<4, true, pot>(field, propclass) {
 		constexpr double xi  = +0.16449865155757600;
 		constexpr double lb  = -0.02094333910398989;
 		constexpr double chi = +1.23569265113891700;
@@ -151,7 +160,7 @@ class	PropOmelyan4 : public PropClass<4, true, pot> {
 		// 	else
 		// 		this->setBaseName("Omelyan4 ");
 		// }
-		switch(spec)
+		switch(propclass)
 		{
 			case PROPC_SPEC:
 				if (field->Device() == DEV_CPU) {
@@ -165,8 +174,12 @@ class	PropOmelyan4 : public PropClass<4, true, pot> {
 				} else
 					this->setBaseName("Omelyan4 ");
 			break;
+			case PROPC_NNEIG:
+				LogError("Error: propagator N-neighbour not supported with Omelyan yet (only even step coded)");
+				exit(1);
+			break;
 			default:
-			case PROPC_2NEIG:
+			case PROPC_BASE:
 				if (field->LowMem())
 					this->setBaseName("Lowmem Omelyan4 ");
 				else
@@ -180,8 +193,8 @@ template<VqcdType pot>
 class	PropRKN4 : public PropClass<4, false, pot> {
 
 	public:
-		PropRKN4(Scalar *field, const PropcType spec) :
-		PropClass<4, false, pot>(field, spec) {
+		PropRKN4(Scalar *field, const PropcType propclass) :
+		PropClass<4, false, pot>(field, propclass) {
 		//	Set up RKN parameters for BABABABA
 
 		const double nC[4] = { +0.1344961992774310892, -0.2248198030794208058, +0.7563200005156682911, +0.3340036032863214255 };
@@ -197,7 +210,7 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 		// 	else
 		// 		this->setBaseName("RKN4 ");
 		// }
-		switch(spec)
+		switch(propclass)
 		{
 			case PROPC_SPEC:
 				if (field->Device() == DEV_CPU) {
@@ -211,8 +224,15 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 				} else
 					this->setBaseName("RKN4 ");
 			break;
+			case PROPC_NNEIG:
+				if (field->LowMem()){
+					LogError("Error: propagator N-neighbour not supported with lowmem yet (only coded with m2!)");
+					exit(1);
+				} else
+					this->setBaseName("Ng RKN4 ");
+			break;
 			default:
-			case PROPC_2NEIG:
+			case PROPC_BASE:
 				if (field->LowMem())
 					this->setBaseName("Lowmem RKN4 ");
 				else
@@ -222,23 +242,36 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 	}
 };
 
-void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
+
+void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 
 	LogMsg	(VERB_NORMAL, "[ip] Initializing propagator");
-	LogMsg	(VERB_HIGH, "[ip] pType is %d",pType);
+	LogMsg	(VERB_NORMAL, "[ip] pType is %d",pType);
 	// bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
 	bool wasTuned = false;
 
-	PropcType spec = PROPC_2NEIG;
+	PropcType propclass = PROPC_BASE;
+	if 	( (pType & PROPC_NNEIG) && (Ng > -1))
+	{
+		LogMsg	(VERB_NORMAL, "[ip] propagator Ng=%d selected (%d)",Ng,pType);LogFlush();
+		propclass = PROPC_NNEIG;
+		field->setNg(Ng);
+		LogMsg	(VERB_HIGH, "[ip] Ng set to %d",Ng);LogFlush();
+		// we send ghosts to initialise COMM definitions once; minimum overhead, perhaps a waste of time?
+		field->sendGhosts(FIELD_M, COMM_SDRV);
+		field->sendGhosts(FIELD_M, COMM_WAIT);
+	}
 	if 	(pType & PROP_FSPEC)
 	{
-		spec = PROPC_FSPEC;
+ 		LogMsg	(VERB_NORMAL, "[ip] propagator Full Spectral selected %d",pType);LogFlush();
+		propclass = PROPC_FSPEC;
 	}
 	if 	(pType & PROP_SPEC) // overwritting
 	{
-		spec = PROPC_SPEC;
+ 		LogMsg	(VERB_NORMAL, "[ip] propagator Spectral selected",pType);LogFlush();
+		propclass = PROPC_SPEC;
 	}
-	LogMsg	(VERB_HIGH, "[ip] spec set to %d", spec);
+	LogMsg	(VERB_NORMAL, "[ip] propclass set to %d", propclass);
 
 	unsigned int xBlock, yBlock, zBlock;
 
@@ -252,29 +285,29 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 
 	//auto pot  = field->BckGnd()->QcdPot();
 	//auto gm   = field->BckGnd()->Gamma ();
-	if (debug) LogOut("[ip] Init propagator\n");
+ 	LogMsg(VERB_NORMAL,"[ip] Init propagator\n");
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropOmelyan2<VQCD_1>>		(field, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_1>>		(field, propclass);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2>>	(field, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2>>	(field, propclass);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2_RHO>>	(field, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2_RHO>>	(field, propclass);
 					break;
 				case VQCD_2:
-					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, propclass);
 					break;
 				case VQCD_0:
-						prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, spec);
+						prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
 						break;
 
 				default:
 				case VQCD_NONE:
-					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, spec);
+					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, propclass);
 					break;
 			}
 			break;
@@ -282,23 +315,23 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 		case PROP_OMELYAN4:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropOmelyan4<VQCD_1>>		(field, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_1>>		(field, propclass);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2>>	(field, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2>>	(field, propclass);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2_RHO>>	(field, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2_RHO>>	(field, propclass);
 					break;
 				case VQCD_2:
-					prop = std::make_unique<PropOmelyan4<VQCD_2>>		(field, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_2>>		(field, propclass);
 					break;
 				case VQCD_0:
-					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, propclass);
 					break;
 				default:
 				case VQCD_NONE:
-					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, spec);
+					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, propclass);
 					break;
 			}
 			break;
@@ -306,23 +339,23 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 		case PROP_LEAP:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropLeap<VQCD_1>>		(field, spec);
+					prop = std::make_unique<PropLeap<VQCD_1>>		(field, propclass);
 					break;
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropLeap<VQCD_1_PQ_2>>		(field, spec);
+					prop = std::make_unique<PropLeap<VQCD_1_PQ_2>>		(field, propclass);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropLeap<VQCD_1_PQ_2_RHO>>	(field, spec);
+					prop = std::make_unique<PropLeap<VQCD_1_PQ_2_RHO>>	(field, propclass);
 					break;
 				case VQCD_2:
-					prop = std::make_unique<PropLeap<VQCD_2>>		(field, spec);
+					prop = std::make_unique<PropLeap<VQCD_2>>		(field, propclass);
 					break;
 				case VQCD_0:
-					prop = std::make_unique<PropLeap<VQCD_0>>		(field, spec);
+					prop = std::make_unique<PropLeap<VQCD_0>>		(field, propclass);
 					break;
 				default:
 				case VQCD_NONE:
-					prop = std::make_unique<PropLeap<VQCD_NONE>>		(field, spec);
+					prop = std::make_unique<PropLeap<VQCD_NONE>>		(field, propclass);
 					break;
 			}
 			break;
@@ -330,115 +363,115 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 			case PROP_MLEAP:
 				switch (pot) {
 					case VQCD_1:
-						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, propclass);
 						break;
 					case VQCD_1_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_RHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1_RHO>>		(field, propclass);
 						break;
 					case VQCD_1_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_DRHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1_DRHO>>		(field, propclass);
 						break;
 					case VQCD_1_PQ_2:
-						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, propclass);
 						break;
 					case VQCD_1_PQ_2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, propclass);
 						break;
 					case VQCD_1_PQ_2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_DRHO>>	(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_DRHO>>	(field, propclass);
 						break;
 
 					case VQCD_2:
-						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, propclass);
 						break;
 					case VQCD_2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_2_RHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_2_RHO>>		(field, propclass);
 						break;
 					case VQCD_2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, propclass);
 						break;
 
 					case VQCD_0:
-						prop = std::make_unique<PropMLeap<VQCD_0>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_0>>		(field, propclass);
 						break;
 					case VQCD_0_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_0_RHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_0_RHO>>		(field, propclass);
 						break;
 					case VQCD_0_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_0_DRHO>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_0_DRHO>>		(field, propclass);
 						break;
 
 					case VQCD_1N2:
-						prop = std::make_unique<PropMLeap<VQCD_1N2>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1N2>>		(field, propclass);
 						break;
 					case VQCD_1N2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1N2_RHO>>	(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1N2_RHO>>	(field, propclass);
 						break;
 					case VQCD_1N2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1N2_DRHO>>	(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_1N2_DRHO>>	(field, propclass);
 						break;
 
 					case VQCD_NONE:
 					default:
-						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, spec);
+						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, propclass);
 						break;
 				break;
 			}
 		case PROP_RKN4:
 			switch (pot) {
 				case VQCD_1:
-					prop = std::make_unique<PropRKN4<VQCD_1>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1>>		(field, propclass);
 					break;
 				case VQCD_1_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_RHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_RHO>>		(field, propclass);
 					break;
 				case VQCD_1_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_DRHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_DRHO>>		(field, propclass);
 					break;
 
 				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2>>		(field, propclass);
 					break;
 				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO>>	(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO>>	(field, propclass);
 					break;
 				case VQCD_1_PQ_2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO>>	(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO>>	(field, propclass);
 					break;
 
 				case VQCD_2:
-					prop = std::make_unique<PropRKN4<VQCD_2>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2>>		(field, propclass);
 					break;
 				case VQCD_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_2_RHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2_RHO>>		(field, propclass);
 					break;
 				case VQCD_2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_2_DRHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_2_DRHO>>		(field, propclass);
 					break;
 
 				case VQCD_0:
-					prop = std::make_unique<PropRKN4<VQCD_0>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_0>>		(field, propclass);
 					break;
 				case VQCD_0_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_0_RHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_0_RHO>>		(field, propclass);
 					break;
 				case VQCD_0_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_0_DRHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_0_DRHO>>		(field, propclass);
 					break;
 
 				case VQCD_1N2:
-					prop = std::make_unique<PropRKN4<VQCD_1N2>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1N2>>		(field, propclass);
 					break;
 				case VQCD_1N2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1N2_RHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1N2_RHO>>		(field, propclass);
 					break;
 				case VQCD_1N2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1N2_DRHO>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_1N2_DRHO>>		(field, propclass);
 					break;
 
 				case VQCD_NONE:
 				default:
-					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, spec);
+					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, propclass);
 					break;
 			}
 
@@ -459,8 +492,8 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot) {
 		prop->SetBlockZ(zBlock);
 		prop->UpdateBestBlock();
 	}
-	if (debug) LogOut("[ip] Alright!\n");
-	LogMsg	(VERB_HIGH, "Propagator %ssuccessfully initialized", prop->Name().c_str());
+	LogMsg	(VERB_NORMAL, "Propagator %ssuccessfully initialized", prop->Name().c_str());
+ 	LogFlush();
 }
 
 using	namespace profiler;
@@ -468,9 +501,11 @@ using	namespace profiler;
 void	propagate	(Scalar *field, const double dz)
 {
 	LogMsg	(VERB_HIGH, "Called propagator");
+LogFlush();
 	Profiler &prof = getProfiler(PROF_PROP);
 
-	if	(!field->Folded() && !(pType & PROP_SPEC) && !(pType & PROP_FSPEC) )
+LogFlush();
+ 	if	( (pType & (PROP_BASE | PROP_NNEIG)) && !field->Folded() )
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
@@ -502,8 +537,8 @@ void	propagate	(Scalar *field, const double dz)
 			return;
 	}
 
-	auto mFlops = prop->cFlops((pType & PROP_SPEC) ? PROPC_SPEC : PROPC_2NEIG);
-	auto mBytes = prop->cBytes((pType & PROP_SPEC) ? PROPC_SPEC : PROPC_2NEIG);
+	auto mFlops = prop->cFlops((pType & PROP_SPEC) ? PROPC_SPEC : PROPC_BASE);
+	auto mBytes = prop->cBytes((pType & PROP_SPEC) ? PROPC_SPEC : PROPC_BASE);
 
 	prop->add(mFlops, mBytes);
 
@@ -520,6 +555,15 @@ void	propagate	(Scalar *field, const double dz)
 
 void	resetPropagator(Scalar *field) {
 	/*	Default block size gives just one block	*/
+
+	LogMsg(VERB_NORMAL,"[tp] reseting!\n");
+	if (pType & PROP_SPEC)
+		return;
+	if (pType & PROP_FSPEC)
+		return;
+	if (pType & PROP_NNEIG)
+		return;
+
 	int tmp   = field->DataAlign()/field->DataSize();
 	int shift = 0;
 
@@ -540,11 +584,13 @@ void	resetPropagator(Scalar *field) {
 void	tunePropagator (Scalar *field) {
 	// Hash CPU model so we don't mix different cache files
 
-	if (debug) LogOut("[tp] tunning!\n");
+ 	LogMsg(VERB_NORMAL,"[tp] tunning!\n");
 	if (pType & PROP_SPEC)
 		return;
 	if (pType & PROP_FSPEC)
 		return;
+	// if (pType & PROP_NNEIG)
+	// 	return;
 
 	int  myRank   = commRank();
 	//int  nThreads = 1;
@@ -555,7 +601,7 @@ void	tunePropagator (Scalar *field) {
 		return;
 	}
 
-	if (debug) LogOut("[tp] profi!\n");
+ 	LogMsg(VERB_NORMAL,"[tp] profi!\n");
 	Profiler &prof = getProfiler(PROF_TUNER);
 
 	std::chrono::high_resolution_clock::time_point start, end;
