@@ -3081,7 +3081,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		exit(0);
 	}
 
-	LogMsg (VERB_HIGH, "Write energy map successful");
+	LogMsg (VERB_HIGH, "Write 2D map successful");
 
 	/*	Close the dataset	*/
 	H5Dclose (mSet_id);
