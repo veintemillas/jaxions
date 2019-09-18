@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <sys/stat.h>
-#include<vector>
+#include <vector>
 
 #include "enum-field.h"
 #include "cosmos/cosmos.h"
@@ -65,6 +65,7 @@ bool uZth     = false;
 bool uZrs     = false;
 bool uZin     = false;
 bool uZfn     = false;
+bool uLogi    = false;
 bool uMI      = false;
 bool uFR      = false;
 bool spectral = false;
@@ -93,6 +94,10 @@ LambdaType   lType     = LAMBDA_FIXED;
 VqcdType     vqcdType  = VQCD_1;
 VqcdType     vqcdTypeDamp    = VQCD_NONE;
 VqcdType     vqcdTypeRhoevol = VQCD_NONE;
+
+// Default IC type
+IcData icdatst;
+
 
 
 // Default measurement type, some options can be chosen with special flags | all with --meas
@@ -262,6 +267,7 @@ void	PrintUsage(char *name)
 	printf("  --sIter [int]                 Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("  --alpha [float]               alpha parameter for the smoothing (default 0.143).\n");
 	printf("  --wkb   [float]               WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
+ 	printf("  --nncore  										Do not apply rho(x) core normalisation.\n");
 	printf("\n");
 	printf("  --index [idx]                 Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 
@@ -396,6 +402,27 @@ int	parseArgs (int argc, char *argv[])
 {
 	bool	passed;
 	int	procArgs = 0;
+
+	// defaults
+	icdatst.icdrule   = false;
+	icdatst.preprop 	= false;
+	icdatst.icstudy 	= false;
+	icdatst.prepstL 	= 5.0 ;
+	icdatst.prepcoe 	= 3.0 ;
+	icdatst.pregammo  = 0.0;
+	icdatst.prelZ2e   = 0.0;
+	icdatst.prevtype  = VQCD_1_RHO;
+	icdatst.normcore  = true;
+	icdatst.alpha     = 0.143;
+	icdatst.siter     = 40;
+	icdatst.kcr       = 1.0;
+	icdatst.kMax      = 2;
+	icdatst.mode0     = 10.0;
+	icdatst.zi        = 0.5;
+	icdatst.logi      = 0.0;
+	icdatst.cType     = CONF_KMAX;
+	icdatst.smvarType = CONF_RAND;
+	icdatst.momConf   = MOM_MEXP2;
 
 	for (int i=1; i<argc; i++)
 	{
@@ -738,9 +765,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			kCrit = atof(argv[i+1]);
+			kCrit = atof(argv[i+1]); //legacy
+			icdatst.kcr = atof(argv[i+1]);
 
-			if (kCrit < 0.)
+			if (icdatst.kcr < 0.)
 			{
 				printf("Error: Critical kappa must be larger than or equal to 0.\n");
 				exit(1);
@@ -760,15 +788,25 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			alpha = atof(argv[i+1]);
+			alpha = atof(argv[i+1]); //legacy
+			icdatst.alpha = atof(argv[i+1]);
 
-			if ((alpha < 0.) || (alpha > 1.))
+			if ((icdatst.alpha < 0.) || (icdatst.alpha > 1.))
 			{
 				printf("Error: Alpha parameter must belong to the [0,1] interval.\n");
 				exit(1);
 			}
 
 			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--nncore"))
+		{
+			icdatst.normcore = false;
+
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -839,17 +877,46 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			pregammo = atof(argv[i+1]);
-			//vqcdTypeDamp = VQCD_DAMP_RHO ;
-
-			//uPot  = true;
-			//uGamma = true;
+			pregammo = atof(argv[i+1]); //legacy
+			icdatst.pregammo = atof(argv[i+1]);
 
 			if (pregammo < 0.)
 			{
 				printf("Error: pre-Damping factor should be larger than 0.\n");
 				exit(1);
 			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--lz2e"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the lambda PRS exponent.\n");
+				exit(1);
+			}
+
+			icdatst.prelZ2e = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--prevqcdtype"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the prevqcd type.\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&icdatst.prevtype));
 
 			i++;
 			procArgs++;
@@ -913,9 +980,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			zInit = atof(argv[i+1]);
+			zInit = atof(argv[i+1]); //legacy
+			icdatst.zi = atof(argv[i+1]);
 
-			if (zInit < 0.)
+		if (icdatst.zi < 0.)
 			{
 				printf("Error: Initial redshift must be larger than 0.\n");
 				exit(1);
@@ -928,6 +996,25 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		if (!strcmp(argv[i], "--logi"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the initial redshift.\n");
+				exit(1);
+			}
+
+			icdatst.logi = atof(argv[i+1]);
+
+			uLogi = true;
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 
 		if (!strcmp(argv[i], "--zf"))
 		{
@@ -1068,7 +1155,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			uMsa  = true;
-			lType = LAMBDA_Z2;
+			lType = LAMBDA_Z2; //obsolete?
 
 			i++;
 			procArgs++;
@@ -1389,7 +1476,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sscanf(argv[i+1], "%zu", &kMax);
+			sscanf(argv[i+1], "%zu", &kMax); //legacy
+			sscanf(argv[i+1], "%zu", &icdatst.kMax);
 
 			if (kMax < 0)
 			{
@@ -1412,6 +1500,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			sscanf(argv[i+1], "%zu", &iter);
+			sscanf(argv[i+1], "%zu", &icdatst.siter);
 
 			if (iter < 0)
 			{
@@ -1457,27 +1546,33 @@ int	parseArgs (int argc, char *argv[])
 
 			if (!strcmp(argv[i+1], "smooth"))
 			{
-				cType = CONF_SMOOTH;
+				cType = CONF_SMOOTH; // legacy
+				icdatst.cType = CONF_SMOOTH;
 			}
 			else if (!strcmp(argv[i+1], "kmax"))
 			{
-				cType = CONF_KMAX;
+				cType = CONF_KMAX; // legacy
+				icdatst.cType = CONF_KMAX;
 			}
 			else if (!strcmp(argv[i+1], "vilgor"))
 			{
-				cType = CONF_VILGOR;
+				cType = CONF_VILGOR; // legacy
+				icdatst.cType =  CONF_VILGOR;
 			}
 			else if (!strcmp(argv[i+1], "vilgork"))
 			{
-				cType = CONF_VILGORK;
+				cType = CONF_VILGORK; // legacy
+				icdatst.cType =  CONF_VILGORK;
 			}
 			else if (!strcmp(argv[i+1], "vilgors"))
 			{
-				cType = CONF_VILGORS;
+				cType = CONF_VILGORS; // legacy
+				icdatst.cType =  CONF_VILGORS;
 			}
 			else if (!strcmp(argv[i+1], "tkachev"))
 			{
-				cType = CONF_TKACHEV;
+				cType = CONF_TKACHEV; // legacy
+				icdatst.cType = CONF_TKACHEV;
 			}
 			else
 			{
@@ -1499,35 +1594,43 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			smvarType = CONF_RAND ;
+			smvarType = CONF_RAND ;//legacy
+			icdatst.smvarType = CONF_RAND ;
 
 			if (!strcmp(argv[i+1], "stXY"))
 			{
-				smvarType = CONF_STRINGXY;
+				smvarType = CONF_STRINGXY; //legacy
+				icdatst.smvarType = CONF_STRINGXY;
 			}
 			else if (!strcmp(argv[i+1], "stYZ"))
 			{
-				smvarType = CONF_STRINGYZ;
+				smvarType = CONF_STRINGYZ; //legacy
+				icdatst.smvarType = CONF_STRINGYZ;
 			}
 			else if (!strcmp(argv[i+1], "mc0"))
 			{
-				smvarType = CONF_MINICLUSTER0;
+				smvarType = CONF_MINICLUSTER0; //legacy
+				icdatst.smvarType = CONF_MINICLUSTER0;;
 			}
 			else if (!strcmp(argv[i+1], "mc"))
 			{
-				smvarType = CONF_MINICLUSTER;
+				smvarType = CONF_MINICLUSTER; //legacy
+				icdatst.smvarType = CONF_MINICLUSTER;
 			}
 			else if (!strcmp(argv[i+1], "axnoise"))
 			{
-				smvarType = CONF_AXNOISE;
+				smvarType = CONF_AXNOISE; //legacy
+				icdatst.smvarType = CONF_AXNOISE;
 			}
 			else if (!strcmp(argv[i+1], "saxnoise"))
 			{
-				smvarType = CONF_SAXNOISE;
+				smvarType = CONF_SAXNOISE; //legacy
+				icdatst.smvarType = CONF_SAXNOISE;
 			}
 			else if (!strcmp(argv[i+1], "ax1mode"))
 			{
-				smvarType = CONF_AX1MODE;
+				smvarType = CONF_AX1MODE; //legacy
+				icdatst.smvarType = CONF_AX1MODE;
 			}
 			else
 			{
@@ -1694,7 +1797,8 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--preprop"))
 		{
-			preprop = true ;
+			preprop = true ; //legacy
+			icdatst.preprop = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1702,7 +1806,8 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--icstudy"))
 		{
-			icstudy = true ;
+			icstudy = true ; //legacy
+			icdatst.icstudy = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1717,9 +1822,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			prepstL = atof(argv[i+1]);
+			prepstL = atof(argv[i+1]); //legacy
+			icdatst.prepstL = atof(argv[i+1]);
 
-			if (prepstL <= 0.)
+			if (icdatst.prepstL <= 0.)
 			{
 				printf("Error: Scaling limit must be a positive number.\n");
 				exit(1);
@@ -1771,7 +1877,6 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		//JAVIER added gradient
 		if (!strcmp(argv[i], "--lapla"))
 		{
 			if (i+1 == argc)
@@ -1786,7 +1891,7 @@ int	parseArgs (int argc, char *argv[])
  			if (Ng < 0 || Ng > 6)
 			{
 				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
-				exit(1);				//exit(1);
+				exit(1);
 			}
 
 			i++;
@@ -1810,17 +1915,18 @@ int	parseArgs (int argc, char *argv[])
 		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Ng%d,sizeZ%d,%d,%d)\n",Ng,sizeZ,Ng*2, Ng*2> sizeZ);
 		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
 		exit(1);
-	}
+}
 
-	if (cType == CONF_SMOOTH )
+//obsolete!
+if (icdatst.cType == CONF_SMOOTH )
 	{
 		parm1 = iter;
 		parm2 = alpha;
-	} else if ((cType == CONF_KMAX) || (cType == CONF_TKACHEV)) {
+	} else if ((icdatst.cType == CONF_KMAX) || (icdatst.cType == CONF_TKACHEV)) {
 		parm1 = kMax;
 		parm2 = kCrit;
 	}
-	else if ((cType == CONF_VILGOR) || (cType == CONF_VILGORK) || (cType == CONF_VILGORS)) {
+	else if ((icdatst.cType == CONF_VILGOR) || (icdatst.cType == CONF_VILGORK) || (icdatst.cType == CONF_VILGORS)) {
 		parm1 = iter;	 // here taken as a flag to randomised the
 		parm2 = kCrit; // here taken as multiplicative factor for nN3
 	}
@@ -1945,6 +2051,30 @@ int	parseArgs (int argc, char *argv[])
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;
 
+		/* Adjust time of initial conditions if --vilgor used */
+	if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS))
+			{
+				if (uLogi && uZin) {
+					printf("Error: zi and logi given for vilgor initial conditions\n ");
+					exit(1);
+				}
+				if (uLogi && !uZin) {
+					if (lType == LAMBDA_FIXED)
+						icdatst.zi = sqrt(exp(icdatst.logi)/sqrt(2*LL));
+						else // LAMBDA_Z2
+						icdatst.zi = exp(icdatst.logi)/sqrt(2*LL);
+						uZin = true;
+				}
+					else if (!uLogi && uZin) {
+					printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
+					if (lType == LAMBDA_FIXED)
+						icdatst.logi = log(sqrt(2*LL)*icdatst.zi*icdatst.zi);
+						else
+						icdatst.logi = log(sqrt(2*LL)*icdatst.zi);
+						uLogi = true;
+				}
+			}
+	zInit = icdatst.zi; //legacy
 	return	procArgs;
 }
 
@@ -1952,10 +2082,18 @@ Cosmos	createCosmos()
 {
 	Cosmos myCosmos;
 
+	/* Initial condition data is saved in cosmos; potential problems when reading confs?*/
+	myCosmos.SetICData(icdatst);
+
 	/*	I'm reading from disk	*/
 	if (fIndex >= 0.) {
 		if (uMsa || uLambda)
 			myCosmos.SetLambda(LL);
+
+		if (lType == LAMBDA_Z2)
+				myCosmos.SetLamZ2Exp(2.0);
+		else if (lType == LAMBDA_FIXED)
+				myCosmos.SetLamZ2Exp(0.0);
 
 		if (uQcd)
 			myCosmos.SetQcdExp(nQcd);
