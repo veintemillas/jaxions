@@ -13,7 +13,7 @@ XTR="  "
 PHYS="--qcd $QCD --msa $MSA --lsize $L  --zf $ZEN $XTR"
 #%%%%%%%%%%%%%%%%%%%%%%%%# initial conditions %
 #PCO=2.0  ;
-#PREP=" --preprop --prepcoe $PCO --pregam 0.2 "
+#PREP=" --preprop --prepcoe 4.0 --icstudy --lz2e 8.0 --prevqcdtype 1 --pregam 0.2 "
 #KCR=$(echo "$L * 1.0 / $ZIN  " | bc -l)
 #INCO=" --ctype kmax --zi 0.1 --kmax $N --kcr $KCR"
 #INCO=" --ctype smooth --zi 0.1 --sIter 5"
@@ -23,11 +23,12 @@ DUMP=10
 WTIM=1.0
 MEAS=$(echo 1+2+4+8+32+128+65536+16384 | bc )
 #OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 2 --rmask 4.0 --redmp 256 --p2Dmap --nologmpi --wTime $WTIM  "
-OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 2 --rmask 4.0 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
+OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 10 --rmask 4.0 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
 echo "vaxion3d   $PHYS"
 echo "         " $GRID
 echo "         " $SIMU
 echo "         " $INCO
+echo "         " $PREP
 echo "         " $OUTP
 
 #export OMP_NUM_THREADS=24
@@ -44,10 +45,12 @@ case "$1" in
     rm out/m/axion.*
     rm axion.log.*
     export AXIONS_OUTPUT="out/m"
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP 2>&1 | tee out/logrun.txt
+    echo mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP $2
+    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP $2 2>&1 | tee out/logrun.txt
     ;;
-  continue)
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $PREP $OUTP --index $2 $3 2>&1 | tee out/log-continue.txt
+  continue) mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index $2 $3
+    echo
+    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index $2 $3 2>&1 | tee out/log-continue.txt
     ;;
   aevol)
     echo aevol in directory $2 with options $3
@@ -56,13 +59,14 @@ case "$1" in
     CUDI=$(pwd)
     ln -s $CUDI/out/m/axion.00000 $CUDI/$2/m/axion.00000
     export AXIONS_OUTPUT="$2/m"
-    echo mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $PREP $OUTP --index 0 $3
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $PREP $OUTP --index 0 $3 2>&1 | tee $2/log-aevol.txt
+    echo mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index 0 $3
+    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index 0 $3 2>&1 | tee $2/log-aevol.txt
     ;;
   restart)
     echo "AXIONS_OUTPUT=$AXIONS_OUTPUT"
     WTIM=12
-    mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $PREP $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
+    echo mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $OUTP --wTime $WTIM
+    mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PREP $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
     ;;
   wkb)
     echo wkb!
