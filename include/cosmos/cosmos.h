@@ -12,6 +12,7 @@
 
 		double	 lSize;
 		double	 lambda;
+		double	 lz2e;
 //		double	 msa;
 		double	 indi3;
 		double	 gamma;
@@ -22,16 +23,18 @@
 
 		double	 frw;
 		bool	 mink;
+		IcData   icdatastruc;
 
 		public:
 
 			 //Cosmos() : nSize(0), lSize(0.0), lambda(-1.e8), msa(-1.e8), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), pot(VQCD_NONE), zThRes(-1.e8), zRestore(-1.e8) {}
-			 Cosmos() : lSize(0.0), lambda(-1.e8), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), zThRes(-1.e8), zRestore(-1.e8), pot(VQCD_NONE), frw(1.0), mink(false) {}
+			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), zThRes(-1.e8), zRestore(-1.e8), pot(VQCD_NONE), frw(1.0), mink(false) {}
 
 		double&   ZThRes  ()	{ return zThRes;   }
 		double&   ZRestore()	{ return zRestore; }
 		double&   PhysSize()	{ return lSize;    }
 		double&   Lambda  ()	{ return lambda;   }
+		double&   LamZ2Exp()	{ return lz2e;   }
 //		double	 Msa     ()	{ return msa;      }
 		double&	  Indi3   ()	{ return indi3;    }
 		double&   Gamma   ()	{ return gamma;    }
@@ -40,11 +43,14 @@
 		double&   Frw     ()	{ return frw;      }
 		bool&     Mink    ()	{ return mink;     }
 
+		IcData&   ICData  ()	{ return icdatastruc;}
+
 		void     SetZThRes  (const double newZT){ zThRes   = newZT; }
 		void     SetZRestore(const double newZR){ zRestore = newZR; }
 		void     SetPhysSize(const double mSize){ lSize    = mSize; }
 //		void     SetLatSize (const size_t mSize){ nSize    = mSize; }
 		void     SetLambda  (const double nLmda){ lambda   = nLmda; } //msa     = sqrt(2.*nLmda)*lSize/((double) nSize); }
+		void     SetLamZ2Exp(const double nLmda){ lz2e     = nLmda; }
 //		void     SetMsa     (const double nMsa) { msa      = nMsa;  lambda  = 0.5*msa*msa*(lSize*lSize)/((double) (nSize*nSize)); }
 		void     SetIndi3   (const double nI3)  { indi3    = nI3;   }
 		void     SetGamma   (const double nGmma){ gamma    = nGmma; }
@@ -53,6 +59,7 @@
 
 		void     SetFrw  (const double fff)	{ frw     = fff;  }
 		void     SetMink  (const bool bbb)	{ mink    = bbb;  }
+		void     SetICData  (const IcData bbb)	{ icdatastruc = bbb;  }
 
 //		double	 AxionMass  (const double z);
 //		double	 AxionMassSq(const double z);
