@@ -283,24 +283,35 @@ def gm(address,something='summary',printerror=False):
         return L/N ;
     if something == 'massA':
         return f.attrs[u'Axion mass'] ;
+
+    if something == 'lambda':
+        try:
+            return f['/potential/'].attrs[u'LambdaP']
+        except:
+            typeL = f['/potential/'].attrs['Lambda type']
+            e = 2.0
+            if typeL == b'z2' :
+                z = f.attrs[u'z']
+                return f['/potential/'].attrs[u'Lambda']/(z**e) ;
+            else :
+                return f['/potential/'].attrs[u'Lambda'] ;
+
     if something == 'msa':
         typeL = f['/potential/'].attrs['Lambda type']
+        l = f['/potential/'].attrs[u'Lambda']
+        try:
+            e = f['/potential/'].attrs[u'Lambda Z2 exponent']
+        except:
+            e = 2.0
         z = f.attrs[u'z']
         L = f.attrs[u'Physical size']
         N = f.attrs[u'Size']
-        l = f['/potential/'].attrs[u'Lambda']
         if typeL == b'z2' :
-            return f.attrs[u'Saxion mass'] ;
+            return np.sqrt(2.0*l)*z**(1-e/2)*L/N ;
         else :
             return np.sqrt(2.0*l)*z*L/N ;
 
-    if something == 'lambda':
-        typeL = f['/potential/'].attrs['Lambda type']
-        if typeL == b'z2' :
-            z = f.attrs[u'z']
-            return f['/potential/'].attrs[u'Lambda']/(z**2) ;
-        else :
-            return f['/potential/'].attrs[u'Lambda'] ;
+
     # if something == 'msa':
     #     return f.attrs[u'Saxion mass'] ;
 
@@ -312,12 +323,19 @@ def gm(address,something='summary',printerror=False):
         return msa/delta ;
         # change for FRW
     if something == 'logi':
-        L = f.attrs[u'Physical size']
-        N = f.attrs[u'Size']
-        delta = L/N
-        msa = f.attrs[u'Saxion mass'] ;
         R = gm(address,'R')
-        return np.log(msa*R/delta) ;
+        try:
+            ll = f['/potential/'].attrs[u'LambdaP']
+            return np.log(np.sqrt(2*ll)*R**2) ;
+        except:
+            typeL = f['/potential/'].attrs['Lambda type']
+            ll = f['/potential/'].attrs[u'Lambda']
+            if typeL == b'z2' :
+                return np.log(np.sqrt(2*ll)*R) ;
+            else:
+                return np.log(np.sqrt(2*ll)*R**2) ;
+
+
 
     # initial condition stuff
     if something == 'kc':
@@ -612,7 +630,7 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nspK?') :
         return nsp_check
     if (something[0:3] == 'nsp') and (something[-1] == '?'):
-        print('nSpectrum/s'+something[3:-1])
+        # print('nSpectrum/s'+something[3:-1])
         return ('nSpectrum/s'+something[3:-1] in f)
     if (something == 'nsp_info'):
         return [a for a in f['nSpectrum']]
