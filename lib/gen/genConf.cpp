@@ -50,8 +50,7 @@ class	ConfGenerator
 
 	public:
 
-		 ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type);
-		 ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type, size_t parm1, double parm2);
+		 ConfGenerator(Cosmos *myCosmos, Scalar *field);
 		~ConfGenerator() {};
 
 	void	runCpu	();
@@ -59,68 +58,8 @@ class	ConfGenerator
 	void	runXeon	();
 };
 
-	ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type, size_t parm1, double parm2) : myCosmos(myCosmos), axionField(field), cType(type)
+ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field) : myCosmos(myCosmos), axionField(field)
 {
-	switch (type)
-	{
-		case CONF_KMAX:
-		case CONF_TKACHEV:
-		kMax = parm1;
-		kCrt = parm2;
-		alpha = 0.143;
-		break;
-
-		case CONF_VILGOR:
-		case CONF_VILGORK:
-		case CONF_VILGORS:
-		sIter = parm1; // iif sIter > 0 > make the above multiplicative factor random
-		kCrit = parm2; // multiplicative factor  to alter nN3 (1+alpha)
-		alpha = 0.143; // used only for vilgors
-		break;
-
-		case CONF_SMOOTH:
-		sIter = parm1;
-		alpha = parm2;
-		break;
-
-		case CONF_READ:
-		index = static_cast<int>(parm1);
-		break;
-
-		case CONF_NONE:
-		default:
-		break;
-	}
-}
-
-	ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field, ConfType type) : myCosmos(myCosmos), axionField(field), cType(type)
-{
-	switch (type)
-	{
-		case CONF_KMAX:
-		case CONF_TKACHEV:
-		case CONF_VILGOR:
-
-		kMax = 2;
-		kCrt = 1.0;
-		alpha = 0.143;
-		break;
-
-		case CONF_SMOOTH:
-
-		sIter = 40;
-		alpha = 0.143;
-		break;
-
-		case CONF_READ:
-
-		index = 0;
-		break;
-
-		case CONF_NONE:
-		default:
-		break;
-	}
 }
 
 using namespace std;
@@ -240,6 +179,33 @@ void	ConfGenerator::runCpu	()
 	string	randName("Random");
 	string	smthName("Smoother");
 
+	/* Ic conditions were fed into myCosmos and the axion field */
+	IcData ic = myCosmos->ICData();
+	cType = ic.cType;
+
+	LogMsg(VERB_NORMAL,"\n");
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.icdrule  %d",ic.icdrule  );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.preprop  %d",ic.preprop  );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.icstudy  %d",ic.icstudy  );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.prepstL  %f",ic.prepstL  );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.prepcoe  %f",ic.prepcoe  );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.pregammo %f",ic.pregammo );
+	LogMsg(VERB_NORMAL,"[sca] myCosmos.ic.prelZ2e  %f",ic.prelZ2e  );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.prevtype %d",ic.prevtype );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.normcore %d",ic.normcore );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.alpha    %f",ic.alpha    );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.siter    %d",ic.siter    );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.kcr      %f",ic.kcr      );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.kMax     %d",ic.kMax     );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.mode0    %f",ic.mode0    );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.zi       %f",ic.zi       );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.logi     %f",ic.logi     );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.cType    %d",ic.cType    );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.smvarTy  %d",ic.smvarType);
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.momConf  %d",ic.momConf);
+
+	LogMsg(VERB_NORMAL, "[gen] cType is %d",cType);
+
 	switch (cType)
 	{
 		case CONF_NONE:
@@ -256,6 +222,7 @@ void	ConfGenerator::runCpu	()
 			std::complex<float> *m2 = static_cast<std::complex<float>*> (axionField->m2Cpu());
 
 
+			LogMsg(VERB_NORMAL,"\n ");
 			LogMsg(VERB_NORMAL,"[GEN] CONF_TKACHEV started!\n ");
 			//these initial conditions make sense only for RD
 			if (axionField->BckGnd()->Frw() != 1.0)
@@ -270,7 +237,7 @@ void	ConfGenerator::runCpu	()
 			LogMsg(VERB_NORMAL,"[GEN] kCrit changed according to initial time %f to kCrit %f !\n ", (*axionField->zV()),kCritz);
 
 			// ft_theta' in M2, ft_theta in V
-			momConf(axionField, kMax, kCritz, MOM_MVSINCOS);
+			momConf(axionField, ic.kMax, kCritz, MOM_MVSINCOS);
 			// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
 			// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
 			// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
@@ -282,8 +249,8 @@ void	ConfGenerator::runCpu	()
 			// <|~theta|^2> = pi^2*kCrit/3 * (3/2pi nmax^3)
 			// <|~theta|> = sqrt(pi/2 kCrit/nmax^3)
 			// and therefore we need to multiply theta and theta' by this factor (was 1)
-			LogMsg(VERB_NORMAL,"kCrit %e kMax %d \n", kCrit, kMax);
-			double norma = std::sqrt(1.5707963*kCrit/(kMax*kMax*kMax));
+			LogMsg(VERB_NORMAL,"kCrit %e kMax %d \n", ic.kcr, ic.kMax);
+			double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
 			LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
 			scaleField (axionField, FIELD_V, norma);
 			norma /= (*axionField->zV());
@@ -324,19 +291,110 @@ void	ConfGenerator::runCpu	()
 			LogFlush();
 			prof.start();
 			// LogOut("[GEN] momConf with kMax %zu kCrit %f!\n ", kMax, kCrt);
-			momConf(axionField, kMax, kCrt, MOM_MEXP2);
+			momConf(axionField, ic.kMax, ic.kcr, ic.momConf);
 			LogFlush();
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
 			myPlan.run(FFT_BCK);
 			normaliseField(axionField, FIELD_M);
-			normCoreField	(axionField);
+			if (myCosmos->ICData().normcore)
+				normCoreField	(axionField);
 		}
 		axionField->setFolded(false);
 		break;
 
 
-		case CONF_VILGOR:
+		case CONF_VILGOR:{
+			LogMsg(VERB_NORMAL,"\n ");
+			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGOR started! ");
+			auto &myPlan = AxionFFT::fetchPlan("Init");  // now transposed
+
+			double LALA = axionField->BckGnd()->Lambda();
+
+			LogMsg(VERB_NORMAL,"[GEN] Current Msa() = %f",axionField->Msa());
+
+			// logi = log ms/H is taken to be zInit (which was input in command line)
+			LogMsg(VERB_NORMAL,"[GEN] zV %f zi %f logi %f",*axionField->zV(), ic.zi, ic.logi);
+
+			double xit;
+			if (axionField->LambdaT() == LAMBDA_Z2) // Strictly valid only for LamZ2e = 2.0
+				xit = (249.48 + 38.8431*ic.logi + 1086.06* ic.logi*ic.logi)/(21775.3 + 3665.11*ic.logi)  ;
+			else // We use this as a nice approximation (for low logi)
+				xit = (249.48 + 38.8431*ic.logi + 1086.06* ic.logi*ic.logi)/(21775.3 + 3665.11*ic.logi)  ;
+				// (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+
+			/*This is the expression that follows from the definition of xi*/
+			double nN3 = (6.0*xit*axionField->Delta()*axionField->Delta()/ic.zi/ic.zi);
+			double nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
+
+			LogMsg(VERB_NORMAL,"[GEN] sIter %d!",ic.siter);
+
+			if (ic.siter == 1) {
+				nN3 = min(ic.kcr*nN3,1.0);
+				nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+				// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
+				LogMsg(VERB_NORMAL,"[GEN] Input kcr %f > modifies to nN3 = %f -> n_critical = %f!",ic.kcr, nN3,nc);
+			} else if (ic.siter == 2) {
+			// add random noise in the initial time ~ random in xi (not really)
+				double r = 0 ;
+				int myRank = commRank();
+
+				if (myRank == 0) {
+					std::random_device rd;
+					std::mt19937 mt(rd());
+					std::uniform_real_distribution<double> dist(-1.0, 1.0);
+					// srand (static_cast <unsigned> (time(0)));
+					r = dist(mt);
+				}
+
+				MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
+				commSync();
+				// printf("hello from rank %d, r = %f\n",myRank,r);
+
+				nN3 = min(pow(ic.kcr,r)*nN3,1.0); ;
+				nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
+				LogMsg(VERB_NORMAL,"[GEN] random,kCrit %f,%f,%f > modifies to nN3 = %f -> n_critical = %f!",r, ic.kcr,pow(ic.kcr,r), nN3,nc);
+			}
+
+			LogMsg(VERB_NORMAL,"[GEN] momConf with kMax %d kcr %f! momConf %d\n ",sizeN,nc,ic.momConf);
+			prof.start();
+			momConf(axionField, sizeN, nc, ic.momConf);
+			prof.stop();
+			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
+			axionField->setFolded(false);
+
+			myPlan.run(FFT_BCK);
+
+			normaliseField(axionField, FIELD_M);
+
+			if (!myCosmos->Mink() && !ic.preprop) {
+				if (myCosmos->ICData().normcore)
+					normCoreField	(axionField);
+				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+				scaleField (axionField, FIELD_M, *axionField->RV());
+			}
+
+			if (ic.preprop) {
+				/* Go back in time the preprop factor*/
+				*axionField->zV() /= ic.prepcoe; // now z <zi
+				axionField->updateR();
+				LogMsg(VERB_NORMAL,"[GEN] prepropagator, jumped back in time to %f",*axionField->zV());
+
+				/* Although this is weird it is included in the prepropagator */
+				// if (myCosmos->ICData().normcore)
+				// 	normCoreField	(axionField);
+				// memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+				// scaleField (axionField, FIELD_M, *axionField->RV());
+
+				prepropa2  (axionField);
+			}
+
+		}
+		break;
+
+
 		case CONF_VILGORK: {
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started! ");
 			auto &myPlan = AxionFFT::fetchPlan("Init");  // now transposed
@@ -367,14 +425,14 @@ void	ConfGenerator::runCpu	()
 			// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] xit(logi)= %f estimated nN3 = %f -> n_critical = %f!",xit, nN3, nc);
 
-			LogMsg(VERB_NORMAL,"[GEN] sIter %d!",sIter);
+			LogMsg(VERB_NORMAL,"[GEN] sIter %d!",ic.siter);
 
-			if (sIter == 1) {
-				nN3 = min(kCrit*nN3,1.0);
+			if (ic.siter == 1) {
+				nN3 = min(ic.kcr*nN3,1.0);
 				nc = sizeN*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
 				// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
-				LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",kCrit, nN3,nc);
-			} else if (sIter > 1) {
+				LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_critical = %f!",ic.kcr, nN3,nc);
+			} else if (ic.siter > 1) {
 			// add random noise in the initial time ~ random in xi (not really)
 				double r = 0 ;
 				int myRank = commRank();
@@ -406,7 +464,8 @@ void	ConfGenerator::runCpu	()
 			myPlan.run(FFT_BCK);
 
 			normaliseField(axionField, FIELD_M);
-			normCoreField	(axionField);
+			if (myCosmos->ICData().normcore)
+				normCoreField	(axionField);
 
 			if (!myCosmos->Mink()) {
 
@@ -524,12 +583,12 @@ void	ConfGenerator::runCpu	()
 			int niter = (int) (0.8/nN3);
 			LogMsg(VERB_NORMAL,"[GEN] estimated nN3 = %f -> n_iterations = %d!",nN3,niter);
 
-			if (sIter == 1) {
+			if (ic.siter == 1) {
 				nN3 = min(kCrit*nN3,1.0);
 				int niter = (int) (0.8/nN3);
 				// LogOut("[GEN] estimated nN3 = %f -> n_critical = %f!",nN3,nc);
 			LogMsg(VERB_NORMAL,"[GEN] kCrit %f > modifies to nN3 = %f -> n_iterations = %d!",kCrit, nN3,niter);
-			} else if (sIter > 1) {
+		} else if (ic.siter > 1) {
 				// add random noise in the initial time ~ random in xi (not really)
 				double r = 0 ;
 				int  myRank   = commRank();
@@ -558,10 +617,11 @@ void	ConfGenerator::runCpu	()
 			prof.start();
 			smoothXeon (axionField, niter, alpha);
 			prof.stop();
-			prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
+			prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
 
 			normaliseField(axionField, FIELD_M);
-			normCoreField	(axionField);
+			if (myCosmos->ICData().normcore)
+				normCoreField	(axionField);
 /*			FIXME	See below
 
 			if (!myCosmos->Mink()){
@@ -585,12 +645,13 @@ void	ConfGenerator::runCpu	()
 		prof.stop();
 		prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 		prof.start();
-		smoothXeon (axionField, sIter, alpha);
+		smoothXeon (axionField, ic.siter, ic.alpha);
 		prof.stop();
-		prof.add(smthName, 18.e-9*axionField->Size()*sIter, 8.e-9*axionField->Size()*axionField->DataSize()*sIter);
-		if (smvarType != CONF_SAXNOISE)
+		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+		if (ic.smvarType != CONF_SAXNOISE)
 			normaliseField(axionField, FIELD_M);
-		normCoreField	(axionField);
+		if (myCosmos->ICData().normcore)
+			normCoreField	(axionField);
 
 		axionField->setFolded(false);
 		break;
@@ -651,37 +712,11 @@ void	ConfGenerator::runCpu	()
 
 }
 
-void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType)
+void	genConf	(Cosmos *myCosmos, Scalar *field)
 {
-	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator");
+	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator II");
 
-	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType);
-
-	switch (field->Device())
-	{
-		case DEV_CPU:
-			cGen->runCpu ();
-			field->exchangeGhosts(FIELD_M);
-			break;
-
-		case DEV_GPU:
-			cGen->runGpu ();
-			field->exchangeGhosts(FIELD_M);
-			break;
-
-		default:
-			LogError ("Not a valid device");
-			break;
-	}
-
-	return;
-}
-
-void	genConf	(Cosmos *myCosmos, Scalar *field, ConfType cType, size_t parm1, double parm2)
-{
-	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator par-par");
-
-	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field, cType, parm1, parm2);
+	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field);
 
 	switch (field->Device())
 	{
