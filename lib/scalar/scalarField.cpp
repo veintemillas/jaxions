@@ -37,9 +37,9 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
-		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp),
-		       device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType)
+		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp),
+		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -56,6 +56,38 @@ const std::complex<float> If(0.,1.);
 
 	bckgnd = cm;
 	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
+
+	LogMsg(VERB_NORMAL,"[sca] ZThRes  () %f",cm->ZThRes  ());
+	LogMsg(VERB_NORMAL,"[sca] ZRestore() %f",cm->ZRestore());
+	LogMsg(VERB_NORMAL,"[sca] PhysSize() %f",cm->PhysSize());
+	LogMsg(VERB_NORMAL,"[sca] Lambda  () %f",cm->Lambda  ());
+	LogMsg(VERB_NORMAL,"[sca] LamZ2Exp() %f",cm->LamZ2Exp());
+	LogMsg(VERB_NORMAL,"[sca] Indi3   () %f",cm->Indi3   ());
+	LogMsg(VERB_NORMAL,"[sca] Gamma   () %f",cm->Gamma   ());
+	LogMsg(VERB_NORMAL,"[sca] QcdExp  () %f",cm->QcdExp  ());
+	LogMsg(VERB_NORMAL,"[sca] QcdPot  () %d",cm->QcdPot  ());
+	LogMsg(VERB_NORMAL,"[sca] Frw     () %f",cm->Frw     ());
+	LogMsg(VERB_NORMAL,"[sca] Mink    () %d",cm->Mink    ());
+
+	LogMsg(VERB_NORMAL,"[sca] ic.icdrule  %d",cm->ICData().icdrule  );
+	LogMsg(VERB_NORMAL,"[sca] ic.preprop  %d",cm->ICData().preprop  );
+	LogMsg(VERB_NORMAL,"[sca] ic.icstudy  %d",cm->ICData().icstudy  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prepstL  %f",cm->ICData().prepstL  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prepcoe  %f",cm->ICData().prepcoe  );
+	LogMsg(VERB_NORMAL,"[sca] ic.pregammo %f",cm->ICData().pregammo );
+	LogMsg(VERB_NORMAL,"[sca] ic.prelZ2e  %f",cm->ICData().prelZ2e  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prevtype %d",cm->ICData().prevtype );
+	LogMsg(VERB_NORMAL,"[sca] ic.normcore %d",cm->ICData().normcore );
+	LogMsg(VERB_NORMAL,"[sca] ic.alpha    %f",cm->ICData().alpha    );
+	LogMsg(VERB_NORMAL,"[sca] ic.siter    %d",cm->ICData().siter    );
+	LogMsg(VERB_NORMAL,"[sca] ic.kcr      %f",cm->ICData().kcr      );
+	LogMsg(VERB_NORMAL,"[sca] ic.kMax     %d",cm->ICData().kMax     );
+	LogMsg(VERB_NORMAL,"[sca] ic.mode0    %f",cm->ICData().mode0    );
+	LogMsg(VERB_NORMAL,"[sca] ic.zi       %f",cm->ICData().zi       );
+	LogMsg(VERB_NORMAL,"[sca] ic.logi     %f",cm->ICData().logi     );
+	LogMsg(VERB_NORMAL,"[sca] ic.cType    %d",cm->ICData().cType    );
+	LogMsg(VERB_NORMAL,"[sca] ic.smvarTy  %d",cm->ICData().smvarType);
+	LogMsg(VERB_NORMAL,"[sca] ic.momConf  %d",cm->ICData().momConf);
 
 	folded 	   = false;
 	eReduced   = false;
@@ -306,7 +338,8 @@ const std::complex<float> If(0.,1.);
 #endif
 	}
 
-	*z = zI;
+	/* Note the big difference zI is an obsolete parameter FIX ME */
+	*z = cm->ICData().zi; //*z = zI;
 	*R = 1.0;
 	updateR();
 
@@ -356,6 +389,7 @@ const std::complex<float> If(0.,1.);
 		}
 		/*	If present, read fileName	*/
 
+		ConfType cType = cm->ICData().cType;
 		if (cType == CONF_NONE) {
 			LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
 
@@ -381,7 +415,7 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
-				genConf	(cm, this, cType, parm1, parm2);
+				genConf	(cm, this);
 			}
 		}
 	}
@@ -813,6 +847,39 @@ void	Scalar::updateR ()
 		*R = pow(*z,frw);
 }
 
+double	Scalar::Rfromct (const double ct)
+{
+	// Returns scale factor R = z^frw for any conformal time ct
+	// Minkowski frw = 0, Radiation frw = 1,
+	return pow(ct,frw);
+}
+
+double	Scalar::LambdaP ()
+{
+	// Returns The value of Lambda with PRS trick IF needed
+	// Minkowski frw = 0, Radiation frw = 1,
+	double lbd  = bckgnd->Lambda();
+	double llee = bckgnd->LamZ2Exp();
+LogMsg(VERB_HIGH,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
+	if (LambdaT() == LAMBDA_FIXED)
+		return  lbd;
+	else if (LambdaT() == LAMBDA_Z2)
+		return  lbd/pow(*R,llee);
+}
+
+double	Scalar::Msa ()
+{
+	// Returns The value of Msa with PRS trick, or Physical strings
+	// Minkowski frw = 0, Radiation frw = 1,
+	// double &lbd = bckgnd->Lambda();
+	// double llee = bckgnd->LamZ2Exp();
+	// if (LambdaT() == LAMBDA_FIXED)
+	// 	return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
+	// else if (LambdaT() == LAMBDA_Z2)
+LogMsg(VERB_HIGH,"[sca:msa] LambdaPhysical %f ",LambdaP() );
+		return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
+}
+
 double  Scalar::HubbleMassSq  ()
 {
 	// R''/R = frw(frw-1)/z^2
@@ -991,10 +1058,9 @@ double	Scalar::IIAxionMassSqn(double z0, double z, int nn) {
 double  Scalar::SaxionMassSq  ()
 {
 
-	double lbd   = bckgnd->Lambda();
-	//a bit confusing that scalar->Lambda() is a MODE or type of Lambda, instead of the value
-	if (Lambda() == LAMBDA_Z2)
-		lbd /= (*RV())*(*RV());
+	double lbd   = LambdaP();
+	// if (LambdaT() == LAMBDA_Z2)
+	// 	lbd /= (*RV())*(*RV());
 
 	auto   &pot = bckgnd->QcdPot();
 
@@ -1028,6 +1094,7 @@ double	Scalar::dzSize	   () {
 	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
 	double mAfq = 0.;
 	auto   &pot = bckgnd->QcdPot();
+	double llee = bckgnd->LamZ2Exp();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
                 return  std::min(wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
@@ -1042,15 +1109,7 @@ double	Scalar::dzSize	   () {
         if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
                 facto = 2. ;
 
-        switch (lambdaType) {
-                case    LAMBDA_Z2:
-                        mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
-                        break;
-
-                case    LAMBDA_FIXED:
-                        mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
-                        break;
-        }
+				mSfq = sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
 
         return  std::min(wDz/std::max(mSfq,mAfq),zNow/10.);
 }
@@ -1061,7 +1120,7 @@ double Scalar::SaxionShift()
 	double lbd   = bckgnd->Lambda();
 	double alpha = AxionMassSq()/lbd;
 
-	if (Lambda() == LAMBDA_Z2)
+	if (LambdaT() == LAMBDA_Z2)
 		alpha *= (*R)*(*R);
 
 	double discr = 4./3.-9.*alpha*alpha;
@@ -1082,7 +1141,7 @@ double  Scalar::Saskia  ()
 		case    VQCD_1_PQ_2_DRHO:
 		{
 			double  lbd = bckgnd->Lambda();
-			if (Lambda() == LAMBDA_Z2)
+			if (LambdaT() == LAMBDA_Z2)
 				return  rsvPQ2(AxionMassSq()/lbd*(*R)*(*R));
 			else
 				return  rsvPQ2(AxionMassSq()/lbd);
@@ -1152,8 +1211,9 @@ double  Scalar::SaxionMassSq  (const double RNow)
 {
 
 	double lbd   = bckgnd->Lambda();
-	if (Lambda() == LAMBDA_Z2)
-		lbd /= (RNow)*(RNow);
+	double llee  = bckgnd->LamZ2Exp();
+	if (LambdaT() == LAMBDA_Z2)
+		lbd /= pow(RNow,llee);
 
 	auto   &pot = bckgnd->QcdPot();
 
