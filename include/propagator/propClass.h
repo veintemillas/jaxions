@@ -82,7 +82,7 @@
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, PropcType spec) : axion(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()),
-		ood2(1./(field->Delta()*field->Delta())), lambda(field->BckGnd()->Lambda()), precision(field->Precision()), gamma(field->BckGnd()->Gamma()), lType(field->Lambda()) {
+		ood2(1./(field->Delta()*field->Delta())), lambda(field->BckGnd()->Lambda()), precision(field->Precision()), gamma(field->BckGnd()->Gamma()), lType(field->LambdaT()) {
 
 		/*	Default block size gives just one block	*/
 		int tmp   = field->DataAlign()/field->DataSize();
@@ -276,12 +276,12 @@
 		// eom only depend on R
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda = axion->LambdaP();
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+
+			cLmbda = axion->LambdaP();
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
@@ -299,8 +299,7 @@
 
 			*z += dz*d1;
 			axion->updateR();
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			maa = axion->AxionMassSq();
 
@@ -318,8 +317,7 @@
 		}
 
 		if (lastStage) {
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+		cLmbda = axion->LambdaP();
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
@@ -346,14 +344,13 @@
 		const uint ext = V + S;
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 
 			axion->updateR();
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
@@ -376,8 +373,7 @@
 		if (lastStage) {
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
@@ -513,7 +509,8 @@
 	void	PropClass<nStages, lastStage, VQcd>::sRunCpu	(const double dz) {
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
+
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
@@ -522,8 +519,7 @@
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			auto maa = axion->AxionMassSq();
 
@@ -536,8 +532,7 @@
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			maa = axion->AxionMassSq();
 
@@ -552,8 +547,7 @@
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
@@ -572,7 +566,7 @@
 
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 
 		axion->exchangeGhosts(FIELD_M);
 
@@ -580,8 +574,9 @@
 		for (int s = 0; s<nStages; s+=2) {
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+
+			cLmbda = axion->LambdaP();
+
 			auto maa = axion->AxionMassSq();
 
 			size_t bsl = 0, csl = 0;  // bsl is current boundary slice
@@ -650,8 +645,7 @@ LogMsg(VERB_DEBUG,"CommSync done");
 			*z += dz*d1;
 			axion->updateR();
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			maa = axion->AxionMassSq();
 
@@ -730,8 +724,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
@@ -749,14 +742,13 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 	void	PropClass<nStages, lastStage, VQcd>::lowCpu	(const double dz) {
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
@@ -772,8 +764,8 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+			cLmbda = axion->LambdaP();
+
 
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
@@ -790,7 +782,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda;
 		auto   lSize  = axion->BckGnd()->PhysSize();
 
 		const double fMom = -(4.*M_PI*M_PI)/(lSize*lSize*((double) axion->TotalSize()));
@@ -808,8 +800,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 			applyLaplacian(axion);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 			*z += dz*d0;
@@ -823,8 +814,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 			applyLaplacian(axion);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0.0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 		}
@@ -837,7 +827,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 		auto   lSize  = axion->BckGnd()->PhysSize();
 		size_t Tz = axion->TotalDepth();
 
@@ -870,8 +860,8 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 			pelota(FIELD_MTOM2, FFT_BCK); // BCK is to send to conf space
 
 			// computes acceleration
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
+
 			/* computes the acceleration in configuration space */
 
 			// LogOut("[fs] m  values %f %f %f %f \n",mmm[0],mmm[1],mmm[2],mmm[3]);
