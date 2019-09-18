@@ -129,7 +129,7 @@ void	energy	(Scalar *field, void *eRes, const bool map, const double shift)
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
-	auto LL   = field->BckGnd()->LambdaP(); // obsolete
+	auto LL   = field->LambdaP(); // obsolete
 	auto pot  = field->BckGnd()->QcdPot();
 	auto dlta = field->Delta();
 
