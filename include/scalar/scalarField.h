@@ -76,7 +76,7 @@
 		public:
 
 				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
-					FieldType newType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
+					FieldType newType, LambdaType lType);
 				~Scalar();
 
 		Cosmos		*BckGnd(){ return bckgnd; }
@@ -126,11 +126,11 @@
 
 		FieldPrecision	Precision()  { return precision; }
 		DeviceType	Device()     { return device; }
-		LambdaType	Lambda()     { return lambdaType; }
+		LambdaType	LambdaT()     { return lambdaType; }
 		FieldType	Field()      { return fieldType; }
 		StatusM2	m2Status()   { return statusM2; }
 		StatusSD  sDStatus()   { return statusSD;}
-		void		setLambda      (LambdaType newLambda) { lambdaType = newLambda; }
+		void  setLambdaT (LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize ()  { return fSize; }
 		size_t		DataAlign()  { return mAlign; }
@@ -142,7 +142,7 @@
 
 
 		double		Delta()      { return bckgnd->PhysSize()/((double) n1); }
-		double		Msa()        { return msa; } //sqrt(2.*bckgnd->Lambda())*Delta(); }
+		// double		Msa()        { return msa; } //sqrt(2.*bckgnd->Lambda())*Delta(); }
 
 		/*	Overloading	*/
 		double		AxionMass  ();
@@ -162,6 +162,9 @@
 		double		SaxionShift(const double zNow);
 		double		Saskia     (const double zNow);
 		double		dzSize     (const double zNow);
+		double		Rfromct    (const double ct);
+		double		LambdaP   (); // Returns the value of Lambda with the 1/z2 included IF needed
+		double		Msa();
 
 		double		*zV()        { return z; }
 		const double	*zV() const  { return z; }
