@@ -242,7 +242,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	double  llPhys = axion->BckGnd()->Lambda();
 
-	switch (axion->Lambda())
+	switch (axion->LambdaT())
 	{
 		case	LAMBDA_Z2:
 			sprintf(lStr, "z2");
@@ -931,15 +931,16 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, 0);
 
+	myCosmos->ICData().cType = CONF_NONE;
 	if (!strcmp(fStr, "Saxion"))
 	{
-		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType);
 		slab   = (hsize_t) ((*axion)->Surf()*2);
 	} else if (!strcmp(fStr, "Axion")) {
-		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else if (!strcmp(fStr, "Axion Mod")) {
-		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, CONF_NONE, 0, 0);
+		*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType);
 		slab   = (hsize_t) ((*axion)->Surf());
 	} else {
 		LogError ("Input error: Invalid field type");
@@ -1137,7 +1138,7 @@ void	createMeas (Scalar *axion, int index)
 	auto gamma    = axion->BckGnd()->Gamma   ();
 	auto vqcdType = axion->BckGnd()->QcdPot  ();
 
-	switch (axion->Lambda())
+	switch (axion->LambdaT())
 	{
 		case 	LAMBDA_Z2:
 			sprintf(lStr, "z2");
@@ -1370,7 +1371,7 @@ void	destroyMeas ()
 
 	meas_id = -1;
 
-	LogMsg (VERB_NORMAL, "Measurement file successfuly closed");
+	LogMsg (VERB_NORMAL, "Measurement file successfuly closed\n");
 }
 
 void	writeString	(Scalar *axion, StringData strDat, const bool rData)
@@ -1795,14 +1796,14 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 			}
 		}
 		/*	write string energy density	*/
-		writeAttribute(group_id, &(strEDat.rho_str), "String energy density", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strEDat.rho_a), "Masked axion energy density", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strEDat.rho_s), "Masked saxion energy density", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strEDat.rho_str_Vil), "String energy density (Vil)", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strEDat.rho_a_Vil), "Masked axion energy density (Vil)", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strEDat.rho_s_Vil), "Masked saxion energy density (Vil)", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strEDat.nout), "nout", H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strEDat.rmask),       "rmask",			       H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_str),    "String energy density",             H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_a),      "Masked axion energy density",       H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_s),      "Masked saxion energy density",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_str_Vil),"String energy density (Vil)",       H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_a_Vil),  "Masked axion energy density (Vil)", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.rho_s_Vil),  "Masked saxion energy density (Vil)",H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strEDat.nout),       "nout",                              H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strEDat.rmask),      "rmask",                             H5T_NATIVE_DOUBLE);
 	}
 
 	bCastAndExit:
