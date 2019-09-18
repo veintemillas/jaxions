@@ -52,7 +52,7 @@ int	main (int argc, char *argv[])
 	if(preprop)
 		zPreInit = zInit/prepcoe;
 
-	if ((fIndex == -1) && (cType == CONF_NONE) && (!restart_flag)) {
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE) && (!restart_flag)) {
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 		endAxions();
 	} else {
@@ -60,7 +60,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zPreInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zPreInit, lowmem, zGrid, fTypeP, lType);
 			LogOut("Done! \n");
 		}
 		else
@@ -200,7 +200,7 @@ int	main (int argc, char *argv[])
 	LogOut("  dx     =  %2.5f\n", axion->Delta());
 	LogOut("  dz     =  %2.2f/FREQ\n", wDz);
 
-	if (LAMBDA_FIXED == axion->Lambda()){
+	if (LAMBDA_FIXED == axion->LambdaT()){
 		LogOut("  LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", myCosmos.Lambda(),
 		sqrt(2.*myCosmos.Lambda())*zInit*axion->Delta(),sqrt(2.*myCosmos.Lambda())*3*axion->Delta());
 	}
@@ -270,7 +270,7 @@ int	main (int argc, char *argv[])
 				mData = Measureme (axion, ninfa);
 				// mData = Measure (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
 
-				if (axion->Lambda() == LAMBDA_Z2)
+				if (axion->LambdaT() == LAMBDA_Z2)
 					llPhys = LL1/((zCur)*(zCur));
 
 				axMassNow = axion->AxionMass();
@@ -357,7 +357,7 @@ int	main (int argc, char *argv[])
 				if (smvarType != CONF_SAXNOISE)
 					if (mData.str.strDen == 0 && strCount > safest0)
 					{
-						if (axion->Lambda() == LAMBDA_Z2)
+						if (axion->LambdaT() == LAMBDA_Z2)
 							llPhys = myCosmos.Lambda()/(zNow*zNow);
 
 						axMassNow = axion->AxionMass();
@@ -396,7 +396,7 @@ int	main (int argc, char *argv[])
 			checkTime(axion, index);
 		}
 
-		if (axion->Lambda() == LAMBDA_Z2)
+		if (axion->LambdaT() == LAMBDA_Z2)
 			llPhys = myCosmos.Lambda()/(zNow*zNow);
 
 		axMassNow = axion->AxionMass();
@@ -513,7 +513,7 @@ void printSample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, Meas
 {
 	double zNow = (*axion->zV());
 	double llPhys = LLL;
-	if (axion->Lambda() == LAMBDA_Z2)
+	if (axion->LambdaT() == LAMBDA_Z2)
 		llPhys = LLL/(zNow*zNow);
 
 	size_t S0 = sizeN*sizeN ;
@@ -561,7 +561,7 @@ double findZDoom(Scalar *axion)
 	while (meas < 0.001)
 	{
 		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
-		if (axion->Lambda() == LAMBDA_Z2)
+		if (axion->LambdaT() == LAMBDA_Z2)
 			DWfun *= ct*ct;
 		meas = DWfun - 1 ;
 		ct += 0.001 ;

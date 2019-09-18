@@ -51,7 +51,7 @@ int	main (int argc, char *argv[])
 	if (fIndex == -1) {
 		//This generates initial conditions
 		LogOut("Generating scalar... ");
-		axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+		axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 		LogOut("Done! \n");
 	} else {
 		//This reads from an Axion.$fIndex file
@@ -124,7 +124,7 @@ int	main (int argc, char *argv[])
 	memset(eRes, 0, 256);
 
 	if (axion->Field() == FIELD_SAXION) {
-		if (LAMBDA_FIXED == axion->Lambda())
+		if (LAMBDA_FIXED == axion->LambdaT())
 			LogOut ("Lambda in FIXED mode\n");
 		else
 			LogOut ("Lambda in Z2 mode\n");
@@ -213,7 +213,7 @@ int	main (int argc, char *argv[])
 	// This is equivalent to Javi's filter
 	double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
 	double nFc  = 1.;
-	int    kMax = axion->Length()/ScaleSize; 
+	int    kMax = axion->Length()/ScaleSize;
 
 
 	if (!axion->LowMem() && axion->Depth()/ScaleSize >= 2) {

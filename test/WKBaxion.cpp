@@ -129,7 +129,8 @@ int	main (int argc, char *argv[])
 // the new axion is always prepared in lowmem
 	Scalar *axion2;
 	// force lowmem in scalar mode -> to be done!
-	axion2 = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
+	myCosmos.ICData().cType = CONF_NONE;
+	axion2 = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED);
 	LogOut ("done !\n");
 
 	//--------------------------------------------------

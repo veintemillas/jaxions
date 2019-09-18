@@ -45,7 +45,7 @@ int	main (int argc, char *argv[])
 	char fileName[256];
 
 	LogOut("Generating scalar ... ");
-	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 	LogOut("Done! \n");
 
 	current = std::chrono::high_resolution_clock::now();

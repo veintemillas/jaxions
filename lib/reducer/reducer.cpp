@@ -194,8 +194,9 @@ Scalar*	Reducer<Float>::runCpu	()
 
 	if (!inPlace) {
 		// Make sure you don't screw up the FFTs!!
+		axionField->BckGnd()->ICData().cType = CONF_NONE;
 		outField = new Scalar(axionField->BckGnd(), newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
-				      axionField->Field() | FIELD_REDUCED, axionField->Lambda(), CONF_NONE, 0, 0.);
+				      axionField->Field() | FIELD_REDUCED, axionField->LambdaT());
 	} else {
 		outField = axionField;
 	}

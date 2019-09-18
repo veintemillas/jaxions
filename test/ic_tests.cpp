@@ -45,17 +45,17 @@ int	main (int argc, char *argv[])
 	//-grids
 
 
-
+	// interaction problematic issue FIX ME!!
 	kCrit = 0.01;
 	Scalar *axion;
 
 
-	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 
 
 	LogOut("LOOP\n\n\n");
 
-	switch (cType)
+	switch (myCosmos.ICData().cType)
 	{
 		case 	CONF_VILGOR:
 		case 	CONF_VILGORK:
@@ -64,13 +64,13 @@ int	main (int argc, char *argv[])
 					for(int i=0; i<30;i++)
 					{
 					// log space from
-					kCrit = exp(i*log(1000)/30.);
+					myCosmos.ICData().kcr = exp(i*log(1000)/30.);
 					for(int j=1; j<3;j++)
 					{
 					// kCrit changes the variable in the parse.h header read by initial condition generator
 					// parm2 is also read by it
-					LogOut("par1 %zu par2 %f kmax %zu kCrit %f cType %d (VILGOR %d) \n", parm1, parm2, kMax, kCrit, static_cast<int>(cType), static_cast<int>(CONF_VILGOR));
-					genConf	(&myCosmos, axion, cType, parm1, parm2);
+					LogOut("par1 %zu par2 %f kmax %zu kCrit %f cType %d (VILGOR %d) \n", parm1, parm2, myCosmos.ICData().kMax, myCosmos.ICData().kcr, myCosmos.ICData().cType, static_cast<int>(CONF_VILGOR));
+					genConf	(&myCosmos, axion);
 					ninfa.measdata = MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM;
 					lm = Measureme (axion, ninfa);
 					ninfa.index += 1;
@@ -86,11 +86,11 @@ int	main (int argc, char *argv[])
 							{
 							// log space from 0 to 1000
 							parm1 = exp(i*log(1000)/30.);
-							iter = exp(i*log(1000)/30.);
+							myCosmos.ICData().siter = exp(i*log(1000)/30.);
 							for(int j=1; j<3;j++)
 							{
-							LogOut("par1 %zu par2 %f kmax %zu kCrit %f cType %d (SMOOTH %d) \n", parm1, parm2, kMax, kCrit, static_cast<int>(cType), static_cast<int>(CONF_SMOOTH));
-							genConf	(&myCosmos, axion, cType, parm1, parm2);
+							LogOut("par1 %zu par2 %f kmax %zu kCrit %f cType %d (SMOOTH %d) \n", parm1, parm2, myCosmos.ICData().kMax, myCosmos.ICData().kcr, myCosmos.ICData().cType, static_cast<int>(CONF_SMOOTH));
+							genConf	(&myCosmos, axion);
 							ninfa.measdata = MEAS_STRING | MEAS_2DMAP | MEAS_STRINGMAP | MEAS_STRINGMAP | MEAS_SPECTRUM;
 							lm = Measureme (axion, ninfa);
 							ninfa.index += 1;
