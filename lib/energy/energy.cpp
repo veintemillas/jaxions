@@ -44,7 +44,7 @@ class	Energy : public Tunable
 
 	Energy::Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field),
 	Vt(field->TotalSize()), delta2(delta*delta), aMass2(field->AxionMassSq()), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
-	LL(field->Lambda() == LAMBDA_Z2 ? LL/((*field->RV())*(*field->RV())) : LL), map(map)
+	LL(field->LambdaP()), map(map)
 {
 }
 
@@ -129,7 +129,7 @@ void	energy	(Scalar *field, void *eRes, const bool map, const double shift)
 	void *eTmp;
 	trackAlloc(&eTmp, 128);
 
-	auto LL   = field->BckGnd()->Lambda();
+	auto LL   = field->BckGnd()->LambdaP(); // obsolete
 	auto pot  = field->BckGnd()->QcdPot();
 	auto dlta = field->Delta();
 
