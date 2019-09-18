@@ -77,8 +77,8 @@
 
 		typedef	enum	LambdaType_s
 		{
-			LAMBDA_FIXED,
-			LAMBDA_Z2,
+			LAMBDA_FIXED       = 0,
+			LAMBDA_Z2          = 1,
 		}	LambdaType;
 
 		typedef	enum	AxionMassType_s
@@ -90,42 +90,42 @@
 
 		typedef	enum	VqcdType_s
 		{
-			VQCD_1		     = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
-			VQCD_2		     = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
-			VQCD_1_PQ_2	     = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
-			VQCD_1N2	     = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_QUAD	     = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_0		     = 32,  // cosine potential
+			VQCD_1            = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
+			VQCD_2            = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
+			VQCD_1_PQ_2       = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
+			VQCD_1N2          = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_QUAD         = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_0            = 32,  // cosine potential
 
-			VQCD_1_RHO	     = 8193,		// First version QCD potential, only rho evolution
-			VQCD_2_RHO	     = 8194,		// Second version QCD potential, only rho evolution
-			VQCD_1_PQ_2_RHO	     = 8196,		// PQ version QCD potential, only rho evolution
-			VQCD_1N2_RHO         = 8200,
-			VQCD_0_RHO         = 8216,
+			VQCD_1_RHO        = 8193,		// First version QCD potential, only rho evolution
+			VQCD_2_RHO        = 8194,		// Second version QCD potential, only rho evolution
+			VQCD_1_PQ_2_RHO   = 8196,		// PQ version QCD potential, only rho evolution
+			VQCD_1N2_RHO      = 8200,
+			VQCD_0_RHO        = 8216,
 
-			VQCD_1_DRHO	     = 16385,		// First version QCD potential, rho damping
-			VQCD_2_DRHO	     = 16386,		// Second version QCD potential, rho damping
-			VQCD_1_PQ_2_DRHO     = 16388,		// PQ version QCD potential, rho damping
-			VQCD_1N2_DRHO        = 16392,
-			VQCD_0_DRHO        = 16408,
+			VQCD_1_DRHO       = 16385,		// First version QCD potential, rho damping
+			VQCD_2_DRHO       = 16386,		// Second version QCD potential, rho damping
+			VQCD_1_PQ_2_DRHO  = 16388,		// PQ version QCD potential, rho damping
+			VQCD_1N2_DRHO     = 16392,
+			VQCD_0_DRHO       = 16408,
 
-			VQCD_1_DALL	     = 32769,		// First version QCD potential, full damping
-			VQCD_2_DALL	     = 32770,		// Second version QCD potential, full damping
-			VQCD_1_PQ_2_DALL     = 32772,		// PQ version QCD potential, full damping
-			VQCD_1N2_DALL	     = 32776,		// PQ version QCD potential, full damping
-			VQCD_0_DALL	     = 32792,		// PQ version QCD potential, full damping
+			VQCD_1_DALL       = 32769,		// First version QCD potential, full damping
+			VQCD_2_DALL       = 32770,		// Second version QCD potential, full damping
+			VQCD_1_PQ_2_DALL  = 32772,		// PQ version QCD potential, full damping
+			VQCD_1N2_DALL     = 32776,		// PQ version QCD potential, full damping
+			VQCD_0_DALL       = 32792,		// PQ version QCD potential, full damping
 
 			VQCD_1_DRHO_RHO	     = 24577,	// First version QCD potential, rho damping and only rho evolution
 			VQCD_2_DRHO_RHO	     = 24578,	// Second version QCD potential, rho damping and only rho evolution
 			VQCD_1_PQ_2_DRHO_RHO = 24580,	// PQ version QCD potential, rho damping and only rho evolution
 			VQCD_1N2_DRHO_RHO    = 24584,
-			VQCD_0_DRHO_RHO    = 24600,
+			VQCD_0_DRHO_RHO      = 24600,
 
 			VQCD_1_DALL_RHO	     = 40961,	// First version QCD potential, full damping and only rho evolution
 			VQCD_2_DALL_RHO	     = 40962,	// Second version QCD potential, full damping and only rho evolution
 			VQCD_1_PQ_2_DALL_RHO = 40964,	// PQ version QCD potential, full damping and only rho evolution
 			VQCD_1N2_DALL_RHO    = 40968,
-			VQCD_0_DALL_RHO    = 40984,
+			VQCD_0_DALL_RHO      = 40984,
 
 			/*	VQCD Masks	*/
 			VQCD_TYPE	      = 63,		// Masks base potential
@@ -140,14 +140,14 @@
 
 		typedef enum	ConfType_s
 		{
-			CONF_KMAX,
-			CONF_VILGOR,
-			CONF_VILGORK,
-			CONF_VILGORS,
-			CONF_TKACHEV,
-			CONF_SMOOTH,
-			CONF_READ,
-			CONF_NONE,
+			CONF_NONE       = 0,
+			CONF_SMOOTH     = 1,
+			CONF_KMAX       = 2,
+			CONF_VILGOR     = 4,
+			CONF_VILGORK    = 8,
+			CONF_VILGORS    = 16,
+			CONF_TKACHEV    = 32,
+			CONF_READ       = 64,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -330,44 +330,44 @@
 		} PropcType;
 
 		typedef	enum	PropType_s {
-			PROP_NONE	    = 0,		// For parsing
+			PROP_NONE     = 0,		// For parsing
 			PROP_BASE     = 1,    // Optimised propagator 1 neighbour
-			PROP_SPEC	    = 2,		// Spectral flag
+			PROP_SPEC     = 2,		// Spectral flag
 			PROP_FSPEC    = 4,		// Full Spectral flag
 			PROP_NNEIG    = 8,		// vectorised multi Ng laplacian propagator
 
-			PROP_LEAP	    = 16,
+			PROP_LEAP     = 16,
 			PROP_OMELYAN2	= 32,
 			PROP_OMELYAN4	= 64,
-			PROP_RKN4	    = 128,
+			PROP_RKN4     = 128,
 			PROP_MLEAP    = 256,
 
-			PROP_BLEAP	    = 17,
+			PROP_BLEAP     = 17,
 			PROP_BOMELYAN2	= 33,
 			PROP_BOMELYAN4	= 65,
-			PROP_BRKN4	    = 129,
+			PROP_BRKN4     = 129,
 			PROP_BMLEAP    = 257,
 
-			PROP_SLEAP	    = 18,
+			PROP_SLEAP     = 18,
 			PROP_SOMELYAN2	= 34,
 			PROP_SOMELYAN4	= 66,
-			PROP_SRKN4	    = 130,
+			PROP_SRKN4     = 130,
 			PROP_SMLEAP     = 258,
 
-			PROP_FSLEAP	    = 20,
-			PROP_FSOMELYAN2	= 36,
-			PROP_FSOMELYAN4	= 68,
-			PROP_FSRKN4	    = 132,
+			PROP_FSLEAP     = 20,
+			PROP_FSOMELYAN2 = 36,
+			PROP_FSOMELYAN4 = 68,
+			PROP_FSRKN4     = 132,
 			PROP_FSMLEAP    = 260,
 
-			PROP_NLEAP	    = 24,
-			PROP_NOMELYAN2	= 40,
-			PROP_NOMELYAN4	= 72,
-			PROP_NRKN4	    = 136,
+			PROP_NLEAP      = 24,
+			PROP_NOMELYAN2  = 40,
+			PROP_NOMELYAN4  = 72,
+			PROP_NRKN4      = 136,
 			PROP_NMLEAP     = 264,
 
-			PROP_MASK	      = 496,		// 16+32+64+128+256 So far... Masks the integrator type, removing the spectral/N flags flag
-			PROP_LAPMASK	  = 15,			// Masks the laplacian type, removing the integrator time			
+			PROP_MASK	      = 496,// 16+32+64+128+256 So far... Masks the integrator type, removing the spectral/N flags flag
+			PROP_LAPMASK	  = 15, // Masks the laplacian type, removing the integrator time
 		}	PropType;
 
 		typedef	enum	SpectrumType_s {
@@ -512,6 +512,29 @@
 			double 			eS;
 		}	MeasData;
 
+		// data output by measurement function to program
+		typedef	struct	IcData_v
+		{
+			bool          icdrule;
+			bool          preprop;
+			bool          icstudy;
+			double        prepstL;
+			double        prepcoe;
+			double        pregammo;
+			double        prelZ2e;
+			VqcdType      prevtype;
+			bool          normcore;
+			double        alpha;
+			size_t        siter;
+			size_t        kMax ;
+			double        kcr;
+			double        mode0;
+			double        zi;
+			double        logi;
+			ConfType      cType;
+			ConfsubType   smvarType;
+			MomConfType   momConf;
+		}	IcData;
 
 
 #ifdef	__NVCC__
