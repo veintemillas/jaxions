@@ -44,10 +44,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	/* This is a change with respect to previous behaviour
 	   Changes the definition of mask to be in units of ms^-1 */
-		if (axiona->Lambda() == LAMBDA_Z2)
+		if (axiona->LambdaT() == LAMBDA_Z2)
 		 		radius_mask /= axiona->Msa(); // radius is a/msa in a units
-		if (axiona->Lambda() == LAMBDA_FIXED){
-			double si = sqrt(2.0*axiona->BckGnd()->Lambda())* (*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
+		if (axiona->LambdaT() == LAMBDA_FIXED){
+			double si = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
 				LogMsg(VERB_HIGH,"msa calaculated %f mask-parameter resized with 1/msa",si);
 				radius_mask /= si;
 		}
@@ -600,18 +600,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		else
 		LogOut("  %3d  | %6d | %2.3f h | ", indexa, info.measdata, cTime*1.e-6/3600.);
 
-	double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
-	if (axiona->Lambda() == LAMBDA_Z2)
-		DWfun *= R_now*R_now;
+	double lola = axiona->LambdaP();
+
+	double DWfun = 40*axiona->AxionMassSq()/(2.0*lola) ;
 	LogOut("%.1e %.1e (%.1e) ", axiona->AxionMass(), sqrt(axiona->SaxionMassSq()), DWfun );
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
 		if ( measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO) ){
-		double loks = log(axiona->Msa()*z_now/axiona->Delta());
+		double loks = log(sqrt(2*lola)*R_now*R_now);
 		double Le = axiona->BckGnd()->PhysSize();
-			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),
+			LogOut("log(%.1f) xi_t(%.3f) xi(%.3f) msa(%.3f) #_st %ld ", loks, xivilgor(loks),
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
+				axiona->Msa(),
 				MeasDataOut.str.strDen );
 		} else {
 			// LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
