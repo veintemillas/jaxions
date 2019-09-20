@@ -425,10 +425,9 @@ int	main (int argc, char *argv[])
 				i_meas++ ;
 				//reset flag
 				measrightnow = false;
-				// after every measurement we check walltime > need update
-				checkTime(axion, index);
 			}
-
+			// after every measurement we check walltime > need update
+			checkTime(axion, index);
 
 	} // time loop's over
 
