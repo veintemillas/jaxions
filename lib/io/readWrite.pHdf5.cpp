@@ -2236,9 +2236,31 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 	commSync();
 }
 
-void	writeEnergy	(Scalar *axion, void *eData_)
+void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 {
-	hid_t	group_id;
+
+	LogMsg(VERB_NORMAL,"[wEn] Write Energy %f ",rmask);
+	bool pe = false ;
+	bool pmaskede = false;
+
+	/* At the moment we do not save both masked and unmasked energy at the same time */
+	if (rmask < 0.){
+			LogMsg(VERB_NORMAL,"[wEn] Saving energy to disk ");
+			pe = true;
+	}
+	if (rmask > 0.){
+			LogMsg(VERB_NORMAL,"[wEn] Saving energy - masked to disk (rmask = %.3f)",rmask);
+			pmaskede = true;
+	}
+
+	char LABEL[256];
+
+	hid_t	group_id, group_id2;
+
+	if (!pe && !pmaskede){
+		LogMsg(VERB_NORMAL,"[wEn] Called but nothing to do: Exit! ");
+		return;
+	}
 
 	double	*eData = static_cast<double *>(eData_);
 
@@ -2252,8 +2274,6 @@ void	writeEnergy	(Scalar *axion, void *eData_)
 
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
-
-	LogMsg (VERB_NORMAL, "Writing energy data");
 
 	/*	Create a group for string data if it doesn't exist	*/
 	auto status = H5Lexists (meas_id, "/energy", H5P_DEFAULT);	// Create group if it doesn't exists
@@ -2269,30 +2289,76 @@ void	writeEnergy	(Scalar *axion, void *eData_)
 			return;
 		}
 	}
-
-	int totalBytes = 40;
-
-	writeAttribute(group_id, &eData[TH_GRX],  "Axion Gr X", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[TH_GRY],  "Axion Gr Y", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[TH_GRZ],  "Axion Gr Z", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[TH_KIN],  "Axion Kinetic", H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &eData[TH_POT],  "Axion Potential", H5T_NATIVE_DOUBLE);
-
-	if	(axion->Field() == FIELD_SAXION)
+	// The masked energy goes into another folder with label
+	if (pmaskede)
 	{
-		writeAttribute(group_id, &eData[RH_GRX],  "Saxion Gr X", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &eData[RH_GRY],  "Saxion Gr Y", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &eData[RH_GRZ],  "Saxion Gr Z", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic", H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &eData[RH_POT],  "Saxion Potential", H5T_NATIVE_DOUBLE);
+		sprintf(LABEL, "Redmask_%.2f", rmask);
+		auto status2 = H5Lexists (group_id, LABEL, H5P_DEFAULT);	// Create group if it doesn't exists
 
+		if (!status2)
+			group_id2 = H5Gcreate2(group_id, LABEL, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		else {
+			if (status > 0) {
+				group_id2 = H5Gopen2(group_id, LABEL, H5P_DEFAULT);		// Group exists, but it shouldn't
+				LogMsg(VERB_NORMAL, "Warning: group %s exists!", LABEL);	// Since this is weird, log it
+			} else {
+				LogError ("Error: can't check whether group %s exists", LABEL);
+				return;
+			}
+		}
+	}
+
+	int totalBytes = 0 ;
+
+	if (pe){
+		writeAttribute(group_id, &eData[TH_GRX],  "Axion Gr X",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[TH_GRY],  "Axion Gr Y",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[TH_GRZ],  "Axion Gr Z",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[TH_KIN],  "Axion Kinetic",   H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[TH_POT],  "Axion Potential", H5T_NATIVE_DOUBLE);
 		totalBytes += 40;
+
+		if	(axion->Field() == FIELD_SAXION)
+		{
+			writeAttribute(group_id, &eData[RH_GRX],  "Saxion Gr X",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_GRY],  "Saxion Gr Y",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_GRZ],  "Saxion Gr Z",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic",   H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_POT],  "Saxion Potential", H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_RHO],  "Saxion vev",       H5T_NATIVE_DOUBLE);
+
+			totalBytes += 48;
+		}
+	}
+
+	if (pmaskede){
+		totalBytes += 40;
+		writeAttribute(group_id2, &eData[TH_GRXM],  "Axion Gr X nMask",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id2, &eData[TH_GRYM],  "Axion Gr Y nMask",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id2, &eData[TH_GRZM],  "Axion Gr Z nMask",      H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id2, &eData[TH_KINM],  "Axion Kinetic nMask",   H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id2, &eData[TH_POTM],  "Axion Potential nMask", H5T_NATIVE_DOUBLE);
+
+		if	(axion->Field() == FIELD_SAXION)
+		{
+			writeAttribute(group_id2, &eData[RH_GRXM],  "Saxion Gr X nMask",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[RH_GRYM],  "Saxion Gr Y nMask",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[RH_GRZM],  "Saxion Gr Z nMask",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[RH_KINM],  "Saxion Kinetic nMask",   H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[RH_POTM],  "Saxion Potential nMask", H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[RH_RHOM],  "Saxion vev nMask",       H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[MM_NUMM],  "Number of masked points",H5T_NATIVE_DOUBLE);
+
+			totalBytes += 48;
+		}
 	}
 
 	/*	TODO	Distinguish the different versions of the potentials	*/
 
 	/*	Close the group		*/
 	H5Gclose (group_id);
+	if (pmaskede)
+		H5Gclose (group_id2);
 
 	prof.stop();
 	prof.add(std::string("Write energy"), 0, 1e-9*totalBytes);

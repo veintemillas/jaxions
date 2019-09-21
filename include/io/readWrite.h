@@ -14,7 +14,7 @@
 	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat);
-	void	writeEnergy	(Scalar *axion, void *eData);
+	void	writeEnergy	(Scalar *axion, void *eData, double rmask=-1.0);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
 	void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin);
 	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);

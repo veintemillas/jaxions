@@ -30,11 +30,11 @@ class	Energy : public Tunable
 	FieldType	fType;
 
 	const double shift, LL;
-	const bool   map;
+	const EnType mapmask;
 
 	public:
 
-		 Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const bool map);
+		 Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const EnType emap);
 		~Energy() {};
 
 	void	runCpu	();
@@ -42,9 +42,9 @@ class	Energy : public Tunable
 	void	runXeon	();
 };
 
-	Energy::Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const bool map) : field(field),
+	Energy::Energy(Scalar *field, const double LL, const double delta, void *eRes, VqcdType pot, const double sh, const EnType emap) : field(field),
 	Vt(field->TotalSize()), delta2(delta*delta), aMass2(field->AxionMassSq()), eRes(eRes), pot(pot), fType(field->Field()), shift(sh),
-	LL(field->LambdaP()), map(map)
+	LL(field->LambdaP()), mapmask(emap)
 {
 }
 
@@ -58,6 +58,8 @@ void	Energy::runGpu	()
 	const uint uV  = field->Size();
 	//double *z = field->zV();
 	double *R = field->RV();
+
+	const bool map = (mapmask & EN_MAP);
 
 	field->exchangeGhosts(FIELD_M);
 
@@ -91,10 +93,12 @@ void	Energy::runGpu	()
 
 void	Energy::runCpu	()
 {
+	const bool map = (mapmask & EN_MAP); //Update if mask in theta is required FIX ME
+
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
-			energyCpu	(field, delta2, LL, aMass2, eRes, shift, pot, map);
+			energyCpu	(field, delta2, LL, aMass2, eRes, shift, pot, mapmask);
 			break;
 
 		case	FIELD_AXION:
@@ -115,25 +119,32 @@ void	Energy::runCpu	()
 
 using namespace profiler;
 
-void	energy	(Scalar *field, void *eRes, const bool map, const double shift)
+void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 {
-	if (map && (field->Field() == FIELD_SAXION) && field->LowMem())
+	if ( (emap & EN_MAP) && (field->Field() == FIELD_SAXION) && field->LowMem())
 	{
 		LogError ("Error: Can't compute energy map for saxion with lowmem kernels\n");
 		return;
 	}
 
+	if ( (emap & EN_MASK) && !(field->sDStatus() & SD_MASK))
+	{
+		LogError ("Error: Can't compute masked energy because there is no mask!\n");
+		return;
+	}
+
+
 	LogMsg  (VERB_HIGH, "Called energy");
 	Profiler &prof = getProfiler(PROF_ENERGY);
 
 	void *eTmp;
-	trackAlloc(&eTmp, 128);
+	trackAlloc(&eTmp, 256);
 
 	auto LL   = field->LambdaP(); // obsolete
 	auto pot  = field->BckGnd()->QcdPot();
 	auto dlta = field->Delta();
 
-	auto	eDark = std::make_unique<Energy>(field, LL, dlta, eTmp, pot, shift, map);
+	auto	eDark = std::make_unique<Energy>(field, LL, dlta, eTmp, pot, shift, emap);
 
 	if	(!field->Folded())
 	{
@@ -160,26 +171,68 @@ void	energy	(Scalar *field, void *eRes, const bool map, const double shift)
 			return;
 	}
 
-	const int size = field->Field() == FIELD_SAXION ? 10 : 5;
+	// Changed SAXION CASE from 10 to 22 for now there are masked energies + rho field
+	const int size = field->Field() == FIELD_SAXION ? 23 : 5;
 
 	MPI_Allreduce(eTmp, eRes, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	trackFree(eTmp);
 
-	const double Vt = 1./(field->TotalSize());
+	const double Vt  = 1./(field->TotalSize());
+	const double Vt2 = 1./( static_cast<double*>(eRes)[22] );
+	const double mi  = 1.*( static_cast<double*>(eRes)[22] );
 
+//LogOut("Norma %f %f",(double) field->TotalSize(), mi );
+
+//LogOut('vol %.3f volm %.3f', (double) field->TotalSize(), static_cast<double*>(eRes)[MM_NUMM] );
 	#pragma unroll
-	for (int i=0; i<size; i++)
+	for (int i=0; i<11; i++)
 		static_cast<double*>(eRes)[i] *= Vt;
+	
+        #pragma unroll
+        for (int i=11; i<22; i++)
+	        static_cast<double*>(eRes)[i] *= Vt2;	
+
+//if (field->Field() == FIELD_SAXION)
+//	{
+//		static_cast<double*>(eRes)[RH_GRX]  *= Vt;
+//		static_cast<double*>(eRes)[TH_GRX]  *= Vt;
+//                static_cast<double*>(eRes)[RH_GRY]  *= Vt;
+//               static_cast<double*>(eRes)[TH_GRY]  *= Vt;
+//                static_cast<double*>(eRes)[TH_GRZ]  *= Vt;
+//              static_cast<double*>(eRes)[RH_POT]  *= Vt;
+//                static_cast<double*>(eRes)[TH_POT]  *= Vt;
+//                static_cast<double*>(eRes)[RH_KIN]  *= Vt;
+//                static_cast<double*>(eRes)[TH_KIN]  *= Vt;
+//                static_cast<double*>(eRes)[TH_KIN]  *= Vt;
+//                static_cast<double*>(eRes)[RH_RHO]  *= Vt;
+
+//                static_cast<double*>(eRes)[RH_GRXM] *= Vt2;
+//                static_cast<double*>(eRes)[TH_GRXM] *= Vt2;
+//                static_cast<double*>(eRes)[RH_GRYM] *= Vt2;
+//                static_cast<double*>(eRes)[TH_GRYM] *= Vt2;
+//                static_cast<double*>(eRes)[RH_GRZM] *= Vt2;
+//                static_cast<double*>(eRes)[TH_GRZM] *= Vt2;
+//                static_cast<double*>(eRes)[RH_POTM] *= Vt2;
+//                static_cast<double*>(eRes)[TH_POTM] *= Vt2;
+//                static_cast<double*>(eRes)[RH_KINM] *= Vt2;
+//                static_cast<double*>(eRes)[TH_KINM] *= Vt2;
+//                static_cast<double*>(eRes)[RH_RHOM] *= Vt2;
+//	}
+
+
 
 	prof.stop();
 
 	field->setReduced(false);
-	field->setM2     (M2_ENERGY);
+	if (emap & EN_MAP) {
+		field->setM2     (M2_ENERGY);
+	}
 
+	// masked energy is non-deterministic but if mask is small is negligible
 	double flops = (field->Field() == FIELD_SAXION ? (pot == VQCD_1 ? 111 : 112) : 25)*field->Size()*1e-9;
 	double bytes = 8.*field->DataSize()*field->Size()*1e-9;
 
-	if (map) {
+	if (emap & EN_MAP) {
 		eDark->appendName(" Map");
 		bytes *= 9./8;
 	}

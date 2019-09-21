@@ -180,7 +180,7 @@ int	main (int argc, char *argv[])
 
 		auto strDen = strings(axion);
 
-		energy(axion, eRes, true);
+		energy(axion, eRes, EN_MAP);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
@@ -267,7 +267,6 @@ int	main (int argc, char *argv[])
 			double saskia = 0.0;
 
 			cmplxToTheta (axion, saskia, aMod);
-//			energy(axion, eRes, true, delta, nQcd);
 //			createMeas(axion, index+1);
 //			writeEnergy(axion, eRes);
 //			writeEDens(axion, MAP_THETA);

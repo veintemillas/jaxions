@@ -419,7 +419,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5 (axion);
 
-				  		energy(axion, eRes, false, zShift);
+				  		energy(axion, eRes, EN_ENE, zShift);
 
 						if (axion->Device() == DEV_GPU)
 							axion->transferCpu(FIELD_MM2);
@@ -468,7 +468,7 @@ int	main (int argc, char *argv[])
 						if (axion->Device() == DEV_GPU)
 							axion->transferCpu(FIELD_MM2);
 
-						energy(axion, eRes, false, 0.);
+						energy(axion, eRes, EN_ENE, 0.);
 						writeEnergy(axion, eRes);
 
 						if (axion->Precision() == FIELD_SINGLE) {
@@ -562,7 +562,7 @@ int	main (int argc, char *argv[])
 				writeBinner(thBin,  "/bins", "theta");
 			}
 
-			energy(axion, eRes, false, zShift);
+			energy(axion, eRes, EN_ENE, zShift);
 
 			double maa = 40.*axion->AxionMassSq()/(2*llPhys);
 
@@ -586,7 +586,7 @@ int	main (int argc, char *argv[])
 			auto pName = pFler->first;
 			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 		} else {
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (axion->Device() == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -667,7 +667,7 @@ int	main (int argc, char *argv[])
 //	index++	;
 	if (axion->Field() == FIELD_AXION) {
 		if (pconfinal) {
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (axion->Device() == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -735,7 +735,7 @@ int	main (int argc, char *argv[])
 			if (cDev == DEV_GPU)
 				axion->transferDev(FIELD_MV);
 
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (cDev == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -795,7 +795,7 @@ int	main (int argc, char *argv[])
 
 		/*	For Jens	*/
 		if (endredmap > 0) {
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (cDev == DEV_GPU)
 				axion->transferCpu(FIELD_M2);

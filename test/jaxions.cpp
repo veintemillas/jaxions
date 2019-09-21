@@ -379,7 +379,7 @@ int	main (int argc, char *argv[])
 				createMeas(axion, index);
 				if (axion->Field() == FIELD_SAXION) {
 					writeString(axion, rts, false);
-					energy(axion, eRes, false, shiftz);
+					energy(axion, eRes, EN_ENE, shiftz);
 				}
 
 				writeEnergy(axion, eRes);
@@ -404,7 +404,7 @@ int	main (int argc, char *argv[])
 		rts = strings(axion);
 		nstrings_global = rts.strDen;
 		writeString(axion, rts, false);
-		energy(axion, eRes, false, shiftz);
+		energy(axion, eRes, EN_ENE, shiftz);
 		writeEnergy(axion, eRes);
 
 		if(p2dmapo)
@@ -523,7 +523,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, shiftz);
+						energy(axion, eRes, EN_ENE, shiftz);
 						writeEnergy(axion, eRes);
 						// BIN RHO+THETA
 						float shiftzf = shiftz ;
@@ -557,7 +557,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 				  			writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, 0.);
+						energy(axion, eRes, EN_ENE, 0.);
 						writeEnergy(axion, eRes);
 						// BIN THETA
 						Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
@@ -644,7 +644,7 @@ int	main (int argc, char *argv[])
 					SpecBin specSAna(axion, (pType & PROP_SPEC) ? true : false);
 
 					//ENERGY //JAVI added true for power spectrum
-					energy(axion, eRes, true, shiftz);
+					energy(axion, eRes, EN_MAP, shiftz);
 					//writeEDens(axion);
 					//computes power spectrum
 					specSAna.pRun();
@@ -681,7 +681,7 @@ int	main (int argc, char *argv[])
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 			// computes energy and creates map
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 			{
 				double *eR = static_cast<double*>(eRes);
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
@@ -746,7 +746,7 @@ int	main (int argc, char *argv[])
 		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 		LogOut("DensMap ... ");
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -839,7 +839,7 @@ int	main (int argc, char *argv[])
 
 			// computes energy and creates map
 			LogOut ("en ");
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 			{
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),

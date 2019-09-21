@@ -93,7 +93,7 @@ void	cDensityMap	(Scalar *axion, size_t rSize, bool rhoMap) {
 
 	if (axion->m2Status() != M2_ENERGY) {
 		double eRes[10];
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 	}
 
 	if (axion->Device() == DEV_GPU)
@@ -116,4 +116,3 @@ void	cDensityMap	(Scalar *axion, size_t rSize, bool rhoMap) {
 
 	return;
 }
-

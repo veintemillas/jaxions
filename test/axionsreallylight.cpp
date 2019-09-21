@@ -440,7 +440,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, shiftz);
+						energy(axion, eRes, EN_ENE, shiftz);
 						writeEnergy(axion, eRes);
 						// BIN THETA
 						{
@@ -470,7 +470,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 						  	writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, 0.);
+						energy(axion, eRes, EN_ENE, 0.);
 						writeEnergy(axion, eRes);
 						// BIN THETA
 						Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
@@ -542,7 +542,7 @@ int	main (int argc, char *argv[])
 			// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 											// old shit still works
 			//ENERGY
-			energy(axion, eRes, false, shiftz);
+			energy(axion, eRes, EN_ENE, shiftz);
 			//DOMAIN WALL KILLER NUMBER
 			double maa = 40*axion->AxionMassSq()/(2.*llphys);
 			if (axion->LambdaT() == LAMBDA_Z2 )
@@ -571,7 +571,7 @@ int	main (int argc, char *argv[])
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 			// computes energy and creates map
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			{
 				double *eR = static_cast<double*>(eRes);
@@ -648,7 +648,7 @@ int	main (int argc, char *argv[])
 
 		LogOut("DensMap ... ");
 
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -735,7 +735,7 @@ int	main (int argc, char *argv[])
 
 			// computes energy and creates map
 			LogOut ("en ");
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 			{
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),

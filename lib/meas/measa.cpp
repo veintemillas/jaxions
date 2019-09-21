@@ -82,6 +82,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
+	LogMsg(VERB_HIGH, "[Meas %d] set aux fields to dirty",indexa);
+	axiona->setM2(M2_DIRTY);
+	axiona->setSD(SD_DIRY);
+
 	createMeas(axiona, indexa);
 
 	if	( axiona->MMomSpace() || axiona->VMomSpace() )
@@ -105,18 +109,24 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeMapHdf5s (axiona,sliceprint);
 	}
 
+	//	--------------------------------------------------------------------------
+	//
+	//	ENERGY BLOCK
+	//
+	//	--------------------------------------------------------------------------
+
 	if (measa & MEAS_NEEDENERGY)
 	{
 		void *eRes;
-		trackAlloc(&eRes, 128);
-		memset(eRes, 0, 128);
+		trackAlloc(&eRes, 256);
+		memset(eRes, 0, 256);
 		double *eR = static_cast<double *> (eRes);
 
 		if (measa & MEAS_NEEDENERGYM2)
 		{
 			// LogOut("energy (map->m2) ");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2", indexa);
-			energy(axiona, eRes, true, shiftz);
+			energy(axiona, eRes, EN_MAP, shiftz);
 
 			MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
 			MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
@@ -160,7 +170,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			}
 
 			LogMsg(VERB_NORMAL, "[meas] M2 status %d", axiona->m2Status());
-			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_A))
+			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_S))
 			{
 
  				SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
@@ -242,7 +252,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		else{
 			// LogOut("energy (sum)");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy (no map)",indexa);
-			energy(axiona, eRes, false, shiftz);
+			energy(axiona, eRes, EN_ENE, shiftz);
 		}
 
 		LogMsg(VERB_NORMAL, "[Meas %d] write energy",indexa);
@@ -250,6 +260,13 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 		trackFree(eRes);
 	}
+
+	//	--------------------------------------------------------------------------
+	//
+	//	STRING BLOCK
+	//
+	//	--------------------------------------------------------------------------
+
 
 	if(axiona->Field() == FIELD_SAXION){
 		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO))
@@ -286,7 +303,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeStringCo(axiona, MeasDataOut.str, true);
 				//saves strings in m2//problem with energy
 			}
-
 		}
 	}
 
@@ -371,7 +387,22 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 								MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
 								writeStringEnergy(axiona,MeasDataOut.strE);
 							}
+
+							{
+									void *eRes;
+									trackAlloc(&eRes, 256);
+									memset(eRes, 0, 256);
+									double *eR = static_cast<double *> (eRes);
+								energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
+								writeEnergy(axiona, eRes, rmasktab[ii]);
+											// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
+								trackFree(eRes);
+							}
 					}
+
+
+
+
 					LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum (rmask %f)",indexa,rmasktab[ii]);
 					prof.start();
 					specAna.nRun(SPMASK_REDO);

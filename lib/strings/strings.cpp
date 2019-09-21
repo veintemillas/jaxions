@@ -356,3 +356,54 @@ StringData	strings2	(Scalar *field)
   commSync();
 	return	strDen;
 }
+
+
+void	stMaskToCM2	(Scalar *field)
+{
+	switch (field->Precision())
+	{
+		case FIELD_SINGLE :
+		stMaskToCM2<float> (field);
+		break;
+
+		case FIELD_DOUBLE :
+		stMaskToCM2<double> (field);
+		break;
+	}
+}
+
+template<typename Float>
+void	stMaskToCM2	(Scalar *field)
+{
+	LogMsg	(VERB_NORMAL, "[st2] Called stMaskToCM2");
+	// profiler::Profiler &prof = getProfiler(PROF_STRING);
+	// prof.start();
+
+	if (field->Field() != FIELD_SAXION || !(field->sDStatus() & SD_MAP)){
+			LogMsg(VERB_NORMAL,"[st2] stMaskToCM2 called without string map! (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+			return;
+		}
+
+	char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
+	Float *M2 = static_cast<Float *>(static_cast<void *>(field->m2Cpu()));
+
+	#pragma omp parallel for shared(strdaa)
+		for (size_t idx=0; idx < field->Size() ; idx++){
+			if ( strdaa[idx] & STRING_MASK ){
+				M2[2*idx]   = 1.0;
+				M2[2*idx+1] = 1.0;
+			}
+			else {
+				M2[2*idx]   = 0.0;
+				M2[2*idx+1] = 0.0;
+			}
+		}
+	// printf("[st2] rank %d proyected %lu, done %lu\n", rank, eStr->StrDat().strDen_local, unilab);
+	// LogOut("strda %d, %d\n",  sizeof(strdaa[0]),      field->Size());
+	// LogOut("dasa  %d, %d\n\n",sizeof(eStr->Pos()[0]), sizeof(eStr->Pos()[0])*carde);
+	commSync();
+
+	field->setM2(M2_ANTIMASK);
+		// unsigned short *cerda = static_cast<unsigned short *>( static_cast<void*>( &eStr->Pos()[0] ));
+		// printf("strings.cpp rank %d   %hu, %hu, %hu\n", rank, cerda[0],cerda[1],cerda[2]);
+}

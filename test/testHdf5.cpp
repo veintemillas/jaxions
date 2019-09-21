@@ -133,9 +133,9 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	if (axion->LowMem())
-		energy(axion, eRes, false);
+		energy(axion, eRes, EN_ENE);
 	else
-		energy(axion, eRes, true);
+		energy(axion, eRes, EN_MAP);
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
@@ -201,7 +201,7 @@ int	main (int argc, char *argv[])
 //
 //	writeConf(axion, index);
 //
-//	energy(axion, eRes, true, delta);
+//	energy(axion, eRes, EN_MAP, delta);
 //
 //	createMeas(axion, index);
 //	writeEnergy(axion, eRes);
@@ -220,7 +220,7 @@ int	main (int argc, char *argv[])
 		if (axion->Precision() == FIELD_DOUBLE) {
 			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
-			energy(axion, eRes, true);
+			energy(axion, eRes, EN_MAP);
 			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
 			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); });
 			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
@@ -228,7 +228,7 @@ int	main (int argc, char *argv[])
 		} else {
 			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
-			energy(axion, eRes, true);
+			energy(axion, eRes, EN_MAP);
 			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
 			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); });
 			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,

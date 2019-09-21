@@ -38,6 +38,11 @@
 
 	StringData	strings2	(Scalar *field);
 
+	void	stMaskToCM2	(Scalar *field);
+
+	template<typename Float>
+	void	stMaskToCM2	(Scalar *field);
+
 	void setCross (std::complex<double> m, std::complex<double> mu, std::complex<double> mv, std::complex<double> muv, double * dua);
 
 	template<typename Float>

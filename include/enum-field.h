@@ -197,16 +197,31 @@
 
 		typedef	enum	Int_EnergyIdx_s
 		{
-			TH_GRX = 0,
-			TH_GRY = 1,
-			TH_GRZ = 2,
-			TH_KIN = 3,
-			TH_POT = 4,
-			RH_GRX = 5,
-			RH_GRY = 6,
-			RH_GRZ = 7,
-			RH_KIN = 8,
-			RH_POT = 9,
+			TH_GRX  = 0,
+			TH_GRY  = 1,
+			TH_GRZ  = 2,
+			TH_KIN  = 3,
+			TH_POT  = 4,
+			RH_GRX  = 5,
+			RH_GRY  = 6,
+			RH_GRZ  = 7,
+			RH_KIN  = 8,
+			RH_POT  = 9,
+                        RH_RHO  = 10, // Average value of rho
+			//masked values
+			TH_GRXM = 11,
+			TH_GRYM = 12,
+			TH_GRZM = 13,
+			TH_KINM = 14,
+			TH_POTM = 15,
+			RH_GRXM = 16,
+			RH_GRYM = 17,
+			RH_GRZM = 18,
+			RH_KINM = 19,
+			RH_POTM = 20,
+			//aux values
+			RH_RHOM = 21,
+			MM_NUMM = 22,
 		}	EnergyIdx;
 
 		typedef	enum	LogLevel_s
@@ -439,7 +454,8 @@
 			M2_ENERGY_AXI  = 64,
 			M2_ENERGY_MASK_AXI_FFT = 128,
 			M2_MASK_AXI2_FFT = 256,
-			M2_MASK        = 512,
+			M2_MASK        = 512,    // Points outside string
+			M2_ANTIMASK    = 1024,   // Points inside the string region (duplicated to mask complex energy)
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
@@ -486,6 +502,21 @@
 			// MASK for those that require energy saved in m2
 			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
 		}	MeasureType;
+
+//Used when energy is called
+		typedef enum	EnType_s
+		{
+			EN_NO         = 0,
+			EN_ENE        = 1,
+			EN_ONLYMAP    = 2, // used for maskinh
+			EN_MAP        = 3, // total energy = 2
+			EN_MASK       = 4, // masked energy from axions->SData() = masked
+			EN_ENEMASK    = 5, // total + masked energies
+			EN_MAPMASK    = 6, // map of masked energy
+			EN_ENEMAPMASK = 7, // energy, masked energy and total map
+			// EN_AMASK = 8, // Antimask
+			// EN_AMAMA = 10, // Antimask
+		}	EnType;
 
 		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v

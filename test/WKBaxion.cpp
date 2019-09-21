@@ -182,7 +182,7 @@ int	main (int argc, char *argv[])
 			writeMapHdf5s(axion,sliceprint);}
 		// computes energy and creates map
 		LogOut ("en ");
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -268,7 +268,7 @@ int	main (int argc, char *argv[])
 
 	// computes energy and creates map
 	LogOut ("en ");
-	energy(axion, eRes, true, 0.);
+	energy(axion, eRes, EN_MAP, 0.);
 
 	{
 		float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);

@@ -81,7 +81,7 @@ void	prepropa  (Scalar *axiona)
 			lm.str = strings(axiona);
 
 		dzaux = axiona->dzSize();
-		// energy(axiona, eRes, false, 0.);
+		// energy(axiona, eRes, EN_ENE, 0.);
 		// float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 		// float eMeanS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]);
 		// LogOut("%f %f %f\n",*axiona->zV(),eMean, eMeanS);
@@ -281,7 +281,7 @@ void	relaxrho  (Scalar *axiona)
 			lm.str = strings(axiona);
 
 		dzaux = axiona->dzSize();
-		// energy(axiona, eRes, false, 0.);
+		// energy(axiona, eRes, EN_ENE, 0.);
 		// float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 		// float eMeanS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]);
 		// LogOut("%f %f %f\n",*axiona->zV(),eMean, eMeanS);

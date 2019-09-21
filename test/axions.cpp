@@ -184,7 +184,7 @@ if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 
 		auto strDen = strings(axion);
 
-		energy(axion, eRes, true);
+		energy(axion, eRes, EN_MAP);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
