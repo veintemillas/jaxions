@@ -562,6 +562,7 @@
 			double        mode0;
 			double        zi;
 			double        logi;
+			double        kickalpha;
 			ConfType      cType;
 			ConfsubType   smvarType;
 			MomConfType   momConf;

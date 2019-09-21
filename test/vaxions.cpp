@@ -79,6 +79,11 @@ int	main (int argc, char *argv[])
 		{
 			LogOut("Reading initial conditions from file ... ");
 			readConf(&myCosmos, &axion, fIndex, restart_flag);
+
+			// temporary test!! FIX ME! allows to kick the initial configuration
+			if ( !(myCosmos.ICData().kickalpha == 0.0) )
+				scaleField (axion, FIELD_V, 1.0+myCosmos.ICData().kickalpha);
+
 			if (axion == NULL)
 			{
 				LogOut ("Error reading HDF5 file\n");

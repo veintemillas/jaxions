@@ -198,6 +198,7 @@ void	ConfGenerator::runCpu	()
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.kcr      %f",ic.kcr      );
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.kMax     %d",ic.kMax     );
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.mode0    %f",ic.mode0    );
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.kickalpha%f",ic.kickalpha);
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.zi       %f",ic.zi       );
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.logi     %f",ic.logi     );
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.cType    %d",ic.cType    );
@@ -373,6 +374,8 @@ void	ConfGenerator::runCpu	()
 				if (myCosmos->ICData().normcore)
 					normCoreField	(axionField);
 				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+				if ( !(ic.kickalpha == 0.0) )
+					scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
 				scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 

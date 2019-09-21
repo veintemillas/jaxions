@@ -420,6 +420,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.mode0     = 10.0;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
+	icdatst.kickalpha = 0.0;
 	icdatst.cType     = CONF_KMAX;
 	icdatst.smvarType = CONF_RAND;
 	icdatst.momConf   = MOM_MEXP2;
@@ -1015,6 +1016,22 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+
+		if (!strcmp(argv[i], "--kickalpha"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the initial redshift.\n");
+				exit(1);
+			}
+
+			icdatst.kickalpha = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
 		if (!strcmp(argv[i], "--zf"))
 		{
