@@ -54,7 +54,7 @@ using namespace profiler;
 
 void	normCoreField	(Scalar *field)
 {
-	LogMsg  (VERB_HIGH, "Called normalise for string cores");
+	LogMsg  (VERB_NORMAL, "Called normalise for string cores");
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	NormCoreField *nField = new NormCoreField(field);

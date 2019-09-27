@@ -87,7 +87,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] ic.logi     %f",cm->ICData().logi     );
 	LogMsg(VERB_NORMAL,"[sca] ic.cType    %d",cm->ICData().cType    );
 	LogMsg(VERB_NORMAL,"[sca] ic.smvarTy  %d",cm->ICData().smvarType);
-	LogMsg(VERB_NORMAL,"[sca] ic.momConf  %d",cm->ICData().momConf);
+	LogMsg(VERB_NORMAL,"[sca] ic.mocoty   %d",cm->ICData().mocoty   );
 
 	folded 	   = false;
 	eReduced   = false;
@@ -376,7 +376,7 @@ const std::complex<float> If(0.,1.);
 
 		/* If fspectral initSpectral plans*/
 		if (fpectral) {
-			LogMsg(VERB_NORMAL,"Initialing fspectral plans");
+			LogMsg(VERB_NORMAL,"Initialising fspectral plans");
 			// Saxion m inplace
 			AxionFFT::initPlan (this, FFT_CtoC_MtoM, FFT_FWDBCK, "C2CM2M");
 			// Saxion v inplace
@@ -406,7 +406,7 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
-				if ((cType == CONF_KMAX) || (cType == CONF_VILGOR) || (cType == CONF_VILGOR) || (cType == CONF_TKACHEV)) {
+				if ( !(cType == CONF_SMOOTH) ) {
 					if (lowmem)
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else
@@ -571,7 +571,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) with Ng=%lu (value of scalar %d)",opComm, Nng, Ng);LogFlush();
+LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) from slice=%lu (value of Ng in scalar %d)",opComm, Nng, Ng);LogFlush();
 	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
 
 	if (fIdx & FIELD_M)

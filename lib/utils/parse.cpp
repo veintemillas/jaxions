@@ -421,9 +421,10 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
+	icdatst.extrav    = 0.0;
 	icdatst.cType     = CONF_KMAX;
 	icdatst.smvarType = CONF_RAND;
-	icdatst.momConf   = MOM_MEXP2;
+	icdatst.mocoty    = MOM_MEXP2;
 
 	for (int i=1; i<argc; i++)
 	{
@@ -454,12 +455,12 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: I need a verbosity level.\n");
 				exit(1);
 			}
+			int mocho;
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&mocho));
 
-			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&verb));
-
-			if (verb > VERB_HIGH)   verb = VERB_HIGH;
- 			if (verb > VERB_DEBUG)   verb = VERB_DEBUG;
-			if (verb < VERB_SILENT) verb = VERB_SILENT;
+			if (mocho > VERB_HIGH)   verb = VERB_HIGH;
+ 			if (mocho > VERB_DEBUG)  verb = VERB_DEBUG;
+			if (mocho < VERB_SILENT) verb = VERB_SILENT;
 
 			i++;
 			procArgs++;
@@ -1033,6 +1034,22 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--extrav"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the initial redshift.\n");
+				exit(1);
+			}
+
+			icdatst.extrav = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--zf"))
 		{
 			if (i+1 == argc)
@@ -1236,7 +1253,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			mode0 = atof(argv[i+1]);
+			mode0 = atof(argv[i+1]); //obsolete
+			icdatst.mode0 =  atof(argv[i+1]);
 
 			i++;
 			procArgs++;
@@ -1591,6 +1609,16 @@ int	parseArgs (int argc, char *argv[])
 				cType = CONF_TKACHEV; // legacy
 				icdatst.cType = CONF_TKACHEV;
 			}
+			else if (!strcmp(argv[i+1], "lola"))
+			{
+				cType = CONF_LOLA; // legacy
+				icdatst.cType =  CONF_LOLA;
+			}
+			else if (!strcmp(argv[i+1], "cole"))
+			{
+				cType = CONF_COLE; // legacy
+				icdatst.cType =  CONF_COLE;
+			}
 			else
 			{
 				printf("Error: Unrecognized configuration type %s\n", argv[i+1]);
@@ -1648,6 +1676,10 @@ int	parseArgs (int argc, char *argv[])
 			{
 				smvarType = CONF_AX1MODE; //legacy
 				icdatst.smvarType = CONF_AX1MODE;
+			}
+			else if (!strcmp(argv[i+1], "parres"))
+			{
+				icdatst.smvarType = CONF_PARRES;
 			}
 			else
 			{
@@ -2069,7 +2101,7 @@ if (icdatst.cType == CONF_SMOOTH )
 		logMpi = ZERO_RANK;
 
 		/* Adjust time of initial conditions if --vilgor used */
-	if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS))
+	if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
 			{
 				if (uLogi && uZin) {
 					printf("Error: zi and logi given for vilgor initial conditions\n ");

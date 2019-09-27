@@ -148,6 +148,8 @@
 			CONF_VILGORS    = 16,
 			CONF_TKACHEV    = 32,
 			CONF_READ       = 64,
+			CONF_LOLA       = 128, // Clean VILGOR
+			CONF_COLE       = 256,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -161,6 +163,7 @@
 			CONF_AXNOISE      = 5,
 			CONF_SAXNOISE     = 6,
 			CONF_AX1MODE      = 7,
+			CONF_PARRES       = 8,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
@@ -170,6 +173,9 @@
 			MOM_MVSINCOS = 2,  // Tkachev sinc into M and its derivative into V
 			MOM_MEXP     = 4,  // Gaussian with exp(-k/k_c) mean amplitude
 			MOM_MEXP2    = 8,  // Gaussian with exp(-(k/k_c)^2) mean amplitude
+			MOM_COLE     = 16,  // 1/sqrt(1+kt2) EXP
+			MOM_KK       = 1024, 	// extra momentum factor
+			MOM_KCOLE   = 1040,  //
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -563,11 +569,20 @@
 			double        zi;
 			double        logi;
 			double        kickalpha;
+			double        extrav;
 			ConfType      cType;
 			ConfsubType   smvarType;
-			MomConfType   momConf;
+			MomConfType   mocoty;
 		}	IcData;
 
+		typedef	struct	MomParms_v
+		{
+			size_t        kMax;
+			double        kCrt;
+			MomConfType   mocoty;
+			double        mass2;
+			FieldType     ftype;
+		}	MomParms;
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__

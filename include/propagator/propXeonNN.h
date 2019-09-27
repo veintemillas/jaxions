@@ -471,7 +471,7 @@ tmp = opCode(sub_pd,
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
 		// LogOut("[prop] Ng %d Lz %d\n",Ng,sizeZ); // The Ng defition reaches here from parse.h
-// LogOut("[prop] zM %d bY %d\n",zM,bY); // tuned chunks
+LogMsg(VERB_DEBUG,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)

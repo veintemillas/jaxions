@@ -912,11 +912,12 @@ def gm(address,something='summary',printerror=False):
         N = f.attrs[u'Size']
         ct = f.attrs[u'z']
         if (something == 'mapmC') and (ftype == 'Saxion'):
-            return np.reshape(f['map']['m'].value.reshape(N,N,2)) ;
+            # return np.reshape(f['map']['m'].value.reshape(N,N,2)) ;
+            return f['map']['m'].value.reshape(N,N,2) ;
         if (something == 'mapmC') and (ftype == 'Axion'):
             return ;
         if (something == 'mapvC') and (ftype == 'Saxion'):
-            return np.reshape(f['map']['v'].value.reshape(N,N,2)) ;
+            return f['map']['v'].value.reshape(N,N,2) ;
         if (something == 'mapvC') and (ftype == 'Axion'):
             return ;
         if (something == 'maptheta') and (ftype == 'Saxion'):
