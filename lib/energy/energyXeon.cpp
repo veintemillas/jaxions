@@ -549,7 +549,7 @@ if (emask & EN_ENE){
 
 								opCode(store_pd, tmpS, opCode(mul_pd,Frho,Mask));
 								RrhoM  +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-if defined(__AVX__)
+#elif defined(__AVX__)
 								opCode(store_pd, tmpS, opCode(mul_pd,tGx,Mask));
 								GxrhoM += tmpS[0] + tmpS[2];
 								GxthM  += tmpS[1] + tmpS[3];
