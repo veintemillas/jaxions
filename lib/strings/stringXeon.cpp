@@ -805,9 +805,9 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
-			#if	defined(__AVX__) & !defined(__AVX2__)
+			// #if	defined(__AVX__) & !defined(__AVX2__)
 			_MData_ tmp, str;
-			#endif
+			// #endif
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
