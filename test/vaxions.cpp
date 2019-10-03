@@ -191,7 +191,7 @@ int	main (int argc, char *argv[])
 					if (meastype < 0)
 						meastype = defaultmeasType;
 					if (mesi < *axion->zV()){
-						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED");
+						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED",*axion->zV());
 					}
 					else {
 						meas_zlist.push_back(mesi);
