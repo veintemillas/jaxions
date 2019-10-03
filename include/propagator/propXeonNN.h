@@ -458,7 +458,7 @@ tmp = opCode(sub_pd,
 		const size_t YC = (Lx>>1);
 
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zQAux[4]  = { zN, -zN, zN, -zN };
+		const float __attribute__((aligned(Align))) zNAux[4]  = { zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
 #endif
 		const _MData_ zQVec  = opCode(load_ps, zQAux);
