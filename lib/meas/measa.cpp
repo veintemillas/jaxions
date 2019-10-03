@@ -105,8 +105,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	}
 
 	if (measa & MEAS_2DMAP){
-			if(p2dmapo)
+			if(p2dmapo){
+				writeMapHdf5s2 (axiona,sliceprint);
 				writeMapHdf5s (axiona,sliceprint);
+				}
 	}
 
 	//	--------------------------------------------------------------------------

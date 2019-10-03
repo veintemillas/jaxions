@@ -221,6 +221,9 @@ void	enableErrorStack	()
 	mDisabled = false;
 }
 
+
+
+
 void	writeConf (Scalar *axion, int index, const bool restart)
 {
 	hid_t	file_id, mset_id, vset_id, plist_id, chunk_id;
@@ -1661,6 +1664,9 @@ void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 }
+
+
+
 
 void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 {
@@ -3111,6 +3117,10 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 	LogMsg (VERB_NORMAL, "Written %lu bytes", powMax*24);
 }
 
+
+
+
+
 void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 {
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
@@ -3296,9 +3306,184 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize*2);
 }
 
+
+
+
+
 void	writeMapHdf5	(Scalar *axion)
 {
 	writeMapHdf5s	(axion, 0);
+}
+
+
+
+
+
+void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
+{
+	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace, memSpace, dataType;
+	hsize_t	dataSize = axion->DataSize();
+
+	int myRank = commRank();
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+	/* total values to be written */
+	hsize_t total  = slabSz;
+	/* chunk size */
+	hsize_t slab  = sizeN;
+	char mCh[16] = "/mapp/m";
+	char vCh[16] = "/mapp/v";
+
+	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ");
+	LogFlush();
+
+	if (header == false || opened == false)
+	{
+		LogError ("Error: measurement file not opened. Ignoring write request");
+		return;
+	}
+
+	/*	Start profiling		*/
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	if (axion->Field() == FIELD_SAXION) {
+		total *= 2;
+		slab *= 2;
+	}
+
+	if (axion->Precision() == FIELD_DOUBLE) {
+		dataType = H5T_NATIVE_DOUBLE;
+	} else {
+		dataType = H5T_NATIVE_FLOAT;
+	}
+
+	/*	Unfold field before writing configuration	*/
+	//if (axion->Folded())
+	//{
+		int slicenumber = slicenumbertoprint ;
+		if (slicenumbertoprint > axion->Length())
+		{
+			LogMsg (VERB_NORMAL, "[wm2] Sliceprintnumberchanged to 0");
+			slicenumber = 0;
+		}
+		Folder	munge(axion);
+		LogMsg (VERB_NORMAL, "[wm2] If configuration folded, unfold 2D slice");	LogFlush();
+		munge(UNFOLD_SLICEYZ, slicenumber);
+	//}
+
+
+	/*	Create a group for map data if it doesn't exist	*/
+	auto status = H5Lexists (meas_id, "/mapp", H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(meas_id, "/mapp", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(meas_id, "/mapp", H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "[wm2] Group /map exists");
+		} else {
+			LogError ("[wm2] Error: can't check whether group /mapp exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	if ((mapSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
+	{
+		LogError ("[wm2] Fatal error H5Screate_simple");
+		prof.stop();
+		exit (1);
+	}
+
+	// if (myRank != 0) {
+	// 	H5Sselect_none(mapSpace);
+	// }
+
+	/*	Set chunked access and dynamical compression	*/
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("[wm2] Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (chunk_id, 1, &slab) < 0) //slb) < 0)
+	{
+		LogError ("[wm2] Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("[wm2] Fatal error H5Pset_alloc_time");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Create a dataset for map data	*/
+	mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+	commSync();
+
+	if (mSet_id < 0 || vSet_id < 0)
+	{
+		LogError ("Fatal error creating datasets");
+		prof.stop();
+		exit (0);
+	}
+
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+	mSpace = H5Dget_space (mSet_id);
+	vSpace = H5Dget_space (vSet_id);
+	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+
+	if (mSpace < 0 )
+	{
+		LogError ("Fatal error");
+		prof.stop();
+		exit (0);
+	}
+
+	hsize_t partial = total/commSize();
+	for (hsize_t yDim=0; yDim < axion->Depth(); yDim++)
+	{
+		hsize_t offset = (hsize_t) myRank*partial + yDim*slab;
+
+		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+		/*	Write raw data	recall slab = sizeN*2*/
+		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, (static_cast<char *> (axion->mFrontGhost())) +sizeN*yDim*dataSize);
+		auto vErr = H5Dwrite (mSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +sizeN*yDim*dataSize);
+
+		if ((mErr < 0) || (vErr < 0))
+		{
+			LogError ("Error writing dataset");
+			exit(0);
+		}
+	}
+
+	LogMsg (VERB_HIGH, "Write 2D mapp successful");
+
+	/*	Close the dataset	*/
+	H5Dclose (mSet_id);
+	H5Dclose (vSet_id);
+	H5Sclose (mSpace);
+	H5Sclose (vSpace);
+
+	H5Sclose (mapSpace);
+	H5Pclose (chunk_id);
+	H5Gclose (group_id);
+	prof.stop();
+
+	prof.add(std::string("Write Mapp"), 0, 2.e-9*total*dataSize);
+	LogMsg (VERB_NORMAL, "Written %lu bytes", total*dataSize*2);
 }
 
 void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)

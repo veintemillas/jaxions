@@ -90,7 +90,7 @@ void	Folder::unfoldField()
 
 	field->setFolded(false);
  	LogMsg (VERB_HIGH, "[Folder] Field unfolded");
-	
+
 	return;
 }
 
@@ -133,6 +133,68 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 	return;
 }
+
+// unfolds a X=constant slice
+template<typename cFloat>
+void	Folder::unfoldField2DYZ (const size_t sX)
+{
+	if ((sX < 0) || (sX > field->Length()) || field->Device() == DEV_GPU)
+		return;
+
+	cFloat *mg1 = static_cast<cFloat *> (field->mFrontGhost());
+	cFloat *mg2 = static_cast<cFloat *> (field->mBackGhost());
+	cFloat *m  = static_cast<cFloat *> (field->mStart());
+	cFloat *v  = static_cast<cFloat *> (field->vCpu());
+
+	int z0 = 0;
+	size_t zT = field->Depth();
+
+	if (!field->Folded())
+	{
+		LogMsg (VERB_HIGH, "[uf2X] unfoldField2D called in an unfolded configuration, copying data to ghost zones");
+		LogFlush();
+		// memcpy ( m,        &m[(sZ+1)*n2], sizeof(cFloat)*n2);
+		// memcpy (&m[n2+n3], &v[sZ*n2],     sizeof(cFloat)*n2);
+		// in m ghost zone, y is permuted for x and z for y to ease the block saving
+		#pragma omp parallel for schedule(static)
+		for (size_t iy=0; iy < n1; iy++)
+			for (size_t iz=z0; iz < zT ; iz++)
+				{
+					size_t oIdx = iz*n2 + iy*n1 + sX;
+					size_t dIdx =         iz*n1 + iy ;
+					//this copies m into buffer 1
+					mg1[dIdx] = m[oIdx];
+					//this copies v into buffer last
+					mg2[dIdx]	= v[oIdx];
+				}
+		return;
+	}
+
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
+
+	LogMsg (VERB_HIGH, "[uf2X] Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	LogFlush();
+
+	#pragma omp parallel for schedule(static)
+	for (size_t iy=0; iy < n1/shift; iy++)
+		for (size_t sy=0; sy<shift; sy++)
+			for (size_t iz=z0; iz < zT ; iz++)
+			{
+				size_t oIdx = (iz)*n2 + iy*n1*shift + sX*shift + sy;
+				size_t dIdx = iz*n1 + (iy+sy*(n1/shift));
+				//this copies m into buffer 1
+				mg1[dIdx] = m[oIdx];
+				//this copies v into buffer last
+				mg2[dIdx] = v[oIdx];
+			}
+			return;
+
+	LogMsg (VERB_HIGH, "[uf2X] Slice unfolded");
+	LogFlush();
+	return;
+}
+
 
 void	Folder::operator()(FoldType fType, size_t cZ)
 {
@@ -305,6 +367,60 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 			}
 
 			break;
+
+		case	UNFOLD_SLICEYZ:
+
+			setName("Unfold slice YZ");
+			add(0., field->Surf()*field->DataSize()*2.e-9);
+
+			switch(field->Precision())
+			{
+				case	FIELD_DOUBLE:
+
+					switch (field->Field())
+					{
+						case	FIELD_SAXION:
+							unfoldField2DYZ<complex<double>>(cZ);
+							break;
+
+						case	FIELD_AXION_MOD:
+						case	FIELD_AXION:
+						case	FIELD_WKB:
+							unfoldField2DYZ<double>(cZ);
+							break;
+
+						default:
+							break;
+					}
+
+					break;
+
+				case	FIELD_SINGLE:
+
+					switch (field->Field())
+					{
+						case	FIELD_SAXION:
+							unfoldField2DYZ<complex<float>>(cZ);
+							break;
+
+						case	FIELD_AXION_MOD:
+						case	FIELD_AXION:
+						case	FIELD_WKB:
+							unfoldField2DYZ<float>(cZ);
+							break;
+
+						default:
+							break;
+					}
+
+					break;
+
+				default:
+					break;
+			}
+
+			break;
+
 
 		default:
 			LogError ("Unrecognized folding option");

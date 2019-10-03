@@ -57,6 +57,7 @@
 			FOLD_ALL,
 			UNFOLD_ALL,
 			UNFOLD_SLICE,
+			UNFOLD_SLICEYZ,
 		}	FoldType;
 
 		typedef	enum	StringType_s
