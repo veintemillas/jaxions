@@ -3460,7 +3460,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 
 		/*	Write raw data	recall slab = sizeN*2*/
 		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, (static_cast<char *> (axion->mFrontGhost())) +sizeN*yDim*dataSize);
-		auto vErr = H5Dwrite (mSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +sizeN*yDim*dataSize);
+		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +sizeN*yDim*dataSize);
 
 		if ((mErr < 0) || (vErr < 0))
 		{

@@ -94,6 +94,10 @@ void	Folder::unfoldField()
 	return;
 }
 
+
+
+
+
 template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
 void	Folder::unfoldField2D (const size_t sZ)
 {
@@ -133,6 +137,10 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 	return;
 }
+
+
+
+
 
 // unfolds a X=constant slice
 template<typename cFloat>

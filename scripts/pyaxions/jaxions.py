@@ -899,6 +899,18 @@ def gm(address,something='summary',printerror=False):
             return np.array(f['pSpectrum/sPmasked2/data/']) ;
 
     # maps
+
+    if (something[0:5] == 'slice'):
+        esp = something[5:]
+        map = esp[:esp.rfind('/')]
+        typ = esp[esp.rfind('/')+1:]
+        mal = np.array(f[map][typ].value)
+        N = f.attrs[u'Size']
+        if len(mal) == N*N*2:
+            return mal.reshape(N,N,2)
+        elif len(mal) == N*N:
+            return mal.reshape(N,N)
+
     map_check = 'map' in f
 
     if (something == 'map?'):
@@ -909,39 +921,42 @@ def gm(address,something='summary',printerror=False):
             print('[gm] Warning: No map in file!. ')
         return ;
     if (something[0:3] == 'map') and  map_check :
+        mapad = 'map'
+        if (something[0:4] == 'mapp') and  map_check :
+            mapad = 'mapp'
         N = f.attrs[u'Size']
         ct = f.attrs[u'z']
-        if (something == 'mapmC') and (ftype == 'Saxion'):
+        if (something == mapad+'mC') and (ftype == 'Saxion'):
             # return np.reshape(f['map']['m'].value.reshape(N,N,2)) ;
-            return f['map']['m'].value.reshape(N,N,2) ;
-        if (something == 'mapmC') and (ftype == 'Axion'):
+            return f[mapad]['m'].value.reshape(N,N,2) ;
+        if (something == mapad+'mC') and (ftype == 'Axion'):
             return ;
-        if (something == 'mapvC') and (ftype == 'Saxion'):
-            return f['map']['v'].value.reshape(N,N,2) ;
-        if (something == 'mapvC') and (ftype == 'Axion'):
+        if (something == mapad+'vC') and (ftype == 'Saxion'):
+            return f[mapad]['v'].value.reshape(N,N,2) ;
+        if (something == mapad+'vC') and (ftype == 'Axion'):
             return ;
-        if (something == 'maptheta') and (ftype == 'Saxion'):
-            temp = np.array(f['map']['m'].value.reshape(N,N,2))
+        if (something == mapad+'theta') and (ftype == 'Saxion'):
+            temp = np.array(f[mapad]['m'].value.reshape(N,N,2))
             temp = np.arctan2(temp[:,:,1], temp[:,:,0])
             return temp ;
-        if (something == 'maptheta') and (ftype == 'Axion'):
-            temp = np.array(f['map']['m'].value.reshape(N,N))
+        if (something == mapad+'theta') and (ftype == 'Axion'):
+            temp = np.array(f[mapad]['m'].value.reshape(N,N))
             return temp/scaleFactorR ;
-        if (something == 'mapvheta') and (ftype == 'Axion'):
-            temp = np.array(f['map']['v'].value.reshape(N,N))
+        if (something == mapad+'vheta') and (ftype == 'Axion'):
+            temp = np.array(f[mapad]['v'].value.reshape(N,N))
             return temp ;
-        if (something == 'maprho') and (ftype == 'Saxion'):
-            temp = np.array(f['map']['m'].value.reshape(N,N,2))
+        if (something == mapad+'rho') and (ftype == 'Saxion'):
+            temp = np.array(f[mapad]['m'].value.reshape(N,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
 
         if (something == 'mapE'):
             if 'map/E' in f:
-                return np.array(f['map']['E'].value.reshape(N,N)) ;
+                return np.array(f[mapad]['E'].value.reshape(N,N)) ;
 
 
         if (something == 'mapEdens') and (ftype == 'Axion'):
-            theta = np.array(f['map']['m'].value.reshape(N,N))/scaleFactorR
+            theta = np.array(f[mapad]['m'].value.reshape(N,N))/scaleFactorR
             massA2 = f.attrs[u'Axion mass']
             massA2 *= massA2
             mapa = massA2*2*np.sin(theta/2)**2
