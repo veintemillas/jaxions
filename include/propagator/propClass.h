@@ -570,6 +570,10 @@
 
 		axion->exchangeGhosts(FIELD_M);
 
+		int nRanks    = commSize();
+		int jobDone   = 0;
+		int jobStatus = 0;
+
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 
@@ -583,64 +587,54 @@
 			bool sent = false;
 			int loopnumber = 0;
 			axion->gReset();
-// LogOut("loop1 (%d/%d,%d) \n",axion->gSent(),sent,axion->gRecv());
-LogMsg(VERB_DEBUG, "* * * * LOOP1 * * * * (%d/%d,%d)",axion->gSent(),sent,axion->gRecv());
-			while ( (csl < sizeZ-2*Ng) || (bsl < Ng) ) // while the number of slices computed is smaller than Lz
-			{
+
+			while ((csl < sizeZ-2*Ng) || (bsl < Ng)) { // while the number of slices computed is smaller than Lz
 				axion->sendGhosts(FIELD_M, COMM_TESTR);
 				axion->sendGhosts(FIELD_M, COMM_TESTS);
-// LogOut("  >> z %d csl %d bsl %d csl + 2*(bsl) %d (%d/%d,%d)\n",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-LogMsg(VERB_DEBUG,"  >> Z %d csl %d bsl %d csl+2*(bsl) %d (%d/%d,%d)",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-				if (bsl < Ng){ // if there are boundary slices prepare and send
+				if (bsl < Ng) { // if there are boundary slices prepare and send
 
-					if ( !sent ){
+					if (!sent) {
 						prepareGhostKernelXeon<VQcd>(axion->mCpu(), axion->vGhost(), ood2, Lx, bsl, precision);
 						axion->sendGhosts(FIELD_M, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
 						sent = true ;
-// LogOut("  bsl %d sent (gs %d/%d)\n",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"  >>>> not send >>>> bsl %d prepared and sent (gs %d/%d)",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"---> info for slice bsl %d SENT",bsl);
 					}
 
 					axion->sendGhosts(FIELD_M, COMM_TESTR);
-					if ( axion->gRecv() ){
-LogMsg(VERB_DEBUG,"---> info for slice bsl %d RECEIVED",bsl);
-// LogOut("  bsl %d received; computing os0 %d os1 %d\n",bsl,bsl,sizeZ-1-bsl);
-LogMsg(VERB_DEBUG,"  >>>> RECEIVED >>>> bsl %d received; computing os0 %d os1 %d",bsl,bsl,sizeZ-1-bsl);
+					if (axion->gRecv()) {
 						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-// LogOut(">>>>> bsl %d\n",bsl);
-						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock, yBlock, zBlock);
-// LogOut(">>>>> bsl %d\n",sizeZ-bsl-1);
-						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  bsl %d %d done (%d)\n",bsl,sizeZ-bsl);
-LogMsg(VERB_DEBUG,"       bsl %d %d calculated; sent = false",bsl,sizeZ-bsl);
+						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
+						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
 						bsl++ ; // mark next boundary slice for next round
 						sent = false;
-				}}
+					}
+				}
 
 				if (csl < sizeZ-2*Ng) {
 					size_t SC = S*(csl+Ng+1);
-// LogOut(">>>>> csl %d\n",csl+Ng);
-LogMsg(VERB_DEBUG,"  >> CORE UNFINISHED, CALCULATE csl %d",csl+Ng);
 					propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  csl %d done (slice %d)\n",csl,csl+Ng);
-LogMsg(VERB_DEBUG,"                                csl %d done (slice %d)",csl,csl+Ng);
-					csl ++;
-				} else { if (sent) {
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, Waiting for bsl %d... (%d/%d,%d)",bsl,axion->gSent(),sent,axion->gRecv());
-										axion->sendGhosts(FIELD_M, COMM_WAIT,0); }
-										// else
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, nothing to wait for ... continue");
-								}
-LogMsg(VERB_DEBUG,"L1-RANK %d loop %d (bsl/csl,%d/%d)",commRank(),loopnumber,bsl,csl);
-loopnumber++;
-LogFlush();
+					csl++;
+				} else {
+					if (sent)
+					axion->sendGhosts(FIELD_M, COMM_WAIT,0);
+				}
+				loopnumber++;
+
+				/*	Send/receive status to/from all ranks and sync	*/
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
 			}
 
-LogMsg(VERB_DEBUG,"CommSync");
-commSync();
-LogMsg(VERB_DEBUG,"CommSync done");
+			jobDone = 1;
 
+			/*	Get status from all ranks until the job is done and sync at each step	*/
+			do {
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
+			}	while (jobStatus < nRanks);
+
+			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
+
+			jobDone	= 0;	// Reset the status for the next loop
 
 			*z += dz*d1;
 			axion->updateR();
@@ -653,66 +647,53 @@ LogMsg(VERB_DEBUG,"CommSync done");
 			sent = false;
 			loopnumber = 0;
 			axion->gReset();
-// LogOut("loop2\n");
-LogMsg(VERB_DEBUG, "* * * * LOOP2 * * * * (%d/%d,%d)",axion->gSent(),sent,axion->gRecv());
-			while ( (csl < sizeZ-2*Ng) || (bsl < Ng) )
-			{
+
+			while	((csl < sizeZ-2*Ng) || (bsl < Ng)) {
 				axion->sendGhosts(FIELD_M2, COMM_TESTR);
 				axion->sendGhosts(FIELD_M2, COMM_TESTS);
-// LogOut("  >> z %d csl %d bsl %d csl + 2*(bsl) %d (%d/%d,%d)\n",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-LogMsg(VERB_DEBUG,"  >> Z %d csl %d bsl %d csl+2*(bsl) %d (%d/%d,%d)",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-				if (bsl < Ng){ // if there are boundary slices prepare and send
 
-					if ( !sent ){
-					prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
+				if (bsl < Ng) { // if there are boundary slices prepare and send
+
+					if (!sent) {
+						prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
 						axion->sendGhosts(FIELD_M2, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
 						sent = true ;
-// LogOut("  bsl %d sent (gs %d/%d)\n",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"  >>>> not send >>>> bsl %d prepared and sent (gs %d/%d)",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"---> info for slice bsl %d SENT",bsl);
 					}
 
 					axion->sendGhosts(FIELD_M2, COMM_TESTR);
-					if ( axion->gRecv() ){
-// LogMsg(VERB_DEBUG,"---> info for slice bsl %d RECEIVED",bsl);
-// LogOut("  bsl %d received; computing os0 %d os1 %d\n",bsl,bsl,sizeZ-1-bsl);
-LogMsg(VERB_DEBUG,"  >>>> RECEIVED >>>> bsl %d received; computing os0 %d os1 %d",bsl,bsl,sizeZ-1-bsl);
+					if (axion->gRecv()){
 						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-// LogOut(">>>>> bsl %d\n",bsl);
-						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock, yBlock, zBlock);
-// LogOut(">>>>> bsl %d\n",sizeZ-bsl-1);
-						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  bsl %d %d done (%d)\n",bsl,sizeZ-bsl);
-LogMsg(VERB_DEBUG,"       bsl %d %d calculated; sent = false",bsl,sizeZ-bsl);
+						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
+						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
 						bsl++ ; // mark next boundary slice for next round
 						sent = false;
-				}}
+					}
+				}
 
 				if (csl < sizeZ-2*Ng) {
 					size_t SC = S*(csl+Ng+1);
-// LogOut(">>>>> csl %d\n",csl+Ng);
-LogMsg(VERB_DEBUG,"  >> CORE UNFINISHED, CALCULATE csl %d",csl+Ng);
 					propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  csl %d done (slice %d)\n",csl,csl+Ng);
-LogMsg(VERB_DEBUG,"  csl %d done (slice %d)",csl,csl+Ng);
 					csl ++;
-				} else { if (sent) {
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, Waiting for bsl %d... (%d/%d,%d)",bsl,axion->gSent(),sent,axion->gRecv());
-										axion->sendGhosts(FIELD_M2, COMM_WAIT,0); }
-										// else
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, nothing to wait for ... continue");
-								}
-LogMsg(VERB_DEBUG,"L1-RANK %d loop %d (bsl/csl,%d/%d)",commRank(),loopnumber,bsl,csl);
-loopnumber++;
+				} else {
+					if (sent)
+						axion->sendGhosts(FIELD_M2, COMM_WAIT,0);
+				}
+				loopnumber++;
 
-LogFlush();
+				/*	Send/receive status to/from all ranks and sync	*/
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
 			}
 
-LogMsg(VERB_DEBUG,"CommSync");
-commSync();
-LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
+			jobDone = 1;
 
+			/*	Get status from all ranks until the job is done and sync at each step	*/
+			do {
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
+			}	while (jobStatus < nRanks);
 
+			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
 
 			*z += dz*d2;
 			axion->updateR();
