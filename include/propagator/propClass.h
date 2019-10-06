@@ -559,6 +559,10 @@
 		axion->setM2     (M2_DIRTY);
 	}
 
+
+
+
+
 	// Generic saxion propagator N neighbour
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
@@ -586,6 +590,7 @@
 			size_t bsl = 0, csl = 0;  // bsl is current boundary slice
 			bool sent = false;
 			int loopnumber = 0;
+			int wom = 0;
 			axion->gReset();
 
 			while ((csl < sizeZ-2*Ng) || (bsl < Ng)) { // while the number of slices computed is smaller than Lz
@@ -597,21 +602,28 @@
 						prepareGhostKernelXeon<VQcd>(axion->mCpu(), axion->vGhost(), ood2, Lx, bsl, precision);
 						axion->sendGhosts(FIELD_M, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
 						sent = true ;
+LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
 					}
 
 					axion->sendGhosts(FIELD_M, COMM_TESTR);
 					if (axion->gRecv()) {
-						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
-						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
-						bsl++ ; // mark next boundary slice for next round
-						sent = false;
+						if (wom > 1){
+							size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
+	LogMsg(VERB_DEBUG,"[pcNN] RECV bsl %d",bsl);
+							propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
+							propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
+	LogMsg(VERB_DEBUG,"[pcNN] PROP bsl %d",bsl);
+							bsl++ ; // mark next boundary slice for next round
+							sent = false;
+							wom = 0;
+						} else { wom++; }
 					}
 				}
 
 				if (csl < sizeZ-2*Ng) {
 					size_t SC = S*(csl+Ng+1);
 					propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
+LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
 					csl++;
 				} else {
 					if (sent)
@@ -630,8 +642,10 @@
 			do {
 				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 				commSync();
+				loopnumber++;
 			}	while (jobStatus < nRanks);
 
+LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
 
 			jobDone	= 0;	// Reset the status for the next loop
@@ -646,6 +660,7 @@
 			bsl = 0; csl = 0;
 			sent = false;
 			loopnumber = 0;
+			wom = 0;
 			axion->gReset();
 
 			while	((csl < sizeZ-2*Ng) || (bsl < Ng)) {
@@ -658,21 +673,28 @@
 						prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
 						axion->sendGhosts(FIELD_M2, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
 						sent = true ;
+LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
 					}
 
 					axion->sendGhosts(FIELD_M2, COMM_TESTR);
 					if (axion->gRecv()){
-						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
-						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
-						bsl++ ; // mark next boundary slice for next round
-						sent = false;
+						if (wom > 1){
+							size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
+	LogMsg(VERB_DEBUG,"[pcNN] RECV bsl %d",bsl);
+							propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
+							propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
+	LogMsg(VERB_DEBUG,"[pcNN] PROP bsl %d",bsl);
+							bsl++ ; // mark next boundary slice for next round
+							sent = false;
+							wom = 0;
+						} else {wom++;}
 					}
 				}
 
 				if (csl < sizeZ-2*Ng) {
 					size_t SC = S*(csl+Ng+1);
 					propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
+LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
 					csl ++;
 				} else {
 					if (sent)
@@ -691,8 +713,10 @@
 			do {
 				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 				commSync();
+				loopnumber++;
 			}	while (jobStatus < nRanks);
 
+LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
 
 			*z += dz*d2;
@@ -716,6 +740,10 @@
 		}
 		axion->setM2     (M2_DIRTY);
 }
+
+
+
+
 
 	// Generic saxion lowmem propagator
 
