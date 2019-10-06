@@ -80,6 +80,24 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 		const double damp2 = (1.-mola)*damp1;
 		const double epsi = mola/(1.+mola);
 
+		double CO[5] = {0, 0, 0, 0, 0} ;
+		if (Ng == 0) {
+			return;
+		}	else if (Ng == 1) {
+			CO[0] = 1.  ;
+		}	else if (Ng == 2) {
+			CO[0] = 4./3.; CO[1] = -1./12.;
+		} else if (Ng == 3) {
+			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
+		} else if (Ng == 4) {
+			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
+		} else if (Ng == 5) {
+			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
+	 	}
+		_MData_ COV[5];
+		for (size_t nv = 0; nv < Ng ; nv++)
+			COV[nv]  = opCode(set1_pd, CO[nv]*ood2);
+
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -116,11 +134,12 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
+LogMsg(VERB_PARANOID,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
 		  {
-		    _MData_ tmp, mel, mPx, mPy, mMx;
+		    _MData_ tmp, mel, mPx, mPy, mMx, lap;
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
 		     for (uint yy = 0; yy < bSizeY; yy++) {
@@ -128,35 +147,38 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
-			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
+			size_t idxb = yC*XC + xC;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
 			if (idx >= Vf)
 				continue;
+
+			X[0] = xC;
+			X[1] = yC;
+
+			idxP0 =  (idx << 1);
+			idxV0 = ((idx-Sf) << 1);
+			mel = opCode(load_pd, &m[idxP0]);
+			lap = opCode(set1_pd, 0.0);
+
+			for (size_t nv=1; nv < Ng+1; nv++)
 			{
-				//size_t tmi = idx/XC, itp;
 
-				//itp = tmi/YC;
-				//X[1] = tmi - itp*YC;
-				//X[0] = idx - tmi*XC;
-				X[0] = xC;
-				X[1] = yC;
-			}
+				if (X[0] < nv*step)
+					idxMx = ((idx + XC - nv*step) << 1);
+				else
+					idxMx = ((idx - nv*step) << 1);
+				//x+
+				if (X[0] + nv*step >= XC)
+					idxPx = ((idx - XC + nv*step) << 1);
+				else
+					idxPx = ((idx + nv*step) << 1);
 
-			if (X[0] == XC-step)
-				idxPx = ((idx - XC + step) << 1);
-			else
-				idxPx = ((idx + step) << 1);
-
-			if (X[0] == 0)
-				idxMx = ((idx + XC - step) << 1);
-			else
-				idxMx = ((idx - step) << 1);
-
-			if (X[1] == 0)
-			{
-				idxMy = ((idx + Sf - XC) << 1);
-				idxPy = ((idx + XC) << 1);
+				if (X[1] < nv )
+					{
+					idxMy = ((idx + Sf - nv*XC) << 1);
+					idxPy = ((idx + nv*XC) << 1);
 #if	defined(__AVX512F__)
 				tmp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), opCode(load_pd, &m[idxPy]));
 #elif	defined(__AVX__)
@@ -165,14 +187,14 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 #else
 				tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
 #endif
-			}
-			else
-			{
-				idxMy = ((idx - XC) << 1);
-
-				if (X[1] == YC-1)
+				}
+				else
 				{
-					idxPy = ((idx - Sf + XC) << 1);
+					idxMy = ((idx - nv*XC) << 1);
+
+					if (X[1] + nv >= YC)
+					{
+						idxPy = ((idx + nv*XC - Sf) << 1);
 #if	defined(__AVX512F__)
 					tmp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX__)
@@ -181,19 +203,40 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 #else
 					tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
 #endif
+					}
+					else
+					{
+						idxPy = ((idx + nv*XC) << 1);
+						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+					}
+			}// end Y+Y-
+
+				// add X+ X-
+				tmp = opCode(add_pd,tmp,opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])));
+				tmp = opCode(add_pd,tmp,opCode(mul_pd, mel,opCode(set1_pd, -6.0)));
+
+				if (zC < nv)
+				{
+					idxPz = ((idx+nv*Sf) << 1);
+					tmp = opCode(add_pd,tmp,opCode(load_pd, &m[idxPz]));
+				}
+				else if (zC + nv > sizeZ+1)
+				{
+					idxMz = ((idx-nv*Sf) << 1);
+					tmp = opCode(add_pd,tmp,opCode(load_pd, &m[idxMz]));
 				}
 				else
 				{
-					idxPy = ((idx + XC) << 1);
-					tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+					idxPz = ((idx+nv*Sf) << 1);
+					idxMz = ((idx-nv*Sf) << 1);
+					tmp = opCode(add_pd,tmp,opCode(add_pd,opCode(load_pd, &m[idxMz]),opCode(load_pd, &m[idxPz])));
 				}
-			}
 
-			idxPz = ((idx+Sf) << 1);
-			idxMz = ((idx-Sf) << 1);
-			idxP0 = (idx << 1);
+				tmp = opCode(mul_pd,tmp, COV[nv-1]);
+				lap = opCode(add_pd,lap,tmp);
 
-			mel = opCode(load_pd, &m[idxP0]);
+			} //end neighbour loop nv
+
 			mPy = opCode(mul_pd, mel, mel);
 
 #if	defined(__AVX512F__)
@@ -203,53 +246,30 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 #else
 			mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
-			switch	(VQcd & VQCD_TYPE) {
 
+			switch	(VQcd & VQCD_TYPE) {
 				default:
 				case	VQCD_1:
 				mMx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
-						zQVec),
+					opCode(add_pd, lap, zQVec),
 					opCode(mul_pd,
 						opCode(mul_pd,
 							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
 							opCode(set1_pd, LL)),
-						mel));
+											 mel));
 				break;
 
 				case	VQCD_1_PQ_2:
 				mMx = opCode(sub_pd,
-					opCode(add_pd,
+					opCode(add_pd, lap, zQVec),
 						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
-						zQVec),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
-							opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-						mel));
-				break;
+							opCode(mul_pd,
+								opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
+								opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
+							mel));
+				 break;
 
+				//FIX ME ADDITIONAL POTENTIALS!
 				case	VQCD_2:
 				mMx = opCode(sub_pd,
 					opCode(sub_pd,
@@ -440,7 +460,6 @@ tmp = opCode(sub_pd,
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
-
 		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
 
@@ -471,7 +490,7 @@ tmp = opCode(sub_pd,
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
 		// LogOut("[prop] Ng %d Lz %d\n",Ng,sizeZ); // The Ng defition reaches here from parse.h
-LogMsg(VERB_DEBUG,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
+LogMsg(VERB_PARANOID,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
