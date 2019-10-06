@@ -458,9 +458,11 @@ int	parseArgs (int argc, char *argv[])
 			int mocho;
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&mocho));
 
-			if (mocho > VERB_HIGH)   verb = VERB_HIGH;
- 			if (mocho > VERB_DEBUG)  verb = VERB_DEBUG;
-			if (mocho < VERB_SILENT) verb = VERB_SILENT;
+			if (mocho > VERB_HIGH)      verb = VERB_HIGH;
+ 			if (mocho > VERB_DEBUG)     verb = VERB_DEBUG;
+			if (mocho > VERB_PARANOID)  verb = VERB_PARANOID;
+			if (mocho < VERB_SILENT)    verb = VERB_SILENT;
+
 
 			i++;
 			procArgs++;
