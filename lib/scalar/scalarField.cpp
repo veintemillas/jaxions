@@ -571,7 +571,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) from slice=%lu (value of Ng in scalar %d)",opComm, Nng, Ng);LogFlush();
+LogMsg(VERB_PARANOID,"[sca] Called send Ghosts (COMM %d) with slice=%lu (value of Ng in scalar %d)",opComm, Nng, Ng);LogFlush();
 	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
 
 	if (fIdx & FIELD_M)
@@ -579,7 +579,7 @@ LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) from slice=%lu (value of N
 		if (Nng > 0){
 			sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2*Nng); 				//slice to be send back
 			sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n2*(Lz+1-Nng));	//slice to be send forw
-LogMsg(VERB_DEBUG,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
+LogMsg(VERB_PARANOID,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
 		} else {
 			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
 			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
@@ -604,7 +604,7 @@ LogMsg(VERB_DEBUG,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
 	switch	(opComm)
 	{
 		case	COMM_SEND:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] SEND");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
 			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 
@@ -615,7 +615,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] SEND");
 			break;
 
 		case	COMM_RECV:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] RECV");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
 			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
 
@@ -625,7 +625,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] RECV");
 			break;
 
 		case	COMM_SDRV:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] SDRV");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
 			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
 			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
@@ -647,7 +647,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] SDRV");
 		if (flag1 * flag2)
 			gsent = true;
 		else  gsent = false ;
-LogMsg(VERB_DEBUG,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
+LogMsg(VERB_PARANOID,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
 		}
 		break;
 
@@ -659,12 +659,12 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pe
 		if (flag1 * flag2)
 			grecv = true;
 		else  grecv = false;
-LogMsg(VERB_DEBUG,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
+LogMsg(VERB_PARANOID,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
 		}
 		break;
 
 	case	COMM_WAIT:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] WAIT");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 		MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
 		MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
 		MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
@@ -675,7 +675,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] WAIT");
 		MPI_Request_free(&rSendBck);
 		MPI_Request_free(&rRecvFwd);
 		MPI_Request_free(&rRecvBck);
-LogMsg(VERB_DEBUG,"[COMM_TESTS] FREE");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 		break;
 
 	}
@@ -683,7 +683,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] FREE");
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
-LogMsg(VERB_DEBUG,"[sca] Exchange Ghosts");LogFlush();
+LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts");LogFlush();
 	recallGhosts(fIdx);
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);
