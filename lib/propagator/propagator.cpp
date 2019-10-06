@@ -285,6 +285,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 
 	//auto pot  = field->BckGnd()->QcdPot();
 	//auto gm   = field->BckGnd()->Gamma ();
+	LogMsg(VERB_NORMAL,"\n");
  	LogMsg(VERB_NORMAL,"[ip] Init propagator\n");
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
@@ -482,9 +483,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 			exit(1);
 			break;
 	}
-	if (debug) LogOut("[ip] getBaseName\n");
+	LogMsg(VERB_HIGH,"[ip] getBaseName");
 	prop->getBaseName();
-	if (debug) LogOut("[ip] set blocks\n");
+	LogMsg(VERB_HIGH,"[ip] set blocks");
 
 	if (wasTuned) {
 		prop->SetBlockX(xBlock);
@@ -556,7 +557,7 @@ LogFlush();
 void	resetPropagator(Scalar *field) {
 	/*	Default block size gives just one block	*/
 
-	LogMsg(VERB_NORMAL,"[tp] reseting!\n");
+	LogMsg(VERB_NORMAL,"[tp] reseting!");
 	if (pType & PROP_SPEC)
 		return;
 	if (pType & PROP_FSPEC)
@@ -583,7 +584,7 @@ void	resetPropagator(Scalar *field) {
 
 void	tunePropagator (Scalar *field) {
 	// Hash CPU model so we don't mix different cache files
-
+	LogMsg(VERB_NORMAL,"\n");
  	LogMsg(VERB_NORMAL,"[tp] tunning!\n");
 	if (pType & PROP_SPEC)
 		return;
@@ -610,23 +611,30 @@ void	tunePropagator (Scalar *field) {
 	LogMsg (VERB_HIGH, "Started tuner");
 	prof.start();
 
-	if (debug) LogOut("[tp] start tuna!\n");
-
 	if (field->Device() == DEV_CPU)
 		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
 	else
 		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign(), true);
 
 	/*	Check for a cache file	*/
-	if (debug) LogOut("[tp] cache?!\n");
 
 	if (myRank == 0) {
 		FILE *cacheFile;
 		char tuneName[2048];
-		sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		// if (pType == PROP_BASE)
+		// 	sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		// else if (pType == PROP_NNEIG)
+		// 	sprintf (tuneName, "%s/tuneCache%d.dat", wisDir,field->getNg());
+		if (pType & PROP_BASE)
+			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		else if (pType & PROP_NNEIG){
+			LogMsg(VERB_HIGH,"%01d",field->getNg());
+			sprintf (tuneName, "%s/tuneCache%01d.dat", wisDir,field->getNg());
+			LogMsg(VERB_HIGH,"%s",tuneName);
+			}
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
-			if (debug) LogOut("[tp] new cache!!\n");
-			LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
+LogMsg(VERB_HIGH,"[tp] new cache!!");
+LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
 			newFile = true;
 		} else {
 			int	     rMpi, rThreads;
@@ -638,32 +646,32 @@ void	tunePropagator (Scalar *field) {
 
 			do {
 				fscanf (cacheFile, "%s %d %d %lu %lu %u %u %u %u\n", reinterpret_cast<char*>(&mDev), &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
-if (debug) LogOut("[tp] string?!\n");
+LogMsg(VERB_HIGH,"[tp] string?!\n");
 				std::string fDev(mDev);
-if (debug) LogOut("[tp] commi!! %d, %d, (%d,%d) (%d,%d,%d)  \n",rMpi, rThreads, rLx, rLz, rBx, rBy, rBz);
+LogMsg(VERB_HIGH,"[tp] commi!! %d, %d, (%d,%d) (%d,%d,%d)  ",rMpi, rThreads, rLx, rLz, rBx, rBy, rBz);
 				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev) {
 					if ((field->Device() == DEV_CPU && (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth())) ||
 					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
 						found = true;
-if (debug) LogOut("[tp] X!!\n");
+LogMsg(VERB_HIGH,"[tp] X!!");
 						prop->SetBlockX(rBx);
-if (debug) LogOut("[tp] Y!!\n");
+LogMsg(VERB_HIGH,"[tp] Y!!");
 						prop->SetBlockY(rBy);
-if (debug) LogOut("[tp] Z!!\n");
+LogMsg(VERB_HIGH,"[tp] Z!!");
 						prop->SetBlockZ(rBz);
-if (debug) LogOut("[tp] ups!!\n");
+LogMsg(VERB_HIGH,"[tp] ups!!");
 						prop->UpdateBestBlock();
 					}
-if (debug) LogOut("[tp] lara!!\n");
+LogMsg(VERB_HIGH,"[tp] lara!!");
 				}
-if (debug) LogOut("[tp] no ups!!\n");
+LogMsg(VERB_HIGH,"[tp] no ups!!");
 			}	while(!feof(cacheFile) && !found);
-if (debug) LogOut("[tp] feof!!\n");
+LogMsg(VERB_HIGH,"[tp] feof!!");
 			fclose (cacheFile);
-if (debug) LogOut("[tp] closed!!\n");
+LogMsg(VERB_HIGH,"[tp] closed!!");
 		}
 	}
-	if (debug) printf("[tp] BCAST!\n");
+	LogMsg(VERB_HIGH,"[tp] BCAST!");
 
 	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
 
@@ -788,7 +796,14 @@ if (debug) LogOut("[tp] closed!!\n");
 	if (myRank == 0) {
 		FILE *cacheFile;
 		char tuneName[2048];
-		sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		// sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		if (pType & PROP_BASE)
+			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+		else if (pType & PROP_NNEIG){
+			LogMsg(VERB_HIGH,"%01d",field->getNg());
+			sprintf (tuneName, "%s/tuneCache%01d.dat", wisDir,field->getNg());
+			LogMsg(VERB_HIGH,"%s",tuneName);
+			}
 
 		// We distinguish between opening and appending a new line
 		if (!newFile) {
