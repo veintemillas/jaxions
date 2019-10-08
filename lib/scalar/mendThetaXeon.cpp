@@ -64,22 +64,21 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 		#pragma omp parallel default(shared) reduction(+:count)
 		{
-			size_t	idx, idxPx, idxVx;
+			size_t	idx, idxPx;
 			_MData_ mel, mDf, mDc, mDp, mDm, mPx, vPx;
 
 			/*	Collapse loops so OpenMP handles the plane YZ	*/
 			#pragma omp for collapse(2) schedule(static)
-			for (size_t zSl = 1; zSl <= Lz; zSl++)
+			for (size_t zSl = 0; zSl < Lz; zSl++)
 				for (size_t yLn = 0; yLn < YC; yLn++) {
 					/*	Bulk loop in X	*/
 					for(size_t xPt = 0; xPt < XC-step; xPt += step) {
 						idx   = zSl*Sf + yLn*XC + xPt;
 						idxPx = idx + step;
-						idxVx = idxPx - Sf;
 
 						mel = opCode(load_pd, &m[idx]);
 						mPx = opCode(load_pd, &m[idxPx]);
-						vPx = opCode(load_pd, &v[idxVx]);
+						vPx = opCode(load_pd, &v[idxPx]);
 
 						/*	X-Direction	*/
 
@@ -147,7 +146,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 #endif	// AVX and SSE4.1
 
 						opCode(store_pd, &m[idxPx], mPx);
-						opCode(store_pd, &v[idxVx], vPx);
+						opCode(store_pd, &v[idxPx], vPx);
 					}
 
 					/*	Boundary	*/
@@ -189,22 +188,21 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 		#pragma omp parallel default(shared) reduction(+:count)
 		{
-			size_t	idx, idxPx, idxVx;
+			size_t	idx, idxPx;
 			_MData_ mel, mDf, mDc, mDp, mDm, mPx, vPx;
 
 			/*	Collapse loops so OpenMP handles the plane YZ	*/
 			#pragma omp for collapse(2) schedule(static)
-			for (size_t zSl = 1; zSl <= Lz; zSl++) {
+			for (size_t zSl = 0; zSl < Lz; zSl++) {
 				for (size_t yLn = 0; yLn < YC; yLn++) {
 					/*	Bulk loop in X	*/
 					for(size_t xPt = 0; xPt < XC-step; xPt += step) {
 						idx   = zSl*Sf + yLn*XC + xPt;
 						idxPx = idx + step;
-						idxVx = idxPx - Sf;
 
 						mel = opCode(load_ps, &m[idx]);
 						mPx = opCode(load_ps, &m[idxPx]);
-						vPx = opCode(load_ps, &v[idxVx]);
+						vPx = opCode(load_ps, &v[idxPx]);
 
 						/*	X-Direction	*/
 						mDf  = opCode(sub_ps, mPx, mel);
@@ -276,7 +274,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						}
 #endif
 						opCode(store_ps, &m[idxPx], mPx);
-						opCode(store_ps, &v[idxVx], vPx);
+						opCode(store_ps, &v[idxPx], vPx);
 					}
 				}
 			}
@@ -471,15 +469,15 @@ size_t	mendThetaXeon (Scalar *field)
 
 	switch (field->Precision()) {
 		case	FIELD_DOUBLE:
-		tJmp += mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
-		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
-		tJmp += mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		tJmp += mendThetaLine(static_cast<double*>(field->mStart()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
+		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mStart()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		case	FIELD_SINGLE:
-		tJmp += mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
-		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
-		tJmp += mendThetaKernelXeon(field->mCpu(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		tJmp += mendThetaLine(static_cast<float *>(field->mStart()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
+		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mStart()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		default:

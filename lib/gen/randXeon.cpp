@@ -25,7 +25,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 
 	const size_t Lx = field->Length();
 	const size_t Sf = field->Surf();
-	const size_t V = field->Size();
+	const size_t V  = field->Size();
+	
 	/* used from ic */
 	double mod0  = ic.mode0;
 	double kCri  = ic.kcr;

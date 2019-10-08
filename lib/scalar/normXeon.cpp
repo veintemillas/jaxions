@@ -16,8 +16,7 @@ void	normXeon (Scalar *sField, FieldIndex fIdx)
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = static_cast<complex<double>*> (sField->mCpu());
-				vol = sField->eSize();
+				field = static_cast<complex<double>*> (sField->mStart());
 				break;
 
 				case FIELD_V:
@@ -31,7 +30,6 @@ void	normXeon (Scalar *sField, FieldIndex fIdx)
 				}
 
 				field = static_cast<complex<double>*> (sField->m2Cpu());
-				vol = sField->eSize();
 				break;
 
 				default:
@@ -58,8 +56,7 @@ void	normXeon (Scalar *sField, FieldIndex fIdx)
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = static_cast<complex<float> *> (sField->mCpu());
-				vol = sField->eSize();
+				field = static_cast<complex<float> *> (sField->mStart());
 				break;
 
 				case FIELD_V:
@@ -73,7 +70,6 @@ void	normXeon (Scalar *sField, FieldIndex fIdx)
 				}
 
 				field = static_cast<complex<float> *> (sField->m2Cpu());
-				vol = sField->eSize();
 				break;
 
 				default:

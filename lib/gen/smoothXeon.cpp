@@ -52,8 +52,7 @@ void	iteraXeon (const complex<Float> * __restrict__ mCp, complex<Float> * __rest
 		iPz = idx + S;
 		iMz = idx - S;
 		//Uses v to copy the smoothed configuration
-		vCp[idx]   = alpha*mCp[idx+S] + OneSixth*(One-alpha)*(mCp[iPx+S] + mCp[iMx+S] + mCp[iPy+S] + mCp[iMy+S] + mCp[iPz+S] + mCp[iMz+S]);
-		//vCp[idx]   = vCp[idx]/abs(vCp[idx]);
+		vCp[idx]   = alpha*mCp[idx] + OneSixth*(One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
 	}
 
 }
@@ -67,8 +66,8 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		case	FIELD_DOUBLE:
 		for (size_t it=0; it<iter; it++)
 		{
-			iteraXeon (static_cast<const complex<double>*>(field->mCpu()), static_cast<complex<double>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), alpha);
-			memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*field->Surf(), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
+			iteraXeon (static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), alpha);
+			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
 			field->exchangeGhosts(FIELD_M);
 		}
 		break;
@@ -76,8 +75,8 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		case	FIELD_SINGLE:
 		for (size_t it=0; it<iter; it++)
 		{
-			iteraXeon (static_cast<const complex<float>*>(field->mCpu()), static_cast<complex<float>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
-			memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*field->Surf(), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
+			iteraXeon (static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
+			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
 			field->exchangeGhosts(FIELD_M);
 		}
 		break;

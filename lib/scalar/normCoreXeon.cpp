@@ -26,7 +26,7 @@ void normCoreKernelXeon (Scalar *field)
 
 	field->exchangeGhosts(FIELD_M);
 
-	complex<Float> *mCp = static_cast<complex<Float>*> (field->mCpu());
+	complex<Float> *mCp = static_cast<complex<Float>*> (field->mStart());
 	complex<Float> *vCp = static_cast<complex<Float>*> (field->vCpu());
 
 	#pragma omp parallel for default(shared) schedule(static)
@@ -70,17 +70,17 @@ void normCoreKernelXeon (Scalar *field)
 		iPz = idx + n2;
 		iMz = idx - n2;
 
-		gradx = imag((mCp[iPx+n2] - mCp[idx+n2])/mCp[idx+n2]);
+		gradx = imag((mCp[iPx] - mCp[idx])/mCp[idx]);
 		gradtot = gradx*gradx ;
-		gradx = imag((mCp[idx+n2] - mCp[iMx+n2])/mCp[idx+n2]);
+		gradx = imag((mCp[idx] - mCp[iMx])/mCp[idx]);
 		gradtot += gradx*gradx ;
-		grady = imag((mCp[iPy+n2] - mCp[idx+n2])/mCp[idx+n2]);
+		grady = imag((mCp[iPy] - mCp[idx])/mCp[idx]);
 		gradtot += grady*grady ;
-		grady = imag((mCp[idx+n2] - mCp[iMy+n2])/mCp[idx+n2]);
+		grady = imag((mCp[idx] - mCp[iMy])/mCp[idx]);
 		gradtot += grady*grady ;
-		gradz = imag((mCp[iPz+n2] - mCp[idx+n2])/mCp[idx+n2]);
+		gradz = imag((mCp[iPz] - mCp[idx])/mCp[idx]);
 		gradtot += gradz*gradz ;
-		gradz = imag((mCp[idx+n2] - mCp[iMz+n2])/mCp[idx+n2]);
+		gradz = imag((mCp[idx] - mCp[iMz])/mCp[idx]);
 		gradtot += gradz*gradz ;
 
 		//JAVIER added an artificial factor of 2.0, can be changed
@@ -109,7 +109,7 @@ void normCoreKernelXeon (Scalar *field)
 			//printf("shock!");
 			rhof = 1.0 ;
 		}
-		vCp[idx] = mCp[idx+n2]*rhof/abs(mCp[idx+n2]);
+		vCp[idx] = mCp[idx]*rhof/abs(mCp[idx]);
 
 		//if(idx % sizeN*sizeN*10 == 0)
 		//{
@@ -119,7 +119,7 @@ void normCoreKernelXeon (Scalar *field)
 	}
 
 	//Copies v to m
-	memcpy (static_cast<char *>(field->mCpu()) + field->DataSize()*n2, field->vCpu(), field->DataSize()*n3);
+	memcpy (static_cast<char *>(field->mStart()), field->vCpu(), field->DataSize()*n3);
 	field->exchangeGhosts(FIELD_M);
 
 	commSync();

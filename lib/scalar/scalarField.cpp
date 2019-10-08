@@ -37,15 +37,15 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType)
-		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp),
-		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Nghost)
+		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2*Nghost), v3(nLx*nLx*(nLz + 2*Nghost)), nSplit(nSp),
+		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem), Ng(Nghost)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	prof.start();
 
-	size_t nData;
+	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar called with Ng = %d",Nghost);
 
 	if (cm == nullptr) {
 		LogError("Error: no cosmological background defined!. Will exit with errors.");
@@ -54,8 +54,10 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
+	size_t nData;
 	bckgnd = cm;
 	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
+
 
 	LogMsg(VERB_NORMAL,"[sca] ZThRes  () %f",cm->ZThRes  ());
 	LogMsg(VERB_NORMAL,"[sca] ZRestore() %f",cm->ZRestore());
@@ -95,7 +97,6 @@ const std::complex<float> If(0.,1.);
 	vmomspace 	 = false;
 	gsent = false;
 	grecv = false;
-	Ng = -1;
 
 	switch (fieldType)
 	{
@@ -164,10 +165,7 @@ const std::complex<float> If(0.,1.);
 	}
 
 	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = v3*fSize;
-
-	// MODIFIED BY JAVI
-	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
+	const size_t	vBytes = (n2*(nLz + 2))*fSize;
 
 	switch (fieldType)
 	{
@@ -184,12 +182,9 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AX_RD:
 		case FIELD_WKB:
 			str = nullptr;
-			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
-			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
-			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
 			//this allocates a slightly larger v to host FFTs in place
-			alignAlloc ((void**) &m, mAlign, 2*mBytes);
-			v = static_cast<void *>(static_cast<char *>(m) + fSize*(2*n2 + n3));
+			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
+			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
 			break;
 
 		default:
@@ -270,11 +265,9 @@ const std::complex<float> If(0.,1.);
 	}
 
 	memset (m, 0, fSize*v3);
-	// changed from memset (v, 0, fSize*n3);
-	memset (v, 0, fSize*v3);
+	memset (v, 0, fSize*(n2*(nLz + 2)));
 
 	commSync();
-
 
 	alignAlloc ((void **) &z, mAlign, mAlign);
 	alignAlloc ((void **) &R, mAlign, mAlign);
@@ -316,7 +309,7 @@ const std::complex<float> If(0.,1.);
 				exit(1);
 			}
 
-			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*(2*n2 + n3));
+			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*v3);
 		}
 
 		if (!lowmem || (fieldType & FIELD_AXION))
@@ -566,7 +559,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	const int ghostBytes = n2*fSize;
+	const int ghostBytes = Ng*n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
@@ -585,7 +578,7 @@ LogMsg(VERB_PARANOID,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
 			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
 		}
 		rGhostBck = m;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2));
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2*Ng));
 	}
 	else
 	{
@@ -597,7 +590,7 @@ LogMsg(VERB_PARANOID,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
 			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
 		}
 		rGhostBck = m2;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2));
+		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2*Ng));
 	}
 
 
@@ -701,100 +694,13 @@ void	Scalar::setField (FieldType newType)
 	{
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
-			if (fieldType == FIELD_SAXION)
-			{
-				if (!lowmem) {
-					trackFree(m2);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						cudaFree(m2_d);
-					#endif
-				}
-
-				m2 = v;
-				#ifdef	USE_GPU
-				if (device == DEV_GPU)
-					m2_d = v_d;
-				#endif
-
-				switch (precision)
-				{
-					case FIELD_SINGLE:
-					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
-					#endif
-
-					break;
-
-					case FIELD_DOUBLE:
-					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
-					#endif
-
-					break;
-
-					default:
-					LogError ("Wrong precision.");
-					return;
-				}
 
 				fSize /= 2;
 
 				if (device != DEV_GPU)
 					shift *= 2;
 
-//				const size_t	mBytes = v3*fSize;
-
-				//if (lowmem)
-				//AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
-
-				// IF low mem was used before, it creates m2 COMPLEX
-/*				if (lowmem)
-				{
-					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-
-					// Move this to the analysis
-					// AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWD, "pSpectrum");
-
-					#ifdef	USE_GPU
-					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
-					{
-						LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", 2*mBytes);
-						exit(1);
-					}
-					#endif
-
-				} else {
-				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
-					trackFree(m2);
-					m2 = nullptr;
-					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-
-				#ifdef	USE_GPU
-					cudaFree(m2_d);
-				#endif
-
-				#ifdef	USE_GPU
-					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
-					{
-						LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", 2*mBytes);
-						exit(1);
-					}
-				#endif
-				}
-*/
-
-			//FFT for spectrums
-
-			}
-			break;
+		break;
 
 		case	FIELD_SAXION:
 			if (fieldType & FIELD_AXION)
@@ -1059,8 +965,6 @@ double  Scalar::SaxionMassSq  ()
 {
 
 	double lbd   = LambdaP();
-	// if (LambdaT() == LAMBDA_Z2)
-	// 	lbd /= (*RV())*(*RV());
 
 	auto   &pot = bckgnd->QcdPot();
 

@@ -187,6 +187,10 @@ void	ConfGenerator::runGpu	()
 #endif
 }
 
+
+
+
+
 using namespace std;
 using namespace profiler;
 
@@ -530,40 +534,6 @@ void	ConfGenerator::runCpu	()
 
 				memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 				scaleField (axionField, FIELD_M, *axionField->RV());
-
-				// LogMsg (VERB_HIGH, "[GEN] Rescale from phi to conformal field (estimates A1=%f A2=%f)", (3.14*hzi)*(3.14*hzi)*ood2, lTmp*hzi*hzi*hzi*hzi);
-				//
-				// Folder	munge(axionField);
-				// munge(FOLD_ALL);
-				// axionField->exchangeGhosts(FIELD_M);
-				//
-				// switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
-				// 	case	VQCD_1:
-				// 	updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				// 	break;
-				//
-				// 	case	VQCD_2:
-				// 	updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				// 	break;
-				//
-				// 	case	VQCD_1_PQ_2:
-				// 	updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				// 	break;
-				//
-				// 	case	VQCD_1N2:
-				// 	updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				// 	break;
-				//
-				// 	case	VQCD_QUAD:
-				// 	updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-				// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-				// 	break;
-				// }
-				// munge(UNFOLD_ALL);
 			}
 
 			if (preprop) {
@@ -718,7 +688,7 @@ void	ConfGenerator::runCpu	()
 		if (!myCosmos->Mink()) {
 			double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 			double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
-			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mCpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size());
+			memcpy     (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
 			scaleField (axionField, FIELD_M, *axionField->RV());
 
 			auto	   S  = axionField->Surf();
@@ -726,40 +696,6 @@ void	ConfGenerator::runCpu	()
 			auto	   Vo = S;
 			auto	   Vf = V+S;
 			double   hzi = *axionField->zV()/2.;
-
-			// LogMsg (VERB_HIGH, "[GEN] Rescale from phi to conformal field (estimates A1=%f A2=%f)", (3.14*hzi)*(3.14*hzi)*ood2, lTmp*hzi*hzi*hzi*hzi);
-			//
-			// Folder	munge(axionField);
-			// munge(FOLD_ALL);
-			// axionField->exchangeGhosts(FIELD_M);
-			//
-			// switch (axionField->BckGnd()->QcdPot() & VQCD_TYPE) {
-			// 	case	VQCD_1:
-			// 	updateVXeon<VQCD_1>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-			// 	break;
-			//
-			// 	case	VQCD_2:
-			// 	updateVXeon<VQCD_2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-			// 	break;
-			//
-			// 	case	VQCD_1_PQ_2:
-			// 	updateVXeon<VQCD_1_PQ_2>(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-			// 	break;
-			//
-			// 	case	VQCD_1N2:
-			// 	updateVXeon<VQCD_1N2>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-			// 	break;
-			//
-			// 	case	VQCD_QUAD:
-			// 	updateVXeon<VQCD_QUAD>	(axionField->mCpu(), axionField->vCpu(), axionField->RV(), hzi, 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0,
-			// 				 axionField->Length(), Vo, Vf, S, axionField->Precision());
-			// 	break;
-			// }
-			// munge(UNFOLD_ALL);
 
 		}
 	}

@@ -37,7 +37,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 	const size_t Sf = Lx*Lx;
 	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
-
+	const size_t NN = Vo/Sf;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -124,7 +124,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
+				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0, idxV0;
 
 				{
 					size_t tmi = idx/XC;
@@ -132,12 +132,13 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghost zone
+					X[2] -= NN; // remove ghosts
 				}
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
+				idxV0 = (idx - NN*Sf) << 2;
 
 				mel = opCode(load_pd, &m[idxP0]); //Carga m con shift
 
@@ -241,7 +242,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				mPz = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
 				mMz = opCode(sub_pd, mel, opCode(load_pd, &m[idxMz]));
 
-				vel = opCode(load_pd, &v[idxMz]);//Carga v
+				vel = opCode(load_pd, &v[idxV0]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
 
 				mTp = opCode(md2_pd, mod);
@@ -716,12 +717,12 @@ if (emask & EN_ENE){
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 
-				size_t X[3], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+				size_t X[3], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 =  (idx     << 1);
-
+				idxV0 = (idx - NN*Sf) << 2;
 // conformal field value
 				mel = opCode(load_ps, &m[idxP0]);
 
@@ -731,8 +732,9 @@ if (emask & EN_ENE){
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghost zone
+					X[2] -= NN; // Removes ghost zone
 				}
+
 
 // Prepare mask in m2 (only if m2 contains the mask in complex notation)
 // counter to check if some of the entries of the vector is in the mask
@@ -842,7 +844,7 @@ if (emask & EN_ENE){
 				mPz = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
 				mMz = opCode(sub_ps, mel, opCode(load_ps, &m[idxMz]));
 // load field velocity
-				vel = opCode(load_ps, &v[idxMz]);
+				vel = opCode(load_ps, &v[idxV0]);
 // r^2, i^2...
 				mod = opCode(mul_ps, mel, mel);
 // r^2+i^2, r^2+i^2  (m^2)
@@ -1304,7 +1306,7 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 	double *R = field->RV();
 	const size_t Lx = field->Length();
 	const size_t Lz = field->Depth();
-	const size_t Vo = field->Surf();
+	const size_t Vo = field->getNg()*field->Surf();
 	const size_t Vf = Vo + field->Size();
 
 	const bool map  = (mapmask & EN_MAP);

@@ -503,6 +503,10 @@
 		}
 		axion->setM2     (M2_DIRTY);
 	}
+
+
+
+
 	// Generic saxion propagator
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
@@ -511,6 +515,13 @@
 		double *R = axion->RV();
 		double cLmbda ;
 
+		/* Returns ghost size region in slices */
+		size_t NG   = axion->getNg();
+		LogMsg(VERB_DEBUG,"[propSax] Ng %d",NG);
+		/* Size of Boundary */
+		size_t BO = NG*S;
+		/* Size of Core  */
+		size_t CO = V-2*NG*S;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
@@ -523,10 +534,10 @@
 
 			auto maa = axion->AxionMassSq();
 
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*BO, 2*BO+CO, precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO   , precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V   , V+BO   , precision, xBlock, yBlock, zBlock);
 			*z += dz*d1;
 			axion->updateR();
 
@@ -536,10 +547,10 @@
 
 			maa = axion->AxionMassSq();
 
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*BO, 2*BO+CO, precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO   , precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V   , V+BO   , precision, xBlock, yBlock, zBlock);
 			*z += dz*d2;
 			axion->updateR();
 		}
@@ -551,10 +562,10 @@
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*BO  , 2*BO+CO, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, BO , 2*BO , S, precision);
+			updateVXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V , V+BO  , S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 	}
@@ -733,10 +744,10 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 }
@@ -753,6 +764,8 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		double *R = axion->RV();
 		double cLmbda ;
 
+		size_t NG = axion->getNg();
+
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
@@ -761,11 +774,11 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
-			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, S, V + S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, S, V + S, precision);
 			*z += dz*d0;
 			axion->updateR();
 		}
@@ -778,10 +791,10 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
 	}
 

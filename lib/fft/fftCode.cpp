@@ -108,20 +108,21 @@ namespace AxionFFT {
 
 			case	FIELD_SINGLE:
 			{
-				fftwf_complex *m     = static_cast<fftwf_complex*>(axion->mCpu())  + axion->Surf();
+				fftwf_complex *m     = static_cast<fftwf_complex*>(axion->mStart());
 				fftwf_complex *v     = static_cast<fftwf_complex*>(axion->vCpu());
 				fftwf_complex *m2    = static_cast<fftwf_complex*>(axion->m2Cpu());
+				//FIX ME is this m2half? what is this for?
 				fftwf_complex *m2R   = static_cast<fftwf_complex*>(axion->m2Cpu()) + (axion->Size()>>1) + axion->Surf();
 
 				// Power spectrum/spectral propagator in axion when the field was created as saxion
-				float	      *mR    = static_cast<float *>       (axion->vCpu());
+				float	      *mR      = static_cast<float *>       (axion->m2Cpu());
 
 				// Power spectrum in saxion and the other axion cases
-				float	      *mA    = static_cast<float *>       (axion->m2Cpu());
-				float	      *mAR   = static_cast<float *>       (axion->m2Cpu()) +  axion->Size()     + axion->Surf()*2;
+				float	      *mA      = static_cast<float *>       (axion->m2Cpu());
+				float	      *mAR     = static_cast<float *>       (axion->m2Cpu()) +  axion->Size()     + axion->Surf()*2;
 
 				// WKB
-				float	      *mNoGr = static_cast<float *>       (axion->mCpu());
+				float	        *mNoGr = static_cast<float *>       (axion->mCpu());
 				fftwf_complex *mNoGc = static_cast<fftwf_complex*>(axion->mCpu());
 
 				switch	(type) {
@@ -304,13 +305,13 @@ namespace AxionFFT {
 
 			case	FIELD_DOUBLE:
 			{
-				fftw_complex *m     = static_cast<fftw_complex*>(axion->mCpu())  + axion->Surf();
+				fftw_complex *m     = static_cast<fftw_complex*>(axion->mStart());
 				fftw_complex *v     = static_cast<fftw_complex*>(axion->vCpu());
 				fftw_complex *m2    = static_cast<fftw_complex*>(axion->m2Cpu());
 				fftw_complex *m2R   = static_cast<fftw_complex*>(axion->m2Cpu()) + (axion->Size()>>1) + axion->Surf();
 
 				// Power spectrum/spectral propagator in axion when the field was created as saxion
-				double	      *mR   = static_cast<double*>      (axion->vCpu());
+				double	      *mR   = static_cast<double*>      (axion->m2Cpu());
 
 				// Power spectrum in saxion and the other axion cases
 				double	      *mA   = static_cast<double*>      (axion->m2Cpu());

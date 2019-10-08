@@ -17,8 +17,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = static_cast<complex<double>*> (sField->mCpu());
-				vol = sField->eSize();
+				field = static_cast<complex<double>*> (sField->mStart());
 				break;
 
 				case FIELD_V:
@@ -32,7 +31,6 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 				}
 
 				field = static_cast<complex<double>*> (sField->m2Cpu());
-				vol = sField->eSize();
 				break;
 
 				default:
@@ -57,8 +55,7 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = static_cast<complex<float> *> (sField->mCpu());
-				vol = sField->eSize();
+				field = static_cast<complex<float> *> (sField->mStart());
 				break;
 
 				case FIELD_V:
@@ -72,7 +69,6 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 				}
 
 				field = static_cast<complex<float> *> (sField->m2Cpu());
-				vol = sField->eSize();
 				break;
 
 				default:
