@@ -29,7 +29,7 @@ extern size_t kMax;
 extern size_t iter;
 extern size_t parm1;
 extern size_t wTime;
-extern int    Ng;
+extern int    Nng;
 //extern double indi3;
 //extern double msa;
 extern double wDz;
