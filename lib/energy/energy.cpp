@@ -61,8 +61,6 @@ void	Energy::runGpu	()
 
 	const bool map = (mapmask & EN_MAP);
 
-	field->exchangeGhosts(FIELD_M);
-
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
@@ -152,6 +150,8 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 		munge(FOLD_ALL);
 	}
 
+	field->exchangeGhosts(FIELD_M);
+
 	prof.start();
 
 	switch (field->Device())
@@ -187,10 +187,10 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	#pragma unroll
 	for (int i=0; i<11; i++)
 		static_cast<double*>(eRes)[i] *= Vt;
-	
+
         #pragma unroll
         for (int i=11; i<22; i++)
-	        static_cast<double*>(eRes)[i] *= Vt2;	
+	        static_cast<double*>(eRes)[i] *= Vt2;
 
 //if (field->Field() == FIELD_SAXION)
 //	{
