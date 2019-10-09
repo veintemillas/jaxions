@@ -36,8 +36,8 @@ void	Folder::foldField()
 
 	for (size_t iz=0; iz < Lz; iz++)
 	{
-		memcpy (mg1, m + n2*iz, fSize*n2);
-		memcpy (mg2, v + n2*iz, fSize*n2);
+		memcpy (mg1, &m[n2*iz], sizeof(cFloat)*n2);
+		memcpy (mg2, &v[n2*iz], sizeof(cFloat)*n2);
 
 		#pragma omp parallel for schedule(static)
 		for (size_t iy=0; iy < n1/shift; iy++)
@@ -115,16 +115,16 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 	if (!field->Folded())
 	{
-		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying data to ghost zones");
-		memcpy (mg1, m + n2*sZ, fSize*n2);
-		memcpy (mg2, v + n2*sZ, fSize*n2);
+		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying data to ghost zones");LogFlush();
+		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
+		memcpy (mg2, &v[n2*sZ], sizeof(cFloat)*n2);
 		return;
 	}
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);LogFlush();
 
 	#pragma omp parallel for schedule(static)
 	for (size_t iy=0; iy < n1/shift; iy++)
@@ -181,6 +181,8 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 					//this copies v into buffer last
 					mg2[dIdx]	= v[oIdx];
 				}
+				LogMsg (VERB_DEBUG, "[uf2X] done");
+				LogFlush();
 		return;
 	}
 
