@@ -72,7 +72,7 @@ int	main (int argc, char *argv[])
 		if ( (fIndex == -1) && !restart_flag)
 		{
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, myCosmos.ICData().Nghost);
 			LogOut("Done! \n");
 		}
 		else
@@ -297,10 +297,10 @@ int	main (int argc, char *argv[])
 
 	LogOut("Running ...\n\n");
 	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
-	if (Ng>0)
-		LogOut(" Ng(%d)",Ng);
+	if (Nng>0)
+		LogOut(" Laplacian with (Nng=%d) neighbours",Nng);
 	LogOut("\n");
-	initPropagator (pType, axion, myCosmos.QcdPot(),Ng);
+	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
 	tunePropagator (axion);
 
 
@@ -372,7 +372,7 @@ int	main (int argc, char *argv[])
 
 					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
 					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, Ng);
+					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, Nng);
 					coD = false ;
 					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}
