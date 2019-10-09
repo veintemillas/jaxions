@@ -533,11 +533,10 @@
 			cLmbda = axion->LambdaP();
 
 			auto maa = axion->AxionMassSq();
-
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*BO, 2*BO+CO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO   , precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V   , V+BO   , precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d1;
 			axion->updateR();
 
@@ -547,10 +546,10 @@
 
 			maa = axion->AxionMassSq();
 
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*BO, 2*BO+CO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO   , precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V   , V+BO   , precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d2;
 			axion->updateR();
 		}
@@ -604,10 +603,10 @@
 			int wom = 0;
 			axion->gReset();
 
-			while ((csl < sizeZ-2*Ng) || (bsl < Ng)) { // while the number of slices computed is smaller than Lz
+			while ((csl < sizeZ-2*Nng) || (bsl < Nng)) { // while the number of slices computed is smaller than Lz
 				axion->sendGhosts(FIELD_M, COMM_TESTR);
 				axion->sendGhosts(FIELD_M, COMM_TESTS);
-				if (bsl < Ng) { // if there are boundary slices prepare and send
+				if (bsl < Nng) { // if there are boundary slices prepare and send
 
 					if (!sent) {
 						prepareGhostKernelXeon<VQcd>(axion->mCpu(), axion->vGhost(), ood2, Lx, bsl, precision);
@@ -631,8 +630,8 @@ LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
 					}
 				}
 
-				if (csl < sizeZ-2*Ng) {
-					size_t SC = S*(csl+Ng+1);
+				if (csl < sizeZ-2*Nng) {
+					size_t SC = S*(csl+Nng+1);
 					propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
 LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
 					csl++;
@@ -674,11 +673,11 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			wom = 0;
 			axion->gReset();
 
-			while	((csl < sizeZ-2*Ng) || (bsl < Ng)) {
+			while	((csl < sizeZ-2*Nng) || (bsl < Nng)) {
 				axion->sendGhosts(FIELD_M2, COMM_TESTR);
 				axion->sendGhosts(FIELD_M2, COMM_TESTS);
 
-				if (bsl < Ng) { // if there are boundary slices prepare and send
+				if (bsl < Nng) { // if there are boundary slices prepare and send
 
 					if (!sent) {
 						prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
@@ -702,8 +701,8 @@ LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
 					}
 				}
 
-				if (csl < sizeZ-2*Ng) {
-					size_t SC = S*(csl+Ng+1);
+				if (csl < sizeZ-2*Nng) {
+					size_t SC = S*(csl+Nng+1);
 					propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
 LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
 					csl ++;
