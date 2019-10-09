@@ -74,21 +74,21 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const double epsi = mola/(1.+mola);
 
 		double CO[5] = {0, 0, 0, 0, 0} ;
-		if (Ng == 0) {
+		if (NN == 0) {
 			return;
-		}	else if (Ng == 1) {
+		}	else if (NN == 1) {
 			CO[0] = 1.  ;
-		}	else if (Ng == 2) {
+		}	else if (NN == 2) {
 			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (Ng == 3) {
+		} else if (NN == 3) {
 			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (Ng == 4) {
+		} else if (NN == 4) {
 			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (Ng == 5) {
+		} else if (NN == 5) {
 			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 	 	}
 		_MData_ COV[5];
-		for (size_t nv = 0; nv < Ng ; nv++)
+		for (size_t nv = 0; nv < NN ; nv++)
 			COV[nv]  = opCode(set1_pd, CO[nv]*ood2);
 
 #if	defined(__AVX512F__)
@@ -426,21 +426,21 @@ tmp = opCode(sub_pd,
 		const float epsi = mola/(1.f+mola);
 
 		float CO[5] = {0, 0, 0, 0, 0} ;
-		if (Ng == 0) {
+		if (NN == 0) {
 			return;
-		}	else if (Ng == 1) {
+		}	else if (NN == 1) {
 			CO[0] = 1.  ;
-		}	else if (Ng == 2) {
+		}	else if (NN == 2) {
 			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (Ng == 3) {
+		} else if (NN == 3) {
 			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (Ng == 4) {
+		} else if (NN == 4) {
 			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (Ng == 5) {
+		} else if (NN == 5) {
 			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 	 	}
 		_MData_ COV[5];
-		for (size_t nv = 0; nv < Ng ; nv++)
+		for (size_t nv = 0; nv < NN ; nv++)
 			COV[nv]  = opCode(set1_ps, CO[nv]*ood2);
 
 #if	defined(__AVX512F__)
@@ -480,6 +480,8 @@ tmp = opCode(sub_pd,
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
+LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d",z0, zF, zM, bY, bSizeZ, bSizeY);LogFlush();
+
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
@@ -506,7 +508,7 @@ tmp = opCode(sub_pd,
 			mel = opCode(load_ps, &m[idxP0]);
 			lap = opCode(set1_ps, 0.f);
 
-			for (size_t nv=1; nv < Ng+1; nv++)
+			for (size_t nv=1; nv < NN+1; nv++)
 			{
 
 				if (X[0] < nv*step)
