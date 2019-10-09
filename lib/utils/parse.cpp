@@ -16,7 +16,7 @@ int    nSteps = 5;
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER
-int    Ng     = -1 ;
+int    Nng    = -1 ;
 double indi3  = 1.0;
 double msa    = 1.5;
 double wDz    = 0.8;
@@ -404,11 +404,12 @@ int	parseArgs (int argc, char *argv[])
 	int	procArgs = 0;
 
 	// defaults
+	icdatst.Nghost    = 1;
 	icdatst.icdrule   = false;
-	icdatst.preprop 	= false;
-	icdatst.icstudy 	= false;
-	icdatst.prepstL 	= 5.0 ;
-	icdatst.prepcoe 	= 3.0 ;
+	icdatst.preprop   = false;
+	icdatst.icstudy   = false;
+	icdatst.prepstL   = 5.0 ;
+	icdatst.prepcoe   = 3.0 ;
 	icdatst.pregammo  = 0.0;
 	icdatst.prelZ2e   = 0.0;
 	icdatst.prevtype  = VQCD_1_RHO;
@@ -1936,10 +1937,36 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			Ng = atoi(argv[i+1]);
+			Nng = atoi(argv[i+1]);
 			bopt = false;
+			pType |= PROP_NNEIG;
 
- 			if (Ng < 0 || Ng > 6)
+ 			if (Nng < 0 || Nng > 6)
+			{
+				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--lap"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of neighbours.\n");
+				exit(1);
+			}
+
+			icdatst.Nghost = atoi(argv[i+1]);
+			Nng = icdatst.Nghost;
+			bopt = false;
+			pType |= PROP_BASE;
+
+ 			if (icdatst.Nghost < 0 || icdatst.Nghost > 6)
 			{
 				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
 				exit(1);
@@ -1962,8 +1989,8 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (Ng*2 > (int) sizeZ) {
-		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Ng%d,sizeZ%d,%d,%d)\n",Ng,sizeZ,Ng*2, Ng*2> sizeZ);
+	if (Nng*2 > (int) sizeZ) {
+		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Nng%d,sizeZ%d,%d,%d)\n",Nng,sizeZ,Nng*2, Nng*2> sizeZ);
 		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
 		exit(1);
 }
@@ -1986,18 +2013,12 @@ if (icdatst.cType == CONF_SMOOTH )
 		pType |= PROP_RKN4;
 
 // if lapla is chosen
-	if (Ng > 0)
+	if (Nng > 0)
 	{
 		if ( ((pType & PROP_LAPMASK) & PROP_FSPEC) || ((pType & PROP_LAPMASK) & PROP_SPEC))
 		{
-			printf("Error: Selected spectral propagator and Ng=%d\n",Ng);
+			printf("Error: Selected spectral propagator and Nng=%d\n",Nng);
 			exit(1);
-		} else {
-			// UNDO
-			if (bopt)
-				pType |= PROP_BASE; // 1 neighbour optimised. Only if no --lapla was invoqued
-				else
-				pType |= PROP_NNEIG; // Ng underoptimised. Ff no --lapla was invoqued, even if it was Ng=1
 		}
 	}
 
