@@ -912,7 +912,7 @@ void	SpecBin::nSRun	() {
 			switch (fPrec) {
 				case FIELD_SINGLE:
 				{
-					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu())  + field->Surf();
+					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mStart());
 					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
 					float *m2sa                 = static_cast<float *>(field->m2Cpu());
 					float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
@@ -943,7 +943,7 @@ void	SpecBin::nSRun	() {
 
 				case FIELD_DOUBLE:
 				{
-					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())  + field->Surf();
+					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mStart());
 					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
 					double *m2sa            = static_cast<double *>(field->m2Cpu());
 					double *m2sax            = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
