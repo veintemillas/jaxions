@@ -654,8 +654,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
-		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mCpu())+slab*(1+zDim)*dataSize));
-		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())+slab*zDim*dataSize));
+		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
+		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())  +slab*zDim*dataSize));
 
 		if ((mErr < 0) || (vErr < 0))
 		{
@@ -1110,8 +1110,8 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 
 		/*	Read raw data	*/
 
-		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mCpu())+slab*(1+zDim)*dataSize));
-		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())+slab*zDim*dataSize));
+		auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
+		auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())  +slab*zDim*dataSize));
 
 		if ((mErr < 0) || (vErr < 0)) {
 			LogError ("Error reading dataset from file");
@@ -2425,7 +2425,7 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	}
 
 	/*	Write point data	*/
-	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mCpu()) + S0*dataSize) < 0)
+	if (H5Dwrite(dataSet, dataType, dataSpace, sSpace, H5P_DEFAULT, static_cast<char*>(axion->mStart())) < 0)
 		LogError ("Error: couldn't write point data to file");
 
 	/*	Close everything		*/
@@ -3131,13 +3131,13 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	hsize_t slb  = slabSz;
 	hsize_t lSz  = sizeN;
-	char *dataM  = static_cast<char *>(axion->mCpu());
-	char *dataV  = static_cast<char *>(axion->mCpu());
+	char *dataM  = static_cast<char *>(axion->mFrontGhost());
+	char *dataV  = static_cast<char *>(axion->mBackGhost());
 	char mCh[16] = "/map/m";
 	char vCh[16] = "/map/v";
 
-	LogMsg (VERB_NORMAL, "Writing 2D maps to Hdf5 measurement file");
-	LogMsg (VERB_NORMAL, "");
+	LogMsg (VERB_NORMAL, "Writing 2D maps to Hdf5 measurement file");LogFlush();
+	LogMsg (VERB_NORMAL, "");LogFlush();
 
 	if (header == false || opened == false)
 	{
@@ -3156,10 +3156,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	}
 
 	if (axion->Precision() == FIELD_DOUBLE) {
-		dataV += slb*(axion->Depth()+1)*sizeof(double);
 		dataType = H5T_NATIVE_DOUBLE;
 	} else {
-		dataV += slb*(axion->Depth()+1)*sizeof(float);
 		dataType = H5T_NATIVE_FLOAT;
 	}
 
@@ -3173,7 +3171,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 			slicenumber = 0;
 		}
 		Folder	munge(axion);
-		LogMsg (VERB_NORMAL, "If configuration folded, unfold 2D slice");
+		LogMsg (VERB_NORMAL, "If configuration folded, unfold 2D slice");LogFlush();
 		munge(UNFOLD_SLICE, slicenumber);
 	//}
 
@@ -3289,7 +3287,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		exit(0);
 	}
 
-	LogMsg (VERB_HIGH, "Write 2D map successful");
+	LogMsg (VERB_HIGH, "Write 2D map successful");LogFlush();
 
 	/*	Close the dataset	*/
 	H5Dclose (mSet_id);
@@ -3303,7 +3301,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	prof.stop();
 
 	prof.add(std::string("Write Map"), 0, 2.e-9*slb*dataSize);
-	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize*2);
+	LogMsg (VERB_HIGH, "Written %lu bytes", slb*dataSize*2);
+	LogFlush();
 }
 
 
@@ -3450,6 +3449,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 		exit (0);
 	}
 
+	LogMsg (VERB_HIGH, "[wm2] Ready to write");	LogFlush();
 	hsize_t partial = total/commSize();
 	for (hsize_t yDim=0; yDim < axion->Depth(); yDim++)
 	{
@@ -3469,7 +3469,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 		}
 	}
 
-	LogMsg (VERB_HIGH, "Write 2D mapp successful");
+	LogMsg (VERB_HIGH, "[wm2] Write 2D mapp successful");LogFlush();
 
 	/*	Close the dataset	*/
 	H5Dclose (mSet_id);
@@ -3483,7 +3483,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	prof.stop();
 
 	prof.add(std::string("Write Mapp"), 0, 2.e-9*total*dataSize);
-	LogMsg (VERB_NORMAL, "Written %lu bytes", total*dataSize*2);
+	LogMsg (VERB_HIGH, "[wm2] Written %lu bytes", total*dataSize*2);LogFlush();
 }
 
 void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
@@ -3658,7 +3658,7 @@ void	writePMapHdf5	(Scalar *axion)
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	hsize_t slb  = slabSz;
 	hsize_t lSz  = sizeN;
-	char *dataE  = static_cast<char *>(axion->mCpu());
+	char *dataE  = static_cast<char *>(axion->mFrontGhost());
 	char eCh[16] = "/map/P";
 
 	LogMsg (VERB_NORMAL, "Writing 2D energy projection to Hdf5 measurement file");
