@@ -38,6 +38,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	const size_t Sf = Lx*Lx;
 	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
 	const size_t NN = Vo/Sf;
+LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -138,7 +139,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
-				idxV0 = (idx - NN*Sf) << 2;
+				idxV0 = (idx - NN*Sf) << 1;
 
 				mel = opCode(load_pd, &m[idxP0]); //Carga m con shift
 
@@ -722,7 +723,7 @@ if (emask & EN_ENE){
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 =  (idx     << 1);
-				idxV0 = (idx - NN*Sf) << 2;
+				idxV0 = (idx - NN*Sf) << 1;
 // conformal field value
 				mel = opCode(load_ps, &m[idxP0]);
 
@@ -1318,7 +1319,7 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 
 	field->exchangeGhosts(FIELD_M);
 
-LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( field->sDStatus() & SD_MASK));
+LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( field->sDStatus() & SD_MASK));LogFlush();
 
 	if (!field->LowMem()) {
 
