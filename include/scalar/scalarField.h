@@ -76,7 +76,7 @@
 		public:
 
 				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
-					FieldType newType, LambdaType lType, size_t Nghost = 1);
+					FieldType newType, LambdaType lType, size_t Ngg=1);
 				~Scalar();
 
 		Cosmos		*BckGnd(){ return bckgnd; }
@@ -98,7 +98,7 @@
 		const void	*m2Cpu() const { return m2; }
 		void		*m2Start     () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2)*Ng); }
 		void		*m2FrontGhost() { return m2; }
-		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
+		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2*Ng+n3)); }
 		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
 
 		void		*sData() { return str; }
