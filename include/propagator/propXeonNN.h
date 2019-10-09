@@ -81,21 +81,21 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 		const double epsi = mola/(1.+mola);
 
 		double CO[5] = {0, 0, 0, 0, 0} ;
-		if (Ng == 0) {
+		if (Nng == 0) {
 			return;
-		}	else if (Ng == 1) {
+		}	else if (Nng == 1) {
 			CO[0] = 1.  ;
-		}	else if (Ng == 2) {
+		}	else if (Nng == 2) {
 			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (Ng == 3) {
+		} else if (Nng == 3) {
 			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (Ng == 4) {
+		} else if (Nng == 4) {
 			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (Ng == 5) {
+		} else if (Nng == 5) {
 			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 	 	}
 		_MData_ COV[5];
-		for (size_t nv = 0; nv < Ng ; nv++)
+		for (size_t nv = 0; nv < Nng ; nv++)
 			COV[nv]  = opCode(set1_pd, CO[nv]*ood2);
 
 #if	defined(__AVX512F__)
@@ -134,7 +134,7 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
-LogMsg(VERB_PARANOID,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
+LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
@@ -162,7 +162,7 @@ LogMsg(VERB_PARANOID,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,z
 			mel = opCode(load_pd, &m[idxP0]);
 			lap = opCode(set1_pd, 0.0);
 
-			for (size_t nv=1; nv < Ng+1; nv++)
+			for (size_t nv=1; nv < Nng+1; nv++)
 			{
 
 				if (X[0] < nv*step)
@@ -436,21 +436,21 @@ tmp = opCode(sub_pd,
 		const float epsi = mola/(1.f+mola);
 
 		float CO[5] = {0, 0, 0, 0, 0} ;
-		if (Ng == 0) {
+		if (Nng == 0) {
 			return;
-		}	else if (Ng == 1) {
+		}	else if (Nng == 1) {
 			CO[0] = 1.  ;
-		}	else if (Ng == 2) {
+		}	else if (Nng == 2) {
 			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (Ng == 3) {
+		} else if (Nng == 3) {
 			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (Ng == 4) {
+		} else if (Nng == 4) {
 			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (Ng == 5) {
+		} else if (Nng == 5) {
 			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 	 	}
 		_MData_ COV[5];
-		for (size_t nv = 0; nv < Ng ; nv++)
+		for (size_t nv = 0; nv < Nng ; nv++)
 			COV[nv]  = opCode(set1_ps, CO[nv]*ood2);
 
 #if	defined(__AVX512F__)
@@ -489,8 +489,8 @@ tmp = opCode(sub_pd,
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
-		// LogOut("[prop] Ng %d Lz %d\n",Ng,sizeZ); // The Ng defition reaches here from parse.h
-LogMsg(VERB_PARANOID,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
+		// LogOut("[prop] Nng %d Lz %d\n",Nng,sizeZ); // The Nng defition reaches here from parse.h
+LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
@@ -522,7 +522,7 @@ LogMsg(VERB_PARANOID,"[propNN] Ng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Ng,z
 // if (idxb==0) LogOut("r%d ghost %f %f \n",commRank(),m[idxP0-2*Sf],m[idxP0-2*Sf+1]);
 			//Laplacian
 			// Neighbour loop
-			for (size_t nv=1; nv < Ng+1; nv++)
+			for (size_t nv=1; nv < Nng+1; nv++)
 			{
 				// LogOut("ca nv %d\n",nv);
 				//x-
@@ -1585,7 +1585,7 @@ tmp = opCode(sub_ps,
 //----------------------------------------------------------------------------//
 // uses same indices than kernel
 // Vo and Vf must be the same: begginig of the slice which we will have to prepare
-// if Vo = Sf (slice 1 of m or 1st slice of data and Ng = 2
+// if Vo = Sf (slice 1 of m or 1st slice of data and Nng = 2
 // we take the last (physical) slices of the previous rank Lz-2 Lz-1 with weigths
 // normalised to the last i.e.
 // Lz-2*C[2]/C[1] + Lz-1
@@ -1605,7 +1605,7 @@ inline	void	prepareGhostKernelXeon(const void * __restrict__ m_, void * __restri
 	//Volume of data and surface slice
 	const size_t Sf = Lx*Lx;
 	const size_t Vo = Lx*Lx*sizeZ;
-	if (z0 > Ng)
+	if (z0 > Nng)
 	{
 		LogError("No preparation needed! why did you call this function?");
 		return; //
@@ -1613,9 +1613,9 @@ inline	void	prepareGhostKernelXeon(const void * __restrict__ m_, void * __restri
 
 
 	// number of slices to sum
-	const size_t nvMax= Ng-z0;
-	// z0 = 0 and Ng =1 > 1 slice
-	// z0 = 0 and Ng =7 > 7 slices
+	const size_t nvMax= Nng-z0;
+	// z0 = 0 and Nng =1 > 1 slice
+	// z0 = 0 and Nng =7 > 7 slices
 
 	// shift for the Coefficients
 	const size_t nvbase = z0;
@@ -1648,23 +1648,23 @@ inline	void	prepareGhostKernelXeon(const void * __restrict__ m_, void * __restri
 #endif
 
 double CO[5] = {0, 0, 0, 0, 0} ;
-if (Ng == 0) {
+if (Nng == 0) {
 	return;
-}	else if (Ng == 1) {
+}	else if (Nng == 1) {
 	CO[0] = 1.  ;
-}	else if (Ng == 2) {
+}	else if (Nng == 2) {
 	CO[0] = 4./3.; CO[1] = -1./12.;
-} else if (Ng == 3) {
+} else if (Nng == 3) {
 	CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-} else if (Ng == 4) {
+} else if (Nng == 4) {
 	CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-} else if (Ng == 5) {
+} else if (Nng == 5) {
 	CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 }
 
 _MData_ COV[5];
 // we normalise the coefficients to the first one, which will get its notmalisation later
-for (size_t nv = 0; nv < Ng ; nv++)
+for (size_t nv = 0; nv < Nng ; nv++)
 	COV[nv]  = opCode(set1_pd, CO[nv]/CO[nvbase]);
 
 		  #pragma omp parallel default(shared)
@@ -1725,22 +1725,22 @@ for (size_t nv = 0; nv < Ng ; nv++)
 #endif
 
 float CO[5] = {0, 0, 0, 0, 0} ;
-if (Ng == 0) {
+if (Nng == 0) {
 	return;
-}	else if (Ng == 1) {
+}	else if (Nng == 1) {
 	CO[0] = 1.  ;
-}	else if (Ng == 2) {
+}	else if (Nng == 2) {
 	CO[0] = 4./3.; CO[1] = -1./12.;
-} else if (Ng == 3) {
+} else if (Nng == 3) {
 	CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-} else if (Ng == 4) {
+} else if (Nng == 4) {
 	CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-} else if (Ng == 5) {
+} else if (Nng == 5) {
 	CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 }
 _MData_ COV[5];
 // we normalise the coefficients to the first one, which will get its notmalisation later
-for (size_t nv = 0; nv < Ng ; nv++)
+for (size_t nv = 0; nv < Nng ; nv++)
 	COV[nv]  = opCode(set1_ps, CO[nv]/CO[nvbase]);
 
 		  #pragma omp parallel default(shared)
