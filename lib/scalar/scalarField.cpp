@@ -37,15 +37,15 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Nghost)
-		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2*Nghost), v3(nLx*nLx*(nLz + 2*Nghost)), nSplit(nSp),
-		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem), Ng(Nghost)
+	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
+		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), nSplit(nSp), Ng(Ngg),  Ez(nLz + 2*Ngg), v3(nLx*nLx*(nLz + 2*Ngg)),
+		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	prof.start();
 
-	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar called with Ng = %d",Nghost);
+	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar called with Ng = %d",Ng);
 
 	if (cm == nullptr) {
 		LogError("Error: no cosmological background defined!. Will exit with errors.");
@@ -54,8 +54,12 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
-	size_t nData;
 	bckgnd = cm;
+	// Ng = cm->ICData().Nghost ;
+	// Ez = nLz + 2*Ng;
+	// v3 = nLx*nLx*(nLz + 2*Ng);
+	size_t nData;
+
 	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
 
 
@@ -71,6 +75,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] Frw     () %f",cm->Frw     ());
 	LogMsg(VERB_NORMAL,"[sca] Mink    () %d",cm->Mink    ());
 
+	LogMsg(VERB_NORMAL,"[sca] ic.Nghost   %d",cm->ICData().Nghost   );
 	LogMsg(VERB_NORMAL,"[sca] ic.icdrule  %d",cm->ICData().icdrule  );
 	LogMsg(VERB_NORMAL,"[sca] ic.preprop  %d",cm->ICData().preprop  );
 	LogMsg(VERB_NORMAL,"[sca] ic.icstudy  %d",cm->ICData().icstudy  );
@@ -139,13 +144,13 @@ const std::complex<float> If(0.,1.);
 //	{
 //		case DEV_CPU:
 			#ifdef	__AVX512F__
-			LogMsg(VERB_NORMAL, "Using AVX-512 64 bytes alignment");
+			LogMsg(VERB_NORMAL, "[sca] Using AVX-512 64 bytes alignment");
 			mAlign = 64;
 			#elif	defined(__AVX__) || defined(__AVX2__)
-			LogMsg(VERB_NORMAL, "Using AVX 32 bytes alignment");
+			LogMsg(VERB_NORMAL, "[sca] Using AVX 32 bytes alignment");
 			mAlign = 32;
 			#else
-			LogMsg(VERB_NORMAL, "Using SSE 16 bytes alignment");
+			LogMsg(VERB_NORMAL, "[sca] Using SSE 16 bytes alignment");
 			mAlign = 16;
 			#endif
 //			break;
@@ -164,13 +169,16 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
+	LogMsg(VERB_NORMAL, "[sca] v3 %d n3 %d", v3, (n2*(nLz + 2)));
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = (n2*(nLz + 2))*fSize;
+
 
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v, sData");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
 			trackAlloc ((void**) &str, n3);
@@ -183,6 +191,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_WKB:
 			str = nullptr;
 			//this allocates a slightly larger v to host FFTs in place
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v");
 			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
 			break;
@@ -210,6 +219,7 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 			if (!lowmem) {
+				LogMsg(VERB_NORMAL, "[sca] allocating m2");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
 				memset (m2, 0, fSize*v3);
 			} else
@@ -218,6 +228,7 @@ const std::complex<float> If(0.,1.);
 
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
+			LogMsg(VERB_NORMAL, "[sca] allocating m2");
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
 			break;
@@ -269,6 +280,7 @@ const std::complex<float> If(0.,1.);
 
 	commSync();
 
+	LogMsg(VERB_NORMAL, "[sca] allocating z, R");
 	alignAlloc ((void **) &z, mAlign, mAlign);
 	alignAlloc ((void **) &R, mAlign, mAlign);
 
@@ -559,38 +571,45 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
+	/* we can send 1 (for energy) , or Ng (for propagator)*/
 	const int ghostBytes = Ng*n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_PARANOID,"[sca] Called send Ghosts (COMM %d) with slice=%lu (value of Ng in scalar %d)",opComm, Nng, Ng);LogFlush();
+LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) slice %lu Ng %d",opComm, Nng, Ng);LogFlush();
 	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
 
 	if (fIdx & FIELD_M)
 	{
 		if (Nng > 0){
-			sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2*Nng); 				//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n2*(Lz+1-Nng));	//slice to be send forw
-LogMsg(VERB_PARANOID,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
+			//FIX ME in case one needs to transfer other slices with Nng
+			sGhostBck = mStart();																																						//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (mStart()) + fSize*n3-ghostBytes);					//slice to be send forw
+			rGhostBck = static_cast<void *> (static_cast<char *> (mFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+			rGhostFwd = static_cast<void *> (static_cast<char *> (mBackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
 		} else {
-			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
+			// from v to 1st slice for NNEIG; assumes Ng = 1
+			sGhostBck = vGhost(); 																													//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
+			rGhostBck = mFrontGhost();
+			rGhostFwd = mBackGhost();
 		}
-		rGhostBck = m;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2*Ng));
 	}
 	else
 	{
 		if (Nng > 0){
-			sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*Nng);
-			sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*(Lz+1-Nng));
+			sGhostBck = m2Start();
+			sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
+			rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
+			rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
 		} else {
-			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
+			// from v to 1st slice for NNEIG; assumes Ng = 1
+			sGhostBck = vGhost();																									 					//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
+			rGhostBck = m2FrontGhost();
+			rGhostFwd = m2BackGhost();
 		}
-		rGhostBck = m2;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2*Ng));
 	}
 
 
