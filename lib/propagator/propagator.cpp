@@ -251,6 +251,13 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 	bool wasTuned = false;
 
 	PropcType propclass = PROPC_BASE;
+
+	if 	( (pType & PROPC_BASE) )
+	{
+		LogMsg	(VERB_NORMAL, "[ip] propagator BASE with Ng=%d selected (%d)",Ng,pType);LogFlush();
+		field->setNg(Ng);
+		LogMsg	(VERB_HIGH, "[ip] Ng set to %d",Ng);LogFlush();
+	}
 	if 	( (pType & PROPC_NNEIG) && (Ng > -1))
 	{
 		LogMsg	(VERB_NORMAL, "[ip] propagator Ng=%d selected (%d)",Ng,pType);LogFlush();
@@ -501,7 +508,7 @@ using	namespace profiler;
 
 void	propagate	(Scalar *field, const double dz)
 {
-	LogMsg	(VERB_HIGH, "Called propagator");
+	LogMsg	(VERB_HIGH, "[pate] Called propagator");
 LogFlush();
 	Profiler &prof = getProfiler(PROF_PROP);
 
