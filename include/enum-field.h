@@ -554,6 +554,7 @@
 		// data output by measurement function to program
 		typedef	struct	IcData_v
 		{
+			size_t        Nghost;
 			bool          icdrule;
 			bool          preprop;
 			bool          icstudy;
