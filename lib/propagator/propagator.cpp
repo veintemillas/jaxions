@@ -548,7 +548,13 @@ LogFlush();
 			break;
 
 		case FIELD_SAXION:
-			prop->appendName("Saxion");
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+				char loli[2048];
+				sprintf (loli, "NN %01d Ng %01d Saxion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Saxion");
+			}
 			(prop->propSaxion)(dz);
 			break;
 

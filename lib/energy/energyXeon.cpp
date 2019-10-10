@@ -1474,6 +1474,22 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 					break;
 				} break;
 
+			case	VQCD_PQ_ONLY:
+				switch (mapmask){
+					case EN_ENE:
+					case EN_MAP:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
 			case	VQCD_2:
 				switch (mapmask){
 					case EN_ENE:

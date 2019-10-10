@@ -489,7 +489,7 @@ tmp = opCode(sub_pd,
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
-LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d",z0, zF, zM, bY, bSizeZ, bSizeY);LogFlush();
+LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",z0, zF, zM, bY, bSizeZ, bSizeY, NN);LogFlush();
 
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
@@ -519,7 +519,6 @@ LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d",z0, zF, zM,
 
 			for (size_t nv=1; nv < NN+1; nv++)
 			{
-
 				if (X[0] < nv*step)
 					idxMx = ((idx + XC - nv*step) << 1);
 				else
@@ -586,7 +585,6 @@ LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d",z0, zF, zM,
 				tmp = opCode(add_ps,tmp,opCode(mul_ps, mel,opCode(set1_ps, -6.f)));
 				tmp = opCode(mul_ps,tmp, COV[nv-1]);
 				lap = opCode(add_ps,lap,tmp);
-
 			} //end neightbour loop
 
 

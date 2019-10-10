@@ -785,7 +785,7 @@ double	Scalar::LambdaP ()
 	// Minkowski frw = 0, Radiation frw = 1,
 	double lbd  = bckgnd->Lambda();
 	double llee = bckgnd->LamZ2Exp();
-LogMsg(VERB_HIGH,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
+LogMsg(VERB_PARANOID,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
 	if (LambdaT() == LAMBDA_FIXED)
 		return  lbd;
 	else if (LambdaT() == LAMBDA_Z2)
@@ -801,7 +801,7 @@ double	Scalar::Msa ()
 	// if (LambdaT() == LAMBDA_FIXED)
 	// 	return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
 	// else if (LambdaT() == LAMBDA_Z2)
-LogMsg(VERB_HIGH,"[sca:msa] LambdaPhysical %f ",LambdaP() );
+LogMsg(VERB_PARANOID,"[sca:msa] LambdaPhysical %f ",LambdaP() );
 		return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
 }
 
