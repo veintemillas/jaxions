@@ -1966,7 +1966,7 @@ int	parseArgs (int argc, char *argv[])
 
 			icdatst.Nghost = atoi(argv[i+1]);
 			Nng = icdatst.Nghost;
-			bopt = false;
+			bopt = true;
 			pType |= PROP_BASE;
 
  			if (icdatst.Nghost < 0 || icdatst.Nghost > 6)
