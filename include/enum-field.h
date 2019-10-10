@@ -481,14 +481,14 @@
 
 		// analysis functions to be called inside a measurement
 		typedef	enum	MeasureType_s {
-			MEAS_NOTHING			= 0,
+			MEAS_NOTHING      = 0,
 			MEAS_BINTHETA     = 1,
 			MEAS_BINRHO       = 2,
 			MEAS_BINLOGTHETA2 = 4,
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
-			// MEAS_BIN...	  = 16,
-			MEAS_STRING	      = 32,
+			// MEAS_BIN..     = 16,
+			MEAS_STRING       = 32,
 			MEAS_STRINGMAP    = 64,
 			MEAS_STRINGCOO    = 128,
 
@@ -530,19 +530,38 @@
 			// EN_AMAMA = 10, // Antimask
 		}	EnType;
 
+//UMaps type
+		typedef enum	SliceType_s
+		{
+			MAPT_NO      = 0,
+			MAPT_XYM     = 1,
+			MAPT_XYV     = 4,
+			MAPT_XYMV    = 5,
+
+			MAPT_YZM     = 16,
+			MAPT_YZV     = 32,
+			MAPT_YZMV    = 48,
+
+			MAPT_XYPE    = 1024,
+			MAPT_XYPE2   = 2048,
+
+			MAPT_XYE     = 65536,
+		}	SliceType;
+
 		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v
 		{
-			int	index;
-			size_t sliceprint	;
-			size_t idxprint	;
-			MeasureType measdata ;
-			SpectrumMaskType mask ;
-			double rmask; 					// a radius to mask
-			std::vector<double> rmask_tab;
-			int i_rmask;
-			int redmap;
-			StringMeasureType strmeas;
+			int                 index;
+			size_t              sliceprint	;
+			size_t              idxprint	;
+			MeasureType         measdata ;
+			SpectrumMaskType    mask ;
+			double              rmask;                   // a radius to mask
+			std::vector<double> rmask_tab;  // more than 1
+			SliceType           maty;
+			int                 i_rmask;
+			int                 redmap;
+			StringMeasureType   strmeas;
 		}	MeasInfo;
 
 		// data output by measurement function to program
