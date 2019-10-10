@@ -33,24 +33,25 @@ echo "         " $OUTP
 
 #export OMP_NUM_THREADS=24
 export OMP_NUM_THREADS=$(echo 8/$RANKS | bc)
+#USA=" --bind-to socket"
 
 case "$1" in
   create)
     rm out/m/axion.*
     rm axion.log.*
     export AXIONS_OUTPUT="out/m"
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP --steps 0 --p3D 1 2>&1 | tee out/log-create.txt
+    mpirun $USA -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP --steps 0 --p3D 1 2>&1 | tee out/log-create.txt
     ;;
   run)
     rm out/m/axion.*
     rm axion.log.*
     export AXIONS_OUTPUT="out/m"
     echo mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP $2
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP $2 2>&1 | tee out/logrun.txt
+    mpirun $USA -np $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP $2 2>&1 | tee out/logrun.txt
     ;;
-  continue) mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index $2 $3
-    echo
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index $2 $3 2>&1 | tee out/log-continue.txt
+  continue)
+    echo mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index $2 $3
+    mpirun $USA -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index $2 $3 2>&1 | tee out/log-continue.txt
     ;;
   aevol)
     echo aevol in directory $2 with options $3
@@ -60,13 +61,13 @@ case "$1" in
     ln -s $CUDI/out/m/axion.00000 $CUDI/$2/m/axion.00000
     export AXIONS_OUTPUT="$2/m"
     echo mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index 0 $3
-    mpirun -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index 0 $3 2>&1 | tee $2/log-aevol.txt
+    mpirun $USA -np $RANKS vaxion3d $GRID $SIMU $PHYS $OUTP --index 0 $3 2>&1 | tee $2/log-aevol.txt
     ;;
   restart)
     echo "AXIONS_OUTPUT=$AXIONS_OUTPUT"
     WTIM=12
     echo mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $OUTP --wTime $WTIM
-    mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PREP $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
+    mpirun $USA -np $RANKS vaxion3d --restart $GRID $SIMU $PREP $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
     ;;
   wkb)
     echo wkb!
@@ -78,7 +79,7 @@ case "$1" in
     find=$(printf "%05d" $2)
     ln -s $cdir/out/m/axion.$find $cdir/wout/m/axion.$find
     #echo " ln -s $cdir/out/m/axion.$find $cdir/wout/m/axion.$find"
-    mpirun -np $RANKS WKVaxion $GRID $SIMU $PHYS $PREP $OUTP --zf $3 --steps $4 --index $2 2>&1 | tee log-wkb.txt
+    mpirun $USA -np $RANKS WKVaxion $GRID $SIMU $PHYS $PREP $OUTP --zf $3 --steps $4 --index $2 2>&1 | tee log-wkb.txt
     ;;
   measfile)
     vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP --dump 8 --measlistlog 2>&1 | tee log-meas.txt
