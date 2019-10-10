@@ -992,6 +992,7 @@ double  Scalar::SaxionMassSq  ()
 		case    VQCD_1:
 		case    VQCD_2:
 		case    VQCD_1N2:
+		case    VQCD_PQ_ONLY:
 			return 2.*lbd;
 			break;
 
@@ -1056,6 +1057,10 @@ double  Scalar::Saskia  ()
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_PQ_ONLY:
+			return 0.0;
+			break;
+
 		case    VQCD_1:
 			return SaxionShift();
 			break;
@@ -1141,6 +1146,7 @@ double  Scalar::SaxionMassSq  (const double RNow)
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_PQ_ONLY:
 		case    VQCD_0:
 		case    VQCD_1:
 		case    VQCD_2:
@@ -1210,6 +1216,10 @@ double  Scalar::Saskia  (const double RNow)
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_PQ_ONLY:
+			return 0.0;
+			break;
+
 		case    VQCD_1:
 			return SaxionShift();
 			break;
