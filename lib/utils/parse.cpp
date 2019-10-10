@@ -82,29 +82,29 @@ size_t iter  = 0;
 size_t parm1 = 0;
 size_t wTime = std::numeric_limits<std::size_t>::max();
 
-size_t       fftplanType = 0; //FFTW_MEASURE = 0
-PropType     pType     = PROP_NONE;
-SpectrumMaskType spmask= SPMASK_FLAT;
-StringMeasureType strmeas = STRMEAS_STRING;
-double       rmask     = 2.0 ;
-ConfType     cType     = CONF_NONE;
-ConfsubType  smvarType = CONF_RAND;
-FieldType    fTypeP    = FIELD_SAXION;
-LambdaType   lType     = LAMBDA_FIXED;
-VqcdType     vqcdType  = VQCD_1;
+size_t       fftplanType     = 0; //FFTW_MEASURE = 0
+PropType     pType           = PROP_NONE;
+SpectrumMaskType spmask      = SPMASK_FLAT;
+StringMeasureType strmeas    = STRMEAS_STRING;
+double       rmask           = 2.0 ;
+ConfType     cType           = CONF_NONE;
+ConfsubType  smvarType       = CONF_RAND;
+FieldType    fTypeP          = FIELD_SAXION;
+LambdaType   lType           = LAMBDA_FIXED;
+VqcdType     vqcdType        = VQCD_1;
 VqcdType     vqcdTypeDamp    = VQCD_NONE;
 VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
 // Default IC type
 IcData icdatst;
 
-
-
 // Default measurement type, some options can be chosen with special flags | all with --meas
-MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY  ;
+MeasureType  defaultmeasType   = MEAS_NOTHING  ;
 // Default measurement type for the transition to theta
-// MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
-MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
+MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
+
+// map measurement types (applies to all measurements that get PLOT_2D)
+SliceType maty;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -534,6 +534,18 @@ int	parseArgs (int argc, char *argv[])
 		{
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYMV;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapYZ"))
+		{
+			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_YZMV;
 
 			procArgs++;
 			passed = true;
@@ -544,6 +556,20 @@ int	parseArgs (int argc, char *argv[])
 		{
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYMV;
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DsliceYZ"))
+		{
+			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_YZMV;
 
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
 			i++;
@@ -556,15 +582,27 @@ int	parseArgs (int argc, char *argv[])
 		{
 			p2dEmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYE;
 			procArgs++;
 			passed = true;
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--p2DmapP"))
+		if (!strcmp(argv[i], "--p2DmapPE2") || !strcmp(argv[i], "--p2DmapP"))
 		{
 			p2dPmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYPE2;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapPE"))
+		{
+			p2dPmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYPE;
 			procArgs++;
 			passed = true;
 			goto endFor;
