@@ -927,33 +927,39 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			case PROPC_BASE:
 			case PROPC_NNEIG: // FIXME
 			{
+				double lapla = 18.0 * axion->getNg();
+
 				switch (axion->Field()) {
 					case FIELD_SAXION:
 						switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
 
 							default:
 							case VQCD_1:
-								return	(1e-9 * ((double) axion->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((24.+lapla) * ((double) nStages) + (lastStage ? (20.+lapla) : 0.)));
+								break;
+
+							case VQCD_PQ_ONLY:
+								return	(1e-9 * ((double) axion->Size()) * ((22.+lapla) * ((double) nStages) + (lastStage ? (18.+lapla) : 0.)));
 								break;
 
 							case VQCD_2:
-								return	(1e-9 * ((double) axion->Size()) * (45. * ((double) nStages) + (lastStage ? 41. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((27.+lapla) * ((double) nStages) + (lastStage ? (23.+lapla) : 0.)));
 								break;
 
 							case VQCD_1_PQ_2:
-								return	(1e-9 * ((double) axion->Size()) * (44. * ((double) nStages) + (lastStage ? 40. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((26.+lapla) * ((double) nStages) + (lastStage ? (22.+lapla) : 0.)));
 								break;
 
 							case VQCD_1_PQ_2_RHO:
-								return	(1e-9 * ((double) axion->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((32.+lapla) * ((double) nStages) + (lastStage ? (28.+lapla) : 0.)));
 								break;
 
 							case VQCD_1N2:
-								return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+								return	(1e-9 * ((double) axion->Size()) * ((25.+lapla) * ((double) nStages) + (lastStage ? (23.+lapla) : 0.))); //check the laststage?
 								break;
 
 							case VQCD_QUAD:
-								return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+								return	(1e-9 * ((double) axion->Size()) * ((25.+lapla) * ((double) nStages) + (lastStage ? (25.+lapla) : 0.))); //check the laststage?
 								break;
 						}
 						break;
@@ -1020,11 +1026,14 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const PropcType spec) {
+
+		double lapla = 1.0 + 6.0 * axion->getNg();
+
 		switch (spec)
 		{
 			case PROPC_BASE:
 			case PROPC_NNEIG: //FIX ME!
-				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   10.    * ((double) nStages) + (lastStage ? 9. : 0.)));
+				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   (3. + lapla)    * ((double) nStages) + (lastStage ? (2. + lapla) : 0.)));
 			break;
 
 			case PROPC_SPEC:
