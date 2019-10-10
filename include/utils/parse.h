@@ -86,6 +86,7 @@ extern SpectrumMaskType spmask;
 extern double           rmask;
 extern MeasureType      defaultmeasType;
 extern MeasureType      rho2thetameasType;
+extern SliceType        maty;
 extern StringMeasureType strmeas;
 
 extern LogMpi       logMpi;
