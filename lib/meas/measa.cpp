@@ -104,12 +104,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
 	}
 
-	if (measa & MEAS_2DMAP){
-			if(p2dmapo){
-				writeMapHdf5s2 (axiona,sliceprint);
-				writeMapHdf5s (axiona,sliceprint);
-				}
-	}
+	if( info.maty & MAPT_XYMV)
+		writeMapHdf5s  (axiona,sliceprint);
+	if( info.maty & MAPT_YZMV)
+		writeMapHdf5s2 (axiona,sliceprint);
 
 	//	--------------------------------------------------------------------------
 	//
@@ -117,14 +115,16 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	//
 	//	--------------------------------------------------------------------------
 
-	if (measa & MEAS_NEEDENERGY)
+	bool mapsneedenergy = (info.maty & MAPT_XYPE2) || (info.maty & MAPT_XYPE) || (info.maty & MAPT_XYE);
+
+	if ( (measa & MEAS_NEEDENERGY) || mapsneedenergy)
 	{
 		void *eRes;
 		trackAlloc(&eRes, 256);
 		memset(eRes, 0, 256);
 		double *eR = static_cast<double *> (eRes);
 
-		if (measa & MEAS_NEEDENERGYM2)
+		if ((measa & MEAS_NEEDENERGYM2) || mapsneedenergy)
 		{
 			// LogOut("energy (map->m2) ");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2", indexa);
@@ -151,15 +151,26 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeBinner(contBin, "/bins", "contB");
 			}
 
-			if (measa & MEAS_2DMAP)
+			if (mapsneedenergy)
 			{
-				if(p2dEmapo){
+				if(info.maty & MAPT_XYE){
 					LogMsg(VERB_NORMAL, "[Meas %d] 2D energy map",indexa);
 					writeEMapHdf5s (axiona,sliceprint);
 				}
 
-				if(p2dPmapo){
+				if(info.maty & MAPT_XYPE){
 					LogMsg(VERB_NORMAL, "[Meas %d] Proyection",indexa);
+					if (axiona->Precision() == FIELD_DOUBLE){
+						projectField	(axiona, [] (double x) -> double { return x ; } );
+					}
+					else{
+						projectField	(axiona, [] (float x) -> float { return x ; } );
+					}
+					writePMapHdf5 (axiona);
+				}
+
+				if(info.maty & MAPT_XYPE2){
+					LogMsg(VERB_NORMAL, "[Meas %d] Proyection energy squared",indexa);
 					if (axiona->Precision() == FIELD_DOUBLE){
 						projectField	(axiona, [] (double x) -> double { return x*x ; } );
 					}
