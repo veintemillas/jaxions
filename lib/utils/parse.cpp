@@ -1212,6 +1212,9 @@ int	parseArgs (int argc, char *argv[])
 			indi3 = atof(argv[i+1]);
 			uI3   = true;
 
+			if (indi3 == 0.0)
+				vqcdType = VQCD_PQ_ONLY;
+
 			if (indi3 < 0.)
 			{
 				printf("Error: Indi3 must be greater than or equal to zero.\n");
