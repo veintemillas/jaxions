@@ -197,7 +197,6 @@
 		void	gReset() { gsent = false ; grecv = false; }
 
 		size_t  getNg() {return Ng;}
-		size_t  setNg(const int nn) { Ng = nn;}
 		/*	Eliminar	*/
 
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
