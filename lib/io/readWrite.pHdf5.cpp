@@ -409,6 +409,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			sprintf(vStr, "VQcd 0");
 			break;
 
+		case	VQCD_PQ_ONLY:
+			sprintf(vStr, "VQcd PQ only");
+			break;
+
 		case	VQCD_1_PQ_2:
 			sprintf(vStr, "VQcd 1 Peccei-Quinn 2");
 			break;
@@ -901,6 +905,8 @@ LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
 				vqcdType = VQCD_2;
 			else if (!strcmp(vStr, "VQcd 0"))
 				vqcdType = VQCD_0;
+			else if (!strcmp(vStr, "VQcd PQ only"))
+				vqcdType = VQCD_PQ_ONLY;
 			else if (!strcmp(vStr, "VQcd 1 Peccei-Quinn 2"))
 				vqcdType = VQCD_1_PQ_2;
 			else if (!strcmp(vStr, "VQcd 1 N=2"))
@@ -1284,6 +1290,9 @@ void	createMeas (Scalar *axion, int index)
 			break;
 		case	VQCD_0:
 			sprintf(vStr, "VQcd 0");
+			break;
+		case	VQCD_PQ_ONLY:
+			sprintf(vStr, "VQcd PQ only");
 			break;
 		case	VQCD_1_PQ_2:
 			sprintf(vStr, "VQcd 1 Peccei-Quinn 2");
