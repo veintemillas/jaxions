@@ -229,6 +229,15 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 #endif
 			switch	(VQcd & VQCD_TYPE) {
 
+				case	VQCD_PQ_ONLY:
+				mMx = opCode(sub_pd,lap,
+					opCode(mul_pd,
+						opCode(mul_pd,
+							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+							opCode(set1_pd, LL)),
+											 mel));
+				break;
+
 				default:
 				case	VQCD_1:
 				mMx = opCode(sub_pd,
@@ -592,6 +601,15 @@ LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d",z0, zF, zM,
 
 			switch	(VQcd & VQCD_TYPE) {
 					default:
+					case	VQCD_PQ_ONLY:
+					mMx = opCode(sub_ps, lap,
+						opCode(mul_ps,
+							opCode(mul_ps,
+								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+								opCode(set1_ps, LL)),
+							mel));
+					break;
+
 					case	VQCD_1:
 					mMx = opCode(sub_ps,
 						opCode(add_ps, lap, zQVec),
