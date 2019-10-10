@@ -255,15 +255,18 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 	if 	( (pType & PROPC_BASE) )
 	{
 		LogMsg	(VERB_NORMAL, "[ip] propagator BASE with Ng=%d selected (%d)",Ng,pType);LogFlush();
-		field->setNg(Ng);
-		LogMsg	(VERB_HIGH, "[ip] Ng set to %d",Ng);LogFlush();
+		LogMsg	(VERB_HIGH, "[ip] field->Ng is set to %d",field->getNg());LogFlush();
 	}
 	if 	( (pType & PROPC_NNEIG) && (Ng > -1))
 	{
 		LogMsg	(VERB_NORMAL, "[ip] propagator Ng=%d selected (%d)",Ng,pType);LogFlush();
 		propclass = PROPC_NNEIG;
-		field->setNg(Ng);
-		LogMsg	(VERB_HIGH, "[ip] Ng set to %d",Ng);LogFlush();
+		LogMsg	(VERB_HIGH, "[ip] External variable Nng is %d",Nng);LogFlush();
+		if (Nng != Ng)
+		{
+			LogMsg	(VERB_HIGH, "[ip] WARNING: Nng was %d but changed to %d!",Nng,Ng);
+			Nng = Ng;
+		}
 		// we send ghosts to initialise COMM definitions once; minimum overhead, perhaps a waste of time?
 		field->sendGhosts(FIELD_M, COMM_SDRV);
 		field->sendGhosts(FIELD_M, COMM_WAIT);
@@ -467,6 +470,16 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropRKN4<VQCD_0_DRHO>>		(field, propclass);
 					break;
 
+				case VQCD_PQ_ONLY:
+					prop = std::make_unique<PropRKN4<VQCD_PQ_ONLY>>		(field, propclass);
+					break;
+				case VQCD_PQ_ONLY_RHO:
+					prop = std::make_unique<PropRKN4<VQCD_PQ_ONLY_RHO>>		(field, propclass);
+					break;
+				case VQCD_PQ_ONLY_DRHO:
+					prop = std::make_unique<PropRKN4<VQCD_PQ_ONLY_DRHO>>		(field, propclass);
+					break;
+
 				case VQCD_1N2:
 					prop = std::make_unique<PropRKN4<VQCD_1N2>>		(field, propclass);
 					break;
@@ -609,13 +622,12 @@ void	tunePropagator (Scalar *field) {
 		return;
 	}
 
- 	LogMsg(VERB_NORMAL,"[tp] profi!\n");
 	Profiler &prof = getProfiler(PROF_TUNER);
 
 	std::chrono::high_resolution_clock::time_point start, end;
 	size_t bestTime, lastTime, cTime;
 
-	LogMsg (VERB_HIGH, "Started tuner");
+	LogMsg (VERB_HIGH, "[tp] Started tuner");
 	prof.start();
 
 	if (field->Device() == DEV_CPU)
@@ -645,18 +657,17 @@ LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tune
 			newFile = true;
 		} else {
 			int	     rMpi, rThreads;
-			size_t       rLx, rLz;
+			size_t       rLx, rLz, Nghost;
 			unsigned int rBx, rBy, rBz, fType, myField = (field->Field() == FIELD_SAXION) ? 0 : 1;
 			char	     mDev[8];
 
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-
+LogMsg(VERB_HIGH,"[tp] Reading cache file %s",tuneName);
 			do {
-				fscanf (cacheFile, "%s %d %d %lu %lu %u %u %u %u\n", reinterpret_cast<char*>(&mDev), &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz);
-LogMsg(VERB_HIGH,"[tp] string?!\n");
+				fscanf (cacheFile, "%s %d %d %lu %lu %u %u %u %u %lu\n", reinterpret_cast<char*>(&mDev), &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz, &Nghost);
 				std::string fDev(mDev);
-LogMsg(VERB_HIGH,"[tp] commi!! %d, %d, (%d,%d) (%d,%d,%d)  ",rMpi, rThreads, rLx, rLz, rBx, rBy, rBz);
-				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev) {
+LogMsg(VERB_HIGH,"[tp] Read: MPI %d, threads %d, Ng %d, Lx,Lz (%d,%d) rBx,y,z (%d,%d,%d)  ",rMpi, rThreads, Nghost, rLx, rLz, rBx, rBy, rBz);
+				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev && Nghost == field->getNg()) {
 					if ((field->Device() == DEV_CPU && (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth())) ||
 					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
 						found = true;
@@ -666,19 +677,17 @@ LogMsg(VERB_HIGH,"[tp] Y!!");
 						prop->SetBlockY(rBy);
 LogMsg(VERB_HIGH,"[tp] Z!!");
 						prop->SetBlockZ(rBz);
-LogMsg(VERB_HIGH,"[tp] ups!!");
+LogMsg(VERB_HIGH,"[tp] update best block!!");
 						prop->UpdateBestBlock();
 					}
-LogMsg(VERB_HIGH,"[tp] lara!!");
 				}
-LogMsg(VERB_HIGH,"[tp] no ups!!");
 			}	while(!feof(cacheFile) && !found);
-LogMsg(VERB_HIGH,"[tp] feof!!");
+
 			fclose (cacheFile);
-LogMsg(VERB_HIGH,"[tp] closed!!");
+LogMsg(VERB_HIGH,"[tp] cache file closed!!");
 		}
 	}
-	LogMsg(VERB_HIGH,"[tp] BCAST!");
+LogMsg(VERB_HIGH,"[tp] BCAST!");
 
 	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
 
@@ -686,6 +695,7 @@ LogMsg(VERB_HIGH,"[tp] closed!!");
 
 	// If a cache file was found, we broadcast the best block and exit
 	if (found) {
+LogMsg(VERB_HIGH,"[tp] optimum found!");
 		unsigned int block[3];
 
 		if (myRank == 0) {
@@ -704,8 +714,8 @@ LogMsg(VERB_HIGH,"[tp] closed!!");
 			prop->UpdateBestBlock();
 		}
 
-		LogMsg (VERB_NORMAL, "Tuned values read from cache file. Best block %u x %u x %u", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
-		LogMsg (VERB_HIGH,   "Chosen block %u x %u x %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+LogMsg (VERB_NORMAL, "Tuned values read from cache file. Best block %u x %u x %u", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+LogMsg (VERB_HIGH,   "Chosen block %u x %u x %u\n", prop->BlockX(), prop->BlockY(), prop->BlockZ());
 		prop->Tune();
 		prof.stop();
 		prof.add(prop->Name(), 0., 0.);
@@ -713,6 +723,8 @@ LogMsg(VERB_HIGH,"[tp] closed!!");
 	}
 
 	// Otherwise we start tuning
+
+LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 
 	start = std::chrono::high_resolution_clock::now();
 	propagate(field, 0.);
@@ -831,10 +843,11 @@ LogMsg(VERB_HIGH,"[tp] closed!!");
 
 		unsigned int fType = (field->Field() == FIELD_SAXION) ? 0 : 1;
 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-		fprintf (cacheFile, "%s %d %d %lu %lu %u %u %u %u\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
-									fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+		fprintf (cacheFile, "%s %d %d %lu %lu %u %u %u %u %lu\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
+									fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), field->getNg());
 		fclose  (cacheFile);
 	}
+LogMsg (VERB_NORMAL, "\n");
 
 	commSync();
 	prof.stop();
