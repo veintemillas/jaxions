@@ -248,7 +248,15 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 #endif
 
 			switch	(VQcd & VQCD_TYPE) {
-				default:
+				case	VQCD_PQ_ONLY:
+				mMx = opCode(sub_pd, lap,
+					opCode(mul_pd,
+						opCode(mul_pd,
+							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+							opCode(set1_pd, LL)),
+											 mel));
+				break;
+								default:
 				case	VQCD_1:
 				mMx = opCode(sub_pd,
 					opCode(add_pd, lap, zQVec),
@@ -272,18 +280,7 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 				//FIX ME ADDITIONAL POTENTIALS!
 				case	VQCD_2:
 				mMx = opCode(sub_pd,
-					opCode(sub_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
+					opCode(sub_pd, lap,
 						opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
 					opCode(mul_pd,
 						opCode(mul_pd,
@@ -294,18 +291,7 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 
 				case	VQCD_1N2:
 				mMx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
+					opCode(add_pd,lap,
 							// 1N2 part
 						opCode(mul_pd,zNVec,mel)),
 					opCode(mul_pd,
@@ -644,6 +630,15 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 #endif
 
 			switch	(VQcd & VQCD_TYPE) {
+				case	VQCD_PQ_ONLY:
+				mMx = opCode(sub_ps, lap,
+					opCode(mul_ps,
+						opCode(mul_ps,
+							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+							opCode(set1_ps, LL)),
+											 mel));
+				break;
+
 					default:
 					case	VQCD_1:
 					mMx = opCode(sub_ps,
@@ -668,18 +663,7 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 					//FIX ME ADDITIONAL POTENTIALS!
 	 				case	VQCD_2:
 	 				mMx = opCode(sub_ps,
-	 					opCode(sub_ps,
-	 						opCode(mul_ps,
-	 							opCode(add_ps,
-	 								opCode(add_ps,
-	 									opCode(load_ps, &m[idxMz]),
-	 									opCode(add_ps,
-	 										opCode(add_ps,
-	 											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-	 											opCode(load_ps, &m[idxMx])),
-	 										opCode(load_ps, &m[idxPz]))),
-	 								opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-	 							opCode(set1_ps, ood2)),
+	 					opCode(sub_ps, lap,
 	 						opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
 	 					opCode(mul_ps,
 	 						opCode(mul_ps,
@@ -690,18 +674,7 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 
 					case	VQCD_1N2:
 					mMx = opCode(sub_ps,
-						opCode(add_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-										opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, ood2)),
+						opCode(add_ps, lap,
 								// 1N2 part
 							opCode(mul_ps,zNVec,mel)),
 						opCode(mul_ps,
@@ -711,9 +684,6 @@ LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng
 							mel));
 					break;
 			}
-
-
-
 
 			mPy = opCode(load_ps, &v[idxV0]);
 
