@@ -34,7 +34,8 @@ void	prepropa  (Scalar *axiona)
 	ninfa.measdata = defaultmeasType;
 	// ninfa.mask = spmask;
 	// ninfa.rmask = rmask;
-
+  ninfa.maty = maty;
+	
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
 	lm.maxTheta = M_PI;
@@ -144,6 +145,7 @@ void	prepropa2  (Scalar *axiona)
 	ninfa.measdata = defaultmeasType;
 	// ninfa.mask = spmask;
 	// ninfa.rmask = rmask;
+	ninfa.maty = maty;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
