@@ -536,21 +536,32 @@ LogFlush();
 
 	prof.start();
 
+	char loli[2048];
+
 	switch (field->Field()) {
 		case FIELD_AXION:
-			prop->appendName("Axion");
+		if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Axion");
+			}
 			(prop->propAxion)(dz);
 			break;
 
 		case FIELD_AXION_MOD:
-			prop->appendName("Axion Mod");
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Axion Mod");
+			}
 			(prop->propAxion)(dz);
 			break;
 
 		case FIELD_SAXION:
 			if (pType & (PROP_BASE | PROP_NNEIG)){
-				char loli[2048];
-				sprintf (loli, "NN %01d Ng %01d Saxion", Nng, field->getNg());
+				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
 				prop->appendName("Saxion");
@@ -580,6 +591,10 @@ LogFlush();
 	return;
 }
 
+
+
+
+
 void	resetPropagator(Scalar *field) {
 	/*	Default block size gives just one block	*/
 
@@ -608,10 +623,12 @@ void	resetPropagator(Scalar *field) {
 }
 
 
+
+
 void	tunePropagator (Scalar *field) {
 	// Hash CPU model so we don't mix different cache files
 	LogMsg(VERB_NORMAL,"\n");
- 	LogMsg(VERB_NORMAL,"[tp] tunning!\n");
+ 	LogMsg(VERB_NORMAL,"[tp] Tune propagator!\n");
 	if (pType & PROP_SPEC)
 		return;
 	if (pType & PROP_FSPEC)
@@ -778,8 +795,10 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 
 		if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
 			LogMsg (VERB_HIGH, "Block %u x %u x %u gave an error and couldn't run on the GPU", prop->BlockX(), prop->BlockY(), prop->BlockZ());
-		else
-			LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime);
+		else{
+			LogMsg (VERB_HIGH, "Test Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), lastTime);
+			LogMsg (VERB_HIGH, "Best Block %u x %u x %u done in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
+		}
 
 		if (lastTime < bestTime) {
 			bestTime = lastTime;
@@ -792,21 +811,39 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 
 	prop->getBaseName();
 
+	char loli[2048];
+
 	switch (field->Field()) {
 		case FIELD_AXION:
-			prop->appendName("Axion");
+		if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Axion");
+			}
 			break;
 
 		case FIELD_AXION_MOD:
-			prop->appendName("Axion Mod");
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Axion Mod");
+			}
 			break;
 
 		case FIELD_SAXION:
-			prop->appendName("Saxion");
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Saxion");
+			}
 			break;
 
 		default:
 			LogError ("Error: invalid field type");
+			prof.stop();
 			return;
 	}
 

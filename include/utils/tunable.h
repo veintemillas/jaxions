@@ -136,7 +136,7 @@
 				yBest = yBlock = 4;
 				zBest = zBlock = 1;
 			} else {
-				size_t xTmp = maxThreadsPerDim(0); 
+				size_t xTmp = maxThreadsPerDim(0);
 				size_t yTmp = maxThreadsPerDim(1);
 				//auto zTmp = 1;
 				//lV = maxThreadsPerBlock();
