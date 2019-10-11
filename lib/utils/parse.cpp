@@ -234,14 +234,18 @@ void	PrintUsage(char *name)
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
- 	printf("  --lapla 1/2/3/4             	Number of Neighbours in the underoptimised laplacian [super-optimised default is 1 and requires no --lapla 1 flag]\n");
+ 	printf("  --lap   1/2/3/4             	Number of Neighbours of the laplacian [default --lap 1 flag]\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
+	printf("  --fftplan [64/0/32/8]         FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE (default MEASURE) \n");
+
+	printf(\n"  --dwgam [float]             Damping factor used for rho between Moore's time and switching to theta-only\n");
+	printf(\n"  --notheta                   Do not switch to theta-only mode when strings have decayed\n");
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
-	printf("  --mink                        Minkowski (No expansion of the Universe)\n");
+	printf("  --mink                        Minkowski (No expansion of the Universe; experimental)\n");
 	printf("  --frw   [float]               Expansion of the Universe [R~eta^frw] (default frw = 1.0)\n");
 	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
 	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
@@ -249,10 +253,15 @@ void	PrintUsage(char *name)
 	printf("  --lsize [float]               Physical size of the system (default 4.0).\n");
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
-	printf("  --msa   [float]               Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
+	printf("  --msa   [float]               [Sets PRS string simulation] msa is the Spacing to core ratio.\n");
+	printf("  --lz2e  [float]               	Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
 	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
+	printf("  --vqcd2                       Cosine QCD potential (default, disabled).\n");
 	printf("  --vqcd2                       Variant of QCD potential (default, disabled).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
+	printf("  --NDW2                        PQ potential with NDW=2 (default, disabled, experimental).\n");
+	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
+	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
 
 	printf("\nInitial conditions:\n");
@@ -284,18 +293,27 @@ void	PrintUsage(char *name)
 	printf("--measinfo                      Prints more info about measurement options.\n");
 	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
-	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
-	printf("--p3Dstr  [Mb]                  Include 3D string/Wall maps axion.m.files always or if expected size below [Mbs] (default no)\n");
+	printf("--p2Dmap                        Include 2D XY maps in axion.m.files (default no)\n");
+	printf("--p2Dslice [int]                Include 2D XY maps of the desired slice in axion.m.files (default no)\n");
+	printf("--p2DmapYZ                      Include 2D YZ maps in axion.m.files (default no)\n");
+	printf("--p2DmapE                       2D Energy XY map in axion.m.files (default no) \n");
+	printf("--p2DmapPE                      2D Projection map of Energy along z direction in axion.m.files (default no) \n");
+	printf("--p2DmapPE2                     2D Projection map of Energy^2 along z direction in axion.m.files (default no) \n");
+	printf("--p3Dstr                        Include 3D string/Wall maps axion.m.files (default no)\n");
 	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
 	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
 	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
+	printf("--redmpwkb [fint]               Same but after the WKB.\n");
 
 	printf("\nLogging:\n");
-	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
+	printf("--verbose 0/1/2/3/4             Choose verbosity level 0 = silent, 1 = normal (default), 2 = high, ...\n\n");
 	printf("--nologmpi                      Disable logging over MPI so only rank 0 logs (default, all ranks log)\n\n");
+	printf("--icinfo                        Info about initial conditions.\n");
+	printf("--measinfo                      Info about measurement types.\n");
 	printf("--help                          Prints this message.\n");
 
+	// printf("--debug                         Prints some messages\n");
 	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
 
 	return;
@@ -313,11 +331,11 @@ void	PrintICoptions()
 	printf("  --smvar [string]                                 Spectial initial distributions.\n");
 	printf("  --smvar axnoise  --mode0 [float] --kcr [float]   theta = mode0+random{-1,1}*kcr.\n");
 	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr.\n");
-	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n\n");
-
 	printf("  --smvar mc   --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x-N/2)^2).\n");
-	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n\n");
-
+	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n");
+	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n");
+	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
+	printf("                   --kcr [float]                   rho = kcr.\n\n");
 	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
 	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n\n");
 
@@ -328,21 +346,38 @@ void	PrintICoptions()
 	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
 	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n\n");
 
-	printf(" [vilgor,vilgork,vilgors]                          Start in the VGH attractor solution (or close)\n");
+	printf(" [lola]                                            Start in the VGH attractor solution (or close)\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-	printf("  --zi [float]                                     Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --logi [float]                                   Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --zi                                             Initial time (do not use with logi)\n");
 	printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
-	printf("  --sIter 2 --kcr [float]                          Network over/underdense by random factor [*kcr,/kcr]. \n");
+	printf("  --kickalpha [float]                              Initial V velocity; V initalised as Phi(1+kick) (default 0.0)\n");
+	printf("  --extrav    [float]                              Extra noise in V (default 0.0)\n\n");
+
+	// printf(" [vilgor,vilgork,vilgors]                          Start in the VGH attractor solution (or close)\n");
+	// printf("-----------------------------------------------------------------------------------------------\n");
+	// printf("  --zi [float]                                     Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	// printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
+	// printf("  --sIter 2 --kcr [float]                          Network over/underdense by random factor [*kcr,/kcr]. \n");
+
+	printf(" [cole]                                            Use correlation length to set field\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --logi [float]                                   Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --zi                                             Initial time (do not use with logi)\n");
+	printf("  --kcr [float]                                    Correlation length. \n");
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --kmax [int] --kcr [float]                       Axion modes as in Kolb&Tkachev 92 .\n");
 	printf("                                                   <theta^2>=kcr*pi^2/3 \n");
 
-	printf(" --preprop                                         prepropagator\n");
+	printf(" --preprop                                         prepropagator; currently only works with lola\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-	printf("  --preprop [int] --kcr [float]                       to be described .\n");
-
+	printf("  --preprop [int] --kcr [float]                    \n");
+	printf("  --pregam [float]                                 Damping factor during prepropagation (def. 0.0) .\n");
+	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default VQCD_1) .\n");
+	printf("\n-----------------------------------------------------------------------------------------------\n");
+	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n");
 	return;
 }
 
@@ -385,13 +420,15 @@ void	PrintMEoptions()
 	printf("    Masked with (rho/v)^2                  4 \n");
 	printf("    Red-Gauss                              8 \n");
 	printf("  --rmask [float]                          radius in grid u. [default = 2]\n\n");
-
+	printf("  --rmask file                             reads a rmasktable.dat with values\n\n");
+	printf("  --printmask                              Prints the mask (experimental)\n\n");
 	printf("  Options for String Measurement \n");
 	printf("  --strmeas [int]            Sum of integers.\n");
 	printf("    Statistical measurment only            0 (default	)\n");
 	printf("    String length                          1 \n");
 	printf("    String velocity and gamma              2 \n");
 	printf("    String energy (needs Red-Gauss mask)   4 \n");
+
 	printf("--------------------------------------------------\n");
 	printf("--measlistlog              Gen measfile log.\n\n");
 	return;
@@ -613,7 +650,7 @@ int	parseArgs (int argc, char *argv[])
 			p3dstrings = true ;
 
 			// p3DthresholdMB=1.8e+21;
-			p3DthresholdMB = atof(argv[i+1]);
+			// p3DthresholdMB = atof(argv[i+1]);
 			i++;
 
 			procArgs++;
