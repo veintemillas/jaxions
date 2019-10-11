@@ -238,10 +238,11 @@ void	PrintUsage(char *name)
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
-	printf("  --fftplan [64/0/32/8]         FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE (default MEASURE) \n");
+	printf("  --fftplan [64/0/32/8]         FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE (default MEASURE) \n\n");
 
-	printf(\n"  --dwgam [float]             Damping factor used for rho between Moore's time and switching to theta-only\n");
-	printf(\n"  --notheta                   Do not switch to theta-only mode when strings have decayed\n");
+	printf("  --sst0  [int]                 Number of steps between end of strings and switch to theta-only propagation\n");
+	printf("  --dwgam [float]               Damping factor used for rho between Moore's time and switching to theta-only\n");
+	printf("  --notheta                     Do not switch to theta-only mode when strings have decayed\n");
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
@@ -254,8 +255,8 @@ void	PrintUsage(char *name)
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
 	printf("  --msa   [float]               [Sets PRS string simulation] msa is the Spacing to core ratio.\n");
-	printf("  --lz2e  [float]               	Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
 	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
+	printf("                                Setting 0.0 turns on massless Axion mode.\n");
 	printf("  --vqcd2                       Cosine QCD potential (default, disabled).\n");
 	printf("  --vqcd2                       Variant of QCD potential (default, disabled).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
@@ -335,7 +336,7 @@ void	PrintICoptions()
 	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n");
 	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n");
 	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
-	printf("                   --kcr [float]                   rho = kcr.\n\n");
+	printf("                   --kcr [float]                   rho = kcr. Alternatively k = (kMax,0,0) if not kkk.dat file. \n\n");
 	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
 	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n\n");
 
@@ -373,9 +374,12 @@ void	PrintICoptions()
 
 	printf(" --preprop                                         prepropagator; currently only works with lola\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-	printf("  --preprop [int] --kcr [float]                    \n");
-	printf("  --pregam [float]                                 Damping factor during prepropagation (def. 0.0) .\n");
+	printf("  --preprop                                                                                    \n");
+	printf("  --prepropcoe  [float]                            Preevolution starts at zi/prepropcoe        \n");
+	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
 	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default VQCD_1) .\n");
+	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
+	printf("  --icstudy                           	           Prints axion.m.xxxxx files during prepropagation (Default no).\n");
 	printf("\n-----------------------------------------------------------------------------------------------\n");
 	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n");
 	return;
@@ -418,9 +422,12 @@ void	PrintMEoptions()
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
-	printf("    Red-Gauss                              8 \n");
-	printf("  --rmask [float]                          radius in grid u. [default = 2]\n\n");
-	printf("  --rmask file                             reads a rmasktable.dat with values\n\n");
+	printf("    Red (Top-hat from Gaussian cut)        8 \n");
+	printf("    Gaussian                               16 \n");
+	printf("     --rmask [float]                       Mask radius in 1/m_s units [default = 2]\n");
+	printf("     --rmask file                          Prints different spectra, each masked \n");
+	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
+	printf("                                           (Red and Gas modes) \n\n");
 	printf("  --printmask                              Prints the mask (experimental)\n\n");
 	printf("  Options for String Measurement \n");
 	printf("  --strmeas [int]            Sum of integers.\n");
@@ -430,7 +437,7 @@ void	PrintMEoptions()
 	printf("    String energy (needs Red-Gauss mask)   4 \n");
 
 	printf("--------------------------------------------------\n");
-	printf("--measlistlog              Gen measfile log.\n\n");
+	printf("--measlistlog              Generate measfile log. with defaults.\n\n");
 	return;
 }
 
@@ -1656,7 +1663,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev).\n");
+				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev/lola/cole...).\n");
 				exit(1);
 			}
 
