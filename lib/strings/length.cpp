@@ -862,9 +862,8 @@ StringEnergyData stringenergy (Scalar *field)
 	std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
 	std::complex<Float> zaskaF((Float)field->Saskia()*Rscale, 0.);
 	double depta = field->BckGnd()->PhysSize()/Lx;
-	double lambda = field->BckGnd()->Lambda();
-	if(field->Lambda() == LAMBDA_Z2) lambda /= Rscale*Rscale;
-
+	double lambda = field->LambdaP();
+	
 	char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
 	std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
 	std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());

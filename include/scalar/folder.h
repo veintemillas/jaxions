@@ -27,6 +27,9 @@
 		template<typename cFloat>
 		void	unfoldField2D(const size_t cZ);
 
+		template<typename cFloat>
+		void	unfoldField2DYZ(const size_t sX);
+
 		public:
 
 			 Folder(Scalar *scalar);

@@ -3,6 +3,7 @@
 
 	#include "scalar/scalarField.h"
 
-	void	prepropa  (Scalar *axiona);
-	void	relaxrho  (Scalar *axiona);
+	void	prepropa   (Scalar *axiona);
+	void	prepropa2  (Scalar *axiona);
+	void	relaxrho   (Scalar *axiona);
 #endif

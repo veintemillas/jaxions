@@ -36,7 +36,7 @@ int	main (int argc, char *argv[])
 	} else {
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 		else
 		{
 			//This reads from an Axion.$fIndex file
@@ -134,7 +134,7 @@ int	main (int argc, char *argv[])
 	else
 		index = fIndex;
 
-	if (LAMBDA_FIXED == axion->Lambda())
+	if (LAMBDA_FIXED == axion->LambdaT())
 		LogOut ("Lambda in FIXED mode\n");
 	else
 		LogOut ("Lambda in Z2 mode\n");

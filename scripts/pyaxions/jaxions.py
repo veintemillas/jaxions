@@ -235,6 +235,17 @@ def gm(address,something='summary',printerror=False):
     f = h5py.File(address, 'r')
 
     #prelim checks
+    if (something[:2] == 'at'):
+        esp = something[2:]
+        gro = esp[:esp.rfind('/')]
+        att = esp[esp.rfind('/')+1:]
+        try:
+            return f[gro].attrs[u'%s'%att]
+        except:
+            print('what!')
+            return 0
+
+    #prelim checks
     ftype = f.attrs.get('Field type').decode()
 
     if 'R' in f.attrs:
@@ -283,41 +294,54 @@ def gm(address,something='summary',printerror=False):
         return L/N ;
     if something == 'massA':
         return f.attrs[u'Axion mass'] ;
+
+    if something == 'lambda':
+        try:
+            return f['/potential/'].attrs[u'LambdaP']
+        except:
+            typeL = f['/potential/'].attrs['Lambda type']
+            e = 2.0
+            if typeL == b'z2' :
+                z = f.attrs[u'z']
+                return f['/potential/'].attrs[u'Lambda']/(z**e) ;
+            else :
+                return f['/potential/'].attrs[u'Lambda'] ;
+
     if something == 'msa':
         typeL = f['/potential/'].attrs['Lambda type']
+        l = f['/potential/'].attrs[u'Lambda']
+        try:
+            e = f['/potential/'].attrs[u'Lambda Z2 exponent']
+        except:
+            e = 2.0
         z = f.attrs[u'z']
         L = f.attrs[u'Physical size']
         N = f.attrs[u'Size']
-        l = f['/potential/'].attrs[u'Lambda']
         if typeL == b'z2' :
-            return f.attrs[u'Saxion mass'] ;
+            return np.sqrt(2.0*l)*z**(1-e/2)*L/N ;
         else :
             return np.sqrt(2.0*l)*z*L/N ;
 
-    if something == 'lambda':
-        typeL = f['/potential/'].attrs['Lambda type']
-        if typeL == b'z2' :
-            z = f.attrs[u'z']
-            return f['/potential/'].attrs[u'Lambda']/(z**2) ;
-        else :
-            return f['/potential/'].attrs[u'Lambda'] ;
-    # if something == 'msa':
-    #     return f.attrs[u'Saxion mass'] ;
 
     if something == 'massS':
-        L = f.attrs[u'Physical size']
-        N = f.attrs[u'Size']
-        delta = L/N
-        msa = f.attrs[u'Saxion mass'] ;
-        return msa/delta ;
+        ll = f['/potential/'].attrs[u'LambdaP']
+        return np.sqrt(2*ll) ;
+
         # change for FRW
     if something == 'logi':
-        L = f.attrs[u'Physical size']
-        N = f.attrs[u'Size']
-        delta = L/N
-        msa = f.attrs[u'Saxion mass'] ;
         R = gm(address,'R')
-        return np.log(msa*R/delta) ;
+        try:
+            ll = f['/potential/'].attrs[u'LambdaP']
+            return np.log(np.sqrt(2*ll)*R**2) ;
+        except:
+            typeL = f['/potential/'].attrs['Lambda type']
+            ll = f['/potential/'].attrs[u'Lambda']
+            if typeL == b'z2' :
+                return np.log(np.sqrt(2*ll)*R) ;
+            else:
+                return np.log(np.sqrt(2*ll)*R**2) ;
+
+
 
     # initial condition stuff
     if something == 'kc':
@@ -328,47 +352,95 @@ def gm(address,something='summary',printerror=False):
     # energies or other stuff
     en_check = 'energy' in f
     if (something[0] == 'e') and en_check :
-        fi = something[-1]
-        if fi == 'A':
-            fis = 'A'
-        elif fi == 'S':
+        ll = len(something)-1
+        if ('mask' in something):
+            # float to the right of mask with the correct format
+            mst = something[something.find('mask'):]
+            mmm = '/Redmask_%.2f'%float(something[something.find('mask')+4:])
+            maska = ' nMask'
+            ll -= len(something[something.find('mask'):])
+        else:
+            mst = ''
+            mmm = ''
+            maska =''
+
+        if 'A' in something:
+            field = 'Axion'
+            ll -= 1
+        elif 'S' in something:
             if ftype == 'Saxion':
-                fis = 'Sa'
+                field = 'Saxion'
+                ll -= 1
             else:
                 if printerror :
                      print('[gm] Warning: file contains no Saxion energy!, set to 0.')
                 return 0. ;
         else :
             if printerror :
-                print('[gm] what field Energy you wants?')
+                print('[gm] No Field specified, add both?')
             return 0. ;
+        # if ('A' in something) and ('S' in something)
+        erequested = 0
+        if ll == 0:
+            if (something == 'eA'+mst) or (something == 'eS'+mst):
+                    erequested += f['energy'+mmm].attrs[field+' Kinetic'+maska] ;
+                    erequested += f['energy'+mmm].attrs[field+' Gr Y'+maska] ;
+                    erequested += f['energy'+mmm].attrs[field+' Gr X'+maska] ;
+                    erequested += f['energy'+mmm].attrs[field+' Gr Z'+maska] ;
+                    erequested += f['energy'+mmm].attrs[field+' Potential'+maska] ;
+                    return erequested
+        if ('K' in something):
+            ll -= 1
+            erequested += f['energy'+mmm].attrs[field+' Kinetic'+maska] ;
+            if ll == 0:
+                return erequested
+        if ('V' in something):
+            ll -= 1
+            erequested += f['energy'+mmm].attrs[field+' Potential'+maska] ;
+            if ll == 0:
+                return erequested
+        if ('G' in something) and not (('Gx' in something) or ('Gy' in something) or ('Gz' in something)): # We assume A or S in the call
+            ll -= 1
+            erequested += f['energy'+mmm].attrs[field+' Gr Y'+maska] ;
+            erequested += f['energy'+mmm].attrs[field+' Gr X'+maska] ;
+            erequested += f['energy'+mmm].attrs[field+' Gr Z'+maska] ;
+            if ll == 0:
+                return erequested
 
-        if (something == 'eGx'+fi):
-            return f['energy'].attrs[fis+'xion Gr X'] ;
-        if (something == 'eGy'+fi):
-            return f['energy'].attrs[fis+'xion Gr Y'] ;
-        if (something == 'eGz'+fi):
-            return f['energy'].attrs[fis+'xion Gr Z'] ;
-        if (something == 'eG'+fi):
-            eni = f['energy'].attrs[fis+'xion Gr X']
-            eni += f['energy'].attrs[fis+'xion Gr Y']
-            eni += f['energy'].attrs[fis+'xion Gr Z']
-            return eni ;
-        if (something == 'eK'+fi):
-            return f['energy'].attrs[fis+'xion Kinetic'] ;
-        if (something == 'eV'+fi):
-            return f['energy'].attrs[fis+'xion Potential'] ;
-        if (something == 'e'+fi):
-            eni = f['energy'].attrs[fis+'xion Gr X']
-            eni += f['energy'].attrs[fis+'xion Gr Y']
-            eni += f['energy'].attrs[fis+'xion Gr Z']
-            eni += f['energy'].attrs[fis+'xion Kinetic']
-            eni += f['energy'].attrs[fis+'xion Potential']
-            return eni ;
+        if ('Gx' in something):
+            ll -= 2
+            erequested += f['energy'+mmm].attrs[field+' Gr X'+maska] ;
+            if ll == 0:
+                return erequested
+
+        if ('Gy' in something):
+            ll -= 2
+            erequested += f['energy'+mmm].attrs[field+' Gr Y'+maska] ;
+            if ll == 0:
+                return erequested
+
+        if ('Gz' in something):
+            ll -= 2
+            erequested += f['energy'+mmm].attrs[field+' Gr Z'+maska] ;
+            if ll == 0:
+                return erequested
+        if (ll > 0):
+            print('[gm] I did not get a part of the request ')
+            return erequested
+
     elif (something[0] == 'e') and not en_check :
         if printerror :
             print('[gm] No energy in the file ',address )
         return 0. ;
+
+    if (something == 'avrho'):
+        return f['energy'].attrs['Saxion vev']
+
+    if (something == 'avrhoM'):
+        return f['energy'].attrs['Saxion vev nMask']
+
+    if (something == 'nmp'):
+        return f['energy'].attrs['Number of masked points']
 
     # strings
     st_check = ('string' in f)
@@ -612,7 +684,7 @@ def gm(address,something='summary',printerror=False):
     if (something == 'nspK?') :
         return nsp_check
     if (something[0:3] == 'nsp') and (something[-1] == '?'):
-        print('nSpectrum/s'+something[3:-1])
+        # print('nSpectrum/s'+something[3:-1])
         return ('nSpectrum/s'+something[3:-1] in f)
     if (something == 'nsp_info'):
         return [a for a in f['nSpectrum']]
@@ -827,6 +899,18 @@ def gm(address,something='summary',printerror=False):
             return np.array(f['pSpectrum/sPmasked2/data/']) ;
 
     # maps
+
+    if (something[0:5] == 'slice'):
+        esp = something[5:]
+        map = esp[:esp.rfind('/')]
+        typ = esp[esp.rfind('/')+1:]
+        mal = np.array(f[map][typ].value)
+        N = f.attrs[u'Size']
+        if len(mal) == N*N*2:
+            return mal.reshape(N,N,2)
+        elif len(mal) == N*N:
+            return mal.reshape(N,N)
+
     map_check = 'map' in f
 
     if (something == 'map?'):
@@ -837,38 +921,42 @@ def gm(address,something='summary',printerror=False):
             print('[gm] Warning: No map in file!. ')
         return ;
     if (something[0:3] == 'map') and  map_check :
+        mapad = 'map'
+        if (something[0:4] == 'mapp') and  map_check :
+            mapad = 'mapp'
         N = f.attrs[u'Size']
         ct = f.attrs[u'z']
-        if (something == 'mapmC') and (ftype == 'Saxion'):
-            return np.reshape(f['map']['m'].value.reshape(N,N,2)) ;
-        if (something == 'mapmC') and (ftype == 'Axion'):
+        if (something == mapad+'mC') and (ftype == 'Saxion'):
+            # return np.reshape(f['map']['m'].value.reshape(N,N,2)) ;
+            return f[mapad]['m'].value.reshape(N,N,2) ;
+        if (something == mapad+'mC') and (ftype == 'Axion'):
             return ;
-        if (something == 'mapvC') and (ftype == 'Saxion'):
-            return np.reshape(f['map']['v'].value.reshape(N,N,2)) ;
-        if (something == 'mapvC') and (ftype == 'Axion'):
+        if (something == mapad+'vC') and (ftype == 'Saxion'):
+            return f[mapad]['v'].value.reshape(N,N,2) ;
+        if (something == mapad+'vC') and (ftype == 'Axion'):
             return ;
-        if (something == 'maptheta') and (ftype == 'Saxion'):
-            temp = np.array(f['map']['m'].value.reshape(N,N,2))
+        if (something == mapad+'theta') and (ftype == 'Saxion'):
+            temp = np.array(f[mapad]['m'].value.reshape(N,N,2))
             temp = np.arctan2(temp[:,:,1], temp[:,:,0])
             return temp ;
-        if (something == 'maptheta') and (ftype == 'Axion'):
-            temp = np.array(f['map']['m'].value.reshape(N,N))
+        if (something == mapad+'theta') and (ftype == 'Axion'):
+            temp = np.array(f[mapad]['m'].value.reshape(N,N))
             return temp/scaleFactorR ;
-        if (something == 'mapvheta') and (ftype == 'Axion'):
-            temp = np.array(f['map']['v'].value.reshape(N,N))
+        if (something == mapad+'vheta') and (ftype == 'Axion'):
+            temp = np.array(f[mapad]['v'].value.reshape(N,N))
             return temp ;
-        if (something == 'maprho') and (ftype == 'Saxion'):
-            temp = np.array(f['map']['m'].value.reshape(N,N,2))
+        if (something == mapad+'rho') and (ftype == 'Saxion'):
+            temp = np.array(f[mapad]['m'].value.reshape(N,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
 
         if (something == 'mapE'):
             if 'map/E' in f:
-                return np.array(f['map']['E'].value.reshape(N,N)) ;
+                return np.array(f[mapad]['E'].value.reshape(N,N)) ;
 
 
         if (something == 'mapEdens') and (ftype == 'Axion'):
-            theta = np.array(f['map']['m'].value.reshape(N,N))/scaleFactorR
+            theta = np.array(f[mapad]['m'].value.reshape(N,N))/scaleFactorR
             massA2 = f.attrs[u'Axion mass']
             massA2 *= massA2
             mapa = massA2*2*np.sin(theta/2)**2

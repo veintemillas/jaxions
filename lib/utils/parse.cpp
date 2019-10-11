@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <sys/stat.h>
-#include<vector>
+#include <vector>
 
 #include "enum-field.h"
 #include "cosmos/cosmos.h"
@@ -16,7 +16,7 @@ int    nSteps = 5;
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER
-int    Ng     = -1 ;
+int    Nng    = -1 ;
 double indi3  = 1.0;
 double msa    = 1.5;
 double wDz    = 0.8;
@@ -65,6 +65,7 @@ bool uZth     = false;
 bool uZrs     = false;
 bool uZin     = false;
 bool uZfn     = false;
+bool uLogi    = false;
 bool uMI      = false;
 bool uFR      = false;
 bool spectral = false;
@@ -81,25 +82,29 @@ size_t iter  = 0;
 size_t parm1 = 0;
 size_t wTime = std::numeric_limits<std::size_t>::max();
 
-size_t       fftplanType = 0; //FFTW_MEASURE = 0
-PropType     pType     = PROP_NONE;
-SpectrumMaskType spmask= SPMASK_FLAT;
-StringMeasureType strmeas = STRMEAS_STRING;
-double       rmask     = 2.0 ;
-ConfType     cType     = CONF_NONE;
-ConfsubType  smvarType = CONF_RAND;
-FieldType    fTypeP    = FIELD_SAXION;
-LambdaType   lType     = LAMBDA_FIXED;
-VqcdType     vqcdType  = VQCD_1;
+size_t       fftplanType     = 0; //FFTW_MEASURE = 0
+PropType     pType           = PROP_NONE;
+SpectrumMaskType spmask      = SPMASK_FLAT;
+StringMeasureType strmeas    = STRMEAS_STRING;
+double       rmask           = 2.0 ;
+ConfType     cType           = CONF_NONE;
+ConfsubType  smvarType       = CONF_RAND;
+FieldType    fTypeP          = FIELD_SAXION;
+LambdaType   lType           = LAMBDA_FIXED;
+VqcdType     vqcdType        = VQCD_1;
 VqcdType     vqcdTypeDamp    = VQCD_NONE;
 VqcdType     vqcdTypeRhoevol = VQCD_NONE;
 
+// Default IC type
+IcData icdatst;
 
 // Default measurement type, some options can be chosen with special flags | all with --meas
-MeasureType  defaultmeasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY  ;
+MeasureType  defaultmeasType   = MEAS_NOTHING  ;
 // Default measurement type for the transition to theta
-// MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP ;
-MeasureType      rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
+MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
+
+// map measurement types (applies to all measurements that get PLOT_2D)
+SliceType maty;
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -229,14 +234,19 @@ void	PrintUsage(char *name)
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
- 	printf("  --lapla 1/2/3/4             	Number of Neighbours in the underoptimised laplacian [super-optimised default is 1 and requires no --lapla 1 flag]\n");
+ 	printf("  --lap   1/2/3/4             	Number of Neighbours of the laplacian [default --lap 1 flag]\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
 	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
+	printf("  --fftplan [64/0/32/8]         FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE (default MEASURE) \n\n");
+
+	printf("  --sst0  [int]                 Number of steps between end of strings and switch to theta-only propagation\n");
+	printf("  --dwgam [float]               Damping factor used for rho between Moore's time and switching to theta-only\n");
+	printf("  --notheta                     Do not switch to theta-only mode when strings have decayed\n");
 
 	printf("\nPhysical parameters:\n");
 	printf("  --ftype saxion/axion          Type of field to be simulated, either saxion + axion or lone axion (default saxion, not parsed yet).\n");
-	printf("  --mink                        Minkowski (No expansion of the Universe)\n");
+	printf("  --mink                        Minkowski (No expansion of the Universe; experimental)\n");
 	printf("  --frw   [float]               Expansion of the Universe [R~eta^frw] (default frw = 1.0)\n");
 	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
 	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
@@ -244,10 +254,15 @@ void	PrintUsage(char *name)
 	printf("  --lsize [float]               Physical size of the system (default 4.0).\n");
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
-	printf("  --msa   [float]               Spacing to core ratio (Moore parameter) [l/raxion3D].\n");
+	printf("  --msa   [float]               [Sets PRS string simulation] msa is the Spacing to core ratio.\n");
 	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
+	printf("                                Setting 0.0 turns on massless Axion mode.\n");
+	printf("  --vqcd2                       Cosine QCD potential (default, disabled).\n");
 	printf("  --vqcd2                       Variant of QCD potential (default, disabled).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
+	printf("  --NDW2                        PQ potential with NDW=2 (default, disabled, experimental).\n");
+	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
+	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
 
 	printf("\nInitial conditions:\n");
@@ -262,6 +277,7 @@ void	PrintUsage(char *name)
 	printf("  --sIter [int]                 Number of smoothing steps for the generation of the configuration with --ctype smooth (default 40)\n");
 	printf("  --alpha [float]               alpha parameter for the smoothing (default 0.143).\n");
 	printf("  --wkb   [float]               WKB's the final AXION configuration until specified time [l/raxion3D] (default no).\n");
+ 	printf("  --nncore  										Do not apply rho(x) core normalisation.\n");
 	printf("\n");
 	printf("  --index [idx]                 Loads HDF5 file at out/dump as initial conditions (default, don't load).\n");
 
@@ -278,18 +294,27 @@ void	PrintUsage(char *name)
 	printf("--measinfo                      Prints more info about measurement options.\n");
 	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
-	printf("--p2Dmap                        Include 2D maps in axion.m.files (default no)\n");
-	printf("--p3Dstr  [Mb]                  Include 3D string/Wall maps axion.m.files always or if expected size below [Mbs] (default no)\n");
+	printf("--p2Dmap                        Include 2D XY maps in axion.m.files (default no)\n");
+	printf("--p2Dslice [int]                Include 2D XY maps of the desired slice in axion.m.files (default no)\n");
+	printf("--p2DmapYZ                      Include 2D YZ maps in axion.m.files (default no)\n");
+	printf("--p2DmapE                       2D Energy XY map in axion.m.files (default no) \n");
+	printf("--p2DmapPE                      2D Projection map of Energy along z direction in axion.m.files (default no) \n");
+	printf("--p2DmapPE2                     2D Projection map of Energy^2 along z direction in axion.m.files (default no) \n");
+	printf("--p3Dstr                        Include 3D string/Wall maps axion.m.files (default no)\n");
 	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
 	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
 	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
 	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
+	printf("--redmpwkb [fint]               Same but after the WKB.\n");
 
 	printf("\nLogging:\n");
-	printf("--verbose 0/1/2                 Choose verbosity level 0 = silent, 1 = normal (default), 2 = high.\n\n");
+	printf("--verbose 0/1/2/3/4             Choose verbosity level 0 = silent, 1 = normal (default), 2 = high, ...\n\n");
 	printf("--nologmpi                      Disable logging over MPI so only rank 0 logs (default, all ranks log)\n\n");
+	printf("--icinfo                        Info about initial conditions.\n");
+	printf("--measinfo                      Info about measurement types.\n");
 	printf("--help                          Prints this message.\n");
 
+	// printf("--debug                         Prints some messages\n");
 	//printf("--lapla 0/1/2/3/4               Number of Neighbours in the laplacian [only for simple3D] \n");
 
 	return;
@@ -307,11 +332,11 @@ void	PrintICoptions()
 	printf("  --smvar [string]                                 Spectial initial distributions.\n");
 	printf("  --smvar axnoise  --mode0 [float] --kcr [float]   theta = mode0+random{-1,1}*kcr.\n");
 	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr.\n");
-	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n\n");
-
 	printf("  --smvar mc   --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x-N/2)^2).\n");
-	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n\n");
-
+	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n");
+	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n");
+	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
+	printf("                   --kcr [float]                   rho = kcr. Alternatively k = (kMax,0,0) if not kkk.dat file. \n\n");
 	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
 	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n\n");
 
@@ -322,23 +347,49 @@ void	PrintICoptions()
 	printf("                                                   mode ~ exp(I*random) * exp( -(kcr* k x)^2).\n");
 	printf("  --mode0 [float]                                  mode[000] = exp(I*mode0).\n\n");
 
-	printf(" [vilgor,vilgork,vilgors]                          Start in the VGH attractor solution (or close)\n");
+	printf(" [lola]                                            Start in the VGH attractor solution (or close)\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --logi [float]                                   Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --zi                                             Initial time (do not use with logi)\n");
+	printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
+	printf("  --kickalpha [float]                              Initial V velocity; V initalised as Phi(1+kick) (default 0.0)\n");
+	printf("  --extrav    [float]                              Extra noise in V (default 0.0)\n\n");
+
+	printf(" [vilgor,vilgork,vilgors]                          Old versions of lola (legacy, to be discontinued)\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --zi [float]                                     Initial log(ms/H) (no time!!!) [default 0.0].\n");
 	printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
 	printf("  --sIter 2 --kcr [float]                          Network over/underdense by random factor [*kcr,/kcr]. \n");
+
+	printf(" [cole]                                            Use correlation length to set field\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --logi [float]                                   Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --zi                                             Initial time (do not use with logi)\n");
+	printf("  --kcr [float]                                    Correlation length. \n");
 
 	printf(" [tkachev]                                         Axion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --kmax [int] --kcr [float]                       Axion modes as in Kolb&Tkachev 92 .\n");
 	printf("                                                   <theta^2>=kcr*pi^2/3 \n");
 
-	printf(" --preprop                                         prepropagator\n");
+	printf(" --preprop                                         prepropagator; currently only works with lola\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
-	printf("  --preprop [int] --kcr [float]                       to be described .\n");
+	printf("  --preprop                                                                                    \n");
+	printf("  --prepropcoe  [float]                            Preevolution starts at zi/prepropcoe        \n");
+	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default VQCD_1) .\n");
+	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
+	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
+	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
+	printf("  --icstudy                           	           Prints axion.m.xxxxx files during prepropagation (Default no).\n");
+	printf("\n-----------------------------------------------------------------------------------------------\n");
+	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n\n");
 
+	printf("  Test examples:                                                                             .\n\n");
+	printf("  --ctype lola --logi 4.0 --sIter 1 --kcr 2.0                                                .\n\n");
+	printf("  --ctype lola --logi 4.0 --sIter 1 --kcr 2.0                                                .\n\n");
 	return;
 }
+
 
 void	PrintMEoptions()
 {
@@ -377,17 +428,22 @@ void	PrintMEoptions()
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
-	printf("    Red-Gauss                              8 \n");
-	printf("  --rmask [float]                          radius in grid u. [default = 2]\n\n");
-
+	printf("    Red (Top-hat from Gaussian cut)        8 \n");
+	printf("    Gaussian                               16 \n");
+	printf("     --rmask [float]                       Mask radius in 1/m_s units [default = 2]\n");
+	printf("     --rmask file                          Prints different spectra, each masked \n");
+	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
+	printf("                                           (Red and Gas modes) \n\n");
+	printf("  --printmask                              Prints the mask (experimental)\n\n");
 	printf("  Options for String Measurement \n");
 	printf("  --strmeas [int]            Sum of integers.\n");
 	printf("    Statistical measurment only            0 (default	)\n");
 	printf("    String length                          1 \n");
 	printf("    String velocity and gamma              2 \n");
 	printf("    String energy (needs Red-Gauss mask)   4 \n");
+
 	printf("--------------------------------------------------\n");
-	printf("--measlistlog              Gen measfile log.\n\n");
+	printf("--measlistlog              Generate measfile log. with defaults.\n\n");
 	return;
 }
 
@@ -396,6 +452,30 @@ int	parseArgs (int argc, char *argv[])
 {
 	bool	passed;
 	int	procArgs = 0;
+
+	// defaults
+	icdatst.Nghost    = 1;
+	icdatst.icdrule   = false;
+	icdatst.preprop   = false;
+	icdatst.icstudy   = false;
+	icdatst.prepstL   = 5.0 ;
+	icdatst.prepcoe   = 3.0 ;
+	icdatst.pregammo  = 0.0;
+	icdatst.prelZ2e   = 0.0;
+	icdatst.prevtype  = VQCD_1_RHO;
+	icdatst.normcore  = true;
+	icdatst.alpha     = 0.143;
+	icdatst.siter     = 40;
+	icdatst.kcr       = 1.0;
+	icdatst.kMax      = 2;
+	icdatst.mode0     = 10.0;
+	icdatst.zi        = 0.5;
+	icdatst.logi      = 0.0;
+	icdatst.kickalpha = 0.0;
+	icdatst.extrav    = 0.0;
+	icdatst.cType     = CONF_KMAX;
+	icdatst.smvarType = CONF_RAND;
+	icdatst.mocoty    = MOM_MEXP2;
 
 	for (int i=1; i<argc; i++)
 	{
@@ -426,12 +506,14 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: I need a verbosity level.\n");
 				exit(1);
 			}
+			int mocho;
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&mocho));
 
-			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&verb));
+			if (mocho > VERB_HIGH)      verb = VERB_HIGH;
+ 			if (mocho > VERB_DEBUG)     verb = VERB_DEBUG;
+			if (mocho > VERB_PARANOID)  verb = VERB_PARANOID;
+			if (mocho < VERB_SILENT)    verb = VERB_SILENT;
 
-			if (verb > VERB_HIGH)   verb = VERB_HIGH;
- 			if (verb > VERB_DEBUG)   verb = VERB_DEBUG;
-			if (verb < VERB_SILENT) verb = VERB_SILENT;
 
 			i++;
 			procArgs++;
@@ -502,6 +584,18 @@ int	parseArgs (int argc, char *argv[])
 		{
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYMV;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapYZ"))
+		{
+			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_YZMV;
 
 			procArgs++;
 			passed = true;
@@ -512,6 +606,20 @@ int	parseArgs (int argc, char *argv[])
 		{
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYMV;
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DsliceYZ"))
+		{
+			p2dmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_YZMV;
 
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
 			i++;
@@ -524,15 +632,27 @@ int	parseArgs (int argc, char *argv[])
 		{
 			p2dEmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYE;
 			procArgs++;
 			passed = true;
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--p2DmapP"))
+		if (!strcmp(argv[i], "--p2DmapPE2") || !strcmp(argv[i], "--p2DmapP"))
 		{
 			p2dPmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYPE2;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--p2DmapPE"))
+		{
+			p2dPmapo = true ;
+			defaultmeasType |= MEAS_2DMAP;
+			maty |= MAPT_XYPE;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -543,7 +663,7 @@ int	parseArgs (int argc, char *argv[])
 			p3dstrings = true ;
 
 			// p3DthresholdMB=1.8e+21;
-			p3DthresholdMB = atof(argv[i+1]);
+			// p3DthresholdMB = atof(argv[i+1]);
 			i++;
 
 			procArgs++;
@@ -738,9 +858,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			kCrit = atof(argv[i+1]);
+			kCrit = atof(argv[i+1]); //legacy
+			icdatst.kcr = atof(argv[i+1]);
 
-			if (kCrit < 0.)
+			if (icdatst.kcr < 0.)
 			{
 				printf("Error: Critical kappa must be larger than or equal to 0.\n");
 				exit(1);
@@ -760,15 +881,25 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			alpha = atof(argv[i+1]);
+			alpha = atof(argv[i+1]); //legacy
+			icdatst.alpha = atof(argv[i+1]);
 
-			if ((alpha < 0.) || (alpha > 1.))
+			if ((icdatst.alpha < 0.) || (icdatst.alpha > 1.))
 			{
 				printf("Error: Alpha parameter must belong to the [0,1] interval.\n");
 				exit(1);
 			}
 
 			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--nncore"))
+		{
+			icdatst.normcore = false;
+
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -839,17 +970,46 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			pregammo = atof(argv[i+1]);
-			//vqcdTypeDamp = VQCD_DAMP_RHO ;
-
-			//uPot  = true;
-			//uGamma = true;
+			pregammo = atof(argv[i+1]); //legacy
+			icdatst.pregammo = atof(argv[i+1]);
 
 			if (pregammo < 0.)
 			{
 				printf("Error: pre-Damping factor should be larger than 0.\n");
 				exit(1);
 			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--lz2e"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the lambda PRS exponent.\n");
+				exit(1);
+			}
+
+			icdatst.prelZ2e = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--prevqcdtype"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the prevqcd type.\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&icdatst.prevtype));
 
 			i++;
 			procArgs++;
@@ -913,15 +1073,67 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			zInit = atof(argv[i+1]);
+			zInit = atof(argv[i+1]); //legacy
+			icdatst.zi = atof(argv[i+1]);
 
-			if (zInit < 0.)
+		if (icdatst.zi < 0.)
 			{
 				printf("Error: Initial redshift must be larger than 0.\n");
 				exit(1);
 			}
 
 			uZin = true;
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--logi"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the initial redshift.\n");
+				exit(1);
+			}
+
+			icdatst.logi = atof(argv[i+1]);
+
+			uLogi = true;
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+
+		if (!strcmp(argv[i], "--kickalpha"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the initial redshift.\n");
+				exit(1);
+			}
+
+			icdatst.kickalpha = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--extrav"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the initial redshift.\n");
+				exit(1);
+			}
+
+			icdatst.extrav = atof(argv[i+1]);
 
 			i++;
 			procArgs++;
@@ -1068,7 +1280,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			uMsa  = true;
-			lType = LAMBDA_Z2;
+			lType = LAMBDA_Z2; //obsolete?
 
 			i++;
 			procArgs++;
@@ -1087,6 +1299,9 @@ int	parseArgs (int argc, char *argv[])
 
 			indi3 = atof(argv[i+1]);
 			uI3   = true;
+
+			if (indi3 == 0.0)
+				vqcdType = VQCD_PQ_ONLY;
 
 			if (indi3 < 0.)
 			{
@@ -1132,7 +1347,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			mode0 = atof(argv[i+1]);
+			mode0 = atof(argv[i+1]); //obsolete
+			icdatst.mode0 =  atof(argv[i+1]);
 
 			i++;
 			procArgs++;
@@ -1389,7 +1605,8 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			sscanf(argv[i+1], "%zu", &kMax);
+			sscanf(argv[i+1], "%zu", &kMax); //legacy
+			sscanf(argv[i+1], "%zu", &icdatst.kMax);
 
 			if (kMax < 0)
 			{
@@ -1412,6 +1629,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			sscanf(argv[i+1], "%zu", &iter);
+			sscanf(argv[i+1], "%zu", &icdatst.siter);
 
 			if (iter < 0)
 			{
@@ -1451,33 +1669,49 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev).\n");
+				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev/lola/cole...).\n");
 				exit(1);
 			}
 
 			if (!strcmp(argv[i+1], "smooth"))
 			{
-				cType = CONF_SMOOTH;
+				cType = CONF_SMOOTH; // legacy
+				icdatst.cType = CONF_SMOOTH;
 			}
 			else if (!strcmp(argv[i+1], "kmax"))
 			{
-				cType = CONF_KMAX;
+				cType = CONF_KMAX; // legacy
+				icdatst.cType = CONF_KMAX;
 			}
 			else if (!strcmp(argv[i+1], "vilgor"))
 			{
-				cType = CONF_VILGOR;
+				cType = CONF_VILGOR; // legacy
+				icdatst.cType =  CONF_VILGOR;
 			}
 			else if (!strcmp(argv[i+1], "vilgork"))
 			{
-				cType = CONF_VILGORK;
+				cType = CONF_VILGORK; // legacy
+				icdatst.cType =  CONF_VILGORK;
 			}
 			else if (!strcmp(argv[i+1], "vilgors"))
 			{
-				cType = CONF_VILGORS;
+				cType = CONF_VILGORS; // legacy
+				icdatst.cType =  CONF_VILGORS;
 			}
 			else if (!strcmp(argv[i+1], "tkachev"))
 			{
-				cType = CONF_TKACHEV;
+				cType = CONF_TKACHEV; // legacy
+				icdatst.cType = CONF_TKACHEV;
+			}
+			else if (!strcmp(argv[i+1], "lola"))
+			{
+				cType = CONF_LOLA; // legacy
+				icdatst.cType =  CONF_LOLA;
+			}
+			else if (!strcmp(argv[i+1], "cole"))
+			{
+				cType = CONF_COLE; // legacy
+				icdatst.cType =  CONF_COLE;
 			}
 			else
 			{
@@ -1499,35 +1733,47 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			smvarType = CONF_RAND ;
+			smvarType = CONF_RAND ;//legacy
+			icdatst.smvarType = CONF_RAND ;
 
 			if (!strcmp(argv[i+1], "stXY"))
 			{
-				smvarType = CONF_STRINGXY;
+				smvarType = CONF_STRINGXY; //legacy
+				icdatst.smvarType = CONF_STRINGXY;
 			}
 			else if (!strcmp(argv[i+1], "stYZ"))
 			{
-				smvarType = CONF_STRINGYZ;
+				smvarType = CONF_STRINGYZ; //legacy
+				icdatst.smvarType = CONF_STRINGYZ;
 			}
 			else if (!strcmp(argv[i+1], "mc0"))
 			{
-				smvarType = CONF_MINICLUSTER0;
+				smvarType = CONF_MINICLUSTER0; //legacy
+				icdatst.smvarType = CONF_MINICLUSTER0;;
 			}
 			else if (!strcmp(argv[i+1], "mc"))
 			{
-				smvarType = CONF_MINICLUSTER;
+				smvarType = CONF_MINICLUSTER; //legacy
+				icdatst.smvarType = CONF_MINICLUSTER;
 			}
 			else if (!strcmp(argv[i+1], "axnoise"))
 			{
-				smvarType = CONF_AXNOISE;
+				smvarType = CONF_AXNOISE; //legacy
+				icdatst.smvarType = CONF_AXNOISE;
 			}
 			else if (!strcmp(argv[i+1], "saxnoise"))
 			{
-				smvarType = CONF_SAXNOISE;
+				smvarType = CONF_SAXNOISE; //legacy
+				icdatst.smvarType = CONF_SAXNOISE;
 			}
 			else if (!strcmp(argv[i+1], "ax1mode"))
 			{
-				smvarType = CONF_AX1MODE;
+				smvarType = CONF_AX1MODE; //legacy
+				icdatst.smvarType = CONF_AX1MODE;
+			}
+			else if (!strcmp(argv[i+1], "parres"))
+			{
+				icdatst.smvarType = CONF_PARRES;
 			}
 			else
 			{
@@ -1694,7 +1940,8 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--preprop"))
 		{
-			preprop = true ;
+			preprop = true ; //legacy
+			icdatst.preprop = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1702,7 +1949,8 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--icstudy"))
 		{
-			icstudy = true ;
+			icstudy = true ; //legacy
+			icdatst.icstudy = true ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1717,9 +1965,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			prepstL = atof(argv[i+1]);
+			prepstL = atof(argv[i+1]); //legacy
+			icdatst.prepstL = atof(argv[i+1]);
 
-			if (prepstL <= 0.)
+			if (icdatst.prepstL <= 0.)
 			{
 				printf("Error: Scaling limit must be a positive number.\n");
 				exit(1);
@@ -1771,7 +2020,6 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		//JAVIER added gradient
 		if (!strcmp(argv[i], "--lapla"))
 		{
 			if (i+1 == argc)
@@ -1780,13 +2028,39 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			Ng = atoi(argv[i+1]);
+			Nng = atoi(argv[i+1]);
 			bopt = false;
+			pType |= PROP_NNEIG;
 
- 			if (Ng < 0 || Ng > 6)
+ 			if (Nng < 0 || Nng > 6)
 			{
 				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
-				exit(1);				//exit(1);
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--lap"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of neighbours.\n");
+				exit(1);
+			}
+
+			icdatst.Nghost = atoi(argv[i+1]);
+			Nng = icdatst.Nghost;
+			bopt = true;
+			pType |= PROP_BASE;
+
+ 			if (icdatst.Nghost < 0 || icdatst.Nghost > 6)
+			{
+				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
+				exit(1);
 			}
 
 			i++;
@@ -1806,21 +2080,22 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (Ng*2 > (int) sizeZ) {
-		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Ng%d,sizeZ%d,%d,%d)\n",Ng,sizeZ,Ng*2, Ng*2> sizeZ);
+	if (Nng*2 > (int) sizeZ) {
+		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Nng%d,sizeZ%d,%d,%d)\n",Nng,sizeZ,Nng*2, Nng*2> sizeZ);
 		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
 		exit(1);
-	}
+}
 
-	if (cType == CONF_SMOOTH )
+//obsolete!
+if (icdatst.cType == CONF_SMOOTH )
 	{
 		parm1 = iter;
 		parm2 = alpha;
-	} else if ((cType == CONF_KMAX) || (cType == CONF_TKACHEV)) {
+	} else if ((icdatst.cType == CONF_KMAX) || (icdatst.cType == CONF_TKACHEV)) {
 		parm1 = kMax;
 		parm2 = kCrit;
 	}
-	else if ((cType == CONF_VILGOR) || (cType == CONF_VILGORK) || (cType == CONF_VILGORS)) {
+	else if ((icdatst.cType == CONF_VILGOR) || (icdatst.cType == CONF_VILGORK) || (icdatst.cType == CONF_VILGORS)) {
 		parm1 = iter;	 // here taken as a flag to randomised the
 		parm2 = kCrit; // here taken as multiplicative factor for nN3
 	}
@@ -1829,18 +2104,12 @@ int	parseArgs (int argc, char *argv[])
 		pType |= PROP_RKN4;
 
 // if lapla is chosen
-	if (Ng > 0)
+	if (Nng > 0)
 	{
 		if ( ((pType & PROP_LAPMASK) & PROP_FSPEC) || ((pType & PROP_LAPMASK) & PROP_SPEC))
 		{
-			printf("Error: Selected spectral propagator and Ng=%d\n",Ng);
+			printf("Error: Selected spectral propagator and Nng=%d\n",Nng);
 			exit(1);
-		} else {
-			// UNDO
-			if (bopt)
-				pType |= PROP_BASE; // 1 neighbour optimised. Only if no --lapla was invoqued
-				else
-				pType |= PROP_NNEIG; // Ng underoptimised. Ff no --lapla was invoqued, even if it was Ng=1
 		}
 	}
 
@@ -1945,6 +2214,30 @@ int	parseArgs (int argc, char *argv[])
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;
 
+		/* Adjust time of initial conditions if --vilgor used */
+	if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
+			{
+				if (uLogi && uZin) {
+					printf("Error: zi and logi given for vilgor initial conditions\n ");
+					exit(1);
+				}
+				if (uLogi && !uZin) {
+					if (lType == LAMBDA_FIXED)
+						icdatst.zi = sqrt(exp(icdatst.logi)/sqrt(2*LL));
+						else // LAMBDA_Z2
+						icdatst.zi = exp(icdatst.logi)/sqrt(2*LL);
+						uZin = true;
+				}
+					else if (!uLogi && uZin) {
+					printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
+					if (lType == LAMBDA_FIXED)
+						icdatst.logi = log(sqrt(2*LL)*icdatst.zi*icdatst.zi);
+						else
+						icdatst.logi = log(sqrt(2*LL)*icdatst.zi);
+						uLogi = true;
+				}
+			}
+	zInit = icdatst.zi; //legacy
 	return	procArgs;
 }
 
@@ -1952,10 +2245,18 @@ Cosmos	createCosmos()
 {
 	Cosmos myCosmos;
 
+	/* Initial condition data is saved in cosmos; potential problems when reading confs?*/
+	myCosmos.SetICData(icdatst);
+
 	/*	I'm reading from disk	*/
 	if (fIndex >= 0.) {
 		if (uMsa || uLambda)
 			myCosmos.SetLambda(LL);
+
+		if (lType == LAMBDA_Z2)
+				myCosmos.SetLamZ2Exp(2.0);
+		else if (lType == LAMBDA_FIXED)
+				myCosmos.SetLamZ2Exp(0.0);
 
 		if (uQcd)
 			myCosmos.SetQcdExp(nQcd);

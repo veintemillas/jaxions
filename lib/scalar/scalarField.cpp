@@ -37,15 +37,15 @@ const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
 
-	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType,
-		       ConfType cType, const size_t parm1, const double parm2) : n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), Ez(nLz + 2), v3(nLx*nLx*(nLz + 2)), nSplit(nSp),
-		       device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
+		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), nSplit(nSp), Ng(Ngg),  Ez(nLz + 2*Ngg), v3(nLx*nLx*(nLz + 2*Ngg)),
+		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	prof.start();
 
-	size_t nData;
+	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar called with Ng = %d",Ng);
 
 	if (cm == nullptr) {
 		LogError("Error: no cosmological background defined!. Will exit with errors.");
@@ -55,7 +55,46 @@ const std::complex<float> If(0.,1.);
 	}
 
 	bckgnd = cm;
+	// Ng = cm->ICData().Nghost ;
+	// Ez = nLz + 2*Ng;
+	// v3 = nLx*nLx*(nLz + 2*Ng);
+	size_t nData;
+
 	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
+
+
+	LogMsg(VERB_NORMAL,"[sca] ZThRes  () %f",cm->ZThRes  ());
+	LogMsg(VERB_NORMAL,"[sca] ZRestore() %f",cm->ZRestore());
+	LogMsg(VERB_NORMAL,"[sca] PhysSize() %f",cm->PhysSize());
+	LogMsg(VERB_NORMAL,"[sca] Lambda  () %f",cm->Lambda  ());
+	LogMsg(VERB_NORMAL,"[sca] LamZ2Exp() %f",cm->LamZ2Exp());
+	LogMsg(VERB_NORMAL,"[sca] Indi3   () %f",cm->Indi3   ());
+	LogMsg(VERB_NORMAL,"[sca] Gamma   () %f",cm->Gamma   ());
+	LogMsg(VERB_NORMAL,"[sca] QcdExp  () %f",cm->QcdExp  ());
+	LogMsg(VERB_NORMAL,"[sca] QcdPot  () %d",cm->QcdPot  ());
+	LogMsg(VERB_NORMAL,"[sca] Frw     () %f",cm->Frw     ());
+	LogMsg(VERB_NORMAL,"[sca] Mink    () %d",cm->Mink    ());
+
+	LogMsg(VERB_NORMAL,"[sca] ic.Nghost   %d",cm->ICData().Nghost   );
+	LogMsg(VERB_NORMAL,"[sca] ic.icdrule  %d",cm->ICData().icdrule  );
+	LogMsg(VERB_NORMAL,"[sca] ic.preprop  %d",cm->ICData().preprop  );
+	LogMsg(VERB_NORMAL,"[sca] ic.icstudy  %d",cm->ICData().icstudy  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prepstL  %f",cm->ICData().prepstL  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prepcoe  %f",cm->ICData().prepcoe  );
+	LogMsg(VERB_NORMAL,"[sca] ic.pregammo %f",cm->ICData().pregammo );
+	LogMsg(VERB_NORMAL,"[sca] ic.prelZ2e  %f",cm->ICData().prelZ2e  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prevtype %d",cm->ICData().prevtype );
+	LogMsg(VERB_NORMAL,"[sca] ic.normcore %d",cm->ICData().normcore );
+	LogMsg(VERB_NORMAL,"[sca] ic.alpha    %f",cm->ICData().alpha    );
+	LogMsg(VERB_NORMAL,"[sca] ic.siter    %d",cm->ICData().siter    );
+	LogMsg(VERB_NORMAL,"[sca] ic.kcr      %f",cm->ICData().kcr      );
+	LogMsg(VERB_NORMAL,"[sca] ic.kMax     %d",cm->ICData().kMax     );
+	LogMsg(VERB_NORMAL,"[sca] ic.mode0    %f",cm->ICData().mode0    );
+	LogMsg(VERB_NORMAL,"[sca] ic.zi       %f",cm->ICData().zi       );
+	LogMsg(VERB_NORMAL,"[sca] ic.logi     %f",cm->ICData().logi     );
+	LogMsg(VERB_NORMAL,"[sca] ic.cType    %d",cm->ICData().cType    );
+	LogMsg(VERB_NORMAL,"[sca] ic.smvarTy  %d",cm->ICData().smvarType);
+	LogMsg(VERB_NORMAL,"[sca] ic.mocoty   %d",cm->ICData().mocoty   );
 
 	folded 	   = false;
 	eReduced   = false;
@@ -63,7 +102,6 @@ const std::complex<float> If(0.,1.);
 	vmomspace 	 = false;
 	gsent = false;
 	grecv = false;
-	Ng = -1;
 
 	switch (fieldType)
 	{
@@ -106,13 +144,13 @@ const std::complex<float> If(0.,1.);
 //	{
 //		case DEV_CPU:
 			#ifdef	__AVX512F__
-			LogMsg(VERB_NORMAL, "Using AVX-512 64 bytes alignment");
+			LogMsg(VERB_NORMAL, "[sca] Using AVX-512 64 bytes alignment");
 			mAlign = 64;
 			#elif	defined(__AVX__) || defined(__AVX2__)
-			LogMsg(VERB_NORMAL, "Using AVX 32 bytes alignment");
+			LogMsg(VERB_NORMAL, "[sca] Using AVX 32 bytes alignment");
 			mAlign = 32;
 			#else
-			LogMsg(VERB_NORMAL, "Using SSE 16 bytes alignment");
+			LogMsg(VERB_NORMAL, "[sca] Using SSE 16 bytes alignment");
 			mAlign = 16;
 			#endif
 //			break;
@@ -131,16 +169,16 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
+	LogMsg(VERB_NORMAL, "[sca] v3 %d n3 %d", v3, (n2*(nLz + 2)));
 	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = v3*fSize;
+	const size_t	vBytes = (n2*(nLz + 2))*fSize;
 
-	// MODIFIED BY JAVI
-	// IN AXION MODE I WANT THE M AND V SPACES TO BE ALIGNED
 
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v, sData");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
 			trackAlloc ((void**) &str, n3);
@@ -152,12 +190,10 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AX_RD:
 		case FIELD_WKB:
 			str = nullptr;
-			//alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
-			//this would allocate a full complex m space, a bit larger than m+v in real mode (mBytes+vBytes)
-			//alignAlloc ((void**) &m, mAlign, 2*mBytes);
 			//this allocates a slightly larger v to host FFTs in place
-			alignAlloc ((void**) &m, mAlign, 2*mBytes);
-			v = static_cast<void *>(static_cast<char *>(m) + fSize*(2*n2 + n3));
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v");
+			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
+			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
 			break;
 
 		default:
@@ -183,6 +219,7 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 			if (!lowmem) {
+				LogMsg(VERB_NORMAL, "[sca] allocating m2");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
 				memset (m2, 0, fSize*v3);
 			} else
@@ -191,6 +228,7 @@ const std::complex<float> If(0.,1.);
 
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
+			LogMsg(VERB_NORMAL, "[sca] allocating m2");
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
 			break;
@@ -238,12 +276,11 @@ const std::complex<float> If(0.,1.);
 	}
 
 	memset (m, 0, fSize*v3);
-	// changed from memset (v, 0, fSize*n3);
-	memset (v, 0, fSize*v3);
+	memset (v, 0, fSize*(n2*(nLz + 2)));
 
 	commSync();
 
-
+	LogMsg(VERB_NORMAL, "[sca] allocating z, R");
 	alignAlloc ((void **) &z, mAlign, mAlign);
 	alignAlloc ((void **) &R, mAlign, mAlign);
 
@@ -284,7 +321,7 @@ const std::complex<float> If(0.,1.);
 				exit(1);
 			}
 
-			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*(2*n2 + n3));
+			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*v3);
 		}
 
 		if (!lowmem || (fieldType & FIELD_AXION))
@@ -306,7 +343,8 @@ const std::complex<float> If(0.,1.);
 #endif
 	}
 
-	*z = zI;
+	/* Note the big difference zI is an obsolete parameter FIX ME */
+	*z = cm->ICData().zi; //*z = zI;
 	*R = 1.0;
 	updateR();
 
@@ -343,7 +381,7 @@ const std::complex<float> If(0.,1.);
 
 		/* If fspectral initSpectral plans*/
 		if (fpectral) {
-			LogMsg(VERB_NORMAL,"Initialing fspectral plans");
+			LogMsg(VERB_NORMAL,"Initialising fspectral plans");
 			// Saxion m inplace
 			AxionFFT::initPlan (this, FFT_CtoC_MtoM, FFT_FWDBCK, "C2CM2M");
 			// Saxion v inplace
@@ -356,6 +394,7 @@ const std::complex<float> If(0.,1.);
 		}
 		/*	If present, read fileName	*/
 
+		ConfType cType = cm->ICData().cType;
 		if (cType == CONF_NONE) {
 			LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
 
@@ -372,7 +411,7 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
 			} else {
-				if ((cType == CONF_KMAX) || (cType == CONF_VILGOR) || (cType == CONF_VILGOR) || (cType == CONF_TKACHEV)) {
+				if ( !(cType == CONF_SMOOTH) ) {
 					if (lowmem)
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else
@@ -381,7 +420,7 @@ const std::complex<float> If(0.,1.);
 				prof.stop();
 
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
-				genConf	(cm, this, cType, parm1, parm2);
+				genConf	(cm, this);
 			}
 		}
 	}
@@ -532,45 +571,52 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	const int ghostBytes = n2*fSize;
+	/* we can send 1 (for energy) , or Ng (for propagator)*/
+	const int ghostBytes = Ng*n2*fSize;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) with Ng=%lu (value of scalar %d)",opComm, Nng, Ng);LogFlush();
+LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) slice %lu Ng %d",opComm, Nng, Ng);LogFlush();
 	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
 
 	if (fIdx & FIELD_M)
 	{
 		if (Nng > 0){
-			sGhostBck = static_cast<void *> (static_cast<char *> (m) + fSize*n2*Nng); 				//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*n2*(Lz+1-Nng));	//slice to be send forw
-LogMsg(VERB_DEBUG,"[sca] FIELD_M Ng > 0 last is %lu",(Lz+1-Nng));LogFlush();
+			//FIX ME in case one needs to transfer other slices with Nng
+			sGhostBck = mStart();																																						//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (mStart()) + fSize*n3-ghostBytes);					//slice to be send forw
+			rGhostBck = static_cast<void *> (static_cast<char *> (mFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+			rGhostFwd = static_cast<void *> (static_cast<char *> (mBackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
 		} else {
-			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
+			// from v to 1st slice for NNEIG; assumes Ng = 1
+			sGhostBck = vGhost(); 																													//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
+			rGhostBck = mFrontGhost();
+			rGhostFwd = mBackGhost();
 		}
-		rGhostBck = m;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m) + fSize*(n3 + n2));
 	}
 	else
 	{
 		if (Nng > 0){
-			sGhostBck = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*Nng);
-			sGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*n2*(Lz+1-Nng));
+			sGhostBck = m2Start();
+			sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
+			rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
+			rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
 		} else {
-			sGhostBck = static_cast<void *> (static_cast<char *> (v) + fSize*n3); 					//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (v) + fSize*(n3+n2));			//slice to be send forw
+			// from v to 1st slice for NNEIG; assumes Ng = 1
+			sGhostBck = vGhost();																									 					//slice to be send back
+			sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
+			rGhostBck = m2FrontGhost();
+			rGhostFwd = m2BackGhost();
 		}
-		rGhostBck = m2;
-		rGhostFwd = static_cast<void *> (static_cast<char *> (m2) + fSize*(n3 + n2));
 	}
 
 
 	switch	(opComm)
 	{
 		case	COMM_SEND:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] SEND");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
 			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 
@@ -581,7 +627,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] SEND");
 			break;
 
 		case	COMM_RECV:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] RECV");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
 			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
 
@@ -591,7 +637,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] RECV");
 			break;
 
 		case	COMM_SDRV:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] SDRV");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
 			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
 			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
@@ -613,7 +659,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] SDRV");
 		if (flag1 * flag2)
 			gsent = true;
 		else  gsent = false ;
-LogMsg(VERB_DEBUG,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
+LogMsg(VERB_PARANOID,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
 		}
 		break;
 
@@ -625,12 +671,12 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pe
 		if (flag1 * flag2)
 			grecv = true;
 		else  grecv = false;
-LogMsg(VERB_DEBUG,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
+LogMsg(VERB_PARANOID,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
 		}
 		break;
 
 	case	COMM_WAIT:
-LogMsg(VERB_DEBUG,"[COMM_TESTS] WAIT");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 		MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
 		MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
 		MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
@@ -641,7 +687,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] WAIT");
 		MPI_Request_free(&rSendBck);
 		MPI_Request_free(&rRecvFwd);
 		MPI_Request_free(&rRecvBck);
-LogMsg(VERB_DEBUG,"[COMM_TESTS] FREE");
+LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 		break;
 
 	}
@@ -649,7 +695,7 @@ LogMsg(VERB_DEBUG,"[COMM_TESTS] FREE");
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
-LogMsg(VERB_DEBUG,"[sca] Exchange Ghosts");LogFlush();
+LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts");LogFlush();
 	recallGhosts(fIdx);
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);
@@ -667,100 +713,13 @@ void	Scalar::setField (FieldType newType)
 	{
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
-			if (fieldType == FIELD_SAXION)
-			{
-				if (!lowmem) {
-					trackFree(m2);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						cudaFree(m2_d);
-					#endif
-				}
-
-				m2 = v;
-				#ifdef	USE_GPU
-				if (device == DEV_GPU)
-					m2_d = v_d;
-				#endif
-
-				switch (precision)
-				{
-					case FIELD_SINGLE:
-					v = static_cast<void*>(static_cast<float*>(m) + 2*n2 + n3);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<float*>(m_d) + 2*n2 + n3);
-					#endif
-
-					break;
-
-					case FIELD_DOUBLE:
-					v = static_cast<void*>(static_cast<double*>(m) + 2*n2 + n3);
-
-					#ifdef	USE_GPU
-					if (device == DEV_GPU)
-						v_d = static_cast<void*>(static_cast<double*>(m_d) + 2*n2 + n3);
-					#endif
-
-					break;
-
-					default:
-					LogError ("Wrong precision.");
-					return;
-				}
 
 				fSize /= 2;
 
 				if (device != DEV_GPU)
 					shift *= 2;
 
-//				const size_t	mBytes = v3*fSize;
-
-				//if (lowmem)
-				//AxionFFT::initPlan(this, FFT_RtoC_M2toM2, FFT_FWD, "pSpectrum");
-
-				// IF low mem was used before, it creates m2 COMPLEX
-/*				if (lowmem)
-				{
-					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-
-					// Move this to the analysis
-					// AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWD, "pSpectrum");
-
-					#ifdef	USE_GPU
-					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
-					{
-						LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", 2*mBytes);
-						exit(1);
-					}
-					#endif
-
-				} else {
-				// IF no lowmem was used, we kill m2 complex and create m2 real ... not used
-					trackFree(m2);
-					m2 = nullptr;
-					alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-
-				#ifdef	USE_GPU
-					cudaFree(m2_d);
-				#endif
-
-				#ifdef	USE_GPU
-					if (cudaMalloc(&m2_d, 2*mBytes) != cudaSuccess)
-					{
-						LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", 2*mBytes);
-						exit(1);
-					}
-				#endif
-				}
-*/
-
-			//FFT for spectrums
-
-			}
-			break;
+		break;
 
 		case	FIELD_SAXION:
 			if (fieldType & FIELD_AXION)
@@ -811,6 +770,39 @@ void	Scalar::updateR ()
 	// by default R=z and there is no need (one uses z for all purposes)
 	if (!bckgnd->Mink())
 		*R = pow(*z,frw);
+}
+
+double	Scalar::Rfromct (const double ct)
+{
+	// Returns scale factor R = z^frw for any conformal time ct
+	// Minkowski frw = 0, Radiation frw = 1,
+	return pow(ct,frw);
+}
+
+double	Scalar::LambdaP ()
+{
+	// Returns The value of Lambda with PRS trick IF needed
+	// Minkowski frw = 0, Radiation frw = 1,
+	double lbd  = bckgnd->Lambda();
+	double llee = bckgnd->LamZ2Exp();
+LogMsg(VERB_PARANOID,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
+	if (LambdaT() == LAMBDA_FIXED)
+		return  lbd;
+	else if (LambdaT() == LAMBDA_Z2)
+		return  lbd/pow(*R,llee);
+}
+
+double	Scalar::Msa ()
+{
+	// Returns The value of Msa with PRS trick, or Physical strings
+	// Minkowski frw = 0, Radiation frw = 1,
+	// double &lbd = bckgnd->Lambda();
+	// double llee = bckgnd->LamZ2Exp();
+	// if (LambdaT() == LAMBDA_FIXED)
+	// 	return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
+	// else if (LambdaT() == LAMBDA_Z2)
+LogMsg(VERB_PARANOID,"[sca:msa] LambdaPhysical %f ",LambdaP() );
+		return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
 }
 
 double  Scalar::HubbleMassSq  ()
@@ -991,10 +983,7 @@ double	Scalar::IIAxionMassSqn(double z0, double z, int nn) {
 double  Scalar::SaxionMassSq  ()
 {
 
-	double lbd   = bckgnd->Lambda();
-	//a bit confusing that scalar->Lambda() is a MODE or type of Lambda, instead of the value
-	if (Lambda() == LAMBDA_Z2)
-		lbd /= (*RV())*(*RV());
+	double lbd   = LambdaP();
 
 	auto   &pot = bckgnd->QcdPot();
 
@@ -1003,6 +992,7 @@ double  Scalar::SaxionMassSq  ()
 		case    VQCD_1:
 		case    VQCD_2:
 		case    VQCD_1N2:
+		case    VQCD_PQ_ONLY:
 			return 2.*lbd;
 			break;
 
@@ -1028,6 +1018,7 @@ double	Scalar::dzSize	   () {
 	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
 	double mAfq = 0.;
 	auto   &pot = bckgnd->QcdPot();
+	double llee = bckgnd->LamZ2Exp();
 
         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
                 return  std::min(wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
@@ -1042,15 +1033,7 @@ double	Scalar::dzSize	   () {
         if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
                 facto = 2. ;
 
-        switch (lambdaType) {
-                case    LAMBDA_Z2:
-                        mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
-                        break;
-
-                case    LAMBDA_FIXED:
-                        mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
-                        break;
-        }
+				mSfq = sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
 
         return  std::min(wDz/std::max(mSfq,mAfq),zNow/10.);
 }
@@ -1061,7 +1044,7 @@ double Scalar::SaxionShift()
 	double lbd   = bckgnd->Lambda();
 	double alpha = AxionMassSq()/lbd;
 
-	if (Lambda() == LAMBDA_Z2)
+	if (LambdaT() == LAMBDA_Z2)
 		alpha *= (*R)*(*R);
 
 	double discr = 4./3.-9.*alpha*alpha;
@@ -1074,6 +1057,10 @@ double  Scalar::Saskia  ()
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_PQ_ONLY:
+			return 0.0;
+			break;
+
 		case    VQCD_1:
 			return SaxionShift();
 			break;
@@ -1082,7 +1069,7 @@ double  Scalar::Saskia  ()
 		case    VQCD_1_PQ_2_DRHO:
 		{
 			double  lbd = bckgnd->Lambda();
-			if (Lambda() == LAMBDA_Z2)
+			if (LambdaT() == LAMBDA_Z2)
 				return  rsvPQ2(AxionMassSq()/lbd*(*R)*(*R));
 			else
 				return  rsvPQ2(AxionMassSq()/lbd);
@@ -1152,12 +1139,14 @@ double  Scalar::SaxionMassSq  (const double RNow)
 {
 
 	double lbd   = bckgnd->Lambda();
-	if (Lambda() == LAMBDA_Z2)
-		lbd /= (RNow)*(RNow);
+	double llee  = bckgnd->LamZ2Exp();
+	if (LambdaT() == LAMBDA_Z2)
+		lbd /= pow(RNow,llee);
 
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_PQ_ONLY:
 		case    VQCD_0:
 		case    VQCD_1:
 		case    VQCD_2:
@@ -1227,6 +1216,10 @@ double  Scalar::Saskia  (const double RNow)
 	auto   &pot = bckgnd->QcdPot();
 
 	switch  (pot & VQCD_TYPE) {
+		case    VQCD_PQ_ONLY:
+			return 0.0;
+			break;
+
 		case    VQCD_1:
 			return SaxionShift();
 			break;

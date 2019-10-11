@@ -65,20 +65,25 @@ int	main (int argc, char *argv[])
 	//-grids
 	Scalar *axion;
 
-	if ((fIndex == -1) && (cType == CONF_NONE) && (!restart_flag))
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE) && (!restart_flag))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
 		if ( (fIndex == -1) && !restart_flag)
 		{
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, myCosmos.ICData().Nghost);
 			LogOut("Done! \n");
 		}
 		else
 		{
 			LogOut("Reading initial conditions from file ... ");
 			readConf(&myCosmos, &axion, fIndex, restart_flag);
+
+			// temporary test!! FIX ME! allows to kick the initial configuration
+			if ( !(myCosmos.ICData().kickalpha == 0.0) )
+				scaleField (axion, FIELD_V, 1.0+myCosmos.ICData().kickalpha);
+
 			if (axion == NULL)
 			{
 				LogOut ("Error reading HDF5 file\n");
@@ -154,7 +159,7 @@ int	main (int argc, char *argv[])
 	ninfa.rmask_tab = rmask_tab;
 	for (int ii = 0; ii < i_rmask ; ii++ )
 		LogMsg(VERB_NORMAL,"[VAX] read rmask %f",ninfa.rmask_tab[ii]);
-
+	ninfa.maty = maty;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
@@ -292,10 +297,10 @@ int	main (int argc, char *argv[])
 
 	LogOut("Running ...\n\n");
 	LogOut("Init propagator Vqcd flag %d\n", myCosmos.QcdPot());
-	if (Ng>0)
-		LogOut(" Ng(%d)",Ng);
+	if (Nng>0)
+		LogOut(" Laplacian with (Nng=%d) neighbours",Nng);
 	LogOut("\n");
-	initPropagator (pType, axion, myCosmos.QcdPot(),Ng);
+	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
 	tunePropagator (axion);
 
 
@@ -367,7 +372,7 @@ int	main (int argc, char *argv[])
 
 					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
 					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, Ng);
+					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, Nng);
 					coD = false ;
 					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}
@@ -522,7 +527,7 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
 	double llphys = LLL;
-	if (axion->Lambda() == LAMBDA_Z2)
+	if (axion->LambdaT() == LAMBDA_Z2)
 		llphys = LLL/(R_now*R_now);
 
 	// LogOut("z %f R %f\n",z_now, R_now);
@@ -570,7 +575,7 @@ void printsampleS(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, siz
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
 	double llphys = LLL;
-	if (axion->Lambda() == LAMBDA_Z2)
+	if (axion->LambdaT() == LAMBDA_Z2)
 		llphys = LLL/(R_now*R_now);
 
 	// LogOut("z %f R %f\n",z_now, R_now);
@@ -628,7 +633,7 @@ double findzdoom(Scalar *axion)
 	while (meas < 0.001)
 	{
 		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
-		if (axion->Lambda() == LAMBDA_Z2)
+		if (axion->LambdaT() == LAMBDA_Z2)
 			DWfun *= pow(ct,2*fff);
 		meas = DWfun - 1 ;
 		ct += 0.001 ;
@@ -712,7 +717,7 @@ void printposter(Scalar *axion)
 	LogOut("FRW scale factor (R)     =  z^%1.2f \n\n", axion->BckGnd()->Frw());
 
 	LogOut("Saxion self-cp. Lambda\n");
-	if (LAMBDA_FIXED == axion->Lambda()){
+	if (LAMBDA_FIXED == axion->LambdaT()){
 	LogOut("LL                       =  %.0f \n        (msa=%1.2f-%1.2f in zInit,3)\n\n", axion->BckGnd()->Lambda(),
 		sqrt(2.0 * axion->BckGnd()->Lambda())*zInit*axion->Delta(),sqrt(2.0 * axion->BckGnd()->Lambda())*3*axion->Delta());
 	}

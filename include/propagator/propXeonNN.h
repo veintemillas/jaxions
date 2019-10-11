@@ -80,6 +80,24 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 		const double damp2 = (1.-mola)*damp1;
 		const double epsi = mola/(1.+mola);
 
+		double CO[5] = {0, 0, 0, 0, 0} ;
+		if (Nng == 0) {
+			return;
+		}	else if (Nng == 1) {
+			CO[0] = 1.  ;
+		}	else if (Nng == 2) {
+			CO[0] = 4./3.; CO[1] = -1./12.;
+		} else if (Nng == 3) {
+			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
+		} else if (Nng == 4) {
+			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
+		} else if (Nng == 5) {
+			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
+	 	}
+		_MData_ COV[5];
+		for (size_t nv = 0; nv < Nng ; nv++)
+			COV[nv]  = opCode(set1_pd, CO[nv]*ood2);
+
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<2);
 		const size_t YC = (Lx>>2);
@@ -116,11 +134,12 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
+LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
 		  {
-		    _MData_ tmp, mel, mPx, mPy, mMx;
+		    _MData_ tmp, mel, mPx, mPy, mMx, lap;
 		    #pragma omp for collapse(3) schedule(static)
 		    for (uint zz = 0; zz < bSizeZ; zz++) {
 		     for (uint yy = 0; yy < bSizeY; yy++) {
@@ -128,35 +147,38 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
-			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
+			size_t idxb = yC*XC + xC;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
 			if (idx >= Vf)
 				continue;
+
+			X[0] = xC;
+			X[1] = yC;
+
+			idxP0 =  (idx << 1);
+			idxV0 = ((idx-Sf) << 1);
+			mel = opCode(load_pd, &m[idxP0]);
+			lap = opCode(set1_pd, 0.0);
+
+			for (size_t nv=1; nv < Nng+1; nv++)
 			{
-				//size_t tmi = idx/XC, itp;
 
-				//itp = tmi/YC;
-				//X[1] = tmi - itp*YC;
-				//X[0] = idx - tmi*XC;
-				X[0] = xC;
-				X[1] = yC;
-			}
+				if (X[0] < nv*step)
+					idxMx = ((idx + XC - nv*step) << 1);
+				else
+					idxMx = ((idx - nv*step) << 1);
+				//x+
+				if (X[0] + nv*step >= XC)
+					idxPx = ((idx - XC + nv*step) << 1);
+				else
+					idxPx = ((idx + nv*step) << 1);
 
-			if (X[0] == XC-step)
-				idxPx = ((idx - XC + step) << 1);
-			else
-				idxPx = ((idx + step) << 1);
-
-			if (X[0] == 0)
-				idxMx = ((idx + XC - step) << 1);
-			else
-				idxMx = ((idx - step) << 1);
-
-			if (X[1] == 0)
-			{
-				idxMy = ((idx + Sf - XC) << 1);
-				idxPy = ((idx + XC) << 1);
+				if (X[1] < nv )
+					{
+					idxMy = ((idx + Sf - nv*XC) << 1);
+					idxPy = ((idx + nv*XC) << 1);
 #if	defined(__AVX512F__)
 				tmp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), opCode(load_pd, &m[idxPy]));
 #elif	defined(__AVX__)
@@ -165,14 +187,14 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 #else
 				tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
 #endif
-			}
-			else
-			{
-				idxMy = ((idx - XC) << 1);
-
-				if (X[1] == YC-1)
+				}
+				else
 				{
-					idxPy = ((idx - Sf + XC) << 1);
+					idxMy = ((idx - nv*XC) << 1);
+
+					if (X[1] + nv >= YC)
+					{
+						idxPy = ((idx + nv*XC - Sf) << 1);
 #if	defined(__AVX512F__)
 					tmp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX__)
@@ -181,19 +203,40 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 #else
 					tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
 #endif
+					}
+					else
+					{
+						idxPy = ((idx + nv*XC) << 1);
+						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+					}
+			}// end Y+Y-
+
+				// add X+ X-
+				tmp = opCode(add_pd,tmp,opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])));
+				tmp = opCode(add_pd,tmp,opCode(mul_pd, mel,opCode(set1_pd, -6.0)));
+
+				if (zC < nv)
+				{
+					idxPz = ((idx+nv*Sf) << 1);
+					tmp = opCode(add_pd,tmp,opCode(load_pd, &m[idxPz]));
+				}
+				else if (zC + nv > sizeZ+1)
+				{
+					idxMz = ((idx-nv*Sf) << 1);
+					tmp = opCode(add_pd,tmp,opCode(load_pd, &m[idxMz]));
 				}
 				else
 				{
-					idxPy = ((idx + XC) << 1);
-					tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
+					idxPz = ((idx+nv*Sf) << 1);
+					idxMz = ((idx-nv*Sf) << 1);
+					tmp = opCode(add_pd,tmp,opCode(add_pd,opCode(load_pd, &m[idxMz]),opCode(load_pd, &m[idxPz])));
 				}
-			}
 
-			idxPz = ((idx+Sf) << 1);
-			idxMz = ((idx-Sf) << 1);
-			idxP0 = (idx << 1);
+				tmp = opCode(mul_pd,tmp, COV[nv-1]);
+				lap = opCode(add_pd,lap,tmp);
 
-			mel = opCode(load_pd, &m[idxP0]);
+			} //end neighbour loop nv
+
 			mPy = opCode(mul_pd, mel, mel);
 
 #if	defined(__AVX512F__)
@@ -203,67 +246,41 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 #else
 			mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
-			switch	(VQcd & VQCD_TYPE) {
 
-				default:
-				case	VQCD_1:
-				mMx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
-						zQVec),
+			switch	(VQcd & VQCD_TYPE) {
+				case	VQCD_PQ_ONLY:
+				mMx = opCode(sub_pd, lap,
 					opCode(mul_pd,
 						opCode(mul_pd,
 							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
 							opCode(set1_pd, LL)),
-						mel));
+											 mel));
+				break;
+								default:
+				case	VQCD_1:
+				mMx = opCode(sub_pd,
+					opCode(add_pd, lap, zQVec),
+					opCode(mul_pd,
+						opCode(mul_pd,
+							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
+							opCode(set1_pd, LL)),
+											 mel));
 				break;
 
 				case	VQCD_1_PQ_2:
 				mMx = opCode(sub_pd,
-					opCode(add_pd,
+					opCode(add_pd, lap, zQVec),
 						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
-						zQVec),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
-							opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-						mel));
-				break;
+							opCode(mul_pd,
+								opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
+								opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
+							mel));
+				 break;
 
+				//FIX ME ADDITIONAL POTENTIALS!
 				case	VQCD_2:
 				mMx = opCode(sub_pd,
-					opCode(sub_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
+					opCode(sub_pd, lap,
 						opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
 					opCode(mul_pd,
 						opCode(mul_pd,
@@ -274,18 +291,7 @@ inline	void	propagateNNKernelXeon(const void * __restrict__ m_, void * __restric
 
 				case	VQCD_1N2:
 				mMx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
+					opCode(add_pd,lap,
 							// 1N2 part
 						opCode(mul_pd,zNVec,mel)),
 					opCode(mul_pd,
@@ -416,21 +422,21 @@ tmp = opCode(sub_pd,
 		const float epsi = mola/(1.f+mola);
 
 		float CO[5] = {0, 0, 0, 0, 0} ;
-		if (Ng == 0) {
+		if (Nng == 0) {
 			return;
-		}	else if (Ng == 1) {
+		}	else if (Nng == 1) {
 			CO[0] = 1.  ;
-		}	else if (Ng == 2) {
+		}	else if (Nng == 2) {
 			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (Ng == 3) {
+		} else if (Nng == 3) {
 			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (Ng == 4) {
+		} else if (Nng == 4) {
 			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (Ng == 5) {
+		} else if (Nng == 5) {
 			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 	 	}
 		_MData_ COV[5];
-		for (size_t nv = 0; nv < Ng ; nv++)
+		for (size_t nv = 0; nv < Nng ; nv++)
 			COV[nv]  = opCode(set1_ps, CO[nv]*ood2);
 
 #if	defined(__AVX512F__)
@@ -440,7 +446,6 @@ tmp = opCode(sub_pd,
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
 		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
-
 		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
 
@@ -470,8 +475,8 @@ tmp = opCode(sub_pd,
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
-		// LogOut("[prop] Ng %d Lz %d\n",Ng,sizeZ); // The Ng defition reaches here from parse.h
-// LogOut("[prop] zM %d bY %d\n",zM,bY); // tuned chunks
+		// LogOut("[prop] Nng %d Lz %d\n",Nng,sizeZ); // The Nng defition reaches here from parse.h
+LogMsg(VERB_PARANOID,"[propNN] Nng %d zM %d bY %d bSizeZ %d bSizeY %d XC %d",Nng,zM,bY,bSizeZ,bSizeY,XC ); // tuned chunks
 		for (uint zT = 0; zT < zM; zT++)
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
@@ -503,7 +508,7 @@ tmp = opCode(sub_pd,
 // if (idxb==0) LogOut("r%d ghost %f %f \n",commRank(),m[idxP0-2*Sf],m[idxP0-2*Sf+1]);
 			//Laplacian
 			// Neighbour loop
-			for (size_t nv=1; nv < Ng+1; nv++)
+			for (size_t nv=1; nv < Nng+1; nv++)
 			{
 				// LogOut("ca nv %d\n",nv);
 				//x-
@@ -625,6 +630,15 @@ tmp = opCode(sub_pd,
 #endif
 
 			switch	(VQcd & VQCD_TYPE) {
+				case	VQCD_PQ_ONLY:
+				mMx = opCode(sub_ps, lap,
+					opCode(mul_ps,
+						opCode(mul_ps,
+							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
+							opCode(set1_ps, LL)),
+											 mel));
+				break;
+
 					default:
 					case	VQCD_1:
 					mMx = opCode(sub_ps,
@@ -649,18 +663,7 @@ tmp = opCode(sub_pd,
 					//FIX ME ADDITIONAL POTENTIALS!
 	 				case	VQCD_2:
 	 				mMx = opCode(sub_ps,
-	 					opCode(sub_ps,
-	 						opCode(mul_ps,
-	 							opCode(add_ps,
-	 								opCode(add_ps,
-	 									opCode(load_ps, &m[idxMz]),
-	 									opCode(add_ps,
-	 										opCode(add_ps,
-	 											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-	 											opCode(load_ps, &m[idxMx])),
-	 										opCode(load_ps, &m[idxPz]))),
-	 								opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-	 							opCode(set1_ps, ood2)),
+	 					opCode(sub_ps, lap,
 	 						opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
 	 					opCode(mul_ps,
 	 						opCode(mul_ps,
@@ -671,18 +674,7 @@ tmp = opCode(sub_pd,
 
 					case	VQCD_1N2:
 					mMx = opCode(sub_ps,
-						opCode(add_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-										opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, ood2)),
+						opCode(add_ps, lap,
 								// 1N2 part
 							opCode(mul_ps,zNVec,mel)),
 						opCode(mul_ps,
@@ -692,9 +684,6 @@ tmp = opCode(sub_pd,
 							mel));
 					break;
 			}
-
-
-
 
 			mPy = opCode(load_ps, &v[idxV0]);
 
@@ -1566,7 +1555,7 @@ tmp = opCode(sub_ps,
 //----------------------------------------------------------------------------//
 // uses same indices than kernel
 // Vo and Vf must be the same: begginig of the slice which we will have to prepare
-// if Vo = Sf (slice 1 of m or 1st slice of data and Ng = 2
+// if Vo = Sf (slice 1 of m or 1st slice of data and Nng = 2
 // we take the last (physical) slices of the previous rank Lz-2 Lz-1 with weigths
 // normalised to the last i.e.
 // Lz-2*C[2]/C[1] + Lz-1
@@ -1586,7 +1575,7 @@ inline	void	prepareGhostKernelXeon(const void * __restrict__ m_, void * __restri
 	//Volume of data and surface slice
 	const size_t Sf = Lx*Lx;
 	const size_t Vo = Lx*Lx*sizeZ;
-	if (z0 > Ng)
+	if (z0 > Nng)
 	{
 		LogError("No preparation needed! why did you call this function?");
 		return; //
@@ -1594,9 +1583,9 @@ inline	void	prepareGhostKernelXeon(const void * __restrict__ m_, void * __restri
 
 
 	// number of slices to sum
-	const size_t nvMax= Ng-z0;
-	// z0 = 0 and Ng =1 > 1 slice
-	// z0 = 0 and Ng =7 > 7 slices
+	const size_t nvMax= Nng-z0;
+	// z0 = 0 and Nng =1 > 1 slice
+	// z0 = 0 and Nng =7 > 7 slices
 
 	// shift for the Coefficients
 	const size_t nvbase = z0;
@@ -1629,23 +1618,23 @@ inline	void	prepareGhostKernelXeon(const void * __restrict__ m_, void * __restri
 #endif
 
 double CO[5] = {0, 0, 0, 0, 0} ;
-if (Ng == 0) {
+if (Nng == 0) {
 	return;
-}	else if (Ng == 1) {
+}	else if (Nng == 1) {
 	CO[0] = 1.  ;
-}	else if (Ng == 2) {
+}	else if (Nng == 2) {
 	CO[0] = 4./3.; CO[1] = -1./12.;
-} else if (Ng == 3) {
+} else if (Nng == 3) {
 	CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-} else if (Ng == 4) {
+} else if (Nng == 4) {
 	CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-} else if (Ng == 5) {
+} else if (Nng == 5) {
 	CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 }
 
 _MData_ COV[5];
 // we normalise the coefficients to the first one, which will get its notmalisation later
-for (size_t nv = 0; nv < Ng ; nv++)
+for (size_t nv = 0; nv < Nng ; nv++)
 	COV[nv]  = opCode(set1_pd, CO[nv]/CO[nvbase]);
 
 		  #pragma omp parallel default(shared)
@@ -1706,22 +1695,22 @@ for (size_t nv = 0; nv < Ng ; nv++)
 #endif
 
 float CO[5] = {0, 0, 0, 0, 0} ;
-if (Ng == 0) {
+if (Nng == 0) {
 	return;
-}	else if (Ng == 1) {
+}	else if (Nng == 1) {
 	CO[0] = 1.  ;
-}	else if (Ng == 2) {
+}	else if (Nng == 2) {
 	CO[0] = 4./3.; CO[1] = -1./12.;
-} else if (Ng == 3) {
+} else if (Nng == 3) {
 	CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-} else if (Ng == 4) {
+} else if (Nng == 4) {
 	CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-} else if (Ng == 5) {
+} else if (Nng == 5) {
 	CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
 }
 _MData_ COV[5];
 // we normalise the coefficients to the first one, which will get its notmalisation later
-for (size_t nv = 0; nv < Ng ; nv++)
+for (size_t nv = 0; nv < Nng ; nv++)
 	COV[nv]  = opCode(set1_ps, CO[nv]/CO[nvbase]);
 
 		  #pragma omp parallel default(shared)

@@ -76,30 +76,34 @@
 		public:
 
 				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
-					FieldType newType, LambdaType lType, ConfType cType, const size_t parm1, const double parm2);
+					FieldType newType, LambdaType lType, size_t Ngg=1);
 				~Scalar();
 
 		Cosmos		*BckGnd(){ return bckgnd; }
 
+		/* Field pointers */
 		void		*mCpu()  { return m; }
 		const void	*mCpu()  const { return m; }
+		void		*mStart      () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2)*Ng); }
+		void		*mFrontGhost () { return m; }
+		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2*Ng+n3)); }
+
+		/* Velocity pointers */
+		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(n3)); }
 		void		*vCpu()  { return v; }
 		const void	*vCpu()  const { return v; }
+
+		/* Auxiliary field pointers */
 		void		*m2Cpu() { return m2; }
 		const void	*m2Cpu() const { return m2; }
-
-		void		*mStart () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2)); }
-		void		*mFrontGhost () { return m; }
-		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2+n3)); }
+		void		*m2Start     () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2)*Ng); }
 		void		*m2FrontGhost() { return m2; }
-		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2+n3)); }
- 		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(n3)); }
-		// fix for saxion mode! eReduced ? rLz*nSplit : Lz*nSplit;
-		// void		*m2half      () { return fieldType == FIELD_SAXION ? static_cast<void *>(static_cast<char *>(m2) + (fSize/2)*(v3)) :static_cast<void *>(static_cast<char *>(m2) + fSize*(v3));  }
+		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2*Ng+n3)); }
 		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
+
 #ifdef	USE_GPU
 		void		*mGpu() { return m_d; }
 		const void	*mGpu() const { return m_d; }
@@ -126,11 +130,11 @@
 
 		FieldPrecision	Precision()  { return precision; }
 		DeviceType	Device()     { return device; }
-		LambdaType	Lambda()     { return lambdaType; }
+		LambdaType	LambdaT()     { return lambdaType; }
 		FieldType	Field()      { return fieldType; }
 		StatusM2	m2Status()   { return statusM2; }
 		StatusSD  sDStatus()   { return statusSD;}
-		void		setLambda      (LambdaType newLambda) { lambdaType = newLambda; }
+		void  setLambdaT (LambdaType newLambda) { lambdaType = newLambda; }
 
 		size_t		DataSize ()  { return fSize; }
 		size_t		DataAlign()  { return mAlign; }
@@ -142,7 +146,7 @@
 
 
 		double		Delta()      { return bckgnd->PhysSize()/((double) n1); }
-		double		Msa()        { return msa; } //sqrt(2.*bckgnd->Lambda())*Delta(); }
+		// double		Msa()        { return msa; } //sqrt(2.*bckgnd->Lambda())*Delta(); }
 
 		/*	Overloading	*/
 		double		AxionMass  ();
@@ -162,6 +166,9 @@
 		double		SaxionShift(const double zNow);
 		double		Saskia     (const double zNow);
 		double		dzSize     (const double zNow);
+		double		Rfromct    (const double ct);
+		double		LambdaP   (); // Returns the value of Lambda with the 1/z2 included IF needed
+		double		Msa();
 
 		double		*zV()        { return z; }
 		const double	*zV() const  { return z; }
@@ -189,8 +196,7 @@
 		bool	gRecv() { return grecv; }
 		void	gReset() { gsent = false ; grecv = false; }
 
-		int  getNg() {return Ng;}
-		int  setNg(const int nn) { Ng = nn;}
+		size_t  getNg() {return Ng;}
 		/*	Eliminar	*/
 
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);

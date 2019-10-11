@@ -57,6 +57,7 @@
 			FOLD_ALL,
 			UNFOLD_ALL,
 			UNFOLD_SLICE,
+			UNFOLD_SLICEYZ,
 		}	FoldType;
 
 		typedef	enum	StringType_s
@@ -77,8 +78,8 @@
 
 		typedef	enum	LambdaType_s
 		{
-			LAMBDA_FIXED,
-			LAMBDA_Z2,
+			LAMBDA_FIXED       = 0,
+			LAMBDA_Z2          = 1,
 		}	LambdaType;
 
 		typedef	enum	AxionMassType_s
@@ -90,64 +91,70 @@
 
 		typedef	enum	VqcdType_s
 		{
-			VQCD_1		     = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
-			VQCD_2		     = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
-			VQCD_1_PQ_2	     = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
-			VQCD_1N2	     = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_QUAD	     = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_0		     = 32,  // cosine potential
+			VQCD_1            = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
+			VQCD_2            = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
+			VQCD_1_PQ_2       = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
+			VQCD_1N2          = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_QUAD         = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_0            = 32,   // cosine potential
+			VQCD_PQ_ONLY      = 64,   // no axion potential, massless propagation
 
-			VQCD_1_RHO	     = 8193,		// First version QCD potential, only rho evolution
-			VQCD_2_RHO	     = 8194,		// Second version QCD potential, only rho evolution
-			VQCD_1_PQ_2_RHO	     = 8196,		// PQ version QCD potential, only rho evolution
-			VQCD_1N2_RHO         = 8200,
-			VQCD_0_RHO         = 8216,
+			VQCD_1_RHO        = 8193,		// First version QCD potential, only rho evolution
+			VQCD_2_RHO        = 8194,		// Second version QCD potential, only rho evolution
+			VQCD_1_PQ_2_RHO   = 8196,		// PQ version QCD potential, only rho evolution
+			VQCD_1N2_RHO      = 8200,
+			VQCD_0_RHO        = 8216,
+			VQCD_PQ_ONLY_RHO  = 8256,
 
-			VQCD_1_DRHO	     = 16385,		// First version QCD potential, rho damping
-			VQCD_2_DRHO	     = 16386,		// Second version QCD potential, rho damping
-			VQCD_1_PQ_2_DRHO     = 16388,		// PQ version QCD potential, rho damping
-			VQCD_1N2_DRHO        = 16392,
-			VQCD_0_DRHO        = 16408,
+			VQCD_1_DRHO       = 16385,		// First version QCD potential, rho damping
+			VQCD_2_DRHO       = 16386,		// Second version QCD potential, rho damping
+			VQCD_1_PQ_2_DRHO  = 16388,		// PQ version QCD potential, rho damping
+			VQCD_1N2_DRHO     = 16392,
+			VQCD_0_DRHO       = 16408,
+			VQCD_PQ_ONLY_DRHO = 16448,
 
-			VQCD_1_DALL	     = 32769,		// First version QCD potential, full damping
-			VQCD_2_DALL	     = 32770,		// Second version QCD potential, full damping
-			VQCD_1_PQ_2_DALL     = 32772,		// PQ version QCD potential, full damping
-			VQCD_1N2_DALL	     = 32776,		// PQ version QCD potential, full damping
-			VQCD_0_DALL	     = 32792,		// PQ version QCD potential, full damping
+			VQCD_1_DALL       = 32769,		// First version QCD potential, full damping
+			VQCD_2_DALL       = 32770,		// Second version QCD potential, full damping
+			VQCD_1_PQ_2_DALL  = 32772,		// PQ version QCD potential, full damping
+			VQCD_1N2_DALL     = 32776,		// PQ version QCD potential, full damping
+			VQCD_0_DALL       = 32792,		// PQ version QCD potential, full damping
+			VQCD_PQ_ONLY_DALL = 32792,		// PQ version QCD potential, full damping
 
 			VQCD_1_DRHO_RHO	     = 24577,	// First version QCD potential, rho damping and only rho evolution
 			VQCD_2_DRHO_RHO	     = 24578,	// Second version QCD potential, rho damping and only rho evolution
 			VQCD_1_PQ_2_DRHO_RHO = 24580,	// PQ version QCD potential, rho damping and only rho evolution
 			VQCD_1N2_DRHO_RHO    = 24584,
-			VQCD_0_DRHO_RHO    = 24600,
+			VQCD_0_DRHO_RHO      = 24600, // not supported yet
 
 			VQCD_1_DALL_RHO	     = 40961,	// First version QCD potential, full damping and only rho evolution
 			VQCD_2_DALL_RHO	     = 40962,	// Second version QCD potential, full damping and only rho evolution
 			VQCD_1_PQ_2_DALL_RHO = 40964,	// PQ version QCD potential, full damping and only rho evolution
 			VQCD_1N2_DALL_RHO    = 40968,
-			VQCD_0_DALL_RHO    = 40984,
+			VQCD_0_DALL_RHO      = 40984,
 
 			/*	VQCD Masks	*/
-			VQCD_TYPE	      = 63,		// Masks base potential
+			VQCD_TYPE	      = 127,		// Masks base potential
 			VQCD_DAMP	      = 49152,	// Masks damping mode 16384+32768
 
 			/*	VQCD Flags	*/
 			VQCD_EVOL_RHO	      = 8192,
 			VQCD_DAMP_RHO	      = 16384,
 			VQCD_DAMP_ALL	      = 32768,
-			VQCD_NONE	      = 0,
+			VQCD_NONE	          = 0,
 		}	VqcdType;
 
 		typedef enum	ConfType_s
 		{
-			CONF_KMAX,
-			CONF_VILGOR,
-			CONF_VILGORK,
-			CONF_VILGORS,
-			CONF_TKACHEV,
-			CONF_SMOOTH,
-			CONF_READ,
-			CONF_NONE,
+			CONF_NONE       = 0,
+			CONF_SMOOTH     = 1,
+			CONF_KMAX       = 2,
+			CONF_VILGOR     = 4,
+			CONF_VILGORK    = 8,
+			CONF_VILGORS    = 16,
+			CONF_TKACHEV    = 32,
+			CONF_READ       = 64,
+			CONF_LOLA       = 128, // Clean VILGOR
+			CONF_COLE       = 256,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -161,6 +168,7 @@
 			CONF_AXNOISE      = 5,
 			CONF_SAXNOISE     = 6,
 			CONF_AX1MODE      = 7,
+			CONF_PARRES       = 8,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
@@ -170,6 +178,9 @@
 			MOM_MVSINCOS = 2,  // Tkachev sinc into M and its derivative into V
 			MOM_MEXP     = 4,  // Gaussian with exp(-k/k_c) mean amplitude
 			MOM_MEXP2    = 8,  // Gaussian with exp(-(k/k_c)^2) mean amplitude
+			MOM_COLE     = 16,  // 1/sqrt(1+kt2) EXP
+			MOM_KK       = 1024, 	// extra momentum factor
+			MOM_KCOLE   = 1040,  //
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -197,16 +208,31 @@
 
 		typedef	enum	Int_EnergyIdx_s
 		{
-			TH_GRX = 0,
-			TH_GRY = 1,
-			TH_GRZ = 2,
-			TH_KIN = 3,
-			TH_POT = 4,
-			RH_GRX = 5,
-			RH_GRY = 6,
-			RH_GRZ = 7,
-			RH_KIN = 8,
-			RH_POT = 9,
+			TH_GRX  = 0,
+			TH_GRY  = 1,
+			TH_GRZ  = 2,
+			TH_KIN  = 3,
+			TH_POT  = 4,
+			RH_GRX  = 5,
+			RH_GRY  = 6,
+			RH_GRZ  = 7,
+			RH_KIN  = 8,
+			RH_POT  = 9,
+                        RH_RHO  = 10, // Average value of rho
+			//masked values
+			TH_GRXM = 11,
+			TH_GRYM = 12,
+			TH_GRZM = 13,
+			TH_KINM = 14,
+			TH_POTM = 15,
+			RH_GRXM = 16,
+			RH_GRYM = 17,
+			RH_GRZM = 18,
+			RH_KINM = 19,
+			RH_POTM = 20,
+			//aux values
+			RH_RHOM = 21,
+			MM_NUMM = 22,
 		}	EnergyIdx;
 
 		typedef	enum	LogLevel_s
@@ -250,10 +276,11 @@
 
 		typedef	enum	VerbosityLevel_s
 		{
-			VERB_SILENT = 0,
-			VERB_NORMAL = 1,
-			VERB_HIGH   = 2,
-			VERB_DEBUG  = 3,
+			VERB_SILENT    = 0,
+			VERB_NORMAL    = 1,
+			VERB_HIGH      = 2,
+			VERB_DEBUG     = 3,
+			VERB_PARANOID  = 4,
 		}	VerbosityLevel;
 
 		typedef	enum	PrintConf_s
@@ -330,44 +357,44 @@
 		} PropcType;
 
 		typedef	enum	PropType_s {
-			PROP_NONE	    = 0,		// For parsing
+			PROP_NONE     = 0,		// For parsing
 			PROP_BASE     = 1,    // Optimised propagator 1 neighbour
-			PROP_SPEC	    = 2,		// Spectral flag
+			PROP_SPEC     = 2,		// Spectral flag
 			PROP_FSPEC    = 4,		// Full Spectral flag
 			PROP_NNEIG    = 8,		// vectorised multi Ng laplacian propagator
 
-			PROP_LEAP	    = 16,
+			PROP_LEAP     = 16,
 			PROP_OMELYAN2	= 32,
 			PROP_OMELYAN4	= 64,
-			PROP_RKN4	    = 128,
+			PROP_RKN4     = 128,
 			PROP_MLEAP    = 256,
 
-			PROP_BLEAP	    = 17,
+			PROP_BLEAP     = 17,
 			PROP_BOMELYAN2	= 33,
 			PROP_BOMELYAN4	= 65,
-			PROP_BRKN4	    = 129,
+			PROP_BRKN4     = 129,
 			PROP_BMLEAP    = 257,
 
-			PROP_SLEAP	    = 18,
+			PROP_SLEAP     = 18,
 			PROP_SOMELYAN2	= 34,
 			PROP_SOMELYAN4	= 66,
-			PROP_SRKN4	    = 130,
+			PROP_SRKN4     = 130,
 			PROP_SMLEAP     = 258,
 
-			PROP_FSLEAP	    = 20,
-			PROP_FSOMELYAN2	= 36,
-			PROP_FSOMELYAN4	= 68,
-			PROP_FSRKN4	    = 132,
+			PROP_FSLEAP     = 20,
+			PROP_FSOMELYAN2 = 36,
+			PROP_FSOMELYAN4 = 68,
+			PROP_FSRKN4     = 132,
 			PROP_FSMLEAP    = 260,
 
-			PROP_NLEAP	    = 24,
-			PROP_NOMELYAN2	= 40,
-			PROP_NOMELYAN4	= 72,
-			PROP_NRKN4	    = 136,
+			PROP_NLEAP      = 24,
+			PROP_NOMELYAN2  = 40,
+			PROP_NOMELYAN4  = 72,
+			PROP_NRKN4      = 136,
 			PROP_NMLEAP     = 264,
 
-			PROP_MASK	      = 496,		// 16+32+64+128+256 So far... Masks the integrator type, removing the spectral/N flags flag
-			PROP_LAPMASK	  = 15,			// Masks the laplacian type, removing the integrator time			
+			PROP_MASK	      = 496,// 16+32+64+128+256 So far... Masks the integrator type, removing the spectral/N flags flag
+			PROP_LAPMASK	  = 15, // Masks the laplacian type, removing the integrator time
 		}	PropType;
 
 		typedef	enum	SpectrumType_s {
@@ -439,7 +466,8 @@
 			M2_ENERGY_AXI  = 64,
 			M2_ENERGY_MASK_AXI_FFT = 128,
 			M2_MASK_AXI2_FFT = 256,
-			M2_MASK        = 512,
+			M2_MASK        = 512,    // Points outside string
+			M2_ANTIMASK    = 1024,   // Points inside the string region (duplicated to mask complex energy)
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
@@ -453,14 +481,14 @@
 
 		// analysis functions to be called inside a measurement
 		typedef	enum	MeasureType_s {
-			MEAS_NOTHING			= 0,
+			MEAS_NOTHING      = 0,
 			MEAS_BINTHETA     = 1,
 			MEAS_BINRHO       = 2,
 			MEAS_BINLOGTHETA2 = 4,
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
-			// MEAS_BIN...	  = 16,
-			MEAS_STRING	      = 32,
+			// MEAS_BIN..     = 16,
+			MEAS_STRING       = 32,
 			MEAS_STRINGMAP    = 64,
 			MEAS_STRINGCOO    = 128,
 
@@ -487,19 +515,53 @@
 			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
 		}	MeasureType;
 
+//Used when energy is called
+		typedef enum	EnType_s
+		{
+			EN_NO         = 0,
+			EN_ENE        = 1,
+			EN_ONLYMAP    = 2, // used for maskinh
+			EN_MAP        = 3, // total energy = 2
+			EN_MASK       = 4, // masked energy from axions->SData() = masked
+			EN_ENEMASK    = 5, // total + masked energies
+			EN_MAPMASK    = 6, // map of masked energy
+			EN_ENEMAPMASK = 7, // energy, masked energy and total map
+			// EN_AMASK = 8, // Antimask
+			// EN_AMAMA = 10, // Antimask
+		}	EnType;
+
+//UMaps type
+		typedef enum	SliceType_s
+		{
+			MAPT_NO      = 0,
+			MAPT_XYM     = 1,
+			MAPT_XYV     = 4,
+			MAPT_XYMV    = 5,
+
+			MAPT_YZM     = 16,
+			MAPT_YZV     = 32,
+			MAPT_YZMV    = 48,
+
+			MAPT_XYPE    = 1024,
+			MAPT_XYPE2   = 2048,
+
+			MAPT_XYE     = 65536,
+		}	SliceType;
+
 		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v
 		{
-			int	index;
-			size_t sliceprint	;
-			size_t idxprint	;
-			MeasureType measdata ;
-			SpectrumMaskType mask ;
-			double rmask; 					// a radius to mask
-			std::vector<double> rmask_tab;
-			int i_rmask;
-			int redmap;
-			StringMeasureType strmeas;
+			int                 index;
+			size_t              sliceprint	;
+			size_t              idxprint	;
+			MeasureType         measdata ;
+			SpectrumMaskType    mask ;
+			double              rmask;                   // a radius to mask
+			std::vector<double> rmask_tab;  // more than 1
+			SliceType           maty;
+			int                 i_rmask;
+			int                 redmap;
+			StringMeasureType   strmeas;
 		}	MeasInfo;
 
 		// data output by measurement function to program
@@ -512,7 +574,41 @@
 			double 			eS;
 		}	MeasData;
 
+		// data output by measurement function to program
+		typedef	struct	IcData_v
+		{
+			size_t        Nghost;
+			bool          icdrule;
+			bool          preprop;
+			bool          icstudy;
+			double        prepstL;
+			double        prepcoe;
+			double        pregammo;
+			double        prelZ2e;
+			VqcdType      prevtype;
+			bool          normcore;
+			double        alpha;
+			size_t        siter;
+			size_t        kMax ;
+			double        kcr;
+			double        mode0;
+			double        zi;
+			double        logi;
+			double        kickalpha;
+			double        extrav;
+			ConfType      cType;
+			ConfsubType   smvarType;
+			MomConfType   mocoty;
+		}	IcData;
 
+		typedef	struct	MomParms_v
+		{
+			size_t        kMax;
+			double        kCrt;
+			MomConfType   mocoty;
+			double        mass2;
+			FieldType     ftype;
+		}	MomParms;
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__

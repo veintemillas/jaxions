@@ -3,5 +3,5 @@
 
 	#include "scalar/scalarField.h"
 
-	void randConf (Scalar *field);
+	void randConf (Scalar *field, IcData ic);
 #endif

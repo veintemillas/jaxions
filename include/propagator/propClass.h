@@ -82,7 +82,7 @@
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, PropcType spec) : axion(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()),
-		ood2(1./(field->Delta()*field->Delta())), lambda(field->BckGnd()->Lambda()), precision(field->Precision()), gamma(field->BckGnd()->Gamma()), lType(field->Lambda()) {
+		ood2(1./(field->Delta()*field->Delta())), lambda(field->BckGnd()->Lambda()), precision(field->Precision()), gamma(field->BckGnd()->Gamma()), lType(field->LambdaT()) {
 
 		/*	Default block size gives just one block	*/
 		int tmp   = field->DataAlign()/field->DataSize();
@@ -276,12 +276,12 @@
 		// eom only depend on R
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda = axion->LambdaP();
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+
+			cLmbda = axion->LambdaP();
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
@@ -299,8 +299,7 @@
 
 			*z += dz*d1;
 			axion->updateR();
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			maa = axion->AxionMassSq();
 
@@ -318,8 +317,7 @@
 		}
 
 		if (lastStage) {
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+		cLmbda = axion->LambdaP();
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
@@ -346,14 +344,13 @@
 		const uint ext = V + S;
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 
 			axion->updateR();
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
@@ -376,8 +373,7 @@
 		if (lastStage) {
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
@@ -507,13 +503,25 @@
 		}
 		axion->setM2     (M2_DIRTY);
 	}
+
+
+
+
 	// Generic saxion propagator
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunCpu	(const double dz) {
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
+
+		/* Returns ghost size region in slices */
+		size_t NG   = axion->getNg();
+		LogMsg(VERB_DEBUG,"[propSax] Ng %d",NG);
+		/* Size of Boundary */
+		size_t BO = NG*S;
+		/* Size of Core  */
+		size_t CO = V-2*NG*S;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
@@ -522,29 +530,26 @@
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			auto maa = axion->AxionMassSq();
-
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d1;
 			axion->updateR();
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			maa = axion->AxionMassSq();
 
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*S, V, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S, 2*S, precision, xBlock, yBlock, zBlock);
-			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V, V+S, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), NG, R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d2;
 			axion->updateR();
 		}
@@ -552,18 +557,21 @@
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*BO  , 2*BO+CO, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, BO , 2*BO , S, precision);
+			updateVXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V , V+BO  , S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 	}
+
+
+
+
 
 	// Generic saxion propagator N neighbour
 
@@ -572,153 +580,154 @@
 
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 
 		axion->exchangeGhosts(FIELD_M);
+
+		int nRanks    = commSize();
+		int jobDone   = 0;
+		int jobStatus = 0;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+
+			cLmbda = axion->LambdaP();
+
 			auto maa = axion->AxionMassSq();
 
 			size_t bsl = 0, csl = 0;  // bsl is current boundary slice
 			bool sent = false;
 			int loopnumber = 0;
+			int wom = 0;
 			axion->gReset();
-// LogOut("loop1 (%d/%d,%d) \n",axion->gSent(),sent,axion->gRecv());
-LogMsg(VERB_DEBUG, "* * * * LOOP1 * * * * (%d/%d,%d)",axion->gSent(),sent,axion->gRecv());
-			while ( (csl < sizeZ-2*Ng) || (bsl < Ng) ) // while the number of slices computed is smaller than Lz
-			{
+
+			while ((csl < sizeZ-2*Nng) || (bsl < Nng)) { // while the number of slices computed is smaller than Lz
 				axion->sendGhosts(FIELD_M, COMM_TESTR);
 				axion->sendGhosts(FIELD_M, COMM_TESTS);
-// LogOut("  >> z %d csl %d bsl %d csl + 2*(bsl) %d (%d/%d,%d)\n",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-LogMsg(VERB_DEBUG,"  >> Z %d csl %d bsl %d csl+2*(bsl) %d (%d/%d,%d)",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-				if (bsl < Ng){ // if there are boundary slices prepare and send
+				if (bsl < Nng) { // if there are boundary slices prepare and send
 
-					if ( !sent ){
+					if (!sent) {
 						prepareGhostKernelXeon<VQcd>(axion->mCpu(), axion->vGhost(), ood2, Lx, bsl, precision);
 						axion->sendGhosts(FIELD_M, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
 						sent = true ;
-// LogOut("  bsl %d sent (gs %d/%d)\n",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"  >>>> not send >>>> bsl %d prepared and sent (gs %d/%d)",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"---> info for slice bsl %d SENT",bsl);
+LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
 					}
 
 					axion->sendGhosts(FIELD_M, COMM_TESTR);
-					if ( axion->gRecv() ){
-LogMsg(VERB_DEBUG,"---> info for slice bsl %d RECEIVED",bsl);
-// LogOut("  bsl %d received; computing os0 %d os1 %d\n",bsl,bsl,sizeZ-1-bsl);
-LogMsg(VERB_DEBUG,"  >>>> RECEIVED >>>> bsl %d received; computing os0 %d os1 %d",bsl,bsl,sizeZ-1-bsl);
-						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-// LogOut(">>>>> bsl %d\n",bsl);
-						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock, yBlock, zBlock);
-// LogOut(">>>>> bsl %d\n",sizeZ-bsl-1);
-						propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  bsl %d %d done (%d)\n",bsl,sizeZ-bsl);
-LogMsg(VERB_DEBUG,"       bsl %d %d calculated; sent = false",bsl,sizeZ-bsl);
-						bsl++ ; // mark next boundary slice for next round
-						sent = false;
-				}}
+					if (axion->gRecv()) {
+						if (wom > 1){
+							size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
+	LogMsg(VERB_DEBUG,"[pcNN] RECV bsl %d",bsl);
+							propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
+							propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
+	LogMsg(VERB_DEBUG,"[pcNN] PROP bsl %d",bsl);
+							bsl++ ; // mark next boundary slice for next round
+							sent = false;
+							wom = 0;
+						} else { wom++; }
+					}
+				}
 
-				if (csl < sizeZ-2*Ng) {
-					size_t SC = S*(csl+Ng+1);
-// LogOut(">>>>> csl %d\n",csl+Ng);
-LogMsg(VERB_DEBUG,"  >> CORE UNFINISHED, CALCULATE csl %d",csl+Ng);
+				if (csl < sizeZ-2*Nng) {
+					size_t SC = S*(csl+Nng+1);
 					propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  csl %d done (slice %d)\n",csl,csl+Ng);
-LogMsg(VERB_DEBUG,"                                csl %d done (slice %d)",csl,csl+Ng);
-					csl ++;
-				} else { if (sent) {
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, Waiting for bsl %d... (%d/%d,%d)",bsl,axion->gSent(),sent,axion->gRecv());
-										axion->sendGhosts(FIELD_M, COMM_WAIT,0); }
-										// else
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, nothing to wait for ... continue");
-								}
-LogMsg(VERB_DEBUG,"L1-RANK %d loop %d (bsl/csl,%d/%d)",commRank(),loopnumber,bsl,csl);
-loopnumber++;
-LogFlush();
+LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
+					csl++;
+				} else {
+					if (sent)
+					axion->sendGhosts(FIELD_M, COMM_WAIT,0);
+				}
+				loopnumber++;
+
+				/*	Send/receive status to/from all ranks and sync	*/
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
 			}
 
-LogMsg(VERB_DEBUG,"CommSync");
-commSync();
-LogMsg(VERB_DEBUG,"CommSync done");
+			jobDone = 1;
 
+			/*	Get status from all ranks until the job is done and sync at each step	*/
+			do {
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
+				loopnumber++;
+			}	while (jobStatus < nRanks);
+
+LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
+			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
+
+			jobDone	= 0;	// Reset the status for the next loop
 
 			*z += dz*d1;
 			axion->updateR();
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			maa = axion->AxionMassSq();
 
 			bsl = 0; csl = 0;
 			sent = false;
 			loopnumber = 0;
+			wom = 0;
 			axion->gReset();
-// LogOut("loop2\n");
-LogMsg(VERB_DEBUG, "* * * * LOOP2 * * * * (%d/%d,%d)",axion->gSent(),sent,axion->gRecv());
-			while ( (csl < sizeZ-2*Ng) || (bsl < Ng) )
-			{
+
+			while	((csl < sizeZ-2*Nng) || (bsl < Nng)) {
 				axion->sendGhosts(FIELD_M2, COMM_TESTR);
 				axion->sendGhosts(FIELD_M2, COMM_TESTS);
-// LogOut("  >> z %d csl %d bsl %d csl + 2*(bsl) %d (%d/%d,%d)\n",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-LogMsg(VERB_DEBUG,"  >> Z %d csl %d bsl %d csl+2*(bsl) %d (%d/%d,%d)",sizeZ, csl, bsl,csl + 2*(bsl),axion->gSent(),sent,axion->gRecv());
-				if (bsl < Ng){ // if there are boundary slices prepare and send
 
-					if ( !sent ){
-					prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
+				if (bsl < Nng) { // if there are boundary slices prepare and send
+
+					if (!sent) {
+						prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
 						axion->sendGhosts(FIELD_M2, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
 						sent = true ;
-// LogOut("  bsl %d sent (gs %d/%d)\n",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"  >>>> not send >>>> bsl %d prepared and sent (gs %d/%d)",bsl,axion->gSent(),sent);
-LogMsg(VERB_DEBUG,"---> info for slice bsl %d SENT",bsl);
+LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
 					}
 
 					axion->sendGhosts(FIELD_M2, COMM_TESTR);
-					if ( axion->gRecv() ){
-// LogMsg(VERB_DEBUG,"---> info for slice bsl %d RECEIVED",bsl);
-// LogOut("  bsl %d received; computing os0 %d os1 %d\n",bsl,bsl,sizeZ-1-bsl);
-LogMsg(VERB_DEBUG,"  >>>> RECEIVED >>>> bsl %d received; computing os0 %d os1 %d",bsl,bsl,sizeZ-1-bsl);
-						size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-// LogOut(">>>>> bsl %d\n",bsl);
-						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock, yBlock, zBlock);
-// LogOut(">>>>> bsl %d\n",sizeZ-bsl-1);
-						propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  bsl %d %d done (%d)\n",bsl,sizeZ-bsl);
-LogMsg(VERB_DEBUG,"       bsl %d %d calculated; sent = false",bsl,sizeZ-bsl);
-						bsl++ ; // mark next boundary slice for next round
-						sent = false;
-				}}
+					if (axion->gRecv()){
+						if (wom > 1){
+							size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
+	LogMsg(VERB_DEBUG,"[pcNN] RECV bsl %d",bsl);
+							propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
+							propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
+	LogMsg(VERB_DEBUG,"[pcNN] PROP bsl %d",bsl);
+							bsl++ ; // mark next boundary slice for next round
+							sent = false;
+							wom = 0;
+						} else {wom++;}
+					}
+				}
 
-				if (csl < sizeZ-2*Ng) {
-					size_t SC = S*(csl+Ng+1);
-// LogOut(">>>>> csl %d\n",csl+Ng);
-LogMsg(VERB_DEBUG,"  >> CORE UNFINISHED, CALCULATE csl %d",csl+Ng);
+				if (csl < sizeZ-2*Nng) {
+					size_t SC = S*(csl+Nng+1);
 					propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
-// LogOut("  csl %d done (slice %d)\n",csl,csl+Ng);
-LogMsg(VERB_DEBUG,"  csl %d done (slice %d)",csl,csl+Ng);
+LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
 					csl ++;
-				} else { if (sent) {
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, Waiting for bsl %d... (%d/%d,%d)",bsl,axion->gSent(),sent,axion->gRecv());
-										axion->sendGhosts(FIELD_M2, COMM_WAIT,0); }
-										// else
-										// LogMsg(VERB_DEBUG,"  >> CORE FINISHED, nothing to wait for ... continue");
-								}
-LogMsg(VERB_DEBUG,"L1-RANK %d loop %d (bsl/csl,%d/%d)",commRank(),loopnumber,bsl,csl);
-loopnumber++;
+				} else {
+					if (sent)
+						axion->sendGhosts(FIELD_M2, COMM_WAIT,0);
+				}
+				loopnumber++;
 
-LogFlush();
+				/*	Send/receive status to/from all ranks and sync	*/
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
 			}
 
-LogMsg(VERB_DEBUG,"CommSync");
-commSync();
-LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
+			jobDone = 1;
 
+			/*	Get status from all ranks until the job is done and sync at each step	*/
+			do {
+				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				commSync();
+				loopnumber++;
+			}	while (jobStatus < nRanks);
 
+LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
+			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
 
 			*z += dz*d2;
 			axion->updateR();
@@ -730,18 +739,21 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 }
+
+
+
+
 
 	// Generic saxion lowmem propagator
 
@@ -749,22 +761,23 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 	void	PropClass<nStages, lastStage, VQcd>::lowCpu	(const double dz) {
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
+
+		size_t NG = axion->getNg();
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
-			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, S, V + S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, S, V + S, precision);
 			*z += dz*d0;
 			axion->updateR();
 		}
@@ -772,15 +785,15 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*z)*(*z));
+			cLmbda = axion->LambdaP();
+
 
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
 		}
 	}
 
@@ -790,7 +803,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda;
 		auto   lSize  = axion->BckGnd()->PhysSize();
 
 		const double fMom = -(4.*M_PI*M_PI)/(lSize*lSize*((double) axion->TotalSize()));
@@ -808,8 +821,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 			applyLaplacian(axion);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 			*z += dz*d0;
@@ -823,8 +835,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 			applyLaplacian(axion);
 
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
 
 			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0.0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
 		}
@@ -837,7 +848,7 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = lambda;
+		double cLmbda ;
 		auto   lSize  = axion->BckGnd()->PhysSize();
 		size_t Tz = axion->TotalDepth();
 
@@ -870,8 +881,8 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 			pelota(FIELD_MTOM2, FFT_BCK); // BCK is to send to conf space
 
 			// computes acceleration
-			if (lType != LAMBDA_FIXED)
-				cLmbda = lambda/((*R)*(*R));
+			cLmbda = axion->LambdaP();
+
 			/* computes the acceleration in configuration space */
 
 			// LogOut("[fs] m  values %f %f %f %f \n",mmm[0],mmm[1],mmm[2],mmm[3]);
@@ -916,33 +927,39 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 			case PROPC_BASE:
 			case PROPC_NNEIG: // FIXME
 			{
+				double lapla = 18.0 * axion->getNg();
+
 				switch (axion->Field()) {
 					case FIELD_SAXION:
 						switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
 
 							default:
 							case VQCD_1:
-								return	(1e-9 * ((double) axion->Size()) * (42. * ((double) nStages) + (lastStage ? 38. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((24.+lapla) * ((double) nStages) + (lastStage ? (20.+lapla) : 0.)));
+								break;
+
+							case VQCD_PQ_ONLY:
+								return	(1e-9 * ((double) axion->Size()) * ((22.+lapla) * ((double) nStages) + (lastStage ? (18.+lapla) : 0.)));
 								break;
 
 							case VQCD_2:
-								return	(1e-9 * ((double) axion->Size()) * (45. * ((double) nStages) + (lastStage ? 41. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((27.+lapla) * ((double) nStages) + (lastStage ? (23.+lapla) : 0.)));
 								break;
 
 							case VQCD_1_PQ_2:
-								return	(1e-9 * ((double) axion->Size()) * (44. * ((double) nStages) + (lastStage ? 40. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((26.+lapla) * ((double) nStages) + (lastStage ? (22.+lapla) : 0.)));
 								break;
 
 							case VQCD_1_PQ_2_RHO:
-								return	(1e-9 * ((double) axion->Size()) * (50. * ((double) nStages) + (lastStage ? 46. : 0.)));
+								return	(1e-9 * ((double) axion->Size()) * ((32.+lapla) * ((double) nStages) + (lastStage ? (28.+lapla) : 0.)));
 								break;
 
 							case VQCD_1N2:
-								return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+								return	(1e-9 * ((double) axion->Size()) * ((25.+lapla) * ((double) nStages) + (lastStage ? (23.+lapla) : 0.))); //check the laststage?
 								break;
 
 							case VQCD_QUAD:
-								return	(1e-9 * ((double) axion->Size()) * (43. * ((double) nStages) + (lastStage ? 31. : 0.))); //check the laststage?
+								return	(1e-9 * ((double) axion->Size()) * ((25.+lapla) * ((double) nStages) + (lastStage ? (25.+lapla) : 0.))); //check the laststage?
 								break;
 						}
 						break;
@@ -1009,11 +1026,14 @@ LogMsg(VERB_DEBUG,"CommSync done");LogFlush();
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const PropcType spec) {
+
+		double lapla = 1.0 + 6.0 * axion->getNg();
+
 		switch (spec)
 		{
 			case PROPC_BASE:
 			case PROPC_NNEIG: //FIX ME!
-				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   10.    * ((double) nStages) + (lastStage ? 9. : 0.)));
+				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   (3. + lapla)    * ((double) nStages) + (lastStage ? (2. + lapla) : 0.)));
 			break;
 
 			case PROPC_SPEC:

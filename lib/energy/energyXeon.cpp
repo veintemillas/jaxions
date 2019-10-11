@@ -27,12 +27,18 @@
 	#endif
 #endif
 
-template<const VqcdType VQcd, const bool map>
+template<const VqcdType VQcd, const EnType emask>
 void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *R, const double o2, const double LL,
-			 const double aMass2, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, const double shift)
+			 const double aMass2, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, Scalar *fieldo, void * __restrict__ eRes_, const double shift)
 {
+
+	FieldPrecision precision = fieldo->Precision();
+	char *strdaa = static_cast<char *>(static_cast<void *>(fieldo->sData()));
+
 	const size_t Sf = Lx*Lx;
 	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
+	const size_t NN = Vo/Sf;
+LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -46,8 +52,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	#define	_MData_ __m128d
 	#define	step 1
 #endif
-
 		double	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
+		double	VrhoM = 0., VthM = 0., KrhoM = 0., KthM = 0., GxrhoM = 0., GxthM = 0., GyrhoM = 0., GythM = 0., GzrhoM = 0., GzthM = 0.;
+		double	Rrho  = 0., RrhoM=0., nummask = 0.;
 
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_,  Align);
 		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_,  Align);
@@ -111,13 +118,14 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		{
 			_MData_ mel, vel, mPx, mMx, mPy, mMy, mPz, mMz, mdv, mod, mTp;
 			_MData_ Grx, Gry, Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
+			_MData_ Mask, Frho;
 
 			double tmpS[2*step] __attribute__((aligned(Align)));
 
-			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth)
+			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0;
+				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0, idxV0;
 
 				{
 					size_t tmi = idx/XC;
@@ -125,14 +133,59 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghost zone
+					X[2] -= NN; // remove ghosts
 				}
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 = (idx << 1);
+				idxV0 = (idx - NN*Sf) << 1;
 
 				mel = opCode(load_pd, &m[idxP0]); //Carga m con shift
+
+// Prepare mask in m2 (only if m2 contains the mask in complex notation)
+// counter to check if some of the entries of the vector is in the mask
+				int ups = 0;
+				if (emask & EN_MASK){
+
+					#pragma unroll
+					for (int ih=0; ih<step; ih++){
+						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+						if (strdaa[iNx] & STRING_MASK)
+						{
+							ups += 1;}
+					}
+					// If required prepare mask
+					if (ups > 0)
+					{
+						#pragma unroll
+							for (int ih=0; ih<step; ih++){
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							if (strdaa[iNx] & STRING_MASK){
+								tmpS[(ih<<1)+1] = 1.f; // imag part
+								tmpS[(ih<<1)]   = 1.f; // real part
+							} else {
+								tmpS[(ih<<1)+1] = 0.f; // imag part
+								tmpS[(ih<<1)]   = 0.f; // real part
+							}
+						}
+						Mask = opCode(load_pd, tmpS);
+						nummask += (double) ups;
+					}
+
+					// If only masked energy required there is nothing else to do
+					if ( (ups == 0) && (emask == EN_MASK) )
+						continue;
+					// If map of masked energy ; setm2 to 0 and leave;
+					if ( (ups == 0) && (emask == EN_MAPMASK) ) {
+						#pragma unroll
+						for (int ih=0; ih<step; ih++) {
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							m2[iNx]    = 0;  m2[iNx+Vt] = 0;   // theta and Rho field
+						}
+						continue;
+					}
+				}
 
 				if (X[0] == XC-step)
 					idxPx = ((idx - XC + step) << 1);
@@ -190,7 +243,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				mPz = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
 				mMz = opCode(sub_pd, mel, opCode(load_pd, &m[idxMz]));
 
-				vel = opCode(load_pd, &v[idxMz]);//Carga v
+				vel = opCode(load_pd, &v[idxV0]);//Carga v
 				mod = opCode(mul_pd, mel, mel);
 
 				mTp = opCode(md2_pd, mod);
@@ -324,6 +377,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Gry = opCode(mul_pd, Grx, Grx);
 				Grz = opCode(md2_pd, Gry);
 				Gry = opCode(mul_pd, Grz, ivZ2);
+				Frho = opCode(sqrt_pd, Gry);
 
 				switch	(VQcd & VQCD_TYPE) {
 
@@ -333,6 +387,12 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						mSg = opCode(sub_pd, Gry, one);
 						mod = opCode(mul_pd, mSg, mSg);
 						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
+						break;
+
+					case	VQCD_PQ_ONLY:
+						mSg = opCode(sub_pd, Gry, one);
+						mod = opCode(mul_pd, mSg, mSg);
+						mCg = one;  // will be multiplied by 0
 						break;
 
 					case	VQCD_1_PQ_2:
@@ -367,29 +427,33 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 #else
 				tVp = opCode(shuffle_pd, mod, mCg, 0b00000001);
 #endif
-				if	(map == true) {
-	                                mdv = opCode(add_pd,
+				if	(emask & EN_MAP) {
+					mdv = opCode(add_pd,
 						opCode(add_pd,
 							opCode(mul_pd, tKp, hVec),
 							opCode(mul_pd, opCode(add_pd, tGx, opCode(add_pd, tGy, tGz)), oVec)),
 						opCode(mul_pd, pVec, tVp));
 
-        	                        opCode(store_pd, tmpS, mdv);
+						//masked map
+						if (emask == EN_MAPMASK)
+							mdv = opCode(mul_pd,Mask,mdv);
+
+						opCode(store_pd, tmpS, mdv);
 
 					#pragma unroll
 					for (int ih=0; ih<step; ih++)
 					{
-						//int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf)<<1);
-						// complex format unghosted unpadded
-						// m2[iNx]   = tmpS[(ih<<1)];
-						// m2[iNx+1] = tmpS[(ih<<1)+1];
-						// real format unpadded
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 						m2[iNx]    = tmpS[(ih<<1)+1]; // Theta field
 						m2[iNx+Vt] = tmpS[(ih<<1)];   // Rho field
 					}
 				}
 
+//-----------------------------------------------------------------------------
+// TOTAL ENERGY
+//-----------------------------------------------------------------------------
+
+if (emask & EN_ENE){
 #if	defined(__AVX512F__)
 				opCode(store_pd, tmpS, tGx);
 				Gxrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
@@ -410,6 +474,10 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				opCode(store_pd, tmpS, tKp);
 				Krho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
 				Kth  += tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+				opCode(store_pd, tmpS, Frho);
+				Rrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+
 #elif defined(__AVX__)
 				opCode(store_pd, tmpS, tGx);
 				Gxrho += tmpS[0] + tmpS[2];
@@ -430,6 +498,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				opCode(store_pd, tmpS, tKp);
 				Krho += tmpS[0] + tmpS[2];
 				Kth  += tmpS[1] + tmpS[3];
+
+				opCode(store_pd, tmpS, Frho);
+				Rrho += tmpS[0] + tmpS[2];
 #else
 				opCode(store_pd, tmpS, tGx);
 				Gxrho += tmpS[0];
@@ -450,9 +521,92 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				opCode(store_pd, tmpS, tKp);
 				Krho += tmpS[0];
 				Kth  += tmpS[1];
+
+				opCode(store_pd, tmpS, Frho);
+				Rrho += tmpS[0];
 #endif
-			}
-		}
+}
+
+//-----------------------------------------------------------------------------
+// MASKED ENERGY
+//-----------------------------------------------------------------------------
+
+// if requested and required by having some element inside the mask!
+				if ((emask & EN_MASK) && (ups > 0) )
+				{
+#if	defined(__AVX512F__)
+								opCode(store_pd, tmpS, opCode(mul_pd,tGx,Mask));
+								GxrhoM +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+								GxthM  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tGy,Mask));
+								GyrhoM +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+								GythM  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tGz,Mask));
+								GzrhoM +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+								GzthM  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tVp,Mask));
+								VrhoM  +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+								VthM   +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tKp,Mask));
+								KrhoM  +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+								KthM   +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,Frho,Mask));
+								RrhoM  +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+#elif defined(__AVX__)
+								opCode(store_pd, tmpS, opCode(mul_pd,tGx,Mask));
+								GxrhoM += tmpS[0] + tmpS[2];
+								GxthM  += tmpS[1] + tmpS[3];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tGy,Mask));
+								GyrhoM += tmpS[0] + tmpS[2];
+								GythM  += tmpS[1] + tmpS[3];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tGz,Mask));
+								GzrhoM += tmpS[0] + tmpS[2];
+								GzthM  += tmpS[1] + tmpS[3];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tVp,Mask));
+								VrhoM  += tmpS[0] + tmpS[2];
+								VthM   += tmpS[1] + tmpS[3];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tKp,Mask));
+								KrhoM  += tmpS[0] + tmpS[2];
+								KthM   += tmpS[1] + tmpS[3];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,Frho,Mask));
+								RrhoM  +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+#else
+								opCode(store_pd, tmpS, opCode(mul_pd,tGx,Mask));
+								GxrhoM +=  tmpS[0];
+								GxthM  +=  tmpS[1];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tGy,Mask));
+								GyrhoM +=  tmpS[0];
+								GythM  +=  tmpS[1];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tGz,Mask));
+								GzrhoM +=  tmpS[0];
+								GzthM  +=  tmpS[1];
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tVp,Mask));
+								VrhoM  +=  tmpS[0] ;
+								VthM   +=  tmpS[1] ;
+
+								opCode(store_pd, tmpS, opCode(mul_pd,tKp,Mask));
+								KrhoM  +=  tmpS[0] ;
+								KthM   +=  tmpS[1] ;
+
+								opCode(store_pd, tmpS, opCode(mul_pd,Frho,Mask));
+								RrhoM  +=  tmpS[0];
+#endif
+				} //end masked energy
+			} //end for loop
+		} //end parallel
 
 		eRes[RH_GRX] = Gxrho*o2;
 		eRes[TH_GRX] = Gxth *o2;
@@ -464,9 +618,24 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		eRes[TH_POT] = Vth  *zQ;
 		eRes[RH_KIN] = Krho *.5;
 		eRes[TH_KIN] = Kth  *.5;
+
+		eRes[RH_GRXM] = GxrhoM*o2;
+		eRes[TH_GRXM] = GxthM *o2;
+		eRes[RH_GRYM] = GyrhoM*o2;
+		eRes[TH_GRYM] = GythM *o2;
+		eRes[RH_GRZM] = GzrhoM*o2;
+		eRes[TH_GRZM] = GzthM *o2;
+		eRes[RH_POTM] = VrhoM *lZ;
+		eRes[TH_POTM] = VthM  *zQ;
+		eRes[RH_KINM] = KrhoM *.5;
+		eRes[TH_KINM] = KthM  *.5;
+		eRes[RH_RHOM] = RrhoM;
+
+		eRes[MM_NUMM] = nummask;
+
 #undef	_MData_
 #undef	step
-	}
+} //end loop DOUBLE precision
 	else if (precision == FIELD_SINGLE)
 	{
 #if	defined(__AVX512F__)
@@ -479,7 +648,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	#define	_MData_ __m128
 	#define	step 2
 #endif
-		double	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
+		double	Vrho  = 0., Vth  = 0., Krho  = 0., Kth  = 0., Gxrho  = 0., Gxth  = 0., Gyrho  = 0., Gyth  = 0., Gzrho  = 0., Gzth  = 0.;
+		double	VrhoM = 0., VthM = 0., KrhoM = 0., KthM = 0., GxrhoM = 0., GxthM = 0., GyrhoM = 0., GythM = 0., GzrhoM = 0., GzthM = 0.;
+		double	Rrho  = 0., RrhoM=0., nummask = 0.;
 
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_,  Align);
 		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_,  Align);
@@ -545,18 +716,21 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 		{
 			_MData_ mel, vel, mPx, mMx, mPy, mMy, mPz, mMz, mdv, mod, mTp;
 			_MData_ Grx, Gry, Grz, tGx, tGy, tGz, tVp, tKp, mCg, mSg;
+			_MData_ Mask, Frho;
 
 			float tmpS[2*step] __attribute__((aligned(Align)));
 
-			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth)
+			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho,RrhoM,nummask)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
-				size_t X[3], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0;
+
+				size_t X[3], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
 
 				idxPz = ((idx+Sf) << 1);
 				idxMz = ((idx-Sf) << 1);
 				idxP0 =  (idx     << 1);
-
+				idxV0 = (idx - NN*Sf) << 1;
+// conformal field value
 				mel = opCode(load_ps, &m[idxP0]);
 
 				{
@@ -565,9 +739,53 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghost zone
+					X[2] -= NN; // Removes ghost zone
 				}
 
+
+// Prepare mask in m2 (only if m2 contains the mask in complex notation)
+// counter to check if some of the entries of the vector is in the mask
+				size_t ups = 0;
+
+				if (emask & EN_MASK){
+					for (int ih=0; ih<step; ih++){
+						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+						if (strdaa[iNx] & STRING_MASK)
+						{
+							ups += 1;}
+					}
+					// If required prepare mask
+					if (ups > 0)
+					{
+						#pragma unroll
+							for (int ih=0; ih<step; ih++){
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							if (strdaa[iNx] & STRING_MASK){
+								tmpS[(ih<<1)+1] = 1.f; // imag part
+								tmpS[(ih<<1)]   = 1.f; // real part
+							} else {
+								tmpS[(ih<<1)+1] = 0.f; // imag part
+								tmpS[(ih<<1)]   = 0.f; // real part
+							}
+						}
+						Mask = opCode(load_ps, tmpS);
+						nummask += (double) ups;
+					}
+					// If only masked energy required there is nothing else to do
+					if ( (ups == 0) && (emask == EN_MASK) )
+						continue;
+					// If map of masked energy ; setm2 to 0 and leave;
+					if ( (ups == 0) && (emask == EN_MAPMASK) ) {
+						#pragma unroll
+						for (int ih=0; ih<step; ih++) {
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							m2[iNx]    = 0;  m2[iNx+Vt] = 0;   // theta and Rho field
+						}
+						continue;
+					}
+				}
+
+// calculate idx of neighbours and gradients
 				if (X[0] == XC-step)
 					idxPx = ((idx - XC + step) << 1);
 				else
@@ -626,28 +844,32 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 					}
 				}
 
-				// Empiezo aqui
+// Start gradient e computation
 				mPx = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
 				mMx = opCode(sub_ps, mel, opCode(load_ps, &m[idxMx]));
-				// mPy, mMy ya están cargados
+// mPy, mMy already loaded
 				mPz = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
 				mMz = opCode(sub_ps, mel, opCode(load_ps, &m[idxMz]));
-
-				vel = opCode(load_ps, &v[idxMz]); // Carga v
+// load field velocity
+				vel = opCode(load_ps, &v[idxV0]);
+// r^2, i^2...
 				mod = opCode(mul_ps, mel, mel);
+// r^2+i^2, r^2+i^2  (m^2)
 				mTp = opCode(md2_ps, mod);
-				mod = opCode(mul_ps, mTp, ivZ2);	// Factor |mel|^2/z^2, util luego
-
+// Factor |mel|^2/z^2, util luego
+				mod = opCode(mul_ps, mTp, ivZ2);
+// r/m^2, i/m^2
 				mCg = opCode(div_ps, mel, mTp);	// Ahora mCg tiene 1/mel
 
-				// Meto en mSg = shuffled(mCg) (Intercambio parte real por parte imaginaria)
+// Meto en mSg = shuffled(mCg) (Intercambio parte real por parte imaginaria)
+// i/m^2, r/m^2
 #if	defined(__AVX__)
 				mSg = opCode(mul_ps, cjg, opCode(permute_ps, mCg, 0b10110001));
 #else
 				mSg = opCode(mul_ps, cjg, opCode(shuffle_ps, mCg, mCg, 0b10110001));
 #endif
 
-				// Calculo los gradientes
+// Gradients
 #if	defined(__AVX512F__)
 				tGx = opCode(mul_ps, mPx, mCg);
 				tGy = opCode(mul_ps, mPx, mSg);
@@ -783,16 +1005,24 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 				mdv = opCode(sub_ps, opCode(shuffle_ps, tKp, tKp, 0b11011000), ivZ);
 #endif
+
+// Theta gradient energy times mod^2/z^2
 				tGx = opCode(mul_ps, mod, Grx);
 				tGy = opCode(mul_ps, mod, Gry);
 				tGz = opCode(mul_ps, mod, Grz);
-
+// Theta kinetic energy times mod^2/z^2
 				tKp = opCode(mul_ps, opCode(mul_ps, mdv, mdv), mod);
 
-				Grx = opCode(sub_ps, mel, shVc);  // RE-S=Re', Im, ...
-				Gry = opCode(mul_ps, Grx, Grx);   // (Re-s)^2,Im^2
-				Grz = opCode(md2_ps, Gry);	  		// (Re-s)^2+Im^2,(Re-s)^2+Im^2
-				Gry = opCode(mul_ps, Grz, ivZ2);  // (Re-s)^2+Im^2/z2,(Re-s)^2+Im^2/z2
+// RE-S=Re', Im, ...
+				Grx = opCode(sub_ps, mel, shVc);
+// (Re-s)^2,Im^2
+				Gry = opCode(mul_ps, Grx, Grx);
+// (Re-s)^2+Im^2,(Re-s)^2+Im^2
+				Grz = opCode(md2_ps, Gry);
+// (Re-s)^2+Im^2/z2,(Re-s)^2+Im^2/z2
+				Gry = opCode(mul_ps, Grz, ivZ2);
+// Rho, Rho (duplicated)
+				Frho = opCode(sqrt_ps, Gry);
 
 				switch	(VQcd & VQCD_TYPE) {
 
@@ -802,6 +1032,12 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
 						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|  // 1-Re'/M , 1-Im/M
+						break;
+
+					case	VQCD_PQ_ONLY:
+						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
+						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
+						mCg = one ; // will be multiplied by 0
 						break;
 
 					case	VQCD_1_PQ_2:
@@ -835,8 +1071,6 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 						// ...   Im^2/Mod^22
 						// ... = (1 - Gry/Grz)/2
 						mCg = opCode(mul_ps, hVec,opCode(sub_ps, one, opCode(div_ps,Gry,Grz)));
-
-
 					break;
 
 				}
@@ -855,27 +1089,36 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				mdv = opCode(shuffle_ps, mod, mCg, 0b10001000); //Era 11011000  //  1-Im/M , 1-Re'/M
 				tVp = opCode(shuffle_ps, mdv, mdv, 0b11011000); 								//  (|rho|^2-1)^2, 1-Re'/M, ...
 #endif
-				if (map == true) {
+
+// Copy energy map to m2
+				if (emask & EN_MAP) {
+// Total energy
 					mdv = opCode(add_ps,
 						opCode(add_ps,
 							opCode(mul_ps, tKp, hVec),
 							opCode(mul_ps, opCode(add_ps, tGx, opCode(add_ps, tGy, tGz)), oVec)),
 						opCode(mul_ps, tVp, pVec));
 
+					//masked map?
+					if (emask == EN_MAPMASK)
+						mdv = opCode(mul_ps,Mask,mdv);
+
 					opCode(store_ps, tmpS, mdv);
 
 					#pragma unroll
 					for (int ih=0; ih<step; ih++)
 					{
-						// int iNx   = ((X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf)<<1);
-						// m2[iNx]   = tmpS[(ih<<1)];
-						// m2[iNx+1] = tmpS[(ih<<1)+1];
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 						m2[iNx]    = tmpS[(ih<<1)+1]; // Theta field
 						m2[iNx+Vt] = tmpS[(ih<<1)];   // Rho field
 					}
 				}
 
+//-----------------------------------------------------------------------------
+// TOTAL ENERGY
+//-----------------------------------------------------------------------------
+
+			if (emask & EN_ENE){
 #if	defined(__AVX512F__)
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
@@ -896,6 +1139,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				opCode(store_ps, tmpS, tKp);
 				Krho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
 				Kth   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+
+				opCode(store_ps, tmpS, Frho);
+				Rrho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
 #elif defined(__AVX__)
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
@@ -916,6 +1162,9 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				opCode(store_ps, tmpS, tKp);
 				Krho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
 				Kth   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+
+				opCode(store_ps, tmpS, Frho);
+				Rrho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
 #else
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2]);
@@ -937,92 +1186,468 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 				Krho += (double) (tmpS[0] + tmpS[2]);
 				Kth  += (double) (tmpS[1] + tmpS[3]);
 
+				opCode(store_ps, tmpS, Frho);
+				Rrho += (double) (tmpS[0] + tmpS[2]);
 #endif
-			}
-		}
-
-		eRes[RH_GRX] = Gxrho*o2;
-		eRes[TH_GRX] = Gxth *o2;
-		eRes[RH_GRY] = Gyrho*o2;
-		eRes[TH_GRY] = Gyth *o2;
-		eRes[RH_GRZ] = Gzrho*o2;
-		eRes[TH_GRZ] = Gzth *o2;
-		eRes[RH_POT] = Vrho *lZ;
-		eRes[TH_POT] = Vth  *zQ;
-		eRes[RH_KIN] = Krho *.5;
-		eRes[TH_KIN] = Kth  *.5;
-#undef	_MData_
-#undef	step
-	}
 }
 
-void	energyCpu	(Scalar *field, const double delta2, const double LL, const double aMass2, void *eRes, const double shift, const VqcdType VQcd, const bool map)
+//-----------------------------------------------------------------------------
+// MASKED ENERGY
+//-----------------------------------------------------------------------------
+
+// if requested and required by having some element inside the mask!
+			if ( (emask & EN_MASK) && (ups > 0) )
+				{
+#if	defined(__AVX512F__)
+								opCode(store_ps, tmpS, opCode(mul_ps,tGx,Mask));
+								GxrhoM += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+								GxthM  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tGy,Mask));
+								GyrhoM += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+								GythM  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tGz,Mask));
+								GzrhoM += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+								GzthM  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tVp,Mask));
+								VrhoM  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+								VthM   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tKp,Mask));
+								KrhoM  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+								KthM   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,Frho,Mask));
+								RrhoM  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+
+#elif defined(__AVX__)
+								opCode(store_ps, tmpS, opCode(mul_ps,tGx,Mask));
+								GxrhoM += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+								GxthM  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tGy,Mask));
+								GyrhoM += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+								GythM  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tGz,Mask));
+								GzrhoM += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+								GzthM  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tVp,Mask));
+								VrhoM  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+								VthM   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tKp,Mask));
+								KrhoM  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+								KthM   += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,Frho,Mask));
+								RrhoM  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+#else
+								opCode(store_ps, tmpS, opCode(mul_ps,tGx,Mask));
+								GxrhoM += (double) (tmpS[0] + tmpS[2]);
+								GxthM  += (double) (tmpS[1] + tmpS[3]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tGy,Mask));
+								GyrhoM += (double) (tmpS[0] + tmpS[2]);
+								GythM  += (double) (tmpS[1] + tmpS[3]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tGz,Mask));
+								GzrhoM += (double) (tmpS[0] + tmpS[2]);
+								GzthM  += (double) (tmpS[1] + tmpS[3]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tVp,Mask));
+								VrhoM += (double) (tmpS[0] + tmpS[2]);
+								VthM  += (double) (tmpS[1] + tmpS[3]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,tKp,Mask));
+								KrhoM += (double) (tmpS[0] + tmpS[2]);
+								KthM  += (double) (tmpS[1] + tmpS[3]);
+
+								opCode(store_ps, tmpS, opCode(mul_ps,Frho,Mask));
+								RrhoM  += (double) (tmpS[0] + tmpS[2]);
+#endif
+				} //end masked energy
+			} //end for loop
+		} //end parallel
+
+		eRes[RH_GRX]  = Gxrho*o2;
+		eRes[TH_GRX]  = Gxth *o2;
+		eRes[RH_GRY]  = Gyrho*o2;
+		eRes[TH_GRY]  = Gyth *o2;
+		eRes[RH_GRZ]  = Gzrho*o2;
+		eRes[TH_GRZ]  = Gzth *o2;
+		eRes[RH_POT]  = Vrho *lZ;
+		eRes[TH_POT]  = Vth  *zQ;
+		eRes[RH_KIN]  = Krho *.5;
+		eRes[TH_KIN]  = Kth  *.5;
+		eRes[TH_KIN]  = Kth  *.5;
+		eRes[RH_RHO]  = Rrho;
+
+		eRes[RH_GRXM] = GxrhoM*o2;
+		eRes[TH_GRXM] = GxthM *o2;
+		eRes[RH_GRYM] = GyrhoM*o2;
+		eRes[TH_GRYM] = GythM *o2;
+		eRes[RH_GRZM] = GzrhoM*o2;
+		eRes[TH_GRZM] = GzthM *o2;
+		eRes[RH_POTM] = VrhoM *lZ;
+		eRes[TH_POTM] = VthM  *zQ;
+		eRes[RH_KINM] = KrhoM *.5;
+		eRes[TH_KINM] = KthM  *.5;
+		eRes[RH_RHOM] = RrhoM;
+
+		eRes[MM_NUMM] = nummask;
+
+
+//LogOut("Energy %f %f %f %f %f\n",  eRes[RH_GRX],  eRes[RH_GRY],  eRes[RH_GRZ],  eRes[RH_KIN],  eRes[RH_POT]);
+//LogOut("Energy %f %f %f %f %f\n",  eRes[RH_GRXM],  eRes[RH_GRYM],  eRes[RH_GRZM],  eRes[RH_KINM],  eRes[RH_POTM]);
+//LogOut("Energy %f %f %f %f %f\n",  eRes[TH_GRX],  eRes[TH_GRY],  eRes[TH_GRZ],  eRes[TH_KIN],  eRes[TH_POT]);
+//LogOut("Energy %f %f %f %f %f\n",  eRes[TH_GRXM],  eRes[TH_GRYM],  eRes[TH_GRZM],  eRes[TH_KINM],  eRes[TH_POTM]);
+
+} //end loop single precision
+
+#undef	_MData_
+#undef	step
+}
+
+
+void	energyCpu	(Scalar *field, const double delta2, const double LL, const double aMass2, void *eRes, const double shift, const VqcdType VQcd, const EnType mapmask)
 {
 	const double ood2 = 0.25/delta2;
 	double *R = field->RV();
 	const size_t Lx = field->Length();
 	const size_t Lz = field->Depth();
-	const size_t Vo = field->Surf();
+	const size_t Vo = field->getNg()*field->Surf();
 	const size_t Vf = Vo + field->Size();
+
+	const bool map  = (mapmask & EN_MAP);
+	const bool mask = (mapmask & EN_MASK);
+
+	// reset m2 because only the masked points will be plot
+	if (mapmask == EN_MAPMASK)
+		memset (field->m2Cpu(), 0, field->DataSize()*field->Size());
 
 	field->exchangeGhosts(FIELD_M);
 
-	switch (VQcd & VQCD_TYPE) {
+LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( field->sDStatus() & SD_MASK));LogFlush();
 
-		default:
-			LogError("Potential not recognized, falling back to VQcd1");
-		case	VQCD_1:
-			if (map == true) {
-				if (field->LowMem()) {
-					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-				} else {
-					energyKernelXeon<VQCD_1,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-				}
-			} else {
-				energyKernelXeon<VQCD_1,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-			}
-			break;
-		case	VQCD_1_PQ_2:
-			if (map == true) {
-				if (field->LowMem()) {
-					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf,
-									    field->Precision(), eRes, shift);
-				} else {
-					energyKernelXeon<VQCD_1_PQ_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf,
-									    field->Precision(), eRes, shift);
-				}
-			} else {
-				energyKernelXeon<VQCD_1_PQ_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-			}
-			break;
+	if (!field->LowMem()) {
 
-		case	VQCD_2:
-			if (map == true) {
-				if (field->LowMem()) {
-					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-				} else {
-					energyKernelXeon<VQCD_2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-				}
-			} else {
-				energyKernelXeon<VQCD_2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-			}
-			break;
+		switch (VQcd & VQCD_TYPE) {
+			default:
+				LogError("Potential not recognized, falling back to VQcd1");
+			case	VQCD_0:
+			case	VQCD_1:
+				switch (mapmask){
+					case EN_ENE:
+						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MAP:
+						energyKernelXeon<VQCD_1,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_1,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_1,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
 
-		case	VQCD_1N2:
-			if (map == true) {
-				if (field->LowMem()) {
-					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-					energyKernelXeon<VQCD_1N2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-				} else {
-					energyKernelXeon<VQCD_1N2,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
+			case	VQCD_PQ_ONLY:
+				switch (mapmask){
+					case EN_ENE:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MAP:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
+				case	VQCD_2:
+					switch (mapmask){
+						case EN_ENE:
+							energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_MAP:
+							energyKernelXeon<VQCD_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_MASK:
+							energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_ENEMASK:
+							energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_MAPMASK:
+							energyKernelXeon<VQCD_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_ENEMAPMASK:
+							energyKernelXeon<VQCD_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+					} break;
+
+				case	VQCD_1_PQ_2:
+					switch (mapmask){
+						case EN_ENE:
+							energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_MAP:
+							energyKernelXeon<VQCD_1_PQ_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_MASK:
+							energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_ENEMASK:
+							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_MAPMASK:
+							energyKernelXeon<VQCD_1_PQ_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+						case EN_ENEMAPMASK:
+							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						break;
+					} break;
+
+					case	VQCD_1N2:
+						switch (mapmask){
+							case EN_ENE:
+								energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							break;
+							case EN_MAP:
+								energyKernelXeon<VQCD_1N2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							break;
+							case EN_MASK:
+								energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							break;
+							case EN_ENEMASK:
+								energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							break;
+							case EN_MAPMASK:
+								energyKernelXeon<VQCD_1N2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							break;
+							case EN_ENEMAPMASK:
+								energyKernelXeon<VQCD_1N2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							break;
+						} break;
 				}
-			} else {
-				energyKernelXeon<VQCD_1N2,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field->Precision(), eRes, shift);
-			}
-			break;
+
+	} else if (field->LowMem())
+	{
+		LogError ("Error: can't produce energy map with lowmem, will compute only averages");
+
+		switch (VQcd & VQCD_TYPE) {
+			default:
+				LogError("Potential not recognized, falling back to VQcd1");
+			case	VQCD_0:
+			case	VQCD_1:
+				switch (mapmask){
+					case EN_ENE:
+					case EN_MAP:
+						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
+			case	VQCD_PQ_ONLY:
+				switch (mapmask){
+					case EN_ENE:
+					case EN_MAP:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
+			case	VQCD_2:
+				switch (mapmask){
+					case EN_ENE:
+					case EN_MAP:
+						energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
+			case	VQCD_1_PQ_2:
+				switch (mapmask){
+					case EN_ENE:
+					case EN_MAP:
+						energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
+			case	VQCD_1N2:
+				switch (mapmask){
+					case EN_ENE:
+					case EN_MAP:
+						energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_MASK:
+					case EN_MAPMASK:
+						energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+					case EN_ENEMASK:
+					case EN_ENEMAPMASK:
+						energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+					break;
+				} break;
+
+				}
 
 	}
+
 }
+
+///
+// void	energyCpu	(Scalar *field, const double delta2, const double LL, const double aMass2, void *eRes, const double shift, const VqcdType VQcd, const EnType mapmask)
+// {
+// 	const double ood2 = 0.25/delta2;
+// 	double *R = field->RV();
+// 	const size_t Lx = field->Length();
+// 	const size_t Lz = field->Depth();
+// 	const size_t Vo = field->Surf();
+// 	const size_t Vf = Vo + field->Size();
+//
+// 	const bool map  = (mapmask & EN_MAP);
+// 	const bool mask = (mapmask & EN_MASK);
+//
+// 	field->exchangeGhosts(FIELD_M);
+//
+// 	switch (VQcd & VQCD_TYPE) {
+//
+// 		default:
+// 			LogError("Potential not recognized, falling back to VQcd1");
+// 		case	VQCD_1:
+// 			if (map == true) {
+// 				if (field->LowMem()) {
+// 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
+// 					if (mask == true)
+// 						energyKernelXeon<VQCD_1,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 						else
+// 						energyKernelXeon<VQCD_1,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 				} else {
+// 					if (mask == true)
+// 						energyKernelXeon<VQCD_1,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 						else
+// 						energyKernelXeon<VQCD_1,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 				}
+// 			} else {
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_1,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_1,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			}
+// 			break;
+// 		case	VQCD_1_PQ_2:
+// 		if (map == true) {
+// 			if (field->LowMem()) {
+// 				LogError ("Error: can't produce energy map with lowmem, will compute only averages");
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_1_PQ_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_1_PQ_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			} else {
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_1_PQ_2,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_1_PQ_2,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			}
+// 		} else {
+// 			if (mask == true)
+// 				energyKernelXeon<VQCD_1_PQ_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 				else
+// 				energyKernelXeon<VQCD_1_PQ_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 		}
+// 		break;
+//
+// 		case	VQCD_2:
+// 		if (map == true) {
+// 			if (field->LowMem()) {
+// 				LogError ("Error: can't produce energy map with lowmem, will compute only averages");
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			} else {
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_2,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_2,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			}
+// 		} else {
+// 			if (mask == true)
+// 				energyKernelXeon<VQCD_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 				else
+// 				energyKernelXeon<VQCD_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 		}
+// 		break;
+//
+// 		case	VQCD_1N2:
+// 		if (map == true) {
+// 			if (field->LowMem()) {
+// 				LogError ("Error: can't produce energy map with lowmem, will compute only averages");
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_1N2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_1N2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			} else {
+// 				if (mask == true)
+// 					energyKernelXeon<VQCD_1N2,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 					else
+// 					energyKernelXeon<VQCD_1N2,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 			}
+// 		} else {
+// 			if (mask == true)
+// 				energyKernelXeon<VQCD_1N2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 				else
+// 				energyKernelXeon<VQCD_1N2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+// 		}
+// 		break;
+// 	}
+// }

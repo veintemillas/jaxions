@@ -34,7 +34,8 @@ void	prepropa  (Scalar *axiona)
 	ninfa.measdata = defaultmeasType;
 	// ninfa.mask = spmask;
 	// ninfa.rmask = rmask;
-
+  ninfa.maty = maty;
+	
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
 	lm.maxTheta = M_PI;
@@ -81,7 +82,7 @@ void	prepropa  (Scalar *axiona)
 			lm.str = strings(axiona);
 
 		dzaux = axiona->dzSize();
-		// energy(axiona, eRes, false, 0.);
+		// energy(axiona, eRes, EN_ENE, 0.);
 		// float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 		// float eMeanS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]);
 		// LogOut("%f %f %f\n",*axiona->zV(),eMean, eMeanS);
@@ -93,6 +94,125 @@ void	prepropa  (Scalar *axiona)
 			break;
 	}
 }
+
+void	prepropa2  (Scalar *axiona)
+{
+	LogOut("\nPrepropagator\n");
+
+	LambdaType ltype_aux = axiona->LambdaT();
+	double lamba = axiona->BckGnd()->Lambda();
+	double cti  = axiona->BckGnd()->ICData().zi;
+	double Rnow = axiona->Rfromct(cti);
+	double lz2e_aux = axiona->BckGnd()->LamZ2Exp();
+	double prelz2e  = axiona->BckGnd()->ICData().prelZ2e;
+	LogMsg(VERB_NORMAL,"[prep] Prepropagator 2 (from ct = %f to %f ) with Lambda = L/R^%.1f fixed",*axiona->zV(),cti,prelz2e);
+	LogMsg(VERB_NORMAL,"[prep] Currently lamba %f cti %f Ri %f LamZ2Exp = %.2f ",lamba, cti, Rnow, lz2e_aux);
+	LogMsg(VERB_NORMAL,"[prep] LambdaType is %d (FIXED/Z2 is 0/1)", ltype_aux);
+	/* Physical value of Lambda at Ri*/
+	double llp;
+	if      (ltype_aux == LAMBDA_FIXED)
+		llp = lamba;
+	else if (ltype_aux == LAMBDA_Z2)
+		llp = lamba/pow(Rnow,lz2e_aux); /*Usually is 2, but it could be different*/
+
+	/* Calculate the new Lambda required to match at at zi
+	   and set Z2 with the IC exponent */
+	axiona->BckGnd()->SetLambda(llp*pow(Rnow,prelz2e));
+	LogMsg(VERB_NORMAL,"[prep] lambda = %f reset to %f",lamba,axiona->BckGnd()->Lambda());
+	axiona->setLambdaT(LAMBDA_Z2);
+	axiona->BckGnd()->SetLamZ2Exp(prelz2e);
+	LogMsg(VERB_NORMAL,"[prep] LamZ2Exp seto to %.2f",lz2e_aux);
+	LogMsg(VERB_NORMAL,"[prep] Set LAMBDA_Z2 (it was %d) with LamZ2Exp = %.2f ",ltype_aux,axiona->BckGnd()->ICData().prelZ2e);
+
+	/* Now normalising the core makes sense */
+	if (axiona->BckGnd()->ICData().normcore)
+		normCoreField	(axiona);
+	memcpy	   (axiona->vCpu(), static_cast<char *> (axiona->mStart()), axiona->DataSize()*axiona->Size());
+	scaleField (axiona, FIELD_M, *axiona->RV());
+
+
+	MeasData lm;
+	//- number of plaquetes pierced by strings
+	lm.str.strDen = 0 ;
+	//- Info to measurement
+	MeasInfo ninfa;
+	//- information needs to be passed onto measurement files
+	ninfa.sliceprint = 0;
+	ninfa.idxprint = 0 ;
+	ninfa.index = 0;
+
+	// default measurement type is parsed
+	ninfa.measdata = defaultmeasType;
+	// ninfa.mask = spmask;
+	// ninfa.rmask = rmask;
+	ninfa.maty = maty;
+
+	//-maximum value of the theta angle in the simulation
+	double maximumtheta = M_PI;
+	lm.maxTheta = M_PI;
+
+	// 	void *eRes;
+	// 	trackAlloc(&eRes, 128);
+	// 	memset(eRes, 0, 128);
+	// 	double *eR = static_cast<double *> (eRes);
+
+	double dzaux;
+	//by default VQCD_1_RHO, only rho evolution
+	double gamma_aux = axiona->BckGnd()->Gamma();
+	if (axiona->BckGnd()->ICData().pregammo > 0.0){
+		axiona->BckGnd()->SetGamma(axiona->BckGnd()->ICData().pregammo);
+		LogMsg(VERB_NORMAL,"[prep] Set damping with pregammo = %f (gam = %f)",axiona->BckGnd()->ICData().pregammo,gamma_aux);
+	}
+
+	initPropagator (pType, axiona, axiona->BckGnd()->ICData().prevtype);
+	tunePropagator (axiona);
+
+
+	fIndex2 = 0 ;
+	while ( *axiona->zV() <  cti )
+	{
+		if (icstudy){
+			ninfa.index=fIndex2;
+			lm = Measureme (axiona, ninfa);
+			fIndex2++;
+		} else
+			lm.str = strings(axiona);
+
+		dzaux = axiona->dzSize();
+		if (*axiona->zV() + dzaux > cti) {
+			dzaux = cti - *axiona->zV();
+			LogMsg(VERB_NORMAL,"[prep] zi almost reached! adjusting dz! ");
+			// break;
+		}
+		propagate (axiona, dzaux);
+	}
+
+	LogMsg(VERB_NORMAL,"[prep] done ");
+	LogMsg(VERB_NORMAL,"[prep] LambdType was %d, (Z2/FIXED=%d,%d) ",ltype_aux,LAMBDA_Z2,LAMBDA_FIXED);
+
+	LogMsg(VERB_NORMAL,"[prep] Restore values");
+	if (ltype_aux == LAMBDA_FIXED)
+		{
+			axiona->setLambdaT(LAMBDA_FIXED);
+			axiona->BckGnd()->SetLambda(lamba);
+			axiona->BckGnd()->SetLamZ2Exp(lz2e_aux);
+			LogMsg(VERB_NORMAL,"[prep] Set LAMBDA_FIXED ");
+		} else if (ltype_aux == LAMBDA_Z2)
+		{
+			axiona->setLambdaT(LAMBDA_Z2);
+			axiona->BckGnd()->SetLambda(lamba);
+			axiona->BckGnd()->SetLamZ2Exp(lz2e_aux);
+			LogMsg(VERB_NORMAL,"[prep] Set LAMBDA_Z2 with LamZ2Exp = .2f",lz2e_aux);
+		}
+
+		if (axiona->BckGnd()->ICData().pregammo > 0.0){
+			axiona->BckGnd()->SetGamma( axiona->BckGnd()->Gamma());
+			LogMsg(VERB_NORMAL,"[prep] ReSet damping to gam = %f (was %f)",axiona->BckGnd()->Gamma(),gamma_aux);
+		}
+
+}
+
+
 
 double findct2(double pre_msa, double msa, double ct0, double delta)
 {
@@ -163,7 +283,7 @@ void	relaxrho  (Scalar *axiona)
 			lm.str = strings(axiona);
 
 		dzaux = axiona->dzSize();
-		// energy(axiona, eRes, false, 0.);
+		// energy(axiona, eRes, EN_ENE, 0.);
 		// float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 		// float eMeanS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]);
 		// LogOut("%f %f %f\n",*axiona->zV(),eMean, eMeanS);

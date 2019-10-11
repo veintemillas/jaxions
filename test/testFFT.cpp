@@ -33,7 +33,8 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, LAMBDA_FIXED, CONF_NONE, 0, 0);
+	myCosmos.ICData().cType = CONF_NONE;
+	axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, LAMBDA_FIXED);
 	readConf(&myCosmos, &axion, 0);
 
 	//--------------------------------------------------

@@ -129,7 +129,8 @@ int	main (int argc, char *argv[])
 // the new axion is always prepared in lowmem
 	Scalar *axion2;
 	// force lowmem in scalar mode -> to be done!
-	axion2 = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED, CONF_NONE, 0. , 0. );
+	myCosmos.ICData().cType = CONF_NONE;
+	axion2 = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, z_now, true, zGrid, FIELD_WKB, LAMBDA_FIXED);
 	LogOut ("done !\n");
 
 	//--------------------------------------------------
@@ -181,7 +182,7 @@ int	main (int argc, char *argv[])
 			writeMapHdf5s(axion,sliceprint);}
 		// computes energy and creates map
 		LogOut ("en ");
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<10000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -267,7 +268,7 @@ int	main (int argc, char *argv[])
 
 	// computes energy and creates map
 	LogOut ("en ");
-	energy(axion, eRes, true, 0.);
+	energy(axion, eRes, EN_MAP, 0.);
 
 	{
 		float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);

@@ -44,7 +44,7 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((fIndex == -1) && (cType == CONF_NONE))
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
@@ -52,7 +52,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 			LogOut("Done! \n");
 		}
 		else
@@ -158,7 +158,7 @@ int	main (int argc, char *argv[])
 
 	double llconstantZ2 = myCosmos.Lambda();
 
-	if (LAMBDA_FIXED == axion->Lambda())
+	if (LAMBDA_FIXED == axion->LambdaT())
 		LogOut ("Lambda in FIXED mode\n");
 	else {
 		LogOut ("Lambda in Z2 mode\n");
@@ -242,7 +242,7 @@ int	main (int argc, char *argv[])
 	LogOut("dx     =  %2.5f\n", axion->Delta());
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
 
-	if (LAMBDA_FIXED == axion->Lambda())
+	if (LAMBDA_FIXED == axion->LambdaT())
 		LogOut("LL     =  %f \n\n", myCosmos.Lambda());
 	else
 		LogOut("LL     =  %1.3e/z^2 Set to make ms*delta =%f \n\n", myCosmos.Lambda(), axion->Msa());
@@ -380,7 +380,7 @@ int	main (int argc, char *argv[])
 				z_now = (*axion->zV());
 					if (axion->Field() == FIELD_SAXION) {
 						// LAMBDA_Z2 MODE assumed!
-							if (axion->Lambda() == LAMBDA_Z2)
+							if (axion->LambdaT() == LAMBDA_Z2)
 								llphys = llconstantZ2/(z_now*z_now);
 							//if (vqcdType == VQCD_1 || vqcdType == VQCD_1_PQ_2)
 							//	saskia = saxionshift(z_now, nQcd, zthres, zrestore, llphys);
@@ -429,7 +429,7 @@ int	main (int argc, char *argv[])
 					if (nstrings_global == 0 && strcount > safest0)
 					{
 						z_now = (*axion->zV());
-						if (axion->Lambda() == LAMBDA_Z2)
+						if (axion->LambdaT() == LAMBDA_Z2)
 							llphys = llconstantZ2/(z_now*z_now);
 						axmass_now = axion->AxionMass();
 						saskia = axion->Saskia();
@@ -440,7 +440,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, shiftz);
+						energy(axion, eRes, EN_ENE, shiftz);
 						writeEnergy(axion, eRes);
 						// BIN THETA
 						{
@@ -470,7 +470,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 						  	writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, 0.);
+						energy(axion, eRes, EN_ENE, 0.);
 						writeEnergy(axion, eRes);
 						// BIN THETA
 						Binner<100,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
@@ -507,7 +507,7 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 
 		z_now = (*axion->zV());
-		if (axion->Lambda() == LAMBDA_Z2)
+		if (axion->LambdaT() == LAMBDA_Z2)
 			llphys = llconstantZ2/(z_now*z_now);
 		axmass_now = axion->AxionMass();
 		saskia = axion->Saskia();
@@ -542,10 +542,10 @@ int	main (int argc, char *argv[])
 			// writeBinnerMetadata (maximumtheta, 0., 100, "/bins");
 											// old shit still works
 			//ENERGY
-			energy(axion, eRes, false, shiftz);
+			energy(axion, eRes, EN_ENE, shiftz);
 			//DOMAIN WALL KILLER NUMBER
 			double maa = 40*axion->AxionMassSq()/(2.*llphys);
-			if (axion->Lambda() == LAMBDA_Z2 )
+			if (axion->LambdaT() == LAMBDA_Z2 )
 				maa = maa*z_now*z_now;
 		//STRINGS
 			rts = strings(axion);
@@ -571,7 +571,7 @@ int	main (int argc, char *argv[])
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 			// computes energy and creates map
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			{
 				double *eR = static_cast<double*>(eRes);
@@ -648,7 +648,7 @@ int	main (int argc, char *argv[])
 
 		LogOut("DensMap ... ");
 
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -735,7 +735,7 @@ int	main (int argc, char *argv[])
 
 			// computes energy and creates map
 			LogOut ("en ");
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 			{
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),

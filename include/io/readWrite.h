@@ -14,13 +14,14 @@
 	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat);
-	void	writeEnergy	(Scalar *axion, void *eData);
+	void	writeEnergy	(Scalar *axion, void *eData, double rmask=-1.0);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
 	void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin);
 	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);
 
 	void	writeMapHdf5	(Scalar *axion);
 	void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint);
+	void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint);
 	void	writeEMapHdf5	(Scalar *axion);
 	void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint);
 	void	writePMapHdf5	(Scalar *axion);

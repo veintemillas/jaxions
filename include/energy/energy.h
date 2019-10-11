@@ -4,5 +4,5 @@
 	#include "scalar/scalarField.h"
 	#include "utils/flopCounter.h"
 
-	void	energy	(Scalar *field, void *eRes, const bool map, const double shift=0);
+	void	energy	(Scalar *field, void *eRes, const EnType map, const double shift=0);
 #endif

@@ -51,7 +51,7 @@ int	main (int argc, char *argv[])
 	if (fIndex == -1) {
 		//This generates initial conditions
 		LogOut("Generating scalar... ");
-		axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+		axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 		LogOut("Done! \n");
 	} else {
 		//This reads from an Axion.$fIndex file
@@ -124,7 +124,7 @@ int	main (int argc, char *argv[])
 	memset(eRes, 0, 256);
 
 	if (axion->Field() == FIELD_SAXION) {
-		if (LAMBDA_FIXED == axion->Lambda())
+		if (LAMBDA_FIXED == axion->LambdaT())
 			LogOut ("Lambda in FIXED mode\n");
 		else
 			LogOut ("Lambda in Z2 mode\n");
@@ -133,9 +133,9 @@ int	main (int argc, char *argv[])
 	commSync();
 
 	if (axion->LowMem())
-		energy(axion, eRes, false);
+		energy(axion, eRes, EN_ENE);
 	else
-		energy(axion, eRes, true);
+		energy(axion, eRes, EN_MAP);
 
 	auto S = axion->Surf();
 	auto V = axion->Size();
@@ -201,7 +201,7 @@ int	main (int argc, char *argv[])
 //
 //	writeConf(axion, index);
 //
-//	energy(axion, eRes, true, delta);
+//	energy(axion, eRes, EN_MAP, delta);
 //
 //	createMeas(axion, index);
 //	writeEnergy(axion, eRes);
@@ -213,14 +213,14 @@ int	main (int argc, char *argv[])
 	// This is equivalent to Javi's filter
 	double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
 	double nFc  = 1.;
-	int    kMax = axion->Length()/ScaleSize; 
+	int    kMax = axion->Length()/ScaleSize;
 
 
 	if (!axion->LowMem() && axion->Depth()/ScaleSize >= 2) {
 		if (axion->Precision() == FIELD_DOUBLE) {
 			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
-			energy(axion, eRes, true);
+			energy(axion, eRes, EN_MAP);
 			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
 			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); });
 			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
@@ -228,7 +228,7 @@ int	main (int argc, char *argv[])
 		} else {
 			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
-			energy(axion, eRes, true);
+			energy(axion, eRes, EN_MAP);
 			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
 			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); });
 			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,

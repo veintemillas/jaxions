@@ -44,10 +44,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	/* This is a change with respect to previous behaviour
 	   Changes the definition of mask to be in units of ms^-1 */
-		if (axiona->Lambda() == LAMBDA_Z2)
+		if (axiona->LambdaT() == LAMBDA_Z2)
 		 		radius_mask /= axiona->Msa(); // radius is a/msa in a units
-		if (axiona->Lambda() == LAMBDA_FIXED){
-			double si = sqrt(2.0*axiona->BckGnd()->Lambda())* (*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
+		if (axiona->LambdaT() == LAMBDA_FIXED){
+			double si = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
 				LogMsg(VERB_HIGH,"msa calaculated %f mask-parameter resized with 1/msa",si);
 				radius_mask /= si;
 		}
@@ -82,6 +82,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
+	LogMsg(VERB_HIGH, "[Meas %d] set aux fields to dirty",indexa);
+	axiona->setM2(M2_DIRTY);
+	axiona->setSD(SD_DIRY);
+
 	createMeas(axiona, indexa);
 
 	if	( axiona->MMomSpace() || axiona->VMomSpace() )
@@ -100,23 +104,31 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
 	}
 
-	if (measa & MEAS_2DMAP){
-			if(p2dmapo)
-				writeMapHdf5s (axiona,sliceprint);
-	}
+	if( info.maty & MAPT_XYMV)
+		writeMapHdf5s  (axiona,sliceprint);
+	if( info.maty & MAPT_YZMV)
+		writeMapHdf5s2 (axiona,sliceprint);
 
-	if (measa & MEAS_NEEDENERGY)
+	//	--------------------------------------------------------------------------
+	//
+	//	ENERGY BLOCK
+	//
+	//	--------------------------------------------------------------------------
+
+	bool mapsneedenergy = (info.maty & MAPT_XYPE2) || (info.maty & MAPT_XYPE) || (info.maty & MAPT_XYE);
+
+	if ( (measa & MEAS_NEEDENERGY) || mapsneedenergy)
 	{
 		void *eRes;
-		trackAlloc(&eRes, 128);
-		memset(eRes, 0, 128);
+		trackAlloc(&eRes, 256);
+		memset(eRes, 0, 256);
 		double *eR = static_cast<double *> (eRes);
 
-		if (measa & MEAS_NEEDENERGYM2)
+		if ((measa & MEAS_NEEDENERGYM2) || mapsneedenergy)
 		{
 			// LogOut("energy (map->m2) ");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2", indexa);
-			energy(axiona, eRes, true, shiftz);
+			energy(axiona, eRes, EN_MAP, shiftz);
 
 			MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
 			MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
@@ -139,15 +151,26 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeBinner(contBin, "/bins", "contB");
 			}
 
-			if (measa & MEAS_2DMAP)
+			if (mapsneedenergy)
 			{
-				if(p2dEmapo){
+				if(info.maty & MAPT_XYE){
 					LogMsg(VERB_NORMAL, "[Meas %d] 2D energy map",indexa);
 					writeEMapHdf5s (axiona,sliceprint);
 				}
 
-				if(p2dPmapo){
+				if(info.maty & MAPT_XYPE){
 					LogMsg(VERB_NORMAL, "[Meas %d] Proyection",indexa);
+					if (axiona->Precision() == FIELD_DOUBLE){
+						projectField	(axiona, [] (double x) -> double { return x ; } );
+					}
+					else{
+						projectField	(axiona, [] (float x) -> float { return x ; } );
+					}
+					writePMapHdf5 (axiona);
+				}
+
+				if(info.maty & MAPT_XYPE2){
+					LogMsg(VERB_NORMAL, "[Meas %d] Proyection energy squared",indexa);
 					if (axiona->Precision() == FIELD_DOUBLE){
 						projectField	(axiona, [] (double x) -> double { return x*x ; } );
 					}
@@ -160,7 +183,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			}
 
 			LogMsg(VERB_NORMAL, "[meas] M2 status %d", axiona->m2Status());
-			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_A))
+			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_S))
 			{
 
  				SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
@@ -242,7 +265,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		else{
 			// LogOut("energy (sum)");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy (no map)",indexa);
-			energy(axiona, eRes, false, shiftz);
+			energy(axiona, eRes, EN_ENE, shiftz);
 		}
 
 		LogMsg(VERB_NORMAL, "[Meas %d] write energy",indexa);
@@ -250,6 +273,13 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 		trackFree(eRes);
 	}
+
+	//	--------------------------------------------------------------------------
+	//
+	//	STRING BLOCK
+	//
+	//	--------------------------------------------------------------------------
+
 
 	if(axiona->Field() == FIELD_SAXION){
 		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO))
@@ -286,7 +316,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeStringCo(axiona, MeasDataOut.str, true);
 				//saves strings in m2//problem with energy
 			}
-
 		}
 	}
 
@@ -371,7 +400,22 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 								MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
 								writeStringEnergy(axiona,MeasDataOut.strE);
 							}
+
+							{
+									void *eRes;
+									trackAlloc(&eRes, 256);
+									memset(eRes, 0, 256);
+									double *eR = static_cast<double *> (eRes);
+								energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
+								writeEnergy(axiona, eRes, rmasktab[ii]);
+											// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
+								trackFree(eRes);
+							}
 					}
+
+
+
+
 					LogMsg(VERB_NORMAL, "[Meas %d] Now the spectrum (rmask %f)",indexa,rmasktab[ii]);
 					prof.start();
 					specAna.nRun(SPMASK_REDO);
@@ -600,18 +644,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		else
 		LogOut("  %3d  | %6d | %2.3f h | ", indexa, info.measdata, cTime*1.e-6/3600.);
 
-	double DWfun = 40*axiona->AxionMassSq()/(2.0*axiona->BckGnd()->Lambda()) ;
-	if (axiona->Lambda() == LAMBDA_Z2)
-		DWfun *= R_now*R_now;
+	double lola = axiona->LambdaP();
+
+	double DWfun = 40*axiona->AxionMassSq()/(2.0*lola) ;
 	LogOut("%.1e %.1e (%.1e) ", axiona->AxionMass(), sqrt(axiona->SaxionMassSq()), DWfun );
 
 	if ( axiona->Field() == FIELD_SAXION)
 	{
 		if ( measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO) ){
-		double loks = log(axiona->Msa()*z_now/axiona->Delta());
+		double loks = log(sqrt(2*lola)*R_now*R_now);
 		double Le = axiona->BckGnd()->PhysSize();
-			LogOut("log(%.1f) xi_t(%f) xi(%f) #_st %ld ", loks, xivilgor(loks),
+			LogOut("log(%.1f) xi_t(%.3f) xi(%.3f) msa(%.3f) #_st %ld ", loks, xivilgor(loks),
 				(1/6.)*axiona->Delta()*( (double) MeasDataOut.str.strDen)*z_now*z_now/(Le*Le*Le),
+				axiona->Msa(),
 				MeasDataOut.str.strDen );
 		} else {
 			// LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);

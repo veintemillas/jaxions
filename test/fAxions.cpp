@@ -86,14 +86,14 @@ int	main (int argc, char *argv[])
 
 	LogOut("Axions molecular dynamics code started\n\n");
 
-	if ((fIndex == -1) && (cType == CONF_NONE)) {
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 		LogError("Error: neither initial conditions nor configuration to be loaded selected\n");
 		endAxions();
 		return	1;
 	} else {
 		if (fIndex == -1) {
 			LogOut("Generating axion field (this might take a while) ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 			if (axion == nullptr) {
 				LogError("Error: couldn't generate axion field\n");
 				endAxions();
@@ -145,7 +145,7 @@ int	main (int argc, char *argv[])
 		endredmap = axion->Length();
 	}
 
-	LogOut("Lambda is in %s mode\n", (axion->Lambda() == LAMBDA_FIXED) ? "fixed" : "z2");
+	LogOut("Lambda is in %s mode\n", (axion->LambdaT() == LAMBDA_FIXED) ? "fixed" : "z2");
 
 	//--------------------------------------------------
 	//   THE TIME ITERATION LOOP
@@ -205,7 +205,7 @@ int	main (int argc, char *argv[])
 	LogOut("  dx     =  %2.5f\n", axion->Delta());
 	LogOut("  dz     =  %2.2f/FREQ\n", wDz);
 
-	if (axion->Lambda() == LAMBDA_FIXED)
+	if (axion->LambdaT() == LAMBDA_FIXED)
 		LogOut("  LL     =  %f \n\n", myCosmos.PhysSize());
 	else
 		LogOut("  LL     =  %1.3e/z^2 Set to make ms*delta =%f\n\n", llConstZ2, axion->Msa());
@@ -364,7 +364,7 @@ int	main (int argc, char *argv[])
 			zNow = (*axion->zV());
 
 			if (axion->Field() == FIELD_SAXION) {
-				llPhys = (axion->Lambda() == LAMBDA_Z2) ? llConstZ2/(zNow*zNow) : llConstZ2;
+				llPhys = (axion->LambdaT() == LAMBDA_Z2) ? llConstZ2/(zNow*zNow) : llConstZ2;
 
 				axMassNow = axion->AxionMass();
 				saskia    = axion->Saskia();
@@ -419,7 +419,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5 (axion);
 
-				  		energy(axion, eRes, false, zShift);
+				  		energy(axion, eRes, EN_ENE, zShift);
 
 						if (axion->Device() == DEV_GPU)
 							axion->transferCpu(FIELD_MM2);
@@ -468,7 +468,7 @@ int	main (int argc, char *argv[])
 						if (axion->Device() == DEV_GPU)
 							axion->transferCpu(FIELD_MM2);
 
-						energy(axion, eRes, false, 0.);
+						energy(axion, eRes, EN_ENE, 0.);
 						writeEnergy(axion, eRes);
 
 						if (axion->Precision() == FIELD_SINGLE) {
@@ -562,11 +562,11 @@ int	main (int argc, char *argv[])
 				writeBinner(thBin,  "/bins", "theta");
 			}
 
-			energy(axion, eRes, false, zShift);
+			energy(axion, eRes, EN_ENE, zShift);
 
 			double maa = 40.*axion->AxionMassSq()/(2*llPhys);
 
-			if (axion->Lambda() == LAMBDA_Z2)
+			if (axion->LambdaT() == LAMBDA_Z2)
 				maa = maa*zNow*zNow;
 
 			axion->setReduced(true, endredmap, endredmap/zGrid);
@@ -586,7 +586,7 @@ int	main (int argc, char *argv[])
 			auto pName = pFler->first;
 			profiler::printMiniStats(zNow, rts, PROF_PROP, pName);
 		} else {
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (axion->Device() == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -637,7 +637,7 @@ int	main (int argc, char *argv[])
 			writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 			writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 		}
-	
+
 		if(p2dmapo)
 			writeMapHdf5(axion);
 
@@ -667,7 +667,7 @@ int	main (int argc, char *argv[])
 //	index++	;
 	if (axion->Field() == FIELD_AXION) {
 		if (pconfinal) {
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (axion->Device() == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -735,7 +735,7 @@ int	main (int argc, char *argv[])
 			if (cDev == DEV_GPU)
 				axion->transferDev(FIELD_MV);
 
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (cDev == DEV_GPU)
 				axion->transferCpu(FIELD_M2);
@@ -795,7 +795,7 @@ int	main (int argc, char *argv[])
 
 		/*	For Jens	*/
 		if (endredmap > 0) {
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 
 			if (cDev == DEV_GPU)
 				axion->transferCpu(FIELD_M2);

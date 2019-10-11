@@ -10,8 +10,8 @@
 #include "enum-field.h"
 #include "comms/comms.h"
 
-template<typename Float>
-void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size_t Vf)
+template<typename Float, ConfsubType SMVT>
+void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 {
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
@@ -23,23 +23,47 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 	for (int i=0; i<maxThreads; i++)
 		sd[i] = seed()*(1 + commRank());
 
-	const int ene = sqrt(Vo);
+	const size_t Lx = field->Length();
+	const size_t Sf = field->Surf();
+	const size_t V  = field->Size();
+	
+	/* used from ic */
+	double mod0  = ic.mode0;
+	double kCri  = ic.kcr;
+	double kCri2 = ic.kcr*ic.kcr;
+	size_t kMa   = ic.kMax;
+
+	double kMx   = (double) ic.kMax;
+	double kMy   = 0.;
+	double kMz   = 0.;
+
+	/* this is useless in many applications but harms not much */
+	FILE *cacheFile = nullptr;
+	if (((cacheFile  = fopen("./kkk.dat", "r")) == nullptr)){
+		LogMsg(VERB_NORMAL,"No kkk.dat file use defaults k = (kMax,1,0)");
+	}
+	else
+	{					double kkk;
+						fscanf (cacheFile ,"%lf ", &kMx);
+						fscanf (cacheFile ,"%lf ", &kMy);
+						fscanf (cacheFile ,"%lf ", &kMz);
+		LogMsg(VERB_NORMAL,"[rand] kkk.dat file used k = (%.2f,%.2f,%.2f)",kMx,kMy,kMz);
+	}
 
 	#pragma omp parallel default(shared)
 	{
 		int nThread = omp_get_thread_num();
 		int rank = commRank();
-		size_t Lz = sizeN/commSize();
+		size_t Lz = Lx/commSize();
 		size_t local_z_start = rank*Lz;
-		//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, sizeN, Lz, local_z_start);
+		//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
 
 		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 		std::uniform_real_distribution<Float> uni(-1.0, 1.0);
 
 		#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-		for (size_t idx=Vo; idx<Vf; idx++)
+		for (size_t idx=0; idx<V; idx++)
 		{
-			size_t pidx ;
 			size_t iz ;
 			size_t iy ;
 			size_t ix	;
@@ -48,7 +72,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 			int y ;
 			int x ;
 
-			switch (smvarType)
+			switch (SMVT)
 			{
 				case CONF_RAND:
 				//RANDOM INITIAL CONDITIONS
@@ -60,26 +84,26 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
 				case CONF_AXNOISE:
 				{
-					Float theta  = mode0 + uni(mt64)*kCrit ;
+					Float theta  = mod0 + uni(mt64)*kCri ;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;
 				}
 
 				case CONF_SAXNOISE:
 				{
-					Float theta  = uni(mt64)*kCrit + 1.;
-					m[idx] = std::complex<Float>(theta*cos(mode0), theta*sin(mode0));
+					Float theta  = uni(mt64)*kCri + 1.;
+					m[idx] = std::complex<Float>(theta*cos(mod0), theta*sin(mod0));
 					break;
 				}
 
 				//	ONE MODE
 				case CONF_AX1MODE:
 				{
-					pidx = idx-Vo;
-					iz = pidx/Vo + local_z_start;
-					iy = (pidx%Vo)/sizeN ;
-					ix = (pidx%Vo)%sizeN ;
-					Float theta = ((Float) mode0*cos(6.2831853*(ix*kMax + iy)/ene));
+					// pidx = idx-Sf;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
+					Float theta = ((Float) mod0*cos(6.2831853*(ix*kMa + iy)/Lx));
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;
 				}
@@ -87,16 +111,16 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				case CONF_MINICLUSTER:
 				//	MINICLUSTER CENTERED AT GRID
 				{
-					pidx = idx-Vo;
-					iz = pidx/Vo + local_z_start;
-					iy = (pidx%Vo)/sizeN ;
-					ix = (pidx%Vo)%sizeN ;
+					// pidx = idx-Sf;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
 					z = iz;
 					y = iy;
 					x = ix;
-					if (iz>sizeN/2) { z = z-sizeN; }
-					Float theta = ((Float) ((x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2)+z*z))/(Vo);
-					theta = exp(-theta*kCrit*kCrit)*mode0;
+					if (iz>Lx/2) { z = z-Lx; }
+					Float theta = ((Float) ((x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2)+z*z))/(Sf);
+					theta = exp(-theta*kCri2)*mod0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 				break;
 				}
@@ -104,18 +128,18 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				//	MINICLUSTER CENTERED AT ZERO
 				case CONF_MINICLUSTER0:
 				{
-					pidx = idx-Vo;
-					iz = pidx/Vo + local_z_start;
-					iy = (pidx%Vo)/sizeN ;
-					ix = (pidx%Vo)%sizeN ;
+					// pidx = idx-Sf;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
 					z = iz;
 					y = iy;
 					x = ix;
-					if (iz>sizeN/2) { z = z-sizeN; }
-					if (iy>sizeN/2) { y = y-sizeN; }
-					if (ix>sizeN/2) { x = x-sizeN; }
-					Float theta = ((Float) (x*x + y*y + z*z))/(Vo);
-					theta = exp(-theta*kCrit*kCrit)*mode0;
+					if (iz>Lx/2) { z = z-Lx; }
+					if (iy>Lx/2) { y = y-Lx; }
+					if (ix>Lx/2) { x = x-Lx; }
+					Float theta = ((Float) (x*x + y*y + z*z))/(Sf);
+					theta = exp(-theta*kCri2)*mod0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;
 				}
@@ -123,28 +147,27 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 
 				//// if(ix<2)
 				//// {
-				//// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (pidx%Vo)%sizeN, ix,iy,iz,m[idx].real(),m[idx].imag());
+				//// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (idx%Sf)%Lx, ix,iy,iz,m[idx].real(),m[idx].imag());
 				//// }
 				//	STRING XY
 				case CONF_STRINGXY:
 				{
-					pidx = idx-Vo;
-					iz = pidx/Vo + local_z_start;
-					iy = (pidx%Vo)/sizeN ;
-					ix = (pidx%Vo)%sizeN ;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
 					z = iz;
 					y = iy;
 					x = ix;
 					//CENTERED AT GRID, z=0
-					if (iz>sizeN/2) { z = z-sizeN; }
-					Float aL = ((Float) sizeN)/4.01;	//RADIUS
-					rho2 = (x-sizeN/2)*(x-sizeN/2)+(y-sizeN/2)*(y-sizeN/2);
+					if (iz>Lx/2) { z = z-Lx; }
+					Float aL = ((Float) Lx)/4.01;	//RADIUS
+					rho2 = (x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2);
 					Float rho = sqrt((Float) rho2)	;
 					Float z2 = ((Float) z*z) ;
 					Float d12 = (rho + aL)*(rho + aL) + z2 ;
 					Float d22 = (rho - aL)*(rho - aL) + z2 ;
-					// d12 /= ((Float) Vo) ;
-					// d22 /= ((Float) Vo) ;
+					// d12 /= ((Float) Sf) ;
+					// d22 /= ((Float) Sf) ;
 					Float zis = (Float) z ;
 					Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.5 + zis)/abs(-0.5 + zis)	;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
@@ -154,30 +177,40 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 				//	STRING YZ
 				case CONF_STRINGYZ:
 				{
-					pidx = idx-Vo;
-					iz = pidx/Vo + local_z_start;
-					iy = (pidx%Vo)/sizeN ;
-					ix = (pidx%Vo)%sizeN ;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
 					z = iz;
 					y = iy;
 					x = ix;
 					//CENTERED AT GRID, z=0
-					if (iz>sizeN/2) { z = z-sizeN; }
-					Float aL = ((Float) sizeN)/4.01;	//RADIUS
-					rho2 = (z)*(z)+(y-sizeN/2)*(y-sizeN/2);
+					if (iz>Lx/2) { z = z-Lx; }
+					Float aL = ((Float) Lx)/4.01;	//RADIUS
+					rho2 = (z)*(z)+(y-Lx/2)*(y-Lx/2);
 					Float rho = sqrt((Float) rho2)	;
-					Float z2 = ((Float) ((x-sizeN/2)*(x-sizeN/2))) ;
+					Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
 					Float d12 = (rho + aL)*(rho + aL) + z2 ;
 					Float d22 = (rho - aL)*(rho - aL) + z2 ;
-					// d12 /= ((Float) Vo) ;
-					// d22 /= ((Float) Vo) ;
+					// d12 /= ((Float) Sf) ;
+					// d22 /= ((Float) Sf) ;
 					//Float zis = (Float) x ;
 					Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
 					theta = 3.14159265*theta*theta	;
-					if (ix>sizeN/2)
+					if (ix>Lx/2)
 						theta *= -1 ;
 
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
+				}
+				//	ONE MODE
+				case CONF_PARRES:
+				{
+					// pidx = idx-Sf;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
+					Float theta = ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
+					m[idx] = std::complex<Float>(kCri*cos(theta), kCri*sin(theta));
 					break;
 				}
 			}
@@ -187,16 +220,82 @@ void	randXeon (std::complex<Float> * __restrict__ m, const size_t Vo, const size
 	trackFree((void *) sd);
 }
 
-void	randConf (Scalar *field)
+void	randConf (Scalar *field, IcData ic)
 {
 	switch (field->Precision())
 	{
 		case FIELD_DOUBLE:
-		randXeon(static_cast<std::complex<double>*> (field->mCpu()), field->Surf(), field->Size()+field->Surf());
+		{
+		complex<double>* ma = static_cast<complex<double>*> (field->mStart());
+
+		switch (ic.smvarType)
+		{
+			case CONF_RAND:
+				randXeon<double,CONF_RAND>(ma, field, ic);
+				break;
+			case CONF_STRINGXY:
+				randXeon<double,CONF_STRINGXY>(ma, field, ic);
+				break;
+			case CONF_STRINGYZ:
+				randXeon<double,CONF_STRINGYZ> (ma, field, ic);
+				break;
+			case CONF_MINICLUSTER0:
+				randXeon<double,CONF_MINICLUSTER0> (ma, field, ic);
+				break;
+			case CONF_MINICLUSTER:
+				randXeon<double,CONF_MINICLUSTER> (ma, field, ic);
+				break;
+			case CONF_AXNOISE:
+				randXeon<double,CONF_AXNOISE> (ma, field, ic);
+				break;
+			case CONF_SAXNOISE:
+				randXeon<double,CONF_SAXNOISE> (ma, field, ic);
+				break;
+			case CONF_AX1MODE:
+				randXeon<double,CONF_AX1MODE> (ma, field, ic);
+				break;
+			case CONF_PARRES:
+				randXeon<double,CONF_PARRES> (ma, field, ic);
+				break;
+		}
+		}
 		break;
 
 		case FIELD_SINGLE:
-		randXeon(static_cast<std::complex<float> *> (field->mCpu()), field->Surf(), field->Size()+field->Surf());
+		{
+		complex<float>* ma = static_cast<complex<float>*> (field->mStart());
+
+		switch (ic.smvarType)
+		{
+			case CONF_RAND:
+				randXeon<float,CONF_RAND> (ma, field, ic);
+				break;
+			case CONF_STRINGXY:
+				randXeon<float,CONF_STRINGXY> (ma, field, ic);
+				break;
+			case CONF_STRINGYZ:
+				randXeon<float,CONF_STRINGYZ> (ma, field, ic);
+				break;
+			case CONF_MINICLUSTER0:
+				randXeon<float,CONF_MINICLUSTER0> (ma, field, ic);
+				break;
+			case CONF_MINICLUSTER:
+				randXeon<float,CONF_MINICLUSTER> (ma, field, ic);
+				break;
+			case CONF_AXNOISE:
+				randXeon<float,CONF_AXNOISE> (ma, field, ic);
+				break;
+			case CONF_SAXNOISE:
+				randXeon<float,CONF_SAXNOISE> (ma, field, ic);
+				break;
+			case CONF_AX1MODE:
+				randXeon<float,CONF_AX1MODE> (ma, field, ic);
+				break;
+			case CONF_PARRES:
+				randXeon<float,CONF_PARRES> (ma, field, ic);
+				break;
+		}
+		}
 		break;
 
 		default:

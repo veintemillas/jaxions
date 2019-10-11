@@ -11,13 +11,13 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 
 class	Plot2D():
-	def	__init__(self):
+	def	__init__(self,map='map'):
 		prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 		fileMeas = []
 		for maes in prefileMeas:
 			try:
 				with h5py.File(maes, 'r') as f:
-					if 'map' in f:
+					if (map in f) :
 						fileMeas.append(maes)
 			except:
 				print('Error opening file: %s'%maes)
@@ -71,13 +71,13 @@ class	Plot2D():
 				exit()
 
 			if fl == "Saxion":
-				mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+				mTmp  = fileHdf5[map]['m'].value.reshape(Ly,Lx,2)
 				rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
 				rMax = np.amax(rData)
 				rData = rData/R
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
 			elif fl == "Axion":
-				aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+				aData = fileHdf5[map]['m'].value.reshape(Ly,Lx)
 #				pm = np.amax(aData)
 #				print ("BMax %f" % pm)
 				aData = aData/R
@@ -255,5 +255,9 @@ class	Plot2D():
 
 if	__name__ == '__main__':
 
-	p = Plot2D()
+	map = 'map'
+	if sys.argv[-1] == 'mapp':
+		map = 'mapp'
+		print('mode mapp')
+	p = Plot2D(map)
 	p.start()

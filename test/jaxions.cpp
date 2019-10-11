@@ -103,7 +103,7 @@ int	main (int argc, char *argv[])
 	if(preprop)
 		zpreInit = zInit/prepcoe;
 
-	if ((fIndex == -1) && (cType == CONF_NONE) && (!restart_flag))
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE) && (!restart_flag))
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	else
 	{
@@ -111,7 +111,7 @@ int	main (int argc, char *argv[])
 		{
 			//This generates initial conditions
 			LogOut("Generating scalar ... ");
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zpreInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zpreInit, lowmem, zGrid, fTypeP, lType);
 
 			LogOut("Done! \n");
 		}
@@ -295,7 +295,7 @@ int	main (int argc, char *argv[])
 	LogOut("dx     =  %2.5f\n", axion->Delta());
 	LogOut("dz     =  %2.2f/FREQ\n", wDz);
 
-	if (LAMBDA_FIXED == axion->Lambda())
+	if (LAMBDA_FIXED == axion->LambdaT())
 	{
 		LogOut("LL     =  %.0f (msa=%1.2f-%1.2f in zInit,3)\n\n", myCosmos.Lambda(),
 		sqrt(2.*myCosmos.Lambda())*zInit*axion->Delta(),sqrt(2.*myCosmos.Lambda())*3*axion->Delta());
@@ -370,7 +370,7 @@ int	main (int argc, char *argv[])
 				strdensn = 0.75*axion->Delta()*nstrings_global*(*zaza)*(*zaza)/(myCosmos.PhysSize()*myCosmos.PhysSize()*myCosmos.PhysSize());
 				LogOut("z %f strings %ld [Lz^2/V] %f (gammo %f)\n", *zaza, nstrings_global, strdensn, myCosmos.Gamma());
 
-				if (axion->Lambda() == LAMBDA_Z2)
+				if (axion->LambdaT() == LAMBDA_Z2)
 					llphys = LL1/((*zaza)*(*zaza));
 				axmass_now = axion->AxionMass();
 				saskia = axion->Saskia();
@@ -379,7 +379,7 @@ int	main (int argc, char *argv[])
 				createMeas(axion, index);
 				if (axion->Field() == FIELD_SAXION) {
 					writeString(axion, rts, false);
-					energy(axion, eRes, false, shiftz);
+					energy(axion, eRes, EN_ENE, shiftz);
 				}
 
 				writeEnergy(axion, eRes);
@@ -404,7 +404,7 @@ int	main (int argc, char *argv[])
 		rts = strings(axion);
 		nstrings_global = rts.strDen;
 		writeString(axion, rts, false);
-		energy(axion, eRes, false, shiftz);
+		energy(axion, eRes, EN_ENE, shiftz);
 		writeEnergy(axion, eRes);
 
 		if(p2dmapo)
@@ -511,7 +511,7 @@ int	main (int argc, char *argv[])
 				if (smvarType != CONF_SAXNOISE)
 					if (nstrings_global == 0 && strcount > safest0)
 					{
-						if (axion->Lambda() == LAMBDA_Z2)
+						if (axion->LambdaT() == LAMBDA_Z2)
 							llphys = myCosmos.Lambda()/(z_now*z_now);
 
 						axmass_now = axion->AxionMass();
@@ -523,7 +523,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 							writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, shiftz);
+						energy(axion, eRes, EN_ENE, shiftz);
 						writeEnergy(axion, eRes);
 						// BIN RHO+THETA
 						float shiftzf = shiftz ;
@@ -557,7 +557,7 @@ int	main (int argc, char *argv[])
 						if(p2dmapo)
 				  			writeMapHdf5s (axion,sliceprint);
 						//ENERGY
-						energy(axion, eRes, false, 0.);
+						energy(axion, eRes, EN_ENE, 0.);
 						writeEnergy(axion, eRes);
 						// BIN THETA
 						Binner<3000,float> thBin2(static_cast<float *>(axion->mCpu()) + axion->Surf(), axion->Size(),
@@ -596,7 +596,7 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 
 		z_now = (*axion->zV());
-		if (axion->Lambda() == LAMBDA_Z2)
+		if (axion->LambdaT() == LAMBDA_Z2)
 			llphys = myCosmos.Lambda()/(z_now*z_now);
 		axmass_now = axion->AxionMass();
 		saskia = axion->Saskia();
@@ -615,7 +615,7 @@ int	main (int argc, char *argv[])
 		{
 			//DOMAIN WALL KILLER NUMBER
 			double maa = 40*axion->AxionMassSq()/(2.*llphys);
-			if (axion->Lambda() == LAMBDA_Z2 )
+			if (axion->LambdaT() == LAMBDA_Z2 )
 				maa = maa*z_now*z_now;
 			LogOut("%d/%d | z=%f | dz=%.3e | LLaux=%.3e | 40ma2/ms2=%.3e ...", zloop, nLoops, (*axion->zV()), dzaux, llphys, maa );
 			// BIN RHO+THETA
@@ -644,7 +644,7 @@ int	main (int argc, char *argv[])
 					SpecBin specSAna(axion, (pType & PROP_SPEC) ? true : false);
 
 					//ENERGY //JAVI added true for power spectrum
-					energy(axion, eRes, true, shiftz);
+					energy(axion, eRes, EN_MAP, shiftz);
 					//writeEDens(axion);
 					//computes power spectrum
 					specSAna.pRun();
@@ -681,7 +681,7 @@ int	main (int argc, char *argv[])
 			SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 
 			// computes energy and creates map
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 			{
 				double *eR = static_cast<double*>(eRes);
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
@@ -746,7 +746,7 @@ int	main (int argc, char *argv[])
 		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG");
 		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sV");
 		LogOut("DensMap ... ");
-		energy(axion, eRes, true, 0.);
+		energy(axion, eRes, EN_MAP, 0.);
 		{
 			float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 			Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -839,7 +839,7 @@ int	main (int argc, char *argv[])
 
 			// computes energy and creates map
 			LogOut ("en ");
-			energy(axion, eRes, true, 0.);
+			energy(axion, eRes, EN_MAP, 0.);
 			{
 				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 				Binner<3000,float> contBin(static_cast<float *>(axion->m2Cpu()), axion->Size(),
@@ -898,7 +898,7 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 {
 	double z_now = (*axion->zV());
 	double llphys = LLL;
-	if (axion->Lambda() == LAMBDA_Z2)
+	if (axion->LambdaT() == LAMBDA_Z2)
 		llphys = LLL/(z_now*z_now);
 
 	size_t S0 = sizeN*sizeN ;
@@ -932,7 +932,7 @@ double findzdoom(Scalar *axion)
 	while (meas < 0.001)
 	{
 		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
-		if (axion->Lambda() == LAMBDA_Z2)
+		if (axion->LambdaT() == LAMBDA_Z2)
 			DWfun *= ct*ct;
 		meas = DWfun - 1 ;
 		ct += 0.001 ;
@@ -948,7 +948,7 @@ double findzdoom(Scalar *axion)
 // 	// z_now, llphys, shiftzf,  axmass_now, saskia, shiftz ... are LOCAL
 // 	// LL, zthres, zrestore are GLOBAL
 // 	double z_now = *axion->zV() ;
-// 	if (axion->Lambda() == LAMBDA_Z2)
+// 	if (axion->LambdaT() == LAMBDA_Z2)
 // 		double llphys = LL/(z_now*z_now);
 // 	double axmass_now = axionmass(*axion->zV(),nQcd, zthres, zrestore);
 // 	double saskia = saxionshift(axmass_now, llphys, vqcdType);
@@ -968,7 +968,7 @@ double findzdoom(Scalar *axion)
 // 	energy(axion, eRes, false, delta, nQcd, LL, vqcdType, shiftz);
 // //DOMAIN WALL KILLER NUMBER
 // 	double maa = 40*axionmass2(z_now,nQcd,zthres, zrestore)/(2*llphys);
-// 	if (axion->Lambda() == LAMBDA_Z2 )
+// 	if (axion->LambdaT() == LAMBDA_Z2 )
 // 		maa = maa*z_now*z_now;
 // //STRINGS
 // 	rts = strings(axion);

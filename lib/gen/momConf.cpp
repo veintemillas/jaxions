@@ -17,10 +17,14 @@
 using namespace std;
 
 template<typename Float, MomConfType Moco>
-void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV, const size_t kMax, const Float kCrat, const size_t Lx, const size_t Lz, const size_t Tz, const size_t S, const size_t V)
+void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV, const MomParms mopa, const size_t Lx, const size_t Lz, const size_t Tz, const size_t S, const size_t V)
 {
+	size_t        kMax  = mopa.kMax;
+	double        kCrat  = mopa.kCrt;
+	double        mass2 = mopa.mass2;
+
 	LogMsg(VERB_NORMAL,"[momXeon] Called with kMax %zu kCrit %f (kCrit es %f)", kMax, kCrat, kCrit);
-	LogMsg(VERB_NORMAL,"[momXeon] Transposed Out", kMax, kCrat, kCrit);
+
 	long long kmax;
 	int adp = 0;
 	if (kMax > Lx/2 - 1)
@@ -36,6 +40,8 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	constexpr Float Twop = 2.0*M_PI;
 	complex<Float> II = complex<Float>{0,1} ;
 	Float kcrit = (Float) kCrat;
+
+	Float bee = (Float) 4*kcrit*kcrit/(Lx*Lx);
 
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
@@ -134,6 +140,20 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									fM[idx] = marsa*sc;
 								}
 							break;
+							case(MOM_COLE):
+								{
+									Float mP = ((Float) modP)/(kcrit*kcrit);
+									Float sc = (modP == 0) ? 1.0 : exp(-bee*mP)/pow(mP+1,1.5);
+									fM[idx] = marsa*sc;
+								}
+							break;
+							case(MOM_KCOLE):
+								{
+									Float mP = ((Float) modP)/(kcrit*kcrit);
+									Float sc = (modP == 0) ? 1.0 : exp(-mP); //*sqrt(mP)
+									fM[idx] = marsa*sc;
+								}
+							break;
 						}
 
 					} // END if
@@ -166,13 +186,21 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	trackFree((void *) sd);
 }
 
-void	momConf (Scalar *field, const size_t kMax, const double kCrt, MomConfType Moco)
+void	momConf (Scalar *field, MomParms mopa)
 {
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
 	const size_t n3 = field->Size();
 	const size_t Lz = field->Depth();
 	const size_t Tz = field->TotalDepth();
+
+	MomConfType   Moco  = mopa.mocoty;
+
+	// size_t        kMax  = mopa.kMax;
+	// double        kCrt  = mopa.kCrt;
+	// double        mass2 = mopa.mass2;
+	// FieldType     ftype = mopa.mass2;
+
 
 	const size_t offset = field->DataSize()*n2;
 
@@ -190,27 +218,30 @@ void	momConf (Scalar *field, const size_t kMax, const double kCrt, MomConfType M
 			switch(Moco)
 			{
 				case MOM_MFLAT:
-				momXeon<double, MOM_MFLAT> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<double, MOM_MFLAT> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_MSIN:
-				momXeon<double, MOM_MSIN> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<double, MOM_MSIN> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_MVSINCOS:
-				momXeon<double, MOM_MVSINCOS> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<double, MOM_MVSINCOS> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				default:
 				case MOM_MEXP:
-				momXeon<double, MOM_MEXP> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<double, MOM_MEXP> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_MEXP2:
-				momXeon<double, MOM_MEXP2> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<double, MOM_MEXP2> (ma, va, mopa, n1, Lz, Tz, n2, n3);
+				break;
+				case MOM_COLE:
+				momXeon<double, MOM_COLE>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 			}
 
 		// if (field->LowMem())
-		// 	momXeon<double, Moco> (static_cast<complex<double>*> (field->mStart()), static_cast<complex<double>*> (field->vCpu()), kMax, kCrt,  n1, Lz, Tz, n2, n3);
+		// 	momXeon<double, Moco> (static_cast<complex<double>*> (field->mStart()), static_cast<complex<double>*> (field->vCpu()), mopa, n1, Lz, Tz, n2, n3);
 		// else
-		// 	momXeon<double, Moco> (static_cast<complex<double>*> (field->m2Cpu()), static_cast<complex<double>*> (field->vCpu()), kMax, kCrt,  n1, Lz, Tz, n2, n3);
+		// 	momXeon<double, Moco> (static_cast<complex<double>*> (field->m2Cpu()), static_cast<complex<double>*> (field->vCpu()), mopa, n1, Lz, Tz, n2, n3);
 		}
 		break;
 
@@ -226,20 +257,23 @@ void	momConf (Scalar *field, const size_t kMax, const double kCrt, MomConfType M
 			switch(Moco)
 			{
 				case MOM_MFLAT:
-				momXeon<float, MOM_MFLAT> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<float, MOM_MFLAT> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_MSIN:
-				momXeon<float, MOM_MSIN> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<float, MOM_MSIN> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_MVSINCOS:
-				momXeon<float, MOM_MVSINCOS> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<float, MOM_MVSINCOS> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				default:
 				case MOM_MEXP:
-				momXeon<float, MOM_MEXP> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<float, MOM_MEXP> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_MEXP2:
-				momXeon<float, MOM_MEXP2> (ma, va, kMax, kCrt,  n1, Lz, Tz, n2, n3);
+				momXeon<float, MOM_MEXP2> (ma, va, mopa, n1, Lz, Tz, n2, n3);
+				break;
+				case MOM_COLE:
+				momXeon<float, MOM_COLE>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 
 			}

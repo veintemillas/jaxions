@@ -143,7 +143,7 @@ int	main (int argc, char *argv[])
 	SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 	// computes energy and creates map
 	LogOut ("en ");
-	energy(axion, eRes, true, 0.);
+	energy(axion, eRes, EN_MAP, 0.);
 	//bins density
 	LogOut ("con ");
 	{

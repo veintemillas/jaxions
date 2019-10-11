@@ -32,12 +32,12 @@ int	main (int argc, char *argv[])
 	Scalar *axion;
 	char fileName[256];
 
-	if ((fIndex == -1) && (cType == CONF_NONE)) {
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	} else {
 		if (fIndex == -1)
 			//This generates initial conditions
-			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType, cType, parm1, parm2);
+			axion = new Scalar (&myCosmos, sizeN, sizeZ, sPrec, cDev, zInit, lowmem, zGrid, fTypeP, lType);
 		else
 		{
 			//This reads from an Axion.$fIndex file
@@ -127,7 +127,7 @@ int	main (int argc, char *argv[])
 	else
 		index = fIndex;
 
-	if (LAMBDA_FIXED == axion->Lambda())
+	if (LAMBDA_FIXED == axion->LambdaT())
 		LogOut ("Lambda in FIXED mode\n");
 	else
 		LogOut ("Lambda in Z2 mode\n");
@@ -180,7 +180,7 @@ int	main (int argc, char *argv[])
 
 		auto strDen = strings(axion);
 
-		energy(axion, eRes, true);
+		energy(axion, eRes, EN_MAP);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
@@ -267,7 +267,6 @@ int	main (int argc, char *argv[])
 			double saskia = 0.0;
 
 			cmplxToTheta (axion, saskia, aMod);
-//			energy(axion, eRes, true, delta, nQcd);
 //			createMeas(axion, index+1);
 //			writeEnergy(axion, eRes);
 //			writeEDens(axion, MAP_THETA);
