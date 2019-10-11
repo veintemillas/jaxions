@@ -355,11 +355,11 @@ void	PrintICoptions()
 	printf("  --kickalpha [float]                              Initial V velocity; V initalised as Phi(1+kick) (default 0.0)\n");
 	printf("  --extrav    [float]                              Extra noise in V (default 0.0)\n\n");
 
-	// printf(" [vilgor,vilgork,vilgors]                          Start in the VGH attractor solution (or close)\n");
-	// printf("-----------------------------------------------------------------------------------------------\n");
-	// printf("  --zi [float]                                     Initial log(ms/H) (no time!!!) [default 0.0].\n");
-	// printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
-	// printf("  --sIter 2 --kcr [float]                          Network over/underdense by random factor [*kcr,/kcr]. \n");
+	printf(" [vilgor,vilgork,vilgors]                          Old versions of lola (legacy, to be discontinued)\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --zi [float]                                     Initial log(ms/H) (no time!!!) [default 0.0].\n");
+	printf("  --sIter 1 --kcr [float]                          Network overdense by exact factor kcr. \n");
+	printf("  --sIter 2 --kcr [float]                          Network over/underdense by random factor [*kcr,/kcr]. \n");
 
 	printf(" [cole]                                            Use correlation length to set field\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
@@ -376,14 +376,20 @@ void	PrintICoptions()
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --preprop                                                                                    \n");
 	printf("  --prepropcoe  [float]                            Preevolution starts at zi/prepropcoe        \n");
-	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
 	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default VQCD_1) .\n");
+	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
+	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
 	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
 	printf("  --icstudy                           	           Prints axion.m.xxxxx files during prepropagation (Default no).\n");
 	printf("\n-----------------------------------------------------------------------------------------------\n");
-	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n");
+	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n\n");
+
+	printf("  Test examples:                                                                             .\n\n");
+	printf("  --ctype lola --logi 4.0 --sIter 1 --kcr 2.0                                                .\n\n");
+	printf("  --ctype lola --logi 4.0 --sIter 1 --kcr 2.0                                                .\n\n");
 	return;
 }
+
 
 void	PrintMEoptions()
 {
