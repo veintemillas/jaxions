@@ -40,9 +40,12 @@ def dfunc(x, a0, a1, a2, a3):
 #     spmask = 'Red' -> Red-Gauss (default)
 #     spmask = 'Vi' -> Masked with rho/v
 #     spmask = 'Vi2' -> Masked with (rho/v)^2
+#   options for rmask:
+#     rmask = '%.2f' -> label from rmasktable (default 2.00)
+#     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
 
 class fitP:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -60,7 +63,10 @@ class fitP:
                 if spmask == 'nomask':
                     print('nomask option is not supported now...')
                 elif spmask == 'Red':
-                    binK = pa.gm(meas,'nspK_Red')
+                    if rmask == 'nolabel':
+                        binK = pa.gm(meas,'nspK_Red')
+                    else:
+                        binK = pa.gm(meas,'nspK_Red'+'_'+rmask)
                 elif spmask == 'Vi':
                     binK = pa.gm(meas,'nspK_Vi')
                 elif spmask == 'Vi2':
@@ -120,11 +126,14 @@ class fitP:
 #     spmask = 'Red' -> Red-Gauss (default)
 #     spmask = 'Vi' -> Masked with rho/v
 #     spmask = 'Vi2' -> Masked with (rho/v)^2
+#   options for rmask:
+#     rmask = '%.2f' -> label from rmasktable (default 2.00)
+#     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
 
 #   calculate instantaneous spectrum based on analytical fit
 class inspA:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
-        fitp = fitP(mfiles,spmask)
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
+        fitp = fitP(mfiles,spmask,rmask)
         self.lltype = lltype
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
@@ -179,8 +188,8 @@ class inspA:
 #   calculate instantaneous spectrum based on analytical fit
 #   time steps specified in the arguments
 class inspAt:
-    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', lltype='Z2'):
-        fitp = fitP(mfiles,spmask)
+    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00', lltype='Z2'):
+        fitp = fitP(mfiles,spmask,rmask)
         self.lltype = lltype
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
@@ -235,7 +244,7 @@ class inspAt:
 
 #   calculate instantaneous spectrum based on backward difference
 class inspB:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
         self.lltype = lltype
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
@@ -255,7 +264,10 @@ class inspB:
                 if spmask == 'nomask':
                     binK = pa.gm(meas,'nspK')
                 elif spmask == 'Red':
-                    binK = pa.gm(meas,'nspK_Red')
+                    if rmask == 'nolabel':
+                        binK = pa.gm(meas,'nspK_Red')
+                    else:
+                        binK = pa.gm(meas,'nspK_Red'+'_'+rmask)
                 elif spmask == 'Vi':
                     binK = pa.gm(meas,'nspK_Vi')
                 elif spmask == 'Vi2':
@@ -269,7 +281,10 @@ class inspB:
                 if spmask == 'nomask':
                     binK = pa.gm(meas,'nspK')
                 elif spmask == 'Red':
-                    binK = pa.gm(meas,'nspK_Red')
+                    if rmask == 'nolabel':
+                        binK = pa.gm(meas,'nspK_Red')
+                    else:
+                        binK = pa.gm(meas,'nspK_Red'+'_'+rmask)
                 elif spmask == 'Vi':
                     binK = pa.gm(meas,'nspK_Vi')
                 elif spmask == 'Vi2':
@@ -305,7 +320,7 @@ class inspB:
 
 #   calculate instantaneous spectrum based on central difference
 class inspC:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
         self.lltype = lltype
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
@@ -328,8 +343,12 @@ class inspC:
                     binK1 = pa.gm(msplist[id-1],'nspK')
                     binK2 = pa.gm(msplist[id+1],'nspK')
                 elif spmask == 'Red':
-                    binK1 = pa.gm(msplist[id-1],'nspK_Red')
-                    binK2 = pa.gm(msplist[id+1],'nspK_Red')
+                    if rmask == 'nolabel':
+                        binK1 = pa.gm(msplist[id-1],'nspK_Red')
+                        binK2 = pa.gm(msplist[id+1],'nspK_Red')
+                    else:
+                        binK1 = pa.gm(msplist[id-1],'nspK_Red'+'_'+rmask)
+                        binK2 = pa.gm(msplist[id+1],'nspK_Red'+'_'+rmask)
                 elif spmask == 'Vi':
                     binK1 = pa.gm(msplist[id-1],'nspK_Vi')
                     binK2 = pa.gm(msplist[id+1],'nspK_Vi')
@@ -1193,13 +1212,20 @@ class readstr:
 #     spmask = 'Red' -> Red-Gauss (default)
 #     spmask = 'Vi' -> Masked with rho/v
 #     spmask = 'Vi2' -> Masked with (rho/v)^2
+#   options for rmask:
+#     rmask = '%.2f' -> label from rmasktable (default 2.00)
+#     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
 
-def nspcor(mfile, nm, spmask='Red'):
+def nspcor(mfile, nm, spmask='Red', rmask='2.00'):
     if spmask == 'nomask':
         return pa.gm(mfile,'nspK')
     elif spmask == 'Red':
-        s0 = pa.gm(mfile,'nspK_Red')
-        m = pa.gm(mfile,'mspM_Red')
+        if rmask == 'nolabel':
+            s0 = pa.gm(mfile,'nspK_Red')
+            m = pa.gm(mfile,'mspM_Red')
+        else:
+            s0 = pa.gm(mfile,'nspK_Red'+'_'+rmask)
+            m = pa.gm(mfile,'mspM_Red'+'_'+rmask)
         s1 = (pa.gm(mfile,'L')**3)*np.dot(inv(m),s0/nm)
         return s1
     elif spmask == 'Vi':
@@ -1223,7 +1249,7 @@ def nspcor(mfile, nm, spmask='Red'):
 #   builds the (masked) axion kinetic spectrum with the correction matrix and outputs the time evolution
 
 class nspevol:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2', cor='nocorrection'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -1243,10 +1269,16 @@ class nspevol:
                 if spmask == 'nomask':
                     self.nsp.append(pa.gm(f,'nspK'))
                 elif spmask == 'Red':
-                    s0 = pa.gm(f,'nspK_Red')
+                    if rmask == 'nolabel':
+                        s0 = pa.gm(f,'nspK_Red')
+                    else:
+                        s0 = pa.gm(f,'nspK_Red'+'_'+rmask)
                     self.nsp.append(s0)
                     if cor == 'correction':
-                        m = pa.gm(f,'mspM_Red')
+                        if rmask == 'nolabel':
+                            m = pa.gm(f,'mspM_Red')
+                        else:
+                            m = pa.gm(f,'mspM_Red'+'_'+rmask)
                         s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                         self.nspcor.append(s1)
                 elif spmask == 'Vi':
@@ -1289,7 +1321,7 @@ class nspevol:
 #   NOTE: The energy density is evaluated just by muptiplying the kinetic energy by 2.
 
 class espevol:
-    def __init__(self, mfiles, spmask='Red', lltype='Z2', cor='nocorrection'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -1310,11 +1342,17 @@ class espevol:
                     e0 = (self.avek**2)*pa.gm(f,'nspK')/(t*(math.pi**2)*self.nm)
                     self.esp.append(e0)
                 elif spmask == 'Red':
-                    s0 = pa.gm(f,'nspK_Red')
+                    if rmask == 'nolabel':
+                        s0 = pa.gm(f,'nspK_Red')
+                    else:
+                        s0 = pa.gm(f,'nspK_Red'+'_'+rmask)
                     e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
                     self.esp.append(e0)
                     if cor == 'correction':
-                        m = pa.gm(f,'mspM_Red')
+                        if rmask == 'nolabel':
+                            m = pa.gm(f,'mspM_Red')
+                        else:
+                            m = pa.gm(f,'mspM_Red'+'_'+rmask)
                         s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                         e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
                         self.espcor.append(e1)
