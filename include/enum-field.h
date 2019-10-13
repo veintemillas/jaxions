@@ -73,6 +73,7 @@
 			STRING_ZX          = 36,
 			STRING_ONLY        = 63, //9+18+36
 			STRING_WALL	       = 64,
+			STRING_DEFECT      = 127,
 			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
 		}	StringType;
 
