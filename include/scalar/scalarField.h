@@ -41,7 +41,7 @@
 		bool	vmomspace;
 		bool folded;
 		bool	lowmem;
-		int Ng;
+		size_t Ng;
 
 		bool	gsent;
 		bool	grecv;
