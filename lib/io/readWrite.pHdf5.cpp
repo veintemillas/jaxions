@@ -3514,6 +3514,8 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 	switch (axion->m2Status()){
 		case M2_ENERGY:
 		case M2_MASK_TEST:
+		case M2_ANTIMASK:
+		case M2_MASK:
 			LogMsg (VERB_NORMAL, "[wem] M2 status %d ",axion->m2Status());
 		break;
 		default:
