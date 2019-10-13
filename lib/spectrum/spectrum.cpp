@@ -1239,6 +1239,40 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 			}
 		break;
 
+		case SPMASK_GAUS :
+			switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::masker<float,SPMASK_GAUS> (radius_mask);
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::masker<double,SPMASK_GAUS> (radius_mask);
+				break;
+
+				default :
+				LogError("[masker] precision not reconised.");
+				break;
+			}
+		break;
+
+		case SPMASK_DIFF :
+			switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::masker<float,SPMASK_DIFF> (radius_mask);
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::masker<double,SPMASK_DIFF> (radius_mask);
+				break;
+
+				default :
+				LogError("[masker] precision not reconised.");
+				break;
+			}
+		break;
+
 		case SPMASK_REDO :
 		default:
 			switch (fPrec)
@@ -1268,6 +1302,22 @@ void	SpecBin::masker	(double radius_mask) {
 	{
 		case SPMASK_REDO:
 			LogMsg(VERB_NORMAL,"[masker] masker REDO (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+			if (field->Field() != FIELD_SAXION || !(field->sDStatus() & SD_MAP)){
+					LogMsg(VERB_NORMAL,"[masker] masker called without string map! (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+					return;
+			}
+		break;
+
+		case SPMASK_GAUS:
+			LogMsg(VERB_NORMAL,"[masker] masker GAUSS (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+			if (field->Field() != FIELD_SAXION || !(field->sDStatus() & SD_MAP)){
+					LogMsg(VERB_NORMAL,"[masker] masker called without string map! (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
+					return;
+			}
+		break;
+
+		case SPMASK_DIFF:
+			LogMsg(VERB_NORMAL,"[masker] masker DIFF (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
 			if (field->Field() != FIELD_SAXION || !(field->sDStatus() & SD_MAP)){
 					LogMsg(VERB_NORMAL,"[masker] masker called without string map! (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
 					return;
@@ -1310,18 +1360,32 @@ void	SpecBin::masker	(double radius_mask) {
 		case	FIELD_SAXION:
 		{
 			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
-			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
-
+			Float *m2F                 = static_cast<Float *>(field->m2Cpu());
 			/* set to 0 one ghost region in m2half*/
-			Float *m2sax                = static_cast<Float *>(field->m2half());
+			Float *m2hF                = static_cast<Float *>(field->m2half());
+			Float *m2sF                 = static_cast<Float *>(field->m2Start());
+			/* auxiliary; Last volume in m2 where size fits, size is 2*(Lz+2Ng)LxLy*/
+			Float *m2aF                = static_cast<Float *>(field->m2Cpu()) + (field->eSize()*2-field->Size()) ;
 			size_t surfi = Ly*(Ly+2) ;
-			// #pragma omp parallel for schedule(static)
-			// for (size_t odx=0; odx < surfi; odx++) {
-			// 	m2sax[odx] = 0 ;
-			// }
-			memset (field->m2half(), 0, surfi*field->Precision());
 
 
+			/* For padding uses */
+			size_t dl = Ly*field->Precision();
+			size_t pl = (Ly+2)*field->Precision();
+			size_t ss	= Ly*Lz;
+			char *m2C  = static_cast<char *>(field->m2Cpu());
+			char *m2sC = static_cast<char *>(field->m2Start());
+			char *m2hC = static_cast<char *>(field->m2half());
+			char *m2aC = static_cast<char *>(static_cast<void *>(m2aF)) ;
+
+			//with ghosts or padding
+			size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
+			//Bare size
+			size_t dataBareSize = (Ly)*Ly*Lz*field->Precision();
+
+			memset (m2hC, 0, surfi*field->Precision());
+
+			{
 			/* MPI rank and position of the last slice that we will send to the next rank */
 			int myRank = commRank();
 			int nsplit = (int) (field->TotalDepth()/field->Depth()) ;
@@ -1331,8 +1395,8 @@ void	SpecBin::masker	(double radius_mask) {
 			size_t voli = Ly*(Ly+2)*(Lz-1) ;
 			const int ghostBytes = (Ly*(Ly+2))*(field->Precision());
 			static MPI_Request 	rSendFwd, rRecvBck;
-			void *sGhostFwd = static_cast<void *>(m2sa + voli);
-			void *rGhostBck = static_cast<void *>(m2sax);
+			void *sGhostFwd = static_cast<void *>(m2F + voli);
+			void *rGhostBck = static_cast<void *>(m2hF);
 
 			// memset (field->m2Cpu(), 0, field->eSize()*field->DataSize());
 
@@ -1360,7 +1424,7 @@ void	SpecBin::masker	(double radius_mask) {
 						// printf("odx %lu idx %lu yi %lu\n", odx, idx);
 						/* initialise to zero the mask */
 
-						m2sa[odx] = 0;
+						m2F[odx] = 0;
 
 						switch(mask){
 							case SPMASK_FLAT:
@@ -1373,26 +1437,28 @@ void	SpecBin::masker	(double radius_mask) {
 							break;
 
 							case SPMASK_REDO:
+							case SPMASK_GAUS:
+							case SPMASK_DIFF:
 									if ( (strdaa[idx] & STRING_ONLY) != 0)
 									{
-										m2sa[odx] = 1;
+										m2F[odx] = 1;
 										if (strdaa[idx] & (STRING_XY))
 										{
-											m2sa[((ix + 1) % Ly) + yo + zo] = 1;
-											m2sa[ix + yoM + zo] = 1;
-											m2sa[((ix + 1) % Ly) + yoM + zo] = 1;
+											m2F[((ix + 1) % Ly) + yo + zo] = 1;
+											m2F[ix + yoM + zo] = 1;
+											m2F[((ix + 1) % Ly) + yoM + zo] = 1;
 										}
 										if (strdaa[idx] & (STRING_YZ))
 										{
-											m2sa[ix + yoM + zo] = 1;
-											m2sa[ix + yo + zoM] = 1;
-											m2sa[ix + yoM + zoM] = 1;
+											m2F[ix + yoM + zo] = 1;
+											m2F[ix + yo + zoM] = 1;
+											m2F[ix + yoM + zoM] = 1;
 										}
 										if (strdaa[idx] & (STRING_ZX))
 										{
-											m2sa[ix + yo + zoM] = 1;
-											m2sa[((ix + 1) % Ly) + yo + zo] = 1;
-											m2sa[((ix + 1) % Ly) + yo + zoM] = 1;
+											m2F[ix + yo + zoM] = 1;
+											m2F[((ix + 1) % Ly) + yo + zo] = 1;
+											m2F[((ix + 1) % Ly) + yo + zoM] = 1;
 										}
 									}
 							break;
@@ -1409,7 +1475,7 @@ void	SpecBin::masker	(double radius_mask) {
 					MPI_Start(&rRecvBck);
 				}
 
-			}        // end loop y
+			}        // end loop z
 
 			/* makes sure the ghosts have arrived */
 			MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
@@ -1419,129 +1485,219 @@ void	SpecBin::masker	(double radius_mask) {
 			MPI_Request_free(&rSendFwd);
 			MPI_Request_free(&rRecvBck);
 
+		} // MPI defs are contained here
 			/* Fuse ghost and local info 1st surfi */
+
 			#pragma omp parallel for schedule(static)
 			for (size_t odx=0; odx < surfi; odx++) {
-				if (m2sax[odx] == 1)
-					m2sa[odx] = m2sax[odx] ; // if it was 1 still 1, otherwise 1
+				if (m2hF[odx] > 0) //FIX ME
+					m2F[odx] = 1 ; // if m2hF[odx] it was 1 still 1, otherwise 1
 			}
 
 			commSync();
 
-			/* Fourier transform */
-			// r2c FFT in m2
+			/* Load FFT for Wtilde and REDO,GAUS */
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
-			myPlan.run(FFT_FWD);
 
-			/* bin the raw mask function */
-							// LogMsg(VERB_NORMAL,"[masker] filling  bins");
-							// binP.assign(powMax, 0.);
-							//
-							// switch (fPrec) {
-							// 	case	FIELD_SINGLE:
-							// 		if (spec)
-							// 			fillBins<float,  SPECTRUM_P, true> ();
-							// 		else
-							// 			fillBins<float,  SPECTRUM_P, false>();
-							// 		break;
-							//
-							// 	case	FIELD_DOUBLE:
-							// 		if (spec)
-							// 			fillBins<double,  SPECTRUM_P, true> ();
-							// 		else
-							// 			fillBins<double,  SPECTRUM_P, false>();
-							// 		break;
-							//
-							// 	default:
-							// 		LogError ("Wrong precision");
-							// 		break;
-							// }
+			/* Here the DIFF, REDO and GAUS diverge */
 
-			/* Filter */
-			switch (fPrec) {
-				case	FIELD_SINGLE:
-						filterFFT<float> (radius_mask);
-					break;
+			switch(mask){
+				case SPMASK_DIFF:
+					{
 
-				case	FIELD_DOUBLE:
-						filterFFT<double> (radius_mask);
-					break;
-
-				default:
-					LogError ("Wrong precision");
-					break;
-			}
-
-
-
-			/* iFFT */
-			myPlan.run(FFT_BCK);
-
-
-
-			/* we needed it padded for the FFT
-        unpad for plots but ... save in m22 ? */
-
-				size_t dl = Ly*field->Precision();
-				size_t pl = (Ly+2)*field->Precision();
-				size_t ss	= Ly*Lz;
-				char *mAS = static_cast<char *>(field->m2Cpu());
-				char *mAH = static_cast<char *>(field->m2half());
-
-				size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
-
-				/* if a save is needed */
-					// memcpy	(mAH, mAS, dataTotalSize);
-
-				/* unpad in place? or operate later with pads? */
-				for (size_t sl=1; sl<ss; sl++) {
-					size_t	oOff = sl*dl;
-					size_t	fOff = sl*pl;
-					memmove	(mAS+oOff, mAS+fOff, dl);
-				}
-
-
-			/* mask in m2 (unpadded) (we label M2_ENERGY for plotting reasons)
-			and m2half padded to use with the spectrum */
-			// field->setM2(M2_ENERGY);
-
-			/* return mask in binary to strData following a criterion */
-			{
-				// the critical value has been calibrated to be ... (for sigma in 1-8)
-				// min (radius_mask)^2 = 0.42772052 -0.05299264*radius_mask for radius_mask<4
-				// min (radius_mask)^2 = 0.22619714 -0.00363601*radius_mask for radius_mask>4
-
-					Float maskcut = (Float) std::abs(radius_mask);
-					if (radius_mask < 4)
-						maskcut = (0.42772052 -0.05299264*maskcut)/(maskcut*maskcut);
-					else
-						maskcut = (0.22619714 -0.00363601*maskcut)/(maskcut*maskcut);
-
-					if (radius_mask > 8)
-						maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
-
-					size_t vol = field->Size() ;
-					#pragma omp parallel for schedule(static)
-					for (size_t idx=0; idx < vol; idx++) {
-						if ( m2sa[idx] > maskcut ) {
-							strdaa[idx] |= STRING_MASK ; // mask stored M=1-W
-							m2sa[idx] = 0; // in m2 we use W
+						/* unpad m2 in place */
+						for (size_t sl=1; sl<ss; sl++) {
+							size_t	oOff = sl*dl;
+							size_t	fOff = sl*pl;
+							memmove	(m2C+oOff, m2C+fOff, dl);
 						}
-						else {
-							m2sa[idx] = 1;
+
+						/* produce a first mask */
+						size_t V = field->Size();
+						size_t S = field->Surf();
+
+
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < V; idx++) {
+							if ( m2F[idx] > 0.5 ){
+								strdaa[idx] |= STRING_MASK ; // mask stored M=1-W
+								}
 						}
-					}
+						// LogMsg(VERB_DEBUG,"[masker] DIff masked points %d",sum);
+						/* shift the ghosts */
 
-			}
+						memmove	(m2sC, m2C, dataBareSize);
 
-			/* pad m2 inplace */
+						/* Smooth with fixed mask */
+						// smoothXeonm2 (axionField, niter, alpha); ?
+						const Float OneSixthOneminusalpha = (1./6.)*(1.-0.143);
+
+						/* how many iterations? FIX ME*/
+						size_t iter = radius_mask*radius_mask;
+
+						/* just to print and calibrate */
+						field->setM2(M2_ENERGY);
+						/* Size of the ghost region in Float (assume this funciton is called in Saxion mode)*/
+						size_t GR = field->getNg()*S*2;
+
+						/*I need char pointers to the last slice in float and complex_float and the backghost*/
+
+						char *m2lsC  = static_cast<char *>(field->m2Start()) + field->Surf()*(field->Depth()-1)*field->Precision();
+						char *m2lscC = static_cast<char *>(field->m2Start()) + field->Surf()*(field->Depth()-field->getNg())*field->DataSize();
+						char *m2bgcC = static_cast<char *>(field->m2BackGhost());
+						char *m2bgC  = static_cast<char *>(field->m2Start()) + field->Size()*field->Precision();
+						size_t SurfTotalSize = Ly*Ly*field->Precision();
+
+						for (size_t it=0; it<iter; it++)
+						{
+							/* exchange ghosts */
+								// copy last slice into the last complex slice that will be sent
+								memcpy	(m2lscC, m2lsC, SurfTotalSize);
+								//the first slice is at position
+								field->exchangeGhosts(FIELD_M2);
+								// move the slice received into the backghost into the end of the physical volume
+								memmove	(m2bgC, m2bgcC, SurfTotalSize);
+								// move the slice received into the frontghost into the position adjacent to m2Start
+								memmove	(m2C+(GR-S)*field->Precision(), m2C, SurfTotalSize);
+
+							/* smooth to m2half */
+							#pragma omp parallel for default(shared) schedule(static)
+							for (size_t idx=GR; idx< GR+V; idx++)
+							{
+								size_t idxu = idx-GR;
+
+								/* String plaquette vertices do not get diffused away*/
+								if( strdaa[idxu] & STRING_MASK )
+								{
+									// LogOut("X %d Y%d Z %d SD %d m2 %f %f\n",X[0],X[1],X[2], (uint8_t) strdaa[idxu],m2F[idx],m2hF[idxu]);
+									m2aF[idxu] = 1; //m2F[idx]
+								}
+								else {
+									size_t iPz, iMz, X[3], O[4];
+									indexXeon::idx2VecNeigh (idx, X, O, Ly);
+									iMz = idx - S;
+									iPz = idx + S;
+									//copies the smoothed configuration into the auxiliary volume
+									m2aF[idxu]   = 0.143*m2F[idx] + OneSixthOneminusalpha*(m2F[O[0]] + m2F[O[1]] + m2F[O[2]] + m2F[O[3]] + m2F[iPz] + m2F[iMz]);
+								}
+
+							}
+							LogMsg(VERB_DEBUG,"[masker] smoothing end iteration %d",it);
+							/* bring back to m2 */
+							memmove (m2sC, m2aC, dataBareSize);
+
+						} // end iteration loop
+
+					/* final move to m2*/
+					memmove (m2C, m2sC, dataBareSize);
+
+					} // end internal SPMASK_DIFF
+				break;
+				case SPMASK_REDO:
+				case SPMASK_GAUS:
+					{
+						/* Fourier transform */
+						// r2c FFT in m2
+						myPlan.run(FFT_FWD);
+
+						/* Filter */
+						switch (fPrec) {
+							case	FIELD_SINGLE:
+									filterFFT<float> (radius_mask);
+								break;
+
+							case	FIELD_DOUBLE:
+									filterFFT<double> (radius_mask);
+								break;
+
+							default:
+								LogError ("Wrong precision");
+								break;
+						}
+
+						/* iFFT */
+						myPlan.run(FFT_BCK);
+
+							/* if a save is needed */
+								// memcpy	(mAH, mAS, dataTotalSize);
+
+						/* unpad in place? or operate later with pads? */
+						for (size_t sl=1; sl<ss; sl++) {
+							size_t	oOff = sl*dl; //dl = datalength
+							size_t	fOff = sl*pl; //pl = padded length
+							memmove	(m2C+oOff, m2C+fOff, dl);
+						}
+
+						/* mask in m2 (unpadded) (we can label it M2_ENERGY for plotting reasons)
+						and m2half padded to use with the spectrum */
+						// field->setM2(M2_ENERGY);
+
+						/* return mask in binary to strData following a criterion */
+
+							// the critical value has been calibrated to be ... (for sigma in 1-8)
+							// min (radius_mask)^2 = 0.42772052 -0.05299264*radius_mask for radius_mask<4
+							// min (radius_mask)^2 = 0.22619714 -0.00363601*radius_mask for radius_mask>4
+
+						/* Constants for mask_REDO, DIFF */
+						Float maskcut = 0.5;
+
+						if (mask == SPMASK_REDO)
+						{
+							 maskcut = (Float) std::abs(radius_mask);
+							if (radius_mask < 4)
+								maskcut = (0.42772052 -0.05299264*maskcut)/(maskcut*maskcut);
+							else
+								maskcut = (0.22619714 -0.00363601*maskcut)/(maskcut*maskcut);
+							if (radius_mask > 8)
+								maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
+						}
+						/* Constant for mask_GAUS */
+						Float cc = 2.*M_PI/4. ; // Untested
+
+						size_t V = field->Size() ;
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < V; idx++) {
+							switch(mask){
+								case SPMASK_REDO:
+										if ( m2F[idx] > maskcut ) {
+											strdaa[idx] |= STRING_MASK ; // We store only CORE points
+											m2F[idx] = 0; // For the mask we copy OUT points
+										}
+										else {
+											m2F[idx] = 1; // For the mask we copy OUT points
+										}
+								break;
+
+								case SPMASK_GAUS:
+										/* we save 1/W1 in m2 (iGauss) and REDO mask in sData for the same price */
+										m2F[idx] = exp(-cc*m2F[idx]);
+										if ( m2F[idx] > maskcut )
+											strdaa[idx] |= STRING_MASK ;
+								break;
+								default:
+								LogError("[sp] Unknown mask!");
+								break;
+							} //end internal switch
+						} // end idx loop
+					} // end internal CASE REDO and GAUS case switch
+				break;
+			} // end switch
+
+			/* All masks continue here REDO, GAUS, DIFF */
+			/* save unpadded mask in m2h to print*/
+			memcpy	(m2hC, m2C, dataBareSize);
+
+			/* pad m2 inplace to produce FT of the mask */
 			for (size_t sl=1; sl<ss; sl++) {
 				size_t isl = ss-sl;
 				size_t	oOff = isl*dl;
 				size_t	fOff = isl*pl;
 				// LogOut("A %lu ",sl);
-				memmove	(mAS+fOff, mAS+oOff, dl);
+				memmove	(m2C+fOff, m2C+oOff, dl);
 			}
+
+			/* save padded mask in m2h to use in nRun*/
+			// memcpy	(mAH, mAS, dataTotalSize);
 
 			/* Calculate the FFT of the mask */
 			myPlan.run(FFT_FWD);
@@ -1570,8 +1726,11 @@ void	SpecBin::masker	(double radius_mask) {
 			for(size_t i=0; i<powMax; i++) binP.at(i) *= 2.;
 
 		field->setSD(SD_MAPMASK);
-		field->setM2(M2_DIRTY); // M2_MASK_FT
+		// field->setM2(M2_DIRTY); // M2_MASK_FT
 
+		/* To print maps from m2*/
+		memcpy	(m2C, m2hC , dataBareSize);
+		field->setM2(M2_ENERGY); // M2_MASK_FT
 		}
 		break; //case saxion ends
 

@@ -338,7 +338,7 @@ void	PrintICoptions()
 	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
 	printf("                   --kcr [float]                   rho = kcr. Alternatively k = (kMax,0,0) if not kkk.dat file. \n\n");
 	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
-	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n\n");
+	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the YZ plane, radius N/4.\n\n");
 
 	printf(" [kmax]                                            Saxion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
@@ -1453,13 +1453,16 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: I need a number of steps.\n");
 				exit(1);
 			}
-			defaultmeasType = (MeasureType) atoi(argv[i+1]);
 
-			if (defaultmeasType < 0)
+			MeasureType loco = (MeasureType) atoi(argv[i+1]);
+
+			if (loco < 0)
 			{
 				printf("Error: Measurement type must be >= 0.\n");
 				exit(1);
 			}
+
+			defaultmeasType |= loco;
 
 			i++;
 			procArgs++;
