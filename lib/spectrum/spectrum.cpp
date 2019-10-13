@@ -1439,6 +1439,8 @@ void	SpecBin::masker	(double radius_mask) {
 							case SPMASK_REDO:
 							case SPMASK_GAUS:
 							case SPMASK_DIFF:
+							/* removes the mask if present */
+							strdaa[idx] &= STRING_DEFECT;
 									if ( (strdaa[idx] & STRING_ONLY) != 0)
 									{
 										m2F[odx] = 1;
@@ -1726,13 +1728,17 @@ void	SpecBin::masker	(double radius_mask) {
 			for(size_t i=0; i<powMax; i++) binP.at(i) *= 2.;
 
 		field->setSD(SD_MAPMASK);
-		// field->setM2(M2_DIRTY); // M2_MASK_FT
 
 		/* To print maps from m2*/
 		memcpy	(m2C, m2hC , dataBareSize);
-		field->setM2(M2_ENERGY); // M2_MASK_FT
+		if (mask == SPMASK_REDO | SPMASK_GAUS)
+			field->setM2(M2_MASK); // M2_MASK_FT
+		if (mask == SPMASK_DIFF)
+			field->setM2(M2_ANTIMASK); // M2_MASK_FT
+
 		}
 		break; //case saxion ends
+
 
 		case FIELD_AXION:
 		{
