@@ -282,7 +282,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 
 	if(axiona->Field() == FIELD_SAXION){
-		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO))
+		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF) )
 		{
 
 			if ( !(measa & MEAS_STRINGCOO)){
@@ -321,35 +321,73 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 
 	// if we are computing any spectrum, prepare the instance
-	if (measa & MEAS_SPECTRUM)
+	if (measa & (MEAS_SPECTRUM | MEAS_MASK))
 	{
  		SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
+
 		/* this is an experimental print that uses axion energy plot2D and could use plot3D energy
 		   is incompatible with a real output of energy density... */
 		if (measa & MEAS_MASK)
 		{
-			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);
-				prof.start();
-				// the mask saved is rmask_0, which coincides with rmask in commandline
-				specAna.masker(rmasktab[0], SPMASK_REDO);
-				prof.stop();
-				prof.add(std::string("Masker"), 0.0, 0.0);
-				/* activate to export premask -- needs changes in spectrum.cpp too*/
-					// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
-				/* activate this to print a 2D smooth mask */
-				 	// writeEMapHdf5s (axiona,sliceprint);
-				/* activate this to see the smooth mask */
-					//writeEDens(axiona);
-				/* activate this to see the binary mask */
-				// writeString(axiona, MeasDataOut.str, true);
-				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W_Red");
-				if(strmeas & STRMEAS_ENERGY) {
-					// measure the energy density of strings by using masked points
-					MeasDataOut.strE = stringenergy(axiona);
-					MeasDataOut.strE.rmask = rmasktab[0]; // this is not written by stringenergy();
-					writeStringEnergy(axiona,MeasDataOut.strE);
+			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);LogFlush();
+
+
+				char LABEL[256];
+				string           masklab[8] = {"Vi", "Vi2", "Red", "Gau", "Dif", "Saxi", "Axit", "Axit2"};
+				SpectrumMaskType maskara[8] = {SPMASK_VIL,SPMASK_VIL2,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_SAXI,SPMASK_AXIT,SPMASK_AXIT2};
+
+				LogMsg(VERB_NORMAL, "[Meas %d] masks are %d",indexa,mask);LogFlush();
+				for (size_t i=0; i<8; i++)
+				{
+					LogMsg(VERB_NORMAL, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
 				}
-		}
+				for (size_t i=0; i<8; i++)
+				{
+					LogMsg(VERB_NORMAL, "[Meas %d] mask %s (%d)",indexa,masklab[i].c_str(),i);LogFlush();
+					if ( !(mask & maskara[i])){
+						LogMsg(VERB_NORMAL, " ... skipped");LogFlush();
+						continue;
+					}
+
+					// if ( !(mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF)) )
+					// 	continue;
+
+					LogMsg(VERB_NORMAL, "... to be done ");LogFlush();
+
+						for(int ii=0; ii < irmask; ii++)
+						{
+
+							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+							prof.start();
+							specAna.masker(rmasktab[ii], maskara[i]);
+							prof.stop();
+							prof.add(std::string("Masker"), 0.0, 0.0);
+
+							sprintf(LABEL, "W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+
+							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
+
+							/* DANGER ZONE !*/
+								/* activate to export premask -- needs changes in spectrum.cpp too*/
+									// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
+								/* activate this to print a 2D smooth mask */
+							sprintf(LABEL, "/map/W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							writeEMapHdf5s (axiona,sliceprint,LABEL);
+								/* activate this to see the smooth mask */
+								// writeEDens(axiona);
+								/* activate this to see the binary mask */
+								// writeString(axiona, MeasDataOut.str, true);
+
+								// if(strmeas & STRMEAS_ENERGY) {
+								// 	// measure the energy density of strings by using masked points
+								// 	MeasDataOut.strE = stringenergy(axiona);
+								// 	MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
+								// 	writeStringEnergy(axiona,MeasDataOut.strE);
+								// }
+							} //end for mask length
+						} // end for mask type
+				}  // end if mask
+
 
 		/* If Axion mode this is the only spectrum. In saxion an option */
 		if ( ((axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_A)) ||
