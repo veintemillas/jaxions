@@ -422,9 +422,13 @@
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
 			SPMASK_REDO	= 8,
-			SPMASK_SAXI	= 16,
-			SPMASK_AXIT	= 32,
-			SPMASK_AXIT2= 64,
+			SPMASK_GAUS	= 16,
+			SPMASK_DIFF	= 32,
+
+			SPMASK_SAXI	= 256,
+
+			SPMASK_AXIT	= 512,
+			SPMASK_AXIT2= 1024,
 		}	SpectrumMaskType;
 
 		typedef	enum	StringMeasureType_s {
