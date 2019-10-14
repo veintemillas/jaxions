@@ -143,23 +143,24 @@ int	main (int argc, char *argv[])
 	//- number of plaquetes pierced by strings
 	lm.str.strDen = 0 ;
 	//- Info to measurement
-	MeasInfo ninfa;
-	//- information needs to be passed onto measurement files
- 	ninfa.sliceprint = slicepp;
-	ninfa.idxprint = 0 ;
-	ninfa.index = 0;
-	ninfa.redmap = endredmap;
-
-	// default measurement type is parsed
-	ninfa.measdata = defaultmeasType;
-	ninfa.strmeas = strmeas;
-	ninfa.mask = spmask;
-	ninfa.rmask = rmask;
-	ninfa.i_rmask = i_rmask;
-	ninfa.rmask_tab = rmask_tab;
+	MeasInfo ninfa = deninfa;
+	// //- information needs to be passed onto measurement files
+ 	// ninfa.sliceprint = slicepp;
+	// ninfa.idxprint = 0 ;
+	// ninfa.index = 0;
+	// ninfa.redmap = endredmap;
+	//
+	// // default measurement type is parsed
+	// ninfa.measdata = defaultmeasType;
+	// ninfa.strmeas = strmeas;
+	// ninfa.mask = spmask;
+	// ninfa.rmask = rmask;
+	// ninfa.i_rmask = i_rmask;
+	// ninfa.rmask_tab = rmask_tab;
 	for (int ii = 0; ii < i_rmask ; ii++ )
 		LogMsg(VERB_NORMAL,"[VAX] read rmask %f",ninfa.rmask_tab[ii]);
-	ninfa.maty = maty;
+	// ninfa.maty = maty;
+	// ninfa.nrt = nrt;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
