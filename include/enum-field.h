@@ -432,6 +432,14 @@
 			SPMASK_AXIT2= 1024,
 		}	SpectrumMaskType;
 
+		typedef	enum	nRunType_s {
+			NRUN_K      = 1,
+			NRUN_G      = 2,
+			NRUN_V      = 4,
+			NRUN_KG     = 3,
+			NRUN_KGV    = 7,
+		}	nRunType;
+
 		typedef	enum	StringMeasureType_s {
 			STRMEAS_STRING = 0,
 			STRMEAS_LENGTH = 1,
@@ -510,8 +518,7 @@
 			MEAS_NSP_S        = 131072,
 			MEAS_NNSPEC       = 262144, 	// number of modes per bin for normalisation purposes
 			// MASK for any spectrum
-			// MEAS_SPECTRUM     = 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
-			MEAS_SPECTRUM     = 516096, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			MEAS_SPECTRUM     = 516096, 		  //  245760, 	// 16384 + 32768 + 65536 + 131072 + 262144(any of the spectra)
 
 			MEAS_SPECTRUMA    = 81920, 	  // 16384  + 65536  (any of the axion spectra)
 			// MASK for those that require energy
@@ -563,6 +570,7 @@
 			SpectrumMaskType    mask ;
 			double              rmask;                   // a radius to mask
 			std::vector<double> rmask_tab;  // more than 1
+			nRunType            nrt;
 			SliceType           maty;
 			int                 i_rmask;
 			int                 redmap;
