@@ -373,7 +373,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							sprintf(LABEL, "/map/W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 							writeEMapHdf5s (axiona,sliceprint,LABEL);
 								/* activate this to see the smooth mask */
-								writeEDens(axiona);
+								// writeEDens(axiona);
 								/* activate this to see the binary mask */
 								// writeString(axiona, MeasDataOut.str, true);
 
