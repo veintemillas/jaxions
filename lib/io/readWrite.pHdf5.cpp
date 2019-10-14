@@ -2557,16 +2557,16 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 	int myRank = commRank();
 
-	LogMsg (VERB_NORMAL, "Writing energy density to Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "[wEd] Writing energy density to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
 
 	if ((fMap & MAP_RHO) && (axion->Field() & FIELD_AXION)) {
-	        LogMsg (VERB_NORMAL, "Requested MAP_RHO with axion field. Request will be ignored");
+	        LogMsg (VERB_NORMAL, "[wEd] Requested MAP_RHO with axion field. Request will be ignored");
 	        fMap ^= MAP_RHO;
 	}
 
 	if ((fMap & MAP_ALL) == MAP_NONE) {
-	        LogMsg (VERB_NORMAL, "Nothing to map. Skipping writeEDens");
+	        LogMsg (VERB_NORMAL, "[wEd] Nothing to map. Skipping writeEDens");
 	        return;
 	}
 
@@ -2580,14 +2580,14 @@ void	writeEDens (Scalar *axion, MapType fMap)
 		axion->transferCpu(FIELD_M2);
 
 	if (axion->m2Cpu() == nullptr) {
-		LogError ("You seem to be using the lowmem option");
+		LogError ("[wEd] You seem to be using the lowmem option");
 		prof.stop();
 		return;
 	}
 
 	if (header == false || opened == false)
 	{
-		LogError ("Error: measurement file not opened. Ignoring write request.\n");
+		LogError ("[wEd] Error: measurement file not opened. Ignoring write request.\n");
 		return;
 	}
 
@@ -2611,7 +2611,7 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 		default:
 
-		LogError ("Error: Invalid precision. How did you get this far?");
+		LogError ("[wEd] Error: Invalid precision. How did you get this far?");
 		exit(1);
 
 		break;
@@ -3495,6 +3495,9 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	LogMsg (VERB_HIGH, "[wm2] Written %lu bytes", total*dataSize*2);LogFlush();
 }
 
+
+
+
 void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 {
 	hid_t	mapSpace, chunk_id, group_id, eSet_id, eSpace, dataType;
@@ -3660,10 +3663,17 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize);
 }
 
+
+
+
+
 void	writeEMapHdf5	(Scalar *axion)
 {
 	writeEMapHdf5s	(axion, 0, "/map/E");
 }
+
+
+
 
 void	writePMapHdf5	(Scalar *axion)
 {
