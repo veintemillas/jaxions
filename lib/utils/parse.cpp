@@ -106,6 +106,11 @@ MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_
 // map measurement types (applies to all measurements that get PLOT_2D)
 SliceType maty;
 
+// measure K, G, V
+nRunType nrt                 = NRUN_KGV;
+
+MeasInfo deninfa;
+
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
 char wisDir[1024] = "./\0";
@@ -422,14 +427,21 @@ void	PrintMEoptions()
 	printf("  Sxion Energy spectrum                32768 \n\n");
 
 	printf("  NUMBER SPECTRA (binned) \n");
-	printf("  Axion Number spectrum (K+G+V)        65536 \n");
 	printf("  Saxion Number spectrum (K+G+V)      131072 \n\n");
+
+	printf("  Axion Number spectrum (K+G+V)        65536 \n");
+	printf("  --spKGV [int]             Sum of integers.\n");
+	printf("    Kinetic                                1 \n");
+	printf("    Gradient                               2 \n");
+	printf("    Potential                              4 \n");
+	printf("    K+G+V                                  7 (default)\n\n");
   printf("  --spmask [int]            Sum of integers.\n");
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
 	printf("    Red (Top-hat from Gaussian cut)        8 \n");
 	printf("    Gaussian                               16 \n");
+	printf("    Diffusion from core top hat            32 \n");
 	printf("     --rmask [float]                       Mask radius in 1/m_s units [default = 2]\n");
 	printf("     --rmask file                          Prints different spectra, each masked \n");
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
@@ -1492,6 +1504,28 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--spKGV"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a nRun output type: 1 (K), 2 (G), 4 (V) or sums (default 7) .\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&nrt));
+
+			if (nrt < 0)
+			{
+				printf("Error: Spectrum masking type is a positive integer.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--printmask"))
 		{
 			defaultmeasType |= MEAS_MASK ;
@@ -2241,6 +2275,25 @@ if (icdatst.cType == CONF_SMOOTH )
 				}
 			}
 	zInit = icdatst.zi; //legacy
+
+
+
+	//- information needs to be passed onto measurement files
+ 	deninfa.sliceprint = slicepp;
+	deninfa.idxprint = 0 ;
+	deninfa.index = 0;
+	deninfa.redmap = endredmap;
+
+	// default measurement type is parsed
+	deninfa.measdata = defaultmeasType;
+	deninfa.strmeas = strmeas;
+	deninfa.mask = spmask;
+	deninfa.rmask = rmask;
+	deninfa.i_rmask = i_rmask;
+	deninfa.rmask_tab = rmask_tab;
+	deninfa.maty = maty;
+	deninfa.nrt = nrt;
+
 	return	procArgs;
 }
 
