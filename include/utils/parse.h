@@ -87,6 +87,8 @@ extern double           rmask;
 extern MeasureType      defaultmeasType;
 extern MeasureType      rho2thetameasType;
 extern SliceType        maty;
+extern nRunType         nrt;
+extern MeasInfo         deninfa;
 extern StringMeasureType strmeas;
 
 extern LogMpi       logMpi;
