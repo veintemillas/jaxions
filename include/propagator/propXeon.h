@@ -1,344 +1,287 @@
-#include<cstdio>
-#include<cmath>
-#include"scalar/scalarField.h"
-#include"enum-field.h"
-//#include"scalar/varNQCD.h"
+#include <cstdio>
+#include <cmath>
+#include "scalar/scalarField.h"
+#include "enum-field.h"
+//#include "scalar/varNQCD.h"
 
-#include "utils/triSimd.h"
 #include "utils/parse.h"
+#include "simd/Simd.h"
 
-#define opCode_P(x,y,...) x ## _ ## y (__VA_ARGS__)
-#define opCode_N(x,y,...) opCode_P(x, y, __VA_ARGS__)
-#define opCode(x,...) opCode_N(_PREFIX_, x, __VA_ARGS__)
-
-#include <immintrin.h>
-
-#if	defined(__AVX512F__)
-	#define	Align 64
-	#define	_PREFIX_ _mm512
-	#define	_MInt_  __m512i
-#else
-	#if not defined(__AVX__) and not defined(__AVX2__)
-		#define	Align 16
-		#define	_PREFIX_ _mm
-	#else
-		#define	Align 32
-		#define	_PREFIX_ _mm256
-	#endif
-#endif
-/*
-#define	bSizeX	1024
-#define	bSizeY	64
-#define	bSizeZ	2
-*/
-template<const VqcdType VQcd>
-inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, size_t NN, double *R, const double dz, const double c, const double d,
-				    const double ood2, const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
+template<class Simd_x, KernelType kType, const VqcdType VQcd, const int nNeigh=1, const bool UpdateM=true>
+inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_,
+				    const void * __restrict__ xGhost, const void * __restrict__ yGhost, const void * __restrict__ zGhost,
+				    double *R, const double dz, const double c, const double d, const double ood2, const double LL,
+				    const double aMass2, const double gamma, const size_t Lx, const size_t Ly, const size_t Lz,
 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
 	const size_t Sf = Lx*Lx;
-	const size_t NSf = NN*Sf;
+	const size_t NSf = nNeigh*Sf;
 
-	if (precision == FIELD_DOUBLE)
-	{
-#if	defined(__AVX512F__)
-	#define	_MData_ __m512d
-	#define	step 4
-#elif	defined(__AVX__)
-	#define	_MData_ __m256d
-	#define	step 2
-#else
-	#define	_MData_ __m128d
-	#define	step 1
-#endif
+	const Simd_x::sData * __restrict__ m	= (const Simd_x::sData * __restrict__) __builtin_assume_aligned (m_, Align);
+	Simd_x::sData * __restrict__ v		= (Simd_x::sData * __restrict__) __builtin_assume_aligned (v_, Align);
+	Simd_x::sData * __restrict__ m2		= (Simd_x::sData * __restrict__) __builtin_assume_aligned (m2_, Align);
 
-		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned (v_, Align);
-		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_, Align);
+	const Simd_x::sData dzc = dz*c;
+	const Simd_x::sData dzd = dz*d;
+	const Simd_x::sData zR = ((double) (*R));
+	const Simd_x::sData z2 = zR*zR;
+	const Simd_x::sData zQ = aMass2*z2*zR;
+	const Simd_x::sData zN = (VQcd & VQCD_TYPE) == VQCD_1N2 ? (aMass2*z2/2.) : aMass2*z2*z2;
 
-		const double dzc = dz*c;
-		const double dzd = dz*d;
-		const double zR = *R;
-		const double z2 = zR*zR;
-		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = aMass2*z2*zR;
-		const double zN = aMass2*z2/2;
+	const Simd_x::sData z4 = z2*z2;
+	const Simd_x::sData LaLa = LL*2./z4;
+	const Simd_x::sData GGGG = sqrt(ood2)*gamma;
+	const Simd_x::sData mola = GGGG*dzc/2.;
+	const Simd_x::sData damp1 = 1./(1.+mola);
+	const Simd_x::sData damp2 = (1.-mola)*damp1;
+	const Simd_x::sData epsi = mola/(1.+mola);
 
-		const double z4 = z2*z2;
-		const double LaLa = LL*2./z4;
-		const double GGGG = gamma/zR;
-//		const double GGiZ = GGGG/zR;
-		const double mola = GGGG*dzc/2.;
-		const double damp1 = 1./(1.+mola);
-		const double damp2 = (1.-mola)*damp1;
-		const double epsi = mola/(1.+mola);
+	// FIXME Fix this crap TEMPLATE
+	Simd_x::sData CO[5] = {0, 0, 0, 0, 0} ;
+	if (NN == 0) {
+		return;
+	}	else if (NN == 1) {
+		CO[0] = 1.  ;
+	}	else if (NN == 2) {
+		CO[0] = 4./3.; CO[1] = -1./12.;
+	} else if (NN == 3) {
+		CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
+	} else if (NN == 4) {
+		CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
+	} else if (NN == 5) {
+		CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
+ 	}
+	_MData_ COV[5];
+	for (size_t nv = 0; nv < NN ; nv++)
+		COV[nv]  = opCode(set1_pd, CO[nv]*ood2);
 
-		double CO[5] = {0, 0, 0, 0, 0} ;
-		if (NN == 0) {
-			return;
-		}	else if (NN == 1) {
-			CO[0] = 1.  ;
-		}	else if (NN == 2) {
-			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (NN == 3) {
-			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (NN == 4) {
-			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (NN == 5) {
-			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
-	 	}
-		_MData_ COV[5];
-		for (size_t nv = 0; nv < NN ; nv++)
-			COV[nv]  = opCode(set1_pd, CO[nv]*ood2);
+	const size_t XC = Lx/Simd_x::xWdCx;
+	const size_t YC = Ly/Simd_x::yWdCx;
+	const size_t ZC = Lz/Simd_x::zWdCx;
 
-#if	defined(__AVX512F__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+	const Simd_x zQVec(zQ, 0.);
+	const Simd_x zNVec(zN,-zN);
+	const Simd_x zRVec(zR, 0.);
 
-		const double    __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double    __attribute__((aligned(Align))) zNAux[8] = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };	// to complex congugate
-		const double    __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
-		const long long __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
-		const long long __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
+	uint x0, xF, y0, yF, z0, zF;
 
-		const _MInt_  vShRg = opCode(load_si512, shfRg);
-		const _MInt_  vShLf = opCode(load_si512, shfLf);
-#elif	defined(__AVX__)
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+	// FIXME Movida con los ghosts y las zonas comunes a dos caras
+	switch (GhostType) {
 
-		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[4] = { zN,-zN, zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
-#else
-		const size_t XC = Lx;
-		const size_t YC = Lx;
+		case    xFace0:
 
-		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[2] = { zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
-#endif
-		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ zNVec  = opCode(load_pd, zNAux);
-		const _MData_ zRVec  = opCode(load_pd, zRAux);
+		x0 = 0;                 xF = nNeigh;
+		y0 = nNeigh;            yF = YC - nNeigh;
+		z0 = nNeigh;            zF = ZC - nNeigh;
+		break;
 
-		const uint z0 = Vo/(Lx*Lx);
-		const uint zF = Vf/(Lx*Lx);
-		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
-		const uint bY = (YC + bSizeY - 1)/bSizeY;
+		case    xFaceF:
 
-		for (uint zT = 0; zT < zM; zT++)
-		 for (uint yT = 0; yT < bY; yT++)
-		  #pragma omp parallel default(shared)
-		  {
-		    _MData_ tmp, mel, mPx, mPy, mMx, lap;
-		    #pragma omp for collapse(3) schedule(static)
-		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (uint yy = 0; yy < bSizeY; yy++) {
-		      for (uint xC = 0; xC < XC; xC += step) {
-			uint zC = zz + bSizeZ*zT + z0;
-			uint yC = yy + bSizeY*yT;
+		x0 = XC - nNeigh;       xF = XC;
+		y0 = nNeigh;            yF = YC - nNeigh;
+		z0 = nNeigh;            zF = ZC - nNeigh;
+		break;
 
-			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
-			size_t idx = zC*(YC*XC) + yC*XC + xC;
+		case    yFace0:
 
-			if (idx >= Vf)
-				continue;
-			{
-				X[0] = xC;
-				X[1] = yC;
+		x0 = nNeigh;            xF = XC - nNeigh;
+		y0 = 0;                 yF = nNeigh;
+		z0 = nNeigh;            zF = ZC - nNeigh;
+		break;
+
+		case    yFaceF:
+
+		x0 = nNeigh;            xF = XC - nNeigh;
+		y0 = YC - nNeigh;       yF = YC;
+		z0 = nNeigh;            zF = ZC - nNeigh;
+		break;
+
+		case    zFace0:
+
+		x0 = nNeigh;            xF = XC - nNeigh;
+		y0 = nNeigh;            yF = YC - nNeigh;
+		z0 = 0;                 zF = nNeigh;
+		break;
+
+		case    zFaceF:
+
+		x0 = nNeigh;            xF = XC - nNeigh;
+		y0 = nNeigh;            yF = YC - nNeigh;
+		z0 = ZC - nNeigh;       zF = ZC;
+		break;
+	}
+
+	const uint zM = (zF - z0 + bSizeZ - 1)/bSizeZ;
+	const uint yM = (yF - y0 + bSizeY - 1)/bSizeY;
+	const uint xM = (xF - x0 + bSizeX - 1)/bSizeX;
+
+	for (uint zT = 0; zT < zM; zT++)
+	 for (uint yT = 0; yT < yM; yT++)
+	  for (uint xT = 0; xT < xM; xT++)
+	  #pragma omp parallel default(shared)
+	  {
+	    _MData_ tmp, tm2, tm3, tm4, mel, lap;
+	    #pragma omp for collapse(3) schedule(static)
+	    for (uint zz = 0; zz < bSizeZ; zz++) {
+	     for (uint yy = 0; yy < bSizeY; yy++) {
+	      for (uint xx = 0; xx < bSizeX; xx++) {
+		uint xC = xx + bSizeX*xT + x0;
+		uint yC = yy + bSizeY*yT + y0;
+		uint zC = zz + bSizeZ*zT + z0;
+
+		size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
+		size_t idx = zC*(YC*XC) + yC*XC + xC;
+
+		//if (idx >= Vf)
+		//	continue;
+		{
+			X[0] = xC;
+			X[1] = yC;
+		}
+
+		idxP0 = idx * Simd_x::sWide;
+		mel.Load(&m[idxP0]);
+		lap.Zero();
+
+		// This loop performs many consecutive loads and stalls the processor
+		// Try to distribute the loads and intercalate calculations
+		// It describes border cases that are related to GhostType and the face exchange
+
+		for (size_t nv=1; nv<=nNeigh; nv++)
+		{
+
+			if (xC < nv) {	// Mal, aquí leemos de ghosts
+				idxMx = (idx + XC - nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxMx]).xPermute();
+			} else {
+				idxMx = (idx - nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxMx]);
 			}
 
-			idxP0 =  (idx << 1);
-			idxV0 =  (idx-NSf) << 1;
-			mel = opCode(load_pd, &m[idxP0]);
-			lap = opCode(set1_pd, 0.0);
+			if (xC >= XC - nv) {
+				idxPx = (idx - XC + nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxPx]).xPermute();
+			} else {
+				idxPx = ((idx + nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxPx]);
+			}
 
+			if (yC < nv) {
+				idxMy = (idx + XC - nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxMy]).yPermute();
+			} else {
+				idxMy = (idx - nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxMy]);
+			}
 
-			for (size_t nv=1; nv < NN+1; nv++)
-			{
+			if (yC >= YC - nv) {
+				idxPy = (idx - YC + nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxPy]).yPermute();
+			} else {
+				idxPy = ((idx + nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxPy]);
+			}
 
-					if (X[0] < nv*step)
-						idxMx = ((idx + XC - nv*step) << 1);
-					else
-						idxMx = ((idx - nv*step) << 1);
-					//x+
-					if (X[0] + nv*step >= XC)
-						idxPx = ((idx - XC + nv*step) << 1);
-					else
-						idxPx = ((idx + nv*step) << 1);
+			if (zC < nv) {
+				idxMz = (idx + XC - nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxMz]).zPermute();
+			} else {
+				idxMz = (idx - nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxMz]);
+			}
 
-					if (X[1] < nv)
-					{
-						idxMy = ((idx + Sf - nv*XC) << 1);
-						idxPy = ((idx + nv*XC) << 1);
-#if	defined(__AVX512F__)
-						tmp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), opCode(load_pd, &m[idxPy]));
-#elif	defined(__AVX__)
-						mPx = opCode(load_pd, &m[idxMy]);
-						tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxPy]));
-#else
-						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
-#endif
-					}
-					else
-					{
-						idxMy = ((idx - nv*XC) << 1);
+			if (zC >= ZC - nv) {
+				idxPz = (idx - YC + nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxPz]).zPermute();
+			} else {
+				idxPz = ((idx + nv) * Simd_x::sWide;
+				tmp += tm2.Load(&m[idxPz]);
+			}
 
-						if (X[1] + nv >= YC)
-						{
-							idxPy = ((idx + nv*XC - Sf) << 1);
-#if	defined(__AVX512F__)
-							tmp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), opCode(load_pd, &m[idxMy]));
-#elif	defined(__AVX__)
-							mPx = opCode(load_pd, &m[idxPy]);
-							tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxMy]));
-#else
-							tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
-#endif
-						}
-						else
-						{
-							idxPy = ((idx + nv*XC) << 1);
-							tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
-						}
-					}// end Y+Y-
+			tmp -= mel*Simd_x(6.0);
+			tmp *= Simd_x(COV[nv-1]);
+			lap += tmp;
 
-					// add X+ X-
-					tmp = opCode(add_pd,tmp,opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])));
-					// add Z+ Z-
-					idxPz = ((idx+nv*Sf) << 1);
-					idxMz = ((idx-nv*Sf) << 1);
-					tmp = opCode(add_pd,tmp,opCode(add_pd,opCode(load_pd, &m[idxMz]),opCode(load_pd, &m[idxPz])));
+		} //end neighbour loop nv
 
-					tmp = opCode(add_pd,tmp,opCode(mul_pd, mel,opCode(set1_pd, -6.0)));
-
-					tmp = opCode(mul_pd,tmp, COV[nv-1]);
-					lap = opCode(add_pd,lap,tmp);
-
-				} //end neighbour loop nv
-
-			mPy = opCode(mul_pd, mel, mel);
-
+		tm2 = mel*mel;
+		tm3 = !mel;
+/*
 #if	defined(__AVX512F__)
 			mPx = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mPy), _MM_PERM_BADC)), mPy);
 #elif	defined(__AVX__)
-			mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
+		mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
 #else
-			mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
+		mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
 #endif
-			switch	(VQcd & VQCD_TYPE) {
+*/
+		// FIXME Separar potenciales
+		switch	(VQcd & VQCD_TYPE) {
 
-				case	VQCD_PQ_ONLY:
-				mMx = opCode(sub_pd,lap,
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-							opCode(set1_pd, LL)),
-											 mel));
-				break;
+			default:
+			case	VQCD_PQ_ONLY:
+			tm4 = lap - ((tm3 - z2)*Simd_x(LL))*mel;
+			break;
 
-				default:
-				case	VQCD_1:
-				mMx = opCode(sub_pd,
-					opCode(add_pd, lap, zQVec),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-							opCode(set1_pd, LL)),
-											 mel));
-				break;
+			case	VQCD_0:
+			tm2 = opCode(vqcd0_ps,mel)/sqrt(tm3*(tm3*tm3));	// FIXME vqcd0_ps won't work properly for double
 
-				case	VQCD_1_PQ_2:
-				mMx = opCode(sub_pd,
-					opCode(add_pd, lap, zQVec),
-						opCode(mul_pd,
-							opCode(mul_pd,
-								opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
-								opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-							mel));
-				 break;
+	 		tm4 = (lap + tm2*zNVec) - ((tm3 - z2)*Simd_x(LL))*mel;
+	 		break;
 
-				//FIX ME ADDITIONAL POTENTIALS!
-				case	VQCD_2:
-				mMx = opCode(sub_pd,
-					opCode(sub_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
-						opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-							opCode(set1_pd, LL)),
-						mel));
-				break;
+			case	VQCD_1:
+			tm4 = (lap + zQVec) - ((tm3 - z2)*Simd_x(LL))*mel;
+			break;
 
-				case	VQCD_1N2:
-				mMx = opCode(sub_pd,
-					opCode(add_pd,
-						opCode(mul_pd,
-							opCode(add_pd,
-								opCode(add_pd,
-									opCode(load_pd, &m[idxMz]),
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-											opCode(load_pd, &m[idxMx])),
-										opCode(load_pd, &m[idxPz]))),
-								opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-							opCode(set1_pd, ood2)),
-							// 1N2 part
-						opCode(mul_pd,zNVec,mel)),
-					opCode(mul_pd,
-						opCode(mul_pd,
-							opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-							opCode(set1_pd, LL)),
-						mel));
-				break;
+			case	VQCD_1_PQ_2:
+			tm4 = (lap + zQVec) - (((tm3*tm3) - z4)*(tm3*Simd_x(LaLa)))*mel;
+			break;
 
-			}
+			case	VQCD_2:
+			tm4 = (lap - (Simd_x(zQ)*(mel - zRVec))) - ((tm3 - z2)*Simd_x(LL))*mel;
+			break;
 
-			mPy = opCode(load_pd, &v[idxV0]);
+			case	VQCD_1N2:
+			tm4 = (lap + (zNVec*mel)) - ((tm3 - z2)*Simd_x(LL))*mel;
+			break;
 
-			switch	(VQcd & VQCD_DAMP) {
+		}
+//mMx -> tm4 mPx -> tm3 mPy -> tm2
+		tm2.Load(&v[idxP0]);
+		// FIXME With potentials
+		switch	(VQcd & VQCD_DAMP) {
 
-				default:
-				case	VQCD_NONE:
+			default:
+			case	VQCD_NONE:
 #if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
+			tmp = tm4.fma(Simd_x(dzc), tm2);
 #else
-				tmp = opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc)));
+			tmp = tm2 + (tm4*Simd_x(dzc));
 #endif
-				break;
+			break;
 
-				case	VQCD_DAMP_RHO:
-				{
-					//New implementation
-					tmp = opCode(mul_pd, mel, mPy);
+			case	VQCD_DAMP_RHO:
+			{
+				//New implementation
+				tmp = mel*tm2;
+				// FIXME This
 #if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
+				auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
 #else
-					auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
+				auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
 #endif
 
-					// vecma = MA
-					// mel = M, mMx = A
-					tmp = opCode(mul_pd, mel, mMx);
+				// vecma = MA
+				// mel = M, mMx = A
+				tmp = mel*tm4;
+				// FIXME This
 #if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000001), tmp);
+				auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000001), tmp);
 #else
-					auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
+				auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
 #endif
 
+// FIXME This crap
 #if	defined(__AVX512F__) || defined(__FMA__)
 // A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
 tmp = opCode(sub_pd,
@@ -353,1219 +296,80 @@ tmp = opCode(sub_pd,
 			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0)),
 			opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #endif
-				}
-				break;
-
-				case	VQCD_DAMP_ALL:
-#if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mPy, opCode(set1_pd, damp2), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
-#else
-				tmp = opCode(add_pd, opCode(mul_pd, mPy, opCode(set1_pd, damp2)), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
-#endif
-				break;
 			}
+			break;
 
-			if (VQcd & VQCD_EVOL_RHO)
-			{
-				auto vecmv = opCode(mul_pd, mel, tmp);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-				auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b00000101), vecmv);
-#else
-				auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
-#endif
-				tmp   = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
-			}
-
+			case	VQCD_DAMP_ALL:
 #if	defined(__AVX512F__) || defined(__FMA__)
-			mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
+			tmp = tm2.fma(Simd_x(damp2), (tm4*Simd_x(damp1*dzc)));
 #else
-			mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
+			tmp = (tm2*Simd_x(damp2)) + (tm4*Simd_x(damp1*dzc));
 #endif
-			opCode(store_pd,  &v[idxV0], tmp);
-			opCode(stream_pd, &m2[idxP0], mPx);
-		      }
-		    }
-		  }
+			break;
 		}
-#undef	_MData_
-#undef	step
-	} else if (precision == FIELD_SINGLE) {
-#if	defined(__AVX512F__)
-	#define	_MData_ __m512
-	#define	step 8
-#elif	defined(__AVX__)
-	#define	_MData_ __m256
-	#define	step 4
+
+		if (VQcd & VQCD_EVOL_RHO)
+		{
+			auto vecmv = mel*tmp;
+			//FIXME Crap strikes again
+#if	defined(__AVX__)// || defined(__AVX512F__)
+			auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b00000101), vecmv);
 #else
-	#define	_MData_ __m128
-	#define	step 2
+			auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
 #endif
-
-		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
-		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
-		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
-
-		const float dzc = dz*c;
-		const float dzd = dz*d;
-		const float zR = *R;
-		const float z2 = zR*zR;
-		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = (float) (aMass2*z2*zR);
-		float gasa;
-		switch	(VQcd & VQCD_TYPE) {
-				case	VQCD_1N2:
-				gasa = (float) (aMass2*z2)/2;
-				break;
-
-				default:
-				case	VQCD_0:
-				gasa = (float) (aMass2*z2*z2);
-				break;
+			tmp = (mel*vecma)/tm3;
 		}
-		//For VQCD_1N2 & VQCD0
-		const float zN = gasa;
 
-		const float z4 = z2*z2;
-		const float LaLa = LL*2.f/z4;
-		const float GGGG = gamma/zR;
-//		const float GGiZ = GGGG/zR;
-		const float mola = GGGG*dzc/2.f;
-		const float damp1 = 1.f/(1.f+mola);
-		const float damp2 = (1.f-mola)*damp1;
-		const float epsi = mola/(1.f+mola);
+		tmp.Save(&v[idxP0]);
 
-		float CO[5] = {0, 0, 0, 0, 0} ;
-		if (NN == 0) {
-			return;
-		}	else if (NN == 1) {
-			CO[0] = 1.  ;
-		}	else if (NN == 2) {
-			CO[0] = 4./3.; CO[1] = -1./12.;
-		} else if (NN == 3) {
-			CO[0] = 1.5    ; CO[1] = -3./20.0; CO[2] = 1./90. ;
-		} else if (NN == 4) {
-			CO[0] = 1.6    ; CO[1] = -0.2    ; CO[2] = 8./315. ; CO[3] = -1./560. ;
-		} else if (NN == 5) {
-			CO[0] = 5./3.  ; CO[1] = -5./21. ; CO[2] = 5./126. ; CO[3] = -5./1008. ; CO[4] = 1./3150. ;
-	 	}
-		_MData_ COV[5];
-		for (size_t nv = 0; nv < NN ; nv++)
-			COV[nv]  = opCode(set1_ps, CO[nv]*ood2);
-
-#if	defined(__AVX512F__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
-
-		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
-		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
-
-		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1};
-
-		const _MInt_  vShRg  = opCode(load_si512, shfRg);
-		const _MInt_  vShLf  = opCode(load_si512, shfLf);
-#elif	defined(__AVX__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
-
-		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zNAux[8]  = { zN, -zN, zN, -zN, zN, -zN, zN, -zN };
-		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
-#else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
-
-		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zNAux[4]  = { zN, -zN, zN, -zN };
-		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
-#endif
-		const _MData_ zQVec  = opCode(load_ps, zQAux);
-		const _MData_ zNVec  = opCode(load_ps, zNAux);
-		const _MData_ zRVec  = opCode(load_ps, zRAux);
-
-		const uint z0 = Vo/(Lx*Lx);
-		const uint zF = Vf/(Lx*Lx);
-		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
-		const uint bY = (YC + bSizeY - 1)/bSizeY;
-
-LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",z0, zF, zM, bY, bSizeZ, bSizeY, NN);LogFlush();
-
-		for (uint zT = 0; zT < zM; zT++)
-		 for (uint yT = 0; yT < bY; yT++)
-		  #pragma omp parallel default(shared)
-		  {
-		    _MData_ tmp, mel, mPx, mPy, mMx, tmp2, lap;
-		    #pragma omp for collapse(3) schedule(static)
-		    for (uint zz = 0; zz < bSizeZ; zz++) {
-		     for (uint yy = 0; yy < bSizeY; yy++) {
-		      for (uint xC = 0; xC < XC; xC += step) {
-			uint zC = zz + bSizeZ*zT + z0;
-			uint yC = yy + bSizeY*yT;
-
-			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
-			size_t idx = zC*(YC*XC) + yC*XC + xC;
-
-			if (idx >= Vf)
-				continue;
-
-			X[0] = xC;
-			X[1] = yC;
-
-			idxP0 =  (idx << 1);
-			idxV0 =  (idx-NSf) << 1;
-			mel = opCode(load_ps, &m[idxP0]);
-			lap = opCode(set1_ps, 0.f);
-
-			for (size_t nv=1; nv < NN+1; nv++)
-			{
-				if (X[0] < nv*step)
-					idxMx = ((idx + XC - nv*step) << 1);
-				else
-					idxMx = ((idx - nv*step) << 1);
-				//x+
-				if (X[0] + nv*step >= XC)
-					idxPx = ((idx - XC + nv*step) << 1);
-				else
-					idxPx = ((idx + nv*step) << 1);
-
-				if (X[1] < nv )
-				{
-					idxMy = ((idx + Sf - nv*XC) << 1);
-					idxPy = ((idx + nv*XC) << 1);
-
-	#if	defined(__AVX512F__)
-					tmp = opCode(add_ps, opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy])), opCode(load_ps, &m[idxPy]));
-	#elif	defined(__AVX2__)
-					tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 6,7,0,1,2,3,4,5)),  opCode(load_ps, &m[idxPy]));
-	#elif	defined(__AVX__)
-					mMx = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b01001110);
-					mPx = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
-					tmp = opCode(add_ps, opCode(blend_ps, mMx, mPx, 0b00110011), opCode(load_ps, &m[idxPy]));
-	#else
-					mMx = opCode(load_ps, &m[idxMy]);
-					tmp = opCode(add_ps, opCode(shuffle_ps, mMx, mMx, 0b01001110), opCode(load_ps, &m[idxPy]));
-	#endif
-				}
-				else
-				{
-					idxMy = ((idx - nv*XC) << 1);
-
-					if (X[1] + nv >= YC)
-					{
-						idxPy = ((idx + nv*XC - Sf) << 1);
-	#if	defined(__AVX512F__)
-						tmp = opCode(add_ps, opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy])), opCode(load_ps, &m[idxMy]));
-	#elif	defined(__AVX2__)	//AVX2
-						tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1)), opCode(load_ps, &m[idxMy]));
-	#elif	defined(__AVX__)	//AVX
-						mMx = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b01001110);
-						mPx = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
-						tmp = opCode(add_ps, opCode(blend_ps, mMx, mPx, 0b11001100), opCode(load_ps, &m[idxMy]));
-	#else
-						mPx = opCode(load_ps, &m[idxPy]);
-						tmp = opCode(add_ps, opCode(shuffle_ps, mPx, mPx, 0b01001110), opCode(load_ps, &m[idxMy]));
-	#endif
-					}
-					else
-					{
-						idxPy = ((idx + nv*XC) << 1);
-						tmp = opCode(add_ps, opCode(load_ps, &m[idxPy]), opCode(load_ps, &m[idxMy]));
-					}
-				} // end Y+Y-
-
-				// add X+ X-
-				tmp = opCode(add_ps,tmp,opCode(add_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx])));
-
-				// add Z+ Z-
-				idxPz = ((idx+nv*Sf) << 1);
-				idxMz = ((idx-nv*Sf) << 1);
-				tmp = opCode(add_ps,tmp,opCode(add_ps,opCode(load_ps, &m[idxMz]),opCode(load_ps, &m[idxPz])));
-
-				tmp = opCode(add_ps,tmp,opCode(mul_ps, mel,opCode(set1_ps, -6.f)));
-				tmp = opCode(mul_ps,tmp, COV[nv-1]);
-				lap = opCode(add_ps,lap,tmp);
-			} //end neightbour loop
-
-
-			mPy = opCode(mul_ps, mel, mel);		// M1^2 M2^2
-
-			// mPx is M1^2+M2^2 M1^2+M2^2
-#if	defined(__AVX__)// || defined(__AVX512F__)
-			mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
-#else
-			mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
-#endif
-
-			switch	(VQcd & VQCD_TYPE) {
-					default:
-					case	VQCD_PQ_ONLY:
-					mMx = opCode(sub_ps, lap,
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, LL)),
-							mel));
-					break;
-
-					case	VQCD_1:
-					mMx = opCode(sub_ps,
-						opCode(add_ps, lap, zQVec),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, LL)),
-							mel));
-					break;
-
-					case	VQCD_1_PQ_2:
-					mMx = opCode(sub_ps,
-						opCode(add_ps, lap, zQVec),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, opCode(mul_ps, mPx, mPx), opCode(set1_ps, z4)),
-								opCode(mul_ps, mPx, opCode(set1_ps, LaLa))),
-							mel));
-					 break;
-
-
-	 				case	VQCD_2:
-	 				mMx = opCode(sub_ps,
-	 					opCode(sub_ps, lap,
-	 						opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
-	 					opCode(mul_ps,
-	 						opCode(mul_ps,
-	 							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-	 							opCode(set1_ps, LL)),
-	 						mel));
-	 				break;
-
-					case	VQCD_0:
-					tmp2 = opCode(div_ps,
-									opCode(vqcd0_ps,mel),
-										opCode(sqrt_ps, opCode(mul_ps, mPx, opCode(mul_ps, mPx, mPx) ) ) ); //
-
-	 				mMx = opCode(sub_ps,
-	 					opCode(add_ps, lap,
-	 						opCode(mul_ps, zNVec, tmp2)), // QCD potential
-	 					opCode(mul_ps,
-	 						opCode(mul_ps,
-	 							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-	 							opCode(set1_ps, LL)),
-	 						mel));
-	 				break;
-
-
-					case	VQCD_1N2:
-					mMx = opCode(sub_ps,
-						opCode(add_ps, lap,
-							// 1N2 part
-							opCode(mul_ps,zNVec,mel)),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, LL)),
-							mel));
-					break;
-			}
-
-
-			mPy = opCode(load_ps, &v[idxV0]);
-
-			switch (VQcd & VQCD_DAMP) {
-
-				default:
-				case	VQCD_NONE:
+		if (UpdateM == true) {
 #if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
+			tm3 = tmp.fma(Simd_x(dzd), mel);
 #else
-			 	tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
+			tm3 = mel + (tmp*Simd_x(dzd));
 #endif
-				break;
-
-				case	VQCD_DAMP_RHO:
-				{
-// NEW implementation
-// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt - 2 |M|^2/t)
-// recall
-// V=mPy     A=mMx    |M|^2=mPx      M=mel
-// vecmv = MV
-					tmp = opCode(mul_ps, mel, mPy);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
-#else
-					auto vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
-#endif
-
-					// vecma = MA
-					// mel = M, mMx = A
-					tmp = opCode(mul_ps, mel, mMx);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
-#else
-					auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
-#endif
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
-tmp = opCode(sub_ps,
-	opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy),
-	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
-#else
-
-tmp = opCode(sub_ps,
-	opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc))),
-	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-		opCode(add_ps,
-			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f)),
-			opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
-#endif
-				}
-				break;
-
-				case	VQCD_DAMP_ALL:
-				// damping all directions implementation
-#if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_ps, mPy, opCode(set1_ps, damp2), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
-#else
-				tmp = opCode(add_ps, opCode(mul_ps, mPy, opCode(set1_ps, damp2)), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
-#endif
-				break;
-			}
-
-			// if only evolution along r is desired project v into rho (m) direction in complex space
-			// we use vecma = m*v_update
-			if (VQcd & VQCD_EVOL_RHO)
-			{
-				auto vecmv = opCode(mul_ps, mel, tmp);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-				auto vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
-#else
-				auto vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
-#endif
-				tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
-			}
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-			mPx = opCode(fmadd_ps, tmp, opCode(set1_ps, dzd), mel);
-#else
-			mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
-#endif
-			opCode(store_ps,  &v[idxV0], tmp);
-			opCode(stream_ps, &m2[idxP0], mPx);	// Avoids cache thrashing
-		      }
-		    }
-		  }
+			tm3.Stream(&m2[idxP0]);
 		}
-#undef	_MData_
-#undef	step
+	      }
+	    }
+	  }
 	}
 }
 
+template<class Simd_x>
+inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d,
+			    const size_t x0, const size_t xF, const size_t y0, const size_t yF, const size_t z0, const size_t zF) {
 
+	Simd_x::sData * __restrict__ m		= (Simd_x::sData * __restrict__) __builtin_assume_aligned (m_, Align);
+	const Simd_x::sData * __restrict__ v	= (const Simd_x::sData * __restrict__) __builtin_assume_aligned (v_, Align);
 
+	const Simd_x dzd(dz*d);
 
-
-inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d, const size_t Vo, const size_t Vf, FieldPrecision precision)
-{
-	if (precision == FIELD_DOUBLE)
+	#pragma omp parallel default(shared)
 	{
-#if	defined(__AVX512F__)
-	#define	_MData_ __m512d
-	#define	step 4
-#elif	defined(__AVX__)
-	#define	_MData_ __m256d
-	#define	step 2
-#else
-	#define	_MData_ __m128d
-	#define	step 1
-#endif
-
-		double * __restrict__ m		= (double * __restrict__) __builtin_assume_aligned (m_, Align);
-		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_, Align);
-
-		const double dzd = dz*d;
+		register Simd_x mIn, vIn, tmp;
+		register size_t idxP0;
 
 		#pragma omp parallel default(shared)
 		{
-			register _MData_ mIn, vIn, tmp;
+			register Simd_x mIn, vIn, tmp;
 			register size_t idxP0;
 
 			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
-			{
+			for (size_t zC = z0; zC < zF; zC ++)
+			  for (size_t yC = y0; yC < yF; yC ++)
+			    for (size_t xC = x0; xC < xF; xC ++)
+			    {
+				idxP0 = (xC + yC*Lx + zC*Lx*Ly) * Simd_x::sWide;
+				vIn.Load(&v[idxP0]);
+				mIn.Load(&m[idxP0]);
 #if	defined(__AVX512F__) || defined(__FMA__)
-				vIn = opCode(load_pd, &v[idxP0]);
-				mIn = opCode(load_pd, &m[idxP0]);
-				tmp = opCode(fmadd_pd, opCode(set1_pd, dzd), vIn, mIn);
-				opCode(store_pd, &m[idxP0], tmp);
+				tmp = dzd.fma(vIn, mIn);
 #else
-				mIn = opCode(load_pd, &m[idxP0]);
-				tmp = opCode(load_pd, &v[idxP0]);
-				vIn = opCode(mul_pd, opCode(set1_pd, dzd), tmp);
-				tmp = opCode(add_pd, mIn, vIn);
-				opCode(store_pd, &m[idxP0], tmp);
+				tmp = mIn + (vIn * dzd);
 #endif
-			}
+				tmp.Save(&m[idxP0]);
+			    }
 		}
-#undef	_MData_
-#undef	step
-	}
-	else if (precision == FIELD_SINGLE)
-	{
-#if	defined(__AVX512F__)
-	#define	_MData_ __m512
-	#define	step 8
-#elif	defined(__AVX__)
-	#define	_MData_ __m256
-	#define	step 4
-#else
-	#define	_MData_ __m128
-	#define	step 2
-#endif
-
-		float * __restrict__ m		= (float * __restrict__) __builtin_assume_aligned (m_, Align);
-		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_, Align);
-
-		const float dzd = dz*d;
-#if	defined(__AVX512F__)
-//		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd  };
-#elif	defined(__AVX__)
-//		const float __attribute__((aligned(Align))) dzdAux[8]  = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
-#else
-//		const float __attribute__((aligned(Align))) dzdAux[4]  = { dzd, dzd, dzd, dzd };
-#endif
-//		const _MData_ dzdVec = opCode(load_ps, dzdAux);
-
-		#pragma omp parallel default(shared)
-		{
-			register _MData_ mIn, vIn, tmp;
-			register size_t idxP0;
-
-			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
-			{
-				idxP0 = idx << 1;
-#if	defined(__AVX512F__) || defined(__FMA__)
-				vIn = opCode(load_ps, &v[idxP0]);
-				mIn = opCode(load_ps, &m[idxP0]);
-				tmp = opCode(fmadd_ps, opCode(set1_ps, dzd), vIn, mIn);
-				opCode(store_ps, &m[idxP0], tmp);
-#else
-				vIn = opCode(load_ps, &v[idxP0]);
-				mIn = opCode(load_ps, &m[idxP0]);
-				tmp = opCode(add_ps, mIn, opCode(mul_ps, opCode(set1_ps, dzd), vIn));
-				opCode(store_ps, &m[idxP0], tmp);
-#endif
-			}
-		}
-#undef	_MData_
-#undef	step
 	}
 }
-
-
-
-
-//FIX ME if kernel works
-//Note that this function can be substituted by kernel with c = 0
-template<const VqcdType VQcd>
-inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, size_t NN, double *R, const double dz, const double c, const double ood2,
-			    const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, const size_t Sf, FieldPrecision precision)
-{
-	if (precision == FIELD_DOUBLE)
-	{
-#if	defined(__AVX512F__)
-	#define	_MData_ __m512d
-	#define	step 4
-#elif	defined(__AVX__)
-	#define	_MData_ __m256d
-	#define	step 2
-#else
-	#define	_MData_ __m128d
-	#define	step 1
-#endif
-
-		const double * __restrict__ m = (const double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v = (double * __restrict__) __builtin_assume_aligned (v_, Align);
-
-		const double zR = *R;
-		const double z2 = zR*zR;
-		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = aMass2*z2*zR;
-		const double zN = aMass2*z2/2;
-		const double dzc = dz*c;
-
-		const double z4 = z2*z2;
-		const double LaLa = LL*2./z4;
-		const double GGGG = gamma/zR;
-//		const double GGiZ = GGGG/zR;
-		const double mola = GGGG*dzc/2.;
-		const double damp1 = 1./(1.+mola);
-		const double damp2 = (1.-mola)*damp1;
-		const double epsi = mola/(1.+mola);
-
-#if	defined(__AVX512F__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
-
-		const double __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[8] = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[8] = { zR, 0., zR, 0., zR, 0., zR, 0. };	// Only real part
-		const int    __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
-		const int    __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
-
-		const _MInt_  vShRg  = opCode(load_si512, shfRg);
-		const _MInt_  vShLf  = opCode(load_si512, shfLf);
-#elif	defined(__AVX__)
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
-
-		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[4] = { zN,-zN, zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[4] = { zR, 0., zR, 0. };	// Only real part
-#else
-		const size_t XC = Lx;
-		const size_t YC = Lx;
-
-		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[2] = { zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[2] = { zR, 0. };	// Only real part
-#endif
-		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ zNVec  = opCode(load_pd, zNAux);
-		const _MData_ zRVec  = opCode(load_pd, zRAux);
-
-		#pragma omp parallel default(shared)
-		{
-			_MData_ tmp, mel, mPx, mPy, mMx;
-
-			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
-			{
-				size_t X[2], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0, idxV0;
-
-				{
-					size_t tmi = idx/XC, tpi;
-
-					tpi = tmi/YC;
-					X[1] = tmi - tpi*YC;
-					X[0] = idx - tmi*XC;
-				}
-
-				if (X[0] == XC-step)
-					idxPx = ((idx - XC + step) << 1);
-				else
-					idxPx = ((idx + step) << 1);
-
-				if (X[0] == 0)
-					idxMx = ((idx + XC - step) << 1);
-				else
-					idxMx = ((idx - step) << 1);
-
-				if (X[1] == 0)
-				{
-					idxMy = ((idx + Sf - XC) << 1);
-					idxPy = ((idx + XC) << 1);
-#if	defined(__AVX512F__)
-					tmp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), opCode(load_pd, &m[idxPy]));
-#elif	defined(__AVX__)
-					mPx = opCode(load_pd, &m[idxMy]);
-					tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxPy]));
-#else
-					tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
-#endif
-				}
-				else
-				{
-					idxMy = ((idx - XC) << 1);
-
-					if (X[1] == YC-1)
-					{
-						idxPy = ((idx - Sf + XC) << 1);
-#if	defined(__AVX512F__)
-						tmp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), opCode(load_pd, &m[idxMy]));
-#elif	defined(__AVX__)
-						mPx = opCode(load_pd, &m[idxPy]);
-						tmp = opCode(add_pd, opCode(permute2f128_pd, mPx, mPx, 0b00000001), opCode(load_pd, &m[idxMy]));
-#else
-						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
-#endif
-					}
-					else
-					{
-						idxPy = ((idx + XC) << 1);
-						tmp = opCode(add_pd, opCode(load_pd, &m[idxMy]), opCode(load_pd, &m[idxPy]));
-					}
-				}
-
-				idxPz = ((idx+Sf) << 1);
-				idxMz = ((idx-Sf) << 1);
-				idxP0 = (idx << 1);
-
-				mel = opCode(load_pd, &m[idxP0]);
-				mPy = opCode(mul_pd, mel, mel);
-
-#if	defined(__AVX512F__)
-				mPx = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mPy), _MM_PERM_BADC)), mPy);
-#elif	defined(__AVX__)
-				mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
-#else
-				mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
-#endif
-				switch	(VQcd & VQCD_TYPE) {
-
-					default:
-					case	VQCD_1:
-						mMx = opCode(sub_pd,
-							opCode(add_pd,
-								opCode(mul_pd,
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(load_pd, &m[idxMz]),
-											opCode(add_pd,
-												opCode(add_pd,
-													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-													opCode(load_pd, &m[idxMx])),
-												opCode(load_pd, &m[idxPz]))),
-										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-									opCode(set1_pd, ood2)),
-								zQVec),
-							opCode(mul_pd,
-								opCode(mul_pd,
-									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-									opCode(set1_pd, LL)),
-								mel));
-						break;
-
-					case	VQCD_1_PQ_2:
-						mMx = opCode(sub_pd,
-							opCode(add_pd,
-								opCode(mul_pd,
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(load_pd, &m[idxMz]),
-											opCode(add_pd,
-												opCode(add_pd,
-													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-													opCode(load_pd, &m[idxMx])),
-												opCode(load_pd, &m[idxPz]))),
-										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-									opCode(set1_pd, ood2)),
-								zQVec),
-							opCode(mul_pd,
-								opCode(mul_pd,
-									opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, z4)),
-									opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-								mel));
-						 break;
-
-					case	VQCD_2:
-						mMx = opCode(sub_pd,
-							opCode(sub_pd,
-								opCode(mul_pd,
-									opCode(add_pd,
-										opCode(add_pd,
-											opCode(load_pd, &m[idxMz]),
-											opCode(add_pd,
-												opCode(add_pd,
-													opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-													opCode(load_pd, &m[idxMx])),
-												opCode(load_pd, &m[idxPz]))),
-										opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-									opCode(set1_pd, (float) ood2)),
-								opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, mel, zRVec))),
-							opCode(mul_pd,
-								opCode(mul_pd,
-									opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-									opCode(set1_pd, LL)),
-								mel));
-						break;
-
-					case	VQCD_1N2:
-					mMx = opCode(sub_pd,
-						opCode(add_pd,
-							opCode(mul_pd,
-								opCode(add_pd,
-									opCode(add_pd,
-										opCode(load_pd, &m[idxMz]),
-										opCode(add_pd,
-											opCode(add_pd,
-												opCode(add_pd, tmp, opCode(load_pd, &m[idxPx])),
-												opCode(load_pd, &m[idxMx])),
-											opCode(load_pd, &m[idxPz]))),
-									opCode(mul_pd, mel, opCode(set1_pd, -6.0))),
-								opCode(set1_pd, ood2)),
-								// 1N2 part
-							opCode(mul_pd,zNVec,mel)),
-						opCode(mul_pd,
-							opCode(mul_pd,
-								opCode(sub_pd, mPx, opCode(set1_pd, z2)),
-								opCode(set1_pd, LL)),
-							mel));
-					break;
-
-				}
-
-				mPy = opCode(load_pd, &v[idxV0]);
-
-				switch	(VQcd & VQCD_DAMP) {
-
-					default:
-					case	VQCD_NONE:
-#if	defined(__AVX512F__) || defined(__FMA__)
-						tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
-#else
-						tmp = opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc)));
-#endif
-						break;
-
-					case	VQCD_DAMP_RHO:
-					{
-						//New implementation
-						tmp = opCode(mul_pd, mel, mPy);
-	#if	defined(__AVX__)// || defined(__AVX512F__)
-						auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
-	#else
-						auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
-	#endif
-
-						// vecma = MA
-						// mel = M, mMx = A
-						tmp = opCode(mul_pd, mel, mMx);
-	#if	defined(__AVX__)// || defined(__AVX512F__)
-						auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000001), tmp);
-	#else
-						auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
-	#endif
-
-	#if	defined(__AVX512F__) || defined(__FMA__)
-	// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
-	tmp = opCode(sub_pd,
-		opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
-		opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-			opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
-	#else
-	tmp = opCode(sub_pd,
-		opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
-		opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-			opCode(add_pd,
-				opCode(mul_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, zR))), opCode(set1_pd, 2.0)),
-				opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
-	#endif
-					}
-					break;
-
-					case	VQCD_DAMP_ALL:
-#if	defined(__AVX512F__) || defined(__FMA__)
-						tmp = opCode(fmadd_pd, mPy, opCode(set1_pd, damp2), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
-#else
-						tmp = opCode(add_pd, opCode(mul_pd, mPy, opCode(set1_pd,damp2)), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
-#endif
-						break;
-				}
-
-				if (VQcd & VQCD_EVOL_RHO)
-				{
-					auto vecmv = opCode(mul_pd, mel, tmp);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b00000101), vecmv);
-#else
-					auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
-#endif
-					tmp   = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
-				}
-
-				opCode(store_pd,  &v[idxMz], tmp);
-			}
-		}
-#undef	_MData_
-#undef	step
-	}
-	else if (precision == FIELD_SINGLE)
-	{
-#if	defined(__AVX512F__)
-	#define	_MData_ __m512
-	#define	step 8
-#elif	defined(__AVX__)
-	#define	_MData_ __m256
-	#define	step 4
-#else
-	#define	_MData_ __m128
-	#define	step 2
-#endif
-
-		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
-		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
-
-		const float zR = *R;
-		const float z2 = zR*zR;
-		//const float zQ = 9.*powf(zR, nQcd+3.);
-		const float zQ = (float) (aMass2*z2*zR);
-		float gasa;
-		switch	(VQcd & VQCD_TYPE) {
-				case	VQCD_1N2:
-				gasa = (float) (aMass2*z2)/2;
-				break;
-
-				default:
-				case	VQCD_0:
-				gasa = (float) (aMass2*z2*z2);
-				break;
-		}
-		//For VQCD_1N2 & VQCD0
-		const float zN = gasa;
-		//For VQCD_1N2
-		// const float zN = (float) (aMass2*z2)/2;
-		const float dzc = dz*c;
-
-		const float z4 = z2*z2;
-		const float LaLa = LL*2./z4;
-		const float GGGG = gamma/zR;
-//		const float GGiZ = GGGG;
-		const float mola = GGGG*dzc/2.;
-		const float damp1 = 1.f/(1.f+mola);
-		const float damp2 = (1.f-mola)*damp1;
-		const float epsi = mola/(1.f+mola);
-
-#if	defined(__AVX512F__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
-
-		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
-		const float __attribute__((aligned(Align))) zRAux[16] = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
-		const int   __attribute__((aligned(Align))) shfRg[16] = {14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };
-		const int   __attribute__((aligned(Align))) shfLf[16] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1 };
-
-		const _MInt_  vShRg  = opCode(load_si512, shfRg);
-		const _MInt_  vShLf  = opCode(load_si512, shfLf);
-#elif	defined(__AVX__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
-
-		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zNAux[8]  = { zN, -zN, zN, -zN, zN, -zN, zN, -zN };
-		const float __attribute__((aligned(Align))) zRAux[8]  = { zR, 0.f, zR, 0.f, zR, 0.f, zR, 0.f };
-#else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
-
-		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
-		const float __attribute__((aligned(Align))) zNAux[4]  = { zN, -zN, zN, -zN };
-		const float __attribute__((aligned(Align))) zRAux[4]  = { zR, 0.f, zR, 0.f };
-#endif
-		const _MData_ zQVec  = opCode(load_ps, zQAux);
-		const _MData_ zNVec  = opCode(load_ps, zNAux);
-		const _MData_ zRVec  = opCode(load_ps, zRAux);
-
-		#pragma omp parallel default(shared)
-		{
-			_MData_ tmp, mel, mPx, mPy, mMx, tmp2;
-
-			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
-			{
-				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz, idxP0, idxV0;
-
-				{
-					size_t tmi = idx/XC, itp;
-
-					itp = tmi/YC;
-					X[1] = tmi - itp*YC;
-					X[0] = idx - tmi*XC;
-				}
-
-				if (X[0] == XC-step)
-					idxPx = ((idx - XC + step) << 1);
-				else
-					idxPx = ((idx + step) << 1);
-
-				if (X[0] == 0)
-					idxMx = ((idx + XC - step) << 1);
-				else
-					idxMx = ((idx - step) << 1);
-
-				if (X[1] == 0)
-				{
-					idxMy = ((idx + Sf - XC) << 1);
-					idxPy = ((idx + XC) << 1);
-
-#if	defined(__AVX512F__)
-					tmp = opCode(add_ps, opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy])), opCode(load_ps, &m[idxPy]));
-#elif	defined(__AVX2__)	//AVX2
-					tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 6,7,0,1,2,3,4,5)),  opCode(load_ps, &m[idxPy]));
-#elif	defined(__AVX__)	//AVX
-					mMx = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b01001110);
-					mPx = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
-					tmp = opCode(add_ps, opCode(blend_ps, mMx, mPx, 0b00110011), opCode(load_ps, &m[idxPy]));
-#else
-					mMx = opCode(load_ps, &m[idxMy]);
-					tmp = opCode(add_ps, opCode(shuffle_ps, mMx, mMx, 0b01001110), opCode(load_ps, &m[idxPy]));
-#endif
-				}
-				else
-				{
-					idxMy = ((idx - XC) << 1);
-
-					if (X[1] == YC-1)
-					{
-						idxPy = ((idx - Sf + XC) << 1);
-#if	defined(__AVX512F__)
-						tmp = opCode(add_ps, opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy])), opCode(load_ps, &m[idxMy]));
-#elif	defined(__AVX2__)	//AVX2
-						tmp = opCode(add_ps, opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 2,3,4,5,6,7,0,1)), opCode(load_ps, &m[idxMy]));
-#elif	defined(__AVX__)	//AVX
-						mMx = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b01001110);
-						mPx = opCode(permute2f128_ps, mMx, mMx, 0b00000001);
-						tmp = opCode(add_ps, opCode(blend_ps, mMx, mPx, 0b11001100), opCode(load_ps, &m[idxMy]));
-#else
-						mMx = opCode(load_ps, &m[idxPy]);
-						tmp = opCode(add_ps, opCode(shuffle_ps, mMx, mMx, 0b01001110), opCode(load_ps, &m[idxMy]));
-#endif
-					}
-					else
-					{
-						idxPy = ((idx + XC) << 1);
-						tmp = opCode(add_ps, opCode(load_ps, &m[idxPy]), opCode(load_ps, &m[idxMy]));
-					}
-				}
-
-				idxPz = ((idx+Sf) << 1);
-				idxMz = ((idx-Sf) << 1);
-				idxP0 = (idx << 1);
-
-				mel = opCode(load_ps, &m[idxP0]);
-				mPy = opCode(mul_ps, mel, mel);
-
-#if	defined(__AVX__) || defined(__AVX512F__)
-				mPx = opCode(add_ps, opCode(permute_ps, mPy, 0b10110001), mPy);
-#else
-				mPx = opCode(add_ps, opCode(shuffle_ps, mPy, mPy, 0b10110001), mPy);
-#endif
-				switch	(VQcd & VQCD_TYPE) {
-					default:
-					case	VQCD_1:
-					mMx = opCode(sub_ps,
-						opCode(add_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-										opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, ood2)),
-							zQVec),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, (float) LL)),
-							mel));
-					break;
-
-					case	VQCD_1_PQ_2:
-					mMx = opCode(sub_ps,
-						opCode(add_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-									 	opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, ood2)),
-							zQVec),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, opCode(mul_ps, mPx, mPx), opCode(set1_ps, z4)),
-								opCode(mul_ps, mPx, opCode(set1_ps, LaLa))),
-							mel));
-					break;
-
-					case	VQCD_2:
-					mMx = opCode(sub_ps,
-						opCode(sub_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-										opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, (float) ood2)),
-							opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, mel, zRVec))),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, (float) LL)),
-							mel));
-					break;
-
-					case	VQCD_0:
-					tmp2 = opCode(div_ps,
-									opCode(vqcd0_ps,mel),
-										opCode(sqrt_ps, opCode(mul_ps, mPx, opCode(mul_ps, mPx, mPx) ) ) ); //
-
-	 				mMx = opCode(sub_ps,
-	 					opCode(add_ps,
-	 						opCode(mul_ps,
-	 							opCode(add_ps,
-	 								opCode(add_ps,
-	 									opCode(load_ps, &m[idxMz]),
-	 									opCode(add_ps,
-	 										opCode(add_ps,
-	 											opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-	 											opCode(load_ps, &m[idxMx])),
-	 										opCode(load_ps, &m[idxPz]))),
-	 								opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-	 							opCode(set1_ps, ood2)),
-	 						opCode(mul_ps, zNVec, tmp2)), // QCD potential
-	 					opCode(mul_ps,
-	 						opCode(mul_ps,
-	 							opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-	 							opCode(set1_ps, LL)),
-	 						mel));
-	 				break;
-
-					case	VQCD_1N2:
-					mMx = opCode(sub_ps,
-						opCode(add_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-										opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, ood2)),
-								// 1N2 part
-							opCode(mul_ps,zNVec,mel)),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, LL)),
-							mel));
-					break;
-
-					case	VQCD_QUAD:
-					mMx = opCode(sub_ps,
-						opCode(add_ps,
-							opCode(mul_ps,
-								opCode(add_ps,
-									opCode(add_ps,
-										opCode(load_ps, &m[idxMz]),
-										opCode(add_ps,
-											opCode(add_ps,
-												opCode(add_ps, tmp, opCode(load_ps, &m[idxPx])),
-												opCode(load_ps, &m[idxMx])),
-											opCode(load_ps, &m[idxPz]))),
-									opCode(mul_ps, mel, opCode(set1_ps, -6.f))),
-								opCode(set1_ps, ood2)),
-								// 1N2 part
-							opCode(mul_ps,zNVec,mel)),
-						opCode(mul_ps,
-							opCode(mul_ps,
-								opCode(sub_ps, mPx, opCode(set1_ps, z2)),
-								opCode(set1_ps, LL)),
-							mel));
-					break;
-
-
-				}
-
-				mPy = opCode(load_ps, &v[idxMz]);
-
-				switch (VQcd & VQCD_DAMP) {
-
-					default:
-					case	VQCD_NONE:
-#if	defined(__AVX512F__) || defined(__FMA__)
-					tmp = opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy);
-#else
-			 		tmp = opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc)));
-#endif
-					break;
-
-					case	VQCD_DAMP_RHO:
-					{
-// NEW implementation
-// V = (V+Adt) - (epsi M/|M|^2)(2 MV+ MA*dt - 2 |M|^2/t)
-// recall
-// V=mPy     A=mMx    |M|^2=mPx      M=mel
-// vecmv = MV
-					tmp = opCode(mul_ps, mel, mPy);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecmv = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
-#else
-					auto vecmv = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
-#endif
-
-					// vecma = MA
-					// mel = M, mMx = A
-					tmp = opCode(mul_ps, mel, mMx);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_ps, opCode(permute_ps, tmp, 0b10110001), tmp);
-#else
-					auto vecma = opCode(add_ps, opCode(shuffle_ps, tmp, tmp, 0b10110001), tmp);
-#endif
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
-tmp = opCode(sub_ps,
-	opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy),
-	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
-#else
-
-tmp = opCode(sub_ps,
-	opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc))),
-	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-		opCode(add_ps,
-			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, zR))), opCode(set1_ps, 2.f)),
-			opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
-#endif
-					}
-					break;
-
-					case	VQCD_DAMP_ALL:
-					tmp = opCode(add_ps, opCode(mul_ps, mPy, opCode(set1_ps, damp2)), opCode(mul_ps, mMx, opCode(set1_ps, damp1*dzc)));
-					break;
-				}
-
-				if (VQcd & VQCD_EVOL_RHO)
-				{
-					auto vecmv = opCode(mul_ps, mel, tmp);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_ps, opCode(permute_ps, vecmv, 0b10110001), vecmv);
-#else
-					auto vecma = opCode(add_ps, opCode(shuffle_ps, vecmv, vecmv, 0b10110001), vecmv);
-#endif
-					tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
-				}
-				opCode(store_ps,  &v[idxMz], tmp);
-			}
-		}
-#undef	_MData_
-#undef	step
-	}
-}
-
-#undef	opCode
-#undef	opCode_N
-#undef	opCode_P
-#undef	Align
-#undef	_PREFIX_
