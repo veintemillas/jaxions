@@ -626,8 +626,6 @@ void	SpecBin::nRun	(nRunType nrt) {
 	field->sendGhosts(FIELD_M,COMM_SDRV);
 	field->sendGhosts(FIELD_M, COMM_WAIT);
 
-
-
 	switch (fType) {
 		case	FIELD_SAXION:
 		{
@@ -670,7 +668,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 								case SPMASK_GAUS:
 								case SPMASK_DIFF:
 										/* keep the mask in mhalf so only one load is possible
-										m2sax[idx] contains the mask */
+										m2sax[idx] contains the mask unpadded*/
 											m2sa[odx] = m2sax[idx]*Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
 										break;
 								case SPMASK_VIL:
@@ -1150,7 +1148,7 @@ void	SpecBin::avekRun	() {
 
 template<typename Float>
 void	SpecBin::filterFFT	(double neigh) {
-	LogMsg (VERB_NORMAL, "[Filter] Called filterFFT with M2 status %d", field->m2Status());
+	LogMsg (VERB_NORMAL, "[FilterFFT] Called filterFFT with M2 status %d", field->m2Status());
 
 	using cFloat = std::complex<Float>;
 
@@ -1162,7 +1160,7 @@ void	SpecBin::filterFFT	(double neigh) {
 	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;
 	double prefac = 0.5*M_PI*M_PI*neigh*neigh/field->Surf() ;
 
-	LogMsg (VERB_NORMAL, "filterBins with %.3f neighbours, prefa = %f", neigh, prefac);
+	LogMsg (VERB_NORMAL, "[FilterFFT] filterBins with %.3f neighbours, prefa = %f", neigh, prefac);
 
 	//complex<Float> * m2ft = static_cast<complex<Float>*>(axion->m2Cpu());
 
@@ -1419,7 +1417,6 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 template<typename Float, SpectrumMaskType mask>
 void	SpecBin::masker	(double radius_mask) {
 
-
 	if (field->LowMem()){
 			LogMsg(VERB_NORMAL,"[masker] masker called in lowmem! exit!\n");
 			return;
@@ -1511,8 +1508,7 @@ void	SpecBin::masker	(double radius_mask) {
 			//Bare size
 			size_t dataBareSize = (Ly)*Ly*Lz*field->Precision();
 
-			memset (m2hC, 0, surfi*field->Precision());
-
+			memset (m2C, 0, field->eSize()*field->DataSize());
 
 			{
 
@@ -1571,7 +1567,7 @@ void	SpecBin::masker	(double radius_mask) {
 							case SPMASK_GAUS:
 							case SPMASK_DIFF:
 							/* removes the mask if present */
-							strdaa[idx] &= STRING_DEFECT;
+							strdaa[idx] = strdaa[idx] & STRING_DEFECT;
 									if ( (strdaa[idx] & STRING_ONLY) != 0)
 									{
 										m2F[odx] = 1;
@@ -1593,7 +1589,8 @@ void	SpecBin::masker	(double radius_mask) {
 											m2F[((ix + 1) % Ly) + yo + zo] = 1;
 											m2F[((ix + 1) % Ly) + yo + zoM] = 1;
 										}
-									}
+									} else
+										m2F[odx] = 0;
 							break;
 						}  //end mask
 					}    // end loop x
@@ -1626,7 +1623,7 @@ void	SpecBin::masker	(double radius_mask) {
 				LogMsg(VERB_DEBUG,"[sp] Fusing ghosts between ranks");
 				#pragma omp parallel for schedule(static)
 				for (size_t odx=0; odx < surfi; odx++) {
-					if (m2hF[odx] > 0) //FIX ME
+					if (m2hF[odx] > 0.5) //FIX ME
 						m2F[odx] = 1 ; // if m2hF[odx] it was 1 still 1, otherwise 1
 				}
 			}
@@ -1654,10 +1651,9 @@ void	SpecBin::masker	(double radius_mask) {
 							memmove	(m2C+oOff, m2C+fOff, dl);
 						}
 
-						/* produce a first mask */
+						/* produce a first mask*/
 						size_t V = field->Size();
 						size_t S = field->Surf();
-
 
 						#pragma omp parallel for schedule(static)
 						for (size_t idx=0; idx < V; idx++) {
@@ -1665,6 +1661,7 @@ void	SpecBin::masker	(double radius_mask) {
 								strdaa[idx] |= STRING_MASK ; // mask stored M=1-W
 								}
 						}
+
 
 						/* shift away from ghost zone*/
 						memmove	(m2sC, m2C, dataBareSize);
@@ -1674,6 +1671,7 @@ void	SpecBin::masker	(double radius_mask) {
 
 						/* how many iterations? FIX ME*/
 						size_t iter = radius_mask*radius_mask;
+						size_t radius_mask_size_t = (size_t) radius_mask;
 
 						/* Size of the ghost region in Float (assume this funciton is called in Saxion mode)*/
 						size_t GR = field->getNg()*S*2;
@@ -1688,7 +1686,7 @@ void	SpecBin::masker	(double radius_mask) {
 						size_t SurfTotalSize = Ly*Ly*field->Precision();
 
 						/* Smoothing iteration loop */
-						for (size_t it=0; it<iter; it++)
+						for (size_t it=0; it<iter+1; it++)
 						{
 							/* exchange ghosts Float using the Complex-based function */
 									// copy last slice into the last complex slice (will be sent)
@@ -1711,16 +1709,28 @@ void	SpecBin::masker	(double radius_mask) {
 								if( strdaa[idxu] & STRING_MASK )
 								{
 									// LogOut("X %d Y%d Z %d SD %d m2 %f %f\n",X[0],X[1],X[2], (uint8_t) strdaa[idxu],m2F[idx],m2hF[idxu]);
-									m2aF[idxu] = 1; //m2F[idx]
+									m2aF[idxu] = 1;
 								}
 								else {
-									size_t iPz, iMz, X[3], O[4];
+									size_t X[3], O[4];
 									indexXeon::idx2VecNeigh (idx, X, O, Ly);
-									iMz = idx - S;
-									iPz = idx + S;
-									//copies the smoothed configuration into the auxiliary volume
-									m2aF[idxu]   = OneSixth*(m2F[O[0]] + m2F[O[1]] + m2F[O[2]] + m2F[O[3]] + m2F[iPz] + m2F[iMz]);
-								}
+									if (it < radius_mask_size_t)
+									{ /* First round mask propagates the mask at 1 point per iteration*/
+										if ((m2F[idx+S] > 0) | (m2F[idx-S] > 0) | (m2F[O[0]] > 0) | (m2F[O[1]] > 0) | (m2F[O[2]] > 0) | (m2F[O[3]] > 0))
+										{
+											/* we can test removing this */
+											strdaa[idxu] |= STRING_MASK ;
+											m2aF[idxu] = 1;
+										} else {
+											m2aF[idxu] = 0;
+										}
+									}
+									else
+									{ /* Next iterations smooth the mask */
+										//copies the smoothed configuration into the auxiliary volume
+										m2aF[idxu]   = OneSixth*(m2F[O[0]] + m2F[O[1]] + m2F[O[2]] + m2F[O[3]] + m2F[idx+S] + m2F[idx-S]);
+									}
+								} // end if not mask
 
 							}
 							LogMsg(VERB_DEBUG,"[masker] smoothing end iteration %d",it);
@@ -1765,7 +1775,7 @@ void	SpecBin::masker	(double radius_mask) {
 						/* iFFT gives desired antimask (unnormalised) */
 						myPlan.run(FFT_BCK);
 
-							/* save an unpadded copy in m2h */
+							/* save a padded copy in m2h */
 						memcpy	(m2hC, m2C, dataTotalSize);
 
 					} // end internal CASE REDO and GAUS case switch
@@ -1780,7 +1790,7 @@ void	SpecBin::masker	(double radius_mask) {
 			/* Constants for mask_REDO, DIFF */
 			Float maskcut = 0.5;
 
-			if (mask == SPMASK_REDO)
+			if (mask & (SPMASK_REDO | SPMASK_GAUS))
 			{
 				 maskcut = (Float) std::abs(radius_mask);
 				if (radius_mask < 4)
@@ -1791,7 +1801,9 @@ void	SpecBin::masker	(double radius_mask) {
 					maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
 			}
 			/* Constant for mask_GAUS */
-			Float cc = 2.*M_PI/4. ; // Uncalibrated
+			Float cc = 2.*M_PI*radius_mask*radius_mask ; // Uncalibrated
+
+			LogMsg(VERB_HIGH,"maskcut %f",maskcut);
 
 			size_t V = field->Size() ;
 
@@ -1807,13 +1819,6 @@ void	SpecBin::masker	(double radius_mask) {
 							/* Here only unpad to m2h*/
 							m2hF[idx] = m2F[oidx];
 							break;
-					case SPMASK_DIFF:
-							/* Diffused mask */
-							if ( m2hF[idx] > maskcut )  //0.5 // remember m2hF is already padded
-								strdaa[idx] |= STRING_MASK ; // Note that we store a CORE string mask here defined by the 0.5
-							m2F[oidx] = 1 - m2hF[idx]; // Axion mask padded
-							m2hF[idx] = 1 - m2hF[idx]; // Axion mask unpadded
-							break;
 					case SPMASK_REDO:
 							/* Top hat mask */
 							if ( m2F[oidx] > maskcut ) {
@@ -1826,12 +1831,27 @@ void	SpecBin::masker	(double radius_mask) {
 								m2hF[idx] = 1;
 							}
 							break;
+						case SPMASK_DIFF:
+								/* Diffused mask */
+								if ( m2hF[idx] > maskcut )  //0.5 // remember m2hF is already unpadded->needs idx
+									strdaa[idx] |= STRING_MASK ; // Note that we store a CORE string mask here defined by the 0.5
+								m2F[oidx] = 1 - m2hF[idx]; // Axion mask padded
+								m2hF[idx] = 1 - m2hF[idx]; // Axion mask unpadded
+								break;
 					case SPMASK_GAUS:
 							/* Exponentially suppressed mask */
-							if ( m2F[oidx] > maskcut )
+							if ( m2F[oidx] > maskcut ){
 								strdaa[idx] |= STRING_MASK ;
-							m2F[oidx] = exp(-cc*m2F[oidx]);
-							m2hF[idx] = m2F[oidx];
+								// Linear version
+								m2F[oidx] = 0;
+								m2hF[idx] = 0;
+							} else {
+								m2F[oidx] = 1-m2F[oidx]/maskcut;
+								m2hF[idx] = m2F[oidx];
+							}
+							// exponential version
+							// m2F[oidx] = exp(-cc*m2F[oidx]);
+							// m2hF[idx] = m2F[oidx];
 							break;
 					default:
 					LogError("[sp] Unknown mask!");
@@ -1845,6 +1865,7 @@ void	SpecBin::masker	(double radius_mask) {
 			/* Calculate the FFT of the mask */
 			myPlan.run(FFT_FWD);
 
+			binP.assign(powMax, 0.);
 			switch (fPrec) {
 				case	FIELD_SINGLE:
 					if (spec)
@@ -1871,8 +1892,9 @@ void	SpecBin::masker	(double radius_mask) {
 
 		/* To print maps from m2*/
 		memcpy	(m2C, m2hC , dataBareSize);
-		field->setM2(M2_MASK); // M2_MASK_FT
-		if (mask == SPMASK_DIFF | SPMASK_GAUS | SPMASK_REDO){
+		field->setM2(M2_MASK);
+
+		if (mask & (SPMASK_DIFF | SPMASK_GAUS | SPMASK_REDO)){
 			field->setSD(SD_MAPMASK);
 		}
 
