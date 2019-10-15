@@ -235,6 +235,7 @@ def gm(address,something='summary',printerror=False):
     f = h5py.File(address, 'r')
 
     #prelim checks
+    # usage:
     if (something[:2] == 'at'):
         esp = something[2:]
         gro = esp[:esp.rfind('/')]
@@ -364,6 +365,15 @@ def gm(address,something='summary',printerror=False):
             mmm = ''
             maska =''
 
+        if 'avrho' in something:
+            return f['energy'+mmm].attrs['Saxion vev']
+
+        if 'avrhoM' in something:
+            return f['energy'+mmm].attrs['Saxion vev nMask']
+
+        if 'nmp' in something:
+            return f['energy'+mmm].attrs['Number of masked points']
+
         if 'A' in something:
             field = 'Axion'
             ll -= 1
@@ -435,12 +445,6 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'avrho'):
         return f['energy'].attrs['Saxion vev']
-
-    if (something == 'avrhoM'):
-        return f['energy'].attrs['Saxion vev nMask']
-
-    if (something == 'nmp'):
-        return f['energy'].attrs['Number of masked points']
 
     # strings
     st_check = ('string' in f)
