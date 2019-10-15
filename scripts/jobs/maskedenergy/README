@@ -1,0 +1,7 @@
+
+This script creates a simulation that outputs masked energies with both:
+
+-Kenichi's function
+-Alex' vectorised function and shows
+
+and shows how to compare them.
