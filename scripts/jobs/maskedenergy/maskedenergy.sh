@@ -5,11 +5,11 @@ GRID=" --size $N --depth $DEPTH --zgrid $RANKS"
 LOW=" --lowmem"  ; PREC=" --prec single" ; DEVI=" --device cpu"
 PROP=" --prop  rkn4"   ;   SPEC=" --spec"
 STEP=20000   ;   WDZ=1.0   ;   SST0=10
-SIMU=" $PREC $DEVI $PROP --steps $STEP --wDz $WDZ --sst0 $SST0"
+SIMU=" $PREC $DEVI $PROP --steps $STEP --wDz $WDZ --sst0 $SST0 --lapla 3 "
 #%%%%%%%%%%%%%%%%%%%%%%%%# physical parameters %
 QCD=4.0   ;   MSA=1.00   ;   L=6.0    ;   ZEN=4.0   ;   WKB=20.0
 #XTR=" --gam .1 --dwgam 0.1 --ind3 0.0 --notheta --wkb $WKB --notheta --wkb $WKB --llcf 20000 "
-XTR="  "
+XTR=" --ind3 0.0 --notheta  "
 PHYS="--qcd $QCD --msa $MSA --lsize $L  --zf $ZEN $XTR"
 #%%%%%%%%%%%%%%%%%%%%%%%%# initial conditions %
 #PCO=2.0  ;
@@ -23,7 +23,7 @@ DUMP=3
 WTIM=1.0
 MEAS=$(echo 32+256+65536 | bc )
 #OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 2 --rmask 4.0 --redmp 256 --p2Dmap --nologmpi --wTime $WTIM  "
-OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 8 --rmask 3.0 --strmeas 4 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
+OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 8 --rmask file --strmeas 4 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
 echo "vaxion3d   $PHYS"
 echo "         " $GRID
 echo "         " $SIMU
