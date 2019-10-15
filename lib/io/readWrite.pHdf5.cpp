@@ -533,6 +533,22 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_LOLA:
+			sprintf(icStr, "Lola");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_COLE:
+			sprintf(icStr, "Cole");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			/* FIX ME read all attributes from Icdata from myCosmos
+			for instance kCrit is ic.kcr, etc. */
+			// writeAttribute(icGrp_id, &kCrit, "Correlation length",   H5T_NATIVE_DOUBLE);
+			break;
 
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
@@ -968,6 +984,14 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "VilGor")) {
 			cType = CONF_VILGOR;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Lola")) {
+			cType = CONF_LOLA;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Cole")) {
+			cType = CONF_COLE;
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "Tkachev")) {
@@ -1414,6 +1438,21 @@ void	createMeas (Scalar *axion, int index)
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
+
+		case	CONF_LOLA:
+			sprintf(icStr, "Lola");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_COLE:
+			sprintf(icStr, "Cole");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
 
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
