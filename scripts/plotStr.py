@@ -13,6 +13,7 @@ import pyqtgraph.opengl as gl
 pString = np.array([255, 0, 0])	# Red for strings+
 nString = np.array([0, 255, 0])	# Green for strings-
 cWalls  = np.array([0, 0, 255])	# Blue for walls
+cMask   = np.array([255, 255, 255])	# White for Mask
 
 def	makeColor():
 	colTable = []
@@ -28,6 +29,9 @@ def	makeColor():
 
 		if ((color & 63) == 0) and (color & 64):
 			col = col + cWalls
+
+		if (color & 128):
+			col = cMask
 
 		colTable.append(col)
 
@@ -57,7 +61,7 @@ class	Plot3D():
 			if "/string/data" in fileHdf5:
 				usableFiles.append(myFile)
 		print('from ', usableFiles[0], ' to ', usableFiles[-1])
-		
+
 		self.allData = []
 
 		self.step  = 1
@@ -110,12 +114,17 @@ class	Plot3D():
 					exit()
 
 				if "/string/data" in fileHdf5:
-					if noWalls == False:
-						strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
-						print(meas + ' + walls')
+					if mask == False:
+						if noWalls == False:
+							strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
+							print(meas + ' + walls')
+						else:
+							strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 63)
+							print(meas + ' nowalls')
 					else:
-						strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 63)
-						print(meas + ' nowalls')
+						strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 128)
+						print(meas + ' + MASK')
+
 					z, y, x = strData.nonzero()
 
 					pos = np.array([z,y,x]).transpose()
@@ -217,10 +226,15 @@ class	Plot3D():
 if	__name__ == '__main__':
 
 	noWalls = False
+	mask = False
 
 	for arg in sys.argv[1:]:
 		if arg == "noWalls":
 			noWalls = True
+
+	for arg in sys.argv[1:]:
+		if arg == "mask":
+			mask = True
 
 	p = Plot3D()
 	p.start()

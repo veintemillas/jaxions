@@ -1216,6 +1216,18 @@ class readstr:
 #     rmask = '%.2f' -> label from rmasktable (default 2.00)
 #     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
 
+def nspcore(mfile, nm, spmasklabel='Red_2.00'):
+    s0 = pa.gm(mfile,'nsp'+spmasklabel)
+    #    print('Attempted to read nsp%s'%(spmasklabel))
+    try :
+        m = pa.gm(mfile,'mspM_'+spmasklabel[2:])
+        pasa = m.shape == (len(s0),len(s0))
+    except:
+        return s0
+
+    s1 = (pa.gm(mfile,'L')**3)*np.dot(inv(m),s0/nm)
+    return s1
+
 def nspcor(mfile, nm, spmask='Red', rmask='2.00'):
     if spmask == 'nomask':
         return pa.gm(mfile,'nspK')

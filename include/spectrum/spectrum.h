@@ -116,7 +116,7 @@
 		template<typename cFloat>
 		void	filterFFT	(double neigh);
 
-		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT);
+		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT, nRunType nrt = NRUN_KGV);
 		void	nSRun		();
 		void	pRun		();
 		void	nmodRun		();
@@ -124,7 +124,7 @@
 		void  wRun(SpectrumMaskType mask);
 
 		template<typename Float, SpectrumMaskType mask>
-		void	nRun		();
+		void	nRun		(nRunType nrt);
 
 		template<typename Float, SpectrumMaskType mask>
 		void	wRun		();

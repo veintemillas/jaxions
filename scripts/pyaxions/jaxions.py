@@ -840,13 +840,22 @@ def gm(address,something='summary',printerror=False):
     if (something == 'msp?') :
         return msp_check
 
+    if (something == 'msp_info'):
+        return [a for a in f['mSpectrum']]
+
     if (something[0:3] == 'msp') and not msp_check :
         if printerror :
             print('[gm] Warning: No mSpec in file!!! ')
         return ;
 
-    if (something == 'msp_info'):
-        return [a for a in f['mSpectrum']]
+    if ftype == 'Saxion':
+        if (something[:3] == 'msp') and ('mSpectrum/'+something[3:] in f):
+            kmax = gm(address,'kmax')
+            arra = np.array(f['mSpectrum/'+something[3:]+'/data/']) ;
+            if len(arra) == kmax :
+                return arra
+            elif len(arra) == kmax*kmax:
+                return np.reshape(arra,(kmax,kmax)) ;
 
     if (something == 'mspW0') and  msp_check and ('mSpectrum/W0' in f) :
         return np.array(f['mSpectrum/W0/data/']) ;

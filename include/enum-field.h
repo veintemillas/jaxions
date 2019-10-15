@@ -73,6 +73,7 @@
 			STRING_ZX          = 36,
 			STRING_ONLY        = 63, //9+18+36
 			STRING_WALL	       = 64,
+			STRING_DEFECT      = 127,
 			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
 		}	StringType;
 
@@ -422,10 +423,22 @@
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
 			SPMASK_REDO	= 8,
-			SPMASK_SAXI	= 16,
-			SPMASK_AXIT	= 32,
-			SPMASK_AXIT2= 64,
+			SPMASK_GAUS	= 16,
+			SPMASK_DIFF	= 32,
+
+			SPMASK_SAXI	= 256,
+
+			SPMASK_AXIT	= 512,
+			SPMASK_AXIT2= 1024,
 		}	SpectrumMaskType;
+
+		typedef	enum	nRunType_s {
+			NRUN_K      = 1,
+			NRUN_G      = 2,
+			NRUN_V      = 4,
+			NRUN_KG     = 3,
+			NRUN_KGV    = 7,
+		}	nRunType;
 
 		typedef	enum	StringMeasureType_s {
 			STRMEAS_STRING = 0,
@@ -471,12 +484,12 @@
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
-			SD_DIRY        = 0,
+			SD_DIRTY       = 0,
 			SD_MAP         = 1,
 			SD_STRINGCOORD = 2,
 			SD_MASK        = 4,
 			SD_MAPMASK     = 5,
-			SD_AXITONMASK  = 6,
+			SD_AXITONMASK  = 8,
 		}	StatusSD;
 
 		// analysis functions to be called inside a measurement
@@ -505,8 +518,7 @@
 			MEAS_NSP_S        = 131072,
 			MEAS_NNSPEC       = 262144, 	// number of modes per bin for normalisation purposes
 			// MASK for any spectrum
-			// MEAS_SPECTRUM     = 507904, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
-			MEAS_SPECTRUM     = 516096, 		//  245760, 	// 16384 + 32768 + 65536 + 131072 (any of the spectra)
+			MEAS_SPECTRUM     = 516096, 		  //  245760, 	// 16384 + 32768 + 65536 + 131072 + 262144(any of the spectra)
 
 			MEAS_SPECTRUMA    = 81920, 	  // 16384  + 65536  (any of the axion spectra)
 			// MASK for those that require energy
@@ -558,6 +570,7 @@
 			SpectrumMaskType    mask ;
 			double              rmask;                   // a radius to mask
 			std::vector<double> rmask_tab;  // more than 1
+			nRunType            nrt;
 			SliceType           maty;
 			int                 i_rmask;
 			int                 redmap;

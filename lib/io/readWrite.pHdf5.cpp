@@ -533,6 +533,22 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_LOLA:
+			sprintf(icStr, "Lola");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_COLE:
+			sprintf(icStr, "Cole");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			/* FIX ME read all attributes from Icdata from myCosmos
+			for instance kCrit is ic.kcr, etc. */
+			// writeAttribute(icGrp_id, &kCrit, "Correlation length",   H5T_NATIVE_DOUBLE);
+			break;
 
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
@@ -968,6 +984,14 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "VilGor")) {
 			cType = CONF_VILGOR;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Lola")) {
+			cType = CONF_LOLA;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Cole")) {
+			cType = CONF_COLE;
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		} else if (!strcmp(icStr, "Tkachev")) {
@@ -1414,6 +1438,21 @@ void	createMeas (Scalar *axion, int index)
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
+
+		case	CONF_LOLA:
+			sprintf(icStr, "Lola");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_COLE:
+			sprintf(icStr, "Cole");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
 
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
@@ -2557,16 +2596,16 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 	int myRank = commRank();
 
-	LogMsg (VERB_NORMAL, "Writing energy density to Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "[wEd] Writing energy density to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
 
 	if ((fMap & MAP_RHO) && (axion->Field() & FIELD_AXION)) {
-	        LogMsg (VERB_NORMAL, "Requested MAP_RHO with axion field. Request will be ignored");
+	        LogMsg (VERB_NORMAL, "[wEd] Requested MAP_RHO with axion field. Request will be ignored");
 	        fMap ^= MAP_RHO;
 	}
 
 	if ((fMap & MAP_ALL) == MAP_NONE) {
-	        LogMsg (VERB_NORMAL, "Nothing to map. Skipping writeEDens");
+	        LogMsg (VERB_NORMAL, "[wEd] Nothing to map. Skipping writeEDens");
 	        return;
 	}
 
@@ -2580,14 +2619,14 @@ void	writeEDens (Scalar *axion, MapType fMap)
 		axion->transferCpu(FIELD_M2);
 
 	if (axion->m2Cpu() == nullptr) {
-		LogError ("You seem to be using the lowmem option");
+		LogError ("[wEd] You seem to be using the lowmem option");
 		prof.stop();
 		return;
 	}
 
 	if (header == false || opened == false)
 	{
-		LogError ("Error: measurement file not opened. Ignoring write request.\n");
+		LogError ("[wEd] Error: measurement file not opened. Ignoring write request.\n");
 		return;
 	}
 
@@ -2611,7 +2650,7 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 		default:
 
-		LogError ("Error: Invalid precision. How did you get this far?");
+		LogError ("[wEd] Error: Invalid precision. How did you get this far?");
 		exit(1);
 
 		break;
@@ -3495,7 +3534,10 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	LogMsg (VERB_HIGH, "[wm2] Written %lu bytes", total*dataSize*2);LogFlush();
 }
 
-void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
+
+
+
+void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 {
 	hid_t	mapSpace, chunk_id, group_id, eSet_id, eSpace, dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -3506,19 +3548,27 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	hsize_t slb  = slabSz;
 	hsize_t lSz  = sizeN;
 	char *dataE  = static_cast<char *>(axion->m2Cpu());
-	char eCh[16] = "/map/E";
+	// char eCh[16] = dataname;
 
-	LogMsg (VERB_NORMAL, "Writing 2D energy map to Hdf5 measurement file");
+	LogMsg (VERB_NORMAL, "[wem] Writing 2D energy map to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
+
+	switch (axion->m2Status()){
+		case M2_ENERGY:
+		case M2_MASK_TEST:
+		case M2_ANTIMASK:
+		case M2_MASK:
+			LogMsg (VERB_NORMAL, "[wem] M2 status %d ",axion->m2Status());
+		break;
+		default:
+		LogError ("Error: Energy not available in m2. (status %d) Call energy before calling writeEMapHdf5", axion->m2Status());
+		return;
+		break;
+	}
 
 	if (header == false || opened == false)
 	{
 		LogError ("Error: measurement file not opened. Ignoring write request");
-		return;
-	}
-
-	if (axion->m2Status() != M2_ENERGY) {
-		LogError ("Error: Energy not available in m2. Call energy before calling writeEMapHdf5");
 		return;
 	}
 
@@ -3540,8 +3590,8 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
 		slicenumber = 0;
 	}
-	Folder	munge(axion);
-	munge(UNFOLD_SLICE, slicenumber);
+	// Folder	munge(axion);
+	// munge(UNFOLD_SLICE, slicenumber);
 
 	/*	Create a group for map data if it doesn't exist	*/
 	auto status = H5Lexists (meas_id, "/map", H5P_DEFAULT);
@@ -3652,10 +3702,17 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize);
 }
 
+
+
+
+
 void	writeEMapHdf5	(Scalar *axion)
 {
-	writeEMapHdf5s	(axion, 0);
+	writeEMapHdf5s	(axion, 0, "/map/E");
 }
+
+
+
 
 void	writePMapHdf5	(Scalar *axion)
 {

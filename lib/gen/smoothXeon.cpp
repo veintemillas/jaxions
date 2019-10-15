@@ -16,7 +16,8 @@ void	iteraXeon (const complex<Float> * __restrict__ mCp, complex<Float> * __rest
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=0; idx<V; idx++)
 	{
-		size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
+		long long int iMz;
+		size_t iPx, iMx, iPy, iMy, iPz,  X[3];
 		indexXeon::idx2Vec (idx, X, Lx);
 
 		if (X[0] == 0)
@@ -50,7 +51,7 @@ void	iteraXeon (const complex<Float> * __restrict__ mCp, complex<Float> * __rest
 		}
 
 		iPz = idx + S;
-		iMz = idx - S;
+		iMz = (long long int) idx - (long long int) S;
 		//Uses v to copy the smoothed configuration
 		vCp[idx]   = alpha*mCp[idx] + OneSixth*(One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
 	}
