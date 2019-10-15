@@ -850,8 +850,12 @@ def gm(address,something='summary',printerror=False):
 
     if ftype == 'Saxion':
         if (something[:3] == 'msp') and ('mSpectrum/'+something[3:] in f):
-            # print('requested '+'nSpectrum/s'+something[3:]+'/data/')
-            return np.array(f['mSpectrum/'+something[3:]+'/data/']) ;
+            kmax = gm(address,'kmax')
+            arra = np.array(f['mSpectrum/'+something[3:]+'/data/']) ;
+            if len(arra) == kmax :
+                return arra
+            elif len(arra) == kmax*kmax:
+                return np.reshape(arra,(kmax,kmax)) ;
 
     if (something == 'mspW0') and  msp_check and ('mSpectrum/W0' in f) :
         return np.array(f['mSpectrum/W0/data/']) ;
