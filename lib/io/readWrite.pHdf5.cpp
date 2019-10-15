@@ -2228,6 +2228,10 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 	commSync();
 }
 
+
+
+
+
 void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 {
 	hid_t	group_id;
@@ -2289,6 +2293,10 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 
 	commSync();
 }
+
+
+
+
 
 void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 {
