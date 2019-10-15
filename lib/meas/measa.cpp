@@ -368,7 +368,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							sprintf(LABEL, "Masker %s", masklab[i].c_str());
 							prof.add(std::string(LABEL), 0.0, 0.0);
 
-							sprintf(LABEL, "W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							sprintf(LABEL, "W_%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
 
 							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
 
@@ -376,7 +376,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 								/* activate to export premask -- needs changes in spectrum.cpp too*/
 									// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
 								/* activate this to print a 2D smooth mask */
-							sprintf(LABEL, "/map/W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							sprintf(LABEL, "/map/W_%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
 							writeEMapHdf5s (axiona,sliceprint,LABEL);
 								/* activate this to see the smooth mask */
 								// if ( !(measa & (MEAS_NSP_A | MEAS_NSP_S | MEAS_NNSPEC)) && !(measa & MEAS_ENERGY3DMAP) && !wEm)
@@ -428,7 +428,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					for(int ii=0; ii < irmask; ii++)
 					{
 						if (mulmask[i])
-							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -439,7 +439,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 										prof.stop();
 											sprintf(LABEL, "Masker %s", masklab[i].c_str());
 												prof.add(std::string(LABEL), 0.0, 0.0);
-											// sprintf(LABEL, "W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 											sprintf(LABEL, "W_%s", PRELABEL);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
 
@@ -448,21 +447,21 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 								if( (strmeas & STRMEAS_ENERGY) || (mask & SPMASK_REDO) ) {
 									// measure the energy density of strings by using masked points
 									MeasDataOut.strE = stringenergy(axiona);
-									MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
+									MeasDataOut.strE.rmask = info.rmask_tab[ii]; // this is not written by stringenergy();
 									writeStringEnergy(axiona,MeasDataOut.strE);
 								}
 
 								/* Redondo's could be active in any mode */
-								// if (maskara[i] == SPMASK_REDO){
-								// 		void *eRes;
-								// 		trackAlloc(&eRes, 256);
-								// 		memset(eRes, 0, 256);
-								// 		double *eR = static_cast<double *> (eRes);
-								// 	energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
-								// 	writeEnergy(axiona, eRes, rmasktab[ii]);
-								// 				// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
-								// 	trackFree(eRes);
-								// }
+								if (maskara[i] == SPMASK_REDO){
+										void *eRes;
+										trackAlloc(&eRes, 256);
+										memset(eRes, 0, 256);
+										double *eR = static_cast<double *> (eRes);
+									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
+									writeEnergy(axiona, eRes, info.rmask_tab[ii]);
+												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
+									trackFree(eRes);
+								}
 							}
 
 						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
