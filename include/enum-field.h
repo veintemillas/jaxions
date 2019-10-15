@@ -484,12 +484,12 @@
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
-			SD_DIRY        = 0,
+			SD_DIRTY       = 0,
 			SD_MAP         = 1,
 			SD_STRINGCOORD = 2,
 			SD_MASK        = 4,
 			SD_MAPMASK     = 5,
-			SD_AXITONMASK  = 6,
+			SD_AXITONMASK  = 8,
 		}	StatusSD;
 
 		// analysis functions to be called inside a measurement
