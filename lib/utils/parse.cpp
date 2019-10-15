@@ -614,6 +614,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--sliceprint"))
+		{
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--p2Dslice"))
 		{
 			p2dmapo = true ;
