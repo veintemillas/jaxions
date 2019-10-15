@@ -45,13 +45,18 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	/* This is a change with respect to previous behaviour
 	   Changes the definition of mask to be in units of ms^-1 */
-		if (axiona->LambdaT() == LAMBDA_Z2)
-		 		radius_mask /= axiona->Msa(); // radius is a/msa in a units
-		if (axiona->LambdaT() == LAMBDA_FIXED){
-			double si = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
-				LogMsg(VERB_HIGH,"msa calaculated %f mask-parameter resized with 1/msa",si);
-				radius_mask /= si;
+		{
+			double msa_aux ;
+			if (axiona->LambdaT() == LAMBDA_Z2)
+					msa_aux = axiona->Msa();
+			if (axiona->LambdaT() == LAMBDA_FIXED)
+					msa_aux = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
+			LogMsg(VERB_HIGH,"[Meas ...] msa = %f ; rmask-parameter interpreted in 1/ms units. Internally converted to lattice units by multiplying with 1/msa",msa_aux);
+			radius_mask /= msa_aux;
+			for (size_t i=0;i<irmask;i++)
+				rmasktab[i] /= msa_aux;
 		}
+
 
 	auto	cTime = Timer();
 
@@ -85,7 +90,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	LogMsg(VERB_HIGH, "[Meas %d] set aux fields to dirty",indexa);
 	axiona->setM2(M2_DIRTY);
-	axiona->setSD(SD_DIRY);
+	axiona->setSD(SD_DIRTY);
 
 	createMeas(axiona, indexa);
 
@@ -342,6 +347,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				{
 					LogMsg(VERB_NORMAL, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
 				}
+				bool wEm = false;
 				for (size_t i=0; i < 7; i++)
 				{
 					LogMsg(VERB_NORMAL, "[Meas %d] mask %s (%d)",indexa,masklab[i].c_str(),i);LogFlush();
@@ -373,7 +379,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							sprintf(LABEL, "/map/W_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 							writeEMapHdf5s (axiona,sliceprint,LABEL);
 								/* activate this to see the smooth mask */
-								// writeEDens(axiona);
+								// if ( !(measa & (MEAS_NSP_A | MEAS_NSP_S | MEAS_NNSPEC)) && !(measa & MEAS_ENERGY3DMAP) && !wEm)
+								// {
+								// 	writeEDens(axiona);
+								// 	wEm = true;
+								// }
 								/* activate this to see the binary mask */
 								// writeString(axiona, MeasDataOut.str, true);
 
@@ -433,25 +443,26 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 											sprintf(LABEL, "W_%s", PRELABEL);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
 
-								/* DANGER */
-								//FIX ME (is labeling correct?)
-								if(strmeas & STRMEAS_ENERGY) {
+								/* Kenichi's only active in REDO mode */
+
+								if( (strmeas & STRMEAS_ENERGY) || (mask & SPMASK_REDO) ) {
 									// measure the energy density of strings by using masked points
 									MeasDataOut.strE = stringenergy(axiona);
 									MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
 									writeStringEnergy(axiona,MeasDataOut.strE);
 								}
 
-								if (maskara[i] == SPMASK_REDO){
-										void *eRes;
-										trackAlloc(&eRes, 256);
-										memset(eRes, 0, 256);
-										double *eR = static_cast<double *> (eRes);
-									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
-									writeEnergy(axiona, eRes, rmasktab[ii]);
-												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
-									trackFree(eRes);
-								}
+								/* Redondo's could be active in any mode */
+								// if (maskara[i] == SPMASK_REDO){
+								// 		void *eRes;
+								// 		trackAlloc(&eRes, 256);
+								// 		memset(eRes, 0, 256);
+								// 		double *eR = static_cast<double *> (eRes);
+								// 	energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
+								// 	writeEnergy(axiona, eRes, rmasktab[ii]);
+								// 				// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
+								// 	trackFree(eRes);
+								// }
 							}
 
 						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
@@ -462,17 +473,20 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 											prof.add(std::string(LABEL), 0.0, 0.0);
 
 
-						// sprintf(LABEL, "sK_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+						if (nruntype & NRUN_K){
 						sprintf(LABEL, "sK_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
-						// sprintf(LABEL, "sG_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							}
+						if (nruntype & NRUN_G){
 						sprintf(LABEL, "sG_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
-
+						}
+						if (nruntype & NRUN_V){
 						if (axiona->AxionMassSq() > 0.0){
 							// sprintf(LABEL, "sV_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 							sprintf(LABEL, "sV_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+						}
 						}
 
 					if (prntmsk[i]){
