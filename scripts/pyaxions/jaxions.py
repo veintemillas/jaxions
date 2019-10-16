@@ -1173,6 +1173,7 @@ class mli:
         self.ctab = [] ;
         self.me = 0;
         self.msa = msa;
+        self.llcf = 1600;
         self.L = L;
         self.N = 1024;
         self.ctend = 1000;
@@ -1205,6 +1206,10 @@ class mli:
             # logi = log (msa ct/a)
             # ct = a exp(temp)*a/msa
             self.ctab.append(np.exp(temp)*self.L/self.N/self.msa)
+        if scale=='logiphys':
+            temp = np.linspace(zi,zf,measN+1)
+            # logi = log (ms ct^2)
+            self.ctab.append(np.sqrt(np.exp(temp)/math.sqrt(2.*self.llcf)))
         self.mtab.append(meastype | self.me)
         print("Set with me %s created"%(meastype | self.me))
     def give(self,name="./measfile.dat"):
