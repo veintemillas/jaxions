@@ -1174,6 +1174,7 @@ class mli:
         self.me = 0;
         self.msa = msa;
         self.llcf = 1600;
+        self.lz2e = 2.0; # lambda = lambda/R^lz2e in case we need it in the future
         self.L = L;
         self.N = 1024;
         self.ctend = 1000;
@@ -1210,6 +1211,15 @@ class mli:
             temp = np.linspace(zi,zf,measN+1)
             # logi = log (ms ct^2)
             self.ctab.append(np.sqrt(np.exp(temp)/math.sqrt(2.*self.llcf)))
+        if scale=='logiz2e':
+            # assuming general lambda = lambda/R^lz2e in case we need it in the future
+            #if self.lz2e == 4.0:
+            #    print("logi does not grow for lz2e = 4.0!")
+            #    return 0
+            #else:
+            temp = np.linspace(zi,zf,measN+1)
+            # logi = log (ms ct^2) = log(sqrt(2*lambda) ct^(2-lz2e/2))
+            self.ctab.append(np.power(np.exp(temp)/math.sqrt(2.*self.llcf),2./(4.-self.lz2e)))
         self.mtab.append(meastype | self.me)
         print("Set with me %s created"%(meastype | self.me))
     def give(self,name="./measfile.dat"):
