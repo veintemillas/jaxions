@@ -444,7 +444,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 								/* Kenichi's only active in REDO mode */
 
-								if( (strmeas & STRMEAS_ENERGY) || (mask & SPMASK_REDO) ) {
+								if( (strmeas & STRMEAS_ENERGY) && (mask & SPMASK_REDO) ) {
 									// measure the energy density of strings by using masked points
 									MeasDataOut.strE = stringenergy(axiona);
 									MeasDataOut.strE.rmask = info.rmask_tab[ii]; // this is not written by stringenergy();
