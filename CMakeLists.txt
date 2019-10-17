@@ -64,7 +64,7 @@ if(${USE_GPU})
   find_package(CUDA REQUIRED)
   #set(CUDA_HOST_COMPILER gcc)
   set(CUDA_PROPAGATE_HOST_FLAGS ON)
-  set(CUDA_NVCC_FLAGS "-arch=${GPU_COMP} -code=${GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false -std=c++14")
+  set(CUDA_NVCC_FLAGS "-arch=${GPU_COMP} -code=${GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false -std=c++14 --expt-relaxed-constexpr")
 
   set(CUDA_NVCC_FLAGS_DEVEL "-O3 -lineinfo" CACHE STRING
       "Flags used by the CUDA compiler during regular development builds." FORCE )

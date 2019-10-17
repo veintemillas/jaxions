@@ -1162,7 +1162,7 @@ void	SpecBin::filterFFT	(double neigh) {
 
 	LogMsg (VERB_NORMAL, "[FilterFFT] filterBins with %.3f neighbours, prefa = %f", neigh, prefac);
 
-	//complex<Float> * m2ft = static_cast<complex<Float>*>(axion->m2Cpu());
+	//std::complex<Float> * m2ft = static_cast<std::complex<Float>*>(axion->m2Cpu());
 
 	const double normn3 = field->TotalSize();
 
@@ -1492,7 +1492,7 @@ void	SpecBin::masker	(double radius_mask) {
 			/* auxiliary; Last volume in m2 where size fits, size is 2*(Lz+2Ng)LxLy*/
 			Float *m2aF                = static_cast<Float *>(field->m2Cpu()) + (field->eSize()*2-field->Size()) ;
 			size_t surfi = Ly*(Ly+2) ;
-			complex<Float>* mc         = static_cast<complex<Float> *>(field->mStart());
+			std::complex<Float>* mc         = static_cast<std::complex<Float> *>(field->mStart());
 
 			/* For padding uses */
 			size_t dl = Ly*field->Precision();
@@ -1676,7 +1676,7 @@ void	SpecBin::masker	(double radius_mask) {
 						/* Size of the ghost region in Float (assume this funciton is called in Saxion mode)*/
 						size_t GR = field->getNg()*S*2;
 
-						/* I need char pointers to the last slice, backghost, both Float and complex_Float */
+						/* I need char pointers to the last slice, backghost, both Float and std::complex_Float */
 
 						char *m2lsC  = static_cast<char *>(field->m2Start()) + field->Surf()*(field->Depth()-1)*field->Precision();
 						char *m2bgC  = static_cast<char *>(field->m2Start()) + field->Size()*field->Precision();
@@ -1689,11 +1689,11 @@ void	SpecBin::masker	(double radius_mask) {
 						for (size_t it=0; it<iter+1; it++)
 						{
 							/* exchange ghosts Float using the Complex-based function */
-									// copy last slice into the last complex slice (will be sent)
+									// copy last slice into the last std::complex slice (will be sent)
 									// the first slice is already at position m2Start
 									memcpy	(m2lscC, m2lsC, SurfTotalSize);
 									field->exchangeGhosts(FIELD_M2);
-									// move the slice received at the complex backghost into the Float-backghost
+									// move the slice received at the std::complex backghost into the Float-backghost
 									memmove	(m2bgC, m2bgcC, SurfTotalSize);
 									// move the slice received at the frontghost into the Float-Frontghost (defined by m2Start)
 									memmove	(m2C+(GR-S)*field->Precision(), m2C, SurfTotalSize);

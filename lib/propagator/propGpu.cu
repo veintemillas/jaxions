@@ -4,7 +4,7 @@
 
 #include "enum-field.h"
 
-#include "utils/parse.h"
+//#include "utils/parse.h"
 //#include "scalar/varNQCD.h"
 
 #define	BLSIZE 256

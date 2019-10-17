@@ -226,7 +226,7 @@ void	randConf (Scalar *field, IcData ic)
 	{
 		case FIELD_DOUBLE:
 		{
-		complex<double>* ma = static_cast<complex<double>*> (field->mStart());
+		std::complex<double>* ma = static_cast<std::complex<double>*> (field->mStart());
 
 		switch (ic.smvarType)
 		{
@@ -263,7 +263,7 @@ void	randConf (Scalar *field, IcData ic)
 
 		case FIELD_SINGLE:
 		{
-		complex<float>* ma = static_cast<complex<float>*> (field->mStart());
+		std::complex<float>* ma = static_cast<std::complex<float>*> (field->mStart());
 
 		switch (ic.smvarType)
 		{

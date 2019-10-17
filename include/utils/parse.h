@@ -2,7 +2,7 @@
 #include "cosmos/cosmos.h"
 #include<vector>
 
-using namespace std;
+//using namespace std;
 
 extern size_t sizeN;
 extern size_t sizeZ;
