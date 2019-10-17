@@ -22,10 +22,11 @@
 	#include <cuda.h>
 	#include <cuda_runtime.h>
 	#include <cuda_device_runtime_api.h>
-	#include "kernelParms.cuh"
+	//#include "kernelParms.cuh"
 	#include "gen/momGpu.h"
 	#include "gen/randGpu.h"
 	#include "gen/smoothGpu.h"
+	#include "propagator/propGpu.h"
 #endif
 
 #include "utils/utils.h"
@@ -175,8 +176,9 @@ void	ConfGenerator::runGpu	()
 			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			scaleField(axionField, FIELD_M, *axionField->RV());
 			axionField->exchangeGhosts(FIELD_M);
-			updateVGpu(axionField->mGpu(), axionField->vGpu(), *axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), Vo, Vf, S,
-				   axionField->BckGnd()->QcdPot() & VQCD_TYPE, axionField->Precision(), xBlockDefaultGpu, yBlockDefaultGpu, zBlockDefaultGpu, ((cudaStream_t *)axionField->Streams())[2]);
+			updateVGpu(axionField->mGpu(), axionField->vGpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), Vo, Vf,
+				   axionField->BckGnd()->QcdPot() & VQCD_TYPE, axionField->Precision(), 512, 1, 1, ((cudaStream_t *)axionField->Streams())[2]);
+					// FIXME --> xDefaultBlockGpu, yDefaultBlockGpu, zDefaultBlockGpu, ((cudaStream_t *)axionField->Streams())[2]);
 		}
 
 		axionField->transferCpu(FIELD_MV);
