@@ -22,6 +22,11 @@ double xivilgor(double logi);
 template<typename Float>
 MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 {
+	if (cDev != DEV_CPU){
+	LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
+	axiona->transferCpu(FIELD_MV);
+	}
+
 	MeasureType measa = info.measdata ;
 
 	MeasData MeasDataOut;
@@ -668,6 +673,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	LogOut("\n");
 
+if (cDev != DEV_CPU){
+LogMsg (VERG_HIGH,"Transferring configuration to device");
+axiona->transferDev(FIELD_MV);
+}
 
 return MeasDataOut;
 }
