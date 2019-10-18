@@ -674,7 +674,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogOut("\n");
 
 if (cDev != DEV_CPU){
-LogMsg (VERG_HIGH,"Transferring configuration to device");
+LogMsg (VERB_HIGH,"Transferring configuration to device");
 axiona->transferDev(FIELD_MV);
 }
 
