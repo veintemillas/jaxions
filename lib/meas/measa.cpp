@@ -54,15 +54,16 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			double msa_aux ;
 			if (axiona->LambdaT() == LAMBDA_Z2)
 					msa_aux = axiona->Msa();
-			if (axiona->LambdaT() == LAMBDA_FIXED) {
+			if (axiona->LambdaT() == LAMBDA_FIXED)
 					msa_aux = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
+
 
 			LogMsg(VERB_HIGH,"[Meas ...] msa = %f rmask-parameter interpreted in 1/ms units. ",msa_aux);
 			LogMsg(VERB_HIGH,"           Internally converted to lattice units by multiplying with 1/msa",msa_aux);
 			radius_mask /= msa_aux;
+
 			for (size_t i=0;i<irmask;i++)
 				rmasktab[i] /= msa_aux;
-			}
 		}
 
 
