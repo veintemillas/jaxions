@@ -66,7 +66,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gamma;
+		const double GGGG = gamma/zR;
 //		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
@@ -427,7 +427,7 @@ tmp = opCode(sub_pd,
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2.f/z4;
-		const float GGGG = pow(ood2,0.5)*gamma;
+		const float GGGG = gamma/zR;
 //		const float GGiZ = GGGG/zR;
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
@@ -899,7 +899,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, si
 
 		const double z4 = z2*z2;
 		const double LaLa = LL*2./z4;
-		const double GGGG = pow(ood2,0.5)*gamma;
+		const double GGGG = gamma/zR;
 //		const double GGiZ = GGGG/zR;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
@@ -1222,8 +1222,8 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, si
 
 		const float z4 = z2*z2;
 		const float LaLa = LL*2./z4;
-		const float GGGG = pow(ood2, 0.5)*gamma;
-//		const float GGiZ = GGGG/zR;
+		const float GGGG = gamma/zR;
+//		const float GGiZ = GGGG;
 		const float mola = GGGG*dzc/2.;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
