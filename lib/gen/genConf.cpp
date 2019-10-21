@@ -663,6 +663,7 @@ void	ConfGenerator::runCpu	()
 		break;
 
 		case CONF_SMOOTH:
+
 		prof.start();
 		randConf (axionField,ic);
 		prof.stop();
@@ -671,12 +672,31 @@ void	ConfGenerator::runCpu	()
 		smoothXeon (axionField, ic.siter, ic.alpha);
 		prof.stop();
 		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+
+		if (!myCosmos->Mink() && !ic.preprop) {
 		if ((ic.smvarType != CONF_SAXNOISE) && (ic.smvarType != CONF_PARRES))
 			normaliseField(axionField, FIELD_M);
 		if (myCosmos->ICData().normcore)
 			normCoreField	(axionField);
+		memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+		if ( !(ic.kickalpha == 0.0) )
+			scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
+		scaleField (axionField, FIELD_M, *axionField->RV());
 
+		/*Note that prepropagation folds the field ;-)*/
 		axionField->setFolded(false);
+	}
+
+
+		if (ic.preprop) {
+		  /* Go back in time the preprop factor*/
+		  *axionField->zV() /= ic.prepcoe; // now z <zi
+		  axionField->updateR();
+		  LogMsg(VERB_NORMAL,"[GEN] prepropagator, jumped back in time to %f",*axionField->zV());
+		  prepropa2  (axionField);
+		}
+
+
 		break;
 
 
@@ -685,7 +705,7 @@ void	ConfGenerator::runCpu	()
 	}
 
 
-	if (((cType == CONF_KMAX) || (cType == CONF_SMOOTH)) || (cType == CONF_VILGORS)) {
+	if ( (cType == CONF_KMAX) || (cType == CONF_VILGORS) ) {
 
 		if (!myCosmos->Mink()) {
 			double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));

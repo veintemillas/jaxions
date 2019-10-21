@@ -45,7 +45,16 @@ const std::complex<float> If(0.,1.);
 
 	prof.start();
 
-	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar called with Ng = %d",Ng);
+	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar");
+	LogMsg(VERB_NORMAL,"[sca] Lx           =  %d",nLx);
+	LogMsg(VERB_NORMAL,"[sca] Lz           =  %d",nLz);
+	LogMsg(VERB_NORMAL,"[sca] nSplit       =  %d ",nSplit);
+	LogMsg(VERB_NORMAL,"[sca] Field Type   =  %d (SAX/AX/WKB %d/%d/%d) ",newType,FIELD_SAXION,FIELD_AXION,FIELD_WKB);
+	// LogMsg(VERB_NORMAL,"[sca] Lambda Type  =  %d (FIXED/Z2 %d/%d) ",lType,LAMBDA_FIXED,LAMBDA_Z2);
+	LogMsg(VERB_NORMAL,"[sca] Precision    =  %d (SINGLE/DOUBLE %d/%d)",prec,FIELD_SINGLE,FIELD_DOUBLE);
+	LogMsg(VERB_NORMAL,"[sca] Device       =  %d (CPU/GPU %d/%d)",dev,DEV_CPU,DEV_GPU);
+	LogMsg(VERB_NORMAL,"[sca] Lowmem       =  %d ",lowmem);
+	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d ", Ngg);
 
 	if (cm == nullptr) {
 		LogError("Error: no cosmological background defined!. Will exit with errors.");
