@@ -145,7 +145,7 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 // Prepare mask in m2 (only if m2 contains the mask in complex notation)
 // counter to check if some of the entries of the vector is in the mask
-				int ups = 0;
+				size_t ups = 0;
 				if (emask & EN_MASK){
 
 					#pragma unroll
