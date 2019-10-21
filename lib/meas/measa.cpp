@@ -62,8 +62,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			LogMsg(VERB_HIGH,"           Internally converted to lattice units by multiplying with 1/msa",msa_aux);
 			radius_mask /= msa_aux;
 
-			for (size_t i=0;i<irmask;i++)
+			for (size_t i=0;i<irmask;i++){
+				LogMsg(VERB_HIGH,"[Meas ...] rmask %f -> %f ",rmasktab[i],rmasktab[i]/msa_aux);
 				rmasktab[i] /= msa_aux;
+			}
+
 		}
 
 
@@ -314,8 +317,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							writeString(axiona, MeasDataOut.str, true);
 						}
 					}
-					// else {
-					else if ( !(measa & MEAS_MASK)) {
+					else {
+					// else if ( !(measa & MEAS_MASK)) {
 						writeString(axiona, MeasDataOut.str, false);
 					}
 			}
