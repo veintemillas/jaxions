@@ -44,6 +44,7 @@ double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
 double prepstL = 5.0 ;
 double prepcoe = 3.0 ;
+double ng0calib = 1.25 ;
 int endredmap = -1;
 int endredmapwkb = -1;
 int safest0   = 20;
@@ -447,6 +448,9 @@ void	PrintMEoptions()
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
 	printf("                                           (Red and Gas modes) \n\n");
 	printf("  --printmask                              Prints the mask (experimental)\n\n");
+	printf("  --ng0calib                               Parameter tunning the exponential masking (default 1.25)\n");
+	printf("                                           (Any negative value gives the old calibration)\n\n");
+
 	printf("  Options for String Measurement \n");
 	printf("  --strmeas [int]            Sum of integers.\n");
 	printf("    Statistical measurment only            0 (default	)\n");
@@ -2046,6 +2050,21 @@ int	parseArgs (int argc, char *argv[])
 			procArgs++;
 			passed = true;
 			goto endFor;
+		}
+
+                if (!strcmp(argv[i], "--ng0calib"))
+		{
+		         if (i+1 == argc)
+		         {
+		         printf("Error: I need a value for ng0calib.\n");
+		         exit(1);
+		         }
+                         ng0calib = atof(argv[i+1]);
+                         
+			 i++;
+		         procArgs++;
+		         passed = true;
+		         goto endFor;	
 		}
 
 		if (!strcmp(argv[i], "--nologmpi"))

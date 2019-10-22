@@ -1,0 +1,34 @@
+I have recalibrated REDO mask to get the mask as accurate as possible. 
+The idea was to adjust the Gaussian filter to have the number of masked points as close as 
+
+L*pi*rmask^2 
+
+as possible. Here L is the string length, which is estimated with Moore's statistical procedure.
+
+I have checked that works accurately with masks in the order of 1-10 [1/ms] for msa in 0.2-1. 
+It works better for small msa and large rmask. 
+However in this limit the tests are not trivial because the masks of two nearby strings overlap for large values of rmask. 
+
+The implementation on the code is discussed in the simu4.tex notes as the second calibration. 
+I have introduced a new constant in the program, which can be changed in parse.cpp 
+
+double ng0calib
+
+Its value can be used to optimise the number of masked points as a function of rmask. 
+The value used up to now was 1.0; It looks like 1.25 works a bit better. 
+But it requires a different value of p_delta = 2.5. 
+
+Note that before I used ng0calib = 1.0; and a empirical calibration of p_delta (listed in simu4.tex)
+
+The calibrations have been made with a stringYZ configuration and with a "lola" with random strings, 
+and it works equally well. 
+
+For the calibration I calculate the number of points masked from the FT of the ANTIMASK, W
+
+Sum W = sqrt(FTW[0] * ... given constant)
+
+and divide it for the string lenght
+
+sL = # plaquettes * (2/3)
+
+Finally I compare it with the OLD calibration with fifth-test.sh

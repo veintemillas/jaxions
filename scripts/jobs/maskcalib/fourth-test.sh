@@ -1,30 +1,30 @@
 #%%%%%%%%%%%%%%%%%%%%%%%%# GRID %
-N=256 ; RANKS=8 ; DEPTH=$(echo $N/$RANKS | bc)
+N=512 ; RANKS=8 ; DEPTH=$(echo $N/$RANKS | bc)
 GRID=" --size $N --depth $DEPTH --zgrid $RANKS"
 #%%%%%%%%%%%%%%%%%%%%%%%%# simulation parameters %
 LOW=" --lowmem"  ; PREC=" --prec single" ; DEVI=" --device cpu"
 PROP=" --prop  rkn4"   ;   SPEC=" --spec"
 STEP=10000   ;   WDZ=1.0   ;   SST0=10
-SIMU=" $PREC $DEVI $PROP --steps $STEP --wDz $WDZ --sst0 $SST0 --fftplan 64"
+SIMU=" $PREC $DEVI $PROP --steps $STEP --wDz $WDZ --sst0 $SST0 --fftplan 64 --ng0calib 1.25 "
 #%%%%%%%%%%%%%%%%%%%%%%%%# physical parameters %
-QCD=4.0   ;   MSA=0.75   ;   L=6.0    ;   ZEN=1.0   ;   WKB=20.0
+QCD=4.0   ;   MSA=0.5   ;   L=6.0    ;   ZEN=3.0   ;   WKB=20.0
 #XTR=" --gam .1 --dwgam 0.1 --ind3 0.0 --notheta --wkb $WKB --notheta --wkb $WKB --llcf 20000 "
 XTR=" --notheta --ind3 0.0 "
 PHYS="--qcd $QCD --msa $MSA --lsize $L  --zf $ZEN $XTR"
 #%%%%%%%%%%%%%%%%%%%%%%%%# initial conditions %
 #PCO=2.0  ;
-#PREP=" --preprop --prepcoe 4.0 --icstudy --lz2e 8.0 --prevqcdtype 1 --pregam 0.2 "
+PREP=" --preprop --prepcoe 4.0 --icstudy --lz2e 8.0 --prevqcdtype 16385 --pregam 1.0 "
 #KCR=$(echo "$L * 1.0 / $ZIN  " | bc -l)
 #INCO=" --ctype kmax --zi 0.1 --kmax $N --kcr $KCR"
 #INCO=" --ctype smooth --zi 0.1 --sIter 5"
 INCO=" --ctype smooth --smvar stYZ  --logi 3.0 --sIter 0"
-#INCO=" --ctype vilgor --logi 0.1 --sIter 0 --kcr 1.0 "
+#INCO=" --ctype lola --logi 3.2 --sIter 0 --kcr 1.0 "
 #%%%%%%%%%%%%%%%%%%%%%%%%# output and extra %
-DUMP=10
+DUMP=30
 WTIM=1.0
 MEAS=$(echo 32 | bc )
 #OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask 2 --rmask 4.0 --redmp 256 --p2Dmap --nologmpi --wTime $WTIM  "
-OUTP="--dump $DUMP --meas $MEAS --printmask --spmask 63 --rmask file --p2Dmap --nologmpi --wTime $WTIM --verbose 4 --sliceprint 0"
+OUTP="--dump $DUMP --meas $MEAS --printmask --spmask 31 --rmask file --p2Dmap --nologmpi --wTime $WTIM --verbose 4 --sliceprint 0"
 echo "vaxion3d   $PHYS"
 echo "         " $GRID
 echo "         " $SIMU

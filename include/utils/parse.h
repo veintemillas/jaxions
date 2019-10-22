@@ -23,6 +23,8 @@ extern double alpha;
 extern double kCrit;
 extern double parm2;
 extern double pregammo;
+
+extern double ng0calib;
 extern double dwgammo;
 extern double p3DthresholdMB;
 extern size_t kMax;
