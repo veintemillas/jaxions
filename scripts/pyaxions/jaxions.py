@@ -365,11 +365,11 @@ def gm(address,something='summary',printerror=False):
             mmm = ''
             maska =''
 
-        if 'avrho' in something:
-            return f['energy'+mmm].attrs['Saxion vev']
-
         if 'avrhoM' in something:
             return f['energy'+mmm].attrs['Saxion vev nMask']
+
+        if 'avrho' in something:
+            return f['energy'+mmm].attrs['Saxion vev']
 
         if 'nmp' in something:
             return f['energy'+mmm].attrs['Number of masked points']
