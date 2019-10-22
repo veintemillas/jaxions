@@ -1343,10 +1343,10 @@ class nspevol2:
                 self.ttab.append(pa.gm(f,'time'))
                 logi = pa.gm(f,'logi')
                 self.logtab.append(logi)
-                s0 = pa.gm(mfile,'nspK_'+spmasklabel)
+                s0 = pa.gm(f,'nspK_'+spmasklabel)
                 self.nsp.append(s0)
                 if cor == 'correction':
-                    m = pa.gm(mfile,'mspM_'+spmasklabel)
+                    m = pa.gm(f,'mspM_'+spmasklabel)
                     s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     self.nspcor.append(s1)
                 print('\rbuilt up to log = %.2f'%logi,end="")
@@ -1459,7 +1459,7 @@ class espevol2:
                 e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
                 self.esp.append(e0)
                 if cor == 'correction':
-                    m = pa.gm(mfile,'mspM_'+spmasklabel)
+                    m = pa.gm(f,'mspM_'+spmasklabel)
                     s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                     e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
                     self.espcor.append(e1)
