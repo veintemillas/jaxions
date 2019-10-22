@@ -1324,6 +1324,38 @@ class nspevol:
         self.nspcor = np.array(self.nspcor)
 
 
+class nspevol2:
+    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
+        self.sizeN = pa.gm(mfiles[0],'sizeN')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        # identify modes less than N/2
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.ttab = []
+        self.logtab = []
+        self.nsp = []
+        self.nspcor = [] # corrected spectrum
+        for f in mfiles:
+            if pa.gm(f,'nsp?'):
+                self.ttab.append(pa.gm(f,'time'))
+                logi = pa.gm(f,'logi')
+                self.logtab.append(logi)
+                s0 = pa.gm(f,'nspK_'+spmasklabel)
+                self.nsp.append(s0)
+                if cor == 'correction':
+                    m = pa.gm(f,'mspM_'+spmasklabel)
+                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                    self.nspcor.append(s1)
+                print('\rbuilt up to log = %.2f'%logi,end="")
+        print("")
+        self.ttab = np.array(self.ttab)
+        self.logtab = np.array(self.logtab)
+        self.nsp = np.array(self.nsp)
+        self.nspcor = np.array(self.nspcor)
+
 
 
 
@@ -1399,6 +1431,42 @@ class espevol:
             self.logtab = np.log(self.ttab*self.sizeN*self.msa/self.sizeL)
         elif lltype == 'fixed':
             self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
+        self.esp = np.array(self.esp)
+        self.espcor = np.array(self.espcor)
+
+
+class espevol2:
+    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
+        self.sizeN = pa.gm(mfiles[0],'sizeN')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        # identify modes less than N/2
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.ttab = []
+        self.logtab = []
+        self.esp = []
+        self.espcor = [] # corrected spectrum
+        for f in mfiles:
+            if pa.gm(f,'nsp?'):
+                t = pa.gm(f,'time')
+                logi = pa.gm(f,'logi')
+                self.ttab.append(t)
+                self.logtab.append(logi)
+                s0 = pa.gm(f,'nspK_'+spmasklabel)
+                e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
+                self.esp.append(e0)
+                if cor == 'correction':
+                    m = pa.gm(f,'mspM_'+spmasklabel)
+                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                    e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
+                    self.espcor.append(e1)
+                print('\rbuilt up to log = %.2f'%logi,end="")
+        print("")
+        self.ttab = np.array(self.ttab)
+        self.logtab = np.array(self.logtab)
         self.esp = np.array(self.esp)
         self.espcor = np.array(self.espcor)
 
