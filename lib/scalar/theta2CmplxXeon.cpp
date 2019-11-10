@@ -10,6 +10,7 @@ void	th2cxXeon (Scalar *sField)
 	{
 		case FIELD_DOUBLE:
 		{
+			// takes into account extra ghosts Ng
 			complex<double> *field, *field2;
 			complex<double> II = complex<double>{0,1};
 			size_t vol = sField->Size();
@@ -33,6 +34,7 @@ void	th2cxXeon (Scalar *sField)
 
 		case FIELD_SINGLE:
 		{
+			// takes into account extra ghosts Ng
 			complex<float> *field, *field2;
 			complex<float> II = complex<float>{0,1};
 			size_t vol = sField->Size();
