@@ -34,7 +34,7 @@ class	MendTheta : public Tunable
 size_t	MendTheta::runGpu	()
 {
 #ifdef	USE_GPU
-	LogMsg (VERB_NORMAL, "Using cpu for mendTheta");
+	LogMsg (VERB_NORMAL, "[mt] Using cpu for mendTheta");
 	axionField->transferCpu(FIELD_MV);
 	Folder munge(axionField);
 	munge(FOLD_ALL);
