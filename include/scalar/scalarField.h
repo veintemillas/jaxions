@@ -53,6 +53,9 @@
 		// string core parameter
 		double	msa;
 
+		// propagation constants //FIX ME place in propClass?
+		std::vector<double>	co;
+
 		void	*m,   *v,   *m2,   *str;			// Cpu data
 #ifdef	USE_GPU
 		void	*m_d, *v_d, *m2_d;				// Gpu data
@@ -197,6 +200,8 @@
 		void	gReset() { gsent = false ; grecv = false; }
 
 		size_t  getNg() {return Ng;}
+		void	  setCO	(size_t newN);
+		double  *getCO() {return &(co[0]); };
 		/*	Eliminar	*/
 
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
