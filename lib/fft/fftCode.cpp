@@ -220,11 +220,10 @@ namespace AxionFFT {
 						if (axion->Field() == FIELD_SAXION) {
 
 							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						} else {
-
 							if (dFft & FFT_FWD)
 								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mA, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
@@ -414,11 +413,11 @@ namespace AxionFFT {
 					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
 						if (axion->Field() == FIELD_SAXION) {
-
+							// Redundancy
 							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						} else {
 
 							if (dFft & FFT_FWD)
