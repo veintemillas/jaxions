@@ -291,7 +291,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 /*	Parallelizes on Z						*/
 
 template<typename Float, const int step>
-inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Lz, const size_t Sf)
+inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Lz, const size_t Sf, size_t NN)
 {
 	const double zP = M_PI*z;
 	size_t count = 0;
@@ -311,14 +311,14 @@ inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, co
 
 	/*	We go parallel on Z	*/
 	#pragma omp parallel for private(idx,idxPy,idxVy,mDf,mel,mPy,vPy) reduction(+:count) schedule(static)
-	for (size_t zSl = 1; zSl <= Lz; zSl++) {
+	for (size_t zSl = NN; zSl < Lz+NN; zSl++) {
 		/*	Vectorization goes serial	*/
 		for (int vIdx = 0; vIdx < step; vIdx++) {
 			/*	Bulk Y, X=0 always	*/
 			for (size_t yPt = 0; yPt < YC - 1; yPt++) {
 				idx   = zSl*Sf + yPt*XC + vIdx;
 				idxPy = idx + XC;
-				idxVy = idxPy - Sf;
+				idxVy = idxPy - Sf*NN;
 
 				mel = m[idx];
 				mPy = m[idxPy];
@@ -348,7 +348,7 @@ inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, co
 			/*	Border, needs shifts	*/
 			idx    = zSl*Sf;
 			idxPy  = idx + ((vIdx+1) % step);
-			idxVy  = idxPy - Sf;
+			idxVy  = idxPy - Sf*NN;
 			idx   += Sf - XC + vIdx;
 
 			mel = m[idx];
@@ -382,7 +382,7 @@ inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, co
 }
 
 template<typename Float>
-inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lz, const size_t Sf)
+inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lz, const size_t Sf, size_t NN)
 {
 	const double zP = M_PI*z;
 	size_t count = 0;
@@ -408,14 +408,14 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 		/*	It's cumbersome but we avoid exchanging the whole slice to get one point	*/
 
 		if (commSize() == 1) {
-			m[0] = m[Sf*Lz];
+			m[Sf*(NN-1)] = m[Sf*(Lz+NN-1)];
 		} else {
 			if (rank == cBckNeig) {
-				MPI_Send(&m[Sf*Lz], sizeof(Float), MPI_CHAR, cRank,   cRank, MPI_COMM_WORLD);
+				MPI_Send(&m[Sf*(Lz+NN-1)], sizeof(Float), MPI_CHAR, cRank,   cRank, MPI_COMM_WORLD);
 			}
 
 			if (rank == cRank) {
-				MPI_Recv(m,         sizeof(Float), MPI_CHAR, bckNeig, cRank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				MPI_Recv(&m[Sf*(NN-1)]  , sizeof(Float), MPI_CHAR, bckNeig, cRank, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			}
 		}
 
@@ -423,15 +423,14 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 		/*	loop where one rank undoes what another did				*/
 
 		if (rank == cRank) {
-			for (size_t idx=0,i=0; i<Lz; i++,idx+=Sf) {
+			for (size_t idx=0,i=0; i<Lz-1; i++,idx+=Sf) {
 
-				idxPz = idx + Sf;
-				idxVz = idx;
+				idxPz = idx + Sf*NN;
 
-				mel = m[idx];
+				mel = m[idx + Sf*(NN-1)];
 
 				mPz = m[idxPz];
-				vPz = v[idxVz];
+				vPz = v[idx];
 
 				/*	Z-Direction	*/
 
@@ -452,7 +451,7 @@ inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, con
 				}
 
 				m[idxPz] = mPz;
-				v[idxVz] = vPz;
+				v[idx] = vPz;
 			}
 		}
 	}
@@ -469,14 +468,14 @@ size_t	mendThetaXeon (Scalar *field)
 
 	switch (field->Precision()) {
 		case	FIELD_DOUBLE:
-		tJmp += mendThetaLine(static_cast<double*>(field->mStart()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf());
-		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mStart()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		tJmp += mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf(), field->getNg());
+		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf(), field->getNg());
 		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		case	FIELD_SINGLE:
-		tJmp += mendThetaLine(static_cast<float *>(field->mStart()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf());
-		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mStart()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf());
+		tJmp += mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf(), field->getNg());
+		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf(), field->getNg());
 		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
