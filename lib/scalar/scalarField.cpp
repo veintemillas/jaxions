@@ -112,6 +112,9 @@ const std::complex<float> If(0.,1.);
 	gsent = false;
 	grecv = false;
 
+	setCO(Ng);
+
+
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
@@ -1256,6 +1259,33 @@ double  Scalar::Saskia  (const double RNow)
 	return  0.;
 }
 
+void	Scalar::setCO(size_t newN)
+{
+	co.resize(newN); co.assign(newN, 0.);
+
+	switch(newN)
+	{
+		case 0:
+		break;
+
+		case 1:
+		default:
+			co = {1.}  ;
+			break;
+		case 2:
+			co = {4./3., -1./12.};
+			break;
+		case 3:
+			co = {1.5, -3./20.0,1./90.};
+			break;
+		case 4:
+			co = {1.6, -0.2, 8./315., -1./560.};
+			break;
+		case 5:
+			co = {5./3., -5./21., 5./126., -5./1008., 1./3150.};
+			break;
+	}
+}
 
 /*	Follow all the functions written by Javier	*/
 /*	These should be rewritten following the
