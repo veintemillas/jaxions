@@ -12,6 +12,20 @@ from scipy.optimize import curve_fit
 
 
 
+def sdata(data, name, dataname):
+    pname = name + '_' + dataname + '.pickle'
+    with open(pname,'wb') as w:
+        pickle.dump(data, w)
+
+def rdata(name, dataname):
+    pname = name + '_' + dataname + '.pickle'
+    with open(pname,'rb') as r:
+        return pickle.load(r)
+
+
+
+
+
 # ------------------------------------------------------------------------------
 #   Analytical fit
 # ------------------------------------------------------------------------------
@@ -541,21 +555,11 @@ class rebinF:
 #   save the data of instantaneous spectra as pickle files
 #   assuming input as an inspave class object
 def saveF(inspave, name='./F'):
-    yname = name + '_y.pickle'
-    dyname = name + '_dy.pickle'
-    xname = name + '_x.pickle'
-    logname = name + '_log.pickle'
-    nname = name + '_Fnorm.pickle'
-    with open(yname,'wb') as wy:
-        pickle.dump(inspave.F, wy)
-    with open(dyname,'wb') as wdy:
-        pickle.dump(inspave.dF, wdy)
-    with open(xname,'wb') as wx:
-        pickle.dump(inspave.x, wx)
-    with open(logname,'wb') as wlog:
-        pickle.dump(inspave.log, wlog)
-    with open(nname,'wb') as wn:
-        pickle.dump(inspave.Fnorm, wn)
+    sdata(inspave.F,name,'y')
+    sdata(inspave.dF,name,'dy')
+    sdata(inspave.x,name,'x')
+    sdata(inspave.log,name,'log')
+    sdata(inspave.Fnorm,name,'Fnorm')
 
 
 
@@ -565,21 +569,11 @@ def saveF(inspave, name='./F'):
 #   read the data of instantaneous spectra
 class readF:
     def __init__(self, name='./F'):
-        yname = name + '_y.pickle'
-        dyname = name + '_dy.pickle'
-        xname = name + '_x.pickle'
-        logname = name + '_log.pickle'
-        nname = name + '_Fnorm.pickle'
-        with open(yname,'rb') as ry:
-            self.F = pickle.load(ry)
-        with open(dyname,'rb') as rdy:
-            self.dF = pickle.load(rdy)
-        with open(xname,'rb') as rx:
-            self.x = pickle.load(rx)
-        with open(logname,'rb') as rlog:
-            self.log = pickle.load(rlog)
-        with open(nname,'rb') as rn:
-            self.Fnorm = pickle.load(rn)
+        self.F = rdata(name,'y')
+        self.dF = rdata(name,'dy')
+        self.x = rdata(name,'x')
+        self.log = rdata(name,'log')
+        self.Fnorm = rdata(name,'Fnorm')
 
 
 
@@ -990,27 +984,13 @@ class Scanqopt:
 #   save the data of q as pickle files
 #   assuming input as an Scanqopt class object
 def saveq(scanqopt, name='./qopt'):
-    qname = name + '_q.pickle'
-    mname = name + '_m.pickle'
-    sqname = name + '_sigmaq.pickle'
-    sqnname = name + '_sigmaqn.pickle'
-    sqcname = name + '_sigmaqc.pickle'
-    logname = name + '_log.pickle'
-    cxmaxoptname = name + '_cxmax.pickle'
-    with open(qname,'wb') as wq:
-        pickle.dump(scanqopt.qbest, wq)
-    with open(mname,'wb') as wm:
-        pickle.dump(scanqopt.mbest, wm)
-    with open(sqname,'wb') as wsq:
-        pickle.dump(scanqopt.sigmaq, wsq)
-    with open(sqnname,'wb') as wsqn:
-        pickle.dump(scanqopt.sigmaqn, wsqn)
-    with open(sqcname,'wb') as wsqc:
-        pickle.dump(scanqopt.sigmaqc, wsqc)
-    with open(logname,'wb') as wl:
-        pickle.dump(scanqopt.log, wl)
-    with open(cxmaxoptname,'wb') as wc:
-        pickle.dump(scanqopt.cxmaxopt, wc)
+    sdata(scanqopt.qbest,name,'q')
+    sdata(scanqopt.mbest,name,'m')
+    sdata(scanqopt.sigmaq,name,'sigmaq')
+    sdata(scanqopt.sigmaqn,name,'sigmaqn')
+    sdata(scanqopt.sigmaqc,name,'sigmaqc')
+    sdata(scanqopt.log,name,'log')
+    sdata(scanqopt.cxmaxopt,name,'cxmax')
 
 
 
@@ -1020,27 +1000,13 @@ def saveq(scanqopt, name='./qopt'):
 #   read the data of q
 class readq:
     def __init__(self, name='./qopt'):
-        qname = name + '_q.pickle'
-        mname = name + '_m.pickle'
-        sqname = name + '_sigmaq.pickle'
-        sqnname = name + '_sigmaqn.pickle'
-        sqcname = name + '_sigmaqc.pickle'
-        logname = name + '_log.pickle'
-        cxmaxoptname = name + '_cxmax.pickle'
-        with open(qname,'rb') as rq:
-            self.qbest = pickle.load(rq)
-        with open(mname,'rb') as rm:
-            self.mbest = pickle.load(rm)
-        with open(sqname,'rb') as rsq:
-            self.sigmaq = pickle.load(rsq)
-        with open(sqnname,'rb') as rsqn:
-            self.sigmaqn = pickle.load(rsqn)
-        with open(sqcname,'rb') as rsqc:
-            self.sigmaqc = pickle.load(rsqc)
-        with open(logname,'rb') as rl:
-            self.log = pickle.load(rl)
-        with open(cxmaxoptname,'rb') as rc:
-            self.cxmaxopt = pickle.load(rc)
+        self.qbest = rdata(name,'q')
+        self.mbest = rdata(name,'m')
+        self.sigmaq = rdata(name,'sigmaq')
+        self.sigmaqn = rdata(name,'sigmaqn')
+        self.sigmaqc = rdata(name,'sigmaqc')
+        self.log = rdata(name,'log')
+        self.cxmaxopt = rdata(name,'cxmax')
 
 
 
@@ -1137,30 +1103,14 @@ class strave:
 #   save the data of string density parameter as pickle files
 #   assuming input as an strave class object
 def savestr(strave, name='./str'):
-    xiname = name + '_xi.pickle'
-    xierrname = name + '_xierr.pickle'
-    dxidlname = name + '_dxidl.pickle'
-    dxidlerrname = name + '_dxidlerr.pickle'
-    dxidtname = name + '_dxidt.pickle'
-    dxidterrname = name + '_dxidterr.pickle'
-    tname = name + '_t.pickle'
-    logname = name + '_log.pickle'
-    with open(xiname,'wb') as wxi:
-        pickle.dump(strave.xi, wxi)
-    with open(xierrname,'wb') as wxie:
-        pickle.dump(strave.xierr, wxie)
-    with open(dxidlname,'wb') as wdxdl:
-        pickle.dump(strave.dxidl, wdxdl)
-    with open(dxidlerrname,'wb') as wdxdle:
-        pickle.dump(strave.dxidlerr, wdxdle)
-    with open(dxidtname,'wb') as wdxdt:
-        pickle.dump(strave.dxidt, wdxdt)
-    with open(dxidterrname,'wb') as wdxdte:
-        pickle.dump(strave.dxidterr, wdxdte)
-    with open(tname,'wb') as wt:
-        pickle.dump(strave.t, wt)
-    with open(logname,'wb') as wl:
-        pickle.dump(strave.log, wl)
+    sdata(strave.xi,name,'xi')
+    sdata(strave.xierr,name,'xierr')
+    sdata(strave.dxidl,name,'dxidl')
+    sdata(strave.dxidlerr,name,'dxidlerr')
+    sdata(strave.dxidt,name,'dxidt')
+    sdata(strave.dxidterr,name,'dxidterr')
+    sdata(strave.t,name,'t')
+    sdata(strave.log,name,'log')
 
 
 
@@ -1170,30 +1120,14 @@ def savestr(strave, name='./str'):
 #   read the data of string density parameter
 class readstr:
     def __init__(self, name='./str'):
-        xiname = name + '_xi.pickle'
-        xierrname = name + '_xierr.pickle'
-        dxidlname = name + '_dxidl.pickle'
-        dxidlerrname = name + '_dxidlerr.pickle'
-        dxidtname = name + '_dxidt.pickle'
-        dxidterrname = name + '_dxidterr.pickle'
-        tname = name + '_t.pickle'
-        logname = name + '_log.pickle'
-        with open(xiname,'rb') as rxi:
-            self.xi = pickle.load(rxi)
-        with open(xierrname,'rb') as rxie:
-            self.xierr = pickle.load(rxie)
-        with open(dxidlname,'rb') as rdxdl:
-            self.dxidl = pickle.load(rdxdl)
-        with open(dxidlerrname,'rb') as rdxdle:
-            self.dxidlerr = pickle.load(rdxdle)
-        with open(dxidtname,'rb') as rdxdt:
-            self.dxidt = pickle.load(rdxdt)
-        with open(dxidterrname,'rb') as rdxdte:
-            self.dxidterr = pickle.load(rdxdte)
-        with open(tname,'rb') as rt:
-            self.t = pickle.load(rt)
-        with open(logname,'rb') as rl:
-            self.log = pickle.load(rl)
+        self.xi = rdata(name,'xi')
+        self.xierr = rdata(name,'xierr')
+        self.dxidl = rdata(name,'dxidl')
+        self.dxidlerr = rdata(name,'dxidlerr')
+        self.dxidt = rdata(name,'dxidt')
+        self.dxidterr = rdata(name,'dxidterr')
+        self.t = rdata(name,'t')
+        self.log = rdata(name,'log')
 
 
 
@@ -1530,33 +1464,15 @@ class espave:
 #   save the data of axion energy spectra as pickle files
 #   assuming input as an espave class object
 def saveesp(espave, name='./esp'):
-    ename = name + '_e.pickle'
-    dename = name + '_de.pickle'
-    ecname = name + '_ec.pickle'
-    decname = name + '_dec.pickle'
-    tname = name + '_t.pickle'
-    logname = name + '_log.pickle'
-    nname = name + '_nm.pickle'
-    kname = name + '_k.pickle'
-    kbname = name + '_kb.pickle'
-    with open(ename,'wb') as we:
-        pickle.dump(espave.esp, we)
-    with open(dename,'wb') as wde:
-        pickle.dump(espave.desp, wde)
-    with open(ecname,'wb') as wec:
-        pickle.dump(espave.espcor, wec)
-    with open(decname,'wb') as wdec:
-        pickle.dump(espave.despcor, wdec)
-    with open(tname,'wb') as wt:
-        pickle.dump(espave.t, wt)
-    with open(logname,'wb') as wl:
-        pickle.dump(espave.log, wl)
-    with open(nname,'wb') as wn:
-        pickle.dump(espave.nm, wn)
-    with open(kname,'wb') as wk:
-        pickle.dump(espave.avek, wk)
-    with open(kbname,'wb') as wkb:
-        pickle.dump(espave.k_below, wkb)
+    sdata(espave.esp,name,'e')
+    sdata(espave.desp,name,'de')
+    sdata(espave.espcor,name,'ec')
+    sdata(espave.despcor,name,'dec')
+    sdata(espave.t,name,'t')
+    sdata(espave.log,name,'log')
+    sdata(espave.nm,name,'nm')
+    sdata(espave.avek,name,'k')
+    sdata(espave.k_below,name,'kb')
 
 
 
@@ -1566,33 +1482,15 @@ def saveesp(espave, name='./esp'):
 #   read the data of axion energy spectra
 class readesp:
     def __init__(self, name='./esp'):
-        ename = name + '_e.pickle'
-        dename = name + '_de.pickle'
-        ecname = name + '_ec.pickle'
-        decname = name + '_dec.pickle'
-        tname = name + '_t.pickle'
-        logname = name + '_log.pickle'
-        nname = name + '_nm.pickle'
-        kname = name + '_k.pickle'
-        kbname = name + '_kb.pickle'
-        with open(ename,'rb') as re:
-            self.esp = pickle.load(re)
-        with open(dename,'rb') as rde:
-            self.desp = pickle.load(rde)
-        with open(ecname,'rb') as rec:
-            self.espcor = pickle.load(rec)
-        with open(decname,'rb') as rdec:
-            self.despcor = pickle.load(rdec)
-        with open(tname,'rb') as rt:
-            self.t = pickle.load(rt)
-        with open(logname,'rb') as rl:
-            self.log = pickle.load(rl)
-        with open(nname,'rb') as rn:
-            self.nm = pickle.load(rn)
-        with open(kname,'rb') as rk:
-            self.avek = pickle.load(rk)
-        with open(kbname,'rb') as rkb:
-            self.k_below = pickle.load(rkb)
+        self.esp = rdata(name,'e')
+        self.desp = rdata(name,'de')
+        self.espcor = rdata(name,'ec')
+        self.despcor = rdata(name,'dec')
+        self.t = rdata(name,'t')
+        self.log = rdata(name,'log')
+        self.nm = rdata(name,'nm')
+        self.avek = rdata(name,'k')
+        self.k_below = rdata(name,'kb')
 
 
 
