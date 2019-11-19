@@ -1757,7 +1757,7 @@ void	SpecBin::masker	(double radius_mask) {
 						// r2c FFT in m2
 						myPlan.run(FFT_FWD);
 
-						/* Filter */					
+						/* Filter */
 						double rsend = radius_mask;
 						if (ng0calib > 0.0)
 							rsend *= ng0calib;
@@ -1795,7 +1795,7 @@ void	SpecBin::masker	(double radius_mask) {
 			Float maskcut = 0.5;
 
 			if (mask & (SPMASK_REDO | SPMASK_GAUS))
-			{	
+			{
 				if (ng0calib < 0.0)
 				{
 				maskcut = (Float) std::abs(radius_mask);
@@ -1829,37 +1829,37 @@ void	SpecBin::masker	(double radius_mask) {
 					case SPMASK_VIL2:
 							/* Here only unpad to m2h*/
 							m2hF[idx] = m2F[oidx];
-							m2F[oidx]  = 1. - m2F[oidx];
+							//m2F[oidx]  = 1. - m2F[oidx];
 							break;
 					case SPMASK_REDO:
 							/* Top hat mask */
 							if ( m2F[oidx] > maskcut ) {
 								strdaa[idx] |= STRING_MASK ;
-								m2F[oidx] = 1; // Axion ANTIMASK
+								m2F[oidx] = 0; // Axion ANTIMASK
 								m2hF[idx] = 0; // Axion MASK
 							}
 							else {
-								m2F[oidx] = 0;
+								m2F[oidx] = 1;
 								m2hF[idx] = 1;
 							}
 							break;
 						case SPMASK_DIFF:
 								/* Diffused mask */
-								if ( m2hF[idx] > maskcut )  //0.5 // remember m2hF is already unpadded->needs idx
+								if ( m2hF[idx] > maskcut )     //0.5 // remember m2hF is already unpadded->needs idx
 									strdaa[idx] |= STRING_MASK ; // Note that we store a CORE string mask here defined by the 0.5
-								m2F[oidx] = m2hF[idx];     // Axion mask padded
-								m2hF[idx] = 1 - m2hF[idx]; // Axion mask unpadded
+								m2hF[idx] = 1 - m2hF[idx];     // Axion mask unpadded
+								m2F[oidx] = m2hF[idx];         // Axion mask padded
 								break;
 					case SPMASK_GAUS:
 							/* Exponentially suppressed mask */
 							if ( m2F[oidx] > maskcut ){
 								strdaa[idx] |= STRING_MASK ;
 								// Linear version
-								m2F[oidx] = 1;
+								m2F[oidx] = 0;
 								m2hF[idx] = 0;
 							} else {
-								m2F[oidx] = m2F[oidx]/maskcut;
-								m2hF[idx] = 1-m2F[oidx];
+								m2F[oidx] = 1 - m2F[oidx]/maskcut;
+								m2hF[idx] = m2F[oidx];
 							}
 							// exponential version
 							// m2F[oidx] = exp(-cc*m2F[oidx]);
