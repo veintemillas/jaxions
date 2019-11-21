@@ -44,8 +44,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	int redmap = info.redmap;
 	StringMeasureType strmeas = info.strmeas;
 	double radius_mask = info.rmask ; //obsolete?
-	int irmask = info.i_rmask;;
+	int irmask = info.i_rmask;
 	std::vector<double> rmasktab = info.rmask_tab ;
+	if (axiona->Field() == FIELD_AXION && irmask == 0 ){
+		irmask = 1;
+		rmasktab.push_back(0.0);
+	}
 	nRunType nruntype = info.nrt;
 
 	/* This is a change with respect to previous behaviour
@@ -416,8 +420,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				}  // end if mask
 
 
-		/* If Axion mode this is the only spectrum. In saxion an option */
-
 		if (measa & (MEAS_NSP_A | MEAS_NSP_S | MEAS_NNSPEC))
 		{
 			LogMsg(VERB_NORMAL, "[Meas %d] nSpectra",indexa);
@@ -437,8 +439,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			for (size_t i=0; i < 8; i++)
 			{
-				LogMsg(VERB_NORMAL, "[Meas %d] mask %s (%d)",indexa,masklab[i].c_str(),i);LogFlush();
+				LogMsg(VERB_NORMAL,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
 				if ( !(mask & maskara[i])){
+					LogMsg(VERB_NORMAL, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
 					continue;
 				}
 				/* Place to set limitations and incomatibilities between saxion and axion spectra */
@@ -449,6 +452,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
+LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 
 						if (prntmsk[i]){
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();

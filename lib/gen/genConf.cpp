@@ -255,7 +255,6 @@ void	ConfGenerator::runCpu	()
 				{
 					LogMsg(VERB_NORMAL,"[GEN] Tkachev Initial conditions only prepared for RD !\n ");
 				}
-			LogMsg(VERB_NORMAL,"[GEN] CONF_TKACHEV started!\n ");
 			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
 			//probably the profiling has to be modified
 			prof.start();
@@ -721,7 +720,7 @@ void	ConfGenerator::runCpu	()
 
 		}
 	}
-
+	LogMsg(VERB_NORMAL,"[GEN] done!",*axionField->zV());LogFlush();
 }
 
 

@@ -2060,11 +2060,11 @@ int	parseArgs (int argc, char *argv[])
 		         exit(1);
 		         }
                          ng0calib = atof(argv[i+1]);
-                         
+
 			 i++;
 		         procArgs++;
 		         passed = true;
-		         goto endFor;	
+		         goto endFor;
 		}
 
 		if (!strcmp(argv[i], "--nologmpi"))
@@ -2238,7 +2238,7 @@ if (icdatst.cType == CONF_SMOOTH )
 			if (stat(outPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
 				strcpy(outDir, outPath);
 			} else {
-				printf("Path %s doesn't exists, using default\n", outPath);
+				printf("Path %s doesn't exist, using default\n", outPath);
 				mCreateOut = true;
 			}
 		}
@@ -2254,7 +2254,7 @@ if (icdatst.cType == CONF_SMOOTH )
 			if (stat(wisPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
 				strcpy(wisDir, wisPath);
 			} else {
-				printf("Path %s doesn't exists, using default\n", wisPath);
+				printf("Path %s doesn't exist, using default\n", wisPath);
 			}
 		}
 	}
