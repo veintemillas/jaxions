@@ -57,7 +57,6 @@ def dfunc(x, a0, a1, a2, a3):
 #   options for rmask:
 #     rmask = '%.2f' -> label from rmasktable (default 2.00)
 #     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
-
 class fitP:
     def __init__(self, mfiles, spmask='Red', rmask='2.00'):
         self.sizeN = pa.gm(mfiles[0],'Size')
@@ -90,6 +89,73 @@ class fitP:
                     binK = pa.gm(meas,'nspK_Vi2')
                 else:
                     print('Wrong option for spmask!')
+                nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
+                ttab.append(t)
+                logtab.append(log)
+                nsptab.append(nsp)
+        self.t = np.array(ttab)
+        self.log = np.array(logtab)
+        self.nsp = np.array(nsptab)
+        # cutoff time (chosen as log(ms/H) = 4)
+        istart = np.abs(self.log - 4.).argmin()
+        self.param = []
+        self.paramv = []
+        self.listihc = []
+        self.dataP = []
+        self.datalog = []
+        # transpose
+        nspT = np.transpose(self.nsp)
+        iterkmax = len(self.avek[self.k_below])
+        for ik in range(iterkmax):
+            print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
+            ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
+            xdata = self.log[istart:]
+            ydata = self.t[istart:]*nspT[ik,istart:]
+            Nparam = 4 # number of parameters for the fitting function
+            if len(xdata) >= Nparam and not ik == 0:
+                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
+            else:
+                popt = [np.nan]*(Nparam)
+                pcov = [np.nan]*(Nparam)
+            self.param.append(popt)
+            self.paramv.append(pcov)
+            self.dataP.append(ydata)
+            self.datalog.append(xdata)
+            self.listihc.append(ihc)
+        print("")
+        self.dataP = np.array(self.dataP)
+        self.datalog = np.array(self.datalog)
+
+
+
+
+
+
+class fitP2:
+    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
+        self.sizeN = pa.gm(mfiles[0],'Size')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda0')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        # identify modes less than N/2
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.lz2e = pa.gm(mfiles[0],'lz2e')
+        # create lists of the evolution of axion number spectrum (kinetic part)
+        ttab = []
+        logtab = []
+        nsptab = []
+        for meas in mfiles:
+            if pa.gm(meas,'nsp?'):
+                t = pa.gm(meas,'time')
+                log = pa.gm(meas,'logi')
+                s0 = pa.gm(meas,'nspK_'+spmasklabel)
+                if cor == 'correction':
+                    m = pa.gm(meas,'mspM_'+spmasklabel)
+                    binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                else:
+                    binK = s0
                 nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
                 ttab.append(t)
                 logtab.append(log)
@@ -384,6 +450,139 @@ class inspC:
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
         self.log = np.array(self.log)
+
+
+
+
+
+
+#   calculate instantaneous spectrum
+#   options for difftype:
+#     difftype = 'A' -> analytical fit
+#     difftype = 'B' -> backward difference
+#     difftype = 'C' -> central difference
+#   options for correction:
+#     cor = 'correction' -> spectrum corrected by the matrix
+class insp:
+    def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection'):
+        self.sizeN = pa.gm(mfiles[0],'sizeN')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda0')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.lz2e = pa.gm(mfiles[0],'lz2e')
+        self.F = [] # instantaneous spectrum F
+        self.Fnorm = [] # normalization factor of F
+        self.t = [] # time
+        self.log = []
+        self.x = [] # x-axis (k/RH)
+        if difftype == 'A':
+            fitp = fitP2(mfiles,spmasklabel,cor)
+            for id in range(len(fitp.t)):
+                t = fitp.t[id]
+                log = fitp.log[id]
+                print('\rcalc F: %d/%d, log = %.2f'%(id+1,len(fitp.log),log),end="")
+                if id >= istart:
+                    Fbinbuf = []
+                    x = []
+                    for ik in range(iterkmax):
+                        # calculate only modes inside the horizon
+                        if id >= fitp.listihc[ik]:
+                            l = fitp.param[ik]
+                            Fval = dfunc(log,*l)/(t**5)
+                            if not np.isnan(Fval):
+                                Fbinbuf.append(Fval)
+                                x.append(self.avek[ik]*t)
+                    Fbinbuf = np.array(Fbinbuf)
+                    # normalize
+                    dx = np.gradient(x)
+                    Fdx = Fbinbuf*dx
+                    self.F.append(Fbinbuf/Fdx.sum())
+                    self.Fnorm.append(Fdx.sum())
+                    self.x.append(np.array(x))
+                    self.t.append(t)
+                    self.log.append(log)
+            print("")
+        elif difftype == 'B':
+            msplist = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
+            for meas in msplist:
+                print('\rcalc F: %d/%d, log = %.2f'%(msplist.index(meas)+1,len(msplist),pa.gm(meas,'logi')),end="")
+                if msplist.index(meas) == 0:
+                    tp = pa.gm(meas,'time')
+                    s0 = pa.gm(meas,'nspK_'+spmasklabel)
+                    if cor == 'correction':
+                        m = pa.gm(meas,'mspM_'+spmasklabel)
+                        binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                    else:
+                        binK = s0
+                    spp = (self.avek**2)*binK/((math.pi**2)*self.nm)
+                else:
+                    t = pa.gm(meas,'time')
+                    dt = t - tp
+                    s0 = pa.gm(meas,'nspK_'+spmasklabel)
+                    if cor == 'correction':
+                        m = pa.gm(meas,'mspM_'+spmasklabel)
+                        binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                    else:
+                        binK = s0
+                    sp = (self.avek**2)*binK/((math.pi**2)*self.nm)
+                    t = tp + dt/2
+                    x = self.avek*t
+                    diff = (sp - spp)/((t**4)*dt)
+                    # normalize
+                    dx = np.gradient(x)
+                    Fdx = (diff*dx)[self.k_below]
+                    self.F.append(diff/Fdx.sum())
+                    self.Fnorm.append(Fdx.sum())
+                    self.t.append(t)
+                    self.x.append(x)
+                    self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
+                    tp = pa.gm(meas,'time')
+                    spp = sp
+            print("")
+        elif difftype == 'C':
+            msplist = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
+            for id in range(len(msplist)):
+                if (id != 0) and (id != len(msplist)-1):
+                    print('\rcalc F: %d/%d, log = %.2f'%(id,len(msplist)-2,pa.gm(msplist[id],'logi')),end="")
+                    t1 = pa.gm(msplist[id-1],'time')
+                    t2 = pa.gm(msplist[id+1],'time')
+                    s01 = pa.gm(msplist[id-1],'nspK_'+spmasklabel)
+                    s02 = pa.gm(msplist[id+1],'nspK_'+spmasklabel)
+                    if cor == 'correction':
+                        m1 = pa.gm(msplist[id-1],'mspM_'+spmasklabel)
+                        m2 = pa.gm(msplist[id+1],'mspM_'+spmasklabel)
+                        binK1 = (self.sizeL**3)*np.dot(inv(m),s01/self.nm)
+                        binK2 = (self.sizeL**3)*np.dot(inv(m),s02/self.nm)
+                    else:
+                        binK1 = s01
+                        binK2 = s02
+                    sp1 = (self.avek**2)*binK1/((math.pi**2)*self.nm)
+                    sp2 = (self.avek**2)*binK2/((math.pi**2)*self.nm)
+                    t = pa.gm(msplist[id],'time')
+                    log = pa.gm(msplist[id],'logi')
+                    x = self.avek*t
+                    dt = t2 - t1
+                    diff = (sp2 - sp1)/((t**4)*dt)
+                    # normalize
+                    dx = np.gradient(x)
+                    Fdx = (diff*dx)[self.k_below]
+                    self.F.append(diff/Fdx.sum())
+                    self.Fnorm.append(Fdx.sum())
+                    self.t.append(t)
+                    self.log.append(log)
+                    self.x.append(x)
+            print("")
+        else:
+            print("wrong difftype option!")
+        self.F = np.array(self.F)
+        self.Fnorm = np.array(self.Fnorm)
+        self.x = np.array(self.x) # x = k/RH
+        self.t = np.array(self.t) # time
+        self.log = np.array(self.log)
+
 
 
 
