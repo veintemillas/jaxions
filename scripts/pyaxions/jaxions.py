@@ -308,6 +308,20 @@ def gm(address,something='summary',printerror=False):
             else :
                 return f['/potential/'].attrs[u'Lambda'] ;
 
+    if something == 'lambda0':
+        return f['/potential/'].attrs[u'Lambda']
+
+    if something == 'lz2e':
+        try:
+            return f['/potential/'].attrs[u'Lambda Z2 exponent']
+        except:
+            typeL = f['/potential/'].attrs['Lambda type']
+            if typeL == b'z2':
+                return 2.0;
+            else:
+                return 0;
+
+
     if something == 'msa':
         typeL = f['/potential/'].attrs['Lambda type']
         l = f['/potential/'].attrs[u'Lambda']

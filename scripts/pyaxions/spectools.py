@@ -59,21 +59,24 @@ def dfunc(x, a0, a1, a2, a3):
 #     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
 
 class fitP:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
         self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.lz2e = pa.gm(mfiles[0],'lz2e')
         # create lists of the evolution of axion number spectrum (kinetic part)
         ttab = []
+        logtab = []
         nsptab = []
         for meas in mfiles:
             if pa.gm(meas,'nsp?'):
                 t = pa.gm(meas,'time')
+                log = pa.gm(meas,'logi')
                 if spmask == 'nomask':
                     print('nomask option is not supported now...')
                 elif spmask == 'Red':
@@ -89,13 +92,11 @@ class fitP:
                     print('Wrong option for spmask!')
                 nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
                 ttab.append(t)
+                logtab.append(log)
                 nsptab.append(nsp)
         self.t = np.array(ttab)
+        self.log = np.array(logtab)
         self.nsp = np.array(nsptab)
-        if lltype == 'Z2':
-            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
         # cutoff time (chosen as log(ms/H) = 4)
         istart = np.abs(self.log - 4.).argmin()
         self.param = []
@@ -146,9 +147,8 @@ class fitP:
 
 #   calculate instantaneous spectrum based on analytical fit
 class inspA:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
         fitp = fitP(mfiles,spmask,rmask)
-        self.lltype = lltype
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
         self.msa = fitp.msa
@@ -159,6 +159,7 @@ class inspA:
         self.F = [] # instantaneous spectrum F
         self.Fnorm = [] # normalization factor of F
         self.t = [] # time
+        self.log = []
         self.x = [] # x-axis (k/RH)
         istart = np.abs(fitp.log - 4.).argmin()
         iterkmax = len(self.avek[self.k_below])
@@ -185,15 +186,13 @@ class inspA:
                 self.Fnorm.append(Fdx.sum())
                 self.x.append(np.array(x))
                 self.t.append(t)
+                self.log.append(log)
         print("")
         self.F = np.array(self.F)
         self.Fnorm = np.array(self.Fnorm)
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
-        if lltype == 'Z2':
-            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
+        self.log = np.array(self.log)
 
 
 
@@ -202,9 +201,9 @@ class inspA:
 #   calculate instantaneous spectrum based on analytical fit
 #   time steps specified in the arguments
 class inspAt:
-    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00', lltype='Z2'):
+    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00'):
         fitp = fitP(mfiles,spmask,rmask)
-        self.lltype = lltype
+        self.lz2e = fitp.lz2e
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
         self.msa = fitp.msa
@@ -216,10 +215,7 @@ class inspAt:
         self.Fnorm = [] # normalization factor of F
         self.x = [] # x-axis (k/RH)
         self.log = np.linspace(logi,logf,nlog)
-        if lltype == 'Z2':
-            self.t = np.exp(self.log)*self.sizeL/(self.sizeN*self.msa)
-        elif lltype == 'fixed':
-            self.t = np.sqrt(np.exp(self.log)/np.sqrt(2.*self.LL))
+        self.t = np.power(np.exp(self.log)/math.sqrt(2.*self.LL),2./(4.-self.lz2e))
         istart = np.abs(self.log - 4.).argmin()
         iterkmax = len(self.avek[self.k_below])
         for id in range(len(self.log)):
@@ -258,12 +254,12 @@ class inspAt:
 
 #   calculate instantaneous spectrum based on backward difference
 class inspB:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
-        self.lltype = lltype
+    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
+        self.lz2e = pa.gm(mfiles[0],'lz2e')
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -322,10 +318,7 @@ class inspB:
         self.Fnorm = np.array(self.Fnorm)
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
-        if lltype == 'Z2':
-            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
+        self.log = np.log(math.sqrt(2.*self.LL)*np.power(self.t,2.-self.lz2e/2.))
 
 
 
@@ -334,12 +327,11 @@ class inspB:
 
 #   calculate instantaneous spectrum based on central difference
 class inspC:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2'):
-        self.lltype = lltype
+    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -347,6 +339,7 @@ class inspC:
         self.F = [] # instantaneous spectrum F
         self.Fnorm = [] # normalization factor of F
         self.t = [] # time
+        self.log = []
         self.x = [] # x-axis (k/RH)
         msplist = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
         for id in range(len(msplist)):
@@ -374,6 +367,7 @@ class inspC:
                 sp1 = (self.avek**2)*binK1/((math.pi**2)*self.nm)
                 sp2 = (self.avek**2)*binK2/((math.pi**2)*self.nm)
                 t = pa.gm(msplist[id],'time')
+                log = pa.gm(msplist[id],'logi')
                 x = self.avek*t
                 dt = t2 - t1
                 diff = (sp2 - sp1)/((t**4)*dt)
@@ -383,15 +377,13 @@ class inspC:
                 self.F.append(diff/Fdx.sum())
                 self.Fnorm.append(Fdx.sum())
                 self.t.append(t)
+                self.log.append(log)
                 self.x.append(x)
         self.F = np.array(self.F)
         self.Fnorm = np.array(self.Fnorm)
         self.x = np.array(self.x) # x = k/RH
         self.t = np.array(self.t) # time
-        if lltype == 'Z2':
-            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
+        self.log = np.array(self.log)
 
 
 
@@ -402,7 +394,6 @@ class inspC:
 class inspave:
     def __init__(self, insplist):
         Nreal = len(insplist) # number of realizations
-        self.lltype = insplist[0].lltype
         self.sizeN = insplist[0].sizeN
         self.sizeL = insplist[0].sizeL
         self.msa = insplist[0].msa
@@ -446,7 +437,6 @@ class inspave:
 #   assuming input as an inspave class object
 class rebinF:
     def __init__(self, inspave, nbin, cmin, cmax):
-        self.lltype = inspave.lltype
         self.sizeN = inspave.sizeN
         self.sizeL = inspave.sizeL
         self.msa = inspave.msa
@@ -460,10 +450,7 @@ class rebinF:
         self.xlim = []
         for id in range(len(inspave.t)):
             print('\r%d/%d, log = %.2f'%(id+1,len(inspave.t),inspave.log[id]),end="")
-            if self.lltype == 'Z2':
-                msoverH = inspave.t[id]*inspave.sizeN*inspave.msa/inspave.sizeL
-            elif self.lltype == 'fixed':
-                msoverH = math.sqrt(2.*self.LL)*(inspave.t[id]**2)
+            msoverH = math.exp(inspave.log[id])
             x = inspave.x[id]
             inspmtab = inspave.F[id]
             xmin = cmin
@@ -1019,24 +1006,16 @@ class readq:
 
 #   evolution of string density parameter
 class strevol:
-    def __init__(self, mfiles, lltype='Z2', diff='nodiff', sigma=1/4., thresh=0.0001):
+    def __init__(self, mfiles, diff='nodiff', sigma=1/4., thresh=0.0001):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
-        self.t = []
-        self.xi = []
+        self.LL = pa.gm(mfiles[0],'lambda0')
+        self.t = pa.gml(mfiles,'ct')
+        self.log = pa.gml(mfiles,'logi')
+        self.xi = pa.gml(mfiles,'stDens')
         self.dxidl = []
         self.dxidt = []
-        for ff in mfiles:
-            self.t.append(pa.gm(ff,'ct'))
-            self.xi.append(pa.gm(ff,'stDens'))
-        self.t = np.array(self.t)
-        self.xi = np.array(self.xi)
-        if lltype == 'Z2':
-            self.log = np.log(self.t*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.log = np.log(math.sqrt(2.*self.LL)*self.t**2)
         # calculate derivative of xi and smooth the result with Gaussian function
         if diff == 'diff':
             xref = sigma*np.sqrt(2.0*np.log(1/thresh))
@@ -1195,11 +1174,11 @@ def nspcor(mfile, nm, spmask='Red', rmask='2.00'):
 #   builds the (masked) axion kinetic spectrum with the correction matrix and outputs the time evolution
 
 class nspevol:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2', cor='nocorrection'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -1243,17 +1222,12 @@ class nspevol:
                         self.nspcor.append(s1)
                 else:
                     print('Wrong option for spmask!')
-                if lltype == 'Z2':
-                    logi = math.log(t*self.sizeN*self.msa/self.sizeL)
-                elif lltype == 'fixed':
-                    logi = math.log(math.sqrt(2.*self.LL)*t**2)
+                logi = pa.gm(f,'logi')
+                self.logtab.append(logi)
                 print('\rbuilt up to log = %.2f'%logi,end="")
         print("")
         self.ttab = np.array(self.ttab)
-        if lltype == 'Z2':
-            self.logtab = np.log(self.ttab*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
+        self.logtab = np.array(self.logtab)
         self.nsp = np.array(self.nsp)
         self.nspcor = np.array(self.nspcor)
 
@@ -1263,7 +1237,7 @@ class nspevol2:
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -1299,11 +1273,11 @@ class nspevol2:
 #   NOTE: The energy density is evaluated just by muptiplying the kinetic energy by 2.
 
 class espevol:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', lltype='Z2', cor='nocorrection'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
@@ -1354,17 +1328,12 @@ class espevol:
                         self.espcor.append(e1)
                 else:
                     print('Wrong option for spmask!')
-                if lltype == 'Z2':
-                    logi = math.log(t*self.sizeN*self.msa/self.sizeL)
-                elif lltype == 'fixed':
-                    logi = math.log(math.sqrt(2.*self.LL)*t**2)
+                logi = pa.gm(f,'logi')
+                self.logtab.append(logi)
                 print('\rbuilt up to log = %.2f'%logi,end="")
         print("")
         self.ttab = np.array(self.ttab)
-        if lltype == 'Z2':
-            self.logtab = np.log(self.ttab*self.sizeN*self.msa/self.sizeL)
-        elif lltype == 'fixed':
-            self.logtab = np.log(math.sqrt(2.*self.LL)*self.ttab**2)
+        self.logtab = np.array(self.logtab)
         self.esp = np.array(self.esp)
         self.espcor = np.array(self.espcor)
 
@@ -1374,7 +1343,7 @@ class espevol2:
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda')
+        self.LL = pa.gm(mfiles[0],'lambda0')
         self.nm = pa.gm(mfiles[0],'nmodelist')
         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
         # identify modes less than N/2
