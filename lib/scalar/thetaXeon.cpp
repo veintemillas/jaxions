@@ -29,6 +29,8 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 	Float *aField2  = static_cast<Float*>(sField->mBackGhost()) ;
 
 	const Float z = static_cast<Float>(sField->zV()[0]);
+	const Float R = static_cast<Float>(sField->RV()[0]);
+	const Float F = static_cast<Float>(sField->BckGnd()->Frw())*R/z;
 
 	for (size_t cZ = 0; cZ < Lz; cZ++)
 	{
@@ -37,10 +39,10 @@ void	toThetaKernelXeon (Scalar *sField, const Float shift)
 		for (size_t lpc = 0; lpc < S; lpc++)
 		{
 			complex<Float> mTmp = cmField[Vo+lpc] - complex<Float>(shift,0.);
-			Float iMod     = z/(mTmp.real()*mTmp.real() + mTmp.imag()*mTmp.imag());
+			Float iMod     = R/(mTmp.real()*mTmp.real() + mTmp.imag()*mTmp.imag());
 			aField1[lpc]   = arg(mTmp);
-			aField2[lpc]   = (cvField[Vo+lpc]*conj(mTmp)).imag()*iMod + aField1[lpc];
-			aField1[lpc]   *= z;
+			aField2[lpc]   = (cvField[Vo+lpc]*conj(mTmp)).imag()*iMod + F*aField1[lpc];
+			aField1[lpc]   *= R;
 		}
 		memcpy (mField + Vo, aField1, sizeof(Float)*S);
 		memcpy (vField + Vo, aField2, sizeof(Float)*S);
