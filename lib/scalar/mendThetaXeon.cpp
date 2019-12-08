@@ -26,10 +26,10 @@
 	#endif
 #endif
 
-/*	Connects all the points in a ZY plane with the whole volume	*/
-/*	Parallelizes on ZY and vectorizes on Y				*/
+/*	Connects all the points in a RY plane with the whole volume	*/
+/*	Parallelizes on RY and vectorizes on Y				*/
 
-inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const double z, const size_t Lx, const size_t Lz, const size_t Sf, FieldPrecision precision)
+inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v_, const double R, const size_t Lx, const size_t Lz, const size_t Sf, FieldPrecision precision)
 {
 	size_t count = 0;
 
@@ -52,7 +52,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 		double * __restrict__ m = (double * __restrict__) __builtin_assume_aligned (m_, Align);
 		double * __restrict__ v = (double * __restrict__) __builtin_assume_aligned (v_, Align);
 
-		const double zP = M_PI*z;
+		const double zP = M_PI*R;
 
 		const size_t XC = (Lx<<shf);
 		const size_t YC = (Lx>>shf);
@@ -176,7 +176,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 		float * __restrict__ m = (float * __restrict__) __builtin_assume_aligned (m_, Align);
 		float * __restrict__ v = (float * __restrict__) __builtin_assume_aligned (v_, Align);
 
-		const float zP = M_PI*z;
+		const float zP = M_PI*R;
 
 		const size_t XC = (Lx<<shf);
 		const size_t YC = (Lx>>shf);
@@ -291,9 +291,9 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 /*	Parallelizes on Z						*/
 
 template<typename Float, const int step>
-inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lx, const size_t Lz, const size_t Sf, size_t NN)
+inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, const double R, const size_t Lx, const size_t Lz, const size_t Sf, size_t NN)
 {
-	const double zP = M_PI*z;
+	const double zP = M_PI*R;
 	size_t count = 0;
 
 	size_t idx, idxPy, idxVy;
@@ -382,9 +382,9 @@ inline  size_t	mendThetaSlice(Float * __restrict__ m, Float * __restrict__ v, co
 }
 
 template<typename Float>
-inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double z, const size_t Lz, const size_t Sf, size_t NN)
+inline  size_t	mendThetaLine(Float * __restrict__ m, Float * __restrict__ v, const double R, const size_t Lz, const size_t Sf, size_t NN)
 {
-	const double zP = M_PI*z;
+	const double zP = M_PI*R;
 	size_t count = 0;
 
 	Float mDf, mel, mPz, vPz;
@@ -463,20 +463,20 @@ size_t	mendThetaXeon (Scalar *field)
 {
 	constexpr int	dStep = Align/sizeof(double);
 	constexpr int	fStep = Align/sizeof(float);
-	const double	z     = *(field->zV());
+	const double	R     = *(field->RV());
 	size_t		tJmp = 0;
 
 	switch (field->Precision()) {
 		case	FIELD_DOUBLE:
-		tJmp += mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Depth(), field->Surf(), field->getNg());
-		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf(), field->getNg());
-		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		tJmp += mendThetaLine(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), R, field->Depth(), field->Surf(), field->getNg());
+		tJmp += mendThetaSlice<double, dStep>(static_cast<double*>(field->mCpu()), static_cast<double*>(field->vCpu()), R, field->Length(), field->Depth(), field->Surf(), field->getNg());
+		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), R, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		case	FIELD_SINGLE:
-		tJmp += mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Depth(), field->Surf(), field->getNg());
-		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), z, field->Length(), field->Depth(), field->Surf(), field->getNg());
-		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), z, field->Length(), field->Depth(), field->Surf(), field->Precision());
+		tJmp += mendThetaLine(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), R, field->Depth(), field->Surf(), field->getNg());
+		tJmp += mendThetaSlice<float, fStep>(static_cast<float *>(field->mCpu()), static_cast<float *>(field->vCpu()), R, field->Length(), field->Depth(), field->Surf(), field->getNg());
+		tJmp += mendThetaKernelXeon(field->mStart(), field->vCpu(), R, field->Length(), field->Depth(), field->Surf(), field->Precision());
 		break;
 
 		default:
