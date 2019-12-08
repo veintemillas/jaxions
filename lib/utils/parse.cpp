@@ -541,6 +541,8 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--mink"))
 		{
 			mink = true;
+			uMI  = true;
+			frw  = 0.0; 
 			procArgs++;
 			passed = true;
 			goto endFor;
