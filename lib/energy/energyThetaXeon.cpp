@@ -27,7 +27,7 @@
 #endif
 
 template<const bool map, const bool wMod>
-void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *R, const double ood2, const double aMass2,
+void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *R, double *z, double frw, const double ood2, const double aMass2,
 			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
 {
 	const size_t Sf = Lx*Lx;
@@ -53,7 +53,9 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_,Align);
 
 		const double zR  = *R;
-		const double iz  = 1./zR;
+		const double zz  = *z;
+		const double iz  = 1.0/zR;
+		const double d1  = frw*zR/zz;
 		const double iz2 = iz*iz;
 		const double zQ  = aMass2*zR*zR;
 		const double o2  = ood2*iz2;
@@ -219,7 +221,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				mMx = opCode(add_pd, mPy, mMy);
 				mMy = opCode(add_pd, mPz, mMz);
 
-				mPz = opCode(sub_pd, vel, opCode(mul_pd, mel, izVec));
+				mPz = opCode(sub_pd, vel, opCode(mul_pd, opCode(set1_pd,d1), opCode(mul_pd, mel, izVec)));
 				mPx = opCode(mul_pd, mPz, mPz);
 
 				tmp = opCode(sin_pd, opCode(mul_pd, hlf, opCode(mul_pd, mel, izVec)));
@@ -271,7 +273,9 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_,Align);
 
 		const float zR  = *R;
-		const float iz  = 1./zR;
+		const float zz  = *z;
+		const float iz  = 1.f/zR;
+		const float d1  = frw*zR/zz;
 		const float iz2 = iz*iz;
 		const float zQ = aMass2*zR*zR;
 		const float o2 = ood2*iz2;
@@ -436,7 +440,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 				// KINETIC
 				// Added full contribution, cancels outside the horizon
-				tmp = opCode(sub_ps, vel , opCode(mul_ps, mel, izVec));
+				tmp = opCode(sub_ps, vel , opCode(mul_ps, opCode(set1_ps, d1), opCode(mul_ps, mel, izVec)));
 				mPx = opCode(mul_ps, tmp, tmp);
 
 				// POTENTIAL
@@ -483,7 +487,9 @@ template<const bool mod>
 void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass2, void *eRes, const bool map)
 {
 	const double ood2 = 0.25/delta2;
-	double *R = axionField->RV();
+	double *R  = axionField->RV();
+	double *z  = axionField->zV();
+	double frw = axionField->BckGnd()->Frw();
 	const FieldPrecision precision = axionField->Precision();
 	const size_t Lx = axionField->Length();
 	const size_t Vo = axionField->Surf();
@@ -493,11 +499,11 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass
 
 	switch	(map) {
 		case	true:
-			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
+			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
 			break;
 
 		case	false:
-			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
+			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
 			break;
 	}
 }
