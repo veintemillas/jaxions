@@ -626,11 +626,12 @@ void printsampleS(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, siz
 
 double findzdoom(Scalar *axion)
 {
-	if (axion->BckGnd()->Indi3() > 0.0){
+	double fff = axion->BckGnd()->Frw();
+
+	if (axion->BckGnd()->Indi3() > 0.0 && (fff > 0.0)){
 	double ct = zInit ;
 	double DWfun;
 	double meas ;
-	double fff = axion->BckGnd()->Frw();
 	while (meas < 0.001)
 	{
 		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
