@@ -793,6 +793,10 @@ void	ConfGenerator::conflola(Cosmos *myCosmos, Scalar *axionField)
 	}
 } // endconflola
 
+
+
+
+
 void	ConfGenerator::confcole(Cosmos *myCosmos, Scalar *axionField)
 {
 	LogMsg(VERB_NORMAL,"\n ");
@@ -861,10 +865,9 @@ void	ConfGenerator::confcole(Cosmos *myCosmos, Scalar *axionField)
 } // endconf cole
 
 
-// void	ConfGenerator::icvkick(double xit, bool kspace)
-// {
-// 	?
-// } //end icvkick
+
+
+
 
 
 
