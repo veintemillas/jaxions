@@ -309,8 +309,25 @@ int	main (int argc, char *argv[])
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
+		if ((axion->Field() == FIELD_AXION ))
+		{
+			LogOut("-----------------------\n TRANSITION TO PAXION \n");
+			thetaToPaxion (axion);
+			ninfa.index=index;
+			ninfa.measdata |= MEAS_3DMAP;
+			lm = Measureme (axion, ninfa);
+			ninfa.measdata ^= MEAS_3DMAP;
+			LogOut("-----------------------\n");
+			index++;
+			tunePropagator(axion);
+		}
+
+
 		// time step
-		dzaux = axion->dzSize();
+		if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
+		 dzaux = 0.0;
+		 else
+		 dzaux = axion->dzSize();
 
 		//will we dump? and when?
 		switch(dumpmode)
@@ -402,7 +419,8 @@ int	main (int argc, char *argv[])
 						LogOut(" shift = %f \n", axion->Saskia());
 
 						double shiftz = axion->Saskia()*(*axion->RV());
-						cmplxToTheta (axion, shiftz);
+						cmplxToTheta (axion, 0.0);
+						// NAXIONTEMP
 
 						// Measurement after switching to theta
 						ninfa.index=index;
@@ -522,6 +540,17 @@ int	main (int argc, char *argv[])
 
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta)
 {

@@ -26,11 +26,13 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	const size_t Lx = field->Length();
 	const size_t Sf = field->Surf();
 	const size_t V  = field->Size();
-	
+	const double L  = field->BckGnd()->PhysSize();
+
 	/* used from ic */
 	double mod0  = ic.mode0;
 	double kCri  = ic.kcr;
-	double kCri2 = ic.kcr*ic.kcr;
+	/* Interpreted as inverse sigma in conf-minicluster in ADM Units*/
+	double kCri2 = ic.kcr*ic.kcr*L*L/(2.0*Sf);
 	size_t kMa   = ic.kMax;
 
 	double kMx   = (double) ic.kMax;
@@ -119,7 +121,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					y = iy;
 					x = ix;
 					if (iz>Lx/2) { z = z-Lx; }
-					Float theta = ((Float) ((x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2)+z*z))/(Sf);
+					Float theta = ((Float) ((x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2)+z*z));
 					theta = exp(-theta*kCri2)*mod0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 				break;
@@ -138,7 +140,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					if (iz>Lx/2) { z = z-Lx; }
 					if (iy>Lx/2) { y = y-Lx; }
 					if (ix>Lx/2) { x = x-Lx; }
-					Float theta = ((Float) (x*x + y*y + z*z))/(Sf);
+					Float theta = ((Float) (x*x + y*y + z*z));
 					theta = exp(-theta*kCri2)*mod0;
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;

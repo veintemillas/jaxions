@@ -17,6 +17,8 @@
 			FIELD_AX_RD	= 258,
 			FIELD_AX_MOD_RD	= 386,
 			FIELD_REDUCED	= 256,
+			FIELD_NAXION  = 512,
+			FIELD_PAXION  = 1024,
 		}	FieldType;
 
 		typedef	enum	FieldIndex_s
@@ -622,6 +624,21 @@
 			double        mass2;
 			FieldType     ftype;
 		}	MomParms;
+
+		typedef	struct	PropParms_v
+		{
+			size_t   Ng;
+			size_t   Lx;
+			double   R;
+			double   ct;
+			double   *PC;
+			double   ood2a;
+			double   massA;
+			double   Lambda;
+			double   lambda;
+			double   gamma;
+			int      sign;
+		}	PropParms;
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__

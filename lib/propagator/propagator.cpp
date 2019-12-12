@@ -539,6 +539,16 @@ LogFlush();
 	char loli[2048];
 
 	switch (field->Field()) {
+		case FIELD_SAXION:
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Saxion");
+			}
+			(prop->propSaxion)(dz);
+			break;
+
 		case FIELD_AXION:
 		if (pType & (PROP_BASE | PROP_NNEIG)){
 				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
@@ -559,15 +569,25 @@ LogFlush();
 			(prop->propAxion)(dz);
 			break;
 
-		case FIELD_SAXION:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
-				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+		case FIELD_NAXION:
+		if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d NAxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
-				prop->appendName("Saxion");
+				prop->appendName("Naxion");
 			}
-			(prop->propSaxion)(dz);
+			(prop->propNaxion)(dz);
 			break;
+
+		case FIELD_PAXION:
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
+					prop->appendName(loli);
+				} else {
+					prop->appendName("Paxion");
+				}
+				(prop->propPaxion)(dz);
+				break;
 
 		default:
 			LogError ("Error: invalid field type");
@@ -681,7 +701,16 @@ LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tune
 		} else {
 			int	     rMpi, rThreads;
 			size_t       rLx, rLz, Nghost;
-			unsigned int rBx, rBy, rBz, fType, myField = (field->Field() == FIELD_SAXION) ? 0 : 1;
+			unsigned int rBx, rBy, rBz, fType, myField ;
+			if      (field->Field() == FIELD_SAXION)
+				myField = 0;
+			else if (field->Field() == FIELD_AXION)
+				myField = 1;
+			else if (field->Field() == FIELD_NAXION)
+				myField = 2;
+			else if (field->Field() == FIELD_PAXION)
+				myField = 3;
+
 			char	     mDev[8];
 
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
@@ -814,6 +843,15 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 	char loli[2048];
 
 	switch (field->Field()) {
+		case FIELD_SAXION:
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Saxion");
+			}
+			break;
+
 		case FIELD_AXION:
 		if (pType & (PROP_BASE | PROP_NNEIG)){
 				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
@@ -832,15 +870,23 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 			}
 			break;
 
-		case FIELD_SAXION:
+		case FIELD_NAXION:
 			if (pType & (PROP_BASE | PROP_NNEIG)){
-				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
-				prop->appendName(loli);
-			} else {
-				prop->appendName("Saxion");
-			}
-			break;
+					sprintf (loli, "N %01d Ng %01d Naxion", Nng, field->getNg());
+					prop->appendName(loli);
+				} else {
+					prop->appendName("Naxion");
+				}
+				break;
 
+		case FIELD_PAXION:
+			if (pType & (PROP_BASE | PROP_NNEIG)){
+					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
+					prop->appendName(loli);
+				} else {
+					prop->appendName("Paxion");
+				}
+				break;
 		default:
 			LogError ("Error: invalid field type");
 			prof.stop();
@@ -884,7 +930,16 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 			}
 		}
 
-		unsigned int fType = (field->Field() == FIELD_SAXION) ? 0 : 1;
+		unsigned int fType ;
+		if      (field->Field() == FIELD_SAXION)
+			fType = 0;
+		else if (field->Field() == FIELD_AXION)
+			fType = 1;
+		else if (field->Field() == FIELD_NAXION)
+			fType = 2;
+		else if (field->Field() == FIELD_PAXION)
+			fType = 3;
+
 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 		fprintf (cacheFile, "%s %d %d %lu %lu %u %u %u %u %lu\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
 									fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), field->getNg());

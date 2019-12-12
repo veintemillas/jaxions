@@ -98,7 +98,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	// fix?
 	double shiftz	   = R_now * saskia;
 
-	if (axiona->Field() == FIELD_AXION)
+	if (axiona->Field() != FIELD_SAXION)
 	 	shiftz = 0.0;
 
 	if (measa != MEAS_NOTHING)
@@ -647,6 +647,47 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 					writeBinner(logth2Bin2, "/bins", "logtheta2B");
 				}
 	}
+	if (axiona->Field() == FIELD_NAXION)
+	{
+		if (measa & MEAS_BINTHETA)
+		{
+			// LogOut("binT ");
+			LogMsg(VERB_NORMAL, "[Meas %d] bin |P|^2",indexa);
+				// Float shs = shiftz;
+				// complex<Float> shhhs = (shs,0.);
+				// Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+				// 				 [s=shhhs] (complex<Float> x) { return (double) arg(x-s); });
+				Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mStart()), axiona->Size(),
+								 [] (complex<Float> x) { return (double) abs(x);});
+				thBin.run();
+				writeBinner(thBin, "/bins", "thetaP2");
+				MeasDataOut.maxTheta = thBin.max();
+		}
+	}
+	if (axiona->Field() == FIELD_PAXION)
+	{
+		if (measa & MEAS_BINTHETA)
+		{
+			// LogOut("binT ");
+			LogMsg(VERB_NORMAL, "[Meas %d] bin |P|^2",indexa);
+				// Float shs = shiftz;
+				// complex<Float> shhhs = (shs,0.);
+				// Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+				// 				 [s=shhhs] (complex<Float> x) { return (double) arg(x-s); });
+				Binner<3000,Float> thBin1(static_cast<Float*>(axiona->mStart()), axiona->Size(),
+								 [] (Float x) { return (double) x*x;});
+				thBin1.run();
+				Binner<3000,Float> thBin2(static_cast<Float*>(axiona->vCpu()), axiona->Size(),
+								 [] (Float x) { return (double) x*x;});
+				thBin2.run();
+				for (int g  =0; g <300; g++)
+					thBin2.data()[g] += thBin1.data()[g];
+
+				writeBinner(thBin2, "/bins", "thetaP2");
+				MeasDataOut.maxTheta = thBin2.max();
+		}
+	}
+
 
 	LogMsg(VERB_HIGH, "destroying meas",indexa);
 	LogFlush();
@@ -683,8 +724,13 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 			// LogOut("str not measured (%ld, %ld) ",MeasDataOut.str.strDen, -1);
 			LogOut("str not measured ");
 		}
-	} else {
+	} else if ( axiona->Field() == FIELD_AXION) {
 		LogOut("maxth=%f ", MeasDataOut.maxTheta);
+		LogOut(" ... ");
+	} else if ( axiona->Field() == FIELD_NAXION || axiona->Field() == FIELD_PAXION) {
+		// E/m-1
+		double k2m2 = 12*pow(((double) axiona->Length())/axiona->BckGnd()->PhysSize(),2)/(axiona->AxionMassSq()*R_now*R_now);
+		LogOut("Emax/m-1=%.2e Max P2 %.2e", k2m2/(sqrt(k2m2 + 1.0)+ 1.0), std::sqrt(MeasDataOut.maxTheta) );
 		LogOut(" ... ");
 	}
 

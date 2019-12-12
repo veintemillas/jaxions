@@ -90,6 +90,20 @@ class	Plot2D():
 #				pm = np.amax(aData)
 #				print ("AMax %f" % pm)
 				rMax  = R
+			elif fl == "Naxion":
+				mTmp  = fileHdf5[map]['m'].value.reshape(Ly,Lx,2)
+				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
+				rData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)/(mAmA*R**3))
+				rMax = np.amax(rData)
+				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
+			elif fl == "Paxion":
+				mTmp1  = fileHdf5[map]['m'].value.reshape(Ly,Lx)
+				mTmp2  = fileHdf5[map]['v'].value.reshape(Ly,Lx)
+				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
+				rData = np.sqrt((mTmp1[:,:]**2 + mTmp2[:,:]**2)) #/(mAmA*R**3))
+				rMax = np.amax(rData)
+				aData = (np.arctan2(mTmp2[:,:], mTmp1[:,:]) + 2*np.pi)/(4.*np.pi)
+
 			else:
 				print("Unrecognized field type %s" % fl)
 				exit()
@@ -182,7 +196,7 @@ class	Plot2D():
 
 	def	update(self):
 		data = self.allData[self.i]
-		self.sImg.setImage(data[0], levels=(0.,1.))
+		self.sImg.setImage(data[0]/data[3], levels=(0.,1.))
 		self.aImg.setImage(data[1], levels=(0.,1.))
 		self.zStxt.setText("z = %f" % data[2])
 		self.zAtxt.setText("z = %f" % data[2])

@@ -119,6 +119,7 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
+		case FIELD_NAXION:
 			nData = 2;
 			break;
 
@@ -127,6 +128,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION:
 		case FIELD_AX_RD:
 		case FIELD_WKB:
+		case FIELD_PAXION:
 			nData = 1;
 			break;
 
@@ -714,8 +716,15 @@ LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts");LogFlush();
 	transferGhosts(fIdx);
 }
 
+
+
+
+
 void	Scalar::setField (FieldType newType)
 {
+	LogMsg(VERB_NORMAL,"\n",newType);
+	LogMsg(VERB_NORMAL,"[sca] Called setField to %d !",newType);
+
 	if (fieldType == FIELD_WKB) {
 		LogError("Warning: conversion from WKB field not supported");
 		return;
@@ -725,12 +734,16 @@ void	Scalar::setField (FieldType newType)
 	{
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
-
+		if (fieldType & FIELD_AXION){
+			LogError ("Error: transformation from axion to axion irrelevant");
+			break;
+		}
 				fSize /= 2;
 
 				if (device != DEV_GPU)
 					shift *= 2;
-
+		fieldType = newType;
+		LogMsg(VERB_NORMAL,"[sca] Field set to AXION !");
 		break;
 
 		case	FIELD_SAXION:
@@ -740,12 +753,33 @@ void	Scalar::setField (FieldType newType)
 				fieldType = FIELD_SAXION;
 			break;
 
+		case	FIELD_NAXION:
+			if ( !(fieldType & FIELD_AXION) )
+				LogError ("Error: transformation to naxion only available from axion mode");
+			else
+				fSize *= 2;
+
+				if (device != DEV_GPU)
+					shift /= 2;
+
+				fieldType = FIELD_NAXION;
+				LogMsg(VERB_NORMAL,"[sca] Field set to NAXION !");
+			break;
+
+		case	FIELD_PAXION:
+			if ( !(fieldType & FIELD_AXION) )
+				LogError ("Error: transformation to paxion only available from axion mode");
+			else
+				fieldType = FIELD_PAXION;
+				LogMsg(VERB_NORMAL,"[sca] Field set to PAXION (nothing was done at the Scalar class-level)!");
+			break;
+
+
 		default:
 			LogError ("Error: transformation not supported");
 			break;
 
 	}
-	fieldType = newType;
 }
 
 void	Scalar::setFolded (bool foli)
@@ -774,6 +808,14 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 	}
 }
 
+// GENERAL BACKGROUND UPDATE REQUIRED!
+double	Scalar::Rfromct (const double ct)
+{
+	// Returns scale factor R = z^frw for any conformal time ct
+	// Minkowski frw = 0, Radiation frw = 1,
+	return pow(ct,frw);
+}
+
 void	Scalar::updateR ()
 {
 	// updates scale factor R = z^frw
@@ -781,14 +823,7 @@ void	Scalar::updateR ()
 	// if Minkowski R=1 and there is no need
 	// by default R=z and there is no need (one uses z for all purposes)
 	if (!bckgnd->Mink())
-		*R = pow(*z,frw);
-}
-
-double	Scalar::Rfromct (const double ct)
-{
-	// Returns scale factor R = z^frw for any conformal time ct
-	// Minkowski frw = 0, Radiation frw = 1,
-	return pow(ct,frw);
+		*R = Rfromct(*z);
 }
 
 double	Scalar::LambdaP ()
@@ -1020,10 +1055,12 @@ double  Scalar::SaxionMassSq  ()
 
 	return  0.;
 }
-
 double	Scalar::dzSize	   () {
-	double zNow = *zV();
-	double RNow = *RV();
+	return dzSize	(*zV());
+}
+/*Need to update everything to zNow */
+double	Scalar::dzSize	   (double zNow) {
+	double RNow = Rfromct(zNow);
 	double oodl = ((double) n1)/bckgnd->PhysSize();
 	double mAx2 = AxionMassSq();
 	double &lbd = bckgnd->Lambda();
@@ -1032,22 +1069,51 @@ double	Scalar::dzSize	   () {
 	auto   &pot = bckgnd->QcdPot();
 	double llee = bckgnd->LamZ2Exp();
 
-        if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
-                return  std::min(wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
-         else
-                mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
+	double dct   = 0.0;
+	double RNext = RNow;
 
-        double mSfq = 0.;
+	switch (fieldType) {
+		case FIELD_SAXION:
+		{
+			double mSfq = 0.;
+			mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
+			mAfq = std::max(mAfq,HubbleMassSq());
+			double facto = 1.;
+			if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
+							facto = 2. ;
+			mSfq = sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
+			dct = wDz/std::max(mSfq,mAfq) ;
+		}
+		break;
 
-				mAfq = std::max(mAfq,HubbleMassSq());
+		case FIELD_AXION:
+		case FIELD_AXION_MOD:
+		case FIELD_WKB:
+			dct = std::min(wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
+		break;
 
-				double facto = 1.;
-        if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
-                facto = 2. ;
+		case FIELD_NAXION:
+		case FIELD_PAXION:
+			/* w = k^2//(\sqrt(m2+k2)+m2) is the safe formula */
+			dct = wDz*(sqrt(12*oodl*oodl + mAx2*RNow*RNow) + sqrt(mAx2)*RNow)/(12.*oodl*oodl) ;
+		break;
+		default:
+			dct = 0.0;
+			LogError(" dz set to 0 because FIELD is undefined!");
+		break;
+	}
 
-				mSfq = sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
+	/* Do not allow to jump over z/10 or Rc */
+	dct = std::min(dct,zNow/100.);
 
-        return  std::min(wDz/std::max(mSfq,mAfq),zNow/10.);
+	RNext = Rfromct(zNow + dct);
+	if ( RNow < bckgnd->ZThRes() && RNext > bckgnd->ZThRes() )
+		{
+			// BACKGROUND R SPECIFIC!
+			dct = pow(bckgnd->ZThRes(),1.0/bckgnd->Frw()) - zNow;
+		}
+	LogMsg(VERB_NORMAL,"dct = %f ct = %f",dct,zNow);
+	return dct;
 }
 
 // Fix for arbitrary background
@@ -1179,39 +1245,42 @@ double  Scalar::SaxionMassSq  (const double RNow)
 	return  0.;
 }
 
-double	Scalar::dzSize	   (const double RNow) {
-	double oodl = ((double) n1)/bckgnd->PhysSize();
-	double mAx2 = AxionMassSq();
-	double &lbd = bckgnd->Lambda();
-	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
-	double mAfq = 0.;
-	auto   &pot = bckgnd->QcdPot();
-
-        if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
-                return  wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
-         else
-                mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
-
-        double mSfq = 0.;
-
-				mAfq = std::max(mAfq,HubbleMassSq());
-
-        double facto = 1.;
-        if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
-                facto = 2. ;
-
-        switch (lambdaType) {
-                case    LAMBDA_Z2:
-                        mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
-                        break;
-
-                case    LAMBDA_FIXED:
-                        mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
-                        break;
-        }
-
-        return  wDz/std::max(mSfq,mAfq);
-}
+// double	Scalar::dzSize	   (const double RNow) {
+// 	double oodl = ((double) n1)/bckgnd->PhysSize();
+// 	double mAx2 = AxionMassSq();
+// 	double &lbd = bckgnd->Lambda();
+// 	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
+// 	double mAfq = 0.;
+// 	auto   &pot = bckgnd->QcdPot();
+//
+// 				if ((fieldType & FIELD_NAXION))
+// 					return  wDz*(sqrt(12*oodl*oodl + mAx2*RNow*RNow) + sqrt(mAx2)*RNow)/(12*oodl*oodl) ;
+//
+//         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
+//                 return  wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
+//          else
+//                 mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
+//
+//         double mSfq = 0.;
+//
+// 				mAfq = std::max(mAfq,HubbleMassSq());
+//
+//         double facto = 1.;
+//         if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
+//                 facto = 2. ;
+//
+//         switch (lambdaType) {
+//                 case    LAMBDA_Z2:
+//                         mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
+//                         break;
+//
+//                 case    LAMBDA_FIXED:
+//                         mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
+//                         break;
+//         }
+//
+//         return  wDz/std::max(mSfq,mAfq);
+// }
 
 double Scalar::SaxionShift(const double RNow)
 {

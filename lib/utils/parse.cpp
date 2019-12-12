@@ -242,7 +242,6 @@ void	PrintUsage(char *name)
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
  	printf("  --lap   1/2/3/4             	Number of Neighbours of the laplacian [default --lap 1 flag]\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
-	printf("  --sst0  [int]                 # steps (Saxion mode) after str=0 before switching to theta [l/raxion3D].\n");
 	printf("  --restart                     searches for out/m/axion.restart and continues a simulation... needs same input parameters!.\n");
 	printf("  --fftplan [64/0/32/8]         FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE (default MEASURE) \n\n");
 
@@ -255,8 +254,9 @@ void	PrintUsage(char *name)
 	printf("  --mink                        Minkowski (No expansion of the Universe; experimental)\n");
 	printf("  --frw   [float]               Expansion of the Universe [R~eta^frw] (default frw = 1.0)\n");
 	printf("  --cax                         Uses a compact axion ranging from -pi to pi (default, the axion is non-compact).\n");
-	printf("  --zi    [float]               Initial value of the redshift (default 0.5).\n");
-	printf("  --zf    [float]               Final value of the redshift (default 1.0).\n");
+	printf("  --zi    [float]               Initial value of the conformal time z (default 0.5).\n");
+	printf("  --zf    [float]               Final value of the conformal time z (default 1.0).\n");
+	printf("  --Rc    [float]               Critical value of scale factor R, (mass_A^2 = constant for R>Rc) (default 1.e5).\n");
 	printf("  --lsize [float]               Physical size of the system (default 4.0).\n");
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
@@ -542,7 +542,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			mink = true;
 			uMI  = true;
-			frw  = 0.0; 
+			frw  = 0.0;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1096,7 +1096,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the initial redshift.\n");
+				printf("Error: I need a value for the initial conformal time.\n");
 				exit(1);
 			}
 
@@ -1105,7 +1105,7 @@ int	parseArgs (int argc, char *argv[])
 
 		if (icdatst.zi < 0.)
 			{
-				printf("Error: Initial redshift must be larger than 0.\n");
+				printf("Error: Initial conformal time must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -1121,7 +1121,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the initial redshift.\n");
+				printf("Error: I need a value for the initial conformal time.\n");
 				exit(1);
 			}
 
@@ -1140,7 +1140,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the initial redshift.\n");
+				printf("Error: I need a value for kickalpha.\n");
 				exit(1);
 			}
 
@@ -1156,7 +1156,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the initial redshift.\n");
+				printf("Error: I need a value for extrav.\n");
 				exit(1);
 			}
 
@@ -1172,7 +1172,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the Final redshift.\n");
+				printf("Error: I need a value for the Final conformal time.\n");
 				exit(1);
 			}
 
@@ -1180,7 +1180,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zFinl < 0.)
 			{
-				printf("Error: Final redshift must be larger than 0.\n");
+				printf("Error: Final conformal time must be larger than 0.\n");
 				exit(1);
 			}
 
@@ -1241,11 +1241,11 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--zswitchOn"))
+		if (!strcmp(argv[i], "--Rc"))
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the switch-off z.\n");
+				printf("Error: I need a value for the Rcritical.\n");
 				exit(1);
 			}
 
@@ -1253,7 +1253,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zthres <= 0.)
 			{
-				printf("Error: The z switch-off must happen at nonzero redshift.\n");
+				printf("Error: The value of Rc should be larger than zero.\n");
 				exit(1);
 			}
 
@@ -1265,11 +1265,11 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--zswitchOff"))
+		if (!strcmp(argv[i], "--RcOff"))
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the re-switch-on z.\n");
+				printf("Error: I need a value for the re-switch-on RcOff of the axion mass growth.\n");
 				exit(1);
 			}
 
@@ -1277,7 +1277,7 @@ int	parseArgs (int argc, char *argv[])
 
 			if (zrestore <= 0.)
 			{
-				printf("Error: The z re-switch must happen at nonzero redshift.\n");
+				printf("Error: The mA2 ~ R^n re-switch must be > 0 .\n");
 				exit(1);
 			}
 

@@ -361,11 +361,25 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		}
 		break;
 
-		default:
+		case 	FIELD_NAXION:
+		{
+			total = tmpS*tmpS*totlZ*2;
+			slab  = axion->Surf()*2;
+			sprintf(fStr, "Naxion");
+		}
+		break;
 
+		case 	FIELD_PAXION:
+		{
+			total = tmpS*tmpS*totlZ;
+			slab  = axion->Surf();
+			sprintf(fStr, "Paxion");
+		}
+		break;
+
+		default:
 		LogError ("Error: Invalid field type. How did you get this far?");
 		exit(1);
-
 		break;
 	}
 
@@ -646,7 +660,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	char vCh[8] = "/v";
 
 	mset_id = H5Dcreate (file_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-	vset_id = H5Dcreate (file_id, vCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	if (axion->Field() != FIELD_NAXION)
+		vset_id = H5Dcreate (file_id, vCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
 	commSync();
 
@@ -659,7 +674,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
 	mSpace = H5Dget_space (mset_id);
-	vSpace = H5Dget_space (vset_id);
+	if (axion->Field() != FIELD_NAXION)
+		vSpace = H5Dget_space (vset_id);
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 
 	commSync();
@@ -671,25 +687,34 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		/*	Select the slab in the file	*/
 		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*slab;
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+		if (axion->Field() != FIELD_NAXION)
+			H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 		/*	Write raw data	*/
 		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
-		auto vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())  +slab*zDim*dataSize));
+		auto vErr = mErr;
+		if (axion->Field() != FIELD_NAXION)
+			vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())  +slab*zDim*dataSize));
 
-		if ((mErr < 0) || (vErr < 0))
+		if (mErr < 0)
 		{
 			LogError ("Error writing dataset");
 			exit(0);
 		}
+		if (axion->Field() != FIELD_NAXION)
+			if (vErr < 0){
+				LogError ("Error writing dataset"); exit(0);}
+
 		//commSync();
 	}
 
 	/*	Close the dataset	*/
 	H5Sclose (mSpace);
-	H5Sclose (vSpace);
 	H5Dclose (mset_id);
-	H5Dclose (vset_id);
+	if (axion->Field() != FIELD_NAXION){
+		H5Sclose (vSpace);
+		H5Dclose (vset_id);}
+
 	H5Sclose (memSpace);
 
 	/*	Close the file		*/
@@ -711,6 +736,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		delete	munge;
 	}
 }
+
+
+
+
 
 /* JAVI ADDED THAT */
 void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
@@ -1273,6 +1302,14 @@ void	createMeas (Scalar *axion, int index)
 			sprintf(fStr, "Axion");
 			break;
 
+		case	FIELD_NAXION:
+			sprintf(fStr, "Naxion");
+			break;
+
+		case	FIELD_PAXION:
+			sprintf(fStr, "Paxion");
+			break;
+
 		default:
 			LogError ("Error: Invalid field type. How did you get this far?");
 			exit(1);
@@ -1522,6 +1559,8 @@ void	createMeas (Scalar *axion, int index)
 
 	return;
 }
+
+
 
 
 void	destroyMeas ()
@@ -3206,7 +3245,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
 
-	if (axion->Field() == FIELD_SAXION) {
+	if ( (axion->Field() == FIELD_SAXION) || (axion->Field() == FIELD_NAXION)) {
 		lSz *= 2;
 		slb *= 2;
 	}
@@ -3260,7 +3299,6 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	}
 
 	/*	Set chunked access and dynamical compression	*/
-
 	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
 	{
 		LogError ("Fatal error H5Pcreate");
@@ -3292,7 +3330,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 
 	/*	Create a dataset for map data	*/
 	mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-	vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	if (axion->Field() != FIELD_NAXION)
+		vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
 	if (mSet_id < 0 || vSet_id < 0)
 	{
@@ -3303,7 +3342,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 	mSpace = H5Dget_space (mSet_id);
-	vSpace = H5Dget_space (vSet_id);
+	if (axion->Field() != FIELD_NAXION)
+		vSpace = H5Dget_space (vSet_id);
 
 	if (mSpace < 0 || vSpace < 0)
 	{
@@ -3329,27 +3369,30 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		exit(0);
 	}
 
-	if (myRank == 0) {
-		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slb, NULL);
-	} else {
-		H5Sselect_none(vSpace);
-		//dataV = NULL;
-	}
+	if (axion->Field() != FIELD_NAXION){
+		if (myRank == 0) {
+			H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slb, NULL);
+		} else {
+			H5Sselect_none(vSpace);
+		}
 
-	if (H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV) < 0)
-	{
-		LogError ("Error writing dataset /map/v");
-		prof.stop();
-		exit(0);
+		if (H5Dwrite (vSet_id, dataType, mapSpace, vSpace, H5P_DEFAULT, dataV) < 0)
+		{
+			LogError ("Error writing dataset /map/v");
+			prof.stop();
+			exit(0);
+		}
 	}
 
 	LogMsg (VERB_HIGH, "Write 2D map successful");LogFlush();
 
 	/*	Close the dataset	*/
 	H5Dclose (mSet_id);
-	H5Dclose (vSet_id);
 	H5Sclose (mSpace);
-	H5Sclose (vSpace);
+
+	if (axion->Field() != FIELD_NAXION){
+		H5Sclose (vSpace);
+		H5Dclose (vSet_id);}
 
 	H5Sclose (mapSpace);
 	H5Pclose (chunk_id);

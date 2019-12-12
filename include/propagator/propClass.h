@@ -18,7 +18,8 @@
 	#include "propagator/sPropXeon.h"
 	#include "propagator/fsPropXeon.h"
 	#include "propagator/sPropThetaXeon.h"
-
+	#include "propagator/propNaxXeon.h"
+	#include "propagator/propPaxXeon.h"
 
 	#ifdef	USE_GPU
 		#include <cuda.h>
@@ -57,20 +58,26 @@
 			for(int i=0; i<nStages; i++) { c[i] = nC[i]; d[i] = nD[i]; } if (lastStage) { c[nStages] = nC[nStages]; }
 		}
 
+
 		inline void	sRunCpu	(const double)	override;	// Saxion propagator
 		inline void	sRunGpu	(const double)	override;
-
 		inline void	sSpecCpu(const double)	override;	// Saxion spectral propagator
 		inline void	sFpecCpu(const double)	override;	// Saxion spectral propagator
 
+
 		inline void	tRunCpu	(const double)	override;	// Axion propagator
 		inline void	tRunGpu	(const double)	override;
-
 		inline void	tSpecCpu(const double)	override;	// Axion spectral propagator
 		// inline void	tfsSpecCpu(const double)	override;	// Axion spectral propagator FIX IT!
 
+
+		inline void	nRunCpu	(const double)	override;			// Naxion propagator
+
+		inline void	pRunCpu	(const double)	override;			// Paxion propagator
+
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
+
 
 		inline void	sNNRunCpu	(const double)	override;	// Saxion Vectorised multi Ng laplacian propagator
 		// inline void	tNNRunCpu	(const double)	override;	// Axion Vectorised multi Ng laplacian propagator (not yet)
@@ -177,6 +184,8 @@
 						} else {
 							propSaxion = [this](const double dz) { this->sRunCpu(dz); };
 							propAxion  = [this](const double dz) { this->tRunCpu(dz); };
+							propNaxion = [this](const double dz) { this->nRunCpu(dz); };
+							propPaxion = [this](const double dz) { this->pRunCpu(dz); };
 						}
 						break;
 
@@ -927,6 +936,142 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		axion->setM2     (M2_DIRTY);
 	}
 
+
+
+
+	// Generic Naxion propagator
+
+	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	void	PropClass<nStages, lastStage, VQcd>::nRunCpu	(const double dz) {
+
+		PropParms ppar;
+		ppar.Ng    = axion->getNg();
+		ppar.ood2a = ood2;
+		ppar.PC    = axion->getCO();
+		ppar.Lx    = Lx;
+
+		/* Returns ghost size region in slices */
+		size_t BO = ppar.Ng*S;
+		size_t CO = V-2*ppar.Ng*S;
+
+		LogMsg(VERB_DEBUG,"[propNax] Ng %d",ppar.Ng);
+
+		#pragma unroll
+		for (int s = 0; s<nStages; s+=2) {
+
+			axion->sendGhosts(FIELD_M, COMM_SDRV);
+
+			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
+
+			ppar.ct     = *axion->zV();
+			ppar.R      = *axion->RV();
+			ppar.massA  = axion->AxionMass();
+			propagateNaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			propagateNaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateNaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			*axion->zV() += dz*d1;
+			axion->updateR();
+
+			axion->sendGhosts(FIELD_M2, COMM_SDRV);
+
+			ppar.ct     = *axion->zV();
+			ppar.R      = *axion->RV();
+			ppar.massA  = axion->AxionMass();
+			propagateNaxKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M2, COMM_WAIT);
+			propagateNaxKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateNaxKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			*axion->zV() += dz*d2;
+			axion->updateR();
+		}
+
+		if (lastStage) {
+			axion->sendGhosts(FIELD_M, COMM_SDRV);
+
+			const double	c0 = c[nStages];
+			/* Last kick but not drift d = 0 */
+			ppar.ct     = *axion->zV();
+			ppar.R      = *axion->RV();
+			ppar.massA  = axion->AxionMass();
+			propagateNaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			propagateNaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateNaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
+		}
+		axion->setM2     (M2_DIRTY);
+	}
+
+
+
+
+	// Generic Paxion propagator
+
+	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	void	PropClass<nStages, lastStage, VQcd>::pRunCpu	(const double dz) {
+
+		PropParms ppar;
+		ppar.Ng    = axion->getNg();
+		ppar.ood2a = ood2;
+		ppar.PC    = axion->getCO();
+		ppar.Lx    = Lx;
+
+		/* Returns ghost size region in slices */
+		size_t BO = ppar.Ng*S;
+		size_t CO = V-2*ppar.Ng*S;
+
+		LogMsg(VERB_DEBUG,"[propNax] Ng %d",ppar.Ng);
+
+		#pragma unroll
+		for (int s = 0; s<nStages; s++) {
+
+			axion->sendGhosts(FIELD_M, COMM_SDRV);
+
+			const double	c1 = c[s], d1 = d[s];
+
+			ppar.ct     = *axion->zV();
+			ppar.R      = *axion->RV();
+			ppar.massA  = axion->AxionMass();
+			ppar.sign   = 1; ppar.Lambda   = 1.;
+			/*updates v(2) into m2(3) with m(1) lap data and NL function ; also (copies 3 into 2) */
+			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
+			axion->sendGhosts(FIELD_M2, COMM_SDRV);
+
+			ppar.ct     = *axion->zV();
+			ppar.R      = *axion->RV();
+			ppar.massA  = axion->AxionMass();
+			ppar.sign   = -1; ppar.Lambda   = 1.;
+			/* double copying the same data in m ... avoidable? */
+			propagatePaxKernelXeon<VQcd>(axion->m2Cpu(), axion->mStart(), axion->mCpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M2, COMM_WAIT);
+			propagatePaxKernelXeon<VQcd>(axion->m2Cpu(), axion->mStart(), axion->mCpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<VQcd>(axion->m2Cpu(), axion->mStart(), axion->mCpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			*axion->zV() += dz*d1;
+			axion->updateR();
+		}
+
+		if (lastStage) {
+			axion->sendGhosts(FIELD_M, COMM_SDRV);
+
+			const double	c0 = c[nStages];
+			/* Last kick but not drift d = 0 */
+			ppar.ct     = *axion->zV();
+			ppar.R      = *axion->RV();
+			ppar.massA  = axion->AxionMass();
+			ppar.sign   = 1; ppar.Lambda   = 1.;
+			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
+		}
+		axion->setM2     (M2_DIRTY);
+	}
 
 
 

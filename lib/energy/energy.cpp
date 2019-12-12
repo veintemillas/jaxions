@@ -77,6 +77,11 @@ void	Energy::runGpu	()
 			energyThetaGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
 			break;
 
+		// case	FIELD_NAXION:
+		// 	setName		("Energy Naxion ");
+		// 	energyNaxionGpu(field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, aMass2, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map, true);
+		// 	break;
+
 		default:
 			LogError ("Energy not supported for this kind of field");
 			return;
@@ -108,6 +113,12 @@ void	Energy::runCpu	()
 			setName		("Energy Axion (mod)");
 			energyThetaCpu	(field, delta2, aMass2, eRes, map, true);
 			break;
+
+		case	FIELD_NAXION:
+			setName		("Energy Naxion");
+			energyNaxionCpu	(field, delta2, aMass2, eRes, map);
+			break;
+
 
 		default:
 			LogError ("Energy not supported for this kind of field");

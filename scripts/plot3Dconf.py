@@ -23,6 +23,12 @@ z     = fileHdf5["/"].attrs.get("z")
 ftype = fileHdf5.attrs.get('Field type').decode()
 if ftype == 'Axion':
     con   = fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz)
+if ftype == 'Naxion':
+    con   = fileHdf5['m'].value.reshape(Ly,Lx,Lz,2)
+    if   sys.argv[-1] == 'm':
+        con   = con[:,:,:,0]
+    elif sys.argv[-1] == 'v':
+        con   = con[:,:,:,1]
 elif ftype == 'Saxion':
     con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
     con   = np.arctan2(con[:,:,:,0],con[:,:,:,1])
