@@ -629,6 +629,8 @@
 		{
 			size_t   Ng;
 			size_t   Lx;
+			size_t   Vo;
+			size_t   Vf;
 			double   R;
 			double   ct;
 			double   *PC;
@@ -637,7 +639,10 @@
 			double   Lambda;
 			double   lambda;
 			double   gamma;
+			double   beta;
 			int      sign;
+			double   frw;
+
 		}	PropParms;
 
 #ifdef	__NVCC__

@@ -9,5 +9,5 @@
 
 	void	energyNaxionCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map=false);
 
-	void	energyPaxionCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map=false);
+	void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map=false);
 #endif

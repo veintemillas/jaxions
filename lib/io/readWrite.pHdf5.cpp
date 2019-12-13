@@ -2415,18 +2415,24 @@ void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 		writeAttribute(group_id, &eData[TH_GRX],  "Axion Gr X",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &eData[TH_GRY],  "Axion Gr Y",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &eData[TH_GRZ],  "Axion Gr Z",      H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &eData[TH_KIN],  "Axion Kinetic",   H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id, &eData[TH_POT],  "Axion Potential", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &eData[TH_KIN],  "Axion Kinetic",   H5T_NATIVE_DOUBLE);
 		totalBytes += 40;
+		if (axion->Field() == FIELD_PAXION )//|| axion->Field() == FIELD_NAXION)
+		{
+			writeAttribute(group_id, &eData[TH_POT],  "Paxion Potential (SI)", H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[TH_KIN],  "Paxion Number density", H5T_NATIVE_DOUBLE);
+		}
+
 
 		if	(axion->Field() == FIELD_SAXION)
 		{
 			writeAttribute(group_id, &eData[RH_GRX],  "Saxion Gr X",      H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id, &eData[RH_GRY],  "Saxion Gr Y",      H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id, &eData[RH_GRZ],  "Saxion Gr Z",      H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic",   H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id, &eData[RH_POT],  "Saxion Potential", H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id, &eData[RH_RHO],  "Saxion vev",       H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic",   H5T_NATIVE_DOUBLE);
 
 			totalBytes += 48;
 		}
@@ -2437,16 +2443,17 @@ void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 		writeAttribute(group_id2, &eData[TH_GRXM],  "Axion Gr X nMask",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_GRYM],  "Axion Gr Y nMask",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_GRZM],  "Axion Gr Z nMask",      H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id2, &eData[TH_KINM],  "Axion Kinetic nMask",   H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_POTM],  "Axion Potential nMask", H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id2, &eData[TH_KINM],  "Axion Kinetic nMask",   H5T_NATIVE_DOUBLE);
 
 		if	(axion->Field() == FIELD_SAXION)
 		{
 			writeAttribute(group_id2, &eData[RH_GRXM],  "Saxion Gr X nMask",      H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id2, &eData[RH_GRYM],  "Saxion Gr Y nMask",      H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id2, &eData[RH_GRZM],  "Saxion Gr Z nMask",      H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id2, &eData[RH_KINM],  "Saxion Kinetic nMask",   H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id2, &eData[RH_POTM],  "Saxion Potential nMask", H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id2, &eData[RH_KINM],  "Saxion Kinetic nMask",   H5T_NATIVE_DOUBLE);
+
 			writeAttribute(group_id2, &eData[RH_RHOM],  "Saxion vev nMask",       H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id2, &eData[MM_NUMM],  "Number of masked points",H5T_NATIVE_DOUBLE);
 

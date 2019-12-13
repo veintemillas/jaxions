@@ -119,6 +119,10 @@ void	Energy::runCpu	()
 			energyNaxionCpu	(field, delta2, aMass2, eRes, map);
 			break;
 
+		case	FIELD_PAXION:
+			setName		("Energy Paxion");
+			energyPaxionCpu	(field, eRes, map);
+			break;
 
 		default:
 			LogError ("Energy not supported for this kind of field");
@@ -192,45 +196,13 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	const double Vt2 = 1./( static_cast<double*>(eRes)[22] );
 	const double mi  = 1.*( static_cast<double*>(eRes)[22] );
 
-//LogOut("Norma %f %f",(double) field->TotalSize(), mi );
-
-//LogOut('vol %.3f volm %.3f', (double) field->TotalSize(), static_cast<double*>(eRes)[MM_NUMM] );
 	#pragma unroll
 	for (int i=0; i<11; i++)
 		static_cast<double*>(eRes)[i] *= Vt;
 
-        #pragma unroll
-        for (int i=11; i<22; i++)
-	        static_cast<double*>(eRes)[i] *= Vt2;
-
-//if (field->Field() == FIELD_SAXION)
-//	{
-//		static_cast<double*>(eRes)[RH_GRX]  *= Vt;
-//		static_cast<double*>(eRes)[TH_GRX]  *= Vt;
-//                static_cast<double*>(eRes)[RH_GRY]  *= Vt;
-//               static_cast<double*>(eRes)[TH_GRY]  *= Vt;
-//                static_cast<double*>(eRes)[TH_GRZ]  *= Vt;
-//              static_cast<double*>(eRes)[RH_POT]  *= Vt;
-//                static_cast<double*>(eRes)[TH_POT]  *= Vt;
-//                static_cast<double*>(eRes)[RH_KIN]  *= Vt;
-//                static_cast<double*>(eRes)[TH_KIN]  *= Vt;
-//                static_cast<double*>(eRes)[TH_KIN]  *= Vt;
-//                static_cast<double*>(eRes)[RH_RHO]  *= Vt;
-
-//                static_cast<double*>(eRes)[RH_GRXM] *= Vt2;
-//                static_cast<double*>(eRes)[TH_GRXM] *= Vt2;
-//                static_cast<double*>(eRes)[RH_GRYM] *= Vt2;
-//                static_cast<double*>(eRes)[TH_GRYM] *= Vt2;
-//                static_cast<double*>(eRes)[RH_GRZM] *= Vt2;
-//                static_cast<double*>(eRes)[TH_GRZM] *= Vt2;
-//                static_cast<double*>(eRes)[RH_POTM] *= Vt2;
-//                static_cast<double*>(eRes)[TH_POTM] *= Vt2;
-//                static_cast<double*>(eRes)[RH_KINM] *= Vt2;
-//                static_cast<double*>(eRes)[TH_KINM] *= Vt2;
-//                static_cast<double*>(eRes)[RH_RHOM] *= Vt2;
-//	}
-
-
+	#pragma unroll
+	for (int i=11; i<22; i++)
+		static_cast<double*>(eRes)[i] *= Vt2;
 
 	prof.stop();
 

@@ -68,10 +68,6 @@ inline	_MData_	lap_pd(const void * __restrict__ m_, size_t idx, size_t NN, doubl
 #endif
 
 	size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
-	size_t idx = zC*(YC*XC) + yC*XC + xC;
-
-	if (idx >= Vf)
-		continue;
 
 	// FIXME Take xyz as an input, so we don't need to compute them again
 	size_t tmi = idx/XC, itp;
@@ -301,15 +297,15 @@ inline	_MData_	slap_pd(const void * __restrict__ m_, size_t idx, size_t NN, doub
 #ifdef	__AVX512F__
 	#define	_MData_ __m512
 	#define	step  16
-	#define	cStep 16
+	#define	cStep 8
 #elif	defined(__AVX__)
 	#define	_MData_ __m256
 	#define	step  8
-	#define	cStep 8
+	#define	cStep 4
 #else
 	#define	_MData_ __m128
 	#define	step  4
-	#define	cStep 4
+	#define	cStep 2
 #endif
 
 template<const bool wMod>

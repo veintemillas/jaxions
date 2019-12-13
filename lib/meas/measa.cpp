@@ -293,6 +293,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		LogMsg(VERB_NORMAL, "[Meas %d] write energy",indexa);
 		writeEnergy(axiona, eRes);
 
+		if (axiona->Field() == FIELD_PAXION)
+			MeasDataOut.maxTheta = static_cast<double *>(eRes)[TH_KIN];
+
 		trackFree(eRes);
 	}
 
@@ -666,26 +669,26 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 	}
 	if (axiona->Field() == FIELD_PAXION)
 	{
-		if (measa & MEAS_BINTHETA)
-		{
-			// LogOut("binT ");
-			LogMsg(VERB_NORMAL, "[Meas %d] bin |P|^2",indexa);
-				// Float shs = shiftz;
-				// complex<Float> shhhs = (shs,0.);
-				// Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
-				// 				 [s=shhhs] (complex<Float> x) { return (double) arg(x-s); });
-				Binner<3000,Float> thBin1(static_cast<Float*>(axiona->mStart()), axiona->Size(),
-								 [] (Float x) { return (double) x*x;});
-				thBin1.run();
-				Binner<3000,Float> thBin2(static_cast<Float*>(axiona->vCpu()), axiona->Size(),
-								 [] (Float x) { return (double) x*x;});
-				thBin2.run();
-				for (int g  =0; g <300; g++)
-					thBin2.data()[g] += thBin1.data()[g];
-
-				writeBinner(thBin2, "/bins", "thetaP2");
-				MeasDataOut.maxTheta = thBin2.max();
-		}
+		// if (measa & MEAS_BINTHETA)
+		// {
+		// 	// LogOut("binT ");
+		// 	LogMsg(VERB_NORMAL, "[Meas %d] bin |P|^2",indexa);
+		// 		// Float shs = shiftz;
+		// 		// complex<Float> shhhs = (shs,0.);
+		// 		// Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+		// 		// 				 [s=shhhs] (complex<Float> x) { return (double) arg(x-s); });
+		// 		Binner<3000,Float> thBin1(static_cast<Float*>(axiona->mStart()), axiona->Size(),
+		// 						 [] (Float x) { return (double) x*x;});
+		// 		thBin1.run();
+		// 		Binner<3000,Float> thBin2(static_cast<Float*>(axiona->vCpu()), axiona->Size(),
+		// 						 [] (Float x) { return (double) x*x;});
+		// 		thBin2.run();
+		// 		for (int g  =0; g <300; g++)
+		// 			thBin2.data()[g] += thBin1.data()[g];
+		//
+		// 		writeBinner(thBin2, "/bins", "thetaP2");
+		// 		MeasDataOut.maxTheta = thBin2.max();
+		// }
 	}
 
 

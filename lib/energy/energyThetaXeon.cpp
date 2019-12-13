@@ -27,10 +27,12 @@
 #endif
 
 template<const bool map, const bool wMod>
-void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *R, double *z, double frw, const double ood2, const double aMass2,
+void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_,
+	double *R, double *z, double frw, const double ood2, const double aMass2,
 			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
 {
 	const size_t Sf = Lx*Lx;
+	const size_t Ng = Vo/Sf;
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
 	double gxC = 0., gyC = 0., gzC = 0., ktC = 0., ptC = 0.;
@@ -105,7 +107,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghosts
+					X[2] -= Ng;	// Removes ghosts
 				}
 
 				if (X[0] == XC-step)
@@ -324,7 +326,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghosts
+					X[2] -= Ng;	// Removes ghosts
 				}
 
 				if (X[0] == XC-step)
@@ -492,7 +494,7 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass
 	double frw = axionField->BckGnd()->Frw();
 	const FieldPrecision precision = axionField->Precision();
 	const size_t Lx = axionField->Length();
-	const size_t Vo = axionField->Surf();
+	const size_t Vo = axionField->getNg()*axionField->Surf();
 	const size_t Vf = Vo + axionField->Size();
 
 	axionField->exchangeGhosts(FIELD_M);
