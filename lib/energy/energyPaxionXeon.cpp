@@ -349,7 +349,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					mel = opCode(load_ps, &m[idxMy]);
 					mMy = opCode(shuffle_ps, mel, mel, 0b10010011);
 					mel = opCode(load_ps, &v[idxMy-Vo]);
-					mMyp = opCode(shuffle_ps, mel, mel, 0x00000001);
+					mMyp = opCode(shuffle_ps, mel, mel, 0b10010011);
 #endif
 				}
 				else
@@ -378,7 +378,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 						vel = opCode(load_ps, &m[idxPy]);
 						mPy = opCode(shuffle_ps, vel, vel, 0b00111001);
 						vel = opCode(load_ps, &v[idxPy-Vo]);
-						mPyp = opCode(shuffle_ps, vel, vel, 0b00000001);
+						mPyp = opCode(shuffle_ps, vel, vel, 0b00111001);
 #endif
 					}
 					else
