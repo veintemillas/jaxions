@@ -93,7 +93,7 @@ class	Plot2D():
 			elif fl == "Naxion":
 				mTmp  = fileHdf5[map]['m'].value.reshape(Ly,Lx,2)
 				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
-				rData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)/(mAmA*R**3))
+				rData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)) # /(mAmA*R**3))
 				rMax = np.amax(rData)
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
 			elif fl == "Paxion":
