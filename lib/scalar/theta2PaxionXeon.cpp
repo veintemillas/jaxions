@@ -51,5 +51,6 @@ void	th2PaxionXeon (Scalar *sField)
 		exit(1);
 		break;
 	}
-
+	/* Paxion velocity is Ghosted! */
+	memmove(sField->vStart(),sField->vCpu(),V*sField->Precision());
 }
