@@ -32,6 +32,8 @@ if ftype == 'Naxion':
 elif ftype == 'Saxion':
     con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
     con   = np.arctan2(con[:,:,:,0],con[:,:,:,1])
+elif ftype == 'Paxion':
+    con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz))    
 print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',fileHdf5)
 
 print('range is',con.min(),con.max())
