@@ -146,6 +146,23 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					break;
 				}
 
+				case CONF_AXITON:
+				{
+					// pidx = idx-Sf;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
+					z = iz;
+					y = iy;
+					x = ix;
+					if (iz>Lx/2) { z = z-Lx; }
+					if (iy>Lx/2) { y = y-Lx; }
+					if (ix>Lx/2) { x = x-Lx; }
+					Float theta = ((Float) (x*x + y*y + z*z));
+					theta = mod0/(theta*kCri2 + 1.0);
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
+				}
 
 				//// if(ix<2)
 				//// {
@@ -259,6 +276,9 @@ void	randConf (Scalar *field, IcData ic)
 			case CONF_PARRES:
 				randXeon<double,CONF_PARRES> (ma, field, ic);
 				break;
+			case CONF_AXITON:
+				randXeon<double,CONF_PARRES> (ma, field, ic);
+				break;
 		}
 		}
 		break;
@@ -294,6 +314,9 @@ void	randConf (Scalar *field, IcData ic)
 				randXeon<float,CONF_AX1MODE> (ma, field, ic);
 				break;
 			case CONF_PARRES:
+				randXeon<float,CONF_PARRES> (ma, field, ic);
+				break;
+			case CONF_AXITON:
 				randXeon<float,CONF_PARRES> (ma, field, ic);
 				break;
 		}
