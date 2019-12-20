@@ -68,16 +68,6 @@ class	PropMLeap : public PropClass<4, true, pot> {
 
 		this->setCoeff(nC, nD);
 
-		// if (spec && field->Device() == DEV_CPU) {
-		// 	this->setBaseName("Multi-Leapfrog spectral ");
-		// } else {
-		// 	if (field->LowMem())
-		// 		this->setBaseName("Lowmem Multi-Leapfrog ");
-		// 	else
-		// 		this->setBaseName("Multi-Leapfrog ");
-		// }
-		//
-
 		switch(propclass)
 		{
 			case PROPC_SPEC:
@@ -93,8 +83,10 @@ class	PropMLeap : public PropClass<4, true, pot> {
 					this->setBaseName("Multi-Leapfrog ");
 			break;
 			case PROPC_NNEIG:
+			{
 				LogError("Error: propagator N-neighbour not supported with Multi-leapfrog yet");
 				exit(1);
+			}
 			break;
 
 			default:
@@ -246,7 +238,7 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 
 	LogMsg	(VERB_NORMAL, "[ip] Initializing propagator");
-	LogMsg	(VERB_NORMAL, "[ip] pType is %d",pType);
+	LogMsg	(VERB_NORMAL, "[ip] pType is %d pot is %d ",pType, pot);
 	// bool	spec = (pType & PROP_SPEC) ? true : false, wasTuned = false;
 	bool wasTuned = false;
 
@@ -292,11 +284,12 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 			yBlock = prop->TunedBlockY();
 			zBlock = prop->TunedBlockZ();
 		}
-
 	//auto pot  = field->BckGnd()->QcdPot();
 	//auto gm   = field->BckGnd()->Gamma ();
 	LogMsg(VERB_NORMAL,"\n");
- 	LogMsg(VERB_NORMAL,"[ip] Init propagator\n");
+ 	LogMsg(VERB_NORMAL,"[ip] Init propagator %d\n",pType & PROP_MASK);
+
+
 	switch (pType & PROP_MASK) {
 		case PROP_OMELYAN2:
 			switch (pot) {
@@ -321,7 +314,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, propclass);
 					break;
 			}
-			break;
+		break;
 
 		case PROP_OMELYAN4:
 			switch (pot) {
@@ -345,7 +338,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, propclass);
 					break;
 			}
-			break;
+		break;
 
 		case PROP_LEAP:
 			switch (pot) {
@@ -369,9 +362,10 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropLeap<VQCD_NONE>>		(field, propclass);
 					break;
 			}
-			break;
+		break;
 
-			case PROP_MLEAP:
+		case PROP_MLEAP:
+				LogMsg(VERB_NORMAL,"[ip] MLEAP chosen");
 				switch (pot) {
 					case VQCD_1:
 						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, propclass);
@@ -426,9 +420,11 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					default:
 						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, propclass);
 						break;
-				break;
-			}
+				}
+		break;
+
 		case PROP_RKN4:
+			LogMsg(VERB_NORMAL,"[ip] RKN4 chosen");
 			switch (pot) {
 				case VQCD_1:
 					prop = std::make_unique<PropRKN4<VQCD_1>>		(field, propclass);
@@ -495,13 +491,12 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, propclass);
 					break;
 			}
-
-			break;
+		break;
 
 		default:
 			LogError ("Error: unrecognized propagator %d", pType);
 			exit(1);
-			break;
+		break;
 	}
 	LogMsg(VERB_HIGH,"[ip] getBaseName");
 	prop->getBaseName();
@@ -513,7 +508,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 		prop->SetBlockZ(zBlock);
 		prop->UpdateBestBlock();
 	}
-	LogMsg	(VERB_NORMAL, "Propagator %ssuccessfully initialized", prop->Name().c_str());
+	LogMsg	(VERB_NORMAL, "Propagator %s successfully initialized", prop->Name().c_str());
  	LogFlush();
 }
 
