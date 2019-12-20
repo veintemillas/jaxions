@@ -31,17 +31,22 @@
 #define	bSizeY	64
 #define	bSizeZ	2
 */
-template<const VqcdType VQcd>
-inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, const double dz,
+template<const KickDriftType KDtype>
+inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, PropParms ppar, const double dz,
 				const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
-
+	const size_t ct  = ppar.ct;
 	const size_t NN  = ppar.Ng;
 	const size_t Lx  = ppar.Lx;
-	const size_t Sf = Lx*Lx;
+	const size_t Sf  = Lx*Lx;
 	const size_t NSf = Sf*NN;
 	const double *PC = ppar.PC;
+	const double R   = ppar.R;
 	const double sss = ppar.sign;
+	const double beta = ppar.beta;
+	const double ood2 = ppar.sign*dz*ppar.ood2a/(2.0*ppar.massA*R);
+	const double u    = 2.0*ppar.frw - 1.0;
+	const double KKt  = ppar.sign*ppar.beta*ct*(pow(ct+dz,u)-pow(ct,u))/(4.0*R*R*u*pow(ct+dz,u));
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -56,20 +61,8 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	#define	step 2
 #endif
 
-		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned (v_, Align);
-		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_, Align);
-
-		const double R    = ppar.R;
-		const double R2   = R*R;
-
-		// conformal axion mass
-		const double cmA   = ppar.massA*R;
-		// conformal axion mass^2 * R
-		const double cmA2R = cmA*cmA*R;
-		// inverse lattice spacing^2/2 cmA
-		const double ood2 = ppar.sign*ppar.ood2a/(2.0*cmA);
-		const double i4R2 = ppar.sign*ppar.Lambda*1.0/(4.0*R*R);
+		double * __restrict__ m	= (double * __restrict__) __builtin_assume_aligned (m_, Align);
+		double * __restrict__ v	= (double * __restrict__) __builtin_assume_aligned (v_, Align);
 
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
@@ -89,8 +82,8 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 		const size_t YC = (Lx>>1);
 #endif
 		const _MData_ m6Vec  = opCode(set1_pd, -6.0);
-		const _MData_ dzVec  = opCode(set1_pd, dz);
-		const _MData_ i4Vec  = opCode(set1_pd, i4R2);
+		const _MData_ KKtVec = opCode(set1_pd, KKt);
+
 
 #ifdef	__AVX512F__
 		const auto vShRg  = opCode(load_si512, shfRg);
@@ -126,106 +119,114 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 			}
 
 			mel = opCode(load_pd, &m[idx]);
-			lap = opCode(set1_pd, 0.0); // for the laplacian
 
-			for (size_t nv=1; nv < NN+1; nv++)
+
+			switch(KDtype)
 			{
-				if (X[0] < nv*step)
-					idxMx = ( idx + XC - nv*step );
-				else
-					idxMx = ( idx - nv*step );
-				//x+
-				if (X[0] + nv*step >= XC)
-					idxPx = ( idx - XC + nv*step );
-				else
-					idxPx = ( idx + nv*step );
-
-				if (X[1] < nv )
+				case KIDI_LAP:
 				{
-					idxMy = ( idx + Sf - nv*XC );
-					idxPy = ( idx + nv*XC );
+							lap = opCode(set1_pd, 0.0); // for the laplacian
 
-					mPy = opCode(load_pd, &m[idxPy]);
-	#ifdef	__AVX512F__
-					mMy = opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
-	#elif	defined(__AVX2__)
-					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
-	#elif	defined(__AVX__)
-					acu = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
-					vel = opCode(permute2f128_pd, acu, acu, 0b00000001);
-					mMy = opCode(blend_pd, acu, vel, 0b00000101);
-	#else
-					acu = opCode(load_pd, &m[idxMy]);
-					mMy = opCode(shuffle_pd, acu, acu, 0x00000001);
-	#endif
-				}
-				else
-				{
-					idxMy = ( idx - nv*XC );
-					mMy = opCode(load_pd, &m[idxMy]);
+							for (size_t nv=1; nv < NN+1; nv++)
+							{
+								if (X[0] < nv*step)
+									idxMx = ( idx + XC - nv*step );
+								else
+									idxMx = ( idx - nv*step );
+								//x+
+								if (X[0] + nv*step >= XC)
+									idxPx = ( idx - XC + nv*step );
+								else
+									idxPx = ( idx + nv*step );
 
-					if (X[1] + nv >= YC)
-					{
-						idxPy = ( idx + nv*XC - Sf );
-	#ifdef	__AVX512F__
-						mPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
-	#elif	defined(__AVX2__)	//AVX2
-						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
-	#elif	defined(__AVX__)
-						acu = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
-						vel = opCode(permute2f128_pd, acu, acu, 0b00000001);
-						mPy = opCode(blend_pd, acu, vel, 0b00001010);
-	#else
-						vel = opCode(load_pd, &m[idxPy]);
-						mPy = opCode(shuffle_pd, vel, vel, 0x00000001);
-	#endif
-					}
-					else
-					{
-						idxPy = ( idx + nv*XC );
-						mPy = opCode(load_pd, &m[idxPy]);
-					}
-				}
+								if (X[1] < nv )
+								{
+									idxMy = ( idx + Sf - nv*XC );
+									idxPy = ( idx + nv*XC );
 
-				// sum Y+Y-
-				// sum X+X-
-				// sum Z+Z-
-				idxPz = idx+nv*Sf;
-				idxMz = idx-nv*Sf;
-
-				acu = 	opCode(add_pd,
-									opCode(add_pd,
-										opCode(add_pd, mPy, mMy),
-											opCode(add_pd,
-												opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])),
-													opCode(add_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz]))
-											)
-									),
-									opCode(mul_pd, mel, m6Vec));
-
-				lap = opCode(add_pd, lap, opCode(mul_pd,acu,COV[nv-1]));
-
-			} // End neighbour loop
-
-			vel = opCode(load_pd, &v[idx-NSf]);
-			/* lapm + i4R2*(m^2+v^2)m */
-			acu = opCode(add_pd, lap,
-							opCode(mul_pd, i4Vec,
-								opCode(mul_pd, mel,
-									opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel)))));
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-			tmp = opCode(fmadd_pd, acu, dzVec, vel);
+									mPy = opCode(load_pd, &m[idxPy]);
+#ifdef	__AVX512F__
+									mMy = opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
+#elif	defined(__AVX2__)
+									mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+#elif	defined(__AVX__)
+									acu = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
+									vel = opCode(permute2f128_pd, acu, acu, 0b00000001);
+									mMy = opCode(blend_pd, acu, vel, 0b00000101);
 #else
-			tmp = opCode(add_pd, vel, opCode(mul_pd, acu, dzVec));
+									acu = opCode(load_pd, &m[idxMy]);
+									mMy = opCode(shuffle_pd, acu, acu, 0x00000001);
 #endif
+								}
+else
+								{
+									idxMy = ( idx - nv*XC );
+									mMy = opCode(load_pd, &m[idxMy]);
 
-			/*	Store	twice */
-			opCode(store_pd, &v[idx-NSf], tmp);
-			opCode(store_pd, &m2[idx]   , tmp);
-		      }
-		    }
+									if (X[1] + nv >= YC)
+									{
+										idxPy = ( idx + nv*XC - Sf );
+#ifdef	__AVX512F__
+										mPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
+#elif	defined(__AVX2__)	//AVX2
+										mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
+#elif	defined(__AVX__)
+										acu = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
+										vel = opCode(permute2f128_pd, acu, acu, 0b00000001);
+										mPy = opCode(blend_pd, acu, vel, 0b00001010);
+#else
+										vel = opCode(load_pd, &m[idxPy]);
+										mPy = opCode(shuffle_pd, vel, vel, 0x00000001);
+#endif
+									}
+									else
+									{
+										idxPy = ( idx + nv*XC );
+										mPy = opCode(load_pd, &m[idxPy]);
+									}
+								}
+
+								// sum Y+Y-
+								// sum X+X-
+								// sum Z+Z-
+								idxPz = idx+nv*Sf;
+								idxMz = idx-nv*Sf;
+
+								acu = 	opCode(add_pd,
+													opCode(add_pd,
+														opCode(add_pd, mPy, mMy),
+															opCode(add_pd,
+																opCode(add_pd, opCode(load_pd, &m[idxPx]), opCode(load_pd, &m[idxMx])),
+																	opCode(add_pd, opCode(load_pd, &m[idxPz]), opCode(load_pd, &m[idxMz]))
+															)
+													),
+													opCode(mul_pd, mel, m6Vec));
+
+								lap = opCode(add_pd, lap, opCode(mul_pd,acu,COV[nv-1]));
+
+							} // End neighbour loop
+
+							tmp = opCode(add_pd, opCode(load_pd, &v[idx]), lap);
+							opCode(store_pd, &v[idx], tmp);
+
+				} // end LAP case
+				break;
+
+				case KIDI_POT:
+				{
+						vel = opCode(load_pd, &v[idx]);
+						acu = opCode(mul_pd, KKtVec, opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel)));
+						mMy = opCode(sin_pd, acu);
+						mPy = opCode(cos_pd, acu);
+						tmp = opCode(sub_pd, opCode(mul_pd, mPy, mel), opCode(mul_pd, mMy, vel));
+						opCode(store_pd, &m[idx], tmp);
+						tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
+						opCode(store_pd, &v[idx], tmp);
+				}
+			} // End prepare cases
+		   }
 		  }
+		 }
 		}
 #undef	_MData_
 #undef	step
@@ -243,25 +244,25 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	#define	step 4
 #endif
 
-		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_, Align);
-		float * __restrict__ v		= (float * __restrict__) __builtin_assume_aligned (v_, Align);
-		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
+		float * __restrict__ m	= (float * __restrict__) __builtin_assume_aligned (m_, Align);
+		float * __restrict__ v	= (float * __restrict__) __builtin_assume_aligned (v_, Align);
 
-		const float dzf  = dz;
-		const float R    = ppar.R;
-		const float R2   = R*R;
+		// // conformal axion mass
+		// const float cmA   = ppar.massA*ppar.R;
+		// // inverse lattice spacing^2/2 cmA
+		// const float ood2 = ppar.sign*ppar.ood2a/(2.0*cmA);
+		// const float i4R2 = ppar.sign*ppar.beta*1.0/(4.0*ppar.R*ppar.R);
 
-		// conformal axion mass
-		const float cmA   = ppar.massA*R;
-		// conformal axion mass^2 * R
-		const float cmA2R = cmA*cmA*R;
-		// inverse lattice spacing^2/2 cmA
-		const float ood2 = ppar.sign*ppar.ood2a/(2.0*cmA);
-		const float i4R2 = ppar.sign*ppar.Lambda*1.0/(4.0*R*R);
+		// Factors for the drift with self-interactions
+		const float KKtf = KKt;
+
+		// Factor for the "kick" with laplacian including dz
+		// dz * d * inverse lattice spacing^2/ (2 cmA)
+		const float ood2f = ood2;
 
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
-			COV[nv]  = opCode(set1_ps, PC[nv]*ood2);
+			COV[nv]  = opCode(set1_ps, PC[nv]*ood2f);
 
 #ifdef	__AVX512F__
 		const size_t XC = (Lx<<4);
@@ -281,8 +282,7 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 #endif
 
 		const _MData_ m6Vec  = opCode(set1_ps, -6.f);
-		const _MData_ i4Vec  = opCode(set1_ps, i4R2);
-		const _MData_ dzVec  = opCode(set1_ps, dzf);
+		const _MData_ KKtVec = opCode(set1_ps, KKtf);//i4R2);
 
 		const uint z0 = Vo/(Lx*Lx);
 		const uint zF = Vf/(Lx*Lx);
@@ -313,121 +313,111 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 			}
 
 			mel = opCode(load_ps, &m[idx]);
-			lap = opCode(set1_ps, 0.f); // for the laplacian
-/*
-		#pragma omp parallel default(shared)
-		{
-			_MData_ tmp, mel, vel, mPy, mMy, acu;
 
-			#pragma omp for schedule(static)
-			for (size_t idx = Vo; idx < Vf; idx += step)
+			switch(KDtype)
 			{
-				size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
-
-				mel = opCode(load_ps, &m[idx]);
-
+				case KIDI_LAP:
 				{
-					size_t tmi = idx/XC, itp;
+							lap = opCode(set1_ps, 0.f); // for the laplacian
 
-					itp = tmi/YC;
-					X[1] = tmi - itp*YC;
-					X[0] = idx - tmi*XC;
-				}
-*/
-			for (size_t nv=1; nv < NN+1; nv++)
-			{
-				if (X[0] < nv*step)
-					idxMx = ( idx + XC - nv*step );
-				else
-					idxMx = ( idx - nv*step );
-				//x+
-				if (X[0] + nv*step >= XC)
-					idxPx = ( idx - XC + nv*step );
-				else
-					idxPx = ( idx + nv*step );
 
-				if (X[1] < nv )
-				{
-					idxMy = ( idx + Sf - nv*XC );
-					idxPy = ( idx + nv*XC );
+							for (size_t nv=1; nv < NN+1; nv++)
+							{
+								if (X[0] < nv*step)
+									idxMx = ( idx + XC - nv*step );
+								else
+									idxMx = ( idx - nv*step );
+								//x+
+								if (X[0] + nv*step >= XC)
+									idxPx = ( idx - XC + nv*step );
+								else
+									idxPx = ( idx + nv*step );
 
-					mPy = opCode(load_ps, &m[idxPy]);
+								if (X[1] < nv )
+								{
+									idxMy = ( idx + Sf - nv*XC );
+									idxPy = ( idx + nv*XC );
+
+									mPy = opCode(load_ps, &m[idxPy]);
 #ifdef	__AVX512F__
-					mMy = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
+									mMy = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
 #elif	defined(__AVX2__)
-					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
+									mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
 #elif	defined(__AVX__)
-					tmp = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
-					vel = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
-					mMy = opCode(blend_ps, tmp, vel, 0b00010001);
+									tmp = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
+									vel = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+									mMy = opCode(blend_ps, tmp, vel, 0b00010001);
 #else
-					tmp = opCode(load_ps, &m[idxMy]);
-					mMy = opCode(shuffle_ps, tmp, tmp, 0b10010011);
+									tmp = opCode(load_ps, &m[idxMy]);
+									mMy = opCode(shuffle_ps, tmp, tmp, 0b10010011);
 #endif
-				}
-				else
-				{
-					idxMy = ( idx - nv*XC );
-					mMy = opCode(load_ps, &m[idxMy]);
+								}
+								else
+								{
+									idxMy = ( idx - nv*XC );
+									mMy = opCode(load_ps, &m[idxMy]);
 
-					if (X[1] + nv >= YC)
-					{
-						idxPy = ( idx + nv*XC - Sf );
+									if (X[1] + nv >= YC)
+									{
+										idxPy = ( idx + nv*XC - Sf );
 #ifdef	__AVX512F__
-						mPy = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
+										mPy = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
 #elif	defined(__AVX2__)
-						mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
+										mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
 #elif	defined(__AVX__)
-						tmp = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
-						vel = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
-						mPy = opCode(blend_ps, tmp, vel, 0b10001000);
+										tmp = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
+										vel = opCode(permute2f128_ps, tmp, tmp, 0b00000001);
+										mPy = opCode(blend_ps, tmp, vel, 0b10001000);
 #else
-						vel = opCode(load_ps, &m[idxPy]);
-						mPy = opCode(shuffle_ps, vel, vel, 0b00111001);
+										vel = opCode(load_ps, &m[idxPy]);
+										mPy = opCode(shuffle_ps, vel, vel, 0b00111001);
 #endif
-					}
-					else
-					{
-						idxPy = ( idx + nv*XC );
-						mPy = opCode(load_ps, &m[idxPy]);
-					}
+									}
+									else
+									{
+										idxPy = ( idx + nv*XC );
+										mPy = opCode(load_ps, &m[idxPy]);
+									}
+								}
+								// sum Y+Y-
+								// sum X+X-
+								// sum Z+Z-
+								idxPz = idx+nv*Sf;
+								idxMz = idx-nv*Sf;
+
+								acu = 	opCode(add_ps,
+													opCode(add_ps,
+														opCode(add_ps, mPy, mMy),
+															opCode(add_ps,
+																opCode(add_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx])),
+																	opCode(add_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz]))
+															)
+													),
+													opCode(mul_ps, mel, m6Vec));
+
+								lap = opCode(add_ps, lap, opCode(mul_ps, acu, COV[nv-1]));
+
+							} // End neighbour loop
+
+							tmp = opCode(add_ps, opCode(load_ps, &v[idx]), lap);
+							opCode(store_ps, &v[idx], tmp);
+
+				} //end LAP cases
+				break;
+
+				case KIDI_POT:
+				{
+						vel = opCode(load_ps, &v[idx]);
+						acu = opCode(mul_ps, KKtVec, opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel)));
+						mMy = opCode(sin_ps, acu);
+						mPy = opCode(cos_ps, acu);
+						tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
+						opCode(store_ps, &m[idx], tmp);
+						tmp = opCode(add_ps, opCode(mul_ps, mPy, vel), opCode(mul_ps, mMy, mel));
+						opCode(store_ps, &v[idx], tmp);
 				}
-				// sum Y+Y-
-				// sum X+X-
-				// sum Z+Z-
-				idxPz = idx+nv*Sf;
-				idxMz = idx-nv*Sf;
+			} // End prepare cases
 
-				acu = 	opCode(add_ps,
-									opCode(add_ps,
-										opCode(add_ps, mPy, mMy),
-											opCode(add_ps,
-												opCode(add_ps, opCode(load_ps, &m[idxPx]), opCode(load_ps, &m[idxMx])),
-													opCode(add_ps, opCode(load_ps, &m[idxPz]), opCode(load_ps, &m[idxMz]))
-											)
-									),
-									opCode(mul_ps, mel, m6Vec));
-
-				lap = opCode(add_ps, lap, opCode(mul_ps, acu, COV[nv-1]));
-
-			} // End neighbour loop
-
-			vel = opCode(load_ps, &v[idx-NSf]);
-			/* lapm + i4R2*(m^2+v^2)m */
-			acu = opCode(add_ps, lap,
-							opCode(mul_ps, i4Vec,
-								opCode(mul_ps, mel,
-									opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel)))));
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-			tmp = opCode(fmadd_ps, acu, dzVec, vel);
-#else
-			tmp = opCode(add_ps, vel, opCode(mul_ps, acu, dzVec));
-#endif
-
-			/*	Store	twice */
-			opCode(store_ps, &v[idx-NSf], tmp);
-			opCode(store_ps, &m2[idx]   , tmp);
 		      }
 		    }
 		  }
