@@ -949,7 +949,8 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		ppar.ood2a = ood2;
 		ppar.PC    = axion->getCO();
 		ppar.Lx    = Lx;
-
+		ppar.frw   = axion->BckGnd()->Frw();
+		ppar.beta  = axion->BckGnd()->ICData().beta;
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 		size_t CO = V-2*ppar.Ng*S;
@@ -1016,12 +1017,19 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		ppar.ood2a = ood2;
 		ppar.PC    = axion->getCO();
 		ppar.Lx    = Lx;
+		ppar.beta  = axion->BckGnd()->ICData().beta;
 
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
-		size_t CO = V-2*ppar.Ng*S;
 
-		LogMsg(VERB_DEBUG,"[propNax] Ng %d",ppar.Ng);
+		LogMsg(VERB_DEBUG,"[propPax] Ng %d",ppar.Ng);
+
+		ppar.ct     = *axion->zV();
+		ppar.R      = *axion->RV();
+		ppar.massA  = axion->AxionMass();
+		ppar.sign   = 1;
+
+		propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), ppar, 0.5*dz, BO,   V+BO , precision, xBlock, yBlock, zBlock);
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
@@ -1033,24 +1041,23 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
 			ppar.massA  = axion->AxionMass();
-			ppar.sign   = 1; ppar.Lambda   = 1.;
+			ppar.sign   = 1;
 			/*updates v(2) into m2(3) with m(1) lap data and NL function ; also (copies 3 into 2) */
-			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
 			ppar.massA  = axion->AxionMass();
-			ppar.sign   = -1; ppar.Lambda   = 1.;
-			/* double copying the same data in m ... avoidable? */
-			propagatePaxKernelXeon<VQcd>(axion->m2Cpu(), axion->mStart(), axion->mCpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			ppar.sign   = -1;
+			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propagatePaxKernelXeon<VQcd>(axion->m2Cpu(), axion->mStart(), axion->mCpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			propagatePaxKernelXeon<VQcd>(axion->m2Cpu(), axion->mStart(), axion->mCpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*axion->zV() += dz*d1;
 			axion->updateR();
 		}
@@ -1063,14 +1070,18 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
 			ppar.massA  = axion->AxionMass();
-			ppar.sign   = 1; ppar.Lambda   = 1.;
-			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			ppar.sign   = 1;
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			propagatePaxKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz*c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
 		}
-		axion->setM2     (M2_DIRTY);
+		ppar.ct     = *axion->zV();
+		ppar.R      = *axion->RV();
+		ppar.massA  = axion->AxionMass();
+		ppar.sign   = 1;
+		propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), ppar, 0.5*dz, BO,   V+BO , precision, xBlock, yBlock, zBlock);
 	}
 
 
