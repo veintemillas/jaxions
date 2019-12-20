@@ -309,25 +309,31 @@ int	main (int argc, char *argv[])
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
-		if ((axion->Field() == FIELD_AXION ))
-		{
-			LogOut("-----------------------\n TRANSITION TO PAXION \n");
-			thetaToPaxion (axion);
-			ninfa.index=index;
-			ninfa.measdata |= MEAS_3DMAP;
-			lm = Measureme (axion, ninfa);
-			ninfa.measdata ^= MEAS_3DMAP;
-			LogOut("-----------------------\n");
-			index++;
-			tunePropagator(axion);
-		}
+		// if ((axion->Field() == FIELD_AXION ))
+		// {
+		// 	LogOut("-----------------------\n TRANSITION TO PAXION \n");
+		// 	thetaToPaxion (axion);
+		//
+		// 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
+		// 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
+		// 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
+		// 	// }
+		// 	ninfa.index=index;
+		// 	ninfa.measdata |= MEAS_3DMAP;
+		// 	lm = Measureme (axion, ninfa);
+		// 	ninfa.measdata ^= MEAS_3DMAP;
+		// 	LogOut("-----------------------\n");
+		// 	index++;
+		// 	tunePropagator(axion);
+		// }
 
 
 		// time step
-		if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
+		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
+		if (axion->Field() == FIELD_SAXION )
 		 dzaux = 0.0;
 		 else
-		 dzaux = axion->dzSize();
+		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
 
 		//will we dump? and when?
 		switch(dumpmode)
