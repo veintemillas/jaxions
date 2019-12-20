@@ -27,7 +27,7 @@ void	Folder::foldField()
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
 	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
 	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vCpu());
+ 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
@@ -67,7 +67,7 @@ void	Folder::unfoldField()
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
 	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
 	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vCpu());
+ 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
 
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
@@ -111,7 +111,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
 	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
 	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vCpu());
+ 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
 
 	if (!field->Folded())
 	{
@@ -158,7 +158,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	cFloat *mg1 = static_cast<cFloat *> (field->mFrontGhost());
 	cFloat *mg2 = static_cast<cFloat *> (field->mBackGhost());
 	cFloat *m  = static_cast<cFloat *> (field->mStart());
-	cFloat *v  = static_cast<cFloat *> (field->vCpu());
+	cFloat *v  = static_cast<cFloat *> (field->vStart());
 
 	int z0 = 0;
 	size_t zT = field->Depth();
