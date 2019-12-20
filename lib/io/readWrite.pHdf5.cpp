@@ -610,9 +610,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			sprintf(smStr, "Axion one mode");
 			break;
 
+		case	CONF_AXITON:
+			sprintf(smStr, "Minicluster 0");
+			break;
+
 		default:
 			sprintf(smStr, "None");
 			break;
+
 	}
 
 	writeAttribute(icGrp_id, &mode0, "Axion zero mode",    H5T_NATIVE_DOUBLE);
