@@ -99,6 +99,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] ic.kcr      %f",cm->ICData().kcr      );
 	LogMsg(VERB_NORMAL,"[sca] ic.kMax     %d",cm->ICData().kMax     );
 	LogMsg(VERB_NORMAL,"[sca] ic.mode0    %f",cm->ICData().mode0    );
+	LogMsg(VERB_NORMAL,"[sca] ic.beta     %f",cm->ICData().beta     );
 	LogMsg(VERB_NORMAL,"[sca] ic.zi       %f",cm->ICData().zi       );
 	LogMsg(VERB_NORMAL,"[sca] ic.logi     %f",cm->ICData().logi     );
 	LogMsg(VERB_NORMAL,"[sca] ic.cType    %d",cm->ICData().cType    );
@@ -612,17 +613,25 @@ LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) slice %lu Ng %d",opComm, N
 	}
 	else
 	{
-		if (Nng > 0){
-			sGhostBck = m2Start();
-			sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
-			rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
-			rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+		if (fIdx & FIELD_V)
+		{
+				sGhostBck = vStart();																																						//slice to be send back
+				sGhostFwd = static_cast<void *> (static_cast<char *> (vStart())      + fSize*n3-ghostBytes);					//slice to be send forw
+				rGhostBck = static_cast<void *> (static_cast<char *> (vFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+				rGhostFwd = static_cast<void *> (static_cast<char *> (vBackGhost())  + fSize*Ng*n2-ghostBytes);	//reception point
 		} else {
-			// from v to 1st slice for NNEIG; assumes Ng = 1
-			sGhostBck = vGhost();																									 					//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
-			rGhostBck = m2FrontGhost();
-			rGhostFwd = m2BackGhost();
+			if (Nng > 0){
+				sGhostBck = m2Start();
+				sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
+				rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
+				rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+			} else {
+				// from v to 1st slice for NNEIG; assumes Ng = 1
+				sGhostBck = vGhost();																									 					//slice to be send back
+				sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
+				rGhostBck = m2FrontGhost();
+				rGhostFwd = m2BackGhost();
+			}
 		}
 	}
 
