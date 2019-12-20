@@ -45,6 +45,7 @@ double wkb2z  = -1.0;
 double prepstL = 5.0 ;
 double prepcoe = 3.0 ;
 double ng0calib = 1.25 ;
+
 int endredmap = -1;
 int endredmapwkb = -1;
 int safest0   = 20;
@@ -53,6 +54,7 @@ size_t nstrings_globale ;
 std::vector<double> rmask_tab;
 int i_rmask = 0;
 
+bool uwDz     = false;
 bool lowmem   = false;
 bool uPrec    = false;
 bool uSize    = false;
@@ -485,6 +487,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.kcr       = 1.0;
 	icdatst.kMax      = 2;
 	icdatst.mode0     = 10.0;
+	icdatst.beta      = 1.0;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
@@ -1092,6 +1095,24 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+
+		if (!strcmp(argv[i], "--beta"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the Naxion/Paxion selfinteraction coefficient.\n");
+				exit(1);
+			}
+
+			icdatst.beta = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+
 		if (!strcmp(argv[i], "--zi"))
 		{
 			if (i+1 == argc)
@@ -1352,8 +1373,9 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			wDz = atof(argv[i+1]);
+			uwDz = true;
 
-			if (wDz <= 0.)
+			if (wDz <= 0.0)
 			{
 				printf("Error: backwards propagation?\n");
 				exit(1);
@@ -1826,6 +1848,10 @@ int	parseArgs (int argc, char *argv[])
 			else if (!strcmp(argv[i+1], "parres"))
 			{
 				icdatst.smvarType = CONF_PARRES;
+			}
+			else if (!strcmp(argv[i+1], "axiton"))
+			{
+				icdatst.smvarType = CONF_AXITON;
 			}
 			else
 			{
