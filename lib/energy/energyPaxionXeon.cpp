@@ -111,24 +111,24 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					idxMy = idx + Sf - XC;
 					idxPy = idx + XC;
 					mPy  = opCode(load_pd, &m[idxPy]);
-					mPyp = opCode(load_pd, &v[idxPy-Vo]);
+					mPyp = opCode(load_pd, &v[idxPy]);
 #if	defined(__AVX512F__)
 					mMy  = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
-					mMyp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &v[idxMy-Vo])), mPy);
+					mMyp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &v[idxMy])), mPy);
 #elif	defined(__AVX2__)       //AVX2
 					mMy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
-					mMyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxMy-Vo])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
+					mMyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
 					mel = opCode(permute_pd, opCode(load_pd, &m[idxMy]), 0b00000101);
 					vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
 					mMy = opCode(blend_pd, mel, vel, 0b00000101);
-					mel = opCode(permute_pd, opCode(load_pd, &v[idxMy-Vo]), 0b00000101);
+					mel = opCode(permute_pd, opCode(load_pd, &v[idxMy]), 0b00000101);
 					vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
 					mMyp = opCode(blend_pd, mel, vel, 0b00000101);
 #else
 					mel = opCode(load_pd, &m[idxMy]);
 					mMy = opCode(shuffle_pd, mel, mel, 0x00000001);
-					mel = opCode(load_pd, &v[idxMy-Vo]);
+					mel = opCode(load_pd, &v[idxMy]);
 					mMyp = opCode(shuffle_pd, mel, mel, 0x00000001);
 #endif
 				}
@@ -136,28 +136,28 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 				{
 					idxMy = idx - XC;
 					mMy  = opCode(load_pd, &m[idxMy]);
-					mMyp = opCode(load_pd, &v[idxMy-Vo]);
+					mMyp = opCode(load_pd, &v[idxMy]);
 
 					if (X[1] == YC-1)
 					{
 						idxPy = idx - Sf + XC;
 #if	defined(__AVX512F__)
 						mPy  = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
-						mPyp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxPy-Vo])), mMy);
+						mPyp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxPy])), mMy);
 #elif	defined(__AVX2__)       //AVX2
 						mPy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
-						mPyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxPy-Vo])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
+						mPyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif	defined(__AVX__)
 						mel = opCode(permute_pd, opCode(load_pd, &m[idxPy]), 0b00000101);
 						vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
 						mPy = opCode(blend_pd, mel, vel, 0b00001010);
-						mel = opCode(permute_pd, opCode(load_pd, &v[idxPy-Vo]), 0b00000101);
+						mel = opCode(permute_pd, opCode(load_pd, &v[idxPy]), 0b00000101);
 						vel = opCode(permute2f128_pd, mel, mel, 0b00000001);
 						mPyp = opCode(blend_pd, mel, vel, 0b00001010);
 #else
 						vel = opCode(load_pd, &m[idxPy]);
 						mPy = opCode(shuffle_pd, vel, vel, 0b00000001);
-						vel = opCode(load_pd, &v[idxPy-Vo]);
+						vel = opCode(load_pd, &v[idxPy]);
 						mPyp = opCode(shuffle_pd, vel, vel, 0b00000001);
 #endif
 					}
@@ -165,7 +165,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					{
 						idxPy = idx + XC;
 						mPy  = opCode(load_pd, &m[idxPy]);
-						mPyp = opCode(load_pd, &v[idxPy-Vo]);
+						mPyp = opCode(load_pd, &v[idxPy]);
 					}
 				}
 
@@ -176,19 +176,19 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 				idxP0 = idx;
 
 				mel = opCode(load_pd, &m[idxP0]);    // Carga m
-				vel = opCode(load_pd, &v[idxP0-Vo]); // Carga v
+				vel = opCode(load_pd, &v[idxP0]); // Carga v
 
 				/* Gradients (without mod)
 				   both for q and p */
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxPx]), mel);
 					mPx = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxPx-Vo]), vel);
+				grd = opCode(sub_pd, opCode(load_pd, &v[idxPx]), vel);
 					mPx = opCode(add_pd, mPx, opCode(mul_pd, grd, grd));
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxMx]), mel);
 					mMx = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxMx-Vo]), vel);
+				grd = opCode(sub_pd, opCode(load_pd, &v[idxMx]), vel);
 					mMx = opCode(add_pd, mMx, opCode(mul_pd, grd, grd));
 
 				grd = opCode(sub_pd, mPy, mel);
@@ -203,12 +203,12 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxPz]), mel);
 					mPz = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxPz-Vo]), vel); // check!
+				grd = opCode(sub_pd, opCode(load_pd, &v[idxPz]), vel); // check!
 					mPz = opCode(add_pd, mPz, opCode(mul_pd, grd, grd));
 
 				grd = opCode(sub_pd, opCode(load_pd, &m[idxMz]), mel);
 					mMz = opCode(mul_pd, grd, grd);
-				grd = opCode(sub_pd, opCode(load_pd, &v[idxMz-Vo]), vel); // check!
+				grd = opCode(sub_pd, opCode(load_pd, &v[idxMz]), vel); // check!
 					mMz = opCode(add_pd, mMz, opCode(mul_pd, grd, grd));
 
 				grd = opCode(add_pd, mPx, mMx);
@@ -331,61 +331,61 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					idxMy = idx + Sf - XC;
 					idxPy = idx + XC;
 					mPy = opCode(load_ps, &m[idxPy]);
-					mPyp = opCode(load_ps, &v[idxPy-Vo]);
+					mPyp = opCode(load_ps, &v[idxPy]);
 #if	defined(__AVX512F__)
 					mMy = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
-					mPyp = opCode(permutexvar_ps, vShRg, opCode(load_ps, &v[idxMy-Vo]));;
+					mPyp = opCode(permutexvar_ps, vShRg, opCode(load_ps, &v[idxMy]));;
 #elif	defined(__AVX2__)
 					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
-					mMyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxMy-Vo]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
+					mMyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
 #elif	defined(__AVX__)
-					mel = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
-					vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
-					mMy = opCode(blend_ps, mel, vel, 0b00010001);
-					mel = opCode(permute_ps, opCode(load_ps, &v[idxMy-Vo]), 0b00000101);
-					vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
+					mel  = opCode(permute_ps, opCode(load_ps, &m[idxMy]), 0b10010011);
+					vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
+					mMy  = opCode(blend_ps, mel, vel, 0b00010001);
+					mel  = opCode(permute_ps, opCode(load_ps, &v[idxMy]), 0b00000101);
+					vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
 					mMyp = opCode(blend_ps, mel, vel, 0b00010001);
 #else
-					mel = opCode(load_ps, &m[idxMy]);
-					mMy = opCode(shuffle_ps, mel, mel, 0b10010011);
-					mel = opCode(load_ps, &v[idxMy-Vo]);
+					mel  = opCode(load_ps, &m[idxMy]);
+					mMy  = opCode(shuffle_ps, mel, mel, 0b10010011);
+					mel  = opCode(load_ps, &v[idxMy]);
 					mMyp = opCode(shuffle_ps, mel, mel, 0b10010011);
 #endif
 				}
 				else
 				{
 					idxMy = idx - XC;
-					mMy = opCode(load_ps, &m[idxMy]);
-					mMyp = opCode(load_ps, &v[idxMy-Vo]);
+					mMy  = opCode(load_ps, &m[idxMy]);
+					mMyp = opCode(load_ps, &v[idxMy]);
 
 					if (X[1] == YC-1)
 					{
 						idxPy = idx - Sf + XC;
 #if	defined(__AVX512F__)
-						mPy = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
-						mPyp = opCode(permutexvar_ps, vShLf, opCode(load_ps, &v[idxPy-Vo]));
+						mPy  = opCode(permutexvar_ps, vShLf, opCode(load_ps, &m[idxPy]));
+						mPyp = opCode(permutexvar_ps, vShLf, opCode(load_ps, &v[idxPy]));
 #elif	defined(__AVX2__)
-						mPy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
-						mPyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxPy-Vo]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
+						mPy  = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
+						mPyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxPy]), opCode(setr_epi32, 1,2,3,4,5,6,7,0));
 #elif	defined(__AVX__)
-						mel = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
-						vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
-						mPy = opCode(blend_ps, mel, vel, 0b10001000);
-						mel = opCode(permute_ps, opCode(load_ps, &v[idxPy-Vo]), 0b00111001);
-						vel = opCode(permute2f128_ps, mel, mel, 0b00000001);
-						mPy = opCode(blend_ps, mel, vel, 0b10001000);
+						mel  = opCode(permute_ps, opCode(load_ps, &m[idxPy]), 0b00111001);
+						vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
+						mPy  = opCode(blend_ps, mel, vel, 0b10001000);
+						mel  = opCode(permute_ps, opCode(load_ps, &v[idxPy]), 0b00111001);
+						vel  = opCode(permute2f128_ps, mel, mel, 0b00000001);
+						mPyp = opCode(blend_ps, mel, vel, 0b10001000);
 #else
 						vel = opCode(load_ps, &m[idxPy]);
 						mPy = opCode(shuffle_ps, vel, vel, 0b00111001);
-						vel = opCode(load_ps, &v[idxPy-Vo]);
+						vel = opCode(load_ps, &v[idxPy]);
 						mPyp = opCode(shuffle_ps, vel, vel, 0b00111001);
 #endif
 					}
 					else
 					{
 						idxPy = idx + XC;
-						mPy = opCode(load_ps, &m[idxPy]);
-						mPyp = opCode(load_ps, &v[idxPy-Vo]);
+						mPy  = opCode(load_ps, &m[idxPy]);
+						mPyp = opCode(load_ps, &v[idxPy]);
 					}
 				}
 
@@ -394,17 +394,17 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 				idxP0 = idx;
 
 				mel = opCode(load_ps, &m[idxP0]);    // Carga m
-				vel = opCode(load_ps, &v[idxP0-Vo]); // Carga v
+				vel = opCode(load_ps, &v[idxP0]); // Carga v
 
 				/* Gradients (without mod) */
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPx]), mel);
 					mPx = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxPx-Vo]), vel);
+				grd = opCode(sub_ps, opCode(load_ps, &v[idxPx]), vel);
 					mPx = opCode(add_ps, mPx, opCode(mul_ps, grd, grd));
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMx]), mel);
 					mMx = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxMx-Vo]), vel);
+				grd = opCode(sub_ps, opCode(load_ps, &v[idxMx]), vel);
 					mMx = opCode(add_ps, mMx, opCode(mul_ps, grd, grd));
 
 				grd = opCode(sub_ps, mPy, mel);
@@ -419,13 +419,21 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxPz]), mel);
 					mPz = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxPz-Vo]), vel);
+				grd = opCode(sub_ps, opCode(load_ps, &v[idxPz]), vel);
 					mPz = opCode(add_ps, mPz, opCode(mul_ps, grd, grd));
 
 				grd = opCode(sub_ps, opCode(load_ps, &m[idxMz]), mel);
 					mMz = opCode(mul_ps, grd, grd);
-				grd = opCode(sub_ps, opCode(load_ps, &v[idxMz-Vo]), vel);
+				grd = opCode(sub_ps, opCode(load_ps, &v[idxMz]), vel);
 					mMz = opCode(add_ps, mMz, opCode(mul_ps, grd, grd));
+
+					// if (idx==Vf-step || idx==Vo)
+					// {
+					// 	printf("%zu\n",idx);
+					// 	printsVar(mMz, "Mz");
+					// 	printsVar(mPz, "Pz");
+					// }
+
 
 				grd = opCode(add_ps, mPx, mMx);
 				mMx = opCode(add_ps, mPy, mMy);
@@ -498,6 +506,7 @@ void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 	const FieldPrecision precision = axionField->Precision();
 
 	axionField->exchangeGhosts(FIELD_M);
+	axionField->exchangeGhosts(FIELD_V);
 
 	switch	(map) {
 		case	true:
