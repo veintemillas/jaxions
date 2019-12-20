@@ -146,6 +146,13 @@
 			VQCD_NONE	          = 0,
 		}	VqcdType;
 
+		typedef enum	KickDriftType_s
+		{
+			KIDI_LAP        = 1,
+			KIDI_POT        = 2,
+			KIDI_LAPPOT     = 3,
+		}	KickDriftType;
+
 		typedef enum	ConfType_s
 		{
 			CONF_NONE       = 0,
@@ -172,6 +179,7 @@
 			CONF_SAXNOISE     = 6,
 			CONF_AX1MODE      = 7,
 			CONF_PARRES       = 8,
+			CONF_AXITON       = 9,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
@@ -607,6 +615,7 @@
 			size_t        kMax ;
 			double        kcr;
 			double        mode0;
+			double        beta;
 			double        zi;
 			double        logi;
 			double        kickalpha;
