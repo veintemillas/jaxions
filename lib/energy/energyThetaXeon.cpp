@@ -498,7 +498,7 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass
 	const size_t Vf = Vo + axionField->Size();
 
 	axionField->exchangeGhosts(FIELD_M);
-
+	
 	switch	(map) {
 		case	true:
 			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
