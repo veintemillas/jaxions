@@ -95,6 +95,9 @@
 		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(n3)); }
 		void		*vCpu()  { return v; }
 		const void	*vCpu()  const { return v; }
+		void		*vStart      () { return (fieldType == FIELD_PAXION) ? (static_cast<void *>(static_cast<char *>(v)  + fSize*(n2)*Ng)) : v; }
+		void		*vFrontGhost () { return v; }
+		void		*vBackGhost  () { return static_cast<void *>(static_cast<char *>(v)  + fSize*(n2*Ng+n3)); }
 
 		/* Auxiliary field pointers */
 		void		*m2Cpu() { return m2; }
