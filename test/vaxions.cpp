@@ -309,28 +309,28 @@ int	main (int argc, char *argv[])
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
-		// if ((axion->Field() == FIELD_AXION ))
-		// {
-		// 	LogOut("-----------------------\n TRANSITION TO PAXION \n");
-		// 	thetaToPaxion (axion);
-		//
-		// 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
-		// 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
-		// 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
-		// 	// }
-		// 	ninfa.index=index;
-		// 	ninfa.measdata |= MEAS_3DMAP;
-		// 	lm = Measureme (axion, ninfa);
-		// 	ninfa.measdata ^= MEAS_3DMAP;
-		// 	LogOut("-----------------------\n");
-		// 	index++;
-		// 	tunePropagator(axion);
-		// }
+		if ((axion->Field() == FIELD_AXION ))
+		{
+			LogOut("-----------------------\n TRANSITION TO PAXION \n");
+			thetaToPaxion (axion);
+
+			// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
+			// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
+			// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
+			// }
+			ninfa.index=index;
+			ninfa.measdata |= MEAS_3DMAP;
+			lm = Measureme (axion, ninfa);
+			ninfa.measdata ^= MEAS_3DMAP;
+			LogOut("-----------------------\n");
+			index++;
+			tunePropagator(axion);
+		}
+
 
 
 		// time step
-		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
-		if (axion->Field() == FIELD_SAXION )
+		if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
 		 dzaux = 0.0;
 		 else
 		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
@@ -450,6 +450,8 @@ int	main (int argc, char *argv[])
 				ninfa.index=index;
 				// in case theta transitioned, the meas was saved as the default
 				ninfa.measdata = defaultmeasType;
+				// if (axion->Field() == FIELD_PAXION )
+				// 		ninfa.measdata |= MEAS_3DMAP;
 				lm = Measureme (axion, ninfa);
 				index++;
 				i_meas++ ;
@@ -575,15 +577,15 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 				double saskia = axion->Saskia();
 
 				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
-				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].real(),
-				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].imag(),
-				static_cast<complex<float> *> (axion->vCpu())[idxprint].real(),
-				static_cast<complex<float> *> (axion->vCpu())[idxprint].imag(),
+				static_cast<complex<float> *> (axion->mStart())[idxprint].real(),
+				static_cast<complex<float> *> (axion->mStart())[idxprint].imag(),
+				static_cast<complex<float> *> (axion->vStart())[idxprint].real(),
+				static_cast<complex<float> *> (axion->vStart())[idxprint].imag(),
 				nstrings_global, maximumtheta, saskia);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
-				static_cast<float *> (axion->mCpu())[idxprint + S0],
-				static_cast<float *> (axion->vCpu())[idxprint], maximumtheta);
+				static_cast<float *> (axion->mStart())[idxprint],
+				static_cast<float *> (axion->vStart())[idxprint], maximumtheta);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){
@@ -592,15 +594,15 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 				double saskia = axion->Saskia();
 
 				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
-				static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].real(),
-				static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].imag(),
-				static_cast<complex<double> *> (axion->vCpu())[idxprint].real(),
-				static_cast<complex<double> *> (axion->vCpu())[idxprint].imag(),
+				static_cast<complex<double> *> (axion->mStart())[idxprint].real(),
+				static_cast<complex<double> *> (axion->mStart())[idxprint].imag(),
+				static_cast<complex<double> *> (axion->vStart())[idxprint].real(),
+				static_cast<complex<double> *> (axion->vStart())[idxprint].imag(),
 				nstrings_global, maximumtheta, saskia);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
-				static_cast<double *> (axion->mCpu())[idxprint + S0],
-				static_cast<double *> (axion->vCpu())[idxprint], maximumtheta);
+				static_cast<double *> (axion->mStart())[idxprint],
+				static_cast<double *> (axion->vStart())[idxprint], maximumtheta);
 			}
 		}
 	}
@@ -625,17 +627,17 @@ void printsampleS(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, siz
 				double iinte = axion->IIAxionMassSqn(0,z_now,3);
 
 				fprintf(fichero,"%f %f %f %f %f %f %f %f %f %ld %f %e %f %f\n", z_now, axmass_now, llphys,
-				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].real(),
-				static_cast<complex<float> *> (axion->mCpu())[idxprint + S0].imag(),
-				static_cast<complex<float> *> (axion->vCpu())[idxprint].real(),
-				static_cast<complex<float> *> (axion->vCpu())[idxprint].imag(),
+				static_cast<complex<float> *> (axion->mStart())[idxprint].real(),
+				static_cast<complex<float> *> (axion->mStart())[idxprint].imag(),
+				static_cast<complex<float> *> (axion->vStart())[idxprint].real(),
+				static_cast<complex<float> *> (axion->vStart())[idxprint].imag(),
 				static_cast<complex<float> *> (axion->m2Cpu())[idxprint].real(),
 				static_cast<complex<float> *> (axion->m2Cpu())[idxprint].imag(),
 				nstrings_global, maximumtheta, saskia, inte, iinte);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
-				static_cast<float *> (axion->mCpu())[idxprint + S0],
-				static_cast<float *> (axion->vCpu())[idxprint], maximumtheta);
+				static_cast<float *> (axion->mStart())[idxprint],
+				static_cast<float *> (axion->vStart())[idxprint], maximumtheta);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){
@@ -644,15 +646,15 @@ void printsampleS(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, siz
 				double saskia = axion->Saskia();
 
 				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
-				static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].real(),
-				static_cast<complex<double> *> (axion->mCpu())[idxprint + S0].imag(),
-				static_cast<complex<double> *> (axion->vCpu())[idxprint].real(),
-				static_cast<complex<double> *> (axion->vCpu())[idxprint].imag(),
+				static_cast<complex<double> *> (axion->mStart())[idxprint].real(),
+				static_cast<complex<double> *> (axion->mStart())[idxprint].imag(),
+				static_cast<complex<double> *> (axion->vStart())[idxprint].real(),
+				static_cast<complex<double> *> (axion->vStart())[idxprint].imag(),
 				nstrings_global, maximumtheta, saskia);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
-				static_cast<double *> (axion->mCpu())[idxprint + S0],
-				static_cast<double *> (axion->vCpu())[idxprint], maximumtheta);
+				static_cast<double *> (axion->mStart())[idxprint],
+				static_cast<double *> (axion->vStart())[idxprint], maximumtheta);
 			}
 		}
 	}

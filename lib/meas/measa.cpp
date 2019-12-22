@@ -625,7 +625,7 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
 					}
 	}
-	else{ // FIELD_AXION
+	else if (axiona->Field() == FIELD_AXION) { // FIELD_AXION
 		if (measa & MEAS_BINTHETA)
 		{
 			// LogOut("binthetha ");

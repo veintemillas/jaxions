@@ -52,5 +52,5 @@ void	th2PaxionXeon (Scalar *sField)
 		break;
 	}
 	/* Paxion velocity is Ghosted! */
-	memmove(sField->vStart(),sField->vCpu(),V*sField->Precision());
+	memmove(static_cast<char*>(sField->vStart())+NG*S*sField->Precision(),sField->vCpu(),V*sField->Precision());
 }

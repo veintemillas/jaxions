@@ -317,7 +317,7 @@ void	randConf (Scalar *field, IcData ic)
 				randXeon<float,CONF_PARRES> (ma, field, ic);
 				break;
 			case CONF_AXITON:
-				randXeon<float,CONF_PARRES> (ma, field, ic);
+				randXeon<float,CONF_AXITON> (ma, field, ic);
 				break;
 		}
 		}

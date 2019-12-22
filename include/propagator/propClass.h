@@ -1018,18 +1018,20 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		ppar.PC    = axion->getCO();
 		ppar.Lx    = Lx;
 		ppar.beta  = axion->BckGnd()->ICData().beta;
+		ppar.frw   = axion->BckGnd()->Frw();
 
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
-		LogMsg(VERB_DEBUG,"[propPax] Ng %d",ppar.Ng);
+		LogMsg(VERB_DEBUG,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+
 
 		ppar.ct     = *axion->zV();
 		ppar.R      = *axion->RV();
 		ppar.massA  = axion->AxionMass();
 		ppar.sign   = 1;
 
-		propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), ppar, 0.5*dz, BO,   V+BO , precision, xBlock, yBlock, zBlock);
+		propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
@@ -1048,14 +1050,14 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
-			axion->sendGhosts(FIELD_M2, COMM_SDRV);
+			axion->sendGhosts(FIELD_V, COMM_SDRV);
 
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
 			ppar.massA  = axion->AxionMass();
 			ppar.sign   = -1;
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
-			axion->sendGhosts(FIELD_M2, COMM_WAIT);
+			axion->sendGhosts(FIELD_V, COMM_WAIT);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*axion->zV() += dz*d1;
@@ -1077,6 +1079,7 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
 		}
+
 		ppar.ct     = *axion->zV();
 		ppar.R      = *axion->RV();
 		ppar.massA  = axion->AxionMass();

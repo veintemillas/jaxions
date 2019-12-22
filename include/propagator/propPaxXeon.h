@@ -35,18 +35,19 @@ template<const KickDriftType KDtype>
 inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, PropParms ppar, const double dz,
 				const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
-	const size_t ct  = ppar.ct;
-	const size_t NN  = ppar.Ng;
-	const size_t Lx  = ppar.Lx;
-	const size_t Sf  = Lx*Lx;
-	const size_t NSf = Sf*NN;
-	const double *PC = ppar.PC;
-	const double R   = ppar.R;
-	const double sss = ppar.sign;
+	const double ct   = ppar.ct;
+	const size_t NN   = ppar.Ng;
+	const size_t Lx   = ppar.Lx;
+	const size_t Sf   = Lx*Lx;
+	const size_t NSf  = Sf*NN;
+	const double *PC  = ppar.PC;
+	const double R    = ppar.R;
 	const double beta = ppar.beta;
 	const double ood2 = ppar.sign*dz*ppar.ood2a/(2.0*ppar.massA*R);
 	const double u    = 2.0*ppar.frw - 1.0;
 	const double KKt  = ppar.sign*ppar.beta*ct*(pow(ct+dz,u)-pow(ct,u))/(4.0*R*R*u*pow(ct+dz,u));
+	LogMsg(VERB_DEBUG,"PPX ct %e dz %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
+	LogMsg(VERB_DEBUG,"KKt %e dct %e",KKt,dz);
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -398,9 +399,17 @@ else
 								lap = opCode(add_ps, lap, opCode(mul_ps, acu, COV[nv-1]));
 
 							} // End neighbour loop
-
-							tmp = opCode(add_ps, opCode(load_ps, &v[idx]), lap);
+							vel = opCode(load_ps, &v[idx]);
+							tmp = opCode(add_ps, vel, lap);
 							opCode(store_ps, &v[idx], tmp);
+
+							// if (idx == Vo){
+							// 	printf("idx Vo z y x %u %u %u\n ",zC,yC,xC);
+							// 	printsVar(mel, "mel");
+							// 	printsVar(lap, "lap");
+							// 	printsVar(vel, "vel");
+							// 	printsVar(tmp, "+++");
+							// 	}
 
 				} //end LAP cases
 				break;
@@ -412,19 +421,31 @@ else
 						mMy = opCode(sin_ps, acu);
 						mPy = opCode(cos_ps, acu);
 						tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
+						// if (idx == Vo){
+						// 	printsVar(mel, "mel K");
+						// 	printsVar(vel, "vel K");
+						// 	printsVar(acu, "acu K");
+						// 	printsVar(mMy, "mMy K");
+						// 	printsVar(mPy, "mPy K");
+						// 	printsVar(tmp, "tmp K");
+						// }
+
+
 						opCode(store_ps, &m[idx], tmp);
 						tmp = opCode(add_ps, opCode(mul_ps, mPy, vel), opCode(mul_ps, mMy, mel));
 						opCode(store_ps, &v[idx], tmp);
 				}
-			} // End prepare cases
+				break;
+			} // End switch prepare cases
+
 
 		      }
 		    }
 		  }
-		}
+		} //end loop
 #undef	_MData_
 #undef	step
-	}
+} // end single
 }
 
 

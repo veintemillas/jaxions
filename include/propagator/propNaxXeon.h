@@ -35,7 +35,7 @@ template<const VqcdType VQcd>
 inline	void	propagateNaxKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, const double dz, const double c, const double d,
 				const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
-	const size_t ct  = ppar.ct;
+	const double ct  = ppar.ct;
 	const size_t NN  = ppar.Ng;
 	const size_t Lx  = ppar.Lx;
 	const size_t Sf = Lx*Lx;
