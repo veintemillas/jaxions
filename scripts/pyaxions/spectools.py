@@ -58,7 +58,7 @@ def dfunc(x, a0, a1, a2, a3):
 #     rmask = '%.2f' -> label from rmasktable (default 2.00)
 #     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
 class fitP:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', logstart=4.):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -97,8 +97,8 @@ class fitP:
         self.t = np.array(ttab)
         self.log = np.array(logtab)
         Ptab = np.array(Ptab)
-        # cutoff time (chosen as log(ms/H) = 4)
-        istart = np.abs(self.log - 4.).argmin()
+        # cutoff time (chosen as log(ms/H) = logstart (default 4))
+        istart = np.abs(self.log - logstart).argmin()
         self.param = []
         self.paramv = []
         self.listihc = []
@@ -133,7 +133,7 @@ class fitP:
 
 
 class fitP2:
-    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
+    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection', logstart=4.):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -165,8 +165,8 @@ class fitP2:
         self.t = np.array(ttab)
         self.log = np.array(logtab)
         Ptab = np.array(Ptab)
-        # cutoff time (chosen as log(ms/H) = 4)
-        istart = np.abs(self.log - 4.).argmin()
+        # cutoff time (chosen as log(ms/H) = logstart (default 4))
+        istart = np.abs(self.log - logstart).argmin()
         self.param = []
         self.paramv = []
         self.listihc = []
@@ -215,8 +215,8 @@ class fitP2:
 
 #   calculate instantaneous spectrum based on analytical fit
 class inspA:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
-        fitp = fitP(mfiles,spmask,rmask)
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', logstart=4.):
+        fitp = fitP(mfiles,spmask,rmask,logstart)
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
         self.msa = fitp.msa
@@ -229,7 +229,7 @@ class inspA:
         self.t = [] # time
         self.log = []
         self.x = [] # x-axis (k/RH)
-        istart = np.abs(fitp.log - 4.).argmin()
+        istart = np.abs(fitp.log - logstart).argmin()
         iterkmax = len(self.avek[self.k_below])
         for id in range(len(fitp.t)):
             t = fitp.t[id]
@@ -269,8 +269,8 @@ class inspA:
 #   calculate instantaneous spectrum based on analytical fit
 #   time steps specified in the arguments
 class inspAt:
-    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00'):
-        fitp = fitP(mfiles,spmask,rmask)
+    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00', logstart=4.):
+        fitp = fitP(mfiles,spmask,rmask,logstart)
         self.lz2e = fitp.lz2e
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
@@ -284,7 +284,7 @@ class inspAt:
         self.x = [] # x-axis (k/RH)
         self.log = np.linspace(logi,logf,nlog)
         self.t = np.power(np.exp(self.log)/math.sqrt(2.*self.LL),2./(4.-self.lz2e))
-        istart = np.abs(self.log - 4.).argmin()
+        istart = np.abs(self.log - logstart).argmin()
         iterkmax = len(self.avek[self.k_below])
         for id in range(len(self.log)):
             log = self.log[id]
@@ -469,7 +469,7 @@ class inspC:
 #     indices = list of integers
 #     if specified, instantaneous spectrum is calculaetd only for time slices selected by the list
 class insp:
-    def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection', indices=[]):
+    def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection', indices=[], logstart=4.):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -489,7 +489,9 @@ class insp:
         mfilesm = mfiles[indices]
         msplistm = [mf for mf in mfilesm if pa.gm(mf,'nsp?')]
         if difftype == 'A':
-            fitp = fitP2(mfiles,spmasklabel,cor)
+            fitp = fitP2(mfiles,spmasklabel,cor,logstart)
+            istart = np.abs(fitp.log - logstart).argmin()
+            iterkmax = len(self.avek[self.k_below])
             for id in range(len(fitp.t)):
                 if msplist[id] in msplistm:
                     t = fitp.t[id]
