@@ -71,7 +71,7 @@ class fitP:
         # create lists of the evolution of axion number spectrum (kinetic part)
         ttab = []
         logtab = []
-        nsptab = []
+        Ptab = []
         for meas in mfiles:
             if pa.gm(meas,'nsp?'):
                 t = pa.gm(meas,'time')
@@ -89,13 +89,14 @@ class fitP:
                     binK = pa.gm(meas,'nspK_Vi2')
                 else:
                     print('Wrong option for spmask!')
-                nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
+                # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
+                P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
                 ttab.append(t)
                 logtab.append(log)
-                nsptab.append(nsp)
+                Ptab.append(P)
         self.t = np.array(ttab)
         self.log = np.array(logtab)
-        self.nsp = np.array(nsptab)
+        Ptab = np.array(Ptab)
         # cutoff time (chosen as log(ms/H) = 4)
         istart = np.abs(self.log - 4.).argmin()
         self.param = []
@@ -104,13 +105,13 @@ class fitP:
         self.dataP = []
         self.datalog = []
         # transpose
-        nspT = np.transpose(self.nsp)
+        PT = np.transpose(Ptab)
         iterkmax = len(self.avek[self.k_below])
         for ik in range(iterkmax):
             print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
             ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
             xdata = self.log[istart:]
-            ydata = self.t[istart:]*nspT[ik,istart:]
+            ydata = PT[ik,istart:]
             Nparam = 4 # number of parameters for the fitting function
             if len(xdata) >= Nparam and not ik == 0:
                 popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
@@ -145,7 +146,7 @@ class fitP2:
         # create lists of the evolution of axion number spectrum (kinetic part)
         ttab = []
         logtab = []
-        nsptab = []
+        Ptab = []
         for meas in mfiles:
             if pa.gm(meas,'nsp?'):
                 t = pa.gm(meas,'time')
@@ -156,13 +157,14 @@ class fitP2:
                     binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
                 else:
                     binK = s0
-                nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
+                # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
+                P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
                 ttab.append(t)
                 logtab.append(log)
-                nsptab.append(nsp)
+                Ptab.append(P)
         self.t = np.array(ttab)
         self.log = np.array(logtab)
-        self.nsp = np.array(nsptab)
+        Ptab = np.array(Ptab)
         # cutoff time (chosen as log(ms/H) = 4)
         istart = np.abs(self.log - 4.).argmin()
         self.param = []
@@ -171,13 +173,13 @@ class fitP2:
         self.dataP = []
         self.datalog = []
         # transpose
-        nspT = np.transpose(self.nsp)
+        PT = np.transpose(Ptab)
         iterkmax = len(self.avek[self.k_below])
         for ik in range(iterkmax):
             print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
             ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
             xdata = self.log[istart:]
-            ydata = self.t[istart:]*nspT[ik,istart:]
+            ydata = PT[ik,istart:]
             Nparam = 4 # number of parameters for the fitting function
             if len(xdata) >= Nparam and not ik == 0:
                 popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
