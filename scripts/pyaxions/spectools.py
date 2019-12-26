@@ -133,7 +133,7 @@ class fitP:
 
 
 class fitP2:
-    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection', logstart=4.):
+    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection', logstart=4., verbose=True):
         self.sizeN = pa.gm(mfiles[0],'Size')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -143,12 +143,16 @@ class fitP2:
         # identify modes less than N/2
         self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
         self.lz2e = pa.gm(mfiles[0],'lz2e')
+
         # create lists of the evolution of axion number spectrum (kinetic part)
+        mfnsp = mfiles[pa.gml(mfiles,'nsp?')]
         ttab = []
         logtab = []
+        mtab = []
         Ptab = []
-        for meas in mfiles:
-            if pa.gm(meas,'nsp?'):
+        istart = np.abs(pa.gml(mfiles,'logi') - logstart).argmin()
+        for meas in mfnsp:
+            if np.where(mfiles==meas) >= istart:
                 t = pa.gm(meas,'time')
                 log = pa.gm(meas,'logi')
                 s0 = pa.gm(meas,'nspK_'+spmasklabel)
@@ -161,25 +165,26 @@ class fitP2:
                 P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
                 ttab.append(t)
                 logtab.append(log)
+                mtab.append(meas)
                 Ptab.append(P)
         self.t = np.array(ttab)
         self.log = np.array(logtab)
+        self.m = mtab
         Ptab = np.array(Ptab)
-        # cutoff time (chosen as log(ms/H) = logstart (default 4))
-        istart = np.abs(self.log - logstart).argmin()
+
+        # fitting
         self.param = []
         self.paramv = []
         self.listihc = []
         self.dataP = []
-        self.datalog = []
-        # transpose
         PT = np.transpose(Ptab)
         iterkmax = len(self.avek[self.k_below])
         for ik in range(iterkmax):
-            print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
+            if verbose:
+                print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
             ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
-            xdata = self.log[istart:]
-            ydata = PT[ik,istart:]
+            xdata = self.log
+            ydata = PT[ik,:]
             Nparam = 4 # number of parameters for the fitting function
             if len(xdata) >= Nparam and not ik == 0:
                 popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
@@ -189,11 +194,10 @@ class fitP2:
             self.param.append(popt)
             self.paramv.append(pcov)
             self.dataP.append(ydata)
-            self.datalog.append(xdata)
             self.listihc.append(ihc)
-        print("")
+        if verbose:
+            print("")
         self.dataP = np.array(self.dataP)
-        self.datalog = np.array(self.datalog)
 
 
 
@@ -469,7 +473,7 @@ class inspC:
 #     indices = list of integers
 #     if specified, instantaneous spectrum is calculaetd only for time slices selected by the list
 class insp:
-    def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection', indices=[], logstart=4.):
+    def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection', indices=[], logstart=4., verbose=True):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -489,34 +493,32 @@ class insp:
         mfilesm = mfiles[indices]
         msplistm = [mf for mf in mfilesm if pa.gm(mf,'nsp?')]
         if difftype == 'A':
-            fitp = fitP2(mfiles,spmasklabel,cor,logstart)
-            istart = np.abs(fitp.log - logstart).argmin()
+            fitp = fitP2(mfiles,spmasklabel,cor,logstart,verbose)
             iterkmax = len(self.avek[self.k_below])
             for id in range(len(fitp.t)):
-                if msplist[id] in msplistm:
+                if fitp.m[id] in msplistm:
                     t = fitp.t[id]
                     log = fitp.log[id]
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),log),end="")
-                    if id >= istart:
-                        Fbinbuf = []
-                        x = []
-                        for ik in range(iterkmax):
-                            # calculate only modes inside the horizon
-                            if id >= fitp.listihc[ik]:
-                                l = fitp.param[ik]
-                                Fval = dfunc(log,*l)/(t**5)
-                                if not np.isnan(Fval):
-                                    Fbinbuf.append(Fval)
-                                    x.append(self.avek[ik]*t)
-                                    Fbinbuf = np.array(Fbinbuf)
-                        # normalize
-                        dx = np.gradient(x)
-                        Fdx = Fbinbuf*dx
-                        self.F.append(Fbinbuf/Fdx.sum())
-                        self.Fnorm.append(Fdx.sum())
-                        self.x.append(np.array(x))
-                        self.t.append(t)
-                        self.log.append(log)
+                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(fitp.m[id])+1,len(msplistm),log),end="")
+                    Fbinbuf = []
+                    x = []
+                    for ik in range(iterkmax):
+                        # calculate only modes inside the horizon
+                        if id >= fitp.listihc[ik]:
+                            l = fitp.param[ik]
+                            Fval = dfunc(log,*l)/(t**5)
+                            if not np.isnan(Fval):
+                                Fbinbuf.append(Fval)
+                                x.append(self.avek[ik]*t)
+                                Fbinbuf = np.array(Fbinbuf)
+                    # normalize
+                    dx = np.gradient(x)
+                    Fdx = Fbinbuf*dx
+                    self.F.append(Fbinbuf/Fdx.sum())
+                    self.Fnorm.append(Fdx.sum())
+                    self.x.append(np.array(x))
+                    self.t.append(t)
+                    self.log.append(log)
             print("")
         elif difftype == 'B':
             for id in range(len(msplist)):
