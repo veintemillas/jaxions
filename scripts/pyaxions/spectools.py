@@ -499,7 +499,8 @@ class insp:
                 if fitp.m[id] in msplistm:
                     t = fitp.t[id]
                     log = fitp.log[id]
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(fitp.m[id])+1,len(msplistm),log),end="")
+                    if verbose:
+                        print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(fitp.m[id])+1,len(msplistm),log),end="")
                     Fbinbuf = []
                     x = []
                     for ik in range(iterkmax):
@@ -510,7 +511,7 @@ class insp:
                             if not np.isnan(Fval):
                                 Fbinbuf.append(Fval)
                                 x.append(self.avek[ik]*t)
-                                Fbinbuf = np.array(Fbinbuf)
+                    Fbinbuf = np.array(Fbinbuf)
                     # normalize
                     dx = np.gradient(x)
                     Fdx = Fbinbuf*dx
@@ -519,11 +520,13 @@ class insp:
                     self.x.append(np.array(x))
                     self.t.append(t)
                     self.log.append(log)
-            print("")
+            if verbose:
+                print("")
         elif difftype == 'B':
             for id in range(len(msplist)):
                 if msplist[id] in msplistm:
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
+                    if verbose:
+                        print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
                     if id != 0:
                         t1 = pa.gm(msplist[id-1],'time')
                         t2 = pa.gm(msplist[id],'time')
@@ -551,11 +554,13 @@ class insp:
                         self.t.append(t)
                         self.x.append(x)
                         self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
-            print("")
+            if verbose:
+                print("")
         elif difftype == 'C':
             for id in range(len(msplist)):
                 if msplist[id] in msplistm:
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
+                    if verbose:
+                        print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
                     if (id != 0) and (id != len(msplist)-1):
                         t1 = pa.gm(msplist[id-1],'time')
                         t2 = pa.gm(msplist[id+1],'time')
@@ -584,7 +589,8 @@ class insp:
                         self.t.append(t)
                         self.log.append(log)
                         self.x.append(x)
-            print("")
+            if verbose:
+                print("")
         else:
             print("wrong difftype option!")
         self.F = np.array(self.F)
