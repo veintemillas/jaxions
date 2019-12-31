@@ -196,7 +196,7 @@ class	Plot2D():
 
 	def	update(self):
 		data = self.allData[self.i]
-		self.sImg.setImage(data[0]/data[3], levels=(0.,1.))
+		self.sImg.setImage(data[0], levels=(0.,1.))
 		self.aImg.setImage(data[1], levels=(0.,1.))
 		self.zStxt.setText("z = %f" % data[2])
 		self.zAtxt.setText("z = %f" % data[2])

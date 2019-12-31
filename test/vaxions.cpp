@@ -288,7 +288,7 @@ int	main (int argc, char *argv[])
 
 	// SIMPLE OUTPUT CHECK
 	printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-	printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
+	// printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 
 
@@ -309,30 +309,30 @@ int	main (int argc, char *argv[])
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
-		if ((axion->Field() == FIELD_AXION ))
-		{
-			LogOut("-----------------------\n TRANSITION TO PAXION \n");
-			thetaToPaxion (axion);
-
-			// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
-			// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
-			// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
-			// }
-			ninfa.index=index;
-			ninfa.measdata |= MEAS_3DMAP;
-			lm = Measureme (axion, ninfa);
-			ninfa.measdata ^= MEAS_3DMAP;
-			LogOut("-----------------------\n");
-			index++;
-			tunePropagator(axion);
-		}
+		// if ((axion->Field() == FIELD_AXION ))
+		// {
+		// 	LogOut("-----------------------\n TRANSITION TO PAXION \n");
+		// 	thetaToPaxion (axion);
+		//
+		// 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
+		// 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
+		// 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
+		// 	// }
+		// 	ninfa.index=index;
+		// 	ninfa.measdata |= MEAS_3DMAP;
+		// 	lm = Measureme (axion, ninfa);
+		// 	ninfa.measdata ^= MEAS_3DMAP;
+		// 	LogOut("-----------------------\n");
+		// 	index++;
+		// 	tunePropagator(axion);
+		// }
 
 
 
 		// time step
-		if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
-		 dzaux = 0.0;
-		 else
+		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
+		//  dzaux = 0.0;
+		//  else
 		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
 
 		//will we dump? and when?
@@ -378,7 +378,7 @@ int	main (int argc, char *argv[])
 
 			// SIMPLE OUTPUT CHECK
 			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-			printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
+			// printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -576,14 +576,14 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
 
-				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
 				static_cast<complex<float> *> (axion->mStart())[idxprint].real(),
 				static_cast<complex<float> *> (axion->mStart())[idxprint].imag(),
 				static_cast<complex<float> *> (axion->vStart())[idxprint].real(),
 				static_cast<complex<float> *> (axion->vStart())[idxprint].imag(),
 				nstrings_global, maximumtheta, saskia);
 			} else {
-				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
+				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
 				static_cast<float *> (axion->mStart())[idxprint],
 				static_cast<float *> (axion->vStart())[idxprint], maximumtheta);
 			}
@@ -593,14 +593,14 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
 
-				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
 				static_cast<complex<double> *> (axion->mStart())[idxprint].real(),
 				static_cast<complex<double> *> (axion->mStart())[idxprint].imag(),
 				static_cast<complex<double> *> (axion->vStart())[idxprint].real(),
 				static_cast<complex<double> *> (axion->vStart())[idxprint].imag(),
 				nstrings_global, maximumtheta, saskia);
 			} else {
-				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
+				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
 				static_cast<double *> (axion->mStart())[idxprint],
 				static_cast<double *> (axion->vStart())[idxprint], maximumtheta);
 			}
@@ -676,6 +676,7 @@ double findzdoom(Scalar *axion)
 			DWfun *= pow(ct,2*fff);
 		meas = DWfun - 1 ;
 		ct += 0.001 ;
+		// LogOut("pdz %e %e %e\n",DWfun,meas,ct);
 	}
 	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct );
 	return ct ;

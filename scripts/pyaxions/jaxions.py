@@ -276,6 +276,8 @@ def gm(address,something='summary',printerror=False):
         else :
             nqcd = 7.0
         return nqcd ;
+    if (something == 'T'):
+        return f.attrs[u'Temperature'] ;
 
     if something == 'shift':
         if '/potential/' in f:

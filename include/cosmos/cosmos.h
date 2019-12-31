@@ -3,6 +3,7 @@
 	#define	_COSMOS_CLASS_
 
 	#include"enum-field.h"
+	#include <WKB/spline.h>
 
 	class	Cosmos
 	{
@@ -10,20 +11,23 @@
 
 //		size_t	 nSize;
 
-		double	 lSize;
-		double	 lambda;
-		double	 lz2e;
-//		double	 msa;
-		double	 indi3;
-		double	 gamma;
-		double	 nQcd;
-		double	 zThRes;
-		double	 zRestore;
-		VqcdType pot;
+		double	   lSize;
+		double	   lambda;
+		double	   lz2e;
+		double	   indi3;
+		double	   gamma;
+		double	   nQcd;
+		double	   zThRes;
+		double	   zRestore;
+		VqcdType	 pot;
 
-		double	 frw;
-		bool	 mink;
-		IcData   icdatastruc;
+		double	   frw;
+		bool	     mink;
+		IcData	   icdatastruc;
+
+		bool	     ueCosm;
+		double	   fA;
+		tk::spline sR, sT, sRpp, schi;
 
 		public:
 
@@ -42,6 +46,7 @@
 		VqcdType& QcdPot  ()	{ return pot;      }
 		double&   Frw     ()	{ return frw;      }
 		bool&     Mink    ()	{ return mink;     }
+		bool&     UeC     ()	{ return ueCosm;   }
 
 		IcData&   ICData  ()	{ return icdatastruc;}
 
@@ -57,12 +62,29 @@
 		void     SetQcdExp  (const double qExp)	{ nQcd     = qExp;  }
 		void     SetQcdPot  (const VqcdType pt)	{ pot      = pt;    }
 
-		void     SetFrw  (const double fff)	{ frw     = fff;  }
-		void     SetMink  (const bool bbb)	{ mink    = bbb;  }
+		void     SetFrw     (const double fff)	{ frw     = fff;  }
+		void     SetMink    (const bool bbb)	  { mink    = bbb;  }
 		void     SetICData  (const IcData bbb)	{ icdatastruc = bbb;  }
+		void     SetUeC     (const bool bbb)	  { ueCosm = bbb;  }
+		void     SetFA      (const double ff)	  { fA = ff;  }
 
-//		double	 AxionMass  (const double z);
-//		double	 AxionMassSq(const double z);
+
+		void     Setup();
+		double	 TopSus     (const double ct);
+		double	 Rpp        (const double ct);
+		double	 R          (const double ct);
+		double	 T          (const double ct);
+
+		/* Axion mass squared not conformal */
+		double	 AxionMass2 (const double ct);
+
+		/* Saxion mass squared not conformal */
+		double	 SaxionMass2 (const double ct);
+
+		/* Saxion mass squared not conformal */
+		double	 LambdaP (const double ct);
+
+
 //		double	 SaxionShift(const double z);
 //		double	 Saskia	    (const double z);
 

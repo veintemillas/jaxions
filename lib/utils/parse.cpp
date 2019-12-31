@@ -22,7 +22,6 @@ double msa    = 1.5;
 double wDz    = 0.8;
 int    fIndex = -1;
 int    fIndex2 = 0;
-
 int    slicepp = 0;
 
 double sizeL = 4.;
@@ -30,6 +29,7 @@ double zInit = 0.5;
 double zFinl = 1.0;
 double kCrit = 1.0;
 //JAVIER
+double fA  = 1.0e10;
 double frw = 1.0;
 double mode0 = 10.0;
 double alpha = 0.143;
@@ -71,6 +71,8 @@ bool uZfn     = false;
 bool uLogi    = false;
 bool uMI      = false;
 bool uFR      = false;
+bool ufA      = false;
+bool uexCosm  = false;
 bool spectral = false;
 bool fpectral = false;
 bool mink			= false;
@@ -1414,8 +1416,12 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: I need an exponent for the susceptibility nQcd!.\n");
 				exit(1);
 			}
-
-			nQcd = atof(argv[i+1]);
+			if (!strcmp(argv[i+1], "qcd")){
+				uexCosm = true;
+				// printf("Detailed Cosmology!")
+			}
+			else
+				nQcd = atof(argv[i+1]);
 
 			if (nQcd < 0)
 			{
@@ -1424,6 +1430,28 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			uQcd = true;
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--fA"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value of the axion decay constant fA [GeV]!.\n");
+				exit(1);
+			}
+			fA = atof(argv[i+1]);
+			ufA = true;
+
+			if (fA < 0)
+			{
+				printf("Error: The axion decay constant is negative!.\n");
+				exit(1);
+			}
 
 			i++;
 			procArgs++;
@@ -2395,6 +2423,11 @@ Cosmos	createCosmos()
 			myCosmos.SetFrw(frw);
 		if (uMI)
 			myCosmos.SetMink(mink);
+		if (uexCosm)
+			myCosmos.SetUeC(true);
+		if (ufA)
+			myCosmos.SetFA(fA);
+
 	} else {
 		myCosmos.SetLambda  (LL);
 		myCosmos.SetQcdExp  (nQcd);
@@ -2406,6 +2439,8 @@ Cosmos	createCosmos()
 		myCosmos.SetIndi3   (indi3);
 		myCosmos.SetFrw     (frw);
 		myCosmos.SetMink    (mink);
+		myCosmos.SetUeC     (uexCosm);
+		myCosmos.SetFA      (fA);
 	}
 
 	return	myCosmos;

@@ -45,9 +45,33 @@ herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type
 		LogError ("Error writing attribute %s to file");
 	H5Sclose (attr_id);
 	H5Aclose (attr);
+	//
+	// switch (h5_type)
+	// {
+	// 	case H5T_NATIVE_UINT:
+	// 		LogMsg (VERB_HIGH, "Write attribute %s = %u", name, *(static_cast<size_t*>(data)));
+	// 	break;
+	// 	case H5T_NATIVE_DOUBLE:
+	// 		LogMsg (VERB_HIGH, "Write attribute %s = %e", name, *(static_cast<double*>(data)));
+	// 	break;
+	// 	case H5T_NATIVE_INT:
+	// 		LogMsg (VERB_HIGH, "Write attribute %s = %d", name, *(static_cast<int*>(data)));	// Usa status para hacer logging de los errores!!!
+	// 	break;
+	// 	default:
+	// 	LogMsg (VERB_HIGH, "Write attribute %s", name);	// Usa status para hacer logging de los errores!!!
+	// 	break;
+	// }
 
-	LogMsg (VERB_HIGH, "Write attribute %s", name);	// Usa status para hacer logging de los errores!!!
-
+		if (h5_type == H5T_NATIVE_UINT)
+		{
+				LogMsg (VERB_HIGH, "Write attribute %s = %u", name, *(static_cast<size_t*>(data)));
+		}	else if (h5_type == H5T_NATIVE_DOUBLE) {
+				LogMsg (VERB_HIGH, "Write attribute %s = %e", name, *(static_cast<double*>(data)));
+		} else if (h5_type == H5T_NATIVE_INT) {
+				LogMsg (VERB_HIGH, "Write attribute %s = %d", name, *(static_cast<int*>(data)));
+		}	else {
+				LogMsg (VERB_HIGH, "Write attribute %s", name);	// Usa status para hacer logging de los errores!!!
+		}
 	return	status;
 }
 
@@ -489,6 +513,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	writeAttribute(file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->RV(),  "R",       H5T_NATIVE_DOUBLE);
+	if (axion->BckGnd()->UeC()){
+		double Temp = axion->BckGnd()->T(*axion->zV());
+		writeAttribute(file_id, &Temp,  "Temperature", H5T_NATIVE_DOUBLE);
+	}
 	writeAttribute(file_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, &nSteps,"nSteps",        H5T_NATIVE_INT);
@@ -1425,6 +1453,10 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(meas_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, axion->RV(),  "R",       H5T_NATIVE_DOUBLE);
+	if (axion->BckGnd()->UeC()){
+		double Temp = axion->BckGnd()->T(*axion->zV());
+		writeAttribute(meas_id, &Temp,  "Temperature", H5T_NATIVE_DOUBLE);
+	}
 	writeAttribute(meas_id, &zInit, "zInitial",      H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &zFinl, "zFinal",        H5T_NATIVE_DOUBLE);
 	writeAttribute(meas_id, &nSteps,"nSteps",        H5T_NATIVE_INT);

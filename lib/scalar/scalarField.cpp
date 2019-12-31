@@ -72,18 +72,24 @@ const std::complex<float> If(0.,1.);
 	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
 
 
+
 	LogMsg(VERB_NORMAL,"[sca] ZThRes  () %f",cm->ZThRes  ());
 	LogMsg(VERB_NORMAL,"[sca] ZRestore() %f",cm->ZRestore());
 	LogMsg(VERB_NORMAL,"[sca] PhysSize() %f",cm->PhysSize());
 	LogMsg(VERB_NORMAL,"[sca] Lambda  () %f",cm->Lambda  ());
 	LogMsg(VERB_NORMAL,"[sca] LamZ2Exp() %f",cm->LamZ2Exp());
 	LogMsg(VERB_NORMAL,"[sca] Indi3   () %f",cm->Indi3   ());
-	LogMsg(VERB_NORMAL,"[sca] Gamma   () %f",cm->Gamma   ());
-	LogMsg(VERB_NORMAL,"[sca] QcdExp  () %f",cm->QcdExp  ());
-	LogMsg(VERB_NORMAL,"[sca] QcdPot  () %d",cm->QcdPot  ());
-	LogMsg(VERB_NORMAL,"[sca] Frw     () %f",cm->Frw     ());
-	LogMsg(VERB_NORMAL,"[sca] Mink    () %d",cm->Mink    ());
-
+	if (cm->UeC()){
+		LogMsg(VERB_NORMAL,"[sca] using QCD cosmology!");
+		cm->Setup();
+	}
+	else {
+		LogMsg(VERB_NORMAL,"[sca] Gamma   () %f",cm->Gamma   ());
+		LogMsg(VERB_NORMAL,"[sca] QcdExp  () %f",cm->QcdExp  ());
+		LogMsg(VERB_NORMAL,"[sca] QcdPot  () %d",cm->QcdPot  ());
+		LogMsg(VERB_NORMAL,"[sca] Frw     () %f",cm->Frw     ());
+		LogMsg(VERB_NORMAL,"[sca] Mink    () %d",cm->Mink    ());
+	}
 	LogMsg(VERB_NORMAL,"[sca] ic.Nghost   %d",cm->ICData().Nghost   );
 	LogMsg(VERB_NORMAL,"[sca] ic.icdrule  %d",cm->ICData().icdrule  );
 	LogMsg(VERB_NORMAL,"[sca] ic.preprop  %d",cm->ICData().preprop  );
@@ -822,7 +828,8 @@ double	Scalar::Rfromct (const double ct)
 {
 	// Returns scale factor R = z^frw for any conformal time ct
 	// Minkowski frw = 0, Radiation frw = 1,
-	return pow(ct,frw);
+	// return pow(ct,frw);
+	return bckgnd->R(ct);
 }
 
 void	Scalar::updateR ()
@@ -831,21 +838,22 @@ void	Scalar::updateR ()
 	// Minkowski frw = 0, Radiation frw = 1,
 	// if Minkowski R=1 and there is no need
 	// by default R=z and there is no need (one uses z for all purposes)
-	if (!bckgnd->Mink())
-		*R = Rfromct(*z);
+	// if (!bckgnd->Mink())
+	*R = Rfromct(*z);
 }
 
 double	Scalar::LambdaP ()
 {
 	// Returns The value of Lambda with PRS trick IF needed
 	// Minkowski frw = 0, Radiation frw = 1,
-	double lbd  = bckgnd->Lambda();
-	double llee = bckgnd->LamZ2Exp();
-LogMsg(VERB_PARANOID,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
-	if (LambdaT() == LAMBDA_FIXED)
-		return  lbd;
-	else if (LambdaT() == LAMBDA_Z2)
-		return  lbd/pow(*R,llee);
+// 	double lbd  = bckgnd->Lambda();
+// 	double llee = bckgnd->LamZ2Exp();
+// LogMsg(VERB_PARANOID,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
+// 	if (LambdaT() == LAMBDA_FIXED)
+// 		return  lbd;
+// 	else if (LambdaT() == LAMBDA_Z2)
+// 		return  lbd/pow(*R,llee);
+	return bckgnd->LambdaP(*z);
 }
 
 double	Scalar::Msa ()
@@ -863,11 +871,18 @@ LogMsg(VERB_PARANOID,"[sca:msa] LambdaPhysical %f ",LambdaP() );
 
 double  Scalar::HubbleMassSq  ()
 {
-	// R''/R = frw(frw-1)/z^2
-	// since we have R=z^frw
-	//except in the case where frw = 0,1
-	int fr = (int) bckgnd->Frw();
-	return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
+	// R''/R
+	// int fr = (int) bckgnd->Frw();
+	// return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
+	return bckgnd->Rpp(*z);
+}
+
+double  Scalar::Rpp  ()
+{
+	// R''/R
+	// int fr = (int) bckgnd->Frw();
+	// return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
+	return bckgnd->Rpp(*z);
 }
 
 double  Scalar::HubbleConformal  ()
@@ -880,47 +895,48 @@ double  Scalar::HubbleConformal  ()
 }
 
 double	Scalar::AxionMass  () {
-
-	double aMass;
-	double RNow      = *RV();
-	// ZThRes is applied to R, not z
-	// change the names?
-	double &zThRes   = bckgnd->ZThRes();
-	double &zRestore = bckgnd->ZRestore();
-	double &indi3    = bckgnd->Indi3();
-	double &nQcd     = bckgnd->QcdExp();
-
-        if ((RNow > zThRes) &&  (zThRes < zRestore))
-        {
-                aMass = indi3*pow(zThRes, nQcd*0.5);
-                if (RNow > zRestore)
-                        aMass *= pow(RNow/zRestore, nQcd*0.5);
-        }
-        else
-                aMass = indi3*pow(RNow, nQcd*0.5);
-
-        return aMass;
+	//
+	// double aMass;
+	// double RNow      = *RV();
+	// // ZThRes is applied to R, not z
+	// // change the names?
+	// double &zThRes   = bckgnd->ZThRes();
+	// double &zRestore = bckgnd->ZRestore();
+	// double &indi3    = bckgnd->Indi3();
+	// double &nQcd     = bckgnd->QcdExp();
+	//
+  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
+  //       {
+  //               aMass = indi3*pow(zThRes, nQcd*0.5);
+  //               if (RNow > zRestore)
+  //                       aMass *= pow(RNow/zRestore, nQcd*0.5);
+  //       }
+  //       else
+  //               aMass = indi3*pow(RNow, nQcd*0.5);
+	//
+  //       return aMass;
+	return std::sqrt(bckgnd->AxionMass2(*z));
 }
 
 double	Scalar::AxionMassSq() {
-
-	double aMass;
-	double RNow      = *RV();
-	double &zThRes   = bckgnd->ZThRes();
-	double &zRestore = bckgnd->ZRestore();
-	double &indi3    = bckgnd->Indi3();
-	double &nQcd     = bckgnd->QcdExp();
-
-        if ((RNow > zThRes) &&  (zThRes < zRestore))
-        {
-                aMass = indi3*indi3*pow(zThRes, nQcd);
-                if (RNow > zRestore)
-                        aMass *= pow(RNow/zRestore, nQcd);
-        }
-        else
-                aMass = indi3*indi3*pow(RNow, nQcd);
-
-        return aMass;
+	// double aMass;
+	// double RNow      = *RV();
+	// double &zThRes   = bckgnd->ZThRes();
+	// double &zRestore = bckgnd->ZRestore();
+	// double &indi3    = bckgnd->Indi3();
+	// double &nQcd     = bckgnd->QcdExp();
+	//
+  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
+  //       {
+  //               aMass = indi3*indi3*pow(zThRes, nQcd);
+  //               if (RNow > zRestore)
+  //                       aMass *= pow(RNow/zRestore, nQcd);
+  //       }
+  //       else
+  //               aMass = indi3*indi3*pow(RNow, nQcd);
+	//
+  //       return aMass;
+	return bckgnd->AxionMass2(*z);
 }
 
 // time integral of the axion mass^2 R^n assuming it is a truncated power law
@@ -1038,32 +1054,34 @@ double	Scalar::IIAxionMassSqn(double z0, double z, int nn) {
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  ()
 {
-
-	double lbd   = LambdaP();
-
-	auto   &pot = bckgnd->QcdPot();
-
-	switch  (pot & VQCD_TYPE) {
-		case    VQCD_0:
-		case    VQCD_1:
-		case    VQCD_2:
-		case    VQCD_1N2:
-		case    VQCD_PQ_ONLY:
-			return 2.*lbd;
-			break;
-
-		case    VQCD_1_PQ_2:
-		case    VQCD_1_PQ_2_DRHO:
-			return  8.*lbd;
-			break;
-
-		default :
-			return  0;
-			break;
-	}
-
-	return  0.;
+	//
+	// double lbd   = LambdaP();
+	//
+	// auto   &pot = bckgnd->QcdPot();
+	//
+	// switch  (pot & VQCD_TYPE) {
+	// 	case    VQCD_0:
+	// 	case    VQCD_1:
+	// 	case    VQCD_2:
+	// 	case    VQCD_1N2:
+	// 	case    VQCD_PQ_ONLY:
+	// 		return 2.*lbd;
+	// 		break;
+	//
+	// 	case    VQCD_1_PQ_2:
+	// 	case    VQCD_1_PQ_2_DRHO:
+	// 		return  8.*lbd;
+	// 		break;
+	//
+	// 	default :
+	// 		return  0;
+	// 		break;
+	// }
+	//
+	// return  0.;
+	return bckgnd->SaxionMass2(*z);
 }
+
 double	Scalar::dzSize	   () {
 	return dzSize	(*zV());
 }
@@ -1113,7 +1131,7 @@ double	Scalar::dzSize	   (double zNow) {
 	}
 
 	/* Do not allow to jump over z/10 or Rc */
-	dct = std::min(dct,zNow/100.);
+	dct = std::min(dct,zNow/10.);
 
 	RNext = Rfromct(zNow + dct);
 	if ( RNow < bckgnd->ZThRes() && RNext > bckgnd->ZThRes() )
@@ -1182,76 +1200,79 @@ double  Scalar::Saskia  ()
 }
 
 double	Scalar::AxionMass  (const double RNow) {
-
-	double aMass;
-	double &zThRes   = bckgnd->ZThRes();
-	double &zRestore = bckgnd->ZRestore();
-	double &indi3    = bckgnd->Indi3();
-	double &nQcd     = bckgnd->QcdExp();
-
-        if ((RNow > zThRes) &&  (zThRes < zRestore))
-        {
-                aMass = indi3*pow(zThRes, nQcd*0.5);
-                if (RNow > zRestore)
-                        aMass *= pow(RNow/zRestore, nQcd*0.5);
-        }
-        else
-                aMass = indi3*pow(RNow, nQcd*0.5);
-
-        return aMass;
+	//
+	// double aMass;
+	// double &zThRes   = bckgnd->ZThRes();
+	// double &zRestore = bckgnd->ZRestore();
+	// double &indi3    = bckgnd->Indi3();
+	// double &nQcd     = bckgnd->QcdExp();
+	//
+  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
+  //       {
+  //               aMass = indi3*pow(zThRes, nQcd*0.5);
+  //               if (RNow > zRestore)
+  //                       aMass *= pow(RNow/zRestore, nQcd*0.5);
+  //       }
+  //       else
+  //               aMass = indi3*pow(RNow, nQcd*0.5);
+	//
+  //       return aMass;
+	return std::sqrt(bckgnd->AxionMass2(RNow));
 }
 
 double	Scalar::AxionMassSq(const double RNow) {
-
-	double aMass;
-	double &zThRes   = bckgnd->ZThRes();
-	double &zRestore = bckgnd->ZRestore();
-	double &indi3    = bckgnd->Indi3();
-	double &nQcd     = bckgnd->QcdExp();
-
-        if ((RNow > zThRes) &&  (zThRes < zRestore))
-        {
-                aMass = indi3*indi3*pow(zThRes, nQcd);
-                if (RNow > zRestore)
-                        aMass *= pow(RNow/zRestore, nQcd);
-        }
-        else
-                aMass = indi3*indi3*pow(RNow, nQcd);
-
-        return aMass;
+	//
+	// double aMass;
+	// double &zThRes   = bckgnd->ZThRes();
+	// double &zRestore = bckgnd->ZRestore();
+	// double &indi3    = bckgnd->Indi3();
+	// double &nQcd     = bckgnd->QcdExp();
+	//
+  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
+  //       {
+  //               aMass = indi3*indi3*pow(zThRes, nQcd);
+  //               if (RNow > zRestore)
+  //                       aMass *= pow(RNow/zRestore, nQcd);
+  //       }
+  //       else
+  //               aMass = indi3*indi3*pow(RNow, nQcd);
+	//
+  //       return aMass;
+	return bckgnd->AxionMass2(RNow);
 }
 
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  (const double RNow)
 {
-
-	double lbd   = bckgnd->Lambda();
-	double llee  = bckgnd->LamZ2Exp();
-	if (LambdaT() == LAMBDA_Z2)
-		lbd /= pow(RNow,llee);
-
-	auto   &pot = bckgnd->QcdPot();
-
-	switch  (pot & VQCD_TYPE) {
-		case    VQCD_PQ_ONLY:
-		case    VQCD_0:
-		case    VQCD_1:
-		case    VQCD_2:
-		case    VQCD_1N2:
-			return 2.*lbd;
-			break;
-
-		case    VQCD_1_PQ_2:
-		case    VQCD_1_PQ_2_DRHO:
-			return  8.*lbd;
-			break;
-
-		default :
-			return  0;
-			break;
-	}
-
-	return  0.;
+	//
+	// double lbd   = bckgnd->Lambda();
+	// double llee  = bckgnd->LamZ2Exp();
+	// if (LambdaT() == LAMBDA_Z2)
+	// 	lbd /= pow(RNow,llee);
+	//
+	// auto   &pot = bckgnd->QcdPot();
+	//
+	// switch  (pot & VQCD_TYPE) {
+	// 	case    VQCD_PQ_ONLY:
+	// 	case    VQCD_0:
+	// 	case    VQCD_1:
+	// 	case    VQCD_2:
+	// 	case    VQCD_1N2:
+	// 		return 2.*lbd;
+	// 		break;
+	//
+	// 	case    VQCD_1_PQ_2:
+	// 	case    VQCD_1_PQ_2_DRHO:
+	// 		return  8.*lbd;
+	// 		break;
+	//
+	// 	default :
+	// 		return  0;
+	// 		break;
+	// }
+	//
+	// return  0.;
+	return bckgnd->SaxionMass2(RNow);
 }
 
 // double	Scalar::dzSize	   (const double RNow) {

@@ -645,6 +645,8 @@
 			double   *PC;
 			double   ood2a;
 			double   massA;
+			double   massA2;
+			double   Rpp;
 			double   Lambda;
 			double   lambda;
 			double   gamma;

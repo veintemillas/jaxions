@@ -161,6 +161,7 @@
 		double		IAxionMassSqn(double z0, double z, int nn);
 		double		SaxionMassSq();
 		double		HubbleMassSq();
+		double		Rpp();
 		double    HubbleConformal();
 		double		SaxionShift();
 		double		Saskia     ();
