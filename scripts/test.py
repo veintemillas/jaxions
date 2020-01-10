@@ -70,9 +70,9 @@ if os.path.exists('./sample.txt'):
         for line in lines:
             myarray = np.fromstring(line, dtype=float, sep=' ')
             l = len(myarray)
-            if l==10:
+            if l==11:
                 l10 = l10 +1
-            elif l==5:
+            elif l==6:
                 l5 = l5 +1
 
         arrayA = np.genfromtxt('./sample.txt',skip_header=l10)
@@ -82,35 +82,37 @@ if os.path.exists('./sample.txt'):
 
     if l10 >1 :
         ztab1 = arrayS[:,0]
+        Rtab1 = arrayS[:,1]
 #UNSHIFTED
-        Thtab1 = np.arctan2(arrayS[:,4],arrayS[:,3])
-        Rhtab1 = arrayS[:,3]**2 + arrayS[:,4]**2
+        Thtab1 = np.arctan2(arrayS[:,5],arrayS[:,4])
+        Rhtab1 = arrayS[:,4]**2 + arrayS[:,5]**2
         #theta_z
-        VThtab1 = (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(Rhtab1)
+        VThtab1 = (arrayS[:,4]*arrayS[:,7]-arrayS[:,5]*arrayS[:,6])/(Rhtab1)
         #ctheta_z
         #VThtab1 = ztab1*(arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(Rhtab1) + Thtab1
-        Rhtab1 = np.sqrt(Rhtab1)/ztab1
+        Rhtab1 = np.sqrt(Rhtab1)/Rtab1
 
 #SHIFTED
-        arrayS[:,3] = arrayS[:,3]-ztab1*arrayS[:,9]
-        Thtab1_shift = np.arctan2(arrayS[:,4],arrayS[:,3])
-        Rhtab1_shift = arrayS[:,3]**2 + arrayS[:,4]**2
+        arrayS[:,4] = arrayS[:,4]-Rtab1*arrayS[:,10]
+        Thtab1_shift = np.arctan2(arrayS[:,5],arrayS[:,4])
+        Rhtab1_shift = arrayS[:,4]**2 + arrayS[:,5]**2
         #theta_z
-        VThtab1_shift = (arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(Rhtab1_shift)
+        VThtab1_shift = (arrayS[:,4]*arrayS[:,7]-arrayS[:,5]*arrayS[:,6])/(Rhtab1_shift)
         #ctheta_z
         #VThtab1_shift = ztab1*(arrayS[:,3]*arrayS[:,6]-arrayS[:,4]*arrayS[:,5])/(Rhtab1_shift) + Thtab1_shift
-        Rhtab1_shift = np.sqrt(Rhtab1_shift)/ztab1
+        Rhtab1_shift = np.sqrt(Rhtab1_shift)/Rtab1
 
 
     if axiondata:
         ztab2 = arrayA[:,0]
-        Thtab2 = arrayA[:,2]/ztab2
+        Rtab2 = arrayA[:,1]
+        Thtab2 = arrayA[:,3]/Rtab2
         #theta_z
-        VThtab2 = (arrayA[:,3]-Thtab2)/ztab2
+        VThtab2 = (arrayA[:,4]-Thtab2)/Rtab2
         #ctheta_z
         #VThtab2 = arrayA[:,3]
     if l10 >1 :
-        strings = arrayS[:,7]
+        strings = arrayS[:,8]
         fix = [[ztab1[0],strings[0]]]
         i = 0
         for i in range(0, len(ztab1)-1):
@@ -165,7 +167,7 @@ if l10 >1 :
 
     p3 = win.addPlot(title=r'rho evolution')
     p3.plot(ztab1,Rhtab1,pen=(200,0,0),name='unshifted')
-    p3.plot(ztab1,Rhtab1-arrayS[:,9],pen=(100,100,100),name='unshifted')
+    p3.plot(ztab1,Rhtab1-arrayS[:,10],pen=(100,100,100),name='unshifted')
     p3.plot(ztab1,Rhtab1_shift,pen=(255,255,255),name='shifted')
 
     p3.setLabel('left',text='rho/v')
