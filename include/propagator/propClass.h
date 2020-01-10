@@ -12,7 +12,6 @@
 
 
 	#include "propagator/propXeon.h"
-	#include "propagator/propXeonNN.h"
 	#include "propagator/propThetaXeon.h"
 	#include "propagator/laplacian.h"
 	#include "propagator/sPropXeon.h"
@@ -78,9 +77,6 @@
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
 
-
-		inline void	sNNRunCpu	(const double)	override;	// Saxion Vectorised multi Ng laplacian propagator
-		// inline void	tNNRunCpu	(const double)	override;	// Axion Vectorised multi Ng laplacian propagator (not yet)
 
 
 		inline double	cFlops	(const PropcType)	override;
@@ -150,29 +146,6 @@
 						return;
 					}
 					break;
-
-			case PROPC_NNEIG:
-				switch (field->Device()) {
-					case	DEV_CPU:
-						if (field->LowMem()) {
-							LogError ("Error: Lowmem not supported with NNeighbour propagators");
-							exit(1);
-						} else {
-							propSaxion = [this](const double dz) { this->sNNRunCpu(dz); };
-							propAxion  = [this](const double dz) { this->tRunCpu(dz); }; //FIX this when tNN is implemented!!!
-						}
-						break;
-
-					case	DEV_GPU:
-						LogError ("Error: GPU not supported with NNeighbour propagators");
-						exit(1);
-						break;
-
-					default:
-						LogError ("Error: not a valid device");
-						return;
-				}
-				break;
 
 			default:
 			case PROPC_BASE:
@@ -635,189 +608,6 @@
 
 
 
-
-	// Generic saxion propagator N neighbour
-
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
-	void	PropClass<nStages, lastStage, VQcd>::sNNRunCpu	(const double dz) {
-
-		double *z = axion->zV();
-		double *R = axion->RV();
-		double cLmbda ;
-
-		axion->exchangeGhosts(FIELD_M);
-
-		int nRanks    = commSize();
-		int jobDone   = 0;
-		int jobStatus = 0;
-
-		#pragma unroll
-		for (int s = 0; s<nStages; s+=2) {
-
-			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
-
-			cLmbda = axion->LambdaP();
-
-			auto maa = axion->AxionMassSq();
-
-			size_t bsl = 0, csl = 0;  // bsl is current boundary slice
-			bool sent = false;
-			int loopnumber = 0;
-			int wom = 0;
-			axion->gReset();
-
-			while ((csl < sizeZ-2*Nng) || (bsl < Nng)) { // while the number of slices computed is smaller than Lz
-				axion->sendGhosts(FIELD_M, COMM_TESTR);
-				axion->sendGhosts(FIELD_M, COMM_TESTS);
-				if (bsl < Nng) { // if there are boundary slices prepare and send
-
-					if (!sent) {
-						prepareGhostKernelXeon<VQcd>(axion->mCpu(), axion->vGhost(), ood2, Lx, bsl, precision);
-						axion->sendGhosts(FIELD_M, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
-						sent = true ;
-LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
-					}
-
-					axion->sendGhosts(FIELD_M, COMM_TESTR);
-					if (axion->gRecv()) {
-						if (wom > 1){
-							size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-	LogMsg(VERB_DEBUG,"[pcNN] RECV bsl %d",bsl);
-							propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
-							propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
-	LogMsg(VERB_DEBUG,"[pcNN] PROP bsl %d",bsl);
-							bsl++ ; // mark next boundary slice for next round
-							sent = false;
-							wom = 0;
-						} else { wom++; }
-					}
-				}
-
-				if (csl < sizeZ-2*Nng) {
-					size_t SC = S*(csl+Nng+1);
-					propagateNNKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
-LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
-					csl++;
-				} else {
-					if (sent)
-					axion->sendGhosts(FIELD_M, COMM_WAIT,0);
-				}
-				loopnumber++;
-
-				/*	Send/receive status to/from all ranks and sync	*/
-				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-				commSync();
-			}
-
-			jobDone = 1;
-
-			/*	Get status from all ranks until the job is done and sync at each step	*/
-			do {
-				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-				commSync();
-				loopnumber++;
-			}	while (jobStatus < nRanks);
-
-LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
-			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
-
-			jobDone	= 0;	// Reset the status for the next loop
-
-			*z += dz*d1;
-			axion->updateR();
-
-			cLmbda = axion->LambdaP();
-
-			maa = axion->AxionMassSq();
-
-			bsl = 0; csl = 0;
-			sent = false;
-			loopnumber = 0;
-			wom = 0;
-			axion->gReset();
-
-			while	((csl < sizeZ-2*Nng) || (bsl < Nng)) {
-				axion->sendGhosts(FIELD_M2, COMM_TESTR);
-				axion->sendGhosts(FIELD_M2, COMM_TESTS);
-
-				if (bsl < Nng) { // if there are boundary slices prepare and send
-
-					if (!sent) {
-						prepareGhostKernelXeon<VQcd>(axion->m2Cpu(), axion->vGhost(), ood2, Lx, bsl, precision);
-						axion->sendGhosts(FIELD_M2, COMM_SDRV, 0); //sends the values prepared in the vghost to the adjacent ghost region
-						sent = true ;
-LogMsg(VERB_DEBUG,"[pcNN] SENT bsl %d",bsl);
-					}
-
-					axion->sendGhosts(FIELD_M2, COMM_TESTR);
-					if (axion->gRecv()){
-						if (wom > 1){
-							size_t S0 = S*(bsl+1), S1 = S*(sizeZ-bsl); // including ghost
-	LogMsg(VERB_DEBUG,"[pcNN] RECV bsl %d",bsl);
-							propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S0, S0+S, precision, xBlock,yBlock,zBlock);
-							propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, S1, S1+S, precision, xBlock,yBlock,zBlock);
-	LogMsg(VERB_DEBUG,"[pcNN] PROP bsl %d",bsl);
-							bsl++ ; // mark next boundary slice for next round
-							sent = false;
-							wom = 0;
-						} else {wom++;}
-					}
-				}
-
-				if (csl < sizeZ-2*Nng) {
-					size_t SC = S*(csl+Nng+1);
-					propagateNNKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, Lx, SC, SC+S, precision, xBlock, yBlock, zBlock);
-LogMsg(VERB_DEBUG,"[pcNN] PROP csl %d",csl);
-					csl ++;
-				} else {
-					if (sent)
-						axion->sendGhosts(FIELD_M2, COMM_WAIT,0);
-				}
-				loopnumber++;
-
-				/*	Send/receive status to/from all ranks and sync	*/
-				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-				commSync();
-			}
-
-			jobDone = 1;
-
-			/*	Get status from all ranks until the job is done and sync at each step	*/
-			do {
-				MPI_Allreduce(&jobDone, &jobStatus, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-				commSync();
-				loopnumber++;
-			}	while (jobStatus < nRanks);
-
-LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
-			/*	Because of the sync points, all the ranks should call the same number of syncs and reduces	*/
-
-			*z += dz*d2;
-			axion->updateR();
-
-		}
-
-// LogOut("->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n\n");
-		// this is done with lap1
-		if (lastStage) {
-			axion->sendGhosts(FIELD_M, COMM_SDRV);
-
-			cLmbda = axion->LambdaP();
-
-			const double	c0 = c[nStages], maa = axion->AxionMassSq();
-
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
-			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), 1, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
-		}
-		axion->setM2     (M2_DIRTY);
-}
-
-
-
-
-
 	// Generic saxion lowmem propagator
 
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
@@ -1138,7 +928,6 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		switch (spec)
 		{
 			case PROPC_BASE:
-			case PROPC_NNEIG: // FIXME
 			{
 				double lapla = 18.0 * axion->getNg();
 
@@ -1245,7 +1034,6 @@ LogMsg(VERB_DEBUG,"[pcNN] 1#cs %d",loopnumber);
 		switch (spec)
 		{
 			case PROPC_BASE:
-			case PROPC_NNEIG: //FIX ME!
 				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   (3. + lapla)    * ((double) nStages) + (lastStage ? (2. + lapla) : 0.)));
 			break;
 
