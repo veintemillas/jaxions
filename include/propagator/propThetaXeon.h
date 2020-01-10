@@ -27,13 +27,18 @@
 #endif
 
 template<const bool wMod>
-inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, size_t NN, double *PC, double *R, const double dz, const double c, const double d,
-				    const double ood2, const double aMass2, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
-				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
+inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
+						const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
-
-	const size_t Sf = Lx*Lx;
-	const size_t NSf = NN*Sf;
+	const size_t NN   = ppar.Ng;
+	const size_t Lx   = ppar.Lx;
+	const size_t Sf   = Lx*Lx;
+	const size_t NSf  = Sf*NN;
+	const double *PC  = ppar.PC;
+	const double R    = ppar.R;
+	const double ood2 = ppar.ood2a;
+	const double Rpp  = ppar.Rpp;
+	const double mA2  = ppar.massA2;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -54,11 +59,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const double dzc = dz*c;
 		const double dzd = dz*d;
-		const double zR = *R;
-		//const double zQ = 9.*pow(zR, nQcd+3.);
-		const double zQ = aMass2*zR*zR*zR;
-		const double iz = 1.0/zR;
-		const double tV	= 2.*M_PI*zR;
+		const double zQ = mA2*R*R*R;
+		const double iz = 1.0/R;
+		const double tV	= 2.*M_PI*R;
 
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
@@ -257,10 +260,13 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 			} // End neighbour loop
 
-
+			/* Acceleration
+					lap - mA2R3 sin(psi/R) + Rpp psi*/
 			acu = opCode(sub_pd, lap,
-				opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))));
+							opCode(sub_pd, opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))),
+								opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
 
+			/* Update  */
 			vel = opCode(load_pd, &v[idx-NSf]);
 
 #if	defined(__AVX512F__) || defined(__FMA__)
@@ -304,10 +310,10 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *R;
-		const float zQ = (float) (aMass2*zR*zR*zR);
-		const float iz = 1.f/zR;
-		const float tV = 2.*M_PI*zR;
+		const float Rf = R;
+		const float zQ = (float) (mA2*Rf*Rf*Rf);
+		const float iz = 1.f/Rf;
+		const float tV = 2.*M_PI*Rf;
 
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
@@ -503,11 +509,11 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			} // End neighbour loop
 
 			acu = opCode(sub_ps, lap,
-				opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))));
+							opCode(sub_ps, opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))),
+								opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
 
 			// this line kills axion self-interactions STERILE MODE!!
 			//opCode(mul_ps, zQVec, opCode(mul_ps, mel, izVec)));
-
 
 			vel = opCode(load_ps, &v[idx-NSf]);
 
@@ -540,18 +546,17 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 #undef	Align
 #undef	_PREFIX_
 
-inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, size_t NN, double *PC, double *R, const double dz, const double c, const double d,
-				    const double ood2, const double aMass2, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
-				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod)
+inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
+				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod)
 {
 	switch (wMod)
 	{
 		case	true:
-			propThetaKernelXeon<true> (m_, v_, m2_, NN, PC, R, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+			propThetaKernelXeon<true> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 			break;
 
 		case	false:
-			propThetaKernelXeon<false>(m_, v_, m2_, NN, PC, R, dz, c, d, ood2, aMass2, Lx, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+			propThetaKernelXeon<false>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 			break;
 	}
 }
