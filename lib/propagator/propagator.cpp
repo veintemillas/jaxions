@@ -40,10 +40,6 @@ class	PropLeap : public PropClass<2, true, pot> {
 				} else
 					this->setBaseName("Leapfrog ");
 			break;
-			case PROPC_NNEIG:
-				LogError("Error: propagator N-neighbour not supported with leapfrog yet");
-				exit(1);
-			break;
 			default:
 			case PROPC_BASE:
 				if (field->LowMem())
@@ -82,13 +78,6 @@ class	PropMLeap : public PropClass<4, true, pot> {
 				} else
 					this->setBaseName("Multi-Leapfrog ");
 			break;
-			case PROPC_NNEIG:
-			{
-				LogError("Error: propagator N-neighbour not supported with Multi-leapfrog yet");
-				exit(1);
-			}
-			break;
-
 			default:
 			case PROPC_BASE:
 				if (field->LowMem())
@@ -166,10 +155,6 @@ class	PropOmelyan4 : public PropClass<4, true, pot> {
 				} else
 					this->setBaseName("Omelyan4 ");
 			break;
-			case PROPC_NNEIG:
-				LogError("Error: propagator N-neighbour not supported with Omelyan yet (only even step coded)");
-				exit(1);
-			break;
 			default:
 			case PROPC_BASE:
 				if (field->LowMem())
@@ -216,13 +201,6 @@ class	PropRKN4 : public PropClass<4, false, pot> {
 				} else
 					this->setBaseName("RKN4 ");
 			break;
-			case PROPC_NNEIG:
-				if (field->LowMem()){
-					LogError("Error: propagator N-neighbour not supported with lowmem yet (only coded with m2!)");
-					exit(1);
-				} else
-					this->setBaseName("Ng RKN4 ");
-			break;
 			default:
 			case PROPC_BASE:
 				if (field->LowMem())
@@ -248,20 +226,6 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 	{
 		LogMsg	(VERB_NORMAL, "[ip] propagator BASE with Ng=%d selected (%d)",Ng,pType);LogFlush();
 		LogMsg	(VERB_HIGH, "[ip] field->Ng is set to %d",field->getNg());LogFlush();
-	}
-	if 	( (pType & PROPC_NNEIG) && (Ng > -1))
-	{
-		LogMsg	(VERB_NORMAL, "[ip] propagator Ng=%d selected (%d)",Ng,pType);LogFlush();
-		propclass = PROPC_NNEIG;
-		LogMsg	(VERB_HIGH, "[ip] External variable Nng is %d",Nng);LogFlush();
-		if (Nng != Ng)
-		{
-			LogMsg	(VERB_HIGH, "[ip] WARNING: Nng was %d but changed to %d!",Nng,Ng);
-			Nng = Ng;
-		}
-		// we send ghosts to initialise COMM definitions once; minimum overhead, perhaps a waste of time?
-		field->sendGhosts(FIELD_M, COMM_SDRV);
-		field->sendGhosts(FIELD_M, COMM_WAIT);
 	}
 	if 	(pType & PROP_FSPEC)
 	{
@@ -521,7 +485,7 @@ LogFlush();
 	Profiler &prof = getProfiler(PROF_PROP);
 
 LogFlush();
- 	if	( (pType & (PROP_BASE | PROP_NNEIG)) && !field->Folded() )
+ 	if	( (pType & PROP_BASE) && !field->Folded() )
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
@@ -535,7 +499,7 @@ LogFlush();
 
 	switch (field->Field()) {
 		case FIELD_SAXION:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -545,7 +509,7 @@ LogFlush();
 			break;
 
 		case FIELD_AXION:
-		if (pType & (PROP_BASE | PROP_NNEIG)){
+		if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -555,7 +519,7 @@ LogFlush();
 			break;
 
 		case FIELD_AXION_MOD:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -565,7 +529,7 @@ LogFlush();
 			break;
 
 		case FIELD_NAXION:
-		if (pType & (PROP_BASE | PROP_NNEIG)){
+		if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d NAxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -575,7 +539,7 @@ LogFlush();
 			break;
 
 		case FIELD_PAXION:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
 					prop->appendName(loli);
 				} else {
@@ -618,8 +582,6 @@ void	resetPropagator(Scalar *field) {
 		return;
 	if (pType & PROP_FSPEC)
 		return;
-	if (pType & PROP_NNEIG)
-		return;
 
 	int tmp   = field->DataAlign()/field->DataSize();
 	int shift = 0;
@@ -648,8 +610,6 @@ void	tunePropagator (Scalar *field) {
 		return;
 	if (pType & PROP_FSPEC)
 		return;
-	// if (pType & PROP_NNEIG)
-	// 	return;
 
 	int  myRank   = commRank();
 	//int  nThreads = 1;
@@ -680,15 +640,9 @@ void	tunePropagator (Scalar *field) {
 		char tuneName[2048];
 		// if (pType == PROP_BASE)
 		// 	sprintf (tuneName, "%s/tuneCache.dat", wisDir);
-		// else if (pType == PROP_NNEIG)
-		// 	sprintf (tuneName, "%s/tuneCache%d.dat", wisDir,field->getNg());
 		if (pType & PROP_BASE)
 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
-		else if (pType & PROP_NNEIG){
-			LogMsg(VERB_HIGH,"%01d",field->getNg());
-			sprintf (tuneName, "%s/tuneCache%01d.dat", wisDir,field->getNg());
-			LogMsg(VERB_HIGH,"%s",tuneName);
-			}
+
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
 LogMsg(VERB_HIGH,"[tp] new cache!!");
 LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
@@ -839,7 +793,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 
 	switch (field->Field()) {
 		case FIELD_SAXION:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -848,7 +802,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 			break;
 
 		case FIELD_AXION:
-		if (pType & (PROP_BASE | PROP_NNEIG)){
+		if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -857,7 +811,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 			break;
 
 		case FIELD_AXION_MOD:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -866,7 +820,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 			break;
 
 		case FIELD_NAXION:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 					sprintf (loli, "N %01d Ng %01d Naxion", Nng, field->getNg());
 					prop->appendName(loli);
 				} else {
@@ -875,7 +829,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 				break;
 
 		case FIELD_PAXION:
-			if (pType & (PROP_BASE | PROP_NNEIG)){
+			if (pType & PROP_BASE){
 					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
 					prop->appendName(loli);
 				} else {
@@ -902,11 +856,6 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 		// sprintf (tuneName, "%s/tuneCache.dat", wisDir);
 		if (pType & PROP_BASE)
 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
-		else if (pType & PROP_NNEIG){
-			LogMsg(VERB_HIGH,"%01d",field->getNg());
-			sprintf (tuneName, "%s/tuneCache%01d.dat", wisDir,field->getNg());
-			LogMsg(VERB_HIGH,"%s",tuneName);
-			}
 
 		// We distinguish between opening and appending a new line
 		if (!newFile) {
