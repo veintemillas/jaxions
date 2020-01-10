@@ -586,7 +586,7 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 	}
 }
 
-void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
+void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 {
 	static const int rank = commRank();
 	static const int fwdNeig = (rank + 1) % nSplit;
@@ -598,24 +598,15 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm, size_t Nng)
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) slice %lu Ng %d",opComm, Nng, Ng);LogFlush();
+LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) Ng %d",opComm, Ng);LogFlush();
 	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
 
 	if (fIdx & FIELD_M)
 	{
-		if (Nng > 0){
-			//FIX ME in case one needs to transfer other slices with Nng
 			sGhostBck = mStart();																																						//slice to be send back
 			sGhostFwd = static_cast<void *> (static_cast<char *> (mStart()) + fSize*n3-ghostBytes);					//slice to be send forw
 			rGhostBck = static_cast<void *> (static_cast<char *> (mFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
 			rGhostFwd = static_cast<void *> (static_cast<char *> (mBackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
-		} else {
-			// from v to 1st slice for NNEIG; assumes Ng = 1
-			sGhostBck = vGhost(); 																													//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
-			rGhostBck = mFrontGhost();
-			rGhostFwd = mBackGhost();
-		}
 	}
 	else
 	{
@@ -626,18 +617,10 @@ LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) slice %lu Ng %d",opComm, N
 				rGhostBck = static_cast<void *> (static_cast<char *> (vFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
 				rGhostFwd = static_cast<void *> (static_cast<char *> (vBackGhost())  + fSize*Ng*n2-ghostBytes);	//reception point
 		} else {
-			if (Nng > 0){
 				sGhostBck = m2Start();
 				sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
 				rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
 				rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
-			} else {
-				// from v to 1st slice for NNEIG; assumes Ng = 1
-				sGhostBck = vGhost();																									 					//slice to be send back
-				sGhostFwd = static_cast<void *> (static_cast<char *> (vGhost()) + fSize*(n2));	//slice to be send forw
-				rGhostBck = m2FrontGhost();
-				rGhostFwd = m2BackGhost();
-			}
 		}
 	}
 
