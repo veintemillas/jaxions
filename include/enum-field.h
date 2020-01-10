@@ -364,7 +364,6 @@
 			PROPC_BASE	    = 1,		// Optimised proppagator 1 neighbour
 			PROPC_SPEC	    = 2,		// Spectral flag
 			PROPC_FSPEC     = 4,		// Full Spectral flag
-			PROPC_NNEIG     = 8,		// vectorised multi Ng laplacian propagator
 		} PropcType;
 
 		typedef	enum	PropType_s {
@@ -372,7 +371,6 @@
 			PROP_BASE     = 1,    // Optimised propagator 1 neighbour
 			PROP_SPEC     = 2,		// Spectral flag
 			PROP_FSPEC    = 4,		// Full Spectral flag
-			PROP_NNEIG    = 8,		// vectorised multi Ng laplacian propagator
 
 			PROP_LEAP     = 16,
 			PROP_OMELYAN2	= 32,
