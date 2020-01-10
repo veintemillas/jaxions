@@ -197,7 +197,7 @@
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
- 		void	sendGhosts(FieldIndex fIdx, CommOperation cOp, size_t Nng=1);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
+ 		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 		bool	gSent() { return gsent; }
 		bool	gRecv() { return grecv; }
