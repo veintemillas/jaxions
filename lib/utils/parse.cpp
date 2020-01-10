@@ -2141,30 +2141,6 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--lapla"))
-		{
-			if (i+1 == argc)
-			{
-				printf("Error: I need a number of neighbours.\n");
-				exit(1);
-			}
-
-			Nng = atoi(argv[i+1]);
-			bopt = false;
-			pType |= PROP_NNEIG;
-
- 			if (Nng < 0 || Nng > 6)
-			{
-				printf("Error: The number of laplacian neighbours must be 0,1,2,3,4 or 5\n");
-				exit(1);
-			}
-
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
-		}
-
 		if (!strcmp(argv[i], "--lap"))
 		{
 			if (i+1 == argc)
