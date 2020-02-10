@@ -1680,6 +1680,193 @@ class readesp:
 
 
 
+# ------------------------------------------------------------------------------
+#   Extrapolation to rmask -> 0
+# ------------------------------------------------------------------------------
+
+
+
+
+#   fitting function
+def frmask(r, a0, a1, a2, a3, a4, a5):
+    return np.log(a0/(1+r**6) + a1 +  a2/np.sqrt(1+a3*r**2) + a4*np.sinc(a5*r))
+
+
+
+
+#   analytical fit of the axion kinetic spectrum as a function of rmask
+class Pext:
+    def __init__(self, mfiles, rmasktable, verbose=True, rcrit=0, cor='correction', logstart=4.):
+        self.sizeN = pa.gm(mfiles[0],'Size')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda0')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        # identify modes less than N/2
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.lz2e = pa.gm(mfiles[0],'lz2e')
+
+        self.rmasktable = rmasktable
+
+        # create lists of the evolution of axion number spectrum (kinetic part)
+        # shape of P array: [log,rmasklabel,k]
+        mfnsp = mfiles[pa.gml(mfiles,'nsp?')]
+        ttab = []
+        logtab = []
+        mtab = []
+        Parr = []
+        istart = np.abs(pa.gml(mfiles,'logi') - logstart).argmin()
+        if verbose:
+            print('creating data lists:')
+        for meas in mfnsp:
+            if np.where(mfiles==meas) >= istart:
+                t = pa.gm(meas,'time')
+                log = pa.gm(meas,'logi')
+                Psubarr = []
+                if verbose:
+                    print('log = %.2f'%log)
+                for rm in rmasktable:
+                    if verbose:
+                        print('\rrmask = '+rm,end="")
+                    if rm == '0':
+                        binK = pa.gm(meas,'nspK_'+rm)
+                    else:
+                        s0 = pa.gm(meas,'nspK_Red_'+rm)
+                        if cor == 'correction':
+                            m = pa.gm(meas,'mspM_Red_'+rm)
+                            binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        else:
+                            binK = s0
+                    # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
+                    P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
+                    Psubarr.append(P)
+                if verbose:
+                    print("")
+                ttab.append(t)
+                logtab.append(log)
+                mtab.append(meas)
+                Parr.append(np.array(Psubarr))
+        self.t = np.array(ttab)
+        self.log = np.array(logtab)
+        self.m = mtab
+        self.Parr = Parr
+
+        self.rmasklist = []
+        for rm in rmasktable:
+            self.rmasklist.append(float(rm))
+        self.rmasklist = np.array(self.rmasklist)
+
+        # fitting
+        msR = self.msa*self.sizeN/self.sizeL
+        idrmask_fit = np.where(self.rmasklist >= rcrit*self.msa)
+        self.param = []
+        if verbose:
+            print('fitting the data:')
+        for il in np.arange(len(self.log)):
+            print('log = %.2f'%self.log[il])
+            parambuf = []
+            for ik in np.arange(len(self.avek)):
+                if verbose:
+                    print('\rk = %.2f, %d/%d'%(self.avek[ik],ik+1,len(self.avek)),end="")
+                xdata = self.rmasklist[idrmask_fit[0]]/self.msa
+                ydata = np.log(self.Parr[il][idrmask_fit[0],ik])
+                uosc = self.msa*self.avek[ik]/msR
+                pinit=[1,1,1,0.15,1e-2,0.62*uosc]
+                pbounds=([0,0,0,0.01,0,0.5*uosc],[np.inf,np.inf,np.inf,0.2,np.inf,0.7*uosc])
+                try:
+                    popt, pcov = curve_fit(frmask, xdata, ydata, p0=pinit, maxfev = 20000, bounds=pbounds)
+                except:
+                    popt = [np.nan]*6
+                    pcov = [np.nan]*6
+                parambuf.append(popt)
+            if verbose:
+                print("")
+            self.param.append(np.array(parambuf))
+
+    def fs(self,r,ik,il):
+        return np.exp(frmask(r,self.param[il][ik,0],0,0,0,0,0))
+
+    def fk(self,r,ik,il):
+        return np.exp(frmask(r,0,self.param[il][ik,1],0,0,0,0))
+
+    def fw(self,r,ik,il):
+        return np.exp(frmask(r,0,0,self.param[il][ik,2],self.param[il][ik,3],0,0))
+
+    def fsinc(self,r,ik,il):
+        return np.exp(frmask(r,0,0,0,0,self.param[il][ik,4],self.param[il][ik,5]))
+
+    def xdata(self):
+        return self.rmasklist/self.msa
+
+    def ydata(self,ik,il):
+        return self.Parr[il][:,ik]
+
+
+
+
+#   save the data of P[rmask] as pickle files
+#   assuming input as an Pext class object
+def savePext(Pext, name='./Pext'):
+    sdata(Pext.sizeN,name,'sizeN')
+    sdata(Pext.sizeL,name,'sizeL')
+    sdata(Pext.msa,name,'msa')
+    sdata(Pext.LL,name,'LL')
+    sdata(Pext.nm,name,'nm')
+    sdata(Pext.avek,name,'avek')
+    sdata(Pext.k_below,name,'k_below')
+    sdata(Pext.lz2e,name,'lz2e')
+    sdata(Pext.rmasktable,name,'rmasktable')
+    sdata(Pext.t,name,'t')
+    sdata(Pext.log,name,'log')
+    sdata(Pext.Parr,name,'Parr')
+    sdata(Pext.rmasklist,name,'rmasklist')
+    sdata(Pext.param,name,'param')
+
+
+
+
+#   read the data of P[rmask]
+class readPext:
+    def __init__(self, name='./Pext'):
+        self.sizeN = rdata(name,'sizeN')
+        self.sizeL = rdata(name,'sizeL')
+        self.msa = rdata(name,'msa')
+        self.LL = rdata(name,'LL')
+        self.nm = rdata(name,'nm')
+        self.avek = rdata(name,'avek')
+        self.k_below = rdata(name,'k_below')
+        self.lz2e = rdata(name,'lz2e')
+        self.rmasktable = rdata(name,'rmasktable')
+        self.t = rdata(name,'t')
+        self.log = rdata(name,'log')
+        self.Parr = rdata(name,'Parr')
+        self.rmasklist = rdata(name,'rmasklist')
+        self.param = rdata(name,'param')
+
+    def fs(self,r,ik,il):
+        return np.exp(frmask(r,self.param[il][ik,0],0,0,0,0,0))
+
+    def fk(self,r,ik,il):
+        return np.exp(frmask(r,0,self.param[il][ik,1],0,0,0,0))
+
+    def fw(self,r,ik,il):
+        return np.exp(frmask(r,0,0,self.param[il][ik,2],self.param[il][ik,3],0,0))
+
+    def fsinc(self,r,ik,il):
+        return np.exp(frmask(r,0,0,0,0,self.param[il][ik,4],self.param[il][ik,5]))
+
+    def xdata(self):
+        return self.rmasklist/self.msa
+
+    def ydata(self,ik,il):
+        return self.Parr[il][:,ik]
+
+
+
+
+
+
 class combiq:
     def __init__(self, mfiles):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
