@@ -11,6 +11,7 @@
 	#include<memory>
 	#include<cstddef>
 	#include<algorithm>
+	#include<thread>
 
 	#include<cstdarg>
 	#include<cstring>
@@ -25,7 +26,7 @@
 
 	namespace AxionsLog {
 
-		constexpr long long int	logFreq	= 5000000;
+		constexpr long long int	logFreq	= 50000; //5000000;
 		constexpr size_t 	basePack = sizeof(ptrdiff_t)*5;
 
 		extern	const char	levelTable[3][16];
@@ -118,6 +119,7 @@
 				const LogMpi		mpiType;
 				std::vector<Msg>	msgStack;
 				const VerbosityLevel	verbose;
+				bool			logRunning;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
 					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << "]"
@@ -199,6 +201,7 @@
 					logStart = std::chrono::high_resolution_clock::now();
 
 					if (commRank() == 0) {
+						logRunning = true;
 						do {
 							idx++;
 							ss.str("");
@@ -208,9 +211,19 @@
 
 						oFile.open(ss.str().c_str(), std::ofstream::out);
 						banner();
+
+						std::thread([&](){
+							while (logRunning) {
+								std::this_thread::sleep_for(std::chrono::microseconds(logFreq));
+								flushLog();
+							}
+						}).detach();
 					}
 
 				}
+
+				// Stops logger in preparation for an MPI shutdown
+				void	stop		() { logRunning = false; usleep(logFreq); }
 
 				// Receives pending MPI messages and flushes them to disk
 				void	flushLog	() {
@@ -227,7 +240,7 @@
 					flushDisk();
 				}
 
-				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { oFile.close(); } }
+				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { stop(); oFile.close(); } }
 
 				auto	runTime() {
 					auto	cTime = std::chrono::high_resolution_clock::now();
@@ -254,8 +267,8 @@
 							// We push the messages in the stack and we flush them later
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), format, vars...)));
 
-							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
-								mustFlush = true;
+//							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
+//								mustFlush = true;
 							break;
 						}
 

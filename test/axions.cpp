@@ -117,8 +117,8 @@ if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 	commSync();
 
 	void *eRes, *str;			// Para guardar la energia
-	trackAlloc(&eRes, 128);
-	memset(eRes, 0, 128);
+	trackAlloc(&eRes, 256);
+	memset(eRes, 0, 256);
 
 	commSync();
 
