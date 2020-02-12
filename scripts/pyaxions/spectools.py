@@ -90,7 +90,7 @@ class fitP:
                 else:
                     print('Wrong option for spmask!')
                 # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
-                P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
+                P = (self.avek**2)*binK/((math.pi**2)*self.nm)
                 ttab.append(t)
                 logtab.append(log)
                 Ptab.append(P)
@@ -162,7 +162,7 @@ class fitP2:
                 else:
                     binK = s0
                 # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
-                P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
+                P = (self.avek**2)*binK/((math.pi**2)*self.nm)
                 ttab.append(t)
                 logtab.append(log)
                 mtab.append(meas)
@@ -1906,7 +1906,7 @@ class Pext:
                         else:
                             binK = s0
                     # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
-                    P = (self.avek**2)*binK/(2*(math.pi**2)*self.nm)
+                    P = (self.avek**2)*binK/((math.pi**2)*self.nm)
                     Psubarr.append(P)
                 if verbose:
                     print("")
