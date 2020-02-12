@@ -929,6 +929,7 @@ def saveF(inspave, name='./F'):
     sdata(inspave.dF,name,'dy')
     sdata(inspave.x,name,'x')
     sdata(inspave.log,name,'log')
+    sdata(inspave.t,name,'t')
     sdata(inspave.Fnorm,name,'Fnorm')
 
 
@@ -943,6 +944,7 @@ class readF:
         self.dF = rdata(name,'dy')
         self.x = rdata(name,'x')
         self.log = rdata(name,'log')
+        self.t = rdata(name,'t')
         self.Fnorm = rdata(name,'Fnorm')
 
 
