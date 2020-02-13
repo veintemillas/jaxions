@@ -1117,7 +1117,7 @@ class Setq:
             elif typesigma==2:
                 sigmasq = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
             else:
-                print("wrong typesigma option!"")
+                print("wrong typesigma option!")
             sigma = math.sqrt(sigmasq)
             chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
             sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
