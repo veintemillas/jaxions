@@ -72,10 +72,16 @@ class	Plot2D():
 
 			if fl == "Saxion":
 				mTmp  = fileHdf5[map]['m'].value.reshape(Ly,Lx,2)
-				rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
-				rMax = np.amax(rData)
-				rData = rData/R
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
+				if sys.argv[-1] == 'vel':
+					vTmp  = fileHdf5[map]['v'].value.reshape(Ly,Lx,2)
+					rData = vTmp[:,:,1]*mTmp[:,:,0]-vTmp[:,:,0]*mTmp[:,:,1]
+					rMax = np.amax(rData)
+				else :
+					rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
+					rMax = np.amax(rData)
+					rData = rData/R
+
 			elif fl == "Axion":
 				aData = fileHdf5[map]['m'].value.reshape(Ly,Lx)
 #				pm = np.amax(aData)
