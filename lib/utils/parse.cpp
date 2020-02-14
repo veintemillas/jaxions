@@ -2365,10 +2365,10 @@ Cosmos	createCosmos()
 	myCosmos.SetICData(icdatst);
 
 	/*	I'm reading from disk	*/
-	if (fIndex >= 0.) {
+	if (fIndex >= 0) {
+
 		if (uMsa || uLambda)
 			myCosmos.SetLambda(LL);
-
 		if (lType == LAMBDA_Z2)
 				myCosmos.SetLamZ2Exp(2.0);
 		else if (lType == LAMBDA_FIXED)
@@ -2397,10 +2397,13 @@ Cosmos	createCosmos()
 
 		if (uFR)
 			myCosmos.SetFrw(frw);
+
 		if (uMI)
 			myCosmos.SetMink(mink);
+
 		if (uexCosm)
-			myCosmos.SetUeC(true);
+			myCosmos.SetUeC(uexCosm);
+
 		if (ufA)
 			myCosmos.SetFA(fA);
 
