@@ -123,10 +123,9 @@ for meas in fileMeas:
         if fl == "Saxion":
             mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
             mTmp2  = fileHdf5['map']['v'].value.reshape(Ly,Lx,2)
-            aData = ((mTmp2/mTmp))[:,:,1]
-            # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
-            # rMax = np.amax(rData)
-            # rData = rData/zR
+            # aData = ((mTmp2/mTmp))[:,:,1]
+            aData = (mTmp2[:,:,1]*mTmp[:,:,0]-mTmp2[:,:,0]*mTmp[:,:,1])/(mTmp[:,:,0]**2+mTmp[:,:,1]**2)
+
         elif fl == "Axion":
             mTmp = fileHdf5['map']['m'].value.reshape(Ly,Lx)
             mTmp2 = fileHdf5['map']['v'].value.reshape(Ly,Lx)
