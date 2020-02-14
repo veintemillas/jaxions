@@ -971,7 +971,7 @@ class readF:
 #   nbin            number of bins (default 30)
 #   typesigma       option to estimate sigma^2 in the denominator of chi^2
 #                        0 : sigma = residuals of different bins
-#                        1 : sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
+#                        1 : sigma = residuals/sqrt(n_bin)
 #                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
 # Output:
@@ -997,7 +997,7 @@ class readF:
 #   self.xwr        flags to identify xlim
 #
 class Setq:
-    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, nbin=30, typesigma=0):
+    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, nbin=30, typesigma=1):
         Deltachisq = 1. # value of Deltachi^2 to define confidence interval
         x = inspx[id]
         inspmtab = inspy[id]
@@ -1159,7 +1159,7 @@ class Setq:
 #   cxmax           upper limit of the interval specified as cxmax*(m/H) (default 1/6)
 #   typesigma       option to estimate sigma^2 in the denominator of chi^2
 #                        0 : sigma = residuals of different bins
-#                        1 : sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
+#                        1 : sigma = residuals/sqrt(n_bin)
 #                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
 # Output:
@@ -1184,7 +1184,7 @@ class Setq:
 #   self.log     　　array for log(m/H)
 #
 class Scanq:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6., typesigma=0):
+    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6., typesigma=1):
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -1259,34 +1259,33 @@ class Scanq:
 #   cxmaxpoints     number of points to scan over cxmax (default 200)
 #   typesigma       option to estimate sigma^2 in the denominator of chi^2
 #                        0 : sigma = residuals of different bins
-#                        1 : sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
+#                        1 : sigma = residuals/sqrt(n_bin)
 #                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
 # Output:
 #   self.chi2min    minimum value of chi^2
-#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
-#   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
 #   self.mbest      best fit value of m (normalization of the model)
 #   self.sigmaq     "1 sigma" confidence interval of q
-#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
-#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.sigmam     "1 sigma" confidence interval of m
 #   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
 #   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
 #   self.sigma      "sigma" to define confidence interval based on the mean of residuals of different bins
-#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
-#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
-#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
-#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
-#   self.gamma
+#   self.alphaq      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.betaq       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gammaq
+#
+#   self.alpham      Delta chi^2(m) can be reconstructed by using alpha, beta, gamma:
+#   self.betam       Delta chi^2(m) = (alpha*m^2 + 2*beta*m + gamma)/sigma^2 - chi^2_min
+#   self.gammam
 #
 #   self.nmbin      number of modes in each bin (currently not used)
 #   self.log        array for log(m/H)
 #   self.cxmaxopt   array for optimized values of cxmax
 #
 class Scanqopt:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, typesigma=0):
+    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, typesigma=1):
         self.chi2min = []
         self.qbest = []
         self.mbest = []
