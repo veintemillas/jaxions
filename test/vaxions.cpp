@@ -356,12 +356,15 @@ int	main (int argc, char *argv[])
 				}
 
 				if ( (*axion->zV())+dzaux >= meas_zlist[i_meas] && (*axion->zV()) < meas_zlist[i_meas]){
+					LogMsg(VERB_NORMAL,"[VAX] dct adjusted from %e",dzaux);
 					dzaux = meas_zlist[i_meas] - (*axion->zV());
+					LogMsg(VERB_NORMAL,"                   to   %e",dzaux);
 					measrightnow = true;
 					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
 					defaultmeasType = ninfa.measdata;
 					// actually, if this is the last measurement, do not measure!
 					if ( (i_meas == meas_zlist.size()-1) ){
+						LogMsg(VERB_NORMAL,"[VAX] last measurement, do not measure and pass END!",dzaux);
 						measrightnow = false;
 					}
 				}
@@ -441,6 +444,10 @@ int	main (int argc, char *argv[])
 			// Break the loop when we are done
 			if ( (*axion->zV()) >= zFinl ){
 				LogOut("zf reached! ENDING ... \n"); fflush(stdout);
+				break;
+			}
+			if ( abs((*axion->zV())-zFinl) < 1.0e-10 ){
+				LogOut("zf approximately reached! ENDING ... \n"); fflush(stdout);
 				break;
 			}
 
