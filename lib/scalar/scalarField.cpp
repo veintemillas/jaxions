@@ -1122,7 +1122,7 @@ double	Scalar::dzSize	   (double zNow) {
 			// BACKGROUND R SPECIFIC!
 			dct = pow(bckgnd->ZThRes(),1.0/bckgnd->Frw()) - zNow;
 		}
-	LogMsg(VERB_NORMAL,"dct = %f ct = %f",dct,zNow);
+	LogMsg(VERB_NORMAL,"[sca:ct] dct = %f ct = %f",dct,zNow);
 	return dct;
 }
 
