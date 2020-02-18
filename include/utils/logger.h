@@ -24,6 +24,8 @@
 	#include"enum-field.h"
 	#include"comms/comms.h"
 
+	#define	MSG_SIZE 2048
+
 	namespace AxionsLog {
 
 		constexpr long long int	logFreq	= 50000; //5000000;
@@ -43,14 +45,14 @@
 
 				mutable MPI_Request req;
 
-				char		packed[1024];						// For serialization and MPI
+				char		packed[MSG_SIZE];						// For serialization and MPI
 
 			public:
 					Msg(LogLevel logLevel, const int tIdx, const char * format, ...) noexcept : tIdx(tIdx), size(0), data(""), logLevel(logLevel) {
-					char buffer[1024 - basePack];
+					char buffer[MSG_SIZE - basePack];
 					va_list args;
 					va_start (args, format);
-					size = vsnprintf (buffer, 1023 - basePack, format, args);
+					size = vsnprintf (buffer, MSG_SIZE - 1 - basePack, format, args);
 					va_end (args);
 
 					data.assign(buffer, size);
@@ -133,8 +135,11 @@
 					if (omp_get_thread_num() != 0)
 						return;
 					auto it = msgStack.cbegin();
-					printMsg(*it);
-					msgStack.erase(it);
+
+					if (it != msgStack.cend()) {
+						printMsg(*it);
+						msgStack.erase(it);
+					}
 				}
 
 				void	flushStack	() noexcept {
@@ -169,7 +174,7 @@
 						MPI_Iprobe(MPI_ANY_SOURCE, level, MPI_COMM_WORLD, &flag, &status);
 
 						if (flag) {
-							char packed[1024];
+							char packed[MSG_SIZE];
 							int  mSize;
 							auto srcRank = status.MPI_SOURCE;
 
