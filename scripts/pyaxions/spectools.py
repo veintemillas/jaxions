@@ -1617,6 +1617,8 @@ class nspevol:
         self.nspcor = np.array(self.nspcor)
 
 
+
+
 class nspevol2:
     def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
@@ -1631,18 +1633,18 @@ class nspevol2:
         self.logtab = []
         self.nsp = []
         self.nspcor = [] # corrected spectrum
-        for f in mfiles:
-            if pa.gm(f,'nsp?'):
-                self.ttab.append(pa.gm(f,'time'))
-                logi = pa.gm(f,'logi')
-                self.logtab.append(logi)
-                s0 = pa.gm(f,'nspK_'+spmasklabel)
-                self.nsp.append(s0)
-                if cor == 'correction':
-                    m = pa.gm(f,'mspM_'+spmasklabel)
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                    self.nspcor.append(s1)
-                print('\rbuilt up to log = %.2f'%logi,end="")
+        mfnsp = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
+        for f in mfnsp:
+            self.ttab.append(pa.gm(f,'time'))
+            logi = pa.gm(f,'logi')
+            self.logtab.append(logi)
+            s0 = pa.gm(f,'nspK_'+spmasklabel)
+            self.nsp.append(s0)
+            if cor == 'correction':
+                m = pa.gm(f,'mspM_'+spmasklabel)
+                s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                self.nspcor.append(s1)
+            print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
         print("")
         self.ttab = np.array(self.ttab)
         self.logtab = np.array(self.logtab)
