@@ -122,6 +122,7 @@
 				std::vector<Msg>	msgStack;
 				const VerbosityLevel	verbose;
 				bool			logRunning;
+				bool			logWriting;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
 					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << "]"
@@ -132,26 +133,30 @@
 				/* We only allow thread 0 to write to disk, but any other thread can put messages in the stack		*/
 				/* The stack is flushed if there is an error on any thread because the variable mustFlush is shared	*/
 				void	flushMsg	() noexcept {
-					if (omp_get_thread_num() != 0)
+					if (omp_get_thread_num() != 0 || logWriting == true)
 						return;
+					logWriting = true;
 					auto it = msgStack.cbegin();
 
 					if (it != msgStack.cend()) {
 						printMsg(*it);
 						msgStack.erase(it);
 					}
+					logWriting = false;
 				}
 
 				void	flushStack	() noexcept {
-					if (omp_get_thread_num() != 0)
+					if (omp_get_thread_num() != 0 || logWriting == true)
 						return;
 
+					logWriting = true;
 					std::sort(msgStack.begin(), msgStack.end(), [logStart = logStart](Msg a, Msg b) { return (a.time(logStart) < b.time(logStart)); } );
 
 					for (auto it = msgStack.cbegin(); it != msgStack.cend(); it++)
 						printMsg(*it);
 
 					msgStack.clear();
+					logWriting = false;
 				}
 
 				void	flushDisk	() {
@@ -181,9 +186,11 @@
 							// Get message
 							MPI_Get_count(&status, MPI_CHAR, &mSize);
 							MPI_Recv(packed, mSize, MPI_CHAR, srcRank, level, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-							Msg msg(static_cast<void*>(packed));
+							//Msg msg(static_cast<void*>(packed));
 							// Put the message in the stack
-							msgStack.push_back(std::move(msg));
+							while (logWriting == true) {}
+							//msgStack.push_back(std::move(msg));
+							msgStack.emplace_back(static_cast<void*>(packed));
 							msgPending = true;
 						}
 					}	while (flag);
@@ -220,7 +227,9 @@
 						std::thread([&](){
 							while (logRunning) {
 								std::this_thread::sleep_for(std::chrono::microseconds(logFreq));
+								logWriting = true;
 								flushLog();
+								logWriting = false;
 							}
 						}).detach();
 					}
