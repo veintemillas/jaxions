@@ -46,7 +46,7 @@ win.setWindowTitle('pyqtgraph example: ImageView')
 # data += img * decay
 # data += 2
 
-print('modes: theta [default], vtheta, saxion, vsaxion, saxion, eA, sP, real, imag')
+print('modes: theta [default], vtheta, saxion, vsaxion, saxion, eA, eP, real, imag')
 mode = 'theta'
 if len(sys.argv) == 2:
     if (sys.argv[-1] == 'eA'):
