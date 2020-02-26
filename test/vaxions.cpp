@@ -406,7 +406,7 @@ int	main (int argc, char *argv[])
 
 				// TRANSITION TO THETA COUNTER
 				if (lm.str.strDen == 0) {
-					LogOut("  no st counter %d\n", strcount);
+					LogOut("  no st counter %d/%d\n", strcount,safest0);
 					strcount++;
 				}
 
