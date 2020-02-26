@@ -399,7 +399,7 @@ void	SpecBin::pRun	() {
 
 
 		if (field->Field() == FIELD_SAXION) {
-			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 			myPlan.run(FFT_FWD);
 		} else {
 			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
