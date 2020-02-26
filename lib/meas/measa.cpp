@@ -22,13 +22,23 @@ double xivilgor(double logi);
 template<typename Float>
 MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 {
+	auto	cTime = Timer();
+
+	Profiler &prof = getProfiler(PROF_MEAS);
+	/* marks the begginin*/
+	LogOut("~");
+	LogMsg(VERB_NORMAL, "\n ");
+	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
+
+	/* For GPU */
 	if (cDev != DEV_CPU){
 	LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
 	axiona->transferCpu(FIELD_MV);
 	}
 
-	MeasureType measa = info.measdata ;
+	/* Define nicer variables for the rest of the file for readability */
 
+	MeasureType measa = info.measdata ;
 	MeasData MeasDataOut;
 
 	MeasDataOut.maxTheta    = -1 ;
@@ -40,7 +50,18 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
+	
 	SpectrumMaskType mask = info.mask ;
+	LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask = %d",mask);
+	if (axiona->Field() == FIELD_SAXION)
+		mask = mask & (SPMASK_FLAT | SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF);
+	else if (axiona->Field() == FIELD_AXION){
+		if (mask & (SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
+			mask = mask | SPMASK_FLAT;
+		mask = mask & (SPMASK_FLAT | SPMASK_AXIT | SPMASK_AXIT2);
+		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask = %d",mask);
+		}
+
 	int redmap = info.redmap;
 	StringMeasureType strmeas = info.strmeas;
 	double radius_mask = info.rmask ; //obsolete?
@@ -74,13 +95,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		}
 
 
-	auto	cTime = Timer();
-
-	Profiler &prof = getProfiler(PROF_MEAS);
-	/* marks the begginin*/
-	LogOut("~");
-	LogMsg(VERB_NORMAL, "\n ", indexa, measa);
-	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", indexa, measa, *axiona->zV());
 
 	/* Save configuration, placed here to avoid running any test if MEAS_NOTHING
 	but to save the configuration */
@@ -434,15 +448,15 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			bool             prntmsk[8] = {false,true,true,true,true,true,true};
 			bool             mulmask[8] = {false,false,false,true,true,true,true,true};
 
-			LogMsg(VERB_NORMAL, "[Meas %d] masks are %d",indexa,mask);LogFlush();
+			LogMsg(VERB_HIGH, "[Meas %d] masks are %d",indexa,mask);LogFlush();
 			for (size_t i=0; i < 8 ; i++)
 			{
-				LogMsg(VERB_NORMAL, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
+				LogMsg(VERB_HIGH, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
 			}
 
 			for (size_t i=0; i < 8; i++)
 			{
-				LogMsg(VERB_NORMAL,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
+				LogMsg(VERB_HIGH,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
 				if ( !(mask & maskara[i])){
 					LogMsg(VERB_NORMAL, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
 					continue;
