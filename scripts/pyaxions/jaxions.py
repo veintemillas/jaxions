@@ -739,19 +739,19 @@ def gm(address,something='summary',printerror=False):
         #     powmax = f['nSpectrum/sK_Red/data/'].size
 
         #ktab = (0.5+np.arange(powmax))*2*math.pi/sizeL
-        if ftype == 'Axion':
-            if (something[:4] == 'nspK'):
-                return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
-            if (something[:4] == 'nspG'):
-                return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-            if (something[:4] == 'nspV'):
-                return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
-            if (something == 'nsp'):
-                spec = np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
-                spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
-                spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
-                return spec ;
-        if ftype == 'Saxion':
+        # if ftype == 'Axion':
+        #     if (something[:4] == 'nspK'):
+        #         return np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+        #     if (something[:4] == 'nspG'):
+        #         return np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
+        #     if (something[:4] == 'nspV'):
+        #         return np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
+        #     if (something == 'nsp'):
+        #         spec = np.reshape(f['nSpectrum/sV/data/'],(powmax)) ;
+        #         spec += np.reshape(f['nSpectrum/sG/data/'],(powmax)) ;
+        #         spec += np.reshape(f['nSpectrum/sK/data/'],(powmax)) ;
+        #         return spec ;
+        if ftype == 'Saxion' or ftype == 'Axion':
             if (something[:3] == 'nsp') and ('nSpectrum/s'+something[3:] in f):
                 # print('requested '+'nSpectrum/s'+something[3:]+'/data/')
                 return np.array(f['nSpectrum/s'+something[3:]+'/data/']) ;
