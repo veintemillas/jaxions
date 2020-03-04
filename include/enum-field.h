@@ -165,6 +165,7 @@
 			CONF_READ       = 64,
 			CONF_LOLA       = 128, // Clean VILGOR
 			CONF_COLE       = 256,
+			CONF_SPAX       = 512,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -192,6 +193,7 @@
 			MOM_COLE     = 16,  // 1/sqrt(1+kt2) EXP
 			MOM_KK       = 1024, 	// extra momentum factor
 			MOM_KCOLE   = 1040,  //
+			MOM_SPAX    = 2048,  // given spectrum
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -630,6 +632,8 @@
 			MomConfType   mocoty;
 			double        mass2;
 			FieldType     ftype;
+			std::vector<double>       mfttab;
+			bool 					cmplx;
 		}	MomParms;
 
 		typedef	struct	PropParms_v

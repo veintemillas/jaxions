@@ -599,6 +599,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_SPAX:
+			sprintf(icStr, "Axion Spectrum");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
 		default:
 		case	CONF_NONE:
 			sprintf(icStr, "None");
@@ -1060,6 +1067,10 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			cType = CONF_TKACHEV;
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Axion Spectrum")) {
+			cType = CONF_SPAX;
+			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 		}
 
 		readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
@@ -1533,6 +1544,13 @@ void	createMeas (Scalar *axion, int index)
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_SPAX:
+			sprintf(icStr, "Axion Spectrum");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		default:

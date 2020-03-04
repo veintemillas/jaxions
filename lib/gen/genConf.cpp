@@ -60,6 +60,7 @@ class	ConfGenerator
 
 	void   conflola(Cosmos *myCosmos, Scalar *field);
 	void   confcole(Cosmos *myCosmos, Scalar *field);
+	void   confspax(Cosmos *myCosmos, Scalar *field);
 
 	void   putxi(double xit, bool kspace);
 	double anymean(FieldIndex ftipo);
@@ -105,6 +106,7 @@ void	ConfGenerator::runGpu	()
 			mopa.kMax = kMax;
 			mopa.kCrt = kCrt;
 			mopa.mocoty = MOM_MFLAT;
+			mopa.cmplx = true;
 			momConf(axionField, mopa);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
@@ -127,6 +129,7 @@ void	ConfGenerator::runGpu	()
 				mopa.kMax = kMax;
 				mopa.kCrt = kCrt;
 				mopa.mocoty = MOM_MEXP2;
+				mopa.cmplx = true;
 			momConf(axionField, mopa);
 			prof.stop();
 			prof.add(momName, 14e-9*axionField->Size(), axionField->Size()*axionField->DataSize()*1e-9);
@@ -241,6 +244,18 @@ void	ConfGenerator::runCpu	()
 		readConf (myCosmos, &axionField, index);
 		break;
 
+		case CONF_LOLA:
+			conflola(myCosmos,axionField);
+		break;
+
+		case CONF_COLE:
+			confcole(myCosmos,axionField);
+		break;
+
+		case CONF_SPAX:
+			confspax(myCosmos,axionField);
+		break;
+
 		case CONF_TKACHEV: {
 
 			std::complex<float> *ma = static_cast<std::complex<float>*>(axionField->mStart());
@@ -266,6 +281,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kMax = ic.kMax;
 				mopa.kCrt = kCritz;
 				mopa.mocoty = MOM_MVSINCOS;
+				mopa.cmplx = true;
 			momConf(axionField, mopa);
 
 			// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
@@ -327,6 +343,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kMax = ic.kMax;
 				mopa.kCrt = ic.kcr;
 				mopa.mocoty = ic.mocoty;
+				mopa.cmplx = true;
 			momConf(axionField, mopa);
 
 			LogFlush();
@@ -401,6 +418,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kMax = sizeN;
 				mopa.kCrt = nc;
 				mopa.mocoty = ic.mocoty;
+				mopa.cmplx = true;
 			momConf(axionField, mopa);
 
 			prof.stop();
@@ -436,14 +454,6 @@ void	ConfGenerator::runCpu	()
 			}
 
 		}
-		break;
-
-		case CONF_LOLA:
-			conflola(myCosmos,axionField);
-		break;
-
-		case CONF_COLE:
-			confcole(myCosmos,axionField);
 		break;
 
 		case CONF_VILGORK: {
@@ -511,6 +521,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kMax = sizeN;
 				mopa.kCrt = nc;
 				mopa.mocoty = MOM_MEXP2;
+				mopa.cmplx = true;
 			momConf(axionField, mopa);
 
 			prof.stop();
@@ -725,6 +736,18 @@ void	ConfGenerator::runCpu	()
 
 
 
+
+
+
+
+
+
+
+/* Collection functions */
+
+
+
+
 void	ConfGenerator::conflola(Cosmos *myCosmos, Scalar *axionField)
 {
 
@@ -825,6 +848,7 @@ void	ConfGenerator::confcole(Cosmos *myCosmos, Scalar *axionField)
 		mopa.kMax = axionField->Length();
 		mopa.kCrt = axionField->BckGnd()->PhysSize()/(6.283185307179586*(*axionField->zV())*ic.kcr);
 		mopa.mocoty = MOM_COLE;
+		mopa.cmplx = true;
 	momConf(axionField, mopa);
 	myPlan.run(FFT_BCK);
 
@@ -867,7 +891,92 @@ void	ConfGenerator::confcole(Cosmos *myCosmos, Scalar *axionField)
 
 
 
+void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
+{
 
+	LogMsg(VERB_NORMAL,"\n ");
+	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX started! ");
+	IcData ic = myCosmos->ICData();
+	LogFlush();
+
+	LogMsg(VERB_NORMAL,"[GEN] set field to axion! ");
+	axionField->setField(FIELD_AXION);
+	size_t VD = (axionField->DataSize())*(axionField->Size());
+
+
+	LogMsg(VERB_NORMAL,"[GEN] Read data file! ");
+	LogFlush();
+
+	std::vector<double> mm,vv;
+	{
+			FILE *cacheFile = nullptr;
+			if (((cacheFile  = fopen("./initialspectrum.txt", "r")) == nullptr)){
+				printf("No initialspectrum.dat ! Exit!");
+				exit(1);
+			}
+			else
+			{					int ii = 0;
+								double ma, va;
+								while(!feof(cacheFile)){
+										fscanf (cacheFile ,"%lf %lf", &ma, &va);
+										LogMsg(VERB_DEBUG," m %.3e v %.3e !",ma,va);
+										// printf(" m %.3e v %.3e ! ",ma,va);
+										mm.push_back(ma);
+										vv.push_back(va);
+										ii++;
+								}
+			}
+	}
+	LogFlush();
+
+	LogMsg(VERB_NORMAL,"[GEN] Create axion field! ");
+	MomParms mopa;
+		mopa.kMax = axionField->Length();
+		mopa.kCrt = axionField->BckGnd()->PhysSize()/(6.283185307179586*(*axionField->zV())*ic.kcr);
+		mopa.mocoty = MOM_SPAX;
+		mopa.mfttab = mm;
+		mopa.cmplx = false;
+
+	momConf(axionField, mopa);
+	LogFlush();
+	LogMsg(VERB_NORMAL,"[GEN] fft! ");
+	LogFlush();
+	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+	myPlan.run(FFT_BCK);
+	/* unpad */
+	LogMsg(VERB_NORMAL,"[GEN] unpad! ");
+	size_t dl = axionField->Length()*axionField->Precision();
+	size_t pl = (axionField->Length()+2)*axionField->Precision();
+	size_t ss	= axionField->Length()*axionField->Depth();
+
+	char *ms = static_cast<char *>(axionField->mStart());
+	char *vs = static_cast<char *>(axionField->vCpu());
+	char *m2 = static_cast<char *>(axionField->m2Cpu());
+
+	for (size_t sl=0; sl<ss; sl++) {
+		size_t	oOff = sl*dl;
+		size_t	fOff = sl*pl;
+		memmove	(ms+oOff, m2+fOff, dl);
+	}
+	// memmove	(ms, m2, VD);
+
+	LogMsg(VERB_NORMAL,"[GEN] Create axion velocity! ");
+	LogFlush();
+	mopa.mfttab = vv;
+	momConf(axionField, mopa);
+	LogMsg(VERB_NORMAL,"[GEN] fft! ");
+	myPlan.run(FFT_BCK);
+	/* unpad */
+	LogMsg(VERB_NORMAL,"[GEN] unpad! ");
+	for (size_t sl=0; sl<ss; sl++) {
+		size_t	oOff = sl*dl;
+		size_t	fOff = sl*pl;
+		memmove	(vs+oOff, m2+fOff, dl);
+	}
+	// memcpy (vs, m2, VD);
+
+	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX end! \n");
+} // endconf spectrum axions
 
 
 
@@ -894,6 +1003,7 @@ void	ConfGenerator::putxi(double xit, bool kspace)
 			mopa.kMax = axionField->Length();
 			mopa.kCrt = nc;
 			mopa.mocoty = MOM_MEXP2;
+			mopa.cmplx = true;
 		momConf(axionField, mopa);
 
 		axionField->setFolded(false);
@@ -1018,9 +1128,14 @@ void	ConfGenerator::susum(FieldIndex ftipo1,FieldIndex ftipo2)
 
 
 
+
+
+
+
 void	genConf	(Cosmos *myCosmos, Scalar *field)
 {
 	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator II");
+	LogFlush();
 
 	auto	cGen = std::make_unique<ConfGenerator> (myCosmos, field);
 

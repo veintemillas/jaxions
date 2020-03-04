@@ -1815,6 +1815,12 @@ int	parseArgs (int argc, char *argv[])
 				cType = CONF_COLE; // legacy
 				icdatst.cType =  CONF_COLE;
 			}
+			else if (!strcmp(argv[i+1], "spax"))
+			{
+				cType = CONF_SPAX; // legacy
+				icdatst.cType =  CONF_SPAX;
+			}
+
 			else
 			{
 				printf("Error: Unrecognized configuration type %s\n", argv[i+1]);

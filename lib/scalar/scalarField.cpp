@@ -437,6 +437,7 @@ const std::complex<float> If(0.,1.);
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
 					else
 						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
+					LogMsg(VERB_NORMAL,"Skipping initialisation of FFT, do it in genconf!");
 				}
 				prof.stop();
 
