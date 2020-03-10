@@ -31,13 +31,14 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
 
 	/* For GPU */
-	if (cDev != DEV_CPU){
-	LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
-	axiona->transferCpu(FIELD_MV);
-	}
+	// if (cDev != DEV_CPU){
+	// LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
+	// axiona->transferCpu(FIELD_MV);
+	// }
 
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
+	LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
 	axiona->transferCpu(FIELD_MV);
 	axiona->setFolded(false);
 	axiona->setDev(DEV_CPU);
