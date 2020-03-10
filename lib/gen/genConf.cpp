@@ -58,11 +58,12 @@ class	ConfGenerator
 	void	 runGpu	();
 	void	 runXeon	();
 
+	void   confsmooth(Cosmos *myCosmos, Scalar *field);
 	void   conflola(Cosmos *myCosmos, Scalar *field);
 	void   confcole(Cosmos *myCosmos, Scalar *field);
 	void   confspax(Cosmos *myCosmos, Scalar *field);
 	void   conftkac(Cosmos *myCosmos, Scalar *field);
-	void   confapr(Cosmos *myCosmos, Scalar *field);
+	// void   confapr(Cosmos *myCosmos, Scalar *field);
 
 	void   putxi(double xit, bool kspace);
 	double anymean(FieldIndex ftipo);
@@ -261,6 +262,14 @@ void	ConfGenerator::runCpu	()
 		case CONF_TKACHEV:
 			conftkac(myCosmos,axionField);
 		break;
+
+		case CONF_SMOOTH:
+			confsmooth(myCosmos,axionField);
+		break;
+
+		// case CONF_APR:
+		// 	confapr(myCosmos,axionField);
+		// break;
 
 		case CONF_KMAX: {
 			LogMsg(VERB_NORMAL,"[GEN] CONF_KMAX started!\n ");
@@ -603,43 +612,6 @@ void	ConfGenerator::runCpu	()
 		axionField->setFolded(false);
 		break;
 
-		case CONF_SMOOTH:
-
-		prof.start();
-		randConf (axionField,ic);
-		prof.stop();
-		prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
-		prof.start();
-		smoothXeon (axionField, ic.siter, ic.alpha);
-		prof.stop();
-		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
-
-		if (!myCosmos->Mink() && !ic.preprop) {
-		if ((ic.smvarType != CONF_SAXNOISE) && (ic.smvarType != CONF_PARRES))
-			normaliseField(axionField, FIELD_M);
-		if (myCosmos->ICData().normcore)
-			normCoreField	(axionField);
-		memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
-		if ( !(ic.kickalpha == 0.0) )
-			scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
-		scaleField (axionField, FIELD_M, *axionField->RV());
-
-		/*Note that prepropagation folds the field ;-)*/
-		axionField->setFolded(false);
-	}
-
-
-		if (ic.preprop) {
-		  /* Go back in time the preprop factor*/
-		  *axionField->zV() /= ic.prepcoe; // now z <zi
-		  axionField->updateR();
-		  LogMsg(VERB_NORMAL,"[GEN] prepropagator, jumped back in time to %f",*axionField->zV());
-		  prepropa2  (axionField);
-		}
-
-
-		break;
-
 
 
 
@@ -675,6 +647,56 @@ void	ConfGenerator::runCpu	()
 
 
 /* Collection functions */
+
+void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
+{
+	Profiler &prof = getProfiler(PROF_GENCONF);
+	string	randName("Random");
+	string	smthName("Smoother");
+
+	IcData ic = myCosmos->ICData();
+
+	LogMsg(VERB_NORMAL,"\n ");
+	LogMsg(VERB_NORMAL,"[GEN] CONF_SMOOTH started! ");
+
+	prof.start();
+	randConf (axionField,ic);
+	prof.stop();
+	prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+	prof.start();
+	smoothXeon (axionField, ic.siter, ic.alpha);
+	prof.stop();
+	prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+
+	if (!myCosmos->Mink() && !ic.preprop) {
+
+		if ((ic.smvarType != CONF_SAXNOISE) && (ic.smvarType != CONF_PARRES))
+			normaliseField(axionField, FIELD_M);
+
+		if (myCosmos->ICData().normcore)
+			normCoreField	(axionField);
+
+		memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+
+		if ( !(ic.kickalpha == 0.0) )
+			scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
+
+		scaleField (axionField, FIELD_M, *axionField->RV());
+
+		/*Note that prepropagation folds the field ;-)*/
+		axionField->setFolded(false);
+	}
+
+	if (ic.preprop) {
+		/* Go back in time the preprop factor*/
+		*axionField->zV() /= ic.prepcoe; // now z <zi
+		axionField->updateR();
+		LogMsg(VERB_NORMAL,"[GEN] prepropagator, jumped back in time to %f",*axionField->zV());
+		prepropa2  (axionField);
+	}
+}
+
 
 
 
@@ -987,77 +1009,18 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 
 
 
-void	ConfGenerator::confapr(Cosmos *myCosmos, Scalar *axionField)
-{
-		std::complex<float> *ma = static_cast<std::complex<float>*>(axionField->mStart());
-		std::complex<float> *va = static_cast<std::complex<float>*> (axionField->vCpu());
-		std::complex<float> *m2 = static_cast<std::complex<float>*> (axionField->m2Cpu());
-
-	IcData ic = myCosmos->ICData();
-
-	LogMsg(VERB_NORMAL,"\n ");
-	LogMsg(VERB_NORMAL,"[GEN] CONF_TKACHEV started!\n ");
-	//these initial conditions make sense only for RD
-	if (axionField->BckGnd()->Frw() != 1.0)
-		{
-			LogMsg(VERB_NORMAL,"[GEN] Tkachev Initial conditions only prepared for RD !\n ");
-		}
-	auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
-	//probably the profiling has to be modified
-
-	double kCritz = axionField->BckGnd()->PhysSize()/(6.283185307179586*(*axionField->zV()));
-	LogMsg(VERB_NORMAL,"[GEN] kCrit changed according to initial time %f to kCrit %f !\n ", (*axionField->zV()),kCritz);
-
-	// ft_theta' in M2, ft_theta in V
-	MomParms mopa;
-		mopa.kMax = ic.kMax;
-		mopa.kCrt = kCritz;
-		mopa.mocoty = MOM_MVSINCOS;
-		mopa.cmplx = true;
-	momConf(axionField, mopa);
-
-	// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
-	// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
-	// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
-
-
-	// The normalisation factor is
-	// <theta^2> = pi^2*/3 - we use KCrit as a multiplicicative Factor
-	// <theta^2> = 1/2 sum |~theta|^2 =1/2 4pi/3 nmax^3 <|~theta|^2>
-	// <|~theta|^2> = pi^2*kCrit/3 * (3/2pi nmax^3)
-	// <|~theta|> = sqrt(pi/2 kCrit/nmax^3)
-	// and therefore we need to multiply theta and theta' by this factor (was 1)
-	LogMsg(VERB_NORMAL,"kCrit %e kMax %d \n", ic.kcr, ic.kMax);
-	double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
-	LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
-	scaleField (axionField, FIELD_V, norma);
-	norma /= (*axionField->zV());
-	scaleField (axionField, FIELD_M2, norma);
-	LogMsg(VERB_NORMAL,"norma2 %e \n",norma);
-
-	// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
-	// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
-	// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
-
-	myPlan.run(FFT_BCK);
-	// theta' into M
-
-	// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
-	// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
-	// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
-
-	// FIX FOR LOWMEM!
-	// move theta from V to M2
-	size_t volData = axionField->Size()*axionField->DataSize();
-	memcpy(static_cast<char *>(axionField->m2Cpu()), static_cast<char *>(axionField->vCpu()), volData);
-	// move theta' from M to V
-	memcpy(static_cast<char *>(axionField->vCpu()), static_cast<char *>(axionField->mStart()), volData);
-	myPlan.run(FFT_BCK);
-	// takes only the real parts and builds exp(itheta), ...
-	// it builds
-	theta2Cmplx	(axionField);
-	axionField->setFolded(false);
-}
+// void	ConfGenerator::confapr(Cosmos *myCosmos, Scalar *axionField)
+// {
+// 		std::complex<float> *ma = static_cast<std::complex<float>*>(axionField->mStart());
+// 		std::complex<float> *va = static_cast<std::complex<float>*> (axionField->vCpu());
+// 		std::complex<float> *m2 = static_cast<std::complex<float>*> (axionField->m2Cpu());
+//
+// 	IcData ic = myCosmos->ICData();
+//
+// 	LogMsg(VERB_NORMAL,"\n ");
+// 	LogMsg(VERB_NORMAL,"[GEN] CONF_APR started! adds two initial condition functions smooth + smooth or smooth + spax\n ");
+//
+// }
 
 
 
