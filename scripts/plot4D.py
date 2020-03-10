@@ -79,10 +79,14 @@ if len(sys.argv) == 2:
 
 prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 fileMeas = []
+
 for maes in prefileMeas:
-	f = h5py.File(maes, 'r')
-	if 'map' in f:
-		fileMeas.append(maes)
+	try:
+		with h5py.File(maes, 'r') as f:
+			if ('map' in f) :
+				fileMeas.append(maes)
+	except:
+		print('Error opening file: %s'%maes)
 fileHdf5 = h5py.File(fileMeas[0], "r")
 Lx = fileHdf5["/"].attrs.get("Size")
 Ly = fileHdf5["/"].attrs.get("Size")
