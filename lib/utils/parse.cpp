@@ -348,8 +348,10 @@ void	PrintICoptions()
 	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
 	printf("                   --kcr [float]                   rho = kcr. Alternatively k = (kMax,0,0) if not kkk.dat file. \n\n");
 	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
-	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the YZ plane, radius N/4.\n\n");
-
+	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the YZ plane, radius N/4.\n");
+	printf("  --smvar stringwave --mode0 [float]               Straight strings along Z + axion wave \n");
+	printf("                                                   of momentum kx,ky,kz specified in kkk.dat and amplitude mode0. \n\n");
+	
 	printf(" [kmax]                                            Saxion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --kmax [int] --kcr [float]                       Random modes and inverse FFT.\n");
