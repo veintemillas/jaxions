@@ -1,4 +1,4 @@
-#include <cmath>
+	#include <cmath>
 #include <chrono>
 #include <complex>
 
@@ -36,6 +36,14 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	axiona->transferCpu(FIELD_MV);
 	}
 
+	bool wasGPU = false;
+	if (cDev == DEV_GPU){
+	axiona->transferCpu(FIELD_MV);
+	axiona->setFolded(false);
+	axiona->setDev(DEV_CPU);
+	wasGPU = true;
+	}
+
 	/* Define nicer variables for the rest of the file for readability */
 
 	MeasureType measa = info.measdata ;
@@ -50,7 +58,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	size_t sliceprint = info.sliceprint;
 	int indexa = info.index;
-	
+
 	SpectrumMaskType mask = info.mask ;
 	LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask = %d",mask);
 	if (axiona->Field() == FIELD_SAXION)
@@ -753,10 +761,13 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 
 	LogOut("\n");
 
-if (cDev != DEV_CPU){
-LogMsg (VERB_HIGH,"Transferring configuration to device");
-axiona->transferDev(FIELD_MV);
-}
+// if (cDev != DEV_CPU){
+// LogMsg (VERB_HIGH,"Transferring configuration to device");
+// axiona->transferDev(FIELD_MV);
+// }
+
+if (wasGPU)
+	axiona->setDev(DEV_GPU);
 
 return MeasDataOut;
 }

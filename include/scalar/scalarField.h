@@ -206,6 +206,8 @@
 		size_t  getNg() {return Ng;}
 		void	  setCO	(size_t newN);
 		double  *getCO() {return &(co[0]); };
+
+		void  setDev(DeviceType newdev) { device = newdev; }
 		/*	Eliminar	*/
 
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);

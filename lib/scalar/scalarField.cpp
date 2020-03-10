@@ -11,6 +11,7 @@
 
 #include"comms/comms.h"
 //#include"scalar/varNQCD.h"
+#include"scalar/folder.h"
 
 #ifdef	USE_GPU
 	#include<cuda.h>
@@ -409,9 +410,10 @@ const std::complex<float> If(0.,1.);
 			AxionFFT::initPlan (this, FFT_CtoC_VtoV, FFT_FWDBCK, "C2CV2V");
 			AxionFFT::initPlan(this, FFT_CtoC_M2toM2, FFT_FWDBCK, "C2CM22M2");
 			AxionFFT::initPlan(this, FFT_CtoC_M2toM, FFT_FWDBCK, "C2CM22M");
-			// Axion m/v inplace
+			// Axion m/v inplace and m2/m if axion mode
 			AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
 			AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
+			AxionFFT::initPlan(this,  FFT_RtoC_M2toM,     FFT_FWDBCK, "R2CM22M");
 		}
 		/*	If present, read fileName	*/
 
@@ -511,6 +513,12 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
+			LogMsg(VERB_HIGH,"[sca] Transfering to device %d (M/V/MV=%d,%d,%d) cMDTH %lu ",fIdx,FIELD_M,FIELD_V,FIELD_MV,cudaMemcpyHostToDevice);
+			if (Folded())
+			{
+					Folder munge(this);
+					munge(UNFOLD_ALL);
+			}
 			if (fIdx & FIELD_M)
 				cudaMemcpy((((char *) m_d) + n2*fSize), (((char *) m) + n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 
@@ -531,6 +539,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
+   		LogMsg(VERB_HIGH,"[sca] Transfering to CPU %d (M/V/MV=%d,%d,%d) cMDTH %lu ",fIdx,FIELD_M,FIELD_V,FIELD_MV,cudaMemcpyDeviceToHost);
 			if (fIdx & FIELD_M)
 				cudaMemcpy(m,  m_d,  v3*fSize, cudaMemcpyDeviceToHost);
 
