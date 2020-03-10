@@ -372,6 +372,10 @@
 	#endif
 	}
 
+
+
+
+
 	/*		CPU PROPAGATORS			*/
 
 	// Generic axion propagator
@@ -650,6 +654,10 @@
 		}
 	}
 
+
+
+
+
 	// Generic saxion spectral propagator
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
@@ -694,6 +702,10 @@
 		}
 		axion->setM2     (M2_DIRTY);
 	}
+
+
+
+
 
 	// Generic saxion full spectral propagator (in Fourier space)
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
@@ -766,6 +778,90 @@
 
 		axion->setM2     (M2_DIRTY);
 	}
+
+
+
+	// // Generic Axion full spectral propagator (in Fourier space)
+	// template<const int nStages, const bool lastStage, VqcdType VQcd>
+	// void	PropClass<nStages, lastStage, VQcd>::tFpecCpu	(const double dz) {
+	//
+	// 	double *z = axion->zV();
+	// 	double *R = axion->RV();
+	// 	double cLmbda ;
+	// 	auto   lSize  = axion->BckGnd()->PhysSize();
+	// 	size_t Tz = axion->TotalDepth();
+	//
+	// 	PropParms ppar;
+	// 	ppar.Ng     = axion->getNg();
+	// 	ppar.ood2a  = ood2;
+	// 	ppar.PC     = axion->getCO();
+	// 	ppar.Lx     = Lx;
+	// 	ppar.frw    = axion->BckGnd()->Frw();
+	//
+	// 	ppar.massA2 = axion->AxionMassSq();
+	// 	ppar.R      = *axion->RV();
+	// 	ppar.Rpp    = axion->Rpp();
+	// 	/* Returns ghost size region in slices */
+	// 	size_t BO = ppar.Ng*S;
+	//
+	// 	const double fMom1 = (2.*M_PI)/(lSize);
+	//
+	// 	if (axion->Folded())
+	// 	{
+	// 		Folder munge(axion);
+	// 		munge(UNFOLD_ALL);
+	// 	}
+	//
+	// 	// If field is in configuration space transform to momentum space
+	// 	if	( !axion->MMomSpace() || !axion->VMomSpace() )
+	// 	{
+	// 		if (debug) LogOut("[fs] FT!\n");
+	// 		FTfield pelotas(axion);
+	// 		pelotas(FIELD_MV, FFT_FWD); // FWD is to send to momentum space transposed out
+	// 	}
+	//
+	// 	float *mmm = static_cast<float *>(axion->mStart());
+	// 	float *vvv = static_cast<float *>(axion->vCpu());
+	// 	float *mm2 = static_cast<float *>(axion->m2Cpu());
+	//
+	// 	#pragma unroll
+	// 	for (int s = 0; s<nStages; s++) {
+	// 		const double	c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
+	//
+	// 		// computes m into m2 in configuration space
+	// 		FTfield pelota(axion);
+	// 		pelota(FIELD_MTOM2, FFT_BCK); // BCK is to send to conf space
+	//
+	// 		/* computes the acceleration in configuration space in m2 */
+	//
+	// 		// LogOut("[fs] m  values %f %f %f %f \n",mmm[0],mmm[1],mmm[2],mmm[3]);
+	// 		// LogOut("[fs] v  values %f %f %f %f \n",vvv[0],vvv[1],vvv[2],vvv[3]);
+	// 		// LogOut("[fs] m2 values %f %f %f %f \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+	// 		// LogFlush();
+	// 		fsAccKernelThetaXeon<VQcd>(axion->m2Cpu(), ppar, S, V+S, precision);
+	// 		// LogOut("[fs] ac values %f %f %f %f \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+	//
+	// 		if (debug) LogOut("[fs] accelerated \n");
+	// 		pelota(FIELD_M2TOM2, FFT_FWD); // FWD sends M2 to mom space
+	// 		if (debug) LogOut("[fs] fff \n");
+	// 		/* kicks in momentum space */
+	// 		// LogOut("[fs] ac momspace %f %f %f %f \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+	// 		const double intemas3  =  axion->IAxionMassSqn(*z,*z + dz*d0,3);
+	// 		const double iintemas3 = axion->IIAxionMassSqn(*z,*z + dz*d0,3);
+	// 		const double shift = axion->Saskia();
+	// 		fsPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, intemas3, iintemas3, shift, fMom1, Lx, Tz, precision);
+	//
+	// 		*z += dz*d0;
+	// 		axion->updateR();
+	//
+	// 	}
+	//
+	// 	if (lastStage) {
+	// 		LogMsg (VERB_HIGH, "Warning: fspectral propagator not working for odd propagators");
+	// 	}
+	//
+	// 	axion->setM2     (M2_DIRTY);
+	// }
 
 
 
