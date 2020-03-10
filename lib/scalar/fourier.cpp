@@ -81,6 +81,13 @@ void	FTfield::ftField(FieldIndex mvomv)
 					scaleField	(field, FIELD_V, scale);
 					field->setVMomSpace(true);
 				}
+			if (mvomv & FIELD_M2TOM2)
+				{
+					auto &myPlan = AxionFFT::fetchPlan("SpAx");
+					myPlan.run(FFT_FWD);
+					scaleField	(field, FIELD_M2, scale);
+				}
+
 		}
 		default:
 		return;
