@@ -173,7 +173,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				idxP0 = idx;
 
 				mel = opCode(load_pd, &m[idxP0]); // Carga m
-				vel = opCode(load_pd, &v[idxMz]); // Carga v
+				vel = opCode(load_pd, &v[idxP0-Ng*Sf]); // Carga v
 
 				// Calculo los gradientes con módulo
 
@@ -390,7 +390,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 				idxP0 = idx;
 
 				mel = opCode(load_ps, &m[idxP0]); // Carga m
-				vel = opCode(load_ps, &v[idxMz]); // Carga v
+				vel = opCode(load_ps, &v[idxP0-Ng*Sf]); // Carga v
 
 				// Calculo los gradientes con módulo
 				// Version sin módulo ; descomentar si modulo necesario ; assumes continuous field
@@ -498,7 +498,7 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass
 	const size_t Vf = Vo + axionField->Size();
 
 	axionField->exchangeGhosts(FIELD_M);
-	
+
 	switch	(map) {
 		case	true:
 			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
