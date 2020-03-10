@@ -47,7 +47,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		kmax = kMax;
 	}
 	size_t kmax2 = kmax*kmax;
-
+	// printf("kmax2 %d\n",kmax2);
 	constexpr Float Twop = 2.0*M_PI;
 	complex<Float> II = complex<Float>{0,1} ;
 	Float kcrit = (Float) kCrat;
@@ -108,6 +108,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 					{
 						Float vl = Twop*(uni(mt64));
 						Float al = distri(mt64);
+						// complex<Float> marsa = exp( complex<Float>(0,vl + px*Twop/2.0+py*Twop/2.0) )*al;
 						complex<Float> marsa = exp( complex<Float>(0,vl) )*al;
 
 						switch (Moco)
@@ -120,6 +121,9 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 								{
 									Float sc = mf((double) sqrt( (Float) modP));
 									fM[idx] = marsa*sc;
+									// if (modP < 10)
+									// 	printf("mom %f sc %f\n",(double) sqrt( (Float) modP),sc);
+
 								}
 							break;
 							case(MOM_MSIN):
@@ -175,6 +179,9 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 						}
 
 					} // END if
+					else {
+						fM[idx] = complex<Float>(0,0);
+					}
 		} // END triple loop
 	}
 
