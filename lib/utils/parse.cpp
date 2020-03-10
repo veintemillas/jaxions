@@ -1883,6 +1883,10 @@ int	parseArgs (int argc, char *argv[])
 			{
 				icdatst.smvarType = CONF_PARRES;
 			}
+			else if (!strcmp(argv[i+1], "stringwave"))
+			{
+				icdatst.smvarType = CONF_STRWAVE;
+			}
 			else if (!strcmp(argv[i+1], "axiton"))
 			{
 				icdatst.smvarType = CONF_AXITON;

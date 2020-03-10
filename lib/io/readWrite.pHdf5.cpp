@@ -649,6 +649,15 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			sprintf(smStr, "Minicluster 0");
 			break;
 
+		case	CONF_PARRES:
+			sprintf(smStr, "Parametric Resonance");
+			break;
+
+		case	CONF_STRWAVE:
+			sprintf(smStr, "String + wave");
+			break;
+
+
 		default:
 			sprintf(smStr, "None");
 			break;
@@ -1091,6 +1100,10 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			smvarType = CONF_SAXNOISE;
 		} else if (!strcmp(icStr, "Axion one mode")) {
 			smvarType = CONF_AX1MODE;
+		} else if (!strcmp(icStr, "Parametric Resonance")) {
+			smvarType = CONF_PARRES;
+		} else if (!strcmp(icStr, "String + wave")) {
+			smvarType = CONF_STRWAVE;
 		} else {
 			LogError("Error: unrecognized configuration type %s", icStr);
 			exit(1);
@@ -1589,6 +1602,14 @@ void	createMeas (Scalar *axion, int index)
 
 		case	CONF_AX1MODE:
 			sprintf(smStr, "Axion one mode");
+			break;
+
+		case	CONF_PARRES:
+			sprintf(smStr, "Parametric Resonance");
+			break;
+
+		case	CONF_STRWAVE:
+			sprintf(smStr, "String + wave");
 			break;
 
 		default:

@@ -232,6 +232,30 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					m[idx] = std::complex<Float>(kCri*cos(theta), kCri*sin(theta));
 					break;
 				}
+
+				case CONF_STRWAVE:
+				{
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
+					z = iz;
+					y = iy;
+					x = ix;
+					Float aL = ((Float) Lx)/4.01;	//RADIUS
+					rho2 = (y-Lx/2)*(y-Lx/2);
+					Float rho = sqrt((Float) rho2)	;
+					Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
+					Float d12 = (rho + aL)*(rho + aL) + z2 ;
+					Float d22 = (rho - aL)*(rho - aL) + z2 ;
+					Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
+					theta = 3.14159265*theta*theta	;
+					if (ix>Lx/2)
+						theta *= -1 ;
+
+					theta += ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
+					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					break;
+				}
 			}
 		}
 	}
@@ -279,6 +303,9 @@ void	randConf (Scalar *field, IcData ic)
 			case CONF_AXITON:
 				randXeon<double,CONF_PARRES> (ma, field, ic);
 				break;
+			case CONF_STRWAVE:
+				randXeon<double,CONF_STRWAVE> (ma, field, ic);
+				break;
 		}
 		}
 		break;
@@ -318,6 +345,9 @@ void	randConf (Scalar *field, IcData ic)
 				break;
 			case CONF_AXITON:
 				randXeon<float,CONF_AXITON> (ma, field, ic);
+				break;
+			case CONF_STRWAVE:
+				randXeon<float,CONF_STRWAVE> (ma, field, ic);
 				break;
 		}
 		}
