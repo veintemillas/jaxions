@@ -854,9 +854,10 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 		FILE *cacheFile;
 		char tuneName[2048];
 		// sprintf (tuneName, "%s/tuneCache.dat", wisDir);
-		if (pType & PROP_BASE)
+		if (pType & PROP_BASE){
 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
-
+			LogMsg(VERB_HIGH,"[tp] tuneName = %s",tuneName);
+		}
 		// We distinguish between opening and appending a new line
 		if (!newFile) {
 			if ((cacheFile = fopen(tuneName, "a")) == nullptr) {
