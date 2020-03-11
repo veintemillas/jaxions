@@ -74,6 +74,11 @@ static __device__ __forceinline__ void	energyCoreGpu(const uint idx, const compl
 	Float tPot, rPot;
 
 	switch (VQcd & VQCD_TYPE) {
+		case	VQCD_PQ_ONLY:
+			rPot  = ((Float) (mFc2 - 1.)*(mFc2 - 1.));
+			tPot  = 0.;
+			break;
+
 		case	VQCD_1:
 			rPot  = ((Float) (mFc2 - 1.)*(mFc2 - 1.));
 			tPot  = (((Float) 1.) - tp2.real()/sqrt(md2));
@@ -149,6 +154,13 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 		const double iZ2 = iZ*iZ;
 
 		switch (VQcd & VQCD_TYPE) {
+			case	VQCD_PQ_ONLY:
+				if (map == true)
+					energyKernel<true, VQCD_PQ_ONLY><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
+				else
+					energyKernel<false,VQCD_PQ_ONLY><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
+				break;
+
 			case	VQCD_1:
 				if (map == true)
 					energyKernel<true, VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<double>*>(m), static_cast<const complex<double>*>(v), static_cast<double*>(m2), Lx, S, Vm, iZ, iZ2, zQ, lZ, o2, tR, partial, shift);
@@ -180,6 +192,13 @@ int	energyGpu	(const void * __restrict__ m, const void * __restrict__ v, void * 
 		const float iZ2 = iZ*iZ;
 
 		switch (VQcd) {
+			case	VQCD_PQ_ONLY:
+				if (map == true)
+					energyKernel<true, VQCD_PQ_ONLY><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
+				else
+					energyKernel<false,VQCD_PQ_ONLY><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);
+				break;
+
 			case	VQCD_1:
 				if (map == true)
 					energyKernel<true, VQCD_1><<<gridSize,blockSize,0,stream>>> (static_cast<const complex<float>*>(m), static_cast<const complex<float>*>(v), static_cast<float*>(m2), Lx, S, Vm, iZ, iZ2, (float) zQ, (float) lZ, (float) o2, tR, partial, (float) shift);

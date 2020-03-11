@@ -50,6 +50,10 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 	Float pot = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
 
 	switch (VQcd & VQCD_TYPE) {
+		case	VQCD_PQ_ONLY:
+		a = (mel-((Float) 6.)*tmp)*ood2 - tmp*(((Float) LL)*(pot - z2));
+		break;
+
 		case	VQCD_1:
 		a = (mel-((Float) 6.)*tmp)*ood2 + zQ - tmp*(((Float) LL)*(pot - z2));
 		break;
@@ -143,6 +147,11 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dp2  = (1. - gFp2)*dp1;
 
 		switch (VQcd) {
+			case	VQCD_PQ_ONLY:
+			propagateKernel<double, VQCD_PQ_ONLY>		<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
+												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
+			break;
+
 			case	VQCD_1:
 			propagateKernel<double, VQCD_1>		<<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v, (complex<double> *) m2,
 												  zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (double) LL, Lx, Sf, Vo, Vf);
