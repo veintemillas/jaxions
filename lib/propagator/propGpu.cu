@@ -529,6 +529,11 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 											zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
 			break;
 
+			case	VQCD_PQ_ONLY:
+			updateVKernel<double, VQCD_PQ_ONLY><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
+											zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (double) LL, Lx, Sf, Vo, Vf);
+			break;
+
 			case	VQCD_1_PQ_2:
 			updateVKernel<double, VQCD_1_PQ_2><<<gridSize,blockSize,0,stream>>> ((const complex<double> *) m, (complex<double> *) v,
 											     zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,  ood2, (double) LL, Lx, Sf, Vo, Vf);
@@ -631,8 +636,14 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		const float dp2  = (1. - gFp2)*dp1;
 
 		switch (VQcd) {
+
 			case	VQCD_1:
 			updateVKernel<float, VQCD_1><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,
+											  ood2, (float) LL, Lx, Sf, Vo, Vf);
+			break;
+
+			case	VQCD_PQ_ONLY:
+			updateVKernel<float, VQCD_PQ_ONLY><<<gridSize,blockSize,0,stream>>> ((const complex<float> *) m, (complex<float> *) v, zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc,
 											  ood2, (float) LL, Lx, Sf, Vo, Vf);
 			break;
 
