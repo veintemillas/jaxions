@@ -351,7 +351,7 @@ void	PrintICoptions()
 	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the YZ plane, radius N/4.\n");
 	printf("  --smvar stringwave --mode0 [float]               Straight strings along Z + axion wave \n");
 	printf("                                                   of momentum kx,ky,kz specified in kkk.dat and amplitude mode0. \n\n");
-	
+
 	printf(" [kmax]                                            Saxion momentum based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --kmax [int] --kcr [float]                       Random modes and inverse FFT.\n");
@@ -499,6 +499,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.cType     = CONF_KMAX;
 	icdatst.smvarType = CONF_RAND;
 	icdatst.mocoty    = MOM_MEXP2;
+	icdatst.fieldindex=FIELD_NO;
 
 	for (int i=1; i<argc; i++)
 	{

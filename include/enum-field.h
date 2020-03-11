@@ -23,6 +23,7 @@
 
 		typedef	enum	FieldIndex_s
 		{
+			FIELD_NO  = 0,
 			FIELD_M   = 1,
 			FIELD_V   = 2,
 			FIELD_MV  = 3,
@@ -625,6 +626,7 @@
 			ConfType      cType;
 			ConfsubType   smvarType;
 			MomConfType   mocoty;
+			FieldIndex    fieldindex;
 		}	IcData;
 
 		typedef	struct	MomParms_v

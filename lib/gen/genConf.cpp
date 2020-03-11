@@ -154,6 +154,7 @@ void	ConfGenerator::runGpu	()
 
 		case CONF_SMOOTH:
 		prof.start();
+		ic.fieldindex = FIELD_M;
 		randConf (axionField,ic);
 		prof.stop();
 		prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
@@ -539,6 +540,7 @@ void	ConfGenerator::runCpu	()
 		case CONF_VILGORS: {
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORs started!\n ");
 			prof.start();
+			ic.fieldindex = FIELD_M;
 			randConf (axionField,ic);
 			prof.stop();
 			prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
@@ -660,7 +662,14 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SMOOTH started! ");
 
 	prof.start();
+	ic.fieldindex = FIELD_M;
 	randConf (axionField,ic);
+	// if (ic.smvarType == CONF_STRWAVE){
+	// 	ic.fieldindex = FIELD_V;
+	// 	ic.smvarType = CONF_PARRES;
+	// 	ic.kcr = 1.
+	// 	randConf (axionField,ic);
+	// }
 	prof.stop();
 	prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 

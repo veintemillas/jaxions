@@ -269,7 +269,13 @@ void	randConf (Scalar *field, IcData ic)
 	{
 		case FIELD_DOUBLE:
 		{
-		std::complex<double>* ma = static_cast<std::complex<double>*> (field->mStart());
+		std::complex<double>* ma;
+		if (ic.fieldindex == FIELD_M)
+		 	ma = static_cast<std::complex<double>*> (field->mStart());
+		else if (ic.fieldindex == FIELD_V)
+			ma = static_cast<std::complex<double>*> (field->vCpu());
+		else if (ic.fieldindex == FIELD_M2)
+			ma = static_cast<std::complex<double>*> (field->m2Cpu());
 
 		switch (ic.smvarType)
 		{
@@ -312,7 +318,14 @@ void	randConf (Scalar *field, IcData ic)
 
 		case FIELD_SINGLE:
 		{
-		std::complex<float>* ma = static_cast<std::complex<float>*> (field->mStart());
+		std::complex<float>* ma;
+		if (ic.fieldindex == FIELD_M)
+			ma = static_cast<std::complex<float>*> (field->mStart());
+		else if (ic.fieldindex == FIELD_V)
+			ma = static_cast<std::complex<float>*> (field->vCpu());
+		else if (ic.fieldindex == FIELD_M2)
+			ma = static_cast<std::complex<float>*> (field->m2Cpu());
+
 
 		switch (ic.smvarType)
 		{

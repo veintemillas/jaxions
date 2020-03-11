@@ -38,11 +38,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
-	LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
-	axiona->transferCpu(FIELD_MV);
-	axiona->setFolded(false);
-	axiona->setDev(DEV_CPU);
-	wasGPU = true;
+		LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
+		axiona->transferCpu(FIELD_MV);
+		axiona->setFolded(false);
+		axiona->setDev(DEV_CPU);
+		wasGPU = true;
 	}
 
 	/* Define nicer variables for the rest of the file for readability */
