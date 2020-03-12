@@ -183,6 +183,7 @@
 			CONF_PARRES       = 8,
 			CONF_AXITON       = 9,
 			CONF_STRWAVE      = 10,
+			CONF_THETAVEL     = 11,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
