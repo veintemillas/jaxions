@@ -41,8 +41,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
 		axiona->transferCpu(FIELD_MV);
 		axiona->setFolded(false);
-		axiona->setDev(DEV_CPU);
-		wasGPU = true;
+		if (info.measCPU){
+			axiona->setDev(DEV_CPU);
+			wasGPU = true;
+		}
 	}
 
 	/* Define nicer variables for the rest of the file for readability */
@@ -767,8 +769,8 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 // axiona->transferDev(FIELD_MV);
 // }
 
-if (wasGPU)
-	axiona->setDev(DEV_GPU);
+if (info.measCPU && wasGPU)
+		axiona->setDev(DEV_GPU);
 
 return MeasDataOut;
 }
