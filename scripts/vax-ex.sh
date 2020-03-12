@@ -67,7 +67,7 @@ case "$1" in
     echo "AXIONS_OUTPUT=$AXIONS_OUTPUT"
     WTIM=12
     echo mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $OUTP --wTime $WTIM
-    mpirun $USA -np $RANKS vaxion3d --restart $GRID $SIMU $PREP $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
+    mpirun $USA -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
     ;;
   wkb)
     echo wkb!
