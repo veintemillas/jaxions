@@ -1555,7 +1555,6 @@ int	parseArgs (int argc, char *argv[])
 		{
 			measCPU = true;
 
-			i++;
 			procArgs++;
 			passed = true;
 			goto endFor;
