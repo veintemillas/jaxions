@@ -183,6 +183,20 @@ double  Cosmos::Rpp  (const double ct)
   }
 }
 
+double  Cosmos::Rp  (const double ct)
+{
+  if (ueCosm) {
+    LogMsg(VERB_NORMAL,"[Cos] using Rp =R'/R in ueCosmos, but it is not currently defined in the txt file; FIX!!");
+    return 1;
+  }
+  else {
+  // R = ct^frw
+  // R''/R = frw(frw-1)/ct^2
+	//except in the case where frw = 0,1
+	return frw/(ct) ;
+  }
+}
+
 double  Cosmos::R       (const double ct)
 {
   if (ueCosm)

@@ -69,6 +69,8 @@ class	ConfGenerator
 	double anymean(FieldIndex ftipo);
 
 	void   susum(FieldIndex from, FieldIndex to);
+	void   mulmul(FieldIndex from, FieldIndex to);
+	void   axby(FieldIndex from, FieldIndex to, double a, double b);
 };
 
 ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field) : myCosmos(myCosmos), axionField(field)
@@ -661,15 +663,22 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"\n ");
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SMOOTH started! ");
 
+	double R  = *axionField->RV();
+	double Rp = myCosmos->Rp(*axionField->zV());
+	LogMsg(VERB_NORMAL,"[GEN] time %f scale factor R %f Rp %f ",*axionField->zV(),*axionField->RV(),Rp);
+
 	prof.start();
 	ic.fieldindex = FIELD_M;
 	randConf (axionField,ic);
-	// if (ic.smvarType == CONF_STRWAVE){
-	// 	ic.fieldindex = FIELD_V;
-	// 	ic.smvarType = CONF_PARRES;
-	// 	ic.kcr = 1.
-	// 	randConf (axionField,ic);
-	// }
+	if (ic.smvarType == CONF_STRWAVE){
+		ic.fieldindex = FIELD_V;
+		ic.smvarType = CONF_THETAVEL;
+		ic.kcr = 1.;
+		randConf (axionField,ic);
+		mulmul(FIELD_M,FIELD_V);
+		ic.smvarType = CONF_STRWAVE;
+	}
+
 	prof.stop();
 	prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 
@@ -686,7 +695,8 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 		if (myCosmos->ICData().normcore)
 			normCoreField	(axionField);
 
-		memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+		// memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
+		axby(FIELD_M,FIELD_V,Rp,R);
 
 		if ( !(ic.kickalpha == 0.0) )
 			scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
@@ -1183,8 +1193,117 @@ void	ConfGenerator::susum(FieldIndex ftipo1,FieldIndex ftipo2)
 
 
 
+void	ConfGenerator::mulmul(FieldIndex ftipo1,FieldIndex ftipo2)
+{
+	/* Multiplies something 1 into something 2*/
 
+	void* meandro ;
+	void* meandro2 ;
 
+	switch(ftipo1){
+		case FIELD_M:
+			meandro = static_cast<void *>(axionField->mStart());
+		break;
+		case FIELD_V:
+			meandro = static_cast<void *>(axionField->vCpu());
+		break;
+		case FIELD_M2:
+			meandro = static_cast<void *>(axionField->m2Cpu());
+		break;
+	}
+	switch(ftipo2){
+		case FIELD_M:
+			meandro2 = static_cast<void *>(axionField->mStart());
+		break;
+		case FIELD_V:
+			meandro2 = static_cast<void *>(axionField->vCpu());
+		break;
+		case FIELD_M2:
+			meandro2 = static_cast<void *>(axionField->m2Cpu());
+		break;
+	}
+
+	switch(axionField->Precision()){
+		case FIELD_DOUBLE:{
+			complex<double> *m = static_cast<complex<double>*>(meandro);
+			complex<double> *d = static_cast<complex<double>*>(meandro2);
+			#pragma omp parallel default(shared)
+			{
+				#pragma omp for schedule(static)
+				for (size_t idx = 0; idx < axionField->Size(); idx++)
+				d[idx] *= m[idx];
+			}
+		} break;
+		case FIELD_SINGLE:{
+			complex<float> *m = static_cast<complex<float>*>(meandro);
+			complex<float> *d = static_cast<complex<float>*>(meandro2);
+			#pragma omp parallel
+			{
+				#pragma omp for schedule(static)
+				for (size_t idx = 0; idx < axionField->Size(); idx++)
+				d[idx] *= m[idx];
+			}
+		} break;
+		}
+
+	return;
+} //end mulmul
+
+void	ConfGenerator::axby(FieldIndex ftipo1, FieldIndex ftipo2, double a, double b)
+{
+	/* Multiplies something 1 into something 2*/
+
+	void* meandro ;
+	void* meandro2 ;
+
+	switch(ftipo1){
+		case FIELD_M:
+			meandro = static_cast<void *>(axionField->mStart());
+		break;
+		case FIELD_V:
+			meandro = static_cast<void *>(axionField->vCpu());
+		break;
+		case FIELD_M2:
+			meandro = static_cast<void *>(axionField->m2Cpu());
+		break;
+	}
+	switch(ftipo2){
+		case FIELD_M:
+			meandro2 = static_cast<void *>(axionField->mStart());
+		break;
+		case FIELD_V:
+			meandro2 = static_cast<void *>(axionField->vCpu());
+		break;
+		case FIELD_M2:
+			meandro2 = static_cast<void *>(axionField->m2Cpu());
+		break;
+	}
+
+	switch(axionField->Precision()){
+		case FIELD_DOUBLE:{
+			complex<double> *m = static_cast<complex<double>*>(meandro);
+			complex<double> *d = static_cast<complex<double>*>(meandro2);
+			#pragma omp parallel default(shared)
+			{
+				#pragma omp for schedule(static)
+				for (size_t idx = 0; idx < axionField->Size(); idx++)
+				d[idx] = b*d[idx] + a*m[idx];
+			}
+		} break;
+		case FIELD_SINGLE:{
+			complex<float> *m = static_cast<complex<float>*>(meandro);
+			complex<float> *d = static_cast<complex<float>*>(meandro2);
+			#pragma omp parallel
+			{
+				#pragma omp for schedule(static)
+				for (size_t idx = 0; idx < axionField->Size(); idx++)
+				d[idx] = ((float) b)*d[idx] + ((float) a)*m[idx];
+			}
+		} break;
+		}
+
+	return;
+} //end mulmul
 
 void	genConf	(Cosmos *myCosmos, Scalar *field)
 {

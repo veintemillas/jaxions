@@ -252,10 +252,22 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					if (ix>Lx/2)
 						theta *= -1 ;
 
-					theta += ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
+					// theta += ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
 					m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;
 				}
+				case CONF_THETAVEL:
+				{
+					// pidx = idx-Sf;
+					iz = idx/Sf + local_z_start;
+					iy = (idx%Sf)/Lx ;
+					ix = (idx%Sf)%Lx ;
+					Float thetap = ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
+
+					m[idx] = std::complex<Float>(0., thetap);
+					break;
+				}
+
 			}
 		}
 	}
@@ -312,6 +324,9 @@ void	randConf (Scalar *field, IcData ic)
 			case CONF_STRWAVE:
 				randXeon<double,CONF_STRWAVE> (ma, field, ic);
 				break;
+			case CONF_THETAVEL:
+				randXeon<double,CONF_THETAVEL> (ma, field, ic);
+				break;
 		}
 		}
 		break;
@@ -362,7 +377,10 @@ void	randConf (Scalar *field, IcData ic)
 			case CONF_STRWAVE:
 				randXeon<float,CONF_STRWAVE> (ma, field, ic);
 				break;
-		}
+			case CONF_THETAVEL:
+				randXeon<float,CONF_THETAVEL> (ma, field, ic);
+				break;
+			}
 		}
 		break;
 

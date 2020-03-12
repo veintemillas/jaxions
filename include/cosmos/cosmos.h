@@ -72,6 +72,7 @@
 		void     Setup();
 		double	 TopSus     (const double ct);
 		double	 Rpp        (const double ct);
+		double	 Rp        (const double ct);
 		double	 R          (const double ct);
 		double	 T          (const double ct);
 
