@@ -124,6 +124,7 @@ namespace AxionFFT {
 				// WKB
 				float	        *mNoGr = static_cast<float *>       (axion->mCpu());
 				fftwf_complex *mNoGc = static_cast<fftwf_complex*>(axion->mCpu());
+				float	        *vR    = static_cast<float *>       (axion->vCpu());
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -282,9 +283,9 @@ namespace AxionFFT {
 					case	FFT_RtoC_VtoV_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, vR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, vR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
 					case	FFT_RtoC_M2toM2_WKB:
@@ -327,6 +328,7 @@ namespace AxionFFT {
 				// WKB
 				double	     *mNoGr = static_cast<double*>      (axion->mCpu());
 				fftw_complex *mNoGc = static_cast<fftw_complex*>(axion->mCpu());
+				double       *vR    = static_cast<double *>     (axion->vCpu());
 
 				switch	(type) {
 					case	FFT_CtoC_MtoM:
@@ -485,9 +487,9 @@ namespace AxionFFT {
 					case	FFT_RtoC_VtoV_WKB:
 
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, mR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, vR, v, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, mR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, v, vR, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 					case	FFT_RtoC_M2toM2_WKB:
 

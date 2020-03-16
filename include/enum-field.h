@@ -589,6 +589,7 @@
 			int                 i_rmask;
 			int                 redmap;
 			StringMeasureType   strmeas;
+			bool                measCPU;
 		}	MeasInfo;
 
 		// data output by measurement function to program

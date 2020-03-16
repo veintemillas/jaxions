@@ -81,6 +81,7 @@ bool icstudy  = false ;
 bool preprop  = false ;
 bool coSwitch2theta  = true ;
 bool WKBtotheend = false;
+bool measCPU  = false;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -1550,6 +1551,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--measCPU"))
+		{
+			measCPU = true;
+
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--spmask"))
 		{
 			if (i+1 == argc)
@@ -2356,6 +2366,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.idxprint = 0 ;
 	deninfa.index = 0;
 	deninfa.redmap = endredmap;
+	deninfa.measCPU = measCPU;
 
 	// default measurement type is parsed
 	deninfa.measdata = defaultmeasType;

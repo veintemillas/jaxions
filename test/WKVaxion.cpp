@@ -106,17 +106,17 @@ int	main (int argc, char *argv[])
 	//- number of plaquetes pierced by strings
 	lm.str.strDen = 0 ;
 	//- Info to measurement
-	MeasInfo ninfa;
+	MeasInfo ninfa = deninfa;
 	//- information needs to be passed onto measurement files
-	ninfa.sliceprint = sliceprint;
-	ninfa.idxprint = 0 ;
+	// ninfa.sliceprint = sliceprint;
+	// ninfa.idxprint = 0 ;
 	ninfa.index = fIndex;
 	ninfa.redmap = endredmap;
-
-	// default measurement type is parsed
-	ninfa.measdata = defaultmeasType;
-	ninfa.mask = spmask;
-	ninfa.rmask = rmask;
+	//
+	// // default measurement type is parsed
+	// ninfa.measdata = defaultmeasType;
+	// ninfa.mask = spmask;
+	// ninfa.rmask = rmask;
 
 		//--------------------------------------------------
 	//       WKB
@@ -131,7 +131,7 @@ int	main (int argc, char *argv[])
 	if (zFinl < z_now)
 		zFinl = z_now	;
 
-	LogOut("from z1=%f to z2=%f in %d time steps\n\n", z_now, zFinl, nSteps);
+	LogOut("from z1=%f to z2=%f in %d log-time steps\n\n", z_now, zFinl, nSteps);
 
 	for (int i = 1; i < nSteps+1; i++)
 	{
@@ -140,7 +140,8 @@ int	main (int argc, char *argv[])
 		ninfa.measdata = defaultmeasType;
 		lm = Measureme (axion, ninfa);
 
-		double zco = z_now + i*(zFinl-z_now)/nSteps	;
+		// double zco = z_now + i*(zFinl-z_now)/nSteps	;
+		double zco = z_now*std::exp( std::log(zFinl/z_now)*i/nSteps )	;
 		{
 			LogOut ("WKBing to %.4f ... ", zco);
 			WKB wonka(axion, axion);
