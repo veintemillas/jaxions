@@ -31,7 +31,7 @@ double kCrit = 1.0;
 //JAVIER
 double fA  = 1.0e10;
 double frw = 1.0;
-double mode0 = 10.0;
+double mode0 = 0.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
 double zrestore = 1.0e+20;
@@ -490,7 +490,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.siter     = 40;
 	icdatst.kcr       = 1.0;
 	icdatst.kMax      = 2;
-	icdatst.mode0     = 10.0;
+	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
