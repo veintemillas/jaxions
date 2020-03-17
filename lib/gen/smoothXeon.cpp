@@ -67,8 +67,8 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		case	FIELD_DOUBLE:
 		for (size_t it=0; it<iter; it++)
 		{
-			iteraXeon (static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), alpha);
-			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
+			iteraXeon(static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->m2Cpu()), field->Length(), field->Surf(), field->Size(), alpha);
+			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->m2Cpu()), field->DataSize()*field->Size());
 			field->exchangeGhosts(FIELD_M);
 		}
 		break;
@@ -76,8 +76,8 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		case	FIELD_SINGLE:
 		for (size_t it=0; it<iter; it++)
 		{
-			iteraXeon (static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
-			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
+			iteraXeon(static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->m2Cpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
+			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->m2Cpu()), field->DataSize()*field->Size());
 			field->exchangeGhosts(FIELD_M);
 		}
 		break;

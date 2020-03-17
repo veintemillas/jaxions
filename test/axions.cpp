@@ -13,6 +13,7 @@
 #include "comms/comms.h"
 #include "strings/strings.h"
 #include "scalar/scalar.h"
+#include "spectrum/spectrum.h"
 
 #include <iostream>
 
@@ -36,7 +37,7 @@ int	main (int argc, char *argv[])
 
 	std::cout << zInit << std::endl;
 
-if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
+	if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 		LogOut("Error: Neither initial conditions nor configuration to be loaded selected. Empty field.\n");
 	} else {
 		if (fIndex == -1)
@@ -117,8 +118,8 @@ if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 	commSync();
 
 	void *eRes, *str;			// Para guardar la energia
-	trackAlloc(&eRes, 128);
-	memset(eRes, 0, 128);
+	trackAlloc(&eRes, 256);
+	memset(eRes, 0, 256);
 
 	commSync();
 
@@ -200,15 +201,20 @@ if ((fIndex == -1) && (myCosmos.ICData().cType == CONF_NONE)) {
 		writeEnergy (axion, eRes);
 		writePoint  (axion);
 		cDensityMap (axion);
+
+		SpecBin specAna(axion, pType);
+		specAna.pRun();
+		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
 		destroyMeas ();
 
 		// Test reduced strings
-		createMeas  (axion, index+20000);
-		axion->setReduced(true, axion->Length()/ScaleFactor, axion->Depth()/ScaleFactor);
-		strDen = strings(axion);
-		writeString (axion, strDen);
-		axion->setReduced(false);
-		destroyMeas ();
+		//createMeas  (axion, index+20000);
+		//axion->setReduced(true, axion->Length()/ScaleFactor, axion->Depth()/ScaleFactor);
+		//strDen = strings(axion);
+		//writeString (axion, strDen);
+		//axion->setReduced(false);
+		//destroyMeas ();
 	} // zloop
 
 	current = std::chrono::high_resolution_clock::now();

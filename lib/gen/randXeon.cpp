@@ -38,17 +38,16 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	double kMx   = (double) ic.kMax;
 	double kMy   = 0.;
 	double kMz   = 0.;
+	double kBase = 2.0*M_PI/Lx;
 
 	/* this is useless in many applications but harms not much */
 	FILE *cacheFile = nullptr;
 	if (((cacheFile  = fopen("./kkk.dat", "r")) == nullptr)){
 		LogMsg(VERB_NORMAL,"No kkk.dat file use defaults k = (kMax,1,0)");
-	}
-	else
-	{					double kkk;
-						fscanf (cacheFile ,"%lf ", &kMx);
-						fscanf (cacheFile ,"%lf ", &kMy);
-						fscanf (cacheFile ,"%lf ", &kMz);
+	} else {
+		fscanf (cacheFile ,"%lf ", &kMx);
+		fscanf (cacheFile ,"%lf ", &kMy);
+		fscanf (cacheFile ,"%lf ", &kMz);
 		LogMsg(VERB_NORMAL,"[rand] kkk.dat file used k = (%.2f,%.2f,%.2f)",kMx,kMy,kMz);
 	}
 
@@ -66,13 +65,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 		#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 		for (size_t idx=0; idx<V; idx++)
 		{
-			size_t iz ;
-			size_t iy ;
-			size_t ix	;
-			size_t rho2 ;
-			int z ;
-			int y ;
-			int x ;
+			size_t ix, iy, iz, rho2;
+			int     x,  y,  z;
 
 			switch (SMVT)
 			{
@@ -262,8 +256,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					iz = idx/Sf + local_z_start;
 					iy = (idx%Sf)/Lx ;
 					ix = (idx%Sf)%Lx ;
-					Float thetap = ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
-
+					Float thetap = ((Float) mod0*sin(kBase*(ix*kMx + iy*kMy + iz*kMz)));
 					m[idx] = std::complex<Float>(0., thetap);
 					break;
 				}

@@ -491,7 +491,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.siter     = 40;
 	icdatst.kcr       = 1.0;
 	icdatst.kMax      = 2;
-	icdatst.mode0     = 10.0;
+	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
