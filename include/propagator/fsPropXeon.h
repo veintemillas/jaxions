@@ -370,7 +370,7 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 			savev1 = v[1];
 		}
 
-		// #pragma omp parallel default(shared)
+		#pragma omp parallel default(shared)
 		{
 			_MData_ pV, aux, saux, caux, vV, mV, m2V;
 			size_t idxm, idxv ;
@@ -380,7 +380,7 @@ inline	void	fsPropKernelXeon(void * __restrict__ m_, void * __restrict__ v_, con
 
 			// number of local modes, I'd say Lx^2 Lz
 			// start by splitting on z so that Lx^2 always fist an integer 32
-			// #pragma omp parallel for schedule(static) default(shared)
+			#pragma omp for schedule(static)
 			for (size_t oy = 0; oy < Ly; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
 			{
 				ky =(int) (oy + zBase);
