@@ -6,6 +6,7 @@
 
 #include "strings/strings.h"
 #include "strings/stringXeon.h"
+#include "scalar/fourier.h"
 
 #ifdef	USE_GPU
 	#include <cuda.h>
@@ -81,10 +82,9 @@ using namespace profiler;
 
 StringData	strings	(Scalar *field)
 {
-	LogMsg	(VERB_HIGH, "Called strings");
+	LogMsg	(VERB_HIGH, "[str] Called strings");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
 
-	prof.start();
 
 	StringData	strDen;
 
@@ -100,13 +100,22 @@ StringData	strings	(Scalar *field)
 		return strDen;
 	}
 
-	auto	eStr = std::make_unique<Strings> (field);
+	if	( field->MMomSpace() || field->VMomSpace() )
+	{
+		if (debug) LogOut("[str] FT!\n");
+		FTfield pelotas(field);
+		pelotas(FIELD_MV, FFT_BCK); // BCK is to send to position space transposed in
+	}
 
 	if	(!field->Folded() && field->Device() == DEV_CPU)
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
 	}
+
+	prof.start();
+
+	auto	eStr = std::make_unique<Strings> (field);
 
 	switch (field->Device())
 	{
@@ -167,7 +176,7 @@ StringData	strings2	(Scalar *field)
 	LogMsg	(VERB_NORMAL, "[st2] Called strings2");
 	profiler::Profiler &prof = getProfiler(PROF_STRING);
 
-	prof.start();
+
 
 	StringData	strDen;
 
@@ -184,13 +193,22 @@ StringData	strings2	(Scalar *field)
 		return strDen;
 	}
 
-	auto	eStr = std::make_unique<Strings> (field);
+	if	( field->MMomSpace() || field->VMomSpace() )
+	{
+		if (debug) LogOut("[str] FT!\n");
+		FTfield pelotas(field);
+		pelotas(FIELD_MV, FFT_BCK); // BCK is to send to position space transposed in
+	}
 
 	if	(!field->Folded() && field->Device() == DEV_CPU)
 	{
 		Folder	munge(field);
 		munge(FOLD_ALL);
 	}
+
+	prof.start();
+	auto	eStr = std::make_unique<Strings> (field);
+
 
 	switch (field->Device())
 	{
