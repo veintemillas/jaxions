@@ -105,7 +105,7 @@ void	SpecBin::fillBins	() {
 		int  tIdx = omp_get_thread_num ();
 
 		#pragma omp for schedule(static)
-		for (size_t idx=0; idx<nPts; idx++) {
+		for (size_t idx=0; idx<nModeshc; idx++) {
 			size_t tmp = idx/Lx;
 			int    kx  = idx - tmp*Lx;
 			int    ky  = tmp/Tz;
@@ -813,9 +813,11 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 					// GRADIENT Z:
 					// Copy m2aux -> m2
-					size_t dataTotalSize2 = field->DataSize()*field->eSize()/2;
-					char *m2C = static_cast<char *>(field->m2Cpu());
-					memmove	(m2C, m2C+dataTotalSize2, dataTotalSize2);
+					// we move real, not complex numbers
+					size_t dataTotalSize2 = field->Precision()*field->eSize();
+					char *m2C  = static_cast<char *>(field->m2Cpu());
+					char *m2Ch = static_cast<char *>(field->m2half());
+					memmove	(m2C, m2Ch, dataTotalSize2);
 
 					/* unpad m2 in place if SPMASK_GAUS/DIFF */
 						if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
@@ -1079,10 +1081,10 @@ void	SpecBin::nSRun	() {
 
 
 			// Copy m2aux -> m2
-			size_t dSize    = (size_t) (field->Precision());
-			size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
-			char *mA = static_cast<char *>(field->m2Cpu());
-			memmove	(mA, mA+dataTotalSize, dataTotalSize);
+			size_t dataTotalSize = field->Precision()*field->eSize();
+			char *mA  = static_cast<char *>(field->m2Cpu());
+			char *mAh = static_cast<char *>(field->m2half());
+			memmove	(mA, mAh, dataTotalSize);
 
 			// float *m2sa                 = static_cast<float *>(field->m2Cpu());
 			// float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
@@ -1164,7 +1166,7 @@ void	SpecBin::filterFFT	(double neigh) {
 
 	#pragma omp parallel
 	#pragma omp for schedule(static)
-		for (size_t idx=0; idx<nPts; idx++) {
+		for (size_t idx=0; idx<nModeshc; idx++) {
 
 			int kz = idx/Lx;
 			int kx = idx - kz*Lx;
