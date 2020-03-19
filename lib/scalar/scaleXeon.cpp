@@ -12,12 +12,12 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 		case FIELD_DOUBLE:
 		{
 			complex<double> *field;
-			size_t vol = sField->Size();
+			size_t vol = sField->eSize();
 
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = static_cast<complex<double>*> (sField->mStart());
+				field = static_cast<complex<double>*> (sField->mCpu());
 				break;
 
 				case FIELD_V:
@@ -50,12 +50,12 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 		{
 			complex<float> *field;
 			float  fac = factor;
-			size_t vol = sField->Size();
+			size_t vol = sField->eSize();
 
 			switch (fIdx)
 			{
 				case FIELD_M:
-				field = static_cast<complex<float> *> (sField->mStart());
+				field = static_cast<complex<float> *> (sField->mCpu());
 				break;
 
 				case FIELD_V:
