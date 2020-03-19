@@ -27,7 +27,7 @@
 
 		Scalar			*field;
 
-		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, kMax, powMax, controlxyz;
+		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, nModeshc, kMax, powMax, controlxyz;
 		double			mass2, mass2Sax; // squared masses (comoving)
 		double 			Rscale, depta;
 		double 			zaskar;
@@ -44,7 +44,7 @@
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
-									       nPts(field->Size()), spec(spectral), fPrec(field->Precision()), fType(field->Field()) {
+									spec(spectral), fPrec(field->Precision()), fType(field->Field()) {
 				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 
@@ -97,7 +97,7 @@
 						return;
 				}
 
-				nPts = Lx*Ly*Lz;
+				nModeshc = Lx*Ly*Lz;
 
 		}
 
