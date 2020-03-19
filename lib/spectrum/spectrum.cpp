@@ -109,15 +109,13 @@ void	SpecBin::fillBins	() {
 			size_t tmp = idx/Lx;
 			int    kx  = idx - tmp*Lx;
 			int    ky  = tmp/Tz;
-
 			int    kz  = tmp - ((size_t) ky)*Tz;
-
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
 			//ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
 
-			if (kx > static_cast<int>(hLx)) kx -= static_cast<int>(Lx);
+			// if (kx > static_cast<int>(hLx)) kx -= static_cast<int>(Ly); // half complex, this line is not needed
 			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
 			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
@@ -623,7 +621,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 		munge(UNFOLD_ALL);
 	}
 
-	field->sendGhosts(FIELD_M,COMM_SDRV);
+	field->sendGhosts(FIELD_M, COMM_SDRV);
 	field->sendGhosts(FIELD_M, COMM_WAIT);
 
 	switch (fType) {
@@ -815,9 +813,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 					// GRADIENT Z:
 					// Copy m2aux -> m2
-					size_t dSize    = (size_t) (field->Precision());
-					//size_t dataTotalSize = dSize*(Ly+2)*Ly*Lz;
-					size_t dataTotalSize2 = dSize*Ly*Ly*(Lz+2);
+					size_t dataTotalSize2 = field->DataSize()*field->eSize()/2;
 					char *m2C = static_cast<char *>(field->m2Cpu());
 					memmove	(m2C, m2C+dataTotalSize2, dataTotalSize2);
 
