@@ -29,7 +29,7 @@ def smo(K0,sigma):
     lK = lK0
     lK[1:] = gaussian_filter1d(lK0[1:],sigma,mode='nearest',cval=0.0)
     return 10**lK
-    
+
 
 
 
@@ -1191,7 +1191,7 @@ class Setq:
 #   self.log     　　array for log(m/H)
 #
 class Scanq:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6., typesigma=1):
+    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6., typesigma=1, verbose=True):
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -1208,7 +1208,8 @@ class Scanq:
         self.gammam = []
         self.nmbin = []
         for id in range(len(insplog)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
+            if verbose:
+                print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
@@ -1228,7 +1229,8 @@ class Scanq:
             self.betam.append(sqt.betam)
             self.gammam.append(sqt.gammam)
             self.nmbin.append(sqt.nmbin)
-        print("")
+        if verbose:
+            print("")
         self.chi2min = np.array(self.chi2min)
         self.qbest = np.array(self.qbest)
         self.mbest = np.array(self.mbest)
@@ -1292,7 +1294,7 @@ class Scanq:
 #   self.cxmaxopt   array for optimized values of cxmax
 #
 class Scanqopt:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, typesigma=1):
+    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, typesigma=1, verbose=True):
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -1310,7 +1312,8 @@ class Scanqopt:
         self.nmbin = []
         self.cxmaxopt = []
         for id in range(len(insplog)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
+            if verbose:
+                print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin,typesigma)
@@ -1342,7 +1345,8 @@ class Scanqopt:
             self.gammam.append(sqt.gammam)
             self.nmbin.append(sqt.nmbin)
             self.cxmaxopt.append(copt)
-        print("")
+        if verbose:
+            print("")
         self.chi2min = np.array(self.chi2min)
         self.qbest = np.array(self.qbest)
         self.mbest = np.array(self.mbest)
