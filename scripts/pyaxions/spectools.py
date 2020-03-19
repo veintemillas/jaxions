@@ -6,6 +6,7 @@ import pickle
 from pyaxions import jaxions as pa
 from numpy.linalg import inv
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter1d
 
 
 
@@ -22,7 +23,13 @@ def rdata(name, dataname):
     with open(pname,'rb') as r:
         return pickle.load(r)
 
-
+def smo(K0,sigma):
+    # If data was corrected by m matrix, it can be negative occationally
+    lK0 = np.log10(np.absolute(K0))
+    lK = lK0
+    lK[1:] = gaussian_filter1d(lK0[1:],sigma,mode='nearest',cval=0.0)
+    return 10**lK
+    
 
 
 
