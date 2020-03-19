@@ -767,6 +767,15 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--vqcdlinear"))
+		{
+			uPot = true;
+			vqcdType = VQCD_QUAD ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--vqcd2"))
 		{
 			uPot = true;

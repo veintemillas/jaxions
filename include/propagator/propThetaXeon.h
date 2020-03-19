@@ -26,7 +26,7 @@
 	#endif
 #endif
 
-template<const bool wMod>
+template<const bool wMod, const VqcdType VQcd>
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
 						const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
@@ -262,10 +262,18 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 			/* Acceleration
 					lap - mA2R3 sin(psi/R) + Rpp psi*/
-			acu = opCode(sub_pd, lap,
-							opCode(sub_pd, opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))),
-								opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
-
+			switch(VQcd){
+				case VQCD_0:
+					acu = opCode(sub_pd, lap,
+									opCode(sub_pd, opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))),
+										opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
+				break;
+				case VQCD_QUAD:
+					acu = opCode(sub_pd, lap,
+									opCode(sub_pd, opCode(mul_pd, zQVec, opCode(mul_pd, mel, izVec)),
+										opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
+				break;
+			}
 			/* Update  */
 			vel = opCode(load_pd, &v[idx-NSf]);
 
@@ -512,6 +520,20 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 							opCode(sub_ps, opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))),
 								opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
 
+			switch(VQcd){
+				case VQCD_0:
+				acu = opCode(sub_ps, lap,
+								opCode(sub_ps, opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))),
+									opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
+				break;
+				case VQCD_QUAD:
+				acu = opCode(sub_ps, lap,
+								opCode(sub_ps, opCode(mul_ps, zQVec, opCode(mul_ps, mel, izVec)),
+									opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
+				break;
+			}
+
+
 			// this line kills axion self-interactions STERILE MODE!!
 			//opCode(mul_ps, zQVec, opCode(mul_ps, mel, izVec)));
 
@@ -546,17 +568,37 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 #undef	Align
 #undef	_PREFIX_
 
-inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
-				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod)
-{
-	switch (wMod)
-	{
-		case	true:
-			propThetaKernelXeon<true> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
-			break;
 
-		case	false:
-			propThetaKernelXeon<false>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
-			break;
+inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
+				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod, const VqcdType VQcd)
+{
+	switch (VQcd)
+	{
+		case VQCD_0:
+		case VQCD_1:
+		case VQCD_2:
+		{
+				switch (wMod) {
+					case	true:
+						propThetaKernelXeon<true,VQCD_0> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						break;
+
+					case	false:
+						propThetaKernelXeon<false,VQCD_0>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						break;
+				}
+		} return;
+		case VQCD_QUAD:
+		{
+				switch (wMod) {
+					case	true:
+						propThetaKernelXeon<true,VQCD_QUAD> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						break;
+
+					case	false:
+						propThetaKernelXeon<false,VQCD_QUAD>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						break;
+				}
+		} return;
 	}
 }

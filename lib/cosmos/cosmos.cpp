@@ -247,6 +247,7 @@ double  Cosmos::SaxionMass2  (double ct)
 		case    VQCD_0:
 		case    VQCD_1:
 		case    VQCD_2:
+    case    VQCD_QUAD:
 		case    VQCD_1N2:
 		case    VQCD_PQ_ONLY:
 			return 2.*lbd;

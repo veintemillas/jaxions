@@ -99,9 +99,10 @@
 			VQCD_2            = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
 			VQCD_1_PQ_2       = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
 			VQCD_1N2          = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_QUAD         = 16,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			VQCD_QUAD         = 16,		// QCD1 [N=2] potential chi[theta^2/2], PQ1 potential
 			VQCD_0            = 32,   // cosine potential
 			VQCD_PQ_ONLY      = 64,   // no axion potential, massless propagation
+
 
 			VQCD_1_RHO        = 8193,		// First version QCD potential, only rho evolution
 			VQCD_2_RHO        = 8194,		// Second version QCD potential, only rho evolution

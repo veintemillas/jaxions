@@ -384,16 +384,7 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tRunCpu	(const double dz) {
 		double *z = axion->zV();
-		// double *R = axion->RV();
 
-		/* Returns ghost size region in slices */
-		// size_t NG   = axion->getNg();
-		// LogMsg(VERB_DEBUG,"[propAx] Ng %d",NG);
-		// /* Size of Boundary */
-		// size_t BO = NG*S;
-		// /* Size of Core  */
-		// // size_t CO = V-2*NG*S;
-		// double *PC = axion->getCO();
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
 		PropParms ppar;
@@ -416,10 +407,10 @@
 
 			const double c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V , precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, BO, 2*BO, precision, xBlock, yBlock, zBlock, wMod);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, V , V+BO, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, BO, 2*BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, V , V+BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			*z += dz*d1;
 			axion->updateR();
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
@@ -428,10 +419,10 @@
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
 
-			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
-			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, BO  , 2*BO, precision, xBlock, yBlock, zBlock, wMod);
-			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, V   , V+BO, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, BO  , 2*BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
+			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, V   , V+BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			*z += dz*d2;
 			axion->updateR();
 		}
@@ -447,10 +438,10 @@
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
 
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., BO  , 2*BO, precision, xBlock, yBlock, zBlock, wMod);
-			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., V   , V+BO, precision, xBlock, yBlock, zBlock, wMod);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., BO  , 2*BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
+			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., V   , V+BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
 		}
 
 	}
@@ -524,16 +515,6 @@
 	template<const int nStages, const bool lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunCpu	(const double dz) {
 		double *z = axion->zV();
-		// double *R = axion->RV();
-		// double cLmbda ;
-
-		/* Returns ghost size region in slices */
-		// size_t NG   = axion->getNg();
-		// LogMsg(VERB_DEBUG,"[propSax] Ng %d",NG);
-		// /* Size of Boundary */
-		// size_t BO = NG*S;
-		// /* Size of Core  */
-		// size_t CO = V-2*NG*S;
 
 		PropParms ppar;
 		ppar.Ng     = axion->getNg();
@@ -558,13 +539,6 @@
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
 
-			// cLmbda = axion->LambdaP();
-			// auto maa = axion->AxionMassSq();
-
-			// propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, 2*BO, V   , precision, xBlock, yBlock, zBlock);
-			// axion->sendGhosts(FIELD_M, COMM_WAIT);
-			// propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			// propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), NG, R, dz, c1, d1, ood2, cLmbda, maa, gamma, Lx, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
@@ -574,8 +548,6 @@
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
-			// cLmbda = axion->LambdaP();
-			// maa = axion->AxionMassSq();
 			ppar.lambda = axion->LambdaP();
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();

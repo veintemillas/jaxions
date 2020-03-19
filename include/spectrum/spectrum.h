@@ -82,6 +82,7 @@
 						// break;
 					case	FIELD_AXION_MOD:
 					case	FIELD_AXION:
+					case	FIELD_PAXION:
 						Lx   = (Ly >> 1)+1;
 						hLx  = Lx;
 						break;

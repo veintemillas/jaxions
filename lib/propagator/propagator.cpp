@@ -370,6 +370,10 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 						prop = std::make_unique<PropMLeap<VQCD_0_DRHO>>		(field, propclass);
 						break;
 
+					case VQCD_QUAD:
+						prop = std::make_unique<PropMLeap<VQCD_QUAD>>		(field, propclass);
+						break;
+
 					case VQCD_1N2:
 						prop = std::make_unique<PropMLeap<VQCD_1N2>>		(field, propclass);
 						break;
@@ -428,6 +432,10 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					break;
 				case VQCD_0_DRHO:
 					prop = std::make_unique<PropRKN4<VQCD_0_DRHO>>		(field, propclass);
+					break;
+
+				case VQCD_QUAD:
+					prop = std::make_unique<PropRKN4<VQCD_QUAD>>		(field, propclass);
 					break;
 
 				case VQCD_PQ_ONLY:
