@@ -30,6 +30,18 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogMsg(VERB_NORMAL, "\n ");
 	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
 
+// float *mmm = static_cast<float *>(axiona->mCpu());
+// float *mss = static_cast<float *>(axiona->mStart());
+// float *vvv = static_cast<float *>(axiona->vCpu());
+// float *mm2 = static_cast<float *>(axiona->m2Cpu());
+//
+// LogOut("[MS] m  values %.2e %.2e %.2e %.2e \n",mmm[0],mmm[1],mmm[2],mmm[3]);
+// LogOut("[MS] ms values %.2e %.2e %.2e %.2e \n",mss[0],mss[1],mss[2],mss[3]);
+// LogOut("[MS] v  values %.2e %.2e %.2e %.2e \n",vvv[0],vvv[1],vvv[2],vvv[3]);
+// LogOut("[MS] m2 values %.2e %.2e %.2e %.2e \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+
+
+
 	/* For GPU */
 	// if (cDev != DEV_CPU){
 	// LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
@@ -147,9 +159,16 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			contBin.run();
 			writeBinner(contBin, "/bins", "fsacceleration");
 		}
+
 		FTfield pelota(axiona);
-		pelota(FIELD_MV, FFT_BCK); // FWD is to send to POSITION space
+		pelota(FIELD_MV, FFT_BCK); // FWD is to send to MOMENTUM space
 	}
+
+	// LogOut("[MS*] m  values %.2e %.2e %.2e %.2e \n",mmm[0],mmm[1],mmm[2],mmm[3]);
+	// LogOut("[MS*] ms values %.2e %.2e %.2e %.2e \n",mss[0],mss[1],mss[2],mss[3]);
+	// LogOut("[MS*] v  values %.2e %.2e %.2e %.2e \n",vvv[0],vvv[1],vvv[2],vvv[3]);
+	// LogOut("[MS*] m2 values %.2e %.2e %.2e %.2e \n",mm2[0],mm2[1],mm2[2],mm2[3]);
+
 
 	if( info.maty & MAPT_XYMV)
 		writeMapHdf5s  (axiona,sliceprint);
