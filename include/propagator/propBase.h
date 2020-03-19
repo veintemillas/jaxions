@@ -27,7 +27,7 @@
 		virtual void	tRunCpu	(const double) = 0;	// Axion propagator
 		virtual void	tRunGpu	(const double) = 0;
 		virtual void	tSpecCpu(const double) = 0;	// Axion spectral propagator
-
+		virtual void	tFpecCpu(const double) = 0;	// Axion spectral propagator
 
 		virtual void	nRunCpu	(const double) = 0;	// Naxion propagator
 

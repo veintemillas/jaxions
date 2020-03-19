@@ -23,6 +23,9 @@
 
 		void	iftField(FieldIndex mvomv);
 
+		void	padtom2(void* point);
+		void	unpadfromm2(void* point);
+
 		public:
 
 			 FTfield(Scalar *scalar);
