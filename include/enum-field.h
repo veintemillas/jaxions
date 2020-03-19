@@ -356,6 +356,7 @@
 			FFT_CtoC_VtoV      = 15,
 			FFT_CtoC_M2toM     = 16,
 			FFT_RtoC_M2toM     = 17,
+			FFT_RtoC_M2toV     = 18,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {
@@ -646,6 +647,7 @@
 		{
 			size_t   Ng;
 			size_t   Lx;
+			size_t   Tz;
 			size_t   Vo;
 			size_t   Vf;
 			double   R;
@@ -661,6 +663,7 @@
 			double   beta;
 			int      sign;
 			double   frw;
+			double   fMom1;
 
 		}	PropParms;
 
