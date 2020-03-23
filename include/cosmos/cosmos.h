@@ -85,7 +85,8 @@
 		/* Saxion mass squared not conformal */
 		double	 LambdaP (const double ct);
 
-
+		/* derivative of Axion mass2 with respect to time */
+		double	 DAxionMass2Dct (const double ct);
 //		double	 SaxionShift(const double z);
 //		double	 Saskia	    (const double z);
 
