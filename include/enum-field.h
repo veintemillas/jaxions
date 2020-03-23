@@ -65,6 +65,7 @@
 
 		typedef	enum	StringType_s
 		{
+			STRING_NOTHING     = 0,
 			STRING_XY_POSITIVE = 1,
 			STRING_YZ_POSITIVE = 2,
 			STRING_ZX_POSITIVE = 4,
@@ -441,6 +442,7 @@
 			SPMASK_REDO	= 8,
 			SPMASK_GAUS	= 16,
 			SPMASK_DIFF	= 32,
+			SPMASK_BALL	= 64,
 
 			SPMASK_SAXI	= 256,
 
