@@ -77,7 +77,7 @@ void	Projector<Float>::runCpu	() {
 	#pragma	omp parallel for schedule(static)
 	for (size_t pt = 0; pt < Sf; pt++)
 		outData[pt] *= oZ;
-}	
+}
 
 template<typename Float>
 void	projectField	(Scalar *field, std::function<double(double)> myFilter)
@@ -88,15 +88,18 @@ void	projectField	(Scalar *field, std::function<double(double)> myFilter)
 	}
 
 	if (field->m2Status() != M2_ENERGY) {
-		LogError("Error: projector only works with energies and the energy has not been computed");
-		return;
+		if (field->m2Status() != M2_ANTIMASK) {
+			if (field->m2Status() != M2_MASK) {
+				LogError("Error: projector only works with energies or anti-masks and the energy has not been computed");
+				return;
+		}}
 	}
 
 	auto	projector = std::make_unique<Projector<Float>> (field, myFilter);
 	Profiler &prof = getProfiler(PROF_PROJECTOR);
 
 	std::stringstream ss;
-	ss << "Project " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " with " << commSize() << "ranks"; 
+	ss << "Project " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " with " << commSize() << "ranks";
 
 	projector->setName(ss.str().c_str());
 	prof.start();
@@ -134,6 +137,6 @@ void	projectField	(Scalar *field, std::function<double(double)> myFilter) {
 		projectField<double>(field, myFilter);
 	else
 		projectField<float> (field, myFilter);
-	
+
 	return;
 }
