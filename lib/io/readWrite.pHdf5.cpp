@@ -3856,7 +3856,7 @@ void	writeEMapHdf5	(Scalar *axion)
 
 
 
-void	writePMapHdf5	(Scalar *axion)
+void	writePMapHdf5s	(Scalar *axion, char *eCh)
 {
 	hid_t	mapSpace, chunk_id, group_id, eSet_id, eSpace, dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -3867,7 +3867,7 @@ void	writePMapHdf5	(Scalar *axion)
 	hsize_t slb  = slabSz;
 	hsize_t lSz  = sizeN;
 	char *dataE  = static_cast<char *>(axion->mFrontGhost());
-	char eCh[16] = "/map/P";
+	// char eCh[16] = "/map/P";
 
 	LogMsg (VERB_NORMAL, "Writing 2D energy projection to Hdf5 measurement file");
 	LogMsg (VERB_NORMAL, "");
@@ -3997,6 +3997,13 @@ void	writePMapHdf5	(Scalar *axion)
 	prof.add(std::string("Write PMap"), 0, 1.e-9*slb*dataSize);
 	LogMsg (VERB_NORMAL, "Written %lu bytes", slb*dataSize);
 }
+
+
+void	writePMapHdf5	(Scalar *axion)
+{
+	writePMapHdf5s	(axion, "/map/P");
+}
+
 
 void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 {
