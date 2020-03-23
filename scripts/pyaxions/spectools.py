@@ -1545,6 +1545,24 @@ class readq:
 
 
 
+#   take ensemble average of q
+#   assuming input as list of Scanq class object
+def aveq(qlist):
+    Ntime = len(qlist[0].log)
+    Nreal = len(qlist)
+    q = [0]*(Ntime)
+    qsq = [0]*(Ntime)
+    for ir in range(Nreal):
+        q += qlist[ir].qbest
+        qsq += np.square(qlist[ir].qbest)
+    q = q/Nreal
+    qsq = (qsq - Nreal*q*q)/(Nreal-1)
+    sigmaq = np.sqrt(qsq)
+    return [q,sigmaq,sigmaq/math.sqrt(Nreal)]
+
+
+
+
 
 # ------------------------------------------------------------------------------
 #   String density
