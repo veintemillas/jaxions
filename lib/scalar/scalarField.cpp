@@ -215,6 +215,7 @@ const std::complex<float> If(0.,1.);
 			LogMsg(VERB_NORMAL, "[sca] allocating m, v");
 			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
+			trackAlloc ((void**) &str, n3);
 			break;
 
 		default:
