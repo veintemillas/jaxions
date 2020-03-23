@@ -450,6 +450,7 @@ void	PrintMEoptions()
 	printf("    Red (Top-hat from Gaussian cut)        8 \n");
 	printf("    Gaussian                               16 \n");
 	printf("    Diffusion from core top hat            32 \n");
+	printf("    Ball                                   64 \n");
 	printf("     --rmask [float]                       Mask radius in 1/m_s units [default = 2]\n");
 	printf("     --rmask file                          Prints different spectra, each masked \n");
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
@@ -2382,7 +2383,11 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.strmeas = strmeas;
 	deninfa.mask = spmask;
 	deninfa.rmask = rmask;
-	deninfa.i_rmask = i_rmask;
+
+	std::sort(rmask_tab.begin(), rmask_tab.end());
+ 	auto last = std::unique(rmask_tab.begin(), rmask_tab.end());
+ 	rmask_tab.erase(last, rmask_tab.end());
+	deninfa.i_rmask = rmask_tab.size();
 	deninfa.rmask_tab = rmask_tab;
 	deninfa.maty = maty;
 	deninfa.nrt = nrt;
