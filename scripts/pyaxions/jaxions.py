@@ -798,28 +798,30 @@ def gm(address,something='summary',printerror=False):
     # power spectra
     psp_check = 'pSpectrum' in f
 
+    if (something == 'psp_info'):
+        return [a for a in f['pSpectrum']]
+
     if (something == 'psp?') :
         return psp_check
-
-    if (something == 'pspMA?') :
-        return 'pSpectrum/sPmasked' in f
-
-    if (something == 'pspMA2?') :
-        return 'pSpectrum/sPmasked2' in f
 
     if (something[0:3] == 'psp') and not psp_check :
         if printerror :
             print('[gm] Warning: No pSpec in file. ')
         return ;
-    if (something[0:3] == 'psp') and  psp_check :
-        if (something == 'psp') and 'pSpectrum/sP' in f:
-            return np.array(f['pSpectrum/sP/data/']) ;
 
+    if (something[0:3] == 'psp') and  psp_check :
+
+        # if (something == 'psp') and 'pSpectrum/sP' in f:
+        #     return np.array(f['pSpectrum/sP/data/']) ;
+        #
         if (something == 'pspMA') and 'pSpectrum/sPmasked' in f:
             return np.array(f['pSpectrum/sPmasked/data/']) ;
 
         if (something == 'pspMA2') and 'pSpectrum/sPmasked2' in f:
             return np.array(f['pSpectrum/sPmasked2/data/']) ;
+        ad = something[3:]
+        if (something[:3] == 'psp') and ('pSpectrum/sP'+ad in f):
+            return np.array(f['pSpectrum/sP'+ad+'/data/']) ;
 
     # maps
 
