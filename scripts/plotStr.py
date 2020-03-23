@@ -52,15 +52,24 @@ class	GLViewWithText(gl.GLViewWidget):
 
 class	Plot3D():
 	def	__init__(self):
-		fileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
-
+		prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 		usableFiles = []
-		print('files with strings? ... ',end='')
-		for myFile in fileMeas:
-			fileHdf5 = h5py.File(myFile, "r")
-			if "/string/data" in fileHdf5:
-				usableFiles.append(myFile)
+		for maes in prefileMeas:
+			try:
+				with h5py.File(maes, 'r') as f:
+					if ("/string/data" in f) :
+						usableFiles.append(maes)
+			except:
+				print('Error opening file: %s'%maes)
+
+		# usableFiles = []
+		# print('files with strings? ... ',end='')
+		# for myFile in fileMeas:
+		# 	fileHdf5 = h5py.File(myFile, "r")
+		# 	if "/string/data" in fileHdf5:
+		# 		usableFiles.append(myFile)
 		print('from ', usableFiles[0], ' to ', usableFiles[-1])
+
 
 		self.allData = []
 
@@ -106,8 +115,8 @@ class	Plot3D():
 
 				fl = fileHdf5["/"].attrs.get("Field type").decode()
 
-				if fl == "Axion":
-					continue
+				# if fl == "Axion":
+				# 	continue
 
 				if self.Lx != Lx or self.Ly != Ly or self.Lz != Lz:
 					print("Error: Size mismatch (%d %d %d) vs (%d %d %d)\nAre you mixing files?\n" % (Lx, Ly, Lz, self.Lx, self.Ly, self.Lz))
