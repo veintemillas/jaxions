@@ -213,7 +213,7 @@ double  Cosmos::T       (const double ct)
 double  Cosmos::AxionMass2 (const double ct)
 {
   if (ueCosm)
-    return std::sqrt(schi(ct));
+    return schi(ct);
   else {
 
     double RNow = R(ct);
@@ -229,6 +229,28 @@ double  Cosmos::AxionMass2 (const double ct)
             aMass = indi3*indi3*pow(RNow, nQcd);
 
     return aMass;
+    }
+}
+
+
+double  Cosmos::DAxionMass2Dct (const double ct)
+{
+  if (ueCosm){
+    double cola = schi(ct+1e-6);
+
+    return (schi(ct+1.e-6)-schi(ct-1.e-6))/2.e-6;
+  }
+  else {
+
+    double RNow = R(ct);
+    double dMass2;
+
+    if ((RNow > zThRes) &&  (zThRes < zRestore))
+      dMass2 = 0.0;
+    else
+      dMass2 = frw*nQcd*AxionMass2(ct)/ct;
+
+    return dMass2;
     }
 }
 
