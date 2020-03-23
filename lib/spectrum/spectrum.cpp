@@ -370,42 +370,289 @@ void	SpecBin::fillBins	() {
 	}
 }
 
+/* masks a spherical ball around a set of points with mpi
+   using strdata matrix */
+void	SpecBin::maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) {
+
+	int rz = (int) floor(radius_mask);
+	// LogOut("[MB] MASKBALL %.2f>%d(sdlab) %lu (>>mask) %d", radius_mask, rz, DEFECT_LABEL, MASK_LABEL) ;
+	LogMsg(VERB_NORMAL,"[MB] MASKBALL %.2f>%d(sdlab) %lu (>>mask) %d", radius_mask, rz, DEFECT_LABEL, MASK_LABEL) ;
+	/* Build the ball, loop around the center of the ball
+		ball is set of coordinates for which
+		d^2 = x^2+y^2+z^2 < radius_mask^2
+		and consists on a loop structure
+		z in (z0 - rz, z0 + rz)
+		y in (y0 - ry(z-z0), y0 + ry(z))
+		x in (x0 - rz(z-z0,y-y0), x0 + rx(z-z0,y-y0))
+		we only need to compute the
+		functions rz,ry,yx
+		rz = floor(radius_mask)
+		ry = floor( sqrt(radius_mask^2-(z-z0)^2) )
+		rx = floor( sqrt(radius_mask^2-(z-z0)^2)-(y-y0)^2) )
+
+		mpi z splitting implies the z-loop will be broken in the frontier
+		if this is the case
+			calculate how many points to mask further in the z direction
+			and send them to a ghost
+			receive and mask
+
+			for mpi reasons do first the first and last rz slices,
+			arrange ghosts and send
+			compute bulk
+			force receive and compute ghosts again
+
+			problem with race conditions
+		 */
+
+
+
+	char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
+
+	if	(field->Folded())
+	{
+		Folder	munge(field);
+		munge(UNFOLD_ALL);
+	}
+
+	/*clear ghost region
+		Compute 1st last slice
+		compose ghosts
+		send ghosts */
+// LogOut("[MB] sifeof char %d short %d int %d single %d double %d\n",sizeof(char),sizeof(short),sizeof(int),sizeof(float),sizeof(double));
+
+		LogMsg(VERB_PARANOID,"[MB] clear g",radius_mask) ;LogFlush();
+
+
+		/* ghosts */
+		short *mFG   = static_cast<short *>(field->mFrontGhost());
+		short *mBG   = static_cast<short *>(field->mBackGhost());
+		#pragma omp parallel for
+		for (size_t idx = 0 ; idx < LyLy; idx++){
+			mFG[idx] = 0;
+			mBG[idx] = 0;
+		}
+
+		/* MPI rank and position of the last slice that we will send to the next rank */
+		int myRank = commRank();
+		int nsplit = (int) (field->TotalDepth()/field->Depth()) ;
+		static const int fwdNeig = (myRank + 1) % nsplit;
+		static const int bckNeig = (myRank - 1 + nsplit) % nsplit;
+
+		const int ghostBytes = LyLy*sizeof(int);
+		static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;
+		void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
+
+		sGhostBck = field->mCpu();																																						//slice to be send back
+		sGhostFwd = static_cast<void *> (static_cast<char *> (field->mBackGhost()));
+		rGhostBck = static_cast<void *> (static_cast<char *> (field->mCpu())       + LyLy*sizeof(short));	//reception point
+		rGhostFwd = static_cast<void *> (static_cast<char *> (field->mBackGhost()) + LyLy*sizeof(short));	//reception point
+
+
+		int mp = 0;
+		int ml = 0;
+		int mr = 0;
+// LogOut("[MB] boundary",radius_mask) ;LogFlush();
+		LogMsg(VERB_PARANOID,"[MB] boundary",radius_mask) ;LogFlush();
+		#pragma omp parallel for reduction(+:mp, mr,ml)
+		for (size_t liz = Lz-rz ; liz < Lz+rz; liz++) {
+			int z = liz % Lz ;
+			size_t zi = Ly*Ly*z ;
+			for (int y=0; y < Ly; y++) {
+				size_t yi = Ly*y ;
+				for (int x=0; x < Ly; x++) {
+					size_t idx = zi + yi + x;
+
+					short aux;
+					short load;
+					/* Signals by any defect */
+					if (strdaa[idx] & DEFECT_LABEL){
+						// int rz = floor(radius_mask);
+						// LogOut("defect %d %d %d mask radius %d\n",x,y,z,rz) ;
+						for (int dz = -rz; dz <= rz; dz++) {
+							int zii = (Lz+z+dz) % Lz;
+							double aux = radius_mask*radius_mask- (double) ((dz)*(dz));
+							int ry = (int) floor(sqrt(aux));
+							for (int dy=-ry; dy <= ry; dy++) {
+								int yii = (Ly+y+dy) % Ly;
+								int rx = (int) floor(sqrt(aux -(dy)*(dy)));
+								for (int dx=-rx; dx <= rx; dx++) {
+									int xii = (Ly+x+dx) % Ly;
+									mp++;
+									if (z + dz < 0)
+									{
+										ml++;
+										load = (short) -(z+dz);
+										#pragma omp atomic read
+										 	aux = mFG[(size_t) Ly*yii+xii];
+
+										if ( load > aux ){
+											#pragma omp atomic write
+												mFG[(size_t) Ly*yii+xii] = load;
+										}
+										// LogOut("(%d,%d,%d)>FG load %d aux %d \n", x+dx,y+dy,z+dz,load, aux) ;
+									}
+									else if (z + dz >= Lz)
+									{
+										mr++;
+										load = (short) (z + dz - Lz + 1);
+										#pragma omp atomic read
+											aux = mBG[(size_t) Ly*yii+xii];
+
+										if (load > aux){
+											#pragma omp atomic write
+												mBG[(size_t) Ly*yii+xii] = load;
+										}
+										// LogOut("(%d,%d,%d)>BG load %d aux %d \n", x+dx,y+dy,z+dz,load, aux) ;
+									}
+									else
+									{
+										// LogOut("(%d,%d,%d) masked\n", x+dx,y+dy,z+dz) ;
+										#pragma omp atomic update
+										strdaa[(size_t) LyLy*zii + Ly*yii + xii] |= MASK_LABEL;
+									}
+								}
+							}
+						}
+					} //end if defect!
+
+				}
+			}
+		} // end bulk loop
+
+// LogOut("[MB] mp %d mr %d ml %d ghosts",mp, mr, ml) ;
+// LogOut("[MB] send ghosts") ;
+
+	LogMsg(VERB_PARANOID,"[MB] send ghosts") ;LogFlush();
+	MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*myRank,   MPI_COMM_WORLD, &rSendFwd);
+	MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*myRank+1, MPI_COMM_WORLD, &rSendBck);
+	MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
+	MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
+
+	MPI_Start(&rRecvBck);
+	MPI_Start(&rRecvFwd);
+	MPI_Start(&rSendFwd);
+	MPI_Start(&rSendBck);
+
+// LogOut("[MB] bulk") ;
+	LogMsg(VERB_PARANOID,"[MB] bulk") ;LogFlush();
+	/* compute bulk
+	distribute in xy
+	*/
+	int mpb = 0;
+	#pragma omp parallel for reduction(+:mpb)
+	for (size_t z = rz; z < Lz-rz; z++) {
+		size_t zi = Ly*Ly*z ;
+		for (size_t y=0; y < Ly; y++) {
+			size_t yi = Ly*y ;
+			for (size_t x=0; x < Ly; x++) {
+				size_t idx = zi + yi + x;
+
+				/* Signals by any defect */
+				if (strdaa[idx] & DEFECT_LABEL){
+					// int rz = floor(radius_mask);
+					// LogOut("defect %d %d %d mask radius %d\n",x,y,z,rz) ;
+					for (int dz = -rz; dz <= rz; dz++) {
+						double aux = radius_mask*radius_mask- (double) ((dz)*(dz));
+						int ry = (int) floor(sqrt(aux));
+						for (int dy=-ry; dy <= ry; dy++) {
+							int yii = (Ly+y+dy) % Ly;
+							int rx = (int) floor(sqrt(aux -(dy)*(dy)));
+							for (int dx=-rx; dx <= rx; dx++) {
+								int xii = (Ly+x+dx) % Ly;
+								mpb++;
+								size_t uidx = (z+dz)*LyLy + Ly*yii + xii;
+								// LogOut("dz %d dy %d dx %d oau %d \n", dz, dy, dx, uidx) ;
+								#pragma omp atomic update
+								strdaa[uidx] |= MASK_LABEL;
+							}
+						}
+					}
+				} //end if defect!
+
+			}
+		}
+		// LogOut("%d %d\n",z, mp, mpb) ;
+	} // end bulk loop
+
+	// int *mFG   = static_cast<char *>(field->mFrontGhost());
+	// int *mBG   = static_cast<char *>(field->mBackGhost());
+
+	LogMsg(VERB_PARANOID,"[MB] receive? ... ") ;LogFlush();
+	/* receive ghosts and mark the mask */
+	// field->sendGhosts(FIELD_M, COMM_WAIT);
+	MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
+	MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
+	MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
+	MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+	MPI_Request_free(&rSendFwd);
+	MPI_Request_free(&rSendBck);
+	MPI_Request_free(&rRecvFwd);
+	MPI_Request_free(&rRecvBck);
+	LogMsg(VERB_PARANOID,"[MB] yes!") ;LogFlush();
+
+
+	#pragma omp parallel for
+	for (size_t idx = 0 ; idx < LyLy; idx++){
+		if (mFG[idx] > 0) {
+			short Dz = mFG[idx];
+			// LogOut("%d ... %d positions!\n",idx, Dz) ;
+			for (size_t dz =0; dz < Dz; dz++)
+				strdaa[idx + dz*LyLy] |= MASK_LABEL;
+		}
+		if (mBG[idx] > 0){
+			short Dz = mBG[idx];
+			// LogOut("%d ... %d positions!\n",idx, Dz) ;
+			for (size_t dz = 0; dz > Dz; dz++)
+				strdaa[LyLy*(Lz-1-dz) + idx] |= MASK_LABEL;
+		}
+	}
+
+	LogMsg(VERB_NORMAL,"[MB] done! masked points %d, (ml %d, mr %d)",mp,mr,ml) ;LogFlush();
+	/* set outside of the function!*/
+	// field->setSD(M2_ENERGY);
+
+}
+
+
+
+
+
 void	SpecBin::pRun	() {
 
 	size_t dSize    = (size_t) (field->Precision());
 	size_t dataLine = dSize*Ly;
 	size_t Sm	= Ly*Lz;
 
-	char *mA = static_cast<char *>(field->m2Cpu());
+	char *m2 = static_cast<char *>(field->m2Cpu());
+	char *mA = m2;
 
 	LogMsg(VERB_NORMAL,"[pRun] Called with status field->statusM2()=%d",field->m2Status()) ;
+	LogMsg(VERB_NORMAL,"[pRun]             status field->statusM2h()=%d",field->m2hStatus()) ;
 
 	if ((field->m2Status() != M2_ENERGY) && (field->m2Status() != M2_ENERGY_FFT)) {
-		LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
-		return;
+		if ((field->m2hStatus() != M2_ENERGY)){
+			LogError ("Power spectrum requires previous calculation of the energy. Ignoring pRun request.");
+			return;
+		} else {
+			mA = static_cast<char *>(field->m2half());
+		}
 	}
 
-	if (field->m2Status() == M2_ENERGY) {
-		// contrast bin is assumed in m2 (without ghost bytes)
-		// Add the f@*&#ng padding plus ghost region, no parallelization
+	/*If we do not have the energy fft in m2, calculate it*/
+	if (field->m2Status() != M2_ENERGY_FFT) {
+		// contrast bin is assumed in m2 or m2h
+		// Add the f@*&#ng padding and copy to m2
 		for (int sl=Sm-1; sl>=0; sl--) {
 			auto	oOff = sl*dSize*(Ly);
 			auto	fOff = sl*dSize*(Ly+2);
-			memmove	(mA+fOff, mA+oOff, dataLine);
+			memmove	(m2+fOff, mA+oOff, dataLine);
 		}
 
-
-
-		if (field->Field() == FIELD_SAXION) {
 			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 			myPlan.run(FFT_FWD);
-		} else {
-			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-			myPlan.run(FFT_FWD);
-		}
 	}
 
-	//issue?
+	/* empty the bins */
 	binP.assign(powMax, 0.);
 
 	// the function gives the same in spectral or !spectral
@@ -558,6 +805,40 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				}
 		break;
 
+		case SPMASK_AXIT :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nRun<float,SPMASK_AXIT> (nrt);
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nRun<double,SPMASK_AXIT> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nRun] precision not reconised.");
+					break;
+				}
+		break;
+
+		case SPMASK_AXIT2 :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nRun<float,SPMASK_AXIT2> (nrt);
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nRun<double,SPMASK_AXIT2> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nRun] precision not reconised.");
+					break;
+				}
+		break;
+
 		default:
 		LogError("[Spectrum nRun] SPMASK not recognised!");
 		break;
@@ -595,7 +876,14 @@ void	SpecBin::nRun	(nRunType nrt) {
 			return ;
 			}
 		break;
-
+		case SPMASK_AXIT2:
+			if ((field->sDStatus() & SD_AXITONMASK))
+				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT2 ok SPMASK=%d field->statusSD()=%d",SPMASK_AXIT2,field->sDStatus()) ;
+			else{
+			LogMsg(VERB_NORMAL,"nRun with SPMASK_DIFF but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_AXIT2,field->sDStatus()) ;
+			return ;
+			}
+		break;
 		default:
 		LogMsg(VERB_NORMAL,"nRun with self-contained mask") ;
 		break;
@@ -825,7 +1113,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 							size_t pl = (Ly+2)*field->Precision();
 							size_t ss	= Ly*Lz;
 
-							for (size_t sl=1; sl<ss; sl++) {
+							for (size_t sl=1; sl<LyLz; sl++) {
 								size_t	oOff = sl*dl;
 								size_t	fOff = sl*pl;
 								memmove	(m2C+oOff, m2C+fOff, dl);
@@ -923,15 +1211,44 @@ void	SpecBin::nRun	(nRunType nrt) {
 			char *vO = static_cast<char *>(field->vCpu());
 			char *mF = static_cast<char *>(field->m2Cpu());
 
+			Float *m   = static_cast<Float*>(field->mStart());
+			Float *v   = static_cast<Float*>(field->vCpu());
+			Float *m2  = static_cast<Float*>(field->m2Cpu());
+
+			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
+
 			size_t dataLine = field->DataSize()*Ly;
 			size_t Sm	= Ly*Lz;
 
 			// Copy m -> m2 with padding
-			#pragma omp parallel for schedule(static)
-			for (uint sl=0; sl<Sm; sl++) {
-				auto	oOff = sl*field->DataSize()* Ly;
-				auto	fOff = sl*field->DataSize()*(Ly+2);
-				memcpy	(mF+fOff, mO+oOff, dataLine);
+			if (mask & SPMASK_FLAT){
+				#pragma omp parallel for schedule(static)
+				for (uint sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*field->DataSize()* Ly;
+					auto	fOff = sl*field->DataSize()*(Ly+2);
+					memcpy	(mF+fOff, mO+oOff, dataLine);
+				}
+			} else {
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*iz ;
+					size_t zi = Ly*Ly*iz ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+							switch(mask){
+								default:
+								case SPMASK_AXIT2:
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = m[idx];
+										break;
+							} //end mask
+					}}} // end last volume loop
 			}
 
 			myPlan.run(FFT_FWD);
@@ -941,12 +1258,35 @@ void	SpecBin::nRun	(nRunType nrt) {
 			else
 				fillBins<Float,  SPECTRUM_GV, false>();
 
-			// Copy v -> m2 with padding
-			#pragma omp parallel for schedule(static)
-			for (uint sl=0; sl<Sm; sl++) {
-				auto	oOff = sl*field->DataSize()* Ly;
-				auto	fOff = sl*field->DataSize()*(Ly+2);
-				memcpy	(mF+fOff, vO+oOff, dataLine);
+			if (mask & SPMASK_FLAT){
+				// Copy v -> m2 with padding
+				#pragma omp parallel for schedule(static)
+				for (uint sl=0; sl<Sm; sl++) {
+					auto	oOff = sl*field->DataSize()* Ly;
+					auto	fOff = sl*field->DataSize()*(Ly+2);
+					memcpy	(mF+fOff, vO+oOff, dataLine);
+				}
+			} else {
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*iz ;
+					size_t zi = Ly*Ly*iz ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+							switch(mask){
+								default:
+								case SPMASK_AXIT2:
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = v[idx];
+										break;
+							} //end mask
+					}}} // end last volume loop
 			}
 
 			myPlan.run(FFT_FWD);
@@ -1276,9 +1616,12 @@ void	SpecBin::filter (size_t neigh) {
 }
 
 
-/* masker functions*/
+/* masker functions
+	they use a radius mask to
+	mask a certain quantity in a certain "mask" way
+	and intend a certain output out*/
 
-void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
+void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask, StatusM2 out){
 
 	switch (mask)
 	{
@@ -1292,11 +1635,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 		switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_VIL2> (radius_mask);
+				SpecBin::masker<float,SPMASK_VIL2> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_VIL2> (radius_mask);
+				SpecBin::masker<double,SPMASK_VIL2> (radius_mask, out);
 				break;
 
 				default :
@@ -1309,11 +1652,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 		switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_VIL> (radius_mask);
+				SpecBin::masker<float,SPMASK_VIL> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_VIL> (radius_mask);
+				SpecBin::masker<double,SPMASK_VIL> (radius_mask, out);
 				break;
 
 				default :
@@ -1326,11 +1669,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 		switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_AXIT> (radius_mask);
+				SpecBin::masker<float,SPMASK_AXIT> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_AXIT> (radius_mask);
+				SpecBin::masker<double,SPMASK_AXIT> (radius_mask, out);
 				break;
 
 				default :
@@ -1343,11 +1686,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 		switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_AXIT2> (radius_mask);
+				SpecBin::masker<float,SPMASK_AXIT2> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_AXIT2> (radius_mask);
+				SpecBin::masker<double,SPMASK_AXIT2> (radius_mask, out);
 				break;
 
 				default :
@@ -1360,11 +1703,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 			switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_GAUS> (radius_mask);
+				SpecBin::masker<float,SPMASK_GAUS> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_GAUS> (radius_mask);
+				SpecBin::masker<double,SPMASK_GAUS> (radius_mask, out);
 				break;
 
 				default :
@@ -1377,11 +1720,28 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 			switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_DIFF> (radius_mask);
+				SpecBin::masker<float,SPMASK_DIFF> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_DIFF> (radius_mask);
+				SpecBin::masker<double,SPMASK_DIFF> (radius_mask, out);
+				break;
+
+				default :
+				LogError("[masker] precision not reconised.");
+				break;
+			}
+		break;
+
+		case SPMASK_BALL :
+			switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::masker<float,SPMASK_BALL> (radius_mask, out);
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::masker<double,SPMASK_BALL> (radius_mask, out);
 				break;
 
 				default :
@@ -1395,11 +1755,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 			switch (fPrec)
 			{
 				case FIELD_SINGLE :
-				SpecBin::masker<float,SPMASK_REDO> (radius_mask);
+				SpecBin::masker<float,SPMASK_REDO> (radius_mask, out);
 				break;
 
 				case FIELD_DOUBLE :
-				SpecBin::masker<double,SPMASK_REDO> (radius_mask);
+				SpecBin::masker<double,SPMASK_REDO> (radius_mask, out);
 				break;
 
 				default :
@@ -1413,7 +1773,7 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask){
 
 
 template<typename Float, SpectrumMaskType mask>
-void	SpecBin::masker	(double radius_mask) {
+void	SpecBin::masker	(double radius_mask, StatusM2 out) {
 
 	if (field->LowMem()){
 			LogMsg(VERB_NORMAL,"[masker] masker called in lowmem! exit!\n");
@@ -1456,12 +1816,24 @@ void	SpecBin::masker	(double radius_mask) {
 
 		case SPMASK_AXIT:
 		case SPMASK_AXIT2:
-			LogMsg(VERB_NORMAL,"[masker] Axiton M2status %d ! \n",field->m2Status());
-			if ( !(field->m2Status() == M2_ENERGY)){
-					LogMsg(VERB_NORMAL,"[masker] Axiton masker called without energy M2status %d ! exit!\n",field->m2Status());
+			// LogMsg(VERB_NORMAL,"[masker] Axiton M2status %d ! \n",field->m2Status());
+			// if (field->sDStatus() == SD_AXITONMASK){
+			// 	LogMsg(VERB_NORMAL,"[masker] masker called but mask already in place! exit!\n");
+			// }
+			if ( !(field->m2Status() == M2_ENERGY) ){
+				if ( !(field->m2hStatus() == M2_ENERGY)){
+					LogError("[masker] Axiton masker called without energy in M2 or in M2h (status %d and %d) ! exit!\n",field->m2Status(),field->m2hStatus());
 					return;
+					} else {
+					LogMsg(VERB_HIGH,"[masker] Axiton masker called;  Energy in M2h (status %d)!\n", field->m2hStatus());
+					}
 			}
 		break;
+
+		case SPMASK_BALL:
+			LogMsg(VERB_NORMAL,"[masker] Ball test");
+		break;
+
 		default:
 			LogMsg(VERB_NORMAL,"\n[masker] Mask not available! exit!\n");
 			return;
@@ -1489,30 +1861,18 @@ void	SpecBin::masker	(double radius_mask) {
 			Float *m2sF                = static_cast<Float *>(field->m2Start());
 			/* auxiliary; Last volume in m2 where size fits, size is 2*(Lz+2Ng)LxLy*/
 			Float *m2aF                = static_cast<Float *>(field->m2Cpu()) + (field->eSize()*2-field->Size()) ;
-			size_t surfi = Ly*(Ly+2) ;
 			std::complex<Float>* mc         = static_cast<std::complex<Float> *>(field->mStart());
 
 			/* For padding uses */
-			size_t dl = Ly*field->Precision();
-			size_t pl = (Ly+2)*field->Precision();
-			size_t ss	= Ly*Lz;
 			char *m2C  = static_cast<char *>(field->m2Cpu());
 			char *m2sC = static_cast<char *>(field->m2Start());
 			char *m2hC = static_cast<char *>(field->m2half());
 			char *m2aC = static_cast<char *>(static_cast<void *>(m2aF)) ;
 
-			//with ghosts or padding
-			size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
-			//Bare size
-			size_t dataBareSize = (Ly)*Ly*Lz*field->Precision();
-
+			/* Clears completely m2 in SAXION MODE; only half in AXION MODE */
 			memset (m2C, 0, field->eSize()*field->DataSize());
 
 			{
-
-			/* Ghosts in place are not required */
-			// field->sendGhosts(FIELD_M,COMM_SDRV);
-			// field->sendGhosts(FIELD_M, COMM_WAIT);
 
 			/* MPI rank and position of the last slice that we will send to the next rank */
 			int myRank = commRank();
@@ -1529,16 +1889,16 @@ void	SpecBin::masker	(double radius_mask) {
 			/* Create the first mask in m2 with sData or rho field */
 			#pragma omp parallel for schedule(static)
 			for (size_t iiz=0; iiz < Lz; iiz++) {
-				size_t iz = Lz-1-iiz;
-				size_t zo = Ly*(Ly+2)*iz ;
-				size_t zoM = Ly*(Ly+2)*(iz+1) ;
-				size_t zi = Ly*Ly*iz ;
+				size_t iz  = Lz-1-iiz;
+				size_t zo  = Ly2Ly*iz ;
+				size_t zoM = Ly2Ly*(iz+1) ;
+				size_t zi  = LyLy*iz ;
 				// printf("zo %lu zoM %lu zi %lu\n",zo,zoM,zi);
 
 				for (size_t iy=0; iy < Ly; iy++) {
-					size_t yo = (Ly+2)*iy ;
+					size_t yo  = (Ly+2)*iy ;
 					size_t yoM = (Ly+2)*((iy+1)%Ly) ;
-					size_t yi = Ly*iy ;
+					size_t yi  = Ly*iy ;
 					// printf("yo %lu yoM %lu yi %lu\n",yo,yoM,yi);
 
 					for (size_t ix=0; ix < Ly; ix++) {
@@ -1564,6 +1924,7 @@ void	SpecBin::masker	(double radius_mask) {
 							case SPMASK_REDO:
 							case SPMASK_GAUS:
 							case SPMASK_DIFF:
+							case SPMASK_BALL:
 							/* removes the mask if present */
 							strdaa[idx] = strdaa[idx] & STRING_DEFECT;
 									if ( (strdaa[idx] & STRING_ONLY) != 0)
@@ -1615,12 +1976,12 @@ void	SpecBin::masker	(double radius_mask) {
 
 		} // MPI defs are contained here
 
-			/* For string based masks Fuse ghost and local info 1st surfi */
-			if (mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
+			/* For string based masks Fuse ghost and local info 1st surface */
+			if (mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF | SPMASK_BALL))
 			{
 				LogMsg(VERB_DEBUG,"[sp] Fusing ghosts between ranks");
 				#pragma omp parallel for schedule(static)
-				for (size_t odx=0; odx < surfi; odx++) {
+				for (size_t odx=0; odx < Ly2Ly; odx++) {
 					if (m2hF[odx] > 0.5) //FIX ME
 						m2F[odx] = 1 ; // if m2hF[odx] it was 1 still 1, otherwise 1
 				}
@@ -1643,18 +2004,16 @@ void	SpecBin::masker	(double radius_mask) {
 				case SPMASK_DIFF:
 					{
 						/* unpad m2 in place */
-						for (size_t sl=1; sl<ss; sl++) {
+						for (size_t sl=1; sl<LyLz; sl++) {
 							size_t	oOff = sl*dl;
 							size_t	fOff = sl*pl;
 							memmove	(m2C+oOff, m2C+fOff, dl);
 						}
 
 						/* produce a first mask*/
-						size_t V = field->Size();
-						size_t S = field->Surf();
 
 						#pragma omp parallel for schedule(static)
-						for (size_t idx=0; idx < V; idx++) {
+						for (size_t idx=0; idx < field->Size(); idx++) {
 							if ( m2F[idx] > 0.5 ){
 								strdaa[idx] |= STRING_MASK ; // mask stored M=1-W
 								}
@@ -1672,7 +2031,7 @@ void	SpecBin::masker	(double radius_mask) {
 						size_t radius_mask_size_t = (size_t) radius_mask;
 
 						/* Size of the ghost region in Float (assume this funciton is called in Saxion mode)*/
-						size_t GR = field->getNg()*S*2;
+						size_t GR = field->getNg()*LyLy*(field->DataSize()/field->Precision());
 
 						/* I need char pointers to the last slice, backghost, both Float and std::complex_Float */
 
@@ -1681,7 +2040,7 @@ void	SpecBin::masker	(double radius_mask) {
 						char *m2lscC = static_cast<char *>(field->m2Start()) + field->Surf()*(field->Depth()-field->getNg())*field->DataSize();
 						char *m2bgcC = static_cast<char *>(field->m2BackGhost());
 
-						size_t SurfTotalSize = Ly*Ly*field->Precision();
+						size_t SurfTotalSize = LyLy*field->Precision();
 
 						/* Smoothing iteration loop */
 						for (size_t it=0; it<iter+1; it++)
@@ -1694,7 +2053,7 @@ void	SpecBin::masker	(double radius_mask) {
 									// move the slice received at the std::complex backghost into the Float-backghost
 									memmove	(m2bgC, m2bgcC, SurfTotalSize);
 									// move the slice received at the frontghost into the Float-Frontghost (defined by m2Start)
-									memmove	(m2C+(GR-S)*field->Precision(), m2C, SurfTotalSize);
+									memmove	(m2C+(GR-LyLy)*field->Precision(), m2C, SurfTotalSize);
 
 							/* Smooth and copy to m2_aux m2aF
 							(m2h does not work because is precisely the Float-backghost) */
@@ -1714,7 +2073,7 @@ void	SpecBin::masker	(double radius_mask) {
 									indexXeon::idx2VecNeigh (idx, X, O, Ly);
 									if (it < radius_mask_size_t)
 									{ /* First round mask propagates the mask at 1 point per iteration*/
-										if ((m2F[idx+S] > 0) | (m2F[idx-S] > 0) | (m2F[O[0]] > 0) | (m2F[O[1]] > 0) | (m2F[O[2]] > 0) | (m2F[O[3]] > 0))
+										if ((m2F[idx+LyLy] > 0) | (m2F[idx-LyLy] > 0) | (m2F[O[0]] > 0) | (m2F[O[1]] > 0) | (m2F[O[2]] > 0) | (m2F[O[3]] > 0))
 										{
 											/* we can test removing this */
 											strdaa[idxu] |= STRING_MASK ;
@@ -1726,7 +2085,7 @@ void	SpecBin::masker	(double radius_mask) {
 									else
 									{ /* Next iterations smooth the mask */
 										//copies the smoothed configuration into the auxiliary volume
-										m2aF[idxu]   = OneSixth*(m2F[O[0]] + m2F[O[1]] + m2F[O[2]] + m2F[O[3]] + m2F[idx+S] + m2F[idx-S]);
+										m2aF[idxu]   = OneSixth*(m2F[O[0]] + m2F[O[1]] + m2F[O[2]] + m2F[O[3]] + m2F[idx+LyLy] + m2F[idx-LyLy]);
 									}
 								} // end if not mask
 
@@ -1739,7 +2098,7 @@ void	SpecBin::masker	(double radius_mask) {
 
 					/* copy to mh2 and pad to m2*/
 					memcpy (m2hC, m2sC, dataBareSize);
-					for (size_t sl=1; sl<ss; sl++) {
+					for (size_t sl=1; sl<LyLz; sl++) {
 						size_t	oOff = sl*dl;
 						size_t	fOff = sl*pl;
 						memmove	(m2C+fOff, m2hC+oOff, dl);
@@ -1782,12 +2141,22 @@ void	SpecBin::masker	(double radius_mask) {
 
 					} // end internal CASE REDO and GAUS case switch
 				break;
+
+				case SPMASK_BALL:
+					{
+						/* masks a ball of radius rm around STRING_DEFECT
+						   and labels it STRING_MASK*/
+						maskball	(radius_mask, STRING_DEFECT, STRING_MASK);
+
+					} // end internal CASE REDO and GAUS case switch
+				break;
 			} // end switch
 
 			/* Produce the final mask in m2
 			and unpadded in m2h
 			remember that REDO, GAUS are padded
-			but diff already unpadded in m2h */
+			diff already unpadded in m2h
+			ball is not even there in m2 */
 
 			/* Constants for mask_REDO, DIFF */
 			Float maskcut = 0.5;
@@ -1815,12 +2184,12 @@ void	SpecBin::masker	(double radius_mask) {
 			LogMsg(VERB_HIGH,"maskcut %f",maskcut);
 
 			size_t V = field->Size() ;
-
+			size_t Ly2 = (Ly+2);
 			#pragma omp parallel for schedule(static)
-			for (size_t idx=0; idx < V; idx++) {
+			for (size_t idx=0; idx < field->Size(); idx++) {
 				size_t X[3];
 				indexXeon::idx2Vec (idx, X, Ly);
-				size_t oidx = X[2]*surfi + X[1]*(Ly+2) + X[0];
+				size_t oidx = X[2]*Ly2Ly + X[1]*(Ly+2) + X[0];
 
 				switch(mask){
 					case SPMASK_VIL:
@@ -1841,6 +2210,16 @@ void	SpecBin::masker	(double radius_mask) {
 								m2hF[idx] = 1;
 							}
 							break;
+						case SPMASK_BALL:
+								if ( strdaa[idx] &  STRING_MASK ) {
+									m2F[oidx] = 0; // Axion ANTIMASK
+									m2hF[idx] = 0; // Axion MASK
+								}
+								else {
+									m2F[oidx] = 1;
+									m2hF[idx] = 1;
+								}
+								break;
 						case SPMASK_DIFF:
 								/* Diffused mask */
 								if ( m2hF[idx] > maskcut )     //0.5 // remember m2hF is already unpadded->needs idx
@@ -1900,9 +2279,22 @@ void	SpecBin::masker	(double radius_mask) {
 			for(size_t i=0; i<powMax; i++) binP.at(i) *= 2.;
 
 
-		/* To print maps from m2*/
-		memcpy	(m2C, m2hC , dataBareSize);
-		field->setM2(M2_MASK);
+		/* Depends on out */
+		switch (out) {
+					default:
+					case M2_MASK:
+						/* To print maps from m2*/
+						memcpy	(m2C, m2hC , dataBareSize);
+						field->setM2(M2_MASK);
+						break;
+					case M2_ANTIMASK:
+						size_t V = field->Size() ;
+						#pragma omp parallel for schedule(static)
+						for (size_t idx=0; idx < V; idx++)
+							m2F[idx] = 1-m2hF[idx];
+						field->setM2(M2_ANTIMASK);
+						break;
+		}
 
 		if (mask & (SPMASK_DIFF | SPMASK_GAUS | SPMASK_REDO)){
 			field->setSD(SD_MAPMASK);
@@ -1921,74 +2313,93 @@ void	SpecBin::masker	(double radius_mask) {
 			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
 			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
 			Float *m2sax                = static_cast<Float *>(field->m2half());
-			char *mA = static_cast<char *>(field->m2Cpu());
+			Float *mm                   = static_cast<Float *>(field->mStart());
+			char *mA  = static_cast<char *>(field->m2Cpu());
 			char *mAS = static_cast<char *>(field->m2half());
-			size_t vola = field->Size() ;
+
 
 			// makes a copy of the energy density of axions in m2_2
-
-			memcpy (mAS, mA, vola*field->Precision());
+			if (field->m2Status() == M2_ENERGY){
+				memmove (mAS, mA, dataBareSize);
+				field->setM2h(M2_ENERGY);
+				}
+			if ((field->m2Status() != M2_ENERGY) && (field->m2hStatus() == M2_ENERGY)){
+				memmove (mA, mAS, dataBareSize);
+				field->setM2(M2_ENERGY);
+			}
 
 			// threshold of the energy density
 			Float RRRRRR = (Float) *field->RV();
 			Float ethres = (Float) field->AxionMassSq()*RRRRRR*RRRRRR;
+			Float iR     = 1/RRRRRR;
 
-			#pragma omp parallel for schedule(static)
-			for (size_t idx=0; idx < vola; idx++) {
+			int mp = 0;
+			#pragma omp parallel for schedule(static) reduction(+:mp)
+			for (size_t idx=0; idx < field->Size(); idx++) {
+				size_t X[3];
+				indexXeon::idx2Vec (idx, X, Ly);
+				size_t oidx = X[2]*Ly2Ly + X[1]*(Ly+2) + X[0];
 
 				switch(mask){
 					case SPMASK_AXIT:
-						if( m2sa[idx] > ethres){
-							// strdaa[idx] = 1;
-							m2sa[idx] = 0.0;
-						}
-						// else
-						// 	strdaa[idx] = 0;
+					if( (m2sax[idx] > ethres) || (mm[idx]*iR > 3)){
+					// if( (m2sax[idx] > ethres) ){
+						mp++;
+						strdaa[idx] = STRING_WALL;
+						m2sa[oidx] = 0.0;
+					} else {
+						m2sa[oidx] = m2sax[idx];
+						strdaa[idx] = 0;
+					}
 					break;
 
 					case SPMASK_AXIT2:
-						if( m2sa[idx] > ethres)
-							m2sa[idx] = 1.0;
-						else
-							m2sa[idx] = 0.0;
+						if( (m2sax[idx] > ethres) || (mm[idx]*iR > 3)){
+							mp++;
+							strdaa[idx] = STRING_WALL;
+							m2sa[oidx] = 1.0;
+						} else {
+							m2sa[oidx] = 0.0;
+							strdaa[idx] = 0;
+						}
 					break;
 				} //end mask switch
 			}    // end loop idx
 
-			// pad in place
-			size_t dSize    = (size_t) (field->Precision());
-			size_t dataLine = dSize*Ly;
-			size_t Sm	= Ly*Lz;
-			for (int sl=Sm-1; sl>=0; sl--) {
-				auto	oOff = sl*dSize*(Ly);
-				auto	fOff = sl*dSize*(Ly+2);
-				memmove	(mA+fOff, mA+oOff, dataLine);
-			}
-
-			/* Fourier transform */
-			// r2c FFT in m2
-			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-			myPlan.run(FFT_FWD);
-
-			switch(mask)
-			{
-				case SPMASK_AXIT:
-					field->setM2(M2_ENERGY_MASK_AXI_FFT);
-				break;
-				case SPMASK_AXIT2:
-					field->setM2(M2_MASK_AXI2_FFT);
-				break;
-			}
+			int mp_g = 0;
+			MPI_Allreduce(&mp, &mp_g, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+			LogMsg(VERB_NORMAL,"[masker axion] %d points masked",mp_g);
 
 			switch (mask)
 			{
-
 				case SPMASK_AXIT:
 				{
-							/* bin the axion energy spectrum */
-							LogMsg(VERB_NORMAL,"[masker] filling masked eA spectrum bins (masked)");
-							binP.assign(powMax, 0.);
+							maskball	(radius_mask, STRING_WALL, STRING_MASK);
 
+							mp = 0;
+							#pragma omp parallel for schedule(static) reduction(+:mp)
+							for (size_t idx=0; idx < field->Size(); idx++) {
+								if (strdaa[idx] & STRING_MASK){
+									mp++;
+									size_t X[3];
+									indexXeon::idx2Vec (idx, X, Ly);
+									size_t oidx = X[2]*Ly2Ly + X[1]*(Ly+2) + X[0];
+									m2sa[oidx] = 0;
+								}
+							}    // end loop idx
+							field->setM2(M2_ENERGY_AXI);
+
+							mp_g = 0;
+							MPI_Allreduce(&mp, &mp_g, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+							LogMsg(VERB_NORMAL,"[masker axion] %d points masked after maskball (all ranks) ",mp_g);
+
+							LogMsg(VERB_PARANOID,"[masker] computing PS");
+							auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+							myPlan.run(FFT_FWD);
+							field->setM2(M2_ENERGY_MASK_AXI_FFT);
+
+							LogMsg(VERB_PARANOID,"[masker] filling masked eA spectrum bins (masked)");
+							binP.assign(powMax, 0.);
 							switch (fPrec) {
 								case	FIELD_SINGLE:
 									if (spec)
@@ -2008,16 +2419,19 @@ void	SpecBin::masker	(double radius_mask) {
 									LogError ("Wrong precision");
 									break;
 							}
-						/* copy m2 back into place */
-						memcpy (mA, mAS, vola*field->Precision());
-						field->setM2(M2_ENERGY);
-
-						// field still contains M2_ENERGY
 				}
 				break;
 
 				case SPMASK_AXIT2:
 				{
+							/* Fourier transform */
+							// r2c FFT in m2
+							auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+							myPlan.run(FFT_FWD);
+
+							field->setM2(M2_MASK_AXI2_FFT);
+							field->setSD(SD_AXITONMASK);
+
 							/* bin the axion energy spectrum */
 							LogMsg(VERB_NORMAL,"[masker] AXIT2 filter");
 							/* Filter */
@@ -2041,52 +2455,30 @@ void	SpecBin::masker	(double radius_mask) {
 
 							/* Make plots if needed */
 
-							/* unpadd */
-							size_t dl = Ly*field->Precision();
-							size_t pl = (Ly+2)*field->Precision();
-							size_t ss	= Ly*Lz;
-							size_t dataTotalSize = (Ly+2)*Ly*Lz*field->Precision();
-							for (size_t sl=1; sl<ss; sl++) {
-								size_t	oOff = sl*dl;
-								size_t	fOff = sl*pl;
-								memmove	(mA+oOff, mA+fOff, dl);
-							}
-
 							/* Generate mask */
-							{
-									Float maskcut = (Float) std::abs(radius_mask);
-									if (radius_mask < 4)
-										maskcut = (0.42772052 -0.05299264*maskcut)/(maskcut*maskcut);
-									else
-										maskcut = (0.22619714 -0.00363601*maskcut)/(maskcut*maskcut);
+									/* */
+									Float rsend = ng0calib* radius_mask;
+									// Float rsend = radius_mask;
+									Float maskcut = 2.5*4/(2*M_PI*rsend*rsend)*std::exp(-2./(ng0calib*ng0calib));
 
-									if (radius_mask > 8)
-										maskcut = (0.22619714 -0.00363601*8)/(radius_mask*radius_mask);
+
 
 									/* I apply the cut to the unpadded */
-									size_t vol = field->Size() ;
 									#pragma omp parallel for schedule(static)
-									for (size_t idx=0; idx < vol; idx++) {
-										if ( m2sa[idx] > maskcut ) {
-											// strdaa[idx] |= 1 ; // mask stored M=1-W
-											m2sa[idx] = 0;
-										}
-										else {
+									for (size_t idx=0; idx < V; idx++) {
+										size_t X[3];
+										indexXeon::idx2Vec (idx, X, Ly);
+										size_t oidx = X[2]*Ly2Ly + X[1]*(Ly+2) + X[0];
+
+										if ( m2sa[oidx] > maskcut ) {
+											strdaa[idx] |= STRING_MASK ;
+											m2sa[oidx] = 0.0;
+										} else {
 											// strdaa[idx] = 0 ;
-											//m2sa[idx] = 1; // use this if you interested in the mask
-											m2sa[idx] = m2sax[idx]; // use this if you interested in the psp directly
+											m2sa[oidx] = m2sax[idx]; // use this if you interested in the psp directly
 										}
 									}
-							field->setM2(M2_ENERGY_AXI);// use this if you interested in the psp directly
-
-							}
-							/* pad m2 inplace */
-							for (size_t sl=1; sl<ss; sl++) {
-								size_t isl = ss-sl;
-								size_t	oOff = isl*dl;
-								size_t	fOff = isl*pl;
-								memmove	(mA+fOff, mA+oOff, dl);
-							}
+							field->setM2(M2_ENERGY_AXI);
 
 							/* Calculate the FFT of the mask */
 							myPlan.run(FFT_FWD);
@@ -2113,10 +2505,6 @@ void	SpecBin::masker	(double radius_mask) {
 									break;
 							}
 
-						/* copy m2 back into place */
-						memcpy (mA, mAS, vola*field->Precision());
-						// field->setSD(SD_AXITONMASK);
-						field->setM2(M2_ENERGY);
 				}
 				break;
 
@@ -2124,6 +2512,36 @@ void	SpecBin::masker	(double radius_mask) {
 				LogError("[masker] Error: Axion mode but no axiton mask!!");
 				break;
 		} // end case mask
+
+		/* Depends on out */
+		switch (out) {
+					default:
+					case M2_ENERGY:
+						memcpy (mA, mAS, dataBareSize);
+						field->setM2(M2_ENERGY);
+						break;
+
+					case M2_MASK:
+					#pragma omp parallel for schedule(static)
+					for (size_t idx=0; idx < V; idx++)
+						if (strdaa[idx] & STRING_MASK)
+							m2sa[idx] = 0;
+						else
+							m2sa[idx] = 1;
+					field->setM2(M2_MASK);
+						break;
+
+					case M2_ANTIMASK:
+					#pragma omp parallel for schedule(static)
+					for (size_t idx=0; idx < V; idx++)
+						if (strdaa[idx] & STRING_MASK)
+							m2sa[idx] = 1;
+						else
+							m2sa[idx] = 0;
+					field->setM2(M2_ANTIMASK);
+						break;
+		}
+
 		}
 		break ; //ends case axion
 
@@ -2131,6 +2549,7 @@ void	SpecBin::masker	(double radius_mask) {
 		LogError("[masker] Error: Masker template called with no saxion mode!");
 		break ;
 	} // end case saxion-axion
+
 }	// end MASKER
 
 /* build correction matrices */
@@ -2339,8 +2758,8 @@ void	SpecBin::wRun	() {
 			// identify the mask function
 			#pragma omp parallel for schedule(static)
 			for (size_t iz=0; iz < Lz; iz++) {
-				size_t zo = Ly*(Ly+2)*iz ;
-				size_t zi = Ly*Ly*iz ;
+				size_t zo = Ly2Ly*iz ;
+				size_t zi = LyLy*iz ;
 				for (size_t iy=0; iy < Ly; iy++) {
 					size_t yo = (Ly+2)*iy ;
 					size_t yi = Ly*iy ;
