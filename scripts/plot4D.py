@@ -51,31 +51,45 @@ mode = 'theta'
 if len(sys.argv) == 2:
     if (sys.argv[-1] == 'eA'):
         mode = 'eA'
+        mapa = 'map/E'
         print('Axion energy map')
     elif (sys.argv[-1] == 'eP'):
         mode = 'eP'
+        mapa = 'map/P'
         print('Axion energy projection map')
     elif (sys.argv[-1] == 'S'):
         mode = 'S'
+        mapa = 'map/m'
         print('Saxion')
     if (sys.argv[-1] == 'vA'):
         mode = 'vA'
+        mapa = 'map/v'
         print('Axion velocity')
     elif (sys.argv[-1] == 'M'):
         mode = 'M'
+        mapa = 'map/m'
         print('Saxion-masked')
     elif (sys.argv[-1] == 'dens'):
         mode = 'den'
+        mapa = 'map/v'
         print('Density from m,v')
     elif (sys.argv[-1] == 'real'):
         mode = 'real'
+        mapa = 'map/m'
         print('real part of m/|m|')
     elif (sys.argv[-1] == 'imag'):
         mode = 'imag'
+        mapa = 'map/m'
         print('imaginary part of m/|m|')
     elif (sys.argv[-1] == 'N'):
         mode = 'Naxion'
+        mapa = 'map/m'
         print('|theta|')
+if len(sys.argv) == 3:
+    if (sys.argv[-2] == 'map'):
+        mode = 'map'
+        mapa = 'map/'+sys.argv[-1]
+        print('mode map -> ',mapa)
 
 prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
 fileMeas = []
@@ -83,10 +97,11 @@ fileMeas = []
 for maes in prefileMeas:
 	try:
 		with h5py.File(maes, 'r') as f:
-			if ('map' in f) :
+			if (mapa in f) :
 				fileMeas.append(maes)
 	except:
 		print('Error opening file: %s'%maes)
+
 fileHdf5 = h5py.File(fileMeas[0], "r")
 Lx = fileHdf5["/"].attrs.get("Size")
 Ly = fileHdf5["/"].attrs.get("Size")
@@ -141,9 +156,13 @@ for meas in fileMeas:
             aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)
             aData = aData/aData.mean()
     elif mode == 'eP' and pa.gm(meas,'2DmapP?'):
-            avi = pa.gm(meas,'eA')**2
+            avi = pa.gm(meas,'eA')
+            if fl == "Paxion":
+                avi = pa.gm(meas,'eAK')
             # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
-            aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
+            # aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
+            aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi/pa.gm(meas,'sizeN')
+
     elif (mode == 'S') and (fl == "Saxion") and pa.gm(meas,'map?'):
             aData = pa.gm(meas,'maprho')
     elif (mode == 'M') and (fl == "Saxion") and pa.gm(meas,'map?'):
@@ -178,6 +197,9 @@ for meas in fileMeas:
             mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
             mAmA  = fileHdf5["/"].attrs.get("Axion mass")
             aData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)/(mAmA*R**3))
+    if (mode == 'map'):
+        aData  = fileHdf5[mapa].value.reshape(Ly,Lx)
+
         # possible but not coded yet
         # elif fl == "Axion":
         #     aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
@@ -211,7 +233,7 @@ zData=np.array(zData)
 print(allData[0].shape)
 ## Display the data and assign each frame a time value from 1.0 to 3.0
 # imv.setImage(data, xvals=np.linspace(1., 3., data.shape[0]))
-imv.setImage(allData, xvals=zData)
+imv.setImage(allData, xvals=zData, autoLevels=True)
 
 ## Set a custom color map
 if mode == 'Axion':
