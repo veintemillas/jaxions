@@ -32,6 +32,7 @@
 		FieldType	fieldType;
 		LambdaType	lambdaType;
 		StatusM2	statusM2;
+		StatusM2	statusM2h;
 		StatusSD  statusSD;
 
 		size_t	fSize;
@@ -139,6 +140,7 @@
 		LambdaType	LambdaT()     { return lambdaType; }
 		FieldType	Field()      { return fieldType; }
 		StatusM2	m2Status()   { return statusM2; }
+		StatusM2	m2hStatus()   { return statusM2h; }
 		StatusSD  sDStatus()   { return statusSD;}
 		void  setLambdaT (LambdaType newLambda) { lambdaType = newLambda; }
 
@@ -185,6 +187,7 @@
 
 		void	setZ (const double newZ)    { *z = newZ; }
 		void	setM2(const StatusM2 newM2) { statusM2 = newM2; }
+		void	setM2h(const StatusM2 newM2) { statusM2h = newM2; }
 		void	setSD(const StatusSD newSD) { statusSD = newSD; }
 
 		void	setField	(FieldType field);
