@@ -27,7 +27,9 @@
 
 		Scalar			*field;
 
-		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, nPts, nModeshc, kMax, powMax, controlxyz;
+		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, V;
+		size_t			nPts, nModeshc, kMax, powMax, controlxyz;
+		size_t			LyLy, Ly2Ly, LyLz, dl, pl, dataTotalSize, dataBareSize;
 		double			mass2, mass2Sax; // squared masses (comoving)
 		double 			Rscale, depta;
 		double 			zaskar;
@@ -98,8 +100,18 @@
 						return;
 				}
 
+				/* for half-complex loops */
 				nModeshc = Lx*Ly*Lz;
 
+				/* for pad/unpadding loops */
+				V             =  field->Size();
+				LyLy          =  Ly*Ly;
+				LyLz          =  Ly*Lz;
+				Ly2Ly         =  Ly*(Ly+2);
+				dl            =  Ly*field->Precision(); /* data line length */
+				pl            =  (Ly+2)*field->Precision(); /* padded data line length */
+				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision();
+				dataBareSize  =  V*field->Precision();
 		}
 
 
@@ -141,15 +153,17 @@
 				binPS.assign(powMax, 0.);
 		}
 
-		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO);
+		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO, StatusM2 out = M2_MASK);
 
 		template<typename Float, SpectrumMaskType mask>
-		void	masker	(double radius_mask);
+		void	masker	(double radius_mask, StatusM2 out);
 
 		void	matrixbuilder	();
 
 		template<typename Float>
 		void	matrixbuilder	();
+
+		void	maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) ;
 
 	};
 
