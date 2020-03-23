@@ -75,14 +75,14 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	int indexa = info.index;
 
 	SpectrumMaskType mask = info.mask ;
-	LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask = %d",mask);
+	LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask passed = %d",mask);
 	if (axiona->Field() == FIELD_SAXION)
-		mask = mask & (SPMASK_FLAT | SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF);
+		mask = mask & (SPMASK_FLAT | SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF | SPMASK_BALL);
 	else if (axiona->Field() == FIELD_AXION){
 		if (mask & (SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
 			mask = mask | SPMASK_FLAT;
 		mask = mask & (SPMASK_FLAT | SPMASK_AXIT | SPMASK_AXIT2);
-		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask = %d",mask);
+		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask corrected = %d",mask);
 		}
 
 	int redmap = info.redmap;
@@ -90,30 +90,50 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	double radius_mask = info.rmask ; //obsolete?
 	int irmask = info.i_rmask;
 	std::vector<double> rmasktab = info.rmask_tab ;
-	if (axiona->Field() == FIELD_AXION && irmask == 0 ){
+	if ( irmask == 0 ){   /* Patch to make the MASK_FLAT case work */
 		irmask = 1;
 		rmasktab.push_back(0.0);
 	}
 	nRunType nruntype = info.nrt;
 
 	/* This is a change with respect to previous behaviour
-	   Changes the definition of mask to be in units of ms^-1 */
-		{
+	   Changes the definition of mask to be in units of ms^-1 (saxion)
+		 or ma^-1 (axion)
+		 only if there is something to mask, of course all masks have mask > 1; 1 is FLAT*/
+		if (mask > 1){
 			double msa_aux ;
-			if (axiona->LambdaT() == LAMBDA_Z2)
-					msa_aux = axiona->Msa();
-			if (axiona->LambdaT() == LAMBDA_FIXED)
-					msa_aux = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
+			if (axiona->Field() == FIELD_SAXION){
+					if (axiona->LambdaT() == LAMBDA_Z2)
+							msa_aux = axiona->Msa();
+					if (axiona->LambdaT() == LAMBDA_FIXED)
+							msa_aux = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
 
+				LogMsg(VERB_HIGH,"[Meas ...] msa = %f rmask-parameter interpreted in 1/ms units. ",msa_aux);
+				LogMsg(VERB_HIGH,"           Internally converted to lattice units by multiplying with 1/msa",msa_aux);
 
-			LogMsg(VERB_HIGH,"[Meas ...] msa = %f rmask-parameter interpreted in 1/ms units. ",msa_aux);
-			LogMsg(VERB_HIGH,"           Internally converted to lattice units by multiplying with 1/msa",msa_aux);
-			radius_mask /= msa_aux;
-
-			for (size_t i=0;i<irmask;i++){
-				LogMsg(VERB_HIGH,"[Meas ...] rmask %f -> %f ",rmasktab[i],rmasktab[i]/msa_aux);
-				rmasktab[i] /= msa_aux;
+				radius_mask /= msa_aux;
+				for (size_t i=0;i<irmask;i++){
+					LogMsg(VERB_HIGH,"[Meas ...] rmask %f -> %f ",rmasktab[i],rmasktab[i]/msa_aux);
+					rmasktab[i] /= msa_aux;
+				}
+			} else { //AXION< PAXION NAXION
+				// msa_aux = axiona->AxionMass()*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length();
+				// LogMsg(VERB_HIGH,"[Meas ...] msa = %f rmask-parameter interpreted in 1/ma_c units. ",msa_aux);
+				// LogMsg(VERB_HIGH,"           Internally converted to lattice units by multiplying with 1/maa",msa_aux);
+				// LogMsg(VERB_HIGH,"           We use min r*(2 + 1/ma_c)");
+				//
+				// radius_mask *= 2. + 1./msa_aux;
+				// for (size_t i=0;i<irmask;i++){
+				// 	LogMsg(VERB_HIGH,"[Meas ...] rmask %f -> %f ",rmasktab[i],rmasktab[i]*(1.+1./msa_aux));
+				// 	rmasktab[i] *= 2. + 1./msa_aux;
+				// }
+				// msa_aux = axiona->AxionMass()*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length();
+				LogMsg(VERB_HIGH,"[Meas ...] rmask-parameter interpreted in delta units ");
 			}
+
+
+
+
 
 		}
 
@@ -143,6 +163,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	LogMsg(VERB_HIGH, "[Meas %d] set aux fields to dirty",indexa);
 	axiona->setM2(M2_DIRTY);
+	axiona->setM2h(M2_DIRTY);
 	axiona->setSD(SD_DIRTY);
 
 	createMeas(axiona, indexa);
@@ -223,7 +244,6 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					LogMsg(VERB_NORMAL, "[Meas %d] 2D energy map",indexa);
 					writeEMapHdf5s (axiona,sliceprint);
 				}
-
 				if(info.maty & MAPT_XYPE){
 					LogMsg(VERB_NORMAL, "[Meas %d] Proyection",indexa);
 					if (axiona->Precision() == FIELD_DOUBLE){
@@ -245,10 +265,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 					}
 					writePMapHdf5 (axiona);
 				}
-
 			}
 
-			LogMsg(VERB_NORMAL, "[meas] M2 status %d", axiona->m2Status());
+			LogMsg(VERB_NORMAL, "[meas] M2 status %d M2h status", axiona->m2Status(), axiona->m2hStatus());
 			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_S))
 			{
 
@@ -257,13 +276,20 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
 				{
 
-
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT)){
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons)",indexa);
 
-						specAna.masker(radius_mask, SPMASK_AXIT);
-						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked");
+						// specAna.masker(radius_mask, SPMASK_AXIT, M2_ENERGY);
+						// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked");
+
+						for(int ii=0; ii < irmask; ii++){
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,info.rmask_tab[ii]);
+							char PRELABEL[256];
+							sprintf(PRELABEL, "%s_%.2f", "sPmasked",info.rmask_tab[ii]);
+							specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY);
+							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+						}
 
 						prof.stop();
 						prof.add(std::string("PSPA_mask"), 0.0, 0.0);
@@ -271,16 +297,17 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT2)){
 						prof.start();
-						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,radius_mask);
 
-						specAna.masker(radius_mask, SPMASK_AXIT2);
-
-						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked2");
-
+						for(int ii=0; ii < irmask; ii++){
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,info.rmask_tab[ii]);
+							char PRELABEL[256];
+							sprintf(PRELABEL, "%s_%.2f", "sPmasked2",info.rmask_tab[ii]);
+							specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY);
+							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+						}
 						prof.stop();
-						prof.add(std::string("PSPA_mask"), 0.0, 0.0);
+						prof.add(std::string("PSPA_mask2"), 0.0, 0.0);
 					}
-
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
 						// at the moment runs PA and PS if in saxion mode
@@ -389,6 +416,13 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	}
 
 
+	//	--------------------------------------------------------------------------
+	//
+	//	SPECTRUM BLOCK
+	//
+	//	--------------------------------------------------------------------------
+
+
 	/* Spectra, masks, nmodes, averaged k2 ... */
 	if (measa & MEAS_SPECTRUM)
 	{
@@ -396,31 +430,32 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 		/* this is an experimental print that uses axion energy plot2D and could use plot3D energy
 		   is incompatible with a real output of energy density... */
+		bool printedmask[8] = {false,false,false,false,false,false,false,false};
+
 		if (measa & MEAS_MASK)
 		{
-			LogMsg(VERB_NORMAL, "[Meas %d] Calculating MASK in m2",indexa);LogFlush();
+			LogMsg(VERB_NORMAL, "[Meas %d] MEAS_MASK in m2 ",indexa);LogFlush();
 
 				char PRELABEL[256];
 				char LABEL[256];
-				string           masklab[7] = {"Vi", "Vi2", "Red", "Gau", "Dif", "Axit", "Axit2"};
-				SpectrumMaskType maskara[7] = {SPMASK_VIL,SPMASK_VIL2,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_AXIT,SPMASK_AXIT2};
-				bool             mulmask[8] = {false,false,true,true,true,true,true};
+				string           masklab[8] = {"Vi", "Vi2", "Bal", "Red", "Gau", "Dif", "Axit", "Axit2"};
+				SpectrumMaskType maskara[8] = {SPMASK_VIL,SPMASK_VIL2,SPMASK_BALL,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_AXIT,SPMASK_AXIT2};
+				bool             mulmask[8] = {false,false,true,true,true,true,true,true};
 
 				LogMsg(VERB_NORMAL, "[Meas %d] masks are %d",indexa,mask);LogFlush();
-				for (size_t i=0; i < 7; i++)
+				for (size_t i=0; i < 8; i++)
 				{
-					LogMsg(VERB_NORMAL, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
+					LogMsg(VERB_HIGH, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
 				}
 				bool wEm = false;
-				for (size_t i=0; i < 7; i++)
+				for (size_t i=0; i < 8; i++)
 				{
-					LogMsg(VERB_NORMAL, "[Meas %d] mask %s (%d)",indexa,masklab[i].c_str(),i);LogFlush();
+
 					if ( !(mask & maskara[i])){
-						LogMsg(VERB_NORMAL, " ... skipped");LogFlush();
+						LogMsg(VERB_HIGH, "[Meas %d] mask %s (%d) skipped",indexa,masklab[i].c_str(),i);LogFlush();
 						continue;
 					}
-
-					LogMsg(VERB_NORMAL, "... to be done ");LogFlush();
+						LogMsg(VERB_HIGH, "[Meas %d] Measuring mask %s (%d) ... ",indexa,masklab[i].c_str(),i);LogFlush();
 
 						for(int ii=0; ii < irmask; ii++)
 						{
@@ -431,20 +466,28 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							prof.start();
-							specAna.masker(rmasktab[ii], maskara[i]);
+							specAna.masker(rmasktab[ii], maskara[i], M2_ANTIMASK); // produces antimask in M2 to export
 							prof.stop();
 							sprintf(LABEL, "Masker %s", masklab[i].c_str());
 							prof.add(std::string(LABEL), 0.0, 0.0);
 
 							sprintf(LABEL, "W_%s", PRELABEL);
 							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
-
+							printedmask[i] = true;
 							/* DANGER ZONE !*/
 								/* activate to export premask -- needs changes in spectrum.cpp too*/
 									// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", "W0");
 								/* activate this to print a 2D smooth mask */
+
+
+							if (axiona->Precision() == FIELD_DOUBLE){
+								projectField	(axiona, [] (double x) -> double { return x ; } );
+							}
+							else{
+								projectField	(axiona, [] (float x) -> float { return x ; } );
+							}
 							sprintf(LABEL, "/map/W_%s", PRELABEL);
-							writeEMapHdf5s (axiona,sliceprint,LABEL);
+							writePMapHdf5s (axiona, LABEL);
 								/* activate this to see the smooth mask */
 								// if ( !(measa & (MEAS_NSP_A | MEAS_NSP_S | MEAS_NNSPEC)) && !(measa & MEAS_ENERGY3DMAP) && !wEm)
 								// {
@@ -467,31 +510,38 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				}  // end if mask
 
 
+
+
+
+
 		if (measa & (MEAS_NSP_A | MEAS_NSP_S | MEAS_NNSPEC))
 		{
-			LogMsg(VERB_NORMAL, "[Meas %d] nSpectra",indexa);
+			LogMsg(VERB_NORMAL, "\n",indexa);
+			LogMsg(VERB_NORMAL, "[Meas %d] N_SPECTRA",indexa);
+			LogFlush();
+
 
 			char PRELABEL[256];
 			char LABEL[256];
-			string           masklab[8] = {"0", "Vi", "Vi2", "Red", "Gau", "Dif", "Axit", "Axit2"};
-			SpectrumMaskType maskara[8] = {SPMASK_FLAT,SPMASK_VIL,SPMASK_VIL2,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_AXIT,SPMASK_AXIT2};
-			bool             prntmsk[8] = {false,true,true,true,true,true,true};
-			bool             mulmask[8] = {false,false,false,true,true,true,true,true};
+			string           masklab[9] = {"0", "Vi", "Vi2", "Bal", "Red", "Gau", "Dif", "Axit", "Axit2"};
+			SpectrumMaskType maskara[9] = {SPMASK_FLAT,SPMASK_VIL,SPMASK_VIL2,SPMASK_BALL,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_AXIT,SPMASK_AXIT2};
+			bool             prntmsk[9] = {false,true,true,true,true,true,true,true};
+			bool             mulmask[9] = {false,false,false,true,true,true,true,true,true};
 
 			LogMsg(VERB_HIGH, "[Meas %d] masks are %d",indexa,mask);LogFlush();
-			for (size_t i=0; i < 8 ; i++)
+			for (size_t i=0; i < 9 ; i++)
 			{
 				LogMsg(VERB_HIGH, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
 			}
 
-			for (size_t i=0; i < 8; i++)
+			for (size_t i=0; i < 9; i++)
 			{
 				LogMsg(VERB_HIGH,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
 				if ( !(mask & maskara[i])){
 					LogMsg(VERB_NORMAL, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
 					continue;
 				}
-				/* Place to set limitations and incomatibilities between saxion and axion spectra */
+				/* Place to set limitations and incompatibilities between saxion and axion spectra */
 
 					for(int ii=0; ii < irmask; ii++)
 					{
@@ -499,17 +549,23 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
-LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
+
 
 						if (prntmsk[i]){
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 								prof.start();
+
 									specAna.masker(rmasktab[ii], maskara[i]);
 										prof.stop();
 											sprintf(LABEL, "Masker %s", masklab[i].c_str());
 												prof.add(std::string(LABEL), 0.0, 0.0);
 											sprintf(LABEL, "W_%s", PRELABEL);
-											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
+											if (printedmask[i-1])
+													LogMsg(VERB_NORMAL,"[meas %d] mask already printed");
+												else
+													writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
+
+
 
 								/* Kenichi's only active in REDO mode */
 
@@ -531,7 +587,7 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
 									trackFree(eRes);
 								}
-							}
+						}
 
 						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							prof.start();
@@ -557,14 +613,17 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 						}
 						}
 
+
+
 					if (prntmsk[i]){
-							prof.start();
-								specAna.matrixbuilder();
-									prof.stop();
-										prof.add(std::string("Matrix Builder"), 0.0, 0.0);
-											// sprintf(LABEL, "M_%s_%.2f", masklab[i].c_str(), rmasktab[ii]);
-											sprintf(LABEL, "M_%s",PRELABEL);
-												writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", LABEL);
+						LogMsg(VERB_NORMAL, "[Meas %d] m-matrix build and write skipped; uncomment if you wish otherwise!",indexa);
+					// 		prof.start();
+					// 			specAna.matrixbuilder();
+					// 				prof.stop();
+					// 					prof.add(std::string("Matrix Builder"), 0.0, 0.0);
+					// 						// sprintf(LABEL, "M_%s_%.2f", masklab[i].c_str(), rmasktab[ii]);
+					// 						sprintf(LABEL, "M_%s",PRELABEL);
+					// 							writeArray(static_cast<double *>(axiona->m2Cpu()), specAna.PowMax()*specAna.PowMax(), "/mSpectrum", LABEL);
 					}
 						/* If only one masking radius makes sense (like no masking) */
 						if ( !mulmask[i])
@@ -787,6 +846,7 @@ LogMsg(VERB_NORMAL, "          cosas ");LogFlush();
 // LogMsg (VERB_HIGH,"Transferring configuration to device");
 // axiona->transferDev(FIELD_MV);
 // }
+
 
 if (info.measCPU && wasGPU)
 		axiona->setDev(DEV_GPU);
