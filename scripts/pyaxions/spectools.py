@@ -586,7 +586,7 @@ class insp:
         self.x = [] # x-axis (k/RH)
         if difftype == 'A':
             fitp = fitP(P,log,t,k,logstart,verbose)
-            iterkmax = len(k)
+            knyq = np.amax(k[k_below])
             for id in range(len(fitp.t)):
                 tt = fitp.t[id]
                 logt = fitp.log[id]
@@ -594,7 +594,7 @@ class insp:
                     print('\rcalc F: %d/%d, log = %.2f'%(id+1,len(fitp.t),logt),end="")
                 Fbinbuf = []
                 x = []
-                for ik in range(iterkmax):
+                for ik in range(len(k)):
                     # calculate only modes inside the horizon
                     if id >= fitp.listihc[ik]:
                         l = fitp.param[ik]
@@ -605,7 +605,9 @@ class insp:
                 Fbinbuf = np.array(Fbinbuf)
                 # normalize
                 dx = np.gradient(x)
-                Fdx = (Fbinbuf*dx)[k_below]
+                # normalization factor is calculated by using only modes below the Nyquist frequency
+                x_below = np.array(x) <= knyq*tt
+                Fdx = (Fbinbuf*dx)[x_below]
                 self.F.append(Fbinbuf/Fdx.sum())
                 self.Fnorm.append(Fdx.sum())
                 self.x.append(np.array(x))
