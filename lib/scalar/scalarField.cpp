@@ -6,6 +6,7 @@
 #include"enum-field.h"
 #include"fft/fftCuda.h"
 #include"fft/fftCode.h"
+#include "scalar/folder.h"
 
 #include"scalar/scalarField.h"
 
