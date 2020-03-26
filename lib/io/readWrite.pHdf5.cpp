@@ -75,6 +75,11 @@ herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type
 	return	status;
 }
 
+void    writeAttribute	(double *data, const char *name)
+{
+	writeAttribute(meas_id, data, name, H5T_NATIVE_DOUBLE);
+}
+
 herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 {
 	hid_t	attr;

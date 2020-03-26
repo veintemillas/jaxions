@@ -32,7 +32,7 @@
 	void	writePoint	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
 	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName);
-
+	void    writeAttribute	(double *data, const char *name);
 
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
