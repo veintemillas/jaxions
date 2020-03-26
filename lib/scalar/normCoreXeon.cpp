@@ -16,7 +16,7 @@ void normCoreKernelXeon (Scalar *field)
 	//fflush (stdout);
 
 	const Float deltaa = field->Delta();
-	const Float zia = static_cast<Float>(*field->zV());
+	const Float zia = static_cast<Float>(*field->RV());
 
 	Float LLa = field->LambdaP();
 
@@ -82,8 +82,6 @@ void normCoreKernelXeon (Scalar *field)
 		gradtot += gradz*gradz ;
 		gradz = imag((mCp[idx] - mCp[iMz])/mCp[idx]);
 		gradtot += gradz*gradz ;
-
-		//JAVIER added an artificial factor of 2.0, can be changed
 
 		if (gradtot > 0.0000001)
 		{
