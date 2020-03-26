@@ -687,7 +687,7 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 	prof.stop();
 	prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
 
-	if (!myCosmos->Mink() && !ic.preprop) {
+	if (!ic.preprop) {
 
 		if ((ic.smvarType != CONF_SAXNOISE) && (ic.smvarType != CONF_PARRES))
 			normaliseField(axionField, FIELD_M);
@@ -695,17 +695,20 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 		if (myCosmos->ICData().normcore)
 			normCoreField	(axionField);
 
-		// memcpy	   (axionField->vCpu(), static_cast<char *> (axionField->mStart()), axionField->DataSize()*axionField->Size());
-		axby(FIELD_M,FIELD_V,Rp,R);
+		if (!myCosmos->Mink()) /* In Minkowski this is trivial */
+			axby(FIELD_M,FIELD_V,Rp*R,R); 
 
 		if ( !(ic.kickalpha == 0.0) )
 			scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
 
-		scaleField (axionField, FIELD_M, *axionField->RV());
+		if (!myCosmos->Mink()) /* In Minkowski this is trivial */
+			scaleField (axionField, FIELD_M, *axionField->RV());
 
-		/*Note that prepropagation folds the field ;-)*/
-		axionField->setFolded(false);
 	}
+
+	/*Note that prepropagation folds the field ;-)*/
+	axionField->setFolded(false);
+
 
 	if (ic.preprop) {
 		/* Go back in time the preprop factor*/

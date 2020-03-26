@@ -28,16 +28,26 @@
 #endif
 
 template<const VqcdType VQcd, const EnType emask>
-void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, double *R, const double o2, const double LL,
-			 const double aMass2, const size_t Lx, const size_t Lz, const size_t Vo, const size_t Vf, Scalar *fieldo, void * __restrict__ eRes_, const double shift)
+void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, Scalar *fieldo, void * __restrict__ eRes_, const double shift)
 {
 
 	FieldPrecision precision = fieldo->Precision();
 	char *strdaa = static_cast<char *>(static_cast<void *>(fieldo->sData()));
 
+	const size_t NN     = ppar.Ng;
+ 	const size_t Lx     = ppar.Lx;
+	const size_t Lz     = ppar.Lz;
+ 	const double R      = ppar.R;
+ 	const double o2     = ppar.ood2a;
+ 	const double aMass2 = ppar.massA2;
+ 	const double LL     = ppar.lambda;
+ 	const double Rpct   = ppar.Rpp;
+	const size_t Vo     = ppar.Vo;
+	const size_t Vf     = ppar.Vf;
+	const size_t Vt     = ppar.Vt;
+
 	const size_t Sf = Lx*Lx;
-	const size_t Vt = Sf*(Lz+2);	// We need to add more space for padding/extra slices FFT might need
-	const size_t NN = Vo/Sf;
+
 LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
@@ -62,7 +72,7 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 		double * __restrict__ eRes	= (double * __restrict__) eRes_;
 
-		const double zR  = *R;
+		const double zR  = R;
 		const double iz  = 1./zR;
 		const double iz2 = iz*iz;
 		//const double zQ = 9.*pow(zR, nQcd+2.);
@@ -658,13 +668,14 @@ if (emask & EN_ENE){
 
 		double * __restrict__ eRes	= (double * __restrict__) eRes_;
 
-		const float zR  = *R;
+		const float zR  = R;
 		const float iz  = (float) (1.f/zR);
 		const float iz2 = iz*iz;
 		//const float zQ = 9.f*powf(zR, nQcd+2.);
 		const float zQ = aMass2*zR*zR;
 		const float lZ = 0.25f*LL*zR*zR;
 		const float sh = shift;				// Makes clang happy
+		const float Rpctf = (float) Rpct;				// for Saxion kinetic opCode(mul_ps,opCos(set1_ps,Rpctf),ivZ)
 
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
@@ -955,7 +966,7 @@ if (emask & EN_ENE){
 					opCode(permute_ps, tGx, 0b10110001),
 					tGx);
 
-				mdv = opCode(sub_ps, opCode(mask_add_ps, tGz, opCode(kmov, 0b1010101010101010), tGz, tGy), ivZ);
+				mdv = opCode(sub_ps, opCode(mask_add_ps, tGz, opCode(kmov, 0b1010101010101010), tGz, tGy), opCode(mul_ps,opCode(set1_ps,Rpctf),ivZ));
 #elif	defined(__AVX__)
 				Grx = opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, mPx, mCg), opCode(mul_ps, mPx, mSg)), 0b11011000);
 				mdv = opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, mMx, mCg), opCode(mul_ps, mMx, mSg)), 0b11011000);
@@ -975,7 +986,7 @@ if (emask & EN_ENE){
 					opCode(mul_ps, mdv, mdv),
 					opCode(mul_ps, Grz, Grz));
 
-				mdv = opCode(sub_ps, opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg)), 0b11011000), ivZ);
+				mdv = opCode(sub_ps, opCode(permute_ps, opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg)), 0b11011000), opCode(mul_ps,opCode(set1_ps,Rpctf),ivZ));
 #else
 				tKp = opCode(hadd_ps, opCode(mul_ps, vel, mCg), opCode(mul_ps, vel, mSg));
 
@@ -1003,7 +1014,7 @@ if (emask & EN_ENE){
 					opCode(mul_ps, vel, vel),
 					opCode(mul_ps, tVp, tVp));
 
-				mdv = opCode(sub_ps, opCode(shuffle_ps, tKp, tKp, 0b11011000), ivZ);
+				mdv = opCode(sub_ps, opCode(shuffle_ps, tKp, tKp, 0b11011000), opCode(mul_ps,opCode(set1_ps,Rpctf),ivZ));
 #endif
 
 // Theta gradient energy times mod^2/z^2
@@ -1315,12 +1326,20 @@ if (emask & EN_ENE){
 
 void	energyCpu	(Scalar *field, const double delta2, const double LL, const double aMass2, void *eRes, const double shift, const VqcdType VQcd, const EnType mapmask)
 {
-	const double ood2 = 0.25/delta2;
-	double *R = field->RV();
-	const size_t Lx = field->Length();
-	const size_t Lz = field->Depth();
-	const size_t Vo = field->getNg()*field->Surf();
-	const size_t Vf = Vo + field->Size();
+	PropParms ppar; /*R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift*/
+	ppar.Ng     = field->getNg();
+	ppar.Lx     = field->Length();;
+	ppar.Lz     = field->Depth();;
+	ppar.ood2a  = 0.25/delta2;
+	ppar.frw    = field->BckGnd()->Frw();
+	ppar.lambda = LL;
+	ppar.massA2 = aMass2;
+	ppar.R      = *field->RV();
+	ppar.Rpp    = field->BckGnd()->Rp(*field->zV())*(ppar.R); /* this is R' */
+
+	ppar.Vo    = field->getNg()*field->Surf();
+	ppar.Vf    = ppar.Vo + field->Size();
+	ppar.Vt    = field->eSize();
 
 	const bool map  = (mapmask & EN_MAP);
 	const bool mask = (mapmask & EN_MASK);
@@ -1342,110 +1361,116 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 			case	VQCD_1:
 				switch (mapmask){
 					case EN_ENE:
-						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MAP:
-						energyKernelXeon<VQCD_1,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
-						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
-						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 
 			case	VQCD_PQ_ONLY:
 				switch (mapmask){
 					case EN_ENE:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2=0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MAP:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2=0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2=0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2=0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2=0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2=0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 
 				case	VQCD_2:
 					switch (mapmask){
 						case EN_ENE:
-							energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar , field, eRes, shift);
 						break;
 						case EN_MAP:
-							energyKernelXeon<VQCD_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_MASK:
-							energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_ENEMASK:
-							energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_MAPMASK:
-							energyKernelXeon<VQCD_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_ENEMAPMASK:
-							energyKernelXeon<VQCD_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 					} break;
 
 				case	VQCD_1_PQ_2:
 					switch (mapmask){
 						case EN_ENE:
-							energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_MAP:
-							energyKernelXeon<VQCD_1_PQ_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_1_PQ_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_MASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_ENEMASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_MAPMASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_1_PQ_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 						case EN_ENEMAPMASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 						break;
 					} break;
 
 					case	VQCD_1N2:
 						switch (mapmask){
 							case EN_ENE:
-								energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+								energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 							break;
 							case EN_MAP:
-								energyKernelXeon<VQCD_1N2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+								energyKernelXeon<VQCD_1N2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 							break;
 							case EN_MASK:
-								energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+								energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 							break;
 							case EN_ENEMASK:
-								energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+								energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 							break;
 							case EN_MAPMASK:
-								energyKernelXeon<VQCD_1N2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+								energyKernelXeon<VQCD_1N2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 							break;
 							case EN_ENEMAPMASK:
-								energyKernelXeon<VQCD_1N2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+								energyKernelXeon<VQCD_1N2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 							break;
 						} break;
 				}
@@ -1462,15 +1487,15 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 				switch (mapmask){
 					case EN_ENE:
 					case EN_MAP:
-						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 
@@ -1478,15 +1503,18 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 				switch (mapmask){
 					case EN_ENE:
 					case EN_MAP:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2 =0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2 =0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, 0.0, Lx, Lz, Vo, Vf, field, eRes, shift);
+						ppar.massA2 =0.0;
+						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 
@@ -1494,15 +1522,15 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 				switch (mapmask){
 					case EN_ENE:
 					case EN_MAP:
-						energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 
@@ -1510,15 +1538,15 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 				switch (mapmask){
 					case EN_ENE:
 					case EN_MAP:
-						energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 
@@ -1526,15 +1554,15 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( 
 				switch (mapmask){
 					case EN_ENE:
 					case EN_MAP:
-						energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_MASK:
 					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 					case EN_ENEMASK:
 					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
+						energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
 					break;
 				} break;
 

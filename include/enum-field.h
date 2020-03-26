@@ -650,9 +650,11 @@
 		{
 			size_t   Ng;
 			size_t   Lx;
+			size_t   Lz;
 			size_t   Tz;
 			size_t   Vo;
 			size_t   Vf;
+			size_t   Vt;
 			double   R;
 			double   ct;
 			double   *PC;

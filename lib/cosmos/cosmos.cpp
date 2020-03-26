@@ -190,6 +190,7 @@ double  Cosmos::Rp  (const double ct)
     return 1;
   }
   else {
+    LogMsg(VERB_PARANOID,"[Cos] Rp = %e ",frw/(ct));
   // R = ct^frw
   // R''/R = frw(frw-1)/ct^2
 	//except in the case where frw = 0,1
