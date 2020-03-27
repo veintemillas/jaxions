@@ -512,6 +512,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	double maa = axion->AxionMass(); //axionmass((*axion->zV()), nQcd, zthres, zrestore);
 	double msa = axion->Msa();
+	double few = axion->BckGnd()->Frw();
 
 	writeAttribute(file_id, fStr,   "Field type",    attr_type);
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
@@ -522,6 +523,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	writeAttribute(file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->zV(),  "z",       H5T_NATIVE_DOUBLE);
 	writeAttribute(file_id, axion->RV(),  "R",       H5T_NATIVE_DOUBLE);
+	writeAttribute(file_id, &few,  "Frw",            H5T_NATIVE_DOUBLE);
 	if (axion->BckGnd()->UeC()){
 		double Temp = axion->BckGnd()->T(*axion->zV());
 		writeAttribute(file_id, &Temp,  "Temperature", H5T_NATIVE_DOUBLE);
@@ -858,7 +860,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	H5Tset_size (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double	zTmp, RTmp, maaR;
+	double	zTmp, RTmp, maaR, fTmp;
 	uint	tStep, cStep, totlZ;
 	readAttribute (file_id, fStr,   "Field type",   attr_type);
 	readAttribute (file_id, prec,   "Precision",    attr_type);
@@ -866,6 +868,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
 	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
+	readAttribute (file_id, &fTmp,  "Frw",          H5T_NATIVE_DOUBLE);
 	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
 	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
 LogMsg (VERB_NORMAL, "Field type: %s",fStr);
@@ -874,6 +877,7 @@ LogMsg (VERB_NORMAL, "Size: %d",sizeN);
 LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
 LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
 LogMsg (VERB_NORMAL, "RTmp: %f",RTmp);
+LogMsg (VERB_NORMAL, "Frw:  %f",fTmp);
 LogMsg (VERB_NORMAL, "tStep: %d",tStep);
 LogMsg (VERB_NORMAL, "cStep: %d",cStep);
 
@@ -994,6 +998,18 @@ LogMsg (VERB_NORMAL, "Gamma = %f\n",myCosmos->Gamma());
 			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
 			myCosmos->SetGamma(gm);
 			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f\n",myCosmos->Gamma());
+		}
+
+LogMsg (VERB_NORMAL, "Frw = %f\n",myCosmos->Frw());
+		if (myCosmos->Frw() != fTmp) {
+			LogError ("Frw read %f but input was %f; Disregarding read data at your risk!\n",fTmp, myCosmos->Frw());
+			fTmp = myCosmos->Frw();
+			if (fTmp == 0.0 ){
+				myCosmos->SetMink(true);
+				LogMsg (VERB_NORMAL, "Set Mink (frw = 0, no expansion) \n");
+			}
+
+
 		}
 
 LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());

@@ -29,7 +29,7 @@ class	Plot2D():
 		self.Lz = fileHdf5["/"].attrs.get("Depth")
 
 		self.z = fileHdf5["/"].attrs.get("z")
-		self.R = self.z
+		self.R = fileHdf5["/"].attrs.get("R")
 
 		fileHdf5.close()
 
@@ -60,9 +60,9 @@ class	Plot2D():
 			Ly = fileHdf5["/"].attrs.get("Size")
 			Lz = fileHdf5["/"].attrs.get("Depth")
 			zR = fileHdf5["/"].attrs.get("z")
-			R  = zR
-			if 'R' in fileHdf5:
-				R = fileHdf5["/"].attrs.get("R")
+			R  = fileHdf5["/"].attrs.get("R")
+			# if 'R' in fileHdf5:
+			# 	R = fileHdf5["/"].attrs.get("R")
 
 			fl = fileHdf5["/"].attrs.get("Field type").decode()
 

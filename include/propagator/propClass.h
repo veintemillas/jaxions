@@ -430,7 +430,7 @@
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 			/* Last kick */
-			LogMsg (VERB_HIGH, "Warning: axion propagator not optimized yet for odd propagators, performance might be reduced");
+			LogMsg (VERB_PARANOID, "Warning: axion propagator not optimized yet for odd propagators, performance might be reduced");
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 

@@ -272,6 +272,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 				case VQCD_0:
 						prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
 						break;
+				case VQCD_PQ_ONLY:
+						prop = std::make_unique<PropOmelyan2<VQCD_PQ_ONLY>>		(field, propclass);
+						break;
 
 				default:
 				case VQCD_NONE:
@@ -297,6 +300,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 				case VQCD_0:
 					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, propclass);
 					break;
+				case VQCD_PQ_ONLY:
+					prop = std::make_unique<PropOmelyan4<VQCD_PQ_ONLY>>		(field, propclass);
+					break;
 				default:
 				case VQCD_NONE:
 					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, propclass);
@@ -320,6 +326,9 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					break;
 				case VQCD_0:
 					prop = std::make_unique<PropLeap<VQCD_0>>		(field, propclass);
+					break;
+				case VQCD_PQ_ONLY:
+					prop = std::make_unique<PropLeap<VQCD_PQ_ONLY>>		(field, propclass);
 					break;
 				default:
 				case VQCD_NONE:

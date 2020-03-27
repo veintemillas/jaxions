@@ -13,6 +13,7 @@
 template<typename Float, ConfsubType SMVT>
 void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 {
+
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
@@ -50,6 +51,45 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 		fscanf (cacheFile ,"%lf ", &kMz);
 		LogMsg(VERB_NORMAL,"[rand] kkk.dat file used k = (%.2f,%.2f,%.2f)",kMx,kMy,kMz);
 	}
+
+	switch(SMVT)
+	{
+		case CONF_RAND:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Random configuration ");
+		break;
+		case CONF_AXNOISE:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Axnoise configuration (mod0 %.e, KCri %.e)",mod0, kCri);
+		break;
+		case CONF_SAXNOISE:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Saxnoise configuration (mod0 %.e, KCri %.e)",mod0, kCri);
+		break;
+		case CONF_AX1MODE:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Axion 1 mode (mod0 %.e, kx %d ky 1)",mod0, kMa);
+		break;
+		case CONF_MINICLUSTER:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Minicluster (mod0 %.e, kCri2 %.e)",mod0, kCri2);
+		break;
+		case CONF_MINICLUSTER0:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Minicluster (mod0 %.e, kCri2 %.e)",mod0, kCri2);
+		break;
+		case CONF_AXITON:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> Minicluster (mod0 %.e, kCri2 %.e)",mod0, kCri2);
+		break;
+		case CONF_STRINGXY:
+		case CONF_STRINGYZ:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> String ");
+		break;
+		case CONF_PARRES:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> ParRes (mod0 %.e, kxyz %.e %.e %.e kCri %.e)",mod0, kMx, kMy, kMz, kCri);
+		break;
+		case CONF_STRWAVE:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> StrWav ");
+		break;
+		case CONF_THETAVEL:
+			LogMsg(VERB_NORMAL,"[RX] >>>>> ThetVel (mod0 %.e, kxyz %.e %.e %.e kCri %.e)",mod0, kMx, kMy, kMz, kCri);
+		break;
+	}
+
 
 	#pragma omp parallel default(shared)
 	{
