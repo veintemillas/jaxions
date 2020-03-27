@@ -638,7 +638,7 @@ void	ConfGenerator::runCpu	()
 
 		}
 	}
-	LogMsg(VERB_NORMAL,"[GEN] done!",*axionField->zV());LogFlush();
+	LogMsg(VERB_NORMAL,"[GEN] done!");LogFlush();
 }
 
 
@@ -676,16 +676,22 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 		ic.kcr = 1.;
 		randConf (axionField,ic);
 		mulmul(FIELD_M,FIELD_V);
+		complex<float> *v = static_cast<complex<float>*>(axionField->vCpu());
+		size_t caca = axionField->Size()/2+axionField->Surf()/2+axionField->Length()/2;
+		LogOut("valores %f %f %f",v[caca].real(),v[caca].imag(),v[caca+10*axionField->Surf()].imag());
 		ic.smvarType = CONF_STRWAVE;
 	}
 
 	prof.stop();
 	prof.add(randName, 0., axionField->Size()*axionField->DataSize()*1e-9);
 
-	prof.start();
-	smoothXeon (axionField, ic.siter, ic.alpha);
-	prof.stop();
-	prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+	if (ic.siter>0)
+	{
+		prof.start();
+		smoothXeon (axionField, ic.siter, ic.alpha);
+		prof.stop();
+		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+	}
 
 	if (!ic.preprop) {
 
@@ -696,7 +702,7 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 			normCoreField	(axionField);
 
 		if (!myCosmos->Mink()) /* In Minkowski this is trivial */
-			axby(FIELD_M,FIELD_V,Rp*R,R); 
+			axby(FIELD_M,FIELD_V,Rp*R,R);
 
 		if ( !(ic.kickalpha == 0.0) )
 			scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
@@ -1093,7 +1099,7 @@ void	ConfGenerator::putxi(double xit, bool kspace)
 double	ConfGenerator::anymean(FieldIndex ftipo)
 {
 	/* Computes the average value of rho for normalisation purposes */
-
+	LogMsg(VERB_NORMAL,"[GEN] any mean %d ",ftipo);
 	void* meandro ;
 	double mean, Mean;
 
@@ -1131,6 +1137,7 @@ double	ConfGenerator::anymean(FieldIndex ftipo)
 		}
 
 	MPI_Allreduce(&mean, &Mean, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	LogMsg(VERB_NORMAL,"[GEN] mean %.10e ",Mean/((double) axionField->eSize()));
 	return Mean/((double) axionField->eSize());
 } //end rhomean
 
@@ -1140,7 +1147,7 @@ double	ConfGenerator::anymean(FieldIndex ftipo)
 void	ConfGenerator::susum(FieldIndex ftipo1,FieldIndex ftipo2)
 {
 	/* Sum something 1 into something 2*/
-
+	LogMsg(VERB_NORMAL,"[GEN] sum field%d into field$d ",ftipo1,ftipo2);
 	void* meandro ;
 	void* meandro2 ;
 
@@ -1199,7 +1206,7 @@ void	ConfGenerator::susum(FieldIndex ftipo1,FieldIndex ftipo2)
 void	ConfGenerator::mulmul(FieldIndex ftipo1,FieldIndex ftipo2)
 {
 	/* Multiplies something 1 into something 2*/
-
+	LogMsg(VERB_NORMAL,"[GEN] multiply field%d times field%d ",ftipo2,ftipo1);
 	void* meandro ;
 	void* meandro2 ;
 
@@ -1255,7 +1262,7 @@ void	ConfGenerator::mulmul(FieldIndex ftipo1,FieldIndex ftipo2)
 void	ConfGenerator::axby(FieldIndex ftipo1, FieldIndex ftipo2, double a, double b)
 {
 	/* Multiplies something 1 into something 2*/
-
+	LogMsg(VERB_NORMAL,"[GEN] axby (f%d) = (f%d)x%.e + (f%d)x%.e",ftipo2,ftipo2,b,ftipo1,a);
 	void* meandro ;
 	void* meandro2 ;
 
