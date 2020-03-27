@@ -667,18 +667,19 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 	double Rp = myCosmos->Rp(*axionField->zV());
 	LogMsg(VERB_NORMAL,"[GEN] time %f scale factor R %f Rp %f ",*axionField->zV(),*axionField->RV(),Rp);
 
+	/* Field m */
 	prof.start();
 	ic.fieldindex = FIELD_M;
 	randConf (axionField,ic);
+
+
+	/* Field velocity */
 	if (ic.smvarType == CONF_STRWAVE){
 		ic.fieldindex = FIELD_V;
 		ic.smvarType = CONF_THETAVEL;
 		ic.kcr = 1.;
 		randConf (axionField,ic);
 		mulmul(FIELD_M,FIELD_V);
-		complex<float> *v = static_cast<complex<float>*>(axionField->vCpu());
-		size_t caca = axionField->Size()/2+axionField->Surf()/2+axionField->Length()/2;
-		LogOut("valores %f %f %f",v[caca].real(),v[caca].imag(),v[caca+10*axionField->Surf()].imag());
 		ic.smvarType = CONF_STRWAVE;
 	}
 
@@ -693,8 +694,8 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
 	}
 
-	if (!ic.preprop) {
-
+	if (!ic.preprop)
+	{
 		if ((ic.smvarType != CONF_SAXNOISE) && (ic.smvarType != CONF_PARRES))
 			normaliseField(axionField, FIELD_M);
 
@@ -709,7 +710,6 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 
 		if (!myCosmos->Mink()) /* In Minkowski this is trivial */
 			scaleField (axionField, FIELD_M, *axionField->RV());
-
 	}
 
 	/*Note that prepropagation folds the field ;-)*/
