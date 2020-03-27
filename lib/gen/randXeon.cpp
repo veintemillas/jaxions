@@ -28,6 +28,9 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	const size_t Sf = field->Surf();
 	const size_t V  = field->Size();
 	const double L  = field->BckGnd()->PhysSize();
+	int rank = commRank();
+	size_t Lz = Lx/commSize();
+	size_t local_z_start = rank*Lz;
 
 	/* used from ic */
 	double mod0  = ic.mode0;
@@ -86,244 +89,262 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 			LogMsg(VERB_NORMAL,"[RX] >>>>> StrWav ");
 		break;
 		case CONF_THETAVEL:
-			LogMsg(VERB_NORMAL,"[RX] >>>>> ThetVel (mod0 %.e, kxyz %.e %.e %.e kCri %.e)",mod0, kMx, kMy, kMz, kCri);
+			LogMsg(VERB_NORMAL,"[RX] >>>>> ThetVel (mod0 %.e, kxyz %.e %.e %.e kBase %.e)",mod0, kMx, kMy, kMz, kBase);
 		break;
 	}
 
-
-	#pragma omp parallel default(shared)
+	if (SMVT != CONF_STRWAVE)
 	{
-		int nThread = omp_get_thread_num();
-		int rank = commRank();
-		size_t Lz = Lx/commSize();
-		size_t local_z_start = rank*Lz;
-		//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
-
-		std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-		std::uniform_real_distribution<Float> uni(-1.0, 1.0);
-
-		#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
-		for (size_t idx=0; idx<V; idx++)
+		#pragma omp parallel default(shared)
 		{
-			size_t ix, iy, iz, rho2;
-			int     x,  y,  z;
+			int nThread = omp_get_thread_num();
+			//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
 
-			switch (SMVT)
+			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
+			std::uniform_real_distribution<Float> uni(-1.0, 1.0);
+
+			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
+			for (size_t idx=0; idx<V; idx++)
 			{
-				case CONF_RAND:
-				//RANDOM INITIAL CONDITIONS
-				{
-					m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
-					break;
-				}
+				size_t ix, iy, iz, rho2;
+				int     x,  y,  z;
 
-				//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
-				case CONF_AXNOISE:
+				switch (SMVT)
 				{
-					Float theta  = mod0 + uni(mt64)*kCri ;
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-					break;
-				}
-
-				case CONF_SAXNOISE:
-				{
-					Float theta  = uni(mt64)*kCri + 1.;
-					m[idx] = std::complex<Float>(theta*cos(mod0), theta*sin(mod0));
-					break;
-				}
-
-				//	ONE MODE
-				case CONF_AX1MODE:
-				{
-					// pidx = idx-Sf;
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					Float theta = ((Float) mod0*cos(6.2831853*(ix*kMa + iy)/Lx));
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-					break;
-				}
-
-				case CONF_MINICLUSTER:
-				//	MINICLUSTER CENTERED AT GRID
-				{
-					// pidx = idx-Sf;
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					z = iz;
-					y = iy;
-					x = ix;
-					if (iz>Lx/2) { z = z-Lx; }
-					Float theta = ((Float) ((x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2)+z*z));
-					theta = exp(-theta*kCri2)*mod0;
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-				break;
-				}
-
-				//	MINICLUSTER CENTERED AT ZERO
-				case CONF_MINICLUSTER0:
-				{
-					// pidx = idx-Sf;
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					z = iz;
-					y = iy;
-					x = ix;
-					if (iz>Lx/2) { z = z-Lx; }
-					if (iy>Lx/2) { y = y-Lx; }
-					if (ix>Lx/2) { x = x-Lx; }
-					Float theta = ((Float) (x*x + y*y + z*z));
-					theta = exp(-theta*kCri2)*mod0;
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-					break;
-				}
-
-				case CONF_AXITON:
-				{
-					// pidx = idx-Sf;
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					z = iz;
-					y = iy;
-					x = ix;
-					if (iz>Lx/2) { z = z-Lx; }
-					if (iy>Lx/2) { y = y-Lx; }
-					if (ix>Lx/2) { x = x-Lx; }
-					Float theta = ((Float) (x*x + y*y + z*z));
-					theta = mod0/(theta*kCri2 + 1.0);
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-					break;
-				}
-
-				//// if(ix<2)
-				//// {
-				//// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (idx%Sf)%Lx, ix,iy,iz,m[idx].real(),m[idx].imag());
-				//// }
-				//	STRING XY
-				case CONF_STRINGXY:
-				{
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					z = iz;
-					y = iy;
-					x = ix;
-					//CENTERED AT GRID, z=0
-					if (iz>Lx/2) { z = z-Lx; }
-					Float aL = ((Float) Lx)/4.01;	//RADIUS
-					rho2 = (x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2);
-					Float rho = sqrt((Float) rho2)	;
-					Float z2 = ((Float) z*z) ;
-					Float d12 = (rho + aL)*(rho + aL) + z2 ;
-					Float d22 = (rho - aL)*(rho - aL) + z2 ;
-					// d12 /= ((Float) Sf) ;
-					// d22 /= ((Float) Sf) ;
-					Float zis = (Float) z ;
-					Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.5 + zis)/abs(-0.5 + zis)	;
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-					break;
-				}
-
-				//	STRING YZ
-				case CONF_STRINGYZ:
-				{
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					z = iz;
-					y = iy;
-					x = ix;
-					//CENTERED AT GRID, z=0
-					if (iz>Lx/2) { z = z-Lx; }
-					Float aL = ((Float) Lx)/4.01;	//RADIUS
-					rho2 = (z)*(z)+(y-Lx/2)*(y-Lx/2);
-					Float rho = sqrt((Float) rho2)	;
-					Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
-					Float d12 = (rho + aL)*(rho + aL) + z2 ;
-					Float d22 = (rho - aL)*(rho - aL) + z2 ;
-					// d12 /= ((Float) Sf) ;
-					// d22 /= ((Float) Sf) ;
-					//Float zis = (Float) x ;
-					Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
-					theta = 3.14159265*theta*theta	;
-					if (ix>Lx/2)
-						theta *= -1 ;
-
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
-					break;
-				}
-				//	ONE MODE
-				case CONF_PARRES:
-				{
-					// pidx = idx-Sf;
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					Float theta = ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
-					m[idx] = std::complex<Float>(kCri*cos(theta), kCri*sin(theta));
-					break;
-				}
-
-				// case CONF_STRWAVE:
-				// {
-				// 	iz = idx/Sf + local_z_start;
-				// 	iy = (idx%Sf)/Lx ;
-				// 	ix = (idx%Sf)%Lx ;
-				// 	z = iz;
-				// 	y = iy;
-				// 	x = ix;
-				// 	Float aL = ((Float) Lx)/4.01;	//RADIUS
-				// 	rho2 = (y-Lx/2)*(y-Lx/2);
-				// 	Float rho = sqrt((Float) rho2)	;
-				// 	Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
-				// 	Float d12 = (rho + aL)*(rho + aL) + z2 ;
-				// 	Float d22 = (rho - aL)*(rho - aL) + z2 ;
-				// 	Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
-				// 	theta = 3.14159265*theta*theta	;
-				// 	if (ix>Lx/2)
-				// 		theta *= -1 ;
-				//
-				// 	// theta += ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
-				// 	m[idx] = std::complex<Float>(cos(theta), sin(theta));
-				// 	break;
-				// }
-
-				case CONF_STRWAVE:
-				{
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					z = iz;
-					y = iy;
-					x = ix;
-					Float L1 = ((Float) Lx)/4.01;
-					Float L3 = ((Float) Lx)*3.01/4.01;
-					Float LL = ((Float) Lx)/2.;
-					Float theta = 0.;
-					for (int nx = -2 ; nx < 4; nx++){
-						for (int ny = -2 ; ny < 4; ny++){
-							theta += pow(-1,nx+ny)*std::atan2(y-((Float) ny + 0.5)*LL,x-((Float) nx + 0.5)*LL);
-						}
+					case CONF_RAND:
+					//RANDOM INITIAL CONDITIONS
+					{
+						m[idx]   = std::complex<Float>(uni(mt64), uni(mt64));
+						break;
 					}
-					m[idx] = std::complex<Float>(cos(theta), sin(theta));
+
+					//RANDOM AXIONS AROUND CP CONSERVING MINIMUM
+					case CONF_AXNOISE:
+					{
+						Float theta  = mod0 + uni(mt64)*kCri ;
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						break;
+					}
+
+					case CONF_SAXNOISE:
+					{
+						Float theta  = uni(mt64)*kCri + 1.;
+						m[idx] = std::complex<Float>(theta*cos(mod0), theta*sin(mod0));
+						break;
+					}
+
+					//	ONE MODE
+					case CONF_AX1MODE:
+					{
+						// pidx = idx-Sf;
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						Float theta = ((Float) mod0*cos(6.2831853*(ix*kMa + iy)/Lx));
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						break;
+					}
+
+					case CONF_MINICLUSTER:
+					//	MINICLUSTER CENTERED AT GRID
+					{
+						// pidx = idx-Sf;
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						z = iz;
+						y = iy;
+						x = ix;
+						if (iz>Lx/2) { z = z-Lx; }
+						Float theta = ((Float) ((x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2)+z*z));
+						theta = exp(-theta*kCri2)*mod0;
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
 					break;
+					}
+
+					//	MINICLUSTER CENTERED AT ZERO
+					case CONF_MINICLUSTER0:
+					{
+						// pidx = idx-Sf;
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						z = iz;
+						y = iy;
+						x = ix;
+						if (iz>Lx/2) { z = z-Lx; }
+						if (iy>Lx/2) { y = y-Lx; }
+						if (ix>Lx/2) { x = x-Lx; }
+						Float theta = ((Float) (x*x + y*y + z*z));
+						theta = exp(-theta*kCri2)*mod0;
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						break;
+					}
+
+					case CONF_AXITON:
+					{
+						// pidx = idx-Sf;
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						z = iz;
+						y = iy;
+						x = ix;
+						if (iz>Lx/2) { z = z-Lx; }
+						if (iy>Lx/2) { y = y-Lx; }
+						if (ix>Lx/2) { x = x-Lx; }
+						Float theta = ((Float) (x*x + y*y + z*z));
+						theta = mod0/(theta*kCri2 + 1.0);
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						break;
+					}
+
+					//// if(ix<2)
+					//// {
+					//// 	printf("MINICLUSTER data! %d %d (%d,%d,%d) %f %f \n",idx, (idx%Sf)%Lx, ix,iy,iz,m[idx].real(),m[idx].imag());
+					//// }
+					//	STRING XY
+					case CONF_STRINGXY:
+					{
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						z = iz;
+						y = iy;
+						x = ix;
+						//CENTERED AT GRID, z=0
+						if (iz>Lx/2) { z = z-Lx; }
+						Float aL = ((Float) Lx)/4.01;	//RADIUS
+						rho2 = (x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2);
+						Float rho = sqrt((Float) rho2)	;
+						Float z2 = ((Float) z*z) ;
+						Float d12 = (rho + aL)*(rho + aL) + z2 ;
+						Float d22 = (rho - aL)*(rho - aL) + z2 ;
+						// d12 /= ((Float) Sf) ;
+						// d22 /= ((Float) Sf) ;
+						Float zis = (Float) z ;
+						Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.5 + zis)/abs(-0.5 + zis)	;
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						break;
+					}
+
+					//	STRING YZ
+					case CONF_STRINGYZ:
+					{
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						z = iz;
+						y = iy;
+						x = ix;
+						//CENTERED AT GRID, z=0
+						if (iz>Lx/2) { z = z-Lx; }
+						Float aL = ((Float) Lx)/4.01;	//RADIUS
+						rho2 = (z)*(z)+(y-Lx/2)*(y-Lx/2);
+						Float rho = sqrt((Float) rho2)	;
+						Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
+						Float d12 = (rho + aL)*(rho + aL) + z2 ;
+						Float d22 = (rho - aL)*(rho - aL) + z2 ;
+						// d12 /= ((Float) Sf) ;
+						// d22 /= ((Float) Sf) ;
+						//Float zis = (Float) x ;
+						Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
+						theta = 3.14159265*theta*theta	;
+						if (ix>Lx/2)
+							theta *= -1 ;
+
+						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						break;
+					}
+					//	ONE MODE
+					case CONF_PARRES:
+					{
+						// pidx = idx-Sf;
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						Float theta = ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
+						m[idx] = std::complex<Float>(kCri*cos(theta), kCri*sin(theta));
+						break;
+					}
+
+					/* done below much faster */
+					// case CONF_STRWAVE:
+					// {
+					// 	iz = idx/Sf + local_z_start;
+					// 	iy = (idx%Sf)/Lx ;
+					// 	ix = (idx%Sf)%Lx ;
+					// 	z = iz;
+					// 	y = iy;
+					// 	x = ix;
+					// 	Float L1 = ((Float) Lx)/4.01;
+					// 	Float L3 = ((Float) Lx)*3.01/4.01;
+					// 	Float LL = ((Float) Lx)/2.;
+					// 	Float theta = 0.;
+					// 	for (int nx = -2 ; nx < 4; nx++){
+					// 		for (int ny = -2 ; ny < 4; ny++){
+					// 			theta += pow(-1,nx+ny)*std::atan2(y-((Float) ny + 0.5)*LL,x-((Float) nx + 0.5)*LL);
+					// 		}
+					// 	}
+					// 	m[idx] = std::complex<Float>(cos(theta), sin(theta));
+					// 	break;
+					// }
+
+
+					case CONF_THETAVEL:
+					{
+						// pidx = idx-Sf;
+						iz = idx/Sf + local_z_start;
+						iy = (idx%Sf)/Lx ;
+						ix = (idx%Sf)%Lx ;
+						z=iz;y=iy;x=ix;
+						Float thetap = ((Float) mod0*sin(kBase*(ix*kMx + iy*kMy + iz*kMz)));
+						m[idx] = std::complex<Float>(0, thetap);
+						break;
+					}
+
 				}
+			}
+		}
+	}
 
+	if (SMVT == CONF_STRWAVE)
+	{
+		LogMsg(VERB_NORMAL,"[RX] CONF_STRWAVE! ");
 
-				case CONF_THETAVEL:
-				{
-					// pidx = idx-Sf;
-					iz = idx/Sf + local_z_start;
-					iy = (idx%Sf)/Lx ;
-					ix = (idx%Sf)%Lx ;
-					Float thetap = ((Float) mod0*sin(kBase*(ix*kMx + iy*kMy + iz*kMz)));
-					m[idx] = std::complex<Float>(0., thetap);
-					break;
+		#pragma omp parallel default(shared)
+		{
+			int nThread = omp_get_thread_num();
+			int rank = commRank();
+			// size_t Lz = Lx/commSize();
+			// size_t local_z_start = rank*Lz;
+			//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
+			Float L1 = ((Float) Lx)/4.01;
+			Float L3 = ((Float) Lx)*3.01/4.01;
+			Float LL = ((Float) Lx)/2.;
+
+			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
+			std::uniform_real_distribution<Float> uni(-1.0, 1.0);
+
+			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
+			for (size_t idx=0; idx<Sf; idx++)
+			{
+				size_t ix, iy;
+				int     x,  y,  z;
+				iy = (idx%Sf)/Lx ;
+				ix = (idx%Sf)%Lx ;
+				y = iy;
+				x = ix;
+				Float theta = 0.;
+				for (int nx = -2 ; nx < 4; nx++){
+					for (int ny = -2 ; ny < 4; ny++){
+						theta += pow(-1,nx+ny)*std::atan2(y-((Float) ny + 0.5)*LL,x-((Float) nx + 0.5)*LL);
+					}
 				}
-
+				std::complex<Float> eee = std::complex<Float>(cos(theta), sin(theta));
+				for (size_t iz =0; iz<Lz; iz++){
+					m[idx+iz*Sf] = eee;
+				}
 			}
 		}
 	}
