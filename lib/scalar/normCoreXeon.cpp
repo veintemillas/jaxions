@@ -27,7 +27,14 @@ void normCoreKernelXeon (Scalar *field)
 	field->exchangeGhosts(FIELD_M);
 
 	complex<Float> *mCp = static_cast<complex<Float>*> (field->mStart());
-	complex<Float> *vCp = static_cast<complex<Float>*> (field->vCpu());
+	complex<Float> *maux;
+
+	if (field->LowMem()){
+		maux = static_cast<complex<Float>*> (field->vCpu());
+		LogError("NormcoreXeon deletes v!!!");
+	}
+	else
+		maux = static_cast<complex<Float>*> (field->m2Cpu());
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=0; idx<n3; idx++)
@@ -100,25 +107,17 @@ void normCoreKernelXeon (Scalar *field)
 					// 	rhof = 1.0	;
 					// }
 
-
 		}
 		else
 		{
-			//printf("shock!");
 			rhof = 1.0 ;
 		}
-		vCp[idx] = mCp[idx]*rhof/abs(mCp[idx]);
-
-		//if(idx % sizeN*sizeN*10 == 0)
-		//{
-		//printf("CORE sets, (%f,%f,%f,%f,%f,%f,%f)= \n", gradx,sss,rhof,abs(vCp[idx]),sqrt(LLa),zia,deltaa);
-		//}
+		maux[idx] = mCp[idx]*rhof/abs(mCp[idx]);
 
 	}
 
-	//Copies v to m
-	memcpy (static_cast<char *>(field->mStart()), field->vCpu(), field->DataSize()*n3);
-	field->exchangeGhosts(FIELD_M);
+	//Copies maux to m
+	memcpy (static_cast<char *>(field->mStart()), static_cast<char *>(static_cast<void *>(maux)), field->DataSize()*n3);
 
 	commSync();
 
