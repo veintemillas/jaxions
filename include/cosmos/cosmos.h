@@ -63,7 +63,7 @@
 		void     SetQcdPot  (const VqcdType pt)	{ pot      = pt;    }
 
 		void     SetFrw     (const double fff)	{ frw     = fff;  }
-		void     SetMink    (const bool bbb)	  { mink    = bbb; frw     = 0.0; }
+		void     SetMink    (const bool bbb)	  { mink    = bbb; }
 		void     SetICData  (const IcData bbb)	{ icdatastruc = bbb;  }
 		void     SetUeC     (const bool bbb)	  { ueCosm = bbb;  }
 		void     SetFA      (const double ff)	  { fA = ff;  }
