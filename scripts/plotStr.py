@@ -52,24 +52,6 @@ class	GLViewWithText(gl.GLViewWidget):
 
 class	Plot3D():
 	def	__init__(self):
-		prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
-		usableFiles = []
-		for maes in prefileMeas:
-			try:
-				with h5py.File(maes, 'r') as f:
-					if ("/string/data" in f) :
-						usableFiles.append(maes)
-			except:
-				print('Error opening file: %s'%maes)
-
-		# usableFiles = []
-		# print('files with strings? ... ',end='')
-		# for myFile in fileMeas:
-		# 	fileHdf5 = h5py.File(myFile, "r")
-		# 	if "/string/data" in fileHdf5:
-		# 		usableFiles.append(myFile)
-		print('from ', usableFiles[0], ' to ', usableFiles[-1])
-
 
 		self.allData = []
 
@@ -94,6 +76,18 @@ class	Plot3D():
 			fp.close()
 			self.size = len(self.allData)
 		else:
+			prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
+			usableFiles = []
+			for maes in prefileMeas:
+				try:
+					with h5py.File(maes, 'r') as f:
+						if ("/string/data" in f) :
+							usableFiles.append(maes)
+				except:
+					print('Error opening file: %s'%maes)
+
+			print('from ', usableFiles[0], ' to ', usableFiles[-1])
+
 			print("Reading measurement files")
 
 			fileHdf5 = h5py.File(usableFiles[0], "r")
