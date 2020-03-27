@@ -355,7 +355,7 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 					opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, tGx), _MM_PERM_BADC)),
 					tGx);
 
-				mdv = opCode(sub_pd, opCode(mask_add_pd, tGz, opCode(kmov, 0b0000000010101010), tGz, tGy), ivZ);
+				mdv = opCode(sub_pd, opCode(mask_add_pd, tGz, opCode(kmov, 0b0000000010101010), tGz, tGy), opCode(mul_pd,opCode(set1_pd,Rpct),ivZ));
 #else				// Las instrucciones se llaman igual con AVX o con SSE3
 				Grx = opCode(hadd_pd, opCode(mul_pd, mPx, mCg), opCode(mul_pd, mPx, mSg));
 				mdv = opCode(hadd_pd, opCode(mul_pd, mMx, mCg), opCode(mul_pd, mMx, mSg));
@@ -375,7 +375,7 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 					opCode(mul_pd, mdv, mdv),
 					opCode(mul_pd, Grz, Grz));
 
-				mdv = opCode(sub_pd, opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), ivZ);
+				mdv = opCode(sub_pd, opCode(hadd_pd, opCode(mul_pd, vel, mCg), opCode(mul_pd, vel, mSg)), opCode(mul_pd,opCode(set1_pd,Rpct),ivZ));
 #endif
 				tGx = opCode(mul_pd, mod, Grx);
 				tGy = opCode(mul_pd, mod, Gry);
