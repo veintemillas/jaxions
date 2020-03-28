@@ -33,7 +33,7 @@
 		#pragma GCC optimize ("unroll-loops")
 	#endif
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	class	PropClass : public PropBase
 	{
 		protected:
@@ -46,8 +46,8 @@
 		double		&gamma;
 		LambdaType	lType;
 
-		double	c[nStages];
-		double	d[nStages + (lastStage == true ? 1 : 0)];
+		double	c[nStages + (lastStage == PROP_LAST  ? 1 : 0)];
+		double	d[nStages + (lastStage == PROP_FIRST ? 1 : 0)];
 
 		public:
 
@@ -55,7 +55,7 @@
 		inline	~PropClass() override {};
 
 		inline void	setCoeff(const double * __restrict__ nC, const double * __restrict__ nD) {
-			for(int i=0; i<nStages; i++) { c[i] = nC[i]; d[i] = nD[i]; } if (lastStage) { d[nStages] = nD[nStages]; }
+			for(int i=0; i<nStages; i++) { c[i] = nC[i]; d[i] = nD[i]; } if (lastStage == PROP_FIRST) { d[nStages] = nD[nStages]; } if (lastStage == PROP_LAST) { c[nStages] = nC[nStages]; }
 		}
 
 
@@ -84,7 +84,7 @@
 		inline double	cBytes	(const PropcType)	override;
 	};
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 		PropClass<nStages, lastStage, VQcd>::PropClass(Scalar *field, PropcType spec) : axion(field), Lx(field->Length()), Lz(field->eDepth()), V(field->Size()), S(field->Surf()),
 		ood2(1./(field->Delta()*field->Delta())), lambda(field->BckGnd()->Lambda()), precision(field->Precision()), gamma(field->BckGnd()->Gamma()), lType(field->LambdaT()) {
 
@@ -186,20 +186,32 @@
 
 	// Generic axion propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tRunGpu	(const double dz) {
 	#ifdef  USE_GPU
 		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
 		const uint ext = uV + uS;
 		// eom only depend on R
-		double *z = axion->zV();
-		double *R = axion->RV();
+		double *z  = axion->zV();
+		double *R  = axion->RV();
+
+		double *cD = d;
 
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
+		if (lastStage == PROP_FIRST) {
+			const double	d0 = d[0];
+
+			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, uLx, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2], FIELD_AXION);
+			*z += dz*d0;
+			axion->updateR();
+			cD = &(d[1]);
+			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
+		}
+
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
-			const double	c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
+			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
 			auto maa = axion->AxionMassSq();
 
@@ -228,7 +240,7 @@
 			axion->updateR();
 		}
 
-		if (lastStage) {
+		if (lastStage == PROP_LAST) {
 			LogMsg (VERB_HIGH, "Warning: axion propagator not optimized yet for odd propagators, performance might be reduced");
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
@@ -250,7 +262,7 @@
 
 	// Generic saxion propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunGpu	(const double dz) {
 	#ifdef	USE_GPU
 		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
@@ -261,15 +273,15 @@
 		double *R = axion->RV();
 		double cLmbda = axion->LambdaP();
 
-		auto *cd = d;
+		auto *cD = d;
 
-		if (lastStage) {
-			const double	d0 = d[0], maa = axion->AxionMassSq();
+		if (lastStage == PROP_FIRST) {
+			const double	d0 = d[0];
 
 			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, uLx, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
 			*z += dz*d0;
 			axion->updateR();
-			cd = &(d[1]);
+			cD = &(d[1]);
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 		}
 
@@ -278,7 +290,7 @@
 
 			cLmbda = axion->LambdaP();
 
-			const double	c1 = c[s], c2 = c[s+1], d1 = cd[s], d2 = cd[s+1];
+			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
 			auto maa = axion->AxionMassSq();
 
@@ -310,6 +322,21 @@
 			*z += dz*d2;
 			axion->updateR();
 		}
+
+		if (lastStage == PROP_LAST) {
+			cLmbda = axion->LambdaP();
+
+			const double    c0 = c[nStages], maa = axion->AxionMassSq();
+
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
+				  ((cudaStream_t *)axion->Streams())[2]);
+			axion->exchangeGhosts(FIELD_M);
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
+				  ((cudaStream_t *)axion->Streams())[0]);
+			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+				  ((cudaStream_t *)axion->Streams())[1]);
+		}
+
 	#else
 		LogError ("Error: gpu support not built");
 		exit(1);
@@ -318,7 +345,7 @@
 
 	// Generic saxion lowmem propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::lowGpu	(const double dz) {
 	#ifdef	USE_GPU
 		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
@@ -379,9 +406,10 @@
 
 	// Generic axion propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tRunCpu	(const double dz) {
-		double *z = axion->zV();
+		double *z  = axion->zV();
+		double *cD = d;
 
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
@@ -398,12 +426,25 @@
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
+		if (lastStage == PROP_FIRST) {
+			/* Last kick */
+			LogMsg (VERB_PARANOID, "Warning: axion propagator not optimized yet for odd propagators, performance might be reduced");
+			const double	d0 = d[0];
+			/* First drift no kick c = 0 */
+
+			updateMThetaXeon(axion->mCpu(), axion->vCpu(), dz, d0, Lx, BO, V+BO, precision, xBlock, yBlock, zBlock);
+			*z += dz*d0;
+			axion->updateR();
+			ppar.R   = *axion->RV();
+			ppar.Rpp = axion->Rpp();
+			cD = &(d[1]);
+		}
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			const double c1 = c[s], c2 = c[s+1], d1 = d[s], d2 = d[s+1];
+			const double c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -425,7 +466,7 @@
 			axion->updateR();
 		}
 
-		if (lastStage) {
+		if (lastStage == PROP_LAST) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 			/* Last kick */
 			LogMsg (VERB_PARANOID, "Warning: axion propagator not optimized yet for odd propagators, performance might be reduced");
@@ -446,7 +487,7 @@
 
 	// Generic axion spectral propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tSpecCpu	(const double dz) {
 
 		double *z     = axion->zV();
@@ -510,7 +551,7 @@
 
 	// Generic saxion propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunCpu	(const double dz) {
 		double *z = axion->zV();
 
@@ -529,11 +570,10 @@
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
-		auto *cd  = d;
+		auto *cD  = d;
 
-		if (lastStage) {
-			// cLmbda = axion->LambdaP();
-			const double	d0 = d[0], maa = axion->AxionMassSq();
+		if (lastStage == PROP_FIRST) {
+			const double d0 = d[0];
 			/* First drift no kick c = 0 */
 
 			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, Lx, BO, V+BO, precision, xBlock, yBlock, zBlock);
@@ -541,7 +581,7 @@
 			axion->updateR();
 			ppar.R   = *axion->RV();
 			ppar.Rpp = axion->Rpp();
-			cd = &(d[1]);
+			cD = &(d[1]);
 		}
 
 		#pragma unroll
@@ -549,7 +589,7 @@
 
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			const double	c1 = c[s], c2 = c[s+1], d1 = cd[s], d2 = cd[s+1];
+			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -572,6 +612,24 @@
 			*z += dz*d2;
 			axion->updateR();
 		}
+
+		if (lastStage == PROP_LAST) {
+			axion->sendGhosts(FIELD_M, COMM_SDRV);
+
+			const double    c0 = c[nStages], maa = axion->AxionMassSq();
+			/* Last kick but not drift d = 0 */
+
+			ppar.lambda = axion->LambdaP();
+			ppar.massA2 = axion->AxionMassSq();
+			ppar.R      = *axion->RV();
+			ppar.Rpp    = axion->Rpp();
+
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+		}
+ 
 		axion->setM2     (M2_DIRTY);
 	}
 
@@ -580,7 +638,7 @@
 
 	// Generic saxion lowmem propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::lowCpu	(const double dz) {
 		double *z = axion->zV();
 		double *R = axion->RV();
@@ -625,7 +683,7 @@
 
 
 	// Generic saxion spectral propagator
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
 
 		double *z = axion->zV();
@@ -674,7 +732,7 @@
 
 
 	// Generic saxion full spectral propagator (in Fourier space)
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sFpecCpu	(const double dz) {
 
 		double *z = axion->zV();
@@ -748,7 +806,7 @@
 
 
 	// // Generic Axion full spectral propagator (in Fourier space)
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tFpecCpu	(const double dz) {
 
 		PropParms ppar;
@@ -823,7 +881,7 @@
 
 	// Generic Naxion propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::nRunCpu	(const double dz) {
 
 		PropParms ppar;
@@ -891,7 +949,7 @@
 
 	// Generic Paxion propagator
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::pRunCpu	(const double dz) {
 
 		PropParms ppar;
@@ -974,7 +1032,7 @@
 
 
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cFlops	(const PropcType spec) {
 		switch (spec)
 		{
@@ -1077,7 +1135,7 @@
 		return	0.;
 	}
 
-	template<const int nStages, const bool lastStage, VqcdType VQcd>
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const PropcType spec) {
 
 		double lapla = 1.0 + 6.0 * axion->getNg();
