@@ -21,8 +21,8 @@ class	PropLeap : public PropClass<2, true, pot> {
 		PropClass<2, true, pot>(field, propclass) {
 		//	Set up Leapfrog parameters
 
-		double nC[3] = { 0.5, 0.5, 0.0 };
-		double nD[2] = { 1.0, 0.0 };
+		double nC[2] = { 0.5, 0.5 };
+		double nD[3] = { 0.25, 0.5, 0.25 };
 
 		this->setCoeff(nC, nD);
 
@@ -59,8 +59,8 @@ class	PropMLeap : public PropClass<4, true, pot> {
 		PropClass<4, true, pot>(field, propclass) {
 		//	Set up Leapfrog parameters
 
-		double nC[5] = { 0.125, 0.25, 0.25, 0.25, 0.125 };
-		double nD[4] = { 0.25,  0.25, 0.25, 0.25 };
+		double nC[4] = { 0.25,  0.25, 0.25, 0.25 };
+		double nD[5] = { 0.125, 0.25, 0.25, 0.25, 0.125 };
 
 		this->setCoeff(nC, nD);
 
@@ -100,8 +100,8 @@ class	PropOmelyan2 : public PropClass<2, true, pot> {
 
 		//	Set up Omelyan parameters for BABAB
 
-		double nC[3] = { chi, 1.-2.*chi, chi };
-		double nD[2] = { 0.5, 0.5 };
+		double nC[2] = { 0.5, 0.5 };
+		double nD[3] = { chi, 1.-2.*chi, chi };
 
 		this->setCoeff(nC, nD);
 
@@ -128,8 +128,8 @@ class	PropOmelyan4 : public PropClass<4, true, pot> {
 
 		//	Set up Omelyan parameters for BABABABAB
 
-		double nC[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
-		double nD[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
+		double nC[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
+		double nD[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
 
 		this->setCoeff(nC, nD);
 
@@ -270,11 +270,11 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, propclass);
 					break;
 				case VQCD_0:
-						prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
-						break;
+					prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
+					break;
 				case VQCD_PQ_ONLY:
-						prop = std::make_unique<PropOmelyan2<VQCD_PQ_ONLY>>		(field, propclass);
-						break;
+					prop = std::make_unique<PropOmelyan2<VQCD_PQ_ONLY>>	(field, propclass);
+					break;
 
 				default:
 				case VQCD_NONE:
@@ -301,7 +301,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, propclass);
 					break;
 				case VQCD_PQ_ONLY:
-					prop = std::make_unique<PropOmelyan4<VQCD_PQ_ONLY>>		(field, propclass);
+					prop = std::make_unique<PropOmelyan4<VQCD_PQ_ONLY>>	(field, propclass);
 					break;
 				default:
 				case VQCD_NONE:

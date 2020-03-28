@@ -18,10 +18,12 @@ endif()
 add_executable(vaxion3d    vaxions.cpp)
 add_executable(WKVaxion    WKVaxion.cpp)
 add_executable(paxion3d    Paxions.cpp)
+add_executable(axion3d      axions.cpp)
 
 target_link_libraries(vaxion3d    ${LIBS} )
 target_link_libraries(WKVaxion    ${LIBS} )
 target_link_libraries(paxion3d    ${LIBS} )
+target_link_libraries(axion3d     ${LIBS} )
 
 #add_custom_target(outFolder       ALL COMMAND ${CMAKE_COMMAND} -E make_directory out)
 #add_custom_target(mFolder         ALL COMMAND ${CMAKE_COMMAND} -E make_directory out/m)
