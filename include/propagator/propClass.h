@@ -271,7 +271,6 @@
 		// eom only depend on R
 		double *z = axion->zV();
 		double *R = axion->RV();
-		double cLmbda = axion->LambdaP();
 
 		auto *cD = d;
 
@@ -288,7 +287,7 @@
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 
-			cLmbda = axion->LambdaP();
+			double cLmbda = axion->LambdaP();
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
@@ -324,7 +323,7 @@
 		}
 
 		if (lastStage == PROP_LAST) {
-			cLmbda = axion->LambdaP();
+			double cLmbda = axion->LambdaP();
 
 			const double    c0 = c[nStages], maa = axion->AxionMassSq();
 
@@ -563,10 +562,6 @@
 		ppar.gamma  = axion->BckGnd()->Gamma();
 		ppar.frw    = axion->BckGnd()->Frw();
 
-		ppar.lambda = axion->LambdaP();
-		ppar.massA2 = axion->AxionMassSq();
-		ppar.R      = *axion->RV();
-		ppar.Rpp    = axion->Rpp();
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
@@ -586,6 +581,11 @@
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
+
+			ppar.lambda = axion->LambdaP();
+			ppar.massA2 = axion->AxionMassSq();
+			ppar.R      = *axion->RV();
+			ppar.Rpp    = axion->Rpp();
 
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
