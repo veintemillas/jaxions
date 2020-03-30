@@ -128,8 +128,8 @@ class	PropOmelyan4 : public PropClass<4, PROP_LAST, pot> {
 
 		//	Set up Omelyan parameters for BABABABAB
 
-		double nC[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
-		double nD[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
+		double nC[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
+		double nD[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
 
 		this->setCoeff(nC, nD);
 
