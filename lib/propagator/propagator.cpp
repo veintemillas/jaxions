@@ -117,11 +117,11 @@ class	PropOmelyan2 : public PropClass<2, PROP_FIRST, pot> {
 };
 
 template<VqcdType pot>
-class	PropOmelyan4 : public PropClass<4, PROP_LAST, pot> {
+class	PropOmelyan4 : public PropClass<4, PROP_FIRST, pot> {
 
 	public:
 		PropOmelyan4(Scalar *field, const PropcType propclass) :
-		PropClass<4, PROP_LAST, pot>(field, propclass) {
+		PropClass<4, PROP_FIRST, pot>(field, propclass) {
 		constexpr double xi  = +0.16449865155757600;
 		constexpr double lb  = -0.02094333910398989;
 		constexpr double chi = +1.23569265113891700;
