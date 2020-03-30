@@ -118,18 +118,26 @@ class	PropOmelyan2 : public PropClass<2, PROP_FIRST, pot> {
 
 template<VqcdType pot>
 class	PropOmelyan4 : public PropClass<4, PROP_FIRST, pot> {
+//class	PropOmelyan4 : public PropClass<4, PROP_LAST, pot> {
 
 	public:
 		PropOmelyan4(Scalar *field, const PropcType propclass) :
 		PropClass<4, PROP_FIRST, pot>(field, propclass) {
-		constexpr double xi  = +0.16449865155757600;
-		constexpr double lb  = -0.02094333910398989;
-		constexpr double chi = +1.23569265113891700;
+//		PropClass<4, PROP_LAST, pot>(field, propclass) {
+		constexpr double xi  = +0.1786178958448091;
+		constexpr double lb  = -0.2123418310626054;
+		constexpr double chi = -0.06626458266981849;
+//		constexpr double xi  = +0.16449865155757600;
+//		constexpr double lb  = -0.02094333910398989;
+//		constexpr double chi = +1.23569265113891700;
 
-		//	Set up Omelyan parameters for BABABABAB
+		//	Set up Omelyan parameters for ABABABABA
+		////	Set up Omelyan parameters for BABABABAB
 
-		double nC[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
-		double nD[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
+		double nC[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
+		double nD[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
+		//double nC[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
+		//double nD[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
 
 		this->setCoeff(nC, nD);
 

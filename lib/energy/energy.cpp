@@ -88,6 +88,7 @@ void	Energy::runGpu	()
 	}
 
 	cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
+	field->transferCpu(FIELD_M2);
 #else
 	LogError ("Gpu support not built");
 	exit(1);
