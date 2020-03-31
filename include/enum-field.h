@@ -415,6 +415,12 @@
 			PROP_LAPMASK	  = 15, // Masks the laplacian type, removing the integrator time
 		}	PropType;
 
+		typedef	enum	PropStage_s {
+			PROP_NORMAL,
+			PROP_FIRST,
+			PROP_LAST,
+		}	PropStage;
+
 		typedef	enum	SpectrumType_s {
 			SPECTRUM_K	= 1,
 			SPECTRUM_G	= 2,

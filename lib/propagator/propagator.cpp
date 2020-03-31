@@ -14,15 +14,15 @@
 std::unique_ptr<PropBase> prop;
 
 template<VqcdType pot>
-class	PropLeap : public PropClass<2, true, pot> {
+class	PropLeap : public PropClass<2, PROP_FIRST, pot> {
 
 	public:
 		PropLeap(Scalar *field, const PropcType propclass) :
-		PropClass<2, true, pot>(field, propclass) {
+		PropClass<2, PROP_FIRST, pot>(field, propclass) {
 		//	Set up Leapfrog parameters
 
-		double nC[3] = { 0.5, 0.5, 0.0 };
-		double nD[2] = { 1.0, 0.0 };
+		double nC[2] = { 0.5, 0.5 };
+		double nD[3] = { 0.25, 0.5, 0.25 };
 
 		this->setCoeff(nC, nD);
 
@@ -52,15 +52,15 @@ class	PropLeap : public PropClass<2, true, pot> {
 };
 
 template<VqcdType pot>
-class	PropMLeap : public PropClass<4, true, pot> {
+class	PropMLeap : public PropClass<4, PROP_FIRST, pot> {
 
 	public:
 		PropMLeap(Scalar *field, const PropcType propclass) :
-		PropClass<4, true, pot>(field, propclass) {
+		PropClass<4, PROP_FIRST, pot>(field, propclass) {
 		//	Set up Leapfrog parameters
 
-		double nC[5] = { 0.125, 0.25, 0.25, 0.25, 0.125 };
-		double nD[4] = { 0.25,  0.25, 0.25, 0.25 };
+		double nC[4] = { 0.25,  0.25, 0.25, 0.25 };
+		double nD[5] = { 0.125, 0.25, 0.25, 0.25, 0.125 };
 
 		this->setCoeff(nC, nD);
 
@@ -91,17 +91,17 @@ class	PropMLeap : public PropClass<4, true, pot> {
 
 
 template<VqcdType pot>
-class	PropOmelyan2 : public PropClass<2, true, pot> {
+class	PropOmelyan2 : public PropClass<2, PROP_FIRST, pot> {
 
 	public:
 		PropOmelyan2(Scalar *field, const PropcType propclass) :
-		PropClass<2, true, pot>(field, propclass) {
+		PropClass<2, PROP_FIRST, pot>(field, propclass) {
 		constexpr double chi = +0.19318332750378360;
 
 		//	Set up Omelyan parameters for BABAB
 
-		double nC[3] = { chi, 1.-2.*chi, chi };
-		double nD[2] = { 0.5, 0.5 };
+		double nC[2] = { 0.5, 0.5 };
+		double nD[3] = { chi, 1.-2.*chi, chi };
 
 		this->setCoeff(nC, nD);
 
@@ -117,19 +117,27 @@ class	PropOmelyan2 : public PropClass<2, true, pot> {
 };
 
 template<VqcdType pot>
-class	PropOmelyan4 : public PropClass<4, true, pot> {
+class	PropOmelyan4 : public PropClass<4, PROP_FIRST, pot> {
+//class	PropOmelyan4 : public PropClass<4, PROP_LAST, pot> {
 
 	public:
 		PropOmelyan4(Scalar *field, const PropcType propclass) :
-		PropClass<4, true, pot>(field, propclass) {
-		constexpr double xi  = +0.16449865155757600;
-		constexpr double lb  = -0.02094333910398989;
-		constexpr double chi = +1.23569265113891700;
+		PropClass<4, PROP_FIRST, pot>(field, propclass) {
+//		PropClass<4, PROP_LAST, pot>(field, propclass) {
+		constexpr double xi  = +0.1786178958448091;
+		constexpr double lb  = -0.2123418310626054;
+		constexpr double chi = -0.06626458266981849;
+//		constexpr double xi  = +0.16449865155757600;
+//		constexpr double lb  = -0.02094333910398989;
+//		constexpr double chi = +1.23569265113891700;
 
-		//	Set up Omelyan parameters for BABABABAB
+		//	Set up Omelyan parameters for ABABABABA
+		////	Set up Omelyan parameters for BABABABAB
 
-		double nC[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
-		double nD[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
+		double nC[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
+		double nD[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
+		//double nC[5] = { xi, chi, 1.-2.*(xi+chi), chi, xi };
+		//double nD[4] = { 0.5*(1.-2.*lb), lb, lb, 0.5*(1.-2.*lb) };
 
 		this->setCoeff(nC, nD);
 
@@ -167,11 +175,11 @@ class	PropOmelyan4 : public PropClass<4, true, pot> {
 };
 
 template<VqcdType pot>
-class	PropRKN4 : public PropClass<4, false, pot> {
+class	PropRKN4 : public PropClass<4, PROP_NORMAL, pot> {
 
 	public:
 		PropRKN4(Scalar *field, const PropcType propclass) :
-		PropClass<4, false, pot>(field, propclass) {
+		PropClass<4, PROP_NORMAL, pot>(field, propclass) {
 		//	Set up RKN parameters for BABABABA
 
 		const double nC[4] = { +0.1344961992774310892, -0.2248198030794208058, +0.7563200005156682911, +0.3340036032863214255 };
@@ -270,11 +278,11 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, propclass);
 					break;
 				case VQCD_0:
-						prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
-						break;
+					prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
+					break;
 				case VQCD_PQ_ONLY:
-						prop = std::make_unique<PropOmelyan2<VQCD_PQ_ONLY>>		(field, propclass);
-						break;
+					prop = std::make_unique<PropOmelyan2<VQCD_PQ_ONLY>>	(field, propclass);
+					break;
 
 				default:
 				case VQCD_NONE:
@@ -301,7 +309,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, propclass);
 					break;
 				case VQCD_PQ_ONLY:
-					prop = std::make_unique<PropOmelyan4<VQCD_PQ_ONLY>>		(field, propclass);
+					prop = std::make_unique<PropOmelyan4<VQCD_PQ_ONLY>>	(field, propclass);
 					break;
 				default:
 				case VQCD_NONE:

@@ -361,10 +361,10 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	}
 }
 
-template<typename Float>
-static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Sf)
+template<typename cFloat, typename Float>
+static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, cFloat * __restrict__ m, const cFloat * __restrict__ v, const Float dzd, const uint Sf)
 {
-	complex<Float> mm = m[idx], vv = v[idx-Sf];
+	cFloat mm = m[idx], vv = v[idx-Sf];
 
 	mm += vv*dzd;
 	m[idx] = mm;
@@ -454,8 +454,8 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 	v[idx-Sf] = mel;
 }
 
-template<typename Float>
-__global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Float> * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf)
+template<typename cFloat, typename Float>
+__global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -463,7 +463,7 @@ __global__ void	updateMKernel(complex<Float> * __restrict__ m, const complex<Flo
 	if	(idx >= Vf)
 		return;
 
-	updateMCoreGpu<Float>(idx, m, v, dzd, Sf);
+	updateMCoreGpu<cFloat,Float>(idx, m, v, dzd, Sf);
 }
 
 template<typename Float, const VqcdType VQcd>
@@ -481,7 +481,7 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 }
 
 void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision,
-		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
+		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream, FieldType fType=FIELD_SAXION)
 {
 /*
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
@@ -495,12 +495,18 @@ void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double
 	if (precision == FIELD_DOUBLE)
 	{
 		const double dzd  = dz*d;
-		updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<double>*) m, (const complex<double>*) v, dzd, Lx, Lx*Lx, Vo, Vf);
+		if (fType & FIELD_AXION)
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((        double *) m, (const         double *) v, dzd, Lx, Lx*Lx, Vo, Vf);
+		else
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<double>*) m, (const complex<double>*) v, dzd, Lx, Lx*Lx, Vo, Vf);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float dzd  = dz*d;
-		updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<float> *) m, (const complex<float> *) v, dzd, Lx, Lx*Lx, Vo, Vf);
+		if (fType & FIELD_AXION)
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((        float  *) m, (const         float  *) v, dzd, Lx, Lx*Lx, Vo, Vf);
+		else
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<float> *) m, (const complex<float> *) v, dzd, Lx, Lx*Lx, Vo, Vf);
 	}
 }
 

@@ -172,6 +172,21 @@ int	main (int argc, char *argv[])
 
 	tunePropagator (axion);
 
+	/*	First measurement	*/
+
+	auto strTmp = strings(axion);
+	createMeas  (axion, index);
+	writeMapHdf5(axion);
+	writeString (axion, strTmp);
+	writeEnergy (axion, eRes);
+
+	energy(axion, eRes, EN_MAP);
+	SpecBin specAna(axion, pType);
+	specAna.pRun();
+	writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+
+	destroyMeas ();
+
 	for (int zloop = 0; zloop < nLoops; zloop++)
 	{
 		//--------------------------------------------------
@@ -182,10 +197,10 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 			propagate (axion, dz);
+		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
+			propagate (axion, -dz);
 
 		auto strDen = strings(axion);
-
-		energy(axion, eRes, EN_MAP);
 
 		profiler::Profiler &prof = profiler::getProfiler(PROF_PROP);
 
@@ -196,12 +211,13 @@ int	main (int argc, char *argv[])
 
 		createMeas  (axion, index);
 		writeMapHdf5(axion);
-		writeEDens  (axion, MAP_ALL);
+		//writeEDens  (axion, MAP_ALL);
 		writeString (axion, strDen);
 		writeEnergy (axion, eRes);
-		writePoint  (axion);
-		cDensityMap (axion);
+		//writePoint  (axion);
+		//cDensityMap (axion);
 
+		energy(axion, eRes, EN_MAP);
 		SpecBin specAna(axion, pType);
 		specAna.pRun();
 		writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
@@ -224,12 +240,12 @@ int	main (int argc, char *argv[])
 
 	munge(UNFOLD_ALL);
 
-	if (cDev != DEV_CPU) {
-		LogOut ("Transferring configuration to host\n");
-		axion->transferCpu(FIELD_MV);
-	}
+	//if (cDev != DEV_CPU) {
+	//	LogOut ("Transferring configuration to host\n");
+	//	axion->transferCpu(FIELD_MV);
+	//}
 
-	writeConf(axion, index);
+	//writeConf(axion, index);
 
 	LogOut("z_final = %f\n", *axion->zV());
 	LogOut("#_steps = %i\n", counter);

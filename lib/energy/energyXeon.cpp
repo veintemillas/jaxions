@@ -172,11 +172,11 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 							for (int ih=0; ih<step; ih++){
 							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
 							if (strdaa[iNx] & STRING_MASK){
-								tmpS[(ih<<1)+1] = 1.f; // imag part
-								tmpS[(ih<<1)]   = 1.f; // real part
+								tmpS[(ih<<1)+1] = 1.0; // imag part
+								tmpS[(ih<<1)]   = 1.0; // real part
 							} else {
-								tmpS[(ih<<1)+1] = 0.f; // imag part
-								tmpS[(ih<<1)]   = 0.f; // real part
+								tmpS[(ih<<1)+1] = 0.0; // imag part
+								tmpS[(ih<<1)]   = 0.0; // real part
 							}
 						}
 						Mask = opCode(load_pd, tmpS);
