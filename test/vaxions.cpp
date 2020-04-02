@@ -457,8 +457,11 @@ int	main (int argc, char *argv[])
 				ninfa.index=index;
 				// in case theta transitioned, the meas was saved as the default
 				ninfa.measdata = defaultmeasType;
+				ninfa.cTimesec = (double) Timer()*1.0e-6;
+				ninfa.propstep = iz;
 				// if (axion->Field() == FIELD_PAXION )
 				// 		ninfa.measdata |= MEAS_3DMAP;
+
 				lm = Measureme (axion, ninfa);
 				index++;
 				i_meas++ ;
