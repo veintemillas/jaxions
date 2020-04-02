@@ -75,27 +75,46 @@ herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type
 	return	status;
 }
 
-void    writeAttribute	(double *data, const char *name)
+void    writeAttribute	(double *data, const char *name )
 {
 	writeAttribute(meas_id, data, name, H5T_NATIVE_DOUBLE);
 }
+
+void    writeAttribute	(void *data, const char *name, hid_t h5_Type)
+{
+	if (h5_Type == H5T_NATIVE_HSIZE)
+	{
+			writeAttribute(meas_id, (size_t*) data, name, H5T_NATIVE_HSIZE);
+	}	else if (h5_Type == H5T_NATIVE_DOUBLE) {
+			writeAttribute(meas_id, (double*) data, name, H5T_NATIVE_DOUBLE);
+	} else if (h5_Type == H5T_NATIVE_INT) {
+			writeAttribute(meas_id, (int*) data, name, H5T_NATIVE_INT);
+	}	else if (h5_Type == H5T_NATIVE_UINT) {
+			writeAttribute(meas_id, (int*) data, name, H5T_NATIVE_INT);
+	} else {
+		LogError("Cannot write attribute %s . Type not recognised.",name);
+	}
+
+}
+
 
 herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 {
 	hid_t	attr;
 	herr_t	status;
 
-	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0)
+	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0){
 		LogError ("Error opening attribute %s");
-
-	if ((status = H5Aread (attr, h5_type, data)) < 0)
-		LogError ("Error reading attribute %s");
-
-	status = H5Aclose(attr);
-
-	LogMsg (VERB_HIGH, "Read attribute %s", name);
-
-	return	status;
+		return attr;
+	}
+	else
+	{
+		if ((status = H5Aread (attr, h5_type, data)) < 0)
+			LogError ("Error reading attribute %s");
+		status = H5Aclose(attr);
+		LogMsg (VERB_HIGH, "Read attribute %s", name);
+		return	status;
+	}
 }
 
 // Cosmos readCosmoAttributes(hid_t file_id)
@@ -1262,6 +1281,8 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 		}
 	}
 
+	(*axion)->setFolded(false);
+
 	/*	Close the dataset	*/
 
 	H5Sclose (mSpace);
@@ -1281,12 +1302,8 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
 
-	LogMsg (VERB_NORMAL, "Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
+	LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 
-	/*	Fold the field		*/
-
-	// Folder munge(*axion);
-	// munge(FOLD_ALL);
 }
 
 
@@ -3703,14 +3720,14 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 {
 	hid_t	mapSpace, chunk_id, group_id, eSet_id, eSpace, dataType;
-	hsize_t	dataSize = axion->DataSize();
+	hsize_t	dataSize = axion->Precision();
 
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	hsize_t slb  = slabSz;
 	hsize_t lSz  = sizeN;
-	char *dataE  = static_cast<char *>(axion->m2Cpu());
+	char *dataE  = static_cast<char *>(axion->m2Cpu()) + dataSize*axion->Surf()*slicenumbertoprint;
 	// char eCh[16] = dataname;
 
 	LogMsg (VERB_NORMAL, "[wem] Writing 2D energy map to Hdf5 measurement file");
