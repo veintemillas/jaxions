@@ -29,7 +29,7 @@
 			public:
 
 					 FFTplan() : planForward(nullptr), planBackward(nullptr), type(FFT_NOTYPE), dFft(FFT_NONE), prec(FIELD_NONE), Lx(0), Lz(0) {}
-					 FFTplan(Scalar * axion, FFTtype type, FFTdir dFft);
+					 FFTplan(Scalar * axion, FFTtype type, FFTdir dFft, size_t red);
 //					~FFTplan() {};
 
 			void		run	(FFTdir cDir);
@@ -45,7 +45,7 @@
 		};
 
 		void		initFFT		(FieldPrecision prec);
-		void		initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name);
+		void		initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name, size_t red = 1);
 		FFTplan&	fetchPlan       (std::string name);
 		void		removePlan	(std::string name);
 		void		closeFFT	();
