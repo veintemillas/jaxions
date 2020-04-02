@@ -212,13 +212,135 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 }
 
 
+	/* m2 folding experimental */
+
+	template<typename cFloat>
+	void	Folder::foldM2()
+	{
+		if (field->M2Folded() || field->Device() == DEV_GPU)
+			return;
+
+		cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
+		cFloat *m   = static_cast<cFloat *> ((void *) field->m2Start());
+
+		fSize = field->DataSize();
+		shift = field->DataAlign()/fSize;
+
+		LogMsg (VERB_NORMAL, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+
+		for (size_t iz=0; iz < Lz; iz++)
+		{
+			memcpy (mg1, &m[n2*iz], sizeof(cFloat)*n2);
+
+			#pragma omp parallel for schedule(static)
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+						size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+						m[dIdx] = mg1[oIdx];
+					}
+		}
+
+		field->setM2Folded(true);
+		LogMsg (VERB_HIGH, "[Folder] Field M2 folded (from M2Start)");
+
+		return;
+	}
+
+	template<typename cFloat>
+	void	Folder::unfoldM2()
+	{
+		if (!field->M2Folded() || field->Device() == DEV_GPU)
+			return;
+
+		cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
+		cFloat *m   = static_cast<cFloat *> ((void *) field->m2Start());
+
+		fSize = field->DataSize();
+		shift = field->DataAlign()/fSize;
+
+		LogMsg (VERB_NORMAL, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+
+		for (size_t iz=0; iz < Lz; iz++)
+		{
+			memcpy (mg1, m + n2*iz, fSize*n2);
+
+			#pragma omp parallel for schedule(static)
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = iy*n1*shift + ix*shift + sy;
+						size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+
+						m[dIdx]    = mg1[oIdx];
+					}
+		}
+
+		field->setM2Folded(false);
+	 	LogMsg (VERB_HIGH, "[Folder] Field M2 unfolded (m2Start)");
+
+		return;
+	}
+
+
+
+
+
+template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
+void	Folder::unfoldM22D (const size_t sZ)
+{
+	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
+		return;
+
+	cFloat *mg1 = static_cast<cFloat *> ((void *) field->m2FrontGhost());
+	cFloat *m   = static_cast<cFloat *> ((void *) field->m2Start());
+
+	if (!field->M2Folded())
+	{
+		LogMsg (VERB_HIGH, "unfoldM22D called in an unfolded configuration, copying data to ghost zones");LogFlush();
+		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
+		return;
+	}
+
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
+
+	LogMsg (VERB_HIGH, "Calling unfoldM22D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);LogFlush();
+
+	#pragma omp parallel for schedule(static)
+	for (size_t iy=0; iy < n1/shift; iy++)
+		for (size_t ix=0; ix < n1; ix++)
+			for (size_t sy=0; sy<shift; sy++)
+			{
+				size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
+				size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
+				//this copies m into buffer 1
+				mg1[dIdx]	= m[oIdx];
+			}
+
+	LogMsg (VERB_HIGH, "Slice unfolded");
+
+	return;
+}
+
+
+
+
+/* basic operator */
+
 void	Folder::operator()(FoldType fType, size_t cZ)
 {
 	// Careful here, GPUS might want to call CPU routines
 	if (field->Device() == DEV_GPU)
 		return;
 
-	LogMsg  (VERB_HIGH, "Called folder");
+	LogMsg  (VERB_HIGH, "[Fold] Called with m/v field %d (folded/unfolded 1/0)",field->Folded());
+	LogMsg  (VERB_HIGH, "[Fold] Called with m2  field %d (folded/unfolded 1/0)",field->M2Folded());
+
 	profiler::Profiler &prof = profiler::getProfiler(PROF_FOLD);
 
 	prof.start();
@@ -453,6 +575,177 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 			break;
 
+			case	FOLD_M2:
+
+				setName("Fold M2");
+				add(0., field->Size()*field->DataSize()*2.e-9);
+
+				switch(field->Precision())
+				{
+					case	FIELD_DOUBLE:
+
+						switch (field->Field())
+						{
+							case	FIELD_SAXION:
+							case	FIELD_NAXION:
+								foldM2<complex<double>>();
+								break;
+
+							case	FIELD_AXION_MOD:
+							case	FIELD_AXION:
+							case	FIELD_WKB:
+							case  FIELD_PAXION:
+								foldM2<double>();
+								break;
+
+							default:
+								break;
+						}
+
+						break;
+
+					case	FIELD_SINGLE:
+
+						switch (field->Field())
+						{
+							case	FIELD_SAXION:
+							case	FIELD_NAXION:
+								foldM2<complex<float>>();
+								break;
+
+							case	FIELD_AXION_MOD:
+							case	FIELD_AXION:
+							case	FIELD_WKB:
+							case  FIELD_PAXION:
+								foldM2<float>();
+								break;
+
+							default:
+								break;
+						}
+
+						break;
+
+					default:
+						break;
+				}
+
+				break;
+
+			case	UNFOLD_M2:
+
+				setName("Unfold M2");
+				add(0., field->Size()*field->DataSize()*2.e-9);
+
+				switch(field->Precision())
+				{
+					case	FIELD_DOUBLE:
+
+						switch (field->Field())
+						{
+							case	FIELD_SAXION:
+							case	FIELD_NAXION:
+								unfoldM2<complex<double>>();
+								break;
+
+							case	FIELD_AXION_MOD:
+							case	FIELD_AXION:
+							case	FIELD_WKB:
+							case  FIELD_PAXION:
+								unfoldM2<double>();
+								break;
+
+							default:
+								break;
+						}
+
+						break;
+
+					case	FIELD_SINGLE:
+
+						switch (field->Field())
+						{
+							case	FIELD_SAXION:
+							case	FIELD_NAXION:
+								unfoldM2<complex<float>>();
+								break;
+
+							case	FIELD_AXION_MOD:
+							case	FIELD_AXION:
+							case	FIELD_WKB:
+							case  FIELD_PAXION:
+								unfoldM2<float>();
+								break;
+
+							default:
+								break;
+						}
+
+						break;
+
+					default:
+						break;
+				}
+
+				break;
+
+
+			case	UNFOLD_SLICEM2:
+
+				setName("Unfold slice M2");
+				add(0., field->Surf()*field->DataSize()*2.e-9);
+
+				switch(field->Precision())
+				{
+					case	FIELD_DOUBLE:
+
+						switch (field->Field())
+						{
+							case	FIELD_SAXION:
+							case	FIELD_NAXION:
+								unfoldM22D<complex<double>>(cZ);
+								break;
+
+							case	FIELD_AXION_MOD:
+							case	FIELD_AXION:
+							case	FIELD_WKB:
+							case  FIELD_PAXION:
+								unfoldM22D<double>(cZ);
+								break;
+
+							default:
+								break;
+						}
+
+						break;
+
+					case	FIELD_SINGLE:
+
+						switch (field->Field())
+						{
+							case	FIELD_SAXION:
+							case	FIELD_NAXION:
+								unfoldM22D<complex<float>>(cZ);
+								break;
+
+							case	FIELD_AXION_MOD:
+							case	FIELD_AXION:
+							case	FIELD_WKB:
+							case  FIELD_PAXION:
+								unfoldM22D<float>(cZ);
+								break;
+
+							default:
+								break;
+						}
+
+						break;
+
+					default:
+						break;
+				}
+				
+				break;
 
 		default:
 			LogError ("Unrecognized folding option");

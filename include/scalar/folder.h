@@ -30,6 +30,15 @@
 		template<typename cFloat>
 		void	unfoldField2DYZ(const size_t sX);
 
+		template<typename cFloat>
+		void	foldM2();
+
+		template<typename cFloat>
+		void	unfoldM2();
+
+		template<typename cFloat>
+		void	unfoldM22D(const size_t cZ);
+
 		public:
 
 			 Folder(Scalar *scalar);
