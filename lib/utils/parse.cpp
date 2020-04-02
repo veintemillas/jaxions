@@ -2376,7 +2376,9 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.idxprint = 0 ;
 	deninfa.index = 0;
 	deninfa.redmap = endredmap;
-	deninfa.measCPU = measCPU;
+	deninfa.measCPU  = measCPU;
+	deninfa.cTimesec = 0.0;
+	deninfa.propstep = 0;
 
 	// default measurement type is parsed
 	deninfa.measdata = defaultmeasType;
