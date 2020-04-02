@@ -2,6 +2,7 @@
 	#define	_IO_HDF5_
 
 	#include "scalar/scalarField.h"
+	#include <hdf5.h>
 
 	// void	writeConf	(Scalar  *axion, int index);
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
@@ -33,6 +34,7 @@
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
 	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName);
 	void    writeAttribute	(double *data, const char *name);
+	void    writeAttribute	(void *data, const char *name, hid_t h5_Type);
 
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
