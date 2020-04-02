@@ -61,6 +61,9 @@
 			UNFOLD_ALL,
 			UNFOLD_SLICE,
 			UNFOLD_SLICEYZ,
+			FOLD_M2,
+			UNFOLD_M2,
+			UNFOLD_SLICEM2,
 		}	FoldType;
 
 		typedef	enum	StringType_s
@@ -154,6 +157,9 @@
 			KIDI_LAP        = 1,
 			KIDI_POT        = 2,
 			KIDI_LAPPOT     = 3,
+			KIDI_SOR        = 4,
+			KIDI_ENE        = 8,
+			KIDI_SUB        = 16,
 		}	KickDriftType;
 
 		typedef enum	ConfType_s
@@ -290,6 +296,8 @@
 			PROF_SPECTRUM_FFTM2,
 			PROF_MEAS,
 			PROF_FTFIELD,
+			PROF_GRAVI,
+			PROF_GRAVI2,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -600,6 +608,8 @@
 			int                 redmap;
 			StringMeasureType   strmeas;
 			bool                measCPU;
+			double              cTimesec;
+			int              propstep;
 		}	MeasInfo;
 
 		// data output by measurement function to program
