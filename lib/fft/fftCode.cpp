@@ -99,7 +99,15 @@ namespace AxionFFT {
 		LogMsg (VERB_NORMAL, "Wisdom successfully exported");
 	}
 
-		FFTplan::FFTplan	(Scalar * axion, FFTtype type, FFTdir dFft) : type(type), dFft(dFft), prec(axion->Precision()), Lx(axion->Length()), Lz(axion->TotalDepth()) {
+		FFTplan::FFTplan	(Scalar * axion, FFTtype type, FFTdir dFft, size_t red) : type(type), dFft(dFft), prec(axion->Precision()) {
+
+		Lx = axion->Length()/red;
+		Lz = axion->TotalDepth()/red;
+		if ( (Lx*red != axion->Length()) || (Lz*red != axion->TotalDepth()) ){
+			LogError("Non-integer reduction factor for FFT, exit!");
+			exit(0);
+		}
+
 
 		/*	Import wisdom	*/
 		importWisdom();
@@ -823,12 +831,12 @@ namespace AxionFFT {
 		init = true;
 	}
 
-	void	initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name) {
+	void	initPlan	(Scalar * axion, FFTtype type, FFTdir dFft, std::string name, size_t red) {
 
 		LogMsg (VERB_NORMAL, "Creating FFT plan %s", name.c_str());
 		LogFlush();
 		if (fftPlans.find(name) == fftPlans.end()) {
-			FFTplan myPlan(axion, type, dFft);
+			FFTplan myPlan(axion, type, dFft, red);
 			fftPlans.insert(std::make_pair(name, std::move(myPlan)));
 
 			LogMsg (VERB_NORMAL, "Plan %s successfully inserted", name.c_str());
