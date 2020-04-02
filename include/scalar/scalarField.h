@@ -40,7 +40,7 @@
 		int	shift;
 		bool	mmomspace;
 		bool	vmomspace;
-		bool folded;
+		bool folded, M2folded;
 		bool	lowmem;
 		size_t Ng;
 
@@ -148,6 +148,7 @@
 		size_t		DataAlign()  { return mAlign; }
 		int			Shift()      { return shift; }
 		bool		Folded()     { return folded; }
+		bool		M2Folded()     { return M2folded; }
 		bool		MMomSpace()     { return mmomspace; }
 		bool		VMomSpace()     { return vmomspace; }
 		bool		Reduced()    { return eReduced; }
@@ -191,7 +192,8 @@
 		void	setSD(const StatusSD newSD) { statusSD = newSD; }
 
 		void	setField	(FieldType field);
-		void	setFolded	(bool foli);
+		void	setFolded	  (bool foli) { folded = foli; };
+		void	setM2Folded	(bool foli) { M2folded = foli; };
 		void	setMMomSpace	(bool foli);
 		void	setVMomSpace	(bool foli);
 		void	updateR ();
