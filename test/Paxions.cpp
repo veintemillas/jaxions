@@ -115,7 +115,7 @@ int	main (int argc, char *argv[])
 
 	LogOut("-----------------------\n TRANSITION TO PAXION \n");
 	thetaToPaxion (axion);
-
+	resetPropagator(axion);
 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
