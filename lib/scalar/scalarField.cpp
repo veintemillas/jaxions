@@ -114,6 +114,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] ic.mocoty   %d",cm->ICData().mocoty   );
 
 	folded 	   = false;
+	M2folded 	 = false;
 	eReduced   = false;
 	mmomspace 	 = false;
 	vmomspace 	 = false;
@@ -793,10 +794,6 @@ void	Scalar::setField (FieldType newType)
 	}
 }
 
-void	Scalar::setFolded (bool foli)
-{
-	folded = foli;
-}
 
 void	Scalar::setMMomSpace (bool foli)
 {
