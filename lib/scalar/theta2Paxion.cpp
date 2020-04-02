@@ -88,7 +88,7 @@ void	thetaToPaxion	(Scalar *field)
 	field->setField(FIELD_PAXION);
 
 
-	munge(FOLD_ALL);
+	// munge(FOLD_ALL);
 
 		/* profiling */
 
@@ -100,7 +100,7 @@ void	thetaToPaxion	(Scalar *field)
 
 	delete	t2n;
 
-	resetPropagator(field);
+	// resetPropagator(field);
 
 	return;
 }
