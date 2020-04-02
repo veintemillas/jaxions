@@ -65,6 +65,13 @@ namespace profiler {
 
 		Profiler	measProfiler("Measa");
 		profs.insert(std::make_pair(PROF_MEAS, measProfiler));
+
+		Profiler	gravProfiler("Gravi-hybrid");
+		profs.insert(std::make_pair(PROF_GRAVI, gravProfiler));
+
+		Profiler	graFProfiler("Gravi-full");
+		profs.insert(std::make_pair(PROF_GRAVI2, graFProfiler));
+
 	}
 
 	void	printMiniStats(double z, StringData strDen, ProfType prof, std::string counter) {
