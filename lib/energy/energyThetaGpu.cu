@@ -114,7 +114,7 @@ __global__ void	energyThetaKernel(const Float * __restrict__ m, const Float * __
 }
 
 template<const bool wMod>
-int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *R, const double delta2, const double aMass2,
+int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double R, const double delta2, const double aMass2,
 			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map)
 {
 	const uint Vm = V+S;
@@ -123,7 +123,7 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 	dim3  blockSize(BLSIZE,1,1);
 	const int nBlocks = gridSize.x*gridSize.y;
 
-	const double zR   = *R;
+	const double zR = R;
 	double *tR, *partial;
 
 	const double zQ  = aMass2*zR*zR;
@@ -169,7 +169,7 @@ int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, vo
 	return	0;
 }
 
-int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double *R, const double delta2, const double aMass2,
+int	energyThetaGpu	(const void * __restrict__ m, const void * __restrict__ v, void * __restrict__ m2, double R, const double delta2, const double aMass2,
 			 const uint Lx, const uint Lz, const uint V, const uint S, FieldPrecision precision, double *eR, cudaStream_t &stream, const bool map, const bool wMod)
 {
 	switch (wMod) {
