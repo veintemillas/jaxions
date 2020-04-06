@@ -574,8 +574,6 @@
 			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, Lx, BO, V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d0;
 			axion->updateR();
-			ppar.R   = *axion->RV();
-			ppar.Rpp = axion->Rpp();
 			cD = &(d[1]);
 		}
 
