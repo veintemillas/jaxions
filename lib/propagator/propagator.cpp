@@ -8,6 +8,7 @@
 #include "enum-field.h"
 #include "propagator/propClass.h"
 #include "utils/utils.h"
+#include "gravity/potential.h"
 
 #include <omp.h>
 
@@ -256,8 +257,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 			yBlock = prop->TunedBlockY();
 			zBlock = prop->TunedBlockZ();
 		}
-	//auto pot  = field->BckGnd()->QcdPot();
-	//auto gm   = field->BckGnd()->Gamma ();
+
 	LogMsg(VERB_NORMAL,"\n");
  	LogMsg(VERB_NORMAL,"[ip] Init propagator %d\n",pType & PROP_MASK);
 
@@ -499,7 +499,12 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 	}
 	LogMsg	(VERB_NORMAL, "Propagator %s successfully initialized", prop->Name().c_str());
  	LogFlush();
+
 }
+
+
+
+
 
 using	namespace profiler;
 
@@ -920,4 +925,17 @@ LogMsg (VERB_NORMAL, "\n");
 	commSync();
 	prof.stop();
 	prof.add(prop->Name(), 0., 0.);
+
+}
+
+void	initGravity	(Scalar *field){
+
+	if (field->Field() != FIELD_PAXION){
+		LogError("Gravity only available in PAXION mode; exit!");
+		exit(1);
+	}
+		InitGravity(field);
+		tuneGravity(prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+		prop->SetGravity(true);
+		normaliseFields	();
 }
