@@ -108,6 +108,7 @@ class	Plot2D():
 				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
 				rData = np.sqrt((mTmp1[:,:]**2 + mTmp2[:,:]**2)) #/(mAmA*R**3))
 				rMax = np.amax(rData)
+				rData = rData/rMax
 				aData = (np.arctan2(mTmp2[:,:], mTmp1[:,:]) + 2*np.pi)/(4.*np.pi)
 
 			else:
@@ -167,9 +168,12 @@ class	Plot2D():
 		self.aPlot.addItem(self.zAtxt)
 
 #		sPos = np.linspace(0.0, data[3], 5)
-		sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
+		# sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
+		# sLab = ["%.2f" % mod for mod in sPos]
+		# sCol = ['w', 'r', 'y', 'c', 'k']
+		sPos = np.array([0.00, 1.00])
 		sLab = ["%.2f" % mod for mod in sPos]
-		sCol = ['w', 'r', 'y', 'c', 'k']
+		sCol = ['k', 'w']
 
 		vs = self.sPlot.getViewBox()
 
@@ -179,13 +183,16 @@ class	Plot2D():
 		self.sMap  = pg.ColorMap(sPos, np.array([pg.colorTuple(pg.Color(c)) for c in sCol]))
 		self.sLut  = self.sMap.getLookupTable()
 		self.sLeg  = pg.GradientLegend((sSzeX/20, sSzeY), (aSzeX/0.96 + sSzeX, sSzeY/12.))
-		self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
+		# self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
+		self.sLeg.setLabels(dict(zip(sLab, sPos)))
 		self.sLeg.setParentItem(self.sPlot)
-		self.sLeg.gradient.setColorAt(0.00, QtGui.QColor(255,255,255))
-		self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
-		self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(255,255,  0))
-		self.sLeg.gradient.setColorAt(0.75, QtGui.QColor(  0,255,255))
-		self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(  0,  0,  0))
+		for s,c in zip(sPos,sCol):
+			self.sLeg.gradient.setColorAt(s, QtGui.QColor(c))
+		# self.sLeg.gradient.setColorAt(s, QtGui.QColor(255,255,255))
+		# self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
+		# self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(255,255,  0))
+		# self.sLeg.gradient.setColorAt(0.75, QtGui.QColor(  0,255,255))
+		# self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(  0,  0,  0))
 
 		self.sImg = pg.ImageItem(lut=self.sLut)
 		self.sPlot.addItem(self.sImg)
@@ -204,8 +211,8 @@ class	Plot2D():
 		data = self.allData[self.i]
 		self.sImg.setImage(data[0], levels=(0.,1.))
 		self.aImg.setImage(data[1], levels=(0.,1.))
-		self.zStxt.setText("z = %f" % data[2])
-		self.zAtxt.setText("z = %f" % data[2])
+		self.zStxt.setText("z = %.3e" % data[2])
+		self.zAtxt.setText("z = %.3e" % data[2])
 
 		vb = self.aPlot.getViewBox()
 
