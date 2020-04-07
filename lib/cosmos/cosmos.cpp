@@ -220,14 +220,24 @@ double  Cosmos::AxionMass2 (const double ct)
     double RNow = R(ct);
     double aMass;
 
-    if ((RNow > zThRes) &&  (zThRes < zRestore))
+    if (zThRes <= zRestore) /* mode restore */
     {
-            aMass = indi3*indi3*pow(zThRes, nQcd);
-            if (RNow > zRestore)
-                    aMass *= pow(RNow/zRestore, nQcd);
+      if (RNow < zThRes)
+        aMass = indi3*indi3*pow(RNow, nQcd);
+
+      if (RNow >= zThRes && RNow <= zRestore)
+        aMass = indi3*indi3*pow(zThRes, nQcd);
+
+      if (RNow > zRestore)
+        aMass = indi3*indi3*pow(zThRes, nQcd)*pow(RNow/zRestore, nQcdr);
+
+    } else { /* mode saturate */
+
+      if (RNow < zThRes)
+        aMass = indi3*indi3*pow(RNow, nQcd);
+      else
+        aMass = indi3*indi3*pow(zThRes, nQcd);
     }
-    else
-            aMass = indi3*indi3*pow(RNow, nQcd);
 
     return aMass;
     }
@@ -237,8 +247,6 @@ double  Cosmos::AxionMass2 (const double ct)
 double  Cosmos::DAxionMass2Dct (const double ct)
 {
   if (ueCosm){
-    double cola = schi(ct+1e-6);
-
     return (schi(ct+1.e-6)-schi(ct-1.e-6))/2.e-6;
   }
   else {
@@ -246,15 +254,62 @@ double  Cosmos::DAxionMass2Dct (const double ct)
     double RNow = R(ct);
     double dMass2;
 
-    if ((RNow > zThRes) &&  (zThRes < zRestore))
-      dMass2 = 0.0;
-    else
-      dMass2 = frw*nQcd*AxionMass2(ct)/ct;
+    if (zThRes <= zRestore) /* mode restore */
+    {
+      if (RNow < zThRes)
+        dMass2 = nQcd*frw*AxionMass2(ct)/ct;
+
+      if (RNow >= zThRes && RNow <= zRestore)
+        dMass2 = 0;
+
+      if (RNow > zRestore)
+        dMass2 = nQcdr*frw*AxionMass2(ct)/ct;
+
+    } else { /* mode saturate */
+      if (RNow < zThRes)
+        dMass2 = nQcd*frw*AxionMass2(ct)/ct;
+      else
+        dMass2 = 0.0;
+    }
 
     return dMass2;
     }
 }
 
+/*logarithmic derivative of m_AR with respect to time */
+double  Cosmos::DlogMARDlogct (const double ct)
+{
+  if (ueCosm){
+    double e = 1.e-6;
+    return (ct*std::sqrt(schi(ct+e))*R(ct+e)-std::sqrt(schi(ct-e))*R(ct-e))/(2.*e*std::sqrt(schi(ct))*R(ct));
+  }
+  else {
+    /*(nqcd/2 + 1)*frw*/
+    double RNow = R(ct);
+    double dlmRlct;
+
+    if (zThRes <= zRestore) /* mode restore */
+    {
+      if (RNow < zThRes)
+        dlmRlct = frw*(nQcd/2+1);
+
+      if (RNow >= zThRes && RNow <= zRestore)
+        dlmRlct = frw;
+
+      if (RNow > zRestore)
+        dlmRlct = frw*(nQcdr/2+1);
+
+    } else { /* mode saturate */
+      if (RNow < zThRes)
+        dlmRlct = frw*(nQcd/2+1);
+      else
+        dlmRlct = frw;
+    }
+
+
+    return dlmRlct;
+    }
+}
 
 double	Cosmos::LambdaP (double ct)
 {

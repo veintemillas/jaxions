@@ -17,6 +17,7 @@
 		double	   indi3;
 		double	   gamma;
 		double	   nQcd;
+		double	   nQcdr;
 		double	   zThRes;
 		double	   zRestore;
 		VqcdType	 pot;
@@ -32,7 +33,7 @@
 		public:
 
 			 //Cosmos() : nSize(0), lSize(0.0), lambda(-1.e8), msa(-1.e8), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), pot(VQCD_NONE), zThRes(-1.e8), zRestore(-1.e8) {}
-			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), zThRes(-1.e8), zRestore(-1.e8), pot(VQCD_NONE), frw(1.0), mink(false), ueCosm(false) {}
+			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), nQcd(-1.e8), nQcdr(-1.e8), zThRes(-1.e8), zRestore(-1.e8), pot(VQCD_NONE), frw(1.0), mink(false), ueCosm(false) {}
 
 		double&   ZThRes  ()	{ return zThRes;   }
 		double&   ZRestore()	{ return zRestore; }
@@ -59,7 +60,8 @@
 //		void     SetMsa     (const double nMsa) { msa      = nMsa;  lambda  = 0.5*msa*msa*(lSize*lSize)/((double) (nSize*nSize)); }
 		void     SetIndi3   (const double nI3)  { indi3    = nI3;   }
 		void     SetGamma   (const double nGmma){ gamma    = nGmma; }
-		void     SetQcdExp  (const double qExp)	{ nQcd     = qExp;  }
+		void     SetQcdExp  (const double qExp)	{ nQcd     = qExp; nQcdr = qExp; }
+		void     SetQcdExpr (const double qExp)	{ nQcdr    = qExp;  }
 		void     SetQcdPot  (const VqcdType pt)	{ pot      = pt;    }
 
 		void     SetFrw     (const double fff)	{ frw     = fff; }
@@ -87,6 +89,7 @@
 
 		/* derivative of Axion mass2 with respect to time */
 		double	 DAxionMass2Dct (const double ct);
+		double   DlogMARDlogct  (const double ct);
 //		double	 SaxionShift(const double z);
 //		double	 Saskia	    (const double z);
 
