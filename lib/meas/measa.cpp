@@ -1,4 +1,4 @@
-	#include <cmath>
+#include <cmath>
 #include <chrono>
 #include <complex>
 
@@ -790,8 +790,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 		LogOut("ctime  |  index |  cmeas |  wtime  | mass \n");
 		LogOut(".");
 		}
-
-	LogOut("%2.3f  | ",z_now);
+	if (z_now < 100.)
+		LogOut("%2.3f  | ",z_now);
+	else
+		LogOut("%2.1e  | ",z_now);
 
 	if (cTime*1.e-6/3600. < 1.0 )
 		LogOut("  %3d  | %6d | %2.3f m | ", indexa, info.measdata, cTime*1.e-6/60.);
