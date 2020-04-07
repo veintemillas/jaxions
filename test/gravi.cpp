@@ -18,7 +18,7 @@
 #include "meas/measa.h"
 
 #include"fft/fftCode.h"
-#include "propagator/propPaxXeon.h"
+#include "gravity/gravityPaxionXeon.h"
 
 using namespace std;
 
@@ -202,7 +202,7 @@ int	main (int argc, char *argv[])
 	double eA = mean(axion, axion->m2Start(), V, axion->TotalSize());
 	ppar.beta  = -eA;
 	LogOut("> energy Average %f\n",eA);
-	graviPaxKernelXeon<KIDI_SUB>(nada, nada, nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
+	graviPaxKernelXeon<KIDI_ADD>(nada, nada, nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
 
 	axion->setM2(M2_ENERGY);
 	createMeas(axion, index);
@@ -307,7 +307,7 @@ int	main (int argc, char *argv[])
 		double eA = mean(axion, static_cast<void *>(MS), V, axion->TotalSize());
 		ppar.beta  = -eA;
 		LogOut("> energy Average %f\n",eA);
-		graviPaxKernelXeon<KIDI_SUB>(nada, nada, nada, axion->m2half(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
+		graviPaxKernelXeon<KIDI_ADD>(nada, nada, nada, axion->m2half(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
 		/*pad into m2*/
 		size_t Lx    = axion->Length();
 		size_t Lz    = axion->Depth();

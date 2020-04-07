@@ -18,7 +18,7 @@
 #include "meas/measa.h"
 
 #include"fft/fftCode.h"
-#include "propagator/propPaxXeon.h"
+#include "gravity/gravityPaxionXeon.h"
 
 using namespace std;
 using namespace profiler;
@@ -204,7 +204,7 @@ int	main (int argc, char *argv[])
 		graviPaxKernelXeon<KIDI_ENE>(axion->mCpu(), axion->vCpu(), nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
 		double eA = mean(axion, axion->m2Start(), V, axion->TotalSize());
 		ppar.beta  = -eA;
-		graviPaxKernelXeon<KIDI_SUB>(nada, nada, nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
+		graviPaxKernelXeon<KIDI_ADD>(nada, nada, nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
 		prof.stop();
 		prof.add(std::string("hybrid-E"), 0.0, 0.0);
 		axion->setM2(M2_ENERGY);
@@ -315,7 +315,7 @@ prof.add(std::string("hybrid-SOR"), 0.0, 0.0);
 		graviPaxKernelXeon<KIDI_ENE>(axion->mCpu(), axion->vCpu(), nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
 		double eA = mean(axion, static_cast<void *>(MS), V, axion->TotalSize());
 		ppar.beta  = -eA;
-		graviPaxKernelXeon<KIDI_SUB>(nada, nada, nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
+		graviPaxKernelXeon<KIDI_ADD>(nada, nada, nada, axion->m2Cpu(), ppar, BO, V+BO, axion->Precision(), xBlock, yBlock, zBlock);
 		prof.stop();
 		prof.add(std::string("full-E"), 0.0, 0.0);
 		axion->setM2Folded(true);
