@@ -390,7 +390,6 @@ const std::complex<float> If(0.,1.);
 				AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
 				AxionFFT::initPlan (this, FFT_PSPEC_SX,   FFT_FWDBCK,  "pSpecSx");
 				AxionFFT::initPlan (this, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
-				AxionFFT::initPlan (this, FFT_RHO_SX,     FFT_FWDBCK,    "RhoSx");
 				AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWD,    "nSpecSxM");	// Only possible if lowmem == false
 				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD,    "nSpecSxV");
 			}
@@ -1101,7 +1100,7 @@ double	Scalar::dzSize	   (double zNow) {
 			double facto = 1.;
 			if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
 							facto = 2. ;
-			mSfq = sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
+			mSfq = std::sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
 			dct = wDz/std::max(mSfq,mAfq) ;
 		}
 		break;
@@ -1109,13 +1108,17 @@ double	Scalar::dzSize	   (double zNow) {
 		case FIELD_AXION:
 		case FIELD_AXION_MOD:
 		case FIELD_WKB:
-			dct = std::min(wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
+			dct = std::min(wDz/std::sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
 		break;
 
 		case FIELD_NAXION:
 		case FIELD_PAXION:
-			/* w = k^2//(\sqrt(m2+k2)+m2) is the safe formula */
-			dct = wDz*(sqrt(12*oodl*oodl + mAx2*RNow*RNow) + sqrt(mAx2)*RNow)/(12.*oodl*oodl) ;
+			{
+				/* w = k^2//(\sqrt(m2+k2)+m2) is the safe formula */
+				double w =(12.*oodl*oodl)/(std::sqrt(12*oodl*oodl + mAx2*RNow*RNow) + std::sqrt(mAx2)*RNow) ;
+				dct = wDz/w ;
+				LogMsg(VERB_DEBUG,"[sca:ct] PNaxion w %e wDz %e mAx2 %e R %e",w,wDz,std::sqrt(mAx2),RNow);
+			}
 		break;
 		default:
 			dct = 0.0;
@@ -1124,15 +1127,22 @@ double	Scalar::dzSize	   (double zNow) {
 	}
 
 	/* Do not allow to jump over z/10 or Rc */
-	dct = std::min(dct,zNow/10.);
+	if (fieldType != FIELD_PAXION){
+		LogMsg(VERB_DEBUG,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
+		dct = std::min(dct,zNow/10.);
+		}
 
 	RNext = Rfromct(zNow + dct);
-	if ( RNow < bckgnd->ZThRes() && RNext > bckgnd->ZThRes() )
+	if ( (RNow < bckgnd->ZThRes()) && (RNext > bckgnd->ZThRes()) && (bckgnd->Frw() != 0.0))
 		{
-			// BACKGROUND R SPECIFIC!
-			dct = pow(bckgnd->ZThRes(),1.0/bckgnd->Frw()) - zNow;
+			/*This would set the next point to Rc but it can be stuck*/
+			// dct = pow(bckgnd->ZThRes(),1.0/bckgnd->Frw()) - zNow;
+			/* Rather, go a ministep ahead */
+			double zNext = zNow + dct;
+			dct = pow(bckgnd->ZThRes()+ 0.001*(RNext-bckgnd->ZThRes()),1.0/bckgnd->Frw()) - zNow;
+			LogMsg(VERB_DEBUG,"[sca:ct] >> dct decreased to %e just jump over Rc [ct,ct_Next,ct+sct]",dct, zNow, zNext,zNow+dct);
 		}
-	LogMsg(VERB_NORMAL,"[sca:ct] dct = %f ct = %f",dct,zNow);
+	LogMsg(VERB_HIGH,"[sca:ct] dct = %e ct = %e",dct,zNow);
 	return dct;
 }
 
