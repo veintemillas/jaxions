@@ -10,6 +10,8 @@
 
 		std::string	baseName;
 
+		bool	gravity;
+
 		public:
 
 			 PropBase() {};
@@ -17,6 +19,8 @@
 
 		inline void	setBaseName(const char *bName) { baseName.assign(bName); }
 		inline void	getBaseName() 		       { name = baseName; }
+
+		inline void	SetGravity (const bool guav) {gravity = guav; };
 
 		virtual void	sRunCpu	(const double) = 0;	// Saxion propagator
 		virtual void	sRunGpu	(const double) = 0;
@@ -43,6 +47,8 @@
 		std::function<void(const double)>	propSaxion;
 		std::function<void(const double)>	propNaxion;
 		std::function<void(const double)>	propPaxion;
+
+
 
 	};
 #endif

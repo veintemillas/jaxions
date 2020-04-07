@@ -20,6 +20,7 @@
 	#include "propagator/sPropThetaXeon.h"
 	#include "propagator/propNaxXeon.h"
 	#include "propagator/propPaxXeon.h"
+	#include "gravity/potential.h"
 
 	#ifdef	USE_GPU
 		#include <cuda.h>
@@ -78,10 +79,9 @@
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
 
-
-
 		inline double	cFlops	(const PropcType)	override;
 		inline double	cBytes	(const PropcType)	override;
+
 	};
 
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
@@ -100,6 +100,8 @@
 		xBest = xBlock = Lx << shift;
 		yBest = yBlock = Lx >> shift;
 		zBest = zBlock = Lz;
+
+		gravity = false;
 
 		switch (spec){
 			case PROPC_SPEC:
@@ -629,7 +631,7 @@
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, V   , V+BO, precision, xBlock, yBlock, zBlock);
 		}
- 
+
 		axion->setM2     (M2_DIRTY);
 	}
 
@@ -965,13 +967,18 @@
 
 		LogMsg(VERB_DEBUG,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
 
-
+		void *nada;
 		ppar.ct     = *axion->zV();
 		ppar.R      = *axion->RV();
+		ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 		ppar.massA  = axion->AxionMass();
 		ppar.sign   = 1;
-
-		propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
+		ppar.grav   = axion->BckGnd()->ICData().grav; /*TODO*/
+		if (gravity){
+			calculateGraviPotential	();
+			propagatePaxKernelXeon<KIDI_POT_GRAV>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
+		} else
+			propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
@@ -982,24 +989,26 @@
 
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
+			ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 			ppar.massA  = axion->AxionMass();
 			ppar.sign   = 1;
-			/*updates v(2) into m2(3) with m(1) lap data and NL function ; also (copies 3 into 2) */
-			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			/*updates v(2) with m(1) lap data and NL function */
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
 			axion->sendGhosts(FIELD_V, COMM_SDRV);
 
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
+			ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 			ppar.massA  = axion->AxionMass();
 			ppar.sign   = -1;
-			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_V, COMM_WAIT);
-			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*axion->zV() += dz*d1;
 			axion->updateR();
 		}
@@ -1011,20 +1020,28 @@
 			/* Last kick but not drift d = 0 */
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
+			ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 			ppar.massA  = axion->AxionMass();
 			ppar.sign   = 1;
-			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), ppar, dz*c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
 		}
 
 		ppar.ct     = *axion->zV();
 		ppar.R      = *axion->RV();
+		ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 		ppar.massA  = axion->AxionMass();
 		ppar.sign   = 1;
-		propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), ppar, 0.5*dz, BO,   V+BO , precision, xBlock, yBlock, zBlock);
+
+		if (gravity){
+			calculateGraviPotential	();
+			propagatePaxKernelXeon<KIDI_POT_GRAV>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
+		} else
+			propagatePaxKernelXeon<KIDI_POT>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
+
 	}
 
 
