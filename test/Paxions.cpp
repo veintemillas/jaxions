@@ -136,11 +136,83 @@ int	main (int argc, char *argv[])
 	index++;
 	tunePropagator(axion);
 
+	if (axion->BckGnd()->ICData().grav>0.0){
+		initGravity(axion);
+		LogOut ("Switch on gravity! (grav %..2e)\n",axion->BckGnd()->ICData().grav);
+
+
+		/* Conversion of Units ?
+			we could convert
+			from ct=eta/eta_1 to eta/etaeq
+			from R = a/a1 to x = R/Req
+			from L = L_c H1R1 to L_c HeqReq
+			from mA = m_A/H1 to m_A/Heq, etc...
+
+			we can renormalise the cpax to be <|cpax|^2> = 1
+
+			In ADM units,
+			grav = 3/4 (HeqReq/H1R1)^2 1/R
+
+			The R = R(eta) relation close to eq is
+
+			R/Req =  eta/etaeq /sqrt{2} + 0.25 (eta/etaeq /sqrt{2})^2
+
+			eta_eq = 1/Heq R_eq (by definition here)
+			eta_1  = 1/H1 R1 (... exact?)
+
+			-----------------------------------------
+
+			grav   = 5.12e-10 (50ueV/m_A)^0.167
+			R1/Req = 1.46747-10 (50ueV/m_A)^0.172
+			e1/eeq = 3.1690110e-10 (50ueV/m_A)^0.167
+
+			resolution limit ...
+			mA R < (pi/delta) / grav
+
+			we force it by using msa ?
+			decrease mA in time ... > no expansion of the Universe?
+			mA R delta = msa <pi/grav>
+			mA = msa <pi/grav>/ R delta
+
+			R/R1 we do an ugly trick assuming no change in DOF
+
+			R/R1 = ct +  0.25 Req/R1(ct eta/etaeq /sqrt{2})^2
+			R/R1 = ct +  0.25 8.55437*10^-11 ct**2
+			*/
+
+
+
+	}
+	bool sat = false;
+
 	LogOut ("Start redshift loop\n\n");
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
 		dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
+
+		/* normalise dynamical graavity time-step?
+		dpax/dct = ... +  mA * gravi * phi
+		assuming phi~O(1)  ... TODO calculate with if (axion->m2Status()=M2_POT)
+		dct < 1/gravi mA
+		*/
+		{
+			double dzg = 1./axion->BckGnd()->ICData().grav/axion->AxionMass();
+			if (dzaux > dzg)
+				dzaux = dzg;
+		}
+
+		if (!sat && axion->AxionMass()*(*axion->RV()) > 3.141597/axion->Delta()/axion->BckGnd()->ICData().grav)
+		{
+			/*change definition of mA, nqcd */
+			axion->BckGnd()->SetZRestore(*axion->RV());
+			axion->BckGnd()->SetQcdExpr(-2.0);
+			// need to renormalise also indi3
+			// have to make aMass = indi3*indi3*pow(zThRes, nQcd)_old= indi3*indi3*pow(zThRes, -1)
+			LogOut("Resolution limit achived! setting Rrestore = %e and n = -1.0\n",*axion->RV()); fflush(stdout);
+			sat = true;
+		}
+
 
 		if (!(iz%dump)){
 			measrightnow = true;
