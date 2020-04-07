@@ -48,6 +48,7 @@ win.setWindowTitle('pyqtgraph example: ImageView')
 
 print('modes: theta [default], vtheta, saxion, vsaxion, saxion, eA, eP, real, imag')
 mode = 'theta'
+mapa = 'map/m'
 if len(sys.argv) == 2:
     if (sys.argv[-1] == 'eA'):
         mode = 'eA'
@@ -85,6 +86,7 @@ if len(sys.argv) == 2:
         mode = 'Naxion'
         mapa = 'map/m'
         print('|theta|')
+
 if len(sys.argv) == 3:
     if (sys.argv[-2] == 'map'):
         mode = 'map'
