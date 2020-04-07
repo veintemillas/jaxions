@@ -940,7 +940,6 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		size_t	fOff = sl*pl;
 		memmove	(ms+oOff, m2+fOff, dl);
 	}
-	// memmove	(ms, m2, VD);
 
 	LogMsg(VERB_NORMAL,"[GEN] Create axion velocity! ");
 	LogFlush();
@@ -955,7 +954,6 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		size_t	fOff = sl*pl;
 		memmove	(vs+oOff, m2+fOff, dl);
 	}
-	// memcpy (vs, m2, VD);
 
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX end! \n");
 } // endconf spectrum axions
