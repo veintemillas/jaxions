@@ -34,7 +34,7 @@ double frw = 1.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
-double zrestore = 1.0e+20;
+double zrestore = 1.0e+30;
 double LL = 25000.;
 double parm2 = 0.;
 double pregammo = 0.0;
@@ -494,6 +494,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.kMax      = 2;
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
+	icdatst.grav      = 0.0;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
@@ -1128,6 +1129,21 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--gravity"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the Naxion/Paxion selfinteraction coefficient.\n");
+				exit(1);
+			}
+
+			icdatst.grav = atof(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
 
 		if (!strcmp(argv[i], "--zi"))
 		{
