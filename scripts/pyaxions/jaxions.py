@@ -829,7 +829,7 @@ def gm(address,something='summary',printerror=False):
         esp = something[5:]
         map = esp[:esp.rfind('/')]
         typ = esp[esp.rfind('/')+1:]
-        mal = np.array(f[map][typ].value)
+        mal = np.array(f[map][typ][()])
         N = f.attrs[u'Size']
         if len(mal) == N*N*2:
             return mal.reshape(N,N,2)
@@ -852,45 +852,44 @@ def gm(address,something='summary',printerror=False):
         N = f.attrs[u'Size']
         ct = f.attrs[u'z']
         if (something == mapad+'mC') and (ftype == 'Saxion'):
-            # return np.reshape(f['map']['m'].value.reshape(N,N,2)) ;
-            return f[mapad]['m'].value.reshape(N,N,2) ;
+            return f[mapad]['m'][()].reshape(N,N,2) ;
         if (something == mapad+'mC') and (ftype == 'Axion'):
             return ;
         if (something == mapad+'vC') and (ftype == 'Saxion'):
-            return f[mapad]['v'].value.reshape(N,N,2) ;
+            return f[mapad]['v'][()].reshape(N,N,2) ;
         if (something == mapad+'vC') and (ftype == 'Axion'):
             return ;
         if (something == mapad+'theta') and (ftype == 'Saxion'):
-            temp = np.array(f[mapad]['m'].value.reshape(N,N,2))
+            temp = np.array(f[mapad]['m'][()].reshape(N,N,2))
             temp = np.arctan2(temp[:,:,1], temp[:,:,0])
             return temp ;
         if (something == mapad+'theta') and (ftype == 'Axion'):
-            temp = np.array(f[mapad]['m'].value.reshape(N,N))
+            temp = np.array(f[mapad]['m'][()].reshape(N,N))
             return temp/scaleFactorR ;
         if (something == mapad+'vheta') and (ftype == 'Axion'):
-            temp = np.array(f[mapad]['v'].value.reshape(N,N))
+            temp = np.array(f[mapad]['v'][()].reshape(N,N))
             return temp ;
         if (something == mapad+'vheta') and (ftype == 'Saxion'):
-            m   = np.array(f[mapad]['m'].value.reshape(N,N,2))
-            v   = np.array(f[mapad]['v'].value.reshape(N,N,2))
+            m   = np.array(f[mapad]['m'][()].reshape(N,N,2))
+            v   = np.array(f[mapad]['v'][()].reshape(N,N,2))
             return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+v[:,:,1]**2) ;
 
         if (something == mapad+'rho') and (ftype == 'Saxion'):
-            temp = np.array(f[mapad]['m'].value.reshape(N,N,2))
+            temp = np.array(f[mapad]['m'][()].reshape(N,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
 
         if (something == 'mapE'):
             if 'map/E' in f:
-                return np.array(f[mapad]['E'].value.reshape(N,N)) ;
+                return np.array(f[mapad]['E'][()].reshape(N,N)) ;
 
 
         if (something == 'mapEdens') and (ftype == 'Axion'):
-            theta = np.array(f[mapad]['m'].value.reshape(N,N))/scaleFactorR
+            theta = np.array(f[mapad]['m'][()].reshape(N,N))/scaleFactorR
             massA2 = f.attrs[u'Axion mass']
             massA2 *= massA2
             mapa = massA2*2*np.sin(theta/2)**2
-            kine = np.array(f['map']['v'].value.reshape(N,N))
+            kine = np.array(f['map']['v'][()].reshape(N,N))
             mapa += ((kine - theta/ct)**2)/(2*ct*ct)
             return mapa ;
 
@@ -912,13 +911,13 @@ def gm(address,something='summary',printerror=False):
             redN = integer_nthroot(redN3, 3)[0]
             if printerror:
                 print('reduced ',redN)
-            return f['energy/redensity'].value.reshape(redN,redN,redN)
+            return f['energy/redensity'][()].reshape(redN,redN,redN)
         if 'energy/density/theta' in f:
             redN = f['energy/density'].attrs[u'Size']
             redZ = f['energy/density'].attrs[u'Depth']
             if printerror:
                 print('Reduced ',redN)
-            return f['energy/density/theta'].value.reshape(redN,redN,redZ)
+            return f['energy/density/theta'][()].reshape(redN,redN,redZ)
 
     if something == '3Dmapefull':
             if 'energy/density/theta' in f:
@@ -927,7 +926,7 @@ def gm(address,something='summary',printerror=False):
                 if printerror:
                     print('Giving you the fullest N=',redN,redZ)
 
-                return f['energy/density/theta'].value.reshape(redN,redN,redZ)
+                return f['energy/density/theta'][()].reshape(redN,redN,redZ)
 
     if something == '2Dmape?':
         if ('map/E' in f) :
@@ -938,7 +937,7 @@ def gm(address,something='summary',printerror=False):
     if something == '2Dmape':
         if ('map/E' in f) :
             sizeN = f.attrs[u'Size']
-            return f['map']['E'].value.reshape(sizeN,sizeN)
+            return f['map']['E'][()].reshape(sizeN,sizeN)
 
     if something == '2DmapP?':
         if ('map/P' in f) :
@@ -949,7 +948,7 @@ def gm(address,something='summary',printerror=False):
     if something == '2DmapP':
         if ('map/P' in f) :
             sizeN = f.attrs[u'Size']
-            return f['map']['P'].value.reshape(sizeN,sizeN)
+            return f['map']['P'][()].reshape(sizeN,sizeN)
 
 
     # the irrelevants
