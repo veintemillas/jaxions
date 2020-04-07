@@ -197,8 +197,6 @@ int	main (int argc, char *argv[])
 
 		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
 			propagate (axion, dz);
-		for (int zsubloop = 0; zsubloop < dump; zsubloop++)
-			propagate (axion, -dz);
 
 		auto strDen = strings(axion);
 

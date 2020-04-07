@@ -106,13 +106,27 @@ class	PropOmelyan2 : public PropClass<2, PROP_FIRST, pot> {
 
 		this->setCoeff(nC, nD);
 
-		if (propclass && field->Device() == DEV_CPU) {
-			this->setBaseName("Omelyan2 spectral ");
-		} else {
-			if (field->LowMem())
-				this->setBaseName("Lowmem Omelyan2 ");
-			else
-				this->setBaseName("Omelyan2 ");
+		switch(propclass)
+		{
+			case PROPC_SPEC:
+				if (field->Device() == DEV_CPU)
+					this->setBaseName("Omelyan2 spectral ");
+				else
+					this->setBaseName("Omelyan2 ");
+			break;
+			case PROPC_FSPEC:
+				if (field->Device() == DEV_CPU)
+					this->setBaseName("Omelyan2 full spectral ");
+				else
+					this->setBaseName("Omelyan2 ");
+			break;
+			default:
+			case PROPC_BASE:
+				if (field->LowMem())
+					this->setBaseName("Lowmem Omelyan2 ");
+				else
+					this->setBaseName("Omnelyan2 ");
+			break;
 		}
 	}
 };

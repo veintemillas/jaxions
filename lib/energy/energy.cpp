@@ -57,14 +57,15 @@ void	Energy::runGpu	()
 	const uint uS  = field->Surf();
 	const uint uV  = field->Size();
 	//double *z = field->zV();
-	double *R = field->RV();
+	double R       = *field->RV();
+	double Rpp     = field->BckGnd()->Rp(*field->zV())*R;
 
 	const bool map = (mapmask & EN_MAP);
 
 	switch (fType) {
 		case	FIELD_SAXION:
 			setName		("Energy Saxion");
-			energyGpu     (field->mGpu(), field->vGpu(), field->m2Gpu(), R, delta2, LL, aMass2, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
+			energyGpu     (field->mGpu(), field->vGpu(), field->m2Gpu(), R, Rpp, delta2, LL, aMass2, shift, pot, uLx, uLz, uV, uS, field->Precision(), static_cast<double*>(eRes), ((cudaStream_t *)field->Streams())[0], map);
 			break;
 
 		case	FIELD_AXION:
