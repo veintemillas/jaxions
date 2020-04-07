@@ -19,6 +19,7 @@
 			FIELD_REDUCED	= 256,
 			FIELD_NAXION  = 512,
 			FIELD_PAXION  = 1024,
+			FIELD_FAXION  = 2048,
 		}	FieldType;
 
 		typedef	enum	FieldIndex_s
@@ -157,9 +158,11 @@
 			KIDI_LAP        = 1,
 			KIDI_POT        = 2,
 			KIDI_LAPPOT     = 3,
-			KIDI_SOR        = 4,
-			KIDI_ENE        = 8,
-			KIDI_SUB        = 16,
+			KIDI_POT_GRAV   = 4,
+			KIDI_SOR        = 8,
+			KIDI_ENE        = 16,
+			KIDI_ENEUG      = 32,
+			KIDI_ADD        = 64,
 		}	KickDriftType;
 
 		typedef enum	ConfType_s
@@ -242,7 +245,8 @@
 			RH_GRZ  = 7,
 			RH_KIN  = 8,
 			RH_POT  = 9,
-                        RH_RHO  = 10, // Average value of rho
+
+			RH_RHO  = 10, // Average value of rho
 			//masked values
 			TH_GRXM = 11,
 			TH_GRYM = 12,
@@ -367,6 +371,7 @@
 			FFT_CtoC_M2toM     = 16,
 			FFT_RtoC_M2toM     = 17,
 			FFT_RtoC_M2toV     = 18,
+			FFT_RtoC_M2StoM2S  = 19,
 		}	FFTtype;
 
 		typedef	enum	FFTdir_s {
@@ -513,6 +518,7 @@
 			M2_MASK_AXI2_FFT = 256,
 			M2_MASK        = 512,    // Points outside string
 			M2_ANTIMASK    = 1024,   // Points inside the string region (duplicated to mask complex energy)
+			M2_POT         = 2048,   // gravitational potential unnormalised (solution of lap Phi = delta)
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
@@ -649,6 +655,7 @@
 			ConfsubType   smvarType;
 			MomConfType   mocoty;
 			FieldIndex    fieldindex;
+			double        grav;
 		}	IcData;
 
 		typedef	struct	MomParms_v
@@ -677,6 +684,7 @@
 			double   ood2a;
 			double   massA;
 			double   massA2;
+			double   n;
 			double   Rpp;
 			double   Lambda;
 			double   lambda;
@@ -685,6 +693,7 @@
 			int      sign;
 			double   frw;
 			double   fMom1;
+			double   grav;
 
 		}	PropParms;
 
