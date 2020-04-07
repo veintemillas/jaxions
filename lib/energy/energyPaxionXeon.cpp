@@ -30,8 +30,10 @@ template<const bool map>
 void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, FieldPrecision precision, void * __restrict__ eRes_)
 {
 
-	const double R = ppar.R, ood2a = ppar.ood2a, ct = ppar.ct, massA = ppar.massA, frw = ppar.frw, beta = ppar.beta;
-	const size_t Lx = ppar.Lx, Sf = Lx*Lx, Vo = ppar.Vo, Vf = ppar.Vf, Ng = ppar.Ng, Vh = Vf+2*Vo;
+	const double R     = ppar.R;
+	const double ood2a = ppar.ood2a/R/R;
+	const double beta  = ppar.beta;
+	const size_t Lx = ppar.Lx, Sf = Lx*Lx, Vo = ppar.Vo, Vf = ppar.Vf, Ng = ppar.Ng, Vh = Vf+Ng*Vo;
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
 	double gxC = 0., gyC = 0., gzC = 0., ntC = 0., ptC = 0.;
@@ -490,6 +492,7 @@ void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 {
 	PropParms ppar ;
 	/* Energy computed with 1 neighbours even if Ng propagation. Some non-conservation expected! */
+	/* Energy densities in ADM units */
 	ppar.Ng     = axionField->getNg();
 	ppar.Lx     = axionField->Length();
 	ppar.Vo     = ppar.Ng*axionField->Surf();
@@ -498,11 +501,18 @@ void	energyPaxionCpu	(Scalar *axionField, void *eRes, const bool map)
 	ppar.R      = *axionField->RV();
 	ppar.massA  = axionField->AxionMass();
 	ppar.frw    = axionField->BckGnd()->Frw();
-	/* Still requires to sum the grad p contribution
-	includes the NR factor 1/2mc
-	and the standard 1/(R^2 delta^2) of conformal ADM coordinates*/
-	ppar.ood2a  = 0.25/ppar.massA/ppar.R/pow(ppar.R * axionField->BckGnd()->PhysSize()/axionField->Length(),2.);
-	ppar.beta   = -1.0/(16.0*ppar.R*ppar.R);
+
+	/*energy density is computed in physical coordinates, not comoving
+	  rho_Grad = 1/2m_A |grad cpax|^2 /R^5   units: [H1fA]^2
+		rho_SI   = -1/16  |cpax|^4 / R^6       units: [H1fA]^2
+		the number density is computed in comoving coordinates for plotting purposes
+		this is stored in eRes[TH_KIN] and corresponds to
+		n        = |cpax|^2                    units: [H1fA^2*(R/R1)^3]
+		energy density is just
+		rho      = |cpax|^2 x mA/(R1/R^3) */
+
+	ppar.ood2a  = 0.25/ppar.massA/pow(axionField->BckGnd()->PhysSize()/axionField->Length(),2.)/pow(ppar.R,5);
+	ppar.beta   = -1.0/(16.0)/pow(ppar.R,6);
 	const FieldPrecision precision = axionField->Precision();
 
 	axionField->exchangeGhosts(FIELD_M);

@@ -34,17 +34,20 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	FieldPrecision precision = fieldo->Precision();
 	char *strdaa = static_cast<char *>(static_cast<void *>(fieldo->sData()));
 
+	/* computes physical energies, not comoving*/
+
 	const size_t NN     = ppar.Ng;
  	const size_t Lx     = ppar.Lx;
 	const size_t Lz     = ppar.Lz;
  	const double R      = ppar.R;
- 	const double o2     = ppar.ood2a;
- 	const double aMass2 = ppar.massA2;
- 	const double LL     = ppar.lambda;
+ 	const double o2     = ppar.ood2a /R/R;
+ 	const double aMass2 = ppar.massA2/R/R;
+ 	const double LL     = ppar.lambda/R/R;
  	const double Rpct   = ppar.Rpp;
 	const size_t Vo     = ppar.Vo;
 	const size_t Vf     = ppar.Vf;
 	const size_t Vt     = ppar.Vt;
+	const size_t iR2    = 1./R/R;
 
 	const size_t Sf = Lx*Lx;
 
@@ -440,7 +443,7 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 				if	(emask & EN_MAP) {
 					mdv = opCode(add_pd,
 						opCode(add_pd,
-							opCode(mul_pd, tKp, hVec),
+							opCode(mul_pd, tKp, opCode(mul_pd,hVec,ivZ2)), /* non-conformal kinetic energy */
 							opCode(mul_pd, opCode(add_pd, tGx, opCode(add_pd, tGy, tGz)), oVec)),
 						opCode(mul_pd, pVec, tVp));
 
@@ -626,8 +629,8 @@ if (emask & EN_ENE){
 		eRes[TH_GRZ] = Gzth *o2;
 		eRes[RH_POT] = Vrho *lZ;
 		eRes[TH_POT] = Vth  *zQ;
-		eRes[RH_KIN] = Krho *.5;
-		eRes[TH_KIN] = Kth  *.5;
+		eRes[RH_KIN] = Krho *.5*iR2;
+		eRes[TH_KIN] = Kth  *.5*iR2;
 
 		eRes[RH_GRXM] = GxrhoM*o2;
 		eRes[TH_GRXM] = GxthM *o2;
@@ -637,8 +640,8 @@ if (emask & EN_ENE){
 		eRes[TH_GRZM] = GzthM *o2;
 		eRes[RH_POTM] = VrhoM *lZ;
 		eRes[TH_POTM] = VthM  *zQ;
-		eRes[RH_KINM] = KrhoM *.5;
-		eRes[TH_KINM] = KthM  *.5;
+		eRes[RH_KINM] = KrhoM *.5*iR2;
+		eRes[TH_KINM] = KthM  *.5*iR2;
 		eRes[RH_RHOM] = RrhoM;
 
 		eRes[MM_NUMM] = nummask;
@@ -1106,7 +1109,7 @@ if (emask & EN_ENE){
 // Total energy
 					mdv = opCode(add_ps,
 						opCode(add_ps,
-							opCode(mul_ps, tKp, hVec),
+							opCode(mul_ps, tKp, opCode(mul_ps, hVec, ivZ2)), /* non-conformal kinetic energy */
 							opCode(mul_ps, opCode(add_ps, tGx, opCode(add_ps, tGy, tGz)), oVec)),
 						opCode(mul_ps, tVp, pVec));
 
@@ -1292,9 +1295,8 @@ if (emask & EN_ENE){
 		eRes[TH_GRZ]  = Gzth *o2;
 		eRes[RH_POT]  = Vrho *lZ;
 		eRes[TH_POT]  = Vth  *zQ;
-		eRes[RH_KIN]  = Krho *.5;
-		eRes[TH_KIN]  = Kth  *.5;
-		eRes[TH_KIN]  = Kth  *.5;
+		eRes[RH_KIN]  = Krho *.5*iz2;
+		eRes[TH_KIN]  = Kth  *.5*iz2;
 		eRes[RH_RHO]  = Rrho;
 
 		eRes[RH_GRXM] = GxrhoM*o2;
@@ -1305,8 +1307,8 @@ if (emask & EN_ENE){
 		eRes[TH_GRZM] = GzthM *o2;
 		eRes[RH_POTM] = VrhoM *lZ;
 		eRes[TH_POTM] = VthM  *zQ;
-		eRes[RH_KINM] = KrhoM *.5;
-		eRes[TH_KINM] = KthM  *.5;
+		eRes[RH_KINM] = KrhoM *.5*iz2;
+		eRes[TH_KINM] = KthM  *.5*iz2;
 		eRes[RH_RHOM] = RrhoM;
 
 		eRes[MM_NUMM] = nummask;
@@ -1330,11 +1332,12 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 	ppar.Ng     = field->getNg();
 	ppar.Lx     = field->Length();;
 	ppar.Lz     = field->Depth();;
-	ppar.ood2a  = 0.25/delta2;
+	ppar.R      = *field->RV();
 	ppar.frw    = field->BckGnd()->Frw();
+
+	ppar.ood2a  = 0.25/delta2;
 	ppar.lambda = LL;
 	ppar.massA2 = aMass2;
-	ppar.R      = *field->RV();
 	ppar.Rpp    = field->BckGnd()->Rp(*field->zV())*(ppar.R); /* this is R' */
 
 	ppar.Vo    = field->getNg()*field->Surf();

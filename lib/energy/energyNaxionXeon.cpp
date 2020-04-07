@@ -1281,8 +1281,8 @@ void	energyNaxionCpu	(Scalar *axionField, const double delta2, const double aMas
 	/* Still requires to sum the grad p contribution
 	includes the NR factor 1/2mc
 	and the standard 1/(R^2 delta^2) of conformal ADM coordinates*/
-	ppar.ood2a  = 0.5/ppar.massA/ppar.R/pow(ppar.R * axionField->BckGnd()->PhysSize()/axionField->Length(),2.);
-	ppar.beta   = -1.0/(8.0*ppar.R*ppar.R);
+	ppar.ood2a  = 0.25/ppar.massA/ppar.R/pow(ppar.R * axionField->BckGnd()->PhysSize()/axionField->Length(),2.);
+	ppar.beta   = -1.0/(16.0*ppar.R*ppar.R);
 	const FieldPrecision precision = axionField->Precision();
 
 	// axionField->exchangeGhosts(FIELD_M);

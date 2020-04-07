@@ -492,6 +492,7 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass
 	double *R  = axionField->RV();
 	double *z  = axionField->zV();
 	double frw = axionField->BckGnd()->Frw();
+
 	const FieldPrecision precision = axionField->Precision();
 	const size_t Lx = axionField->Length();
 	const size_t Vo = axionField->getNg()*axionField->Surf();
