@@ -123,47 +123,47 @@ for meas in fileMeas:
 
     if (mode == 'theta') and pa.gm(meas,'map?'):
         if fl == "Saxion":
-            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            mTmp  = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
             # aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
             aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]))
             # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
             # rMax = np.amax(rData)
             # rData = rData/zR
         elif fl == "Axion":
-            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = fileHdf5['map']['m'][()].reshape(Ly,Lx)
             aData = aData/zR
             # rData = np.ones(aData.shape)
             # pData = np.ones(aData.shape)*(2*np.pi)
             # aData = (aData + pData)/(4.*np.pi)
         elif fl == "Naxion":
-            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            aData = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
             # aData = np.sqrt(aData[:,:,0]**2 + aData[:,:,1]**2)
             aData = aData[:,:,0]/np.sqrt(mA*R)/R
             # missing normalisation
     if (mode == 'vA') and pa.gm(meas,'map?'):
         if fl == "Saxion":
-            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
-            mTmp2  = fileHdf5['map']['v'].value.reshape(Ly,Lx,2)
+            mTmp  = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
+            mTmp2  = fileHdf5['map']['v'][()].reshape(Ly,Lx,2)
             # aData = ((mTmp2/mTmp))[:,:,1]
             aData = (mTmp2[:,:,1]*mTmp[:,:,0]-mTmp2[:,:,0]*mTmp[:,:,1])/(mTmp[:,:,0]**2+mTmp[:,:,1]**2)
 
         elif fl == "Axion":
-            mTmp = fileHdf5['map']['m'].value.reshape(Ly,Lx)
-            mTmp2 = fileHdf5['map']['v'].value.reshape(Ly,Lx)
+            mTmp = fileHdf5['map']['m'][()].reshape(Ly,Lx)
+            mTmp2 = fileHdf5['map']['v'][()].reshape(Ly,Lx)
             aData = (mTmp2-mTmp/zR)/zR
     elif mode == 'eA' and pa.gm(meas,'2Dmape?'):
             # avi = pa.gm(meas,'eA')
-            # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
-            # aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi
-            aData = fileHdf5['map']['E'].value.reshape(Ly,Lx)
+            # aData = ((fileHdf5['map']['E'][()].reshape(Ly,Lx)/avi -1))**2
+            # aData = fileHdf5['map']['E'][()].reshape(Ly,Lx)/avi
+            aData = fileHdf5['map']['E'][()].reshape(Ly,Lx)
             aData = aData/aData.mean()
     elif mode == 'eP' and pa.gm(meas,'2DmapP?'):
             avi = pa.gm(meas,'eA')
             if fl == "Paxion":
                 avi = pa.gm(meas,'eAK')
-            # aData = ((fileHdf5['map']['E'].value.reshape(Ly,Lx)/avi -1))**2
-            # aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi
-            aData = fileHdf5['map']['P'].value.reshape(Ly,Lx)/avi/pa.gm(meas,'sizeN')
+            # aData = ((fileHdf5['map']['E'][()].reshape(Ly,Lx)/avi -1))**2
+            # aData = fileHdf5['map']['P'][()].reshape(Ly,Lx)/avi
+            aData = fileHdf5['map']['P'][()].reshape(Ly,Lx)/avi/pa.gm(meas,'sizeN')
 
     elif (mode == 'S') and (fl == "Saxion") and pa.gm(meas,'map?'):
             aData = pa.gm(meas,'maprho')
@@ -173,38 +173,38 @@ for meas in fileMeas:
             aData = (1-mask)
     if (mode == 'den') and pa.gm(meas,'map?'):
         if fl == "Saxion":
-            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            mTmp  = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
             aData = 1-np.arg(mTmp[:,:,0])/np.abs(mTmp[:,:])
             # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
             # rMax = np.amax(rData)
             # rData = rData/zR
         elif fl == "Axion":
-            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = fileHdf5['map']['m'][()].reshape(Ly,Lx)
             aData = aData/zR
             rData = np.ones(aData.shape)
             pData = np.ones(aData.shape)*(2*np.pi)
             aData = (aData + pData)/(4.*np.pi)
     if (mode == 'real') and pa.gm(meas,'map?'):
         if fl == "Saxion":
-            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            mTmp  = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
             aData = mTmp[:,:,1]/zR
             # rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
             # rMax = np.amax(rData)
             # rData = rData/zR
         elif fl == "Axion":
-            aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+            aData = fileHdf5['map']['m'][()].reshape(Ly,Lx)
             aData = np.cos(aData/zR)
     if (mode == 'Naxion') and pa.gm(meas,'map?'):
         if fl == "Saxion":
-            mTmp  = fileHdf5['map']['m'].value.reshape(Ly,Lx,2)
+            mTmp  = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
             mAmA  = fileHdf5["/"].attrs.get("Axion mass")
             aData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)/(mAmA*R**3))
     if (mode == 'map'):
-        aData  = fileHdf5[mapa].value.reshape(Ly,Lx)
+        aData  = fileHdf5[mapa][()].reshape(Ly,Lx)
 
         # possible but not coded yet
         # elif fl == "Axion":
-        #     aData = fileHdf5['map']['m'].value.reshape(Ly,Lx)
+        #     aData = fileHdf5['map']['m'][()].reshape(Ly,Lx)
         #     aData = np.cos(aData/zR)
 
     #				iData = np.trunc(aData/(2*np.pi))
