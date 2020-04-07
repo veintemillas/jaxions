@@ -62,16 +62,20 @@ herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type
 	// 	break;
 	// }
 
-		if (h5_type == H5T_NATIVE_UINT)
-		{
-				LogMsg (VERB_HIGH, "Write attribute %s = %u", name, *(static_cast<size_t*>(data)));
+
+		if        (h5_type == H5T_NATIVE_HSIZE){
+				LogMsg (VERB_HIGH, "Write attribute %s = %d", name, *(static_cast<size_t*>(data)));
 		}	else if (h5_type == H5T_NATIVE_DOUBLE) {
 				LogMsg (VERB_HIGH, "Write attribute %s = %e", name, *(static_cast<double*>(data)));
 		} else if (h5_type == H5T_NATIVE_INT) {
 				LogMsg (VERB_HIGH, "Write attribute %s = %d", name, *(static_cast<int*>(data)));
-		}	else {
-				LogMsg (VERB_HIGH, "Write attribute %s", name);	// Usa status para hacer logging de los errores!!!
+		} else if (h5_type == H5T_NATIVE_UINT) {
+				LogMsg (VERB_HIGH, "Write attribute %s = %u", name, *(static_cast<unsigned int*>(data)));
+ 		} else {
+				// LogMsg (VERB_HIGH, "Write attribute %s ", name);
+				LogMsg (VERB_HIGH, "Write attribute %s = %s", name, (char*) data);
 		}
+
 	return	status;
 }
 
@@ -90,7 +94,16 @@ void    writeAttribute	(void *data, const char *name, hid_t h5_Type)
 	} else if (h5_Type == H5T_NATIVE_INT) {
 			writeAttribute(meas_id, (int*) data, name, H5T_NATIVE_INT);
 	}	else if (h5_Type == H5T_NATIVE_UINT) {
-			writeAttribute(meas_id, (int*) data, name, H5T_NATIVE_INT);
+			writeAttribute(meas_id, (unsigned int*) data, name, H5T_NATIVE_UINT);
+	}	else if (h5_Type == H5T_C_S1) {
+				char *arr_ptr = (char *) data;
+				int	length = std::max( (int) strlen(arr_ptr), 32);
+				hid_t attr_type;
+				attr_type = H5Tcopy(H5T_C_S1);
+				H5Tset_size   (attr_type, length);
+				H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+			writeAttribute(meas_id, arr_ptr, name, attr_type);
+			H5Tclose (attr_type);
 	} else {
 		LogError("Cannot write attribute %s . Type not recognised.",name);
 	}
