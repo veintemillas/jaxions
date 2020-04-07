@@ -4,11 +4,11 @@
 
 using namespace std;
 
+template<typename Float>
 void	th2PaxionXeon (Scalar *sField)
 {
 	/* Prepares axion into Paxion mode by
-			renormalising it
-		*/
+			renormalising it */
 
 		const size_t NG = sField->getNg();
 		const size_t V  = sField->Size();
@@ -21,49 +21,29 @@ void	th2PaxionXeon (Scalar *sField)
 		double mA2   = (sField->AxionMassSq());
 		double DmA2ct= sField->BckGnd()->DAxionMass2Dct(*sField->zV());
 
-	switch (sField->Precision())
-	{
-		case FIELD_DOUBLE:
+		Float sqcms1 = (Float) sqrt(0.5*mA*(*sField->RV()));
+		Float sqcms2 = (Float) sqrt(2.0*mA*(*sField->RV()));
+		Float adiab  = (Float) (DmA2ct + 2*frw*mA2*R2/ct)/(4*mA2*mA) ;
+		Float *cfield = static_cast<Float*> (sField->mStart());
+		Float *cveloc = static_cast<Float*> (sField->vCpu());
+		Float *faxion = static_cast<Float*> (sField->m2Cpu());
+
+		#pragma omp parallel for default(shared) schedule(static)
+		for (size_t lpc = 0; lpc < V; lpc++)
 		{
-
-			double sqcms = sqrt(mA*(*sField->RV()));
-			double adiab = (DmA2ct + 2*frw*mA2*R2/ct)/(4*mA2*mA) ;
-			double *cfield = static_cast<double*> (sField->mStart());
-			double *cveloc = static_cast<double*> (sField->vCpu());
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (size_t lpc = 0; lpc < V; lpc++)
-			{
-				cfield[lpc] *= sqcms  ;
-				cveloc[lpc] /= sqcms ;
-				cveloc[lpc] += cfield[lpc]*adiab ;
-			}
-			break;
+			cfield[lpc] *= sqcms1 ;
+			cveloc[lpc] /= sqcms2 ;
+			cveloc[lpc] += cfield[lpc]*adiab ;
 		}
 
-		case FIELD_SINGLE:
-		{
-
-			float sqcms = (float) sqrt(mA*(*sField->RV()));
-			float adiab = (float) (DmA2ct + 2*frw*mA2*R2/ct)/(4*mA2*sField->AxionMass()) ;
-			float *cfield = static_cast<float*> (sField->mStart());
-			float *cveloc = static_cast<float*> (sField->vCpu());
-
-			#pragma omp parallel for default(shared) schedule(static)
-			for (size_t lpc = 0; lpc < V; lpc++)
-			{
-				cfield[lpc] *= sqcms  ;
-				cveloc[lpc] /= sqcms ;
-				cveloc[lpc] += cfield[lpc]* ((float) adiab) ;
-			}
-			break;
-		}
-
-		default:
-		printf("Unrecognized precision\n");
-		exit(1);
-		break;
-	}
 	/* Paxion velocity is Ghosted! */
 	memmove(static_cast<char*>(sField->vStart())+NG*S*sField->Precision(),sField->vCpu(),V*sField->Precision());
+}
+
+void th2PaxionXeon(Scalar *axionField)
+{
+	if (axionField->Precision()==FIELD_SINGLE)
+		th2PaxionXeon<float>(axionField);
+	else
+		th2PaxionXeon<double>(axionField);
 }
