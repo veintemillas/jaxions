@@ -7,4 +7,5 @@
 	void	propagate	(Scalar *field, const double dz);
 	void	resetPropagator	(Scalar *field);
 	void	tunePropagator	(Scalar *field);
+  void	initGravity	(Scalar *field);
 #endif
