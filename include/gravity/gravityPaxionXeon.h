@@ -117,7 +117,6 @@
 	#endif
 
 			const _MData_ m6Vec  = opCode(set1_ps, -6.f);
-			// const _MData_ KKtVec = opCode(set1_ps, KKtf);//i4R2);
 			const _MData_ betaV  = opCode(set1_ps, betaf);
 
 			const uint z0 = Vo/(Lx*Lx);
@@ -243,14 +242,6 @@
 								/* replace in m2h itself */
 								opCode(store_ps, &m2h[idx], tmp);
 
-								// if (idx == Vo){
-								// 	printf("idx Vo z y x %u %u %u\n ",zC,yC,xC);
-								// 	printsVar(mel, "mel");
-								// 	printsVar(lap, "lap");
-								// 	printsVar(vel, "vel");
-								// 	printsVar(tmp, "+++");
-								// 	}
-
 					} //end LAP cases
 					break;
 
@@ -304,6 +295,7 @@
 
 		double * __restrict__ m	= (double * __restrict__) __builtin_assume_aligned (m_, Align);
 		double * __restrict__ v	= (double * __restrict__) __builtin_assume_aligned (v_, Align);
+		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_, Align);
 
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
@@ -322,8 +314,9 @@
 		const size_t XC = (Lx<<1);
 		const size_t YC = (Lx>>1);
 	#endif
-		const _MData_ m6Vec  = opCode(set1_pd, -6.0);
 
+		const _MData_ m6Vec  = opCode(set1_pd, -6.0);
+		const _MData_ betaV  = opCode(set1_pd, beta);
 
 
 	#ifdef	__AVX512F__
@@ -359,12 +352,12 @@
 				X[1] = yC;
 			}
 
-			mel = opCode(load_pd, &m[idx]);
+			mel = opCode(load_pd, &m2h[idx]);
 
 
 			switch(KDtype)
 			{
-				case KIDI_LAP:
+				case KIDI_SOR:
 				{
 							lap = opCode(set1_pd, 0.0); // for the laplacian
 
@@ -447,28 +440,47 @@
 
 							} // End neighbour loop
 
-							tmp = opCode(add_pd, opCode(load_pd, &v[idx]), lap);
-							opCode(store_pd, &v[idx], tmp);
+							/* potential */
+							vel = opCode(load_pd, &m2[idx]);
+							/* update is
+							m = m + lapla m - beta*vel */
+							tmp = opCode(add_pd, mel, opCode(sub_pd, lap, opCode(mul_pd, betaV, vel)));
+							/* replace in m2h itself */
+							opCode(store_pd, &m2h[idx], tmp);
 
 				} // end LAP case
 				break;
 
-				case KIDI_POT:
+				case KIDI_ENE:
 				{
 						vel = opCode(load_pd, &v[idx]);
-						// acu = opCode(mul_pd, KKtVec, opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel)));
-						mMy = opCode(sin_pd, acu);
-						mPy = opCode(cos_pd, acu);
-						tmp = opCode(sub_pd, opCode(mul_pd, mPy, mel), opCode(mul_pd, mMy, vel));
-						opCode(store_pd, &m[idx], tmp);
-						tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
-						opCode(store_pd, &v[idx], tmp);
+						mel = opCode(load_pd, &m[idx]);
+						tmp = opCode(add_pd, opCode(mul_pd,mel,mel), opCode(mul_pd,vel,vel));
+						opCode(store_pd, &m2h[idx], tmp);
 				}
-			} // End prepare cases
+				break;
+
+				case KIDI_ENEUG:
+				{
+						vel = opCode(load_pd, &v[idx]);
+						mel = opCode(load_pd, &m[idx]);
+						tmp = opCode(add_pd, opCode(mul_pd,mel,mel), opCode(mul_pd,vel,vel));
+						opCode(store_pd, &m2h[idx-NN*Sf], tmp);
+				}
+				break;
+
+				case KIDI_ADD:
+				{
+					mel = opCode(load_pd, &m2h[idx]);
+					tmp = opCode(add_pd, mel, betaV);
+					opCode(store_pd, &m2h[idx], tmp);
+				}
+				break;
+			} // End switch prepare cases
 			 }
 			}
 		 }
-		}
+		} //end loop
 	#undef	_MData_
 	#undef	step
 	}
