@@ -71,7 +71,6 @@ void	tuneGravityHybrid	()
 
 void	calculateGraviPotential	()
 {
-
 	LogMsg	(VERB_HIGH, "[GV] Calculate Gravitational Potential");
 	profiler::Profiler &prof = getProfiler(PROF_GRAVI);
 
@@ -89,7 +88,6 @@ void	calculateGraviPotential	()
 
 void	setHybridMode	(bool ca)
 {
-
 	LogMsg	(VERB_HIGH, "[GV] Set hybrid mode for Gravitational Potential %d (yes/no)",ca);
 
 	grav->SetHybrid(ca);
@@ -99,7 +97,6 @@ void	setHybridMode	(bool ca)
 
 void	normaliseFields	()
 {
-	/* TODO normalise cuadratic coefficient! */
 	LogMsg	(VERB_HIGH, "[GV] Called normalisation of cpaxion to have <|cpax|^2> = 1");
 
 	grav->normaliseFields();
