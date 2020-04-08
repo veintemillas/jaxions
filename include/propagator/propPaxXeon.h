@@ -272,18 +272,10 @@ else
 		float * __restrict__ v	= (float * __restrict__) __builtin_assume_aligned (v_, Align);
 		float * __restrict__ m2	= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
 
-		// // conformal axion mass
-		// const float cmA   = ppar.massA*ppar.R;
-		// // inverse lattice spacing^2/2 cmA
-		// const float ood2 = ppar.sign*ppar.ood2a/(2.0*cmA);
-		// const float i4R2 = ppar.sign*ppar.beta*1.0/(4.0*ppar.R*ppar.R);
-
 		// Factors for the drift with self-interactions
 		const float KKtf = KKt;
 		const float gravf = grav;
-
 		// Factor for the "kick" with laplacian including dz
-		// dz * d * inverse lattice spacing^2/ (2 cmA)
 		const float ood2f = ood2;
 
 		_MData_ COV[5];
