@@ -1614,10 +1614,13 @@ class strevol:
 class strave:
     def __init__(self, strevollist):
         Nreal = len(strevollist) # number of realizations
-        self.sizeN = strevollist[0].sizeN
-        self.sizeL = strevollist[0].sizeL
-        self.msa = strevollist[0].msa
-        self.LL = strevollist[0].LL
+        try:
+            self.sizeN = strevollist[0].sizeN
+            self.sizeL = strevollist[0].sizeL
+            self.msa = strevollist[0].msa
+            self.LL = strevollist[0].LL
+        except:
+            pass
         self.t = strevollist[0].t
         self.log = strevollist[0].log
         xi = [0]*len(strevollist[0].xi)
