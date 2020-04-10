@@ -862,17 +862,9 @@ namespace AxionFFT {
 		return fftPlans[name];
 	}
 
-	void	removePlan		(std::string name) {
+        void	destroyPlan		(FFTplan &myPlan)  {
 
-		if (fftPlans.find(name) == fftPlans.end()) {
-			LogError ("Error removing plan %s: not found", name.c_str());
-			return;
-		}
-
-		auto &myPlan = fftPlans[name];
 		auto dFft    = myPlan.Direction();
-
-		LogMsg (VERB_NORMAL, "Removing plan %s", name.c_str());
 
 		switch (myPlan.Precision()) {
 
@@ -899,11 +891,20 @@ namespace AxionFFT {
 				LogError ("Invalid field precision, can't remove plan (probably it doesn't even exist).");
 				return;
 		}
-		// remove name too
+
+	}
+
+	void	removePlan		(std::string name) {
+
+		auto &myPlan = fftPlans[name];
+
+		LogMsg      (VERB_HIGH, "Destroying plan %s", name.c_str());
+		destroyPlan (myPlan);
+		LogMsg      (VERB_HIGH, "Plan %s destroyed", name.c_str());
+
 		name = fftPlans.erase(name);
 		return;
 	}
-
 
 	void	closeFFT		() {
 
@@ -920,9 +921,18 @@ namespace AxionFFT {
 			auto name = (*fft).first;
 			auto plan = (*fft).second;
 
+			if (fftPlans.find(name) == fftPlans.end()) {
+				LogError ("Error removing plan %s: not found", name.c_str());
+				return;
+			}
+
 			prec = plan.Precision();
-			removePlan(name);
-			// fft = fftPlans.erase(fft);	//name // removed in removePLanc
+
+			LogMsg      (VERB_HIGH, "Destroying plan %s", name.c_str());
+			destroyPlan (plan);
+			LogMsg      (VERB_HIGH, "Plan %s destroyed", name.c_str());
+
+			fft = fftPlans.erase(fft);
 
 			LogMsg (VERB_NORMAL, "Plan %s closed", name.c_str());
 		}
