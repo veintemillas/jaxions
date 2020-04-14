@@ -224,19 +224,13 @@ namespace AxionFFT {
 
 					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
-						if (axion->Field() == FIELD_SAXION) {
 
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2f, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
-						} else {
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2f, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
-						}
-						break;
+					if (dFft & FFT_FWD)
+						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+
+					if (dFft & FFT_BCK)
+						planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2f, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+					break;
 
 					case	FFT_SPSX:
 					case	FFT_RDSX_M:
@@ -443,20 +437,13 @@ namespace AxionFFT {
 
 					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
-						if (axion->Field() == FIELD_SAXION) {
-							// Redundancy
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2d, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2d, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
-						} else {
 
-							if (dFft & FFT_FWD)
-								planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2d, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
-							if (dFft & FFT_BCK)
-								planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2d, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
-						}
-						break;
+					if (dFft & FFT_FWD)
+						planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2d, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+
+					if (dFft & FFT_BCK)
+						planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2d, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+					break;
 
 					case	FFT_SPSX:
 					case    FFT_RDSX_M:
@@ -862,7 +849,16 @@ namespace AxionFFT {
 		return fftPlans[name];
 	}
 
+<<<<<<< Updated upstream
         void	destroyPlan		(FFTplan &myPlan)  {
+=======
+	void	removePlan		(std::string name, bool erasename ) {
+
+		if (fftPlans.find(name) == fftPlans.end()) {
+			LogError ("Error removing plan %s: not found", name.c_str());
+			return;
+		}
+>>>>>>> Stashed changes
 
 		auto dFft    = myPlan.Direction();
 
@@ -915,6 +911,13 @@ namespace AxionFFT {
 			return;
 		}
 
+		LogMsg (VERB_DEBUG, "Plans in list:");
+
+		for (auto fft = fftPlans.cbegin(); fft != fftPlans.cend(); fft++) {
+			auto name = (*fft).first;
+			LogMsg (VERB_DEBUG, "             %s", name.c_str());
+		}
+
 		FieldPrecision	prec;
 
 		for (auto fft = fftPlans.cbegin(); fft != fftPlans.cend(); ) {
@@ -935,6 +938,7 @@ namespace AxionFFT {
 			fft = fftPlans.erase(fft);
 
 			LogMsg (VERB_NORMAL, "Plan %s closed", name.c_str());
+			LogFlush();
 		}
 
 		switch (prec) {
