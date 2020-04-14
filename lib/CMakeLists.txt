@@ -6,7 +6,7 @@ gen/smoothXeon.cpp gen/prepropa.cpp gen/smoothKernel.cu  meas/measa.cpp scalar/s
 scalar/theta2Paxion.cpp scalar/theta2PaxionXeon.cpp scalar/theta2CmplxGpu.cu
 scalar/normField.cpp scalar/normXeon.cpp scalar/normGpu.cu scalar/normCore.cpp scalar/normCoreXeon.cpp scalar/normCoreGpu.cu scalar/thetaGpu.cu scalar/thetaXeon.cpp scalar/thetaScalar.cpp scalar/folder.cpp
 scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu scalar/fourier.cpp utils/logger.cpp utils/profiler.cpp utils/misc.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
-spectrum/spectrum.cpp WKB/WKB.cpp cosmos/cosmos.cpp gravity/potential.cpp scalar/theta2FaxionXeon.cpp scalar/theta2Faxion.cpp scalar/mendFaxionXeon.cpp)
+spectrum/spectrum.cpp WKB/WKB.cpp cosmos/cosmos.cpp gravity/potential.cpp)
 else()
 	set(OBJS fft/fftCuda.cpp comms/comms.cpp fft/fftCode.cpp utils/parse.cpp io/readWrite.cpp scalar/scalarField.cpp propagator/propagator.cpp propagator/propGpu.cu
 propagator/propSimple.cpp propagator/propThetaGpu.cu energy/energy.cpp energy/energyXeon.cpp energy/energyThetaXeon.cpp energy/energyNaxionXeon.cpp energy/energyPaxionXeon.cpp energy/energyGpu.cu energy/energyThetaGpu.cu energy/dContrast.cpp
@@ -15,7 +15,7 @@ gen/smoothXeon.cpp gen/prepropa.cpp gen/smoothKernel.cu  meas/measa.cpp scalar/s
 scalar/theta2Paxion.cpp scalar/theta2PaxionXeon.cpp scalar/theta2CmplxGpu.cu
 scalar/normField.cpp scalar/normXeon.cpp scalar/normGpu.cu scalar/normCore.cpp scalar/normCoreXeon.cpp scalar/normCoreGpu.cu scalar/thetaGpu.cu scalar/thetaXeon.cpp scalar/thetaScalar.cpp scalar/folder.cpp
 scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu scalar/fourier.cpp utils/logger.cpp utils/profiler.cpp utils/misc.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
-spectrum/spectrum.cpp WKB/WKB.cpp cosmos/cosmos.cpp gravity/potential.cpp scalar/theta2FaxionXeon.cpp scalar/theta2Faxion.cpp scalar/mendFaxionXeon.cpp)
+spectrum/spectrum.cpp WKB/WKB.cpp cosmos/cosmos.cpp gravity/potential.cpp)
 endif()
 
 include_directories(.)

@@ -86,10 +86,10 @@
 		#define	step 4
 	#endif
 
-			float * __restrict__ m	= (float * __restrict__) __builtin_assume_aligned (m_, Align);
-			float * __restrict__ v	= (float * __restrict__) __builtin_assume_aligned (v_, Align);
-			float * __restrict__ m2	= (float * __restrict__) __builtin_assume_aligned (m2_, Align);
-			float * __restrict__ m2h	= (float * __restrict__) __builtin_assume_aligned (m2h_, Align);
+			float * __restrict__ m	 = (float * __restrict__) __builtin_assume_aligned (m_, Align);
+			float * __restrict__ v	 = (float * __restrict__) __builtin_assume_aligned (v_, Align);
+			float * __restrict__ m2	 = (float * __restrict__) __builtin_assume_aligned (m2_, Align);
+			float * __restrict__ m2h = (float * __restrict__) __builtin_assume_aligned (m2h_, Align);
 
 			const float ood2f = ood2;
 			const float betaf = (float) beta;
@@ -293,10 +293,10 @@
 	#define	step 2
 	#endif
 
-		double * __restrict__ m	= (double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v	= (double * __restrict__) __builtin_assume_aligned (v_, Align);
-		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_, Align);
-		double * __restrict__ m2h	= (double * __restrict__) __builtin_assume_aligned (m2h_, Align);
+		double * __restrict__ m	  = (double * __restrict__) __builtin_assume_aligned (m_,   Align);
+		double * __restrict__ v	  = (double * __restrict__) __builtin_assume_aligned (v_,   Align);
+		double * __restrict__ m2  = (double * __restrict__) __builtin_assume_aligned (m2_,  Align);
+		double * __restrict__ m2h = (double * __restrict__) __builtin_assume_aligned (m2h_, Align);
 
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
