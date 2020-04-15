@@ -18,6 +18,12 @@
 #include "fft/fftCode.h"
 #include "scalar/fourier.h"
 
+#define caspr(lab,var,str)   \
+	case lab:                  \
+	sprintf(var, str);         \
+	break;
+
+
 //#include "scalar/varNQCD.h"
 
 hid_t	meas_id = -1, mlist_id;
@@ -110,6 +116,40 @@ void    writeAttribute	(void *data, const char *name, hid_t h5_Type)
 
 }
 
+void    writeAttributeg	(void *data, const char *group, const char *name, hid_t h5_Type)
+{
+	hid_t	group_id, base_id;
+
+	if ((group_id = H5Gopen2(meas_id, group, H5P_DEFAULT)) < 0)
+	{
+		LogError ("Error: couldn't open group %s in measurement file.\n", group);
+		return;
+	}
+
+	if (h5_Type == H5T_NATIVE_HSIZE)
+	{
+			writeAttribute(group_id, (size_t*) data, name, H5T_NATIVE_HSIZE);
+	}	else if (h5_Type == H5T_NATIVE_DOUBLE) {
+			writeAttribute(group_id, (double*) data, name, H5T_NATIVE_DOUBLE);
+	} else if (h5_Type == H5T_NATIVE_INT) {
+			writeAttribute(group_id, (int*) data, name, H5T_NATIVE_INT);
+	}	else if (h5_Type == H5T_NATIVE_UINT) {
+			writeAttribute(group_id, (unsigned int*) data, name, H5T_NATIVE_UINT);
+	}	else if (h5_Type == H5T_C_S1) {
+				char *arr_ptr = (char *) data;
+				int	length = std::max( (int) strlen(arr_ptr), 32);
+				hid_t attr_type;
+				attr_type = H5Tcopy(H5T_C_S1);
+				H5Tset_size   (attr_type, length);
+				H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+			writeAttribute(group_id, arr_ptr, name, attr_type);
+			H5Tclose (attr_type);
+	} else {
+		LogError("Cannot write attribute %s . Type not recognised.",name);
+	}
+	H5Gclose (group_id);
+
+}
 
 herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 {
@@ -130,120 +170,7 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 	}
 }
 
-// Cosmos readCosmoAttributes(hid_t file_id)
-// {
-// 	hid_t	attr;
-// 	herr_t	status;
-//
-//	readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
-// myCosmos->SetQcdExp(nQcd);
-//	readAttribute (vGrp_id, &lda,   "Lambda",      H5T_NATIVE_DOUBLE);
-// myCosmos->SetLambda(lda);
-// readAttribute (vGrp_id, &lStr,  "Lambda type", attr_type);
-// readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
-// myCosmos->SetIndi3(indi3);
-// readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
-// myCosmos->SetZThRes(zthrs);
 
-// readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
-// myCosmos->SetZRestore(zrest);
-//
-// readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
-// myCosmos->SetGamma(gm);
-//
-// readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
-//
-// if (!strcmp(vStr, "VQcd 1"))
-// 	vqcdType = VQCD_1;
-// else if (!strcmp(vStr, "VQcd 2"))
-// 	vqcdType = VQCD_2;
-// else if (!strcmp(vStr, "VQcd 0"))
-// 	vqcdType = VQCD_0;
-// else if (!strcmp(vStr, "VQcd 1 Peccei-Quinn 2"))
-// 	vqcdType = VQCD_1_PQ_2;
-// else if (!strcmp(vStr, "VQcd 1 N=2"))
-// 	vqcdType = VQCD_1N2;
-// else {
-// 	LogError ("Error reading file %s: invalid potential type %s", base, vStr);
-// 	vqcdType = VQCD_1;
-//
-// 	readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
-//
-// 	if (!strcmp(vStr, "Rho"))
-// 		vqcdType |= VQCD_DAMP_RHO;
-// 	else if (!strcmp(vStr, "All"))
-// 		vqcdType |= VQCD_DAMP_ALL;
-// 	else if (!strcmp(vStr, "None"))
-// 		vqcdType |= VQCD_NONE;
-// 	else {
-// 		LogError ("Error reading file %s: invalid damping type %s. Ignoring damping", base, vStr);
-// 	}
-//
-// 	readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
-//
-// 	if (!strcmp(vStr, "Only Rho"))
-// 		vqcdType |= VQCD_EVOL_RHO;
-// 	else if (!strcmp(vStr, "Full"))
-// 		vqcdType |= VQCD_NONE;
-// 	else {
-// 		LogError ("Error reading file %s: invalid rho evolution type %s. Ignoring rho evolution", base, vStr);
-// 		exit(1);
-// 	}
-//
-// 	myCosmos->SetQcdPot(vqcdType);
-//
-// 	LogMsg (VERB_NORMAL, "Ic... \n");
-// 		if (status <= 0)
-// 			LogMsg(VERB_NORMAL, "IC data not available");
-// 		else {
-// 			hid_t icGrp_id = H5Gopen2(file_id, "/ic", H5P_DEFAULT);
-// 			readAttribute(icGrp_id, &mode0, "Axion zero mode", H5T_NATIVE_DOUBLE);
-// 			readAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
-//
-// 			if (!strcmp(icStr, "Smooth")) {
-// 				cType = CONF_SMOOTH;
-// 				readAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
-// 				readAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
-// 			} else if (!strcmp(icStr, "kMax")) {
-// 				cType = CONF_KMAX;
-// 				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-// 				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-// 			} else if (!strcmp(icStr, "VilGor")) {
-// 				cType = CONF_VILGOR;
-// 				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-// 				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-// 			} else if (!strcmp(icStr, "Tkachev")) {
-// 				cType = CONF_TKACHEV;
-// 				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-// 				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-// 			}
-//
-// 			readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
-//
-// 			if (!strcmp(icStr, "Random")) {
-// 				smvarType = CONF_RAND;
-// 			} else if (!strcmp(icStr, "String XY")) {
-// 				smvarType = CONF_STRINGXY;
-// 			} else if (!strcmp(icStr, "String YZ")) {
-// 				smvarType = CONF_STRINGYZ;
-// 			} else if (!strcmp(icStr, "Minicluster")) {
-// 				smvarType = CONF_MINICLUSTER;
-// 			} else if (!strcmp(icStr, "Minicluster 0")) {
-// 				smvarType = CONF_MINICLUSTER0;
-// 			} else if (!strcmp(icStr, "Axion noise")) {
-// 				smvarType = CONF_AXNOISE;
-// 			} else if (!strcmp(icStr, "Saxion noise")) {
-// 				smvarType = CONF_SAXNOISE;
-// 			} else if (!strcmp(icStr, "Axion one mode")) {
-// 				smvarType = CONF_AX1MODE;
-// 			} else {
-// 				LogError("Error: unrecognized configuration type %s", icStr);
-// 				exit(1);
-// }
-
-//	readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
-// 	return	status;
-// }
 
 
 
@@ -291,7 +218,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
-	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], icStr[16], smStr[16];
+	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], vPQStr[32], icStr[16], smStr[16];
 	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -470,67 +397,33 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	auto gamma    = axion->BckGnd()->Gamma   ();
 	auto LL       = axion->BckGnd()->Lambda  ();
 
-	switch (vqcdType & VQCD_TYPE)
-	{
-		case	VQCD_1:
-			sprintf(vStr, "VQcd 1");
-			break;
-
-		case	VQCD_2:
-			sprintf(vStr, "VQcd 2");
-			break;
-
-		case	VQCD_0:
-			sprintf(vStr, "VQcd 0");
-			break;
-
-		case	VQCD_QUAD:
-			sprintf(vStr, "VQcd Linear");
-			break;
-
-		case	VQCD_PQ_ONLY:
-			sprintf(vStr, "VQcd PQ only");
-			break;
-
-		case	VQCD_1_PQ_2:
-			sprintf(vStr, "VQcd 1 Peccei-Quinn 2");
-			break;
-
-		case	VQCD_1N2:
-			sprintf(vStr, "VQcd 1 N=2");
-			break;
-
+	switch (vqcdType & V_QCD)	{
 		default:
-			sprintf(vStr, "VQcd 1");
-			break;
+		caspr(V_QCDC,vStr,"VQcd Cos")
+		caspr(V_QCD1,vStr,"VQcd 1")
+		caspr(V_QCD0,vStr,"VQcd 0")
+		caspr(V_QCDV,vStr,"VQcd Variant")
+		caspr(V_QCDL,vStr,"VQcd Linear")
+		caspr(V_QCD2,vStr,"VQcd N = 2")
 	}
 
-	switch (vqcdType & VQCD_DAMP)
-	{
-		case	VQCD_DAMP_RHO:
-			sprintf(dStr, "Rho");
-			break;
-
-		case	VQCD_DAMP_ALL:
-			sprintf(dStr, "All");
-			break;
-
+	switch (vqcdType & V_PQ) {
 		default:
-		case	VQCD_NONE:
-			sprintf(dStr, "None");
-			break;
+		caspr(V_PQ1,vPQStr,"VPQ 1")
+		caspr(V_PQ2,vPQStr,"VPQ 2")
 	}
 
-	switch (vqcdType & VQCD_EVOL_RHO)
-	{
-		case	VQCD_EVOL_RHO:
-			sprintf(rStr, "Only Rho");
-			break;
-
+	switch (vqcdType & V_DAMP) {
+		caspr(V_DAMP_RHO,dStr,"Rho")
+		caspr(V_DAMP_ALL,dStr,"All")
 		default:
-		case	VQCD_NONE:
-			sprintf(rStr, "Full");
-			break;
+		caspr(V_NONE,dStr,"None")
+	}
+
+	switch (vqcdType & V_EVOL_RHO)	{
+		caspr(V_EVOL_RHO,rStr,"Only Rho")
+		default:
+		caspr(V_NONE,rStr,"Full")
 	}
 
 	/*	Write header	*/
@@ -581,6 +474,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
+	writeAttribute(vGrp_id, &vPQStr,"VPQ type",      attr_type);
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
@@ -844,7 +738,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 
 	FieldPrecision	precision;
 
-	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], smStr[16];
+	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], vPQStr[32], smStr[16];
 	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -1045,39 +939,47 @@ LogMsg (VERB_NORMAL, "Frw = %f\n",myCosmos->Frw());
 		}
 
 LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
-		if (myCosmos->QcdPot() == VQCD_NONE) {
-			VqcdType vqcdType = VQCD_NONE;
+		if (myCosmos->QcdPot() == V_NONE) {
+			VqcdType vqcdType = V_NONE;
 
 			readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
 
 			if (!strcmp(vStr, "VQcd 1"))
-				vqcdType = VQCD_1;
-			else if (!strcmp(vStr, "VQcd 2"))
-				vqcdType = VQCD_2;
+				vqcdType = V_QCD1;
+			else if ( !strcmp(vStr, "VQcd Variant") || !strcmp(vStr, "VQcd 2")) //legacy
+				vqcdType = V_QCDV;
 			else if (!strcmp(vStr, "VQcd 0"))
-				vqcdType = VQCD_0;
+				vqcdType = V_QCD0;
 			else if (!strcmp(vStr, "VQcd Linear"))
-				vqcdType = VQCD_QUAD;
-			else if (!strcmp(vStr, "VQcd PQ only"))
-				vqcdType = VQCD_PQ_ONLY;
-			else if (!strcmp(vStr, "VQcd 1 Peccei-Quinn 2"))
-				vqcdType = VQCD_1_PQ_2;
-			else if (!strcmp(vStr, "VQcd 1 N=2"))
-				vqcdType = VQCD_1N2;
+				vqcdType = V_QCDL;
+			else if (!strcmp(vStr, "VQcd Cos"))
+				vqcdType = V_QCDC;
+			else if (!strcmp(vStr, "VQcd N = 2"))
+				vqcdType = V_QCD2;
 			else {
-				LogError ("Error reading file %s: invalid potential type %s", base, vStr);
-				vqcdType = VQCD_1;
-				//exit(1);
+				LogError ("Error reading file %s: invalid QCD potential type %s. Use QCD1", base, vStr);
+				vqcdType = V_QCD1;
+			}
+
+			readAttribute (vGrp_id, &vStr,  "VPQ type",  attr_type);
+
+			if (!strcmp(vStr, "VPQ 1"))
+				vqcdType |= V_PQ1;
+			else if ( !strcmp(vStr, "VPQ2"))
+				vqcdType |= V_PQ2;
+			else {
+				LogError ("Error reading file %s: invalid PQ potential type %s. Use PQ1", base, vStr);
+				vqcdType |= V_PQ1;
 			}
 
 			readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
 
 			if (!strcmp(vStr, "Rho"))
-				vqcdType |= VQCD_DAMP_RHO;
+				vqcdType |= V_DAMP_RHO;
 			else if (!strcmp(vStr, "All"))
-				vqcdType |= VQCD_DAMP_ALL;
+				vqcdType |= V_DAMP_ALL;
 			else if (!strcmp(vStr, "None"))
-				vqcdType |= VQCD_NONE;
+				vqcdType |= V_NONE;
 			else {
 				LogError ("Error reading file %s: invalid damping type %s. Ignoring damping", base, vStr);
 			}
@@ -1085,12 +987,11 @@ LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
 			readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
 
 			if (!strcmp(vStr, "Only Rho"))
-				vqcdType |= VQCD_EVOL_RHO;
+				vqcdType |= V_EVOL_RHO;
 			else if (!strcmp(vStr, "Full"))
-				vqcdType |= VQCD_NONE;
+				vqcdType |= V_NONE;
 			else {
 				LogError ("Error reading file %s: invalid rho evolution type %s. Ignoring rho evolution", base, vStr);
-				exit(1);
 			}
 
 			myCosmos->SetQcdPot(vqcdType);
@@ -1326,7 +1227,7 @@ void	createMeas (Scalar *axion, int index)
 {
 	hid_t	plist_id, dataType;
 
-	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], smStr[16], dStr[16], rStr[16];
+	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], vPQStr[32], smStr[16], dStr[16], rStr[16];
 	int	length = 32;
 
 //	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -1454,62 +1355,33 @@ void	createMeas (Scalar *axion, int index)
 			break;
 	}
 
-	switch (vqcdType & VQCD_TYPE)
-	{
-		case	VQCD_1:
-			sprintf(vStr, "VQcd 1");
-			break;
-		case	VQCD_2:
-			sprintf(vStr, "VQcd 2");
-			break;
-		case	VQCD_0:
-			sprintf(vStr, "VQcd 0");
-			break;
-		case	VQCD_QUAD:
-			sprintf(vStr, "VQcd Linear");
-			break;
-		case	VQCD_PQ_ONLY:
-			sprintf(vStr, "VQcd PQ only");
-			break;
-		case	VQCD_1_PQ_2:
-			sprintf(vStr, "VQcd 1 Peccei-Quinn 2");
-			break;
-
-		case	VQCD_1N2:
-			sprintf(vStr, "VQcd 1 N=2");
-			break;
-
+	switch (vqcdType & V_QCD)	{
 		default:
-			sprintf(vStr, "None");
-			break;
+		caspr(V_QCDC,vStr,"VQcd Cos")
+		caspr(V_QCD1,vStr,"VQcd 1")
+		caspr(V_QCD0,vStr,"VQcd 0")
+		caspr(V_QCDV,vStr,"VQcd Variant")
+		caspr(V_QCDL,vStr,"VQcd Linear")
+		caspr(V_QCD2,vStr,"VQcd N = 2")
 	}
 
-	switch (vqcdType & VQCD_DAMP)
-	{
-		case	VQCD_DAMP_RHO:
-			sprintf(dStr, "Rho");
-			break;
-
-		case	VQCD_DAMP_ALL:
-			sprintf(dStr, "All");
-			break;
-
+	switch (vqcdType & V_PQ) {
 		default:
-		case	VQCD_NONE:
-			sprintf(dStr, "None");
-			break;
+		caspr(V_PQ1,vPQStr,"VPQ 1")
+		caspr(V_PQ2,vPQStr,"VPQ 2")
 	}
 
-	switch (vqcdType & VQCD_EVOL_RHO)
-	{
-		case	VQCD_EVOL_RHO:
-			sprintf(rStr, "Only Rho");
-			break;
-
+	switch (vqcdType & V_DAMP) {
+		caspr(V_DAMP_RHO,dStr,"Rho")
+		caspr(V_DAMP_ALL,dStr,"All")
 		default:
-		case	VQCD_NONE:
-			sprintf(rStr, "Full");
-			break;
+		caspr(V_NONE,dStr,"None")
+	}
+
+	switch (vqcdType & V_EVOL_RHO)	{
+		caspr(V_EVOL_RHO,rStr,"Only Rho")
+		default:
+		caspr(V_NONE,rStr,"Full")
 	}
 
 	/*	Write header	*/
@@ -1561,6 +1433,7 @@ void	createMeas (Scalar *axion, int index)
 	writeAttribute(vGrp_id, &lz2e,  "Lambda Z2 exponent",H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &laam,  "LambdaP",       H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
+	writeAttribute(vGrp_id, &vPQStr,"VPQ type",      attr_type);
 	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
 	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
@@ -1701,11 +1574,15 @@ void	createMeas (Scalar *axion, int index)
 void	destroyMeas ()
 {
 	/*	Closes the currently opened file for measurements	*/
-	LogMsg (VERB_NORMAL, "Closing measurement file...");
+	LogMsg (VERB_NORMAL, "Closing measurement file...");LogFlush();
+
 
 	if (opened) {
+		LogMsg (VERB_DEBUG, "opened indeed");LogFlush();
 		H5Pclose (mlist_id);
+		LogMsg (VERB_DEBUG, "mlist_id closed");LogFlush();
 		H5Fclose (meas_id);
+		LogMsg (VERB_DEBUG, "meas_id closed");LogFlush();
 	}
 
 	opened = false;
@@ -1713,7 +1590,7 @@ void	destroyMeas ()
 
 	meas_id = -1;
 
-	LogMsg (VERB_NORMAL, "Measurement file successfuly closed\n");
+	LogMsg (VERB_NORMAL, "Measurement file successfuly closed\n");LogFlush();
 }
 
 void	writeDensity	(Scalar *axion, MapType fMap, double eMax, double eMin)
@@ -2674,7 +2551,7 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	LogMsg (VERB_NORMAL, "Written %lu bytes", dataSize);
 }
 
-void	writeArray (double *aData, size_t aSize, const char *group, const char *dataName)
+void	writeArray (double *aData, size_t aSize, const char *group, const char *dataName, int rango)
 {
 	hid_t	group_id, base_id, dataSpace, sSpace, dataSet;
 	hsize_t dims[1] = { aSize };
@@ -2738,7 +2615,7 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 	dataSet   = H5Dcreate(group_id, "data", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	sSpace	  = H5Dget_space (dataSet);
 
-	if (myRank == 0) {
+	if (myRank == rango) {
 		hsize_t offset = 0;
 		H5Sselect_hyperslab(sSpace, H5S_SELECT_SET, &offset, NULL, dims, NULL);
 	} else {
@@ -3776,15 +3653,12 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 		dataType = H5T_NATIVE_FLOAT;
 	}
 
-	/*	Unfold field before writing configuration	*/
 	int slicenumber = slicenumbertoprint ;
 	if (slicenumbertoprint > axion->Depth())
 	{
 		LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
 		slicenumber = 0;
 	}
-	// Folder	munge(axion);
-	// munge(UNFOLD_SLICE, slicenumber);
 
 	/*	Create a group for map data if it doesn't exist	*/
 	auto status = H5Lexists (meas_id, "/map", H5P_DEFAULT);
@@ -4029,7 +3903,7 @@ void	writePMapHdf5s	(Scalar *axion, char *eCh)
 	/*	Write raw data	*/
 	if (H5Dwrite (eSet_id, dataType, mapSpace, eSpace, H5P_DEFAULT, dataE) < 0)
 	{
-		LogError ("Error writing dataset /map/P");
+		LogError ("Error writing dataset %s",eCh);
 		prof.stop();
 		exit(0);
 	}

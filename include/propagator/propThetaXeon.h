@@ -87,6 +87,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const _MData_ dzdVec = opCode(set1_pd, dzd);
 		const _MData_ izVec  = opCode(set1_pd, iz);
 
+		const _MData_ PiVec  = opCode(set1_pd,  M_PI);
+		const _MData_ iPVec  = opCode(set1_pd, -M_PI);
+
 #ifdef	__AVX512F__
 		const auto vShRg  = opCode(load_si512, shfRg);
 		const auto vShLf  = opCode(load_si512, shfLf);
@@ -263,15 +266,28 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			/* Acceleration
 					lap - mA2R3 sin(psi/R) + Rpp psi*/
 			switch(VQcd){
-				case VQCD_0:
+				default:
+				case V_QCDC:
 					acu = opCode(sub_pd, lap,
 									opCode(sub_pd, opCode(mul_pd, zQVec, opCode(sin_pd, opCode(mul_pd, mel, izVec))),
 										opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
 				break;
-				case VQCD_QUAD:
+
+				case V_QCD0:
+				acu = opCode(add_pd, lap, opCode(mul_pd, opCode(set1_pd, Rpp), mel));
+				break;
+
+				case V_QCDL:
 					acu = opCode(sub_pd, lap,
 									opCode(sub_pd, opCode(mul_pd, zQVec, opCode(mul_pd, mel, izVec)),
 										opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
+				break;
+
+				case V_QCDS:
+				vel = opCode(max_pd, iPVec, opCode(min_pd, PiVec, opCode(mul_pd, mel, izVec)));
+				acu = opCode(sub_pd, lap,
+								opCode(sub_pd, opCode(mul_pd, zQVec, opCode(sin_pd, vel )),
+									opCode(mul_pd, opCode(set1_pd, Rpp), mel)));
 				break;
 			}
 			/* Update  */
@@ -349,6 +365,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const _MData_ dzcVec = opCode(set1_ps, dzc);
 		const _MData_ dzdVec = opCode(set1_ps, dzd);
 		const _MData_ izVec  = opCode(set1_ps, iz);
+
+		const _MData_ PiVec  = opCode(set1_ps, (float)  M_PI);
+		const _MData_ iPVec  = opCode(set1_ps, (float) -M_PI);
 
 		const uint z0 = Vo/(Lx*Lx);
 		const uint zF = Vf/(Lx*Lx);
@@ -516,19 +535,29 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 			} // End neighbour loop
 
-			acu = opCode(sub_ps, lap,
-							opCode(sub_ps, opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))),
-								opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
 
 			switch(VQcd){
-				case VQCD_0:
+				default:
+				case V_QCDC:
 				acu = opCode(sub_ps, lap,
 								opCode(sub_ps, opCode(mul_ps, zQVec, opCode(sin_ps, opCode(mul_ps, mel, izVec))),
 									opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
 				break;
-				case VQCD_QUAD:
+
+				case V_QCD0:
+				acu = opCode(add_ps, lap, opCode(mul_ps, opCode(set1_ps, Rpp), mel));
+				break;
+
+				case V_QCDL:
 				acu = opCode(sub_ps, lap,
 								opCode(sub_ps, opCode(mul_ps, zQVec, opCode(mul_ps, mel, izVec)),
+									opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
+				break;
+
+				case V_QCDS:
+				vel = opCode(max_ps, iPVec, opCode(min_ps, PiVec, opCode(mul_ps, mel, izVec)));
+				acu = opCode(sub_ps, lap,
+								opCode(sub_ps, opCode(mul_ps, zQVec, opCode(sin_ps, vel )),
 									opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
 				break;
 			}
@@ -720,33 +749,58 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
 				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod, const VqcdType VQcd)
 {
-	switch (VQcd)
+	/* Warning! to avoid the false vacuum locking at large mA, we switch off V(theta) for theta>pi */
+	bool sat = (ppar.massA2*ppar.R*ppar.R > 27.62 * ppar.ood2a);
+
+	switch (VQcd & V_QCD)
 	{
-		case VQCD_0:
-		case VQCD_1:
-		case VQCD_2:
+		case V_QCD0:
+		case V_NONE:
 		{
+LogMsg(VERB_DEBUG,"[PT] propTheta QCD0");
 				switch (wMod) {
 					case	true:
-						propThetaKernelXeon<true,VQCD_0> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						propThetaKernelXeon<true,V_QCD0> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 						break;
 
 					case	false:
-						propThetaKernelXeon<false,VQCD_0>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						propThetaKernelXeon<false,V_QCD0>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 						break;
 				}
-		} return;
-		case VQCD_QUAD:
+		} break;
+		case V_QCD1:
+		case V_QCDV:
+		case V_QCDC:
 		{
+LogMsg(VERB_DEBUG,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
 				switch (wMod) {
 					case	true:
-						propThetaKernelXeon<true,VQCD_QUAD> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						propThetaKernelXeon<true,V_QCDC> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 						break;
 
 					case	false:
-						propThetaKernelXeon<false,VQCD_QUAD>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						if (!sat)
+							propThetaKernelXeon<false,V_QCDC>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						else
+							propThetaKernelXeon<false,V_QCDS>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
 						break;
 				}
-		} return;
+		} break;
+		case V_QCDL:
+		{
+LogMsg(VERB_DEBUG,"[PT] propTheta QCDL %d",V_QCDL);
+				switch (wMod) {
+					case	true:
+						propThetaKernelXeon<true,V_QCDL> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						break;
+
+					case	false:
+						propThetaKernelXeon<false,V_QCDL>(m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
+						break;
+				}
+		} break;
+		default:
+			LogError("PropXeon Case not recognised: exit!");
+		break;
 	}
 }

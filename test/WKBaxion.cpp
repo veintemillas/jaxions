@@ -222,7 +222,7 @@ int	main (int argc, char *argv[])
 	// SpecBin specAna(axion, (pType & PROP_SPEC) ? true : false);
 	// // computes energy and creates map
 	// LogOut ("en ");
-	// energy(axion, eRes, true, delta, nQcd, 0., VQCD_1, 0.);
+	// energy(axion, eRes, true, delta, nQcd, 0., V_QCD1_PQ1, 0.);
 	// //bins density
 	// LogOut ("con ");
 	// axion->writeMAPTHETA( (*(axion->zV() )) , index, binarray, 10000)		;

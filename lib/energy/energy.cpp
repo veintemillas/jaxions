@@ -214,7 +214,7 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	}
 
 	// masked energy is non-deterministic but if mask is small is negligible
-	double flops = (field->Field() == FIELD_SAXION ? (pot == VQCD_1 ? 111 : 112) : 25)*field->Size()*1e-9;
+	double flops = (field->Field() == FIELD_SAXION ? (pot & (V_QCD1|V_QCDC) ? 111 : 112) : 25)*field->Size()*1e-9;
 	double bytes = 8.*field->DataSize()*field->Size()*1e-9;
 
 	if (emap & EN_MAP) {

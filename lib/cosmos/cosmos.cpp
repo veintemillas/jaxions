@@ -321,19 +321,13 @@ double  Cosmos::SaxionMass2  (double ct)
 {
 	double lbd   = LambdaP(ct);
 
-	switch  (pot & VQCD_TYPE) {
-		case    VQCD_0:
-		case    VQCD_1:
-		case    VQCD_2:
-    case    VQCD_QUAD:
-		case    VQCD_1N2:
-		case    VQCD_PQ_ONLY:
+	switch  (pot & V_PQ) {
+		case    V_PQ1:
 			return 2.*lbd;
 			break;
 
-		case    VQCD_1_PQ_2:
-		case    VQCD_1_PQ_2_DRHO:
-			return  8.*lbd;
+		case    V_PQ2:
+      return  8.*lbd;
 			break;
 
 		default :

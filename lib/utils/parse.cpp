@@ -97,9 +97,10 @@ ConfType     cType           = CONF_NONE;
 ConfsubType  smvarType       = CONF_RAND;
 FieldType    fTypeP          = FIELD_SAXION;
 LambdaType   lType           = LAMBDA_FIXED;
-VqcdType     vqcdType        = VQCD_1;
-VqcdType     vqcdTypeDamp    = VQCD_NONE;
-VqcdType     vqcdTypeRhoevol = VQCD_NONE;
+VqcdType     vqcdType        = V_QCD1;
+VqcdType     vpqType         = V_PQ1;
+VqcdType     vqcdTypeDamp    = V_NONE;
+VqcdType     vqcdTypeRhoevol = V_NONE;
 
 // Default IC type
 IcData icdatst;
@@ -268,10 +269,11 @@ void	PrintUsage(char *name)
 	printf("  --msa   [float]               [Sets PRS string simulation] msa is the Spacing to core ratio.\n");
 	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
 	printf("                                Setting 0.0 turns on massless Axion mode.\n");
-	printf("  --vqcd2                       Cosine QCD potential (default, disabled).\n");
-	printf("  --vqcd2                       Variant of QCD potential (default, disabled).\n");
+	printf("  --vqcdC                       Cosine QCD potential (default, disabled).\n");
+	printf("  --vqcdV                       Variant of QCD potential (default, disabled).\n");
+	printf("  --vqcd0                       No QCD potential (default, disabled).\n");
+	printf("  --N2                          PQ potential with NDW=2 (default, disabled, experimental).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
-	printf("  --NDW2                        PQ potential with NDW=2 (default, disabled, experimental).\n");
 	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
 	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
@@ -389,7 +391,7 @@ void	PrintICoptions()
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --preprop                                                                                    \n");
 	printf("  --prepropcoe  [float]                            Preevolution starts at zi/prepropcoe        \n");
-	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default VQCD_1) .\n");
+	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default V_QCD1) .\n");
 	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
 	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
 	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
@@ -486,7 +488,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.prepcoe   = 3.0 ;
 	icdatst.pregammo  = 0.0;
 	icdatst.prelZ2e   = 0.0;
-	icdatst.prevtype  = VQCD_1_RHO;
+	icdatst.prevtype  = V_QCD1_PQ1_RHO;
 	icdatst.normcore  = true;
 	icdatst.alpha     = 0.143;
 	icdatst.siter     = 40;
@@ -760,37 +762,46 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
+		if (!strcmp(argv[i], "--vqcdC"))
+		{
+			uPot = true;
+			vqcdType = V_QCDC ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--vqcdV"))
+		{
+			uPot = true;
+			vqcdType = V_QCDV ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--vqcdL"))
+		{
+			uPot = true;
+			vqcdType = V_QCDL ;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
 		if (!strcmp(argv[i], "--vqcd0"))
 		{
 			uPot = true;
-			vqcdType = VQCD_0 ;
+			vqcdType = V_QCD0 ;
 			procArgs++;
 			passed = true;
 			goto endFor;
 		}
 
-		if (!strcmp(argv[i], "--vqcdlinear"))
+		if (!strcmp(argv[i], "--N2"))
 		{
 			uPot = true;
-			vqcdType = VQCD_QUAD ;
-			procArgs++;
-			passed = true;
-			goto endFor;
-		}
-
-		if (!strcmp(argv[i], "--vqcd2"))
-		{
-			uPot = true;
-			vqcdType = VQCD_2 ;
-			procArgs++;
-			passed = true;
-			goto endFor;
-		}
-
-		if (!strcmp(argv[i], "--NDW2"))
-		{
-			uPot = true;
-			vqcdType = VQCD_1N2 ;
+			vqcdType = V_QCD2 ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -799,7 +810,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
 			uPot = true;
-			vqcdType = VQCD_1_PQ_2 ;
+			vpqType = V_PQ2 ;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -808,7 +819,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
 			uPot = true;
-			vqcdTypeRhoevol = VQCD_EVOL_RHO;
+			vqcdTypeRhoevol = V_EVOL_RHO;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1095,7 +1106,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			gammo = atof(argv[i+1]);
-			vqcdTypeDamp = VQCD_DAMP_RHO ;
+			vqcdTypeDamp = V_DAMP_RHO ;
 
 			uPot  = true;
 			uGamma = true;
@@ -1381,7 +1392,7 @@ int	parseArgs (int argc, char *argv[])
 			uI3   = true;
 
 			if (indi3 == 0.0)
-				vqcdType = VQCD_PQ_ONLY;
+				vqcdType = V_QCD0;
 
 			if (indi3 < 0.)
 			{
@@ -2280,6 +2291,7 @@ if (icdatst.cType == CONF_SMOOTH )
 		msa = sqrt(2*LL)*tmp;
 	}
 
+	vqcdType |= vpqType;
  	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
 
 	if (zrestore < zthres) {
@@ -2425,10 +2437,9 @@ Cosmos	createCosmos()
 
 		if (uMsa || uLambda)
 			myCosmos.SetLambda(LL);
-		if (lType == LAMBDA_Z2)
-				myCosmos.SetLamZ2Exp(2.0);
-		else if (lType == LAMBDA_FIXED)
-				myCosmos.SetLamZ2Exp(0.0);
+
+		if (uMsa || uLambda)
+			myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
 
 		if (uQcd)
 			myCosmos.SetQcdExp(nQcd);
@@ -2465,6 +2476,7 @@ Cosmos	createCosmos()
 
 	} else {
 		myCosmos.SetLambda  (LL);
+		myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
 		myCosmos.SetQcdExp  (nQcd);
 		myCosmos.SetGamma   (gammo);
 		myCosmos.SetQcdPot  (vqcdType);

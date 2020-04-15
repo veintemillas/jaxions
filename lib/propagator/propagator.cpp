@@ -9,6 +9,7 @@
 #include "propagator/propClass.h"
 #include "utils/utils.h"
 #include "gravity/potential.h"
+#include "propagator/prop-def-mac.h"
 
 #include <omp.h>
 
@@ -277,223 +278,25 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 
 
 	switch (pType & PROP_MASK) {
-		case PROP_OMELYAN2:
-			switch (pot) {
-				case VQCD_1:
-					prop = std::make_unique<PropOmelyan2<VQCD_1>>		(field, propclass);
-					break;
-				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2>>	(field, propclass);
-					break;
-				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropOmelyan2<VQCD_1_PQ_2_RHO>>	(field, propclass);
-					break;
-				case VQCD_2:
-					prop = std::make_unique<PropOmelyan2<VQCD_2>>		(field, propclass);
-					break;
-				case VQCD_0:
-					prop = std::make_unique<PropOmelyan2<VQCD_0>>		(field, propclass);
-					break;
-				case VQCD_PQ_ONLY:
-					prop = std::make_unique<PropOmelyan2<VQCD_PQ_ONLY>>	(field, propclass);
-					break;
 
-				default:
-				case VQCD_NONE:
-					prop = std::make_unique<PropOmelyan2<VQCD_NONE>>	(field, propclass);
-					break;
-			}
-		break;
-
-		case PROP_OMELYAN4:
-			switch (pot) {
-				case VQCD_1:
-					prop = std::make_unique<PropOmelyan4<VQCD_1>>		(field, propclass);
-					break;
-				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2>>	(field, propclass);
-					break;
-				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropOmelyan4<VQCD_1_PQ_2_RHO>>	(field, propclass);
-					break;
-				case VQCD_2:
-					prop = std::make_unique<PropOmelyan4<VQCD_2>>		(field, propclass);
-					break;
-				case VQCD_0:
-					prop = std::make_unique<PropOmelyan4<VQCD_0>>		(field, propclass);
-					break;
-				case VQCD_PQ_ONLY:
-					prop = std::make_unique<PropOmelyan4<VQCD_PQ_ONLY>>	(field, propclass);
-					break;
-				default:
-				case VQCD_NONE:
-					prop = std::make_unique<PropOmelyan4<VQCD_NONE>>	(field, propclass);
-					break;
-			}
-		break;
-
-		case PROP_LEAP:
-			switch (pot) {
-				case VQCD_1:
-					prop = std::make_unique<PropLeap<VQCD_1>>		(field, propclass);
-					break;
-				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropLeap<VQCD_1_PQ_2>>		(field, propclass);
-					break;
-				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropLeap<VQCD_1_PQ_2_RHO>>	(field, propclass);
-					break;
-				case VQCD_2:
-					prop = std::make_unique<PropLeap<VQCD_2>>		(field, propclass);
-					break;
-				case VQCD_0:
-					prop = std::make_unique<PropLeap<VQCD_0>>		(field, propclass);
-					break;
-				case VQCD_PQ_ONLY:
-					prop = std::make_unique<PropLeap<VQCD_PQ_ONLY>>		(field, propclass);
-					break;
-				default:
-				case VQCD_NONE:
-					prop = std::make_unique<PropLeap<VQCD_NONE>>		(field, propclass);
-					break;
-			}
-		break;
-
-		case PROP_MLEAP:
-				LogMsg(VERB_NORMAL,"[ip] MLEAP chosen");
-				switch (pot) {
-					case VQCD_1:
-						prop = std::make_unique<PropMLeap<VQCD_1>>		(field, propclass);
-						break;
-					case VQCD_1_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_RHO>>		(field, propclass);
-						break;
-					case VQCD_1_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_DRHO>>		(field, propclass);
-						break;
-					case VQCD_1_PQ_2:
-						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2>>		(field, propclass);
-						break;
-					case VQCD_1_PQ_2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_RHO>>	(field, propclass);
-						break;
-					case VQCD_1_PQ_2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1_PQ_2_DRHO>>	(field, propclass);
-						break;
-
-					case VQCD_2:
-						prop = std::make_unique<PropMLeap<VQCD_2>>		(field, propclass);
-						break;
-					case VQCD_2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_2_RHO>>		(field, propclass);
-						break;
-					case VQCD_2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_2_DRHO>>		(field, propclass);
-						break;
-
-					case VQCD_0:
-						prop = std::make_unique<PropMLeap<VQCD_0>>		(field, propclass);
-						break;
-					case VQCD_0_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_0_RHO>>		(field, propclass);
-						break;
-					case VQCD_0_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_0_DRHO>>		(field, propclass);
-						break;
-
-					case VQCD_QUAD:
-						prop = std::make_unique<PropMLeap<VQCD_QUAD>>		(field, propclass);
-						break;
-
-					case VQCD_1N2:
-						prop = std::make_unique<PropMLeap<VQCD_1N2>>		(field, propclass);
-						break;
-					case VQCD_1N2_RHO:
-						prop = std::make_unique<PropMLeap<VQCD_1N2_RHO>>	(field, propclass);
-						break;
-					case VQCD_1N2_DRHO:
-						prop = std::make_unique<PropMLeap<VQCD_1N2_DRHO>>	(field, propclass);
-						break;
-
-					case VQCD_NONE:
-					default:
-						prop = std::make_unique<PropMLeap<VQCD_NONE>>		(field, propclass);
-						break;
-				}
-		break;
+		// case PROP_OMELYAN2:
+		// 	DEFALLPROPTEM(PropOmelyan2);
+		// break;
+		//
+		// case PROP_OMELYAN4:
+		// 	DEFALLPROPTEM(PropOmelyan4);
+		// break;
+		//
+		// case PROP_LEAP:
+		// 	DEFALLPROPTEM(PropLeap);
+		// break;
+		//
+		// case PROP_MLEAP:
+		// 	DEFALLPROPTEM(PropMLeap);
+		// break;
 
 		case PROP_RKN4:
-			LogMsg(VERB_NORMAL,"[ip] RKN4 chosen");
-			switch (pot) {
-				case VQCD_1:
-					prop = std::make_unique<PropRKN4<VQCD_1>>		(field, propclass);
-					break;
-				case VQCD_1_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_RHO>>		(field, propclass);
-					break;
-				case VQCD_1_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_DRHO>>		(field, propclass);
-					break;
-
-				case VQCD_1_PQ_2:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2>>		(field, propclass);
-					break;
-				case VQCD_1_PQ_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_RHO>>	(field, propclass);
-					break;
-				case VQCD_1_PQ_2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1_PQ_2_DRHO>>	(field, propclass);
-					break;
-
-				case VQCD_2:
-					prop = std::make_unique<PropRKN4<VQCD_2>>		(field, propclass);
-					break;
-				case VQCD_2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_2_RHO>>		(field, propclass);
-					break;
-				case VQCD_2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_2_DRHO>>		(field, propclass);
-					break;
-
-				case VQCD_0:
-					prop = std::make_unique<PropRKN4<VQCD_0>>		(field, propclass);
-					break;
-				case VQCD_0_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_0_RHO>>		(field, propclass);
-					break;
-				case VQCD_0_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_0_DRHO>>		(field, propclass);
-					break;
-
-				case VQCD_QUAD:
-					prop = std::make_unique<PropRKN4<VQCD_QUAD>>		(field, propclass);
-					break;
-
-				case VQCD_PQ_ONLY:
-					prop = std::make_unique<PropRKN4<VQCD_PQ_ONLY>>		(field, propclass);
-					break;
-				case VQCD_PQ_ONLY_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_PQ_ONLY_RHO>>		(field, propclass);
-					break;
-				case VQCD_PQ_ONLY_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_PQ_ONLY_DRHO>>		(field, propclass);
-					break;
-
-				case VQCD_1N2:
-					prop = std::make_unique<PropRKN4<VQCD_1N2>>		(field, propclass);
-					break;
-				case VQCD_1N2_RHO:
-					prop = std::make_unique<PropRKN4<VQCD_1N2_RHO>>		(field, propclass);
-					break;
-				case VQCD_1N2_DRHO:
-					prop = std::make_unique<PropRKN4<VQCD_1N2_DRHO>>		(field, propclass);
-					break;
-
-				case VQCD_NONE:
-				default:
-					prop = std::make_unique<PropRKN4<VQCD_NONE>>		(field, propclass);
-					break;
-			}
+			DEFALLPROPTEM(PropRKN4);
 		break;
 
 		default:

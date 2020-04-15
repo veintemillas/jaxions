@@ -35,7 +35,7 @@ void	prepropa  (Scalar *axiona)
 	// ninfa.mask = spmask;
 	// ninfa.rmask = rmask;
   ninfa.maty = maty;
-	
+
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
 	lm.maxTheta = M_PI;
@@ -53,7 +53,7 @@ void	prepropa  (Scalar *axiona)
 	}
 
 	double dzaux;
-	initPropagator (pType, axiona, VQCD_1);
+	initPropagator (pType, axiona, V_QCD1_PQ1);
 	tunePropagator (axiona);
 
 	double ct0 = *axiona->zV();
@@ -157,7 +157,7 @@ void	prepropa2  (Scalar *axiona)
 	// 	double *eR = static_cast<double *> (eRes);
 
 	double dzaux;
-	//by default VQCD_1_RHO, only rho evolution
+	//by default V_QCD1_PQ1_RHO, only rho evolution
 	double gamma_aux = axiona->BckGnd()->Gamma();
 	if (axiona->BckGnd()->ICData().pregammo > 0.0){
 		axiona->BckGnd()->SetGamma(axiona->BckGnd()->ICData().pregammo);
@@ -254,7 +254,7 @@ void	relaxrho  (Scalar *axiona)
 	}
 
 	double dzaux;
-	initPropagator (pType, axiona, VQCD_1_DRHO);
+	initPropagator (pType, axiona, V_QCD1_PQ1_DRHO);
 	tunePropagator (axiona);
 
 	double ct0 = *axiona->zV();
@@ -299,58 +299,3 @@ void	relaxrho  (Scalar *axiona)
 		// LogOut("nN3 = %f\n",trala);
 	}
 }
-
-
-// //--------------------------------------------------
-// // prepropagator with relaxing strong damping
-// //--------------------------------------------------
-// // only if preprop and if z smaller or equal than zInit
-// // When z>zInit, it is understood that prepropagation was done
-// // NEW it takes the pregam value (if is > 0, otherwise gam )
-// if (preprop && ((*axion->zV()) < zInit)) {
-// 	//
-// 	// LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
-// 	// 	(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, myCosmos.Gamma(),pregammo,dwgammo);
-// 	LogOut("pppp Preprocessing ... z=%f->%f (VQCDTYPE %d, gam=%.2f pregam=%.2f dwgam=%.2f) \n\n",
-// 		(*axion->zV()), zInit, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO, myCosmos.Gamma(),pregammo,dwgammo);
-// 	// gammo is reserved for long-time damping
-// 	// use pregammo for prepropagation damping
-// 	double gammo_save = myCosmos.Gamma();
-// 	double *zaza = axion->zV();
-// 	double strdensn;
-//
-// 	if (pregammo > 0)
-// 		myCosmos.SetGamma(pregammo);
-//
-// 	// prepropagation is always with rho-damping
-// 	LogOut("Prepropagator always with damping Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-// 	initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-// 	tunePropagator (axion);
-//
-// 	while (*zaza < zInit){
-// 		dzaux = axion->dzSize(zInit)/2.;
-// 		//myCosmos.SetGamma(gammo_save*pow(abs(1.0 - (*zaza)/zInit)/(1. - 1./prepcoe),1.5));
-//
-// 		// obs?
-// 		printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-// 		//printsample(file_samp, axion, myCosmos.Lambda(), idxprint, nstrings_globale, maximumtheta);
-// 		if (icstudy){
-//
-// 			// lm = Measureme (axion, index, MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP);
-// 			ninfa.index=index;
-// 			ninfa.measdata=MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-// 			MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM ;
-// 			lm = Measureme (axion, ninfa, MEAS_ALLBIN | MEAS_STRING | MEAS_STRINGMAP |
-// 			MEAS_ENERGY | MEAS_2DMAP | MEAS_SPECTRUM);
-// 			index++;
-//
-// 		} else{
-// 			// LogOut("z %f (gamma %f)\n", *zaza, myCosmos.Gamma());
-// 			LogOut(".");
-// 		}
-// 		propagate (axion, dzaux);
-// 	}
-//
-// 	myCosmos.SetGamma(gammo_save);
-// }
-// LogOut("\n");

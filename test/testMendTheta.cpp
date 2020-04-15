@@ -163,7 +163,7 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	initPropagator (pType, axion, VQCD_1);
+	initPropagator (pType, axion, V_QCD1_PQ1);
 
 	start = std::chrono::high_resolution_clock::now();
 	old = start;

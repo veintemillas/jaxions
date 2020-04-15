@@ -383,7 +383,7 @@ const std::complex<float> If(0.,1.);
 		AxionFFT::initFFT(prec);
 
 		/* Backward needed for reduce-filter-map */
-		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");		// Spectrum for axion
+		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
 		if (fieldType == FIELD_SAXION) {
 			if (!lowmem) {
@@ -394,8 +394,6 @@ const std::complex<float> If(0.,1.);
 				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD,    "nSpecSxV");
 			}
 		}
-
-		AxionFFT::initPlan (this, FFT_SPAX,       FFT_FWDBCK,  "SpAx");
 
 		/* If spectral initSpectral plans
 		at the moment this is always done which avoids some issues
@@ -1046,38 +1044,14 @@ double	Scalar::IIAxionMassSqn(double z0, double z, int nn) {
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  ()
 {
-	//
-	// double lbd   = LambdaP();
-	//
-	// auto   &pot = bckgnd->QcdPot();
-	//
-	// switch  (pot & VQCD_TYPE) {
-	// 	case    VQCD_0:
-	// 	case    VQCD_1:
-	// 	case    VQCD_2:
-	// 	case    VQCD_1N2:
-	// 	case    VQCD_PQ_ONLY:
-	// 		return 2.*lbd;
-	// 		break;
-	//
-	// 	case    VQCD_1_PQ_2:
-	// 	case    VQCD_1_PQ_2_DRHO:
-	// 		return  8.*lbd;
-	// 		break;
-	//
-	// 	default :
-	// 		return  0;
-	// 		break;
-	// }
-	//
-	// return  0.;
 	return bckgnd->SaxionMass2(*z);
 }
 
 double	Scalar::dzSize	   () {
 	return dzSize	(*zV());
 }
-/*Need to update everything to zNow */
+
+/* TODO Need to update everything to zNow */
 double	Scalar::dzSize	   (double zNow) {
 	double RNow = Rfromct(zNow);
 	double oodl = ((double) n1)/bckgnd->PhysSize();
@@ -1098,7 +1072,7 @@ double	Scalar::dzSize	   (double zNow) {
 			mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
 			mAfq = std::max(mAfq,HubbleMassSq());
 			double facto = 1.;
-			if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
+			if ((pot & V_PQ) == V_PQ2)
 							facto = 2. ;
 			mSfq = std::sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
 			dct = wDz/std::max(mSfq,mAfq) ;
@@ -1127,10 +1101,10 @@ double	Scalar::dzSize	   (double zNow) {
 	}
 
 	/* Do not allow to jump over z/10 or Rc */
-	if (fieldType != FIELD_PAXION){
-		LogMsg(VERB_DEBUG,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
-		dct = std::min(dct,zNow/10.);
-		}
+	// if (fieldType != FIELD_PAXION){
+	// 	LogMsg(VERB_DEBUG,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
+	// 	dct = std::min(dct,zNow/10.);
+	// 	}
 
 	RNext = Rfromct(zNow + dct);
 	if ( (RNow < bckgnd->ZThRes()) && (RNext > bckgnd->ZThRes()) && (bckgnd->Frw() != 0.0))
@@ -1164,35 +1138,23 @@ double  Scalar::Saskia  ()
 {
 	auto   &pot = bckgnd->QcdPot();
 
-	switch  (pot & VQCD_TYPE) {
-		case    VQCD_PQ_ONLY:
+	switch  (pot & V_QCD) {
+		case    V_QCD0:
+		case    V_QCDV:
 			return 0.0;
-			break;
+		break;
 
-		case    VQCD_1:
-			return SaxionShift();
-			break;
-
-		case    VQCD_1_PQ_2:
-		case    VQCD_1_PQ_2_DRHO:
-		{
-			double  lbd = bckgnd->Lambda();
-			if (LambdaT() == LAMBDA_Z2)
-				return  rsvPQ2(AxionMassSq()/lbd*(*R)*(*R));
-			else
-				return  rsvPQ2(AxionMassSq()/lbd);
-			break;
-		}
-
-		case    VQCD_2:
-		case    VQCD_0:
-			return  0.;
-			break;
+		case    V_QCD1:
+			if 			(pot & V_PQ == V_PQ1)
+				return SaxionShift();
+			else if (pot & V_PQ == V_PQ2)
+				return rsvPQ2(AxionMassSq()/bckgnd->LambdaP (*z));
+		break;
 
 		// This is yet to be computed
-		case    VQCD_1N2:
+		case    V_QCD2:
 			return  0.;
-			break;
+		break;
 
 		default :
 			return  0;
@@ -1223,135 +1185,45 @@ double	Scalar::AxionMass  (const double RNow) {
 	return std::sqrt(bckgnd->AxionMass2(RNow));
 }
 
-double	Scalar::AxionMassSq(const double RNow) {
-	//
-	// double aMass;
-	// double &zThRes   = bckgnd->ZThRes();
-	// double &zRestore = bckgnd->ZRestore();
-	// double &indi3    = bckgnd->Indi3();
-	// double &nQcd     = bckgnd->QcdExp();
-	//
-  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
-  //       {
-  //               aMass = indi3*indi3*pow(zThRes, nQcd);
-  //               if (RNow > zRestore)
-  //                       aMass *= pow(RNow/zRestore, nQcd);
-  //       }
-  //       else
-  //               aMass = indi3*indi3*pow(RNow, nQcd);
-	//
-  //       return aMass;
-	return bckgnd->AxionMass2(RNow);
+double	Scalar::AxionMassSq(const double ct) {
+	return bckgnd->AxionMass2(ct);
 }
 
 // Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  (const double RNow)
 {
-	//
-	// double lbd   = bckgnd->Lambda();
-	// double llee  = bckgnd->LamZ2Exp();
-	// if (LambdaT() == LAMBDA_Z2)
-	// 	lbd /= pow(RNow,llee);
-	//
-	// auto   &pot = bckgnd->QcdPot();
-	//
-	// switch  (pot & VQCD_TYPE) {
-	// 	case    VQCD_PQ_ONLY:
-	// 	case    VQCD_0:
-	// 	case    VQCD_1:
-	// 	case    VQCD_2:
-	// 	case    VQCD_1N2:
-	// 		return 2.*lbd;
-	// 		break;
-	//
-	// 	case    VQCD_1_PQ_2:
-	// 	case    VQCD_1_PQ_2_DRHO:
-	// 		return  8.*lbd;
-	// 		break;
-	//
-	// 	default :
-	// 		return  0;
-	// 		break;
-	// }
-	//
-	// return  0.;
 	return bckgnd->SaxionMass2(RNow);
 }
 
-// double	Scalar::dzSize	   (const double RNow) {
-// 	double oodl = ((double) n1)/bckgnd->PhysSize();
-// 	double mAx2 = AxionMassSq();
-// 	double &lbd = bckgnd->Lambda();
-// 	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
-// 	double mAfq = 0.;
-// 	auto   &pot = bckgnd->QcdPot();
-//
-// 				if ((fieldType & FIELD_NAXION))
-// 					return  wDz*(sqrt(12*oodl*oodl + mAx2*RNow*RNow) + sqrt(mAx2)*RNow)/(12*oodl*oodl) ;
-//
-//         if ((fieldType & FIELD_AXION) || (fieldType == FIELD_WKB))
-//                 return  wDz/sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
-//          else
-//                 mAfq = sqrt(mAx2*(RNow*RNow) + 12.*oodl*oodl);
-//
-//         double mSfq = 0.;
-//
-// 				mAfq = std::max(mAfq,HubbleMassSq());
-//
-//         double facto = 1.;
-//         if ((pot & VQCD_TYPE) == VQCD_1_PQ_2)
-//                 facto = 2. ;
-//
-//         switch (lambdaType) {
-//                 case    LAMBDA_Z2:
-//                         mSfq = sqrt(facto*facto*msaa*msaa + 12.)*oodl;
-//                         break;
-//
-//                 case    LAMBDA_FIXED:
-//                         mSfq = sqrt(2.*lbd*(RNow*RNow)*facto*facto + 12.*oodl*oodl);
-//                         break;
-//         }
-//
-//         return  wDz/std::max(mSfq,mAfq);
-// }
-
-double Scalar::SaxionShift(const double RNow)
+double Scalar::SaxionShift(const double ct)
 {
-	double &lbd = bckgnd->Lambda();
-	double alpha = AxionMassSq()/(lbd*RNow*RNow);
+	double alpha = AxionMassSq(ct)/bckgnd->LambdaP(ct);
 	double discr = 4./3.-9.*alpha*alpha;
 
 	return	((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
 }
 
-double  Scalar::Saskia  (const double RNow)
+double  Scalar::Saskia  (const double ct)
 {
-	double &lbd = bckgnd->Lambda();
 	auto   &pot = bckgnd->QcdPot();
 
-	switch  (pot & VQCD_TYPE) {
-		case    VQCD_PQ_ONLY:
+	switch  (pot & V_QCD) {
+		case    V_QCD0:
+		case    V_QCDV:
 			return 0.0;
-			break;
+		break;
 
-		case    VQCD_1:
-			return SaxionShift();
-			break;
+		case    V_QCD1:
+			if 			(pot & V_PQ == V_PQ1)
+				return SaxionShift(ct);
+			else if (pot & V_PQ == V_PQ2)
+				return rsvPQ2(AxionMassSq(ct)/bckgnd->LambdaP (ct));
+		break;
 
-		case    VQCD_1_PQ_2:
-		case    VQCD_1_PQ_2_DRHO:
-			return  rsvPQ2(AxionMassSq()/(lbd*RNow*RNow));
-			break;
-
-		case    VQCD_2:
-		case    VQCD_0:
+		// This is yet to be computed
+		case    V_QCD2:
 			return  0.;
-			break;
-
-		case    VQCD_1N2:
-			return  0.;
-			break;
-
+		break;
 
 		default :
 			return  0;

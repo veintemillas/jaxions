@@ -641,24 +641,35 @@
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::lowCpu	(const double dz) {
 		double *z = axion->zV();
-		double *R = axion->RV();
-		double cLmbda ;
 
-		size_t NG = axion->getNg();
+		PropParms ppar;
+		ppar.Ng     = axion->getNg();
+		ppar.Lx     = Lx;
+		ppar.PC     = axion->getCO();
+		ppar.ood2a  = ood2;
+		ppar.gamma  = axion->BckGnd()->Gamma();
+		ppar.frw    = axion->BckGnd()->Frw();
+
+		size_t BO = ppar.Ng*S;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
+
+			ppar.lambda = axion->LambdaP();
+			ppar.massA2 = axion->AxionMassSq();
+			ppar.R      = *axion->RV();
+			ppar.Rpp    = axion->Rpp();
+
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			cLmbda = axion->LambdaP();
+			const double c0 = c[s], d0 = d[s];
 
-			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
-
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
-			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, Lx, S, V + S, precision, xBlock, yBlock, zBlock);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
+			/*missing update M?*/
 			*z += dz*d0;
 			axion->updateR();
 		}
@@ -666,15 +677,18 @@
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			cLmbda = axion->LambdaP();
+			ppar.lambda = axion->LambdaP();
+			ppar.massA2 = axion->AxionMassSq();
+			ppar.R      = *axion->RV();
+			ppar.Rpp    = axion->Rpp();
 
+			const double c0 = c[nStages];
 
-			const double c0 = c[nStages], maa = axion->AxionMassSq();
-
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, 2*S, V, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, S, 2*S, S, precision);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), NG, R, dz, c0, ood2, cLmbda, maa, gamma, Lx, V, V+S, S, precision);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
 		}
 	}
 
@@ -687,11 +701,18 @@
 	void	PropClass<nStages, lastStage, VQcd>::sSpecCpu	(const double dz) {
 
 		double *z = axion->zV();
-		double *R = axion->RV();
-		double cLmbda;
-		auto   lSize  = axion->BckGnd()->PhysSize();
 
-		const double fMom = -(4.*M_PI*M_PI)/(lSize*lSize*((double) axion->TotalSize()));
+		PropParms ppar;
+		ppar.Ng     = axion->getNg();
+		ppar.Lx     = Lx;
+		ppar.PC     = axion->getCO();
+		ppar.ood2a  = ood2;
+		ppar.gamma  = axion->BckGnd()->Gamma();
+		ppar.frw    = axion->BckGnd()->Frw();
+		ppar.fMom1 = -(4.*M_PI*M_PI)/(axion->BckGnd()->PhysSize()*axion->BckGnd()->PhysSize()*((double) axion->TotalSize()));
+
+		/* Returns ghost size region in slices */
+		size_t BO = ppar.Ng*S;
 
 		//debug
 		if	(axion->Folded())
@@ -706,9 +727,12 @@
 
 			applyLaplacian(axion);
 
-			cLmbda = axion->LambdaP();
+			ppar.lambda = axion->LambdaP();
+			ppar.massA2 = axion->AxionMassSq();
+			ppar.R      = *axion->RV();
+			ppar.Rpp    = axion->Rpp();
 
-			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, d0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, d0, S, V+S, precision);
 			*z += dz*d0;
 			axion->updateR();
 		}
@@ -720,9 +744,12 @@
 
 			applyLaplacian(axion);
 
-			cLmbda = axion->LambdaP();
+			ppar.lambda = axion->LambdaP();
+			ppar.massA2 = axion->AxionMassSq();
+			ppar.R      = *axion->RV();
+			ppar.Rpp    = axion->Rpp();
 
-			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), R, dz, c0, 0.0, ood2, cLmbda, maa, gamma, fMom, Lx, S, V+S, precision);
+			sPropKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, S, V+S, precision);
 		}
 		axion->setM2     (M2_DIRTY);
 	}
@@ -1055,36 +1082,37 @@
 			{
 				double lapla = 18.0 * axion->getNg();
 
+				/* TODO GENERALISE */
 				switch (axion->Field()) {
 					case FIELD_SAXION:
-						switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+						switch (VQcd & V_TYPE) {
 
 							default:
-							case VQCD_1:
+							case V_QCD1_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((24.+lapla) * ((double) nStages) + (lastStage ? (20.+lapla) : 0.)));
 								break;
 
-							case VQCD_PQ_ONLY:
+							case V_QCD0_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((22.+lapla) * ((double) nStages) + (lastStage ? (18.+lapla) : 0.)));
 								break;
 
-							case VQCD_2:
+							case V_QCDV_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((27.+lapla) * ((double) nStages) + (lastStage ? (23.+lapla) : 0.)));
 								break;
 
-							case VQCD_1_PQ_2:
+							case V_QCD1_PQ2:
 								return	(1e-9 * ((double) axion->Size()) * ((26.+lapla) * ((double) nStages) + (lastStage ? (22.+lapla) : 0.)));
 								break;
 
-							case VQCD_1_PQ_2_RHO:
+							case V_QCD1_PQ2_RHO:
 								return	(1e-9 * ((double) axion->Size()) * ((32.+lapla) * ((double) nStages) + (lastStage ? (28.+lapla) : 0.)));
 								break;
 
-							case VQCD_1N2:
+							case V_QCD2_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((25.+lapla) * ((double) nStages) + (lastStage ? (23.+lapla) : 0.))); //check the laststage?
 								break;
 
-							case VQCD_QUAD:
+							case V_QCDL_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((25.+lapla) * ((double) nStages) + (lastStage ? (25.+lapla) : 0.))); //check the laststage?
 								break;
 						}
@@ -1110,19 +1138,19 @@
 					case FIELD_SAXION: {
 						auto &planFFT   = AxionFFT::fetchPlan("SpSx");
 						double fftFlops = planFFT.GFlops(FFT_FWDBCK) * (((double) nStages) + (lastStage ? 1. : 0.));
-						switch (VQcd & VQCD_TYPE) {	//FIXME Wrong for damping/only rho
+						switch (VQcd & V_TYPE) {	//FIXME Wrong for most propagators
 							default:
-							case VQCD_1:
+							case V_QCD1_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
 									) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
 								break;
 
-							case VQCD_2:
+							case V_QCDV_PQ1:
 								return	(1e-9 * ((double) axion->Size()) * ((29. + 1.) * ((double) nStages) + (lastStage ? 25. + 1. : 0.)
 									) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
 								break;
 
-							case VQCD_1_PQ_2:
+							case V_QCD1_PQ2:
 								return	(1e-9 * ((double) axion->Size()) * ((26. + 1.) * ((double) nStages) + (lastStage ? 22. + 1. : 0.)
 									) + fftFlops);//+ 5.*1.44695*log(((double) axion->Size()))));
 								break;

@@ -148,7 +148,7 @@ int	main (int argc, char *argv[])
 		double smthi = 0.5*std::exp( std::log(10*sizeN/0.5)*i/nSteps )	;
 		double smth = smthi*delta/2;
 		// double smth = pow(1.2,i)*delta/2.;
-		LogOut("smoothing with sigma-length %.2e\n",smth);
+		LogOut("SmOOthing with sigma-length %.2e\n",smth);
 		specAna.filterFFT<float>	(smthi);
 		myPlan.run(FFT_BCK);
 		/*uppad*/
