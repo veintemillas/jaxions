@@ -14,6 +14,8 @@
 #include "projector/projector.h"
 #include "scalar/fourier.h"
 
+#include "fft/fftCode.h"
+
 using namespace std;
 using namespace profiler;
 
@@ -193,92 +195,87 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if ( (measa & MEAS_NEEDENERGY) || mapsneedenergy)
 	{
 		void *eRes;
-		trackAlloc(&eRes, 256);
-		memset(eRes, 0, 256);
-		double *eR = static_cast<double *> (eRes);
+			trackAlloc(&eRes, 256);
+				memset(eRes, 0, 256);
+					double *eR = static_cast<double *> (eRes);
 
 		if ((measa & MEAS_NEEDENERGYM2) || mapsneedenergy)
 		{
 			// LogOut("energy (map->m2) ");
 			LogMsg(VERB_NORMAL, "[Meas %d] called energy + map->m2", indexa);
-			energy(axiona, eRes, EN_MAP, shiftz);
+				energy(axiona, eRes, EN_MAP, shiftz);
 
-			MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
-			MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
+				MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
+					MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
 
 			if (measa & MEAS_ENERGY3DMAP){
 				// LogOut("write eMap ");
 				LogMsg(VERB_NORMAL, "[Meas %d] called writeEDens",indexa);
-				writeEDens(axiona);
+					writeEDens(axiona);
 			}
 
-			if (measa & MEAS_BINDELTA)
-			{
+			if (measa & MEAS_BINDELTA){
 				// LogOut("bindelta ");
 				LogMsg(VERB_NORMAL, "[Meas %d] bin energy axion (delta)",indexa);
-				// JARE possible problem m2 saved as double in _DOUBLE?
-				float eMean = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
-				Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), axiona->Size(),
-								[eMean = eMean] (Float x) -> float { return (double) (log10(x/eMean)) ;});
-				contBin.run();
-				writeBinner(contBin, "/bins", "contB");
+					float eMean = MeasDataOut.eA;
+						Binner<3000,Float> contBin(static_cast<Float *>(axiona->m2Cpu()), axiona->Size(),
+							[eMean = eMean] (Float x) -> float { return (double) (log10(x/eMean)) ;});
+								contBin.run();
+									writeBinner(contBin, "/bins", "contB");
 			}
 
-			if (mapsneedenergy)
-			{
+			if (mapsneedenergy) {
+
 				if(info.maty & MAPT_XYE){
 					LogMsg(VERB_NORMAL, "[Meas %d] 2D energy map",indexa);
-					writeEMapHdf5s (axiona,sliceprint);
+						writeEMapHdf5s (axiona,sliceprint);
 				}
+
 				if(info.maty & MAPT_XYPE){
 					LogMsg(VERB_NORMAL, "[Meas %d] Proyection",indexa);
-					if (axiona->Precision() == FIELD_DOUBLE){
-						projectField	(axiona, [] (double x) -> double { return x ; } );
-					}
-					else{
-						projectField	(axiona, [] (float x) -> float { return x ; } );
-					}
-					writePMapHdf5 (axiona);
+						if (axiona->Precision() == FIELD_DOUBLE){
+							projectField	(axiona, [] (double x) -> double { return x ; } );
+						}
+							else {
+								projectField	(axiona, [] (float x) -> float { return x ; } );
+							}
+								writePMapHdf5 (axiona);
 				}
 
 				if(info.maty & MAPT_XYPE2){
 					LogMsg(VERB_NORMAL, "[Meas %d] Proyection energy squared",indexa);
-					if (axiona->Precision() == FIELD_DOUBLE){
-						projectField	(axiona, [] (double x) -> double { return x*x ; } );
-					}
-					else{
-						projectField	(axiona, [] (float x) -> float { return x*x ; } );
-					}
-					writePMapHdf5 (axiona);
+						if (axiona->Precision() == FIELD_DOUBLE){
+							projectField	(axiona, [] (double x) -> double { return x*x ; } );
+						}
+							else {
+								projectField	(axiona, [] (float x) -> float { return x*x ; } );
+							}
+								writePMapHdf5 (axiona);
 				}
 			}
 
-			LogMsg(VERB_NORMAL, "[meas] M2 status %d M2h status", axiona->m2Status(), axiona->m2hStatus());
-			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_S))
-			{
+			LogMsg(VERB_NORMAL, "[meas] M2 status %d M2h status %d", axiona->m2Status(), axiona->m2hStatus());
+
+			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_S | MEAS_MULTICON)){
 
  				SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
 
-				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP))
+				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_MULTICON))
 				{
 
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT)){
 						prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons)",indexa);
 
-						// specAna.masker(radius_mask, SPMASK_AXIT, M2_ENERGY);
-						// writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sPmasked");
-
 						for(int ii=0; ii < irmask; ii++){
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,info.rmask_tab[ii]);
-							char PRELABEL[256];
-							sprintf(PRELABEL, "%s_%.2f", "sPmasked",info.rmask_tab[ii]);
-							specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY);
-							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
-						}
-
-						prof.stop();
-						prof.add(std::string("PSPA_mask"), 0.0, 0.0);
+								char PRELABEL[256];
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked",info.rmask_tab[ii]);
+										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY);
+											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+										}
+											prof.stop();
+												prof.add(std::string("PSPA_mask"), 0.0, 0.0);
 					}
 
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT2)){
@@ -286,34 +283,72 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 						for(int ii=0; ii < irmask; ii++){
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,info.rmask_tab[ii]);
-							char PRELABEL[256];
-							sprintf(PRELABEL, "%s_%.2f", "sPmasked2",info.rmask_tab[ii]);
-							specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY);
-							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
-						}
-						prof.stop();
-						prof.add(std::string("PSPA_mask2"), 0.0, 0.0);
+								char PRELABEL[256];
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",info.rmask_tab[ii]);
+										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY);
+											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+										}
+											prof.stop();
+												prof.add(std::string("PSPA_mask2"), 0.0, 0.0);
 					}
-						prof.start();
+
+
+					prof.start();
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
-						// at the moment runs PA and PS if in saxion mode
-						// perhaps we should create another psRun() YYYEEEESSSSS
-						specAna.pRun();
-						writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+							specAna.pRun();
+								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
+									prof.stop();
+										prof.add(std::string("PSPA"), 0.0, 0.0);
 
-						prof.stop();
-						prof.add(std::string("PSPA"), 0.0, 0.0);
 
-						//FIXME issue with endredmap?
+					if (measa & MEAS_MULTICON){
+						LogMsg(VERB_NORMAL, "[Meas %d] Multi contrast tool",indexa);LogFlush();
+						prof.start();
+							/* requires M2_ENERGY or M2_ENERGY_FFT in M2 or M2h > here it gets it */
+							/* loop over filters? */
+							/* loop over interesting distances */
+							size_t Nx = axiona->Length();
+							double delta = axiona->BckGnd()->PhysSize()/Nx;
+							int dsteps = 4*std::log2(Nx);
+
+							{
+							for (int id = 0; id < dsteps+1; id++){
+								LogMsg(VERB_NORMAL,"Multicon %id\n",id);LogFlush();
+								/* this is calibrated to make sense for FILTER_TOPHAT*/
+								double smthi = 0.25*std::exp( std::log(4*Nx)*id/dsteps )	;
+									double smth = smthi*delta;
+										specAna.smoothFourier(smth, FILTER_TOPHAT);
+											char FIL[256],LAB[256];
+												sprintf(FIL, "Top Hat");
+													/* bin delta */
+														float eMean = MeasDataOut.eA;
+															LogMsg(VERB_NORMAL, "[Meas %d] bin energy axion (delta) eA %.6e",indexa, MeasDataOut.eA);LogFlush();
+																Binner<3000,Float> conaBin(static_cast<Float *>(axiona->m2Cpu()), axiona->Size()+2*Nx*axiona->Depth(),
+																	[eMean = eMean] (Float x) -> float { return (double) (log10(x/eMean)) ;});
+																		conaBin.setpad(Nx+2,Nx);
+																			conaBin.run();
+																					sprintf(LAB, "cont%03dB", id);
+																						writeBinner(conaBin, "/bins", LAB);
+																							sprintf(LAB, "/bins/cont%03dB", id);
+																								writeAttributeg(&smth,LAB,"Smoothing Length",H5T_NATIVE_DOUBLE);
+																									writeAttributeg(FIL,LAB,"Filter Type",H5T_C_S1);
+/* print somehting if needed */
+specAna.unpad(PFIELD_M2,PFIELD_M2);
+sprintf(LAB, "/map/P%03d",id);
+axiona->setM2(M2_ENERGY_SMOOTH);
+if (axiona->Precision() == FIELD_DOUBLE){
+projectField	(axiona, [] (double x) -> double { return x ; } );
+} else {
+projectField	(axiona, [] (float x) -> float { return x ; } );}
+writePMapHdf5s (axiona, LAB);
+							}}
+							prof.stop();
+								prof.add(std::string("Multiple contrast"), 0.0, 0.0);
+
+						}
+
 						if (measa & MEAS_REDENE3DMAP){
 								if ( redmap > 0 ){
-									// prof.start();
-									// size_t nena = sizeN/ ((size_t) redmap) ;
-									// LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to N=%d by smoothing %d neig",indexa, redmap, nena);
-									// specAna.filter(nena);
-									// writeEDensReduced(axiona, indexa, redmap, redmap/((int) zGrid));
-									// prof.stop();
-									// prof.add(std::string("Reduced PSPA"), 0.0, 0.0);
 										LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to N=%d by smoothing",sizeN, redmap);
 										double ScaleSize = ((double) axiona->Length())/((double) redmap);
 										double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axiona->Surf());
@@ -585,16 +620,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 						if (nruntype & NRUN_K){
 						sprintf(LABEL, "sK_%s",PRELABEL);
+							writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
 							}
 						if (nruntype & NRUN_G){
 						sprintf(LABEL, "sG_%s",PRELABEL);
+							writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
 						}
 						if (nruntype & NRUN_V){
 						if (axiona->AxionMassSq() > 0.0){
 							// sprintf(LABEL, "sV_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 							sprintf(LABEL, "sV_%s",PRELABEL);
+							writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
 						}
 						}
@@ -626,9 +664,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSP real and imaginary",indexa);
 				specAna.nRun(SPMASK_SAXI, nruntype);
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sK_Im");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sK_Re");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sG_Im");
+				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/nSpectrum", "sK_Im");
+				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/nSpectrum", "sK_Re");
+				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/nSpectrum", "sG_Im");
 				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "sG_Re");
 			}
 
@@ -643,6 +681,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
+				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sKS");
+				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sGS");
+				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sVS");
+
 			}
 		}
 
