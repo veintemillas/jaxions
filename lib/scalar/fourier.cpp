@@ -100,7 +100,7 @@ void	FTfield::ftField(FieldIndex mvomv)
 					/* we assume the field is unghosted but padded in m2!!
 					and we want its FT at m2 (unghosted)
 					so we can directly use the FFT*/
-					auto &myPlan = AxionFFT::fetchPlan("SpAx");
+					auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 					myPlan.run(FFT_FWD);
 					scaleField	(field, FIELD_M2, scale);
 					LogMsg  (VERB_HIGH, "[Ftfield] real M2 transformed into momentum space ");
