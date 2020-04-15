@@ -849,16 +849,8 @@ namespace AxionFFT {
 		return fftPlans[name];
 	}
 
-<<<<<<< Updated upstream
-        void	destroyPlan		(FFTplan &myPlan)  {
-=======
-	void	removePlan		(std::string name, bool erasename ) {
 
-		if (fftPlans.find(name) == fftPlans.end()) {
-			LogError ("Error removing plan %s: not found", name.c_str());
-			return;
-		}
->>>>>>> Stashed changes
+	void	destroyPlan		(FFTplan &myPlan)  {
 
 		auto dFft    = myPlan.Direction();
 
