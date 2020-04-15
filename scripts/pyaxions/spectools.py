@@ -1698,8 +1698,9 @@ class energy:
             self.eSG = pa.gml(mfiles,'eSG')
             self.eSV = pa.gml(mfiles,'eSV')
             self.avrho = pa.gml(mfiles,'avrho')
-            # physical energy densities (rho_a)
+            # physical energy densities (rho_a,rho_s)
             self.rA = 2.*self.eAK/self.t**2/self.avrho**2
+            self.rS = self.eS/self.t**2
         else:
             Nt = pa.gm(mfiles[0],'sizeN')**3
             mask = pa.gml(mfiles,'nsp?')
@@ -1723,8 +1724,10 @@ class energy:
             self.avrhoM = pa.gml(mfiles[mask],'eavrhoMmask'+rmask)
             self.nmp = pa.gml(mfiles[mask],'enmpmask'+rmask)
             self.avrhoout = (self.avrho*Nt-self.avrhoM*self.nmp)/(Nt-self.nmp)
-            # physical energy densities (rho_a)
+            # physical energy densities (rho_a,rho_s,rho_str)
             self.rA = 2.*(self.eAK*Nt-self.eAKM*self.nmp)/(Nt-self.nmp)/self.t**2/self.avrhoout**2
+            self.rS = (self.eS*Nt-self.eSM*self.nmp)/(Nt-self.nmp)/self.t**2
+            self.rstr = (self.eA+self.eS)/self.t**2 - self.rA - self.rS
 
 
 
