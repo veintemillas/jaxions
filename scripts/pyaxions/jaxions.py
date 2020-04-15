@@ -114,28 +114,39 @@ def mv10001(address='./'):
 
 
 
-#   displays attributes of a measurement file
+#   displays attributes and groups of a measurement file
 
-def aximcontent(address='./'):
-    f = h5py.File(address, 'r')
-    # displays the atribbutes of a file
-    print('Attributes of file ',f)
-    for item in f.attrs.keys():
-        print(item + ":", f.attrs[item])
-    print()
-    print('[/ic/]')
-    for item in f['/ic/'].attrs.keys():
-        print("     ",item + ":", f['/ic/'].attrs[item])
-    print()
-    print('[/potential/]')
-    for item in f['/potential/'].attrs.keys():
-        print("     ",item + ":", f['/potential/'].attrs[item])
-    print()
+def aximcontent(address='./',group='/'):
+    """
+    Lists: 1 - sub groups in input h5 file ('/' or any other group)
+           2 - Attributes in '/'
+           3 - Attributes in '/ic'
+           4 - Attributes in '/potential'
+
+    : par addres :  string        address of the files
+    : par group  :  string        group name
+    """
+    with h5py.File(address, 'r') as f:
+        # displays the atribbutes of a file
+        print('Groups in %s'%group)
+        print([a for a in f[group]])
+        print()
+        print('Attributes of file ',f)
+        for item in f.attrs.keys():
+            print(item + ":", f.attrs[item])
+        print()
+        print('[/ic/]')
+        for item in f['/ic/'].attrs.keys():
+            print("     ",item + ":", f['/ic/'].attrs[item])
+        print()
+        print('[/potential/]')
+        for item in f['/potential/'].attrs.keys():
+            print("     ",item + ":", f['/potential/'].attrs[item])
+        print()
 
     # displays the data sets?
     # returns a lists of flags?
     return ;
-
 
 
 
@@ -154,83 +165,91 @@ def gml(list,something='z'):
     return np.array(out)
 
 def gm(address,something='summary',printerror=False):
+    """
+    gm (get from measure)
+    : par address : string   [address of the axion.m.xxxxx file to extract from]
+    : par request : string   [label of required output]
 
-    # the help
-    if something == 'help':
-        print('---------------------------------------------')
-        print('gm help           ')
-        print('---------------------------------------------')
-        print('ftype       Saxion/Axion      ')
-        print('ct/z/time   conformal time    ')
-        print('N/Size      Number of lattice points along 1D ')
-        print('L           Phyiscal Box Length [ADM u.]     ')
-        print('massA       Axion mass    [ADM u.]     ')
-        print('massS       Saxion mass   [ADM u.]    ')
-        print('msa         Saxion mass*L/N           ')
-        print('eA          Energy Axion  [ADM u.]   ')
-        print('eS          Energy SAxion [ADM u.]   ')
-        print('eGA         Grad En Axion [ADM u.]   ')
-        print('eGxA        Grad x En Axion [ADM u.]   ')
-        print('eKA         Kin En Axion [ADM u.]   ')
-        print('eVA         Pot En Axion [ADM u.]   ')
-        print('stringN     String #points ')
-        print('stwallN     Walls  #points   ')
-        print('stringL     String Length [lattice u.]')
-        print('stringNG    String #points weighted by gamma ')
-        print('stVel       String velocity')
-        print('stVel2      String velocity squared')
-        print('stGamma     String gamma')
-        print('stDens      String length/Volume [ADM u.] (statistically)')
-        print('stDensL     String length/Volume [ADM u.] (directly)')
-        print('stDensG     String length/Volume weighted by gamma [ADM u.] (statistically)')
-        print('stEDens     String energy density')
-        print('stEDensA    Masked axion energy density')
-        print('stEDensS    Masked saxion energy density')
-        print('stEDensVil  String energy density (Villadoro masking)')
-        print('stEDensAVil Masked axion energy density (Villadoro masking)')
-        print('stEDensSVil Masked saxion energy density (Villadoro masking)')
-        print('stnout      Number of grid points which are not masked')
-        print('binconB     binned normalised log10 contrast         ')
-        print('binconBmax  maximum log10(contrast)         ')
-        print('binconBmin  maximum log10(contrast)         ')
-        print('binthetaB   binned normalised theta value        ')
-        print('binthetaBmax, binthetaBmin...   ')
-        print('bincon?     True/False')
-        print('binrho?     True/False')
-        print('bintheta?   True/False')
-        print('kmax        maximum momentum [int] in the 3D grid ')
-        print('         ')
-        print('AXION SPECTRUM         ')
-        print('nsp         binned number spectrum [total]')
-        print('nspK        binned number spectrum [Kinetic energy part]')
-        print('nspG        binned number spectrum [Gradient energy part]')
-        print('nspV        binned number spectrum [Potential energy part]')
-        print('nsp?        True/False')
-        print('SAXION SPECTRUM         ')
-        print('nspKS        binned number spectrum [Kinetic energy part]')
-        print('nspGS        binned number spectrum [Gradient energy part]')
-        print('nspVS        binned number spectrum [Potential energy part]')
-        print('nspS?       True/False')
-        print('         ')
-        print('psp         binned power spectrum')
-        print('psp?        True/False')
-        print('         ')
-        print('3Dmape      3D map of axion energy density')
-        print('3Dmape?     Do we have energy density 3D map?')
-        print('2Dmape      2D slice map of axion energy density')
-        print('2Dmape?     Do we have one?')
-        print('2DmapP      2D proyection map of density^2')
-        print('2DmapP?     Do we have one?')
+    A list is shown below
+    request     output      description
+    ---------------------------------------------
+    at//x...x   undef.      generic h5 attribute /x...x
 
-        print('         ')
-        print('mapmC       2D slice map of conformal PQ field')
-        print('mapvC       2D slice map of conformal PQ velocity field')
-        print('         ')
-        print('maptheta    2D slice map of THETA')
-        print('mapvheta    2D slice map of THETA_v')
-        print('mapEdens    2D slice map of ENERGY in THETA [currentlt only Axion]')
-        print('         ')
-        return ;
+    ftype       string      Saxion/Axion
+    ct/z/time   float       conformal time
+    N/Size      float       Number of lattice points along 1D
+    L           float       Phyiscal Box Length [ADM u.]
+    massA       float       Axion mass    [ADM u.]
+    massS       float       Saxion mass   [ADM u.]
+    msa         float       Saxion mass*L/N
+    eA          float       Energy Axion  [ADM u.]
+    eS          float       Energy SAxion [ADM u.]
+    eGA         float       Grad En Axion [ADM u.]
+    eGxA        float       Grad x En Axion [ADM u.]
+    eKA         float       Kin En Axion [ADM u.]
+    eVA         float       Pot En Axion [ADM u.]
+    stringN     float       String #points
+    stwallN     float       Walls  #points
+    stringL     float       String Length [lattice u.]
+    stringNG    float       String #points weighted by gamma
+    stVel       float       String velocity
+    stVel2      float       String velocity squared
+    stGamma     float       String gamma
+    stDens      float       String length/Volume [ADM u.] (statistically)
+    stDensL     float       String length/Volume [ADM u.] (directly)
+    stDensG     float       String length/Volume weighted by gamma [ADM u.] (statistically)
+    stEDens     float       String energy density
+    stEDensA    float       Masked axion energy density
+    stEDensS    float       Masked saxion energy density
+    stEDensVil  float       String energy density (Villadoro masking)
+    stEDensAVil float       Masked axion energy density (Villadoro masking)
+    stEDensSVil float       Masked saxion energy density (Villadoro masking)
+    stnout      float       Number of grid points which are not masked
+    binconB     float       binned normalised log10 contrast
+    binconBmax  float       maximum log10(contrast)
+    binconBmin  float       maximum log10(contrast)
+    binthetaB   float       binned normalised theta value
+    binthetaBmaxfloat       , binthetaBmin...
+    bincon?     float       True/False
+    binrho?     float       True/False
+    bintheta?   float       True/False
+    kmax        float       maximum momentum [int] in the 3D grid
+
+    AXION NUMBER SPECTRUM
+    nsp_info    list        list of all number spectra in file
+    nspX_Y_Z    fl. array   nspectrum X=(K,G,V) masked Y=(0,Red,Bal,...) Z=(x.xx) mask radius
+    nsp?        bool        true if there is any nspectrum in file
+
+    AXION ENERGY SPECTRUM
+    esp_info    list        list of all energy spectra in file
+    espX_Y_Z    fl. array   espectrum X=(K,G,V) masked Y=(0,Red,Bal,...) Z=(x.xx) mask radius
+    esp?        bool        true if there is any nspectrum in file
+
+    SAXION NUMBER/ENERGY SPECTRUM
+    nspKS       fl. array   binned number spectrum [Kinetic energy part]
+    nspGS       fl. array   binned number spectrum [Gradient energy part]
+    nspVS       fl. array   binned number spectrum [Potential energy part]
+    nspS?       fl. array   True/False
+
+    DENSITY CONTRAST SPECTRUM
+    psp         binned power spectrum
+    psp?        True/False
+
+    MAPS
+    3Dmape      fl. array   3D map of axion energy density
+    3Dmape?     fl. array   Do we have energy density 3D map?
+    2Dmape      fl. array   2D slice map of axion energy density
+    2Dmape?     fl. array   Do we have one?
+    2DmapP      fl. array   2D proyection map of density^2
+    2DmapP?     fl. array   Do we have one?
+
+    mapmC       fl. array   2D slice map of conformal PQ field
+    mapvC       fl. array   2D slice map of conformal PQ velocity field
+
+    maptheta    fl. array   2D slice map of THETA
+    mapvheta    fl. array   2D slice map of THETA_v
+    mapEdens    fl. array   2D slice map of ENERGY in THETA [currentlt only Axion]
+    """
 
     f = h5py.File(address, 'r')
 
@@ -368,7 +387,7 @@ def gm(address,something='summary',printerror=False):
 
     # energies or other stuff
     en_check = 'energy' in f
-    if (something[0] == 'e') and en_check :
+    if (something[0] == 'e') and (something[:3] != 'esp') and en_check :
         ll = len(something)-1
         if ('mask' in something):
             # float to the right of mask with the correct format
@@ -454,7 +473,7 @@ def gm(address,something='summary',printerror=False):
             print('[gm] I did not get a part of the request ')
             return erequested
 
-    elif (something[0] == 'e') and not en_check :
+    elif (something[0] == 'e') and (something[:3] != 'esp') and not en_check :
         if printerror :
             print('[gm] No energy in the file ',address )
         return 0. ;
@@ -548,142 +567,34 @@ def gm(address,something='summary',printerror=False):
     # the bins
     ##########
 
-    bin_check = 'bins' in f
 
-    if (something == 'bincon?'):
-        return 'bins/contB' in f
 
-    if (something == 'bintheta?'):
-        return 'bins/thetaB' in f
+    if (something[:3] == 'bin'):
+        bin_check = 'bins' in f
 
-    if (something == 'binlt2?'):
-        return 'bins/logtheta2B' in f
-
-    if (something[0:2] == 'bi') and not bin_check :
-        if printerror :
+        if ( not bin_check) :
             print('[gm] Warning: No bins in file. Returning []')
-        return ;
-
-    if (something[0:2] == 'bi') and  bin_check :
-
-        #### contrast bin
-
-        binconB_check = False
-
-        if ('bins/contB' in f):
-            binconB_check = True
-            bincon_string = 'bins/contB'
-        elif ('bins/cont' in f) :
-            binconB_check = True
-            bincon_string = 'bins/cont'
-
-        if (something == 'bincon?'):
-            return binconB_check
-
-        if (something[0:4] == 'binc') and not binconB_check :
-            if printerror :
-                print(""" [gm] Warning: No contrast bin in file (bins/cont or bins/contB). Returning 'None' """)
             return ;
-        if (something[0:4] == 'binc') and binconB_check :
-            if (something == 'binconB'):
-                numBIN = f[bincon_string].attrs[u'Size']
-                return np.reshape(f[bincon_string+'/data'],(numBIN)) ;
-            if (something == 'binconBmax'):
-                return f[bincon_string].attrs[u'Maximum'] ;
-            if (something == 'binconBmin'):
-                return f[bincon_string].attrs[u'Minimum'] ;
 
-        #### theta bin
+        bname = something[3:]
+        # print('bins called bname = %s ... %d'%(bname, '/bins/'+bname in f))
+        if (bname[-3:] =='max'):
+            bname = bname[:-3]
+            if ('/bins/'+bname in f):
+                return f['/bins/'+bname].attrs[u'Maximum'] ;
 
-        bintheB_check = False
+        if (bname[-3:] =='min'):
+            bname = bname[:-3]
+            if ('/bins/'+bname in f):
+                return f['/bins/'+bname].attrs[u'Minimum'] ;
 
-        if ('bins/thetaB' in f):
-            bintheB_check = True
-            bintheta_string = 'bins/thetaB'
-        elif ('bins/theta' in f) :
-            bintheB_check = True
-            bintheta_string = 'bins/theta'
+        if (bname[-3:] =='len'):
+            bname = bname[:-3]
+            if ('/bins/'+bname in f):
+                return f['/bins/'+bname].attrs[u'Size'] ;
 
-        if (something == 'bintheta?'):
-            return bintheB_check
-
-        if (something[0:4] == 'bint') and not bintheB_check :
-            if printerror :
-                print(""" [gm] Warning: No bins/thetaB in file. Returning 'None' """)
-            return ;
-        if (something[0:4] == 'bint') and bintheB_check :
-            if (something == 'binthetaB'):
-                numBIN = f[bintheta_string].attrs[u'Size']
-                return np.reshape(f[bintheta_string+'/data'],(numBIN)) ;
-            if (something == 'binthetaBmax'):
-                return f[bintheta_string].attrs[u'Maximum'] ;
-            if (something == 'binthetaBmin'):
-                return f[bintheta_string].attrs[u'Minimum'] ;
-
-        #### logtheta2 bin
-
-        binlt2B_check = False
-
-        if ('bins/logtheta2B' in f):
-            binlt2B_check = True
-
-        if (something == 'binlt2?'):
-            return binlt2B_check
-
-        if (something[0:4] == 'binl') and not binlt2B_check :
-            if printerror :
-                print(""" [gm] Warning: No bins/logtheta2 in file. Returning 'None' """)
-            return ;
-        if (something[0:4] == 'binl') and bintheB_check :
-            if (something == 'binlt2B') or (something == 'binlogtheta2B'):
-                numBIN = f['bins/logtheta2B'].attrs[u'Size']
-                return np.reshape(f['bins/logtheta2B/data'],(numBIN)) ;
-            if (something == 'binlt2Bmax') or (something == 'binthetaBmax'):
-                return f['bins/logtheta2B'].attrs[u'Maximum'] ;
-            if (something == 'binlt2Bmin') or (something == 'binthetaBmin'):
-                return f['bins/logtheta2B'].attrs[u'Minimum'] ;
-
-
-        #### rho bin
-
-        binrhoB_check = False
-        if ('bins/rhoB' in f):
-            binrhoB_check = True
-            binrho_string = 'bins/rhoB'
-        elif ('bins/rho' in f) :
-            binrhoB_check = True
-            binrho_string = 'bins/rho'
-
-        if (something == 'binrho?'):
-            return binrhoB_check
-
-        if (something[0:4] == 'binr') and not binrhoB_check :
-            if ftype == 'Axion' :
-                if printerror :
-                    print('[gm] Warning: Axion mode, no rho!')
-                return ;
-            elif ftype == 'Axion' :
-                if printerror :
-                    print('[gm] Warning: No bins/thetaB in file. Returning []')
-                return ;
-        if (something[0:4] == 'binr') and binrhoB_check :
-            if (something == 'binrhoB'):
-                numBIN = f[binrho_string].attrs[u'Size']
-                return np.reshape(f[binrho_string+'/data'],(numBIN)) ;
-            if (something == 'binrhoBmax'):
-                return f[binrho_string].attrs[u'Maximum'] ;
-            if (something == 'binrhoBmin'):
-                return f[binrho_string].attrs[u'Minimum'] ;
-
-        #### fsacc bin
-
-        if (something == 'binfaacc') and 'bins/fsacceleration' in f :
-            numBIN = f['bins/fsacceleration'].attrs[u'Size']
-            return np.reshape(f['bins/fsacceleration/data'],(numBIN)) ;
-        if (something == 'binfaaccmax') and 'bins/fsacceleration' in f :
-            return f['bins/fsacceleration'].attrs[u'Maximum'] ;
-        if (something == 'binfaaccmin') and 'bins/fsacceleration' in f :
-            return f['bins/fsacceleration'].attrs[u'Minimum'] ;
+        if ('/bins/'+bname in f):
+            return np.array(f['/bins/'+bname+'/data']);
 
 
     if (something == 'kmax'):
@@ -693,6 +604,32 @@ def gm(address,something='summary',printerror=False):
     ##############
     # the spectra
     ##############
+
+    # energy spectra
+
+    esp_check = ('eSpectrum' in f)
+
+    if (something == 'esp?') :
+        return esp_check
+    if (something == 'espK?') :
+        return esp_check
+    if (something[0:3] == 'esp') and (something[-1] == '?'):
+        # print('nSpectrum/s'+something[3:-1])
+        return ('eSpectrum/s'+something[3:-1] in f)
+    if (something == 'esp_info'):
+        return [a for a in f['eSpectrum']]
+
+    if (something[0:3] == 'esp') and not esp_check :
+        if printerror :
+            print(""" [gm] Warning: No eSpec in file. Returning 'None' """)
+        return ;
+
+    if (something[0:3] == 'esp') and  esp_check :
+        if ftype == 'Saxion' or ftype == 'Axion':
+            if (something[:3] == 'esp') and ('eSpectrum/s'+something[3:] in f):
+                # print('requested '+'nSpectrum/s'+something[3:]+'/data/')
+                return np.array(f['eSpectrum/s'+something[3:]+'/data/']) ;
+
 
     # number spectra
 
@@ -713,12 +650,27 @@ def gm(address,something='summary',printerror=False):
         if printerror :
             print(""" [gm] Warning: No nSpec in file. Returning 'None' """)
         return ;
-    # note very specific will be obsolete?
+
     if (something[0:3] == 'nsp') and  nsp_check :
-        if ftype == 'Saxion' or ftype == 'Axion':
-            if (something[:3] == 'nsp') and ('nSpectrum/s'+something[3:] in f):
-                # print('requested '+'nSpectrum/s'+something[3:]+'/data/')
-                return np.array(f['nSpectrum/s'+something[3:]+'/data/']) ;
+
+        if (something[:3] == 'nsp') and ('nSpectrum/s'+something[3:] in f):
+            return np.array(f['nSpectrum/s'+something[3:]+'/data/']) ;
+
+
+    # # axion number
+    #
+    # if (something[0:2] == 'NV') :
+    #     if ('nSpectrum/s'+something[2:] in f):
+    #         K = np.array(f['nSpectrum/s'+something[2:]+'/data/'])
+    #         k0 = gm(address,'k0')
+    #         mA = gm(address,'massA')
+    #         R  = gm(address,'R')
+    #         if ('nSpectrum/nmodes' in f):
+    #             nn = gm(address,'nmodelist')
+    #             kl = gm(address,'klist')
+    #             return (k0*kl*kl*(K)/(2*np.pi**2)/nn).sum()
+    #         else :
+    #             return (k0*k0*k0*(K)/(2*np.pi**2)).sum()
 
 
     # ssp_check = 'nSpectrum/ssK' in f
@@ -747,6 +699,13 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'aveklist') and ('nSpectrum/averagek' in f):
         return np.array(f['nSpectrum/averagek/data'])
+
+    if (something == 'k0') :
+        return 2*np.pi/f.attrs[u'Physical size']
+
+    if (something == 'klist') and ('nSpectrum/averagek' in f):
+        return 2*np.pi/f.attrs[u'Physical size']*np.sqrt(np.array(f['nSpectrum/averagek/data'])/np.array(f['nSpectrum/nmodes/data']))
+
 
     # mask spectra
     msp_check = 'mSpectrum' in f
@@ -1072,6 +1031,7 @@ measdic = { "MEAS_NOTHING" : 0,
 "MEAS_NSP_A"        : 65536,
 "MEAS_NSP_S"        : 131072,
 "MEAS_NNSPEC"       : 262144,
+"MEAS_MULTICON"     : 524288,
           }
 inv_measdic = {v: k for k, v in measdic.items()}
 
@@ -1225,6 +1185,8 @@ def fildic(meas):
         return 'MEAS_NSP_S'
     if (meas in ['MEAS_NNSPEC','nmodelist','nmodes']):
         return 'MEAS_NNSPEC'
+    if (meas in ['MEAS_MULTICON','multicontrast','multi contrast','multicon','multi con']):
+        return 'MEAS_MULTICON'
 
 
 
@@ -1420,6 +1382,9 @@ def modelist ( sizeN ):
 #   and a mimumum number of X points per bin by grouping
 #   variable size bins
 
+def glbin(file, binsp, X=10):
+    return logbin(gm(file,binsp), gm(file,binsp+'min'), gm(file,binsp+'max'), gm(file,'Size'), X) ;
+
 def conbin(file, X=10):
     return logbin(gm(file,'binconB'), gm(file,'binconBmin'), gm(file,'binconBmax'), gm(file,'Size'), X) ;
 
@@ -1512,6 +1477,10 @@ def logbin(logbins, mincon, maxcon, N, X):
 #   returns a list of logarithmic bins and bin heights from a axion.m.XXXXX file
 #   and a mimumum number of X points per bin by grouping
 #   variable size bins
+
+def gbin(file, binsp, X=10):
+    return linbin(gm(file,binsp), gm(file,binsp+'min'), gm(file,binsp+'max'), gm(file,'Size'), X) ;
+
 
 def thetabin(file, X=10):
     return linbin(gm(file,'binthetaB'), gm(file,'binthetaBmin'), gm(file,'binthetaBmax'), gm(file,'Size'), X) ;
