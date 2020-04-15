@@ -71,10 +71,10 @@ class	Plot2D():
 				exit()
 
 			if fl == "Saxion":
-				mTmp  = fileHdf5[map]['m'].value.reshape(Ly,Lx,2)
+				mTmp  = fileHdf5[map]['m'][()].reshape(Ly,Lx,2)
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
 				if sys.argv[-1] == 'vel':
-					vTmp  = fileHdf5[map]['v'].value.reshape(Ly,Lx,2)
+					vTmp  = fileHdf5[map]['v'][()].reshape(Ly,Lx,2)
 					rData = vTmp[:,:,1]*mTmp[:,:,0]-vTmp[:,:,0]*mTmp[:,:,1]
 					rMax = np.amax(rData)
 				else :
@@ -83,7 +83,7 @@ class	Plot2D():
 					rData = rData/R
 
 			elif fl == "Axion":
-				aData = fileHdf5[map]['m'].value.reshape(Ly,Lx)
+				aData = fileHdf5[map]['m'][()].reshape(Ly,Lx)
 #				pm = np.amax(aData)
 #				print ("BMax %f" % pm)
 				aData = aData/R
@@ -97,7 +97,7 @@ class	Plot2D():
 #				print ("AMax %f" % pm)
 				rMax  = R
 			elif fl == "Naxion":
-				mTmp  = fileHdf5[map]['m'].value.reshape(Ly,Lx,2)
+				mTmp  = fileHdf5[map]['m'][()].reshape(Ly,Lx,2)
 				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
 				rData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)) # /(mAmA*R**3))
 				rMax = np.amax(rData)
@@ -168,12 +168,12 @@ class	Plot2D():
 		self.aPlot.addItem(self.zAtxt)
 
 #		sPos = np.linspace(0.0, data[3], 5)
-		# sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
-		# sLab = ["%.2f" % mod for mod in sPos]
-		# sCol = ['w', 'r', 'y', 'c', 'k']
-		sPos = np.array([0.00, 1.00])
+		sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
 		sLab = ["%.2f" % mod for mod in sPos]
-		sCol = ['k', 'w']
+		sCol = ['w', 'r', 'y', 'c', 'k']
+		# sPos = np.array([0.00, 1.00])
+		# sLab = ["%.2f" % mod for mod in sPos]
+		# sCol = ['k', 'w']
 
 		vs = self.sPlot.getViewBox()
 
