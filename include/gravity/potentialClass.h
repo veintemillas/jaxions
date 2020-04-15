@@ -614,7 +614,7 @@ LogMsg (VERB_PARANOID, "[ilap] rnorm %e ",rnorm);
 			sum += PC[in];
 		sum /= 6.;
 
-		/* modes are stored as Idx = kx + ky*hrLx * kz*hrLx*rTz */
+		/* modes are stored as Idx = kx + kz*hrLx * ky*hrLx*rTz */
 
 		#pragma omp parallel for schedule(static)
 		for (size_t idx=0; idx<nModesrhc; idx++) {
