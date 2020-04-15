@@ -1681,6 +1681,56 @@ class readstr:
 
 
 
+# ------------------------------------------------------------------------------
+#   Energy
+# ------------------------------------------------------------------------------
+
+class energy:
+    def __init__(self, mfiles, rmask='0'):
+        if rmask=='0':
+            self.t = pa.gml(mfiles,'ct')
+            self.log = pa.gml(mfiles,'logi')
+            self.eA = pa.gml(mfiles,'eA')
+            self.eAK = pa.gml(mfiles,'eAK')
+            self.eAG = pa.gml(mfiles,'eAG')
+            self.eS = pa.gml(mfiles,'eS')
+            self.eSK = pa.gml(mfiles,'eSK')
+            self.eSG = pa.gml(mfiles,'eSG')
+            self.eSV = pa.gml(mfiles,'eSV')
+            self.avrho = pa.gml(mfiles,'avrho')
+            # physical energy densities (rho_a)
+            self.rA = self.eA/self.t**2/self.avrho**2
+            self.rAK = self.eAK/self.t**2/self.avrho**2
+            self.rAG = self.eAG/self.t**2/self.avrho**2
+        else:
+            Nt = pa.gm(mfiles[0],'sizeN')**3
+            mask = pa.gml(mfiles,'nsp?')
+            self.t = pa.gml(mfiles[mask],'ct')
+            self.log = pa.gml(mfiles[mask],'logi')
+            self.eA = pa.gml(mfiles[mask],'eA')
+            self.eAK = pa.gml(mfiles[mask],'eAK')
+            self.eAG = pa.gml(mfiles[mask],'eAG')
+            self.eS = pa.gml(mfiles[mask],'eS')
+            self.eSK = pa.gml(mfiles[mask],'eSK')
+            self.eSG = pa.gml(mfiles[mask],'eSG')
+            self.eSV = pa.gml(mfiles[mask],'eSV')
+            self.avrho = pa.gml(mfiles[mask],'avrho')
+            self.eAM = pa.gml(mfiles[mask],'eAmask'+rmask)
+            self.eAKM = pa.gml(mfiles[mask],'eAKmask'+rmask)
+            self.eAGM = pa.gml(mfiles[mask],'eAGmask'+rmask)
+            self.eSM = pa.gml(mfiles[mask],'eSmask'+rmask)
+            self.eSKM = pa.gml(mfiles[mask],'eSKmask'+rmask)
+            self.eSGM = pa.gml(mfiles[mask],'eSGmask'+rmask)
+            self.eSVM = pa.gml(mfiles[mask],'eSVmask'+rmask)
+            self.avrhoM = pa.gml(mfiles[mask],'eavrhoMmask'+rmask)
+            self.nmp = pa.gml(mfiles[mask],'enmpmask'+rmask)
+            self.avrhoout = (self.avrho*Nt-self.avrhoM*self.nmp)/(Nt-self.nmp)
+            # physical energy densities (rho_a)
+            self.rA = (self.eA*Nt-self.eAM*self.nmp)/(Nt-self.nmp)/self.t**2/self.avrhoout**2
+            self.rAK = (self.eAK*Nt-self.eAKM*self.nmp)/(Nt-self.nmp)/self.t**2/self.avrhoout**2
+            self.rAG = (self.eAG*Nt-self.eAGM*self.nmp)/(Nt-self.nmp)/self.t**2/self.avrhoout**2
+
+
 
 
 # ------------------------------------------------------------------------------
