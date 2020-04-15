@@ -392,47 +392,52 @@ LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 				Gry = opCode(mul_pd, Grz, ivZ2);
 				Frho = opCode(sqrt_pd, Gry);
 
-				switch	(VQcd & VQCD_TYPE) {
 
-					default:
-					case	VQCD_1:
-					case	VQCD_0:
+				/* Saxion and Axion potential energies without norm-factor
+					mSg = Saxion potential (|phi|^2)-1
+					mCg = (1-cos theta)
+				*/
+				switch	(VQcd & V_PQ) {
+					case V_PQ1:
 						mSg = opCode(sub_pd, Gry, one);
-						mod = opCode(mul_pd, mSg, mSg);
-						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
-						break;
-
-					case	VQCD_PQ_ONLY:
-						mSg = opCode(sub_pd, Gry, one);
-						mod = opCode(mul_pd, mSg, mSg);
-						mCg = one;  // will be multiplied by 0
-						break;
-
-					case	VQCD_1_PQ_2:
-						mSg = opCode(sub_pd, opCode(mul_pd, Gry, Gry), one);   // |rho|^4-1
-						mod = opCode(mul_pd, mSg, mSg);   											// (|rho|^4-1)^2
-						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
-						break;
-
-					case	VQCD_2:
-						// mSg = opCode(sub_pd, Gry, one);
-						// mod = opCode(mul_pd, mSg, mSg);
-						// mTp = opCode(sub_pd, one, opCode(mul_pd, Grx, ivZ));
-						// mCg = opCode(mul_pd, mTp, mTp);
-
-						mSg = opCode(sub_pd, Gry, one);   // |rho|^2-1
 						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^2-1)^2
-						mTp = opCode(sub_pd, qcd2, opCode(mul_pd, Grx, iiiZ));								// (1-Re'/Z), -Im/Z
-						mCg = opCode(mul_pd, hVec, opCode(md2_pd, opCode(mul_pd,mTp,mTp) ));	// 0.5*((1-Re'/Z)^2+(Im/Z)^2), ...2
-
-						break;
-
-					case	VQCD_1N2:		//to be checked
-						mSg = opCode(sub_pd, Gry, one);   // |rho|^2-1
-						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^2-1)^2
-						mCg = opCode(mul_pd, hVec, opCode(sub_pd, one, opCode(div_pd, Gry, Grz)));
+					break;
+					case V_PQ2:
+						mSg = opCode(sub_pd, opCode(mul_pd, Gry, Gry), one);
+						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^4-1)^2
 					break;
 				}
+
+				switch	(VQcd & V_QCD) {
+					case V_QCD1:
+						/* We should use 1-Re(Phi)/R but behaves very bad */
+						// mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
+						/* We use VQCDC instead */
+						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
+					break;
+					case V_QCDV:
+						/* (1-Re'/Z), -Im/Z */
+						mTp = opCode(sub_pd, qcd2, opCode(mul_pd, Grx, iiiZ));
+						/* 0.5*((1-Re'/Z)^2+(Im/Z)^2) */
+						mCg = opCode(mul_pd, hVec, opCode(md2_pd, opCode(mul_pd,mTp,mTp) ));
+					break;
+					case V_QCD2:
+						/* (1 - Im(Phi)^2/|Phi|^2)/2 = */
+						mCg = opCode(mul_pd, hVec, opCode(sub_pd, one, opCode(div_pd, Gry, Grz)));
+					break;
+					case V_QCDC:
+						/* (1 - Re(|phi)/|Phi|) */
+						mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
+					break;
+					default:
+					case V_QCDL:
+						/*TODO*/
+					case V_QCD0:
+						// mCg = one; // whatever mCg is will be multiplied by zero;
+					break;
+				}
+
+
 #if	defined(__AVX512F__)
 				tVp = opCode(mask_blend_pd, opCode(kmov, 0b10101010), mod, opCode(permute_pd, mCg, 0b01010101));
 #elif	defined(__AVX__)
@@ -1038,55 +1043,48 @@ if (emask & EN_ENE){
 // Rho, Rho (duplicated)
 				Frho = opCode(sqrt_ps, Gry);
 
-				switch	(VQcd & VQCD_TYPE) {
-
-					default:
-					case	VQCD_1:
-					case	VQCD_0:
-						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
+				/* Saxion and Axion potential energies without norm-factor
+					mod = Saxion potential (|phi|^2-1)^2
+					mCg = (1-cos theta)
+				*/
+				switch	(VQcd & V_PQ) {
+					case V_PQ1:
+						mSg = opCode(sub_ps, Gry, one); // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|  // 1-Re'/M , 1-Im/M
-						break;
-
-					case	VQCD_PQ_ONLY:
-						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
-						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						mCg = one ; // will be multiplied by 0
-						break;
-
-					case	VQCD_1_PQ_2:
-						mSg = opCode(sub_ps, opCode(mul_ps, Gry, Gry), one);   	// |rho|^4-1
-						mod = opCode(mul_ps, mSg, mSg);   											// (|rho|^4-1)^2
-						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
-						break;
-
-					case	VQCD_2:
-						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
-						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						// mTp = opCode(sub_ps, one, opCode(mul_ps, Grx, ivZ));  // 1-Re'/Z,     0
-						// mCg = opCode(mul_ps, mTp, mTp);												// (1-Re'/Z)^2, 0
-						// opCode(store_ps, tmpS, Grx);
-						// printf("m %f %f %f %f\n",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
-						// mTp = opCode(sub_ps, opCode(mul_ps,ivZ,opCode(set1_ps,zR)), opCode(div_ps, Grx, opCode(set1_ps,zR)));
-						// opCode(store_ps, tmpS, mTp);
-						// printf("a %f %f %f %f\n",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
-						// mCg = opCode(mul_ps, hVec, opCode(md2_ps, opCode(mul_ps,mTp,mTp) ));
-						// opCode(store_ps, tmpS, mCg);
-						// printf("a %f %f %f %f\n\n",tmpS[0],tmpS[1],tmpS[2],tmpS[3]);
-						mTp = opCode(sub_ps, qcd2, opCode(mul_ps, Grx, iiiZ));								// (1-Re'/Z), -Im/Z
-						mCg = opCode(mul_ps, hVec, opCode(md2_ps, opCode(mul_ps,mTp,mTp) ));	// 0.5*((1-Re'/Z)^2+(Im/Z)^2), ...2
-						break;
-
-					case	VQCD_1N2:		//to be checked
-						mSg = opCode(sub_ps, Gry, one);   // |rho|^2-1
-						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
-						// Gry = [Re^2, Im^2]
-						// Grz = Mod^2, Mod^2...
-						// ...   Im^2/Mod^22
-						// ... = (1 - Gry/Grz)/2
-						mCg = opCode(mul_ps, hVec,opCode(sub_ps, one, opCode(div_ps,Gry,Grz)));
 					break;
+					case V_PQ2:
+						mSg = opCode(sub_ps, opCode(mul_ps, Gry, Gry), one); // |rho|^2-1
+						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^4-1)^2
+					break;
+				}
 
+				switch	(VQcd & V_QCD) {
+					case V_QCD1:
+					/* We should use 1-Re(Phi)/R but behaves very bad */
+					// mCg = opCode(sub_pd, one, opCode(div_pd, Grx, opCode(sqrt_pd, Grz)));  // 1-m/|m|
+					/* We use VQCDC instead */
+					mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
+					break;
+					case V_QCDV:
+						/* (1-Re'/Z), -Im/Z */
+						mTp = opCode(sub_ps, qcd2, opCode(mul_ps, Grx, iiiZ));
+						/* 0.5*((1-Re'/Z)^2+(Im/Z)^2) */
+						mCg = opCode(mul_ps, hVec, opCode(md2_ps, opCode(mul_ps,mTp,mTp) ));
+					break;
+					case V_QCD2:
+						/* (1 - Im(Phi)^2/|Phi|^2)/2 = */
+						mCg = opCode(mul_ps, hVec, opCode(sub_ps, one, opCode(div_ps, Gry, Grz)));
+					break;
+					case V_QCDC:
+						/* (1 - Re(|phi)/|Phi|) */
+						mCg = opCode(sub_ps, one, opCode(div_ps, Grx, opCode(sqrt_ps, Grz)));  // 1-m/|m|
+					break;
+					default:
+					case V_QCDL:
+						/*TODO*/
+					case V_QCD0:
+						// mCg = one; // whatever mCg is will be multiplied by zero;
+					break;
 				}
 
 				// now combine axion and saxion V in one vector
@@ -1353,332 +1351,128 @@ void	energyCpu	(Scalar *field, const double delta2, const double LL, const doubl
 
 	field->exchangeGhosts(FIELD_M);
 
-LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d\n",mapmask, ( field->sDStatus() & SD_MASK));LogFlush();
+LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d",mapmask, ( field->sDStatus() & SD_MASK));LogFlush();
+
+	/* templates */
+
+	/* Only defined PQ1, PQ2
+		QCDC, QCDV, QCD2, QCD0 (cosine, variant, N=2, 0)
+		QCD1 uses QCDC
+		QCDL is not defined yet
+		*/
+
+#define CASE_(pote,ene) \
+case ene: \
+	energyKernelXeon<pote,ene>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift); \
+break;
+
+#define CASE_MULTIE_(pote2) \
+switch (mapmask){ \
+CASE_(pote2,EN_ENE) \
+CASE_(pote2,EN_MAP) \
+CASE_(pote2,EN_MASK) \
+CASE_(pote2,EN_ENEMASK) \
+CASE_(pote2,EN_MAPMASK) \
+CASE_(pote2,EN_ENEMAPMASK) \
+}
+
+
 
 	if (!field->LowMem()) {
 
-		switch (VQcd & VQCD_TYPE) {
+		switch (VQcd & V_TYPE) {
 			default:
-				LogError("Potential not recognized, falling back to VQcd1");
-			case	VQCD_0:
-			case	VQCD_1:
-				switch (mapmask){
-					case EN_ENE:
-						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MAP:
-						energyKernelXeon<VQCD_1,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+				LogError("Potential not recognized, falling back to PQ1 QCDcos");
+			case	V_QCD1_PQ1:
+			case	V_QCDC_PQ1:
+				CASE_MULTIE_(V_QCDC_PQ1)
+			break;
 
-			case	VQCD_PQ_ONLY:
-				switch (mapmask){
-					case EN_ENE:
-						ppar.massA2=0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MAP:
-						ppar.massA2=0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-						ppar.massA2=0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-						ppar.massA2=0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MAPMASK:
-						ppar.massA2=0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMAPMASK:
-						ppar.massA2=0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+			case	V_QCDV_PQ1:
+				CASE_MULTIE_(V_QCDV_PQ1)
+			break;
 
-				case	VQCD_2:
-					switch (mapmask){
-						case EN_ENE:
-							energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar , field, eRes, shift);
-						break;
-						case EN_MAP:
-							energyKernelXeon<VQCD_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_MASK:
-							energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_ENEMASK:
-							energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_MAPMASK:
-							energyKernelXeon<VQCD_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_ENEMAPMASK:
-							energyKernelXeon<VQCD_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-					} break;
+			case	V_QCD2_PQ1:
+				CASE_MULTIE_(V_QCD2_PQ1)
+			break;
 
-				case	VQCD_1_PQ_2:
-					switch (mapmask){
-						case EN_ENE:
-							energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_MAP:
-							energyKernelXeon<VQCD_1_PQ_2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_MASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_ENEMASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_MAPMASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-						case EN_ENEMAPMASK:
-							energyKernelXeon<VQCD_1_PQ_2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-						break;
-					} break;
+			case	V_QCD0_PQ1:
+				CASE_MULTIE_(V_QCD0_PQ1)
+			break;
 
-					case	VQCD_1N2:
-						switch (mapmask){
-							case EN_ENE:
-								energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-							break;
-							case EN_MAP:
-								energyKernelXeon<VQCD_1N2,EN_MAP>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-							break;
-							case EN_MASK:
-								energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-							break;
-							case EN_ENEMASK:
-								energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-							break;
-							case EN_MAPMASK:
-								energyKernelXeon<VQCD_1N2,EN_MAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-							break;
-							case EN_ENEMAPMASK:
-								energyKernelXeon<VQCD_1N2,EN_ENEMAPMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-							break;
-						} break;
-				}
+			case	V_QCD1_PQ2:
+			case	V_QCDC_PQ2:
+				CASE_MULTIE_(V_QCDC_PQ2)
+			break;
+
+			case	V_QCDV_PQ2:
+				CASE_MULTIE_(V_QCDV_PQ2)
+			break;
+
+			case	V_QCD2_PQ2:
+				CASE_MULTIE_(V_QCD2_PQ2)
+			break;
+
+			case	V_QCD0_PQ2:
+				CASE_MULTIE_(V_QCD0_PQ2)
+			break;
+			}
 
 	} else if (field->LowMem())
 	{
 		LogError ("Error: can't produce energy map with lowmem, will compute only averages");
 
-		switch (VQcd & VQCD_TYPE) {
+#define CASE2_(pote,ene, ene2) \
+case ene: \
+case ene2: \
+	energyKernelXeon<pote,ene>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift); \
+break;
+
+#define CASE2_MULTIE_(pote2) \
+switch (mapmask){ \
+CASE2_(pote2,EN_ENE,EN_MAP) \
+CASE2_(pote2,EN_MASK,EN_ENEMASK) \
+CASE2_(pote2,EN_MAPMASK,EN_ENEMAPMASK) \
+}
+
+		switch (VQcd & V_TYPE) {
 			default:
 				LogError("Potential not recognized, falling back to VQcd1");
-			case	VQCD_0:
-			case	VQCD_1:
-				switch (mapmask){
-					case EN_ENE:
-					case EN_MAP:
-						energyKernelXeon<VQCD_1,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+				case	V_QCD1_PQ1:
+				case	V_QCDC_PQ1:
+					CASE2_MULTIE_(V_QCDC_PQ1)
+				break;
 
-			case	VQCD_PQ_ONLY:
-				switch (mapmask){
-					case EN_ENE:
-					case EN_MAP:
-						ppar.massA2 =0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-					case EN_MAPMASK:
-						ppar.massA2 =0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-					case EN_ENEMAPMASK:
-						ppar.massA2 =0.0;
-						energyKernelXeon<VQCD_PQ_ONLY,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+				case	V_QCDV_PQ1:
+					CASE2_MULTIE_(V_QCDV_PQ1)
+				break;
 
-			case	VQCD_2:
-				switch (mapmask){
-					case EN_ENE:
-					case EN_MAP:
-						energyKernelXeon<VQCD_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-					case EN_MAPMASK:
-						energyKernelXeon<VQCD_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+				case	V_QCD2_PQ1:
+					CASE2_MULTIE_(V_QCD2_PQ1)
+				break;
 
-			case	VQCD_1_PQ_2:
-				switch (mapmask){
-					case EN_ENE:
-					case EN_MAP:
-						energyKernelXeon<VQCD_1_PQ_2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1_PQ_2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1_PQ_2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+				case	V_QCD0_PQ1:
+					CASE2_MULTIE_(V_QCD0_PQ1)
+				break;
 
-			case	VQCD_1N2:
-				switch (mapmask){
-					case EN_ENE:
-					case EN_MAP:
-						energyKernelXeon<VQCD_1N2,EN_ENE>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_MASK:
-					case EN_MAPMASK:
-						energyKernelXeon<VQCD_1N2,EN_MASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-					case EN_ENEMASK:
-					case EN_ENEMAPMASK:
-						energyKernelXeon<VQCD_1N2,EN_ENEMASK>(field->mCpu(), field->vCpu(), field->m2Cpu(), ppar, field, eRes, shift);
-					break;
-				} break;
+				case	V_QCD1_PQ2:
+				case	V_QCDC_PQ2:
+					CASE2_MULTIE_(V_QCDC_PQ2)
+				break;
+
+				case	V_QCDV_PQ2:
+					CASE2_MULTIE_(V_QCDV_PQ2)
+				break;
+
+				case	V_QCD2_PQ2:
+					CASE2_MULTIE_(V_QCD2_PQ2)
+				break;
+
+				case	V_QCD0_PQ2:
+					CASE2_MULTIE_(V_QCD0_PQ2)
+				break;
 
 				}
-
 	}
 
 }
-
-///
-// void	energyCpu	(Scalar *field, const double delta2, const double LL, const double aMass2, void *eRes, const double shift, const VqcdType VQcd, const EnType mapmask)
-// {
-// 	const double ood2 = 0.25/delta2;
-// 	double *R = field->RV();
-// 	const size_t Lx = field->Length();
-// 	const size_t Lz = field->Depth();
-// 	const size_t Vo = field->Surf();
-// 	const size_t Vf = Vo + field->Size();
-//
-// 	const bool map  = (mapmask & EN_MAP);
-// 	const bool mask = (mapmask & EN_MASK);
-//
-// 	field->exchangeGhosts(FIELD_M);
-//
-// 	switch (VQcd & VQCD_TYPE) {
-//
-// 		default:
-// 			LogError("Potential not recognized, falling back to VQcd1");
-// 		case	VQCD_1:
-// 			if (map == true) {
-// 				if (field->LowMem()) {
-// 					LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-// 					if (mask == true)
-// 						energyKernelXeon<VQCD_1,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 						else
-// 						energyKernelXeon<VQCD_1,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 				} else {
-// 					if (mask == true)
-// 						energyKernelXeon<VQCD_1,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 						else
-// 						energyKernelXeon<VQCD_1,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 				}
-// 			} else {
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_1,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_1,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			}
-// 			break;
-// 		case	VQCD_1_PQ_2:
-// 		if (map == true) {
-// 			if (field->LowMem()) {
-// 				LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_1_PQ_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_1_PQ_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			} else {
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_1_PQ_2,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_1_PQ_2,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			}
-// 		} else {
-// 			if (mask == true)
-// 				energyKernelXeon<VQCD_1_PQ_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 				else
-// 				energyKernelXeon<VQCD_1_PQ_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 		}
-// 		break;
-//
-// 		case	VQCD_2:
-// 		if (map == true) {
-// 			if (field->LowMem()) {
-// 				LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			} else {
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_2,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_2,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			}
-// 		} else {
-// 			if (mask == true)
-// 				energyKernelXeon<VQCD_2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 				else
-// 				energyKernelXeon<VQCD_2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 		}
-// 		break;
-//
-// 		case	VQCD_1N2:
-// 		if (map == true) {
-// 			if (field->LowMem()) {
-// 				LogError ("Error: can't produce energy map with lowmem, will compute only averages");
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_1N2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_1N2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			} else {
-// 				if (mask == true)
-// 					energyKernelXeon<VQCD_1N2,true,true> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 					else
-// 					energyKernelXeon<VQCD_1N2,true,false> (field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 			}
-// 		} else {
-// 			if (mask == true)
-// 				energyKernelXeon<VQCD_1N2,false,true>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 				else
-// 				energyKernelXeon<VQCD_1N2,false,false>(field->mCpu(), field->vCpu(), field->m2Cpu(), R, ood2, LL, aMass2, Lx, Lz, Vo, Vf, field, eRes, shift);
-// 		}
-// 		break;
-// 	}
-// }
