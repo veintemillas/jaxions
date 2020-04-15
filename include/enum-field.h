@@ -29,7 +29,7 @@
 			FIELD_V   = 2,
 			FIELD_MV  = 3,
 			FIELD_M2  = 4,
-			FIELD_MM2 = 5,
+			FIELD_M2H = 5,
 			FIELD_M2V = 6,
 			FIELD_ALL = 7,
 			FIELD_MTOM2 = 16, // option for FFTs
@@ -100,58 +100,106 @@
 
 		typedef	enum	VqcdType_s
 		{
-			VQCD_1            = 1,		// QCD1 potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
-			VQCD_2            = 2,		// QCD2 potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
-			VQCD_1_PQ_2       = 4,		// QCD1 potential, PQ2 potential lambda(|Phi|^4-fa^4)^2/4
-			VQCD_1N2          = 8,		// QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
-			VQCD_QUAD         = 16,		// QCD1 [N=2] potential chi[theta^2/2], PQ1 potential
-			VQCD_0            = 32,   // cosine potential
-			VQCD_PQ_ONLY      = 64,   // no axion potential, massless propagation
+			V_NONE       = 0,
 
+			V_QCD0       = 1,  // VQCD = 0
+			V_QCD1       = 2,  // potential chi(1-RePhi/fa), PQ1 potential lambda(|Phi|^2-fa^2)^2/4
+			V_QCDV       = 4,  // Variant potential chi(1-RePhi/fa)^2/2 + chi(ImPhi/fa)^2/2, PQ1 potential
+			V_QCD2       = 8,  // QCD1 [N=2] potential chi[(1-(RePhi/v)^2+(RePhi/v)^2], PQ1 potential
+			V_QCDL       = 16, // Linear EOM, quadratic potential, chi[theta^2/2], PQ1 potential
+			V_QCDC       = 32, // cosine potential
+			V_QCDS       = 64, // saturation trick
 
-			VQCD_1_RHO        = 8193,		// First version QCD potential, only rho evolution
-			VQCD_2_RHO        = 8194,		// Second version QCD potential, only rho evolution
-			VQCD_1_PQ_2_RHO   = 8196,		// PQ version QCD potential, only rho evolution
-			VQCD_1N2_RHO      = 8200,
-			VQCD_0_RHO        = 8216,
-			VQCD_PQ_ONLY_RHO  = 8256,
+			V_PQ1        = 1024,
+			V_PQ2        = 2048,
 
-			VQCD_1_DRHO       = 16385,		// First version QCD potential, rho damping
-			VQCD_2_DRHO       = 16386,		// Second version QCD potential, rho damping
-			VQCD_1_PQ_2_DRHO  = 16388,		// PQ version QCD potential, rho damping
-			VQCD_1N2_DRHO     = 16392,
-			VQCD_0_DRHO       = 16408,
-			VQCD_PQ_ONLY_DRHO = 16448,
+			/*	Flags	*/
+			V_EVOL_RHO	= 8192,
+			V_DAMP_RHO	= 16384,
+			V_DAMP_ALL	= 32768,
 
-			VQCD_1_DALL       = 32769,		// First version QCD potential, full damping
-			VQCD_2_DALL       = 32770,		// Second version QCD potential, full damping
-			VQCD_1_PQ_2_DALL  = 32772,		// PQ version QCD potential, full damping
-			VQCD_1N2_DALL     = 32776,		// PQ version QCD potential, full damping
-			VQCD_0_DALL       = 32792,		// PQ version QCD potential, full damping
-			VQCD_PQ_ONLY_DALL = 32792,		// PQ version QCD potential, full damping
+			/*	Masks	*/
+			V_QCD	      = 63,     // Masks QCD potential
+			V_PQ        = 3072,   // Masks PQ potential
+			V_TYPE	    = 3135,   // Masks base potential 2048+1024+32+16+8+4+2+1
+			V_DAMP	    = 49152,  // Masks damping mode 16384+32768
 
-			VQCD_1_DRHO_RHO	     = 24577,	// First version QCD potential, rho damping and only rho evolution
-			VQCD_2_DRHO_RHO	     = 24578,	// Second version QCD potential, rho damping and only rho evolution
-			VQCD_1_PQ_2_DRHO_RHO = 24580,	// PQ version QCD potential, rho damping and only rho evolution
-			VQCD_1N2_DRHO_RHO    = 24584,
-			VQCD_0_DRHO_RHO      = 24600, // not supported yet
+			V_QCD0_PQ1   = 1024+1,
+			V_QCD1_PQ1   = 1024+2,
+			V_QCDV_PQ1   = 1024+4,
+			V_QCD2_PQ1   = 1024+8,
+			V_QCDL_PQ1   = 1024+16,
+			V_QCDC_PQ1   = 1024+32,
 
-			VQCD_1_DALL_RHO	     = 40961,	// First version QCD potential, full damping and only rho evolution
-			VQCD_2_DALL_RHO	     = 40962,	// Second version QCD potential, full damping and only rho evolution
-			VQCD_1_PQ_2_DALL_RHO = 40964,	// PQ version QCD potential, full damping and only rho evolution
-			VQCD_1N2_DALL_RHO    = 40968,
-			VQCD_0_DALL_RHO      = 40984,
+			V_QCD0_PQ2   = 2048+1,
+			V_QCD1_PQ2   = 2048+2,
+			V_QCDV_PQ2   = 2048+4,
+			V_QCD2_PQ2   = 2048+8,
+			V_QCDL_PQ2   = 2048+16,
+			V_QCDC_PQ2   = 2048+32,
+			//
+			V_QCD0_PQ1_RHO   = 8192+1024+1,
+			V_QCD1_PQ1_RHO   = 8192+1024+2,
+			V_QCDV_PQ1_RHO   = 8192+1024+4,
+			V_QCD2_PQ1_RHO   = 8192+1024+8,
+			V_QCDL_PQ1_RHO   = 8192+1024+16,
+			V_QCDC_PQ1_RHO   = 8192+1024+32,
 
-			/*	VQCD Masks	*/
-			VQCD_TYPE	      = 127,		// Masks base potential
-			VQCD_DAMP	      = 49152,	// Masks damping mode 16384+32768
+			V_QCD0_PQ2_RHO   = 8192+2048+1,
+			V_QCD1_PQ2_RHO   = 8192+2048+2,
+			V_QCDV_PQ2_RHO   = 8192+2048+4,
+			V_QCD2_PQ2_RHO   = 8192+2048+8,
+			V_QCDL_PQ2_RHO   = 8192+2048+16,
+			V_QCDC_PQ2_RHO   = 8192+2048+32,
+			//
+			V_QCD0_PQ1_DRHO   = 16384+1024+1,
+			V_QCD1_PQ1_DRHO   = 16384+1024+2,
+			V_QCDV_PQ1_DRHO   = 16384+1024+4,
+			V_QCD2_PQ1_DRHO   = 16384+1024+8,
+			V_QCDL_PQ1_DRHO   = 16384+1024+16,
+			V_QCDC_PQ1_DRHO   = 16384+1024+32,
 
-			/*	VQCD Flags	*/
-			VQCD_EVOL_RHO	      = 8192,
-			VQCD_DAMP_RHO	      = 16384,
-			VQCD_DAMP_ALL	      = 32768,
-			VQCD_NONE	          = 0,
+			V_QCD0_PQ2_DRHO   = 16384+2048+1,
+			V_QCD1_PQ2_DRHO   = 16384+2048+2,
+			V_QCDV_PQ2_DRHO   = 16384+2048+4,
+			V_QCD2_PQ2_DRHO   = 16384+2048+8,
+			V_QCDL_PQ2_DRHO   = 16384+2048+16,
+			V_QCDC_PQ2_DRHO   = 16384+2048+32,
+			//
+			V_QCD0_PQ1_DRHO_RHO   = 24576+1024+1,
+			V_QCD1_PQ1_DRHO_RHO   = 24576+1024+2,
+			V_QCDV_PQ1_DRHO_RHO   = 24576+1024+4,
+			V_QCD2_PQ1_DRHO_RHO   = 24576+1024+8,
+			V_QCDL_PQ1_DRHO_RHO   = 24576+1024+16,
+			V_QCDC_PQ1_DRHO_RHO   = 24576+1024+32,
+
+			V_QCD0_PQ2_DRHO_RHO   = 24576+2048+1,
+			V_QCD1_PQ2_DRHO_RHO   = 24576+2048+2,
+			V_QCDV_PQ2_DRHO_RHO   = 24576+2048+4,
+			V_QCD2_PQ2_DRHO_RHO   = 24576+2048+8,
+			V_QCDL_PQ2_DRHO_RHO   = 24576+2048+16,
+			V_QCDC_PQ2_DRHO_RHO   = 24576+2048+32,
+			//
+			V_QCD0_PQ1_DALL   = 32768+1024+1,
+			V_QCD1_PQ1_DALL   = 32768+1024+2,
+			V_QCDV_PQ1_DALL   = 32768+1024+4,
+			V_QCD2_PQ1_DALL   = 32768+1024+8,
+			V_QCDL_PQ1_DALL   = 32768+1024+16,
+			V_QCDC_PQ1_DALL   = 32768+1024+32,
+
+			V_QCD0_PQ2_DALL   = 32768+2048+1,
+			V_QCD1_PQ2_DALL   = 32768+2048+2,
+			V_QCDV_PQ2_DALL   = 32768+2048+4,
+			V_QCD2_PQ2_DALL   = 32768+2048+8,
+			V_QCDL_PQ2_DALL   = 32768+2048+16,
+			V_QCDC_PQ2_DALL   = 32768+2048+32,
+
 		}	VqcdType;
+
+
+
+
+
 
 		typedef enum	KickDriftType_s
 		{
@@ -301,7 +349,7 @@
 			PROF_MEAS,
 			PROF_FTFIELD,
 			PROF_GRAVI,
-			PROF_GRAVI2,
+			PROF_TRACK,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -516,9 +564,11 @@
 			M2_ENERGY_AXI  = 64,
 			M2_ENERGY_MASK_AXI_FFT = 128,
 			M2_MASK_AXI2_FFT = 256,
-			M2_MASK        = 512,    // Points outside string
-			M2_ANTIMASK    = 1024,   // Points inside the string region (duplicated to mask complex energy)
-			M2_POT         = 2048,   // gravitational potential unnormalised (solution of lap Phi = delta)
+			M2_MASK        = 512,      // Points outside string
+			M2_ANTIMASK    = 1024,     // Points inside the string region (duplicated to mask complex energy)
+			M2_POT         = 2048,     // gravitational potential unnormalised (solution of lap Phi = delta)
+			M2_ENERGY_SMOOTH = 4092,   // smoothed energy map
+
 		}	StatusM2;
 
 		typedef	enum	StatusSD_s {
@@ -555,14 +605,17 @@
 			MEAS_NSP_A        = 65536,
 			MEAS_NSP_S        = 131072,
 			MEAS_NNSPEC       = 262144, 	// number of modes per bin for normalisation purposes
+
+			MEAS_MULTICON     = 524288,        // contrast bin of multipled smoothed energy
+
 			// MASK for any spectrum
 			MEAS_SPECTRUM     = 516096, 		  //  245760, 	// 16384 + 32768 + 65536 + 131072 + 262144(any of the spectra)
 
 			MEAS_SPECTRUMA    = 81920, 	  // 16384  + 65536  (any of the axion spectra)
 			// MASK for those that require energy
-			MEAS_NEEDENERGY   = 50952,				// 8 + 256 + 512 + 1024 + 16384 + 32768
+			MEAS_NEEDENERGY   = 575240,				// 8 + 256 + 512 + 1024 + 16384 + 32768 + 524288
 			// MASK for those that require energy saved in m2
-			MEAS_NEEDENERGYM2 = 50696,				// 8 + 512 + 1024 + 16384 + 32768
+			MEAS_NEEDENERGYM2 = 574984,				// 8 + 512 + 1024 + 16384 + 32768 + 524288
 		}	MeasureType;
 
 //Used when energy is called
@@ -597,6 +650,30 @@
 
 			MAPT_XYE     = 65536,
 		}	SliceType;
+
+		typedef	enum	PadIndex_s
+		{
+			/* mask Start*/
+			PFIELD_START = 1,
+			/* Positions */
+			PFIELD_M     = 2,
+			PFIELD_MS    = 3,
+			PFIELD_V     = 8,
+			PFIELD_VS    = 9,
+			PFIELD_M2    = 16,
+			PFIELD_M2S   = 17,
+			PFIELD_M2H   = 32,
+			PFIELD_M2HS  = 33,
+			/* mask start */
+
+		}	PadIndex;
+
+		typedef	enum	FilterIndex_s
+		{
+			FILTER_GAUSS   = 0,
+			FILTER_TOPHAT  = 1,
+			FILTER_SHARPK  = 2,
+		}	FilterIndex;
 
 		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v
