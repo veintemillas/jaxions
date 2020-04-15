@@ -107,6 +107,8 @@
 		void		*m2FrontGhost() { return m2; }
 		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2*Ng+n3)); }
 		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
+		/* m2h plus a ghost, used when fSize=precision because in complex mode fSize=2precision and the grid does not fit in m2h */
+		void		*m2hStart    () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision + fSize*(n2)*Ng); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
@@ -173,7 +175,7 @@
 		double		AxionMassSq(const double zNow);
 		double		SaxionMassSq(const double zNow);
 		double		HubbleMassSq(const double zNow);
-		double		SaxionShift(const double zNow);
+		double		SaxionShift(const double ct);
 		double		Saskia     (const double zNow);
 		double		dzSize     (const double zNow);
 		double		Rfromct    (const double ct);
