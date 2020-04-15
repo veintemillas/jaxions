@@ -45,6 +45,9 @@ void	SpecBin::fillBins	() {
 	std::vector<double>	tBinK;
 	std::vector<double>	tBinG;
 	std::vector<double>	tBinV;
+	std::vector<double>	tBinNK;
+	std::vector<double>	tBinNG;
+	std::vector<double>	tBinNV;
 	std::vector<double>	tBinP;
 	std::vector<double>	tBinPS;
 	std::vector<double>	tBinNN;
@@ -56,6 +59,8 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_KK:
 			tBinK.resize(powMax*mIdx);
 			tBinK.assign(powMax*mIdx, 0);
+			tBinNK.resize(powMax*mIdx);
+			tBinNK.assign(powMax*mIdx, 0);
 			break;
 
 		case	SPECTRUM_P:
@@ -85,11 +90,15 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_GG:
 			tBinG.resize(powMax*mIdx);
 			tBinG.assign(powMax*mIdx, 0);
+			tBinNG.resize(powMax*mIdx);
+			tBinNG.assign(powMax*mIdx, 0);
 			break;
 
 		case	SPECTRUM_VV:
 			tBinV.resize(powMax*mIdx);
 			tBinV.assign(powMax*mIdx, 0);
+			tBinNV.resize(powMax*mIdx);
+			tBinNV.assign(powMax*mIdx, 0);
 			break;
 
 		default:
@@ -97,6 +106,10 @@ void	SpecBin::fillBins	() {
 			tBinV.resize(powMax*mIdx);
 			tBinG.assign(powMax*mIdx, 0);
 			tBinV.assign(powMax*mIdx, 0);
+			tBinNG.resize(powMax*mIdx);
+			tBinNV.resize(powMax*mIdx);
+			tBinNG.assign(powMax*mIdx, 0);
+			tBinNV.assign(powMax*mIdx, 0);
 			break;
 	}
 
@@ -197,9 +210,11 @@ void	SpecBin::fillBins	() {
 				 can be zero; it needs to be done outside the program */
 				case	SPECTRUM_KK:
 					tBinK.at(myBin + powMax*tIdx) += m2;
+					tBinNK.at(myBin + powMax*tIdx) += m2/w;
 					break;
 				case	SPECTRUM_VV:
 					tBinV.at(myBin + powMax*tIdx) += m2;
+					tBinNV.at(myBin + powMax*tIdx) += m2/w;
 					break;
 				case  SPECTRUM_GaS:
 				case  SPECTRUM_GaSadd:
@@ -217,6 +232,7 @@ void	SpecBin::fillBins	() {
 							break;
 					}
 					tBinG.at(myBin + powMax*tIdx) += m2/cosTable2[tmp];
+					tBinNG.at(myBin + powMax*tIdx) += m2/cosTable2[tmp]/w;
 					break;
 				/* is possible to account for the finite difference formula
 				by using the folloging line for the gradients
@@ -226,32 +242,40 @@ void	SpecBin::fillBins	() {
 				/* Axion mode or only Saxion*/
 				case	SPECTRUM_K:
 				case	SPECTRUM_KS:
-				 	mw = m2/w;
-					tBinK.at(myBin + powMax*tIdx) += mw;
+				 	// mw = m2/w;
+					tBinK.at(myBin + powMax*tIdx) += m2;
+					tBinNK.at(myBin + powMax*tIdx) += m2/w;
 					break;
 				case	SPECTRUM_G:
 				case	SPECTRUM_GS:
-					mw = m2/w;
-					tBinG.at(myBin + powMax*tIdx) += mw*k2;
+					// mw = m2/w;
+					tBinG.at(myBin + powMax*tIdx) += m2*k2;
+					tBinNG.at(myBin + powMax*tIdx) += m2*k2/w;
 					break;
 				case	SPECTRUM_V:
-					mw = m2/w;
-					tBinV.at(myBin + powMax*tIdx) += mw*mass2;
+					// mw = m2/w;
+					tBinV.at(myBin + powMax*tIdx) += m2*mass2;
+					tBinNV.at(myBin + powMax*tIdx) += m2*mass2/w;
 					break;
 				case	SPECTRUM_VS:
-					mw = m2/w;
-					tBinV.at(myBin + powMax*tIdx) += mw*mass2Sax;
+					// mw = m2/w;
+					tBinV.at(myBin + powMax*tIdx) += m2*mass2Sax;
+					tBinNV.at(myBin + powMax*tIdx) += m2*mass2Sax/w;
 					break;
 				case	SPECTRUM_GVS:
-					mw = m2/w;
-					tBinG.at(myBin + powMax*tIdx) += mw*k2;
-					tBinV.at(myBin + powMax*tIdx) += mw*mass2Sax;
+					// mw = m2/w;
+					tBinG.at(myBin + powMax*tIdx) += m2*k2;
+					tBinV.at(myBin + powMax*tIdx) += m2*mass2Sax;
+					tBinNG.at(myBin + powMax*tIdx) += mw*k2/w;
+					tBinNV.at(myBin + powMax*tIdx) += mw*mass2Sax/w;
 					break;
 
 				case	SPECTRUM_GV:
-					mw = m2/w;
-					tBinG.at(myBin + powMax*tIdx) += mw*k2;
-					tBinV.at(myBin + powMax*tIdx) += mw*mass2;
+					// mw = m2/w;
+					tBinG.at(myBin + powMax*tIdx) += m2*k2;
+					tBinV.at(myBin + powMax*tIdx) += m2*mass2;
+					tBinNG.at(myBin + powMax*tIdx) += m2*k2/w;
+					tBinNV.at(myBin + powMax*tIdx) += m2*mass2/w;
 					break;
 
 				/* energy spectra */
@@ -284,15 +308,18 @@ void	SpecBin::fillBins	() {
 					case	SPECTRUM_KK:
 					case	SPECTRUM_KS:
 						binK[j] += tBinK[j + i*powMax]*norm;
+						binNK[j] += tBinNK[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_G:
 					case	SPECTRUM_GG:
 					case	SPECTRUM_GaS:
 					case	SPECTRUM_GaSadd:
 						binG[j] += tBinG[j + i*powMax]*norm;
+						binNG[j] += tBinNG[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_VV:
 						binV[j] += tBinV[j + i*powMax]*norm;
+						binNV[j] += tBinNV[j + i*powMax]*norm;
 						break;
 					case	SPECTRUM_P:
 						binP[j] += tBinP[j + i*powMax]*norm;
@@ -310,6 +337,8 @@ void	SpecBin::fillBins	() {
 					default:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						binV[j] += tBinV[j + i*powMax]*norm;
+						binNG[j] += tBinNG[j + i*powMax]*norm;
+						binNV[j] += tBinNV[j + i*powMax]*norm;
 						break;
 
 				}
@@ -323,6 +352,8 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_KS:
 			std::copy_n(binK.begin(), powMax, tBinK.begin());
 			MPI_Allreduce(tBinK.data(), binK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			std::copy_n(binNK.begin(), powMax, tBinNK.begin());
+			MPI_Allreduce(tBinNK.data(), binNK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
 		case	SPECTRUM_P:
@@ -354,18 +385,27 @@ void	SpecBin::fillBins	() {
 		// we can reduce among ranks
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			std::copy_n(binNG.begin(), powMax, tBinNG.begin());
+			MPI_Allreduce(tBinNG.data(), binNG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
 		case	SPECTRUM_VV:
 			std::copy_n(binV.begin(), powMax, tBinV.begin());
 			MPI_Allreduce(tBinV.data(), binV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			std::copy_n(binNV.begin(), powMax, tBinNV.begin());
+			MPI_Allreduce(tBinNV.data(), binNV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
 		default:
+		case	SPECTRUM_GV:
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			std::copy_n(binV.begin(), powMax, tBinV.begin());
 			MPI_Allreduce(tBinV.data(), binV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			std::copy_n(binNG.begin(), powMax, tBinNG.begin());
+			MPI_Allreduce(tBinNG.data(), binNG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			std::copy_n(binNV.begin(), powMax, tBinNV.begin());
+			MPI_Allreduce(tBinNV.data(), binNV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 	}
 }
@@ -641,7 +681,7 @@ void	SpecBin::pRun	() {
 	/*If we do not have the energy fft in m2, calculate it*/
 	if (field->m2Status() != M2_ENERGY_FFT) {
 		// contrast bin is assumed in m2 or m2h
-		// Add the f@*&#ng padding and copy to m2
+		// pad in place
 		for (int sl=Sm-1; sl>=0; sl--) {
 			auto	oOff = sl*dSize*(Ly);
 			auto	fOff = sl*dSize*(Ly+2);
@@ -894,9 +934,12 @@ void	SpecBin::nRun	(nRunType nrt) {
 	binG.assign(powMax, 0.);
 	binV.assign(powMax, 0.);
 
+	binNK.assign(powMax, 0.);
+	binNG.assign(powMax, 0.);
+	binNV.assign(powMax, 0.);
+
 	if (mask == SPMASK_SAXI)
 	{
-		binV.assign(powMax, 0.);
 		binPS.assign(powMax, 0.);
 	}
 
@@ -1481,8 +1524,353 @@ void	SpecBin::avekRun	() {
 	}
 }
 
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
+
+/* SMOOTHER */
+/* SMOOTHS THE M2 FIELD WITH A GIVEN FILTER IN FOURIER SPACE */
+
+void	SpecBin::smoothFourier	(double length, FilterIndex filter) {
+	LogMsg (VERB_NORMAL, "[sF] Called smoothFourier");LogFlush();
+
+	char *m2  = chosechar(PFIELD_M2);
+	char *m2h = chosechar(PFIELD_M2H);
+	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+
+	bool ok = false;
+	if ((field->m2Status() == M2_ENERGY_FFT) && (field->m2hStatus() == M2_ENERGY_FFT))
+	{
+		LogMsg (VERB_DEBUG, "[sF] FFTs already there");LogFlush();
+		ok = true;
+	}
+	else if ((field->m2Status() == M2_ENERGY_FFT) && (field->m2hStatus() != M2_ENERGY_FFT) && !ok)
+	{
+		LogMsg (VERB_DEBUG, "[sF] FFT in M2, copy to M2h");LogFlush();
+		memmove(m2h, m2, dataTotalSize);
+		ok = true;
+		field->setM2h(M2_ENERGY_FFT);
+	}
+	else if ((field->m2Status() != M2_ENERGY_FFT) && (field->m2hStatus() == M2_ENERGY_FFT) && !ok)
+	{
+		LogMsg (VERB_DEBUG, "[sF] FFT in M2h, copy to M2");LogFlush();
+		memmove(m2, m2h, dataTotalSize);
+		ok = true;
+		field->setM2(M2_ENERGY_FFT);
+	}
+	else if ((field->m2Status() == M2_ENERGY) && !ok)
+	{
+		LogMsg (VERB_DEBUG, "[sF] Energy in M2. Pad, FFT and copy to M2");LogFlush();
+		pad(PFIELD_M2,PFIELD_M2);
+		myPlan.run(FFT_FWD);
+		memmove(m2h, m2, dataTotalSize);
+		ok = true;
+		field->setM2(M2_ENERGY_FFT);
+		field->setM2h(M2_ENERGY_FFT);
+	}
+	else if ((field->m2hStatus() == M2_ENERGY) && !ok)
+	{
+		LogMsg (VERB_DEBUG, "[sF] Energy in M2h. Pad to M2, FFT and copy to M2h");LogFlush();
+		pad(PFIELD_M2H,PFIELD_M2);
+		myPlan.run(FFT_FWD);
+		memmove(m2h, m2, dataTotalSize);
+		ok = true;
+		field->setM2(M2_ENERGY_FFT);
+		field->setM2h(M2_ENERGY_FFT);
+	}
+	else
+	{
+		LogError ("Error: smoothFourier called with no energy/FFT in m2/m2h what?!");
+		return ;
+		/* */
+	}
+
+	LogMsg (VERB_DEBUG, "[sF] Start filter");LogFlush();
+	switch(fPrec)
+	{
+		case FIELD_SINGLE:
+			switch(filter){
+					case FILTER_GAUSS:
+						smoothFourier<float,FILTER_GAUSS>(length);
+						break;
+					case FILTER_TOPHAT:
+						smoothFourier<float,FILTER_TOPHAT>(length);
+						break;
+					case FILTER_SHARPK:
+						smoothFourier<float,FILTER_SHARPK>(length);
+						break;
+			}
+			break;
+		case FIELD_DOUBLE:
+			switch(filter){
+					case FILTER_GAUSS:
+						smoothFourier<double,FILTER_GAUSS>(length);
+						break;
+					case FILTER_TOPHAT:
+						smoothFourier<double,FILTER_TOPHAT>(length);
+						break;
+					case FILTER_SHARPK:
+						smoothFourier<double,FILTER_SHARPK>(length);
+						break;
+			}
+			break;
+	}
+	myPlan.run(FFT_BCK);
+	field->setM2(M2_ENERGY_SMOOTH);
+	LogMsg(VERB_HIGH,"[sF] Filtered!");
+}
+
+
+	/* smooths in Fourier space */
+
+
+template<typename Float, FilterIndex filter>
+void	SpecBin::smoothFourier	(double length) {
+
+	using cFloat = std::complex<Float>;
+
+	Float normn3 = 1./ ((double) field->TotalSize());
+	Float k0R  = k0*length;
+	Float pref ;
+
+	switch(filter){
+		case FILTER_GAUSS:
+			LogMsg(VERB_HIGH,"[sF] Filter Gaussian - R = %.2e [ADM]",length);
+			pref = 0.5*k0R*k0R;
+			break;
+		case FILTER_TOPHAT:
+			LogMsg(VERB_HIGH,"[sF] Filter TopHat - R = %.2e [ADM]",length);
+			normn3 *= 3.;
+			break;
+		case FILTER_SHARPK:
+			pref = k0R*k0R;
+			LogMsg(VERB_HIGH,"[sF] Filter SharpK - R = %.2e [ADM]",length);
+			break;
+	}
+
+	LogMsg(VERB_DEBUG,"k0R %e pref %e normn3 %e",k0R,pref,normn3);
+
+	// Float *m2 = static_cast<Float*> (field->m2Cpu());
+
+	#pragma omp parallel for schedule(static)
+		for (size_t idx=0; idx<nModeshc; idx++) {
+			/* hC modes are stored as Idx = kx + kz*hLx * ky*hLx*Tz
+				with hLx = Ly/2 + 1 here called Lx by Alex ... */
+			int kz = idx/Lx; 				//aux kz + ky*Tz
+			int kx = idx - kz*Lx;
+			int ky = kz/Tz;
+			kz -= ky*Tz;
+			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
+
+			// if (kx > static_cast<int>(hLy)) kx -= static_cast<int>(Ly); // by definition never true
+			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
+			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
+			Float k2    = (Float) kx*kx + ky*ky + kz*kz;
+
+			switch(filter){
+				case FILTER_GAUSS:
+					static_cast<cFloat *>(field->m2Cpu())[idx] *= exp(-pref*k2) * normn3;
+					// k2 = exp(-pref*k2) * normn3;
+					// m2[2*idx]   *= k2;
+					// m2[2*idx+1] *= k2;
+					break;
+				case FILTER_TOPHAT:
+					k2 = k0R*sqrt(k2);
+					// k2 = ((std::sin(k2)-k2*std::cos(k2)) * normn3);
+					// m2[2*idx]   *= k2;
+					// m2[2*idx+1] *= k2;
+					if (k2 > 0)
+						static_cast<cFloat *>(field->m2Cpu())[idx] *= (normn3 * (sin(k2)-k2*cos(k2))/(k2*k2*k2) );
+					else
+						static_cast<cFloat *>(field->m2Cpu())[idx] *= (normn3/3.);
+
+					break;
+				case FILTER_SHARPK:
+					if (pref*k2 > 1)
+						static_cast<cFloat *>(field->m2Cpu())[idx] = ((cFloat) (0.,0.));
+					else
+						static_cast<cFloat *>(field->m2Cpu())[idx] *= normn3;
+						// m2[2*idx]   = 0;
+						// m2[2*idx+1] = 0;
+
+
+					break;
+			}
+		}
+		LogMsg(VERB_HIGH,"[sF] Done!");
+}
+
+
+	/* pads in general */
+
+
+int	SpecBin::pad	(PadIndex origin, PadIndex dest){
+
+	/* recall that Lx = Lx/2 +1, we use Ly for the would-be Lx*/
+	size_t padVol   = (Ly+2)*Ly*Lz;
+	size_t fromSVol = Ly*Ly*(Lz+field->getNg());
+	size_t eVol     = Ly*Ly*(Lz+2*field->getNg());
+
+	LogMsg (VERB_HIGH,  "[pad] from %d to %d",origin, dest);
+	LogMsg (VERB_DEBUG, "[pad] padVol %d fromSVol %d eVol %d [-LxLxLz]",2*Ly*Lz, Ly*Ly*field->getNg(), 2*Ly*Ly*field->getNg());
+
+	if ((dest & PFIELD_START) && (fromSVol > padVol) ){
+		LogMsg(VERB_HIGH,"[pad] Padding unsafe, (Lz+Ng)Ly < (Ly+2)(Lz) and padded date overruns FIELD");
+		LogError("[pad] Padding unsafe, perhaps ok! perhaps not...");
+	} else {
+		LogMsg (VERB_HIGH, "[pad] Padding safe (Lz+Ng)Ly>(Ly+2)(Lz)");
+	}
+
+	char *oR = chosechar(origin);
+	char *dE = chosechar(dest);
+
+	/* pad = expand > start from the end
+	write before read if : end of write (sl*pl+dl) is before beggining of write (sl*dl) */
+	if ( origin - dest == 0 ){
+		/* sl*pl+dl > sl*dl always > SAFE*/
+		for (int sl = LyLz-1; sl>=0; sl--) {
+			memmove (dE + sl*pl, oR + sl*dl, dl);
+		}
+		return 1;
+	}
+	else if ( origin - dest == 1){
+		/* From start to 0
+		-write before read if : end of write (sl*pl+dl) is before beggining of write (sl*dl)
+		-offset of Ng*Lx*dl = Ghost slices
+		sl*pl + dl > Ng*Lx*dl + sl*dl
+		sl*2  + dl > Ng*Lx*dl
+		sl > (Ng*Lx-1)*dl/2
+		this is always larger than the ghost region
+		where there is nothing to overwrite > SAFE
+		Can also be done from 0 onwards I think */
+		for (int sl = LyLz-1; sl>=0; sl--) {
+			memmove (dE + sl*pl, oR + sl*dl, dl);
+		}
+		return 1;
+	} /* from  0 to Start : from the end */
+	else if ( dest - origin == 1){
+		for (int sl = LyLz-1; sl>=0; sl--)
+			memmove (dE + sl*pl, oR + sl*dl, dl);
+		return 1;
+	}
+
+	/* if padding into a different field > parallel */
+	if (std::abs(origin - dest)>1)
+	{
+		#pragma omp parallel for schedule(static)
+		for (size_t sl=0; sl < LyLz; sl++) {
+			memmove	(dE + sl*pl, oR + sl*dl, dl);
+		}
+		return 1 ;
+	}
+	LogError("[Pad] could not pad anything!");
+	return 0;
+}
+
+
+	/* unpads in general */
+
+
+int	SpecBin::unpad	(PadIndex origin, PadIndex dest)
+{
+	/* recall that Lx = Lx/2 +1, we use Ly for the would-be Lx*/
+	size_t padVol   = (Ly+2)*Ly*Lz;
+	size_t fromSVol = Ly*Ly*(Lz+field->getNg());
+	size_t eVol     = Ly*Ly*(Lz+2*field->getNg());
+
+	LogMsg (VERB_HIGH,  "[upad] from %d to %d",origin, dest);
+	LogMsg (VERB_DEBUG, "[upad] padVol %d fromSVol %d eVol %d [-LxLxLz]",2*Ly*Lz, Ly*Ly*field->getNg(), 2*Ly*Ly*field->getNg());
+
+	if ((origin & PFIELD_START) && (fromSVol > padVol) ){
+		LogMsg(VERB_HIGH,"[upad] Unpadding unsafe, (Lz+Ng)Ly < (Ly+2)(Lz) and padded date overruns FIELD");
+		LogError("[upad] Padding unsafe, perhaps ok! perhaps not...");
+	} else {
+		LogMsg (VERB_HIGH, "[upad] Unpadding safe (Lz+Ng)Ly>(Ly+2)(Lz)");
+	}
+
+	char *oR = chosechar(origin);
+	char *dE = chosechar(dest);
+
+	/* unpad is compressing > start from beggining */
+	if ( origin - dest == 0 ){
+		/* In place
+				> start from the beggining
+					possible parallel by slice chunks?
+						possible issue only if origin has elements outside natural range */
+		LogMsg (VERB_PARANOID, "[upad] In place");
+		LogMsg (VERB_PARANOID, "[upad] LyLz %d dl %d pl %d ",LyLz,dl,pl);
+		for (size_t sl=0; sl < LyLz; sl++) {
+			memmove	(dE + sl*dl, oR + sl*pl, dl);
+		}
+		return 1;
+	}
+	else if ( origin - dest == 1 ){
+		/* From Start to 0 */
+		LogMsg (VERB_PARANOID, "[upad] From S to 0");
+		LogMsg (VERB_PARANOID, "[upad] LyLz %d dl %d pl %d ",LyLz,dl,pl);
+		for (size_t sl=0; sl < LyLz; sl++) {
+			memmove	(dE + sl*dl, oR + sl*pl, dl);
+		}
+		return 1;
+	}
+	else if ( dest - origin == 1){
+		/* from  0 to Start (NLxLx): in place + all translation
+			    0   - (Lx+2) Lx Lz; line starts at (Lx+2)*l , l in (0,LxLz)
+			Lx*Lx*N - Lx Lx (Lz+N); line starts at Lx*Lx*N + Lx*l
+			sure overlap unpad in place and memmove all
+		*/
+		LogMsg (VERB_PARANOID, "[upad] Forward! First in place, second move all");
+		LogMsg (VERB_PARANOID, "[upad] dataBareSize %d",dataBareSize);
+		for (int sl = 1; sl < LyLz; sl++)
+			memmove (oR + sl*dl, oR + sl*pl, dl);
+		memmove (dE, oR, dataBareSize);
+		return 1;
+	}
+
+	/* if unpadding into a different field > parallel */
+	if (std::abs(origin - dest)>1)
+	{
+		#pragma omp parallel for schedule(static)
+		for (size_t sl=0; sl < LyLz; sl++) {
+			memmove	(dE + sl*dl, oR + sl*pl, dl);
+		}
+		return 1 ;
+	}
+	LogError("[unPad] could not unpad anything!");
+	return 0;
+}
+
+char*	SpecBin::chosechar	(PadIndex start){
+switch (start){
+	case PFIELD_M:
+		return static_cast<char*>(field->mCpu());
+		break;
+	case PFIELD_MS:
+		return static_cast<char*>(field->mStart());
+		break;
+	case PFIELD_V:
+		return static_cast<char*>(field->vCpu());
+		break;
+	case PFIELD_VS:
+		return static_cast<char*>(field->vStart());
+		break;
+	case PFIELD_M2:
+		return static_cast<char*>(field->m2Cpu());
+		break;
+	case PFIELD_M2S:
+		return static_cast<char*>(field->m2Start());
+		break;
+	case PFIELD_M2H:
+		return static_cast<char*>(field->m2half());
+		break;
+	case PFIELD_M2HS:
+		return static_cast<char*>(field->m2hStart());
+		break;
+	}
+}
+
+
+
+
+/* FILTERFFT */
+/* multiplies the Fourier modes of m2 by a Gaussian filter; obsolete?? */
 
 template<typename Float>
 void	SpecBin::filterFFT	(double neigh) {
@@ -1491,8 +1879,6 @@ void	SpecBin::filterFFT	(double neigh) {
 	using cFloat = std::complex<Float>;
 
 	//const int mIdx = commThreads();
-
-	size_t	zBase = (Ly/commSize())*commRank();
 
 	//prefactor is (2 pi^2 neigh^2/N^2)
 	//double prefac = 2.0*M_PI*M_PI*neigh*neigh/field->Surf() ;
@@ -1518,7 +1904,7 @@ void	SpecBin::filterFFT	(double neigh) {
 			kz -= ky*Tz;
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
-			if (kx > static_cast<int>(hLx)) kx -= static_cast<int>(Lx);
+			// if (kx > static_cast<int>(hLy)) kx -= static_cast<int>(Ly); // by definition never true
 			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
 			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
@@ -1769,6 +2155,9 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask, StatusM2 out){
 		break;
 	}
 }
+
+
+/* MASKER */
 
 
 
@@ -2146,7 +2535,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out) {
 					{
 						/* masks a ball of radius rm around STRING_DEFECT
 						   and labels it STRING_MASK*/
-						maskball	(radius_mask, STRING_DEFECT, STRING_MASK);
+						maskball	(radius_mask, STRING_ONLY, STRING_MASK);
 
 					} // end internal CASE REDO and GAUS case switch
 				break;
@@ -2342,7 +2731,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out) {
 
 				switch(mask){
 					case SPMASK_AXIT:
-					if( (m2sax[idx] > ethres) || (mm[idx]*iR > 3)){
+					if( (m2sax[idx] > ethres) || ( std::abs(mm[idx]*iR) > 3)){
 					// if( (m2sax[idx] > ethres) ){
 						mp++;
 						strdaa[idx] = STRING_WALL;
@@ -2354,7 +2743,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out) {
 					break;
 
 					case SPMASK_AXIT2:
-						if( (m2sax[idx] > ethres) || (mm[idx]*iR > 3)){
+						if( (m2sax[idx] > ethres) || ( std::abs(mm[idx]*iR) > 3)){
 							mp++;
 							strdaa[idx] = STRING_WALL;
 							m2sa[oidx] = 1.0;

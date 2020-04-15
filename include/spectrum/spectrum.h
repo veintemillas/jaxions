@@ -17,6 +17,9 @@
 		std::vector<double>	binK;
 		std::vector<double>	binG;
 		std::vector<double>	binV;
+		std::vector<double>	binNK;
+		std::vector<double>	binNG;
+		std::vector<double>	binNV;
 		std::vector<double>	binP;
 		std::vector<double>	binPS;
 		std::vector<double>	binNN;
@@ -30,23 +33,30 @@
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, V;
 		size_t			nPts, nModeshc, kMax, powMax, controlxyz;
 		size_t			LyLy, Ly2Ly, LyLz, dl, pl, dataTotalSize, dataBareSize;
+		size_t			zBase;
 		double			mass2, mass2Sax; // squared masses (comoving)
 		double 			Rscale, depta;
 		double 			zaskar;
-		float			zaskarf;
+		float				zaskarf;
+		double 			k0;
+
 		std::complex<double>	zaska ;
 		std::complex<float>	zaskaf ;
-
-		void			fillCosTable ();
 
 		const bool		spec;
 		const FieldPrecision	fPrec;
 		const FieldType		fType;
 
+		void			fillCosTable ();
+
+		template<typename Float, FilterIndex filter>
+		void	smoothFourier	(double length);
+
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
-									spec(spectral), fPrec(field->Precision()), fType(field->Field()) {
+									spec(spectral), fPrec(field->Precision()), fType(field->Field()), zBase(commRank()*Ly/commSize()),
+									k0(2.0*M_PI/((double) field->BckGnd()->PhysSize())) {
 				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 
@@ -55,6 +65,11 @@
 				binV.resize(powMax); binV.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
 				binPS.resize(powMax); binPS.assign(powMax, 0.);
+
+				binNK.resize(powMax); binNK.assign(powMax, 0.);
+				binNG.resize(powMax); binNG.assign(powMax, 0.);
+				binNV.resize(powMax); binNV.assign(powMax, 0.);
+
 
 				mass2    = field->AxionMassSq()*(*field->zV())*(*field->zV());
 				mass2Sax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
@@ -100,7 +115,7 @@
 						return;
 				}
 
-				/* for half-complex loops */
+				/* for half-complex Fourier loops */
 				nModeshc = Lx*Ly*Lz;
 
 				/* for pad/unpadding loops */
@@ -108,10 +123,10 @@
 				LyLy          =  Ly*Ly;
 				LyLz          =  Ly*Lz;
 				Ly2Ly         =  Ly*(Ly+2);
-				dl            =  Ly*field->Precision(); /* data line length */
-				pl            =  (Ly+2)*field->Precision(); /* padded data line length */
-				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision();
-				dataBareSize  =  V*field->Precision();
+				dl            =  Ly*field->Precision(); 					/* data line length */
+				pl            =  (Ly+2)*field->Precision(); 			/* padded data line length */
+				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision(); /* total data volume including padding */
+				dataBareSize  =  V*field->Precision();            /* total data volume without padding */
 		}
 
 
@@ -142,6 +157,10 @@
 		template<typename Float, SpectrumMaskType mask>
 		void	wRun		();
 
+		int	pad	  (PadIndex origin, PadIndex dest) ;
+		int unpad	(PadIndex origin, PadIndex dest) ;
+		char*	chosechar	(PadIndex start);
+
 		void	filter	(size_t neigh);
 
 		void	reset0(){
@@ -151,6 +170,10 @@
 				binV.assign(powMax, 0.);
 				binP.assign(powMax, 0.);
 				binPS.assign(powMax, 0.);
+				binNK.assign(powMax, 0.);
+				binNG.assign(powMax, 0.);
+				binNV.assign(powMax, 0.);
+
 		}
 
 		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO, StatusM2 out = M2_MASK);
@@ -165,6 +188,7 @@
 
 		void	maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) ;
 
+		void	smoothFourier	(double length, FilterIndex filter);
 	};
 
 
@@ -173,25 +197,39 @@
 	inline double	SpecBin::operator()(size_t idx, SpectrumType sType)	const	{
 
 		switch(sType) {
-			case	SPECTRUM_K:
-			case	SPECTRUM_KS:
+			/* energy */
+			case	SPECTRUM_KK:
 				return binK[idx];
 				break;
 
-			case	SPECTRUM_G:
-			case	SPECTRUM_GS:
+			case	SPECTRUM_GG:
 				return binG[idx];
 				break;
 
-			case	SPECTRUM_V:
-			case	SPECTRUM_VS:
+			case	SPECTRUM_VV:
+
 				return binV[idx];
 				break;
 
+			/* number */
+			case	SPECTRUM_K:
+				return binNK[idx];
+				break;
+
+			case	SPECTRUM_G:
+				return binNG[idx];
+				break;
+
+			case	SPECTRUM_V:
+				return binNV[idx];
+				break;
+
+			/* power-spectrum-axion */
 			case	SPECTRUM_P:
 				return binP[idx];
 				break;
 
+			/* power-spectrum-saxion */
 			case	SPECTRUM_PS:
 				return binPS[idx];
 				break;
@@ -213,25 +251,39 @@
 	inline double&	SpecBin::operator()(size_t idx, SpectrumType rType)		{
 
 		switch(rType) {
-			case	SPECTRUM_K:
-			case	SPECTRUM_KS:
+			/* energy */
+			case	SPECTRUM_KK:
 				return binK[idx];
 				break;
 
-			case	SPECTRUM_G:
-			case	SPECTRUM_GS:
+			case	SPECTRUM_GG:
 				return binG[idx];
 				break;
 
-			case	SPECTRUM_V:
-			case	SPECTRUM_VS:
+			case	SPECTRUM_VV:
+
 				return binV[idx];
 				break;
 
+			/* number */
+			case	SPECTRUM_K:
+				return binNK[idx];
+				break;
+
+			case	SPECTRUM_G:
+				return binNG[idx];
+				break;
+
+			case	SPECTRUM_V:
+				return binNV[idx];
+				break;
+
+			/* power-spectrum-axion */
 			case	SPECTRUM_P:
 				return binP[idx];
 				break;
 
+			/* power-spectrum-saxion */
 			case	SPECTRUM_PS:
 				return binPS[idx];
 				break;
@@ -253,19 +305,28 @@
 	inline double*	SpecBin::data(SpectrumType sType) {
 
 		switch(sType) {
-			case	SPECTRUM_K:
-			case	SPECTRUM_KS:
+			case	SPECTRUM_KK:
 				return binK.data();
 				break;
 
-			case	SPECTRUM_G:
-			case	SPECTRUM_GS:
+			case	SPECTRUM_GG:
 				return binG.data();
 				break;
 
-			case	SPECTRUM_V:
-			case	SPECTRUM_VS:
+			case	SPECTRUM_VV:
 				return binV.data();
+				break;
+
+			case	SPECTRUM_K:
+				return binNK.data();
+				break;
+
+			case	SPECTRUM_G:
+				return binNG.data();
+				break;
+
+			case	SPECTRUM_V:
+				return binNV.data();
 				break;
 
 			case	SPECTRUM_P:
@@ -292,19 +353,28 @@
 	inline const double*	SpecBin::data(SpectrumType sType)	const	{
 
 		switch(sType) {
-			case	SPECTRUM_K:
-			case	SPECTRUM_KS:
+			case	SPECTRUM_KK:
 				return binK.data();
 				break;
 
-			case	SPECTRUM_G:
-			case	SPECTRUM_GS:
+			case	SPECTRUM_GG:
 				return binG.data();
 				break;
 
-			case	SPECTRUM_V:
-			case	SPECTRUM_VS:
+			case	SPECTRUM_VV:
 				return binV.data();
+				break;
+
+			case	SPECTRUM_K:
+				return binNK.data();
+				break;
+
+			case	SPECTRUM_G:
+				return binNG.data();
+				break;
+
+			case	SPECTRUM_V:
+				return binNV.data();
 				break;
 
 			case	SPECTRUM_P:
