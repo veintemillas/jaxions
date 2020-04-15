@@ -21,6 +21,7 @@
 
 #include "meas/measa.h"
 #include "WKB/WKB.h"
+#include "axiton/tracker.h"
 
 using namespace std;
 using namespace AxionWKB;
@@ -248,9 +249,6 @@ int	main (int argc, char *argv[])
 
 	commSync();
 
-	//--------------------------------------------------
-	// prepropagator is been moved away
-	//--------------------------------------------------
 
 	//--------------------------------------------------
 	// INITIAL MEASUREMENT
@@ -291,6 +289,13 @@ int	main (int argc, char *argv[])
 	// printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
 
+
+	//--------------------------------------------------
+	// Axiton TRACKER
+	//--------------------------------------------------
+
+		initTracker(axion);
+		searchAxitons();
 
 	//--------------------------------------------------
 	// TIME ITERATION LOOP
@@ -398,8 +403,8 @@ int	main (int argc, char *argv[])
 					LogOut("-----------------------------------------\n");
 
 					//initPropagator (pType, axion, myCosmos.QcdPot());   // old option, required --gam now it is activated with --pregam
-					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO);
-					initPropagator (pType, axion, (myCosmos.QcdPot() & VQCD_TYPE) | VQCD_DAMP_RHO, Nng);
+					LogOut("Re-Init propagator Vqcd flag %d\n", (myCosmos.QcdPot() & V_TYPE) | V_DAMP_RHO);
+					initPropagator (pType, axion, (myCosmos.QcdPot() & V_TYPE) | V_DAMP_RHO, Nng);
 					coD = false ;
 					// possible problem!! if gamma is needed later, as it is written pregammo will stay
 				}
@@ -451,8 +456,15 @@ int	main (int argc, char *argv[])
 				break;
 			}
 
+			/* read axitons */
+			readAxitons();
+
 			// Partial analysis
 			if(measrightnow){
+
+				/* checks for more axitons */
+
+				searchAxitons ();
 
 				ninfa.index=index;
 				// in case theta transitioned, the meas was saved as the default
@@ -539,6 +551,8 @@ int	main (int argc, char *argv[])
 			Measureme (axion, ninfa);
 		}
 	}
+
+	printAxitons();
 
 	current = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
@@ -780,19 +794,43 @@ void printposter(Scalar *axion)
 	LogOut("indi3                    =  %2.2f\n", axion->BckGnd()->Indi3());
 	LogOut("nQCD                     =  %2.2f\n", axion->BckGnd()->QcdExp());
 	if (axion->BckGnd()->ZRestore() > axion->BckGnd()->ZThRes())
-		LogOut("                       =  0 in (%3.3f, %3.3f) \n", axion->BckGnd()->ZThRes(), axion->BckGnd()->ZRestore());
+		LogOut("                       =  0 in (%.3e, %.3e) \n", axion->BckGnd()->ZThRes(), axion->BckGnd()->ZRestore());
 
-	if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1)
-		LogOut("VQCD1PQ1,shift,continuous theta  \n\n");
-	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_2)
-		LogOut("VQCD2PQ1,no shift, continuous theta  \n\n");
-	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1_PQ_2)
-		LogOut("VQCD1PQ2,shift, continuous theta  \n\n");
-	else if	((axion->BckGnd()->QcdPot() & VQCD_TYPE) == VQCD_1N2)
-		LogOut("VQCD1PQ1,NDW=2, no shift!, continuous theta \n\n");
+		switch(axion->BckGnd()->QcdPot() & V_QCD){
+			case V_QCD0:
+			case V_NONE:
+				LogOut("V_QCD0, massless axions\n");
+				break;
+				case V_QCD1:
+					LogOut("V_QCD1, shift\n");
+					break;
+					case V_QCDV:
+						LogOut("V_QCDV variant, no shift\n");
+						break;
+						case V_QCD2:
+							LogOut("V_QCD2, N=2, domain wall problem, shift\n");
+							break;
+							case V_QCDL:
+								LogOut("V_QCDL, quadratic potential (in axion mode) VQCD1  (in saxion mode) shift\n");
+								break;
+								case V_QCDC:
+									LogOut("V_QCDC, 1-cos potential, 1/0 problem, no shift\n");
+									break;
+		}
+		switch(axion->BckGnd()->QcdPot() & V_PQ){
+			case V_NONE:
+				LogOut("V_PQ0, massless saxions!\n");
+				break;
+				case V_PQ1:
+					LogOut("V_PQ1,mexican hat!\n");
+					break;
+					case V_PQ2:
+						LogOut("V_PQ2, top hat !\n");
+						break;
+		}
 
 		LogOut("Vqcd flag %d\n", axion->BckGnd()->QcdPot());
-		LogOut("Damping flag %d 		     \n", axion->BckGnd()->QcdPot() & VQCD_DAMP);
+		LogOut("Damping flag %d 		     \n", axion->BckGnd()->QcdPot() & V_DAMP);
 		LogOut("gam                    = %lf \n", axion->BckGnd()->Gamma());
 		LogOut("--------------------------------------------------\n\n");
 		LogOut("           TIME SCALES ESTIMATES\n\n");
@@ -810,4 +848,8 @@ void printposter(Scalar *axion)
 	} else {
 		LogOut("Massless axion!!!\n\n");
 	}
+}
+
+void axitontracker(Scalar *axion)
+{
 }
