@@ -90,9 +90,10 @@ void	projectField	(Scalar *field, std::function<double(double)> myFilter)
 	if (field->m2Status() != M2_ENERGY) {
 		if (field->m2Status() != M2_ANTIMASK) {
 			if (field->m2Status() != M2_MASK) {
+				if (field->m2Status() != M2_ENERGY_SMOOTH) {
 				LogError("Error: projector only works with energies or anti-masks and the energy has not been computed");
 				return;
-		}}
+		}}}
 	}
 
 	auto	projector = std::make_unique<Projector<Float>> (field, myFilter);
