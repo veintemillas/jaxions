@@ -72,10 +72,10 @@
 		inline       double*	data	()		{ return bins.data();   }
 		inline const double*	data	() const	{ return bins.data();   }
 
-		void	setpad	(size_t PadLin,size_t DatLin) {PaddedLength = PadLin; DataLength = DatLin;};
+		void	setpad	(size_t PadLin,size_t DatLin) { PaddedLength = PadLin; DataLength = DatLin;};
 
 		void	find	();
-		void	run	  ();
+		void	run	();
 
 		/*	idx is unsigned, we only check one end		*/
 		inline double	operator()(DType  val)	const	{ size_t idx = (filter(val) - baseVal)/step; if (idx < N) { return bins[idx]; } else { return 0; } }
@@ -105,14 +105,14 @@
 		int	anf =0;
 		int Ninf = 0;
 
-		if (PaddedLength == DataLength){
+		if (PaddedLength == DataLength) {
 
 			#pragma omp parallel for schedule(static) reduction(max:car) reduction(min:cir) reduction(+:anf)
 			for (size_t idx=1; idx<dSize; idx++) {
 
 				double tmp = filter(inData[idx]);
 
-				if (std::isinf(tmp)){
+				if (std::isinf(tmp)) {
 					anf++;
 					continue;
 				}
@@ -123,9 +123,7 @@
 					cir = tmp;
 			}
 
-		}
-		else if (PaddedLength > DataLength)
-		{
+		} else if (PaddedLength > DataLength) {
 			LogMsg (VERB_NORMAL, "Padded loop");LogFlush();
 			#pragma omp parallel for schedule(static) reduction(max:car) reduction(min:cir) reduction(+:anf)
 			for (size_t idx=1; idx<dSize; idx++) {
@@ -135,7 +133,7 @@
 
 				double tmp = filter(inData[idx]);
 
-				if (std::isinf(tmp)){
+				if (std::isinf(tmp)) {
 					anf++;
 					continue;
 				}
@@ -157,7 +155,7 @@
 
 		if (Ninf > 0)	{ LogMsg (VERB_NORMAL, "Error: infinite values found but ignored (%d of them)",Ninf); }
 		/* I think cannot happen */
-		if (std::isnan(maxVal) || std::isnan(minVal))	{ LogError ("Error: NaN found");						unphysicalmaxmin = true; }
+		if (std::isnan(maxVal) || std::isnan(minVal)) { LogError ("Error: NaN found");				     unphysicalmaxmin = true; }
 		/* This yes  */
 		if (std::abs(maxVal - minVal) < 1e-10)        { LogError ("Error: max-min too close!");   bins.fill(maxVal); unphysicalmaxmin = true; }
 
@@ -179,12 +177,12 @@
 	void	Binner<N,DType>::run	() {
 		LogMsg (VERB_DEBUG, "Called Bin run");LogFlush();
 
-		if (!setmaxmin){
+		if (!setmaxmin) {
 			LogMsg (VERB_NORMAL, "Call find()");LogFlush();
 			find();
 		}
 
-		if (unphysicalmaxmin){
+		if (unphysicalmaxmin) {
 			LogMsg (VERB_NORMAL, "There was an unphysical max or min, skip");LogFlush();
 			return;
 		}
@@ -198,15 +196,18 @@
 
 		if (std::abs(maxVal - minVal) < 1.e-10) {
 			LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %f step, %f min, %f max", mIdx, N, step, minVal, maxVal);
-			LogError ("Error: max value can't be lower or equal than min"); bins.fill(maxVal); return; }
+			LogError ("Error: max value can't be lower or equal than min");
+			bins.fill(maxVal);
+			return;
+		}
 
 		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %e step, %e min, %e max", mIdx, N, step, minVal, maxVal);LogFlush();
 
 
 		int unbins = 0;
-		if (PaddedLength==DataLength){
+		if (PaddedLength == DataLength) {
 
-			double	tSize = static_cast<double>( (dSize)*commSize())*step;
+			double	tSize = static_cast<double>(dSize*commSize())*step;
 
 			/* contiguous data */
 			#pragma omp parallel
@@ -218,14 +219,14 @@
 
 					double cVal = filter(inData[i]);
 
-					if ((cVal >= minVal) && (cVal <= maxVal)){
+					if ((cVal >= minVal) && (cVal <= maxVal)) {
 
-						if (std::abs(cVal - baseVal) < step/100.) {
+						if (std::abs(cVal - baseVal) < step/100.)
 							tBins[N*tIdx]++;
-						} else {
+						else {
 							size_t myBin = floor((cVal - baseVal)/step);
 
-							if (0 <= myBin < N && myBin < N)	// Comparison with NaN will always return false
+							if (0 <= myBin && myBin < N)	// Comparison with NaN will always return false
 								tBins.at(myBin + N*tIdx)++;
 							else {
 								LogMsg (VERB_DEBUG,"Warning: (th%d) Value out of range data[%lu]=%e > %e (interval [%f, %f], assigned bin %lu of %lu)",
@@ -233,11 +234,8 @@
 								unbins++;
 							}
 						}
-					}
-					else
-					{
+					} else
 						unbins++;
-					}
 
 				}
 
@@ -250,7 +248,7 @@
 			/* data padded with zeros */
 			/* corrected for padding */
 			size_t unpaddedSize = (dSize/PaddedLength)*DataLength;
-			double	tSize = static_cast<double>( (unpaddedSize)*commSize())*step;
+			double tSize        = static_cast<double>(unpaddedSize*commSize())*step;
 
 			#pragma omp parallel
 			{
@@ -264,14 +262,14 @@
 
 					double cVal = filter(inData[i]);
 
-					if ((cVal >= minVal) && (cVal <= maxVal)){
+					if ((cVal >= minVal) && (cVal <= maxVal)) {
 
 						if (std::abs(cVal - baseVal) < step/100.) {
 							tBins[N*tIdx]++;
 						} else {
 							size_t myBin = floor((cVal - baseVal)/step);
 
-							if (0 <= myBin < N && myBin < N)	// Comparison with NaN will always return false
+							if (0 <= myBin && myBin < N)	// Comparison with NaN will always return false
 								tBins.at(myBin + N*tIdx)++;
 							else {
 								LogMsg (VERB_DEBUG,"Warning: (th%d) Value out of range data[%lu]=%e > %e (interval [%f, %f], assigned bin %lu of %lu)",
@@ -279,12 +277,8 @@
 								unbins++;
 							}
 						}
-					}
-					else
-					{
+					} else
 						unbins++;
-					}
-
 				}
 
 				#pragma omp for schedule(static)
@@ -293,6 +287,7 @@
 						bins[j] += static_cast<double>(tBins[j + i*N])/tSize;
 			}
 		}
+
 		LogMsg (VERB_DEBUG, "Binner Loop done (exceptions %d) ", unbins);LogFlush();
 
 		std::array<double,N>    tmp;
@@ -315,44 +310,44 @@
 	/* min max finder not using the class */
 
 	template<FindType fType, typename cFloat>
-		double	find	(cFloat *data, size_t size, std::function<double(cFloat)> filter) {
-			LogMsg (VERB_NORMAL, "Called Find");
+	double	find	(cFloat *data, size_t size, std::function<double(cFloat)> filter) {
+		LogMsg (VERB_NORMAL, "Called Find");
 
-			if ((data == nullptr) || (size == 0))
-				return 0.0;
+		if ((data == nullptr) || (size == 0))
+			return 0.0;
 
-			auto	cur = filter(data[0]);
-			auto	ret = cur;
+		auto	cur = filter(data[0]);
+		auto	ret = cur;
 
-			switch (fType) {
-				case	FIND_MAX: {
-					#pragma omp parallel for reduction(max:cur) schedule(static)
-					for (size_t idx=1; idx<size; idx++) {
-						auto tmp = filter(data[idx]);
+		switch (fType) {
+			case	FIND_MAX: {
+				#pragma omp parallel for reduction(max:cur) schedule(static)
+				for (size_t idx=1; idx<size; idx++) {
+					auto tmp = filter(data[idx]);
 
-						if (cur < tmp)
-							cur = tmp;
-					}
-					MPI_Allreduce (&cur, &ret, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+					if (cur < tmp)
+						cur = tmp;
 				}
-				break;
-
-				case	FIND_MIN: {
-					#pragma omp parallel for reduction(min:cur) schedule(static)
-					for (size_t idx=1; idx<size; idx++) {
-						auto tmp = filter(data[idx]);
-
-						if (cur > tmp)
-							cur = tmp;
-					}
-					MPI_Allreduce (&cur, &ret, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-				}
-				break;
+				MPI_Allreduce (&cur, &ret, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 			}
+			break;
 
+			case	FIND_MIN: {
+				#pragma omp parallel for reduction(min:cur) schedule(static)
+				for (size_t idx=1; idx<size; idx++) {
+					auto tmp = filter(data[idx]);
 
-			return	ret;
+					if (cur > tmp)
+						cur = tmp;
+				}
+				MPI_Allreduce (&cur, &ret, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+			}
+			break;
 		}
+
+
+		return	ret;
+	}
 
 
 #endif

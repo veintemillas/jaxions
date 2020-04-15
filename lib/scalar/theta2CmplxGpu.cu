@@ -2,7 +2,7 @@
 #include "complexGpu.cuh"
 
 #include "scalar/scalarField.h"
-#include "utils/utils.h"
+//#include "utils/utils.h"
 
 using namespace gpuCu;
 

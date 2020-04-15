@@ -77,16 +77,16 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 	switch (VQcd & V_QCD) {
 		default:
 		case	V_QCD1:
-			a  += zQ;
+			a  += complex<Float>(zQ,0);
 			break;
 		case	V_QCDV:
-			a  += (z - tmp)*zQ
+			a  += (z - tmp)*zQ;
 			break;
 		case	V_QCD2:
-			a  -= tmp*zN
+			a  -= tmp*zN;
 			break;
 		// case	V_QCDC:
-		// 	a  += (1 - tmp)*zQ
+		// 	a  += (1 - tmp)*zQ;
 		// 	break;
 		case	V_QCDL:
 		/*TODO*/
@@ -407,7 +407,18 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 {
 	uint X[3], idxMx, idxPx, idxMy, idxPy;
 
-	complex<Float> mel, a, tmp;
+	complex<Float> mel, a, tmp, zN;
+
+	switch	(VQcd & V_QCD) {
+			case	V_QCD2:
+			zN = (Float) (zQ/z)/2 * complex<Float>(1,-1);
+			break;
+
+			default:
+			case	V_QCDC:
+			zN = (Float) (mA2*z4) * complex<Float>(1,-1);
+			break;
+	}
 
 	idx2Vec(idx, X, Lx);
 
@@ -445,26 +456,27 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 			a  = (mel-((Float) 6.)*tmp)*ood2 - tmp*pot*(((Float) LL)*(pot*pot - z4))*((Float) 2.)/z4;
 			break;
 		case	V_NONE:
-			a  = (mel-((Float) 6.)*tmp)*ood2 ;
+			a  = (mel-((Float) 6.)*tmp)*ood2;
 			break;
 	}
 
 	switch (VQcd & V_QCD) {
 		default:
 		case	V_QCD1:
-			a  += zQ;
+			a  += complex<Float>(zQ,0);
 			break;
 		case	V_QCDV:
-			a  += (z - tmp)*zQ
+			a  += (z - tmp)*zQ;
 			break;
 		case	V_QCD2:
-			a  -= tmp*zN
+			a  -= tmp*zN;
 			break;
 		// case	V_QCDC:
-		// 	a  += (1 - tmp)*zQ
+		// 	a  += (1 - tmp)*zQ;
 		// 	break;
 		case	V_QCDL:
 		/*TODO*/
+			break;
 		case	V_QCD0:
 			break;
 	}

@@ -4,7 +4,7 @@
 
 #include "enum-field.h"
 #include "scalar/scalarField.h"
-#include "utils/utils.h"
+//#include "utils/utils.h"
 
 using namespace gpuCu;
 using namespace indexHelper;

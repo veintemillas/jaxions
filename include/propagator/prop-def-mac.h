@@ -116,55 +116,55 @@
 
 	/* Used in Gpu propagators */
 	#define PK_GPU(preci,X)  \
-	case	V_X:							\
-	propagateKernel<preci, V_X>		<<<gridSize,blockSize,0,stream>>> ((const complex<preci> *) m, (complex<preci> *) v, (complex<preci> *) m2, \
+	case	V_##X:							\
+	propagateKernel<preci, V_##X>		<<<gridSize,blockSize,0,stream>>> ((const complex<preci> *) m, (complex<preci> *) v, (complex<preci> *) m2, \
 											zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (preci) LL, Lx, Sf, Vo, Vf); \
 	break;
 
-	#define CAZ3_GPU(pk,preci,qcd,pq)  \
-	PK_GPU(pk,preci,qcd##_##pq))  \
-	PK_GPU(pk,preci,qcd##_##pq##_RHO))  \
-	PK_GPU(pk,preci,qcd##_##pq##_DRHO))  \
-	PK_GPU(pk,preci,qcd##_##pq##_DALL))  \
-	PK_GPU(pk,preci,qcd##_##pq##_DRHO_RHO))
+	#define CAZ3_GPU(preci,qcd,pq)  \
+	PK_GPU(preci,qcd##_##pq)  \
+	PK_GPU(preci,qcd##_##pq##_RHO)  \
+	PK_GPU(preci,qcd##_##pq##_DRHO)  \
+	PK_GPU(preci,qcd##_##pq##_DALL)  \
+	PK_GPU(preci,qcd##_##pq##_DRHO_RHO)
 
-	#define CAZ2_GPU(pk,preci,qcds)  \
-	CAZ3_GPU(pk,preci,qcds,PQ1))  \
-	CAZ3_GPU(pk,preci,qcds,PQ2))
+	#define CAZ2_GPU(preci,qcds)  \
+	CAZ3_GPU(preci,qcds,PQ1)  \
+	CAZ3_GPU(preci,qcds,PQ2)
 
-	#define DEFALLPROPTEM_K_GPU(pk,preci)  \
-	CAZ2_GPU(pk,preci,QCD0) \
-	CAZ2_GPU(pk,preci,QCD1) \
-	CAZ2_GPU(pk,preci,QCDV) \
-	CAZ2_GPU(pk,preci,QCD2) \
-	CAZ2_GPU(pk,preci,QCDL) \
-	CAZ2_GPU(pk,preci,QCDC)
+	#define DEFALLPROPTEM_K_GPU(preci)  \
+	CAZ2_GPU(preci,QCD0) \
+	CAZ2_GPU(preci,QCD1) \
+	CAZ2_GPU(preci,QCDV) \
+	CAZ2_GPU(preci,QCD2) \
+	CAZ2_GPU(preci,QCDL) \
+	CAZ2_GPU(preci,QCDC)
 
 
 	#define UVK_GPU(preci,X)  \
-	case	V_X: \
-	updateVKernel<preci, V_X><<<gridSize,blockSize,0,stream>>> ((const complex<preci> *) m, (complex<preci> *) v, \
+	case	V_##X: \
+	updateVKernel<preci, V_##X><<<gridSize,blockSize,0,stream>>> ((const complex<preci> *) m, (complex<preci> *) v, \
 									zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (preci) LL, Lx, Sf, Vo, Vf); \
 	break;
 
-	#define UCAZ3_GPU(pk,preci,qcd,pq)  \
-	UVK_GPU(pk,preci,qcd##_##pq))  \
-	UVK_GPU(pk,preci,qcd##_##pq##_RHO))  \
-	UVK_GPU(pk,preci,qcd##_##pq##_DRHO))  \
-	UVK_GPU(pk,preci,qcd##_##pq##_DALL))  \
-	UVK_GPU(pk,preci,qcd##_##pq##_DRHO_RHO))
+	#define UCAZ3_GPU(preci,qcd,pq)  \
+	UVK_GPU(preci,qcd##_##pq)  \
+	UVK_GPU(preci,qcd##_##pq##_RHO)  \
+	UVK_GPU(preci,qcd##_##pq##_DRHO)  \
+	UVK_GPU(preci,qcd##_##pq##_DALL)  \
+	UVK_GPU(preci,qcd##_##pq##_DRHO_RHO)
 
-	#define UCAZ2_GPU(pk,preci,qcds)  \
-	UCAZ3_GPU(pk,preci,qcds,PQ1))  \
-	UCAZ3_GPU(pk,preci,qcds,PQ2))
+	#define UCAZ2_GPU(preci,qcds)  \
+	UCAZ3_GPU(preci,qcds,PQ1)  \
+	UCAZ3_GPU(preci,qcds,PQ2)
 
-	#define DEFALLPROPTEM_U_GPU(pk,preci)  \
-	UCAZ2_GPU(pk,preci,QCD0) \
-	UCAZ2_GPU(pk,preci,QCD1) \
-	UCAZ2_GPU(pk,preci,QCDV) \
-	UCAZ2_GPU(pk,preci,QCD2) \
-	UCAZ2_GPU(pk,preci,QCDL) \
-	UCAZ2_GPU(pk,preci,QCDC)
+	#define DEFALLPROPTEM_U_GPU(preci)  \
+	UCAZ2_GPU(preci,QCD0) \
+	UCAZ2_GPU(preci,QCD1) \
+	UCAZ2_GPU(preci,QCDV) \
+	UCAZ2_GPU(preci,QCD2) \
+	UCAZ2_GPU(preci,QCDL) \
+	UCAZ2_GPU(preci,QCDC)
 
 
 
