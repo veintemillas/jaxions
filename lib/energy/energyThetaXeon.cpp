@@ -54,13 +54,15 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_, Align);
 		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_,Align);
 
+		/* computes physical, not comoving enegy density */
 		const double zR  = *R;
 		const double zz  = *z;
 		const double iz  = 1.0/zR;
 		const double d1  = frw*zR/zz;
 		const double iz2 = iz*iz;
-		const double zQ  = aMass2*zR*zR;
-		const double o2  = ood2*iz2;
+		const double iz4 = iz2*iz2;
+		const double zQ  = aMass2;
+		const double o2  = ood2*iz2*iz2;
 		const double tV  = 2.*M_PI*zR;
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<3);
@@ -246,13 +248,13 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
+						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ;
 					}
 				}
 			}
 		}
 
-		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= iz2*0.5; ptC *= zQ;
+		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= iz4*0.5; ptC *= zQ;
 
 #undef	_MData_
 #undef	step
@@ -274,13 +276,16 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_, Align);
 		float * __restrict__ m2		= (float * __restrict__) __builtin_assume_aligned (m2_,Align);
 
+		/* computes physical, not comoving enegy density */
+
 		const float zR  = *R;
 		const float zz  = *z;
 		const float iz  = 1.f/zR;
 		const float d1  = frw*zR/zz;
 		const float iz2 = iz*iz;
-		const float zQ = aMass2*zR*zR;
-		const float o2 = ood2*iz2;
+		const float iz4 = iz2*iz2;
+		const float zQ = aMass2;
+		const float o2 = ood2*iz2*iz2;
 		const float tV = 2.f*M_PI*zR;
 #if	defined(__AVX512F__)
 		const size_t XC = (Lx<<4);
@@ -467,13 +472,13 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					// Saves map
 					if	(map == true) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz2*0.5 + tmpV[ih]*zQ;
+						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ;
 					}
 				}
 			}
 		}
 
-		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= 0.5*iz2; ptC *= zQ;
+		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= 0.5*iz4; ptC *= zQ;
 #undef	_MData_
 #undef	step
 	}
