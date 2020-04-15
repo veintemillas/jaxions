@@ -186,7 +186,7 @@ void	ConfGenerator::runGpu	()
 			scaleField(axionField, FIELD_M, *axionField->RV());
 			axionField->exchangeGhosts(FIELD_M);
 			updateVGpu(axionField->mGpu(), axionField->vGpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), Vo, Vf,
-				   axionField->BckGnd()->QcdPot() & VQCD_TYPE, axionField->Precision(), 512, 1, 1, ((cudaStream_t *)axionField->Streams())[2]);
+				   axionField->BckGnd()->QcdPot() & V_TYPE, axionField->Precision(), 512, 1, 1, ((cudaStream_t *)axionField->Streams())[2]);
 					// FIXME --> xDefaultBlockGpu, yDefaultBlockGpu, zDefaultBlockGpu, ((cudaStream_t *)axionField->Streams())[2]);
 		}
 
@@ -606,7 +606,7 @@ void	ConfGenerator::runCpu	()
 			scaleField (axionField, FIELD_M, *axionField->RV());
 			}
 */
-			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & VQCD_TYPE) | VQCD_EVOL_RHO);
+			// initPropagator (pType, axionField, (axionField->BckGnd().QcdPot() & V_TYPE) | V_EVOL_RHO);
 			// tunePropagator (axiona);
 			// if (int i ==0; i<10; i++ ){
 			// 	dzaux = axion->dzSize(zInit);
