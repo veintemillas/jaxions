@@ -160,11 +160,11 @@ void    Laplacian::tRunCpu	()
 {
 	switch (precision) {
 		case FIELD_SINGLE:
-			lapCpu<std::complex<float>, true>(std::string("SpAx"));
+			lapCpu<std::complex<float>, true>(std::string("pSpecAx"));
 			break;
 
 		case FIELD_DOUBLE:
-			lapCpu<std::complex<double>,true>(std::string("SpAx"));
+			lapCpu<std::complex<double>,true>(std::string("pSpecAx"));
 			break;
 
 		default:
