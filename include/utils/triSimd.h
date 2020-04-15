@@ -860,6 +860,7 @@ inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 	return	ret;
 }
 
+/* x^2,y^2 returns x^2+y^2, x^2+y^2 */
 inline _MData_	opCode(md2_ps, const _MData_ &x)
 {
 #if defined(__AVX__)
@@ -869,7 +870,7 @@ inline _MData_	opCode(md2_ps, const _MData_ &x)
 #endif
 }
 
-//returns y^2, xy
+/* x,y returns y^2, xy */
 inline _MData_	opCode(vqcd0_ps, const _MData_ &x)
 {
 #if defined(__AVX__)
