@@ -32,15 +32,17 @@
 
 	void	writePoint	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
-	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName);
+	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName, int rank = 0);
 	void    writeAttribute	(double *data, const char *name);
 	void    writeAttribute	(void *data, const char *name, hid_t h5_Type);
-
+	void    writeAttributeg	(void *data, const char *group, const char *name, hid_t h5_Type);
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
 	template<const size_t N, typename cFloat>
 	void	writeBinner	(Binner<N,cFloat> bins, const char *group, const char *dataName) {
+
+	LogMsg(VERB_DEBUG,"[wB] Writting binner");LogFlush();
 
 		writeArray (bins.data(), N, group, dataName);
 
