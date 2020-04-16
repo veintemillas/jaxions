@@ -3,7 +3,8 @@
 
 	#include "scalar/scalarField.h"
 	#include <hdf5.h>
-
+	#include "utils/binner.h"
+	
 	// void	writeConf	(Scalar  *axion, int index);
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
 	void	writeConf (Scalar *axion, int index, const bool restart=false);
