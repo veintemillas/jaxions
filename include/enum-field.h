@@ -692,7 +692,7 @@
 			StringMeasureType   strmeas;
 			bool                measCPU;
 			double              cTimesec;
-			int              propstep;
+			int                 propstep;
 		}	MeasInfo;
 
 		// data output by measurement function to program
@@ -705,7 +705,18 @@
 			double 			eS;
 		}	MeasData;
 
-		// data output by measurement function to program
+		typedef	struct	AxitonInfo_v
+		{
+			int           nMax;
+			double        th_threshold	;
+			double        ve_threshold	;
+			double        ct_threshold	;
+			int           printradius ;
+			bool          gradients ;
+		}	AxitonInfo;
+		
+		// Data required for initial conditions
+		// or other configuration
 		typedef	struct	IcData_v
 		{
 			size_t        Nghost;
@@ -733,6 +744,7 @@
 			MomConfType   mocoty;
 			FieldIndex    fieldindex;
 			double        grav;
+			AxitonInfo    axtinfo;
 		}	IcData;
 
 		typedef	struct	MomParms_v

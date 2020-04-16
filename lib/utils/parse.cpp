@@ -505,6 +505,9 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.smvarType = CONF_RAND;
 	icdatst.mocoty    = MOM_MEXP2;
 	icdatst.fieldindex=FIELD_NO;
+	// Axiton tracker info. default: disabled
+	icdatst.axtinfo.nMax = -1;
+
 
 	for (int i=1; i<argc; i++)
 	{
@@ -1748,6 +1751,74 @@ int	parseArgs (int argc, char *argv[])
 			passed = true;
 			goto endFor;
 		}
+
+		/* Axiton tracker */
+
+		if (!strcmp(argv[i], "--axitontracker"))
+		{
+			char ff[] = "-";
+			if (argv[i+1][0] == ff[0])
+				icdatst.axtinfo.nMax = -2; //default
+			else {
+				sscanf(argv[i+1], "%zu", &icdatst.axtinfo.nMax);
+				i++;
+			}
+			icdatst.axtinfo.th_threshold = -1.;   //default
+			icdatst.axtinfo.ve_threshold = -1.;   //default
+			icdatst.axtinfo.ct_threshold = -1.;   //default
+			icdatst.axtinfo.printradius  = 1;     //default
+			icdatst.axtinfo.gradients    = false; //default
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--axitontracker.th_threshold"))
+		{
+			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.th_threshold);
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--axitontracker.vh_threshold"))
+		{
+			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ve_threshold);
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--axitontracker.ct_threshold"))
+		{
+			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ct_threshold);
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--axitontracker.printradius"))
+		{
+			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.printradius);
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--axitontracker.gradients"))
+		{
+			i++;
+			icdatst.axtinfo.gradients = true;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		/* IC's*/
 
 		if (!strcmp(argv[i], "--kmax"))
 		{

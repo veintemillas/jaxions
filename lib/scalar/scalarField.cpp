@@ -74,41 +74,41 @@ const std::complex<float> If(0.,1.);
 
 
 
-	LogMsg(VERB_NORMAL,"[sca] ZThRes  () %f",cm->ZThRes  ());
-	LogMsg(VERB_NORMAL,"[sca] ZRestore() %f",cm->ZRestore());
-	LogMsg(VERB_NORMAL,"[sca] PhysSize() %f",cm->PhysSize());
-	LogMsg(VERB_NORMAL,"[sca] Lambda  () %f",cm->Lambda  ());
-	LogMsg(VERB_NORMAL,"[sca] LamZ2Exp() %f",cm->LamZ2Exp());
-	LogMsg(VERB_NORMAL,"[sca] Indi3   () %f",cm->Indi3   ());
+	LogMsg(VERB_NORMAL,"[sca] ZThRes  () %e",cm->ZThRes  ());
+	LogMsg(VERB_NORMAL,"[sca] ZRestore() %e",cm->ZRestore());
+	LogMsg(VERB_NORMAL,"[sca] PhysSize() %e",cm->PhysSize());
+	LogMsg(VERB_NORMAL,"[sca] Lambda  () %e",cm->Lambda  ());
+	LogMsg(VERB_NORMAL,"[sca] LamZ2Exp() %e",cm->LamZ2Exp());
+	LogMsg(VERB_NORMAL,"[sca] Indi3   () %e",cm->Indi3   ());
 	if (cm->UeC()){
 		LogMsg(VERB_NORMAL,"[sca] using QCD cosmology!");
 		cm->Setup();
 	}
 	else {
-		LogMsg(VERB_NORMAL,"[sca] Gamma   () %f",cm->Gamma   ());
-		LogMsg(VERB_NORMAL,"[sca] QcdExp  () %f",cm->QcdExp  ());
+		LogMsg(VERB_NORMAL,"[sca] Gamma   () %e",cm->Gamma   ());
+		LogMsg(VERB_NORMAL,"[sca] QcdExp  () %e",cm->QcdExp  ());
 		LogMsg(VERB_NORMAL,"[sca] QcdPot  () %d",cm->QcdPot  ());
-		LogMsg(VERB_NORMAL,"[sca] Frw     () %f",cm->Frw     ());
+		LogMsg(VERB_NORMAL,"[sca] Frw     () %e",cm->Frw     ());
 		LogMsg(VERB_NORMAL,"[sca] Mink    () %d",cm->Mink    ());
 	}
 	LogMsg(VERB_NORMAL,"[sca] ic.Nghost   %d",cm->ICData().Nghost   );
 	LogMsg(VERB_NORMAL,"[sca] ic.icdrule  %d",cm->ICData().icdrule  );
 	LogMsg(VERB_NORMAL,"[sca] ic.preprop  %d",cm->ICData().preprop  );
 	LogMsg(VERB_NORMAL,"[sca] ic.icstudy  %d",cm->ICData().icstudy  );
-	LogMsg(VERB_NORMAL,"[sca] ic.prepstL  %f",cm->ICData().prepstL  );
-	LogMsg(VERB_NORMAL,"[sca] ic.prepcoe  %f",cm->ICData().prepcoe  );
-	LogMsg(VERB_NORMAL,"[sca] ic.pregammo %f",cm->ICData().pregammo );
-	LogMsg(VERB_NORMAL,"[sca] ic.prelZ2e  %f",cm->ICData().prelZ2e  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prepstL  %e",cm->ICData().prepstL  );
+	LogMsg(VERB_NORMAL,"[sca] ic.prepcoe  %e",cm->ICData().prepcoe  );
+	LogMsg(VERB_NORMAL,"[sca] ic.pregammo %e",cm->ICData().pregammo );
+	LogMsg(VERB_NORMAL,"[sca] ic.prelZ2e  %e",cm->ICData().prelZ2e  );
 	LogMsg(VERB_NORMAL,"[sca] ic.prevtype %d",cm->ICData().prevtype );
 	LogMsg(VERB_NORMAL,"[sca] ic.normcore %d",cm->ICData().normcore );
-	LogMsg(VERB_NORMAL,"[sca] ic.alpha    %f",cm->ICData().alpha    );
+	LogMsg(VERB_NORMAL,"[sca] ic.alpha    %e",cm->ICData().alpha    );
 	LogMsg(VERB_NORMAL,"[sca] ic.siter    %d",cm->ICData().siter    );
-	LogMsg(VERB_NORMAL,"[sca] ic.kcr      %f",cm->ICData().kcr      );
+	LogMsg(VERB_NORMAL,"[sca] ic.kcr      %e",cm->ICData().kcr      );
 	LogMsg(VERB_NORMAL,"[sca] ic.kMax     %d",cm->ICData().kMax     );
-	LogMsg(VERB_NORMAL,"[sca] ic.mode0    %f",cm->ICData().mode0    );
-	LogMsg(VERB_NORMAL,"[sca] ic.beta     %f",cm->ICData().beta     );
-	LogMsg(VERB_NORMAL,"[sca] ic.zi       %f",cm->ICData().zi       );
-	LogMsg(VERB_NORMAL,"[sca] ic.logi     %f",cm->ICData().logi     );
+	LogMsg(VERB_NORMAL,"[sca] ic.mode0    %e",cm->ICData().mode0    );
+	LogMsg(VERB_NORMAL,"[sca] ic.beta     %e",cm->ICData().beta     );
+	LogMsg(VERB_NORMAL,"[sca] ic.zi       %e",cm->ICData().zi       );
+	LogMsg(VERB_NORMAL,"[sca] ic.logi     %e",cm->ICData().logi     );
 	LogMsg(VERB_NORMAL,"[sca] ic.cType    %d",cm->ICData().cType    );
 	LogMsg(VERB_NORMAL,"[sca] ic.smvarTy  %d",cm->ICData().smvarType);
 	LogMsg(VERB_NORMAL,"[sca] ic.mocoty   %d",cm->ICData().mocoty   );
@@ -816,62 +816,37 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 // GENERAL BACKGROUND UPDATE REQUIRED!
 double	Scalar::Rfromct (const double ct)
 {
-	// Returns scale factor R = z^frw for any conformal time ct
-	// Minkowski frw = 0, Radiation frw = 1,
-	// return pow(ct,frw);
+	// Returns scale factor R = R(ct) conformal time ct
 	return bckgnd->R(ct);
 }
 
 void	Scalar::updateR ()
 {
 	// updates scale factor R = z^frw
-	// Minkowski frw = 0, Radiation frw = 1,
-	// if Minkowski R=1 and there is no need
-	// by default R=z and there is no need (one uses z for all purposes)
-	// if (!bckgnd->Mink())
 	*R = Rfromct(*z);
 }
 
 double	Scalar::LambdaP ()
 {
 	// Returns The value of Lambda with PRS trick IF needed
-	// Minkowski frw = 0, Radiation frw = 1,
-// 	double lbd  = bckgnd->Lambda();
-// 	double llee = bckgnd->LamZ2Exp();
-// LogMsg(VERB_PARANOID,"[sca:LambdaP] LambdaPhysical %f Le %f",lbd,llee);
-// 	if (LambdaT() == LAMBDA_FIXED)
-// 		return  lbd;
-// 	else if (LambdaT() == LAMBDA_Z2)
-// 		return  lbd/pow(*R,llee);
 	return bckgnd->LambdaP(*z);
 }
 
 double	Scalar::Msa ()
 {
 	// Returns The value of Msa with PRS trick, or Physical strings
-	// Minkowski frw = 0, Radiation frw = 1,
-	// double &lbd = bckgnd->Lambda();
-	// double llee = bckgnd->LamZ2Exp();
-	// if (LambdaT() == LAMBDA_FIXED)
-	// 	return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
-	// else if (LambdaT() == LAMBDA_Z2)
-LogMsg(VERB_PARANOID,"[sca:msa] LambdaPhysical %f ",LambdaP() );
+LogMsg(VERB_PARANOID,"[sca:msa] LambdaPhysical %.2f msa %.2f",LambdaP(),sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() );
 		return  sqrt(2.0*LambdaP()) * (*R) * bckgnd->PhysSize()/Length() ;
 }
 
 double  Scalar::HubbleMassSq  ()
 {
-	// R''/R
-	// int fr = (int) bckgnd->Frw();
-	// return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
 	return bckgnd->Rpp(*z);
 }
 
 double  Scalar::Rpp  ()
 {
 	// R''/R
-	// int fr = (int) bckgnd->Frw();
-	// return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())*(bckgnd->Frw()-1.0)/(*RV()*(*RV())) ;
 	return bckgnd->Rpp(*z);
 }
 
@@ -881,51 +856,16 @@ double  Scalar::HubbleConformal  ()
 	// since we have R=z^frw
 	//except in the case where frw = 0,1
 	int fr = (int) bckgnd->Frw();
-	return (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())/(*RV()) ;
+	double Rp = (fr == 0 || fr == 1) ? 0.0 : (bckgnd->Frw())/(*zV());
+	LogMsg(VERB_PARANOID,"[sca:HC] %.2e (legacy!)",Rp);
+	return Rp ;
 }
 
 double	Scalar::AxionMass  () {
-	//
-	// double aMass;
-	// double RNow      = *RV();
-	// // ZThRes is applied to R, not z
-	// // change the names?
-	// double &zThRes   = bckgnd->ZThRes();
-	// double &zRestore = bckgnd->ZRestore();
-	// double &indi3    = bckgnd->Indi3();
-	// double &nQcd     = bckgnd->QcdExp();
-	//
-  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
-  //       {
-  //               aMass = indi3*pow(zThRes, nQcd*0.5);
-  //               if (RNow > zRestore)
-  //                       aMass *= pow(RNow/zRestore, nQcd*0.5);
-  //       }
-  //       else
-  //               aMass = indi3*pow(RNow, nQcd*0.5);
-	//
-  //       return aMass;
 	return std::sqrt(bckgnd->AxionMass2(*z));
 }
 
 double	Scalar::AxionMassSq() {
-	// double aMass;
-	// double RNow      = *RV();
-	// double &zThRes   = bckgnd->ZThRes();
-	// double &zRestore = bckgnd->ZRestore();
-	// double &indi3    = bckgnd->Indi3();
-	// double &nQcd     = bckgnd->QcdExp();
-	//
-  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
-  //       {
-  //               aMass = indi3*indi3*pow(zThRes, nQcd);
-  //               if (RNow > zRestore)
-  //                       aMass *= pow(RNow/zRestore, nQcd);
-  //       }
-  //       else
-  //               aMass = indi3*indi3*pow(RNow, nQcd);
-	//
-  //       return aMass;
 	return bckgnd->AxionMass2(*z);
 }
 
@@ -1055,12 +995,10 @@ double	Scalar::dzSize	   () {
 double	Scalar::dzSize	   (double zNow) {
 	double RNow = Rfromct(zNow);
 	double oodl = ((double) n1)/bckgnd->PhysSize();
-	double mAx2 = AxionMassSq();
-	double &lbd = bckgnd->Lambda();
-	double msaa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) n1);
+	double mAx2 = AxionMassSq(zNow);
+	double lamP = bckgnd->LambdaP(zNow);
 	double mAfq = 0.;
 	auto   &pot = bckgnd->QcdPot();
-	double llee = bckgnd->LamZ2Exp();
 
 	double dct   = 0.0;
 	double RNext = RNow;
@@ -1074,7 +1012,7 @@ double	Scalar::dzSize	   (double zNow) {
 			double facto = 1.;
 			if ((pot & V_PQ) == V_PQ2)
 							facto = 2. ;
-			mSfq = std::sqrt(2.*lbd*pow(RNow,2.0-llee)*facto*facto + 12.*oodl*oodl);
+			mSfq = std::sqrt(2.*lamP*RNow*RNow*facto*facto + 12.*oodl*oodl);
 			dct = wDz/std::max(mSfq,mAfq) ;
 		}
 		break;
@@ -1082,7 +1020,7 @@ double	Scalar::dzSize	   (double zNow) {
 		case FIELD_AXION:
 		case FIELD_AXION_MOD:
 		case FIELD_WKB:
-			dct = std::min(wDz/std::sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl)),zNow/10.);
+			dct = wDz/std::sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
 		break;
 
 		case FIELD_NAXION:
@@ -1120,17 +1058,12 @@ double	Scalar::dzSize	   (double zNow) {
 	return dct;
 }
 
-// Fix for arbitrary background
+
+
 double Scalar::SaxionShift()
 {
-	double lbd   = bckgnd->Lambda();
-	double alpha = AxionMassSq()/lbd;
-
-	if (LambdaT() == LAMBDA_Z2)
-		alpha *= (*R)*(*R);
-
+	double alpha = AxionMassSq()/bckgnd->LambdaP (*z);
 	double discr = 4./3.-9.*alpha*alpha;
-
 	return	((discr > 0.) ? ((2./sqrt(3.))*cos(atan2(sqrt(discr),3.0*alpha)/3.0)-1.) : ((2./sqrt(3.))*cosh(atanh(sqrt(-discr)/(3.0*alpha))/3.0)-1.));
 }
 
@@ -1145,10 +1078,18 @@ double  Scalar::Saskia  ()
 		break;
 
 		case    V_QCD1:
-			if 			(pot & V_PQ == V_PQ1)
-				return SaxionShift();
-			else if (pot & V_PQ == V_PQ2)
-				return rsvPQ2(AxionMassSq()/bckgnd->LambdaP (*z));
+			if 			((pot & V_PQ) == V_PQ1){
+				double sh = SaxionShift();
+				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ1 %e",sh);
+				return sh;
+			}
+			else if ((pot & V_PQ) == V_PQ2)
+			{
+				double sh = rsvPQ2(AxionMassSq()/bckgnd->LambdaP (*z));
+				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ2 %e",sh);
+				return sh ;
+			}
+
 		break;
 
 		// This is yet to be computed
@@ -1165,23 +1106,7 @@ double  Scalar::Saskia  ()
 }
 
 double	Scalar::AxionMass  (const double RNow) {
-	//
-	// double aMass;
-	// double &zThRes   = bckgnd->ZThRes();
-	// double &zRestore = bckgnd->ZRestore();
-	// double &indi3    = bckgnd->Indi3();
-	// double &nQcd     = bckgnd->QcdExp();
-	//
-  //       if ((RNow > zThRes) &&  (zThRes < zRestore))
-  //       {
-  //               aMass = indi3*pow(zThRes, nQcd*0.5);
-  //               if (RNow > zRestore)
-  //                       aMass *= pow(RNow/zRestore, nQcd*0.5);
-  //       }
-  //       else
-  //               aMass = indi3*pow(RNow, nQcd*0.5);
-	//
-  //       return aMass;
+
 	return std::sqrt(bckgnd->AxionMass2(RNow));
 }
 
@@ -1189,7 +1114,6 @@ double	Scalar::AxionMassSq(const double ct) {
 	return bckgnd->AxionMass2(ct);
 }
 
-// Saxion mass squared, perhaps the following functions could be rewriten to use this one
 double  Scalar::SaxionMassSq  (const double RNow)
 {
 	return bckgnd->SaxionMass2(RNow);
@@ -1214,10 +1138,18 @@ double  Scalar::Saskia  (const double ct)
 		break;
 
 		case    V_QCD1:
-			if 			(pot & V_PQ == V_PQ1)
-				return SaxionShift(ct);
-			else if (pot & V_PQ == V_PQ2)
-				return rsvPQ2(AxionMassSq(ct)/bckgnd->LambdaP (ct));
+			if 			((pot & V_PQ) == V_PQ1){
+				double sh = SaxionShift();
+				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ1 %e",sh);
+				return sh;
+			}
+			else if ((pot & V_PQ) == V_PQ2)
+			{
+				double sh = rsvPQ2(AxionMassSq()/bckgnd->LambdaP (*z));
+				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ2 %e",sh);
+				return sh ;
+			}
+
 		break;
 
 		// This is yet to be computed

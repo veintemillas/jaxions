@@ -29,9 +29,8 @@ using namespace AxionWKB;
 
 // vaxions3d definitions
 
-void    printsample  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
-void    printsampleS  (FILE *fichero, Scalar *axion,            double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
-void    printsample_p(FILE *fichero, Scalar *axion, double zz, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void    printsample  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void    printsampleS  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double  findzdoom(Scalar *axion);
 void    checkTime (Scalar *axion, int index);
 void    printposter (Scalar *axion);
@@ -285,8 +284,8 @@ int	main (int argc, char *argv[])
 	}
 
 	// SIMPLE OUTPUT CHECK
-	printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-	// printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
+	printsample(file_samp, axion, idxprint, lm.str.strDen, lm.maxTheta);
+	// printsampleS(file_sams, axion, idxprint, lm.str.strDen, lm.maxTheta);
 
 	//--------------------------------------------------
 	// Axiton TRACKER (if THETA)
@@ -383,8 +382,8 @@ int	main (int argc, char *argv[])
  			LogFlush();
 
 			// SIMPLE OUTPUT CHECK
-			printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
-			// printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
+			printsample(file_samp, axion, idxprint, lm.str.strDen, lm.maxTheta);
+			// printsampleS(file_sams, axion, idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -586,13 +585,11 @@ int	main (int argc, char *argv[])
 
 
 
-void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta)
+void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings_global, double maximumtheta)
 {
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
-	double llphys = LLL;
-	if (axion->LambdaT() == LAMBDA_Z2)
-		llphys = LLL/(R_now*R_now);
+	double llphys = axion->LambdaP();
 
 	// LogOut("z %f R %f\n",z_now, R_now);
 	size_t S0 = sizeN*sizeN ;
@@ -634,13 +631,11 @@ void printsample(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size
 	}
 }
 
-void printsampleS(FILE *fichero, Scalar *axion, double LLL, size_t idxprint, size_t nstrings_global, double maximumtheta)
+void printsampleS(FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta)
 {
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
-	double llphys = LLL;
-	if (axion->LambdaT() == LAMBDA_Z2)
-		llphys = LLL/(R_now*R_now);
+	double llphys = axion->LambdaP();
 
 	// LogOut("z %f R %f\n",z_now, R_now);
 	size_t S0 = sizeN*sizeN ;
