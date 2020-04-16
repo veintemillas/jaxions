@@ -30,7 +30,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 
 			default:
 			case	V_QCDC:
-			zN = (Float) (mA2*z4) * complex<Float>(1,-1);
+			zN = (Float) (zQ*z) * complex<Float>(1,-1);
 			break;
 	}
 
@@ -416,7 +416,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 
 			default:
 			case	V_QCDC:
-			zN = (Float) (mA2*z4) * complex<Float>(1,-1);
+			zN = (Float) (zQ*z) * complex<Float>(1,-1);
 			break;
 	}
 
