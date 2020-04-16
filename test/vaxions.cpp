@@ -288,10 +288,8 @@ int	main (int argc, char *argv[])
 	printsample(file_samp, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 	// printsampleS(file_sams, axion, myCosmos.Lambda(), idxprint, lm.str.strDen, lm.maxTheta);
 
-
-
 	//--------------------------------------------------
-	// Axiton TRACKER
+	// Axiton TRACKER (if THETA)
 	//--------------------------------------------------
 
 		initTracker(axion);
@@ -443,6 +441,10 @@ int	main (int argc, char *argv[])
 						LogOut("--------------------------------------------------\n");
 
 						tunePropagator (axion);
+
+						/* Axiton tracker */
+						initTracker(axion);
+						searchAxitons();
 					}
 			}
 
@@ -456,7 +458,7 @@ int	main (int argc, char *argv[])
 				break;
 			}
 
-			/* read axitons */
+			/* read axitons?*/
 			readAxitons();
 
 			// Partial analysis

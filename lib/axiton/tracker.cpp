@@ -23,6 +23,16 @@ using	namespace profiler;
 void	initTracker	(Scalar *field)
 {
 	LogMsg	(VERB_HIGH, "[AT] Called Init Axiton Tracker");
+
+	if (field->Field() != FIELD_AXION){
+		LogMsg(VERB_NORMAL,"[iT] Traker only works in Axion mode: Exit.");
+		return;
+	}
+
+	if (field->BckGnd()->ICData().axtinfo.nMax == -1){
+		LogMsg(VERB_NORMAL,"[iT] Traker only works if --axitontracker (int) is parsed");
+		return;
+	}
 	profiler::Profiler &prof = getProfiler(PROF_TRACK);
 
 	prof.start();
@@ -37,6 +47,9 @@ void	initTracker	(Scalar *field)
 
 void 	searchAxitons()
 {
+	if (!axitrack)
+		return;
+
 	profiler::Profiler &prof = getProfiler(PROF_TRACK);
 	prof.start();
 	axitrack->SearchAxitons ();
@@ -47,6 +60,9 @@ void 	searchAxitons()
 
 void 	readAxitons()
 {
+	if (!axitrack)
+		return;
+
 	profiler::Profiler &prof = getProfiler(PROF_TRACK);
 	prof.start();
 	axitrack->Update ();
@@ -56,6 +72,9 @@ void 	readAxitons()
 
 void 	printAxitons()
 {
+	if (!axitrack)
+		return;
+
 	profiler::Profiler &prof = getProfiler(PROF_TRACK);
 	prof.start();
 	axitrack->PrintAxitons ();

@@ -83,7 +83,14 @@
 
 		int limit;
 		int index;
+		double ct_th;
+		double th_th;
+		double ve_th;
+		int printradius;
+		bool gradients;
 
+		bool addifm;
+		bool addifv;
 		void	report	(int index, int red, int pad, int fft, int slice, char *name);
 
 		template<typename Float>
@@ -102,20 +109,63 @@
 								norm( -1./(k0*k0*((double) afield->TotalSize()))), dl(precision*Lx), pl(precision*(Lx+2)), ss(Lz*Lx),
 								fSize(afield->DataSize()), shift(afield->DataAlign()/fSize) {
 
+					/* generic; check if needed TODO */
 					zBase = Lx/commSize()*commRank();
-
-					/* better use the tuned one */
-					/*	Default block size gives just one block	*/
-
 					ppar.Ng    = Ng;
 					ppar.ood2a = 1.0;
 					ppar.PC    = afield->getCO();
 					ppar.Lx    = Lx;
 					ppar.Lz    = Lz;
 
+					/* Specific */
+					addifm = false;
+					addifv = false;
+					{
+					LogMsg(VERB_HIGH,"[AT] Axiton Tracker config");
 					index  = 0;
+					LogMsg(VERB_HIGH,"     index %d",index);
 
-					limit  = 100/commSize();
+					int iaux = afield->BckGnd()->ICData().axtinfo.nMax;
+					if (iaux == -1){
+						LogError("Axiton tracker should not have initialised: closing.");
+						return;
+					}
+					else if (iaux == -2)
+						iaux = 100;
+					limit  = iaux/commSize();
+					LogMsg(VERB_HIGH,"     nMax  %d",limit);
+
+					double aux = afield->BckGnd()->ICData().axtinfo.th_threshold;
+					if (aux == -1.)
+						th_th = M_PI;
+					else
+						th_th = aux;
+					addifm = true;
+					LogMsg(VERB_HIGH,"     thetha_threshold  %.2f",th_th);
+
+					aux = afield->BckGnd()->ICData().axtinfo.ve_threshold;
+					if (aux == -1.){
+						ve_th  = 1.0;
+						addifv = false;
+						LogMsg(VERB_HIGH,"     cvelocity_threshold (disabled) but report if v > %.2f [mAR^2]",ve_th);
+					}
+					else{
+						ve_th  = aux;
+						addifv = true;
+						LogMsg(VERB_HIGH,"     cvelocity_threshold  %.2f [mAR^2]",ve_th);
+					}
+
+					aux = afield->BckGnd()->ICData().axtinfo.ct_threshold;
+					if (aux == -1.)
+						ct_th = 2.5;
+					else
+						ct_th = aux;
+					LogMsg(VERB_HIGH,"     ct_threshold  mA*R*ct > %.2f",ct_th);
+
+					LogMsg(VERB_HIGH,"     printradius ignored",ct_th);
+					LogMsg(VERB_HIGH,"     gradients ignored",ct_th);
+					}
+
 			}
 
 		 	~Tracker()  {};
@@ -190,6 +240,9 @@
 		if (afield->Device() == DEV_GPU)
 			return -1;
 
+		if (afield->AxionMass()*(*afield->RV())*(*afield->zV()) < ct_th)
+			return -1;
+
 		int co ;
 		if (precision == FIELD_DOUBLE)
 		{
@@ -208,8 +261,8 @@
 		Float *m = static_cast<Float*>(afield->mStart());
 		Float *v = static_cast<Float*>(afield->vStart());
 
-		Float mlim = (Float) M_PI* (*afield->RV());
-		Float vlim = (Float) afield->AxionMass()*(*afield->RV())*(*afield->RV());
+		Float mlim = (Float) (th_th)* (*afield->RV());
+		Float vlim = (Float) (ve_th)* afield->AxionMass()*(*afield->RV())*(*afield->RV());
 
 		const int nThreads = commThreads();
 
@@ -226,7 +279,7 @@
 				max = true;
 			if ( std::abs(v[iidx]) > vlim )
 				vax = true;
-			if (max || vax)
+			if ( (max && addifm) || (vax && addifv))
 			{
 					size_t esta = iidx;
 					if (!afield->Folded())
@@ -274,7 +327,7 @@ LogMsg(VERB_DEBUG,"[AT] Search axitons returned %d (%d/%d with m/v criterion) bu
 
 
 		if ( idxlist.size() >= limit){
-			LogMsg(VERB_DEBUG,"[AT] Axiton limit exceeded rejecting axiton %d",id);
+			LogMsg(VERB_DEBUG,"[AT] Axiton limit (%d) exceeded rejecting axiton %d",limit, id);
 			return false;
 		}
 
