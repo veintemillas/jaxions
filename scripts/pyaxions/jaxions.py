@@ -10,6 +10,8 @@ import datetime
 import glob
 from sympy import integer_nthroot
 import pickle
+import matplotlib.colors as col
+
 # mark=f"{datetime.datetime.now():%Y-%m-%d}"
 # from uuid import getnode as get_mac
 # mac = get_mac()
@@ -253,8 +255,7 @@ def gm(address,something='summary',printerror=False):
 
     f = h5py.File(address, 'r')
 
-    #prelim checks
-    # usage:
+    # generic attribute: something = 'at/nombre'
     if (something[:2] == 'at'):
         esp = something[2:]
         gro = esp[:esp.rfind('/')]
@@ -264,6 +265,18 @@ def gm(address,something='summary',printerror=False):
         except:
             print('what!')
             return 0
+
+    # generic data: something = 'da/nombre'
+
+    if (something[0:2] == 'da'):
+        esp = something[2:]
+        dap = esp[:esp.rfind('/')]
+        try:
+            return np.array(f[dap][()])
+        except:
+            print('not found!')
+            return 0
+        return
 
     #prelim checks
     ftype = f.attrs.get('Field type').decode()
@@ -2129,6 +2142,24 @@ def xit(logi):
 def xitt(logi):
     return 0.21738*np.log(1 + 0.1564394*np.exp(logi))
 
+def mkcmap2(lis, N=100, gamma=1):
+    dic = {
+    'w' : '#ffffff',
+    'y' : '#FFFF00',
+    't' : '#00868B',
+    'k' : '#000000',
+    'r2' : '#b20000',
+    'r' : '#ff0000',
+    'b' : '#03A89E', 'b2' : '#0000ff',
+    'b3' : '#0080ff',
+    'b4' :  '#00BFFF',
+    'd' : '#68228B',
+    'o': '#FFA500'}
+    anglemap = col.LinearSegmentedColormap.from_list(
+        'anglemap', [dic[c] for c in lis], N=N, gamma=gamma)
+    return anglemap
+
+thetacmap = mkcmap2(['w','b','k','r','w'])
 
 #   qt plot!
 
