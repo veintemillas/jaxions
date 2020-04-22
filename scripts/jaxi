@@ -7,6 +7,12 @@ if [ "$1" == "copy" ]; then
 	exit 1
 fi
 
+if [ "$1" == "nb" ]; then
+	cp $JAXIONS_DIR/scripts/movie-maker.ipynb ./
+	cp $JAXIONS_DIR/scripts/simulation-outlook.ipynb ./
+	exit 1
+fi
+
 if [ "$1" == "" ]; then
 	echo Options:
 	echo plot2D
