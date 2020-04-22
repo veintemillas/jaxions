@@ -18,6 +18,10 @@
 #include "fft/fftCode.h"
 #include "scalar/fourier.h"
 
+/* In case one reads from Moore format */
+#include "utils/simpleops.h"
+#include "scalar/mendTheta.h"
+
 #define caspr(lab,var,str)   \
 	case lab:                  \
 	sprintf(var, str);         \
@@ -156,22 +160,23 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 	hid_t	attr;
 	herr_t	status;
 
+	// status = H5Lexists (file_id, name, H5P_DEFAULT);
+	// LogMsg (VERB_DEBUG, "Attribute %s checked %d", name, status);
+
+
 	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0){
-		LogError ("Error opening attribute %s");
+		LogError ("Error opening attribute %s", name);
 		return attr;
 	}
 	else
 	{
 		if ((status = H5Aread (attr, h5_type, data)) < 0)
-			LogError ("Error reading attribute %s");
+			LogError ("Error reading attribute %s", name);
 		status = H5Aclose(attr);
 		LogMsg (VERB_HIGH, "Read attribute %s", name);
 		return	status;
 	}
 }
-
-
-
 
 
 void	disableErrorStack	()
@@ -747,6 +752,8 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 
 	int myRank = commRank();
 
+	bool Moore = 0;
+
 	LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk");
 	LogMsg (VERB_NORMAL, "");
 
@@ -1040,6 +1047,10 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			cType = CONF_SPAX;
 			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+		} else if (!strcmp(icStr, "Moore")) {
+			cType = CONF_SMOOTH;
+			/* The m and v fields are not conformal so we will need to rescale them */
+			Moore = true;
 		}
 
 		readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
@@ -1066,7 +1077,6 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 			smvarType = CONF_STRWAVE;
 		} else {
 			LogError("Error: unrecognized configuration type %s", icStr);
-			exit(1);
 		}
 		H5Gclose(icGrp_id);
 	}
@@ -1209,6 +1219,17 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
+
+	if (Moore)
+		{
+			LogMsg(VERB_NORMAL, "[RC] Unmooring field");
+			/* Converts Moore format to conformal theta */
+			unMoor(*axion, PFIELD_MS);
+			/* cVelocity = RVelocity - Theta */
+			axby(*axion, PFIELD_MS, PFIELD_V, -1., *(*axion)->RV());
+			/* mendTheta! */
+			mendTheta (*axion);
+		}
 
 	if (cDev == DEV_GPU)
 		(*axion)->transferDev(FIELD_MV);
