@@ -51,6 +51,9 @@ size_t	MendTheta::runGpu	()
 
 size_t	MendTheta::runCpu	()
 {
+	/* if field is Folded this does nothing but mTX requires folding */
+	Folder munge(axionField);
+	munge(FOLD_ALL);
 	return	mendThetaXeon(axionField);
 }
 
