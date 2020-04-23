@@ -399,6 +399,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	auto lSize    = axion->BckGnd()->PhysSize();
 	auto vqcdType = axion->BckGnd()->QcdPot  ();
 	auto nQcd     = axion->BckGnd()->QcdExp  ();
+	auto nQcdr    = axion->BckGnd()->QcdExpr ();
 	auto gamma    = axion->BckGnd()->Gamma   ();
 	auto LL       = axion->BckGnd()->Lambda  ();
 
@@ -476,18 +477,19 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	double zthres   = axion->BckGnd()->ZThRes();
 	double zrestore = axion->BckGnd()->ZRestore();
 
-	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
-	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
-	writeAttribute(vGrp_id, &vPQStr,"VPQ type",      attr_type);
-	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
-	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
-	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &gamma, "Gamma",         H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zrestore,"z Restore",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &lStr,    "Lambda type",   attr_type);
+	writeAttribute(vGrp_id, &LL,      "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &vStr,    "VQcd type",     attr_type);
+	writeAttribute(vGrp_id, &vPQStr,  "VPQ type",      attr_type);
+	writeAttribute(vGrp_id, &dStr,    "Damping type",  attr_type);
+	writeAttribute(vGrp_id, &rStr,    "Evolution type",attr_type);
+	writeAttribute(vGrp_id, &nQcd,    "nQcd",          H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gamma,   "Gamma",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &shift,   "Shift",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &indi3,   "Indi3",         H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zthres,  "z Threshold",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zrestore,"z Restore",     H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &nQcdr,   "nQcd2",         H5T_NATIVE_DOUBLE);
 
 	H5Gclose(vGrp_id);
 
@@ -863,12 +865,18 @@ LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
 	else {
 		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
 
-LogMsg (VERB_NORMAL, "nQcd = %f\n",myCosmos->QcdExp());
+		LogMsg (VERB_HIGH, "nQcd = %f (cosmos)",myCosmos->QcdExp());
 		if (myCosmos->QcdExp() == -1.e8) {
 			double nQcd;
 			readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
 			myCosmos->SetQcdExp(nQcd);
-			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f\n",myCosmos->QcdExp());
+			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f",myCosmos->QcdExp());
+
+			LogMsg (VERB_HIGH, "nQcdr = %f (cosmos)",myCosmos->QcdExpr());
+			double nQcd2;
+			readAttribute (vGrp_id, &nQcd2,  "nQcd2",	  H5T_NATIVE_DOUBLE);
+			myCosmos->SetQcdExpr(nQcd2);
+			LogMsg (VERB_NORMAL, "nQcdr (read and set to)= %f",myCosmos->QcdExpr());
 		}
 
 		if (myCosmos->Lambda() == -1.e8) {
@@ -887,7 +895,7 @@ LogMsg (VERB_NORMAL, "nQcd = %f\n",myCosmos->QcdExp());
 			}
 
 			myCosmos->SetLambda(lda);
-			LogMsg (VERB_NORMAL, "Lambda (read and set)= %f\n",myCosmos->Lambda());
+			LogMsg (VERB_NORMAL, "Lambda (read and set)= %f",myCosmos->Lambda());
 
 		} /*else {	// Ya se ha hecho en Cosmos
 			if (uMsa) {
@@ -898,44 +906,44 @@ LogMsg (VERB_NORMAL, "nQcd = %f\n",myCosmos->QcdExp());
 				msa = sqrt(2*LL)*tmp;
 			}
 		}*/
-LogMsg (VERB_NORMAL, "Indi3 = %f\n",myCosmos->Indi3());
+LogMsg (VERB_HIGH, "Indi3 = %f (cosmos)",myCosmos->Indi3());
 		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
 		if (myCosmos->Indi3() == -1.e8) {
 			double indi3;
 			readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
 			myCosmos->SetIndi3(indi3);
-			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f\n",myCosmos->Indi3());
+			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f",myCosmos->Indi3());
 		}
 
-LogMsg (VERB_NORMAL, "z Threshold = %f\n",myCosmos->ZThRes());
+LogMsg (VERB_HIGH, "z Threshold = %.3e (cosmos)",myCosmos->ZThRes());
 		if (myCosmos->ZThRes() == -1.e8) {
 			double zthrs;
 			readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
 			myCosmos->SetZThRes(zthrs);
-			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %f\n",myCosmos->ZThRes());
+			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %.3e",myCosmos->ZThRes());
 		}
 
-LogMsg (VERB_NORMAL, "z Restore = %f\n",myCosmos->ZRestore());
+LogMsg (VERB_HIGH, "z Restore = %.3e (cosmos)",myCosmos->ZRestore());
 		if (myCosmos->ZRestore() == -1.e8) {
 			double zrest;
 			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
 			myCosmos->SetZRestore(zrest);
-			LogMsg (VERB_NORMAL, "z Restore (read and set) = %f\n",myCosmos->ZRestore());
+			LogMsg (VERB_NORMAL, "z Restore (read and set) = %.3e",myCosmos->ZRestore());
 		}
 
 		//indi3 =  maa/pow(zTmp, nQcd*0.5);
 
-LogMsg (VERB_NORMAL, "Gamma = %f\n",myCosmos->Gamma());
+LogMsg (VERB_HIGH, "Gamma = %f",myCosmos->Gamma());
 		if (myCosmos->Gamma() == -1.e8) {
 			double gm;
 			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
 			myCosmos->SetGamma(gm);
-			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f\n",myCosmos->Gamma());
+			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f",myCosmos->Gamma());
 		}
 
-LogMsg (VERB_NORMAL, "Frw = %f\n",myCosmos->Frw());
+LogMsg (VERB_HIGH, "Frw = %.2f (cosmos)",myCosmos->Frw());
 		if (myCosmos->Frw() != fTmp) {
-			LogError ("Frw read %f but input was %f; Disregarding read data at your risk!\n",fTmp, myCosmos->Frw());
+			LogError ("Frw read %.2f but your input was %.2f (cosmos); We will use input data!\n",fTmp, myCosmos->Frw());
 			fTmp = myCosmos->Frw();
 			if (fTmp == 0.0 ){
 				myCosmos->SetMink(true);
@@ -945,7 +953,7 @@ LogMsg (VERB_NORMAL, "Frw = %f\n",myCosmos->Frw());
 
 		}
 
-LogMsg (VERB_NORMAL, "QcdPot = %d\n",myCosmos->QcdPot());
+LogMsg (VERB_HIGH, "QcdPot = %d (cosmos)",myCosmos->QcdPot());
 		if (myCosmos->QcdPot() == V_NONE) {
 			VqcdType vqcdType = V_NONE;
 
@@ -1356,6 +1364,7 @@ void	createMeas (Scalar *axion, int index)
 	auto llPhys   = axion->BckGnd()->Lambda  ();
 	auto LL       = axion->BckGnd()->Lambda  ();
 	auto nQcd     = axion->BckGnd()->QcdExp  ();
+	auto nQcdr    = axion->BckGnd()->QcdExpr ();
 	auto gamma    = axion->BckGnd()->Gamma   ();
 	auto vqcdType = axion->BckGnd()->QcdPot  ();
 
@@ -1415,7 +1424,7 @@ void	createMeas (Scalar *axion, int index)
 	H5Tset_size   (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double maa = axion->AxionMass();//axionmass((*axion->zV()), nQcd, zthres, zrestore);
+	double maa = axion->AxionMass();
 	double ms  = sqrt(axion->SaxionMassSq());
 	double msa = axion->Msa();
 
@@ -1442,27 +1451,28 @@ void	createMeas (Scalar *axion, int index)
 	hid_t vGrp_id = H5Gcreate2(meas_id, "/potential", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	double shift    = axion->Saskia();//saxionshift(maa, llPhys, vqcdType);
-	//indi3 =  maa/pow(*axion->zV(), nQcd*0.5);
+
 	double indi3    = axion->BckGnd()->Indi3();
 	double zthres   = axion->BckGnd()->ZThRes();
 	double zrestore = axion->BckGnd()->ZRestore();
 	double lz2e     = axion->BckGnd()->LamZ2Exp();
 	double laam     = axion->LambdaP();
 
-	writeAttribute(vGrp_id, &lStr,  "Lambda type",   attr_type);
-	writeAttribute(vGrp_id, &LL,    "Lambda",        H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &lz2e,  "Lambda Z2 exponent",H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &laam,  "LambdaP",       H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &vStr,  "VQcd type",     attr_type);
-	writeAttribute(vGrp_id, &vPQStr,"VPQ type",      attr_type);
-	writeAttribute(vGrp_id, &dStr,  "Damping type",  attr_type);
-	writeAttribute(vGrp_id, &rStr,  "Evolution type",attr_type);
-	writeAttribute(vGrp_id, &nQcd,  "nQcd",          H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &gamma, "Gamma",         H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &shift, "Shift",         H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &indi3, "Indi3",         H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zthres,"z Threshold",   H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &zrestore,"z Restore",   H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &lStr,  "Lambda type",        attr_type);
+	writeAttribute(vGrp_id, &LL,    "Lambda",             H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &lz2e,  "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &laam,  "LambdaP",            H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &vStr,  "VQcd type",          attr_type);
+	writeAttribute(vGrp_id, &vPQStr,"VPQ type",           attr_type);
+	writeAttribute(vGrp_id, &dStr,  "Damping type",       attr_type);
+	writeAttribute(vGrp_id, &rStr,  "Evolution type",     attr_type);
+	writeAttribute(vGrp_id, &nQcd,  "nQcd",               H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &nQcdr, "nQcd2",              H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &gamma, "Gamma",              H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &shift, "Shift",              H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &indi3, "Indi3",              H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zthres,"z Threshold",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &zrestore,"z Restore",        H5T_NATIVE_DOUBLE);
 
 	H5Gclose(vGrp_id);
 
