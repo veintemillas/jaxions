@@ -43,6 +43,7 @@
 		double&	  Indi3   ()	{ return indi3;    }
 		double&   Gamma   ()	{ return gamma;    }
 		double&   QcdExp  ()	{ return nQcd;     }
+		double&   QcdExpr ()	{ return nQcdr;    }
 		VqcdType& QcdPot  ()	{ return pot;      }
 		double&   Frw     ()	{ return frw;      }
 		bool&     Mink    ()	{ return mink;     }
