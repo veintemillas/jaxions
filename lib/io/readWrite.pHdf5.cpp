@@ -55,23 +55,6 @@ herr_t	writeAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type
 		LogError ("Error writing attribute %s to file");
 	H5Sclose (attr_id);
 	H5Aclose (attr);
-	//
-	// switch (h5_type)
-	// {
-	// 	case H5T_NATIVE_UINT:
-	// 		LogMsg (VERB_HIGH, "Write attribute %s = %u", name, *(static_cast<size_t*>(data)));
-	// 	break;
-	// 	case H5T_NATIVE_DOUBLE:
-	// 		LogMsg (VERB_HIGH, "Write attribute %s = %e", name, *(static_cast<double*>(data)));
-	// 	break;
-	// 	case H5T_NATIVE_INT:
-	// 		LogMsg (VERB_HIGH, "Write attribute %s = %d", name, *(static_cast<int*>(data)));	// Usa status para hacer logging de los errores!!!
-	// 	break;
-	// 	default:
-	// 	LogMsg (VERB_HIGH, "Write attribute %s", name);	// Usa status para hacer logging de los errores!!!
-	// 	break;
-	// }
-
 
 		if        (h5_type == H5T_NATIVE_HSIZE){
 				LogMsg (VERB_HIGH, "Write attribute %s = %d", name, *(static_cast<size_t*>(data)));
@@ -160,10 +143,6 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 	hid_t	attr;
 	herr_t	status;
 
-	// status = H5Lexists (file_id, name, H5P_DEFAULT);
-	// LogMsg (VERB_DEBUG, "Attribute %s checked %d", name, status);
-
-
 	if ((attr   = H5Aopen_by_name (file_id, ".", name, H5P_DEFAULT, H5P_DEFAULT)) < 0){
 		LogError ("Error opening attribute %s", name);
 		return attr;
@@ -173,7 +152,19 @@ herr_t	readAttribute(hid_t file_id, void *data, const char *name, hid_t h5_type)
 		if ((status = H5Aread (attr, h5_type, data)) < 0)
 			LogError ("Error reading attribute %s", name);
 		status = H5Aclose(attr);
-		LogMsg (VERB_HIGH, "Read attribute %s", name);
+
+		if        (h5_type == H5T_NATIVE_HSIZE){
+				LogMsg (VERB_HIGH, "h5read attribute %s = %d", name, *(static_cast<size_t*>(data)));
+		}	else if (h5_type == H5T_NATIVE_DOUBLE) {
+				LogMsg (VERB_HIGH, "h5read attribute %s = %e", name, *(static_cast<double*>(data)));
+		} else if (h5_type == H5T_NATIVE_INT) {
+				LogMsg (VERB_HIGH, "h5read attribute %s = %d", name, *(static_cast<int*>(data)));
+		} else if (h5_type == H5T_NATIVE_UINT) {
+				LogMsg (VERB_HIGH, "h5read attribute %s = %u", name, *(static_cast<unsigned int*>(data)));
+		} else {
+				LogMsg (VERB_HIGH, "h5read attribute %s = %s", name, (char*) data);
+		}
+
 		return	status;
 	}
 }
@@ -734,29 +725,35 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 
 
-/* JAVI ADDED THAT */
+/* Read Configuration and parameters from axion.xxxxx file
+ 	and prepare Cosmos my merging with commandline parameters */
+
 void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 {
+	/* Some definitions */
 	hid_t	file_id, mset_id, vset_id, plist_id;
 	hid_t	mSpace, vSpace, memSpace, dataType;
 	hid_t	attr_type;
-
 	hsize_t	slab, offset;
-
 	FieldPrecision	precision;
-
 	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], vPQStr[32], smStr[16];
 	int	length = 32;
-
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-
 	size_t	dataSize;
-
 	int myRank = commRank();
-
 	bool Moore = 0;
+	char base[256];
 
-	LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk");
+	/* JAVI if restart flag, do not read index number for simplicity */
+	/* restart files have to pass the same parameters of the simulation! */
+	if (!restart)
+		sprintf(base, "%s/%s.%05d", outDir, outName, index);
+	else
+		sprintf(base, "%s/%s.restart", outDir, outName);
+
+	/* Start */
+
+	LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk (%s)", base);
 	LogMsg (VERB_NORMAL, "");
 
 	/*	Start profiling		*/
@@ -769,16 +766,6 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	char base[256];
-
-	/* JAVI if restart flag, do not read index number for simplicity */
-	if (!restart)
-	sprintf(base, "%s/%s.%05d", outDir, outName, index);
-	else
-		sprintf(base, "%s/%s.restart", outDir, outName);
-
-	if (debug) LogOut("[db] File read: %s\n",base);
-	LogMsg (VERB_NORMAL, "File read: %s",base);
 	/*	Open the file and release the plist	*/
 
 	if ((file_id = H5Fopen (base, H5F_ACC_RDONLY, plist_id)) < 0)
@@ -789,347 +776,460 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	}
 	H5Pclose(plist_id);
 
-	/*	Attributes	*/
+	/*	                    Attributes	                         */
 
 	attr_type = H5Tcopy(H5T_C_S1);
 	H5Tset_size (attr_type, length);
 	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 
-	double	zTmp, RTmp, maaR, fTmp;
-	uint	tStep, cStep, totlZ;
-	readAttribute (file_id, fStr,   "Field type",   attr_type);
-	readAttribute (file_id, prec,   "Precision",    attr_type);
-	readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
-	readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
-	readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &fTmp,  "Frw",          H5T_NATIVE_DOUBLE);
-	readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
-	readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
-LogMsg (VERB_NORMAL, "Field type: %s",fStr);
-LogMsg (VERB_NORMAL, "Precision: %s",prec);
-LogMsg (VERB_NORMAL, "Size: %d",sizeN);
-LogMsg (VERB_NORMAL, "Depth: %d",totlZ);
-LogMsg (VERB_NORMAL, "zTmp: %f",zTmp);
-LogMsg (VERB_NORMAL, "RTmp: %f",RTmp);
-LogMsg (VERB_NORMAL, "Frw:  %f",fTmp);
-LogMsg (VERB_NORMAL, "tStep: %d",tStep);
-LogMsg (VERB_NORMAL, "cStep: %d",cStep);
-
-LogMsg (VERB_NORMAL, "PhysSize: %f",myCosmos->PhysSize());
-	if (myCosmos->PhysSize() == 0.0) {
-		double lSize;
-		readAttribute (file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
-		myCosmos->SetPhysSize(lSize);
-	}
-
-	//initial time; axion will be created with z=zTmp
-	readAttribute (file_id, &zTmp,  "z", H5T_NATIVE_DOUBLE);
-	//if zInit is given in command line change it
-	if (uZin) {
-		zTmp = zInit;
-LogMsg (VERB_NORMAL, "Commandline input for zInit!! \nzTmp (set to): %f",zTmp);
-		//unless zTmp is before [Im not sure in which case this is relevant]
-	} else {
-		//but a record of the true z of the read confifuration is kept in zInit
-		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
-		LogMsg (VERB_NORMAL, "zInit (read): %f",zInit);
-
-	}
+	//	GRID PARAMETERS
+	//  --------------
+	//  (do not change, except precision, which does automatically)
 
 
-	if (!uZfn) {
-		readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
-	}
-LogMsg (VERB_NORMAL, "zFinal (read): %f",zFinl);
-//	if (zInit > zTmp)
-//		zTmp = zInit;
-	if (restart)
-	{
-		readAttribute (file_id, &fIndex, "index", H5T_NATIVE_INT);
-		LogOut("Reading index is %d\n",fIndex);
-		LogMsg (VERB_NORMAL, "Reading index is %d\n",fIndex);
-		/* It is very easy, we keep zInit and take z=zTmp we trust everything was properly specified in the file */
-		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
+		double	zTmp, RTmp, maaR, fTmp;
+		uint	tStep, cStep, totlZ;
+
+		readAttribute (file_id, fStr,   "Field type",   attr_type);
+		readAttribute (file_id, &sizeN, "Size",         H5T_NATIVE_UINT);
+		readAttribute (file_id, &totlZ, "Depth",        H5T_NATIVE_UINT);
+		readAttribute (file_id, prec,   "Precision",    attr_type);
+
+	//	  IRRELEVANT
+	//    ----------
+
+		readAttribute (file_id, &tStep, "nSteps",       H5T_NATIVE_INT);
+		readAttribute (file_id, &cStep, "Current step", H5T_NATIVE_INT);
+
+	//	  PHYSICAL PARAMETERS
+	//    ------------------
+	//    (can be modified by commandline, already parsed in Cosmos)
+
+		/* conformal time now (ADM units) */
+
 		readAttribute (file_id, &zTmp,  "z",            H5T_NATIVE_DOUBLE);
-		LogOut("Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
-		LogMsg (VERB_NORMAL, "Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+		readAttribute (file_id, &RTmp,  "R",            H5T_NATIVE_DOUBLE);
 
-	}
-
-	/*	Read potential data	*/
-	auto status = H5Lexists (file_id, "/potential", H5P_DEFAULT);
-
-	if (status <= 0)
-		LogMsg(VERB_NORMAL, "Potential data not available, using defaults");
-	else {
-		hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
-
-		LogMsg (VERB_HIGH, "nQcd = %f (cosmos)",myCosmos->QcdExp());
-		if (myCosmos->QcdExp() == -1.e8) {
-			double nQcd;
-			readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
-			myCosmos->SetQcdExp(nQcd);
-			LogMsg (VERB_NORMAL, "nQcd (read and set to)= %f",myCosmos->QcdExp());
-
-			LogMsg (VERB_HIGH, "nQcdr = %f (cosmos)",myCosmos->QcdExpr());
-			double nQcd2;
-			readAttribute (vGrp_id, &nQcd2,  "nQcd2",	  H5T_NATIVE_DOUBLE);
-			myCosmos->SetQcdExpr(nQcd2);
-			LogMsg (VERB_NORMAL, "nQcdr (read and set to)= %f",myCosmos->QcdExpr());
+		// note: Field will be created with z=zTmp, R = R(z)
+		// if zInit is given in command line -> change it
+		if (uZin) {
+			zTmp = myCosmos->ICData().zi;
+			LogMsg (VERB_NORMAL, "Commandline input for zInit!!!!! Initial time set to: %f",zTmp);
 		}
 
-		if (myCosmos->Lambda() == -1.e8) {
-			double	lda;
-			readAttribute (vGrp_id, &lda,   "Lambda",      H5T_NATIVE_DOUBLE);
-			//readAttribute (file_id, &msa,   "Saxion mass", H5T_NATIVE_DOUBLE);	// Useless, I guess
-			readAttribute (vGrp_id, &lStr,  "Lambda type", attr_type);
+		/* initial time of the read simulation */
 
-			if (!strcmp(lStr, "z2"))
-				lType = LAMBDA_Z2;
-			else if (!strcmp(lStr, "Fixed"))
-				lType = LAMBDA_FIXED;
-			else {
-				LogError ("Error reading file %s: invalid lambda type %s", base, lStr);
-				exit(1);
-			}
+		readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
 
-			myCosmos->SetLambda(lda);
-			LogMsg (VERB_NORMAL, "Lambda (read and set)= %f",myCosmos->Lambda());
+		/* final, stopping time  */
 
-		} /*else {	// Ya se ha hecho en Cosmos
-			if (uMsa) {
-				double tmp = (msa*sizeN)/sizeL;
-				LL    = 0.5*tmp*tmp;
-			} else {
-				double tmp = sizeL/sizeN;
-				msa = sqrt(2*LL)*tmp;
-			}
-		}*/
-LogMsg (VERB_HIGH, "Indi3 = %f (cosmos)",myCosmos->Indi3());
-		readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
-		if (myCosmos->Indi3() == -1.e8) {
-			double indi3;
-			readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
-			myCosmos->SetIndi3(indi3);
-			LogMsg (VERB_NORMAL, "Indi3 (read and set to)= %f",myCosmos->Indi3());
+		if (!uZfn) {
+			readAttribute (file_id, &zFinl,  "zFinal",  H5T_NATIVE_DOUBLE);
+		} else {
+			LogMsg (VERB_NORMAL, "zFinal (commandline): %f",zFinl);
 		}
 
-LogMsg (VERB_HIGH, "z Threshold = %.3e (cosmos)",myCosmos->ZThRes());
-		if (myCosmos->ZThRes() == -1.e8) {
-			double zthrs;
-			readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
-			myCosmos->SetZThRes(zthrs);
-			LogMsg (VERB_NORMAL, "z Threshold (read and set) = %.3e",myCosmos->ZThRes());
-		}
+		/* expansion parameter; cosmology, R = z^frw  */
 
-LogMsg (VERB_HIGH, "z Restore = %.3e (cosmos)",myCosmos->ZRestore());
-		if (myCosmos->ZRestore() == -1.e8) {
-			double zrest;
-			readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
-			myCosmos->SetZRestore(zrest);
-			LogMsg (VERB_NORMAL, "z Restore (read and set) = %.3e",myCosmos->ZRestore());
-		}
+		readAttribute (file_id, &fTmp,  "Frw",          H5T_NATIVE_DOUBLE);
 
-		//indi3 =  maa/pow(zTmp, nQcd*0.5);
-
-LogMsg (VERB_HIGH, "Gamma = %f",myCosmos->Gamma());
-		if (myCosmos->Gamma() == -1.e8) {
-			double gm;
-			readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
-			myCosmos->SetGamma(gm);
-			LogMsg (VERB_NORMAL, "Gamma (read and set) = %f",myCosmos->Gamma());
-		}
-
-LogMsg (VERB_HIGH, "Frw = %.2f (cosmos)",myCosmos->Frw());
+		// note: command line is given precedence
 		if (myCosmos->Frw() != fTmp) {
-			LogError ("Frw read %.2f but your input was %.2f (cosmos); We will use input data!\n",fTmp, myCosmos->Frw());
+			LogMsg (VERB_NORMAL, "Commandline input for frw (%.2f) does not match h5read value (%.2f); frw set to input %.2f",myCosmos->Frw(),fTmp,myCosmos->Frw());
 			fTmp = myCosmos->Frw();
 			if (fTmp == 0.0 ){
 				myCosmos->SetMink(true);
-				LogMsg (VERB_NORMAL, "Set Mink (frw = 0, no expansion) \n");
+				LogMsg (VERB_NORMAL, "Set Mink (frw = 0, no expansion)");
 			}
-
-
 		}
 
-LogMsg (VERB_HIGH, "QcdPot = %d (cosmos)",myCosmos->QcdPot());
-		if (myCosmos->QcdPot() == V_NONE) {
+		/* Box length in ADM units */
+
+		// note: if no value is read in commandline, PhysSize() gives 0
+		if (myCosmos->PhysSize() == 0.0) {
+			double lSize;
+			readAttribute (file_id, &lSize, "Physical size", H5T_NATIVE_DOUBLE);
+			myCosmos->SetPhysSize(lSize);
+		} else {
+			LogMsg (VERB_NORMAL, "PhysSize (commandline): %f", myCosmos->PhysSize());
+		}
+
+		// RESTART MODULE !!!
+		// ------------------------------------------------------------------------
+		//
+		// note: if restart, we assume all the parsed parameters are equal to
+		// the read values; but we give priority to h5file
+		if (restart)
+		{
+
+			readAttribute (file_id, &fIndex, "index", H5T_NATIVE_INT);
+			LogOut(" Reading index is %d\n",fIndex);
+			LogMsg (VERB_NORMAL, "RESTART RUN! index %d\n",fIndex);
+			readAttribute (file_id, &zInit, "zInitial", H5T_NATIVE_DOUBLE);
+			readAttribute (file_id, &zTmp,  "z",        H5T_NATIVE_DOUBLE);
+			LogOut("Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+			LogMsg (VERB_NORMAL, "Reading zTmp = %f, zInit=%f \n",zTmp,zInit);
+		}
+		//
+		// ------------------------------------------------------------------------
+
+		//	  POTENTIAL PARAMETERS
+		//    ------------------
+		//    (can be modified by commandline, already parsed in Cosmos)
+
+		/*	Open potential group	*/
+		auto status = H5Lexists (file_id, "/potential", H5P_DEFAULT);
+
+		if (status <= 0)
+			LogMsg(VERB_NORMAL, "Potential data not available, using defaults");
+		else
+		{
+			hid_t vGrp_id = H5Gopen2(file_id, "/potential", H5P_DEFAULT);
+
+
+			/* Axion mass; model          mA^2 = i3^2 * R^n          */
+
+			readAttribute (file_id, &maaR,  "Axion mass",   H5T_NATIVE_DOUBLE);
+
+			/* n, exponent of topological susceptibility */
+
+			// note: if no value is read in commandline, QcdExp() gives -1.e8
+			if (myCosmos->QcdExp() == -1.e8) {
+				double nQcd;
+				readAttribute (vGrp_id, &nQcd,  "nQcd",	  H5T_NATIVE_DOUBLE);
+				myCosmos->SetQcdExp(nQcd);
+				double nQcd2;
+				herr_t test = readAttribute (vGrp_id, &nQcd2,  "nQcd2",	  H5T_NATIVE_DOUBLE);
+				if (!(test < 0)){
+					myCosmos->SetQcdExpr(nQcd2);
+					LogMsg (VERB_NORMAL, "nQcdr (read and set to)= %f",myCosmos->QcdExpr());
+				}
+			} else {
+				LogMsg (VERB_NORMAL, "nQcd  (commandline) = %.2f", myCosmos->QcdExp());
+				LogMsg (VERB_HIGH,   "nQcdr (commandline) = %.2f ",myCosmos->QcdExpr());
+			}
+
+			/* i3  prefactor */
+
+			// note: if no value is read in commandline, Indi3() gives -1.e8
+			if (myCosmos->Indi3() == -1.e8) {
+				double indi3;
+				readAttribute (vGrp_id, &indi3, "Indi3", H5T_NATIVE_DOUBLE);
+				myCosmos->SetIndi3(indi3);
+			} else
+				LogMsg (VERB_NORMAL, "Indi3 (commandline) = %.2f",myCosmos->Indi3());
+
+
+			/* Scale factor R beyond which axion mass growth saturates to n = 0 */
+
+			if (myCosmos->ZThRes() == -1.e8) {
+				double zthrs;
+				readAttribute (vGrp_id, &zthrs, "z Threshold", H5T_NATIVE_DOUBLE);
+				myCosmos->SetZThRes(zthrs);
+			} else
+				LogMsg (VERB_NORMAL, "z Threshold (commandline) = %.3e",myCosmos->ZThRes());
+
+			/* Scale factor R above which axion mass growth continues with n_r */
+
+			if (myCosmos->ZRestore() == -1.e8) {
+				double zrest;
+				readAttribute (vGrp_id, &zrest, "z Restore", H5T_NATIVE_DOUBLE);
+				myCosmos->SetZRestore(zrest);
+			} else
+				LogMsg (VERB_NORMAL, "z Restore (commandline) = %.3e",myCosmos->ZRestore());
+
+
+			// test the axion mass
+			// -------------------
+			LogMsg (VERB_NORMAL, "Axion mass^2 (h5read) %.2f (calculated) %.2f", maaR*maaR, myCosmos->AxionMass2(zTmp));
+
+			// note: if i3, n, n2, z, frw, zThreshold, zRestore have changed
+			// the mass might not coincide
+			// To ensure the continuity we need to adapt the parameters,
+			// and we will choose those which we have not changed in the commandline
+
+			// The most relevant cases :
+			// 1) we have nQcd, zTh, zRe >>> we adapt i3
+			// 2) ...
+			// anyways these readjustments can always be made from the commandline
+
+			/* Lambda; saxion self-interation coefficient at z = 1 */
+
+			// note: if no value is read in commandline, Lambda() gives -1.e8
+			if (myCosmos->Lambda() == -1.e8) {
+				double	lda, lz2e;
+
+				readAttribute (vGrp_id, &lda,   "Lambda",      H5T_NATIVE_DOUBLE);
+				myCosmos->SetLambda(lda);
+
+				readAttribute (vGrp_id, &lStr,  "Lambda type", attr_type);
+				herr_t test = readAttribute (vGrp_id, &lz2e,  "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
+
+				if (!strcmp(lStr, "z2")){
+					lType = LAMBDA_Z2;
+					if (!(test < 0))
+						myCosmos->SetLambda(lda);
+					else
+						myCosmos->SetLamZ2Exp(2.0);
+				}
+				else if (!strcmp(lStr, "Fixed")){
+					lType = LAMBDA_FIXED;
+					myCosmos->SetLamZ2Exp(0.0);
+					}
+				else {
+					LogError ("Error reading file %s: invalid lambda type %s", base, lStr);
+					exit(1);
+				}
+				LogMsg (VERB_NORMAL, "Lambda (h5read and set)= %.2f/R^%.2f",myCosmos->Lambda(),myCosmos->LamZ2Exp());
+			}
+			else
+				LogMsg (VERB_NORMAL, "Lambda (commandline)   = %.2f/R^%.2f",myCosmos->Lambda(),myCosmos->LamZ2Exp());
+
+
+			// test LambdaP?
+			// -------------------
+			// LogMsg (VERB_NORMAL, "Axion mass (h5read) %.2f (calculated) %.2f",maaR, myCosmos->AxionMass());
+
+
+			/* Gamma; Saxion damping coefficient */
+
+
+			if (myCosmos->Gamma() == -1.e8) {
+				double gm;
+				readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
+				myCosmos->SetGamma(gm);
+			}
+			else
+				LogMsg (VERB_NORMAL, "Gamma (commandline) = %f",myCosmos->Gamma());
+
+
+			/* V_QCD potential type */
+
+
+			// note : if no commandline values myCosmos->QcdPot() == V_NONE
 			VqcdType vqcdType = V_NONE;
-
-			readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
-
-			if (!strcmp(vStr, "VQcd 1"))
-				vqcdType = V_QCD1;
-			else if ( !strcmp(vStr, "VQcd Variant") || !strcmp(vStr, "VQcd 2")) //legacy
-				vqcdType = V_QCDV;
-			else if (!strcmp(vStr, "VQcd 0"))
-				vqcdType = V_QCD0;
-			else if (!strcmp(vStr, "VQcd Linear"))
-				vqcdType = V_QCDL;
-			else if (!strcmp(vStr, "VQcd Cos"))
-				vqcdType = V_QCDC;
-			else if (!strcmp(vStr, "VQcd N = 2"))
-				vqcdType = V_QCD2;
+			if (myCosmos->Indi3() == 0.0)
+				myCosmos->SetQcdPot(V_QCD0);
 			else {
-				LogError ("Error reading file %s: invalid QCD potential type %s. Use QCD1", base, vStr);
-				vqcdType = V_QCD1;
+				if ( (myCosmos->QcdPot() & V_QCD) == V_NONE) {
+
+					readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
+
+					if (!strcmp(vStr, "VQcd 1"))
+						vqcdType = V_QCD1;
+					else if ( !strcmp(vStr, "VQcd Variant") || !strcmp(vStr, "VQcd 2")) //legacy
+						vqcdType = V_QCDV;
+					else if (!strcmp(vStr, "VQcd 0"))
+						vqcdType = V_QCD0;
+					else if (!strcmp(vStr, "VQcd Linear"))
+						vqcdType = V_QCDL;
+					else if (!strcmp(vStr, "VQcd Cos"))
+						vqcdType = V_QCDC;
+					else if (!strcmp(vStr, "VQcd N = 2"))
+						vqcdType = V_QCD2;
+					else {
+						LogError ("Error reading file %s: invalid QCD potential type %s. Use QCD1", base, vStr);
+						vqcdType = V_QCD1;
+					}
+				}
+				else
+					LogMsg (VERB_NORMAL, "V_QCD (commandline) = %d", myCosmos->QcdPot() & V_QCD);
 			}
 
-			readAttribute (vGrp_id, &vStr,  "VPQ type",  attr_type);
+			/* V_PQ potential type */
 
-			if (!strcmp(vStr, "VPQ 1"))
-				vqcdType |= V_PQ1;
-			else if ( !strcmp(vStr, "VPQ2"))
-				vqcdType |= V_PQ2;
-			else {
-				LogError ("Error reading file %s: invalid PQ potential type %s. Use PQ1", base, vStr);
-				vqcdType |= V_PQ1;
+			if ( (myCosmos->QcdPot() & V_PQ) == V_NONE) {
+
+				readAttribute (vGrp_id, &vStr,  "VPQ type",  attr_type);
+
+				if (!strcmp(vStr, "VPQ 1"))
+					vqcdType |= V_PQ1;
+				else if ( !strcmp(vStr, "VPQ2"))
+					vqcdType |= V_PQ2;
+				else {
+					LogError ("Error reading file %s: invalid PQ potential type %s. Use PQ1", base, vStr);
+					vqcdType |= V_PQ1;
+				}
 			}
+			else
+				LogMsg (VERB_NORMAL, "V_PQ (commandline) = %d", myCosmos->QcdPot() & V_PQ);
 
-			readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
 
-			if (!strcmp(vStr, "Rho"))
-				vqcdType |= V_DAMP_RHO;
-			else if (!strcmp(vStr, "All"))
-				vqcdType |= V_DAMP_ALL;
-			else if (!strcmp(vStr, "None"))
-				vqcdType |= V_NONE;
-			else {
-				LogError ("Error reading file %s: invalid damping type %s. Ignoring damping", base, vStr);
+			if ( (myCosmos->QcdPot() & V_DAMP) == V_NONE) {
+
+				readAttribute (vGrp_id, &vStr,  "Damping type",  attr_type);
+
+				if (!strcmp(vStr, "Rho"))
+					vqcdType |= V_DAMP_RHO;
+				else if (!strcmp(vStr, "All"))
+					vqcdType |= V_DAMP_ALL;
+				else if (!strcmp(vStr, "None"))
+					vqcdType |= V_NONE;
+				else {
+					LogError ("Error reading file %s: invalid damping type %s. Ignoring damping", base, vStr);
+				}
 			}
+			else
+				LogMsg (VERB_NORMAL, "V_DAMP (commandline) = %d", myCosmos->QcdPot() & V_DAMP);
 
-			readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
 
-			if (!strcmp(vStr, "Only Rho"))
-				vqcdType |= V_EVOL_RHO;
-			else if (!strcmp(vStr, "Full"))
-				vqcdType |= V_NONE;
-			else {
-				LogError ("Error reading file %s: invalid rho evolution type %s. Ignoring rho evolution", base, vStr);
+			if ( (myCosmos->QcdPot() & V_EVOL_RHO) == V_NONE) {
+
+				readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
+
+				if (!strcmp(vStr, "Only Rho"))
+					vqcdType |= V_EVOL_RHO;
+				else if (!strcmp(vStr, "Full"))
+					vqcdType |= V_NONE;
+				else {
+					LogError ("Error reading file %s: invalid rho evolution type %s. Ignoring rho evolution", base, vStr);
+				}
 			}
+			else
+				LogMsg (VERB_NORMAL, "V_EVOL_RHO (commandline)");
 
 			myCosmos->SetQcdPot(vqcdType);
-			LogMsg (VERB_NORMAL, "QcdPot (read and set)= %d\n",myCosmos->QcdPot());
+			LogMsg (VERB_NORMAL, "QcdPot set to %d\n",myCosmos->QcdPot());
+
+			H5Gclose(vGrp_id);
 		}
+		/* end potential group */
 
-		H5Gclose(vGrp_id);
-	}
+		//    INITIAL CONDITIONS DATA
+		//    -----------------------
+		//
 
-	/*	Read IC data		*/
-	status = H5Lexists (file_id, "/ic", H5P_DEFAULT);
+		status = H5Lexists (file_id, "/ic", H5P_DEFAULT);
 
-LogMsg (VERB_NORMAL, "Ic... \n");
-	if (status <= 0)
-		LogMsg(VERB_NORMAL, "IC data not available");
-	else {
-		hid_t icGrp_id = H5Gopen2(file_id, "/ic", H5P_DEFAULT);
-		readAttribute(icGrp_id, &mode0, "Axion zero mode", H5T_NATIVE_DOUBLE);
-		readAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+		LogMsg (VERB_NORMAL, "Ic... \n");
+		if (status <= 0)
+			LogMsg(VERB_NORMAL, "IC data not available");
+		else
+		{
+			hid_t icGrp_id = H5Gopen2(file_id, "/ic", H5P_DEFAULT);
+			readAttribute(icGrp_id, &mode0, "Axion zero mode", H5T_NATIVE_DOUBLE);
+			readAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
 
-		if (!strcmp(icStr, "Smooth")) {
-			cType = CONF_SMOOTH;
-			readAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
-			readAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "kMax")) {
-			cType = CONF_KMAX;
-			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "VilGor")) {
-			cType = CONF_VILGOR;
-			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "Lola")) {
-			cType = CONF_LOLA;
-			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "Cole")) {
-			cType = CONF_COLE;
-			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "Tkachev")) {
-			cType = CONF_TKACHEV;
-			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-			readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "Axion Spectrum")) {
-			cType = CONF_SPAX;
-			readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
-			// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
-		} else if (!strcmp(icStr, "Moore")) {
-			cType = CONF_SMOOTH;
-			/* The m and v fields are not conformal so we will need to rescale them */
-			Moore = true;
+			if (!strcmp(icStr, "Smooth")) {
+				cType = CONF_SMOOTH;
+				readAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
+				readAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "kMax")) {
+				cType = CONF_KMAX;
+				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "VilGor")) {
+				cType = CONF_VILGOR;
+				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "Lola")) {
+				cType = CONF_LOLA;
+				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "Cole")) {
+				cType = CONF_COLE;
+				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "Tkachev")) {
+				cType = CONF_TKACHEV;
+				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+				readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "Axion Spectrum")) {
+				cType = CONF_SPAX;
+				readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+				// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			} else if (!strcmp(icStr, "Moore")) {
+				cType = CONF_SMOOTH;
+				/* The m and v fields are not conformal so we will need to rescale them */
+				Moore = true;
+			}
+
+			readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
+
+			if (!strcmp(icStr, "Random")) {
+				smvarType = CONF_RAND;
+			} else if (!strcmp(icStr, "String XY")) {
+				smvarType = CONF_STRINGXY;
+			} else if (!strcmp(icStr, "String YZ")) {
+				smvarType = CONF_STRINGYZ;
+			} else if (!strcmp(icStr, "Minicluster")) {
+				smvarType = CONF_MINICLUSTER;
+			} else if (!strcmp(icStr, "Minicluster 0")) {
+				smvarType = CONF_MINICLUSTER0;
+			} else if (!strcmp(icStr, "Axion noise")) {
+				smvarType = CONF_AXNOISE;
+			} else if (!strcmp(icStr, "Saxion noise")) {
+				smvarType = CONF_SAXNOISE;
+			} else if (!strcmp(icStr, "Axion one mode")) {
+				smvarType = CONF_AX1MODE;
+			} else if (!strcmp(icStr, "Parametric Resonance")) {
+				smvarType = CONF_PARRES;
+			} else if (!strcmp(icStr, "String + wave")) {
+				smvarType = CONF_STRWAVE;
+			} else {
+				LogError("Error: unrecognized configuration type %s", icStr);
+			}
+			H5Gclose(icGrp_id);
 		}
+		/* end IC group */
 
-		readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
-
-		if (!strcmp(icStr, "Random")) {
-			smvarType = CONF_RAND;
-		} else if (!strcmp(icStr, "String XY")) {
-			smvarType = CONF_STRINGXY;
-		} else if (!strcmp(icStr, "String YZ")) {
-			smvarType = CONF_STRINGYZ;
-		} else if (!strcmp(icStr, "Minicluster")) {
-			smvarType = CONF_MINICLUSTER;
-		} else if (!strcmp(icStr, "Minicluster 0")) {
-			smvarType = CONF_MINICLUSTER0;
-		} else if (!strcmp(icStr, "Axion noise")) {
-			smvarType = CONF_AXNOISE;
-		} else if (!strcmp(icStr, "Saxion noise")) {
-			smvarType = CONF_SAXNOISE;
-		} else if (!strcmp(icStr, "Axion one mode")) {
-			smvarType = CONF_AX1MODE;
-		} else if (!strcmp(icStr, "Parametric Resonance")) {
-			smvarType = CONF_PARRES;
-		} else if (!strcmp(icStr, "String + wave")) {
-			smvarType = CONF_STRWAVE;
-		} else {
-			LogError("Error: unrecognized configuration type %s", icStr);
-		}
-		H5Gclose(icGrp_id);
-	}
-
+	/* we do not need this anymore */
 	H5Tclose (attr_type);
 
-	if (!uPrec)
-	{
-		if (!strcmp(prec, "Double"))
-		{
-			precision = FIELD_DOUBLE;
-			sPrec	  = FIELD_DOUBLE;
-			dataType  = H5T_NATIVE_DOUBLE;
-			dataSize  = sizeof(double);
-		} else if (!strcmp(prec, "Single")) {
-			precision = FIELD_SINGLE;
-			sPrec	  = FIELD_SINGLE;
-			dataType  = H5T_NATIVE_FLOAT;
-			dataSize  = sizeof(float);
-		} else {
-			LogError ("Error reading file %s: Invalid precision %s", base, prec);
-			exit(1);
-		}
-	} else {
-		precision = sPrec;
 
-		if (sPrec == FIELD_DOUBLE)
-		{
-			dataType  = H5T_NATIVE_DOUBLE;
-			dataSize  = sizeof(double);
+		//    PRECISION
+		//    ---------
+		//    will be adapted to the commandline
 
-			if (!strcmp(prec, "Single"))
-				LogMsg (VERB_NORMAL, "Reading single precision configuration as double precision");
-		} else if (sPrec == FIELD_SINGLE) {
-			dataType  = H5T_NATIVE_FLOAT;
-			dataSize  = sizeof(float);
+		if (!uPrec)
+		{
 			if (!strcmp(prec, "Double"))
-				LogMsg (VERB_NORMAL, "Reading double precision configuration as single precision");
-		} else {
-			LogError ("Input error: Invalid precision");
-			exit(1);
+			{
+				precision = FIELD_DOUBLE;
+				sPrec	  = FIELD_DOUBLE;
+				dataType  = H5T_NATIVE_DOUBLE;
+				dataSize  = sizeof(double);
+			} else if (!strcmp(prec, "Single")) {
+				precision = FIELD_SINGLE;
+				sPrec	  = FIELD_SINGLE;
+				dataType  = H5T_NATIVE_FLOAT;
+				dataSize  = sizeof(float);
+			} else {
+				LogError ("Error reading file %s: Invalid precision %s", base, prec);
+				exit(1);
+			}
 		}
-	}
+		else
+		{
+			precision = sPrec;
 
-	/*	Create axion field	*/
+			if (sPrec == FIELD_DOUBLE)
+			{
+				dataType  = H5T_NATIVE_DOUBLE;
+				dataSize  = sizeof(double);
+
+				if (!strcmp(prec, "Single"))
+					LogMsg (VERB_NORMAL, "Reading single precision configuration as double precision");
+			} else if (sPrec == FIELD_SINGLE) {
+				dataType  = H5T_NATIVE_FLOAT;
+				dataSize  = sizeof(float);
+				if (!strcmp(prec, "Double"))
+					LogMsg (VERB_NORMAL, "Reading double precision configuration as single precision");
+			} else {
+				LogError ("Input error: Invalid precision");
+				exit(1);
+			}
+		}
+		/* end precision */
+
+
+
+	/*	-------------------------------------------------------------------------
+      -------------------------------------------------------------------------
+                             Create axion field
+      -------------------------------------------------------------------------
+      -------------------------------------------------------------------------
+	*/
 
 	IcData ictemp   = myCosmos->ICData();
 	ictemp.alpha    = alpha;
@@ -1150,7 +1250,8 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	else
 		sizeZ = totlZ/zGrid;
 
-	if (debug) LogOut("[db] Read start\n");
+	LogMsg(VERB_DEBUG, "[db] Read start\n");
+
 	prof.stop();
 	prof.add(std::string("Read configuration"), 0, 0);
 
@@ -1170,18 +1271,16 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 		exit(1);
 	}
 
-	double maa = (*axion)->AxionMass();
-
-	if (fabs((maa - maaR)/std::max(maaR,maa)) > 1e-5)
-		LogMsg(VERB_NORMAL, "Chaging axion mass from %e to %e (difference %.3f %%)", maaR, maa, 100.*fabs((maaR-maa)/std::max(maaR,maa)));
-
 	prof.start();
 	commSync();
+
+
 
 	/*	Create plist for collective read	*/
 
 	plist_id = H5Pcreate(H5P_DATASET_XFER);
 	H5Pset_dxpl_mpio(plist_id,H5FD_MPIO_COLLECTIVE);
+
 
 	/*	Open a dataset for the whole axion data	*/
 
@@ -1228,13 +1327,25 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	H5Pclose (plist_id);
 	H5Fclose (file_id);
 
+	prof.stop();
+	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
+
+
+	/*	If configuration is Moore > convert to jaxions */
 	if (Moore)
 		{
 			LogMsg(VERB_NORMAL, "[RC] Unmooring field");
+			prof.start();
+
 			/* Converts Moore format to conformal theta */
 			unMoor(*axion, PFIELD_MS);
+
 			/* cVelocity = RVelocity - Theta */
 			axby(*axion, PFIELD_MS, PFIELD_V, -1., *(*axion)->RV());
+
+			prof.stop();
+			prof.add(std::string("Unmoor configuration"), 0, 10*(totlZ*slab*(*axion)->Precision())*1.e-9);
+
 			/* mendTheta! */
 			mendTheta (*axion);
 		}
@@ -1242,12 +1353,14 @@ LogMsg (VERB_NORMAL, "Ic... \n");
 	if (cDev == DEV_GPU)
 		(*axion)->transferDev(FIELD_MV);
 
-	prof.stop();
-	prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*(*axion)->DataSize() + 77.)*1.e-9);
-
 	LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 
 }
+
+
+
+
+
 
 
 
