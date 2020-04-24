@@ -498,7 +498,7 @@ def gm(address,something='summary',printerror=False):
     st_check = ('string' in f)
     if (something[0:2] == 'st') and ftype == 'Axion':
         return 0. ;
-    if (something[0:2] == 'st' or something[0:2] == 'xi') and st_check and ftype == 'Saxion':
+    if (something[0:2] == 'st' or something == 'xi') and st_check :
         if (something == 'stringN'):
             return f['string'].attrs[u'String number'] ;
         if (something == 'stringL'):
