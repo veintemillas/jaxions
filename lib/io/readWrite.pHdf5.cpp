@@ -1032,8 +1032,11 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 						vqcdType = V_QCD1;
 					}
 				}
-				else
+				else {
 					LogMsg (VERB_NORMAL, "V_QCD (commandline) = %d", myCosmos->QcdPot() & V_QCD);
+					vqcdType |= (myCosmos->QcdPot() & V_QCD);
+				}
+
 			}
 
 			/* V_PQ potential type */
@@ -1051,8 +1054,10 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 					vqcdType |= V_PQ1;
 				}
 			}
-			else
+			else {
 				LogMsg (VERB_NORMAL, "V_PQ (commandline) = %d", myCosmos->QcdPot() & V_PQ);
+				vqcdType |= (myCosmos->QcdPot() & V_PQ);
+			}
 
 
 			if ( (myCosmos->QcdPot() & V_DAMP) == V_NONE) {
@@ -1069,9 +1074,10 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 					LogError ("Error reading file %s: invalid damping type %s. Ignoring damping", base, vStr);
 				}
 			}
-			else
+			else {
 				LogMsg (VERB_NORMAL, "V_DAMP (commandline) = %d", myCosmos->QcdPot() & V_DAMP);
-
+				vqcdType |= (myCosmos->QcdPot() & V_DAMP);
+			}
 
 			if ( (myCosmos->QcdPot() & V_EVOL_RHO) == V_NONE) {
 
@@ -1085,9 +1091,11 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 					LogError ("Error reading file %s: invalid rho evolution type %s. Ignoring rho evolution", base, vStr);
 				}
 			}
-			else
+			else {
 				LogMsg (VERB_NORMAL, "V_EVOL_RHO (commandline)");
-
+				vqcdType |= (myCosmos->QcdPot() & V_EVOL_RHO);
+			}
+			
 			myCosmos->SetQcdPot(vqcdType);
 			LogMsg (VERB_NORMAL, "QcdPot set to %d\n",myCosmos->QcdPot());
 
