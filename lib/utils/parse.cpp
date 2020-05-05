@@ -796,6 +796,8 @@ int	parseArgs (int argc, char *argv[])
 		{
 			uPot = true;
 			vqcdType = V_QCD0 ;
+			indi3  = 0.0; 
+			uI3    = true;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -1941,6 +1943,11 @@ int	parseArgs (int argc, char *argv[])
 				cType = CONF_SPAX; // legacy
 				icdatst.cType =  CONF_SPAX;
 			}
+			else if (!strcmp(argv[i+1], "spsax"))
+			{
+				cType = CONF_SPAX; // legacy
+				icdatst.cType =  CONF_SPAX;
+			}
 
 			else
 			{
@@ -2443,8 +2450,8 @@ if (icdatst.cType == CONF_SMOOTH )
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;
 
-		/* Adjust time of initial conditions if --vilgor used */
-	if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
+		/* Adjust time of initial conditions if logi is given instead of zi */
+	// if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
 			{
 				if (uLogi && uZin) {
 					printf("Error: zi and logi given for vilgor initial conditions\n ");
