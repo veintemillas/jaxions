@@ -82,15 +82,11 @@ if len(sys.argv) == 2:
         mode = 'imag'
         mapa = 'map/m'
         print('imaginary part of m/|m|')
-    elif (sys.argv[-1] == 'N'):
-        mode = 'Naxion'
-        mapa = 'map/m'
-        print('|theta|')
 
 if len(sys.argv) == 3:
     if (sys.argv[-2] == 'map'):
         mode = 'map'
-        mapa = 'map/'+sys.argv[-1]
+        mapa = sys.argv[-1]
         print('mode map -> ',mapa)
 
 prefileMeas = sorted([x for x in [y for y in os.listdir("./")] if re.search("axion.m.[0-9]{5}$", x)])
@@ -116,6 +112,17 @@ zData = []
 for meas in fileMeas:
 #			print(meas)
     fileHdf5 = h5py.File(meas, "r")
+    if (mode == 'map'):
+        aData  = np.array(fileHdf5[mapa][()])
+        Lx = len(aData)
+        for i in range(len(aData)):
+            Lx = Lx//2
+            if (Lx*Lx == len(aData)):
+                break
+        print(Lx)
+        aData  = np.mod(aData.reshape(Lx,Lx),2*np.pi)-np.pi
+
+
     zR = fileHdf5["/"].attrs.get("z")
     R  = fileHdf5["/"].attrs.get("R")
     fl = fileHdf5["/"].attrs.get("Field type").decode()
@@ -199,8 +206,6 @@ for meas in fileMeas:
             mTmp  = fileHdf5['map']['m'][()].reshape(Ly,Lx,2)
             mAmA  = fileHdf5["/"].attrs.get("Axion mass")
             aData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)/(mAmA*R**3))
-    if (mode == 'map'):
-        aData  = fileHdf5[mapa][()].reshape(Ly,Lx)
 
         # possible but not coded yet
         # elif fl == "Axion":
