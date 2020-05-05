@@ -669,9 +669,20 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 
 	/* Field m */
 	prof.start();
+
 	ic.fieldindex = FIELD_M;
 	randConf (axionField,ic);
 
+	/*exp new piece FIXME */
+	// if (ic.smvarType == CONF_RAND)
+	// if (ic.mode0 != 0.0){
+	// 	ic.fieldindex = FIELD_V;
+	// 	ic.smvarType = CONF_VELRAND;
+	// 	randConf (axionField,ic);
+	// 	mulmul(FIELD_M,FIELD_V);
+	// 	ic.fieldindex = FIELD_M;
+	// 	ic.smvarType = CONF_RAND;
+	// }
 
 	/* Field velocity */
 	if (ic.smvarType == CONF_STRWAVE){
