@@ -243,6 +243,7 @@
 			CONF_AXITON       = 9,
 			CONF_STRWAVE      = 10,
 			CONF_THETAVEL     = 11,
+			CONF_VELRAND      = 12,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
@@ -714,7 +715,7 @@
 			int           printradius ;
 			bool          gradients ;
 		}	AxitonInfo;
-		
+
 		// Data required for initial conditions
 		// or other configuration
 		typedef	struct	IcData_v
