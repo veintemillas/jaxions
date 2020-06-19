@@ -1560,7 +1560,8 @@ def aveq(qlist):
     q = q/Nreal
     qsq = (qsq - Nreal*q*q)/(Nreal-1)
     sigmaq = np.sqrt(qsq)
-    return [q,sigmaq,sigmaq/math.sqrt(Nreal)]
+    log = qlist[0].log
+    return [q,sigmaq,sigmaq/math.sqrt(Nreal),log]
 
 
 
