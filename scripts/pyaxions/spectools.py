@@ -1156,7 +1156,19 @@ class readF:
 #   self.xwr        flags to identify xlim
 #
 class Setq:
-    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, nbin=30, typesigma=1):
+    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, **kwargs):
+        if 'nbin' in kwargs:
+            nbin = kwargs['nbin']
+        else:
+            nbin = 30
+        if 'typesigma' in kwargs:
+            typesigma = kwargs['typesigma']
+        else:
+            typesigma = 1
+        if 'norebin' in kwargs:
+            norebin = kwargs['norebin']
+        else:
+            norebin = False
         Deltachisq = 1. # value of Deltachi^2 to define confidence interval
         x = inspx[id]
         inspmtab = inspy[id]
@@ -1191,6 +1203,12 @@ class Setq:
             # do not rebin if number of data points is less than nbin
             if len(xlim) < nbin:
                 #print(r' number of data points (%d) is less than nbin (%d)! (log = %.2f)'%(len(xlim),nbin,insplog[id]))
+                xbin = xlim
+                Fbin = inspmlim
+                nmbin = [1 for i in range(len(xlim))]
+                nbin = len(xlim)
+            # do not rebin for norebin option
+            elif norebin==True:
                 xbin = xlim
                 Fbin = inspmlim
                 nmbin = [1 for i in range(len(xlim))]
@@ -1343,7 +1361,23 @@ class Setq:
 #   self.log     　　array for log(m/H)
 #
 class Scanq:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6., typesigma=1, verbose=True):
+    def __init__(self, inspx, inspy, insplog, cxmin=30., cxmax=1/6., **kwargs):
+        if 'nbin' in kwargs:
+            nb = kwargs['nbin']
+        else:
+            nb = 30
+        if 'typesigma' in kwargs:
+            types = kwargs['typesigma']
+        else:
+            types = 1
+        if 'norebin' in kwargs:
+            noreb = kwargs['norebin']
+        else:
+            noreb = False
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -1360,12 +1394,12 @@ class Scanq:
         self.gammam = []
         self.nmbin = []
         for id in range(len(insplog)):
-            if verbose:
+            if verbose==True:
                 print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
-            sqt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin,typesigma)
+            sqt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
             self.chi2min.append(sqt.chi2min)
             self.qbest.append(sqt.qbest)
             self.mbest.append(sqt.mbest)
@@ -1381,7 +1415,7 @@ class Scanq:
             self.betam.append(sqt.betam)
             self.gammam.append(sqt.gammam)
             self.nmbin.append(sqt.nmbin)
-        if verbose:
+        if verbose==True:
             print("")
         self.chi2min = np.array(self.chi2min)
         self.qbest = np.array(self.qbest)
@@ -1446,7 +1480,23 @@ class Scanq:
 #   self.cxmaxopt   array for optimized values of cxmax
 #
 class Scanqopt:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, typesigma=1, verbose=True):
+    def __init__(self, inspx, inspy, insplog, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, **kwargs):
+        if 'nbin' in kwargs:
+            nb = kwargs['nbin']
+        else:
+            nb = 30
+        if 'typesigma' in kwargs:
+            types = kwargs['typesigma']
+        else:
+            types = 1
+        if 'norebin' in kwargs:
+            noreb = kwargs['norebin']
+        else:
+            noreb = False
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -1464,17 +1514,17 @@ class Scanqopt:
         self.nmbin = []
         self.cxmaxopt = []
         for id in range(len(insplog)):
-            if verbose:
+            if verbose==True:
                 print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
-            sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin,typesigma)
+            sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin=nb,typesigma=types,norebin=noreb)
             sigmaq = sqt.sigmaq
             copt = cxmaxstart
             for c in np.linspace(cxmaxstart,cxmaxend,cxmaxpoints)[1:]:
                 #print('\rcxmax = %.3f'%c)
                 xmax = c*msoverH
-                sqtt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin,typesigma)
+                sqtt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
                 sigmaqt = sqtt.sigmaq
                 if sigmaqt < sigmaq:
                     sqt = sqtt
@@ -1497,7 +1547,7 @@ class Scanqopt:
             self.gammam.append(sqt.gammam)
             self.nmbin.append(sqt.nmbin)
             self.cxmaxopt.append(copt)
-        if verbose:
+        if verbose==True:
             print("")
         self.chi2min = np.array(self.chi2min)
         self.qbest = np.array(self.qbest)
