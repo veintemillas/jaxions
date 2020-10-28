@@ -23,6 +23,7 @@ double wDz    = 0.8;
 int    fIndex = -1;
 int    fIndex2 = 0;
 int    slicepp = 0;
+int    cumumas = -1;
 
 double sizeL = 4.;
 double zInit = 0.5;
@@ -138,6 +139,7 @@ bool p3dwalls	  = false;
 bool pconfinal 	  = false;
 bool pconfinalwkb = false;
 bool restart_flag = false;
+bool cummask      = false;
 
 bool mCreateOut = false;
 bool bopt = true;
@@ -453,13 +455,16 @@ void	PrintMEoptions()
 	printf("    Gaussian                               16 \n");
 	printf("    Diffusion from core top hat            32 \n");
 	printf("    Ball                                   64 \n");
-	printf("     --rmask [float]                       Mask radius in 1/m_s units [default = 2]\n");
+	printf("    Axiton Ball                            512 \n");
+	printf("    Axiton FT                              1024 \n");
+	printf("     --rmask [float]                       Mask radius (for strings in 1/m_s units) [default = 2]\n");
 	printf("     --rmask file                          Prints different spectra, each masked \n");
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
-	printf("                                           (Red and Gas modes) \n\n");
-	printf("  --printmask                              Prints the mask (experimental)\n\n");
+	printf("                                           (Red, Gaus, Axit12 modes) \n\n");
+	printf("  --printmask                              Prints the mask\n\n");
 	printf("  --ng0calib                               Parameter tunning the exponential masking (default 1.25)\n");
 	printf("                                           (Any negative value gives the old calibration)\n\n");
+	printf("  --cummask [int > 0]                      Mask region is not reset at each meas. Can only increase. (default no)\n\n");
 
 	printf("  Options for String Measurement \n");
 	printf("  --strmeas [int]            Sum of integers.\n");
@@ -796,7 +801,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			uPot = true;
 			vqcdType = V_QCD0 ;
-			indi3  = 0.0; 
+			indi3  = 0.0;
 			uI3    = true;
 			procArgs++;
 			passed = true;
@@ -879,11 +884,11 @@ int	parseArgs (int argc, char *argv[])
 
 			sscanf(argv[i+1], "%zu", &sizeZ);
 
-			if (sizeZ < 2)
-			{
-				printf("Error: Size must be larger than 2.\n");
-				exit(1);
-			}
+			// if (sizeZ < 2)
+			// {
+			// 	printf("Error: Size must be larger than 2.\n");
+			// 	exit(1);
+			// }
 
 			i++;
 			procArgs++;
@@ -2246,19 +2251,34 @@ int	parseArgs (int argc, char *argv[])
 			goto endFor;
 		}
 
-                if (!strcmp(argv[i], "--ng0calib"))
+    if (!strcmp(argv[i], "--ng0calib"))
 		{
 		         if (i+1 == argc)
 		         {
 		         printf("Error: I need a value for ng0calib.\n");
 		         exit(1);
 		         }
-                         ng0calib = atof(argv[i+1]);
+            ng0calib = atof(argv[i+1]);
 
 			 i++;
 		         procArgs++;
 		         passed = true;
 		         goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--cummask"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for cummask.\n");
+				exit(1);
+			}
+			cumumas = atoi(argv[i+1]);
+
+			i++;
+			procArgs++;
+			passed = true;
+			goto endFor;
 		}
 
 		if (!strcmp(argv[i], "--nologmpi"))
@@ -2315,11 +2335,11 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (Nng*2 > (int) sizeZ) {
-		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Nng%d,sizeZ%d,%d,%d)\n",Nng,sizeZ,Nng*2, Nng*2> sizeZ);
-		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
-		exit(1);
-}
+// 	if (Nng*2 > (int) sizeZ) {
+// 		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Nng%d,sizeZ%d,%d,%d)\n",Nng,sizeZ,Nng*2, Nng*2> sizeZ);
+// 		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
+// 		exit(1);
+// }
 
 //obsolete!
 if (icdatst.cType == CONF_SMOOTH )
@@ -2485,6 +2505,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.measCPU  = measCPU;
 	deninfa.cTimesec = 0.0;
 	deninfa.propstep = 0;
+	deninfa.cummask = cumumas;
 
 	// default measurement type is parsed
 	deninfa.measdata = defaultmeasType;

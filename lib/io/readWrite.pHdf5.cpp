@@ -22,6 +22,10 @@
 #include "utils/simpleops.h"
 #include "scalar/mendTheta.h"
 
+#ifdef USE_NYX_OUTPUT
+	#include "io/output_nyx.h"
+#endif
+
 #define caspr(lab,var,str)   \
 	case lab:                  \
 	sprintf(var, str);         \
@@ -714,11 +718,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	/*	Fold back the field	*/
 
-	if (wasFolded)
-	{
-		(*munge)(FOLD_ALL);
-		delete	munge;
-	}
+	// if (wasFolded)
+	// {
+	// 	(*munge)(FOLD_ALL);
+	// 	delete	munge;
+	// }
 }
 
 
@@ -1095,7 +1099,7 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 				LogMsg (VERB_NORMAL, "V_EVOL_RHO (commandline)");
 				vqcdType |= (myCosmos->QcdPot() & V_EVOL_RHO);
 			}
-			
+
 			myCosmos->SetQcdPot(vqcdType);
 			LogMsg (VERB_NORMAL, "QcdPot set to %d\n",myCosmos->QcdPot());
 
@@ -4107,3 +4111,21 @@ void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 
 	LogMsg (VERB_HIGH, "Metadata written");
 }
+
+#ifdef USE_NYX_OUTPUT
+	void writeConfNyx(Scalar *axion, int index)
+	{
+		if (axion->Folded())
+		{
+			Folder	*munge;
+			munge	= new Folder(axion);
+			(*munge)(UNFOLD_ALL);
+			delete munge;
+		}
+
+		LogMsg (VERB_NORMAL, "[rw] write Conf NYX called "); LogFlush();
+		amrex::nyx_output_plugin *morla;
+		morla = new amrex::nyx_output_plugin(axion);
+		delete morla;
+	}
+#endif

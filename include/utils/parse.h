@@ -108,7 +108,7 @@ extern bool           p3dwalls;
 extern bool           pconfinal;
 extern bool           pconfinalwkb ;
 extern bool           restart_flag ;
-
+extern bool           cummask ;
 int	parseArgs (int argc, char *argv[]);
 Cosmos	createCosmos();
 void	createOutput();

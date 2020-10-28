@@ -17,7 +17,6 @@ if(CURRENT_BUILD LESS 0)
   message(SEND_ERROR "Please specify a valid CMAKE_BUILD_TYPE type! Valid build types are: " "${VALID_BUILDS}")
 endif()
 
-
 #
 # PROJECT is Axions
 #
@@ -34,7 +33,10 @@ set(USE_AVX OFF CACHE BOOL "builds Avx support")
 set(USE_AVX2 OFF CACHE BOOL "builds Avx2 support")
 set(USE_AVX512 OFF CACHE BOOL "builds Avx-512 support")
 set(USE_FMA OFF CACHE BOOL "builds Fma support")
-set(HDF5_PARALLEL_COMPRESSION OFF CACHE BOOL "uses experimental parallel compression, requires Hdf5 1.11.0")
+set(HDF5_PARALLEL_COMPRESSION ON CACHE BOOL "uses experimental parallel compression, requires Hdf5 1.11.0")
+set(USE_NYX_OUTPUT OFF CACHE BOOL "To produce Nyx-compatible files")
+#set(USE_2D OFF CACHE BOOL "Uses only the Z=1 plane")
+
 
 # do all the build definitions
 #
@@ -45,17 +47,20 @@ include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 #find_package (HDF5 NAMES hdf5 COMPONENTS C STATIC)
 include_directories(SYSTEM ${HDF5_INCLUDE_DIR})
 
+
 find_package(OpenMP REQUIRED)
 
-find_library(FFTW_LIBRARY NAMES fftw3 fftw)
-find_library(FFTW_OMP_LIBRARY NAMES fftw3_omp fftw_omp)
-find_library(FFTW_MPI_LIBRARY NAMES fftw3_mpi fftw_mpi)
-find_library(FFTWF_LIBRARY NAMES fftw3f fftwf PATHS $FFTW_HOME)
-find_library(FFTWF_OMP_LIBRARY NAMES fftw3f_omp fftwf_omp)
-find_library(FFTWF_MPI_LIBRARY NAMES fftw3f_mpi fftwf_mpi)
-find_library(HDF5_LIBRARY NAMES hdf5 PATHS $HDF5_HOME)
-find_library(GSL_LIBRARY NAMES gsl PATHS $GSL_HOME)
-find_library(GSL_CBLAS_LIBRARY NAMES gslcblas PATHS PATHS $GSL_HOME)
+find_library(FFTW_LIBRARY      NAMES fftw3 fftw           PATHS $FFTW_LIB)
+find_library(FFTW_LIBRARY      NAMES fftw3 fftw           PATHS $FFTW_LIB)
+find_library(FFTW_OMP_LIBRARY  NAMES fftw3_omp fftw_omp   PATHS $FFTW_LIB)
+find_library(FFTW_MPI_LIBRARY  NAMES fftw3_mpi fftw_mpi   PATHS $FFTW_LIB)
+find_library(FFTWF_LIBRARY     NAMES fftw3f fftwf         PATHS $FFTW_LIB)
+find_library(FFTWF_OMP_LIBRARY NAMES fftw3f_omp fftwf_omp PATHS $FFTW_LIB)
+find_library(FFTWF_MPI_LIBRARY NAMES fftw3f_mpi fftwf_mpi PATHS $FFTW_LIB)
+find_library(HDF5_LIBRARY      NAMES hdf5                 PATHS $HDF5_LIB)
+find_library(GSL_LIBRARY       NAMES gsl                  PATHS $GSL_HOME)
+find_library(GSL_CBLAS_LIBRARY NAMES gslcblas             PATHS $GSL_HOME)
+
 if(${USE_GPU})
   add_definitions(-DUSE_GPU)
   set(GPU_ARCH sm_35 CACHE STRING "set the GPU architecture (sm_30, sm_35, sm_50, sm_52, sm_60, sm_61, sm_62, sm_70)")
@@ -106,8 +111,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" 
     set(SSE_FLAGS "-msse4.1")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} -mcmodel=medium -std=c++14")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} -mcmodel=medium -std=c++14")
+# AMReX
+if(${USE_NYX_OUTPUT})
+  list(APPEND CMAKE_PREFIX_PATH "$ENV{AMReX_DIR}/Tools/CMake")
+  find_package(AMReX REQUIRED NAMES "AMReX_" )
+  find_library(AMReX_LIBRARY NAMES amrex PATHS "$ENV{AMREX_LIBRARY_HOME}/lib")
+  set(NYX_FLAGS "-DUSE_NYX_OUTPUT")
+  include_directories("$ENV{AMREX_LIBRARY_HOME}/include")
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} -mcmodel=medium -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} -mcmodel=medium -std=c++14")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wa,-q -lc++")
@@ -122,6 +136,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Wall -g -fno-inline" CACHE STRING
     "Flags used by the C++ compiler during debug builds." FORCE )
 
 
+
+include_directories("$ENV{FFTW_INC}")
+include_directories("$ENV{HDF5_INC}")
 include_directories(include)
 include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
 
