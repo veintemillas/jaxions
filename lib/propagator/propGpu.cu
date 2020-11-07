@@ -30,6 +30,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 
 			default:
 			case	V_QCDC:
+			case	V_QCDL:
 			zN = (Float) (zQ*z) * complex<Float>(1,-1);
 			break;
 	}
@@ -85,11 +86,17 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 		case	V_QCD2:
 			a  -= tmp*zN;
 			break;
-		// case	V_QCDC:
-		// 	a  += (1 - tmp)*zQ;
-		// 	break;
+		case	V_QCDC:
+			{
+			Float pota = 1/pot*sqrt(pot);
+			mel = complex<Float>(tmp.imag()*tmp.imag(),tmp.imag()*tmp.real());
+			a  -= pota*mel*zN;
+			}
+			break;
 		case	V_QCDL:
-		/*TODO*/
+			mel = complex<Float>(tmp.imag(),tmp.real());
+			a += mel*atan2(tmp.real(),tmp.imag())*zN/pot;
+			break;
 		case	V_QCD0:
 			break;
 	}
@@ -145,6 +152,8 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		     const double LL, const double aMass2, const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
 		     const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+	if (Vo>Vf)
+		return ;
 /*
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
@@ -416,6 +425,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 
 			default:
 			case	V_QCDC:
+			case	V_QCDL:
 			zN = (Float) (zQ*z) * complex<Float>(1,-1);
 			break;
 	}
@@ -471,11 +481,16 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 		case	V_QCD2:
 			a  -= tmp*zN;
 			break;
-		// case	V_QCDC:
-		// 	a  += (1 - tmp)*zQ;
-		// 	break;
+		case	V_QCDC:
+			{
+			Float pota = 1/pot*sqrt(pot);
+			mel = complex<Float>(tmp.imag()*tmp.imag(),tmp.imag()*tmp.real());
+			a  -= pota*mel*zN;
+			}
+			break;
 		case	V_QCDL:
-		/*TODO*/
+			mel = complex<Float>(tmp.imag(),tmp.real());
+			a += mel*atan2(tmp.real(),tmp.imag())*zN/pot;
 			break;
 		case	V_QCD0:
 			break;
@@ -571,6 +586,8 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, double *z, c
 		   const double gamma, const uint Lx, const uint Lz, const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision,
 		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+	if (Vo>Vf)
+		return ;
 /*
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);

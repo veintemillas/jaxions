@@ -83,6 +83,7 @@
 			STRING_WALL	       = 64,
 			STRING_DEFECT      = 127,
 			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
+			STRING_IMPOSSIBLE  = 256,     //used for comparisons
 		}	StringType;
 
 		typedef	enum	LambdaType_s
@@ -694,6 +695,7 @@
 			bool                measCPU;
 			double              cTimesec;
 			int                 propstep;
+			int								  cummask;
 		}	MeasInfo;
 
 		// data output by measurement function to program

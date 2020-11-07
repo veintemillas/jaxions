@@ -176,10 +176,10 @@
 
 		}
 
-		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO, StatusM2 out = M2_MASK);
+		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO, StatusM2 out = M2_MASK, bool l_cumsum = false);
 
 		template<typename Float, SpectrumMaskType mask>
-		void	masker	(double radius_mask, StatusM2 out);
+		void	masker	(double radius_mask, StatusM2 out, bool l_cumsum);
 
 		void	matrixbuilder	();
 
