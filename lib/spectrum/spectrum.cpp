@@ -1214,7 +1214,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 													m2sa[odx] = 0 ;
 											}
 											else{
-												m2sa[odx]  = mass*Rscale*std::arg(ma[idx]-zaskaF);
+													m2sa[odx]  = mass*Rscale*std::arg(ma[idx]-zaskaF);
 											}
 											break;
 									case SPMASK_VIL:
@@ -1334,10 +1334,54 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 			myPlan.run(FFT_FWD);
 
+		if (spec)
+			fillBins<Float,  SPECTRUM_K, true> ();
+		else
+			fillBins<Float,  SPECTRUM_K, false>();
+
+		/* If cosine potential the energy is
+		R^-4 [ (psi')^2/2 + (grad phi)^2/2 + m2 R^4 (1-cos(psi/R)) ]
+		in the linear regime the potential term is simply
+		m2 R^2 psi^2/2
+		the non0-linear term can be written as
+		m2 R^4 (2 sin^2(psi/2R))
+		which suggests to generalise
+		m2 R^2/2 psi^2 -> m2 R^2/2 (4R^2 sin^2(psi/2R))
+		and compute the FT not of psi, but of 2R sin(psi/R)
+
+
+		Float iR = 1./(Rscale*2);
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*iz ;
+					size_t zi = Ly*Ly*iz ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+							switch(mask){
+								default:
+								case SPMASK_FLAT:
+											m2[odx] = 2*std::sin(m[idx] * iR);
+										break;
+								case SPMASK_AXIT2:
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = 2*std::sin(m[idx] * iR);
+										break;
+							} //end mask
+					}}} // end last volume loop
+
+			myPlan.run(FFT_FWD);
+
 			if (spec)
 				fillBins<Float,  SPECTRUM_K, true> ();
 			else
 				fillBins<Float,  SPECTRUM_K, false>();
+		*/
 
 			field->setM2     (M2_DIRTY);
 		}
