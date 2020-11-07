@@ -723,6 +723,11 @@ void	checkTime (Scalar *axion, int index) {
 		fclose (capa);
 	}
 
+	FILE *capo = nullptr;
+	if (!((capo  = fopen("./save", "r")) == nullptr)){
+		flag = 3;
+		fclose (capo);
+	}
 
 	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -737,29 +742,52 @@ void	checkTime (Scalar *axion, int index) {
 	if (done) {
 		if (cDev == DEV_GPU)
 			axion->transferCpu(FIELD_MV);
-		if (flag ==2){
-			LogMsg(VERB_NORMAL, "[VAX checkTime %d] stop file detected! stopping ... ",index);
-			LogOut ("Interrupted manually with stop file ...");
-		}
 		if (flag ==1){
 			LogMsg(VERB_NORMAL, "[VAX checkTime %d] Walltime reached ",index);
 			LogOut ("Walltime reached, dumping configuration...");
+			writeConf(axion, index, 1);
+			LogOut ("Done!\n");
+
+			LogOut("z Final = %f\n", *axion->zV());
+			LogOut("nPrints = %i\n", index);
+
+			LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+			LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+
+			delete axion;
+
+			endAxions();
+
+			exit(0);
+
+		}
+		if (flag ==2){
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] stop file detected! stopping ... ",index);
+			LogOut ("Interrupted manually with stop file ...");
+			writeConf(axion, index, 1);
+			LogOut ("Done!\n");
+
+			LogOut("z Final = %f\n", *axion->zV());
+			LogOut("nPrints = %i\n", index);
+
+			LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+			LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+
+			delete axion;
+
+			endAxions();
+
+			exit(0);
+
 		}
 
-		writeConf(axion, index, 1);
-		LogOut ("Done!\n");
+		if (flag ==3){
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] save file detected! saving ... ",index);
+			writeConf(axion, index);
+			commSync();
+			remove( "./save" );
+		}
 
-		LogOut("z Final = %f\n", *axion->zV());
-		LogOut("nPrints = %i\n", index);
-
-		LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
-		LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
-
-		delete axion;
-
-		endAxions();
-
-		exit(0);
 	}
 }
 
