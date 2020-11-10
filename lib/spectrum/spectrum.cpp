@@ -981,10 +981,12 @@ void	SpecBin::nRun	(nRunType nrt) {
 	binK.assign(powMax, 0.);
 	binG.assign(powMax, 0.);
 	binV.assign(powMax, 0.);
+	binVnl.assign(powMax, 0.);
 
 	binNK.assign(powMax, 0.);
 	binNG.assign(powMax, 0.);
 	binNV.assign(powMax, 0.);
+	binNVnl.assign(powMax, 0.);
 
 	if (mask == SPMASK_SAXI)
 	{
@@ -1331,13 +1333,16 @@ void	SpecBin::nRun	(nRunType nrt) {
 							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 							switch(mask){
+								case SPMASK_VIL:
+										m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+									break;
 								default:
 								case SPMASK_AXIT2:
-											if (strdaa[idx] & STRING_MASK)
-													m2[odx] = 0 ;
-											else
-													m2[odx] = m[idx];
-										break;
+										if (strdaa[idx] & STRING_MASK)
+												m2[odx] = 0 ;
+										else
+												m2[odx] = m[idx];
+									break;
 							} //end mask
 					}}} // end last volume loop
 			}
@@ -1418,10 +1423,10 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 								switch(mask){
-									default:
 									case SPMASK_FLAT:
 												m2[odx] = R2*std::sin(m[idx] * iR2);
 											break;
+									default:
 									case SPMASK_AXIT2:
 												if (strdaa[idx] & STRING_MASK)
 														m2[odx] = 0 ;
@@ -2305,6 +2310,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 
 		case SPMASK_AXIT:
 		case SPMASK_AXIT2:
+		case SPMASK_AXITV:
 			// LogMsg(VERB_NORMAL,"[masker] Axiton M2status %d ! \n",field->m2Status());
 			// if (field->sDStatus() == SD_AXITONMASK){
 			// 	LogMsg(VERB_NORMAL,"[masker] masker called but mask already in place! exit!\n");
@@ -2823,6 +2829,9 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 			// threshold of the energy density [energy ]
 			Float RRRRRR = (Float) *field->RV();
 			Float ethres = (Float) 2*field->AxionMassSq();
+			if (mask == SPMASK_AXITV)
+				ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
+
 			Float iR     = 1/RRRRRR;
 			Float tthres = std::sqrt(12/ethres)*iR/field->Delta();
 			if( tthres > 3)
@@ -2877,6 +2886,10 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							m2sa[oidx] = 0.0;
 							strdaa[idx] = STRING_NOTHING;
 						}
+					break;
+
+					case SPMASK_AXITV:
+						m2sa[oidx] = m2sax[idx]*0.5*(1-std::tanh(5*(m2sax[idx]/ethres - 1)));
 					break;
 
 				} //end mask switch
@@ -3034,6 +3047,39 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 				}
 				break;
 
+				case SPMASK_AXITV:
+				{
+
+							field->setM2(M2_ENERGY_AXI);
+
+							LogMsg(VERB_PARANOID,"[masker] computing PS");
+							auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+							myPlan.run(FFT_FWD);
+							field->setM2(M2_ENERGY_MASK_AXI_FFT);
+
+							LogMsg(VERB_PARANOID,"[masker] filling masked eA spectrum bins (masked)");
+							binP.assign(powMax, 0.);
+							switch (fPrec) {
+								case	FIELD_SINGLE:
+									if (spec)
+										fillBins<float,  SPECTRUM_P, true> ();
+									else
+										fillBins<float,  SPECTRUM_P, false>();
+									break;
+
+								case	FIELD_DOUBLE:
+									if (spec)
+										fillBins<double,  SPECTRUM_P, true> ();
+									else
+										fillBins<double,  SPECTRUM_P, false>();
+									break;
+
+								default:
+									LogError ("Wrong precision");
+									break;
+							}
+				}
+				break;
 				default:
 				LogError("[masker axion] Error: Axion mode but no axiton mask!!");
 				break;

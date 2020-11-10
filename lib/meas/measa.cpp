@@ -641,7 +641,6 @@ writePMapHdf5s (axiona, LAB);
 							sprintf(LABEL, "sS_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
-
 						}
 						}
 

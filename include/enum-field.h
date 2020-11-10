@@ -519,6 +519,7 @@
 
 			SPMASK_AXIT	= 512,
 			SPMASK_AXIT2= 1024,
+			SPMASK_AXITV= 2048,
 		}	SpectrumMaskType;
 
 		typedef	enum	nRunType_s {
