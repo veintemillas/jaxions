@@ -31,7 +31,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "\n ");
 	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
-
+LogMsg(VERB_NORMAL,"cummask %d %d %d\n",info.cummask,deninfa.cummask,cummask);
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
 		LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
@@ -64,8 +64,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (axiona->Field() == FIELD_SAXION)
 		mask = mask & (SPMASK_FLAT | SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF | SPMASK_BALL);
 	else if (axiona->Field() == FIELD_AXION){
-		if (mask & (SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
-			mask = mask | SPMASK_FLAT;
+		// if (mask & (SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
+		// 	mask = mask | SPMASK_FLAT;
 		mask = mask & (SPMASK_FLAT | SPMASK_AXIT | SPMASK_AXIT2);
 		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask corrected = %d",mask);
 		}
@@ -129,6 +129,10 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa & MEAS_3DMAP){
 		LogMsg(VERB_NORMAL, "[Meas %d] Sav3 3D configuration", indexa);
 		writeConf(axiona, indexa);
+#ifdef USE_NYX_OUTPUT
+		LogMsg(VERB_NORMAL, "[Meas %d] Save NYX 3D conf", indexa);
+		writeConfNyx(axiona,indexa);
+#endif
 		MeasureType mesa = measa;
 		measa = measa ^ MEAS_3DMAP ; // removes the map
 		// LogOut("mesa %d measa %d MEAS3DMAP %d\n", mesa, measa, MEAS_3DMAP);
@@ -271,7 +275,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,info.rmask_tab[ii]);
 								char PRELABEL[256];
 									sprintf(PRELABEL, "%s_%.2f", "sPmasked",info.rmask_tab[ii]);
-										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY);
+										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
 											prof.stop();
@@ -285,7 +289,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,info.rmask_tab[ii]);
 								char PRELABEL[256];
 									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",info.rmask_tab[ii]);
-										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY);
+										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
 											prof.stop();
@@ -487,7 +491,7 @@ writePMapHdf5s (axiona, LAB);
 
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							prof.start();
-							specAna.masker(rmasktab[ii], maskara[i], M2_ANTIMASK); // produces antimask in M2 to export
+							specAna.masker(rmasktab[ii], maskara[i], M2_ANTIMASK,cummask); // produces antimask in M2 to export
 							prof.stop();
 							sprintf(LABEL, "Masker %s", masklab[i].c_str());
 							prof.add(std::string(LABEL), 0.0, 0.0);
@@ -576,7 +580,7 @@ writePMapHdf5s (axiona, LAB);
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 								prof.start();
 
-									specAna.masker(rmasktab[ii], maskara[i]);
+									specAna.masker(rmasktab[ii], maskara[i], M2_MASK, cummask);
 										prof.stop();
 											sprintf(LABEL, "Masker %s", masklab[i].c_str());
 												prof.add(std::string(LABEL), 0.0, 0.0);
@@ -877,7 +881,14 @@ writePMapHdf5s (axiona, LAB);
 // axiona->transferDev(FIELD_MV);
 // }
 
+// After the first measurement we switch cumulative mask buiding
+if (deninfa.cummask > 0){
+	cummask = true;
+	LogMsg(VERB_NORMAL, "[Meas %d] Set cummask to %d (false/true = 1/0)",indexa,cummask);
+}
 
+
+// Return to GPU if needed
 if (info.measCPU && wasGPU)
 		axiona->setDev(DEV_GPU);
 
