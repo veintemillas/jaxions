@@ -2485,7 +2485,7 @@ if (icdatst.cType == CONF_SMOOTH )
 						uZin = true;
 				}
 					else if (!uLogi && uZin) {
-					printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
+					// printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
 					if (lType == LAMBDA_FIXED)
 						icdatst.logi = log(sqrt(2*LL)*icdatst.zi*icdatst.zi);
 						else
