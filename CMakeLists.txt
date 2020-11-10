@@ -140,6 +140,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Wall -g -fno-inline" CACHE STRING
 include_directories("$ENV{FFTW_HOME}/include")
 include_directories("$ENV{HDF5_HOME}/include")
 include_directories("$ENV{GSL_HOME}/include")
+
 include_directories(include)
 include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
 

@@ -502,6 +502,8 @@
 			SPECTRUM_KK = 512,
 			SPECTRUM_GG = 1024,
 			SPECTRUM_VV	= 2048,
+			SPECTRUM_VNL	= 4096,
+			SPECTRUM_VVNL	= 8192,
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
@@ -517,6 +519,7 @@
 
 			SPMASK_AXIT	= 512,
 			SPMASK_AXIT2= 1024,
+			SPMASK_AXITV= 2048,
 		}	SpectrumMaskType;
 
 		typedef	enum	nRunType_s {
