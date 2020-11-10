@@ -33,6 +33,7 @@ void	SpecBin::fillCosTable () {
 template<typename Float, const SpectrumType sType, const bool spectral>
 void	SpecBin::fillBins	() {
 
+	LogMsg(VERB_HIGH,"[FB] Filling beans sType %d ",sType) ;LogFlush();
 	using cFloat = std::complex<Float>;
 
 	/* The factor that will multiply the |ft|^2, taken to be L^3/(2 N^6) */
@@ -45,9 +46,11 @@ void	SpecBin::fillBins	() {
 	std::vector<double>	tBinK;
 	std::vector<double>	tBinG;
 	std::vector<double>	tBinV;
+	std::vector<double>	tBinVnl;
 	std::vector<double>	tBinNK;
 	std::vector<double>	tBinNG;
 	std::vector<double>	tBinNV;
+	std::vector<double>	tBinNVnl;
 	std::vector<double>	tBinP;
 	std::vector<double>	tBinPS;
 	std::vector<double>	tBinNN;
@@ -99,6 +102,13 @@ void	SpecBin::fillBins	() {
 			tBinV.assign(powMax*mIdx, 0);
 			tBinNV.resize(powMax*mIdx);
 			tBinNV.assign(powMax*mIdx, 0);
+			break;
+
+		case	SPECTRUM_VNL:
+			tBinVnl.resize(powMax*mIdx);
+			tBinVnl.assign(powMax*mIdx, 0);
+			tBinNVnl.resize(powMax*mIdx);
+			tBinNVnl.assign(powMax*mIdx, 0);
 			break;
 
 		default:
@@ -165,6 +175,7 @@ void	SpecBin::fillBins	() {
 				case 	SPECTRUM_GaS:
 				case 	SPECTRUM_GaSadd:
 				case 	SPECTRUM_VV:
+				case 	SPECTRUM_VNL:
 					k2 *= (4.*M_PI*M_PI)/(field->BckGnd()->PhysSize()*field->BckGnd()->PhysSize());
 					w  = sqrt(k2 + mass2);
 					m  = std::abs(static_cast<cFloat *>(field->m2Cpu())[idx]);
@@ -257,6 +268,10 @@ void	SpecBin::fillBins	() {
 					tBinV.at(myBin + powMax*tIdx) += m2*mass2;
 					tBinNV.at(myBin + powMax*tIdx) += m2*mass2/w;
 					break;
+				case	SPECTRUM_VNL:
+					tBinVnl.at(myBin + powMax*tIdx) += m2*mass2;
+					tBinNVnl.at(myBin + powMax*tIdx) += m2*mass2/w;
+					break;
 				case	SPECTRUM_VS:
 					// mw = m2/w;
 					tBinV.at(myBin + powMax*tIdx) += m2*mass2Sax;
@@ -321,6 +336,10 @@ void	SpecBin::fillBins	() {
 						binV[j] += tBinV[j + i*powMax]*norm;
 						binNV[j] += tBinNV[j + i*powMax]*norm;
 						break;
+					case	SPECTRUM_VNL:
+						binVnl[j] += tBinVnl[j + i*powMax]*norm;
+						binNVnl[j] += tBinNVnl[j + i*powMax]*norm;
+						break;
 					case	SPECTRUM_P:
 						binP[j] += tBinP[j + i*powMax]*norm;
 						break;
@@ -346,7 +365,7 @@ void	SpecBin::fillBins	() {
 		}
 	}
 
-	switch	(sType) {
+switch	(sType) {
 		case	SPECTRUM_K:
 		case	SPECTRUM_KK:
 		case	SPECTRUM_KS:
@@ -396,6 +415,13 @@ void	SpecBin::fillBins	() {
 			MPI_Allreduce(tBinNV.data(), binNV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 
+		case	SPECTRUM_VNL:
+			std::copy_n(binVnl.begin(), powMax, tBinVnl.begin());
+			MPI_Allreduce(tBinVnl.data(), binVnl.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			std::copy_n(binNVnl.begin(), powMax, tBinNVnl.begin());
+			MPI_Allreduce(tBinNVnl.data(), binNVnl.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			break;
+
 		default:
 		case	SPECTRUM_GV:
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
@@ -408,6 +434,7 @@ void	SpecBin::fillBins	() {
 			MPI_Allreduce(tBinNV.data(), binNV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			break;
 	}
+	LogMsg(VERB_NORMAL,"[FB] Bins filled sType = %d", sType) ;
 }
 
 /* masks a spherical ball around a set of points with mpi
@@ -1355,10 +1382,10 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 			myPlan.run(FFT_FWD);
 
-		if (spec)
-			fillBins<Float,  SPECTRUM_K, true> ();
-		else
-			fillBins<Float,  SPECTRUM_K, false>();
+			if (spec)
+				fillBins<Float,  SPECTRUM_K, true> ();
+			else
+				fillBins<Float,  SPECTRUM_K, false>();
 
 		/* If cosine potential the energy is
 		R^-4 [ (psi')^2/2 + (grad phi)^2/2 + m2 R^4 (1-cos(psi/R)) ]
@@ -1370,39 +1397,47 @@ void	SpecBin::nRun	(nRunType nrt) {
 		m2 R^2/2 psi^2 -> m2 R^2/2 (4R^2 sin^2(psi/2R))
 		and compute the FT not of psi, but of 2R sin(psi/R)
 
+		However, we will use the binning method SPECTRUM_VV
+		which requires to multiply by the mass-prefactor
+		as well, i.e.
 
-		Float iR = 1./(Rscale*2);
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-
-							switch(mask){
-								default:
-								case SPMASK_FLAT:
-											m2[odx] = 2*std::sin(m[idx] * iR);
-										break;
-								case SPMASK_AXIT2:
-											if (strdaa[idx] & STRING_MASK)
-													m2[odx] = 0 ;
-											else
-													m2[odx] = 2*std::sin(m[idx] * iR);
-										break;
-							} //end mask
-					}}} // end last volume loop
-
-			myPlan.run(FFT_FWD);
-
-			if (spec)
-				fillBins<Float,  SPECTRUM_K, true> ();
-			else
-				fillBins<Float,  SPECTRUM_K, false>();
 		*/
+			if (mass2 > 0)
+			{
+
+				Float R2   = (Float) Rscale*2;
+				Float iR2  = 1/R2;
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+								switch(mask){
+									default:
+									case SPMASK_FLAT:
+												m2[odx] = R2*std::sin(m[idx] * iR2);
+											break;
+									case SPMASK_AXIT2:
+												if (strdaa[idx] & STRING_MASK)
+														m2[odx] = 0 ;
+												else
+														m2[odx] = R2*std::sin(m[idx] * iR2);
+											break;
+								} //end mask
+						}}} // end last volume loop
+
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_VNL, true> ();
+				else
+					fillBins<Float,  SPECTRUM_VNL, false>();
+			}
 
 			field->setM2     (M2_DIRTY);
 		}

@@ -17,9 +17,11 @@
 		std::vector<double>	binK;
 		std::vector<double>	binG;
 		std::vector<double>	binV;
+		std::vector<double>	binVnl;
 		std::vector<double>	binNK;
 		std::vector<double>	binNG;
 		std::vector<double>	binNV;
+		std::vector<double>	binNVnl;
 		std::vector<double>	binP;
 		std::vector<double>	binPS;
 		std::vector<double>	binNN;
@@ -63,16 +65,18 @@
 				binK.resize(powMax); binK.assign(powMax, 0.);
 				binG.resize(powMax); binG.assign(powMax, 0.);
 				binV.resize(powMax); binV.assign(powMax, 0.);
+				binVnl.resize(powMax); binVnl.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
 				binPS.resize(powMax); binPS.assign(powMax, 0.);
 
 				binNK.resize(powMax); binNK.assign(powMax, 0.);
 				binNG.resize(powMax); binNG.assign(powMax, 0.);
 				binNV.resize(powMax); binNV.assign(powMax, 0.);
+				binNVnl.resize(powMax); binNVnl.assign(powMax, 0.);
 
 
-				mass2    = field->AxionMassSq()*(*field->zV())*(*field->zV());
-				mass2Sax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
+				mass2    = field->AxionMassSq()*(*field->RV())*(*field->RV());
+				mass2Sax = field->SaxionMassSq()*(*field->RV())*(*field->RV());
 				Rscale   = *field->RV();
 				depta    = field->BckGnd()->PhysSize()/Ly;
 
@@ -211,6 +215,10 @@
 				return binV[idx];
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl[idx];
+				break;
+
 			/* number */
 			case	SPECTRUM_K:
 				return binNK[idx];
@@ -222,6 +230,10 @@
 
 			case	SPECTRUM_V:
 				return binNV[idx];
+				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl[idx];
 				break;
 
 			/* power-spectrum-axion */
@@ -261,8 +273,11 @@
 				break;
 
 			case	SPECTRUM_VV:
-
 				return binV[idx];
+				break;
+
+			case	SPECTRUM_VVNL:
+				return binVnl[idx];
 				break;
 
 			/* number */
@@ -276,6 +291,10 @@
 
 			case	SPECTRUM_V:
 				return binNV[idx];
+				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl[idx];
 				break;
 
 			/* power-spectrum-axion */
@@ -317,6 +336,10 @@
 				return binV.data();
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl.data();
+				break;
+
 			case	SPECTRUM_K:
 				return binNK.data();
 				break;
@@ -327,6 +350,10 @@
 
 			case	SPECTRUM_V:
 				return binNV.data();
+				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl.data();
 				break;
 
 			case	SPECTRUM_P:
@@ -365,6 +392,10 @@
 				return binV.data();
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl.data();
+				break;
+
 			case	SPECTRUM_K:
 				return binNK.data();
 				break;
@@ -375,6 +406,10 @@
 
 			case	SPECTRUM_V:
 				return binNV.data();
+				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl.data();
 				break;
 
 			case	SPECTRUM_P:
