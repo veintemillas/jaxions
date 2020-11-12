@@ -1011,8 +1011,19 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 	// <|~theta|^2> = pi^2*kCrit/3 * (3/2pi nmax^3)
 	// <|~theta|> = sqrt(pi/2 kCrit/nmax^3)
 	// and therefore we need to multiply theta and theta' by this factor (was 1)
+
+	/* A better estimate ignoring modes in the corners of phase spaced
+	and using that |~theta|^2 = constant^2 * (sin(k z)/kz)^2
+	<theta^2> = 1/2 constant^2 4pi
+	  	(1/2)(1/k0z)^3(kmax z - 0.5 sin(2 kmax z))
+	note that the last term does indeed behave as kmax
+	for kmax z < 1
+	 */
 	LogMsg(VERB_NORMAL,"kCrit %e kMax %d \n", ic.kcr, ic.kMax);
-	double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
+	// old naive version
+	// double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
+	// better version including mode decay inside horizon
+	double norma = 1/std::sqrt(3.14159*kCritz*kCritz*kCritz*(ic.kMax/kCritz - 0.5*std::sin(2*ic.kMax/kCritz));
 	LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
 	scaleField (axionField, FIELD_V, norma);
 	norma /= (*axionField->zV());
