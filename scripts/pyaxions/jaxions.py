@@ -844,7 +844,7 @@ def gm(address,something='summary',printerror=False):
         if (something == mapad+'vheta') and (ftype == 'Saxion'):
             m   = np.array(f[mapad]['m'][()].reshape(N,N,2))
             v   = np.array(f[mapad]['v'][()].reshape(N,N,2))
-            return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+v[:,:,1]**2) ;
+            return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+m[:,:,1]**2) ;
 
         if (something == mapad+'rho') and (ftype == 'Saxion'):
             temp = np.array(f[mapad]['m'][()].reshape(N,N,2))
