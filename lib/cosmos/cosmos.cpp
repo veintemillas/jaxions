@@ -325,7 +325,7 @@ LogMsg(VERB_PARANOID,"[Cos:] DlogMARDlogct %.2e ",dlmRlct);
 
 double	Cosmos::LambdaP (double ct)
 {
-LogMsg(VERB_PARANOID,"[Cos:LambdaP] LambdaPhysical %f Le %f",lambda,lz2e);
+LogMsg(VERB_PARANOID,"[Cos:LambdaP] LambdaPhysical %e Le %e",lambda,lz2e);
   return  lambda/pow(R(ct),lz2e);
 }
 
