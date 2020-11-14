@@ -300,20 +300,23 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 		break;
 
 		default:
-			LogError ("Error: unrecognized propagator %d", pType);
+			LogError ("Error: unrecognized propagator PROP_ %d (RKN4/MLEAP/LEAP/OM4/OM2 %d/%d/%d/%d/%d) ",
+				pType, PROP_RKN4,PROP_MLEAP,PROP_LEAP,PROP_OMELYAN4,PROP_OMELYAN2);
 			exit(1);
 		break;
 	}
+
 	LogMsg(VERB_HIGH,"[ip] getBaseName");
 	prop->getBaseName();
-	LogMsg(VERB_HIGH,"[ip] set blocks");
 
+	LogMsg(VERB_HIGH,"[ip] set blocks");
 	if (wasTuned) {
 		prop->SetBlockX(xBlock);
 		prop->SetBlockY(yBlock);
 		prop->SetBlockZ(zBlock);
 		prop->UpdateBestBlock();
 	}
+
 	LogMsg	(VERB_NORMAL, "Propagator %s successfully initialized", prop->Name().c_str());
  	LogFlush();
 
