@@ -14,7 +14,7 @@ XTR="  "
 PHYS="--qcd $QCD --msa $MSA --lsize $L  --zf $ZEN $XTR"
 #%%%%%%%%%%%%%%%%%%%%%%%%# initial conditions %
 #PCO=2.0  ;
-#PREP=" --preprop --prepcoe 4.0 --icstudy --lz2e 8.0 --prevqcdtype 1 --pregam 0.2 "
+#PREP=" --preprop --prepcoe 4.0 --icstudy --lz2e 8.0 --prevqcdtype 17409 --pregam 0.2 "
 #KCR=$(echo "$L * 1.0 / $ZIN  " | bc -l)
 #INCO=" --ctype kmax --zi 0.1 --kmax $N --kcr $KCR"
 INCO=" --ctype smooth --kcr 1.1 --sIter 5 "
