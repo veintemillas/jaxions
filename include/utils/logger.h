@@ -11,6 +11,7 @@
 	#include<memory>
 	#include<cstddef>
 	#include<algorithm>
+	#include<thread>
 
 	#include<cstdarg>
 	#include<cstring>
@@ -23,9 +24,11 @@
 	#include"enum-field.h"
 	#include"comms/comms.h"
 
+	#define	MSG_SIZE 2048
+
 	namespace AxionsLog {
 
-		constexpr long long int	logFreq	= 5000000;
+		constexpr long long int	logFreq	= 50000; // In microseconds 
 		constexpr size_t 	basePack = sizeof(ptrdiff_t)*5;
 
 		extern	const char	levelTable[3][16];
@@ -42,14 +45,14 @@
 
 				mutable MPI_Request req;
 
-				char		packed[1024];						// For serialization and MPI
+				char		packed[MSG_SIZE];						// For serialization and MPI
 
 			public:
 					Msg(LogLevel logLevel, const int tIdx, const char * format, ...) noexcept : tIdx(tIdx), size(0), data(""), logLevel(logLevel) {
-					char buffer[1024 - basePack];
+					char buffer[MSG_SIZE - basePack];
 					va_list args;
 					va_start (args, format);
-					size = vsnprintf (buffer, 1023 - basePack, format, args);
+					size = vsnprintf (buffer, MSG_SIZE - 1 - basePack, format, args);
 					va_end (args);
 
 					data.assign(buffer, size);
@@ -118,6 +121,8 @@
 				const LogMpi		mpiType;
 				std::vector<Msg>	msgStack;
 				const VerbosityLevel	verbose;
+				bool			logRunning;
+				volatile bool		logWriting;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
 					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << "]"
@@ -130,21 +135,33 @@
 				void	flushMsg	() noexcept {
 					if (omp_get_thread_num() != 0)
 						return;
+ 
+					while (logWriting == true);
+
+					logWriting = true;
 					auto it = msgStack.cbegin();
-					printMsg(*it);
-					msgStack.erase(it);
+
+					if (it != msgStack.cend()) {
+						printMsg(*it);
+						msgStack.erase(it);
+					}
+					logWriting = false;
 				}
 
 				void	flushStack	() noexcept {
 					if (omp_get_thread_num() != 0)
 						return;
 
+					while (logWriting == true);
+
+					logWriting = true;
 					std::sort(msgStack.begin(), msgStack.end(), [logStart = logStart](Msg a, Msg b) { return (a.time(logStart) < b.time(logStart)); } );
 
 					for (auto it = msgStack.cbegin(); it != msgStack.cend(); it++)
 						printMsg(*it);
 
 					msgStack.clear();
+					logWriting = false;
 				}
 
 				void	flushDisk	() {
@@ -167,16 +184,18 @@
 						MPI_Iprobe(MPI_ANY_SOURCE, level, MPI_COMM_WORLD, &flag, &status);
 
 						if (flag) {
-							char packed[1024];
+							char packed[MSG_SIZE];
 							int  mSize;
 							auto srcRank = status.MPI_SOURCE;
 
 							// Get message
 							MPI_Get_count(&status, MPI_CHAR, &mSize);
 							MPI_Recv(packed, mSize, MPI_CHAR, srcRank, level, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-							Msg msg(static_cast<void*>(packed));
+							//Msg msg(static_cast<void*>(packed));
 							// Put the message in the stack
-							msgStack.push_back(std::move(msg));
+							while (logWriting == true) {}
+							//msgStack.push_back(std::move(msg));
+							msgStack.emplace_back(static_cast<void*>(packed));
 							msgPending = true;
 						}
 					}	while (flag);
@@ -199,6 +218,7 @@
 					logStart = std::chrono::high_resolution_clock::now();
 
 					if (commRank() == 0) {
+						logRunning = true;
 						do {
 							idx++;
 							ss.str("");
@@ -208,9 +228,19 @@
 
 						oFile.open(ss.str().c_str(), std::ofstream::out);
 						banner();
+
+						std::thread([&](){
+							while (logRunning) {
+								std::this_thread::sleep_for(std::chrono::microseconds(logFreq));
+								flushLog();
+							}
+						}).detach();
 					}
 
 				}
+
+				// Stops logger in preparation for an MPI shutdown
+				void	stop		() { logRunning = false; usleep(logFreq); }
 
 				// Receives pending MPI messages and flushes them to disk
 				void	flushLog	() {
@@ -227,7 +257,7 @@
 					flushDisk();
 				}
 
-				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { oFile.close(); } }
+				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { stop(); oFile.close(); } }
 
 				auto	runTime() {
 					auto	cTime = std::chrono::high_resolution_clock::now();
@@ -254,8 +284,8 @@
 							// We push the messages in the stack and we flush them later
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), format, vars...)));
 
-							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
-								mustFlush = true;
+//							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
+//								mustFlush = true;
 							break;
 						}
 

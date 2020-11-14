@@ -433,14 +433,14 @@
 
 		typedef	enum	PropcType_s {
 			PROPC_NONE	    = 0,		// For parsing
-			PROPC_BASE	    = 1,		// Optimised proppagator 1 neighbour
+			PROPC_BASE	    = 1,		// Propagator N neighbours
 			PROPC_SPEC	    = 2,		// Spectral flag
 			PROPC_FSPEC     = 4,		// Full Spectral flag
 		} PropcType;
 
 		typedef	enum	PropType_s {
 			PROP_NONE     = 0,		// For parsing
-			PROP_BASE     = 1,    // Optimised propagator 1 neighbour
+			PROP_BASE     = 1,    // Propagator N neighbours
 			PROP_SPEC     = 2,		// Spectral flag
 			PROP_FSPEC    = 4,		// Full Spectral flag
 
