@@ -28,7 +28,7 @@
 
 	namespace AxionsLog {
 
-		constexpr long long int	logFreq	= 50000; //5000000;
+		constexpr long long int	logFreq	= 50000; // In microseconds 
 		constexpr size_t 	basePack = sizeof(ptrdiff_t)*5;
 
 		extern	const char	levelTable[3][16];
@@ -122,7 +122,7 @@
 				std::vector<Msg>	msgStack;
 				const VerbosityLevel	verbose;
 				bool			logRunning;
-				bool			logWriting;
+				volatile bool		logWriting;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
 					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << "]"
@@ -133,8 +133,11 @@
 				/* We only allow thread 0 to write to disk, but any other thread can put messages in the stack		*/
 				/* The stack is flushed if there is an error on any thread because the variable mustFlush is shared	*/
 				void	flushMsg	() noexcept {
-					if (omp_get_thread_num() != 0 || logWriting == true)
+					if (omp_get_thread_num() != 0)
 						return;
+ 
+					while (logWriting == true);
+
 					logWriting = true;
 					auto it = msgStack.cbegin();
 
@@ -146,8 +149,10 @@
 				}
 
 				void	flushStack	() noexcept {
-					if (omp_get_thread_num() != 0 || logWriting == true)
+					if (omp_get_thread_num() != 0)
 						return;
+
+					while (logWriting == true);
 
 					logWriting = true;
 					std::sort(msgStack.begin(), msgStack.end(), [logStart = logStart](Msg a, Msg b) { return (a.time(logStart) < b.time(logStart)); } );
@@ -227,9 +232,7 @@
 						std::thread([&](){
 							while (logRunning) {
 								std::this_thread::sleep_for(std::chrono::microseconds(logFreq));
-								logWriting = true;
 								flushLog();
-								logWriting = false;
 							}
 						}).detach();
 					}
