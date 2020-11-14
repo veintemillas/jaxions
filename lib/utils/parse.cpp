@@ -393,7 +393,7 @@ void	PrintICoptions()
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --preprop                                                                                    \n");
 	printf("  --prepropcoe  [float]                            Preevolution starts at zi/prepropcoe        \n");
-	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default V_QCD1) .\n");
+	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default V_QCD0_PQ1_DRHO).\n");
 	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
 	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
 	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
