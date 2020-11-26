@@ -138,6 +138,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AX_RD:
 		case FIELD_WKB:
 		case FIELD_PAXION:
+		case FIELD_FAXION:
 			nData = 1;
 			break;
 
@@ -220,6 +221,17 @@ const std::complex<float> If(0.,1.);
 			trackAlloc ((void**) &str, n3);
 			break;
 
+		case FIELD_FAXION:
+			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
+			alignAlloc ((void**) &m,   mAlign, mBytes); // will not compute grads
+			alignAlloc ((void**) &v,   mAlign, mBytes); //
+			alignAlloc ((void**) &rho, mAlign, mBytes);
+			alignAlloc ((void**) &vho, mAlign, mBytes);
+			alignAlloc ((void**) &g,   mAlign, 3*mBytes);
+			trackAlloc ((void**) &str, n3);
+			break;
+
+
 		default:
 			LogError("Error: unrecognized field type");
 			exit(1);
@@ -252,6 +264,7 @@ const std::complex<float> If(0.,1.);
 
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
+		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m2");
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
@@ -301,8 +314,13 @@ const std::complex<float> If(0.,1.);
 
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*(n2*(nLz + 2)));
+	if (fieldType == FIELD_FAXION){
+		memset (rho, 0, fSize*v3);
+		memset (vho, 0, fSize*v3);
+		memset (g, 0, 3*fSize*v3);
+	}
 
-	commSync();
+
 
 	LogMsg(VERB_NORMAL, "[sca] allocating z, R");
 	alignAlloc ((void **) &z, mAlign, mAlign);
