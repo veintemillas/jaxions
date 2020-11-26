@@ -52,6 +52,9 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 	const double LL    = ppar.lambda;
 	const double Rpp   = ppar.Rpp;
 
+	if (Vo>Vf)
+		return ;
+
 	if (precision == FIELD_DOUBLE)
 	{
 #if	defined(__AVX512F__)
@@ -277,8 +280,11 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 										opCode(sqrt_pd, opCode(mul_pd, mPx, opCode(mul_pd, mPx, mPx) ) ) ); //
 					mMx = opCode(add_pd, mMx, opCode(mul_pd, zNVec, tmp2));
 				break;
-				default:
 				case V_QCDL:
+				/* Compute explicitly each arctan */
+				break;
+
+				default:
 				case V_QCD0:
 				break;
 			}
@@ -601,6 +607,11 @@ LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",z0,
 				break;
 				default:
 				case V_QCDL:
+					tmp2 = opCode(div_ps,
+									opCode(vqcd0_ps,mel),
+										opCode(sqrt_ps, opCode(mul_ps, mPx, opCode(mul_ps, mPx, mPx) ) ) ); //
+					mMx = opCode(add_ps, mMx, opCode(mul_ps, zNVec, tmp2));
+				break;
 				case V_QCD0:
 				break;
 			}
@@ -1403,7 +1414,8 @@ LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",z0,
 				break;
 				case V_QCD2:
 					mMx = opCode(sub_ps, mMx, opCode(mul_ps,zNVec,mel));
-				break;
+				break;			
+				case V_QCDL:
 				case V_QCDC:
 					tmp2 = opCode(div_ps,
 									opCode(vqcd0_ps,mel),
@@ -1411,7 +1423,6 @@ LogMsg(VERB_DEBUG,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",z0,
 					mMx = opCode(add_ps, mMx, opCode(mul_ps, zNVec, tmp2));
 				break;
 				default:
-				case V_QCDL:
 				case V_QCD0:
 				break;
 			}
