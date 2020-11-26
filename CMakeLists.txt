@@ -35,6 +35,12 @@ set(USE_AVX512 OFF CACHE BOOL "builds Avx-512 support")
 set(USE_FMA OFF CACHE BOOL "builds Fma support")
 set(HDF5_PARALLEL_COMPRESSION ON CACHE BOOL "uses experimental parallel compression, requires Hdf5 1.11.0")
 set(USE_NYX_OUTPUT OFF CACHE BOOL "To produce Nyx-compatible files")
+
+set(USE_PROP_RKN4 ON CACHE BOOL "RKN4 propagators")
+set(USE_PROP_MLEAP OFF CACHE BOOL "multi leapfrog propagators")
+set(USE_PROP_OM2 OFF CACHE BOOL "Omelyan 2 propagators")
+set(USE_PROP_OM4 OFF CACHE BOOL "Omelyan 4 propagators")
+set(USE_PROP_LEAP OFF CACHE BOOL "Leapfrog propagators")
 #set(USE_2D OFF CACHE BOOL "Uses only the Z=1 plane")
 
 
@@ -120,8 +126,27 @@ if(${USE_NYX_OUTPUT})
   include_directories("$ENV{AMREX_LIBRARY_HOME}/include")
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} -mcmodel=medium -std=c++14")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} -mcmodel=medium -std=c++14")
+# Propagators
+set(PROP_FLAGS "")
+if(${USE_PROP_RKN4})
+  set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_RKN4")
+endif()
+if(${USE_PROP_MLEAP})
+  set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_MLEAP")
+endif()
+if(${USE_PROP_LEAP})
+  set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_LEAP")
+endif()
+if(${USE_PROP_OM2})
+  set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_OM2")
+endif()
+if(${USE_PROP_OM4})
+  set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_OM4")
+endif()
+
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} -mcmodel=medium -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} -mcmodel=medium -std=c++14")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wa,-q -lc++")

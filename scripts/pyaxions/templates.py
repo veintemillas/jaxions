@@ -7,7 +7,7 @@
 # l_ex=['RHO','DRHO','DRHO_RHO','DALL']
 
 prefix='V_'
-l_QCD=['0','1','C','V','L']
+l_QCD=['0','1','C','L']
 l_PQ=['1']
 l_ex=['RHO','DRHO','DRHO_RHO','DALL']
 
@@ -39,8 +39,8 @@ def CASECPU(vqcd):
 def multiCASECPU():
     print('case PT1:          \\')
     print('switch (pot) {     \\')
-    for q in l_QCD:
-        for p in l_PQ:
+    for p in l_PQ:
+        for q in l_QCD:
             vqcd=prefix+'QCD'+q+'_PQ'+p
             CASECPU(vqcd)
             for e in l_ex:
@@ -49,7 +49,7 @@ def multiCASECPU():
     print('} \\\n break; \n')
 
 # run this to get multiCASECPU
-# multiCASECPU()
+multiCASECPU()
 
 # tun this to get all explicit templates
 # for prop in [k for k in PR.keys()]:
