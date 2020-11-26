@@ -54,6 +54,8 @@
 		template<typename Float, FilterIndex filter>
 		void	smoothFourier	(double length);
 
+
+
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
@@ -193,6 +195,12 @@
 		void	maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) ;
 
 		void	smoothFourier	(double length, FilterIndex filter);
+
+		template<typename Float>
+		void	stringcorre	(Float *data, Float *result);
+
+		void	stringcorre	(void *data, void *result); // parms is a pointer to m,r and grads, result written to result
+
 	};
 
 

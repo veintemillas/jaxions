@@ -626,6 +626,9 @@ writePMapHdf5s (axiona, LAB);
 						sprintf(LABEL, "sK_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+						sprintf(LABEL, "sC_%s",PRELABEL);
+							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", LABEL);
+							writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", LABEL);
 							}
 						if (nruntype & NRUN_G){
 						sprintf(LABEL, "sG_%s",PRELABEL);
