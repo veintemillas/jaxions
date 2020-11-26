@@ -279,25 +279,35 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 
 	switch (pType & PROP_MASK) {
 
-		// case PROP_OMELYAN2:
-		// 	DEFALLPROPTEM(PropOmelyan2);
-		// break;
-		//
-		// case PROP_OMELYAN4:
-		// 	DEFALLPROPTEM(PropOmelyan4);
-		// break;
-		//
-		// case PROP_LEAP:
-		// 	DEFALLPROPTEM(PropLeap);
-		// break;
-		//
-		// case PROP_MLEAP:
-		// 	DEFALLPROPTEM(PropMLeap);
-		// break;
+#ifdef	USE_PROP_OM2
+		case PROP_OMELYAN2:
+			DEFALLPROPTEM(PropOmelyan2);
+		break;
+#endif
 
+#ifdef	USE_PROP_OM2
+		case PROP_OMELYAN4:
+			DEFALLPROPTEM(PropOmelyan4);
+		break;
+#endif
+
+#ifdef	USE_PROP_LEAP
+		case PROP_LEAP:
+			DEFALLPROPTEM(PropLeap);
+		break;
+#endif
+
+#ifdef	USE_PROP_MLEAP
+		case PROP_MLEAP:
+			DEFALLPROPTEM(PropMLeap);
+		break;
+#endif
+
+#ifdef	USE_PROP_RKN4
 		case PROP_RKN4:
 			DEFALLPROPTEM(PropRKN4);
 		break;
+#endif
 
 		default:
 			LogError ("Error: unrecognized propagator PROP_ %d (RKN4/MLEAP/LEAP/OM4/OM2 %d/%d/%d/%d/%d) ",
