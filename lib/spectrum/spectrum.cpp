@@ -1026,8 +1026,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 
 			// FIX ME vectorise
-			/* Kinetic energy
-			includes the easiest discretisation correction */
+			/* Kinetic energy includes subgrid correction */
 			if (nrt & NRUN_K)
 			{
 				Float sigma = 0.4;
@@ -1049,7 +1048,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 							Float da[10];
 							Float re[2];
 							da[0] = ma[idx].real()-zaskaFF;
-							da[1] = ma[idx].imag()-zaskaFF;
+							da[1] = ma[idx].imag();
 							da[2] = va[idx-Ly*Ly].real();
 							da[3] = va[idx-Ly*Ly].imag();
 							da[4] = pre*(ma[((ix + 1) % Ly) + yi + zi].real()-ma[((Ly + ix - 1) % Ly) + yi + zi].real());
@@ -1068,37 +1067,149 @@ void	SpecBin::nRun	(nRunType nrt) {
 								case SPMASK_FLAT:
 										// m2sa[odx] = Rscale*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
 											// m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
-											m2sa[odx] = Rscale*re[0];
-											m2sax[odx] = Rscale*re[1];
+											m2sa[odx] = Rscale*re[1];
+											// m2sax[odx] = Rscale*re[0];
 										break;
 								case SPMASK_REDO:
 											if (strdaa[idx] & STRING_MASK) {
 													m2sa[odx] = 0 ;
-													m2sax[odx] = 0 ;}
+													// m2sax[odx] = 0 ;
+												}
 											else {
 													// m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
-													m2sa[odx] = Rscale*re[0];
-													m2sax[odx] = Rscale*re[1];}
+													m2sa[odx] = Rscale*re[1];
+													// m2sax[odx] = Rscale*re[0];
+												}
 										break;
 								case SPMASK_GAUS:
 								case SPMASK_DIFF:
 										/* keep the mask in mhalf so only one load is possible
 										m2sax[idx] contains the mask unpadded*/
 											// m2sa[odx] = m2sax[idx]*Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
-											m2sa[odx] = m2sax[idx]*Rscale*re[0];
-											m2sax[idx-Ly*Ly] = m2sax[idx]*Rscale*re[1]; //unpadded
+											m2sa[odx] = m2sax[idx]*Rscale*re[1];
+											// m2sax[idx-Ly*Ly] = m2sax[idx]*Rscale*re[0]; //unpadded
 										break;
 								case SPMASK_VIL:
 										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
 											// m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
-											m2sa[odx] = std::abs(da[0])*Rscale*re[0];
-											m2sax[odx] = std::abs(da[0])*Rscale*re[1];
+											m2sa[odx] = std::abs(da[0])*Rscale*re[1];
+											// m2sax[odx] = std::abs(da[0])*Rscale*re[0];
 										break;
 								case SPMASK_VIL2:
 										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
 											// m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale*(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
-											m2sa[odx] = std::pow(std::abs(da[0]),2)*Rscale*re[0];
-											m2sax[odx] = std::pow(std::abs(da[0]),2)*Rscale*re[1];
+											m2sa[odx] = std::pow(std::abs(da[0]),2)*Rscale*re[1];
+											// m2sax[odx] = std::pow(std::abs(da[0]),2)*Rscale*re[0];
+										break;
+								case SPMASK_SAXI:
+											m2sa[odx]   =  std::real(va[idx]) ;
+											m2sax[odx]  =  std::imag(va[idx]) ;
+								break;
+
+							} //end mask
+						}
+					}
+				} // end last volume loop
+
+				/* corrected */
+				LogMsg(VERB_HIGH,"[nRun] FFT") ;
+				myPlan.run(FFT_FWD);
+
+				// FIX ME FOR SAXI
+				LogMsg(VERB_HIGH,"[nRun] bin") ;
+				if (spec)
+					fillBins<Float,  SPECTRUM_KK, true> ();
+				else
+					fillBins<Float,  SPECTRUM_KK, false>();
+
+				/* if you want the uncorrected spectrum remove the next block
+						Returns the uncorrected spectrum in P, PS
+						Warning!! it requires uncommenting filling the msax matrix in the above loop */
+						// {
+						// 	binVnl = binK;
+						// 	binNVnl = binNK;
+						// 	binK.assign(powMax, 0.);
+						// 	binNK.assign(powMax, 0.);
+						//
+						// 	/* uncorrected*/
+						// 	// Copy m2aux -> m2
+						// 	LogMsg(VERB_HIGH,"[nRun] move") ;
+						// 	size_t dataTotalSize2 = field->Precision()*field->eSize();
+						// 	char *m2C  = static_cast<char *>(field->m2Cpu());
+						// 	char *m2Ch = static_cast<char *>(field->m2half());
+						// 	memmove	(m2C, m2Ch, dataTotalSize2);
+						//
+						// 	LogMsg(VERB_HIGH,"[nRun] unpad") ;
+						// 	/* unpad m2 in place if SPMASK_GAUS/DIFF */
+						// 		if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
+						// 			size_t dl = Ly*field->Precision();
+						// 			size_t pl = (Ly+2)*field->Precision();
+						// 			size_t ss	= Ly*Lz;
+						//
+						// 			for (size_t sl=1; sl<LyLz; sl++) {
+						// 				size_t	oOff = sl*dl;
+						// 				size_t	fOff = sl*pl;
+						// 				memmove	(m2C+oOff, m2C+fOff, dl);
+						// 				}
+						// 		}
+						// 	LogMsg(VERB_HIGH,"[nRun] FFT") ;
+						// 	myPlan.run(FFT_FWD);
+						//
+						// 	LogMsg(VERB_HIGH,"[nRun] bin") ;
+						// 	if (spec)
+						// 		fillBins<Float,  SPECTRUM_KK, true> ();
+						// 	else
+						// 		fillBins<Float,  SPECTRUM_KK, false>();
+						// 	/* now corrected bins to K,KK uncorrected to P,PS*/
+						// 	binP  = binK;
+						// 	binPS = binNK;
+						// 	binK  = binVnl;
+						// 	binNK = binNVnl;
+						// }
+
+			}
+
+			/* Kinetic energy OLD VERSION*/
+			if (nrt & NRUN_C)
+			{
+				LogMsg(VERB_HIGH,"[nRun] K loop") ;
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*(iz) ;
+					size_t zi = Ly*Ly*(iz+1) ;
+					size_t zp = Ly*Ly*(iz+2) ;
+					size_t zm = Ly*Ly*(iz) ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						size_t yp = Ly*((iy+1)%Ly) ;
+						size_t ym = Ly*((Ly+iy-1)%Ly) ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+							switch(mask){
+								case SPMASK_FLAT:
+										// m2sa[odx] = Rscale*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
+											m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+										break;
+								case SPMASK_REDO:
+											if (strdaa[idx] & STRING_MASK)
+													m2sa[odx] = 0 ;
+											else
+													m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+										break;
+								case SPMASK_GAUS:
+								case SPMASK_DIFF:
+										/* keep the mask in mhalf so only one load is possible
+										m2sax[idx] contains the mask unpadded*/
+											m2sa[odx] = m2sax[idx]*Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+										break;
+								case SPMASK_VIL:
+										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
+											m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
+										break;
+								case SPMASK_VIL2:
+										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
+											m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale*(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
 										break;
 								case SPMASK_SAXI:
 											m2sa[odx]   =  std::real(va[idx]) ;
@@ -1121,41 +1232,8 @@ void	SpecBin::nRun	(nRunType nrt) {
 				else
 					fillBins<Float,  SPECTRUM_KK, false>();
 
-				/* uses powerspectral bins remember in measa */
 				binP  = binK;
 				binPS = binNK;
-				binK.assign(powMax, 0.);
-				binNK.assign(powMax, 0.);
-
-				/* corrected*/
-				// Copy m2aux -> m2
-				LogMsg(VERB_HIGH,"[nRun] move") ;
-				size_t dataTotalSize2 = field->Precision()*field->eSize();
-				char *m2C  = static_cast<char *>(field->m2Cpu());
-				char *m2Ch = static_cast<char *>(field->m2half());
-				memmove	(m2C, m2Ch, dataTotalSize2);
-
-				LogMsg(VERB_HIGH,"[nRun] unpad") ;
-				/* unpad m2 in place if SPMASK_GAUS/DIFF */
-					if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
-						size_t dl = Ly*field->Precision();
-						size_t pl = (Ly+2)*field->Precision();
-						size_t ss	= Ly*Lz;
-
-						for (size_t sl=1; sl<LyLz; sl++) {
-							size_t	oOff = sl*dl;
-							size_t	fOff = sl*pl;
-							memmove	(m2C+oOff, m2C+fOff, dl);
-							}
-					}
-				LogMsg(VERB_HIGH,"[nRun] FFT") ;
-				myPlan.run(FFT_FWD);
-
-				LogMsg(VERB_HIGH,"[nRun] bin") ;
-				if (spec)
-					fillBins<Float,  SPECTRUM_KK, true> ();
-				else
-					fillBins<Float,  SPECTRUM_KK, false>();
 			}
 
 			if (nrt & NRUN_G)
@@ -3536,28 +3614,73 @@ void	SpecBin::stringcorre	( Float *da, Float *result)
 		int iC = (cb+1)*(N_C-1)/2;
 		int i0 = iC + N_C*iE + N_CE*iB + N_CEB*iA;
 		// LogOut("iA %d iB %d iE %d iC %d \n",iA,iB,iE,iC);
-		Float L0 = LUTc[i0];
-		Float LpA = LUTc[i0+N_CEB];
-		Float LpB = LUTc[i0+N_CE];
-		Float LpE = LUTc[i0+N_C];
-		Float LpC = LUTc[i0+1];
 		Float dA  = A*(N_A-1)/5-iA;
 		Float dB  = B*(N_B-1)/5-iB;
 		Float dE  = e*(N_E-1)-iE;
 		Float dC  = (cb+1)*(N_C-1)/2-iC;
+		Float dA1  = 1-dA;
+		Float dB1  = 1-dB;
+		Float dE1  = 1-dE;
+		Float dC1  = 1-dC;
+		// trilinear interpolation
+		// face C 16->8 proyection
+		Float L000 = LUTc[i0]*dC1 + LUTc[i0+1]*dC;
+		Float L001 = LUTc[i0+N_C]*dC1 + LUTc[i0+N_C+1]*dC;
+		Float L010 = LUTc[i0+N_E]*dC1 + LUTc[i0+N_E+1]*dC;
+		Float L011 = LUTc[i0+N_E+N_C]*dC1 + LUTc[i0+N_E+N_C+1]*dC;
+		Float L100 = LUTc[i0+N_B]*dC1 + LUTc[i0+N_B+1]*dC;
+		Float L101 = LUTc[i0+N_B+N_C]*dC1 + LUTc[i0+N_B+N_C+1]*dC;
+		Float L110 = LUTc[i0+N_B+N_E]*dC1 + LUTc[i0+N_B+N_E+1]*dC;
+		Float L111 = LUTc[i0+N_B+N_E+N_C]*dC1 + LUTc[i0+N_B+N_E+N_C+1]*dC;
+		// face E 8->4
+		L000 = L000*dE1 + L001*dE;
+		L010 = L010*dE1 + L011*dE;
+		L100 = L100*dE1 + L101*dE;
+		L110 = L110*dE1 + L111*dE;
+		// face B 4->2
+		L000 = L000*dB1 + L010*dB;
+		L100 = L100*dB1 + L110*dB;
+		// face A 2->1
+		Float Lc = s1*(L000*dA1 + L100*dA);
+
+		L000 = LUTs[i0]*dC1             + LUTs[i0+1]*dC;
+		L001 = LUTs[i0+N_C]*dC1         + LUTs[i0+N_C+1]*dC;
+		L010 = LUTs[i0+N_E]*dC1         + LUTs[i0+N_E+1]*dC;
+		L011 = LUTs[i0+N_E+N_C]*dC1     + LUTs[i0+N_E+N_C+1]*dC;
+		L100 = LUTs[i0+N_B]*dC1         + LUTs[i0+N_B+1]*dC;
+		L101 = LUTs[i0+N_B+N_C]*dC1     + LUTs[i0+N_B+N_C+1]*dC;
+		L110 = LUTs[i0+N_B+N_E]*dC1     + LUTs[i0+N_B+N_E+1]*dC;
+		L111 = LUTs[i0+N_B+N_E+N_C]*dC1 + LUTs[i0+N_B+N_E+N_C+1]*dC;
+		// face E 8->4
+		L000 = L000*dE1 + L001*dE;
+		L010 = L010*dE1 + L011*dE;
+		L100 = L100*dE1 + L101*dE;
+		L110 = L110*dE1 + L111*dE;
+		// face B 4->2
+		L000 = L000*dB1 + L010*dB;
+		L100 = L100*dB1 + L110*dB;
+		// face A 2->1
+		Float Ls = s2*(L000*dA1 + L100*dA);
+
+		// Float L0 = LUTc[i0];
+		// Float LpA = LUTc[i0+N_CEB];
+		// Float LpB = LUTc[i0+N_CE];
+		// Float LpE = LUTc[i0+N_C];
+		// Float LpC = LUTc[i0+1];
 		// LogOut("dA  %f dB  %f dE  %f dC  %f\n", dA,dB,dE,dC);
 		// LogOut("LpA %f LpB %f LpE %f LpC %f\n", LpA, LpB, LpE, LpC);
-		Float Lc = L0 + (LpA-L0)*dA + (LpB-L0)*dB + (LpE-L0)*dE + (LpC-L0)*dC;
-		Lc *= s1;
+		// Float Lc = L0 + (LpA-L0)*dA + (LpB-L0)*dB + (LpE-L0)*dE + (LpC-L0)*dC;
+		// Lc *= s1;
+
 		// LogOut("L0 %f Lc %f \n",L0,Lc);
-		L0  = LUTs[i0];
-		LpA = LUTs[i0+N_CEB];
-		LpB = LUTs[i0+N_CE];
-		LpE = LUTs[i0+N_C];
-		LpC = LUTs[i0+1];
-		// LogOut("LpA %f LpB %f LpE %f LpC %f\n", LpA, LpB, LpE, LpC);
-		Float Ls = L0 + (LpA-L0)*dA + (LpB-L0)*dB+ (LpE-L0)*dE + (LpC-L0)*dC;
-		Ls *= s2;
+		// L0  = LUTs[i0];
+		// LpA = LUTs[i0+N_CEB];
+		// LpB = LUTs[i0+N_CE];
+		// LpE = LUTs[i0+N_C];
+		// LpC = LUTs[i0+1];
+		// // LogOut("LpA %f LpB %f LpE %f LpC %f\n", LpA, LpB, LpE, LpC);
+		// Float Ls = L0 + (LpA-L0)*dA + (LpB-L0)*dB+ (LpE-L0)*dE + (LpC-L0)*dC;
+		// Ls *= s2;
 		// LogOut("L0 %f Ls %f \n",L0,Ls);
 		result[1] = flip ? (Ls*da[3]-Lc*da[2])/mb : (Lc*da[3]-Ls*da[2])/ma;
 	}
@@ -3565,5 +3688,5 @@ void	SpecBin::stringcorre	( Float *da, Float *result)
 	{
 		result[1] = result[0];
 	}
-	LogOut("r0 %.3f r1 %.3f\n",result[0],result[1]);
+	// LogOut("r0 %.3f r1 %.3f\n",result[0],result[1]);
 }

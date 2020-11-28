@@ -528,6 +528,7 @@
 			NRUN_V      = 4,
 			NRUN_KG     = 3,
 			NRUN_KGV    = 7,
+			NRUN_C      = 16,
 		}	nRunType;
 
 		typedef	enum	StringMeasureType_s {

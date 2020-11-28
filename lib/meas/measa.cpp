@@ -579,7 +579,6 @@ writePMapHdf5s (axiona, LAB);
 						if (prntmsk[i]){
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 								prof.start();
-
 									specAna.masker(rmasktab[ii], maskara[i], M2_MASK, cummask);
 										prof.stop();
 											sprintf(LABEL, "Masker %s", masklab[i].c_str());
@@ -622,13 +621,24 @@ writePMapHdf5s (axiona, LAB);
 											prof.add(std::string(LABEL), 0.0, 0.0);
 
 
+
 						if (nruntype & NRUN_K){
-						sprintf(LABEL, "sK_%s",PRELABEL);
-							writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
-							writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
-						sprintf(LABEL, "sC_%s",PRELABEL);
-							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", LABEL);
-							writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", LABEL);
+
+							sprintf(LABEL, "sK_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+
+							/* FIXME test*/
+							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+								prof.start();
+									specAna.nRun(maskara[i], NRUN_C);
+										prof.stop();
+											sprintf(LABEL, "NSPA_%s (pure)", masklab[i].c_str());
+												prof.add(std::string(LABEL), 0.0, 0.0);
+							sprintf(LABEL, "sC_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", LABEL);
+								writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", LABEL);
+
 							}
 						if (nruntype & NRUN_G){
 						sprintf(LABEL, "sG_%s",PRELABEL);
