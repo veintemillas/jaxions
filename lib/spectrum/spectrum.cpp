@@ -7,6 +7,7 @@
 #include <mpi.h>
 
 #include "spectrum/spectrum.h"
+#include "spectrum/LLUTs.h"
 #include "scalar/folder.h"
 #include "comms/comms.h"
 #include "fft/fftCode.h"
@@ -1052,10 +1053,10 @@ void	SpecBin::nRun	(nRunType nrt) {
 							da[2] = va[idx-Ly*Ly].real();
 							da[3] = va[idx-Ly*Ly].imag();
 							da[4] = pre*(ma[((ix + 1) % Ly) + yi + zi].real()-ma[((Ly + ix - 1) % Ly) + yi + zi].real());
-							da[5] = pre*(ma[((ix + 1) % Ly) + yi + zi].imag()-ma[((Ly + ix - 1) % Ly) + yi + zi].imag());
-							da[6] = pre*(ma[ix + yp + zi].real()-ma[ix + ym + zi].real());
-							da[7] = pre*(ma[ix + yp + zi].imag()-ma[ix + ym + zi].imag());
-							da[8] = pre*(ma[ix + yi + zp].real()-ma[ix + yi + zm].real());
+							da[7] = pre*(ma[((ix + 1) % Ly) + yi + zi].imag()-ma[((Ly + ix - 1) % Ly) + yi + zi].imag());
+							da[5] = pre*(ma[ix + yp + zi].real()-ma[ix + ym + zi].real());
+							da[8] = pre*(ma[ix + yp + zi].imag()-ma[ix + ym + zi].imag());
+							da[6] = pre*(ma[ix + yi + zp].real()-ma[ix + yi + zm].real());
 							da[9] = pre*(ma[ix + yi + zp].imag()-ma[ix + yi + zm].imag());
 							SpecBin::stringcorre(static_cast<void*>(da),static_cast<void*>(re));
 							// if (idx == 256*256){
@@ -3487,26 +3488,82 @@ void	SpecBin::stringcorre	(void *data, void *result) // parms is a pointer to m,
 template<typename Float>
 void	SpecBin::stringcorre	( Float *da, Float *result)
 {
+	Float sigma = 0.4;
 	// Float mr = da[0];
 	// Float mi = da[1];
 	// Float vr = da[2];
 	// Float vi = da[3];
-	// Float mrx = da[4];Float mry = da[6];Float mrz = da[8];
-	// Float mix = da[5];Float miy = da[7];Float miz = da99];
+	// Float mrx = da[4];Float mry = da[5];Float mrz = da[6];
+	// Float mix = da[7];Float miy = da[8];Float miz = da[9];
 	// Gradients already premultiplied by sigma
-
-	/* Build A,B,E,cb */
-
-	/* Small/Large A,B formulas */
-	// Float A2 = da[4]*da[4]+da[6]*da[6]+da[8]*da[8];
-	// Float B2 = da[5]*da[5]+da[7]*da[7]+da[9]*da[9];
-
-	/* Intermediate values, full calculation or interpolation */
 
 	/* Poorman's solution */
 	result[0] = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
+	// result[1] = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]
+	// + (da[4]*da[4]+da[5]*da[5]+da[6]*da[6]
+	// + da[7]*da[7]+da[8]*da[8]+da[9]*da[9]) );
 
-	result[1] = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]
-	+ (da[4]*da[4]+da[5]*da[5]+da[6]*da[6]
-	+ da[7]*da[7]+da[8]*da[8]+da[9]*da[9]) );
+	/* LUT function */
+	// 1 - LUTs is somehow loaded already
+	// Lc and Ls
+	// LogOut(">>> %f %f %f %f %f %f %f %f %f %f\n",da[0], da[1], da[2], da[3], da[4], da[5], da[6], da[7], da[8], da[9], da[10]);
+	Float ma  = std::sqrt(da[4]*da[4]+da[5]*da[5]+da[6]*da[6]);
+	Float mb  = std::sqrt(da[7]*da[7]+da[8]*da[8]+da[9]*da[9]);
+	bool flip = false;
+	if (ma < mb)
+		flip=true;
+	Float e   = flip ? ma/mb : mb/ma;
+	Float cb  = (da[4]*da[7]+da[5]*da[8]+da[6]*da[9])/ma/mb;
+	Float sb  = std::sqrt(1-cb*cb);
+	Float A   = flip ? da[1]/mb : da[0]/ma;
+	Float B   = flip ? da[0]/mb : da[1]/ma;
+	Float s1  = 1;
+	Float s2  = 1;
+	// LogOut("ma %.2e mb %.2e \n",ma,mb);
+	// LogOut("A %.2f B %.2f E %.2f cb %.2f\n",A,B,e,cb);
+	if (A < 0){ A = -A; B = -B; s1 = -s1; s2 = -s2;};
+	if (B < 0){ B = -B; cb = -cb; s2 = -s2;};
+	if ( (A <= 5) && (B <= 5) && ( e <= 1 ) && (cb <= 1) && (cb >= -1))
+	{
+		/* the LUT has N_A*N_B*N_E*N_C
+		in the range (0,5)(0,5)(0,1),(-1,1)
+		it misses a factor of e sqrt(1-cb^2)
+		but will be compensated at the end */
+		// LogOut("A %.2f B %.2f E %.2f cb %.2f\n",A,B,e,cb);
+		int iA = A*(N_A-1)/5;
+		int iB = B*(N_B-1)/5;
+		int iE = e*(N_E-1);
+		int iC = (cb+1)*(N_C-1)/2;
+		int i0 = iC + N_C*iE + N_CE*iB + N_CEB*iA;
+		// LogOut("iA %d iB %d iE %d iC %d \n",iA,iB,iE,iC);
+		Float L0 = LUTc[i0];
+		Float LpA = LUTc[i0+N_CEB];
+		Float LpB = LUTc[i0+N_CE];
+		Float LpE = LUTc[i0+N_C];
+		Float LpC = LUTc[i0+1];
+		Float dA  = A*(N_A-1)/5-iA;
+		Float dB  = B*(N_B-1)/5-iB;
+		Float dE  = e*(N_E-1)-iE;
+		Float dC  = (cb+1)*(N_C-1)/2-iC;
+		// LogOut("dA  %f dB  %f dE  %f dC  %f\n", dA,dB,dE,dC);
+		// LogOut("LpA %f LpB %f LpE %f LpC %f\n", LpA, LpB, LpE, LpC);
+		Float Lc = L0 + (LpA-L0)*dA + (LpB-L0)*dB + (LpE-L0)*dE + (LpC-L0)*dC;
+		Lc *= s1;
+		// LogOut("L0 %f Lc %f \n",L0,Lc);
+		L0  = LUTs[i0];
+		LpA = LUTs[i0+N_CEB];
+		LpB = LUTs[i0+N_CE];
+		LpE = LUTs[i0+N_C];
+		LpC = LUTs[i0+1];
+		// LogOut("LpA %f LpB %f LpE %f LpC %f\n", LpA, LpB, LpE, LpC);
+		Float Ls = L0 + (LpA-L0)*dA + (LpB-L0)*dB+ (LpE-L0)*dE + (LpC-L0)*dC;
+		Ls *= s2;
+		// LogOut("L0 %f Ls %f \n",L0,Ls);
+		result[1] = flip ? (Ls*da[3]-Lc*da[2])/mb : (Lc*da[3]-Ls*da[2])/ma;
+	}
+	else
+	{
+		result[1] = result[0];
+	}
+	LogOut("r0 %.3f r1 %.3f\n",result[0],result[1]);
 }
