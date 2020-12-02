@@ -1395,7 +1395,7 @@ void	createMeas (Scalar *axion, int index)
 	hsize_t tmpS  = axion->Length();
 
 	tSize  = axion->TotalSize();
-	slabSz = tmpS*tmpS;
+	slabSz = axion->Surf();
 	sLz    = axion->Depth();
 
 	LogMsg (VERB_NORMAL, "Creating measurement file with index %d", index);
@@ -3399,8 +3399,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	hsize_t slb  = slabSz;
-	hsize_t lSz  = sizeN;
+	hsize_t slb  = axion->Surf();
+	hsize_t lSz  = axion->Length();
 	char *dataM  = static_cast<char *>(axion->mFrontGhost());
 	char *dataV  = static_cast<char *>(axion->mBackGhost());
 	char mCh[16] = "/map/m";
@@ -3601,13 +3601,14 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
 	/* total values to be written */
-	hsize_t total  = slabSz;
+	hsize_t total  = axion->Surf();
 	/* chunk size */
-	hsize_t slab  = sizeN;
+	hsize_t slab  = axion->Length();
 	char mCh[16] = "/mapp/m";
 	char vCh[16] = "/mapp/v";
 
 	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ");
+	LogMsg (VERB_DEBUG, "[wm2] total %d slab %d myRank %d dataSize %d",total,slab, commRank(),dataSize);	LogFlush();
 	LogFlush();
 
 	if (header == false || opened == false)
@@ -3723,8 +3724,9 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 		exit (0);
 	}
 
-	LogMsg (VERB_HIGH, "[wm2] Ready to write");	LogFlush();
 	hsize_t partial = total/commSize();
+	LogMsg (VERB_HIGH, "[wm2] Ready to write");	LogFlush();
+	LogMsg (VERB_DEBUG, "[wm2] total %d commSize() %d sizeN %d dataSize %d",total,commSize(),sizeN,dataSize);	LogFlush();
 	for (hsize_t yDim=0; yDim < axion->Depth(); yDim++)
 	{
 		hsize_t offset = (hsize_t) myRank*partial + yDim*slab;
@@ -3732,9 +3734,10 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
+		LogMsg (VERB_DEBUG, "[wm2] line yDim %d ",yDim);	LogFlush();
 		/*	Write raw data	recall slab = sizeN*2*/
-		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, (static_cast<char *> (axion->mFrontGhost())) +sizeN*yDim*dataSize);
-		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +sizeN*yDim*dataSize);
+		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, (static_cast<char *> (axion->mFrontGhost())) +axion->Length()*yDim*dataSize);
+		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +axion->Length()*yDim*dataSize);
 
 		if ((mErr < 0) || (vErr < 0))
 		{
@@ -3771,8 +3774,8 @@ void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint, char *eCh)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	hsize_t slb  = slabSz;
-	hsize_t lSz  = sizeN;
+	hsize_t slb  = axion->Surf();
+	hsize_t lSz  = axion->Length();
 	char *dataE  = static_cast<char *>(axion->m2Cpu()) + dataSize*axion->Surf()*slicenumbertoprint;
 	// char eCh[16] = dataname;
 
@@ -3945,8 +3948,8 @@ void	writePMapHdf5s	(Scalar *axion, char *eCh)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	hsize_t slb  = slabSz;
-	hsize_t lSz  = sizeN;
+	hsize_t slb  = axion->Surf();
+	hsize_t lSz  = axion->Length();
 	char *dataE  = static_cast<char *>(axion->mFrontGhost());
 	// char eCh[16] = "/map/P";
 
