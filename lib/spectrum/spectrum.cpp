@@ -1035,9 +1035,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 				#pragma omp parallel for schedule(static)
 				for (size_t iz=0; iz < Lz; iz++) {
 					size_t zo = Ly*(Ly+2)*(iz) ;
-					size_t zi = Ly*Ly*(iz+1) ;
-					size_t zp = Ly*Ly*(iz+2) ;
-					size_t zm = Ly*Ly*(iz) ;
+					size_t zi = LyLy*(iz+1) ;
+					size_t zp = LyLy*(iz+2) ;
+					size_t zm = LyLy*(iz) ;
 					for (size_t iy=0; iy < Ly; iy++) {
 						size_t yo = (Ly+2)*iy ;
 						size_t yi = Ly*iy ;
@@ -1049,8 +1049,8 @@ void	SpecBin::nRun	(nRunType nrt) {
 							Float re[2];
 							da[0] = ma[idx].real()-zaskaFF;
 							da[1] = ma[idx].imag();
-							da[2] = va[idx-Ly*Ly].real();
-							da[3] = va[idx-Ly*Ly].imag();
+							da[2] = va[idx-LyLy].real();
+							da[3] = va[idx-LyLy].imag();
 							da[4] = pre*(ma[((ix + 1) % Ly) + yi + zi].real()-ma[((Ly + ix - 1) % Ly) + yi + zi].real());
 							da[7] = pre*(ma[((ix + 1) % Ly) + yi + zi].imag()-ma[((Ly + ix - 1) % Ly) + yi + zi].imag());
 							da[5] = pre*(ma[ix + yp + zi].real()-ma[ix + ym + zi].real());
@@ -1102,8 +1102,8 @@ void	SpecBin::nRun	(nRunType nrt) {
 											// m2sax[odx] = std::pow(std::abs(da[0]),2)*Rscale*re[0];
 										break;
 								case SPMASK_SAXI:
-											m2sa[odx]   =  std::real(va[idx]) ;
-											m2sax[odx]  =  std::imag(va[idx]) ;
+											m2sa[odx]   =  std::real(va[idx-LyLy]) ;
+											m2sax[odx]  =  std::imag(va[idx-LyLy]) ;
 								break;
 
 							} //end mask
@@ -1172,7 +1172,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 			/* Kinetic energy OLD VERSION*/
 			if (nrt & NRUN_C)
 			{
-				LogMsg(VERB_HIGH,"[nRun] K loop") ;
+				LogMsg(VERB_HIGH,"[nRun] C loop") ;
 				#pragma omp parallel for schedule(static)
 				for (size_t iz=0; iz < Lz; iz++) {
 					size_t zo = Ly*(Ly+2)*(iz) ;
@@ -1189,31 +1189,31 @@ void	SpecBin::nRun	(nRunType nrt) {
 							switch(mask){
 								case SPMASK_FLAT:
 										// m2sa[odx] = Rscale*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
-											m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+											m2sa[odx] = Rscale*std::imag( va[idx-LyLy]/(ma[idx]-zaskaF) );
 										break;
 								case SPMASK_REDO:
 											if (strdaa[idx] & STRING_MASK)
 													m2sa[odx] = 0 ;
 											else
-													m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+													m2sa[odx] = Rscale*std::imag( va[idx-LyLy]/(ma[idx]-zaskaF) );
 										break;
 								case SPMASK_GAUS:
 								case SPMASK_DIFF:
 										/* keep the mask in mhalf so only one load is possible
 										m2sax[idx] contains the mask unpadded*/
-											m2sa[odx] = m2sax[idx]*Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
+											m2sa[odx] = m2sax[idx]*Rscale*std::imag( va[idx-LyLy]/(ma[idx]-zaskaF) );
 										break;
 								case SPMASK_VIL:
 										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
-											m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
+											m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx-LyLy]/(ma[idx]-zaskaF))) ;
 										break;
 								case SPMASK_VIL2:
 										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
-											m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale*(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
+											m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale*(std::imag(va[idx-LyLy]/(ma[idx]-zaskaF))) ;
 										break;
 								case SPMASK_SAXI:
-											m2sa[odx]   =  std::real(va[idx]) ;
-											m2sax[odx]  =  std::imag(va[idx]) ;
+											m2sa[odx]   =  std::real(va[idx-LyLy]) ;
+											m2sax[odx]  =  std::imag(va[idx-LyLy]) ;
 								break;
 
 							} //end mask
