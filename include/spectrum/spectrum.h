@@ -196,11 +196,6 @@
 
 		void	smoothFourier	(double length, FilterIndex filter);
 
-		template<typename Float>
-		void	stringcorre	(Float *data, Float *result);
-
-		void	stringcorre	(void *data, void *result); // parms is a pointer to m,r and grads, result written to result
-
 	};
 
 

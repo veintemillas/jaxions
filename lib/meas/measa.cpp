@@ -615,7 +615,7 @@ writePMapHdf5s (axiona, LAB);
 
 						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							prof.start();
-								specAna.nRun(maskara[i], nruntype);
+								specAna.nRun(maskara[i], nruntype & (NRUN_K | NRUN_G | NRUN_V));
 									prof.stop();
 										sprintf(LABEL, "NSPA_%s", masklab[i].c_str());
 											prof.add(std::string(LABEL), 0.0, 0.0);
@@ -623,22 +623,9 @@ writePMapHdf5s (axiona, LAB);
 
 
 						if (nruntype & NRUN_K){
-
 							sprintf(LABEL, "sK_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
 								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
-
-							/* FIXME test*/
-							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
-								prof.start();
-									specAna.nRun(maskara[i], NRUN_C);
-										prof.stop();
-											sprintf(LABEL, "NSPA_%s (pure)", masklab[i].c_str());
-												prof.add(std::string(LABEL), 0.0, 0.0);
-							sprintf(LABEL, "sC_%s",PRELABEL);
-								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", LABEL);
-								writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", LABEL);
-
 							}
 						if (nruntype & NRUN_G){
 						sprintf(LABEL, "sG_%s",PRELABEL);
@@ -655,6 +642,23 @@ writePMapHdf5s (axiona, LAB);
 							writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
 						}
+						}
+
+						if (nruntype & NRUN_CK){
+						/* FIXME test*/
+						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+							prof.start();
+							nRunType aux = (NRUN_G & nruntype) ? NRUN_CK|NRUN_CG : NRUN_CK ;
+								specAna.nRun(maskara[i], aux);
+									prof.stop();
+										sprintf(LABEL, "NSPA_%s (pure)", masklab[i].c_str());
+											prof.add(std::string(LABEL), 0.0, 0.0);
+						sprintf(LABEL, "sCK_%s",PRELABEL);
+							writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+							writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+						sprintf(LABEL, "sCG_%s",PRELABEL);
+							writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
+							writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
 						}
 
 
