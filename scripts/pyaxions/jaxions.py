@@ -1211,6 +1211,71 @@ def fildic(meas):
 
 
 # ------------------------------------------------------------------------------
+#   Function to retrieve axion number in ADM units from nspectra
+# ------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+def checkNV(file,k0, kl, nn, mode='KGV',mask='_0'):
+    """
+    Computes the axion number / comoving volume in ADM units
+    from file
+    : par file :  string        address of the axion.m.xxxxx file containing nspec
+    : par k0   :  float         2pi/L in ADM units
+    : par kl   :  float array   list of mode wavenumbers in ADM units (multiples of k0)
+    : par nn   :  float array   number of modes summed in each bin of n_spec
+    : par mode :  string        string contains 'K' and/or 'G' and/or 'V' for the K, G, or V
+                                contribution to the axion number; only those are summed
+    : par mask :  string        mask used in the spectrum; searchs for '/nSpectrum/sK'+mask
+                                examples mask='_0', '_Red_1.00', etc.
+    """
+#     w  = np.sqrt(kl**2 + mA*mA*R*R)
+    sus = 0
+    if 'K' in mode:
+        sus += gm(file,'nspK'+mask)
+    if 'G' in mode:
+        sus += gm(file,'nspG'+mask)
+    if 'V' in mode:
+        sus += gm(file,'nspV'+mask)
+    if 'S' in mode:
+        sus += gm(file,'nspS'+mask)
+    return (k0*kl*kl*(sus)/(2*np.pi**2)/nn).sum()
+
+def NV(mf, k0, kl, nn, mode='KGV',mask='_0'):
+    """
+    Computes the axion number / comoving volume in ADM units
+    from a list/array of files mf by calling the funciton checkNV(file,k0, kl, nn, mode='KGV',mask='_0')
+    : par file :  string        address of the axion.m.xxxxx file containing nspec
+    : par k0   :  float         2pi/L in ADM units
+    : par kl   :  float array   list of mode wavenumbers in ADM units (multiples of k0)
+    : par nn   :  float array   number of modes summed in each bin of n_spec
+    : par mode :  string        string contains 'K' and/or 'G' and/or 'V' for the K, G, or V
+                                contribution to the axion number; only those are summed
+    : par mask :  string        mask used in the spectrum; searchs for '/nSpectrum/sK'+mask
+                                examples mask='_0', '_Red_1.00', etc.
+    """
+    hi = []
+    for f in mf:
+        hi.append(checkNV(f,k0, kl, nn, mode, mask))
+    return np.array(hi)
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
 #   n modes for normalising power spectra (move to other file?)
 # ------------------------------------------------------------------------------
 
