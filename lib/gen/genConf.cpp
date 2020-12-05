@@ -1023,7 +1023,7 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 	// old naive version
 	// double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
 	// better version including mode decay inside horizon
-	double norma = 1/std::sqrt(3.14159*kCritz*kCritz*kCritz*(ic.kMax/kCritz - 0.5*std::sin(2*ic.kMax/kCritz)));
+	double norma = ic.kcr/std::sqrt(3.14159*kCritz*kCritz*kCritz*(ic.kMax/kCritz - 0.5*std::sin(2*ic.kMax/kCritz)));
 	LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
 	scaleField (axionField, FIELD_V, norma);
 	norma /= (*axionField->zV());
