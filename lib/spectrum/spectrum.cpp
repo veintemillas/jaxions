@@ -1030,7 +1030,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 			/* Kinetic energy includes subgrid correction */
 			if (nrt & NRUN_K)
 			{
-				LogMsg(VERB_HIGH,"[nRun] K loop") ;
+
 				switch (mask){
 					default:
 					case SPMASK_FLAT:
@@ -1153,7 +1153,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 			LogMsg(VERB_HIGH,"[nRun] axion mass 0 (%.6e) -> no V loop ",mass2) ;
 
 			/* Gradient energy OLD VERSION*/
-			if (nrt & NRUN_CV)
+			if ( (nrt & NRUN_CV) && (mass2 > 0.0) )
 			{
 
 					/* Potential ... WARNING: still experimental */
@@ -1221,7 +1221,6 @@ void	SpecBin::nRun	(nRunType nrt) {
 						fillBins<Float,  SPECTRUM_VV, false>();
 					}
 			} // potential
-
 
 			if (nrt & NRUN_G)
 			{
@@ -1526,84 +1525,95 @@ void	SpecBin::nRun	(nRunType nrt) {
 			size_t Sm	= Ly*Lz;
 
 			// Copy m -> m2 with padding
-			if (mask & SPMASK_FLAT){
-				#pragma omp parallel for schedule(static)
-				for (uint sl=0; sl<Sm; sl++) {
-					auto	oOff = sl*field->DataSize()* Ly;
-					auto	fOff = sl*field->DataSize()*(Ly+2);
-					memcpy	(mF+fOff, mO+oOff, dataLine);
-				}
-			} else {
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
-							switch(mask){
-								case SPMASK_VIL:
-										m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
-									break;
-								default:
-								case SPMASK_AXIT2:
-										if (strdaa[idx] & STRING_MASK)
-												m2[odx] = 0 ;
-										else
-												m2[odx] = m[idx];
-									break;
-							} //end mask
-					}}} // end last volume loop
+			if (nrt & (NRUN_G | NRUN_CG | NRUN_V | NRUN_CV) )
+			{
+				LogMsg(VERB_HIGH,"[nRun] GV loop (Axion)") ;
+				if (mask & SPMASK_FLAT){
+					#pragma omp parallel for schedule(static)
+					for (uint sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*field->DataSize()* Ly;
+						auto	fOff = sl*field->DataSize()*(Ly+2);
+						memcpy	(mF+fOff, mO+oOff, dataLine);
+					}
+				} else {
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+								switch(mask){
+									case SPMASK_AXIT:
+											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+										break;
+									default:
+									case SPMASK_AXIT2:
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = m[idx];
+										break;
+								} //end mask
+						}}} // end last volume loop
+				}
+
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_GV, true> ();
+				else
+					fillBins<Float,  SPECTRUM_GV, false>();
 			}
 
-			myPlan.run(FFT_FWD);
+			if (nrt & (NRUN_K | NRUN_CK ) )
+			{
+				LogMsg(VERB_HIGH,"[nRun] K loop (Axion)") ;
+				if (mask & SPMASK_FLAT){
+					// Copy v -> m2 with padding
+					#pragma omp parallel for schedule(static)
+					for (uint sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*field->DataSize()* Ly;
+						auto	fOff = sl*field->DataSize()*(Ly+2);
+						memcpy	(mF+fOff, vO+oOff, dataLine);
+					}
+				} else {
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
-			if (spec)
-				fillBins<Float,  SPECTRUM_GV, true> ();
-			else
-				fillBins<Float,  SPECTRUM_GV, false>();
-
-			if (mask & SPMASK_FLAT){
-				// Copy v -> m2 with padding
-				#pragma omp parallel for schedule(static)
-				for (uint sl=0; sl<Sm; sl++) {
-					auto	oOff = sl*field->DataSize()* Ly;
-					auto	fOff = sl*field->DataSize()*(Ly+2);
-					memcpy	(mF+fOff, vO+oOff, dataLine);
-				}
-			} else {
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-
-							switch(mask){
-								default:
-								case SPMASK_AXIT2:
+								switch(mask){
+									case SPMASK_AXIT:
+											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+										break;
+									default:
+									case SPMASK_AXIT2:
 											if (strdaa[idx] & STRING_MASK)
 													m2[odx] = 0 ;
 											else
 													m2[odx] = v[idx];
 										break;
-							} //end mask
-					}}} // end last volume loop
+								} //end mask
+						}}} // end last volume loop
+				}
+
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_K, true> ();
+				else
+					fillBins<Float,  SPECTRUM_K, false>();
 			}
-
-			myPlan.run(FFT_FWD);
-
-			if (spec)
-				fillBins<Float,  SPECTRUM_K, true> ();
-			else
-				fillBins<Float,  SPECTRUM_K, false>();
-
 		/* If cosine potential the energy is
 		R^-4 [ (psi')^2/2 + (grad phi)^2/2 + m2 R^4 (1-cos(psi/R)) ]
 		in the linear regime the potential term is simply
@@ -1619,9 +1629,10 @@ void	SpecBin::nRun	(nRunType nrt) {
 		as well, i.e.
 
 		*/
-			if (mass2 > 0)
-			{
 
+			if ( (nrt & (NRUN_S | NRUN_CS)) && (mass2 > 0.0))
+			{
+				LogMsg(VERB_HIGH,"[nRun] Vnl loop (Axion)") ;
 				Float R2   = (Float) Rscale*2;
 				Float iR2  = 1/R2;
 					#pragma omp parallel for schedule(static)
@@ -1635,15 +1646,18 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 								switch(mask){
+									default:
 									case SPMASK_FLAT:
 												m2[odx] = R2*std::sin(m[idx] * iR2);
 											break;
-									default:
+									case SPMASK_AXIT:
+												m2[odx] = R2*std::sin(m[idx] * iR2)*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+											break;
 									case SPMASK_AXIT2:
-												if (strdaa[idx] & STRING_MASK)
-														m2[odx] = 0 ;
-												else
-														m2[odx] = R2*std::sin(m[idx] * iR2);
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = R2*std::sin(m[idx] * iR2);
 											break;
 								} //end mask
 						}}} // end last volume loop
