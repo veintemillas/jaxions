@@ -1240,14 +1240,30 @@ def checkNV(file,k0, kl, nn, mode='KGV',mask='_0'):
 #     w  = np.sqrt(kl**2 + mA*mA*R*R)
     sus = 0
     if 'K' in mode:
-        sus += gm(file,'nspK'+mask)
+        if 'C' not in mode:
+            sus += gm(file,'nspK'+mask)
+        else :
+            sus += gm(file,'nspCK'+mask)
     if 'G' in mode:
-        sus += gm(file,'nspG'+mask)
+        if 'C' not in mode:
+            sus += gm(file,'nspG'+mask)
+        else :
+            sus += gm(file,'nspCG'+mask)
     if 'V' in mode:
-        sus += gm(file,'nspV'+mask)
+        if 'C' not in mode:
+            sus += gm(file,'nspV'+mask)
+        else :
+            sus += gm(file,'nspCV'+mask)
     if 'S' in mode:
-        sus += gm(file,'nspS'+mask)
-    return (k0*kl*kl*(sus)/(2*np.pi**2)/nn).sum()
+        if 'C' not in mode:
+            sus += gm(file,'nspS'+mask)
+        else :
+            sus += gm(file,'nspCS'+mask)
+    if sus[0] == np.inf:
+        return ((k0*kl*kl*(sus)/(2*np.pi**2)/nn))[1:].sum()
+    else :
+        return (k0*kl*kl*(sus)/(2*np.pi**2)/nn).sum()
+
 
 def NV(mf, k0, kl, nn, mode='KGV',mask='_0'):
     """
