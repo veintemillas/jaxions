@@ -54,6 +54,8 @@
 		template<typename Float, FilterIndex filter>
 		void	smoothFourier	(double length);
 
+
+
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
@@ -193,6 +195,7 @@
 		void	maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) ;
 
 		void	smoothFourier	(double length, FilterIndex filter);
+
 	};
 
 

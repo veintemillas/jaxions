@@ -42,30 +42,30 @@ if ftype == 'Naxion':
         con   = con[:,:,:,1]
 elif ftype == 'Saxion':
     if sys.argv[-2] == 'm':
-        con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
         con   = np.arctan2(con[:,:,:,0],con[:,:,:,1])
     elif sys.argv[-2] == 'mr':
-        con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
         con   = con[:,:,:,0]
     elif sys.argv[-2] == 'mi':
-        con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
         con   = con[:,:,:,1]
     elif sys.argv[-2] == 'rho':
         con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
         con   = np.sqrt(con[:,:,:,0]**2+con[:,:,:,1]**2)
     elif sys.argv[-2] == 'v':
-        con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
         con   = np.sqrt(con[:,:,:,0]**2+con[:,:,:,1]**2)
     elif sys.argv[-2] == 'vr':
-        con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
         con   = con[:,:,:,0]
     elif sys.argv[-2] == 'vi':
-        con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
         con   = con[:,:,:,1]
     elif sys.argv[-2] == 'vt':
         m   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
         v   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
-        con   = (m[:,:,:,0]*v[:,:,:,1]-m[:,:,:,1]*v[:,:,:,0])/(m[:,:,:,0]**2+v[:,:,:,1]**2)
+        con   = (m[:,:,:,0]*v[:,:,:,1]-m[:,:,:,1]*v[:,:,:,0])/(m[:,:,:,0]**2+m[:,:,:,1]**2+0.2)
     elif sys.argv[-2] == 'vtn':
         m   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
         v   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))

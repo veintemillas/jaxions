@@ -11,6 +11,7 @@
 #include "comms/comms.h"
 #include "fft/fftCode.h"
 
+#include "utils/kgvops.h"
 
 void	SpecBin::fillCosTable () {
 
@@ -937,6 +938,7 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 template<typename Float, SpectrumMaskType mask>
 void	SpecBin::nRun	(nRunType nrt) {
 
+	LogMsg(VERB_HIGH,"[nRun] Called with mask %d nrt %d",mask,nrt);
 	/* test if everything we need is there in the different cases */
 	switch(mask)
 	{
@@ -988,6 +990,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 	binNV.assign(powMax, 0.);
 	binNVnl.assign(powMax, 0.);
 
+	binPS.assign(powMax, 0.);
+	binP.assign(powMax, 0.);
+
 	if (mask == SPMASK_SAXI)
 	{
 		binPS.assign(powMax, 0.);
@@ -995,6 +1000,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 	// using cFloat = std::complex<Float>;
 	std::complex<Float> zaskaF((Float) zaskar, 0.);
+	Float zaskaFF = (Float) zaskar;
 
 	if	(field->Folded())
 	{
@@ -1009,7 +1015,8 @@ void	SpecBin::nRun	(nRunType nrt) {
 		case	FIELD_SAXION:
 		{
 			// FIX ME vectorise loops?
-			std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
+			// std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
+			std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
 			std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
 			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
 			// Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + field->eSize();
@@ -1020,179 +1027,113 @@ void	SpecBin::nRun	(nRunType nrt) {
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
 
 			// FIX ME vectorise
-			/* Kinetic energy */
+			/* Kinetic energy includes subgrid correction */
 			if (nrt & NRUN_K)
 			{
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
-							switch(mask){
-								case SPMASK_FLAT:
-										// m2sa[odx] = Rscale*std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx]) ;
-											m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
-										break;
-								case SPMASK_REDO:
-											if (strdaa[idx] & STRING_MASK)
-													m2sa[odx] = 0 ;
-											else
-													m2sa[odx] = Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
-										break;
-								case SPMASK_GAUS:
-								case SPMASK_DIFF:
-										/* keep the mask in mhalf so only one load is possible
-										m2sax[idx] contains the mask unpadded*/
-											m2sa[odx] = m2sax[idx]*Rscale*std::imag( va[idx]/(ma[idx]-zaskaF) );
-										break;
-								case SPMASK_VIL:
-										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
-											m2sa[odx] =       std::abs(ma[idx]-zaskaF)      *(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
-										break;
-								case SPMASK_VIL2:
-										// m2sa[odx] = std::abs(ma[idx]-zaskaf)*(std::imag(va[idx]/(ma[idx]-zaskaf))+std::arg(ma[idx])/Rscale) ;
-											m2sa[odx] =       std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale*(std::imag(va[idx]/(ma[idx]-zaskaF))) ;
-										break;
-								case SPMASK_SAXI:
-											m2sa[odx]   =  std::real(va[idx]) ;
-											m2sax[odx]  =  std::imag(va[idx]) ;
-								break;
+				switch (mask){
+					default:
+					case SPMASK_FLAT:
+						buildc_k<SPMASK_FLAT,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_REDO:
+						buildc_k<SPMASK_REDO,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_GAUS:
+					case SPMASK_DIFF:
+						buildc_k<SPMASK_DIFF,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL:
+						buildc_k<SPMASK_VIL,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL2:
+						buildc_k<SPMASK_VIL2,true> (field, PFIELD_M2, zaskar);
+					break;
+				}
 
-							} //end mask
-						}
-					}
-				} // end last volume loop
-
+				/* corrected */
+				LogMsg(VERB_HIGH,"[nRun] FFT") ;
 				myPlan.run(FFT_FWD);
 
 				// FIX ME FOR SAXI
+				LogMsg(VERB_HIGH,"[nRun] bin") ;
+				if (spec)
+					fillBins<Float,  SPECTRUM_KK, true> ();
+				else
+					fillBins<Float,  SPECTRUM_KK, false>();
+			}
+
+			/* Kinetic energy OLD VERSION*/
+			if (nrt & NRUN_CK)
+			{
+				LogMsg(VERB_HIGH,"[nRun] C loop") ;
+				switch (mask){
+					default:
+					case SPMASK_FLAT:
+						buildc_k<SPMASK_FLAT,false> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_REDO:
+						buildc_k<SPMASK_REDO,false> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_GAUS:
+					case SPMASK_DIFF:
+						buildc_k<SPMASK_DIFF,false> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL:
+						buildc_k<SPMASK_VIL,false> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL2:
+						buildc_k<SPMASK_VIL2,false> (field, PFIELD_M2, zaskar);
+					break;
+				}
+
+				/* uncorrected */
+				LogMsg(VERB_HIGH,"[nRun] FFT") ;
+				myPlan.run(FFT_FWD);
+
+				// FIX ME FOR SAXI
+				LogMsg(VERB_HIGH,"[nRun] bin") ;
 				if (spec)
 					fillBins<Float,  SPECTRUM_KK, true> ();
 				else
 					fillBins<Float,  SPECTRUM_KK, false>();
 
+				/* overwrites K! */
 			}
 
-			if (nrt & NRUN_G)
+			if ( (nrt & NRUN_V) && (mass2 > 0.0))
 			{
-				/* Gradient X */
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
 
-							switch(mask){
-								case SPMASK_FLAT:
-										m2sa[odx] = (2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-										break;
-								case SPMASK_REDO:
-										if (strdaa[idx] & STRING_MASK)
-												m2sa[odx] = 0 ;
-										else
-												m2sa[odx] = (2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-										break;
-								case SPMASK_GAUS:
-								case SPMASK_DIFF:
-										/* keep the mask in mhalf so only one load is possible */
-										m2sa[odx] = m2sax[idx]*(2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));;
-										break;
-								case SPMASK_VIL:
-										m2sa[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-										break;
-								case SPMASK_VIL2:
-										m2sa[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
-										break;
-								case SPMASK_SAXI:
-										m2sa[odx]  =  std::real(va[idx]) ;
-										m2sax[odx] =  std::imag(va[idx]);
-								break;
-
-							} //end mask
-						}
+					LogMsg(VERB_HIGH,"[nRun] V loop") ;
+					switch (mask){
+						default:
+						case SPMASK_FLAT:
+							buildc_v<SPMASK_FLAT,false> (field, PFIELD_M2, zaskar);
+						break;
+						case SPMASK_REDO:
+							buildc_v<SPMASK_REDO,false> (field, PFIELD_M2, zaskar);
+						break;
+						case SPMASK_GAUS:
+						case SPMASK_DIFF:
+							buildc_v<SPMASK_DIFF,false> (field, PFIELD_M2, zaskar);
+						break;
+						case SPMASK_VIL:
+							buildc_v<SPMASK_VIL,false> (field, PFIELD_M2, zaskar);
+						break;
+						case SPMASK_VIL2:
+							buildc_v<SPMASK_VIL2,false> (field, PFIELD_M2, zaskar);
+						break;
 					}
-				} // end last volume loop
 
-				// r2c FFT in m2
-				myPlan.run(FFT_FWD);
-
-				if (spec)
-					fillBins<Float,  SPECTRUM_GaSadd, true> ();
-				else
-					fillBins<Float,  SPECTRUM_GaSadd, false>();
-
-
-				/* Gradient YZ */
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					size_t zp = Ly*Ly*(iz+1) ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						size_t yp = Ly*((iy+1)%Ly) ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-							size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
-
-							switch(mask){
-								case SPMASK_FLAT:
-										m2sa[odx]  = (2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-										m2sax[odx] = (2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-										break;
-								case SPMASK_REDO:
-										if (strdaa[idx] & STRING_MASK){
-												m2sa[odx] = 0 ;
-												m2sax[odx] = 0 ;
-										}
-										else{
-											m2sa[odx]  = (2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-											m2sax[odx] = (2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-										}
-										break;
-								case SPMASK_GAUS:
-								case SPMASK_DIFF:
-										/* The mask in m2sax[idx] will be destroyed but a race condition is prevented by padding m2sax */
-										m2sa[odx]  = m2sax[idx]*(2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-										m2sax[idx] = m2sax[idx]*(2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-										break;
-								case SPMASK_VIL:
-										m2sa[odx]  = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-										m2sax[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-										break;
-									case SPMASK_VIL2:
-											m2sa[odx]  = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
-											m2sax[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
-											break;
-									case SPMASK_SAXI:
-											m2sa[odx]  =  std::real(ma[idx]) ;
-											m2sax[odx] =  std::imag(ma[idx]);
-											break;
-							} //end mask
-						}
-					}
-				} //end volume loop
-
-					// GRADIENT Y:
+					// POTENTIAL:
 					myPlan.run(FFT_FWD);
 
-					controlxyz = 1;
 					if (spec)
-						fillBins<Float,  SPECTRUM_GaSadd, true> ();
+						fillBins<Float,  SPECTRUM_VNL, true> ();
 					else
-						fillBins<Float,  SPECTRUM_GaSadd, false>();
+						fillBins<Float,  SPECTRUM_VNL, false>();
 
-					// GRADIENT Z:
+					// linear version
 					// Copy m2aux -> m2
 					// we move real, not complex numbers
 					size_t dataTotalSize2 = field->Precision()*field->eSize();
@@ -1200,29 +1141,19 @@ void	SpecBin::nRun	(nRunType nrt) {
 					char *m2Ch = static_cast<char *>(field->m2half());
 					memmove	(m2C, m2Ch, dataTotalSize2);
 
-					/* unpad m2 in place if SPMASK_GAUS/DIFF */
-						if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
-							size_t dl = Ly*field->Precision();
-							size_t pl = (Ly+2)*field->Precision();
-							size_t ss	= Ly*Lz;
-
-							for (size_t sl=1; sl<LyLz; sl++) {
-								size_t	oOff = sl*dl;
-								size_t	fOff = sl*pl;
-								memmove	(m2C+oOff, m2C+fOff, dl);
-								}
-						}
-
+					// POTENTIAL LINEAR:
 					myPlan.run(FFT_FWD);
 
-					controlxyz = 2;
 					if (spec)
-						fillBins<Float,  SPECTRUM_GaS, true> ();
+						fillBins<Float,  SPECTRUM_V, true> ();
 					else
-						fillBins<Float,  SPECTRUM_GaS, false>();
-			}
+						fillBins<Float,  SPECTRUM_V, false>();
+			} // potential
+			else
+			LogMsg(VERB_HIGH,"[nRun] axion mass 0 (%.6e) -> no V loop ",mass2) ;
 
-			if (nrt & NRUN_V)
+			/* Gradient energy OLD VERSION*/
+			if ( (nrt & NRUN_CV) && (mass2 > 0.0) )
 			{
 
 					/* Potential ... WARNING: still experimental */
@@ -1291,6 +1222,286 @@ void	SpecBin::nRun	(nRunType nrt) {
 					}
 			} // potential
 
+			if (nrt & NRUN_G)
+			{
+				/* Gradient X */
+				LogMsg(VERB_HIGH,"[nRun] GX loop") ;
+				switch (mask){
+					default:
+					case SPMASK_FLAT:
+						buildc_gx<SPMASK_FLAT,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_REDO:
+						buildc_gx<SPMASK_REDO,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_GAUS:
+					case SPMASK_DIFF:
+						buildc_gx<SPMASK_DIFF,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL:
+						buildc_gx<SPMASK_VIL,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL2:
+						buildc_gx<SPMASK_VIL2,true> (field, PFIELD_M2, zaskar);
+					break;
+				}
+
+				// r2c FFT in m2
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_GaSadd, true> ();
+				else
+					fillBins<Float,  SPECTRUM_GaSadd, false>();
+
+
+				/* Gradient YZ */
+				LogMsg(VERB_HIGH,"[nRun] GYZ loop") ;
+				switch (mask){
+					default:
+					case SPMASK_FLAT:
+						buildc_gyz<SPMASK_FLAT,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_REDO:
+						buildc_gyz<SPMASK_REDO,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_GAUS:
+					case SPMASK_DIFF:
+						buildc_gyz<SPMASK_DIFF,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL:
+						buildc_gyz<SPMASK_VIL,true> (field, PFIELD_M2, zaskar);
+					break;
+					case SPMASK_VIL2:
+						buildc_gyz<SPMASK_VIL2,true> (field, PFIELD_M2, zaskar);
+					break;
+				}
+
+					// GRADIENT Y:
+					myPlan.run(FFT_FWD);
+
+					controlxyz = 1;
+					if (spec)
+						fillBins<Float,  SPECTRUM_GaSadd, true> ();
+					else
+						fillBins<Float,  SPECTRUM_GaSadd, false>();
+
+					// GRADIENT Z:
+					// Copy m2aux -> m2
+					// we move real, not complex numbers
+					size_t dataTotalSize2 = field->Precision()*field->eSize();
+					char *m2C  = static_cast<char *>(field->m2Cpu());
+					char *m2Ch = static_cast<char *>(field->m2half());
+					memmove	(m2C, m2Ch, dataTotalSize2);
+
+					/* unpad m2 in place if SPMASK_GAUS/DIFF */
+						if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
+							size_t dl = Ly*field->Precision();
+							size_t pl = (Ly+2)*field->Precision();
+							size_t ss	= Ly*Lz;
+
+							for (size_t sl=1; sl<LyLz; sl++) {
+								size_t	oOff = sl*dl;
+								size_t	fOff = sl*pl;
+								memmove	(m2C+oOff, m2C+fOff, dl);
+								}
+						}
+
+					myPlan.run(FFT_FWD);
+
+					controlxyz = 2;
+					if (spec)
+						fillBins<Float,  SPECTRUM_GaS, true> ();
+					else
+						fillBins<Float,  SPECTRUM_GaS, false>();
+			}
+
+			/* Gradient energy OLD VERSION*/
+			if (nrt & NRUN_CG)
+			{
+				/* Gradient X */
+				LogMsg(VERB_HIGH,"[nRun] CGX loop") ;
+				// switch (mask){
+				// 	default:
+				// 	case SPMASK_FLAT:
+				// 		buildc_gx<SPMASK_FLAT,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_REDO:
+				// 		buildc_gx<SPMASK_REDO,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_GAUS:
+				// 	case SPMASK_DIFF:
+				// 		buildc_gx<SPMASK_DIFF,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_VIL:
+				// 		buildc_gx<SPMASK_VIL,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_VIL2:
+				// 		buildc_gx<SPMASK_VIL2,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// }
+				/* Gradient X */
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*iz ;
+					size_t zi = Ly*Ly*(iz+1) ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t ixM = ((ix + 1) % Ly) + yi + zi;
+
+							switch(mask){
+								case SPMASK_FLAT:
+										m2sa[odx] = (2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_REDO:
+										if (strdaa[idx] & STRING_MASK)
+												m2sa[odx] = 0 ;
+										else
+												m2sa[odx] = (2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_GAUS:
+								case SPMASK_DIFF:
+										/* keep the mask in mhalf so only one load is possible */
+										m2sa[odx] = m2sax[idx]*(2*Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));;
+										break;
+								case SPMASK_VIL:
+										m2sa[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_VIL2:
+										m2sa[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[ixM]-ma[idx])/(ma[ixM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_SAXI:
+										m2sa[odx]  =  std::real(va[idx-LyLy]) ;
+										m2sax[odx] =  std::imag(va[idx-LyLy]);
+								break;
+
+							} //end mask
+						}
+					}
+				} // end last volume loop
+
+				// r2c FFT in m2
+				myPlan.run(FFT_FWD);
+
+				controlxyz = 0;
+				if (spec)
+					fillBins<Float,  SPECTRUM_GaSadd, true> ();
+				else
+					fillBins<Float,  SPECTRUM_GaSadd, false>();
+
+
+				/* Gradient YZ */
+				// LogMsg(VERB_HIGH,"[nRun] CGYZ loop") ;
+				// switch (mask){
+				// 	default:
+				// 	case SPMASK_FLAT:
+				// 		buildc_gyz<SPMASK_FLAT,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_REDO:
+				// 		buildc_gyz<SPMASK_REDO,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_GAUS:
+				// 	case SPMASK_DIFF:
+				// 		buildc_gyz<SPMASK_DIFF,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_VIL:
+				// 		buildc_gyz<SPMASK_VIL,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// 	case SPMASK_VIL2:
+				// 		buildc_gyz<SPMASK_VIL2,false> (field, PFIELD_M2, zaskar);
+				// 	break;
+				// }
+			#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zo = Ly*(Ly+2)*iz ;
+					size_t zi = Ly*Ly*(iz+1) ;
+					size_t zp = Ly*Ly*(iz+2) ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yo = (Ly+2)*iy ;
+						size_t yi = Ly*iy ;
+						size_t yp = Ly*((iy+1)%Ly) ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+							size_t iyM = ix + yp + zi; size_t izM = ix + yi + zp;
+
+							switch(mask){
+								case SPMASK_FLAT:
+										m2sa[odx]  = (2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+										m2sax[odx] = (2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_REDO:
+										if (strdaa[idx] & STRING_MASK){
+												m2sa[odx] = 0 ;
+												m2sax[odx] = 0 ;
+										}
+										else{
+											m2sa[odx]  = (2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+											m2sax[odx] = (2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+										}
+										break;
+								case SPMASK_GAUS:
+								case SPMASK_DIFF:
+										/* The mask in m2sax[idx] will be destroyed but a race condition is prevented by padding m2sax */
+										m2sa[odx]  = m2sax[idx]*(2*Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+										m2sax[idx] = m2sax[idx]*(2*Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+										break;
+								case SPMASK_VIL:
+										m2sa[odx]  = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+										m2sax[odx] = (2*std::abs(ma[idx]-zaskaF)/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+										break;
+									case SPMASK_VIL2:
+											m2sa[odx]  = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[iyM]-ma[idx])/(ma[iyM]+ma[idx]-zaskaF-zaskaF));
+											m2sax[odx] = (2*std::pow(std::abs(ma[idx]-zaskaF),2)/Rscale/depta)*std::imag((ma[izM]-ma[idx])/(ma[izM]+ma[idx]-zaskaF-zaskaF));
+											break;
+									case SPMASK_SAXI:
+											m2sa[odx]  =  std::real(ma[idx]) ;
+											m2sax[odx] =  std::imag(ma[idx]);
+											break;
+							} //end mask
+						}
+					}
+				} //end volume loop
+					// GRADIENT Y:
+					myPlan.run(FFT_FWD);
+
+					controlxyz = 1;
+					if (spec)
+						fillBins<Float,  SPECTRUM_GaSadd, true> ();
+					else
+						fillBins<Float,  SPECTRUM_GaSadd, false>();
+
+					// GRADIENT Z:
+					// Copy m2aux -> m2
+					// we move real, not complex numbers
+					size_t dataTotalSize2 = field->Precision()*field->eSize();
+					char *m2C  = static_cast<char *>(field->m2Cpu());
+					char *m2Ch = static_cast<char *>(field->m2half());
+					memmove	(m2C, m2Ch, dataTotalSize2);
+
+					/* unpad m2 in place if SPMASK_GAUS/DIFF */
+						if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
+							size_t dl = Ly*field->Precision();
+							size_t pl = (Ly+2)*field->Precision();
+							size_t ss	= Ly*Lz;
+
+							for (size_t sl=1; sl<LyLz; sl++) {
+								size_t	oOff = sl*dl;
+								size_t	fOff = sl*pl;
+								memmove	(m2C+oOff, m2C+fOff, dl);
+								}
+						}
+
+					myPlan.run(FFT_FWD);
+
+					controlxyz = 2;
+					if (spec)
+						fillBins<Float,  SPECTRUM_GaS, true> ();
+					else
+						fillBins<Float,  SPECTRUM_GaS, false>();
+			}
+
 			field->setM2     (M2_DIRTY);
 		}
 		break;
@@ -1314,84 +1525,95 @@ void	SpecBin::nRun	(nRunType nrt) {
 			size_t Sm	= Ly*Lz;
 
 			// Copy m -> m2 with padding
-			if (mask & SPMASK_FLAT){
-				#pragma omp parallel for schedule(static)
-				for (uint sl=0; sl<Sm; sl++) {
-					auto	oOff = sl*field->DataSize()* Ly;
-					auto	fOff = sl*field->DataSize()*(Ly+2);
-					memcpy	(mF+fOff, mO+oOff, dataLine);
-				}
-			} else {
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
-							switch(mask){
-								case SPMASK_VIL:
-										m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
-									break;
-								default:
-								case SPMASK_AXIT2:
-										if (strdaa[idx] & STRING_MASK)
-												m2[odx] = 0 ;
-										else
-												m2[odx] = m[idx];
-									break;
-							} //end mask
-					}}} // end last volume loop
+			if (nrt & (NRUN_G | NRUN_CG | NRUN_V | NRUN_CV) )
+			{
+				LogMsg(VERB_HIGH,"[nRun] GV loop (Axion)") ;
+				if (mask & SPMASK_FLAT){
+					#pragma omp parallel for schedule(static)
+					for (uint sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*field->DataSize()* Ly;
+						auto	fOff = sl*field->DataSize()*(Ly+2);
+						memcpy	(mF+fOff, mO+oOff, dataLine);
+					}
+				} else {
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+								switch(mask){
+									case SPMASK_AXIT:
+											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+										break;
+									default:
+									case SPMASK_AXIT2:
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = m[idx];
+										break;
+								} //end mask
+						}}} // end last volume loop
+				}
+
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_GV, true> ();
+				else
+					fillBins<Float,  SPECTRUM_GV, false>();
 			}
 
-			myPlan.run(FFT_FWD);
+			if (nrt & (NRUN_K | NRUN_CK ) )
+			{
+				LogMsg(VERB_HIGH,"[nRun] K loop (Axion)") ;
+				if (mask & SPMASK_FLAT){
+					// Copy v -> m2 with padding
+					#pragma omp parallel for schedule(static)
+					for (uint sl=0; sl<Sm; sl++) {
+						auto	oOff = sl*field->DataSize()* Ly;
+						auto	fOff = sl*field->DataSize()*(Ly+2);
+						memcpy	(mF+fOff, vO+oOff, dataLine);
+					}
+				} else {
+					#pragma omp parallel for schedule(static)
+					for (size_t iz=0; iz < Lz; iz++) {
+						size_t zo = Ly*(Ly+2)*iz ;
+						size_t zi = Ly*Ly*iz ;
+						for (size_t iy=0; iy < Ly; iy++) {
+							size_t yo = (Ly+2)*iy ;
+							size_t yi = Ly*iy ;
+							for (size_t ix=0; ix < Ly; ix++) {
+								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
-			if (spec)
-				fillBins<Float,  SPECTRUM_GV, true> ();
-			else
-				fillBins<Float,  SPECTRUM_GV, false>();
-
-			if (mask & SPMASK_FLAT){
-				// Copy v -> m2 with padding
-				#pragma omp parallel for schedule(static)
-				for (uint sl=0; sl<Sm; sl++) {
-					auto	oOff = sl*field->DataSize()* Ly;
-					auto	fOff = sl*field->DataSize()*(Ly+2);
-					memcpy	(mF+fOff, vO+oOff, dataLine);
-				}
-			} else {
-				#pragma omp parallel for schedule(static)
-				for (size_t iz=0; iz < Lz; iz++) {
-					size_t zo = Ly*(Ly+2)*iz ;
-					size_t zi = Ly*Ly*iz ;
-					for (size_t iy=0; iy < Ly; iy++) {
-						size_t yo = (Ly+2)*iy ;
-						size_t yi = Ly*iy ;
-						for (size_t ix=0; ix < Ly; ix++) {
-							size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
-
-							switch(mask){
-								default:
-								case SPMASK_AXIT2:
+								switch(mask){
+									case SPMASK_AXIT:
+											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+										break;
+									default:
+									case SPMASK_AXIT2:
 											if (strdaa[idx] & STRING_MASK)
 													m2[odx] = 0 ;
 											else
 													m2[odx] = v[idx];
 										break;
-							} //end mask
-					}}} // end last volume loop
+								} //end mask
+						}}} // end last volume loop
+				}
+
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_K, true> ();
+				else
+					fillBins<Float,  SPECTRUM_K, false>();
 			}
-
-			myPlan.run(FFT_FWD);
-
-			if (spec)
-				fillBins<Float,  SPECTRUM_K, true> ();
-			else
-				fillBins<Float,  SPECTRUM_K, false>();
-
 		/* If cosine potential the energy is
 		R^-4 [ (psi')^2/2 + (grad phi)^2/2 + m2 R^4 (1-cos(psi/R)) ]
 		in the linear regime the potential term is simply
@@ -1400,16 +1622,17 @@ void	SpecBin::nRun	(nRunType nrt) {
 		m2 R^4 (2 sin^2(psi/2R))
 		which suggests to generalise
 		m2 R^2/2 psi^2 -> m2 R^2/2 (4R^2 sin^2(psi/2R))
-		and compute the FT not of psi, but of 2R sin(psi/R)
+		and compute the FT not of psi, but of 2R sin(psi/2R)
 
 		However, we will use the binning method SPECTRUM_VV
 		which requires to multiply by the mass-prefactor
 		as well, i.e.
 
 		*/
-			if (mass2 > 0)
-			{
 
+			if ( (nrt & (NRUN_S | NRUN_CS)) && (mass2 > 0.0))
+			{
+				LogMsg(VERB_HIGH,"[nRun] Vnl loop (Axion)") ;
 				Float R2   = (Float) Rscale*2;
 				Float iR2  = 1/R2;
 					#pragma omp parallel for schedule(static)
@@ -1423,15 +1646,18 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 								switch(mask){
+									default:
 									case SPMASK_FLAT:
 												m2[odx] = R2*std::sin(m[idx] * iR2);
 											break;
-									default:
+									case SPMASK_AXIT:
+												m2[odx] = R2*std::sin(m[idx] * iR2)*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+											break;
 									case SPMASK_AXIT2:
-												if (strdaa[idx] & STRING_MASK)
-														m2[odx] = 0 ;
-												else
-														m2[odx] = R2*std::sin(m[idx] * iR2);
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = R2*std::sin(m[idx] * iR2);
 											break;
 								} //end mask
 						}}} // end last volume loop

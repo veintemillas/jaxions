@@ -579,7 +579,6 @@ writePMapHdf5s (axiona, LAB);
 						if (prntmsk[i]){
 							LogMsg(VERB_NORMAL, "[Meas %d] mask %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 								prof.start();
-
 									specAna.masker(rmasktab[ii], maskara[i], M2_MASK, cummask);
 										prof.stop();
 											sprintf(LABEL, "Masker %s", masklab[i].c_str());
@@ -614,36 +613,75 @@ writePMapHdf5s (axiona, LAB);
 								}
 						}
 
-						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
-							prof.start();
-								specAna.nRun(maskara[i], nruntype);
-									prof.stop();
-										sprintf(LABEL, "NSPA_%s", masklab[i].c_str());
-											prof.add(std::string(LABEL), 0.0, 0.0);
+						/* For spectra we have two options:
+						1 - with LUT correction (slow more accurate)
+						2 - without LUT correction */
+						if (nruntype & (NRUN_K | NRUN_G | NRUN_V | NRUN_S))
+						{
+							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d]",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+								prof.start();
+									specAna.nRun(maskara[i], nruntype & (NRUN_K | NRUN_G | NRUN_V | NRUN_S));
+										prof.stop();
+											sprintf(LABEL, "NSPA_%s", masklab[i].c_str());
+												prof.add(std::string(LABEL), 0.0, 0.0);
 
-
-						if (nruntype & NRUN_K){
-						sprintf(LABEL, "sK_%s",PRELABEL);
-							writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
-							writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+							if (nruntype & NRUN_K){
+								sprintf(LABEL, "sK_%s",PRELABEL);
+									writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+								}
+							if (nruntype & NRUN_G){
+							sprintf(LABEL, "sG_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
+								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
 							}
-						if (nruntype & NRUN_G){
-						sprintf(LABEL, "sG_%s",PRELABEL);
+							if ( (nruntype & NRUN_V) && axiona->AxionMassSq() > 0.0 ){
+									sprintf(LABEL, "sV_%s",PRELABEL);
+									writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
+									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+							}
+							if ( (nruntype & NRUN_S) && axiona->AxionMassSq() > 0.0 ){
+									sprintf(LABEL, "sS_%s",PRELABEL);
+									writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
+									writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
+							}
+						} // END IF NSPECTRA WITH LUT CORRECTION
+
+						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS))
+						{
+							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+							prof.start();
+							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS) ;
+								specAna.nRun(maskara[i], aux);
+									prof.stop();
+										sprintf(LABEL, "NSPA_%s (pure)", masklab[i].c_str());
+											prof.add(std::string(LABEL), 0.0, 0.0);
+						if (nruntype & NRUN_CK){
+							sprintf(LABEL, "sCK_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+						}
+						if (nruntype & NRUN_CG){
+						sprintf(LABEL, "sCG_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
 							writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
 						}
-						if (nruntype & NRUN_V){
-						if (axiona->AxionMassSq() > 0.0){
-							// sprintf(LABEL, "sV_%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
-							sprintf(LABEL, "sV_%s",PRELABEL);
-							writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
-							writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
-							sprintf(LABEL, "sS_%s",PRELABEL);
-							writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
-							writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
-						}
-						}
+							/* Note that there is NO DIFFERENCE between CV CS and V,S */
 
+						if ( (nruntype & NRUN_CV) && axiona->AxionMassSq() > 0.0 ){
+							LogMsg(VERB_NORMAL,"[Meas %d] Warning: You asked for nspV without LUT correction (CV) which is the same as V. Waste of resources?",indexa);
+							sprintf(LABEL, "sCV_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
+								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+							}
+						if ( (nruntype & NRUN_CS) && axiona->AxionMassSq() > 0.0 ){
+							LogMsg(VERB_NORMAL,"[Meas %d] Warning: You asked for nspS without LUT correction (CS) which is the same as S. Waste of resources?",indexa);
+							sprintf(LABEL, "sCS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
+								writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
+							}
+
+					} // END IF NSPECTRA WITHOUT CORRECTION
 
 
 					if (prntmsk[i]){

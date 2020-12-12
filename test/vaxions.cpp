@@ -685,23 +685,55 @@ void printsampleS(FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings
 
 double findzdoom(Scalar *axion)
 {
+
 	double fff = axion->BckGnd()->Frw();
 
 	if (axion->BckGnd()->Indi3() > 0.0 && (fff > 0.0)){
-	double ct = zInit ;
-	double DWfun;
-	double meas ;
-	while (meas < 0.001)
+	double ct = *axion->zV();
+	double DWfun0 = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->LambdaP(ct));
+	double DWfun = DWfun0;
+	double ct2 = ct*1.1;
+	double DWfun2 = 40*axion->AxionMassSq(ct2)/(2.0*axion->BckGnd()->LambdaP(ct2));
+	double k = 1;
+	double a = 1;
+	double meas = std::abs(DWfun2 - 1);;
+	LogMsg(VERB_NORMAL,"[VAX findzdoom] frw %f indi3 %f ct %e ", fff, axion->BckGnd()->Indi3(), ct );LogFlush();
+	while (meas > 0.001)
 	{
-		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
-		if (axion->LambdaT() == LAMBDA_Z2)
-			DWfun *= pow(ct,2*fff);
-		meas = DWfun - 1 ;
-		ct += 0.001 ;
-		// LogOut("pdz %e %e %e\n",DWfun,meas,ct);
+
+		/* Assume power law
+		DWfun ~ k ct^a
+		then DWfun2/DWfun = (ct2/ct)^a
+		a = log(DWfun2/DWfun)/log(ct2/ct)
+		k = DWfun2/ct2^a
+		DWfun = 1 -> ct3 = 1/k^{1/a}, ct2 = ct
+		*/
+		a = std::log(DWfun2/DWfun)/std::log(ct2/ct);
+		k = DWfun2/std::pow(ct2,a);
+		// LogOut("ct %e DWfun %e ct2 %e DWfun2 %e meas %e k %e a %e\n", ct, DWfun, ct2, DWfun2, meas, k ,a );
+		if ((a == 0) && (DWfun2 > DWfun0) ){
+			LogMsg(VERB_DEBUG,"[VAX findzdoom] flat slope between ct %e ct2 %e", ct, ct2 );
+			if (DWfun2 > 1) {
+				LogMsg(VERB_DEBUG,"[VAX findzdoom] Jump back!");
+				ct  = ct2;
+				ct2 = std::sqrt(*axion->zV()*ct2);
+			}
+			else {
+				LogMsg(VERB_DEBUG,"[VAX findzdoom] DWfun will never reach 1");
+				return INFINITY;
+			}
+		} else {
+			ct  = ct2;
+			ct2 = std::pow(k,-1./a);
+		}
+		DWfun = DWfun2;
+		DWfun2 = 40*axion->AxionMassSq(ct2)/(2.0*axion->BckGnd()->LambdaP(ct2));
+		meas = std::abs(DWfun2 - 1);
+		LogMsg(VERB_DEBUG,"ct2 %e DWfun2 %e meas %e k %e a %e", ct2, DWfun2, meas, k ,a );
 	}
-	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct );
-	return ct ;
+LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
+	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct2 );LogFlush();
+	return ct2 ;
 } else {
 	return -1 ; }
 }

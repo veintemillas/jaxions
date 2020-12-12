@@ -526,8 +526,15 @@
 			NRUN_K      = 1,
 			NRUN_G      = 2,
 			NRUN_V      = 4,
+			NRUN_S      = 8, // Non linear axion theta -> 2 sin(theta/2)
 			NRUN_KG     = 3,
 			NRUN_KGV    = 7,
+			NRUN_KGVS   = 15,
+			NRUN_CK      = 16, // Fast, without LUT correction
+			NRUN_CG      = 32, // Fast, without LUT correction
+			NRUN_CV      = 64, // Fast, without LUT correction, redundant
+			NRUN_CS      = 128, // Fast, without LUT correction, redundant
+
 		}	nRunType;
 
 		typedef	enum	StringMeasureType_s {
