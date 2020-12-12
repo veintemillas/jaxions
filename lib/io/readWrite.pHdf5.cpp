@@ -1012,12 +1012,17 @@ void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 
 			// note : if no commandline values myCosmos->QcdPot() == V_NONE
 			VqcdType vqcdType = V_NONE;
-			if (myCosmos->Indi3() == 0.0)
+			if (myCosmos->Indi3() == 0.0){
 				myCosmos->SetQcdPot(V_QCD0);
+				vqcdType = V_QCD0;
+			}
 			else {
 				if ( (myCosmos->QcdPot() & V_QCD) == V_NONE) {
 
 					readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
+					LogMsg (VERB_DEBUG, " V_QCD (commandline   ) = %d", myCosmos->QcdPot() & V_QCD);
+					LogMsg (VERB_DEBUG, " V_QCD (read from file) = %s", vStr);
+
 
 					if (!strcmp(vStr, "VQcd 1"))
 						vqcdType = V_QCD1;
