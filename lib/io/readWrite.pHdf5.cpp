@@ -800,13 +800,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			double	zTmp, RTmp, maaR, fTmp;
 			uint	tStep, cStep, totlZ;
 
-	    size_t Nx_read;
-	    size_t Nz_read;
+			size_t Nx_read;
+			size_t Nz_read;
 
-			readAttribute (file_id, fStr,     "Field type",   attr_type);
+			readAttribute (file_id, fStr,   "Field type",   attr_type);
 			readAttribute (file_id, &Nx_read, "Size",         H5T_NATIVE_UINT);
 			readAttribute (file_id, &Nz_read, "Depth",        H5T_NATIVE_UINT);
-			readAttribute (file_id, prec,     "Precision",    attr_type);
+			readAttribute (file_id, prec,   "Precision",    attr_type);
 
 		//	  IRRELEVANT
 		//    ----------
@@ -1251,10 +1251,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 
 		/*	-------------------------------------------------------------------------
-	      -------------------------------------------------------------------------
-	                             Create axion field
-	      -------------------------------------------------------------------------
-	      -------------------------------------------------------------------------
+				-------------------------------------------------------------------------
+															 Create axion field
+				-------------------------------------------------------------------------
+				-------------------------------------------------------------------------
 		*/
 
 		IcData ictemp   = myCosmos->ICData();
@@ -1275,70 +1275,69 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			exit (1);
 		}
 		else
-			Nz = Nz_read/zGrid;
+			Nz = Nz_read/zGrid;// sizeZ = totlZ/zGrid;
 
-		LogMsg(VERB_DEBUG, "[db] Read start\n");
+		if ( (sizeN == Nx_read) && (sizeZ == Nz)){
+			LogMsg(VERB_NORMAL,"[rc] Reading exact size %dx%dx%d(x%d), size requested %dx%dx%d(x%d)",Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
+		}
+		else if ( (sizeN > Nx_read) && (sizeZ > Nz) )
+		{
+			LogMsg(VERB_NORMAL,"[rc] Expanding from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
+				Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
+		}
+		else if ( (sizeN < Nx_read) && (sizeZ < Nz) )
+		{
+			LogMsg(VERB_NORMAL,"[rc] Reducing from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
+			Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
+		}
+		// else
+		// {
+		// 	LogError ("Error: Expanding and reducing in different directions not supported: exit!");
+		// 	exit (1);
+		// }
 
-	  /* if sizeN != Nx_read
-	  and sizeZ != Nx_read
-	  3 cases, same, expand, reduce
-	  same
-	    axion_aux = axion
-	  expand
-	    read in axion and expand in place
-	  reduce
-	    create new axion, read, reduce, copy, destroy */
-	  size_t sX =sizeN;
-	  size_t sZ =sizeZ;
-	  Scalar *auxion;
-	  bool lowmem_aux = lowmem;
 
-	  if ( (sizeN == Nx_read) && (sizeZ == Nz)){
-	    LogMsg(VERB_NORMAL,"[rc] Reading exact size %dx%dx%d(x%d)",Nx_read,Nx_read,Nz,zGrid);
-	    auxion = *axion;
-	  }
-	  else if ( (sizeN > Nx_read) && (sizeZ > Nz) )
-	  {
-	    LogMsg(VERB_NORMAL,"[rc] Expanding from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
-	      Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
-	    auxion = *axion;
-	  }
-	  else if ( (sizeN < Nx_read) && (sizeZ < Nz) )
-	  {
-	    LogMsg(VERB_NORMAL,"[rc] Reducing from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
-	    Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
-	    sX = Nx_read;
-	    sZ = Nz;
-	    lowmem_aux = false;
-	  } else {
-	    LogError ("Error: Expanding and reducing in different directions not supported: exit!");
-	    exit (1);
-	  }
-
+		LogMsg(VERB_DEBUG, "[rc] Read start\n");
 
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, 0);
 
-		slab = Nx_read*Nx_read;
+		slab   = (hsize_t) (Nx_read*Nx_read);
 
 		myCosmos->ICData().cType = CONF_NONE;
 		if (!strcmp(fStr, "Saxion"))
 		{
-			auxion = new Scalar(myCosmos, sX, sZ, precision, cDev, zTmp, lowmem_aux, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
-			slab   *= 2;
+			*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
+			slab   = (hsize_t) (slab*2);
 		} else if (!strcmp(fStr, "Axion")) {
-			auxion = new Scalar(myCosmos, sX, sZ, precision, cDev, zTmp, lowmem_aux, zGrid, FIELD_AXION,     lType, myCosmos->ICData().Nghost);
+			*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType, myCosmos->ICData().Nghost);
+			// slab   = (hsize_t) ((*axion)->Surf());
 		} else if (!strcmp(fStr, "Axion Mod")) {
-			auxion = new Scalar(myCosmos, sX, sZ, precision, cDev, zTmp, lowmem_aux, zGrid, FIELD_AXION_MOD, lType, myCosmos->ICData().Nghost);
+			*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, myCosmos->ICData().Nghost);
+			// slab   = (hsize_t) ((*axion)->Surf());
 		} else {
 			LogError ("Input error: Invalid field type");
 			exit(1);
 		}
-LogOut("1\n");
+
 		prof.start();
 		commSync();
 
+		/* for reducing we might need */
+		// Scalar *auxion;
+		// if ( (sizeN < Nx_read) && (sizeZ < Nz) )
+		// {
+		// 	LogMsg(VERB_NORMAL, "Creating AUXION to reduce field\n");
+		// 	if( (*axion)->Field()==FIELD_SAXION)
+		// 		auxion = new Scalar(myCosmos, Nx_read, Nz, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
+		// 	else
+		// 		auxion = new Scalar(myCosmos, Nx_read, Nz, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,    lType, myCosmos->ICData().Nghost);
+		// }
+		// else
+		// 	auxion = *axion;
 
+		// LogMsg(VERB_DEBUG, "pointers axion %p auxion %p",*axion,auxion);
+		// LogOut("pointers axion %p auxion %p\n",*axion,auxion);
 
 		/*	Create plist for collective read	*/
 
@@ -1360,24 +1359,27 @@ LogOut("1\n");
 
 		for (hsize_t zDim=0; zDim<((hsize_t) Nz); zDim++)
 		{
+	LogMsg(VERB_DEBUG, "[rc] Reading zDim %d slab %d Nz %d",zDim,slab,Nz);LogFlush();
+			// LogOut("[rc] Reading zDim %d slab %d Nz %d",zDim,slab,Nz);
 			/*	Select the slab in the file	*/
 			offset = (((hsize_t) (myRank*Nz))+zDim)*slab;
 			H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 			H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-LogOut("2 %d\n",zDim);
+
 			/*	Read raw data	*/
 
-			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (auxion->mStart())+slab*zDim*dataSize));
-			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (auxion->vCpu())  +slab*zDim*dataSize));
+			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
+			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())  +slab*zDim*dataSize));
 
 			if ((mErr < 0) || (vErr < 0)) {
 				LogError ("Error reading dataset from file");
 				return;
 			}
 		}
-LogOut("3\n");
-		auxion->setFolded(false);
-
+	LogOut("-2\n");
+		// auxion->setFolded(false);
+		(*axion)->setFolded(false);
+	LogOut("-1\n");
 		/*	Close the dataset	*/
 
 		H5Sclose (mSpace);
@@ -1392,9 +1394,9 @@ LogOut("3\n");
 		H5Fclose (file_id);
 
 		prof.stop();
-		prof.add(std::string("Read configuration"), 0, (2.*totlZ*slab*auxion->DataSize() + 77.)*1.e-9);
+		prof.add(std::string("Read configuration"), 0, (2.*Nz_read*slab*(*axion)->DataSize() + 77.)*1.e-9);
 
-LogOut("4\n");
+	LogOut("-0\n");
 		/*	If configuration is Moore > convert to jaxions */
 		if (Moore)
 			{
@@ -1402,67 +1404,60 @@ LogOut("4\n");
 				prof.start();
 
 				/* Converts Moore format to conformal theta */
-				unMoor(auxion, PFIELD_MS);
+				unMoor(*axion, PFIELD_MS);
 
 				/* cVelocity = RVelocity - Theta */
-				axby(auxion, PFIELD_MS, PFIELD_V, -1., *(*axion)->RV());
+				axby(*axion, PFIELD_MS, PFIELD_V, -1., *(*axion)->RV());
 
 				prof.stop();
-				prof.add(std::string("Unmoor configuration"), 0, 10*(totlZ*slab*auxion->Precision())*1.e-9);
+				prof.add(std::string("Unmoor configuration"), 0, 10*(totlZ*slab*(*axion)->Precision())*1.e-9);
 
 				/* mendTheta! */
-				mendTheta (auxion);
+				mendTheta (*axion);
 			}
-LogOut("4\n");
-	    /* Reduce or expand if required */
-	  if (sizeN > Nx_read)
-	  {
-			LogOut("5\n");
-	    auxion->setReduced	(true, Nx_read, Nz);
-			LogOut("6\n");
-	    expandField(auxion);
-			LogOut("7\n");
-	  } else if (sizeN < Nx_read)
-	  {
-			Scalar *reduced;
 
-	    double eFc_xy  = 2*M_PI*M_PI/((double) sizeN*sizeN);
-	    double eFc_z  = 2*M_PI*M_PI/((double) sizeZ*sizeZ*zGrid*zGrid);
-	    double nFc  = 1.;
-
-      if (auxion->Precision() == FIELD_DOUBLE) {
-        reduced = reduceField(auxion, sizeN, sizeZ, FIELD_MV,
-            [eFc_xy  = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz)); }, false);
-      } else {
-        reduced = reduceField(auxion, sizeN, sizeZ, FIELD_MV,
-            [eFc_xy = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz))); }, false);
-      }
-			delete auxion;
-			// myCosmos->ICData().cType = CONF_NONE;
-			if (!strcmp(fStr, "Saxion"))
+		commSync();
+			/* Reduce or expand if required */
+		if ((sizeN > Nx_read) && (sizeZ > Nz))
 			{
-				*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
-				slab   *= 2;
-			} else if (!strcmp(fStr, "Axion")) {
-				*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,     lType, myCosmos->ICData().Nghost);
-			} else if (!strcmp(fStr, "Axion Mod")) {
-				*axion = new Scalar(myCosmos, sizeN, sizeZ, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, myCosmos->ICData().Nghost);
-			} else {
-				LogError ("Input error: Invalid field type");
-				exit(1);
+				(*axion)->setReduced	(true, Nx_read, Nz);
+				expandField(*axion);
+				(*axion)->setReduced	(false, 1, 1); // 2,3 entries have no effect
 			}
-			memcpy((*axion)->mStart(),reduced->mStart(),(*axion)->Size()*(*axion)->DataSize());
-			memcpy((*axion)->vCpu(),  reduced->vCpu(),  (*axion)->Size()*(*axion)->DataSize());
-			delete reduced;
-	  }
+			// else if ((sizeN < Nx_read) && (sizeZ < Nz))
+			// {
+			// 	LogMsg(VERB_NORMAL, "Reduction by a factor %d in x and %d in z",Nx_read/sizeN,Nz/sizeZ);
+			// 	LogOut("0\n");
+			// 	double eFc_xy  = 2*M_PI*M_PI/((double) sizeN*sizeN);
+			// 	double eFc_z  = 2*M_PI*M_PI/((double) sizeZ*sizeZ*zGrid*zGrid);
+			// 	double nFc  = 1.;
+			// 	// if (auxion->Precision() == FIELD_DOUBLE) {
+			// 	//   reduceField(auxion, sizeN, sizeZ, FIELD_MV,
+			// 	//       [eFc_xy  = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz)); }, true);
+			// 	// } else {
+			// 	//   reduceField(auxion, sizeN, sizeZ, FIELD_MV,
+			// 	//       [eFc_xy = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz))); }, true);
+			// 	// }
+			// 	memmove((*axion)->mStart(),auxion->mStart(),(*axion)->Size()*auxion->DataSize());
+			// 	memmove((*axion)->vCpu(),  auxion->vCpu(),  (*axion)->Size()*auxion->DataSize());
+			// 	LogMsg(VERB_NORMAL, "Reduction complete!");
+			// 	LogOut("1\n");
+			// }
 
-		(*axion)->setFolded(false);
+	LogOut("2\n");
+		commSync();
+	LogOut("3\n");
+		// delete auxion;
+		// LogMsg(VERB_NORMAL, "AUXION deleted");
 
 		if (cDev == DEV_GPU)
 			(*axion)->transferDev(FIELD_MV);
-
+	LogOut("6\n");
 		LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) Nz_read)*slab*2 + 77);
+		/* If transformed add information */
+		// LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 		LogFlush();
+	LogOut("7\n");
 	}
 
 
