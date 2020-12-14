@@ -439,7 +439,6 @@ const std::complex<float> If(0.,1.);
 		ConfType cType = cm->ICData().cType;
 		if (cType == CONF_NONE) {
 			LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
-
 			if (fIndex == -1) {
 				LogError ("Error: neither file nor initial configuration specified");
 				exit(2);
@@ -466,6 +465,7 @@ const std::complex<float> If(0.,1.);
 				genConf	(cm, this);
 			}
 		}
+		LogFlush();
 	}
 }
 
@@ -736,7 +736,7 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
-LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts");LogFlush();
+LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	recallGhosts(fIdx);
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);

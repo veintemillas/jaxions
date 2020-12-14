@@ -143,4 +143,132 @@ void	unMoor(Scalar *axion, PadIndex ftipo1)
 	return;
 } //end unMoor
 
+
+
+template <typename cFloat>
+void expandField(Scalar *axion, PadIndex ftipo1)
+{
+	LogMsg(VERB_NORMAL,"[ex] Expanding field (padtype %d)",ftipo1);
+	if (!axion->Reduced()){
+		LogError("Error: Scalar not reduced!"); exit(0);}
+
+	size_t nx = axion->rLength();
+	size_t nz = axion->rDepth();
+	size_t Nx = axion->Length();
+	size_t Nz = axion->Depth();
+	// Float *m = static_cast<Float>(axion->mStart());
+	// Float *v = static_cast<Float>(axion->vStart());
+	cFloat  *s = static_cast<cFloat*> (static_cast<void*> (chosechar(axion,ftipo1)));
+	cFloat  *m2 = static_cast<cFloat*> (axion->m2Start());
+
+	/* migrate to m2 the reduced grid */
+	memcpy(&(m2[0]), &(s[0]), nx*nx*nz*axion->DataSize());
+
+	/* We need to exchange ghosts but we are reduced, move last slice to unreduced ghost zone
+	not critical: we use only bachghost, which comes from slice 0 */
+	memcpy(&(m2[Nx*Nx*(Nz-1)]), &(m2[nx*nx*(nz-1)]), nx*nx*axion->DataSize());
+	axion->exchangeGhosts(FIELD_M2);
+
+LogOut("Z1\n");
+	/* form a compact reduced field sandwiched between ghosts */
+	cFloat *mr = static_cast<cFloat*>(axion->m2Cpu()) + Nx*Nx*axion->getNg() - nx*nx;
+	memmove(mr, axion->m2Cpu(), nx*nx*axion->DataSize()); //not critical
+	memmove(&(m2[nx*nx*nz]), axion->m2BackGhost(), nx*nx*axion->DataSize()); //relevant
+LogOut("Z2\n");
+	/* for each point in the reduced grid calculate all points of
+	the extended grid in m2 and move
+	rx = 0,...,nx-1
+	ix = 0,...,N-1
+	allow irregular grids 9 from 4, for instance 4/9 =
+	n < L? N/N' < n+1
+	Lmin = ceil(n*N'/N)
+	Lmax = floor((n+1)*N'/N)
+	*/
+	LogOut("Nx %d Nz %d nx %d nz %d\n", Nx, Nz, nx, nz);
+
+	#pragma omp parallel default(shared)
+	{
+		cFloat xyz, xyZ, xYz, Xyz, xYZ, XyZ, XYz, XYZ;
+		size_t rpx,rpy, xm, xM, ym, yM, zm, zM;
+		double nx_d = (double) nx;
+		double nz_d = (double) nz;
+		size_t ix0, iy0, iz0, ixM, iyM, izM;
+		double dx, dy, dz;
+		#pragma omp for schedule(static)
+		for (size_t riz = 0; riz < nz; riz++) {
+		 for (size_t riy = 0; riy < nx; riy++) {
+			for (size_t rix = 0; rix < nx; rix++) {
+				rpx = (rix+1) % nx;
+				rpy = (riy+1) % nx;
+				xyz = m2[rix+nx*(riy+nx*riz)];
+				xyZ = m2[rix+nx*(riy+nx*(riz+1))];
+				xYz = m2[rix+nx*(rpy+nx*riz)];
+				Xyz = m2[rpx+nx*(rpy+nx*riz)];
+				xYZ = m2[rix+nx*(rpy+nx*(riz+1))];
+				XyZ = m2[rpx+nx*(riy+nx*(riz+1))];
+				XYz = m2[rpx+nx*(rpy+nx*riz)];
+				XYZ = m2[rpx+nx*(rpy+nx*(riz+1))];
+				iz0 = riz*Nz/nz;
+				izM = ((riz+1)*Nz)/nz;
+				iy0 = riy*Nx/nx;
+				iyM = ((riy+1)*Nx)/nx;
+				ix0 = rix*Nx/nx;
+				ixM = ((rix+1)*Nx)/nx;
+LogOut("rz(%d) %d->%d ry(%d) %d->%d rx(%d) %d->%d\n", riz, iz0, izM, riy, iy0, iyM, rix, ix0, ixM);
+
+				for (size_t iz = iz0; iz< izM; iz++) {
+					for (size_t iy = iy0; iy< iyM; iy++) {
+						for (size_t ix = ix0; ix< ixM; ix++) {
+LogOut("%d %d %d, %d %d, %d %d %d \n", riz,riy,rix,rpx,rpy, iz, iy, ix);
+							dx = ((double) rix*Nx)/nx - ix;
+							dy = ((double) riy*Nx)/nx - iy;
+							dz = ((double) riz*Nz)/nz - iz;
+							s[ix+Nx*(iy+Nx*iz)] =
+									xyz*((cFloat) ((1.-dx)*(1.-dy)*(1.-dz))) +
+									Xyz*((cFloat) (     dx*(1.-dy)*(1.-dz))) +
+									xYz*((cFloat) ((1.-dx)*    dy *(1.-dz))) +
+									XYz*((cFloat) (dx     *    dy *(1.-dz))) +
+								  xyZ*((cFloat) ((1.-dx)*(1.-dy)*    dz )) +
+									XyZ*((cFloat) (dx     *(1.-dy)*    dz )) +
+									xYZ*((cFloat) ((1.-dx)*    dy *    dz )) +
+									XYZ*((cFloat) (dx     *    dy *    dz ));
+								}}} //end 3 fors
+			}
+		 }
+	 } //end reduced volume loop
+	} //end parallel region
+	commSync();
+LogOut("Z3\n");
+	return;
+}
+
+void	expandField(Scalar *axion)
+{
+	/* Expands Nx, Nx, Nz into size(), size(), depth()
+	by linear extrapolation */
+	LogMsg(VERB_NORMAL,"[ex] Expanding field");
+	switch(axion->Field())
+	{
+		case FIELD_SAXION:
+			if (axion->Precision() == FIELD_SINGLE) {
+				expandField<std::complex<float>>(axion, PFIELD_MS);
+				expandField<std::complex<float>>(axion, PFIELD_V); }
+			else {
+				expandField<std::complex<double>>(axion, PFIELD_MS);
+				expandField<std::complex<double>>(axion, PFIELD_V); }
+		break;
+
+		case FIELD_AXION:
+		if (axion->Precision() == FIELD_SINGLE) {
+			expandField<float>(axion, PFIELD_MS);
+			expandField<float>(axion, PFIELD_V); }
+		else {
+			expandField<double>(axion, PFIELD_MS);
+			expandField<double>(axion, PFIELD_V); }
+		break;
+	}
+	return;
+}
+
+
 #endif
