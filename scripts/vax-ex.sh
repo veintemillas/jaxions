@@ -29,7 +29,7 @@ WTIM=1.0
 MEAS=$(echo 1+2+4+8+32+128+65536+16384 | bc )
 SPMA=$(echo 1+64 | bc )
 #OUTP="--dump $DUMP --meas $MEAS --p3D 2 --p2DmapE --p2DmapPE --p2DmapPE2 --spmask 2 --rmask 4.0/file --redmp 256 --p2Dmap --nologmpi --wTime $WTIM  "
-OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask $SPMA --rmask 4.0 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
+OUTP="--dump $DUMP --meas $MEAS --p2Dmap --p2DmapPE --spmask $SPMA --rmask 1.5 --nologmpi --wTime $WTIM --verbose 1 "
 echo "vaxion3d   $PHYS"
 echo "         " $GRID
 echo "         " $SIMU
@@ -39,7 +39,7 @@ echo "         " $OUTP
 
 #export OMP_NUM_THREADS=24
 export OMP_NUM_THREADS=$(echo 8/$RANKS | bc)
-#USA=" --bind-to socket"
+#USA=" --bind-to socket --mca btl_base_warn_component_unused  0 "
 
 case "$1" in
   create)
