@@ -550,9 +550,9 @@ void	ConfGenerator::runCpu	()
 			// logi = log ms/H is taken to be zInit (which was input in command line)
 			// number of iterations needed = 0.8/(#/N^3)
 			// desired 0.8/(#/N^3) is 6*xi(logi)*msa^2*exp(-2logi)
-			double logi = *axionField->zV();
-			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
-			axionField->updateR();
+			double logi = std::log(std::sqrt(axionField->SaxionMassSq())*(*axionField->RV())*(*axionField->RV()));
+			//*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			//axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
 			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
