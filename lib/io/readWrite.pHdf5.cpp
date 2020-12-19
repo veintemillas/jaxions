@@ -800,13 +800,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			double	zTmp, RTmp, maaR, fTmp;
 			uint	tStep, cStep, totlZ;
 
-			size_t Nx_read;
-			size_t Nz_read;
-
+			uint ux_read;
+			uint uz_read;	
 			readAttribute (file_id, fStr,   "Field type",   attr_type);
-			readAttribute (file_id, &Nx_read, "Size",         H5T_NATIVE_UINT);
-			readAttribute (file_id, &Nz_read, "Depth",        H5T_NATIVE_UINT);
+			readAttribute (file_id, &ux_read, "Size",         H5T_NATIVE_UINT);
+			readAttribute (file_id, &uz_read, "Depth",        H5T_NATIVE_UINT);
 			readAttribute (file_id, prec,   "Precision",    attr_type);
+			size_t Nx_read = (size_t) ux_read;
+                        size_t Nz_read = (size_t) uz_read;
 
 		//	  IRRELEVANT
 		//    ----------
@@ -1268,14 +1269,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		ictemp.smvarType= smvarType;
 		myCosmos->SetICData(ictemp);
 
-		size_t Nz;
+		size_t Nz = Nz_read/zGrid;
+
 		if (Nz_read % zGrid)
 		{
 			LogError ("Error: Geometry not valid. Try a different partitioning");
 			exit (1);
 		}
-		else
-			Nz = Nz_read/zGrid;// sizeZ = totlZ/zGrid;
+		// sizeZ = totlZ/zGrid;
 
 		if ( (sizeN == Nx_read) && (sizeZ == Nz)){
 			LogMsg(VERB_NORMAL,"[rc] Reading exact size %dx%dx%d(x%d), size requested %dx%dx%d(x%d)",Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
@@ -1357,10 +1358,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		mSpace   = H5Dget_space (mset_id);
 		vSpace   = H5Dget_space (vset_id);
 
-		for (hsize_t zDim=0; zDim<((hsize_t) Nz); zDim++)
+		for (hsize_t zDim = 0; zDim < Nz ; zDim++)
 		{
+
 	LogMsg(VERB_DEBUG, "[rc] Reading zDim %d slab %d Nz %d",zDim,slab,Nz);LogFlush();
-			// LogOut("[rc] Reading zDim %d slab %d Nz %d",zDim,slab,Nz);
+
 			/*	Select the slab in the file	*/
 			offset = (((hsize_t) (myRank*Nz))+zDim)*slab;
 			H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
@@ -1376,10 +1378,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				return;
 			}
 		}
-	LogOut("-2\n");
+
 		// auxion->setFolded(false);
 		(*axion)->setFolded(false);
-	LogOut("-1\n");
+
 		/*	Close the dataset	*/
 
 		H5Sclose (mSpace);
@@ -1396,7 +1398,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, (2.*Nz_read*slab*(*axion)->DataSize() + 77.)*1.e-9);
 
-	LogOut("-0\n");
+
 		/*	If configuration is Moore > convert to jaxions */
 		if (Moore)
 			{
@@ -1444,20 +1446,20 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			// 	LogOut("1\n");
 			// }
 
-	LogOut("2\n");
+
 		commSync();
-	LogOut("3\n");
+
 		// delete auxion;
 		// LogMsg(VERB_NORMAL, "AUXION deleted");
 
 		if (cDev == DEV_GPU)
 			(*axion)->transferDev(FIELD_MV);
-	LogOut("6\n");
+
 		LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) Nz_read)*slab*2 + 77);
 		/* If transformed add information */
 		// LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 		LogFlush();
-	LogOut("7\n");
+
 	}
 
 
@@ -4219,7 +4221,7 @@ void	writeBinnerMetadata (double max, double min, size_t N, const char *group)
 
 		LogMsg (VERB_NORMAL, "[rw] write Conf NYX called "); LogFlush();
 		amrex::nyx_output_plugin *morla;
-		morla = new amrex::nyx_output_plugin(axion);
+		morla = new amrex::nyx_output_plugin(axion,index);
 		delete morla;
 	}
 #endif
