@@ -756,9 +756,12 @@ void	checkTime (Scalar *axion, int index) {
 	}
 
 	FILE *capo = nullptr;
-	if (!((capo  = fopen("./save", "r")) == nullptr)){
+	if (!((capo  = fopen("./savejaxconf", "r")) == nullptr)){
 		flag = 3;
 		fclose (capo);
+		if( remove( "./savejaxconf" ) != 0 ){
+			LogOut("savejaxconf file cannot be deleted. Danger!\n");
+		}
 	}
 
 	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
