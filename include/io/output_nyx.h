@@ -80,7 +80,7 @@
 
 			public:
 
-			nyx_output_plugin( Scalar *axion ) ;
+			nyx_output_plugin( Scalar *axion, int index) ;
 
 			~nyx_output_plugin();
 

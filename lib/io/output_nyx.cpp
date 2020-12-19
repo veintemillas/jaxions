@@ -27,7 +27,7 @@
 #define BL_SPACEDIM 3
 
 
-  amrex::nyx_output_plugin::nyx_output_plugin( Scalar *axion ) : faxion(axion)
+  amrex::nyx_output_plugin::nyx_output_plugin( Scalar *axion, int index ) : faxion(axion)
 	{
 		int argc=0;
 		char **argv;
@@ -36,6 +36,7 @@
 
     LogMsg(VERB_NORMAL, "[ONYXp] Done!");LogFlush();
 		bool bhave_hydro = false;
+
 
     /* Number and names of scalar fields to print */
 	  n_data_items = 4;
@@ -118,7 +119,8 @@
     /* Here I initialise nonessentials */
     levelmin_ = 0;
     levelmax_ = 0;
-    fname_    = "save";
+    fname_    = "save" + std::to_string(index);
+
     LogMsg(VERB_NORMAL,"[ONYXp] Constructor done");LogFlush();
 	}
 
