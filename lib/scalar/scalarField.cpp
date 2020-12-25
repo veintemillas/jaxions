@@ -193,6 +193,10 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
+	int mos = (int) n1*fSize;
+	MPI_Type_contiguous(mos, MPI_BYTE, &MPI_JAXLINE);
+	MPI_Type_commit(&MPI_JAXLINE);
+
 	LogMsg(VERB_NORMAL, "[sca] v3 %d n3 %d", v3, (n2*(nLz + 2)));
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = (n2*(nLz + 2))*fSize;
@@ -522,6 +526,8 @@ const std::complex<float> If(0.,1.);
 
 	if ((fieldType & FIELD_REDUCED) == false)
 		AxionFFT::closeFFT();
+
+	MPI_Type_free(&MPI_JAXLINE);
 }
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
@@ -622,7 +628,13 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
 	/* we can send 1 (for energy) , or Ng (for propagator)*/
-	const int ghostBytes = Ng*n2*fSize;
+	// const int ghostBytes = Ng*n2*fSize;
+	/* Define a line-type to avoid integer overflow */
+	// MPI_Datatype MPI_JAXLINE;
+	// MPI_Type_contiguous(n1*fSize, MPI_BYTE, &MPI_JAXLINE);
+	// MPI_Type_commit(&MPI_JAXLINE);
+
+	const int ghostBytes = Ng*n1;
 
 	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
 
@@ -658,8 +670,8 @@ LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) Ng %d",opComm, Ng);LogFlus
 	{
 		case	COMM_SEND:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
-			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
+			MPI_Send_init(sGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
+			MPI_Send_init(sGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
 
 			MPI_Start(&rSendFwd);
 			MPI_Start(&rSendBck);
@@ -669,8 +681,8 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 
 		case	COMM_RECV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
-			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
+			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
+			MPI_Recv_init(rGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
 
 			MPI_Start(&rRecvBck);
 			MPI_Start(&rRecvFwd);
@@ -679,10 +691,10 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 
 		case	COMM_SDRV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
-			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
-			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
+			MPI_Send_init(sGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
+			MPI_Send_init(sGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
+			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
+			MPI_Recv_init(rGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
 
 			MPI_Start(&rRecvBck);
 			MPI_Start(&rRecvFwd);
@@ -690,6 +702,7 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
 			MPI_Start(&rSendBck);
 			gsent = false;
 			grecv = false;
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
 			break;
 
 		case	COMM_TESTS:
@@ -741,6 +754,7 @@ LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	sendGhosts(fIdx, COMM_SDRV);
 	sendGhosts(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
+LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
 }
 
 
@@ -770,6 +784,10 @@ void	Scalar::setField (FieldType newType)
 				if (device != DEV_GPU)
 					shift *= 2;
 		fieldType = newType;
+
+		MPI_Type_free(&MPI_JAXLINE);
+		MPI_Type_contiguous(n1*fSize, MPI_BYTE, &MPI_JAXLINE);
+		MPI_Type_commit(&MPI_JAXLINE);
 		LogMsg(VERB_NORMAL,"[sca] Field set to AXION !");
 		break;
 
@@ -790,6 +808,9 @@ void	Scalar::setField (FieldType newType)
 					shift /= 2;
 
 				fieldType = FIELD_NAXION;
+				MPI_Type_free(&MPI_JAXLINE);
+				MPI_Type_contiguous(n1*fSize, MPI_BYTE, &MPI_JAXLINE);
+				MPI_Type_commit(&MPI_JAXLINE);
 				LogMsg(VERB_NORMAL,"[sca] Field set to NAXION !");
 			break;
 

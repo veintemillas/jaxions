@@ -58,6 +58,9 @@
 		// propagation constants //FIX ME place in propClass?
 		std::vector<double>	co;
 
+		/* Communicaiton size */
+		MPI_Datatype MPI_JAXLINE;
+		
 		void	*m,   *v,   *m2,   *str;			// Cpu data
 		void	*rho, *vho, *g;								// Faxion data
 #ifdef	USE_GPU
