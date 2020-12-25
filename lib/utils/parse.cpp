@@ -101,7 +101,7 @@ LambdaType   lType           = LAMBDA_FIXED;
 VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
-VqcdType     vqcdTypeRhoevol = V_NONE;
+VqcdType     vqcdTypeEvol    = V_NONE;
 
 // Default IC type
 IcData icdatst;
@@ -277,6 +277,7 @@ void	PrintUsage(char *name)
 	printf("  --N2                          PQ potential with NDW=2 (default, disabled, experimental).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
 	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
+	printf("  --onlytheta                   Only theta-evolution, rho frozen (default, disabled)\n");
 	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
 
@@ -829,7 +830,16 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
 			uPot = true;
-			vqcdTypeRhoevol = V_EVOL_RHO;
+			vqcdTypeEvol = V_EVOL_RHO;
+			procArgs++;
+			passed = true;
+			goto endFor;
+		}
+
+		if (!strcmp(argv[i], "--onlytheta"))
+		{
+			uPot = true;
+			vqcdTypeEvol = V_EVOL_THETA;
 			procArgs++;
 			passed = true;
 			goto endFor;
@@ -2390,7 +2400,8 @@ if (icdatst.cType == CONF_SMOOTH )
 	}
 
 	vqcdType |= vpqType;
- 	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
+ 	vqcdType |= (vqcdTypeDamp | vqcdTypeEvol);
+
 
 	if (zrestore < zthres) {
 		printf("Warning: zrestore = %f < zthres %f. Switch-off disabled.\n", zrestore, zthres);

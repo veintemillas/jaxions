@@ -740,6 +740,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
 	{
+
 		/* Some definitions */
 		hid_t	file_id, mset_id, vset_id, plist_id;
 		hid_t	mSpace, vSpace, memSpace, dataType;
@@ -801,7 +802,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			uint	tStep, cStep, totlZ;
 
 			uint ux_read;
-			uint uz_read;	
+			uint uz_read;
 			readAttribute (file_id, fStr,   "Field type",   attr_type);
 			readAttribute (file_id, &ux_read, "Size",         H5T_NATIVE_UINT);
 			readAttribute (file_id, &uz_read, "Depth",        H5T_NATIVE_UINT);
@@ -1023,7 +1024,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				// note : if no commandline values myCosmos->QcdPot() == V_NONE
 				VqcdType vqcdType = V_NONE;
 				if (myCosmos->Indi3() == 0.0){
-					myCosmos->SetQcdPot(V_QCD0);
+					VqcdType PQEVDA = myCosmos->QcdPot() & (V_PQ|V_TYPE|V_EVOL|V_DAMP);
+					myCosmos->SetQcdPot(V_QCD0 | PQEVDA);
 					vqcdType = V_QCD0;
 				}
 				else {
@@ -1098,7 +1100,12 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					vqcdType |= (myCosmos->QcdPot() & V_DAMP);
 				}
 
-				if ( (myCosmos->QcdPot() & V_EVOL_RHO) == V_NONE) {
+				// FIXME
+				// If command line theta or rho, respect that, else read
+				// If theta and rho, -> All (eq. none)
+
+
+				if ( (myCosmos->QcdPot() & (V_EVOL_RHO | V_EVOL_THETA)) == V_NONE) {
 
 					readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
 
@@ -1111,9 +1118,21 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					}
 				}
 				else {
-					LogMsg (VERB_NORMAL, "V_EVOL_RHO (commandline)");
-					vqcdType |= (myCosmos->QcdPot() & V_EVOL_RHO);
-				}
+					if ((myCosmos->QcdPot() & V_EVOL_THETA) && (myCosmos->QcdPot() & V_EVOL_RHO))
+						LogMsg (VERB_NORMAL, "V_EVOL_RHO & V_EVOL_THETA selected (commandline), we use full evolution.");
+					else
+					{
+						if (myCosmos->QcdPot() & V_EVOL_RHO) {
+							LogMsg (VERB_NORMAL, "V_EVOL_RHO (commandline)");
+							vqcdType |= (myCosmos->QcdPot() & V_EVOL_RHO);
+						}
+						else if (myCosmos->QcdPot() & V_EVOL_THETA) {
+							LogMsg (VERB_NORMAL, "V_EVOL_THETA (commandline)");
+							vqcdType |= (myCosmos->QcdPot() & V_EVOL_THETA);
+						}
+					}
+
+				} // end EVOL RHO/THETA TYPE
 
 				myCosmos->SetQcdPot(vqcdType);
 				LogMsg (VERB_NORMAL, "QcdPot set to %d\n",myCosmos->QcdPot());

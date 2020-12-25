@@ -594,6 +594,7 @@
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
+			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
@@ -613,6 +614,7 @@
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
+			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
@@ -633,6 +635,7 @@
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
+			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);

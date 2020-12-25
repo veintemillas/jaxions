@@ -4,12 +4,12 @@
 # prefix='V_'
 # l_QCD=['0','1','2','C','V','L']
 # l_PQ=['1','2']
-# l_ex=['RHO','DRHO','DRHO_RHO','DALL']
+# l_ex=['THETA','RHO','DRHO','DRHO_RHO','DALL']
 
 prefix='V_'
 l_QCD=['0','1','C','L']
 l_PQ=['1']
-l_ex=['RHO','DRHO','DRHO_RHO','DALL']
+l_ex=['THETA','RHO','DRHO','DRHO_RHO','DALL']
 
 
 PR={'PROP_OMELYAN2':'PropOmelyan2', 'PROP_OMELYAN4':'PropOmelyan4',

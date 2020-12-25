@@ -115,15 +115,17 @@
 			V_PQ2        = 2048,
 
 			/*	Flags	*/
-			V_EVOL_RHO	= 8192,
-			V_DAMP_RHO	= 16384,
-			V_DAMP_ALL	= 32768,
+			V_EVOL_THETA = 4096,
+			V_EVOL_RHO	 = 8192,
+			V_DAMP_RHO	 = 16384,
+			V_DAMP_ALL	 = 32768,
 
 			/*	Masks	*/
-			V_QCD	      = 63,     // Masks QCD potential
-			V_PQ        = 3072,   // Masks PQ potential
-			V_TYPE	    = 3135,   // Masks base potential 2048+1024+32+16+8+4+2+1
-			V_DAMP	    = 49152,  // Masks damping mode 16384+32768
+			V_QCD	       = 63,     // Masks QCD potential
+			V_PQ         = 3072,   // Masks PQ potential
+			V_TYPE	     = 3135,   // Masks base potential 2048+1024+32+16+8+4+2+1
+			V_EVOL	     = 4096+8192,   // Masks base potential 2048+1024+32+16+8+4+2+1
+			V_DAMP	     = 49152,  // Masks damping mode 16384+32768
 
 			V_QCD0_PQ1   = 1024+1,
 			V_QCD1_PQ1   = 1024+2,
@@ -139,6 +141,20 @@
 			V_QCDL_PQ2   = 2048+16,
 			V_QCDC_PQ2   = 2048+32,
 			//
+			V_QCD0_PQ1_THETA = 4096+1024+1,
+			V_QCD1_PQ1_THETA = 4096+1024+2,
+			V_QCDV_PQ1_THETA = 4096+1024+4,
+			V_QCD2_PQ1_THETA = 4096+1024+8,
+			V_QCDL_PQ1_THETA = 4096+1024+16,
+			V_QCDC_PQ1_THETA = 4096+1024+32,
+
+			V_QCD0_PQ2_THETA = 4096+2048+1,
+			V_QCD1_PQ2_THETA = 4096+2048+2,
+			V_QCDV_PQ2_THETA = 4096+2048+4,
+			V_QCD2_PQ2_THETA = 4096+2048+8,
+			V_QCDL_PQ2_THETA = 4096+2048+16,
+			V_QCDC_PQ2_THETA = 4096+2048+32,
+
 			V_QCD0_PQ1_RHO   = 8192+1024+1,
 			V_QCD1_PQ1_RHO   = 8192+1024+2,
 			V_QCDV_PQ1_RHO   = 8192+1024+4,
@@ -788,6 +804,7 @@
 			double   massA2;
 			double   n;
 			double   Rpp;
+			double   Rp;
 			double   Lambda;
 			double   lambda;
 			double   gamma;
