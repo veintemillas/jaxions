@@ -73,14 +73,14 @@
 			Float dC1  = 1-dC;
 			// trilinear interpolation
 			// face C 16->8 proyection
-			Float L000 = LUTc[i0]*dC1 + LUTc[i0+1]*dC;
-			Float L001 = LUTc[i0+N_C]*dC1 + LUTc[i0+N_C+1]*dC;
-			Float L010 = LUTc[i0+N_E]*dC1 + LUTc[i0+N_E+1]*dC;
-			Float L011 = LUTc[i0+N_E+N_C]*dC1 + LUTc[i0+N_E+N_C+1]*dC;
-			Float L100 = LUTc[i0+N_B]*dC1 + LUTc[i0+N_B+1]*dC;
-			Float L101 = LUTc[i0+N_B+N_C]*dC1 + LUTc[i0+N_B+N_C+1]*dC;
-			Float L110 = LUTc[i0+N_B+N_E]*dC1 + LUTc[i0+N_B+N_E+1]*dC;
-			Float L111 = LUTc[i0+N_B+N_E+N_C]*dC1 + LUTc[i0+N_B+N_E+N_C+1]*dC;
+			Float L000 = (Float) (LUTc[i0]*dC1 + LUTc[i0+1]*dC);
+			Float L001 = (Float) (LUTc[i0+N_C]*dC1 + LUTc[i0+N_C+1]*dC);
+			Float L010 = (Float) (LUTc[i0+N_E]*dC1 + LUTc[i0+N_E+1]*dC);
+			Float L011 = (Float) (LUTc[i0+N_E+N_C]*dC1 + LUTc[i0+N_E+N_C+1]*dC);
+			Float L100 = (Float) (LUTc[i0+N_B]*dC1 + LUTc[i0+N_B+1]*dC);
+			Float L101 = (Float) (LUTc[i0+N_B+N_C]*dC1 + LUTc[i0+N_B+N_C+1]*dC);
+			Float L110 = (Float) (LUTc[i0+N_B+N_E]*dC1 + LUTc[i0+N_B+N_E+1]*dC);
+			Float L111 = (Float) (LUTc[i0+N_B+N_E+N_C]*dC1 + LUTc[i0+N_B+N_E+N_C+1]*dC);
 			// face E 8->4
 			L000 = L000*dE1 + L001*dE;
 			L010 = L010*dE1 + L011*dE;
@@ -92,14 +92,14 @@
 			// face A 2->1
 			Float Lc = s1*(L000*dA1 + L100*dA);
 
-			L000 = LUTs[i0]*dC1             + LUTs[i0+1]*dC;
-			L001 = LUTs[i0+N_C]*dC1         + LUTs[i0+N_C+1]*dC;
-			L010 = LUTs[i0+N_E]*dC1         + LUTs[i0+N_E+1]*dC;
-			L011 = LUTs[i0+N_E+N_C]*dC1     + LUTs[i0+N_E+N_C+1]*dC;
-			L100 = LUTs[i0+N_B]*dC1         + LUTs[i0+N_B+1]*dC;
-			L101 = LUTs[i0+N_B+N_C]*dC1     + LUTs[i0+N_B+N_C+1]*dC;
-			L110 = LUTs[i0+N_B+N_E]*dC1     + LUTs[i0+N_B+N_E+1]*dC;
-			L111 = LUTs[i0+N_B+N_E+N_C]*dC1 + LUTs[i0+N_B+N_E+N_C+1]*dC;
+			L000 = (Float) (LUTs[i0]*dC1             + LUTs[i0+1]*dC);
+			L001 = (Float) (LUTs[i0+N_C]*dC1         + LUTs[i0+N_C+1]*dC);
+			L010 = (Float) (LUTs[i0+N_E]*dC1         + LUTs[i0+N_E+1]*dC);
+			L011 = (Float) (LUTs[i0+N_E+N_C]*dC1     + LUTs[i0+N_E+N_C+1]*dC);
+			L100 = (Float) (LUTs[i0+N_B]*dC1         + LUTs[i0+N_B+1]*dC);
+			L101 = (Float) (LUTs[i0+N_B+N_C]*dC1     + LUTs[i0+N_B+N_C+1]*dC);
+			L110 = (Float) (LUTs[i0+N_B+N_E]*dC1     + LUTs[i0+N_B+N_E+1]*dC);
+			L111 = (Float) (LUTs[i0+N_B+N_E+N_C]*dC1 + LUTs[i0+N_B+N_E+N_C+1]*dC);
 			// face E 8->4
 			L000 = L000*dE1 + L001*dE;
 			L010 = L010*dE1 + L011*dE;
@@ -133,10 +133,10 @@
 			// LogOut("L0 %f Ls %f \n",L0,Ls);
 
 			if (nr == 1)
-				re[0] = flip ? (Ls*da[3]-Lc*da[2])/mb : (Lc*da[3]-Ls*da[2])/ma;
+				re[0] = flip ? ((Float) Ls*da[3]-Lc*da[2])/mb : ((Float) Lc*da[3]-Ls*da[2])/ma;
 			else {
-				re[1] = flip ? (Ls*re[1]-Lc*re[0])/mb : (Lc*re[1]-Ls*re[0])/ma;
-				re[0] = flip ? (Ls*da[3]-Lc*da[2])/mb : (Lc*da[3]-Ls*da[2])/ma;
+				re[1] = flip ? ((Float) Ls*re[1]-Lc*re[0])/mb : ((Float) Lc*re[1]-Ls*re[0])/ma;
+				re[0] = flip ? ((Float) Ls*da[3]-Lc*da[2])/mb : ((Float) Lc*da[3]-Ls*da[2])/ma;
 			}
 		}
 		else
@@ -247,14 +247,14 @@
 									m2sa[odx] = Rscale*(vA);
 								break;
 						case SPMASK_REDO:
-									if (strdaa[idx] & STRING_MASK)
+									if (strdaa[idx-LyLy] & STRING_MASK)
 											m2sa[odx] = 0 ;
 									else
 											m2sa[odx] = Rscale*(vA);
 								break;
 						case SPMASK_GAUS:
 						case SPMASK_DIFF:
-									m2sa[odx] = m2sax[idx]*Rscale*(vA);
+									m2sa[odx] = m2sax[idx-LyLy]*Rscale*(vA);
 								break;
 						case SPMASK_VIL:
 									m2sa[odx] = std::sqrt(da[0]*da[0]+da[1]*da[1])*(vA);
@@ -286,7 +286,7 @@
 				buildc_k<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_k<float,mask,true> (field, pi, (double) zaskaFF);
+				buildc_k<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
 		else
@@ -297,7 +297,7 @@
 			buildc_k<float,mask,false> (field, pi, (float) zaskaFF);
 			break;
 			case FIELD_DOUBLE :
-			buildc_k<float,mask,false> (field, pi, (double) zaskaFF);
+			buildc_k<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
 	}
@@ -375,14 +375,14 @@
 									m2sa[odx] = Rdepta2*(gAx);
 								break;
 						case SPMASK_REDO:
-									if (strdaa[idx] & STRING_MASK)
+									if (strdaa[idx-LyLy] & STRING_MASK)
 											m2sa[odx] = 0 ;
 									else
 											m2sa[odx] = Rdepta2*(gAx);
 								break;
 						case SPMASK_GAUS:
 						case SPMASK_DIFF:
-									m2sa[odx] = m2sax[idx]*Rdepta2*(gAx);
+									m2sa[odx] = m2sax[idx-LyLy]*Rdepta2*(gAx);
 								break;
 						case SPMASK_VIL:
 									m2sa[odx] = idepta2*std::sqrt(da[0]*da[0]+da[1]*da[1])*(gAx);
@@ -414,7 +414,7 @@
 				buildc_gx<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_gx<float,mask,true> (field, pi, (double) zaskaFF);
+				buildc_gx<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
 		else
@@ -425,7 +425,7 @@
 			buildc_gx<float,mask,false> (field, pi, (float) zaskaFF);
 			break;
 			case FIELD_DOUBLE :
-			buildc_gx<float,mask,false> (field, pi, (double) zaskaFF);
+			buildc_gx<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
 	}
@@ -501,7 +501,7 @@
 									m2sax[odx] = Rdepta2*gAyz[1];
 								break;
 						case SPMASK_REDO:
-									if (strdaa[idx] & STRING_MASK) {
+									if (strdaa[idx-LyLy] & STRING_MASK) {
 											m2sa[odx]  = 0 ;
 											m2sax[odx] = 0 ;}
 									else {
@@ -510,8 +510,8 @@
 								break;
 						case SPMASK_GAUS:
 						case SPMASK_DIFF:
-									m2sa[odx]  = m2sax[idx]*Rdepta2*gAyz[0];
-									m2sax[idx] = m2sax[idx]*Rdepta2*gAyz[1];
+									m2sa[odx]       = m2sax[idx-LyLy]*Rdepta2*gAyz[0];
+									m2sax[idx-LyLy] = m2sax[idx-LyLy]*Rdepta2*gAyz[1];
 								break;
 						case SPMASK_VIL:
 									m2sa[odx]  = idepta2*std::sqrt(da[0]*da[0]+da[1]*da[1])*gAyz[0];
@@ -545,7 +545,7 @@
 				buildc_gyz<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_gyz<float,mask,true> (field, pi, (double) zaskaFF);
+				buildc_gyz<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
 		else
@@ -556,7 +556,7 @@
 			buildc_gyz<float,mask,false> (field, pi, (float) zaskaFF);
 			break;
 			case FIELD_DOUBLE :
-			buildc_gyz<float,mask,false> (field, pi, (double) zaskaFF);
+			buildc_gyz<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
 	}
@@ -679,7 +679,7 @@
 				buildc_v<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_v<float,mask,true> (field, pi, (double) zaskaFF);
+				buildc_v<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
 		else
@@ -690,7 +690,7 @@
 			buildc_v<float,mask,false> (field, pi, (float) zaskaFF);
 			break;
 			case FIELD_DOUBLE :
-			buildc_v<float,mask,false> (field, pi, (double) zaskaFF);
+			buildc_v<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
 	}
