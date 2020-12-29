@@ -34,6 +34,8 @@ using namespace profiler;
 	  fflush(stdout); }		\
 }	while (0)
 
+#define NMPICHUNK 10
+
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
@@ -192,10 +194,6 @@ const std::complex<float> If(0.,1.);
 		LogError("Error: misaligned memory. Are you using an odd dimension?");
 		exit(1);
 	}
-
-	int mos = (int) n1*fSize;
-	MPI_Type_contiguous(mos, MPI_BYTE, &MPI_JAXLINE);
-	MPI_Type_commit(&MPI_JAXLINE);
 
 	LogMsg(VERB_NORMAL, "[sca] v3 %d n3 %d", v3, (n2*(nLz + 2)));
 	const size_t	mBytes = v3*fSize;
@@ -527,7 +525,6 @@ const std::complex<float> If(0.,1.);
 	if ((fieldType & FIELD_REDUCED) == false)
 		AxionFFT::closeFFT();
 
-	MPI_Type_free(&MPI_JAXLINE);
 }
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
@@ -627,120 +624,125 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	/* we can send 1 (for energy) , or Ng (for propagator)*/
-	// const int ghostBytes = Ng*n2*fSize;
-	/* Define a line-type to avoid integer overflow */
-	// MPI_Datatype MPI_JAXLINE;
-	// MPI_Type_contiguous(n1*fSize, MPI_BYTE, &MPI_JAXLINE);
-	// MPI_Type_commit(&MPI_JAXLINE);
-
-	const int ghostBytes = Ng*n1;
-
-	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
+	/* If ghostbytes > INT_MAX split the communication */
+	// const size_t MAX_CHUNK  = 2147483648;
+	// OJO this is NOT 2^31! is the maximum multiple of 64 below 2^31
+	const size_t MAX_CHUNK  = 2147483584;
+	const size_t ghostBytes = Ng*n2*fSize;
+	size_t nchunks    = 1 + (ghostBytes/MAX_CHUNK);
+	int lastchunk     = (ghostBytes - (nchunks-1)*MAX_CHUNK);
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) Ng %d",opComm, Ng);LogFlush();
-	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
+	LogMsg(VERB_HIGH,"[sca] Called send Ghosts (COMM %d)",opComm);
+	LogMsg(VERB_DEBUG,"[sca] #Ghost regions Ng = %d, ghostBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", Ng, ghostBytes, MAX_CHUNK, nchunks, lastchunk);
+	LogFlush();
 
-	if (fIdx & FIELD_M)
-	{
-			sGhostBck = mStart();																																						//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (mStart()) + fSize*n3-ghostBytes);					//slice to be send forw
-			rGhostBck = static_cast<void *> (static_cast<char *> (mFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
-			rGhostFwd = static_cast<void *> (static_cast<char *> (mBackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+	if (nchunks > NMPICHUNK){
+		LogError("Number of ghost chunks %d larger than precompiled maximum %d. Change NMPICHUNK in scalarField.cpp and recompile again!", nchunks, NMPICHUNK);
+		exit(0);
 	}
-	else
+
+
+	int sendBytes[nchunks];
+	static MPI_Request rSendFwd[NMPICHUNK],  rSendBck[NMPICHUNK],   rRecvFwd[NMPICHUNK],   rRecvBck[NMPICHUNK];	// For non-blocking MPI Comms
+	void      *sGhostBck[nchunks], *sGhostFwd[nchunks], *rGhostBck[nchunks], *rGhostFwd[nchunks];
+
+	for (int n = 0; n < nchunks; n++)
 	{
-		if (fIdx & FIELD_V)
+		sendBytes[n] = (int) MAX_CHUNK;
+		if (n == nchunks-1)
+			sendBytes[n] = lastchunk;
+
+		if (fIdx & FIELD_M)
 		{
-				sGhostBck = vStart();																																						//slice to be send back
-				sGhostFwd = static_cast<void *> (static_cast<char *> (vStart())      + fSize*n3-ghostBytes);					//slice to be send forw
-				rGhostBck = static_cast<void *> (static_cast<char *> (vFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
-				rGhostFwd = static_cast<void *> (static_cast<char *> (vBackGhost())  + fSize*Ng*n2-ghostBytes);	//reception point
-		} else {
-				sGhostBck = m2Start();
-				sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
-				rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
-				rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+				sGhostBck[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK                         );                       //slice to be send back
+				sGhostFwd[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK + fSize*n3-ghostBytes   ); //slice to be send forw
+				rGhostBck[n] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);       //reception point
+				rGhostFwd[n] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);        //reception point
 		}
+		else
+		{
+			if (fIdx & FIELD_V)
+			{
+					sGhostBck[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK                          );//slice to be send back
+					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK + fSize*n3-ghostBytes    );					//slice to be send forw
+					rGhostBck[n] = static_cast<void *> (static_cast<char *> (vFrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (vBackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+			} else {
+					sGhostBck[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK) ;
+					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK + fSize*n3-ghostBytes);
+					rGhostBck[n] = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);		//reception point
+					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);	//reception point
+			}
+		}
+		LogMsg(VERB_DEBUG,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
 	}
-
 
 	switch	(opComm)
 	{
 		case	COMM_SEND:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
-			MPI_Send_init(sGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-			MPI_Send_init(sGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
-
-			MPI_Start(&rSendFwd);
-			MPI_Start(&rSendBck);
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(rSendFwd[n]));
+				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(rSendBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Start(&rSendFwd[n]);
+				MPI_Start(&rSendBck[n]);
+			}
  			gsent = false;
 
 			break;
 
 		case	COMM_RECV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
-			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			MPI_Recv_init(rGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
-
-			MPI_Start(&rRecvBck);
-			MPI_Start(&rRecvFwd);
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
+				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Start(&rRecvBck[n]);
+				MPI_Start(&rRecvFwd[n]);
+			}
  			grecv = false;
 			break;
 
 		case	COMM_SDRV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
-			MPI_Send_init(sGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-			MPI_Send_init(sGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
-			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_JAXLINE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			MPI_Recv_init(rGhostBck, ghostBytes, MPI_JAXLINE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
-
-			MPI_Start(&rRecvBck);
-			MPI_Start(&rRecvFwd);
-			MPI_Start(&rSendFwd);
-			MPI_Start(&rSendBck);
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(rSendFwd[n]));
+				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(rSendBck[n]));
+				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
+				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Start(&(rRecvBck[n]));
+				MPI_Start(&(rRecvFwd[n]));
+				MPI_Start(&(rSendFwd[n]));
+				MPI_Start(&(rSendBck[n]));
+			}
 			gsent = false;
 			grecv = false;
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
 			break;
 
-		case	COMM_TESTS:
-		{
-		int flag1 = 0, flag2 = 0;
-		int pest1 = MPI_Test(&rSendBck, &flag1, MPI_STATUS_IGNORE);
-		int pest2 = MPI_Test(&rSendFwd, &flag2, MPI_STATUS_IGNORE);
-		if (flag1 * flag2)
-			gsent = true;
-		else  gsent = false ;
-LogMsg(VERB_PARANOID,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
-		}
-		break;
-
-	case	COMM_TESTR:
-		{
-		int flag1 = 0, flag2 = 0;
-		int pest1 = MPI_Test(&rRecvFwd, &flag1, MPI_STATUS_IGNORE);
-		int pest2 = MPI_Test(&rRecvBck, &flag2, MPI_STATUS_IGNORE);
-		if (flag1 * flag2)
-			grecv = true;
-		else  grecv = false;
-LogMsg(VERB_PARANOID,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
-		}
-		break;
 
 	case	COMM_WAIT:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
-		MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-		MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
-		MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
-		MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
+		for (int n=0; n<nchunks ;n++) {
+			MPI_Wait(&(rSendFwd[n]), MPI_STATUS_IGNORE);
+			MPI_Wait(&(rSendBck[n]), MPI_STATUS_IGNORE);
+			MPI_Wait(&(rRecvFwd[n]), MPI_STATUS_IGNORE);
+			MPI_Wait(&(rRecvBck[n]), MPI_STATUS_IGNORE);
+		}
+		for (int n=0; n<nchunks ;n++) {
+			MPI_Request_free(&(rSendFwd[n]));
+			MPI_Request_free(&(rSendBck[n]));
+			MPI_Request_free(&(rRecvFwd[n]));
+			MPI_Request_free(&(rRecvBck[n]));
+		}
 		gsent = true;
 		grecv = true;
-		MPI_Request_free(&rSendFwd);
-		MPI_Request_free(&rSendBck);
-		MPI_Request_free(&rRecvFwd);
-		MPI_Request_free(&rRecvBck);
 LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 		break;
 
@@ -785,9 +787,6 @@ void	Scalar::setField (FieldType newType)
 					shift *= 2;
 		fieldType = newType;
 
-		MPI_Type_free(&MPI_JAXLINE);
-		MPI_Type_contiguous(n1*fSize, MPI_BYTE, &MPI_JAXLINE);
-		MPI_Type_commit(&MPI_JAXLINE);
 		LogMsg(VERB_NORMAL,"[sca] Field set to AXION !");
 		break;
 
@@ -808,9 +807,6 @@ void	Scalar::setField (FieldType newType)
 					shift /= 2;
 
 				fieldType = FIELD_NAXION;
-				MPI_Type_free(&MPI_JAXLINE);
-				MPI_Type_contiguous(n1*fSize, MPI_BYTE, &MPI_JAXLINE);
-				MPI_Type_commit(&MPI_JAXLINE);
 				LogMsg(VERB_NORMAL,"[sca] Field set to NAXION !");
 			break;
 
