@@ -3712,14 +3712,14 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	/* total values to be written */
-	hsize_t total  = axion->Surf();
+	/* total values to be written is NOT Surf but Ly*Lz*zGrid*/
+	hsize_t total  = axion->Length()*axion->TotalDepth();
 	/* chunk size */
 	hsize_t slab  = axion->Length();
 	char mCh[16] = "/mapp/m";
 	char vCh[16] = "/mapp/v";
 
-	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ");
+	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ (%dx%d)",axion->Length(), axion->TotalDepth());
 	LogMsg (VERB_DEBUG, "[wm2] total %d slab %d myRank %d dataSize %d",total,slab, commRank(),dataSize);	LogFlush();
 	LogFlush();
 
