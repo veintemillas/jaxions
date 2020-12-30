@@ -755,9 +755,15 @@ void	checkTime (Scalar *axion, int index) {
 		fclose (capa);
 	}
 
+	FILE *cape = nullptr;
+	if (!((cape  = fopen("./abort", "r")) == nullptr)){
+		flag = 3;
+		fclose (cape);
+	}
+
 	FILE *capo = nullptr;
 	if (!((capo  = fopen("./savejaxconf", "r")) == nullptr)){
-		flag = 3;
+		flag = 4;
 		fclose (capo);
 		if( remove( "./savejaxconf" ) != 0 ){
 			LogOut("savejaxconf file cannot be deleted. Danger!\n");
@@ -815,8 +821,17 @@ void	checkTime (Scalar *axion, int index) {
 			exit(0);
 
 		}
+		if (flag == 3){
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] abort file detected! aborting! ",index);
+			LogOut ("Aborting ...");
+			delete axion;
 
-		if (flag ==3){
+			endAxions();
+
+			exit(0);
+
+		}
+		if (flag ==4){
 			LogMsg(VERB_NORMAL, "[VAX checkTime %d] save file detected! saving ... ",index);
 			writeConf(axion, index);
 			commSync();

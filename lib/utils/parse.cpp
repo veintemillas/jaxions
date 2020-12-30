@@ -2473,6 +2473,15 @@ if (icdatst.cType == CONF_SMOOTH )
 		} else
 			printf("and deleted!\n ");
 	}
+	if (!((capa  = fopen("./abort", "r")) == nullptr)) {
+		fclose (capa);
+		printf("Abort file detected! ... ");
+		if( remove( "./abort" ) != 0 ){
+			printf("and cannot be deleted. Exit!\n");
+			exit(1);
+		} else
+			printf("and deleted!\n ");
+	}
 
 	/*	Create measfile.dat if required	*/
 	if (CreateLogMeas)
