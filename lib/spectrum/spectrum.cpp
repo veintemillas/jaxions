@@ -2598,6 +2598,23 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 
 		case	FIELD_SAXION:
 		{
+			/* If a plaquete is pierced by string marks the 4 vertices
+
+				The only complication is that if the main vertex is in Lz-1
+				and is a YZ or XZ plaquette we need to mark points in the next MPI
+				rank. For this reason we MPI_send the last slice forward from z=Lz-1
+				to m2half and then use it to mark the first slice of the next rank,
+				i.e. slice z=0.
+
+				For large slices we need to split the MPI communication into chunks
+				less than INT_MAX.
+				This is an unnecesary overhead of sizeof(single,double)*8
+				because we only need 1 bit per point (mark? true or false).
+				Thus we can most likely use just one slice of bool in 1 MPI_Send
+
+			*/
+
+
 			Float RR = (Float) Rscale;
 			std::complex<Float> zaskaF((Float) zaskar, 0.);
 			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
@@ -2609,6 +2626,10 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 			Float *m2aF                = static_cast<Float *>(field->m2Cpu()) + (field->eSize()*2-field->Size()) ;
 			std::complex<Float>* mc         = static_cast<std::complex<Float> *>(field->mStart());
 
+			/* For ghosting purposes */
+			char *m2hb                = static_cast<char *>(field->m2half());
+			char *m2h1b               = static_cast<char *>(field->m2half()) + field->Length()*(2+field->Length());
+
 			/* For padding uses */
 			char *m2C  = static_cast<char *>(field->m2Cpu());
 			char *m2sC = static_cast<char *>(field->m2Start());
@@ -2618,48 +2639,92 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 			/* Clears completely m2 in SAXION MODE; only half in AXION MODE */
 			memset (m2C, 0, field->eSize()*field->DataSize());
 
+			/* Build mask (Vi,Vi2) or pre-mask */
 			{
+			/* Create the first mask in m2 with sData or rho field,
+			in REDO, GAUSS, DIFF, BALL,
+			1st slice Lz-1 to be send, then the rest */
+			bool mpi = false;
+			void *empty;
+			size_t sliceBytes = (Ly*(Ly+2));
 
-			/* MPI rank and position of the last slice that we will send to the next rank */
-			int myRank = commRank();
-			int nsplit = (int) (field->TotalDepth()/field->Depth()) ;
-			static const int fwdNeig = (myRank + 1) % nsplit;
-			static const int bckNeig = (myRank - 1 + nsplit) % nsplit;
-
-			size_t voli = Ly*(Ly+2)*(Lz-1) ;
-			const int ghostBytes = (Ly*(Ly+2))*(field->Precision());
-			static MPI_Request 	rSendFwd, rRecvBck;
-			void *sGhostFwd = static_cast<void *>(m2F + voli);
-			void *rGhostBck = static_cast<void *>(m2hF);
-
-			/* Create the first mask in m2 with sData or rho field */
-			#pragma omp parallel for schedule(static)
-			for (size_t iiz=0; iiz < Lz; iiz++) {
-				size_t iz  = Lz-1-iiz;
+			if (mask & (SPMASK_REDO|SPMASK_GAUS|SPMASK_DIFF|SPMASK_BALL))
+			{
+				size_t iz  = Lz-1;
 				size_t zo  = Ly2Ly*iz ;
 				size_t zoM = Ly2Ly*(iz+1) ;
 				size_t zi  = LyLy*iz ;
-				// printf("zo %lu zoM %lu zi %lu\n",zo,zoM,zi);
 
+				#pragma omp parallel for schedule(static)
 				for (size_t iy=0; iy < Ly; iy++) {
 					size_t yo  = (Ly+2)*iy ;
 					size_t yoM = (Ly+2)*((iy+1)%Ly) ;
 					size_t yi  = Ly*iy ;
-					// printf("yo %lu yoM %lu yi %lu\n",yo,yoM,yi);
-
 					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo;
+						size_t idx = ix + yi + zi;
 
-						/* position in the mask (with padded zeros for the FFT) and in the stringData */
+						/* removes the mask if present
+						watch out updates outside thread region of the loop
+						(different y) */
+						strdaa[idx] = strdaa[idx] & STRING_DEFECT;
+								if ( (strdaa[idx] & STRING_ONLY) != 0)
+								{
+									#pragma omp atomic write
+									m2F[odx] = 1;
+									if (strdaa[idx] & (STRING_XY))
+									{
+										#pragma omp atomic write
+										m2F[((ix + 1) % Ly) + yo  + zo] = 1;
+										#pragma omp atomic write
+										m2F[ix              + yoM + zo] = 1;
+										#pragma omp atomic write
+										m2F[((ix + 1) % Ly) + yoM + zo] = 1;
+									}
+									if (strdaa[idx] & (STRING_YZ))
+									{
+										#pragma omp atomic write
+										m2F[ix + yoM + zo] = 1;
+										#pragma omp atomic write
+										m2h1b[ix + yo ] = 1;
+										#pragma omp atomic write
+										m2h1b[ix + yoM] = 1;
+									}
+									if (strdaa[idx] & (STRING_ZX))
+									{
+										#pragma omp atomic write
+										m2F[((ix + 1) % Ly) + yo + zo]  = 1;
+										#pragma omp atomic write
+										m2h1b[ix              + yo] = 1;
+										#pragma omp atomic write
+										m2h1b[((ix + 1) % Ly) + yo] = 1;
+									}
+								}
+					}    // end loop x
+				}      // end loop z
+
+			field->sendGeneral(COMM_SDRV, sliceBytes, MPI_BYTE, empty, empty, static_cast<void *>(m2h1b), static_cast<void *>(m2hb));
+			mpi = true;
+			}
+			size_t iiz_start = mpi ? 1 : 0;
+
+			/* We invert the order of the loops because usually Ly > Lz
+			we dont collapse to avoid recalculating y0,y0M,yi,iz,zo,zoM,zi*/
+			#pragma omp parallel for schedule(static)
+			for (size_t iy=0; iy < Ly; iy++) {
+				size_t yo  = (Ly+2)*iy ;
+				size_t yoM = (Ly+2)*((iy+1)%Ly) ;
+				size_t yi  = Ly*iy ;
+				for (size_t iiz=iiz_start; iiz < Lz; iiz++) {
+					size_t iz  = Lz-1-iiz;
+					size_t zo  = Ly2Ly*iz ;
+					size_t zoM = Ly2Ly*(iz+1) ;
+					size_t zi  = LyLy*iz ;
+					for (size_t ix=0; ix < Ly; ix++) {
 						size_t odx = ix + yo + zo;
 						size_t idx = ix + yi + zi;
 
 						switch(mask){
-							case SPMASK_FLAT:
-							case SPMASK_SAXI:
-								LogOut("These masks are automatic! why did you run this function??\n");
-								LogMsg(VERB_NORMAL,"These masks are automatic! why did you run this function??");
-								//exit ?
-							break;
 							case SPMASK_VIL:
 									m2F[odx] = std::abs(mc[idx]-zaskaF)/RR;
 									break;
@@ -2671,72 +2736,82 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							case SPMASK_GAUS:
 							case SPMASK_DIFF:
 							case SPMASK_BALL:
-							/* removes the mask if present */
+							/* removes the mask if present
+							needs atomic updates if other threads can be at work
+							just when updating different values of y */
 							strdaa[idx] = strdaa[idx] & STRING_DEFECT;
 									if ( (strdaa[idx] & STRING_ONLY) != 0)
 									{
+										#pragma omp atomic write
 										m2F[odx] = 1;
 										if (strdaa[idx] & (STRING_XY))
 										{
-											m2F[((ix + 1) % Ly) + yo + zo] = 1;
-											m2F[ix + yoM + zo] = 1;
+											#pragma omp atomic write
+											m2F[((ix + 1) % Ly) + yo  + zo] = 1;
+											#pragma omp atomic write
+											m2F[ix              + yoM + zo] = 1;
+											#pragma omp atomic write
 											m2F[((ix + 1) % Ly) + yoM + zo] = 1;
 										}
 										if (strdaa[idx] & (STRING_YZ))
 										{
-											m2F[ix + yoM + zo] = 1;
-											m2F[ix + yo + zoM] = 1;
+											#pragma omp atomic write
+											m2F[ix + yoM + zo ] = 1;
+											#pragma omp atomic write
+											m2F[ix + yo  + zoM] = 1;
+											#pragma omp atomic write
 											m2F[ix + yoM + zoM] = 1;
 										}
 										if (strdaa[idx] & (STRING_ZX))
 										{
-											m2F[ix + yo + zoM] = 1;
-											m2F[((ix + 1) % Ly) + yo + zo] = 1;
+											#pragma omp atomic write
+											m2F[((ix + 1) % Ly) + yo + zo ] = 1;
+											#pragma omp atomic write
+											m2F[ix              + yo + zoM] = 1;
+											#pragma omp atomic write
 											m2F[((ix + 1) % Ly) + yo + zoM] = 1;
 										}
-									} else
-										m2F[odx] = 0;
+									}
 							break;
 						}  //end mask
 					}    // end loop x
-				}      // end loop y
+				}      // end loop z
+			}        // end loop y
 
-				if (iz == Lz-1) //given to one thread only I hope
-				{
-					/* Send ghosts from lastslicem2 -> mhalf */
-					MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, myRank,   MPI_COMM_WORLD, &rSendFwd);
-					MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, bckNeig,   MPI_COMM_WORLD, &rRecvBck);
-					MPI_Start(&rSendFwd);
-					MPI_Start(&rRecvBck);
-				}
 
-			}        // end loop z
+			/* For string based masks:
+			1 - receive info from previous rank
+			2 - Fuse ghost and local info inthe 1st surface */
+			if (mpi)
+			{
+				field->sendGeneral(COMM_WAIT, sliceBytes, MPI_BYTE, empty, empty, static_cast<void *>(m2h1b), static_cast<void *>(m2hb));
 
-			/* makes sure the ghosts have arrived */
-			MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-			MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
-
-			/* frees */
-			MPI_Request_free(&rSendFwd);
-			MPI_Request_free(&rRecvBck);
-
+				// int myRank = commRank();
+				// int own = 0;
+				// int news = 0;
+				// int overlap = 0;
+				// LogMsg(VERB_DEBUG,"[sp] Fusing ghosts between ranks");
+				// #pragma omp parallel for reduction(+:own,news,overlap) collapse(2)
+				#pragma omp parallel for collapse(2)
+					for (size_t iy=0; iy < Ly; iy++) {
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t odx = ix+(Ly+2)*iy;
+							// if (m2F[odx] > 0.5)
+							// 	own++;
+							if (m2hb[odx] > 0){
+								// news++;
+								// if (m2F[odx] > 0.5)
+								// 		overlap++;
+								m2F[odx] = 1 ;
+							}
+				}}
+				// LogMsg(VERB_DEBUG,"[sp] rank %d own %d new %d overlap %d",myRank,own,news,overlap);
+			}
 		} // MPI defs are contained here
 
-			/* For string based masks Fuse ghost and local info 1st surface */
-			if (mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF | SPMASK_BALL))
-			{
-				LogMsg(VERB_DEBUG,"[sp] Fusing ghosts between ranks");
-				#pragma omp parallel for schedule(static)
-				for (size_t odx=0; odx < Ly2Ly; odx++) {
-					if (m2hF[odx] > 0.5) //FIX ME
-						m2F[odx] = 1 ; // if m2hF[odx] it was 1 still 1, otherwise 1
-				}
-			}
-			commSync();
 
 			/* Load FFT for Wtilde and REDO,GAUS */
 			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
-
 
 			/* At this point all pre-masks are m2 (padded)
 			Hereforth the DIFF, REDO and GAUS diverge;
@@ -2764,7 +2839,6 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 								strdaa[idx] |= STRING_MASK ; // mask stored M=1-W
 								}
 						}
-
 
 						/* shift away from ghost zone*/
 						memmove	(m2sC, m2C, dataBareSize);
