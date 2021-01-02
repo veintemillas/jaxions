@@ -808,7 +808,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			readAttribute (file_id, &uz_read, "Depth",        H5T_NATIVE_UINT);
 			readAttribute (file_id, prec,   "Precision",    attr_type);
 			size_t Nx_read = (size_t) ux_read;
-                        size_t Nz_read = (size_t) uz_read;
+			size_t Nz_read = (size_t) uz_read;
 
 		//	  IRRELEVANT
 		//    ----------
@@ -2084,19 +2084,24 @@ void	writeString	(Scalar *axion, StringData strDat, const bool rData)
 	hsize_t total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
 	hsize_t slab  = ((hsize_t) redlX)*((hsize_t) redlX);
 
-	/*	Might be reduced	*/
-	writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
-	writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+	/* We only write these if group does not exist, assuming they are there
+	a better fix would be to modify the wA function to make a check */
+	if (!(status > 0))
+	{
+		/*	Might be reduced	*/
+		writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
+		writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
 
-	/*	String metadata		*/
-	writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
-	writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
-	writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
-	writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
-	writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
+		/*	String metadata		*/
+		writeAttribute(group_id, &(strDat.strDen), "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strChr), "String chirality", H5T_NATIVE_HSSIZE);
+		writeAttribute(group_id, &(strDat.wallDn), "Wall number",      H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
+	}
 
 	if	(rData) {
 		/*	Create space for writing the raw data to disk with chunked access	*/
