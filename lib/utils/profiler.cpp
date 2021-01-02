@@ -63,6 +63,9 @@ namespace profiler {
 		Profiler	projProfiler("Projector");
 		profs.insert(std::make_pair(PROF_PROJECTOR, projProfiler));
 
+		Profiler	specProfiler("Spectrum");
+		profs.insert(std::make_pair(PROF_SPEC, specProfiler));
+
 		Profiler	measProfiler("Measa");
 		profs.insert(std::make_pair(PROF_MEAS, measProfiler));
 
@@ -71,7 +74,6 @@ namespace profiler {
 
 		Profiler	trakProfiler("Axiton tracker");
 		profs.insert(std::make_pair(PROF_TRACK, trakProfiler));
-
 	}
 
 	void	printMiniStats(double z, StringData strDen, ProfType prof, std::string counter) {
