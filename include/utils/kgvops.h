@@ -17,6 +17,7 @@
 
 	/* String velocity correction function */
 
+	using namespace profiler;
 
 	template<typename Float>
 	void	stringcorre	( Float *da, Float *re, int nr)
@@ -40,7 +41,7 @@
 		if (ma < mb)
 			flip=true;
 		Float e   = flip ? ma/mb : mb/ma;
-		Float cb  = (da[4]*da[7]+da[5]*da[8]+da[6]*da[9])/ma/mb;
+		Float cb  = (da[4]*da[7]+da[5]*da[8]+da[6]*da[9])/(ma*mb);
 		Float sb  = std::sqrt(1-cb*cb);
 		Float A   = flip ? da[1]/mb : da[0]/ma;
 		Float B   = flip ? da[0]/mb : da[1]/ma;
@@ -177,7 +178,7 @@
 
 
 	template<typename Float, SpectrumMaskType mask, bool LUTcorr>
-	void buildc_k(Scalar *field, PadIndex pi, Float zaskaFF)
+	size_t buildc_k(Scalar *field, PadIndex pi, Float zaskaFF)
 	{
 		/* Builds the axion velocity from a complex scalar
 		with the integral softening method.
@@ -205,14 +206,15 @@
 
 		Float sigma = 0.4;
 		Float pre = 0.5*sigma;
-		LogMsg(VERB_HIGH,"[bck] Build conformal Axion velocity %s", LUTcorr? "with LUT":"");
-		#pragma omp parallel for schedule(static)
+		size_t luts = 0;
+		LogMsg(VERB_HIGH,"[bck] Build conformal Axion velocity %s", LUTcorr? "with LUT":"");LogFlush();
+		#pragma omp parallel for schedule(static) collapse(2) reduction(+:luts)
 		for (size_t iz=0; iz < Lz; iz++) {
-			size_t zo = Ly*(Ly+2)*(iz) ;
-			size_t zi = LyLy*(iz+1) ;
-			size_t zp = LyLy*(iz+2) ;
-			size_t zm = LyLy*(iz) ;
 			for (size_t iy=0; iy < Ly; iy++) {
+				size_t zo = Ly*(Ly+2)*(iz) ;
+				size_t zi = LyLy*(iz+1) ;
+				size_t zp = LyLy*(iz+2) ;
+				size_t zm = LyLy*(iz) ;
 				size_t yo = (Ly+2)*iy ;
 				size_t yi = Ly*iy ;
 				size_t yp = Ly*((iy+1)%Ly) ;
@@ -221,21 +223,36 @@
 					size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 					Float vA;
 					Float da[10];
+					bool  skipLUT = false;
 					da[0] = ma[idx].real()-zaskaFF;
 					da[1] = ma[idx].imag();
 					da[2] = va[idx-LyLy].real();
 					da[3] = va[idx-LyLy].imag();
 					if (LUTcorr) {
 						da[4] = pre*(ma[((ix + 1) % Ly) + yi + zi].real()-ma[((Ly + ix - 1) % Ly) + yi + zi].real());
+						if (abs(da[0]) > abs(5*da[4]))
+							{ skipLUT = true; goto jmp;}
 						da[7] = pre*(ma[((ix + 1) % Ly) + yi + zi].imag()-ma[((Ly + ix - 1) % Ly) + yi + zi].imag());
+						if (abs(da[1]) > abs(5*da[7]))
+							{ skipLUT = true; goto jmp;}
 						da[5] = pre*(ma[ix + yp + zi].real()-ma[ix + ym + zi].real());
+						if (abs(da[0]) > abs(5*da[5]))
+							{ skipLUT = true; goto jmp;}
 						da[8] = pre*(ma[ix + yp + zi].imag()-ma[ix + ym + zi].imag());
+						if (abs(da[1]) > abs(5*da[8]))
+							{ skipLUT = true; goto jmp;}
 						da[6] = pre*(ma[ix + yi + zp].real()-ma[ix + yi + zm].real());
+						if (abs(da[0]) > abs(5*da[6]))
+							{ skipLUT = true; goto jmp;}
 						da[9] = pre*(ma[ix + yi + zp].imag()-ma[ix + yi + zm].imag());
+						if (abs(da[1]) > abs(5*da[9]))
+							{ skipLUT = true; goto jmp;}
 						stringcorre(static_cast<void*>(da),static_cast<void*>(&vA), fPrec, 1);
-					} else{
-						vA = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
+						luts++;
 					}
+					jmp:
+					if (!LUTcorr || skipLUT)
+						vA = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
 
 					// if (idx == 256*256){
 					// LogOut("x %d %d %d y %d %d z %d %d \n",ix,((ix + 1) % Ly),((Ly + ix - 1) % Ly),yp,ym,zp,zm);
@@ -271,6 +288,7 @@
 				}
 			}
 		}
+		return luts;
 	}
 
 	/* Float Template expansion */
@@ -278,15 +296,18 @@
 	template <SpectrumMaskType mask, bool LUTcorr>
 	void	buildc_k	(Scalar *field, PadIndex pi, double zaskaFF)
 	{
+		Profiler &prof = getProfiler(PROF_SPEC);
+		prof.start();
+		size_t luts;
 		if (LUTcorr)
 			switch (field->Precision())
 			{
 				default :
 				case FIELD_SINGLE :
-				buildc_k<float,mask,true> (field, pi, (float) zaskaFF);
+				luts = buildc_k<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_k<double,mask,true> (field, pi, (double) zaskaFF);
+				luts = buildc_k<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
 		else
@@ -294,12 +315,34 @@
 		{
 			default:
 			case FIELD_SINGLE :
-			buildc_k<float,mask,false> (field, pi, (float) zaskaFF);
+			luts = buildc_k<float,mask,false> (field, pi, (float) zaskaFF);
 			break;
 			case FIELD_DOUBLE :
-			buildc_k<double,mask,false> (field, pi, (double) zaskaFF);
+			luts = buildc_k<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
+
+		char LABEL[256];
+		sprintf(LABEL, "BuildK %d %s", mask, LUTcorr? "LUT" : "-");
+		prof.stop();
+		/* Flop/Bytes counter
+		-
+		if no lut
+			FLOP *-* / *-* = 7
+			BYTE mr,mi,vr,vi->m2 4 reads 1 write
+		if lut
+			FLOP sqrt(*+*+*)x2,/,*+*+* /*,sqrt-*,/x4,****,* /-*-/-*-/-+*-/-----,
+			FLOP *+*x(8+4+2+1)x2, *-* / (possibly 2)
+			= 6x2 + 1 + 7 + 3 + 4 + 4+ 20 + 3x15x2 + 3 =
+			BYTE (mr,mi)x(7),vr,vi->m2 16 reads 1 write
+		if FLAT, REDO *
+		if GAUS,DIFF  **
+		if VIL  sqrt*+*** VIL2 I *+* / *
+		*/
+		LogMsg(VERB_PARANOID,"[bck] BuildK Reporting %lu LUTs",luts);
+		double flops  = 1e-9 * (144*luts + 7*(field->Size()-luts));
+		double mbytes = 1e-9 * (17*luts + 5*(field->Size()-luts));
+		prof.add(std::string(LABEL), flops, mbytes);
 	}
 
 
@@ -314,7 +357,7 @@
 
 
 	template<typename Float, SpectrumMaskType mask, bool LUTcorr>
-	void buildc_gx(Scalar *field, PadIndex pi, Float zaskaFF)
+	size_t buildc_gx(Scalar *field, PadIndex pi, Float zaskaFF)
 	{
 
 		size_t Lz            = field->Depth();
@@ -333,14 +376,15 @@
 
 		Float sigma = 0.4;
 		Float pre = 0.5*sigma;
+		size_t luts = 0;
 		LogMsg(VERB_HIGH,"[bcgx] Build conformal Axion gradient X %s", LUTcorr? "with LUT":"");
-		#pragma omp parallel for schedule(static)
+		#pragma omp parallel for schedule(static) collapse(2) reduction(+:luts)
 		for (size_t iz=0; iz < Lz; iz++) {
-			size_t zo = Ly*(Ly+2)*(iz) ;
-			size_t zi = LyLy*(iz+1) ;
-			size_t zp = LyLy*(iz+2) ;
-			size_t zm = LyLy*(iz) ;
 			for (size_t iy=0; iy < Ly; iy++) {
+				size_t zo = Ly*(Ly+2)*(iz) ;
+				size_t zi = LyLy*(iz+1) ;
+				size_t zp = LyLy*(iz+2) ;
+				size_t zm = LyLy*(iz) ;
 				size_t yo = (Ly+2)*iy ;
 				size_t yi = Ly*iy ;
 				size_t yp = Ly*((iy+1)%Ly) ;
@@ -349,21 +393,36 @@
 					size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 					Float gAx;
 					Float da[10];
+					bool  skipLUT = false;
 					da[0] = ma[idx].real()-zaskaFF;
 					da[1] = ma[idx].imag();
 					da[2] = ma[((ix + 1) % Ly) + yi + zi].real()-ma[((Ly + ix - 1) % Ly) + yi + zi].real(); // gradient*2delta
 					da[3] = ma[((ix + 1) % Ly) + yi + zi].imag()-ma[((Ly + ix - 1) % Ly) + yi + zi].imag(); // gradient*2delta
 					if (LUTcorr) {
 						da[4] = pre*da[2];
+						if (abs(da[0]) > abs(5*da[4]))
+							{ skipLUT = true; goto jmp;}
 						da[7] = pre*da[3];
+						if (abs(da[1]) > abs(5*da[7]))
+							{ skipLUT = true; goto jmp;}
 						da[5] = pre*(ma[ix + yp + zi].real()-ma[ix + ym + zi].real());
+						if (abs(da[0]) > abs(5*da[5]))
+							{ skipLUT = true; goto jmp;}
 						da[8] = pre*(ma[ix + yp + zi].imag()-ma[ix + ym + zi].imag());
+						if (abs(da[1]) > abs(5*da[8]))
+							{ skipLUT = true; goto jmp;}
 						da[6] = pre*(ma[ix + yi + zp].real()-ma[ix + yi + zm].real());
+						if (abs(da[0]) > abs(5*da[6]))
+							{ skipLUT = true; goto jmp;}
 						da[9] = pre*(ma[ix + yi + zp].imag()-ma[ix + yi + zm].imag());
+						if (abs(da[1]) > abs(5*da[9]))
+							{ skipLUT = true; goto jmp;}
 						stringcorre(static_cast<void*>(da),static_cast<void*>(&gAx), fPrec, 1);
-					} else{
-						gAx = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
+						luts++;
 					}
+					jmp:
+					if (!LUTcorr || skipLUT)
+						gAx = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
 
 					// if (idx == 256*256){
 					// LogOut("x %d %d %d y %d %d z %d %d \n",ix,((ix + 1) % Ly),((Ly + ix - 1) % Ly),yp,ym,zp,zm);
@@ -399,6 +458,7 @@
 				}
 			}
 		}
+		return luts;
 	}
 
 	/* Float Template expansion */
@@ -406,15 +466,18 @@
 	template <SpectrumMaskType mask, bool LUTcorr>
 	void	buildc_gx	(Scalar *field, PadIndex pi, double zaskaFF)
 	{
+		Profiler &prof = getProfiler(PROF_SPEC);
+		prof.start();
+		size_t luts;
 		if (LUTcorr)
 			switch (field->Precision())
 			{
 				default :
 				case FIELD_SINGLE :
-				buildc_gx<float,mask,true> (field, pi, (float) zaskaFF);
+				luts = buildc_gx<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_gx<double,mask,true> (field, pi, (double) zaskaFF);
+				luts = buildc_gx<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
 		else
@@ -422,12 +485,33 @@
 		{
 			default:
 			case FIELD_SINGLE :
-			buildc_gx<float,mask,false> (field, pi, (float) zaskaFF);
+			luts = buildc_gx<float,mask,false> (field, pi, (float) zaskaFF);
 			break;
 			case FIELD_DOUBLE :
-			buildc_gx<double,mask,false> (field, pi, (double) zaskaFF);
+			luts = buildc_gx<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
+
+		char LABEL[256];
+		sprintf(LABEL, "BuildGX %d %s", mask, LUTcorr? "LUT" : "-");
+		prof.stop();
+		/* Flop/Bytes counter
+		-
+		if no lut
+			FLOP -*-*- / *-* = 9
+			BYTE mr,mi+(mr,mi)x2 neighbours ->m2 6 reads 1 write
+		if lut
+			aprox the same as before
+			BYTE (mr,mi)x(7),vr,vi->m2 16 reads 1 write
+		if FLAT, REDO *
+		if GAUS,DIFF  **
+		if VIL  sqrt*+*** VIL2 I *+* / *
+		*/
+
+		LogMsg(VERB_PARANOID,"[bck] BuildGX Reporting %lu LUTs",luts);
+		double flops  = 1e-9 * (144*luts + 9*(field->Size()-luts));
+		double mbytes = 1e-9 * (15*luts + 7*(field->Size()-luts));
+		prof.add(std::string(LABEL), flops, mbytes);
 	}
 
 
@@ -441,7 +525,7 @@
 
 
 	template<typename Float, SpectrumMaskType mask, bool LUTcorr>
-	void buildc_gyz(Scalar *field, PadIndex pi, Float zaskaFF)
+	size_t buildc_gyz(Scalar *field, PadIndex pi, Float zaskaFF)
 	{
 
 		size_t Lz            = field->Depth();
@@ -460,14 +544,15 @@
 
 		Float sigma = 0.4;
 		Float pre = 0.5*sigma;
+		size_t luts = 0;
 		LogMsg(VERB_HIGH,"[bcgyz] Build conformal Axion gradients YZ %s", LUTcorr? "with LUT":"");
-		#pragma omp parallel for schedule(static)
+		#pragma omp parallel for schedule(static) collapse(2) reduction(+:luts)
 		for (size_t iz=0; iz < Lz; iz++) {
-			size_t zo = Ly*(Ly+2)*(iz) ;
-			size_t zi = LyLy*(iz+1) ;
-			size_t zp = LyLy*(iz+2) ;
-			size_t zm = LyLy*(iz) ;
 			for (size_t iy=0; iy < Ly; iy++) {
+				size_t zo = Ly*(Ly+2)*(iz) ;
+				size_t zi = LyLy*(iz+1) ;
+				size_t zp = LyLy*(iz+2) ;
+				size_t zm = LyLy*(iz) ;
 				size_t yo = (Ly+2)*iy ;
 				size_t yi = Ly*iy ;
 				size_t yp = Ly*((iy+1)%Ly) ;
@@ -476,6 +561,7 @@
 					size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 					Float gAyz[2];
 					Float da[10];
+					bool  skipLUT = false;
 					da[0] = ma[idx].real()-zaskaFF;
 					da[1] = ma[idx].imag();
 					da[2] = ma[ix + yp + zi].real()-ma[ix + ym + zi].real(); // gradienty*2delta
@@ -484,15 +570,30 @@
 					gAyz[1] = ma[ix + yi + zp].imag()-ma[ix + yi + zm].imag();
 					if (LUTcorr) {
 						da[4] = pre*(ma[((ix + 1) % Ly) + yi + zi].real()-ma[((Ly + ix - 1) % Ly) + yi + zi].real());
+						if (abs(da[0]) > abs(5*da[4]))
+							{ skipLUT = true; goto jmp;}
 						da[7] = pre*(ma[((ix + 1) % Ly) + yi + zi].imag()-ma[((Ly + ix - 1) % Ly) + yi + zi].imag());
+						if (abs(da[1]) > abs(5*da[7]))
+							{ skipLUT = true; goto jmp;}
 						da[5] = pre*da[2];
+						if (abs(da[0]) > abs(5*da[5]))
+							{ skipLUT = true; goto jmp;}
 						da[8] = pre*da[3];
+						if (abs(da[1]) > abs(5*da[8]))
+							{ skipLUT = true; goto jmp;}
 						da[6] = pre*gAyz[0];
+						if (abs(da[0]) > abs(5*da[6]))
+							{ skipLUT = true; goto jmp;}
 						da[9] = pre*gAyz[1];
+						if (abs(da[1]) > abs(5*da[9]))
+							{ skipLUT = true; goto jmp;}
 						stringcorre(static_cast<void*>(da),static_cast<void*>(gAyz), fPrec, 2);
-					} else {
-						gAyz[0] = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
+						luts++;
+					}
+					jmp:
+					if (!LUTcorr || skipLUT) {
 						gAyz[1] = (da[0]*gAyz[1]-da[1]*gAyz[0])/(da[0]*da[0]+da[1]*da[1]);
+						gAyz[0] = (da[0]*da[3]-da[1]*da[2])/(da[0]*da[0]+da[1]*da[1]);
 					}
 
 					switch(mask){
@@ -530,6 +631,7 @@
 				}
 			}
 		}
+		return luts;
 	}
 
 	/* Float Template expansion */
@@ -537,28 +639,51 @@
 	template <SpectrumMaskType mask, bool LUTcorr>
 	void	buildc_gyz	(Scalar *field, PadIndex pi, double zaskaFF)
 	{
+		Profiler &prof = getProfiler(PROF_SPEC);
+		prof.start();
+		size_t luts;
 		if (LUTcorr)
 			switch (field->Precision())
 			{
 				default :
 				case FIELD_SINGLE :
-				buildc_gyz<float,mask,true> (field, pi, (float) zaskaFF);
+				luts = buildc_gyz<float,mask,true> (field, pi, (float) zaskaFF);
 				break;
 				case FIELD_DOUBLE :
-				buildc_gyz<double,mask,true> (field, pi, (double) zaskaFF);
+				luts = buildc_gyz<double,mask,true> (field, pi, (double) zaskaFF);
 				break;
 			}
-		else
-		switch (field->Precision())
-		{
-			default:
-			case FIELD_SINGLE :
-			buildc_gyz<float,mask,false> (field, pi, (float) zaskaFF);
-			break;
-			case FIELD_DOUBLE :
-			buildc_gyz<double,mask,false> (field, pi, (double) zaskaFF);
-			break;
-		}
+			else
+			switch (field->Precision())
+			{
+				default:
+				case FIELD_SINGLE :
+				luts = buildc_gyz<float,mask,false> (field, pi, (float) zaskaFF);
+				break;
+				case FIELD_DOUBLE :
+				luts = buildc_gyz<double,mask,false> (field, pi, (double) zaskaFF);
+				break;
+			}
+
+		char LABEL[256];
+		sprintf(LABEL, "BuildGYZ %d %s", mask, LUTcorr? "LUT" : "-");
+		prof.stop();
+		/* Flop/Bytes counter
+		-
+		if no lut
+			FLOP (-*-*- / *-*) + *  = 10 x 2 = 18
+			BYTE mr,mi+(mr,mi)x4 neighbours ->m2 10 reads 2 write
+		if lut
+			aprox the same as before
+			BYTE (mr,mi)x(7)->m2 14 reads 2 write
+		if FLAT, REDO *
+		if GAUS,DIFF  **
+		if VIL  sqrt*+*** VIL2 I *+* / *
+		*/
+		LogMsg(VERB_PARANOID,"[bck] BuildGYZ Reporting %lu LUTs",luts);
+		double flops  = 1e-9 * (144*luts + 20*(field->Size()-luts));
+		double mbytes = 1e-9 * (16*luts + 12*(field->Size()-luts));
+		prof.add(std::string(LABEL), flops, mbytes);
 	}
 
 
@@ -671,6 +796,9 @@
 	template <SpectrumMaskType mask, bool LUTcorr>
 	void	buildc_v	(Scalar *field, PadIndex pi, double zaskaFF)
 	{
+		Profiler &prof = getProfiler(PROF_SPEC);
+		prof.start();
+
 		if (LUTcorr)
 			switch (field->Precision())
 			{
@@ -693,6 +821,11 @@
 			buildc_v<double,mask,false> (field, pi, (double) zaskaFF);
 			break;
 		}
+
+		char LABEL[256];
+		sprintf(LABEL, "BuildV %d %s", mask, LUTcorr? "LUT" : "-");
+		prof.stop();
+		prof.add(std::string(LABEL), 0.0, 0.0);
 	}
 
 
