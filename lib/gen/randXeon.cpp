@@ -30,6 +30,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	const double L  = field->BckGnd()->PhysSize();
 	int rank = commRank();
 	size_t Lz = Lx/commSize();
+	size_t Tz = field->TotalDepth();
 	size_t local_z_start = rank*Lz;
 
 	/* used from ic */
@@ -216,17 +217,21 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						y = iy;
 						x = ix;
 						//CENTERED AT GRID, z=0
-						if (iz>Lx/2) { z = z-Lx; }
+						//CENTERED AT GRID, z=kMa
+						//symmetry with respect to z=kMa map all points to |z-kMa|>Tz/2
+						Float zis = ((Float) z) - ((Float) kCrit) ;
+						if ( zis > (Float) Tz/2) { zis -= (Float) Tz; }
+						if (-zis > (Float) Tz/2) { zis += (Float) Tz; }
 						Float aL = ((Float) Lx)/4.01;	//RADIUS
 						rho2 = (x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2);
 						Float rho = sqrt((Float) rho2)	;
-						Float z2 = ((Float) z*z) ;
+						Float z2  = zis*zis;
 						Float d12 = (rho + aL)*(rho + aL) + z2 ;
 						Float d22 = (rho - aL)*(rho - aL) + z2 ;
 						// d12 /= ((Float) Sf) ;
 						// d22 /= ((Float) Sf) ;
-						Float zis = (Float) z ;
-						Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.5 + zis)/abs(-0.5 + zis)	;
+
+						Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))*(-0.01 + zis)/abs(-0.01 + zis)	;
 						m[idx] = std::complex<Float>(cos(theta), sin(theta));
 						break;
 					}

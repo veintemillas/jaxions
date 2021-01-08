@@ -83,7 +83,7 @@
 			STRING_WALL	       = 64,
 			STRING_DEFECT      = 127,
 			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
-			STRING_IMPOSSIBLE  = 256,     //used for comparisons
+			// STRING_IMPOSSIBLE  = 256,     //used for comparisons
 		}	StringType;
 
 		typedef	enum	LambdaType_s
@@ -521,6 +521,9 @@
 			SPECTRUM_VV	= 2048,
 			SPECTRUM_VNL	= 4096,
 			SPECTRUM_VVNL	= 8192,
+			//TEMP
+				SPECTRUM_GGy = 16384,
+				SPECTRUM_GGz = 16384*2,
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
@@ -579,6 +582,7 @@
 			MAP_RHO   = 1,
 			MAP_THETA = 2,
 			MAP_ALL   = 3,
+			MAP_VHETA = 4,
 			MAP_NONE  = 0,
 		}	MapType;
 
@@ -617,7 +621,8 @@
 			MEAS_BINLOGTHETA2 = 4,
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
-			// MEAS_BIN..     = 16,
+
+			MEAS_AUX          = 16,   // For whatever
 			MEAS_STRING       = 32,
 			MEAS_STRINGMAP    = 64,
 			MEAS_STRINGCOO    = 128,
