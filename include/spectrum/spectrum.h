@@ -16,6 +16,11 @@
 
 		std::vector<double>	binK;
 		std::vector<double>	binG;
+
+		// //TEMP INDIVIDUAL XYZ
+		// std::vector<double>	binGy;
+		// std::vector<double>	binGz;
+
 		std::vector<double>	binV;
 		std::vector<double>	binVnl;
 		std::vector<double>	binNK;
@@ -213,6 +218,15 @@
 				return binG[idx];
 				break;
 
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy[idx];
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz[idx];
+				// 	break;
+
 			case	SPECTRUM_VV:
 
 				return binV[idx];
@@ -275,6 +289,15 @@
 				return binG[idx];
 				break;
 
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy[idx];
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz[idx];
+				// 	break;
+
 			case	SPECTRUM_VV:
 				return binV[idx];
 				break;
@@ -335,6 +358,15 @@
 				return binG.data();
 				break;
 
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy.data();
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz.data();
+				// 	break;
+
 			case	SPECTRUM_VV:
 				return binV.data();
 				break;
@@ -390,6 +422,16 @@
 			case	SPECTRUM_GG:
 				return binG.data();
 				break;
+
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy.data();
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz.data();
+				// 	break;
+
 
 			case	SPECTRUM_VV:
 				return binV.data();
