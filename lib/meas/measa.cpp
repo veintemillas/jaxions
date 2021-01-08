@@ -10,11 +10,14 @@
 #include "strings/strings.h"
 #include "scalar/scalar.h"
 #include "reducer/reducer.h"
+
 #include "spectrum/spectrum.h"
 #include "projector/projector.h"
 #include "scalar/fourier.h"
 
 #include "fft/fftCode.h"
+
+#include "utils/kgvops.h"
 
 using namespace std;
 using namespace profiler;
@@ -410,8 +413,8 @@ writePMapHdf5s (axiona, LAB);
 							writeString(axiona, MeasDataOut.str, true);
 						}
 					}
-					else {
-					// else if ( !(measa & MEAS_MASK)) {
+					// else {
+					else if ( !(measa & MEAS_MASK)) {
 						writeString(axiona, MeasDataOut.str, false);
 					}
 			}
@@ -623,6 +626,11 @@ writePMapHdf5s (axiona, LAB);
 							sprintf(LABEL, "sG_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
 								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+								// // TEMP INDIVIDUAL XYZ
+								// sprintf(LABEL, "sGX_%s",PRELABEL);
+								// writeArray(specAna.data(SPECTRUM_GGy), specAna.PowMax(), "/eSpectrum", LABEL);
+								// sprintf(LABEL, "sGY_%s",PRELABEL);
+								// writeArray(specAna.data(SPECTRUM_GGz), specAna.PowMax(), "/eSpectrum", LABEL);
 							}
 							if ( (nruntype & NRUN_V) && axiona->AxionMassSq() > 0.0 ){
 									sprintf(LABEL, "sV_%s",PRELABEL);
@@ -636,6 +644,7 @@ writePMapHdf5s (axiona, LAB);
 							}
 						} // END IF NSPECTRA WITH LUT CORRECTION
 
+						// NSPECTRA WITHOUT LUT CORRECTION
 						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS))
 						{
 							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
@@ -855,6 +864,22 @@ writePMapHdf5s (axiona, LAB);
 		// 		MeasDataOut.maxTheta = thBin2.max();
 		// }
 	}
+
+
+
+	/* This is a generic placeholder to test new functions or debugging */
+	if (measa & MEAS_AUX)
+	{
+		// if	(axiona->Folded())
+		// {
+		// 	Folder	munge(axiona);
+		// 	munge(UNFOLD_ALL);
+		// }
+		// buildc_k_map(axiona, true);
+		// writeEDens(axiona);
+	}
+
+
 
 
 	LogMsg(VERB_HIGH, "destroying meas",indexa);
