@@ -41,6 +41,9 @@ set(USE_PROP_MLEAP OFF CACHE BOOL "multi leapfrog propagators")
 set(USE_PROP_OM2 OFF CACHE BOOL "Omelyan 2 propagators")
 set(USE_PROP_OM4 OFF CACHE BOOL "Omelyan 4 propagators")
 set(USE_PROP_LEAP OFF CACHE BOOL "Leapfrog propagators")
+
+set(USE_NN_BINS OFF CACHE BOOL "Output occupation number bins")
+
 #set(USE_2D OFF CACHE BOOL "Uses only the Z=1 plane")
 
 
@@ -144,9 +147,15 @@ if(${USE_PROP_OM4})
   set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_OM4")
 endif()
 
+set(OUTPUT_FLAGS "")
+if(${USE_NN_BINS})
+  set(OUTPUT_FLAGS "${OUTPUT_FLAGS} -DUSE_NN_BINS")
+endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} -mcmodel=medium -std=c++14")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} -mcmodel=medium -std=c++14")
+
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} ${OUTPUT_FLAGS} -mcmodel=medium -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} ${OUTPUT_FLAGS} -mcmodel=medium -std=c++14")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wa,-q -lc++")

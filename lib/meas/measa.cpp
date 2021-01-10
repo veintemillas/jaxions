@@ -620,12 +620,16 @@ writePMapHdf5s (axiona, LAB);
 							if (nruntype & NRUN_K){
 								sprintf(LABEL, "sK_%s",PRELABEL);
 									writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 								}
 							if (nruntype & NRUN_G){
 							sprintf(LABEL, "sG_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 								// // TEMP INDIVIDUAL XYZ
 								// sprintf(LABEL, "sGX_%s",PRELABEL);
 								// writeArray(specAna.data(SPECTRUM_GGy), specAna.PowMax(), "/eSpectrum", LABEL);
@@ -635,12 +639,16 @@ writePMapHdf5s (axiona, LAB);
 							if ( (nruntype & NRUN_V) && axiona->AxionMassSq() > 0.0 ){
 									sprintf(LABEL, "sV_%s",PRELABEL);
 									writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 							}
 							if ( (nruntype & NRUN_S) && axiona->AxionMassSq() > 0.0 ){
 									sprintf(LABEL, "sS_%s",PRELABEL);
 									writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 									writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 							}
 						} // END IF NSPECTRA WITH LUT CORRECTION
 
@@ -657,12 +665,16 @@ writePMapHdf5s (axiona, LAB);
 						if (nruntype & NRUN_CK){
 							sprintf(LABEL, "sCK_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 						}
 						if (nruntype & NRUN_CG){
 						sprintf(LABEL, "sCG_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 							writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 						}
 							/* Note that there is NO DIFFERENCE between CV CS and V,S */
 
@@ -670,13 +682,17 @@ writePMapHdf5s (axiona, LAB);
 							LogMsg(VERB_NORMAL,"[Meas %d] Warning: You asked for nspV without LUT correction (CV) which is the same as V. Waste of resources?",indexa);
 							sprintf(LABEL, "sCV_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 							}
 						if ( (nruntype & NRUN_CS) && axiona->AxionMassSq() > 0.0 ){
 							LogMsg(VERB_NORMAL,"[Meas %d] Warning: You asked for nspS without LUT correction (CS) which is the same as S. Waste of resources?",indexa);
 							sprintf(LABEL, "sCS_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
 							}
 
 					} // END IF NSPECTRA WITHOUT CORRECTION
@@ -721,13 +737,14 @@ writePMapHdf5s (axiona, LAB);
 				// LogOut("NSPS ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
 				specAna.nSRun();
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
 				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sKS");
 				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sGS");
 				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sVS");
-
+#ifdef USE_NN_BINS
+				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
+				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
+				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
+#endif
 			}
 		}
 

@@ -53,10 +53,12 @@ void	SpecBin::fillBins	() {
 	std::vector<double>	tBinG;
 	std::vector<double>	tBinV;
 	std::vector<double>	tBinVnl;
+#ifdef USE_NN_BINS
 	std::vector<double>	tBinNK;
 	std::vector<double>	tBinNG;
 	std::vector<double>	tBinNV;
 	std::vector<double>	tBinNVnl;
+#endif
 	std::vector<double>	tBinP;
 	std::vector<double>	tBinPS;
 	std::vector<double>	tBinNN;
@@ -68,8 +70,10 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_KK:
 			tBinK.resize(powMax*mIdx);
 			tBinK.assign(powMax*mIdx, 0);
+#ifdef USE_NN_BINS
 			tBinNK.resize(powMax*mIdx);
 			tBinNK.assign(powMax*mIdx, 0);
+#endif
 			break;
 
 		case	SPECTRUM_P:
@@ -99,22 +103,28 @@ void	SpecBin::fillBins	() {
 		case	SPECTRUM_GG:
 			tBinG.resize(powMax*mIdx);
 			tBinG.assign(powMax*mIdx, 0);
+#ifdef USE_NN_BINS
 			tBinNG.resize(powMax*mIdx);
 			tBinNG.assign(powMax*mIdx, 0);
+#endif
 			break;
 
 		case	SPECTRUM_VV:
 			tBinV.resize(powMax*mIdx);
 			tBinV.assign(powMax*mIdx, 0);
+#ifdef USE_NN_BINS
 			tBinNV.resize(powMax*mIdx);
 			tBinNV.assign(powMax*mIdx, 0);
+#endif
 			break;
 
 		case	SPECTRUM_VNL:
 			tBinVnl.resize(powMax*mIdx);
 			tBinVnl.assign(powMax*mIdx, 0);
+#ifdef USE_NN_BINS
 			tBinNVnl.resize(powMax*mIdx);
 			tBinNVnl.assign(powMax*mIdx, 0);
+#endif
 			break;
 
 		default:
@@ -122,10 +132,12 @@ void	SpecBin::fillBins	() {
 			tBinV.resize(powMax*mIdx);
 			tBinG.assign(powMax*mIdx, 0);
 			tBinV.assign(powMax*mIdx, 0);
+#ifdef USE_NN_BINS
 			tBinNG.resize(powMax*mIdx);
 			tBinNV.resize(powMax*mIdx);
 			tBinNG.assign(powMax*mIdx, 0);
 			tBinNV.assign(powMax*mIdx, 0);
+#endif
 			break;
 	}
 
@@ -227,11 +239,15 @@ void	SpecBin::fillBins	() {
 				 can be zero; it needs to be done outside the program */
 				case	SPECTRUM_KK:
 					tBinK.at(myBin + powMax*tIdx) += m2;
+#ifdef USE_NN_BINS
 					tBinNK.at(myBin + powMax*tIdx) += m2/w;
+#endif
 					break;
 				case	SPECTRUM_VV:
 					tBinV.at(myBin + powMax*tIdx) += m2;
+#ifdef USE_NN_BINS
 					tBinNV.at(myBin + powMax*tIdx) += m2/w;
+#endif
 					break;
 				case  SPECTRUM_GaS:
 				case  SPECTRUM_GaSadd:
@@ -249,7 +265,9 @@ void	SpecBin::fillBins	() {
 							break;
 					}
 					tBinG.at(myBin + powMax*tIdx) += m2/cosTable2[tmp];
+#ifdef USE_NN_BINS
 					tBinNG.at(myBin + powMax*tIdx) += m2/(cosTable2[tmp]*w);
+#endif
 					break;
 				/* is possible to account for the finite difference formula
 				by using the folloging line for the gradients
@@ -261,42 +279,56 @@ void	SpecBin::fillBins	() {
 				case	SPECTRUM_KS:
 				 	// mw = m2/w;
 					tBinK.at(myBin + powMax*tIdx) += m2;
+#ifdef USE_NN_BINS
 					tBinNK.at(myBin + powMax*tIdx) += m2/w;
+#endif
 					break;
 				case	SPECTRUM_G:
 				case	SPECTRUM_GS:
 					// mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += m2*k2;
+#ifdef USE_NN_BINS
 					tBinNG.at(myBin + powMax*tIdx) += m2*k2/w;
+#endif
 					break;
 				case	SPECTRUM_V:
 					// mw = m2/w;
 					tBinV.at(myBin + powMax*tIdx) += m2*mass2;
+#ifdef USE_NN_BINS
 					tBinNV.at(myBin + powMax*tIdx) += m2*mass2/w;
+#endif
 					break;
 				case	SPECTRUM_VNL:
 					tBinVnl.at(myBin + powMax*tIdx) += m2*mass2;
+#ifdef USE_NN_BINS
 					tBinNVnl.at(myBin + powMax*tIdx) += m2*mass2/w;
+#endif
 					break;
 				case	SPECTRUM_VS:
 					// mw = m2/w;
 					tBinV.at(myBin + powMax*tIdx) += m2*mass2Sax;
+#ifdef USE_NN_BINS
 					tBinNV.at(myBin + powMax*tIdx) += m2*mass2Sax/w;
+#endif
 					break;
 				case	SPECTRUM_GVS:
 					// mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += m2*k2;
 					tBinV.at(myBin + powMax*tIdx) += m2*mass2Sax;
+#ifdef USE_NN_BINS
 					tBinNG.at(myBin + powMax*tIdx) += mw*k2/w;
 					tBinNV.at(myBin + powMax*tIdx) += mw*mass2Sax/w;
+#endif
 					break;
 
 				case	SPECTRUM_GV:
 					// mw = m2/w;
 					tBinG.at(myBin + powMax*tIdx) += m2*k2;
 					tBinV.at(myBin + powMax*tIdx) += m2*mass2;
+#ifdef USE_NN_BINS
 					tBinNG.at(myBin + powMax*tIdx) += m2*k2/w;
 					tBinNV.at(myBin + powMax*tIdx) += m2*mass2/w;
+#endif
 					break;
 
 				/* energy spectra */
@@ -329,22 +361,30 @@ void	SpecBin::fillBins	() {
 					case	SPECTRUM_KK:
 					case	SPECTRUM_KS:
 						binK[j] += tBinK[j + i*powMax]*norm;
+#ifdef USE_NN_BINS
 						binNK[j] += tBinNK[j + i*powMax]*norm;
+#endif
 						break;
 					case	SPECTRUM_G:
 					case	SPECTRUM_GG:
 					case	SPECTRUM_GaS:
 					case	SPECTRUM_GaSadd:
 						binG[j] += tBinG[j + i*powMax]*norm;
+#ifdef USE_NN_BINS
 						binNG[j] += tBinNG[j + i*powMax]*norm;
+#endif
 						break;
 					case	SPECTRUM_VV:
 						binV[j] += tBinV[j + i*powMax]*norm;
+#ifdef USE_NN_BINS
 						binNV[j] += tBinNV[j + i*powMax]*norm;
+#endif
 						break;
 					case	SPECTRUM_VNL:
 						binVnl[j] += tBinVnl[j + i*powMax]*norm;
+#ifdef USE_NN_BINS
 						binNVnl[j] += tBinNVnl[j + i*powMax]*norm;
+#endif
 						break;
 					case	SPECTRUM_P:
 						binP[j] += tBinP[j + i*powMax]*norm;
@@ -362,8 +402,10 @@ void	SpecBin::fillBins	() {
 					default:
 						binG[j] += tBinG[j + i*powMax]*norm;
 						binV[j] += tBinV[j + i*powMax]*norm;
+#ifdef USE_NN_BINS
 						binNG[j] += tBinNG[j + i*powMax]*norm;
 						binNV[j] += tBinNV[j + i*powMax]*norm;
+#endif
 						break;
 
 				}
@@ -377,8 +419,10 @@ switch	(sType) {
 		case	SPECTRUM_KS:
 			std::copy_n(binK.begin(), powMax, tBinK.begin());
 			MPI_Allreduce(tBinK.data(), binK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#ifdef USE_NN_BINS
 			std::copy_n(binNK.begin(), powMax, tBinNK.begin());
 			MPI_Allreduce(tBinNK.data(), binNK.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 			break;
 
 		case	SPECTRUM_P:
@@ -410,22 +454,28 @@ switch	(sType) {
 		// we can reduce among ranks
 			std::copy_n(binG.begin(), powMax, tBinG.begin());
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#ifdef USE_NN_BINS
 			std::copy_n(binNG.begin(), powMax, tBinNG.begin());
 			MPI_Allreduce(tBinNG.data(), binNG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 			break;
 
 		case	SPECTRUM_VV:
 			std::copy_n(binV.begin(), powMax, tBinV.begin());
 			MPI_Allreduce(tBinV.data(), binV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#ifdef USE_NN_BINS
 			std::copy_n(binNV.begin(), powMax, tBinNV.begin());
 			MPI_Allreduce(tBinNV.data(), binNV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 			break;
 
 		case	SPECTRUM_VNL:
 			std::copy_n(binVnl.begin(), powMax, tBinVnl.begin());
 			MPI_Allreduce(tBinVnl.data(), binVnl.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#ifdef USE_NN_BINS
 			std::copy_n(binNVnl.begin(), powMax, tBinNVnl.begin());
 			MPI_Allreduce(tBinNVnl.data(), binNVnl.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 			break;
 
 		default:
@@ -434,10 +484,12 @@ switch	(sType) {
 			MPI_Allreduce(tBinG.data(), binG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			std::copy_n(binV.begin(), powMax, tBinV.begin());
 			MPI_Allreduce(tBinV.data(), binV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#ifdef USE_NN_BINS
 			std::copy_n(binNG.begin(), powMax, tBinNG.begin());
 			MPI_Allreduce(tBinNG.data(), binNG.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 			std::copy_n(binNV.begin(), powMax, tBinNV.begin());
 			MPI_Allreduce(tBinNV.data(), binNV.data(), powMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
 			break;
 	}
 	LogMsg(VERB_NORMAL,"[FB] Bins filled sType = %d", sType) ;
@@ -1003,12 +1055,12 @@ void	SpecBin::nRun	(nRunType nrt) {
 		// binGz.assign(powMax, 0.);
 	binV.assign(powMax, 0.);
 	binVnl.assign(powMax, 0.);
-
+#ifdef USE_NN_BINS
 	binNK.assign(powMax, 0.);
 	binNG.assign(powMax, 0.);
 	binNV.assign(powMax, 0.);
 	binNVnl.assign(powMax, 0.);
-
+#endif 
 	binPS.assign(powMax, 0.);
 	binP.assign(powMax, 0.);
 	if (mask == SPMASK_SAXI)
