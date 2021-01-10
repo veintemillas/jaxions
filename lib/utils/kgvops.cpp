@@ -8,6 +8,7 @@
 
 #include "utils/profiler.h"
 #include "utils/kgvops.h"
+#include "utils/kgvopsXeon.h"
 #include "spectrum/LLUTs.h"
 
 
@@ -191,6 +192,13 @@ size_t buildc_k(Scalar *field, PadIndex pi, Float zaskaFF)
 	Actually we first compute in m2 and then move
 	*/
 
+
+	/* vectorised version for AVX, does not buy much */
+	// if (LUTcorr){
+	// 	buildc_k_KernelXeon(field->mCpu(),field->vCpu(),field->m2Cpu(),field);
+	// 	return 0;
+	// }
+
 	size_t Lz = field->Depth();
 	size_t Ly = field->Length();
 	size_t LyLy = Ly*Ly;
@@ -202,7 +210,6 @@ size_t buildc_k(Scalar *field, PadIndex pi, Float zaskaFF)
 	char *strdaa                = static_cast<char *>(static_cast<void *>(field->sData()));
 	Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
 	Float *m2sax                = static_cast<Float *>(field->m2half());
-
 
 	// Float sigma = SIGMALUT;
 	Float pre = 0.5*SIGMALUT;
