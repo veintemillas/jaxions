@@ -1931,26 +1931,26 @@ void	SpecBin::smoothFourier	(double length, FilterIndex filter) {
 	bool ok = false;
 	if ((field->m2Status() == M2_ENERGY_FFT) && (field->m2hStatus() == M2_ENERGY_FFT))
 	{
-		LogMsg (VERB_DEBUG, "[sF] FFTs already there");LogFlush();
+		LogMsg (VERB_PARANOID, "[sF] FFTs already there");LogFlush();
 		ok = true;
 	}
 	else if ((field->m2Status() == M2_ENERGY_FFT) && (field->m2hStatus() != M2_ENERGY_FFT) && !ok)
 	{
-		LogMsg (VERB_DEBUG, "[sF] FFT in M2, copy to M2h");LogFlush();
+		LogMsg (VERB_PARANOID, "[sF] FFT in M2, copy to M2h");LogFlush();
 		memmove(m2h, m2, dataTotalSize);
 		ok = true;
 		field->setM2h(M2_ENERGY_FFT);
 	}
 	else if ((field->m2Status() != M2_ENERGY_FFT) && (field->m2hStatus() == M2_ENERGY_FFT) && !ok)
 	{
-		LogMsg (VERB_DEBUG, "[sF] FFT in M2h, copy to M2");LogFlush();
+		LogMsg (VERB_PARANOID, "[sF] FFT in M2h, copy to M2");LogFlush();
 		memmove(m2, m2h, dataTotalSize);
 		ok = true;
 		field->setM2(M2_ENERGY_FFT);
 	}
 	else if ((field->m2Status() == M2_ENERGY) && !ok)
 	{
-		LogMsg (VERB_DEBUG, "[sF] Energy in M2. Pad, FFT and copy to M2");LogFlush();
+		LogMsg (VERB_PARANOID, "[sF] Energy in M2. Pad, FFT and copy to M2");LogFlush();
 		pad(PFIELD_M2,PFIELD_M2);
 		myPlan.run(FFT_FWD);
 		memmove(m2h, m2, dataTotalSize);
@@ -1960,7 +1960,7 @@ void	SpecBin::smoothFourier	(double length, FilterIndex filter) {
 	}
 	else if ((field->m2hStatus() == M2_ENERGY) && !ok)
 	{
-		LogMsg (VERB_DEBUG, "[sF] Energy in M2h. Pad to M2, FFT and copy to M2h");LogFlush();
+		LogMsg (VERB_PARANOID, "[sF] Energy in M2h. Pad to M2, FFT and copy to M2h");LogFlush();
 		pad(PFIELD_M2H,PFIELD_M2);
 		myPlan.run(FFT_FWD);
 		memmove(m2h, m2, dataTotalSize);
@@ -1975,7 +1975,7 @@ void	SpecBin::smoothFourier	(double length, FilterIndex filter) {
 		/* */
 	}
 
-	LogMsg (VERB_DEBUG, "[sF] Start filter");LogFlush();
+	LogMsg (VERB_PARANOID, "[sF] Start filter");LogFlush();
 	switch(fPrec)
 	{
 		case FIELD_SINGLE:
@@ -2038,7 +2038,7 @@ void	SpecBin::smoothFourier	(double length) {
 			break;
 	}
 
-	LogMsg(VERB_DEBUG,"k0R %e pref %e normn3 %e",k0R,pref,normn3);
+	LogMsg(VERB_PARANOID,"k0R %e pref %e normn3 %e",k0R,pref,normn3);
 
 	// Float *m2 = static_cast<Float*> (field->m2Cpu());
 
@@ -2102,7 +2102,7 @@ int	SpecBin::pad	(PadIndex origin, PadIndex dest){
 	size_t eVol     = Ly*Ly*(Lz+2*field->getNg());
 
 	LogMsg (VERB_HIGH,  "[pad] from %d to %d",origin, dest);
-	LogMsg (VERB_DEBUG, "[pad] padVol %d fromSVol %d eVol %d [-LxLxLz]",2*Ly*Lz, Ly*Ly*field->getNg(), 2*Ly*Ly*field->getNg());
+	LogMsg (VERB_PARANOID, "[pad] padVol %d fromSVol %d eVol %d [-LxLxLz]",2*Ly*Lz, Ly*Ly*field->getNg(), 2*Ly*Ly*field->getNg());
 
 	if ((dest & PFIELD_START) && (fromSVol > padVol) ){
 		LogMsg(VERB_HIGH,"[pad] Padding unsafe, (Lz+Ng)Ly < (Ly+2)(Lz) and padded date overruns FIELD");
@@ -2169,7 +2169,7 @@ int	SpecBin::unpad	(PadIndex origin, PadIndex dest)
 	size_t eVol     = Ly*Ly*(Lz+2*field->getNg());
 
 	LogMsg (VERB_HIGH,  "[upad] from %d to %d",origin, dest);
-	LogMsg (VERB_DEBUG, "[upad] padVol %d fromSVol %d eVol %d [-LxLxLz]",2*Ly*Lz, Ly*Ly*field->getNg(), 2*Ly*Ly*field->getNg());
+	LogMsg (VERB_PARANOID, "[upad] padVol %d fromSVol %d eVol %d [-LxLxLz]",2*Ly*Lz, Ly*Ly*field->getNg(), 2*Ly*Ly*field->getNg());
 
 	if ((origin & PFIELD_START) && (fromSVol > padVol) ){
 		LogMsg(VERB_HIGH,"[upad] Unpadding unsafe, (Lz+Ng)Ly < (Ly+2)(Lz) and padded date overruns FIELD");
@@ -2855,7 +2855,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 				// int own = 0;
 				// int news = 0;
 				// int overlap = 0;
-				// LogMsg(VERB_DEBUG,"[sp] Fusing ghosts between ranks");
+				// LogMsg(VERB_PARANOID,"[sp] Fusing ghosts between ranks");
 				// #pragma omp parallel for reduction(+:own,news,overlap) collapse(2)
 					prof.start();
 				#pragma omp parallel for collapse(2)
@@ -2876,7 +2876,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 				sprintf(LABEL2, "M2.FUSE (%s)", PROFLABEL);
 					prof.add(std::string(LABEL2), 0.0, 0.0);
 
-				// LogMsg(VERB_DEBUG,"[sp] rank %d own %d new %d overlap %d",myRank,own,news,overlap);
+				// LogMsg(VERB_PARANOID,"[sp] rank %d own %d new %d overlap %d",myRank,own,news,overlap);
 			}
 
 			/* if maskball we set the mask also in strdaa
@@ -3028,7 +3028,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 								} // end if not mask
 
 							}
-							LogMsg(VERB_DEBUG,"[masker] smoothing end iteration %d",it);
+							LogMsg(VERB_PARANOID,"[masker] smoothing end iteration %d",it);
 							/* bring smoothed configuration back to m2 */
 							memmove (m2sC, m2aC, dataBareSize);
 
@@ -3102,7 +3102,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 // for (size_t idx = 0 ; idx < V; idx++){
 // 	if (strdaa[idx] & STRING_MASK)
 // 		imask++;}
-// LogMsg(VERB_DEBUG,"DEBUG imask %d",imask);
+// LogMsg(VERB_PARANOID,"DEBUG imask %d",imask);
 
 			/* Produce the final mask in m2
 			and unpadded in m2h
@@ -3214,7 +3214,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 // for (size_t idx = 0 ; idx < V; idx++){
 // 	if (strdaa[idx] & STRING_MASK)
 // 		imask++;}
-// LogMsg(VERB_DEBUG,"DEBUG 2 imask %d",imask);
+// LogMsg(VERB_PARANOID,"DEBUG 2 imask %d",imask);
 
 
 			/* Calculate the FFT of the mask */

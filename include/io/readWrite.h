@@ -45,7 +45,7 @@
 	template<const size_t N, typename cFloat>
 	void	writeBinner	(Binner<N,cFloat> bins, const char *group, const char *dataName) {
 
-	LogMsg(VERB_DEBUG,"[wB] Writting binner");LogFlush();
+	LogMsg(VERB_PARANOID,"[wB] Writting binner");LogFlush();
 
 		writeArray (bins.data(), N, group, dataName);
 

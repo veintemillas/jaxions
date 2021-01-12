@@ -51,7 +51,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 
 	const size_t Sf = Lx*Lx;
 
-LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
+LogMsg(VERB_PARANOID,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
 	{

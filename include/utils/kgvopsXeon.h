@@ -59,7 +59,7 @@ void	buildc_k_KernelXeon(const void * __restrict__ m_, const void * __restrict__
 	const size_t Vo     = fieldo->Surf()*NN;
 	const size_t Vf     = fieldo->Size()+Vo;
 
-// LogMsg(VERB_DEBUG,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
+// LogMsg(VERB_PARANOID,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
 	{

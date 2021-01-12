@@ -28,7 +28,7 @@
 
 	namespace AxionsLog {
 
-		constexpr long long int	logFreq	= 50000; // In microseconds 
+		constexpr long long int	logFreq	= 50000; // In microseconds
 		constexpr size_t 	basePack = sizeof(ptrdiff_t)*5;
 
 		extern	const char	levelTable[3][16];
@@ -37,8 +37,8 @@
 			private:
 				int		tIdx;							// OMP thread
 				int		size;							// Message size
-				std::string	data;							// Log message
-				LogLevel	logLevel;						// Level of logging (info, debug or error)
+				std::string	data;				// Log message
+				LogLevel	logLevel;			// Level of logging (info, debug or error)
 				int		mRnk;							// MPI rank
 
 				std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;	// Timestamp
@@ -125,9 +125,15 @@
 				volatile bool		logWriting;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
-					oFile << std::setw(11) << myMsg.time(logStart)/1000 << "ms: Logger level[" << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << "]"
-					      << " Rank " << std::setw(4)  << myMsg.rank()+1 << "/" << commSize() << " - Thread " << std::setw(3) << myMsg.thread()+1 << "/"
-					      << omp_get_num_threads() << " ==> " << myMsg.msg() << std::endl;
+					if (myMsg.time(logStart)/1000 < 1000000) {
+					oFile << std::setw(8) << myMsg.time(logStart)/1000 << "ms " << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << " "
+					      << std::setw(3) << myMsg.rank()+1 << "/" << commSize() << "-" << myMsg.thread()+1 << "/"
+					      << omp_get_num_threads() << " " << myMsg.msg() << std::endl;
+					} else {
+						oFile << std::setw(8) << myMsg.time(logStart)/1000000 << "s  " << std::right << std::setw(5) << levelTable[myMsg.level()>>21] << " "
+						      << std::setw(3) << myMsg.rank()+1 << "/" << commSize() << "-" << myMsg.thread()+1 << "/"
+						      << omp_get_num_threads() << " " << myMsg.msg() << std::endl;
+					}
 				}
 
 				/* We only allow thread 0 to write to disk, but any other thread can put messages in the stack		*/
@@ -135,7 +141,7 @@
 				void	flushMsg	() noexcept {
 					if (omp_get_thread_num() != 0)
 						return;
- 
+
 					while (logWriting == true);
 
 					logWriting = true;
@@ -284,8 +290,8 @@
 							// We push the messages in the stack and we flush them later
 							msgStack.push_back(std::move(Msg(level, omp_get_thread_num(), format, vars...)));
 
-//							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
-//								mustFlush = true;
+							if	(std::chrono::duration_cast<std::chrono::microseconds> (std::chrono::high_resolution_clock::now() - logStart).count() > logFreq)
+								mustFlush = true;
 							break;
 						}
 

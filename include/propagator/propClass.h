@@ -936,7 +936,7 @@
 		size_t BO = ppar.Ng*S;
 		size_t CO = V-2*ppar.Ng*S;
 
-		LogMsg(VERB_DEBUG,"[propNax] Ng %d",ppar.Ng);
+		LogMsg(VERB_PARANOID,"[propNax] Ng %d",ppar.Ng);
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
@@ -1004,7 +1004,7 @@
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
-		LogMsg(VERB_DEBUG,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+		LogMsg(VERB_PARANOID,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
 
 		void *nada;
 		ppar.ct     = *axion->zV();

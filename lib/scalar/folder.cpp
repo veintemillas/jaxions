@@ -181,7 +181,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 					//this copies v into buffer last
 					mg2[dIdx]	= v[oIdx];
 				}
-				LogMsg (VERB_DEBUG, "[uf2X] done");
+				LogMsg (VERB_PARANOID, "[uf2X] done");
 				LogFlush();
 		return;
 	}

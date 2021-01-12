@@ -70,8 +70,8 @@
 			break;
 		}
 
-		// LogMsg(VERB_DEBUG,"PPX ct %e dz %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
-		// LogMsg(VERB_DEBUG,"KKt %e dct %e",KKt,dz);
+		// LogMsg(VERB_PARANOID,"PPX ct %e dz %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
+		// LogMsg(VERB_PARANOID,"KKt %e dct %e",KKt,dz);
 
 		if (precision == FIELD_SINGLE)
 		{

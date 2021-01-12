@@ -62,17 +62,17 @@ void Cosmos::Setup()
       // LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
       fscanf (cFile ,"%lf %lf %lf %lf %lf %lf", &eta, &R, &T, &Rpp, &chi , &pf);
       if (feof(cFile)){
-        LogMsg (VERB_DEBUG ,"I break");
+        LogMsg (VERB_PARANOID ,"I break");
         break;
       }
 
-      LogMsg (VERB_DEBUG ,"%d %lf %lf %lf %lf %lf %lf", line, eta, R, T, Rpp, chi , pf);
+      LogMsg (VERB_PARANOID ,"%d %lf %lf %lf %lf %lf %lf", line, eta, R, T, Rpp, chi , pf);
       line ++;
     }
-    LogMsg (VERB_DEBUG ,"eta %lf eta %lf ", etav[etav.size()-1], etav[etav.size()-2]);
+    LogMsg (VERB_PARANOID ,"eta %lf eta %lf ", etav[etav.size()-1], etav[etav.size()-2]);
     // for (int i =etav.size()-1; i>0;i--)
     //   if (etav[i] == etav[i-1]){
-    //     LogMsg (VERB_DEBUG ,"%d eta %lf eta-1 %lf merged", i, etav[i],etav[i-1]);
+    //     LogMsg (VERB_PARANOID ,"%d eta %lf eta-1 %lf merged", i, etav[i],etav[i-1]);
     //     etav.erase(etav.begin()+i);
     //     Rv.erase(Rv.begin()+i);
     //     Tv.erase(Tv.begin()+i);

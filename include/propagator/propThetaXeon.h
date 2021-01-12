@@ -769,7 +769,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		case V_QCD0:
 		case V_NONE:
 		{
-LogMsg(VERB_DEBUG,"[PT] propTheta QCD0");
+LogMsg(VERB_PARANOID,"[PT] propTheta QCD0");
 				switch (wMod) {
 					case	true:
 						propThetaKernelXeon<true,V_QCD0> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
@@ -784,7 +784,7 @@ LogMsg(VERB_DEBUG,"[PT] propTheta QCD0");
 		case V_QCDV:
 		case V_QCDC:
 		{
-LogMsg(VERB_DEBUG,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
+LogMsg(VERB_PARANOID,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
 				switch (wMod) {
 					case	true:
 						propThetaKernelXeon<true,V_QCDC> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
@@ -800,7 +800,7 @@ LogMsg(VERB_DEBUG,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
 		} break;
 		case V_QCDL:
 		{
-LogMsg(VERB_DEBUG,"[PT] propTheta QCDL %d",V_QCDL);
+LogMsg(VERB_PARANOID,"[PT] propTheta QCDL %d",V_QCDL);
 				switch (wMod) {
 					case	true:
 						propThetaKernelXeon<true,V_QCDL> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);

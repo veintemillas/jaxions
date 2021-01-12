@@ -911,7 +911,7 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 								double ma, va;
 								while(!feof(cacheFile)){
 										fscanf (cacheFile ,"%lf %lf", &ma, &va);
-										LogMsg(VERB_DEBUG," m %.3e v %.3e !",ma,va);
+										LogMsg(VERB_PARANOID," m %.3e v %.3e !",ma,va);
 										// printf(" m %.3e v %.3e ! ",ma,va);
 										mm.push_back(ma);
 										vv.push_back(va);

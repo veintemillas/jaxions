@@ -1032,8 +1032,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					if ( (myCosmos->QcdPot() & V_QCD) == V_NONE) {
 
 						readAttribute (vGrp_id, &vStr,  "VQcd type",  attr_type);
-						LogMsg (VERB_DEBUG, " V_QCD (commandline   ) = %d", myCosmos->QcdPot() & V_QCD);
-						LogMsg (VERB_DEBUG, " V_QCD (read from file) = %s", vStr);
+						LogMsg (VERB_PARANOID, " V_QCD (commandline   ) = %d", myCosmos->QcdPot() & V_QCD);
+						LogMsg (VERB_PARANOID, " V_QCD (read from file) = %s", vStr);
 
 
 						if (!strcmp(vStr, "VQcd 1"))
@@ -1317,7 +1317,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// }
 
 
-		LogMsg(VERB_DEBUG, "[rc] Read start\n");
+		LogMsg(VERB_PARANOID, "[rc] Read start\n");
 
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, 0);
@@ -1356,7 +1356,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// else
 		// 	auxion = *axion;
 
-		// LogMsg(VERB_DEBUG, "pointers axion %p auxion %p",*axion,auxion);
+		// LogMsg(VERB_PARANOID, "pointers axion %p auxion %p",*axion,auxion);
 		// LogOut("pointers axion %p auxion %p\n",*axion,auxion);
 
 		/*	Create plist for collective read	*/
@@ -1380,7 +1380,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		for (hsize_t zDim = 0; zDim < Nz ; zDim++)
 		{
 
-	LogMsg(VERB_DEBUG, "[rc] Reading zDim %d slab %d Nz %d",zDim,slab,Nz);LogFlush();
+	LogMsg(VERB_PARANOID, "[rc] Reading zDim %d slab %d Nz %d",zDim,slab,Nz);LogFlush();
 
 			/*	Select the slab in the file	*/
 			offset = (((hsize_t) (myRank*Nz))+zDim)*slab;
@@ -1846,11 +1846,11 @@ void	destroyMeas ()
 
 
 	if (opened) {
-		LogMsg (VERB_DEBUG, "opened indeed");LogFlush();
+		LogMsg (VERB_PARANOID, "opened indeed");LogFlush();
 		H5Pclose (mlist_id);
-		LogMsg (VERB_DEBUG, "mlist_id closed");LogFlush();
+		LogMsg (VERB_PARANOID, "mlist_id closed");LogFlush();
 		H5Fclose (meas_id);
-		LogMsg (VERB_DEBUG, "meas_id closed");LogFlush();
+		LogMsg (VERB_PARANOID, "meas_id closed");LogFlush();
 	}
 
 	opened = false;
@@ -3725,7 +3725,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	char vCh[16] = "/mapp/v";
 
 	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ (%dx%d)",axion->Length(), axion->TotalDepth());
-	LogMsg (VERB_DEBUG, "[wm2] total %d slab %d myRank %d dataSize %d",total,slab, commRank(),dataSize);	LogFlush();
+	LogMsg (VERB_PARANOID, "[wm2] total %d slab %d myRank %d dataSize %d",total,slab, commRank(),dataSize);	LogFlush();
 	LogFlush();
 
 	if (header == false || opened == false)
@@ -3843,7 +3843,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 
 	hsize_t partial = total/commSize();
 	LogMsg (VERB_HIGH, "[wm2] Ready to write");	LogFlush();
-	LogMsg (VERB_DEBUG, "[wm2] total %d commSize() %d sizeN %d dataSize %d",total,commSize(),sizeN,dataSize);	LogFlush();
+	LogMsg (VERB_PARANOID, "[wm2] total %d commSize() %d sizeN %d dataSize %d",total,commSize(),sizeN,dataSize);	LogFlush();
 	for (hsize_t yDim=0; yDim < axion->Depth(); yDim++)
 	{
 		hsize_t offset = (hsize_t) myRank*partial + yDim*slab;
@@ -3851,7 +3851,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
-		LogMsg (VERB_DEBUG, "[wm2] line yDim %d ",yDim);	LogFlush();
+		LogMsg (VERB_PARANOID, "[wm2] line yDim %d ",yDim);	LogFlush();
 		/*	Write raw data	recall slab = sizeN*2*/
 		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, (static_cast<char *> (axion->mFrontGhost())) +axion->Length()*yDim*dataSize);
 		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +axion->Length()*yDim*dataSize);

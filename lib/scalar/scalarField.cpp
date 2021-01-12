@@ -650,7 +650,7 @@ void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataTy
 
 	/* Assign receive buffers to the right parts of m, v */
 	LogMsg(VERB_HIGH, "[sca] Called send General (COMM %d)",opComm);
-	LogMsg(VERB_DEBUG,"[sca] count %lu sizeof(MPIDATA) %d countBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", count, sizeDataType, countBytes, MAX_CHUNK, nchunks, lastchunk);
+	LogMsg(VERB_PARANOID,"[sca] count %lu sizeof(MPIDATA) %d countBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", count, sizeDataType, countBytes, MAX_CHUNK, nchunks, lastchunk);
 	LogFlush();
 
 	if (nchunks > NMPICHUNK){
@@ -683,7 +683,7 @@ void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataTy
 		rGhostBck[n] = static_cast<void *> (static_cast<char *> (receiveBufferB) + n*MAX_CHUNK );
 		}
 
-		LogMsg(VERB_DEBUG,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
+		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
 	}
 
 	switch	(opComm)
@@ -784,7 +784,7 @@ void	Scalar::sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng)
 	}
 
 	const size_t ghostBytes = rNg*n2*fSize;
-	LogMsg(VERB_DEBUG,"[sca] sendGhosts2 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
+	LogMsg(VERB_PARANOID,"[sca] sendGhosts2 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
 
 	void *sB, *rF, *sF, *rB;
 	if (fIdx == FIELD_M){
@@ -824,7 +824,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 	/* Assign receive buffers to the right parts of m, v */
 	LogMsg(VERB_HIGH,"[sca] Called send Ghosts (COMM %d)",opComm);
-	LogMsg(VERB_DEBUG,"[sca] #Ghost regions Ng = %d, ghostBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", Ng, ghostBytes, MAX_CHUNK, nchunks, lastchunk);
+	LogMsg(VERB_PARANOID,"[sca] #Ghost regions Ng = %d, ghostBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", Ng, ghostBytes, MAX_CHUNK, nchunks, lastchunk);
 	LogFlush();
 
 	if (nchunks > NMPICHUNK){
@@ -865,7 +865,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);	//reception point
 			}
 		}
-		LogMsg(VERB_DEBUG,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
+		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
 	}
 
 	switch	(opComm)
@@ -1255,7 +1255,7 @@ double	Scalar::dzSize	   (double zNow) {
 				/* w = k^2//(\sqrt(m2+k2)+m2) is the safe formula */
 				double w =(12.*oodl*oodl)/(std::sqrt(12*oodl*oodl + mAx2*RNow*RNow) + std::sqrt(mAx2)*RNow) ;
 				dct = wDz/w ;
-				LogMsg(VERB_DEBUG,"[sca:ct] PNaxion w %e wDz %e mAx2 %e R %e",w,wDz,std::sqrt(mAx2),RNow);
+				LogMsg(VERB_PARANOID,"[sca:ct] PNaxion w %e wDz %e mAx2 %e R %e",w,wDz,std::sqrt(mAx2),RNow);
 			}
 		break;
 		default:
@@ -1266,7 +1266,7 @@ double	Scalar::dzSize	   (double zNow) {
 
 	/* Do not allow to jump over z/10 or Rc */
 	// if (fieldType != FIELD_PAXION){
-	// 	LogMsg(VERB_DEBUG,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
+	// 	LogMsg(VERB_PARANOID,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
 	// 	dct = std::min(dct,zNow/10.);
 	// 	}
 
@@ -1278,7 +1278,7 @@ double	Scalar::dzSize	   (double zNow) {
 			/* Rather, go a ministep ahead */
 			double zNext = zNow + dct;
 			dct = pow(bckgnd->ZThRes()+ 0.001*(RNext-bckgnd->ZThRes()),1.0/bckgnd->Frw()) - zNow;
-			LogMsg(VERB_DEBUG,"[sca:ct] >> dct decreased to %e just jump over Rc [ct,ct_Next,ct+sct]",dct, zNow, zNext,zNow+dct);
+			LogMsg(VERB_PARANOID,"[sca:ct] >> dct decreased to %e just jump over Rc [ct,ct_Next,ct+sct]",dct, zNow, zNext,zNow+dct);
 		}
 	LogMsg(VERB_HIGH,"[sca:ct] dct = %e ct = %e",dct,zNow);
 	return dct;

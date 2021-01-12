@@ -376,8 +376,7 @@
 			VERB_SILENT    = 0,
 			VERB_NORMAL    = 1,
 			VERB_HIGH      = 2,
-			VERB_DEBUG     = 3,
-			VERB_PARANOID  = 4,
+			VERB_PARANOID  = 3,
 		}	VerbosityLevel;
 
 		typedef	enum	PrintConf_s

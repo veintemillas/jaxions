@@ -175,7 +175,7 @@
 
 	template<size_t N, typename DType>
 	void	Binner<N,DType>::run	() {
-		LogMsg (VERB_DEBUG, "Called Bin run");LogFlush();
+		LogMsg (VERB_PARANOID, "Called Bin run");LogFlush();
 
 		if (!setmaxmin) {
 			LogMsg (VERB_NORMAL, "Call find()");LogFlush();
@@ -229,7 +229,7 @@
 							if (0 <= myBin && myBin < N)	// Comparison with NaN will always return false
 								tBins.at(myBin + N*tIdx)++;
 							else {
-								LogMsg (VERB_DEBUG,"Warning: (th%d) Value out of range data[%lu]=%e > %e (interval [%f, %f], assigned bin %lu of %lu)",
+								LogMsg (VERB_PARANOID,"Warning: (th%d) Value out of range data[%lu]=%e > %e (interval [%f, %f], assigned bin %lu of %lu)",
 								tIdx, i, inData[i], cVal, baseVal, maxVal+0.5*step, myBin, N);LogFlush();
 								unbins++;
 							}
@@ -272,7 +272,7 @@
 							if (0 <= myBin && myBin < N)	// Comparison with NaN will always return false
 								tBins.at(myBin + N*tIdx)++;
 							else {
-								LogMsg (VERB_DEBUG,"Warning: (th%d) Value out of range data[%lu]=%e > %e (interval [%f, %f], assigned bin %lu of %lu)",
+								LogMsg (VERB_PARANOID,"Warning: (th%d) Value out of range data[%lu]=%e > %e (interval [%f, %f], assigned bin %lu of %lu)",
 								tIdx, i, inData[i], cVal, baseVal, maxVal+0.5*step, myBin, N);LogFlush();
 								unbins++;
 							}
@@ -288,7 +288,7 @@
 			}
 		}
 
-		LogMsg (VERB_DEBUG, "Binner Loop done (exceptions %d) ", unbins);LogFlush();
+		LogMsg (VERB_PARANOID, "Binner Loop done (exceptions %d) ", unbins);LogFlush();
 
 		std::array<double,N>    tmp;
 

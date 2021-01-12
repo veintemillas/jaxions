@@ -712,14 +712,14 @@ double findzdoom(Scalar *axion)
 		k = DWfun2/std::pow(ct2,a);
 		// LogOut("ct %e DWfun %e ct2 %e DWfun2 %e meas %e k %e a %e\n", ct, DWfun, ct2, DWfun2, meas, k ,a );
 		if ((a == 0) && (DWfun2 > DWfun0) ){
-			LogMsg(VERB_DEBUG,"[VAX findzdoom] flat slope between ct %e ct2 %e", ct, ct2 );
+			LogMsg(VERB_PARANOID,"[VAX findzdoom] flat slope between ct %e ct2 %e", ct, ct2 );
 			if (DWfun2 > 1) {
-				LogMsg(VERB_DEBUG,"[VAX findzdoom] Jump back!");
+				LogMsg(VERB_PARANOID,"[VAX findzdoom] Jump back!");
 				ct  = ct2;
 				ct2 = std::sqrt(*axion->zV()*ct2);
 			}
 			else {
-				LogMsg(VERB_DEBUG,"[VAX findzdoom] DWfun will never reach 1");
+				LogMsg(VERB_PARANOID,"[VAX findzdoom] DWfun will never reach 1");
 				return INFINITY;
 			}
 		} else {
@@ -729,9 +729,9 @@ double findzdoom(Scalar *axion)
 		DWfun = DWfun2;
 		DWfun2 = 40*axion->AxionMassSq(ct2)/(2.0*axion->BckGnd()->LambdaP(ct2));
 		meas = std::abs(DWfun2 - 1);
-		LogMsg(VERB_DEBUG,"ct2 %e DWfun2 %e meas %e k %e a %e", ct2, DWfun2, meas, k ,a );
+		LogMsg(VERB_PARANOID,"ct2 %e DWfun2 %e meas %e k %e a %e", ct2, DWfun2, meas, k ,a );
 	}
-LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
+	//LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
 	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct2 );LogFlush();
 	return ct2 ;
 } else {

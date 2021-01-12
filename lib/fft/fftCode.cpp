@@ -903,11 +903,11 @@ namespace AxionFFT {
 			return;
 		}
 
-		LogMsg (VERB_DEBUG, "Plans in list:");
+		LogMsg (VERB_PARANOID, "Plans in list:");
 
 		for (auto fft = fftPlans.cbegin(); fft != fftPlans.cend(); fft++) {
 			auto name = (*fft).first;
-			LogMsg (VERB_DEBUG, "             %s", name.c_str());
+			LogMsg (VERB_PARANOID, "             %s", name.c_str());
 		}
 
 		FieldPrecision	prec;
