@@ -283,14 +283,14 @@ Scalar*	Reducer<Float>::runCpu	()
 		if (axionField->Field() == FIELD_SAXION) {
 			switch ( axionField->m2Status() ) {
 				case M2_ENERGY:
-					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
 					/* if saxion field is required uncomment this */
 					// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 					// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
 					// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
 				break;
 				case M2_ENERGY_FFT:
-					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx",FFT_NONE);
+					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx",FFT_NONE);
 					/* if saxion field is required uncomment this */
 					// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 					// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
@@ -305,7 +305,7 @@ Scalar*	Reducer<Float>::runCpu	()
 			// 	LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
 			// 	return	outField;
 			// }
-			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
 			// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 			// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
 			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");

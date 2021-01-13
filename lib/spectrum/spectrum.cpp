@@ -1060,7 +1060,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 	binNG.assign(powMax, 0.);
 	binNV.assign(powMax, 0.);
 	binNVnl.assign(powMax, 0.);
-#endif 
+#endif
 	binPS.assign(powMax, 0.);
 	binP.assign(powMax, 0.);
 	if (mask == SPMASK_SAXI)
@@ -1095,7 +1095,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
 
 			// r2c FFT in m2
-			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 
 			// FIX ME vectorise
 			/* Kinetic energy includes subgrid correction */
@@ -1838,7 +1838,7 @@ void	SpecBin::nSRun	() {
 
 			// r2c FFT in m2
 
-			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 			myPlan.run(FFT_FWD);
 
 
@@ -2926,7 +2926,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 
 
 			/* Load FFT for Wtilde and REDO,GAUS */
-			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 
 			/* At this point all pre-masks are m2 (padded)
 			Hereforth the DIFF, REDO and GAUS diverge;
@@ -3842,7 +3842,7 @@ void	SpecBin::wRun	() {
 			}
 
 			// r2c FFT in m2
-			auto &myPlan = AxionFFT::fetchPlan("pSpecSx");
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 			myPlan.run(FFT_FWD);
 			if (spec)
 				fillBins<Float,  SPECTRUM_P, true> ();

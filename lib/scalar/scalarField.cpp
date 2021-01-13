@@ -312,6 +312,7 @@ const std::complex<float> If(0.,1.);
 		}
 	}
 
+	LogMsg(VERB_NORMAL, "[sca] Setting m,v to 0");
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*(n2*(nLz + 2)));
 	if (fieldType == FIELD_FAXION){
@@ -337,6 +338,15 @@ const std::complex<float> If(0.,1.);
 		LogError ("Error: couldn't allocate %d bytes on host for the z field", sizeof(double));
 		exit(1);
 	}
+
+	/* Note the big difference zI is an obsolete parameter FIX ME */
+	*z = cm->ICData().zi;
+	*R = 1.0;
+	updateR();
+
+	LogFlush();
+
+	/* CPU allocation */
 
 	if (device == DEV_GPU)
 	{
@@ -385,14 +395,11 @@ const std::complex<float> If(0.,1.);
 #endif
 	}
 
-	/* Note the big difference zI is an obsolete parameter FIX ME */
-	*z = cm->ICData().zi; //*z = zI;
-	*R = 1.0;
-	updateR();
-
-
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
+
+
+	LogMsg(VERB_NORMAL, "[sca] Initialise FFT plans");LogFlush();
 
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
@@ -400,16 +407,13 @@ const std::complex<float> If(0.,1.);
 		prof.start();
 		AxionFFT::initFFT(prec);
 
-		/* Backward needed for reduce-filter-map */
+		/* For spectra, reducer, genConf */
 		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
 		if (fieldType == FIELD_SAXION) {
 			if (!lowmem) {
 				AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
-				AxionFFT::initPlan (this, FFT_PSPEC_SX,   FFT_FWDBCK,  "pSpecSx");
 				AxionFFT::initPlan (this, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
-				AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWD,    "nSpecSxM");	// Only possible if lowmem == false
-				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD,    "nSpecSxV");
 			}
 		}
 

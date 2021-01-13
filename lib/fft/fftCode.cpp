@@ -246,19 +246,6 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
-					case	FFT_PSPEC_SX:
-
-						if (axion->m2Cpu() == nullptr) {
-							LogError ("Can't create R->C plan with m2 in lowmem runs");
-							exit(0);
-						}
-
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2f, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
-						break;
-
 					case	FFT_RHO_SX:
 
 						if (axion->m2Cpu() == nullptr) {
@@ -459,18 +446,6 @@ namespace AxionFFT {
 							planBackward = static_cast<void *>(fftw_mpi_plan_dft_3d(Lz, Lx, Lx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						break;
 
-					case	FFT_PSPEC_SX:
-
-						if (axion->m2Cpu() == nullptr) {
-							LogError ("Can't create R->C plan with m2 in lowmem runs");
-							exit(0);
-						}
-
-						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftw_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2d, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
-						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftw_mpi_plan_dft_c2r_3d(Lz, Lx, Lx, m2, m2d, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
-						break;
 
 					case    FFT_RHO_SX:
 
@@ -705,86 +680,7 @@ namespace AxionFFT {
 		}
 
 		LogFlush();
-/*
-		int  *fftInitThreads;
-		void *fftPlanThreads;
-		void *fftInitMpi;
 
-		switch (prec)
-		{
-			case FIELD_DOUBLE:
-				fftInitThreads = &fftw_init_threads;
-				fftPlanThreads = &fftw_plan_with_nthreads;
-				fftInitMpi     = &fftw_mpi_init;
-				break;
-
-			case FIELD_SINGLE:
-				fftInitThreads = &fftwf_init_threads;
-				fftPlanThreads = &fftwf_plan_with_nthreads;
-				fftInitMpi     = &fftwf_mpi_init;
-				break;
-
-			default:
-				LogError ("Invalid precision");
-				return;
-				break;
-		}
-
-		if (!(*fftInitThreads()))
-		{
-			LogError ("Error initializing FFT with threads");
-			LogError ("FFT will use one thread");
-			useThreads = false;
-			*fftInitMpi();
-		} else {
-			int nThreads = omp_get_max_threads();
-
-	void	initFFT		(FieldPrecision prec) {
-		LogMsg (VERB_NORMAL, "Initializing FFT using %d MPI ranks...", commSize());
-
-		if (init == true) {
-			LogMsg (VERB_HIGH, "FFT already initialized");
-			return;
-		}
-/*
-		int  *fftInitThreads;
-		void *fftPlanThreads;
-		void *fftInitMpi;
-
-		switch (prec)
-		{
-			case FIELD_DOUBLE:
-				fftInitThreads = &fftw_init_threads;
-				fftPlanThreads = &fftw_plan_with_nthreads;
-				fftInitMpi     = &fftw_mpi_init;
-				break;
-
-			case FIELD_SINGLE:
-				fftInitThreads = &fftwf_init_threads;
-				fftPlanThreads = &fftwf_plan_with_nthreads;
-				fftInitMpi     = &fftwf_mpi_init;
-				break;
-
-			default:
-				LogError ("Invalid precision");
-				return;
-				break;
-		}
-
-		if (!(*fftInitThreads()))
-		{
-			LogError ("Error initializing FFT with threads");
-			LogError ("FFT will use one thread");
-			useThreads = false;
-			*fftInitMpi();
-		} else {
-			int nThreads = omp_get_max_threads();
-			LogMsg (VERB_NORMAL, "Using %d threads for the FFT", nThreads);
-			*fftInitMpi();
-			*fftwPlanThreads(nThreads);
-		}
-
-*/
 		switch (prec)
 		{
 			case FIELD_DOUBLE:
