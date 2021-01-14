@@ -122,7 +122,7 @@
 				std::vector<Msg>	msgStack;
 				const VerbosityLevel	verbose;
 				bool			logRunning;
-				volatile bool		logWriting;
+				volatile bool		logWriting ;
 
 				void	printMsg	(const Msg &myMsg) noexcept {
 					if (myMsg.time(logStart)/1000 < 1000000) {
@@ -212,6 +212,10 @@
 			public:
 				 Logger(const int index, const LogMpi mpiType, const VerbosityLevel verbosity) : mpiType(mpiType), verbose(verbosity) {
 
+					 /* LogWriting is created false to avoid inf-loops */
+					 // printf("Rank %d Logger started %s\n", commRank(), logWriting ? "true" : "false" );
+					logWriting = false ;
+
 					bool			test;
 					struct stat		buffer;
 					std::string		base("axion.log.");
@@ -263,7 +267,20 @@
 					flushDisk();
 				}
 
-				~Logger() { int noMpi; MPI_Finalized(&noMpi); if (noMpi == 0) flushLog(); if (commRank()==0) { stop(); oFile.close(); } }
+				~Logger()
+				{
+					int noMpi;
+					MPI_Finalized(&noMpi);
+					if (noMpi == 0)
+						flushLog();
+					// else
+					// 	printf("rank %d MPI not finalised\n ",commRank());
+
+					if (commRank()==0)
+						{ stop();
+							oFile.close();
+						}
+					}
 
 				auto	runTime() {
 					auto	cTime = std::chrono::high_resolution_clock::now();
