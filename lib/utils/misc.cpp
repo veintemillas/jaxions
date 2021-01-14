@@ -6,7 +6,16 @@
 using namespace profiler;
 
 Cosmos	initAxions(int argc, char *argv[]) {
+
+	/* Parse the base values (zGrid, cDev, logMpi, verb)
+	to initialise MPI, threads, FFTW etc. */
+
 	parseDims(argc, argv);
+
+	/* Initialise :
+			MPI_Init_thread
+			createLogger
+			CUDA device*/
 
 	if (initComms(argc, argv, zGrid, cDev, logMpi, verb) == -1)
 	{
