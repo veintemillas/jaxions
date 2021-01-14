@@ -513,9 +513,6 @@ int inflsq(double aux)
    using strdata matrix */
 void	SpecBin::maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) {
 
-	Profiler &prof = getProfiler(PROF_SPEC);
-	prof.start();
-
 	int rz = (int) floor(radius_mask);
 	// LogOut("[MB] MASKBALL %.2f>%d(sdlab) %lu (>>mask) %d", radius_mask, rz, DEFECT_LABEL, MASK_LABEL) ;
 	LogMsg(VERB_NORMAL,"[MB] MASKBALL %.2f > %d (sdlab) %d (>>mask) %d", radius_mask, rz, DEFECT_LABEL, MASK_LABEL) ;
@@ -736,8 +733,6 @@ void	SpecBin::maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) 
 	LogMsg(VERB_NORMAL,"[MB] done! masked points bulk %d border %d, (MPIed <-0 %d, MPIed Lz-> %d) ",mpb, mp, ml, mr) ;
 	LogMsg(VERB_NORMAL,"[MB] received from back %d (slices 0...r) from forward %d (Lz-1... Lz-r-1)",irB,irF) ;LogFlush();
 
-	prof.stop();
-	prof.add(std::string("Mask Ball"), 0.0, 0.0);
 }
 
 
@@ -1320,8 +1315,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 							prof.add(std::string("memmove"), 0.0, 0.0);
 
 					/* unpad m2 in place if SPMASK_GAUS/DIFF */
-							prof.start();
+
 						if (mask & (SPMASK_GAUS|SPMASK_DIFF)){
+								prof.start();
 							size_t dl = Ly*field->Precision();
 							size_t pl = (Ly+2)*field->Precision();
 							size_t ss	= Ly*Lz;
@@ -1331,9 +1327,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t	fOff = sl*pl;
 								memmove	(m2C+oOff, m2C+fOff, dl);
 								}
-						}
 							prof.stop();
 								prof.add(std::string("unpad"), 0.0, 0.0);
+						}
 
 
 					LogMsg(VERB_HIGH,"[nRun] FFT") ;
@@ -2833,11 +2829,9 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 			}        // end loop y
 
 			prof.stop();
-			{
-				char LABEL[256];
-				sprintf(LABEL, "M0.PREP (%s)", PROFLABEL);
-				prof.add(std::string(LABEL), 0.0, 0.0);
-			}
+			char LABEL[256];
+			sprintf(LABEL, "M0.PREP (%s)", PROFLABEL);
+			prof.add(std::string(LABEL), 0.0, 0.0);
 
 			/* For string based masks:
 			1 - receive info from previous rank
@@ -2847,7 +2841,6 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 					prof.start();
 				field->sendGeneral(COMM_WAIT, sliceBytes, MPI_BYTE, empty, empty, static_cast<void *>(m2h1b), static_cast<void *>(m2hb));
 					prof.stop();
-				char LABEL[256];
 					sprintf(LABEL, "M1.WAIT (%s)", PROFLABEL);
 						prof.add(std::string(LABEL), 0.0, 0.0);
 
@@ -2872,9 +2865,8 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							}
 				}}
 				prof.stop();
-			char LABEL2[256];
-				sprintf(LABEL2, "M2.FUSE (%s)", PROFLABEL);
-					prof.add(std::string(LABEL2), 0.0, 0.0);
+				sprintf(LABEL, "M2.FUSE (%s)", PROFLABEL);
+					prof.add(std::string(LABEL), 0.0, 0.0);
 
 				// LogMsg(VERB_PARANOID,"[sp] rank %d own %d new %d overlap %d",myRank,own,news,overlap);
 			}
@@ -2884,6 +2876,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 			after the call to mask ball; the overhead is not huge */
 			if (mask == SPMASK_BALL)
 			{
+					prof.start();
 				size_t mm0 = 0;
 				size_t mm1 = 0;
 				size_t mm2 = 0;
@@ -2919,6 +2912,9 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 						}
 					}
 				}
+				prof.stop();
+				sprintf(LABEL, "M2.2STRD (%s)", PROFLABEL);
+					prof.add(std::string(LABEL), 0.0, 0.0);
 				LogMsg(VERB_PARANOID,"[MB] masked points (@M2) %lu (un/corrected in stdata) %lu/%lu",mm0,mm1,mm2) ;LogFlush();
 			}
 
@@ -2946,8 +2942,6 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							size_t	fOff = sl*pl;
 							memmove	(m2C+oOff, m2C+fOff, dl);
 						}
-							prof.stop();
-								prof.add(std::string("memmove"), 0.0, 0.0);
 
 						/* produce a first mask*/
 
@@ -3042,6 +3036,8 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 						memmove	(m2C+fOff, m2hC+oOff, dl);
 					}
 
+					prof.stop();
+						prof.add(std::string("M3.DIFF"), 0.0, 0.0);
 					} // end internal SPMASK_DIFF
 				break;
 
@@ -3091,7 +3087,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							prof.start();
 						maskball	(radius_mask, STRING_ONLY, STRING_MASK);
 							prof.stop();
-								prof.add(std::string("M3.maskball"), 0.0, 0.0);
+								prof.add(std::string("M3.BALL"), 0.0, 0.0);
 					} // end internal CASE REDO and GAUS case switch
 				break;
 			} // end switch

@@ -69,6 +69,9 @@ namespace profiler {
 		Profiler	measProfiler("Measa");
 		profs.insert(std::make_pair(PROF_MEAS, measProfiler));
 
+		Profiler	binProfiler("Binner");
+		profs.insert(std::make_pair(PROF_BIN, binProfiler));
+
 		Profiler	gravProfiler("Gravity");
 		profs.insert(std::make_pair(PROF_GRAVI, gravProfiler));
 

@@ -34,7 +34,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "\n ");
 	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
-LogMsg(VERB_NORMAL,"cummask %d %d %d\n",info.cummask,deninfa.cummask,cummask);
+
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
 		LogMsg (VERB_HIGH, "[Meas ] Transferring configuration to CPU");
@@ -118,7 +118,7 @@ LogMsg(VERB_NORMAL,"cummask %d %d %d\n",info.cummask,deninfa.cummask,cummask);
 				// msa_aux = axiona->AxionMass()*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length();
 				LogMsg(VERB_HIGH,"[Meas ...] rmask-parameter interpreted in delta units ");
 			}
-
+	LogMsg(VERB_NORMAL,"cummask %d %d %d",info.cummask,deninfa.cummask,cummask);
 
 
 
