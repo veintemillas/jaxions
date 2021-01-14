@@ -8,6 +8,9 @@
 	#include <string>
 	#include <mpi.h>
 
+	#include "utils/profiler.h"
+	using namespace profiler;
+
 	template<size_t N, typename DType>
 	class	Binner {
 
@@ -175,11 +178,18 @@
 
 	template<size_t N, typename DType>
 	void	Binner<N,DType>::run	() {
+
+		Profiler &prof = getProfiler(PROF_BIN);
+
 		LogMsg (VERB_PARANOID, "Called Bin run");LogFlush();
 
 		if (!setmaxmin) {
 			LogMsg (VERB_NORMAL, "Call find()");LogFlush();
+				prof.start();
 			find();
+				prof.stop();
+					prof.add(std::string("find"), 0.0, 0.0);
+
 		}
 
 		if (unphysicalmaxmin) {
@@ -203,7 +213,7 @@
 
 		LogMsg (VERB_NORMAL, "Running binner with %d threads, %llu bins, %e step, %e min, %e max", mIdx, N, step, minVal, maxVal);LogFlush();
 
-
+			prof.start();
 		int unbins = 0;
 		if (PaddedLength == DataLength) {
 
@@ -287,11 +297,14 @@
 						bins[j] += static_cast<double>(tBins[j + i*N])/tSize;
 			}
 		}
+		prof.stop();
+			prof.add(std::string("bin"), 0.0, 0.0);
 
 		LogMsg (VERB_PARANOID, "Binner Loop done (exceptions %d) ", unbins);LogFlush();
 
 		std::array<double,N>    tmp;
 
+			prof.start();
 		std::copy_n(bins.begin(), N, tmp.begin());
 		MPI_Allreduce(tmp.data(), bins.data(), N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -299,6 +312,8 @@
 		commSync();
 		int unbin = 0 ;
 		MPI_Allreduce (&unbins, &unbin, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		prof.stop();
+			prof.add(std::string("reduce"), 0.0, 0.0);
 		LogMsg (VERB_NORMAL, "Binner done (%d exceptions not binned)", unbin);LogFlush();
 	}
 

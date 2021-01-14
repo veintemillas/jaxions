@@ -369,6 +369,7 @@
 			PROF_FTFIELD,
 			PROF_GRAVI,
 			PROF_TRACK,
+			PROF_BIN,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
