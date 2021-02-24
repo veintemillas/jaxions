@@ -5,7 +5,7 @@ GRID=" --size $N --depth $DEPTH --zgrid $RANKS"
 LOW=" --lowmem"  ; PREC=" --prec single" ; DEVI=" --device cpu"
 PROP=" --prop  rkn4"   ;   SPEC=" --spec"
 STEP=20000   ;   WDZ=1.0   ;   SST0=10  ; LAP=1
-SIMU=" $PREC $DEVI $PROP --steps $STEP --wDz $WDZ --sst0 $SST0 --lap 1"
+SIMU=" $PREC $DEVI $PROP --steps $STEP --wDz $WDZ --sst0 $SST0 --lap $LAP"
 #%%%%%%%%%%%%%%%%%%%%%%%%# physical parameters %
 QCD=4.0   ;   MSA=1.00   ;   L=6.0    ;   ZEN=4.0   ;   WKB=20.0
 #XTR=" --llcf 20000 --ind3 0.0 --notheta  --gam .1 --dwgam 0.1  --ind3 0.0 --notheta --wkb $WKB"
@@ -27,9 +27,10 @@ INCO=" --ctype smooth --kcr 1.1 --sIter 5 "
 DUMP=10
 WTIM=1.0
 MEAS=$(echo 1+2+4+8+32+128+65536+16384 | bc )
-SPMA=$(echo 1+64 | bc )
+SPMA=$(echo 1 | bc )
+SKGV=$(echo 1 | bc )
 #OUTP="--dump $DUMP --meas $MEAS --p3D 2 --p2DmapE --p2DmapPE --p2DmapPE2 --spmask 2 --rmask 4.0/file --redmp 256 --p2Dmap --nologmpi --wTime $WTIM  "
-OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask $SPMA --rmask 4.0 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
+OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask $SPMA --spKGV $SKGV --rmask 4.0 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
 echo "vaxion3d   $PHYS"
 echo "         " $GRID
 echo "         " $SIMU
@@ -39,7 +40,7 @@ echo "         " $OUTP
 
 #export OMP_NUM_THREADS=24
 export OMP_NUM_THREADS=$(echo 8/$RANKS | bc)
-#USA=" --bind-to socket"
+#USA=" --bind-to socket --mca btl_base_warn_component_unused  0 "
 
 case "$1" in
   create)
@@ -79,6 +80,11 @@ case "$1" in
     WTIM=12
     echo mpirun -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $OUTP --wTime $WTIM
     mpirun $USA -np $RANKS vaxion3d --restart $GRID $SIMU $PHYS $OUTP --wTime $WTIM 2>&1 | tee out/log-restart.txt
+    ;;
+  redu)
+    echo "redo file with index $2 to n = $3"
+    echo mpirun -np $RANKS redu $GRID $SIMU $PHYS $OUTP --index $2 --redmp $3
+    mpirun $USA -np $RANKS redu $GRID $SIMU $PHYS $OUTP --index $2 --redmp $3
     ;;
   wkb)
     echo "WKB the configuration $AXIONS_OUTPUT/axion.$2 until time --zf $3 in logarithmic --steps $4 "
