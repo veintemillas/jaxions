@@ -75,7 +75,7 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n");
 	LogOut("           REDUCE AND MEAS                        \n");
 	LogOut("--------------------------------------------------\n");
-
+	LogOut(" N %d n %d kCrit %f \n",axion->Length(),deninfa.redmap,kCrit);
 	commSync();
 
 	int ScaleSize = axion->Length()/deninfa.redmap;
