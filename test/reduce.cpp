@@ -75,13 +75,13 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n");
 	LogOut("           REDUCE AND MEAS                        \n");
 	LogOut("--------------------------------------------------\n");
-	LogOut(" N %d n %d kCrit %f \n",axion->Length(),deninfa.redmap,kCrit);
+	LogOut(" N %d n %d kCrit %f \n",axion->Length(),deninfa.redmap,myCosmos.ICData().beta);
 	commSync();
 
 	int ScaleSize = axion->Length()/deninfa.redmap;
 
 	// This is equivalent to Javi's filter
-	double eFc  = 0.5*M_PI*M_PI*kCrit*kCrit*(ScaleSize*ScaleSize)/((double) axion->Surf());
+	double eFc  = 0.5*M_PI*M_PI*myCosmos.ICData().beta*myCosmos.ICData().beta*(ScaleSize*ScaleSize)/((double) axion->Surf());
 	double nFc  = 1.;
 	int    kMax = axion->Length()/ScaleSize;
 
