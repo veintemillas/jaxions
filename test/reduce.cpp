@@ -81,7 +81,7 @@ int	main (int argc, char *argv[])
 	int ScaleSize = axion->Length()/deninfa.redmap;
 
 	// This is equivalent to Javi's filter
-	double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axion->Surf());
+	double eFc  = 0.5*M_PI*M_PI*kCrit*kCrit*(ScaleSize*ScaleSize)/((double) axion->Surf());
 	double nFc  = 1.;
 	int    kMax = axion->Length()/ScaleSize;
 
