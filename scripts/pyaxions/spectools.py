@@ -369,6 +369,94 @@ class fitP_old:
 #   Instantaneous spectrum
 # ------------------------------------------------------------------------------
 
+
+
+
+#   calculate instantaneous spectrum based on analytical fit
+class calcF:
+    def __init__(self, P, log, t, k, k_below, **kwargs):
+        if 'sigma' in kwargs:
+            sigma = kwargs['sigma']
+        else:
+            sigma = 0.1
+        if 'chc' in kwargs:
+            chc = kwargs['chc']
+        else:
+            chc = 1.
+        if 'logstart' in kwargs:
+            logstart = kwargs['logstart']
+        else:
+            logstart = 4.
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
+        self.F = [] # instantaneous spectrum F
+        self.Fnorm = [] # normalization factor of F
+        self.t = [] # time
+        self.log = []
+        self.x = [] # x-axis (k/RH)
+        mask = np.where(log >= logstart)
+        logm = log[mask[0]]
+        tm = t[mask[0]]
+        fitp = fitP(P,log,t,k,chc,logstart,verbose)
+        for id in range(len(tm)):
+            tt = tm[id]
+            logt = logm[id]
+            if verbose:
+                print('\rcalc F: log = %.2f [%d/%d]'%(logt,id+1,len(tm)),end="")
+            Fbin = []
+            xbin = []
+            Fbinaux = []
+            xbinaux = []
+            for ik in range(1,len(k)):
+                lsup = fitp.paramsup[ik]
+                lsub = fitp.paramsub[ik]
+                xx = k[ik]*tt
+                lxx = math.log(xx)
+                lxhc = math.log(k[ik]*t[fitp.listihc[ik]])
+                try:
+                    if (fitp.listfitsup[ik] and fitp.listfitsub[ik]):
+                        Fval = (logistic(lxx,lxhc,sigma)*math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)+(1-logistic(lxx,lxhc,sigma))*math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub))/(xx*(tt**4))
+                    elif fitp.listfitsup[ik]:
+                        Fval = math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)/(xx*(tt**4))
+                    elif fitp.listfitsub[ik]:
+                        Fval = math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub)/(xx*(tt**4))
+                    else:
+                        Fval = np.nan
+                except:
+                    Fval = np.nan
+                if not (np.isnan(Fval) or (Fval < 0)):
+                    # Fval can have huge negative value when two fit functions are interpolated
+                    # (behavior of the fit function outside their domain may not be well controlled).
+                    # We remove such a point for the calculation of the normalization factor.
+                    Fbinaux.append(Fval)
+                    xbinaux.append(xx)
+                Fbin.append(Fval)
+                xbin.append(xx)
+            Fbinaux = np.array(Fbinaux)
+            xbinaux = np.array(xbinaux)
+            # normalize
+            dx = np.gradient(xbinaux)
+            # normalization factor is calculated by using only modes below the Nyquist frequency
+            x_below = xbinaux <= np.amax(k[k_below])*tt
+            Fdx = (Fbinaux*dx)[x_below]
+            self.F.append(np.array(Fbin)/Fdx.sum())
+            self.Fnorm.append(Fdx.sum())
+            self.x.append(xbin)
+            self.t.append(tt)
+            self.log.append(logt)
+        if verbose:
+            print("")
+        self.F = np.array(self.F)
+        self.Fnorm = np.array(self.Fnorm)
+        self.x = np.array(self.x) # x = k/RH
+        self.t = np.array(self.t) # time
+        self.log = np.array(self.log)
+
+
+
+
 #   options for spmask:
 #     spmask = 'nomask' -> Fields unmasked
 #     spmask = 'Red' -> Red-Gauss (default)
@@ -381,7 +469,7 @@ class fitP_old:
 #   calculate instantaneous spectrum based on analytical fit
 class inspA:
     def __init__(self, mfiles, spmask='Red', rmask='2.00', logstart=4.):
-        fitp = fitP(mfiles,spmask,rmask,logstart)
+        fitp = fitP_old(mfiles,spmask,rmask,logstart)
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
         self.msa = fitp.msa
@@ -435,7 +523,7 @@ class inspA:
 #   time steps specified in the arguments
 class inspAt:
     def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00', logstart=4.):
-        fitp = fitP(mfiles,spmask,rmask,logstart)
+        fitp = fitP_old(mfiles,spmask,rmask,logstart)
         self.lz2e = fitp.lz2e
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
@@ -654,7 +742,7 @@ class insp:
         self.log = []
         self.x = [] # x-axis (k/RH)
         if difftype == 'A':
-            fitp = fitP(P,log,t,k,logstart,verbose)
+            fitp = fitP_old(P,log,t,k,logstart,verbose)
             knyq = np.amax(k[k_below])
             for id in range(len(fitp.t)):
                 tt = fitp.t[id]
@@ -891,110 +979,110 @@ class insp:
 #   options for indices:
 #     indices = list of integers
 #     if specified, instantaneous spectrum is calculaetd only for time slices selected by the list
-
-class inspext:
-    def __init__(self, Pext, difftype='C', indices=[], verbose=True):
-        self.sizeN = Pext.sizeN
-        self.sizeL = Pext.sizeL
-        self.msa = Pext.msa
-        self.LL = Pext.LL
-        self.nm = Pext.nm
-        self.avek = Pext.avek
-        self.k_below = Pext.k_below
-        self.lz2e = Pext.lz2e
-        self.F = [] # instantaneous spectrum F
-        self.Fnorm = [] # normalization factor of F
-        self.t = [] # time
-        self.log = []
-        self.x = [] # x-axis (k/RH)
-        if indices == []:
-            indices = range(len(Pext.log))
-        if difftype == 'A':
-            fitp = fitPext(Pext,verbose)
-            iterkmax = len(self.avek[self.k_below])
-            for id in range(len(fitp.t)):
-                if id in indices:
-                    t = fitp.t[id]
-                    log = fitp.log[id]
-                    if verbose:
-                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),log),end="")
-                    Fbinbuf = []
-                    x = []
-                    for ik in range(iterkmax):
-                        # calculate only modes inside the horizon
-                        if id >= fitp.listihc[ik]:
-                            l = fitp.param[ik]
-                            Fval = dfunc(log,*l)/(t**5)
-                            if not np.isnan(Fval):
-                                Fbinbuf.append(Fval)
-                                x.append(self.avek[ik]*t)
-                    Fbinbuf = np.array(Fbinbuf)
-                    # normalize
-                    dx = np.gradient(x)
-                    Fdx = Fbinbuf*dx
-                    self.F.append(Fbinbuf/Fdx.sum())
-                    self.Fnorm.append(Fdx.sum())
-                    self.x.append(np.array(x))
-                    self.t.append(t)
-                    self.log.append(log)
-            if verbose:
-                print("")
-        elif difftype == 'B':
-            for id in range(len(Pext.log)):
-                if id in indices:
-                    if verbose:
-                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),Pext.log[id]),end="")
-                    if id != 0:
-                        t1 = Pext.t[id-1]
-                        t2 = Pext.t[id]
-                        sp1 = Pext.param[id-1][:,1]+Pext.param[id-1][:,2]+Pext.param[id-1][:,4]
-                        sp2 = Pext.param[id][:,1]+Pext.param[id][:,2]+Pext.param[id][:,4]
-                        dt = t2 - t1
-                        t = tp + dt/2
-                        x = self.avek*t
-                        diff = (sp2 - sp1)/((t**4)*dt)
-                        # normalize
-                        dx = np.gradient(x)
-                        Fdx = (diff*dx)[self.k_below]
-                        self.F.append(diff/Fdx.sum())
-                        self.Fnorm.append(Fdx.sum())
-                        self.t.append(t)
-                        self.x.append(x)
-                        self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
-            if verbose:
-                print("")
-        elif difftype == 'C':
-            for id in range(len(Pext.log)):
-                if id in indices:
-                    if verbose:
-                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),Pext.log[id]),end="")
-                    if (id != 0) and (id != len(Pext.log)-1):
-                        t1 = Pext.t[id-1]
-                        t2 = Pext.t[id+1]
-                        sp1 = Pext.param[id-1][:,1]+Pext.param[id-1][:,2]+Pext.param[id-1][:,4]
-                        sp2 = Pext.param[id+1][:,1]+Pext.param[id+1][:,2]+Pext.param[id+1][:,4]
-                        t = Pext.t[id]
-                        log = Pext.log[id]
-                        x = self.avek*t
-                        dt = t2 - t1
-                        diff = (sp2 - sp1)/((t**4)*dt)
-                        # normalize
-                        dx = np.gradient(x)
-                        Fdx = (diff*dx)[self.k_below]
-                        self.F.append(diff/Fdx.sum())
-                        self.Fnorm.append(Fdx.sum())
-                        self.t.append(t)
-                        self.log.append(log)
-                        self.x.append(x)
-            if verbose:
-                print("")
-        else:
-            print("wrong difftype option!")
-        self.F = np.array(self.F)
-        self.Fnorm = np.array(self.Fnorm)
-        self.x = np.array(self.x) # x = k/RH
-        self.t = np.array(self.t) # time
-        self.log = np.array(self.log)
+#
+#class inspext:
+#    def __init__(self, Pext, difftype='C', indices=[], verbose=True):
+#        self.sizeN = Pext.sizeN
+#        self.sizeL = Pext.sizeL
+#        self.msa = Pext.msa
+#        self.LL = Pext.LL
+#        self.nm = Pext.nm
+#        self.avek = Pext.avek
+#        self.k_below = Pext.k_below
+#        self.lz2e = Pext.lz2e
+#        self.F = [] # instantaneous spectrum F
+#        self.Fnorm = [] # normalization factor of F
+#        self.t = [] # time
+#        self.log = []
+#        self.x = [] # x-axis (k/RH)
+#        if indices == []:
+#            indices = range(len(Pext.log))
+#        if difftype == 'A':
+#            fitp = fitPext(Pext,verbose)
+#            iterkmax = len(self.avek[self.k_below])
+#            for id in range(len(fitp.t)):
+#                if id in indices:
+#                    t = fitp.t[id]
+#                    log = fitp.log[id]
+#                    if verbose:
+#                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),log),end="")
+#                    Fbinbuf = []
+#                    x = []
+#                    for ik in range(iterkmax):
+#                        # calculate only modes inside the horizon
+#                        if id >= fitp.listihc[ik]:
+#                            l = fitp.param[ik]
+#                            Fval = dfunc(log,*l)/(t**5)
+#                            if not np.isnan(Fval):
+#                                Fbinbuf.append(Fval)
+#                                x.append(self.avek[ik]*t)
+#                    Fbinbuf = np.array(Fbinbuf)
+#                    # normalize
+#                    dx = np.gradient(x)
+#                    Fdx = Fbinbuf*dx
+#                    self.F.append(Fbinbuf/Fdx.sum())
+#                    self.Fnorm.append(Fdx.sum())
+#                    self.x.append(np.array(x))
+#                    self.t.append(t)
+#                    self.log.append(log)
+#            if verbose:
+#                print("")
+#        elif difftype == 'B':
+#            for id in range(len(Pext.log)):
+#                if id in indices:
+#                    if verbose:
+#                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),Pext.log[id]),end="")
+#                    if id != 0:
+#                        t1 = Pext.t[id-1]
+#                        t2 = Pext.t[id]
+#                        sp1 = Pext.param[id-1][:,1]+Pext.param[id-1][:,2]+Pext.param[id-1][:,4]
+#                        sp2 = Pext.param[id][:,1]+Pext.param[id][:,2]+Pext.param[id][:,4]
+#                        dt = t2 - t1
+#                        t = tp + dt/2
+#                        x = self.avek*t
+#                        diff = (sp2 - sp1)/((t**4)*dt)
+#                        # normalize
+#                        dx = np.gradient(x)
+#                        Fdx = (diff*dx)[self.k_below]
+#                        self.F.append(diff/Fdx.sum())
+#                        self.Fnorm.append(Fdx.sum())
+#                        self.t.append(t)
+#                        self.x.append(x)
+#                        self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
+#            if verbose:
+#                print("")
+#        elif difftype == 'C':
+#            for id in range(len(Pext.log)):
+#                if id in indices:
+#                    if verbose:
+#                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),Pext.log[id]),end="")
+#                    if (id != 0) and (id != len(Pext.log)-1):
+#                        t1 = Pext.t[id-1]
+#                        t2 = Pext.t[id+1]
+#                        sp1 = Pext.param[id-1][:,1]+Pext.param[id-1][:,2]+Pext.param[id-1][:,4]
+#                        sp2 = Pext.param[id+1][:,1]+Pext.param[id+1][:,2]+Pext.param[id+1][:,4]
+#                        t = Pext.t[id]
+#                        log = Pext.log[id]
+#                        x = self.avek*t
+#                        dt = t2 - t1
+#                        diff = (sp2 - sp1)/((t**4)*dt)
+#                        # normalize
+#                        dx = np.gradient(x)
+#                        Fdx = (diff*dx)[self.k_below]
+#                        self.F.append(diff/Fdx.sum())
+#                        self.Fnorm.append(Fdx.sum())
+#                        self.t.append(t)
+#                        self.log.append(log)
+#                        self.x.append(x)
+#            if verbose:
+#                print("")
+#        else:
+#            print("wrong difftype option!")
+#        self.F = np.array(self.F)
+#        self.Fnorm = np.array(self.Fnorm)
+#        self.x = np.array(self.x) # x = k/RH
+#        self.t = np.array(self.t) # time
+#        self.log = np.array(self.log)
 
 
 
