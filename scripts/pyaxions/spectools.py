@@ -40,6 +40,75 @@ def smo(K0,sigma):
 
 
 
+#   fitting function for subhorizon regime
+def fsubh(x, a0, a1, a2):
+    return a0 + a1*x + a2*(x**2)
+def dfsubh(x, a0, a1, a2):
+    return a1 + 2*a2*x
+
+#   fitting function for superhorizon regime
+def fsuph(x, a0, a1, a2, a3):
+    return a0 + a1*x - np.log(1+(a3*np.exp(x))**a2)
+def dfsuph(x, a0, a1, a2, a3):
+    return a1 - a2 + a2/(1 + (a3*np.exp(x))**a2)
+
+def logistic(x, x0, sigma):
+    return (1-np.tanh((x-x0)/sigma))/2
+
+
+
+
+class fitP:
+    def __init__(self, P, log, t, k, chc=1., logstart=4., verbose=True):
+        self.paramsup = []
+        self.paramsub = []
+        self.paramvsup = []
+        self.paramvsub = []
+        self.listihc = []
+        self.listfitsup = []
+        self.listfitsub = []
+        PT = np.transpose(P)
+        bo = ((-np.inf,0,0,0),(np.inf,np.inf,np.inf,np.inf))
+        iterkmax = len(k)
+        for ik in range(iterkmax):
+            if verbose:
+                print('\rfit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,iterkmax),end="")
+            ihc = np.abs(k[ik]*t - chc*2*math.pi).argmin() # time index corresponding to the horizon crossing
+            masksup = np.where((log <= log[ihc]) & (log >= logstart))
+            masksub = np.where(log >= max(logstart,log[ihc]))
+            xdatasup = np.log(k[ik]*t[masksup[0]])
+            ydatasup = np.log(PT[ik,masksup[0]])
+            xdatasub = np.log(k[ik]*t[masksub[0]])
+            ydatasub = np.log(PT[ik,masksub[0]])
+            Npsup = 4 # number of parameters for the fitting function
+            Npsub = 3
+            if len(xdatasup) >= Npsup and not ik == 0:
+                psup, pvsup = curve_fit(fsuph, xdatasup, ydatasup, bounds=bo, maxfev = 20000)
+                self.listfitsup.append(True)
+            else:
+                psup = [np.nan]*(Npsup)
+                pvsup = [np.nan]*(Npsup)
+                self.listfitsup.append(False)
+            if len(xdatasub) >= Npsub and not ik == 0:
+                psub, pvsub = curve_fit(fsubh, xdatasub, ydatasub, maxfev = 20000)
+                self.listfitsub.append(True)
+            else:
+                psub = [np.nan]*(Npsub)
+                pvsub = [np.nan]*(Npsub)
+                self.listfitsub.append(False)
+            self.paramsup.append(psup)
+            self.paramvsup.append(pvsup)
+            self.paramsub.append(psub)
+            self.paramvsub.append(pvsub)
+            self.listihc.append(ihc)
+        if verbose:
+            print("")
+
+
+
+
+
+#   Old functions are left below, just in case
 
 
 #   fitting function as cubic polynomial
@@ -53,7 +122,7 @@ def dfunc(x, a0, a1, a2, a3):
 
 
 
-class fitP:
+class fitP_old:
     def __init__(self, P, log, t, k, logstart=4., verbose=True):
         mask = np.where(log >= logstart)
         self.param = []
@@ -243,53 +312,53 @@ class fitP:
 
 
 #   assuming P extrepolated to rmask->0
-class fitPext:
-    def __init__(self, Pext, verbose=True):
-        self.sizeN = Pext.sizeN
-        self.sizeL = Pext.sizeL
-        self.msa = Pext.msa
-        self.LL = Pext.LL
-        self.nm = Pext.nm
-        self.avek = Pext.avek
-        self.k_below = Pext.k_below
-        self.lz2e = Pext.lz2e
-
-        self.t = Pext.t
-        self.log = Pext.log
-
-        # create lists of the evolution of axion number spectrum (kinetic part)
-        Ptab = []
-        for id in range(len(self.log)):
-            P = Pext.param[id][:,1]+Pext.param[id][:,2]+Pext.param[id][:,4]
-            Ptab.append(P)
-        Ptab = np.array(Ptab)
-
-        # fitting
-        self.param = []
-        self.paramv = []
-        self.listihc = []
-        self.dataP = []
-        PT = np.transpose(Ptab)
-        iterkmax = len(self.avek[self.k_below])
-        for ik in range(iterkmax):
-            if verbose:
-                print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
-            ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
-            xdata = self.log
-            ydata = PT[ik,:]
-            Nparam = 4 # number of parameters for the fitting function
-            if len(xdata) >= Nparam and not ik == 0:
-                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
-            else:
-                popt = [np.nan]*(Nparam)
-                pcov = [np.nan]*(Nparam)
-            self.param.append(popt)
-            self.paramv.append(pcov)
-            self.dataP.append(ydata)
-            self.listihc.append(ihc)
-        if verbose:
-            print("")
-        self.dataP = np.array(self.dataP)
+#class fitPext:
+#    def __init__(self, Pext, verbose=True):
+#        self.sizeN = Pext.sizeN
+#        self.sizeL = Pext.sizeL
+#        self.msa = Pext.msa
+#        self.LL = Pext.LL
+#        self.nm = Pext.nm
+#        self.avek = Pext.avek
+#        self.k_below = Pext.k_below
+#        self.lz2e = Pext.lz2e
+#
+#        self.t = Pext.t
+#        self.log = Pext.log
+#
+#        # create lists of the evolution of axion number spectrum (kinetic part)
+#        Ptab = []
+#        for id in range(len(self.log)):
+#            P = Pext.param[id][:,1]+Pext.param[id][:,2]+Pext.param[id][:,4]
+#            Ptab.append(P)
+#        Ptab = np.array(Ptab)
+#
+#        # fitting
+#        self.param = []
+#        self.paramv = []
+#        self.listihc = []
+#        self.dataP = []
+#        PT = np.transpose(Ptab)
+#        iterkmax = len(self.avek[self.k_below])
+#        for ik in range(iterkmax):
+#            if verbose:
+#                print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
+#            ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
+#            xdata = self.log
+#            ydata = PT[ik,:]
+#            Nparam = 4 # number of parameters for the fitting function
+#            if len(xdata) >= Nparam and not ik == 0:
+#                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
+#            else:
+#                popt = [np.nan]*(Nparam)
+#                pcov = [np.nan]*(Nparam)
+#            self.param.append(popt)
+#            self.paramv.append(pcov)
+#            self.dataP.append(ydata)
+#            self.listihc.append(ihc)
+#        if verbose:
+#            print("")
+#        self.dataP = np.array(self.dataP)
 
 
 
