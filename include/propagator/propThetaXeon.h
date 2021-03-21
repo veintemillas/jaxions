@@ -122,8 +122,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
-			if (idx >= Vf)
-				continue;
+			// If YC (or zF-z0) is not divisible by bSizeY (bSizeZ), there is a possibility of exceeding the assumed domain in the last block.
+			// This may be avoided by adjusting bSizeY (bSizeZ) in tunePropagator.
+			if ((yC >= YC) || (zC >= zF)) continue;
 			{
 				//size_t tmi = idx/XC, itp;
 
@@ -398,8 +399,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
-			if (idx >= Vf)
-				continue;
+			if ((yC >= YC) || (zC >= zF)) continue;
 			{
 				//size_t tmi = idx/XC, itp;
 
@@ -651,8 +651,7 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 
 			      auto idx = zC*(YC*XC) + yC*XC + xC;
 
-			      if (idx >= Vf)
-				continue;
+			      if ((yC >= YC) || (zC >= zF)) continue;
 
 			      idxV0 = idx - Vo;
 
@@ -725,8 +724,7 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 
 			      auto idx = zC*(YC*XC) + yC*XC + xC;
 
-			      if (idx >= Vf)
-				continue;
+			      if ((yC >= YC) || (zC >= zF)) continue;
 
 			      idxV0 = idx - Vo;
 
