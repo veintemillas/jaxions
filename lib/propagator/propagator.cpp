@@ -3,6 +3,7 @@
 #include <memory>
 #include <chrono>
 #include <string>
+#include <vector>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -430,9 +431,30 @@ LogFlush();
 	return;
 }
 
+/*
+std::vector<int>	calculateAllowedBlockSize(int length) {
 
+	int 			maxSize = (int) (floor(sqrt(length)));
+	std::vector<int>	lowDiv, highDiv;
 
+	for (dLow=2; dLow<=maxSize; dLow++) {
+		if ((length % dLow) != 0)
+			continue;
 
+		dHigh = length/d;
+		lowDiv.push_back(dLow);
+		highDiv.push_back(dHigh);
+	}
+
+	std::reverse(highDiv.begin(), highDiv.end());
+	lowDiv.insert(lowDiv.end(), highDiv.begin(), highDiv.end());
+
+	for (i=0; i<lowDiv.size; i++)
+		printf("%d\t\t%d\n", i, lowDiv[i]);
+
+	return lowDiv;
+}
+*/			
 
 void	resetPropagator(Scalar *field) {
 	/*	Default block size gives just one block	*/
