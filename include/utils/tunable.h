@@ -73,7 +73,11 @@
 							xBlock++;
 						}	while ((xSize % xBlock) != 0);
 					} else {
-						xBlock = 8;
+						xBlock = 7;
+						do {
+							xBlock++;
+						}	while ((xSize % xBlock) != 0);
+						
 
 						if (yBlock < yMax) {
 							do {
@@ -90,7 +94,10 @@
 						yBlock++;
 					}	while ((ySize % yBlock) != 0);
 				} else {
-					yBlock = 4;
+					yBlock = 3;
+					do {
+						yBlock++;
+					}	while ((ySize % yBlock) != 0);
 
 					if (zBlock < zSize) {
 						do {
@@ -102,7 +109,46 @@
 				}
 			}
 		}
+/*
+		void		AdvanceBlockSize(std::vector<int> allowedSizes1, std::vector<int> allowedSizes2) {
 
+			static int idx1 = 0, idx2 = 0;
+
+			if (isGpu) {
+				do {
+					if ((xBlock < xMax) && (idx1 < allowedSizes1.size() - 1)  {
+						idx1++;
+						xBlock = allowedSizes1[idx1];
+					} else {
+						idx1   = 0;
+						xBlock = allowedSizes1[0];
+
+						if ((yBlock < yMax) && (idx2 < allowedSizes2.size() - 1)){
+							idx2++;
+							yBlock = allowedSizes2[idx2];
+						} else {
+							isTuned = true;
+						}
+					}
+				}	while (!isTuned && TotalThreads() > ((size_t) maxThreadsPerBlock()));
+			} else {
+				if ((yBlock < ySize) && (idx1 < allowedSizes1.size() - 1)) {
+					idx1++;
+					yBlock = allowedSizes1[idx1];
+				} else {
+					idx1   = 0;
+					yBlock = allowedSizes1[0];
+
+					if ((zBlock < zSize) && (idx2 < allowedSizes2.size() - 1)) {
+						idx2++;
+						zBlock = allowedSizes2[idx2];
+					} else {
+						isTuned = true;
+					}
+				}
+			}
+		}
+*/
 		std::string	Name   () const noexcept { return name; }
 
 		void		reset  ()                     { gFlops = 0.; gBytes = 0.; }
@@ -133,7 +179,7 @@
 				zMax  = Lz;
 
 				xBest = xBlock = xMax;
-				yBest = yBlock = 4;
+				yBest = yBlock = 2;
 				zBest = zBlock = 1;
 			} else {
 				size_t xTmp = maxThreadsPerDim(0);
@@ -152,7 +198,7 @@
 				if (yTmp*maxGridSize(2) < Lz)
 					LogError("Error: not enough threads on gpu to accomodate z-dimension");
 
-				xBest = xBlock = 8;
+				xBest = xBlock = 4;
 				yBest = yBlock = 1;
 				zBest = zBlock = 1;
 			}
