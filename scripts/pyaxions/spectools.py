@@ -2097,11 +2097,10 @@ class nspevol2:
 
 
 
-#   builds the (masked) axion energy spectrum with the correction matrix and outputs the time evolution
-#   NOTE: The energy density is evaluated just by muptiplying the kinetic energy by 2.
+#   builds the (masked) axion energy spectrum (with the correction matrix) and outputs the time evolution
 
 class espevol:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', cor='nocorrection'):
+    def __init__(self, mfiles, spmasklabel='espK_0', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -2114,87 +2113,21 @@ class espevol:
         self.logtab = []
         self.esp = []
         self.espcor = [] # corrected spectrum
-        for f in mfiles:
-            if pa.gm(f,'nsp?'):
-                t = pa.gm(f,'time')
-                self.ttab.append(t)
-                if spmask == 'nomask':
-                    e0 = (self.avek**2)*pa.gm(f,'nspK')/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                elif spmask == 'Red':
-                    if rmask == 'nolabel':
-                        s0 = pa.gm(f,'nspK_Red')
-                    else:
-                        s0 = pa.gm(f,'nspK_Red'+'_'+rmask)
-                    e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                    if cor == 'correction':
-                        if rmask == 'nolabel':
-                            m = pa.gm(f,'mspM_Red')
-                        else:
-                            m = pa.gm(f,'mspM_Red'+'_'+rmask)
-                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                        self.espcor.append(e1)
-                elif spmask == 'Vi':
-                    s0 = pa.gm(f,'nspK_Vi')
-                    e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                    if cor == 'correction':
-                        m = pa.gm(f,'mspM_Vi')
-                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                        self.espcor.append(e1)
-                elif spmask == 'Vi2':
-                    s0 = pa.gm(f,'nspK_Vi2')
-                    e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                    if cor == 'correction':
-                        m = pa.gm(f,'mspM_Vi2')
-                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                        self.espcor.append(e1)
-                else:
-                    print('Wrong option for spmask!')
-                logi = pa.gm(f,'logi')
-                self.logtab.append(logi)
-                print('\rbuilt up to log = %.2f'%logi,end="")
-        print("")
-        self.ttab = np.array(self.ttab)
-        self.logtab = np.array(self.logtab)
-        self.esp = np.array(self.esp)
-        self.espcor = np.array(self.espcor)
-
-
-class espevol2:
-    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
-        self.sizeN = pa.gm(mfiles[0],'sizeN')
-        self.sizeL = pa.gm(mfiles[0],'L')
-        self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda0')
-        self.nm = pa.gm(mfiles[0],'nmodelist')
-        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
-        # identify modes less than N/2
-        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
-        self.ttab = []
-        self.logtab = []
-        self.esp = []
-        self.espcor = [] # corrected spectrum
-        for f in mfiles:
-            if pa.gm(f,'nsp?'):
-                t = pa.gm(f,'time')
-                logi = pa.gm(f,'logi')
-                self.ttab.append(t)
-                self.logtab.append(logi)
-                s0 = pa.gm(f,'nspK_'+spmasklabel)
-                e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                self.esp.append(e0)
-                if cor == 'correction':
-                    m = pa.gm(f,'mspM_'+spmasklabel)
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                    e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                    self.espcor.append(e1)
-                print('\rbuilt up to log = %.2f'%logi,end="")
+        mfnsp = [mf for mf in mfiles if pa.gm(mf,'espK?')]
+        for f in mfnsp:
+            self.ttab.append(pa.gm(f,'time'))
+            logi = pa.gm(f,'logi')
+            self.logtab.append(logi)
+            s0 = pa.gm(f,spmasklabel)
+            self.esp.append(s0)
+            if cor == 'correction':
+                if spmasklabel[0:4] == 'espK':
+                    m = pa.gm(f,'mspM_'+spmasklabel[4:-1])
+                elif spmasklabel[0:5] == 'espCK':
+                    m = pa.gm(f,'mspM_'+spmasklabel[5:-1])
+                s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                self.espcor.append(s1)
+            print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
         print("")
         self.ttab = np.array(self.ttab)
         self.logtab = np.array(self.logtab)
