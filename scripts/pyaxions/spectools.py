@@ -2112,7 +2112,7 @@ class espevol:
         self.ttab = []
         self.logtab = []
         self.esp = []
-        self.espcor = [] # corrected spectrum
+        self.espc = [] # corrected spectrum
         mfnsp = [mf for mf in mfiles if pa.gm(mf,'espK?')]
         for f in mfnsp:
             self.ttab.append(pa.gm(f,'time'))
@@ -2126,13 +2126,13 @@ class espevol:
                 elif spmasklabel[0:5] == 'espCK':
                     m = pa.gm(f,'mspM_'+spmasklabel[5:-1])
                 s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                self.espcor.append(s1)
+                self.espc.append(s1)
             print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
         print("")
         self.ttab = np.array(self.ttab)
         self.logtab = np.array(self.logtab)
         self.esp = np.array(self.esp)
-        self.espcor = np.array(self.espcor)
+        self.espc = np.array(self.espc)
 
 
 
@@ -2192,35 +2192,44 @@ class espave:
 
 
 #   save the data of axion energy spectra as pickle files
-#   assuming input as an espave class object
-def saveesp(espave, name='./esp'):
-    sdata(espave.esp,name,'e')
-    sdata(espave.desp,name,'de')
-    sdata(espave.espcor,name,'ec')
-    sdata(espave.despcor,name,'dec')
-    sdata(espave.t,name,'t')
-    sdata(espave.log,name,'log')
-    sdata(espave.nm,name,'nm')
-    sdata(espave.avek,name,'k')
-    sdata(espave.k_below,name,'kb')
+#   assuming input as an espevol class object
+def saveesp(espe, name='./esp', cor='nocorrection'):
+    sp.sdata(espe.esp,name,'esp')
+    if cor == 'correction':
+        sp.sdata(espe.espc,name,'espc')
+    sp.sdata(espe.nm,name,'nm')
+    sp.sdata(espe.avek,name,'k')
+    sp.sdata(espe.k_below,name,'k_below')
+    sp.sdata(espe.ttab,name,'t')
+    sp.sdata(espe.logtab,name,'log')
 
+        
+        
+        
+        
+        
+#   read the data of axion energy spectra and construct P   
+class readP:
+    def __init__(self, name, cor='nocorrection'):
+        self.nm = sp.rdata(name,'nm')
+        self.k = sp.rdata(name,'k')
+        self.k_below = sp.rdata(name,'k_below')
+        self.t = sp.rdata(name,'t')
+        self.log = sp.rdata(name,'log')
+        self.esp = sp.rdata(name,'esp')
+        if cor == 'correction':
+            self.espc = sp.rdata(name,'espc')
+        self.P = []
+        self.Pc = []
+        for id in np.arange(len(self.log)):
+            P = (self.k**3)*self.esp[id]/((math.pi**2)*self.nm)
+            self.P.append(P)
+            if cor == 'correction':
+                Pc = (self.k**3)*self.espc[id]/((math.pi**2)*self.nm)
+                self.Pc.append(Pc)
+        self.P = np.array(self.P)
+        self.Pc = np.array(self.Pc)
 
-
-
-
-
-#   read the data of axion energy spectra
-class readesp:
-    def __init__(self, name='./esp'):
-        self.esp = rdata(name,'e')
-        self.desp = rdata(name,'de')
-        self.espcor = rdata(name,'ec')
-        self.despcor = rdata(name,'dec')
-        self.t = rdata(name,'t')
-        self.log = rdata(name,'log')
-        self.nm = rdata(name,'nm')
-        self.avek = rdata(name,'k')
-        self.k_below = rdata(name,'kb')
 
 
 
