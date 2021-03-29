@@ -1239,14 +1239,13 @@ class rebinF:
 
 
 #   save the data of instantaneous spectra as pickle files
-#   assuming input as an inspave class object
-def saveF(inspave, name='./F'):
-    sdata(inspave.F,name,'y')
-    sdata(inspave.dF,name,'dy')
-    sdata(inspave.x,name,'x')
-    sdata(inspave.log,name,'log')
-    sdata(inspave.t,name,'t')
-    sdata(inspave.Fnorm,name,'Fnorm')
+#   assuming input as an calcF class object
+def saveF(insp, name='./F'):
+    sdata(insp.F,name,'F')
+    sdata(insp.x,name,'x')
+    sdata(insp.log,name,'log')
+    sdata(insp.t,name,'t')
+    sdata(insp.Fnorm,name,'Fnorm')
 
 
 
@@ -1256,8 +1255,7 @@ def saveF(inspave, name='./F'):
 #   read the data of instantaneous spectra
 class readF:
     def __init__(self, name='./F'):
-        self.F = rdata(name,'y')
-        self.dF = rdata(name,'dy')
+        self.F = rdata(name,'F')
         self.x = rdata(name,'x')
         self.log = rdata(name,'log')
         self.t = rdata(name,'t')
