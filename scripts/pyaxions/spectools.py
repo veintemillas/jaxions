@@ -2194,14 +2194,14 @@ class espave:
 #   save the data of axion energy spectra as pickle files
 #   assuming input as an espevol class object
 def saveesp(espe, name='./esp', cor='nocorrection'):
-    sp.sdata(espe.esp,name,'esp')
+    sdata(espe.esp,name,'esp')
     if cor == 'correction':
-        sp.sdata(espe.espc,name,'espc')
-    sp.sdata(espe.nm,name,'nm')
-    sp.sdata(espe.avek,name,'k')
-    sp.sdata(espe.k_below,name,'k_below')
-    sp.sdata(espe.ttab,name,'t')
-    sp.sdata(espe.logtab,name,'log')
+        sdata(espe.espc,name,'espc')
+    sdata(espe.nm,name,'nm')
+    sdata(espe.avek,name,'k')
+    sdata(espe.k_below,name,'k_below')
+    sdata(espe.ttab,name,'t')
+    sdata(espe.logtab,name,'log')
 
         
         
@@ -2211,14 +2211,14 @@ def saveesp(espe, name='./esp', cor='nocorrection'):
 #   read the data of axion energy spectra and construct P   
 class readP:
     def __init__(self, name, cor='nocorrection'):
-        self.nm = sp.rdata(name,'nm')
-        self.k = sp.rdata(name,'k')
-        self.k_below = sp.rdata(name,'k_below')
-        self.t = sp.rdata(name,'t')
-        self.log = sp.rdata(name,'log')
-        self.esp = sp.rdata(name,'esp')
+        self.nm = rdata(name,'nm')
+        self.k = rdata(name,'k')
+        self.k_below = rdata(name,'k_below')
+        self.t = rdata(name,'t')
+        self.log = rdata(name,'log')
+        self.esp = rdata(name,'esp')
         if cor == 'correction':
-            self.espc = sp.rdata(name,'espc')
+            self.espc = rdata(name,'espc')
         self.P = []
         self.Pc = []
         for id in np.arange(len(self.log)):
