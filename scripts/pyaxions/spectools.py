@@ -1133,29 +1133,24 @@ class inspave:
 
 #   rebin data of F(x) such that bins are homogeneous in log(x)
 #   fixed data points (nbin) within given interval [cmin,cmax*(ms/H)]
-#   assuming input as an inspave class object
 class rebinF:
-    def __init__(self, inspave, nbin, cmin, cmax):
-        self.sizeN = inspave.sizeN
-        self.sizeL = inspave.sizeL
-        self.msa = inspave.msa
-        self.LL = inspave.LL
-        self.t = inspave.t
-        self.log = inspave.log
+    def __init__(self, F, x, t, log, nbin, cmin, cmax):
+        self.t = t
+        self.log = log
         self.xbin = []
         self.inspmbin = []
         self.nmbin = []
         self.xwr = []
         self.xlim = []
-        for id in range(len(inspave.t)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(inspave.t),inspave.log[id]),end="")
-            msoverH = math.exp(inspave.log[id])
-            x = inspave.x[id]
-            inspmtab = inspave.F[id]
+        for id in range(len(t)):
+            print('\r%d/%d, log = %.2f'%(id+1,len(t),log[id]),end="")
+            msoverH = math.exp(log[id])
+            xtab = x[id]
+            inspmtab = F[id]
             xmin = cmin
             xmax = msoverH*cmax
-            x_within_range = ((x > xmin) & (x < xmax))
-            xlim = x[x_within_range]
+            x_within_range = ((xtab > xmin) & (xtab < xmax))
+            xlim = xtab[x_within_range]
             inspmlim = inspmtab[x_within_range]
             # do not rebin if number of data points is less than nbin
             if len(xlim) < nbin:
