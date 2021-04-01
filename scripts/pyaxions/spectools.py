@@ -1134,7 +1134,7 @@ class inspave:
 #   rebin data of F(x) such that bins are homogeneous in log(x)
 #   fixed data points (nbin) within given interval [cmin,cmax*(ms/H)]
 class rebinF:
-    def __init__(self, F, x, t, log, nbin, cmin, cmax):
+    def __init__(self, F, x, t, log, nbin, cmin, cmax, verbose=False):
         self.t = t
         self.log = log
         self.xbin = []
@@ -1143,7 +1143,8 @@ class rebinF:
         self.xwr = []
         self.xlim = []
         for id in range(len(t)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(t),log[id]),end="")
+            if verbose:
+                print('\rrebin: %d/%d, log = %.2f'%(id+1,len(t),log[id]),end="")
             msoverH = math.exp(log[id])
             xtab = x[id]
             inspmtab = F[id]
@@ -1222,7 +1223,8 @@ class rebinF:
             self.xwr.append(x_within_range)
             self.xlim.append(xlim)
             # end of id loop
-        print("")
+        if verbose:
+            print("")
         self.xbin = np.array(self.xbin)
         self.inspmbin = np.array(self.inspmbin)
         self.nmbin = np.array(self.nmbin)
