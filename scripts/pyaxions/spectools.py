@@ -1267,7 +1267,7 @@ class readF:
 #   Calculate q
 # ------------------------------------------------------------------------------
 
-# class Setq:
+# class setq:
 #   calculate chi^2 and estimate q for a given time step specified by id
 #   use log bin in k (rebinned)
 #   fixed data points (nbin) within given interval (xmin,xmax)
@@ -1307,7 +1307,7 @@ class readF:
 #   self.xlim       x within the range specified by (xmin,xmax)
 #   self.xwr        flags to identify xlim
 #
-class Setq:
+class setq:
     def __init__(self, inspx, inspy, insplog, id, xmin, xmax, **kwargs):
         if 'nbin' in kwargs:
             nbin = kwargs['nbin']
@@ -1475,7 +1475,7 @@ class Setq:
 
 
 
-# class Scanq:
+# class scanq:
 #   estimate q at every time step
 #   x range is taken as (cxmin,cxmax*(m/H))
 #
@@ -1512,8 +1512,8 @@ class Setq:
 #   self.nmbin      number of modes in each bin (currently not used)
 #   self.log     　　array for log(m/H)
 #
-class Scanq:
-    def __init__(self, inspx, inspy, insplog, cxmin=30., cxmax=1/6., **kwargs):
+class scanq:
+    def __init__(self, inspx, inspy, insplog, cxmin=50., cxmax=1/4., **kwargs):
         if 'nbin' in kwargs:
             nb = kwargs['nbin']
         else:
@@ -1551,7 +1551,7 @@ class Scanq:
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
-            sqt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
+            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
             self.chi2min.append(sqt.chi2min)
             self.qbest.append(sqt.qbest)
             self.mbest.append(sqt.mbest)
@@ -1588,7 +1588,7 @@ class Scanq:
 
 
 
-# class Scanqopt:
+# class scanqopt:
 #   estimate q at every time step
 #   x range is taken as (cxmin,cxmax*(m/H))
 #   optimize xmax such that the error of q takes the smallest value :
@@ -1631,8 +1631,8 @@ class Scanq:
 #   self.log        array for log(m/H)
 #   self.cxmaxopt   array for optimized values of cxmax
 #
-class Scanqopt:
-    def __init__(self, inspx, inspy, insplog, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, **kwargs):
+class scanqopt:
+    def __init__(self, inspx, inspy, insplog, cxmin=50., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, **kwargs):
         if 'nbin' in kwargs:
             nb = kwargs['nbin']
         else:
@@ -1670,13 +1670,13 @@ class Scanqopt:
                 print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
-            sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin=nb,typesigma=types,norebin=noreb)
+            sqt = setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin=nb,typesigma=types,norebin=noreb)
             sigmaq = sqt.sigmaq
             copt = cxmaxstart
             for c in np.linspace(cxmaxstart,cxmaxend,cxmaxpoints)[1:]:
                 #print('\rcxmax = %.3f'%c)
                 xmax = c*msoverH
-                sqtt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
+                sqtt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
                 sigmaqt = sqtt.sigmaq
                 if sigmaqt < sigmaq:
                     sqt = sqtt
@@ -1721,7 +1721,7 @@ class Scanqopt:
 
 
 #   save the data of q as pickle files
-#   assuming input as an Scanqopt class object
+#   assuming input as an scanqopt class object
 def saveq(scanqopt, name='./qopt'):
     sdata(scanqopt.qbest,name,'q')
     sdata(scanqopt.mbest,name,'m')
@@ -1750,7 +1750,7 @@ class readq:
 
 
 #   take ensemble average of q
-#   assuming input as list of Scanq class object
+#   assuming input as list of scanq class object
 def aveq(qlist):
     Ntime = len(qlist[0].log)
     Nreal = len(qlist)
