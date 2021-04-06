@@ -417,11 +417,11 @@ class calcF:
                 lxhc = math.log(k[ik]*t[fitp.listihc[ik]])
                 try:
                     if (fitp.listfitsup[ik] and fitp.listfitsub[ik]):
-                        Fval = (logistic(lxx,lxhc,sigma)*math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)+(1-logistic(lxx,lxhc,sigma))*math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub))/(xx*(tt**4))
+                        Fval = (logistic(lxx,lxhc,sigma)*math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)+(1-logistic(lxx,lxhc,sigma))*math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub))/xx
                     elif fitp.listfitsup[ik]:
-                        Fval = math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)/(xx*(tt**4))
+                        Fval = math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)/xx
                     elif fitp.listfitsub[ik]:
-                        Fval = math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub)/(xx*(tt**4))
+                        Fval = math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub)/xx
                     else:
                         Fval = np.nan
                 except:
