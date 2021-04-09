@@ -1852,16 +1852,14 @@ class strave:
 
 
 #   save the data of string density parameter as pickle files
-#   assuming input as an strave class object
-def savestr(strave, name='./str'):
-    sdata(strave.xi,name,'xi')
-    sdata(strave.xierr,name,'xierr')
-    sdata(strave.dxidl,name,'dxidl')
-    sdata(strave.dxidlerr,name,'dxidlerr')
-    sdata(strave.dxidt,name,'dxidt')
-    sdata(strave.dxidterr,name,'dxidterr')
-    sdata(strave.t,name,'t')
-    sdata(strave.log,name,'log')
+#   assuming input as an strevol class object
+def savestr(stre, name='./str', diff='nodiff'):
+    sdata(stre.xi,name,'xi')
+    sdata(stre.t,name,'t')
+    sdata(stre.log,name,'log')
+    if diff == 'diff':
+        sdata(stre.dxidl,name,'dxidl')
+        sdata(stre.dxidt,name,'dxidt')
 
 
 
@@ -1870,15 +1868,13 @@ def savestr(strave, name='./str'):
 
 #   read the data of string density parameter
 class readstr:
-    def __init__(self, name='./str'):
+    def __init__(self, name='./str', diff='nodiff'):
         self.xi = rdata(name,'xi')
-        self.xierr = rdata(name,'xierr')
-        self.dxidl = rdata(name,'dxidl')
-        self.dxidlerr = rdata(name,'dxidlerr')
-        self.dxidt = rdata(name,'dxidt')
-        self.dxidterr = rdata(name,'dxidterr')
         self.t = rdata(name,'t')
         self.log = rdata(name,'log')
+        if diff == 'diff':
+            self.dxidl = rdata(name,'dxidl')
+            self.dxidt = rdata(name,'dxidt')
 
 
 
