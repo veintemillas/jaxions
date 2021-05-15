@@ -471,6 +471,10 @@ const std::complex<float> If(0.,1.);
 		}
 		LogFlush();
 	}
+	
+	// preparing finer bins
+	LogMsg(VERB_NORMAL, "[sca] Preparing finer bins");
+	finerbins();
 }
 
 // END SCALAR
@@ -1607,4 +1611,83 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		(static_cast<size_t *> (idxbin))[i] = ar_local[i];
 	}
 	return ;
+}
+
+
+void	Scalar::finerbins	() {
+	
+	Profiler &prof = getProfiler(PROF_SCALAR);
+	prof.start();
+	
+	LogMsg(VERB_HIGH,"[finerbins] Filling finer bins") ;LogFlush();
+	
+	size_t Lx = (n1 >> 1)+1;
+	size_t Ly = n1;
+	size_t hLx = Lx;
+	size_t hLy = Ly >> 1;
+	size_t hTz = Tz >> 1;
+	
+	size_t nModeshc = Lx*Ly*Lz;
+	size_t zBase = (Ly/commSize())*commRank();
+	size_t powsqMax = hLy*hLy + hLy*hLy + hTz*hTz + 1;
+	
+	const int mIdx = commThreads();
+	
+	std::vector<double> tBinNNfine;
+	tBinNNfine.resize(powsqMax*mIdx);
+	tBinNNfine.assign(powsqMax*mIdx,0);
+	binNNfine.resize(powsqMax);
+	binNNfine.assign(powsqMax,0);
+	binIndex.resize(powsqMax);
+	binIndex.assign(powsqMax,powsqMax);
+	
+	#pragma omp parallel
+	{
+		int  tIdx = omp_get_thread_num ();
+
+		#pragma omp for schedule(static)
+		for (size_t idx=0; idx<nModeshc; idx++) {
+			size_t tmp = idx/Lx;
+			int    kx  = idx - tmp*Lx;
+			int    ky  = tmp/Tz;
+			int    kz  = tmp - ((size_t) ky)*Tz;
+			ky += zBase;
+			
+			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
+			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
+			
+			size_t k2 = kx*kx + ky*ky + kz*kz;
+			
+			if ((kx == 0) || (kx == static_cast<int>(hLx - 1)))
+				tBinNNfine.at(k2 + powsqMax*tIdx) += 1;
+			else
+				tBinNNfine.at(k2 + powsqMax*tIdx) += 2;
+		}
+		
+		#pragma omp for schedule(static)
+		for (uint j=0; j<powsqMax; j++) {
+			for (int i=0; i<mIdx; i++) {
+				binNNfine[j] += tBinNNfine[j + i*powsqMax];
+			}
+		}
+	}
+	
+	std::copy_n(binNNfine.begin(), powsqMax, tBinNNfine.begin());
+	MPI_Allreduce(tBinNNfine.data(), binNNfine.data(), powsqMax, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	
+	uint count = 0;
+	for(uint j=0; j<powsqMax; j++) {
+		if(binNNfine[j]!=0) {
+			binIndex[j] = count;
+			count++;
+		}
+	}
+	
+	powfMax = count;
+	
+	LogMsg(VERB_HIGH,"[finerbins] Finer bins filled");
+	
+	prof.stop();
+	prof.add(std::string("Init Finer Bins"), 0.0, 0.0);
+	
 }

@@ -76,6 +76,9 @@
 		/* Fin eliminar */
 		/* Falta: axitonfinder */
 
+		/* finer bins */
+		uint powfMax;
+
 		public:
 
 				 Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp,
@@ -254,6 +257,12 @@
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);
 
 		/*	Fin eliminar	*/
+		
+		/* finer bins */
+		void	finerbins ();
+		std::vector<double>	binNNfine;
+		std::vector<uint> binIndex;
+		uint  PowfMax()      { return powfMax; }
 
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }
