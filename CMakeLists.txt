@@ -43,6 +43,7 @@ set(USE_PROP_OM4 OFF CACHE BOOL "Omelyan 4 propagators")
 set(USE_PROP_LEAP OFF CACHE BOOL "Leapfrog propagators")
 
 set(USE_NN_BINS OFF CACHE BOOL "Output occupation number bins")
+set(USE_FINER_BINS OFF CACHE BOOL "Output finer bins")
 
 #set(USE_2D OFF CACHE BOOL "Uses only the Z=1 plane")
 
@@ -150,6 +151,9 @@ endif()
 set(OUTPUT_FLAGS "")
 if(${USE_NN_BINS})
   set(OUTPUT_FLAGS "${OUTPUT_FLAGS} -DUSE_NN_BINS")
+endif()
+if(${USE_FINER_BINS})
+  set(OUTPUT_FLAGS "${OUTPUT_FLAGS} -DUSE_FINER_BINS")
 endif()
 
 

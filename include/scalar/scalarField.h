@@ -77,7 +77,9 @@
 		/* Falta: axitonfinder */
 
 		/* finer bins */
+#ifdef USE_FINER_BINS
 		uint powfMax;
+#endif
 
 		public:
 
@@ -259,10 +261,12 @@
 		/*	Fin eliminar	*/
 		
 		/* finer bins */
+#ifdef USE_FINER_BINS
 		void	finerbins ();
 		std::vector<double>	binNNfine;
 		std::vector<uint> binIndex;
 		uint  PowfMax()      { return powfMax; }
+#endif
 
 #ifdef	USE_GPU
 		void	*Streams() { return sStreams; }

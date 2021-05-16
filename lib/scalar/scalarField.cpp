@@ -472,9 +472,10 @@ const std::complex<float> If(0.,1.);
 		LogFlush();
 	}
 	
-	// preparing finer bins
+#ifdef USE_FINER_BINS
 	LogMsg(VERB_NORMAL, "[sca] Preparing finer bins");
 	finerbins();
+#endif
 }
 
 // END SCALAR
@@ -1613,7 +1614,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	return ;
 }
 
-
+#ifdef USE_FINER_BINS
 void	Scalar::finerbins	() {
 	
 	Profiler &prof = getProfiler(PROF_SCALAR);
@@ -1691,3 +1692,4 @@ void	Scalar::finerbins	() {
 	prof.add(std::string("Init Finer Bins"), 0.0, 0.0);
 	
 }
+#endif
