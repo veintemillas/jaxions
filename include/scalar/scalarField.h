@@ -78,7 +78,9 @@
 
 		/* finer bins */
 #ifdef USE_FINER_BINS
-		uint powfMax;
+		size_t powfMax;
+		std::vector<double>	binNNfine;
+		std::vector<size_t> binIndex;
 #endif
 
 		public:
@@ -263,9 +265,9 @@
 		/* finer bins */
 #ifdef USE_FINER_BINS
 		void	finerbins ();
-		std::vector<double>	binNNfine;
-		std::vector<uint> binIndex;
-		uint  PowfMax()      { return powfMax; }
+		size_t  PowfMax()      { return powfMax; }
+		double  *getBinNNfine() {return &(binNNfine[0]); };
+		size_t  *getBinIndex() {return &(binIndex[0]); };
 #endif
 
 #ifdef	USE_GPU

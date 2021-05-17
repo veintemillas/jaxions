@@ -33,6 +33,23 @@
 		std::vector<double>	binPS;
 		std::vector<double>	binNN;
 		std::vector<double>	binAK;
+		
+#ifdef USE_FINER_BINS
+		std::vector<double>	binKfine;
+		std::vector<double>	binGfine;
+		std::vector<double>	binVfine;
+		std::vector<double>	binVnlfine;
+#ifdef USE_NN_BINS
+		std::vector<double>	binNKfine;
+		std::vector<double>	binNGfine;
+		std::vector<double>	binNVfine;
+		std::vector<double>	binNVnlfine;
+#endif
+		std::vector<double>	binPfine;
+		std::vector<double>	binPSfine;
+		std::vector<double>	binNNfine;
+		std::vector<double>	binAKfine;
+#endif
 
 		std::vector<double>	cosTable;
 		std::vector<double>	cosTable2;
@@ -48,6 +65,12 @@
 		double 			zaskar;
 		float				zaskarf;
 		double 			k0;
+		
+#ifdef USE_FINER_BINS
+		size_t      powfMax;
+		double      *fNN;
+		size_t      *fIndex;
+#endif
 
 		std::complex<double>	zaska ;
 		std::complex<float>	zaskaf ;
@@ -70,6 +93,12 @@
 									k0(2.0*M_PI/((double) field->BckGnd()->PhysSize())) {
 				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+				
+#ifdef USE_FINER_BINS
+			  powfMax = field->PowfMax();
+				fNN = field->getBinNNfine();
+				fIndex = field->getBinIndex();
+#endif
 
 				binK.resize(powMax); binK.assign(powMax, 0.);
 				binG.resize(powMax); binG.assign(powMax, 0.);
@@ -83,6 +112,21 @@
 				binNG.resize(powMax); binNG.assign(powMax, 0.);
 				binNV.resize(powMax); binNV.assign(powMax, 0.);
 				binNVnl.resize(powMax); binNVnl.assign(powMax, 0.);
+#endif
+
+#ifdef USE_FINER_BINS
+				binKfine.resize(powfMax); binKfine.assign(powfMax, 0.);
+				binGfine.resize(powfMax); binGfine.assign(powfMax, 0.);
+				binVfine.resize(powfMax); binVfine.assign(powfMax, 0.);
+				binVnlfine.resize(powfMax); binVnlfine.assign(powfMax, 0.);
+				binPfine.resize(powfMax); binPfine.assign(powfMax, 0.);
+				binPSfine.resize(powfMax); binPSfine.assign(powfMax, 0.);
+#ifdef USE_NN_BINS
+				binNKfine.resize(powfMax); binNKfine.assign(powfMax, 0.);
+				binNGfine.resize(powfMax); binNGfine.assign(powfMax, 0.);
+				binNVfine.resize(powfMax); binNVfine.assign(powfMax, 0.);
+				binNVnlfine.resize(powfMax); binNVnlfine.assign(powfMax, 0.);
+#endif
 #endif
 
 				mass2    = field->AxionMassSq()*(*field->RV())*(*field->RV());
@@ -189,6 +233,19 @@
 				binNG.assign(powMax, 0.);
 				binNV.assign(powMax, 0.);
 				binNVnl.assign(powMax, 0.);
+#endif
+#ifdef USE_FINER_BINS
+				binKfine.assign(powfMax, 0.);
+				binGfine.assign(powfMax, 0.);
+				binVfine.assign(powfMax, 0.);
+				binPfine.assign(powfMax, 0.);
+				binPSfine.assign(powfMax, 0.);
+#ifdef USE_NN_BINS
+				binNKfine.assign(powfMax, 0.);
+				binNGfine.assign(powfMax, 0.);
+				binNVfine.assign(powfMax, 0.);
+				binNVnlfine.assign(powfMax, 0.);
+#endif
 #endif
 		}
 
