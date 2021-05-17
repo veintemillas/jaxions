@@ -1686,7 +1686,7 @@ void	Scalar::finerbins	() {
 	
 	powfMax = count;
 	
-	LogMsg(VERB_HIGH,"[finerbins] Finer bins filled");
+	LogMsg(VERB_HIGH,"[finerbins] Finer bins filled (powsqMax = %lu, powfMax = %lu)",powsqMax,powfMax);
 	
 	prof.stop();
 	prof.add(std::string("Init Finer Bins"), 0.0, 0.0);
