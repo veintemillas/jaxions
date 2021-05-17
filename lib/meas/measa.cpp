@@ -279,6 +279,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 									sprintf(PRELABEL, "%s_%.2f", "sPmasked",info.rmask_tab[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+#ifdef USE_FINER_BINS
+											writeArray(specAna.finerdata(SPECTRUM_P), specAna.PowfMax(), "/pfSpectrum", PRELABEL);
+#endif
 										}
 					}
 
@@ -289,6 +292,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",info.rmask_tab[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+#ifdef USE_FINER_BINS
+											writeArray(specAna.finerdata(SPECTRUM_P), specAna.PowfMax(), "/pfSpectrum", PRELABEL);
+#endif
 										}
 					}
 
@@ -296,7 +302,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
 							specAna.pRun();
 								writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", "sP");
-
+#ifdef USE_FINER_BINS
+								writeArray(specAna.finerdata(SPECTRUM_P), specAna.PowfMax(), "/pfSpectrum", "sP");
+#endif
 
 					if (measa & MEAS_MULTICON){
 						LogMsg(VERB_NORMAL, "[Meas %d] Multi contrast tool",indexa);LogFlush();
@@ -491,6 +499,9 @@ writePMapHdf5s (axiona, LAB);
 
 							sprintf(LABEL, "W_%s", PRELABEL);
 							writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
+#ifdef USE_FINER_BINS
+							writeArray(specAna.finerdata(SPECTRUM_P), specAna.PowfMax(), "/mfSpectrum", LABEL);
+#endif
 							printedmask[i] = true;
 							/* DANGER ZONE !*/
 								/* activate to export premask -- needs changes in spectrum.cpp too*/
@@ -578,9 +589,12 @@ writePMapHdf5s (axiona, LAB);
 											sprintf(LABEL, "W_%s", PRELABEL);
 											if (printedmask[i-1])
 													LogMsg(VERB_NORMAL,"[meas %d] mask already printed");
-												else
+												else {
 													writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/mSpectrum", LABEL);
-
+#ifdef USE_FINER_BINS
+													writeArray(specAna.finerdata(SPECTRUM_P), specAna.PowfMax(), "/mfSpectrum", LABEL);
+#endif
+												}
 
 
 								/* Kenichi's only active in REDO mode */
@@ -623,12 +637,24 @@ writePMapHdf5s (axiona, LAB);
 #ifdef USE_NN_BINS
 									writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
 #endif
+#ifdef USE_FINER_BINS
+									writeArray(specAna.finerdata(SPECTRUM_KK), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+									writeArray(specAna.finerdata(SPECTRUM_K), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
+#endif
 								}
 							if (nruntype & NRUN_G){
 							sprintf(LABEL, "sG_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
 #ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+#ifdef USE_FINER_BINS
+								writeArray(specAna.finerdata(SPECTRUM_GG), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.finerdata(SPECTRUM_G), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
 #endif
 								// // TEMP INDIVIDUAL XYZ
 								// sprintf(LABEL, "sGX_%s",PRELABEL);
@@ -642,12 +668,24 @@ writePMapHdf5s (axiona, LAB);
 #ifdef USE_NN_BINS
 									writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
 #endif
+#ifdef USE_FINER_BINS
+									writeArray(specAna.finerdata(SPECTRUM_VV), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+									writeArray(specAna.finerdata(SPECTRUM_V), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
+#endif
 							}
 							if ( (nruntype & NRUN_S) && axiona->AxionMassSq() > 0.0 ){
 									sprintf(LABEL, "sS_%s",PRELABEL);
 									writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
 #ifdef USE_NN_BINS
 									writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+#ifdef USE_FINER_BINS
+									writeArray(specAna.finerdata(SPECTRUM_VVNL), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+									writeArray(specAna.finerdata(SPECTRUM_VNL), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
 #endif
 							}
 						} // END IF NSPECTRA WITH LUT CORRECTION
@@ -668,12 +706,24 @@ writePMapHdf5s (axiona, LAB);
 #ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
 #endif
+#ifdef USE_FINER_BINS
+								writeArray(specAna.finerdata(SPECTRUM_KK), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.finerdata(SPECTRUM_K), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
+#endif
 						}
 						if (nruntype & NRUN_CG){
 						sprintf(LABEL, "sCG_%s",PRELABEL);
 							writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
 #ifdef USE_NN_BINS
 							writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+#ifdef USE_FINER_BINS
+							writeArray(specAna.finerdata(SPECTRUM_GG), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+							writeArray(specAna.finerdata(SPECTRUM_G), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
 #endif
 						}
 							/* Note that there is NO DIFFERENCE between CV CS and V,S */
@@ -685,6 +735,12 @@ writePMapHdf5s (axiona, LAB);
 #ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
 #endif
+#ifdef USE_FINER_BINS
+								writeArray(specAna.finerdata(SPECTRUM_VV), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.finerdata(SPECTRUM_V), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
+#endif
 							}
 						if ( (nruntype & NRUN_CS) && axiona->AxionMassSq() > 0.0 ){
 							LogMsg(VERB_NORMAL,"[Meas %d] Warning: You asked for nspS without LUT correction (CS) which is the same as S. Waste of resources?",indexa);
@@ -692,6 +748,12 @@ writePMapHdf5s (axiona, LAB);
 								writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", LABEL);
 #ifdef USE_NN_BINS
 								writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+#ifdef USE_FINER_BINS
+								writeArray(specAna.finerdata(SPECTRUM_VVNL), specAna.PowfMax(), "/efSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.finerdata(SPECTRUM_VNL), specAna.PowfMax(), "/nfSpectrum", LABEL);
+#endif
 #endif
 							}
 
@@ -727,6 +789,12 @@ writePMapHdf5s (axiona, LAB);
 				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/nSpectrum", "sK_Re");
 				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/nSpectrum", "sG_Im");
 				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "sG_Re");
+#ifdef USE_FINER_BINS
+				writeArray(specAna.finerdata(SPECTRUM_KK), specAna.PowfMax(), "/nfSpectrum", "sK_Im");
+				writeArray(specAna.finerdata(SPECTRUM_VV), specAna.PowfMax(), "/nfSpectrum", "sK_Re");
+				writeArray(specAna.finerdata(SPECTRUM_GG), specAna.PowfMax(), "/nfSpectrum", "sG_Im");
+				writeArray(specAna.finerdata(SPECTRUM_PS), specAna.PowfMax(), "/nfSpectrum", "sG_Re");
+#endif
 			}
 
 
@@ -745,6 +813,16 @@ writePMapHdf5s (axiona, LAB);
 				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
 				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
 #endif
+#ifdef USE_FINER_BINS
+				writeArray(specAna.finerdata(SPECTRUM_KK), specAna.PowfMax(), "/efSpectrum", "sKS");
+				writeArray(specAna.finerdata(SPECTRUM_GG), specAna.PowfMax(), "/efSpectrum", "sGS");
+				writeArray(specAna.finerdata(SPECTRUM_VV), specAna.PowfMax(), "/efSpectrum", "sVS");
+#ifdef USE_NN_BINS
+				writeArray(specAna.finerdata(SPECTRUM_K), specAna.PowfMax(), "/nfSpectrum", "sKS");
+				writeArray(specAna.finerdata(SPECTRUM_G), specAna.PowfMax(), "/nfSpectrum", "sGS");
+				writeArray(specAna.finerdata(SPECTRUM_V), specAna.PowfMax(), "/nfSpectrum", "sVS");
+#endif
+#endif
 			}
 		}
 
@@ -757,6 +835,9 @@ writePMapHdf5s (axiona, LAB);
 				// prof.stop();
 				// prof.add(std::string("nmod Run"), 0.0, 0.0);
 			writeArray(specAna.data(SPECTRUM_NN), specAna.PowMax(), "/nSpectrum", "nmodes");
+#ifdef USE_FINER_BINS
+			writeArray(specAna.finerdata(SPECTRUM_NN), specAna.PowfMax(), "/nfSpectrum", "nmodes");
+#endif
 		}
 
 		if ( (indexa == 0) || (measa & MEAS_NNSPEC) )
@@ -767,8 +848,10 @@ writePMapHdf5s (axiona, LAB);
 			specAna.avekRun();
 				// prof.stop();
 				// prof.add(std::string("avek Run"), 0.0, 0.0);
-
 			writeArray(specAna.data(SPECTRUM_AK), specAna.PowMax(), "/nSpectrum", "averagek");
+#ifdef USE_FINER_BINS
+			writeArray(specAna.finerdata(SPECTRUM_AK), specAna.PowfMax(), "/nfSpectrum", "averagek");
+#endif
 		}
 	} // end if spectrum
 }   // end if spectrum or mask

@@ -189,12 +189,19 @@
 
 
 		inline const size_t	PowMax() const { return powMax; }
+#ifdef USE_FINER_BINS
+		inline const size_t	PowfMax() const { return powfMax; }
+#endif
 
 		inline double		operator()(size_t idx, SpectrumType sType)	const;
 		inline double&		operator()(size_t idx, SpectrumType sType);
 
 		inline const double*	data(SpectrumType sType)	const;
 		inline	     double*	data(SpectrumType sType);
+#ifdef USE_FINER_BINS
+		inline const double*	finerdata(SpectrumType sType)	const;
+		inline	     double*	finerdata(SpectrumType sType);
+#endif
 
 		template<typename cFloat, const SpectrumType sType, const bool spectral>
 		void	fillBins	();
@@ -546,4 +553,140 @@
 				return	nullptr;
 		}
 	}
+	
+#ifdef USE_FINER_BINS
+	inline double*	SpecBin::finerdata(SpectrumType sType) {
+
+		switch(sType) {
+			case	SPECTRUM_KK:
+				return binKfine.data();
+				break;
+
+			case	SPECTRUM_GG:
+				return binGfine.data();
+				break;
+
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy.data();
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz.data();
+				// 	break;
+
+			case	SPECTRUM_VV:
+				return binVfine.data();
+				break;
+
+			case	SPECTRUM_VVNL:
+				return binVnlfine.data();
+				break;
+
+#ifdef USE_NN_BINS
+			case	SPECTRUM_K:
+				return binNKfine.data();
+				break;
+
+			case	SPECTRUM_G:
+				return binNGfine.data();
+				break;
+
+			case	SPECTRUM_V:
+				return binNVfine.data();
+				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnlfine.data();
+				break;
+#endif
+
+			case	SPECTRUM_P:
+				return binPfine.data();
+				break;
+
+			case	SPECTRUM_PS:
+				return binPSfine.data();
+				break;
+
+			case	SPECTRUM_NN:
+				return binNNfine.data();
+				break;
+
+			case	SPECTRUM_AK:
+				return binAKfine.data();
+				break;
+
+			default:
+				return	nullptr;
+		}
+	}
+	
+	inline const double*	SpecBin::finerdata(SpectrumType sType) const {
+
+		switch(sType) {
+			case	SPECTRUM_KK:
+				return binKfine.data();
+				break;
+
+			case	SPECTRUM_GG:
+				return binGfine.data();
+				break;
+
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy.data();
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz.data();
+				// 	break;
+
+			case	SPECTRUM_VV:
+				return binVfine.data();
+				break;
+
+			case	SPECTRUM_VVNL:
+				return binVnlfine.data();
+				break;
+
+#ifdef USE_NN_BINS
+			case	SPECTRUM_K:
+				return binNKfine.data();
+				break;
+
+			case	SPECTRUM_G:
+				return binNGfine.data();
+				break;
+
+			case	SPECTRUM_V:
+				return binNVfine.data();
+				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnlfine.data();
+				break;
+#endif
+
+			case	SPECTRUM_P:
+				return binPfine.data();
+				break;
+
+			case	SPECTRUM_PS:
+				return binPSfine.data();
+				break;
+
+			case	SPECTRUM_NN:
+				return binNNfine.data();
+				break;
+
+			case	SPECTRUM_AK:
+				return binAKfine.data();
+				break;
+
+			default:
+				return	nullptr;
+		}
+	}
+#endif
 #endif
