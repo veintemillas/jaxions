@@ -118,12 +118,18 @@ void	SpecBin::fillBins	() {
 
 		case 	SPECTRUM_NN:
 			binNN.resize(powMax); binNN.assign(powMax, 0.);
+#ifdef USE_FINER_BINS
+			binNNfine.resize(powfMax); binNNfine.assign(powfMax, 0.);
+#endif
 			tBinNN.resize(powMax*mIdx);
 			tBinNN.assign(powMax*mIdx, 0);
 			break;
 
 		case 	SPECTRUM_AK:
 			binAK.resize(powMax); binAK.assign(powMax, 0.);
+#ifdef USE_FINER_BINS
+			binAKfine.resize(powfMax); binAKfine.assign(powfMax, 0.);
+#endif
 			tBinAK.resize(powMax*mIdx);
 			tBinAK.assign(powMax*mIdx, 0);
 			break;
