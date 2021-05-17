@@ -755,6 +755,12 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'aveklist') and ('nSpectrum/averagek' in f):
         return np.array(f['nSpectrum/averagek/data'])
+        
+    if (something == 'fnmodelist') and ('nfSpectrum/nmodes' in f):
+        return np.array(f['nfSpectrum/nmodes/data'])
+        
+    if (something == 'faveklist') and ('nfSpectrum/averagek' in f):
+        return np.array(f['nfSpectrum/averagek/data'])
 
     if (something == 'k0') :
         return 2*np.pi/f.attrs[u'Physical size']
