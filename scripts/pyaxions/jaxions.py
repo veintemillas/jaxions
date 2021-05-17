@@ -643,6 +643,28 @@ def gm(address,something='summary',printerror=False):
                 # print('requested '+'nSpectrum/s'+something[3:]+'/data/')
                 return np.array(f['eSpectrum/s'+something[3:]+'/data/']) ;
 
+    # finer energy spectra
+    
+    fesp_check = ('efSpectrum' in f)
+
+    if (something == 'fesp?') :
+        return fesp_check
+    if (something == 'fespK?') :
+        return fesp_check
+    if (something[0:4] == 'fesp') and (something[-1] == '?'):
+        return ('efSpectrum/s'+something[4:-1] in f)
+    if (something == 'fesp_info'):
+        return [a for a in f['efSpectrum']]
+
+    if (something[0:4] == 'fesp') and not fesp_check :
+        if printerror :
+            print(""" [gm] Warning: No feSpec in file. Returning 'None' """)
+        return ;
+
+    if (something[0:4] == 'fesp') and  fesp_check :
+        if ftype == 'Saxion' or ftype == 'Axion':
+            if (something[:4] == 'fesp') and ('efSpectrum/s'+something[4:] in f):
+                return np.array(f['efSpectrum/s'+something[4:]+'/data/']) ;
 
     # number spectra
 
@@ -669,7 +691,28 @@ def gm(address,something='summary',printerror=False):
         if (something[:3] == 'nsp') and ('nSpectrum/s'+something[3:] in f):
             return np.array(f['nSpectrum/s'+something[3:]+'/data/']) ;
 
+    # finer number spectra
+    fnsp_check = ('nfSpectrum' in f)
 
+    if (something == 'fnsp?') :
+        return fnsp_check
+    if (something == 'fnspK?') :
+        return fnsp_check
+    if (something[0:4] == 'fnsp') and (something[-1] == '?'):
+        return ('nfSpectrum/s'+something[4:-1] in f)
+    if (something == 'fnsp_info'):
+        return [a for a in f['nfSpectrum']]
+
+    if (something[0:4] == 'fnsp') and not fnsp_check :
+        if printerror :
+            print(""" [gm] Warning: No fnSpec in file. Returning 'None' """)
+        return ;
+
+    if (something[0:4] == 'fnsp') and  fnsp_check :
+
+        if (something[:4] == 'fnsp') and ('nfSpectrum/s'+something[4:] in f):
+            return np.array(f['nfSpectrum/s'+something[4:]+'/data/']) ;
+    
     # # axion number
     #
     # if (something[0:2] == 'NV') :
