@@ -205,11 +205,10 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 				accCount++;
 		}
 
-		if (accCount == nAccs - 1) {
-			for (int i=0; i<nAccs; i++)
-				cudaDeviceEnablePeerAccess(i, 0);
+		if (accCount == nAccs - 1)
+			cudaDeviceEnablePeerAccess(idxAcc, 0);
 
-			LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: P2P enabled in GPUs", rank, hostname);
+			LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: P2P enabled in GPU %d", rank, hostname, idxAcc);
 		}
 	}
 	LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: Found %d accelerators, using accelerator %d", rank, hostname, nAccs, idxAcc);
