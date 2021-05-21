@@ -13,6 +13,7 @@
 #ifdef	USE_GPU
 	#include <cuda.h>
 	#include <cuda_runtime.h>
+	#include "cudaErrors.h"
 #endif
 
 #include <omp.h>
@@ -191,25 +192,34 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 		maxGrid[1]    = gpuProp.maxGridSize[1];
 		maxGrid[2]    = gpuProp.maxGridSize[2];
 
+		#ifdef P2PGPU
 		int  accCount  = 0;
 
 		for (int i=0; i<nAccs; i++) {
 			if (i==idxAcc)
 				continue;
 
-			int canAccessPeerFw, canAccessPeerBw;
-			cudaDeviceCanAccessPeer(&canAccessPeerFw, idxAcc, i);
-			cudaDeviceCanAccessPeer(&canAccessPeerFw, i, idxAcc);
+			int canAccessPeer = 0;
+			cudaDeviceCanAccessPeer(&canAccessPeer, idxAcc, i);
 
-			if (canAccessPeerFw & canAccessPeerBw)
+			if (canAccessPeer)
 				accCount++;
+			else {
+				LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: P2P not supported from GPU%d to GPU%d, P2P disabled", rank, hostname, idxAcc, i);
+				break;
+			}
 		}
 
-		if (accCount == nAccs - 1)
-			cudaDeviceEnablePeerAccess(idxAcc, 0);
+		if (accCount == nAccs - 1) {
+			for (int i=0; i<nAccs; i++) {
+				if (i == idxAcc)
+					continue;
+				checkCudaErrors(cudaDeviceEnablePeerAccess(i, 0));
+			}
 
 			LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: P2P enabled in GPU %d", rank, hostname, idxAcc);
 		}
+		#endif
 	}
 	LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: Found %d accelerators, using accelerator %d", rank, hostname, nAccs, idxAcc);
 #endif
