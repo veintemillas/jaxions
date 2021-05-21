@@ -190,6 +190,27 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 		maxGrid[0]    = gpuProp.maxGridSize[0];
 		maxGrid[1]    = gpuProp.maxGridSize[1];
 		maxGrid[2]    = gpuProp.maxGridSize[2];
+
+		int  accCount  = 0;
+
+		for (int i=0; i<nAccs; i++) {
+			if (i==idxAcc)
+				continue;
+
+			int canAccessPeerFw, canAccessPeerBw;
+			cudaDeviceCanAccessPeer(&canAccessPeerFw, idxAcc, i);
+			cudaDeviceCanAccessPeer(&canAccessPeerFw, i, idxAcc);
+
+			if (canAccessPeerFw & canAccessPeerBw)
+				accCount++;
+		}
+
+		if (accCount == nAccs - 1) {
+			for (int i=0; i<nAccs; i++)
+				cudaDeviceEnablePeerAccess(i, 0);
+
+			LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: P2P enabled in GPUs", rank, hostname);
+		}
 	}
 	LogMsg (VERB_NORMAL, "Rank %d reporting from host %s: Found %d accelerators, using accelerator %d", rank, hostname, nAccs, idxAcc);
 #endif
