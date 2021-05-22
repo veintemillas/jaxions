@@ -62,17 +62,17 @@ void Cosmos::Setup()
       // LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
       fscanf (cFile ,"%lf %lf %lf %lf %lf %lf", &eta, &R, &T, &Rpp, &chi , &pf);
       if (feof(cFile)){
-        LogMsg (VERB_DEBUG ,"I break");
+        LogMsg (VERB_PARANOID ,"I break");
         break;
       }
 
-      LogMsg (VERB_DEBUG ,"%d %lf %lf %lf %lf %lf %lf", line, eta, R, T, Rpp, chi , pf);
+      LogMsg (VERB_PARANOID ,"%d %lf %lf %lf %lf %lf %lf", line, eta, R, T, Rpp, chi , pf);
       line ++;
     }
-    LogMsg (VERB_DEBUG ,"eta %lf eta %lf ", etav[etav.size()-1], etav[etav.size()-2]);
+    LogMsg (VERB_PARANOID ,"eta %lf eta %lf ", etav[etav.size()-1], etav[etav.size()-2]);
     // for (int i =etav.size()-1; i>0;i--)
     //   if (etav[i] == etav[i-1]){
-    //     LogMsg (VERB_DEBUG ,"%d eta %lf eta-1 %lf merged", i, etav[i],etav[i-1]);
+    //     LogMsg (VERB_PARANOID ,"%d eta %lf eta-1 %lf merged", i, etav[i],etav[i-1]);
     //     etav.erase(etav.begin()+i);
     //     Rv.erase(Rv.begin()+i);
     //     Tv.erase(Tv.begin()+i);
@@ -166,6 +166,8 @@ void Cosmos::Setup()
   LogOut("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*\n");
 }
 
+
+
 double  Cosmos::TopSus     (const double ct)
 {
   return schi(ct);
@@ -173,87 +175,97 @@ double  Cosmos::TopSus     (const double ct)
 
 double  Cosmos::Rpp  (const double ct)
 {
+  double rpp;
   if (ueCosm)
-    return sRpp(ct)/(ct*ct);
-  else {
-  // R = ct^frw
-  // R''/R = frw(frw-1)/ct^2
-	//except in the case where frw = 0,1
-	return frw*(frw-1.0)/(ct*ct) ;
+    rpp = sRpp(ct)/(ct*ct);
+  else
+  {
+    // R = ct^frw
+    // R''/R = frw(frw-1)/ct^2
+  	//except in the case where frw = 0,1
+  	rpp = frw*(frw-1.0)/(ct*ct) ;
   }
+LogMsg(VERB_PARANOID,"[Cos:Rpp] Rpp %.2e ",rpp);
+  return rpp;
 }
 
 double  Cosmos::Rp  (const double ct)
 {
+  double rp;
   if (ueCosm) {
-    LogMsg(VERB_NORMAL,"[Cos] using Rp =R'/R in ueCosmos, but it is not currently defined in the txt file; FIX!!");
-    return 1;
+    rp = (R(ct+1.e-3)-R(ct-1.e-3))/(2.e-3 * R(ct));
+    LogMsg(VERB_NORMAL,"[Cos] calculating Rp =R(ct+e)-R(ct-e)/2eR = %e",rp);
   }
   else {
-    LogMsg(VERB_PARANOID,"[Cos] Rp = %e ",frw/(ct));
   // R = ct^frw
-  // R''/R = frw(frw-1)/ct^2
-	//except in the case where frw = 0,1
-	return frw/(ct) ;
+  // R'/R = frw/ct
+	rp = frw/(ct) ;
+  LogMsg(VERB_PARANOID,"[Cos] Rp = %e ",rp);
   }
+  return rp;
 }
 
 double  Cosmos::R       (const double ct)
 {
+  double r ;
   if (ueCosm)
-    return sR(ct);
+    r = sR(ct);
   else
-    return std::pow(ct,frw);
+    r = std::pow(ct,frw);
+
+  LogMsg(VERB_PARANOID,"[Cos:R] R %.2e ",r);
+  return r;
 }
 
 double  Cosmos::T       (const double ct)
 {
+LogMsg(VERB_PARANOID,"[Cos:T] T %.2e ",sT(ct));
   return sT(ct);
 }
 
 double  Cosmos::AxionMass2 (const double ct)
 {
+  double RNow = R(ct);
+  double aMass2;
+
   if (ueCosm)
-    return schi(ct);
-  else {
-
-    double RNow = R(ct);
-    double aMass;
-
+    aMass2 = schi(ct);
+  else
+  {
     if (zThRes <= zRestore) /* mode restore */
     {
       if (RNow < zThRes)
-        aMass = indi3*indi3*pow(RNow, nQcd);
+        aMass2 = indi3*indi3*pow(RNow, nQcd);
 
       if (RNow >= zThRes && RNow <= zRestore)
-        aMass = indi3*indi3*pow(zThRes, nQcd);
+        aMass2 = indi3*indi3*pow(zThRes, nQcd);
 
       if (RNow > zRestore)
-        aMass = indi3*indi3*pow(zThRes, nQcd)*pow(RNow/zRestore, nQcdr);
+        aMass2 = indi3*indi3*pow(zThRes, nQcd)*pow(RNow/zRestore, nQcdr);
 
     } else { /* mode saturate */
 
       if (RNow < zThRes)
-        aMass = indi3*indi3*pow(RNow, nQcd);
+        aMass2 = indi3*indi3*pow(RNow, nQcd);
       else
-        aMass = indi3*indi3*pow(zThRes, nQcd);
+        aMass2 = indi3*indi3*pow(zThRes, nQcd);
     }
-
-    return aMass;
-    }
+  }
+LogMsg(VERB_PARANOID,"[Cos:mA2] mA2 %.2e ",aMass2);
+    return aMass2;
 }
 
 
 double  Cosmos::DAxionMass2Dct (const double ct)
 {
+  double RNow = R(ct);
+  double dMass2;
+
   if (ueCosm){
-    return (schi(ct+1.e-6)-schi(ct-1.e-6))/2.e-6;
+    dMass2 = (schi(ct+1.e-6)-schi(ct-1.e-6))/2.e-6;
   }
-  else {
-
-    double RNow = R(ct);
-    double dMass2;
-
+  else
+  {
     if (zThRes <= zRestore) /* mode restore */
     {
       if (RNow < zThRes)
@@ -271,9 +283,9 @@ double  Cosmos::DAxionMass2Dct (const double ct)
       else
         dMass2 = 0.0;
     }
-
-    return dMass2;
-    }
+  }
+LogMsg(VERB_PARANOID,"[Cos:] dmA2dt %.2e ",dMass2);
+  return dMass2;
 }
 
 /*logarithmic derivative of m_AR with respect to time */
@@ -306,14 +318,14 @@ double  Cosmos::DlogMARDlogct (const double ct)
         dlmRlct = frw;
     }
 
-
+LogMsg(VERB_PARANOID,"[Cos:] DlogMARDlogct %.2e ",dlmRlct);
     return dlmRlct;
     }
 }
 
 double	Cosmos::LambdaP (double ct)
 {
-  LogMsg(VERB_PARANOID,"[Cos:LambdaP] LambdaPhysical %f Le %f",lambda,lz2e);
+LogMsg(VERB_PARANOID,"[Cos:LambdaP] LambdaPhysical %e Le %e",lambda,lz2e);
   return  lambda/pow(R(ct),lz2e);
 }
 
@@ -323,16 +335,17 @@ double  Cosmos::SaxionMass2  (double ct)
 
 	switch  (pot & V_PQ) {
 		case    V_PQ1:
-			return 2.*lbd;
+			lbd *= 2.;
 			break;
 
 		case    V_PQ2:
-      return  8.*lbd;
+      lbd *= 8.;
 			break;
 
 		default :
-			return  0;
+			lbd *= 0;
 			break;
 	}
-	return  0.;
+  LogMsg(VERB_PARANOID,"[Cos:ms2] ms2 %.2e ",lbd);
+	return  lbd;
 }

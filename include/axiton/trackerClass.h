@@ -311,7 +311,7 @@
 						axitn++;
 			}
 		}
-LogMsg(VERB_DEBUG,"[AT] Search axitons returned %d (%d/%d with m/v criterion) but only %d new",axitt,axitm,axitv,axitn);
+LogMsg(VERB_PARANOID,"[AT] Search axitons returned %d (%d/%d with m/v criterion) but only %d new",axitt,axitm,axitv,axitn);
 		return axitm;
 	}
 
@@ -327,7 +327,7 @@ LogMsg(VERB_DEBUG,"[AT] Search axitons returned %d (%d/%d with m/v criterion) bu
 
 
 		if ( idxlist.size() >= limit){
-			LogMsg(VERB_DEBUG,"[AT] Axiton limit (%d) exceeded rejecting axiton %d",limit, id);
+			LogMsg(VERB_PARANOID,"[AT] Axiton limit (%d) exceeded rejecting axiton %d",limit, id);
 			return false;
 		}
 

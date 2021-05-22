@@ -550,9 +550,9 @@ void	ConfGenerator::runCpu	()
 			// logi = log ms/H is taken to be zInit (which was input in command line)
 			// number of iterations needed = 0.8/(#/N^3)
 			// desired 0.8/(#/N^3) is 6*xi(logi)*msa^2*exp(-2logi)
-			double logi = *axionField->zV();
-			*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
-			axionField->updateR();
+			double logi = std::log(std::sqrt(axionField->SaxionMassSq())*(*axionField->RV())*(*axionField->RV()));
+			//*axionField->zV() = (axionField->Delta())*exp(logi)/axionField->Msa();
+			//axionField->updateR();
 			LogMsg(VERB_NORMAL,"[GEN] time reset to z=%f to start with kappa(=logi)=%f",*axionField->zV(), logi);
 
 			double xit = (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
@@ -669,9 +669,20 @@ void	ConfGenerator::confsmooth(Cosmos *myCosmos, Scalar *axionField)
 
 	/* Field m */
 	prof.start();
+
 	ic.fieldindex = FIELD_M;
 	randConf (axionField,ic);
 
+	/*exp new piece FIXME */
+	// if (ic.smvarType == CONF_RAND)
+	// if (ic.mode0 != 0.0){
+	// 	ic.fieldindex = FIELD_V;
+	// 	ic.smvarType = CONF_VELRAND;
+	// 	randConf (axionField,ic);
+	// 	mulmul(FIELD_M,FIELD_V);
+	// 	ic.fieldindex = FIELD_M;
+	// 	ic.smvarType = CONF_RAND;
+	// }
 
 	/* Field velocity */
 	if (ic.smvarType == CONF_STRWAVE){
@@ -900,7 +911,7 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 								double ma, va;
 								while(!feof(cacheFile)){
 										fscanf (cacheFile ,"%lf %lf", &ma, &va);
-										LogMsg(VERB_DEBUG," m %.3e v %.3e !",ma,va);
+										LogMsg(VERB_PARANOID," m %.3e v %.3e !",ma,va);
 										// printf(" m %.3e v %.3e ! ",ma,va);
 										mm.push_back(ma);
 										vv.push_back(va);
@@ -1000,9 +1011,22 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 	// <|~theta|^2> = pi^2*kCrit/3 * (3/2pi nmax^3)
 	// <|~theta|> = sqrt(pi/2 kCrit/nmax^3)
 	// and therefore we need to multiply theta and theta' by this factor (was 1)
+
+	/* A better estimate ignoring modes in the corners of phase spaced
+	and using that |~theta|^2 = constant^2 * (sin(k z)/kz)^2
+	<theta^2> = 1/2 constant^2 4pi
+	  	(1/2)(1/k0z)^3(kmax z - 0.5 sin(2 kmax z))
+	note that the last term does indeed behave as kmax
+	for kmax z < 1
+	 */
 	LogMsg(VERB_NORMAL,"kCrit %e kMax %d \n", ic.kcr, ic.kMax);
-	double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
-	LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
+	// old naive version
+	// double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
+	// better version including mode decay inside horizon
+
+	double norma = ic.kcr/std::sqrt(3.14159*kCritz*kCritz*kCritz*(ic.kMax/kCritz - 0.5*std::sin(2*ic.kMax/kCritz)));
+
+  LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
 	scaleField (axionField, FIELD_V, norma);
 	norma /= (*axionField->zV());
 	scaleField (axionField, FIELD_M2, norma);

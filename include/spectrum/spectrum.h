@@ -16,10 +16,19 @@
 
 		std::vector<double>	binK;
 		std::vector<double>	binG;
+
+		// //TEMP INDIVIDUAL XYZ
+		// std::vector<double>	binGy;
+		// std::vector<double>	binGz;
+
 		std::vector<double>	binV;
+		std::vector<double>	binVnl;
+#ifdef USE_NN_BINS
 		std::vector<double>	binNK;
 		std::vector<double>	binNG;
 		std::vector<double>	binNV;
+		std::vector<double>	binNVnl;
+#endif
 		std::vector<double>	binP;
 		std::vector<double>	binPS;
 		std::vector<double>	binNN;
@@ -52,6 +61,8 @@
 		template<typename Float, FilterIndex filter>
 		void	smoothFourier	(double length);
 
+
+
 		public:
 
 				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
@@ -63,16 +74,19 @@
 				binK.resize(powMax); binK.assign(powMax, 0.);
 				binG.resize(powMax); binG.assign(powMax, 0.);
 				binV.resize(powMax); binV.assign(powMax, 0.);
+				binVnl.resize(powMax); binVnl.assign(powMax, 0.);
 				binP.resize(powMax); binP.assign(powMax, 0.);
 				binPS.resize(powMax); binPS.assign(powMax, 0.);
 
+#ifdef USE_NN_BINS
 				binNK.resize(powMax); binNK.assign(powMax, 0.);
 				binNG.resize(powMax); binNG.assign(powMax, 0.);
 				binNV.resize(powMax); binNV.assign(powMax, 0.);
+				binNVnl.resize(powMax); binNVnl.assign(powMax, 0.);
+#endif
 
-
-				mass2    = field->AxionMassSq()*(*field->zV())*(*field->zV());
-				mass2Sax = field->SaxionMassSq()*(*field->zV())*(*field->zV());
+				mass2    = field->AxionMassSq()*(*field->RV())*(*field->RV());
+				mass2Sax = field->SaxionMassSq()*(*field->RV())*(*field->RV());
 				Rscale   = *field->RV();
 				depta    = field->BckGnd()->PhysSize()/Ly;
 
@@ -170,16 +184,18 @@
 				binV.assign(powMax, 0.);
 				binP.assign(powMax, 0.);
 				binPS.assign(powMax, 0.);
+#ifdef USE_NN_BINS
 				binNK.assign(powMax, 0.);
 				binNG.assign(powMax, 0.);
 				binNV.assign(powMax, 0.);
-
+				binNVnl.assign(powMax, 0.);
+#endif
 		}
 
-		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO, StatusM2 out = M2_MASK);
+		void	masker	(double radius_mask, SpectrumMaskType mask = SPMASK_REDO, StatusM2 out = M2_MASK, bool l_cumsum = false);
 
 		template<typename Float, SpectrumMaskType mask>
-		void	masker	(double radius_mask, StatusM2 out);
+		void	masker	(double radius_mask, StatusM2 out, bool l_cumsum);
 
 		void	matrixbuilder	();
 
@@ -189,6 +205,7 @@
 		void	maskball	(double radius_mask, char DEFECT_LABEL, char MASK_LABEL) ;
 
 		void	smoothFourier	(double length, FilterIndex filter);
+
 	};
 
 
@@ -206,12 +223,26 @@
 				return binG[idx];
 				break;
 
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy[idx];
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz[idx];
+				// 	break;
+
 			case	SPECTRUM_VV:
 
 				return binV[idx];
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl[idx];
+				break;
+
 			/* number */
+#ifdef USE_NN_BINS
 			case	SPECTRUM_K:
 				return binNK[idx];
 				break;
@@ -223,6 +254,11 @@
 			case	SPECTRUM_V:
 				return binNV[idx];
 				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl[idx];
+				break;
+#endif
 
 			/* power-spectrum-axion */
 			case	SPECTRUM_P:
@@ -260,12 +296,25 @@
 				return binG[idx];
 				break;
 
-			case	SPECTRUM_VV:
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy[idx];
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz[idx];
+				// 	break;
 
+			case	SPECTRUM_VV:
 				return binV[idx];
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl[idx];
+				break;
+
 			/* number */
+#ifdef USE_NN_BINS
 			case	SPECTRUM_K:
 				return binNK[idx];
 				break;
@@ -278,6 +327,10 @@
 				return binNV[idx];
 				break;
 
+			case	SPECTRUM_VNL:
+				return binNVnl[idx];
+				break;
+#endif
 			/* power-spectrum-axion */
 			case	SPECTRUM_P:
 				return binP[idx];
@@ -313,10 +366,24 @@
 				return binG.data();
 				break;
 
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy.data();
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz.data();
+				// 	break;
+
 			case	SPECTRUM_VV:
 				return binV.data();
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl.data();
+				break;
+
+#ifdef USE_NN_BINS
 			case	SPECTRUM_K:
 				return binNK.data();
 				break;
@@ -328,6 +395,11 @@
 			case	SPECTRUM_V:
 				return binNV.data();
 				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl.data();
+				break;
+#endif
 
 			case	SPECTRUM_P:
 				return binP.data();
@@ -361,10 +433,25 @@
 				return binG.data();
 				break;
 
+				// // TEMP INDIVIDUAL XYZ
+				// case	SPECTRUM_GGy:
+				// 	return binGy.data();
+				// 	break;
+				//
+				// case	SPECTRUM_GGz:
+				// 	return binGz.data();
+				// 	break;
+
+
 			case	SPECTRUM_VV:
 				return binV.data();
 				break;
 
+			case	SPECTRUM_VVNL:
+				return binVnl.data();
+				break;
+
+#ifdef USE_NN_BINS
 			case	SPECTRUM_K:
 				return binNK.data();
 				break;
@@ -376,6 +463,11 @@
 			case	SPECTRUM_V:
 				return binNV.data();
 				break;
+
+			case	SPECTRUM_VNL:
+				return binNVnl.data();
+				break;
+#endif
 
 			case	SPECTRUM_P:
 				return binP.data();

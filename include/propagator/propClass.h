@@ -300,6 +300,7 @@
 			axion->exchangeGhosts(FIELD_M);
 			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0]);
+			if (uV>uS)
 			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
@@ -316,6 +317,7 @@
 			axion->exchangeGhosts(FIELD_M2);
 			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0]);
+			if (uV>uS)
 			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
@@ -334,6 +336,7 @@
 			axion->exchangeGhosts(FIELD_M);
 			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
+			if (uV>uS)
 			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 		}
@@ -424,6 +427,8 @@
 		ppar.massA2 = axion->AxionMassSq();
 		ppar.R      = *axion->RV();
 		ppar.Rpp    = axion->Rpp();
+
+		ppar.beta  = axion->BckGnd()->ICData().beta;
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
@@ -450,6 +455,7 @@
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, BO, 2*BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
+			if (V>BO)
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, V , V+BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			*z += dz*d1;
 			axion->updateR();
@@ -462,6 +468,7 @@
 			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
 			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, BO  , 2*BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
+			if (V>BO)
 			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, V   , V+BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			*z += dz*d2;
 			axion->updateR();
@@ -481,6 +488,7 @@
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., BO  , 2*BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
+			if (V>BO)
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., V   , V+BO, precision, xBlock, yBlock, zBlock, wMod, VQcd);
 		}
 
@@ -586,6 +594,7 @@
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
+			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
@@ -594,6 +603,7 @@
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			if (V>BO)
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d1;
 			axion->updateR();
@@ -604,10 +614,12 @@
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
+			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
 			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			if (V>BO)
 			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d2;
 			axion->updateR();
@@ -623,10 +635,12 @@
 			ppar.massA2 = axion->AxionMassSq();
 			ppar.R      = *axion->RV();
 			ppar.Rpp    = axion->Rpp();
+			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			if (V>BO)
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, V   , V+BO, precision, xBlock, yBlock, zBlock);
 		}
 
@@ -922,7 +936,7 @@
 		size_t BO = ppar.Ng*S;
 		size_t CO = V-2*ppar.Ng*S;
 
-		LogMsg(VERB_DEBUG,"[propNax] Ng %d",ppar.Ng);
+		LogMsg(VERB_PARANOID,"[propNax] Ng %d",ppar.Ng);
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
@@ -990,7 +1004,7 @@
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
-		LogMsg(VERB_DEBUG,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+		LogMsg(VERB_PARANOID,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
 
 		void *nada;
 		ppar.ct     = *axion->zV();

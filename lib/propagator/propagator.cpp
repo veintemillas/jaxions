@@ -3,6 +3,7 @@
 #include <memory>
 #include <chrono>
 #include <string>
+#include <vector>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
@@ -279,41 +280,54 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 
 	switch (pType & PROP_MASK) {
 
-		// case PROP_OMELYAN2:
-		// 	DEFALLPROPTEM(PropOmelyan2);
-		// break;
-		//
-		// case PROP_OMELYAN4:
-		// 	DEFALLPROPTEM(PropOmelyan4);
-		// break;
-		//
-		// case PROP_LEAP:
-		// 	DEFALLPROPTEM(PropLeap);
-		// break;
-		//
-		// case PROP_MLEAP:
-		// 	DEFALLPROPTEM(PropMLeap);
-		// break;
+#ifdef	USE_PROP_OM2
+		case PROP_OMELYAN2:
+			DEFALLPROPTEM(PropOmelyan2);
+		break;
+#endif
 
+#ifdef	USE_PROP_OM2
+		case PROP_OMELYAN4:
+			DEFALLPROPTEM(PropOmelyan4);
+		break;
+#endif
+
+#ifdef	USE_PROP_LEAP
+		case PROP_LEAP:
+			DEFALLPROPTEM(PropLeap);
+		break;
+#endif
+
+#ifdef	USE_PROP_MLEAP
+		case PROP_MLEAP:
+			DEFALLPROPTEM(PropMLeap);
+		break;
+#endif
+
+#ifdef	USE_PROP_RKN4
 		case PROP_RKN4:
 			DEFALLPROPTEM(PropRKN4);
 		break;
+#endif
 
 		default:
-			LogError ("Error: unrecognized propagator %d", pType);
+			LogError ("Error: unrecognized propagator PROP_ %d (RKN4/MLEAP/LEAP/OM4/OM2 %d/%d/%d/%d/%d) ",
+				pType, PROP_RKN4,PROP_MLEAP,PROP_LEAP,PROP_OMELYAN4,PROP_OMELYAN2);
 			exit(1);
 		break;
 	}
+
 	LogMsg(VERB_HIGH,"[ip] getBaseName");
 	prop->getBaseName();
-	LogMsg(VERB_HIGH,"[ip] set blocks");
 
+	LogMsg(VERB_HIGH,"[ip] set blocks");
 	if (wasTuned) {
 		prop->SetBlockX(xBlock);
 		prop->SetBlockY(yBlock);
 		prop->SetBlockZ(zBlock);
 		prop->UpdateBestBlock();
 	}
+
 	LogMsg	(VERB_NORMAL, "Propagator %s successfully initialized", prop->Name().c_str());
  	LogFlush();
 
@@ -417,9 +431,30 @@ LogFlush();
 	return;
 }
 
+/*
+std::vector<int>	calculateAllowedBlockSize(int length) {
 
+	int 			maxSize = (int) (floor(sqrt(length)));
+	std::vector<int>	lowDiv, highDiv;
 
+	for (dLow=2; dLow<=maxSize; dLow++) {
+		if ((length % dLow) != 0)
+			continue;
 
+		dHigh = length/d;
+		lowDiv.push_back(dLow);
+		highDiv.push_back(dHigh);
+	}
+
+	std::reverse(highDiv.begin(), highDiv.end());
+	lowDiv.insert(lowDiv.end(), highDiv.begin(), highDiv.end());
+
+	for (i=0; i<lowDiv.size; i++)
+		printf("%d\t\t%d\n", i, lowDiv[i]);
+
+	return lowDiv;
+}
+*/			
 
 void	resetPropagator(Scalar *field) {
 	/*	Default block size gives just one block	*/

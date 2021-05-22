@@ -34,6 +34,8 @@ using namespace profiler;
 	  fflush(stdout); }		\
 }	while (0)
 
+#define NMPICHUNK 10
+
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
@@ -118,8 +120,6 @@ const std::complex<float> If(0.,1.);
 	eReduced   = false;
 	mmomspace 	 = false;
 	vmomspace 	 = false;
-	gsent = false;
-	grecv = false;
 
 	setCO(Ng);
 
@@ -138,6 +138,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AX_RD:
 		case FIELD_WKB:
 		case FIELD_PAXION:
+		case FIELD_FAXION:
 			nData = 1;
 			break;
 
@@ -220,6 +221,17 @@ const std::complex<float> If(0.,1.);
 			trackAlloc ((void**) &str, n3);
 			break;
 
+		case FIELD_FAXION:
+			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
+			alignAlloc ((void**) &m,   mAlign, mBytes); // will not compute grads
+			alignAlloc ((void**) &v,   mAlign, mBytes); //
+			alignAlloc ((void**) &rho, mAlign, mBytes);
+			alignAlloc ((void**) &vho, mAlign, mBytes);
+			alignAlloc ((void**) &g,   mAlign, 3*mBytes);
+			trackAlloc ((void**) &str, n3);
+			break;
+
+
 		default:
 			LogError("Error: unrecognized field type");
 			exit(1);
@@ -252,6 +264,7 @@ const std::complex<float> If(0.,1.);
 
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
+		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m2");
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
@@ -299,10 +312,16 @@ const std::complex<float> If(0.,1.);
 		}
 	}
 
+	LogMsg(VERB_NORMAL, "[sca] Setting m,v to 0");
 	memset (m, 0, fSize*v3);
 	memset (v, 0, fSize*(n2*(nLz + 2)));
+	if (fieldType == FIELD_FAXION){
+		memset (rho, 0, fSize*v3);
+		memset (vho, 0, fSize*v3);
+		memset (g, 0, 3*fSize*v3);
+	}
 
-	commSync();
+
 
 	LogMsg(VERB_NORMAL, "[sca] allocating z, R");
 	alignAlloc ((void **) &z, mAlign, mAlign);
@@ -319,6 +338,15 @@ const std::complex<float> If(0.,1.);
 		LogError ("Error: couldn't allocate %d bytes on host for the z field", sizeof(double));
 		exit(1);
 	}
+
+	/* Note the big difference zI is an obsolete parameter FIX ME */
+	*z = cm->ICData().zi;
+	*R = 1.0;
+	updateR();
+
+	LogFlush();
+
+	/* CPU allocation */
 
 	if (device == DEV_GPU)
 	{
@@ -367,14 +395,11 @@ const std::complex<float> If(0.,1.);
 #endif
 	}
 
-	/* Note the big difference zI is an obsolete parameter FIX ME */
-	*z = cm->ICData().zi; //*z = zI;
-	*R = 1.0;
-	updateR();
-
-
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
+
+
+	LogMsg(VERB_NORMAL, "[sca] Initialise FFT plans");LogFlush();
 
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
@@ -382,16 +407,13 @@ const std::complex<float> If(0.,1.);
 		prof.start();
 		AxionFFT::initFFT(prec);
 
-		/* Backward needed for reduce-filter-map */
+		/* For spectra, reducer, genConf */
 		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
 		if (fieldType == FIELD_SAXION) {
 			if (!lowmem) {
 				AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
-				AxionFFT::initPlan (this, FFT_PSPEC_SX,   FFT_FWDBCK,  "pSpecSx");
 				AxionFFT::initPlan (this, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
-				AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWD,    "nSpecSxM");	// Only possible if lowmem == false
-				AxionFFT::initPlan (this, FFT_CtoC_VtoM2, FFT_FWD,    "nSpecSxV");
 			}
 		}
 
@@ -421,7 +443,6 @@ const std::complex<float> If(0.,1.);
 		ConfType cType = cm->ICData().cType;
 		if (cType == CONF_NONE) {
 			LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
-
 			if (fIndex == -1) {
 				LogError ("Error: neither file nor initial configuration specified");
 				exit(2);
@@ -448,6 +469,7 @@ const std::complex<float> If(0.,1.);
 				genConf	(cm, this);
 			}
 		}
+		LogFlush();
 	}
 }
 
@@ -504,6 +526,7 @@ const std::complex<float> If(0.,1.);
 
 	if ((fieldType & FIELD_REDUCED) == false)
 		AxionFFT::closeFFT();
+
 }
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
@@ -597,119 +620,316 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 	}
 }
 
+void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB, void* receiveBufferF, void* sendBufferF, void* receiveBufferB)
+{
+	/* Sends, receives, waits, etc... up to two buffers between ranks
+	sendBufferB: pointer to buffer to be sent backwards (0->R-1,1->0,2->1,etc.)
+	receBufferF: pointer to buffer to be received FROM forward rank (in 0 from 1, in 1 from 2, etc..)
+
+	sendBufferF: pointer to buffer to be sent forwards  (0->1,1->2,etc.)
+	receBufferB: pointer to buffer to be received FROM backwards rank (in 0 from R-1, in 1 from 0, etc..)
+
+	if sendBufferB==receBufferF we deactivate this exchange
+	if sendBufferF==receBufferB we deactivate this exchange
+	*/
+	bool sendB = false;
+	bool sendF = false;
+
+	if (sendBufferB != receiveBufferF)
+		sendB = true;
+	if (sendBufferF != receiveBufferB)
+		sendF = true;
+
+	static const int rank = commRank();
+	static const int fwdNeig = (rank + 1) % nSplit;
+	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
+
+	/* Calculate chunks to comply with INT_MAX in MPI */
+	const size_t MAX_CHUNK  = 2147483584;
+	int sizeDataType;
+	MPI_Type_size(dataType,&sizeDataType);
+	const size_t countBytes = count*sizeDataType;
+	const size_t nchunks    = (countBytes % MAX_CHUNK == 0) ? countBytes/MAX_CHUNK : 1 + (countBytes/MAX_CHUNK);
+	int lastchunk     = (countBytes - (nchunks-1)*MAX_CHUNK); // if lastchunk = 0 it won't be used
+
+	/* Assign receive buffers to the right parts of m, v */
+	LogMsg(VERB_HIGH, "[sca] Called send General (COMM %d)",opComm);
+	LogMsg(VERB_PARANOID,"[sca] count %lu sizeof(MPIDATA) %d countBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", count, sizeDataType, countBytes, MAX_CHUNK, nchunks, lastchunk);
+	LogFlush();
+
+	if (nchunks > NMPICHUNK){
+		LogError("Number of ghost chunks %d larger than precompiled maximum %d. Change NMPICHUNK in scalarField.cpp and recompile again!", nchunks, NMPICHUNK);
+		exit(0);
+	}
+
+	int sendBytes[nchunks];
+	/* Initialises ALL 4 request-arrays
+	I am not sure if different calls will overwrite
+	please use only 1 call at a time */
+	static MPI_Request reqSendBck[NMPICHUNK], reqRecvFwd[NMPICHUNK];
+	static MPI_Request reqSendFwd[NMPICHUNK], reqRecvBck[NMPICHUNK];
+	void *sGhostBck[nchunks], *rGhostFwd[nchunks];
+	void *sGhostFwd[nchunks], *rGhostBck[nchunks];
+
+	for (int n = 0; n < nchunks; n++)
+	{
+		sendBytes[n] = (int) MAX_CHUNK;
+		if (n == nchunks-1 && lastchunk > 0)
+			sendBytes[n] = lastchunk;
+
+		if (sendB) {
+		sGhostBck[n] = static_cast<void *> (static_cast<char *> (sendBufferB)    + n*MAX_CHUNK );
+		rGhostFwd[n] = static_cast<void *> (static_cast<char *> (receiveBufferF) + n*MAX_CHUNK );
+		}
+
+		if (sendF) {
+		sGhostFwd[n] = static_cast<void *> (static_cast<char *> (sendBufferF)    + n*MAX_CHUNK );
+		rGhostBck[n] = static_cast<void *> (static_cast<char *> (receiveBufferB) + n*MAX_CHUNK );
+		}
+
+		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
+	}
+
+	switch	(opComm)
+	{
+		case	COMM_SEND:
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
+			for (int n=0; n<nchunks ;n++) {
+				if (sendB)
+					MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(reqSendBck[n]));
+				if (sendF)
+					MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(reqSendFwd[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				if (sendB)
+					MPI_Start(&reqSendBck[n]);
+				if (sendF)
+					MPI_Start(&reqSendFwd[n]);
+			}
+			break;
+
+		case	COMM_RECV:
+LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
+			for (int n=0; n<nchunks ;n++) {
+				if (sendB)
+					MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(reqRecvFwd[n]));
+				if (sendF)
+					MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(reqRecvBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				if (sendB)
+					MPI_Start(&reqRecvFwd[n]);
+				if (sendF)
+					MPI_Start(&reqRecvBck[n]);
+			}
+			break;
+
+		case	COMM_SDRV:
+			LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
+			for (int n=0; n<nchunks ;n++) {
+				if (sendB) {
+					MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(reqSendBck[n]));
+					MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(reqRecvFwd[n]));
+				}
+				if (sendF){
+					MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(reqSendFwd[n]));
+					MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(reqRecvBck[n]));
+				}
+			}
+			for (int n=0; n<nchunks ;n++) {
+				if (sendB){
+					MPI_Start(&(reqSendBck[n]));
+					MPI_Start(&(reqRecvFwd[n]));
+				}
+				if (sendF){
+					MPI_Start(&(reqSendFwd[n]));
+					MPI_Start(&(reqRecvBck[n]));
+				}
+			}
+			LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
+			break;
+
+
+	case	COMM_WAIT:
+LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
+		for (int n=0; n<nchunks ;n++) {
+			if (sendB){
+				MPI_Wait(&(reqSendBck[n]), MPI_STATUS_IGNORE);
+				MPI_Wait(&(reqRecvFwd[n]), MPI_STATUS_IGNORE);
+			}
+			if (sendF){
+				MPI_Wait(&(reqSendFwd[n]), MPI_STATUS_IGNORE);
+				MPI_Wait(&(reqRecvBck[n]), MPI_STATUS_IGNORE);
+			}
+		}
+		for (int n=0; n<nchunks ;n++) {
+			if (sendB){
+				MPI_Request_free(&(reqSendBck[n]));
+				MPI_Request_free(&(reqRecvFwd[n]));
+			}
+			if (sendF){
+				MPI_Request_free(&(reqSendFwd[n]));
+				MPI_Request_free(&(reqRecvBck[n]));
+			}
+		}
+LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
+		break;
+	}
+}
+
+void	Scalar::sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng)
+{
+	/* Exchange ghosts
+	by default ng = Ng */
+	int rNg = (ng == -1) ? Ng : ng;
+	if (rNg > Ng){
+		LogError("too many ghost slices requested to be exhanged! ng %d > Ng = %d. Only Ng will be exchanged!",ng,Ng);
+		rNg = Ng;
+	}
+
+	const size_t ghostBytes = rNg*n2*fSize;
+	LogMsg(VERB_PARANOID,"[sca] sendGhosts2 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
+
+	void *sB, *rF, *sF, *rB;
+	if (fIdx == FIELD_M){
+		sB = mStart();
+		rF = mBackGhost(); // slice after m
+		sF = static_cast<void *> (static_cast<char *> (mStart()) +fSize*n3-ghostBytes);
+		rB = mFrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+	} else {
+		if (fIdx & FIELD_V) {
+			sB = vStart();
+			rF = vBackGhost(); // slice after m
+			sF = static_cast<void *> (static_cast<char *> (vStart()) +fSize*n3-ghostBytes);
+			rB = vFrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+		} else {
+			sB = m2Start();
+			rF = m2BackGhost(); // slice after m
+			sF = static_cast<void *> (static_cast<char *> (m2Start()) +fSize*n3-ghostBytes);
+			rB = m2FrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+		}
+	}
+	Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB, rF, sF, rB);
+}
+
 void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 {
 	static const int rank = commRank();
 	static const int fwdNeig = (rank + 1) % nSplit;
 	static const int bckNeig = (rank - 1 + nSplit) % nSplit;
 
-	/* we can send 1 (for energy) , or Ng (for propagator)*/
-	const int ghostBytes = Ng*n2*fSize;
-
-	static MPI_Request 	rSendFwd, rSendBck, rRecvFwd, rRecvBck;	// For non-blocking MPI Comms
+	/* If ghostbytes > INT_MAX split the communication */
+	// const size_t MAX_CHUNK  = 2147483648;
+	// OJO this is NOT 2^31! is the maximum multiple of 64 below 2^31
+	const size_t MAX_CHUNK  = 2147483584;
+	const size_t ghostBytes = Ng*n2*fSize;
+	size_t nchunks    = 1 + (ghostBytes/MAX_CHUNK);
+	int lastchunk     = (ghostBytes - (nchunks-1)*MAX_CHUNK);
 
 	/* Assign receive buffers to the right parts of m, v */
-LogMsg(VERB_DEBUG,"[sca] Called send Ghosts (COMM %d) Ng %d",opComm, Ng);LogFlush();
-	void *sGhostBck, *sGhostFwd, *rGhostBck, *rGhostFwd;
+	LogMsg(VERB_HIGH,"[sca] Called send Ghosts (COMM %d)",opComm);
+	LogMsg(VERB_PARANOID,"[sca] #Ghost regions Ng = %d, ghostBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", Ng, ghostBytes, MAX_CHUNK, nchunks, lastchunk);
+	LogFlush();
 
-	if (fIdx & FIELD_M)
-	{
-			sGhostBck = mStart();																																						//slice to be send back
-			sGhostFwd = static_cast<void *> (static_cast<char *> (mStart()) + fSize*n3-ghostBytes);					//slice to be send forw
-			rGhostBck = static_cast<void *> (static_cast<char *> (mFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
-			rGhostFwd = static_cast<void *> (static_cast<char *> (mBackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+	if (nchunks > NMPICHUNK){
+		LogError("Number of ghost chunks %d larger than precompiled maximum %d. Change NMPICHUNK in scalarField.cpp and recompile again!", nchunks, NMPICHUNK);
+		exit(0);
 	}
-	else
+
+
+	int sendBytes[nchunks];
+	static MPI_Request rSendFwd[NMPICHUNK],  rSendBck[NMPICHUNK],   rRecvFwd[NMPICHUNK],   rRecvBck[NMPICHUNK];	// For non-blocking MPI Comms
+	void      *sGhostBck[nchunks], *sGhostFwd[nchunks], *rGhostBck[nchunks], *rGhostFwd[nchunks];
+
+	for (int n = 0; n < nchunks; n++)
 	{
-		if (fIdx & FIELD_V)
+		sendBytes[n] = (int) MAX_CHUNK;
+		if (n == nchunks-1)
+			sendBytes[n] = lastchunk;
+
+		if (fIdx & FIELD_M)
 		{
-				sGhostBck = vStart();																																						//slice to be send back
-				sGhostFwd = static_cast<void *> (static_cast<char *> (vStart())      + fSize*n3-ghostBytes);					//slice to be send forw
-				rGhostBck = static_cast<void *> (static_cast<char *> (vFrontGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
-				rGhostFwd = static_cast<void *> (static_cast<char *> (vBackGhost())  + fSize*Ng*n2-ghostBytes);	//reception point
-		} else {
-				sGhostBck = m2Start();
-				sGhostFwd = static_cast<void *> (static_cast<char *> (m2Start()) + fSize*n3-ghostBytes);
-				rGhostBck = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + fSize*Ng*n2-ghostBytes);		//reception point
-				rGhostFwd = static_cast<void *> (static_cast<char *> (m2BackGhost()) + fSize*Ng*n2-ghostBytes);	//reception point
+				sGhostBck[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK                         );                       //slice to be send back
+				sGhostFwd[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK + fSize*n3-ghostBytes   ); //slice to be send forw
+				rGhostBck[n] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);       //reception point
+				rGhostFwd[n] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);        //reception point
 		}
+		else
+		{
+			if (fIdx & FIELD_V)
+			{
+					sGhostBck[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK                          );//slice to be send back
+					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK + fSize*n3-ghostBytes    );					//slice to be send forw
+					rGhostBck[n] = static_cast<void *> (static_cast<char *> (vFrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (vBackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+			} else {
+					sGhostBck[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK) ;
+					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK + fSize*n3-ghostBytes);
+					rGhostBck[n] = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);		//reception point
+					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);	//reception point
+			}
+		}
+		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
 	}
-
 
 	switch	(opComm)
 	{
 		case	COMM_SEND:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
-			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
-
-			MPI_Start(&rSendFwd);
-			MPI_Start(&rSendBck);
- 			gsent = false;
-
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(rSendFwd[n]));
+				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(rSendBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Start(&rSendFwd[n]);
+				MPI_Start(&rSendBck[n]);
+			}
 			break;
 
 		case	COMM_RECV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
-			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
-
-			MPI_Start(&rRecvBck);
-			MPI_Start(&rRecvFwd);
- 			grecv = false;
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
+				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Start(&rRecvBck[n]);
+				MPI_Start(&rRecvFwd[n]);
+			}
 			break;
 
 		case	COMM_SDRV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
-			MPI_Send_init(sGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &rSendFwd);
-			MPI_Send_init(sGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &rSendBck);
-			MPI_Recv_init(rGhostFwd, ghostBytes, MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &rRecvFwd);
-			MPI_Recv_init(rGhostBck, ghostBytes, MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &rRecvBck);
-
-			MPI_Start(&rRecvBck);
-			MPI_Start(&rRecvFwd);
-			MPI_Start(&rSendFwd);
-			MPI_Start(&rSendBck);
-			gsent = false;
-			grecv = false;
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(rSendFwd[n]));
+				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(rSendBck[n]));
+				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
+				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
+			}
+			for (int n=0; n<nchunks ;n++) {
+				MPI_Start(&(rRecvBck[n]));
+				MPI_Start(&(rRecvFwd[n]));
+				MPI_Start(&(rSendFwd[n]));
+				MPI_Start(&(rSendBck[n]));
+			}
+LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
 			break;
 
-		case	COMM_TESTS:
-		{
-		int flag1 = 0, flag2 = 0;
-		int pest1 = MPI_Test(&rSendBck, &flag1, MPI_STATUS_IGNORE);
-		int pest2 = MPI_Test(&rSendFwd, &flag2, MPI_STATUS_IGNORE);
-		if (flag1 * flag2)
-			gsent = true;
-		else  gsent = false ;
-LogMsg(VERB_PARANOID,"[COMM_TESTS] flag1/2 %d/%d [%d/%d] > gsent %d",flag1,flag2,pest1,pest2,gsent);
-		}
-		break;
-
-	case	COMM_TESTR:
-		{
-		int flag1 = 0, flag2 = 0;
-		int pest1 = MPI_Test(&rRecvFwd, &flag1, MPI_STATUS_IGNORE);
-		int pest2 = MPI_Test(&rRecvBck, &flag2, MPI_STATUS_IGNORE);
-		if (flag1 * flag2)
-			grecv = true;
-		else  grecv = false;
-LogMsg(VERB_PARANOID,"[COMM_TESTR] flag1/2 %d/%d [%d/%d] > grecv %d",flag1,flag2,pest1,pest2,grecv);
-		}
-		break;
 
 	case	COMM_WAIT:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
-		MPI_Wait(&rSendFwd, MPI_STATUS_IGNORE);
-		MPI_Wait(&rSendBck, MPI_STATUS_IGNORE);
-		MPI_Wait(&rRecvFwd, MPI_STATUS_IGNORE);
-		MPI_Wait(&rRecvBck, MPI_STATUS_IGNORE);
-		gsent = true;
-		grecv = true;
-		MPI_Request_free(&rSendFwd);
-		MPI_Request_free(&rSendBck);
-		MPI_Request_free(&rRecvFwd);
-		MPI_Request_free(&rRecvBck);
+		for (int n=0; n<nchunks ;n++) {
+			MPI_Wait(&(rSendFwd[n]), MPI_STATUS_IGNORE);
+			MPI_Wait(&(rSendBck[n]), MPI_STATUS_IGNORE);
+			MPI_Wait(&(rRecvFwd[n]), MPI_STATUS_IGNORE);
+			MPI_Wait(&(rRecvBck[n]), MPI_STATUS_IGNORE);
+		}
+		for (int n=0; n<nchunks ;n++) {
+			MPI_Request_free(&(rSendFwd[n]));
+			MPI_Request_free(&(rSendBck[n]));
+			MPI_Request_free(&(rRecvFwd[n]));
+			MPI_Request_free(&(rRecvBck[n]));
+		}
 LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 		break;
 
@@ -718,12 +938,21 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
-LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts");LogFlush();
+LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	recallGhosts(fIdx);
-	sendGhosts(fIdx, COMM_SDRV);
-	sendGhosts(fIdx, COMM_WAIT);
+	sendGhosts2(fIdx, COMM_SDRV);
+	sendGhosts2(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
+LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -752,6 +981,7 @@ void	Scalar::setField (FieldType newType)
 				if (device != DEV_GPU)
 					shift *= 2;
 		fieldType = newType;
+
 		LogMsg(VERB_NORMAL,"[sca] Field set to AXION !");
 		break;
 
@@ -1029,7 +1259,7 @@ double	Scalar::dzSize	   (double zNow) {
 				/* w = k^2//(\sqrt(m2+k2)+m2) is the safe formula */
 				double w =(12.*oodl*oodl)/(std::sqrt(12*oodl*oodl + mAx2*RNow*RNow) + std::sqrt(mAx2)*RNow) ;
 				dct = wDz/w ;
-				LogMsg(VERB_DEBUG,"[sca:ct] PNaxion w %e wDz %e mAx2 %e R %e",w,wDz,std::sqrt(mAx2),RNow);
+				LogMsg(VERB_PARANOID,"[sca:ct] PNaxion w %e wDz %e mAx2 %e R %e",w,wDz,std::sqrt(mAx2),RNow);
 			}
 		break;
 		default:
@@ -1040,7 +1270,7 @@ double	Scalar::dzSize	   (double zNow) {
 
 	/* Do not allow to jump over z/10 or Rc */
 	// if (fieldType != FIELD_PAXION){
-	// 	LogMsg(VERB_DEBUG,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
+	// 	LogMsg(VERB_PARANOID,"[sca:ct] >> ct forced to ct/10 ",dct,zNow);
 	// 	dct = std::min(dct,zNow/10.);
 	// 	}
 
@@ -1052,7 +1282,7 @@ double	Scalar::dzSize	   (double zNow) {
 			/* Rather, go a ministep ahead */
 			double zNext = zNow + dct;
 			dct = pow(bckgnd->ZThRes()+ 0.001*(RNext-bckgnd->ZThRes()),1.0/bckgnd->Frw()) - zNow;
-			LogMsg(VERB_DEBUG,"[sca:ct] >> dct decreased to %e just jump over Rc [ct,ct_Next,ct+sct]",dct, zNow, zNext,zNow+dct);
+			LogMsg(VERB_PARANOID,"[sca:ct] >> dct decreased to %e just jump over Rc [ct,ct_Next,ct+sct]",dct, zNow, zNext,zNow+dct);
 		}
 	LogMsg(VERB_HIGH,"[sca:ct] dct = %e ct = %e",dct,zNow);
 	return dct;

@@ -4,7 +4,7 @@
 	#include "scalar/scalarField.h"
 	#include <hdf5.h>
 	#include "utils/binner.h"
-	
+
 	// void	writeConf	(Scalar  *axion, int index);
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
 	void	writeConf (Scalar *axion, int index, const bool restart=false);
@@ -40,10 +40,12 @@
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
+	void	writeConfNyx (Scalar *axion, int index);
+	
 	template<const size_t N, typename cFloat>
 	void	writeBinner	(Binner<N,cFloat> bins, const char *group, const char *dataName) {
 
-	LogMsg(VERB_DEBUG,"[wB] Writting binner");LogFlush();
+	LogMsg(VERB_PARANOID,"[wB] Writting binner");LogFlush();
 
 		writeArray (bins.data(), N, group, dataName);
 

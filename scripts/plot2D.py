@@ -19,8 +19,13 @@ class	Plot2D():
 				with h5py.File(maes, 'r') as f:
 					if (map in f) :
 						fileMeas.append(maes)
+					if (map == 'Moore'):
+						if ('m' in f) :
+							fileMeas.append(maes)
 			except:
 				print('Error opening file: %s'%maes)
+
+		print('%s > %s'%(fileMeas[0],fileMeas[-1]))
 
 		fileHdf5 = h5py.File(fileMeas[0], "r")
 
@@ -28,8 +33,18 @@ class	Plot2D():
 		self.Ly = fileHdf5["/"].attrs.get("Size")
 		self.Lz = fileHdf5["/"].attrs.get("Depth")
 
+		print('%dx%dx%d'%(self.Lx,self.Ly,self.Lz))
+
 		self.z = fileHdf5["/"].attrs.get("z")
-		self.R = fileHdf5["/"].attrs.get("R")
+		if ('R' in fileHdf5) :
+			self.R = fileHdf5["/"].attrs.get("R")
+		else :
+			self.R = self.z
+
+		if (map == 'Moore'):
+			self.Lx  = fileHdf5["/"].attrs.get("Size")
+			self.Ly  = len(fileHdf5['m'][()])//self.Lx
+			self.Lz  = fileHdf5["/"].attrs.get("Depth")
 
 		fileHdf5.close()
 
@@ -46,6 +61,13 @@ class	Plot2D():
 		self.i = 0
 		self.size = 0
 
+		self.L1 = self.Lx
+		self.L2 = self.Ly
+
+		if map == 'mapp':
+			self.L1 = self.Ly
+			self.L2 = self.Lz
+
 #		if os.path.exists("./Strings.PyDat"):
 #			fp = gzip.open("./Strings.PyDat", "rb")
 #			self.allData = pickle.load(fp)
@@ -60,9 +82,26 @@ class	Plot2D():
 			Ly = fileHdf5["/"].attrs.get("Size")
 			Lz = fileHdf5["/"].attrs.get("Depth")
 			zR = fileHdf5["/"].attrs.get("z")
-			R  = fileHdf5["/"].attrs.get("R")
+
+			if ('R' in fileHdf5) :
+				R  = fileHdf5["/"].attrs.get("R")
+			else :
+				R = zR
+
+			if (map == 'Moore'):
+				Lx  = fileHdf5["/"].attrs.get("Size")
+				Ly  = len(fileHdf5['m'][()])//Lx
+				Lz  = fileHdf5["/"].attrs.get("Depth")
+
 			# if 'R' in fileHdf5:
 			# 	R = fileHdf5["/"].attrs.get("R")
+
+			L1=Lx
+			L2=Ly
+
+			if map == 'mapp':
+				L1=Ly
+				L2=Lz
 
 			fl = fileHdf5["/"].attrs.get("Field type").decode()
 
@@ -70,11 +109,13 @@ class	Plot2D():
 				print("Error: Size mismatch (%d %d %d) vs (%d %d %d)\nAre you mixing files?\n" % (Lx, Ly, Lz, self.Lx, self.Ly, self.Lz))
 				exit()
 
+
+
 			if fl == "Saxion":
-				mTmp  = fileHdf5[map]['m'][()].reshape(Ly,Lx,2)
-				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
+				mTmp  = fileHdf5[map]['m'][()].reshape(L2,L1,2)
+				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0])+np.pi)/(2.*np.pi)
 				if sys.argv[-1] == 'vel':
-					vTmp  = fileHdf5[map]['v'][()].reshape(Ly,Lx,2)
+					vTmp  = fileHdf5[map]['v'][()].reshape(L2,L1,2)
 					rData = vTmp[:,:,1]*mTmp[:,:,0]-vTmp[:,:,0]*mTmp[:,:,1]
 					rMax = np.amax(rData)
 				else :
@@ -83,28 +124,27 @@ class	Plot2D():
 					rData = rData/R
 
 			elif fl == "Axion":
-				aData = fileHdf5[map]['m'][()].reshape(Ly,Lx)
-#				pm = np.amax(aData)
-#				print ("BMax %f" % pm)
-				aData = aData/R
-				rData = np.ones(aData.shape)
-				pData = np.ones(aData.shape)*(2*np.pi)
-				aData = (aData + pData)/(4.*np.pi)
-#				iData = np.trunc(aData/(2*np.pi))
-#				aData = aData - iData*(2*np.pi)
-#				aData = aData - pData
-#				pm = np.amax(aData)
-#				print ("AMax %f" % pm)
-				rMax  = R
+				if ('map' in fileHdf5):
+					aData = fileHdf5[map]['m'][()].reshape(L2,L1)
+					aData = (aData/R + np.pi)/(2*np.pi)
+					rData = fileHdf5[map]['v'][()].reshape(L2,L1)
+					rMax  = R
+
+				# For Moore's Axion and velocity
+				elif ('m' in fileHdf5):
+					aData = fileHdf5['m'][()].reshape(L2,L1)
+					aData = np.mod(aData + np.pi, 2*np.pi)/(2*np.pi)
+					rData = fileHdf5['v'][()].reshape(L2,L1)
+					rMax = np.amax(rData)
 			elif fl == "Naxion":
-				mTmp  = fileHdf5[map]['m'][()].reshape(Ly,Lx,2)
+				mTmp  = fileHdf5[map]['m'][()].reshape(L2,L1,2)
 				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
 				rData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)) # /(mAmA*R**3))
 				rMax = np.amax(rData)
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
 			elif fl == "Paxion":
-				mTmp1  = fileHdf5[map]['m'][()].reshape(Ly,Lx)
-				mTmp2  = fileHdf5[map]['v'][()].reshape(Ly,Lx)
+				mTmp1  = fileHdf5[map]['m'][()].reshape(L2,L1)
+				mTmp2  = fileHdf5[map]['v'][()].reshape(L2,L1)
 				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
 				rData = np.sqrt((mTmp1[:,:]**2 + mTmp2[:,:]**2)) #/(mAmA*R**3))
 				rMax = np.amax(rData)
@@ -134,18 +174,21 @@ class	Plot2D():
 		self.aPlot = self.pWin.addPlot(row=0, col=0)
 		self.sPlot = self.pWin.addPlot(row=0, col=1)
 
-		self.aPlot.setXRange(0,Lx*1.2)
-		self.aPlot.setYRange(0,Lx*1.2)
-		self.sPlot.setXRange(0,Lx*1.2)
-		self.sPlot.setYRange(0,Lx*1.2)
+		L12 = L1
+		if L2>L1:
+			L12=L2
+		self.aPlot.setXRange(0,L12*1.2)
+		self.aPlot.setYRange(0,L12*1.2)
+		self.sPlot.setXRange(0,L12*1.2)
+		self.sPlot.setYRange(0,L12*1.2)
 
 		self.zAtxt = pg.TextItem("z=0.000000")
 		self.zStxt = pg.TextItem("z=0.000000")
 
 		data = self.allData[0]
 
-		aPos = np.array([0.00, 0.10, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9, 1.0 ])
-		aCol = ['#006600', 'b', 'w', 'r', 'k', 'b', 'w', 'r', '#006600']
+		aPos = np.array([0.00, 0.25, 0.5, 0.75, 1.0 ])
+		aCol = ['w', 'r', 'k', 'b', 'w']
 
 		vb = self.aPlot.getViewBox()
 
@@ -286,5 +329,8 @@ if	__name__ == '__main__':
 	if sys.argv[-1] == 'mapp':
 		map = 'mapp'
 		print('mode mapp')
+	elif sys.argv[-1] == 'Moore':
+		map = 'Moore'
+		print('mode Moore')
 	p = Plot2D(map)
 	p.start()

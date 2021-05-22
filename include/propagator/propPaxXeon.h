@@ -46,15 +46,15 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	const double beta = ppar.beta;
 	const double u    = 2.0*ppar.frw - 1.0;
 	const double KKt  = ppar.sign*ppar.beta*ct*(pow(ct+dz,u)-pow(ct,u))/(8.0*R*R*u*pow(ct+dz,u));
-	LogMsg(VERB_DEBUG,"PPX ct  %e dz  %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
-	LogMsg(VERB_DEBUG,"PPX KKt %e ");
+	LogMsg(VERB_PARANOID,"PPX ct  %e dz  %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
+	LogMsg(VERB_PARANOID,"PPX KKt %e ");
 	/* integrate in time assuming powerlaw int d z/ m_A R */
 	const double grav = -ppar.massA*ppar.grav*dz;
 	double alpho = (ppar.n - 1);
 	double dzp = (std::abs(alpho) < 1.e-2) ? ct*std::log(1.0 + dz/ct) : ct/alpho*(1. - pow(1.+dz/ct,-alpho));
 	const double ood2 = ppar.sign*dzp*ppar.ood2a/(2.0*ppar.massA*R);
-	LogMsg(VERB_DEBUG,"PPX od2 %e dct %e dcp %e n %.2f alpho %.e",ood2, dz, dzp, ppar.n,alpho);
-	LogMsg(VERB_DEBUG,"mA grav %e",grav);
+	LogMsg(VERB_PARANOID,"PPX od2 %e dct %e dcp %e n %.2f alpho %.e",ood2, dz, dzp, ppar.n,alpho);
+	LogMsg(VERB_PARANOID,"mA grav %e",grav);
 
 	if (precision == FIELD_DOUBLE)
 	{

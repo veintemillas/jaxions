@@ -40,6 +40,12 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 	const double Rpp  = ppar.Rpp;
 	const double mA2  = ppar.massA2;
 
+	const double beta  = ppar.beta;
+
+
+	if (Vo>Vf)
+		return ;
+
 	if (precision == FIELD_DOUBLE)
 	{
 #ifdef	__AVX512F__
@@ -116,8 +122,9 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
-			if (idx >= Vf)
-				continue;
+			// If YC (or zF-z0) is not divisible by bSizeY (bSizeZ), there is a possibility of exceeding the assumed domain in the last block.
+			// This may be avoided by adjusting bSizeY (bSizeZ) in tunePropagator.
+			if ((yC >= YC) || (zC >= zF)) continue;
 			{
 				//size_t tmi = idx/XC, itp;
 
@@ -339,6 +346,8 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const float iz = 1.f/Rf;
 		const float tV = 2.*M_PI*Rf;
 
+		const float betaf = (float) beta;
+
 		_MData_ COV[5];
 		for (size_t nv = 0; nv < NN ; nv++)
 			COV[nv]  = opCode(set1_ps, PC[nv]*ood2);
@@ -390,8 +399,7 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
-			if (idx >= Vf)
-				continue;
+			if ((yC >= YC) || (zC >= zF)) continue;
 			{
 				//size_t tmi = idx/XC, itp;
 
@@ -549,8 +557,11 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				break;
 
 				case V_QCDL:
+				tmp = opCode(mul_ps, mel, izVec);
+				vel = opCode(mul_ps, opCode(mul_ps, tmp, tmp), opCode(set1_ps, 0.1666667*betaf));
+				tmp = opCode(mul_ps, tmp, opCode(sub_ps, opCode(set1_ps, 1), opCode(sub_ps, vel, opCode(mul_ps, opCode(mul_ps, vel, vel), opCode(set1_ps, 0.3)))));
 				acu = opCode(sub_ps, lap,
-								opCode(sub_ps, opCode(mul_ps, zQVec, opCode(mul_ps, mel, izVec)),
+								opCode(sub_ps, opCode(mul_ps, zQVec, tmp),
 									opCode(mul_ps, opCode(set1_ps, Rpp), mel)));
 				break;
 
@@ -640,8 +651,7 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 
 			      auto idx = zC*(YC*XC) + yC*XC + xC;
 
-			      if (idx >= Vf)
-				continue;
+			      if ((yC >= YC) || (zC >= zF)) continue;
 
 			      idxV0 = idx - Vo;
 
@@ -714,8 +724,7 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 
 			      auto idx = zC*(YC*XC) + yC*XC + xC;
 
-			      if (idx >= Vf)
-				continue;
+			      if ((yC >= YC) || (zC >= zF)) continue;
 
 			      idxV0 = idx - Vo;
 
@@ -750,14 +759,15 @@ inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict_
 				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ, const bool wMod, const VqcdType VQcd)
 {
 	/* Warning! to avoid the false vacuum locking at large mA, we switch off V(theta) for theta>pi */
-	bool sat = (ppar.massA2*ppar.R*ppar.R > 27.62 * ppar.ood2a);
+	// bool sat = (ppar.massA2*ppar.R*ppar.R > 27.62 * ppar.ood2a);
+	bool sat =false;
 
 	switch (VQcd & V_QCD)
 	{
 		case V_QCD0:
 		case V_NONE:
 		{
-LogMsg(VERB_DEBUG,"[PT] propTheta QCD0");
+LogMsg(VERB_PARANOID,"[PT] propTheta QCD0");
 				switch (wMod) {
 					case	true:
 						propThetaKernelXeon<true,V_QCD0> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
@@ -772,7 +782,7 @@ LogMsg(VERB_DEBUG,"[PT] propTheta QCD0");
 		case V_QCDV:
 		case V_QCDC:
 		{
-LogMsg(VERB_DEBUG,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
+LogMsg(VERB_PARANOID,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
 				switch (wMod) {
 					case	true:
 						propThetaKernelXeon<true,V_QCDC> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);
@@ -788,7 +798,7 @@ LogMsg(VERB_DEBUG,"[PT] propTheta QCDC (saturated %d = 1/0 true/false)",sat);
 		} break;
 		case V_QCDL:
 		{
-LogMsg(VERB_DEBUG,"[PT] propTheta QCDL %d",V_QCDL);
+LogMsg(VERB_PARANOID,"[PT] propTheta QCDL %d",V_QCDL);
 				switch (wMod) {
 					case	true:
 						propThetaKernelXeon<true,V_QCDL> (m_, v_, m2_, ppar, dz, c, d, Vo, Vf, precision, bSizeX, bSizeY, bSizeZ);

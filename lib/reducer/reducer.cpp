@@ -207,7 +207,7 @@ Scalar*	Reducer<Float>::runCpu	()
 		munge(UNFOLD_ALL);
 
 		if (axionField->Field() == FIELD_SAXION) {
-			complex<Float> *mIn  = static_cast<complex<Float>*>(axionField->mCpu()) + axionField->Surf();
+			complex<Float> *mIn  = static_cast<complex<Float>*>(axionField->mStart());
 			complex<Float> *vIn  = static_cast<complex<Float>*>(axionField->vCpu());
 			complex<Float> *fOut = static_cast<complex<Float>*>(axionField->m2Cpu());
 
@@ -217,7 +217,7 @@ Scalar*	Reducer<Float>::runCpu	()
 				// Reduce memory of m AND copy new axionField
 				// FIXME DO IT!!
 			} else {
-				complex<Float> *mD = static_cast<complex<Float>*>(outField->mCpu()) + outField->Surf();
+				complex<Float> *mD = static_cast<complex<Float>*>(outField->mStart());
 				size_t volData     = outField->Size()*sizeof(complex<Float>);
 
 				// Copy m to the second axionField
@@ -238,7 +238,7 @@ Scalar*	Reducer<Float>::runCpu	()
 				memcpy(vD, fOut, volData);
 			}
 		} else {
-			Float          *mIn  = static_cast<Float*>         (axionField->mCpu()) + axionField->Surf();
+			Float          *mIn  = static_cast<Float*>         (axionField->mStart());
 			Float          *vIn  = static_cast<Float*>         (axionField->vCpu());
 			Float          *fOut = static_cast<Float*>         (axionField->m2Cpu());
 			complex<Float> *fMid = static_cast<complex<Float>*>(axionField->m2Cpu());
@@ -283,14 +283,14 @@ Scalar*	Reducer<Float>::runCpu	()
 		if (axionField->Field() == FIELD_SAXION) {
 			switch ( axionField->m2Status() ) {
 				case M2_ENERGY:
-					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
 					/* if saxion field is required uncomment this */
 					// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 					// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
 					// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");
 				break;
 				case M2_ENERGY_FFT:
-					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx",FFT_NONE);
+					transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx",FFT_NONE);
 					/* if saxion field is required uncomment this */
 					// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 					// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
@@ -305,7 +305,7 @@ Scalar*	Reducer<Float>::runCpu	()
 			// 	LogError ("Reducer for m2 requires a previous computation of the energy, ignoring request");
 			// 	return	outField;
 			// }
-			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecSx");
+			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
 			// mR = static_cast<Float *>(axionField->m2Cpu()) + axionField->Size() + axionField->Surf()*2;
 			// mC = static_cast<complex<Float>*>(static_cast<void*>(mR));
 			// transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "RhoSx");

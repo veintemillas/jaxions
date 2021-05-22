@@ -7,7 +7,11 @@
 #include <vector>
 
 #include "enum-field.h"
+#include "utils/logger.h"
 #include "cosmos/cosmos.h"
+
+# define PARSE1 { LogMsg(VERB_PARANOID,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
+# define PARSE2 { LogMsg(VERB_PARANOID,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
 
 size_t sizeN  = 128;
 size_t sizeZ  = 128;
@@ -23,6 +27,7 @@ double wDz    = 0.8;
 int    fIndex = -1;
 int    fIndex2 = 0;
 int    slicepp = 0;
+int    cumumas = -1;
 
 double sizeL = 4.;
 double zInit = 0.5;
@@ -100,7 +105,7 @@ LambdaType   lType           = LAMBDA_FIXED;
 VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
-VqcdType     vqcdTypeRhoevol = V_NONE;
+VqcdType     vqcdTypeEvol    = V_NONE;
 
 // Default IC type
 IcData icdatst;
@@ -138,6 +143,7 @@ bool p3dwalls	  = false;
 bool pconfinal 	  = false;
 bool pconfinalwkb = false;
 bool restart_flag = false;
+bool cummask      = false;
 
 bool mCreateOut = false;
 bool bopt = true;
@@ -275,6 +281,7 @@ void	PrintUsage(char *name)
 	printf("  --N2                          PQ potential with NDW=2 (default, disabled, experimental).\n");
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
 	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
+	printf("  --onlytheta                   Only theta-evolution, rho frozen (default, disabled)\n");
 	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
 
@@ -350,7 +357,7 @@ void	PrintICoptions()
 	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n");
 	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
 	printf("                   --kcr [float]                   rho = kcr. Alternatively k = (kMax,0,0) if not kkk.dat file. \n\n");
-	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane, radius N/4.\n");
+	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane at z=kcr, radius N/4.\n");
 	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the YZ plane, radius N/4.\n");
 	printf("  --smvar stringwave --mode0 [float]               Straight strings along Z + axion wave \n");
 	printf("                                                   of momentum kx,ky,kz specified in kkk.dat and amplitude mode0. \n\n");
@@ -391,7 +398,7 @@ void	PrintICoptions()
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --preprop                                                                                    \n");
 	printf("  --prepropcoe  [float]                            Preevolution starts at zi/prepropcoe        \n");
-	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default V_QCD1) .\n");
+	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default V_QCD0_PQ1_DRHO).\n");
 	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
 	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
 	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
@@ -453,13 +460,16 @@ void	PrintMEoptions()
 	printf("    Gaussian                               16 \n");
 	printf("    Diffusion from core top hat            32 \n");
 	printf("    Ball                                   64 \n");
-	printf("     --rmask [float]                       Mask radius in 1/m_s units [default = 2]\n");
+	printf("    Axiton Ball                            512 \n");
+	printf("    Axiton FT                              1024 \n");
+	printf("     --rmask [float]                       Mask radius (for strings in 1/m_s units) [default = 2]\n");
 	printf("     --rmask file                          Prints different spectra, each masked \n");
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
-	printf("                                           (Red and Gas modes) \n\n");
-	printf("  --printmask                              Prints the mask (experimental)\n\n");
+	printf("                                           (Red, Gaus, Axit12 modes) \n\n");
+	printf("  --printmask                              Prints the mask\n\n");
 	printf("  --ng0calib                               Parameter tunning the exponential masking (default 1.25)\n");
 	printf("                                           (Any negative value gives the old calibration)\n\n");
+	printf("  --cummask [int > 0]                      Mask region is not reset at each meas. Can only increase. (default no)\n\n");
 
 	printf("  Options for String Measurement \n");
 	printf("  --strmeas [int]            Sum of integers.\n");
@@ -473,9 +483,139 @@ void	PrintMEoptions()
 	return;
 }
 
+int	parseDims (int argc, char *argv[])
+{
+	bool	brank, bcdev, blog, bverb = false;
+	int	procArgs = 0;
+
+	/* We collect the arguments for initComms:
+		1 - the number of MPI processes
+		2 - the device
+		3 - type of logMpi
+		4 - verbosity level */
+	for (int i=1; i<argc; i++)
+	{
+		/* Base arguments to start MPI communications, logger, etc. */
+
+		if (!strcmp(argv[i], "--zgrid"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of mpi ranks.\n");
+				exit(1);
+			}
+
+			zGrid = atoi(argv[i+1]);
+
+			if (zGrid < 1)
+			{
+				printf("Error: The number of mpi ranks must be larger than 0.\n");
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			brank = true;
+			continue;
+		}
+
+		if (!strcmp(argv[i], "--device"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a device name (cpu/gpu).\n");
+				exit(1);
+			}
+
+			if (!strcmp(argv[i+1], "cpu"))
+			{
+				cDev = DEV_CPU;
+			}
+			else if (!strcmp(argv[i+1], "gpu"))
+			{
+				cDev = DEV_GPU;
+			}
+			else if (!strcmp(argv[i+1], "xeon"))
+			{
+				printf("Error: Knights Corner support has been removed\n");
+				exit(1);
+			}
+			else
+			{
+				printf("Error: unrecognized device %s\n", argv[i+1]);
+				exit(1);
+			}
+
+			i++;
+			procArgs++;
+			bcdev = true;
+			continue;
+		}
+
+		if (!strcmp(argv[i], "--nologmpi"))
+		{
+			logMpi = ZERO_RANK;
+
+			procArgs++;
+			blog = true;
+			continue;
+		}
+
+		if (!strcmp(argv[i], "--verbose"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a verbosity level.\n");
+				exit(1);
+			}
+			int mocho;
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&mocho));
+
+			if (mocho > VERB_HIGH)      verb = VERB_HIGH;      //2
+			if (mocho > VERB_PARANOID)  verb = VERB_PARANOID;  //3
+			if (mocho < VERB_SILENT)    verb = VERB_SILENT;    //0
+
+
+			i++;
+			procArgs++;
+			bverb = true;
+
+			continue;
+		}
+
+		/* Arguments to display info, they interrupt program */
+
+		if (!strcmp(argv[i], "--help"))
+		{
+			PrintUsage(argv[0]);
+			exit(0);
+		}
+
+		if (!strcmp(argv[i], "--icinfo"))
+		{
+			PrintICoptions();
+			exit(0);
+		}
+
+		if (!strcmp(argv[i], "--measinfo"))
+		{
+			PrintMEoptions();
+			exit(0);
+		}
+
+	}
+
+	if (!brank || !bcdev || !blog || !bverb)
+	{
+		printf("Jaxions will use defauls for %s %s %s %s", !brank? "rank":"", !bcdev? "device":"", !blog? "logmpi":"", !bverb? "verbosity":"");
+	}
+
+	return procArgs;
+}
 
 int	parseArgs (int argc, char *argv[])
 {
+	LogMsg(VERB_HIGH,"Parsing ...");
 	bool	passed;
 	int	procArgs = 0;
 
@@ -513,63 +653,36 @@ int	parseArgs (int argc, char *argv[])
 	{
 		passed = false;
 
-		if (!strcmp(argv[i], "--help"))
-		{
-			PrintUsage(argv[0]);
-			exit(0);
-		}
+		/* These are parsed before */
 
-		if (!strcmp(argv[i], "--icinfo"))
-		{
-			PrintICoptions();
-			exit(0);
-		}
-
-		if (!strcmp(argv[i], "--measinfo"))
-		{
-			PrintMEoptions();
-			exit(0);
-		}
-
+		if (!strcmp(argv[i], "--zgrid"))
+			PARSE2;
+		if (!strcmp(argv[i], "--device"))
+			PARSE2;
+		if (!strcmp(argv[i], "--nologmpi"))
+			PARSE1;
 		if (!strcmp(argv[i], "--verbose"))
-		{
-			if (i+1 == argc)
-			{
-				printf("Error: I need a verbosity level.\n");
-				exit(1);
-			}
-			int mocho;
-			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&mocho));
-
-			if (mocho > VERB_HIGH)      verb = VERB_HIGH;
- 			if (mocho > VERB_DEBUG)     verb = VERB_DEBUG;
-			if (mocho > VERB_PARANOID)  verb = VERB_PARANOID;
-			if (mocho < VERB_SILENT)    verb = VERB_SILENT;
-
-
-			i++;
-			procArgs++;
-			passed = true;
-
-			goto endFor;
-		}
+			PARSE2;
+		if (!strcmp(argv[i], "--help"))
+			PARSE1;
+		if (!strcmp(argv[i], "--icinfo"))
+			PARSE1;
+		if (!strcmp(argv[i], "--measinfo"))
+			PARSE1;
+		/* Parse jaxion arguments */
 
 		if (!strcmp(argv[i], "--mink"))
 		{
 			mink = true;
 			uMI  = true;
 			frw  = 0.0;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--debug"))
 		{
 			debug = true;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--frw"))
@@ -588,10 +701,7 @@ int	parseArgs (int argc, char *argv[])
 				printf("Warning: Contracting Universe?\n");
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--p3D"))
@@ -600,18 +710,13 @@ int	parseArgs (int argc, char *argv[])
 			{
 				printf("Warning: p3D set by default to 0 [no 00000 and final configuration files].\n");
 				prinoconfo = PRINTCONF_NONE ;
-				procArgs++;
-				passed = true;
-				goto endFor;
+				PARSE1
 			}
 
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&prinoconfo));
 			//printf("p3D set to %d \n", prinoconfo);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--p2Dmap"))
@@ -619,10 +724,7 @@ int	parseArgs (int argc, char *argv[])
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
 			maty |= MAPT_XYMV;
-
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--p2DmapYZ"))
@@ -630,19 +732,13 @@ int	parseArgs (int argc, char *argv[])
 			p2dmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
 			maty |= MAPT_YZMV;
-
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--sliceprint"))
 		{
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--p2Dslice"))
@@ -652,10 +748,7 @@ int	parseArgs (int argc, char *argv[])
 			maty |= MAPT_XYMV;
 
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--p2DsliceYZ"))
@@ -665,20 +758,22 @@ int	parseArgs (int argc, char *argv[])
 			maty |= MAPT_YZMV;
 
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&slicepp));
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
+
+		if (!strcmp(argv[i], "--measaux"))
+		{
+			defaultmeasType |= MEAS_AUX;
+			PARSE1;
+		}
+
 
 		if (!strcmp(argv[i], "--p2DmapE"))
 		{
 			p2dEmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
 			maty |= MAPT_XYE;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--p2DmapPE2") || !strcmp(argv[i], "--p2DmapP"))
@@ -686,9 +781,7 @@ int	parseArgs (int argc, char *argv[])
 			p2dPmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
 			maty |= MAPT_XYPE2;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--p2DmapPE"))
@@ -696,47 +789,31 @@ int	parseArgs (int argc, char *argv[])
 			p2dPmapo = true ;
 			defaultmeasType |= MEAS_2DMAP;
 			maty |= MAPT_XYPE;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--p3Dstr"))
 		{
 			p3dstrings = true ;
-
-			// p3DthresholdMB=1.8e+21;
-			// p3DthresholdMB = atof(argv[i+1]);
-			i++;
-
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--p3Dwal"))
 		{
 			p3dwalls = true ;
-
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--pcon"))
 		{
 			pconfinal = true ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--pconwkb"))
 		{
 			pconfinalwkb = true ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--wTime"))
@@ -758,91 +835,77 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			wTime = tTime*3600000000;	// Walltime is processed in microseconds, but the expected precision is much worse
-
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--vqcdC"))
 		{
 			uPot = true;
 			vqcdType = V_QCDC ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--vqcdV"))
 		{
 			uPot = true;
 			vqcdType = V_QCDV ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--vqcdL"))
 		{
 			uPot = true;
 			vqcdType = V_QCDL ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--vqcd0"))
 		{
 			uPot = true;
 			vqcdType = V_QCD0 ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			indi3  = 0.0;
+			uI3    = true;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--N2"))
 		{
 			uPot = true;
 			vqcdType = V_QCD2 ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
 			uPot = true;
 			vpqType = V_PQ2 ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--onlyrho"))
 		{
 			uPot = true;
-			vqcdTypeRhoevol = V_EVOL_RHO;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			vqcdTypeEvol = V_EVOL_RHO;
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--onlytheta"))
+		{
+			uPot = true;
+			vqcdTypeEvol = V_EVOL_THETA;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--lowmem"))
 		{
 			lowmem = true;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--notheta"))
 		{
 			coSwitch2theta = false;
-
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--size"))
@@ -861,10 +924,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--depth"))
@@ -876,40 +936,9 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			sscanf(argv[i+1], "%zu", &sizeZ);
-
-			if (sizeZ < 2)
-			{
-				printf("Error: Size must be larger than 2.\n");
-				exit(1);
-			}
-
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
-		if (!strcmp(argv[i], "--zgrid"))
-		{
-			if (i+1 == argc)
-			{
-				printf("Error: I need a number of mpi ranks.\n");
-				exit(1);
-			}
-
-			zGrid = atoi(argv[i+1]);
-
-			if (zGrid < 1)
-			{
-				printf("Error: The number of mpi ranks must be larger than 0.\n");
-				exit(1);
-			}
-
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
-		}
 
 		if (!strcmp(argv[i], "--kcr"))
 		{
@@ -928,10 +957,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--alpha"))
@@ -951,19 +977,13 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--nncore"))
 		{
 			icdatst.normcore = false;
-
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--wkb"))
@@ -983,10 +1003,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--redmp"))
@@ -1000,10 +1017,7 @@ int	parseArgs (int argc, char *argv[])
 				endredmap = atof(argv[i+1]);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--redmpwkb"))
@@ -1017,10 +1031,7 @@ int	parseArgs (int argc, char *argv[])
 				endredmapwkb = atof(argv[i+1]);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--pregam"))
@@ -1040,10 +1051,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--lz2e"))
@@ -1056,10 +1064,7 @@ int	parseArgs (int argc, char *argv[])
 
 			icdatst.prelZ2e = atof(argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--prevqcdtype"))
@@ -1072,10 +1077,7 @@ int	parseArgs (int argc, char *argv[])
 
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&icdatst.prevtype));
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--dwgam"))
@@ -1094,10 +1096,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--gam"))
@@ -1120,10 +1119,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 
@@ -1137,10 +1133,7 @@ int	parseArgs (int argc, char *argv[])
 
 			icdatst.beta = atof(argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--gravity"))
@@ -1153,10 +1146,7 @@ int	parseArgs (int argc, char *argv[])
 
 			icdatst.grav = atof(argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--zi"))
@@ -1178,10 +1168,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uZin = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--logi"))
@@ -1196,10 +1183,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uLogi = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 
@@ -1213,10 +1197,7 @@ int	parseArgs (int argc, char *argv[])
 
 			icdatst.kickalpha = atof(argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--extrav"))
@@ -1229,10 +1210,7 @@ int	parseArgs (int argc, char *argv[])
 
 			icdatst.extrav = atof(argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--zf"))
@@ -1253,10 +1231,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uZfn = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--lsize"))
@@ -1277,10 +1252,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uSize = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--llcf"))
@@ -1302,10 +1274,7 @@ int	parseArgs (int argc, char *argv[])
 			uLambda = true;
 			lType   = LAMBDA_FIXED;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--Rc"))
@@ -1326,10 +1295,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uZth   = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--RcOff"))
@@ -1350,10 +1316,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uZrs   = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		//NEW
@@ -1376,10 +1339,7 @@ int	parseArgs (int argc, char *argv[])
 			uMsa  = true;
 			lType = LAMBDA_Z2; //obsolete?
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		//NEW
@@ -1403,10 +1363,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 
@@ -1427,10 +1384,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		// NEW
@@ -1445,10 +1399,7 @@ int	parseArgs (int argc, char *argv[])
 			mode0 = atof(argv[i+1]); //obsolete
 			icdatst.mode0 =  atof(argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 
@@ -1475,10 +1426,7 @@ int	parseArgs (int argc, char *argv[])
 
 			uQcd = true;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--fA"))
@@ -1497,10 +1445,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--steps"))
@@ -1518,10 +1463,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--sst0"))
@@ -1539,10 +1481,7 @@ int	parseArgs (int argc, char *argv[])
 				printf("WARNING: sst0 < 0 won't switch to theta-mode.\n");
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--dump"))
@@ -1561,10 +1500,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--meas"))
@@ -1585,19 +1521,14 @@ int	parseArgs (int argc, char *argv[])
 
 			defaultmeasType |= loco;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--measCPU"))
 		{
 			measCPU = true;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--spmask"))
@@ -1616,10 +1547,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--spKGV"))
@@ -1638,19 +1566,14 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--printmask"))
 		{
 			defaultmeasType |= MEAS_MASK ;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--fftplan"))
@@ -1663,10 +1586,7 @@ int	parseArgs (int argc, char *argv[])
 
 			sscanf(argv[i+1], "%lu", reinterpret_cast<size_t*>(&fftplanType));
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--rmask"))
@@ -1702,10 +1622,7 @@ int	parseArgs (int argc, char *argv[])
 			i_rmask++;
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--strmeas"))
@@ -1724,10 +1641,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--name"))
@@ -1746,76 +1660,59 @@ int	parseArgs (int argc, char *argv[])
 
 			strcpy (outName, argv[i+1]);
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		/* Axiton tracker */
 
 		if (!strcmp(argv[i], "--axitontracker"))
 		{
-			char ff[] = "-";
-			if (argv[i+1][0] == ff[0])
-				icdatst.axtinfo.nMax = -2; //default
-			else {
-				sscanf(argv[i+1], "%zu", &icdatst.axtinfo.nMax);
-				i++;
-			}
 			icdatst.axtinfo.th_threshold = -1.;   //default
 			icdatst.axtinfo.ve_threshold = -1.;   //default
 			icdatst.axtinfo.ct_threshold = -1.;   //default
 			icdatst.axtinfo.printradius  = 1;     //default
 			icdatst.axtinfo.gradients    = false; //default
-			procArgs++;
-			passed = true;
-			goto endFor;
+
+			char ff[] = "-";
+			if (argv[i+1][0] == ff[0]){
+				icdatst.axtinfo.nMax = -2; //default
+				PARSE1;
+			}
+			else {
+				sscanf(argv[i+1], "%zu", &icdatst.axtinfo.nMax);
+				PARSE2;
+			}
+
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.th_threshold"))
 		{
 			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.th_threshold);
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.vh_threshold"))
 		{
 			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ve_threshold);
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.ct_threshold"))
 		{
 			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ct_threshold);
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.printradius"))
 		{
 			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.printradius);
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.gradients"))
 		{
-			i++;
 			icdatst.axtinfo.gradients = true;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		/* IC's*/
@@ -1837,10 +1734,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--sIter"))
@@ -1860,10 +1754,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--index"))
@@ -1882,10 +1773,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--ctype"))
@@ -1941,6 +1829,11 @@ int	parseArgs (int argc, char *argv[])
 				cType = CONF_SPAX; // legacy
 				icdatst.cType =  CONF_SPAX;
 			}
+			else if (!strcmp(argv[i+1], "spsax"))
+			{
+				cType = CONF_SPAX; // legacy
+				icdatst.cType =  CONF_SPAX;
+			}
 
 			else
 			{
@@ -1948,10 +1841,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--smvar"))
@@ -2018,10 +1908,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 
@@ -2049,44 +1936,9 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
-		if (!strcmp(argv[i], "--device"))
-		{
-			if (i+1 == argc)
-			{
-				printf("Error: I need a device name (cpu/gpu).\n");
-				exit(1);
-			}
-
-			if (!strcmp(argv[i+1], "cpu"))
-			{
-				cDev = DEV_CPU;
-			}
-			else if (!strcmp(argv[i+1], "gpu"))
-			{
-				cDev = DEV_GPU;
-			}
-			else if (!strcmp(argv[i+1], "xeon"))
-			{
-				printf("Error: Knights Corner support has been removed\n");
-				exit(1);
-			}
-			else
-			{
-				printf("Error: unrecognized device %s\n", argv[i+1]);
-				exit(1);
-			}
-
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
-		}
 
 		if (!strcmp(argv[i], "--prop"))
 		{
@@ -2128,19 +1980,14 @@ int	parseArgs (int argc, char *argv[])
 			if (fpectral)
 				pType |= PROP_FSPEC;
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--cax"))
 		{
 			aMod = true;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--spec"))
@@ -2149,9 +1996,7 @@ int	parseArgs (int argc, char *argv[])
 
 			pType |= PROP_SPEC;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--fspec"))
@@ -2160,18 +2005,14 @@ int	parseArgs (int argc, char *argv[])
 
 			pType |= PROP_FSPEC;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--restart"))
 		{
 			restart_flag = true;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 
@@ -2179,18 +2020,14 @@ int	parseArgs (int argc, char *argv[])
 		{
 			preprop = true ; //legacy
 			icdatst.preprop = true ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--icstudy"))
 		{
 			icstudy = true ; //legacy
 			icdatst.icstudy = true ;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--prepstL"))
@@ -2211,10 +2048,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--prepcoe"))
@@ -2233,43 +2067,39 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
-                if (!strcmp(argv[i], "--ng0calib"))
+    if (!strcmp(argv[i], "--ng0calib"))
 		{
-		         if (i+1 == argc)
-		         {
-		         printf("Error: I need a value for ng0calib.\n");
-		         exit(1);
-		         }
-                         ng0calib = atof(argv[i+1]);
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for ng0calib.\n");
+				exit(1);
+			}
+			ng0calib = atof(argv[i+1]);
 
-			 i++;
-		         procArgs++;
-		         passed = true;
-		         goto endFor;
+			PARSE2;
 		}
 
-		if (!strcmp(argv[i], "--nologmpi"))
+		if (!strcmp(argv[i], "--cummask"))
 		{
-			logMpi = ZERO_RANK;
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for cummask.\n");
+				exit(1);
+			}
+			cumumas = atoi(argv[i+1]);
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
+
 
 		if (!strcmp(argv[i], "--measlistlog"))
 		{
 			CreateLogMeas = true;
 
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--lap"))
@@ -2291,10 +2121,7 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			i++;
-			procArgs++;
-			passed = true;
-			goto endFor;
+			PARSE2;
 		}
 
 		endFor:
@@ -2308,11 +2135,11 @@ int	parseArgs (int argc, char *argv[])
 
 	}
 
-	if (Nng*2 > (int) sizeZ) {
-		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Nng%d,sizeZ%d,%d,%d)\n",Nng,sizeZ,Nng*2, Nng*2> sizeZ);
-		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
-		exit(1);
-}
+// 	if (Nng*2 > (int) sizeZ) {
+// 		printf("Error: current limitation for number of neighbours for the laplacian is Depth/2 (Nng%d,sizeZ%d,%d,%d)\n",Nng,sizeZ,Nng*2, Nng*2> sizeZ);
+// 		printf("Error: If you are reading from a file, this exit might not be correct. Check it!\n");
+// 		exit(1);
+// }
 
 //obsolete!
 if (icdatst.cType == CONF_SMOOTH )
@@ -2363,7 +2190,8 @@ if (icdatst.cType == CONF_SMOOTH )
 	}
 
 	vqcdType |= vpqType;
- 	vqcdType |= (vqcdTypeDamp | vqcdTypeRhoevol);
+ 	vqcdType |= (vqcdTypeDamp | vqcdTypeEvol);
+
 
 	if (zrestore < zthres) {
 		printf("Warning: zrestore = %f < zthres %f. Switch-off disabled.\n", zrestore, zthres);
@@ -2435,6 +2263,15 @@ if (icdatst.cType == CONF_SMOOTH )
 		} else
 			printf("and deleted!\n ");
 	}
+	if (!((capa  = fopen("./abort", "r")) == nullptr)) {
+		fclose (capa);
+		printf("Abort file detected! ... ");
+		if( remove( "./abort" ) != 0 ){
+			printf("and cannot be deleted. Exit!\n");
+			exit(1);
+		} else
+			printf("and deleted!\n ");
+	}
 
 	/*	Create measfile.dat if required	*/
 	if (CreateLogMeas)
@@ -2443,8 +2280,8 @@ if (icdatst.cType == CONF_SMOOTH )
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;
 
-		/* Adjust time of initial conditions if --vilgor used */
-	if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
+		/* Adjust time of initial conditions if logi is given instead of zi */
+	// if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
 			{
 				if (uLogi && uZin) {
 					printf("Error: zi and logi given for vilgor initial conditions\n ");
@@ -2458,7 +2295,7 @@ if (icdatst.cType == CONF_SMOOTH )
 						uZin = true;
 				}
 					else if (!uLogi && uZin) {
-					printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
+					// printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
 					if (lType == LAMBDA_FIXED)
 						icdatst.logi = log(sqrt(2*LL)*icdatst.zi*icdatst.zi);
 						else
@@ -2478,6 +2315,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.measCPU  = measCPU;
 	deninfa.cTimesec = 0.0;
 	deninfa.propstep = 0;
+	deninfa.cummask = cumumas;
 
 	// default measurement type is parsed
 	deninfa.measdata = defaultmeasType;
@@ -2493,8 +2331,10 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.maty = maty;
 	deninfa.nrt = nrt;
 
+	LogMsg(VERB_HIGH,"Parse Jaxions completed! %d parsed args",procArgs);
 	return	procArgs;
 }
+
 
 Cosmos	createCosmos()
 {

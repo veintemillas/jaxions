@@ -118,7 +118,7 @@ void	prepropa2  (Scalar *axiona)
 	/* Calculate the new Lambda required to match at at zi
 	   and set Z2 with the IC exponent */
 	axiona->BckGnd()->SetLambda(llp*pow(Rnow,prelz2e));
-	LogMsg(VERB_NORMAL,"[prep] lambda = %f reset to %f",lamba,axiona->BckGnd()->Lambda());
+	LogMsg(VERB_NORMAL,"[prep] lambda = %e reset to %e",lamba,axiona->BckGnd()->Lambda());
 	axiona->setLambdaT(LAMBDA_Z2);
 	axiona->BckGnd()->SetLamZ2Exp(prelz2e);
 	LogMsg(VERB_NORMAL,"[prep] LamZ2Exp seto to %.2f",lz2e_aux);

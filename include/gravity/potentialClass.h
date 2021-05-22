@@ -196,14 +196,14 @@
 
 		index = 0;
 
-LogMsg(VERB_DEBUG,"Full test (index %d)",index);
+LogMsg(VERB_PARANOID,"Full test (index %d)",index);
 
 		double t0 = (double) Timer()*1.0e-6;
 		this->Run();
 		double te = (double) Timer()*1.0e-6;
 		double delta = te-t0;
 
-LogMsg(VERB_DEBUG,"Full delta %e",delta);
+LogMsg(VERB_PARANOID,"Full delta %e",delta);
 
 
 			size_t best = 1;
@@ -213,7 +213,7 @@ LogMsg(VERB_DEBUG,"Full delta %e",delta);
 			/* adjust dynamically ? */
 			for (int fo = 2; fo<32; fo *=2)
 			{
-LogMsg(VERB_DEBUG,"[GVt] Hybrid test red=%d (index %d)\n",fo, index);
+LogMsg(VERB_PARANOID,"[GVt] Hybrid test red=%d (index %d)\n",fo, index);
 				AxionFFT::removePlan("m2redFFT");
 				redfft  = fo;
 				AxionFFT::initPlan (afield, FFT_PSPEC_AX,  FFT_FWDBCK, "m2redFFT",redfft);
@@ -222,16 +222,16 @@ LogMsg(VERB_DEBUG,"[GVt] Hybrid test red=%d (index %d)\n",fo, index);
 				t0 = (double) Timer()*1.0e-6;
 				this->Run();
 				te = (double) Timer()*1.0e-6;
-LogMsg(VERB_DEBUG,"Hybrid delta %e",te-t0);
+LogMsg(VERB_PARANOID,"Hybrid delta %e",te-t0);
 				if (te-t0 < delta){
-LogMsg(VERB_DEBUG,"best");
+LogMsg(VERB_PARANOID,"best");
 					delta = te-t0;
 					best = fo;
 					}
 
 			}
 			AxionFFT::removePlan("m2redFFT");
-LogMsg(VERB_DEBUG,"best was redfft=%d",best);
+LogMsg(VERB_PARANOID,"best was redfft=%d",best);
 
 			if (best == 1)
 				hybrid = false;

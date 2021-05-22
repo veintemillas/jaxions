@@ -83,6 +83,7 @@
 			STRING_WALL	       = 64,
 			STRING_DEFECT      = 127,
 			STRING_MASK	       = 128,     //used to exclude spectra and energy sums
+			// STRING_IMPOSSIBLE  = 256,     //used for comparisons
 		}	StringType;
 
 		typedef	enum	LambdaType_s
@@ -114,15 +115,17 @@
 			V_PQ2        = 2048,
 
 			/*	Flags	*/
-			V_EVOL_RHO	= 8192,
-			V_DAMP_RHO	= 16384,
-			V_DAMP_ALL	= 32768,
+			V_EVOL_THETA = 4096,
+			V_EVOL_RHO	 = 8192,
+			V_DAMP_RHO	 = 16384,
+			V_DAMP_ALL	 = 32768,
 
 			/*	Masks	*/
-			V_QCD	      = 63,     // Masks QCD potential
-			V_PQ        = 3072,   // Masks PQ potential
-			V_TYPE	    = 3135,   // Masks base potential 2048+1024+32+16+8+4+2+1
-			V_DAMP	    = 49152,  // Masks damping mode 16384+32768
+			V_QCD	       = 63,     // Masks QCD potential
+			V_PQ         = 3072,   // Masks PQ potential
+			V_TYPE	     = 3135,   // Masks base potential 2048+1024+32+16+8+4+2+1
+			V_EVOL	     = 4096+8192,   // Masks base potential 2048+1024+32+16+8+4+2+1
+			V_DAMP	     = 49152,  // Masks damping mode 16384+32768
 
 			V_QCD0_PQ1   = 1024+1,
 			V_QCD1_PQ1   = 1024+2,
@@ -138,6 +141,20 @@
 			V_QCDL_PQ2   = 2048+16,
 			V_QCDC_PQ2   = 2048+32,
 			//
+			V_QCD0_PQ1_THETA = 4096+1024+1,
+			V_QCD1_PQ1_THETA = 4096+1024+2,
+			V_QCDV_PQ1_THETA = 4096+1024+4,
+			V_QCD2_PQ1_THETA = 4096+1024+8,
+			V_QCDL_PQ1_THETA = 4096+1024+16,
+			V_QCDC_PQ1_THETA = 4096+1024+32,
+
+			V_QCD0_PQ2_THETA = 4096+2048+1,
+			V_QCD1_PQ2_THETA = 4096+2048+2,
+			V_QCDV_PQ2_THETA = 4096+2048+4,
+			V_QCD2_PQ2_THETA = 4096+2048+8,
+			V_QCDL_PQ2_THETA = 4096+2048+16,
+			V_QCDC_PQ2_THETA = 4096+2048+32,
+
 			V_QCD0_PQ1_RHO   = 8192+1024+1,
 			V_QCD1_PQ1_RHO   = 8192+1024+2,
 			V_QCDV_PQ1_RHO   = 8192+1024+4,
@@ -243,6 +260,7 @@
 			CONF_AXITON       = 9,
 			CONF_STRWAVE      = 10,
 			CONF_THETAVEL     = 11,
+			CONF_VELRAND      = 12,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
@@ -343,6 +361,7 @@
 			PROF_HDF5,
 			PROF_REDUCER,
 			PROF_PROJECTOR,
+			PROF_SPEC,
 			PROF_SPECTRUM_FILLBINS,
 			PROF_SPECTRUM_NRUNLOOP,
 			PROF_SPECTRUM_FFTM2,
@@ -350,6 +369,7 @@
 			PROF_FTFIELD,
 			PROF_GRAVI,
 			PROF_TRACK,
+			PROF_BIN,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -357,8 +377,7 @@
 			VERB_SILENT    = 0,
 			VERB_NORMAL    = 1,
 			VERB_HIGH      = 2,
-			VERB_DEBUG     = 3,
-			VERB_PARANOID  = 4,
+			VERB_PARANOID  = 3,
 		}	VerbosityLevel;
 
 		typedef	enum	PrintConf_s
@@ -431,14 +450,14 @@
 
 		typedef	enum	PropcType_s {
 			PROPC_NONE	    = 0,		// For parsing
-			PROPC_BASE	    = 1,		// Optimised proppagator 1 neighbour
+			PROPC_BASE	    = 1,		// Propagator N neighbours
 			PROPC_SPEC	    = 2,		// Spectral flag
 			PROPC_FSPEC     = 4,		// Full Spectral flag
 		} PropcType;
 
 		typedef	enum	PropType_s {
 			PROP_NONE     = 0,		// For parsing
-			PROP_BASE     = 1,    // Optimised propagator 1 neighbour
+			PROP_BASE     = 1,    // Propagator N neighbours
 			PROP_SPEC     = 2,		// Spectral flag
 			PROP_FSPEC    = 4,		// Full Spectral flag
 
@@ -500,6 +519,11 @@
 			SPECTRUM_KK = 512,
 			SPECTRUM_GG = 1024,
 			SPECTRUM_VV	= 2048,
+			SPECTRUM_VNL	= 4096,
+			SPECTRUM_VVNL	= 8192,
+			//TEMP
+				SPECTRUM_GGy = 16384,
+				SPECTRUM_GGz = 16384*2,
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
@@ -515,14 +539,22 @@
 
 			SPMASK_AXIT	= 512,
 			SPMASK_AXIT2= 1024,
+			SPMASK_AXITV= 2048,
 		}	SpectrumMaskType;
 
 		typedef	enum	nRunType_s {
 			NRUN_K      = 1,
 			NRUN_G      = 2,
 			NRUN_V      = 4,
+			NRUN_S      = 8, // Non linear axion theta -> 2 sin(theta/2)
 			NRUN_KG     = 3,
 			NRUN_KGV    = 7,
+			NRUN_KGVS   = 15,
+			NRUN_CK      = 16, // Fast, without LUT correction
+			NRUN_CG      = 32, // Fast, without LUT correction
+			NRUN_CV      = 64, // Fast, without LUT correction, redundant
+			NRUN_CS      = 128, // Fast, without LUT correction, redundant
+
 		}	nRunType;
 
 		typedef	enum	StringMeasureType_s {
@@ -550,6 +582,7 @@
 			MAP_RHO   = 1,
 			MAP_THETA = 2,
 			MAP_ALL   = 3,
+			MAP_VHETA = 4,
 			MAP_NONE  = 0,
 		}	MapType;
 
@@ -588,7 +621,8 @@
 			MEAS_BINLOGTHETA2 = 4,
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
-			// MEAS_BIN..     = 16,
+
+			MEAS_AUX          = 16,   // For whatever
 			MEAS_STRING       = 32,
 			MEAS_STRINGMAP    = 64,
 			MEAS_STRINGCOO    = 128,
@@ -693,6 +727,7 @@
 			bool                measCPU;
 			double              cTimesec;
 			int                 propstep;
+			int								  cummask;
 		}	MeasInfo;
 
 		// data output by measurement function to program
@@ -714,7 +749,7 @@
 			int           printradius ;
 			bool          gradients ;
 		}	AxitonInfo;
-		
+
 		// Data required for initial conditions
 		// or other configuration
 		typedef	struct	IcData_v
@@ -775,6 +810,7 @@
 			double   massA2;
 			double   n;
 			double   Rpp;
+			double   Rp;
 			double   Lambda;
 			double   lambda;
 			double   gamma;

@@ -254,6 +254,7 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 
+	ninfa.measdata |= MEAS_NNSPEC ;
 	if (!restart_flag && (fIndex == -1)){
 		index = fIndex2;
 		LogOut("First measurement file %d \n",index);
@@ -684,23 +685,55 @@ void printsampleS(FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings
 
 double findzdoom(Scalar *axion)
 {
+
 	double fff = axion->BckGnd()->Frw();
 
 	if (axion->BckGnd()->Indi3() > 0.0 && (fff > 0.0)){
-	double ct = zInit ;
-	double DWfun;
-	double meas ;
-	while (meas < 0.001)
+	double ct = *axion->zV();
+	double DWfun0 = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->LambdaP(ct));
+	double DWfun = DWfun0;
+	double ct2 = ct*1.1;
+	double DWfun2 = 40*axion->AxionMassSq(ct2)/(2.0*axion->BckGnd()->LambdaP(ct2));
+	double k = 1;
+	double a = 1;
+	double meas = std::abs(DWfun2 - 1);;
+	LogMsg(VERB_NORMAL,"[VAX findzdoom] frw %f indi3 %f ct %e ", fff, axion->BckGnd()->Indi3(), ct );LogFlush();
+	while (meas > 0.001)
 	{
-		DWfun = 40*axion->AxionMassSq(ct)/(2.0*axion->BckGnd()->Lambda()) ;
-		if (axion->LambdaT() == LAMBDA_Z2)
-			DWfun *= pow(ct,2*fff);
-		meas = DWfun - 1 ;
-		ct += 0.001 ;
-		// LogOut("pdz %e %e %e\n",DWfun,meas,ct);
+
+		/* Assume power law
+		DWfun ~ k ct^a
+		then DWfun2/DWfun = (ct2/ct)^a
+		a = log(DWfun2/DWfun)/log(ct2/ct)
+		k = DWfun2/ct2^a
+		DWfun = 1 -> ct3 = 1/k^{1/a}, ct2 = ct
+		*/
+		a = std::log(DWfun2/DWfun)/std::log(ct2/ct);
+		k = DWfun2/std::pow(ct2,a);
+		// LogOut("ct %e DWfun %e ct2 %e DWfun2 %e meas %e k %e a %e\n", ct, DWfun, ct2, DWfun2, meas, k ,a );
+		if ((a == 0) && (DWfun2 > DWfun0) ){
+			LogMsg(VERB_PARANOID,"[VAX findzdoom] flat slope between ct %e ct2 %e", ct, ct2 );
+			if (DWfun2 > 1) {
+				LogMsg(VERB_PARANOID,"[VAX findzdoom] Jump back!");
+				ct  = ct2;
+				ct2 = std::sqrt(*axion->zV()*ct2);
+			}
+			else {
+				LogMsg(VERB_PARANOID,"[VAX findzdoom] DWfun will never reach 1");
+				return INFINITY;
+			}
+		} else {
+			ct  = ct2;
+			ct2 = std::pow(k,-1./a);
+		}
+		DWfun = DWfun2;
+		DWfun2 = 40*axion->AxionMassSq(ct2)/(2.0*axion->BckGnd()->LambdaP(ct2));
+		meas = std::abs(DWfun2 - 1);
+		LogMsg(VERB_PARANOID,"ct2 %e DWfun2 %e meas %e k %e a %e", ct2, DWfun2, meas, k ,a );
 	}
-	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct );
-	return ct ;
+	//LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
+	LogMsg(VERB_NORMAL,"[VAX findzdoom] Real z_doom %f ", ct2 );LogFlush();
+	return ct2 ;
 } else {
 	return -1 ; }
 }
@@ -722,6 +755,20 @@ void	checkTime (Scalar *axion, int index) {
 		fclose (capa);
 	}
 
+	FILE *cape = nullptr;
+	if (!((cape  = fopen("./abort", "r")) == nullptr)){
+		flag = 3;
+		fclose (cape);
+	}
+
+	FILE *capo = nullptr;
+	if (!((capo  = fopen("./savejaxconf", "r")) == nullptr)){
+		flag = 4;
+		fclose (capo);
+		if( remove( "./savejaxconf" ) != 0 ){
+			LogOut("savejaxconf file cannot be deleted. Danger!\n");
+		}
+	}
 
 	MPI_Allgather(&flag, 1, MPI_INT, allFlags.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -736,29 +783,61 @@ void	checkTime (Scalar *axion, int index) {
 	if (done) {
 		if (cDev == DEV_GPU)
 			axion->transferCpu(FIELD_MV);
-		if (flag ==2){
-			LogMsg(VERB_NORMAL, "[VAX checkTime %d] stop file detected! stopping ... ",index);
-			LogOut ("Interrupted manually with stop file ...");
-		}
 		if (flag ==1){
 			LogMsg(VERB_NORMAL, "[VAX checkTime %d] Walltime reached ",index);
 			LogOut ("Walltime reached, dumping configuration...");
+			writeConf(axion, index, 1);
+			LogOut ("Done!\n");
+
+			LogOut("z Final = %f\n", *axion->zV());
+			LogOut("nPrints = %i\n", index);
+
+			LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+			LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+
+			delete axion;
+
+			endAxions();
+
+			exit(0);
+
+		}
+		if (flag ==2){
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] stop file detected! stopping ... ",index);
+			LogOut ("Interrupted manually with stop file ...");
+			writeConf(axion, index, 1);
+			LogOut ("Done!\n");
+
+			LogOut("z Final = %f\n", *axion->zV());
+			LogOut("nPrints = %i\n", index);
+
+			LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
+			LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
+
+			delete axion;
+
+			endAxions();
+
+			exit(0);
+
+		}
+		if (flag == 3){
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] abort file detected! aborting! ",index);
+			LogOut ("Aborting ...");
+			delete axion;
+
+			endAxions();
+
+			exit(0);
+
+		}
+		if (flag ==4){
+			LogMsg(VERB_NORMAL, "[VAX checkTime %d] save file detected! saving ... ",index);
+			writeConf(axion, index);
+			commSync();
+			remove( "./save" );
 		}
 
-		writeConf(axion, index, 1);
-		LogOut ("Done!\n");
-
-		LogOut("z Final = %f\n", *axion->zV());
-		LogOut("nPrints = %i\n", index);
-
-		LogOut("Total time: %2.3f min\n", cTime*1.e-6/60.);
-		LogOut("Total time: %2.3f h\n", cTime*1.e-6/3600.);
-
-		delete axion;
-
-		endAxions();
-
-		exit(0);
 	}
 }
 

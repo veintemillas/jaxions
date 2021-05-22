@@ -10,6 +10,8 @@ import datetime
 import glob
 from sympy import integer_nthroot
 import pickle
+import matplotlib.colors as col
+
 # mark=f"{datetime.datetime.now():%Y-%m-%d}"
 # from uuid import getnode as get_mac
 # mac = get_mac()
@@ -253,8 +255,7 @@ def gm(address,something='summary',printerror=False):
 
     f = h5py.File(address, 'r')
 
-    #prelim checks
-    # usage:
+    # generic attribute: something = 'at/nombre'
     if (something[:2] == 'at'):
         esp = something[2:]
         gro = esp[:esp.rfind('/')]
@@ -264,6 +265,18 @@ def gm(address,something='summary',printerror=False):
         except:
             print('what!')
             return 0
+
+    # generic data: something = 'da/nombre'
+
+    if (something[0:2] == 'da'):
+        esp = something[2:]
+        dap = esp[:esp.rfind('/')]
+        try:
+            return np.array(f[dap][()])
+        except:
+            print('not found!')
+            return 0
+        return
 
     #prelim checks
     ftype = f.attrs.get('Field type').decode()
@@ -485,7 +498,7 @@ def gm(address,something='summary',printerror=False):
     st_check = ('string' in f)
     if (something[0:2] == 'st') and ftype == 'Axion':
         return 0. ;
-    if (something[0:2] == 'st' or something[0:2] == 'xi') and st_check and ftype == 'Saxion':
+    if (something[0:2] == 'st' or something == 'xi') and st_check :
         if (something == 'stringN'):
             return f['string'].attrs[u'String number'] ;
         if (something == 'stringL'):
@@ -831,7 +844,7 @@ def gm(address,something='summary',printerror=False):
         if (something == mapad+'vheta') and (ftype == 'Saxion'):
             m   = np.array(f[mapad]['m'][()].reshape(N,N,2))
             v   = np.array(f[mapad]['v'][()].reshape(N,N,2))
-            return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+v[:,:,1]**2) ;
+            return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+m[:,:,1]**2) ;
 
         if (something == mapad+'rho') and (ftype == 'Saxion'):
             temp = np.array(f[mapad]['m'][()].reshape(N,N,2))
@@ -1188,6 +1201,87 @@ def fildic(meas):
     if (meas in ['MEAS_MULTICON','multicontrast','multi contrast','multicon','multi con']):
         return 'MEAS_MULTICON'
 
+
+
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
+#   Function to retrieve axion number in ADM units from nspectra
+# ------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+def checkNV(file,k0, kl, nn, mode='KGV',mask='_0'):
+    """
+    Computes the axion number / comoving volume in ADM units
+    from file
+    : par file :  string        address of the axion.m.xxxxx file containing nspec
+    : par k0   :  float         2pi/L in ADM units
+    : par kl   :  float array   list of mode wavenumbers in ADM units (multiples of k0)
+    : par nn   :  float array   number of modes summed in each bin of n_spec
+    : par mode :  string        string contains 'K' and/or 'G' and/or 'V' for the K, G, or V
+                                contribution to the axion number; only those are summed
+    : par mask :  string        mask used in the spectrum; searchs for '/nSpectrum/sK'+mask
+                                examples mask='_0', '_Red_1.00', etc.
+    """
+#     w  = np.sqrt(kl**2 + mA*mA*R*R)
+    sus = 0
+    if 'K' in mode:
+        if 'C' not in mode:
+            sus += gm(file,'nspK'+mask)
+        else :
+            sus += gm(file,'nspCK'+mask)
+    if 'G' in mode:
+        if 'C' not in mode:
+            sus += gm(file,'nspG'+mask)
+        else :
+            sus += gm(file,'nspCG'+mask)
+    if 'V' in mode:
+        if 'C' not in mode:
+            sus += gm(file,'nspV'+mask)
+        else :
+            sus += gm(file,'nspCV'+mask)
+    if 'S' in mode:
+        if 'C' not in mode:
+            sus += gm(file,'nspS'+mask)
+        else :
+            sus += gm(file,'nspCS'+mask)
+    if sus[0] == np.inf:
+        return ((k0*kl*kl*(sus)/(2*np.pi**2)/nn))[1:].sum()
+    else :
+        return (k0*kl*kl*(sus)/(2*np.pi**2)/nn).sum()
+
+
+def NV(mf, k0, kl, nn, mode='KGV',mask='_0'):
+    """
+    Computes the axion number / comoving volume in ADM units
+    from a list/array of files mf by calling the funciton checkNV(file,k0, kl, nn, mode='KGV',mask='_0')
+    : par file :  string        address of the axion.m.xxxxx file containing nspec
+    : par k0   :  float         2pi/L in ADM units
+    : par kl   :  float array   list of mode wavenumbers in ADM units (multiples of k0)
+    : par nn   :  float array   number of modes summed in each bin of n_spec
+    : par mode :  string        string contains 'K' and/or 'G' and/or 'V' for the K, G, or V
+                                contribution to the axion number; only those are summed
+    : par mask :  string        mask used in the spectrum; searchs for '/nSpectrum/sK'+mask
+                                examples mask='_0', '_Red_1.00', etc.
+    """
+    hi = []
+    for f in mf:
+        hi.append(checkNV(f,k0, kl, nn, mode, mask))
+    return np.array(hi)
 
 
 
@@ -2129,6 +2223,24 @@ def xit(logi):
 def xitt(logi):
     return 0.21738*np.log(1 + 0.1564394*np.exp(logi))
 
+def mkcmap2(lis, N=100, gamma=1):
+    dic = {
+    'w' : '#ffffff',
+    'y' : '#FFFF00',
+    't' : '#00868B',
+    'k' : '#000000',
+    'r2' : '#b20000',
+    'r' : '#ff0000',
+    'b' : '#03A89E', 'b2' : '#0000ff',
+    'b3' : '#0080ff',
+    'b4' :  '#00BFFF',
+    'd' : '#68228B',
+    'o': '#FFA500'}
+    anglemap = col.LinearSegmentedColormap.from_list(
+        'anglemap', [dic[c] for c in lis], N=N, gamma=gamma)
+    return anglemap
+
+thetacmap = mkcmap2(['w','b','k','r','w'])
 
 #   qt plot!
 

@@ -54,7 +54,7 @@ using namespace profiler;
 
 void	normaliseField	(Scalar *field, const FieldIndex fIdx)
 {
-	LogMsg  (VERB_HIGH, "Called normalise field %d (M,V,M2=%d,%d,%d)",FIELD_M,FIELD_V,FIELD_M2);
+	LogMsg  (VERB_HIGH, "Called normalise field %d (M,V,M2=%d,%d,%d)",fIdx, FIELD_M,FIELD_V,FIELD_M2);
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	NormaliseField *nField = new NormaliseField(field, fIdx);

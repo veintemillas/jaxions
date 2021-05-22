@@ -45,9 +45,6 @@
 		bool	lowmem;
 		size_t Ng;
 
-		bool	gsent;
-		bool	grecv;
-
 		// conformal time
 		double	*z;
 		// scale factor
@@ -59,6 +56,7 @@
 		std::vector<double>	co;
 
 		void	*m,   *v,   *m2,   *str;			// Cpu data
+		void	*rho, *vho, *g;								// Faxion data
 #ifdef	USE_GPU
 		void	*m_d, *v_d, *m2_d;				// Gpu data
 
@@ -110,6 +108,32 @@
 		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
 		/* m2h plus a ghost, used when fSize=precision because in complex mode fSize=2precision and the grid does not fit in m2h */
 		void		*m2hStart    () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision + fSize*(n2)*Ng); }
+
+		/* Faxion rho, vho, gx, gy, gx*/
+		void		*rhoCpu       () { return                                         rho; }
+		void		*rhoStart     () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(n2)*Ng); }
+		void		*rhoFrontGhost() { return                                         rho; }
+		void		*rhoBackGhost () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(n2*Ng+n3)); }
+
+		void		*vhoCpu       () { return                                         vho; }
+		void		*vhoStart     () { return static_cast<void *>(static_cast<char *>(vho) + fSize*(n2)*Ng); }
+		void		*vhoFrontGhost() { return                                         vho; }
+		void		*vhoBackGhost () { return static_cast<void *>(static_cast<char *>(vho) + fSize*(n2*Ng+n3)); }
+
+		void		*gxCpu       () { return                                         g; }
+		void		*gxStart     () { return static_cast<void *>(static_cast<char *>(g) + fSize*(n2)*Ng); }
+		void		*gxFrontGhost() { return                                         g; }
+		void		*gxBackGhost () { return static_cast<void *>(static_cast<char *>(g) + fSize*(n2*Ng+n3)); }
+
+		void		*gyCpu       () { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision                ); }
+		void		*gyStart     () { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision + fSize*(n2)*Ng); }
+		void		*gyFrontGhost() { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision                ); }
+		void		*gyBackGhost () { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision + fSize*(n2*Ng+n3)); }
+
+		void		*gzCpu       () { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision                ); }
+		void		*gzStart     () { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision + fSize*(n2)*Ng); }
+		void		*gzFrontGhost() { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision                ); }
+		void		*gzBackGhost () { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision + fSize*(n2*Ng+n3)); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
@@ -205,11 +229,20 @@
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
 
+		/* Function to exchange ghosts
+		sendGeneral allows exchange of two general slices
+		sendGhost2 exchanges usual ghost slices of m,v, or m2, with option to ng<Ng
+		exchangeGhosts does the standard exchange
+		sendGhost is a previous version that works for the standard exchange */
+
+		void	sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB, void* receiveBufferF, void* sendBufferF, void* receiveBufferB);
+		void	sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng = -1);
  		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
-		bool	gSent() { return gsent; }
-		bool	gRecv() { return grecv; }
-		void	gReset() { gsent = false ; grecv = false; }
+
+
+
+
 
 		size_t  getNg() {return Ng;}
 		void	  setCO	(size_t newN);

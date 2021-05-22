@@ -63,15 +63,20 @@ namespace profiler {
 		Profiler	projProfiler("Projector");
 		profs.insert(std::make_pair(PROF_PROJECTOR, projProfiler));
 
+		Profiler	specProfiler("Spectrum");
+		profs.insert(std::make_pair(PROF_SPEC, specProfiler));
+
 		Profiler	measProfiler("Measa");
 		profs.insert(std::make_pair(PROF_MEAS, measProfiler));
+
+		Profiler	binProfiler("Binner");
+		profs.insert(std::make_pair(PROF_BIN, binProfiler));
 
 		Profiler	gravProfiler("Gravity");
 		profs.insert(std::make_pair(PROF_GRAVI, gravProfiler));
 
 		Profiler	trakProfiler("Axiton tracker");
 		profs.insert(std::make_pair(PROF_TRACK, trakProfiler));
-
 	}
 
 	void	printMiniStats(double z, StringData strDen, ProfType prof, std::string counter) {

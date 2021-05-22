@@ -155,8 +155,11 @@ void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
 		     cudaStream_t &stream, const bool wMod)
 {
+	if (Vo>Vf)
+		return ;
+		
 	switch (wMod) {
-	
+
 		case	true:
 			propThModGpu(m, v, m2, z, dz, c, d, ood2, aMass2, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
