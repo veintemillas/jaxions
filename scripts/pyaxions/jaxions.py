@@ -2242,6 +2242,17 @@ def mkcmap2(lis, N=100, gamma=1):
 
 thetacmap = mkcmap2(['w','b','k','r','w'])
 
+def colorbar(mappable):
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    import matplotlib.pyplot as plt
+    last_axes = plt.gca()
+    ax = mappable.axes
+    fig = ax.figure
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = fig.colorbar(mappable, cax=cax)
+    plt.sca(last_axes)
+
 #   qt plot!
 
 # def axevplot(arrayS, arrayA):
