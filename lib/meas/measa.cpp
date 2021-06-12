@@ -346,10 +346,13 @@ writePMapHdf5s (axiona, LAB);
 
 						if (measa & MEAS_REDENE3DMAP){
 								if ( redmap > 0 ){
-										LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map to N=%d by smoothing",sizeN, redmap);
+										size_t nLz = (axiona->TotalDepth()*redmap)/axiona->Length();
+										LogMsg(VERB_NORMAL, "[Meas %d] reduced energy map from Nx,Nz=%d,%d to Nx'Nz'=%d,%d by smoothing",indexa, axiona->Length(), redmap,
+												axiona->Depth(), nLz);
 										double ScaleSize = ((double) axiona->Length())/((double) redmap);
 										double eFc  = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((double) axiona->Surf());
-										size_t nLz = redmap / commSize();
+										// size_t nLz = redmap / commSize();
+
 
 										if (axiona->Precision() == FIELD_DOUBLE) {
 											reduceField(axiona, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>

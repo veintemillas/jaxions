@@ -354,8 +354,8 @@ void	PrintICoptions()
 	printf("  --smvar saxnoise --mode0 [float] --kcr [float]   theta = mode0, rho = 1 + random{-1,1}*kcr.\n");
 	printf("  --smvar mc   --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x-N/2)^2).\n");
 	printf("  --smvar mc0  --mode0 [float] --kcr [float]       theta = mode0 Exp(-kcr*(x)^2).\n");
-	printf("  --smvar ax1mode  --mode0 [float] --kMax[int]     theta = mode0 cos(2Pi kMax*x/N).\n");
-	printf("  --smvar parres   --mode0 [float] --kMax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
+	printf("  --smvar ax1mode  --mode0 [float] --kmax[int]     theta = mode0 cos(2Pi kMax*x/N).\n");
+	printf("  --smvar parres   --mode0 [float] --kmax[int]     theta = mode0 cos(kx*x + ky*y + kz*z) k's specified in kkk.dat, \n");
 	printf("                   --kcr [float]                   rho = kcr. Alternatively k = (kMax,0,0) if not kkk.dat file. \n\n");
 	printf("  --smvar stXY --mode0 [float] --kcr [float]       Circular loop in the XY plane at z=kcr, radius N/4.\n");
 	printf("  --smvar stYZ --mode0 [float] --kcr [float]       Circular loop in the YZ plane, radius N/4.\n");
@@ -2206,20 +2206,20 @@ if (icdatst.cType == CONF_SMOOTH )
 			printf("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
 			endredmap = siN;
 		}
-		if (siN%endredmap != 0 ){
-			int schei =  siN/endredmap;
-			endredmap = siN/schei;
-			printf("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
-		}
+		// if (siN%endredmap != 0 ){
+		// 	int schei =  siN/endredmap;
+		// 	endredmap = siN/schei;
+		// 	printf("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
+		// }
 		if (endredmapwkb > siN){
 			printf("[Error:1] Reduced wkb map dimensions (%d) set to %d\n ", endredmap,siN);
 			endredmapwkb = siN;
 		}
-		if (siN%endredmapwkb != 0 ){
-			int schei =  siN/endredmapwkb;
-			endredmapwkb = siN/schei;
-			printf("[Error:2] Reduced wkb map dimensions set to %d\n ", endredmap);
-		}
+		// if (siN%endredmapwkb != 0 ){
+		// 	int schei =  siN/endredmapwkb;
+		// 	endredmapwkb = siN/schei;
+		// 	printf("[Error:2] Reduced wkb map dimensions set to %d\n ", endredmap);
+		// }
 
 	}
 	/*	Set the output directory, according to an environmental variable	*/
