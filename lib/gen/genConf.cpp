@@ -1024,13 +1024,15 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 	// double norma = std::sqrt(1.5707963*ic.kcr/(ic.kMax*ic.kMax*ic.kMax));
 	// better version including mode decay inside horizon
 
-	double norma = ic.kcr/std::sqrt(3.14159*kCritz*kCritz*kCritz*(ic.kMax/kCritz - 0.5*std::sin(2*ic.kMax/kCritz)));
+	// better version adjust by hand
 
-  LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
-	scaleField (axionField, FIELD_V, norma);
-	norma /= (*axionField->zV());
-	scaleField (axionField, FIELD_M2, norma);
-	LogMsg(VERB_NORMAL,"norma2 %e \n",norma);
+	/* Analytical estimate */
+	// double norma = ic.kcr/std::sqrt(3.14159*kCritz*kCritz*kCritz*(ic.kMax/kCritz - 0.5*std::sin(2*ic.kMax/kCritz)));
+  // LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
+	// scaleField (axionField, FIELD_V, norma);
+	// norma /= (*axionField->zV());
+	// scaleField (axionField, FIELD_M2, norma);
+	// LogMsg(VERB_NORMAL,"norma2 %e \n",norma);
 
 	// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
 	// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
@@ -1052,6 +1054,37 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 	myPlan.run(FFT_BCK);
 	// takes only the real parts and builds exp(itheta), ...
 	// it builds
+	double theta2_loco = 0;
+	double theta2 = 0;
+	if (axionField->Precision() == FIELD_SINGLE) {
+		float* thets = static_cast<float*> (axionField->mStart());
+		#pragma parallel for reduce(+:theta2)
+		for (size_t idx = 0; idx < axionField->Size(); idx++)
+		{
+			theta2_loco += (double) pow(thets[2*idx],2);
+		}
+	} else {
+		double* thets = static_cast<double*> (axionField->mStart());
+		#pragma parallel for reduce(+:theta2)
+		for (size_t idx = 0; idx < axionField->Size(); idx++)
+		{
+			theta2_loco += pow(thets[2*idx],2);
+		}
+	}
+	MPI_Allreduce (&theta2_loco, &theta2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	// printf("theta2_loco %.2e\n",theta2_loco);
+
+	theta2 /= (double) axionField->TotalSize();
+	LogMsg(VERB_NORMAL,"theta2 is %.2e we will normalise to %.2e \n", theta2,M_PI*M_PI/3.0 * ic.kcr);
+
+	double norma = M_PI/(std::sqrt(3*theta2/ic.kcr));
+
+	LogMsg(VERB_NORMAL,"norma1 %e \n",norma);
+	scaleField (axionField, FIELD_M, norma);
+	norma /= (*axionField->zV());
+	scaleField (axionField, FIELD_V, norma);
+	LogMsg(VERB_NORMAL,"norma2 %e \n",norma);
+
 	theta2Cmplx	(axionField);
 	axionField->setFolded(false);
 }
