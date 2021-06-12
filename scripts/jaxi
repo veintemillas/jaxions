@@ -2,14 +2,14 @@
 #JAXIONS_DIR=/Users/maturino/jaxions/jaxions
 
 if [ "$1" == "copy" ]; then
-	cp $JAXIONS_DIR/scripts/vax-ex.sh ./
-	cp $JAXIONS_DIR/scripts/measfile.py ./
+	cp $JAXIONS_DIR/jaxions/scripts/vax-ex.sh ./
+	cp $JAXIONS_DIR/jaxions/scripts/measfile.py ./
 	exit 1
 fi
 
 if [ "$1" == "nb" ]; then
-	cp $JAXIONS_DIR/scripts/movie-maker.ipynb ./
-	cp $JAXIONS_DIR/scripts/simulation-outlook.ipynb ./
+	cp $JAXIONS_DIR/jaxions/scripts/movie-maker.ipynb ./
+	cp $JAXIONS_DIR/jaxions/scripts/simulation-outlook.ipynb ./
 	exit 1
 fi
 
@@ -27,5 +27,5 @@ if [ "$1" == "" ]; then
 else
 	echo "jax ipython > rm"
 	echo $1 $2 $3
-	ipython $JAXIONS_DIR/scripts/$1.py $2 $3
+	ipython $JAXIONS_DIR/jaxions/scripts/$1.py $2 $3
 fi
