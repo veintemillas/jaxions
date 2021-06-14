@@ -7,7 +7,7 @@ from scipy import interpolate
 
 def genspec(N, L, R, mA, X, klist, v02, mode='v'):
     """
-    Creates the IC for jAxions spax option in 'initialspectrum.txt'
+    Creates the IC for jAxions spax option in 'initialspectrum.dat'
 
     :par N  : integer     [#points/dimension]
     :par L  : float       [box length in L1 units]
@@ -23,7 +23,7 @@ def genspec(N, L, R, mA, X, klist, v02, mode='v'):
     array m               [array of |FT{theta}| for jAxions]
     array v               [array of |FT{theta'}| for jAxions]
 
-    creates 'initialspectrum.txt'
+    creates 'initialspectrum.dat'
 
     Typical usage :
 
@@ -83,7 +83,7 @@ def genspec(N, L, R, mA, X, klist, v02, mode='v'):
         v = m*w
 
     xy = np.column_stack((m, v))
-    np.savetxt('initialspectrum.txt', xy, delimiter=' ', fmt='%.8e %.8e')   # X is an array
-    print('File initialspectrum.txt created')
+    np.savetxt('initialspectrum.dat', xy, delimiter=' ', fmt='%.8e %.8e')   # X is an array
+    print('File initialspectrum.dat created')
     print('Done')
     return k, m, v

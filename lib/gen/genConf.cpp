@@ -902,7 +902,7 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	std::vector<double> mm,vv;
 	{
 			FILE *cacheFile = nullptr;
-			if (((cacheFile  = fopen("./initialspectrum.txt", "r")) == nullptr)){
+			if (((cacheFile  = fopen("./initialspectrum.dat", "r")) == nullptr)){
 				printf("No initialspectrum.dat ! Exit!");
 				exit(1);
 			}
