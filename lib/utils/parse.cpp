@@ -95,7 +95,7 @@ size_t wTime = std::numeric_limits<std::size_t>::max();
 
 size_t       fftplanType     = 0; //FFTW_MEASURE = 0
 PropType     pType           = PROP_NONE;
-SpectrumMaskType spmask      = SPMASK_FLAT;
+SpectrumMaskType spmask      = SPMASK_NONE;
 StringMeasureType strmeas    = STRMEAS_STRING;
 double       rmask           = 2.0 ;
 ConfType     cType           = CONF_NONE;
@@ -2320,8 +2320,12 @@ if (icdatst.cType == CONF_SMOOTH )
 	// default measurement type is parsed
 	deninfa.measdata = defaultmeasType;
 	deninfa.strmeas = strmeas;
+	/* if measdata included spectra but no mask was speficied, set FLAT*/
+	if ( (deninfa.measdata & ( MEAS_SPECTRUM )) && (spmask == SPMASK_NONE) )
+		spmask = SPMASK_FLAT;
 	deninfa.mask = spmask;
 	deninfa.rmask = rmask;
+
 
 	std::sort(rmask_tab.begin(), rmask_tab.end());
  	auto last = std::unique(rmask_tab.begin(), rmask_tab.end());

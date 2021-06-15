@@ -23,6 +23,10 @@
 #include "WKB/WKB.h"
 #include "axiton/tracker.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+
 using namespace std;
 using namespace AxionWKB;
 
@@ -34,6 +38,9 @@ void    printsampleS  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nst
 double  findzdoom(Scalar *axion);
 void    checkTime (Scalar *axion, int index);
 void    printposter (Scalar *axion);
+void    readmeasfile (Scalar *axion, DumpType *dumpmode_p, std::vector<double> *mzl, std::vector<int>	*mtl, std::vector<int>	*ptl, std::vector<int>	*ktl, MeasInfo *ninfa);
+void    mysplit (std::string *str, std::vector<std::string> *result);
+int     readmeasline (std::string *str, double *ctime, std::vector<int> *lint);
 
 //-point to print
 size_t idxprint = 0 ;
@@ -174,53 +181,58 @@ int	main (int argc, char *argv[])
 	int meastype ;
 	std::vector<double>	meas_zlist;
 	std::vector<int>	meas_typelist;
+	std::vector<int>	map_typelist;
+	std::vector<int>	mask_typelist;
 
-	{
-			FILE *cacheFile = nullptr;
-			if (((cacheFile  = fopen("./measfile.dat", "r")) == nullptr)){
-				LogMsg(VERB_NORMAL,"[VAX] No measfile.dat ! Use linear dump mode by default");
-			}
-			else
-			{
-				LogOut("\n- . - . - . - . - . - . - . - . - . - . - . - . -\n");
-				LogOut("Measurement list : \n");
+	readmeasfile (axion, &dumpmode, &meas_zlist, &meas_typelist, &map_typelist, &mask_typelist, &ninfa);
 
-				dumpmode = DUMP_FROMLIST;
-				LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list");
-				fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
-				while(!feof(cacheFile)){
-					if (meastype < 0)
-						meastype = defaultmeasType;
-					if (mesi < *axion->zV()){
-						LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED",mesi,*axion->zV());
-					}
-					else {
-						meas_zlist.push_back(mesi);
-						meas_typelist.push_back(meastype);
-						LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
-						i_meas++ ;
-					}
-					fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
-				}
-				/* check for no repetitions */
-				for (int i =i_meas-1; i>0;i--)
-					if (meas_zlist[i] == meas_zlist[i-1]){
-						LogMsg(VERB_NORMAL,"[VAX] merge %d %d at t %f with %d %d > %d", i, i-1, meas_zlist[i], meas_typelist[i], meas_typelist[i-1], meas_typelist[i]|meas_typelist[i-0]);
-						meas_typelist[i-1] |= meas_typelist[i];
-						meas_zlist.erase(meas_zlist.begin()+i);
-						meas_typelist.erase(meas_typelist.begin()+i);
-					}
+	// {
+	// 		FILE *cacheFile = nullptr;
+	// 		if (((cacheFile  = fopen("./measfile.dat", "r")) == nullptr)){
+	// 			LogMsg(VERB_NORMAL,"[VAX] No measfile.dat ! Use linear dump mode by default");
+	// 		}
+	// 		else
+	// 		{
+	// 			LogOut("\n- . - . - . - . - . - . - . - . - . - . - . - . -\n");
+	// 			LogOut("Measurement list : \n");
+	//
+	// 			dumpmode = DUMP_FROMLIST;
+	// 			LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list");
+	// 			fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+	// 			while(!feof(cacheFile)){
+	// 				if (meastype < 0)
+	// 					meastype = defaultmeasType;
+	// 				if (mesi < *axion->zV()){
+	// 					LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED",mesi,*axion->zV());
+	// 				}
+	// 				else {
+	// 					meas_zlist.push_back(mesi);
+	// 					meas_typelist.push_back(meastype);
+	// 					LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d", i_meas, meas_zlist[i_meas], meas_typelist[i_meas]);
+	// 					i_meas++ ;
+	// 				}
+	// 				fscanf (cacheFile ,"%lf %d", &mesi, &meastype);
+	// 			}
+	// 			/* check for no repetitions */
+	// 			for (int i =i_meas-1; i>0;i--)
+	// 				if (meas_zlist[i] == meas_zlist[i-1]){
+	// 					LogMsg(VERB_NORMAL,"[VAX] merge %d %d at t %f with %d %d > %d", i, i-1, meas_zlist[i], meas_typelist[i], meas_typelist[i-1], meas_typelist[i]|meas_typelist[i-0]);
+	// 					meas_typelist[i-1] |= meas_typelist[i];
+	// 					meas_zlist.erase(meas_zlist.begin()+i);
+	// 					meas_typelist.erase(meas_typelist.begin()+i);
+	// 				}
+	//
+	//
+	//
+	// 			LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
+	// 			zFinl = meas_zlist[meas_zlist.size()-1];
+	// 			LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
+	// 			ninfa.measdata |= (MeasureType) meas_typelist[0];
+	// 			LogOut("First measurement set to %d\n", ninfa.measdata);
+	// 			LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
+	// 		}
+	// }
 
-
-
-				LogOut("List dump mode! number of measurements = %d (=%d)\n",meas_zlist.size(),i_meas);
-				zFinl = meas_zlist[meas_zlist.size()-1];
-				LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
-				ninfa.measdata |= (MeasureType) meas_typelist[0];
-				LogOut("First measurement set to %d\n", ninfa.measdata);
-				LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
-			}
-	}
 	i_meas=0;
 
 	LogOut("\n");
@@ -364,6 +376,8 @@ int	main (int argc, char *argv[])
 					LogMsg(VERB_NORMAL,"                   to   %e",dzaux);
 					measrightnow = true;
 					ninfa.measdata = (MeasureType) meas_typelist[i_meas];
+					ninfa.maty     = (SliceType) map_typelist[i_meas];
+					ninfa.mask     = (SpectrumMaskType) mask_typelist[i_meas];
 					defaultmeasType = ninfa.measdata;
 					// actually, if this is the last measurement, do not measure!
 					if ( (i_meas == meas_zlist.size()-1) ){
@@ -422,6 +436,8 @@ int	main (int argc, char *argv[])
 							// customize?
 							ninfa.index=index;
 							ninfa.measdata = rho2thetameasType;
+							ninfa.maty     = deninfa.maty;
+							ninfa.mask     = deninfa.mask;
 							lm = Measureme (axion, ninfa);
 							index++;
 
@@ -925,6 +941,142 @@ void printposter(Scalar *axion)
 		LogOut("Massless axion!!!\n\n");
 	}
 }
+
+
+void mysplit (std::string *str, std::vector<std::string> *result)
+{
+	std::istringstream iss(*str);
+	(*result).clear();
+	for(std::string s; iss >> s; )
+			(*result).push_back(s);
+}
+
+int readmeasline (std::string *str, double *ctime, std::vector<int> *lint)
+{
+	int n = 2;
+	std::vector<std::string> result;
+	mysplit(str, &result);
+	(*lint).clear();
+	*ctime = std::stof( result[0]);
+	(*lint).push_back( std::stoi(result[1]));
+	if (result.size() > 2) {
+		(*lint).push_back( std::stoi(result[2]));
+		n ++;} else
+		(*lint).push_back(0);
+	if (result.size() > 3){
+			(*lint).push_back( std::stoi(result[3]));
+		n++;} else
+		(*lint).push_back(0);
+	return n;
+}
+
+
+void readmeasfile (Scalar *axion, DumpType *dumpmode_p, std::vector<double> *meas_zlist, std::vector<int>	*meas_typelist, std::vector<int>	*map_typelist, std::vector<int>	*mask_typelist, MeasInfo *ninfa)
+{
+		FILE *cacheFile = nullptr;
+		if (((cacheFile  = fopen("./measfile.dat", "r")) == nullptr)){
+			LogMsg(VERB_NORMAL,"[VAX] No measfile.dat ! Use linear dump mode by default");
+		}
+		else
+		{
+			LogOut("Reading measurement files from measfile.dat \n");
+
+			*dumpmode_p = DUMP_FROMLIST;
+			LogMsg(VERB_NORMAL,"[VAX] Reading measurement files from list");
+			double mesi;
+			int meastype ;
+			int maptype = 0 ;
+			int masktype = 0;
+			int i_meas = 0;
+
+			int parsed;
+
+			std::ifstream file("./measfile.dat");
+		  std::string str;
+			std::vector<int> lint;
+
+		  while (std::getline(file, str)) {
+		    // std::cout << str << "\n";
+				parsed = readmeasline (&str, &mesi, &lint);
+
+				/* negative int is the signal for a default measurement type */
+				if (lint[0] < 0)
+					lint[0] = defaultmeasType;
+
+				/* maps  passed in the commandline will be added to all measurements */
+				lint[1] |= deninfa.maty;
+				/* masks passed in the commandline will be added to all measurements */
+				lint[2] |= deninfa.mask;
+
+				if (mesi < *axion->zV()){
+					LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED",mesi,*axion->zV());
+				}
+				else {
+					(*meas_zlist).push_back(mesi);
+					(*meas_typelist).push_back(lint[0]);
+					(*map_typelist).push_back(lint[1]);
+					(*mask_typelist).push_back(lint[2]);
+					LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d map=%d mask=%d",
+					i_meas, (*meas_zlist)[i_meas], (*meas_typelist)[i_meas], (*map_typelist)[i_meas], (*mask_typelist)[i_meas]);
+					i_meas++ ;
+				}
+				// std::cout << lint.size() << " " << mesi << " ";
+				// for(int i=0; i < lint.size(); i++){
+				// 	std::cout << lint[i] << " " ;
+				// }
+				// std::cout << "\n" ;
+
+			}
+
+			/* old version stuff */
+			// parsed = fscanf (cacheFile ,"%lf %d %d %d\n", &mesi, &meastype, &maptype, &masktype);
+			// printf("parsed %d %lf %d %d %d\n", parsed, mesi, meastype, maptype, masktype);
+			// while(!feof(cacheFile)){
+			// 	if (meastype < 0)
+			// 		/* defaultmeasType it is a global variable */
+			// 		meastype = defaultmeasType;
+			// 	if (mesi < *axion->zV()){
+			// 		LogMsg(VERB_NORMAL,"[VAX] read z=%f < current time (z=%f) > DISCARDED",mesi,*axion->zV());
+			// 	}
+			// 	else {
+			// 		(*meas_zlist).push_back(mesi);
+			// 		(*meas_typelist).push_back(meastype);
+			// 		(*map_typelist).push_back(maptype);
+			// 		(*mask_typelist).push_back(masktype);
+			// 		// LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d ", i_meas, (*meas_zlist)[i_meas], (*meas_typelist)[i_meas]);
+			// 		LogMsg(VERB_NORMAL,"[VAX] i_meas=%d read z=%f meas=%d map=%d mask=%d",
+			// 		i_meas, (*meas_zlist)[i_meas], (*meas_typelist)[i_meas], (*map_typelist)[i_meas], (*mask_typelist)[i_meas]);
+			// 		i_meas++ ;
+			// 	}
+			// 	parsed = fscanf (cacheFile ,"%lf %d %d %d\n", &mesi, &meastype, &maptype, &masktype);
+			// 	printf("parsed %d %lf %d %d %d\n", parsed, mesi, meastype, maptype, masktype);
+			// }
+			/* check for no repetitions */
+
+			for (int i =i_meas-1; i>0;i--)
+				if ((*meas_zlist)[i] == (*meas_zlist)[i-1]){
+					LogMsg(VERB_NORMAL,"[VAX] merge %d %d at t %f with %d %d > %d", i, i-1, (*meas_zlist)[i], (*meas_typelist)[i], (*meas_typelist)[i-1], (*meas_typelist)[i]| (*meas_typelist)[i-0]);
+					(*meas_typelist)[i-1] |= (*meas_typelist)[i];
+					(*meas_zlist).erase( (*meas_zlist).begin()+i);
+					(*meas_typelist).erase( (*meas_typelist).begin()+i);
+					(*map_typelist).erase( (*map_typelist).begin()+i);
+					(*mask_typelist).erase( (*mask_typelist).begin()+i);
+				}
+
+
+
+			LogOut("List dump mode! number of measurements = %d (=%d)\n", (*meas_zlist).size(),i_meas);
+			/*zFinl is a global variable */
+			zFinl = (*meas_zlist)[(*meas_zlist).size()-1];
+			LogOut("zFinl overwritten to last measurement %lf\n",zFinl);
+			(*ninfa).measdata |= (MeasureType) (*meas_typelist)[0];
+			(*ninfa).maty     |= (SliceType) (*map_typelist)[0];
+			(*ninfa).mask     |= (SpectrumMaskType) (*mask_typelist)[0];
+			LogOut("First measurement set to %d %d %d\n", (*ninfa).measdata, (*ninfa).maty, (*ninfa).mask);
+			LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
+		}
+}
+
 
 void axitontracker(Scalar *axion)
 {

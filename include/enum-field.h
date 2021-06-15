@@ -527,6 +527,7 @@
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
+			SPMASK_NONE	= 0,
 			SPMASK_FLAT	= 1,
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
