@@ -794,6 +794,15 @@
 			bool 					cmplx;
 		}	MomParms;
 
+		typedef	struct	MeasFileParms_v
+		{
+			std::vector<double>	ct;
+			std::vector<int>    meas;
+			std::vector<int>    map;
+			std::vector<int>    mask;
+			std::vector<int>    nrt;
+		}	MeasFileParms;
+
 		typedef	struct	PropParms_v
 		{
 			size_t   Ng;
