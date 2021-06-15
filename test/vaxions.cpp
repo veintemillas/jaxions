@@ -26,6 +26,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <map>
 
 using namespace std;
 using namespace AxionWKB;
@@ -41,6 +42,8 @@ void    printposter (Scalar *axion);
 void    readmeasfile (Scalar *axion, DumpType *dumpmode_p, std::vector<double> *mzl, std::vector<int>	*mtl, std::vector<int>	*ptl, std::vector<int>	*ktl, MeasInfo *ninfa);
 void    mysplit (std::string *str, std::vector<std::string> *result);
 int     readmeasline (std::string *str, double *ctime, std::vector<int> *lint);
+int     readheader (std::string *str, std::vector<int> *perm);
+int     readmeasline2 (std::string *str, double *ctime, std::vector<int> *lint, std::vector<int> *perm, int n_max);
 
 //-point to print
 size_t idxprint = 0 ;
@@ -970,6 +973,53 @@ int readmeasline (std::string *str, double *ctime, std::vector<int> *lint)
 	return n;
 }
 
+int readheader (std::string *str, std::vector<int> *perm)
+{
+	int n = 0;
+	std::vector<std::string> result;
+	mysplit(str, &result);
+
+	/* build the permutation to have the order
+	0 cout
+	1 meas
+	2 map
+	3 mask */
+	for (int k =0; k < result.size(); k++)
+		{
+			if (result[k] == "ct")
+				{(*perm)[k] = 0;n++;}
+			else if (result[k] == "meas")
+			{(*perm)[k] = 1;n++;}
+			else if (result[k] == "map")
+			{(*perm)[k] = 2;n++;}
+			else if (result[k] == "mask")
+			{(*perm)[k] = 3;n++;}
+		}
+
+	return n;
+}
+
+int readmeasline2 (std::string *str, double *ctime, std::vector<int> *lint, std::vector<int> *perm, int n_max)
+{
+	/* reads str and uses the permutation to fill the lint list */
+	std::vector<std::string> result;
+	mysplit(str, &result);
+	(*lint).clear();
+	(*lint) = {0, 0, 0};
+	int kmax = result.size();
+	if (kmax > n_max)
+		kmax = n_max;
+
+	for (int k = 0; k < kmax; k++)
+	{
+		if ( (*perm)[k] == 0)
+			*ctime = std::stof( result[k]);
+		else
+		 	(*lint)[(*perm)[k]-1] = std::stoi(result[k]);
+	}
+	/* return discarded */
+	return result.size()-n_max;
+}
 
 void readmeasfile (Scalar *axion, DumpType *dumpmode_p, std::vector<double> *meas_zlist, std::vector<int>	*meas_typelist, std::vector<int>	*map_typelist, std::vector<int>	*mask_typelist, MeasInfo *ninfa)
 {
@@ -989,15 +1039,28 @@ void readmeasfile (Scalar *axion, DumpType *dumpmode_p, std::vector<double> *mea
 			int masktype = 0;
 			int i_meas = 0;
 
-			int parsed;
+			int n_header;
 
 			std::ifstream file("./measfile.dat");
 		  std::string str;
 			std::vector<int> lint;
+			std::vector<int> perm = {0,1,2,3};
 
-		  while (std::getline(file, str)) {
-		    // std::cout << str << "\n";
-				parsed = readmeasline (&str, &mesi, &lint);
+			/* First line header, create the map */
+			std::getline(file, str);
+			n_header = readheader (&str, &perm);
+			if (parsed==0){
+				LogMsg(VERB_NORMAL,"[VAX] old measfile.dat format");
+				file.seekg(ios::beg);
+			} else {
+				LogMsg(VERB_NORMAL,"[VAX] header: %s", str.c_str());
+				}
+			LogMsg(VERB_NORMAL,"[VAX] perm %d %d %d %d", perm[0], perm[1], perm[2], perm[3]);
+
+			/* Now read the file */
+			while (std::getline(file, str)) {
+				/* */
+				int n_disc = readmeasline2 (&str, &mesi, &lint, &perm, n_header);
 
 				/* negative int is the signal for a default measurement type */
 				if (lint[0] < 0)
