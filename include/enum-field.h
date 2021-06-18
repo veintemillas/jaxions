@@ -544,6 +544,7 @@
 		}	SpectrumMaskType;
 
 		typedef	enum	nRunType_s {
+			NRUN_NONE   = 0,
 			NRUN_K      = 1,
 			NRUN_G      = 2,
 			NRUN_V      = 4,
@@ -824,6 +825,7 @@
 			double   Lambda;
 			double   lambda;
 			double   gamma;
+			double   dectime;
 			double   beta;
 			int      sign;
 			double   frw;

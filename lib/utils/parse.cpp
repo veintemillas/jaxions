@@ -45,6 +45,7 @@ double parm2 = 0.;
 double pregammo = 0.0;
 double dwgammo  = -1.0;
 double gammo    = 0.0;
+double dectime  = -1.0;
 double p3DthresholdMB = 1.e+6;
 double wkb2z  = -1.0;
 double prepstL = 5.0 ;
@@ -69,6 +70,7 @@ bool uMsa     = false;
 bool uI3      = false;
 bool uPot     = false;
 bool uGamma   = false;
+bool uGamExp  = false;
 bool uZth     = false;
 bool uZrs     = false;
 bool uZin     = false;
@@ -118,8 +120,8 @@ MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_
 // map measurement types (applies to all measurements that get PLOT_2D)
 SliceType maty;
 
-// measure K, G, V
-nRunType nrt                 = NRUN_KGV;
+// measure K, G, V ? the default is given below
+nRunType nrt                 = NRUN_NONE;
 
 MeasInfo deninfa;
 
@@ -1116,6 +1118,29 @@ int	parseArgs (int argc, char *argv[])
 			if (gammo < 0.)
 			{
 				printf("Error: Damping factor should be larger than 0.\n");
+				exit(1);
+			}
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--dectime"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the damping factor.\n");
+				exit(1);
+			}
+
+			dectime = atof(argv[i+1]);
+			vqcdTypeDamp = V_DAMP_RHO ;
+
+			uPot  = true;
+			uGamExp = true;
+
+			if (dectime < 0.)
+			{
+				printf("Error: decay time should be larger than 0.\n");
 				exit(1);
 			}
 
@@ -2321,8 +2346,8 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.measdata = defaultmeasType;
 	deninfa.strmeas = strmeas;
 	/* if measdata included spectra but no mask was speficied, set FLAT*/
-	if ( (deninfa.measdata & ( MEAS_SPECTRUM )) && (spmask == SPMASK_NONE) )
-		spmask = SPMASK_FLAT;
+	// if ( (deninfa.measdata & ( MEAS_SPECTRUM )) && (spmask == SPMASK_NONE) )
+	// 	spmask = SPMASK_FLAT;
 	deninfa.mask = spmask;
 	deninfa.rmask = rmask;
 
@@ -2333,6 +2358,9 @@ if (icdatst.cType == CONF_SMOOTH )
 	deninfa.i_rmask = rmask_tab.size();
 	deninfa.rmask_tab = rmask_tab;
 	deninfa.maty = maty;
+	/* if measdata included spectra but no KGV specified, set FLAT*/
+	// if ( (deninfa.measdata & ( MEAS_SPECTRUM )) && (nrt == NRUN_NONE) )
+	// 	nrt = NRUN_KGV;
 	deninfa.nrt = nrt;
 
 	LogMsg(VERB_HIGH,"Parse Jaxions completed! %d parsed args",procArgs);
@@ -2361,6 +2389,9 @@ Cosmos	createCosmos()
 
 		if (uGamma)
 			myCosmos.SetGamma(gammo);
+
+		if (uGamExp)
+			myCosmos.SetDecTime(dectime);
 
 		if (uPot)
 			myCosmos.SetQcdPot(vqcdType);
@@ -2394,6 +2425,7 @@ Cosmos	createCosmos()
 		myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
 		myCosmos.SetQcdExp  (nQcd);
 		myCosmos.SetGamma   (gammo);
+		myCosmos.SetDecTime   (dectime);
 		myCosmos.SetQcdPot  (vqcdType);
 		myCosmos.SetPhysSize(sizeL);
 		myCosmos.SetZThRes  (zthres);

@@ -52,6 +52,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 	const double LL    = ppar.lambda;
 	const double Rpp   = ppar.Rpp;
 	const double Rp    = ppar.Rp ;
+	const double deti  = ppar.dectime ;
 
 	if (Vo>Vf)
 		return ;
@@ -93,7 +94,9 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 		const double R4 = R2*R2;
 		const double LaLa = LL*2./R4;
-		const double GGGG = gamma/R;
+		double GGGG = gamma/R;
+		if (deti > 0)
+			GGGG *= R2/deti;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
@@ -452,7 +455,9 @@ tmp = opCode(sub_pd,
 
 		const float R4 = R2*R2;
 		const float LaLa = LL*2.f/R4;
-		const float GGGG = gamma/Rf;
+		float GGGG = gamma/Rf;
+		if (deti > 0)
+			GGGG *= R2/deti;
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;
@@ -996,6 +1001,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 	const double gamma = ppar.gamma;
 	const double LL    = ppar.lambda;
 	const double Rpp   = ppar.Rpp;
+	const double deti  = ppar.dectime ;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -1032,7 +1038,9 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 
 		const double R4 = R2*R2;
 		const double LaLa = LL*2./R4;
-		const double GGGG = gamma/R;
+		double GGGG = gamma/R;
+		if (deti > 0)
+			GGGG *= R2/deti;
 		const double mola = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
@@ -1338,7 +1346,9 @@ tmp = opCode(sub_pd,
 
 		const float R4 = R2*R2;
 		const float LaLa = LL*2.f/R4;
-		const float GGGG = gamma/Rf;
+		float GGGG = gamma/Rf;
+		if (deti > 0)
+			GGGG *= R2/deti;
 		const float mola = GGGG*dzc/2.f;
 		const float damp1 = 1.f/(1.f+mola);
 		const float damp2 = (1.f-mola)*damp1;

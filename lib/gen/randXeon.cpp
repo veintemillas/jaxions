@@ -36,8 +36,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	/* used from ic */
 	double mod0  = ic.mode0;
 	double kCri  = ic.kcr;
-	/* In conf-minicluster, interpreted as sigma in ADM Units*/
-	double kCri2 = L*L/(2.0*ic.kcr*ic.kcr*Sf);
+	/* Interpreted as inverse sigma in conf-minicluster in ADM Units*/
+	double kCri2 = ic.kcr*ic.kcr*L*L/(2.0*Sf);
 	size_t kMa   = ic.kMax;
 
 	double kMx   = (double) ic.kMax;
@@ -105,7 +105,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 			//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
 
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-			std::uniform_real_distribution<Float> uni(-1.0, 1.0);
+				std::uniform_real_distribution<Float> uni(-1.0, 1.0);
 
 			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
 			for (size_t idx=0; idx<V; idx++)
@@ -144,7 +144,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						iz = idx/Sf + local_z_start;
 						iy = (idx%Sf)/Lx ;
 						ix = (idx%Sf)%Lx ;
-						Float theta = ((Float) mod0*cos(6.2831853*(ix*kMx + iy*kMy + iz*kMz)/Lx));
+						Float theta = ((Float) mod0*cos(6.2831853*(ix*kMa + iy)/Lx));
 						m[idx] = std::complex<Float>(cos(theta), sin(theta));
 						break;
 					}
@@ -222,7 +222,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						Float zis = ((Float) z) - ((Float) kCrit) ;
 						if ( zis > (Float) Tz/2) { zis -= (Float) Tz; }
 						if (-zis > (Float) Tz/2) { zis += (Float) Tz; }
-						Float aL = ((Float) Lx)*kCri;	//RADIUS
+						Float aL = ((Float) Lx)/4.01;	//RADIUS
 						rho2 = (x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2);
 						Float rho = sqrt((Float) rho2)	;
 						Float z2  = zis*zis;
@@ -247,7 +247,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						x = ix;
 						//CENTERED AT GRID, z=0
 						if (iz>Lx/2) { z = z-Lx; }
-						Float aL = ((Float) Lx)*kCri;	//RADIUS
+						Float aL = ((Float) Lx)/4.01;	//RADIUS
 						rho2 = (z)*(z)+(y-Lx/2)*(y-Lx/2);
 						Float rho = sqrt((Float) rho2)	;
 						Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
