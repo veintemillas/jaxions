@@ -318,18 +318,20 @@
 		// std::cout << "in writeLevelPlotFile" << std::endl;
 		double h0 = 1.0;
 
-		//
-		// The first thing we write out is the plotfile type.
-		//
+		/* Writes header according to WriteGenericPlotfileHeader of
+    /AMReX_PlotFileUtil.cpp */
+
 		os << "ARMeX_Jaxions_output" << '\n';
-
+    /* number of fields */
 		os << n_data_items << '\n';
-
+    /* names of the fields */
 		for (i = 0; i < n_data_items; i++)
 			os << field_name[i] << '\n';
 
+    /* number of space dimensions */
 		os << 3 << '\n';
-		os << 0 << '\n';
+    /* conformal time; in NYX this is TIME */
+		os << *(faxion)->zV() << '\n';
 
 		os << f_lev << '\n';
 
@@ -395,7 +397,7 @@
 		if (!UtilCreateDirectory(FullPath, 0755))
 			CreateDirectoryFailed(FullPath);
 
-		os << 0 << ' ' << boxarrays[0].size() << ' ' << 0 << '\n';
+		os << 0 << ' ' << boxarrays[0].size() << ' ' << *(faxion)->zV() << '\n';
 		os << 0 << '\n';
 
 		double cellsize[3];
