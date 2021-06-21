@@ -571,6 +571,7 @@
 		ppar.ood2a  = ood2;
 		ppar.gamma  = axion->BckGnd()->Gamma();
 		ppar.frw    = axion->BckGnd()->Frw();
+		ppar.dectime= axion->BckGnd()->DecTime();
 
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
@@ -663,6 +664,8 @@
 		ppar.ood2a  = ood2;
 		ppar.gamma  = axion->BckGnd()->Gamma();
 		ppar.frw    = axion->BckGnd()->Frw();
+		ppar.dectime= axion->BckGnd()->DecTime();
+
 
 		size_t BO = ppar.Ng*S;
 
@@ -724,7 +727,7 @@
 		ppar.gamma  = axion->BckGnd()->Gamma();
 		ppar.frw    = axion->BckGnd()->Frw();
 		ppar.fMom1 = -(4.*M_PI*M_PI)/(axion->BckGnd()->PhysSize()*axion->BckGnd()->PhysSize()*((double) axion->TotalSize()));
-
+		
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 

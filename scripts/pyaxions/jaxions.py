@@ -251,6 +251,19 @@ def gm(address,something='summary',printerror=False):
     maptheta    fl. array   2D slice map of THETA
     mapvheta    fl. array   2D slice map of THETA_v
     mapEdens    fl. array   2D slice map of ENERGY in THETA [currentlt only Axion]
+
+    GENERIC READS
+    Any attribute of hdf5 file
+    at/group/name
+                requested   attribute at group '/gr' with name 'name'
+
+    Any slice in the hdf5 file
+    slice/group/name
+                np array    2D slice data under group/name 
+
+    Generic data in the hdf5 file
+    da/address
+                np array    any data under /address (e.g. /map/m/data)
     """
 
     f = h5py.File(address, 'r')
@@ -1585,8 +1598,8 @@ def rhobin(file, X=10):
 
 
 
-#   returns a list of logarithmic bins and bin heights from a list
-#   a minimum log, maximum log, N (N3 is the original number of points)
+#   returns a list of lin bins and bin heights from a list
+#   a minimum , maximum, N (N3 is the original number of points)
 #   and a minimum X of points in the bin
 
 # normalise contbin with variable width bins of minimum X points

@@ -527,6 +527,7 @@
 		}	SpectrumType;
 
 		typedef	enum	SpectrumMaskType_s {
+			SPMASK_NONE	= 0,
 			SPMASK_FLAT	= 1,
 			SPMASK_VIL	= 2,
 			SPMASK_VIL2	= 4,
@@ -543,6 +544,7 @@
 		}	SpectrumMaskType;
 
 		typedef	enum	nRunType_s {
+			NRUN_NONE   = 0,
 			NRUN_K      = 1,
 			NRUN_G      = 2,
 			NRUN_V      = 4,
@@ -793,6 +795,15 @@
 			bool 					cmplx;
 		}	MomParms;
 
+		typedef	struct	MeasFileParms_v
+		{
+			std::vector<double>	ct;
+			std::vector<int>    meas;
+			std::vector<int>    map;
+			std::vector<int>    mask;
+			std::vector<int>    nrt;
+		}	MeasFileParms;
+
 		typedef	struct	PropParms_v
 		{
 			size_t   Ng;
@@ -814,6 +825,7 @@
 			double   Lambda;
 			double   lambda;
 			double   gamma;
+			double   dectime;
 			double   beta;
 			int      sign;
 			double   frw;
