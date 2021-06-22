@@ -9,14 +9,14 @@ a.msa = 1.0
 a.ctend= 3.5
 
 # Scaling measurements
-a.me  = 0
+a.clear()
 a.me_adds("string")
 a.me_adds("energy")
 a.nmt_prt()
 a.addset(9*4,0.0,9.0,0,'logi')
 
 # Refine close to DM annihilation
-a.me  = 0
+a.clear()
 a.me_adds("string")
 a.me_adds("energy")
 a.me_adds("bin theta")
@@ -27,42 +27,48 @@ a.nmt_prt()
 a.addset(20,1.8,2.8,0,'lin')
 
 # A spectrum from time to time
-a.me  = 0
+a.clear()
 a.me_adds("string")
 a.me_adds("bin theta")
 a.me_adds("bin rho")
 a.me_adds("bin logtheta")
 a.me_adds("bin contrast")
 a.me_adds("plot2D")
+# default is mask flat KGVS
 a.me_adds("NSP_A")
+# default is mask flat
 a.me_adds("PSP_A")
+a.me_addmask("FLAT")
+a.me_addmask("AXITV")
 a.nmt_prt()
 a.addset(7*2,2.0,9.0,0,'logi')
 
 # Refine spectra during the NR period
-a.me  = 0
+a.clear()
 a.me_adds("string")
 a.me_adds("bin theta")
 a.me_adds("bin rho")
 a.me_adds("bin logtheta")
 a.me_adds("bin contrast")
-a.me_adds("plot2D")
+a.me_addmap("slices XY")
 a.me_adds("NSP_A")
 a.me_adds("PSP_A")
+a.me_addmask("FLAT")
+a.me_addmask("AXITV")
 a.nmt_prt()
 a.addset(25,1.5,4.0,0,'lin')
 
 # Final dump
-a.me  = 0
+a.clear()
 #a.me_adds("plot2D")
 a.me_adds("bin theta")
 a.me_adds("bin rho")
 a.me_adds("bin logtheta")
 a.me_adds("bin contrast")
-# a.me_adds("plot3D") # better specify this with --p3D 2 (final) or --p3D 6 (final+wkb)
-#a.me_adds("reduced energy map")  # better specify this with --redmp --redmpwkb
 a.me_adds("NSP_A")
 a.me_adds("PSP_A")
+a.me_addmask("FLAT")
+a.me_addmask("AXITV")
 a.nmt_prt()
 a.addset(1,a.ctend,a.ctend,0,'lin')
 

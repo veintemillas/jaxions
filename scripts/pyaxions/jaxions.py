@@ -1344,13 +1344,13 @@ def fildic_map(maps):
     if 'XY' in maps and 'V' in maps:
         return 'MAPT_XYV'
     if 'XY' in maps :
-        return 'MAPT_XY'
+        return 'MAPT_XYMV'
     if 'YZ' in maps and 'M' in maps:
         return 'MAPT_YZM'
     if 'YZ' in maps and 'V' in maps:
         return 'MAPT_YZV'
     if 'YZ' in maps :
-        return 'MAPT_YZ'
+        return 'MAPT_YZMV'
     if ('PE2' in maps)  :
         return 'MAPT_XYPE2'
     if ('PE' in maps)  :
