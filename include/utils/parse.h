@@ -72,6 +72,7 @@ extern bool mink;
 extern bool icstudy;
 extern bool preprop;
 extern bool coSwitch2theta;
+extern bool saveconfSwitch2theta;
 extern bool WKBtotheend;
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;

@@ -87,6 +87,7 @@ bool aMod     = false;
 bool icstudy  = false ;
 bool preprop  = false ;
 bool coSwitch2theta  = true ;
+bool saveconfSwitch2theta = false;
 bool WKBtotheend = false;
 bool measCPU  = false;
 
@@ -907,6 +908,12 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--notheta"))
 		{
 			coSwitch2theta = false;
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--saveconfSwitch2theta"))
+		{
+			saveconfSwitch2theta = true;
 			PARSE1;
 		}
 

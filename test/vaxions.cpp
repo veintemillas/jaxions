@@ -366,6 +366,8 @@ int	main (int argc, char *argv[])
 
 						// Measurement after switching to theta
 						ninfa.index=index;
+						if (saveconfSwitch2theta)
+							ninfa.measdata |= MEAS_3DMAP  ;
 						lm = Measureme (axion, ninfa);
 						index++;
 						LogOut("--------------------------------------------------\n");
