@@ -259,7 +259,7 @@ def gm(address,something='summary',printerror=False):
 
     Any slice in the hdf5 file
     slice/group/name
-                np array    2D slice data under group/name 
+                np array    2D slice data under group/name
 
     Generic data in the hdf5 file
     da/address
@@ -1022,6 +1022,26 @@ def gm(address,something='summary',printerror=False):
 
 
 
+def po22human(inte,labs='meas'):
+    sa=[]
+    if labs == 'meas':
+        ic = inv_measdic
+    elif labs == 'map':
+        ic = inv_mapdic
+    elif labs == 'mask':
+        ic = inv_maskdic
+    elif labs == 'nrt':
+        ic = inv_nrtdic
+
+
+    for n in range(0,20):
+        s=int(2**n)
+        if (inte & s) and (s in ic):
+            sa.append(s)
+            print(s, ic[s])
+    return sa
+
+
 def meas2human(inte):
     sa=[]
     for n in range(0,40):
@@ -1061,7 +1081,45 @@ measdic = { "MEAS_NOTHING" : 0,
           }
 inv_measdic = {v: k for k, v in measdic.items()}
 
+mapdic = { "MAPT_NO" : 0,
+"MAPT_XYM"           : 1,
+"MAPT_XYV"           : 4,
+"MAPT_XYMV"          : 5,
+"MAPT_YZM"           : 16,
+"MAPT_YZV"           : 32,
+"MAPT_YZMV"          : 48,
+"MAPT_XYPE"          : 1024,
+"MAPT_XYPE2"         : 2048,
+"MAPT_XYE"           : 65536,
+          }
+inv_mapdic = {v: k for k, v in mapdic.items()}
 
+nrtdic = { "NRUN_NONE" : 0,
+"NRUN_K"           : 1,
+"NRUN_G"           : 2,
+"NRUN_V"           : 4,
+"NRUN_S"           : 8,
+"NRUN_CK"           : 16,
+"NRUN_CG"           : 32,
+"NRUN_CV"           : 64,
+"NRUN_CS"           : 128,
+          }
+inv_nrtdic = {v: k for k, v in nrtdic.items()}
+
+maskdic = { "SPMASK_NONE" : 0,
+"SPMASK_FLAT"           : 1,
+"SPMASK_VIL"           : 2,
+"SPMASK_VIL2"           : 4,
+"SPMASK_REDO"           : 8,
+"SPMASK_GAUS"           : 16,
+"SPMASK_DIFF"           : 32,
+"SPMASK_BALL"           : 64,
+"SPMASK_SAXI"           : 256,
+"SPMASK_AXIT"           : 512,
+"SPMASK_AXIT2"           : 1024,
+"SPMASK_AXITV"           : 2048,
+          }
+inv_maskdic = {v: k for k, v in maskdic.items()}
 
 
 
@@ -1069,11 +1127,23 @@ inv_measdic = {v: k for k, v in measdic.items()}
 
 
 # build a measurement list
+# build a measurement list of 5 columns
 class mli:
     def __init__(self,msa=1.0,L=6.0,N=1024):
-        self.mtab = [] ;
+        # measurement time
         self.ctab = [] ;
+        # measurement meas
+        self.mtab = [] ;
         self.me = 0;
+        # measurement map
+        self.maptab = [] ;
+        self.mapi = 0;
+        # spectrum mask and type
+        self.spmasktab = [] ;
+        self.spmaski = 0;
+        self.spKGVtab = [] ;
+        self.spKGVi = 0;
+
         self.msa = msa;
         self.llcf = 1600;
         self.lz2e = 2.0; # lambda = lambda/R^lz2e in case we need it in the future
@@ -1082,16 +1152,35 @@ class mli:
         self.ctend = 1000;
         self.outa = []
         self.outb = []
+        self.outc = []
+        self.outd = []
+        self.oute = []
 
     def dic (self):
         return measdic
-    def nmt (self):
+    def clear (self):
         self.me = 0
+        self.mapi = 0
+        self.spmaski = 0
+        self.spKGVi = 0
+
     def me_add (self, meas):
         self.me |= meas
     def me_adds (self, meass):
         self.me |= measdic[fildic(meass)]
         print("adds %s (%d) > me %d"%(fildic(meass), measdic[fildic(meass)],self.me))
+
+    def me_addmap (self, caca):
+        self.mapi |= mapdic[fildic_map(caca)]
+        print("map %s (%d) > me %d"%(fildic_map(caca), mapdic[fildic_map(caca)],self.mapi))
+
+    def me_addmask(self, caca):
+        self.spmaski |= maskdic[fildic_mask(caca)]
+        print("map %s (%d) > me %d"%(fildic_mask(caca), maskdic[fildic_mask(caca)],self.spmaski))
+
+    def me_addnrt (self, caca):
+        self.spKGVi |= nrtdic[fildic_nrt(caca)]
+        print("map %s (%d) > me %d"%(fildic_nrt(caca), nrtdic[fildic_nrt(caca)],self.spKGVi))
 
     #caca
     def nmt_rem (self,meas):
@@ -1101,7 +1190,7 @@ class mli:
     # def nmt_prt (self,meas):
     #     pa.meas2human(meas)
 
-    def addset (self,measN, zi, zf, meastype=0, scale='lin'):
+    def addset (self,measN, zi, zf, meastype=0, scale='lin', masktype=0, maptype=0, nrttype=0):
         if scale=='lin':
             self.ctab.append(np.linspace(zi,zf,measN+1))
         if scale=='logi':
@@ -1122,22 +1211,48 @@ class mli:
             temp = np.linspace(zi,zf,measN+1)
             # logi = log (ms ct^2) = log(sqrt(2*lambda) ct^(2-lz2e/2))
             self.ctab.append(np.power(np.exp(temp)/math.sqrt(2.*self.llcf),2./(4.-self.lz2e)))
-        self.mtab.append(meastype | self.me)
-        print("Set with me %s created"%(meastype | self.me))
+
+        measloc = meastype | self.me
+        mapaloc = maptype | self.mapi
+        maskloc = masktype | self.spmaski
+        nrteloc = nrttype | self.spKGVi
+        if (measloc & (measdic['MEAS_NSP_A'] | measdic['MEAS_PSP_A'])) and (maskloc == maskdic['SPMASK_NONE']):
+            maskloc |= maskdic['SPMASK_FLAT']
+            print('Axion spectrum selected w/o mask, use default = FLAT')
+        if (measloc & measdic['MEAS_NSP_A']) and (nrteloc == nrtdic['NRUN_NONE']):
+            nrteloc = nrtdic['NRUN_K'] | nrtdic['NRUN_G'] | nrtdic['NRUN_V'] | nrtdic['NRUN_S']
+            print('Axion spectrum selected w/o type, use default = KGVS')
+
+        self.mtab.append(measloc)
+        self.maptab.append(mapaloc)
+        self.spmasktab.append(maskloc)
+        self.spKGVtab.append(nrteloc)
+        print("Set with me %s map %s spmask %s KGV %s created"%(measloc, mapaloc, maskloc, nrteloc))
+
     def give(self,name="./measfile.dat"):
-        outa = [a for a in self.ctab[0]]
-        outb = [self.mtab[0] for a in self.ctab[0]]
+
+#         outa = [a for a in self.ctab[0]]
+#         outb = [self.mtab[0] for a in self.ctab[0]]
 #         print(outa)
-        print("Printing sets with measures: ",self.mtab)
+#         print("Printing sets with measures: ",self.mtab)
         outa = []
         outb = []
+        outc = []
+        outd = []
+        oute = []
 
         for imt in range(len(self.mtab)):
             outa += [t for t in list(self.ctab[imt])]
             outb += [self.mtab[imt] for t in list(self.ctab[imt])]
+            outc += [self.maptab[imt] for t in list(self.ctab[imt])]
+            outd += [self.spmasktab[imt] for t in list(self.ctab[imt])]
+            oute += [self.spKGVtab[imt] for t in list(self.ctab[imt])]
 
         outa=np.array(outa)
         outb=np.array(outb)
+        outc=np.array(outc)
+        outd=np.array(outd)
+        oute=np.array(oute)
         self.outa = sorted(list(set(outa)))
         # print(set(outa))
         # print(self.outa)
@@ -1145,26 +1260,31 @@ class mli:
         for ct in self.outa:
             mask = (outa == ct)
             if sum(mask)>1:
-                ii=0
-                print("%f merged "%(ct),end="")
-                for ca in outb[mask]:
-                    ii |= ca
-                    print("%d "%(ca),end="")
-                print(" into %d "%(ii))
-                self.outb.append(ii)
+                for outlist, pra in zip([outb, outc, outd, oute],[self.outb, self.outc, self.outd, self.oute]):
+                    ii=0
+                    print("%f merged "%(ct),end="")
+                    for ca in outlist[mask]:
+                        ii |= ca
+                        print("%d "%(ca),end="")
+                    print(" into %d "%(ii))
+                    pra.append(ii)
             else :
-                ii = outb[mask][0]
-                self.outb.append(ii)
+                self.outb.append(outb[mask][0])
+                self.outc.append(outc[mask][0])
+                self.outd.append(outd[mask][0])
+                self.oute.append(oute[mask][0])
             # print("%f %d"%(ct,ii))
 
         cap = []
         file = open(name,"w")
         print(self.outa)
+        print("ct    meas     map    mask     nrt   ")
         for i in range(len(self.outa)):
             if self.outa[i] <= self.ctend :
-                print("%f %d"%(self.outa[i],self.outb[i]))
-                file.write("%f %d\n"%(self.outa[i],self.outb[i]))
-                cap.append([self.outa[i],self.outb[i]])
+                print("%f %d %d %d %d"%(self.outa[i],self.outb[i],self.outc[i],self.outd[i],self.oute[i]))
+                file.write("ct    meas     map    mask     nrt   ")
+                file.write("%f %d %d %d %d\n"%(self.outa[i],self.outb[i], self.outc[i], self.outd[i], self.oute[i]))
+                cap.append([self.outa[i],self.outb[i], self.outc[i], self.outd[i], self.oute[i]])
         file.close()
 
 
@@ -1218,7 +1338,69 @@ def fildic(meas):
 
 
 
+def fildic_map(maps):
+    if 'XY' in maps and 'M' in maps:
+        return 'MAPT_XYM'
+    if 'XY' in maps and 'V' in maps:
+        return 'MAPT_XYV'
+    if 'XY' in maps :
+        return 'MAPT_XY'
+    if 'YZ' in maps and 'M' in maps:
+        return 'MAPT_YZM'
+    if 'YZ' in maps and 'V' in maps:
+        return 'MAPT_YZV'
+    if 'YZ' in maps :
+        return 'MAPT_YZ'
+    if ('PE2' in maps)  :
+        return 'MAPT_XYPE2'
+    if ('PE' in maps)  :
+        return 'MAPT_XYPE'
+    if ('E' in maps):
+        return 'MAPT_XYE'
 
+def fildic_mask(maps):
+    if 'FLAT' in maps :
+        return 'SPMASK_FLAT'
+    if 'VIL2' in maps:
+        return 'SPMASK_VIL2'
+    if 'VIL' in maps:
+        return 'SPMASK_VIL'
+    if 'RED' in maps:
+        return 'SPMASK_REDO'
+    if 'GAUS' in maps:
+        return 'SPMASK_GAUS'
+    if 'DIFF' in maps:
+        return 'SPMASK_DIFF'
+    if 'BALL' in maps:
+        return 'SPMASK_BALL'
+    if 'AXIT2' in maps:
+        return 'SPMASK_AXIT2'
+    if 'AXIT2' in maps:
+        return 'SPMASK_AXIT2'
+    if 'AXITV' in maps:
+        return 'SPMASK_AXITV'
+    if 'AXIT' in maps:
+        return 'SPMASK_AXIT'
+
+def fildic_nrt(maps):
+    if 'CK' in maps :
+        return 'NRUN_CK'
+    if 'CG' in maps :
+        return 'NRUN_CG'
+    if 'CV' in maps :
+        return 'NRUN_CV'
+    if 'CS' in maps :
+        return 'NRUN_CS'
+    if 'K' in maps :
+        return 'NRUN_K'
+    if 'G' in maps :
+        return 'NRUN_G'
+    if 'V' in maps :
+        return 'NRUN_V'
+    if 'S' in maps :
+        return 'NRUN_S'
+    else :
+        return 'NRUN_NONE'
 
 
 
