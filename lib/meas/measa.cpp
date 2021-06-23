@@ -33,7 +33,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	/* marks the begginin*/
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "\n ");
-	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
+	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d, MAP %d, NRT %d, SPMASK %d ctime %2.3f\n", info.index, info.measdata,
+	info.maty, info.nrt, info.mask, *axiona->zV());
 
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
@@ -548,7 +549,7 @@ writePMapHdf5s (axiona, LAB);
 			bool             prntmsk[9] = {false,true,true,true,true,true,true,true};
 			bool             mulmask[9] = {false,false,false,true,true,true,true,true,true};
 
-			LogMsg(VERB_HIGH, "[Meas %d] masks are %d",indexa,mask);LogFlush();
+			LogMsg(VERB_NORMAL, "[Meas %d] masks are %d",indexa,mask);LogFlush();
 			for (size_t i=0; i < 9 ; i++)
 			{
 				LogMsg(VERB_HIGH, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
@@ -558,7 +559,7 @@ writePMapHdf5s (axiona, LAB);
 			{
 				LogMsg(VERB_HIGH,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
 				if ( !(mask & maskara[i])){
-					LogMsg(VERB_NORMAL, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
+					LogMsg(VERB_HIGH, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
 					continue;
 				}
 				/* Place to set limitations and incompatibilities between saxion and axion spectra */

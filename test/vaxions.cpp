@@ -1021,6 +1021,7 @@ void 		loadmeasfromlist(MeasFileParms *mfp, MeasInfo *info, int i_meas)
 	(*info).measdata = (MeasureType) (*mfp).meas[i_meas];
 	(*info).maty     = (SliceType) (*mfp).map[i_meas];
 	(*info).mask     = (SpectrumMaskType) (*mfp).mask[i_meas];
+	(*info).nrt     = (nRunType) (*mfp).nrt[i_meas];
 }
 
 void axitontracker(Scalar *axion)
