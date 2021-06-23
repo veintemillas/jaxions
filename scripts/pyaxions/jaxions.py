@@ -1279,7 +1279,7 @@ class mli:
         file = open(name,"w")
         print(self.outa)
         print("ct    meas     map    mask     nrt   ")
-        file.write("ct    meas     map    mask     nrt   ")
+        file.write("ct       meas   map  mask nrt \n")
         for i in range(len(self.outa)):
             if self.outa[i] <= self.ctend :
                 print("%f %d %d %d %d"%(self.outa[i],self.outb[i],self.outc[i],self.outd[i],self.oute[i]))
