@@ -79,10 +79,15 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	double radius_mask = info.rmask ; //obsolete?
 	int irmask = info.i_rmask;
 	std::vector<double> rmasktab = info.rmask_tab ;
-	if ( irmask == 0 ){   /* Patch to make the MASK_FLAT case work */
+	/* Patch to make the cases where no radius is needed to work */
+	if ( irmask == 0 ){
 		irmask = 1;
 		rmasktab.push_back(0.0);
 	}
+	LogMsg(VERB_PARANOID,"[Meas ...] rmask %.2f ",radius_mask);
+	LogMsg(VERB_HIGH,    "[Meas ...] number of mask radii %d ",irmask);
+	for (int ii=0; ii<irmask; ii++)
+		LogMsg(VERB_PARANOID,    "[Meas ...] rmask #%d %.2f ",ii,rmasktab[ii]);
 	nRunType nruntype = info.nrt;
 
 	/* This is a change with respect to previous behaviour
@@ -275,9 +280,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons)",indexa);
 
 						for(int ii=0; ii < irmask; ii++){
-							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,info.rmask_tab[ii]);
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmasked",info.rmask_tab[ii]);
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked",rmasktab[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -285,9 +290,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXIT2)){
 						for(int ii=0; ii < irmask; ii++){
-							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,info.rmask_tab[ii]);
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",info.rmask_tab[ii]);
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",rmasktab[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -295,9 +300,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXITV)){
 						for(int ii=0; ii < irmask; ii++){
-							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons V radius_mask = %f)",indexa,info.rmask_tab[ii]);
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons V radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmaskedV",info.rmask_tab[ii]);
+									sprintf(PRELABEL, "%s", "sPmaskedV");
 										specAna.masker(rmasktab[ii], SPMASK_AXITV, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -491,7 +496,7 @@ writePMapHdf5s (axiona, LAB);
 						for(int ii=0; ii < irmask; ii++)
 						{
 							if (mulmask[i])
-								sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
+								sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 							else
 								sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -576,7 +581,7 @@ writePMapHdf5s (axiona, LAB);
 					for(int ii=0; ii < irmask; ii++)
 					{
 						if (mulmask[i])
-							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),info.rmask_tab[ii]);
+							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -601,7 +606,7 @@ writePMapHdf5s (axiona, LAB);
 								if( (strmeas & STRMEAS_ENERGY) && (maskara[i] & SPMASK_REDO) ) {
 									// measure the energy density of strings by using masked points
 									MeasDataOut.strE = stringenergy(axiona);
-									MeasDataOut.strE.rmask = info.rmask_tab[ii]; // this is not written by stringenergy();
+									MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
 									writeStringEnergy(axiona,MeasDataOut.strE);
 								}
 
@@ -612,7 +617,7 @@ writePMapHdf5s (axiona, LAB);
 										memset(eRes, 0, 256);
 										double *eR = static_cast<double *> (eRes);
 									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
-									writeEnergy(axiona, eRes, info.rmask_tab[ii]);
+									writeEnergy(axiona, eRes, rmasktab[ii]);
 												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
 									trackFree(eRes);
 								}

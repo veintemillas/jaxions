@@ -15,6 +15,10 @@
 
 using namespace profiler;
 
+	/* Correction tables for the spectrum of gradients:
+	   they are calculated as the spectrum of differences
+		 and they can be corrected to the continuum defintion */
+
 void	SpecBin::fillCosTable () {
 
 	const double	ooLx   = 1./Ly;
@@ -2485,6 +2489,23 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask, StatusM2 out, b
 			}
 		break;
 
+		case SPMASK_AXITV :
+		switch (fPrec)
+			{
+				case FIELD_SINGLE :
+				SpecBin::masker<float,SPMASK_AXITV> (0.0, out, l_cummask);
+				break;
+
+				case FIELD_DOUBLE :
+				SpecBin::masker<double,SPMASK_AXITV> (0.0, out, l_cummask);
+				break;
+
+				default :
+				LogError("[masker] precision not reconised.");
+				break;
+			}
+		break;
+
 		case SPMASK_GAUS :
 			switch (fPrec)
 			{
@@ -2537,7 +2558,6 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask, StatusM2 out, b
 		break;
 
 		case SPMASK_REDO :
-		default:
 			switch (fPrec)
 			{
 				case FIELD_SINGLE :
@@ -2552,6 +2572,11 @@ void	SpecBin::masker	(double radius_mask, SpectrumMaskType mask, StatusM2 out, b
 				LogError("[masker] precision not reconised.");
 				break;
 			}
+		break;
+
+		default:
+			LogError("[masker] Mask not recognised! Exit without doing anything");
+			LogFlush();
 		break;
 	}
 }

@@ -47,7 +47,7 @@
 		double 			Rscale, depta;
 		double 			zaskar;
 		float				zaskarf;
-		double				nbinmul;
+		double			nbinmul;
 		double 			k0;
 
 		std::complex<double>	zaska ;
@@ -86,9 +86,10 @@
 				/* Number of natural bins */
 				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 				/* Number of user desired bins */
-				nbins = measinfo.nbinsspec < 0 ? powMax : measinfo.nbinsspec;
+				nbins = measinfo.nbinsspec < 0 ? powMax : (size_t) measinfo.nbinsspec;
 				/* Multiplier */
-				nbinmul = measinfo.nbinsspec < 0 ? 1 : ((double) measinfo.nbinsspec)/((double) powMax);
+				nbinmul = measinfo.nbinsspec < 0 ? 1.0 : ((double) measinfo.nbinsspec)/((double) powMax);
+				/* Prefil the value of k? */
 
 				LogMsg(VERB_NORMAL,"[spe] SpecBin constructor called with powMax %lu nbins %lu nbinmul %f ",powMax,nbins,nbinmul);
 
@@ -165,6 +166,9 @@
 				pl            =  (Ly+2)*field->Precision(); 			/* padded data line length */
 				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision(); /* total data volume including padding */
 				dataBareSize  =  V*field->Precision();            /* total data volume without padding */
+
+				LogMsg(VERB_HIGH,"[spe] SpecBin constructor ended.");
+				LogFlush();
 		}
 
 
