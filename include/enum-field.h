@@ -719,9 +719,10 @@
 			size_t              idxprint	;
 			MeasureType         measdata ;
 			SpectrumMaskType    mask ;
-			double              rmask;                   // a radius to mask
+			double              rmask;      // a radius to mask
 			std::vector<double> rmask_tab;  // more than 1
 			nRunType            nrt;
+			int                 nbinsspec;  // number of bins for spectra
 			SliceType           maty;
 			int                 i_rmask;
 			int                 redmap;
@@ -729,7 +730,7 @@
 			bool                measCPU;
 			double              cTimesec;
 			int                 propstep;
-			int								  cummask;
+			int                 cummask;
 		}	MeasInfo;
 
 		// data output by measurement function to program

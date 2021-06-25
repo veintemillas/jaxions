@@ -265,7 +265,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 			if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_PSP_S | MEAS_MULTICON)){
 
- 				SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
+ 				SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false, info);
 
 				if (measa & (MEAS_PSP_A | MEAS_REDENE3DMAP | MEAS_MULTICON))
 				{
@@ -447,7 +447,7 @@ writePMapHdf5s (axiona, LAB);
 	/* Spectra, masks, nmodes, averaged k2 ... */
 	if (measa & MEAS_SPECTRUM)
 	{
- 		SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false);
+ 		SpecBin specAna(axiona, (pType & (PROP_SPEC | PROP_FSPEC)) ? true : false, info);
 
 		/* this is an experimental print that uses axion energy plot2D and could use plot3D energy
 		   is incompatible with a real output of energy density... */

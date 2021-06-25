@@ -124,7 +124,10 @@ SliceType maty;
 // measure K, G, V ? the default is given below
 nRunType nrt                 = NRUN_NONE;
 
+// Measurement type (defaults)
 MeasInfo deninfa;
+
+
 
 char outName[128] = "axion\0";
 char outDir[1024] = "out/m\0";
@@ -651,6 +654,7 @@ int	parseArgs (int argc, char *argv[])
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
 
+	deninfa.nbinsspec = -1; 		// (natural width bin width = 2pi/L0)
 
 	for (int i=1; i<argc; i++)
 	{
@@ -1653,6 +1657,19 @@ int	parseArgs (int argc, char *argv[])
 			rmask_tab.push_back(rmask);
 			i_rmask++;
 			}
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--nbinsspec"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of bins \n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&deninfa.nbinsspec));
 
 			PARSE2;
 		}

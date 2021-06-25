@@ -730,6 +730,9 @@ def gm(address,something='summary',printerror=False):
         return 2*np.pi/f.attrs[u'Physical size']
 
     if (something == 'klist') and ('nSpectrum/averagek' in f):
+        # nn = np.array(f['nSpectrum/nmodes/data'])
+        # mask = nn > 1
+        # 
         return 2*np.pi/f.attrs[u'Physical size']*np.sqrt(np.array(f['nSpectrum/averagek/data'])/np.array(f['nSpectrum/nmodes/data']))
 
 

@@ -40,13 +40,14 @@
 		Scalar			*field;
 
 		size_t			Lx, Ly, Lz, hLx, hLy, hLz, hTz, Tz, V;
-		size_t			nPts, nModeshc, kMax, powMax, controlxyz;
+		size_t			nPts, nModeshc, kMax, powMax, nbins, controlxyz;
 		size_t			LyLy, Ly2Ly, LyLz, dl, pl, dataTotalSize, dataBareSize;
 		size_t			zBase;
 		double			mass2, mass2Sax; // squared masses (comoving)
 		double 			Rscale, depta;
 		double 			zaskar;
 		float				zaskarf;
+		double				nbinmul;
 		double 			k0;
 
 		std::complex<double>	zaska ;
@@ -65,25 +66,48 @@
 
 		public:
 
-				SpecBin (Scalar *field, const bool spectral) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
+				SpecBin (Scalar *field, const bool spectral, MeasInfo measinfo) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
 									spec(spectral), fPrec(field->Precision()), fType(field->Field()), zBase(commRank()*Ly/commSize()),
 									k0(2.0*M_PI/((double) field->BckGnd()->PhysSize())) {
-				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
-				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
 
-				binK.resize(powMax); binK.assign(powMax, 0.);
-				binG.resize(powMax); binG.assign(powMax, 0.);
-				binV.resize(powMax); binV.assign(powMax, 0.);
-				binVnl.resize(powMax); binVnl.assign(powMax, 0.);
-				binP.resize(powMax); binP.assign(powMax, 0.);
-				binPS.resize(powMax); binPS.assign(powMax, 0.);
+				/* select nbins from maximum k in 2pi/L0 units
+				we want measinfo.nbinsspec bins
+				we will compute k/k1 = sqrt(kx^2+ky^2+kz^2) in k1=2pi/L units
+				and have a total of NB1 = sqrt(2*(Nx/2)^2+(Nz/2)^2) natural bins
+				so we need to multiply k/k1 by (nbinsspec/NB1)
+				NB = (k/k1)*(nbinsspec/NB1)
+				there are plenty of sqwrt and products so create a LUT table of squares
+				IDEA: tabulate floor((k/k1)**2), NB
+				PROBLEM: how many integers do we need?
+				NICETY: Each MPI rank needs only a few of them
+				DISCARDED: too much for too little*/
+
+
+				/* Number of natural bins */
+				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+				/* Number of user desired bins */
+				nbins = measinfo.nbinsspec < 0 ? powMax : measinfo.nbinsspec;
+				/* Multiplier */
+				nbinmul = measinfo.nbinsspec < 0 ? 1 : ((double) measinfo.nbinsspec)/((double) powMax);
+
+				LogMsg(VERB_NORMAL,"[spe] SpecBin constructor called with powMax %lu nbins %lu nbinmul %f ",powMax,nbins,nbinmul);
+
+				binK.resize(nbins); binK.assign(nbins, 0.);
+				binG.resize(nbins); binG.assign(nbins, 0.);
+				binV.resize(nbins); binV.assign(nbins, 0.);
+				binVnl.resize(nbins); binVnl.assign(nbins, 0.);
+				binP.resize(nbins); binP.assign(nbins, 0.);
+				binPS.resize(nbins); binPS.assign(nbins, 0.);
 
 #ifdef USE_NN_BINS
-				binNK.resize(powMax); binNK.assign(powMax, 0.);
-				binNG.resize(powMax); binNG.assign(powMax, 0.);
-				binNV.resize(powMax); binNV.assign(powMax, 0.);
-				binNVnl.resize(powMax); binNVnl.assign(powMax, 0.);
+				binNK.resize(nbins); binNK.assign(nbins, 0.);
+				binNG.resize(nbins); binNG.assign(nbins, 0.);
+				binNV.resize(nbins); binNV.assign(nbins, 0.);
+				binNVnl.resize(nbins); binNVnl.assign(nbins, 0.);
 #endif
+
+				/* kMax for correction tables */
+				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 
 				mass2    = field->AxionMassSq()*(*field->RV())*(*field->RV());
 				mass2Sax = field->SaxionMassSq()*(*field->RV())*(*field->RV());
@@ -144,7 +168,8 @@
 		}
 
 
-		inline const size_t	PowMax() const { return powMax; }
+		inline const size_t	PowMax() const { return nbins; }
+		inline const size_t	NBins() const { return nbins; }
 
 		inline double		operator()(size_t idx, SpectrumType sType)	const;
 		inline double&		operator()(size_t idx, SpectrumType sType);
@@ -179,16 +204,16 @@
 
 		void	reset0(){
 				LogMsg(VERB_NORMAL,"Reset SpecAna Bins to zero");
-				binK.assign(powMax, 0.);
-				binG.assign(powMax, 0.);
-				binV.assign(powMax, 0.);
-				binP.assign(powMax, 0.);
-				binPS.assign(powMax, 0.);
+				binK.assign(nbins, 0.);
+				binG.assign(nbins, 0.);
+				binV.assign(nbins, 0.);
+				binP.assign(nbins, 0.);
+				binPS.assign(nbins, 0.);
 #ifdef USE_NN_BINS
-				binNK.assign(powMax, 0.);
-				binNG.assign(powMax, 0.);
-				binNV.assign(powMax, 0.);
-				binNVnl.assign(powMax, 0.);
+				binNK.assign(nbins, 0.);
+				binNG.assign(nbins, 0.);
+				binNV.assign(nbins, 0.);
+				binNVnl.assign(nbins, 0.);
 #endif
 		}
 
