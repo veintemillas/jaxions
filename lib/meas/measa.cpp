@@ -33,7 +33,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	/* marks the begginin*/
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "\n ");
-	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d,  ctime %2.3f\n", info.index, info.measdata, *axiona->zV());
+	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d, MAP %d, NRT %d, SPMASK %d ctime %2.3f\n", info.index, info.measdata,
+	info.maty, info.nrt, info.mask, *axiona->zV());
 
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
@@ -69,7 +70,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	else if (axiona->Field() == FIELD_AXION){
 		// if (mask & (SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
 		// 	mask = mask | SPMASK_FLAT;
-		mask = mask & (SPMASK_FLAT | SPMASK_AXIT | SPMASK_AXIT2);
+		mask = mask & (SPMASK_FLAT | SPMASK_AXIT | SPMASK_AXIT2 | SPMASK_AXITV);
 		LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask corrected = %d",mask);
 		}
 
@@ -292,6 +293,15 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 										}
 					}
 
+					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXITV)){
+						for(int ii=0; ii < irmask; ii++){
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons V radius_mask = %f)",indexa,info.rmask_tab[ii]);
+								char PRELABEL[256];
+									sprintf(PRELABEL, "%s_%.2f", "sPmaskedV",info.rmask_tab[ii]);
+										specAna.masker(rmasktab[ii], SPMASK_AXITV, M2_ENERGY, cummask);
+											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+										}
+					}
 
 						LogMsg(VERB_NORMAL, "[Meas %d] PSPA",indexa);
 							specAna.pRun();
@@ -548,7 +558,7 @@ writePMapHdf5s (axiona, LAB);
 			bool             prntmsk[9] = {false,true,true,true,true,true,true,true};
 			bool             mulmask[9] = {false,false,false,true,true,true,true,true,true};
 
-			LogMsg(VERB_HIGH, "[Meas %d] masks are %d",indexa,mask);LogFlush();
+			LogMsg(VERB_NORMAL, "[Meas %d] masks are %d",indexa,mask);LogFlush();
 			for (size_t i=0; i < 9 ; i++)
 			{
 				LogMsg(VERB_HIGH, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
@@ -558,7 +568,7 @@ writePMapHdf5s (axiona, LAB);
 			{
 				LogMsg(VERB_HIGH,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
 				if ( !(mask & maskara[i])){
-					LogMsg(VERB_NORMAL, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
+					LogMsg(VERB_HIGH, "          ... skipped",indexa,masklab[i].c_str(),i);LogFlush();
 					continue;
 				}
 				/* Place to set limitations and incompatibilities between saxion and axion spectra */
