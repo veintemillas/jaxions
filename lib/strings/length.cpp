@@ -75,7 +75,7 @@ void setCross (std::complex<double> m, std::complex<double> mu, std::complex<dou
 		du = -(Cr*Ai-Ci*Ar)/(Br*Ai-Bi*Ar);
 		dv = -(Cr*Bi-Ci*Br)/(Ar*Bi-Ai*Br);
 	} else {
-		//LogMsg(VERB_HIGH,"[stringlength] string position was not properly identified");
+		// LogMsg(VERB_PARANOID,"[stringlength] string position was not properly identified");
 		du = 0.5;
 		dv = 0.5;
 	}
@@ -88,10 +88,18 @@ void setCross (std::complex<double> m, std::complex<double> mu, std::complex<dou
 // Function that calculates the length of strings
 // -----------------------------------------------------
 
+	/* As it is written, it requires string information from
+	the slice forward in z, but stringData is not ghosted,
+	and so the last slice cannot be computed reliably,
+	the plaquette XY at Z+1 does not exist in the desired rank
+	THIS NEEDS TO BE FIXED
+	The current PATCH simply ignores the problematic plaquettes */
+
 template<typename Float>
 StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
-	LogMsg	(VERB_NORMAL, "[stringlength] Called stringlength");
+	LogMsg	(VERB_NORMAL, "[stringlength] Called stringlength (StringMeasType %d 0124 string/length/gamma/energy)", strmeas);
+	LogMsg	(VERB_HIGH, "[stringlength] Points to check %d", strDen_in.strDen);
 
 	StringData	strDen;
 
@@ -197,6 +205,8 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 						pos_y.push_back(iy + 1.);
 						pos_z.push_back(rank*Lz + iz + du[0]);
 					}
+					/* In the case iz = Lz-1 this would segfault */
+					if ( iz < Lz - 1 )
 					if (strdaa[izM] & STRING_XY) {
 						double du[2];
 						setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
@@ -281,7 +291,7 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 
 		MPI_Allreduce(&(strDen.strLen_local), &(strDen.strLen), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-		LogMsg(VERB_HIGH, "[stringlength] length = %f",strDen.strLen);
+		LogMsg(VERB_HIGH, "[stringlength] length = %f",strDen.strLen);LogFlush();
   	commSync();
 
 	}
