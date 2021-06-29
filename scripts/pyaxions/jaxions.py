@@ -730,9 +730,12 @@ def gm(address,something='summary',printerror=False):
         return 2*np.pi/f.attrs[u'Physical size']
 
     if (something == 'klist') and ('nSpectrum/averagek' in f):
+        # Some of the bins can be empty if --nbinsspec LARGE was requested
+        # we want either to give a klist including k's in those few bins (reg)
+        # or drop the bins altogether (better done on a case to case basis)
         # nn = np.array(f['nSpectrum/nmodes/data'])
         # mask = nn > 1
-        # 
+        #
         return 2*np.pi/f.attrs[u'Physical size']*np.sqrt(np.array(f['nSpectrum/averagek/data'])/np.array(f['nSpectrum/nmodes/data']))
 
 
