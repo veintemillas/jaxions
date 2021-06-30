@@ -269,11 +269,11 @@
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunGpu	(const double dz) {
 	#ifdef	USE_GPU
+		PropParms ppar;
+		loadparms(&ppar, axion);
 		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
 		const uint ext = uV + uS;
 
-		PropParms ppar;
-		loadparms(&ppar, axion);
 
 		double *z = axion->zV();
 
@@ -1223,9 +1223,9 @@
 		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 		(*pipar).Ng     = axion->getNg();
-		(*pipar).Lx     = Lx;
+		(*pipar).Lx     = axion->Length();;
 		(*pipar).PC     = axion->getCO();
-		(*pipar).ood2a  = ood2;
+		(*pipar).ood2a  = 1./(field->Delta()*field->Delta());
 		(*pipar).gamma  = axion->BckGnd()->Gamma();
 		(*pipar).frw    = axion->BckGnd()->Frw();
 		(*pipar).dectime= axion->BckGnd()->DecTime();
