@@ -1214,7 +1214,7 @@
 		}
 	}
 
-	void loadparms(PropParms *pipar, Scalar *field)
+	void loadparms(PropParms *pipar, Scalar *axion)
 	{
 		(*pipar).lambda = axion->LambdaP();
 		(*pipar).massA2 = axion->AxionMassSq();
