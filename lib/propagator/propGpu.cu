@@ -189,7 +189,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 		double pood2[NN] ;
 		for (int i =0; i<NN; i++)
-			pood2[i] = *(ppar.PC)[i]*ppar.ood2a;
+			pood2[i] = (ppar.PC)[i]*ppar.ood2a;
 		const double *ood2 = &(pood2[0]);
 
 		switch (VQcd) {
@@ -216,7 +216,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 		float  food2[NN] ;
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) (*(ppar.PC)[i])*ppar.ood2a;
+			food2[i] = (float) (ppar.PC)[i]*ppar.ood2a;
 		const float *ood2 = &(food2[0]);
 
 		switch (VQcd) {
@@ -452,7 +452,7 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 
 		double pood2[NN] ;
 		for (int i =0; i<NN; i++)
-			pood2[i] = *(ppar.PC)[i]*ppar.ood2a;
+			pood2[i] = (ppar.PC)[i]*ppar.ood2a;
 		const double *ood2 = &(pood2[0]);
 
 		switch (VQcd) {
@@ -478,7 +478,7 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 
 		float  food2[NN] ;
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) (*(ppar.PC)[i])*ppar.ood2a;
+			food2[i] = (float) (ppar.PC)[i]*ppar.ood2a;
 		const float *ood2 = &(food2[0]);
 
 		switch (VQcd) {
