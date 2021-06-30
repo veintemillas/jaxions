@@ -17,7 +17,7 @@ using namespace indexHelper;
 template<typename Float, const VqcdType VQcd>
 static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2,
 							 const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2,
-							 const Float dzc, const Float dzd, const * Float ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
+							 const Float dzc, const Float dzd, const Float *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
@@ -163,13 +163,13 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
 */
+	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 
 	const uint NN    = ppar.Ng;
-	const uint Lx    = ppar.Lx;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -189,7 +189,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 		double pood2[NN] = *ppar.PC;
 		for (int i =0; i<NN; i++)
-			pood2[i] *= ppar.ood2;
+			pood2[i] *= ppar.ood2a;
 		const * double ood2 = &(pood2[0]);
 
 		switch (VQcd) {
@@ -217,8 +217,8 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		double pood2[NN] = *ppar.PC;
 		float  food2[NN] ;
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) pood2[NN]*ppar.ood2;
-		const * float ood2 = &(food2[0]);
+			food2[i] = (float) pood2[NN]*ppar.ood2a;
+		const float *ood2 = &(food2[0]);
 
 		switch (VQcd) {
 
@@ -376,7 +376,7 @@ __global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict
 
 template<typename Float, const VqcdType VQcd>
 __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac,
-			      const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
+			      const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float *ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
 			      const uint Vf)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -453,8 +453,8 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 
 		double pood2[NN] = *ppar.PC;
 		for (int i =0; i<NN; i++)
-			pood2[i] *= ppar.ood2;
-		const * double ood2 = &(pood2[0]);
+			pood2[i] *= ppar.ood2a;
+		const double *ood2 = &(pood2[0]);
 
 		switch (VQcd) {
 
@@ -480,8 +480,8 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		double pood2[NN] = *ppar.PC;
 		float  food2[NN] ;
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) pood2[NN]*ppar.ood2;
-		const * float ood2 = &(food2[0]);
+			food2[i] = (float) pood2[NN]*ppar.ood2a;
+		const float *ood2 = &(food2[0]);
 
 		switch (VQcd) {
 
