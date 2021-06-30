@@ -544,13 +544,13 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 				munge(UNFOLD_ALL);
 			}
 			if (fIdx & FIELD_M)
-				cudaMemcpy((((char *) m_d) + Ngg*n2*fSize), (((char *) m) + Ngg*n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m_d) + Ng*n2*fSize), (((char *) m) + Ng*n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 
 			if (fIdx & FIELD_V)
 				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
 
 			if ((fIdx & FIELD_M2) && (!lowmem))
-				cudaMemcpy((((char *) m2_d) + Ngg*n2*fSize), (((char *) m2) + Ngg*n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m2_d) + Ng*n2*fSize), (((char *) m2) + Ng*n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
 		#endif
 	}
 }
