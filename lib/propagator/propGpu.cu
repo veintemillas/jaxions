@@ -187,10 +187,10 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dp1  =   1./(1. + gFp2);
 		const double dp2  = (1. - gFp2)*dp1;
 
-		double pood2[NN] = *ppar.PC;
+		double pood2[NN] ;
 		for (int i =0; i<NN; i++)
-			pood2[i] *= ppar.ood2a;
-		const * double ood2 = &(pood2[0]);
+			pood2[i] = *(ppar.PC)[i]*ppar.ood2a;
+		const double *ood2 = &(pood2[0]);
 
 		switch (VQcd) {
 
@@ -214,10 +214,9 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dp1  =   1./(1. + gFp2);
 		const float dp2  = (1. - gFp2)*dp1;
 
-		double pood2[NN] = *ppar.PC;
 		float  food2[NN] ;
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) pood2[NN]*ppar.ood2a;
+			food2[i] = (float) (*(ppar.PC)[i])*ppar.ood2a;
 		const float *ood2 = &(food2[0]);
 
 		switch (VQcd) {
@@ -428,13 +427,13 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
 */
+	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 
 	const uint NN    = ppar.Ng;
-	const uint Lx    = ppar.Lx;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -451,9 +450,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		const double dp1  =   1./(1. + gFp2);
 		const double dp2  = (1. - gFp2)*dp1;
 
-		double pood2[NN] = *ppar.PC;
+		double pood2[NN] ;
 		for (int i =0; i<NN; i++)
-			pood2[i] *= ppar.ood2a;
+			pood2[i] = *(ppar.PC)[i]*ppar.ood2a;
 		const double *ood2 = &(pood2[0]);
 
 		switch (VQcd) {
@@ -477,10 +476,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		const float dp1  =   1./(1. + gFp2);
 		const float dp2  = (1. - gFp2)*dp1;
 
-		double pood2[NN] = *ppar.PC;
 		float  food2[NN] ;
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) pood2[NN]*ppar.ood2a;
+			food2[i] = (float) (*(ppar.PC)[i])*ppar.ood2a;
 		const float *ood2 = &(food2[0]);
 
 		switch (VQcd) {
