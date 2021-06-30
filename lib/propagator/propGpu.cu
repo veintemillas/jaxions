@@ -376,7 +376,7 @@ __global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict
 template<typename Float, const VqcdType VQcd>
 __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac,
 			      const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float *ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
-			      const uint Vf)
+			      const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -384,7 +384,7 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 	if	(idx >= Vf)
 		return;
 
-	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, LL, Lx, Sf);
+	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, LL, Lx, Sf, NN);
 }
 
 void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision,
