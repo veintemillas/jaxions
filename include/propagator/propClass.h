@@ -1225,7 +1225,7 @@
 		(*pipar).Ng     = axion->getNg();
 		(*pipar).Lx     = axion->Length();;
 		(*pipar).PC     = axion->getCO();
-		(*pipar).ood2a  = 1./(field->Delta()*field->Delta());
+		(*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
 		(*pipar).gamma  = axion->BckGnd()->Gamma();
 		(*pipar).frw    = axion->BckGnd()->Frw();
 		(*pipar).dectime= axion->BckGnd()->DecTime();
