@@ -221,7 +221,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		}
 
 		const float *ood2 = &(food2[0]);
-		LogOut("ood2 %d %f (%f)\n",i,ood2[0],ood2[1]);
+		LogOut("ood2 %f (%f)\n",ood2[0],ood2[1]);
 
 		switch (VQcd) {
 
