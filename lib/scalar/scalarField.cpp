@@ -531,6 +531,8 @@ const std::complex<float> If(0.,1.);
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 {
+	size_t Gc = Ng*n2*fSize;  // Number of chars of the ghost region
+	size_t Tc = n3*fSize;			// Number of chars to transfer
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -544,19 +546,23 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 				munge(UNFOLD_ALL);
 			}
 			if (fIdx & FIELD_M)
-				cudaMemcpy((((char *) m_d) + Ng*n2*fSize), (((char *) m) + Ng*n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m_d) + Gc), (((char *) m) + Gc),  Tc, cudaMemcpyHostToDevice);
 
 			if (fIdx & FIELD_V)
-				cudaMemcpy(v_d,  v,  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy(v_d,  v,  Tc, cudaMemcpyHostToDevice);
 
 			if ((fIdx & FIELD_M2) && (!lowmem))
-				cudaMemcpy((((char *) m2_d) + Ng*n2*fSize), (((char *) m2) + Ng*n2*fSize),  n3*fSize, cudaMemcpyHostToDevice);
+				cudaMemcpy((((char *) m2_d) + Gc), (((char *) m2) + Gc),  Tc, cudaMemcpyHostToDevice);
 		#endif
 	}
 }
 
-void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
+void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 {
+	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
+	size_t Tc  = v3*fSize;              // Number of chars to transfer
+	size_t Tvc = (n2*(Lz+2*Ng))*fSize;  // Number of chars to transfer
+
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -565,19 +571,23 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Transfers only the internal volume
 		#else
 			LogMsg(VERB_HIGH,"[sca] Transfering to CPU %d (M/V/MV=%d,%d,%d) cMDTH %lu ",fIdx,FIELD_M,FIELD_V,FIELD_MV,cudaMemcpyDeviceToHost);
 			if (fIdx & FIELD_M)
-				cudaMemcpy(m,  m_d,  v3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(m,  m_d,  Tc, cudaMemcpyDeviceToHost);
 
 			if (fIdx & FIELD_V)
-				cudaMemcpy(v,  v_d,  n3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(v,  v_d,  Tvc, cudaMemcpyDeviceToHost);
 
 			if ((fIdx & FIELD_M2) && (!lowmem))
-				cudaMemcpy(m2, m2_d, v3*fSize, cudaMemcpyDeviceToHost);
+				cudaMemcpy(m2, m2_d, Tc, cudaMemcpyDeviceToHost);
 		#endif
 	}
 }
 
-void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the Gpu that are to be exchanged
+void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the slices of the Gpu that are to be exchanged
 {
+	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
+	                                    // The same than the chars we have to transfer
+	size_t Tc  = n3*fSize;              // Number of chars of the total physical unghosted array
+
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -585,11 +595,11 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M) {
-				cudaMemcpyAsync(static_cast<char *> (m) + Ng*n2*fSize, static_cast<char *> (m_d) + Ng*n2*fSize, Ng*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m) + n3*fSize, static_cast<char *> (m_d) + n3*fSize, Ng*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m) + Gc, static_cast<char *> (m_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m) + Tc, static_cast<char *> (m_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			} else {
-				cudaMemcpyAsync(static_cast<char *> (m2) + Ng*n2*fSize, static_cast<char *> (m2_d) + Ng*n2*fSize, Ng*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m2) + n3*fSize, static_cast<char *> (m2_d) + n3*fSize, Ng*n2*fSize, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m2) + Gc, static_cast<char *> (m2_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2) + Tc, static_cast<char *> (m2_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			}
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);
@@ -598,8 +608,12 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the fields in the
 	}
 }
 
-void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the Gpu
+void	Scalar::transferGhosts(FieldIndex fIdx)	// Copy to the GPU the slices of the CPU that HAVE BEEN UPDATED
 {
+	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
+																			// The same than the chars we have to transfer
+	size_t Tc  = n3*fSize;              // Number of chars of the total physical unghosted array
+	size_t Lc  = Gc+Tc;                 // Number of chars before the lastghost region (1 ghost region+physical vol)
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -607,11 +621,11 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Transfers only the ghosts to the
 			exit   (1);
 		#else
 			if (fIdx & FIELD_M) {
-				cudaMemcpyAsync(static_cast<char *> (m_d),                     static_cast<char *> (m),                        Ng*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m_d) + (n3+n2*Ng)*fSize, static_cast<char *> (m) + (n3+n2*Ng)*fSize, Ng*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m_d),       static_cast<char *> (m),      Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m_d)  + Lc, static_cast<char *> (m) + Lc, Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			} else {
-				cudaMemcpyAsync(static_cast<char *> (m2_d),                    static_cast<char *> (m2),                  n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
-				cudaMemcpyAsync(static_cast<char *> (m2_d) + (n3+n2*Ng)*fSize, static_cast<char *> (m2)  + (n3+n2*Ng)*fSize, Ng*n2*fSize, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d),      static_cast<char *> (m2),     Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (m2_d) + Lc, static_cast<char *> (m2)+ Lc, Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			}
 
 			cudaStreamSynchronize(((cudaStream_t *)sStreams)[0]);

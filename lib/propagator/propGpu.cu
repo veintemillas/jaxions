@@ -215,9 +215,13 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dp2  = (1. - gFp2)*dp1;
 
 		float  food2[NN] ;
-		for (int i =0; i<NN; i++)
+		for (int i =0; i<NN; i++){
 			food2[i] = (float) (ppar.PC)[i]*ppar.ood2a;
+			LogOut("food %d %f (%f)\n",i,food2[i],ppar.ood2a);
+		}
+
 		const float *ood2 = &(food2[0]);
+
 
 		switch (VQcd) {
 
