@@ -106,7 +106,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 			break;
 	}
 
-	mel = v[idx-Sf];
+	mel = v[idx-NN*Sf];
 
 	switch (VQcd & V_DAMP) {
 		case	V_NONE:
@@ -133,7 +133,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 		mel *= kReal/pot;
 	}
 
-	v[idx-Sf] = mel;
+	v[idx-NN*Sf] = mel;
 	mel *= dzd;
 	tmp += mel;
 	m2[idx] = tmp;
@@ -221,7 +221,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		}
 
 		const float *ood2 = &(food2[0]);
-
+		LogOut("ood2 %d %f (%f)\n",i,ood2[0],ood2[1]);
 
 		switch (VQcd) {
 
@@ -335,7 +335,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 			break;
 	}
 
-	mel = v[idx-Sf];
+	mel = v[idx-NN*Sf];
 
 	switch (VQcd & V_DAMP) {
 		case	V_NONE:
@@ -362,7 +362,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 		mel *= kReal/pot;
 	}
 
-	v[idx-Sf] = mel;
+	v[idx-NN*Sf] = mel;
 }
 
 template<typename cFloat, typename Float>
