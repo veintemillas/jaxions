@@ -25,6 +25,9 @@
 #include "WKB/WKB.h"
 #include "axiton/tracker.h"
 
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_device_runtime_api.h>
 #include "propagator/propGpu.h"
 
 using namespace std;
@@ -38,7 +41,7 @@ size_t idxprint = 0 ;
 size_t sliceprint = 0 ;
 
 
-void loadparms(PropParms *pipar, Scalar *axion);
+void loadparams(PropParms *pipar, Scalar *axion);
 
 /* Program */
 
@@ -84,18 +87,19 @@ int	main (int argc, char *argv[])
 
 
 	/* transfer to device */
-	LogOut("Folded? %d (0 false, 1 true) \n",axion->Folded(),);
+	LogOut("Folded? %d (0 false, 1 true) \n",axion->Folded());
 	axion->transferDev(FIELD_MV);
 
 	PropParms ppar;
-	loadparms(&ppar, axion);
+	loadparams(&ppar, axion);
 
 	/* propagate */
-	double dz = 1;
+	double dz = 30;
 	double c1 = 1;
 	double d1 = 1;
 	size_t uS =  ppar.Ng*axion->Surf();
 	size_t uV =  axion->Size();
+	size_t ext = uS+uV;
 
 	size_t xBlock = 128 ;
 	size_t yBlock = 1 ;
@@ -109,7 +113,7 @@ int	main (int argc, char *argv[])
 	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[1]);
 
-	double dz = 0;
+	dz = 0;
 	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, 2*uS, uV, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[2]);
 	axion->exchangeGhosts(FIELD_M);
@@ -130,7 +134,7 @@ int	main (int argc, char *argv[])
 	return 0;
 }
 
-void loadparms(PropParms *pipar, Scalar *axion)
+void loadparams(PropParms *pipar, Scalar *axion)
 {
 	(*pipar).lambda = axion->LambdaP();
 	(*pipar).massA2 = axion->AxionMassSq();
