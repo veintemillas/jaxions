@@ -37,7 +37,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 
 	idx2Vec(idx, X, Lx);
 
-	mel = 0;
+	mel = complex<Float>(0,0);
 	tmp = m[idx];
 	for (size_t nv=1; nv <= NN; nv++)
 	{
