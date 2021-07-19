@@ -167,11 +167,11 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						}
 
 						/* Backward */
-						auto pMask = opCode(cmp_pd_mask, mBDf, pVec, _CMP_GE_OQ);
-						auto mMask = opCode(cmp_pd_mask, mBDf, mVec, _CMP_LT_OQ);
-						auto mask = pMask | mMask;
+						pMask = opCode(cmp_pd_mask, mBDf, pVec, _CMP_GE_OQ);
+						mMask = opCode(cmp_pd_mask, mBDf, mVec, _CMP_LT_OQ);
+						mask = pMask | mMask;
 
-						int  nChg = 0;
+						nChg = 0;
 						for (int k=0,i=1; k<step; k++,i<<=1) {
 							nChg += (mask & i) >> k;
 							if ( (mask & i) >> k ) strdaa[iNxB+k*YC*Lx]  = 1;
@@ -709,11 +709,11 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							int mask = 0;
 							int msk[step];
 	#ifdef	__AVX512F__
-							melB = opCode(cmp_ps_mask, mPx, mBMx, _CMP_EQ_OQ);
-							vBMx = opCode(cmp_ps_mask, mPx, mBMx, _CMP_NEQ_OQ);
-							auto mask  = opCode(kor, melB, vBMx);
+							auto pMask = opCode(cmp_ps_mask, mPx, mBMx, _CMP_EQ_OQ);
+							auto mMask  = opCode(cmp_ps_mask, mPx, mBMx, _CMP_NEQ_OQ);
+							auto masks  = opCode(kor, pMask, mMask);
 							for (int k=0,i=1; k<step; k++,i<<=1)
-								msk[k] = (mask & i) >> k;
+								msk[k] = (masks & i) >> k;
 	#else
 		#ifdef	__AVX__
 							melB = opCode(cmp_ps, mPx, mBMx, _CMP_EQ_OQ); // are cF and cB equal?
