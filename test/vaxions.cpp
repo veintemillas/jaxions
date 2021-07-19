@@ -207,7 +207,7 @@ int	main (int argc, char *argv[])
 		index = fIndex2;
 		LogOut("First measurement file %d \n",index);
 		ninfa.index=index;
-		if (prinoconfo & PRINTCONF_INITIAL)
+		if (ninfa.printconf & PRINTCONF_INITIAL)
 			ninfa.measdata |= MEAS_3DMAP ;
 		lm = Measureme (axion, ninfa);
 	}
@@ -352,21 +352,24 @@ int	main (int argc, char *argv[])
 							ninfa.measdata = rho2thetameasType;
 							ninfa.maty     = deninfa.maty;
 							ninfa.mask     = deninfa.mask;
+							if (ninfa.printconf & PRINTCONF_PRE2THETA)
+								ninfa.measdata |= MEAS_3DMAP  ;
 							lm = Measureme (axion, ninfa);
 							index++;
-
+							if (ninfa.printconf & PRINTCONF_PRE2THETA)
+								ninfa.measdata ^= MEAS_3DMAP  ;
 
 						LogOut("--------------------------------------------------\n");
 						LogOut(" TRANSITION TO THETA (z=%.4f R=%.4f)\n",(*axion->zV()), (*axion->RV()));
 						LogOut(" shift = %f \n", axion->Saskia());
 
 						double shiftz = axion->Saskia()*(*axion->RV());
-						cmplxToTheta (axion, 0.0);
+						cmplxToTheta (axion, shiftz);
 						// NAXIONTEMP
 
 						// Measurement after switching to theta
 						ninfa.index=index;
-						if (saveconfSwitch2theta)
+						if (ninfa.printconf & PRINTCONF_POST2THETA)
 							ninfa.measdata |= MEAS_3DMAP  ;
 						lm = Measureme (axion, ninfa);
 						index++;
@@ -432,7 +435,7 @@ int	main (int argc, char *argv[])
 
 	MeasureType mesa = defaultmeasType;
 
-	if ((prinoconfo & PRINTCONF_FINAL) ) {
+	if ((ninfa.printconf & PRINTCONF_FINAL) ) {
 		mesa = mesa | MEAS_3DMAP  ;
 	}
 	if (pconfinal)
@@ -463,7 +466,7 @@ int	main (int argc, char *argv[])
 			/* last measurement after WKB */
 			MeasureType mesa = defaultmeasType;
 
-			if (prinoconfo & PRINTCONF_WKB) {
+			if (ninfa.printconf & PRINTCONF_WKB) {
 				LogOut ("Dumping final WKBed configuration %05d ...", index);
 				mesa = mesa | MEAS_3DMAP  ;
 			}
