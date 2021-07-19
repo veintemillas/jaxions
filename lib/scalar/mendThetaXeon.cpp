@@ -138,6 +138,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						mBDf = opCode(sub_pd, mBMx, melB);
 #ifdef	__AVX512F__
 						/* Forward */
+						{
 						auto pMask = opCode(cmp_pd_mask, mDf, pVec, _CMP_GE_OQ);
 						auto mMask = opCode(cmp_pd_mask, mDf, mVec, _CMP_LT_OQ);
 						auto mask = pMask | mMask;
@@ -192,7 +193,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							auto mMask = opCode(cmp_pd_mask, mBDf, mVec, _CMP_LT_OQ);
 							mask = pMask | mMask;
 						}
-
+						}
 #else
 						long mask = 0;
 						long msk[step];
@@ -332,9 +333,9 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						long mask = 0;
 						long msk[step];
 #ifdef	__AVX512F__
-						melB = opCode(cmp_pd_mask, mPx, mBMx, _CMP_EQ_OQ);
-						vBMx = opCode(cmp_pd_mask, mPx, mBMx, _CMP_NEQ_OQ);
-						auto masks  = melB | vBMx;
+						auto pMask = opCode(cmp_pd_mask, mPx, mBMx, _CMP_EQ_OQ);
+						auto mMask = opCode(cmp_pd_mask, mPx, mBMx, _CMP_NEQ_OQ);
+						auto masks  = pMask | mMask;
 						for (int k=0,i=1; k<step; k++,i<<=1)
 							msk[k] = (masks & i) >> k;
 #else
