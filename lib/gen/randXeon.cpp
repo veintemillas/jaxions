@@ -36,8 +36,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	/* used from ic */
 	double mod0  = ic.mode0;
 	double kCri  = ic.kcr;
-	/* Interpreted as inverse sigma in conf-minicluster in ADM Units*/
-	double kCri2 = ic.kcr*ic.kcr*L*L/(2.0*Sf);
+	/* kCri2 Interpreted as sigma in conf-minicluster in ADM Units*/
+	double kCri2 = L*L/(2.0*Sf*ic.kcr*ic.kcr);
 	size_t kMa   = ic.kMax;
 
 	double kMx   = (double) ic.kMax;
