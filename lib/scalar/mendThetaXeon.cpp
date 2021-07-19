@@ -41,6 +41,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 	size_t countF = 0;
 	size_t countB = 0;
 	size_t count  = 0;
+	size_t DLz    = commRank()*Lz;
 
 	/* check that m2 is sufficient,
 	we assume m2 is still the complex field with only 2 ghost regions, the minimum */
@@ -506,6 +507,11 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							if ( (mask & i) >> k ) strdaa[iNx+k*YC*Lx]  = 1;
 						}
 						if (nChg > 0) cha = true;
+//if (cha){
+//for (int k=0,i=1; k<step; k++,i<<=1) 
+//LogMsg(VERB_PARANOID,"zyx %lu %lu %lu k %d i %d mask %d nChg %d ",DLz+zSl,yLn+k*YC,xPt/step+1,k,i,mask, nChg);
+//}
+
 
 						while	(nChg != 0) {
 							mPx = opCode(mask_sub_ps, mPx, pMask, mPx, cVec);
@@ -644,7 +650,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 	#else
 							mBDp = opCode(cmpge_ps, mBDf, pVec);
 							mBDm = opCode(cmplt_ps, mBDf, mVec);
-#endif
+	#endif
 							mBDc = opCode(or_ps, mBDp, mBDm);
 							opCode(store_ps, static_cast<float*>(static_cast<void*>(mskB)), mBDc);
 
@@ -676,8 +682,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 					/* compare forwards with backwards and write only if they coincide
 					do nothing if nothing was changed in the line */
 					if (cha) {
-						// LogMsg(VERB_HIGH,"[mT] z,y = %lu, %lu pre-mends F %lu B %lu",zSl,yLn,countF_line,countB_line);
-// if (zSl == 128 && yLn == 0 && 0) {
+						LogMsg(VERB_HIGH,"[mT] z,y = %lu, %lu (+%lu*n) pre-mends F %lu B %lu",DLz+zSl,yLn,YC,countF_line,countB_line);
+//if (zSl == 128 && yLn == 0 && 0) {
 	// printf("[mT] z,y = %lu, %lu pre-mends F %lu B %lu\n",zSl,yLn,countF_line,countB_line);
 	// size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx + step - XC +k;
 	// printf("m[-1] %f m[+1] %f \n", m[idxPx-step+k]/co, m[com]/co); //ojo con +1
@@ -710,10 +716,10 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							int msk[step];
 	#ifdef	__AVX512F__
 							auto pMask = opCode(cmp_ps_mask, mPx, mBMx, _CMP_EQ_OQ);
-							auto mMask  = opCode(cmp_ps_mask, mPx, mBMx, _CMP_NEQ_OQ);
-							auto masks  = opCode(kor, pMask, mMask);
+							//auto mMask  = opCode(cmp_ps_mask, mPx, mBMx, _CMP_NEQ_OQ);
+							//auto masks  = opCode(kor, pMask, mMask);
 							for (int k=0,i=1; k<step; k++,i<<=1)
-								msk[k] = (masks & i) >> k;
+								msk[k] = (pMask & i) >> k;
 	#else
 		#ifdef	__AVX__
 							melB = opCode(cmp_ps, mPx, mBMx, _CMP_EQ_OQ); // are cF and cB equal?
@@ -733,22 +739,23 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 							/* store if necessary */
 							if (mask >0){
-								// float mm[step], mvB[step];
+								float mm[step], mvB[step];
 								float vv[step], mvF[step];
-								// opCode(store_ps, static_cast<float*>(static_cast<void*>(mm)), mel);
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(mm)), mel);
 								opCode(store_ps, static_cast<float*>(static_cast<void*>(mvF)), mPx);
-								// opCode(store_ps, static_cast<float*>(static_cast<void*>(mvB)), mBMx);
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(mvB)), mBMx);
 								mPx  = opCode(load_ps, &m2[idx2+XC]);                                  // we have saved corrected v here
 								opCode(store_ps, static_cast<float*>(static_cast<void*>(vv)), mPx);
 								for (int k=0; k<step; k++) {
 									if ((msk[k] & 1) && (strdaa[iNx+k*YC*Lx] > 0) ) {
 										strdaa[iNx+k*YC*Lx] |= STRING_WALL;
-										// float co = R;
+										float co = R;
 										// if (zSl == 128 && yLn == 0) {
-										// 	printf("[mT] x %lu k %d mask %d msk[k] %d m %f (%f)-> m_mendF/B %f/%f ... \n", xPt/step, k, mask, msk[k], m[idxPx+k]/co, mm[k]/co, mvF[k]/co, mvB[k]/co);
-											// size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx + step - XC +k;
-											// printf("m[-1] %f m[+1] %f \n", m[idxPx-step+k]/co, m[com]/co); //ojo con +1
+										printf("[mT] x %lu y %lu mask %d msk[k] %d m %f (%f)-> m_mendF/B %f/%f ... %d \n", xPt/step, yLn+YC*k, mask, msk[k], m[idxPx+k]/co, mm[k]/co, mvF[k]/co, mvB[k]/co,strdaa[iNx+k*YC*Lx]);
+										// size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx + step - XC +k;
+										// printf("m[-1] %f m[+1] %f \n", m[idxPx-step+k]/co, m[com]/co); //ojo con +1
 										// }
+										strdaa[iNx+k*YC*Lx] |= STRING_WALL;
 
 										/* do this to store or the vector alternative below */
 										static_cast<float*>(m_)[idxPx+k] = mvF[k];
