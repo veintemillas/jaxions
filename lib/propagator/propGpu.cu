@@ -174,7 +174,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	void *ood2;
 	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
 	cudaMalloc(&ood2, NN*sizeof(double));
-	
+
 	for (int i =0; i<NN; i++) {
 		LogMsg(VERB_PARANOID,"PC[%d] %f", i, (ppar.PC)[i]);
 	}
@@ -196,10 +196,10 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dp2  = (1. - gFp2)*dp1;
 
 		double aux[NN];
-
 		for (int i =0; i<NN; i++)
 	        	aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
+
 		switch (VQcd) {
 
 			DEFALLPROPTEM_K_GPU(double)
@@ -221,11 +221,10 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float eps  = gFp2/(1. + gFp2);
 		const float dp1  =   1./(1. + gFp2);
 		const float dp2  = (1. - gFp2)*dp1;
-                
+
 		float aux[NN];
-		for (int i =0; i<NN; i++) {
+		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
-		}
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
@@ -273,7 +272,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 
 	idx2Vec(idx, X, Lx);
 
-	mel = 0;
+	mel = complex<Float>(0,0);
 	tmp = m[idx];
 
 	for (size_t nv=1; nv <= NN; nv++)
@@ -371,6 +370,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 	}
 
 	v[idx-NN*Sf] = mel;
+	/* and do not update m */
 }
 
 template<typename cFloat, typename Float>
@@ -439,6 +439,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
 	dim3	blockSize(BSSIZE,1,1);
 */
+	LogMsg(VERB_PARANOID,"[pGu] updateVGpu called");
+	LogMsg(VERB_PARANOID,"[pGu] dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+
 	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
@@ -447,8 +450,12 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 
 	const uint NN    = ppar.Ng;
 	void *ood2;
-        cudaMalloc(&ood2, NN*precision*8);
-	
+	LogMsg(VERB_PARANOID,"[pGu] allocate %d bits for NN = %d",NN*sizeof(double), NN);
+  cudaMalloc(&ood2, NN*sizeof(double));
+	for (int i =0; i<NN; i++) {
+		LogMsg(VERB_PARANOID,"PC[%d] %f", i, (ppar.PC)[i]);
+	}
+
 	if (precision == FIELD_DOUBLE)
 	{
 		const double zR   = ppar.R;
@@ -464,8 +471,10 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		const double dp1  =   1./(1. + gFp2);
 		const double dp2  = (1. - gFp2)*dp1;
 
+		double aux[NN];
 		for (int i =0; i<NN; i++)
-			static_cast<double*>(ood2)[i] = (double) (ppar.PC)[i]*ppar.ood2a;
+	        	aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -487,9 +496,11 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		const float eps  = gFp2/(1. + gFp2);
 		const float dp1  =   1./(1. + gFp2);
 		const float dp2  = (1. - gFp2)*dp1;
-		
+
+		float aux[NN];
 		for (int i =0; i<NN; i++)
-			static_cast<float*>(ood2)[i] = (float) (ppar.PC)[i]*ppar.ood2a;
+			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -500,4 +511,5 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		}
 	}
 	cudaFree(ood2);
+	CudaCheckError();
 }

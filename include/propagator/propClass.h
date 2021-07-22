@@ -326,8 +326,6 @@
 		}
 
 		if (lastStage == PROP_LAST) {
-			double cLmbda = axion->LambdaP();
-
 			const double    c0 = c[nStages], maa = axion->AxionMassSq();
 
 			loadparms(&ppar, axion);
