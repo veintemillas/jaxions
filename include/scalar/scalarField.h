@@ -140,6 +140,7 @@
 
 #ifdef	USE_GPU
 		void		*mGpu() { return m_d; }
+		void		*mGpuStart() { return static_cast<void *>(static_cast<char *>(m_d)  + fSize*(n2)*Ng); }
 		const void	*mGpu() const { return m_d; }
 		void		*vGpu() { return v_d; }
 		const void	*vGpu() const { return v_d; }
