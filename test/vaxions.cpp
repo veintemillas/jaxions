@@ -28,6 +28,13 @@
 #include <string>
 #include <map>
 
+#ifdef	USE_GPU
+	#include <cuda.h>
+	#include <cuda_runtime.h>
+	#include <cuda_device_runtime_api.h>
+#endif
+
+
 using namespace std;
 using namespace AxionWKB;
 
@@ -526,12 +533,16 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 			if (axion->Field() == FIELD_SAXION) {
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
-
+				float buff[4];
+				if (axion->Device() == DEV_GPU) {
+					cudaMemcpy(buff,static_cast<float*> (axion->mStart()),2*sizeof(float),cudaMemcpyDeviceToHost);
+					cudaMemcpy(&(buff[2]),static_cast<float*> (axion->vStart()),2*sizeof(float),cudaMemcpyDeviceToHost);
+				} else {
+					memcpy(buff,static_cast<float*> (axion->mStart()),2*sizeof(float));
+					memcpy(&(buff[2]),static_cast<float*> (axion->vStart()),2*sizeof(float));
+				}
 				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
-				static_cast<complex<float> *> (axion->mStart())[idxprint].real(),
-				static_cast<complex<float> *> (axion->mStart())[idxprint].imag(),
-				static_cast<complex<float> *> (axion->vStart())[idxprint].real(),
-				static_cast<complex<float> *> (axion->vStart())[idxprint].imag(),
+				buff[0], buff[1], buff[2], buff[3],
 				nstrings_global, maximumtheta, saskia);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
