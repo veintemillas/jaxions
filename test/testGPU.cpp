@@ -93,7 +93,18 @@ int	main (int argc, char *argv[])
 	PropParms ppar;
 	loadparams(&ppar, axion);
 
+
+	float buf[2];
+	cudaMemcpy(buf,axion->vGpu(),2*sizeof(float),cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+	printf("buf GPU %f %f  \n",buf[0],buf[1]);
+        memcpy(buf,axion->vCpu(),2*sizeof(float));
+	printf("buf CPU %f %f  \n",buf[0],buf[1]);
+
+	if (0)
+	{
 	/* propagate */
+	
 	double dz = 30;
 	double c1 = 1;
 	double d1 = 1;
@@ -114,7 +125,7 @@ int	main (int argc, char *argv[])
 	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[1]);
 
-	dz = 0;
+	//dz = 0;
 	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, 2*uS, uV, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[2]);
 	axion->exchangeGhosts(FIELD_M);
@@ -124,8 +135,26 @@ int	main (int argc, char *argv[])
 	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, uV,  ext, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[1]);
 
+	} else {
+	memset (axion->mStart(), 0, axion->Size()*axion->DataSize());
+	memset (axion->vStart(), 0, axion->Size()*axion->DataSize());
+       cudaMemcpy(buf,axion->vGpu(),2*sizeof(float),cudaMemcpyDeviceToHost);
+       cudaDeviceSynchronize();
+       printf("0buf GPU %f %f  \n",buf[0],buf[1]);
+       memcpy(buf,axion->vCpu(),2*sizeof(float));
+       printf("0buf CPU %f %f  \n",buf[0],buf[1]);
+
+	}
+
 	/* write result */
 	axion->transferCpu(FIELD_MV);
+	
+       cudaMemcpy(buf,axion->vGpu(),2*sizeof(float),cudaMemcpyDeviceToHost);
+       printf("after transfer buf GPU %f %f  \n",buf[0],buf[1]);
+       memcpy(buf,axion->vCpu(),2*sizeof(float));
+       printf("after transfer buf CPU %f %f  \n",buf[0],buf[1]);
+
+
 	writeConf(axion, 2);
 
 	delete axion;

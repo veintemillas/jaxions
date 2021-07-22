@@ -440,7 +440,7 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 	dim3	blockSize(BSSIZE,1,1);
 */
 	LogMsg(VERB_PARANOID,"[pGu] updateVGpu called");
-	LogMsg(VERB_PARANOID,"[pGu] dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+	LogMsg(VERB_PARANOID,"[pGu] dz %f c %f d (no) Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 
 	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
