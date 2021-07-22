@@ -1,7 +1,7 @@
 #include "kernelParms.cuh"
 #include "complexGpu.cuh"
 #include "utils/index.cuh"
-
+#include "cudaErrors.h"
 #include "enum-field.h"
 #include "propagator/prop-def-mac.h"
 
@@ -15,9 +15,7 @@ using namespace gpuCu;
 using namespace indexHelper;
 
 template<typename Float, const VqcdType VQcd>
-static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2,
-							 const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2,
-							 const Float dzc, const Float dzd, const Float *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
+static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, void  *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
@@ -61,9 +59,8 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 		else
 			idxMy = idx - nv*Lx;
 
-		mel += (m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*ood2[nv-1];
+		mel += (m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
 	}
-
 
 	Float pot = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
 
@@ -133,6 +130,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 		mel *= kReal/pot;
 	}
 
+
 	v[idx-NN*Sf] = mel;
 	mel *= dzd;
 	tmp += mel;
@@ -141,7 +139,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 
 template<typename Float, const VqcdType VQcd>
 __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4,
-				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float *ood2, const Float LL,
+				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, void *ood2, const Float LL,
 				const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -163,6 +161,9 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3	  blockSize(BLSIZE,1,1);
 */
+	LogMsg(VERB_PARANOID,"[pG] propGPU called");
+	LogMsg(VERB_PARANOID,"[pG] dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+
 	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
@@ -170,6 +171,13 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3 blockSize(xBlock, yBlock, 1);
 
 	const uint NN    = ppar.Ng;
+	void *ood2;
+	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
+	cudaMalloc(&ood2, NN*sizeof(double));
+	
+	for (int i =0; i<NN; i++) {
+		LogMsg(VERB_PARANOID,"PC[%d] %f", i, (ppar.PC)[i]);
+	}
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -187,11 +195,11 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dp1  =   1./(1. + gFp2);
 		const double dp2  = (1. - gFp2)*dp1;
 
-		double pood2[NN] ;
-		for (int i =0; i<NN; i++)
-			pood2[i] = (ppar.PC)[i]*ppar.ood2a;
-		const double *ood2 = &(pood2[0]);
+		double aux[NN];
 
+		for (int i =0; i<NN; i++)
+	        	aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
 		switch (VQcd) {
 
 			DEFALLPROPTEM_K_GPU(double)
@@ -205,7 +213,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float zR   = ppar.R;
 		const float z2   = zR*zR;
 		const float z4   = z2*z2;
-		const float zQ   = ppar.massA2*z2*zR;//(float) axionmass2(*z, nQcd, zthres, zrestore)*z2*zR;
+		const float zQ   = ppar.massA2*z2*zR; //(float) axionmass2(*z, nQcd, zthres, zrestore)*z2*zR;
 		const float LL   = ppar.lambda;
 		const float gFp1 = ppar.gamma/zR;
 		const float gFac = gFp1/zR;
@@ -213,13 +221,12 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float eps  = gFp2/(1. + gFp2);
 		const float dp1  =   1./(1. + gFp2);
 		const float dp2  = (1. - gFp2)*dp1;
-
-		float  food2[NN] ;
-		for (int i =0; i<NN; i++){
-			food2[i] = (float) (ppar.PC)[i]*ppar.ood2a;
+                
+		float aux[NN];
+		for (int i =0; i<NN; i++) {
+			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		}
-
-		const float *ood2 = &(food2[0]);
+		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -229,6 +236,9 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 			return;
 		}
 	}
+	//cudaDeviceSynchronize();
+	cudaFree(ood2);
+	CudaCheckError();
 }
 
 template<typename cFloat, typename Float>
@@ -243,7 +253,7 @@ static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, cFloat * _
 template<typename Float, const VqcdType VQcd>
 static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2,
 						       const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc,
-						       const Float *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
+						       void *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
 {
 	uint X[3], idxMx, idxPx, idxMy, idxPy;
 
@@ -288,7 +298,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 		else
 			idxMy = idx - nv*Lx;
 
-		mel += (m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*ood2[nv-1];
+		mel += (m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
 	}
 
 
@@ -377,7 +387,7 @@ __global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict
 
 template<typename Float, const VqcdType VQcd>
 __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac,
-			      const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float *ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
+			      const Float eps, const Float dp1, const Float dp2, const Float dzc, void  *ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
 			      const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -436,7 +446,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 	dim3 blockSize(xBlock, yBlock, 1);
 
 	const uint NN    = ppar.Ng;
-
+	void *ood2;
+        cudaMalloc(&ood2, NN*precision*8);
+	
 	if (precision == FIELD_DOUBLE)
 	{
 		const double zR   = ppar.R;
@@ -452,10 +464,8 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		const double dp1  =   1./(1. + gFp2);
 		const double dp2  = (1. - gFp2)*dp1;
 
-		double pood2[NN] ;
 		for (int i =0; i<NN; i++)
-			pood2[i] = (ppar.PC)[i]*ppar.ood2a;
-		const double *ood2 = &(pood2[0]);
+			static_cast<double*>(ood2)[i] = (double) (ppar.PC)[i]*ppar.ood2a;
 
 		switch (VQcd) {
 
@@ -477,11 +487,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		const float eps  = gFp2/(1. + gFp2);
 		const float dp1  =   1./(1. + gFp2);
 		const float dp2  = (1. - gFp2)*dp1;
-
-		float  food2[NN] ;
+		
 		for (int i =0; i<NN; i++)
-			food2[i] = (float) (ppar.PC)[i]*ppar.ood2a;
-		const float *ood2 = &(food2[0]);
+			static_cast<float*>(ood2)[i] = (float) (ppar.PC)[i]*ppar.ood2a;
 
 		switch (VQcd) {
 
@@ -491,4 +499,5 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 			return;
 		}
 	}
+	cudaFree(ood2);
 }

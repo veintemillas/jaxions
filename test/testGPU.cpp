@@ -104,23 +104,24 @@ int	main (int argc, char *argv[])
 	size_t xBlock = 128 ;
 	size_t yBlock = 1 ;
 	size_t zBlock = 1 ;
-	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, 2*uS, uV, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
+	VqcdType vqcdese = V_PQ1|V_QCD1 ;
+	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, 2*uS, uV, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[2]);
 	axion->exchangeGhosts(FIELD_M);
-	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, 2*uS, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
+	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, 2*uS, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[0]);
 	if (uV>uS)
-	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
+	propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[1]);
 
 	dz = 0;
-	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, 2*uS, uV, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
+	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, 2*uS, uV, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[2]);
 	axion->exchangeGhosts(FIELD_M);
-	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, uS, 2*uS, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
+	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, uS, 2*uS, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[0]);
 	if (uV>uS)
-	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, uV,  ext, V_PQ1|V_QCD1, axion->Precision(), xBlock, yBlock, zBlock,
+	propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c1, d1, uV,  ext, vqcdese, axion->Precision(), xBlock, yBlock, zBlock,
 				((cudaStream_t *)axion->Streams())[1]);
 
 	/* write result */
