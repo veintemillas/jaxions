@@ -176,8 +176,10 @@ void	ConfGenerator::runGpu	()
 	if ((cType != CONF_READ) && (cType != CONF_NONE)) {
 
 		if (!myCosmos->Mink()) {
-			double	  lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
-			double	  ood2 = 1./(axionField->Delta()*axionField->Delta());
+			PropParms ppar;
+			ppar.R      = *axionField->RV();
+			ppar.ood2a  = 1./(axionField->Delta()*axionField->Delta());;
+			ppar.lambda = axionField->LambdaP();
 			uint	  S    = axionField->Surf();
 			uint	  V    = axionField->Size();
 			uint	  Vo   = S;
@@ -185,7 +187,7 @@ void	ConfGenerator::runGpu	()
 			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			scaleField(axionField, FIELD_M, *axionField->RV());
 			axionField->exchangeGhosts(FIELD_M);
-			updateVGpu(axionField->mGpu(), axionField->vGpu(), axionField->RV(), *axionField->RV(), 1.0, ood2, lTmp, axionField->AxionMassSq(), 0.0, axionField->Length(), axionField->Depth(), Vo, Vf,
+			updateVGpu(axionField->mGpu(), axionField->vGpu(), ppar, ppar.R, 1.0, Vo, Vf,
 				   axionField->BckGnd()->QcdPot() & V_TYPE, axionField->Precision(), 512, 1, 1, ((cudaStream_t *)axionField->Streams())[2]);
 					// FIXME --> xDefaultBlockGpu, yDefaultBlockGpu, zDefaultBlockGpu, ((cudaStream_t *)axionField->Streams())[2]);
 		}

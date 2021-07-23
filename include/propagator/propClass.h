@@ -34,6 +34,8 @@
 		#pragma GCC optimize ("unroll-loops")
 	#endif
 
+	void loadparms(PropParms *pipar, Scalar *field);
+
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	class	PropClass : public PropBase
 	{
@@ -267,12 +269,13 @@
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunGpu	(const double dz) {
 	#ifdef	USE_GPU
-		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
+		PropParms ppar;
+		loadparms(&ppar, axion);
+		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
 		const uint ext = uV + uS;
 
-		// eom only depend on R
+
 		double *z = axion->zV();
-		double *R = axion->RV();
 
 		auto *cD = d;
 
@@ -289,36 +292,32 @@
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 
-			double cLmbda = axion->LambdaP();
+			loadparms(&ppar, axion);
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
-			auto maa = axion->AxionMassSq();
-
-			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0]);
 			if (uV>uS)
-			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
 
 			*z += dz*d1;
 			axion->updateR();
-			cLmbda = axion->LambdaP();
+			loadparms(&ppar, axion);
 
-			maa = axion->AxionMassSq();
-
-			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c2, d2, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M2);
-			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c2, d2, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0]);
 			if (uV>uS)
-			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c2, d2, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1]);
 
 			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
@@ -327,17 +326,17 @@
 		}
 
 		if (lastStage == PROP_LAST) {
-			double cLmbda = axion->LambdaP();
-
 			const double    c0 = c[nStages], maa = axion->AxionMassSq();
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			loadparms(&ppar, axion);
+
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
 			if (uV>uS)
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 		}
 
@@ -352,26 +351,27 @@
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::lowGpu	(const double dz) {
 	#ifdef	USE_GPU
-		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
-		const uint ext = V + S;
+		PropParms ppar;
+		loadparms(&ppar, axion);
+		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
+		const uint ext = uV + uS;
+
 		double *z = axion->zV();
-		double *R = axion->RV();
-		double cLmbda ;
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 
+			loadparms(&ppar, axion);
 			axion->updateR();
-			cLmbda = axion->LambdaP();
 
 			const double c0 = c[s], d0 = d[s], maa = axion->AxionMassSq();
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[0]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[1]);
@@ -385,14 +385,14 @@
 		if (lastStage) {
 			const double c0 = c[nStages], maa = axion->AxionMassSq();
 
-			cLmbda = axion->LambdaP();
+			loadparms(&ppar, axion);
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, 2*uS, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uS, 2*uS, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
-			updateVGpu(axion->mGpu(), axion->vGpu(), R, dz, c0, ood2, cLmbda, maa, gamma, uLx, uLz, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 			cudaDeviceSynchronize();
 		}
@@ -727,7 +727,7 @@
 		ppar.gamma  = axion->BckGnd()->Gamma();
 		ppar.frw    = axion->BckGnd()->Frw();
 		ppar.fMom1 = -(4.*M_PI*M_PI)/(axion->BckGnd()->PhysSize()*axion->BckGnd()->PhysSize()*((double) axion->TotalSize()));
-		
+
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
@@ -1213,4 +1213,21 @@
 		}
 	}
 
+	void loadparms(PropParms *pipar, Scalar *axion)
+	{
+		(*pipar).lambda = axion->LambdaP();
+		(*pipar).massA2 = axion->AxionMassSq();
+		(*pipar).R      = *axion->RV();
+		(*pipar).Rpp    = axion->Rpp();
+		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
+
+		(*pipar).Ng     = axion->getNg();
+		(*pipar).Lx     = axion->Length();;
+		(*pipar).PC     = axion->getCO();
+		(*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
+		(*pipar).gamma  = axion->BckGnd()->Gamma();
+		(*pipar).frw    = axion->BckGnd()->Frw();
+		(*pipar).dectime= axion->BckGnd()->DecTime();
+
+	}
 #endif

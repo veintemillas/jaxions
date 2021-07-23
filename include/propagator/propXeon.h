@@ -184,7 +184,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 						idxMx = ((idx - nv*step) << 1);
 					//x+
 					if (X[0] + nv*step >= XC)
-						idxPx = ((idx - XC + nv*step) << 1);
+						idxPx = ((idx + nv*step - XC) << 1);
 					else
 						idxPx = ((idx + nv*step) << 1);
 

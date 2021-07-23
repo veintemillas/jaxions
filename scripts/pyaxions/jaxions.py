@@ -509,7 +509,7 @@ def gm(address,something='summary',printerror=False):
 
     # strings
     st_check = ('string' in f)
-    if (something[0:2] == 'st') and ftype == 'Axion':
+    if (something[0:2] == 'st' or something == 'xi') and ftype == 'Axion':
         return 0. ;
     if (something[0:2] == 'st' or something == 'xi') and st_check :
         if (something == 'stringN'):

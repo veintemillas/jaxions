@@ -28,6 +28,13 @@
 #include <string>
 #include <map>
 
+#ifdef	USE_GPU
+	#include <cuda.h>
+	#include <cuda_runtime.h>
+	#include <cuda_device_runtime_api.h>
+#endif
+
+
 using namespace std;
 using namespace AxionWKB;
 
@@ -35,7 +42,6 @@ using namespace AxionWKB;
 // vaxions3d definitions
 
 void    printsample  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta);
-void    printsampleS  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double  findzdoom(Scalar *axion);
 void    checkTime (Scalar *axion, int index);
 void    printposter (Scalar *axion);
@@ -44,8 +50,9 @@ void    mysplit (std::string *str, std::vector<std::string> *result);
 int     readheader (std::string *str, std::vector<int> *perm);
 int     readmeasline2 (std::string *str, double *ctime, std::vector<int> *lint, std::vector<int> *perm, int n_max);
 void 		loadmeasfromlist(MeasFileParms *mfp, MeasInfo *info, int i_meas);
+size_t  unfoldidx(size_t idx, Scalar *axion);
 //-point to print
-size_t idxprint = 0 ;
+size_t idxprint = 66065 ;
 //- z-coordinate of the slice that is printed as a 2D map
 size_t sliceprint = 0 ;
 
@@ -117,16 +124,14 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 	//-output txt file
+	char out2Name[2048];
+	sprintf (out2Name, "%s/../sample.txt", outDir);
 	FILE *file_samp ;
-	FILE *file_sams ;
 	file_samp = NULL;
-	file_sams = NULL;
 	if (!restart_flag){
-		file_samp = fopen("out/sample.txt","w+");
-		file_sams = fopen("out/samplS.txt","w+");
+		file_samp = fopen(out2Name,"w+");
 	} else{
-		file_samp = fopen("out/sample.txt","a+"); // if restart append in file
-		file_sams = fopen("out/samplS.txt","a+"); // if restart append in file
+		file_samp = fopen(out2Name,"a+"); // if restart append in file
 	}
 
 
@@ -234,7 +239,6 @@ int	main (int argc, char *argv[])
 
 	// SIMPLE OUTPUT CHECK
 	printsample(file_samp, axion, idxprint, lm.str.strDen, lm.maxTheta);
-	// printsampleS(file_sams, axion, idxprint, lm.str.strDen, lm.maxTheta);
 
 	//--------------------------------------------------
 	// Axiton TRACKER (if THETA)
@@ -312,7 +316,6 @@ int	main (int argc, char *argv[])
 
 			// SIMPLE OUTPUT CHECK
 			printsample(file_samp, axion, idxprint, lm.str.strDen, lm.maxTheta);
-			// printsampleS(file_sams, axion, idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -527,24 +530,29 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 	double R_now = (*axion->RV());
 	double llphys = axion->LambdaP();
 
-	// LogOut("z %f R %f\n",z_now, R_now);
+	/* unfold if needed */
+	size_t idxp = unfoldidx(idxprint, axion);
 	size_t S0 = sizeN*sizeN ;
 	if (commRank() == 0){
 		if (sPrec == FIELD_SINGLE) {
 			if (axion->Field() == FIELD_SAXION) {
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
-
+				float buff[4];
+				if (axion->Device() == DEV_GPU) {
+					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
+					cudaMemcpy(&(buff[2]), &(static_cast<float*>(axion->vGpu())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
+				} else {
+					memcpy(buff,&(static_cast<float*> (axion->mStart())[2*idxp]),2*sizeof(float));
+					memcpy(&(buff[2]),&(static_cast<float*> (axion->vStart())[2*idxp]),2*sizeof(float));
+				}
 				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
-				static_cast<complex<float> *> (axion->mStart())[idxprint].real(),
-				static_cast<complex<float> *> (axion->mStart())[idxprint].imag(),
-				static_cast<complex<float> *> (axion->vStart())[idxprint].real(),
-				static_cast<complex<float> *> (axion->vStart())[idxprint].imag(),
+				buff[0], buff[1], buff[2], buff[3],
 				nstrings_global, maximumtheta, saskia);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
-				static_cast<float *> (axion->mStart())[idxprint],
-				static_cast<float *> (axion->vStart())[idxprint], maximumtheta);
+				static_cast<float *> (axion->mStart())[idxp],
+				static_cast<float *> (axion->vStart())[idxp], maximumtheta);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){
@@ -553,65 +561,15 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 				double saskia = axion->Saskia();
 
 				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
-				static_cast<complex<double> *> (axion->mStart())[idxprint].real(),
-				static_cast<complex<double> *> (axion->mStart())[idxprint].imag(),
-				static_cast<complex<double> *> (axion->vStart())[idxprint].real(),
-				static_cast<complex<double> *> (axion->vStart())[idxprint].imag(),
+				static_cast<complex<double> *> (axion->mStart())[idxp].real(),
+				static_cast<complex<double> *> (axion->mStart())[idxp].imag(),
+				static_cast<complex<double> *> (axion->vStart())[idxp].real(),
+				static_cast<complex<double> *> (axion->vStart())[idxp].imag(),
 				nstrings_global, maximumtheta, saskia);
 			} else {
 				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
-				static_cast<double *> (axion->mStart())[idxprint],
-				static_cast<double *> (axion->vStart())[idxprint], maximumtheta);
-			}
-		}
-	}
-}
-
-void printsampleS(FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta)
-{
-	double z_now = (*axion->zV());
-	double R_now = (*axion->RV());
-	double llphys = axion->LambdaP();
-
-	// LogOut("z %f R %f\n",z_now, R_now);
-	size_t S0 = sizeN*sizeN ;
-	if (commRank() == 0){
-		if (sPrec == FIELD_SINGLE) {
-			if (axion->Field() == FIELD_SAXION) {
-				double axmass_now = axion->AxionMass();
-				double saskia = axion->Saskia();
-				double inte = axion->IAxionMassSqn(0,z_now,3);
-				double iinte = axion->IIAxionMassSqn(0,z_now,3);
-
-				fprintf(fichero,"%f %f %f %f %f %f %f %f %f %ld %f %e %f %f\n", z_now, axmass_now, llphys,
-				static_cast<complex<float> *> (axion->mStart())[idxprint].real(),
-				static_cast<complex<float> *> (axion->mStart())[idxprint].imag(),
-				static_cast<complex<float> *> (axion->vStart())[idxprint].real(),
-				static_cast<complex<float> *> (axion->vStart())[idxprint].imag(),
-				static_cast<complex<float> *> (axion->m2Cpu())[idxprint].real(),
-				static_cast<complex<float> *> (axion->m2Cpu())[idxprint].imag(),
-				nstrings_global, maximumtheta, saskia, inte, iinte);
-			} else {
-				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
-				static_cast<float *> (axion->mStart())[idxprint],
-				static_cast<float *> (axion->vStart())[idxprint], maximumtheta);
-			}
-			fflush(fichero);
-		} else if (sPrec == FIELD_DOUBLE){
-			if (axion->Field() == FIELD_SAXION) {
-				double axmass_now = axion->AxionMass();
-				double saskia = axion->Saskia();
-
-				fprintf(fichero,"%f %f %f %f %f %f %f %ld %f %e\n", z_now, axmass_now, llphys,
-				static_cast<complex<double> *> (axion->mStart())[idxprint].real(),
-				static_cast<complex<double> *> (axion->mStart())[idxprint].imag(),
-				static_cast<complex<double> *> (axion->vStart())[idxprint].real(),
-				static_cast<complex<double> *> (axion->vStart())[idxprint].imag(),
-				nstrings_global, maximumtheta, saskia);
-			} else {
-				fprintf(fichero,"%f %f %f %f %f\n", z_now, axion->AxionMass(),
-				static_cast<double *> (axion->mStart())[idxprint],
-				static_cast<double *> (axion->vStart())[idxprint], maximumtheta);
+				static_cast<double *> (axion->mStart())[idxp],
+				static_cast<double *> (axion->vStart())[idxp], maximumtheta);
 			}
 		}
 	}
@@ -1029,4 +987,19 @@ void 		loadmeasfromlist(MeasFileParms *mfp, MeasInfo *info, int i_meas)
 
 void axitontracker(Scalar *axion)
 {
+}
+
+size_t unfoldidx(size_t idx, Scalar *axion)
+{
+		if (axion->Folded()){
+			size_t X[3];
+			indexXeon::idx2Vec(idxprint,X,axion->Length());
+			size_t v_length = axion->DataAlign()/axion->DataSize();
+			size_t XC = axion->Length()*v_length;
+			size_t YC = axion->Length()/v_length;
+			size_t iiy = X[1]/YC;
+			size_t iv  = X[1]-iiy*YC;
+			return X[2]*axion->Surf() + iv*XC + X[0]*v_length + iiy;
+		} else
+			return idx;
 }
