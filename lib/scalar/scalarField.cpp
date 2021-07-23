@@ -8,6 +8,8 @@
 #include"fft/fftCode.h"
 #include "scalar/folder.h"
 
+
+
 #include"scalar/scalarField.h"
 
 #include"comms/comms.h"
@@ -561,7 +563,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 {
 	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
 	size_t Tc  = v3*fSize;              // Number of chars to transfer
-	size_t Tvc = (n2*(Lz+2*Ng))*fSize;  // Number of chars to transfer
+	size_t Tvc = (n2*(Lz+2))*fSize;     // Number of chars to transfer
 
 	if (device == DEV_GPU)
 	{
@@ -569,15 +571,18 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 			LogError ("Error: gpu support not built");
 			exit   (1);
 		#else
-			LogMsg(VERB_HIGH,"[sca] Transfering to CPU %d (M/V/MV=%d,%d,%d) cMDTH %lu ",fIdx,FIELD_M,FIELD_V,FIELD_MV,cudaMemcpyDeviceToHost);
+			LogMsg(VERB_HIGH,"[sca] Transferring to CPU %d (M/V/MV=%d,%d,%d) cMDTH %lu ",fIdx,FIELD_M,FIELD_V,FIELD_MV,cudaMemcpyDeviceToHost);
 			if (fIdx & FIELD_M)
 				cudaMemcpy(m,  m_d,  Tc, cudaMemcpyDeviceToHost);
 
-			if (fIdx & FIELD_V)
+			if (fIdx & FIELD_V){
 				cudaMemcpy(v,  v_d,  Tvc, cudaMemcpyDeviceToHost);
-
+				LogMsg(VERB_HIGH,"[sca] v transferred %p to %p (%zu bytes)",v_d,v,Tvc);
+			}
 			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy(m2, m2_d, Tc, cudaMemcpyDeviceToHost);
+			
+			CudaCheckError();
 		#endif
 	}
 }
