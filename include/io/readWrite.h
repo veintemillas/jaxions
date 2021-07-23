@@ -9,6 +9,7 @@
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
 	void	writeConf (Scalar *axion, int index, const bool restart=false);
 	void	readConf	(Cosmos *myCosmos, Scalar **axion, int index, const bool restart=false);
+double	readEDens	(Cosmos *myCosmos, Scalar **axion, int index);
 
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
@@ -28,6 +29,7 @@
 	void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint=0, char *eCh="/map/E");
 	void	writePMapHdf5	(Scalar *axion);
 	void	writePMapHdf5s	(Scalar *axion, char *eCh);
+	void	writeGadget	(Scalar *axion, double eMean, size_t realN=0, size_t nParts=0, double sigma = 1.0);
 
 	void	reduceEDens	(int index, uint newLx, uint newLz);
 
@@ -40,8 +42,9 @@
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
+	void	writeGadget	(Scalar *axion);
 	void	writeConfNyx (Scalar *axion, int index);
-	
+
 	template<const size_t N, typename cFloat>
 	void	writeBinner	(Binner<N,cFloat> bins, const char *group, const char *dataName) {
 

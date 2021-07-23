@@ -87,7 +87,6 @@ bool aMod     = false;
 bool icstudy  = false ;
 bool preprop  = false ;
 bool coSwitch2theta  = true ;
-bool saveconfSwitch2theta = false;
 bool WKBtotheend = false;
 bool measCPU  = false;
 
@@ -140,7 +139,7 @@ VerbosityLevel	verb   = VERB_NORMAL;
 LogMpi		logMpi = ALL_RANKS;
 bool debug        = false;
 
-PrintConf prinoconfo  = PRINTCONF_NONE;
+// PrintConf prinoconfo  = PRINTCONF_NONE;
 bool p2dmapo  	  = false;
 bool p2dEmapo  	  = false;
 bool p2dPmapo  	  = false;
@@ -654,7 +653,9 @@ int	parseArgs (int argc, char *argv[])
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
 
-	deninfa.nbinsspec = -1; 		// (natural width bin width = 2pi/L0)
+	/* Default measurements */
+	deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
+	deninfa.printconf = PRINTCONF_NONE;  // no configuration
 
 	for (int i=1; i<argc; i++)
 	{
@@ -716,12 +717,11 @@ int	parseArgs (int argc, char *argv[])
 			if (i+1 == argc)
 			{
 				printf("Warning: p3D set by default to 0 [no 00000 and final configuration files].\n");
-				prinoconfo = PRINTCONF_NONE ;
+				deninfa.printconf = PRINTCONF_NONE ;
 				PARSE1
 			}
 
-			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&prinoconfo));
-			//printf("p3D set to %d \n", prinoconfo);
+			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&(deninfa.printconf)));
 
 			PARSE2;
 		}
@@ -912,12 +912,6 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--notheta"))
 		{
 			coSwitch2theta = false;
-			PARSE1;
-		}
-
-		if (!strcmp(argv[i], "--saveconfSwitch2theta"))
-		{
-			saveconfSwitch2theta = true;
 			PARSE1;
 		}
 
@@ -1158,6 +1152,29 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+		/* TODO If decay time is to be used, give it before --gamall? */
+		if (!strcmp(argv[i], "--gamall"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the theta-rho damping factor.\n");
+				exit(1);
+			}
+
+			gammo = atof(argv[i+1]);
+			vqcdTypeDamp = V_DAMP_ALL ;
+
+			uPot  = true;
+			uGamma = true;
+
+			if (gammo < 0.)
+			{
+				printf("Error: Damping (theta-rho) factor should be larger than 0.\n");
+				exit(1);
+			}
+
+			PARSE2;
+		}
 
 		if (!strcmp(argv[i], "--beta"))
 		{
@@ -1556,6 +1573,22 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			defaultmeasType |= loco;
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--meas2theta"))
+		{
+
+			MeasureType loco = (MeasureType) atoi(argv[i+1]);
+
+			if (loco < 0)
+			{
+				printf("Error: Measurement 2theta type must be >= 0.\n");
+				exit(1);
+			}
+
+			rho2thetameasType |= loco;
 
 			PARSE2;
 		}

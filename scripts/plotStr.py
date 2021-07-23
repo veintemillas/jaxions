@@ -48,7 +48,7 @@ class	GLViewWithText(gl.GLViewWidget):
 	def	paintGL(self, *args, **kwds):
 		gl.GLViewWidget.paintGL(self, *args, **kwds)
 		self.qglColor(QtCore.Qt.white)
-		self.renderText(0,0,1.5, "z = %f" % self.z)
+		self.renderText(0,0,1.5, "ct = %f" % self.z)
 
 class	Plot3D():
 	def	__init__(self):

@@ -72,7 +72,6 @@ extern bool mink;
 extern bool icstudy;
 extern bool preprop;
 extern bool coSwitch2theta;
-extern bool saveconfSwitch2theta;
 extern bool WKBtotheend;
 extern FieldPrecision sPrec;
 extern DeviceType     cDev;
@@ -100,7 +99,7 @@ extern bool         debug ;
 extern VerbosityLevel verb;
 
 //for output
-extern PrintConf      prinoconfo;
+// extern PrintConf      prinoconfo;
 extern bool           p2dmapo;
 extern bool           p2dEmapo;
 extern bool           p2dPmapo;
