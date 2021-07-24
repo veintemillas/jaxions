@@ -1,6 +1,7 @@
 #include "kernelParms.cuh"
 #include "complexGpu.cuh"
 #include "utils/index.cuh"
+#include "cudaErrors.h"
 
 #include "enum-field.h"
 
@@ -36,7 +37,7 @@ static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, con
 
 	idx2Vec(idx, X, Lx);
 
-	mel = complex<Float>(0,0);
+	mel = (Float) 0.;
 	tmp = m[idx];
 
 	for (size_t nv=1; nv <= NN; nv++)
@@ -100,6 +101,8 @@ __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __res
 void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
 	const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+	const uint Lx    = ppar.Lx;
+
 	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3 gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
@@ -134,7 +137,7 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
-		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, (float) ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
+		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
 	cudaFree(ood2);
 	CudaCheckError();
@@ -143,6 +146,7 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
 	const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
+	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
 //	dim3 gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
