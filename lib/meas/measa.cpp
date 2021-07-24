@@ -159,12 +159,20 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (measa != MEAS_NOTHING)
 	{
 
-	LogMsg(VERB_HIGH, "[Meas %d] set aux fields to dirty",indexa);
-	axiona->setM2(M2_DIRTY);
-	axiona->setM2h(M2_DIRTY);
-	axiona->setSD(SD_DIRTY);
-
 	createMeas(axiona, indexa);
+
+	/* Use M2, M2h, SD before they are marked as garbage */
+
+		/* If map of mendtheta is present use it */
+		if ( (axiona->Field() == FIELD_AXION) && (axiona->sDStatus() == SD_MENDMAP) && (measa & MEAS_MASK)) {
+			writeString(axiona, MeasDataOut.str, true);
+			}
+
+
+		LogMsg(VERB_HIGH, "[Meas %d] set aux fields to dirty",indexa);
+		axiona->setM2(M2_DIRTY);
+		axiona->setM2h(M2_DIRTY);
+		axiona->setSD(SD_DIRTY);
 
 	writeAttribute(&info.cTimesec, "Wall time [s]", H5T_NATIVE_DOUBLE);
 	writeAttribute(&info.propstep, "Prop step #", H5T_NATIVE_INT);

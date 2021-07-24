@@ -211,6 +211,20 @@
 			V_QCDL_PQ2_DALL   = 32768+2048+16,
 			V_QCDC_PQ2_DALL   = 32768+2048+32,
 
+			V_QCD0_PQ1_DALL_THETA   = 32768+4096+1024+1,
+			V_QCD1_PQ1_DALL_THETA   = 32768+4096+1024+2,
+			V_QCDV_PQ1_DALL_THETA   = 32768+4096+1024+4,
+			V_QCD2_PQ1_DALL_THETA   = 32768+4096+1024+8,
+			V_QCDL_PQ1_DALL_THETA   = 32768+4096+1024+16,
+			V_QCDC_PQ1_DALL_THETA   = 32768+4096+1024+32,
+
+			V_QCD0_PQ2_DALL_THETA   = 32768+4096+2048+1,
+			V_QCD1_PQ2_DALL_THETA   = 32768+4096+2048+2,
+			V_QCDV_PQ2_DALL_THETA   = 32768+4096+2048+4,
+			V_QCD2_PQ2_DALL_THETA   = 32768+4096+2048+8,
+			V_QCDL_PQ2_DALL_THETA   = 32768+4096+2048+16,
+			V_QCDC_PQ2_DALL_THETA   = 32768+4096+2048+32,
+
 		}	VqcdType;
 
 
@@ -387,6 +401,8 @@
 			PRINTCONF_FINAL   = 2,
 			PRINTCONF_WKB   	= 4,
 			PRINTCONF_BOTH    = 3,
+			PRINTCONF_PRE2THETA  = 8,
+			PRINTCONF_POST2THETA = 16,
 		}	PrintConf;
 
 		typedef	struct	StringData_v
@@ -613,6 +629,7 @@
 			SD_MASK        = 4,
 			SD_MAPMASK     = 5,
 			SD_AXITONMASK  = 8,
+			SD_MENDMAP     = 16,
 		}	StatusSD;
 
 		// analysis functions to be called inside a measurement
@@ -731,6 +748,7 @@
 			double              cTimesec;
 			int                 propstep;
 			int                 cummask;
+			PrintConf           printconf;
 		}	MeasInfo;
 
 		// data output by measurement function to program
