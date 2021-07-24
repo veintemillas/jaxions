@@ -37,6 +37,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 
 	mel = complex<Float>(0,0);
 	tmp = m[idx];
+
 	for (size_t nv=1; nv <= NN; nv++)
 	{
 		if (X[0] + nv >= Lx)

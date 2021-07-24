@@ -193,11 +193,12 @@
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::tRunGpu	(const double dz) {
 	#ifdef  USE_GPU
-		const uint uLx = Lx, uLz = Lz, uS = S, uV = V;
+		PropParms ppar;
+		loadparms(&ppar, axion);
+		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
 		const uint ext = uV + uS;
-		// eom only depend on R
+
 		double *z  = axion->zV();
-		double *R  = axion->RV();
 
 		double *cD = d;
 
@@ -215,29 +216,30 @@
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
+
+			loadparms(&ppar, axion);
+
 			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
 
-			auto maa = axion->AxionMassSq();
-
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c1, d1, ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 
 			*z += dz*d1;
 			axion->updateR();
-			maa = axion->AxionMassSq();
+			loadparms(&ppar, axion);
 
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c2, d2, 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M2);
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c2, d2, uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), R, dz, c2, d2, ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->m2Gpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c2, d2, uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 			*z += dz*d2;
@@ -247,14 +249,16 @@
 		if (lastStage == PROP_LAST) {
 			LogMsg (VERB_HIGH, "Warning: axion propagator not optimized yet for odd propagators, performance might be reduced");
 
-			const double	c0 = c[nStages], maa = axion->AxionMassSq();
+			const double	c0 = c[nStages];
 
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c0, 0., ood2, maa, uLx, uLz, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+			loadparms(&ppar, axion);
+
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c0, 0., 2*uS, uV, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
 			axion->exchangeGhosts(FIELD_M);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c0, 0., ood2, maa, uLx, uLz, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c0, 0., uS, 2*uS, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[0], wMod);
-			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), R, dz, c0, 0., ood2, maa, uLx, uLz, uV,  ext, precision, xBlock, yBlock, zBlock,
+			propThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c0, 0., uV,  ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[1], wMod);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
 		}
@@ -326,7 +330,7 @@
 		}
 
 		if (lastStage == PROP_LAST) {
-			const double    c0 = c[nStages], maa = axion->AxionMassSq();
+			const double    c0 = c[nStages];
 
 			loadparms(&ppar, axion);
 
