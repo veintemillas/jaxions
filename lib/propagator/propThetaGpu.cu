@@ -28,7 +28,7 @@ static __device__ __forceinline__ Float modPi (const Float x, const Float OneOvP
 
 template<typename Float, const bool wMod>
 static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float iz,
-							      const Float dzc, const Float dzd, const Float ood2, const uint Lx, const uint Sf, const Float zP, const Float tPz)
+							      const Float dzc, const Float dzd, void  *ood2, const uint Lx, const uint Sf, const uint NN, const Float zP, const Float tPz)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy, idxPz, idxMz;
 
@@ -36,51 +36,57 @@ static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, con
 
 	idx2Vec(idx, X, Lx);
 
-	if (X[0] == Lx-1)
-		idxPx = idx - Lx+1;
-	else
-		idxPx = idx+1;
-
-	if (X[0] == 0)
-		idxMx = idx + Lx-1;
-	else
-		idxMx = idx-1;
-
-	if (X[1] == Lx-1)
-		idxPy = idx - Sf + Lx;
-	else
-		idxPy = idx + Lx;
-
-	if (X[1] == 0)
-		idxMy = idx + Sf - Lx;
-	else
-		idxMy = idx - Lx;
-
-	idxPz = idx + Sf;
-	idxMz = idx - Sf;
-
+	mel = complex<Float>(0,0);
 	tmp = m[idx];
 
-	if (wMod) {
-		mel = modPi(m[idxPx] - tmp, zP, tPz) + modPi(m[idxMx] - tmp, zP, tPz) +
-		      modPi(m[idxPy] - tmp, zP, tPz) + modPi(m[idxMy] - tmp, zP, tPz) +
-		      modPi(m[idxPz] - tmp, zP, tPz) + modPi(m[idxMz] - tmp, zP, tPz);
-	} else
-		mel = m[idxPx] + m[idxMx] + m[idxPy] + m[idxMy] + m[idxPz] + m[idxMz] - ((Float) 6.)*m[idx];
+	for (size_t nv=1; nv <= NN; nv++)
+	{
+		if (X[0] + nv >= Lx)
+			idxPx = idx + nv - Lx;
+		else
+			idxPx = idx + nv;
 
-	a = mel*ood2 - zQ*sin(tmp*iz);
+		if (X[0] < nv)
+			idxMx = idx + Lx - nv;
+		else
+			idxMx = idx - nv;
 
-	mel = v[idxMz];
+		if (X[1] + nv >= Lx)
+			idxPy = idx + nv*Lx - Sf;
+		else
+			idxPy = idx + nv*Lx;
+
+		if (X[1] < nv)
+			idxMy = idx + Sf - nv*Lx;
+		else
+			idxMy = idx - nv*Lx;
+
+		idxPz = idx + nv*Sf;
+		idxMz = idx - nv*Sf;
+
+		if (wMod) {
+			mel += (modPi(m[idxPx] - tmp, zP, tPz) + modPi(m[idxMx] - tmp, zP, tPz) +
+			        modPi(m[idxPy] - tmp, zP, tPz) + modPi(m[idxMy] - tmp, zP, tPz) +
+			        modPi(m[idxPz] - tmp, zP, tPz) + modPi(m[idxMz] - tmp, zP, tPz))*static_cast<Float*>(ood2)[nv-1];
+		} else
+			mel += (m[idxPx] + m[idxMx] + m[idxPy] + m[idxMy] + m[idxPz] + m[idxMz] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
+	}
+	a = mel - zQ*sin(tmp*iz);
+
+	mel = v[idx - NN*Sf];
 	mel += a*dzc;
-	v[idxMz] = mel;
+	v[idx - NN*Sf] = mel;
 	mel *= dzd;
 	tmp += mel;
-	m2[idx] = modPi(tmp, zP, tPz);
+	if (wMod)
+		m2[idx] = modPi(tmp, zP, tPz);
+	else
+		m2[idx] = tmp;
 }
 
 template<typename Float, const bool wMod>
 __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float dzc, const Float dzd,
-				     const Float ood2, const Float iz, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const Float zP=0, const Float tPz=0)
+				     void *ood2, const Float iz, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN, const Float zP=0, const Float tPz=0)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -88,39 +94,54 @@ __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __res
 	if	(idx >= Vf)
 		return;
 
-	propagateThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, iz, dzc, dzd, ood2, Lx, Sf, zP, tPz);
+	propagateThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, iz, dzc, dzd, ood2, Lx, Sf, NN, zP, tPz);
 }
 
-void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
-		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
+void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
+	const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 	#define	BLSIZE 256
 	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
 	dim3 gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
 	dim3 blockSize(BLSIZE,1,1);
 
+	const uint NN    = ppar.Ng;
+	void *ood2;
+	cudaMalloc(&ood2, NN*sizeof(double));
+
 	if (precision == FIELD_DOUBLE)
 	{
 		const double dzc  = dz*c;
 		const double dzd  = dz*d;
-		const double zR   = *z;
-		const double zQ   = aMass2*zR*zR*zR;//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zR   = ppar.R;
+		const double zQ   = ppar.massA2*zR*zR*zR;
 		const double iZ   = 1./zR;
-		propagateThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf);
+		double aux[NN];
+		for (int i =0; i<NN; i++)
+						aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
+		propagateThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *z;
-		const float zQ = (float) (aMass2*zR*zR*zR);//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zR = ppar.R;
+		const float zQ = (float) (ppar.massA2*zR*zR*zR);
 		const float iZ   = 1./zR;
-		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, (float) ood2, iZ, Lx, Lx*Lx, Vo, Vf);
+		float aux[NN];
+		for (int i =0; i<NN; i++)
+			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
+
+		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, (float) ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
+	cudaFree(ood2);
+	CudaCheckError();
 }
 
-void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
-		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
+void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
+	const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 	const uint Sf  = Lx*Lx;
 	const uint Lz2 = (Vf-Vo)/Sf;
@@ -129,43 +150,55 @@ void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3 gridSize((Sf+xBlock-1)/xBlock,(Lz2+yBlock-1)/yBlock,1);
 	dim3 blockSize(xBlock,yBlock,1);
 
+	const uint NN    = ppar.Ng;
+	void *ood2;
+	cudaMalloc(&ood2, NN*sizeof(double));
+
 	if (precision == FIELD_DOUBLE)
 	{
 		const double dzc  = dz*c;
 		const double dzd  = dz*d;
-		const double zR   = *z;
-		const double zQ   = aMass2*zR*zR*zR;//xionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const double zR   = ppar.R;
+		const double zQ   = ppar.massA2*zR*zR*zR;
 		const double iZ   = 1./zR;
 		const double tPz  = 2.*M_PI*zR;
-		propagateThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, M_1_PI*iZ, tPz);
+		double aux[NN];
+		for (int i =0; i<NN; i++)
+						aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
+		propagateThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float dzc = dz*c;
 		const float dzd = dz*d;
-		const float zR = *z;
-		const float zQ = (float) (aMass2*zR*zR*zR);//axionmass2((double) zR, nQcd, zthres, zrestore)*zR*zR*zR;
+		const float zR = ppar.R;
+		const float zQ = (float) (ppar.massA2*zR*zR*zR);
 		const float iZ   = 1./zR;
 		const float tPz  = 2.*M_PI*zR;
-		propagateThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, M_1_PI*iZ, tPz);
+		float aux[NN];
+		for (int i =0; i<NN; i++)
+			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
+		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
+		propagateThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
 	}
 }
 
-void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, double *z, const double dz, const double c, const double d, const double ood2,
-		     const double aMass2, const uint Lx, const uint Lz, const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
+void	propThetaGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
+	const uint Vo, const uint Vf, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock,
 		     cudaStream_t &stream, const bool wMod)
 {
 	if (Vo>Vf)
 		return ;
-		
+
 	switch (wMod) {
 
 		case	true:
-			propThModGpu(m, v, m2, z, dz, c, d, ood2, aMass2, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
+			propThModGpu(m, v, m2, ppar, dz, c, d, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
 
 		case	false:
-			propThNmdGpu(m, v, m2, z, dz, c, d, ood2, aMass2, Lx, Lz, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
+			propThNmdGpu(m, v, m2, ppar, dz, c, d, Vo, Vf, precision, xBlock, yBlock, zBlock, stream);
 			break;
 	}
 
