@@ -29,6 +29,7 @@ add_executable(vaxion3d     vaxions.cpp)
 #add_executable(redu       reduce.cpp)
 #add_executable(tgpu       testGPU.cpp)
 #add_executable(gadgetme      gadgetme.cpp)
+add_executable(testfft      testFT.cpp)
 
 target_link_libraries(vaxion3d    ${LIBS} )
 #target_link_libraries(basoc    ${LIBS} )
@@ -39,6 +40,8 @@ target_link_libraries(vaxion3d    ${LIBS} )
 #target_link_libraries(redu     ${LIBS} )
 #target_link_libraries(tgpu     ${LIBS} )
 #target_link_libraries(gadgetme     ${LIBS} )
+target_link_libraries(testfft     ${LIBS} )
+
 
 #add_custom_target(outFolder       ALL COMMAND ${CMAKE_COMMAND} -E make_directory out)
 #add_custom_target(mFolder         ALL COMMAND ${CMAKE_COMMAND} -E make_directory out/m)
