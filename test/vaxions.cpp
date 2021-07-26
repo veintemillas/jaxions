@@ -539,10 +539,13 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
 				float buff[4];
+#ifdef USE_GPU
 				if (axion->Device() == DEV_GPU) {
 					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
 					cudaMemcpy(&(buff[2]), &(static_cast<float*>(axion->vGpu())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
-				} else {
+				} else
+#endif
+				{
 					memcpy(buff,&(static_cast<float*> (axion->mStart())[2*idxp]),2*sizeof(float));
 					memcpy(&(buff[2]),&(static_cast<float*> (axion->vStart())[2*idxp]),2*sizeof(float));
 				}
