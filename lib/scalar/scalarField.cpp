@@ -997,8 +997,8 @@ void	Scalar::setField (FieldType newType)
 		}
 				fSize /= 2;
 
-				if (device != DEV_GPU)
-					shift *= 2;
+				//if (device != DEV_GPU)
+				shift *= 2;
 		fieldType = newType;
 
 		LogMsg(VERB_NORMAL,"[sca] Field set to AXION !");
