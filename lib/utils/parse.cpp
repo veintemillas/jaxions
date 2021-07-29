@@ -155,6 +155,13 @@ bool bopt = true;
 
 bool CreateLogMeas = false;
 
+bool legal_int(char *str) {
+    while (*str)
+        if (!isdigit(*str++))
+            return false;
+    return true;
+}
+
 void	createOutput() {
 	struct stat tStat;
 
@@ -326,11 +333,8 @@ void	PrintUsage(char *name)
 	printf("--p2DmapPE                      2D Projection map of Energy along z direction in axion.m.files (default no) \n");
 	printf("--p2DmapPE2                     2D Projection map of Energy^2 along z direction in axion.m.files (default no) \n");
 	printf("--p3Dstr                        Include 3D string/Wall maps axion.m.files (default no)\n");
-	printf("--pcon                          Include 3D contrastmap in final axion.m.  (default no)\n");
-	printf("--pconwkb                       Include 3D contrastmap in final wkb axion.m. (default yes)\n");
-	printf("--redmp [fint]                  Reduces final density map to [specified n]**3 [l/raxion3D] (default NO or 256 if int not specified).\n");
-	printf("                                Includes reduced 3D contrast maps if possible and in final axion.m.file\n");
-	printf("--redmpwkb [fint]               Same but after the WKB.\n");
+	printf("--p3Def   [int]                 Include 3D axion energy map of size [specified int < N]**3 in final measurement file (default no) (default int = N)\n");
+	printf("--p3Dewkb [int]                 Include 3D axion energy map of size [specified int < N]**3 in measurement file after wkb (default no) (default int = N)\n");
 
 	printf("\nLogging:\n");
 	printf("--verbose 0/1/2/3/4             Choose verbosity level 0 = silent, 1 = normal (default), 2 = high, ...\n\n");
@@ -811,16 +815,36 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
-		if (!strcmp(argv[i], "--pcon"))
+		if (!strcmp(argv[i], "--pcon") || !strcmp(argv[i], "--p3Def") )
 		{
-			pconfinal = true ;
-			PARSE1;
+			if (i+1 == argc)
+			{
+				pconfinal = true ;
+				PARSE1;
+			} else
+					if (legal_int(argv[i+1])) {
+						endredmap = atof(argv[i+1]);
+						PARSE2;
+					} else {
+						pconfinal = true ;
+						PARSE1;
+					}
 		}
 
-		if (!strcmp(argv[i], "--pconwkb"))
+		if (!strcmp(argv[i], "--pconwkb")  || !strcmp(argv[i], "--p3Dewkb") )
 		{
-			pconfinalwkb = true ;
-			PARSE1;
+			if (i+1 == argc)
+			{
+				pconfinalwkb = true ;
+				PARSE1;
+			} else
+					if (legal_int(argv[i+1])) {
+						endredmapwkb = atof(argv[i+1]);
+						PARSE2;
+					} else {
+						pconfinalwkb = true ;
+						PARSE1;
+					}
 		}
 
 		if (!strcmp(argv[i], "--wTime"))
@@ -2288,21 +2312,11 @@ if (icdatst.cType == CONF_SMOOTH )
 			printf("[Error:1] Reduced map dimensions (%d) set to %d\n ", endredmap,siN);
 			endredmap = siN;
 		}
-		// if (siN%endredmap != 0 ){
-		// 	int schei =  siN/endredmap;
-		// 	endredmap = siN/schei;
-		// 	printf("[Error:2] Reduced map dimensions set to %d\n ", endredmap);
-		// }
+
 		if (endredmapwkb > siN){
 			printf("[Error:1] Reduced wkb map dimensions (%d) set to %d\n ", endredmap,siN);
 			endredmapwkb = siN;
 		}
-		// if (siN%endredmapwkb != 0 ){
-		// 	int schei =  siN/endredmapwkb;
-		// 	endredmapwkb = siN/schei;
-		// 	printf("[Error:2] Reduced wkb map dimensions set to %d\n ", endredmap);
-		// }
-
 	}
 	/*	Set the output directory, according to an environmental variable	*/
 

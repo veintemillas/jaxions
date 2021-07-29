@@ -19,22 +19,14 @@ if os.path.exists('./axion.m.10001'):
     os.rename('./axion.m.10001','./../axion.m.10001')
 
 
-filename = './' + sys.argv[-1]
-fileHdf5 = h5py.File(filename, "r")
-
-
-filename = './' + sys.argv[-1]
-fileHdf5 = h5py.File(filename, "r")
-
-
-print("you can type dens/redens after the file to choose map if possible")
+print("You can type dens/redens AFTER the file name to choose the full or reduced energy map (if both present)")
+print("By default reduced maps are printed.")
 if len(sys.argv) == 2:
     filename = './' + sys.argv[-1]
     fileHdf5 = h5py.File(filename, "r")
     an_contrastmap = 'energy/density' in fileHdf5
-    re_contrastmap = 'energy/redensity' in fileHdf5
-    if re_contrastmap :
-        an_contrastmap = False
+    re_contrastmap = ('energy/redensity' in fileHdf5) or ('energy/rdensity' in fileHdf5)
+
 elif len(sys.argv) == 3:
     filename = './' + sys.argv[-2]
     fileHdf5 = h5py.File(filename, "r")
@@ -43,25 +35,31 @@ elif len(sys.argv) == 3:
         an_contrastmap = 'energy/density' in fileHdf5
         re_contrastmap = False
     elif dens0redens == 'redens':
-        re_contrastmap = 'energy/redensity' in fileHdf5
+        re_contrastmap = 'energy/rdensity' in fileHdf5
         an_contrastmap = False
 
-if an_contrastmap:
-    print('Contrast found')
-    con = pa.gm(filename,'3Dmapefull',True)
-    Lx    = len(con)
-    Ly    = len(con)
-    Lz    = len(con)
+    # make a choice, if both reduced and full maps exist print the reduced
+
+if re_contrastmap:
+    if an_contrastmap:
+        print('Both Full and Reduced Contrast found, displaying reduced map')
+        an_contrastmap = False
+    else :
+        print('Reduced Contrast found')
+    con = pa.gm(filename,'3Dmaper')
+    Lx    = fileHdf5['energy/rdensity'].attrs[u'Size']
+    Ly    = fileHdf5['energy/rdensity'].attrs[u'Size']
+    Lz    = fileHdf5['energy/rdensity'].attrs[u'Depth']
     sizeL = pa.gm(filename,'L')
     z     = pa.gm(filename,'z')
     print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',filename)
 
-if re_contrastmap:
-    print('Reduced Contrast found')
-    con = pa.gm(filename,'3Dmape')
-    Lx    = len(con)
-    Ly    = len(con)
-    Lz    = len(con)
+if an_contrastmap:
+    print('Contrast found')
+    con = pa.gm(filename,'3Dmapefull',True)
+    Lx    = fileHdf5['energy/density'].attrs[u'Size']
+    Ly    = fileHdf5['energy/density'].attrs[u'Size']
+    Lz    = fileHdf5['energy/density'].attrs[u'Depth']
     sizeL = pa.gm(filename,'L')
     z     = pa.gm(filename,'z')
     print('Size =  (',Lx,'x',Ly,'x',Lz,') in file ',filename)

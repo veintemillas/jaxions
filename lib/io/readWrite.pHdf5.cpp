@@ -3008,7 +3008,7 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 	total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
 	slab  = ((hsize_t) redlX)*((hsize_t) redlX);
-	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(axion->Depth()+2);
+	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(axion->Depth()+2*axion->getNg());
 
 	if (axion->Field() == FIELD_WKB) {
 		LogError ("Error: WKB field not supported");
@@ -3062,17 +3062,24 @@ void	writeEDens (Scalar *axion, MapType fMap)
 		}
 	}
 
-	/*	Create a group for energy density if it doesn't exist	*/
-	status = H5Lexists (eGrp_id, "density", H5P_DEFAULT);
+	/*	Create a group for energy density if it doesn't exist
+	we call it density for the full resolution and rdensity for the reduced resolution	*/
+	char *gr_name;
+	if (axion->Reduced())
+		gr_name = "rdensity";
+	else
+		gr_name = "density";
+
+	status = H5Lexists (eGrp_id, gr_name, H5P_DEFAULT);
 
 	if (!status)
-		group_id = H5Gcreate2(eGrp_id, "density", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		group_id = H5Gcreate2(eGrp_id, gr_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
 		if (status > 0) {
-			group_id = H5Gopen2(eGrp_id, "density", H5P_DEFAULT);		// Group exists
-			LogMsg (VERB_HIGH, "Group /energy/density exists");
+			group_id = H5Gopen2(eGrp_id, gr_name, H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "Group /energy/%s exists",gr_name);
 		} else {
-			LogError ("Error: can't check whether group /energy/density exists");
+			LogError ("Error: can't check whether group /energy/%s exists",gr_name);
 			prof.stop();
 			return;
 		}
@@ -3084,8 +3091,10 @@ void	writeEDens (Scalar *axion, MapType fMap)
 
 	/*	Create a dataset for the whole axion data	*/
 
-	char rhoCh[24] = "/energy/density/rho";
-	char thCh[24]  = "/energy/density/theta";
+	char rhoCh[24];
+	sprintf (rhoCh, "/energy/%s/rho", gr_name);
+	char thCh[24];
+	sprintf (thCh, "/energy/%s/theta", gr_name);
 
 	if (fMap & MAP_RHO) {
 		rset_id = H5Dcreate (meas_id, rhoCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);

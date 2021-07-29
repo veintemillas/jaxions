@@ -891,8 +891,9 @@ def gm(address,something='summary',printerror=False):
         else :
             return False
 
+    # returns one map
     if something == '3Dmape':
-    # three options:
+    # 4 options options:
     # 1-legacy ... (I do not remember)
     # 2-energy/density/theta/
     # 3-energy/redensity/data
@@ -903,21 +904,34 @@ def gm(address,something='summary',printerror=False):
             if printerror:
                 print('reduced ',redN)
             return f['energy/redensity'][()].reshape(redN,redN,redN)
+        if 'energy/rdensity/theta' in f:
+            redN = f['energy/rdensity'].attrs[u'Size']
+            redZ = f['energy/rdensity'].attrs[u'Depth']
+            if printerror:
+                print('Reduced ',redN)
+            return f['energy/density/theta'][()].reshape(redZ,redN,redN)
         if 'energy/density/theta' in f:
             redN = f['energy/density'].attrs[u'Size']
             redZ = f['energy/density'].attrs[u'Depth']
             if printerror:
                 print('Reduced ',redN)
-            return f['energy/density/theta'][()].reshape(redN,redN,redZ)
+            return f['energy/density/theta'][()].reshape(redZ,redN,redN)
+    if something == '3Dmaper':
+            if 'energy/rdensity/theta' in f:
+                redN = f['energy/rdensity'].attrs[u'Size']
+                redZ = f['energy/rdensity'].attrs[u'Depth']
+                if printerror:
+                    print('Giving you the Reduced map N, Z=',redN,redZ)
+                return f['energy/rdensity/theta'][()].reshape(redZ, redN,redN)
 
     if something == '3Dmapefull':
             if 'energy/density/theta' in f:
-                redN = f['energy/density'].attrs[u'Size']
-                redZ = f['energy/density'].attrs[u'Depth']
+                lN = f['energy/density'].attrs[u'Size']
+                lZ = f['energy/density'].attrs[u'Depth']
                 if printerror:
-                    print('Giving you the fullest N=',redN,redZ)
+                    print('Giving you the fullest N, Z=',lN,lZ)
 
-                return f['energy/density/theta'][()].reshape(redN,redN,redZ)
+                return f['energy/density/theta'][()].reshape(lZ,lN,lN)
 
     if something == '2Dmape?':
         if ('map/E' in f) :
