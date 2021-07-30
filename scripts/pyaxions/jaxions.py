@@ -1696,7 +1696,7 @@ def glbin(file, binsp, X=10):
     return logbin(gm(file,binsp), gm(file,binsp+'min'), gm(file,binsp+'max'), gm(file,'Size'), X) ;
 
 def conbin(file, X=10):
-    return logbin(gm(file,'binconB'), gm(file,'binconBmin'), gm(file,'binconBmax'), gm(file,'Size'), X) ;
+    return logbin(gm(file,'bincontB'), gm(file,'bincontBmin'), gm(file,'bincontBmax'), gm(file,'Size'), X) ;
 
 def lt2bin(file, X=10):
     return logbin(gm(file,'binlt2B'), gm(file,'binlt2Bmin'), gm(file,'binlt2Bmax'), gm(file,'Size'), X) ;
