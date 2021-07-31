@@ -465,13 +465,14 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 					opCode(store_ps, &m2[thread0+2*XC], mel);
 
 					for(size_t xPt = 0; xPt < XC-step; xPt += step) {
+						size_t ix = xPt/step;
 // if (zSl == 128 && yLn == 0 && 0)
 // 	printf("z,y,x = %lu, %lu-%lu, %lu; R = %f ",zSl, yLn, yLn+(step-1)*YC, xPt/step,R);
 						/* Forward (x,y,z) vs (x+step,y,z) */
 						idx   = thread0 + xPt;                 // in m2 I do not need z,y info, just thread0
 						idx2  = idx + step;                    // in m2
 						idxPx = Vo + yLn*XC + xPt + step;      // in m I need the full index
-						iNx   = (xPt/step + 1 + (yLn)*Lx + Vo); // will miss + vectorindex*YC*Lx
+						iNx   = Vo + yLn*Lx + ix + 1 ; // will miss + vectorindex*YC*Lx
 						mel = opCode(load_ps, &m2[idx]);        // note we read from m2
 						mPx = opCode(load_ps, &m[idxPx]);
 // TODO load only if neccesary?
@@ -483,7 +484,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						if (xPt == 0)
 								idxB -= XC; // wrap around the boundary
 						idxBMx = Vo + (yLn+1)*XC - xPt - step;
-						iNxB   = ((yLn+1)*Lx + Vo -xPt/step - 1);  // will miss + vectorindex*YC*Lx
+						iNxB   = Vo + (yLn+1)*Lx  -ix - 1;  // will miss + vectorindex*YC*Lx
 						melB = opCode(load_ps, &m2[idxB]); // note we read the ref from the copy
 						mBMx = opCode(load_ps, &m[idxBMx]);
 						vBMx = opCode(load_ps, &v[idxBMx]);
@@ -505,7 +506,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						int  nChg = 0;
 						for (int k=0,i=1; k<step; k++,i<<=1) {
 							nChg += (mask & i) >> k;
-							if ( (mask & i) >> k ) strdaa[iNx+k*YC*Lx]  = 1;
+							if ( (mask & i) >> k ) strdaa[iNx+k*YC*Lx]  |= 1;
 						}
 						if (nChg > 0) cha = true;
 //if (cha){
@@ -541,7 +542,7 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						nChg = 0;
 						for (int k=0,i=1; k<step; k++,i<<=1) {
 							nChg += (mask & i) >> k;
-							if ( (mask & i) >> k ) strdaa[iNxB+k*YC*Lx] = 2;
+							if ( (mask & i) >> k ) strdaa[iNxB+k*YC*Lx] |= 2;
 						}
 						if (nChg > 0) cha = true;
 
@@ -589,8 +590,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						for (int k=0; k<step; k++) {
 							mask += msk[k] & 1;
 							maskB += mskB[k] & 1;
-							if (msk[k]  & 1) strdaa[iNx+k*YC*Lx]  = 1;
-							if (mskB[k] & 1) strdaa[iNxB+k*YC*Lx] = 2;
+							if (msk[k]  & 1) strdaa[iNx+k*YC*Lx]  |= 1;
+							if (mskB[k] & 1) strdaa[iNxB+k*YC*Lx] |= 2;
 						}
 						if ((mask > 0) || (maskB > 0)) cha = true;
 
@@ -681,21 +682,24 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 					countB += countB_line;
 					countF += countF_line;
+
 					/* compare forwards with backwards and write only if they coincide
 					do nothing if nothing was changed in the line */
 					if (cha) {
+
 						LogMsg(VERB_PARANOID,"[mT] z,y = %lu, %lu (+%lu*n) pre-mends F %lu B %lu",DLz+zSl,yLn,YC,countF_line,countB_line);
 //if (zSl == 128 && yLn == 0 && 0) {
 	// printf("[mT] z,y = %lu, %lu pre-mends F %lu B %lu\n",zSl,yLn,countF_line,countB_line);
 	// size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx + step - XC +k;
 	// printf("m[-1] %f m[+1] %f \n", m[idxPx-step+k]/co, m[com]/co); //ojo con +1
 // }
-
+//
 						for(size_t xPt = 0; xPt < XC-step; xPt += step) {
+							size_t ix = xPt/step;
 
 							/* checks if jumps where taken, else it breaks to avoid loads */
 							bool compute = false;
-							iNx   = (xPt/step + 1 + (yLn)*Lx + Vo);  // will miss + vectorindex*YC*Lx
+							iNx   =  Vo + (yLn)*Lx + ix + 1;  // will miss + vectorindex*YC*Lx
 							for (int k=0; k<step; k++) {
 								if (strdaa[iNx+k*YC*Lx] != STRING_NOTHING)
 									compute = true;
@@ -710,12 +714,13 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 							mel  = opCode(load_ps, &m[idxPx]);      // arg(phi)
 							mPx  = opCode(load_ps, &m2[idx2]);      // corrected F
 							mBMx = opCode(load_ps, &m2[idx2+2*XC]); // corrected B
+							vPx  = opCode(load_ps, &v[idxPx]);      // velocity
 
 							/* calculate mask
 							1 if F = B (will mend)
 							0 if F!= B (will not mend) */
 							int mask = 0;
-							int msk[step];
+							int msk[step] = {0};
 	#ifdef	__AVX512F__
 							auto pMask = opCode(cmp_ps_mask, mPx, mBMx, _CMP_EQ_OQ);
 							//auto mMask  = opCode(cmp_ps_mask, mPx, mBMx, _CMP_NEQ_OQ);
@@ -741,42 +746,61 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 
 							/* store if necessary */
 							if (mask >0){
-								// float mm[step], mvB[step];
-								float vv[step], mvF[step];
-								// opCode(store_ps, static_cast<float*>(static_cast<void*>(mm)), mel);
+								float mm[step], mvB[step];
+								float vv[step], mvF[step], vvF[step];
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(mm)), mel);
 								opCode(store_ps, static_cast<float*>(static_cast<void*>(mvF)), mPx);
-								// opCode(store_ps, static_cast<float*>(static_cast<void*>(mvB)), mBMx);
-								mPx  = opCode(load_ps, &m2[idx2+XC]);                                  // we have saved corrected v here
-								opCode(store_ps, static_cast<float*>(static_cast<void*>(vv)), mPx);
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(mvB)), mBMx);
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(vv)), vPx);
+								mDf  = opCode(load_ps, &m2[idx2+XC]);                                  // we have saved corrected v here
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(vvF)), mDf);
+								float para[step], noia[step];
+								mDp  = opCode(load_ps, &m2[idx2-step]);
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(para)), mDp);
+								mDc  = opCode(load_ps, &m2[idx2+step]);	
+								opCode(store_ps, static_cast<float*>(static_cast<void*>(noia)), mDc);
+								
+								
 								for (int k=0; k<step; k++) {
-									if ((msk[k] & 1) && (strdaa[iNx+k*YC*Lx] > 0) ) {
-										// float co = R;
+									if ((msk[k] & 1) && (strdaa[iNx+k*YC*Lx] == 3) ) {
+									//	float co = R;
+									//	size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx +step+k -XC ;
 										// if (zSl == 128 && yLn == 0) {
-										// printf("[mT] x %lu y %lu mask %d msk[k] %d m %f (%f)-> m_mendF/B %f/%f ... %d \n", xPt/step, yLn+YC*k, mask, msk[k], m[idxPx+k]/co, mm[k]/co, mvF[k]/co, mvB[k]/co,strdaa[iNx+k*YC*Lx]);
-										// size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx + step - XC +k;
-										// printf("m[-1] %f m[+1] %f \n", m[idxPx-step+k]/co, m[com]/co); //ojo con +1
+									//	printf("[mT] zyx %zu, %zu, %zu (zSl,yLn,xPt,k %d, %d, %d %d) mask %d msk[k] %d m %f (%f)-> m_mendF/B %f/%f ... %d m[-1] %f m[+1] %f m2[-1] %f m2[+1] %f \n", 
+									//	DLz + zSl, yLn+YC*k, xPt/step,zSl,yLn,xPt,k,mask, msk[k],m[idxPx+k]/co, mm[k]/co, mvF[k]/co, mvB[k]/co,strdaa[iNx+k*YC*Lx], m[idxPx-step+k]/co, m[com]/co, para[k]/co,noia[k]/co);
+										// size_t com = xPt/step < XC - 2 ? idxPx+step+k : idxPx +step+k -XC ;
+	//									printf("m[-1] %f m[+1] %f \n", m[idxPx-step+k]/co, m[com]/co); //ojo con +1
 										// }
-										strdaa[iNx+k*YC*Lx] |= STRING_WALL;
+									//	strdaa[iNx+k*YC*Lx] |= STRING_WALL;
 
 										/* do this to store or the vector alternative below */
-										static_cast<float*>(m_)[idxPx+k] = mvF[k];
-										static_cast<float*>(v_)[idxPx+k] = vv[k];
-									}
-										/* vector alternative (problems at y=0?)*/
-										/* apply masks and save */
-											// mel = opCode(add_ps,opCode(and_ps, mel, vBMx),
-											// 										opCode(and_ps, mPx, melB));
-											// opCode(store_ps, &m[idxPx], mel);
-											//
-											// mel  = opCode(load_ps, &v[idxPx]);      // v
-											// // mPx  = opCode(load_ps, &m2[idx2+XC]);   // corrected F
-											//
-											// mel = opCode(add_ps,opCode(and_ps, mel, vBMx),
-											// 										opCode(and_ps, mPx, melB));
-											// opCode(store_ps, &v[idxPx], mel);
+										//static_cast<float*>(m_)[idxPx+k] = mvF[k];
+										//static_cast<float*>(v_)[idxPx+k] = vv[k];
+										mm[k] = mvB[k];
+										vv[k] = vvF[k];
+									} 
+									// else {
+									//	if ((msk[k] & 1) && (strdaa[iNx+k*YC*Lx] == 2 || strdaa[iNx+k*YC*Lx] == 1) )
+									//	LogMsg(VERB_PARANOID," error with %d %d %d string %d ", DLz+zSl, yLn+YC*k, xPt/step, strdaa[iNx+k*YC*Lx]);
+									//}
 								}
-
+								mel = opCode(load_ps, mm);
+								opCode(store_ps, &m[idxPx], mel);
+								mel = opCode(load_ps, vv);
+								opCode(store_ps, &v[idxPx], mel);
+                                                                                /* vector alternative (problems at y=0?)*/
+								                 /* apply masks and save */
+								                // mel = opCode(add_ps,opCode(and_ps, mel, vBMx),
+										//                     opCode(and_ps, mPx, melB));
+										// opCode(store_ps, &m[idxPx], mel);
+										// mel  = opCode(load_ps, &v[idxPx]);      // v
+										// mPx  = opCode(load_ps, &m2[idx2+XC]);   // corrected F
+									
+										// mel = opCode(add_ps,opCode(and_ps, mel, vBMx),
+									        //                     opCode(and_ps, mPx, melB));
+										// opCode(store_ps, &v[idxPx], mel);
 							}
+
 						} // end correction x-loop
 					} // end conditional correction x-loop
 

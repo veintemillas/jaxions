@@ -115,7 +115,7 @@ IcData icdatst;
 // Default measurement type, some options can be chosen with special flags | all with --meas
 MeasureType  defaultmeasType   = MEAS_NOTHING  ;
 // Default measurement type for the transition to theta
-MeasureType  rho2thetameasType = MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
+MeasureType  rho2thetameasType = MEAS_NOTHING ; //MEAS_ALLBIN | MEAS_STRING | MEAS_ENERGY | MEAS_2DMAP | MEAS_NSP_A | MEAS_PSP_A;
 
 // map measurement types (applies to all measurements that get PLOT_2D)
 SliceType maty;

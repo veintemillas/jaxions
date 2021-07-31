@@ -45,16 +45,10 @@ int	main (int argc, char *argv[])
 	std::chrono::high_resolution_clock::time_point start, current, old;
 	std::chrono::milliseconds elapsed;
 
-	commSync();
-
-	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n--               VAXION 3D!                    --\n");
-	LogOut("\n-------------------------------------------------\n\n");
 
 	//-grids
 	Scalar *axion;
 	Scalar *reduced;
-
 
 	LogOut("Reading initial conditions from file ... ");
 	readConf(&myCosmos, &axion, fIndex, restart_flag);
@@ -74,11 +68,16 @@ int	main (int argc, char *argv[])
 
 	LogOut("--------------------------------------------------\n");
 	LogOut("           REDUCE AND MEAS                        \n");
-	LogOut("--------------------------------------------------\n");
-	LogOut(" N %d n %d kCrit %f \n",axion->Length(),deninfa.redmap,myCosmos.ICData().beta);
+	LogOut("--------------------------------------------------\n\n");
+	LogOut("Usage:\n");
+	LogOut("mpirun -np R redu --index i --zgrid R --size N --depth Z --redmp n --nologmpi --beta f \n");
+	LogOut("mpirun -np %d redu --zgrid %d --index %d --size %d --depth %d --redmp %d --beta %f \n", 
+			zGrid,zGrid, fIndex, axion->Length(), axion->Depth(), deninfa.redmap, myCosmos.ICData().beta);
 	commSync();
 
-	int ScaleSize = axion->Length()/deninfa.redmap;
+	size_t nLx = deninfa.redmap;
+	double ScaleSize = axion->Length()/deninfa.redmap;
+	size_t nLz = (axion->Depth()*nLx)/axion->Length();
 
 	// This is equivalent to Javi's filter
 	double eFc  = 0.5*M_PI*M_PI*myCosmos.ICData().beta*myCosmos.ICData().beta*(ScaleSize*ScaleSize)/((double) axion->Surf());
@@ -87,12 +86,12 @@ int	main (int argc, char *argv[])
 
 
 
-	if (!axion->LowMem() && axion->Depth()/ScaleSize >= 2) {
+	if (!axion->LowMem() && nLx >= 2 && nLz >= 2) {
 		if (axion->Precision() == FIELD_DOUBLE) {
-			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
+			reduced = reduceField(axion, nLx, nLz, FIELD_MV,
 					[eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
 		} else {
-			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
+			reduced = reduceField(axion, nLx, nLz, FIELD_MV,
 					[eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
 		}
 
