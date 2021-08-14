@@ -63,6 +63,7 @@ class	ConfGenerator
 	void   confcole(Cosmos *myCosmos, Scalar *field);
 	void   confspax(Cosmos *myCosmos, Scalar *field);
 	void   conftkac(Cosmos *myCosmos, Scalar *field);
+	void   confthermal(Cosmos *myCosmos, Scalar *field);
 	// void   confapr(Cosmos *myCosmos, Scalar *field);
 
 	void   putxi(double xit, bool kspace);
@@ -266,6 +267,10 @@ void	ConfGenerator::runCpu	()
 
 		case CONF_TKACHEV:
 			conftkac(myCosmos,axionField);
+		break;
+
+		case CONF_THERMAL:
+			confthermal(myCosmos,axionField);
 		break;
 
 		case CONF_SMOOTH:
@@ -1093,7 +1098,71 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 
 
 
+void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
+{
+		std::complex<float> *ma = static_cast<std::complex<float>*>(axionField->mStart());
+		std::complex<float> *va = static_cast<std::complex<float>*> (axionField->vCpu());
+		std::complex<float> *m2 = static_cast<std::complex<float>*> (axionField->m2Cpu());
 
+	IcData ic = myCosmos->ICData();
+
+	LogMsg(VERB_NORMAL,"\n ");
+	LogMsg(VERB_NORMAL,"[GEN] CONF_THERMAL started!\n ");
+	//these initial conditions make sense only for RD
+
+	auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
+
+	// ft_theta' in M2, ft_theta in V
+
+	/* mass2 in ADM units it follows from temperature (in ic.kcr in ADM units)
+	and the conformal potential lambda/4 ( cPhi^2-R^2)^2 +lambda/6 T^2 cF^2
+	the minimum of the potential happens at
+	x (x^2-R^2) + T^2 x/3 = 0
+  and the mass2 is
+	lambda [3x^2-R^2 + T^2/3]_xmin
+	which are
+	x^2 +T2/3 - R^2 = 0 >>>> xmin = sqrt(R^2-T2/3) or 0
+	m2 = lambda [3(R^2-T2/3)-R^2 + T^2/3] = lambda * 2(R^2-T2/3) or lambda * (T2/3-R^2)
+
+	Assume T2 contains an R2 factor, i.e. it is conformal T
+	then
+		m2 = max (lambda * 2 * R^2 (1-T2/3), 0) */
+		double T2   = ic.kcr*ic.kcr;
+		double R2   = (*axionField->RV())*(*axionField->RV());
+		double mS2  = axionField->LambdaP()*( (T2 > 3*R2) ? R2*(T2/3- 1) : 2*R2*(1 - T2/3));
+		LogMsg(VERB_NORMAL,"[GEN] lambda %e", axionField->LambdaP());
+		LogMsg(VERB_NORMAL,"[GEN] T (kcr) %e", ic.kcr);
+		LogMsg(VERB_NORMAL,"[GEN] k0 (2pi/L) %e ", 6.283185307179586/axionField->BckGnd()->PhysSize());
+		LogMsg(VERB_NORMAL,"[GEN] mass %e", sqrt(mS2));
+
+	MomParms mopa;
+		mopa.kMax   = axionField->Length();
+		mopa.mass2  = mS2;
+		mopa.k0     = 6.283185307179586/axionField->BckGnd()->PhysSize();
+		mopa.kCrt   = ic.kcr;
+		mopa.mocoty = MOM_MVTHERMAL;
+		mopa.cmplx  = true;
+	momConf(axionField, mopa);
+
+	myPlan.run(FFT_BCK);
+	// cphi' in m array
+
+	// move cphi from v to m2 array
+	size_t volData = axionField->Size()*axionField->DataSize();
+	memcpy(static_cast<char *>(axionField->m2Cpu()), static_cast<char *>(axionField->vCpu()), volData);
+	// move cphi' from m to m
+	memcpy(static_cast<char *>(axionField->vCpu()), static_cast<char *>(axionField->mStart()), volData);
+	myPlan.run(FFT_BCK);
+
+	double norma = 1./pow(axionField->BckGnd()->PhysSize(),1.5);
+
+	LogMsg(VERB_NORMAL,"L %e, norma %e \n",axionField->BckGnd()->PhysSize(), norma);
+	scaleField (axionField, FIELD_M, norma);
+	scaleField (axionField, FIELD_V, norma);
+
+
+	axionField->setFolded(false);
+}
 // void	ConfGenerator::confapr(Cosmos *myCosmos, Scalar *axionField)
 // {
 // 		std::complex<float> *ma = static_cast<std::complex<float>*>(axionField->mStart());

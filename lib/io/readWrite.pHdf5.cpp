@@ -542,6 +542,12 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_THERMAL:
+			sprintf(icStr, "Thermal");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
+			break;
+
 		case	CONF_SPAX:
 			sprintf(icStr, "Axion Spectrum");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
@@ -1181,6 +1187,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					cType = CONF_TKACHEV;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+				} else if (!strcmp(icStr, "Thermal")) {
+  				cType = CONF_THERMAL;
+  				readAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Axion Spectrum")) {
 					cType = CONF_SPAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
@@ -1758,6 +1767,12 @@ void	createMeas (Scalar *axion, int index)
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_THERMAL:
+			sprintf(icStr, "Thermal");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_SPAX:

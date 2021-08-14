@@ -257,6 +257,7 @@
 			CONF_LOLA       = 128, // Clean VILGOR
 			CONF_COLE       = 256,
 			CONF_SPAX       = 512,
+			CONF_THERMAL    = 1024,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -288,6 +289,7 @@
 			MOM_KK       = 1024, 	// extra momentum factor
 			MOM_KCOLE   = 1040,  //
 			MOM_SPAX    = 2048,  // given spectrum
+			MOM_MVTHERMAL = 4096, 
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -809,6 +811,7 @@
 			double        kCrt;
 			MomConfType   mocoty;
 			double        mass2;
+			double        k0;
 			FieldType     ftype;
 			std::vector<double>       mfttab;
 			bool 					cmplx;
