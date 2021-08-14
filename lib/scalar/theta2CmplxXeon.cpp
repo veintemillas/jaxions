@@ -4,6 +4,13 @@
 
 using namespace std;
 
+
+/* builds cphi, cphi_ct from theta, theta_ct
+	 with VEV = 1
+	 as
+	 cphi    = R exp(I theta)
+	 cphi_ct = R' exp(I theta) + R I theta_ct exp(I theta) = (R'/R + I theta_ct) cphi */
+
 void	th2cxXeon (Scalar *sField)
 {
 	switch (sField->Precision())
@@ -27,7 +34,7 @@ void	th2cxXeon (Scalar *sField)
 			{
 				field[lpc] = r*exp(II*real(field[lpc]));
 				// asumes rho' = 0
-				field2[lpc] = field[lpc]*(ir+II*field2[lpc]);
+				field2[lpc] = field[lpc]*(ir+II*real(field2[lpc]));
 			}
 			break;
 		}
@@ -51,7 +58,7 @@ void	th2cxXeon (Scalar *sField)
 			{
 				field[lpc] = r*exp(II*real(field[lpc]));
 				// asumes rho' = 0
-				field2[lpc] = field[lpc]*(ir + II*field2[lpc]);
+				field2[lpc] = field[lpc]*(ir + II*real(field2[lpc]));
 			}
 
 			break;

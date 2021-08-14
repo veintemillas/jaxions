@@ -53,6 +53,10 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	Float kcrit = (Float) kCrat;
 	Float bee = (Float) 4*kcrit*kcrit/(Lx*Lx);
 
+	/* prefactors for thermal ICs */
+	Float m2 = mopa.mass2;   // re,im effective mass
+	Float k0 = mopa.k0;      // 2pi/L
+
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
@@ -146,6 +150,24 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 								}
 							break;
 
+							case(MOM_MVTHERMAL):
+								{
+									// needs mass!
+									Float mP = sqrt(sqrt(((Float) modP)*k0*k0 + m2));
+									Float mE = sqrt(1./(exp(mP*mP/kcrit)-1.));
+									// field (goes to V array)
+									// the zero mode has infinite thermal expectation value in the continuum
+									// discrete version not ... 0? adjusted to VEV? ...
+									fV[idx] = (modP == 0) ? 0 : marsa*mE/mP ;
+									// velocity (goes into M)
+									// the zero mode is finite mE/mP -> kcrit
+									vl = Twop*(uni(mt64));
+									al = distri(mt64);
+									marsa   = exp( complex<Float>(0,vl) )*al;
+									fM[idx] = (modP == 0) ? marsa*sqrt(kcrit) : marsa*mE*mP ;
+								}
+							break;
+
 							case(MOM_MEXP):
 								{
 									Float mP = sqrt(((Float) modP))/(kcrit);
@@ -192,14 +214,14 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 			{
 				LogMsg (VERB_NORMAL, "mode0 set to %f in rank %d", mode0, commRank());
 				// fM[0] = complex<Float>(cos(mode0), sin(mode0));
-				if (Moco == MOM_MVSINCOS)
+				if (Moco == MOM_MVSINCOS || Moco == MOM_MVTHERMAL)
 					fV[0] = exp( complex<Float>(0,mode0) );
 					else
 					fM[0] = exp( complex<Float>(0,mode0) );
 			}
 			else
 			{
-				if (Moco == MOM_MVSINCOS)
+				if (Moco == MOM_MVSINCOS || Moco == MOM_MVTHERMAL)
 					mode0 = atan2(fV[0].imag(),fV[0].real());
 					else
 					mode0 = atan2(fM[0].imag(),fM[0].real());
@@ -258,6 +280,9 @@ void	momConf (Scalar *field, MomParms mopa)
 				case MOM_MVSINCOS:
 				momXeon<double, MOM_MVSINCOS> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
+				case MOM_MVTHERMAL:
+				momXeon<double, MOM_MVTHERMAL> (ma, va, mopa, n1, Lz, Tz, n2, n3);
+				break;
 				default:
 				case MOM_MEXP:
 				momXeon<double, MOM_MEXP> (ma, va, mopa, n1, Lz, Tz, n2, n3);
@@ -299,6 +324,9 @@ void	momConf (Scalar *field, MomParms mopa)
 				break;
 				case MOM_MVSINCOS:
 				momXeon<float, MOM_MVSINCOS> (ma, va, mopa, n1, Lz, Tz, n2, n3);
+				break;
+				case MOM_MVTHERMAL:
+				momXeon<float, MOM_MVTHERMAL> (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				default:
 				case MOM_MEXP:
