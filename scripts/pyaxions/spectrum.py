@@ -165,7 +165,7 @@ class fitP:
         if 'verbose' in kwargs:
             verbose = kwargs['verbose']
         else:
-            verbose = True
+            verbose = 1
         if 'logstart' in kwargs:
             logstart = kwargs['logstart']
         else:
@@ -191,8 +191,10 @@ class fitP:
         if x0[his] < xh:
             self.ikhistart = his+1
         for ik in range(len(k)):
-            if verbose:
-                print('\rfit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="")
+            if verbose == 1:
+                print('\rfit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="",flush=True)
+            elif verbose == 2:
+                print('fit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),flush=True)
             xdata = np.log(k[ik]*t[mask[0]])
             ydata = np.log(P[mask[0],ik])
             if not ik == 0:
