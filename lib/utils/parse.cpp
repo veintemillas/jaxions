@@ -353,7 +353,7 @@ void	PrintICoptions()
 {
 	printf("\nOptions for Initial conditions\n\n");
 
-	printf("--ctype smooth/kmax/tkachev               			   Main IC selector.\n\n");
+	printf("--ctype smooth/kmax/tkachev/thermal        			   Main IC selector.\n\n");
 
 	printf(" [smooth]                                          Point based.\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
@@ -402,6 +402,10 @@ void	PrintICoptions()
 	printf("-----------------------------------------------------------------------------------------------\n");
 	printf("  --kmax [int] --kcr [float]                       Axion modes as in Kolb&Tkachev 92 .\n");
 	printf("                                                   <theta^2>=kcr*pi^2/3 \n");
+
+  printf(" [thermal]                                         Temperature based.\n");
+	printf("-----------------------------------------------------------------------------------------------\n");
+	printf("  --kcr [float]                                    c. Temperature in ADM units sqrt[H1 fA].\n");
 
 	printf(" --preprop                                         prepropagator; currently only works with lola\n");
 	printf("-----------------------------------------------------------------------------------------------\n");
@@ -1886,7 +1890,7 @@ int	parseArgs (int argc, char *argv[])
 		{
 			if (i+1 == argc)
 			{
-				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev/lola/cole...).\n");
+				printf("Error: I need a value for the configuration type (smooth/kmax/tkachev/thermal/lola/cole...).\n");
 				exit(1);
 			}
 
@@ -1919,6 +1923,10 @@ int	parseArgs (int argc, char *argv[])
 			{
 				cType = CONF_TKACHEV; // legacy
 				icdatst.cType = CONF_TKACHEV;
+			}
+      else if (!strcmp(argv[i+1], "thermal"))
+			{
+				icdatst.cType = CONF_THERMAL;
 			}
 			else if (!strcmp(argv[i+1], "lola"))
 			{

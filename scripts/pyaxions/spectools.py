@@ -6,6 +6,7 @@ import pickle
 from pyaxions import jaxions as pa
 from numpy.linalg import inv
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter1d
 
 
 
@@ -22,6 +23,12 @@ def rdata(name, dataname):
     with open(pname,'rb') as r:
         return pickle.load(r)
 
+def smo(K0,sigma):
+    # If data was corrected by m matrix, it can be negative occationally
+    lK0 = np.log10(np.absolute(K0))
+    lK = lK0
+    lK[1:] = gaussian_filter1d(lK0[1:],sigma,mode='nearest',cval=0.0)
+    return 10**lK
 
 
 
@@ -33,6 +40,75 @@ def rdata(name, dataname):
 
 
 
+#   fitting function for subhorizon regime
+def fsubh(x, a0, a1, a2):
+    return a0 + a1*x + a2*(x**2)
+def dfsubh(x, a0, a1, a2):
+    return a1 + 2*a2*x
+
+#   fitting function for superhorizon regime
+def fsuph(x, a0, a1, a2, a3):
+    return a0 + a1*x - np.log(1+(a3*np.exp(x))**a2)
+def dfsuph(x, a0, a1, a2, a3):
+    return a1 - a2 + a2/(1 + (a3*np.exp(x))**a2)
+
+def logistic(x, x0, sigma):
+    return (1-np.tanh((x-x0)/sigma))/2
+
+
+
+
+class fitP:
+    def __init__(self, P, log, t, k, chc=1., logstart=4., verbose=True):
+        self.paramsup = []
+        self.paramsub = []
+        self.paramvsup = []
+        self.paramvsub = []
+        self.listihc = []
+        self.listfitsup = []
+        self.listfitsub = []
+        PT = np.transpose(P)
+        bo = ((-np.inf,0,0,0),(np.inf,np.inf,np.inf,np.inf))
+        iterkmax = len(k)
+        for ik in range(iterkmax):
+            if verbose:
+                print('\rfit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,iterkmax),end="")
+            ihc = np.abs(k[ik]*t - chc*2*math.pi).argmin() # time index corresponding to the horizon crossing
+            masksup = np.where((log <= log[ihc]) & (log >= logstart))
+            masksub = np.where(log >= max(logstart,log[ihc]))
+            xdatasup = np.log(k[ik]*t[masksup[0]])
+            ydatasup = np.log(PT[ik,masksup[0]])
+            xdatasub = np.log(k[ik]*t[masksub[0]])
+            ydatasub = np.log(PT[ik,masksub[0]])
+            Npsup = 4 # number of parameters for the fitting function
+            Npsub = 3
+            if len(xdatasup) >= Npsup and not ik == 0:
+                psup, pvsup = curve_fit(fsuph, xdatasup, ydatasup, bounds=bo, maxfev = 20000)
+                self.listfitsup.append(True)
+            else:
+                psup = [np.nan]*(Npsup)
+                pvsup = [np.nan]*(Npsup)
+                self.listfitsup.append(False)
+            if len(xdatasub) >= Npsub and not ik == 0:
+                psub, pvsub = curve_fit(fsubh, xdatasub, ydatasub, maxfev = 20000)
+                self.listfitsub.append(True)
+            else:
+                psub = [np.nan]*(Npsub)
+                pvsub = [np.nan]*(Npsub)
+                self.listfitsub.append(False)
+            self.paramsup.append(psup)
+            self.paramvsup.append(pvsup)
+            self.paramsub.append(psub)
+            self.paramvsub.append(pvsub)
+            self.listihc.append(ihc)
+        if verbose:
+            print("")
+
+
+
+
+
+#   Old functions are left below, just in case
 
 
 #   fitting function as cubic polynomial
@@ -46,8 +122,41 @@ def dfunc(x, a0, a1, a2, a3):
 
 
 
+class fitP_old:
+    def __init__(self, P, log, t, k, logstart=4., verbose=True):
+        mask = np.where(log >= logstart)
+        self.param = []
+        self.paramv = []
+        self.listihc = []
+        self.dataP = []
+        PT = np.transpose(P)
+        iterkmax = len(k)
+        for ik in range(iterkmax):
+            if verbose:
+                print('\rfit: k = %.2f, %d/%d'%(k[ik],ik+1,iterkmax),end="")
+            tmask = t[mask[0]]
+            ihc = np.abs(k[ik]*tmask - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
+            xdata = log[mask[0]]
+            ydata = PT[ik,mask[0]]
+            Nparam = 4 # number of parameters for the fitting function
+            if len(xdata) >= Nparam and not ik == 0:
+                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
+            else:
+                popt = [np.nan]*(Nparam)
+                pcov = [np.nan]*(Nparam)
+            self.param.append(popt)
+            self.paramv.append(pcov)
+            self.dataP.append(ydata)
+            self.listihc.append(ihc)
+        if verbose:
+            print("")
+        self.dataP = np.array(self.dataP)
+        self.log = log[mask[0]]
+        self.t = t[mask[0]]
 
 
+#   obsolate?
+#
 #   perform analytical fit for each mode
 #   options for spmask:
 #     spmask = 'nomask' -> Fields unmasked
@@ -57,141 +166,199 @@ def dfunc(x, a0, a1, a2, a3):
 #   options for rmask:
 #     rmask = '%.2f' -> label from rmasktable (default 2.00)
 #     rmask = 'nolabel' -> just try to read nK_Red without rmasklabel (for old data)
-class fitP:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
-        self.sizeN = pa.gm(mfiles[0],'Size')
-        self.sizeL = pa.gm(mfiles[0],'L')
-        self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda0')
-        self.nm = pa.gm(mfiles[0],'nmodelist')
-        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
-        # identify modes less than N/2
-        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
-        self.lz2e = pa.gm(mfiles[0],'lz2e')
-        # create lists of the evolution of axion number spectrum (kinetic part)
-        ttab = []
-        logtab = []
-        nsptab = []
-        for meas in mfiles:
-            if pa.gm(meas,'nsp?'):
-                t = pa.gm(meas,'time')
-                log = pa.gm(meas,'logi')
-                if spmask == 'nomask':
-                    print('nomask option is not supported now...')
-                elif spmask == 'Red':
-                    if rmask == 'nolabel':
-                        binK = pa.gm(meas,'nspK_Red')
-                    else:
-                        binK = pa.gm(meas,'nspK_Red'+'_'+rmask)
-                elif spmask == 'Vi':
-                    binK = pa.gm(meas,'nspK_Vi')
-                elif spmask == 'Vi2':
-                    binK = pa.gm(meas,'nspK_Vi2')
-                else:
-                    print('Wrong option for spmask!')
-                nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
-                ttab.append(t)
-                logtab.append(log)
-                nsptab.append(nsp)
-        self.t = np.array(ttab)
-        self.log = np.array(logtab)
-        self.nsp = np.array(nsptab)
-        # cutoff time (chosen as log(ms/H) = 4)
-        istart = np.abs(self.log - 4.).argmin()
-        self.param = []
-        self.paramv = []
-        self.listihc = []
-        self.dataP = []
-        self.datalog = []
-        # transpose
-        nspT = np.transpose(self.nsp)
-        iterkmax = len(self.avek[self.k_below])
-        for ik in range(iterkmax):
-            print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
-            ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
-            xdata = self.log[istart:]
-            ydata = self.t[istart:]*nspT[ik,istart:]
-            Nparam = 4 # number of parameters for the fitting function
-            if len(xdata) >= Nparam and not ik == 0:
-                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
-            else:
-                popt = [np.nan]*(Nparam)
-                pcov = [np.nan]*(Nparam)
-            self.param.append(popt)
-            self.paramv.append(pcov)
-            self.dataP.append(ydata)
-            self.datalog.append(xdata)
-            self.listihc.append(ihc)
-        print("")
-        self.dataP = np.array(self.dataP)
-        self.datalog = np.array(self.datalog)
+# class fitP:
+#     def __init__(self, mfiles, spmask='Red', rmask='2.00', logstart=4.):
+#         self.sizeN = pa.gm(mfiles[0],'Size')
+#         self.sizeL = pa.gm(mfiles[0],'L')
+#         self.msa = pa.gm(mfiles[0],'msa')
+#         self.LL = pa.gm(mfiles[0],'lambda0')
+#         self.nm = pa.gm(mfiles[0],'nmodelist')
+#         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+#         # identify modes less than N/2
+#         self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+#         self.lz2e = pa.gm(mfiles[0],'lz2e')
+#         # create lists of the evolution of axion number spectrum (kinetic part)
+#         ttab = []
+#         logtab = []
+#         Ptab = []
+#         for meas in mfiles:
+#             if pa.gm(meas,'nsp?'):
+#                 t = pa.gm(meas,'time')
+#                 log = pa.gm(meas,'logi')
+#                 if spmask == 'nomask':
+#                     print('nomask option is not supported now...')
+#                 elif spmask == 'Red':
+#                     if rmask == 'nolabel':
+#                         binK = pa.gm(meas,'nspK_Red')
+#                     else:
+#                         binK = pa.gm(meas,'nspK_Red'+'_'+rmask)
+#                 elif spmask == 'Vi':
+#                     binK = pa.gm(meas,'nspK_Vi')
+#                 elif spmask == 'Vi2':
+#                     binK = pa.gm(meas,'nspK_Vi2')
+#                 else:
+#                     print('Wrong option for spmask!')
+#                 # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
+#                 P = (self.avek**2)*binK/((math.pi**2)*self.nm)
+#                 ttab.append(t)
+#                 logtab.append(log)
+#                 Ptab.append(P)
+#         self.t = np.array(ttab)
+#         self.log = np.array(logtab)
+#         Ptab = np.array(Ptab)
+#         # cutoff time (chosen as log(ms/H) = logstart (default 4))
+#         istart = np.abs(self.log - logstart).argmin()
+#         self.param = []
+#         self.paramv = []
+#         self.listihc = []
+#         self.dataP = []
+#         self.datalog = []
+#         # transpose
+#         PT = np.transpose(Ptab)
+#         iterkmax = len(self.avek[self.k_below])
+#         for ik in range(iterkmax):
+#             print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
+#             ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
+#             xdata = self.log[istart:]
+#             ydata = PT[ik,istart:]
+#             Nparam = 4 # number of parameters for the fitting function
+#             if len(xdata) >= Nparam and not ik == 0:
+#                 popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
+#             else:
+#                 popt = [np.nan]*(Nparam)
+#                 pcov = [np.nan]*(Nparam)
+#             self.param.append(popt)
+#             self.paramv.append(pcov)
+#             self.dataP.append(ydata)
+#             self.datalog.append(xdata)
+#             self.listihc.append(ihc)
+#         print("")
+#         self.dataP = np.array(self.dataP)
+#         self.datalog = np.array(self.datalog)
 
 
 
 
 
+#   obsolate?
+# class fitP2:
+#     def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection', logstart=4., verbose=True):
+#         self.sizeN = pa.gm(mfiles[0],'Size')
+#         self.sizeL = pa.gm(mfiles[0],'L')
+#         self.msa = pa.gm(mfiles[0],'msa')
+#         self.LL = pa.gm(mfiles[0],'lambda0')
+#         self.nm = pa.gm(mfiles[0],'nmodelist')
+#         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+#         # identify modes less than N/2
+#         self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+#         self.lz2e = pa.gm(mfiles[0],'lz2e')
+#
+#         # create lists of the evolution of axion number spectrum (kinetic part)
+#         mfnsp = mfiles[pa.gml(mfiles,'nsp?')]
+#         ttab = []
+#         logtab = []
+#         mtab = []
+#         Ptab = []
+#         istart = np.abs(pa.gml(mfiles,'logi') - logstart).argmin()
+#         for meas in mfnsp:
+#             if np.where(mfiles==meas) >= istart:
+#                 t = pa.gm(meas,'time')
+#                 log = pa.gm(meas,'logi')
+#                 s0 = pa.gm(meas,'nspK_'+spmasklabel)
+#                 if cor == 'correction':
+#                     m = pa.gm(meas,'mspM_'+spmasklabel)
+#                     binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+#                 else:
+#                     binK = s0
+#                 # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
+#                 P = (self.avek**2)*binK/((math.pi**2)*self.nm)
+#                 ttab.append(t)
+#                 logtab.append(log)
+#                 mtab.append(meas)
+#                 Ptab.append(P)
+#         self.t = np.array(ttab)
+#         self.log = np.array(logtab)
+#         self.m = mtab
+#         Ptab = np.array(Ptab)
+#
+#         # fitting
+#         self.param = []
+#         self.paramv = []
+#         self.listihc = []
+#         self.dataP = []
+#         PT = np.transpose(Ptab)
+#         iterkmax = len(self.avek[self.k_below])
+#         for ik in range(iterkmax):
+#             if verbose:
+#                 print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
+#             ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
+#             xdata = self.log
+#             ydata = PT[ik,:]
+#             Nparam = 4 # number of parameters for the fitting function
+#             if len(xdata) >= Nparam and not ik == 0:
+#                 popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
+#             else:
+#                 popt = [np.nan]*(Nparam)
+#                 pcov = [np.nan]*(Nparam)
+#             self.param.append(popt)
+#             self.paramv.append(pcov)
+#             self.dataP.append(ydata)
+#             self.listihc.append(ihc)
+#         if verbose:
+#             print("")
+#         self.dataP = np.array(self.dataP)
 
-class fitP2:
-    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
-        self.sizeN = pa.gm(mfiles[0],'Size')
-        self.sizeL = pa.gm(mfiles[0],'L')
-        self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda0')
-        self.nm = pa.gm(mfiles[0],'nmodelist')
-        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
-        # identify modes less than N/2
-        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
-        self.lz2e = pa.gm(mfiles[0],'lz2e')
-        # create lists of the evolution of axion number spectrum (kinetic part)
-        ttab = []
-        logtab = []
-        nsptab = []
-        for meas in mfiles:
-            if pa.gm(meas,'nsp?'):
-                t = pa.gm(meas,'time')
-                log = pa.gm(meas,'logi')
-                s0 = pa.gm(meas,'nspK_'+spmasklabel)
-                if cor == 'correction':
-                    m = pa.gm(meas,'mspM_'+spmasklabel)
-                    binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                else:
-                    binK = s0
-                nsp = (self.avek**2)*binK/(2*t*(math.pi**2)*self.nm)
-                ttab.append(t)
-                logtab.append(log)
-                nsptab.append(nsp)
-        self.t = np.array(ttab)
-        self.log = np.array(logtab)
-        self.nsp = np.array(nsptab)
-        # cutoff time (chosen as log(ms/H) = 4)
-        istart = np.abs(self.log - 4.).argmin()
-        self.param = []
-        self.paramv = []
-        self.listihc = []
-        self.dataP = []
-        self.datalog = []
-        # transpose
-        nspT = np.transpose(self.nsp)
-        iterkmax = len(self.avek[self.k_below])
-        for ik in range(iterkmax):
-            print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
-            ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
-            xdata = self.log[istart:]
-            ydata = self.t[istart:]*nspT[ik,istart:]
-            Nparam = 4 # number of parameters for the fitting function
-            if len(xdata) >= Nparam and not ik == 0:
-                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
-            else:
-                popt = [np.nan]*(Nparam)
-                pcov = [np.nan]*(Nparam)
-            self.param.append(popt)
-            self.paramv.append(pcov)
-            self.dataP.append(ydata)
-            self.datalog.append(xdata)
-            self.listihc.append(ihc)
-        print("")
-        self.dataP = np.array(self.dataP)
-        self.datalog = np.array(self.datalog)
+
+
+
+#   assuming P extrepolated to rmask->0
+#class fitPext:
+#    def __init__(self, Pext, verbose=True):
+#        self.sizeN = Pext.sizeN
+#        self.sizeL = Pext.sizeL
+#        self.msa = Pext.msa
+#        self.LL = Pext.LL
+#        self.nm = Pext.nm
+#        self.avek = Pext.avek
+#        self.k_below = Pext.k_below
+#        self.lz2e = Pext.lz2e
+#
+#        self.t = Pext.t
+#        self.log = Pext.log
+#
+#        # create lists of the evolution of axion number spectrum (kinetic part)
+#        Ptab = []
+#        for id in range(len(self.log)):
+#            P = Pext.param[id][:,1]+Pext.param[id][:,2]+Pext.param[id][:,4]
+#            Ptab.append(P)
+#        Ptab = np.array(Ptab)
+#
+#        # fitting
+#        self.param = []
+#        self.paramv = []
+#        self.listihc = []
+#        self.dataP = []
+#        PT = np.transpose(Ptab)
+#        iterkmax = len(self.avek[self.k_below])
+#        for ik in range(iterkmax):
+#            if verbose:
+#                print('\rfit: k = %.2f, %d/%d'%(self.avek[ik],ik+1,iterkmax),end="")
+#            ihc = np.abs(self.avek[ik]*self.t - 2*math.pi).argmin() # save the time index corresponding to the horizon crossing
+#            xdata = self.log
+#            ydata = PT[ik,:]
+#            Nparam = 4 # number of parameters for the fitting function
+#            if len(xdata) >= Nparam and not ik == 0:
+#                popt, pcov = curve_fit(func, xdata, ydata, maxfev = 20000)
+#            else:
+#                popt = [np.nan]*(Nparam)
+#                pcov = [np.nan]*(Nparam)
+#            self.param.append(popt)
+#            self.paramv.append(pcov)
+#            self.dataP.append(ydata)
+#            self.listihc.append(ihc)
+#        if verbose:
+#            print("")
+#        self.dataP = np.array(self.dataP)
 
 
 
@@ -201,6 +368,94 @@ class fitP2:
 # ------------------------------------------------------------------------------
 #   Instantaneous spectrum
 # ------------------------------------------------------------------------------
+
+
+
+
+#   calculate instantaneous spectrum based on analytical fit
+class calcF:
+    def __init__(self, P, log, t, k, k_below, **kwargs):
+        if 'sigma' in kwargs:
+            sigma = kwargs['sigma']
+        else:
+            sigma = 0.1
+        if 'chc' in kwargs:
+            chc = kwargs['chc']
+        else:
+            chc = 1.
+        if 'logstart' in kwargs:
+            logstart = kwargs['logstart']
+        else:
+            logstart = 4.
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
+        self.F = [] # instantaneous spectrum F
+        self.Fnorm = [] # normalization factor of F
+        self.t = [] # time
+        self.log = []
+        self.x = [] # x-axis (k/RH)
+        mask = np.where(log >= logstart)
+        logm = log[mask[0]]
+        tm = t[mask[0]]
+        fitp = fitP(P,log,t,k,chc,logstart,verbose)
+        for id in range(len(tm)):
+            tt = tm[id]
+            logt = logm[id]
+            if verbose:
+                print('\rcalc F: log = %.2f [%d/%d]'%(logt,id+1,len(tm)),end="")
+            Fbin = []
+            xbin = []
+            Fbinaux = []
+            xbinaux = []
+            for ik in range(1,len(k)):
+                lsup = fitp.paramsup[ik]
+                lsub = fitp.paramsub[ik]
+                xx = k[ik]*tt
+                lxx = math.log(xx)
+                lxhc = math.log(k[ik]*t[fitp.listihc[ik]])
+                try:
+                    if (fitp.listfitsup[ik] and fitp.listfitsub[ik]):
+                        Fval = (logistic(lxx,lxhc,sigma)*math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)+(1-logistic(lxx,lxhc,sigma))*math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub))/xx
+                    elif fitp.listfitsup[ik]:
+                        Fval = math.exp(fsuph(lxx,*lsup))*dfsuph(lxx,*lsup)/xx
+                    elif fitp.listfitsub[ik]:
+                        Fval = math.exp(fsubh(lxx,*lsub))*dfsubh(lxx,*lsub)/xx
+                    else:
+                        Fval = np.nan
+                except:
+                    Fval = np.nan
+                if not (np.isnan(Fval) or (Fval < 0)):
+                    # Fval can have huge negative value when two fit functions are interpolated
+                    # (behavior of the fit function outside their domain may not be well controlled).
+                    # We remove such a point for the calculation of the normalization factor.
+                    Fbinaux.append(Fval)
+                    xbinaux.append(xx)
+                Fbin.append(Fval)
+                xbin.append(xx)
+            Fbinaux = np.array(Fbinaux)
+            xbinaux = np.array(xbinaux)
+            # normalize
+            dx = np.gradient(xbinaux)
+            # normalization factor is calculated by using only modes below the Nyquist frequency
+            x_below = xbinaux <= np.amax(k[k_below])*tt
+            Fdx = (Fbinaux*dx)[x_below]
+            self.F.append(np.array(Fbin)/Fdx.sum())
+            self.Fnorm.append(Fdx.sum())
+            self.x.append(xbin)
+            self.t.append(tt)
+            self.log.append(logt)
+        if verbose:
+            print("")
+        self.F = np.array(self.F)
+        self.Fnorm = np.array(self.Fnorm)
+        self.x = np.array(self.x) # x = k/RH
+        self.t = np.array(self.t) # time
+        self.log = np.array(self.log)
+
+
+
 
 #   options for spmask:
 #     spmask = 'nomask' -> Fields unmasked
@@ -213,8 +468,8 @@ class fitP2:
 
 #   calculate instantaneous spectrum based on analytical fit
 class inspA:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00'):
-        fitp = fitP(mfiles,spmask,rmask)
+    def __init__(self, mfiles, spmask='Red', rmask='2.00', logstart=4.):
+        fitp = fitP_old(mfiles,spmask,rmask,logstart)
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
         self.msa = fitp.msa
@@ -227,7 +482,7 @@ class inspA:
         self.t = [] # time
         self.log = []
         self.x = [] # x-axis (k/RH)
-        istart = np.abs(fitp.log - 4.).argmin()
+        istart = np.abs(fitp.log - logstart).argmin()
         iterkmax = len(self.avek[self.k_below])
         for id in range(len(fitp.t)):
             t = fitp.t[id]
@@ -267,8 +522,8 @@ class inspA:
 #   calculate instantaneous spectrum based on analytical fit
 #   time steps specified in the arguments
 class inspAt:
-    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00'):
-        fitp = fitP(mfiles,spmask,rmask)
+    def __init__(self, mfiles, logi, logf, nlog, spmask='Red', rmask='2.00', logstart=4.):
+        fitp = fitP_old(mfiles,spmask,rmask,logstart)
         self.lz2e = fitp.lz2e
         self.sizeN = fitp.sizeN
         self.sizeL = fitp.sizeL
@@ -282,7 +537,7 @@ class inspAt:
         self.x = [] # x-axis (k/RH)
         self.log = np.linspace(logi,logf,nlog)
         self.t = np.power(np.exp(self.log)/math.sqrt(2.*self.LL),2./(4.-self.lz2e))
-        istart = np.abs(self.log - 4.).argmin()
+        istart = np.abs(self.log - logstart).argmin()
         iterkmax = len(self.avek[self.k_below])
         for id in range(len(self.log)):
             log = self.log[id]
@@ -454,8 +709,127 @@ class inspC:
 
 
 
+#   calculate instantaneous spectrum
+#   options for difftype:
+#     difftype = 'A' -> analytical fit
+#     difftype = 'B' -> backward difference
+#     difftype = 'C' -> central difference
+class insp:
+    def __init__(self, P, log, t, k, k_below, **kwargs):
+        if 'difftype' in kwargs:
+            difftype = kwargs['difftype']
+        else :
+            difftype = 'A'
+        if 'logstart' in kwargs:
+            logstart = kwargs['logstart']
+        else :
+            logstart = 4
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else :
+            verbose = True
+        if 'LL' in kwargs:
+            LL = kwargs['LL']
+        else :
+            LL = 25000.
+        if 'lz2e' in kwargs:
+            lz2e = kwargs['lz2e']
+        else :
+            lz2e = 2.
+        self.F = [] # instantaneous spectrum F
+        self.Fnorm = [] # normalization factor of F
+        self.t = [] # time
+        self.log = []
+        self.x = [] # x-axis (k/RH)
+        if difftype == 'A':
+            fitp = fitP_old(P,log,t,k,logstart,verbose)
+            knyq = np.amax(k[k_below])
+            for id in range(len(fitp.t)):
+                tt = fitp.t[id]
+                logt = fitp.log[id]
+                if verbose:
+                    print('\rcalc F: %d/%d, log = %.2f'%(id+1,len(fitp.t),logt),end="")
+                Fbinbuf = []
+                x = []
+                for ik in range(len(k)):
+                    # calculate only modes inside the horizon
+                    if id >= fitp.listihc[ik]:
+                        l = fitp.param[ik]
+                        Fval = dfunc(logt,*l)/(tt**5)
+                        if not np.isnan(Fval):
+                            Fbinbuf.append(Fval)
+                            x.append(k[ik]*tt)
+                Fbinbuf = np.array(Fbinbuf)
+                # normalize
+                dx = np.gradient(x)
+                # normalization factor is calculated by using only modes below the Nyquist frequency
+                x_below = np.array(x) <= knyq*tt
+                Fdx = (Fbinbuf*dx)[x_below]
+                self.F.append(Fbinbuf/Fdx.sum())
+                self.Fnorm.append(Fdx.sum())
+                self.x.append(np.array(x))
+                self.t.append(tt)
+                self.log.append(logt)
+            if verbose:
+                print("")
+        elif difftype == 'B':
+            for id in range(len(log)):
+                if verbose:
+                    print('\rcalc F: %d/%d, log = %.2f'%(id+1,len(log),log[id]),end="")
+                if id != 0:
+                    t1 = t[id-1]
+                    t2 = t[id]
+                    sp1 = P[id-1]
+                    sp2 = P[id]
+                    dt = t2 - t1
+                    tt = t1 + dt/2
+                    x = k*tt
+                    diff = (sp2 - sp1)/((tt**4)*dt)
+                    # normalize
+                    dx = np.gradient(x)
+                    Fdx = (diff*dx)[k_below]
+                    self.F.append(diff/Fdx.sum())
+                    self.Fnorm.append(Fdx.sum())
+                    self.t.append(tt)
+                    self.x.append(x)
+                    self.log.append(math.log(math.sqrt(2.*LL)*math.power(tt,2.-lz2e/2.)))
+            if verbose:
+                print("")
+        elif difftype == 'C':
+            for id in range(len(log)):
+                if verbose:
+                    print('\rcalc F: %d/%d, log = %.2f'%(id+1,len(log),log[id]),end="")
+                if (id != 0) and (id != len(log)-1):
+                    t1 = t[id-1]
+                    t2 = t[id+1]
+                    sp1 = P[id-1]
+                    sp2 = P[id+1]
+                    tt = t[id]
+                    logt = log[id]
+                    x = k*tt
+                    dt = t2 - t1
+                    diff = (sp2 - sp1)/((tt**4)*dt)
+                    # normalize
+                    dx = np.gradient(x)
+                    Fdx = (diff*dx)[k_below]
+                    self.F.append(diff/Fdx.sum())
+                    self.Fnorm.append(Fdx.sum())
+                    self.t.append(tt)
+                    self.log.append(logt)
+                    self.x.append(x)
+        else:
+            print("wrong difftype option!")
+        self.F = np.array(self.F)
+        self.Fnorm = np.array(self.Fnorm)
+        self.x = np.array(self.x) # x = k/RH
+        self.t = np.array(self.t) # time
+        self.log = np.array(self.log)
 
 
+
+
+#   obsolate?
+#
 #   calculate instantaneous spectrum
 #   options for difftype:
 #     difftype = 'A' -> analytical fit
@@ -466,127 +840,249 @@ class inspC:
 #   options for indices:
 #     indices = list of integers
 #     if specified, instantaneous spectrum is calculaetd only for time slices selected by the list
-class insp:
-    def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection', indices=[]):
-        self.sizeN = pa.gm(mfiles[0],'sizeN')
-        self.sizeL = pa.gm(mfiles[0],'L')
-        self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda0')
-        self.nm = pa.gm(mfiles[0],'nmodelist')
-        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
-        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
-        self.lz2e = pa.gm(mfiles[0],'lz2e')
-        self.F = [] # instantaneous spectrum F
-        self.Fnorm = [] # normalization factor of F
-        self.t = [] # time
-        self.log = []
-        self.x = [] # x-axis (k/RH)
-        if indices == []:
-            indices = range(len(mfiles))
-        msplist = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
-        mfilesm = mfiles[indices]
-        msplistm = [mf for mf in mfilesm if pa.gm(mf,'nsp?')]
-        if difftype == 'A':
-            fitp = fitP2(mfiles,spmasklabel,cor)
-            for id in range(len(fitp.t)):
-                if msplist[id] in msplistm:
-                    t = fitp.t[id]
-                    log = fitp.log[id]
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),log),end="")
-                    if id >= istart:
-                        Fbinbuf = []
-                        x = []
-                        for ik in range(iterkmax):
-                            # calculate only modes inside the horizon
-                            if id >= fitp.listihc[ik]:
-                                l = fitp.param[ik]
-                                Fval = dfunc(log,*l)/(t**5)
-                                if not np.isnan(Fval):
-                                    Fbinbuf.append(Fval)
-                                    x.append(self.avek[ik]*t)
-                                    Fbinbuf = np.array(Fbinbuf)
-                        # normalize
-                        dx = np.gradient(x)
-                        Fdx = Fbinbuf*dx
-                        self.F.append(Fbinbuf/Fdx.sum())
-                        self.Fnorm.append(Fdx.sum())
-                        self.x.append(np.array(x))
-                        self.t.append(t)
-                        self.log.append(log)
-            print("")
-        elif difftype == 'B':
-            for id in range(len(msplist)):
-                if msplist[id] in msplistm:
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
-                    if id != 0:
-                        t1 = pa.gm(msplist[id-1],'time')
-                        t2 = pa.gm(msplist[id],'time')
-                        s01 = pa.gm(msplist[id-1],'nspK_'+spmasklabel)
-                        s02 = pa.gm(msplist[id],'nspK_'+spmasklabel)
-                        if cor == 'correction':
-                            m1 = pa.gm(msplist[id-1],'mspM_'+spmasklabel)
-                            m2 = pa.gm(msplist[id],'mspM_'+spmasklabel)
-                            binK1 = (self.sizeL**3)*np.dot(inv(m1),s01/self.nm)
-                            binK2 = (self.sizeL**3)*np.dot(inv(m2),s02/self.nm)
-                        else:
-                            binK1 = s01
-                            binK2 = s02
-                        sp1 = (self.avek**2)*binK1/((math.pi**2)*self.nm)
-                        sp2 = (self.avek**2)*binK2/((math.pi**2)*self.nm)
-                        dt = t2 - t1
-                        t = tp + dt/2
-                        x = self.avek*t
-                        diff = (sp2 - sp1)/((t**4)*dt)
-                        # normalize
-                        dx = np.gradient(x)
-                        Fdx = (diff*dx)[self.k_below]
-                        self.F.append(diff/Fdx.sum())
-                        self.Fnorm.append(Fdx.sum())
-                        self.t.append(t)
-                        self.x.append(x)
-                        self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
-            print("")
-        elif difftype == 'C':
-            for id in range(len(msplist)):
-                if msplist[id] in msplistm:
-                    print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
-                    if (id != 0) and (id != len(msplist)-1):
-                        t1 = pa.gm(msplist[id-1],'time')
-                        t2 = pa.gm(msplist[id+1],'time')
-                        s01 = pa.gm(msplist[id-1],'nspK_'+spmasklabel)
-                        s02 = pa.gm(msplist[id+1],'nspK_'+spmasklabel)
-                        if cor == 'correction':
-                            m1 = pa.gm(msplist[id-1],'mspM_'+spmasklabel)
-                            m2 = pa.gm(msplist[id+1],'mspM_'+spmasklabel)
-                            binK1 = (self.sizeL**3)*np.dot(inv(m1),s01/self.nm)
-                            binK2 = (self.sizeL**3)*np.dot(inv(m2),s02/self.nm)
-                        else:
-                            binK1 = s01
-                            binK2 = s02
-                        sp1 = (self.avek**2)*binK1/((math.pi**2)*self.nm)
-                        sp2 = (self.avek**2)*binK2/((math.pi**2)*self.nm)
-                        t = pa.gm(msplist[id],'time')
-                        log = pa.gm(msplist[id],'logi')
-                        x = self.avek*t
-                        dt = t2 - t1
-                        diff = (sp2 - sp1)/((t**4)*dt)
-                        # normalize
-                        dx = np.gradient(x)
-                        Fdx = (diff*dx)[self.k_below]
-                        self.F.append(diff/Fdx.sum())
-                        self.Fnorm.append(Fdx.sum())
-                        self.t.append(t)
-                        self.log.append(log)
-                        self.x.append(x)
-            print("")
-        else:
-            print("wrong difftype option!")
-        self.F = np.array(self.F)
-        self.Fnorm = np.array(self.Fnorm)
-        self.x = np.array(self.x) # x = k/RH
-        self.t = np.array(self.t) # time
-        self.log = np.array(self.log)
+# class insp:
+#     def __init__(self, mfiles, difftype='C', spmasklabel='Red_2.00', cor='nocorrection', indices=[], logstart=4., verbose=True):
+#         self.sizeN = pa.gm(mfiles[0],'sizeN')
+#         self.sizeL = pa.gm(mfiles[0],'L')
+#         self.msa = pa.gm(mfiles[0],'msa')
+#         self.LL = pa.gm(mfiles[0],'lambda0')
+#         self.nm = pa.gm(mfiles[0],'nmodelist')
+#         self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+#         self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+#         self.lz2e = pa.gm(mfiles[0],'lz2e')
+#         self.F = [] # instantaneous spectrum F
+#         self.Fnorm = [] # normalization factor of F
+#         self.t = [] # time
+#         self.log = []
+#         self.x = [] # x-axis (k/RH)
+#         if indices == []:
+#             indices = range(len(mfiles))
+#         msplist = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
+#         mfilesm = mfiles[indices]
+#         msplistm = [mf for mf in mfilesm if pa.gm(mf,'nsp?')]
+#         if difftype == 'A':
+#             fitp = fitP2(mfiles,spmasklabel,cor,logstart,verbose)
+#             iterkmax = len(self.avek[self.k_below])
+#             for id in range(len(fitp.t)):
+#                 if fitp.m[id] in msplistm:
+#                     t = fitp.t[id]
+#                     log = fitp.log[id]
+#                     if verbose:
+#                         print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(fitp.m[id])+1,len(msplistm),log),end="")
+#                     Fbinbuf = []
+#                     x = []
+#                     for ik in range(iterkmax):
+#                         # calculate only modes inside the horizon
+#                         if id >= fitp.listihc[ik]:
+#                             l = fitp.param[ik]
+#                             Fval = dfunc(log,*l)/(t**5)
+#                             if not np.isnan(Fval):
+#                                 Fbinbuf.append(Fval)
+#                                 x.append(self.avek[ik]*t)
+#                     Fbinbuf = np.array(Fbinbuf)
+#                     # normalize
+#                     dx = np.gradient(x)
+#                     Fdx = Fbinbuf*dx
+#                     self.F.append(Fbinbuf/Fdx.sum())
+#                     self.Fnorm.append(Fdx.sum())
+#                     self.x.append(np.array(x))
+#                     self.t.append(t)
+#                     self.log.append(log)
+#             if verbose:
+#                 print("")
+#         elif difftype == 'B':
+#             for id in range(len(msplist)):
+#                 if msplist[id] in msplistm:
+#                     if verbose:
+#                         print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
+#                     if id != 0:
+#                         t1 = pa.gm(msplist[id-1],'time')
+#                         t2 = pa.gm(msplist[id],'time')
+#                         s01 = pa.gm(msplist[id-1],'nspK_'+spmasklabel)
+#                         s02 = pa.gm(msplist[id],'nspK_'+spmasklabel)
+#                         if cor == 'correction':
+#                             m1 = pa.gm(msplist[id-1],'mspM_'+spmasklabel)
+#                             m2 = pa.gm(msplist[id],'mspM_'+spmasklabel)
+#                             binK1 = (self.sizeL**3)*np.dot(inv(m1),s01/self.nm)
+#                             binK2 = (self.sizeL**3)*np.dot(inv(m2),s02/self.nm)
+#                         else:
+#                             binK1 = s01
+#                             binK2 = s02
+#                         sp1 = (self.avek**2)*binK1/((math.pi**2)*self.nm)
+#                         sp2 = (self.avek**2)*binK2/((math.pi**2)*self.nm)
+#                         dt = t2 - t1
+#                         t = t1 + dt/2
+#                         x = self.avek*t
+#                         diff = (sp2 - sp1)/((t**4)*dt)
+#                         # normalize
+#                         dx = np.gradient(x)
+#                         Fdx = (diff*dx)[self.k_below]
+#                         self.F.append(diff/Fdx.sum())
+#                         self.Fnorm.append(Fdx.sum())
+#                         self.t.append(t)
+#                         self.x.append(x)
+#                         self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
+#             if verbose:
+#                 print("")
+#         elif difftype == 'C':
+#             for id in range(len(msplist)):
+#                 if msplist[id] in msplistm:
+#                     if verbose:
+#                         print('\rcalc F: %d/%d, log = %.2f'%(msplistm.index(msplist[id])+1,len(msplistm),pa.gm(msplist[id],'logi')),end="")
+#                     if (id != 0) and (id != len(msplist)-1):
+#                         t1 = pa.gm(msplist[id-1],'time')
+#                         t2 = pa.gm(msplist[id+1],'time')
+#                         s01 = pa.gm(msplist[id-1],'nspK_'+spmasklabel)
+#                         s02 = pa.gm(msplist[id+1],'nspK_'+spmasklabel)
+#                         if cor == 'correction':
+#                             m1 = pa.gm(msplist[id-1],'mspM_'+spmasklabel)
+#                             m2 = pa.gm(msplist[id+1],'mspM_'+spmasklabel)
+#                             binK1 = (self.sizeL**3)*np.dot(inv(m1),s01/self.nm)
+#                             binK2 = (self.sizeL**3)*np.dot(inv(m2),s02/self.nm)
+#                         else:
+#                             binK1 = s01
+#                             binK2 = s02
+#                         sp1 = (self.avek**2)*binK1/((math.pi**2)*self.nm)
+#                         sp2 = (self.avek**2)*binK2/((math.pi**2)*self.nm)
+#                         t = pa.gm(msplist[id],'time')
+#                         log = pa.gm(msplist[id],'logi')
+#                         x = self.avek*t
+#                         dt = t2 - t1
+#                         diff = (sp2 - sp1)/((t**4)*dt)
+#                         # normalize
+#                         dx = np.gradient(x)
+#                         Fdx = (diff*dx)[self.k_below]
+#                         self.F.append(diff/Fdx.sum())
+#                         self.Fnorm.append(Fdx.sum())
+#                         self.t.append(t)
+#                         self.log.append(log)
+#                         self.x.append(x)
+#             if verbose:
+#                 print("")
+#         else:
+#             print("wrong difftype option!")
+#         self.F = np.array(self.F)
+#         self.Fnorm = np.array(self.Fnorm)
+#         self.x = np.array(self.x) # x = k/RH
+#         self.t = np.array(self.t) # time
+#         self.log = np.array(self.log)
 
+
+
+
+
+#   calculate instantaneous spectrum from P extrepolated to rmask->0
+#   options for difftype:
+#     difftype = 'A' -> analytical fit
+#     difftype = 'B' -> backward difference
+#     difftype = 'C' -> central difference
+#   options for indices:
+#     indices = list of integers
+#     if specified, instantaneous spectrum is calculaetd only for time slices selected by the list
+#
+#class inspext:
+#    def __init__(self, Pext, difftype='C', indices=[], verbose=True):
+#        self.sizeN = Pext.sizeN
+#        self.sizeL = Pext.sizeL
+#        self.msa = Pext.msa
+#        self.LL = Pext.LL
+#        self.nm = Pext.nm
+#        self.avek = Pext.avek
+#        self.k_below = Pext.k_below
+#        self.lz2e = Pext.lz2e
+#        self.F = [] # instantaneous spectrum F
+#        self.Fnorm = [] # normalization factor of F
+#        self.t = [] # time
+#        self.log = []
+#        self.x = [] # x-axis (k/RH)
+#        if indices == []:
+#            indices = range(len(Pext.log))
+#        if difftype == 'A':
+#            fitp = fitPext(Pext,verbose)
+#            iterkmax = len(self.avek[self.k_below])
+#            for id in range(len(fitp.t)):
+#                if id in indices:
+#                    t = fitp.t[id]
+#                    log = fitp.log[id]
+#                    if verbose:
+#                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),log),end="")
+#                    Fbinbuf = []
+#                    x = []
+#                    for ik in range(iterkmax):
+#                        # calculate only modes inside the horizon
+#                        if id >= fitp.listihc[ik]:
+#                            l = fitp.param[ik]
+#                            Fval = dfunc(log,*l)/(t**5)
+#                            if not np.isnan(Fval):
+#                                Fbinbuf.append(Fval)
+#                                x.append(self.avek[ik]*t)
+#                    Fbinbuf = np.array(Fbinbuf)
+#                    # normalize
+#                    dx = np.gradient(x)
+#                    Fdx = Fbinbuf*dx
+#                    self.F.append(Fbinbuf/Fdx.sum())
+#                    self.Fnorm.append(Fdx.sum())
+#                    self.x.append(np.array(x))
+#                    self.t.append(t)
+#                    self.log.append(log)
+#            if verbose:
+#                print("")
+#        elif difftype == 'B':
+#            for id in range(len(Pext.log)):
+#                if id in indices:
+#                    if verbose:
+#                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),Pext.log[id]),end="")
+#                    if id != 0:
+#                        t1 = Pext.t[id-1]
+#                        t2 = Pext.t[id]
+#                        sp1 = Pext.param[id-1][:,1]+Pext.param[id-1][:,2]+Pext.param[id-1][:,4]
+#                        sp2 = Pext.param[id][:,1]+Pext.param[id][:,2]+Pext.param[id][:,4]
+#                        dt = t2 - t1
+#                        t = tp + dt/2
+#                        x = self.avek*t
+#                        diff = (sp2 - sp1)/((t**4)*dt)
+#                        # normalize
+#                        dx = np.gradient(x)
+#                        Fdx = (diff*dx)[self.k_below]
+#                        self.F.append(diff/Fdx.sum())
+#                        self.Fnorm.append(Fdx.sum())
+#                        self.t.append(t)
+#                        self.x.append(x)
+#                        self.log.append(math.log(math.sqrt(2.*self.LL)*math.power(t,2.-self.lz2e/2.)))
+#            if verbose:
+#                print("")
+#        elif difftype == 'C':
+#            for id in range(len(Pext.log)):
+#                if id in indices:
+#                    if verbose:
+#                        print('\rcalc F: %d/%d, log = %.2f'%(indices.index(id)+1,len(indices),Pext.log[id]),end="")
+#                    if (id != 0) and (id != len(Pext.log)-1):
+#                        t1 = Pext.t[id-1]
+#                        t2 = Pext.t[id+1]
+#                        sp1 = Pext.param[id-1][:,1]+Pext.param[id-1][:,2]+Pext.param[id-1][:,4]
+#                        sp2 = Pext.param[id+1][:,1]+Pext.param[id+1][:,2]+Pext.param[id+1][:,4]
+#                        t = Pext.t[id]
+#                        log = Pext.log[id]
+#                        x = self.avek*t
+#                        dt = t2 - t1
+#                        diff = (sp2 - sp1)/((t**4)*dt)
+#                        # normalize
+#                        dx = np.gradient(x)
+#                        Fdx = (diff*dx)[self.k_below]
+#                        self.F.append(diff/Fdx.sum())
+#                        self.Fnorm.append(Fdx.sum())
+#                        self.t.append(t)
+#                        self.log.append(log)
+#                        self.x.append(x)
+#            if verbose:
+#                print("")
+#        else:
+#            print("wrong difftype option!")
+#        self.F = np.array(self.F)
+#        self.Fnorm = np.array(self.Fnorm)
+#        self.x = np.array(self.x) # x = k/RH
+#        self.t = np.array(self.t) # time
+#        self.log = np.array(self.log)
 
 
 
@@ -637,29 +1133,25 @@ class inspave:
 
 #   rebin data of F(x) such that bins are homogeneous in log(x)
 #   fixed data points (nbin) within given interval [cmin,cmax*(ms/H)]
-#   assuming input as an inspave class object
 class rebinF:
-    def __init__(self, inspave, nbin, cmin, cmax):
-        self.sizeN = inspave.sizeN
-        self.sizeL = inspave.sizeL
-        self.msa = inspave.msa
-        self.LL = inspave.LL
-        self.t = inspave.t
-        self.log = inspave.log
+    def __init__(self, F, x, t, log, nbin, cmin, cmax, verbose=False):
+        self.t = t
+        self.log = log
         self.xbin = []
         self.inspmbin = []
         self.nmbin = []
         self.xwr = []
         self.xlim = []
-        for id in range(len(inspave.t)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(inspave.t),inspave.log[id]),end="")
-            msoverH = math.exp(inspave.log[id])
-            x = inspave.x[id]
-            inspmtab = inspave.F[id]
+        for id in range(len(t)):
+            if verbose:
+                print('\rrebin: %d/%d, log = %.2f'%(id+1,len(t),log[id]),end="")
+            msoverH = math.exp(log[id])
+            xtab = x[id]
+            inspmtab = F[id]
             xmin = cmin
             xmax = msoverH*cmax
-            x_within_range = ((x > xmin) & (x < xmax))
-            xlim = x[x_within_range]
+            x_within_range = ((xtab > xmin) & (xtab < xmax))
+            xlim = xtab[x_within_range]
             inspmlim = inspmtab[x_within_range]
             # do not rebin if number of data points is less than nbin
             if len(xlim) < nbin:
@@ -731,7 +1223,8 @@ class rebinF:
             self.xwr.append(x_within_range)
             self.xlim.append(xlim)
             # end of id loop
-        print("")
+        if verbose:
+            print("")
         self.xbin = np.array(self.xbin)
         self.inspmbin = np.array(self.inspmbin)
         self.nmbin = np.array(self.nmbin)
@@ -743,13 +1236,13 @@ class rebinF:
 
 
 #   save the data of instantaneous spectra as pickle files
-#   assuming input as an inspave class object
-def saveF(inspave, name='./F'):
-    sdata(inspave.F,name,'y')
-    sdata(inspave.dF,name,'dy')
-    sdata(inspave.x,name,'x')
-    sdata(inspave.log,name,'log')
-    sdata(inspave.Fnorm,name,'Fnorm')
+#   assuming input as an calcF class object
+def saveF(insp, name='./F'):
+    sdata(insp.F,name,'F')
+    sdata(insp.x,name,'x')
+    sdata(insp.log,name,'log')
+    sdata(insp.t,name,'t')
+    sdata(insp.Fnorm,name,'Fnorm')
 
 
 
@@ -759,10 +1252,10 @@ def saveF(inspave, name='./F'):
 #   read the data of instantaneous spectra
 class readF:
     def __init__(self, name='./F'):
-        self.F = rdata(name,'y')
-        self.dF = rdata(name,'dy')
+        self.F = rdata(name,'F')
         self.x = rdata(name,'x')
         self.log = rdata(name,'log')
+        self.t = rdata(name,'t')
         self.Fnorm = rdata(name,'Fnorm')
 
 
@@ -774,7 +1267,7 @@ class readF:
 #   Calculate q
 # ------------------------------------------------------------------------------
 
-# class Setq:
+# class setq:
 #   calculate chi^2 and estimate q for a given time step specified by id
 #   use log bin in k (rebinned)
 #   fixed data points (nbin) within given interval (xmin,xmax)
@@ -787,32 +1280,47 @@ class readF:
 #   xmin            lower limit of the interval used to evaluate q
 #   xmax            upper limit of the interval used to evaluate q
 #   nbin            number of bins (default 30)
+#   typesigma       option to estimate sigma^2 in the denominator of chi^2
+#                        0 : sigma = residuals of different bins
+#                        1 : sigma = residuals/sqrt(n_bin)
+#                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
 # Output:
 #   self.chi2min    minimum value of chi^2
-#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
-#   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
 #   self.mbest      best fit value of m (normalization of the model)
 #   self.sigmaq     "1 sigma" confidence interval of q
-#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
-#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.sigmam     "1 sigma" confidence interval of m
 #   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
 #   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
 #   self.sigma      "sigma" to define confidence interval based on the residuals of different bins
-#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
-#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
-#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
-#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
-#   self.gamma
+#   self.alphaq      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.betaq       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gammaq
+#
+#   self.alpham      Delta chi^2(m) can be reconstructed by using alpha, beta, gamma:
+#   self.betam       Delta chi^2(m) = (alpha*m^2 + 2*beta*m + gamma)/sigma^2 - chi^2_min
+#   self.gammam
 #
 #   self.nmbin      number of modes in each bin (currently not used)
 #   self.xlim       x within the range specified by (xmin,xmax)
 #   self.xwr        flags to identify xlim
 #
-class Setq:
-    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, nbin=30):
+class setq:
+    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, **kwargs):
+        if 'nbin' in kwargs:
+            nbin = kwargs['nbin']
+        else:
+            nbin = 30
+        if 'typesigma' in kwargs:
+            typesigma = kwargs['typesigma']
+        else:
+            typesigma = 1
+        if 'norebin' in kwargs:
+            norebin = kwargs['norebin']
+        else:
+            norebin = False
         Deltachisq = 1. # value of Deltachi^2 to define confidence interval
         x = inspx[id]
         inspmtab = inspy[id]
@@ -830,19 +1338,29 @@ class Setq:
             sigmaq = np.nan
             sigmaqn = np.nan
             sigmaqc = np.nan
+            sigmam = np.nan
             xbin = xlim
             Fbin = inspmlim
             sigma = np.nan
             sigman = np.nan
             sigmac = np.nan
-            alpha = np.nan
-            beta = np.nan
-            gamma = np.nan
+            alphaq = np.nan
+            betaq = np.nan
+            gammaq = np.nan
+            alpham = np.nan
+            betam = np.nan
+            gammam = np.nan
             nmbin = [1 for i in range(len(xlim))]
         else:
             # do not rebin if number of data points is less than nbin
             if len(xlim) < nbin:
                 #print(r' number of data points (%d) is less than nbin (%d)! (log = %.2f)'%(len(xlim),nbin,insplog[id]))
+                xbin = xlim
+                Fbin = inspmlim
+                nmbin = [1 for i in range(len(xlim))]
+                nbin = len(xlim)
+            # do not rebin for norebin option
+            elif norebin==True:
                 xbin = xlim
                 Fbin = inspmlim
                 nmbin = [1 for i in range(len(xlim))]
@@ -912,41 +1430,42 @@ class Setq:
             SL = np.sum(np.log(Fbin))
             SLL = np.sum(np.log(Fbin)**2)
             SlL = np.sum(np.log(xbin)*np.log(Fbin))
-            alpha = Sll*(Su*Sll/(Sl**2)-1)
-            beta = (Sll/Sl)*(Su*SlL/Sl-SL)
-            gamma = SLL - 2.*SL*SlL/Sl + Su*((SlL/Sl)**2)
+            alphaq = Sll - Sl*Sl/Su
+            betaq = SlL - Sl*SL/Su
+            gammaq = SLL - SL*SL/Su
+            alpham = Su - Sl*Sl/Sll
+            betam = SlL*Sl/Sll - SL
+            gammam = SLL - SlL*SlL/Sll
             qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
             mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
             vecone = np.ones(len(xbin))
-            sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))
-            sigmasqn = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/(nbin)
-            sigmasqc = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
+            if typesigma==0:
+                sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))
+            elif typesigma==1:
+                sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/(nbin)
+            elif typesigma==2:
+                sigmasq = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
+            else:
+                print("wrong typesigma option!")
             sigma = math.sqrt(sigmasq)
-            sigman = math.sqrt(sigmasqn)
-            sigmac = math.sqrt(sigmasqc)
             chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
-            chi2minn = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasqn
-            chi2minc = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasqc
-            sigmaq = math.sqrt(beta**2-alpha*(gamma-sigmasq*(chi2min+Deltachisq)))/alpha
-            sigmaqn = math.sqrt(beta**2-alpha*(gamma-sigmasqn*(chi2minn+Deltachisq)))/alpha
-            sigmaqc = math.sqrt(beta**2-alpha*(gamma-sigmasqc*(chi2minc+Deltachisq)))/alpha
+            sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
+            sigmam = math.sqrt(betam**2-alpham*(gammam-sigmasq*(chi2min+Deltachisq)))/alpham
         # end of the case len(xlim) >= 4
         self.chi2min = chi2min
-        self.chi2minn = chi2minn
-        self.chi2minc = chi2minc
         self.qbest = qbest
         self.mbest = mbest
         self.sigmaq = sigmaq
-        self.sigmaqn = sigmaqn
-        self.sigmaqc = sigmaqc
+        self.sigmam = sigmam
         self.xbin = xbin
         self.Fbin = Fbin
         self.sigma = sigma
-        self.sigman = sigman
-        self.sigmac = sigmac
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
+        self.alphaq = alphaq
+        self.betaq = betaq
+        self.gammaq = gammaq
+        self.alpham = alpham
+        self.betam = betam
+        self.gammam = gammam
         self.nmbin = nmbin
         self.xwr = x_within_range
         self.xlim = xlim
@@ -956,7 +1475,7 @@ class Setq:
 
 
 
-# class Scanq:
+# class scanq:
 #   estimate q at every time step
 #   x range is taken as (cxmin,cxmax*(m/H))
 #
@@ -967,86 +1486,101 @@ class Setq:
 #   nbin            number of bins (default 30)
 #   cxmin           lower limit of the interval (default 30)
 #   cxmax           upper limit of the interval specified as cxmax*(m/H) (default 1/6)
+#   typesigma       option to estimate sigma^2 in the denominator of chi^2
+#                        0 : sigma = residuals of different bins
+#                        1 : sigma = residuals/sqrt(n_bin)
+#                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
 # Output:
 #   self.chi2min    minimum value of chi^2
-#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
-#   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
 #   self.mbest      best fit value of m (normalization of the model)
 #   self.sigmaq     "1 sigma" confidence interval of q
-#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
-#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.sigmam     "1 sigma" confidence interval of m
 #   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
 #   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
 #   self.sigma      "sigma" to define confidence interval based on the mean of residuals of different bins
-#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
-#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
-#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
-#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
-#   self.gamma
+#   self.alphaq      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.betaq       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gammaq
+#
+#   self.alpham      Delta chi^2(m) can be reconstructed by using alpha, beta, gamma:
+#   self.betam       Delta chi^2(m) = (alpha*m^2 + 2*beta*m + gamma)/sigma^2 - chi^2_min
+#   self.gammam
 #
 #   self.nmbin      number of modes in each bin (currently not used)
 #   self.log     　　array for log(m/H)
 #
-class Scanq:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmax=1/6.):
+class scanq:
+    def __init__(self, inspx, inspy, insplog, cxmin=50., cxmax=1/4., **kwargs):
+        if 'nbin' in kwargs:
+            nb = kwargs['nbin']
+        else:
+            nb = 30
+        if 'typesigma' in kwargs:
+            types = kwargs['typesigma']
+        else:
+            types = 1
+        if 'norebin' in kwargs:
+            noreb = kwargs['norebin']
+        else:
+            noreb = False
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
         self.chi2min = []
-        self.chi2minn = []
-        self.chi2minc = []
         self.qbest = []
         self.mbest = []
         self.sigmaq = []
-        self.sigmaqn = []
-        self.sigmaqc = []
+        self.sigmam = []
         self.xbin = []
         self.Fbin = []
         self.sigma = []
-        self.sigman = []
-        self.sigmac = []
-        self.alpha = []
-        self.beta = []
-        self.gamma = []
+        self.alphaq = []
+        self.betaq = []
+        self.gammaq = []
+        self.alpham = []
+        self.betam = []
+        self.gammam = []
         self.nmbin = []
         for id in range(len(insplog)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
+            if verbose==True:
+                print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
-            sqt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin)
+            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
             self.chi2min.append(sqt.chi2min)
-            self.chi2minn.append(sqt.chi2minn)
-            self.chi2minc.append(sqt.chi2minc)
             self.qbest.append(sqt.qbest)
             self.mbest.append(sqt.mbest)
             self.sigmaq.append(sqt.sigmaq)
-            self.sigmaqn.append(sqt.sigmaqn)
-            self.sigmaqc.append(sqt.sigmaqc)
+            self.sigmam.append(sqt.sigmam)
             self.xbin.append(sqt.xbin)
             self.Fbin.append(sqt.Fbin)
             self.sigma.append(sqt.sigma)
-            self.sigman.append(sqt.sigman)
-            self.sigmac.append(sqt.sigmac)
-            self.alpha.append(sqt.alpha)
-            self.beta.append(sqt.beta)
-            self.gamma.append(sqt.gamma)
+            self.alphaq.append(sqt.alphaq)
+            self.betaq.append(sqt.betaq)
+            self.gammaq.append(sqt.gammaq)
+            self.alpham.append(sqt.alpham)
+            self.betam.append(sqt.betam)
+            self.gammam.append(sqt.gammam)
             self.nmbin.append(sqt.nmbin)
-        print("")
+        if verbose==True:
+            print("")
         self.chi2min = np.array(self.chi2min)
-        self.chi2minn = np.array(self.chi2minn)
-        self.chi2minc = np.array(self.chi2minc)
         self.qbest = np.array(self.qbest)
         self.mbest = np.array(self.mbest)
         self.sigmaq = np.array(self.sigmaq)
-        self.sigmaqn = np.array(self.sigmaqn)
-        self.sigmaqc = np.array(self.sigmaqc)
+        self.sigmam = np.array(self.sigmam)
         self.sigma = np.array(self.sigma)
-        self.sigman = np.array(self.sigman)
-        self.sigmac = np.array(self.sigmac)
-        self.alpha = np.array(self.alpha)
-        self.beta = np.array(self.beta)
-        self.gamma = np.array(self.gamma)
+        self.alphaq = np.array(self.alphaq)
+        self.betaq = np.array(self.betaq)
+        self.gammaq = np.array(self.gammaq)
+        self.alpham = np.array(self.alpham)
+        self.betam = np.array(self.betam)
+        self.gammam = np.array(self.gammam)
         self.log = insplog
         self.cxmaxopt = cxmax
 
@@ -1054,7 +1588,7 @@ class Scanq:
 
 
 
-# class Scanqopt:
+# class scanqopt:
 #   estimate q at every time step
 #   x range is taken as (cxmin,cxmax*(m/H))
 #   optimize xmax such that the error of q takes the smallest value :
@@ -1070,61 +1604,79 @@ class Scanq:
 #   cxmaxstart      lower limit of cxmax to scan (default 0.15)
 #   cxmaxend        upper limit of cxmax to scan (default 0.5)
 #   cxmaxpoints     number of points to scan over cxmax (default 200)
+#   typesigma       option to estimate sigma^2 in the denominator of chi^2
+#                        0 : sigma = residuals of different bins
+#                        1 : sigma = residuals/sqrt(n_bin)
+#                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
 # Output:
 #   self.chi2min    minimum value of chi^2
-#   self.chi2minn    minimum value of chi^2 (usinf sigman defined below)
-#   self.chi2minc   minimum value of chi^2 (using conservative estimate of sigma based on maximum distance from mean)
 #   self.qbest      best fit value of q
 #   self.mbest      best fit value of m (normalization of the model)
 #   self.sigmaq     "1 sigma" confidence interval of q
-#   self.sigmaqn     "1 sigma" confidence interval of q (using sigman defined below)
-#   self.sigmaqc    "1 sigma" confidence interval of q (using conservative estimate of sigma based on maximum distance from mean)
+#   self.sigmam     "1 sigma" confidence interval of m
 #   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
 #   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
 #   self.sigma      "sigma" to define confidence interval based on the mean of residuals of different bins
-#   self.sigman     sigma = residuals/sqrt(n_bin) This might underestimate the error and depend on n_bin
-#   self.sigmac     conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
 #
-#   self.alpha      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
-#   self.beta       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
-#   self.gamma
+#   self.alphaq      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.betaq       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gammaq
+#
+#   self.alpham      Delta chi^2(m) can be reconstructed by using alpha, beta, gamma:
+#   self.betam       Delta chi^2(m) = (alpha*m^2 + 2*beta*m + gamma)/sigma^2 - chi^2_min
+#   self.gammam
 #
 #   self.nmbin      number of modes in each bin (currently not used)
 #   self.log        array for log(m/H)
 #   self.cxmaxopt   array for optimized values of cxmax
 #
-class Scanqopt:
-    def __init__(self, inspx, inspy, insplog, nbin=30, cxmin=30., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200):
+class scanqopt:
+    def __init__(self, inspx, inspy, insplog, cxmin=50., cxmaxstart=0.15, cxmaxend=0.5, cxmaxpoints=200, **kwargs):
+        if 'nbin' in kwargs:
+            nb = kwargs['nbin']
+        else:
+            nb = 30
+        if 'typesigma' in kwargs:
+            types = kwargs['typesigma']
+        else:
+            types = 1
+        if 'norebin' in kwargs:
+            noreb = kwargs['norebin']
+        else:
+            noreb = False
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
         self.chi2min = []
-        self.chi2minn = []
-        self.chi2minc = []
         self.qbest = []
         self.mbest = []
         self.sigmaq = []
-        self.sigmaqn = []
-        self.sigmaqc = []
+        self.sigmam = []
         self.xbin = []
         self.Fbin = []
         self.sigma = []
-        self.sigman = []
-        self.sigmac = []
-        self.alpha = []
-        self.beta = []
-        self.gamma = []
+        self.alphaq = []
+        self.betaq = []
+        self.gammaq = []
+        self.alpham = []
+        self.betam = []
+        self.gammam = []
         self.nmbin = []
         self.cxmaxopt = []
         for id in range(len(insplog)):
-            print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
+            if verbose==True:
+                print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
-            sqt = Setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin)
+            sqt = setq(inspx,inspy,insplog,id,xmin,cxmaxstart*msoverH,nbin=nb,typesigma=types,norebin=noreb)
             sigmaq = sqt.sigmaq
             copt = cxmaxstart
             for c in np.linspace(cxmaxstart,cxmaxend,cxmaxpoints)[1:]:
                 #print('\rcxmax = %.3f'%c)
                 xmax = c*msoverH
-                sqtt = Setq(inspx,inspy,insplog,id,xmin,xmax,nbin)
+                sqtt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
                 sigmaqt = sqtt.sigmaq
                 if sigmaqt < sigmaq:
                     sqt = sqtt
@@ -1132,38 +1684,35 @@ class Scanqopt:
                     copt = c
             #print("")
             self.chi2min.append(sqt.chi2min)
-            self.chi2minn.append(sqt.chi2minn)
-            self.chi2minc.append(sqt.chi2minc)
             self.qbest.append(sqt.qbest)
             self.mbest.append(sqt.mbest)
             self.sigmaq.append(sqt.sigmaq)
-            self.sigmaqn.append(sqt.sigmaqn)
-            self.sigmaqc.append(sqt.sigmaqc)
+            self.sigmam.append(sqt.sigmam)
             self.xbin.append(sqt.xbin)
             self.Fbin.append(sqt.Fbin)
             self.sigma.append(sqt.sigma)
-            self.sigman.append(sqt.sigman)
-            self.sigmac.append(sqt.sigmac)
-            self.alpha.append(sqt.alpha)
-            self.beta.append(sqt.beta)
-            self.gamma.append(sqt.gamma)
+            self.alphaq.append(sqt.alphaq)
+            self.betaq.append(sqt.betaq)
+            self.gammaq.append(sqt.gammaq)
+            self.alpham.append(sqt.alpham)
+            self.betam.append(sqt.betam)
+            self.gammam.append(sqt.gammam)
             self.nmbin.append(sqt.nmbin)
             self.cxmaxopt.append(copt)
-        print("")
+        if verbose==True:
+            print("")
         self.chi2min = np.array(self.chi2min)
-        self.chi2minn = np.array(self.chi2minn)
-        self.chi2minc = np.array(self.chi2minc)
         self.qbest = np.array(self.qbest)
         self.mbest = np.array(self.mbest)
         self.sigmaq = np.array(self.sigmaq)
-        self.sigmaqn = np.array(self.sigmaqn)
-        self.sigmaqc = np.array(self.sigmaqc)
+        self.sigmam = np.array(self.sigmam)
         self.sigma = np.array(self.sigma)
-        self.sigman = np.array(self.sigman)
-        self.sigmac = np.array(self.sigmac)
-        self.alpha = np.array(self.alpha)
-        self.beta = np.array(self.beta)
-        self.gamma = np.array(self.gamma)
+        self.alphaq = np.array(self.alphaq)
+        self.betaq = np.array(self.betaq)
+        self.gammaq = np.array(self.gammaq)
+        self.alpham = np.array(self.alpham)
+        self.betam = np.array(self.betam)
+        self.gammam = np.array(self.gammam)
         self.log = insplog
         self.cxmaxopt = np.array(self.cxmaxopt)
 
@@ -1172,13 +1721,12 @@ class Scanqopt:
 
 
 #   save the data of q as pickle files
-#   assuming input as an Scanqopt class object
+#   assuming input as an scanqopt class object
 def saveq(scanqopt, name='./qopt'):
     sdata(scanqopt.qbest,name,'q')
     sdata(scanqopt.mbest,name,'m')
     sdata(scanqopt.sigmaq,name,'sigmaq')
-    sdata(scanqopt.sigmaqn,name,'sigmaqn')
-    sdata(scanqopt.sigmaqc,name,'sigmaqc')
+    sdata(scanqopt.sigmam,name,'sigmam')
     sdata(scanqopt.log,name,'log')
     sdata(scanqopt.cxmaxopt,name,'cxmax')
 
@@ -1193,11 +1741,29 @@ class readq:
         self.qbest = rdata(name,'q')
         self.mbest = rdata(name,'m')
         self.sigmaq = rdata(name,'sigmaq')
-        self.sigmaqn = rdata(name,'sigmaqn')
-        self.sigmaqc = rdata(name,'sigmaqc')
+        self.sigmam = rdata(name,'sigmam')
         self.log = rdata(name,'log')
         self.cxmaxopt = rdata(name,'cxmax')
 
+
+
+
+
+#   take ensemble average of q
+#   assuming input as list of scanq class object
+def aveq(qlist):
+    Ntime = len(qlist[0].log)
+    Nreal = len(qlist)
+    q = [0]*(Ntime)
+    qsq = [0]*(Ntime)
+    for ir in range(Nreal):
+        q += qlist[ir].qbest
+        qsq += np.square(qlist[ir].qbest)
+    q = q/Nreal
+    qsq = (qsq - Nreal*q*q)/(Nreal-1)
+    sigmaq = np.sqrt(qsq)
+    log = qlist[0].log
+    return [q,sigmaq,sigmaq/math.sqrt(Nreal),log]
 
 
 
@@ -1251,10 +1817,13 @@ class strevol:
 class strave:
     def __init__(self, strevollist):
         Nreal = len(strevollist) # number of realizations
-        self.sizeN = strevollist[0].sizeN
-        self.sizeL = strevollist[0].sizeL
-        self.msa = strevollist[0].msa
-        self.LL = strevollist[0].LL
+        try:
+            self.sizeN = strevollist[0].sizeN
+            self.sizeL = strevollist[0].sizeL
+            self.msa = strevollist[0].msa
+            self.LL = strevollist[0].LL
+        except:
+            pass
         self.t = strevollist[0].t
         self.log = strevollist[0].log
         xi = [0]*len(strevollist[0].xi)
@@ -1283,16 +1852,14 @@ class strave:
 
 
 #   save the data of string density parameter as pickle files
-#   assuming input as an strave class object
-def savestr(strave, name='./str'):
-    sdata(strave.xi,name,'xi')
-    sdata(strave.xierr,name,'xierr')
-    sdata(strave.dxidl,name,'dxidl')
-    sdata(strave.dxidlerr,name,'dxidlerr')
-    sdata(strave.dxidt,name,'dxidt')
-    sdata(strave.dxidterr,name,'dxidterr')
-    sdata(strave.t,name,'t')
-    sdata(strave.log,name,'log')
+#   assuming input as an strevol class object
+def savestr(stre, name='./str', diff='nodiff'):
+    sdata(stre.xi,name,'xi')
+    sdata(stre.t,name,'t')
+    sdata(stre.log,name,'log')
+    if diff == 'diff':
+        sdata(stre.dxidl,name,'dxidl')
+        sdata(stre.dxidt,name,'dxidt')
 
 
 
@@ -1301,18 +1868,65 @@ def savestr(strave, name='./str'):
 
 #   read the data of string density parameter
 class readstr:
-    def __init__(self, name='./str'):
+    def __init__(self, name='./str', diff='nodiff'):
         self.xi = rdata(name,'xi')
-        self.xierr = rdata(name,'xierr')
-        self.dxidl = rdata(name,'dxidl')
-        self.dxidlerr = rdata(name,'dxidlerr')
-        self.dxidt = rdata(name,'dxidt')
-        self.dxidterr = rdata(name,'dxidterr')
         self.t = rdata(name,'t')
         self.log = rdata(name,'log')
+        if diff == 'diff':
+            self.dxidl = rdata(name,'dxidl')
+            self.dxidt = rdata(name,'dxidt')
 
 
 
+
+
+# ------------------------------------------------------------------------------
+#   Energy
+# ------------------------------------------------------------------------------
+
+class energy:
+    def __init__(self, mfiles, rmask='0'):
+        if rmask=='0':
+            self.t = pa.gml(mfiles,'ct')
+            self.log = pa.gml(mfiles,'logi')
+            self.eA = pa.gml(mfiles,'eA')
+            self.eAK = pa.gml(mfiles,'eAK')
+            self.eAG = pa.gml(mfiles,'eAG')
+            self.eS = pa.gml(mfiles,'eS')
+            self.eSK = pa.gml(mfiles,'eSK')
+            self.eSG = pa.gml(mfiles,'eSG')
+            self.eSV = pa.gml(mfiles,'eSV')
+            self.avrho = pa.gml(mfiles,'avrho')
+            # physical energy densities (rho_a,rho_s)
+            self.rA = 2.*self.eAK/self.t**2/self.avrho**2
+            self.rS = self.eS/self.t**2
+        else:
+            Nt = pa.gm(mfiles[0],'sizeN')**3
+            mask = pa.gml(mfiles,'nsp?')
+            self.t = pa.gml(mfiles[mask],'ct')
+            self.log = pa.gml(mfiles[mask],'logi')
+            self.eA = pa.gml(mfiles[mask],'eA')
+            self.eAK = pa.gml(mfiles[mask],'eAK')
+            self.eAG = pa.gml(mfiles[mask],'eAG')
+            self.eS = pa.gml(mfiles[mask],'eS')
+            self.eSK = pa.gml(mfiles[mask],'eSK')
+            self.eSG = pa.gml(mfiles[mask],'eSG')
+            self.eSV = pa.gml(mfiles[mask],'eSV')
+            self.avrho = pa.gml(mfiles[mask],'avrho')
+            self.eAM = pa.gml(mfiles[mask],'eAmask'+rmask)
+            self.eAKM = pa.gml(mfiles[mask],'eAKmask'+rmask)
+            self.eAGM = pa.gml(mfiles[mask],'eAGmask'+rmask)
+            self.eSM = pa.gml(mfiles[mask],'eSmask'+rmask)
+            self.eSKM = pa.gml(mfiles[mask],'eSKmask'+rmask)
+            self.eSGM = pa.gml(mfiles[mask],'eSGmask'+rmask)
+            self.eSVM = pa.gml(mfiles[mask],'eSVmask'+rmask)
+            self.avrhoM = pa.gml(mfiles[mask],'eavrhoMmask'+rmask)
+            self.nmp = pa.gml(mfiles[mask],'enmpmask'+rmask)
+            self.avrhoout = (self.avrho*Nt-self.avrhoM*self.nmp)/(Nt-self.nmp)
+            # physical energy densities (rho_a,rho_s,rho_str)
+            self.rA = 2.*(self.eAK*Nt-self.eAKM*self.nmp)/(Nt-self.nmp)/self.t**2/self.avrhoout**2
+            self.rS = (self.eS*Nt-self.eSM*self.nmp)/(Nt-self.nmp)/self.t**2
+            self.rstr = (self.eA+self.eS)/self.t**2 - self.rA - self.rS
 
 
 
@@ -1435,6 +2049,8 @@ class nspevol:
         self.nspcor = np.array(self.nspcor)
 
 
+
+
 class nspevol2:
     def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
@@ -1449,18 +2065,18 @@ class nspevol2:
         self.logtab = []
         self.nsp = []
         self.nspcor = [] # corrected spectrum
-        for f in mfiles:
-            if pa.gm(f,'nsp?'):
-                self.ttab.append(pa.gm(f,'time'))
-                logi = pa.gm(f,'logi')
-                self.logtab.append(logi)
-                s0 = pa.gm(f,'nspK_'+spmasklabel)
-                self.nsp.append(s0)
-                if cor == 'correction':
-                    m = pa.gm(f,'mspM_'+spmasklabel)
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                    self.nspcor.append(s1)
-                print('\rbuilt up to log = %.2f'%logi,end="")
+        mfnsp = [mf for mf in mfiles if pa.gm(mf,'nsp?')]
+        for f in mfnsp:
+            self.ttab.append(pa.gm(f,'time'))
+            logi = pa.gm(f,'logi')
+            self.logtab.append(logi)
+            s0 = pa.gm(f,'nspK_'+spmasklabel)
+            self.nsp.append(s0)
+            if cor == 'correction':
+                m = pa.gm(f,'mspM_'+spmasklabel)
+                s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                self.nspcor.append(s1)
+            print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
         print("")
         self.ttab = np.array(self.ttab)
         self.logtab = np.array(self.logtab)
@@ -1472,11 +2088,10 @@ class nspevol2:
 
 
 
-#   builds the (masked) axion energy spectrum with the correction matrix and outputs the time evolution
-#   NOTE: The energy density is evaluated just by muptiplying the kinetic energy by 2.
+#   builds the (masked) axion energy spectrum (with the correction matrix) and outputs the time evolution
 
 class espevol:
-    def __init__(self, mfiles, spmask='Red', rmask='2.00', cor='nocorrection'):
+    def __init__(self, mfiles, spmasklabel='espK_0', cor='nocorrection'):
         self.sizeN = pa.gm(mfiles[0],'sizeN')
         self.sizeL = pa.gm(mfiles[0],'L')
         self.msa = pa.gm(mfiles[0],'msa')
@@ -1488,93 +2103,27 @@ class espevol:
         self.ttab = []
         self.logtab = []
         self.esp = []
-        self.espcor = [] # corrected spectrum
-        for f in mfiles:
-            if pa.gm(f,'nsp?'):
-                t = pa.gm(f,'time')
-                self.ttab.append(t)
-                if spmask == 'nomask':
-                    e0 = (self.avek**2)*pa.gm(f,'nspK')/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                elif spmask == 'Red':
-                    if rmask == 'nolabel':
-                        s0 = pa.gm(f,'nspK_Red')
-                    else:
-                        s0 = pa.gm(f,'nspK_Red'+'_'+rmask)
-                    e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                    if cor == 'correction':
-                        if rmask == 'nolabel':
-                            m = pa.gm(f,'mspM_Red')
-                        else:
-                            m = pa.gm(f,'mspM_Red'+'_'+rmask)
-                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                        self.espcor.append(e1)
-                elif spmask == 'Vi':
-                    s0 = pa.gm(f,'nspK_Vi')
-                    e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                    if cor == 'correction':
-                        m = pa.gm(f,'mspM_Vi')
-                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                        self.espcor.append(e1)
-                elif spmask == 'Vi2':
-                    s0 = pa.gm(f,'nspK_Vi2')
-                    e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                    self.esp.append(e0)
-                    if cor == 'correction':
-                        m = pa.gm(f,'mspM_Vi2')
-                        s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                        e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                        self.espcor.append(e1)
-                else:
-                    print('Wrong option for spmask!')
-                logi = pa.gm(f,'logi')
-                self.logtab.append(logi)
-                print('\rbuilt up to log = %.2f'%logi,end="")
+        self.espc = [] # corrected spectrum
+        mfnsp = [mf for mf in mfiles if pa.gm(mf,'espK?')]
+        for f in mfnsp:
+            self.ttab.append(pa.gm(f,'time'))
+            logi = pa.gm(f,'logi')
+            self.logtab.append(logi)
+            s0 = pa.gm(f,spmasklabel)
+            self.esp.append(s0)
+            if cor == 'correction':
+                if spmasklabel[0:4] == 'espK':
+                    m = pa.gm(f,'mspM_'+spmasklabel[4:-1])
+                elif spmasklabel[0:5] == 'espCK':
+                    m = pa.gm(f,'mspM_'+spmasklabel[5:-1])
+                s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                self.espc.append(s1)
+            print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
         print("")
         self.ttab = np.array(self.ttab)
         self.logtab = np.array(self.logtab)
         self.esp = np.array(self.esp)
-        self.espcor = np.array(self.espcor)
-
-
-class espevol2:
-    def __init__(self, mfiles, spmasklabel='Red_2.00', cor='nocorrection'):
-        self.sizeN = pa.gm(mfiles[0],'sizeN')
-        self.sizeL = pa.gm(mfiles[0],'L')
-        self.msa = pa.gm(mfiles[0],'msa')
-        self.LL = pa.gm(mfiles[0],'lambda0')
-        self.nm = pa.gm(mfiles[0],'nmodelist')
-        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
-        # identify modes less than N/2
-        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
-        self.ttab = []
-        self.logtab = []
-        self.esp = []
-        self.espcor = [] # corrected spectrum
-        for f in mfiles:
-            if pa.gm(f,'nsp?'):
-                t = pa.gm(f,'time')
-                logi = pa.gm(f,'logi')
-                self.ttab.append(t)
-                self.logtab.append(logi)
-                s0 = pa.gm(f,'nspK_'+spmasklabel)
-                e0 = (self.avek**2)*s0/(t*(math.pi**2)*self.nm)
-                self.esp.append(e0)
-                if cor == 'correction':
-                    m = pa.gm(f,'mspM_'+spmasklabel)
-                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
-                    e1 = (self.avek**2)*s1/(t*(math.pi**2)*self.nm)
-                    self.espcor.append(e1)
-                print('\rbuilt up to log = %.2f'%logi,end="")
-        print("")
-        self.ttab = np.array(self.ttab)
-        self.logtab = np.array(self.logtab)
-        self.esp = np.array(self.esp)
-        self.espcor = np.array(self.espcor)
+        self.espc = np.array(self.espc)
 
 
 
@@ -1634,35 +2183,228 @@ class espave:
 
 
 #   save the data of axion energy spectra as pickle files
-#   assuming input as an espave class object
-def saveesp(espave, name='./esp'):
-    sdata(espave.esp,name,'e')
-    sdata(espave.desp,name,'de')
-    sdata(espave.espcor,name,'ec')
-    sdata(espave.despcor,name,'dec')
-    sdata(espave.t,name,'t')
-    sdata(espave.log,name,'log')
-    sdata(espave.nm,name,'nm')
-    sdata(espave.avek,name,'k')
-    sdata(espave.k_below,name,'kb')
+#   assuming input as an espevol class object
+def saveesp(espe, name='./esp', cor='nocorrection'):
+    sdata(espe.esp,name,'esp')
+    if cor == 'correction':
+        sdata(espe.espc,name,'espc')
+    sdata(espe.nm,name,'nm')
+    sdata(espe.avek,name,'k')
+    sdata(espe.k_below,name,'k_below')
+    sdata(espe.ttab,name,'t')
+    sdata(espe.logtab,name,'log')
 
-
-
-
-
-
-#   read the data of axion energy spectra
-class readesp:
-    def __init__(self, name='./esp'):
-        self.esp = rdata(name,'e')
-        self.desp = rdata(name,'de')
-        self.espcor = rdata(name,'ec')
-        self.despcor = rdata(name,'dec')
+        
+        
+        
+        
+        
+#   read the data of axion energy spectra and construct P   
+class readP:
+    def __init__(self, name, cor='nocorrection'):
+        self.nm = rdata(name,'nm')
+        self.k = rdata(name,'k')
+        self.k_below = rdata(name,'k_below')
         self.t = rdata(name,'t')
         self.log = rdata(name,'log')
+        self.esp = rdata(name,'esp')
+        if cor == 'correction':
+            self.espc = rdata(name,'espc')
+        self.P = []
+        self.Pc = []
+        for id in np.arange(len(self.log)):
+            P = (self.k**3)*self.esp[id]/((math.pi**2)*self.nm)
+            self.P.append(P)
+            if cor == 'correction':
+                Pc = (self.k**3)*self.espc[id]/((math.pi**2)*self.nm)
+                self.Pc.append(Pc)
+        self.P = np.array(self.P)
+        self.Pc = np.array(self.Pc)
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
+#   Extrapolation to rmask -> 0
+# ------------------------------------------------------------------------------
+
+
+
+
+#   fitting function
+def frmask(r, a0, a1, a2, a3, a4, a5):
+    return np.log(a0/(1+r**6) + a1 +  a2/np.sqrt(1+a3*r**2) + a4*np.sinc(a5*r))
+
+
+
+
+#   analytical fit of the axion kinetic spectrum as a function of rmask
+class Pext:
+    def __init__(self, mfiles, rmasktable, verbose=True, rcrit=0, cor='correction', logstart=4.):
+        self.sizeN = pa.gm(mfiles[0],'Size')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda0')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        # identify modes less than N/2
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.lz2e = pa.gm(mfiles[0],'lz2e')
+
+        self.rmasktable = rmasktable
+
+        # create lists of the evolution of axion number spectrum (kinetic part)
+        # shape of P array: [log,rmasklabel,k]
+        mfnsp = mfiles[pa.gml(mfiles,'nsp?')]
+        ttab = []
+        logtab = []
+        Parr = []
+        istart = np.abs(pa.gml(mfiles,'logi') - logstart).argmin()
+        if verbose:
+            print('creating data lists:')
+        for meas in mfnsp:
+            if np.where(mfiles==meas) >= istart:
+                t = pa.gm(meas,'time')
+                log = pa.gm(meas,'logi')
+                Psubarr = []
+                if verbose:
+                    print('log = %.2f'%log)
+                for rm in rmasktable:
+                    if verbose:
+                        print('\rrmask = '+rm,end="")
+                    if rm == '0':
+                        binK = pa.gm(meas,'nspK_'+rm)
+                    else:
+                        s0 = pa.gm(meas,'nspK_Red_'+rm)
+                        if cor == 'correction':
+                            m = pa.gm(meas,'mspM_Red_'+rm)
+                            binK = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                        else:
+                            binK = s0
+                    # P = k^3 N(k)/(2 pi^2) = R^4 drho_a/dk
+                    P = (self.avek**2)*binK/((math.pi**2)*self.nm)
+                    Psubarr.append(P)
+                if verbose:
+                    print("")
+                ttab.append(t)
+                logtab.append(log)
+                Parr.append(np.array(Psubarr))
+        self.t = np.array(ttab)
+        self.log = np.array(logtab)
+        self.Parr = Parr
+
+        self.rmasklist = []
+        for rm in rmasktable:
+            self.rmasklist.append(float(rm))
+        self.rmasklist = np.array(self.rmasklist)
+
+        # fitting
+        msR = self.msa*self.sizeN/self.sizeL
+        idrmask_fit = np.where(self.rmasklist >= rcrit*self.msa)
+        self.param = []
+        if verbose:
+            print('fitting the data:')
+        for il in np.arange(len(self.log)):
+            print('log = %.2f'%self.log[il])
+            parambuf = []
+            for ik in np.arange(len(self.avek)):
+                if verbose:
+                    print('\rk = %.2f, %d/%d'%(self.avek[ik],ik+1,len(self.avek)),end="")
+                xdata = self.rmasklist[idrmask_fit[0]]/self.msa
+                ydata = np.log(self.Parr[il][idrmask_fit[0],ik])
+                uosc = self.msa*self.avek[ik]/msR
+                pinit=[1,1,1,0.15,1e-2,0.62*uosc]
+                pbounds=([0,0,0,0.01,0,0.5*uosc],[np.inf,np.inf,np.inf,0.2,np.inf,0.7*uosc])
+                try:
+                    popt, pcov = curve_fit(frmask, xdata, ydata, p0=pinit, maxfev = 20000, bounds=pbounds)
+                except:
+                    popt = [np.nan]*6
+                    pcov = [np.nan]*6
+                parambuf.append(popt)
+            if verbose:
+                print("")
+            self.param.append(np.array(parambuf))
+
+    def fs(self,r,ik,il):
+        return np.exp(frmask(r,self.param[il][ik,0],0,0,0,0,0))
+
+    def fk(self,r,ik,il):
+        return np.exp(frmask(r,0,self.param[il][ik,1],0,0,0,0))
+
+    def fw(self,r,ik,il):
+        return np.exp(frmask(r,0,0,self.param[il][ik,2],self.param[il][ik,3],0,0))
+
+    def fsinc(self,r,ik,il):
+        return np.exp(frmask(r,0,0,0,0,self.param[il][ik,4],self.param[il][ik,5]))
+
+    def xdata(self):
+        return self.rmasklist/self.msa
+
+    def ydata(self,ik,il):
+        return self.Parr[il][:,ik]
+
+
+
+
+#   save the data of P[rmask] as pickle files
+#   assuming input as an Pext class object
+def savePext(Pext, name='./Pext'):
+    sdata(Pext.sizeN,name,'sizeN')
+    sdata(Pext.sizeL,name,'sizeL')
+    sdata(Pext.msa,name,'msa')
+    sdata(Pext.LL,name,'LL')
+    sdata(Pext.nm,name,'nm')
+    sdata(Pext.avek,name,'avek')
+    sdata(Pext.k_below,name,'k_below')
+    sdata(Pext.lz2e,name,'lz2e')
+    sdata(Pext.rmasktable,name,'rmasktable')
+    sdata(Pext.t,name,'t')
+    sdata(Pext.log,name,'log')
+    sdata(Pext.Parr,name,'Parr')
+    sdata(Pext.rmasklist,name,'rmasklist')
+    sdata(Pext.param,name,'param')
+
+
+
+
+#   read the data of P[rmask]
+class readPext:
+    def __init__(self, name='./Pext'):
+        self.sizeN = rdata(name,'sizeN')
+        self.sizeL = rdata(name,'sizeL')
+        self.msa = rdata(name,'msa')
+        self.LL = rdata(name,'LL')
         self.nm = rdata(name,'nm')
-        self.avek = rdata(name,'k')
-        self.k_below = rdata(name,'kb')
+        self.avek = rdata(name,'avek')
+        self.k_below = rdata(name,'k_below')
+        self.lz2e = rdata(name,'lz2e')
+        self.rmasktable = rdata(name,'rmasktable')
+        self.t = rdata(name,'t')
+        self.log = rdata(name,'log')
+        self.Parr = rdata(name,'Parr')
+        self.rmasklist = rdata(name,'rmasklist')
+        self.param = rdata(name,'param')
+
+    def fs(self,r,ik,il):
+        return np.exp(frmask(r,self.param[il][ik,0],0,0,0,0,0))
+
+    def fk(self,r,ik,il):
+        return np.exp(frmask(r,0,self.param[il][ik,1],0,0,0,0))
+
+    def fw(self,r,ik,il):
+        return np.exp(frmask(r,0,0,self.param[il][ik,2],self.param[il][ik,3],0,0))
+
+    def fsinc(self,r,ik,il):
+        return np.exp(frmask(r,0,0,0,0,self.param[il][ik,4],self.param[il][ik,5]))
+
+    def xdata(self):
+        return self.rmasklist/self.msa
+
+    def ydata(self,ik,il):
+        return self.Parr[il][:,ik]
+
 
 
 
