@@ -400,7 +400,7 @@
 		os << 0 << ' ' << boxarrays[0].size() << ' ' << *(faxion)->zV() << '\n';
 		os << 0 << '\n';
 
-		double cellsize[3];
+		Real cellsize[3];
 		dx = faxion->BckGnd()->PhysSize()/gridp/h0;
 		for (n = 0; n < BL_SPACEDIM; n++)
 		{
@@ -416,7 +416,7 @@
 		// std::cout << cellsize[0] << std::endl;
 		for (i = 0; i < boxarrays[0].size(); ++i)
 		{
-			double problo[] = {0,0,0};
+			Real problo[] = {0,0,0};
 			// std::cout << boxarrays[0][i] << std::endl;
 			RealBox gridloc = RealBox(boxarrays[0][i], cellsize, problo);
 			for (n = 0; n < BL_SPACEDIM; n++)
