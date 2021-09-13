@@ -281,7 +281,7 @@ class calcF:
         if usedata:
             fitp = fitpin
         else:
-            fitp = fitP0(P,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi)
+            fitp = fitP(P,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi)
         Farr = []
         xarr = []
         Farr_aux = []
