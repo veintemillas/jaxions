@@ -2116,7 +2116,11 @@ class espevol:
                     m = pa.gm(f,'mspM_'+spmasklabel[5:])
                 elif spmasklabel[0:5] == 'espCK':
                     m = pa.gm(f,'mspM_'+spmasklabel[6:])
-                s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                try:
+                    s1 = (self.sizeL**3)*np.dot(inv(m),s0/self.nm)
+                except:
+                    # skip the evaluation of s1 if m becomes singular
+                    s1 = [np.nan]*len(s0)
                 self.espc.append(s1)
             print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
         print("")
