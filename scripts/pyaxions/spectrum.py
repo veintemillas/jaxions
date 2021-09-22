@@ -305,7 +305,7 @@ class calcF:
                     # subtract linear trend
                     a = (res[-1]-res[0])/(xx[-1]-xx[0])
                     b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
-                    res = res - a*xx+b
+                    res = res - a*xx-b
                     # DST
                     fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
                     Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
