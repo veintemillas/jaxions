@@ -89,6 +89,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	for (int ii=0; ii<irmask; ii++)
 		LogMsg(VERB_PARANOID,    "[Meas ...] rmask #%d %.2f ",ii,rmasktab[ii]);
 	nRunType nruntype = info.nrt;
+	
+	bool onlymaskenergy = info.maskenergyonly;
 
 	/* This is a change with respect to previous behaviour
 	   Changes the definition of mask to be in units of ms^-1 (saxion)
@@ -629,6 +631,11 @@ writePMapHdf5s (axiona, LAB);
 												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
 									trackFree(eRes);
 								}
+						}
+						
+						if((maskara[i] == SPMASK_REDO) && onlymaskenergy) {
+							LogMsg(VERB_NORMAL,"[Meas %d] Spectrum %s rmask %f skipped",indexa,masklab[i].c_str(),rmasktab[ii]);
+							continue; // skip spectra in Red mode when onlymaskenergy is true
 						}
 
 						/* For spectra we have two options:
