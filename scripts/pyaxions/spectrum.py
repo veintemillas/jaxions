@@ -354,3 +354,60 @@ class calcF:
         self.t = tm
         self.log = logm
         
+
+# ------------------------------------------------------------------------------
+#   energy radiation rate
+# ------------------------------------------------------------------------------
+
+def calcGamma(energy, t, log, **kwargs):
+    if 'p' in kwargs:
+        p = kwargs['p']
+    else:
+        p = 2
+    if 'logstart' in kwargs:
+        logstart = kwargs['logstart']
+    else:
+        logstart = 4.
+    if 'sigma' in kwargs:
+        sigma = kwargs['sigma']
+    else:
+        sigma = 0.25
+    if p not in [2,3,4,5]:
+        print("order of polynomial (p) not supported")
+        return None
+
+    li = np.abs(log - logstart).argmin()
+    enem = energy[li:]
+    tm = t[li:]
+    
+    freq = np.pi*np.linspace(1,enem.size,enem.size)/(tm[-1]-tm[0])
+    freqN = np.pi*enem.size/(tm[-1]-tm[0])
+    
+    if p==2:
+        param, paramv = curve_fit(f2a, np.log(tm), np.log(enem*(tm**4)))
+    elif p==3:
+        param, paramv = curve_fit(f3a, np.log(tm), np.log(enem*(tm**4)))
+    elif p==4:
+        param, paramv = curve_fit(f4a, np.log(tm), np.log(enem*(tm**4)))
+    elif p==5:
+        param, paramv = curve_fit(f5a, np.log(tm), np.log(enem*(tm**4)))
+        
+    res = enem*(tm**4) - np.exp(ftrenda(np.log(tm),p,*param))
+    
+    # subtract linear trend
+    a = (res[-1]-res[0])/(tm[-1]-tm[0])
+    b = (res[0]*tm[-1]-res[-1]*tm[0])/(tm[-1]-tm[0])
+    res = res - a*tm - b
+    
+    # DST
+    dst = fftpack.dst(res,norm='ortho',type=1)
+    dst_filtered = dst*np.exp(-(freq/(freqN*sigma))**2/2)
+    res_filtered_dst = fftpack.idst(dst_filtered,norm='ortho',type=1)
+    
+    # This is Gamma times R^5
+    gamma = np.exp(ftrenda(np.log(tm),p,*param))*dftrenda(np.log(tm),p,*param)/tm + a + np.gradient(res_filtered_dst)/np.gradient(tm)
+    
+    # Just a finite difference, for comparison
+    gamma_diff = np.gradient(enem*(tm**4))/np.gradient(tm)
+    
+    return gamma/(tm**5), gamma_diff/(tm**5), tm
