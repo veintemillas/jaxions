@@ -167,6 +167,8 @@
 
 			// std::cout << ng[0] << " " << ng[1] << " " << ng[2] << std::endl;
 
+      LogMsg(VERB_NORMAL,"[ONYXdgd] Output phi, phi' NOT CONFORMAL FIELDS");
+
 			//write data to mf
 			// for(MFIter mfi(mfs); mfi.isValid(); ++mfi) {
       for(MFIter mfi(*(mfs[blevel])); mfi.isValid(); ++mfi) {
@@ -175,6 +177,14 @@
 			  const int  *fab_lo = box.loVect();
 			  const int  *fab_hi = box.hiVect();
 
+
+        /* Here I have the choice of outputting conformal or regular field
+        jaxions stores conformal field
+        Phi = R phi
+        Phi'= R' phi + R phi'
+        so
+        phi = Phi/R
+        phi'= Phi'/R - phi (R'/R) */
         if (faxion->Precision() == FIELD_SINGLE)
         {
           #pragma omp parallel for default(shared)
@@ -187,11 +197,19 @@
           size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
 
           /* cm_re, cm_im cv_re, cv_im */
-          // LogOut("g ~ %d %d %d -> %d %f\n",k,j,i,fidx,static_cast<float*>(faxion->mStart())[fidx*2]);
-          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2];
-          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1];
-          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2];
-          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1];
+          // myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2];
+          // myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1];
+          // myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2];
+          // myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1];
+
+          /* m_re, m_im v_re, v_im */
+          double RRR = *faxion->RV();
+          double Hc  = faxion->BckGnd()->Rp();
+          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
+          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
+          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
+          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1]/RRR - myFab.dataPtr(1)[idx]*Hc;
+
           }}}
         }
         else
@@ -206,10 +224,19 @@
           size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
 
           /* cm_re, cm_im cv_re, cv_im */
-          myFab.dataPtr(0)[idx] = static_cast<double*>(faxion->mStart())[fidx*2];
-          myFab.dataPtr(1)[idx] = static_cast<double*>(faxion->mStart())[fidx*2+1];
-          myFab.dataPtr(2)[idx] = static_cast<double*>(faxion->vStart())[fidx*2];
-          myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1];
+          // myFab.dataPtr(0)[idx] = static_cast<double*>(faxion->mStart())[fidx*2];
+          // myFab.dataPtr(1)[idx] = static_cast<double*>(faxion->mStart())[fidx*2+1];
+          // myFab.dataPtr(2)[idx] = static_cast<double*>(faxion->vStart())[fidx*2];
+          // myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1];
+
+          /* m_re, m_im v_re, v_im */
+          double RRR = *faxion->RV();
+          double Hc  = faxion->BckGnd()->Rp();
+          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
+          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
+          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
+          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1]/RRR - myFab.dataPtr(1)[idx]*Hc;
+
           }}}
         }
 
