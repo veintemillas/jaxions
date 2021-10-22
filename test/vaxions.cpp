@@ -367,7 +367,7 @@ int	main (int argc, char *argv[])
 						LogOut(" shift = %f \n", axion->Saskia());
 
 						double shiftz = axion->Saskia()*(*axion->RV());
-						cmplxToTheta (axion, shiftz);
+						cmplxToTheta (axion, shiftz, aMod);
 						// NAXIONTEMP
 
 						// Measurement after switching to theta
