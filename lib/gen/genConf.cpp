@@ -1129,7 +1129,7 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 		m2 = max (lambda * 2 * R^2 (1-T2/3), 0) */
 		double T2   = ic.kcr*ic.kcr;
 		double R2   = (*axionField->RV())*(*axionField->RV());
-		double mS2  = axionField->LambdaP()*( (T2 > 3*R2) ? R2*(T2/3- 1) : 2*R2*(1 - T2/3));
+		double mS2  = axionField->LambdaP()*( (T2 > 3) ? R2*(T2/3- 1) : 2*R2*(1 - T2/3));
 		LogMsg(VERB_NORMAL,"[GEN] lambda %e", axionField->LambdaP());
 		LogMsg(VERB_NORMAL,"[GEN] T (kcr) %e", ic.kcr);
 		LogMsg(VERB_NORMAL,"[GEN] k0 (2pi/L) %e ", 6.283185307179586/axionField->BckGnd()->PhysSize());
