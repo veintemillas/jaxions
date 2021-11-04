@@ -380,19 +380,25 @@ def calcGamma(energy, t, log, **kwargs):
     enem = energy[li:]
     tm = t[li:]
     
+    if 'z' in kwargs:
+        z = kwargs['z']
+        zm = z[li:]
+    else:
+        zm = np.full(len(tm),4.)
+
     freq = np.pi*np.linspace(1,enem.size,enem.size)/(tm[-1]-tm[0])
     freqN = np.pi*enem.size/(tm[-1]-tm[0])
     
     if p==2:
-        param, paramv = curve_fit(f2a, np.log(tm), np.log(enem*(tm**4)))
+        param, paramv = curve_fit(f2a, np.log(tm), np.log(enem*(tm**zm)))
     elif p==3:
-        param, paramv = curve_fit(f3a, np.log(tm), np.log(enem*(tm**4)))
+        param, paramv = curve_fit(f3a, np.log(tm), np.log(enem*(tm**zm)))
     elif p==4:
-        param, paramv = curve_fit(f4a, np.log(tm), np.log(enem*(tm**4)))
+        param, paramv = curve_fit(f4a, np.log(tm), np.log(enem*(tm**zm)))
     elif p==5:
-        param, paramv = curve_fit(f5a, np.log(tm), np.log(enem*(tm**4)))
+        param, paramv = curve_fit(f5a, np.log(tm), np.log(enem*(tm**zm)))
         
-    res = enem*(tm**4) - np.exp(ftrenda(np.log(tm),p,*param))
+    res = enem*(tm**zm) - np.exp(ftrenda(np.log(tm),p,*param))
     
     # subtract linear trend
     a = (res[-1]-res[0])/(tm[-1]-tm[0])
@@ -404,10 +410,10 @@ def calcGamma(energy, t, log, **kwargs):
     dst_filtered = dst*np.exp(-(freq/(freqN*sigma))**2/2)
     res_filtered_dst = fftpack.idst(dst_filtered,norm='ortho',type=1)
     
-    # This is Gamma times R^5
-    gamma = np.exp(ftrenda(np.log(tm),p,*param))*dftrenda(np.log(tm),p,*param)/tm + a + np.gradient(res_filtered_dst)/np.gradient(tm)
+    # This is Gamma/(f_a^2 H^3)
+    gamma = (tm**(5-zm))*(np.exp(ftrenda(np.log(tm),p,*param))*dftrenda(np.log(tm),p,*param)/tm + a + np.gradient(res_filtered_dst)/np.gradient(tm))
     
     # Just a finite difference, for comparison
-    gamma_diff = np.gradient(enem*(tm**4))/np.gradient(tm)
+    gamma_diff = (tm**(5-zm))*(np.gradient(enem*(tm**zm))/np.gradient(tm))
     
-    return gamma/(tm**5), gamma_diff/(tm**5), tm
+    return gamma, gamma_diff, tm
