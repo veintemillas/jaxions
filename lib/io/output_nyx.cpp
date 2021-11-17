@@ -185,7 +185,12 @@
         so
         phi = Phi/R
         phi'= Phi'/R - phi (R'/R) */
-        if (faxion->Precision() == FIELD_SINGLE)
+
+        double RRR = *faxion->RV();
+        double ct  = *faxion->zV();
+        double Hc  = faxion->BckGnd()->Rp(ct);
+        
+	if (faxion->Precision() == FIELD_SINGLE)
         {
           #pragma omp parallel for default(shared)
 			    for (int k = fab_lo[2]; k <= fab_hi[2]; k++) {
@@ -203,8 +208,6 @@
           // myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1];
 
           /* m_re, m_im v_re, v_im */
-          double RRR = *faxion->RV();
-          double Hc  = faxion->BckGnd()->Rp();
           myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
           myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
           myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
@@ -230,8 +233,6 @@
           // myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1];
 
           /* m_re, m_im v_re, v_im */
-          double RRR = *faxion->RV();
-          double Hc  = faxion->BckGnd()->Rp();
           myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
           myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
           myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
