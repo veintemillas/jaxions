@@ -167,6 +167,8 @@
 
 			// std::cout << ng[0] << " " << ng[1] << " " << ng[2] << std::endl;
 
+      LogMsg(VERB_NORMAL,"[ONYXdgd] Output phi, phi' NOT CONFORMAL FIELDS");
+
 			//write data to mf
 			// for(MFIter mfi(mfs); mfi.isValid(); ++mfi) {
       for(MFIter mfi(*(mfs[blevel])); mfi.isValid(); ++mfi) {
@@ -175,7 +177,20 @@
 			  const int  *fab_lo = box.loVect();
 			  const int  *fab_hi = box.hiVect();
 
-        if (faxion->Precision() == FIELD_SINGLE)
+
+        /* Here I have the choice of outputting conformal or regular field
+        jaxions stores conformal field
+        Phi = R phi
+        Phi'= R' phi + R phi'
+        so
+        phi = Phi/R
+        phi'= Phi'/R - phi (R'/R) */
+
+        double RRR = *faxion->RV();
+        double ct  = *faxion->zV();
+        double Hc  = faxion->BckGnd()->Rp(ct);
+        
+	if (faxion->Precision() == FIELD_SINGLE)
         {
           #pragma omp parallel for default(shared)
 			    for (int k = fab_lo[2]; k <= fab_hi[2]; k++) {
@@ -187,11 +202,17 @@
           size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
 
           /* cm_re, cm_im cv_re, cv_im */
-          // LogOut("g ~ %d %d %d -> %d %f\n",k,j,i,fidx,static_cast<float*>(faxion->mStart())[fidx*2]);
-          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2];
-          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1];
-          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2];
-          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1];
+          // myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2];
+          // myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1];
+          // myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2];
+          // myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1];
+
+          /* m_re, m_im v_re, v_im */
+          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
+          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
+          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
+          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1]/RRR - myFab.dataPtr(1)[idx]*Hc;
+
           }}}
         }
         else
@@ -206,10 +227,17 @@
           size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
 
           /* cm_re, cm_im cv_re, cv_im */
-          myFab.dataPtr(0)[idx] = static_cast<double*>(faxion->mStart())[fidx*2];
-          myFab.dataPtr(1)[idx] = static_cast<double*>(faxion->mStart())[fidx*2+1];
-          myFab.dataPtr(2)[idx] = static_cast<double*>(faxion->vStart())[fidx*2];
-          myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1];
+          // myFab.dataPtr(0)[idx] = static_cast<double*>(faxion->mStart())[fidx*2];
+          // myFab.dataPtr(1)[idx] = static_cast<double*>(faxion->mStart())[fidx*2+1];
+          // myFab.dataPtr(2)[idx] = static_cast<double*>(faxion->vStart())[fidx*2];
+          // myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1];
+
+          /* m_re, m_im v_re, v_im */
+          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
+          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
+          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
+          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1]/RRR - myFab.dataPtr(1)[idx]*Hc;
+
           }}}
         }
 
@@ -400,7 +428,7 @@
 		os << 0 << ' ' << boxarrays[0].size() << ' ' << *(faxion)->zV() << '\n';
 		os << 0 << '\n';
 
-		double cellsize[3];
+		Real cellsize[3];
 		dx = faxion->BckGnd()->PhysSize()/gridp/h0;
 		for (n = 0; n < BL_SPACEDIM; n++)
 		{
@@ -416,7 +444,7 @@
 		// std::cout << cellsize[0] << std::endl;
 		for (i = 0; i < boxarrays[0].size(); ++i)
 		{
-			double problo[] = {0,0,0};
+			Real problo[] = {0,0,0};
 			// std::cout << boxarrays[0][i] << std::endl;
 			RealBox gridloc = RealBox(boxarrays[0][i], cellsize, problo);
 			for (n = 0; n < BL_SPACEDIM; n++)

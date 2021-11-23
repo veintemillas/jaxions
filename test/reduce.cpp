@@ -83,16 +83,16 @@ int	main (int argc, char *argv[])
 	double eFc  = 0.5*M_PI*M_PI*myCosmos.ICData().beta*myCosmos.ICData().beta*(ScaleSize*ScaleSize)/((double) axion->Surf());
 	double nFc  = 1.;
 	int    kMax = axion->Length()/ScaleSize;
+	int    kMax2= (nLx/2)*(nLx/2);
 
-
-
+	
 	if (!axion->LowMem() && nLx >= 2 && nLz >= 2) {
 		if (axion->Precision() == FIELD_DOUBLE) {
 			reduced = reduceField(axion, nLx, nLz, FIELD_MV,
 					[eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
 		} else {
 			reduced = reduceField(axion, nLx, nLz, FIELD_MV,
-					[eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
+					[eFc = eFc, nFc = nFc, kMax2 = kMax2] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc* ((px*px + py*py + pz*pz > kMax2) ? 0 : 1))); }, false);
 		}
 
 		writeConf(reduced, fIndex+1000);
