@@ -1327,7 +1327,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// }
 
 
-		LogMsg(VERB_PARANOID, "[rc] Read start\n");
+		LogMsg(VERB_PARANOID, "[rc] Creating axion field %d %d(x%d)",sizeN,sizeZ,zGrid);
 
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, 0);
@@ -1350,24 +1350,29 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			exit(1);
 		}
 
-		prof.start();
-		commSync();
 
 		/* for reducing we might need */
-		// Scalar *auxion;
-		// if ( (sizeN < Nx_read) && (sizeZ < Nz) )
-		// {
-		// 	LogMsg(VERB_NORMAL, "Creating AUXION to reduce field\n");
-		// 	if( (*axion)->Field()==FIELD_SAXION)
-		// 		auxion = new Scalar(myCosmos, Nx_read, Nz, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
-		// 	else
-		// 		auxion = new Scalar(myCosmos, Nx_read, Nz, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,    lType, myCosmos->ICData().Nghost);
-		// }
-		// else
-		// 	auxion = *axion;
+		Scalar *auxion;
+		if ( (sizeN < Nx_read) && (sizeZ < Nz) )
+		{
+			LogMsg(VERB_NORMAL, "[rc] Creating AUXION (to reduce field) %d %d(x%d) (m2less=lowmem)",Nx_read,Nz,zGrid);
+			// WARNING!
+			// Dangerous thing, this will create the Scalar field but the FFT plans will be those of the previous axion field,
+			if( (*axion)->Field()==FIELD_SAXION)
+				auxion = new Scalar(myCosmos, Nx_read, Nz, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
+			else
+				auxion = new Scalar(myCosmos, Nx_read, Nz, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION ,    lType, myCosmos->ICData().Nghost);
+		}
+		else
+			auxion = *axion;
 
 		// LogMsg(VERB_PARANOID, "pointers axion %p auxion %p",*axion,auxion);
 		// LogOut("pointers axion %p auxion %p\n",*axion,auxion);
+
+		LogMsg(VERB_PARANOID, "[rc] Reading into auxion/axion \n");
+
+		prof.start();
+		commSync();
 
 		/*	Create plist for collective read	*/
 
@@ -1399,8 +1404,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 			/*	Read raw data	*/
 
-			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
-			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())  +slab*zDim*dataSize));
+			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (auxion->mStart())+slab*zDim*dataSize));
+			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (auxion->vCpu())  +slab*zDim*dataSize));
 
 			if ((mErr < 0) || (vErr < 0)) {
 				LogError ("Error reading dataset from file");
@@ -1408,8 +1413,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			}
 		}
 
-		// auxion->setFolded(false);
-		(*axion)->setFolded(false);
+		auxion->setFolded(false);
+		// (*axion)->setFolded(false);
 
 		/*	Close the dataset	*/
 
@@ -1435,16 +1440,16 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				prof.start();
 
 				/* Converts Moore format to conformal theta */
-				unMoor(*axion, PFIELD_MS);
+				unMoor(auxion, PFIELD_MS);
 
 				/* cVelocity = RVelocity - Theta */
-				axby(*axion, PFIELD_MS, PFIELD_V, -1., *(*axion)->RV());
+				axby(auxion, PFIELD_MS, PFIELD_V, -1., *(*axion)->RV());
 
 				prof.stop();
-				prof.add(std::string("Unmoor configuration"), 0, 10*(totlZ*slab*(*axion)->Precision())*1.e-9);
+				prof.add(std::string("Unmoor configuration"), 0, 10*(totlZ*slab*auxion->Precision())*1.e-9);
 
 				/* mendTheta! */
-				mendTheta (*axion);
+				mendTheta (auxion);
 			}
 
 		commSync();
@@ -1455,25 +1460,45 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				expandField(*axion);
 				(*axion)->setReduced	(false, 1, 1); // 2,3 entries have no effect
 			}
-			// else if ((sizeN < Nx_read) && (sizeZ < Nz))
-			// {
-			// 	LogMsg(VERB_NORMAL, "Reduction by a factor %d in x and %d in z",Nx_read/sizeN,Nz/sizeZ);
-			// 	LogOut("0\n");
-			// 	double eFc_xy  = 2*M_PI*M_PI/((double) sizeN*sizeN);
-			// 	double eFc_z  = 2*M_PI*M_PI/((double) sizeZ*sizeZ*zGrid*zGrid);
-			// 	double nFc  = 1.;
-			// 	// if (auxion->Precision() == FIELD_DOUBLE) {
-			// 	//   reduceField(auxion, sizeN, sizeZ, FIELD_MV,
-			// 	//       [eFc_xy  = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz)); }, true);
-			// 	// } else {
-			// 	//   reduceField(auxion, sizeN, sizeZ, FIELD_MV,
-			// 	//       [eFc_xy = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz))); }, true);
-			// 	// }
-			// 	memmove((*axion)->mStart(),auxion->mStart(),(*axion)->Size()*auxion->DataSize());
-			// 	memmove((*axion)->vCpu(),  auxion->vCpu(),  (*axion)->Size()*auxion->DataSize());
-			// 	LogMsg(VERB_NORMAL, "Reduction complete!");
-			// 	LogOut("1\n");
-			// }
+			else if ((sizeN < Nx_read) && (sizeZ < Nz))
+			{
+				LogMsg(VERB_NORMAL, "[rc] Reduction by a factor %d in x and %d in z",Nx_read/sizeN,Nz/sizeZ);
+				LogOut("0\n");
+				double eFc_xy  = 2*M_PI*M_PI/((double) sizeN*sizeN);
+				double eFc_z  = 2*M_PI*M_PI/((double) sizeZ*sizeZ*zGrid*zGrid);
+				double nFc  = 1.;
+				LogMsg(VERB_NORMAL, "[rc] 1 - remove plans from axion");
+				AxionFFT::removePlan("pSpecAx");
+				AxionFFT::removePlan("SpSx");
+				AxionFFT::removePlan("RdSxV");
+				LogMsg(VERB_NORMAL, "[rc] 2 - insert plans for auxion");
+				AxionFFT::initPlan (auxion, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+				AxionFFT::initPlan (auxion, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
+				AxionFFT::initPlan (auxion, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
+				LogMsg(VERB_NORMAL, "[rc] 3 - reduce in place in auxion");
+				if (auxion->Precision() == FIELD_DOUBLE) {
+				  reduceField(auxion, sizeN, sizeZ, FIELD_MV,
+				      [eFc_xy  = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz)); }, true);
+				} else {
+				  reduceField(auxion, sizeN, sizeZ, FIELD_MV,
+				      [eFc_xy = eFc_xy, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc_xy*(px*px + py*py) -eFc_z*pz*pz))); }, true);
+				}
+				LogMsg(VERB_NORMAL, "[rc] 4 - move reduced data from auxion to axion (%lu/%lu data points)",sizeN*sizeN*sizeZ,auxion->Size());
+				//data when reduced in place is in mCpu ,vCpu, sizeN*sizeN*sizeZ
+				memmove((*axion)->mStart(),auxion->mCpu(), sizeN*sizeN*sizeZ * auxion->DataSize());
+				memmove((*axion)->vCpu(),  auxion->vCpu(), sizeN*sizeN*sizeZ * auxion->DataSize());
+				LogMsg(VERB_NORMAL, "[rc] 5 - remove plans from auxion");
+				AxionFFT::removePlan("pSpecAx");
+				AxionFFT::removePlan("SpSx");
+				AxionFFT::removePlan("RdSxV");
+				LogMsg(VERB_NORMAL, "[rc] 6 - insert plans for axion");
+				AxionFFT::initPlan (*axion, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+				AxionFFT::initPlan (*axion, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
+				AxionFFT::initPlan (*axion, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
+				LogMsg(VERB_NORMAL, "[rc] 7 - Reduction complete!");
+				LogMsg(VERB_NORMAL, "[rc] 8 - Remove auxion");
+				// delete auxion; kkils the FFTs do not use!
+			}
 
 
 		commSync();
