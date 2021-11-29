@@ -1115,19 +1115,22 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 	// ft_theta' in M2, ft_theta in V
 
 	/* mass2 in ADM units it follows from temperature (in ic.kcr in ADM units)
-	and the conformal potential lambda/4 ( cPhi^2-R^2)^2 +lambda/6 T^2 cF^2
-	the minimum of the potential happens at
-	x (x^2-R^2) + T^2 x/3 = 0
+	and the conformal potential
+	 lambda/4 ( Phi^2-v^2)^2 +lambda/6 T^2 Phi^2
+	        >>>>>>>> lambda/4 ( cPhi^2-R^2)^2 +lambda/6 (T^2 R^2/v^2) cPhi^2
+	The minimum of the potential happens at
+	x (x^2-R^2) + cT^2 x/3 = 0
   and the mass2 is
-	lambda [3x^2-R^2 + T^2/3]_xmin
+	lambda [3x^2-R^2 + cT^2/3]_xmin
 	which are
-	x^2 +T2/3 - R^2 = 0 >>>> xmin = sqrt(R^2-T2/3) or 0
-	m2 = lambda [3(R^2-T2/3)-R^2 + T^2/3] = lambda * 2(R^2-T2/3) or lambda * (T2/3-R^2)
+	x^2 +cT2/3 - R^2 = 0 >>>> xmin = sqrt(R^2-cT2/3) or 0
+	m2 = lambda [3(R^2-T2/3)-R^2 + T^2/3] = lambda * 2(R^2-cT2/3) or lambda * (cT2/3-R^2)
 
-	Assume T2 contains an R2 factor, i.e. it is conformal T
 	then
-		m2 = max (lambda * 2 * R^2 (1-T2/3), 0) */
-		double T2   = ic.kcr*ic.kcr;
+		m2 = max (lambda * 2 * R^2 (1-T2/v^2/3), 0)
+
+		*/
+		double T2   = ic.kcr*ic.kcr; // in units of [v^2]
 		double R2   = (*axionField->RV())*(*axionField->RV());
 		double mS2  = axionField->LambdaP()*( (T2 > 3) ? R2*(T2/3- 1) : 2*R2*(1 - T2/3));
 		LogMsg(VERB_NORMAL,"[GEN] lambda %e", axionField->LambdaP());
