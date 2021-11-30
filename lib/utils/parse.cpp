@@ -17,6 +17,7 @@ size_t sizeN  = 128;
 size_t sizeZ  = 128;
 int    zGrid  = 1;
 int    nSteps = 5;
+int    wSteps = 0; 
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER
@@ -263,6 +264,7 @@ void	PrintUsage(char *name)
 	printf("  --device cpu/gpu              Uses nVidia Gpus to accelerate the computations (default, use cpu).\n");
 	printf("  --prop  leap/rkn4/om2/om4     Numerical propagator to be used for molecular dynamics (default, use rkn4).\n");
 	printf("  --steps [int]                 Number of steps of the simulation (default 500).\n");
+	printf("  --wkbsteps [int]              Number of wkb steps (linear) from final simulation time to WKB time (default 0).\n");
 	printf("  --spec                        Enables the spectral propagator for the laplacian (default, disabled).\n");
  	printf("  --lap   1/2/3/4             	Number of Neighbours of the laplacian [default --lap 1 flag]\n");
 	printf("  --wDz   [float]               Adaptive time step dz = wDz/frequency [l/raxion3D].\n");
@@ -1537,6 +1539,24 @@ int	parseArgs (int argc, char *argv[])
 			if (nSteps < 0)
 			{
 				printf("Error: Number of steps must be > 0.\n");
+				exit(1);
+			}
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--wkbsteps"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a number of wkb steps.\n");
+				exit(1);
+			}
+			wSteps = atoi(argv[i+1]);
+
+			if (wSteps < 0)
+			{
+				printf("Error: Number of wkb steps must be > 0.\n");
 				exit(1);
 			}
 

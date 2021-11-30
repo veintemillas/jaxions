@@ -450,6 +450,8 @@ int	main (int argc, char *argv[])
 	ninfa.measdata=mesa;
 	Measureme (axion, ninfa);
 
+	double z_now = (*axion->zV());
+
 	if (axion->Field() == FIELD_AXION)
 	{
 		//--------------------------------------------------
@@ -457,6 +459,33 @@ int	main (int argc, char *argv[])
 		//--------------------------------------------------
 
 		if (wkb2z >= zFinl) {
+			
+			if (wSteps > 0 )
+			{
+				LogOut("WKBing from z1=%f to z2=%f in %d time steps\n\n", z_now, wkb2z, wSteps);
+				
+				for (int i = 1; i < wSteps+1; i++)
+				{
+					double zco = z_now + i*(wkb2z-z_now)/wSteps	;
+					{	
+						LogOut ("WKBing to %.4f ... ", zco);
+						WKB wonka(axion, axion);
+						wonka(zco) 	;
+						LogOut ("done!\n");
+						index++;
+					}
+					ninfa.index++;
+					
+					ninfa.measdata = defaultmeasType;
+					lm = Measureme (axion, ninfa);
+
+				}
+
+			}
+			
+			else 
+			{
+
 			WKB wonka(axion, axion);
 
 			LogOut ("WKBing %d (z=%.4f) to %d (%.4f) ... ", index, 	(*axion->zV()), index+1, wkb2z);
@@ -465,6 +494,7 @@ int	main (int argc, char *argv[])
 			LogOut (" done! (z=%.4f)\n", (*axion->zV()));
 
 			index++;
+			}
 
 			/* last measurement after WKB */
 			MeasureType mesa = defaultmeasType;
