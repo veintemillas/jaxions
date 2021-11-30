@@ -8,6 +8,7 @@ extern size_t sizeN;
 extern size_t sizeZ;
 extern int    zGrid;
 extern int    nSteps;
+extern int    wSteps;
 extern int    dump;
 extern int    fIndex;
 extern int    fIndex2;
