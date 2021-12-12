@@ -1772,15 +1772,17 @@ void	SpecBin::nSRun	() {
 			switch (fPrec) {
 				case FIELD_SINGLE:
 				{
-					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mStart());
+					//std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mStart());
+					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
 					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
 					float *m2sa                 = static_cast<float *>(field->m2Cpu());
-					float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+					//float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+					float *m2sax                = static_cast<float *>(field->m2half());
 
 					#pragma omp parallel for schedule(static)
 					for (size_t iz=0; iz < Lz; iz++) {
 						size_t zo = Ly*(Ly+2)*iz ;
-						size_t zi = Ly*Ly*iz ;
+						size_t zi = Ly*Ly*(iz+1) ;
 						for (size_t iy=0; iy < Ly; iy++) {
 							size_t yo = (Ly+2)*iy ;
 							size_t yi = Ly*iy ;
@@ -1803,15 +1805,17 @@ void	SpecBin::nSRun	() {
 
 				case FIELD_DOUBLE:
 				{
-					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mStart());
+					//std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mStart());
+					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
 					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
 					double *m2sa            = static_cast<double *>(field->m2Cpu());
-					double *m2sax            = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
+					//double *m2sax            = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
+					double *m2sax                = static_cast<double *>(field->m2half());
 
 					#pragma omp parallel for schedule(static)
 					for (size_t iz=0; iz < Lz; iz++) {
 						size_t zo = Ly*(Ly+2)*iz ;
-						size_t zi = Ly*Ly*iz ;
+						size_t zi = Ly*Ly*(iz+1) ;
 						for (size_t iy=0; iy < Ly; iy++) {
 							size_t yo = (Ly+2)*iy ;
 							size_t yi = Ly*iy ;
