@@ -44,7 +44,7 @@
 		size_t			LyLy, Ly2Ly, LyLz, dl, pl, dataTotalSize, dataBareSize;
 		size_t			zBase;
 		double			mass2, mass2Sax; // squared masses (comoving)
-		double 			Rscale, depta;
+		double 			Rscale, Rpp, depta;
 		double 			zaskar;
 		float				zaskarf;
 		double			nbinmul;
@@ -113,6 +113,7 @@
 				mass2    = field->AxionMassSq()*(*field->RV())*(*field->RV());
 				mass2Sax = field->SaxionMassSq()*(*field->RV())*(*field->RV());
 				Rscale   = *field->RV();
+				Rpp      = field->BckGnd()->Rp(*field->zV())*(Rscale); /* this is R' */
 				depta    = field->BckGnd()->PhysSize()/Ly;
 
 				zaskar  = field->Saskia()*Rscale;

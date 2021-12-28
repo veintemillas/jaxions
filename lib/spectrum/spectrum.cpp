@@ -1792,7 +1792,8 @@ void	SpecBin::nSRun	() {
 
 								float modu = std::abs(ma[idx]-zaskaf);
 								// float modu = std::abs(ma[idx]);
-								m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaskaf)) ;
+								m2sa[odx] = ((ma[idx].real()-zaskaf.real())*va[idx].real()+ma[idx].imag()*va[idx].imag())/modu - modu*Rpp/Rscale;
+								// m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaskaf)) ;
 								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
 								m2sax[odx] = modu - Rscale ;
 							}
@@ -1825,7 +1826,8 @@ void	SpecBin::nSRun	() {
 
 								double modu = std::abs(ma[idx]-zaska);
 								// double modu = abs(ma[idx]);
-								m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaska)) ;
+								m2sa[odx] = ((ma[idx].real()-zaska.real())*va[idx].real()+ma[idx].imag()*va[idx].imag())/modu - modu*Rpp/Rscale;
+								// m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaska)) ;
 								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
 								m2sax[odx] = modu - Rscale ;
 							}
