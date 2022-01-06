@@ -1744,13 +1744,167 @@ void	SpecBin::nRun	(nRunType nrt) {
 	}
 }
 
+// saxion spectrum
+	
+void	SpecBin::nSRun	(SpectrumMaskType mask, nRunType nrt){
 
-void	SpecBin::nSRun	() {
-	// saxion spectrum
+	switch (mask)
+	{
+		case SPMASK_FLAT :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nSRun<float,SPMASK_FLAT> (nrt);
+					break;
 
+					case FIELD_DOUBLE :
+					SpecBin::nSRun<double,SPMASK_FLAT> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nSRun] precision not reconised.");
+					break;
+				}
+				break;
+
+		case SPMASK_VIL :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nSRun<float,SPMASK_VIL> (nrt);
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nSRun<double,SPMASK_VIL> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nSRun] precision not reconised.");
+					break;
+				}
+			break;
+
+			case SPMASK_VIL2 :
+					switch (fPrec)
+					{
+						case FIELD_SINGLE :
+						SpecBin::nSRun<float,SPMASK_VIL2> (nrt);
+						break;
+
+						case FIELD_DOUBLE :
+						SpecBin::nSRun<double,SPMASK_VIL2> (nrt);
+						break;
+
+						default :
+						LogError("[Spectrum nSRun] precision not reconised.");
+						break;
+					}
+		break;
+
+		case SPMASK_REDO :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nSRun<float,SPMASK_REDO> (nrt);
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nSRun<double,SPMASK_REDO> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nSRun] precision not reconised.");
+					break;
+				}
+		break;
+
+		case SPMASK_BALL :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nSRun<float,SPMASK_BALL> (nrt);
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nSRun<double,SPMASK_BALL> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nSRun] precision not reconised.");
+					break;
+				}
+		break;
+		
+		case SPMASK_SAXI :
+		case SPMASK_AXIT :
+		case SPMASK_AXIT2 :
+		case SPMASK_DIFF :
+		case SPMASK_GAUS :
+		// currently SPMASK_DIFF and SPMASK_GAUS are not considered. (TODO)
+		LogError("[Spectrum nSRun] SPMASK not supported!");
+		break;
+
+		default:
+		LogError("[Spectrum nSRun] SPMASK not recognised!");
+		break;
+	}
+}
+
+
+template<typename Float, SpectrumMaskType mask>
+void	SpecBin::nSRun	(nRunType nrt) {
+
+	Profiler &prof = getProfiler(PROF_SPEC);
+
+	LogMsg(VERB_HIGH,"[nSRun] Called with mask %d nrt %d",mask,nrt);
+	/* test if everything we need is there in the different cases */
+	switch(mask)
+	{
+		case SPMASK_REDO:
+			if ((field->sDStatus() & SD_MASK))
+				LogMsg(VERB_NORMAL,"nSRun with SPMASK_REDO ok SPMASK=%d field->statusSD()=%d",SPMASK_REDO,field->sDStatus()) ;
+			else{
+			LogMsg(VERB_NORMAL,"nSRun with SPMASK_REDO but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_REDO,field->sDStatus()) ;
+			return ;
+			}
+		break;
+		//case SPMASK_GAUS:
+		//	if ((field->sDStatus() & SD_MASK))
+		//		LogMsg(VERB_NORMAL,"nSRun with SPMASK_GAUS ok SPMASK=%d field->statusSD()=%d",SPMASK_GAUS,field->sDStatus()) ;
+		//	else{
+		//	LogMsg(VERB_NORMAL,"nSRun with SPMASK_GAUS but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_GAUS,field->sDStatus()) ;
+		//	return ;
+		//	}
+		//break;
+		//case SPMASK_DIFF:
+		//	if ((field->sDStatus() & SD_MASK))
+		//		LogMsg(VERB_NORMAL,"nSRun with SPMASK_DIFF ok SPMASK=%d field->statusSD()=%d",SPMASK_DIFF,field->sDStatus()) ;
+		//	else{
+		//	LogMsg(VERB_NORMAL,"nSRun with SPMASK_DIFF but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_DIFF,field->sDStatus()) ;
+		//	return ;
+		//	}
+		//break;
+		default:
+		LogMsg(VERB_NORMAL,"nSRun with self-contained mask") ;
+		break;
+	}
+
+  prof.start();
+	
 	binK.assign(nbins, 0.);
 	binG.assign(nbins, 0.);
 	binV.assign(nbins, 0.);
+#ifdef USE_NN_BINS
+	binNK.assign(nbins, 0.);
+	binNG.assign(nbins, 0.);
+	binNV.assign(nbins, 0.);
+#endif
+
+  prof.stop();
+	prof.add(std::string("assign"), 0.0, 0.0);
+
+	std::complex<Float> zaskaF((Float) zaskar, 0.);
+	Float zaskaFF = (Float) zaskar;
 
 	if	(field->Folded())
 	{
@@ -1769,122 +1923,111 @@ void	SpecBin::nSRun	() {
 		case	FIELD_SAXION:
 		{
 			// nPts = Lx*Ly*Lz;
-			switch (fPrec) {
-				case FIELD_SINGLE:
-				{
-					//std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mStart());
-					std::complex<float> *ma     = static_cast<std::complex<float>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
-					std::complex<float> *va     = static_cast<std::complex<float>*>(field->vCpu());
-					float *m2sa                 = static_cast<float *>(field->m2Cpu());
-					//float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
-					float *m2sax                = static_cast<float *>(field->m2half());
-
-					#pragma omp parallel for schedule(static)
-					for (size_t iz=0; iz < Lz; iz++) {
-						size_t zo = Ly*(Ly+2)*iz ;
-						size_t zi = Ly*Ly*(iz+1) ;
-						for (size_t iy=0; iy < Ly; iy++) {
-							size_t yo = (Ly+2)*iy ;
-							size_t yi = Ly*iy ;
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo;
-								size_t idx = ix + yi + zi;
-
-								float modu = std::abs(ma[idx]-zaskaf);
-								// float modu = std::abs(ma[idx]);
-								m2sa[odx] = ((ma[idx].real()-zaskaf.real())*va[idx].real()+ma[idx].imag()*va[idx].imag())/modu - modu*Rpp/Rscale;
-								// m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaskaf)) ;
-								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
-								m2sax[odx] = modu - Rscale ;
-							}
-						}
-					}
-					// LogOut("[debug] 0 and 0 %f %f \n", m2sa[0], m2sax[0]);
-					// LogOut("[debug] -1 and -1 %f %f \n", m2sa[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1], m2sax[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1]);
-				}
-				break;
-
-				case FIELD_DOUBLE:
-				{
-					//std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mStart());
-					std::complex<double> *ma     = static_cast<std::complex<double>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
-					std::complex<double> *va     = static_cast<std::complex<double>*>(field->vCpu());
-					double *m2sa            = static_cast<double *>(field->m2Cpu());
-					//double *m2sax            = static_cast<double *>(field->m2Cpu())+(Ly+2)*Ly*Lz;
-					double *m2sax                = static_cast<double *>(field->m2half());
-
-					#pragma omp parallel for schedule(static)
-					for (size_t iz=0; iz < Lz; iz++) {
-						size_t zo = Ly*(Ly+2)*iz ;
-						size_t zi = Ly*Ly*(iz+1) ;
-						for (size_t iy=0; iy < Ly; iy++) {
-							size_t yo = (Ly+2)*iy ;
-							size_t yi = Ly*iy ;
-							for (size_t ix=0; ix < Ly; ix++) {
-								size_t odx = ix + yo + zo;
-								size_t idx = ix + yi + zi;
-
-								double modu = std::abs(ma[idx]-zaska);
-								// double modu = abs(ma[idx]);
-								m2sa[odx] = ((ma[idx].real()-zaska.real())*va[idx].real()+ma[idx].imag()*va[idx].imag())/modu - modu*Rpp/Rscale;
-								// m2sa[odx] = std::real(va[idx]*modu/(ma[idx]-zaska)) ;
-								// m2sa[odx] = real(va[idx]*modu/(ma[idx])) ;
-								m2sax[odx] = modu - Rscale ;
-							}
-						}
+			//std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
+			std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
+			std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
+			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+			//Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+			Float *m2sax                = static_cast<Float *>(field->m2half());
+			char *strdaa                = static_cast<char *>(static_cast<void *>(field->sData()));
+			
+			LogMsg(VERB_HIGH,"[nSRun] S loop") ;
+			prof.start();
+			#pragma omp parallel for schedule(static)
+			for (size_t iz=0; iz < Lz; iz++) {
+				size_t zo = Ly*(Ly+2)*iz ;
+				size_t zi = Ly*Ly*(iz+1) ;
+				for (size_t iy=0; iy < Ly; iy++) {
+					size_t yo = (Ly+2)*iy ;
+					size_t yi = Ly*iy ;
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo;
+						size_t idx = ix + yi + zi;
+						
+						Float modu = std::abs(ma[idx]-zaskaF);
+						// Float modu = std::abs(ma[idx]);
+						Float vS = ((ma[idx].real()-zaskaF.real())*va[idx].real()+ma[idx].imag()*va[idx].imag())/modu/Rscale - modu*Rpp/Rscale/Rscale;
+						// Float vS = std::real(va[idx]*modu/(ma[idx]-zaskaF))/Rscale ;
+						// Float vS = real(va[idx]*modu/(ma[idx]))/Rscale ;
+						
+						switch (mask) {
+							case SPMASK_FLAT:
+								m2sa[odx] = Rscale*vS;
+								m2sax[odx] = modu - Rscale;
+								break;
+							case SPMASK_REDO:
+							case SPMASK_BALL:
+								if (strdaa[idx-LyLy] & STRING_MASK) {
+									m2sa[odx] = 0;
+									m2sax[odx] = 0;
+								} else {
+									m2sa[odx] = Rscale*vS;
+									m2sax[odx] = modu - Rscale;
+								}
+								break;
+							case SPMASK_VIL:
+								m2sa[odx] = modu*vS;
+								m2sax[odx] = (modu/Rscale)*(modu-Rscale);
+								break;
+							case SPMASK_VIL2:
+								m2sa[odx] = (std::pow(modu,2)/Rscale)*vS;
+								m2sax[odx] = std::pow(modu/Rscale,2)*(modu-Rscale);
+							break;
+						} // end mask
 					}
 				}
-				break;
-
-				default:
-					LogError ("Wrong precision");
-					break;
-			}//End prec switch
-
-
-			// r2c FFT in m2
-
-			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-			myPlan.run(FFT_FWD);
-
-
-			if (fPrec == FIELD_SINGLE) {
-				if (spec)
-					fillBins<float,  SPECTRUM_KS, true> ();
-				else
-					fillBins<float,  SPECTRUM_KS, false>();
-			} else {
-				if (spec)
-					fillBins<double, SPECTRUM_KS, true> ();
-				else
-					fillBins<double, SPECTRUM_KS, false>();
-			}
-
-
-
-			// Copy m2aux -> m2
-			size_t dataTotalSize = field->Precision()*field->eSize();
-			char *mA  = static_cast<char *>(field->m2Cpu());
-			char *mAh = static_cast<char *>(field->m2half());
-			memmove	(mA, mAh, dataTotalSize);
-
-			// float *m2sa                 = static_cast<float *>(field->m2Cpu());
-			// float *m2sax                = static_cast<float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+			} // end last volume loop
 			// LogOut("[debug] 0 and 0 %f %f \n", m2sa[0], m2sax[0]);
 			// LogOut("[debug] -1 and -1 %f %f \n", m2sa[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1], m2sax[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1]);
+			prof.stop();
+			prof.add(std::string("Build K (saxion)"), 0.0, 0.0);
 
-			myPlan.run(FFT_FWD);
+			// r2c FFT in m2
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+			
+			if (nrt & NRUN_K) {
+				
+				LogMsg(VERB_HIGH,"[nSRun] FFT");
+				prof.start();
+				myPlan.run(FFT_FWD);
+				prof.stop();
+				prof.add(std::string("pSpecAx"), 0.0, 0.0);
 
-			if (fPrec == FIELD_SINGLE) {
+				LogMsg(VERB_HIGH,"[nSRun] bin") ;
 				if (spec)
-					fillBins<float,  SPECTRUM_GVS, true> ();
+					fillBins<Float,  SPECTRUM_KS, true> ();
 				else
-					fillBins<float,  SPECTRUM_GVS, false>();
-			} else {
+					fillBins<Float,  SPECTRUM_KS, false>();
+
+			}
+
+			if ( (nrt & NRUN_G) || (nrt & NRUN_V) ) {
+
+				// Copy m2aux -> m2
+				size_t dataTotalSize = field->Precision()*field->eSize();
+				char *mA  = static_cast<char *>(field->m2Cpu());
+				char *mAh = static_cast<char *>(field->m2half());
+				prof.start();
+				memmove	(mA, mAh, dataTotalSize);
+				prof.stop();
+				prof.add(std::string("memmove"), 0.0, 0.0);
+
+				// Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+				// Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+				// LogOut("[debug] 0 and 0 %f %f \n", m2sa[0], m2sax[0]);
+				// LogOut("[debug] -1 and -1 %f %f \n", m2sa[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1], m2sax[(Ly+2)*Ly*(Lz-1)+(Ly+2)*(Ly-1)+Ly-1]);
+
+				LogMsg(VERB_HIGH,"[nSRun] FFT");
+				prof.start();
+				myPlan.run(FFT_FWD);
+				prof.stop();
+				prof.add(std::string("pSpecAx"), 0.0, 0.0);
+				
 				if (spec)
-					fillBins<double, SPECTRUM_GVS, true> ();
+					fillBins<Float,  SPECTRUM_GVS, true> ();
 				else
-					fillBins<double, SPECTRUM_GVS, false>();
+					fillBins<Float,  SPECTRUM_GVS, false>();
+
 			}
 
 			field->setM2     (M2_DIRTY);

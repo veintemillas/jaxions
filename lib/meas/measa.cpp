@@ -688,7 +688,7 @@ writePMapHdf5s (axiona, LAB);
 						// NSPECTRA WITHOUT LUT CORRECTION
 						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS))
 						{
-							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old version)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							// prof.start();
 							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS) ;
 								specAna.nRun(maskara[i], aux);
@@ -730,6 +730,35 @@ writePMapHdf5s (axiona, LAB);
 
 					} // END IF NSPECTRA WITHOUT CORRECTION
 
+					// SAXION SPECTRA
+					if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
+					{
+						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (saxion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+						nRunType aux = nruntype & (NRUN_K | NRUN_G | NRUN_V);
+						specAna.nSRun(maskara[i], aux);
+						
+						if (nruntype & NRUN_K){
+							sprintf(LABEL, "sKS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+						}
+						if (nruntype & NRUN_G){
+							sprintf(LABEL, "sGS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+						}
+						if (nruntype & NRUN_V){
+							sprintf(LABEL, "sVS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+						}
+					} // END IF SAXION SPECTRA
 
 					if (prntmsk[i]){
 						LogMsg(VERB_NORMAL, "[Meas %d] m-matrix build and write skipped; uncomment if you wish otherwise!",indexa);
@@ -763,23 +792,23 @@ writePMapHdf5s (axiona, LAB);
 			}
 
 
-
-		if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
-		{
-			if (axiona->Field() == FIELD_SAXION){
-				// LogOut("NSPS ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
-				specAna.nSRun();
-				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sKS");
-				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sGS");
-				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sVS");
-#ifdef USE_NN_BINS
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
-#endif
-			}
-		}
+		// saxion spectra moved into mask loop
+		//if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
+		//{
+		//	if (axiona->Field() == FIELD_SAXION){
+		//		// LogOut("NSPS ");
+		//		LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
+		//		specAna.nSRun();
+		//		writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sKS");
+		//		writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sGS");
+		//		writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sVS");
+		//#ifdef USE_NN_BINS
+		//		writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
+		//		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
+		//		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
+		//#endif
+		//	}
+		//}
 
 		if ( (indexa == 0) || (measa & MEAS_NNSPEC) )
 		{
