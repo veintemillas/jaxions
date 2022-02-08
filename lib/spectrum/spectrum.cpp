@@ -1946,7 +1946,7 @@ void	SpecBin::nSRun	(nRunType nrt) {
 						
 						Float modu = std::abs(ma[idx]-zaskaF);
 						// Float modu = std::abs(ma[idx]);
-						Float vS = ((ma[idx].real()-zaskaF.real())*va[idx].real()+ma[idx].imag()*va[idx].imag())/modu/Rscale - modu*Rpp/Rscale/Rscale;
+						Float vS = ((ma[idx].real()-zaskaF.real())*va[idx-LyLy].real()+ma[idx].imag()*va[idx-LyLy].imag())/modu/Rscale - modu*Rpp/Rscale/Rscale;
 						// Float vS = std::real(va[idx]*modu/(ma[idx]-zaskaF))/Rscale ;
 						// Float vS = real(va[idx]*modu/(ma[idx]))/Rscale ;
 						
