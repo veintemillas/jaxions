@@ -211,69 +211,75 @@ Scalar*	Reducer<Float>::runCpu	()
 			complex<Float> *vIn  = static_cast<complex<Float>*>(axionField->vCpu());
 			complex<Float> *fOut = static_cast<complex<Float>*>(axionField->m2Cpu());
 
+			size_t volData     = newLx*newLx*newLz*sizeof(complex<Float>);
+
 			transformField<complex<Float>,complex<Float>,complex<Float>,false>(mIn, fOut, fOut, "SpSx");
 
+
 			if (inPlace) {
-				// Reduce memory of m AND copy new axionField
-				// FIXME DO IT!!
+				// the transformfield funciton leaves m in m2
+				// copy red axionField into mStart of the reduced-field
+				complex<Float> *mD = static_cast<complex<Float>*>(static_cast<void *>(
+					static_cast<char *>(axionField->mCpu())  + axionField->DataSize()*(newLx*newLx)*axionField->getNg() ));
+				memcpy(mD, fOut, volData);
 			} else {
 				complex<Float> *mD = static_cast<complex<Float>*>(outField->mStart());
-				size_t volData     = outField->Size()*sizeof(complex<Float>);
-
-				// Copy m to the second axionField
 				memcpy(mD, fOut, volData);
 			}
 
 			transformField<complex<Float>,complex<Float>,complex<Float>,false>(vIn, fOut, fOut, "RdSxV");
 
 			if (inPlace) {
-				// Reduce memory of v AND copy new axionField
-				// Then, reduce the memory of m2
-				// FIXME DO IT!!
+				// the transformfield funciton leaves m in m2
+				// copy red v axionField into vStart of the reduced-field
+				memcpy(vIn, fOut, volData);
 			} else {
-				complex<Float> *vD = static_cast<complex<Float>*>(outField->vCpu());
-				size_t volData     = outField->Size()*sizeof(complex<Float>);
-
 				// Copy v to the second axionField
+				complex<Float> *vD = static_cast<complex<Float>*>(outField->vCpu());
 				memcpy(vD, fOut, volData);
 			}
+
+			// CASE AXION, AXION_MOD
 		} else {
 			Float          *mIn  = static_cast<Float*>         (axionField->mStart());
 			Float          *vIn  = static_cast<Float*>         (axionField->vCpu());
 			Float          *fOut = static_cast<Float*>         (axionField->m2Cpu());
 			complex<Float> *fMid = static_cast<complex<Float>*>(axionField->m2Cpu());
 
+			size_t volData     = newLx*newLx*newLz*sizeof(Float);
+
 			transformField<Float,complex<Float>,Float,true>(mIn, fMid, fOut, "pSpecAx");
 
 			if (inPlace) {
-				// Copy new axionField to m2
-				// FIXME DO IT!!
-			} else {
-				Float *mD      = static_cast<Float*>(outField->mCpu()) + outField->Surf();
-				size_t volData = outField->Size()*sizeof(Float);
-
-				// Copy m to the second axionField
+				// the transformfield funciton leaves m in m2
+				// copy red axionField into mStart of the reduced-field
+				Float *mD = static_cast<Float*>(static_cast<void *>(
+					static_cast<char *>(axionField->mCpu())  + axionField->DataSize()*(newLx*newLx)*axionField->getNg() ));
 				memcpy(mD, fOut, volData);
+			} else {
+				// Copy m to the second axionField
+				memcpy(mIn, fOut, volData);
 			}
 
 			transformField<Float,complex<Float>,Float,true>(vIn, fMid, fOut, "pSpecAx");
 
 			if (inPlace) {
-				// Copy new axionField to last part of m2 without overwriting m
-				// Then, reduce the memory of m/v and m2(v)
-				// Copy stuff back
-				// FIXME DO IT!!
+				memcpy(vIn, fOut, volData);
 			} else {
 				Float *vD      = static_cast<Float*>(outField->vCpu());
-				size_t volData = outField->Size()*sizeof(Float);
-
 				// Copy v to the second axionField
 				memcpy(vD, fOut, volData);
 			}
 		}
 
 		axionField->setM2 (M2_DIRTY);
-	} else {
+		if (inPlace){
+			LogMsg (VERB_NORMAL, "[r] Fields reduced in place! resetting axion Dims");
+		  axionField->setDims(newLx,newLz);
+			}
+	}
+	else  // CASE REDUCE ENERGY
+	{
 		/*	Reduce m2 means reduce energy, so it's always real	*/
 		/*	and ALWAYS in place					*/
 		Float          *mR = static_cast<Float *>(axionField->m2Cpu());

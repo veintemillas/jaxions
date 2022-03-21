@@ -237,7 +237,7 @@ namespace AxionFFT {
 					case	FFT_RDSX_M:
 
 						if (axion->LowMem()) {
-							LogError ("The spectral propagator doesn't work with lowmem");
+							LogError ("[fftC] Plans FFT_SPSX FFT_RDSX_M don't work with lowmem");
 							exit(0);
 						}
 
@@ -437,7 +437,7 @@ namespace AxionFFT {
 					case    FFT_RDSX_M:
 
 						if (axion->LowMem()) {
-							LogError ("The spectral propagator doesn't work with lowmem");
+							LogError ("[fftC] Plans FFT_SPSX FFT_RDSX_M don't work with lowmem");
 							exit(0);
 						}
 
@@ -837,7 +837,7 @@ namespace AxionFFT {
 					fftwf_cleanup_threads();
 				else
 					fftwf_cleanup();
-				break;
+			break;
 
 			case FIELD_DOUBLE:
 				if (useThreads)

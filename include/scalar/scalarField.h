@@ -12,14 +12,14 @@
 
 		Cosmos	*bckgnd;
 
-		const size_t n1;
-		const size_t n2;
-		const size_t n3;
+		size_t n1;
+		size_t n2;
+		size_t n3;
 
-		const size_t Lz;
-		const size_t Tz;
-		const size_t Ez;
-		const size_t v3;
+		size_t Lz;
+		size_t Tz;
+		size_t Ez;
+		size_t v3;
 
 		bool eReduced;
 		size_t rLx;
@@ -226,6 +226,7 @@
 		void	setVMomSpace	(bool foli);
 		void	updateR ();
 		void	setReduced	(bool eRed, size_t nLx = 0, size_t nLz = 0);
+		void	setDims	(size_t newnLx, size_t newnLz);
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu

@@ -43,9 +43,16 @@ const std::complex<float> If(0.,1.);
 
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
-		: n1(nLx), n2(nLx*nLx), n3(nLx*nLx*nLz), Lz(nLz), Tz(Lz*nSp), nSplit(nSp), Ng(Ngg),  Ez(nLz + 2*Ngg), v3(nLx*nLx*(nLz + 2*Ngg)),
-		  device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+		: nSplit(nSp), Ng(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
+	n1 = nLx;
+	n2 = nLx*nLx;
+	n3 = nLx*nLx*nLz;
+	Lz = nLz;
+	Tz = Lz*nSp;
+	Ez = nLz + 2*Ngg;
+	v3 = nLx*nLx*(nLz + 2*Ngg);
+
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	prof.start();
@@ -581,7 +588,7 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 			}
 			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy(m2, m2_d, Tc, cudaMemcpyDeviceToHost);
-			
+
 			CudaCheckError();
 		#endif
 	}
@@ -1060,6 +1067,23 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 		rLx = n1;
 		rLz = Lz;
 	}
+}
+
+
+void	Scalar::setDims	(size_t newnLx, size_t newnLz)
+{
+	LogMsg (VERB_NORMAL, "[sf] Call reset of axion dimensions from (%d,%d,%d) to (%d,%d,%d)!",n1,n1,Lz,newnLx,newnLx,newnLz);
+	if (newnLx < n1 && newnLz < Lz){
+		n1 = newnLx;
+		n2 = newnLx*newnLx;
+		n3 = newnLx*newnLx*newnLz;
+		Lz = newnLz;
+		Tz = Lz*nSplit;
+		Ez = newnLz + 2*Ng;
+		v3 = newnLx*newnLx*(newnLz + 2*Ng);
+		LogMsg (VERB_NORMAL, "[sf] Dimensions reset - but FFTs not changed, RENEW THE PLANS MANUALLY!");
+	} else
+	LogMsg (VERB_NORMAL, "[sf] Cannot increase data size. dismissed!");
 }
 
 // GENERAL BACKGROUND UPDATE REQUIRED!
