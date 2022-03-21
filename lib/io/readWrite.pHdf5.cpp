@@ -692,7 +692,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
 		auto vErr = mErr;
 		if (axion->Field() != FIELD_NAXION)
-			vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vCpu())  +slab*zDim*dataSize));
+			vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vStart())  +slab*zDim*dataSize));
 
 		if (mErr < 0)
 		{
@@ -2953,8 +2953,8 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 
 void	writeEDens (Scalar *axion, MapType fMap)
 {
-	hid_t	eGrp_id, group_id, rset_id, tset_id, plist_id, chunk_id;
-	hid_t	rSpace, tSpace, memSpace, dataType, totalSpace;
+	hid_t	eGrp_id, group_id, rset_id, tset_id, aset_id, plist_id, chunk_id;
+	hid_t	rSpace, tSpace, aSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset, rOff;
 
 	char	prec[16], fStr[16];
@@ -3125,6 +3125,8 @@ void	writeEDens (Scalar *axion, MapType fMap)
 	sprintf (rhoCh, "/energy/%s/rho", gr_name);
 	char thCh[24];
 	sprintf (thCh, "/energy/%s/theta", gr_name);
+	char auCh[24];
+	sprintf (auCh, "/energy/%s/aux", gr_name);
 
 	if (fMap & MAP_RHO) {
 		rset_id = H5Dcreate (meas_id, rhoCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
@@ -3152,6 +3154,18 @@ void	writeEDens (Scalar *axion, MapType fMap)
 		tSpace = H5Dget_space (tset_id);
 	}
 
+	if (fMap & MAP_M2S) {
+		aset_id = H5Dcreate (meas_id, auCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+		if (aset_id < 0)
+		{
+			LogError("Error creating aux dataset");
+			prof.stop();
+			exit (0);
+		}
+
+		aSpace = H5Dget_space (aset_id);
+	}
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
@@ -3204,6 +3218,27 @@ void	writeEDens (Scalar *axion, MapType fMap)
 		commSync();
 	}
 
+	if (fMap & MAP_M2S) {
+		for (hsize_t zDim = 0; zDim < Lz; zDim++)
+		{
+			/*	Select the slab in the file	*/
+			offset = (((hsize_t) (myRank*Lz)) + zDim)*slab;
+			H5Sselect_hyperslab(aSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+			/*	Write raw data	*/
+			auto tErr = H5Dwrite (aset_id, dataType, memSpace, aSpace, mlist_id, (static_cast<char *> (axion->m2Start())+slab*zDim*dataSize));
+
+			if (tErr < 0)
+			{
+				LogError ("Error writing theta dataset");
+				prof.stop();
+				exit(0);
+			}
+		}
+
+		commSync();
+	}
+
 	LogMsg (VERB_HIGH, "Write energy map successful");
 
 	size_t bytes = 0;
@@ -3219,6 +3254,12 @@ void	writeEDens (Scalar *axion, MapType fMap)
 	if (fMap & MAP_THETA) {
 		H5Dclose (tset_id);
 		H5Sclose (tSpace);
+		bytes += total*dataSize;
+	}
+
+	if (fMap & MAP_M2S) {
+		H5Dclose (aset_id);
+		H5Sclose (aSpace);
 		bytes += total*dataSize;
 	}
 

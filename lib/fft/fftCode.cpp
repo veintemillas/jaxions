@@ -224,7 +224,8 @@ namespace AxionFFT {
 
 					case	FFT_SPAX:
 					case	FFT_PSPEC_AX:
-
+					pfrom = m2f;
+					pto   = m2;
 					if (dFft & FFT_FWD)
 						planForward  = static_cast<void *>(fftwf_mpi_plan_dft_r2c_3d(Lz, Lx, Lx, m2f, m2, MPI_COMM_WORLD, fftplanType | FFTW_MPI_TRANSPOSED_OUT));
 
@@ -523,7 +524,7 @@ namespace AxionFFT {
 
 	void	FFTplan::run	(FFTdir cDir)
 	{
-		LogMsg (VERB_NORMAL, "Executing FFT");
+		LogMsg (VERB_NORMAL, "Executing FFT %p -> %p",pfrom,pto);
 
 		LogFlush();
 		FILE *file_fft ;
@@ -590,6 +591,7 @@ namespace AxionFFT {
 		if (myRank ==0)
 			fclose(file_fft);
 		LogFlush();
+		LogMsg (VERB_PARANOID, "Executing FFT %p -> %p done",pfrom,pto);
 	}
 
 	double	FFTplan::GFlops	(FFTdir cDir) {
