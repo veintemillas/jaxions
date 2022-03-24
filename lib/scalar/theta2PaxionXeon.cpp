@@ -36,8 +36,8 @@ void	th2PaxionXeon (Scalar *sField)
 			cveloc[lpc] += cfield[lpc]*adiab ;
 		}
 
-	/* Paxion velocity is Ghosted! */
-	memmove(static_cast<char*>(sField->vStart())+NG*S*sField->Precision(),sField->vCpu(),V*sField->Precision());
+	/* Paxion velocity will be Ghosted! */
+	memmove(static_cast<char*>(sField->vCpu())+NG*S*sField->Precision(),sField->vCpu(),V*sField->Precision());
 }
 
 void th2PaxionXeon(Scalar *axionField)
