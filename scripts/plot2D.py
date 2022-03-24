@@ -9,6 +9,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+from matplotlib import colors
 
 class	Plot2D():
 	def	__init__(self,map='map'):
@@ -155,7 +156,7 @@ class	Plot2D():
 				print("Unrecognized field type %s" % fl)
 				exit()
 
-			self.allData.append([rData, aData, zR, rMax])
+			self.allData.append([rData, aData, zR, rMax, fl])
 			fileHdf5.close()
 
 			self.size = self.size + 1
@@ -167,7 +168,16 @@ class	Plot2D():
 
 		self.app  = QtGui.QApplication([])
 		self.pWin = pg.GraphicsLayoutWidget()
-		self.pWin.setWindowTitle('Axion / Saxion evolution')
+
+		data = self.allData[0]
+		fl = data[4]
+		if fl == 'Saxion':
+			self.pWin.setWindowTitle('Axion / Saxion evolution')
+		if fl == 'Axion':
+			self.pWin.setWindowTitle('Axion / energy evolution')
+		if fl == 'Paxion':
+			self.pWin.setWindowTitle('Paxion phase / density evolution')
+
 		self.pWin.resize(1600,1600)
 		pg.setConfigOptions(antialias=True)
 
@@ -182,10 +192,9 @@ class	Plot2D():
 		self.sPlot.setXRange(0,L12*1.2)
 		self.sPlot.setYRange(0,L12*1.2)
 
-		self.zAtxt = pg.TextItem("z=0.000000")
-		self.zStxt = pg.TextItem("z=0.000000")
+		self.zAtxt = pg.TextItem("ct=0.000000")
+		self.zStxt = pg.TextItem("ct=0.000000")
 
-		data = self.allData[0]
 
 		aPos = np.array([0.00, 0.25, 0.5, 0.75, 1.0 ])
 		aCol = ['w', 'r', 'k', 'b', 'w']
@@ -211,9 +220,16 @@ class	Plot2D():
 		self.aPlot.addItem(self.zAtxt)
 
 #		sPos = np.linspace(0.0, data[3], 5)
-		sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
+		if fl == 'Axion' or fl == 'Saxion':
+			sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
+			sCol = ['w', 'r', 'y', 'c', 'k']
+		else :
+			# sPos = np.array([0.00, 1.00])
+			# sCol = ['k', 'w']
+			sPos = np.array([0.00, 0.5, 1.00])
+			sCol = ['k', 'g', 'w']
 		sLab = ["%.2f" % mod for mod in sPos]
-		sCol = ['w', 'r', 'y', 'c', 'k']
+
 		# sPos = np.array([0.00, 1.00])
 		# sLab = ["%.2f" % mod for mod in sPos]
 		# sCol = ['k', 'w']
@@ -225,11 +241,12 @@ class	Plot2D():
 
 		self.sMap  = pg.ColorMap(sPos, np.array([pg.colorTuple(pg.Color(c)) for c in sCol]))
 		self.sLut  = self.sMap.getLookupTable()
-		self.sLeg  = pg.GradientLegend((sSzeX/20, sSzeY), (aSzeX/0.96 + sSzeX, sSzeY/12.))
+		self.sLeg  = pg.GradientLegend((sSzeX/20, sSzeY), (sSzeX/0.96 + sSzeX, sSzeY/12.))
 		# self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
 		self.sLeg.setLabels(dict(zip(sLab, sPos)))
 		self.sLeg.setParentItem(self.sPlot)
 		for s,c in zip(sPos,sCol):
+			# print(QtGui.QColor(c))
 			self.sLeg.gradient.setColorAt(s, QtGui.QColor(c))
 		# self.sLeg.gradient.setColorAt(s, QtGui.QColor(255,255,255))
 		# self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
@@ -252,10 +269,11 @@ class	Plot2D():
 
 	def	update(self):
 		data = self.allData[self.i]
+		fl   = data[4]
 		self.sImg.setImage(data[0], levels=(0.,1.))
 		self.aImg.setImage(data[1], levels=(0.,1.))
-		self.zStxt.setText("z = %.3e" % data[2])
-		self.zAtxt.setText("z = %.3e" % data[2])
+		self.zStxt.setText("ct = %.3e" % data[2])
+		self.zAtxt.setText("ct = %.3e" % data[2])
 
 		vb = self.aPlot.getViewBox()
 
@@ -273,14 +291,30 @@ class	Plot2D():
 		self.sLeg.size   = (sSzeX/20, sSzeY)
 		self.sLeg.offset = (aSzeX/0.96 + sSzeX, sSzeY/12.)
 
-		sPos = np.linspace(0.0, data[3], 5)
-		sLab = ["%.2f" % mod for mod in sPos]
-		self.sLeg.gradient.setColorAt(0.00, QtGui.QColor(255,255,255))
-		self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
-		self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(255,255,  0))
-		self.sLeg.gradient.setColorAt(0.75, QtGui.QColor(  0,255,255))
-		self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(  0,  0,  0))
-		self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
+		if fl == 'Axion' or fl == 'Saxion':
+			sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
+			sCol = ['w', 'r', 'y', 'c', 'k']
+			sLab = ["%.2f" % mod for mod in sPos]
+			self.sLeg.gradient.setColorAt(0.00, QtGui.QColor(255,255,255))
+			self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
+			self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(255,255,  0))
+			self.sLeg.gradient.setColorAt(0.75, QtGui.QColor(  0,255,255))
+			self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(  0,  0,  0))
+			self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
+
+		else :
+			sPos = np.array([0.00, 0.5, 1.00])
+			sCol = ['k', 'g', 'w']
+			sLab = ["%.2f" % mod for mod in sPos]
+			self.sLeg.gradient.setColorAt(0.00, QtGui.QColor(0,0,0))
+			self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(0,255,  0))
+			self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(  255,  255,  255))
+			self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.50, sLab[2]: 1.00 })
+
+		self.sLeg.setLabels(dict(zip(sLab, sPos)))
+		# for s,c in zip(sPos,sCoQ):
+		# 	self.sLeg.gradient.setColorAt(s, c)
+
 
 		self.i = (self.i+self.step)%self.size
 
