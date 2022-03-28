@@ -26,6 +26,9 @@
 /* In case one reads larger grids */
 #include "reducer/reducer.h"
 
+/* In case one reads csaxion wants axion */
+#include "scalar/thetaScalar.h"
+
 #ifdef USE_NYX_OUTPUT
 	#include "io/output_nyx.h"
 #endif
@@ -743,6 +746,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
  	and prepare Cosmos by merging with commandline parameters
 
 	Includes adjusting size to the desired command line
+
+	Includes axion->Saxion or Saxion->axion
 	*/
 
 	void	readConf (Cosmos *myCosmos, Scalar **axion, int index, const bool restart)
@@ -1332,7 +1337,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		/* We read in an auxiliar Scalar field because we might need to reduce into axion */
 
-		LogMsg(VERB_PARANOID, "[rc] Creating axion field %d %d(x%d)",Nxcreate,Nzcreate,zGrid);
+		LogMsg(VERB_HIGH, "[rc] Creating axion field %d %d(x%d)",Nxcreate,Nzcreate,zGrid);
 
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, 0);
@@ -1341,24 +1346,40 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		slab   = (hsize_t) (Nx_read*Nx_read);
 		// We create a larger axion file if we need to expand
 
+		FieldType_s fTypeRead, fTypeCreate;
 		if (!strcmp(fStr, "Saxion"))
 		{
-			(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, FIELD_SAXION,    lType, myCosmos->ICData().Nghost);
+			fTypeRead = FIELD_SAXION;
+			fTypeCreate = FIELD_SAXION;
 			slab   = (hsize_t) (slab*2);
 		}
 		else if (!strcmp(fStr, "Axion"))
 		{
-			(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION,    lType, myCosmos->ICData().Nghost);
+			fTypeRead = FIELD_AXION;
+			fTypeCreate = FIELD_AXION;
+			if (fTypeP == FIELD_SAXION)
+				fTypeCreate = FIELD_SAXION;
 		}
 		else if (!strcmp(fStr, "Axion Mod"))
 		{
-			(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, FIELD_AXION_MOD, lType, myCosmos->ICData().Nghost);
+			fTypeRead = FIELD_AXION_MOD;
+			fTypeCreate = FIELD_AXION_MOD;
+			if (fTypeP == FIELD_SAXION)
+				fTypeCreate = FIELD_SAXION;
 		}
 		else
 		{
 			LogError ("Input error: Invalid field type");
 			exit(1);
 		}
+
+		(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, fTypeCreate,    lType, myCosmos->ICData().Nghost);
+
+		if (fTypeRead == FIELD_AXION)
+			(*axion)->setField(FIELD_AXION);
+
+		if (fTypeRead == FIELD_AXION_MOD)
+			(*axion)->setField(FIELD_AXION_MOD);
 
 		LogMsg(VERB_PARANOID, "[rc] Read start\n");
 
@@ -1450,7 +1471,32 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		commSync();
 
-			/* Reduce or expand if required */
+		/* Transform Field saxion->axion, axion->saxion */
+		//TODO make it consistent for axion mod
+
+		LogMsg(VERB_NORMAL,"[rc] fTypeParsed %d fTypeRead %d fTypeCreate %d",fTypeP, fTypeRead, fTypeCreate);
+
+		if (fTypeP == FIELD_SAXION && (fTypeRead == FIELD_AXION || fTypeRead == FIELD_AXION_MOD)){
+			LogMsg(VERB_NORMAL,"[rc] Saxion requested, axion read. Transforming... ");
+			ctheta2csaxion(*axion);
+		}
+		if (fTypeP == FIELD_AXION && fTypeRead == FIELD_SAXION){
+			LogMsg(VERB_NORMAL,"[rc] Axion requested, saxion read. Transforming... ");
+			aMod = false;
+			double shiftz = (*axion)->Saskia()*(*(*axion)->RV());
+			cmplxToTheta (*axion, shiftz, aMod);
+		}
+		if (fTypeP == FIELD_AXION_MOD && fTypeRead == FIELD_SAXION){
+			LogMsg(VERB_NORMAL,"[rc] Axion% requested, saxion read. Transforming... ");
+			LogMsg(VERB_NORMAL,"[rc] WARINING: axion mod not tested");
+			aMod = true;
+			double shiftz = (*axion)->Saskia()*(*(*axion)->RV());
+			cmplxToTheta (*axion, shiftz, aMod);
+		}
+			// mend?
+
+		/* Reduce or expand if required */
+
 		if ((sizeN > Nx_read) && (sizeZ > Nz))
 		{
 				LogMsg(VERB_NORMAL, "[rC] Expansion from XY %d Z %d to XY %d Z %d",Nx_read,Nz*zGrid, sizeN,sizeZ*zGrid);
@@ -1504,7 +1550,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) totlZ)*slab*2 + 77);
 		LogFlush();
 
-	}
+	} //end readConf
 
 
 

@@ -5,6 +5,7 @@
 	#include "scalar/scalarField.h"
 	#include <math.h>
 
+	using namespace std;
 	// double anymean(FieldIndex ftipo);
 	// void   susum(FieldIndex from, FieldIndex to);
 	// void   mulmul(FieldIndex from, FieldIndex to);
@@ -286,6 +287,73 @@
 		}
 		return;
 	}
+
+	/* Converts a conformal theta configuration into conformal saxion */
+	void	ctheta2csaxion(Scalar *axion)
+	{
+	/* ctheta = theta R
+	  cvtheta = theta' R + theta R'
+		cphi    = R exp(i theta) = R exp(i ctheta/R)
+		cvphi   = R' exp(i theta) + R i theta' exp(i theta)
+		        = (R'/R  + i theta') cphi
+						= (R'/R  + i (cvtheta/R - theta R'/R)) cphi
+						= (R'/R (1-i ctheta/R) + i cvtheta/R ) cphi
+						*/
+
+		LogMsg(VERB_NORMAL,"[SOP] c_theta to c_saxion");
+		memmove(axion->m2Cpu(),axion->mStart(), axion->Size()*axion->Precision());
+		memmove(axion->m2half(),axion->vStart(), axion->Size()*axion->Precision());
+
+
+
+		switch(axion->Precision()){
+			case FIELD_DOUBLE:{
+				double R = *axion->RV();
+				double Rp = axion->BckGnd()->Rp(*axion->zV());
+				complex<double> II = complex<double>{0,1};
+
+				double *m = static_cast<double*>(axion->m2Cpu());
+				double *v = static_cast<double*>(axion->m2half());
+				complex <double> *mc = static_cast<complex<double>*>(axion->mCpu())+axion->getNg()*axion->Surf();
+				complex <double> *vc = static_cast<complex<double>*>(axion->vCpu());
+
+				#pragma omp parallel
+				{
+					#pragma omp for schedule(static)
+					for (size_t idx = 0; idx < axion->Size(); idx++){
+						double theta = m[idx]/R;
+						mc[idx] = R * std::exp(II*theta);
+						vc[idx] = (Rp * (1.0 - II*theta) + II * v[idx]/R )* mc[idx];
+					}
+				}
+			} break;
+			case FIELD_SINGLE:{
+				float R = *axion->RV();
+				float Rp = axion->BckGnd()->Rp(*axion->zV());
+				complex<float> II = complex<float>{0,1};
+
+				float *m = static_cast<float*>(axion->m2Cpu());
+				float *v = static_cast<float*>(axion->m2half());
+				complex <float> *mc = static_cast<complex<float>*>(axion->mCpu())+axion->getNg()*axion->Surf();
+				complex <float> *vc = static_cast<complex<float>*>(axion->vCpu());
+
+				#pragma omp parallel
+				{
+					#pragma omp for schedule(static)
+					for (size_t idx = 0; idx < axion->Size(); idx++){
+						float theta = m[idx]/R;
+						mc[idx] = R * std::exp(II*theta);
+						vc[idx] = (Rp * (1.f - II*theta) + II * v[idx]/R )* mc[idx];
+					}
+				}
+			} break;
+			}
+
+		axion->setField(FIELD_SAXION);
+		return;
+	} //end ctheta2csaxion
+
+
 
 
 #endif

@@ -1008,14 +1008,19 @@ void	Scalar::setField (FieldType newType)
 				shift *= 2;
 		fieldType = newType;
 
-		LogMsg(VERB_NORMAL,"[sca] Field set to AXION !");
+		LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
+		LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
 		break;
 
 		case	FIELD_SAXION:
-			if (fieldType & FIELD_AXION)
-				LogError ("Error: transformation from axion to saxion not supported");
-			else
-				fieldType = FIELD_SAXION;
+			if (fieldType & FIELD_AXION) {
+				LogMsg (VERB_NORMAL, "[sca] WARNING: Transformation from axion to saxion assumes the field was created as saxion. Otherwise errors will ensue.");
+				fSize *= 2;
+				shift /= 2;
+				fieldType = newType;
+				LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
+				LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
+			}
 			break;
 
 		case	FIELD_NAXION:
