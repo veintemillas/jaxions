@@ -17,6 +17,9 @@
 			void *		planForward;
 			void *		planBackward;
 
+			void *		pfrom;
+			void *		pto;
+
 			FFTtype		type;
 			FFTdir		dFft;
 			FieldPrecision	prec;

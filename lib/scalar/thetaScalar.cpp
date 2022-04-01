@@ -86,9 +86,9 @@ void	cmplxToTheta	(Scalar *field, const double shift, const bool wMod)
 
 	if (wMod == true) {
 		field->setField(FIELD_AXION_MOD);
-	} else {
+	} else
 		field->setField(FIELD_AXION);
-	}
+
 
 	field->setLowMem(false);
 

@@ -650,6 +650,8 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
 	icdatst.grav      = 0.0;
+  icdatst.grav_hyb  = false;
+  icdatst.grav_sat  = false;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
@@ -686,6 +688,30 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--measinfo"))
 			PARSE1;
 		/* Parse jaxion arguments */
+
+    if (!strcmp(argv[i], "--ftype"))
+		{
+      LogMsg(VERB_NORMAL,"WARNING: Currently setting field type is experimental! Mostly for reading files into other formats.");
+			if (i+1 == argc)
+			{
+				printf("I need a field type!.\n");
+				exit(1);
+			}
+			if (!strcmp(argv[i+1], "saxion"))
+				fTypeP = FIELD_SAXION;
+			else if (!strcmp(argv[i+1], "axion"))
+        fTypeP = FIELD_AXION;
+        else if (!strcmp(argv[i+1], "axionmod"))
+        fTypeP = FIELD_AXION_MOD;
+      else if (!strcmp(argv[i+1], "Paxion"))
+        fTypeP = FIELD_PAXION;
+      else {
+        printf("field type not recognised!.\n");
+				exit(1);
+      }
+
+			PARSE2;
+		}
 
 		if (!strcmp(argv[i], "--mink"))
 		{
@@ -1228,6 +1254,22 @@ int	parseArgs (int argc, char *argv[])
 			icdatst.grav = atof(argv[i+1]);
 
 			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--hybrid_gravity"))
+		{
+
+			icdatst.grav_hyb = true;
+
+			PARSE1;
+		}
+
+    if (!strcmp(argv[i], "--sat_gravity"))
+		{
+
+			icdatst.grav_sat = true;
+
+			PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--zi"))

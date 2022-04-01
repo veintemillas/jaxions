@@ -289,7 +289,7 @@
 			MOM_KK       = 1024, 	// extra momentum factor
 			MOM_KCOLE   = 1040,  //
 			MOM_SPAX    = 2048,  // given spectrum
-			MOM_MVTHERMAL = 4096, 
+			MOM_MVTHERMAL = 4096,
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -601,9 +601,10 @@
 		typedef	enum	MapType_s {
 			MAP_RHO   = 1,
 			MAP_THETA = 2,
-			MAP_ALL   = 3,
+			MAP_ALL   = 11,
 			MAP_VHETA = 4,
 			MAP_NONE  = 0,
+			MAP_M2S   = 8, //whatever is in M2S
 		}	MapType;
 
 		typedef	enum	StatusM2_s {
@@ -619,8 +620,8 @@
 			M2_MASK_AXI2_FFT = 256,
 			M2_MASK        = 512,      // Points outside string
 			M2_ANTIMASK    = 1024,     // Points inside the string region (duplicated to mask complex energy)
-			M2_POT         = 2048,     // gravitational potential unnormalised (solution of lap Phi = delta)
-			M2_ENERGY_SMOOTH = 4092,   // smoothed energy map
+			M2_POT         = 2048,     // gravitational potential unnormalised (solution of lap Phi = delta, without 4pi G rho0) in m2Start, typically
+			M2_ENERGY_SMOOTH = 4096,   // smoothed energy map
 
 		}	StatusM2;
 
@@ -802,6 +803,8 @@
 			MomConfType   mocoty;
 			FieldIndex    fieldindex;
 			double        grav;
+			bool          grav_hyb;
+			bool          grav_sat;
 			AxitonInfo    axtinfo;
 		}	IcData;
 

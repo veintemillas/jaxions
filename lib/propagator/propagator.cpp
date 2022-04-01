@@ -454,10 +454,15 @@ std::vector<int>	calculateAllowedBlockSize(int length) {
 
 	return lowDiv;
 }
-*/			
+*/
 
 void	resetPropagator(Scalar *field) {
 	/*	Default block size gives just one block	*/
+
+	if (prop == nullptr){
+		LogMsg(VERB_NORMAL,"[tp] reset propagator called but not initialised: EXIT!");
+		return ;
+	}
 
 	LogMsg(VERB_NORMAL,"[tp] reseting!");
 	if (pType & PROP_SPEC)
@@ -469,6 +474,7 @@ void	resetPropagator(Scalar *field) {
 	int shift = 0;
 
 	while (tmp != 1) {
+		LogMsg(VERB_HIGH,"[tp] tmp %d!",tmp);
 		shift++;
 		tmp >>= 1;
 	}
@@ -477,8 +483,8 @@ void	resetPropagator(Scalar *field) {
 	prop->SetBlockY(field->Length() >> shift);
 	prop->SetBlockZ(field->Depth ());
 	prop->UpdateBestBlock();
-
 	prop->UnTune();
+	LogMsg(VERB_HIGH,"[tp] done!",tmp);
 }
 
 

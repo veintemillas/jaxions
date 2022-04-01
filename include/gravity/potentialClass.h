@@ -314,7 +314,7 @@ report (index, red, pad, fft, 1, "FFT");
 				int    kx  = idx - tmp*hLx;
 				int    ky  = tmp/Tz;
 				int    kz  = tmp - Tz*((size_t) ky);
-				kz += (int) zBase;
+				ky += (int) zBase;
 				if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Lx);
 				if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 				Float k2    = (Float) (kx*kx + ky*ky + kz*kz);
@@ -622,7 +622,7 @@ LogMsg (VERB_PARANOID, "[ilap] rnorm %e ",rnorm);
 			int    kx  = idx - tmp*hrLx;
 			int    ky  = tmp/rTz;
 			int    kz  = tmp - ((size_t) ky)*rTz;
-			kz += (int) zBase;
+			ky += (int) zBase;
 
 			if (ky > static_cast<int>(hrLy)) ky -= static_cast<int>(rLx);
 			if (kz > static_cast<int>(hrTz)) kz -= static_cast<int>(rTz);
@@ -840,6 +840,7 @@ LogMsg (VERB_PARANOID, "[GV] Report index %d red %d pad %d fft %d slice %d Messa
 			writeAttribute(&fft, "fft", H5T_NATIVE_INT);
 			writeAttribute(name, "Message", H5T_C_S1);
 			writeEMapHdf5s (afield,slice);
+			writeEDens (afield,MAP_M2S);
 		destroyMeas();
 		index++;
 		}
