@@ -478,9 +478,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	double indi3    = axion->BckGnd()->Indi3();
 	double zthres   = axion->BckGnd()->ZThRes();
 	double zrestore = axion->BckGnd()->ZRestore();
+	double lz2e     = axion->BckGnd()->LamZ2Exp();
 
 	writeAttribute(vGrp_id, &lStr,    "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,      "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &lz2e,    "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &vStr,    "VQcd type",     attr_type);
 	writeAttribute(vGrp_id, &vPQStr,  "VPQ type",      attr_type);
 	writeAttribute(vGrp_id, &dStr,    "Damping type",  attr_type);
