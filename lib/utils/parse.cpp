@@ -1277,7 +1277,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--part_vel"))
 		{
 
-			icdatst.grav_sat = true;
+			icdatst.part_vel = true;
 
 			PARSE1;
 		}
