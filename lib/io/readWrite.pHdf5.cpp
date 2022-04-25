@@ -1369,6 +1369,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			if (fTypeP == FIELD_SAXION)
 				fTypeCreate = FIELD_SAXION;
 		}
+		else if (!strcmp(fStr, "Paxion"))
+		{
+			fTypeRead = FIELD_PAXION;
+			fTypeCreate = FIELD_PAXION;
+			if (fTypeP == FIELD_SAXION)
+				fTypeCreate = FIELD_PAXION;
+		}
 		else
 		{
 			LogError ("Input error: Invalid field type");
@@ -1424,7 +1431,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			/*	Read raw data	*/
 
 			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
-			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())  +slab*zDim*dataSize));
+			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vStart())+slab*zDim*dataSize));
 
 			if ((mErr < 0) || (vErr < 0)) {
 				LogError ("Error reading dataset from file");
