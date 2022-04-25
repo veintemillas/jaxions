@@ -108,7 +108,7 @@ int	main (int argc, char *argv[])
 	// 	bool map_velocity = true;
 	
 	if (gadType == GAD_GRID)
-		createGadget_Grid (axion,Ngrid,nPart,L1_pc,map_velocity);
+		createGadget_Grid (axion,Ngrid,nPart,L1_pc);
 	else if (gadType == GAD_MASS)
 		LogOut("Not yet implemented...");
 	else if (gadType == GAD)
