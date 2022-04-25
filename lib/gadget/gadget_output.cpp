@@ -79,10 +79,10 @@ void grad_idx(Scalar *axion, float * grad3, size_t idx, hssize_t xC, hssize_t yC
     gr_x = 0.5*(  atan2(-rea[idxPx]*ima[idx]+ima[idxPx]*rea[idx], rea[idxPx]*rea[idx]+ima[idxPx]*ima[idx]) 
 				- atan2(-rea[idxMx]*ima[idx]+ima[idxMx]*rea[idx], rea[idxMx]*rea[idx]+ima[idxMx]*ima[idx]));
 							
-	gr_y = 0.5*(  atan2(-rea[idxPy]*ima[idx]+ima[idxPy]*rea[idx], rea[idxPy]*rea[idx]+ima[idxPy]*ima[idx]) 
+    gr_y = 0.5*(  atan2(-rea[idxPy]*ima[idx]+ima[idxPy]*rea[idx], rea[idxPy]*rea[idx]+ima[idxPy]*ima[idx]) 
 				- atan2(-rea[idxMy]*ima[idx]+ima[idxMy]*rea[idx], rea[idxMy]*rea[idx]+ima[idxMy]*ima[idx]));
 							
-	gr_z = 0.5*(  atan2(-rea[idxPz]*ima[idx]+ima[idxPz]*rea[idx], rea[idxPz]*rea[idx]+ima[idxPz]*ima[idx]) 
+    gr_z = 0.5*(  atan2(-rea[idxPz]*ima[idx]+ima[idxPz]*rea[idx], rea[idxPz]*rea[idx]+ima[idxPz]*ima[idx]) 
 				- atan2(-rea[idxMz]*ima[idx]+ima[idxMz]*rea[idx], rea[idxMz]*rea[idx]+ima[idxMz]*ima[idx]));
     
     grad3[0] = gr_x;
@@ -106,7 +106,7 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, double L1_pc
 
 	LogMsg (VERB_NORMAL, "Writing Gadget output file");
 	LogMsg (VERB_NORMAL, "");
-    LogOut("\n----------------------------------------------------------------------\n");
+        LogOut("\n----------------------------------------------------------------------\n");
 	LogOut("   GAD_GRID selected!        \n");
 	LogOut("----------------------------------------------------------------------\n");
 	
@@ -114,20 +114,20 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, double L1_pc
 	Profiler &prof = getProfiler(PROF_HDF5);
 	prof.start();
     
-    /*      WKB not supported atm   */
-    if (axion->Field() == FIELD_WKB) 
-    {
+        /*      WKB not supported atm   */
+        if (axion->Field() == FIELD_WKB) 
+        {
             LogError ("Error: WKB field not supported");
             prof.stop();
             exit(1);
-    }
+        }
 
 	/*      If needed, transfer data to host        */
 	if (axion->Device() == DEV_GPU)
 		axion->transferCpu(FIELD_M2);
 
 	if (axion->m2Cpu() == nullptr) 
-    {
+        {
 		LogError ("You seem to be using the lowmem option");
 		prof.stop();
 		return;
@@ -184,28 +184,28 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, double L1_pc
 	hGrp_id = H5Gcreate2(file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     
 	// Units
-    double  L1_in_pc = L1_pc; 
-    double	bSize  = axion->BckGnd()->PhysSize() * L1_in_pc / 0.7;
-    double  Omega0 = 0.3;
-    double  met_to_pc = 1/(3.08567758e16);
-    double  G_N = 6.67430e-11 * 1.98847e30 * met_to_pc * met_to_pc * met_to_pc; // pc^3/s^2/SolarMass
-    double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s 
-    
-    size_t  nPrt = nParts;
-    if (nParts == 0)
-        nPrt = axion->TotalSize();
-    
-    double  totalMass = Omega0 * (bSize*bSize*bSize) * (3.0 * H0*H0) / (8 * M_PI * G_N);
-    double  avMass = totalMass/((double) nPrt);
-   
-    LogOut("\n[gadmass] Number of particles (nPrt): %lu\n",nPrt);
-    LogOut("[gadmass] Box Length: L = %lf pc/h\n",bSize); 
-    LogOut("[gadmass] Total Mass: M = %e Solar Masses\n",totalMass);
-    LogOut("[gadmass] Average Particle Mass: m_av = %e Solar Masses\n",avMass);
+	    double  L1_in_pc = L1_pc; 
+	    double	bSize  = axion->BckGnd()->PhysSize() * L1_in_pc / 0.7;
+	    double  Omega0 = 0.3;
+	    double  met_to_pc = 1/(3.08567758e16);
+	    double  G_N = 6.67430e-11 * 1.98847e30 * met_to_pc * met_to_pc * met_to_pc; // pc^3/s^2/SolarMass
+	    double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s 
 
-    size_t  iDummy = 0;
-    size_t  oDummy = 1;
-    double  fDummy = 0.0;
+	    size_t  nPrt = nParts;
+	    if (nParts == 0)
+		nPrt = axion->TotalSize();
+
+	    double  totalMass = Omega0 * (bSize*bSize*bSize) * (3.0 * H0*H0) / (8 * M_PI * G_N);
+	    double  avMass = totalMass/((double) nPrt);
+
+	    LogOut("\n[gadmass] Number of particles (nPrt): %lu\n",nPrt);
+	    LogOut("[gadmass] Box Length: L = %lf pc/h\n",bSize); 
+	    LogOut("[gadmass] Total Mass: M = %e Solar Masses\n",totalMass);
+	    LogOut("[gadmass] Average Particle Mass: m_av = %e Solar Masses\n",avMass);
+
+	    size_t  iDummy = 0;
+	    size_t  oDummy = 1;
+	    double  fDummy = 0.0;
 
     /* Simple scalar attributes */
 	writeAttribute(hGrp_id, &bSize,  "BoxSize",                H5T_NATIVE_DOUBLE);
