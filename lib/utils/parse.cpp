@@ -651,8 +651,9 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
 	icdatst.grav      = 0.0;
-  icdatst.grav_hyb  = false;
-  icdatst.grav_sat  = false;
+  	icdatst.grav_hyb  = false;
+  	icdatst.grav_sat  = false;
+	icdatst.part_vel  = false;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
@@ -1266,6 +1267,14 @@ int	parseArgs (int argc, char *argv[])
 		}
 
     if (!strcmp(argv[i], "--sat_gravity"))
+		{
+
+			icdatst.grav_sat = true;
+
+			PARSE1;
+		}
+		
+		if (!strcmp(argv[i], "--part_vel"))
 		{
 
 			icdatst.grav_sat = true;
@@ -2080,17 +2089,9 @@ int	parseArgs (int argc, char *argv[])
 			{
 				gadType = GAD;
 			}
-			else if (!strcmp(argv[i+1], "gadvel"))
-			{
-				gadType = GAD_VEL;
-			}
 			else if (!strcmp(argv[i+1], "gadmass"))
 			{
 				gadType = GAD_MASS;
-			}
-			else if (!strcmp(argv[i+1], "gadmassvel"))
-			{
-				gadType = GAD_MASS_VEL;
 			}
 			else if (!strcmp(argv[i+1], "gadgrid"))
 			{

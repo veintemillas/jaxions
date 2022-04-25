@@ -103,7 +103,10 @@ int	main (int argc, char *argv[])
 	LogOut("Ready to Gadget %lu!\n",nPart);
 
 	double L1_pc = 0.06;
-	bool map_velocity = true;
+	bool map_velocity = false;
+	if (axion->BckGnd()->ICData().part_vel)
+		bool map_velocity = true;
+	
 	if (gadType == GAD_GRID)
 		createGadget_Grid (axion,Ngrid,nPart,L1_pc,map_velocity);
 	else
