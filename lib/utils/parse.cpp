@@ -108,6 +108,7 @@ VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
 VqcdType     vqcdTypeEvol    = V_NONE;
+GadType      gadType         = GAD_MASS_VEL; 
 
 // Default IC type
 IcData icdatst;
@@ -2064,6 +2065,38 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--gadtype"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the gadget configuration type (gad/gadvel/gadmass/gadmassvel/gadgrid).\n");
+				exit(1);
+			}
+
+			if (!strcmp(argv[i+1], "gad"))
+			{
+				gadType = GAD;
+			}
+			else if (!strcmp(argv[i+1], "gadvel"))
+			{
+				gadType = GAD_VEL;
+			}
+			else if (!strcmp(argv[i+1], "gadmass"))
+			{
+				gadType = GAD_MASS;
+			}
+			else if (!strcmp(argv[i+1], "gadmassvel"))
+			{
+				gadType = GAD_MASS_VEL;
+			}
+			else if (!strcmp(argv[i+1], "gadgrid"))
+			{
+				gadType = GAD_GRID;
+			}
+					
 			PARSE2;
 		}
 
