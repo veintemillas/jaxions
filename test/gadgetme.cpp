@@ -17,6 +17,7 @@
 #include "spectrum/spectrum.h"
 #include "meas/measa.h"
 #include "reducer/reducer.h"
+#include "gadget/gadget_output.h"
 
 #include "WKB/WKB.h"
 
@@ -28,30 +29,31 @@ int	main (int argc, char *argv[])
 
 	double zendWKB = 10. ;
 	Cosmos myCosmos = initAxions(argc, argv);
+	size_t nPart = sizeN*sizeN*sizeN;
 
 	if (nSteps==0)
 	return 0 ;
 
-	//--------------------------------------------------
-	//       AUX STUFF
-	//--------------------------------------------------
-
-
 	commSync();
-	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n   GADGET axion.m.%5d > %5d        particles     \n", fIndex, sizeN);
-	LogOut("\n-------------------------------------------------\n");
-	LogOut(" ~ (%04d)^3                                      \n", pow( (double) sizeN ,1./3.));
-	LogOut(" KCrit   = %5f \n",kCrit);
-	LogOut("\n-------------------------------------------------\n");
+	LogOut("(Usage:   mpirun -n RANKS gadgetme --index X --zgrid RANKS --nologmpi --size N --redmp n --gadtype GADTYPE --mapvel       )\n");
+	LogOut("(         Creates N^3 particles, reducing the grid first to n^3 if needed                                                 )\n");
+	LogOut("(Options: --gadtype [gad/gadmass/gadgrid]                                                                                 )\n");
+	LogOut("(         If --mapvel is parsed the configurations contains velocities                                                    )\n");
+	LogOut("(         If gad/gadvel are selected, --kcr sigma is the variance of the displacement (default = 1, recommended ~ 0.25)   )\n\n");
 
-	size_t nPart = sizeN;
-
-	LogOut("(Usage: mpirun -n RANKS gadgetme --index X --zgrid RANKS --nologmpi --size N --redmp n --kcr sigma )\n");
-	LogOut("(Usage: creates N^3 particulas reducing the grid first to n^3  )\n");
-	LogOut("(Usage: sigma in latice units, default = 1, recommended ~ 0.25  )\n");
+	LogOut("\n----------------------------------------------------------------------\n");
+	LogOut("   GADGET axion.m.%05d > %d^3 = %5d particles   \n", fIndex, sizeN, nPart);
+	LogOut("----------------------------------------------------------------------\n\n");
 
 	Scalar *axion;
+	LogOut ("Reading conf %d ...", fIndex);
+	readConf(&myCosmos, &axion, fIndex);
+	if (axion == NULL)
+	{
+		LogOut ("Error reading HDF5 file\n");
+		exit (0);
+	}
+	LogOut ("... Done!\n");
 
 	/* Creates axion and reads energy into M2 */
 	double eMean = readEDens	(&myCosmos, &axion, fIndex);
@@ -61,14 +63,10 @@ int	main (int argc, char *argv[])
 	LogOut("Z_grid = %lu\n",axion->Depth());
 	commSync();
 
-	// for (int i=0; i< 10; i++)
-	// 	printf("energy[%d,%d] = %f\n",commRank(),i,static_cast<float *> (axion->m2Cpu())[i]);
-
-
 	size_t Ngrid = axion->Length();
 
 	if (sizeN < Ngrid)
-		endredmap = sizeN;
+		endredmap = sizeN*sizeN*sizeN;
 
 	if (endredmap > 0)
 	{
@@ -103,7 +101,13 @@ int	main (int argc, char *argv[])
 	}
 
 	LogOut("Ready to Gadget %lu!\n",nPart);
-	writeGadget(axion,eMean,Ngrid,nPart,kCrit);
+
+	double L1_pc = 0.06;
+	bool map_velocity = true;
+	if (gadType == GAD_GRID)
+		createGadget_Grid (axion,Ngrid,nPart,L1_pc,map_velocity);
+	else
+		LogOut("Not yet implemented...");
 
 	//create measurement spectrum
 	if ( !(defaultmeasType == MEAS_NOTHING) )
