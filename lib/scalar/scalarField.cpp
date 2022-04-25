@@ -278,6 +278,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 		case FIELD_FAXION:
+		case FIELD_PAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m2");
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
