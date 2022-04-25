@@ -39,6 +39,7 @@
 	void    writeAttribute	(double *data, const char *name);
 	void    writeAttribute	(void *data, const char *name, hid_t h5_Type);
 	void    writeAttributeg	(void *data, const char *group, const char *name, hid_t h5_Type);
+	herr_t	writeAttribute  (hid_t file_id, void *data, const char *name, hid_t h5_type);
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 

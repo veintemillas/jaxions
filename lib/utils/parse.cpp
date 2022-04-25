@@ -108,7 +108,7 @@ VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
 VqcdType     vqcdTypeEvol    = V_NONE;
-GadType      gadType         = GAD_MASS_VEL; 
+GadType      gadType         = GAD_MASS; 
 
 // Default IC type
 IcData icdatst;
