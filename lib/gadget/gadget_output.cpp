@@ -566,10 +566,18 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, double L1_pc
 					float grad[3];
 					grad_idx(axion,grad,idx,xC,yC,zC);
 
-					vOut[tPrti*3+0] = grad[0]/(*axion->zV() * axion->AxionMass());
-					vOut[tPrti*3+1] = grad[1]/(*axion->zV() * axion->AxionMass());
-					vOut[tPrti*3+2] = grad[2]/(*axion->zV() * axion->AxionMass());
-
+					if (map_velocity)
+					{
+						vOut[tPrti*3+0] = grad[0]/(*axion->zV() * axion->AxionMass());
+						vOut[tPrti*3+1] = grad[1]/(*axion->zV() * axion->AxionMass());
+						vOut[tPrti*3+2] = grad[2]/(*axion->zV() * axion->AxionMass());
+					}
+					else
+					{
+						vOut[tPrti*3+0] = 0.f;
+						vOut[tPrti*3+1] = 0.f;
+						vOut[tPrti*3+2] = 0.f;
+					}
 					tPrti++; 
 				} 
 			} 

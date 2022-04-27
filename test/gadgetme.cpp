@@ -102,13 +102,14 @@ int	main (int argc, char *argv[])
 
 	LogOut("Ready to Gadget %lu!\n",nPart);
 
-	double L1_pc = 0.06;
-	// TO ADD
-	// if (axion->BckGnd()->ICData().part_vel)
-	// 	bool map_velocity = true;
+	double L1_pc = 0.036;
+	
+	bool map_velocity = false;
+	if (axion->BckGnd()->ICData().part_vel)
+		map_velocity = true;
 	
 	if (gadType == GAD_GRID)
-		createGadget_Grid (axion,Ngrid,nPart,L1_pc);
+		createGadget_Grid (axion,Ngrid,nPart,L1_pc,map_velocity);
 	else if (gadType == GAD_MASS)
 		LogOut("Not yet implemented...");
 	else if (gadType == GAD)
