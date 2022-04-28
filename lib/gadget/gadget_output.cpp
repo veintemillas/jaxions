@@ -63,6 +63,14 @@ void grad_idx(Scalar *axion, float * grad3, size_t idx)
     grad3[2] = gr_z;
 }
 
+float mass_idx(Scalar *axion, size_t idx)
+{
+	float mass_int;
+	float  *massArr = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())));
+	mass_int = massArr[idx];
+	return mass_int;
+}
+
 void grad_interp(Scalar *axion, float * grad3, size_t idx, float x_disp, float y_disp, float z_disp)
 {
 	const size_t totlX = axion->Length();
@@ -137,6 +145,66 @@ void grad_interp(Scalar *axion, float * grad3, size_t idx, float x_disp, float y
 			 + gra_XyZ[2] *((float) ( x_disp      * (1.-y_disp) * z_disp      )) 
 			 + gra_xYZ[2] *((float) ((1.-x_disp)  *  y_disp     * z_disp      )) 
 			 + gra_XYZ[2] *((float) ( x_disp      *  y_disp     * z_disp      ));
+}
+
+float mass_interp(Scalar *axion, size_t idx, float x_disp, float y_disp, float z_disp)
+{
+	const size_t totlX = axion->Length();
+    hsize_t S  = axion->Surf();
+
+	float mass;
+	float mass_xyz,mass_Xyz,mass_xYz,mass_xyZ;
+	float mass_XYz,mass_XyZ,mass_xYZ,mass_XYZ;
+
+	size_t xyz, Xyz ,xYz, xyZ;
+	size_t XYz, XyZ ,xYZ, XYZ;
+	size_t X[3], O[4]; //check grad_idx function
+
+	indexXeon::idx2VecNeigh(idx,X,O,totlX);
+	xyz = idx;
+	Xyz = O[0]; //idxPx
+	xYz = O[2]; //idxPy
+	xyZ = idx + S; //idxPz
+
+	if (X[1] != totlX - 1)
+		XYz = Xyz + totlX;          // (1,1,0)
+	else
+		XYz = xYz + 1;              // (1,1,0)
+
+	if (X[0] != totlX - 1)
+		XyZ = xyZ + 1;              // (1,0,1)
+	else 
+		XyZ = xyZ + totlX;          // (1,0,1)
+
+	if (X[1] != totlX - 1)
+		xYZ = xyZ + totlX;          // (0,1,1)
+	else 
+		xYZ = xYz + S;              // (0,1,1)
+
+	if (X[1] != totlX - 1)
+		XYZ = Xyz + totlX + S;      // (1,1,1)
+	else
+		XYZ = xYz + 1 + S;
+
+	mass_xyz = mass_idx(axion,xyz);
+	mass_Xyz = mass_idx(axion,Xyz);
+	mass_xYz = mass_idx(axion,xYz);
+	mass_xyZ = mass_idx(axion,xyZ);
+
+	mass_XYz = mass_idx(axion,XYz);
+	mass_XyZ = mass_idx(axion,XyZ);
+	mass_xYZ = mass_idx(axion,xYZ);
+	mass_XYZ = mass_idx(axion,XYZ);
+
+	mass = mass_xyz *((float) ( (1.-x_disp) * (1.-y_disp) * (1.-z_disp) ))
+	     + mass_Xyz *((float) ( x_disp      * (1.-y_disp) * (1.-z_disp) )) 
+		 + mass_xYz *((float) ( (1.-x_disp) * y_disp      * (1.-z_disp) )) 
+		 + mass_XYz *((float) ( x_disp      * y_disp      * (1.-z_disp) )) 
+		 + mass_xyZ *((float) ( (1.-x_disp) * (1.-y_disp) * z_disp      )) 
+		 + mass_XyZ *((float) ( x_disp      * (1.-y_disp) * z_disp      )) 
+		 + mass_xYZ *((float) ((1.-x_disp)  *  y_disp     * z_disp      )) 
+		 + mass_XYZ *((float) ( x_disp      *  y_disp     * z_disp      ));
+	return mass;
 }
 
 void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_velocity)
@@ -1198,9 +1266,26 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	hsize_t Nslabs = nPrt_h/slab/commSize(); // This only works for one particle per grid
     if (nPrt_h > Nslabs*slab*commSize())
         LogOut("\nError: Nparticles is not a multiple of the slab size!");
+
+	/* Write the values in solar masses in m2*/
+	if (dataSize == 4) 
+    {   
+        float * mData = static_cast<float *>(axion->m2Cpu());
+		#pragma omp parallel for schedule(static)
+        for (size_t idx = 0; idx<rOff; idx++)
+		{
+			mData[idx] *= avMass;
+		}
+    }
+	else
+	{
+		LogError ("Double precision not supported yet! Set --prec single");
+        prof.stop();
+        exit(1);
+	}
 	
     /*  Fill particle coordinates and velocities  */
-	LogOut("\n[gadmass] Creating particle coordinates and velocities ... \n");
+	LogOut("\n[gadmass] Creating particle coordinates, velocities and masses ... \n");
 	size_t lPos = 0;
 	for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
 	{
@@ -1225,8 +1310,9 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 			int nPrti = pp_grid;
 			if (dataSize == 4) 
 			{	
-				float *axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+dataSize*(slab*(Lz*2+1))));
+				float *axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->mCpu())+dataSize*(slab*(Lz*2+1))));
 				float  *vOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->vBackGhost())+dataSize*(slab*(Lz*2+1))));
+				float  *mOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+(slab*Lz)*dataSize));
                 for (hssize_t i=0; i<nPrti; i++)
 				{	
 					float xO,yO,zO,x_disp,y_disp,z_disp;
@@ -1271,6 +1357,10 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 						vOut[tPrti*3+1] = 0.f;
 						vOut[tPrti*3+2] = 0.f;
 					}
+					
+					float mass = mass_interp(axion,idx,x_disp,y_disp,z_disp);
+					mOut[tPrti] = mass;
+					
 					tPrti++; 
 				} 
 			} 
@@ -1288,7 +1378,7 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 		};
 
 		H5Sselect_hyperslab(vSpc1, H5S_SELECT_SET, vOffset, stride, vSlab, nullptr);
-		auto rErr = H5Dwrite (vSt1_id, dataType, memSpace, vSpc1, plist_id, static_cast<char *> (axion->m2Cpu())+(slab*(Lz*2 + 1)*dataSize));
+		auto rErr = H5Dwrite (vSt1_id, dataType, memSpace, vSpc1, plist_id, static_cast<char *> (axion->mCpu())+(slab*(Lz*2 + 1)*dataSize));
 		
 		if ((rErr < 0))
 		{
@@ -1305,59 +1395,49 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 			prof.stop();
 			exit(0);
 		}
+
+		H5Sselect_hyperslab(mSpce, H5S_SELECT_SET, vOffset, NULL, mSlab, NULL);
+		auto mErr = H5Dwrite (mSts_id, dataType, mesSpace, mSpce, plist_id, (static_cast<char *> (axion->m2Cpu())+(slab*zDim)*dataSize));
+		if ((mErr < 0))
+		{
+			LogError ("Error writing mass dataset");
+			prof.stop();
+			exit(0);
+		}
 		
 	}
 
 	commSync();
 	LogOut("\n[gadgrid] Filled coordinates and velocities!"); 
 
-    /*  Pointers used to fill data  */
-	void *mArray = static_cast<void*>(static_cast<char*>(axion->m2Cpu())+(slab*Lz)*dataSize); // This will be filled with masses
-    void *vArray = static_cast<void*>(static_cast<char*>(axion->m2Cpu())+(slab*Lz)*dataSize); // This will be filled with IDs
-
     /*  Fill particle masses        */
-    if (dataSize == 4) 
-    {   
-        float * mData = static_cast<float *>(axion->m2Cpu());
-		#pragma omp parallel for schedule(static)
-        for (size_t idx = 0; idx<rOff; idx++)
-		{
-			mData[idx] *= avMass;
-		}
-    }
-	else
-	{
-		LogError ("Double precision not supported yet! Set --prec single");
-        prof.stop();
-        exit(1);
-	}
 
-    for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
-    {	
-		float *maOut = static_cast<float*>(axion->m2Cpu());
-        offset = (((hsize_t) (myRank*Nslabs)) + zDim)*slab;
-		hsize_t vOffset[2] = { offset , 0 };
-		H5Sselect_hyperslab(mSpce, H5S_SELECT_SET, vOffset, NULL, mSlab, NULL);
-		hsize_t *imArray = static_cast<hsize_t*>(mArray);
-        #pragma omp parallel for shared(mArray) schedule(static)
-        for (hsize_t idx = 0; idx < slab; idx++)		
-            imArray[idx] = maOut[idx];
-        
-		auto rErr = H5Dwrite (mSts_id, dataType, mesSpace, mSpce, plist_id, (static_cast<char *> (axion->m2Cpu())+(slab*zDim)*dataSize));
+    // for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
+    // {	
+	// 	float *maOut = static_cast<float*>(axion->m2Cpu());
+    //     offset = (((hsize_t) (myRank*Nslabs)) + zDim)*slab;
+	// 	hsize_t vOffset[2] = { offset , 0 };
+	// 	H5Sselect_hyperslab(mSpce, H5S_SELECT_SET, vOffset, NULL, mSlab, NULL);
+	// 	hsize_t *imArray = static_cast<hsize_t*>(mArray);
+    //     #pragma omp parallel for shared(mArray) schedule(static)
+    //     for (hsize_t idx = 0; idx < slab; idx++)
+	// 		imArray[idx] = maOut[idx];
+	// 	auto rErr = H5Dwrite (mSts_id, dataType, mesSpace, mSpce, plist_id, (static_cast<char *> (axion->m2Cpu())+(slab*zDim)*dataSize));
 
-        if (rErr < 0)
-        {
-            LogError ("Error writing particle masses");
-            prof.stop();
-            exit(0);
-        }
+    //     if (rErr < 0)
+    //     {
+    //         LogError ("Error writing particle masses");
+    //         prof.stop();
+    //         exit(0);
+    //     }
                     
-        commSync();
-    }
+    //     commSync();
+    // }
     
-    LogOut("\n[gadgrid] Filled particle Masses!"); 
+    // LogOut("\n[gadgrid] Filled particle Masses!"); 
     
     /*  Fill particle ID  */
+	void *vArray = static_cast<void*>(static_cast<char*>(axion->m2Cpu())+(slab*Lz)*dataSize); // This will be filled with IDs
     for (hsize_t zDim = 0; zDim < Nslabs; zDim++)
     {
         offset = (((hsize_t) (myRank*Nslabs)) + zDim)*slab;
