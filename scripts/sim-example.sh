@@ -87,7 +87,7 @@ case "$1" in
     find=$(printf "%05d" $2)
     ln -s $cdir/out/m/axion.$find $cdir/wout/m/axion.$find
     #echo " ln -s $cdir/out/m/axion.$find $cdir/wout/m/axion.$find"
-    mpirun $USA -np $RANKS WKVaxion $GRID $SIMU $PHYS $PREP $OUTP --zf $3 --steps $4 --index $2 2>&1 | tee log-wkb.txt
+    mpirun $USA -np $RANKS WKVaxion $GRID $SIMU $PHYS $PREP $OUTP --ftype axion --zf $3 --steps $4 --index $2 2>&1 | tee log-wkb.txt
     ;;
   pax)
     echo "Paxion evolution with settings $PAX"
@@ -99,7 +99,7 @@ case "$1" in
     find=$(printf "%05d" $2)
     #ln -s $cdir/out/m/axion.$find $cdir/pout/m/axion.$find
     ln -s $cdir/wout/m/axion.$find $cdir/pout/m/axion.$find #for WKB 
-    mpirun $USA -np $RANKS paxion3d $GRID $SIMU $PHYS $PREP $OUTP $PAX --index $2 --zf $3 $4 2>&1 | tee log-pax.txt
+    mpirun $USA -np $RANKS paxion3d $GRID $SIMU $PHYS $PREP $OUTP $PAX --ftype axion--index $2 --zf $3 $4 2>&1 | tee log-pax.txt
     ;;
   gad)
     echo "gadget file $2 with $3^3 particles with settings $GADG"
