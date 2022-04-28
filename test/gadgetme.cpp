@@ -37,8 +37,8 @@ int	main (int argc, char *argv[])
 	commSync();
 	LogOut("\n\nUsage:   mpirun -n RANKS gadgetme --index X --zgrid RANKS --nologmpi --size N --redmp n --gadtype GADTYPE --mapvel\n");
 	LogOut("         Creates N^3 particles, reducing the grid first to n^3 if needed\n");
-	LogOut("Options: --gadtype [gad/gadmass/gadgrid]\n");
-	LogOut("         If --mapvel is parsed the configurations contains velocities (to implement)\n");
+	LogOut("Options: --gadtype [gad/gadmass/gadgrid]\n"); 
+	LogOut("         If --part_vel is parsed the configurations contains velocities (to implement)\n");
 	LogOut("         If gad is selected, --kcr sigma is the variance of the displacement (default = 1, recommended ~ 0.25)\n\n");
 
 	LogOut("\n----------------------------------------------------------------------\n");
@@ -102,16 +102,17 @@ int	main (int argc, char *argv[])
 
 	LogOut("Ready to Gadget %lu!\n",nPart);
 
-	double L1_pc = 0.036;
-	
 	bool map_velocity = false;
 	if (axion->BckGnd()->ICData().part_vel)
 		map_velocity = true;
 	
+	axion->exchangeGhosts(FIELD_M);
+	axion->exchangeGhosts(FIELD_V);
+	
 	if (gadType == GAD_GRID)
-		createGadget_Grid (axion,Ngrid,nPart,L1_pc,map_velocity);
+		createGadget_Grid (axion,Ngrid,nPart,map_velocity);
 	else if (gadType == GAD_MASS)
-		LogOut("Not yet implemented...");
+		createGadget_Mass (axion,Ngrid,nPart,map_velocity);
 	else if (gadType == GAD)
 		LogOut("Not yet implemented...");
 

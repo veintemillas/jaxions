@@ -256,6 +256,9 @@ int	main (int argc, char *argv[])
 				if ct>Rrestore>Rc, need to change indi3 (because of the way Rthres is implemented)
 				 */
 				/*change definition of mA, nqcd */
+				if (ninfa.printconf & PRINTCONF_PAXIONSAT)
+					writeConf(axion,index); 
+				
 				double R0 = *axion->RV();
 				double Rc = axion->BckGnd()->ZThRes();
 				double Rr = axion->BckGnd()->ZRestore();

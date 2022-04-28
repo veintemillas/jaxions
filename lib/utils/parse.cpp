@@ -325,7 +325,7 @@ void	PrintUsage(char *name)
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--meas  [int]                   MeasuremeType [default ALLBIN|STRING|STRINGMAP|ENERGY|2DMAP|SPECTRUM].\n");
 	printf("--measinfo                      Prints more info about measurement options.\n");
-	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
+	printf("--p3D 0/1/2/3/4/32              Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both 4=wkb 32=paxion at saturation \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
 	printf("--p2Dmap                        Include 2D XY maps in axion.m.files (default no)\n");
 	printf("--p2Dslice [int]                Include 2D XY maps of the desired slice in axion.m.files (default no)\n");
@@ -342,6 +342,7 @@ void	PrintUsage(char *name)
 	printf("--nologmpi                      Disable logging over MPI so only rank 0 logs (default, all ranks log)\n\n");
 	printf("--icinfo                        Info about initial conditions.\n");
 	printf("--measinfo                      Info about measurement types.\n");
+	printf("--gravinfo                      Info about SP module and gadget output.\n");
 	printf("--help                          Prints this message.\n");
 
 	// printf("--debug                         Prints some messages\n");
@@ -426,6 +427,21 @@ void	PrintICoptions()
 	return;
 }
 
+void    PrintGravoptions()
+{
+	printf("\nOptions for Gravity evolution\n");
+	printf("-------------------------------------------------------------------------------------------------------\n\n");
+	printf("--beta [float]                     Coefficient for self-interactions, GPP system [default 1.0].\n");
+	printf("--gravity [float]                  Ratio between R_1/R_eq [default 0.0].\n");
+	printf("--sat_gravity                      After saturation time evolve with constant conformal axion mass [default: false].\n");
+	printf("--hybrid_gravity                   Compute gravitational potential with hybrid method [default: false].\n");
+	printf("--L1_pc [float]                    Sets the value of L1 in parsec units [default: 0.036]");
+	printf("--gad_type [gad/gadmass/gadgrid]   Gadget mapping type [default: gadmass].\n");
+	printf("--part_vel                         Add particle velocities [default: false].\n");
+	printf("--smooth_vel (to be implemented)   Smooth velocity field [default: false].\n");
+	printf("--kcr [float]                      Displacement for [gad] mapping [default 1.0, recommended 0.25].\n");
+	printf("-------------------------------------------------------------------------------------------------------\n\n");
+}
 
 void	PrintMEoptions()
 {
@@ -466,7 +482,7 @@ void	PrintMEoptions()
 	printf("    Gradient                               2 \n");
 	printf("    Potential                              4 \n");
 	printf("    K+G+V                                  7 (default)\n\n");
-  printf("  --spmask [int]            Sum of integers.\n");
+    printf("  --spmask [int]            Sum of integers.\n");
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
@@ -611,6 +627,12 @@ int	parseDims (int argc, char *argv[])
 			exit(0);
 		}
 
+		if (!strcmp(argv[i], "--gravinfo"))
+		{
+			PrintGravoptions();
+			exit(0);
+		}
+
 		if (!strcmp(argv[i], "--measinfo"))
 		{
 			PrintMEoptions();
@@ -651,6 +673,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
 	icdatst.grav      = 0.0;
+	icdatst.L1_pc     = 0.036;
   	icdatst.grav_hyb  = false;
   	icdatst.grav_sat  = false;
 	icdatst.part_vel  = false;
@@ -1254,6 +1277,19 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			icdatst.grav = atof(argv[i+1]);
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--L1_pc"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the Naxion/Paxion selfinteraction coefficient.\n");
+				exit(1);
+			}
+
+			icdatst.L1_pc = atof(argv[i+1]);
 
 			PARSE2;
 		}

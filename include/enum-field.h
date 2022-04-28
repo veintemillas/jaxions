@@ -405,6 +405,7 @@
 			PRINTCONF_BOTH    = 3,
 			PRINTCONF_PRE2THETA  = 8,
 			PRINTCONF_POST2THETA = 16,
+			PRINTCONF_PAXIONSAT  = 32,
 		}	PrintConf;
 
 		typedef	struct	StringData_v
@@ -810,6 +811,7 @@
 			MomConfType   mocoty;
 			FieldIndex    fieldindex;
 			double        grav;
+			double        L1_pc;
 			bool          grav_hyb;
 			bool          grav_sat;
 			bool          part_vel;
