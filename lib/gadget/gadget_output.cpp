@@ -324,9 +324,27 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	    size_t  oDummy = 1;
 	    double  fDummy = 0.0;
 
+	hid_t attr_type;
+	attr_type = H5Tcopy(H5T_C_S1);
+	H5Tset_size   (attr_type, length);
+	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+	char gtype[16];
+	switch(gadType)
+	{
+		case GAD_GRID:
+			sprintf(gtype, "gadgrid");	
+		case GAD_MASS:
+			sprintf(gtype, "gadmass");	
+		case GAD:
+			sprintf(gtype, "gad");	
+	}
+
     /* Simple scalar attributes */
 	writeAttribute(hGrp_id, &bSize,  "BoxSize",                H5T_NATIVE_DOUBLE);
 	writeAttribute(hGrp_id, &L1_in_pc, "L1_pc",                H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, &avMass, "AverageMass",            H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, gtype, "GadType",                  attr_type);
 	writeAttribute(hGrp_id, &iDummy, "Flag_Entropy_ICs",       H5T_NATIVE_UINT);
 	writeAttribute(hGrp_id, &iDummy, "Flag_Cooling",           H5T_NATIVE_HSIZE);
 	writeAttribute(hGrp_id, &iDummy, "Flag_DoublePrecision",   H5T_NATIVE_HSIZE);  
@@ -957,9 +975,27 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	    size_t  oDummy = 1;
 	    double  fDummy = 0.0;
 
+	hid_t attr_type;
+	attr_type = H5Tcopy(H5T_C_S1);
+	H5Tset_size   (attr_type, length);
+	H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
+
+	char gtype[16];
+	switch(gadType)
+	{
+		case GAD_GRID:
+			sprintf(gtype, "gadgrid");	
+		case GAD_MASS:
+			sprintf(gtype, "gadmass");	
+		case GAD:
+			sprintf(gtype, "gad");	
+	}
+
     /* Simple scalar attributes */
 	writeAttribute(hGrp_id, &bSize,  "BoxSize",                H5T_NATIVE_DOUBLE);
 	writeAttribute(hGrp_id, &L1_in_pc, "L1_pc",                H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, &avMass, "AverageMass",            H5T_NATIVE_DOUBLE);
+	writeAttribute(hGrp_id, gtype, "GadType",                  attr_type);
 	writeAttribute(hGrp_id, &iDummy, "Flag_Entropy_ICs",       H5T_NATIVE_UINT);
 	writeAttribute(hGrp_id, &iDummy, "Flag_Cooling",           H5T_NATIVE_HSIZE);
 	writeAttribute(hGrp_id, &iDummy, "Flag_DoublePrecision",   H5T_NATIVE_HSIZE);  
