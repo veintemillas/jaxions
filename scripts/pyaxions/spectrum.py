@@ -196,8 +196,8 @@ def filterf(p, xh, x, y):
 # Perform analytical fit
 # Switch to a simplified fit function when x[0] becomes larger than xh (default xh = -1)
 # If xh = -1 (or some negative value), do not use this simplification (no discontinuity but time-consuming)
-class fitP:
-    def __init__(self, P, log, t, k, **kwargs):
+class fitS:
+    def __init__(self, data, log, t, k, **kwargs):
         if 'p' in kwargs:
             p = kwargs['p']
         else:
@@ -232,11 +232,11 @@ class fitP:
             self.ikhistart = his+1
         for ik in range(len(k)):
             if verbose == 1:
-                print('\rfit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="",flush=True)
+                print('\rfit:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="",flush=True)
             elif verbose == 2:
-                print('fit P:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),flush=True)
+                print('fit:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),flush=True)
             xdata = np.log(k[ik]*t[mask[0]])
-            ydata = np.log(P[mask[0],ik])
+            ydata = np.log(data[mask[0],ik])
             if not ik == 0:
                 par, parv, flag = filterf(p,xh,xdata,ydata)
                 self.listfit.append(flag)
@@ -249,15 +249,15 @@ class fitP:
         if verbose:
             print("")
 
-# save parameters
-def savePP(fP, name='./PP'):
-    sdata(fP.param,name,'param')
-    sdata(fP.listfit,name,'listfit')
-    sdata(fP.ikhistart,name,'ikhistart')
+# save parameters in fitS class object (fS)
+def saveParam(fS, name='./P'):
+    sdata(fS.param,name,'param')
+    sdata(fS.listfit,name,'listfit')
+    sdata(fS.ikhistart,name,'ikhistart')
     
 # read parameters
-class readPP:
-    def __init__(self, name='./PP'):
+class readParam:
+    def __init__(self, name='./P'):
         self.param = rdata(name,'param')
         self.listfit = rdata(name,'listfit')
         self.ikhistart = rdata(name,'ikhistart')
@@ -282,7 +282,7 @@ def filterDST(k, sigma, res, t):
     
     
 class calcF:
-    def __init__(self, P, log, t, k, k_below, **kwargs):
+    def __init__(self, data, log, t, k, k_below, **kwargs):
         if 'p' in kwargs:
             po = kwargs['p']
         else:
@@ -300,9 +300,9 @@ class calcF:
         else:
             usedata = False
         if 'fitp' in kwargs:
-            fitpin = kwargs['fitp']
+            fitin = kwargs['fitp']
         else:
-            fitpin = []
+            fitin = []
         if 'xh' in kwargs:
             xhi = kwargs['xh']
         else:
@@ -319,9 +319,9 @@ class calcF:
         logm = log[mask[0]]
         tm = t[mask[0]]
         if usedata:
-            fitp = fitpin
+            fitp = fitin
         else:
-            fitp = fitP(P,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi)
+            fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi)
         Farr = []
         xarr = []
         Farr_aux = []
@@ -341,7 +341,7 @@ class calcF:
             if fitp.listfit[ik]:
                 if ik < fitp.ikhistart:
                     Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx
-                    res = P[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
+                    res = data[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
                     # subtract linear trend
                     a = (res[-1]-res[0])/(xx[-1]-xx[0])
                     b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
