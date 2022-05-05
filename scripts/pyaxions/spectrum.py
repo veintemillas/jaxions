@@ -20,6 +20,46 @@ def rdata(name, dataname):
 
 
 # ------------------------------------------------------------------------------
+#   energy and number spectrum
+# ------------------------------------------------------------------------------
+
+class readS:
+    def __init__(self,dataname='./Sdata/S',esplabel='espAK_0'):
+        self.dataname = dataname
+        self.nm = sp.rdata(dataname,'nm')
+        self.k = sp.rdata(dataname,'k')
+        self.k_below = sp.rdata(dataname,'k_below')
+        self.t = sp.rdata(dataname,'t')
+        self.log = sp.rdata(dataname,'log')
+        self.esp = sp.rdata(dataname,esplabel)
+        
+        self.Narr = []
+        self.Earr = []
+        for id in range(len(self.log)):
+            self.Narr.append(((self.k**2)*self.esp[id]/self.nm)/((math.pi**2)*self.t[id]))
+            self.Earr.append((self.k**3)*self.esp[id]/self.nm/(math.pi**2))
+        self.Narr = np.array(self.Narr)
+        self.Earr = np.array(self.Earr)
+    
+    # print number spectrum N = drho/d(k/R)/(H*f_a^2) at a given log
+    def N(self,log):
+        it = np.abs(self.log - log).argmin()
+        return ((self.k**2)*self.esp[it]/self.nm)/((math.pi**2)*self.t[it])
+        
+    # print energy spectrum E = drho/d(logk)/(H*f_a^2) at a given log
+    def E(self,log):
+        it = np.abs(self.log - log).argmin()
+        return (self.k**3)*self.esp[it]/self.nm/(math.pi**2)
+
+    # print mode evolution
+    def Nevol(self,ik):
+        return ((self.k[ik]**2)*self.esp[:,ik]/self.nm[ik])/((math.pi**2)*self.t)
+    
+    def Eevol(self,ik):
+        return (self.k[ik]**3)*self.esp[:,ik]/self.nm[ik]/(math.pi**2)
+
+
+# ------------------------------------------------------------------------------
 #   analytical fit of the mode evolution
 # ------------------------------------------------------------------------------
 
