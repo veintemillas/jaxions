@@ -26,12 +26,12 @@ def rdata(name, dataname):
 class readS:
     def __init__(self,dataname='./Sdata/S',esplabel='espAK_0'):
         self.dataname = dataname
-        self.nm = sp.rdata(dataname,'nm')
-        self.k = sp.rdata(dataname,'k')
-        self.k_below = sp.rdata(dataname,'k_below')
-        self.t = sp.rdata(dataname,'t')
-        self.log = sp.rdata(dataname,'log')
-        self.esp = sp.rdata(dataname,esplabel)
+        self.nm = rdata(dataname,'nm')
+        self.k = rdata(dataname,'k')
+        self.k_below = rdata(dataname,'k_below')
+        self.t = rdata(dataname,'t')
+        self.log = rdata(dataname,'log')
+        self.esp = rdata(dataname,esplabel)
         
         self.Narr = []
         self.Earr = []
@@ -46,7 +46,7 @@ class readS:
         it = np.abs(self.log - log).argmin()
         return ((self.k**2)*self.esp[it]/self.nm)/((math.pi**2)*self.t[it])
         
-    # print energy spectrum E = drho/d(logk)/(H*f_a^2) at a given log
+    # print energy spectrum E = drho/d(logk)/(H*f_a)^2 at a given log
     def E(self,log):
         it = np.abs(self.log - log).argmin()
         return (self.k**3)*self.esp[it]/self.nm/(math.pi**2)
@@ -192,10 +192,16 @@ def filterf(p, xh, x, y):
             flag = False
     return par, parv, flag
 
-
+# For a given value of lambda_physical, calculate red-shift exponent for the saxion spectrum
+def saxionZ(k, t, LL, lz2e=0):
+    mr = np.sqrt(2.*LL)/t**(.5*lz2e)
+    r = k/mr/t
+    return 3 + (r**2 + 0.5*lz2e)/(1 + r**2)
+    
 # Perform analytical fit
 # Switch to a simplified fit function when x[0] becomes larger than xh (default xh = -1)
 # If xh = -1 (or some negative value), do not use this simplification (no discontinuity but time-consuming)
+# If saxionmass = True, it takes account of the non-trivial redshift for saxion spectrum
 class fitS:
     def __init__(self, data, log, t, k, **kwargs):
         if 'p' in kwargs:
@@ -214,6 +220,18 @@ class fitS:
             xh = kwargs['xh']
         else:
             xh = -1
+        if 'saxionmass' in kwargs:
+            saxionmass = kwargs['saxionmass']
+        else:
+            saxionmass = False
+        if 'LL' in kwargs:
+            LL = kwargs['LL']
+        else:
+            LL = 1600.0
+        if 'lz2e' in kwargs:
+            lz2e = kwargs['lz2e']
+        else:
+            lz2e = 0
         if p not in [2,3,4,5]:
             print("order of polynomial (p) not supported")
             return None
@@ -224,6 +242,8 @@ class fitS:
         # identify ik at which x[0] becomes larger than xh
         if xh < 0:
             xh = t[-1]*k[-1]
+        if saxionmass:
+            xh = 0 # For saxion modes, use simple polynomial functions from the beginning
         tt = t[mask[0]]
         x0 = tt[0]*k
         his = np.abs(x0-xh).argmin()
@@ -235,8 +255,12 @@ class fitS:
                 print('\rfit:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="",flush=True)
             elif verbose == 2:
                 print('fit:  k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),flush=True)
-            xdata = np.log(k[ik]*t[mask[0]])
-            ydata = np.log(data[mask[0],ik])
+            xdata = np.log(k[ik]*tt)
+            if saxionmass:
+                zz = saxionZ(k[ik],tt,LL,lz2e)
+                ydata = np.log(data[mask[0],ik]*(tt**(zz-4)))
+            else:
+                ydata = np.log(data[mask[0],ik])
             if not ik == 0:
                 par, parv, flag = filterf(p,xh,xdata,ydata)
                 self.listfit.append(flag)
@@ -311,24 +335,30 @@ class calcF:
             sigma = kwargs['sigma']
         else:
             sigma = 0.5
-        self.F = [] # instantaneous spectrum F
-        self.Fnorm = [] # normalization factor of F
-        self.F_fit = [] # instantaneous spectrum F (fit only)
-        self.Fnorm_fit = [] # normalization factor of F (fit only)
+        if 'saxionmass' in kwargs:
+            saxionmassi = kwargs['saxionmass']
+        else:
+            saxionmassi = False
+        if 'LL' in kwargs:
+            LLi = kwargs['LL']
+        else:
+            LLi = 1600.0
+        if 'lz2e' in kwargs:
+            lz2ei = kwargs['lz2e']
+        else:
+            lz2ei = 0
         mask = np.where(log >= logst)
         logm = log[mask[0]]
         tm = t[mask[0]]
         if usedata:
             fitp = fitin
         else:
-            fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi)
-        Farr = []
+            fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
+        Farr = [] # instantaneous spectrum F
         xarr = []
         Farr_aux = []
         xarr_aux = []
-        Farr_fit = []
-        Farr_fit_aux = []
-        xarr_fit_aux = []
+        Farr_fit = [] # instantaneous spectrum F (fit only)
         # for test
         #print('kcut = %f'%(cmin/tm[-1]))
         # test
@@ -340,17 +370,29 @@ class calcF:
             lxx = np.log(xx)
             if fitp.listfit[ik]:
                 if ik < fitp.ikhistart:
-                    Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx
-                    res = data[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
+                    if saxionmassi:
+                        zz = saxionZ(k[ik],tm,LLi,lz2ei)
+                        Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx/(tm**(zz-4))
+                        res = data[mask[0],ik]*(tm**(zz-4)) - np.exp(ftrend(lxx,po,*par))
+                    else:
+                        Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx
+                        res = data[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
                     # subtract linear trend
                     a = (res[-1]-res[0])/(xx[-1]-xx[0])
                     b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
                     res = res - a*xx-b
                     # DST
                     fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
-                    Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
+                    if saxionmassi:
+                        Fk = Fk_fit + (a + np.gradient(fres,xx[1]-xx[0],edge_order=2))/(tm**(zz-4))
+                    else:
+                        Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
                 else:
-                    Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx
+                    if saxionmassi:
+                        zz = saxionZ(k[ik],tm,LLi,lz2ei)
+                        Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx/(tm**(zz-4))
+                    else:
+                        Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx
                     Fk = Fk_fit
             else:
                 Fk_fit = [np.nan]*len(tm)
@@ -358,9 +400,6 @@ class calcF:
             if not np.isnan(np.sum(Fk)):
                 Farr_aux.append(Fk)
                 xarr_aux.append(xx)
-            if not np.isnan(np.sum(Fk_fit)):
-                Farr_fit_aux.append(Fk_fit)
-                xarr_fit_aux.append(xx)
             Farr.append(Fk)
             xarr.append(xx)
             Farr_fit.append(Fk_fit)
@@ -371,26 +410,18 @@ class calcF:
         Farr_aux = np.transpose(np.array(Farr_aux))
         xarr_aux = np.transpose(np.array(xarr_aux))
         Farr_fit = np.transpose(np.array(Farr_fit))
-        Farr_fit_aux = np.transpose(np.array(Farr_fit_aux))
-        xarr_fit_aux = np.transpose(np.array(xarr_fit_aux))
-        # normalize
+        # normalization factor
+        Fnorm = []
         for id in range(len(tm)):
             dx = np.gradient(xarr_aux[id,:])
-            dx_fit = np.gradient(xarr_fit_aux[id,:])
             # normalization factor is calculated by using only modes below the Nyquist frequency
             x_below = xarr_aux[id,:] <= np.amax(k[k_below])*tm[id]
-            x_below_fit = xarr_fit_aux[id,:] <= np.amax(k[k_below])*tm[id]
             Fdx = (Farr_aux[id,:]*dx)[x_below]
-            Fdx_fit = (Farr_fit_aux[id,:]*dx_fit)[x_below_fit]
-            self.F.append(Farr[id,:]/Fdx.sum())
-            self.F_fit.append(Farr_fit[id,:]/Fdx_fit.sum())
-            self.Fnorm.append(Fdx.sum())
-            self.Fnorm_fit.append(Fdx_fit.sum())
-        self.F = np.array(self.F)
-        self.Fnorm = np.array(self.Fnorm)
-        self.F_fit = np.array(self.F_fit)
-        self.Fnorm_fit = np.array(self.Fnorm_fit)
+            Fnorm.append(Fdx.sum())
+        self.F = Farr # instantaneous spectrum F
         self.x = xarr
+        self.F_fit = Farr_fit # instantaneous spectrum F (fit only)
+        self.Fnorm = np.array(Fnorm) # normalization factor of F
         self.t = tm
         self.log = logm
         
