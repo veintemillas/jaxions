@@ -12,6 +12,16 @@ from sympy import integer_nthroot
 import pickle
 import matplotlib.colors as col
 
+
+import cmasher as cmr
+from matplotlib import cm
+import matplotlib.gridspec as gridspec
+from matplotlib.colors import ListedColormap
+from matplotlib import colors
+import matplotlib.ticker as mticker
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+
 # mark=f"{datetime.datetime.now():%Y-%m-%d}"
 # from uuid import getnode as get_mac
 # mac = get_mac()
@@ -2469,6 +2479,60 @@ def colorbar(mappable):
     cbar = fig.colorbar(mappable, cax=cax)
     plt.sca(last_axes)
 
+
+
+#================================================================================
+# PAXION
+#================================================================================
+
+class paxion:
+    def load(name=''):
+        if name and not name.isspace():
+            name += '/'
+            print("Loading data from %s'/pout/m/"%name)
+            print("...")
+        else:
+            print("Loading data from pout/m/")
+            print("...")
+        list = [] 
+        for filename in glob.iglob(name+'pout/m/axion.m.*', recursive=True):
+            list.append(filename)
+        sorted_list = np.array(sorted(list)) 
+        print("Last file loaded:",sorted_list[-1])
+        return sorted_list
+    
+    def phase(mf,i):
+        N = gm(mf[i],'N')
+        mTmp1 = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+        mTmp2 = np.reshape(gm(mf[i],'da/map/v/data'),(N,N))
+        return np.arctan2(mTmp2,mTmp1)
+    
+    def density(mf,i):
+        N = gm(mf[i],'N')
+        mTmp1 = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+        mTmp2 = np.reshape(gm(mf[i],'da/map/v/data'),(N,N))
+        return (mTmp1[:,:]**2 + mTmp2[:,:]**2)
+
+    def velocity(mf,i,method='rotated'):
+        N = gm(mf[i],'N')
+        mTmp1 = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+        mTmp2 = np.reshape(gm(mf[i],'da/map/v/data'),(N,N))
+        paxnorm = 1/(2*gm(mf[i],'R')*gm(mf[i],'massA')*gm(mf[i],'delta'))
+        if method == 'naive':
+            vel = paxnorm*(np.roll(np.arctan2(mTmp2[:,:],mTmp1[:,:]),1,axis=1)-np.roll(np.arctan2(mTmp2[:,:],mTmp1[:,:]),-1,axis=1))
+        elif method == 'full':
+            gDataR = np.roll(mTmp1[:,:],1,axis=1)-np.roll(mTmp1[:,:],-1,axis=1)
+            gDataI = np.roll(mTmp2[:,:],1,axis=1)-np.roll(mTmp2[:,:],-1,axis=1)
+            vel = -(gDataR*mTmp2[:,:]-gDataI*mTmp1[:,:])/(mTmp1[:,:]**2 + mTmp2[:,:]**2) * paxnorm
+        elif method == 'rotated':
+            fp1 = np.roll(mTmp1[:,:],1,axis=1)
+            fp2 = np.roll(mTmp2[:,:],1,axis=1)
+            Sp  = np.arctan2(-fp1*mTmp2 + fp2*mTmp1,fp1*mTmp1 + fp2*mTmp2)
+            fp1 = np.roll(mTmp1[:,:],-1,axis=1)
+            fp2 = np.roll(mTmp2[:,:],-1,axis=1)
+            Sm  = np.arctan2(-fp1*mTmp2 + fp2*mTmp1,fp1*mTmp1 + fp2*mTmp2)
+            vel = (Sp-Sm) * paxnorm
+        return vel
 #   qt plot!
 
 # def axevplot(arrayS, arrayA):
