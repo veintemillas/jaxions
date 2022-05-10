@@ -7,6 +7,8 @@
 	#include "scalar/scalarField.h"
 	#include "scalar/folder.h"
 	#include "enum-field.h"
+	#include "energy/energy.h"
+	#include "scalar/scaleField.h"
 
 	#ifdef	USE_GPU
 		#include <cuda.h>
@@ -262,8 +264,18 @@ LogMsg(VERB_PARANOID,"[GV] begin GravCpu()");
 
 			/* Energy map in m2Start (folded or unfolded) */
 			/* (assumes paxion, otherwise use energy map) */
-			graviPaxKernelXeon<KIDI_ENE>(afield->mCpu(), afield->vCpu(), nada, afield->m2Cpu(), ppar, BO, V+BO, afield->Precision(), xBlock, yBlock, zBlock);
-
+			if (afield->Field() == FIELD_PAXION) 
+				graviPaxKernelXeon<KIDI_ENE>(afield->mCpu(), afield->vCpu(), nada, afield->m2Cpu(), ppar, BO, V+BO, afield->Precision(), xBlock, yBlock, zBlock);
+			else if (afield->Field() == FIELD_AXION)
+			{
+				void *eRes;
+				trackAlloc(&eRes, 256);
+				energy(afield,eRes,EN_MAP,0); // energy unfolded starting in m2
+				double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);  
+				scaleField(afield,FIELD_M2,factor);
+				memmove(afield->m2Start(),afield->m2Cpu(),afield->Size()*afield->Precision());
+			}
+				
 int red =1;
 int pad =0;
 int fft =0;
@@ -272,7 +284,7 @@ report (index, red, pad, fft, 1, "After energy");
 
 			/* If field was folded energy in m2 it is too and we need it unfolded */
 
-			if (afield->Folded()){
+			if (afield->Folded() && afield->Field() == FIELD_PAXION){
 // LogMsg(VERB_PARANOID,"[GV] Unfold M2");
 				afield->setM2Folded(true);
 				munge(UNFOLD_M2);
@@ -283,7 +295,7 @@ report (index, red, pad, fft, 1, "After unfolding");
 
 			/* pad in place m2S
 				note that this exceeds the first half of m2 so things in m2h will be erased */
-LogMsg(VERB_PARANOID,"[GV] pad in place m2s");
+			LogMsg(VERB_PARANOID,"[GV] pad in place m2s");
 			char *M2  = static_cast<char *> ((void *) afield->m2Cpu());
 			char *MS  = static_cast<char *> ((void *) afield->m2Start());
 			for (int l = ss-1; l>0; l--)
@@ -366,13 +378,24 @@ LogMsg(VERB_PARANOID,"[GV] end GravCpu()");
 	template<class Float>
 	void	GraVi::GraHybridCpu	()
 	{
-LogMsg(VERB_PARANOID,"[GV] begin GraHybridCpu()");
+		LogMsg(VERB_PARANOID,"[GV] begin GraHybridCpu()");
 		void *nada;
 
 		Folder munge(afield);
 
 		/* Energy map in m2Start */
-		graviPaxKernelXeon<KIDI_ENE>(afield->mCpu(), afield->vCpu(), nada, afield->m2Cpu(), ppar, BO, V+BO, afield->Precision(), xBlock, yBlock, zBlock);
+		if (afield->Field() == FIELD_PAXION)
+			graviPaxKernelXeon<KIDI_ENE>(afield->mCpu(), afield->vCpu(), nada, afield->m2Cpu(), ppar, BO, V+BO, afield->Precision(), xBlock, yBlock, zBlock);
+		else if (afield->Field() == FIELD_AXION)
+		{
+			void *eRes;
+			trackAlloc(&eRes, 256);
+			energy(afield,eRes,EN_MAP,0); // energy unfolded starting in m2
+			double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);  
+			scaleField(afield,FIELD_M2,factor);
+			memmove(afield->m2Start(),afield->m2Cpu(),afield->Size()*afield->Precision());
+		}
+
 
 int red =1;
 int pad =0;
