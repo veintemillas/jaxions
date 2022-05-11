@@ -2488,21 +2488,23 @@ def colorbar(mappable):
 class paxion:
     def load(name=''):
         try:
+            list = []
             if name and not name.isspace():
                 name += '/'
-                print("Loading data from %spout/m/"%name)
+                print(f"Loading data from {name}m")
                 print("...")
+                for filename in glob.iglob(name+'m/axion.m.*', recursive=True):
+                    list.append(filename)
             else:
-                print("Loading data from pout/m/")
+                print("Loading data from pout/m")
                 print("...")
-            list = [] 
-            for filename in glob.iglob(name+'pout/m/axion.m.*', recursive=True):
-                list.append(filename)
+                for filename in glob.iglob(name+'pout/m/axion.m.*', recursive=True):
+                    list.append(filename)
             sorted_list = np.array(sorted(list))
             print("Last file loaded:",sorted_list[-1])
         except:
             sorted_list = None
-            print("Error: pout folder not found!")
+            print(f"Error: {name}m folder not found!")
         return sorted_list
     
     def phase(mf,i):
@@ -2560,6 +2562,62 @@ class paxion:
             print('Error: Projection not found in file %s, set --p2DmapP in the command line'%mf[i])
         return proj
 
+
+class plot:
+    def cbar(mappable,extend='neither',minorticklength=8,majorticklength=10,\
+            minortickwidth=2,majortickwidth=2.5,pad=0.2,side="right",orientation="vertical"):
+        ax = mappable.axes
+        fig = ax.figure
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes(side, size="5%", pad=pad)
+        cbar = fig.colorbar(mappable, cax=cax,extend=extend,orientation=orientation)
+        cbar.ax.tick_params(which='minor',length=minorticklength,width=minortickwidth)
+        cbar.ax.tick_params(which='major',length=majorticklength,width=majortickwidth)
+        cbar.solids.set_edgecolor("face")
+        return cbar
+    def single(xlab='',ylab='',\
+                 lw=1.5,lfs=25,tfs=18,size_x=13,size_y=8,Grid=False):
+        plt.rcParams['axes.linewidth'] = lw
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif',size=tfs)
+
+        fig = plt.figure(figsize=(size_x,size_y))
+        ax = fig.add_subplot(111)
+
+        ax.set_xlabel(xlab,fontsize=lfs)
+        ax.set_ylabel(ylab,fontsize=lfs)
+
+        ax.tick_params(which='major',direction='in',width=0.8,length=8,right=True,top=True,pad=7)
+        ax.tick_params(which='minor',direction='in',width=0.8,length=8,right=True,top=True)
+        if Grid:
+            ax.grid()
+        return fig,ax
+    def double(xlab1='',ylab1='',xlab2='',ylab2='',\
+                 wspace=0.25,lw=1,lfs=25,tfs=18,size_x=20,size_y=11,Grid=False):
+        plt.rcParams['axes.linewidth'] = lw
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif',size=tfs)
+        #mpl.rcParams['text.latex.preamble'] = [r'\usepackage{mathpazo}']
+        fig, axarr = plt.subplots(1, 2,figsize=(size_x,size_y))
+        gs = gridspec.GridSpec(1, 2)
+        gs.update(wspace=wspace)
+        ax1 = plt.subplot(gs[0])
+        ax2 = plt.subplot(gs[1])
+        ax1.tick_params(which='major',direction='in',width=2,length=13,right=True,top=True,pad=7)
+        ax1.tick_params(which='minor',direction='in',width=1,length=10,right=True,top=True)
+        ax2.tick_params(which='major',direction='in',width=2,length=13,right=True,top=True,pad=7)
+        ax2.tick_params(which='minor',direction='in',width=1,length=10,right=True,top=True)
+
+        ax1.set_xlabel(xlab1,fontsize=lfs)
+        ax1.set_ylabel(ylab1,fontsize=lfs)
+
+        ax2.set_xlabel(xlab2,fontsize=lfs)
+        ax2.set_ylabel(ylab2,fontsize=lfs)
+
+        if Grid:
+            ax1.grid()
+            ax2.grid()
+        return fig,ax1,ax2
 
 
 

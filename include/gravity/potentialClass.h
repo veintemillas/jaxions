@@ -255,7 +255,7 @@ LogMsg(VERB_PARANOID,"best was redfft=%d",best);
 	template<class Float>
 	void	GraVi::GraCpu	()
 	{
-LogMsg(VERB_PARANOID,"[GV] begin GravCpu()");
+			LogMsg(VERB_PARANOID,"[GV] begin GravCpu()");
 			void *nada;
 
 // int index =0 ;
