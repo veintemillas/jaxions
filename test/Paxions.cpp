@@ -48,22 +48,14 @@ int	main (int argc, char *argv[])
 	double *bA = static_cast<double *> (binarray);
 	size_t sliceprint = 0 ; // sizeN/2;
 
-
-
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n           PAXION EVOLUTION to %f                   \n", zFinl);
+	LogOut("\n           PAXION EVOLUTION to %.1e                   \n", zFinl);
 	LogOut("\n-------------------------------------------------\n");
-
-	LogOut("\n-------------------------------------------------\n");
-
-	//--------------------------------------------------
-	//       READING INITIAL CONDITIONS
-	//--------------------------------------------------
 
 	Scalar *axion;
 
-	LogOut ("reading conf %d ...", fIndex);
+	LogOut ("Reading conf axion.%05d ...", fIndex);
 	readConf(&myCosmos, &axion, fIndex);
 	if (axion == NULL)
 	{
@@ -73,17 +65,21 @@ int	main (int argc, char *argv[])
 	LogOut ("\n");
 
 	if (axion->Field() != FIELD_AXION)
-	{
-		LogOut ("Error: Paxion only works in axion mode\n");
-		exit (0);
-	}
+		if (axion->Field() != FIELD_PAXION)
+		{
+			LogOut ("Error: Paxion only works in axion or paxion mode, call mpirun paxion3d --ftype axion if mapping from axion\n");
+			exit (0);
+		}
 	LogOut ("\n");
-
 
 	double z_now = (*axion->zV())	;
 	LogOut("--------------------------------------------------\n");
 	LogOut("           INITIAL CONDITIONS                     \n\n");
 
+	if (axion->Field() != FIELD_AXION)
+		LogOut("Field =  AXION");
+	else
+		LogOut("Field =  PAXION");
 	LogOut("Length =  %2.2f\n", myCosmos.PhysSize());
 	LogOut("nQCD   =  %2.2f\n", myCosmos.QcdExp());
 	LogOut("N      =  %ld\n",   axion->Length());
@@ -94,12 +90,12 @@ int	main (int argc, char *argv[])
 	LogOut("zres   =  %.2e\n", myCosmos.ZRestore());
 	LogOut("mass   =  %3.3f\n", axion->AxionMass());
 	LogOut("grav   =  %.1e\n",axion->BckGnd()->ICData().grav);
-	LogOut("beta   =  %.1f\n\n",axion->BckGnd()->ICData().beta);
+	LogOut("beta   =  %.1f\n",axion->BckGnd()->ICData().beta);
 
 	if (axion->Precision() == FIELD_SINGLE)
-		LogOut("precis = SINGLE(%d)\n",FIELD_SINGLE);
+		LogOut("precis =  SINGLE(%d)\n",FIELD_SINGLE);
 	else
-		LogOut("precis = DOUBLE(%d)\n",FIELD_DOUBLE);
+		LogOut("precis =  DOUBLE(%d)\n",FIELD_DOUBLE);
 
 	LogOut("--------------------------------------------------\n");
 
@@ -115,20 +111,28 @@ int	main (int argc, char *argv[])
 	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
 	tunePropagator (axion);
 
-	LogOut("-----------------------\n TRANSITION TO PAXION \n");
-	thetaToPaxion (axion);
+	if (axion->Field() == FIELD_AXION)
+	{
+		LogOut("-----------------------\n TRANSITION TO PAXION \n");
+		thetaToPaxion (axion);
+	}
 	resetPropagator(axion);
 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
 	// }
 
-
 	int counter = 0;
 	int index ;
 	double dzaux;
 	int i_meas = 0;
 	bool measrightnow = false;
+
+	/* Add measfile support */
+
+	// MeasFileParms measfilepar;
+	// readmeasfile (axion, &dumpmode, &measfilepar, &ninfa);
+	// i_meas = 0;
 
 	ninfa.index=index;
 	// ninfa.measdata |= MEAS_3DMAP;
@@ -214,7 +218,6 @@ int	main (int argc, char *argv[])
 
 			/* Assumes gravitational field in m2start */
 			ct_sat = find_saturation_ct(axion,file_sat);
-			LogOut("First Saturation time %.2f\n\n",ct_sat);
 
 	}
 	
@@ -334,7 +337,8 @@ int	main (int argc, char *argv[])
 
 		if(measrightnow)
 		{
-			ct_sat = find_saturation_ct(axion, file_sat);
+			if (*axion->zV() < ct_sat)
+				ct_sat = find_saturation_ct(axion, file_sat);
 			ninfa.index=index;
 			lm = Measureme (axion, ninfa);
 			index++;
@@ -462,6 +466,7 @@ double find_saturation_ct(Scalar *axion, FILE *file)
 	}
 	//LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
 	fprintf(file, "%e %f %f %e\n",*axion->zV(),grad_max,grad_mean,ct2);
+	LogOut("Current saturation time: %.2e\n",ct2);
 	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] Saturation time %f ", ct2 );LogFlush();
 	return ct2 ;
 } else {
