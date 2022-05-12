@@ -74,12 +74,13 @@ int	main (int argc, char *argv[])
 
 	double z_now = (*axion->zV())	;
 	LogOut("--------------------------------------------------\n");
-	LogOut("           INITIAL CONDITIONS                     \n\n");
+	LogOut("        SIMULATION (%d x %d x %d) \n\n", axion->Length(), axion->Length(), axion->Depth());
+	//LogOut("           INITIAL CONDITIONS                     \n\n");
 
-	if (axion->Field() != FIELD_AXION)
-		LogOut("Field =  AXION");
+	if (axion->Field() == FIELD_AXION)
+		LogOut("Field  =  AXION\n");
 	else
-		LogOut("Field =  PAXION");
+		LogOut("Field  =  PAXION\n");
 	LogOut("Length =  %2.2f\n", myCosmos.PhysSize());
 	LogOut("nQCD   =  %2.2f\n", myCosmos.QcdExp());
 	LogOut("N      =  %ld\n",   axion->Length());
@@ -222,6 +223,7 @@ int	main (int argc, char *argv[])
 	}
 	
 	bool sat = false;
+	bool closef = false;
 
 	LogOut ("Start redshift loop\n\n");
 	for (int iz = 0; iz < nSteps; iz++)
@@ -316,6 +318,12 @@ int	main (int argc, char *argv[])
 				}
 				else
 					LogOut("--------------------------------------------------------------------------------------------------------\n");
+				
+				if (!closef)
+				{
+					fclose(file_sat);
+					closef = true;
+				}
 				sat = true;
 			}
 		}
@@ -348,9 +356,7 @@ int	main (int argc, char *argv[])
 	}
 
 	ninfa.index++;
-	
-	fclose(file_sat);
-	
+		
 	if (ninfa.printconf & PRINTCONF_FINAL)
 	{
 		LogOut ("Dumping configuration %05d ...", ninfa.index);
