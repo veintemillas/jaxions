@@ -2174,9 +2174,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			prepcoe = atof(argv[i+1]);
+			prepcoe = atof(argv[i+1]); //legacy
+      icdatst.prepcoe = atof(argv[i+1]);
 
-			if (prepcoe <= 1.)
+			if (icdatst.prepcoe <= 1.)
 			{
 				printf("Error: The prepropagator time coefficient must be larger than 1.\n");
 				exit(1);
