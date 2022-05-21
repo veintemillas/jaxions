@@ -79,6 +79,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	double radius_mask = info.rmask ; //obsolete?
 	int irmask = info.i_rmask;
 	std::vector<double> rmasktab = info.rmask_tab ;
+	std::vector<double> rmasklabel = info.rmask_tab ; // use rmasklabels from command line (1/ms units) rather than lattice units
 	/* Patch to make the cases where no radius is needed to work */
 	if ( irmask == 0 ){
 		irmask = 1;
@@ -292,7 +293,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						for(int ii=0; ii < irmask; ii++){
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmasked",rmasktab[ii]);
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked",rmasklabel[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -302,7 +303,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						for(int ii=0; ii < irmask; ii++){
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",rmasktab[ii]);
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",rmasklabel[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -506,7 +507,7 @@ writePMapHdf5s (axiona, LAB);
 						for(int ii=0; ii < irmask; ii++)
 						{
 							if (mulmask[i])
-								sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+								sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasklabel[ii]);
 							else
 								sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -591,7 +592,7 @@ writePMapHdf5s (axiona, LAB);
 					for(int ii=0; ii < irmask; ii++)
 					{
 						if (mulmask[i])
-							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasklabel[ii]);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -616,7 +617,7 @@ writePMapHdf5s (axiona, LAB);
 								if( (strmeas & STRMEAS_ENERGY) && (maskara[i] & SPMASK_REDO) ) {
 									// measure the energy density of strings by using masked points
 									MeasDataOut.strE = stringenergy(axiona);
-									MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
+									MeasDataOut.strE.rmask = rmasklabel[ii]; // this is not written by stringenergy();
 									writeStringEnergy(axiona,MeasDataOut.strE);
 								}
 
@@ -627,7 +628,7 @@ writePMapHdf5s (axiona, LAB);
 										memset(eRes, 0, 256);
 										double *eR = static_cast<double *> (eRes);
 									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
-									writeEnergy(axiona, eRes, rmasktab[ii]);
+									writeEnergy(axiona, eRes, rmasklabel[ii]);
 												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
 									trackFree(eRes);
 								}
