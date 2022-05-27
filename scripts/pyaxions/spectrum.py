@@ -391,9 +391,20 @@ class calcF:
                     if saxionmassi:
                         zz = saxionZ(k[ik],tm,LLi,lz2ei)
                         Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx/(tm**(zz-4))
+                        res = data[mask[0],ik]*(tm**(zz-4)) - np.exp(ftrenda(lxx,po,*par))
                     else:
                         Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx
-                    Fk = Fk_fit
+                        res = data[mask[0],ik] - np.exp(ftrenda(lxx,po,*par))
+                    # subtract linear trend
+                    a = (res[-1]-res[0])/(xx[-1]-xx[0])
+                    b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
+                    res = res - a*xx-b
+                    # DST
+                    fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
+                    if saxionmassi:
+                        Fk = Fk_fit + (a + np.gradient(fres,xx[1]-xx[0],edge_order=2))/(tm**(zz-4))
+                    else:
+                        Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
             else:
                 Fk_fit = [np.nan]*len(tm)
                 Fk = [np.nan]*len(tm)
