@@ -345,7 +345,7 @@ int	main (int argc, char *argv[])
 
 		if(measrightnow)
 		{
-			if (*axion->zV() < ct_sat)
+			if (*axion->zV() < ct_sat && axion->BckGnd()->ICData().grav_sat)
 				ct_sat = find_saturation_ct(axion, file_sat);
 			ninfa.index=index;
 			lm = Measureme (axion, ninfa);
@@ -356,7 +356,7 @@ int	main (int argc, char *argv[])
 	}
 
 	ninfa.index++;
-		
+
 	if (ninfa.printconf & PRINTCONF_FINAL)
 	{
 		LogOut ("Dumping configuration %05d ...", ninfa.index);

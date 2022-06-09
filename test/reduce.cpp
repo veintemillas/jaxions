@@ -96,6 +96,7 @@ int	main (int argc, char *argv[])
 		}
 
 		writeConf(reduced, fIndex+1000);
+		LogOut("Field reduced in file axion.%05d",fIndex+1000);
 
 	} else {
 		LogOut ("MPI z dimension too small, skipping reduction...\n");

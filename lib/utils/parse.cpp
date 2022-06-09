@@ -130,6 +130,7 @@ MeasInfo deninfa;
 
 
 char outName[128] = "axion\0";
+char gadName[128] = "ics\0";
 char outDir[1024] = "out/m\0";
 char wisDir[1024] = "./\0";
 
@@ -1857,6 +1858,25 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			strcpy (outName, argv[i+1]);
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--gname"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a name for the gadget output file.\n");
+				exit(1);
+			}
+
+			if (strlen(argv[i+1]) > 96)
+			{
+				printf("Error: name too long, keep it under 96 characters\n");
+				exit(1);
+			}
+
+			strcpy (gadName, argv[i+1]);
 
 			PARSE2;
 		}

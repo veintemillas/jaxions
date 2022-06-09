@@ -2484,6 +2484,49 @@ def colorbar(mappable):
 #================================================================================
 # PAXION
 #================================================================================
+class axion:
+    def load(name=''):
+        try:
+            list = []
+            if name and not name.isspace():
+                name += '/'
+                print(f"Loading data from {name}m")
+                print("...")
+                for filename in glob.iglob(name+'m/axion.m.*', recursive=True):
+                    list.append(filename)
+            else:
+                print("Loading data from pout/m")
+                print("...")
+                for filename in glob.iglob(name+'out/m/axion.m.*', recursive=True):
+                    list.append(filename)
+            sorted_list = np.array(sorted(list))
+            print("Last file loaded:",sorted_list[-1])
+        except:
+            sorted_list = None
+            print(f"Error: {name}m folder not found!")
+        return sorted_list
+    
+    # def axion(mf,i):
+    #     N = gm(mf[i],'N')
+    #     try:
+    #         if gm(mf[i],'ftype') == 'Axion':
+    #             pha = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+    #         elif gm(mf[i],'ftype') == 'Saxion':
+    #             pha = np.reshape(gm(mf[i],'da/map/m/data'),(N,N,2))
+    #     except:
+    #         pha = None
+    #         print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
+    #     return pha
+
+    def projection(mf,i):
+        try:
+            proj = gm(mf[i],'slice//map/P')
+        except:
+            proj = []
+            print('Error: Projection not found in file %s, set --p2DmapP in the command line'%mf[i])
+        return proj
+    
+
 
 class paxion:
     def load(name=''):
@@ -2559,7 +2602,7 @@ class paxion:
             proj = gm(mf[i],'slice//map/P')
         except:
             proj = []
-            print('Error: Projection not found in file %s, set --p2DmapP in the command line'%mf[i])
+            print('Error: Projection not found in file %s, set --p2DmapPE in the command line'%mf[i])
         return proj
 
 
@@ -2603,10 +2646,10 @@ class plot:
         gs.update(wspace=wspace)
         ax1 = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[1])
-        ax1.tick_params(which='major',direction='in',width=2,length=13,right=True,top=True,pad=7)
-        ax1.tick_params(which='minor',direction='in',width=1,length=10,right=True,top=True)
-        ax2.tick_params(which='major',direction='in',width=2,length=13,right=True,top=True,pad=7)
-        ax2.tick_params(which='minor',direction='in',width=1,length=10,right=True,top=True)
+        ax1.tick_params(which='major',direction='in',width=1,length=8,right=True,top=True,pad=7)
+        ax1.tick_params(which='minor',direction='in',width=0.5,length=5,right=True,top=True)
+        ax2.tick_params(which='major',direction='in',width=1,length=8,right=True,top=True,pad=7)
+        ax2.tick_params(which='minor',direction='in',width=0.5,length=5,right=True,top=True)
 
         ax1.set_xlabel(xlab1,fontsize=lfs)
         ax1.set_ylabel(ylab1,fontsize=lfs)

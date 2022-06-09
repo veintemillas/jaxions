@@ -269,8 +269,10 @@ LogMsg(VERB_PARANOID,"best was redfft=%d",best);
 			else if (afield->Field() == FIELD_AXION)
 			{
 				void *eRes;
+				//double *eR = static_cast<double *> (eRes);
 				trackAlloc(&eRes, 256);
 				energy(afield,eRes,EN_MAP,0); // energy unfolded starting in m2
+				//double factor = 1/(eR[TH_KIN]...);
 				double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);  
 				scaleField(afield,FIELD_M2,factor);
 				memmove(afield->m2Start(),afield->m2Cpu(),afield->Size()*afield->Precision());

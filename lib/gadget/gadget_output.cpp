@@ -223,7 +223,7 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 
 	LogMsg (VERB_NORMAL, "Writing Gadget output file");
 	LogMsg (VERB_NORMAL, "");
-    LogOut("\n----------------------------------------------------------------------\n");
+	LogOut("\n----------------------------------------------------------------------\n");
 	LogOut("   GAD_GRID selected!        \n");
 	LogOut("----------------------------------------------------------------------\n");
 	
@@ -255,7 +255,7 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
 	char base[256];
-	sprintf(base, "%s/ics.hdf5", outDir, outName);
+	sprintf(base, "%s/%s.hdf5", outDir, gadName);
 
 	/*	Create the file and release the plist	*/
 	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
@@ -301,28 +301,28 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	hGrp_id = H5Gcreate2(file_id, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     
 	// Units
-	    double  L1_in_pc = axion->BckGnd()->ICData().L1_pc; 
-	    double	bSize  = axion->BckGnd()->PhysSize() * L1_in_pc / 0.7;
-	    double  Omega0 = 0.3;
-	    double  met_to_pc = 1/(3.08567758e16);
-	    double  G_N = 6.67430e-11 * 1.98847e30 * met_to_pc * met_to_pc * met_to_pc; // pc^3/s^2/SolarMass
-	    double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s 
+	double  L1_in_pc = axion->BckGnd()->ICData().L1_pc; 
+	double	bSize  = axion->BckGnd()->PhysSize() * L1_in_pc / 0.7;
+	double  Omega0 = 0.3;
+	double  met_to_pc = 1/(3.08567758e16);
+	double  G_N = 6.67430e-11 * 1.98847e30 * met_to_pc * met_to_pc * met_to_pc; // pc^3/s^2/SolarMass
+	double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s 
 
-	    size_t  nPrt = nParts;
-	    if (nParts == 0)
-		nPrt = axion->TotalSize();
+	size_t  nPrt = nParts;
+	if (nParts == 0)
+	nPrt = axion->TotalSize();
 
-	    double  totalMass = Omega0 * (bSize*bSize*bSize) * (3.0 * H0*H0) / (8 * M_PI * G_N);
-	    double  avMass = totalMass/((double) nPrt);
+	double  totalMass = Omega0 * (bSize*bSize*bSize) * (3.0 * H0*H0) / (8 * M_PI * G_N);
+	double  avMass = totalMass/((double) nPrt);
 
-	    LogOut("\n[gadgrid] Number of particles (nPrt): %lu\n",nPrt);
-	    LogOut("[gadgrid] Box Length: L = %lf pc/h\n",bSize); 
-	    LogOut("[gadgrid] Total Mass: M = %e Solar Masses\n",totalMass);
-	    LogOut("[gadgrid] Average Particle Mass: m_av = %e Solar Masses\n",avMass);
+	LogOut("\n[gadgrid] Number of particles (nPrt): %lu\n",nPrt);
+	LogOut("[gadgrid] Box Length: L = %lf pc/h\n",bSize); 
+	LogOut("[gadgrid] Total Mass: M = %e Solar Masses\n",totalMass);
+	LogOut("[gadgrid] Average Particle Mass: m_av = %e Solar Masses\n",avMass);
 
-	    size_t  iDummy = 0;
-	    size_t  oDummy = 1;
-	    double  fDummy = 0.0;
+	size_t  iDummy = 0;
+	size_t  oDummy = 1;
+	double  fDummy = 0.0;
 
 	hid_t attr_type;
 	attr_type = H5Tcopy(H5T_C_S1);
@@ -898,7 +898,7 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
 	char base[256];
-	sprintf(base, "%s/ics.hdf5", outDir, outName);
+	sprintf(base, "%s/%s.hdf5", outDir, gadName);
 
 	/*	Create the file and release the plist	*/
 	if ((file_id = H5Fcreate (base, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id)) < 0)
@@ -1314,7 +1314,7 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 
 		std::random_device rSd;
 		std::mt19937_64 rng(rSd());
-		std::uniform_real_distribution<float> uni(0.0, 1.0);
+		std::uniform_real_distribution<float> uni(0.0, 0.5);
 
 		size_t	idx = lPos;
 		size_t	tPrti = 0;
