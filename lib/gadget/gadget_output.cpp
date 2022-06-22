@@ -1332,7 +1332,8 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 			{	
 				float *axOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->mCpu())+dataSize*(slab*(Lz*2+1))));
 				float  *vOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->vBackGhost())+dataSize*(slab*(Lz*2+1))));
-				float  *mOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+(slab*Lz)*dataSize));
+				//float  *mOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+(slab*Lz)*dataSize));
+				float  *mOut = static_cast<float*>(static_cast<void*>(static_cast<char *> (axion->m2Cpu())+ (slab*(Lz+1))*dataSize));
                 for (hssize_t i=0; i<nPrti; i++)
 				{	
 					float xO,yO,zO,x_disp,y_disp,z_disp;
@@ -1417,7 +1418,7 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 		}
 
 		H5Sselect_hyperslab(mSpce, H5S_SELECT_SET, vOffset, NULL, mSlab, NULL);
-		auto mErr = H5Dwrite (mSts_id, dataType, mesSpace, mSpce, plist_id, (static_cast<char *> (axion->m2Cpu())+(slab*zDim)*dataSize));
+		auto mErr = H5Dwrite (mSts_id, dataType, mesSpace, mSpce, plist_id, (static_cast<char *> (axion->m2Cpu())+(slab*(Lz+1))*dataSize));
 		if ((mErr < 0))
 		{
 			LogError ("Error writing mass dataset");
