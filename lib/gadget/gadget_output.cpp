@@ -306,7 +306,8 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	double  Omega0 = 0.3;
 	double  met_to_pc = 1/(3.08567758e16);
 	double  G_N = 6.67430e-11 * 1.98847e30 * met_to_pc * met_to_pc * met_to_pc; // pc^3/s^2/SolarMass
-	double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s 
+	double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s
+	double  vel_conv = 299792.458;  
 
 	size_t  nPrt = nParts;
 	if (nParts == 0)
@@ -695,9 +696,9 @@ void	createGadget_Grid (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 					{
 						float grad[3];
 						grad_idx(axion,grad,idx);
-						vOut[tPrti*3+0] = grad[0]/(*axion->zV() * axion->AxionMass());
-						vOut[tPrti*3+1] = grad[1]/(*axion->zV() * axion->AxionMass());
-						vOut[tPrti*3+2] = grad[2]/(*axion->zV() * axion->AxionMass());
+						vOut[tPrti*3+0] = grad[0]/(*axion->zV() * axion->AxionMass()) * vel_conv;
+						vOut[tPrti*3+1] = grad[1]/(*axion->zV() * axion->AxionMass()) * vel_conv;
+						vOut[tPrti*3+2] = grad[2]/(*axion->zV() * axion->AxionMass()) * vel_conv;
 						// if (sm_vel) // to finish
 						// {
 						// 	smooth_vel();
@@ -950,6 +951,7 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 	    double  met_to_pc = 1/(3.08567758e16);
 	    double  G_N = 6.67430e-11 * 1.98847e30 * met_to_pc * met_to_pc * met_to_pc; // pc^3/s^2/SolarMass
 	    double  H0 = 0.1 * met_to_pc; // 100 km/s/Mpc in 1/s 
+		double  vel_conv = 299792.458; 
 
 	    size_t  nPrt = nParts;
 	    if (nParts == 0)
@@ -1361,9 +1363,9 @@ void	createGadget_Mass (Scalar *axion, size_t realN, size_t nParts, bool map_vel
 					{
 						float grad[3];
 						grad_interp(axion,grad,idx,x_disp,y_disp,z_disp);
-						vOut[tPrti*3+0] = grad[0]/(*axion->zV() * axion->AxionMass());
-						vOut[tPrti*3+1] = grad[1]/(*axion->zV() * axion->AxionMass());
-						vOut[tPrti*3+2] = grad[2]/(*axion->zV() * axion->AxionMass());
+						vOut[tPrti*3+0] = grad[0]/(*axion->zV() * axion->AxionMass()) * vel_conv;
+						vOut[tPrti*3+1] = grad[1]/(*axion->zV() * axion->AxionMass()) * vel_conv;
+						vOut[tPrti*3+2] = grad[2]/(*axion->zV() * axion->AxionMass()) * vel_conv;
 						// if (sm_vel) // to finish
 						// {
 						// 	smooth_vel();
