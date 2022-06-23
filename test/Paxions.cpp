@@ -19,11 +19,13 @@
 
 #include "WKB/WKB.h"
 #include "gravity/potential.h"
+#include "axiton/tracker.h"
 
 using namespace std;
 using namespace AxionWKB;
 
 double find_saturation_ct (Scalar *axion, FILE *file);
+void   find_MC(Scalar *axion, double MC_thr);
 
 int	main (int argc, char *argv[])
 {
@@ -345,13 +347,16 @@ int	main (int argc, char *argv[])
 
 		if(measrightnow)
 		{
-			if (*axion->zV() < ct_sat && axion->BckGnd()->ICData().grav_sat)
+			//if (*axion->zV() < ct_sat && axion->BckGnd()->ICData().grav_sat) // TO REVIEW THIS CHANGE
+			if (*axion->zV() < ct_sat)
 				ct_sat = find_saturation_ct(axion, file_sat);
 			ninfa.index=index;
 			lm = Measureme (axion, ninfa);
 			index++;
 			i_meas++ ;
 			measrightnow = false;
+			initTracker(axion);
+			//find_MC(axion,2.0);
 		}
 	}
 
@@ -478,3 +483,89 @@ double find_saturation_ct(Scalar *axion, FILE *file)
 } else {
 	return -1 ; }
 }
+
+
+void find_MC(Scalar *axion, double MC_thr)
+{
+	size_t dataSize;
+	uint totlX, totlZ,realDepth;
+	double Delta;
+	hsize_t rOff;
+	MeasInfo ninfa;
+	ninfa.nbinsspec = 1000;
+	
+	totlZ	  = axion->TotalDepth();
+	totlX	  = axion->Length();
+	realDepth = axion->Depth();
+	Delta     = (double) axion->BckGnd()->PhysSize()/((double) totlZ); 
+	
+	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(realDepth);
+	
+	switch (axion->Precision())
+	{
+		case FIELD_SINGLE:
+		{
+			//dataType = H5T_NATIVE_FLOAT;
+			dataSize = sizeof(float);
+		}
+
+		break;
+
+		case FIELD_DOUBLE:
+		{
+			//dataType = H5T_NATIVE_DOUBLE;
+			dataSize = sizeof(double);
+		}
+
+		break;
+
+		default:
+
+		LogError ("Error: Invalid precision. How did you get this far?");
+		exit(1);
+
+		break;
+	}
+
+	if (dataSize == 4)
+	{
+		int mccount = 0;
+		int tot = 0;
+		float * re    = static_cast<float *>(axion->mStart());
+		float * im    = static_cast<float *>(axion->vStart());
+		float * newEn = static_cast<float *>(axion->m2Cpu());
+		
+		#pragma omp parallel for schedule(static)
+		for (size_t idx = 0; idx < rOff; idx++)
+		{
+			newEn[idx] = re[idx]*re[idx]+im[idx]*im[idx];
+			if (newEn[idx] > MC_thr)
+				mccount += 1;
+			tot += 1;
+		}
+		LogOut("MC ratio: %f",(float) mccount/(float) tot); 
+
+		// Now smooth field m2
+		double smth_len = 3*Delta;
+		//auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+		SpecBin specAna(axion, (pType & (PROP_SPEC | PROP_FSPEC)) ? true: false, ninfa);
+		specAna.smoothFourier(smth_len,FILTER_GAUSS);
+
+		int mccount_s = 0;
+		int tot_s = 0;
+		float * smEn = static_cast<float *>(axion->m2Cpu());
+		
+		#pragma omp parallel for schedule(static)
+		for (size_t idx = 0; idx < rOff; idx++)
+		{
+			smEn[idx] = re[idx]*re[idx]+im[idx]*im[idx];
+			if (smEn[idx] > MC_thr)
+				mccount_s += 1;
+			tot_s += 1;
+		}
+		LogOut("\nMC ratio (smoothed): %f",(float) mccount_s/(float) tot_s); 
+	}
+	
+	return ;
+
+}	

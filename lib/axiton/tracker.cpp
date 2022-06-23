@@ -24,8 +24,8 @@ void	initTracker	(Scalar *field)
 {
 	LogMsg	(VERB_HIGH, "[AT] Called Init Axiton Tracker");
 
-	if (field->Field() != FIELD_AXION){
-		LogMsg(VERB_NORMAL,"[iT] Traker only works in Axion mode: Exit.");
+	if (field->Field() != FIELD_AXION && field->Field() != FIELD_PAXION){
+		LogMsg(VERB_NORMAL,"[iT] Traker only works in Axion/Paxion mode: Exit.");
 		return;
 	}
 

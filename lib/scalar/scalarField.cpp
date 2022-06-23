@@ -232,7 +232,8 @@ const std::complex<float> If(0.,1.);
 		case FIELD_PAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m,v for Paxion");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
-			alignAlloc ((void**) &v,   mAlign, mBytes); 
+			alignAlloc ((void**) &v,   mAlign, mBytes);
+			trackAlloc ((void**) &str, n3);
 
 		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
