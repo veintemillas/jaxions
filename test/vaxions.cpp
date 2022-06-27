@@ -535,10 +535,10 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 	size_t S0 = sizeN*sizeN ;
 	if (commRank() == 0){
 		if (sPrec == FIELD_SINGLE) {
+			float buff[4];
 			if (axion->Field() == FIELD_SAXION) {
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
-				float buff[4];
 #ifdef USE_GPU
 				if (axion->Device() == DEV_GPU) {
 					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
