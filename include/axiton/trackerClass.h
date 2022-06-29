@@ -7,6 +7,7 @@
 	#include "scalar/scalarField.h"
 	#include "scalar/folder.h"
 	#include "enum-field.h"
+	#include "gravity/gravityPaxionXeon.h"
 
 	#ifdef	USE_GPU
 		#include <cuda.h>
@@ -17,7 +18,6 @@
 	#include "utils/utils.h"
 	#include "fft/fftCode.h"
 	#include "comms/comms.h"
-
 
 	#include "io/readWrite.h"
 
@@ -30,12 +30,17 @@
 		std::vector<double>	v;
 		std::vector<double>	e;
 
-		public:
+		size_t haloid;
 
-			Axiton(){ };
+		public:
+			/* Constructor */
+			Axiton() : haloid(-1){};
+
 			~Axiton(){ };
 
 			void	SetIdx	  (size_t id, int i) {idx = id; i0=i;};
+			void	SethaloIdx (int id) {haloid = id; };
+
 			void	AddPoint	(double m1, double v1) {m.push_back(m1); v.push_back(v1);};
 			double* Field	() { return m.data();};
 			double* Veloc	() { return v.data();};
@@ -45,25 +50,45 @@
 	};
 
 
-	class Group 
+	class Group
 	{
-		/* This will contain group of axiton candidates or minicluster candidates 
+		/* This will contain group of axiton candidates or minicluster candidates
 		   On Axion mode groups into axitons, on Paxion mode gropus into miniclusters
 		*/
 		private:
-		// an ID
-		// a vector containing the positions
-		// a vector containing the density
+		int gidx;    	// group id
+		int gidxB;    // group id of the group with points in the previus rank
+		int gidxF;    // group id of the group with points in the next rank
+		int npoints; // number of points
+		std::vector<size_t> pfidxlist ; // a vector containing the positions foldedIds
+		std::vector<double> pmlist ;    // a vector containing a field value
+		std::vector<double> pvlist ;    // a vector containing another field value
 		// a double to store the total mass
 		// a double to store the maximum density
 		// a double to store an estimation of the size
-		 
-		public:
-			Group (){ };
-			~Group(){ };
 
-			void setID (){};
-			void addGroup(){};
+		public:
+			Group () : gidx(-1),npoints(0) { };
+			~Group() { };
+
+			void    setID (size_t gidx){gidx=gidx;};
+			void    setIDF (size_t gidxF){gidxF=gidxF;};
+			void    setIDB (size_t gidxB){gidxB=gidxB;};
+			void    addGroup(){};
+			size_t* IdxList() {return pfidxlist.data();};
+			int     NPoints() {return npoints;};
+			int     gID()     {return gidx;};
+			bool    AddPoint (size_t fidx)
+			{
+				if ( std::find(pfidxlist.begin(), pfidxlist.end(), fidx) != pfidxlist.end()  )
+					return false;
+				else {
+					pfidxlist.push_back(fidx);
+					npoints++;
+					return true;
+				}
+			};
+
 	};
 
 
@@ -99,9 +124,12 @@
 
 		PropParms ppar;
 
-		std::vector<Axiton>	Axilist;
+		std::vector<Axiton>	Axilist;  // axiton list
+		std::vector<Group*>	Halolist; //group/halo list
+
 
 		std::vector<size_t> idxlist;
+		std::vector<size_t> cidxlist; // candidate list
 		std::vector<double>	ct;
 
 		int limit;
@@ -114,6 +142,9 @@
 
 		bool addifm;
 		bool addifv;
+
+		double en_th;
+
 		void	report	(int index, int red, int pad, int fft, int slice, char *name);
 
 		template<typename Float>
@@ -121,6 +152,12 @@
 
 		template<typename Float>
 		int	SearchAxitons ();
+
+    template<typename Float>
+		int GroupTags ();
+
+		// template<typename Float>
+		// int SearchHalos();
 
 		public:
 
@@ -185,6 +222,13 @@
 						ct_th = aux;
 					LogMsg(VERB_HIGH,"     ct_threshold  mA*R*ct > %.2f",ct_th);
 
+					aux = afield->BckGnd()->ICData().axtinfo.con_threshold;
+					if (aux == -1.)
+						en_th = 100.0;
+					else
+						en_th = aux;
+					LogMsg(VERB_HIGH,"     con_threshold  en/<en> > %.2f",en_th);
+
 					LogMsg(VERB_HIGH,"     printradius ignored",ct_th);
 					LogMsg(VERB_HIGH,"     gradients ignored",ct_th);
 					}
@@ -194,10 +238,17 @@
 		 	~Tracker()  {};
 
 			void	SetLimit	(int newlim) {limit = newlim;} ;
-			int	  SearchAxitons	() ;
-			bool	AddAxiton	(size_t id) ;
-			void	Update () ;
-			void	PrintAxitons () ;
+			void	SetEThreshold	(double lola) {en_th = lola;} ;
+			int   SearchAxitons	() ;
+			int   GroupTags	() ;
+			bool	AddAxiton	(size_t fidx) ;
+			bool	AddGroup	(Group* newg) ;
+			void	AddTagPoint	(size_t idx) {cidxlist.push_back(idx);}; // saved unfolded to simplify neighbours a bit
+
+			void	  Update () ;
+			void	  PrintAxitons () ;
+			size_t  foldidx(size_t idx);
+			size_t  unfoldidx(size_t fidx);
 	};
 
 
@@ -206,6 +257,7 @@
 
 	void	Tracker::Update ()
 	{
+		LogMsg(VERB_HIGH," [UA] Update Axitons");
 		if (afield->Device() == DEV_GPU)
 			return;
 
@@ -223,6 +275,7 @@
 	int	Tracker::ReadAxitons ()
 	{
 
+		LogMsg(VERB_HIGH," [UA] Read Axitons");
 		ct.push_back(*afield->zV());
 
 		Float *m = static_cast<Float*>(afield->mStart());
@@ -252,6 +305,9 @@
 
 		}
 		index++;
+		commSync();
+		LogMsg(VERB_HIGH," [UA] Axitons read, index = %d (number of times?)",index);
+
 	}
 
 
@@ -286,6 +342,7 @@
 	template<typename Float>
 	int	Tracker::SearchAxitons ()
 	{
+		LogMsg(VERB_NORMAL,"[SA] Searching axitons");
 		const int nThreads = commThreads(); // IS THIS USEFUL?
 
 		if (afield->Field() == FIELD_AXION)
@@ -346,156 +403,277 @@
 		}
 		else if (afield->Field() == FIELD_PAXION)
 		{
-			/* HALO CODE HERE */
-			 
+			LogMsg(VERB_NORMAL,"[SA] Paxion Mode");
+			/* HALO CODE HERE
+			Make sure the paxion energy is in m2S */
+			void *nada;
+			PropParms ppar;
+			ppar.Ng    = Ng;
+			ppar.ood2a = 1.0;
+			ppar.PC    = afield->getCO();
+			ppar.Lx    = Lx;
+			ppar.Lz    = Lz;
+			LogMsg(VERB_NORMAL,"[SA] Energy to m2Start");
+			LogMsg(VERB_NORMAL,"[SA] Check B0 %d V %d Precision %d xB %d yB %d zB %d",BO, V, afield->Precision(), xBlock, yBlock, zBlock);
+			graviPaxKernelXeon<KIDI_ENE>(afield->mCpu(), afield->vCpu(), nada, afield->m2Cpu(), ppar, BO, V+BO, afield->Precision(), xBlock, yBlock, zBlock);
 
 			Float *m2 = static_cast<Float*>(afield->m2Start());
 			Float *m2h = static_cast<Float*>(afield->m2hStart());
-			char *tag = static_cast<char *>(static_cast<void *>(field->sData()));
+			char *tag = static_cast<char *>(static_cast<void *>(afield->sData()));
 
+			LogMsg(VERB_NORMAL,"[SA] Resseting");
 			memset(afield->m2half(),0,afield->eSize()*afield->Precision());
 			memset(tag,0,afield->Size());
 
-			Float m2lim = (Float) (en_th); //en_th will be an element of AxitInfo Struct
-			
-			int halott = 0;
+			Float m2lim = (Float) (en_th);
 
-			#pragma omp parallel for schedule(static) reduction (+:halott)
+			/* For candidate point IDs */
+			int candipointcounter = 0;
+			int accepted = 1;
+
+			LogMsg(VERB_NORMAL,"[SA] Mainloop, contrast limit %f",m2lim);
+			#pragma omp parallel for schedule(static) reduction(+:candipointcounter,accepted)
 			for (size_t iidx = 0 ; iidx < V; iidx++)
 			{
-				int max = false;
+
 				if ( std::abs(m2[iidx]) > m2lim )
 				{
-					max = true;
+					// LogMsg(VERB_PARANOID,"[AT] Paxitons %f > %f ",m2[iidx],m2lim);
+					candipointcounter++;
 					tag[iidx] = STRING_MASK;
 
-					size_t esta = iidx;
-					if (!afield->Folded())
-					{
-						/* fidx = iZ*n2 + iiy*shift*Lx +ix*shift +sy
-							idx  = iZ*n2 + [iy+sy*(n1/shift)]*Lx +ix
-							ix   = rix*ref , etc... */
-						size_t X[3];
-						indexXeon::idx2Vec (iidx, X, Lx);
-						size_t sy  = X[1]/(Lx/shift);
-						size_t iiy = X[1] - (sy*Lx/shift);
-						esta = X[2]*S + shift*(iiy*Lx+X[0]) +sy;
-					}
+					/* Canditates are saved unfolded */
+					AddTagPoint(afield->Folded() ? unfoldidx(iidx) : iidx);
+					m2h[iidx] = accepted;
 
-					// if (max)
-					// 	halott++;
+						// if follow in time is wanted
+						// bool bola = false;
+						// size_t esta = afield->Folded() ? iidx : foldidx(iidx);
+						// #pragma omp critical (candypoint)
+						// 	bola = AddAxiton(esta); // Axitons track evolution in time, ID is fidx
+						// if (bola)
+					accepted++;
 
-					bool bola = false;
-					#pragma omp critical (writeaxiton)
-					{
-						m2h[iidx] = halott;
-						bola = AddAxiton(esta);
-						if (bola)
-							halott++;
-					}
 
 				}
-				
-			}
-		}	
-		else 
+
+			} // end main loop
+			LogMsg(VERB_NORMAL,"[AT] Search Candidate Points returned/accepted %d/%d ",candipointcounter,accepted);
+			return accepted;
+		} // end case PAXION
+		else
 		{
 			LogError("Tracker class is only valid in Axion/Paxion mode");
 			return -1;
 		}
 	}
 
-	// Running serial?
-	int Tracker::GroupAxitons()
+	int	Tracker::GroupTags ()
 	{
-	
-		if (afield->Folded()){
-			//#pragma omp parallel for schedule(static)
-			for (int iidx = 0 ; iidx < idxlist.size(); iidx++)
+		LogMsg(VERB_NORMAL,"[GA] Group Candidates...");
+		if (afield->Device() == DEV_GPU)
+			return -1;
+
+		// if (afield->Field() == FIELD_AXION)
+		// {
+		// 	if (afield->AxionMass()*(*afield->RV())*(*afield->zV()) < ct_th)
+		// 	return -1;
+		// }
+
+		// ADD TEMPORAL CHECK FOR PAXION (MINICLUSTERS)
+
+		int co ;
+		if (precision == FIELD_DOUBLE)
+		{
+			co = this->GroupTags<double>();
+		}
+			else
+		{
+			co = this->GroupTags<float>();
+		}
+		return co;
+	}
+
+	// Running serial?
+	template<typename Float>
+	int Tracker::GroupTags()
+	{
+		LogMsg(VERB_NORMAL,"[GA] Group Tagged points CPU (con_th %f)",en_th);
+		/* Make neighbouring points have the same tag in m2h */
+
+		/* If groups already exist, do something else */
+
+		/* If groups do not exist and we need to process all info */
+
+		/* Exchange Ghosts in m2h */
+
+		int groupId = 1;
+
+		/* It should work for folded and unfolded fields */
+		{
+
+			LogMsg(VERB_NORMAL,"[GA] Group Axitons (Unfolded)");
+			Float *m2h = static_cast<Float*>(afield->m2hStart());
+			char  *tag = static_cast<char*>(afield->sData());
+
+			/* Loop over points (Axitons),
+
+			copies them into a newgroup
+			tags in sData:
+			STRING_WALL        = point in the group, already checked for neighbours
+			STRING_XY_POSITIVE = point in the group
+			STRING_MASK        = point belonging to some group (from SearchAxitons)*/
+
+			#pragma omp parallel for schedule(static) shared(groupId)
+			for (int iidx = 0 ; iidx < cidxlist.size(); iidx++)
 			{
-				size_t idx = Axilist[iidx].Idx();
-				//Axilist[iidx].AddPoint( (double) m[idx], (double) v[idx]);
-				/* energy? */
-			}
-		} else {
-			//#pragma omp parallel for schedule(static)
-			for (int iidx = 0 ; iidx < idxlist.size(); iidx++)
-			{
-				size_t fidx = Axilist[iidx].Idx();
-				size_t X[3];
-				indexXeon::idx2Vec (fidx, X, Lx);
-				size_t sy  = X[1]/(Lx/shift);
-				size_t iiy = X[1] - (sy*Lx/shift);
-				size_t idx = X[2]*S + shift*(iiy*Lx+X[0]) +sy;
+				/* Finds the idx of the tagged point in the tracker list */
+				size_t idx  = cidxlist[iidx];   // element iidx of the tagged list in tracker
+				size_t fidx = foldidx(idx);     // in case we need it ...
+				size_t midx = afield->Folded() ? fidx : idx;
 
-				size_t idxPx, idxMx, idxPy, idxMy, idxPz, idxMz,X[3],O[4];
-				indexXeon::idx2VecNeigh(idx,X,O,totlX);				
-				idxPx = O[0];
-				idxMx = O[1];
-				idxPy = O[2];
-				idxMy = O[3];
-				idxPz = idx + S;
-				idxMz = idx - S;
-
-				if (m2h[idxPx] > 0)
-					m2h[idxPx] = min(m2h[idx],m2h[idxPx]);
-
-				if (m2h[idxMx] > 0)
-					m2h[idxMx] = min(m2h[idx],m2h[idxMx]);
-
-				if (m2h[idxPy] > 0)
-					m2h[idxPy] = min(m2h[idx],m2h[idxPy]);
-
-				if (m2h[idxMy] > 0)
-					m2h[idxMy] = min(m2h[idx],m2h[idxMy]);
-				
-				if (m2h[idxPz] > 0)
-					m2h[idxPz] = min(m2h[idx],m2h[idxPz]);
-
-				if (m2h[idxMz] > 0)
-					m2h[idxMz] = min(m2h[idx],m2h[idxMz]);
-
-				// We might need to check if neighbours have index smaller than center
-
-	
-
-				
-
-
-
-				//Axilist[iidx].AddPoint( (double) m[idx], (double) v[idx]);
-				/* energy? */
-			}
-
-
-
-			vector<Float> groups;
-			for (int iidx = 0 ; iidx < idxlist.size(); iidx++)
-			{
-				Float preid = m2h[idx];
-				
-				{
-					if ( std::find(idxlist.begin(), idxlist.end(), id) != idxlist.end()  )
-						return false;
-					else 
-					{
-						Group newgroup;
-						newaxiton.SetIdx(id,index);
-						Axilist.push_back(newaxiton);
-						idxlist.push_back(id);
-						return true;
-					}	
+				LogMsg(VERB_PARANOID,"[GA] Seed idx %d midx %d (m2h %f)",idx, midx, m2h[midx]);
+				/* Creates a group unless the point is already classified/labelled in a group
+				remember that STRING_MASK means point-candidate (Axiton)
+				we use STRING_WALL for those points which are already grouped in a closed group
+				THAT WOULD BE WEIRD */
+				LogMsg(VERB_PARANOID,"[GA] tag %d",tag[midx]);
+				if (tag[idx] & STRING_WALL){
+					LogMsg(VERB_PARANOID,"[GA] already studied ... continue %d",idx);
+					continue;
 				}
-			}
-			
+
+				LogMsg(VERB_PARANOID,"[GA] Seed %d (m2h %f) will span GROUP %d",idx,m2h[midx],groupId);
+				/* Creates a group for point idx with reserved memory*/
+				Group *newgroup = new Group();
+				newgroup->setID(groupId);
+				/* Adds the tagged point to the Group with unfolded idx */
+				newgroup->AddPoint(idx);
+
+				/* Main WHILE loop, checks for neighbours of all points in the temp group until all are tagged
+				adds points to the group and iterates */
+				int npoints = 1;
+				int npointsincrease = 1; // any value >0 to make the while loop start
+
+				LogMsg(VERB_PARANOID,"[GA] while");
+				while (npointsincrease)
+				{
+					LogMsg(VERB_PARANOID,"[GA] Npoints %d increase %d ",newgroup->NPoints(),npointsincrease);
+					/* We reset the counter */
+					npointsincrease = 0;
+
+					/* We make a copy of the points in newgroup to avoid race conditions
+					the while loop keeps a hierarchy in the neighbours added */
+					std::vector<size_t> temp_idx;
+					for (int ii = 0; ii<newgroup->NPoints(); ii++)
+					{
+						size_t aidx = newgroup->IdxList()[ii];
+						size_t maidx = afield->Folded()? foldidx(aidx) : aidx;
+						LogMsg(VERB_PARANOID,"[GA] loop aux %d midx %d (tag %d)",aidx,maidx,tag[maidx] & STRING_WALL);
+						/* but we include only those which have not been checked for neighbours */
+						if ((tag[maidx] & STRING_WALL) == 0)
+						{
+							LogMsg(VERB_PARANOID,"[GA] idx %d AUX added %d (tag %d)",idx, aidx,tag[maidx] | STRING_XY_POSITIVE);
+							temp_idx.push_back(aidx);         // we add the unfolded idx
+							tag[maidx] |= STRING_XY_POSITIVE; // tag as belonging to A group
+						}
+					}
+					LogMsg(VERB_PARANOID,"[GA] Run the idx2 loop");
+					// for (const auto& idx2: temp_idx)
+					for (size_t ii =0;ii < temp_idx.size(); ii++)
+					{
+						size_t idx2 = temp_idx.data()[ii];
+						LogMsg(VERB_PARANOID,"[GA] idx2 %d ",idx2);
+						/* Find idx of neighbours */
+						size_t X[3], O[4];
+						indexXeon::idx2VecNeigh(idx2,X,O,Lx);
+
+						/* Creates a collection of neighbours to test */
+						std::vector<size_t> nebo;
+						nebo.push_back(O[0]);
+						nebo.push_back(O[1]);
+						nebo.push_back(O[2]);
+						nebo.push_back(O[3]);
+						/* Avoid ghost zones */
+						if (idx2 < V-S)
+							nebo.push_back(idx2+S);
+						if (idx2 > S)
+							nebo.push_back(idx2-S);
+
+						/* Loop over neighbours to incorporate them */
+						for (const auto& nidx : nebo)
+						{
+							LogMsg(VERB_PARANOID,"[GA] nebo loop %d ",nidx);
+							/* If candidates satisfy the criteriun include them in the group and tag them
+							(UNLESS THEY ARE ALREADY! )*/
+							size_t mnidx = afield->Folded()? foldidx(nidx) : nidx;
+							if ((tag[mnidx] & STRING_XY_POSITIVE) == 0) // this avoids points already in the group
+								if (m2h[mnidx] > 0)
+								{
+									if (newgroup->AddPoint(nidx)){
+										npointsincrease++;
+										LogMsg(VERB_PARANOID,"[GA] added %d ",nidx);
+									}
+									tag[mnidx] |= STRING_XY_POSITIVE; // tagged as grouped
+									m2h[mnidx] = groupId;           ; // pasted groupId into m2h
+								}
+							}
+						/* idx2 neighbouras should note be checked again */
+						size_t midx2 = afield->Folded()? foldidx(idx2) : idx2;
+						tag[midx2] |= STRING_WALL;
+					}
+					/* How many new points have been added ? */
+					LogMsg(VERB_PARANOID,"[Group] group %d, %d new points have been added",groupId,npointsincrease);
+				}
+
+				/* Now Newgroup contains the unfolded IDs of all points in a group,
+				and we can continue with the next point (which is not in a group) */
+
+				/* Publish group into Halolist
+				(we can now use the opportunity to fold the IDs, for instance)
+				note that it already has the groupid inside */
+				LogMsg(VERB_HIGH,"[Group] group %d with %d points",groupId,newgroup->NPoints());
+				AddGroup(newgroup);
+				delete newgroup;
+				groupId++;
+			} //end candidate point list
+
+
+			/* MPI mapping,
+			exchange ghosts to associate groups from different ranks */
+			const int sliceBytes = afield->Surf()*afield->Precision();
+			void *sB = afield->m2hStart();
+			void *rF = static_cast<void *> (static_cast<char *> (afield->m2hStart() + V*afield->Precision())); // m2BackGhost(); // slice after m
+			void *sF = static_cast<void *> (static_cast<char *> (afield->m2hStart() + (V-S)*afield->Precision())); // static_cast<void *> (static_cast<char *> (m2Start()) +fSize*n3-ghostBytes);
+			void *rB = afield->m2half();
+			LogMsg(VERB_PARANOID,"[MB] send ghosts") ;LogFlush();
+			afield->sendGeneral(COMM_SDRV, sliceBytes, MPI_BYTE, sB, rF, sF, rB);
+
+			/* Go over ghost zones and create a dictionary
+			loop over ranks from second and give them a global idx
+			and label m2 with this global id */
+			// int ggid;
+			// if (commRank() == 0)
+			// 	ggid = Halolist.size();
+			//
+			// for (int i = 1; i<commSize();i++)
+			// {
+			// 	if (commRank() == i)
+			// 	{
+			// 		/* scan the first slice and propose changes */
+			//
+			// 	}
+			// }
+
+			/* print stuff */
+			createMeas(afield, 17562);
+			memcpy(afield->m2Start(),afield->m2hStart(),afield->Size()*afield->Precision());
+			writeEDens (afield,MAP_M2S);
+			destroyMeas();
 
 		}
 
-	
-
-
-
-		return group_id;
+		return groupId;
 	}
 
 
@@ -526,9 +704,16 @@
 	}
 
 
+	/* Adds a group into the tracker */
+
+	bool	Tracker::AddGroup (Group* newg)
+	{
+			Halolist.push_back(newg);
+			return true;
+	}
 
 
-    void	Tracker::PrintAxitons (){
+  void	Tracker::PrintAxitons (){
 
 	if (afield->Device() == DEV_GPU)
 		return;
@@ -622,62 +807,83 @@ LogMsg(VERB_HIGH,"Total %d",nAx_l);
 	}
 
 
-	template<typename Float>
-	int Tracker::SearchHalos()
+	// template<typename Float>
+	// int Tracker::SearchHalos()
+	// {
+	// 	/* Assumes density contrast in m2
+	// 		TO INTRODUCE:
+	// 		- halo_thr
+	// 		- halom2 as a varibale of the tracjer Class
+	// 	*/
+	// 	Float *m2 = static_cast<Float*>(afield->m2Start());
+	//
+	// 	int halott = 0;
+	// 	int halom2 = 0;
+	// 	Float halo_thr = (Float) (en_th;); //halo_thr might be element of HaloInfo Struct
+	//
+	// 	const int nThreads = commThreads();
+	//
+	//
+	// 	#pragma omp parallel for schedule(static) reduction (+:halott)
+	// 	for (size_t iidx = 0 ; iidx < V; iidx++)
+	// 	{
+	// 		int max = false;
+	// 		if ( std::abs(m2[iidx]) > halo_thr )
+	// 			max = true;
+	//
+	// 		if (max && addifm)
+	// 		{
+	// 			size_t esta = iidx;
+	// 			if (!afield->Folded())
+	// 			{
+	// 				/* fidx = iZ*n2 + iiy*shift*Lx +ix*shift +sy
+	// 					idx  = iZ*n2 + [iy+sy*(n1/shift)]*Lx +ix
+	// 					ix   = rix*ref , etc... */
+	// 				size_t X[3];
+	// 				indexXeon::idx2Vec (iidx, X, Lx);
+	// 				size_t sy  = X[1]/(Lx/shift);
+	// 				size_t iiy = X[1] - (sy*Lx/shift);
+	// 				esta = X[2]*S + shift*(iiy*Lx+X[0]) +sy;
+	// 			}
+	//
+	// 			halott++;
+	//
+	// 			if (max)
+	// 				halom2++;
+	//
+	// 			bool bola = false;
+	//
+	// 			#pragma omp critical (writeaxiton)
+	// 				bola = AddPoint(esta);
+	//
+	// 			if (bola)
+	// 				halonew++;
+	// 		}
+	// 	}
+	// 	LogMsg(VERB_PARANOID,"[AT] Search Halos returned %d (%d with m2 criterion) but only %d new",halott,halom2,halonew);
+	// 	return axitm;
+	//
+	// }
+
+	size_t Tracker::foldidx(size_t idx)
 	{
-		/* Assumes density contrast in m2 
-			TO INTRODUCE:
-			- halo_thr	
-			- halom2 as a varibale of the tracjer Class
-		*/
-		Float *m2 = static_cast<Float*>(afield->m2Start());
-		Float dens_thr = (Float) (halo_th); //halo_thr might be element of HaloInfo Struct
+	size_t X[3];
+	indexXeon::idx2Vec (idx, X, Lx);
+	size_t sy  = X[1]/(Lx/shift);
+	size_t iiy = X[1] - (sy*Lx/shift);
+	return X[2]*S + shift*(iiy*Lx+X[0]) +sy;
 
-		const int nThreads = commThreads();
+}
 
-		int halott = 0;
-		Float halo_thr = ;//ADD_HERE!
-
-		#pragma omp parallel for schedule(static) reduction (+:halott)
-		for (size_t iidx = 0 ; iidx < V; iidx++)
-		{
-			int max = false;
-			if ( std::abs(m2[iidx]) > halo_thr )
-				max = true;
-
-			if (max && addifm)
-			{
-				size_t esta = iidx;
-				if (!afield->Folded())
-				{
-					/* fidx = iZ*n2 + iiy*shift*Lx +ix*shift +sy
-						idx  = iZ*n2 + [iy+sy*(n1/shift)]*Lx +ix
-						ix   = rix*ref , etc... */
-					size_t X[3];
-					indexXeon::idx2Vec (iidx, X, Lx);
-					size_t sy  = X[1]/(Lx/shift);
-					size_t iiy = X[1] - (sy*Lx/shift);
-					esta = X[2]*S + shift*(iiy*Lx+X[0]) +sy;
-				}
-
-				halott++;
-
-				if (max)
-					halom2++;
-
-				bool bola = false;
-
-				#pragma omp critical (writeaxiton)
-					bola = AddHaloPoint(esta);
-
-				if (bola)
-					halonew++;
-			}
-		}
-		LogMsg(VERB_PARANOID,"[AT] Search Halos returned %d (%d with m2 criterion) but only %d new",halott,halom2,halonew);
-		return axitm;
-
-	}
+	size_t Tracker::unfoldidx(size_t fidx)
+	{
+	size_t sy  = fidx % shift; // danger, assumes S is divisible/shift
+	size_t iz  = fidx / S;
+	size_t tem = (fidx - iz*S - sy)/shift;
+	size_t iiy = tem/Lx;
+	size_t ix  = tem % Lx;
+	return iz*S + (iiy + sy*Lx/shift)*Lx + ix;
+}
 
 
 #endif

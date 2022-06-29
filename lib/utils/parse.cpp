@@ -108,7 +108,7 @@ VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
 VqcdType     vqcdTypeEvol    = V_NONE;
-GadType      gadType         = GAD_MASS; 
+GadType      gadType         = GAD_MASS;
 
 // Default IC type
 IcData icdatst;
@@ -1310,7 +1310,7 @@ int	parseArgs (int argc, char *argv[])
 
 			PARSE1;
 		}
-		
+
 		if (!strcmp(argv[i], "--part_vel"))
 		{
 
@@ -1905,19 +1905,29 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--axitontracker.th_threshold"))
 		{
-			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.th_threshold);
+			// sscanf(argv[i+1], "%zu", &icdatst.axtinfo.th_threshold);
+      icdatst.axtinfo.th_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.vh_threshold"))
 		{
-			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ve_threshold);
+			// sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ve_threshold);
+      icdatst.axtinfo.ve_threshold = atof(argv[i+1]);
+			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--axitontracker.con_threshold"))
+		{
+			// sscanf(argv[i+1], "%zu", &icdatst.axtinfo.con_threshold);
+      icdatst.axtinfo.con_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.ct_threshold"))
 		{
 			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ct_threshold);
+      icdatst.axtinfo.ct_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
@@ -2153,7 +2163,7 @@ int	parseArgs (int argc, char *argv[])
 			{
 				gadType = GAD_GRID;
 			}
-					
+
 			PARSE2;
 		}
 

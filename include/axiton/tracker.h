@@ -6,4 +6,5 @@
 	void 		searchAxitons();
 	void 		readAxitons();
 	void 		printAxitons();
+	void 	  grouptags();
 #endif

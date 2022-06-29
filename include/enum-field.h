@@ -734,9 +734,9 @@
 
 		typedef	enum	GadType_s
 		{
-			GAD,	                 // createGadget      
-			GAD_MASS,                // createGadget_Mass  
-			GAD_GRID,                // createGadget_Grid 
+			GAD,	                 // createGadget
+			GAD_MASS,                // createGadget_Mass
+			GAD_GRID,                // createGadget_Grid
 		}	GadType;
 
 		// data given to measurement function (includes labels and analyses)
@@ -777,6 +777,7 @@
 			int           nMax;
 			double        th_threshold	;
 			double        ve_threshold	;
+			double        con_threshold	;
 			double        ct_threshold	;
 			int           printradius ;
 			bool          gradients ;

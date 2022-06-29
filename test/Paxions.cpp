@@ -227,6 +227,28 @@ int	main (int argc, char *argv[])
 	bool sat = false;
 	bool closef = false;
 
+	//--------------------------------------------------
+	//	Halo TRACKER 
+	//--------------------------------------------------
+
+	/**/
+	LogMsg  (VERB_NORMAL, "[Pax] track ");
+	LogOut("0");
+	initTracker(axion);
+	LogMsg  (VERB_NORMAL, "[Pax] search ");
+	LogOut("1");
+	searchAxitons();
+	LogOut("2");
+	commSync();
+	LogMsg	(VERB_NORMAL, "[Pax] group ");
+	LogOut("1");
+	commSync();
+	grouptags();
+
+	//--------------------------------------------------
+	//      MAIN LOOP
+	//-------------------------------------------------
+
 	LogOut ("Start redshift loop\n\n");
 	for (int iz = 0; iz < nSteps; iz++)
 	{

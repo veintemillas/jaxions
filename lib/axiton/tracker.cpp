@@ -22,7 +22,7 @@ using	namespace profiler;
 
 void	initTracker	(Scalar *field)
 {
-	LogMsg	(VERB_HIGH, "[AT] Called Init Axiton Tracker");
+	LogMsg	(VERB_NORMAL, "[AT] Called Init Axiton Tracker");
 
 	if (field->Field() != FIELD_AXION && field->Field() != FIELD_PAXION){
 		LogMsg(VERB_NORMAL,"[iT] Traker only works in Axion/Paxion mode: Exit.");
@@ -39,6 +39,12 @@ void	initTracker	(Scalar *field)
 
 	axitrack = std::make_unique<Tracker>(field);
 
+	LogMsg	(VERB_NORMAL, "[AT] Tune by hand, 8, 4, 1");
+	axitrack->SetBlockX( field->Length()*8);
+	axitrack->SetBlockY( 4);
+	axitrack->SetBlockZ( 1);
+	axitrack->UpdateBestBlock();
+
 	prof.stop();
 	prof.add(std::string("Initialisation"), 0.0, 0.0);
 
@@ -47,15 +53,19 @@ void	initTracker	(Scalar *field)
 
 void 	searchAxitons()
 {
+	LogMsg	(VERB_NORMAL, "[SeA] Searching axitons");
 	if (!axitrack)
 		return;
 
 	profiler::Profiler &prof = getProfiler(PROF_TRACK);
 	prof.start();
 	axitrack->SearchAxitons ();
-	axitrack->Update ();
+	// axitrack->Update ();
+	LogMsg	(VERB_NORMAL, "[SeA] ...");
 	prof.stop();
+	LogMsg	(VERB_NORMAL, "[SeA] ...");
 	prof.add(std::string("Search Axitons"), 0.0, 0.0);
+	LogMsg	(VERB_NORMAL, "[SeA] Searching axitons done");
 }
 
 void 	readAxitons()
@@ -80,4 +90,18 @@ void 	printAxitons()
 	axitrack->PrintAxitons ();
 	prof.stop();
 	prof.add(std::string("Print Axitons"), 0.0, 0.0);
+}
+
+void 	grouptags()
+{
+	LogMsg	(VERB_NORMAL, "[AT] Called Group Tagged Points");
+	if (!axitrack)
+		return;
+
+	profiler::Profiler &prof = getProfiler(PROF_TRACK);
+	prof.start();
+	// axitrack->SetEThreshold(threshold);
+	axitrack->GroupTags ();
+	prof.stop();
+	prof.add(std::string("Group tags"), 0.0, 0.0);
 }
