@@ -18,6 +18,7 @@
 #include "meas/measa.h"
 #include "reducer/reducer.h"
 #include "gadget/gadget_output.h"
+#include "projector/projector.h"
 
 #include "WKB/WKB.h"
 
@@ -46,14 +47,15 @@ int	main (int argc, char *argv[])
 	LogOut("----------------------------------------------------------------------\n\n");
 
 	Scalar *axion;
-	LogOut ("Reading conf %d ...", fIndex);
+	LogOut ("Reading conf axion.%05d ...", fIndex);
+	
 	readConf(&myCosmos, &axion, fIndex);
 	if (axion == NULL)
 	{
 		LogOut ("Error reading HDF5 file\n");
 		exit (0);
 	}
-	LogOut ("... Done!\n");
+	LogOut ("... done!\n");
 
 	/* Creates axion and reads energy into M2 */
 	// double eMean = readEDens	(&myCosmos, &axion, fIndex);
@@ -100,8 +102,6 @@ int	main (int argc, char *argv[])
 	// 	eMean /= (double) totalsize;
 	// }
 
-	LogOut("Ready to Gadget %lu!\n",nPart);
-
 	bool map_velocity = false;
 	if (axion->BckGnd()->ICData().part_vel)
 		map_velocity = true;
@@ -116,16 +116,14 @@ int	main (int argc, char *argv[])
 	else if (gadType == GAD)
 		LogOut("Not yet implemented...");
 
-	//create measurement spectrum
-	if ( !(defaultmeasType == MEAS_NOTHING) )
-	{
-		MeasInfo ninfa = deninfa;
-		ninfa.index=fIndex+1;
-		ninfa.measdata = defaultmeasType;
-		ninfa.cTimesec = (double) Timer()*1.0e-6;
-		ninfa.propstep = 1;
-		MeasData lm = Measureme (axion, ninfa);
-	}
+	/* Save energy projection to compare with Gadget*/
+
+	createMeas(axion, fIndex+1000);
+	LogOut("\n\nSaving projection plot in axion.m.%05d ...",fIndex+1000);
+	projectField(axion, [] (float x) -> float { return x ; } );
+	writePMapHdf5 (axion);
+	LogOut("done!\n\n");
+	destroyMeas();
 
 	endAxions();
 

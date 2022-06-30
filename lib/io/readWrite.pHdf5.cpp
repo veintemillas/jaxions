@@ -983,7 +983,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				// anyways these readjustments can always be made from the commandline
 
 				/* Lambda; saxion self-interation coefficient at z = 1 */
-
+				if (strcmp(fStr, "Paxion"))
+				{
 				// note: if no value is read in commandline, Lambda() gives -1.e8
 				if (myCosmos->Lambda() == -1.e8) {
 					double	lda, lz2e;
@@ -1014,7 +1015,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				else
 					LogMsg (VERB_NORMAL, "Lambda (commandline)   = %.2f/R^%.2f",myCosmos->Lambda(),myCosmos->LamZ2Exp());
 
-
+				}
 				// test LambdaP?
 				// -------------------
 				// LogMsg (VERB_NORMAL, "Axion mass (h5read) %.2f (calculated) %.2f",maaR, myCosmos->AxionMass());
