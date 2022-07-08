@@ -2,6 +2,7 @@
 	#define	_TRACKERCLASS_
 
 	#include <string>
+	#include <iostream>
 	#include <complex>
 	#include <memory>
 	#include "scalar/scalarField.h"
@@ -53,7 +54,7 @@
 	class Group
 	{
 		/* This will contain group of axiton candidates or minicluster candidates
-		   On Axion mode groups into axitons, on Paxion mode gropus into miniclusters
+		   On Axion mode groups into axitons, on Paxion mode groups into miniclusters
 		*/
 		private:
 		int gidx;    	// group id
@@ -63,6 +64,8 @@
 		std::vector<size_t> pfidxlist ; // a vector containing the positions foldedIds
 		std::vector<double> pmlist ;    // a vector containing a field value
 		std::vector<double> pvlist ;    // a vector containing another field value
+		std::vector<double> pm2list ;   // a vector containing density contrast
+
 		// a double to store the total mass
 		// a double to store the maximum density
 		// a double to store an estimation of the size
@@ -76,6 +79,7 @@
 			void    setIDB (size_t gidxB){gidxB=gidxB;};
 			void    addGroup(){};
 			size_t* IdxList() {return pfidxlist.data();};
+
 			int     NPoints() {return npoints;};
 			int     gID()     {return gidx;};
 			bool    AddPoint (size_t fidx)
@@ -153,7 +157,7 @@
 		template<typename Float>
 		int	SearchAxitons ();
 
-    template<typename Float>
+    	template<typename Float>
 		int GroupTags ();
 
 		// template<typename Float>
@@ -241,6 +245,7 @@
 			void	SetEThreshold	(double lola) {en_th = lola;} ;
 			int   SearchAxitons	() ;
 			int   GroupTags	() ;
+			bool  PatchGroups () ;
 			bool	AddAxiton	(size_t fidx) ;
 			bool	AddGroup	(Group* newg) ;
 			void	AddTagPoint	(size_t idx) {cidxlist.push_back(idx);}; // saved unfolded to simplify neighbours a bit
@@ -443,6 +448,7 @@
 					tag[iidx] = STRING_MASK;
 
 					/* Canditates are saved unfolded */
+					#pragma omp critical 
 					AddTagPoint(afield->Folded() ? unfoldidx(iidx) : iidx);
 					m2h[iidx] = accepted;
 
@@ -498,7 +504,7 @@
 	template<typename Float>
 	int Tracker::GroupTags()
 	{
-		LogMsg(VERB_NORMAL,"[GA] Group Tagged points CPU (con_th %f)",en_th);
+		LogMsg(VERB_NORMAL,"[GA] Group Tagged points CPU (con_th %.1f)",en_th);
 		/* Make neighbouring points have the same tag in m2h */
 
 		/* If groups already exist, do something else */
@@ -541,7 +547,7 @@
 				if (tag[idx] & STRING_WALL){
 					LogMsg(VERB_PARANOID,"[GA] already studied ... continue %d",idx);
 					continue;
-				}
+				} 
 
 				LogMsg(VERB_PARANOID,"[GA] Seed %d (m2h %f) will span GROUP %d",idx,m2h[midx],groupId);
 				/* Creates a group for point idx with reserved memory*/
@@ -633,12 +639,11 @@
 				(we can now use the opportunity to fold the IDs, for instance)
 				note that it already has the groupid inside */
 				LogMsg(VERB_HIGH,"[Group] group %d with %d points",groupId,newgroup->NPoints());
-				AddGroup(newgroup);
+				AddGroup(newgroup);	
 				delete newgroup;
 				groupId++;
 			} //end candidate point list
-
-
+			
 			/* MPI mapping,
 			exchange ghosts to associate groups from different ranks */
 			const int sliceBytes = afield->Surf()*afield->Precision();
@@ -652,16 +657,33 @@
 			/* Go over ghost zones and create a dictionary
 			loop over ranks from second and give them a global idx
 			and label m2 with this global id */
-			// int ggid;
-			// if (commRank() == 0)
-			// 	ggid = Halolist.size();
-			//
+
+			int ggid;
+			int totalgroupnum;
+			//if (commRank() == 0)
+			ggid = Halolist.size();
+			/* For displaying division of groups between ranks */
+			// for (int i = 0; i<commSize()+1;i++)
+			// {
+			// 	if (commRank() == i)
+			// 	{
+			// 		printf("Rank %d has %d groups!\n",i,ggid);
+			// 	}
+			// }
+			MPI_Allreduce(&ggid, &totalgroupnum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+			LogMsg(VERB_PARANOID,"[GA2] Global number of groups is %d",totalgroupnum);
+			
+			LogOut("Found %d groups to sort between ranks\n",totalgroupnum);
+
+			
+
+
 			// for (int i = 1; i<commSize();i++)
 			// {
 			// 	if (commRank() == i)
 			// 	{
 			// 		/* scan the first slice and propose changes */
-			//
+
 			// 	}
 			// }
 
@@ -675,6 +697,21 @@
 
 		return groupId;
 	}
+
+
+	bool Tracker::PatchGroups ()
+	{
+		LogOut("\nPatching groups ... ");
+
+		// for (int ig = 0; ig < Halolist.size(); ig++)
+		// {
+		// 	LogOut("group %d\n",Halolist[ig]->gID());	
+		// }
+
+		//LogOut("done!\n");
+		return true;
+	}
+
 
 
 
@@ -709,6 +746,8 @@
 	bool	Tracker::AddGroup (Group* newg)
 	{
 			Halolist.push_back(newg);
+			/* Quick check */
+			LogOut("group %d pushed %d points to halolist\n",Halolist.back()->gID(),Halolist.back()->NPoints());	
 			return true;
 	}
 
@@ -872,8 +911,7 @@ LogMsg(VERB_HIGH,"Total %d",nAx_l);
 	size_t sy  = X[1]/(Lx/shift);
 	size_t iiy = X[1] - (sy*Lx/shift);
 	return X[2]*S + shift*(iiy*Lx+X[0]) +sy;
-
-}
+	}
 
 	size_t Tracker::unfoldidx(size_t fidx)
 	{
@@ -883,7 +921,7 @@ LogMsg(VERB_HIGH,"Total %d",nAx_l);
 	size_t iiy = tem/Lx;
 	size_t ix  = tem % Lx;
 	return iz*S + (iiy + sy*Lx/shift)*Lx + ix;
-}
+	}
 
 
 #endif

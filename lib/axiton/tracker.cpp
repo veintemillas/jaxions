@@ -102,6 +102,7 @@ void 	grouptags()
 	prof.start();
 	// axitrack->SetEThreshold(threshold);
 	axitrack->GroupTags ();
+	axitrack->PatchGroups ();
 	prof.stop();
 	prof.add(std::string("Group tags"), 0.0, 0.0);
 }
