@@ -74,7 +74,7 @@
 			Group () : gidx(-1),npoints(0) { };
 			~Group() { };
 
-			void    setID (size_t gidx){gidx=gidx;};
+			void    setID (size_t idx){gidx=idx;};
 			void    setIDF (size_t gidxF){gidxF=gidxF;};
 			void    setIDB (size_t gidxB){gidxB=gidxB;};
 			void    addGroup(){};
@@ -129,7 +129,7 @@
 		PropParms ppar;
 
 		std::vector<Axiton>	Axilist;  // axiton list
-		std::vector<Group*>	Halolist; //group/halo list
+		std::vector<Group>	Halolist; //group/halo list
 
 
 		std::vector<size_t> idxlist;
@@ -247,7 +247,7 @@
 			int   GroupTags	() ;
 			bool  PatchGroups () ;
 			bool	AddAxiton	(size_t fidx) ;
-			bool	AddGroup	(Group* newg) ;
+			bool	AddGroup	(Group newg) ;
 			void	AddTagPoint	(size_t idx) {cidxlist.push_back(idx);}; // saved unfolded to simplify neighbours a bit
 
 			void	  Update () ;
@@ -448,7 +448,7 @@
 					tag[iidx] = STRING_MASK;
 
 					/* Canditates are saved unfolded */
-					#pragma omp critical 
+					#pragma omp critical
 					AddTagPoint(afield->Folded() ? unfoldidx(iidx) : iidx);
 					m2h[iidx] = accepted;
 
@@ -547,14 +547,14 @@
 				if (tag[idx] & STRING_WALL){
 					LogMsg(VERB_PARANOID,"[GA] already studied ... continue %d",idx);
 					continue;
-				} 
+				}
 
 				LogMsg(VERB_PARANOID,"[GA] Seed %d (m2h %f) will span GROUP %d",idx,m2h[midx],groupId);
 				/* Creates a group for point idx with reserved memory*/
-				Group *newgroup = new Group();
-				newgroup->setID(groupId);
+				Group newgroup;
+				newgroup.setID(groupId);
 				/* Adds the tagged point to the Group with unfolded idx */
-				newgroup->AddPoint(idx);
+				newgroup.AddPoint(idx);
 
 				/* Main WHILE loop, checks for neighbours of all points in the temp group until all are tagged
 				adds points to the group and iterates */
@@ -564,16 +564,16 @@
 				LogMsg(VERB_PARANOID,"[GA] while");
 				while (npointsincrease)
 				{
-					LogMsg(VERB_PARANOID,"[GA] Npoints %d increase %d ",newgroup->NPoints(),npointsincrease);
+					LogMsg(VERB_PARANOID,"[GA] Npoints %d increase %d ",newgroup.NPoints(),npointsincrease);
 					/* We reset the counter */
 					npointsincrease = 0;
 
 					/* We make a copy of the points in newgroup to avoid race conditions
 					the while loop keeps a hierarchy in the neighbours added */
 					std::vector<size_t> temp_idx;
-					for (int ii = 0; ii<newgroup->NPoints(); ii++)
+					for (int ii = 0; ii<newgroup.NPoints(); ii++)
 					{
-						size_t aidx = newgroup->IdxList()[ii];
+						size_t aidx = newgroup.IdxList()[ii];
 						size_t maidx = afield->Folded()? foldidx(aidx) : aidx;
 						LogMsg(VERB_PARANOID,"[GA] loop aux %d midx %d (tag %d)",aidx,maidx,tag[maidx] & STRING_WALL);
 						/* but we include only those which have not been checked for neighbours */
@@ -616,7 +616,7 @@
 							if ((tag[mnidx] & STRING_XY_POSITIVE) == 0) // this avoids points already in the group
 								if (m2h[mnidx] > 0)
 								{
-									if (newgroup->AddPoint(nidx)){
+									if (newgroup.AddPoint(nidx)){
 										npointsincrease++;
 										LogMsg(VERB_PARANOID,"[GA] added %d ",nidx);
 									}
@@ -638,12 +638,12 @@
 				/* Publish group into Halolist
 				(we can now use the opportunity to fold the IDs, for instance)
 				note that it already has the groupid inside */
-				LogMsg(VERB_HIGH,"[Group] group %d with %d points",groupId,newgroup->NPoints());
-				AddGroup(newgroup);	
-				delete newgroup;
+				LogMsg(VERB_HIGH,"[Group] group %d/%d with %d points",groupId,newgroup.gID(),newgroup.NPoints());
+				AddGroup(newgroup);
+				// delete newgroup;
 				groupId++;
 			} //end candidate point list
-			
+
 			/* MPI mapping,
 			exchange ghosts to associate groups from different ranks */
 			const int sliceBytes = afield->Surf()*afield->Precision();
@@ -672,10 +672,10 @@
 			// }
 			MPI_Allreduce(&ggid, &totalgroupnum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 			LogMsg(VERB_PARANOID,"[GA2] Global number of groups is %d",totalgroupnum);
-			
+
 			LogOut("Found %d groups to sort between ranks\n",totalgroupnum);
 
-			
+
 
 
 			// for (int i = 1; i<commSize();i++)
@@ -705,7 +705,7 @@
 
 		// for (int ig = 0; ig < Halolist.size(); ig++)
 		// {
-		// 	LogOut("group %d\n",Halolist[ig]->gID());	
+		// 	LogOut("group %d\n",Halolist[ig]->gID());
 		// }
 
 		//LogOut("done!\n");
@@ -743,11 +743,12 @@
 
 	/* Adds a group into the tracker */
 
-	bool	Tracker::AddGroup (Group* newg)
+	bool	Tracker::AddGroup (Group newg)
 	{
 			Halolist.push_back(newg);
 			/* Quick check */
-			LogOut("group %d pushed %d points to halolist\n",Halolist.back()->gID(),Halolist.back()->NPoints());	
+			for (int i=0; i<Halolist.size();i++)
+				LogOut("group %d pushed %d points to halolist\n",Halolist[i].gID(),Halolist[i].NPoints());
 			return true;
 	}
 
