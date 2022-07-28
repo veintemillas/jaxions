@@ -2618,6 +2618,7 @@ class plot:
         cbar.ax.tick_params(which='major',length=majorticklength,width=majortickwidth)
         cbar.solids.set_edgecolor("face")
         return cbar
+        
     def single(xlab='',ylab='',\
                  lw=1.5,lfs=25,tfs=18,size_x=13,size_y=8,Grid=False):
         plt.rcParams['axes.linewidth'] = lw
@@ -2662,7 +2663,36 @@ class plot:
             ax2.grid()
         return fig,ax1,ax2
 
+class gadget:
+    def get_info(f):
+        print('File: ',f, '\n')
+        print("Redshift: %.1e"%f['Header'].attrs['Redshift'])
+        print("NumParts: %d^3"%int(np.ceil(f['Header'].attrs['NumPart_Total'][1]**(1/3))))
+        print("Box Size: %.3f pc"%f['Header'].attrs['BoxSize'])
 
+    def load_miniclusters(f):
+        size = len(f['/Subhalo/SubhaloHalfmassRad'] )
+        rad = np.reshape(f['/Subhalo/SubhaloHalfmassRad'],(size))
+        mass   = np.reshape(f['/Subhalo/SubhaloMass'],(size))
+        npar  = np.reshape(f['/Subhalo/SubhaloLen']  ,(size))
+        vdisp = np.reshape(f['/Subhalo/SubhaloVelDisp'],(size))
+        dens  = np.reshape([mass[i]/(4/3*np.pi*rad[i]**3)for i in range(len(mass))],(size))
+        mc = np.column_stack((mass,rad,dens,npar,vdisp))
+        print("Loaded %d miniclusters at z=%.1f"%(size,f['Header'].attrs['Redshift']))
+        return mc
+
+    def load_particles(f):
+        npart = f['Header'].attrs['NumPart_Total'][-1] 
+        bsize = f['Header'].attrs['BoxSize'] 
+        red   = f['Header'].attrs['Redshift']
+        pos   = np.reshape(f['/PartType1/Coordinates'],(npart,3)) 
+        vel   = np.reshape(f['/PartType1/Velocities'] ,(npart,3))
+        vmod  = np.reshape(np.sqrt(vel[:,0]**2+vel[:,1]**2+vel[:,2]**2),(npart,1))
+        mass  = np.reshape(f['/PartType1/Masses']     ,(npart,1)) 
+        ids   = np.reshape(f['/PartType1/ParticleIDs'],(npart,1)) 
+        pp    = np.concatenate((pos,vel,vmod,mass,ids,),axis=1)
+        print("Loaded %d particles at z=%.1f"%(npart,red))
+        return pp
 
 
 
