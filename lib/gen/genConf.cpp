@@ -761,11 +761,30 @@ void	ConfGenerator::conflola(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] zV %f zi %f logi %f",*axionField->zV(), ic.zi, ic.logi);
 
 	double xit;
+	double logit;
+	if (ic.preprop) {
+		double Rnow = axionField->Rfromct(ic.zi);
+		double Rpre = axionField->Rfromct(ic.zi/ic.prepcoe);
+		double prelz2e = ic.prelZ2e;
+		double llp;
+		if (axionField->LambdaT() == LAMBDA_FIXED) {
+			llp = LALA;
+		} else {
+			llp = LALA/pow(Rnow,axionField->BckGnd()->LamZ2Exp());
+		}
+		double preLambdaP = llp/pow(Rpre/Rnow,prelz2e);
+		logit = log(sqrt(2*preLambdaP)*Rpre*Rpre);
+		LogMsg(VERB_NORMAL,"[GEN] logi jumped from %f to %f for prepropagator",ic.logi,logit);
+		LogMsg(VERB_NORMAL,"[GEN] Ri %f Rpi %f llp %f LambdaP %f prelZ2e %f preLambdaP %f",Rnow,Rpre,llp,axionField->LambdaP(),prelz2e,preLambdaP);
+	} else {
+		logit = ic.logi;
+	}
 	if (axionField->LambdaT() == LAMBDA_Z2) // Strictly valid only for LamZ2e = 2.0
-	  xit = (249.48 + 38.8431*ic.logi + 1086.06* ic.logi*ic.logi)/(21775.3 + 3665.11*ic.logi)  ;
+	  xit = (249.48 + 38.8431*logit + 1086.06*logit*logit)/(21775.3 + 3665.11*logit)  ;
 	else // We use this as a nice approximation (for low logi)
-	  xit = (249.48 + 38.8431*ic.logi + 1086.06* ic.logi*ic.logi)/(21775.3 + 3665.11*ic.logi)  ;
+	  xit = (249.48 + 38.8431*logit + 1086.06*logit*logit)/(21775.3 + 3665.11*logit)  ;
 	  // (9.31021 + 1.38292e-6*logi + 0.713821*logi*logi)/(42.8748 + 0.788167*logi);
+	if (ic.preprop) xit *= ic.prepcoe*ic.prepcoe;
 
 	if (ic.siter == 1) {
 		xit *= ic.kcr;

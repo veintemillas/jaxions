@@ -230,7 +230,7 @@ int	main (int argc, char *argv[])
 	index++;
 	if ( (dumpmode == DUMP_FROMLIST) ){
 			LogOut("time %f and %d-measurement %lf\n",*axion->zV(),i_meas,measfilepar.ct[i_meas]);
-		if (abs(1.0 -(*axion->zV())/measfilepar.ct[i_meas])<0.0001){
+		if (!restart_flag && (abs(1.0 -(*axion->zV())/measfilepar.ct[i_meas])<0.0001)){
 				i_meas++;
 				LogOut("i_meas++ initial conditions coincided with 1st measurement\n");
 		}

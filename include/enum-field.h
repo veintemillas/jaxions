@@ -760,6 +760,7 @@
 			int                 propstep;
 			int                 cummask;
 			PrintConf           printconf;
+			bool                maskenergyonly;
 		}	MeasInfo;
 
 		// data output by measurement function to program

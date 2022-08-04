@@ -89,6 +89,7 @@ bool preprop  = false ;
 bool coSwitch2theta  = true ;
 bool WKBtotheend = false;
 bool measCPU  = false;
+bool maskenergyonly = false;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -498,6 +499,7 @@ void	PrintMEoptions()
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
 	printf("                                           (Red, Gaus, Axit12 modes) \n\n");
 	printf("  --printmask                              Prints the mask\n\n");
+  printf("  --maskenergyonly                         Skips masked spectra in Red mode and prints masked energies only (default no)\n\n");
 	printf("  --ng0calib                               Parameter tunning the exponential masking (default 1.25)\n");
 	printf("                                           (Any negative value gives the old calibration)\n\n");
 	printf("  --cummask [int > 0]                      Mask region is not reset at each meas. Can only increase. (default no)\n\n");
@@ -1716,6 +1718,13 @@ int	parseArgs (int argc, char *argv[])
 
 			PARSE1;
 		}
+    
+    if (!strcmp(argv[i], "--maskenergyonly"))
+		{
+			maskenergyonly = true;
+
+			PARSE1;
+		}
 
 		if (!strcmp(argv[i], "--spmask"))
 		{
@@ -2315,9 +2324,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			prepcoe = atof(argv[i+1]);
+			prepcoe = atof(argv[i+1]); //legacy
+      icdatst.prepcoe = atof(argv[i+1]);
 
-			if (prepcoe <= 1.)
+			if (icdatst.prepcoe <= 1.)
 			{
 				printf("Error: The prepropagator time coefficient must be larger than 1.\n");
 				exit(1);
@@ -2583,6 +2593,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	// if ( (deninfa.measdata & ( MEAS_SPECTRUM )) && (nrt == NRUN_NONE) )
 	// 	nrt = NRUN_KGV;
 	deninfa.nrt = nrt;
+  deninfa.maskenergyonly = maskenergyonly;
 
 	LogMsg(VERB_HIGH,"Parse Jaxions completed! %d parsed args",procArgs);
 	return	procArgs;
