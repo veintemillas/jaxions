@@ -9,7 +9,7 @@
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
 	void	writeConf (Scalar *axion, int index, const bool restart=false);
 	void	readConf	(Cosmos *myCosmos, Scalar **axion, int index, const bool restart=false);
-double	readEDens	(Cosmos *myCosmos, Scalar **axion, int index);
+	double	readEDens	(Cosmos *myCosmos, Scalar **axion, int index);
 
 	void	createMeas	(Scalar *axion, int index);
 	void	destroyMeas	();
@@ -39,6 +39,7 @@ double	readEDens	(Cosmos *myCosmos, Scalar **axion, int index);
 	void    writeAttribute	(double *data, const char *name);
 	void    writeAttribute	(void *data, const char *name, hid_t h5_Type);
 	void    writeAttributeg	(void *data, const char *group, const char *name, hid_t h5_Type);
+	herr_t	writeAttribute  (hid_t file_id, void *data, const char *name, hid_t h5_type);
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 

@@ -1,6 +1,6 @@
 #include "enum-field.h"
 #include "cosmos/cosmos.h"
-#include<vector>
+#include <vector>
 
 //using namespace std;
 
@@ -53,6 +53,7 @@ extern int safest0 ;
 
 extern char *initFile;
 extern char outName[128];
+extern char gadName[128];
 extern char outDir[1024];
 extern char wisDir[1024];
 extern bool uwDz;
@@ -93,6 +94,7 @@ extern SliceType        maty;
 extern nRunType         nrt;
 extern MeasInfo         deninfa;
 extern StringMeasureType strmeas;
+extern GadType          gadType;
 
 extern LogMpi       logMpi;
 extern bool         debug ;

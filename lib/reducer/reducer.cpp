@@ -195,8 +195,12 @@ Scalar*	Reducer<Float>::runCpu	()
 	if (!inPlace) {
 		// Make sure you don't screw up the FFTs!!
 		axionField->BckGnd()->ICData().cType = CONF_NONE;
+		/* GP: fix here, in fieldtype option the bitwise OR does not work when reducing paxion grid (leads to unrecongnised field type 1024+256=1280)
 		outField = new Scalar(axionField->BckGnd(), newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
 				      axionField->Field() | FIELD_REDUCED, axionField->LambdaT());
+		*/
+		outField = new Scalar(axionField->BckGnd(), newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
+				       axionField->Field(), axionField->LambdaT());
 	} else {
 		outField = axionField;
 	}

@@ -788,8 +788,9 @@ LogMsg (VERB_NORMAL, "\n");
 
 void	initGravity	(Scalar *field){
 
-	if (field->Field() != FIELD_PAXION){
-		LogError("Gravity only available in PAXION mode; exit!");
+	if (field->Field() != FIELD_PAXION)
+		if (field->Field() != FIELD_AXION){
+		LogError("Gravity only available in PAXION/AXION mode; exit!");
 		exit(1);
 	}
 		InitGravity(field);
