@@ -23,6 +23,41 @@ def rdata(name, dataname):
 #   energy and number spectrum
 # ------------------------------------------------------------------------------
 
+class espevol:
+    def __init__(self, mfiles, esplabel='espK_0'):
+        self.sizeN = pa.gm(mfiles[0],'sizeN')
+        self.sizeL = pa.gm(mfiles[0],'L')
+        self.msa = pa.gm(mfiles[0],'msa')
+        self.LL = pa.gm(mfiles[0],'lambda0')
+        self.nm = pa.gm(mfiles[0],'nmodelist')
+        self.avek = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm)*(2*math.pi/self.sizeL)
+        # identify modes less than N/2
+        self.k_below = np.sqrt(pa.gm(mfiles[0],'aveklist')/self.nm) <= self.sizeN/2
+        self.ttab = []
+        self.logtab = []
+        self.esp = []
+        mfnsp = [mf for mf in mfiles if pa.gm(mf,'esp?')]
+        for f in mfnsp:
+            self.ttab.append(pa.gm(f,'time'))
+            logi = pa.gm(f,'logi')
+            self.logtab.append(logi)
+            sK = pa.gm(f,esplabel)
+            self.esp.append(sK)
+            #print('\rbuilt up to log = %.2f [%d/%d]'%(logi,mfnsp.index(f)+1,len(mfnsp)),end="")
+        #print("")
+        self.ttab = np.array(self.ttab)
+        self.logtab = np.array(self.logtab)
+        self.esp = np.array(self.esp)
+
+def saveesp(espe, name='./esp', esplabel='espK_0', esponly=False):
+    sdata(espe.esp,name,esplabel)
+    if not esponly:
+        sdata(espe.nm,name,'nm')
+        sdata(espe.avek,name,'k')
+        sdata(espe.k_below,name,'k_below')
+        sdata(espe.ttab,name,'t')
+        sdata(espe.logtab,name,'log')
+
 class readS:
     def __init__(self,dataname='./Sdata/S',esplabel='espAK_0'):
         self.dataname = dataname
