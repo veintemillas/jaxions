@@ -59,7 +59,7 @@ def saveesp(espe, name='./esp', esplabel='espK_0', esponly=False):
         sdata(espe.logtab,name,'log')
 
 class readS:
-    def __init__(self,dataname='./Sdata/S',esplabel='espAK_0'):
+    def __init__(self,dataname='./Sdata/S',esplabel='espK_0'):
         self.dataname = dataname
         self.nm = rdata(dataname,'nm')
         self.k = rdata(dataname,'k')
@@ -471,6 +471,341 @@ class calcF:
         self.t = tm
         self.log = logm
         
+
+# ------------------------------------------------------------------------------
+#   spectral index
+# ------------------------------------------------------------------------------
+
+# class setq:
+#   calculate chi^2 and estimate q for a given time step specified by id
+#   use log bin in k (rebinned)
+#   fixed data points (nbin) within given interval (xmin,xmax)
+#
+# Arguments:
+#   inspx           x-axis of the instantaneous spectrum
+#   inspy           y-axis of the instantaneous spectrum
+#   insplog         array for log(m/H)
+#   id              time index (index of insp array)
+#   xmin            lower limit of the interval used to evaluate q
+#   xmax            upper limit of the interval used to evaluate q
+#   nbin            number of bins (default 30)
+#   typesigma       option to estimate sigma^2 in the denominator of chi^2
+#                        0 : sigma = residuals of different bins
+#                        1 : sigma = residuals/sqrt(n_bin)
+#                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
+#
+# Output:
+#   self.chi2min    minimum value of chi^2
+#   self.qbest      best fit value of q
+#   self.mbest      best fit value of m (normalization of the model)
+#   self.sigmaq     "1 sigma" confidence interval of q
+#   self.sigmam     "1 sigma" confidence interval of m
+#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
+#   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
+#   self.sigma      "sigma" to define confidence interval based on the residuals of different bins
+#
+#   self.alphaq      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.betaq       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gammaq
+#
+#   self.alpham      Delta chi^2(m) can be reconstructed by using alpha, beta, gamma:
+#   self.betam       Delta chi^2(m) = (alpha*m^2 + 2*beta*m + gamma)/sigma^2 - chi^2_min
+#   self.gammam
+#
+#   self.nmbin      number of modes in each bin (currently not used)
+#   self.xlim       x within the range specified by (xmin,xmax)
+#   self.xwr        flags to identify xlim
+#
+class setq:
+    def __init__(self, inspx, inspy, insplog, id, xmin, xmax, **kwargs):
+        if 'nbin' in kwargs:
+            nbin = kwargs['nbin']
+        else:
+            nbin = 30
+        if 'typesigma' in kwargs:
+            typesigma = kwargs['typesigma']
+        else:
+            typesigma = 1
+        if 'norebin' in kwargs:
+            norebin = kwargs['norebin']
+        else:
+            norebin = False
+        Deltachisq = 1. # value of Deltachi^2 to define confidence interval
+        x = inspx[id]
+        inspmtab = inspy[id]
+        x_within_range = ((x > xmin) & (x < xmax))
+        xlim = x[x_within_range]
+        inspmlim = inspmtab[x_within_range]
+        # do not calculate chi^2 if there are not enough data points
+        if len(xlim) < 4:
+            #print(r' cannot optimize since number of data points is less than 4! (log = %.2f)'%insplog[id])
+            chi2min = np.inf
+            chi2minn = np.inf
+            chi2minc = np.inf
+            qbest = np.nan
+            mbest = np.nan
+            sigmaq = np.nan
+            sigmaqn = np.nan
+            sigmaqc = np.nan
+            sigmam = np.nan
+            xbin = xlim
+            Fbin = inspmlim
+            sigma = np.nan
+            sigman = np.nan
+            sigmac = np.nan
+            alphaq = np.nan
+            betaq = np.nan
+            gammaq = np.nan
+            alpham = np.nan
+            betam = np.nan
+            gammam = np.nan
+            nmbin = [1 for i in range(len(xlim))]
+        else:
+            # do not rebin if number of data points is less than nbin
+            if len(xlim) < nbin:
+                #print(r' number of data points (%d) is less than nbin (%d)! (log = %.2f)'%(len(xlim),nbin,insplog[id]))
+                xbin = xlim
+                Fbin = inspmlim
+                nmbin = [1 for i in range(len(xlim))]
+                nbin = len(xlim)
+            # do not rebin for norebin option
+            elif norebin==True:
+                xbin = xlim
+                Fbin = inspmlim
+                nmbin = [1 for i in range(len(xlim))]
+                nbin = len(xlim)
+            else:
+                # prepare for rebin
+                lnx = np.log(xlim)
+                minlnx = np.min(lnx)
+                maxlnx = np.max(lnx)
+                dlnx = (maxlnx - minlnx)/nbin
+                xbinbuf = []
+                Fbinbuf = []
+                nmbinbuf = []
+                # rebin
+                for i in range(nbin):
+                    lnxstart = minlnx+dlnx*i
+                    lnxend = minlnx+dlnx*(i+1)
+                    if i == 0:
+                        x_in_bin = ((lnx >= lnxstart) & (lnx <= lnxend))
+                    else:
+                        x_in_bin = ((lnx > lnxstart) & (lnx <= lnxend))
+                    xave = np.mean(xlim[x_in_bin])
+                    mave = np.mean(inspmlim[x_in_bin])
+                    if not np.isnan(xave):
+                        xbinbuf.append(xave)
+                        Fbinbuf.append(mave)
+                        nmbinbuf.append(len(xlim[x_in_bin]))
+                    else:
+                        lnxlast = lnxend # save the last boundary of empty bin
+                # if actual number of bins is less than specified value of nbin,
+                # do not use homogeneous log bin for lower k, and rebin higher k
+                # until number of bin becomes nbin.
+                if not len(xbinbuf) == nbin:
+                    #iloop = 0
+                    while len(xbinbuf) < nbin:
+                        #print('%d-th while loop lnxlast = %f, datalength = %d'%(iloop+1,lnxlast,len(xbinbuf)))
+                        #iloop = iloop + 1
+                        lnxleft = np.array([ele for ele in lnx if ele <= lnxlast])
+                        xbinbuf = np.exp(lnxleft)
+                        Fbinbuf = inspmlim[:len(xbinbuf)]
+                        nmbinbuf = [1 for ind in range(len(xbinbuf))]
+                        naux = len(xbinbuf)
+                        lnxlastre = lnxlast
+                        dlnxre = (maxlnx - lnxlastre)/(nbin-naux)
+                        for i in range(nbin-naux):
+                            lnxstart = lnxlastre+dlnxre*i
+                            lnxend = lnxlastre+dlnxre*(i+1)
+                            x_in_bin = ((lnx > lnxstart) & (lnx <= lnxend))
+                            xave = np.mean(xlim[x_in_bin])
+                            mave = np.mean(inspmlim[x_in_bin])
+                            if not np.isnan(xave):
+                                xbinbuf = np.append(xbinbuf,xave)
+                                Fbinbuf = np.append(Fbinbuf,mave)
+                                nmbinbuf = np.append(nmbinbuf,len(xlim[x_in_bin]))
+                            else:
+                                lnxlast = lnxend # save the last boundary of empty bin
+                    #print("homogeneous bin was not possible! (%d/%d, log = %.2f)"%(id+1,len(insplog),insplog[id]))
+                    #print("no rebin for x < %f (%d points) and rebin for x > %f (%d points)"%(math.exp(lnxlast),naux,math.exp(lnxlast),nbin-naux))
+                xbin = np.array(xbinbuf)
+                Fbin = np.array(Fbinbuf)
+                nmbin = np.array(nmbinbuf)
+            # end of rebin
+            # next calculate q
+            Su = nbin
+            Sl = np.sum(np.log(xbin))
+            Sll = np.sum(np.log(xbin)**2)
+            SL = np.sum(np.log(Fbin))
+            SLL = np.sum(np.log(Fbin)**2)
+            SlL = np.sum(np.log(xbin)*np.log(Fbin))
+            alphaq = Sll - Sl*Sl/Su
+            betaq = SlL - Sl*SL/Su
+            gammaq = SLL - SL*SL/Su
+            alpham = Su - Sl*Sl/Sll
+            betam = SlL*Sl/Sll - SL
+            gammam = SLL - SlL*SlL/Sll
+            qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
+            mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
+            vecone = np.ones(len(xbin))
+            if typesigma==0:
+                sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))
+            elif typesigma==1:
+                sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/(nbin)
+            elif typesigma==2:
+                sigmasq = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
+            else:
+                print("wrong typesigma option!")
+            sigma = math.sqrt(sigmasq)
+            chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
+            sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
+            sigmam = math.sqrt(betam**2-alpham*(gammam-sigmasq*(chi2min+Deltachisq)))/alpham
+        # end of the case len(xlim) >= 4
+        self.chi2min = chi2min
+        self.qbest = qbest
+        self.mbest = mbest
+        self.sigmaq = sigmaq
+        self.sigmam = sigmam
+        self.xbin = xbin
+        self.Fbin = Fbin
+        self.sigma = sigma
+        self.alphaq = alphaq
+        self.betaq = betaq
+        self.gammaq = gammaq
+        self.alpham = alpham
+        self.betam = betam
+        self.gammam = gammam
+        self.nmbin = nmbin
+        self.xwr = x_within_range
+        self.xlim = xlim
+
+
+# class scanq:
+#   estimate q at every time step
+#   x range is taken as (cxmin,cxmax*(m/H))
+#
+# Arguments:
+#   inspx           x-axis of the instantaneous spectrum
+#   inspy           y-axis of the instantaneous spectrum
+#   insplog         array for log(m/H)
+#   nbin            number of bins (default 30)
+#   cxmin           lower limit of the interval (default 30)
+#   cxmax           upper limit of the interval specified as cxmax*(m/H) (default 1/6)
+#   typesigma       option to estimate sigma^2 in the denominator of chi^2
+#                        0 : sigma = residuals of different bins
+#                        1 : sigma = residuals/sqrt(n_bin)
+#                        2 : conservative estimate of "sigma" to define confidence interval based on the maximum value of residuals of different bins
+#
+# Output:
+#   self.chi2min    minimum value of chi^2
+#   self.qbest      best fit value of q
+#   self.mbest      best fit value of m (normalization of the model)
+#   self.sigmaq     "1 sigma" confidence interval of q
+#   self.sigmam     "1 sigma" confidence interval of m
+#   self.xbin       x-axis for rebinned instantaneous spectrum F(x) where x = k/RH
+#   self.Fbin       y-axis for rebinned instantaneous spectrum F(x)
+#   self.sigma      "sigma" to define confidence interval based on the mean of residuals of different bins
+#
+#   self.alphaq      Delta chi^2(q) can be reconstructed by using alpha, beta, gamma:
+#   self.betaq       Delta chi^2(q) = (alpha*q^2 + 2*beta*q + gamma)/sigma^2 - chi^2_min
+#   self.gammaq
+#
+#   self.alpham      Delta chi^2(m) can be reconstructed by using alpha, beta, gamma:
+#   self.betam       Delta chi^2(m) = (alpha*m^2 + 2*beta*m + gamma)/sigma^2 - chi^2_min
+#   self.gammam
+#
+#   self.nmbin      number of modes in each bin (currently not used)
+#   self.log     　　array for log(m/H)
+#
+class scanq:
+    def __init__(self, inspx, inspy, insplog, cxmin=50., cxmax=1/4., **kwargs):
+        if 'nbin' in kwargs:
+            nb = kwargs['nbin']
+        else:
+            nb = 30
+        if 'typesigma' in kwargs:
+            types = kwargs['typesigma']
+        else:
+            types = 1
+        if 'norebin' in kwargs:
+            noreb = kwargs['norebin']
+        else:
+            noreb = False
+        if 'verbose' in kwargs:
+            verbose = kwargs['verbose']
+        else:
+            verbose = True
+        self.chi2min = []
+        self.qbest = []
+        self.mbest = []
+        self.sigmaq = []
+        self.sigmam = []
+        self.xbin = []
+        self.Fbin = []
+        self.sigma = []
+        self.alphaq = []
+        self.betaq = []
+        self.gammaq = []
+        self.alpham = []
+        self.betam = []
+        self.gammam = []
+        self.nmbin = []
+        for id in range(len(insplog)):
+            if verbose==True:
+                print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
+            msoverH = math.exp(insplog[id])
+            xmin = cxmin
+            xmax = cxmax*msoverH
+            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
+            self.chi2min.append(sqt.chi2min)
+            self.qbest.append(sqt.qbest)
+            self.mbest.append(sqt.mbest)
+            self.sigmaq.append(sqt.sigmaq)
+            self.sigmam.append(sqt.sigmam)
+            self.xbin.append(sqt.xbin)
+            self.Fbin.append(sqt.Fbin)
+            self.sigma.append(sqt.sigma)
+            self.alphaq.append(sqt.alphaq)
+            self.betaq.append(sqt.betaq)
+            self.gammaq.append(sqt.gammaq)
+            self.alpham.append(sqt.alpham)
+            self.betam.append(sqt.betam)
+            self.gammam.append(sqt.gammam)
+            self.nmbin.append(sqt.nmbin)
+        if verbose==True:
+            print("")
+        self.chi2min = np.array(self.chi2min)
+        self.qbest = np.array(self.qbest)
+        self.mbest = np.array(self.mbest)
+        self.sigmaq = np.array(self.sigmaq)
+        self.sigmam = np.array(self.sigmam)
+        self.sigma = np.array(self.sigma)
+        self.alphaq = np.array(self.alphaq)
+        self.betaq = np.array(self.betaq)
+        self.gammaq = np.array(self.gammaq)
+        self.alpham = np.array(self.alpham)
+        self.betam = np.array(self.betam)
+        self.gammam = np.array(self.gammam)
+        self.log = insplog
+        self.cxmaxopt = cxmax
+
+
+#   take ensemble average of q
+#   assuming input as list of scanq class object
+def aveq(qlist):
+    Ntime = len(qlist[0].log)
+    Nreal = len(qlist)
+    q = [0]*(Ntime)
+    qsq = [0]*(Ntime)
+    for ir in range(Nreal):
+        q += qlist[ir].qbest
+        qsq += np.square(qlist[ir].qbest)
+    q = q/Nreal
+    qsq = (qsq - Nreal*q*q)/(Nreal-1)
+    sigmaq = np.sqrt(qsq)
+    log = qlist[0].log
+    return [q,sigmaq,sigmaq/math.sqrt(Nreal),log]
+    
 
 # ------------------------------------------------------------------------------
 #   energy radiation rate
