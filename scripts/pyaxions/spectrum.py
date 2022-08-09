@@ -472,6 +472,76 @@ class calcF:
         self.log = logm
         
 
+class calcFdiff:
+    def __init__(self, data, log, t, k, k_below, difftype='C', **kwargs):
+        if 'saxionmass' in kwargs:
+            saxionmassi = kwargs['saxionmass']
+        else:
+            saxionmassi = False
+        if 'LL' in kwargs:
+            LLi = kwargs['LL']
+        else:
+            LLi = 1600.0
+        if 'lz2e' in kwargs:
+            lz2ei = kwargs['lz2e']
+        else:
+            lz2ei = 0
+        Farr = [] # instantaneous spectrum F
+        xarr = []
+        Fnorm = []
+        tarr = []
+        logarr = []
+        for id in range(len(log)):
+            try:
+                if (difftype == 'B' or difftype == 'backward') and id != 0:
+                    t1 = t[id-1]
+                    t2 = t[id]
+                    if saxionmassi:
+                        z1 = saxionZ(k[1:],t1,LLi,lz2ei)
+                        z2 = saxionZ(k[1:],t2,LLi,lz2ei)
+                        sp1 = data[id-1,1:]*t1**(z1-4)
+                        sp2 = data[id,1:]*t2**(z2-4)
+                    else:
+                        sp1 = data[id-1,1:]
+                        sp2 = data[id,1:]
+                        tt = (t1 + t2)/2
+                elif (difftype == 'C' or difftype == 'central') and id != 0:
+                    t1 = t[id-1]
+                    t2 = t[id+1]
+                    if saxionmassi:
+                        z1 = saxionZ(k[1:],t1,LLi,lz2ei)
+                        z2 = saxionZ(k[1:],t2,LLi,lz2ei)
+                        sp1 = data[id-1,1:]*t1**(z1-4)
+                        sp2 = data[id+1,1:]*t2**(z2-4)
+                    else:
+                        sp1 = data[id-1,1:]
+                        sp2 = data[id+1,1:]
+                    tt = t[id]
+                dt = t2 - t1
+                if saxionmassi:
+                    zz = saxionZ(k[1:],tt,LLi,lz2ei)
+                    diff = (sp2 - sp1)/(k[1:]*dt)/tt**(zz-4)
+                else:
+                    diff = (sp2 - sp1)/(k[1:]*dt)
+                Farr.append(diff)
+                xarr.append(k[1:]*tt)
+                tarr.append(tt)
+                logarr.append(log[id])
+                # normalization factor
+                dx = np.gradient(k[1:]*tt)
+                # normalization factor is calculated by using only modes below the Nyquist frequency
+                x_below = k[1:]*tt <= np.amax(k[k_below])*tt
+                Fdx = (diff*dx)[x_below]
+                Fnorm.append(Fdx.sum())
+            except:
+                pass
+        self.F = np.array(Farr)
+        self.x = np.array(xarr)
+        self.Fnorm = np.array(Fnorm)
+        self.t = np.array(tarr)
+        self.log = np.array(logarr)
+        
+        
 # ------------------------------------------------------------------------------
 #   spectral index
 # ------------------------------------------------------------------------------
