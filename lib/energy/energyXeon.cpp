@@ -67,6 +67,7 @@ LogMsg(VERB_PARANOID,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 #endif
 		double	Vrho = 0., Vth = 0., Krho = 0., Kth = 0., Gxrho = 0., Gxth = 0., Gyrho = 0., Gyth = 0., Gzrho = 0., Gzth = 0.;
 		double	VrhoM = 0., VthM = 0., KrhoM = 0., KthM = 0., GxrhoM = 0., GxthM = 0., GyrhoM = 0., GythM = 0., GzrhoM = 0., GzthM = 0.;
+		double	VrhoW = 0., VthW = 0., KrhoW = 0., KthW = 0., GxrhoW = 0., GxthW = 0., GyrhoW = 0., GythW = 0., GzrhoW = 0., GzthW = 0.;
 		double	Rrho  = 0., RrhoM=0., nummask = 0.;
 
 		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_,  Align);
@@ -135,7 +136,8 @@ LogMsg(VERB_PARANOID,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 
 			double tmpS[2*step] __attribute__((aligned(Align)));
 
-			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho)
+			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho,RrhoM,nummask,VrhoW,VthW,KrhoW,KthW,GxrhoW,GxthW,GyrhoW,GythW,GzrhoW,GzthW)
+				
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 				size_t X[3], idxPx, idxMx, idxPy, idxMy, idxPz, idxMz, idxP0, idxV0;
@@ -495,7 +497,27 @@ if (emask & EN_ENE){
 
 				opCode(store_pd, tmpS, Frho);
 				Rrho += tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
-
+				
+				// energies weighted by (|rho|^2-1)^2 for rest-frame string length and velocity estimators
+				opCode(store_pd, tmpS, opCode(mul_pd,tGx,mod));
+				GxrhoW +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				GxthW  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tGy,mod));
+				GyrhoW +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				GythW  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tGz,mod));
+				GzrhoW +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				GzthW  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tVp,mod));
+				VrhoW +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				VthW  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tKp,mod));
+				KrhoW +=  tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6];
+				KthW  +=  tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7];
 #elif defined(__AVX__)
 				opCode(store_pd, tmpS, tGx);
 				Gxrho += tmpS[0] + tmpS[2];
@@ -519,6 +541,27 @@ if (emask & EN_ENE){
 
 				opCode(store_pd, tmpS, Frho);
 				Rrho += tmpS[0] + tmpS[2];
+				
+				// energies weighted by (|rho|^2-1)^2 for rest-frame string length and velocity estimators
+				opCode(store_pd, tmpS, opCode(mul_pd,tGx,mod));
+				GxrhoW += tmpS[0] + tmpS[2];
+				GxthW  += tmpS[1] + tmpS[3];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tGy,mod));
+				GyrhoW += tmpS[0] + tmpS[2];
+				GythW  += tmpS[1] + tmpS[3];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tGz,mod));
+				GzrhoW += tmpS[0] + tmpS[2];
+				GzthW  += tmpS[1] + tmpS[3];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tVp,mod));
+				VrhoW += tmpS[0] + tmpS[2];
+				VthW  += tmpS[1] + tmpS[3];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tKp,mod));
+				KrhoW += tmpS[0] + tmpS[2];
+				KthW  += tmpS[1] + tmpS[3];
 #else
 				opCode(store_pd, tmpS, tGx);
 				Gxrho += tmpS[0];
@@ -542,6 +585,27 @@ if (emask & EN_ENE){
 
 				opCode(store_pd, tmpS, Frho);
 				Rrho += tmpS[0];
+				
+				// energies weighted by (|rho|^2-1)^2 for rest-frame string length and velocity estimators
+				opCode(store_pd, tmpS, opCode(mul_pd,tGx,mod));
+				GxrhoW +=  tmpS[0];
+				GxthW  +=  tmpS[1];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tGy,mod));
+				GyrhoW +=  tmpS[0];
+				GythW  +=  tmpS[1];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tGz,mod));
+				GzrhoW +=  tmpS[0];
+				GzthW  +=  tmpS[1];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tVp,mod));
+				VrhoW +=  tmpS[0];
+				VthW  +=  tmpS[1];
+				
+				opCode(store_pd, tmpS, opCode(mul_pd,tKp,mod));
+				KrhoW +=  tmpS[0];
+				KthW  +=  tmpS[1];
 #endif
 }
 
@@ -651,6 +715,17 @@ if (emask & EN_ENE){
 		eRes[RH_RHOM] = RrhoM;
 
 		eRes[MM_NUMM] = nummask;
+		
+		eRes[RH_GRXW] = GxrhoW*o2;
+		eRes[TH_GRXW] = GxthW *o2;
+		eRes[RH_GRYW] = GyrhoW*o2;
+		eRes[TH_GRYW] = GythW *o2;
+		eRes[RH_GRZW] = GzrhoW*o2;
+		eRes[TH_GRZW] = GzthW *o2;
+		eRes[RH_POTW] = VrhoW *lZ;
+		eRes[TH_POTW] = VthW  *zQ;
+		eRes[RH_KINW] = KrhoW *.5*iR2;
+		eRes[TH_KINW] = KthW  *.5*iR2;
 
 #undef	_MData_
 #undef	step
@@ -669,6 +744,7 @@ if (emask & EN_ENE){
 #endif
 		double	Vrho  = 0., Vth  = 0., Krho  = 0., Kth  = 0., Gxrho  = 0., Gxth  = 0., Gyrho  = 0., Gyth  = 0., Gzrho  = 0., Gzth  = 0.;
 		double	VrhoM = 0., VthM = 0., KrhoM = 0., KthM = 0., GxrhoM = 0., GxthM = 0., GyrhoM = 0., GythM = 0., GzrhoM = 0., GzthM = 0.;
+		double	VrhoW = 0., VthW = 0., KrhoW = 0., KthW = 0., GxrhoW = 0., GxthW = 0., GyrhoW = 0., GythW = 0., GzrhoW = 0., GzthW = 0.;
 		double	Rrho  = 0., RrhoM=0., nummask = 0.;
 
 		const float * __restrict__ m	= (const float * __restrict__) __builtin_assume_aligned (m_,  Align);
@@ -740,7 +816,7 @@ if (emask & EN_ENE){
 
 			float tmpS[2*step] __attribute__((aligned(Align)));
 
-			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho,RrhoM,nummask)
+			#pragma omp for schedule(static) reduction(+:Vrho,Vth,Krho,Kth,Gxrho,Gxth,Gyrho,Gyth,Gzrho,Gzth,VrhoM,VthM,KrhoM,KthM,GxrhoM,GxthM,GyrhoM,GythM,GzrhoM,GzthM,Rrho,RrhoM,nummask,VrhoW,VthW,KrhoW,KthW,GxrhoW,GxthW,GyrhoW,GythW,GzrhoW,GzthW)
 			for (size_t idx = Vo; idx < Vf; idx += step)
 			{
 
@@ -1155,6 +1231,28 @@ if (emask & EN_ENE){
 
 				opCode(store_ps, tmpS, Frho);
 				Rrho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				
+				// energies weighted by (|rho|^2-1)^2 for rest-frame string length and velocity estimators
+				opCode(store_ps, tmpS, opCode(mul_ps,tGx,mod));
+				GxrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				GxthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tGy,mod));
+				GyrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				GythW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tGz,mod));
+				GzrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				GzthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tVp,mod));
+				VrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				VthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tKp,mod));
+				KrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6] + tmpS[8] + tmpS[10] + tmpS[12] + tmpS[14]);
+				KthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7] + tmpS[9] + tmpS[11] + tmpS[13] + tmpS[15]);
+				
 #elif defined(__AVX__)
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
@@ -1178,6 +1276,27 @@ if (emask & EN_ENE){
 
 				opCode(store_ps, tmpS, Frho);
 				Rrho  += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				
+				// energies weighted by (|rho|^2-1)^2 for rest-frame string length and velocity estimators
+				opCode(store_ps, tmpS, opCode(mul_ps,tGx,mod));
+				GxrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				GxthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tGy,mod));
+				GyrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				GythW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tGz,mod));
+				GzrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				GzthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tVp,mod));
+				VrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				VthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tKp,mod));
+				KrhoW += (double) (tmpS[0] + tmpS[2] + tmpS[4] + tmpS[6]);
+				KthW  += (double) (tmpS[1] + tmpS[3] + tmpS[5] + tmpS[7]);
 #else
 				opCode(store_ps, tmpS, tGx);
 				Gxrho += (double) (tmpS[0] + tmpS[2]);
@@ -1201,6 +1320,27 @@ if (emask & EN_ENE){
 
 				opCode(store_ps, tmpS, Frho);
 				Rrho += (double) (tmpS[0] + tmpS[2]);
+				
+				// energies weighted by (|rho|^2-1)^2 for rest-frame string length and velocity estimators
+				opCode(store_ps, tmpS, opCode(mul_ps,tGx,mod));
+				GxrhoW += (double) (tmpS[0] + tmpS[2]);
+				GxthW  += (double) (tmpS[1] + tmpS[3]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tGy,mod));
+				GyrhoW += (double) (tmpS[0] + tmpS[2]);
+				GythW  += (double) (tmpS[1] + tmpS[3]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tGz,mod));
+				GzrhoW += (double) (tmpS[0] + tmpS[2]);
+				GzthW  += (double) (tmpS[1] + tmpS[3]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tVp,mod));
+				VrhoW += (double) (tmpS[0] + tmpS[2]);
+				VthW  += (double) (tmpS[1] + tmpS[3]);
+				
+				opCode(store_ps, tmpS, opCode(mul_ps,tKp,mod));
+				KrhoW += (double) (tmpS[0] + tmpS[2]);
+				KthW  += (double) (tmpS[1] + tmpS[3]);
 #endif
 }
 
@@ -1311,7 +1451,17 @@ if (emask & EN_ENE){
 		eRes[RH_RHOM] = RrhoM;
 
 		eRes[MM_NUMM] = nummask;
-
+		
+		eRes[RH_GRXW] = GxrhoW*o2;
+		eRes[TH_GRXW] = GxthW *o2;
+		eRes[RH_GRYW] = GyrhoW*o2;
+		eRes[TH_GRYW] = GythW *o2;
+		eRes[RH_GRZW] = GzrhoW*o2;
+		eRes[TH_GRZW] = GzthW *o2;
+		eRes[RH_POTW] = VrhoW *lZ;
+		eRes[TH_POTW] = VthW  *zQ;
+		eRes[RH_KINW] = KrhoW *.5*iz2;
+		eRes[TH_KINW] = KthW  *.5*iz2;
 
 //LogOut("Energy %f %f %f %f %f\n",  eRes[RH_GRX],  eRes[RH_GRY],  eRes[RH_GRZ],  eRes[RH_KIN],  eRes[RH_POT]);
 //LogOut("Energy %f %f %f %f %f\n",  eRes[RH_GRXM],  eRes[RH_GRYM],  eRes[RH_GRZM],  eRes[RH_KINM],  eRes[RH_POTM]);

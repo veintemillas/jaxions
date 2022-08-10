@@ -219,8 +219,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if ( (measa & MEAS_NEEDENERGY) || mapsneedenergy)
 	{
 		void *eRes;
-			trackAlloc(&eRes, 256);
-				memset(eRes, 0, 256);
+			trackAlloc(&eRes, 512);
+				memset(eRes, 0, 512);
 					double *eR = static_cast<double *> (eRes);
 
 		if ((measa & MEAS_NEEDENERGYM2) || mapsneedenergy)
@@ -624,8 +624,8 @@ writePMapHdf5s (axiona, LAB);
 								/* Redondo's could be active in any mode */
 								if (maskara[i] == SPMASK_REDO){
 										void *eRes;
-										trackAlloc(&eRes, 256);
-										memset(eRes, 0, 256);
+										trackAlloc(&eRes, 512);
+										memset(eRes, 0, 512);
 										double *eR = static_cast<double *> (eRes);
 									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
 									writeEnergy(axiona, eRes, rmasklabel[ii]);

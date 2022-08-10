@@ -341,6 +341,17 @@
 			//aux values
 			RH_RHOM = 21,
 			MM_NUMM = 22,
+			//potential-weighted energies
+			TH_GRXW  = 23,
+			TH_GRYW  = 24,
+			TH_GRZW  = 25,
+			TH_KINW  = 26,
+			TH_POTW  = 27,
+			RH_GRXW  = 28,
+			RH_GRYW  = 29,
+			RH_GRZW  = 30,
+			RH_KINW  = 31,
+			RH_POTW  = 32,
 		}	EnergyIdx;
 
 		typedef	enum	LogLevel_s

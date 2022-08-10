@@ -421,6 +421,11 @@ def gm(address,something='summary',printerror=False):
             mmm = '/Redmask_%.2f'%float(something[something.find('mask')+4:])
             maska = ' nMask'
             ll -= len(something[something.find('mask'):])
+        elif ('weighted' in something):
+            mst = something[something.find('weighted'):]
+            mmm = ''
+            maska = ' Weighted'
+            ll -= len(something[something.find('weighted'):])
         else:
             mst = ''
             mmm = ''

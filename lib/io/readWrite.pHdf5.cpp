@@ -2719,8 +2719,19 @@ void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 			writeAttribute(group_id, &eData[RH_POT],  "Saxion Potential", H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id, &eData[RH_RHO],  "Saxion vev",       H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id, &eData[RH_KIN],  "Saxion Kinetic",   H5T_NATIVE_DOUBLE);
+			
+			writeAttribute(group_id, &eData[TH_GRXW],  "Axion Gr X Weighted",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[TH_GRYW],  "Axion Gr Y Weighted",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[TH_GRZW],  "Axion Gr Z Weighted",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[TH_POTW],  "Axion Potential Weighted", H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[TH_KINW],  "Axion Kinetic Weighted",   H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_GRXW],  "Saxion Gr X Weighted",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_GRYW],  "Saxion Gr Y Weighted",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_GRZW],  "Saxion Gr Z Weighted",      H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_POTW],  "Saxion Potential Weighted", H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &eData[RH_KINW],  "Saxion Kinetic Weighted",   H5T_NATIVE_DOUBLE);
 
-			totalBytes += 48;
+			totalBytes += 128;
 		}
 	}
 

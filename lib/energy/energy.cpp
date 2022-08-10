@@ -153,7 +153,7 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	Profiler &prof = getProfiler(PROF_ENERGY);
 
 	void *eTmp;
-	trackAlloc(&eTmp, 256);
+	trackAlloc(&eTmp, 512);
 
 	auto LL   = field->LambdaP(); // obsolete
 	auto pot  = field->BckGnd()->QcdPot();
@@ -189,7 +189,9 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	}
 
 	// Changed SAXION CASE from 10 to 22 for now there are masked energies + rho field
-	const int size = field->Field() == FIELD_SAXION ? 23 : 5;
+	// Further changed to 33 for weighted energies
+	const int size = field->Field() == FIELD_SAXION ? 33 : 5;
+	//const int size = field->Field() == FIELD_SAXION ? 23 : 5;
 
 	MPI_Allreduce(eTmp, eRes, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	trackFree(eTmp);
@@ -205,6 +207,10 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	#pragma unroll
 	for (int i=11; i<22; i++)
 		static_cast<double*>(eRes)[i] *= Vt2;
+		
+	#pragma unroll
+	for (int i=23; i<33; i++)
+		static_cast<double*>(eRes)[i] *= Vt;
 
 	prof.stop();
 
