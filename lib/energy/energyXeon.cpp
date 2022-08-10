@@ -47,7 +47,7 @@ void	energyKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_
 	const size_t Vo     = ppar.Vo;
 	const size_t Vf     = ppar.Vf;
 	const size_t Vt     = ppar.Vt;
-	const size_t iR2    = 1./R/R;
+	const double iR2    = 1./R/R;
 
 	const size_t Sf = Lx*Lx;
 
@@ -636,6 +636,7 @@ if (emask & EN_ENE){
 		eRes[TH_POT] = Vth  *zQ;
 		eRes[RH_KIN] = Krho *.5*iR2;
 		eRes[TH_KIN] = Kth  *.5*iR2;
+		eRes[RH_RHO] = Rrho;
 
 		eRes[RH_GRXM] = GxrhoM*o2;
 		eRes[TH_GRXM] = GxthM *o2;
