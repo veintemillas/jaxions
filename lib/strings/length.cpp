@@ -310,7 +310,8 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 		double c = 0.41238;
 
 		std::complex<Float> Rscale((Float)*field->RV(),0.);
-		std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+		//std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+		std::complex<Float> Hc((Float) (1. / *field->RV()),0.);
 
 		std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
 
@@ -716,7 +717,8 @@ StringData	stringlength2	(Scalar *field, StringData strDen_in, StringMeasureType
 		double c = 0.41238;
 
 		std::complex<Float> Rscale((Float)*field->RV(),0.);
-		std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+		//std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+		std::complex<Float> Hc((Float) (1. / *field->RV()),0.);
 
 		std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
 
@@ -869,7 +871,8 @@ StringEnergyData stringenergy (Scalar *field)
 	field->sendGhosts(FIELD_M,COMM_WAIT);
 
 	double Rscale = *field->RV();
-	std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+	//std::complex<Float> Hc((Float)field->HubbleConformal(),0.);
+	std::complex<Float> Hc((Float)(1./Rscale),0.);
 	std::complex<Float> zaskaF((Float)field->Saskia()*Rscale, 0.);
 	double depta = field->BckGnd()->PhysSize()/Lx;
 	double lambda = field->LambdaP();
