@@ -939,3 +939,29 @@ def calcGamma(energy, t, log, **kwargs):
     gamma_diff = (tm**(5-zm))*(np.gradient(enem*(tm**zm))/np.gradient(tm))
     
     return gamma, gamma_diff, tm
+
+
+# ------------------------------------------------------------------------------
+#   string length
+# ------------------------------------------------------------------------------
+
+def lvrest(eK, eG, eV, t, Lbox):
+    
+    # total energy, Lagrangian, and equation of state
+    E = (t**2)*(Lbox**3)*(eK + eG + eV)
+    L = (t**2)*(Lbox**3)*(eK - eG - eV)
+    w = (eK - eG/3. - eV)/(eK + eG + eV)
+    
+    # tentative values, need to be confirmed and generalized
+    mu = 2.*0.892
+    fv = 0.368
+    
+    # rest-frame length, velocities, and xi parameter
+    lr = (E+fv*L)/(1.-fv)/mu
+    vLsq = (E+L)/(E+fv*L)
+    vwsq = (1.+3.*w+2.*fv)/(2.+fv*(1.+3.*w))
+    vssq = 2.*eK/(eK+eG)
+    xir = lr*t*t/4./Lbox**3
+    
+    return xir, np.sqrt(vLsq), np.sqrt(vwsq), np.sqrt(vssq), lr
+    
