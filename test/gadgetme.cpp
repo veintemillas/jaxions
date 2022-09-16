@@ -31,6 +31,7 @@ int	main (int argc, char *argv[])
 	double zendWKB = 10. ;
 	Cosmos myCosmos = initAxions(argc, argv);
 	size_t nPart = sizeN*sizeN*sizeN;
+	double sigma = kCrit;
 
 	if (nSteps==0)
 	return 0 ;
@@ -56,7 +57,14 @@ int	main (int argc, char *argv[])
 		exit (0);
 	}
 	LogOut ("... done!\n");
-
+	
+	if (gadType == GAD)
+		LogOut("Sigma selected for mapping is %5f \n",sigma);
+	double z_now = *axion->zV();
+	//LogOut("Allocating memory for velocity fields ...");
+	//Scalar *velo ;
+	//velo = new Scalar(&myCosmos,sizeN,sizeZ,sPrec,cDev,z_now,true,zGrid,FIELD_WKB,LAMBDA_FIXED,CONF_NONE);
+	
 	/* Creates axion and reads energy into M2 */
 	// double eMean = readEDens	(&myCosmos, &axion, fIndex);
 
@@ -114,7 +122,7 @@ int	main (int argc, char *argv[])
 	else if (gadType == GAD_MASS)
 		createGadget_Mass (axion,Ngrid,nPart,map_velocity);
 	else if (gadType == GAD)
-		LogOut("Not yet implemented...");
+		createGadget_3 (axion,Ngrid,nPart,sigma);
 
 	/* Save energy projection to compare with Gadget*/
 
