@@ -600,6 +600,10 @@ class setq:
             norebin = kwargs['norebin']
         else:
             norebin = False
+        if 'discardnegative' in kwargs:
+            discneg = kwargs['discardnegative']
+        else:
+            discneg = False
         Deltachisq = 1. # value of Deltachi^2 to define confidence interval
         x = inspx[id]
         inspmtab = inspy[id]
@@ -703,6 +707,12 @@ class setq:
                 nmbin = np.array(nmbinbuf)
             # end of rebin
             # next calculate q
+            if discneg==True:
+                xbin = xbin[Fbin > 0]
+                Fbin = Fbin[Fbin > 0]
+                nbin = len(Fbin)
+                if nbin < 4:
+                    print(r'number of data points becomes less than 4 after discarding bins with negative F! (log = %.2f)'%insplog[id])
             Su = nbin
             Sl = np.sum(np.log(xbin))
             Sll = np.sum(np.log(xbin)**2)
@@ -805,6 +815,14 @@ class scanq:
             verbose = kwargs['verbose']
         else:
             verbose = True
+        if 'discardnegative' in kwargs:
+            discneg = kwargs['discardnegative']
+        else:
+            discneg = False
+        if 'skipnan' in kwargs:
+            sknan = kwargs['skipnan']
+        else:
+            sknan = False
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -820,28 +838,33 @@ class scanq:
         self.betam = []
         self.gammam = []
         self.nmbin = []
+        self.log = []
         for id in range(len(insplog)):
             if verbose==True:
                 print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
-            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
-            self.chi2min.append(sqt.chi2min)
-            self.qbest.append(sqt.qbest)
-            self.mbest.append(sqt.mbest)
-            self.sigmaq.append(sqt.sigmaq)
-            self.sigmam.append(sqt.sigmam)
-            self.xbin.append(sqt.xbin)
-            self.Fbin.append(sqt.Fbin)
-            self.sigma.append(sqt.sigma)
-            self.alphaq.append(sqt.alphaq)
-            self.betaq.append(sqt.betaq)
-            self.gammaq.append(sqt.gammaq)
-            self.alpham.append(sqt.alpham)
-            self.betam.append(sqt.betam)
-            self.gammam.append(sqt.gammam)
-            self.nmbin.append(sqt.nmbin)
+            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb,discardnegative=discneg)
+            if np.isnan(sqt.qbest) and sknan:
+                pass
+            else:
+                self.chi2min.append(sqt.chi2min)
+                self.qbest.append(sqt.qbest)
+                self.mbest.append(sqt.mbest)
+                self.sigmaq.append(sqt.sigmaq)
+                self.sigmam.append(sqt.sigmam)
+                self.xbin.append(sqt.xbin)
+                self.Fbin.append(sqt.Fbin)
+                self.sigma.append(sqt.sigma)
+                self.alphaq.append(sqt.alphaq)
+                self.betaq.append(sqt.betaq)
+                self.gammaq.append(sqt.gammaq)
+                self.alpham.append(sqt.alpham)
+                self.betam.append(sqt.betam)
+                self.gammam.append(sqt.gammam)
+                self.nmbin.append(sqt.nmbin)
+                self.log.append(insplog[id])
         if verbose==True:
             print("")
         self.chi2min = np.array(self.chi2min)
@@ -856,7 +879,7 @@ class scanq:
         self.alpham = np.array(self.alpham)
         self.betam = np.array(self.betam)
         self.gammam = np.array(self.gammam)
-        self.log = insplog
+        self.log = np.array(self.log)
         self.cxmaxopt = cxmax
 
 
