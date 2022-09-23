@@ -326,18 +326,56 @@ class readParam:
 #   instantaneous spectrum
 # ------------------------------------------------------------------------------
 
-def filterDST(k, sigma, res, t):
-    y  = res
-    T = t[-1]-t[0]
-    # The Discrete Sine Transform of the signal
-    sig_dst = fftpack.dst(y,norm='ortho',type=1)
-    # The corresponding frequencies
-    freq_dst = np.pi*np.linspace(1,y.size,y.size)/T
-    # filter
-    # high-pass Gauss
-    sig_dst_filtered = sig_dst*np.exp(-(freq_dst/(k*sigma))**2/2)
+# subtract linear trend
+def subtraction(res, w):
+    a = (res[-1]-res[0])/(w[-1]-w[0])
+    b = (res[0]*w[-1]-res[-1]*w[0])/(w[-1]-w[0])
+    lin = a*w+b
+    res2 = res - a*w-b
+    return res2, lin, a, b
+    
+# return alias frequency for signal frequency (f) and sample frequency (fs)
+def falias(f,fs):
+    n = np.floor(f/fs)
+    return min(np.abs(f - n*fs),np.abs(f - (n+1)*fs))
+
+def checkfreq(fs, fcrit, ftol):
+    n = np.floor(fcrit/fs)
+    fc1 = ftol + n*fs
+    fc2 = (n+1)*fs - ftol
+    fc3 = ftol + (n+1)*fs
+    if fcrit < fc1:
+        return fc1
+    elif fc1 <= fcrit < fc2:
+        return fc2
+    else:
+        return fc3
+        
+def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, lambdatype='z2', LL=1600., cftol=0.5):
+    fs = nmeas/(t[-1]-t[0])       # sample frequency
+    fn = k/np.pi                  # frequency of 2k axion oscillation
+    ftol = min(cftol*fs/2.,fs/2.) # factor cftol times Nyquist crequency
+    if ftol < 0:
+        ftol = 0
+    if antialiasing:
+        if lambdatype == 'fixed':
+            fcrit = t[-1]*np.sqrt(0.5*LL)/np.pi  # critical frequency above which modes do not exhibit the saxion mass crossing
+            fc = checkfreq(fs,fcrit,ftol)
+            if fn < fc:
+                fa = falias(fn,fs)
+            else:
+                fa = ftol
+        else:
+            fa = falias(fn,fs)
+    else:
+        fa = fn
+    wa = 2*np.pi*max(fa,fcutmin)
+    res_sub, lin, a, b = subtraction(res, t*k)
+    sig_dst = fftpack.dst(res_sub,norm='ortho',type=1)
+    w_dst = np.pi*np.linspace(1,res_sub.size,res_sub.size)/(t[-1]-t[0])
+    sig_dst_filtered = sig_dst*np.exp(-(w_dst/(wa*sigma))**2/2)
     filtered_dst = fftpack.idst(sig_dst_filtered,norm='ortho',type=1)
-    return filtered_dst, sig_dst, sig_dst_filtered, freq_dst
+    return filtered_dst + lin
     
     
 class calcF:
@@ -366,10 +404,6 @@ class calcF:
             xhi = kwargs['xh']
         else:
             xhi = -1
-        if 'sigma' in kwargs:
-            sigma = kwargs['sigma']
-        else:
-            sigma = 0.5
         if 'saxionmass' in kwargs:
             saxionmassi = kwargs['saxionmass']
         else:
@@ -382,6 +416,30 @@ class calcF:
             lz2ei = kwargs['lz2e']
         else:
             lz2ei = 0
+        if 'antialiasing' in kwargs:
+            antialiasing = kwargs['antialiasing']
+        else:
+            antialiasing = False
+        if 'sigma' in kwargs:
+            sigma = kwargs['sigma']
+        else:
+            sigma = 0.25
+        if 'nmeas' in kwargs:
+            nmeas = kwargs['nmeas']
+        else:
+            nmeas = 250
+        if 'fcutmin' in kwargs:
+            fcutmin = kwargs['fcutmin']
+        else:
+            fcutmin = 3.0
+        if 'lambdatype' in kwargs:
+            lambdatype = kwargs['lambdatype']
+        else:
+            lambdatype = 'z2'
+        if 'cftol' in kwargs:
+            cftol = kwargs['cftol']
+        else:
+            cftol = 0.5
         mask = np.where(log >= logst)
         logm = log[mask[0]]
         tm = t[mask[0]]
@@ -394,9 +452,6 @@ class calcF:
         Farr_aux = []
         xarr_aux = []
         Farr_fit = [] # instantaneous spectrum F (fit only)
-        # for test
-        #print('kcut = %f'%(cmin/tm[-1]))
-        # test
         for ik in range(1,len(k)):
             #if verbose:
             #    print('\rcalc F (differentiate): k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="")
@@ -412,16 +467,11 @@ class calcF:
                     else:
                         Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx
                         res = data[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
-                    # subtract linear trend
-                    a = (res[-1]-res[0])/(xx[-1]-xx[0])
-                    b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
-                    res = res - a*xx-b
-                    # DST
-                    fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
+                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,lambdatype,LLi,cftol)
                     if saxionmassi:
-                        Fk = Fk_fit + (a + np.gradient(fres,xx[1]-xx[0],edge_order=2))/(tm**(zz-4))
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)/(tm**(zz-4))
                     else:
-                        Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)
                 else:
                     if saxionmassi:
                         zz = saxionZ(k[ik],tm,LLi,lz2ei)
@@ -430,16 +480,11 @@ class calcF:
                     else:
                         Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx
                         res = data[mask[0],ik] - np.exp(ftrenda(lxx,po,*par))
-                    # subtract linear trend
-                    a = (res[-1]-res[0])/(xx[-1]-xx[0])
-                    b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
-                    res = res - a*xx-b
-                    # DST
-                    fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
+                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,lambdatype,LLi,cftol)
                     if saxionmassi:
-                        Fk = Fk_fit + (a + np.gradient(fres,xx[1]-xx[0],edge_order=2))/(tm**(zz-4))
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)/(tm**(zz-4))
                     else:
-                        Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)
             else:
                 Fk_fit = [np.nan]*len(tm)
                 Fk = [np.nan]*len(tm)
