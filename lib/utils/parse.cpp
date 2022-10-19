@@ -108,7 +108,7 @@ VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
 VqcdType     vqcdTypeEvol    = V_NONE;
-GadType      gadType         = GAD_MASS;
+GadType      gadType         = VOID;
 
 // Default IC type
 IcData icdatst;
@@ -678,6 +678,8 @@ int	parseArgs (int argc, char *argv[])
   	icdatst.grav_hyb  = false;
   	icdatst.grav_sat  = false;
 	icdatst.part_vel  = false;
+	icdatst.sm_vel    = false;
+	icdatst.part_disp = false;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
@@ -1295,7 +1297,7 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
-    if (!strcmp(argv[i], "--hybrid_gravity"))
+                if (!strcmp(argv[i], "--hybrid_gravity"))
 		{
 
 			icdatst.grav_hyb = true;
@@ -1303,7 +1305,7 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
-    if (!strcmp(argv[i], "--sat_gravity"))
+                if (!strcmp(argv[i], "--sat_gravity"))
 		{
 
 			icdatst.grav_sat = true;
@@ -1315,6 +1317,22 @@ int	parseArgs (int argc, char *argv[])
 		{
 
 			icdatst.part_vel = true;
+
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--sm_vel"))
+		{
+
+			icdatst.sm_vel = true;
+
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--part_disp"))
+		{
+
+			icdatst.part_disp = true;
 
 			PARSE1;
 		}
@@ -2151,17 +2169,13 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			if (!strcmp(argv[i+1], "gad"))
+			if (!strcmp(argv[i+1], "halo"))
 			{
-				gadType = GAD;
+				gadType = HALO;
 			}
-			else if (!strcmp(argv[i+1], "gadmass"))
+			else if (!strcmp(argv[i+1], "void"))
 			{
-				gadType = GAD_MASS;
-			}
-			else if (!strcmp(argv[i+1], "gadgrid"))
-			{
-				gadType = GAD_GRID;
+				gadType = VOID;
 			}
 
 			PARSE2;

@@ -734,9 +734,8 @@
 
 		typedef	enum	GadType_s
 		{
-			GAD,	                 // createGadget
-			GAD_MASS,                // createGadget_Mass
-			GAD_GRID,                // createGadget_Grid
+			HALO,	     
+			VOID,              
 		}	GadType;
 
 		// data given to measurement function (includes labels and analyses)
@@ -816,6 +815,8 @@
 			bool          grav_hyb;
 			bool          grav_sat;
 			bool          part_vel;
+                        bool          sm_vel;
+                        bool          part_disp;
 			AxitonInfo    axtinfo;
 		}	IcData;
 
