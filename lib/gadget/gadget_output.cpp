@@ -188,7 +188,7 @@ void gaussSmooth(Scalar *field, Scalar *vaxion, int vtype, float length)
 		if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
 		if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 		float k2    = (float) kx*kx + ky*ky + kz*kz;
-		static_cast<float *>(field->mStart())[idx]  *= exp(-pref*k2) * normn3;
+		static_cast<float *>(field->m2Start())[idx]  *= exp(-pref*k2) * normn3;
 	}
 
 	myPlan.run(FFT_BCK);
