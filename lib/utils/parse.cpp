@@ -62,6 +62,7 @@ int i_rmask = 0;
 
 bool uwDz     = false;
 bool lowmem   = false;
+bool lowmemGPU= false;
 bool uPrec    = false;
 bool uSize    = false;
 bool uQcd     = false;
@@ -990,6 +991,12 @@ int	parseArgs (int argc, char *argv[])
 			lowmem = true;
 			PARSE1;
 		}
+
+		if (!strcmp(argv[i], "--lowmemGPU"))
+	        {
+	                lowmemGPU = true;
+	                PARSE1;
+	        }
 
 		if (!strcmp(argv[i], "--notheta"))
 		{

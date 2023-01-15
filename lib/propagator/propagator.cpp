@@ -231,7 +231,12 @@ class	PropRKN4 : public PropClass<4, PROP_NORMAL, pot> {
 				if (field->LowMem())
 					this->setBaseName("Lowmem RKN4 ");
 				else
-					this->setBaseName("RKN4 ");
+				{
+					if (field->LowMemGPU())
+						this->setBaseName("Lowmem G RKN4 ");
+					else 
+						this->setBaseName("RKN4 ");
+				}
 			break;
 		}
 	}

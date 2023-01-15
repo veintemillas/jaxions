@@ -58,6 +58,7 @@ extern char outDir[1024];
 extern char wisDir[1024];
 extern bool uwDz;
 extern bool lowmem;
+extern bool lowmemGPU;
 extern bool uPrec;
 //extern bool uQcd;
 //extern bool uMsa;
