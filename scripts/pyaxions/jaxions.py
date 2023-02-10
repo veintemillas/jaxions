@@ -2283,29 +2283,39 @@ def plotbin(f):
 #   finds the sample.txt file and returns arrayS and arrayA
 #   can be problematic if any is empty
 
-def loadsample(address='./'):
-    mdir = findmdir(address)
-    odir = mdir[:-2]
-    fina = odir+'./sample.txt'
-    if os.path.exists(fina):
+def loadsample(file):
+    """
+    aS, aA = loadsample(sample.txt) returns TWO tables from a jaxions sample.txt
+    one with quantities calculated from Saxion evolution
 
-        with open(fina) as f:
+    ct, R, mA, lambda, phi_r phi_i phi'_r phi'_i stringN theta_MAX shift
+
+    another with quantities calculated from Saxion evolution
+
+    ct, R, mA, ctheta ctheta' theta_MAX 
+    """
+    # mdir = findmdir(address)
+    # odir = mdir[:-2]
+    # fina = odir+'./sample.txt'
+    if os.path.exists(file):
+
+        with open(file) as f:
             lines=f.readlines()
             l10 = 0
             l5 = 0
             for line in lines:
                 myarray = np.fromstring(line, dtype=float, sep=' ')
                 l = len(myarray)
-                if l==10:
+                if l==11:
                     l10 = l10 +1
-                elif l==5:
+                elif l==6:
                     l5 = l5 +1
             #print('1 - lines/SAX/AX ',len(lines),l10,l5)
             #if l5 > 0 :
-            arrayA = np.genfromtxt(fina,skip_header=l10)
+            arrayA = np.genfromtxt(file,skip_header=l10)
             #    arrayS = np.empty([])
             #if l10 > 0 :
-            arrayS = np.genfromtxt(fina,skip_footer=l5)
+            arrayS = np.genfromtxt(file,skip_footer=l5)
             #    arrayA = arrayS = np.empty([])
             #print('2 - lines/SAX/AX ',len(lines),len(arrayS),len(arrayA))
         #axiondata = len(arrayA) >0
