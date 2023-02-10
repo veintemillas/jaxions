@@ -203,12 +203,13 @@ const std::complex<float> If(0.,1.);
 		LogError("Error: misaligned memory. Are you using an odd dimension?");
 		exit(1);
 	}
+	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
-	LogMsg(VERB_NORMAL, "[sca] v3 %d n3 %d", v3, (n2*(nLz + 2)));
+	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: v3[m]  %llu n2(Lz+2)[v] %llu n3[str]", v3, (n2*(nLz + 2)),n3);
 	const size_t	mBytes = v3*fSize;
 	const size_t	vBytes = (n2*(nLz + 2))*fSize;
-
-
+	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, n3/1e9);
+	size_t totalCPU = 0;
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
@@ -217,6 +218,7 @@ const std::complex<float> If(0.,1.);
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
 			trackAlloc ((void**) &str, n3);
+			totalCPU += mBytes+vBytes+n3;
 			break;
 
 		case FIELD_AXION_MOD:
@@ -230,12 +232,14 @@ const std::complex<float> If(0.,1.);
 			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
 			trackAlloc ((void**) &str, n3);
+			totalCPU += mBytes+vBytes+n3;
 			break;
 		case FIELD_PAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m,v for Paxion");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, mBytes);
 			trackAlloc ((void**) &str, n3);
+			totalCPU += mBytes*2 + n3;
 
 		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
@@ -245,6 +249,7 @@ const std::complex<float> If(0.,1.);
 			alignAlloc ((void**) &vho, mAlign, mBytes);
 			alignAlloc ((void**) &g,   mAlign, 3*mBytes);
 			trackAlloc ((void**) &str, n3);
+			totalCPU += mBytes*7+vBytes+n3;
 			break;
 
 
@@ -266,15 +271,23 @@ const std::complex<float> If(0.,1.);
 
 	//  M2 issue ;; we always allocate a complex m2 in theta mode!
 	//	EVEN IF WE DO NOT SPECIFY lowmem
+	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for m2 ");
 
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
-			if (!lowmem) {
-				LogMsg(VERB_NORMAL, "[sca] allocating m2");
+			
+			if (!lowmem && !lowmemGPU) {
+				LogMsg(VERB_NORMAL, "[sca] allocating mBytes for m2");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
-				memset (m2, 0, fSize*v3);
-			} else
+				memset (m2, 0, mBytes);
+				totalCPU += mBytes;
+			} else if (!lowmem && lowmemGPU) {
+				LogMsg(VERB_NORMAL, "[sca] lowmemGPU allocating mBytes for m2 [Experimental warning!!]");
+				alignAlloc ((void**) &m2, mAlign, mBytes);
+				memset (m2, 0, mBytes);
+				totalCPU += mBytes;
+			} else 
 				m2 = nullptr;
 			break;
 
@@ -282,9 +295,18 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION:
 		case FIELD_FAXION:
 		case FIELD_PAXION:
-			LogMsg(VERB_NORMAL, "[sca] allocating m2");
-			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-			memset (m2, 0, 2*fSize*n3);
+			if (!lowmemGPU){
+				LogMsg(VERB_NORMAL, "[sca] allocating 2mBytes for m2");
+				alignAlloc ((void**) &m2, mAlign, 2*mBytes);
+				memset (m2, 0, 2*fSize*n3);
+				totalCPU += mBytes*2;
+			} else {
+				LogMsg(VERB_NORMAL, "[sca] allocating mBytes for m2 [Experimental warning]");
+				alignAlloc ((void**) &m2, mAlign, mBytes);
+				memset (m2, 0, fSize*n3);
+				totalCPU += mBytes;
+			}
+
 			break;
 
 		case FIELD_SX_RD:
@@ -320,6 +342,7 @@ const std::complex<float> If(0.,1.);
 		exit(1);
 	}
 
+	// we need to update this TODO
 	if (!lowmem)
 	{
 		if (m2 == nullptr)
@@ -363,42 +386,54 @@ const std::complex<float> If(0.,1.);
 
 	LogFlush();
 
-	/* CPU allocation */
+	/* GPU allocation */
 
+	size_t totalGPU = 0;
 	if (device == DEV_GPU)
 	{
+		LogMsg(VERB_NORMAL, "[sca] Allocating RAM in the GPU");
+
 #ifndef	USE_GPU
 		LogError ("Error: gpu support not built\n");
 		exit   (1);
 #else
 		if (fieldType == FIELD_SAXION) {
+			LogMsg(VERB_NORMAL, "[sca] GPU allocating m, %.2e Gbytes",mBytes/1.e9);
 			if (cudaMalloc(&m_d,  mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
 				exit(1);
 			}
-
+			totalGPU += mBytes;
+			LogMsg(VERB_NORMAL, "[sca] GPU allocating v, %.2e Gbytes",vBytes/1.e9);
 			if (cudaMalloc(&v_d,  vBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field v", vBytes);
 				exit(1);
 			}
+			totalGPU += vBytes;
 		} else {
+			LogMsg(VERB_NORMAL, "[sca] GPU allocating m & v, %.2e Gbytes",2*mBytes/1.e9);
 			if (cudaMalloc(&m_d, 2*mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
 				exit(1);
 			}
-
+			totalGPU += 2*mBytes;
 			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*v3);
 		}
-
-		if (!lowmemGPU || (fieldType & FIELD_AXION))
+		
+		// IN SAXION MODE, WE HAVE LOWMEM GPU AND WE CAN AVOID THIS M2 FIELD!
+		if (!lowmemGPU)
+		{
+			LogMsg(VERB_NORMAL, "[sca] GPU allocating m2 [only %.2e Gbytes, handicapped m2!]",mBytes/1.0e9);
 			if (cudaMalloc(&m2_d, mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", mBytes);
 				exit(1);
 			}
+			totalGPU += mBytes;
+		}
 
 		if ((sStreams = malloc(sizeof(cudaStream_t)*3)) == NULL)
 		{
@@ -412,6 +447,9 @@ const std::complex<float> If(0.,1.);
 #endif
 	}
 
+	LogMsg(VERB_NORMAL, "[sca] TOTAL RAM ALLOCATED:  %.3e GB (CPU) and %.3e GB (GPU)",totalCPU/1e9,totalGPU/1e9);
+	
+	
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
 
@@ -469,17 +507,19 @@ const std::complex<float> If(0.,1.);
 			prof.add(std::string("Init FFT"), 0.0, 0.0);
 		} else {
 			if (fieldType & FIELD_AXION) {
-				LogError ("Configuration generation for axion fields not supported");
+				//LogError ("Configuration generation for axion fields not supported");
+				LogMsg(VERB_NORMAL,"[sca] Initialisation in axion mode is in testing mode, only for SPAX ICs");
 				prof.stop();
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
+				genConf (cm, this);
 			} else {
-				if ( !(cType == CONF_SMOOTH) ) {
-					if (lowmem)
-						AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
-					else
-						AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
-					LogMsg(VERB_NORMAL,"Skipping initialisation of FFT, do it in genconf!");
-				}
+				//if ( !(cType == CONF_SMOOTH) ) {
+				//	if (lowmem)
+				//		AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
+				//	else
+				//		AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
+				LogMsg(VERB_NORMAL,"[sca] WARNING!! Skipping initialisation of FFT, do it in genconf!");
+				//}
 				prof.stop();
 
 				prof.add(std::string("Init FFT"), 0.0, 0.0);
@@ -495,27 +535,37 @@ const std::complex<float> If(0.,1.);
 	Scalar::~Scalar()
 {
 	commSync();
-	LogMsg (VERB_HIGH, "Rank %d Calling destructor...",commRank());
+	LogMsg (VERB_NORMAL, "Rank %d Calling destructor...",commRank());
 
 	bckgnd = nullptr;
 
 	if (m != nullptr)
 		trackFree(m);
+//printf("%d 1 FType %d\n",commRank(),fieldType);fflush(stdout);commSync();
 
 	if (v != nullptr && (fieldType & FIELD_SAXION))
 		trackFree(v);
 
+//printf("%d 2\n",commRank());fflush(stdout);commSync();
+
 	if (m2 != nullptr)
 		trackFree(m2);
+//printf("%d 3\n",commRank());fflush(stdout);commSync();
+
 
 	if (str != nullptr)
 		trackFree(str);
 
+//printf("%d 4\n",commRank());fflush(stdout);commSync();
+
 	if (z != nullptr)
 		trackFree((void *) z);
 
+//printf("%d 5\n",commRank());fflush(stdout);commSync();
+
 	if (R != nullptr)
 		trackFree((void *) R);
+//printf("%d 6\n",commRank());fflush(stdout);commSync();
 
 	if (device == DEV_GPU)
 	{
@@ -526,11 +576,16 @@ const std::complex<float> If(0.,1.);
 			if (m_d != nullptr)
 				cudaFree(m_d);
 
+//printf("%d 7\n",commRank());fflush(stdout);commSync();
+
 			if (v_d != nullptr)
 				cudaFree(v_d);
 
+//printf("%d 7\n",commRank());commSync();
+
 			if (m2_d != nullptr)
 				cudaFree(m2_d);
+//printf("%d 8\n",commRank());fflush(stdout);commSync();
 
 			cudaStreamDestroy(((cudaStream_t *)sStreams)[2]);
 			cudaStreamDestroy(((cudaStream_t *)sStreams)[1]);
@@ -543,6 +598,7 @@ const std::complex<float> If(0.,1.);
 
 	if ((fieldType & FIELD_REDUCED) == false)
 		AxionFFT::closeFFT();
+//printf("%d 9\n",commRank());fflush(stdout);commSync();
 
 }
 
@@ -1016,12 +1072,13 @@ void	Scalar::setField (FieldType newType)
 
 			LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
 			LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
-		
+#ifdef  USE_GPU
 			if (device == DEV_GPU && lowmemgpu)
 			{
 				m2_d = static_cast<void *>(static_cast<char *>(m_d)+fSize*v3);
 				LogMsg(VERB_NORMAL,"[sca] lowmemgpu uses the second half of m as m2 (potential risks! change it soon)",fieldType);
 			}
+#endif
 		break;
 
 		case	FIELD_SAXION:
