@@ -168,7 +168,7 @@
 						break;
 
 					case	DEV_GPU:
-						if (field->LowMem()) {
+						if (field->LowMemGPU() || field->LowMem()) {
 							propSaxion = [this](const double dz) { this->lowGpu(dz); };
 							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
 						} else {

@@ -12,6 +12,16 @@ from sympy import integer_nthroot
 import pickle
 import matplotlib.colors as col
 
+
+import cmasher as cmr
+from matplotlib import cm
+import matplotlib.gridspec as gridspec
+from matplotlib.colors import ListedColormap
+from matplotlib import colors
+import matplotlib.ticker as mticker
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+
 # mark=f"{datetime.datetime.now():%Y-%m-%d}"
 # from uuid import getnode as get_mac
 # mac = get_mac()
@@ -287,7 +297,7 @@ def gm(address,something='summary',printerror=False):
         try:
             return np.array(f[dap][()])
         except:
-            print('not found!')
+            print('Data not found!')
             return 0
         return
 
@@ -2478,6 +2488,223 @@ def colorbar(mappable):
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = fig.colorbar(mappable, cax=cax)
     plt.sca(last_axes)
+
+
+
+#================================================================================
+# PAXION
+#================================================================================
+class axion:
+    def load(name=''):
+        try:
+            list = []
+            if name and not name.isspace():
+                name += '/'
+                print(f"Loading data from {name}m")
+                print("...")
+                for filename in glob.iglob(name+'m/axion.m.*', recursive=True):
+                    list.append(filename)
+            else:
+                print("Loading data from pout/m")
+                print("...")
+                for filename in glob.iglob(name+'out/m/axion.m.*', recursive=True):
+                    list.append(filename)
+            sorted_list = np.array(sorted(list))
+            print("Last file loaded:",sorted_list[-1])
+        except:
+            sorted_list = None
+            print(f"Error: {name}m folder not found!")
+        return sorted_list
+    
+    # def axion(mf,i):
+    #     N = gm(mf[i],'N')
+    #     try:
+    #         if gm(mf[i],'ftype') == 'Axion':
+    #             pha = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+    #         elif gm(mf[i],'ftype') == 'Saxion':
+    #             pha = np.reshape(gm(mf[i],'da/map/m/data'),(N,N,2))
+    #     except:
+    #         pha = None
+    #         print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
+    #     return pha
+
+    def projection(mf,i):
+        try:
+            proj = gm(mf[i],'slice//map/P')
+        except:
+            proj = []
+            print('Error: Projection not found in file %s, set --p2DmapP in the command line'%mf[i])
+        return proj
+    
+
+
+class paxion:
+    def load(name=''):
+        try:
+            list = []
+            if name and not name.isspace():
+                name += '/'
+                print(f"Loading data from {name}m")
+                print("...")
+                for filename in glob.iglob(name+'m/axion.m.*', recursive=True):
+                    list.append(filename)
+            else:
+                print("Loading data from pout/m")
+                print("...")
+                for filename in glob.iglob(name+'pout/m/axion.m.*', recursive=True):
+                    list.append(filename)
+            sorted_list = np.array(sorted(list))
+            print("Last file loaded:",sorted_list[-1])
+        except:
+            sorted_list = None
+            print(f"Error: {name}m folder not found!")
+        return sorted_list
+    
+    def phase(mf,i):
+        N = gm(mf[i],'N')
+        try:
+            mTmp1 = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+            mTmp2 = np.reshape(gm(mf[i],'da/map/v/data'),(N,N))
+            pha = np.arctan2(mTmp2,mTmp1)
+        except:
+            pha = None
+            print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
+        return pha
+    
+    def density(mf,i):
+        N = gm(mf[i],'N')
+        try:
+            mTmp1 = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+            mTmp2 = np.reshape(gm(mf[i],'da/map/v/data'),(N,N))
+            dens = (mTmp1[:,:]**2 + mTmp2[:,:]**2)
+        except:
+            dens = None
+            print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
+        return dens
+
+    def velocity(mf,i,method='rotated'):
+        N = gm(mf[i],'N')
+        try:
+            mTmp1 = np.reshape(gm(mf[i],'da/map/m/data'),(N,N))
+            mTmp2 = np.reshape(gm(mf[i],'da/map/v/data'),(N,N))
+            paxnorm = 1/(2*gm(mf[i],'R')*gm(mf[i],'massA')*gm(mf[i],'delta'))
+            if method == 'naive':
+                vel = paxnorm*(np.roll(np.arctan2(mTmp2[:,:],mTmp1[:,:]),1,axis=1)-np.roll(np.arctan2(mTmp2[:,:],mTmp1[:,:]),-1,axis=1))
+            elif method == 'full':
+                gDataR = np.roll(mTmp1[:,:],1,axis=1)-np.roll(mTmp1[:,:],-1,axis=1)
+                gDataI = np.roll(mTmp2[:,:],1,axis=1)-np.roll(mTmp2[:,:],-1,axis=1)
+                vel = -(gDataR*mTmp2[:,:]-gDataI*mTmp1[:,:])/(mTmp1[:,:]**2 + mTmp2[:,:]**2) * paxnorm
+            elif method == 'rotated':
+                fp1 = np.roll(mTmp1[:,:],1,axis=1)
+                fp2 = np.roll(mTmp2[:,:],1,axis=1)
+                Sp  = np.arctan2(-fp1*mTmp2 + fp2*mTmp1,fp1*mTmp1 + fp2*mTmp2)
+                fp1 = np.roll(mTmp1[:,:],-1,axis=1)
+                fp2 = np.roll(mTmp2[:,:],-1,axis=1)
+                Sm  = np.arctan2(-fp1*mTmp2 + fp2*mTmp1,fp1*mTmp1 + fp2*mTmp2)
+                vel = (Sp-Sm) * paxnorm
+        except:
+            vel = None
+            print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
+        return vel
+    
+    def projection(mf,i):
+        try:
+            proj = gm(mf[i],'slice//map/P')
+        except:
+            proj = []
+            print('Error: Projection not found in file %s, set --p2DmapPE in the command line'%mf[i])
+        return proj
+
+
+class plot:
+    def cbar(mappable,extend='neither',minorticklength=8,majorticklength=10,\
+            minortickwidth=2,majortickwidth=2.5,pad=0.2,side="right",orientation="vertical"):
+        ax = mappable.axes
+        fig = ax.figure
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes(side, size="5%", pad=pad)
+        cbar = fig.colorbar(mappable, cax=cax,extend=extend,orientation=orientation)
+        cbar.ax.tick_params(which='minor',length=minorticklength,width=minortickwidth)
+        cbar.ax.tick_params(which='major',length=majorticklength,width=majortickwidth)
+        cbar.solids.set_edgecolor("face")
+        return cbar
+        
+    def single(xlab='',ylab='',\
+                 lw=1.5,lfs=25,tfs=18,size_x=13,size_y=8,Grid=False):
+        plt.rcParams['axes.linewidth'] = lw
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif',size=tfs)
+
+        fig = plt.figure(figsize=(size_x,size_y))
+        ax = fig.add_subplot(111)
+
+        ax.set_xlabel(xlab,fontsize=lfs)
+        ax.set_ylabel(ylab,fontsize=lfs)
+
+        ax.tick_params(which='major',direction='in',width=0.8,length=8,right=True,top=True,pad=7)
+        ax.tick_params(which='minor',direction='in',width=0.8,length=8,right=True,top=True)
+        if Grid:
+            ax.grid()
+        return fig,ax
+    def double(xlab1='',ylab1='',xlab2='',ylab2='',\
+                 wspace=0.25,lw=1,lfs=25,tfs=18,size_x=20,size_y=11,Grid=False):
+        plt.rcParams['axes.linewidth'] = lw
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif',size=tfs)
+        #mpl.rcParams['text.latex.preamble'] = [r'\usepackage{mathpazo}']
+        fig, axarr = plt.subplots(1, 2,figsize=(size_x,size_y))
+        gs = gridspec.GridSpec(1, 2)
+        gs.update(wspace=wspace)
+        ax1 = plt.subplot(gs[0])
+        ax2 = plt.subplot(gs[1])
+        ax1.tick_params(which='major',direction='in',width=1,length=8,right=True,top=True,pad=7)
+        ax1.tick_params(which='minor',direction='in',width=0.5,length=5,right=True,top=True)
+        ax2.tick_params(which='major',direction='in',width=1,length=8,right=True,top=True,pad=7)
+        ax2.tick_params(which='minor',direction='in',width=0.5,length=5,right=True,top=True)
+
+        ax1.set_xlabel(xlab1,fontsize=lfs)
+        ax1.set_ylabel(ylab1,fontsize=lfs)
+
+        ax2.set_xlabel(xlab2,fontsize=lfs)
+        ax2.set_ylabel(ylab2,fontsize=lfs)
+
+        if Grid:
+            ax1.grid()
+            ax2.grid()
+        return fig,ax1,ax2
+
+class gadget:
+    def get_info(f):
+        print('File: ',f, '\n')
+        print("Redshift: %.1e"%f['Header'].attrs['Redshift'])
+        print("NumParts: %d^3"%int(np.ceil(f['Header'].attrs['NumPart_Total'][1]**(1/3))))
+        print("Box Size: %.3f pc"%f['Header'].attrs['BoxSize'])
+
+    def load_miniclusters(f):
+        size = len(f['/Subhalo/SubhaloHalfmassRad'] )
+        rad = np.reshape(f['/Subhalo/SubhaloHalfmassRad'],(size))
+        mass   = np.reshape(f['/Subhalo/SubhaloMass'],(size))
+        npar  = np.reshape(f['/Subhalo/SubhaloLen']  ,(size))
+        vdisp = np.reshape(f['/Subhalo/SubhaloVelDisp'],(size))
+        dens  = np.reshape([mass[i]/(4/3*np.pi*rad[i]**3)for i in range(len(mass))],(size))
+        mc = np.column_stack((mass,rad,dens,npar,vdisp))
+        print("Loaded %d miniclusters at z=%.1f"%(size,f['Header'].attrs['Redshift']))
+        return mc
+
+    def load_particles(f):
+        npart = f['Header'].attrs['NumPart_Total'][-1] 
+        bsize = f['Header'].attrs['BoxSize'] 
+        red   = f['Header'].attrs['Redshift']
+        pos   = np.reshape(f['/PartType1/Coordinates'],(npart,3)) 
+        vel   = np.reshape(f['/PartType1/Velocities'] ,(npart,3))
+        vmod  = np.reshape(np.sqrt(vel[:,0]**2+vel[:,1]**2+vel[:,2]**2),(npart,1))
+        mass  = np.reshape(f['/PartType1/Masses']     ,(npart,1)) 
+        ids   = np.reshape(f['/PartType1/ParticleIDs'],(npart,1)) 
+        pp    = np.concatenate((pos,vel,vmod,mass,ids,),axis=1)
+        print("Loaded %d particles at z=%.1f"%(npart,red))
+        return pp
+
+
 
 #   qt plot!
 

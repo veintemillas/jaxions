@@ -43,6 +43,7 @@
 		bool	vmomspace;
 		bool folded, M2folded;
 		bool	lowmem;
+		bool    lowmemgpu;
 		size_t Ng;
 
 		// conformal time
@@ -148,6 +149,7 @@
 		const void	*m2Gpu() const { return m2_d; }
 #endif
 		bool		LowMem()    		  { return lowmem; }
+		bool            LowMemGPU()                  { return lowmemgpu; }
 		void		setLowMem(const bool nLm) { lowmem = nLm; }
 
 		size_t		TotalSize()  { return n3*nSplit; }

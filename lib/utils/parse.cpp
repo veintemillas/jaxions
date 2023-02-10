@@ -62,6 +62,7 @@ int i_rmask = 0;
 
 bool uwDz     = false;
 bool lowmem   = false;
+bool lowmemGPU= false;
 bool uPrec    = false;
 bool uSize    = false;
 bool uQcd     = false;
@@ -89,6 +90,7 @@ bool preprop  = false ;
 bool coSwitch2theta  = true ;
 bool WKBtotheend = false;
 bool measCPU  = false;
+bool maskenergyonly = false;
 
 size_t kMax  = 2;
 size_t iter  = 0;
@@ -108,6 +110,7 @@ VqcdType     vqcdType        = V_QCD1;
 VqcdType     vpqType         = V_PQ1;
 VqcdType     vqcdTypeDamp    = V_NONE;
 VqcdType     vqcdTypeEvol    = V_NONE;
+GadType      gadType         = GAD_MASS;
 
 // Default IC type
 IcData icdatst;
@@ -129,6 +132,7 @@ MeasInfo deninfa;
 
 
 char outName[128] = "axion\0";
+char gadName[128] = "ics\0";
 char outDir[1024] = "out/m\0";
 char wisDir[1024] = "./\0";
 
@@ -324,7 +328,7 @@ void	PrintUsage(char *name)
 	printf("--dump  [int]                   frequency of the output (default 100).\n");
 	printf("--meas  [int]                   MeasuremeType [default ALLBIN|STRING|STRINGMAP|ENERGY|2DMAP|SPECTRUM].\n");
 	printf("--measinfo                      Prints more info about measurement options.\n");
-	printf("--p3D 0/1/2/3                   Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both \n");
+	printf("--p3D 0/1/2/3/4/32              Print initial/final configurations (default 0 = no) 1=initial 2=final 3=both 4=wkb 32=paxion at saturation \n");
 	printf("--wTime [float]                 Simulates during approx. [float] hours and then writes the configuration to disk.\n");
 	printf("--p2Dmap                        Include 2D XY maps in axion.m.files (default no)\n");
 	printf("--p2Dslice [int]                Include 2D XY maps of the desired slice in axion.m.files (default no)\n");
@@ -341,6 +345,7 @@ void	PrintUsage(char *name)
 	printf("--nologmpi                      Disable logging over MPI so only rank 0 logs (default, all ranks log)\n\n");
 	printf("--icinfo                        Info about initial conditions.\n");
 	printf("--measinfo                      Info about measurement types.\n");
+	printf("--gravinfo                      Info about SP module and gadget output.\n");
 	printf("--help                          Prints this message.\n");
 
 	// printf("--debug                         Prints some messages\n");
@@ -425,6 +430,21 @@ void	PrintICoptions()
 	return;
 }
 
+void    PrintGravoptions()
+{
+	printf("\nOptions for Gravity evolution\n");
+	printf("-------------------------------------------------------------------------------------------------------\n\n");
+	printf("--beta [float]                     Coefficient for self-interactions, GPP system [default 1.0].\n");
+	printf("--gravity [float]                  Ratio between R_1/R_eq [default 0.0].\n");
+	printf("--sat_gravity                      After saturation time evolve with constant conformal axion mass [default: false].\n");
+	printf("--hybrid_gravity                   Compute gravitational potential with hybrid method [default: false].\n");
+	printf("--L1_pc [float]                    Sets the value of L1 in parsec units [default: 0.036]");
+	printf("--gad_type [gad/gadmass/gadgrid]   Gadget mapping type [default: gadmass].\n");
+	printf("--part_vel                         Add particle velocities [default: false].\n");
+	printf("--smooth_vel (to be implemented)   Smooth velocity field [default: false].\n");
+	printf("--kcr [float]                      Displacement for [gad] mapping [default 1.0, recommended 0.25].\n");
+	printf("-------------------------------------------------------------------------------------------------------\n\n");
+}
 
 void	PrintMEoptions()
 {
@@ -465,7 +485,7 @@ void	PrintMEoptions()
 	printf("    Gradient                               2 \n");
 	printf("    Potential                              4 \n");
 	printf("    K+G+V                                  7 (default)\n\n");
-  printf("  --spmask [int]            Sum of integers.\n");
+    printf("  --spmask [int]            Sum of integers.\n");
 	printf("    Fields unmasked                        1 (default	)\n");
 	printf("    Masked with  rho/v                     2 \n");
 	printf("    Masked with (rho/v)^2                  4 \n");
@@ -480,6 +500,7 @@ void	PrintMEoptions()
 	printf("                                           with the values read from rows of a rmasktable.dat file.\n");
 	printf("                                           (Red, Gaus, Axit12 modes) \n\n");
 	printf("  --printmask                              Prints the mask\n\n");
+  printf("  --maskenergyonly                         Skips masked spectra in Red mode and prints masked energies only (default no)\n\n");
 	printf("  --ng0calib                               Parameter tunning the exponential masking (default 1.25)\n");
 	printf("                                           (Any negative value gives the old calibration)\n\n");
 	printf("  --cummask [int > 0]                      Mask region is not reset at each meas. Can only increase. (default no)\n\n");
@@ -610,6 +631,12 @@ int	parseDims (int argc, char *argv[])
 			exit(0);
 		}
 
+		if (!strcmp(argv[i], "--gravinfo"))
+		{
+			PrintGravoptions();
+			exit(0);
+		}
+
 		if (!strcmp(argv[i], "--measinfo"))
 		{
 			PrintMEoptions();
@@ -650,8 +677,10 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
 	icdatst.grav      = 0.0;
-  icdatst.grav_hyb  = false;
-  icdatst.grav_sat  = false;
+	icdatst.L1_pc     = 0.036;
+  	icdatst.grav_hyb  = false;
+  	icdatst.grav_sat  = false;
+	icdatst.part_vel  = false;
 	icdatst.zi        = 0.5;
 	icdatst.logi      = 0.0;
 	icdatst.kickalpha = 0.0;
@@ -963,6 +992,12 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
+		if (!strcmp(argv[i], "--lowmemGPU"))
+	        {
+	                lowmemGPU = true;
+	                PARSE1;
+	        }
+
 		if (!strcmp(argv[i], "--notheta"))
 		{
 			coSwitch2theta = false;
@@ -1256,6 +1291,19 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+		if (!strcmp(argv[i], "--L1_pc"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the Naxion/Paxion selfinteraction coefficient.\n");
+				exit(1);
+			}
+
+			icdatst.L1_pc = atof(argv[i+1]);
+
+			PARSE2;
+		}
+
     if (!strcmp(argv[i], "--hybrid_gravity"))
 		{
 
@@ -1268,6 +1316,14 @@ int	parseArgs (int argc, char *argv[])
 		{
 
 			icdatst.grav_sat = true;
+
+			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--part_vel"))
+		{
+
+			icdatst.part_vel = true;
 
 			PARSE1;
 		}
@@ -1669,6 +1725,13 @@ int	parseArgs (int argc, char *argv[])
 
 			PARSE1;
 		}
+    
+    if (!strcmp(argv[i], "--maskenergyonly"))
+		{
+			maskenergyonly = true;
+
+			PARSE1;
+		}
 
 		if (!strcmp(argv[i], "--spmask"))
 		{
@@ -1815,6 +1878,25 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+		if (!strcmp(argv[i], "--gname"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a name for the gadget output file.\n");
+				exit(1);
+			}
+
+			if (strlen(argv[i+1]) > 96)
+			{
+				printf("Error: name too long, keep it under 96 characters\n");
+				exit(1);
+			}
+
+			strcpy (gadName, argv[i+1]);
+
+			PARSE2;
+		}
+
 		/* Axiton tracker */
 
 		if (!strcmp(argv[i], "--axitontracker"))
@@ -1839,19 +1921,29 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--axitontracker.th_threshold"))
 		{
-			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.th_threshold);
+			// sscanf(argv[i+1], "%zu", &icdatst.axtinfo.th_threshold);
+      icdatst.axtinfo.th_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.vh_threshold"))
 		{
-			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ve_threshold);
+			// sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ve_threshold);
+      icdatst.axtinfo.ve_threshold = atof(argv[i+1]);
+			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--axitontracker.con_threshold"))
+		{
+			// sscanf(argv[i+1], "%zu", &icdatst.axtinfo.con_threshold);
+      icdatst.axtinfo.con_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.ct_threshold"))
 		{
 			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ct_threshold);
+      icdatst.axtinfo.ct_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
@@ -2067,6 +2159,30 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+		if (!strcmp(argv[i], "--gadtype"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the gadget configuration type (gad/gadvel/gadmass/gadmassvel/gadgrid).\n");
+				exit(1);
+			}
+
+			if (!strcmp(argv[i+1], "gad"))
+			{
+				gadType = GAD;
+			}
+			else if (!strcmp(argv[i+1], "gadmass"))
+			{
+				gadType = GAD_MASS;
+			}
+			else if (!strcmp(argv[i+1], "gadgrid"))
+			{
+				gadType = GAD_GRID;
+			}
+
+			PARSE2;
+		}
+
 
 		if (!strcmp(argv[i], "--prec"))
 		{
@@ -2215,9 +2331,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
-			prepcoe = atof(argv[i+1]);
+			prepcoe = atof(argv[i+1]); //legacy
+      icdatst.prepcoe = atof(argv[i+1]);
 
-			if (prepcoe <= 1.)
+			if (icdatst.prepcoe <= 1.)
 			{
 				printf("Error: The prepropagator time coefficient must be larger than 1.\n");
 				exit(1);
@@ -2483,6 +2600,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	// if ( (deninfa.measdata & ( MEAS_SPECTRUM )) && (nrt == NRUN_NONE) )
 	// 	nrt = NRUN_KGV;
 	deninfa.nrt = nrt;
+  deninfa.maskenergyonly = maskenergyonly;
 
 	LogMsg(VERB_HIGH,"Parse Jaxions completed! %d parsed args",procArgs);
 	return	procArgs;

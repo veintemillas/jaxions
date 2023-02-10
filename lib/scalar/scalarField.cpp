@@ -55,6 +55,7 @@ const std::complex<float> If(0.,1.);
 
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
+	lowmemgpu = lowmemGPU;
 	prof.start();
 
 	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar");
@@ -66,6 +67,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] Precision    =  %d (SINGLE/DOUBLE %d/%d)",prec,FIELD_SINGLE,FIELD_DOUBLE);
 	LogMsg(VERB_NORMAL,"[sca] Device       =  %d (CPU/GPU %d/%d)",dev,DEV_CPU,DEV_GPU);
 	LogMsg(VERB_NORMAL,"[sca] Lowmem       =  %d ",lowmem);
+	LogMsg(VERB_NORMAL,"[sca] LowmemGPU    =  %d %d ",lowmemGPU,lowmemgpu);
 	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d ", Ngg);
 
 	if (cm == nullptr) {
@@ -229,6 +231,11 @@ const std::complex<float> If(0.,1.);
 			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
 			trackAlloc ((void**) &str, n3);
 			break;
+		case FIELD_PAXION:
+			LogMsg(VERB_NORMAL, "[sca] allocating m,v for Paxion");
+			alignAlloc ((void**) &m,   mAlign, mBytes);
+			alignAlloc ((void**) &v,   mAlign, mBytes);
+			trackAlloc ((void**) &str, n3);
 
 		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
@@ -274,6 +281,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_AXION_MOD:
 		case FIELD_AXION:
 		case FIELD_FAXION:
+		case FIELD_PAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m2");
 			alignAlloc ((void**) &m2, mAlign, 2*mBytes);
 			memset (m2, 0, 2*fSize*n3);
@@ -385,7 +393,7 @@ const std::complex<float> If(0.,1.);
 			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*v3);
 		}
 
-		if (!lowmem || (fieldType & FIELD_AXION))
+		if (!lowmemGPU || (fieldType & FIELD_AXION))
 			if (cudaMalloc(&m2_d, mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m2", mBytes);
@@ -1002,14 +1010,18 @@ void	Scalar::setField (FieldType newType)
 			LogError ("Error: transformation from axion to axion irrelevant");
 			break;
 		}
-				fSize /= 2;
+			fSize /= 2;
+			shift *= 2;
+			fieldType = newType;
 
-				//if (device != DEV_GPU)
-				shift *= 2;
-		fieldType = newType;
-
-		LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
-		LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
+			LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
+			LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
+		
+			if (device == DEV_GPU && lowmemgpu)
+			{
+				m2_d = static_cast<void *>(static_cast<char *>(m_d)+fSize*v3);
+				LogMsg(VERB_NORMAL,"[sca] lowmemgpu uses the second half of m as m2 (potential risks! change it soon)",fieldType);
+			}
 		break;
 
 		case	FIELD_SAXION:

@@ -1,6 +1,8 @@
 #ifndef	_LLUTS_
 	#define	_LLUTS_
 
+  #include<array>
+
 	const int N_A = 26;
 	const int N_B = 26;
 	const int N_E = 6;

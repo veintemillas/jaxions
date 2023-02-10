@@ -478,9 +478,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	double indi3    = axion->BckGnd()->Indi3();
 	double zthres   = axion->BckGnd()->ZThRes();
 	double zrestore = axion->BckGnd()->ZRestore();
+	double lz2e     = axion->BckGnd()->LamZ2Exp();
 
 	writeAttribute(vGrp_id, &lStr,    "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,      "Lambda",        H5T_NATIVE_DOUBLE);
+	writeAttribute(vGrp_id, &lz2e,    "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &vStr,    "VQcd type",     attr_type);
 	writeAttribute(vGrp_id, &vPQStr,  "VPQ type",      attr_type);
 	writeAttribute(vGrp_id, &dStr,    "Damping type",  attr_type);
@@ -981,7 +983,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				// anyways these readjustments can always be made from the commandline
 
 				/* Lambda; saxion self-interation coefficient at z = 1 */
-
+				if (strcmp(fStr, "Paxion"))
+				{
 				// note: if no value is read in commandline, Lambda() gives -1.e8
 				if (myCosmos->Lambda() == -1.e8) {
 					double	lda, lz2e;
@@ -1012,7 +1015,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				else
 					LogMsg (VERB_NORMAL, "Lambda (commandline)   = %.2f/R^%.2f",myCosmos->Lambda(),myCosmos->LamZ2Exp());
 
-
+				}
 				// test LambdaP?
 				// -------------------
 				// LogMsg (VERB_NORMAL, "Axion mass (h5read) %.2f (calculated) %.2f",maaR, myCosmos->AxionMass());
@@ -1367,6 +1370,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			if (fTypeP == FIELD_SAXION)
 				fTypeCreate = FIELD_SAXION;
 		}
+		else if (!strcmp(fStr, "Paxion"))
+		{
+			fTypeRead = FIELD_PAXION;
+			fTypeCreate = FIELD_PAXION;
+			if (fTypeP == FIELD_SAXION)
+				fTypeCreate = FIELD_PAXION;
+		}
 		else
 		{
 			LogError ("Input error: Invalid field type");
@@ -1422,7 +1432,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			/*	Read raw data	*/
 
 			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
-			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vCpu())  +slab*zDim*dataSize));
+			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vStart())+slab*zDim*dataSize));
 
 			if ((mErr < 0) || (vErr < 0)) {
 				LogError ("Error reading dataset from file");

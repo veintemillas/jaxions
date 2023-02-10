@@ -230,7 +230,7 @@ int	main (int argc, char *argv[])
 	index++;
 	if ( (dumpmode == DUMP_FROMLIST) ){
 			LogOut("time %f and %d-measurement %lf\n",*axion->zV(),i_meas,measfilepar.ct[i_meas]);
-		if (abs(1.0 -(*axion->zV())/measfilepar.ct[i_meas])<0.0001){
+		if (!restart_flag && (abs(1.0 -(*axion->zV())/measfilepar.ct[i_meas])<0.0001)){
 				i_meas++;
 				LogOut("i_meas++ initial conditions coincided with 1st measurement\n");
 		}
@@ -553,18 +553,9 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 				buff[0], buff[1], buff[2], buff[3],
 				nstrings_global, maximumtheta, saskia);
 			} else {
-#ifdef USE_GPU
-				if (axion->Device() == DEV_GPU) {
-					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[idxprint]),sizeof(float),cudaMemcpyDeviceToHost);
-					cudaMemcpy(&(buff[1]), &(static_cast<float*>(axion->vGpu())[idxprint]),sizeof(float),cudaMemcpyDeviceToHost);
-				} else
-#endif
-				{
-					memcpy(buff,&(static_cast<float*> (axion->mStart())[idxp]),sizeof(float));
-					memcpy(&(buff[1]),&(static_cast<float*> (axion->vStart())[idxp]),sizeof(float));
-				}
 				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
-				buff[0], buff[1], maximumtheta);
+				static_cast<float *> (axion->mStart())[idxp],
+				static_cast<float *> (axion->vStart())[idxp], maximumtheta);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){

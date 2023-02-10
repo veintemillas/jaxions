@@ -405,6 +405,7 @@
 			PRINTCONF_BOTH    = 3,
 			PRINTCONF_PRE2THETA  = 8,
 			PRINTCONF_POST2THETA = 16,
+			PRINTCONF_PAXIONSAT  = 32,
 		}	PrintConf;
 
 		typedef	struct	StringData_v
@@ -731,6 +732,13 @@
 			FILTER_SHARPK  = 2,
 		}	FilterIndex;
 
+		typedef	enum	GadType_s
+		{
+			GAD,	                 // createGadget
+			GAD_MASS,                // createGadget_Mass
+			GAD_GRID,                // createGadget_Grid
+		}	GadType;
+
 		// data given to measurement function (includes labels and analyses)
 		typedef	struct	MeasInfo_v
 		{
@@ -752,6 +760,7 @@
 			int                 propstep;
 			int                 cummask;
 			PrintConf           printconf;
+			bool                maskenergyonly;
 		}	MeasInfo;
 
 		// data output by measurement function to program
@@ -769,6 +778,7 @@
 			int           nMax;
 			double        th_threshold	;
 			double        ve_threshold	;
+			double        con_threshold	;
 			double        ct_threshold	;
 			int           printradius ;
 			bool          gradients ;
@@ -803,8 +813,10 @@
 			MomConfType   mocoty;
 			FieldIndex    fieldindex;
 			double        grav;
+			double        L1_pc;
 			bool          grav_hyb;
 			bool          grav_sat;
+			bool          part_vel;
 			AxitonInfo    axtinfo;
 		}	IcData;
 

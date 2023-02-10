@@ -32,9 +32,14 @@ void	prepropa  (Scalar *axiona)
 
 	// default measurement type is parsed
 	ninfa.measdata = defaultmeasType;
-	// ninfa.mask = spmask;
-	// ninfa.rmask = rmask;
-  ninfa.maty = maty;
+	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
+	ninfa.nrt = nrt;
+  ninfa.nbinsspec = -1;
+	ninfa.maty = maty;
+	ninfa.i_rmask = rmask_tab.size();
+	ninfa.rmask_tab = rmask_tab;
+	ninfa.maskenergyonly = false;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;
@@ -143,9 +148,14 @@ void	prepropa2  (Scalar *axiona)
 
 	// default measurement type is parsed
 	ninfa.measdata = defaultmeasType;
-	// ninfa.mask = spmask;
-	// ninfa.rmask = rmask;
+	ninfa.mask = spmask;
+	ninfa.rmask = rmask;
+	ninfa.nrt = nrt;
+  ninfa.nbinsspec = -1;
 	ninfa.maty = maty;
+	ninfa.i_rmask = rmask_tab.size();
+	ninfa.rmask_tab = rmask_tab;
+	ninfa.maskenergyonly = false;
 
 	//-maximum value of the theta angle in the simulation
 	double maximumtheta = M_PI;

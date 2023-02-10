@@ -79,6 +79,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	double radius_mask = info.rmask ; //obsolete?
 	int irmask = info.i_rmask;
 	std::vector<double> rmasktab = info.rmask_tab ;
+	std::vector<double> rmasklabel = info.rmask_tab ; // use rmasklabels from command line (1/ms units) rather than lattice units
 	/* Patch to make the cases where no radius is needed to work */
 	if ( irmask == 0 ){
 		irmask = 1;
@@ -89,6 +90,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	for (int ii=0; ii<irmask; ii++)
 		LogMsg(VERB_PARANOID,    "[Meas ...] rmask #%d %.2f ",ii,rmasktab[ii]);
 	nRunType nruntype = info.nrt;
+	
+	bool onlymaskenergy = info.maskenergyonly;
 
 	/* This is a change with respect to previous behaviour
 	   Changes the definition of mask to be in units of ms^-1 (saxion)
@@ -290,7 +293,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						for(int ii=0; ii < irmask; ii++){
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 1 radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmasked",rmasktab[ii]);
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked",rmasklabel[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -300,7 +303,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 						for(int ii=0; ii < irmask; ii++){
 							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons 2 radius_mask = %f)",indexa,rmasktab[ii]);
 								char PRELABEL[256];
-									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",rmasktab[ii]);
+									sprintf(PRELABEL, "%s_%.2f", "sPmasked2",rmasklabel[ii]);
 										specAna.masker(rmasktab[ii], SPMASK_AXIT2, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
 										}
@@ -504,7 +507,7 @@ writePMapHdf5s (axiona, LAB);
 						for(int ii=0; ii < irmask; ii++)
 						{
 							if (mulmask[i])
-								sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+								sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasklabel[ii]);
 							else
 								sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -589,7 +592,7 @@ writePMapHdf5s (axiona, LAB);
 					for(int ii=0; ii < irmask; ii++)
 					{
 						if (mulmask[i])
-							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasktab[ii]);
+							sprintf(PRELABEL, "%s_%.2f", masklab[i].c_str(),rmasklabel[ii]);
 						else
 							sprintf(PRELABEL, "%s", masklab[i].c_str());
 
@@ -614,7 +617,7 @@ writePMapHdf5s (axiona, LAB);
 								if( (strmeas & STRMEAS_ENERGY) && (maskara[i] & SPMASK_REDO) ) {
 									// measure the energy density of strings by using masked points
 									MeasDataOut.strE = stringenergy(axiona);
-									MeasDataOut.strE.rmask = rmasktab[ii]; // this is not written by stringenergy();
+									MeasDataOut.strE.rmask = rmasklabel[ii]; // this is not written by stringenergy();
 									writeStringEnergy(axiona,MeasDataOut.strE);
 								}
 
@@ -625,10 +628,15 @@ writePMapHdf5s (axiona, LAB);
 										memset(eRes, 0, 256);
 										double *eR = static_cast<double *> (eRes);
 									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
-									writeEnergy(axiona, eRes, rmasktab[ii]);
+									writeEnergy(axiona, eRes, rmasklabel[ii]);
 												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
 									trackFree(eRes);
 								}
+						}
+						
+						if((maskara[i] == SPMASK_REDO) && onlymaskenergy) {
+							LogMsg(VERB_NORMAL,"[Meas %d] Spectrum %s rmask %f skipped",indexa,masklab[i].c_str(),rmasktab[ii]);
+							continue; // skip spectra in Red mode when onlymaskenergy is true
 						}
 
 						/* For spectra we have two options:
@@ -681,7 +689,7 @@ writePMapHdf5s (axiona, LAB);
 						// NSPECTRA WITHOUT LUT CORRECTION
 						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS))
 						{
-							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old wersion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old version)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							// prof.start();
 							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS) ;
 								specAna.nRun(maskara[i], aux);
@@ -723,6 +731,35 @@ writePMapHdf5s (axiona, LAB);
 
 					} // END IF NSPECTRA WITHOUT CORRECTION
 
+					// SAXION SPECTRA
+					if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
+					{
+						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (saxion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
+						nRunType aux = nruntype & (NRUN_K | NRUN_G | NRUN_V);
+						specAna.nSRun(maskara[i], aux);
+						
+						if (nruntype & NRUN_K){
+							sprintf(LABEL, "sKS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+						}
+						if (nruntype & NRUN_G){
+							sprintf(LABEL, "sGS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+						}
+						if (nruntype & NRUN_V){
+							sprintf(LABEL, "sVS_%s",PRELABEL);
+								writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", LABEL);
+#ifdef USE_NN_BINS
+								writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", LABEL);
+#endif
+						}
+					} // END IF SAXION SPECTRA
 
 					if (prntmsk[i]){
 						LogMsg(VERB_NORMAL, "[Meas %d] m-matrix build and write skipped; uncomment if you wish otherwise!",indexa);
@@ -756,23 +793,23 @@ writePMapHdf5s (axiona, LAB);
 			}
 
 
-
-		if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
-		{
-			if (axiona->Field() == FIELD_SAXION){
-				// LogOut("NSPS ");
-				LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
-				specAna.nSRun();
-				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sKS");
-				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sGS");
-				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sVS");
-#ifdef USE_NN_BINS
-				writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
-				writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
-				writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
-#endif
-			}
-		}
+		// saxion spectra moved into mask loop
+		//if ( (axiona->Field() == FIELD_SAXION) && (measa & MEAS_NSP_S))
+		//{
+		//	if (axiona->Field() == FIELD_SAXION){
+		//		// LogOut("NSPS ");
+		//		LogMsg(VERB_NORMAL, "[Meas %d] NSPS ",indexa);
+		//		specAna.nSRun();
+		//		writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sKS");
+		//		writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sGS");
+		//		writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sVS");
+		//#ifdef USE_NN_BINS
+		//		writeArray(specAna.data(SPECTRUM_K), specAna.PowMax(), "/nSpectrum", "sKS");
+		//		writeArray(specAna.data(SPECTRUM_G), specAna.PowMax(), "/nSpectrum", "sGS");
+		//		writeArray(specAna.data(SPECTRUM_V), specAna.PowMax(), "/nSpectrum", "sVS");
+		//#endif
+		//	}
+		//}
 
 		if ( (indexa == 0) || (measa & MEAS_NNSPEC) )
 		{

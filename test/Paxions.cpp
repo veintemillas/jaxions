@@ -19,11 +19,13 @@
 
 #include "WKB/WKB.h"
 #include "gravity/potential.h"
+#include "axiton/tracker.h"
 
 using namespace std;
 using namespace AxionWKB;
 
-double find_saturation_ct(Scalar *axion, double zf);
+double find_saturation_ct (Scalar *axion, FILE *file);
+void   find_MC(Scalar *axion, double MC_thr);
 
 int	main (int argc, char *argv[])
 {
@@ -48,22 +50,14 @@ int	main (int argc, char *argv[])
 	double *bA = static_cast<double *> (binarray);
 	size_t sliceprint = 0 ; // sizeN/2;
 
-
-
 	commSync();
 	LogOut("\n-------------------------------------------------\n");
-	LogOut("\n           PAXION EVOLUTION to %f                   \n", zFinl);
+	LogOut("\n           PAXION EVOLUTION to %.1e                   \n", zFinl);
 	LogOut("\n-------------------------------------------------\n");
-
-	LogOut("\n-------------------------------------------------\n");
-
-	//--------------------------------------------------
-	//       READING INITIAL CONDITIONS
-	//--------------------------------------------------
 
 	Scalar *axion;
 
-	LogOut ("reading conf %d ...", fIndex);
+	LogOut ("Reading conf axion.%05d ...", fIndex);
 	readConf(&myCosmos, &axion, fIndex);
 	if (axion == NULL)
 	{
@@ -73,17 +67,22 @@ int	main (int argc, char *argv[])
 	LogOut ("\n");
 
 	if (axion->Field() != FIELD_AXION)
-	{
-		LogOut ("Error: Paxion only works in axion mode\n");
-		exit (0);
-	}
+		if (axion->Field() != FIELD_PAXION)
+		{
+			LogOut ("Error: Paxion only works in axion or paxion mode, call mpirun paxion3d --ftype axion if mapping from axion\n");
+			exit (0);
+		}
 	LogOut ("\n");
-
 
 	double z_now = (*axion->zV())	;
 	LogOut("--------------------------------------------------\n");
-	LogOut("           INITIAL CONDITIONS                     \n\n");
+	LogOut("        SIMULATION (%d x %d x %d) \n\n", axion->Length(), axion->Length(), axion->Depth());
+	//LogOut("           INITIAL CONDITIONS                     \n\n");
 
+	if (axion->Field() == FIELD_AXION)
+		LogOut("Field  =  AXION\n");
+	else
+		LogOut("Field  =  PAXION\n");
 	LogOut("Length =  %2.2f\n", myCosmos.PhysSize());
 	LogOut("nQCD   =  %2.2f\n", myCosmos.QcdExp());
 	LogOut("N      =  %ld\n",   axion->Length());
@@ -91,19 +90,18 @@ int	main (int argc, char *argv[])
 	LogOut("zGrid  =  %ld\n",   zGrid);
 	LogOut("z      =  %2.2f\n", z_now);
 	LogOut("zthr   =  %3.3f\n", myCosmos.ZThRes());
-	LogOut("zres   =  %3.3f\n", myCosmos.ZRestore());
-	LogOut("mass   =  %3.3f\n\n", axion->AxionMass());
+	LogOut("zres   =  %.2e\n", myCosmos.ZRestore());
+	LogOut("mass   =  %3.3f\n", axion->AxionMass());
+	LogOut("grav   =  %.1e\n",axion->BckGnd()->ICData().grav);
+	LogOut("beta   =  %.1f\n",axion->BckGnd()->ICData().beta);
 
 	if (axion->Precision() == FIELD_SINGLE)
-		LogOut("precis = SINGLE(%d)\n",FIELD_SINGLE);
+		LogOut("precis =  SINGLE(%d)\n",FIELD_SINGLE);
 	else
-		LogOut("precis = DOUBLE(%d)\n",FIELD_DOUBLE);
+		LogOut("precis =  DOUBLE(%d)\n",FIELD_DOUBLE);
 
 	LogOut("--------------------------------------------------\n");
 
-	//--------------------------------------------------
-	//       MEASUREMENT
-	//--------------------------------------------------
 	//- Measurement
 	MeasData lm;
 	//- number of plaquetes pierced by strings
@@ -116,20 +114,28 @@ int	main (int argc, char *argv[])
 	initPropagator (pType, axion, myCosmos.QcdPot(),Nng);
 	tunePropagator (axion);
 
-	LogOut("-----------------------\n TRANSITION TO PAXION \n");
-	thetaToPaxion (axion);
+	if (axion->Field() == FIELD_AXION)
+	{
+		LogOut("-----------------------\n TRANSITION TO PAXION \n");
+		thetaToPaxion (axion);
+	}
 	resetPropagator(axion);
 	// for (size_t aaaa = 0; aaaa < axion->Surf(); aaaa++){
 	// 	static_cast<float*>(axion->vCpu())[aaaa] = aaaa;
 	// 	static_cast<float*>(axion->vStart())[aaaa+axion->Size()] = aaaa;
 	// }
 
-
 	int counter = 0;
 	int index ;
 	double dzaux;
 	int i_meas = 0;
 	bool measrightnow = false;
+
+	/* Add measfile support */
+
+	// MeasFileParms measfilepar;
+	// readmeasfile (axion, &dumpmode, &measfilepar, &ninfa);
+	// i_meas = 0;
 
 	ninfa.index=index;
 	// ninfa.measdata |= MEAS_3DMAP;
@@ -139,6 +145,13 @@ int	main (int argc, char *argv[])
 	index++;
 	tunePropagator(axion);
 
+	FILE *file_sat;
+	file_sat = NULL;
+	char base[32];
+	sprintf(base, "pout/info_saturation.txt");
+	file_sat = fopen(base,"w+");
+	fprintf(file_sat, "# Time, Grad max, Grad mean, Saturation time\n\n");
+
 
 	/* Saturation */
 	double ct_sat = 1e300;
@@ -146,17 +159,17 @@ int	main (int argc, char *argv[])
 	/*typical value of phi*/
 	double typ_phi = 1;
 
-	if (axion->BckGnd()->ICData().grav>0.0){
+	if (axion->BckGnd()->ICData().grav>0.0)
+	{
 
-		LogOut ("Switch on gravity! (grav %..2e)\n",axion->BckGnd()->ICData().grav);
+		LogOut ("Switch on gravity! (grav %.2e)\n",axion->BckGnd()->ICData().grav);
 		initGravity(axion);
 
-		if (axion->BckGnd()->ICData().grav_hyb){
+		if (axion->BckGnd()->ICData().grav_hyb)
+		{
 			LogOut ("Tunning hybrid method\n");
 			tuneGravityHybrid	();
-
 		}
-
 
 		/* Conversion of Units ?
 			we could convert
@@ -207,19 +220,41 @@ int	main (int argc, char *argv[])
 			typ_phi = max(contBin.max(),-contBin.min());
 
 			/* Assumes gravitational field in m2start */
-			ct_sat = find_saturation_ct(axion,zFinl);
-			LogOut("Saturation time %.2f\n",ct_sat);
+			ct_sat = find_saturation_ct(axion,file_sat);
 
 	}
+	
 	bool sat = false;
+	bool closef = false;
 
+	//--------------------------------------------------
+	//	Halo TRACKER 
+	//--------------------------------------------------
+
+	/**/
+	LogMsg  (VERB_NORMAL, "[Pax] track ");
+	LogOut("0");
+	initTracker(axion);
+	LogMsg  (VERB_NORMAL, "[Pax] search ");
+	LogOut("1");
+	searchAxitons();
+	LogOut("2");
+	commSync();
+	LogMsg	(VERB_NORMAL, "[Pax] group ");
+	LogOut("1");
+	commSync();
+	grouptags();
+
+	//--------------------------------------------------
+	//      MAIN LOOP
+	//-------------------------------------------------
 
 	LogOut ("Start redshift loop\n\n");
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
 		dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
-
+		
 		/* normalise dynamical graavity time-step?
 		Option 1, (Naive) allow only phase~1 per iteration in the point with the largest grav-pot.
 		there is really not need because our integrator is exact in V as we alternate V and K Kick operators. */
@@ -241,90 +276,123 @@ int	main (int argc, char *argv[])
 		if (*axion->zV() < axion->BckGnd()->ZThRes() && *axion->zV() + dzaux > axion->BckGnd()->ZThRes())
 			dzaux = axion->BckGnd()->ZThRes() - *axion->zV();
 
+		if (!(iz%dump)){
+			measrightnow = true;
+		}
 
-		/* decrease saturation time to improve */
+		propagate (axion, dzaux);
+		//ct_sat = find_saturation_ct(axion, file_sat);
+		
 		if (axion->BckGnd()->ICData().grav_sat)
-			if (!sat && *axion->zV() == ct_sat)
-			{
+		{
+			if (*axion->zV() >= ct_sat && !sat)
+			{			
 				/* We want to saturate the conformal axion mass to be constant from this moment on
-				this means that mA R = (mA R)_now
-				in power-law cosmology R=ct^frw
-				mA^2 = 1/R^2frw, which we can achieve with nqcd = -2frw
-				nqcd is only active below zthreshold or above zrestore
-				if ct<Rc, then set Rc=R_restore=Rnow
-				if ct>Rc, set R_restore=R_now
-				if ct>Rrestore>Rc, need to change indi3 (because of the way Rthres is implemented)
-				 */
-				/*change definition of mA, nqcd */
+		 		this means that mA R = (mA R)_now
+		 		in power-law cosmology R=ct^frw
+		 		mA^2 = 1/R^2frw, which we can achieve with nqcd = -2frw
+		 		nqcd is only active below zthreshold or above zrestore
+		 		if ct<Rc, then set Rc=R_restore=Rnow
+		 		if ct>Rc, set R_restore=R_now
+		 		if ct>Rrestore>Rc, need to change indi3 (because of the way Rthres is implemented)
+		 		 */
 				double R0 = *axion->RV();
 				double Rc = axion->BckGnd()->ZThRes();
 				double Rr = axion->BckGnd()->ZRestore();
 				double aa = 2*axion->BckGnd()->Frw();
-				if (R0 <= Rc){
+				if (R0 <= Rc)
+				{
 					axion->BckGnd()->SetZThRes(R0);
 					axion->BckGnd()->SetZRestore(R0);
 					axion->BckGnd()->SetQcdExpr(-aa);
-					LogOut("Linear gravitaty resolution limit achived! SET Rc=Rr = %e and n = %f\n",R0,-aa);
-				} else if (R0 > Rc && R0 <= Rr) {
+					LogOut("--------------------------------------------------------------------------------------------------------");
+					LogOut("\nSaturation time %e",*axion->zV());
+					LogOut("\nLinear gravitational resolution limit achieved! Setting Rc=Rr = %e and n = %.1f\n",R0,-aa);
+				} 
+				else if (R0 > Rc && R0 <= Rr) 
+				{
 					axion->BckGnd()->SetZRestore(R0);
 					axion->BckGnd()->SetQcdExpr(-aa);
-					LogOut("Linear gravitaty resolution limit achived! SET Rr = %e (Rc = %e) and n = %f\n",R0,Rc,-aa);
-				} else if (R0 > Rc && R0 > Rr) {
+					LogOut("--------------------------------------------------------------------------------------------------------");
+					LogOut("\nSaturation time %e",*axion->zV());
+					LogOut("\nLinear gravitational resolution limit achieved! Setting Rr = %e (Rc = %e) and n = %.1f\n",R0,Rc,-aa);
+				} 
+				else if (R0 > Rc && R0 > Rr) 
+				{
 					// we will keep Rc, Rr, but will change indi3 to have the same conformal mass with the new nqcd = -2*frw
 					// aMassSq = indi3**2*(Rc)**nqcd * (R/Rr)**nqcd = indi3**2*(Rc R / Rr)**nqcd
 					// indi3_neq = aMass(nqcd)/[(Rc R / Rr)]**(-frw)
 					double newindi3 = axion->AxionMass()/pow(Rc*R0/Rr,-aa);
 					axion->BckGnd()->SetIndi3(-aa);
 					axion->BckGnd()->SetQcdExpr(-aa);
-					LogOut("Linear gravitaty resolution limit achived! RESET indi3 = %e (Rc = %e, Rr = %e) and n = %f\n",newindi3,Rc,Rr,-aa);
+					LogOut("--------------------------------------------------------------------------------------------------------");
+					LogOut("\nSaturation time %e",*axion->zV());
+					LogOut("\nLinear gravitational resolution limit achieved! Resetting indi3 = %e (Rc = %e, Rr = %e) and n = %.1f\n",newindi3,Rc,Rr,-aa);
 				}
 				// need to renormalise also indi3
-				// have to make aMass = indi3*indi3*pow(zThRes, nQcd)_old= indi3*indi3*pow(zThRes, -1)
-
+		 		// have to make aMass = indi3*indi3*pow(zThRes, nQcd)_old= indi3*indi3*pow(zThRes, -1)
+				
+				if (ninfa.printconf & PRINTCONF_PAXIONSAT)
+				{
+					LogOut("Dumping configuration %05d for Gadget ... ",index);
+					writeConf(axion,index);
+					LogOut("done! \n");
+					LogOut("--------------------------------------------------------------------------------------------------------\n");
+					
+				}
+				else
+					LogOut("--------------------------------------------------------------------------------------------------------\n");
+				
+				if (!closef)
+				{
+					fclose(file_sat);
+					closef = true;
+				}
 				sat = true;
 			}
-
-
-		if (!(iz%dump)){
-			measrightnow = true;
 		}
 
-		propagate (axion, dzaux);
 		counter++;
 
-		// Break the loop when we are done
-		if ( (*axion->zV()) >= zFinl ){
+		if ( (*axion->zV()) >= zFinl )
+		{
+			LogOut("--------------------------------------------------------------------------------------------------------\n");
 			LogOut("zf reached! ENDING ... \n"); fflush(stdout);
 			break;
 		}
-		if ( abs((*axion->zV())-zFinl) < 1.0e-10 ){
+		if ( abs((*axion->zV())-zFinl) < 1.0e-10 )
+		{
+			LogOut("--------------------------------------------------------------------------------------------------------\n");
 			LogOut("zf approximately reached! ENDING ... \n"); fflush(stdout);
 			break;
 		}
 
-		// Partial analysis
-		if(measrightnow){
-
+		if(measrightnow)
+		{
+			//if (*axion->zV() < ct_sat && axion->BckGnd()->ICData().grav_sat) // TO REVIEW THIS CHANGE
+			if (*axion->zV() < ct_sat)
+				ct_sat = find_saturation_ct(axion, file_sat);
 			ninfa.index=index;
 			lm = Measureme (axion, ninfa);
 			index++;
 			i_meas++ ;
 			measrightnow = false;
+			initTracker(axion);
+			//find_MC(axion,2.0);
 		}
 	}
 
-	//--------------------------------------------------
-	//       SAVE DATA
-	//--------------------------------------------------
-
 	ninfa.index++;
 
-	LogOut ("\n\n Dumping configuration %05d ...", ninfa.index);
-	writeConf(axion, ninfa.index);
-	LogOut ("Done!\n\n");
-
-
-	LogOut ("Printing FINAL measurement file %05d ... ", ninfa.index);
+	if (ninfa.printconf & PRINTCONF_FINAL)
+	{
+		LogOut ("Dumping configuration %05d ...", ninfa.index);
+		writeConf(axion, ninfa.index);
+		LogOut ("done!\n");
+	}
+	
+	LogOut ("Printing FINAL measurement file %05d \n", ninfa.index);
+	LogOut("--------------------------------------------------------------------------------------------------------\n");
 
 	Measureme (axion, ninfa);
 
@@ -333,6 +401,10 @@ int	main (int argc, char *argv[])
 	return 0;
 }
 
+
+/*  
+	AUXILIARY FUNCTIONS
+*/  
 
 /* Finds the time at which the gravitational term becomes large
   phase difference between two points
@@ -343,11 +415,8 @@ int	main (int argc, char *argv[])
 	I will calculate
 	ct mA gravi phi12_code = 1
 */
-
-
-double find_saturation_ct(Scalar *axion, double zFinl)
+double find_saturation_ct(Scalar *axion, FILE *file)
 {
-
 	double fff = axion->BckGnd()->Frw();
 
 	if (axion->BckGnd()->Indi3() > 0.0 && (fff > 0.0)){
@@ -378,7 +447,7 @@ double find_saturation_ct(Scalar *axion, double zFinl)
 	}
 	grad_mean /= axion->Size()-axion->Surf();
 	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] grad max %.2e grad_mean %.2e",grad_max, grad_mean);
-	LogOut("[VAX find_saturation_ct] grad max %.2e grad_mean %.2e\n",grad_max, grad_mean);
+	//LogOut("[VAX find_saturation_ct] grad max %.2e grad_mean %.2e\n",grad_max, grad_mean);
 
 	double ct = *axion->zV();
 	double phi12 = axion->BckGnd()->ICData().grav*grad_max;
@@ -429,8 +498,96 @@ double find_saturation_ct(Scalar *axion, double zFinl)
 		LogMsg(VERB_NORMAL,"ct2 %e fun2 %e meas %e k %e a %e", ct2, fun2, meas, k ,a );
 	}
 	//LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
+	fprintf(file, "%e %f %f %e\n",*axion->zV(),grad_max,grad_mean,ct2);
+	LogOut("Current saturation time: %.2e\n",ct2);
 	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] Saturation time %f ", ct2 );LogFlush();
 	return ct2 ;
 } else {
 	return -1 ; }
 }
+
+
+void find_MC(Scalar *axion, double MC_thr)
+{
+	size_t dataSize;
+	uint totlX, totlZ,realDepth;
+	double Delta;
+	hsize_t rOff;
+	MeasInfo ninfa;
+	ninfa.nbinsspec = 1000;
+	
+	totlZ	  = axion->TotalDepth();
+	totlX	  = axion->Length();
+	realDepth = axion->Depth();
+	Delta     = (double) axion->BckGnd()->PhysSize()/((double) totlZ); 
+	
+	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(realDepth);
+	
+	switch (axion->Precision())
+	{
+		case FIELD_SINGLE:
+		{
+			//dataType = H5T_NATIVE_FLOAT;
+			dataSize = sizeof(float);
+		}
+
+		break;
+
+		case FIELD_DOUBLE:
+		{
+			//dataType = H5T_NATIVE_DOUBLE;
+			dataSize = sizeof(double);
+		}
+
+		break;
+
+		default:
+
+		LogError ("Error: Invalid precision. How did you get this far?");
+		exit(1);
+
+		break;
+	}
+
+	if (dataSize == 4)
+	{
+		int mccount = 0;
+		int tot = 0;
+		float * re    = static_cast<float *>(axion->mStart());
+		float * im    = static_cast<float *>(axion->vStart());
+		float * newEn = static_cast<float *>(axion->m2Cpu());
+		
+		#pragma omp parallel for schedule(static)
+		for (size_t idx = 0; idx < rOff; idx++)
+		{
+			newEn[idx] = re[idx]*re[idx]+im[idx]*im[idx];
+			if (newEn[idx] > MC_thr)
+				mccount += 1;
+			tot += 1;
+		}
+		LogOut("MC ratio: %f",(float) mccount/(float) tot); 
+
+		// Now smooth field m2
+		double smth_len = 3*Delta;
+		//auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+		SpecBin specAna(axion, (pType & (PROP_SPEC | PROP_FSPEC)) ? true: false, ninfa);
+		specAna.smoothFourier(smth_len,FILTER_GAUSS);
+
+		int mccount_s = 0;
+		int tot_s = 0;
+		float * smEn = static_cast<float *>(axion->m2Cpu());
+		
+		#pragma omp parallel for schedule(static)
+		for (size_t idx = 0; idx < rOff; idx++)
+		{
+			smEn[idx] = re[idx]*re[idx]+im[idx]*im[idx];
+			if (smEn[idx] > MC_thr)
+				mccount_s += 1;
+			tot_s += 1;
+		}
+		LogOut("\nMC ratio (smoothed): %f",(float) mccount_s/(float) tot_s); 
+	}
+	
+	return ;
+
+}	
