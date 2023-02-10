@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 import numpy as np
@@ -42,7 +42,7 @@ if ftype == 'Naxion':
         con   = con[:,:,:,1]
 elif ftype == 'Saxion':
     if sys.argv[-2] == 'm':
-        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'][()].reshape(Ly,Lx,Lz,2))
         con   = np.arctan2(con[:,:,:,0],con[:,:,:,1])
     elif sys.argv[-2] == 'mr':
         con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
@@ -123,15 +123,15 @@ a 2D plane and interpolate data along that plane to generate a slice image
 ## Add path to library (just for examples; you do not need this)
 
 
-app = QtGui.QApplication([])
+app = QtWidgets.QApplication([])
 
 ## Create window with two ImageView widgets
-win = QtGui.QMainWindow()
+win = QtWidgets.QMainWindow()
 win.resize(800,800)
 win.setWindowTitle('pyqtgraph example: DataSlicing')
-cw = QtGui.QWidget()
+cw = QtWidgets.QWidget()
 win.setCentralWidget(cw)
-l = QtGui.QGridLayout()
+l = QtWidgets.QGridLayout()
 cw.setLayout(l)
 imv1 = pg.ImageView()
 imv2 = pg.ImageView()
@@ -170,4 +170,4 @@ update()
 if __name__ == '__main__':
     import sys
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+        QtWidgets.QApplication.instance().exec_()
