@@ -106,6 +106,8 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_TKACHEV: {
+			// TODO THIS WILL NOT WORK
+			LogError("Configuration Tkachev in GPU not ready!");
 			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
 			prof.start();
 			MomParms mopa;
@@ -129,6 +131,7 @@ void	ConfGenerator::runGpu	()
 		break;
 
 		case CONF_KMAX: {
+			LogError("Configuration KMAX in GPU not ready! check FFT plans");
 			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
 			prof.start();
 			MomParms mopa;
@@ -241,7 +244,7 @@ void	ConfGenerator::runCpu	()
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.cType    %d",ic.cType    );
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.smvarTy  %d",ic.smvarType);
 	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.mocoty   %d",ic.mocoty   );
-
+	LogMsg(VERB_NORMAL,"[gen] myCosmos.ic.randommom   %d",ic.randommom   );
 	LogMsg(VERB_NORMAL, "[gen] cType is %d",cType);
 
 	switch (cType)
@@ -284,8 +287,8 @@ void	ConfGenerator::runCpu	()
 		case CONF_KMAX: {
 			LogMsg(VERB_NORMAL,"[GEN] CONF_KMAX started!\n ");
 			LogFlush();
-			auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
-			LogFlush();
+			AxionFFT::initPlan (axionField, FFT_CtoC_MtoM,  FFT_FWDBCK, "InitKMAX");
+			auto &myPlan = AxionFFT::fetchPlan("InitKMAX");
 			prof.start();
 
 			// LogOut("[GEN] momConf with kMax %zu kCrit %f!\n ", kMax, kCrt);
@@ -295,6 +298,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kCrt = ic.kcr;
 				mopa.mocoty = ic.mocoty;
 				mopa.cmplx = true;
+				mopa.mp = axionField->mStart();
 			momConf(axionField, mopa);
 
 			LogFlush();
@@ -311,7 +315,8 @@ void	ConfGenerator::runCpu	()
 		case CONF_VILGOR:{
 			LogMsg(VERB_NORMAL,"\n ");
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGOR started! ");
-			auto &myPlan = AxionFFT::fetchPlan("Init");  // now transposed
+			AxionFFT::initPlan (axionField, FFT_CtoC_MtoM, FFT_FWDBCK, "InitVilgor");
+			auto &myPlan = AxionFFT::fetchPlan("InitVilgor");  // now transposed
 
 			double LALA = axionField->BckGnd()->Lambda();
 
@@ -369,6 +374,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kCrt = nc;
 				mopa.mocoty = ic.mocoty;
 				mopa.cmplx = true;
+				mopa.mp = axionField->mStart();
 			momConf(axionField, mopa);
 
 			prof.stop();
@@ -408,7 +414,8 @@ void	ConfGenerator::runCpu	()
 
 		case CONF_VILGORK: {
 			LogMsg(VERB_NORMAL,"[GEN] CONF_VILGORk started! ");
-			auto &myPlan = AxionFFT::fetchPlan("Init");  // now transposed
+			AxionFFT::initPlan (axionField, FFT_CtoC_MtoM, FFT_FWDBCK, "InitVilgorK");
+			auto &myPlan = AxionFFT::fetchPlan("InitVilgorK");  
 
 			double LALA = axionField->BckGnd()->Lambda();
 			if (preprop) {
@@ -472,6 +479,7 @@ void	ConfGenerator::runCpu	()
 				mopa.kCrt = nc;
 				mopa.mocoty = MOM_MEXP2;
 				mopa.cmplx = true;
+				mopa.mp = axionField->mStart();
 			momConf(axionField, mopa);
 
 			prof.stop();
@@ -801,11 +809,13 @@ void	ConfGenerator::conflola(Cosmos *myCosmos, Scalar *axionField)
 	  MPI_Bcast (&r, sizeof(double), MPI_BYTE, 0, MPI_COMM_WORLD);
 	  commSync();
 	  LogMsg(VERB_NORMAL,"[GEN] random %f,%f -> %f",r, ic.kcr, pow(ic.kcr,r));
-		xit *= pow(ic.kcr,r);
+	  xit *= pow(ic.kcr,r);
 	}
 
 	/* Creates the configuration with correct value of xit*/
-	putxi(xit,true);
+	LogMsg(VERB_NORMAL,"[GEN] call putxi mode %d",ic.kMax);
+
+	putxi(xit,ic.kMax);
 
 	normaliseField(axionField, FIELD_M);
 
@@ -911,7 +921,7 @@ void	ConfGenerator::confcole(Cosmos *myCosmos, Scalar *axionField)
 
 void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 {
-
+	Profiler &prof = getProfiler(PROF_GENCONF);
 	LogMsg(VERB_NORMAL,"\n ");
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX started! ");
 	IcData ic = myCosmos->ICData();
@@ -945,8 +955,8 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 								}
 			}
 	}
-	LogFlush();
-
+	/* Generate axion in momentum space */
+	prof.start();
 	LogMsg(VERB_NORMAL,"[GEN] Create axion field! ");
 	MomParms mopa;
 		mopa.kMax = axionField->Length();
@@ -955,14 +965,25 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		mopa.mocoty = MOM_SPAX;
 		mopa.mfttab = mm;
 		mopa.cmplx = false;
+		mopa.randommom = ic.randommom;
 
 	momConf(axionField, mopa);
-	LogFlush();
+	
+	prof.stop();
+	prof.add("momConf", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+	/* iFFT */
+	prof.start();
 	LogMsg(VERB_NORMAL,"[GEN] fft! ");
-	LogFlush();
 	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 	myPlan.run(FFT_BCK);
+	
+	prof.stop();
+	prof.add("fft", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
 	/* unpad */
+	prof.start();
+
 	LogMsg(VERB_NORMAL,"[GEN] unpad! ");
 	size_t dl = axionField->Length()*axionField->Precision();
 	size_t pl = (axionField->Length()+2)*axionField->Precision();
@@ -977,20 +998,38 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		size_t	fOff = sl*pl;
 		memmove	(ms+oOff, m2+fOff, dl);
 	}
+	
+	prof.stop();
+	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
 
 	LogMsg(VERB_NORMAL,"[GEN] Create axion velocity! ");
-	LogFlush();
+	prof.start();
 	mopa.mfttab = vv;
 	momConf(axionField, mopa);
+	prof.stop();
+	prof.add("momConf v", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+
+
 	LogMsg(VERB_NORMAL,"[GEN] fft! ");
+	prof.start();
+
 	myPlan.run(FFT_BCK);
-	/* unpad */
+	prof.stop();
+	prof.add("fft", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+/* unpad */
 	LogMsg(VERB_NORMAL,"[GEN] unpad! ");
+	prof.start();
 	for (size_t sl=0; sl<ss; sl++) {
 		size_t	oOff = sl*dl;
 		size_t	fOff = sl*pl;
 		memmove	(vs+oOff, m2+fOff, dl);
 	}
+	prof.stop();
+	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
 
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX end! \n");
 } // endconf spectrum axions
@@ -1012,7 +1051,11 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 		{
 			LogMsg(VERB_NORMAL,"[GEN] Tkachev Initial conditions only prepared for RD !\n ");
 		}
-	auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
+
+	AxionFFT::initPlan (axionField, FFT_CtoC_MtoM, FFT_FWDBCK, "InitM");
+	AxionFFT::initPlan (axionField, FFT_CtoC_VtoV, FFT_FWDBCK, "InitV");
+	auto &myPlanM = AxionFFT::fetchPlan("InitM"); // now transposed
+	auto &myPlanV = AxionFFT::fetchPlan("InitV"); // now transposed
 	//probably the profiling has to be modified
 
 	double kCritz = axionField->BckGnd()->PhysSize()/(6.283185307179586*(*axionField->zV()));
@@ -1024,6 +1067,8 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 		mopa.kCrt = kCritz;
 		mopa.mocoty = MOM_MVSINCOS;
 		mopa.cmplx = true;
+		mopa.mp = axionField->mStart();
+		mopa.vp = axionField->vStart();
 	momConf(axionField, mopa);
 
 	// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
@@ -1064,20 +1109,8 @@ void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)
 	// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
 	// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
 
-	myPlan.run(FFT_BCK);
-	// theta' into M
-
-	// LogOut("m %e %e \n", real(ma[0]), imag(ma[0]));
-	// LogOut("v %e %e \n", real(va[0]), imag(va[0]));
-	// LogOut("2 %e %e \n", real(m2[1]), imag(m2[1]));
-
-	// FIX FOR LOWMEM!
-	// move theta from V to M2
-	size_t volData = axionField->Size()*axionField->DataSize();
-	memcpy(static_cast<char *>(axionField->m2Cpu()), static_cast<char *>(axionField->vCpu()), volData);
-	// move theta' from M to V
-	memcpy(static_cast<char *>(axionField->vCpu()), static_cast<char *>(axionField->mStart()), volData);
-	myPlan.run(FFT_BCK);
+	myPlanM.run(FFT_BCK);
+	myPlanV.run(FFT_BCK);
 	// takes only the real parts and builds exp(itheta), ...
 	// it builds
 	double theta2_loco = 0;
@@ -1129,7 +1162,11 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] CONF_THERMAL started!\n ");
 	//these initial conditions make sense only for RD
 
-	auto &myPlan = AxionFFT::fetchPlan("Init"); // now transposed
+	AxionFFT::initPlan (axionField, FFT_CtoC_MtoM, FFT_FWDBCK, "InitM");
+	AxionFFT::initPlan (axionField, FFT_CtoC_VtoV, FFT_FWDBCK, "InitV");
+	auto &myPlanM = AxionFFT::fetchPlan("InitM"); // now transposed
+	auto &myPlanV = AxionFFT::fetchPlan("InitV"); 
+
 
 	// ft_theta' in M2, ft_theta in V
 
@@ -1164,17 +1201,13 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 		mopa.kCrt   = ic.kcr;
 		mopa.mocoty = MOM_MVTHERMAL;
 		mopa.cmplx  = true;
+		mopa.mp = axionField->mStart();
+		mopa.vp = axionField->vStart();
 	momConf(axionField, mopa);
 
-	myPlan.run(FFT_BCK);
+	myPlanM.run(FFT_BCK);
+	myPlanV.run(FFT_BCK);
 	// cphi' in m array
-
-	// move cphi from v to m2 array
-	size_t volData = axionField->Size()*axionField->DataSize();
-	memcpy(static_cast<char *>(axionField->m2Cpu()), static_cast<char *>(axionField->vCpu()), volData);
-	// move cphi' from m to m
-	memcpy(static_cast<char *>(axionField->vCpu()), static_cast<char *>(axionField->mStart()), volData);
-	myPlan.run(FFT_BCK);
 
 	double norma = 1./pow(axionField->BckGnd()->PhysSize(),1.5);
 
@@ -1204,14 +1237,14 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 void	ConfGenerator::putxi(double xit, bool kspace)
 {
 	/* Builds a configuration with a given value of xit */
-	LogMsg(VERB_NORMAL,"[GENputxi] putxi -> %f! ",xit);
+	LogMsg(VERB_NORMAL,"[GENputxi] putxi xi = %f, mode %d ",xit,kspace);
 	/*This is the expression that follows from the definition of xi*/
 	double nN3 = (6.0*xit*axionField->Delta()*axionField->Delta()/pow(*axionField->zV(),2));
 	nN3 = min(nN3,1.0);
 
 	if (kspace)
-	{
-		auto &myPlan = AxionFFT::fetchPlan("Init");  // now transposed
+	{	AxionFFT::initPlan (axionField, FFT_CtoC_MtoM,  FFT_FWDBCK, "Initputxi");
+		auto &myPlan = AxionFFT::fetchPlan("Initputxi");  // now transposed
 
 		/* This is the phenomenological calibrated fit with MOM_MEXP2*/
 		double nc = axionField->Length()*std::sqrt((nN3/4.7)*pow(1.-pow(nN3,1.5),-1./1.5));
@@ -1225,6 +1258,7 @@ void	ConfGenerator::putxi(double xit, bool kspace)
 			mopa.kCrt = nc;
 			mopa.mocoty = MOM_MEXP2;
 			mopa.cmplx = true;
+			mopa.mp = axionField->mStart();
 		momConf(axionField, mopa);
 
 		axionField->setFolded(false);
@@ -1233,6 +1267,13 @@ void	ConfGenerator::putxi(double xit, bool kspace)
 	} else {
 	/* This is the phenomenological calibrated fit with alpha =0.143*/
 		int niter = (int) (0.8/nN3);
+		
+		LogMsg(VERB_NORMAL,"[GENputxi-smooth] xit(logi)= %f estimated nN3 = %f -> niter = %f!",xit, nN3, niter);
+		
+		IcData ic = axionField->BckGnd()->ICData();
+		ic.fieldindex = FIELD_M;
+		randConf (axionField,ic);
+
 		if (niter>100) {
 				LogMsg(VERB_NORMAL,"[GENputxi] WARNING!! More than 100 iterations is not particularly efficient! update VILGOR algorithm to use FFTs!!\n");
 		}
