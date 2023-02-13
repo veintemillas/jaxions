@@ -24,6 +24,11 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	double        mass2 = mopa.mass2;
 
 	LogMsg(VERB_NORMAL,"[momXeon] Called with kMax %zu kCrit %f (kCrit es %f)", kMax, kCrat, kCrit);
+	if (mopa.randommom)
+		LogMsg(VERB_NORMAL,"[momXeon] random momenta");
+	else
+		LogMsg(VERB_NORMAL,"[momXeon] Modulus of momenta fixed with --norandommom!");
+
 	std::vector<double> 	mm = mopa.mfttab;
 	std::vector<double> 	ii;
 	tk::spline mf;
@@ -108,12 +113,19 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 
 					size_t modP = pz*pz + py*py + px*px;
 
+					/* this monitors the speed of the loop */
+					if (nThread ==0 && commRank() ==0 && !(py%10) && px == 0 && pz == 0)
+						LogMsg (VERB_PARANOID, "[momXeon] px py pz %d %d %d", px, py, pz);
+					
 					if (modP <= 3*kmax2 )
 					{
 						Float vl = Twop*(uni(mt64));
 						Float al = distri(mt64);
 						// complex<Float> marsa = exp( complex<Float>(0,vl + px*Twop/2.0+py*Twop/2.0) )*al;
-						complex<Float> marsa = exp( complex<Float>(0,vl) )*al;
+						//complex<Float> marsa = exp( complex<Float>(0,vl) )*al;
+						complex<Float> marsa = complex<Float>(0,vl);
+						if (mopa.randommom)
+							marsa *= al;
 
 						switch (Moco)
 						{
@@ -123,10 +135,12 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 							break;
 							case(MOM_SPAX):
 								{
-									Float sc = mf((double) sqrt( (Float) modP));
-									fM[idx] = marsa*sc;
-									// if (modP < 10)
-									// 	printf("mom %f sc %f\n",(double) sqrt( (Float) modP),sc);
+									//Float sc = mf((double) sqrt( (Float) modP));
+									double sc = (Float) sqrt(modP);
+									int b    = (int) sc;
+									Float c0 = mm[b];
+									Float c1 = mm[b+1];
+									fM[idx]  = marsa*((Float) (c0+(c1-c0)*(sc-b)));
 
 								}
 							break;
@@ -144,9 +158,9 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									Float mP = sqrt(((Float) modP))/(kcrit);
 									// v to m2 m to v
 									Float sc = (modP == 0) ? 1.0 : sin(mP)/mP;
-									fV[idx] = marsa*sc;
-									sc = (modP == 0) ? 0.0 : (cos(mP) - sc) ;
 									fM[idx] = marsa*sc;
+									sc = (modP == 0) ? 0.0 : (cos(mP) - sc) ;
+									fV[idx] = marsa*sc;
 								}
 							break;
 
@@ -158,13 +172,13 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									// field (goes to V array)
 									// the zero mode has infinite thermal expectation value in the continuum
 									// discrete version not ... 0? adjusted to VEV? ...
-									fV[idx] = (modP == 0) ? 0 : marsa*mE/mP ;
+									fM[idx] = (modP == 0) ? 0 : marsa*mE/mP ;
 									// velocity (goes into M)
 									// the zero mode is finite mE/mP -> kcrit
 									vl = Twop*(uni(mt64));
 									al = distri(mt64);
 									marsa   = exp( complex<Float>(0,vl) )*al;
-									fM[idx] = (modP == 0) ? marsa*sqrt(kcrit) : marsa*mE*mP ;
+									fV[idx] = (modP == 0) ? marsa*sqrt(kcrit) : marsa*mE*mP ;
 								}
 							break;
 
@@ -207,7 +221,9 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		} // END triple loop
 	}
 
-
+	// In some cases we want to adjust the zero mode by hand
+	// not in SPAX! 
+	if (Moco != MOM_SPAX)
 	if (commRank() == 0)
 		{
 			if ( mode0 < 3.141597 )
@@ -262,12 +278,13 @@ void	momConf (Scalar *field, MomParms mopa)
 	{
 		case FIELD_DOUBLE:
 		{
-			complex<double>* ma;
+			complex<double>* ma = static_cast<complex<double>*> (mopa.mp);
 			complex<double>* va = static_cast<complex<double>*> (field->vCpu());
-			if (field->LowMem())
-				ma = static_cast<complex<double>*> (field->mStart());
-			else
-				ma = static_cast<complex<double>*> (field->m2Cpu());
+			// Wild modification
+			//if (field->LowMem())
+			//ma = static_cast<complex<double>*> (field->mStart());
+			//else
+			//	ma = static_cast<complex<double>*> (field->m2Cpu());
 
 			switch(Moco)
 			{
@@ -307,12 +324,13 @@ void	momConf (Scalar *field, MomParms mopa)
 
 		case FIELD_SINGLE:
 		{
-			complex<float>* ma;
+			complex<float>* ma = static_cast<complex<float>*> (mopa.mp);
 			complex<float>* va = static_cast<complex<float>*> (field->vCpu());
-			if (field->LowMem())
-				ma = static_cast<complex<float>*> (field->mStart());
-			else
-				ma = static_cast<complex<float>*> (field->m2Cpu());
+			//WILD modification
+			//if (field->LowMem())
+			//ma = static_cast<complex<float>*> (field->mStart());
+			//else
+			//	ma = static_cast<complex<float>*> (field->m2Cpu());
 
 			switch(Moco)
 			{
