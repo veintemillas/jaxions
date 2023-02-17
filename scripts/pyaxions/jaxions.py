@@ -13,7 +13,7 @@ import pickle
 import matplotlib.colors as col
 
 
-import cmasher as cmr
+#import cmasher as cmr
 from matplotlib import cm
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import ListedColormap
@@ -1153,13 +1153,10 @@ inv_maskdic = {v: k for k, v in maskdic.items()}
 
 
 
-
-
-
 # build a measurement list
 # build a measurement list of 5 columns
 class mli:
-    def __init__(self,msa=1.0,L=6.0,N=1024):
+    def __init__(self,verb=True,msa=1.0,L=6.0,N=1024):
         # measurement time
         self.ctab = [] ;
         # measurement meas
@@ -1185,6 +1182,8 @@ class mli:
         self.outc = []
         self.outd = []
         self.oute = []
+        #verbosity 
+        self.verb = verb
 
     def dic (self):
         return measdic
@@ -1198,19 +1197,23 @@ class mli:
         self.me |= meas
     def me_adds (self, meass):
         self.me |= measdic[fildic(meass)]
-        print("adds %s (%d) > me %d"%(fildic(meass), measdic[fildic(meass)],self.me))
+        if self.verb:
+            print("adds %s (%d) > me %d"%(fildic(meass), measdic[fildic(meass)],self.me))
 
     def me_addmap (self, caca):
         self.mapi |= mapdic[fildic_map(caca)]
-        print("map %s (%d) > me %d"%(fildic_map(caca), mapdic[fildic_map(caca)],self.mapi))
+        if self.verb:
+            print("map %s (%d) > me %d"%(fildic_map(caca), mapdic[fildic_map(caca)],self.mapi))
 
     def me_addmask(self, caca):
         self.spmaski |= maskdic[fildic_mask(caca)]
-        print("map %s (%d) > me %d"%(fildic_mask(caca), maskdic[fildic_mask(caca)],self.spmaski))
+        if self.verb:
+            print("map %s (%d) > me %d"%(fildic_mask(caca), maskdic[fildic_mask(caca)],self.spmaski))
 
     def me_addnrt (self, caca):
         self.spKGVi |= nrtdic[fildic_nrt(caca)]
-        print("map %s (%d) > me %d"%(fildic_nrt(caca), nrtdic[fildic_nrt(caca)],self.spKGVi))
+        if self.verb:
+            print("map %s (%d) > me %d"%(fildic_nrt(caca), nrtdic[fildic_nrt(caca)],self.spKGVi))
 
     #caca
     def nmt_rem (self,meas):
@@ -1248,16 +1251,19 @@ class mli:
         nrteloc = nrttype | self.spKGVi
         if (measloc & (measdic['MEAS_NSP_A'] | measdic['MEAS_PSP_A'])) and (maskloc == maskdic['SPMASK_NONE']):
             maskloc |= maskdic['SPMASK_FLAT']
-            print('Axion spectrum selected w/o mask, use default = FLAT')
+            if self.verb:
+                print('Axion spectrum selected w/o mask, use default = FLAT')
         if (measloc & measdic['MEAS_NSP_A']) and (nrteloc == nrtdic['NRUN_NONE']):
             nrteloc = nrtdic['NRUN_K'] | nrtdic['NRUN_G'] | nrtdic['NRUN_V'] | nrtdic['NRUN_S']
-            print('Axion spectrum selected w/o type, use default = KGVS')
+            if self.verb:
+                print('Axion spectrum selected w/o type, use default = KGVS')
 
         self.mtab.append(measloc)
         self.maptab.append(mapaloc)
         self.spmasktab.append(maskloc)
         self.spKGVtab.append(nrteloc)
-        print("Set with me %s map %s spmask %s KGV %s created"%(measloc, mapaloc, maskloc, nrteloc))
+        if self.verb:
+            print("Set with me %s map %s spmask %s KGV %s created"%(measloc, mapaloc, maskloc, nrteloc))
 
     def give(self,name="./measfile.dat"):
 
@@ -1292,11 +1298,14 @@ class mli:
             if sum(mask)>1:
                 for outlist, pra in zip([outb, outc, outd, oute],[self.outb, self.outc, self.outd, self.oute]):
                     ii=0
-                    print("%f merged "%(ct),end="")
+                    if self.verb:
+                        print("%f merged "%(ct),end="")
                     for ca in outlist[mask]:
                         ii |= ca
-                        print("%d "%(ca),end="")
-                    print(" into %d "%(ii))
+                        if self.verb:
+                            print("%d "%(ca),end="")
+                    if self.verb:
+                        print(" into %d "%(ii))
                     pra.append(ii)
             else :
                 self.outb.append(outb[mask][0])
@@ -1307,12 +1316,15 @@ class mli:
 
         cap = []
         file = open(name,"w")
-        print(self.outa)
-        print("ct    meas     map    mask     kgv   ")
+        if self.verb:
+            print(self.outa)
+        if self.verb:
+            print("ct    meas     map    mask     kgv   ")
         file.write("ct       meas   map  mask kgv \n")
         for i in range(len(self.outa)):
             if self.outa[i] <= self.ctend :
-                print("%f %d %d %d %d"%(self.outa[i],self.outb[i],self.outc[i],self.outd[i],self.oute[i]))
+                if self.verb:
+                    print("%f %d %d %d %d"%(self.outa[i],self.outb[i],self.outc[i],self.outd[i],self.oute[i]))
 
                 file.write("%f %d %d %d %d\n"%(self.outa[i],self.outb[i], self.outc[i], self.outd[i], self.oute[i]))
                 cap.append([self.outa[i],self.outb[i], self.outc[i], self.outd[i], self.oute[i]])
