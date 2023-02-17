@@ -80,6 +80,7 @@
 
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
+		inline void     tlowGpu  (const double)  override;      // Lowmem GPU theta useful for serverGPUs
 
 		inline double	cFlops	(const PropcType)	override;
 		inline double	cBytes	(const PropcType)	override;
@@ -170,7 +171,7 @@
 					case	DEV_GPU:
 						if (field->LowMemGPU() || field->LowMem()) {
 							propSaxion = [this](const double dz) { this->lowGpu(dz); };
-							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+							propAxion  = [this](const double dz) { this->tlowGpu(dz); };
 						} else {
 							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
 							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
@@ -349,6 +350,83 @@
 		exit(1);
 	#endif
 	}
+
+	// Generic axion lowmem propagator
+
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
+	void	PropClass<nStages, lastStage, VQcd>::tlowGpu	(const double dz) {
+	#ifdef  USE_GPU
+		LogMsg(VERB_PARANOID,"[prop] axion loe mem");
+		PropParms ppar;
+		loadparms(&ppar, axion);
+		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
+		const uint ext = uV + uS;
+
+		double *z  = axion->zV();
+
+		double *cD = d;
+		
+		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
+
+		if (lastStage == PROP_FIRST) {
+			const double	d0 = d[0];
+			LogMsg(VERB_PARANOID,"[prop] axion loe mem 11");
+
+			updateMThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, 0., d0, uS, ext, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[2], wMod);
+			*z += dz*d0;
+			axion->updateR();
+			cD = &(d[1]);
+			cudaDeviceSynchronize();	// This is not strictly necessary, but simplifies things a lot
+		}
+
+		#pragma unroll
+		for (int s = 0; s<nStages; s++) {
+			LogMsg(VERB_PARANOID,"[prop] axion loe mem s = %d cD %f",s, cD[s]);
+			loadparms(&ppar, axion);
+
+			const double	c1 = c[s], d1 = cD[s];
+
+			updateVThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, 2*uS, uV, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[2], wMod);
+			axion->exchangeGhosts(FIELD_M);
+			updateVThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, 2*uS, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[0], wMod);
+			updateVThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uV,  ext, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[1], wMod);
+			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[0]);
+			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[1]);
+			//cudaDeviceSynchronize();
+			updateMThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, ext, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[2], wMod);
+	
+			//cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+			
+			*z += dz*d1;
+			axion->updateR();
+			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[2]);
+		}
+
+		if (lastStage == PROP_LAST) {
+			const double	c0 = c[nStages];
+
+			loadparms(&ppar, axion);
+
+			updateVThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c0, 0., 2*uS, uV, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[2], wMod);
+			axion->exchangeGhosts(FIELD_M);
+			updateVThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c0, 0., uS, 2*uS, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[0], wMod);
+			updateVThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c0, 0., uV,  ext, precision, xBlock, yBlock, zBlock,
+				    ((cudaStream_t *)axion->Streams())[1], wMod);
+			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+		}
+	#else
+		LogError ("Error: gpu support not built");
+		exit(1);
+	#endif
+	}
+
 
 	// Generic saxion lowmem propagator
 
