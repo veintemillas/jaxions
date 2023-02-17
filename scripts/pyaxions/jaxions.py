@@ -13,7 +13,10 @@ import pickle
 import matplotlib.colors as col
 
 
-#import cmasher as cmr
+
+
+
+
 from matplotlib import cm
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import ListedColormap
@@ -1048,8 +1051,56 @@ def gm(address,something='summary',printerror=False):
 # ------------------------------------------------------------------------------
 
 
+#Mathieu
+
+#Sort out folders and classify datasets
+def sof(PATH, PARAM = 'msa', SAVE = []):
+    """
+    sof(PATH, PARAM = 'msa', SAVE = [])
+
+    - looks for "out" folders in PATH and stores all the individual paths
+    - associates and sorts the data according to PARAM, which is read out directly from the simulation data
+    - (optional:) for every dataset, the parameters in SAVE are stored and related to the data via an additional dictionary
+
+    returns: param_dict (dict with paths of the simulation data, keys = PARAM values), save_dict (dict with additional information about every dataset)
+
+    PATH is the path to the directory containing one or multiple "out" folders with simulation data
+    PARAM is a string of a simulation parameter according to which we want to classify the data (see help(gm) for an overview of all available options)
+    SAVE (optional) is a list of strings of simulation parameters that are extracted from th simulation data (same options as for PARAM)
+
+    """
+
+    param_dict = {}
+    save_dict = {}
+
+    #Access all the "out" folders in the "PATH" directory
+    out_dirs = sorted([dirs for dirs in next(os.walk(PATH))[1] if dirs.startswith("out")])
+    #Store full path for every individual folder to avoid trouble
+    out_dirs = [PATH + str(out) for out in out_dirs]
+
+    #Read param and save from initial measure file and use as key for the dict
+    for out_dir in out_dirs:
+        key = str(PARAM) + "=" + str(gm(out_dir + "/m/axion.m.00000", PARAM))
+
+        if key not in param_dict.keys():
+            param_dict.update({key:[]})
+
+        param_dict[key].append(out_dir)
+
+        #If the user wants to save additional information, access it and associate it with the dataset
+        if len(SAVE)>0:
+
+            #Create dict key for every data set
+            save_dict.update({out_dir:[]})
+
+            for props in SAVE:
+                prop = gm(out_dir + "/m/axion.m.00000", props)
+                save_dict[out_dir].append(prop)
+
+    return param_dict, save_dict
 
 
+#Javier
 
 
 def po22human(inte,labs='meas'):
@@ -2517,7 +2568,7 @@ class axion:
             sorted_list = None
             print(f"Error: {name}m folder not found!")
         return sorted_list
-    
+
     # def axion(mf,i):
     #     N = gm(mf[i],'N')
     #     try:
@@ -2537,7 +2588,7 @@ class axion:
             proj = []
             print('Error: Projection not found in file %s, set --p2DmapP in the command line'%mf[i])
         return proj
-    
+
 
 
 class paxion:
@@ -2561,7 +2612,7 @@ class paxion:
             sorted_list = None
             print(f"Error: {name}m folder not found!")
         return sorted_list
-    
+
     def phase(mf,i):
         N = gm(mf[i],'N')
         try:
@@ -2572,7 +2623,7 @@ class paxion:
             pha = None
             print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
         return pha
-    
+
     def density(mf,i):
         N = gm(mf[i],'N')
         try:
@@ -2608,7 +2659,7 @@ class paxion:
             vel = None
             print('Error: Map data not found in file %s, set --p2Dmap in the command line'%mf[i])
         return vel
-    
+
     def projection(mf,i):
         try:
             proj = gm(mf[i],'slice//map/P')
@@ -2630,7 +2681,7 @@ class plot:
         cbar.ax.tick_params(which='major',length=majorticklength,width=majortickwidth)
         cbar.solids.set_edgecolor("face")
         return cbar
-        
+
     def single(xlab='',ylab='',\
                  lw=1.5,lfs=25,tfs=18,size_x=13,size_y=8,Grid=False):
         plt.rcParams['axes.linewidth'] = lw
@@ -2694,14 +2745,14 @@ class gadget:
         return mc
 
     def load_particles(f):
-        npart = f['Header'].attrs['NumPart_Total'][-1] 
-        bsize = f['Header'].attrs['BoxSize'] 
+        npart = f['Header'].attrs['NumPart_Total'][-1]
+        bsize = f['Header'].attrs['BoxSize']
         red   = f['Header'].attrs['Redshift']
-        pos   = np.reshape(f['/PartType1/Coordinates'],(npart,3)) 
+        pos   = np.reshape(f['/PartType1/Coordinates'],(npart,3))
         vel   = np.reshape(f['/PartType1/Velocities'] ,(npart,3))
         vmod  = np.reshape(np.sqrt(vel[:,0]**2+vel[:,1]**2+vel[:,2]**2),(npart,1))
-        mass  = np.reshape(f['/PartType1/Masses']     ,(npart,1)) 
-        ids   = np.reshape(f['/PartType1/ParticleIDs'],(npart,1)) 
+        mass  = np.reshape(f['/PartType1/Masses']     ,(npart,1))
+        ids   = np.reshape(f['/PartType1/ParticleIDs'],(npart,1))
         pp    = np.concatenate((pos,vel,vmod,mass,ids,),axis=1)
         print("Loaded %d particles at z=%.1f"%(npart,red))
         return pp
