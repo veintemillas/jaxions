@@ -39,6 +39,7 @@
 
 		virtual void	lowCpu	(const double) = 0;	// Lowmem only available for saxion
 		virtual void	lowGpu	(const double) = 0;
+		virtual void	tlowGpu	(const double) = 0;
 
 		virtual double	cFlops	(const PropcType) = 0;
 		virtual double	cBytes	(const PropcType) = 0;

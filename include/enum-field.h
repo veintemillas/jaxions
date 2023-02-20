@@ -818,6 +818,7 @@
 			bool          grav_sat;
 			bool          part_vel;
 			AxitonInfo    axtinfo;
+			bool          randommom;
 		}	IcData;
 
 		typedef	struct	MomParms_v
@@ -828,8 +829,11 @@
 			double        mass2;
 			double        k0;
 			FieldType     ftype;
-			std::vector<double>       mfttab;
-			bool 					cmplx;
+			std::vector<double>     mfttab;
+			bool 	      cmplx;
+			bool          randommom = true;
+			void*         mp;
+			void*         vp;
 		}	MomParms;
 
 		typedef	struct	MeasFileParms_v

@@ -688,6 +688,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.cType     = CONF_KMAX;
 	icdatst.smvarType = CONF_RAND;
 	icdatst.mocoty    = MOM_MEXP2;
+	icdatst.randommom = true;
 	icdatst.fieldindex=FIELD_NO;
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
@@ -1054,6 +1055,12 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--norandommom"))
+		{
+			icdatst.randommom = false;
+		       	PARSE1;	
 		}
 
 		if (!strcmp(argv[i], "--alpha"))
