@@ -14,11 +14,10 @@ displaying and analyzing 2D and 3D data. ImageView provides:
 #import initExample
 
 import numpy as np
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from pyaxions import jaxions as pa
 
-from matplotlib import cm
 
 import os,re,sys
 import h5py
@@ -28,10 +27,10 @@ maskthreshold = 0.5
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
-app = QtGui.QApplication([])
+app = QtWidgets.QApplication([])
 
 ## Create window with ImageView widget
-win = QtGui.QMainWindow()
+win = QtWidgets.QMainWindow()
 win.resize(1600,1600)
 imv = pg.ImageView()
 win.setCentralWidget(imv)
@@ -265,4 +264,4 @@ if mode == 'Axion':
 if __name__ == '__main__':
     import sys
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+        QtWidgets.QApplication.instance().exec_()
