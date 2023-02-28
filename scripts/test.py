@@ -74,7 +74,7 @@ if os.path.exists('./sample.txt'):
                 l10 = l10 +1
             elif l==6:
                 l5 = l5 +1
-
+        print('length %d %d',l10,l5)
         arrayA = np.genfromtxt('./sample.txt',skip_header=l10)
         arrayS = np.genfromtxt('./sample.txt',skip_footer=l5)
 
@@ -123,15 +123,15 @@ if os.path.exists('./sample.txt'):
         co = (sizeL/sizeN)*(1/6)*(1/sizeL)**3
 
 
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 import pyqtgraph as pg
 
 #QtGui.QApplication.setGraphicsSystem('raster')
-app = QtGui.QApplication([])
+app = QtWidgets.QApplication([])
 #mw = QtGui.QMainWindow()
 #mw.resize(800,800)
 
-win = pg.GraphicsWindow(title="Evolution idx=0")
+win = pg.GraphicsLayoutWidget(title="Evolution idx=0") #pg.GraphicsWindow(title="Evolution idx=0")
 win.resize(1000,600)
 win.setWindowTitle('jaxions evolution')
 
@@ -180,10 +180,10 @@ if l10 >1 :
     p4.plot(stringo[1:,0],co*stringo[1:,1]*stringo[1:,0]**2,pen=(255,255,255),symbolBrush=(153,255,204))
     p4.setLabel('left',text='Length/Volume')
     p4.setLabel('bottom',text='time')
-
+win.show()
 
 ## Start Qt event loop unless running in interactive mode or using pyside.
 if __name__ == '__main__':
     import sys
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+        QtWidgets.QApplication.instance().exec_()
