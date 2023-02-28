@@ -33,7 +33,8 @@
 
 		public:
 
-			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), dectime(-1.0), nQcd(-1.e8), nQcdr(-1.e8), zThRes(-1.e8), zRestore(-1.e8), pot(V_NONE), frw(1.0), mink(false), ueCosm(false) {}
+			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), dectime(-1.0), nQcd(-1.e8), nQcdr(-1.e8), zThRes(-1.e8), zRestore(-1.e8),
+			 pot(V_NONE), frw(1.0), mink(false), ueCosm(false) {}
 
 		double&   ZThRes  ()	{ return zThRes;   }
 		double&   ZRestore()	{ return zRestore; }

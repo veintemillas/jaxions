@@ -676,7 +676,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.kMax      = 2;
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
-	icdatst.grav      = 0.0;
+	icdatst.grav      = -1.0;
 	icdatst.L1_pc     = 0.036;
   	icdatst.grav_hyb  = false;
   	icdatst.grav_sat  = false;
@@ -1060,7 +1060,7 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--norandommom"))
 		{
 			icdatst.randommom = false;
-		       	PARSE1;	
+		       	PARSE1;
 		}
 
 		if (!strcmp(argv[i], "--alpha"))
@@ -1732,7 +1732,7 @@ int	parseArgs (int argc, char *argv[])
 
 			PARSE1;
 		}
-    
+
     if (!strcmp(argv[i], "--maskenergyonly"))
 		{
 			maskenergyonly = true;
