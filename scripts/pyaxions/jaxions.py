@@ -2670,7 +2670,7 @@ class gadget:
         print("NumParts: %d^3"%int(np.ceil(f['Header'].attrs['NumPart_Total'][1]**(1/3))))
         print("Box Size: %.3f pc"%f['Header'].attrs['BoxSize'])
 
-    def load_miniclusters(f):
+    def load_miniclusters(f,verbose=False):
         size = len(f['/Subhalo/SubhaloHalfmassRad'] )
         rad = np.reshape(f['/Subhalo/SubhaloHalfmassRad'],(size))
         mass   = np.reshape(f['/Subhalo/SubhaloMass'],(size))
@@ -2678,8 +2678,12 @@ class gadget:
         vdisp = np.reshape(f['/Subhalo/SubhaloVelDisp'],(size))
         dens  = np.reshape([mass[i]/(4/3*np.pi*rad[i]**3)for i in range(len(mass))],(size))
         mc = np.column_stack((mass,rad,dens,npar,vdisp))
-        print("Loaded %d miniclusters at z=%.1f"%(size,f['Header'].attrs['Redshift']))
+        if verbose:
+            print("Loaded %d miniclusters at z=%.1f"%(size,f['Header'].attrs['Redshift']))
         return mc
+    
+    def load_groups(f):
+        return 
 
     def load_particles(f):
         npart = f['Header'].attrs['NumPart_Total'][-1] 

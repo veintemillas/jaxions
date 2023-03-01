@@ -143,14 +143,15 @@ void gaussSmooth(Scalar *field, Scalar *vaxion, int vtype, float length)
 	float pref   = 0.5*k0R*k0R;
         
 	const size_t datamove = Lx*Lx*Lz*field->Precision();
-        AxionFFT::initPlan (field, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+        
+	AxionFFT::initPlan (field, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
 		
 	/* Move data */
-	float   *m2 = static_cast<float*>(static_cast<void*>(static_cast<char *> (field->m2Start()))); 
-	float   *vx = static_cast<float*>(static_cast<void*>(static_cast<char *> (field->m2half()))); 
-	float   *vy = static_cast<float*>(static_cast<void*>(static_cast<char *> (vaxion->mStart())));
-	float   *vz = static_cast<float*>(static_cast<void*>(static_cast<char *> (vaxion->vStart())));
+	float   *m2  = static_cast<float*>(static_cast<void*>(static_cast<char *> (field->m2Cpu()))); 
+	float   *vx  = static_cast<float*>(static_cast<void*>(static_cast<char *> (field->m2half()))); 
+	float   *vy  = static_cast<float*>(static_cast<void*>(static_cast<char *> (vaxion->mStart())));
+	float   *vz  = static_cast<float*>(static_cast<void*>(static_cast<char *> (vaxion->vStart())));
 	
 	switch(vtype)
 	{
@@ -188,7 +189,7 @@ void gaussSmooth(Scalar *field, Scalar *vaxion, int vtype, float length)
 		if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
 		if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 		float k2    = (float) kx*kx + ky*ky + kz*kz;
-		static_cast<float *>(field->m2Start())[idx]  *= exp(-pref*k2) * normn3;
+		static_cast<float *>(field->m2Cpu())[idx]  *= exp(-pref*k2) * normn3;
 	}
 
 	myPlan.run(FFT_BCK);
@@ -446,6 +447,22 @@ void	createGadget_Void (Scalar *axion, Scalar *vaxion, size_t realN, size_t nPar
     rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(realDepth);
     const hsize_t vSlab[2] = { slab, 3 };
 
+    /*  Build velocities in vaxion and smooth them */ 
+    if (sm_vel)
+    {	
+	LogOut("\n[gadgetme] Building velocity fields for smoothing ...");
+        
+	set_velo_fields(axion,vaxion);
+        double delta = axion->BckGnd()->PhysSize()/totlX; 
+        double smth_len = 5*delta;
+       
+	LogOut("\n[gadgetme] Smoothing fields ...");
+
+        gaussSmooth(axion,vaxion,0,smth_len);
+        gaussSmooth(axion,vaxion,1,smth_len);
+        gaussSmooth(axion,vaxion,2,smth_len);
+    }
+    
     LogMsg(VERB_NORMAL,"Decomposition: total %lu slab %lu rOff %lu\n",total, slab, rOff);
     LogOut("\n[gadgetme] Computing energy grid ...");
 
@@ -569,13 +586,14 @@ void	createGadget_Void (Scalar *axion, Scalar *vaxion, size_t realN, size_t nPar
     if (nPrt_h > Nslabs*slab*commSize()) LogOut("\nError: Nparticles is not a mltiple of the slab size!");
 
     /*  Build velocities in vaxion and smooth them */ 
+    /*
     if (sm_vel)
     {	
 	LogOut("\n[gadgetme] Building velocity fields for smoothing ...");
         
 	set_velo_fields(axion,vaxion);
         double delta = axion->BckGnd()->PhysSize()/totlX; 
-        double smth_len = 10*delta;
+        double smth_len = 5*delta;
        
 	LogOut("\n[gadgetme] Smoothing fields ...");
 
@@ -583,7 +601,8 @@ void	createGadget_Void (Scalar *axion, Scalar *vaxion, size_t realN, size_t nPar
         gaussSmooth(axion,vaxion,1,smth_len);
         gaussSmooth(axion,vaxion,2,smth_len);
     }
-    
+    */
+
     /* Prepare the mass field in Solar Masses */
     float * mData = static_cast<float *>(axion->m2Cpu());
     #pragma omp parallel for schedule(static)
