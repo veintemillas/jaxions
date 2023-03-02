@@ -338,7 +338,6 @@ int	main (int argc, char *argv[])
 					writeConf(axion,index);
 					LogOut("done! \n");
 					LogOut("--------------------------------------------------------------------------------------------------------\n");
-					
 				}
 				else
 					LogOut("--------------------------------------------------------------------------------------------------------\n");
@@ -389,6 +388,19 @@ int	main (int argc, char *argv[])
 		LogOut ("Dumping configuration %05d ...", ninfa.index);
 		writeConf(axion, ninfa.index);
 		LogOut ("done!\n");
+
+		LogMsg  (VERB_NORMAL, "[Pax] track ");
+		LogOut("0");
+		initTracker(axion);
+		LogMsg  (VERB_NORMAL, "[Pax] search ");
+		LogOut("1");
+		searchAxitons();
+		LogOut("2");
+		commSync();
+		LogMsg	(VERB_NORMAL, "[Pax] group ");
+		LogOut("1");
+		commSync();
+		grouptags();
 	}
 	
 	LogOut ("Printing FINAL measurement file %05d \n", ninfa.index);
