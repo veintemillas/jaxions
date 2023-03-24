@@ -22,53 +22,53 @@
 
 	#include "io/readWrite.h"
 
-	class	Axiton
+	/* This will contain one axiton candidate or minicluster candidate
+           On axion mode takes an axiton, on paxion mode takes a minicluster
+	*/
+	class Axiton
 	{
 		private:
-		size_t idx;
-		int i0;
-		std::vector<double>	m;
-		std::vector<double>	v;
-		std::vector<double>	e;
-
-		size_t haloid;
+			int    i0;
+			size_t idx;
+			size_t haloid;
+			std::vector<double> m;
+			std::vector<double> v;
+			std::vector<double> e;
 
 		public:
-			/* Constructor */
 			Axiton() : haloid(-1){};
-
 			~Axiton(){ };
 
-			void	SetIdx	  (size_t id, int i) {idx = id; i0=i;};
+			void	SetIdx	   (size_t id, int i) {idx = id; i0=i;};
 			void	SethaloIdx (int id) {haloid = id; };
-
-			void	AddPoint	(double m1, double v1) {m.push_back(m1); v.push_back(v1);};
-			double* Field	() { return m.data();};
+			void	AddPoint   (double m1, double v1) {m.push_back(m1); v.push_back(v1);};
+			
+                        double* Field	() { return m.data();};
 			double* Veloc	() { return v.data();};
-			size_t 	Idx	()   { return idx;};
+			size_t 	Idx	() { return idx;};
 			size_t 	Size	() { return m.size();};
-			int	I0	()       { return i0;};
+			int	I0	() { return i0;};
 	};
 
 
+	/* This will contain group of axiton candidates or minicluster candidates
+           On Axion mode groups into axitons, on Paxion mode groups into miniclusters
+	*/
 	class Group
 	{
-		/* This will contain group of axiton candidates or minicluster candidates
-		   On Axion mode groups into axitons, on Paxion mode groups into miniclusters
-		*/
-		private:
-		int gidx;    	// group id
-		int gidxB;    // group id of the group with points in the previus rank
-		int gidxF;    // group id of the group with points in the next rank
-		int npoints; // number of points
-		std::vector<size_t> pfidxlist ; // a vector containing the positions foldedIds
-		std::vector<double> pmlist ;    // a vector containing a field value
-		std::vector<double> pvlist ;    // a vector containing another field value
-		std::vector<double> pm2list ;   // a vector containing density contrast
+	        private:
+			int gidx;     // group id
+			int gidxB;    // group id of the group with points in the previus rank
+			int gidxF;    // group id of the group with points in the next rank
+			int npoints;  // number of points
+			std::vector<size_t> pfidxlist ; // a vector containing the positions foldedIds
+			std::vector<double> pmlist ;    // a vector containing a field value
+			std::vector<double> pvlist ;    // a vector containing another field value
+			std::vector<double> pm2list ;   // a vector containing density contrast
 
-		// a double to store the total mass
-		// a double to store the maximum density
-		// a double to store an estimation of the size
+			// a double to store the total mass
+			// a double to store the maximum density
+			// a double to store an estimation of the size
 
 		public:
 			Group () : gidx(-1),npoints(0) { };

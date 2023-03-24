@@ -5,7 +5,7 @@ import os,re,sys
 import h5py, pickle, gzip
 import numpy as np
 
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -166,7 +166,7 @@ class	Plot2D():
 #			fp.close()
 
 
-		self.app  = QtGui.QApplication([])
+		self.app  = QtWidgets.QApplication([])
 		self.pWin = pg.GraphicsLayoutWidget()
 
 		data = self.allData[0]
@@ -324,7 +324,7 @@ class	Plot2D():
 		self.pWin.keyPressEvent = self.keyPressEvent
 
 		if	(sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-			QtGui.QApplication.instance().exec_()
+			QtWidgets.QApplication.instance().exec_()
 
 	def	setData(self,i):
 		self.data = allData[i]
