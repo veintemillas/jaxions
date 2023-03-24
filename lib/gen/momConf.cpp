@@ -38,7 +38,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 			ii.push_back((double) il);
 		}
 		mf.set_points(ii,mm);
-		LogMsg(VERB_NORMAL,"[momXeon] Called SPAX");
+		LogMsg(VERB_NORMAL,"[momXeon] Called SPAX, mm.size -= %d",mm.size());
 	}
 
 	long long kmax;
@@ -81,7 +81,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	const int hTz = Tz>>1;
 	uint   maxLx = (mopa.cmplx) ? Lx : (Lx>>1)+1;
 	size_t maxSf = maxLx*Tz;
-// printf("purrum y %d z %d x %d\n",LLy,Tz,maxLx);
+	LogMsg(VERB_HIGH,"purrum y %d z %d x %d\n",LLy,Tz,maxLx);
 	#pragma omp parallel default(shared)
 	{
 		int nThread = omp_get_thread_num();
@@ -123,7 +123,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 						Float al = distri(mt64);
 						// complex<Float> marsa = exp( complex<Float>(0,vl + px*Twop/2.0+py*Twop/2.0) )*al;
 						//complex<Float> marsa = exp( complex<Float>(0,vl) )*al;
-						complex<Float> marsa = complex<Float>(0,vl);
+						complex<Float> marsa = exp(complex<Float>(0,vl));
 						if (mopa.randommom)
 							marsa *= al;
 
@@ -141,7 +141,6 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									Float c0 = mm[b];
 									Float c1 = mm[b+1];
 									fM[idx]  = marsa*((Float) (c0+(c1-c0)*(sc-b)));
-
 								}
 							break;
 							case(MOM_MSIN):

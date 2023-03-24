@@ -966,6 +966,7 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		mopa.mfttab = mm;
 		mopa.cmplx = false;
 		mopa.randommom = ic.randommom;
+		mopa.mp = axionField->m2Cpu();
 
 	momConf(axionField, mopa);
 	
