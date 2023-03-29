@@ -149,15 +149,11 @@ def aximcontent(address='./',group='/'):
         print('Attributes of file ',f)
         for item in f.attrs.keys():
             print(item + ":", f.attrs[item])
-        print()
-        print('[/ic/]')
-        for item in f['/ic/'].attrs.keys():
-            print("     ",item + ":", f['/ic/'].attrs[item])
-        print()
-        print('[/potential/]')
-        for item in f['/potential/'].attrs.keys():
-            print("     ",item + ":", f['/potential/'].attrs[item])
-        print()
+
+        for a in f[group]:
+            print(a)
+            for item in f[a].attrs.keys():
+                print("     ",item + ":", f[a].attrs[item])
 
     # displays the data sets?
     # returns a lists of flags?
@@ -1233,7 +1229,7 @@ class mli:
         self.outc = []
         self.outd = []
         self.oute = []
-        #verbosity 
+        #verbosity
         self.verb = verb
 
     def dic (self):
@@ -2365,7 +2361,7 @@ def loadsample(file):
 
     another with quantities calculated from Saxion evolution
 
-    ct, R, mA, ctheta ctheta' theta_MAX 
+    ct, R, mA, ctheta ctheta' theta_MAX
     """
     # mdir = findmdir(address)
     # odir = mdir[:-2]
@@ -2754,9 +2750,9 @@ class gadget:
         if verbose:
             print("Loaded %d miniclusters at z=%.1f"%(size,f['Header'].attrs['Redshift']))
         return mc
-    
+
     def load_groups(f):
-        return 
+        return
 
     def load_particles(f):
         npart = f['Header'].attrs['NumPart_Total'][-1]

@@ -2107,7 +2107,10 @@ int	parseArgs (int argc, char *argv[])
 				cType = CONF_SPAX; // legacy
 				icdatst.cType =  CONF_SPAX;
 			}
-
+      else if (!strcmp(argv[i+1], "string"))
+			{
+				icdatst.cType = CONF_STRING;
+			}
 			else
 			{
 				printf("Error: Unrecognized configuration type %s\n", argv[i+1]);
