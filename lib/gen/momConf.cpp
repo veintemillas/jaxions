@@ -91,7 +91,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 		std::normal_distribution<Float> distri(0.0,1.0);
 
-		#pragma omp for collapse(3) schedule(static) default(shared)
+		#pragma omp for collapse(3) schedule(static)
 		for (uint oy = 0; oy < LLy; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
 			for (uint oz = 0; oz < Tz; oz++)
 				for (uint ox = 0; ox < maxLx; ox++)
