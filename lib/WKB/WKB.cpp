@@ -188,7 +188,7 @@ namespace AxionWKB {
 
 
 	WKB::WKB(Scalar *field, Scalar *tmp): field(field), tmp(tmp), rLx(field->Length()/2 + 1), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()), hLy(field->Length()/2),
-					      hLz(field->Depth()/2), hTz(field->TotalDepth()/2), nModes(field->eSize()/2), Sm(field->Length()*field->Depth()),
+					      hLz(field->Depth()/2), hTz(field->TotalDepth()/2), nModes(rLx*Lz*Ly), Sm(field->Length()*field->Depth()),
 					      zIni((*field->zV())), fPrec(field->Precision())
 	{
 		powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
