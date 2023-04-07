@@ -91,7 +91,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		std::uniform_real_distribution<Float> uni(0.0, 1.0);
 		std::normal_distribution<Float> distri(0.0,1.0);
 
-		#pragma omp parallel for collapse(3) schedule(static) default(shared)
+		#pragma omp for collapse(3) schedule(static) default(shared)
 		for (uint oy = 0; oy < LLy; oy++)	// As Javier pointed out, the transposition makes y the slowest coordinate
 			for (uint oz = 0; oz < Tz; oz++)
 				for (uint ox = 0; ox < maxLx; ox++)
@@ -116,7 +116,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 					/* this monitors the speed of the loop */
 					if (nThread ==0 && commRank() ==0 && !(py%10) && px == 0 && pz == 0)
 						LogMsg (VERB_PARANOID, "[momXeon] px py pz %d %d %d", px, py, pz);
-					
+
 					if (modP <= 3*kmax2 )
 					{
 						Float vl = Twop*(uni(mt64));
@@ -221,7 +221,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	}
 
 	// In some cases we want to adjust the zero mode by hand
-	// not in SPAX! 
+	// not in SPAX!
 	if (Moco != MOM_SPAX)
 	if (commRank() == 0)
 		{
