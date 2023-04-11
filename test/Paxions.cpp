@@ -223,15 +223,15 @@ int	main (int argc, char *argv[])
 			ct_sat = find_saturation_ct(axion,file_sat);
 
 	}
-	
+
 	bool sat = false;
 	bool closef = false;
 
 	//--------------------------------------------------
-	//	Halo TRACKER 
+	//	Halo TRACKER
 	//--------------------------------------------------
 
-	/**/
+	/*
 	LogMsg  (VERB_NORMAL, "[Pax] track ");
 	LogOut("0");
 	initTracker(axion);
@@ -244,6 +244,7 @@ int	main (int argc, char *argv[])
 	LogOut("1");
 	commSync();
 	grouptags();
+	*/
 
 	//--------------------------------------------------
 	//      MAIN LOOP
@@ -254,7 +255,7 @@ int	main (int argc, char *argv[])
 	{
 
 		dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
-		
+
 		/* normalise dynamical graavity time-step?
 		Option 1, (Naive) allow only phase~1 per iteration in the point with the largest grav-pot.
 		there is really not need because our integrator is exact in V as we alternate V and K Kick operators. */
@@ -282,11 +283,13 @@ int	main (int argc, char *argv[])
 
 		propagate (axion, dzaux);
 		//ct_sat = find_saturation_ct(axion, file_sat);
-		
+
+
 		if (axion->BckGnd()->ICData().grav_sat)
 		{
 			if (*axion->zV() >= ct_sat && !sat)
-			{			
+			{
+
 				/* We want to saturate the conformal axion mass to be constant from this moment on
 		 		this means that mA R = (mA R)_now
 		 		in power-law cosmology R=ct^frw
@@ -308,16 +311,16 @@ int	main (int argc, char *argv[])
 					LogOut("--------------------------------------------------------------------------------------------------------");
 					LogOut("\nSaturation time %e",*axion->zV());
 					LogOut("\nLinear gravitational resolution limit achieved! Setting Rc=Rr = %e and n = %.1f\n",R0,-aa);
-				} 
-				else if (R0 > Rc && R0 <= Rr) 
+				}
+				else if (R0 > Rc && R0 <= Rr)
 				{
 					axion->BckGnd()->SetZRestore(R0);
 					axion->BckGnd()->SetQcdExpr(-aa);
 					LogOut("--------------------------------------------------------------------------------------------------------");
 					LogOut("\nSaturation time %e",*axion->zV());
 					LogOut("\nLinear gravitational resolution limit achieved! Setting Rr = %e (Rc = %e) and n = %.1f\n",R0,Rc,-aa);
-				} 
-				else if (R0 > Rc && R0 > Rr) 
+				}
+				else if (R0 > Rc && R0 > Rr)
 				{
 					// we will keep Rc, Rr, but will change indi3 to have the same conformal mass with the new nqcd = -2*frw
 					// aMassSq = indi3**2*(Rc)**nqcd * (R/Rr)**nqcd = indi3**2*(Rc R / Rr)**nqcd
@@ -331,7 +334,7 @@ int	main (int argc, char *argv[])
 				}
 				// need to renormalise also indi3
 		 		// have to make aMass = indi3*indi3*pow(zThRes, nQcd)_old= indi3*indi3*pow(zThRes, -1)
-				
+
 				if (ninfa.printconf & PRINTCONF_PAXIONSAT)
 				{
 					LogOut("Dumping configuration %05d for Gadget ... ",index);
@@ -341,7 +344,7 @@ int	main (int argc, char *argv[])
 				}
 				else
 					LogOut("--------------------------------------------------------------------------------------------------------\n");
-				
+
 				if (!closef)
 				{
 					fclose(file_sat);
@@ -376,7 +379,7 @@ int	main (int argc, char *argv[])
 			index++;
 			i_meas++ ;
 			measrightnow = false;
-			initTracker(axion);
+			// initTracker(axion);
 			//find_MC(axion,2.0);
 		}
 	}
@@ -389,6 +392,7 @@ int	main (int argc, char *argv[])
 		writeConf(axion, ninfa.index);
 		LogOut ("done!\n");
 
+		/*
 		LogMsg  (VERB_NORMAL, "[Pax] track ");
 		LogOut("0");
 		initTracker(axion);
@@ -401,8 +405,9 @@ int	main (int argc, char *argv[])
 		LogOut("1");
 		commSync();
 		grouptags();
+		*/
 	}
-	
+
 	LogOut ("Printing FINAL measurement file %05d \n", ninfa.index);
 	LogOut("--------------------------------------------------------------------------------------------------------\n");
 
@@ -414,9 +419,9 @@ int	main (int argc, char *argv[])
 }
 
 
-/*  
+/*
 	AUXILIARY FUNCTIONS
-*/  
+*/
 
 /* Finds the time at which the gravitational term becomes large
   phase difference between two points
@@ -457,12 +462,18 @@ double find_saturation_ct(Scalar *axion, FILE *file)
 			grad_mean += grad;
 		}
 	}
+
 	grad_mean /= axion->Size()-axion->Surf();
-	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] grad max %.2e grad_mean %.2e",grad_max, grad_mean);
+	double total_grad_max, total_grad_mean;
+	MPI_Allreduce (&grad_max, &total_grad_max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+	MPI_Allreduce (&grad_mean, &total_grad_mean, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+	total_grad_mean /= commSize();
+	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] grad max %.2e grad_mean %.2e",total_grad_max, grad_mean);
+	LogMsg(VERB_NORMAL,"local values             grad max %.2e grad_mean %.2e",grad_max, grad_mean);
 	//LogOut("[VAX find_saturation_ct] grad max %.2e grad_mean %.2e\n",grad_max, grad_mean);
 
 	double ct = *axion->zV();
-	double phi12 = axion->BckGnd()->ICData().grav*grad_max;
+	double phi12 = axion->BckGnd()->ICData().grav*total_grad_max;
 	// double phi12 = axion->BckGnd()->ICData().grav*grad_mean;
 	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] phi12 %.5e",phi12);
 	// double fun0 = axion->AxionMass(ct)*ct*phi12*log(zFinl/ct);
@@ -510,7 +521,7 @@ double find_saturation_ct(Scalar *axion, FILE *file)
 		LogMsg(VERB_NORMAL,"ct2 %e fun2 %e meas %e k %e a %e", ct2, fun2, meas, k ,a );
 	}
 	//LogOut("ct2 %e DWfun2 %e meas %e k %e a %e\n", ct2, DWfun2, meas, k ,a );
-	fprintf(file, "%e %f %f %e\n",*axion->zV(),grad_max,grad_mean,ct2);
+	fprintf(file, "%e %f %f %e\n",*axion->zV(),total_grad_max,total_grad_mean,ct2);
 	LogOut("Current saturation time: %.2e\n",ct2);
 	LogMsg(VERB_NORMAL,"[VAX find_saturation_ct] Saturation time %f ", ct2 );LogFlush();
 	return ct2 ;
@@ -527,14 +538,14 @@ void find_MC(Scalar *axion, double MC_thr)
 	hsize_t rOff;
 	MeasInfo ninfa;
 	ninfa.nbinsspec = 1000;
-	
+
 	totlZ	  = axion->TotalDepth();
 	totlX	  = axion->Length();
 	realDepth = axion->Depth();
-	Delta     = (double) axion->BckGnd()->PhysSize()/((double) totlZ); 
-	
+	Delta     = (double) axion->BckGnd()->PhysSize()/((double) totlZ);
+
 	rOff  = ((hsize_t) (totlX))*((hsize_t) (totlX))*(realDepth);
-	
+
 	switch (axion->Precision())
 	{
 		case FIELD_SINGLE:
@@ -568,7 +579,7 @@ void find_MC(Scalar *axion, double MC_thr)
 		float * re    = static_cast<float *>(axion->mStart());
 		float * im    = static_cast<float *>(axion->vStart());
 		float * newEn = static_cast<float *>(axion->m2Cpu());
-		
+
 		#pragma omp parallel for schedule(static)
 		for (size_t idx = 0; idx < rOff; idx++)
 		{
@@ -577,7 +588,7 @@ void find_MC(Scalar *axion, double MC_thr)
 				mccount += 1;
 			tot += 1;
 		}
-		LogOut("MC ratio: %f",(float) mccount/(float) tot); 
+		LogOut("MC ratio: %f",(float) mccount/(float) tot);
 
 		// Now smooth field m2
 		double smth_len = 3*Delta;
@@ -588,7 +599,7 @@ void find_MC(Scalar *axion, double MC_thr)
 		int mccount_s = 0;
 		int tot_s = 0;
 		float * smEn = static_cast<float *>(axion->m2Cpu());
-		
+
 		#pragma omp parallel for schedule(static)
 		for (size_t idx = 0; idx < rOff; idx++)
 		{
@@ -597,9 +608,9 @@ void find_MC(Scalar *axion, double MC_thr)
 				mccount_s += 1;
 			tot_s += 1;
 		}
-		LogOut("\nMC ratio (smoothed): %f",(float) mccount_s/(float) tot_s); 
+		LogOut("\nMC ratio (smoothed): %f",(float) mccount_s/(float) tot_s);
 	}
-	
+
 	return ;
 
-}	
+}
