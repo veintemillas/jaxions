@@ -264,7 +264,7 @@ LogMsg(VERB_PARANOID,"best was redfft=%d",best);
 
 			/* Energy map in m2Start (folded or unfolded) */
 			/* (assumes paxion, otherwise use energy map) */
-			if (afield->Field() == FIELD_PAXION) 
+			if (afield->Field() == FIELD_PAXION)
 				graviPaxKernelXeon<KIDI_ENE>(afield->mCpu(), afield->vCpu(), nada, afield->m2Cpu(), ppar, BO, V+BO, afield->Precision(), xBlock, yBlock, zBlock);
 			else if (afield->Field() == FIELD_AXION)
 			{
@@ -273,11 +273,11 @@ LogMsg(VERB_PARANOID,"best was redfft=%d",best);
 				trackAlloc(&eRes, 256);
 				energy(afield,eRes,EN_MAP,0); // energy unfolded starting in m2
 				//double factor = 1/(eR[TH_KIN]...);
-				double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);  
+				double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);
 				scaleField(afield,FIELD_M2,factor);
 				memmove(afield->m2Start(),afield->m2Cpu(),afield->Size()*afield->Precision());
 			}
-				
+
 int red =1;
 int pad =0;
 int fft =0;
@@ -393,7 +393,7 @@ LogMsg(VERB_PARANOID,"[GV] end GravCpu()");
 			void *eRes;
 			trackAlloc(&eRes, 256);
 			energy(afield,eRes,EN_MAP,0); // energy unfolded starting in m2
-			double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);  
+			double factor = 1/(((double *) eRes)[TH_KIN] + ((double *) eRes)[TH_POT] + ((double *) eRes)[TH_GRX] + ((double *) eRes)[TH_GRY] + ((double *) eRes)[TH_GRZ]);
 			scaleField(afield,FIELD_M2,factor);
 			memmove(afield->m2Start(),afield->m2Cpu(),afield->Size()*afield->Precision());
 		}
@@ -826,14 +826,13 @@ LogMsg (VERB_PARANOID, "[ilap] rnorm %e ",rnorm);
 	{
 			double eA = 0, eAl = 0;
 
-			#pragma omp parallel for schedule(static) reduction(+:eA)
+			#pragma omp parallel for schedule(static) reduction(+:eAl)
 			for (size_t idx=0; idx < V; idx++){
-				eA += pow((double) static_cast<Float*>(afield->mStart())[idx],2);
-				eA += pow((double) static_cast<Float*>(afield->vStart())[idx],2);
+				eAl += pow((double) static_cast<Float*>(afield->mStart())[idx],2);
+				eAl += pow((double) static_cast<Float*>(afield->vStart())[idx],2);
 			}
 
-
-			MPI_Allreduce (&eA, &eAl, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+			MPI_Allreduce (&eAl, &eA, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 			eA /= (double) (afield->TotalSize());
 
@@ -845,11 +844,11 @@ LogMsg (VERB_PARANOID, "[ilap] rnorm %e ",rnorm);
 				static_cast<Float*>(afield->vStart())[idx] *= nn ;
 			}
 
-		LogMsg (VERB_PARANOID, "[Norm] normalised Field to have <|cpax|^2>=1, eA = %e ",eA);
+		LogMsg (VERB_NORMAL, "[Norm] normalised Field to have <|cpax|^2>=1, eA = %e (local %e)",eA,eAl);
 		IcData ics = afield->BckGnd()->ICData();
 		ics.beta *= eA;
 		afield->BckGnd()->SetICData(ics);
-		LogMsg (VERB_PARANOID, "[Norm] Self-coupling beta renormalised to beta*eA^2 = %e ",afield->BckGnd()->ICData().beta);
+		LogMsg (VERB_NORMAL, "[Norm] Self-coupling beta renormalised to beta*eA^2 = %e ",afield->BckGnd()->ICData().beta);
 		return ;
 	}
 
