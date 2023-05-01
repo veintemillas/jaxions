@@ -12,6 +12,7 @@
 #include "scalar/theta2Cmplx.h"
 #include "gen/momConf.h"
 #include "gen/randXeon.h"
+#include "gen/anystringXeon.h"
 #include "gen/smoothXeon.h"
 #include "gen/prepropa.h"
 #include "io/readWrite.h"
@@ -31,7 +32,7 @@
 
 #include "utils/utils.h"
 #include "fft/fftCode.h"
-#include "utils/pad.h"
+// #include "utils/pad.h"
 
 class	ConfGenerator
 {
@@ -66,6 +67,7 @@ class	ConfGenerator
 	void   conftkac(Cosmos *myCosmos, Scalar *field);
 	void   confthermal(Cosmos *myCosmos, Scalar *field);
 	void	 confstring(Cosmos *myCosmos, Scalar *axionField);
+	void	 confstring2(Cosmos *myCosmos, Scalar *axionField);
 	// void   confapr(Cosmos *myCosmos, Scalar *field);
 
 	void   putxi(double xit, bool kspace);
@@ -279,7 +281,7 @@ void	ConfGenerator::runCpu	()
 		break;
 
 		case CONF_STRING:
-			confstring(myCosmos,axionField);
+			confstring2(myCosmos,axionField);
 		break;
 
 		case CONF_SMOOTH:
@@ -1279,8 +1281,8 @@ void	ConfGenerator::confstring(Cosmos *myCosmos, Scalar *axionField)
 
 	if (((stringFile2  = fopen("./x0.dat", "r")) == nullptr)){
 		LogMsg(VERB_NORMAL,"[STR] none found! chosing default parameters !\n ");
-		x0.push_back(axionField->Length());
-		x0.push_back(axionField->Length());
+		x0.push_back(axionField->Length()/2);
+		x0.push_back(axionField->Length()/2);
 		x0.push_back(0);
 	}
 	else
@@ -1375,7 +1377,46 @@ void	ConfGenerator::confstring(Cosmos *myCosmos, Scalar *axionField)
 }
 
 
+void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
+{
+	Profiler &prof = getProfiler(PROF_GENCONF);
+	IcData ic = myCosmos->ICData();
 
+	LogMsg(VERB_NORMAL,"\n ");
+	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING' started!\n ");
+
+	LogMsg(VERB_NORMAL,"[STR] Searching for string data file string.dat !");
+
+	FILE *stringFile = nullptr;
+	std::vector<double> xx,yy,zz;
+	if (((stringFile  = fopen("./string.dat", "r")) == nullptr)){
+		LogMsg(VERB_NORMAL,"[STR] none found ! ");
+	}
+	else
+	{
+		LogMsg(VERB_NORMAL,"[STR] Found ! ");
+			int ii = 0;
+			double xa, ya, za;
+			while(!feof(stringFile)){
+				fscanf (stringFile ,"%lf %lf %lf", &xa, &ya, &za);
+				LogMsg(VERB_PARANOID," x,y,z %.2f %.2f %.2f !",xa, ya, za);
+				xx.push_back(xa);
+				yy.push_back(ya);
+				zz.push_back(za);
+				ii++;
+			}
+	}
+
+	prof.start();
+	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size());
+	prof.stop();
+
+	/* TODO wrong flops */
+	prof.add("anystringConf", 0., xx.size()*axionField->Size()*axionField->DataSize()*1e-9);
+
+	axionField->setFolded(false);
+	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING2 ended'' ");
+}
 
 
 // void	ConfGenerator::confapr(Cosmos *myCosmos, Scalar *axionField)

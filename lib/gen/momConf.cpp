@@ -60,7 +60,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		} else {
 			/* circular loop case */
 
-			circ_loop_pref = (Float) (-16*M_PI*M_PI)/(mopa.k0*mopa.k0);
+			circ_loop_pref = (Float) (-4*M_PI*M_PI)/(mopa.k0*mopa.k0);
 			circ_loop_rad  = (Float) mopa.kCrt*Lx;
 			LogMsg(VERB_NORMAL,"[momXeon] CIRCULAR LOOP R=%f",circ_loop_rad);
 		}
@@ -258,9 +258,10 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 								Float p  = (Float) std::sqrt( (Float) modP);
 								if (circular_loop)
 								{
-									Float p  = (Float) std::sqrt( (Float) px*px+py*py);
+									Float p  = (Float) std::sqrt( (Float) (px*px+py*py));
 									Float we = p == 0 ? circ_loop_rad*k0N/2 : ((Float) gsl_sf_bessel_J1 (k0N*p*circ_loop_rad))/ ((Float) p) ;
-									fM[idx] = complex<Float>(0,circ_loop_pref*pz*we);
+									fM[idx] = complex<Float>(0,circ_loop_pref*pz*we/modP) * exp(complex<Float>(0,-k0N*(px*x0[0]+py*x0[1]+pz*x0[2])));
+									printf("rank (%d %d) br px py pz %d %d %d -> %f %f pref %f k0N %f we %f\n",commRank(),zBase,px,py,pz,real(fM[idx]),imag(fM[idx]),circ_loop_pref, k0N, circ_loop_pref*pz*we);
 										// * exp(complex<Float>(0,-k0N*(px*x0[0]+py*x0[1]+pz*x0[2])));
 								//	printf("br px py pz %d %d %d -> %f %f pref %f \n",px,py,pz,real(fM[idx]),imag(fM[idx]), circ_loop_pref*pz/std::pow(p,3));
 								// fM[idx] = complex<Float>(0.,0.);
