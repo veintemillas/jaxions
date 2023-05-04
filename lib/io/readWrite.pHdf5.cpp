@@ -1023,15 +1023,19 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 				/* Gamma; Saxion damping coefficient */
 
-
+				bool damping = false;
 				if (myCosmos->Gamma() == -1.e8) {
 					double gm;
 					readAttribute (vGrp_id, &gm, "Gamma", H5T_NATIVE_DOUBLE);
 					myCosmos->SetGamma(gm);
 				}
-				else
+				else{
 					LogMsg (VERB_NORMAL, "Gamma (commandline) = %f",myCosmos->Gamma());
-
+				}
+				if (myCosmos->Gamma() > 0.0)
+				{
+					damping = true;
+				}
 
 				/* V_QCD potential type */
 
@@ -3688,12 +3692,14 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	/*	Unfold field before writing configuration	*/
 	//if (axion->Folded())
 	//{
-		int slicenumber = slicenumbertoprint ;
-		if (slicenumbertoprint > axion->Depth())
-		{
-			LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
-			slicenumber = 0;
-		}
+		int slicenumber = slicenumbertoprint % axion->Depth() ;
+		/* select printing rank */
+		int prank = slicenumbertoprint/axion->Depth();
+							// if (slicenumbertoprint > axion->Depth())
+							// {
+							// 	LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
+							// 	slicenumber = 0;
+							// }
 		Folder	munge(axion);
 		LogMsg (VERB_NORMAL, "If configuration folded, unfold 2D slice");LogFlush();
 		munge(UNFOLD_SLICE, slicenumber);
@@ -3723,7 +3729,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		exit (1);
 	}
 
-	if (myRank != 0) {
+	if (myRank != prank) {
 		H5Sselect_none(mapSpace);
 	}
 
@@ -3783,7 +3789,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 
 	hsize_t offset = 0;
 
-	if (myRank == 0) {
+	if (myRank == prank) {
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slb, NULL);
 	} else {
 		H5Sselect_none(mSpace);
@@ -3799,7 +3805,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	}
 
 	if (axion->Field() != FIELD_NAXION){
-		if (myRank == 0) {
+		if (myRank == prank) {
 			H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slb, NULL);
 		} else {
 			H5Sselect_none(vSpace);

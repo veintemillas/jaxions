@@ -22,11 +22,51 @@
 
   by construction we will avoid |v| = 0 by avoiding equal points.
 
-
   */
-double mora(double* xs,double* ys,double* zs, int lo, double x, double y, double z, double *out)
+double int0(double dx,double dy,double dz, bool verb)
 {
-	return 0;
+	double a2 = pow(dy,2) + pow(dz,2);
+	double ddx = 1;
+	if (dx == -0.5)
+		return 1/(a2*sqrt(a2+0.25));
+
+	double s1 = sqrt(pow(dx,2)    + a2);
+	double s2 = sqrt(pow(dx+ddx,2)+ a2);
+	double re = ddx*(ddx+2*dx)/(s1*s2*( (dx+ddx)*s1 + dx*s2 ) );
+	if (verb)
+		printf("(dxdydz) %f %f %f (a2,s1,s2) %f %f %f - %f %f = %f\n",dx,dy,dz,a2,s1,s2,dx+ddx,dx,re);
+	return re;
+}
+
+double mora(double* xs,double* ys,double* zs, int lo, double x, double y, double z, bool verb=false)
+{
+	// TODO find if there is a nearby crossing and determine how many s-subdivisions we need
+	double res;
+	double vxs = xs[lo+1] - xs[lo];
+	double vys = ys[lo+1] - ys[lo];
+	double vzs = zs[lo+1] - zs[lo];
+	double dx = x-0.5*(xs[lo+1] + xs[lo]);
+	double dy = y-0.5*(ys[lo+1] + ys[lo]);
+	double dz = z-0.5*(zs[lo+1] + zs[lo]);
+	// double s_cross = abs(vxs*vxs+vys*vys+vzs*vzs) > 0 ? (dx*vxs+dy*vys+dz*vzs)/(vxs*vxs+vys*vys+vzs*vzs) : 100;
+	// double dist    = pow(dx-vxs*s_cross,2) + pow(dy-vys*s_cross,2) + pow(dz-vzs*s_cross,2);
+	// if (s_cross*s_cross < 1 && dist < 1){
+	double dist    = pow(dx,2) + pow(dy,2) + pow(dz,2);
+	if (dist < 1){
+		printf("crossing %f %f %f, %f %f %f, (%f) %f %f\n",dx,dy,dz,vxs,vys,vzs,dist);
+		res = 0;
+		for (double i=0;i<10;i++){
+			double fdx = dx + vxs*(-0.5+i/10);
+			double fdy = dy + vys*(-0.5+i/10);
+			double fdz = dz + vzs*(-0.5+i/10);
+			res += 0.1*(vys*fdz-vzs*fdy)*int0(fdx,fdy,fdz,true);
+		}
+	}
+	else {
+	double prefa = vys*dz-vzs*dy;
+	double integrand = int0(dx,dy,dz,verb);
+	res = prefa*integrand; }
+	return res;
 }
 
 template<typename Float>
@@ -66,7 +106,7 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 		Float   rx,  ry,  rz, r3;
 		Float   bx = 0., by = 0., bz = 0.;
 		iz_l = idx/Sf;
-	        iz   = iz_l + local_z_start;
+	  iz = iz_l + local_z_start;
 		iy = (idx%Sf)/Lx ;
 		ix = (idx%Sf)%Lx ;
 		z = iz;
@@ -75,26 +115,42 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 		// Biot-Savart
 		for (int il = 0; il < len-1; il++)
 		{
-			/* linear approx is very good far away from strings */
-			dz = zs[il+1]-zs[il];
-			dy = ys[il+1]-ys[il];
-			rx = (xs[il+1]+xs[il])*0.5 - (x+0.5) ; // links live between lattice sites
-			ry = (ys[il+1]+ys[il])*0.5 - y ;
-			rz = (zs[il+1]+zs[il])*0.5 - z ;
-			r3 = pow(rx*rx+ry*ry+rz*rz,1.5);
-			bx += (ry*dz-rz*dy)/r3;
+			// OLD CODE WORKS
+			// /* linear approx is very good far away from strings */
+			// dz = zs[il+1]-zs[il];
+			// dy = ys[il+1]-ys[il];
+			// rx = (xs[il+1]+xs[il])*0.5 - (x+0.5) ; // links live between lattice sites
+			// ry = (ys[il+1]+ys[il])*0.5 - y ;
+			// rz = (zs[il+1]+zs[il])*0.5 - z ;
+			// r3 = pow(rx*rx+ry*ry+rz*rz,1.5);
+			// bx += (ry*dz-rz*dy)/r3;
+			double partial = mora(xs, ys, zs, il, x, y, z);
+			if (partial != partial)
+				printf("morcillax! %d %d %d %f\n",ix,iy,iz,partial);
+			bx += partial;
 			if (ix==0)
 			{
-				dx = xs[il+1]-xs[il];
-				rx += 0.5;
-				ry -= 0.5;
-				r3 = pow(rx*rx+ry*ry+rz*rz,1.5);
-				by += (-rx*dz+rz*dx)/r3;
+				// OLD CODE WORKS
+				// dx = xs[il+1]-xs[il];
+				// rx += 0.5;
+				// ry -= 0.5;
+				// r3 = pow(rx*rx+ry*ry+rz*rz,1.5);
+				// by += (-rx*dz+rz*dx)/r3;
+				double partial = mora(ys, zs, xs, il, y, z, x);
+				by += partial;
+				if (partial != partial) {
+					printf("morcillay! %d %d %d, %f\n",ix,iy,iz,partial);
+					double partial = mora(ys, zs, xs, il, y, z, x,true);}
 				if (iy==0)
 				{
-					ry += 0.5;
-					rz -= 0.5;
-					bz += (rx*dy-ry*dx)/r3;
+					// OLD CODE WORKS
+					// ry += 0.5;
+					// rz -= 0.5;
+					// bz += (rx*dy-ry*dx)/r3;
+					double partial = mora(zs, xs, ys, il, z, x, y);
+					if (partial != partial)
+						printf("morcillaz! %d %d %d\n",ix,iy,iz);
+					bz += partial;
 				}
 			}
 

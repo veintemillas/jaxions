@@ -1381,6 +1381,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 {
 	Profiler &prof = getProfiler(PROF_GENCONF);
 	IcData ic = myCosmos->ICData();
+	string	smthName("Smoother");
 
 	LogMsg(VERB_NORMAL,"\n ");
 	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING' started!\n ");
@@ -1413,6 +1414,30 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 
 	/* TODO wrong flops */
 	prof.add("anystringConf", 0., xx.size()*axionField->Size()*axionField->DataSize()*1e-9);
+
+	if (ic.siter>0)
+	{
+		prof.start();
+		smoothXeon (axionField, ic.siter, ic.alpha);
+		prof.stop();
+		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+	}
+
+	normaliseField(axionField, FIELD_M);
+
+	if (myCosmos->ICData().normcore)
+		normCoreField	(axionField);
+
+	if (!myCosmos->Mink()){ /* In Minkowski this is trivial */
+		double R  = *axionField->RV();
+		double Rp = myCosmos->Rp(*axionField->zV());
+		axby(FIELD_M,FIELD_V,Rp*R,R);
+		}
+	if ( !(ic.kickalpha == 0.0) )
+		scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
+
+	if (!myCosmos->Mink()) /* In Minkowski this is trivial */
+		scaleField (axionField, FIELD_M, *axionField->RV());
 
 	axionField->setFolded(false);
 	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING2 ended'' ");
