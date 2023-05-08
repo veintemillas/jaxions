@@ -279,21 +279,32 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									if (px != 0){
 										for (int il = 0; il < xx.size()-1;il++)
 											{
-												// Float dx = xx[il+1]-xx[il];
+												Float dx = xx[il+1]-xx[il];
 												Float dy = yy[il+1]-yy[il];
 												Float dz = zz[il+1]-zz[il];
+												Float pdx = px*dx+py*dy+pz*dz;
+												complex<Float> aux = (1.0,0.);
+												if (pdx != 0.0){
+													// aux = (exp(complex<Float>(0,-k0N*pdx))-complex<Float>((1.0,0)))/complex<Float>((0.,-k0N*pdx));
+													aux = complex<Float>(sin(k0N*pdx),cos(k0N*pdx)-1)/(k0N*pdx);}
+												// printf("aux idx %lu %f (%f,%f)\n",idx,k0N*pdx,aux.real(),aux.imag());
 												// py Wz - pzWy
-												su += (py*dz-pz*dy)/(px*modP) * exp(complex<Float>(0,-k0N*(px*xx[il]+py*yy[il]+pz*zz[il])));
+												su += (py*dz-pz*dy)/(px*modP) * exp(complex<Float>(0,-k0N*(px*xx[il]+py*yy[il]+pz*zz[il])))*aux;
 											}
 										}
 									else if (py != 0)
 										{
 											for (int il = 0; il < xx.size();il++){
 												Float dx = xx[il+1]-xx[il];
-												// Float dy = yy[il+1]-yy[il];
+												Float dy = yy[il+1]-yy[il];
 												Float dz = zz[il+1]-zz[il];
+												Float pdx = px*dx+py*dy+pz*dz;
+												complex<Float> aux = (1.0,0.);
+												if (pdx != 0.0){
+													// aux = (exp(complex<Float>(0,-k0N*pdx))-complex<Float>((1.0,0)))/complex<Float>((0.,-k0N*pdx));
+													aux = complex<Float>(sin(k0N*pdx),cos(k0N*pdx)-1)/(k0N*pdx);}
 												// pz Wx - pxWz
-												su += (pz*dx-px*dz)/(py*modP) * exp(complex<Float>(0,-k0N*(px*xx[il]+py*yy[il]+pz*zz[il])));
+												su += (pz*dx-px*dz)/(py*modP) * exp(complex<Float>(0,-k0N*(px*xx[il]+py*yy[il]+pz*zz[il])))*aux;
 											}
 										}
 									else if (pz != 0)
@@ -301,14 +312,19 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 												for (int il = 0; il < xx.size();il++){
 													Float dx = xx[il+1]-xx[il];
 													Float dy = yy[il+1]-yy[il];
-													// Float dz = zz[il+1]-zz[il];
+													Float dz = zz[il+1]-zz[il];
+													Float pdx = px*dx+py*dy+pz*dz;
+													complex<Float> aux = (1.0,0.);
+													if (pdx != 0.0){
+														// aux = (exp(complex<Float>(0,-k0N*pdx))-complex<Float>((1.0,0)))/complex<Float>((0.,-k0N*pdx));
+														aux = complex<Float>(sin(k0N*pdx),cos(k0N*pdx)-1)/(k0N*pdx);}
 													// px Wy - pyWx
-													su += (px*dy-py*dx)/(pz*modP) * exp(complex<Float>(0,-k0N*(px*xx[il]+py*yy[il]+pz*zz[il])));
+													su += (px*dy-py*dx)/(pz*modP) * exp(complex<Float>(0,-k0N*(px*xx[il]+py*yy[il]+pz*zz[il])))*aux;
 												}
 										}
 									// else p=0, keep fM=0
 
-									fM[idx] = su*ik02;
+									fM[idx] = su * ik02 ; //* exp(-k0N*k0N*modP/((Float) 8.))
 								} // end case generic loop
 
 						}
