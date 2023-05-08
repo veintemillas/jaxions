@@ -53,13 +53,13 @@ double mora(double* xs,double* ys,double* zs, int lo, double x, double y, double
 	// if (s_cross*s_cross < 1 && dist < 1){
 	double dist    = pow(dx,2) + pow(dy,2) + pow(dz,2);
 	if (dist < 1){
-		printf("crossing %f %f %f, %f %f %f, (%f) %f %f\n",dx,dy,dz,vxs,vys,vzs,dist);
+		// printf("crossing %f %f %f, %f %f %f, (%f) %f %f\n",dx,dy,dz,vxs,vys,vzs,dist);
 		res = 0;
 		for (double i=0;i<10;i++){
 			double fdx = dx + vxs*(-0.5+i/10);
 			double fdy = dy + vys*(-0.5+i/10);
 			double fdz = dz + vzs*(-0.5+i/10);
-			res += 0.1*(vys*fdz-vzs*fdy)*int0(fdx,fdy,fdz,true);
+			res += 0.1*(vys*fdz-vzs*fdy)*int0(fdx,fdy,fdz,false);
 		}
 	}
 	else {
@@ -224,7 +224,7 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 			for (size_t idx=Sf,iz=0; iz<nz; iz++,idx+=Sf)
 			{
 				th[idx] = th[idx-Sf] + Bz[iz];
-printf("[asX] bz[%d] %f thz[%d] %f\n",idx,Bz[iz],iz,th[idx]);
+// printf("[asX] bz[%d] %f thz[%d] %f\n",idx,Bz[iz],iz,th[idx]);
 			}
 
 		// send the last value of theta
