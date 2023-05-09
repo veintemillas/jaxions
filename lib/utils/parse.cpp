@@ -10,8 +10,8 @@
 #include "utils/logger.h"
 #include "cosmos/cosmos.h"
 
-# define PARSE1 { LogMsg(VERB_PARANOID,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
-# define PARSE2 { LogMsg(VERB_PARANOID,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
+# define PARSE1 { LogMsg(VERB_NORMAL,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
+# define PARSE2 { LogMsg(VERB_NORMAL,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
 
 size_t sizeN  = 128;
 size_t sizeZ  = 128;
@@ -23,6 +23,7 @@ double nQcd   = 7.0;
 int    Nng    = -1 ;
 double indi3  = 1.0;
 double msa    = 1.5;
+double lz2e   = 0.0;
 double wDz    = 0.8;
 int    fIndex = -1;
 int    fIndex2 = 0;
@@ -419,7 +420,7 @@ void	PrintICoptions()
 	printf("  --prevqcdtype [int]                              VQCD type during prepropagation (default V_QCD0_PQ1_DRHO).\n");
 	printf("  --pregam      [float]                            Damping factor during prepropagation (default 0.0) .\n");
 	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
-	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
+	printf("  --prelz2e     [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
 	printf("  --icstudy                           	           Prints axion.m.xxxxx files during prepropagation (Default no).\n");
 	printf("\n-----------------------------------------------------------------------------------------------\n");
 	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n\n");
@@ -1159,7 +1160,7 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
-		if (!strcmp(argv[i], "--lz2e"))
+		if (!strcmp(argv[i], "--prelz2e"))
 		{
 			if (i+1 == argc)
 			{
@@ -1542,6 +1543,19 @@ int	parseArgs (int argc, char *argv[])
 
 			uMsa  = true;
 			lType = LAMBDA_Z2; //obsolete?
+      lz2e  = 2.0;
+			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--lz2e"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the lambda time-dependence exponent.\n");
+				exit(1);
+			}
+
+			lz2e = atof(argv[i+1]);
 
 			PARSE2;
 		}
@@ -2471,20 +2485,117 @@ if (icdatst.cType == CONF_SMOOTH )
 
 
 
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+// % if msa is used FIX lambda
+// % if logi is given FIX zi
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+/* Adjust LL depending on (lz2e, frw) such that msa = given value at:
+    - end of the simulation if lz2 < 2 (because msa decreases)
+    - beggining of the simulation if lz2 <= 2 (because msa increases)
+
+        physical mass^2 =  0.5 L1/R^lz2e
+        msa^2 = 2 L1/R^lz2e * (L R/N)^2
+
+   therefore (recall that R = eta^frw )
+
+        LL = 0.5 * msa^2 R^(frw(lz2e-2)) (N/L)^2
+
+   Adjust zi of initial conditions if logi is given
+      log is usually log ms/H, but it is not well defined for frw = 0
+      replace the definition with log (ms d_H) where
+        dH = R * eta = eta^(frw+1) where dt = R deta
+        log = log (ms/H) = 0.5 log (ms^2/H^2) = 0.5 log (2 lamda/R^lz2e/H^2)
+          H = R'/R^2 = frw*R/eta/R^2 = frw/eta R = frw/eta^(1+frw)
+          logi = 0.5 log (2 lambda1/eta^(lz2e*frw) eta^(2+2frw)/frw^2) = 0.5 log (2 lambda1/frw^2 * eta^(2+2frw - frw*lz2e))
+
+   therefore
+
+        zi = (exp(2 logi) (frw^2 /2 LL))^(1/(2+frw(2-lz2e)))
+
+   **WARNING**
+      logi is not a proxy of time if ms dH = constant, which happens for (2L/R^lze) (R eta)^2 = eta^(2 + frw(2-lz2e)) = constant
+      i.e. when 2 -frw(2-lz2e) = 0 -> frw = 2/(lz2e-2)
+        (for instance for lze2 = 4 if frw=1)
+      in that case, we cannot adjust eta1 to satisfy a certain logi,
+      logi can only be adjusted by LL, but we can use msa to determine zi
+
+      in this special case ...
+
+      Conclusions (on paper)
+      if using logi
+        if lze2<=2
+          LL = (msa)^2 / 2 delta^2 1/eta_f^(frw(2-lz2e))
+          etai   = [exp(2 logi)/2LL]^(1/(2+frw(2-lze2)))
+        else
+        if lze2<=2+2/frw
+          etai   = exp(logi) delta /msa
+          LL = (msa)^2 / 2 delta^2 1/eta_i^(frw(2-lz2e))
+      else if using zi
+      if lze2<=2
+        LL = (msa)^2 / 2 delta^2 1/eta_f^(frw(2-lz2e))
+        logi   = 0.5 log (2 LL/frw^2 * etai^(2+2frw - frw*lz2e))
+      else
+      if lze2<=2+2/frw
+        LL = (msa)^2 / 2 delta^2 1/eta_i^(frw(2-lz2e))
+        logi   = 0.5 log (2 LL/frw^2 * etai^(2+2frw - frw*lz2e))
+   */
 
 	if (uMsa) {
-		if (uLambda)
+    lType = LAMBDA_Z2;
+
+    if (uLambda)
 			printf("Error: Conflicting options --llcf and --msa. Using msa\n");
 
-		double tmp = (msa*sizeN)/sizeL;
-
-		LL    = 0.5*tmp*tmp;
-		lType = LAMBDA_Z2;
-	} else {
-		double tmp = sizeL/sizeN;
-
-		msa = sqrt(2*LL)*tmp;
+    if (uLogi){
+      if (lz2e <= 2.0){
+        LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(zFinl,frw*(2.0-lz2e)) );
+        icdatst.zi = pow(exp(2*icdatst.logi)/(2*LL),1/(2.0+frw*(2-lz2e)));
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from zf = %f logi = %f msa = %.f",LL,icdatst.zi,zFinl,icdatst.logi,msa);
+      }
+      else if (lz2e*frw <= 2*(1+frw)){
+        icdatst.zi = exp(icdatst.logi) * sizeL/sizeN / msa;
+        LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(icdatst.zi,frw*(2.0-lz2e)) );
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from logi = %f msa = %.f",LL,icdatst.zi,icdatst.logi,msa);
+      }
+      else {
+        LogMsg(VERB_NORMAL,"[parse] Core increasing so fast that log decreases with time !");
+        icdatst.zi = exp(icdatst.logi) * sizeL/sizeN / msa;
+        LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(icdatst.zi,frw*(2.0-lz2e)) );
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from logi = %f msa = %.f",LL,icdatst.zi,icdatst.logi,msa);
+      }
+    } // end use logi
+    else // using zi
+    {
+      if (lz2e <= 2.0){
+        LL           = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(zFinl,frw*(2.0-lz2e)) );
+        icdatst.logi = 0.5 * log(2*LL * pow(icdatst.zi,(2+2*frw - frw*lz2e)));
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, logi = %f from zf = %f zi = %f msa = %.f",LL,icdatst.logi,zFinl,icdatst.zi,msa);
+      }
+      else if (lz2e*frw <= 2*(1+frw)){
+        LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(icdatst.zi,frw*(2.0-lz2e)) );
+        icdatst.logi = 0.5 * log(2*LL * pow(icdatst.zi,(2+2*frw - frw*lz2e)));
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, logi = %f from zi = %f msa = %.f",LL,icdatst.logi,icdatst.zi,msa);
+      }
+      else {
+        LogMsg(VERB_NORMAL,"[parse] Core increasing so fast that log decreases with time !");
+        LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(icdatst.zi,frw*(2.0-lz2e)) );
+        icdatst.logi = 0.5 * log(2*LL * pow(icdatst.zi,(2+2*frw - frw*lz2e)));
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, logi = %f from zi = %f msa = %.f",LL,icdatst.logi,icdatst.zi,msa);
+      }
+    } // end zi case
+  }
+  else // using lambda from command line, interpreted as L1 // user is responsible for getting the correct zi, logi...
+  {
+    /* In principle we could adjust zi, from logi... */
+    if (uLogi){
+      icdatst.zi = pow(exp(2*icdatst.logi)/(2*LL),1/(2.0+frw*(2-lz2e)));
+      LogMsg(VERB_NORMAL,"[parse] Adjusting zi = %f from logi = %f",icdatst.zi,icdatst.logi);
+    }
+    msa = sqrt(2*LL)*sizeL/sizeN * pow(icdatst.zi,frw*(1.0-lz2e/2.0));
 	}
+  zInit = icdatst.zi; //legacy
+
 
 	vqcdType |= vpqType;
  	vqcdType |= (vqcdTypeDamp | vqcdTypeEvol);
@@ -2567,30 +2678,7 @@ if (icdatst.cType == CONF_SMOOTH )
 	if (zGrid == 1)
 		logMpi = ZERO_RANK;
 
-		/* Adjust time of initial conditions if logi is given instead of zi */
-	// if (cType & (CONF_VILGOR | CONF_VILGORK | CONF_VILGORS | CONF_LOLA | CONF_COLE))
-			{
-				if (uLogi && uZin) {
-					printf("Error: zi and logi given for vilgor initial conditions\n ");
-					exit(1);
-				}
-				if (uLogi && !uZin) {
-					if (lType == LAMBDA_FIXED)
-						icdatst.zi = sqrt(exp(icdatst.logi)/sqrt(2*LL));
-						else // LAMBDA_Z2
-						icdatst.zi = exp(icdatst.logi)/sqrt(2*LL);
-						uZin = true;
-				}
-					else if (!uLogi && uZin) {
-					// printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
-					if (lType == LAMBDA_FIXED)
-						icdatst.logi = log(sqrt(2*LL)*icdatst.zi*icdatst.zi);
-						else
-						icdatst.logi = log(sqrt(2*LL)*icdatst.zi);
-						uLogi = true;
-				}
-			}
-	zInit = icdatst.zi; //legacy
+
 
 
 
@@ -2685,7 +2773,7 @@ Cosmos	createCosmos()
 
 	} else {
 		myCosmos.SetLambda  (LL);
-		myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
+		myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? lz2e : 0.0);
 		myCosmos.SetQcdExp  (nQcd);
 		myCosmos.SetGamma   (gammo);
 		myCosmos.SetDecTime   (dectime);
