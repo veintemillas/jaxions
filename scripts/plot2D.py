@@ -37,7 +37,7 @@ class	Plot2D():
 		print('%dx%dx%d'%(self.Lx,self.Ly,self.Lz))
 
 		self.z = fileHdf5["/"].attrs.get("z")
-		if ('R' in fileHdf5) :
+		if ('R' in fileHdf5.attrs) :
 			self.R = fileHdf5["/"].attrs.get("R")
 		else :
 			self.R = self.z
@@ -84,7 +84,7 @@ class	Plot2D():
 			Lz = fileHdf5["/"].attrs.get("Depth")
 			zR = fileHdf5["/"].attrs.get("z")
 
-			if ('R' in fileHdf5) :
+			if ('R' in fileHdf5.attrs) :
 				R  = fileHdf5["/"].attrs.get("R")
 			else :
 				R = zR
@@ -150,7 +150,7 @@ class	Plot2D():
 				rData = np.sqrt((mTmp1[:,:]**2 + mTmp2[:,:]**2)) #/(mAmA*R**3))
 				rMax = np.amax(rData)
 				rData = rData/rMax
-				aData = (np.arctan2(mTmp2[:,:], mTmp1[:,:]) + 2*np.pi)/(4.*np.pi)
+				aData = (np.arctan2(mTmp2[:,:], mTmp1[:,:]) + np.pi)/(2.*np.pi)
 
 			else:
 				print("Unrecognized field type %s" % fl)

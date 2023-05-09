@@ -34,8 +34,10 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	size_t local_z_start = rank*Lz;
 
 	/* used from ic */
-	double mod0  = ic.mode0;
+	double mod0  = ic.mode0 > 0.0;
 	double kCri  = ic.kcr;
+	/* for string wave */
+	int div = ic.kMax; // number of strings in one dimension
 	/* kCri2 Interpreted as sigma in conf-minicluster in ADM Units*/
 	double kCri2 = L*L/(2.0*Sf*ic.kcr*ic.kcr);
 	size_t kMa   = ic.kMax;
@@ -44,7 +46,8 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	double kMy   = 0.;
 	double kMz   = 0.;
 	double kBase = 2.0*M_PI/Lx;
-
+	/* for string radius  */
+	double strR  = ic.mode0 > 0.0 ? ic.mode0 : 0.2501;
 	/* this is useless in many applications but harms not much */
 	FILE *cacheFile = nullptr;
 	if (((cacheFile  = fopen("./kkk.dat", "r")) == nullptr)){
@@ -222,7 +225,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						Float zis = ((Float) z) - ((Float) kCrit) ;
 						if ( zis > (Float) Tz/2) { zis -= (Float) Tz; }
 						if (-zis > (Float) Tz/2) { zis += (Float) Tz; }
-						Float aL = ((Float) Lx)/4.01;	//RADIUS
+						Float aL = ((Float) Lx)*((Float) strR);	//RADIUS
 						rho2 = (x-Lx/2)*(x-Lx/2)+(y-Lx/2)*(y-Lx/2);
 						Float rho = sqrt((Float) rho2)	;
 						Float z2  = zis*zis;
@@ -245,9 +248,10 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						z = iz;
 						y = iy;
 						x = ix;
+						if(1){
 						//CENTERED AT GRID, z=0
 						if (iz>Lx/2) { z = z-Lx; }
-						Float aL = ((Float) Lx)/4.01;	//RADIUS
+						Float aL = ((Float) Lx)*((Float) strR);	//RADIUS
 						rho2 = (z)*(z)+(y-Lx/2)*(y-Lx/2);
 						Float rho = sqrt((Float) rho2)	;
 						Float z2 = ((Float) ((x-Lx/2)*(x-Lx/2))) ;
@@ -256,12 +260,27 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						// d12 /= ((Float) Sf) ;
 						// d22 /= ((Float) Sf) ;
 						//Float zis = (Float) x ;
-						Float theta = (0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
-						theta = 3.14159265*theta*theta	;
+						Float theta = 3.14159265*(0.5 + (4.f*aL*aL - d12 - d22)/(4.f*sqrt(d12*d22)))	;
+						// theta = 3.14159265*theta*theta	;
 						if (ix>Lx/2)
 							theta *= -1 ;
 
 						m[idx] = std::complex<Float>(cos(theta), sin(theta));
+						}
+
+
+						//Float mor   = sqrt(pow(x-Lx/2,2) + pow(sqrt(z*z+pow(y-Lx,2)-R),2)
+						//Float theta = atan2(sqrt(z*z+pow(y-Lx/2,2))- (Float) (strR*Lx),x-Lx/2 ) ;
+
+						// Float a1 = x-Lx/2.;
+						// Float a2 = sqrt(z*z + pow(y-Lx/2.,2.))- ((Float) (strR*Lx));
+						// Float we = sqrt( pow(a1,2.) + pow(a2,2.));
+						// Float ss = pow(sin(kBase*x/2),2);
+						// Float th = ss*atan2(a1,a2);
+						// //Float ss = 1.0;
+						// //m[idx] = std::complex<Float>(ss*a2/we, ss*a1/we);
+						// m[idx] = std::complex<Float>(cos(th), sin(th));
+
 						break;
 					}
 					//	ONE MODE
@@ -335,7 +354,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 			//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
 			Float L1 = ((Float) Lx)/4.01;
 			Float L3 = ((Float) Lx)*3.01/4.01;
-			Float LL = ((Float) Lx)/2.;
+			Float LL = ((Float) Lx)/div;
 
 			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
 			std::uniform_real_distribution<Float> uni(-1.0, 1.0);
@@ -350,14 +369,14 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 				y = iy;
 				x = ix;
 				Float theta = 0.;
-				for (int nx = -2 ; nx < 4; nx++){
-					for (int ny = -2 ; ny < 4; ny++){
+				for (int nx = -div ; nx < div+2; nx++){
+					for (int ny = -div ; ny < div+2; ny++){
 						theta += pow(-1,nx+ny)*std::atan2(y-((Float) ny + 0.5)*LL,x-((Float) nx + 0.5)*LL);
 					}
 				}
 				std::complex<Float> eee = std::complex<Float>(cos(theta), sin(theta));
 				for (size_t iz =0; iz<Lz; iz++){
-					m[idx+iz*Sf] = eee;
+					m[idx+iz*Sf] *= eee;
 				}
 			}
 		}

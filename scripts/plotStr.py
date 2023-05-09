@@ -45,10 +45,13 @@ class	GLViewWithText(gl.GLViewWidget):
 	z = 0.0
 	def	updateZ(self,z):
 		self.z = z
+	def	updatePS(self,ps):
+		self.psize = ps
 	def	paintGL(self, *args, **kwds):
 		gl.GLViewWidget.paintGL(self, *args, **kwds)
 		self.qglColor(QtCore.Qt.white)
-		self.renderText(0,0,1.5, "ct = %f" % self.z)
+		self.renderText(0,0,1.5, "ct = %f ps = %d" % (self.z,self.psize))
+		# self.renderText(0,0,1.5, "ct = %f" % (self.z))
 
 class	Plot3D():
 	def	__init__(self):
@@ -58,6 +61,8 @@ class	Plot3D():
 		self.step  = 1
 		self.tStep = 100
 		self.pause = False
+
+		self.psize  = 2
 
 		self.timer = pg.QtCore.QTimer()
 
@@ -174,7 +179,7 @@ class	Plot3D():
 
 		data = self.allData[0]
 		self.view.updateZ(data[2])
-		self.plt = gl.GLScatterPlotItem(pos=data[0], color=data[1], size=1)
+		self.plt = gl.GLScatterPlotItem(pos=data[0], color=data[1], size=self.psize)
 		self.view.addItem(self.plt)
 		self.plt.scale(2./float(self.Lx), 2./float(self.Ly), 2./float(self.Lz))
 		self.plt.translate(-1.0,-1.0,-1.0)
@@ -185,7 +190,9 @@ class	Plot3D():
 	def	update(self):
 		data = self.allData[self.i]
 		self.view.updateZ(data[2])
-		self.plt.setData(pos=data[0], color=data[1])
+		self.view.updatePS(self.psize)
+		self.plt.setData(pos=data[0], color=data[1], size=self.psize)
+		# self.plt.setSize(self.psize)
 		self.i = (self.i+self.step)%self.size
 
 	def	start(self):
@@ -222,6 +229,10 @@ class	Plot3D():
 			self.timer.setInterval(self.tStep)
 		elif key == QtCore.Qt.Key_R:
 			self.step = -self.step
+		elif key == QtCore.Qt.Key_B:
+			self.psize += 1
+		elif key == QtCore.Qt.Key_S:
+			self.psize -= 1
 
 
 # Plot 3D

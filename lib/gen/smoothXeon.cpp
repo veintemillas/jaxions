@@ -60,6 +60,7 @@ void	iteraXeon (const complex<Float> * __restrict__ mCp, complex<Float> * __rest
 
 void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 {
+	LogMsg(VERB_SILENT,"[smo] Called smoothXeon");
 	field->exchangeGhosts(FIELD_M);
 
 	switch	(field->Precision())
@@ -67,6 +68,7 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		case	FIELD_DOUBLE:
 		for (size_t it=0; it<iter; it++)
 		{
+			LogMsg(VERB_HIGH,"[smo] Smoothing step %d",it);
 			iteraXeon(static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->m2Cpu()), field->Length(), field->Surf(), field->Size(), alpha);
 			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->m2Cpu()), field->DataSize()*field->Size());
 			field->exchangeGhosts(FIELD_M);
@@ -76,6 +78,7 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		case	FIELD_SINGLE:
 		for (size_t it=0; it<iter; it++)
 		{
+			LogMsg(VERB_HIGH,"[smo] Smoothing step %d",it);
 			iteraXeon(static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->m2Cpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
 			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->m2Cpu()), field->DataSize()*field->Size());
 			field->exchangeGhosts(FIELD_M);
@@ -87,4 +90,5 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 		exit(1);
 		break;
 	}
+	LogMsg(VERB_SILENT,"[smo] END smoothXeon ");
 }

@@ -211,7 +211,10 @@ double  Cosmos::R       (const double ct)
   if (ueCosm)
     r = sR(ct);
   else
-    r = std::pow(ct,frw);
+    if (frw == 1 && icdatastruc.grav > 0.0)
+      r = ct * (1 + 0.25 * ct * icdatastruc.grav);
+    else
+      r = std::pow(ct,frw);
 
   LogMsg(VERB_PARANOID,"[Cos:R] R %.2e ",r);
   return r;

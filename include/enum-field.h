@@ -258,6 +258,7 @@
 			CONF_COLE       = 256,
 			CONF_SPAX       = 512,
 			CONF_THERMAL    = 1024,
+			CONF_STRING     = 2048,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -290,6 +291,7 @@
 			MOM_KCOLE   = 1040,  //
 			MOM_SPAX    = 2048,  // given spectrum
 			MOM_MVTHERMAL = 4096,
+			MOM_STRING   = 4096*2,
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -734,8 +736,8 @@
 
 		typedef	enum	GadType_s
 		{
-			HALO,	     
-			VOID,              
+			HALO,
+			VOID,
 		}	GadType;
 
 		// data given to measurement function (includes labels and analyses)
@@ -835,6 +837,10 @@
 			bool          randommom = true;
 			void*         mp;
 			void*         vp;
+			std::vector<double>         xx;
+			std::vector<double>         yy;
+			std::vector<double>         zz;
+			std::vector<double>         x0;
 		}	MomParms;
 
 		typedef	struct	MeasFileParms_v

@@ -7,9 +7,9 @@
 # l_ex=['THETA','RHO','DRHO','DRHO_RHO','DALL']
 
 prefix='V_'
-l_QCD=['0','1','C','L']
+l_QCD=['0','1','2','C','L']
 l_PQ=['1']
-l_ex=['THETA','RHO','DRHO','DRHO_RHO','DALL']
+l_ex=['THETA','RHO','DRHO','DRHO_RHO','DALL','DALL_THETA']
 
 
 PR={'PROP_OMELYAN2':'PropOmelyan2', 'PROP_OMELYAN4':'PropOmelyan4',

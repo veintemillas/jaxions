@@ -655,7 +655,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 						mMx = opCode(add_ps, mMx, opCode(mul_ps, opCode(set1_ps, zQ), opCode(sub_ps, zRVec, mel)));
 					break;
 					case V_QCD2:
-						mMx = opCode(sub_ps, mMx, opCode(mul_ps,zNVec,mel));
+						mMx = opCode(add_ps, mMx, opCode(mul_ps,zNVec,mel));
 					break;
 					case V_QCDC:
 						tmp2 = opCode(div_ps,
@@ -1219,7 +1219,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 					mMx = opCode(add_pd, mMx, opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, zRVec, mel)));
 				break;
 				case V_QCD2:
-					mMx = opCode(sub_pd, mMx, opCode(mul_pd,zNVec,mel));
+					mMx = opCode(add_pd, mMx, opCode(mul_pd,zNVec,mel));
 				break;
 				case V_QCDC:
 					tmp2 = opCode(div_pd,
