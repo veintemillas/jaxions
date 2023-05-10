@@ -646,7 +646,7 @@ void	ConfGenerator::runCpu	()
 
 
 	if ( (cType == CONF_KMAX) || (cType == CONF_VILGORS) ) {
-
+		LogMsg(VERB_NORMAL,"[GEN] final rescaling for KMAX/VILGORS!");
 		if (!myCosmos->Mink()) {
 			double	   lTmp = axionField->BckGnd()->Lambda()/((*axionField->RV()) * (*axionField->RV()));
 			double	   ood2 = 1./(axionField->Delta()*axionField->Delta());
@@ -661,7 +661,7 @@ void	ConfGenerator::runCpu	()
 
 		}
 	}
-	LogMsg(VERB_NORMAL,"[GEN] done!");LogFlush();
+	LogMsg(VERB_NORMAL,"[GEN] done!");
 }
 
 
@@ -935,10 +935,16 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	IcData ic = myCosmos->ICData();
 	LogFlush();
 
-	LogMsg(VERB_NORMAL,"[GEN] set field to axion! ");
-	axionField->setField(FIELD_AXION);
-	size_t VD = (axionField->DataSize())*(axionField->Size());
-
+	size_t VD;
+	if (myCosmos->ICData().fType == FIELD_AXION)
+	{
+		LogMsg(VERB_NORMAL,"[GEN] set field to axion! ");
+		axionField->setField(FIELD_AXION);
+		VD = (axionField->DataSize())*(axionField->Size());
+	} else if (myCosmos->ICData().fType == FIELD_SAXION)
+	{
+		LogMsg(VERB_NORMAL,"[GEN] SPAX with saxion ... works? ");
+	}
 
 	LogMsg(VERB_NORMAL,"[GEN] Read data file! ");
 	LogFlush();
@@ -1020,7 +1026,6 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	prof.add("momConf v", 0., axionField->Size()*axionField->DataSize()*1e-9);
 
 
-
 	LogMsg(VERB_NORMAL,"[GEN] fft! ");
 	prof.start();
 
@@ -1040,6 +1045,87 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
 
 
+
+	/* If saxion was specified, convert axion only to saxion
+	and add ... possibly ... string network
+	*/
+
+	if (myCosmos->ICData().fType == FIELD_SAXION)
+	{
+		LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX SAXION MODE! \n");
+		/* Now add strings a la "lola" (they go to m) */
+
+		double logit = ic.logi;
+		double xit = (249.48 + 38.8431*logit + 1086.06*logit*logit)/(21775.3 + 3665.11*logit)  ;
+		if (ic.siter == 1)
+			xit *= ic.kcr;
+		if (xit > 0.0)
+		{
+			LogMsg(VERB_NORMAL,"[GEN] Creating string on top of SPAX! \n");
+			/* moves ctheta to m2*/
+			memcpy	   (m2, ms, axionField->DataSize()*axionField->Size());
+			float *lerdo = static_cast<float*>(axionField->m2Cpu());
+			putxi(xit,ic.kMax);
+			normaliseField(axionField, FIELD_M);
+		}
+
+		/* Build the scalar field merging the extra waves
+
+		we have :
+			strings in mStart, phi_s
+			extra waves psi = theta*R in m2Cpu
+			extra waves psi' = theta'*R+theta R' in vCpu
+		we need :
+			conformal scalar Phi = phi_s * exp(i theta) * R, theta = psi/R IN MSTART
+			conformal velocity Phi' = phi_s * exp(i theta) = phi_s * exp(i theta) * (R' + i theta')
+				theta' = psi'/R - theta R'/R
+		psi' = (thetaR)' = theta'R + theta R'
+		psi  = theta R
+		Phi  = phi exp(I psi/R) R
+		phi' = (rho'  + rho i theta')exp(I theta)
+				 > (rho'  + rho i theta'+extra)exp(I (theta+extra))
+*/
+		size_t vol = axionField->Size();
+
+
+		if (axionField->Precision() == FIELD_SINGLE)
+		{
+				float R    = *axionField->RV();
+				float Rp   = myCosmos->Rp(*axionField->zV());
+				complex<float> *co_m = static_cast<complex<float>*>(axionField->mStart());
+				complex<float> *co_v = static_cast<complex<float>*>(axionField->vCpu());
+				float *f_m  = static_cast<float*>(axionField->m2Cpu());
+				float *f_v  = static_cast<float*>(axionField->vCpu());
+				#pragma omp parallel for default(shared) schedule(static)
+				for (size_t pidx = 0; pidx < vol; pidx++){
+					size_t idx = vol-pidx-1;
+					float theta  = f_m[idx]/R;
+					float thetap = f_v[idx]/R-theta*Rp;
+					co_m[idx] = co_m[idx]*exp(complex<float>(0.0,theta))*R;
+					co_v[idx] = complex<float>(Rp,thetap)*co_m[idx];
+				}
+			}
+			else
+			{
+				double R    = *axionField->RV();
+				double Rp   = myCosmos->Rp(*axionField->zV());
+				complex<double> *co_m = static_cast<complex<double>*>(axionField->mStart());
+				complex<double> *co_v = static_cast<complex<double>*>(axionField->vCpu());
+				double *f_m  = static_cast<double*>(axionField->m2Cpu());
+				double *f_v  = static_cast<double*>(axionField->vCpu());
+				#pragma omp parallel for default(shared) schedule(static)
+				for (size_t pidx = 0; pidx < vol; pidx++){
+					size_t idx = vol-pidx-1;
+					float theta  = f_m[idx]/R;
+					float thetap = f_v[idx]/R-theta*Rp;
+					co_m[idx] = co_m[idx]*exp(complex<double>(0.0,theta))*R;
+					co_v[idx] = complex<double>(Rp,thetap)*co_m[idx];
+				}
+			}
+		/* Normalise cores? */
+		if (myCosmos->ICData().normcore)
+			normCoreField	(axionField);
+	}
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX end! \n");
 } // endconf spectrum axions
 

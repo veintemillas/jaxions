@@ -789,6 +789,7 @@
 		// or other configuration
 		typedef	struct	IcData_v
 		{
+			FieldType     fType;
 			size_t        Nghost;
 			bool          icdrule;
 			bool          preprop;

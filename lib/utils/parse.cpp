@@ -2680,7 +2680,7 @@ if (icdatst.cType == CONF_SMOOTH )
 
 
 
-
+  icdatst.fType = fTypeP;
 
 	//- information needs to be passed onto measurement files
  	deninfa.sliceprint = slicepp;
