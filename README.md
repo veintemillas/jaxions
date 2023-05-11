@@ -1,5 +1,7 @@
 # Jaxions
 
+![](docs/cover.png)
+
 Jaxions is a grid-based massively parallel code to study the Axion field evolution before, around and after the QCD phase transition.
  
 ## Requirements
