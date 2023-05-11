@@ -1,5 +1,6 @@
 title: jaxions
 description: Axion field evolution around the QCD phase transition
+baseurl: /jaxions
 theme: just-the-docs
 url: "https://veintemillas.github.io/jaxions" 
 repository: veintemillas/jaxions 
