@@ -52,9 +52,9 @@ set(USE_NN_BINS OFF CACHE BOOL "Output occupation number bins")
 
 find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
-#find_package(HDF5 REQUIRED)
+find_package(HDF5 REQUIRED)
 #find_package (HDF5 NAMES hdf5 COMPONENTS C STATIC)
-include_directories(SYSTEM ${HDF5_INCLUDE_DIR})
+#include_directories(SYSTEM ${HDF5_INCLUDE_DIR})
 
 
 find_package(OpenMP REQUIRED)
@@ -66,7 +66,7 @@ find_library(FFTW_MPI_LIBRARY  NAMES fftw3_mpi fftw_mpi   PATHS $ENV{FFTW_HOME}/
 find_library(FFTWF_LIBRARY     NAMES fftw3f fftwf         PATHS $ENV{FFTW_HOME}/lib)
 find_library(FFTWF_OMP_LIBRARY NAMES fftw3f_omp fftwf_omp PATHS $ENV{FFTW_HOME}/lib)
 find_library(FFTWF_MPI_LIBRARY NAMES fftw3f_mpi fftwf_mpi PATHS $ENV{FFTW_HOME}/lib)
-find_library(HDF5_LIBRARY      NAMES hdf5                 PATHS $ENV{HDF5_HOME}/lib)
+#find_library(HDF5_LIBRARY      NAMES hdf5                 PATHS $ENV{HDF5_HOME}/lib)
 find_library(GSL_LIBRARY       NAMES gsl                  PATHS $ENV{GSL_HOME}/lib)
 find_library(GSL_CBLAS_LIBRARY NAMES gslcblas             PATHS $ENV{GSL_HOME}/lib)
 
