@@ -1476,7 +1476,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 
 	FILE *stringFile = nullptr;
 	std::vector<double> xx,yy,zz;
-	std::vector<bool> endpoints;
+	std::vector<int> endpoints;
 
 	if (((stringFile  = fopen("./string.dat", "r")) == nullptr)){
 		LogMsg(VERB_NORMAL,"[STR] none found ! ");
@@ -1498,16 +1498,16 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 			ii++;
 
 		}
-		endpoints.pop_back() //remove last entry and replace it with a True for the endpoint
-		endpoints.push_back(true)
+		//endpoints.pop_back(); //remove last entry and replace it with a True for the endpoint
+		//endpoints.push_back(true);
 
 
 		// Add periodic copies of the string outside the simulation volume
 	   const int numCopies = 1; // Number of copies to add
-	   const double boxSize = myCosmos->TotalDepth(); 
+	  //const double boxSize = myCosmos->TotalDepth(); 
 
 	   for (int i = -numCopies; i < numCopies + 1; i++) {
-		   if (i == 0):
+		   if (i == 0)
 		   	continue;
 
 		   for (int ind = 0; ind < ii; ind++) {
@@ -1518,7 +1518,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 			   double newY = yy.at(ind);
 			   yy.push_back(newY);
 		   	   // Add a copy shifted in the z-direction
-			   double newZ = zz.at(ind) + i * boxSize;
+			   double newZ = zz.at(ind) + i * sizeN;
 			   zz.push_back(newZ);
 		   }
 	   }
@@ -1526,7 +1526,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	}
 
 	prof.start();
-	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size()); //additionally give input about endpoints of the loops
+	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size()); 
 	prof.stop();
 
 	/* TODO wrong flops */

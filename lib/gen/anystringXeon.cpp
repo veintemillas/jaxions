@@ -70,7 +70,7 @@ double mora(double* xs,double* ys,double* zs, int lo, double x, double y, double
 }
 
 template<typename Float>
-void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic, double *xs, double *ys, double *zs, size_t len, double *eps, size_t eps_len)
+void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic, double *xs, double *ys, double *zs, size_t len, int *eps, size_t eps_len)
 {
 	LogMsg(VERB_NORMAL,"[rX] Any string configuration");
 
@@ -117,7 +117,7 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 		// Biot-Savart
 		for (int il = 0; il < len; il++)
 		{
-			if (eps[il % eps_len]) //skip the segment that would connect the endpoint of the loop with the copies
+			if (eps[il % eps_len] == 1) //skip the segment that would connect the endpoint of the loop with the copies
 				continue;
 			// OLD CODE WORKS
 			// /* linear approx is very good far away from strings */
@@ -307,7 +307,7 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 
 }
 
-void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, size_t len, double *ep, size_t len_ep)
+void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, size_t len, int  *ep, size_t len_ep)
 {
 	switch (field->Precision())
 	{
