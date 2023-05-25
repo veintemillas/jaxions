@@ -1,10 +1,10 @@
 # JAXIONS MODULE TO PREPARE A string.dat FILE FOR SIMULATIONS WITH THE "String" INITIAL CONDITIONS
 import numpy as np
 
-def randomstrings(N, LEN, NSTRINGS=1, IT=3, XCF=0.5, YCF=0.5, ZCF=0.5):
+def randomstrings(N, LEN, NSTRINGS=1, ITER=3, XCF=0.5, YCF=0.5, ZCF=0.5, PATH = './'):
 
     """
-    randomstrings(N,L,NSTRINGS,ITER,XCF,YCF,ZCF)
+    randomstrings(N,L,NSTRINGS,ITER,XCF,YCF,ZCF,PATH)
 
     1) Generates Nstrings random string loops
     2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid wrong contributions from the sections connceting two distinct strings
@@ -21,6 +21,8 @@ def randomstrings(N, LEN, NSTRINGS=1, IT=3, XCF=0.5, YCF=0.5, ZCF=0.5):
     ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1)
 
     For multiple strings, the center coordinates are chosen randomly and these values are not considered!
+
+    PATH is a string containing the path to the folder where you want to store the string.dat file
     """
 
     xx, yy, zz = np.array([]), np.array([]), np.array([])
@@ -72,6 +74,6 @@ def randomstrings(N, LEN, NSTRINGS=1, IT=3, XCF=0.5, YCF=0.5, ZCF=0.5):
         eps = np.append(eps,ep).flatten()
 
     coords = np.column_stack((xx, yy, zz, eps))
-    np.savetxt('./string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+    np.savetxt(PATH + 'string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
 
     return xx,yy,zz
