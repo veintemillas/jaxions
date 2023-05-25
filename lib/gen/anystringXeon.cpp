@@ -70,7 +70,7 @@ double mora(double* xs,double* ys,double* zs, int lo, double x, double y, double
 }
 
 template<typename Float>
-void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic, double *xs, double *ys, double *zs, size_t len)
+void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic, double *xs, double *ys, double *zs, size_t len, double *eps, size_t eps_len)
 {
 	LogMsg(VERB_NORMAL,"[rX] Any string configuration");
 
@@ -106,15 +106,19 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 		Float   rx,  ry,  rz, r3;
 		Float   bx = 0., by = 0., bz = 0.;
 		iz_l = idx/Sf;
-	  iz = iz_l + local_z_start;
+	    iz = iz_l + local_z_start;
 		iy = (idx%Sf)/Lx ;
 		ix = (idx%Sf)%Lx ;
+
 		z = iz;
 		y = iy;
 		x = ix;
+
 		// Biot-Savart
-		for (int il = 0; il < len-1; il++)
+		for (int il = 0; il < len; il++)
 		{
+			if (eps[il % eps_len]) //skip the segment that would connect the endpoint of the loop with the copies
+				continue;
 			// OLD CODE WORKS
 			// /* linear approx is very good far away from strings */
 			// dz = zs[il+1]-zs[il];
@@ -157,6 +161,11 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 			/* integral version is much better close to strings, it can be regularised too */
 
 		} // end x string loop
+
+		  /* At this point we want to add the contributions from the periodic copies (I guess ?!)
+		   Repeat same calculation for all the copies and add the contributions to bx, by and bz */
+
+		  // From here, the computation should be the same
 		Bx[idx] = 0.5*bx;
 		if(ix==0){
 			By[iy + Lx*iz_l] = 0.5*by;
@@ -298,7 +307,7 @@ void	anystringXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData 
 
 }
 
-void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, size_t len)
+void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, size_t len, double *ep, size_t len_ep)
 {
 	switch (field->Precision())
 	{
@@ -318,7 +327,7 @@ void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, s
 			LogMsg(VERB_NORMAL,"[RC] Generating double conf in m2! ");
 		}
 
-		anystringXeon<double>(ma, field, ic, x,y,z,len);
+		anystringXeon<double>(ma, field, ic, x,y,z,len, ep, len_ep);
 		}
 		break;
 
@@ -338,7 +347,7 @@ void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, s
 			LogMsg(VERB_NORMAL,"[RC] Generating single conf in m2! ");
 		}
 
-		anystringXeon<float> (ma, field, ic, x,y,z,len);
+		anystringXeon<float> (ma, field, ic, x,y,z,len, ep, len_ep);
 		}
 		break;
 

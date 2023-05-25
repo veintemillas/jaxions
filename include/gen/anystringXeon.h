@@ -3,6 +3,6 @@
 
 	#include "scalar/scalarField.h"
 
-	void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, size_t len);
+	void	anystringConf (Scalar *field, IcData ic, double *x, double *y, double *z, size_t len, double *eps, size_t eps_len);
 
 #endif
