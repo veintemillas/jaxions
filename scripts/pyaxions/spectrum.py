@@ -752,26 +752,39 @@ class setq:
                 nmbin = np.array(nmbinbuf)
             # end of rebin
             # next calculate q
+            flag_exception = False 
             if discneg==True:
                 xbin = xbin[Fbin > 0]
                 Fbin = Fbin[Fbin > 0]
                 nbin = len(Fbin)
                 if nbin < 4:
                     print(r'number of data points becomes less than 4 after discarding bins with negative F! (log = %.2f)'%insplog[id])
+                    flag_exception = True
             Su = nbin
             Sl = np.sum(np.log(xbin))
             Sll = np.sum(np.log(xbin)**2)
             SL = np.sum(np.log(Fbin))
             SLL = np.sum(np.log(Fbin)**2)
             SlL = np.sum(np.log(xbin)*np.log(Fbin))
-            alphaq = Sll - Sl*Sl/Su
-            betaq = SlL - Sl*SL/Su
-            gammaq = SLL - SL*SL/Su
-            alpham = Su - Sl*Sl/Sll
-            betam = SlL*Sl/Sll - SL
-            gammam = SLL - SlL*SlL/Sll
-            qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
-            mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
+            if flag_exception:
+                # if discneg==True and nbin < 4 we do not trust the result
+                alphaq = np.nan
+                betaq = np.nan
+                gammaq = np.nan
+                alpham = np.nan
+                betam = np.nan
+                gammam = np.nan
+                qbest = np.nan
+                mbest = np.nan
+            else:
+                alphaq = Sll - Sl*Sl/Su
+                betaq = SlL - Sl*SL/Su
+                gammaq = SLL - SL*SL/Su
+                alpham = Su - Sl*Sl/Sll
+                betam = SlL*Sl/Sll - SL
+                gammam = SLL - SlL*SlL/Sll
+                qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
+                mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
             vecone = np.ones(len(xbin))
             if typesigma==0:
                 sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))
@@ -781,10 +794,16 @@ class setq:
                 sigmasq = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
             else:
                 print("wrong typesigma option!")
-            sigma = math.sqrt(sigmasq)
-            chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
-            sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
-            sigmam = math.sqrt(betam**2-alpham*(gammam-sigmasq*(chi2min+Deltachisq)))/alpham
+            if flag_exception:
+                chi2min = np.nan
+                sigma = np.nan
+                sigmaq = np.nan
+                sigmam = np.nan
+            else:
+                chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
+                sigma = math.sqrt(sigmasq)
+                sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
+                sigmam = math.sqrt(betam**2-alpham*(gammam-sigmasq*(chi2min+Deltachisq)))/alpham
         # end of the case len(xlim) >= 4
         self.chi2min = chi2min
         self.qbest = qbest
