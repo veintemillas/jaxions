@@ -1,5 +1,7 @@
 # Jaxions
 
+![](docs/cover.png)
+
 Jaxions is a grid-based massively parallel code to study the Axion field evolution before, around and after the QCD phase transition.
  
 ## Requirements
@@ -29,6 +31,6 @@ The deafult branch is 'redondo', this might change in the future.
 
 ## Documentation
 
-A documentation on the GADGET-4-CPPC additions and methods is under development. For reference on the physics implemented, please refer to the main paper:
+A documentation is under development. For reference on the physics implemented, please refer to the main paper:
 
 - *A. Vaquero, J. Redondo, J. Stadler*, Early seeds of axion miniclusters, [1809.09241](https://arxiv.org/abs/1809.09241) 
