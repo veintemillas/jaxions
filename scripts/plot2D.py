@@ -114,6 +114,9 @@ class	Plot2D():
 
 			if fl == "Saxion":
 				mTmp  = fileHdf5[map]['m'][()].reshape(L2,L1,2)
+				# remove shift?
+				shift = fileHdf5["/potential"].attrs.get("Shift")
+				mTmp[:,:,0] -= shift*R
 				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0])+np.pi)/(2.*np.pi)
 				if sys.argv[-1] == 'vel':
 					vTmp  = fileHdf5[map]['v'][()].reshape(L2,L1,2)
@@ -122,13 +125,16 @@ class	Plot2D():
 				else :
 					rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
 					rMax = np.amax(rData)
-					rData = rData/R
+					rData = rData/R*0.75
 
 			elif fl == "Axion":
 				if ('map' in fileHdf5):
 					aData = fileHdf5[map]['m'][()].reshape(L2,L1)
-					aData = (aData/R + np.pi)/(2*np.pi)
+					aData = np.mod(aData/R,2*np.pi)/(2*np.pi) + 0.5 # mapped into (0.5,1.5)
+					aData = aData*(aData<=1) + (aData-1)*(aData>1)
 					rData = fileHdf5[map]['v'][()].reshape(L2,L1)
+					tpyVa = 3*rData.std()
+					rData = 1+rData/tpyVa
 					rMax  = R
 
 				# For Moore's Axion and velocity
@@ -196,7 +202,7 @@ class	Plot2D():
 		self.zStxt = pg.TextItem("ct=0.000000")
 
 
-		aPos = np.array([0.00, 0.25, 0.5, 0.75, 1.0 ])
+		aPos = np.array([0.00, 0.30, 0.5, 0.70, 1.0 ])
 		aCol = ['w', 'r', 'k', 'b', 'w']
 
 		vb = self.aPlot.getViewBox()
@@ -221,18 +227,14 @@ class	Plot2D():
 
 #		sPos = np.linspace(0.0, data[3], 5)
 		if fl == 'Axion' or fl == 'Saxion':
-			sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
-			sCol = ['w', 'r', 'y', 'c', 'k']
+			sPos = np.array([0.00, 0.25, 0.5, 0.75, 1.0])
+			sCol = ['w', 'r', 'y', 'k', 'm']
 		else :
 			# sPos = np.array([0.00, 1.00])
 			# sCol = ['k', 'w']
 			sPos = np.array([0.00, 0.5, 1.00])
 			sCol = ['k', 'g', 'w']
 		sLab = ["%.2f" % mod for mod in sPos]
-
-		# sPos = np.array([0.00, 1.00])
-		# sLab = ["%.2f" % mod for mod in sPos]
-		# sCol = ['k', 'w']
 
 		vs = self.sPlot.getViewBox()
 
@@ -245,6 +247,8 @@ class	Plot2D():
 		# self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
 		self.sLeg.setLabels(dict(zip(sLab, sPos)))
 		self.sLeg.setParentItem(self.sPlot)
+
+		self.cola = dict(zip(sCol, [QtGui.QColor(c) for c in sCol]))
 		for s,c in zip(sPos,sCol):
 			# print(QtGui.QColor(c))
 			self.sLeg.gradient.setColorAt(s, QtGui.QColor(c))
@@ -292,15 +296,21 @@ class	Plot2D():
 		self.sLeg.offset = (aSzeX/0.96 + sSzeX, sSzeY/12.)
 
 		if fl == 'Axion' or fl == 'Saxion':
-			sPos = np.array([0.00, 0.25, 0.50, 0.75, 1.00])
-			sCol = ['w', 'r', 'y', 'c', 'k']
-			sLab = ["%.2f" % mod for mod in sPos]
+			sPos = np.array([0.00, 0.25, 0.5, 0.75, 1.0])
+			sCol = ['w', 'r', 'y', 'k', 'm']
+			sLab = ["%.2f" % (mod/0.75) for mod in sPos]
 			self.sLeg.gradient.setColorAt(0.00, QtGui.QColor(255,255,255))
 			self.sLeg.gradient.setColorAt(0.25, QtGui.QColor(255,  0,  0))
 			self.sLeg.gradient.setColorAt(0.50, QtGui.QColor(255,255,  0))
-			self.sLeg.gradient.setColorAt(0.75, QtGui.QColor(  0,255,255))
-			self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(  0,  0,  0))
-			self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00 })
+			self.sLeg.gradient.setColorAt(0.75, QtGui.QColor(  0,0,0))
+			self.sLeg.gradient.setColorAt(1.00, QtGui.QColor(255,  0,255))
+			# for s,c in zip(sPos,sCol):
+			# 	self.sLeg.gradient.setColorAt(s, self.cola[c])
+
+			# self.sLeg.gradient.setColorAt(1.50, QtGui.QColor(255,  0,255))
+
+			# self.sLeg.setLabels({ sLab[0]: 0.0, sLab[1]: 0.25, sLab[2]: 0.50, sLab[3]: 0.75, sLab[4]: 1.00, sLab[5]: 1.50 })
+			self.sLeg.setLabels(dict(zip(sLab, sPos)))
 
 		else :
 			sPos = np.array([0.00, 0.5, 1.00])
