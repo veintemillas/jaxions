@@ -1476,26 +1476,57 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 
 	FILE *stringFile = nullptr;
 	std::vector<double> xx,yy,zz;
+	std::vector<int> endpoints;
+
 	if (((stringFile  = fopen("./string.dat", "r")) == nullptr)){
 		LogMsg(VERB_NORMAL,"[STR] none found ! ");
 	}
 	else
 	{
 		LogMsg(VERB_NORMAL,"[STR] Found ! ");
-			int ii = 0;
-			double xa, ya, za;
-			while(!feof(stringFile)){
-				fscanf (stringFile ,"%lf %lf %lf", &xa, &ya, &za);
-				LogMsg(VERB_PARANOID," x,y,z %.2f %.2f %.2f !",xa, ya, za);
-				xx.push_back(xa);
-				yy.push_back(ya);
-				zz.push_back(za);
-				ii++;
-			}
+		int ii = 0;
+		double xa, ya, za;
+		bool ep;
+		while(!feof(stringFile)){
+			fscanf (stringFile ,"%lf %lf %lf %d", &xa, &ya, &za, &ep);
+			LogMsg(VERB_PARANOID," x,y,z %.2f %.2f %.2f %d !",xa, ya, za, ep);
+			xx.push_back(xa);
+			yy.push_back(ya);
+			zz.push_back(za);
+
+			endpoints.push_back(ep);
+			ii++;
+
+		}
+		//endpoints.pop_back(); //remove last entry and replace it with a True for the endpoint
+		//endpoints.push_back(true);
+
+
+		// Add periodic copies of the string outside the simulation volume
+	   const int numCopies = 1; // Number of copies to add
+	  //const double boxSize = myCosmos->TotalDepth(); 
+
+	   for (int i = -numCopies; i < numCopies + 1; i++) {
+		   if (i == 0)
+		   	continue;
+
+		   for (int ind = 0; ind < ii; ind++) {
+			   // Add a copy shifted in the x-direction
+			   double newX = xx.at(ind);
+			   xx.push_back(newX);
+		   	   // Add a copy shifted in the y-direction
+			   double newY = yy.at(ind);
+			   yy.push_back(newY);
+		   	   // Add a copy shifted in the z-direction
+			   double newZ = zz.at(ind) + i * sizeN;
+			   zz.push_back(newZ);
+		   }
+	   }
+
 	}
 
 	prof.start();
-	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size());
+	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size()); 
 	prof.stop();
 
 	/* TODO wrong flops */

@@ -344,8 +344,8 @@ inline  size_t	mendThetaKernelXeon(void * __restrict__ m_, void * __restrict__ v
 						melB = opCode(cmp_pd, mPx, mBMx, _CMP_EQ_OQ); // are cF and cB equal?
 						vBMx = opCode(cmp_pd, mPx, mBMx, _CMP_NEQ_OQ); //are cF and cB different?
 	#else
-						melB = opCode(cmpeq_ps, mPx, mBMx);
-						vBMx = opCode(cmpneq_ps, mPx, mBMx);
+						melB = _mm_castps_pd(opCode(cmpeq_ps, _mm_castpd_ps(mPx), _mm_castpd_ps(mBMx)));
+						vBMx = _mm_castps_pd(opCode(cmpneq_ps, _mm_castpd_ps(mPx), _mm_castpd_ps(mBMx)));
 	#endif
 						opCode(store_pd, static_cast<double*>(static_cast<void*>(msk)), melB);
 #endif
