@@ -1504,7 +1504,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 
 		// Add periodic copies of the string outside the simulation volume
 	   const int numCopies = 1; // Number of copies to add
-	  //const double boxSize = myCosmos->TotalDepth(); 
+	  //const double boxSize = myCosmos->TotalDepth();
 
 	   for (int i = -numCopies; i < numCopies + 1; i++) {
 		   if (i == 0)
@@ -1518,7 +1518,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 			   double newY = yy.at(ind);
 			   yy.push_back(newY);
 		   	   // Add a copy shifted in the z-direction
-			   double newZ = zz.at(ind) + i * sizeN;
+			   double newZ = zz.at(ind) + i * axionField->TotalDepth();
 			   zz.push_back(newZ);
 		   }
 	   }
@@ -1526,7 +1526,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	}
 
 	prof.start();
-	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size()); 
+	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size());
 	prof.stop();
 
 	/* TODO wrong flops */
