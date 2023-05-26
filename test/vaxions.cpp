@@ -238,7 +238,7 @@ int	main (int argc, char *argv[])
 	}
 
 	// SIMPLE OUTPUT CHECK
-	printsample(file_samp, axion, idxprint, lm.str.strDen, lm.maxTheta);
+	printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
 
 	//--------------------------------------------------
 	// Axiton TRACKER (if THETA)
@@ -315,7 +315,7 @@ int	main (int argc, char *argv[])
  			LogFlush();
 
 			// SIMPLE OUTPUT CHECK
-			printsample(file_samp, axion, idxprint, lm.str.strDen, lm.maxTheta);
+			printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -524,16 +524,24 @@ int	main (int argc, char *argv[])
 
 
 
-void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings_global, double maximumtheta)
+void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global, size_t nstrings_global, double maximumtheta)
 {
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
 	double llphys = axion->LambdaP();
 
 	/* unfold if needed */
-	size_t idxp = unfoldidx(idxprint, axion);
+
 	size_t S0 = sizeN*sizeN ;
-	if (commRank() == 0){
+
+	/* Calculate rank */
+	size_t zidx = idxprint_global/axion->Surf();
+	int rankprint = zidx/axion->Depth();
+	size_t idxprinta = idxprint_global - rankprint*axion->Size();
+	size_t idxp = unfoldidx(idxprinta, axion);
+
+	LogMsg(VERB_HIGH,"printsample [global idx %lu ] [local idx=%lu] [folded %lu] from rank %d", idxprint_global,	idxprint, idxp, rankprint);
+	if (commRank() == rankprint){
 		if (sPrec == FIELD_SINGLE) {
 			float buff[4];
 			if (axion->Field() == FIELD_SAXION) {
@@ -541,8 +549,8 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint, size_t nstrings
 				double saskia = axion->Saskia();
 #ifdef USE_GPU
 				if (axion->Device() == DEV_GPU) {
-					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
-					cudaMemcpy(&(buff[2]), &(static_cast<float*>(axion->vGpu())[2*idxprint]),2*sizeof(float),cudaMemcpyDeviceToHost);
+					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[2*idxprinta]),2*sizeof(float),cudaMemcpyDeviceToHost);
+					cudaMemcpy(&(buff[2]), &(static_cast<float*>(axion->vGpu())[2*idxprinta]),2*sizeof(float),cudaMemcpyDeviceToHost);
 				} else
 #endif
 				{
@@ -996,7 +1004,7 @@ size_t unfoldidx(size_t idx, Scalar *axion)
 {
 		if (axion->Folded()){
 			size_t X[3];
-			indexXeon::idx2Vec(idxprint,X,axion->Length());
+			indexXeon::idx2Vec(idx,X,axion->Length());
 			size_t v_length = axion->DataAlign()/axion->DataSize();
 			size_t XC = axion->Length()*v_length;
 			size_t YC = axion->Length()/v_length;
