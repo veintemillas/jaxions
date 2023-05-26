@@ -697,7 +697,8 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.axtinfo.nMax = -1;
 
 	/* Default measurements */
-	deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
+	deninfa.idxprint  = 0;
+  deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
 	deninfa.printconf = PRINTCONF_NONE;  // no configuration
 
 	for (int i=1; i<argc; i++)
@@ -910,6 +911,12 @@ int	parseArgs (int argc, char *argv[])
 					}
 		}
 
+    if (!strcmp(argv[i], "--idxprint"))
+		{
+			sscanf(argv[i+1], "%lu", reinterpret_cast<size_t*>(&deninfa.idxprint));
+			PARSE2;
+		}
+
 		if (!strcmp(argv[i], "--wTime"))
 		{
 			double	tTime = 0.;
@@ -969,10 +976,24 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
+    if (!strcmp(argv[i], "--vPQ1"))
+		{
+			uPot = true;
+			vpqType = V_PQ1 ;
+			PARSE1;
+		}
+
 		if (!strcmp(argv[i], "--vPQ2"))
 		{
 			uPot = true;
 			vpqType = V_PQ2 ;
+			PARSE1;
+		}
+
+    if (!strcmp(argv[i], "--vPQ3"))
+		{
+			uPot = true;
+			vpqType = V_PQ3 ;
 			PARSE1;
 		}
 
@@ -2684,7 +2705,6 @@ if (icdatst.cType == CONF_SMOOTH )
 
 	//- information needs to be passed onto measurement files
  	deninfa.sliceprint = slicepp;
-	deninfa.idxprint = 0 ;
 	deninfa.index = 0;
 	deninfa.redmap = endredmap;
 	deninfa.measCPU  = measCPU;

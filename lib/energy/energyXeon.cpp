@@ -402,6 +402,13 @@ LogMsg(VERB_PARANOID,"Sf %d Vt %d NN %d", Sf, Vt, NN);LogFlush();
 						mSg = opCode(sub_pd, Gry, one);
 						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^2-1)^2
 					break;
+					case V_PQ3:
+						mSg = opCode(sub_pd, Gry, one);
+						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^2-1)^2
+						mSg = opCode(sub_pd, opCode(sqrt_pd,Gry), one); // partial (|rho|-1)
+						mSg = opCode(mul_pd, opCode(set1_pd,4.0), opCode(mul_pd, mSg, mSg)); // 4(rho-1)^2
+						mod = opCode(kkk_pd,mSg,mod,Gry,one);
+					break;
 					case V_PQ2:
 						mSg = opCode(sub_pd, opCode(mul_pd, Gry, Gry), one);
 						mod = opCode(mul_pd, mSg, mSg);   // (|rho|^4-1)^2
@@ -1052,6 +1059,13 @@ if (emask & EN_ENE){
 						mSg = opCode(sub_ps, Gry, one); // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
 					break;
+					case V_PQ3:
+						mSg = opCode(sub_ps, Gry, one);
+						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^2-1)^2
+						mSg = opCode(sub_ps, opCode(sqrt_ps,Gry), one); // partial (|rho|-1)
+						mSg = opCode(mul_ps, opCode(set1_ps,4.0), opCode(mul_ps, mSg, mSg)); // 4(rho-1)^2
+						mod = opCode(kkk_ps,mSg,mod,Gry,one);
+					break;
 					case V_PQ2:
 						mSg = opCode(sub_ps, opCode(mul_ps, Gry, Gry), one); // |rho|^2-1
 						mod = opCode(mul_ps, mSg, mSg);   // (|rho|^4-1)^2
@@ -1355,7 +1369,7 @@ LogMsg(VERB_HIGH,"[eCpu] Called %d and SD status contains MASK %d",mapmask, ( fi
 
 	/* templates */
 
-	/* Only defined PQ1, PQ2
+	/* Only defined PQ1, PQ2, PQ3
 		QCDC, QCDV, QCD2, QCD0 (cosine, variant, N=2, 0)
 		QCD1 uses QCDC
 		QCDL is not defined yet
@@ -1416,6 +1430,23 @@ CASE_(pote2,EN_ENEMAPMASK) \
 			case	V_QCD0_PQ2:
 				CASE_MULTIE_(V_QCD0_PQ2)
 			break;
+
+			case	V_QCD1_PQ3:
+			case	V_QCDC_PQ3:
+				CASE_MULTIE_(V_QCDC_PQ3)
+			break;
+
+			case	V_QCDV_PQ3:
+				CASE_MULTIE_(V_QCDV_PQ3)
+			break;
+
+			case	V_QCD2_PQ3:
+				CASE_MULTIE_(V_QCD2_PQ3)
+			break;
+
+			case	V_QCD0_PQ3:
+				CASE_MULTIE_(V_QCD0_PQ3)
+			break;
 			}
 
 	} else if (field->LowMem())
@@ -1470,6 +1501,23 @@ CASE2_(pote2,EN_MAPMASK,EN_ENEMAPMASK) \
 
 				case	V_QCD0_PQ2:
 					CASE2_MULTIE_(V_QCD0_PQ2)
+				break;
+
+				case	V_QCD1_PQ3:
+				case	V_QCDC_PQ3:
+					CASE2_MULTIE_(V_QCDC_PQ3)
+				break;
+
+				case	V_QCDV_PQ3:
+					CASE2_MULTIE_(V_QCDV_PQ3)
+				break;
+
+				case	V_QCD2_PQ3:
+					CASE2_MULTIE_(V_QCD2_PQ3)
+				break;
+
+				case	V_QCD0_PQ3:
+					CASE2_MULTIE_(V_QCD0_PQ3)
 				break;
 
 				}

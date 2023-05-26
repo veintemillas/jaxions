@@ -276,7 +276,7 @@ const std::complex<float> If(0.,1.);
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
-			
+
 			if (!lowmem && !lowmemGPU) {
 				LogMsg(VERB_NORMAL, "[sca] allocating mBytes for m2");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
@@ -287,7 +287,7 @@ const std::complex<float> If(0.,1.);
 				alignAlloc ((void**) &m2, mAlign, mBytes);
 				memset (m2, 0, mBytes);
 				totalCPU += mBytes;
-			} else 
+			} else
 				m2 = nullptr;
 			break;
 
@@ -422,7 +422,7 @@ const std::complex<float> If(0.,1.);
 			totalGPU += 2*mBytes;
 			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*v3);
 		}
-		
+
 		// IN SAXION MODE, WE HAVE LOWMEM GPU AND WE CAN AVOID THIS M2 FIELD!
 		if (!lowmemGPU)
 		{
@@ -448,8 +448,8 @@ const std::complex<float> If(0.,1.);
 	}
 
 	LogMsg(VERB_NORMAL, "[sca] TOTAL RAM ALLOCATED:  %.3e GB (CPU) and %.3e GB (GPU)",totalCPU/1e9,totalGPU/1e9);
-	
-	
+
+
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
 
@@ -1425,9 +1425,9 @@ double  Scalar::Saskia  ()
 		break;
 
 		case    V_QCD1:
-			if 			((pot & V_PQ) == V_PQ1){
+			if 			((pot & V_PQ) & (V_PQ1 | V_PQ3)){
 				double sh = SaxionShift();
-				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ1 %e",sh);
+				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ1(3) %e",sh);
 				return sh;
 			}
 			else if ((pot & V_PQ) == V_PQ2)
@@ -1485,7 +1485,7 @@ double  Scalar::Saskia  (const double ct)
 		break;
 
 		case    V_QCD1:
-			if 			((pot & V_PQ) == V_PQ1){
+			if 			((pot & V_PQ) & (V_PQ1 | V_PQ3)){
 				double sh = SaxionShift();
 				LogMsg(VERB_PARANOID,"[sca:Saskia] Shift PQ1 %e",sh);
 				return sh;

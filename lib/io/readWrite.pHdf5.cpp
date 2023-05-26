@@ -419,6 +419,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		default:
 		caspr(V_PQ1,vPQStr,"VPQ 1")
 		caspr(V_PQ2,vPQStr,"VPQ 2")
+		caspr(V_PQ3,vPQStr,"VPQ 3")
 	}
 
 	switch (vqcdType & V_DAMP) {
@@ -1089,6 +1090,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 						vqcdType |= V_PQ1;
 					else if ( !strcmp(vStr, "VPQ2"))
 						vqcdType |= V_PQ2;
+					else if ( !strcmp(vStr, "VPQ3"))
+						vqcdType |= V_PQ3;
 					else {
 						LogError ("Error reading file %s: invalid PQ potential type %s. Use PQ1", base, vStr);
 						vqcdType |= V_PQ1;
@@ -1721,6 +1724,7 @@ void	createMeas (Scalar *axion, int index)
 		default:
 		caspr(V_PQ1,vPQStr,"VPQ 1")
 		caspr(V_PQ2,vPQStr,"VPQ 2")
+		caspr(V_PQ3,vPQStr,"VPQ 3")
 	}
 
 	switch (vqcdType & V_DAMP) {

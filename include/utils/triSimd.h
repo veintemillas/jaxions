@@ -462,6 +462,27 @@ inline _MData_	opCode(cos_pd, _MData_ x)
 
 #endif
 
+// from a, b, c, d, returns a if c>d and b if c<d
+inline _MData_	opCode(kkk_pd, const _MData_ &a, const _MData_ &b, const _MData_ &c, const _MData_ &d)
+{
+_MData_	ret;
+
+#if	defined(__AVX512F__)
+	ret = opCode(mask_add_pd, opCode(setzero_ps), opCode(cmp_pd_mask, c, d, _CMP_GE_OQ), opCode(setzero_ps), a);
+	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd_mask, c, d, _CMP_LT_OQ), ret,                b);
+#elif   defined(__AVX__)
+	ret = opCode(add_pd,
+					opCode(and_pd, opCode(cmp_pd, c, d, _CMP_GE_OQ), a),
+					opCode(and_pd, opCode(cmp_pd, c, d, _CMP_LT_OQ), b));
+#else
+	ret = opCode(add_pd,
+			opCode(and_pd, opCode(cmpge_pd, c, d), a),
+			opCode(and_pd, opCode(cmplt_pd, c, d), b)));
+#endif
+
+	return	ret;
+}
+
 inline _MData_	opCode(mod_pd, _MData_ &x, const _MData_ &md)
 {
 	_MData_	min, ret;
@@ -827,6 +848,27 @@ inline _MData_	opCode(cos_ps, _MData_ x)
 }
 
 #endif
+
+// from a, b, c, returns a if c>d and b if c<d
+inline _MData_	opCode(kkk_ps, const _MData_ &a, const _MData_ &b, const _MData_ &c, const _MData_ &d)
+{
+_MData_	ret;
+
+#if	defined(__AVX512F__)
+	ret = opCode(mask_add_ps, opCode(setzero_ps), opCode(cmp_ps_mask, c, d, _CMP_GE_OQ), opCode(setzero_ps), a);
+	ret = opCode(mask_add_ps, ret,                opCode(cmp_ps_mask, c, d, _CMP_LT_OQ), ret,                b);
+#elif   defined(__AVX__)
+	ret = opCode(add_ps,
+					opCode(and_ps, opCode(cmp_ps, c, d, _CMP_GE_OQ), a),
+					opCode(and_ps, opCode(cmp_ps, c, d, _CMP_LT_OQ), b));
+#else
+	ret = opCode(add_ps,
+			opCode(and_ps, opCode(cmpge_ps, c, d), a),
+			opCode(and_ps, opCode(cmplt_ps, c, d), b)));
+#endif
+
+	return	ret;
+}
 
 inline _MData_	opCode(mod_ps, _MData_ &x, const _MData_ &md)
 {

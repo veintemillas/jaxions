@@ -265,6 +265,24 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 													opCode(set1_pd, LL)),
 												opCode(set1_pd, Rpp))));
 					break;
+					case V_PQ3:
+						// a = p^2 - R^2
+						tmp2 = opCode(sub_pd, mPx, opCode(set1_pd, R2));
+						// b = 2R^2(1-R/p)
+						tmp  = opCode(mul_pd, opCode(set1_pd, 2*R2),
+										opCode(sub_pd,opCode(set1_pd, 1.0),
+											opCode(div_pd,opCode(set1_pd, R),
+												opCode(sqrt_pd, mPx))));
+						// tmp(cuadratic) if p > R and tmp2(quartic) if p < R
+						tmp = opCode(kkk_pd,tmp,tmp2,mPx,opCode(set1_pd, R2));
+
+						mMx = opCode(sub_pd, lap,
+										opCode(mul_pd, mel,
+											opCode(sub_pd,
+												opCode(mul_pd, tmp,
+													opCode(set1_pd, LL)),
+												opCode(set1_pd, Rpp))));
+					break;
 					case V_PQ2:
 						mMx = opCode(sub_pd, lap,
 										opCode(mul_pd, mel,
@@ -632,6 +650,24 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 										opCode(mul_ps, mel,
 											opCode(sub_ps,
 												opCode(mul_ps, opCode(sub_ps, mPx, opCode(set1_ps, R2)),
+													opCode(set1_ps, LL)),
+												opCode(set1_ps, Rpp))));
+					break;
+					case V_PQ3:
+						// a = p^2 - R^2
+						tmp2 = opCode(sub_ps, mPx, opCode(set1_ps, R2));
+						// b = 2R^2(1-R/p)
+						tmp  = opCode(mul_ps, opCode(set1_ps, 2*R2),
+										opCode(sub_ps,opCode(set1_ps, 1.f),
+											opCode(div_ps,opCode(set1_ps, Rf),
+												opCode(sqrt_ps, mPx))));
+						// tmp(cuadratic) if p > R and tmp2(quartic) if p < R
+						tmp = opCode(kkk_ps,tmp,tmp2,mPx,opCode(set1_ps, R2));
+
+						mMx = opCode(sub_ps, lap,
+										opCode(mul_ps, mel,
+											opCode(sub_ps,
+												opCode(mul_ps, tmp,
 													opCode(set1_ps, LL)),
 												opCode(set1_ps, Rpp))));
 					break;
@@ -1200,6 +1236,24 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 												opCode(set1_pd, LL)),
 											opCode(set1_pd, Rpp))));
 				break;
+				case V_PQ3:
+					// a = p^2 - R^2
+					tmp2 = opCode(sub_pd, mPx, opCode(set1_pd, R2));
+					// b = 2R^2(1-R/p)
+					tmp  = opCode(mul_pd, opCode(set1_pd, 2*R2),
+									opCode(sub_pd,opCode(set1_pd, 1.0),
+										opCode(div_pd,opCode(set1_pd, R),
+											opCode(sqrt_pd, mPx))));
+					// tmp(cuadratic) if p > R and tmp2(quartic) if p < R
+					tmp = opCode(kkk_pd,tmp,tmp2,mPx,opCode(set1_pd, R2));
+
+					mMx = opCode(sub_pd, lap,
+									opCode(mul_pd, mel,
+										opCode(sub_pd,
+											opCode(mul_pd, tmp,
+												opCode(set1_pd, LL)),
+											opCode(set1_pd, Rpp))));
+				break;
 				case V_PQ2:
 					mMx = opCode(sub_pd, lap,
 									opCode(mul_pd, mel,
@@ -1513,6 +1567,24 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 									opCode(mul_ps, mel,
 										opCode(sub_ps,
 											opCode(mul_ps, opCode(sub_ps, mPx, opCode(set1_ps, R2)),
+												opCode(set1_ps, LL)),
+											opCode(set1_ps, Rpp))));
+				break;
+				case V_PQ3:
+					// a = p^2 - R^2
+					tmp2 = opCode(sub_ps, mPx, opCode(set1_ps, R2));
+					// b = 2R^2(1-R/p)
+					tmp  = opCode(mul_ps, opCode(set1_ps, 2*R2),
+									opCode(sub_ps,opCode(set1_ps, 1.f),
+										opCode(div_ps,opCode(set1_ps, Rf),
+											opCode(sqrt_ps, mPx))));
+					// tmp(cuadratic) if p > R and tmp2(quartic) if p < R
+					tmp = opCode(kkk_ps,tmp,tmp2,mPx,opCode(set1_ps, R2));
+
+					mMx = opCode(sub_ps, lap,
+									opCode(mul_ps, mel,
+										opCode(sub_ps,
+											opCode(mul_ps, tmp,
 												opCode(set1_ps, LL)),
 											opCode(set1_ps, Rpp))));
 				break;

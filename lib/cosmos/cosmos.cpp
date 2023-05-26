@@ -338,6 +338,7 @@ double  Cosmos::SaxionMass2  (double ct)
 
 	switch  (pot & V_PQ) {
 		case    V_PQ1:
+    case    V_PQ3:
 			lbd *= 2.;
 			break;
 
