@@ -468,7 +468,7 @@ inline _MData_	opCode(kkk_pd, const _MData_ &a, const _MData_ &b, const _MData_ 
 _MData_	ret;
 
 #if	defined(__AVX512F__)
-	ret = opCode(mask_add_pd, opCode(setzero_pd), opCode(cmp_pd_mask, c, d, _CMP_GE_OQ), opCode(setzero_ps), a);
+	ret = opCode(mask_add_pd, opCode(setzero_pd), opCode(cmp_pd_mask, c, d, _CMP_GE_OQ), opCode(setzero_pd), a);
 	ret = opCode(mask_add_pd, ret,                opCode(cmp_pd_mask, c, d, _CMP_LT_OQ), ret,                b);
 #elif   defined(__AVX__)
 	ret = opCode(add_pd,
