@@ -107,10 +107,15 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
         SIMU += ' --lowmem'
     if dev == 'gpu':
         SIMU += ' --measCPU'
+
     if spec:
         SIMU += ' --spec'
+        if verb:
+            print('Be careful: --spec overwrites --lap now!')
     if fspec:
         SIMU += ' --fspec'
+        if verb:
+            print('Be careful: --fspec overwrites --spec and --lap now!')
     ####################################################
     VQCP=''
     if vqcd in ['vqcdC','vqcdV','vqcd0','vqcdL','N2']:
@@ -141,7 +146,8 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
         dwgams = ' --dwgam %f'%dwgam
     if mink:
         mnk = ' --mink'
-        print('You are simulating in Minkowski!')
+        if verb:
+            print('Minkowski!')
     PHYS += noth+wkbs+gams+dwgams+mnk+xtr
     #################################################### IC condition 1 by 1
     if index >= 0:
