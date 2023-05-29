@@ -434,7 +434,7 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
             os.system("mv out out_%s_config%s"%(NAME,config+1))
             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-            print('Configuration %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
+            print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
 
     #multiple configurations with STAT repetitions each
     if len(JAX) > 1 and STAT > 1:
