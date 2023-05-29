@@ -359,7 +359,6 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
                     ict=input["ict"][config],dump=input["dump"][config],meas=input["meas"][config],p3D=input["p3D"][config],spmask=input["spmask"][config],rmask=input["rmask"][config],redmp=input["redmp"][config],
                     wTime=input["wTime"][config],spKGV=input["spKGV"][config],printmask=input["printmask"][config],ng0calib=input["ng0calib"][config],cummask=input["cummask"][config],p2Dmap=input["p2Dmap"][config],
                     p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],p2DmapYZ=input["p2DmapYZ"][config],slice=input["slice"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
-git 
         ranks.append(rank)
         jaxs.append(jax)
 
