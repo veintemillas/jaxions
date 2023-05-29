@@ -36,7 +36,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
             vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
-            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slice=-1,
+            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slc=-1,
             nologmpi=True,verbose=1,
             verb=False,**kwargs):
     """
@@ -92,7 +92,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
     p2DmapPE
     p2DmapPE2
     p2DmapYZ
-    slice
+    slc
     nologmpi
     verbose
     verb
@@ -165,8 +165,8 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
         OUT0+=' --p2DmapPE2'
     if p2DmapYZ:
         OUT0+=' --p2DmapYZ'
-    if slice >= 0:
-        OUT0+=' --sliceprint %s'%slice
+    if slc >= 0:
+        OUT0+=' --sliceprint %d'%slc
 
     OUT1=" --dump %d --meas %d --p3D %d "%(dump,meas,p3D)
     if redmp > 0:
@@ -255,14 +255,14 @@ def INCOgen(ict,verb=False,**kwargs):
     return INCO+PREP
 
 #Still need to check if we have all the functionality (dwgam, fftplan?!)
-def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',steps=1000000,wDz=1.0,sst0=10,lap=1,
-            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0,ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
-            vqcd='vqcdC',vpq=0,xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
+def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
+            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
+            vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
-            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slice=-1,
+            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slc=-1,
             nologmpi=True,verbose=1,
-            verb=False,*args, **kwargs):
+            verb=False,**kwargs):
     """
     multisimgen creates a list of strings of command line flags to select options for vaxion3d. The length of the returned list depends on the number of different configurations that the user decides to provide.
 
@@ -320,7 +320,7 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
     p2DmapPE
     p2DmapPE2
     p2DmapYZ
-    slice
+    slc
     nologmpi
     verbose
     verb
@@ -352,13 +352,13 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     #Go through all the configs and generate the corresponding string of flags
     for config in range(configs):
-        jax, rank = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],spec=input["spec"][config],fspec=input["fspec"][config],
+        rank, jax = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],spec=input["spec"][config],fspec=input["fspec"][config],
                     steps=input["steps"][config],wDz=input["wDz"][config],sst0=input["sst0"][config],lap=input["lap"][config],nqcd=input["nqcd"][config],msa=input["msa"][config],lamb=input["lamb"][config],
                     ctf=input["ctf"][config],L=input["L"][config],ind3=input["ind3"][config],notheta=input["notheta"][config],wkb=input["wkb"][config],gam=input["gam"][config],dwgam=input["dwgam"][config],
                     vqcd=input["vqcd"][config],vpq=input["vpq"][config],mink=input["mink"][config],xtr=input["xtr"][config],prep=input["prep"][config],ic=input["ic"][config],logi=input["logi"][config],cti=input["cti"][config],index=input["index"][config],
                     ict=input["ict"][config],dump=input["dump"][config],meas=input["meas"][config],p3D=input["p3D"][config],spmask=input["spmask"][config],rmask=input["rmask"][config],redmp=input["redmp"][config],
                     wTime=input["wTime"][config],spKGV=input["spKGV"][config],printmask=input["printmask"][config],ng0calib=input["ng0calib"][config],cummask=input["cummask"][config],p2Dmap=input["p2Dmap"][config],
-                    p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],p2DmapYZ=input["p2DmapYZ"][config],slice=input["slice"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
+                    p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],p2DmapYZ=input["p2DmapYZ"][config],slc=input["slc"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
         ranks.append(rank)
         jaxs.append(jax)
 
