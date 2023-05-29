@@ -31,12 +31,12 @@ def runsim(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component
     output = os.popen('mpirun %s -np %s -x OMP_NUM_THREADS=%s vaxion3d %s > log.txt'%(USA,RANK,THR,JAX))
     output.read()
 
-def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',steps=1000000,wDz=1.0,sst0=10,lap=1,
-            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0,ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
-            vqcd='vqcdC',vpq=0,xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
+def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
+            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
+            vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
-            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False,
+            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slice=-1,
             nologmpi=True,verbose=1,
             verb=False,**kwargs):
     """
@@ -52,10 +52,12 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
     dev       str    cpu      cpu or gpu (use --measCPU)
     lowmem    bool   False
     prop      str    rkn4     propagator/time integrator
+    spec      str    False    spectral propagator 1 (only CPU atm)
+    fspec     str    False    spectral propagator 2 (only CPU atm)
     steps     int    10000    number of time steps (max if --wDz is used)
     wDz       float  1.0      time interval set to dt = wDz/w_max
     sst0      int    10       time steps without strings before switch to theta
-    lap       int    1        number of neighbours in laplacian
+    lap       int    1        number of neighbours in Laplacian
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
@@ -89,6 +91,8 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
     p2DmapE
     p2DmapPE
     p2DmapPE2
+    p2DmapYZ
+    slice
     nologmpi
     verbose
     verb
@@ -102,6 +106,10 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
         SIMU += ' --lowmem'
     if dev == 'gpu':
         SIMU += ' --measCPU'
+    if spec:
+        SIMU += ' --spec'
+    if fspec:
+        SIMU += ' --fspec'
     ####################################################
     VQCP=''
     if vqcd in ['vqcdC','vqcdV','vqcd0','vqcdL','N2']:
@@ -130,7 +138,9 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
         gams = ' --gam %f'%gam
     if dwgam > 0:
         dwgams = ' --dwgam %f'%dwgam
-    PHYS += noth+wkbs+gams+dwgams+xtr
+    if mink:
+        mink = ' --mink'
+    PHYS += noth+wkbs+gams+dwgams+mink+xtr
     #################################################### IC condition 1 by 1
     if index >= 0:
         # READ CONF
@@ -152,6 +162,10 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
         OUT0+=' --p2DmapPE'
     if p2DmapPE2 and not p2DmapPE:
         OUT0+=' --p2DmapPE2'
+    if p2DmapYZ:
+        OUT0+=' --p2DmapYZ'
+    if slice >= 0:
+        OUT0+=' --sliceprint %s'%slice
 
     OUT1=" --dump %d --meas %d --p3D %d "%(dump,meas,p3D)
     if redmp > 0:
@@ -216,6 +230,10 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO = fif('kMax','kMax',INCO)
         INCO = fif('kcr','kcr',INCO)
 
+    if ict == 'string':
+        INCO = ' --ctype %s'%ict
+        INCO = fif('sIter','sIter',INCO)
+
     if 'kickalpha' in kwargs:
         INCO += ' --kickalpha '+str(kwargs['kickalpha'])
     if 'extrav' in kwargs:
@@ -241,7 +259,7 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
             vqcd='vqcdC',vpq=0,xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
-            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False,
+            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slice=-1,
             nologmpi=True,verbose=1,
             verb=False,*args, **kwargs):
     """
@@ -253,16 +271,20 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     options:
 
+    options:
+
     N         int    256      number of grid points in x,y directions
     zRANKS    int    1        number of MPI processes along z direction
     prec      str    single   single or double
     dev       str    cpu      cpu or gpu (use --measCPU)
     lowmem    bool   False
     prop      str    rkn4     propagator/time integrator
+    spec      str    False    spectral propagator 1 (only CPU atm)
+    fspec     str    False    spectral propagator 2 (only CPU atm)
     steps     int    10000    number of time steps (max if --wDz is used)
     wDz       float  1.0      time interval set to dt = wDz/w_max
     sst0      int    10       time steps without strings before switch to theta
-    lap       int    1        number of neighbours in laplacian
+    lap       int    1        number of neighbours in Laplacian
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
@@ -296,6 +318,8 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
     p2DmapE
     p2DmapPE
     p2DmapPE2
+    p2DmapYZ
+    slice
     nologmpi
     verbose
     verb
@@ -327,13 +351,13 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     #Go through all the configs and generate the corresponding string of flags
     for config in range(configs):
-        jax, rank = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],
+        jax, rank = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],spec=input["spec"][config],fspec=input["fspec"][config],
                     steps=input["steps"][config],wDz=input["wDz"][config],sst0=input["sst0"][config],lap=input["lap"][config],nqcd=input["nqcd"][config],msa=input["msa"][config],lamb=input["lamb"][config],
                     ctf=input["ctf"][config],L=input["L"][config],ind3=input["ind3"][config],notheta=input["notheta"][config],wkb=input["wkb"][config],gam=input["gam"][config],dwgam=input["dwgam"][config],
-                    vqcd=input["vqcd"][config],vpq=input["vpq"][config],xtr=input["xtr"][config],prep=input["prep"][config],ic=input["ic"][config],logi=input["logi"][config],cti=input["cti"][config],index=input["index"][config],
+                    vqcd=input["vqcd"][config],vpq=input["vpq"][config],mink=input["mink"][config],xtr=input["xtr"][config],prep=input["prep"][config],ic=input["ic"][config],logi=input["logi"][config],cti=input["cti"][config],index=input["index"][config],
                     ict=input["ict"][config],dump=input["dump"][config],meas=input["meas"][config],p3D=input["p3D"][config],spmask=input["spmask"][config],rmask=input["rmask"][config],redmp=input["redmp"][config],
                     wTime=input["wTime"][config],spKGV=input["spKGV"][config],printmask=input["printmask"][config],ng0calib=input["ng0calib"][config],cummask=input["cummask"][config],p2Dmap=input["p2Dmap"][config],
-                    p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
+                    p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],p2DmapYZ=input["p2DmapYZ"][config],slice=input["slice"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
 
         ranks.append(rank)
         jaxs.append(jax)
