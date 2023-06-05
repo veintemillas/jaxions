@@ -376,7 +376,7 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
 def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', stringIC = False):
     """
-    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new')
+    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', stringIC = False)
     1 - runs jaxions as
     !mpirun $USA -np $RANK -x OMP_NUM_THREADS=$THR vaxion3d $JAX > log.txt
     2 - repeats the simulation with the same configuration STAT times
@@ -390,6 +390,7 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
     JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
     STAT is the number of repitions per configuration (used to collect statistics)
     NAME is a string that is used to store the data of the simulations in a structured manner
+    stringIC is a bool that can be used to switch between different string.dat files for a series of simulations
     """
 
     #Special case: "string IC", if you want to use different string ICs for multirun, dynamically move and rename the string.dat files
