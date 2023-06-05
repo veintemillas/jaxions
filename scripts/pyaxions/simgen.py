@@ -438,7 +438,8 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('Simulating %s configurations.'%len(JAX))
         for config in range(len(JAX)):
             #Access respective string.dat file
-            os.system("mv %s string.dat"%string_files[config])
+            if stringIC:
+                os.system("mv %s string.dat"%string_files[config])
             start = time.time()
             runsim(JAX[config],RANK[config],THR=THR,USA=USA)
             end = time.time()
@@ -446,7 +447,8 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
             os.system("mv out out_%s_config%s"%(NAME,config+1))
             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-            os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1))
+            if stringIC:
+                os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1))
             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
 
     #multiple configurations with STAT repetitions each
@@ -455,7 +457,8 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
         for config in range(len(JAX)):
             #Access respective string.dat file
-            os.system("mv %s string.dat"%string_files[config])
+            if string_IC:
+                os.system("mv %s string.dat"%string_files[config])
 
             for rep in range(STAT):
                 start = time.time()
@@ -465,7 +468,8 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
-                os.system("cp string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
+                if string_IC:
+                    os.system("cp string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
-
-            os.system("rm string.dat") #to avoid overwriting
+            if stringIC:
+                os.system("rm string.dat") #to avoid overwriting
