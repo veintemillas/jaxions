@@ -465,5 +465,7 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
-                os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
+                os.system("cp string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
+
+            os.system("rm string.dat") #to avoid overwriting
