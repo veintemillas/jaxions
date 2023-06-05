@@ -374,7 +374,7 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     return ranks, jaxs
 
-def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new'):
+def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', stringIC = False):
     """
     multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new')
     1 - runs jaxions as
@@ -391,8 +391,18 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
     STAT is the number of repitions per configuration (used to collect statistics)
     NAME is a string that is used to store the data of the simulations in a structured manner
     """
-    #Four different cases need to be considered
 
+    #Special case: "string IC", if you want to use different string ICs for multirun, dynamically move and rename the string.dat files
+    if stringIC:
+    # Look for files in the current working directory of type .dat and print their names: Order is important here!
+    string_files = [filename for filename in os.listdir('.') if filename.endswith('.dat')]
+    print('Different string.dat files will be used for every configuration. Found: ', string_files)
+
+        if len(string_files) != len(JAX):
+            raise ValueError("Error: Number of string.dat files must be the same as the number of different configurations!")
+
+
+    #Four different cases need to be considered
     #single configuration (in principle the same as the "old" runsim)
     if not len(JAX) > 1 and not STAT > 1:
         print('')
@@ -427,6 +437,8 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('')
         print('Simulating %s configurations.'%len(JAX))
         for config in range(len(JAX)):
+            #Access respective string.dat file
+            os.system("mv %s string.dat"%string_files[config]
             start = time.time()
             runsim(JAX[config],RANK[config],THR=THR,USA=USA)
             end = time.time()
@@ -434,6 +446,7 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
             os.system("mv out out_%s_config%s"%(NAME,config+1))
             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
+            os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1))
             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
 
     #multiple configurations with STAT repetitions each
@@ -441,6 +454,9 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('')
         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
         for config in range(len(JAX)):
+            #Access respective string.dat file
+            os.system("mv %s string.dat"%string_files[config]
+
             for rep in range(STAT):
                 start = time.time()
                 runsim(JAX[config],RANK[config],THR=THR,USA=USA)
@@ -449,4 +465,5 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
+                os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
