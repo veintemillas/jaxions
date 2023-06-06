@@ -396,7 +396,7 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
     #Special case: "string IC", if you want to use different string ICs for multirun, dynamically move and rename the string.dat files
     if stringIC:
     # Look for files in the current working directory of type .dat and print their names: Order is important here!
-        string_files = [filename for filename in os.listdir('.') if filename.endswith('.dat') and filename != 'measfile.dat' and filename != 'string.dat']
+        string_files = sorted([filename for filename in os.listdir('.') if filename.endswith('.dat') and filename != 'measfile.dat' and filename != 'string.dat'])
         print('Using different string.dat files: ', string_files)
 
         if len(string_files) != len(JAX):
