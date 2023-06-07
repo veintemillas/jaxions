@@ -1092,8 +1092,10 @@ def sof(PATH, PARAM = 'msa', SAVE = []):
             for props in SAVE:
                 prop = gm(out_dir + "/m/axion.m.00000", props)
                 save_dict[out_dir].append(prop)
-
-    return param_dict, save_dict
+    if len(SAVE)>0:
+        return param_dict, save_dict
+    else:
+        return param_dict
 
 
 #Javier

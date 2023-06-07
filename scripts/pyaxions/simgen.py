@@ -31,12 +31,12 @@ def runsim(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component
     output = os.popen('mpirun %s -np %s -x OMP_NUM_THREADS=%s vaxion3d %s > log.txt'%(USA,RANK,THR,JAX))
     output.read()
 
-def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',steps=1000000,wDz=1.0,sst0=10,lap=1,
-            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0,ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
-            vqcd='vqcdC',vpq=0,xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
+def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
+            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
+            vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
-            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False,
+            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slc=-1, strmeas =-1,
             nologmpi=True,verbose=1,
             verb=False,**kwargs):
     """
@@ -52,10 +52,12 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
     dev       str    cpu      cpu or gpu (use --measCPU)
     lowmem    bool   False
     prop      str    rkn4     propagator/time integrator
+    spec      str    False    spectral propagator 1 (only CPU atm)
+    fspec     str    False    spectral propagator 2 (only CPU atm)
     steps     int    10000    number of time steps (max if --wDz is used)
     wDz       float  1.0      time interval set to dt = wDz/w_max
     sst0      int    10       time steps without strings before switch to theta
-    lap       int    1        number of neighbours in laplacian
+    lap       int    1        number of neighbours in Laplacian
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
@@ -89,6 +91,9 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
     p2DmapE
     p2DmapPE
     p2DmapPE2
+    p2DmapYZ
+    slc
+    strmeas
     nologmpi
     verbose
     verb
@@ -102,6 +107,15 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
         SIMU += ' --lowmem'
     if dev == 'gpu':
         SIMU += ' --measCPU'
+
+    if spec:
+        SIMU += ' --spec'
+        if verb:
+            print('Be careful: --spec overwrites --lap now!')
+    if fspec:
+        SIMU += ' --fspec'
+        if verb:
+            print('Be careful: --fspec overwrites --spec and --lap now!')
     ####################################################
     VQCP=''
     if vqcd in ['vqcdC','vqcdV','vqcd0','vqcdL','N2']:
@@ -121,7 +135,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
     else :
         tension = ' --msa %f'%msa
     PHYS=" --qcd %f %s --lsize %f --zf %f --ind3 %f"%(nqcd,tension,L,ctf,ind3)
-    noth='';wkbs='';gams=''
+    noth='';wkbs='';gams='';dwgams='';mnk=''
     if notheta:
         noth = ' --notheta '
     if wkb > 0:
@@ -130,7 +144,11 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
         gams = ' --gam %f'%gam
     if dwgam > 0:
         dwgams = ' --dwgam %f'%dwgam
-    PHYS += noth+wkbs+gams+dwgams+xtr
+    if mink:
+        mnk = ' --mink'
+        if verb:
+            print('Minkowski!')
+    PHYS += noth+wkbs+gams+dwgams+mnk+xtr
     #################################################### IC condition 1 by 1
     if index >= 0:
         # READ CONF
@@ -152,6 +170,12 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',step
         OUT0+=' --p2DmapPE'
     if p2DmapPE2 and not p2DmapPE:
         OUT0+=' --p2DmapPE2'
+    if p2DmapYZ:
+        OUT0+=' --p2DmapYZ'
+    if slc >= 0:
+        OUT0+=' --sliceprint %d'%slc
+    if strmeas >= 0:
+        OUT0+=' --strmeas %d'%strmeas
 
     OUT1=" --dump %d --meas %d --p3D %d "%(dump,meas,p3D)
     if redmp > 0:
@@ -216,6 +240,10 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO = fif('kMax','kMax',INCO)
         INCO = fif('kcr','kcr',INCO)
 
+    if ict == 'string':
+        INCO = ' --ctype %s'%ict
+        INCO = fif('sIter','sIter',INCO)
+
     if 'kickalpha' in kwargs:
         INCO += ' --kickalpha '+str(kwargs['kickalpha'])
     if 'extrav' in kwargs:
@@ -235,15 +263,15 @@ def INCOgen(ict,verb=False,**kwargs):
                 PREP += ' --icstudy'
     return INCO+PREP
 
-#Still need to check if we have all the functionality (dwgam, fftplan?!)
-def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4',steps=1000000,wDz=1.0,sst0=10,lap=1,
-            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0,ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
-            vqcd='vqcdC',vpq=0,xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
+#Need to add all the missing (and newly implemeted) features ..
+def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
+            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
+            vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
-            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False,
+            p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slc=-1, strmeas=-1,
             nologmpi=True,verbose=1,
-            verb=False,*args, **kwargs):
+            verb=False,**kwargs):
     """
     multisimgen creates a list of strings of command line flags to select options for vaxion3d. The length of the returned list depends on the number of different configurations that the user decides to provide.
 
@@ -253,16 +281,20 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     options:
 
+    options:
+
     N         int    256      number of grid points in x,y directions
     zRANKS    int    1        number of MPI processes along z direction
     prec      str    single   single or double
     dev       str    cpu      cpu or gpu (use --measCPU)
     lowmem    bool   False
     prop      str    rkn4     propagator/time integrator
+    spec      str    False    spectral propagator 1 (only CPU atm)
+    fspec     str    False    spectral propagator 2 (only CPU atm)
     steps     int    10000    number of time steps (max if --wDz is used)
     wDz       float  1.0      time interval set to dt = wDz/w_max
     sst0      int    10       time steps without strings before switch to theta
-    lap       int    1        number of neighbours in laplacian
+    lap       int    1        number of neighbours in Laplacian
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
@@ -296,6 +328,9 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
     p2DmapE
     p2DmapPE
     p2DmapPE2
+    p2DmapYZ
+    slc
+    strmeas
     nologmpi
     verbose
     verb
@@ -327,22 +362,21 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     #Go through all the configs and generate the corresponding string of flags
     for config in range(configs):
-        jax, rank = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],
+        rank, jax = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],spec=input["spec"][config],fspec=input["fspec"][config],
                     steps=input["steps"][config],wDz=input["wDz"][config],sst0=input["sst0"][config],lap=input["lap"][config],nqcd=input["nqcd"][config],msa=input["msa"][config],lamb=input["lamb"][config],
                     ctf=input["ctf"][config],L=input["L"][config],ind3=input["ind3"][config],notheta=input["notheta"][config],wkb=input["wkb"][config],gam=input["gam"][config],dwgam=input["dwgam"][config],
-                    vqcd=input["vqcd"][config],vpq=input["vpq"][config],xtr=input["xtr"][config],prep=input["prep"][config],ic=input["ic"][config],logi=input["logi"][config],cti=input["cti"][config],index=input["index"][config],
+                    vqcd=input["vqcd"][config],vpq=input["vpq"][config],mink=input["mink"][config],xtr=input["xtr"][config],prep=input["prep"][config],ic=input["ic"][config],logi=input["logi"][config],cti=input["cti"][config],index=input["index"][config],
                     ict=input["ict"][config],dump=input["dump"][config],meas=input["meas"][config],p3D=input["p3D"][config],spmask=input["spmask"][config],rmask=input["rmask"][config],redmp=input["redmp"][config],
                     wTime=input["wTime"][config],spKGV=input["spKGV"][config],printmask=input["printmask"][config],ng0calib=input["ng0calib"][config],cummask=input["cummask"][config],p2Dmap=input["p2Dmap"][config],
-                    p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
-
+                    p2DmapE=input["p2DmapE"][config],p2DmapPE=input["p2DmapPE"][config],p2DmapPE2=input["p2DmapPE2"][config],p2DmapYZ=input["p2DmapYZ"][config],slc=input["slc"][config],strmeas=input["strmeas"][config],nologmpi=input["nologmpi"][config],verbose=input["verbose"][config],verb=input["verb"][config],**kwargs)
         ranks.append(rank)
         jaxs.append(jax)
 
     return ranks, jaxs
 
-def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new'):
+def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', stringIC = False):
     """
-    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new')
+    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', stringIC = False)
     1 - runs jaxions as
     !mpirun $USA -np $RANK -x OMP_NUM_THREADS=$THR vaxion3d $JAX > log.txt
     2 - repeats the simulation with the same configuration STAT times
@@ -356,9 +390,19 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
     JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
     STAT is the number of repitions per configuration (used to collect statistics)
     NAME is a string that is used to store the data of the simulations in a structured manner
+    stringIC is a bool that can be used to switch between different string.dat files for a series of simulations
     """
-    #Four different cases need to be considered
 
+    #Special case: "string IC", if you want to use different string ICs for multirun, dynamically move and rename the string.dat files
+    if stringIC:
+    # Look for files in the current working directory of type .dat and print their names: Order is important here!
+        string_files = sorted([filename for filename in os.listdir('.') if filename.endswith('.dat') and filename != 'measfile.dat' and filename != 'string.dat'])
+        print('Using different string.dat files: ', string_files)
+
+        if len(string_files) != len(JAX):
+            raise ValueError("Error: Number of string.dat files must be the same as the number of different configurations!")
+
+    #Four different cases need to be considered
     #single configuration (in principle the same as the "old" runsim)
     if not len(JAX) > 1 and not STAT > 1:
         print('')
@@ -393,6 +437,9 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('')
         print('Simulating %s configurations.'%len(JAX))
         for config in range(len(JAX)):
+            #Access respective string.dat file
+            if stringIC:
+                os.system("mv %s string.dat"%string_files[config])
             start = time.time()
             runsim(JAX[config],RANK[config],THR=THR,USA=USA)
             end = time.time()
@@ -400,13 +447,19 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
             os.system("mv out out_%s_config%s"%(NAME,config+1))
             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-            print('Configuration %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
+            if stringIC:
+                os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1))
+            print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
 
     #multiple configurations with STAT repetitions each
     if len(JAX) > 1 and STAT > 1:
         print('')
         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
         for config in range(len(JAX)):
+            #Access respective string.dat file
+            if string_IC:
+                os.system("mv %s string.dat"%string_files[config])
+
             for rep in range(STAT):
                 start = time.time()
                 runsim(JAX[config],RANK[config],THR=THR,USA=USA)
@@ -415,4 +468,8 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
+                if string_IC:
+                    os.system("cp string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
+            if stringIC:
+                os.system("rm string.dat") #to avoid overwriting
