@@ -216,11 +216,11 @@
 					// iyM = ((riy+1)*Nx)/nx;
 					// ix0 = rix*Nx/nx;
 					// ixM = ((rix+1)*Nx)/nx;
-					iz0 = riz*Nz/nz;
-					if (riz*Nz % nz) ix0++;
-					iy0 = riy*Nx/nx;
+					iz0 = (riz*Nz)/nz;
+					if (riz*Nz % nz) iz0++;
+					iy0 = (riy*Nx)/nx;
 					if (riy*Nx % nx) iy0++;
-					ix0 = rix*Nx/nx;
+					ix0 = (rix*Nx)/nx;
 					if (rix*Nx % nx) ix0++;
 					izM = ((riz+1)*Nz)/nz;
 					if ((riz+1)*Nz % nz ==0) izM--;
