@@ -92,25 +92,25 @@ def overview(PATH):
     #Get relevant parameters from inputs file
     try:
         ell = int(getValue("max_level",parameters_dict, alias_dict))
-    except KeyError:
+    except (KeyError, TypeError):
         print('max_level not used in inputs. Assume default value $\ell = 0$.')
         ell = int(0)
 
     try:
         ref_ratio = int(getValue("ref_ratio",parameters_dict, alias_dict))
-    except KeyError:
+    except (KeyError, TypeError):
         print('ref_ratio not used in inputs. Assume default value of 2.')
         ref_ratio = int(2)
 
     try:
         msa = float(getValue("msa",parameters_dict, alias_dict))
-    except KeyError:
+    except (KeyError, TypeError):
         print('msa not used in inputs. Assume default value of $ms_a=1.0$.')
         msa = float(1.0)
 
     try:
         N = int(getValue("n_cell",parameters_dict, alias_dict)[0])
-    except KeyError:
+    except (KeyError, TypeError):
         print('n_cell not used in inputs. Assume default value of $N=128$.')
         N = int(128)
 
