@@ -135,7 +135,7 @@ def getSpecfiles(PATH = './spectra/'):
     """
     specfiles = []
 
-    _, _, filenames = next(os.walk(path))
+    _, _, filenames = next(os.walk(PATH))
 
     times = []
     for name in filenames:
