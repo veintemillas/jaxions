@@ -70,9 +70,9 @@ def getValue(PARAM, parameters_dict, alias_dict):
     PARAM is a string of a key in parameters_dict or alias_dict
     """
     if PARAM in parameters_dict:
-        return parameters_dict[key]
+        return parameters_dict[PARAM]
     elif PARAM in alias_dict:
-        return parameters_dict[alias_dict[key]]
+        return parameters_dict[alias_dict[PARAM]]
     else:
         print('%s not used in inputs. Assume default value or check for typos.')
         return None
