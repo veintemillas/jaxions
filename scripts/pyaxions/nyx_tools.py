@@ -150,18 +150,19 @@ def getSpecfiles(PATH = './spectra/'):
 
 #Automate processing of the spectrum data files
 class processSpectrum:
-    def __init__(self, PATH, FILES, MSA=2, L=256, N=128):
-            """
-            processSpectrum: __init__(self, PATH, FILES, MSA, L, N)
-            1 - Reads the spectrum FILES in PATH and associates the data with the relevant parameters
-            2 - Computes some other potentially interesting variables for comparison with Jaxions spectra (e.g log(h) etc.)
+    """
+    processSpectrum: __init__(self, PATH, FILES, MSA, L, N)
+    1 - Reads the spectrum FILES in PATH and associates the data with the relevant parameters
+    2 - Computes some other potentially interesting variables for comparison with Jaxions spectra (e.g log(h) etc.)
 
-            PATH is a string specifying the location of the "spectra" folder which is created automatically for every nyx simulation
-            FILES is list of data files such as for example generareted with the getspecfiles function defined above in nyx_tools.py (see help(getspecfiles()))
-            MSA is the value of msa on the root grid
-            L is the simulation volume
-            N (or N0) is the number of grid points in one direction in the root grid.
-            """
+    PATH is a string specifying the location of the "spectra" folder which is created automatically for every nyx simulation
+    FILES is list of data files such as for example generareted with the getspecfiles function defined above in nyx_tools.py (see help(getspecfiles()))
+    MSA is the value of msa on the root grid
+    L is the simulation volume
+    N (or N0) is the number of grid points in one direction in the root grid.
+    """
+    def __init__(self, PATH, FILES, MSA=2, L=256, N=128):
+
         #Read and prepare data
         spec=np.transpose(np.loadtxt(PATH+FILES[0]))
 
