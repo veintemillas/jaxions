@@ -61,7 +61,7 @@ def readInputs(PATH):
 
 
 #Function to retrieve the value of a simulation parameter using the full key or alias
-def getValue(PARAM):
+def getValue(PARAM, parameters_dict, alias_dict):
     """
     getValue(PARAM)
     1 - Accessses the parameter dictionaries created with readInputs() (cf. help(readInputs()))
