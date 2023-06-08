@@ -169,12 +169,20 @@
 		/* We need to exchange ghosts but we are reduced, move last slice to unreduced ghost zone
 		not critical: we use only bachghost, which comes from slice 0 */
 		memcpy(&(m2[Nx*Nx*(Nz-1)]), &(m2[nx*nx*(nz-1)]), nx*nx*axion->DataSize());
+		bool wasGPU = false;
+		if (axion->Device() == DEV_GPU){
+			wasGPU = true;
+			axion->setDev(DEV_CPU); // otherwise GPU data will overwrite CPU
+		}
 		axion->exchangeGhosts(FIELD_M2);
+		
+
 
 		/* form a compact reduced field sandwiched between ghosts */
 		cFloat *mr = static_cast<cFloat*>(axion->m2Cpu()) + Nx*Nx*axion->getNg() - nx*nx;
 		memmove(mr, axion->m2Cpu(), nx*nx*axion->DataSize()); //not critical
 		memmove(&(m2[nx*nx*nz]), axion->m2BackGhost(), nx*nx*axion->DataSize()); //relevant
+
 
 		/* for each point in the reduced grid calculate all points of
 		the extended grid in m2 and move
@@ -198,7 +206,14 @@
 			double dx, dy, dz;
 			#pragma omp for schedule(static)
 			for (size_t riz = 0; riz < nz; riz++) {
+			 iz0 = (riz*Nz)/nz;
+			 izM = ((riz+1)*Nz)/nz;
+			 if ((riz+1)*Nz % nz ==0) izM--;
+
 			 for (size_t riy = 0; riy < nx; riy++) {
+				iy0 = (riy*Nx)/nx;
+				iyM = ((riy+1)*Nx)/nx;
+                                if ((riy+1)*Nx % nx ==0) iyM--;
 				for (size_t rix = 0; rix < nx; rix++) {
 					rpx = (rix+1) % nx;
 					rpy = (riy+1) % nx;
@@ -216,30 +231,30 @@
 					// iyM = ((riy+1)*Nx)/nx;
 					// ix0 = rix*Nx/nx;
 					// ixM = ((rix+1)*Nx)/nx;
-					iz0 = (riz*Nz)/nz;
+					//iz0 = (riz*Nz)/nz;
 					// if (riz*Nz % nz) iz0++;
-					iy0 = (riy*Nx)/nx;
+					//iy0 = (riy*Nx)/nx;
 					// if (riy*Nx % nx) iy0++;
 					ix0 = (rix*Nx)/nx;
 					// if (rix*Nx % nx) ix0++;
-					izM = ((riz+1)*Nz)/nz;
-					if ((riz+1)*Nz % nz ==0) izM--;
-					iyM = ((riy+1)*Nx)/nx;
-					if ((riy+1)*Nx % nx ==0) iyM--;
+					//izM = ((riz+1)*Nz)/nz;
+					//if ((riz+1)*Nz % nz ==0) izM--;
+					//iyM = ((riy+1)*Nx)/nx;
+					//if ((riy+1)*Nx % nx ==0) iyM--;
 					ixM = ((rix+1)*Nx)/nx;
 					if ((rix+1)*Nz % nx ==0) ixM--;
-	// if (thread==0)
-	// 	LogOut("rz(%d) %d->%d ry(%d) %d->%d rx(%d) %d->%d\n", riz, iz0, izM, riy, iy0, iyM, rix, ix0, ixM);
+
+
 					for (size_t iz = iz0; iz <= izM; iz++) {
 						for (size_t iy = iy0; iy <= iyM; iy++) {
 							for (size_t ix = ix0; ix <= ixM; ix++) {
-	// if (thread==0)
-	// 	LogOut("%d %d %d, %d %d, %d %d %d \n", riz,riy,rix,rpx,rpy, iz, iy, ix);
+
+
 								dx = r*ix - ((double) rix);
 								dy = r*iy - ((double) riy);
 								dz = r*iz - ((double) riz);
-	// if (thread==0	)
-	// 	LogOut("dx %f dy %f dz %f \n", dx,dy,dz);
+
+
 								s[ix+Nx*(iy+Nx*iz)] =
 										xyz*((cFloat) ((1.-dx)*(1.-dy)*(1.-dz))) +
 										Xyz*((cFloat) (     dx*(1.-dy)*(1.-dz))) +
@@ -248,6 +263,12 @@
 									  xyZ*((cFloat) ((1.-dx)*(1.-dy)*    dz )) +
 										XyZ*((cFloat) (dx     *(1.-dy)*    dz )) +
 										xYZ*((cFloat) ((1.-dx)*    dy *    dz )) +
+
+
+
+
+
+
 										XYZ*((cFloat) (dx     *    dy *    dz ));
 									}
 								}
@@ -257,6 +278,10 @@
 		 } //end reduced volume loop
 		} //end parallel region
 		commSync();
+
+		if (wasGPU)
+			axion->setDev(DEV_GPU);
+
 		return;
 	}
 
