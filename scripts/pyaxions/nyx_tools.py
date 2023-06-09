@@ -74,7 +74,7 @@ def getValue(PARAM, parameters_dict, alias_dict):
     elif PARAM in alias_dict:
         return parameters_dict[alias_dict[PARAM]]
     else:
-        print('%s not used in inputs. Assume default value or check for typos.')
+        print('%s not used in inputs. Assume default value or check for typos.'%PARAM)
         return None
 
 #Overview of effective simulation paramters for AMR simulations
