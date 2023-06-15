@@ -386,17 +386,17 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2 R'/R) +vecma dzc)
 tmp = opCode(sub_pd,
 	opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
 	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-		opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, R))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+		opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(mul_pd,mPx,opCode(set1_pd, Rp))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #else
 tmp = opCode(sub_pd,
 	opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
 	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
 		opCode(add_pd,
-			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, R))), opCode(set1_pd, 2.0)),
+			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(mul_pd,mPx,opCode(set1_pd, Rp))), opCode(set1_pd, 2.0)),
 			opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #endif
 				}
@@ -782,18 +782,18 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2 R'/R) +vecma dzc)
 tmp = opCode(sub_ps,
 	opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy),
 	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, Rf))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(mul_ps,mPx,opCode(set1_ps, Rp))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #else
 
 tmp = opCode(sub_ps,
 	opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc))),
 	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 		opCode(add_ps,
-			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, Rf))), opCode(set1_ps, 2.f)),
+			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(mul_ps,mPx,opCode(set1_ps, Rp))), opCode(set1_ps, 2.f)),
 			opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #endif
 				}
@@ -1037,6 +1037,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 	const double gamma = ppar.gamma;
 	const double LL    = ppar.lambda;
 	const double Rpp   = ppar.Rpp;
+	const double Rp    = ppar.Rp ;
 	const double deti  = ppar.dectime ;
 
 	if (precision == FIELD_DOUBLE)
@@ -1320,17 +1321,17 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2 R'/R) +vecma dzc)
 tmp = opCode(sub_pd,
 	opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
 	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-		opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, R))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+		opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(mul_pd,mPx,opCode(set1_pd, Rp))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #else
 tmp = opCode(sub_pd,
 	opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
 	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
 		opCode(add_pd,
-			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(div_pd,mPx,opCode(set1_pd, R))), opCode(set1_pd, 2.0)),
+			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(mul_pd,mPx,opCode(set1_pd, Rp))), opCode(set1_pd, 2.0)),
 			opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
 #endif
 				}
@@ -1659,18 +1660,18 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 #endif
 
 #if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2/t) +vecma dzc)
+// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2 R'/R) +vecma dzc)
 tmp = opCode(sub_ps,
 	opCode(fmadd_ps, mMx, opCode(set1_ps, dzc), mPy),
 	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
-		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, Rf))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
+		opCode(fmadd_ps, opCode(sub_ps,vecmv,opCode(mul_ps,mPx,opCode(set1_ps, Rp))), opCode(set1_ps, 2.f), opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #else
 
 tmp = opCode(sub_ps,
 	opCode(add_ps, mPy, opCode(mul_ps, mMx, opCode(set1_ps, dzc))),
 	opCode(mul_ps, opCode(mul_ps, opCode(set1_ps, epsi), opCode(div_ps, mel, mPx)),
 		opCode(add_ps,
-			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(div_ps,mPx,opCode(set1_ps, Rf))), opCode(set1_ps, 2.f)),
+			opCode(mul_ps, opCode(sub_ps,vecmv,opCode(mul_ps,mPx,opCode(set1_ps, Rp))), opCode(set1_ps, 2.f)),
 			opCode(mul_ps, vecma, opCode(set1_ps, dzc)))));
 #endif
 				}
