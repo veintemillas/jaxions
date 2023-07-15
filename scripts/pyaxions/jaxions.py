@@ -1417,6 +1417,8 @@ def fildic(meas):
         return 'MEAS_MASK'
     if (meas in ['MEAS_PSP_A','PSP_A','energy power spectrum','energy power spectrum axion','psp','pspa','power spectrum']):
         return 'MEAS_PSP_A'
+    if (meas in ['MEAS_PSP_P','PSP_P','energy power spectrum','energy power spectrum saxion','psp','psps','power spectrum']):
+        return 'MEAS_PSP_P'
     if (meas in ['MEAS_NSP_A','NSP_A','axion spectrum','nspa']):
         return 'MEAS_NSP_A'
     if (meas in ['MEAS_NSP_S','NSP_S','Saxion spectrum','nspS']):
