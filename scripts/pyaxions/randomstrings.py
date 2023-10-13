@@ -151,7 +151,7 @@ def b(zeta, beta, psi):
         result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
     return result
 
-def vv_string(N, R, alpha, beta, psi, t, xcf=0.5, ycf=0.5, zcf=0.5, PATH = './'):
+def vv_string(N, R, alpha, beta, psi, t, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, PATH = './'):
     """
     vv_string(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
 
@@ -168,6 +168,7 @@ def vv_string(N, R, alpha, beta, psi, t, xcf=0.5, ycf=0.5, zcf=0.5, PATH = './')
     XCF specifies the center of the loop on the x-axis (ranges from 0 to 1)
     YCF specifies the center of the loop on the y-axis (ranges from 0 to 1)
     ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1)
+    DZ is a shift in the z-coordinate
 
     PATH is a string containing the path to the folder where you want to store the string.dat file
 
