@@ -134,6 +134,75 @@ def onestring(N,R,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
     np.savetxt('./string.dat', xy, delimiter=' ', fmt='%.2f %.2f %.2f %d')   # X is an array
     return x,y,z,ep
 
+#Implementation of the string IC for their simulations for the paper "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
+e1 = np.array([1, 0, 0])  # Unit vector x1
+e2 = np.array([0, 1, 0])  # Unit vector x2
+e3 = np.array([0, 0, 1])  # Unit vector x3
+
+def a(zeta, alpha):
+    result = np.empty((len(zeta), 3))
+    for i in range(len(zeta)):
+        result[i] = (1 / alpha) * (e1 * np.sin(alpha * zeta[i]) + e3 * np.cos(alpha * zeta[i]))
+    return result
+
+def b(zeta, beta, psi):
+    result = np.empty((len(zeta), 3))
+    for i in range(len(zeta)):
+        result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
+    return result
+
+def vv_string(N, R, alpha, beta, psi, t, xcf=0.5, ycf=0.5, zcf=0.5, PATH = './'):
+    """
+    vv_string(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
+
+    1) Generates a string IC as in "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
+    2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid connecting disconnected loops
+    3) Saves the generated configuration in "string.dat". This file will be read and processed at the beginning of the jaxions simulation
+
+
+    N is the number of grid points (must be the same as for the planned simulation!)
+    R is the string radius
+    ALPHA and BETA are constants (alpha = N1/R, beta = N2/R, with N1 and N2 relatively prime integers)
+    PSI is another constant, that controls the rotation of the string around the z-axis (from 0 to 2pi)
+
+    XCF specifies the center of the loop on the x-axis (ranges from 0 to 1)
+    YCF specifies the center of the loop on the y-axis (ranges from 0 to 1)
+    ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1)
+
+    PATH is a string containing the path to the folder where you want to store the string.dat file
+
+    Check the paper for details about the choice of parameters etc.
+    """
+    xc, yc, zc = N * xcf, N * ycf, N * zcf + dz
+
+    zeta = np.linspace(0, 2 * np.pi * R, int(2 * np.pi * R))
+
+    a_zeta = a(zeta-t, alpha)
+    b_zeta = b(zeta+t, beta, psi)
+
+    x = []
+    y = []
+    z = []
+
+    for i in range(len(zeta)):
+        x_i = 0.5 * (a_zeta[i] + b_zeta[i])
+        x_i = x_i + np.array([xc, yc, zc])
+        x.append(x_i[0])
+        y.append(x_i[1])
+        z.append(x_i[2])
+
+    x = np.array(x)
+    y = np.array(y)
+    z = np.array(z)
+
+    ep = np.zeros(len(zeta), dtype=int)
+    ep[-1] = 1
+
+    data = np.column_stack((x, y, z, ep))
+    np.savetxt(PATH + './string.dat', data, delimiter=' ', fmt='%.2f %.2f %.2f %d')
+
+    return x, y, z, ep
+
 def arctan3(r,i,a):
     c = np.cos(a)
     s = np.sin(a)
