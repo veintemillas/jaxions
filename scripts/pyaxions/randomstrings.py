@@ -3,82 +3,90 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyaxions import jaxions as pa
 
-def randomstrings(N, LEN, NSTRINGS=1, ITER=3, XCF=0.5, YCF=0.5, ZCF=0.5, PATH = './'):
+import numpy as np
 
+def randomstrings(N, LEN, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
     """
-    randomstrings(N,L,NSTRINGS,ITER,XCF,YCF,ZCF,PATH)
+    randomstrings(N, LEN, NSTRINGS, ITER, KINKS, XCF, YCF, ZCF, PATH)
 
-    1) Generates Nstrings random string loops
-    2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid connecting disconnected loops
-    3) Saves the generated configuration in "string.dat". This file will be read and processed at the beginning of the jaxions simulation
+    Generates NSTRINGS random string loops with a random number of 90-degree angle kinks.
+    Stores their (x, y, z)-coordinates and marks the endpoints of every string.
+    Saves the configuration in "string_with_random_kinks.dat."
 
-
-    N is the number of grid points (must be the same as for the planned simulation!)
-    LEN is the length of the respective loop (for multiple strings the length will be randomly set to values of order of +- 50% of the given LEN)
-    NSTRINGS is the number of strings that will be generated
-    ITER  is the number of iteratations for the random scattering of the coordinates (Idea: The larger the number, the more complicated the form of the loop)
-
-    XCF specifies the center of the loop on the x-axis (ranges from 0 to 1)
-    YCF specifies the center of the loop on the y-axis (ranges from 0 to 1)
-    ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1)
-
-    For multiple strings, the center coordinates are chosen randomly and these values are not considered!
-
-    PATH is a string containing the path to the folder where you want to store the string.dat file
+    N is the number of grid points (must match the simulation).
+    LEN is the length of the respective loop.
+    NSTRINGS is the number of strings that will be generated.
+    ITER is the number of iterations for the random scattering of the coordinates.
+    KINKS is the (maximum) number of kinks for each string (randomized between 0 and NUM_KINKS, if multiple strings).
+    XCF specifies the center of the loop on the x-axis (ranges from 0 to 1).
+    YCF specifies the center of the loop on the y-axis (ranges from 0 to 1).
+    ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1).
+    PATH is a string containing the path to the folder where you want to store the string_with_random_kinks.dat file.
     """
 
     xx, yy, zz = np.array([]), np.array([]), np.array([])
-    eps = np.array([]) #For marking the endpoints
+    eps = np.array([])  # For marking the endpoints
 
-    #Generate Nstrings random string loops
+    # Generate NSTRINGS random string loops
     for string in range(NSTRINGS):
-
         if NSTRINGS == 1:
-            #use the respectiv input values
-            xc,yc,zc = N*XCF, N*YCF, N*ZCF
+            xc, yc, zc = N*XCF, N*YCF, N*ZCF
             LL = LEN
         else:
-            xc,yc,zc = N*np.random.uniform(0.2,0.8), N*np.random.uniform(0.2,0.8), N*np.random.uniform(0.2,0.8) #randomly distribute the strings in the volume (not too close to the boundary)
-            LL = np.random.randint(LEN - 0.5*LEN, LEN + 0.5*LEN + 1 )  #upper limit is exclusiv, thats why we add one
+            xc, yc, zc = N * np.random.uniform(0.2, 0.8), N * np.random.uniform(0.2, 0.8), N * np.random.uniform(0.2, 0.8)  # Randomly distribute the strings
+            LL = np.random.randint(LEN - 0.5 * LEN, LEN + 0.5 * LEN + 1)  # Random length
 
-        s = np.linspace(0, 2*np.pi, LL)
+        s = np.linspace(0, 2 * np.pi, LL)
 
-        r = np.random.random(3)*2*np.pi
+        r = np.random.random(3) * 2 * np.pi
         a = np.random.random(3)
-        x = a[0]*LL*np.cos(s+r[0])
-        y = a[1]*LL*np.cos(s+r[1])
-        z = a[2]*LL*np.cos(s+r[2])
+        x = a[0] * LL * np.cos(s + r[0])
+        y = a[1] * LL * np.cos(s + r[1])
+        z = a[2] * LL * np.cos(s + r[2])
 
-        for i in range(2,ITER):
-            r = np.random.random(3)*2*np.pi
+        for i in range(2, ITER):
+            r = np.random.random(3) * 2 * np.pi
             a = np.random.random(3)
-            x += a[0]*(LL/i)*np.cos(i*s+r[0])
-            y += a[1]*(LL/i)*np.cos(i*s+r[1])
-            z += a[2]*(LL/i)*np.cos(i*s+r[2])
+            x += a[0] * (LL / i) * np.cos(i * s + r[0])
+            y += a[1] * (LL / i) * np.cos(i * s + r[1])
+            z += a[2] * (LL / i) * np.cos(i * s + r[2])
 
-        #Normalisation
-        pv = (np.sqrt((x[1:]-x[:-1])**2+(y[1:]-y[:-1])**2+(z[1:]-z[:-1])**2).sum())
-        #print(pv)
-        x = x/pv*LL + xc
-        y = y/pv*LL + yc
-        z = z/pv*LL + zc
-        m = (x >= N) + (y >= N) +(x >= N)
-        if m.sum()>0:
+        #Introduce a random number of 90-degree angle kinks (between 0 and NUM_KINKS, for multiple strings)
+        if NSTRINGS == 1:
+            num_kinks = KINKS
+        else:
+            num_kinks = np.random.randint(0, KINKS + 1)
+
+        kink_indices = np.sort(np.random.choice(LL, num_kinks, replace=False))
+        kink_angle = np.pi / 2  # 90-degree angle, hardcoded for now
+
+        for kink_index in kink_indices:
+            x[kink_index] += LL * np.cos(kink_angle)
+            y[kink_index] += LL * np.cos(kink_angle)
+            z[kink_index] += LL * np.cos(kink_angle)
+
+        #Normalize
+        pv = (np.sqrt((x[1:] - x[:-1]) ** 2 + (y[1:] - y[:-1]) ** 2 + (z[1:] - z[:-1]) ** 2).sum())
+        x = x / pv * LL + xc
+        y = y / pv * LL + yc
+        z = z / pv * LL + zc
+        m = (x >= N) + (y >= N) + (x >= N)
+        if m.sum() > 0:
             print('fail')
 
-        #mark endpoint of the string -> important to avoid contributions to the calculation of the axion field from sections that are not from the same string
+        # Mark endpoint of the string
         ep = np.zeros(len(x))
         ep[-1] = 1
 
-        xx = np.append(xx,x).flatten()
-        yy = np.append(yy,y).flatten()
-        zz = np.append(zz,z).flatten()
-        eps = np.append(eps,ep).flatten()
+        xx = np.append(xx, x).flatten()
+        yy = np.append(yy, y).flatten()
+        zz = np.append(zz, z).flatten()
+        eps = np.append(eps, ep).flatten()
 
     coords = np.column_stack((xx, yy, zz, eps))
     np.savetxt(PATH + 'string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
 
-    return xx,yy,zz
+    return xx, yy, zz
 
 def onestring(N,R,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
     """
