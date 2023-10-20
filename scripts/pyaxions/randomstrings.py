@@ -5,7 +5,7 @@ from pyaxions import jaxions as pa
 
 import numpy as np
 
-def randomstrings(N, LEN, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
+def randomstrings(N = 256, LEN = 2*np.pi*(N)//4, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
     """
     randomstrings(N, LEN, NSTRINGS, ITER, KINKS, XCF, YCF, ZCF, PATH)
 
@@ -88,7 +88,7 @@ def randomstrings(N, LEN, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5
 
     return xx, yy, zz
 
-def onestring(N,R,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
+def onestring(N = 256,R =N//4,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
     """
 
     Creates a string.dat file with the coordinates of a :
@@ -140,7 +140,7 @@ def onestring(N,R,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
     ep[-1] = 1
     xy = np.column_stack((x, y, z, ep))
     np.savetxt('./string.dat', xy, delimiter=' ', fmt='%.2f %.2f %.2f %d')   # X is an array
-    return x,y,z,ep
+    return x,y,z
 
 #Implementation of the string IC for their simulations for the paper "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
 e1 = np.array([1, 0, 0])  # Unit vector x1
@@ -159,7 +159,7 @@ def b(zeta, beta, psi):
         result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
     return result
 
-def vv_string(N, R, alpha, beta, psi, t, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, PATH = './'):
+def vv_string(N=256, R=N//4, alpha=1.0/R, beta=1.0/R, psi=np.pi/2, t=0.0, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, PATH = './'):
     """
     vv_string(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
 
@@ -210,7 +210,215 @@ def vv_string(N, R, alpha, beta, psi, t, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, P
     data = np.column_stack((x, y, z, ep))
     np.savetxt(PATH + './string.dat', data, delimiter=' ', fmt='%.2f %.2f %.2f %d')
 
-    return x, y, z, ep
+    return x, y, z
+
+def longstring(N=256, AUX=1, A=0.5, D=10, D1 = N/4, D2 = 3*N/4, DIST=20, ORIENTATION='z', PATH = './'):
+    """
+    longstring(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
+    
+    *** Work in progress ***
+
+    1) Generates ICs with different longstrings, at the moment one sinusodially displace string and AUX straigth strings (to avoid boundary effects)
+    2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid connecting disconnected loops
+    3) Saves the generated configuration in "string.dat". This file will be read and processed at the beginning of the jaxions simulation
+
+
+    N is the number of grid points (must be the same as for the planned simulation!)
+    AUX is the number of straight strings (atm 1 or 3, work in progress ..)
+    A allows you to shift the string coordinates
+    D controls the amplitude of the sinusodially displaced string
+    D1 and D2 controls shifts of the additional strings for the AUX=3 case
+    DIST controls the distance between the strings
+    ORIENTATION allows you to choose the orientation of the strings
+
+    PATH is a string containing the path to the folder where you want to store the string.dat file
+    """
+    if AUX==1:
+        x0, y0, x1, y1 = N/2-DIST, N/2, N/2+DIST, N/2  # Center points for x and y
+
+        #sinusodially displaced string
+        if ORIENTATION == 'z':
+            z = np.linspace(0, N, N+1)
+            x = A + x0 + D * np.sin(2 * np.pi * z / N)
+            y = A + y0 + z * 0  # Set y values to point in the z direction (0)
+        elif ORIENTATION == 'x':
+            x = np.linspace(0, N, N+1)
+            y = A + y0 + D * np.sin(2 * np.pi * x / N)
+            z = A + x0 + x * 0  # Set z values to point in the x direction (0)
+        elif ORIENTATION == 'y':
+            y = np.linspace(0, N, N+1)
+            x = A + x0 + D * np.sin(2 * np.pi * y / N)
+            z = A + y0 + y * 0  # Set z values to point in the y direction (0)
+        else:
+            raise ValueError("Invalid orientation. Use 'x', 'y', or 'z'.")
+
+        ep = x * 0
+        ep[-1] = 1
+
+        #straight string
+        if ORIENTATION == 'z':
+            z2 = np.linspace(N, 0, N+1)
+            x2 = A + x1 + z2 * 0
+            y2 = A + y1 + z2 * 0  # Set y values to point in the z direction (0)
+        elif ORIENTATION == 'x':
+            x2 = np.linspace(N, 0, N+1)
+            y2 = A + y1 + x2 * 0
+            z2 = A + x1 + x2 * 0  # Set z values to point in the x direction (0)
+        elif ORIENTATION == 'y':
+            y2 = np.linspace(N, 0, N+1)
+            x2 = A + x1 + y2 * 0
+            z2 = A + y1 + y2 * 0  # Set z values to point in the y direction (0)
+
+        ep2 = x2 * 0
+        ep2[-1] = 1
+
+        x = np.concatenate((x, x2))
+        y = np.concatenate((y, y2))
+        z = np.concatenate((z, z2))
+        e = np.concatenate((ep, ep2))
+
+        coords = np.column_stack((x,y,z,e))
+
+    elif AUX==3:
+
+        #sinusodially displaced string
+        if ORIENTATION == 'z':
+            z = np.linspace(0, N, N+1)
+            x = A + D1 + D * np.sin(2*np.pi*z/N)
+            y = A + D1 + z*0  # Set y values to point in the z direction (0)
+        elif ORIENTATION == 'x':
+            x = np.linspace(0, N, N+1)
+            y = A + D1 + D * np.sin(2 * np.pi * x / N)
+            z = A + D1 + x * 0  # Set z values to point in the x direction (0)
+        elif ORIENTATION == 'y':
+            y = np.linspace(0, N, N+1)
+            x = A + D1 + D * np.sin(2 * np.pi * y / N)
+            z = A + D1 + y * 0  # Set z values to point in the y direction (0)
+        else:
+            raise ValueError("Invalid orientation. Use 'x', 'y', or 'z'.")
+
+        #endpoints
+        e = z*0
+        e[-1] = 1
+
+        #straight string
+        if ORIENTATION == 'z':
+            z2 = np.linspace(N, 0, N+1)
+            x2 = A + D1 + z2*0
+            y2 = A + D2 + z2*0  # Set y values to point in the z direction (0)
+
+            ep2 = z2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+            z2 = np.linspace(N,0,N+1)
+            x2 = A + D2 + z2*0
+            y2 = A + D1 + z2*0
+
+            e2 = z2*0
+            e2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+            z2 = np.linspace(0,N,N+1)
+            x2 = A + D2 + z2*0
+            y2 = A + D2 + z2*0
+            e2 = z2*0
+            e2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+        elif ORIENTATION == 'x':
+            x2 = np.linspace(N, 0, N+1)
+            y2 = A + D1 + x2 * 0
+            z2 = A + D2 + x2 * 0  # Set z values to point in the x direction (0)
+
+            ep2 = x2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+            x2 = np.linspace(N, 0, N+1)
+            y2 = A + D2 + x2 * 0
+            z2 = A + D1 + x2 * 0  # Set z values to point in the x direction (0)
+
+            ep2 = x2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+            x2 = np.linspace(N, 0, N+1)
+            y2 = A + D2 + x2 * 0
+            z2 = A + D2 + x2 * 0  # Set z values to point in the x direction (0)
+
+            ep2 = x2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+        elif ORIENTATION == 'y':
+            y2 = np.linspace(N, 0, N+1)
+            x2 = A + D1 + y2 * 0
+            z2 = A + D2 + y2 * 0  # Set z values to point in the y direction (0)
+
+            ep2 = y2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+            y2 = np.linspace(N, 0, N+1)
+            x2 = A + D2 + y2 * 0
+            z2 = A + D1 + y2 * 0  # Set z values to point in the y direction (0)
+
+            ep2 = y2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+            y2 = np.linspace(N, 0, N+1)
+            x2 = A + D2 + y2 * 0
+            z2 = A + D2 + y2 * 0  # Set z values to point in the y direction (0)
+
+            ep2 = y2 * 0
+            ep2[-1] = 1
+
+            x = np.concatenate((x,x2))
+            y = np.concatenate((y,y2))
+            z = np.concatenate((z,z2))
+            e = np.concatenate((e,e2))
+
+    else:
+        raise ValueError("So far only AUX=1 and AUX=3 available.")
+
+    coords = np.column_stack((x, y, z, e))
+    np.savetxt('string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %d')
+
+    return x, y, z
+
 
 def arctan3(r,i,a):
     c = np.cos(a)
