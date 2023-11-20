@@ -5,9 +5,11 @@ from pyaxions import jaxions as pa
 
 import numpy as np
 
-def randomstrings(N = 256, LEN = 2*np.pi*(N)//4, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
+import numpy as np
+
+def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
     """
-    randomstrings(N, LEN, NSTRINGS, ITER, KINKS, XCF, YCF, ZCF, PATH)
+    randomstrings(N, LEN, SEED, NSTRINGS, ITER, KINKS, XCF, YCF, ZCF, PATH)
 
     Generates NSTRINGS random string loops with a random number of 90-degree angle kinks.
     Stores their (x, y, z)-coordinates and marks the endpoints of every string.
@@ -15,14 +17,24 @@ def randomstrings(N = 256, LEN = 2*np.pi*(N)//4, NSTRINGS=1, ITER=3, KINKS=0, XC
 
     N is the number of grid points (must match the simulation).
     LEN is the length of the respective loop.
+    SEED is an abitrary integer that can be used to reproduce the random parameters
     NSTRINGS is the number of strings that will be generated.
     ITER is the number of iterations for the random scattering of the coordinates.
-    KINKS is the (maximum) number of kinks for each string (randomized between 0 and NUM_KINKS, if multiple strings).
+    (** Currently removed **) KINKS is the (maximum) number of kinks for each string (randomized between 0 and NUM_KINKS, if multiple strings).
     XCF specifies the center of the loop on the x-axis (ranges from 0 to 1).
     YCF specifies the center of the loop on the y-axis (ranges from 0 to 1).
     ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1).
     PATH is a string containing the path to the folder where you want to store the string_with_random_kinks.dat file.
     """
+
+    # Set a random seed for reproducibility
+    if SEED is not None:
+        seed = SEED
+        np.random.seed(seed)
+    else:
+        seed = np.random.randint(0, 2**32 - 1)
+        np.random.seed(seed)
+    print('If you want to reproduce the exact same loop shape, use SEED=%d'%seed)
 
     xx, yy, zz = np.array([]), np.array([]), np.array([])
     eps = np.array([])  # For marking the endpoints
@@ -30,10 +42,10 @@ def randomstrings(N = 256, LEN = 2*np.pi*(N)//4, NSTRINGS=1, ITER=3, KINKS=0, XC
     # Generate NSTRINGS random string loops
     for string in range(NSTRINGS):
         if NSTRINGS == 1:
-            xc, yc, zc = N*XCF, N*YCF, N*ZCF
-            LL = LEN
+            xc, yc, zc = N * XCF, N * YCF, N * ZCF
+            LL = int(LEN)
         else:
-            xc, yc, zc = N * np.random.uniform(0.2, 0.8), N * np.random.uniform(0.2, 0.8), N * np.random.uniform(0.2, 0.8)  # Randomly distribute the strings
+            xc, yc, zc = N * np.random.uniform(0.2, 0.8), N * np.random.uniform(0.2, 0.8), N * np.random.uniform(0.2,0.8)  # Randomly distribute the strings
             LL = np.random.randint(LEN - 0.5 * LEN, LEN + 0.5 * LEN + 1)  # Random length
 
         s = np.linspace(0, 2 * np.pi, LL)
@@ -51,21 +63,22 @@ def randomstrings(N = 256, LEN = 2*np.pi*(N)//4, NSTRINGS=1, ITER=3, KINKS=0, XC
             y += a[1] * (LL / i) * np.cos(i * s + r[1])
             z += a[2] * (LL / i) * np.cos(i * s + r[2])
 
+        # Removed kinks for now, need to discuss how to create loops with kinks appropriately
         #Introduce a random number of 90-degree angle kinks (between 0 and NUM_KINKS, for multiple strings)
-        if NSTRINGS == 1:
-            num_kinks = KINKS
-        else:
-            num_kinks = np.random.randint(0, KINKS + 1)
+        #if NSTRINGS == 1:
+        #    num_kinks = KINKS
+        #else:
+        #    num_kinks = np.random.randint(0, KINKS + 1)
 
-        kink_indices = np.sort(np.random.choice(LL, num_kinks, replace=False))
-        kink_angle = np.pi / 2  # 90-degree angle, hardcoded for now
+        #kink_indices = np.sort(np.random.choice(LL, num_kinks, replace=False))
+        #kink_angle = np.pi / 2  # 90-degree angle, hardcoded for now
 
-        for kink_index in kink_indices:
-            x[kink_index] += LL * np.cos(kink_angle)
-            y[kink_index] += LL * np.cos(kink_angle)
-            z[kink_index] += LL * np.cos(kink_angle)
+        #for kink_index in kink_indices:
+        #    x[kink_index] += LL * np.cos(kink_angle)
+        #    y[kink_index] += LL * np.cos(kink_angle)
+        #    z[kink_index] += LL * np.cos(kink_angle)
 
-        #Normalize
+        # Normalize
         pv = (np.sqrt((x[1:] - x[:-1]) ** 2 + (y[1:] - y[:-1]) ** 2 + (z[1:] - z[:-1]) ** 2).sum())
         x = x / pv * LL + xc
         y = y / pv * LL + yc
@@ -84,39 +97,52 @@ def randomstrings(N = 256, LEN = 2*np.pi*(N)//4, NSTRINGS=1, ITER=3, KINKS=0, XC
         eps = np.append(eps, ep).flatten()
 
     coords = np.column_stack((xx, yy, zz, eps))
-    np.savetxt(PATH + 'string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+
+    # Save seed and other relevant parameters in the output file
+    with open(PATH + 'string.dat', 'w') as file:
+        file.write(f"# Seed: {SEED}\n")
+        file.write(f"# N: {N}\n")
+        file.write(f"# LEN: {LEN}\n")
+        file.write(f"# NSTRINGS: {NSTRINGS}\n")
+        file.write(f"# ITER: {ITER}\n")
+        file.write(f"# KINKS: {KINKS}\n")
+        file.write(f"# XCF: {XCF}\n")
+        file.write(f"# YCF: {YCF}\n")
+        file.write(f"# ZCF: {ZCF}\n")
+        np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
 
     return xx, yy, zz
 
-def onestring(N = 256,R =N//4,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
+
+def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5):
     """
 
     Creates a string.dat file with the coordinates of a :
-        string loop (m='l')
-        polyhedra of n vertices (m='s')
-        knot (m='k')
-    centered at N*xcf, N*ycf, N*zcf+dz
+        string loop (M='l')
+        polyhedra of n vertices (M='s')
+        knot (M='k')
+    centered at N*XCF, N*YCF, N*ZCF+DZ
 
     N  : number of grid points to be used in the simulation, which helps in
          specifying the number of poins ~ O(1) per grid cube
     R  : Radius
-    ar : angle of rotation around z axis, if desired
+    AR : angle of rotation around z axis, if desired
 
-    returns x,y,z,ep (arrays of coordinates and endpoints)
+    returns x,y,z
     """
-    xc,yc,zc=N*xcf,N*ycf,N*zcf+dz
+    xc,yc,zc = N*XCF,N*YCF,N*ZCF+DZ
     # loop
-    if m == 'l':
+    if M == 'l':
         s = np.linspace(0.000001,2*np.pi,int(2*np.pi*R))
         x = R*np.cos(s)
         y = R*np.sin(s)
         z = 0*s
-    elif m == 's':
-        v  = 2*np.pi*np.linspace(0,n,n+1)/n
+    elif M == 's':
+        v  = 2*np.pi*np.linspace(0,NPOLY,NPOLY+1)/NPOLY
         vx = R*np.cos(v)
         vy = R*np.sin(v)
-        pv = int((np.sqrt((vx[1:]-vx[:-1])**2+(vy[1:]-vy[:-1])**2).sum())/n)
-        tn = pv*n
+        pv = int((np.sqrt((vx[1:]-vx[:-1])**2+(vy[1:]-vy[:-1])**2).sum())/NPOLY)
+        tn = pv*NPOLY
         x = np.zeros(tn)
         y = np.zeros(tn)
         f = np.arange(0,pv)/pv
@@ -124,22 +150,37 @@ def onestring(N = 256,R =N//4,n=4,m='l',ar=0,xcf=0.5,ycf=0.5,zcf=0.5,dz=-0.5):
             x[base*pv:(base+1)*pv] = vx[base] + (vx[base+1]-vx[base])*f
             y[base*pv:(base+1)*pv] = vy[base] + (vy[base+1]-vy[base])*f
         z = 0*x
-    elif m == 'k':
+    elif M == 'k':
         t = np.linspace(0.000001,2*np.pi,2*int(2*np.pi*R))
         x = R/3*(np.sin(t)+2*np.sin(2*t))
         y = R/3*(np.cos(t)-2*np.cos(2*t))
         z = R/3*(-np.sin(3*t))
-    if ar != 0:
-        xr = x*np.cos(ar) + y*np.sin(ar)
-        y  = -x*np.sin(ar) + y*np.cos(ar)
+    if AR != 0:
+        xr = x*np.cos(AR) + y*np.sin(AR)
+        y  = -x*np.sin(AR) + y*np.cos(AR)
         x  = xr
     x = x + xc
     y = y + yc
     z = z + zc
+
     ep = np.zeros(len(x),dtype=int)
     ep[-1] = 1
+
     xy = np.column_stack((x, y, z, ep))
-    np.savetxt('./string.dat', xy, delimiter=' ', fmt='%.2f %.2f %.2f %d')   # X is an array
+    np.savetxt('./string.dat', xy, delimiter=' ', fmt='%.2f %.2f %.2f %d')
+
+    # Save input parameters in the output file
+    with open(PATH + 'string.dat', 'w') as file:
+        file.write(f"# N: {N}\n")
+        file.write(f"# R: {R}\n")
+        file.write(f"# NPOLY: {n}\n")
+        file.write(f"# M: {m}\n")
+        file.write(f"# AR: {AR}\n")
+        file.write(f"# XCF: {XCF}\n")
+        file.write(f"# YCF: {YCF}\n")
+        file.write(f"# ZCF: {ZCF}\n")
+        file.write(f"# DZ: {DZ}\n")
+        np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
     return x,y,z
 
 #Implementation of the string IC for their simulations for the paper "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
@@ -159,9 +200,9 @@ def b(zeta, beta, psi):
         result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
     return result
 
-def vv_string(N=256, R=N//4, alpha=1.0/R, beta=1.0/R, psi=np.pi/2, t=0.0, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, PATH = './'):
+def burden(N=256, R=256//4, alpha=1.0/64, beta=1.0/64, psi=np.pi/2, t=0.0, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, PATH = './'):
     """
-    vv_string(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
+    burden(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
 
     1) Generates a string IC as in "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
     2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid connecting disconnected loops
@@ -212,10 +253,10 @@ def vv_string(N=256, R=N//4, alpha=1.0/R, beta=1.0/R, psi=np.pi/2, t=0.0, xcf=0.
 
     return x, y, z
 
-def longstring(N=256, AUX=1, A=0.5, D=10, D1 = N/4, D2 = 3*N/4, DIST=20, ORIENTATION='z', PATH = './'):
+def longstring(N=256, AUX=1, A=0.5, D=10, D1 = 256/4, D2 = 3*256/4, DIST=20, ORIENTATION='z', PATH = './'):
     """
     longstring(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
-    
+
     *** Work in progress ***
 
     1) Generates ICs with different longstrings, at the moment one sinusodially displace string and AUX straigth strings (to avoid boundary effects)
