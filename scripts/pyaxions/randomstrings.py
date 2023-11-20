@@ -181,7 +181,11 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
         file.write(f"# ZCF: {ZCF}\n")
         file.write(f"# DZ: {DZ}\n")
         np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+
     return x,y,z
+
+
+#Burden solutions
 
 #Implementation of the string IC for their simulations for the paper "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
 e1 = np.array([1, 0, 0])  # Unit vector x1
@@ -200,7 +204,7 @@ def b(zeta, beta, psi):
         result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
     return result
 
-def burden(N=256, R=256//4, alpha=1.0/64, beta=1.0/64, psi=np.pi/2, t=0.0, xcf=0.5, ycf=0.5, zcf=0.5, dz = -0.5, PATH = './'):
+def burden(N=256, R=256//4, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ = -0.5, PATH = './'):
     """
     burden(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
 
@@ -223,12 +227,12 @@ def burden(N=256, R=256//4, alpha=1.0/64, beta=1.0/64, psi=np.pi/2, t=0.0, xcf=0
 
     Check the paper for details about the choice of parameters etc.
     """
-    xc, yc, zc = N * xcf, N * ycf, N * zcf + dz
+    xc, yc, zc = N * XCF, N * YCF, N * ZCF + DZ
 
     zeta = np.linspace(0, 2 * np.pi * R, int(2 * np.pi * R))
 
-    a_zeta = a(zeta-t, alpha)
-    b_zeta = b(zeta+t, beta, psi)
+    a_zeta = a(zeta-T, ALPHA)
+    b_zeta = b(zeta+T, BETA, PSI)
 
     x = []
     y = []
@@ -251,11 +255,25 @@ def burden(N=256, R=256//4, alpha=1.0/64, beta=1.0/64, psi=np.pi/2, t=0.0, xcf=0
     data = np.column_stack((x, y, z, ep))
     np.savetxt(PATH + './string.dat', data, delimiter=' ', fmt='%.2f %.2f %.2f %d')
 
+    # Save input parameters in the output file
+    with open(PATH + 'string.dat', 'w') as file:
+        file.write(f"# N: {N}\n")
+        file.write(f"# R: {R}\n")
+        file.write(f"# ALPHA: {ALPHA}\n")
+        file.write(f"# BETA: {BETA}\n")
+        file.write(f"# PSI: {PSI}\n")
+        file.write(f"# T: {T}\n")
+        file.write(f"# XCF: {XCF}\n")
+        file.write(f"# YCF: {YCF}\n")
+        file.write(f"# ZCF: {ZCF}\n")
+        file.write(f"# DZ: {DZ}\n")
+        np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+
     return x, y, z
 
 def longstring(N=256, AUX=1, A=0.5, D=10, D1 = 256/4, D2 = 3*256/4, DIST=20, ORIENTATION='z', PATH = './'):
     """
-    longstring(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
+    longstring(N, AUX, A, D, D1, D2, DIST, ORIENTATION, PATH)
 
     *** Work in progress ***
 
@@ -453,10 +471,21 @@ def longstring(N=256, AUX=1, A=0.5, D=10, D1 = 256/4, D2 = 3*256/4, DIST=20, ORI
             e = np.concatenate((e,e2))
 
     else:
-        raise ValueError("So far only AUX=1 and AUX=3 available.")
+        raise ValueError("So far, there is only AUX=1 and AUX=3 available.")
 
     coords = np.column_stack((x, y, z, e))
     np.savetxt('string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %d')
+
+    with open(PATH + 'string.dat', 'w') as file:
+        file.write(f"# N: {N}\n")
+        file.write(f"# AUX: {AUX}\n")
+        file.write(f"# A: {A}\n")
+        file.write(f"# D: {D}\n")
+        file.write(f"# D1: {D1}\n")
+        file.write(f"# D2: {D2}\n")
+        file.write(f"# DIST: {DIST}\n")
+        file.write(f"# ORIENTATION: {ORIENTATION}\n")
+        np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
 
     return x, y, z
 
