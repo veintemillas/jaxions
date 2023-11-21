@@ -63,7 +63,7 @@ def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER
             y += a[1] * (LL / i) * np.cos(i * s + r[1])
             z += a[2] * (LL / i) * np.cos(i * s + r[2])
 
-        # Removed kinks for now, need to discuss how to create loops with kinks appropriately
+        # Removed kinks for now, need to discuss how to create loops with kinks appropriately -> collisions probably
         #Introduce a random number of 90-degree angle kinks (between 0 and NUM_KINKS, for multiple strings)
         #if NSTRINGS == 1:
         #    num_kinks = KINKS
