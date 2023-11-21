@@ -1463,99 +1463,109 @@ void	ConfGenerator::confstring(Cosmos *myCosmos, Scalar *axionField)
 }
 
 
-void ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
+void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 {
-    Profiler &prof = getProfiler(PROF_GENCONF);
-    IcData ic = myCosmos->ICData();
-    string smthName("Smoother");
+	Profiler &prof = getProfiler(PROF_GENCONF);
+	IcData ic = myCosmos->ICData();
+	string	smthName("Smoother");
 
-    LogMsg(VERB_NORMAL, "\n ");
-    LogMsg(VERB_NORMAL, "[GEN] CONF_STRING' started!\n ");
+	LogMsg(VERB_NORMAL,"\n ");
+	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING' started!\n ");
 
-    LogMsg(VERB_NORMAL, "[STR] Searching for string data file string.dat !");
+	LogMsg(VERB_NORMAL,"[STR] Searching for string data file string.dat !");
 
-    FILE *stringFile = nullptr;
-    std::vector<double> xx, yy, zz;
-    std::vector<int> endpoints;
+	FILE *stringFile = nullptr;
+	std::vector<double> xx,yy,zz;
+	std::vector<int> endpoints;
 
-    if (((stringFile = fopen("./string.dat", "r")) == nullptr)) {
-        LogMsg(VERB_NORMAL, "[STR] none found ! ");
-    } else {
-        LogMsg(VERB_NORMAL, "[STR] Found ! ");
-        int ii = 0;
-        double xa, ya, za;
-        bool ep;
-        while (!feof(stringFile)) {
-            int result = fscanf(stringFile, "%lf %lf %lf %d", &xa, &ya, &za, &ep);
-            if (result != 4) {
-                LogMsg(VERB_NORMAL, "[STR] Error reading data from file.");
-                break;
-            }
+	if (((stringFile = fopen("./string.dat", "r")) == nullptr))
+	{
+    LogMsg(VERB_NORMAL, "[STR] none found !");
+	}
+	else
+	{
+    LogMsg(VERB_NORMAL, "[STR] Found ! ");
+    int ii = 0;
+    double xa, ya, za;
+    bool ep;
+    char line[256]; // Assuming a maximum line length of 256 characters, should be large enough to avoid trouble
 
-            LogMsg(VERB_PARANOID, " x,y,z %.2f %.2f %.2f %d !", xa, ya, za, ep);
-            xx.push_back(xa);
-            yy.push_back(ya);
-            zz.push_back(za);
-            endpoints.push_back(ep);
-            ii++;
+    while (fgets(line, sizeof(line), stringFile) != nullptr) {
+        // Check if the line starts with '#' (header line)
+        if (line[0] == '#') {
+            continue; // Skip header lines
         }
-        fclose(stringFile);
 
-        // Add periodic copies of the string outside the simulation volume
-        const int numCopies = 1; // Number of copies to add
-
-        for (int i = -numCopies; i < numCopies + 1; i++) {
-            if (i == 0)
-                continue;
-
-            for (int ind = 0; ind < ii; ind++) {
-                // Add a copy shifted in the x-direction
-                double newX = xx.at(ind);
-                xx.push_back(newX);
-                // Add a copy shifted in the y-direction
-                double newY = yy.at(ind);
-                yy.push_back(newY);
-                // Add a copy shifted in the z-direction
-                double newZ = zz.at(ind) + i * axionField->TotalDepth();
-                zz.push_back(newZ);
-            }
-        }
+        // Process data if it's not a header line
+        sscanf(line, "%lf %lf %lf %d", &xa, &ya, &za, &ep);
+        LogMsg(VERB_PARANOID, " x,y,z %.2f %.2f %.2f %d !", xa, ya, za, ep);
+        xx.push_back(xa);
+        yy.push_back(ya);
+        zz.push_back(za);
+        endpoints.push_back(ep);
+        ii++;
     }
 
-    prof.start();
-    anystringConf(axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size());
-    prof.stop();
+    fclose(stringFile); // Don't forget to close the file when done
+	}
 
-    /* TODO wrong flops */
-    prof.add("anystringConf", 0., xx.size() * axionField->Size() * axionField->DataSize() * 1e-9);
+		// Add periodic copies of the string outside the simulation volume
+	   const int numCopies = 1; // Number of copies to add
+	  //const double boxSize = myCosmos->TotalDepth();
 
-    if (ic.siter > 0) {
-        prof.start();
-        smoothXeon(axionField, ic.siter, ic.alpha);
-        prof.stop();
-        prof.add(smthName, 18.e-9 * axionField->Size() * ic.siter, 8.e-9 * axionField->Size() * axionField->DataSize() * ic.siter);
-    }
+	   for (int i = -numCopies; i < numCopies + 1; i++) {
+		   if (i == 0)
+		   	continue;
 
-    normaliseField(axionField, FIELD_M);
+		   for (int ind = 0; ind < ii; ind++) {
+			   // Add a copy shifted in the x-direction
+			   double newX = xx.at(ind);
+			   xx.push_back(newX);
+		   	   // Add a copy shifted in the y-direction
+			   double newY = yy.at(ind);
+			   yy.push_back(newY);
+		   	   // Add a copy shifted in the z-direction
+			   double newZ = zz.at(ind) + i * axionField->TotalDepth();
+			   zz.push_back(newZ);
+		   }
+	   }
 
-    if (myCosmos->ICData().normcore)
-        normCoreField(axionField);
+	}
 
-    if (!myCosmos->Mink()) { /* In Minkowski this is trivial */
-        double R = *axionField->RV();
-        double Rp = myCosmos->Rp(*axionField->zV());
-        axby(FIELD_M, FIELD_V, Rp * R, R);
-    }
-    if (!(ic.kickalpha == 0.0))
-        scaleField(axionField, FIELD_V, 1.0 + ic.kickalpha);
+	prof.start();
+	anystringConf (axionField, ic, xx.data(), yy.data(), zz.data(), xx.size(), endpoints.data(), endpoints.size());
+	prof.stop();
 
-    if (!myCosmos->Mink()) /* In Minkowski this is trivial */
-        scaleField(axionField, FIELD_M, *axionField->RV());
+	/* TODO wrong flops */
+	prof.add("anystringConf", 0., xx.size()*axionField->Size()*axionField->DataSize()*1e-9);
 
-    axionField->setFolded(false);
-    LogMsg(VERB_NORMAL, "[GEN] CONF_STRING2 ended'' ");
+	if (ic.siter>0)
+	{
+		prof.start();
+		smoothXeon (axionField, ic.siter, ic.alpha);
+		prof.stop();
+		prof.add(smthName, 18.e-9*axionField->Size()*ic.siter, 8.e-9*axionField->Size()*axionField->DataSize()*ic.siter);
+	}
+
+	normaliseField(axionField, FIELD_M);
+
+	if (myCosmos->ICData().normcore)
+		normCoreField	(axionField);
+
+	if (!myCosmos->Mink()){ /* In Minkowski this is trivial */
+		double R  = *axionField->RV();
+		double Rp = myCosmos->Rp(*axionField->zV());
+		axby(FIELD_M,FIELD_V,Rp*R,R);
+		}
+	if ( !(ic.kickalpha == 0.0) )
+		scaleField (axionField, FIELD_V, 1.0+ic.kickalpha);
+
+	if (!myCosmos->Mink()) /* In Minkowski this is trivial */
+		scaleField (axionField, FIELD_M, *axionField->RV());
+
+	axionField->setFolded(false);
+	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING2 ended'' ");
 }
-
 
 
 // void	ConfGenerator::confapr(Cosmos *myCosmos, Scalar *axionField)
