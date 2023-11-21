@@ -1478,57 +1478,55 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	std::vector<double> xx,yy,zz;
 	std::vector<int> endpoints;
 
-	if (((stringFile = fopen("./string.dat", "r")) == nullptr))
-	{
-    LogMsg(VERB_NORMAL, "[STR] none found !");
+	if (((stringFile = fopen("./string.dat", "r")) == nullptr)) {
+    	LogMsg(VERB_NORMAL, "[STR] none found !");
 	}
-	else
-	{
-    LogMsg(VERB_NORMAL, "[STR] Found ! ");
-    int ii = 0;
-    double xa, ya, za;
-    bool ep;
-    char line[256]; // Assuming a maximum line length of 256 characters, should be large enough to avoid trouble
+	else {
+    	LogMsg(VERB_NORMAL, "[STR] Found ! ");
+    	int ii = 0;
+    	double xa, ya, za;
+    	bool ep;
+    	char line[256]; // Assuming a maximum line length of 256 characters
 
-    while (fgets(line, sizeof(line), stringFile) != nullptr) {
-        // Check if the line starts with '#' (header line)
-        if (line[0] == '#') {
-            continue; // Skip header lines
-        }
+    	while (fgets(line, sizeof(line), stringFile) != nullptr) {
+        	// Check if the line starts with '#' (header line)
+        	if (line[0] == '#') {
+            	continue; // Skip header lines
+        	}
 
-        // Process data if it's not a header line
-        sscanf(line, "%lf %lf %lf %d", &xa, &ya, &za, &ep);
-        LogMsg(VERB_PARANOID, " x,y,z %.2f %.2f %.2f %d !", xa, ya, za, ep);
-        xx.push_back(xa);
-        yy.push_back(ya);
-        zz.push_back(za);
-        endpoints.push_back(ep);
-        ii++;
-    }
+        	// Process data if it's not a header line
+        	sscanf(line, "%lf %lf %lf %d", &xa, &ya, &za, &ep);
+        	LogMsg(VERB_PARANOID, " x,y,z %.2f %.2f %.2f %d !", xa, ya, za, ep);
+        	xx.push_back(xa);
+        	yy.push_back(ya);
+        	zz.push_back(za);
+        	endpoints.push_back(ep);
+        	ii++;
+    	}
 
-    fclose(stringFile); // Don't forget to close the file when done
-	}
+    	fclose(stringFile); // Don't forget to close the file when done
+
 
 		// Add periodic copies of the string outside the simulation volume
-	   const int numCopies = 1; // Number of copies to add
-	  //const double boxSize = myCosmos->TotalDepth();
+		const int numCopies = 1; // Number of copies to add
+		//const double boxSize = myCosmos->TotalDepth();
 
-	   for (int i = -numCopies; i < numCopies + 1; i++) {
-		   if (i == 0)
-		   	continue;
+		for (int i = -numCopies; i < numCopies + 1; i++) {
+			if (i == 0)
+				continue;
 
-		   for (int ind = 0; ind < ii; ind++) {
-			   // Add a copy shifted in the x-direction
-			   double newX = xx.at(ind);
-			   xx.push_back(newX);
-		   	   // Add a copy shifted in the y-direction
-			   double newY = yy.at(ind);
-			   yy.push_back(newY);
-		   	   // Add a copy shifted in the z-direction
-			   double newZ = zz.at(ind) + i * axionField->TotalDepth();
-			   zz.push_back(newZ);
-		   }
-	   }
+				for (int ind = 0; ind < ii; ind++) {
+					// Add a copy shifted in the x-direction
+					double newX = xx.at(ind);
+					xx.push_back(newX);
+		   		// Add a copy shifted in the y-direction
+				double newY = yy.at(ind);
+				yy.push_back(newY);
+		   		// Add a copy shifted in the z-direction
+				double newZ = zz.at(ind) + i * axionField->TotalDepth();
+				zz.push_back(newZ);
+			}
+		}
 
 	}
 
