@@ -183,7 +183,7 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
         file.write(f"# YCF: {YCF}\n")
         file.write(f"# ZCF: {ZCF}\n")
         file.write(f"# DZ: {DZ}\n")
-        np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+        np.savetxt(file, xy, delimiter=' ', fmt='%.2f %.2f %.2f %i')
 
     return x,y,z
 
