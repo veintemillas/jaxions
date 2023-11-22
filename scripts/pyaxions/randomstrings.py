@@ -146,7 +146,7 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
         x = np.zeros(tn)
         y = np.zeros(tn)
         f = np.arange(0,pv)/pv
-        for base in range(n):
+        for base in range(NPOLY):
             x[base*pv:(base+1)*pv] = vx[base] + (vx[base+1]-vx[base])*f
             y[base*pv:(base+1)*pv] = vy[base] + (vy[base+1]-vy[base])*f
         z = 0*x
@@ -173,8 +173,8 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
     with open(PATH + 'string.dat', 'w') as file:
         file.write(f"# N: {N}\n")
         file.write(f"# R: {R}\n")
-        file.write(f"# NPOLY: {n}\n")
-        file.write(f"# M: {m}\n")
+        file.write(f"# NPOLY: {NPOLY}\n")
+        file.write(f"# SHAPE: {SHAPE}\n")
         file.write(f"# AR: {AR}\n")
         file.write(f"# XCF: {XCF}\n")
         file.write(f"# YCF: {YCF}\n")
