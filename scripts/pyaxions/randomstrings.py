@@ -114,7 +114,7 @@ def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER
     return xx, yy, zz
 
 
-def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5):
+def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5, PATH='./'):
     """
 
     Creates a string.dat file with the coordinates of a :
@@ -123,10 +123,13 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
         knot (M='k')
     centered at N*XCF, N*YCF, N*ZCF+DZ
 
-    N  : number of grid points to be used in the simulation, which helps in
+    N: number of grid points to be used in the simulation, which helps in
          specifying the number of poins ~ O(1) per grid cube
-    R  : Radius
+    R: Radius
+    NPOLY: Number of edges of hexagon
+    SHAPE: Loop ('l'), Hexagon ('s'), or Knot ('k')
     AR : angle of rotation around z axis, if desired
+
 
     returns x,y,z
     """
@@ -167,7 +170,7 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
     ep[-1] = 1
 
     xy = np.column_stack((x, y, z, ep))
-    np.savetxt('./string.dat', xy, delimiter=' ', fmt='%.2f %.2f %.2f %d')
+    np.savetxt(PATH + 'string.dat', xy, delimiter=' ', fmt='%.2f %.2f %.2f %d')
 
     # Save input parameters in the output file
     with open(PATH + 'string.dat', 'w') as file:
