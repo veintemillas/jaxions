@@ -132,12 +132,12 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
     """
     xc,yc,zc = N*XCF,N*YCF,N*ZCF+DZ
     # loop
-    if M == 'l':
+    if SHAPE == 'l':
         s = np.linspace(0.000001,2*np.pi,int(2*np.pi*R))
         x = R*np.cos(s)
         y = R*np.sin(s)
         z = 0*s
-    elif M == 's':
+    elif SHAPE == 's':
         v  = 2*np.pi*np.linspace(0,NPOLY,NPOLY+1)/NPOLY
         vx = R*np.cos(v)
         vy = R*np.sin(v)
@@ -150,7 +150,7 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
             x[base*pv:(base+1)*pv] = vx[base] + (vx[base+1]-vx[base])*f
             y[base*pv:(base+1)*pv] = vy[base] + (vy[base+1]-vy[base])*f
         z = 0*x
-    elif M == 'k':
+    elif SHAPE == 'k':
         t = np.linspace(0.000001,2*np.pi,2*int(2*np.pi*R))
         x = R/3*(np.sin(t)+2*np.sin(2*t))
         y = R/3*(np.cos(t)-2*np.cos(2*t))
