@@ -7,7 +7,7 @@ import numpy as np
 
 import numpy as np
 
-def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
+def randomstrings(N=256, RL_RATIO=0.25, SEED = None, NSTRINGS=1, ITER=3, KINKS=0, XCF=0.5, YCF=0.5, ZCF=0.5, PATH='./'):
     """
     randomstrings(N, LEN, SEED, NSTRINGS, ITER, KINKS, XCF, YCF, ZCF, PATH)
 
@@ -16,7 +16,7 @@ def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER
     Saves the configuration in "string_with_random_kinks.dat."
 
     N is the number of grid points (must match the simulation).
-    LEN is the length of the respective loop.
+    RL_RATIO: R/L, with L^3, the volume of the simulation box and R the radius of the loop. The code effectivly uses the variable LEN = 2pi*(R/L)*N for initialisation, to. Value should should be smaller than ~0.45.
     SEED is an abitrary integer that can be used to reproduce the random parameters
     NSTRINGS is the number of strings that will be generated.
     ITER is the number of iterations for the random scattering of the coordinates.
@@ -38,6 +38,9 @@ def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER
 
     xx, yy, zz = np.array([]), np.array([]), np.array([])
     eps = np.array([])  # For marking the endpoints
+
+    #Use R/L to generate comparable string to circular loop case
+    LEN = 2*np.pi*RL_RATIO*N
 
     # Generate NSTRINGS random string loops
     for string in range(NSTRINGS):
@@ -114,7 +117,7 @@ def randomstrings(N=256, LEN=2 * np.pi * 256 // 4, SEED = None, NSTRINGS=1, ITER
     return xx, yy, zz
 
 
-def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5, PATH='./'):
+def onestring(N = 256,RL_RATIO =0.25, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5, PATH='./'):
     """
 
     Creates a string.dat file with the coordinates of a :
@@ -124,26 +127,30 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
     centered at N*XCF, N*YCF, N*ZCF+DZ
 
     N: number of grid points to be used in the simulation, which helps in
-         specifying the number of poins ~ O(1) per grid cube
-    R: Radius
+         specifying the number of points ~ O(1) per grid cube
+    RL_RATIO: R/L, with L^3, the volume of the simulation box and R the radius of the loop. The code effectivly uses the variable Rdx = (R/L)*N for initialisation. Value should should be smaller than ~0.45.
     NPOLY: Number of edges of hexagon
     SHAPE: Loop ('l'), Hexagon ('s'), or Knot ('k')
-    AR : angle of rotation around z axis, if desired
+    AR : Angle of rotation around z axis, if desired
 
 
     returns x,y,z
     """
     xc,yc,zc = N*XCF,N*YCF,N*ZCF+DZ
     # loop
+
+    #Use correct variables to avoid trouble
+    Rdx = RL_RATIO * N
+
     if SHAPE == 'l':
-        s = np.linspace(0.000001,2*np.pi,int(2*np.pi*R))
-        x = R*np.cos(s)
-        y = R*np.sin(s)
+        s = np.linspace(0.000001,2*np.pi,int(2*np.pi*Rdx))
+        x = Rdx*np.cos(s)
+        y = Rdx*np.sin(s)
         z = 0*s
     elif SHAPE == 's':
         v  = 2*np.pi*np.linspace(0,NPOLY,NPOLY+1)/NPOLY
-        vx = R*np.cos(v)
-        vy = R*np.sin(v)
+        vx = Rdx*np.cos(v)
+        vy = Rdx*np.sin(v)
         pv = int((np.sqrt((vx[1:]-vx[:-1])**2+(vy[1:]-vy[:-1])**2).sum())/NPOLY)
         tn = pv*NPOLY
         x = np.zeros(tn)
@@ -154,10 +161,10 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
             y[base*pv:(base+1)*pv] = vy[base] + (vy[base+1]-vy[base])*f
         z = 0*x
     elif SHAPE == 'k':
-        t = np.linspace(0.000001,2*np.pi,2*int(2*np.pi*R))
-        x = R/3*(np.sin(t)+2*np.sin(2*t))
-        y = R/3*(np.cos(t)-2*np.cos(2*t))
-        z = R/3*(-np.sin(3*t))
+        t = np.linspace(0.000001,2*np.pi,2*int(2*np.pi*Rdx))
+        x = Rdx/3*(np.sin(t)+2*np.sin(2*t))
+        y = Rdx/3*(np.cos(t)-2*np.cos(2*t))
+        z = Rdx/3*(-np.sin(3*t))
     if AR != 0:
         xr = x*np.cos(AR) + y*np.sin(AR)
         y  = -x*np.sin(AR) + y*np.cos(AR)
@@ -175,7 +182,7 @@ def onestring(N = 256,R =256//4, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF
     # Save input parameters in the output file
     with open(PATH + 'string.dat', 'w') as file:
         file.write(f"# N: {N}\n")
-        file.write(f"# R: {R}\n")
+        file.write(f"# RL_RATIO: {RL_RATIO}\n")
         file.write(f"# NPOLY: {NPOLY}\n")
         file.write(f"# SHAPE: {SHAPE}\n")
         file.write(f"# AR: {AR}\n")
@@ -207,9 +214,9 @@ def b(zeta, beta, psi):
         result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
     return result
 
-def burden(N=256, R=256//4, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ = -0.5, PATH = './'):
+def burden(N=256, RL_RATIO=0.25, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ = -0.5, PATH = './'):
     """
-    burden(N, R, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
+    burden(N, RL_RATIO, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
 
     1) Generates a string IC as in "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
     2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid connecting disconnected loops
@@ -217,7 +224,7 @@ def burden(N=256, R=256//4, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, XCF=0
 
 
     N is the number of grid points (must be the same as for the planned simulation!)
-    R is the string radius
+    RL_RATIO: R/L, with L^3, the volume of the simulation box and R the radius of the loop. The code effectivly uses the variable Rdx = (R/L)*N for initialisation. Value should should be smaller than ~0.45.
     ALPHA and BETA are constants (alpha = N1/R, beta = N2/R, with N1 and N2 relatively prime integers)
     PSI is another constant, that controls the rotation of the string around the z-axis (from 0 to 2pi)
 
@@ -232,7 +239,10 @@ def burden(N=256, R=256//4, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, XCF=0
     """
     xc, yc, zc = N * XCF, N * YCF, N * ZCF + DZ
 
-    zeta = np.linspace(0, 2 * np.pi * R, int(2 * np.pi * R))
+    #Using the "correct" variable
+    Rdx = RL_RATIO*N
+
+    zeta = np.linspace(0, 2 * np.pi * Rdx, int(2 * np.pi * Rdx))
 
     a_zeta = a(zeta-T, ALPHA)
     b_zeta = b(zeta+T, BETA, PSI)
@@ -492,6 +502,7 @@ def longstring(N=256, AUX=1, A=0.5, D=10, D1 = 256/4, D2 = 3*256/4, DIST=20, ORI
 
     return x, y, z
 
+##### Plotting tools for visualisation #####
 
 def arctan3(r,i,a):
     c = np.cos(a)
