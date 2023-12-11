@@ -1057,8 +1057,7 @@ def find_first_mfile(directory, pattern):
         return None
 
 def sof(PATH, PARAM='N', SAVE=[]):
-
-     """
+    """
     sof(PATH, PARAM = 'N', SAVE = [])
     - looks for "out" folders in PATH and stores all the individual paths
     - associates and sorts the data according to PARAM, which is read out directly from the simulation data
@@ -1070,7 +1069,6 @@ def sof(PATH, PARAM='N', SAVE=[]):
     PARAM is a string of a simulation parameter according to which we want to classify the data (see help(gm) for an overview of all available options)
     SAVE (optional) is a list of strings of simulation parameters that are extracted from th simulation data (same options as for PARAM)
     """
-
     param_dict = {}
     save_dict = {}
 
