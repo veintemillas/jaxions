@@ -1048,54 +1048,49 @@ def gm(address,something='summary',printerror=False):
 
 
 #Mathieu
+def find_first_mfile(directory, pattern):
+    file_pattern = re.compile(pattern)
+    files = [file for file in os.listdir(directory) if file_pattern.match(file)]
+    if files:
+        return min([int(re.search(r'\d+', file).group()) for file in files])
+    else:
+        return None
 
-#Sort out folders and classify datasets
-def sof(PATH, PARAM = 'msa', SAVE = []):
-    """
-    sof(PATH, PARAM = 'msa', SAVE = [])
-
-    - looks for "out" folders in PATH and stores all the individual paths
-    - associates and sorts the data according to PARAM, which is read out directly from the simulation data
-    - (optional:) for every dataset, the parameters in SAVE are stored and related to the data via an additional dictionary
-
-    returns: param_dict (dict with paths of the simulation data, keys = PARAM values), save_dict (dict with additional information about every dataset)
-
-    PATH is the path to the directory containing one or multiple "out" folders with simulation data
-    PARAM is a string of a simulation parameter according to which we want to classify the data (see help(gm) for an overview of all available options)
-    SAVE (optional) is a list of strings of simulation parameters that are extracted from th simulation data (same options as for PARAM)
-
-    """
-
+def sof(PATH, PARAM='N', SAVE=[]):
     param_dict = {}
     save_dict = {}
 
-    #Access all the "out" folders in the "PATH" directory
+    # Access all the "out" folders in the "PATH" directory
     out_dirs = sorted([dirs for dirs in next(os.walk(PATH))[1] if dirs.startswith("out")])
-    #Store full path for every individual folder to avoid trouble
-    out_dirs = [PATH + str(out) for out in out_dirs]
 
-    #Read param and save from initial measure file and use as key for the dict
+    # Store full path for every individual folder to avoid trouble
+    out_dirs = [os.path.join(PATH, out) for out in out_dirs]
+
+    # Read param and save from the lowest numbered file and use as key for the dict
     for out_dir in out_dirs:
-        key = str(PARAM) + "=" + str(gm(out_dir + "/m/axion.m.00000", PARAM))
+        first_mfile = find_first_mfile(os.path.join(out_dir, 'm'), r'axion\.m\.\d+')
+        if first_mfile is not None:
+            key = f"{PARAM}={gm(os.path.join(out_dir, 'm', f'axion.m.{first_mfile:05d}'), PARAM)}"
 
-        if key not in param_dict.keys():
-            param_dict.update({key:[]})
+            if key not in param_dict:
+                param_dict[key] = []
 
-        param_dict[key].append(out_dir)
+            param_dict[key].append(out_dir)
 
-        #If the user wants to save additional information, access it and associate it with the dataset
-        if len(SAVE)>0:
+            # If the user wants to save additional information, access it and associate it with the dataset
+            if SAVE:
+                # Create dict key for every data set
+                save_dict[out_dir] = []
 
-            #Create dict key for every data set
-            save_dict.update({out_dir:[]})
+                for prop in SAVE:
+                    value = gm(os.path.join(out_dir, 'm', f'axion.m.{first_mfile:05d}'), prop)
+                    save_dict[out_dir].append(value)
 
-            for props in SAVE:
-                prop = gm(out_dir + "/m/axion.m.00000", props)
-                save_dict[out_dir].append(prop)
-    if len(SAVE)>0:
+    if SAVE:
         return param_dict, save_dict
     else:
         return param_dict
+
 
 
 #Javier
