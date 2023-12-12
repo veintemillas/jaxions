@@ -11,11 +11,7 @@ import glob
 from sympy import integer_nthroot
 import pickle
 import matplotlib.colors as col
-
-
-
-
-
+from natsort import natsorted
 
 from matplotlib import cm
 import matplotlib.gridspec as gridspec
@@ -1073,7 +1069,7 @@ def sof(PATH, PARAM='N', SAVE=[]):
     save_dict = {}
 
     # Access all the "out" folders in the "PATH" directory
-    out_dirs = sorted([dirs for dirs in next(os.walk(PATH))[1] if dirs.startswith("out")])
+    out_dirs = natsorted([dirs for dirs in next(os.walk(PATH))[1] if dirs.startswith("out")])
 
     # Store full path for every individual folder to avoid trouble
     out_dirs = [os.path.join(PATH, out) for out in out_dirs]
