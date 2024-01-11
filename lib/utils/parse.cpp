@@ -23,6 +23,7 @@ double nQcd   = 7.0;
 int    Nng    = -1 ;
 double indi3  = 1.0;
 double msa    = 1.5;
+double mstoH  = 20.0;
 double wDz    = 0.8;
 int    fIndex = -1;
 int    fIndex2 = 0;
@@ -67,6 +68,7 @@ bool uSize    = false;
 bool uQcd     = false;
 bool uLambda  = false;
 bool uMsa     = false;
+bool uMstoH   = false;
 bool uI3      = false;
 bool uPot     = false;
 bool uGamma   = false;
@@ -201,6 +203,11 @@ void	createMeasLogList() {
 
 		switch(lType)
 		{
+			case LAMBDA_CONF:
+				printf("[cmll] Error: Unable to generate a list of log-spaced measurements for simulations of conformal strings because log must be constant!\n");
+				printf("[cmll]        Please use --msa or --llcf to make log evolve.\n");
+				exit(0);
+			break;
 			case LAMBDA_FIXED:
 				logf = log(msa*zFinl*zFinl*sizeN/sizeL);
 			break;
@@ -286,6 +293,7 @@ void	PrintUsage(char *name)
 	printf("  --qcd   [float]               Exponent of topological susceptibility (default 7).\n");
 	printf("  --llcf  [float]               Lagrangian coefficient (default 15000).\n");
 	printf("  --msa   [float]               [Sets PRS string simulation] msa is the Spacing to core ratio.\n");
+	printf("  --mstoH [float]               [Sets conformal string simulation] Ratio of the saxion mass to the Hubble parameter.\n");
 	printf("  --ind3  [float]               Factor multiplying axion mass^2 (default, 1).\n");
 	printf("                                Setting 0.0 turns on massless Axion mode.\n");
 	printf("  --vqcdC                       Cosine QCD potential (default, disabled).\n");
@@ -1421,6 +1429,28 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+		if (!strcmp(argv[i], "--mstoH"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for saxion mass-to-Hubble ratio mstoH.\n");
+				exit(1);
+			}
+
+			mstoH = atof(argv[i+1]);
+
+			if (mstoH <= 0.)
+			{
+				printf("Error: The saxion mass-to-Hubble ratio must be greater than zero.\n");
+				exit(1);
+			}
+
+			uMstoH  = true;
+			lType = LAMBDA_CONF;
+
+			PARSE2;
+		}
+
 		//NEW
 		if (!strcmp(argv[i], "--ind3"))
 		{
@@ -2288,21 +2318,30 @@ if (icdatst.cType == CONF_SMOOTH )
 	if ((pType & PROP_LAPMASK) == PROP_NONE)
 		pType |= PROP_BASE;
 
+	// if several options are used, the order of priority is LAMBDA_CONF > LAMBDA_Z2 > LAMBDA_FIXED
+	if (uMstoH) {
+		if (uLambda || uMsa) printf("Error: Conflicting options, --llcf or --msa, and --mstoH. Using mstoH\n");
 
+		msa = mstoH*sizeL/sizeN;
+		LL = 0.5*mstoH*mstoH;
+		lType = LAMBDA_CONF;
 
-
-	if (uMsa) {
-		if (uLambda)
-			printf("Error: Conflicting options --llcf and --msa. Using msa\n");
-
-		double tmp = (msa*sizeN)/sizeL;
-
-		LL    = 0.5*tmp*tmp;
-		lType = LAMBDA_Z2;
 	} else {
-		double tmp = sizeL/sizeN;
 
-		msa = sqrt(2*LL)*tmp;
+		if (uMsa) {
+			if (uLambda)
+				printf("Error: Conflicting options --llcf and --msa. Using msa\n");
+
+			double tmp = (msa*sizeN)/sizeL;
+
+			LL    = 0.5*tmp*tmp;
+			lType = LAMBDA_Z2;
+		} else {
+			double tmp = sizeL/sizeN;
+
+			msa = sqrt(2*LL)*tmp;
+		}
+
 	}
 
 	vqcdType |= vpqType;
@@ -2394,19 +2433,26 @@ if (icdatst.cType == CONF_SMOOTH )
 					exit(1);
 				}
 				if (uLogi && !uZin) {
-					if (lType == LAMBDA_FIXED)
+					if (lType == LAMBDA_CONF) {
+						printf("Error: For conformal string simulation, we need to specify the initial conformal time. Use --zi.\n ");
+						exit(1);
+					} else if (lType == LAMBDA_FIXED) {
 						icdatst.zi = sqrt(exp(icdatst.logi)/sqrt(2*LL));
-						else // LAMBDA_Z2
+					} else {
+						// LAMBDA_Z2 
 						icdatst.zi = exp(icdatst.logi)/sqrt(2*LL);
-						uZin = true;
-				}
-					else if (!uLogi && uZin) {
+					}
+					uZin = true;
+				} else if (!uLogi && uZin) {
 					// printf("Warning: --vilgor --zi x.y now really starts at c-time x.y; Specify lopi (kappa initial) with --logi x.y instead!");
-					if (lType == LAMBDA_FIXED)
+					if (lType == LAMBDA_CONF) {
+						icdatst.logi = log(mstoH);
+					} else if (lType == LAMBDA_FIXED) {
 						icdatst.logi = log(sqrt(2*LL)*icdatst.zi*icdatst.zi);
-						else
+					} else {
 						icdatst.logi = log(sqrt(2*LL)*icdatst.zi);
-						uLogi = true;
+					}
+					uLogi = true;
 				}
 			}
 	zInit = icdatst.zi; //legacy
@@ -2463,8 +2509,15 @@ Cosmos	createCosmos()
 		if (uMsa || uLambda)
 			myCosmos.SetLambda(LL);
 
-		if (uMsa || uLambda)
-			myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
+		if (uMsa || uLambda) {
+			if (lType == LAMBDA_Z2) {
+				myCosmos.SetLamZ2Exp(2.0);
+			} else if (lType == LAMBDA_CONF) {
+				myCosmos.SetLamZ2Exp(4.0);
+			} else {
+				myCosmos.SetLamZ2Exp(0.0);
+			}
+		}
 
 		if (uQcd)
 			myCosmos.SetQcdExp(nQcd);
@@ -2504,7 +2557,13 @@ Cosmos	createCosmos()
 
 	} else {
 		myCosmos.SetLambda  (LL);
-		myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
+		if (lType == LAMBDA_Z2) {
+			myCosmos.SetLamZ2Exp(2.0);
+		} else if (lType == LAMBDA_CONF) {
+			myCosmos.SetLamZ2Exp(4.0);
+		} else {
+			myCosmos.SetLamZ2Exp(0.0);
+		}
 		myCosmos.SetQcdExp  (nQcd);
 		myCosmos.SetGamma   (gammo);
 		myCosmos.SetDecTime   (dectime);

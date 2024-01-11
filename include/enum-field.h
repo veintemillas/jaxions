@@ -90,6 +90,7 @@
 		{
 			LAMBDA_FIXED       = 0,
 			LAMBDA_Z2          = 1,
+			LAMBDA_CONF        = 2,
 		}	LambdaType;
 
 		typedef	enum	AxionMassType_s
