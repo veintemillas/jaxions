@@ -112,15 +112,15 @@ void	prepropa2  (Scalar *axiona)
 	double prelz2e  = axiona->BckGnd()->ICData().prelZ2e;
 	LogMsg(VERB_NORMAL,"[prep] Prepropagator 2 (from ct = %f to %f ) with Lambda = L/R^%.1f fixed",*axiona->zV(),cti,prelz2e);
 	LogMsg(VERB_NORMAL,"[prep] Currently lamba %f cti %f Ri %f LamZ2Exp = %.2f ",lamba, cti, Rnow, lz2e_aux);
-	LogMsg(VERB_NORMAL,"[prep] LambdaType is %d (FIXED/Z2 is 0/1)", ltype_aux);
+	LogMsg(VERB_NORMAL,"[prep] LambdaType is %d (FIXED/Z2/CONFORMAL is 0/1/2)", ltype_aux);
 	/* Physical value of Lambda at Ri*/
 	double llp;
 	if      (ltype_aux == LAMBDA_FIXED)
 		llp = lamba;
-	else if (ltype_aux == LAMBDA_Z2)
-		llp = lamba/pow(Rnow,lz2e_aux); /*Usually is 2, but it could be different*/
+	else
+		llp = lamba/pow(Rnow,lz2e_aux); /*Usually is 2 (PRS), but it could be different*/
 
-	/* Calculate the new Lambda required to match at at zi
+	/* Calculate the new Lambda required to match at zi
 	   and set Z2 with the IC exponent */
 	axiona->BckGnd()->SetLambda(llp*pow(Rnow,prelz2e));
 	LogMsg(VERB_NORMAL,"[prep] lambda = %e reset to %e",lamba,axiona->BckGnd()->Lambda());
@@ -198,7 +198,7 @@ void	prepropa2  (Scalar *axiona)
 	}
 
 	LogMsg(VERB_NORMAL,"[prep] done ");
-	LogMsg(VERB_NORMAL,"[prep] LambdType was %d, (Z2/FIXED=%d,%d) ",ltype_aux,LAMBDA_Z2,LAMBDA_FIXED);
+	LogMsg(VERB_NORMAL,"[prep] LambdType was %d, (CONFORMAL/Z2/FIXED=%d,%d) ",ltype_aux,LAMBDA_CONF,LAMBDA_Z2,LAMBDA_FIXED);
 
 	LogMsg(VERB_NORMAL,"[prep] Restore values");
 	if (ltype_aux == LAMBDA_FIXED)
@@ -213,6 +213,12 @@ void	prepropa2  (Scalar *axiona)
 			axiona->BckGnd()->SetLambda(lamba);
 			axiona->BckGnd()->SetLamZ2Exp(lz2e_aux);
 			LogMsg(VERB_NORMAL,"[prep] Set LAMBDA_Z2 with LamZ2Exp = .2f",lz2e_aux);
+		} else if (ltype_aux == LAMBDA_CONF)
+		{
+			axiona->setLambdaT(LAMBDA_CONF);
+			axiona->BckGnd()->SetLambda(lamba);
+			axiona->BckGnd()->SetLamZ2Exp(lz2e_aux);
+			LogMsg(VERB_NORMAL,"[prep] Set LAMBDA_CONF with LamZ2Exp = .2f",lz2e_aux);
 		}
 
 		if (axiona->BckGnd()->ICData().pregammo > 0.0){
