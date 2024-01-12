@@ -126,7 +126,11 @@ double	dzSize	(double z, FieldType fType, LambdaType lType, VqcdType poti) {
 			break;
 
 		case	LAMBDA_FIXED:
-			mSfq = sqrt(2.*LL*(z*z)*facto*facto   + 12.*oodl);
+			mSfq = sqrt(2.*LL*(z*z)*facto*facto   + 12.*oodl*oodl);
+			break;
+
+		case	LAMBDA_CONF:
+			mSfq = sqrt(2.*LL*facto*facto/(z*z)   + 12.*oodl*oodl);
 			break;
 	}
 
@@ -151,7 +155,11 @@ double	dzSize	(double z, FieldType fType, LambdaType lType) {
 			break;
 
 		case	LAMBDA_FIXED:
-			mSfq = sqrt(2.*LL*(z*z)   + 12.*oodl);
+			mSfq = sqrt(2.*LL*(z*z)   + 12.*oodl*oodl);
+			break;
+
+		case	LAMBDA_CONF:
+			mSfq = sqrt(2.*LL/(z*z)   + 12.*oodl*oodl);
 			break;
 	}
 
