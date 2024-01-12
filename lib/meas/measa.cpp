@@ -102,7 +102,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 			if (axiona->Field() == FIELD_SAXION){
 					if (axiona->LambdaT() == LAMBDA_Z2)
 							msa_aux = axiona->Msa();
-					if (axiona->LambdaT() == LAMBDA_FIXED)
+					if ((axiona->LambdaT() == LAMBDA_FIXED) || (axiona->LambdaT() == LAMBDA_CONF))
 							msa_aux = sqrt(2.0*axiona->LambdaP())*(*axiona->RV())*axiona->BckGnd()->PhysSize()/axiona->Length() ;
 
 				LogMsg(VERB_HIGH,"[Meas ...] msa = %f rmask-parameter interpreted in 1/ms units. ",msa_aux);
