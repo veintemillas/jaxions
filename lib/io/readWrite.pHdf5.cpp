@@ -379,6 +379,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	switch (axion->LambdaT())
 	{
+		case 	LAMBDA_CONF:
+			sprintf(lStr, "Conformal");
+			llPhys /= (*axion->zV())*(*axion->zV())*(*axion->zV())*(*axion->zV());
+			break;
+
 		case 	LAMBDA_Z2:
 			sprintf(lStr, "z2");
 			llPhys /= (*axion->zV())*(*axion->zV());
@@ -991,8 +996,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					else if (!strcmp(lStr, "Fixed")){
 						lType = LAMBDA_FIXED;
 						myCosmos->SetLamZ2Exp(0.0);
-						}
-					else {
+					}
+					else if (!strcmp(lStr, "Conformal")){
+						lType = LAMBDA_CONF;
+						if (!(test < 0))
+							myCosmos->SetLambda(lda);
+						else
+							myCosmos->SetLamZ2Exp(4.0);
+					} else {
 						LogError ("Error reading file %s: invalid lambda type %s", base, lStr);
 						exit(1);
 					}
@@ -1608,6 +1619,11 @@ void	createMeas (Scalar *axion, int index)
 
 	switch (axion->LambdaT())
 	{
+		case 	LAMBDA_CONF:
+			sprintf(lStr, "Conformal");
+			llPhys /= (*axion->zV())*(*axion->zV())*(*axion->zV())*(*axion->zV());
+			break;
+
 		case 	LAMBDA_Z2:
 			sprintf(lStr, "z2");
 			llPhys /= (*axion->zV())*(*axion->zV());
