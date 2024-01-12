@@ -756,6 +756,9 @@ void printposter(Scalar *axion)
 	if (LAMBDA_FIXED == axion->LambdaT()){
 	LogOut("LL                       =  %.0f \n        (msa=%1.2f-%1.2f in zInit,3)\n\n", axion->BckGnd()->Lambda(),
 		sqrt(2.0 * axion->BckGnd()->Lambda())*zInit*axion->Delta(),sqrt(2.0 * axion->BckGnd()->Lambda())*3*axion->Delta());
+	} else if (axion->LambdaT() == LAMBDA_CONF) {
+	LogOut("LL                       =  %.0f \n        (msa=%1.2f-%1.2f in zInit,3)\n\n", axion->BckGnd()->Lambda(),
+		sqrt(2.0 * axion->BckGnd()->Lambda())*axion->Delta()/zInit,sqrt(2.0 * axion->BckGnd()->Lambda())*axion->Delta()/3);
 	}
 	else{
 	LogOut("LL                       =  %1.3e/z^2\n", axion->BckGnd()->Lambda());
