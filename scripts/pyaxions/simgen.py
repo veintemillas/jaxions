@@ -1,35 +1,186 @@
 # JAXIONS MODULE TO RUN SIMULATIONS FROM PYTHON
 import os
 import time
+import re
 
-def runsim(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0'):
+#auxiliary function to find the last config file
+def last_mfile():
+    cwd = os.getcwd()
+    out_m_dir = cwd + '/out/m'
+    files = os.listdir(out_m_dir)
+
+    indices = [int(filename.split('.')[-1]) for filename in files if filename.startswith('axion.') and not filename.startswith('axion.m.')]
+
+    if indices:
+        return max(indices)
+    else:
+        return None
+
+def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False):
     """
-    runsim(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0')
-    1 - cleans the out/m directory of axion.m.files
-    2 - runs jaxions as
-    !mpirun $USA -np $RANK -x OMP_NUM_THREADS=$THR vaxion3d $JAX > log.txt
+    runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='')
 
-    USA  are mpirun options
+    1 - cleans the out/m directory of axion.m.files
+    2 - creates, runs or continues jaxions simulations as (equivalent to the definitons in the "standard" 'vax-ex.sh' scripts):
+
+            - MODE = "create": mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt
+            - MODE = "run":    mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt (DEFAULT)
+            - MODE = "con":    mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {IDX or last_mfile()} {CON_OPTIONS} 2>&1 | tee log-con.txt
+
+    *Note that for "con", the user can either specify a specific index when calling the function or if not, the last config file will be used
+
+    JAX  is a string of vaxion3d flags generated with the simgen program, see help(simgen)
+    MODE specifies if the user want to 'run' (default), 'create' or 'con' a simulation
     RANK is the number of MPI processes
     THR  is the number of OMP processes
-    JAX  is a string of vaxion3d flags generated with the simgen program, see help(simgen)
-
+    USA  are mpirun options
+    IDX is either 'False' or an int. It is used only for MODE='con' and specifies which config file should be continued
+    OUT_CON is the name of the out folder where the simulation is continued
+    CON_OPTIONS are additional settings/flags such as --size N etc. that are needed to appropriately continue/rescale the simulations
+    VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
     """
-#     !rm out/m/axion.m.*
-#     !mpirun $USA -np $RANK -x OMP_NUM_THREADS=$THR vaxion3d $JAX > log.txt
-    output = os.popen('rm out/m/axion.m.*')
+
+    #Clear "out" folder
+    output = os.popen(f'rm out/m/axion.m.*')
     output.read()
     print('')
     print('')
     print('--------------------------------------------------------------------------------------------')
-    print('running: ')
+    print(f'Mode: {MODE} ')
     print('')
-    print('mpirun %s -np %s -x OMP_NUM_THREADS=%s vaxion3d %s > log.txt'%(USA,RANK,THR,JAX))
-    print('')
+
+    #Get important parameters from JAX input string
+    read_params = JAX
+    cwd = os.getcwd()
+
+    #Read specific values from the input JAX string (for printout and rescaling)
+    N0_match = re.search(r'--size (\d+)', read_params)
+    depth_match = re.search(r'--depth (\d+)', read_params)
+    L0_match = re.search(r'--lsize (\d+)', read_params)
+    msa0_match = re.search(r'--msa (\d+\.\d+)', read_params)
+
+    N0 = int(N0_match.group(1))
+    depth = int(depth_match.group(1))
+    L0 = float(L0_match.group(1))
+    msa0 = float(msa0_match.group(1))
+
+    if MODE == 'create':
+        if VERB:
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+        else:
+            print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
+        output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+        output.read()
+        print('')
+        print('Done!')
+
+    elif MODE == 'run':
+        if VERB:
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt')
+        else:
+            print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
+        output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --p3D 1 2>&1 | tee log.txt')
+        output.read()
+        print('')
+        print('Done!')
+
+    elif MODE == 'con':
+
+        #Define con options as the minimally needed ones + whatever is specified by the user in CON_OPTIONS
+        extra_con_options = ''
+        if '--size' not in CON_OPTIONS:
+            extra_con_options += '--size %d '%N0
+
+        if '--depth' not in CON_OPTIONS:
+            extra_con_options += '--depth %d '%depth
+
+        if '--msa' not in CON_OPTIONS:
+            extra_con_options += '--msa %f '%msa0
+
+        #add additional params from CON_OPTIONS to the minimally required ones
+        extra_con_options += CON_OPTIONS
+
+        #Create new dir for mfiles
+        os.makedirs(OUT_CON, exist_ok=True)
+        os.makedirs(f'{OUT_CON}/m', exist_ok=True)
+
+        #Continue simulation in OUT_CON
+        os.system(f'export AXIONS_OUTPUT="{cwd}/{OUT_CON}/m"')
+
+        #Either use the user-specified index or use the last config file
+        if IDX:
+            index = IDX
+        else:
+            index = last_mfile()
+
+        #create symbolic link between the config file in out and the new folder in OUT_CON
+        find = f'{index:05d}'
+        os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
+
+        #os.chdir(OUT_CON)
+        if VERB:
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+        else:
+            print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)'%(N0, RANK, L0, msa0, OUT_CON))
+        output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+        output.read()
+        print('')
+        print('Done!')
     print('--------------------------------------------------------------------------------------------')
 
-    output = os.popen('mpirun %s -np %s -x OMP_NUM_THREADS=%s vaxion3d %s > log.txt'%(USA,RANK,THR,JAX))
-    output.read()
+def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS ='', VERB=False):
+    """
+    runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS='', VERB=False)
+
+    1 - Creates "string" initial conditions in N=256 specified by "string.dat" file with appropriately rescaled variables (JAX_INIT)
+    2 - Continues and initial setup with the "correct" parameters JAX
+
+    JAX  is a string of vaxion3d flags generated with the simgen program, see help(simgen)
+    MODE specifies if the user want to 'run' (default), 'create' or 'con' a simulation
+    RANK is the number of MPI processes
+    THR  is the number of OMP processes
+    USA  are mpirun options
+    OUT_CON is the name of the out folder where the simulation is continued
+    CON_OPTIONS are additional settings/flags such as --size N etc. that are needed to appropriately continue/rescale the simulations
+    VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
+    """
+    cwd = os.getcwd()
+
+    if 'string.dat' not in next(os.walk(cwd))[2]:
+        print('No string.dat file found. Use randomstrings tools to create ICs first (N=256)!')
+
+    else:
+        #Copy initial command line flags (generated with simgen)
+        JAX_INIT = JAX
+
+        #Find value of N in JAX and use it to rescale the initial configuration
+        N0_match = re.search(r'--size (\d+)', JAX_INIT)
+        N0 = int(N0_match.group(1))
+
+        #size
+        JAX_INIT = JAX_INIT.replace('--size %d'%N0, '--size 256')
+
+        #depth
+        JAX_INIT = JAX_INIT.replace('--depth %d'%(N0//RANK), '--depth %d'%(256//RANK))
+
+        #msa
+        msa0_match = re.search(r'--msa (\d+)', JAX_INIT)
+        msa0 = float(msa0_match.group(1))
+
+        JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
+
+        #create string IC using JAX_INIT (N=256)
+        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB)
+
+        print('')
+        print('Succesfully created string configuration in N=256! (out)')
+        #continue simulation with original parameters
+        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB)
+        print('')
+        print('Running ...')
+        print('Finished simulation with N=%d! (%s)'%(N0, OUT_CON))
+        print('--------------------------------------------------------------------------------------------')
+
 
 def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
             nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
@@ -374,33 +525,25 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     return ranks, jaxs
 
-def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', stringIC = False):
+#Only works for MODE='run', easy to use combnations of runsim in a loop!
+def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', VERB = False ):
     """
-    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', stringIC = False)
+    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
     1 - runs jaxions as
-    !mpirun $USA -np $RANK -x OMP_NUM_THREADS=$THR vaxion3d $JAX > log.txt
+    mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
     2 - repeats the simulation with the same configuration STAT times
     3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
 
     To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
 
-    USA  are mpirun options
+    JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
     RANK is the number of MPI processes
     THR  is the number of OMP processes
-    JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
+    USA  are mpirun options
     STAT is the number of repitions per configuration (used to collect statistics)
     NAME is a string that is used to store the data of the simulations in a structured manner
-    stringIC is a bool that can be used to switch between different string.dat files for a series of simulations
+    VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
     """
-
-    #Special case: "string IC", if you want to use different string ICs for multirun, dynamically move and rename the string.dat files
-    if stringIC:
-    # Look for files in the current working directory of type .dat and print their names: Order is important here!
-        string_files = sorted([filename for filename in os.listdir('.') if filename.endswith('.dat') and filename != 'measfile.dat' and filename != 'string.dat'])
-        print('Using different string.dat files: ', string_files)
-
-        if len(string_files) != len(JAX):
-            raise ValueError("Error: Number of string.dat files must be the same as the number of different configurations!")
 
     #Four different cases need to be considered
     #single configuration (in principle the same as the "old" runsim)
@@ -408,7 +551,7 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('')
         print('Simulating single configuration.')
         start = time.time()
-        runsim(JAX[0],RANK[0],THR=THR,USA=USA)
+        runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
         end = time.time()
 
         #Better ideas for unique renaming to avoid overwriting?
@@ -417,14 +560,13 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         os.system("mv log.txt out_%s"%NAME)
         print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
 
-
     #single configuration with STAT repetitions
     if not len(JAX) > 1 and STAT > 1:
         print('')
         print('Simulating single configuration %s times.'%STAT)
         for rep in range(STAT):
             start = time.time()
-            runsim(JAX[0],RANK[0],THR=THR,USA=USA)
+            runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
             end = time.time()
 
             os.system("mv out out_%s_%s"%(NAME,rep+1))
@@ -438,17 +580,13 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('Simulating %s configurations.'%len(JAX))
         for config in range(len(JAX)):
             #Access respective string.dat file
-            if stringIC:
-                os.system("mv %s string.dat"%string_files[config])
             start = time.time()
-            runsim(JAX[config],RANK[config],THR=THR,USA=USA)
+            runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
             end = time.time()
 
             os.system("mv out out_%s_config%s"%(NAME,config+1))
             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-            if stringIC:
-                os.system("mv string.dat out_%s_config%s/string.dat "%(NAME,config+1))
             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
 
     #multiple configurations with STAT repetitions each
@@ -456,20 +594,13 @@ def multirun(JAX:list,RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca b
         print('')
         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
         for config in range(len(JAX)):
-            #Access respective string.dat file
-            if string_IC:
-                os.system("mv %s string.dat"%string_files[config])
-
             for rep in range(STAT):
                 start = time.time()
-                runsim(JAX[config],RANK[config],THR=THR,USA=USA)
+                runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
                 end = time.time()
 
                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
-                if string_IC:
-                    os.system("cp string.dat out_%s_config%s/string.dat "%(NAME,config+1, rep+1))
+
                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
-            if stringIC:
-                os.system("rm string.dat") #to avoid overwriting
