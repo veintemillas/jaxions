@@ -526,81 +526,82 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
     return ranks, jaxs
 
 #Only works for MODE='run', easy to use combnations of runsim in a loop!
-def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', VERB = False ):
-    """
-    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
-    1 - runs jaxions as
-    mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
-    2 - repeats the simulation with the same configuration STAT times
-    3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
-
-    To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
-
-    JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
-    RANK is the number of MPI processes
-    THR  is the number of OMP processes
-    USA  are mpirun options
-    STAT is the number of repitions per configuration (used to collect statistics)
-    NAME is a string that is used to store the data of the simulations in a structured manner
-    VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
-    """
-
-    #Four different cases need to be considered
-    #single configuration (in principle the same as the "old" runsim)
-    if not len(JAX) > 1 and not STAT > 1:
-        print('')
-        print('Simulating single configuration.')
-        start = time.time()
-        runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-        end = time.time()
-
-        #Better ideas for unique renaming to avoid overwriting?
-        os.system("mv out out_%s"%NAME)
-        os.system("mv axion.log.0 out_%s"%NAME)
-        os.system("mv log.txt out_%s"%NAME)
-        print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
-
-    #single configuration with STAT repetitions
-    if not len(JAX) > 1 and STAT > 1:
-        print('')
-        print('Simulating single configuration %s times.'%STAT)
-        for rep in range(STAT):
-            start = time.time()
-            runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-            end = time.time()
-
-            os.system("mv out out_%s_%s"%(NAME,rep+1))
-            os.system("mv axion.log.0 out_%s_%s"%(NAME,rep+1))
-            os.system("mv log.txt out_%s_%s"%(NAME,rep+1))
-            print('Simulation %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(rep+1, STAT, NAME,rep+1, round(end-start,1)))
-
-    #multiple configurations
-    if len(JAX) > 1 and not STAT > 1:
-        print('')
-        print('Simulating %s configurations.'%len(JAX))
-        for config in range(len(JAX)):
-            #Access respective string.dat file
-            start = time.time()
-            runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-            end = time.time()
-
-            os.system("mv out out_%s_config%s"%(NAME,config+1))
-            os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
-            os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-            print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
-
-    #multiple configurations with STAT repetitions each
-    if len(JAX) > 1 and STAT > 1:
-        print('')
-        print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
-        for config in range(len(JAX)):
-            for rep in range(STAT):
-                start = time.time()
-                runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-                end = time.time()
-
-                os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
-                os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
-                os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
-
-                print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
+# def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', VERB = False ):
+#     """
+#     multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
+#     1 - runs jaxions as
+#     mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
+#     2 - repeats the simulation with the same configuration STAT times
+#     3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
+#
+#     To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
+#
+#     JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
+#     RANK is the number of MPI processes
+#     THR  is the number of OMP processes
+#     USA  are mpirun options
+#     STAT is the number of repitions per configuration (used to collect statistics)
+#     NAME is a string that is used to store the data of the simulations in a structured manner
+#     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
+#     """
+#
+#     #Four different cases need to be considered
+#     #single configuration (in principle the same as the "old" runsim)
+#     if not len(JAX) > 1 and not STAT > 1:
+#         print('')
+#         print('Simulating single configuration.')
+#         start = time.time()
+#
+#         runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
+#         end = time.time()
+#
+#         #Better ideas for unique renaming to avoid overwriting?
+#         os.system("mv out out_%s"%NAME)
+#         os.system("mv axion.log.0 out_%s"%NAME)
+#         os.system("mv log.txt out_%s"%NAME)
+#         print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
+#
+#     #single configuration with STAT repetitions
+#     if not len(JAX) > 1 and STAT > 1:
+#         print('')
+#         print('Simulating single configuration %s times.'%STAT)
+#         for rep in range(STAT):
+#             start = time.time()
+#             runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
+#             end = time.time()
+#
+#             os.system("mv out out_%s_%s"%(NAME,rep+1))
+#             os.system("mv axion.log.0 out_%s_%s"%(NAME,rep+1))
+#             os.system("mv log.txt out_%s_%s"%(NAME,rep+1))
+#             print('Simulation %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(rep+1, STAT, NAME,rep+1, round(end-start,1)))
+#
+#     #multiple configurations
+#     if len(JAX) > 1 and not STAT > 1:
+#         print('')
+#         print('Simulating %s configurations.'%len(JAX))
+#         for config in range(len(JAX)):
+#             #Access respective string.dat file
+#             start = time.time()
+#             runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
+#             end = time.time()
+#
+#             os.system("mv out out_%s_config%s"%(NAME,config+1))
+#             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
+#             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
+#             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
+#
+#     #multiple configurations with STAT repetitions each
+#     if len(JAX) > 1 and STAT > 1:
+#         print('')
+#         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
+#         for config in range(len(JAX)):
+#             for rep in range(STAT):
+#                 start = time.time()
+#                 runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
+#                 end = time.time()
+#
+#                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
+#                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
+#                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
+#
+#                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
