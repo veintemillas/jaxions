@@ -551,7 +551,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
         print('')
         print('Simulating single configuration.')
         start = time.time()
-        runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
+        runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
         end = time.time()
 
         #Better ideas for unique renaming to avoid overwriting?
@@ -566,7 +566,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
         print('Simulating single configuration %s times.'%STAT)
         for rep in range(STAT):
             start = time.time()
-            runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
+            runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
             end = time.time()
 
             os.system("mv out out_%s_%s"%(NAME,rep+1))
@@ -581,7 +581,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
         for config in range(len(JAX)):
             #Access respective string.dat file
             start = time.time()
-            runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
+            runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
             end = time.time()
 
             os.system("mv out out_%s_config%s"%(NAME,config+1))
@@ -596,7 +596,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
         for config in range(len(JAX)):
             for rep in range(STAT):
                 start = time.time()
-                runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB = VERB)
+                runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
                 end = time.time()
 
                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
