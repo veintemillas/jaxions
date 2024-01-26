@@ -170,12 +170,12 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
 
         #create string IC using JAX_INIT (N=256)
-        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB)
+        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB)
 
         print('')
         print('Succesfully created string configuration in N=256! (out)')
         #continue simulation with original parameters
-        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB)
+        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='--msa %f'%msa0, VERB=VERB)
         print('')
         print('Running ...')
         print('Finished simulation with N=%d! (%s)'%(N0, OUT_CON))
