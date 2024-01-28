@@ -16,6 +16,19 @@ def last_mfile():
     else:
         return None
 
+#auxiliary function to find the last config file
+def last_mfile():
+    cwd = os.getcwd()
+    out_m_dir = cwd + '/out/m'
+    files = os.listdir(out_m_dir)
+
+    indices = [int(filename.split('.')[-1]) for filename in files if filename.startswith('axion.') and not filename.startswith('axion.m.')]
+
+    if indices:
+        return max(indices)
+    else:
+        return None
+
 def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False):
     """
     runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='')
@@ -56,7 +69,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     #Read specific values from the input JAX string (for printout and rescaling)
     N0_match = re.search(r'--size (\d+)', read_params)
     depth_match = re.search(r'--depth (\d+)', read_params)
-    L0_match = re.search(r'--lsize (\d+)', read_params)
+    L0_match = re.search(r'--lsize (\d+\.\d+)', read_params)
     msa0_match = re.search(r'--msa (\d+\.\d+)', read_params)
 
     N0 = int(N0_match.group(1))
@@ -164,7 +177,7 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         JAX_INIT = JAX_INIT.replace('--depth %d'%(N0//RANK), '--depth %d'%(256//RANK))
 
         #msa
-        msa0_match = re.search(r'--msa (\d+)', JAX_INIT)
+        msa0_match = re.search(r'--msa (\d+\.\d+)', JAX_INIT)
         msa0 = float(msa0_match.group(1))
 
         JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
