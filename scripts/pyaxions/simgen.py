@@ -90,7 +90,6 @@ def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socke
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
         output = os.popen(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
-        mpiexec $USA -n $RANKS vaxion3d $GRID $SIMU $PHYS $INCO $PREP $OUTP --steps 0 --p3D 1 2>&1 | tee out/log-create.txt
         output.read()
         print('')
         print('Done!')
