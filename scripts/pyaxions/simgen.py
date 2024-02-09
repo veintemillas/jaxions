@@ -16,22 +16,9 @@ def last_mfile():
     else:
         return None
 
-#auxiliary function to find the last config file
-def last_mfile():
-    cwd = os.getcwd()
-    out_m_dir = cwd + '/out/m'
-    files = os.listdir(out_m_dir)
-
-    indices = [int(filename.split('.')[-1]) for filename in files if filename.startswith('axion.') and not filename.startswith('axion.m.')]
-
-    if indices:
-        return max(indices)
-    else:
-        return None
-
-def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False):
+def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False):
     """
-    runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='')
+    runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='')
 
     1 - cleans the out/m directory of axion.m.files
     2 - creates, runs or continues jaxions simulations as (equivalent to the definitons in the "standard" 'vax-ex.sh' scripts):
@@ -43,7 +30,6 @@ def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socke
     *Note that for "con", the user can either specify a specific index when calling the function or if not, the last config file will be used
 
     JAX  is a string of vaxion3d flags generated with the simgen program, see help(simgen)
-    BONDEN triggers the use of mpiexec instead of mpirun for compatibilty reasons with the new computer
     MODE specifies if the user want to 'run' (default), 'create' or 'con' a simulation
     RANK is the number of MPI processes
     THR  is the number of OMP processes
@@ -78,15 +64,9 @@ def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socke
     L0 = float(L0_match.group(1))
     msa0 = float(msa0_match.group(1))
 
-    #on bonden we need to use mpiexec instead of mpirun ...
-    if BONDEN:
-        EXEC = 'mpiexec'
-    else:
-        EXEC = 'mpirun'
-
     if MODE == 'create':
         if VERB:
-            print(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
         output = os.popen(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
@@ -96,7 +76,7 @@ def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socke
 
     elif MODE == 'run':
         if VERB:
-            print(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt')
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
         output = os.popen(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --p3D 1 2>&1 | tee log.txt')
@@ -139,7 +119,7 @@ def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socke
 
         #os.chdir(OUT_CON)
         if VERB:
-            print(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)'%(N0, RANK, L0, msa0, OUT_CON))
         output = os.popen(f'{EXEC} {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
@@ -148,7 +128,7 @@ def runsim(JAX, BONDEN = False, MODE='run', RANK=1, THR=1, USA=' --bind-to socke
         print('Done!')
     print('--------------------------------------------------------------------------------------------')
 
-def runstring(JAX, BONDEN = False, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS ='', VERB=False):
+def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS ='', VERB=False):
     """
     runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS='', VERB=False)
 
@@ -190,12 +170,12 @@ def runstring(JAX, BONDEN = False, RANK=1, THR=1, USA=' --bind-to socket --mca b
         JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
 
         #create string IC using JAX_INIT (N=256)
-        runsim(JAX_INIT, BONDEN=BONDEN, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB)
+        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB)
 
         print('')
         print('Succesfully created string configuration in N=256! (out)')
         #continue simulation with original parameters
-        runsim(JAX, BONDEN=BONDEN, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='--msa %f'%msa0, VERB=VERB)
+        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='--msa %f'%msa0, VERB=VERB)
         print('')
         print('Running ...')
         print('Finished simulation with N=%d! (%s)'%(N0, OUT_CON))
