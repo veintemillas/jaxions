@@ -16,7 +16,7 @@ def last_mfile():
     else:
         return None
 
-def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False):
+def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False, BONDEN = False):
     """
     runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='')
 
@@ -38,6 +38,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     OUT_CON is the name of the out folder where the simulation is continued
     CON_OPTIONS are additional settings/flags such as --size N etc. that are needed to appropriately continue/rescale the simulations
     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
+    BONDEN is used to slightly modify the mpi commands for the use of our new computer
     """
 
     #Clear "out" folder
@@ -64,12 +65,18 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     L0 = float(L0_match.group(1))
     msa0 = float(msa0_match.group(1))
 
+    #for mpiexec usage on bonden
+    os.system(f'export OMP_NUM_THREADS={THR}')
+
     if MODE == 'create':
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
-        output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+        if BONDEN:
+            output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+        else:
+            output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         output.read()
         print('')
         print('Done!')
@@ -79,7 +86,11 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
-        output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --p3D 1 2>&1 | tee log.txt')
+
+        if BONDEN:
+            output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --p3D 1 2>&1 | tee log-run.txt')
+        else:
+            output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX}--p3D 1 2>&1 | tee log-run.txt')
         output.read()
         print('')
         print('Done!')
@@ -117,18 +128,22 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         find = f'{index:05d}'
         os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
 
-        #os.chdir(OUT_CON)
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)'%(N0, RANK, L0, msa0, OUT_CON))
-        output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+
+        if BONDEN:
+            output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+        else:
+            output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+
         output.read()
         print('')
         print('Done!')
     print('--------------------------------------------------------------------------------------------')
 
-def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS ='', VERB=False):
+def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS ='', VERB=False, BONDEN = False):
     """
     runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS='', VERB=False)
 
@@ -143,6 +158,7 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
     OUT_CON is the name of the out folder where the simulation is continued
     CON_OPTIONS are additional settings/flags such as --size N etc. that are needed to appropriately continue/rescale the simulations
     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
+    BONDEN is used to slightly modify the mpi commands for the use of our new computer
     """
     cwd = os.getcwd()
 
@@ -170,19 +186,18 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
 
         #create string IC using JAX_INIT (N=256)
-        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB)
+        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB, BONDEN=BONDEN)
 
         print('')
         print('Succesfully created string configuration in N=256! (out)')
         #continue simulation with original parameters
-        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='--msa %f'%msa0, VERB=VERB)
+        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='--msa %f'%msa0, VERB=VERB, BONDEN=BONDEN)
         print('')
         print('Running ...')
         print('Finished simulation with N=%d! (%s)'%(N0, OUT_CON))
         print('--------------------------------------------------------------------------------------------')
 
-
-def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
+def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
             nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
             vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
@@ -209,6 +224,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
     wDz       float  1.0      time interval set to dt = wDz/w_max
     sst0      int    10       time steps without strings before switch to theta
     lap       int    1        number of neighbours in Laplacian
+    fftplan   int    64       specify FFT plan to speed up initialisation
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
@@ -253,7 +269,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spe
     ####################################################
     GRID=" --size %d --depth %d --zgrid %d"%(N,N//zRANKS,zRANKS)
     ####################################################
-    SIMU=" --prec %s --device %s --prop %s --steps %d --wDz %f --sst0 %d --lap %d"%(prec,dev,prop,steps,wDz,sst0,lap)
+    SIMU=" --prec %s --device %s --prop %s --steps %d --wDz %f --sst0 %d --lap %d --fftplan %d"%(prec,dev,prop,steps,wDz,sst0,lap, fftplan)
     if lowmem:
         SIMU += ' --lowmem'
     if dev == 'gpu':
@@ -415,7 +431,7 @@ def INCOgen(ict,verb=False,**kwargs):
     return INCO+PREP
 
 #Need to add all the missing (and newly implemeted) features ..
-def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
+def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
             nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
             vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
@@ -446,6 +462,7 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
     wDz       float  1.0      time interval set to dt = wDz/w_max
     sst0      int    10       time steps without strings before switch to theta
     lap       int    1        number of neighbours in Laplacian
+    fftplan   int    64       specify FFT plan to speed up initialisation
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
@@ -513,7 +530,7 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
 
     #Go through all the configs and generate the corresponding string of flags
     for config in range(configs):
-        rank, jax = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],spec=input["spec"][config],fspec=input["fspec"][config],
+        rank, jax = simgen(N=input["N"][config],zRANKS=input["zRANKS"][config],prec=input["prec"][config],dev=input["dev"][config], fftplan = input["fftplan"][config],lowmem=input["lowmem"][config],prop=input["prop"][config],spec=input["spec"][config],fspec=input["fspec"][config],
                     steps=input["steps"][config],wDz=input["wDz"][config],sst0=input["sst0"][config],lap=input["lap"][config],nqcd=input["nqcd"][config],msa=input["msa"][config],lamb=input["lamb"][config],
                     ctf=input["ctf"][config],L=input["L"][config],ind3=input["ind3"][config],notheta=input["notheta"][config],wkb=input["wkb"][config],gam=input["gam"][config],dwgam=input["dwgam"][config],
                     vqcd=input["vqcd"][config],vpq=input["vpq"][config],mink=input["mink"][config],xtr=input["xtr"][config],prep=input["prep"][config],ic=input["ic"][config],logi=input["logi"][config],cti=input["cti"][config],index=input["index"][config],
@@ -526,82 +543,81 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu',lowmem=False,prop='rkn4'
     return ranks, jaxs
 
 #Only works for MODE='run', easy to use combnations of runsim in a loop!
-# def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', VERB = False ):
-#     """
-#     multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
-#     1 - runs jaxions as
-#     mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
-#     2 - repeats the simulation with the same configuration STAT times
-#     3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
-#
-#     To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
-#
-#     JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
-#     RANK is the number of MPI processes
-#     THR  is the number of OMP processes
-#     USA  are mpirun options
-#     STAT is the number of repitions per configuration (used to collect statistics)
-#     NAME is a string that is used to store the data of the simulations in a structured manner
-#     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
-#     """
-#
-#     #Four different cases need to be considered
-#     #single configuration (in principle the same as the "old" runsim)
-#     if not len(JAX) > 1 and not STAT > 1:
-#         print('')
-#         print('Simulating single configuration.')
-#         start = time.time()
-#
-#         runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-#         end = time.time()
-#
-#         #Better ideas for unique renaming to avoid overwriting?
-#         os.system("mv out out_%s"%NAME)
-#         os.system("mv axion.log.0 out_%s"%NAME)
-#         os.system("mv log.txt out_%s"%NAME)
-#         print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
-#
-#     #single configuration with STAT repetitions
-#     if not len(JAX) > 1 and STAT > 1:
-#         print('')
-#         print('Simulating single configuration %s times.'%STAT)
-#         for rep in range(STAT):
-#             start = time.time()
-#             runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-#             end = time.time()
-#
-#             os.system("mv out out_%s_%s"%(NAME,rep+1))
-#             os.system("mv axion.log.0 out_%s_%s"%(NAME,rep+1))
-#             os.system("mv log.txt out_%s_%s"%(NAME,rep+1))
-#             print('Simulation %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(rep+1, STAT, NAME,rep+1, round(end-start,1)))
-#
-#     #multiple configurations
-#     if len(JAX) > 1 and not STAT > 1:
-#         print('')
-#         print('Simulating %s configurations.'%len(JAX))
-#         for config in range(len(JAX)):
-#             #Access respective string.dat file
-#             start = time.time()
-#             runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-#             end = time.time()
-#
-#             os.system("mv out out_%s_config%s"%(NAME,config+1))
-#             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
-#             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-#             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
-#
-#     #multiple configurations with STAT repetitions each
-#     if len(JAX) > 1 and STAT > 1:
-#         print('')
-#         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
-#         for config in range(len(JAX)):
-#             for rep in range(STAT):
-#                 start = time.time()
-#                 runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='out1',CON_OPTIONS='',VERB)
-#                 end = time.time()
-#
-#                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
-#                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
-#                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
-#
-#                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
+def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', VERB = False, BONDEN = False):
+     """
+     multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
+     1 - runs jaxions as
+     mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
+     2 - repeats the simulation with the same configuration STAT times
+     3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
+
+     To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
+
+     JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
+     RANK is the number of MPI processes
+     THR  is the number of OMP processes
+     USA  are mpirun options
+     STAT is the number of repitions per configuration (used to collect statistics)
+     NAME is a string that is used to store the data of the simulations in a structured manner
+     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
+     BONDEN is used to slightly modify the mpi commands for the use of our new computer
+     """
+
+     #Four different cases need to be considered
+     #single configuration (in principle the same as the "old" runsim)
+     if not len(JAX) > 1 and not STAT > 1:
+         print('')
+         print('Simulating single configuration.')
+         start = time.time()
+         runsim(JAX[0], MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB, BONDEN)
+         end = time.time()
+
+         #Better ideas for unique renaming to avoid overwriting?
+         os.system("mv out out_%s"%NAME)
+         os.system("mv axion.log.0 out_%s"%NAME)
+         os.system("mv log.txt out_%s"%NAME)
+         print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
+
+     #single configuration with STAT repetitions
+     if not len(JAX) > 1 and STAT > 1:
+         print('')
+         print('Simulating single configuration %s times.'%STAT)
+         for rep in range(STAT):
+             start = time.time()
+             runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB,BONDEN)
+             end = time.time()
+
+             os.system("mv out out_%s_%s"%(NAME,rep+1))
+             os.system("mv axion.log.0 out_%s_%s"%(NAME,rep+1))
+             os.system("mv log.txt out_%s_%s"%(NAME,rep+1))
+             print('Simulation %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(rep+1, STAT, NAME,rep+1, round(end-start,1)))
+
+     #multiple configurations
+     if len(JAX) > 1 and not STAT > 1:
+         print('')
+         print('Simulating %s configurations.'%len(JAX))
+         for config in range(len(JAX)):
+             start = time.time()
+             runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB,BONDEN)
+             end = time.time()
+
+             os.system("mv out out_%s_config%s"%(NAME,config+1))
+             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
+             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
+             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
+
+     #multiple configurations with STAT repetitions each#
+    if len(JAX) > 1 and STAT > 1:
+         print('')
+         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
+         for config in range(len(JAX)):
+             for rep in range(STAT):
+                 start = time.time()
+                 runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB,BONDEN)
+                 end = time.time()
+
+                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
+                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
+                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
+
+                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
