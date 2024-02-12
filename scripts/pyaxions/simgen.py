@@ -565,59 +565,59 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
 
      #Four different cases need to be considered
      #single configuration (in principle the same as the "old" runsim)
-     if not len(JAX) > 1 and not STAT > 1:
-         print('')
-         print('Simulating single configuration.')
-         start = time.time()
-         runsim(JAX=JAX[0], MODE='run',RANK=RANK[0],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
-         end = time.time()
+    if not len(JAX) > 1 and not STAT > 1:
+        print('')
+        print('Simulating single configuration.')
+        start = time.time()
+        runsim(JAX=JAX[0], MODE='run',RANK=RANK[0],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
+        end = time.time()
 
-         #Better ideas for unique renaming to avoid overwriting?
-         os.system("mv out out_%s"%NAME)
-         os.system("mv axion.log.0 out_%s"%NAME)
-         os.system("mv log.txt out_%s"%NAME)
-         print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
+        #Better ideas for unique renaming to avoid overwriting?
+        os.system("mv out out_%s"%NAME)
+        os.system("mv axion.log.0 out_%s"%NAME)
+        os.system("mv log.txt out_%s"%NAME)
+        print('Simulation done. Data stored in out_%s. Runtime:%s seconds'%(NAME, round(end-start,1)))
 
-     #single configuration with STAT repetitions
-     if not len(JAX) > 1 and STAT > 1:
-         print('')
-         print('Simulating single configuration %s times.'%STAT)
-         for rep in range(STAT):
-             start = time.time()
-             runsim(JAX=JAX[0], MODE='run',RANK=RANK[0],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
-             end = time.time()
+    #single configuration with STAT repetitions
+    if not len(JAX) > 1 and STAT > 1:
+        print('')
+        print('Simulating single configuration %s times.'%STAT)
+        for rep in range(STAT):
+            start = time.time()
+            runsim(JAX=JAX[0], MODE='run',RANK=RANK[0],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
+            end = time.time()
 
-             os.system("mv out out_%s_%s"%(NAME,rep+1))
-             os.system("mv axion.log.0 out_%s_%s"%(NAME,rep+1))
-             os.system("mv log.txt out_%s_%s"%(NAME,rep+1))
-             print('Simulation %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(rep+1, STAT, NAME,rep+1, round(end-start,1)))
+            os.system("mv out out_%s_%s"%(NAME,rep+1))
+            os.system("mv axion.log.0 out_%s_%s"%(NAME,rep+1))
+            os.system("mv log.txt out_%s_%s"%(NAME,rep+1))
+            print('Simulation %s/%s done. Data stored in out_%s_%s. Runtime:%s seconds'%(rep+1, STAT, NAME,rep+1, round(end-start,1)))
 
-     #multiple configurations
-     if len(JAX) > 1 and not STAT > 1:
-         print('')
-         print('Simulating %s configurations.'%len(JAX))
-         for config in range(len(JAX)):
-             start = time.time()
-             runsim(JAX=JAX[config], MODE='run',RANK=RANK[config],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
-             end = time.time()
+    #multiple configurations
+    if len(JAX) > 1 and not STAT > 1:
+        print('')
+        print('Simulating %s configurations.'%len(JAX))
+        for config in range(len(JAX)):
+            start = time.time()
+            runsim(JAX=JAX[config], MODE='run',RANK=RANK[config],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
+            end = time.time()
 
-             os.system("mv out out_%s_config%s"%(NAME,config+1))
-             os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
-             os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
-             print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
+            os.system("mv out out_%s_config%s"%(NAME,config+1))
+            os.system("mv axion.log.0 out_%s_config%s"%(NAME,config+1))
+            os.system("mv log.txt out_%s_config%s"%(NAME,config+1))
+            print('Configuration %s/%s done. Data stored in out_%s_config%s. Runtime:%s seconds'%(config+1, len(JAX), NAME,config+1, round(end-start,1)))
 
-     #multiple configurations with STAT repetitions each#
+    #multiple configurations with STAT repetitions each#
     if len(JAX) > 1 and STAT > 1:
-         print('')
-         print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
-         for config in range(len(JAX)):
-             for rep in range(STAT):
-                 start = time.time()
-                 runsim(JAX=JAX[config], MODE='run',RANK=RANK[config],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
-                 end = time.time()
+        print('')
+        print('Simulating %s configurations %s times each.'%(len(JAX),STAT))
+        for config in range(len(JAX)):
+            for rep in range(STAT):
+                start = time.time()
+                runsim(JAX=JAX[config], MODE='run',RANK=RANK[config],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
+                end = time.time()
 
-                 os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
-                 os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
-                 os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
+                os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
+                os.system("mv axion.log.0 out_%s_config%s_%s"%(NAME,config+1,rep+1))
+                os.system("mv log.txt out_%s_config%s_%s"%(NAME,config+1,rep+1))
 
-                 print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
+                print('Configuration %s/%s: Simulation %s/%s done. Data stored in out_%s_config%s_%s. Runtime:%s seconds'%(config+1,len(JAX), rep+1, STAT, NAME,config+1,rep+1, round(end-start,1)))
