@@ -569,7 +569,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
          print('')
          print('Simulating single configuration.')
          start = time.time()
-         runsim(JAX[0], MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB, BONDEN)
+         runsim(JAX=JAX[0], MODE='run',RANK=RANK[0],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
          end = time.time()
 
          #Better ideas for unique renaming to avoid overwriting?
@@ -584,7 +584,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
          print('Simulating single configuration %s times.'%STAT)
          for rep in range(STAT):
              start = time.time()
-             runsim(JAX[0],MODE='run',RANK[0],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB,BONDEN)
+             runsim(JAX=JAX[0], MODE='run',RANK=RANK[0],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
              end = time.time()
 
              os.system("mv out out_%s_%s"%(NAME,rep+1))
@@ -598,7 +598,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
          print('Simulating %s configurations.'%len(JAX))
          for config in range(len(JAX)):
              start = time.time()
-             runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB,BONDEN)
+             runsim(JAX=JAX[config], MODE='run',RANK=RANK[config],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
              end = time.time()
 
              os.system("mv out out_%s_config%s"%(NAME,config+1))
@@ -613,7 +613,7 @@ def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca 
          for config in range(len(JAX)):
              for rep in range(STAT):
                  start = time.time()
-                 runsim(JAX[config],MODE='run',RANK[config],THR,USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB,BONDEN)
+                 runsim(JAX=JAX[config], MODE='run',RANK=RANK[config],THR=THR,USA=USA,IDX = False,OUT_CON='tmp',CON_OPTIONS='',VERB=VERB, BONDEN=BONDEN)
                  end = time.time()
 
                  os.system("mv out out_%s_config%s_%s"%(NAME,config+1, rep+1))
