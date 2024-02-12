@@ -544,27 +544,27 @@ def multisimgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=Fa
 
 #Only works for MODE='run', easy to use combnations of runsim in a loop!
 def multirun(JAX:list, RANK:list = 1,THR:int=1,USA:str=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT:int=1, NAME:str='new', VERB = False, BONDEN = False):
-     """
-     multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
-     1 - runs jaxions as
-     mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
-     2 - repeats the simulation with the same configuration STAT times
-     3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
+    """
+    multirun(JAX,RANK=1,THR=1,USA=' --bind-to socket --mca btl_base_warn_component_unused  0', STAT=1,  NAME:str='new', VERB = False)
+    1 - runs jaxions as
+    mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt
+    2 - repeats the simulation with the same configuration STAT times
+    3 - repeats steps 1 and 2, if JAX is a list of configurations instead of a single configuration
 
-     To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
+    To avoid overwriting, the respective "out" folders are renamed dynamically after every simulation.
 
-     JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
-     RANK is the number of MPI processes
-     THR  is the number of OMP processes
-     USA  are mpirun options
-     STAT is the number of repitions per configuration (used to collect statistics)
-     NAME is a string that is used to store the data of the simulations in a structured manner
-     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
-     BONDEN is used to slightly modify the mpi commands for the use of our new computer
-     """
+    JAX  is a list of strings of vaxion3d flags generated with the multisimgen program, see help(multisimgen), can be a list
+    RANK is the number of MPI processes
+    THR  is the number of OMP processes
+    USA  are mpirun options
+    STAT is the number of repitions per configuration (used to collect statistics)
+    NAME is a string that is used to store the data of the simulations in a structured manner
+    VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
+    BONDEN is used to slightly modify the mpi commands for the use of our new computer
+    """
 
-     #Four different cases need to be considered
-     #single configuration (in principle the same as the "old" runsim)
+    #Four different cases need to be considered
+    #single configuration (in principle the same as the "old" runsim)
     if not len(JAX) > 1 and not STAT > 1:
         print('')
         print('Simulating single configuration.')
