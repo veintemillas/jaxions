@@ -251,6 +251,11 @@ class fitS:
             logstart = kwargs['logstart']
         else:
             logstart = 4.
+        if 'tstart' in kwargs:
+            tstart = kwargs['tstart']
+            utstart = True
+        else:
+            utstart = False
         if 'xh' in kwargs:
             xh = kwargs['xh']
         else:
@@ -273,7 +278,10 @@ class fitS:
         self.param = []
         self.paramv = []
         self.listfit = []
-        mask = np.where(log >= logstart)
+        if utstart:
+            mask = np.where(t >= tstart)
+        else:
+            mask = np.where(log >= logstart)
         # identify ik at which x[0] becomes larger than xh
         if xh < 0:
             xh = t[-1]*k[-1]
