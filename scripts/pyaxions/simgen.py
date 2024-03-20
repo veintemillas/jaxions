@@ -182,8 +182,15 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         #msa
         msa0_match = re.search(r'--msa (\d+\.\d+)', JAX_INIT)
         msa0 = float(msa0_match.group(1))
-
         JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
+
+        #sliceplot (needs to be properly rescaled)
+        slc_match = re.search(r'--sliceprint (\d+)', JAX_INIT)
+        slc = int(slc_match.group(1))
+
+        if slc > 0:
+            JAX_INIT = JAX_INIT.replace('--sliceprint %d'%slc, '--sliceprint %d'%(128))
+
 
         #create string IC using JAX_INIT (N=256)
         runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB, BONDEN=BONDEN)
