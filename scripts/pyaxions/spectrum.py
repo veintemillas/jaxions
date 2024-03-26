@@ -396,6 +396,11 @@ class calcF:
             logst = kwargs['logstart']
         else:
             logst = 4.
+        if 'tstart' in kwargs:
+            tst = kwargs['tstart']
+            utstart = True
+        else:
+            utstart = False
         if 'verbose' in kwargs:
             verb = kwargs['verbose']
         else:
@@ -448,13 +453,19 @@ class calcF:
             cftol = kwargs['cftol']
         else:
             cftol = 0.5
-        mask = np.where(log >= logst)
+        if utstart:
+            mask = np.where(t >= tst)
+        else:
+            mask = np.where(log >= logst)
         logm = log[mask[0]]
         tm = t[mask[0]]
         if usedata:
             fitp = fitin
         else:
-            fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
+            if utstart:
+                fitp = fitS(data,log,t,k,p=po,verbose=verb,tstart=tst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
+            else:
+                fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
         Farr = [] # instantaneous spectrum F
         xarr = []
         Farr_aux = []
