@@ -251,6 +251,11 @@ class fitS:
             logstart = kwargs['logstart']
         else:
             logstart = 4.
+        if 'tstart' in kwargs:
+            tstart = kwargs['tstart']
+            utstart = True
+        else:
+            utstart = False
         if 'xh' in kwargs:
             xh = kwargs['xh']
         else:
@@ -273,7 +278,10 @@ class fitS:
         self.param = []
         self.paramv = []
         self.listfit = []
-        mask = np.where(log >= logstart)
+        if utstart:
+            mask = np.where(t >= tstart)
+        else:
+            mask = np.where(log >= logstart)
         # identify ik at which x[0] becomes larger than xh
         if xh < 0:
             xh = t[-1]*k[-1]
@@ -326,18 +334,56 @@ class readParam:
 #   instantaneous spectrum
 # ------------------------------------------------------------------------------
 
-def filterDST(k, sigma, res, t):
-    y  = res
-    T = t[-1]-t[0]
-    # The Discrete Sine Transform of the signal
-    sig_dst = fftpack.dst(y,norm='ortho',type=1)
-    # The corresponding frequencies
-    freq_dst = np.pi*np.linspace(1,y.size,y.size)/T
-    # filter
-    # high-pass Gauss
-    sig_dst_filtered = sig_dst*np.exp(-(freq_dst/(k*sigma))**2/2)
+# subtract linear trend
+def subtraction(res, w):
+    a = (res[-1]-res[0])/(w[-1]-w[0])
+    b = (res[0]*w[-1]-res[-1]*w[0])/(w[-1]-w[0])
+    lin = a*w+b
+    res2 = res - a*w-b
+    return res2, lin, a, b
+    
+# return alias frequency for signal frequency (f) and sample frequency (fs)
+def falias(f,fs):
+    n = np.floor(f/fs)
+    return min(np.abs(f - n*fs),np.abs(f - (n+1)*fs))
+
+def checkfreq(fs, fcrit, ftol):
+    n = np.floor(fcrit/fs)
+    fc1 = ftol + n*fs
+    fc2 = (n+1)*fs - ftol
+    fc3 = ftol + (n+1)*fs
+    if fcrit < fc1:
+        return fc1
+    elif fc1 <= fcrit < fc2:
+        return fc2
+    else:
+        return fc3
+        
+def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, lambdatype='z2', LL=1600., cftol=0.5):
+    fs = nmeas/(t[-1]-t[0])       # sample frequency
+    fn = k/np.pi                  # frequency of 2k axion oscillation
+    ftol = min(cftol*fs/2.,fs/2.) # factor cftol times Nyquist crequency
+    if ftol < 0:
+        ftol = 0
+    if antialiasing:
+        if lambdatype == 'fixed':
+            fcrit = t[-1]*np.sqrt(0.5*LL)/np.pi  # critical frequency above which modes do not exhibit the saxion mass crossing
+            fc = checkfreq(fs,fcrit,ftol)
+            if fn < fc:
+                fa = falias(fn,fs)
+            else:
+                fa = ftol
+        else:
+            fa = falias(fn,fs)
+    else:
+        fa = fn
+    wa = 2*np.pi*max(fa,fcutmin)
+    res_sub, lin, a, b = subtraction(res, t*k)
+    sig_dst = fftpack.dst(res_sub,norm='ortho',type=1)
+    w_dst = np.pi*np.linspace(1,res_sub.size,res_sub.size)/(t[-1]-t[0])
+    sig_dst_filtered = sig_dst*np.exp(-(w_dst/(wa*sigma))**2/2)
     filtered_dst = fftpack.idst(sig_dst_filtered,norm='ortho',type=1)
-    return filtered_dst, sig_dst, sig_dst_filtered, freq_dst
+    return filtered_dst + lin
     
     
 class calcF:
@@ -350,6 +396,11 @@ class calcF:
             logst = kwargs['logstart']
         else:
             logst = 4.
+        if 'tstart' in kwargs:
+            tst = kwargs['tstart']
+            utstart = True
+        else:
+            utstart = False
         if 'verbose' in kwargs:
             verb = kwargs['verbose']
         else:
@@ -366,10 +417,6 @@ class calcF:
             xhi = kwargs['xh']
         else:
             xhi = -1
-        if 'sigma' in kwargs:
-            sigma = kwargs['sigma']
-        else:
-            sigma = 0.5
         if 'saxionmass' in kwargs:
             saxionmassi = kwargs['saxionmass']
         else:
@@ -382,21 +429,48 @@ class calcF:
             lz2ei = kwargs['lz2e']
         else:
             lz2ei = 0
-        mask = np.where(log >= logst)
+        if 'antialiasing' in kwargs:
+            antialiasing = kwargs['antialiasing']
+        else:
+            antialiasing = False
+        if 'sigma' in kwargs:
+            sigma = kwargs['sigma']
+        else:
+            sigma = 0.25
+        if 'nmeas' in kwargs:
+            nmeas = kwargs['nmeas']
+        else:
+            nmeas = 250
+        if 'fcutmin' in kwargs:
+            fcutmin = kwargs['fcutmin']
+        else:
+            fcutmin = 3.0
+        if 'lambdatype' in kwargs:
+            lambdatype = kwargs['lambdatype']
+        else:
+            lambdatype = 'z2'
+        if 'cftol' in kwargs:
+            cftol = kwargs['cftol']
+        else:
+            cftol = 0.5
+        if utstart:
+            mask = np.where(t >= tst)
+        else:
+            mask = np.where(log >= logst)
         logm = log[mask[0]]
         tm = t[mask[0]]
         if usedata:
             fitp = fitin
         else:
-            fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
+            if utstart:
+                fitp = fitS(data,log,t,k,p=po,verbose=verb,tstart=tst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
+            else:
+                fitp = fitS(data,log,t,k,p=po,verbose=verb,logstart=logst,xh=xhi,saxionmass=saxionmassi,LL=LLi,lz2e=lz2ei)
         Farr = [] # instantaneous spectrum F
         xarr = []
         Farr_aux = []
         xarr_aux = []
         Farr_fit = [] # instantaneous spectrum F (fit only)
-        # for test
-        #print('kcut = %f'%(cmin/tm[-1]))
-        # test
         for ik in range(1,len(k)):
             #if verbose:
             #    print('\rcalc F (differentiate): k = %.2f [%d/%d]'%(k[ik],ik+1,len(k)),end="")
@@ -412,16 +486,11 @@ class calcF:
                     else:
                         Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx
                         res = data[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
-                    # subtract linear trend
-                    a = (res[-1]-res[0])/(xx[-1]-xx[0])
-                    b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
-                    res = res - a*xx-b
-                    # DST
-                    fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
+                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,lambdatype,LLi,cftol)
                     if saxionmassi:
-                        Fk = Fk_fit + (a + np.gradient(fres,xx[1]-xx[0],edge_order=2))/(tm**(zz-4))
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)/(tm**(zz-4))
                     else:
-                        Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)
                 else:
                     if saxionmassi:
                         zz = saxionZ(k[ik],tm,LLi,lz2ei)
@@ -430,16 +499,11 @@ class calcF:
                     else:
                         Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx
                         res = data[mask[0],ik] - np.exp(ftrenda(lxx,po,*par))
-                    # subtract linear trend
-                    a = (res[-1]-res[0])/(xx[-1]-xx[0])
-                    b = (res[0]*xx[-1]-res[-1]*xx[0])/(xx[-1]-xx[0])
-                    res = res - a*xx-b
-                    # DST
-                    fres, dst, dst_fil, freq = filterDST(k[ik],sigma,res,tm)
+                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,lambdatype,LLi,cftol)
                     if saxionmassi:
-                        Fk = Fk_fit + (a + np.gradient(fres,xx[1]-xx[0],edge_order=2))/(tm**(zz-4))
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)/(tm**(zz-4))
                     else:
-                        Fk = Fk_fit + a + np.gradient(fres,xx[1]-xx[0],edge_order=2)
+                        Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)
             else:
                 Fk_fit = [np.nan]*len(tm)
                 Fk = [np.nan]*len(tm)
@@ -600,6 +664,10 @@ class setq:
             norebin = kwargs['norebin']
         else:
             norebin = False
+        if 'discardnegative' in kwargs:
+            discneg = kwargs['discardnegative']
+        else:
+            discneg = False
         Deltachisq = 1. # value of Deltachi^2 to define confidence interval
         x = inspx[id]
         inspmtab = inspy[id]
@@ -703,20 +771,39 @@ class setq:
                 nmbin = np.array(nmbinbuf)
             # end of rebin
             # next calculate q
+            flag_exception = False 
+            if discneg==True:
+                xbin = xbin[Fbin > 0]
+                Fbin = Fbin[Fbin > 0]
+                nbin = len(Fbin)
+                if nbin < 4:
+                    print(r'number of data points becomes less than 4 after discarding bins with negative F! (log = %.2f)'%insplog[id])
+                    flag_exception = True
             Su = nbin
             Sl = np.sum(np.log(xbin))
             Sll = np.sum(np.log(xbin)**2)
             SL = np.sum(np.log(Fbin))
             SLL = np.sum(np.log(Fbin)**2)
             SlL = np.sum(np.log(xbin)*np.log(Fbin))
-            alphaq = Sll - Sl*Sl/Su
-            betaq = SlL - Sl*SL/Su
-            gammaq = SLL - SL*SL/Su
-            alpham = Su - Sl*Sl/Sll
-            betam = SlL*Sl/Sll - SL
-            gammam = SLL - SlL*SlL/Sll
-            qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
-            mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
+            if flag_exception:
+                # if discneg==True and nbin < 4 we do not trust the result
+                alphaq = np.nan
+                betaq = np.nan
+                gammaq = np.nan
+                alpham = np.nan
+                betam = np.nan
+                gammam = np.nan
+                qbest = np.nan
+                mbest = np.nan
+            else:
+                alphaq = Sll - Sl*Sl/Su
+                betaq = SlL - Sl*SL/Su
+                gammaq = SLL - SL*SL/Su
+                alpham = Su - Sl*Sl/Sll
+                betam = SlL*Sl/Sll - SL
+                gammam = SLL - SlL*SlL/Sll
+                qbest = (Sl*SL-SlL*Su)/(Sll*Su-Sl**2)
+                mbest = (Sll*SL-SlL*Sl)/(Sll*Su-Sl**2)
             vecone = np.ones(len(xbin))
             if typesigma==0:
                 sigmasq = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))
@@ -726,10 +813,16 @@ class setq:
                 sigmasq = np.max(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone)) # conservative estimate of sigma based on maximum distance from best fit
             else:
                 print("wrong typesigma option!")
-            sigma = math.sqrt(sigmasq)
-            chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
-            sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
-            sigmam = math.sqrt(betam**2-alpham*(gammam-sigmasq*(chi2min+Deltachisq)))/alpham
+            if flag_exception:
+                chi2min = np.nan
+                sigma = np.nan
+                sigmaq = np.nan
+                sigmam = np.nan
+            else:
+                chi2min = np.sum(np.square(np.log(Fbin)+qbest*np.log(xbin)-mbest*vecone))/sigmasq
+                sigma = math.sqrt(sigmasq)
+                sigmaq = math.sqrt(betaq**2-alphaq*(gammaq-sigmasq*(chi2min+Deltachisq)))/alphaq
+                sigmam = math.sqrt(betam**2-alpham*(gammam-sigmasq*(chi2min+Deltachisq)))/alpham
         # end of the case len(xlim) >= 4
         self.chi2min = chi2min
         self.qbest = qbest
@@ -805,6 +898,14 @@ class scanq:
             verbose = kwargs['verbose']
         else:
             verbose = True
+        if 'discardnegative' in kwargs:
+            discneg = kwargs['discardnegative']
+        else:
+            discneg = False
+        if 'skipnan' in kwargs:
+            sknan = kwargs['skipnan']
+        else:
+            sknan = False
         self.chi2min = []
         self.qbest = []
         self.mbest = []
@@ -820,28 +921,33 @@ class scanq:
         self.betam = []
         self.gammam = []
         self.nmbin = []
+        self.log = []
         for id in range(len(insplog)):
             if verbose==True:
                 print('\r%d/%d, log = %.2f'%(id+1,len(insplog),insplog[id]),end="")
             msoverH = math.exp(insplog[id])
             xmin = cxmin
             xmax = cxmax*msoverH
-            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb)
-            self.chi2min.append(sqt.chi2min)
-            self.qbest.append(sqt.qbest)
-            self.mbest.append(sqt.mbest)
-            self.sigmaq.append(sqt.sigmaq)
-            self.sigmam.append(sqt.sigmam)
-            self.xbin.append(sqt.xbin)
-            self.Fbin.append(sqt.Fbin)
-            self.sigma.append(sqt.sigma)
-            self.alphaq.append(sqt.alphaq)
-            self.betaq.append(sqt.betaq)
-            self.gammaq.append(sqt.gammaq)
-            self.alpham.append(sqt.alpham)
-            self.betam.append(sqt.betam)
-            self.gammam.append(sqt.gammam)
-            self.nmbin.append(sqt.nmbin)
+            sqt = setq(inspx,inspy,insplog,id,xmin,xmax,nbin=nb,typesigma=types,norebin=noreb,discardnegative=discneg)
+            if np.isnan(sqt.qbest) and sknan:
+                pass
+            else:
+                self.chi2min.append(sqt.chi2min)
+                self.qbest.append(sqt.qbest)
+                self.mbest.append(sqt.mbest)
+                self.sigmaq.append(sqt.sigmaq)
+                self.sigmam.append(sqt.sigmam)
+                self.xbin.append(sqt.xbin)
+                self.Fbin.append(sqt.Fbin)
+                self.sigma.append(sqt.sigma)
+                self.alphaq.append(sqt.alphaq)
+                self.betaq.append(sqt.betaq)
+                self.gammaq.append(sqt.gammaq)
+                self.alpham.append(sqt.alpham)
+                self.betam.append(sqt.betam)
+                self.gammam.append(sqt.gammam)
+                self.nmbin.append(sqt.nmbin)
+                self.log.append(insplog[id])
         if verbose==True:
             print("")
         self.chi2min = np.array(self.chi2min)
@@ -856,7 +962,7 @@ class scanq:
         self.alpham = np.array(self.alpham)
         self.betam = np.array(self.betam)
         self.gammam = np.array(self.gammam)
-        self.log = insplog
+        self.log = np.array(self.log)
         self.cxmaxopt = cxmax
 
 
@@ -939,3 +1045,29 @@ def calcGamma(energy, t, log, **kwargs):
     gamma_diff = (tm**(5-zm))*(np.gradient(enem*(tm**zm))/np.gradient(tm))
     
     return gamma, gamma_diff, tm
+
+
+# ------------------------------------------------------------------------------
+#   string length
+# ------------------------------------------------------------------------------
+
+def lvrest(eK, eG, eV, t, Lbox):
+    
+    # total energy, Lagrangian, and equation of state
+    E = (t**2)*(Lbox**3)*(eK + eG + eV)
+    L = (t**2)*(Lbox**3)*(eK - eG - eV)
+    w = (eK - eG/3. - eV)/(eK + eG + eV)
+    
+    # tentative values, need to be confirmed and generalized
+    mu = 2.*0.892
+    fv = 0.368
+    
+    # rest-frame length, velocities, and xi parameter
+    lr = (E+fv*L)/(1.-fv)/mu
+    vLsq = (E+L)/(E+fv*L)
+    vwsq = (1.+3.*w+2.*fv)/(2.+fv*(1.+3.*w))
+    vssq = 2.*eK/(eK+eG)
+    xir = lr*t*t/4./Lbox**3
+    
+    return xir, np.sqrt(vLsq), np.sqrt(vwsq), np.sqrt(vssq), lr
+    
