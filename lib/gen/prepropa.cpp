@@ -177,11 +177,12 @@ void	prepropa2  (Scalar *axiona)
 	initPropagator (pType, axiona, axiona->BckGnd()->ICData().prevtype);
 	tunePropagator (axiona);
 
-
+	int dump = axiona->BckGnd()->ICData().dumpicmeas;
+	int iz = 0;
 	fIndex2 = 0 ;
 	while ( *axiona->zV() <  cti )
 	{
-		if (icstudy){
+		if (icstudy && !(iz%dump)){
 			ninfa.index=fIndex2;
 			lm = Measureme (axiona, ninfa);
 			fIndex2++;
@@ -195,6 +196,7 @@ void	prepropa2  (Scalar *axiona)
 			// break;
 		}
 		propagate (axiona, dzaux);
+		iz++;
 	}
 
 	LogMsg(VERB_NORMAL,"[prep] done ");
@@ -287,11 +289,13 @@ void	relaxrho  (Scalar *axiona)
 
 	LogOut("[prep] goal nN3 = %f \n", goalnN3);
 
+	int dump = axiona->BckGnd()->ICData().dumpicmeas;
+	int iz = 0;
 	double trala = 1.;
 	fIndex2 = 0 ;
 	while ( trala > goalnN3 )
 	{
-		if (icstudy){
+		if (icstudy && !(iz%dump)){
 			ninfa.index=fIndex2;
 			lm = Measureme (axiona, ninfa);
 			fIndex2++;
@@ -313,5 +317,6 @@ void	relaxrho  (Scalar *axiona)
 
 		trala= ((double) lm.str.strDen)/((double) axiona->TotalSize());
 		// LogOut("nN3 = %f\n",trala);
+		iz++;
 	}
 }

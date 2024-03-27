@@ -104,6 +104,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] ic.pregammo %e",cm->ICData().pregammo );
 	LogMsg(VERB_NORMAL,"[sca] ic.prelZ2e  %e",cm->ICData().prelZ2e  );
 	LogMsg(VERB_NORMAL,"[sca] ic.prevtype %d",cm->ICData().prevtype );
+	LogMsg(VERB_NORMAL,"[sca] ic.dumpicmeas %d",cm->ICData().dumpicmeas );
 	LogMsg(VERB_NORMAL,"[sca] ic.normcore %d",cm->ICData().normcore );
 	LogMsg(VERB_NORMAL,"[sca] ic.alpha    %e",cm->ICData().alpha    );
 	LogMsg(VERB_NORMAL,"[sca] ic.siter    %d",cm->ICData().siter    );

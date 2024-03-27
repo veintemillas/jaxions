@@ -421,6 +421,7 @@ void	PrintICoptions()
 	printf("                                                   Requires prevqcdtype to include damping, +16384 or +32768.\n");
 	printf("  --lz2e        [float]               	           Makes lambda = lambda/R^lz2e (Default 2.0 in PRS mode).\n");
 	printf("  --icstudy                           	           Prints axion.m.xxxxx files during prepropagation (Default no).\n");
+	printf("  --dumpic      [int]                              Frequency of the output for icstudy (default 1).\n");
 	printf("\n-----------------------------------------------------------------------------------------------\n");
 	printf("  --nncore                                         Do not normalise rho according to grad but rho=1.\n\n");
 
@@ -666,6 +667,8 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.fieldindex=FIELD_NO;
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
+
+	icdatst.dumpicmeas = 1;
 
 	/* Default measurements */
 	deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
@@ -2173,6 +2176,25 @@ int	parseArgs (int argc, char *argv[])
 			icstudy = true ; //legacy
 			icdatst.icstudy = true ;
 			PARSE1;
+		}
+
+		if (!strcmp(argv[i], "--dumpic"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for dumpic.\n");
+				exit(1);
+			}
+
+      		icdatst.dumpicmeas = atof(argv[i+1]);
+
+			if (icdatst.dumpicmeas < 0)
+			{
+				printf("Error: Print rate for ic must be equal or greater than zero.\n");
+				exit(1);
+			}
+
+			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--prepstL"))

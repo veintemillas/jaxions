@@ -797,6 +797,7 @@
 			double        pregammo;
 			double        prelZ2e;
 			VqcdType      prevtype;
+			int           dumpicmeas;
 			bool          normcore;
 			double        alpha;
 			size_t        siter;
