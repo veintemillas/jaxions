@@ -359,7 +359,7 @@ def checkfreq(fs, fcrit, ftol):
     else:
         return fc3
         
-def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, lambdatype='z2', LL=1600., cftol=0.5):
+def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, align=True, dsttype=1, lambdatype='z2', LL=1600., cftol=0.5):
     fs = nmeas/(t[-1]-t[0])       # sample frequency
     fn = k/np.pi                  # frequency of 2k axion oscillation
     ftol = min(cftol*fs/2.,fs/2.) # factor cftol times Nyquist crequency
@@ -378,13 +378,17 @@ def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, lam
     else:
         fa = fn
     wa = 2*np.pi*max(fa,fcutmin)
-    res_sub, lin, a, b = subtraction(res, t*k)
-    sig_dst = fftpack.dst(res_sub,norm='ortho',type=1)
-    w_dst = np.pi*np.linspace(1,res_sub.size,res_sub.size)/(t[-1]-t[0])
+    if align:
+        res_sub, lin, a, b = subtraction(res, t*k)
+        sig_dst = fftpack.dst(res_sub,norm='ortho',type=dsttype)
+        w_dst = np.pi*np.linspace(1,res_sub.size,res_sub.size)/(t[-1]-t[0])
+    else:
+        lin = np.zeros(len(t))
+        sig_dst = fftpack.dst(res,norm='ortho',type=dsttype)
+        w_dst = np.pi*np.linspace(1,res.size,res.size)/(t[-1]-t[0])
     sig_dst_filtered = sig_dst*np.exp(-(w_dst/(wa*sigma))**2/2)
-    filtered_dst = fftpack.idst(sig_dst_filtered,norm='ortho',type=1)
+    filtered_dst = fftpack.idst(sig_dst_filtered,norm='ortho',type=dsttype)
     return filtered_dst + lin
-    
     
 class calcF:
     def __init__(self, data, log, t, k, k_below, **kwargs):
@@ -453,6 +457,14 @@ class calcF:
             cftol = kwargs['cftol']
         else:
             cftol = 0.5
+        if 'align' in kwargs:
+            align = kwargs['align']
+        else:
+            align = True
+        if 'dsttype' in kwargs:
+            dsttype = kwargs['dsttype']
+        else:
+            dsttype = 1
         if utstart:
             mask = np.where(t >= tst)
         else:
@@ -486,7 +498,7 @@ class calcF:
                     else:
                         Fk_fit = np.exp(ftrend(lxx,po,*par))*dftrend(lxx,po,*par)/xx
                         res = data[mask[0],ik] - np.exp(ftrend(lxx,po,*par))
-                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,lambdatype,LLi,cftol)
+                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,align,dsttype,lambdatype,LLi,cftol)
                     if saxionmassi:
                         Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)/(tm**(zz-4))
                     else:
@@ -499,7 +511,7 @@ class calcF:
                     else:
                         Fk_fit = np.exp(ftrenda(lxx,po,*par))*dftrenda(lxx,po,*par)/xx
                         res = data[mask[0],ik] - np.exp(ftrenda(lxx,po,*par))
-                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,lambdatype,LLi,cftol)
+                    fres = filtergauss(k[ik],res,tm,nmeas,fcutmin,antialiasing,sigma,align,dsttype,lambdatype,LLi,cftol)
                     if saxionmassi:
                         Fk = Fk_fit + np.gradient(fres,xx[1]-xx[0],edge_order=2)/(tm**(zz-4))
                     else:
