@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 
 import numpy as np
+import re
+import os
+import h5py
 import math
 import pickle
 from pyaxions import jaxions as pa
@@ -58,6 +61,104 @@ def saveesp(espe, name='./esp', esplabel='espK_0', esponly=False):
         sdata(espe.ttab,name,'t')
         sdata(espe.logtab,name,'log')
 
+def saveesp_amr(path = './spectra/', data_path = './', name='./esp', esplabel='espK_0', src = 'axionyx', N = 256, L = 6., msa = 1., esponly=False):
+
+    if src == "axionyx":
+
+        all_spectra = os.listdir(path)
+        specs = [spec for spec in all_spectra if os.path.isfile(os.path.join(path, spec)) and spec.startswith('spectrum_')]
+        num_specs = len(specs)
+
+        if num_specs < 1:
+            print('No spectra found in %s!'%path)
+
+        else:
+            # Regular expression to extract the numeric part from the file name
+            name_pattern = re.compile(r'spectrum_(\d+\.\d+)')  # Matches 'spectrum_' followed by a decimal number
+
+            # List to hold the extracted times
+            t = []
+            # Extract times from the file names and convert to float
+            for spec in specs:
+                match = name_pattern.match(spec)
+                if match:
+                    t.append(float(match.group(1)))  # Extract the numeric part and convert to float
+
+            t = np.array(t)
+
+            #sort the times properly
+            sorted_indices = np.argsort(t)
+
+            t = t[sorted_indices]
+            log = np.log(msa*t)
+
+            esp, k, nm = [], [], []
+            for id, spec in enumerate(specs):
+                data = np.loadtxt(path + spec)
+                if id == 0:
+                    #only read out k and nm for the first file as they are always the same
+                    k.append(data[0])
+                    esp.append(data[1])
+                    nm.append(data[2])
+                else:
+                    esp.append(data[1])
+
+            k = np.array(k)
+            #Cutoff at the saxion mass
+            k_below = k <= msa*N/L
+            nm = np.array(nm)
+            esp = np.array(esp)[sorted_indices]
+
+    elif src == "sledgehamr":
+
+        all_spectra = os.listdir(path)
+        specs = [spec for spec in all_spectra if os.path.isdir(os.path.join(path, spec))]
+        num_specs = len(specs)
+
+        if num_specs < 1:
+            print('No spectra found in %s!'%path)
+
+        else:
+            #Get k's first from first spec as they don't change for later times
+            esp_data = h5py.File(path + '0/spectra.hdf5', "r")
+
+            k = np.sqrt(np.array(esp_data['k_sq']))
+
+            N = int(esp_data['Header'][1])
+            #Cutoff at the saxion mass (only values of the base grid important here -> CHECK)
+            k_below = k <= msa*N/L
+
+            nm_data = h5py.File(data_path + 'nm.hdf5', 'r')
+            nm_dataset = nm_data['%s_counts'%str(N)]
+            nm = nm_dataset[:]
+
+            t, log, esp = [], [], []
+            for id in range(num_specs):
+                with h5py.File(path + '%d/spectra.hdf5'%id, "r") as data:
+                    esp.append(np.array(data[esplabel]))
+                    t.append(data['Header'][0])
+                    log.append(np.log(msa*t[-1]))
+
+            t = np.array(t)
+            log = np.array(log)
+            esp = np.array(esp)
+
+    elif src == "chombo":
+        #need to understand how to map chombo output to ours ...
+        raise TypeError('Not yet implemented, sorry!')
+
+    else:
+        raise TypeError('Only "sledgehamr" and "axionyx" output formats supported atm. Working on "chombo" support atm.')
+
+    #save the respective data in the same format as before to be able to use the tools appropriately
+    sdata(esp,name,esplabel)
+    if not esponly:
+        sdata(nm,name,'nm')
+        sdata(k,name,'k')
+        sdata(k_below,name,'k_below')
+        sdata(t,name,'t')
+        sdata(log,name,'log')
+
 class readS:
     def __init__(self,dataname='./Sdata/S',esplabel='espK_0'):
         self.dataname = dataname
@@ -67,7 +168,7 @@ class readS:
         self.t = rdata(dataname,'t')
         self.log = rdata(dataname,'log')
         self.esp = rdata(dataname,esplabel)
-        
+
         self.Narr = []
         self.Earr = []
         for id in range(len(self.log)):
@@ -75,12 +176,12 @@ class readS:
             self.Earr.append((self.k**3)*self.esp[id]/self.nm/(math.pi**2))
         self.Narr = np.array(self.Narr)
         self.Earr = np.array(self.Earr)
-    
+
     # print number spectrum N = drho/d(k/R)/(H*f_a^2) at a given log
     def N(self,log):
         it = np.abs(self.log - log).argmin()
         return ((self.k**2)*self.esp[it]/self.nm)/((math.pi**2)*self.t[it])
-        
+
     # print energy spectrum E = drho/d(logk)/(H*f_a)^2 at a given log
     def E(self,log):
         it = np.abs(self.log - log).argmin()
@@ -89,7 +190,7 @@ class readS:
     # print mode evolution
     def Nevol(self,ik):
         return ((self.k[ik]**2)*self.esp[:,ik]/self.nm[ik])/((math.pi**2)*self.t)
-    
+
     def Eevol(self,ik):
         return (self.k[ik]**3)*self.esp[:,ik]/self.nm[ik]/(math.pi**2)
 
@@ -147,7 +248,7 @@ def df4a(lx, a0, a1, a2, a3, a4):
     return a1 + 2*a2*lx + 3*a3*(lx**2) + 4*a4*(lx**3)
 def df5a(lx, a0, a1, a2, a3, a4, a5):
     return a1 + 2*a2*lx + 3*a3*(lx**2) + 4*a4*(lx**3) + 5*a5*(lx**4)
-    
+
 def ftrend(lx, order, *args):
     if order == 2:
         return f2(lx,*args)
@@ -157,7 +258,7 @@ def ftrend(lx, order, *args):
         return f4(lx,*args)
     elif order == 5:
         return f5(lx,*args)
-    
+
 def ftrenda(lx, order, *args):
     if order == 2:
         return f2a(lx,*args)
@@ -177,7 +278,7 @@ def dftrend(lx, order, *args):
         return df4(lx,*args)
     elif order == 5:
         return df5(lx,*args)
-    
+
 def dftrenda(lx, order, *args):
     if order == 2:
         return df2a(lx,*args)
@@ -232,7 +333,7 @@ def saxionZ(k, t, LL, lz2e=0):
     mr = np.sqrt(2.*LL)/t**(.5*lz2e)
     r = k/mr/t
     return 3 + (r**2 + 0.5*lz2e)/(1 + r**2)
-    
+
 # Perform analytical fit
 # Switch to a simplified fit function when x[0] becomes larger than xh (default xh = -1)
 # If xh = -1 (or some negative value), do not use this simplification (no discontinuity but time-consuming)
@@ -321,7 +422,7 @@ def saveParam(fS, name='./P'):
     sdata(fS.param,name,'param')
     sdata(fS.listfit,name,'listfit')
     sdata(fS.ikhistart,name,'ikhistart')
-    
+
 # read parameters
 class readParam:
     def __init__(self, name='./P'):
@@ -341,7 +442,7 @@ def subtraction(res, w):
     lin = a*w+b
     res2 = res - a*w-b
     return res2, lin, a, b
-    
+
 # return alias frequency for signal frequency (f) and sample frequency (fs)
 def falias(f,fs):
     n = np.floor(f/fs)
@@ -358,7 +459,7 @@ def checkfreq(fs, fcrit, ftol):
         return fc2
     else:
         return fc3
-        
+
 def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, align=True, dsttype=1, lambdatype='z2', LL=1600., cftol=0.5):
     fs = nmeas/(t[-1]-t[0])       # sample frequency
     fn = k/np.pi                  # frequency of 2k axion oscillation
@@ -389,7 +490,7 @@ def filtergauss(k, res, t, nmeas, fcutmin=1., antialiasing=True, sigma=0.25, ali
     sig_dst_filtered = sig_dst*np.exp(-(w_dst/(wa*sigma))**2/2)
     filtered_dst = fftpack.idst(sig_dst_filtered,norm='ortho',type=dsttype)
     return filtered_dst + lin
-    
+
 class calcF:
     def __init__(self, data, log, t, k, k_below, **kwargs):
         if 'p' in kwargs:
@@ -546,7 +647,7 @@ class calcF:
         self.Fnorm = np.array(Fnorm) # normalization factor of F
         self.t = tm
         self.log = logm
-        
+
 
 class calcFdiff:
     def __init__(self, data, log, t, k, k_below, difftype='C', **kwargs):
@@ -616,8 +717,8 @@ class calcFdiff:
         self.Fnorm = np.array(Fnorm)
         self.t = np.array(tarr)
         self.log = np.array(logarr)
-        
-        
+
+
 # ------------------------------------------------------------------------------
 #   spectral index
 # ------------------------------------------------------------------------------
@@ -783,7 +884,7 @@ class setq:
                 nmbin = np.array(nmbinbuf)
             # end of rebin
             # next calculate q
-            flag_exception = False 
+            flag_exception = False
             if discneg==True:
                 xbin = xbin[Fbin > 0]
                 Fbin = Fbin[Fbin > 0]
@@ -993,7 +1094,7 @@ def aveq(qlist):
     sigmaq = np.sqrt(qsq)
     log = qlist[0].log
     return [q,sigmaq,sigmaq/math.sqrt(Nreal),log]
-    
+
 
 # ------------------------------------------------------------------------------
 #   energy radiation rate
@@ -1019,7 +1120,7 @@ def calcGamma(energy, t, log, **kwargs):
     li = np.abs(log - logstart).argmin()
     enem = energy[li:]
     tm = t[li:]
-    
+
     if 'z' in kwargs:
         z = kwargs['z']
         zm = z[li:]
@@ -1028,7 +1129,7 @@ def calcGamma(energy, t, log, **kwargs):
 
     freq = np.pi*np.linspace(1,enem.size,enem.size)/(tm[-1]-tm[0])
     freqN = np.pi*enem.size/(tm[-1]-tm[0])
-    
+
     if p==2:
         param, paramv = curve_fit(f2a, np.log(tm), np.log(enem*(tm**zm)))
     elif p==3:
@@ -1037,25 +1138,25 @@ def calcGamma(energy, t, log, **kwargs):
         param, paramv = curve_fit(f4a, np.log(tm), np.log(enem*(tm**zm)))
     elif p==5:
         param, paramv = curve_fit(f5a, np.log(tm), np.log(enem*(tm**zm)))
-        
+
     res = enem*(tm**zm) - np.exp(ftrenda(np.log(tm),p,*param))
-    
+
     # subtract linear trend
     a = (res[-1]-res[0])/(tm[-1]-tm[0])
     b = (res[0]*tm[-1]-res[-1]*tm[0])/(tm[-1]-tm[0])
     res = res - a*tm - b
-    
+
     # DST
     dst = fftpack.dst(res,norm='ortho',type=1)
     dst_filtered = dst*np.exp(-(freq/(freqN*sigma))**2/2)
     res_filtered_dst = fftpack.idst(dst_filtered,norm='ortho',type=1)
-    
+
     # This is Gamma/(f_a^2 H^3)
     gamma = (tm**(5-zm))*(np.exp(ftrenda(np.log(tm),p,*param))*dftrenda(np.log(tm),p,*param)/tm + a + np.gradient(res_filtered_dst)/np.gradient(tm))
-    
+
     # Just a finite difference, for comparison
     gamma_diff = (tm**(5-zm))*(np.gradient(enem*(tm**zm))/np.gradient(tm))
-    
+
     return gamma, gamma_diff, tm
 
 
@@ -1064,22 +1165,21 @@ def calcGamma(energy, t, log, **kwargs):
 # ------------------------------------------------------------------------------
 
 def lvrest(eK, eG, eV, t, Lbox):
-    
+
     # total energy, Lagrangian, and equation of state
     E = (t**2)*(Lbox**3)*(eK + eG + eV)
     L = (t**2)*(Lbox**3)*(eK - eG - eV)
     w = (eK - eG/3. - eV)/(eK + eG + eV)
-    
+
     # tentative values, need to be confirmed and generalized
     mu = 2.*0.892
     fv = 0.368
-    
+
     # rest-frame length, velocities, and xi parameter
     lr = (E+fv*L)/(1.-fv)/mu
     vLsq = (E+L)/(E+fv*L)
     vwsq = (1.+3.*w+2.*fv)/(2.+fv*(1.+3.*w))
     vssq = 2.*eK/(eK+eG)
     xir = lr*t*t/4./Lbox**3
-    
+
     return xir, np.sqrt(vLsq), np.sqrt(vwsq), np.sqrt(vssq), lr
-    
