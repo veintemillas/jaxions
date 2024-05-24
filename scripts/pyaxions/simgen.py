@@ -90,7 +90,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         if BONDEN:
             output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --p3D 1 2>&1 | tee log-run.txt')
         else:
-            output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX}--p3D 1 2>&1 | tee log-run.txt')
+            output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --p3D 1 2>&1 | tee log-run.txt')
         output.read()
         print('')
         print('Done!')
