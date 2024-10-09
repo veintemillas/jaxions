@@ -59,7 +59,6 @@ find_package(HDF5 REQUIRED)
 
 find_package(OpenMP REQUIRED)
 
-find_library(FFTW_LIBRARY      NAMES fftw3 fftw           HINTS "$ENV{:q}")
 find_library(FFTW_LIBRARY      NAMES fftw3 fftw           HINTS $ENV{FFTW_HOME}/lib $ENV{FFTW_HOME}/lib64)
 find_library(FFTW_OMP_LIBRARY  NAMES fftw3_omp fftw_omp   PATHS $ENV{FFTW_HOME}/lib $ENV{FFTW_HOME}/lib64)
 find_library(FFTW_MPI_LIBRARY  NAMES fftw3_mpi fftw_mpi   PATHS $ENV{FFTW_HOME}/lib $ENV{FFTW_HOME}/lib64)
