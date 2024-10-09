@@ -998,10 +998,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 					if (!strcmp(lStr, "z2")){
 						lType = LAMBDA_Z2;
-						if (!(test < 0))
-							myCosmos->SetLambda(lda);
-						else
-							myCosmos->SetLamZ2Exp(2.0);
+						//if (!(test < 0))
+						//	myCosmos->SetLambda(lda);
+						//else
+						myCosmos->SetLamZ2Exp(lz2e);
 					}
 					else if (!strcmp(lStr, "Fixed")){
 						lType = LAMBDA_FIXED;
