@@ -2753,7 +2753,7 @@ Cosmos	createCosmos()
 			myCosmos.SetLambda(LL);
 
 		if (uMsa || uLambda)
-			myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? 2.0 : 0.0);
+			myCosmos.SetLamZ2Exp( (lType == LAMBDA_Z2) ? lz2e : 0.0);
 
 		if (uQcd)
 			myCosmos.SetQcdExp(nQcd);
