@@ -66,7 +66,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     msa0 = float(msa0_match.group(1))
 
     #for mpiexec usage on bonden
-    os.system(f'export OMP_NUM_THREADS={THR}')
+    os.environ['OMP_NUM_THREADS'] = str(THR)
 
     if MODE == 'create':
         if VERB:
@@ -126,7 +126,15 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
 
         # Create symbolic link between the config file in out and the new folder in OUT_CON
         find = f'{index:05d}'
-        os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
+        source_file = f'{cwd}/out/m/axion.{find}'
+        dest_link = f'{cwd}/{OUT_CON}/m/axion.{find}'
+
+        if not os.path.exists(source_file):
+            raise FileNotFoundError(f"Source file {source_file} does not exist.")
+        if os.path.exists(dest_link):
+            print(f"Warning: Link {dest_link} already exists. Skipping.")
+        else:
+            os.symlink(source_file, dest_link)
 
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
