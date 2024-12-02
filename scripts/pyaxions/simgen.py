@@ -115,23 +115,23 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         os.makedirs(OUT_CON, exist_ok=True)
         os.makedirs(f'{OUT_CON}/m', exist_ok=True)
 
-        #Continue simulation in OUT_CON
-        os.system(f'export AXIONS_OUTPUT="{cwd}/{OUT_CON}/m"')
+        # Set the AXIONS_OUTPUT environment variable for the Python process and its children
+        os.environ['AXIONS_OUTPUT'] = f"{cwd}/{OUT_CON}/m"
 
-        #Either use the user-specified index or use the last config file
+        # Either use the user-specified index or use the last config file
         if IDX:
             index = IDX
         else:
             index = last_mfile()
 
-        #create symbolic link between the config file in out and the new folder in OUT_CON
+        # Create symbolic link between the config file in out and the new folder in OUT_CON
         find = f'{index:05d}'
         os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
 
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
-            print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)'%(N0, RANK, L0, msa0, OUT_CON))
+            print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)' % (N0, RANK, L0, msa0, OUT_CON))
 
         if BONDEN:
             output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
