@@ -1109,6 +1109,11 @@ def calcGamma(energy, t, log, **kwargs):
         logstart = kwargs['logstart']
     else:
         logstart = 4.
+    if 'tstart' in kwargs:
+        tstart = kwargs['tstart']
+        utstart = True
+    else:
+        utstart = False
     if 'sigma' in kwargs:
         sigma = kwargs['sigma']
     else:
@@ -1117,7 +1122,10 @@ def calcGamma(energy, t, log, **kwargs):
         print("order of polynomial (p) not supported")
         return None
 
-    li = np.abs(log - logstart).argmin()
+    if utstart:
+        li = np.abs(t - tstart).argmin()
+    else:
+        li = np.abs(log - logstart).argmin()
     enem = energy[li:]
     tm = t[li:]
 
