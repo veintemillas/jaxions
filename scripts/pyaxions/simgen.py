@@ -1,4 +1,4 @@
-# JAXIONS MODULE TO RUN SIMULATIONS FROM PYTHON
+#JAXIONS MODULE TO RUN SIMULATIONS FROM PYTHON
 import os
 import time
 import re
@@ -277,7 +277,11 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
     ####################################################
     GRID=" --size %d --depth %d --zgrid %d"%(N,N//zRANKS,zRANKS)
     ####################################################
-    SIMU=" --prec %s --device %s --prop %s --steps %d --wDz %f --sst0 %d --lap %d --fftplan %d"%(prec,dev,prop,steps,wDz,sst0,lap, fftplan)
+    SIMU=" --prec %s --device %s --prop %s --steps %d --wDz %f --sst0 %d --fftplan %d"%(prec,dev,prop,steps,wDz,sst0,fftplan)
+
+    if not (spec or fspec):
+        SIMU += ' --lap %d'%lap
+
     if lowmem:
         SIMU += ' --lowmem'
     if dev == 'gpu':
@@ -286,11 +290,11 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
     if spec:
         SIMU += ' --spec'
         if verb:
-            print('Be careful: --spec overwrites --lap now!')
+            print('Using spec propagator.')
     if fspec:
         SIMU += ' --fspec'
         if verb:
-            print('Be careful: --fspec overwrites --spec and --lap now!')
+            print('Using fspec propagator.')
     ####################################################
     VQCP=''
     if vqcd in ['vqcdC','vqcdV','vqcd0','vqcdL','N2']:
