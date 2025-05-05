@@ -75,7 +75,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
         if BONDEN:
-            output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+            output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         else:
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         output.read()
@@ -93,7 +93,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
 
         if BONDEN:
-            output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --p3D 1 2>&1 | tee log-run.txt')
+            output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX}  --p3D 1 2>&1 | tee log-run.txt')
         else:
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --p3D 1 2>&1 | tee log-run.txt')
         output.read()
@@ -129,13 +129,17 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         else:
             index = last_mfile()
 
+        #properly link config files
+        find = f'{index:05d}'
+        os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
+
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)' % (N0, RANK, L0, msa0, OUT_CON))
 
         if BONDEN:
-            output = os.popen(f'mpirun {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
+            output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
 
