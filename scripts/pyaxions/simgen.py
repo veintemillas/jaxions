@@ -139,7 +139,6 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)' % (N0, RANK, L0, msa0, OUT_CON))
 
         if BONDEN:
-            print(f'mpiexec {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
             output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
