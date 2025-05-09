@@ -981,6 +981,11 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		mopa.cmplx = false;
 		mopa.randommom = ic.randommom;
 		mopa.mp = axionField->m2Cpu();
+		// we use ninfa.mode0 from commandline --mode0 (default 0 = False) 
+		// if mode0 = 0, all modes are random
+		// if mode0 > 0, zero modes are exact
+		if (ic.mode0 > 0)
+			mopa.setmom0 = true;
 
 	momConf(axionField, mopa);
 

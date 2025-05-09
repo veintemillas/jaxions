@@ -886,6 +886,7 @@
 			std::vector<double>     mfttab;
 			bool 	      cmplx;
 			bool          randommom = true;
+			bool          setmom0   = false;
 			void*         mp;
 			void*         vp;
 			std::vector<double>         xx;

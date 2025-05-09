@@ -337,6 +337,10 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	// not in SPAX!
 	switch (Moco){
 		case(MOM_SPAX):
+		if (commRank() == 0 && mopa.setmom0){
+	        	fM[0] = complex<Float>(mm[0],0);
+			LogMsg (VERB_NORMAL, "mode0 set to %f %f in rank %d", real(fM[0]), imag(fM[0]), commRank());
+                }
 		break;
 
 		case(MOM_STRING):
