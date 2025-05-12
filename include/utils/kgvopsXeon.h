@@ -151,7 +151,7 @@ void	buildc_k_KernelXeon(const void * __restrict__ m_, const void * __restrict__
 #elif	defined(__AVX__)
 								// mod1 = opCode(blend_pd, lap1, lap2, 0b10101010);
 #else
-								mod1 = opCode(blend_pd, lap1, lap2, 0b10101010);
+								mod1 = opCode(blend_pd, lap1, lap2, 0b10); //101010);
 #endif
 				/* scale factor for conformal field velocity */
 				mod1 = opCode(mul_pd, mod1, RVec);
@@ -284,7 +284,7 @@ void	buildc_k_KernelXeon(const void * __restrict__ m_, const void * __restrict__
 				// lap2 = opCode(permute_ps, lap2, opCode(setr_epi32, 0,2,4,6,1,3,5,7));
 				mod1 = opCode(blend_ps, lap1, lap2, 0b11110000);
 #else
-				mod1 = opCode(blend_ps, lap1, lap2, 0b10101010);
+				mod1 = opCode(blend_ps, lap1, lap2, 0b1010);//0b10101010);
 #endif
 				/* scale factor for conformal field velocity */
 				mod1 = opCode(mul_ps, mod1, RVec);

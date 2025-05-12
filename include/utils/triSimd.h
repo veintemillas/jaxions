@@ -477,7 +477,7 @@ _MData_	ret;
 #else
 	ret = opCode(add_pd,
 			opCode(and_pd, opCode(cmpge_pd, c, d), a),
-			opCode(and_pd, opCode(cmplt_pd, c, d), b)));
+			opCode(and_pd, opCode(cmplt_pd, c, d), b));
 #endif
 
 	return	ret;
@@ -864,7 +864,7 @@ _MData_	ret;
 #else
 	ret = opCode(add_ps,
 			opCode(and_ps, opCode(cmpge_ps, c, d), a),
-			opCode(and_ps, opCode(cmplt_ps, c, d), b)));
+			opCode(and_ps, opCode(cmplt_ps, c, d), b));
 #endif
 
 	return	ret;
