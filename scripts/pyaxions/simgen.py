@@ -210,7 +210,7 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         print('--------------------------------------------------------------------------------------------')
 
 def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
-            nqcd=7.0,msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
+            nqcd=7.0, fA = -1, msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
             vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
@@ -238,6 +238,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
     lap       int    1        number of neighbours in Laplacian
     fftplan   int    64       specify FFT plan to speed up initialisation
     nqcd      float  7.0      index of ct-dependence of Topological Susceptibility
+    fA        int    -1       if fA > 0 is given, the code uses the --qcd qcd option with fA as specified
     msa       float  1.0      use PRS strings with ms = msa/(dx R); overrides lambda!
     lamb      float  -1.0     use Physical strings with SI lambda; make >0; is overridden by --msa
     ctf       float  128.     final conformal time of simulations
@@ -317,8 +318,11 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
         tension = ' --llcf %f'%lamb
     else :
         tension = ' --msa %f'%msa
-    PHYS=" --qcd %f %s --lsize %f --zf %f --ind3 %f"%(nqcd,tension,L,ctf,ind3)
+    PHYS="%s --lsize %f --zf %f --ind3 %f"%(tension,L,ctf,ind3)
     noth='';wkbs='';gams='';dwgams='';mnk=''
+    if fA > 0:
+        qcd = ' --qcd qcd --fA %d'%fA
+    else: qcd = ' --qcd %f'%nqcd
     if notheta:
         noth = ' --notheta '
     if wkb > 0:
@@ -331,7 +335,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
         mnk = ' --mink'
         if verb:
             print('Minkowski!')
-    PHYS += noth+wkbs+gams+dwgams+mnk+xtr
+    PHYS += qcd+noth+wkbs+gams+dwgams+mnk+xtr
     #################################################### IC condition 1 by 1
     if index >= 0:
         # READ CONF
