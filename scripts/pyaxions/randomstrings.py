@@ -131,8 +131,8 @@ def onestring(N = 256,RL_RATIO =0.25, NPOLY=4, SHAPE='l', AR=0, AXIS='x', XCF=0.
     RL_RATIO: R/L, with L^3, the volume of the simulation box and R the radius of the loop. The code effectivly uses the variable Rdx = (R/L)*N for initialisation. Value should should be smaller than ~0.45.
     NPOLY: Number of edges of hexagon
     SHAPE: Loop ('l'), Hexagon ('s'), or Knot ('k')
-    AR : Angle of rotation around z axis, if desired
-
+    AR: Angle of rotation, if desired
+    AXIS: Axis around which we want to rotate
 
     returns x,y,z
     """
@@ -166,15 +166,15 @@ def onestring(N = 256,RL_RATIO =0.25, NPOLY=4, SHAPE='l', AR=0, AXIS='x', XCF=0.
         y = Rdx/3*(np.cos(t)-2*np.cos(2*t))
         z = Rdx/3*(-np.sin(3*t))
     if AR != 0:
-        if axis == 'x':
+        if AXIS == 'x':
             yz = y * np.cos(AR) - z * np.sin(AR)
             z  = y * np.sin(AR) + z * np.cos(AR)
             y = yz
-        elif axis == 'y':
+        elif AXIS == 'y':
             xz = z * np.cos(AR) + x * np.sin(AR)
             x  = -z * np.sin(AR) + x * np.cos(AR)
             z = xz
-        elif axis == 'z':
+        elif AXIS == 'z':
             xr = x * np.cos(AR) + y * np.sin(AR)
             y  = -x * np.sin(AR) + y * np.cos(AR)
             x = xr
