@@ -117,7 +117,7 @@ def randomstrings(N=256, RL_RATIO=0.25, SEED = None, NSTRINGS=1, ITER=3, KINKS=0
     return xx, yy, zz
 
 
-def onestring(N = 256,RL_RATIO =0.25, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5, PATH='./'):
+def onestring(N = 256,RL_RATIO =0.25, NPOLY=4, SHAPE='l', AR=0, AXIS='x', XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5, PATH='./'):
     """
 
     Creates a string.dat file with the coordinates of a :
@@ -166,9 +166,18 @@ def onestring(N = 256,RL_RATIO =0.25, NPOLY=4, SHAPE='l', AR=0, XCF=0.5, YCF=0.5
         y = Rdx/3*(np.cos(t)-2*np.cos(2*t))
         z = Rdx/3*(-np.sin(3*t))
     if AR != 0:
-        xr = x*np.cos(AR) + y*np.sin(AR)
-        y  = -x*np.sin(AR) + y*np.cos(AR)
-        x  = xr
+        if axis == 'x':
+            yz = y * np.cos(AR) - z * np.sin(AR)
+            z  = y * np.sin(AR) + z * np.cos(AR)
+            y = yz
+        elif axis == 'y':
+            xz = z * np.cos(AR) + x * np.sin(AR)
+            x  = -z * np.sin(AR) + x * np.cos(AR)
+            z = xz
+        elif axis == 'z':
+            xr = x * np.cos(AR) + y * np.sin(AR)
+            y  = -x * np.sin(AR) + y * np.cos(AR)
+            x = xr
     x = x + xc
     y = y + yc
     z = z + zc
