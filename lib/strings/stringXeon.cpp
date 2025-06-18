@@ -524,7 +524,8 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		double	   ratio = ((double) rLx)/((double) Lx);
 		double	   datio = ((double) rLz)/((double) Lz);
 		const size_t rSf = rLx*rLx;
-
+		const size_t Ng = Vo/XC/YC;
+		
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
@@ -618,7 +619,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				// Tienes los 7 puntos que definen las 3 plaquetas
 
 				//size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
-				size_t nIdx = (((size_t)(((double) (X[0]/step))*ratio)) + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-1))*datio))*rSf);
+				size_t nIdx = (((size_t)(((double) (X[0]/step))*ratio)) + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-Ng))*datio))*rSf);
 
 				// Plaqueta XY
 
@@ -801,6 +802,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		double	   ratio = ((double) rLx)/((double) Lx);
 		double	   datio = ((double) rLz)/((double) Lz);
 		const size_t rSf = rLx*rLx;
+		const size_t Ng = Vo/XC/YC;
 
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
@@ -907,7 +909,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 				stringHandS (mPy, mel, hand);
 
 				//size_t nIdx = (X[0]/step + X[1]*Lx + (X[2]-1)*Sf);
-				size_t nIdx = (((size_t)(((double) (X[0]/step))*ratio)) + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-1))*datio))*rSf);
+				size_t nIdx = (((size_t)(((double) (X[0]/step))*ratio)) + ((size_t)(((double) X[1])*ratio))*rLx + ((size_t)(((double) (X[2]-Ng))*datio))*rSf);
 
 				#pragma unroll
 				for (int ih=0; ih<step; ih++)
