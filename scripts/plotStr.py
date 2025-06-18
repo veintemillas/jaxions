@@ -124,13 +124,13 @@ class	Plot3D():
 				if "/string/data" in fileHdf5:
 					if mask == False:
 						if noWalls == False:
-							strData  = fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz)
+							strData  = np.reshape(fileHdf5['string']['data'],(Lx,Ly,Lz))
 							print(meas + ' + walls')
 						else:
-							strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 63)
+							strData  = np.bitwise_and(fileHdf5['string']['data'].reshape(Lx,Ly,Lz), 63)
 							print(meas + ' nowalls')
 					else:
-						strData  = np.bitwise_and(fileHdf5['string']['data'].value.reshape(Lx,Ly,Lz), 128)
+						strData  = np.bitwise_and(fileHdf5['string']['data'].reshape(Lx,Ly,Lz), 128)
 						print(meas + ' + MASK')
 
 					z, y, x = strData.nonzero()
