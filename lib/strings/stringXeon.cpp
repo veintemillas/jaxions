@@ -525,7 +525,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 		double	   datio = ((double) rLz)/((double) Lz);
 		const size_t rSf = rLx*rLx;
 		const size_t Ng = Vo/XC/YC;
-		
+
 		#pragma omp parallel default(shared) firstprivate(hand,wHand) reduction(+:nStrings,nChiral,nWalls)
 		{
 			_MData_ mel, mPx, mPy, mPz, mXY, mYZ, mZX;
@@ -1044,7 +1044,7 @@ StringData	stringKernelXeon(const void * __restrict__ m_, const size_t Lx, const
 
 StringData	stringCpu	(Scalar *field)
 {
-	const size_t S = field->Surf();
+	const size_t S = field->Surf()*field->getNg();
 	const size_t V = field->Size();
 	field->exchangeGhosts(FIELD_M);
 	field->setSD(SD_MAP);
