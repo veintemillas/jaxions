@@ -429,7 +429,7 @@ writePMapHdf5s (axiona, LAB);
 		{
 
 			if ( !(measa & MEAS_STRINGCOO)){
-					LogMsg(VERB_NORMAL, "[Meas %d] string (measa %d)",indexa,measa);
+					LogMsg(VERB_NORMAL, "[Meas %d] string (measa %d, mask %d)",indexa,measa,mask);
 					MeasDataOut.str = strings(axiona);
 					MeasDataOut.str = stringlength(axiona,MeasDataOut.str,strmeas);
 
