@@ -48,7 +48,7 @@ const std::complex<float> If(0.,1.);
 	// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS Ly=1
 	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates");
 	n1 = nLx;
-	n2 = nLx;
+	n2 = nLx*nLx;
 	n3 = nLx*nLx*nLz;
 	Lz = nLz;
 	Tz = Lz*nSp;
