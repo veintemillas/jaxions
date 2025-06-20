@@ -425,7 +425,7 @@ writePMapHdf5s (axiona, LAB);
 
 
 	if(axiona->Field() == FIELD_SAXION){
-		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF) )
+		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF)) )
 		{
 
 			if ( !(measa & MEAS_STRINGCOO)){
