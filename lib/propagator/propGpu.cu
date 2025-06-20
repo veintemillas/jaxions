@@ -292,24 +292,34 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 	mel = complex<Float>(0,0);
 	tmp = m[idx];
 
-// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS
-	for (size_t nv=1; nv <= NN; nv++)
-	{
-		if (X[0] + nv >= Lx)
-			idxPx = idx; 				// this cancels this term, here we would need absorbing boundary conditions ...
-		else
-			idxPx = idx + nv;
+	// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS
+		for (size_t nv=1; nv <= NN; nv++)
+		{
+			if (X[0] + nv >= Lx)
+				malPx = m[idx]; 				// this cancels this term, here we would need absorbing boundary conditions ...
+			else
+				malPx = m[idx + nv];
 
-		if (X[0] < nv)
-			idxMx = idx + (nv-2*X[0]); // symmetric boundary conditions around x=0
-		else
-			idxMx = idx - nv;
+			if (X[0] < nv)
+				malMx = m[idx + (nv-2*X[0])]; // symmetric boundary conditions around x=0
+			else
+				malMx = m[idx - nv];
 
-		if (X[0]==0)
-			mel += ((m[idxMx] + m[idxPx])*((Float) 6.) + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1] ;
-		else
-			mel += (m[idxMx] + m[idxPx] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 4.)*tmp)*static_cast<Float*>(ood2)[nv-1] + (m[idxPx] - m[idxMx])/X[0]*static_cast<Float*>(ood2p)[nv-1];
-	}
+			if (X[1] + nv >= Lx)
+				malPy = m[idx] ; // absorbind boundary
+			else
+				malPy = m[idx + nv*Lx];
+
+			if (X[1] < nv)
+				malMy = conj(m[idx + (nv-2*X[1])]); // antisymmetric BC at y=0
+			else
+				idxMy = m[idx - nv*Lx];
+
+			if (X[0]==0)
+				mel += (malPx+malMx+malPx+malMx + malPy+malMy - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1] ;
+			else
+				mel += (malPx+malMx+malPy+malMy - ((Float) 4.)*tmp)*static_cast<Float*>(ood2)[nv-1] + (malPx - malMx)/((Float) X[0])*static_cast<Float*>(ood2p)[nv-1];
+		}
 
 
 	Float pot = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
@@ -398,7 +408,7 @@ __global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict
 
 template<typename Float, const VqcdType VQcd>
 __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac,
-			      const Float eps, const Float dp1, const Float dp2, const Float dzc, void  *ood2,void  *ood2p, const Float LL, const uint Lx, const uint Sf, const uint Vo,
+			      const Float eps, const Float dp1, const Float dp2, const Float dzc, void  *ood2, void  *ood2p, const Float LL, const uint Lx, const uint Sf, const uint Vo,
 			      const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -407,7 +417,7 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 	if	(idx >= Vf)
 		return;
 
-	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2,ood2p, LL, Lx, Sf, NN);
+	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, ood2p, LL, Lx, Sf, NN);
 }
 
 void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision,
@@ -461,11 +471,17 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 
 	const uint NN    = ppar.Ng;
 	void *ood2;
-	LogMsg(VERB_PARANOID,"[pGu] allocate %d bits for NN = %d",NN*sizeof(double), NN);
-  cudaMalloc(&ood2, NN*sizeof(double));
+	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
+	cudaMalloc(&ood2, NN*sizeof(double));
+	void *ood2p;
+	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
+	cudaMalloc(&ood2p, NN*sizeof(double));
+
 	for (int i =0; i<NN; i++) {
 		LogMsg(VERB_PARANOID,"PC[%d] %f", i, (ppar.PC)[i]);
+		LogMsg(VERB_PARANOID,"PCp[%d] %f", i, (ppar.PCp)[i]);
 	}
+
 
 	if (precision == FIELD_DOUBLE)
 	{

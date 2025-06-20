@@ -123,7 +123,7 @@
 	#define UVK_GPU(preci,X)  \
 	case	V_##X: \
 	updateVKernel<preci, V_##X><<<gridSize,blockSize,0,stream>>> ((const complex<preci> *) m, (complex<preci> *) v, \
-									zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, (preci) LL, Lx, Sf, Vo, Vf, NN); \
+									zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, ood2p, (preci) LL, Lx, Sf, Vo, Vf, NN); \
 	break;
 
 	#define UCAZ3_GPU(preci,qcd,pq)  \
