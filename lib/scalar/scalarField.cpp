@@ -460,15 +460,19 @@ const std::complex<float> If(0.,1.);
 
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
-//2Dcylindrical
-if (1<0)
 	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
 		prof.start();
+		//2Dcylindrical
+		if (1<0)
 		AxionFFT::initFFT(prec);
 
 		/* For spectra, reducer, genConf */
+		//2Dcylindrical
+		if (1<0)
 		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
+		//2Dcylindrical
+		if (1<0)
 		if (fieldType == FIELD_SAXION) {
 			if (!lowmem) {
 				AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
