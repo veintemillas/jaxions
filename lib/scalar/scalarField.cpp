@@ -45,13 +45,15 @@ const std::complex<float> If(0.,1.);
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
 		: nSplit(nSp), Ng(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
+	// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS Ly=1
+	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates");
 	n1 = nLx;
-	n2 = nLx*nLx;
-	n3 = nLx*nLx*nLz;
+	n2 = nLx;
+	n3 = nLx*nLz;
 	Lz = nLz;
 	Tz = Lz*nSp;
 	Ez = nLz + 2*Ngg;
-	v3 = nLx*nLx*(nLz + 2*Ngg);
+	v3 = nLx*(nLz + 2*Ngg);
 
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -1512,9 +1514,11 @@ double  Scalar::Saskia  (const double ct)
 	return  0.;
 }
 
+
 void	Scalar::setCO(size_t newN)
 {
 	co.resize(newN); co.assign(newN, 0.);
+	cop.resize(newN); cop.assign(newN, 0.);
 
 	switch(newN)
 	{
@@ -1524,18 +1528,23 @@ void	Scalar::setCO(size_t newN)
 		case 1:
 		default:
 			co = {1.}  ;
+			cop = {1./2.}  ;
 			break;
 		case 2:
 			co = {4./3., -1./12.};
+			cop = {2./3., -1./12.};
 			break;
 		case 3:
 			co = {1.5, -3./20.0,1./90.};
+			cop = {3./4., -3./20.0,1./60.}; //FIXME
 			break;
 		case 4:
 			co = {1.6, -0.2, 8./315., -1./560.};
+			cop = {0.8, -0.2, 4./105., -2./560.};//FIXME
 			break;
 		case 5:
 			co = {5./3., -5./21., 5./126., -5./1008., 1./3150.};
+			cop = {5./6., -5./21., 5./84., -10./1008., 5./6300.};//FIXME
 			break;
 	}
 }

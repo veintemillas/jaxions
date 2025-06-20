@@ -916,6 +916,7 @@
 			double   R;
 			double   ct;
 			double   *PC;
+			double   *PCp;
 			double   ood2a;
 			double   massA;
 			double   massA2;

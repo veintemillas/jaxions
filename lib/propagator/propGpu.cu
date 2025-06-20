@@ -15,11 +15,11 @@ using namespace gpuCu;
 using namespace indexHelper;
 
 template<typename Float, const VqcdType VQcd>
-static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, void  *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
+static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, void  *ood2, void  *ood2p,const Float LL, const uint Lx, const uint Sf, const uint NN)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
-	complex<Float> mel, a, tmp, zN;
+	complex<Float> mel, a, tmp, zN, malPx, malMx,malPy, malMy;
 
 	switch	(VQcd & V_QCD) {
 			case	V_QCD2:
@@ -38,29 +38,33 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 	mel = complex<Float>(0,0);
 	tmp = m[idx];
 
+// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS
 	for (size_t nv=1; nv <= NN; nv++)
 	{
 		if (X[0] + nv >= Lx)
-			idxPx = idx + nv - Lx;
+			malPx = m[idx]; 				// this cancels this term, here we would need absorbing boundary conditions ...
 		else
-			idxPx = idx + nv;
+			malPx = m[idx + nv];
 
 		if (X[0] < nv)
-			idxMx = idx + Lx - nv;
+			malMx = m[idx + (nv-2*X[0])]; // symmetric boundary conditions around x=0
 		else
-			idxMx = idx - nv;
+			malMx = m[idx - nv];
 
 		if (X[1] + nv >= Lx)
-			idxPy = idx + nv*Lx - Sf;
+			malPy = m[idx] ; // absorbind boundary
 		else
-			idxPy = idx + nv*Lx;
+			malPy = m[idx + nv*Lx];
 
 		if (X[1] < nv)
-			idxMy = idx + Sf - nv*Lx;
+			malMy = conj(m[idx + (nv-2*X[1])]); // antisymmetric BC at y=0
 		else
-			idxMy = idx - nv*Lx;
+			idxMy = m[idx - nv*Lx];
 
-		mel += (m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
+		if (X[0]==0)
+			mel += (malPx+malMx+malPx+malMx + malPy+malMy - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1] ;
+		else
+			mel += (malPx+malMx+malPy+malMy - ((Float) 4.)*tmp)*static_cast<Float*>(ood2)[nv-1] + (malPx - malMx)/((Float) X[0])*static_cast<Float*>(ood2p)[nv-1];
 	}
 
 	Float pot = tmp.real()*tmp.real() + tmp.imag()*tmp.imag();
@@ -140,7 +144,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 
 template<typename Float, const VqcdType VQcd>
 __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4,
-				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, void *ood2, const Float LL,
+				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, void *ood2, void *ood2p, const Float LL,
 				const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -149,7 +153,7 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 	if	(idx >= Vf)
 		return;
 
-	propagateCoreGpu<Float, VQcd>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Sf, NN);
+	propagateCoreGpu<Float, VQcd>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, ood2p, LL, Lx, Sf, NN);
 }
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
@@ -175,9 +179,13 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	void *ood2;
 	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
 	cudaMalloc(&ood2, NN*sizeof(double));
+	void *ood2p;
+	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
+	cudaMalloc(&ood2p, NN*sizeof(double));
 
 	for (int i =0; i<NN; i++) {
 		LogMsg(VERB_PARANOID,"PC[%d] %f", i, (ppar.PC)[i]);
+		LogMsg(VERB_PARANOID,"PCp[%d] %f", i, (ppar.PCp)[i]);
 	}
 
 	if (precision == FIELD_DOUBLE)
@@ -200,6 +208,10 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		for (int i =0; i<NN; i++)
 	        	aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
+
+		for (int i =0; i<NN; i++)
+	        	aux[i] = (double) ((ppar.PCp)[i]*ppar.ood2a);
+		cudaMemcpy(ood2p,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -227,6 +239,9 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
+		for (int i =0; i<NN; i++)
+			aux[i] = (float) ((ppar.PCp)[i]*ppar.ood2a);
+		cudaMemcpy(ood2p,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -238,6 +253,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	}
 	//cudaDeviceSynchronize();
 	cudaFree(ood2);
+	cudaFree(ood2p);
 	CudaCheckError();
 }
 
@@ -253,7 +269,7 @@ static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, cFloat * _
 template<typename Float, const VqcdType VQcd>
 static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2,
 						       const Float z4, const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc,
-						       void *ood2, const Float LL, const uint Lx, const uint Sf, const uint NN)
+						       void *ood2, void *ood2p, const Float LL, const uint Lx, const uint Sf, const uint NN)
 {
 	uint X[3], idxMx, idxPx, idxMy, idxPy;
 
@@ -276,29 +292,23 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 	mel = complex<Float>(0,0);
 	tmp = m[idx];
 
+// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS
 	for (size_t nv=1; nv <= NN; nv++)
 	{
 		if (X[0] + nv >= Lx)
-			idxPx = idx + nv - Lx;
+			idxPx = idx; 				// this cancels this term, here we would need absorbing boundary conditions ...
 		else
 			idxPx = idx + nv;
 
 		if (X[0] < nv)
-			idxMx = idx + Lx - nv;
+			idxMx = idx + (nv-2*X[0]); // symmetric boundary conditions around x=0
 		else
 			idxMx = idx - nv;
 
-		if (X[1] + nv >= Lx)
-			idxPy = idx + nv*Lx - Sf;
+		if (X[0]==0)
+			mel += ((m[idxMx] + m[idxPx])*((Float) 6.) + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1] ;
 		else
-			idxPy = idx + nv*Lx;
-
-		if (X[1] < nv)
-			idxMy = idx + Sf - nv*Lx;
-		else
-			idxMy = idx - nv*Lx;
-
-		mel += (m[idxMx] + m[idxPx] + m[idxPy] + m[idxMy] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
+			mel += (m[idxMx] + m[idxPx] + m[idx+nv*Sf] + m[idx-nv*Sf] - ((Float) 4.)*tmp)*static_cast<Float*>(ood2)[nv-1] + (m[idxPx] - m[idxMx])/X[0]*static_cast<Float*>(ood2p)[nv-1];
 	}
 
 
@@ -388,7 +398,7 @@ __global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict
 
 template<typename Float, const VqcdType VQcd>
 __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac,
-			      const Float eps, const Float dp1, const Float dp2, const Float dzc, void  *ood2, const Float LL, const uint Lx, const uint Sf, const uint Vo,
+			      const Float eps, const Float dp1, const Float dp2, const Float dzc, void  *ood2,void  *ood2p, const Float LL, const uint Lx, const uint Sf, const uint Vo,
 			      const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -397,7 +407,7 @@ __global__ void	updateVKernel(const complex<Float> * __restrict__ m, complex<Flo
 	if	(idx >= Vf)
 		return;
 
-	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2, LL, Lx, Sf, NN);
+	updateVCoreGpu<Float, VQcd>(idx, m, v, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, ood2,ood2p, LL, Lx, Sf, NN);
 }
 
 void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision,
@@ -476,6 +486,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		for (int i =0; i<NN; i++)
 	        	aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
+		for (int i =0; i<NN; i++)
+	        	aux[i] = (double) ((ppar.PCp)[i]*ppar.ood2a);
+		cudaMemcpy(ood2p,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -502,6 +515,9 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
+		for (int i =0; i<NN; i++)
+			aux[i] = (float) ((ppar.PCp)[i]*ppar.ood2a);
+		cudaMemcpy(ood2p,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -512,5 +528,6 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 		}
 	}
 	cudaFree(ood2);
+	cudaFree(ood2p);
 	CudaCheckError();
 }

@@ -55,6 +55,7 @@
 
 		// propagation constants //FIX ME place in propClass?
 		std::vector<double>	co;
+		std::vector<double>	cop;
 
 		void	*m,   *v,   *m2,   *str;			// Cpu data
 		void	*rho, *vho, *g;								// Faxion data
@@ -251,6 +252,7 @@
 		size_t  getNg() {return Ng;}
 		void	  setCO	(size_t newN);
 		double  *getCO() {return &(co[0]); };
+		double  *getCOp() {return &(cop[0]); };
 
 		void  setDev(DeviceType newdev) { device = newdev; }
 		/*	Eliminar	*/
