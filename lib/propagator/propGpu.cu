@@ -19,7 +19,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
-	complex<Float> mel, a, tmp, zN, malPx, malMx,malPy, malMy;
+	complex<Float> mel, a, tmp, zN, malPx, malMx, malPy, malMy;
 
 	switch	(VQcd & V_QCD) {
 			case	V_QCD2:
@@ -273,7 +273,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 {
 	uint X[3], idxMx, idxPx, idxMy, idxPy;
 
-	complex<Float> mel, a, tmp, zN;
+	complex<Float> mel, a, tmp, zN, malPx, malMx, malPy, malMy;
 
 	switch	(VQcd & V_QCD) {
 			case	V_QCD2:
