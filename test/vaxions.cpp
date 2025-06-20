@@ -207,7 +207,8 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 
 
-	ninfa.measdata |= MEAS_NNSPEC ;
+//2Dcylindrical
+	// ninfa.measdata |= MEAS_NNSPEC ;
 	if (!restart_flag && (fIndex == -1)){
 		index = fIndex2;
 		LogOut("First measurement file %d \n",index);

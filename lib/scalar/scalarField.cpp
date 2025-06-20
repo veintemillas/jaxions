@@ -460,6 +460,7 @@ const std::complex<float> If(0.,1.);
 
 	/*	WKB fields won't trigger configuration read or FFT initialization	*/
 
+//2Dcylindrical
 if (1<0)
 	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
 		prof.start();
