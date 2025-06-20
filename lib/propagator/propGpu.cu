@@ -59,7 +59,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 		if (X[1] < nv)
 			malMy = conj(m[idx + (nv-2*X[1])]); // antisymmetric BC at y=0
 		else
-			idxMy = m[idx - nv*Lx];
+			malMy = m[idx - nv*Lx];
 
 		if (X[0]==0)
 			mel += (malPx+malMx+malPx+malMx + malPy+malMy - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1] ;
@@ -313,7 +313,7 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 			if (X[1] < nv)
 				malMy = conj(m[idx + (nv-2*X[1])]); // antisymmetric BC at y=0
 			else
-				idxMy = m[idx - nv*Lx];
+				malMy = m[idx - nv*Lx];
 
 			if (X[0]==0)
 				mel += (malPx+malMx+malPx+malMx + malPy+malMy - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1] ;
