@@ -3711,7 +3711,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 
 	/*	Create a group for map data if it doesn't exist	*/
 	auto status = H5Lexists (meas_id, "/map", H5P_DEFAULT);
-LogMsg (VERB_PARANOID, "[wmd0] ");LogFlush();
+
 	if (!status)
 		group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
@@ -3724,7 +3724,7 @@ LogMsg (VERB_PARANOID, "[wmd0] ");LogFlush();
 			return;
 		}
 	}
-LogMsg (VERB_PARANOID, "[wmd1] ");LogFlush();
+
 	/*	Create space for writing the raw data to disk with chunked access	*/
 	if ((mapSpace = H5Screate_simple(1, &slb, maxD)) < 0)	// Whole data
 	{
@@ -3732,11 +3732,11 @@ LogMsg (VERB_PARANOID, "[wmd1] ");LogFlush();
 		prof.stop();
 		exit (1);
 	}
-LogMsg (VERB_PARANOID, "[wmd2] ");LogFlush();
+
 	if (myRank != prank) {
 		H5Sselect_none(mapSpace);
 	}
-LogMsg (VERB_PARANOID, "[wmd3] ");LogFlush();
+
 	/*	Set chunked access and dynamical compression	*/
 	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
 	{
@@ -3744,21 +3744,21 @@ LogMsg (VERB_PARANOID, "[wmd3] ");LogFlush();
 		prof.stop();
 		exit (1);
 	}
-LogMsg (VERB_PARANOID, "[wmd4] ");LogFlush();
+
 	if (H5Pset_chunk (chunk_id, 1, &lSz) < 0) //slb) < 0)
 	{
 		LogError ("Fatal error H5Pset_chunk");
 		prof.stop();
 		exit (1);
 	}
-LogMsg (VERB_PARANOID, "[wmd5] ");LogFlush();
+
 //	if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression, hoping that the map is a bunch of zeroes
 //	{
 //		LogError ("Fatal error H5Pset_deflate");
 //		prof.stop();
 //		exit (1);
 //	}
-LogMsg (VERB_PARANOID, "[wmd6] ");LogFlush();
+
 	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
 	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
 	{
@@ -3766,7 +3766,7 @@ LogMsg (VERB_PARANOID, "[wmd6] ");LogFlush();
 		prof.stop();
 		exit (1);
 	}
-LogMsg (VERB_PARANOID, "[wmd7] ");LogFlush();
+
 	/*	Create a dataset for map data	*/
 	mSet_id = H5Dcreate (meas_id, mCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 	if (axion->Field() != FIELD_NAXION)
@@ -3778,19 +3778,19 @@ LogMsg (VERB_PARANOID, "[wmd7] ");LogFlush();
 		prof.stop();
 		exit (0);
 	}
-LogMsg (VERB_PARANOID, "[wmd8] ");LogFlush();
+
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 	mSpace = H5Dget_space (mSet_id);
 	if (axion->Field() != FIELD_NAXION)
 		vSpace = H5Dget_space (vSet_id);
-LogMsg (VERB_PARANOID, "[wmd9] ");LogFlush();
+
 	if ((mSpace < 0) || (vSpace < 0))
 	{
 		LogError ("Fatal error");
 		prof.stop();
 		exit (0);
 	}
-LogMsg (VERB_PARANOID, "[wmd10] ");LogFlush();
+
 	hsize_t offset = 0;
 
 	if (myRank == prank) {
@@ -3799,8 +3799,7 @@ LogMsg (VERB_PARANOID, "[wmd10] ");LogFlush();
 		H5Sselect_none(mSpace);
 		//dataM = NULL;
 	}
-LogMsg (VERB_PARANOID, "[wmd11] ");LogFlush();
-LogMsg (VERB_PARANOID, "Beggining to print ");
+
 
 	/*	Write raw data	*/
 	if (H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM) < 0)
