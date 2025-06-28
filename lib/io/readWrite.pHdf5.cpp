@@ -1327,14 +1327,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		if ( (sizeN == Nx_read) && (sizeZ == Nz)){
 			LogMsg(VERB_NORMAL,"[rc] Reading exact size %dx%dx%d(x%d), size requested %dx%dx%d(x%d)",Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
 		}
-		else if ( (sizeN > Nx_read) && (sizeZ > Nz) )
+		else if ( (sizeN > Nx_read) || (sizeZ > Nz) )
 		{
 			LogMsg(VERB_NORMAL,"[rc] We will be expanding from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
 				Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
 				Nxcreate = sizeN;
 				Nzcreate = sizeZ;
 		}
-		else if ( (sizeN < Nx_read) && (sizeZ < Nz) )
+		else if ( (sizeN < Nx_read) || (sizeZ < Nz) )
 		{
 			LogMsg(VERB_NORMAL,"[rc] We will be reducing from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
 			Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
