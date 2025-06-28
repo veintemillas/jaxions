@@ -12,6 +12,9 @@ extern int    dump;
 extern int    fIndex;
 extern int    fIndex2;
 
+//2Dcylindrical
+extern bool    switchoffcyll;
+
 //extern double nQcd;
 //extern double sizeL;
 extern double zInit;

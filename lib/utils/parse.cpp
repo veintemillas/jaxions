@@ -20,6 +20,9 @@ int    nSteps = 5;
 int    dump   = 100;
 double nQcd   = 7.0;
 //JAVIER
+//2Dcylindrical
+extern bool    switchoffcyll=false;
+
 int    Nng    = -1 ;
 double indi3  = 1.0;
 double msa    = 1.5;
@@ -758,6 +761,12 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--debug"))
 		{
 			debug = true;
+			PARSE1;
+		}
+
+    if (!strcmp(argv[i], "--nocyl"))
+		{
+			switchoffcyll = true;
 			PARSE1;
 		}
 

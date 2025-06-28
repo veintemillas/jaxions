@@ -1553,6 +1553,11 @@ void	Scalar::setCO(size_t newN)
 			cop = {5./6., -5./21., 5./84., -10./1008., 5./6300.};//FIXME
 			break;
 	}
+	if (switchoffcyll){
+		cop.assign(newN, 0.);
+		LogOut("Switching off cylindrical term\n");
+		LogMsg(VERB_NORMAL,"Switching off cylindrical term\n");
+	}
 }
 
 /*	Follow all the functions written by Javier	*/
