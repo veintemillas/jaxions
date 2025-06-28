@@ -47,17 +47,17 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 			malPx = m[idx + nv];
 
 		if (X[0] < nv)
-			malMx = m[idx + (nv-2*X[0])]; // symmetric boundary conditions around x=0
+			malMx = m[idx + (nv-X[0])]; // symmetric boundary conditions around x=0
 		else
 			malMx = m[idx - nv];
 
 		if (X[1] + nv >= Lx)
-			malPy = m[idx] ; // absorbind boundary
+			malPy = m[idx] ; // TODO absorbing boundary!
 		else
 			malPy = m[idx + nv*Lx];
 
 		if (X[1] < nv)
-			malMy = conj(m[idx + Lx*(nv-2*X[1])]); // antisymmetric BC at y=0
+			malMy = conj(m[idx + Lx*(nv-X[1])]); // antisymmetric BC at y=0
 		else
 			malMy = m[idx - nv*Lx];
 
@@ -301,12 +301,12 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 				malPx = m[idx + nv];
 
 			if (X[0] < nv)
-				malMx = m[idx + (nv-2*X[0])]; // symmetric boundary conditions around x=0
+				malMx = m[idx + (nv-X[0])]; // symmetric boundary conditions around x=0
 			else
 				malMx = m[idx - nv];
 
 			if (X[1] + nv >= Lx)
-				malPy = m[idx] ; // absorbind boundary
+				malPy = m[idx] ; // TODO absorbing boundary!
 			else
 				malPy = m[idx + nv*Lx];
 
