@@ -3800,6 +3800,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		//dataM = NULL;
 	}
 
+LogMsg (VERB_PARANOID, "Beggining to print ")
+
 	/*	Write raw data	*/
 	if (H5Dwrite (mSet_id, dataType, mapSpace, mSpace, H5P_DEFAULT, dataM) < 0)
 	{
