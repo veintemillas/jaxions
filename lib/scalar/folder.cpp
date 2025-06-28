@@ -139,7 +139,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 				mg2[dIdx]	= v[oIdx];
 			}
 
-	LogMsg (VERB_HIGH, "Slice unfolded");
+	LogMsg (VERB_HIGH, "Slice unfolded");LogFlush();
 
 	return;
 }
