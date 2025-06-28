@@ -1514,14 +1514,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		/* Reduce or expand if required */
 
-		if ((sizeN > Nx_read) && (sizeZ > Nz))
+		if ((sizeN > Nx_read) || (sizeZ > Nz))
 		{
 				LogMsg(VERB_NORMAL, "[rC] Expansion from XY %d Z %d to XY %d Z %d",Nx_read,Nz*zGrid, sizeN,sizeZ*zGrid);
 				(*axion)->setReduced	(true, Nx_read, Nz);
 				expandField(*axion);
 				(*axion)->setReduced	(false, 1, 1); // 2,3 entries have no effect
 		}
-		else if ((sizeN < Nx_read) && (sizeZ < Nz))
+		else if ((sizeN < Nx_read) || (sizeZ < Nz))
 		{
 			LogMsg(VERB_NORMAL, "[rc] Reduction by a factor %d in x and %d in z",Nx_read/sizeN,Nz/sizeZ);
 			LogOut("0\n");
