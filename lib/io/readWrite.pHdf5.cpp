@@ -3676,7 +3676,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 	strcpy(vCh, "/chunk/v");};
 
 
-	LogMsg (VERB_NORMAL, "Writing 2D maps (slice %d) (%d x %d)to Hdf5 measurement file",slicenumbertoprint,LLx,LLy);LogFlush();
+	LogMsg (VERB_NORMAL, "Writing 2D maps (slice %d) (%d x %d) to Hdf5 measurement file into %s %s ",slicenumbertoprint,LLx,LLy,mCh,vCh);LogFlush();
 	LogMsg (VERB_NORMAL, "");LogFlush();
 
 	if (header == false || opened == false)
@@ -3774,7 +3774,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 	if (axion->Field() != FIELD_NAXION)
 		vSet_id = H5Dcreate (meas_id, vCh, dataType, mapSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
 
-	if (mSet_id < 0 || vSet_id < 0)
+	if ( (mSet_id < 0) || (vSet_id < 0))
 	{
 		LogError ("Fatal error creating datasets");
 		prof.stop();
@@ -3851,7 +3851,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 
 void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 {
-	writeMapHdf5s	(axion, slicenumbertoprint,axion->Length());
+	writeMapHdf5s	(axion, slicenumbertoprint,-1);
 }
 
 void	writeMapHdf5	(Scalar *axion)
