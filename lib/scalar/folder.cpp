@@ -118,6 +118,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying %d slice to ghost zone 1",sZ);LogFlush();
 		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
 		memcpy (mg2, &v[n2*sZ], sizeof(cFloat)*n2);
+		LogMsg (VERB_HIGH, "copying Done");LogFlush();
 		return;
 	}
 

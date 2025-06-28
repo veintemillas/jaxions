@@ -3668,7 +3668,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	char mCh[16] = "/map/m";
 	char vCh[16] = "/map/v";
 
-	LogMsg (VERB_NORMAL, "Writing 2D maps to Hdf5 measurement file");LogFlush();
+	LogMsg (VERB_NORMAL, "Writing 2D maps (slice %d) to Hdf5 measurement file",slicenumbertoprint);LogFlush();
 	LogMsg (VERB_NORMAL, "");LogFlush();
 
 	if (header == false || opened == false)
