@@ -3671,6 +3671,10 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 	char *dataV  = static_cast<char *>(axion->mBackGhost());
 	char mCh[16] = "/map/m";
 	char vCh[16] = "/map/v";
+	if (iLy>0) {
+	strcpy(mCh, "/chunk/m");
+	strcpy(vCh, "/chunk/v");};
+
 
 	LogMsg (VERB_NORMAL, "Writing 2D maps (slice %d) (%d x %d)to Hdf5 measurement file",slicenumbertoprint,LLx,LLy);LogFlush();
 	LogMsg (VERB_NORMAL, "");LogFlush();
