@@ -1556,7 +1556,7 @@ void	Scalar::setCO(size_t newN)
 	if (switchoffcyll){
 		cop.assign(newN, 0.);
 		LogOut("Switching off cylindrical term\n");
-		LogMsg(VERB_NORMAL,"Switching off cylindrical term\n");
+		LogMsg(VERB_NORMAL,"Switching off cylindrical term ... %.2f% \n",cop[0]);
 	}
 }
 
