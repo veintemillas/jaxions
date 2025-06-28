@@ -205,8 +205,11 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	if( info.maty & MAPT_XYMV)
 		writeMapHdf5s  (axiona,sliceprint);
+	//2Dcylindrical this doesn't make much sense so I change it to a X line and use the same flag
+	// if( info.maty & MAPT_YZMV)
+	// 	writeMapHdf5s2 (axiona,sliceprint);
 	if( info.maty & MAPT_YZMV)
-		writeMapHdf5s2 (axiona,sliceprint);
+		writeMapHdf5s3 (axiona,sliceprint);
 
 	//	--------------------------------------------------------------------------
 	//

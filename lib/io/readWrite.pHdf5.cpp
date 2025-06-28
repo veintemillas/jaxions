@@ -3653,7 +3653,7 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 
 
 
-void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
+void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 {
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -3661,14 +3661,18 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	hsize_t slb  = axion->Surf();
-	hsize_t lSz  = axion->Length();
+	hsize_t LLx  = axion->Length();
+	hsize_t LLy  = axion->Length();
+	if (iLy > 0)
+		LLy = iLy;
+	hsize_t slb  = LLx*LLy; //axion->Surf();
+	hsize_t lSz  = axion->Length(); //FIXME!
 	char *dataM  = static_cast<char *>(axion->mFrontGhost());
 	char *dataV  = static_cast<char *>(axion->mBackGhost());
 	char mCh[16] = "/map/m";
 	char vCh[16] = "/map/v";
 
-	LogMsg (VERB_NORMAL, "Writing 2D maps (slice %d) to Hdf5 measurement file",slicenumbertoprint);LogFlush();
+	LogMsg (VERB_NORMAL, "Writing 2D maps (slice %d) (%d x %d)to Hdf5 measurement file",slicenumbertoprint,LLx,LLy);LogFlush();
 	LogMsg (VERB_NORMAL, "");LogFlush();
 
 	if (header == false || opened == false)
@@ -3694,29 +3698,30 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	}
 
 	/*	Unfold field before writing configuration	*/
-	//if (axion->Folded())
-	//{
 		int slicenumber = slicenumbertoprint % axion->Depth() ;
 		/* select printing rank */
 		int prank = slicenumbertoprint/axion->Depth();
-							// if (slicenumbertoprint > axion->Depth())
-							// {
-							// 	LogMsg (VERB_NORMAL, "Sliceprintnumberchanged to 0");
-							// 	slicenumber = 0;
-							// }
+
 		Folder	munge(axion);
 		LogMsg (VERB_NORMAL, "If configuration folded, unfold 2D slice");LogFlush();
 		munge(UNFOLD_SLICE, slicenumber);
-	//}
+
 
 	/*	Create a group for map data if it doesn't exist	*/
-	auto status = H5Lexists (meas_id, "/map", H5P_DEFAULT);
+	char baseco[256];
+	if (iLy<0)
+		sprintf(baseco, "/map");
+	else
+		sprintf(baseco, "/chunk");
+
+	const char *gname = baseco;
+	auto status = H5Lexists (meas_id, gname, H5P_DEFAULT);
 
 	if (!status)
-		group_id = H5Gcreate2(meas_id, "/map", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		group_id = H5Gcreate2(meas_id, gname, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
 		if (status > 0) {
-			group_id = H5Gopen2(meas_id, "/map", H5P_DEFAULT);		// Group exists
+			group_id = H5Gopen2(meas_id, gname, H5P_DEFAULT);		// Group exists
 			LogMsg (VERB_HIGH, "Group /map exists");
 		} else {
 			LogError ("Error: can't check whether group /map exists");
@@ -3751,13 +3756,6 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		prof.stop();
 		exit (1);
 	}
-
-//	if (H5Pset_deflate (chunk_id, 9) < 0)	// Maximum compression, hoping that the map is a bunch of zeroes
-//	{
-//		LogError ("Fatal error H5Pset_deflate");
-//		prof.stop();
-//		exit (1);
-//	}
 
 	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
 	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
@@ -3847,13 +3845,20 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 
 
 
+void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
+{
+	writeMapHdf5s	(axion, slicenumbertoprint,axion->Length());
+}
 
 void	writeMapHdf5	(Scalar *axion)
 {
 	writeMapHdf5s	(axion, 0);
 }
 
-
+void	writeMapHdf5s3	(Scalar *axion, int slicenumbertoprint)
+{
+	writeMapHdf5s	(axion, slicenumbertoprint,1);
+}
 
 
 

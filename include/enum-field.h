@@ -754,6 +754,10 @@
 			MAPT_YZV     = 32,
 			MAPT_YZMV    = 48,
 
+			MAPT_XZM     = 64,
+			MAPT_XZV     = 128,
+			MAPT_XZMV    = 192,
+
 			MAPT_XYPE    = 1024,
 			MAPT_XYPE2   = 2048,
 
