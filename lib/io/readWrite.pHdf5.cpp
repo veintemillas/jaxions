@@ -3708,13 +3708,13 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 
 
 	/*	Create a group for map data if it doesn't exist	*/
-	char baseco[256];
-	if (iLy<0)
-		sprintf(baseco, "/map");
-	else
-		sprintf(baseco, "/chunk");
 
-	const char *gname = baseco;
+	const char *gname;
+	if (iLy<0)
+		gname = "/map";
+	else
+		gname = "/chunk";
+
 	auto status = H5Lexists (meas_id, gname, H5P_DEFAULT);
 
 	if (!status)
