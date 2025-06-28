@@ -1513,7 +1513,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			// mend?
 
 		/* Reduce or expand if required */
-
+LogMsg(VERB_NORMAL, "[rC] sizeN %d Nx_read %d sizeZ %d Nz %d",sizeN,Nx_read,sizeZ,Nz);
 		if ((sizeN > Nx_read) || (sizeZ > Nz))
 		{
 				LogMsg(VERB_NORMAL, "[rC] Expansion from XY %d Z %d to XY %d Z %d",Nx_read,Nz*zGrid, sizeN,sizeZ*zGrid);
