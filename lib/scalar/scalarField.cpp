@@ -53,7 +53,7 @@ const std::complex<float> If(0.,1.);
 	Lz = nLz;
 	Tz = Lz*nSp;
 	Ez = nLz + 2*Ngg;
-	v3 = nLx*(nLz + 2*Ngg);
+	v3 = nLx*nLx*(nLz + 2*Ngg);
 
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
