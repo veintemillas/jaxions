@@ -57,7 +57,7 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 			malPy = m[idx + nv*Lx];
 
 		if (X[1] < nv)
-			malMy = conj(m[idx + (nv-2*X[1])]); // antisymmetric BC at y=0
+			malMy = conj(m[idx + Lx*(nv-2*X[1])]); // antisymmetric BC at y=0
 		else
 			malMy = m[idx - nv*Lx];
 
