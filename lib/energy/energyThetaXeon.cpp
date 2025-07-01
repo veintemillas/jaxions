@@ -128,7 +128,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					idxPy = idx + XC;
 					mPy = opCode(load_pd, &m[idxPy]);
 #if	defined(__AVX512F__)
-					mMy = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
+					mMy = opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
 #elif	defined(__AVX2__)       //AVX2
 					mMy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 #elif	defined(__AVX__)
@@ -149,7 +149,7 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					{
 						idxPy = idx - Sf + XC;
 #if	defined(__AVX512F__)
-						mPy = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
+						mPy = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
 #elif	defined(__AVX2__)       //AVX2
 						mPy = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 #elif	defined(__AVX__)
