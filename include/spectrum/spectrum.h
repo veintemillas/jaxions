@@ -49,7 +49,7 @@
 		float				zaskarf;
 		double			nbinmul;
 		double 			k0;
-
+		double      pzrescale;
 		std::complex<double>	zaska ;
 		std::complex<float>	zaskaf ;
 
@@ -121,6 +121,7 @@
 				zaska   = std::complex<double>(zaskar,0.);
 				zaskaf  = std::complex<float>(zaskarf,0.f);
 
+				pzrescale = Ly*Ly/Tz/Tz;
 				controlxyz = 0;
 
 				fillCosTable();
@@ -197,7 +198,7 @@
 
 		template<typename Float, SpectrumMaskType mask>
 		void	nRun		(nRunType nrt);
-		
+
 		template<typename Float, SpectrumMaskType mask>
 		void	nSRun		(nRunType nrt);
 

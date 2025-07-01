@@ -164,7 +164,7 @@ void	SpecBin::fillBins	() {
 			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
 			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
-			double k2    = (double) kx*kx + ky*ky + kz*kz;
+			double k2    = (double) kx*kx + ky*ky + kz*kz*pzrescale;
 
 			/* Select the bin
 			there might be more options here in the future */
@@ -1745,7 +1745,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 }
 
 // saxion spectrum
-	
+
 void	SpecBin::nSRun	(SpectrumMaskType mask, nRunType nrt){
 
 	switch (mask)
@@ -1834,7 +1834,7 @@ void	SpecBin::nSRun	(SpectrumMaskType mask, nRunType nrt){
 					break;
 				}
 		break;
-		
+
 		case SPMASK_SAXI :
 		case SPMASK_AXIT :
 		case SPMASK_AXIT2 :
@@ -1890,7 +1890,7 @@ void	SpecBin::nSRun	(nRunType nrt) {
 	}
 
   prof.start();
-	
+
 	binK.assign(nbins, 0.);
 	binG.assign(nbins, 0.);
 	binV.assign(nbins, 0.);
@@ -1930,7 +1930,7 @@ void	SpecBin::nSRun	(nRunType nrt) {
 			//Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
 			Float *m2sax                = static_cast<Float *>(field->m2half());
 			char *strdaa                = static_cast<char *>(static_cast<void *>(field->sData()));
-			
+
 			LogMsg(VERB_HIGH,"[nSRun] S loop") ;
 			prof.start();
 			#pragma omp parallel for schedule(static)
@@ -1943,13 +1943,13 @@ void	SpecBin::nSRun	(nRunType nrt) {
 					for (size_t ix=0; ix < Ly; ix++) {
 						size_t odx = ix + yo + zo;
 						size_t idx = ix + yi + zi;
-						
+
 						Float modu = std::abs(ma[idx]-zaskaF);
 						// Float modu = std::abs(ma[idx]);
 						Float vS = ((ma[idx].real()-zaskaF.real())*va[idx-LyLy].real()+ma[idx].imag()*va[idx-LyLy].imag())/modu/Rscale - modu*Rpp/Rscale/Rscale;
 						// Float vS = std::real(va[idx]*modu/(ma[idx]-zaskaF))/Rscale ;
 						// Float vS = real(va[idx]*modu/(ma[idx]))/Rscale ;
-						
+
 						switch (mask) {
 							case SPMASK_FLAT:
 								m2sa[odx] = Rscale*vS;
@@ -1984,9 +1984,9 @@ void	SpecBin::nSRun	(nRunType nrt) {
 
 			// r2c FFT in m2
 			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
-			
+
 			if (nrt & NRUN_K) {
-				
+
 				LogMsg(VERB_HIGH,"[nSRun] FFT");
 				prof.start();
 				myPlan.run(FFT_FWD);
@@ -2022,7 +2022,7 @@ void	SpecBin::nSRun	(nRunType nrt) {
 				myPlan.run(FFT_FWD);
 				prof.stop();
 				prof.add(std::string("pSpecAx"), 0.0, 0.0);
-				
+
 				if (spec)
 					fillBins<Float,  SPECTRUM_GVS, true> ();
 				else
