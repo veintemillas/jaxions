@@ -981,7 +981,7 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		mopa.cmplx = false;
 		mopa.randommom = ic.randommom;
 		mopa.mp = axionField->m2Cpu();
-		// we use ninfa.mode0 from commandline --mode0 (default 0 = False) 
+		// we use ninfa.mode0 from commandline --mode0 (default 0 = False)
 		// if mode0 = 0, all modes are random
 		// if mode0 > 0, zero modes are exact
 		if (ic.mode0 > 0)
@@ -1064,14 +1064,27 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 		double xit = (249.48 + 38.8431*logit + 1086.06*logit*logit)/(21775.3 + 3665.11*logit)  ;
 		if (ic.siter == 1)
 			xit *= ic.kcr;
+
+		memcpy	   (m2, ms, axionField->DataSize()*axionField->Size());
+
 		if (xit > 0.0)
 		{
 			LogMsg(VERB_NORMAL,"[GEN] Creating string on top of SPAX! \n");
 			/* moves ctheta to m2*/
-			memcpy	   (m2, ms, axionField->DataSize()*axionField->Size());
-			float *lerdo = static_cast<float*>(axionField->m2Cpu());
+
 			putxi(xit,ic.kMax);
 			normaliseField(axionField, FIELD_M);
+		}
+		else{
+			LogMsg(VERB_NORMAL,"[GEN] Creating no strings on top of SPAX! \n");
+
+			IcData ico = axionField->BckGnd()->ICData();
+			ico.fieldindex = FIELD_M;
+			ico.mode0      = 0.0;
+			ico.kcr        = 1.0;
+			ico.cType      = CONF_SMOOTH;
+			ico.smvarType  = CONF_MINICLUSTER;
+			randConf (axionField,ico);
 		}
 
 		/* Build the scalar field merging the extra waves
@@ -1091,7 +1104,6 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 				 > (rho'  + rho i theta'+extra)exp(I (theta+extra))
 */
 		size_t vol = axionField->Size();
-
 
 		if (axionField->Precision() == FIELD_SINGLE)
 		{
