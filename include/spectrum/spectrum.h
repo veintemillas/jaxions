@@ -84,7 +84,9 @@
 
 
 				/* Number of natural bins */
-				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+				pzrescale = Ly*Ly/Tz/Tz;
+				// powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + (Tz>>1)*(Tz>>1)))+1;
+				powMax = floor(sqrt(2.*(Ly>>1)*(Ly>>1) + pzrescale*(Tz>>1)*(Tz>>1)))+1;
 				/* Number of user desired bins */
 				nbins = measinfo.nbinsspec < 0 ? powMax : (size_t) measinfo.nbinsspec;
 				/* Multiplier */
@@ -121,7 +123,7 @@
 				zaska   = std::complex<double>(zaskar,0.);
 				zaskaf  = std::complex<float>(zaskarf,0.f);
 
-				pzrescale = Ly*Ly/Tz/Tz;
+
 				controlxyz = 0;
 
 				fillCosTable();
