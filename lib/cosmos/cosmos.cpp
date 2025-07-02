@@ -22,17 +22,15 @@ void Cosmos::Setup()
   /*Read Cosmology*/
 
   char cosName[2048];
-  if (const char *cosPath = std::getenv("JAXIONS_DIR")) {
-    if (strlen(cosPath) < 1022) {
-      struct stat tStat;
-      if (stat(cosPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
-        strcpy(cosName, cosPath);
-      } else {
-        printf("Path %s doesn't exist, using default\n", cosPath);
-      }
-    }
+  // Get the environment variable
+  const char* baseDir = getenv("JAXIONS_DIR");
+  if (baseDir == nullptr){
+    LogMsg(VERB_NORMAL, "Environment variable JAXIONS_DIR not set!");
+    return;
   }
-  sprintf(cosName, "%s%s", cosName,  "jaxions/include/cosmos/jaxi-cosmo.txt");
+  // Build the full path safely
+  snprintf(cosName, sizeof(cosName), "%s%s", baseDir, "/jaxions/include/cosmos/jaxi-cosmo.txt");
+  
   std::vector<double>	etav, Rv, Tv, Rppv, chiv, pfv;
   FILE *cFile = nullptr;
   if (((cFile  = fopen(cosName, "r")) == nullptr)){
