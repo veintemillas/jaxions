@@ -45,6 +45,7 @@
 		bool	lowmem;
 		bool    lowmemgpu;
 		size_t Ng;
+		size_t lap;
 
 		// conformal time
 		double	*z;
@@ -250,6 +251,7 @@
 
 
 		size_t  getNg() {return Ng;}
+		size_t  getLap() {return lap;}
 		void	  setCO	(size_t newN);
 		double  *getCO() {return &(co[0]); };
 		double  *getCOp() {return &(cop[0]); };

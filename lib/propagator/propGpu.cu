@@ -469,7 +469,7 @@ void	updateVGpu(const void * __restrict__ m, void * __restrict__ v, PropParms pp
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 
-	const uint NN    = ppar.Ng;
+	const uint NN    = ppar.Lap;
 	void *ood2;
 	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
 	cudaMalloc(&ood2, NN*sizeof(double));

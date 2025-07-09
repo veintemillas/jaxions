@@ -43,17 +43,17 @@ const std::complex<float> If(0.,1.);
 
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
-		: nSplit(nSp), Ng(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+		: nSplit(nSp), Ng(1), lap(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 	// 2DVERSION CYLINDRICAL DIFFERENT BOUNDARY CONDITIONS Ly=1
-	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates");
+	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates Ngg=1, lap=%d",lap);
 	n1 = nLx;
 	n2 = nLx*nLx;
 	n3 = nLx*nLx*nLz;
 	Lz = nLz;
 	Tz = Lz*nSp;
-	Ez = nLz + 2*Ngg;
-	v3 = nLx*nLx*(nLz + 2*Ngg);
+	Ez = nLz + 2*Ng;
+	v3 = nLx*nLx*(nLz + 2*Ng);
 
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -70,7 +70,8 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] Device       =  %d (CPU/GPU %d/%d)",dev,DEV_CPU,DEV_GPU);
 	LogMsg(VERB_NORMAL,"[sca] Lowmem       =  %d ",lowmem);
 	LogMsg(VERB_NORMAL,"[sca] LowmemGPU    =  %d %d ",lowmemGPU,lowmemgpu);
-	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d ", Ngg);
+	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d ", Ng);
+	LogMsg(VERB_NORMAL,"[sca] Laplacian    =  %d ", lap);
 
 	if (cm == nullptr) {
 		LogError("Error: no cosmological background defined!. Will exit with errors.");
@@ -134,7 +135,7 @@ const std::complex<float> If(0.,1.);
 	mmomspace 	 = false;
 	vmomspace 	 = false;
 
-	setCO(Ng);
+	setCO(lap);
 
 
 	switch (fieldType)

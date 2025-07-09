@@ -1304,6 +1304,7 @@
 		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
 
 		(*pipar).Ng     = axion->getNg();
+		(*pipar).Lap    = axion->getLap();
 		(*pipar).Lx     = axion->Length();;
 		(*pipar).PC     = axion->getCO();
 		(*pipar).PCp    = axion->getCOp();
