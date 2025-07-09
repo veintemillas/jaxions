@@ -108,7 +108,9 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 			break;
 	}
 
-	mel = v[idx-NN*Sf];
+//2Dcylindrical with Ng=1
+	// mel = v[idx-NN*Sf];
+	mel = v[idx-Sf];
 
 	switch (VQcd & V_DAMP) {
 		case	V_NONE:
@@ -135,8 +137,9 @@ static __device__ __forceinline__ void	propagateCoreGpu(const uint idx, const co
 		mel *= kReal/pot;
 	}
 
-
-	v[idx-NN*Sf] = mel;
+//2Dcylindrical with Ng = 1
+	// v[idx-NN*Sf] = mel;
+	v[idx-Sf] = mel;
 	mel *= dzd;
 	tmp += mel;
 	m2[idx] = tmp;
@@ -175,7 +178,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 
-	const uint NN    = ppar.Ng;
+	const uint NN    = ppar.Lap;
 	void *ood2;
 	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for NN = %d",NN*sizeof(double), NN);
 	cudaMalloc(&ood2, NN*sizeof(double));
@@ -362,8 +365,9 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 		case	V_QCD0:
 			break;
 	}
-
-	mel = v[idx-NN*Sf];
+//2Dcylindrical Ng=1
+	// mel = v[idx-NN*Sf];
+	mel = v[idx-Sf];
 
 	switch (VQcd & V_DAMP) {
 		case	V_NONE:
@@ -389,8 +393,9 @@ static __device__ void __forceinline__	updateVCoreGpu(const uint idx, const comp
 		Float kReal = tmp.real()*mel.real() + tmp.imag()*mel.imag();
 		mel *= kReal/pot;
 	}
-
-	v[idx-NN*Sf] = mel;
+//2Dcylindrical with Ng=1
+	// v[idx-NN*Sf] = mel;
+	v[idx-Sf] = mel;
 	/* and do not update m */
 }
 
