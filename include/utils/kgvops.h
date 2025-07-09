@@ -27,6 +27,18 @@
 
 	void	buildc_k_map	(Scalar *field, bool LUTcorr);
 
+//HINDMARSH
+	template<typename Float, SpectrumMaskType mask, bool LUTcorr, bool padded>
+	size_t buildc_h(Scalar *field, PadIndex pi, Float zaskaFF);
+
+	template <SpectrumMaskType mask, bool LUTcorr>
+	void	buildc_h	(Scalar *field, PadIndex pi, double zaskaFF);
+
+	void	buildc_h	(Scalar *field, PadIndex pi, double zaskaFF, SpectrumMaskType mask, bool LUTcorr);
+
+	void	buildc_h_map	(Scalar *field, bool LUTcorr);
+	
+
 	template<typename Float, SpectrumMaskType mask, bool LUTcorr>
 	size_t buildc_gx(Scalar *field, PadIndex pi, Float zaskaFF);
 

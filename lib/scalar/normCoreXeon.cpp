@@ -15,11 +15,9 @@ void normCoreKernelXeon (Scalar *field)
 	//printf("Entering CORE smoothing ");
 	//fflush (stdout);
 
-	const Float deltaa = field->Delta();
-	const Float zia = static_cast<Float>(*field->RV());
-
-	Float LLa = field->LambdaP();
-
+	const Float delta = field->Delta();
+	const Float R = static_cast<Float>(*field->RV());
+	const Float msa = sqrt(2*field->LambdaP())*R*delta;
 	const size_t n1 = field->Length();
 	const size_t n2 = field->Surf();
 	const size_t n3 = field->Size();
@@ -92,12 +90,13 @@ void normCoreKernelXeon (Scalar *field)
 
 		if (gradtot > 0.0000001)
 		{
-					sss  = 2.0*sqrt(LLa)*zia*deltaa/sqrt(gradtot);
+					sss  = msa/sqrt(gradtot/2.);
 					//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
 					sss2 = sss*sss;
 					sss4 = sss2*sss2;
 					// rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
 					rhof  = (0.43*sss + 0.164*sss2 + 0.036*sss4)/(1.0+0.39*sss+0.2*sss2+0.036*sss4);
+					// rhof  = (0.40*sss + 0.1619383*sss2 + 0.01719206*sss4)/(1.0+0.28552459*sss+0.2*sss2+0.01719206*sss4);
 					// sss  = sqrt(LLa)*zia*deltaa/sqrt(gradtot);
 					// if (sss < 1.64447) {
 					// rhof  = 0.6081*sss ;

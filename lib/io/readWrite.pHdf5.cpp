@@ -561,6 +561,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_STRING:
+			sprintf(icStr, "Custom Strings");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
 		default:
 		case	CONF_NONE:
 			sprintf(icStr, "None");
@@ -1209,6 +1216,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					cType = CONF_SPAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+				} else if (!strcmp(icStr, "Custom Strings")) {
+					cType = CONF_STRING;
+					// readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 				} else if (!strcmp(icStr, "Moore")) {
 					cType = CONF_SMOOTH;
 					/* The m and v fields are not conformal so we will need to rescale them */
@@ -1861,6 +1871,12 @@ void	createMeas (Scalar *axion, int index)
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_STRING:
+			sprintf(icStr, "Custom Strings");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
 		default:
 		case	CONF_NONE:
 			sprintf(icStr, "None");

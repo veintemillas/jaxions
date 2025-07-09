@@ -412,6 +412,196 @@ void	buildc_k	(Scalar *field, PadIndex pi, double zaskaFF, SpectrumMaskType mask
 }
 
 
+/* Builds HINDMARSH Axion divergence */
+
+
+template<typename Float, SpectrumMaskType mask, bool LUTcorr, bool padded>
+size_t buildc_h(Scalar *field, PadIndex pi, Float zaskaFF)
+{
+	/* Builds the axion HINDMARSH scalar from a complex scalar
+	with the integral softening method.
+	Options
+	PadIndex = PFIELD_M2 ? copy to m2
+	PadIndex = PFIELD_M2S ? copy to m2Start
+	PadIndex = PFIELD_M2H ? copy to m2half
+	PadIndex = PFIELD_M2HS ? copy to m2half
+
+	Actually we first compute in m2 and then move
+	*/
+
+	size_t Lz = field->Depth();
+	size_t Ly = field->Length();
+	size_t LyLy = Ly*Ly;
+	FieldPrecision fPrec = field->Precision();
+	Float Rscale = *field->RV();
+	Float idelta2 = 1/(field->Delta()*field->Delta()); // prefactor
+
+	std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
+	std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
+	char *strdaa                = static_cast<char *>(static_cast<void *>(field->sData()));
+	Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+	Float *m2sax                = static_cast<Float *>(field->m2half());
+
+	Float pre = 0.5*SIGMALUT;
+	size_t luts = 0;
+	LogMsg(VERB_HIGH,"[bck] Build conformal Axion HINDMARSH scalar");LogFlush();
+	#pragma omp parallel for schedule(static) collapse(2) reduction(+:luts)
+	for (size_t iz=0; iz < Lz; iz++) {
+		for (size_t iy=0; iy < Ly; iy++) {
+			size_t zo = Ly*(Ly+2)*(iz) ;
+			size_t zi = LyLy*(iz+1) ;
+			size_t zp = LyLy*(iz+2) ;
+			size_t zm = LyLy*(iz) ;
+			size_t yo = (Ly+2)*iy ;
+			size_t yi = Ly*iy ;
+			size_t yp = Ly*((iy+1)%Ly) ;
+			size_t ym = Ly*((Ly+iy-1)%Ly) ;
+			for (size_t ix=0; ix < Ly; ix++) {
+				size_t odx = ix + yo + zo; size_t idx = ix + yi + zi; size_t oodx;
+				Float hA;
+				std::complex<Float> da[10], aux;
+				bool  skipLUT = false;
+				// we dont need -zaskaFF corrections for differences.
+				da[0] = ma[idx];
+				da[1] = ma[((ix + 1) % Ly) + yi + zi];
+				da[2] = ma[((Ly + ix - 1) % Ly) + yi + zi];
+				da[3] = ma[ix + yp + zi];
+				da[4] = ma[ix + ym + zi];
+				da[5] = ma[idx+LyLy];
+				da[6] = ma[idx-LyLy];
+
+				aux = ((da[1]-da[2])*std::conj(da[1]-da[2]) + (da[3]-da[4])*std::conj(da[3]-da[4]) + (da[5]-da[6])*std::conj(da[5]-da[6]))/std::complex<Float>(4.,0) ;
+				aux += std::conj(da[0]-std::complex<Float>(zaskaFF,0))*(da[1]+da[2]+da[3]+da[4]+da[5]+da[6]-std::complex<Float>(6.,0)*da[0]);
+				hA = aux.imag();
+
+				oodx = padded ? odx : idx-LyLy;
+				switch(mask){
+					case SPMASK_FLAT:
+					case SPMASK_VIL:
+					case SPMASK_VIL2:
+					// The H scalar is self masked
+								m2sa[oodx] = idelta2*(hA);
+							break;
+					case SPMASK_REDO:
+					case SPMASK_BALL:
+								if (strdaa[idx-LyLy] & STRING_MASK)
+										m2sa[oodx] = 0 ;
+								else
+										m2sa[oodx] = idelta2*(hA);
+							break;
+					case SPMASK_GAUS:
+					case SPMASK_DIFF:
+								m2sa[oodx] = m2sax[idx-LyLy]*idelta2*(hA);
+							break;
+
+				} //end mask
+			}
+		}
+	}
+	return luts;
+}
+
+void	buildc_h_map	(Scalar *field, bool LUTcorr)
+{
+	double zasi = field->Saskia()* *(field->RV());
+	if (LUTcorr)
+		size_t luts = buildc_h<float,SPMASK_FLAT,true, false> (field, PFIELD_M2, (float) zasi);
+	else
+		size_t luts = buildc_h<float,SPMASK_FLAT,false, false> (field, PFIELD_M2, (float) zasi);
+}
+
+/* Float Template expansion */
+
+template <SpectrumMaskType mask, bool LUTcorr>
+void	buildc_h	(Scalar *field, PadIndex pi, double zaskaFF)
+{
+	Profiler &prof = getProfiler(PROF_SPEC);
+	prof.start();
+	size_t luts;
+	if (LUTcorr)
+		switch (field->Precision())
+		{
+			default :
+			case FIELD_SINGLE :
+				luts = buildc_h<float,mask,true, true> (field, pi, (float) zaskaFF);
+				break;
+			case FIELD_DOUBLE :
+				luts = buildc_h<double,mask,true, true> (field, pi, (double) zaskaFF);
+				break;
+		}
+	else
+	switch (field->Precision())
+	{
+		default:
+		case FIELD_SINGLE :
+			luts = buildc_h<float,mask,false, true> (field, pi, (float) zaskaFF);
+			break;
+		case FIELD_DOUBLE :
+			luts = buildc_h<double,mask,false, true> (field, pi, (double) zaskaFF);
+			break;
+	}
+
+	char LABEL[256];
+	sprintf(LABEL, "BuildH %d %s", mask, LUTcorr? "LUT" : "-");
+	prof.stop();
+	/* Flop/Bytes counter
+	-
+	if no lut
+		FLOP *-* / *-* = 7
+		BYTE mr,mi,vr,vi->m2 4 reads 1 write
+	if lut
+		FLOP sqrt(*+*+*)x2,/,*+*+* /*,sqrt-*,/x4,****,* /-*-/-*-/-+*-/-----,
+		FLOP *+*x(8+4+2+1)x2, *-* / (possibly 2)
+		= 6x2 + 1 + 7 + 3 + 4 + 4+ 20 + 3x15x2 + 3 =
+		BYTE (mr,mi)x(7),vr,vi->m2 16 reads 1 write
+	if FLAT, REDO *
+	if GAUS,DIFF  **
+	if VIL  sqrt*+*** VIL2 I *+* / *
+	*/
+	LogMsg(VERB_PARANOID,"[bck] BuildH Reporting %lu LUTs",luts);
+	double flops  = 1e-9 * (144*luts + 7*(field->Size()-luts));
+	double mbytes = 1e-9 * (17*luts + 5*(field->Size()-luts));
+	prof.add(std::string(LABEL), flops, mbytes);
+}
+
+void	buildc_h	(Scalar *field, PadIndex pi, double zaskaFF, SpectrumMaskType mask, bool LUTcorr)
+{
+	if (LUTcorr)
+	switch (mask){
+		default:
+		case SPMASK_FLAT:
+		case SPMASK_VIL:
+		case SPMASK_VIL2:
+			buildc_h<SPMASK_FLAT,true> (field, PFIELD_M2, zaskaFF);
+			break;
+		case SPMASK_REDO:
+		case SPMASK_BALL:
+			buildc_h<SPMASK_REDO,true> (field, PFIELD_M2, zaskaFF);
+			break;
+		case SPMASK_GAUS:
+		case SPMASK_DIFF:
+			buildc_h<SPMASK_DIFF,true> (field, PFIELD_M2, zaskaFF);
+			break;
+	}
+	else {
+		switch (mask){
+			default:
+			case SPMASK_FLAT:
+			case SPMASK_VIL:
+			case SPMASK_VIL2:
+				buildc_h<SPMASK_FLAT,false> (field, PFIELD_M2, zaskaFF);
+				break;
+			case SPMASK_REDO:
+			case SPMASK_BALL:
+				buildc_h<SPMASK_REDO,false> (field, PFIELD_M2, zaskaFF);
+				break;
+			case SPMASK_GAUS:
+			case SPMASK_DIFF:
+				buildc_h<SPMASK_DIFF,false> (field, PFIELD_M2, zaskaFF);
+				break;
+		}
+	}
+}
 
 /* Builds conformal Axion gradient X w/wo LUT correction,
 is almost a copy of the K function

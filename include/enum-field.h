@@ -627,6 +627,7 @@
 			NRUN_CG      = 32, // Fast, without LUT correction
 			NRUN_CV      = 64, // Fast, without LUT correction, redundant
 			NRUN_CS      = 128, // Fast, without LUT correction, redundant
+			NRUN_H       = 256, // Hindmarsh scalar, without LUT correction
 
 		}	nRunType;
 

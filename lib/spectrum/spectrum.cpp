@@ -1062,8 +1062,6 @@ void	SpecBin::nRun	(nRunType nrt) {
 #endif
 	binPS.assign(nbins, 0.);
 	binP.assign(nbins, 0.);
-	if (mask == SPMASK_SAXI)
-		binPS.assign(nbins, 0.);
 
 	prof.stop();
 		prof.add(std::string("assign"), 0.0, 0.0);
@@ -1141,6 +1139,29 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 				/* overwrites K! */
 			}
+
+			/* HINDMARSH scalar*/
+			if (nrt & NRUN_H)
+			{
+				LogMsg(VERB_HIGH,"[nRun] Hindmarsh scalar loop") ;
+
+				buildc_h(field, PFIELD_M2, zaskar, mask, false);
+
+				/* uncorrected */
+				LogMsg(VERB_HIGH,"[nRun] FFT") ;
+					prof.start();
+				myPlan.run(FFT_FWD);
+					prof.stop();
+						prof.add(std::string("pSpecAx"), 0.0, 0.0);
+
+				LogMsg(VERB_HIGH,"[nRun] bin |mod|^2 (without 1/k^4!)") ;
+				if (spec)
+					fillBins<Float,  SPECTRUM_P, true> ();
+				else
+					fillBins<Float,  SPECTRUM_P, false>();
+
+			}
+
 
 			/* Potential energy*/
 			if ( (nrt & NRUN_V) && (mass2 > 0.0))

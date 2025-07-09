@@ -90,7 +90,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	for (int ii=0; ii<irmask; ii++)
 		LogMsg(VERB_PARANOID,    "[Meas ...] rmask #%d %.2f ",ii,rmasktab[ii]);
 	nRunType nruntype = info.nrt;
-	
+
 	bool onlymaskenergy = info.maskenergyonly;
 
 	/* This is a change with respect to previous behaviour
@@ -633,7 +633,7 @@ writePMapHdf5s (axiona, LAB);
 									trackFree(eRes);
 								}
 						}
-						
+
 						if((maskara[i] == SPMASK_REDO) && onlymaskenergy) {
 							LogMsg(VERB_NORMAL,"[Meas %d] Spectrum %s rmask %f skipped",indexa,masklab[i].c_str(),rmasktab[ii]);
 							continue; // skip spectra in Red mode when onlymaskenergy is true
@@ -687,11 +687,11 @@ writePMapHdf5s (axiona, LAB);
 						} // END IF NSPECTRA WITH LUT CORRECTION
 
 						// NSPECTRA WITHOUT LUT CORRECTION
-						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS))
+						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS | NRUN_H))
 						{
 							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old version)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 							// prof.start();
-							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS) ;
+							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS | NRUN_H) ;
 								specAna.nRun(maskara[i], aux);
 									// prof.stop();
 										sprintf(LABEL, "NSPA_%s (pure)", masklab[i].c_str());
@@ -728,6 +728,13 @@ writePMapHdf5s (axiona, LAB);
 								writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
 #endif
 							}
+							if ( (nruntype & NRUN_H) ){
+									sprintf(LABEL, "sH_%s",PRELABEL);
+										writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", LABEL);
+		#ifdef USE_NN_BINS
+										writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/nSpectrum", LABEL);
+		#endif
+									}
 
 					} // END IF NSPECTRA WITHOUT CORRECTION
 
@@ -737,7 +744,7 @@ writePMapHdf5s (axiona, LAB);
 						LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (saxion)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
 						nRunType aux = nruntype & (NRUN_K | NRUN_G | NRUN_V);
 						specAna.nSRun(maskara[i], aux);
-						
+
 						if (nruntype & NRUN_K){
 							sprintf(LABEL, "sKS_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);
