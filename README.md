@@ -4,6 +4,9 @@
 
 Jaxions is a grid-based massively parallel code to study the Axion field evolution before, around and after the QCD phase transition.
  
+In this branch we have adapted it to run simulations in cylindrical symmetry using a mere reduced 2D grid evolving n the GPU.
+An example how to run the code is in caxion3d-example.ipynb, which requires functions defined in caxion23loops.py
+
 ## Requirements
 
 To compile the code and run a typical simulation you will need the following libraries:
