@@ -992,6 +992,23 @@ void	SpecBin::nRun	(SpectrumMaskType mask, nRunType nrt){
 				}
 		break;
 
+		case SPMASK_AXITV :
+				switch (fPrec)
+				{
+					case FIELD_SINGLE :
+					SpecBin::nRun<float,SPMASK_AXITV> (nrt);
+					break;
+
+					case FIELD_DOUBLE :
+					SpecBin::nRun<double,SPMASK_AXITV> (nrt);
+					break;
+
+					default :
+					LogError("[Spectrum nRun] precision not reconised.");
+					break;
+				}
+		break;
+
 		default:
 		LogError("[Spectrum nRun] SPMASK not recognised!");
 		break;
@@ -1032,11 +1049,27 @@ void	SpecBin::nRun	(nRunType nrt) {
 			return ;
 			}
 		break;
+		case SPMASK_AXIT:
+			if ((field->sDStatus() & SD_AXITONMASK))
+				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT ok SPMASK=%d field->statusSD()=%d",SPMASK_AXIT,field->sDStatus()) ;
+			else{
+			LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_AXIT,field->sDStatus()) ;
+			return ;
+			}
+		break;
 		case SPMASK_AXIT2:
 			if ((field->sDStatus() & SD_AXITONMASK))
 				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT2 ok SPMASK=%d field->statusSD()=%d",SPMASK_AXIT2,field->sDStatus()) ;
 			else{
 			LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT2 but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_AXIT2,field->sDStatus()) ;
+			return ;
+			}
+		break;
+		case SPMASK_AXITV:
+			if (field->m2hStatus() == M2_ENERGY)
+				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXITV ok SPMASK=%d field->m2hStatus()=%d",SPMASK_AXITV,field->m2hStatus()) ;
+			else{
+			LogMsg(VERB_NORMAL,"nRun with SPMASK_AXITV but SPMASK=%d field->m2hStatus()=%d ... EXIT!",SPMASK_AXITV,field->m2hStatus()) ;
 			return ;
 			}
 		break;
@@ -1580,11 +1613,15 @@ void	SpecBin::nRun	(nRunType nrt) {
 			Float *m   = static_cast<Float*>(field->mStart());
 			Float *v   = static_cast<Float*>(field->vCpu());
 			Float *m2  = static_cast<Float*>(field->m2Cpu());
+			Float *m2h  = static_cast<Float*>(field->m2half());
 
 			char *strdaa = static_cast<char *>(static_cast<void *>(field->sData()));
 
 			size_t dataLine = field->DataSize()*Ly;
 			size_t Sm	= Ly*Lz;
+
+			// threshold of the energy density
+			Float ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
 
 			// Copy m -> m2 with padding
 
@@ -1610,10 +1647,11 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 								switch(mask){
-									case SPMASK_AXIT:
-											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+									case SPMASK_AXITV:
+											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
 										break;
 									default:
+									case SPMASK_AXIT:
 									case SPMASK_AXIT2:
 											if (strdaa[idx] & STRING_MASK)
 													m2[odx] = 0 ;
@@ -1655,10 +1693,11 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 								switch(mask){
-									case SPMASK_AXIT:
-											m2[odx] = m[idx]*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+									case SPMASK_AXITV:
+											m2[odx] = v[idx]*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
 										break;
 									default:
+									case SPMASK_AXIT:
 									case SPMASK_AXIT2:
 											if (strdaa[idx] & STRING_MASK)
 													m2[odx] = 0 ;
@@ -1712,9 +1751,10 @@ void	SpecBin::nRun	(nRunType nrt) {
 									case SPMASK_FLAT:
 												m2[odx] = R2*std::sin(m[idx] * iR2);
 											break;
-									case SPMASK_AXIT:
-												m2[odx] = R2*std::sin(m[idx] * iR2)*0.5*(1-std::tanh(5*(m2[idx])-1)) ;
+									case SPMASK_AXITV:
+												m2[odx] = R2*std::sin(m[idx] * iR2)*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
 											break;
+									case SPMASK_AXIT:
 									case SPMASK_AXIT2:
 											if (strdaa[idx] & STRING_MASK)
 													m2[odx] = 0 ;
@@ -2795,6 +2835,8 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 					} else {
 					LogMsg(VERB_HIGH,"[masker] Axiton masker called;  Energy in M2h (status %d)!\n", field->m2hStatus());
 					}
+			} else {
+				LogMsg(VERB_HIGH,"[masker] Axiton masker called;  Energy in M2 (status %d)!\n", field->m2Status());
 			}
 		break;
 
@@ -3463,7 +3505,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 
 			// makes a copy of the energy density of axions in m2_2
 			if (field->m2Status() == M2_ENERGY){
-				LogMsg(VERB_NORMAL,"[masker] Copy ENERGy to M2h");
+				LogMsg(VERB_NORMAL,"[masker] Copy ENERGY to M2h");
 				memmove (mAS, mA, dataBareSize);
 				field->setM2h(M2_ENERGY);
 				}
@@ -3555,6 +3597,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 				case SPMASK_AXIT:
 				{
 							maskball	(radius_mask, STRING_WALL, STRING_MASK);
+							field->setSD(SD_AXITONMASK);
 
 							mp = 0;
 							#pragma omp parallel for schedule(static) reduction(+:mp)
@@ -3610,7 +3653,6 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							myPlan.run(FFT_FWD);
 
 							field->setM2(M2_MASK_AXI2_FFT);
-							field->setSD(SD_AXITONMASK);
 
 							/* bin the axion energy spectrum */
 							LogMsg(VERB_NORMAL,"[masker] AXIT2 filter");
@@ -3661,6 +3703,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 											m2sa[oidx] = m2sax[idx];
 										}
 									}
+							field->setSD(SD_AXITONMASK);
 							field->setM2(M2_ENERGY_AXI);
 							int mp_g = 0;
 							MPI_Allreduce(&mp, &mp_g, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
