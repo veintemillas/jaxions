@@ -311,11 +311,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 					if( (axiona->Field() == FIELD_AXION) && (mask & SPMASK_AXITV)){
 						for(int ii=0; ii < irmask; ii++){
-							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons V radius_mask = %f)",indexa,rmasktab[ii]);
+							LogMsg(VERB_NORMAL, "[Meas %d] PSPA (masked axitons V)",indexa);
 								char PRELABEL[256];
 									sprintf(PRELABEL, "%s", "sPmaskedV");
 										specAna.masker(rmasktab[ii], SPMASK_AXITV, M2_ENERGY, cummask);
 											writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/pSpectrum", PRELABEL);
+											break; // only one masking for AXITV
 										}
 					}
 
