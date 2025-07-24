@@ -182,7 +182,7 @@ __global__ void	updateMThetaKernel(Float * __restrict__ m, Float * __restrict__ 
 
 
 template<typename Float, const bool wMod>
-__global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ,, const Float Rpp, const Float dzc, const Float dzd,
+__global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float Rpp, const Float dzc, const Float dzd,
 				     void *ood2, const Float iz, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN, const Float zP=0, const Float tPz=0)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
