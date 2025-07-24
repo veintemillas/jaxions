@@ -16,6 +16,7 @@
 
 	void	writeString	(Scalar *axion, StringData strDat, const bool rData=true);
 	void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData=true);
+	void	writeStringLabelMap	(Scalar *axion);
 	void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat);
 	void	writeEnergy	(Scalar *axion, void *eData, double rmask=-1.0);
 	void	writeEDens	(Scalar *axion, MapType fMap=MAP_THETA);
@@ -35,13 +36,15 @@
 
 	void	writePoint	(Scalar *axion);
 	void    writeSpectrum 	(Scalar *axion, void *spectrumK, void *spectrumG, void *spectrumV, size_t powMax, bool power);
-	void    writeArray	(double *array, size_t aSize, const char *group, const char *dataName, int rank = 0);
+	void    writeArray	(const double *array, size_t aSize, const char *group, const char *dataName, int rank = 0);
 	void    writeAttribute	(double *data, const char *name);
 	void    writeAttribute	(void *data, const char *name, hid_t h5_Type);
 	void    writeAttributeg	(void *data, const char *group, const char *name, hid_t h5_Type);
 	herr_t	writeAttribute  (hid_t file_id, void *data, const char *name, hid_t h5_type);
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
+
+	void writeStringLoopObservables(StringLoopParms slp, int rango);
 
 	void	writeGadget	(Scalar *axion);
 	void	writeConfNyx (Scalar *axion, int index);

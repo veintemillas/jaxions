@@ -63,14 +63,14 @@ StringData	Strings::runCpu	()
 
 void Strings::resizePos ()
 {
-	LogMsg(VERB_NORMAL," [Strings] Resized to %d",3*stringdata.strDen_local);
+	LogMsg(VERB_NORMAL," [Strings] Resized pos.array to 3x#plaquettes %d",3*stringdata.strDen_local);
 	pos.resize(3*stringdata.strDen_local);
 	pos.assign(3*stringdata.strDen_local, 0);
 }
 
 void Strings::resizePos (size_t size)
 {
-	LogMsg(VERB_NORMAL," [Strings] Resized to %d",3*stringdata.strDen);
+	LogMsg(VERB_NORMAL," [Strings] Resized pos.array to %d",3*stringdata.strDen);
 	pos.resize(3*size);
 	pos.assign(3*size, 0);
 }
@@ -141,7 +141,7 @@ StringData	strings	(Scalar *field)
 	MPI_Allreduce(&(strDen.wallDn_local), &(strDen.wallDn), 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
 	prof.stop();
-
+	LogMsg	(VERB_NORMAL, "[str] found %d strings %d chirality %d walls",strDen.strDen,strDen.strChr,strDen.wallDn);
 	eStr->add((15.*strDen.wallDn + 6.*field->rSize())*1.e-9, (7.*field->DataSize() + 1.)*field->rSize()*1.e-9);	// Flops are not exact
 	prof.add(eStr->Name(), eStr->GFlops(), eStr->GBytes());
 
@@ -198,7 +198,7 @@ StringData	strings2	(Scalar *field)
 
 	if	( field->MMomSpace() || field->VMomSpace() )
 	{
-		if (debug) LogOut("[str] FT!\n");
+		if (debug) LogOut("[st2] FT!\n");
 		FTfield pelotas(field);
 		pelotas(FIELD_MV, FFT_BCK); // BCK is to send to position space transposed in
 	}
@@ -245,7 +245,7 @@ StringData	strings2	(Scalar *field)
 	eStr->SetStrDat(strDen);
 
 	prof.stop();
-
+	LogMsg	(VERB_NORMAL, "[st2] found %d strings %d chirality %d walls",strDen.strDen,strDen.strChr,strDen.wallDn);
 	eStr->add((15.*strDen.wallDn + 6.*field->rSize())*1.e-9, (7.*field->DataSize() + 1.)*field->rSize()*1.e-9);	// Flops are not exact
 	prof.add(eStr->Name(), eStr->GFlops(), eStr->GBytes());
 

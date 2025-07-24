@@ -431,7 +431,7 @@ writePMapHdf5s (axiona, LAB);
 			if ( !(measa & MEAS_STRINGCOO)){
 					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 					MeasDataOut.str = strings(axiona);
-					MeasDataOut.str = stringlength(axiona,MeasDataOut.str,strmeas);
+					MeasDataOut.str = stringlength	(axiona, MeasDataOut.str, strmeas);
 
 					if ( measa & MEAS_STRINGMAP )
 					{
@@ -450,7 +450,6 @@ writePMapHdf5s (axiona, LAB);
 			else if (measa & MEAS_STRINGCOO){
 				LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
 				MeasDataOut.str = strings2(axiona);
-				MeasDataOut.str = stringlength(axiona,MeasDataOut.str,strmeas);
 				if ( measa & MEAS_STRINGMAP ){
 					LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
 					writeString(axiona, MeasDataOut.str, true);
@@ -458,6 +457,12 @@ writePMapHdf5s (axiona, LAB);
 				LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
 				writeStringCo(axiona, MeasDataOut.str, true);
 				//saves strings in m2//problem with energy
+
+				StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
+				MeasDataOut.str = slp.stringdata;
+				writeStringLabelMap(axiona);
+				writeStringLoopObservables(slp, 0);
+
 			}
 		}
 	}

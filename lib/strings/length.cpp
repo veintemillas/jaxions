@@ -1,19 +1,26 @@
 #include <memory>
 #include <cstring>
 #include <complex>
+#include <unordered_map>
+#include <unordered_set>
 #include "scalar/scalarField.h"
 #include "scalar/folder.h"
 #include "enum-field.h"
 
 #include "strings/strings.h"
+// #include "strings/length.h"
+
+#include <limits.h>
 
 #include "utils/utils.h"
 
 #include <vector>
 #include "utils/index.h"
 
+#include <omp.h>
 #include <mpi.h>
 
+using namespace profiler;
 
 void setCross (std::complex<double> m, std::complex<double> mu, std::complex<double> mv, std::complex<double> muv, double * dua)
 {
@@ -844,6 +851,13 @@ StringData stringlength2 (Scalar *field, StringData strDen_in, StringMeasureType
 		return stringlength2<double>(field, strDen_in, strmeas);
 	}
 }
+
+// -----------------------------------------------------
+// Function that find positions of strings in plaquetes, connects them into strings
+// calculates their length, and others
+// -----------------------------------------------------
+
+
 
 // ------------------------------------------------------------------
 // Function that calculates the energy density of strings
