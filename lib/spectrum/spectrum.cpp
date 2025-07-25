@@ -1036,7 +1036,7 @@ void	SpecBin::nRun	(nRunType nrt) {
 			if ((field->sDStatus() & SD_AXITONMASK))
 				LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT2 ok SPMASK=%d field->statusSD()=%d",SPMASK_AXIT2,field->sDStatus()) ;
 			else{
-			LogMsg(VERB_NORMAL,"nRun with SPMASK_DIFF but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_AXIT2,field->sDStatus()) ;
+			LogMsg(VERB_NORMAL,"nRun with SPMASK_AXIT2 but SPMASK=%d field->statusSD()=%d ... EXIT!",SPMASK_AXIT2,field->sDStatus()) ;
 			return ;
 			}
 		break;

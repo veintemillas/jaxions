@@ -16,30 +16,49 @@ void Cosmos::Setup()
 
   if (!ueCosm)
     return ;
-  LogMsg(VERB_NORMAL,"[Cos] Cosmos Setup");
+
+  std::vector<double>	etav, Rv, Tv, Rppv, chiv, pfv;
+
+  LogMsg(VERB_NORMAL,"[Cos] Cosmos Setup Upd");
   LogFlush();
 
   /*Read Cosmology*/
 
-  char cosName[2048];
-  if (const char *cosPath = std::getenv("JAXIONS_DIR")) {
-    if (strlen(cosPath) < 1022) {
-      struct stat tStat;
-      if (stat(cosPath, &tStat) == 0 && S_ISDIR(tStat.st_mode)) {
-        strcpy(cosName, cosPath);
-      } else {
-        printf("Path %s doesn't exist, using default\n", cosPath);
-      }
-    }
+  const char* localFile = "jaxi-cosmo.txt";
+  char fallbackPath[2048];
+
+  const char* baseDir = getenv("JAXIONS_DIR");
+  if (!baseDir) {
+    LogMsg(VERB_NORMAL, "Environment variable JAXIONS_DIR not set!");
+    LogFlush();
+  return;
   }
-  sprintf(cosName, "%s%s", cosName,  "jaxions/include/cosmos/jaxi-cosmo.txt");
-  std::vector<double>	etav, Rv, Tv, Rppv, chiv, pfv;
-  FILE *cFile = nullptr;
-  if (((cFile  = fopen(cosName, "r")) == nullptr)){
-    LogMsg(VERB_NORMAL,"[Cos] No %s !",cosName);
-    return ;
+
+  snprintf(fallbackPath, sizeof(fallbackPath), "%s/jaxions/include/cosmos/jaxi-cosmo.txt", baseDir);
+LogOut("Fallback path: %s", fallbackPath);
+  FILE* cFile = nullptr;
+  LogMsg(VERB_NORMAL, "Fallback path: %s", fallbackPath);
+  LogFlush();
+
+
+  // Try local version first
+  cFile = fopen(localFile, "r");
+  if (!cFile) {
+    LogMsg(VERB_NORMAL, "[Cos] Local file '%s' not found, trying fallback...", localFile);
+    cFile = fopen(fallbackPath, "r");
+
+    if (!cFile) {
+      LogMsg(VERB_NORMAL, "[Cos] File not found at fallback path: %s", fallbackPath);
+      return;
+    } else {
+      LogMsg(VERB_NORMAL, "[Cos] Using fallback file: %s", fallbackPath);
+    }
+
   }
   else
+    LogMsg(VERB_NORMAL, "[Cos] Using local file: %s", localFile);
+
+  if(1)
   {
     double eta, R, T, Rpp, chi ,pf;
 
@@ -66,7 +85,7 @@ void Cosmos::Setup()
         break;
       }
 
-      LogMsg (VERB_PARANOID ,"%d %lf %lf %lf %lf %lf %lf", line, eta, R, T, Rpp, chi , pf);
+      LogMsg (VERB_PARANOID ,"%d %.2e %.2e %.2e %.2e %.2e %.2e", line, eta, R, T, Rpp, chi , pf);
       line ++;
     }
     LogMsg (VERB_PARANOID ,"eta %lf eta %lf ", etav[etav.size()-1], etav[etav.size()-2]);
@@ -82,7 +101,7 @@ void Cosmos::Setup()
     //   }
   }
   double mA = std::sqrt(chiv.back())/fA;
-
+  LogMsg(VERB_NORMAL,"[Cos] chiT_0 = %.2e",chiv.back());
   /* Find eta 1 */
 
   double eta1, R1, chi1;
@@ -101,7 +120,7 @@ void Cosmos::Setup()
     double lfA2  = pfv.back();
     double errr = 1.0 ;
     double leta1, lfA1, lslo;
-    while (std::abs(errr) > 0.00001)
+    while (std::abs(errr) > 0.000001)
     {
       lslo  = (lfA2-lfA0)/(leta2-leta0);
       leta1 = leta0 + (lfA-lfA0)/lslo;
@@ -142,7 +161,11 @@ void Cosmos::Setup()
   sT.set_points(etav,Tv);
   sRpp.set_points(etav,Rppv);
   schi.set_points(etav,chiv);
+  LogMsg(VERB_NORMAL,"[Cos] fA = %.2e GeV",fA);
+  LogMsg(VERB_NORMAL,"[Cos] mA = %.2e eV",1.0e+9*mA);
+  LogMsg(VERB_NORMAL,"[Cos] T1 = %.2e GeV",sT(1.0)/1000.);
   LogMsg(VERB_NORMAL,"[Cos] Setup of Cosmos finished",chi1);
+  LogMsg(VERB_NORMAL,"[Cos] Created out/cosmos.txt");
 
   if (commRank() == 0 ){
     FILE *file_co ;

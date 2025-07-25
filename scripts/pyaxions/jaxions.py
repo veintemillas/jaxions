@@ -843,36 +843,40 @@ def gm(address,something='summary',printerror=False):
         return ;
     if (something[0:3] == 'map') and  map_check :
         mapad = 'map'
+        N = f.attrs[u'Size']
+        Ny = N
+        Nz = f.attrs[u'Depth']
         if (something[0:4] == 'mapp') and  map_check :
             mapad = 'mapp'
-        N = f.attrs[u'Size']
+            Ny=Nz
+
         Nz = f.attrs[u'Depth']
         ct = f.attrs[u'z']
         if (something == mapad+'mC') and (ftype == 'Saxion'):
-            return f[mapad]['m'][()].reshape(N,N,2) ;
+            return f[mapad]['m'][()].reshape(Ny,N,2) ;
         if (something == mapad+'mC') and (ftype == 'Axion'):
             return ;
         if (something == mapad+'vC') and (ftype == 'Saxion'):
-            return f[mapad]['v'][()].reshape(N,N,2) ;
+            return f[mapad]['v'][()].reshape(Ny,N,2) ;
         if (something == mapad+'vC') and (ftype == 'Axion'):
             return ;
         if (something == mapad+'theta') and (ftype == 'Saxion'):
-            temp = np.array(f[mapad]['m'][()].reshape(Nz,N,2))
+            temp = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
             temp = np.arctan2(temp[:,:,1], temp[:,:,0])
             return temp ;
         if (something == mapad+'theta') and (ftype == 'Axion'):
-            temp = np.array(f[mapad]['m'][()].reshape(Nz,N))
+            temp = np.array(f[mapad]['m'][()].reshape(Ny,N))
             return temp/scaleFactorR ;
         if (something == mapad+'vheta') and (ftype == 'Axion'):
-            temp = np.array(f[mapad]['v'][()].reshape(Nz,N))
+            temp = np.array(f[mapad]['v'][()].reshape(Ny,N))
             return temp ;
         if (something == mapad+'vheta') and (ftype == 'Saxion'):
-            m   = np.array(f[mapad]['m'][()].reshape(Nz,N,2))
-            v   = np.array(f[mapad]['v'][()].reshape(Nz,N,2))
+            m   = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
+            v   = np.array(f[mapad]['v'][()].reshape(Ny,N,2))
             return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+m[:,:,1]**2) ;
 
         if (something == mapad+'rho') and (ftype == 'Saxion'):
-            temp = np.array(f[mapad]['m'][()].reshape(Nz,N,2))
+            temp = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
 

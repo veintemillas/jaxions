@@ -37,7 +37,7 @@ static __device__ __forceinline__ void	updateMThetaCoreGpu(const uint idx, Float
 
 
 template<typename Float, const bool wMod>
-static __device__ __forceinline__ void	updateVThetaCoreGpu(const uint idx, const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float iz,
+static __device__ __forceinline__ void	updateVThetaCoreGpu(const uint idx, const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float Rpp, const Float iz,
 							      const Float dzc, const Float dzd, void  *ood2, const uint Lx, const uint Sf, const uint NN, const Float zP, const Float tPz)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy, idxPz, idxMz;
@@ -81,7 +81,7 @@ static __device__ __forceinline__ void	updateVThetaCoreGpu(const uint idx, const
 		} else
 			mel += (m[idxPx] + m[idxMx] + m[idxPy] + m[idxMy] + m[idxPz] + m[idxMz] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
 	}
-	a = mel - zQ*sin(tmp*iz);
+	a = mel - zQ*sin(tmp*iz) + Rpp*tmp;
 
 	mel = v[idx - NN*Sf];
 	mel += a*dzc;
@@ -97,7 +97,7 @@ static __device__ __forceinline__ void	updateVThetaCoreGpu(const uint idx, const
 
 
 template<typename Float, const bool wMod>
-static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float iz,
+static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float Rpp, const Float iz,
 							      const Float dzc, const Float dzd, void  *ood2, const uint Lx, const uint Sf, const uint NN, const Float zP, const Float tPz)
 {
 	uint X[3], idxPx, idxPy, idxMx, idxMy, idxPz, idxMz;
@@ -141,7 +141,7 @@ static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, con
 		} else
 			mel += (m[idxPx] + m[idxMx] + m[idxPy] + m[idxMy] + m[idxPz] + m[idxMz] - ((Float) 6.)*tmp)*static_cast<Float*>(ood2)[nv-1];
 	}
-	a = mel - zQ*sin(tmp*iz);
+	a = mel - zQ*sin(tmp*iz) + Rpp*tmp;
 
 	mel = v[idx - NN*Sf];
 	mel += a*dzc;
@@ -155,7 +155,7 @@ static __device__ __forceinline__ void	propagateThetaCoreGpu(const uint idx, con
 }
 
 template<typename Float, const bool wMod>
-__global__ void	updateVThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float dzc, const Float dzd,
+__global__ void	updateVThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float Rpp, const Float dzc, const Float dzd,
 				     void *ood2, const Float iz, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN, const Float zP=0, const Float tPz=0)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -164,7 +164,7 @@ __global__ void	updateVThetaKernel(const Float * __restrict__ m, Float * __restr
 	if	(idx >= Vf)
 		return;
 
-	updateVThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, iz, dzc, dzd, ood2, Lx, Sf, NN, zP, tPz);
+	updateVThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, Rpp, iz, dzc, dzd, ood2, Lx, Sf, NN, zP, tPz);
 }
 
 template<typename Float, const bool wMod>
@@ -182,7 +182,7 @@ __global__ void	updateMThetaKernel(Float * __restrict__ m, Float * __restrict__ 
 
 
 template<typename Float, const bool wMod>
-__global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float dzc, const Float dzd,
+__global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __restrict__ v, Float * __restrict__ m2, const Float zQ, const Float Rpp, const Float dzc, const Float dzd,
 				     void *ood2, const Float iz, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN, const Float zP=0, const Float tPz=0)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
@@ -191,7 +191,7 @@ __global__ void	propagateThetaKernel(const Float * __restrict__ m, Float * __res
 	if	(idx >= Vf)
 		return;
 
-	propagateThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, iz, dzc, dzd, ood2, Lx, Sf, NN, zP, tPz);
+	propagateThetaCoreGpu<Float,wMod>(idx, m, v, m2, zQ, Rpp, iz, dzc, dzd, ood2, Lx, Sf, NN, zP, tPz);
 }
 
 void	updateVThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
@@ -214,12 +214,13 @@ void	updateVThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		const double dzd  = dz*d;
 		const double zR   = ppar.R;
 		const double zQ   = ppar.massA2*zR*zR*zR;
+		const double Rpp  = ppar.Rpp;
 		const double iZ   = 1./zR;
 		double aux[NN];
 		for (int i =0; i<NN; i++)
 						aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
-		updateVThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
+		updateVThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
@@ -227,13 +228,14 @@ void	updateVThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		const float dzd = dz*d;
 		const float zR = ppar.R;
 		const float zQ = (float) (ppar.massA2*zR*zR*zR);
+		const float Rpp  = (float) ppar.Rpp;
 		const float iZ   = 1./zR;
 		float aux[NN];
 		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
-		updateVThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
+		updateVThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
 	cudaFree(ood2);
 	CudaCheckError();
@@ -259,6 +261,7 @@ void	updateMThGpu(void * __restrict__ m, void * __restrict__ v, void * __restric
 		const double dzd  = dz*d;
 		const double zR   = ppar.R;
 		const double zQ   = ppar.massA2*zR*zR*zR;
+		const double Rpp  = ppar.Rpp;
 		const double iZ   = 1./zR;
 		double aux[NN];
 		for (int i =0; i<NN; i++)
@@ -272,6 +275,7 @@ void	updateMThGpu(void * __restrict__ m, void * __restrict__ v, void * __restric
 		const float dzd = dz*d;
 		const float zR = ppar.R;
 		const float zQ = (float) (ppar.massA2*zR*zR*zR);
+		const float Rpp  = (float) ppar.Rpp;
 		const float iZ   = 1./zR;
 		float aux[NN];
 		for (int i =0; i<NN; i++)
@@ -306,12 +310,13 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dzd  = dz*d;
 		const double zR   = ppar.R;
 		const double zQ   = ppar.massA2*zR*zR*zR;
+		const double Rpp  = ppar.Rpp;
 		const double iZ   = 1./zR;
 		double aux[NN];
 		for (int i =0; i<NN; i++)
 						aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
-		propagateThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
+		propagateThetaKernel<double,false><<<gridSize,blockSize,0,stream>>>((const double *) m, (double *) v, (double *) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
@@ -319,13 +324,14 @@ void	propThNmdGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dzd = dz*d;
 		const float zR = ppar.R;
 		const float zQ = (float) (ppar.massA2*zR*zR*zR);
+		const float Rpp  = (float) ppar.Rpp;
 		const float iZ   = 1./zR;
 		float aux[NN];
 		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
 
-		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
+		propagateThetaKernel<float, false><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN);
 	}
 	cudaFree(ood2);
 	CudaCheckError();
@@ -354,13 +360,14 @@ void	updateVThModGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		const double dzd  = dz*d;
 		const double zR   = ppar.R;
 		const double zQ   = ppar.massA2*zR*zR*zR;
+		const double Rpp  = ppar.Rpp;
 		const double iZ   = 1./zR;
 		const double tPz  = 2.*M_PI*zR;
 		double aux[NN];
 		for (int i =0; i<NN; i++)
 						aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
-		updateVThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
+		updateVThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
@@ -368,13 +375,14 @@ void	updateVThModGpu(const void * __restrict__ m, void * __restrict__ v, void * 
 		const float dzd = dz*d;
 		const float zR = ppar.R;
 		const float zQ = (float) (ppar.massA2*zR*zR*zR);
+		const float Rpp  = (float) ppar.Rpp;
 		const float iZ   = 1./zR;
 		const float tPz  = 2.*M_PI*zR;
 		float aux[NN];
 		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
-		updateVThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
+		updateVThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
 	}
 }
 
@@ -401,13 +409,14 @@ void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const double dzd  = dz*d;
 		const double zR   = ppar.R;
 		const double zQ   = ppar.massA2*zR*zR*zR;
+		const double Rpp  = ppar.Rpp;
 		const double iZ   = 1./zR;
 		const double tPz  = 2.*M_PI*zR;
 		double aux[NN];
 		for (int i =0; i<NN; i++)
 						aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(double),cudaMemcpyHostToDevice);
-		propagateThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
+		propagateThetaKernel<double,true><<<gridSize,blockSize,0,stream>>>((const double*) m, (double*) v, (double*) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
@@ -415,13 +424,14 @@ void	propThModGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		const float dzd = dz*d;
 		const float zR = ppar.R;
 		const float zQ = (float) (ppar.massA2*zR*zR*zR);
+		const float Rpp  = (float) ppar.Rpp;
 		const float iZ   = 1./zR;
 		const float tPz  = 2.*M_PI*zR;
 		float aux[NN];
 		for (int i =0; i<NN; i++)
 			aux[i] = (float) ((ppar.PC)[i]*ppar.ood2a);
 		cudaMemcpy(ood2,aux,NN*sizeof(float),cudaMemcpyHostToDevice);
-		propagateThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
+		propagateThetaKernel<float, true><<<gridSize,blockSize,0,stream>>>((const float *) m, (float *) v, (float *) m2, zQ, Rpp, dzc, dzd, ood2, iZ, Lx, Lx*Lx, Vo, Vf, NN, M_1_PI*iZ, tPz);
 	}
 }
 
