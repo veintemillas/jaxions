@@ -203,7 +203,7 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         print('')
         print('Succesfully created string configuration in N=256! (out)')
         #continue simulation with original parameters
-        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='--msa %f'%msa0, VERB=VERB, BONDEN=BONDEN)
+        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB, BONDEN=BONDEN)
         print('')
         print('Running ...')
         print('Finished simulation with N=%d! (%s)'%(N0, OUT_CON))
