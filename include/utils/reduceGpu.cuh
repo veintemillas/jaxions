@@ -1,6 +1,7 @@
+#define THRUST_IGNORE_CUB_VERSION_CHECK
 #include "cub/cub.cuh"
 
-__device__ uint bCount = 0;
+static __device__ uint bCount = 0;
 
 template <const int bSize, typename Float, const unsigned int eSize>
 __device__ inline void reduction(Float * __restrict__ eRes, const Float * __restrict__ tmp, Float *partial)

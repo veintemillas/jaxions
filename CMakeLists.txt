@@ -1,11 +1,12 @@
 # basic setup for cmake
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_policy(VERSION 3.10)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE ON)
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_COLOR_MAKEFILE ON)
-set(CMAKE_CXX_STANDARD_REQUIRED 14)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED 17)
+set(CMAKE_CXX_STANDARD 17)
 
 set(DEFAULT_BUILD "RELEASE")
 set(VALID_BUILDS DEVEL RELEASE DEBUG)
@@ -71,20 +72,37 @@ find_library(GSL_CBLAS_LIBRARY NAMES gslcblas             PATHS $ENV{GSL_HOME}/l
 
 if(${USE_GPU})
   add_definitions(-DUSE_GPU)
-  set(GPU_ARCH sm_70 CACHE STRING "set the GPU architecture (default: sm_70)")
-  set(GPU_COMP compute_70 CACHE STRING "set the GPU compute capability (default: compute_70)")
-  set(DEFARCH "700")
-  find_package(CUDA REQUIRED)
-  #set(CUDA_HOST_COMPILER gcc)
-  set(CUDA_PROPAGATE_HOST_FLAGS ON)
-  set(CUDA_NVCC_FLAGS "-arch=${GPU_COMP} -code=${GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false -std=c++14 --expt-relaxed-constexpr")
+  add_definitions(-DTHRUST_IGNORE_CUB_VERSION_CHECK)
+  set(GPU_ARCH sm_86 CACHE STRING "set the GPU architecture (default: sm_86)")
+  set(GPU_COMP compute_86 CACHE STRING "set the GPU compute capability (default: compute_86)")
+  set(DEFARCH "860")
+  
+  # Use modern CMake CUDA support
+  find_package(CUDAToolkit REQUIRED)
+  
+  # Set CUDA compiler if not already set
+  if(NOT CMAKE_CUDA_COMPILER)
+    set(CMAKE_CUDA_COMPILER ${CUDAToolkit_NVCC_EXECUTABLE})
+  endif()
+  
+  # Set CUDA architecture before enabling CUDA language
+  set(CMAKE_CUDA_ARCHITECTURES 86)
+  
+  # Enable CUDA language
+  enable_language(CUDA)
+  
+  set(CMAKE_CUDA_STANDARD 17)
+  set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+  
+  # Set CUDA compiler flags
+  set(CMAKE_CUDA_FLAGS "-ftz=true -prec-div=false -prec-sqrt=false --expt-relaxed-constexpr -DCUB_IGNORE_DEPRECATED_API")
 
-  set(CUDA_NVCC_FLAGS_DEVEL "-O3 -lineinfo" CACHE STRING
+  set(CMAKE_CUDA_FLAGS_DEVEL "-O3 -lineinfo" CACHE STRING
       "Flags used by the CUDA compiler during regular development builds." FORCE )
-  set(CUDA_NVCC_FLAGS_RELEASE "-O3 -w" CACHE STRING
-    "Flags used by the C++ compiler during release builds." FORCE )
-  set(CUDA_NVCC_FLAGS_HOSTDEBUG "-g -G" CACHE STRING
-      "Flags used by the C++ compiler during debug builds." FORCE )
+  set(CMAKE_CUDA_FLAGS_RELEASE "-O3 -w" CACHE STRING
+    "Flags used by the CUDA compiler during release builds." FORCE )
+  set(CMAKE_CUDA_FLAGS_HOSTDEBUG "-g -G" CACHE STRING
+      "Flags used by the CUDA compiler during debug builds." FORCE )
 endif()
 
 #if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -153,8 +171,8 @@ endif()
 
 
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} ${OUTPUT_FLAGS} -mcmodel=medium -std=c++14")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} ${OUTPUT_FLAGS} -mcmodel=medium -std=c++14")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} ${OUTPUT_FLAGS} -mcmodel=medium -I${CMAKE_SOURCE_DIR}/include")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${AVX_FLAGS} ${SSE_FLAGS} ${FMA_FLAGS} ${NYX_FLAGS} ${PROP_FLAGS} ${OUTPUT_FLAGS} -mcmodel=medium -I${CMAKE_SOURCE_DIR}/include")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wa,-q -lc++")
@@ -175,7 +193,9 @@ include_directories("$ENV{HDF5_HOME}/include")
 include_directories("$ENV{GSL_HOME}/include")
 
 include_directories(include)
-include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
+if(${USE_GPU})
+  include_directories(SYSTEM ${CUDAToolkit_INCLUDE_DIRS})
+endif()
 
 ### add tests and library
 add_subdirectory(lib)

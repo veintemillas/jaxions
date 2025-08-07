@@ -639,8 +639,8 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
 		  {
-			register _MData_ mIn, vIn, tmp;
-			register size_t idxV0;
+			_MData_ mIn, vIn, tmp;
+			size_t idxV0;
 
 			#pragma omp for collapse(3) schedule(static)
 			for (uint zz = 0; zz < bSizeZ; zz++) {
@@ -712,8 +712,8 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 		 for (uint yT = 0; yT < bY; yT++)
 		    #pragma omp parallel default(shared)
 		    {
-			register _MData_ mIn, vIn, tmp;
-			register size_t idxV0;
+			_MData_ mIn, vIn, tmp;
+			size_t idxV0;
 
 			#pragma omp for collapse(3) schedule(static)
 			for (uint zz = 0; zz < bSizeZ; zz++) {

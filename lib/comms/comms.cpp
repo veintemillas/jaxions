@@ -183,7 +183,11 @@ int	initComms (int argc, char *argv[], int size, DeviceType dev, LogMpi logMpi, 
 
 		cudaGetDeviceProperties(&gpuProp, idxAcc);
 
+		LogMsg (VERB_NORMAL, "  GPU %d Memory Info: Total Global Memory: %zu bytes", idxAcc, gpuProp.totalGlobalMem);
+		// Memory bandwidth calculation - memoryClockRate and memoryBusWidth were removed in CUDA 13
+		#if CUDART_VERSION < 13000
 		LogMsg (VERB_NORMAL, "  Peak Memory Bandwidth of Gpu %d (GB/s): %f", idxAcc, 2.0*gpuProp.memoryClockRate*(gpuProp.memoryBusWidth/8)/1.0e6);
+		#endif
 		gpuMem	      = gpuProp.totalGlobalMem;
 		tPerBlock     = gpuProp.maxThreadsPerBlock;
 		maxThreads[0] = gpuProp.maxThreadsDim[0];

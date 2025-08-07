@@ -7,11 +7,21 @@ scalar/normField.cpp scalar/normXeon.cpp scalar/normGpu.cu scalar/normCore.cpp s
 scalar/mendTheta.cpp scalar/mendThetaXeon.cpp scalar/mendThetaGpu.cu scalar/fourier.cpp utils/logger.cpp utils/profiler.cpp utils/misc.cpp utils/kgvops.cpp projector/projector.cpp propagator/laplacian.cpp reducer/reducer.cpp
 spectrum/spectrum.cpp WKB/WKB.cpp cosmos/cosmos.cpp gravity/potential.cpp gadget/gadget_output.cpp)
 
+# Add current directory to include path
 include_directories(.)
+
+# Create the library
+add_library(Axions STATIC ${OBJS})
+
+# Set include directories for this target specifically
+target_include_directories(Axions PRIVATE .)
+target_include_directories(Axions PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+# Set properties for CUDA files if GPU is enabled
 if(USE_GPU)
-	cuda_add_library(Axions STATIC ${OBJS})
-else()
-	add_library(Axions STATIC ${OBJS})
+    set_property(TARGET Axions PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+    # Ensure CUDA files get the correct include paths
+    target_include_directories(Axions PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
 endif()
 
 

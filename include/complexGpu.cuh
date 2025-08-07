@@ -430,8 +430,8 @@ public:
   __host__ __device__
     inline complex<ValueType>& operator*=(const ValueType z)
     {
-      this->x *= z;
-      this->y *= z;
+      real(real() * z);
+      imag(imag() * z);
       return *this;
     }
 
@@ -531,8 +531,8 @@ public:
   __host__ __device__
     inline complex<float>& operator*=(const float z)
     {
-      this->x *= z;
-      this->y *= z;
+      real(real() * z);
+      imag(imag() * z);
       return *this;
     }
 
@@ -648,8 +648,8 @@ public:
   __host__ __device__
     inline complex<double>& operator*=(const double z)
     {
-      this->x *= z;
-      this->y *= z;
+      real(real() * z);
+      imag(imag() * z);
       return *this;
     }
 

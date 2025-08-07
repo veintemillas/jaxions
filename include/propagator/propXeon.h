@@ -908,8 +908,8 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 		 for (uint yT = 0; yT < bY; yT++)
 		  #pragma omp parallel default(shared)
 		  {
-			register _MData_ mIn, vIn, tmp;
-			register size_t idxM0, idxV0;
+			_MData_ mIn, vIn, tmp;
+			size_t idxM0, idxV0;
 
 			#pragma omp for collapse(3) schedule(static)
 			for (uint zz = 0; zz < bSizeZ; zz++) {
@@ -982,8 +982,8 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, co
 		 for (uint yT = 0; yT < bY; yT++)
 		    #pragma omp parallel default(shared)
 		    {
-			register _MData_ mIn, vIn, tmp;
-			register size_t idxM0, idxV0;
+			_MData_ mIn, vIn, tmp;
+			size_t idxM0, idxV0;
 
 			#pragma omp for collapse(3) schedule(static)
 			for (uint zz = 0; zz < bSizeZ; zz++) {

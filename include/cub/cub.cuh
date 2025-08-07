@@ -33,6 +33,15 @@
 
 #pragma once
 
+#ifndef THRUST_IGNORE_CUB_VERSION_CHECK
+#define THRUST_IGNORE_CUB_VERSION_CHECK
+#endif
+
+// Disable deprecated CUB APIs for CUDA 12+
+#ifndef CUB_IGNORE_DEPRECATED_API
+#define CUB_IGNORE_DEPRECATED_API
+#endif
+
 
 // Block
 #include "block/block_histogram.cuh"
@@ -56,7 +65,10 @@
 #include "device/device_segmented_radix_sort.cuh"
 #include "device/device_segmented_reduce.cuh"
 #include "device/device_select.cuh"
+// Disable SPMV for CUDA 12+ due to deprecated texture API dependency
+#if CUDART_VERSION < 12000
 #include "device/device_spmv.cuh"
+#endif
 
 // Grid
 //#include "grid/grid_barrier.cuh"
@@ -81,8 +93,11 @@
 #include "iterator/cache_modified_output_iterator.cuh"
 #include "iterator/constant_input_iterator.cuh"
 #include "iterator/counting_input_iterator.cuh"
+// Disable texture iterators for CUDA 12+ due to deprecated texture API
+#if CUDART_VERSION < 12000
 #include "iterator/tex_obj_input_iterator.cuh"
 #include "iterator/tex_ref_input_iterator.cuh"
+#endif
 #include "iterator/transform_input_iterator.cuh"
 
 // Util
