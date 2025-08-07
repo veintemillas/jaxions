@@ -139,11 +139,16 @@ endif()
 
 # AMReX
 if(${USE_NYX_OUTPUT})
+  # Add path where AMReX_Config.H and other generated headers live
+  include_directories("$ENV{AMREX_LIBRARY_HOME}/include")
+
+  # Also explicitly include tmp_install_dir/include if AMREX_LIBRARY_HOME isn't pointing there
+  include_directories("/home/bonden/Salsa/axionyx_2.0/subprojects/amrex/tmp_install_dir/include")
+
   list(APPEND CMAKE_PREFIX_PATH "$ENV{AMReX_DIR}/Tools/CMake")
   find_package(AMReX REQUIRED NAMES "AMReX_" )
   find_library(AMReX_LIBRARY NAMES amrex PATHS "$ENV{AMREX_LIBRARY_HOME}/lib")
   set(NYX_FLAGS "-DUSE_NYX_OUTPUT")
-  include_directories("$ENV{AMREX_LIBRARY_HOME}/include")
 endif()
 
 # Propagators
