@@ -3517,14 +3517,16 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 
 			// threshold of the energy density [energy ]
 			Float RRRRRR = (Float) *field->RV();
-			Float ethres = (Float) 2*field->AxionMassSq();
-			if (mask == SPMASK_AXITV)
-				ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
+			Float ethres = (Float) field->AxionMassSq();
+			// if (mask == SPMASK_AXITV)
+			// 	ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
 
 			Float iR     = 1/RRRRRR;
-			Float tthres = std::sqrt(12/ethres)*iR/field->Delta();
-			if( tthres > 3)
-				tthres = 3;
+			// Float tthres = std::sqrt(12/ethres)*iR/field->Delta();
+			// if( tthres > 3)
+			// 	tthres = 3;
+			Float tthres = 1.5;
+			LogMsg(VERB_NORMAL,"[masker axion] Theta threshold %.2f",tthres);
 
 			// l_cummask, Axit2 mask if previous point has this label
 			StringType ST_CS = STRING_XY_POSITIVE;
@@ -3545,28 +3547,35 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 
 				switch(mask){
 					case SPMASK_AXIT:
-					/* The last condition allows to mask if the point was masked before,
-					i.e. not refresing the mask! */
-					if (strdaa[idx] & ST_CS)
-						mt++;
-					if( (m2sax[idx] > ethres) || ( std::abs(mm[idx]*iR) > tthres) || (strdaa[idx] & ST_CS)){
-					// if( (m2sax[idx] > ethres) ){
-						mp++;
-						strdaa[idx] = STRING_WALL;
-						m2sa[oidx] = 0.0;
-					} else {
-						ms++;
-						m2sa[oidx] = m2sax[idx];
-						strdaa[idx] = STRING_NOTHING;
-					}
-					break;
-
-					case SPMASK_AXIT2:
+					{
 						/* The last condition allows to mask if the point was masked before,
 						i.e. not refresing the mask! */
 						if (strdaa[idx] & ST_CS)
 							mt++;
-						if( (m2sax[idx] > ethres) || ( std::abs(mm[idx]*iR) > tthres) || (strdaa[idx] & ST_CS) ){
+						Float theta_mod = std::fmod(mm[idx]*iR + M_PI,2*M_PI)-M_PI;
+						// if( (m2sax[idx] > ethres) || ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS)){
+						if( ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS)){
+						// if( (m2sax[idx] > ethres) ){
+							mp++;
+							strdaa[idx] = STRING_WALL;
+							m2sa[oidx] = 0.0;
+						} else {
+							ms++;
+							m2sa[oidx] = m2sax[idx];
+							strdaa[idx] = STRING_NOTHING;
+						}
+					}
+					break;
+
+					case SPMASK_AXIT2:
+					{
+						/* The last condition allows to mask if the point was masked before,
+						i.e. not refresing the mask! */
+						if (strdaa[idx] & ST_CS)
+							mt++;
+						Float theta_mod = std::fmod(mm[idx]*iR + M_PI,2*M_PI)-M_PI;
+						// if( (m2sax[idx] > ethres) || ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS) ){
+						if( ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS) ){
 							mp++;
 							strdaa[idx] = STRING_WALL;
 							m2sa[oidx] = 1.0;
@@ -3575,6 +3584,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 							m2sa[oidx] = 0.0;
 							strdaa[idx] = STRING_NOTHING;
 						}
+					}
 					break;
 
 					case SPMASK_AXITV:
