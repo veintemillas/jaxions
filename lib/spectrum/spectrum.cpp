@@ -3518,13 +3518,8 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 			// threshold of the energy density [energy ]
 			Float RRRRRR = (Float) *field->RV();
 			Float ethres = (Float) field->AxionMassSq();
-			// if (mask == SPMASK_AXITV)
-			// 	ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
 
 			Float iR     = 1/RRRRRR;
-			// Float tthres = std::sqrt(12/ethres)*iR/field->Delta();
-			// if( tthres > 3)
-			// 	tthres = 3;
 			Float tthres = 1.5;
 			LogMsg(VERB_NORMAL,"[masker axion] Theta threshold %.2f",tthres);
 
@@ -3553,8 +3548,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 						if (strdaa[idx] & ST_CS)
 							mt++;
 						Float theta_mod = std::fmod(mm[idx]*iR + M_PI,2*M_PI)-M_PI;
-						// if( (m2sax[idx] > ethres) || ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS)){
-						if( ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS)){
+						if( (m2sax[idx] > ethres) || ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS)){
 						// if( (m2sax[idx] > ethres) ){
 							mp++;
 							strdaa[idx] = STRING_WALL;
@@ -3574,8 +3568,7 @@ void	SpecBin::masker	(double radius_mask, StatusM2 out, bool l_cummask) {
 						if (strdaa[idx] & ST_CS)
 							mt++;
 						Float theta_mod = std::fmod(mm[idx]*iR + M_PI,2*M_PI)-M_PI;
-						// if( (m2sax[idx] > ethres) || ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS) ){
-						if( ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS) ){
+						if( (m2sax[idx] > ethres) || ( std::abs(theta_mod) > tthres) || (strdaa[idx] & ST_CS) ){
 							mp++;
 							strdaa[idx] = STRING_WALL;
 							m2sa[oidx] = 1.0;
