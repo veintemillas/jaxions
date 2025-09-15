@@ -56,6 +56,7 @@
 		const bool		spec;
 		const FieldPrecision	fPrec;
 		const FieldType		fType;
+		MeasInfo mInfo;
 
 		void			fillCosTable ();
 
@@ -68,7 +69,7 @@
 
 				SpecBin (Scalar *field, const bool spectral, MeasInfo measinfo) : field(field), Ly(field->Length()), Lz(field->Depth()), Tz(field->TotalDepth()),
 									spec(spectral), fPrec(field->Precision()), fType(field->Field()), zBase(commRank()*Ly/commSize()),
-									k0(2.0*M_PI/((double) field->BckGnd()->PhysSize())) {
+									k0(2.0*M_PI/((double) field->BckGnd()->PhysSize())), mInfo(measinfo) {
 
 				/* select nbins from maximum k in 2pi/L0 units
 				we want measinfo.nbinsspec bins

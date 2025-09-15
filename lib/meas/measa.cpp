@@ -90,7 +90,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	for (int ii=0; ii<irmask; ii++)
 		LogMsg(VERB_PARANOID,    "[Meas ...] rmask #%d %.2f ",ii,rmasktab[ii]);
 	nRunType nruntype = info.nrt;
-	
+
 	bool onlymaskenergy = info.maskenergyonly;
 
 	/* This is a change with respect to previous behaviour
@@ -230,7 +230,8 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 				energy(axiona, eRes, EN_MAP, shiftz);
 
 				MeasDataOut.eA = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]) ;
-					MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
+				MeasDataOut.eS = (eR[5] + eR[6] + eR[7] + eR[8] + eR[9]) ;
+				info.edens_average = MeasDataOut.eA;
 
 			if (measa & MEAS_ENERGY3DMAP){
 				// LogOut("write eMap ");
@@ -681,7 +682,7 @@ writePMapHdf5s (axiona, LAB);
 									trackFree(eRes);
 								}
 						}
-						
+
 						if((maskara[i] == SPMASK_REDO) && onlymaskenergy) {
 							LogMsg(VERB_NORMAL,"[Meas %d] Spectrum %s rmask %f skipped",indexa,masklab[i].c_str(),rmasktab[ii]);
 							continue; // skip spectra in Red mode when onlymaskenergy is true
@@ -797,7 +798,7 @@ writePMapHdf5s (axiona, LAB);
 						}
 						nRunType aux = nruntype & (NRUN_K | NRUN_G | NRUN_V);
 						specAna.nSRun(maskara[i], aux);
-						
+
 						if (nruntype & NRUN_K){
 							sprintf(LABEL, "sKS_%s",PRELABEL);
 								writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", LABEL);

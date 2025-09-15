@@ -812,6 +812,8 @@
 			int                 cummask;
 			PrintConf           printconf;
 			bool                maskenergyonly;
+			double              edens_average;
+			double              edens_sigma_threshold;
 		}	MeasInfo;
 
 		// data output by measurement function to program

@@ -9,6 +9,8 @@
 #include "enum-field.h"
 #include "utils/logger.h"
 #include "cosmos/cosmos.h"
+#include "io/readWrite.h"
+
 
 # define PARSE1 { LogMsg(VERB_NORMAL,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
 # define PARSE2 { LogMsg(VERB_NORMAL,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
@@ -700,6 +702,9 @@ int	parseArgs (int argc, char *argv[])
 	deninfa.idxprint  = 0;
   deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
 	deninfa.printconf = PRINTCONF_NONE;  // no configuration
+
+  deninfa.edens_average  = 0;
+  deninfa.edens_sigma_threshold = 3;
 
 	for (int i=1; i<argc; i++)
 	{
@@ -2016,6 +2021,28 @@ int	parseArgs (int argc, char *argv[])
 		if (!strcmp(argv[i], "--axitontracker.gradients"))
 		{
 			icdatst.axtinfo.gradients = true;
+			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--edens_sigma_threshold"))
+		{
+
+      double esm = 0;
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the energy density mask threshold.\n");
+				exit(1);
+			}
+
+			esm = atof(argv[i+1]);
+
+			if (esm < 0.)
+			{
+				printf("Error: energy density mask threshold must be larger than or equal to 0.\n");
+				exit(1);
+			}
+
+			deninfa.edens_sigma_threshold = esm;
 			PARSE2;
 		}
 
