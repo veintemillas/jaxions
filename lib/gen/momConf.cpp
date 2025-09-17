@@ -84,7 +84,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	Float bee = (Float) 4*kcrit*kcrit/(Lx*Lx);
 
 	/* prefactors for thermal ICs */
-	Float m2 = mopa.mass2;   // re,im effective mass
+	Float m2 = mopa.mass2;   // re,im effective mass in k0 units
 	Float k0 = mopa.k0;      // 2pi/L
 	Float ik02 = (Float) (1/(mopa.k0*mopa.k0));
 	int	maxThreads = omp_get_max_threads();
@@ -195,18 +195,20 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									case(MOM_MVTHERMAL):
 										{
 											// needs mass!
-											Float mP = sqrt(sqrt(((Float) modP)*k0*k0 + m2));
-											Float mE = sqrt(1./(exp(mP*mP/kcrit)-1.));
+											Float wT = sqrt(((Float) modP) + m2)/kcrit;
+											Float nnnnnn = sqrt(1./(exp(wT)-1.));
+											Float wT_sqrt = sqrt(wT);
 											// field (goes to V array)
 											// the zero mode has infinite thermal expectation value in the continuum
 											// discrete version not ... 0? adjusted to VEV? ...
-											fM[idx] = (modP == 0) ? 0 : marsa*mE/mP ;
+											fM[idx] = (modP == 0) ? 0 : marsa*nnnnnn/wT_sqrt ;
 											// velocity (goes into M)
 											// the zero mode is finite mE/mP -> kcrit
 											vl = Twop*(uni(mt64));
 											al = distri(mt64);
 											marsa   = exp( complex<Float>(0,vl) )*al;
-											fV[idx] = (modP == 0) ? marsa*sqrt(kcrit) : marsa*mE*mP ;
+											// fV[idx] = (modP == 0) ? marsa*sqrt(kcrit) : marsa*mE*mP ;
+											fV[idx] =  marsa*nnnnnn*wT_sqrt ;
 										}
 									break;
 

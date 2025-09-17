@@ -1279,38 +1279,89 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 	auto &myPlanM = AxionFFT::fetchPlan("InitM"); // now transposed
 	auto &myPlanV = AxionFFT::fetchPlan("InitV");
 
-
 	// ft_theta' in M2, ft_theta in V
 
-	/* mass2 in ADM units it follows from temperature (in ic.kcr in ADM units)
-	and the conformal potential
-	 lambda/4 ( Phi^2-v^2)^2 +lambda/6 T^2 Phi^2
-	        >>>>>>>> lambda/4 ( cPhi^2-R^2)^2 +lambda/6 (T^2 R^2/v^2) cPhi^2
-	The minimum of the potential happens at
-	x (x^2-R^2) + cT^2 x/3 = 0
-  and the mass2 is
-	lambda [3x^2-R^2 + cT^2/3]_xmin
-	which are
-	x^2 +cT2/3 - R^2 = 0 >>>> xmin = sqrt(R^2-cT2/3) or 0
-	m2 = lambda [3(R^2-T2/3)-R^2 + T^2/3] = lambda * 2(R^2-cT2/3) or lambda * (cT2/3-R^2)
 
-	then
-		m2 = max (lambda * 2 * R^2 (1-T2/v^2/3), 0)
+	/* New stuff
 
-		*/
-		double T2   = ic.kcr*ic.kcr; // in units of [v^2]
-		double R2   = (*axionField->RV())*(*axionField->RV());
-		double mS2  = axionField->LambdaP()*( (T2 > 3) ? R2*(T2/3- 1) : 2*R2*(1 - T2/3));
-		LogMsg(VERB_NORMAL,"[GEN] lambda %e", axionField->LambdaP());
-		LogMsg(VERB_NORMAL,"[GEN] T (kcr) %e", ic.kcr);
-		LogMsg(VERB_NORMAL,"[GEN] k0 (2pi/L) %e ", 6.283185307179586/axionField->BckGnd()->PhysSize());
-		LogMsg(VERB_NORMAL,"[GEN] mass %e", sqrt(mS2));
+	In the new Thermal ICs, RPQ = TR/v/sqrt(3) represents the temperature in
+	units of VEV with the scale factor factored in that makes it almost constant
+	to fill the Fourier modes, we need the exponential factors that contain
+	energy/temperature, and w is measured in H1 units, not v. Effectively we need
+	another parameter, which is H1/v, tradeable for v/Mpl up to dof.
+
+	We use pTf = TR/k_max, the temperature in units of the maximum momentum,
+	which allows to control directly where in the Bose-Einstein distribution is
+	do we cut-off our distribution.
+
+	we define
+							pTf   = TcRc / (pi N/L)
+	note that
+							v/H1  = pTf pi N / sqrt(3) RPQ (L/eta1)
+							v/Mpl = 0.033 / tauc / sqrt(g100) L/eta1 / N / pTf
+
+	this way  w/T = sqrt( (2pi n /LR)^2 + m^2)/T = k0 n / TR x finite mass
+	is now    w/T = sqrt( (n/N)^2 + ??)/pTf ) simply
+
+
+	*/
+
+	// Term controling T/v
+
+	double RPQ  = axionField->BckGnd()->RPQ(); // in units of [TR/vsqrt(3)]
+	double R    = *axionField->RV();
+	double mS2  = 2*axionField->LambdaP()*( (RPQ > R) ? RPQ*RPQ-R*R : 0.5*(R*R-RPQ*RPQ));
+	double k0   = 6.283185307179586/axionField->BckGnd()->PhysSize();
+	mS2 /= k0; //mS is normalised to k0
+
+	// Term controling T/H1 imput by pTf = kcr
+
+	LogMsg(VERB_NORMAL,"[GEN] lambda %e", axionField->LambdaP());
+	LogMsg(VERB_NORMAL,"[GEN] RPQ %.2f", RPQ);
+	LogMsg(VERB_NORMAL,"[GEN] k0 (2pi/L) %e ", k0);
+	LogMsg(VERB_NORMAL,"[GEN] mass/k0 %e", sqrt(mS2));
+	LogMsg(VERB_NORMAL,"[GEN] pTf %.2f", ic.kcr);
+
+	LogMsg(VERB_NORMAL,"[GEN] v/H1 = %.2f", ic.kcr* 3.1416 * axionField->Length()/(1.7 * RPQ * axionField->BckGnd()->PhysSize()));
+	/* OLD STUFF */
+
+								/* mass2 in ADM units it follows from temperature (in ic.kcr in ADM units)
+								and the conformal potential
+								 lambda/4 ( Phi^2-v^2)^2 +lambda/6 T^2 Phi^2
+								        >>>>>>>> lambda/4 ( cPhi^2-R^2)^2 +lambda/6 (T^2 R^2/v^2) cPhi^2
+								The minimum of the potential happens at
+								x (x^2-R^2) + cT^2 x/3 = 0
+							  and the mass2 is
+								lambda [3x^2-R^2 + cT^2/3]_xmin
+								which are
+								x^2 +cT2/3 - R^2 = 0 >>>> xmin = sqrt(R^2-cT2/3) or 0
+								m2 = lambda [3(R^2-T2/3)-R^2 + T^2/3] = lambda * 2(R^2-cT2/3) or lambda * (cT2/3-R^2)
+
+								then
+									m2 = max (lambda * 2 * R^2 (1-T2/v^2/3), 0)
+
+									*/
+
+									/*
+
+									double T2   = ic.kcr*ic.kcr; // in units of [v^2]
+									double R2   = (*axionField->RV())*(*axionField->RV());
+									double mS2  = axionField->LambdaP()*( (T2 > 3) ? R2*(T2/3- 1) : 2*R2*(1 - T2/3));
+									LogMsg(VERB_NORMAL,"[GEN] lambda %e", axionField->LambdaP());
+									LogMsg(VERB_NORMAL,"[GEN] T (kcr) %e", ic.kcr);
+									LogMsg(VERB_NORMAL,"[GEN] k0 (2pi/L) %e ", 6.283185307179586/axionField->BckGnd()->PhysSize());
+									LogMsg(VERB_NORMAL,"[GEN] mass %e", sqrt(mS2));
+
+									*/
+
+
+
 
 	MomParms mopa;
 		mopa.kMax   = axionField->Length();
 		mopa.mass2  = mS2;
-		mopa.k0     = 6.283185307179586/axionField->BckGnd()->PhysSize();
-		mopa.kCrt   = ic.kcr;
+		mopa.k0     = k0;
+		mopa.kCrt   = ic.kcr * axionField->Length();
 		mopa.mocoty = MOM_MVTHERMAL;
 		mopa.cmplx  = true;
 		mopa.mp = axionField->mStart();
@@ -1321,11 +1372,21 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 	myPlanV.run(FFT_BCK);
 	// cphi' in m array
 
-	double norma = 1./pow(axionField->BckGnd()->PhysSize(),1.5);
+	/* Normalisation
+	|Phik|^2 = V R^4 RPQ^2 /pTf^3 kmax^3 * (T/w/()expwT-1)
+	Phik needs sqrt(V) R^2 RPQ / (pTf kmax)^(3/2)
+	and an extra factor of 1/V from continuum/discrete definitions */
+	// double norma = 1./pow(axionField->BckGnd()->PhysSize(),1.5);
+	double norma1 = 1/pow(axionField->BckGnd()->PhysSize(),3);
+	norma1 *= 3 * pow(RPQ,2) / pow(k0 * ic.kcr * axionField->Length(),3);
 
-	LogMsg(VERB_NORMAL,"L %e, norma %e \n",axionField->BckGnd()->PhysSize(), norma);
-	scaleField (axionField, FIELD_M, norma);
-	scaleField (axionField, FIELD_V, norma);
+	LogMsg(VERB_NORMAL,"L %e, norma1 %e \n",axionField->BckGnd()->PhysSize(), norma1);
+	scaleField (axionField, FIELD_M, sqrt(norma1));
+
+	double norma2 = 1/pow(axionField->BckGnd()->PhysSize(),3);
+	norma2 *= 3 * pow(RPQ,2) / pow(k0 * ic.kcr * axionField->Length(),1);
+	LogMsg(VERB_NORMAL,"L %e, norma2 %e \n",axionField->BckGnd()->PhysSize(), norma2);
+	scaleField (axionField, FIELD_V, sqrt(norma2));
 
 
 	axionField->setFolded(false);

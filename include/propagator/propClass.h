@@ -365,7 +365,7 @@
 		double *z  = axion->zV();
 
 		double *cD = d;
-		
+
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
 		if (lastStage == PROP_FIRST) {
@@ -399,9 +399,9 @@
 			//cudaDeviceSynchronize();
 			updateMThetaGpu(axion->mGpu(), axion->vGpu(), axion->m2Gpu(), ppar, dz, c1, d1, uS, ext, precision, xBlock, yBlock, zBlock,
 				    ((cudaStream_t *)axion->Streams())[2], wMod);
-	
+
 			//cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
-			
+
 			*z += dz*d1;
 			axion->updateR();
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[2]);
@@ -1310,6 +1310,7 @@
 		(*pipar).gamma  = axion->BckGnd()->Gamma();
 		(*pipar).frw    = axion->BckGnd()->Frw();
 		(*pipar).dectime= axion->BckGnd()->DecTime();
+		(*pipar).RPQ    = axion->BckGnd()->RPQ();
 
 	}
 #endif

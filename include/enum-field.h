@@ -926,6 +926,7 @@
 			double   Rp;
 			double   Lambda;
 			double   lambda;
+			double   RPQ;
 			double   gamma;
 			double   dectime;
 			double   beta;

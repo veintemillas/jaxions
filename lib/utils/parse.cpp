@@ -39,6 +39,7 @@ double kCrit = 1.0;
 //JAVIER
 double fA  = 1.0e10;
 double frw = 1.0;
+double RPQ = 0.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
@@ -84,6 +85,7 @@ bool uMI      = false;
 bool uFR      = false;
 bool ufA      = false;
 bool uexCosm  = false;
+bool uRPQ     = false;
 bool spectral = false;
 bool fpectral = false;
 bool mink			= false;
@@ -780,6 +782,26 @@ int	parseArgs (int argc, char *argv[])
 			if (frw < 0.)
 			{
 				printf("Warning: Contracting Universe?\n");
+			}
+
+			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--RPQ"))
+		{
+
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for TR/v = R_PQ (scale factor of PQ phase trans).\n");
+				exit(1);
+			}
+
+      uRPQ = true;
+			RPQ = atof(argv[i+1]);
+
+			if (RPQ < 0.)
+			{
+				printf("Warning: RPQ negative but it appears only ^2?\n");
 			}
 
 			PARSE2;
@@ -2809,6 +2831,9 @@ Cosmos	createCosmos()
 		if (uFR)
 			myCosmos.SetFrw(frw);
 
+    if (uRPQ)
+			myCosmos.SetRPQ(RPQ);
+
 		if (uMI)
 			myCosmos.SetMink(mink);
 
@@ -2830,6 +2855,7 @@ Cosmos	createCosmos()
 		myCosmos.SetZRestore(zrestore);
 		myCosmos.SetIndi3   (indi3);
 		myCosmos.SetFrw     (frw);
+    myCosmos.SetRPQ     (RPQ);
 		myCosmos.SetMink    (mink);
 		myCosmos.SetUeC     (uexCosm);
 		myCosmos.SetFA      (fA);
