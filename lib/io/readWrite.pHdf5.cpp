@@ -561,6 +561,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_STRING:
+			sprintf(icStr, "Custom Strings");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
 		default:
 		case	CONF_NONE:
 			sprintf(icStr, "None");
@@ -1209,6 +1216,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					cType = CONF_SPAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+				} else if (!strcmp(icStr, "Custom Strings")) {
+					cType = CONF_STRING;
+					// readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 				} else if (!strcmp(icStr, "Moore")) {
 					cType = CONF_SMOOTH;
 					/* The m and v fields are not conformal so we will need to rescale them */
@@ -1861,6 +1871,12 @@ void	createMeas (Scalar *axion, int index)
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_STRING:
+			sprintf(icStr, "Custom Strings");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
 		default:
 		case	CONF_NONE:
 			sprintf(icStr, "None");
@@ -2555,19 +2571,19 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 	/*	Maximum coordinate is 2xN	(to avoid 1/2's)*/
 	writeAttribute(group_id, &nmax, "nmax",  H5T_NATIVE_UINT);
 
-	/*	String metadata		*/
-	status = H5Aexists(group_id, "String number");
-
-	if (status==0){
-		writeAttribute(group_id, &(strDat.strDen),  "String number",    H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strDat.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
-		writeAttribute(group_id, &(strDat.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
-		writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
-		writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
-	}
+	// /*	String metadata		*/
+	// status = H5Aexists(group_id, "String number");
+	//
+	// if (status==0){
+	// 	writeAttribute(group_id, &(strDat.strDen),  "String number",    H5T_NATIVE_HSIZE);
+	// 	writeAttribute(group_id, &(strDat.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
+	// 	writeAttribute(group_id, &(strDat.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
+	// 	writeAttribute(group_id, &(strDat.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+	// 	writeAttribute(group_id, &(strDat.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+	// 	writeAttribute(group_id, &(strDat.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+	// 	writeAttribute(group_id, &(strDat.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+	// 	writeAttribute(group_id, &(strDat.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
+	// }
 
 	/* if rData write the coordinates*/
 	if (rData)
@@ -2645,6 +2661,206 @@ void	writeStringCo	(Scalar *axion, StringData strDat, const bool rData)
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", sBytes);
 	commSync();
+}
+
+
+
+/* Writes a map of string labels, mainly for debugging, copied from writeEDens */
+
+void	writeStringLabelMap (Scalar *axion)
+{
+	hid_t	eGrp_id, group_id, rset_id, tset_id, aset_id, plist_id, chunk_id;
+	hid_t	rSpace, tSpace, aSpace, memSpace, dataType, totalSpace;
+	hsize_t	total, slice, slab, offset, rOff;
+
+	char	prec[16], fStr[16];
+	int	length = 8;
+
+	const hsize_t maxD[1] = { H5S_UNLIMITED };
+
+	size_t	dataSize;
+
+	int myRank = commRank();
+
+	LogMsg (VERB_NORMAL, "[WSLM] Writing String Label Map from m2");
+	LogMsg (VERB_NORMAL, "");
+
+	if (axion->Field() != FIELD_SAXION || !(axion->m2Status() & M2_LABEL_MAP)){
+			LogMsg(VERB_NORMAL,"[WSLM] Called without label map! (Field = %d, sDStatus= %d)\n",axion->Field(),axion->m2Status());
+			return ;
+		}
+
+	/*      Start profiling         */
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+	prof.start();
+
+	if (header == false || opened == false)
+	{
+		LogError ("[wEd] Error: measurement file not opened. Ignoring write request.\n");
+		return;
+	}
+
+	/* Label maps are unsigned short int */
+
+	dataType = H5T_NATIVE_UINT;
+	dataSize = sizeof(unsigned int);
+
+
+	uint redlZ = axion->rTotalDepth();
+	uint redlX = axion->rLength();
+
+	total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) redlZ);
+	// uint furu = (axion->Depth())*commSize();
+	// total = ((hsize_t) redlX)*((hsize_t) redlX)*((hsize_t) furu);
+	slab  = ((hsize_t) redlX)*((hsize_t) redlX);
+
+	/*	Create space for writing the raw data to disk with chunked access	*/
+	if ((totalSpace = H5Screate_simple(1, &total, maxD)) < 0)	// Whole data
+	{
+		LogError ("Fatal error H5Screate_simple");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Set chunked access	*/
+	if ((chunk_id = H5Pcreate (H5P_DATASET_CREATE)) < 0)
+	{
+		LogError ("Fatal error H5Pcreate");
+		prof.stop();
+		exit (1);
+	}
+
+	if (H5Pset_chunk (chunk_id, 1, &slab) < 0)
+	{
+		LogError ("Fatal error H5Pset_chunk");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Tell HDF5 not to try to write a 100Gb+ file full of zeroes with a single process	*/
+	if (H5Pset_fill_time (chunk_id, H5D_FILL_TIME_NEVER) < 0)
+	{
+		LogError ("Fatal error H5Pset_alloc_time");
+		prof.stop();
+		exit (1);
+	}
+
+	/*	Create a group for string data if it doesn't exist	*/
+	auto status = H5Lexists (meas_id, "/string", H5P_DEFAULT);
+
+	if (!status)
+		eGrp_id = H5Gcreate2(meas_id, "/string", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			eGrp_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);		// Group exists
+		} else {
+			LogError ("Error: can't check whether group /energy exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create a group for string labels if it doesn't exist
+	we call it density for the full resolution and rdensity for the reduced resolution	*/
+	char *gr_name;
+	if (axion->Reduced())
+		gr_name = "rlabels";
+	else
+		gr_name = "labels";
+
+	status = H5Lexists (eGrp_id, gr_name, H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(eGrp_id, gr_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(eGrp_id, gr_name, H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "Group /string/%s exists",gr_name);
+		} else {
+			LogError ("Error: can't check whether group /string/%s exists",gr_name);
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Might be reduced	*/
+	writeAttribute(group_id, &redlX, "Size",  H5T_NATIVE_UINT);
+	writeAttribute(group_id, &redlZ, "Depth", H5T_NATIVE_UINT);
+
+	/*	Create a dataset for the whole axion data	*/
+
+	char auCh[24];
+	sprintf (auCh, "/string/%s/data", gr_name);
+
+	if (1) {
+		aset_id = H5Dcreate (meas_id, auCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+
+		if (aset_id < 0)
+		{
+			LogError("Error creating aux dataset");
+			prof.stop();
+			exit (0);
+		}
+
+		aSpace = H5Dget_space (aset_id);
+	}
+	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
+
+	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
+
+	commSync();
+
+	LogMsg (VERB_HIGH, "Rank %d ready to write", myRank);
+
+	const hsize_t Lz = axion->rDepth();
+
+	if (1) {
+		for (hsize_t zDim = 0; zDim < Lz; zDim++)
+		{
+			/*	Select the slab in the file	*/
+			offset = (((hsize_t) (myRank*(Lz))) + zDim)*slab;
+			H5Sselect_hyperslab(aSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+
+			/*	Write raw data	*/
+			auto tErr = H5Dwrite (aset_id, dataType, memSpace, aSpace, mlist_id, (static_cast<char *> (axion->m2Cpu())+slab*zDim*dataSize));
+
+			if (tErr < 0)
+			{
+				LogError ("Error writing theta dataset");
+				prof.stop();
+				exit(0);
+			}
+		}
+
+		commSync();
+	}
+
+	LogMsg (VERB_NORMAL, "[WSLM] Write label map successful ");
+
+	size_t bytes = 0;
+
+	/*	Close the dataset	*/
+
+	if (1) {
+		H5Dclose (aset_id);
+		H5Sclose (aSpace);
+		bytes += total*dataSize;
+	}
+
+	H5Sclose (memSpace);
+
+	/*	Close the file		*/
+
+	H5Sclose (totalSpace);
+	H5Pclose (chunk_id);
+	H5Gclose (group_id);
+	H5Gclose (eGrp_id);
+
+        prof.stop();
+	prof.add(std::string("Write String Label map"), 0., ((double) bytes)*1e-9);
+
+	LogMsg (VERB_NORMAL, "Written %lu bytes", bytes);
 }
 
 
@@ -2919,7 +3135,11 @@ void	writePoint (Scalar *axion)	// NO PROFILER YET
 	LogMsg (VERB_NORMAL, "Written %lu bytes", dataSize);
 }
 
-void	writeArray (double *aData, size_t aSize, const char *group, const char *dataName, int rango)
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void	writeArray (const double *aData, size_t aSize, const char *group, const char *dataName, int rango)
 {
 	hid_t	group_id, base_id, dataSpace, sSpace, dataSet;
 	hsize_t dims[1] = { aSize };
@@ -3010,6 +3230,50 @@ void	writeArray (double *aData, size_t aSize, const char *group, const char *dat
 
 	LogMsg (VERB_NORMAL, "Written %lu bytes to disk", aSize*8);
 }
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void writeStringLoopObservables(StringLoopParms slp, int rango) {
+    const char* stringGroup = "/string";
+    const char* loopsGroup  = "/string/loops";
+
+    // Ensure /string group exists
+    if (!H5Lexists(meas_id, stringGroup, H5P_DEFAULT)) {
+        hid_t str_grp = H5Gcreate2(meas_id, stringGroup, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				H5Gclose(str_grp);
+    }
+
+    // Ensure /string/loops group exists
+    if (!H5Lexists(meas_id, loopsGroup, H5P_DEFAULT)) {
+        hid_t str_grp = H5Gcreate2(meas_id, loopsGroup, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				H5Gclose(str_grp);
+    }
+
+    // Write the individual datasets
+    writeArray(slp.len.data(),    slp.len.size(),    loopsGroup, "lengths",    rango);
+		writeArray(slp.vel.data(),    slp.vel.size(),    loopsGroup, "velocities",    rango);
+		writeArray(slp.gam.data(),    slp.gam.size(),    loopsGroup, "gammas",    rango);
+		writeArray(slp.cub.data(),    slp.cub.size(),    loopsGroup, "cubes",    rango);
+
+		/*	String metadata		*/
+
+		hid_t group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);
+		herr_t status = H5Aexists(group_id, "String number");
+
+		if (status==0){
+			writeAttribute(group_id, &(slp.stringdata.strDen),  "String number",    H5T_NATIVE_HSIZE);
+			writeAttribute(group_id, &(slp.stringdata.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
+			writeAttribute(group_id, &(slp.stringdata.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
+			writeAttribute(group_id, &(slp.stringdata.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(slp.stringdata.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(slp.stringdata.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(slp.stringdata.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+			writeAttribute(group_id, &(slp.stringdata.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
+		}
+			H5Gclose (group_id);
+	}
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

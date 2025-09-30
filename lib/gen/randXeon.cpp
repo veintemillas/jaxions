@@ -34,7 +34,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	size_t local_z_start = rank*Lz;
 
 	/* used from ic */
-	double mod0  = ic.mode0 > 0.0;
+	double mod0  = ic.mode0 ;
 	double kCri  = ic.kcr;
 	/* for string wave */
 	int div = ic.kMax; // number of strings in one dimension
@@ -147,7 +147,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 						iz = idx/Sf + local_z_start;
 						iy = (idx%Sf)/Lx ;
 						ix = (idx%Sf)%Lx ;
-						Float theta = ((Float) mod0*cos(6.2831853*(ix*kMa + iy)/Lx));
+						Float theta = ((Float) mod0*sin(kBase*(ix*kMx + iy*kMy + iz*kMz)));
 						m[idx] = std::complex<Float>(cos(theta), sin(theta));
 						break;
 					}
@@ -349,17 +349,10 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 		{
 			int nThread = omp_get_thread_num();
 			int rank = commRank();
-			// size_t Lz = Lx/commSize();
-			// size_t local_z_start = rank*Lz;
-			//printf("rank %d (t %d)-> N=%d Lz %d lzs = %d \n", rank, nThread, Lx, Lz, local_z_start);
-			Float L1 = ((Float) Lx)/4.01;
-			Float L3 = ((Float) Lx)*3.01/4.01;
+
 			Float LL = ((Float) Lx)/div;
 
-			std::mt19937_64 mt64(sd[nThread]);		// Mersenne-Twister 64 bits, independent per thread
-			std::uniform_real_distribution<Float> uni(-1.0, 1.0);
-
-			#pragma omp for schedule(static)	// This is NON-REPRODUCIBLE, unless one thread is used. Alternatively one can fix the seeds
+			#pragma omp for schedule(static)
 			for (size_t idx=0; idx<Sf; idx++)
 			{
 				size_t ix, iy;
@@ -375,11 +368,13 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 					}
 				}
 				std::complex<Float> eee = std::complex<Float>(cos(theta), sin(theta));
-				for (size_t iz =0; iz<Lz; iz++){
-					m[idx+iz*Sf] *= eee;
-				}
+				for (size_t iz =0; iz<Lz; iz++)
+						m[idx+iz*Sf] = eee;
 			}
 		}
+		// memcopy to new slices
+		// for (size_t iz =1; iz<Lz; iz++)
+		// 	memcpy(&m[iz* Sf], &m[0], 2 * Sf * sizeof(Float));
 	}
 
 	trackFree((void *) sd);

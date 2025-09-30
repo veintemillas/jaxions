@@ -11,6 +11,7 @@ if [ "$1" == "copy" ]; then
 fi
 
 if [ "$1" == "nb" ]; then
+	cp $JAXIONS_DIR/jaxions/scripts/basic.ipynb ./
 	cp $JAXIONS_DIR/jaxions/scripts/movie-maker.ipynb ./
 	cp $JAXIONS_DIR/jaxions/scripts/simulation-outlook.ipynb ./
 	exit 1

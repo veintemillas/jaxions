@@ -5,7 +5,7 @@ import os,re,sys
 import h5py, pickle, gzip
 import numpy as np
 
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl

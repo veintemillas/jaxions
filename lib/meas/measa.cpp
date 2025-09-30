@@ -433,7 +433,7 @@ writePMapHdf5s (axiona, LAB);
 			if ( !(measa & MEAS_STRINGCOO)){
 					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 					MeasDataOut.str = strings(axiona);
-					MeasDataOut.str = stringlength(axiona,MeasDataOut.str,strmeas);
+					MeasDataOut.str = stringlength	(axiona, MeasDataOut.str, strmeas);
 
 					if ( measa & MEAS_STRINGMAP )
 					{
@@ -452,7 +452,6 @@ writePMapHdf5s (axiona, LAB);
 			else if (measa & MEAS_STRINGCOO){
 				LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
 				MeasDataOut.str = strings2(axiona);
-				MeasDataOut.str = stringlength(axiona,MeasDataOut.str,strmeas);
 				if ( measa & MEAS_STRINGMAP ){
 					LogMsg(VERB_NORMAL, "[Meas %d] string map'",indexa);
 					writeString(axiona, MeasDataOut.str, true);
@@ -460,6 +459,12 @@ writePMapHdf5s (axiona, LAB);
 				LogMsg(VERB_NORMAL, "[Meas %d] string coordinates",indexa);
 				writeStringCo(axiona, MeasDataOut.str, true);
 				//saves strings in m2//problem with energy
+
+				StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
+				MeasDataOut.str = slp.stringdata;
+				writeStringLabelMap(axiona);
+				writeStringLoopObservables(slp, 0);
+
 			}
 		}
 	}
@@ -740,7 +745,7 @@ writePMapHdf5s (axiona, LAB);
 						} // END IF NSPECTRA WITH LUT CORRECTION
 
 						// NSPECTRA WITHOUT LUT CORRECTION
-						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS))
+						if (nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS | NRUN_H))
 						{
 							if (mulmask[i]) {
 							LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s rmask %f [%d/%d] (old version)",indexa,masklab[i].c_str(),rmasktab[ii],ii+1,irmask);LogFlush();
@@ -748,7 +753,7 @@ writePMapHdf5s (axiona, LAB);
 								LogMsg(VERB_NORMAL, "[Meas %d] Spectrum %s (old version)",indexa,masklab[i].c_str());LogFlush();
 							}
 							// prof.start();
-							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS) ;
+							nRunType aux = nruntype & (NRUN_CK | NRUN_CG | NRUN_CV | NRUN_CS | NRUN_H) ;
 								specAna.nRun(maskara[i], aux);
 									// prof.stop();
 										sprintf(LABEL, "NSPA_%s (pure)", masklab[i].c_str());
@@ -785,6 +790,13 @@ writePMapHdf5s (axiona, LAB);
 								writeArray(specAna.data(SPECTRUM_VNL), specAna.PowMax(), "/nSpectrum", LABEL);
 #endif
 							}
+							if ( (nruntype & NRUN_H) ){
+									sprintf(LABEL, "sH_%s",PRELABEL);
+										writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", LABEL);
+		#ifdef USE_NN_BINS
+										writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/nSpectrum", LABEL);
+		#endif
+									}
 
 					} // END IF NSPECTRA WITHOUT CORRECTION
 

@@ -56,6 +56,7 @@
 
 	StringData	stringlength	(Scalar *field, StringData strDen, StringMeasureType strmeas);
 	StringData	stringlength2	(Scalar *field, StringData strDen, StringMeasureType strmeas);
+	StringLoopParms	stringlength3	(Scalar *field, StringData strDen, StringMeasureType strmeas);
 	StringEnergyData	stringenergy	(Scalar *field);
 
 	int	analyzeStrFolded	(Scalar *axion, const int index);

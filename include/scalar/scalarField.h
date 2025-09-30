@@ -237,13 +237,17 @@
 		sendGeneral allows exchange of two general slices
 		sendGhost2 exchanges usual ghost slices of m,v, or m2, with option to ng<Ng
 		exchangeGhosts does the standard exchange
-		sendGhost is a previous version that works for the standard exchange */
+		sendGhost is a previous version that works for the standard exchange
+		sendghost 3 exchages stringData ghost
+		exchangeStringGhost wraps send and receive*/
 
 		void	sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB, void* receiveBufferF, void* sendBufferF, void* receiveBufferB);
 		void	sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng = -1);
  		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
+		void	sendGhosts3(CommOperation opComm);
+		void	exchangeStringGhost();
 
 
 

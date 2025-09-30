@@ -31,11 +31,11 @@ if ftype == 'Axion' :
         print('Mooron!')
         Lx    = fileHdf5["/"].attrs.get("SizeX")
         Ly    = fileHdf5["/"].attrs.get("SizeY")
-        con   = np.mod(fileHdf5[sys.argv[-2]].value.reshape(Lz,Ly,Lx)+np.pi,2*np.pi)-np.pi
+        con   = np.mod(fileHdf5[sys.argv[-2]].reshape(Lz,Ly,Lx)+np.pi,2*np.pi)-np.pi
     else :
-        con   = fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz)
+        con   = fileHdf5[sys.argv[-2]].reshape(Ly,Lx,Lz)
 if ftype == 'Naxion':
-    con   = fileHdf5['m'].value.reshape(Ly,Lx,Lz,2)
+    con   = fileHdf5['m'].reshape(Ly,Lx,Lz,2)
     if   sys.argv[-1] == 'm':
         con   = con[:,:,:,0]
     elif sys.argv[-1] == 'v':
@@ -45,33 +45,33 @@ elif ftype == 'Saxion':
         con   = np.array(fileHdf5['m'][()].reshape(Ly,Lx,Lz,2))
         con   = np.arctan2(con[:,:,:,0],con[:,:,:,1])
     elif sys.argv[-2] == 'mr':
-        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'][()]).reshape(Ly,Lx,Lz,2)
         con   = con[:,:,:,0]
     elif sys.argv[-2] == 'mi':
-        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'][()]).reshape(Ly,Lx,Lz,2)
         con   = con[:,:,:,1]
     elif sys.argv[-2] == 'rho':
-        con   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['m'][()]).reshape(Ly,Lx,Lz,2)
         con   = np.sqrt(con[:,:,:,0]**2+con[:,:,:,1]**2)
     elif sys.argv[-2] == 'v':
-        con   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['v'][()]).reshape(Ly,Lx,Lz,2)
         con   = np.sqrt(con[:,:,:,0]**2+con[:,:,:,1]**2)
     elif sys.argv[-2] == 'vr':
-        con   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['v'][()]).reshape(Ly,Lx,Lz,2)
         con   = con[:,:,:,0]
     elif sys.argv[-2] == 'vi':
-        con   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
+        con   = np.array(fileHdf5['v'][()]).reshape(Ly,Lx,Lz,2)
         con   = con[:,:,:,1]
     elif sys.argv[-2] == 'vt':
-        m   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
-        v   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
+        m   = np.array(fileHdf5['m'][()]).reshape(Ly,Lx,Lz,2)
+        v   = np.array(fileHdf5['v'][()]).reshape(Ly,Lx,Lz,2)
         con   = (m[:,:,:,0]*v[:,:,:,1]-m[:,:,:,1]*v[:,:,:,0])/(m[:,:,:,0]**2+m[:,:,:,1]**2+0.2)
     elif sys.argv[-2] == 'vtn':
-        m   = np.array(fileHdf5['m'].value.reshape(Ly,Lx,Lz,2))
-        v   = np.array(fileHdf5['v'].value.reshape(Ly,Lx,Lz,2))
+        m   = np.array(fileHdf5['m'][()]).reshape(Ly,Lx,Lz,2)
+        v   = np.array(fileHdf5['v'][()]).reshape(Ly,Lx,Lz,2)
         con   = (m[:,:,:,0]*v[:,:,:,1]-m[:,:,:,1]*v[:,:,:,0])
 elif ftype == 'Paxion':
-    con   = np.array(fileHdf5[sys.argv[-2]].value.reshape(Ly,Lx,Lz))
+    con   = np.array(fileHdf5[sys.argv[-2]]).reshape(Ly,Lx,Lz)
 
 if ftype == 'who knows':
     Lx    = fileHdf5["/lattice_data"].attrs.get("Tx")
