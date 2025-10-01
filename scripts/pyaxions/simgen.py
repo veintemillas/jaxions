@@ -7,20 +7,13 @@ import re
 def last_mfile():
     cwd = os.getcwd()
     out_m_dir = cwd + '/out/m'
-    
-    try:
-        files = os.listdir(out_m_dir)
-    except Exception as e:
-        print(f'ERROR: Cannot list directory {out_m_dir}: {e}')
-        return None
+    files = os.listdir(out_m_dir)
 
     indices = [int(filename.split('.')[-1]) for filename in files if filename.startswith('axion.') and not filename.startswith('axion.m.')]
 
     if indices:
-        max_index = max(indices)
-        return max_index
+        return max(indices)
     else:
-        print('ERROR: No axion configuration files found in out/m/')
         return None
 
 def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', IDX = False, OUT_CON='out1', CON_OPTIONS='', VERB = False, BONDEN = False):
@@ -127,56 +120,23 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         os.makedirs(OUT_CON, exist_ok=True)
         os.makedirs(f'{OUT_CON}/m', exist_ok=True)
 
+        # Set the AXIONS_OUTPUT environment variable for the Python process and its children
+        os.environ['AXIONS_OUTPUT'] = f"{cwd}/{OUT_CON}/m"
+
         # Either use the user-specified index or use the last config file
-        if IDX is not False:
+        if IDX:
             index = IDX
         else:
             index = last_mfile()
-            
-        if index is None:
-            print('ERROR: No valid configuration file index found')
-            return
 
         #properly link config files
         find = f'{index:05d}'
-        source_file = f'{cwd}/out/m/axion.{find}'
-        target_file = f'{cwd}/{OUT_CON}/m/axion.{find}'
-        
-        # Check if source file exists
-        if not os.path.exists(source_file):
-            print(f'ERROR: Source configuration file does not exist: {source_file}')
-            print(f'Available files in out/m/:')
-            try:
-                files = os.listdir(f'{cwd}/out/m/')
-                for f in files:
-                    if f.startswith('axion.') and not f.startswith('axion.m.'):
-                        print(f'  {f}')
-            except:
-                print('  Could not list files in out/m/')
-            return
-            
-        # Remove existing symlink if it exists
-        if os.path.exists(target_file) or os.path.islink(target_file):
-            os.remove(target_file)
-            
-        # Create the symlink
-        try:
-            os.symlink(source_file, target_file)
-            print(f'Created symlink: {target_file} -> {source_file}')
-        except Exception as e:
-            print(f'ERROR: Failed to create symlink: {e}')
-            return
-
-        # NOW set the AXIONS_OUTPUT environment variable for the simulation
-        os.environ['AXIONS_OUTPUT'] = f"{cwd}/{OUT_CON}/m"
-        print(f'Set AXIONS_OUTPUT to: {os.environ["AXIONS_OUTPUT"]}')
+        os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
 
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
         else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f (data in %s)' % (N0, RANK, L0, msa0, OUT_CON))
-            print(f'Using config file index: {index}')
-            print(f'Extra continuation options: {extra_con_options}')
 
         if BONDEN:
             output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
@@ -227,30 +187,26 @@ def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_com
         #msa
         msa0_match = re.search(r'--msa (\d+\.\d+)', JAX_INIT)
         msa0 = float(msa0_match.group(1))
-        new_msa = msa0*(N0/256)
-        JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%new_msa)
+        JAX_INIT = JAX_INIT.replace('--msa %f'%msa0, '--msa %f'%(msa0*(N0/256)))
 
         #sliceplot (needs to be properly rescaled)
         slc_match = re.search(r'--sliceprint (\d+)', JAX_INIT)
-        if slc_match:
-            slc = int(slc_match.group(1))
-            if slc > 0:
-                JAX_INIT = JAX_INIT.replace('--sliceprint %d'%slc, '--sliceprint %d'%(128))
+        slc = int(slc_match.group(1))
+
+        if slc > 0:
+            JAX_INIT = JAX_INIT.replace('--sliceprint %d'%slc, '--sliceprint %d'%(128))
 
 
-        #create string IC using JAX_INIT (N=256) - write to standard 'out' directory
-        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX=False, OUT_CON='out', CON_OPTIONS='', VERB=VERB, BONDEN=BONDEN)
+        #create string IC using JAX_INIT (N=256)
+        runsim(JAX_INIT, MODE='create', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS='', VERB=VERB, BONDEN=BONDEN)
 
         print('')
         print('Succesfully created string configuration in N=256! (out)')
-        
-        #continue simulation with original parameters - use last_mfile() to get the actual config index
-        created_index = last_mfile()
-        if created_index is None:
-            print('ERROR: No configuration file was created in the create step!')
-            return
-        print(f'Found created config file with index: {created_index}')
-        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX=created_index, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB, BONDEN=BONDEN)
+        #continue simulation with original parameters
+        runsim(JAX, MODE='con', RANK=RANK, THR=THR, USA=USA, IDX = 0, OUT_CON=OUT_CON, CON_OPTIONS=CON_OPTIONS, VERB=VERB, BONDEN=BONDEN)
+        print('')
+        print('Running ...')
+        print('Finished simulation with N=%d! (%s)'%(N0, OUT_CON))
         print('--------------------------------------------------------------------------------------------')
 
 def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
