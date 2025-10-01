@@ -218,6 +218,8 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 	size_t ncubes_local = globalIndex;
 	LogMsg(VERB_NORMAL,"[SL3] We found %zu cubes",ncubes_local);
 
+// DEBUG
+// {
 // size_t count = 0;
 // for (size_t i=0;i<n3;i++)
 // 	if (scOutData[i])
@@ -232,7 +234,7 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 // 	if (labelData[i])
 // 		count++;
 // LogOut("count %zu\n",count);
-
+// }
 
 	//----------------------------------------------------------------------------
 	// 2nd we label strings bidirectionally
@@ -255,8 +257,9 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 				size_t start_idx = Sf+idxCubeList[i]; // labelData has Sf ghosts!
         if (labelData[start_idx]) continue;   // if labelled exit
 
-        unsigned label = nextLabel;
-				nextLabel++;         // get a unique label 1,2...
+        unsigned label = nextLabel++; // returns old value atomically
+				// alternative to prev. line
+				// unsigned label = nextLabel.fetch_add(1, std::memory_order_relaxed); // unique
 
 				size_t cur_idx = start_idx;           // save start_idx for backward
 				labelData[cur_idx] = label;           // store thread safe
@@ -291,6 +294,11 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 						/* if next cube is already labeled, we add equivalence and break
 						(but for NEXT cubes with multiple exits) */
 						if (next_label){
+							if (next_label == label) {
+							// no need to record an equivalence with ourselves
+							break;
+							}
+
 							equiv_omp[tid].push_back({label,next_label});
 							if (!msc)
 								break;
@@ -329,6 +337,7 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 // LogOut("        prev %zu %u %d \n",prev_idx,prev_label,sc_in);
 
 						if (prev_label){
+							if (prev_label == label) break; // closed loop
 							equiv_omp[tid].push_back({label,prev_label});
 							if (!msc)
 								break;
@@ -343,11 +352,16 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
     } //end parallel
 	}
 
-		size_t nlabels_local = nextLabel;
-		LogMsg(VERB_NORMAL,"[SL3] We wrote %u unique labels",nlabels_local);
+		// size_t nlabels_local = nextLabel;
+
+		// issued number of labels ()
+		unsigned issued = nextLabel.load(std::memory_order_relaxed) - 1;
+
+// LogMsg(VERB_NORMAL,"[SL3] We issued %u unique labels",nlabels_local);
 // LogOut	("[SL3] We wrote %u unique labels\n",nlabels_local);
 
-
+		LogMsg(VERB_NORMAL,"[SL3] We issued %u unique labels",issued);
+LogFlush();
 		//----------------------------------------------------------------------------
 		// 3rd we build a global equivalence, and the canonical set
 		// first OMP, then MPI
@@ -359,13 +373,26 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
   }
 	// swap equiv_omp?
 
-	auto dense_map = assign_dense_labels(equiv, nlabels_local);
+	LogMsg(VERB_HIGH,"[SL3 Assign dense labels local (OMP)]");LogFlush();
+	// auto dense_map = assign_dense_labels(equiv, nlabels_local);
+	auto dense_map = assign_dense_labels(equiv, issued);
 
 //DEBUG LOCAL
 // for (unsigned i=1;i<nlabels_local;i++){
 // 	LogOut("label %u > denselabel %u\n",i,dense_map[i]);
 // }
-	nlabels_local = dense_map[nlabels_local-1]; // number of non-zero labels
+
+	unsigned dense = 0;
+	for (unsigned i = 1; i <= issued; ++i)
+		dense = std::max(dense, dense_map[i]);
+
+	unsigned nlabels_local = dense;
+	// old way
+	// nlabels_local = dense_map[nlabels_local-1]; // number of non-zero labels
+
+	LogMsg(VERB_HIGH,
+	  "[SL3] local labels: issued=%u, dense=%u, dense_map[last=%u]=%u",
+	  issued, dense, issued, issued ? dense_map[issued] : 0);LogFlush();
 
 	// broadcast and get unique labels
 	std::vector<int> nlabels_mpi(commSize(),0);
@@ -373,16 +400,16 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 
 	commSync();
 
-	MPI_Allgather(&nlabels_local, 1, MPI_INT,
+	int nlabels_local_i = (int)nlabels_local;
+	MPI_Allgather(&nlabels_local_i, 1, MPI_INT,
                 nlabels_mpi.data(), 1, MPI_INT, MPI_COMM_WORLD);
-
 
 	for (int i=0; i < commSize(); i++){
 		for (int j=0; j < i; j++){
 			label_start_mpi[i] += nlabels_mpi[j];
 		}
 //DEBUG LOCAL
-	// LogOut("rank %d has %u labels and starts at %u\n",i,nlabels_mpi[i],label_start_mpi[i]);
+// LogOut("rank %d has %u labels and starts at %u\n",i,nlabels_mpi[i],label_start_mpi[i]+1);LogFlush();
 	}
 
 	// apply dense maps at each rank with MPI off-set
@@ -390,25 +417,25 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 	for (size_t i = 0; i < ncubes_local; ++i) {
 	size_t label_idx = Sf + idxCubeList[i];
 	unsigned old_label = labelData[label_idx];
-	unsigned new_label = label_start_mpi[rank] + dense_map[old_label];
+	unsigned new_label = label_start_mpi[rank] + dense_map[old_label]; // note that dense_map already starts at 1
 	labelData[label_idx] = new_label;
 	}
 
 //DEBUG LOCAL
-
-
-	// unsigned min_label = label_start_mpi[rank]+nlabels_mpi[rank], max_label =0;
-	// for (size_t idx = 0; idx < n3; ++idx) {
-	// 	unsigned labelo = labelData[idx+Sf];
-	// 	if (labelo == 0)
-	// 		continue;
-	// 	if (labelo > max_label)
-	// 		max_label = labelo;
-	// 	if (labelo < min_label)
-	// 		min_label = labelo;
-	// }
-	// printf("rank %d: min/max labels = %u,%u (expected %u,%u) \n",rank,
-	// min_label,max_label,label_start_mpi[rank]+1,label_start_mpi[rank]+nlabels_mpi[rank]);
+// {
+// 	unsigned min_label = label_start_mpi[rank]+nlabels_mpi[rank], max_label =0;
+// 	for (size_t idx = 0; idx < n3; ++idx) {
+// 		unsigned labelo = labelData[idx+Sf];
+// 		if (labelo == 0)
+// 			continue;
+// 		if (labelo > max_label)
+// 			max_label = labelo;
+// 		if (labelo < min_label)
+// 			min_label = labelo;
+// 	}
+// 	printf("rank %d: min/max labels = %u,%u (expected %u,%u) \n",rank,
+// 	min_label,max_label,label_start_mpi[rank]+1,label_start_mpi[rank]+nlabels_mpi[rank]);
+// }
 
 //MPI
 	// ghost slices have now local dense labels
@@ -424,7 +451,7 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 	memset(rB,0,sliceBytes);
 	memset(rF,0,sliceBytes);
 
-	LogMsg(VERB_HIGH,"[SL3] send/wait ghosts") ;
+	LogMsg(VERB_HIGH,"[SL3] send/wait ghosts") ;LogFlush();
 	field->sendGeneral(COMM_SDRV, sliceBytes, MPI_BYTE, sB, rF, sF, rB);
 	field->sendGeneral(COMM_WAIT, sliceBytes, MPI_BYTE, sB, rF, sF, rB);
 
@@ -468,6 +495,7 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 // 	 (labelData[idx+Sf] < min_curr_rank) ||
 // 	 (labelData[idx+Sf] > max_curr_rank) )
 // printf("rank %d (0): %u == %u (max min %u %u)\n",rank,labelData[idx],labelData[idx+Sf],min_label,max_label);
+
 				}
 			}
 // 			if (idx > n3-Sf) // we look up at idx+Sf
@@ -487,7 +515,7 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 } // end parallel
 
 	unsigned global_label_number = 0;
-	for (int i; i < commSize();i++)
+	for (int i = 0; i < commSize();i++)
 		global_label_number += nlabels_mpi[i];
 LogMsg(VERB_NORMAL,"Global number of (redundant?) labels %u",global_label_number);
 
@@ -515,6 +543,18 @@ LogMsg(VERB_NORMAL,"Global number of (redundant?) labels %u",global_label_number
 
 	// root builds the global map
 	std::vector<unsigned> global_map;
+
+
+//DEBUG
+// {
+// 	unsigned seen_min = UINT_MAX, seen_max = 0;
+// 	for (auto [a,b] : global_equivs) {
+// 	    seen_min = std::min(seen_min, std::min(a,b));
+// 	    seen_max = std::max(seen_max, std::max(a,b));
+// 	}
+// 	fprintf(stderr, "[rank %d] seen_min=%u seen_max=%u max_label=%u\n",
+// 	        rank, seen_min, seen_max, max_label);
+// }
 
 	if (rank == 0) {
 			global_map = assign_dense_labels(global_equivs, global_label_number);
@@ -800,6 +840,7 @@ StringLoopParms stringlength3 (Scalar *field, StringData strDen_in, StringMeasur
 	}
 
 	prof.stop();
+	prof.add("String Length 3",0,0);
 
 	return slp;
 }

@@ -33,10 +33,34 @@ public:
 std::vector<unsigned>
 assign_dense_labels(const std::vector<std::pair<unsigned, unsigned>>& equivalences,
                     unsigned max_label) {
+
+		LogMsg(VERB_HIGH,"[ADL] Start with %u max_label",max_label);LogFlush();
     // Step 1: Validate that all equivalence labels are in range
-    for (const auto& [a, b] : equivalences) {
+    // for (const auto& [a, b] : equivalences) {
+    //     if (a > max_label || b > max_label) {
+    //         throw std::invalid_argument("Equivalence contains label > max_label");
+    //     }
+    // }
+
+		unsigned seen_max = 0;
+    for (size_t i = 0; i < equivalences.size(); ++i) {
+        auto [a,b] = equivalences[i];
+				LogMsg(VERB_PARANOID,"[ADL] %d %d == %d",i,a,b);
+        if (a < 1 || b < 1) {
+						LogOut("assign_dense_labels: label < 1 at pair # %d (%d, %d) max_label= %u",i,a,b,max_label);
+            std::ostringstream oss;
+            oss << "assign_dense_labels: label < 1 at pair #" << i
+                << " (" << a << "," << b << ") max_label=" << max_label;
+            throw std::invalid_argument(oss.str());
+        }
+        seen_max = std::max(seen_max, std::max(a,b));
         if (a > max_label || b > max_label) {
-            throw std::invalid_argument("Equivalence contains label > max_label");
+						LogOut("assign_dense_labels: label > max_label at pair # %d (%d, %d) max_label= %u",i,a,b,max_label);
+            std::ostringstream oss;
+            oss << "assign_dense_labels: label > max_label at pair #" << i
+                << " (" << a << "," << b << ") max_label=" << max_label
+                << " seen_max=" << seen_max;
+            throw std::invalid_argument(oss.str());
         }
     }
 
@@ -57,6 +81,7 @@ assign_dense_labels(const std::vector<std::pair<unsigned, unsigned>>& equivalenc
         dense_labels[i] = it->second;
     }
 
+		LogMsg(VERB_HIGH,"[ADL] Exit");LogFlush();
     return dense_labels;  // dense_labels[i] is the dense label for original label i
 }
 
