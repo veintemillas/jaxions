@@ -26,6 +26,7 @@
 		double	   frw;
 		bool	     mink;
 		IcData	   icdatastruc;
+		double	   R_PQ;
 
 		bool	     ueCosm;
 		double	   fA;
@@ -51,6 +52,7 @@
 		double&   Frw     ()	{ return frw;      }
 		bool&     Mink    ()	{ return mink;     }
 		bool&     UeC     ()	{ return ueCosm;   }
+		double&   RPQ     ()	{ return R_PQ;      }
 
 		IcData&   ICData  ()	{ return icdatastruc;}
 
@@ -73,6 +75,7 @@
 		void     SetICData  (const IcData bbb)	{ icdatastruc = bbb;  }
 		void     SetUeC     (const bool bbb)	  { ueCosm = bbb;  }
 		void     SetFA      (const double ff)	  { fA = ff;  }
+		void     SetRPQ     (const double ff)	  { R_PQ = ff;  }
 
 
 		void     Setup();

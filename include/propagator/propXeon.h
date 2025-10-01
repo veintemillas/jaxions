@@ -53,6 +53,10 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 	const double Rpp   = ppar.Rpp;
 	const double Rp    = ppar.Rp ;
 	const double deti  = ppar.dectime ;
+	const double RPQ   = ppar.RPQ ;
+
+	/* Linear term in the EOM contains T,Rpp,etc... */
+	const double A     = Rpp - LL*RPQ*RPQ;
 
 	if (Vo>Vf)
 		return ;
@@ -263,7 +267,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 											opCode(sub_pd,
 												opCode(mul_pd, opCode(sub_pd, mPx, opCode(set1_pd, R2)),
 													opCode(set1_pd, LL)),
-												opCode(set1_pd, Rpp))));
+												opCode(set1_pd, A))));
 					break;
 					case V_PQ3:
 						// a = p^2 - R^2
@@ -281,7 +285,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 											opCode(sub_pd,
 												opCode(mul_pd, tmp,
 													opCode(set1_pd, LL)),
-												opCode(set1_pd, Rpp))));
+												opCode(set1_pd, A))));
 					break;
 					case V_PQ2:
 						mMx = opCode(sub_pd, lap,
@@ -290,7 +294,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 												opCode(mul_pd,
 													opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, R4)),
 														opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-											opCode(set1_pd, Rpp))));
+											opCode(set1_pd, A))));
 					break;
 				}
 			/* mMx = mMx + VQCD part */
@@ -348,7 +352,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 				//5.- (-ar*mi ai*mr, -ar*mi ai*mr)*(-mi mr)/|m|^2 + R''/R (mr mi)
 				mMx   = opCode(add_pd,
 									opCode(div_pd, opCode(mul_pd, lap, vecma), mPx),
-										opCode(mul_pd, mel, opCode(set1_pd, Rpp)));
+										opCode(mul_pd, mel, opCode(set1_pd, A)));
 				//6.- (-vr*mi vi*mr, -vr*mi vi*mr)*(-mi mr)/|m|^2 + R/R (mr mi)
 				mPy   = opCode(add_pd,
 									opCode(div_pd, opCode(mul_pd, lap, vecmv), mPx),
@@ -651,7 +655,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 											opCode(sub_ps,
 												opCode(mul_ps, opCode(sub_ps, mPx, opCode(set1_ps, R2)),
 													opCode(set1_ps, LL)),
-												opCode(set1_ps, Rpp))));
+												opCode(set1_ps, A))));
 					break;
 					case V_PQ3:
 						// a = p^2 - R^2
@@ -669,7 +673,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 											opCode(sub_ps,
 												opCode(mul_ps, tmp,
 													opCode(set1_ps, LL)),
-												opCode(set1_ps, Rpp))));
+												opCode(set1_ps, A))));
 					break;
 					case V_PQ2:
 						mMx = opCode(sub_ps, lap,
@@ -678,7 +682,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 												opCode(mul_ps,
 													opCode(sub_ps, opCode(mul_ps, mPx, mPx), opCode(set1_ps, R4)),
 														opCode(mul_ps, mPx, opCode(set1_ps, LaLa))),
-											opCode(set1_ps, Rpp))));
+											opCode(set1_ps, A))));
 					break;
 				}
 			/* mMx = mMx + VQCD part */
@@ -739,7 +743,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 				//5.- (-ar*mi ai*mr, -ar*mi ai*mr)*(-mi mr)/|m|^2 + R''/R (mr mi)
 				mMx   = opCode(add_ps,
 									opCode(div_ps, opCode(mul_ps, lap, vecma), mPx),
-										opCode(mul_ps, mel, opCode(set1_ps, Rpp)));
+										opCode(mul_ps, mel, opCode(set1_ps, A)));
 				//6.- (-vr*mi vi*mr, -vr*mi vi*mr)*(-mi mr)/|m|^2 + R/R (mr mi)
 				mPy   = opCode(add_ps,
 									opCode(div_ps, opCode(mul_ps, lap, vecmv), mPx),
@@ -1039,6 +1043,10 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 	const double Rpp   = ppar.Rpp;
 	const double Rp    = ppar.Rp ;
 	const double deti  = ppar.dectime ;
+	const double RPQ   = ppar.RPQ ;
+
+	/* Linear term in the EOM contains T,Rpp,etc... */
+	const double A     = Rpp - LL*RPQ*RPQ;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -1235,7 +1243,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 										opCode(sub_pd,
 											opCode(mul_pd, opCode(sub_pd, mPx, opCode(set1_pd, R2)),
 												opCode(set1_pd, LL)),
-											opCode(set1_pd, Rpp))));
+											opCode(set1_pd, A))));
 				break;
 				case V_PQ3:
 					// a = p^2 - R^2
@@ -1253,7 +1261,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 										opCode(sub_pd,
 											opCode(mul_pd, tmp,
 												opCode(set1_pd, LL)),
-											opCode(set1_pd, Rpp))));
+											opCode(set1_pd, A))));
 				break;
 				case V_PQ2:
 					mMx = opCode(sub_pd, lap,
@@ -1262,7 +1270,7 @@ inline	void	updateVXeon(const void * __restrict__ m_, void * __restrict__ v_, Pr
 											opCode(mul_pd,
 												opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, R4)),
 													opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-										opCode(set1_pd, Rpp))));
+										opCode(set1_pd, A))));
 				break;
 			}
 			/* mMx = mMx + VQCD part */
@@ -1569,7 +1577,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 										opCode(sub_ps,
 											opCode(mul_ps, opCode(sub_ps, mPx, opCode(set1_ps, R2)),
 												opCode(set1_ps, LL)),
-											opCode(set1_ps, Rpp))));
+											opCode(set1_ps, A))));
 				break;
 				case V_PQ3:
 					// a = p^2 - R^2
@@ -1587,7 +1595,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 										opCode(sub_ps,
 											opCode(mul_ps, tmp,
 												opCode(set1_ps, LL)),
-											opCode(set1_ps, Rpp))));
+											opCode(set1_ps, A))));
 				break;
 				case V_PQ2:
 					mMx = opCode(sub_ps, lap,
@@ -1596,7 +1604,7 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 											opCode(mul_ps,
 												opCode(sub_ps, opCode(mul_ps, mPx, mPx), opCode(set1_ps, R4)),
 													opCode(mul_ps, mPx, opCode(set1_ps, LaLa))),
-										opCode(set1_ps, Rpp))));
+										opCode(set1_ps, A))));
 				break;
 			}
 			/* mMx = mMx + VQCD part */

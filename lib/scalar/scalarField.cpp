@@ -217,8 +217,8 @@ const std::complex<float> If(0.,1.);
 			LogMsg(VERB_NORMAL, "[sca] allocating m, v, sData");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
-			trackAlloc ((void**) &str, n3);
-			totalCPU += mBytes+vBytes+n3;
+			trackAlloc ((void**) &str, n3+n2);
+			totalCPU += mBytes+vBytes+n3+n2;
 			break;
 
 		case FIELD_AXION_MOD:
@@ -338,7 +338,7 @@ const std::complex<float> If(0.,1.);
 
 	if (str == nullptr && (fieldType & (FIELD_SAXION != 0)))
 	{
-		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3);
+		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3+n2);
 		exit(1);
 	}
 
@@ -743,7 +743,7 @@ void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataTy
 	int lastchunk     = (countBytes - (nchunks-1)*MAX_CHUNK); // if lastchunk = 0 it won't be used
 
 	/* Assign receive buffers to the right parts of m, v */
-	LogMsg(VERB_HIGH, "[sca] Called send General (COMM %d)",opComm);
+	LogMsg(VERB_HIGH,    "[sca] Called send General (COMM %d)",opComm);
 	LogMsg(VERB_PARANOID,"[sca] count %lu sizeof(MPIDATA) %d countBytes %lu, MAX_CHUNK %lu, #chunks %lu lastchunk %d", count, sizeDataType, countBytes, MAX_CHUNK, nchunks, lastchunk);
 	LogFlush();
 
@@ -1036,7 +1036,31 @@ LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
 }
 
+/* For sending 1st slice from string data backwards */
+void	Scalar::sendGhosts3(CommOperation opComm)
+{
 
+	/* string data is char = byte*/
+	const size_t ghostBytes = n2;
+	LogMsg(VERB_PARANOID,"[sca] sendGhosts3 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
+
+	void *sB, *rF, *sF, *rB;
+	sB = sData();
+	rF = static_cast<void *> (static_cast<char *> (sData()) +n3);
+	sF = mFrontGhost(); // equal pointers trigger no transfer
+	rB = mFrontGhost();
+	Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB, rF, sF, rB);
+}
+
+
+
+void	Scalar::exchangeStringGhost()
+{
+LogMsg(VERB_PARANOID,"[sca] Exchange String Ghost ");LogFlush();
+	sendGhosts3(COMM_SDRV);
+	sendGhosts3(COMM_WAIT);
+LogMsg(VERB_PARANOID,"[sca] Exchange String Ghosts Done!");LogFlush();
+}
 
 
 

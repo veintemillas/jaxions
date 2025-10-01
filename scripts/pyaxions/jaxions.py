@@ -195,6 +195,8 @@ def gm(address,something='summary',printerror=False):
     eGxA        float       Grad x En Axion [ADM u.]
     eKA         float       Kin En Axion [ADM u.]
     eVA         float       Pot En Axion [ADM u.]
+
+    Strings -----------------------------------------------
     stringN     float       String #points
     stwallN     float       Walls  #points
     stringL     float       String Length [lattice u.]
@@ -212,6 +214,11 @@ def gm(address,something='summary',printerror=False):
     stEDensAVil float       Masked axion energy density (Villadoro masking)
     stEDensSVil float       Masked saxion energy density (Villadoro masking)
     stnout      float       Number of grid points which are not masked
+    stringco    [n,3]       Coordinates of plaquete centers with string
+    stLabels    list        Label map
+    stloop     lists       length, velocities, gammas, cubes / loop
+
+    BINS ---------------------------------------------------
     binconB     float       binned normalised log10 contrast
     binconBmax  float       maximum log10(contrast)
     binconBmin  float       maximum log10(contrast)
@@ -593,6 +600,25 @@ def gm(address,something='summary',printerror=False):
         if printerror :
             print('[gm] No string info in the file! Use 0.')
         return 0. ;
+
+
+    ##########
+    # stringco
+    ##########
+
+    if (something == 'stringco'):
+        return f['/string/codata'][()] ;
+
+    if (something == 'stLabels'):
+        return f['/string/labels/data'][()] ;
+
+    if (something == 'stloop'):
+        if ('/string/loops/' in f):
+            lgt = f['/string/loops/lengths/data'][()] ;
+            vel = f['/string/loops/velocities/data'][()] ;
+            gam = f['/string/loops/gammas/data'][()] ;
+            cub = f['/string/loops/cubes/data'][()] ;
+            return lgt,vel,gam,cub
 
     ##########
     # the bins

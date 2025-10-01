@@ -77,6 +77,10 @@ namespace profiler {
 
 		Profiler	trakProfiler("Axiton tracker");
 		profs.insert(std::make_pair(PROF_TRACK, trakProfiler));
+
+		Profiler	stlenProfiler("StringLength");
+		profs.insert(std::make_pair(PROF_STRINGLENGTH3, stlenProfiler));
+
 	}
 
 	void	printMiniStats(double z, StringData strDen, ProfType prof, std::string counter) {

@@ -9,6 +9,8 @@
 #include "enum-field.h"
 #include "utils/logger.h"
 #include "cosmos/cosmos.h"
+#include "io/readWrite.h"
+
 
 # define PARSE1 { LogMsg(VERB_NORMAL,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
 # define PARSE2 { LogMsg(VERB_NORMAL,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
@@ -37,6 +39,7 @@ double kCrit = 1.0;
 //JAVIER
 double fA  = 1.0e10;
 double frw = 1.0;
+double RPQ = 0.0;
 double mode0 = 10.0;
 double alpha = 0.143;
 double zthres   = 1000.0;
@@ -82,6 +85,7 @@ bool uMI      = false;
 bool uFR      = false;
 bool ufA      = false;
 bool uexCosm  = false;
+bool uRPQ     = false;
 bool spectral = false;
 bool fpectral = false;
 bool mink			= false;
@@ -701,6 +705,9 @@ int	parseArgs (int argc, char *argv[])
   deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
 	deninfa.printconf = PRINTCONF_NONE;  // no configuration
 
+  deninfa.edens_average  = 0;
+  deninfa.edens_sigma_threshold = 3;
+
 	for (int i=1; i<argc; i++)
 	{
 		passed = false;
@@ -775,6 +782,26 @@ int	parseArgs (int argc, char *argv[])
 			if (frw < 0.)
 			{
 				printf("Warning: Contracting Universe?\n");
+			}
+
+			PARSE2;
+		}
+
+    if (!strcmp(argv[i], "--RPQ"))
+		{
+
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for TR/v = R_PQ (scale factor of PQ phase trans).\n");
+				exit(1);
+			}
+
+      uRPQ = true;
+			RPQ = atof(argv[i+1]);
+
+			if (RPQ < 0.)
+			{
+				printf("Warning: RPQ negative but it appears only ^2?\n");
 			}
 
 			PARSE2;
@@ -2019,6 +2046,28 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+    if (!strcmp(argv[i], "--edens_sigma_threshold"))
+		{
+
+      double esm = 0;
+			if (i+1 == argc)
+			{
+				printf("Error: I need a value for the energy density mask threshold.\n");
+				exit(1);
+			}
+
+			esm = atof(argv[i+1]);
+
+			if (esm < 0.)
+			{
+				printf("Error: energy density mask threshold must be larger than or equal to 0.\n");
+				exit(1);
+			}
+
+			deninfa.edens_sigma_threshold = esm;
+			PARSE2;
+		}
+
 		/* IC's*/
 
 		if (!strcmp(argv[i], "--kmax"))
@@ -2782,6 +2831,9 @@ Cosmos	createCosmos()
 		if (uFR)
 			myCosmos.SetFrw(frw);
 
+    if (uRPQ)
+			myCosmos.SetRPQ(RPQ);
+
 		if (uMI)
 			myCosmos.SetMink(mink);
 
@@ -2803,6 +2855,7 @@ Cosmos	createCosmos()
 		myCosmos.SetZRestore(zrestore);
 		myCosmos.SetIndi3   (indi3);
 		myCosmos.SetFrw     (frw);
+    myCosmos.SetRPQ     (RPQ);
 		myCosmos.SetMink    (mink);
 		myCosmos.SetUeC     (uexCosm);
 		myCosmos.SetFA      (fA);

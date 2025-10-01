@@ -86,6 +86,22 @@
 			// STRING_IMPOSSIBLE  = 256,     //used for comparisons
 		}	StringType;
 
+		typedef	enum	StringCubeType_s
+		{
+			STRCUB_0  = 0, // no string
+			STRCUB_XY = 1, // through XY
+			STRCUB_YZ = 2, // through YZ
+			STRCUB_ZX = 4, // ...
+			STRCUB_XY2 = 8, // ...
+			STRCUB_YZ2 = 16, // ...
+			STRCUB_ZX2 = 32, // ...
+			STRCUB_PLA = 63,
+			STRCUB_1EX = 64, // 1 exit
+			STRCUB_2EX = 128, // 1 exit
+			STRCUB_3EX = 128,// when 4 plaquetes, indicates whether 2nd lowest is IN or OUT
+			// STRING_IMPOSSIBLE  = 256,     //used for comparisons
+		}	StringCubeType;
+
 		typedef	enum	LambdaType_s
 		{
 			LAMBDA_FIXED       = 0,
@@ -438,6 +454,7 @@
 			PROF_GRAVI,
 			PROF_TRACK,
 			PROF_BIN,
+			PROF_STRINGLENGTH3,
 		}	ProfType;
 
 		typedef	enum	VerbosityLevel_s
@@ -627,6 +644,7 @@
 			NRUN_CG      = 32, // Fast, without LUT correction
 			NRUN_CV      = 64, // Fast, without LUT correction, redundant
 			NRUN_CS      = 128, // Fast, without LUT correction, redundant
+			NRUN_H       = 256, // Hindmarsh scalar, without LUT correction
 
 		}	nRunType;
 
@@ -675,6 +693,7 @@
 			M2_ANTIMASK    = 1024,     // Points inside the string region (duplicated to mask complex energy)
 			M2_POT         = 2048,     // gravitational potential unnormalised (solution of lap Phi = delta, without 4pi G rho0) in m2Start, typically
 			M2_ENERGY_SMOOTH = 4096,   // smoothed energy map
+			M2_LABEL_MAP   = 4096*2,   // map of string labels
 
 		}	StatusM2;
 
@@ -812,6 +831,8 @@
 			int                 cummask;
 			PrintConf           printconf;
 			bool                maskenergyonly;
+			double              edens_average;
+			double              edens_sigma_threshold;
 		}	MeasInfo;
 
 		// data output by measurement function to program
@@ -904,6 +925,15 @@
 			std::vector<int>    nrt;
 		}	MeasFileParms;
 
+		typedef	struct	StringLoopParms_v
+		{
+			std::vector<double>	len;
+			std::vector<double>	vel;
+			std::vector<double>	gam;
+			std::vector<double>	cub;
+			StringData stringdata;
+		}	StringLoopParms;
+
 		typedef	struct	PropParms_v
 		{
 			size_t   Ng;
@@ -924,6 +954,7 @@
 			double   Rp;
 			double   Lambda;
 			double   lambda;
+			double   RPQ;
 			double   gamma;
 			double   dectime;
 			double   beta;
