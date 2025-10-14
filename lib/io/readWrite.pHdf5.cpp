@@ -978,7 +978,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 				// test the axion mass
 				// -------------------
-				LogMsg (VERB_NORMAL, "Axion mass^2 (h5read) %.2f (calculated) %.2f", maaR*maaR, myCosmos->AxionMass2(zTmp));
+				// If UeC is True, using AxionMass2 at this point may lead to an error, since QCD cosmology is not set yet.
+				if(!myCosmos->UeC()) LogMsg (VERB_NORMAL, "Axion mass^2 (h5read) %.2f (calculated) %.2f", maaR*maaR, myCosmos->AxionMass2(zTmp));
 
 				// note: if i3, n, n2, z, frw, zThreshold, zRestore have changed
 				// the mass might not coincide
