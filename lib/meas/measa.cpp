@@ -631,6 +631,7 @@ writePMapHdf5s (axiona, LAB);
 							memset(eRes, 0, 256);
 							double *eR = static_cast<double *> (eRes);
 							energy(axiona, eRes, EN_MAP, shiftz);
+							info.edens_average = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 						} else {
 							LogMsg(VERB_NORMAL,"[Meas %d] mask %s: Energy in M2h (status %d)",indexa,masklab[i].c_str(),axiona->m2hStatus());
 						}

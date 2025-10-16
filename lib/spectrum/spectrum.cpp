@@ -1642,7 +1642,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 			size_t Sm	= Ly*Lz;
 
 			// threshold of the energy density
-			Float ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
+			// Float ethres = (Float) std::max(field->AxionMassSq(),mInfo.edens_average * mInfo.edens_sigma_threshold);
+			Float ethres = (Float) mInfo.edens_average * mInfo.edens_sigma_threshold;
+			LogMsg(VERB_NORMAL,"[nRun axion] Edens threshold %.2f (chiTop %.2f, edens %.2f)",ethres,field->AxionMassSq(),mInfo.edens_average);
 
 			// Copy m -> m2 with padding
 
