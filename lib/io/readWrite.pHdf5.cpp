@@ -2934,7 +2934,7 @@ void	writeStringEnergy	(Scalar *axion, StringEnergyData strEDat)
 
 
 
-void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
+void	writeEnergy	(Scalar *axion, void *eData_, double rmask, const char *masklabel)
 {
 
 	LogMsg(VERB_NORMAL,"[wEn] Write Energy %f ",rmask);
@@ -2990,7 +2990,7 @@ void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 	// The masked energy goes into another folder with label
 	if (pmaskede)
 	{
-		sprintf(LABEL, "Redmask_%.2f", rmask);
+		sprintf(LABEL, "%smask_%.2f", masklabel, rmask);
 		auto status2 = H5Lexists (group_id, LABEL, H5P_DEFAULT);	// Create group if it doesn't exists
 
 		if (!status2)
@@ -3036,12 +3036,14 @@ void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 	}
 
 	if (pmaskede){
-		totalBytes += 40;
+		totalBytes += 48;
 		writeAttribute(group_id2, &eData[TH_GRXM],  "Axion Gr X nMask",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_GRYM],  "Axion Gr Y nMask",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_GRZM],  "Axion Gr Z nMask",      H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_POTM],  "Axion Potential nMask", H5T_NATIVE_DOUBLE);
 		writeAttribute(group_id2, &eData[TH_KINM],  "Axion Kinetic nMask",   H5T_NATIVE_DOUBLE);
+
+		writeAttribute(group_id2, &eData[MM_NUMM],  "Number of masked points",H5T_NATIVE_DOUBLE);
 
 		if	(axion->Field() == FIELD_SAXION)
 		{
@@ -3050,9 +3052,7 @@ void	writeEnergy	(Scalar *axion, void *eData_, double rmask)
 			writeAttribute(group_id2, &eData[RH_GRZM],  "Saxion Gr Z nMask",      H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id2, &eData[RH_POTM],  "Saxion Potential nMask", H5T_NATIVE_DOUBLE);
 			writeAttribute(group_id2, &eData[RH_KINM],  "Saxion Kinetic nMask",   H5T_NATIVE_DOUBLE);
-
 			writeAttribute(group_id2, &eData[RH_RHOM],  "Saxion vev nMask",       H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id2, &eData[MM_NUMM],  "Number of masked points",H5T_NATIVE_DOUBLE);
 
 			totalBytes += 48;
 		}
