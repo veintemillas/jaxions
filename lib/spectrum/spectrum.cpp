@@ -1642,7 +1642,9 @@ void	SpecBin::nRun	(nRunType nrt) {
 			size_t Sm	= Ly*Lz;
 
 			// threshold of the energy density
-			Float ethres = (Float) 0.5*M_PI*M_PI*field->AxionMassSq();
+			// Float ethres = (Float) std::max(field->AxionMassSq(),mInfo.edens_average * mInfo.edens_sigma_threshold);
+			Float ethres = (Float) mInfo.edens_average * mInfo.edens_sigma_threshold;
+			LogMsg(VERB_NORMAL,"[nRun axion] Edens threshold %.2f (chiTop %.2f, edens %.2f)",ethres,field->AxionMassSq(),mInfo.edens_average);
 
 			// Copy m -> m2 with padding
 
@@ -1693,16 +1695,45 @@ void	SpecBin::nRun	(nRunType nrt) {
 
 			if (nrt & (NRUN_K | NRUN_CK ) )
 			{
-				LogMsg(VERB_HIGH,"[nRun] K loop (Axion)") ;
-				if (mask & SPMASK_FLAT){
-					// Copy v -> m2 with padding
-					#pragma omp parallel for schedule(static)
-					for (uint sl=0; sl<Sm; sl++) {
-						auto	oOff = sl*field->DataSize()* Ly;
-						auto	fOff = sl*field->DataSize()*(Ly+2);
-						memcpy	(mF+fOff, vO+oOff, dataLine);
+				if (nrt & NRUN_K) {
+					LogMsg(VERB_HIGH,"[nRun] K loop (Axion)") ;
+					if (mask & SPMASK_FLAT){
+						// Copy v -> m2 with padding
+						#pragma omp parallel for schedule(static)
+						for (uint sl=0; sl<Sm; sl++) {
+							auto	oOff = sl*field->DataSize()* Ly;
+							auto	fOff = sl*field->DataSize()*(Ly+2);
+							memcpy	(mF+fOff, vO+oOff, dataLine);
+						}
+					} else {
+						#pragma omp parallel for schedule(static)
+						for (size_t iz=0; iz < Lz; iz++) {
+							size_t zo = Ly*(Ly+2)*iz ;
+							size_t zi = Ly*Ly*iz ;
+							for (size_t iy=0; iy < Ly; iy++) {
+								size_t yo = (Ly+2)*iy ;
+								size_t yi = Ly*iy ;
+								for (size_t ix=0; ix < Ly; ix++) {
+									size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
+
+									switch(mask){
+										case SPMASK_AXITV:
+											m2[odx] = v[idx]*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
+											break;
+										default:
+										case SPMASK_AXIT:
+										case SPMASK_AXIT2:
+											if (strdaa[idx] & STRING_MASK)
+													m2[odx] = 0 ;
+											else
+													m2[odx] = v[idx];
+											break;
+									} //end mask
+						}}} // end last volume loop
 					}
 				} else {
+					LogMsg(VERB_HIGH,"[nRun] CK loop (Axion)") ;
+					Float calH   = (Float) Rpp/Rscale; // calH = R'/R
 					#pragma omp parallel for schedule(static)
 					for (size_t iz=0; iz < Lz; iz++) {
 						size_t zo = Ly*(Ly+2)*iz ;
@@ -1714,19 +1745,22 @@ void	SpecBin::nRun	(nRunType nrt) {
 								size_t odx = ix + yo + zo; size_t idx = ix + yi + zi;
 
 								switch(mask){
+									case SPMASK_FLAT:
+										m2[odx] = v[idx] - calH*m[idx];
+										break;
 									case SPMASK_AXITV:
-											m2[odx] = v[idx]*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
+										m2[odx] = (v[idx]-calH*m[idx])*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
 										break;
 									default:
 									case SPMASK_AXIT:
 									case SPMASK_AXIT2:
-											if (strdaa[idx] & STRING_MASK)
-													m2[odx] = 0 ;
-											else
-													m2[odx] = v[idx];
+										if (strdaa[idx] & STRING_MASK)
+											m2[odx] = 0 ;
+										else
+											m2[odx] = v[idx] - calH*m[idx];
 										break;
 								} //end mask
-						}}} // end last volume loop
+					}}} // end last volume loop
 				}
 
 				myPlan.run(FFT_FWD);

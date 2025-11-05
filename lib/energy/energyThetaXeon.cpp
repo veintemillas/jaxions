@@ -26,16 +26,21 @@
 	#endif
 #endif
 
-template<const bool map, const bool wMod>
+template<const EnType emask, const bool wMod>
 void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict__ v_, void * __restrict__ m2_,
 	double *R, double *z, double frw, const double ood2, const double aMass2,
-			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_)
+			 const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision, void * __restrict__ eRes_, Scalar *fieldo)
 {
+
+	char *strdaa = static_cast<char *>(static_cast<void *>(fieldo->sData()));
+
 	const size_t Sf = Lx*Lx;
 	const size_t Ng = Vo/Sf;
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
 	double gxC = 0., gyC = 0., gzC = 0., ktC = 0., ptC = 0.;
+	double gxCM = 0., gyCM = 0., gzCM = 0., ktCM = 0., ptCM = 0.;
+	double nummask = 0.;
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -88,15 +93,17 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const _MData_ tpVec = opCode(set1_pd, tV);
 		const _MData_ izVec = opCode(set1_pd, iz);
 
-		#pragma omp parallel default(shared) reduction(+:gxC,gyC,gzC,ktC,ptC)
+		#pragma omp parallel default(shared) reduction(+:gxC,gyC,gzC,ktC,ptC,gxCM,gyCM,gzCM,ktCM,ptCM,nummask)
 		{
 			_MData_ mel, vel, mMx, mMy, mMz, mPx, mPy, mPz, tmp, grd;
+			_MData_ Mask;
 
 			double tmpGx[step] __attribute__((aligned(Align)));
 			double tmpGy[step] __attribute__((aligned(Align)));
 			double tmpGz[step] __attribute__((aligned(Align)));
 			double tmpV [step] __attribute__((aligned(Align)));
 			double tmpK [step] __attribute__((aligned(Align)));
+			double tmpM [step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -110,6 +117,48 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
 					X[2] -= Ng;	// Removes ghosts
+				}
+
+				// Prepare mask in m2 (only if m2 contains the mask)
+				// counter to check if some of the entries of the vector is in the mask
+				size_t ups = 0;
+				if (emask & EN_MASK){
+
+					#pragma unroll
+					for (int ih=0; ih<step; ih++){
+						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+						if (strdaa[iNx] & STRING_MASK)
+						{
+							ups += 1;}
+					}
+					// If required prepare mask
+					if (ups > 0)
+					{
+						#pragma unroll
+							for (int ih=0; ih<step; ih++){
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							if (strdaa[iNx] & STRING_MASK){
+								tmpM[ih] = 1.0;
+							} else {
+								tmpM[ih] = 0.0;
+							}
+						}
+						Mask = opCode(load_pd, tmpM);
+						nummask += (double) ups;
+					}
+
+					// If only masked energy required there is nothing else to do
+					if ( (ups == 0) && (emask == EN_MASK) )
+						continue;
+					// If map of masked energy ; setm2 to 0 and leave;
+					if ( (ups == 0) && (emask == EN_MAPMASK) ) {
+						#pragma unroll
+						for (int ih=0; ih<step; ih++) {
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							m2[iNx]    = 0;
+						}
+						continue;
+					}
 				}
 
 				if (X[0] == XC-step)
@@ -246,15 +295,36 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					gyC += tmpGy[ih];
 					gzC += tmpGz[ih];
 
-					if	(map == true) {
+					if	(emask & EN_MAP) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ;
+						if (emask == EN_MAPMASK)
+							m2[iNx] = tmpM[ih]*((tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ); //masked map
+						else
+							m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ;
+					}
+				}
+				// masked energy
+				if ((emask & EN_MASK) && (ups > 0) ) {
+					opCode(store_pd, tmpGx, opCode(mul_pd,grd,Mask));
+					opCode(store_pd, tmpGy, opCode(mul_pd,mMx,Mask));
+					opCode(store_pd, tmpGz, opCode(mul_pd,mMy,Mask));
+					opCode(store_pd, tmpK,  opCode(mul_pd,mPx,Mask));
+					opCode(store_pd, tmpV,  opCode(mul_pd,mPy,Mask));
+					#pragma unroll
+					for (int ih=0; ih<step; ih++)
+					{
+						ptCM += tmpV[ih];
+						ktCM += tmpK[ih];
+						gxCM += tmpGx[ih];
+						gyCM += tmpGy[ih];
+						gzCM += tmpGz[ih];
 					}
 				}
 			}
 		}
 
 		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= iz4*0.5; ptC *= zQ;
+		gxCM *= o2; gyCM *= o2; gzCM *= o2; ktCM *= iz4*0.5; ptCM *= zQ;
 
 #undef	_MData_
 #undef	step
@@ -310,15 +380,17 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 		const _MData_ izVec = opCode(set1_ps, iz);
 		const _MData_ tpVec = opCode(set1_ps, tV);
 
-		#pragma omp parallel default(shared) reduction(+:gxC,gyC,gzC,ktC,ptC)
+		#pragma omp parallel default(shared) reduction(+:gxC,gyC,gzC,ktC,ptC,gxCM,gyCM,gzCM,ktCM,ptCM,nummask)
 		{
 			_MData_ mel, vel, grd, tmp, mMx, mMy, mMz, mPx, mPy, mPz;
+			_MData_ Mask;
 
 			float tmpGx[step] __attribute__((aligned(Align)));
 			float tmpGy[step] __attribute__((aligned(Align)));
 			float tmpGz[step] __attribute__((aligned(Align)));
 			float tmpK [step] __attribute__((aligned(Align)));
 			float tmpV [step] __attribute__((aligned(Align)));
+			float tmpM [step] __attribute__((aligned(Align)));
 
 			#pragma omp for schedule(static)
 			for (size_t idx = Vo; idx < Vf; idx += step)
@@ -332,6 +404,48 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
 					X[2] -= Ng;	// Removes ghosts
+				}
+
+				// Prepare mask in m2 (only if m2 contains the mask)
+				// counter to check if some of the entries of the vector is in the mask
+				size_t ups = 0;
+				if (emask & EN_MASK){
+
+					#pragma unroll
+					for (int ih=0; ih<step; ih++){
+						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+						if (strdaa[iNx] & STRING_MASK)
+						{
+							ups += 1;}
+					}
+					// If required prepare mask
+					if (ups > 0)
+					{
+						#pragma unroll
+							for (int ih=0; ih<step; ih++){
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							if (strdaa[iNx] & STRING_MASK){
+								tmpM[ih] = 1.0;
+							} else {
+								tmpM[ih] = 0.0;
+							}
+						}
+						Mask = opCode(load_ps, tmpM);
+						nummask += (double) ups;
+					}
+
+					// If only masked energy required there is nothing else to do
+					if ( (ups == 0) && (emask == EN_MASK) )
+						continue;
+					// If map of masked energy ; setm2 to 0 and leave;
+					if ( (ups == 0) && (emask == EN_MAPMASK) ) {
+						#pragma unroll
+						for (int ih=0; ih<step; ih++) {
+							unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
+							m2[iNx]    = 0;
+						}
+						continue;
+					}
 				}
 
 				if (X[0] == XC-step)
@@ -469,16 +583,36 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 					gyC += (double) (tmpGy[ih]);
 					gzC += (double) (tmpGz[ih]);
 
-					// Saves map
-					if	(map == true) {
+					if	(emask & EN_MAP) {
 						unsigned long long iNx   = (X[0]/step + (X[1]+ih*YC)*Lx + X[2]*Sf);
-						m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ;
+						if (emask == EN_MAPMASK)
+							m2[iNx] = tmpM[ih]*((tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ); //masked map
+						else
+							m2[iNx] = (tmpGx[ih] + tmpGy[ih] + tmpGz[ih])*o2 + tmpK[ih]*iz4*0.5 + tmpV[ih]*zQ;
+					}
+				}
+				// masked energy
+				if ((emask & EN_MASK) && (ups > 0) ) {
+					opCode(store_ps, tmpGx, opCode(mul_ps,grd,Mask));
+					opCode(store_ps, tmpGy, opCode(mul_ps,mMx,Mask));
+					opCode(store_ps, tmpGz, opCode(mul_ps,mMy,Mask));
+					opCode(store_ps, tmpK,  opCode(mul_ps,mPx,Mask));
+					opCode(store_ps, tmpV,  opCode(mul_ps,mPy,Mask));
+					#pragma unroll
+					for (int ih=0; ih<step; ih++)
+					{
+						ptCM += (double) (tmpV[ih]);
+						ktCM += (double) (tmpK[ih]);
+						gxCM += (double) (tmpGx[ih]);
+						gyCM += (double) (tmpGy[ih]);
+						gzCM += (double) (tmpGz[ih]);
 					}
 				}
 			}
 		}
 
 		gxC *= o2; gyC *= o2; gzC *= o2; ktC *= 0.5*iz4; ptC *= zQ;
+		gxCM *= o2; gyCM *= o2; gzCM *= o2; ktCM *= 0.5*iz4; ptCM *= zQ;
 #undef	_MData_
 #undef	step
 	}
@@ -488,10 +622,21 @@ void	energyThetaKernelXeon(const void * __restrict__ m_, const void * __restrict
 	eRes[TH_GRZ] = gzC;
 	eRes[TH_KIN] = ktC;
 	eRes[TH_POT] = ptC;
+
+	eRes[TH_GRXM] = gxCM;
+	eRes[TH_GRYM] = gyCM;
+	eRes[TH_GRZM] = gzCM;
+	eRes[TH_KINM] = ktCM;
+	eRes[TH_POTM] = ptCM;
+
+	eRes[MM_NUMM] = nummask;
+
+	//LogOut("Energy %f %f %f %f %f\n",  eRes[TH_GRX],  eRes[TH_GRY],  eRes[TH_GRZ],  eRes[TH_KIN],  eRes[TH_POT]);
+	//LogOut("Energy %f %f %f %f %f\n",  eRes[TH_GRXM],  eRes[TH_GRYM],  eRes[TH_GRZM],  eRes[TH_KINM],  eRes[TH_POTM]);
+	//LogOut("nmp %f %f\n", eRes[MM_NUMM], nummask);
 }
 
-template<const bool mod>
-void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass2, void *eRes, const bool map)
+void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass2, void *eRes, const EnType mapmask, const bool mod)
 {
 	const double ood2 = 0.25/delta2;
 	double *R  = axionField->RV();
@@ -505,26 +650,27 @@ void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass
 
 	axionField->exchangeGhosts(FIELD_M);
 
-	switch	(map) {
-		case	true:
-			energyThetaKernelXeon<true, mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
-			break;
+	#define CASE_(mo,ene) \
+	case ene: \
+		energyThetaKernelXeon<ene,mo>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes, axionField); \
+	break;
 
-		case	false:
-			energyThetaKernelXeon<false,mod>(axionField->mCpu(), axionField->vCpu(), axionField->m2Cpu(), R, z, frw, ood2, aMass2, Lx, Vo, Vf, precision, eRes);
-			break;
+	#define CASE_MULTIE_(mo2) \
+	switch (mapmask){ \
+	CASE_(mo2,EN_ENE) \
+	CASE_(mo2,EN_MAP) \
+	CASE_(mo2,EN_MASK) \
+	CASE_(mo2,EN_ENEMASK) \
+	CASE_(mo2,EN_MAPMASK) \
+	CASE_(mo2,EN_ENEMAPMASK) \
 	}
-}
 
-void	energyThetaCpu	(Scalar *axionField, const double delta2, const double aMass2, void *eRes, const bool map, const bool mod)
-{
 	switch	(mod) {
 		case	true:
-			energyThetaCpu<true> (axionField, delta2, aMass2, eRes, map);
+			CASE_MULTIE_(true)
 			break;
-
 		case	false:
-			energyThetaCpu<false>(axionField, delta2, aMass2, eRes, map);
+			CASE_MULTIE_(false)
 			break;
 	}
 }
