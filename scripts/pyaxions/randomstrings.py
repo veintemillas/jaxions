@@ -280,7 +280,7 @@ def burden(N=256, RL_RATIO=0.25, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, 
     # Save input parameters in the output file
     with open(PATH + 'string.dat', 'w') as file:
         file.write(f"# N: {N}\n")
-        file.write(f"# R: {R}\n")
+        # file.write(f"# R: {R}\n")
         file.write(f"# ALPHA: {ALPHA}\n")
         file.write(f"# BETA: {BETA}\n")
         file.write(f"# PSI: {PSI}\n")
@@ -289,7 +289,7 @@ def burden(N=256, RL_RATIO=0.25, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, 
         file.write(f"# YCF: {YCF}\n")
         file.write(f"# ZCF: {ZCF}\n")
         file.write(f"# DZ: {DZ}\n")
-        np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+        # np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
 
     return x, y, z
 
