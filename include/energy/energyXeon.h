@@ -5,7 +5,7 @@
 
 	void	energyCpu	(Scalar *axionField, const double delta2, const double LL, const double nQcd, void *eRes, const double shift, const VqcdType VQcd, const EnType map=EN_ENE);
 
-	void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map=false, const bool wMod=false);
+	void	energyThetaCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const EnType map=EN_ENE, const bool wMod=false);
 
 	void	energyNaxionCpu	(Scalar *axionField, const double delta2, const double nQcd, void *eRes, const bool map=false);
 

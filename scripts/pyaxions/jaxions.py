@@ -429,10 +429,24 @@ def gm(address,something='summary',printerror=False):
         ll = len(something)-1
         if ('mask' in something):
             # float to the right of mask with the correct format
-            mst = something[something.find('mask'):]
-            mmm = '/Redmask_%.2f'%float(something[something.find('mask')+4:])
+            if ('Redmask' in something) or ('REDmask' in something):
+                mst = something[something.find('mask')-3:]
+                mmm = '/Redmask_%.2f'%float(something[something.find('mask')+4:])
+                ll -= len(something[something.find('mask')-3:])
+            elif ('Axitmask' in something) or ('AXITmask' in something):
+                mst = something[something.find('mask')-4:]
+                mmm = '/Axitmask_%.2f'%float(something[something.find('mask')+4:])
+                ll -= len(something[something.find('mask')-4:])
+            elif ('Axit2mask' in something) or ('AXIT2mask' in something):
+                mst = something[something.find('mask')-5:]
+                mmm = '/Axit2mask_%.2f'%float(something[something.find('mask')+4:])
+                ll -= len(something[something.find('mask')-5:])
+            else:
+                # default is Red mask
+                mst = something[something.find('mask'):]
+                mmm = '/Redmask_%.2f'%float(something[something.find('mask')+4:])
+                ll -= len(something[something.find('mask'):])
             maska = ' nMask'
-            ll -= len(something[something.find('mask'):])
         else:
             mst = ''
             mmm = ''

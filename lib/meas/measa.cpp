@@ -631,6 +631,7 @@ writePMapHdf5s (axiona, LAB);
 							memset(eRes, 0, 256);
 							double *eR = static_cast<double *> (eRes);
 							energy(axiona, eRes, EN_MAP, shiftz);
+							info.edens_average = (eR[0] + eR[1] + eR[2] + eR[3] + eR[4]);
 						} else {
 							LogMsg(VERB_NORMAL,"[Meas %d] mask %s: Energy in M2h (status %d)",indexa,masklab[i].c_str(),axiona->m2hStatus());
 						}
@@ -676,21 +677,21 @@ writePMapHdf5s (axiona, LAB);
 								}
 
 								/* Redondo's could be active in any mode */
-								if (maskara[i] == SPMASK_REDO){
+								if (maskara[i] & (SPMASK_REDO | SPMASK_AXIT | SPMASK_AXIT2)){
 										void *eRes;
 										trackAlloc(&eRes, 256);
 										memset(eRes, 0, 256);
 										double *eR = static_cast<double *> (eRes);
 									energy(axiona, eRes, EN_MASK, shiftz); // EN_MAPMASK possible
-									writeEnergy(axiona, eRes, rmasklabel[ii]);
+									writeEnergy(axiona, eRes, rmasklabel[ii], masklab[i].c_str());
 												// if(p2dEmapo){ writeEMapHdf5s (axiona,sliceprint) }; //Needs EN_MAPMASK
 									trackFree(eRes);
 								}
 						}
 
-						if((maskara[i] == SPMASK_REDO) && onlymaskenergy) {
+						if((maskara[i] & (SPMASK_REDO | SPMASK_AXIT | SPMASK_AXIT2)) && onlymaskenergy) {
 							LogMsg(VERB_NORMAL,"[Meas %d] Spectrum %s rmask %f skipped",indexa,masklab[i].c_str(),rmasktab[ii]);
-							continue; // skip spectra in Red mode when onlymaskenergy is true
+							continue; // skip spectra when onlymaskenergy is true
 						}
 
 						/* For spectra we have two options:

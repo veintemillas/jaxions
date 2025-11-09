@@ -108,12 +108,12 @@ void	Energy::runCpu	()
 
 		case	FIELD_AXION:
 			setName		("Energy Axion");
-			energyThetaCpu	(field, delta2, aMass2, eRes, map, false);
+			energyThetaCpu	(field, delta2, aMass2, eRes, mapmask, false);
 			break;
 
 		case	FIELD_AXION_MOD:
 			setName		("Energy Axion (mod)");
-			energyThetaCpu	(field, delta2, aMass2, eRes, map, true);
+			energyThetaCpu	(field, delta2, aMass2, eRes, mapmask, true);
 			break;
 
 		case	FIELD_NAXION:
@@ -142,12 +142,16 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 		return;
 	}
 
-	if ( (emap & EN_MASK) && !(field->sDStatus() & SD_MASK))
-	{
+	if (emap & EN_MASK) {
+	if ( (field->Field() == FIELD_SAXION) && !(field->sDStatus() & SD_MASK)) {
 		LogError ("Error: Can't compute masked energy because there is no mask!\n");
 		return;
 	}
-
+	if ( (field->Field() == FIELD_AXION) && !(field->sDStatus() & SD_AXITONMASK)) {
+		LogError ("Error: Can't compute masked axion energy because there is no axiton mask!\n");
+		return;
+	}
+	}
 
 	LogMsg  (VERB_HIGH, "Called energy");
 	Profiler &prof = getProfiler(PROF_ENERGY);
@@ -189,7 +193,8 @@ void	energy	(Scalar *field, void *eRes, const EnType emap, const double shift)
 	}
 
 	// Changed SAXION CASE from 10 to 22 for now there are masked energies + rho field
-	const int size = field->Field() == FIELD_SAXION ? 23 : 5;
+	// Changed AXION CASE from 5 to 22 for the same reason
+	const int size = ((field->Field() == FIELD_SAXION)||(field->Field() == FIELD_AXION)) ? 23 : 5;
 
 	MPI_Allreduce(eTmp, eRes, size, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 	trackFree(eTmp);
