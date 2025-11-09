@@ -2,7 +2,8 @@
 	#define _ENUM_FIELD_
 	#include<mpi.h>
 	#include<vector>
-
+	#include <array>
+	
 	typedef	unsigned int uint;
 
 	namespace	AxionEnum {
@@ -894,6 +895,7 @@
                         bool          part_disp;
 			AxitonInfo    axtinfo;
 			bool          randommom;
+			bool          uEvolAll;
 		}	IcData;
 
 		typedef	struct	MomParms_v
@@ -932,6 +934,9 @@
 			std::vector<double>	gam;
 			std::vector<double>	cub;
 			StringData stringdata;
+			std::vector<std::array<double,3>> loop_com;
+			std::vector<std::array<double,6>> loop_inertia;
+			std::vector<double>               loop_len_com;
 		}	StringLoopParms;
 
 		typedef	struct	PropParms_v
