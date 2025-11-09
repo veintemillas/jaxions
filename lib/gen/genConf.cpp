@@ -1540,6 +1540,40 @@ void	ConfGenerator::confstring(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING ended! ");
 }
 
+void buildPeriodicLoopImages(
+    const std::vector<double> &xs, const std::vector<double> &ys, const std::vector<double> &zs,
+    const std::vector<int>    &eps,
+    int numX, int numY, int numZ,
+    double Lx, double Ly, double Lz,
+    std::vector<double> &xs_out,
+    std::vector<double> &ys_out,
+    std::vector<double> &zs_out,
+    std::vector<int>    &eps_out)
+{
+    const size_t N = xs.size();
+    xs_out.clear(); ys_out.clear(); zs_out.clear(); eps_out.clear();
+
+    const size_t copies = size_t(2*numX+1) * size_t(2*numY+1) * size_t(2*numZ+1);
+    xs_out.reserve(N * copies);
+    ys_out.reserve(N * copies);
+    zs_out.reserve(N * copies);
+    eps_out.reserve(N * copies);
+
+    for (int dx = -numX; dx <= numX; ++dx)
+    for (int dy = -numY; dy <= numY; ++dy)
+    for (int dz = -numZ; dz <= numZ; ++dz) {
+        const double sx = dx * Lx;
+        const double sy = dy * Ly;
+        const double sz = dz * Lz;
+
+        for (size_t i = 0; i < N; ++i) {
+            xs_out.push_back(xs[i] + sx);
+            ys_out.push_back(ys[i] + sy);
+            zs_out.push_back(zs[i] + sz);
+            eps_out.push_back(eps[i]);
+        }
+    }
+}
 
 void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 {
@@ -1556,6 +1590,9 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	std::vector<double> xx,yy,zz;
 	std::vector<int> endpoints;
 
+	std::vector<double> xs, ys, zs;
+	std::vector<int>   eps;
+
 	if (((stringFile = fopen("./string.dat", "r")) == nullptr)) {
     	LogMsg(VERB_NORMAL, "[STR] none found !");
 	}
@@ -1566,6 +1603,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
     	bool ep;
     	char line[256]; // Assuming a maximum line length of 256 characters
 
+			LogMsg(VERB_NORMAL, "[STR] Reading string.dat! ");
     	while (fgets(line, sizeof(line), stringFile) != nullptr) {
         	// Check if the line starts with '#' (header line)
         	if (line[0] == '#') {
@@ -1574,7 +1612,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 
         	// Process data if it's not a header line
         	sscanf(line, "%lf %lf %lf %d", &xa, &ya, &za, &ep);
-        	LogMsg(VERB_PARANOID, " x,y,z %.2f %.2f %.2f %d !", xa, ya, za, ep);
+        	LogMsg(VERB_PARANOID, " x,y,z %.6f %.6f %.6f ep %d", xa, ya, za, ep);
         	xx.push_back(xa);
         	yy.push_back(ya);
         	zz.push_back(za);
@@ -1583,28 +1621,61 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
     	}
 
     	fclose(stringFile); // Don't forget to close the file when done
+			LogMsg(VERB_NORMAL, "[STR] We check loop closings #poins %d",xx.size());
 
+			double x0 = xx[0],y0 = yy[0],z0=zz[0];
+			double xi,yi,zi;
+			int loop_number=1;
 
-		// Add periodic copies of the string outside the simulation volume
-		const int numCopies = 1; // Number of copies to add
-		//const double boxSize = myCosmos->TotalDepth();
+			LogMsg(VERB_HIGH, "[STR] loop %d ",loop_number);
+			for(size_t i=0; i<xx.size();i++){
 
-		for (int i = -numCopies; i < numCopies + 1; i++) {
-			if (i == 0)
-				continue;
+				if (endpoints[i]==0)
+					continue;
 
-				for (int ind = 0; ind < ii; ind++) {
-					// Add a copy shifted in the x-direction
-					double newX = xx.at(ind);
-					xx.push_back(newX);
-		   		// Add a copy shifted in the y-direction
-				double newY = yy.at(ind);
-				yy.push_back(newY);
-		   		// Add a copy shifted in the z-direction
-				double newZ = zz.at(ind) + i * axionField->TotalDepth();
-				zz.push_back(newZ);
+				xi = xx[i];
+				yi = yy[i];
+				zi = zz[i];
+
+				if (xi==x0 && yi==y0 &&zi==z0)
+					continue;
+
+				LogMsg(VERB_HIGH, "[STR] loop closing does not match beggining, patch! ");
+				LogMsg(VERB_HIGH, "[STR] (%lf,%lf,%lf) (%lf,%lf,%lf)",x0,y0,z0,xi,yi,zi);
+
+				xx.insert(xx.begin() + i+1, x0);
+				yy.insert(yy.begin() + i+1, y0);
+				zz.insert(zz.begin() + i+1, z0);
+				endpoints.insert(endpoints.begin() + i+1, 1);
+				endpoints[i] = 0; // it wasn't a proper ending
+
+				if (xx.size() > i+2)
+				{
+					loop_number++;
+					LogMsg(VERB_HIGH, "[STR] loop %d ",loop_number);
+					LogMsg(VERB_HIGH, "[STR] size check %d %d",xx.size(),i+1);
+					x0 = xx[i+2];
+					y0 = yy[i+2];
+					z0 = zz[i+2];
+				}
+
 			}
-		}
+
+		const int numCopiesX = ic.kMax; // Number of copies to add
+		const int numCopiesY = ic.kMax; // Number of copies to add
+		const int numCopiesZ = ic.kMax; // Number of copies to add
+
+		LogFlush();
+
+		/* If explicit perdiodic copies are desired:
+		- uncomment this
+		- disable the dipoles in  anystringConf
+		- pass xs,ys,zs  to anystringConf */
+
+		// buildPeriodicLoopImages(xx, yy, zz, endpoints,
+		//                         numCopiesX, numCopiesY, numCopiesZ,
+		//                         axionField->Length(), axionField->Length(), axionField->TotalDepth(),
+		//                         xs, ys, zs, eps);
 
 	}
 
