@@ -17,6 +17,7 @@ add_library(Axions STATIC ${OBJS})
 target_include_directories(Axions PRIVATE .)
 target_include_directories(Axions PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+
 # Set properties for CUDA files if GPU is enabled
 if(USE_GPU)
     set_property(TARGET Axions PROPERTY CUDA_SEPARABLE_COMPILATION ON)

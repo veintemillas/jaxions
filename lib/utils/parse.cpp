@@ -303,6 +303,7 @@ void	PrintUsage(char *name)
 	printf("  --vPQ2                        Variant of PQ potential (default, disabled).\n");
 	printf("  --onlyrho                    	Only rho-evolution, theta frozen (default, disabled)\n");
 	printf("  --onlytheta                   Only theta-evolution, rho frozen (default, disabled)\n");
+  printf("  --evolall                     rho+theta evolution (default) (use when reading a only- ... file to force)\n");
 	printf("  --gam   [float]               Saxion damping rate (default 0.0)\n");
 
 
@@ -699,6 +700,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.fieldindex=FIELD_NO;
 	// Axiton tracker info. default: disabled
 	icdatst.axtinfo.nMax = -1;
+  icdatst.uEvolAll  = false;
 
 	/* Default measurements */
 	deninfa.idxprint  = 0;
@@ -1037,6 +1039,14 @@ int	parseArgs (int argc, char *argv[])
 			vqcdTypeEvol = V_EVOL_THETA;
 			PARSE1;
 		}
+
+    if (!strcmp(argv[i], "--evolall"))
+		{
+			icdatst.uEvolAll = true;
+			vqcdTypeEvol = V_NONE;
+			PARSE1;
+		}
+
 
 		if (!strcmp(argv[i], "--lowmem"))
 		{
@@ -2000,7 +2010,7 @@ int	parseArgs (int argc, char *argv[])
 				PARSE1;
 			}
 			else {
-				sscanf(argv[i+1], "%zu", &icdatst.axtinfo.nMax);
+				sscanf(argv[i+1], "%d", &icdatst.axtinfo.nMax);
 				PARSE2;
 			}
 
@@ -2029,14 +2039,14 @@ int	parseArgs (int argc, char *argv[])
 
 		if (!strcmp(argv[i], "--axitontracker.ct_threshold"))
 		{
-			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.ct_threshold);
+			sscanf(argv[i+1], "%lf", &icdatst.axtinfo.ct_threshold);
       icdatst.axtinfo.ct_threshold = atof(argv[i+1]);
 			PARSE2;
 		}
 
 		if (!strcmp(argv[i], "--axitontracker.printradius"))
 		{
-			sscanf(argv[i+1], "%zu", &icdatst.axtinfo.printradius);
+			sscanf(argv[i+1], "%d", &icdatst.axtinfo.printradius);
 			PARSE2;
 		}
 
@@ -2668,6 +2678,11 @@ if (icdatst.cType == CONF_SMOOTH )
 
 
 	vqcdType |= vpqType;
+  if ( (vqcdTypeEvol | V_EVOL_RHO) & (vqcdTypeEvol | V_EVOL_THETA))
+  {
+    vqcdTypeEvol = V_NONE;
+    icdatst.uEvolAll = true;
+  }
  	vqcdType |= (vqcdTypeDamp | vqcdTypeEvol);
 
 

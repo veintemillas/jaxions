@@ -65,6 +65,7 @@ extern bool uPrec;
 //extern bool uLambda;
 //extern bool uGamma;
 //extern bool uPot;
+extern bool uEvolAll;
 extern bool uZin;
 extern bool uZfn;
 extern bool aMod;

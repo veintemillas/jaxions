@@ -1135,7 +1135,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				// If theta and rho, -> All (eq. none)
 
 
-				if ( (myCosmos->QcdPot() & (V_EVOL_RHO | V_EVOL_THETA)) == V_NONE) {
+				if ( (myCosmos->QcdPot() & (V_EVOL_RHO | V_EVOL_THETA)) == V_NONE & !myCosmos->ICData().uEvolAll) {
 
 					readAttribute (vGrp_id, &vStr,  "Evolution type",  attr_type);
 
@@ -1150,6 +1150,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				else {
 					if ((myCosmos->QcdPot() & V_EVOL_THETA) && (myCosmos->QcdPot() & V_EVOL_RHO))
 						LogMsg (VERB_NORMAL, "V_EVOL_RHO & V_EVOL_THETA selected (commandline), we use full evolution.");
+					else if (myCosmos->ICData().uEvolAll)
+						LogMsg (VERB_NORMAL, "Using full evolution forced from command-line uEvolAll");
 					else
 					{
 						if (myCosmos->QcdPot() & V_EVOL_RHO) {
