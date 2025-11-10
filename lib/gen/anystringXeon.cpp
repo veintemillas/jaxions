@@ -33,35 +33,9 @@ void anystringXeon (Scalar *field, IcData ic,
 
     size_t local_z_start = size_t(rank) * Lz;
 
-    // LogMsg(VERB_NORMAL,"[θX] Fan apex = (%g,%g,%g)", apex.x, apex.y, apex.z);
+    LogMsg(VERB_NORMAL,"[θX] Calculation with %d copies in dipole approx",ic.kMax);
+    cthetaSolidAngleXeon(field->mStart(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax);
 
-		// LogMsg(VERB_NORMAL,"[θX] Aligned");LogFlush();
-
-    if (0)
-    {
-      // slower version, kept for fun
-
-    // Main pass: compute θ(x) at every lattice site
-    thetaSolidAngleXeon(field->m2Cpu(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax);
-
-    // complexify
-    Float* mc = static_cast<Float*> (field->mStart());
-    Float* m2 = static_cast<Float*> (field->m2Cpu());
-      for (size_t idx = 0; idx< V;idx++)
-      {
-        if (std::isnan(m2[idx]))
-          m2[idx] = (Float) M_PI;
-
-        mc[2*idx]   = std::cos(m2[idx]);
-        mc[2*idx+1] = std::sin(m2[idx]);
-      }
-    }
-    else
-    {
-      // faster version
-      LogMsg(VERB_NORMAL,"[θX] Calculation");LogFlush();
-      cthetaSolidAngleXeon(field->mStart(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax);
-    }
 }
 
 

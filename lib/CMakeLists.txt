@@ -17,15 +17,6 @@ add_library(Axions STATIC ${OBJS})
 target_include_directories(Axions PRIVATE .)
 target_include_directories(Axions PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# --- SLEEF Linking ---
-find_library(SLEEF_LIB sleef HINTS /usr/local/lib /opt/homebrew/lib)
-if(NOT SLEEF_LIB)
-  message(FATAL_ERROR "SLEEF library not found. Install with: brew install sleef")
-endif()
-
-target_include_directories(Axions PRIVATE /usr/local/include /opt/homebrew/include)
-target_link_libraries(Axions PRIVATE ${SLEEF_LIB})
-
 
 # Set properties for CUDA files if GPU is enabled
 if(USE_GPU)
