@@ -534,6 +534,33 @@ inline _MData_	opCode(vqcd0_pd, const _MData_ &x)
 	return	opCode(mul_pd, opCode(shuffle_pd, x, x, 0b0001), opCode(shuffle_pd, x, x, 0b0101));
 #endif
 }
+
+/* -----------------------------------------------------------------------
+   double-precision rsqrt fallback for triSimd:
+   Usage:  opCode(rsqrt_pd, x)   // works for SSE2/AVX/AVX-512 widths
+   Default = precise 1/sqrt.  Optionally enable fast AVX-512 seed + NR:
+   #define TRISIMD_USE_AVX512_RSQRT14 1
+   ----------------------------------------------------------------------- */
+static inline _MData_ opCode(rsqrt_pd, _MData_ x) {
+#if defined(__AVX512F__) && defined(TRISIMD_USE_AVX512_RSQRT14)
+    /* Fast path (AVX-512): VRSQRT14PD seed + one Newton step:
+       y <- y * (1.5 - 0.5*x*y*y) */
+    _MData_ y = opCode(rsqrt14_pd, x);                       // VRSQRT14PD
+    _MData_ halfx = opCode(mul_pd, x, opCode(set1_pd, 0.5));
+  #if defined(__FMA__) || defined(__AVX512F__)
+    _MData_ term = opCode(fnmsub_pd, halfx, opCode(mul_pd, y, y), opCode(set1_pd, 1.5));
+    return opCode(mul_pd, y, term);
+  #else
+    _MData_ y2   = opCode(mul_pd, y, y);
+    _MData_ term = opCode(sub_pd, opCode(set1_pd, 1.5), opCode(mul_pd, halfx, y2));
+    return opCode(mul_pd, y, term);
+  #endif
+#else
+    /* Precise & portable: 1 / sqrt(x) */
+    return opCode(div_pd, opCode(set1_pd, 1.0), opCode(sqrt_pd, x));
+#endif
+}
+
 #undef	_MData_
 
 #if	defined(__AVX512F__)
@@ -920,6 +947,32 @@ inline _MData_	opCode(vqcd0_ps, const _MData_ &x)
 #else
 	return	opCode(mul_ps, opCode(shuffle_ps, x, x, 0b10110001), opCode(shuffle_ps, x, x, 0b11110101));
 #endif
+}
+
+// One-step Newton–Raphson refinement of rsqrt
+// returns ~22–23 bits accuracy, good for your normalization pass.
+static inline _MData_ rsqrt1_ps(const _MData_ s2)
+{
+    const _MData_ half         = opCode(set1_ps, 0.5f);
+    const _MData_ threehalves  = opCode(set1_ps, 1.5f);
+
+    _MData_ y  = opCode(rsqrt_ps, s2);           // ~12-bit seed
+    _MData_ yy = opCode(mul_ps, y, y);
+
+#if defined(__FMA__)
+    // corr = 1.5 - 0.5*s2*yy   (use FMA if available)
+  #if defined(__AVX2__) || defined(__AVX512F__)
+    _MData_ corr = opCode(fnmadd_ps, opCode(mul_ps, half, s2), yy, threehalves);
+  #else
+    _MData_ corr = opCode(sub_ps, threehalves,
+                          opCode(mul_ps, opCode(mul_ps, half, s2), yy));
+  #endif
+#else
+    _MData_ corr = opCode(sub_ps, threehalves,
+                          opCode(mul_ps, opCode(mul_ps, half, s2), yy));
+#endif
+
+    return opCode(mul_ps, y, corr);
 }
 
 #undef	_MData_
