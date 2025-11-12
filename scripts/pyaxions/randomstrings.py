@@ -223,75 +223,61 @@ def b(zeta, beta, psi):
         result[i] = (1 / beta) * ((e1 * np.cos(psi) + e2 * np.sin(psi)) * np.sin(beta * zeta[i]) + e3 * np.cos(beta * zeta[i]))
     return result
 
-def burden(N=256, RL_RATIO=0.25, ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0, XCF=0.5, YCF=0.5, ZCF=0.5, DZ = -0.5, PATH = './'):
+def burden(
+    N=256, RL_RATIO=0.25,
+    ALPHA=1.0/64, BETA=1.0/64, PSI=np.pi/2, T=0.0,
+    XCF=0.5, YCF=0.5, ZCF=0.5, DZ=-0.5,
+    PATH='./'
+):
     """
-    burden(N, RL_RATIO, ALPHA, BETA, PSI, T, XCF, YCF, ZCF)
+    burden(N, RL_RATIO, ALPHA, BETA, PSI, T, XCF, YCF, ZCF, DZ, PATH)
 
-    1) Generates a string IC as in "Radiation of Goldstone bosons from cosmic strings" (PRD Vol. 35, Nr. 4, 1987) by Vilenkin and Vachaspati
-    2) Stores their (x,y,z)-coordinates and an additional list marking the endpoint of every string (with a 1) to avoid connecting disconnected loops
-    3) Saves the generated configuration in "string.dat". This file will be read and processed at the beginning of the jaxions simulation
-
-
-    N is the number of grid points (must be the same as for the planned simulation!)
-    RL_RATIO: R/L, with L^3, the volume of the simulation box and R the radius of the loop. The code effectivly uses the variable Rdx = (R/L)*N for initialisation. Value should should be smaller than ~0.45.
-    ALPHA and BETA are constants (alpha = N1/R, beta = N2/R, with N1 and N2 relatively prime integers)
-    PSI is another constant, that controls the rotation of the string around the z-axis (from 0 to 2pi)
-
-    XCF specifies the center of the loop on the x-axis (ranges from 0 to 1)
-    YCF specifies the center of the loop on the y-axis (ranges from 0 to 1)
-    ZCF specifies the center of the loop on the z-axis (ranges from 0 to 1)
-    DZ is a shift in the z-coordinate
-
-    PATH is a string containing the path to the folder where you want to store the string.dat file
-
-    Check the paper for details about the choice of parameters etc.
+    Builds the “Burden–Vilenkin–Vachaspati” string initial condition.
+    Coordinates are centered at (N*XCF, N*YCF, N*ZCF+DZ) and saved to string.dat
+    with an endpoint flag in the 4th column (last point = 1).
     """
-    xc, yc, zc = N * XCF, N * YCF, N * ZCF + DZ
 
-    #Using the "correct" variable
-    Rdx = RL_RATIO*N
+    # center and scale
+    xc, yc, zc = N*XCF, N*YCF, N*ZCF + DZ
+    Rdx = RL_RATIO * N
 
-    zeta = np.linspace(0, 2 * np.pi * Rdx, int(2 * np.pi * Rdx))
+    # parameter along the curve
+    npts = int(np.round(2*np.pi*Rdx)) 
+    zeta = np.linspace(0.0, 2.0*np.pi*Rdx, npts)
 
-    a_zeta = a(zeta-T, ALPHA)
-    b_zeta = b(zeta+T, BETA, PSI)
+    a_zeta = a(zeta - T, ALPHA)              # shape (npts, 3)
+    b_zeta = b(zeta + T, BETA, PSI)          # shape (npts, 3)
 
-    x = []
-    y = []
-    z = []
+    # curve: x_i = 0.5*(a_i + b_i)
+    xyb = 0.5*(a_zeta + b_zeta)              # (npts, 3)
+    xyb[:, 0] += xc
+    xyb[:, 1] += yc
+    xyb[:, 2] += zc
 
-    for i in range(len(zeta)):
-        x_i = 0.5 * (a_zeta[i] + b_zeta[i])
-        x_i = x_i + np.array([xc, yc, zc])
-        x.append(x_i[0])
-        y.append(x_i[1])
-        z.append(x_i[2])
-
-    x = np.array(x)
-    y = np.array(y)
-    z = np.array(z)
-
-    ep = np.zeros(len(zeta), dtype=int)
+    # endpoint flags
+    ep = np.zeros(npts, dtype=int)
     ep[-1] = 1
 
-    data = np.column_stack((x, y, z, ep))
-    np.savetxt(PATH + './string.dat', data, delimiter=' ', fmt='%.2f %.2f %.2f %d')
+    coords = np.column_stack((xyb[:,0], xyb[:,1], xyb[:,2], ep))
 
-    # Save input parameters in the output file
-    with open(PATH + 'string.dat', 'w') as file:
-        file.write(f"# N: {N}\n")
-        # file.write(f"# R: {R}\n")
-        file.write(f"# ALPHA: {ALPHA}\n")
-        file.write(f"# BETA: {BETA}\n")
-        file.write(f"# PSI: {PSI}\n")
-        file.write(f"# T: {T}\n")
-        file.write(f"# XCF: {XCF}\n")
-        file.write(f"# YCF: {YCF}\n")
-        file.write(f"# ZCF: {ZCF}\n")
-        file.write(f"# DZ: {DZ}\n")
-        # np.savetxt(file, coords, delimiter=' ', fmt='%.2f %.2f %.2f %i')
+    # single write with header (matches onestring style)
+    header = (
+        f"# N: {N}\n"
+        f"# RL_RATIO: {RL_RATIO}\n"
+        f"# ALPHA: {ALPHA}\n"
+        f"# BETA: {BETA}\n"
+        f"# PSI: {PSI}\n"
+        f"# T: {T}\n"
+        f"# XCF: {XCF}\n"
+        f"# YCF: {YCF}\n"
+        f"# ZCF: {ZCF}\n"
+        f"# DZ: {DZ}\n"
+        f"# Rdx: {Rdx}\n"
+    )
+    np.savetxt(PATH + 'string.dat', coords, delimiter=' ', fmt='%.2f %.2f %.2f %d',
+               header=header, comments='')
 
-    return x, y, z
+    return coords[:,0], coords[:,1], coords[:,2]
 
 def longstring(N=256, AUX=1, A=0.5, D=10, D1 = 256/4, D2 = 3*256/4, DIST=20, ORIENTATION='z', PATH = './'):
     """

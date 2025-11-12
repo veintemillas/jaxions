@@ -9,31 +9,49 @@
 
 #include <immintrin.h>
 
-#ifdef	__AVX512F__
-	#define _MData_ __m512d
-	#define	_MInt_  __m512i
-	#define	_MHnt_  __m256i
-#elif   defined(__AVX__)
-	#define _MData_ __m256d
-	#define	_MInt_  __m256i
-	#define	_MHnt_  __m128i
+
+// --- ISA-dependent vector types ---
+#ifdef __AVX512F__
+    #define _MData_ __m512d
+    #define _MInt_  __m512i
+    #define _MHnt_  __m256i
+#elif defined(__AVX__)
+    #define _MData_ __m256d
+    #define _MInt_  __m256i
+    #define _MHnt_  __m128i
 #else
-	#define _MData_ __m128d
-	#define	_MInt_  __m128i
+    #define _MData_ __m128d
+    #define _MInt_  __m128i
 #endif
 
-#if	defined(__AVX512F__)
-	#define	_PREFIX_ _mm512
-	#define	_PREFXL_ _mm256
-	#define opCodl(x,...) opCode_N(_PREFXL_, x, __VA_ARGS__)
+// --- Opcode prefix selection + "low" prefix helper ---
+#ifdef __AVX512F__
+    #define _PREFIX_  _mm512
+    #define _PREFXL_  _mm256
+    #define opCodl(x, ...) opCode_N(_PREFXL_, x, __VA_ARGS__)
+
+    /* AVX-512 does NOT provide _mm512_rsqrt_ps/_mm512_rcp_ps.
+       Map the generic names used by opCode(...) to the correct AVX-512 intrinsics. */
+    #ifndef _mm512_rsqrt_ps
+      #if defined(__AVX512ER__)
+        #define _mm512_rsqrt_ps _mm512_rsqrt28_ps   /* Knights/ER: higher-precision seed */
+      #else
+        #define _mm512_rsqrt_ps _mm512_rsqrt14_ps   /* Baseline AVX-512F */
+      #endif
+    #endif
+
+    #ifndef _mm512_rcp_ps
+      #define _mm512_rcp_ps _mm512_rcp14_ps         /* Baseline AVX-512F reciprocal */
+    #endif
+
 #else
-	#if not defined(__AVX__) and not defined(__AVX2__)
-		#define	_PREFIX_ _mm
-	#else
-		#define	_PREFIX_ _mm256
-		#define	_PREFXL_ _mm
-		#define opCodl(x,...) opCode_N(_PREFXL_, x, __VA_ARGS__)
-	#endif
+    #if !defined(__AVX__) && !defined(__AVX2__)
+        #define _PREFIX_  _mm
+    #else
+        #define _PREFIX_  _mm256
+        #define _PREFXL_  _mm
+        #define opCodl(x, ...) opCode_N(_PREFXL_, x, __VA_ARGS__)
+    #endif
 #endif
 
 #define	M_PI2	(M_PI *M_PI)
