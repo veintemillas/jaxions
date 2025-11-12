@@ -79,9 +79,11 @@ StringLoopParms	stringlength3	(Scalar *field, StringData strDen_in, StringMeasur
 
 	size_t Lx = field->Length();
 	size_t Lz = field->Depth();
+	size_t Tz = field->TotalDepth();
 	size_t n3 = field->Size();
 	size_t Sf = Lx*Lx;
 	int rank = commRank();
+	int nMPI = commSize();
 
 	char* strData = static_cast<char*>(field->sData());
   unsigned int*   labelData = reinterpret_cast<unsigned int*>(field->m2Cpu());
@@ -373,7 +375,7 @@ LogFlush();
   }
 	// swap equiv_omp?
 
-	LogMsg(VERB_HIGH,"[SL3 Assign dense labels local (OMP)]");LogFlush();
+	LogMsg(VERB_HIGH,"[SL3] Assign dense labels local (OMP)]");LogFlush();
 	// auto dense_map = assign_dense_labels(equiv, nlabels_local);
 	auto dense_map = assign_dense_labels(equiv, issued);
 
@@ -395,8 +397,8 @@ LogFlush();
 	  issued, dense, issued, issued ? dense_map[issued] : 0);LogFlush();
 
 	// broadcast and get unique labels
-	std::vector<int> nlabels_mpi(commSize(),0);
-	std::vector<int> label_start_mpi(commSize(),0);
+	std::vector<int> nlabels_mpi(nMPI,0);
+	std::vector<int> label_start_mpi(nMPI,0);
 
 	commSync();
 
@@ -404,7 +406,7 @@ LogFlush();
 	MPI_Allgather(&nlabels_local_i, 1, MPI_INT,
                 nlabels_mpi.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
-	for (int i=0; i < commSize(); i++){
+	for (int i=0; i < nMPI; i++){
 		for (int j=0; j < i; j++){
 			label_start_mpi[i] += nlabels_mpi[j];
 		}
@@ -473,8 +475,8 @@ LogFlush();
 	#pragma omp parallel
 	{
 		int tid = omp_get_thread_num();
-		int next_rank = (rank + 1)%commSize();
-		int prev_rank = (commSize() + rank - 1)%commSize();
+		int next_rank = (rank + 1)%nMPI;
+		int prev_rank = (nMPI + rank - 1)%nMPI;
 		int min_next_rank = label_start_mpi[next_rank]+1;
 		int min_prev_rank = label_start_mpi[prev_rank]+1;
 		int min_curr_rank = label_start_mpi[rank]+1;
@@ -515,7 +517,7 @@ LogFlush();
 } // end parallel
 
 	unsigned global_label_number = 0;
-	for (int i = 0; i < commSize();i++)
+	for (int i = 0; i < nMPI;i++)
 		global_label_number += nlabels_mpi[i];
 LogMsg(VERB_NORMAL,"Global number of (redundant?) labels %u",global_label_number);
 
@@ -626,12 +628,21 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 		Float scale_phi = inv_a;
 		Float scale_vel = inv_a2;
 
+		/* segments */
+		std::vector<SegRec> segs_all;
+		segs_all.reserve(4 * ncubes_local);  // heuristic; ok to overshoot
+
+		/* z baseline for absolute coordinates */
+		Float local_z = (Float) (rank*Lz);
 		#pragma omp parallel
     {
         std::vector<double> threadLengths(max_global_label, 0.0);
         std::vector<double> threadVelocities(max_global_label, 0.0);
 				std::vector<double> threadGammas(max_global_label, 0.0);
 				std::vector<double> threadCubes(max_global_label, 0.0);
+
+				std::vector<SegRec> segs_thr;
+				segs_thr.reserve(256);
 
         #pragma omp for
         for (size_t i = 0; i < ncubes_local; ++i) {
@@ -663,52 +674,70 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
             std::complex<Float> v001 = v[idx001], v101 = v[idx101], v011 = v[idx011], v111 = v[idx111];
 
 						// convert to non-conformal fields
-						for (auto [m, v] : std::initializer_list<std::pair<std::complex<Float>*, std::complex<Float>*>>{
+						for (auto [mp, vp] : std::initializer_list<std::pair<std::complex<Float>*, std::complex<Float>*>>{
 						        {&m000, &v000}, {&m001, &v001}, {&m010, &v010}, {&m011, &v011},
 						        {&m100, &v100}, {&m101, &v101}, {&m110, &v110}, {&m111, &v111}
 						    })
 						{
-						    *v = scale_vel * (*v - Hc * (*m));
-								*m *= scale_phi;
+						    *vp = scale_vel * (*v - Hc * (*m));
+								*mp *= scale_phi;
 						}
 
             Float total_vg2 = 0.0;
             int np = 0;
             Float pos_x[6] = {0}, pos_y[6] = {0}, pos_z[6] = {0};
+						uint64_t pkey[6];
+						uint8_t  isExit[6];
+
+						// --- helper: register one point + metadata ---
+						auto push_point = [&](Float px, Float py, Float pz, unsigned short faceFlag){
+							pos_x[np] = px;
+							pos_y[np] = py;
+							pos_z[np] = pz;
+
+							// unique plaquette id across ranks: maps *2 faces to neighbor cell
+							pkey[np]  = canonical_plaq_key((usi)ix,(usi)iy,(usi)(local_z+iz),
+							                               faceFlag, (usi)Lx, (usi)Tz);
+
+							// classify OUT vs IN for THIS cube
+							isExit[np] = ( (scOutData[idx] & faceFlag) ? 1 : 0 );
+
+							++np;
+						};
 
 						auto collect = [&](std::complex<Float> m00, std::complex<Float> m10,
 						                   std::complex<Float> m11, std::complex<Float> m01,
 						                   std::complex<Float> v00, std::complex<Float> v10,
 						                   std::complex<Float> v11, std::complex<Float> v01,
 						                   Float origin_x, Float origin_y, Float origin_z,
-						                   unsigned short flag, int orientation) {
-						    if (!((scOutData[idx] | scInData[idx]) & flag)) return;
+						                   unsigned short faceflag, int orientation) {
+						    if (!((scOutData[idx] | scInData[idx]) & faceflag)) return;
 
 						    Float du[2], vg2 = 0.0;
 						    set_cross_and_velocity<Float>(m00, m10, m11, m01,
 						                           v00, v10, v11, v01,
 						                           du, vg2, ms2, c);
-
+								Float px, py, pz;
 						    switch (orientation) {
 						        case 0: // XY: u→x, v→y
-						            pos_x[np] = origin_x + du[0];
-						            pos_y[np] = origin_y + du[1];
-						            pos_z[np] = origin_z;
+						            px = origin_x + du[0];
+						            py = origin_y + du[1];
+						            pz = origin_z;
 						            break;
 						        case 1: // YZ: u→y, v→z
-						            pos_x[np] = origin_x;
-						            pos_y[np] = origin_y + du[0];
-						            pos_z[np] = origin_z + du[1];
+						            px = origin_x;
+						            py = origin_y + du[0];
+						            pz = origin_z + du[1];
 						            break;
 						        case 2: // ZX: u→z, v→x
-						            pos_x[np] = origin_x + du[1];
-						            pos_y[np] = origin_y;
-						            pos_z[np] = origin_z + du[0];
+						            px = origin_x + du[1];
+						            py = origin_y;
+						            pz = origin_z + du[0];
 						            break;
 						    }
 
 						    total_vg2 += vg2;
-						    np++;
+								push_point(px, py, pz, faceflag);
 						};
 						// We do not wrap in the coordinates, or distances get unphysical factors of Lx,Lz
 						// when collecting points for string positions, we need to avoid printing
@@ -722,6 +751,32 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 
 
             if (np >= 2) {
+
+							int exits_idx[6], enters_idx[6], nE=0, nI=0;
+							for (int k=0; k<np; ++k) {
+								if (isExit[k]) exits_idx[nE++] = k;
+								else           enters_idx[nI++] = k;
+							}
+							const int pairs = std::min(nE, nI);  // should be np/2
+
+							for (int t=0; t<pairs; ++t) {
+								const int a = exits_idx[t];
+								const int b = enters_idx[t];
+
+								SegRec s;
+								s.label = label;
+								s.a_key = pkey[a];
+								s.b_key = pkey[b];
+								s.ax = wrapf(pos_x[a], (double)Lx);
+								s.ay = wrapf(pos_y[a], (double)Lx);
+								s.az = wrapf(pos_z[a]+(Float)local_z, (double)Tz);
+								s.bx = wrapf(pos_x[b], (double)Lx);
+								s.by = wrapf(pos_y[b], (double)Lx);
+								s.bz = wrapf(pos_z[b]+(Float)local_z, (double)Tz);
+								segs_thr.push_back(s);
+							}
+
+
 							Float dl = dl_cal<Float>(pos_x, pos_y, pos_z, np);
               threadLengths[label - 1] += dl;
 // printf("tl %d = %f (dl %f)\n",label,threadLengths[label - 1], dl);
@@ -735,13 +790,16 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
             }
         }
 
-        #pragma omp critical
-        for (size_t l = 0; l < max_global_label; ++l) {
-            string_len[l] += threadLengths[l];
-            string_vel[l] += threadVelocities[l];
-						string_gam[l] += threadGammas[l];
-						string_cub[l] += threadCubes[l];
-        }
+				#pragma omp critical
+				{
+				for (size_t l = 0; l < max_global_label; ++l) {
+					string_len[l] += threadLengths[l];
+					string_vel[l] += threadVelocities[l];
+					string_gam[l] += threadGammas[l];
+					string_cub[l] += threadCubes[l];
+				}
+				segs_all.insert(segs_all.end(), segs_thr.begin(), segs_thr.end());
+				}
     }
 // for (size_t l = 0; l < max_global_label; ++l)
 // 	printf("l,v,g,c %f %f %f %f (label %d)\n",string_len[l],string_vel[l],string_gam[l],string_cub[l],l);
@@ -763,6 +821,264 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 // 	printf("r%d - l,v,g,c %f %f %f %f (label %zu/%zu)\n",rank,
 // 	string_len[l],string_vel[l],string_gam[l],string_cub[l],l,max_global_label);
 
+		//------------------------------------------------------------
+		// 4.1) Ownership
+		//------------------------------------------------------------
+
+		// compute local counts per label present on this rank
+		std::vector<int> cnt_local(max_global_label, 0);
+		for (const SegRec& s : segs_all) {
+		    size_t L = s.label - 1;
+		    if (L < cnt_local.size()) cnt_local[L] += 1;
+		}
+
+		// choose owner per label with MAXLOC
+		struct { int val; int rank; } local_pair, owner_pair;
+		std::vector<decltype(local_pair)> local_pairs(max_global_label), owner_pairs(max_global_label);
+
+
+		for (size_t i=0;i<max_global_label;++i) { local_pairs[i].val = cnt_local[i]; local_pairs[i].rank = rank; }
+
+		MPI_Allreduce(local_pairs.data(), owner_pairs.data(),
+		              (int)max_global_label, MPI_2INT, MPI_MAXLOC, MPI_COMM_WORLD);
+
+		auto owner_of = [&](uint32_t label)->int { return owner_pairs[label-1].rank; };
+
+		//------------------------------------------------------------
+		// 4.1) Redistribute segments so each string label is owned by 1 rank
+		//------------------------------------------------------------
+		commSync();
+
+		// Build send buffers grouped by destination rank
+		std::vector<std::vector<SegRec>> sendBuf(nMPI);
+		for (const SegRec &s : segs_all) {
+		    int dst = owner_of(s.label);
+		    sendBuf[dst].push_back(s);
+		}
+
+		// Prepare recv counts
+		std::vector<int> sendCounts(nMPI), recvCounts(nMPI);
+		for (int r = 0; r < nMPI; r++)
+		    sendCounts[r] = (int)sendBuf[r].size();
+
+		MPI_Alltoall(sendCounts.data(), 1, MPI_INT,
+		             recvCounts.data(), 1, MPI_INT,
+		             MPI_COMM_WORLD);
+
+		// Compute displacements and total receive count
+		std::vector<int> sendDisp(nMPI), recvDisp(nMPI);
+		int totalSend = 0, totalRecv = 0;
+		for (int r = 0; r < nMPI; r++) {
+		    sendDisp[r] = totalSend;
+		    recvDisp[r] = totalRecv;
+		    totalSend += sendCounts[r];
+		    totalRecv += recvCounts[r];
+		}
+
+		// Flatten
+		std::vector<SegRec> sendFlat; sendFlat.reserve(totalSend);
+		for (int r=0; r<nMPI; ++r) sendFlat.insert(sendFlat.end(), sendBuf[r].begin(), sendBuf[r].end());
+
+		// Convert to bytes
+		std::vector<int> sendCountsB(nMPI), recvCountsB(nMPI), sendDispB(nMPI), recvDispB(nMPI);
+		for (int r=0; r<nMPI; ++r) {
+		    sendCountsB[r] = sendCounts[r] * (int)sizeof(SegRec);
+		    recvCountsB[r] = recvCounts[r] * (int)sizeof(SegRec);
+		    sendDispB[r]   = sendDisp[r]   * (int)sizeof(SegRec);
+		    recvDispB[r]   = recvDisp[r]   * (int)sizeof(SegRec);
+		}
+
+		std::vector<SegRec> recvFlat(totalRecv);
+		MPI_Alltoallv(sendFlat.data(), sendCountsB.data(), sendDispB.data(), MPI_BYTE,
+		              recvFlat.data(), recvCountsB.data(), recvDispB.data(), MPI_BYTE,
+		              MPI_COMM_WORLD);
+
+		static_assert(std::is_trivially_copyable<SegRec>::value, "SegRec must be POD for MPI_BYTE send.");
+
+		// Now recvFlat contains **only** the segments whose label is owned by *this* rank
+		segs_all.swap(recvFlat);   // replace local storage
+		sendFlat.clear();
+		sendBuf.clear();
+
+		//=============================================================
+		// 4.2) Stitch segments into ordered polylines per label
+		// and compute stuff
+		//=============================================================
+
+		// ordered the segments by label
+		std::unordered_map<usi, std::vector<SegRec>> segs_by_label;
+		segs_by_label.reserve(segs_all.size());
+		for (auto &s : segs_all) segs_by_label[s.label].push_back(s);
+
+		// stable list of labels owned here
+		std::vector<usi> labels_owned; labels_owned.reserve(segs_by_label.size());
+		for (auto &kv : segs_by_label) labels_owned.push_back(kv.first);
+		std::sort(labels_owned.begin(), labels_owned.end());
+
+		const int N = (int)labels_owned.size();
+		// --- sizes & offsets (prefix sum) ---
+		std::vector<unsigned> sizes(N, 0);
+		std::vector<unsigned> offsets(N+1, 0); // NOTE: N+1, offsets[0]=0
+
+		for (int i = 0; i < N; ++i) {
+		    const usi L = labels_owned[i];
+		    sizes[i]     = (unsigned) segs_by_label[L].size(); // points == segments
+		    offsets[i+1] = offsets[i] + sizes[i];
+		}
+		const unsigned M = offsets.back(); // total number of points
+		// --- pre-size slp outputs (no push_backs later) ---
+		slp.loop_labels.resize(N);
+		slp.loop_sizes .resize(N);
+		slp.loop_offsets.resize(N+1);
+		slp.loop_closed.resize(N);
+		slp.loop_origin.resize(3* (size_t)N);
+		slp.loop_coords.resize(3* (size_t)M);
+
+		slp.loop_com.resize(3*N);
+		slp.loop_inertia.resize(3*N);
+		slp.loop_inertia_eigs.resize(3*N);
+		slp.loop_len_com.resize(3*N);
+
+		// copy offsets
+		for (int i=0;i<=N;++i) slp.loop_offsets[i] = offsets[i];
+
+
+
+		// string loop loop by label
+
+
+		// --- fill per loop in parallel ---
+		#pragma omp parallel for schedule(dynamic)
+		for (int i = 0; i < N; ++i) {
+			const usi L = labels_owned[i];
+			auto &segv  = segs_by_label[L];
+
+		// stitch into a polyline
+		// result: vectors px, py, pz with length sizes[i], and a bool isClosed
+			std::vector<double> px, py, pz;
+			bool isClosed = false;
+			{
+			std::unordered_map<uint64_t,uint64_t> next_of;
+			std::unordered_map<uint64_t,std::array<double,3>> coord_of;
+			std::unordered_set<uint64_t> in_nodes;
+			px.reserve(segv.size()); py.reserve(segv.size()); pz.reserve(segv.size());
+
+			for (auto &s : segv) {
+				next_of[s.a_key]  = s.b_key;
+				coord_of[s.a_key] = {s.ax,s.ay,s.az};
+				coord_of[s.b_key] = {s.bx,s.by,s.bz};
+				in_nodes.insert(s.b_key);
+			}
+			uint64_t start = 0;
+			for (auto &s : segv)
+				if (!in_nodes.count(s.a_key)) { start = s.a_key; break; }
+			if (start == 0 && !segv.empty()) start = segv[0].a_key;
+
+			std::unordered_set<uint64_t> vis;
+			uint64_t cur = start;
+			while (coord_of.count(cur) && !vis.count(cur) && px.size() < segv.size())
+				{
+					vis.insert(cur);
+					auto &p = coord_of[cur];
+					px.push_back(p[0]); py.push_back(p[1]); pz.push_back(p[2]);
+					auto it = next_of.find(cur);
+					if (it == next_of.end())
+						break;
+					if (it->second == start) {
+						isClosed = true; break;
+					}
+					cur = it->second;
+				}
+			}
+
+		// write label, size, origin
+		slp.loop_labels[i] = L;
+		slp.loop_sizes[i]  = (unsigned)px.size();
+		slp.loop_origin[3*i+0] = px.empty()?0.0:px[0];
+		slp.loop_origin[3*i+1] = py.empty()?0.0:py[0];
+		slp.loop_origin[3*i+2] = pz.empty()?0.0:pz[0];
+
+		// write coordinates at their slice
+		const unsigned base = offsets[i];
+		double *C = slp.loop_coords.data() + 3*base;
+		for (unsigned k=0; k<px.size(); ++k) {
+			C[3*k+0] = px[k];
+			C[3*k+1] = py[k];
+			C[3*k+2] = pz[k];
+		}
+
+		// unwrapped for COM/inertia + winding
+		if (px.size() >= 2) {
+			std::vector<V3> U(px.size());
+			V3 Wprev{px[0],py[0],pz[0]}, uacc{0,0,0};
+			U[0] = uacc;
+			for (size_t k=1;k<px.size();++k) {
+				V3 Wk{px[k],py[k],pz[k]};
+				V3 du{
+				mindelta(Wk.x-Wprev.x,(double)Lx),
+				mindelta(Wk.y-Wprev.y,(double)Lx),
+				mindelta(Wk.z-Wprev.z,(double)Tz)
+				};
+				uacc = {uacc.x+du.x, uacc.y+du.y, uacc.z+du.z};
+				U[k] = uacc; Wprev = Wk;
+			}
+
+			// winding bitmask (0/1/2/4) from end-start
+			auto rn = [](double t)->int { return (int)llround(t); };
+			const int wx = rn((U.back().x - U.front().x)/ (double)Lx);
+			const int wy = rn((U.back().y - U.front().y)/ (double)Lx);
+			const int wz = rn((U.back().z - U.front().z)/ (double)Tz);
+			uint8_t mask = 0; if (wx) mask|=1; if (wy) mask|=2; if (wz) mask|=4;
+			slp.loop_closed[i] = mask;
+
+			Acc A{};
+			for (size_t k=0;k+1< U.size();++k)
+				accum_seg(A, U[k], U[k+1]);
+			if (isClosed) accum_seg(A, U.back(), U.front());
+				V3 R; double I6[6];
+			if (A.L>0)
+				finalize(A, R, I6);
+			else {
+				R={0,0,0}; for(double&q:I6) q=0;
+			}
+
+			// slp.loop_len_com[i] = A.L;
+			// slp.loop_com[i][0]=R.x;
+			// 	slp.loop_com[i][1]=R.y;
+			// 		slp.loop_com[i][2]=R.z;
+			// slp.loop_inertia[i][0]=I6[0]; slp.loop_inertia[i][1]=I6[1]; slp.loop_inertia[i][2]=I6[2];
+			// slp.loop_inertia[i][3]=I6[3]; slp.loop_inertia[i][4]=I6[4]; slp.loop_inertia[i][5]=I6[5];
+			slp.loop_len_com[i] = A.L;
+			slp.loop_com[3*i+0]=R.x;
+				slp.loop_com[3*i+1]=R.y;
+					slp.loop_com[3*i+2]=R.z;
+			slp.loop_inertia[6*i+0]=I6[0]; slp.loop_inertia[6*i+1]=I6[1]; slp.loop_inertia[6*i+2]=I6[2];
+			slp.loop_inertia[6*i+3]=I6[3]; slp.loop_inertia[6*i+4]=I6[4]; slp.loop_inertia[6*i+5]=I6[5];
+			double evals[3];
+			inertia_principal_eigs(I6[0],I6[1],I6[2],I6[3],I6[4],I6[5],evals);
+			// slp.loop_inertia_eigs[i] = { std::sqrt(2*evals[0]/A.L),
+			// 															std::sqrt(2*evals[1]/A.L),
+			// 																std::sqrt(2*evals[2]/A.L)}; // ascending
+			slp.loop_inertia_eigs[3*i  ] = std::sqrt(2*evals[0]/A.L);
+			slp.loop_inertia_eigs[3*i+1] = std::sqrt(2*evals[1]/A.L);
+			slp.loop_inertia_eigs[3*i+2] = std::sqrt(2*evals[2]/A.L);
+
+		}
+		else  // px.size() 1or2
+		{
+		slp.loop_closed[i] = 0;
+		slp.loop_len_com[i] = 0.0;
+		slp.loop_com[3*i] = 0;
+		slp.loop_com[3*i+1] = 0;
+		slp.loop_com[3*i+2] = 0;
+		slp.loop_inertia[6*i+0] = 0;
+		slp.loop_inertia[6*i+1] = 0;
+		slp.loop_inertia[6*i+2] = 0;
+		slp.loop_inertia[6*i+3] = 0;
+		slp.loop_inertia[6*i+4] = 0;
+		slp.loop_inertia[6*i+5] = 0;
+		}
+		}
 
 		//----------------------------------------------------------------------------
 		// 5rd we print the label map, write Loop data
@@ -820,8 +1136,67 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 // 	printf("strGamm %f\n",slp.stringdata.strGam);
 // }
 
+	/*some debugging prints*/
+	if (0)
+	{
+		if (rank==0)
+		{
+			printf("rank 0 prints %d loops \n",slp.len.size());
+				for (int d=0; d<slp.len.size();d++){
+					printf("global label %d len %lf vel %lf gam %lf cub %lf\n",1+d,slp.len[d],slp.vel[d]/slp.cub[d],slp.gam[d]/slp.cub[d],slp.cub[d]);
+				}
+		}
+		for (int ran = 0 ; ran < nMPI; ran++)
+		{
+		if (rank == ran){
+			const size_t K = slp.loop_labels.size();
+			printf("rank %d printing ........................ \n", rank);
+			for (size_t k = 0; k < K; ++k) {
+			    unsigned short lab = slp.loop_labels[k];
+			    unsigned off0 = slp.loop_offsets[k];
+			    unsigned off1 = slp.loop_offsets[k+1];
+			    unsigned sz   = off1 - off0;
+			    printf("loop %zu label %hu\n", k, lab);
+					printf("         size  %u\n", sz);
+					printf("         len  %.1f estimate R %.1f\n", slp.loop_len_com[k],slp.loop_len_com[k]/(6.28));
+			    printf("         offset  %u\n", off0);
+			    printf("         com   %lf, %lf, %lf\n",
+			           slp.loop_com[3*k], slp.loop_com[3*k+1], slp.loop_com[3*k+2]);
+					printf("         inertia  %lf %lf %lf %lf %lf %lf \n",
+					          slp.loop_inertia[6*k+0],slp.loop_inertia[6*k+1],slp.loop_inertia[6*k+2],
+											slp.loop_inertia[6*k+3],slp.loop_inertia[6*k+4],slp.loop_inertia[6*k+5]);
+					printf("         wrap  %d\n", slp.loop_closed[k]);
+					printf("         eig(I)    λ1=%d λ2=%d λ3=%d\n",
+			       (int)slp.loop_inertia_eigs[3*k], (int)slp.loop_inertia_eigs[3*k+1], (int)slp.loop_inertia_eigs[3*k+2]);
+					if (0)
+					for (uint64_t i = off0; i < off1; ++i) {
+					    const double x = slp.loop_coords[3*i+0];
+					    const double y = slp.loop_coords[3*i+1];
+					    const double z = slp.loop_coords[3*i+2];
+					    printf("           p[%lu] = (%.1f, %.1f, %.1f)\n", i, x, y, z);
+					}
+
+
+			}
+		}
+		}
+	}
+
+	commSync();
+	//----------------------------------------------------------------------------
+	// 6rd we store all data in rank0
+	//----------------------------------------------------------------------------
+
+
+
 	return	slp;
 }
+
+
+
+
+
+
 
 StringLoopParms stringlength3 (Scalar *field, StringData strDen_in, StringMeasureType strmeas)
 {
@@ -844,687 +1219,3 @@ StringLoopParms stringlength3 (Scalar *field, StringData strDen_in, StringMeasur
 
 	return slp;
 }
-
-//----------------------
-// copia seguridad
-//----------------------
-
-//----------------------
-
-// template<typename Float>
-// StringData	stringlength3	(Scalar *field, StringData strDen_in, StringMeasureType strmeas)
-// {
-// 	LogMsg	(VERB_NORMAL, "[SL3] stringlength3");
-//
-//
-// 	StringData	strDen;
-//
-// 	strDen.strDen = strDen_in.strDen;
-// 	strDen.strChr = strDen_in.strChr;
-// 	strDen.wallDn = strDen_in.wallDn;
-// 	strDen.strDen_local = strDen_in.strDen_local;
-// 	strDen.strChr_local = strDen_in.strChr_local;
-// 	strDen.wallDn_local = strDen_in.wallDn_local;
-//
-// 	strDen.strLen = 0.;
-// 	strDen.strDeng = 0.;
-// 	strDen.strVel = 0.;
-// 	strDen.strVel2 = 0.;
-// 	strDen.strGam = 0.;
-// 	strDen.strLen_local = 0.;
-// 	strDen.strDeng_local = 0.;
-//
-// 	if (field->Field() != FIELD_SAXION || !(field->sDStatus() & SD_MAP)){
-// 			LogMsg(VERB_NORMAL,"[SL3] Called without string map! (Field = %d, sDStatus= %d)\n",field->Field(),field->sDStatus());
-// 			return strDen;
-// 		}
-//
-// 	if (strDen_in.strDen == 0) {
-// 		LogMsg(VERB_NORMAL,"[SL3 called without strings: exit]");
-// 		return strDen;
-// 	}
-// 	if (!(field->Field() & FIELD_SAXION)) {
-// 		LogMsg(VERB_NORMAL,"[SL3 ftype %d is not FIELD_SAXION  strings: exit]",field->Field());
-// 		return strDen;
-// 	}
-//
-// 	LogMsg	(VERB_NORMAL, "[SL3] recalling string data ghost");
-// 	field->exchangeStringGhost();
-//
-// 	int rank = commRank();
-//
-// 	size_t carde = strDen.strDen_local;
-// 	size_t Lx = field->Length();
-// 	size_t Lz = field->Depth();
-// 	size_t Sf = Lx*Lx;
-//
-// 	if	(field->Folded())
-// 	{
-// 		Folder	munge(field);
-// 		munge(UNFOLD_ALL);
-// 	}
-//
-// 	LogMsg	(VERB_HIGH, "[SL3] Exchanging M ghosts");
-// 	field->sendGhosts(FIELD_M,COMM_SDRV);
-// 	field->sendGhosts(FIELD_M,COMM_WAIT);
-//
-// 	char *strdaa                = static_cast<char *>(static_cast<void *>(field->sData()));
-// 	std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
-//
-//
-//
-// 	/* Check ghost FOR DEBUG */
-// 	// for (size_t i=0;i<field->Surf();i++)
-// 	// 	{
-// 	// 		if (strdaa[i] != strdaa[field->Size()+i])
-// 	// 			LogError("sD ghost exchange didn't work!");
-// 	// 	}
-//
-//
-// 	/* clean m2 */
-// 	LogMsg	(VERB_HIGH, "[SL3] Clear m2");
-// 	size_t mBytes = field->DataSize()*field->eSize();
-// 	memset (field->m2Cpu(), 0, mBytes);
-// 	char   *m2_c    = static_cast<char *>(field->m2Cpu());
-//
-// 	LogMsg	(VERB_HIGH, "[SL3]  Enter OMP");
-//   if(1)
-// 	{
-//
-// 		int nthreads = commThreads();
-//
-// 		size_t local_number_cubes[nthreads]    = {0}; // # of cubes found by thread
-// 		size_t local_number_segments[nthreads] = {0}; // # of segments
-// 		size_t local_start[nthreads]           = {0}; // to label threadwritting
-//
-//
-// 		size_t global_number_cubes = 0;
-// 		size_t global_number_segments = 0;
-//
-// 		/* We read the whole grid and save STRCUB data */
-//
-// 		size_t m2h_label_vol_perthread = mBytes/2/sizeof(size_t)/nthreads ;
-// 		size_t chunk_size = Lz / nthreads;
-//
-// 		#pragma omp parallel
-// 		{
-// 			int tid = omp_get_thread_num();
-// 			size_t Lzstart = tid * chunk_size;
-// 			size_t Lzend = (tid == nthreads - 1) ? Lz : Lzstart + chunk_size;
-//
-// 			/* Each thread gets 1/nThreads of m2h m2h has mBytes/2 */
-// 			size_t disp = Lzstart*(mBytes/4/Lz/sizeof(size_t));
-//
-// 			char st,stXY2,stYZ2,stZX2 = STRING_NOTHING;
-// 			char sc_out = STRCUB_0;
-// 			char sc_in  = STRCUB_0;
-// 			int n_pla = 0; // number of plaquetes in cube
-// 			int chi[6] = {0}; // for chiralities
-//
-// 			local_number_segments[tid] = 0;
-// 			local_number_cubes[tid]    = 0;
-// 			local_start[tid]           = 0;
-//
-// 			// LogMsg(VERB_HIGH,"[SL3] m2h has %d slices ",field->eSize()/Sf);
-// 			// LogMsg(VERB_HIGH,"[SL3] Lz %d chunk %d nthreads %d",Lz,chunk_size,nthreads);
-// 			// LogMsg(VERB_HIGH,"[SL3] thread %d will read from %d to %d ",tid,Lzstart,Lzend);
-// 			// LogMsg(VERB_HIGH,"[SL3] Displacement m2h (thread %d) m2h disp %d*Sf ",tid,disp/Sf);
-// 			// LogMsg(VERB_HIGH,"[SL3] Space for local_number_cubes in m2h per thread is %lu (slices)",m2h_label_vol_perthread/Sf);
-// 			// LogMsg(VERB_HIGH,"[SL3] Initial local_number_cubes %lu ",local_number_cubes[tid]);
-// 			// LogFlush();
-//
-// 			size_t *m2h     = static_cast<size_t *>(field->m2half()) + disp;
-//
-// 			for (size_t iz=Lzstart; iz < Lzend; iz++) {
-// 				size_t zi = Lx*Lx*iz ;
-// 				size_t zp = Lx*Lx*(iz+1) ;
-// 				for (size_t iy=0; iy < Lx; iy++) {
-// 					size_t yi = Lx*iy ;
-// 					size_t yp = Lx*((iy+1)%Lx) ;
-// 					for (size_t ix=0; ix < Lx; ix++) {
-//
-// 						sc_out= STRCUB_0;
-// 						sc_in = STRCUB_0;
-//
-// 						st    = strdaa[ix + yi + zi];
-// 						// to read plaquete YZ2
-// 						stYZ2 = strdaa[((ix + 1) % Lx) + yi + zi];
-// 						// to read plaquete ZX2
-// 						stZX2 = strdaa[ix + yp + zi];
-// 						// here I will read XY2
-// 						stXY2 = strdaa[ix + yi + zp];
-//
-// 						n_pla = 0;
-// 						memset(chi, 0, 6*sizeof(int));
-//
-// 						/* We search for plaquettes where string enters or exits
-// 						1 enter, -1 exits
-// 						we check sum is 0 */
-// 						if (st & STRING_XY)
-// 							{n_pla++; chi[0] = (st & STRING_XY_POSITIVE)? 1 : -1 ;}
-// 						if (st & STRING_YZ)
-// 							{n_pla++; chi[1] = (st & STRING_YZ_POSITIVE)? 1 : -1 ;}
-// 						if (st & STRING_ZX)
-// 							{n_pla++; chi[2] = (st & STRING_ZX_POSITIVE)? 1 : -1 ;}
-// 						/* These belong to nearby cubes so in is out and viceversa */
-// 						if (stXY2 & STRING_XY)
-// 							{n_pla++; chi[3] = (stXY2 & STRING_XY_POSITIVE)? -1 : 1 ;}
-// 						if (stYZ2 & STRING_YZ)
-// 							{n_pla++; chi[4] = (stYZ2 & STRING_YZ_POSITIVE)? -1 : 1 ;}
-// 						if (stZX2 & STRING_ZX)
-// 							{n_pla++; chi[5] = (stZX2 & STRING_ZX_POSITIVE)? -1 : 1 ;}
-//
-// 						if (n_pla == 0)
-// 							continue;
-//
-// 						if (n_pla%2 == 1)
-// 							{LogError("[SL3] missing plaquete!!!");
-// 								// LogMsg(VERB_HIGH,"[SL3] Cube with %d plaquette pierced! Something must be done! %d");LogFlush();
-// 								// LogMsg(VERB_HIGH,"[SL3] (iz,iy,ix %d %d %d) %d xy2(%d).yz2(%d).zx2(%d) chi %d %d %d %d %d %d",iz,iy,ix,
-// 									// st&STRING_ONLY,stXY2&STRING_ONLY,stYZ2&STRING_ONLY,stZX2&STRING_ONLY,chi[0],chi[1],chi[2],chi[3],chi[4],chi[5]);
-// }
-//
-// 						if (n_pla%2 == 0)
-// 						{
-// 							/* record ONLY exits */
-// 							if (chi[0]<0) sc_out |= STRCUB_XY;
-// 							if (chi[1]<0) sc_out |= STRCUB_YZ;
-// 							if (chi[2]<0) sc_out |= STRCUB_ZX;
-// 							if (chi[3]<0) sc_out |= STRCUB_XY2;
-// 							if (chi[4]<0) sc_out |= STRCUB_YZ2;
-// 							if (chi[5]<0) sc_out |= STRCUB_ZX2;
-// 							/* Record all */
-// 							if (chi[0]!=0) sc_in |= STRCUB_XY;
-// 							if (chi[1]!=0) sc_in |= STRCUB_YZ;
-// 							if (chi[2]!=0) sc_in |= STRCUB_ZX;
-// 							if (chi[3]!=0) sc_in |= STRCUB_XY2;
-// 							if (chi[4]!=0) sc_in |= STRCUB_YZ2;
-// 							if (chi[5]!=0) sc_in |= STRCUB_ZX2;
-//
-// 							/* check INs = OUTs */
-// 							int sum = 0 ;
-// 							for (int i = 0; i < 6;i++)
-// 								sum += chi[i];
-//
-// 								LogFlush();
-// 							if (sum != 0){
-// 								LogError("[SL3] chiralities mismatched!!");
-// 								// LogMsg(VERB_HIGH,"[SL3] (iz,iy,ix %d %d %d) %d xy2(%d).yz2(%d).zx2(%d) chi %d %d %d %d %d %d",iz,iy,ix,
-// 								// 	st&STRING_ONLY,stXY2&STRING_ONLY,stYZ2&STRING_ONLY,stZX2&STRING_ONLY,chi[0],chi[1],chi[2],chi[3],chi[4],chi[5]);
-// 							}
-// 							/* record the number of exits */
-// 							if (n_pla == 2)
-// 								sc_out |= STRCUB_1EX; // 1 EXIT
-// 							if (n_pla == 4)
-// 								sc_out |= STRCUB_1EXEX; // 2 EXIT
-// 							if (n_pla == 6)
-// 								sc_out |= STRCUB_3EX; // 2 EXIT
-// 								/* record the number of exits */
-// 							if (n_pla == 2)
-// 								sc_in |= STRCUB_1EX; // 1 EXIT
-// 							if (n_pla == 4)
-// 								sc_in |= STRCUB_1EXEX; // 2 EXIT
-// 							if (n_pla == 6)
-// 								sc_in |= STRCUB_3EX; // 2 EXIT
-// 						/* we copy string_cube data in m2!*/
-// 						m2_c[ix + yi + zi]               = sc_out;
-// 						m2_c[field->Size()+ix + yi + zi] = sc_in;
-//
-// 						/* we keep cube idx in m2h, possible race condition if many cubes! */
-// 						if (local_number_cubes[tid] > m2h_label_vol_perthread)
-// 							LogError("[SL3] -- Too many cubes! Where did all these strings came from?");
-// 						else
-// 							{
-// 								// LogMsg(VERB_HIGH,"-- (thread/iz/iy/ix %d/%d-%d-%d) %d ",tid,iz,iy,ix,local_number_cubes[tid]);LogFlush();
-// 							m2h[local_number_cubes[tid]] = ix + yi + zi;
-// 							local_number_cubes[tid]     += 1;
-// 							local_number_segments[tid]  += n_pla/2;
-// 						}
-// 						}
-// 				  } //end of ix loop
-// 			  } //end of iy loop
-// 		  } // end of iz loop
-//
-// 		} // end parallel section
-//
-//
-// 			LogMsg(VERB_HIGH,"[SL3] continue serial ");
-//
-// 			for (int i = 0; i < nthreads; ++i) {
-// 				global_number_cubes    += local_number_cubes[i];
-// 				global_number_segments += local_number_segments[i];
-// 			}
-//
-// 			for (unsigned int i = 0; i < nthreads; ++i)
-// 				{
-// 					for (unsigned int j = 0; j < i; ++j)
-// 						local_start[i] += local_number_cubes[j];
-// 				LogMsg(VERB_HIGH,"[SL3] Threah %d found %d cubes (%d segments) and will write starting at %d",i, local_number_cubes[i],local_number_segments[i],local_start[i]);
-// 			}
-// 			LogFlush();
-//
-// 			/* Compress cubes idx info to,
-// 			each thread wrote at m2h+disp,
-// 			it should now at m2h+local_start */
-// 			if (global_number_cubes < (mBytes/sizeof(size_t)/4))
-// 			{
-// 				LogMsg(VERB_NORMAL,"Compressing idxs! global_number_cubes < m2/4 (%d < %d)",global_number_cubes,mBytes/sizeof(size_t)/4);
-// 				for (int tid=1;tid<nthreads;tid++)
-// 				{
-// 					LogMsg(VERB_NORMAL,"[SL3] Threah %d copies %d from %d to %d",tid,
-// 					local_number_cubes[tid],local_start[tid],local_start[tid]+local_number_cubes[tid]);
-// 					size_t Lzstart = tid * chunk_size;
-// 					size_t disp = Lzstart*(mBytes/4/Lz/sizeof(size_t));
-// 					size_t *m2h     = static_cast<size_t *>(field->m2half()) + disp;
-// 					size_t *m2_sizet = static_cast<size_t *>(field->m2half());
-// 					void *origin = static_cast<void *>(m2h);
-// 					void *dest   = static_cast<void *>(m2_sizet+local_start[tid]);
-// 					memmove(dest, origin, local_number_cubes[tid]*sizeof(size_t));
-// 					LogMsg(VERB_NORMAL,"[SL3] values %d - %d",m2h[0],m2_sizet[local_start[tid]]);
-// 				}
-// 			}
-// 			else
-// 			{
-// 				LogMsg(VERB_NORMAL,"anda que no hay cuerdas ... me rindo!");
-// 				return strDen;
-// 			}
-//
-// 			LogMsg(VERB_HIGH,"[SL3] move strig-cube data to m234!");
-// 			char *m234 = static_cast<char *>(field->m2half())+mBytes/4;
-// // memcpy(field->sData(), field->m2Cpu(), field->Size()*sizeof(char));
-// if (m234 < (char*)field->m2Cpu() + 2*field->Size() &&
-//     m234 + 2*field->Size() > (char*)field->m2Cpu()) {
-//     LogError("[SL3] Overlapping copy between m2Cpu and m234! Use memmove or fix offsets.");
-// }
-//
-// 			memmove(static_cast<void *>(m234), field->m2Cpu(), 2*field->Size());
-// 			LogMsg(VERB_HIGH,"[SL3] reset first half m2");
-// 			memset (field->m2Cpu(), 0, mBytes/2);
-//
-// 			char *m2h_c = static_cast<char *>(field->m2half());
-//
-//
-// 			/* We have all cubes tagged.
-// 			Next we build the strings by a map of tags*/
-//
-//
-// 			/* We read the whole grid and write size_t labels (IDs) in m2
-// 			labels are (threadID,unsigned short int)
-// 			when we find an equivalence we write it in a global local_equivs "map"*/
-//
-// 			typedef unsigned short int usi;
-//
-// 			std::vector<std::pair<std::pair<usi, usi>, std::pair<usi, usi>>> equivalences;
-// 			usi local_used_labels[nthreads]    = {0}; // # of cubes found by thread
-//
-// 			usi *m2_usi = static_cast<usi *>(field->m2Cpu());
-//
-// 			#pragma omp parallel
-// 			{
-// 				int tid = omp_get_thread_num();
-// 				usi tid_usi = (usi) tid;
-// 				int Lzstart = tid * chunk_size;
-// 				int Lzend = (tid == nthreads - 1) ? Lz : Lzstart + chunk_size;
-// 				size_t disp = Lzstart*(mBytes/4/Lz/sizeof(size_t));
-//
-// 				char sc, next_sc, closed_sc = STRCUB_0;
-// 				int npla = 0; // number of plaquetes in cube
-// 				int chi[6] ; // for chiralities
-// 				size_t X[3];
-//
-// // size_t *m2h     = static_cast<size_t *>(field->m2half()) + disp;
-// 				size_t *m2h     = static_cast<size_t *>(field->m2half()) + local_start[tid];
-//
-// 				size_t idx, next_idx ;
-// 				/* each thread has its same label counter
-// 				grid is initialised to (0,0) */
-// 				usi label = 0;
-// 				usi next_label =0;
-// 				usi next_tidusi = 0;
-// 				int n_pla,next_n_pla;
-// 				bool out_of_volume;
-//
-// 				/* we loop over identified cubes, label them and those connected
-// 				when two threads get different labels for the same string we:
-// 				- write a dictionary?
-// 				- use the smallest and continue running?
-// 				 */
-//
-// 				for (size_t i=0; i < local_number_cubes[tid]; i++)
-// 				{
-//
-// 					/* read the idx of a cube with string */
-// 					idx = m2h[i];
-//
-// 					/* if cube is unlabeled, label and track the string,
-// 					otherwise it has already been followed and thus skip
-// 					note:
-// 						m2[2*idx]   = nthread
-// 						m2[2*idx+1] = local_label  */
-// 					if (m2_usi[2*idx+1] == 0){
-// 						// if cube is untagged initialise a new label
-// 						label = label+1;
-// 						// no race condition, each thread has its own points
-// 						m2_usi[2*idx+1] = label;
-// 						m2_usi[2*idx]   = tid_usi;}
-// 					else
-// 						continue;
-//
-// 					/* We track cubes labeling with the same label
-// 					If next_cube has another label, stop, write an equivalence in
-// 					dictionary */
-// 					/* load the strData to find next */
-// // sc = strdaa[idx];
-// 					sc = m234[idx];
-// 					n_pla = how_many_plaquettes(sc);
-// 					bool intersection = false;
-// 					/* initialise stopping condition for the while loop that
-// 					tracks the strings */
-// 					next_label = 0;
-//
-// 					while ((next_label == 0) || intersection)
-// 					{
-// 						/* reset intersection */
-// 						intersection = false;
-//
-// 						/* find next cube
-// 						- IF OUTSIDE LOCAL MPI continue we deal with MPI later */
-// 						indexXeon::idx2Vec (idx, X, Lx);
-// 						next_idx = next_cube_idx(sc,X,Lx,Sf,&out_of_volume);
-// 						if (out_of_volume)
-// 							break;
-//
-// 						/* we modify strData to "close" one exit:
-// 						if current cube has more than 2 plaquettes!
-// 						(this way, the next time a thread-tracker passes by it takes
-// 						a different exit) */
-//
-// 						if ( n_pla > 1){
-// 							/* if n_pla > 1 means that we have arrived to a multi-string cube
-// 							with more than 1 exit.
-// 							These cubes might have been already labelled, but still have
-// 							more exits to take, thus if they have a label but n_pla > 1
-// 							WE will not stop the while loop,
-// 							we keep the original label in the loop
-// 							we write an equivalence (two loops with an intersection are the same)
-// 							Note that by construction we will close the exit corresponding
-// 							to next_idx (see length.h) */
-// 							closed_sc = close_exit_cube(sc,X,Lx,Sf);
-// 							/* we change strData with a slow locking to avoid race */
-// 							#pragma omp critical
-// 							{
-// // strdaa[idx] = closed_sc;
-// 							m234[idx] = closed_sc;
-// 							}
-// 						}
-//
-// 						/* read next cubes label:
-// 						- if 0, label and continue
-// 						- if cube has non-zero label, write an assotiation in the local map and continue
-// 						*/
-// 						next_label = m2_usi[2*next_idx+1];
-// 						next_tidusi = m2_usi[2*next_idx];
-// //next_sc    = strdaa[next_idx];
-// 						next_sc    = m234[next_idx];
-// 						next_n_pla = how_many_plaquettes(next_sc);
-// 						if (next_label == 0){
-// 							#pragma omp critical
-// 								{
-// 									m2_usi[2*next_idx]   = tid_usi;
-// 									m2_usi[2*next_idx+1] = label;
-// 								}
-// 							}
-// 						else {
-//
-// 							if ( (next_label == label) && ( next_tidusi == tid_usi)){
-// 								// LogMsg(VERB_PARANOID, "loop %d closed! (thread %d)",label,tid);
-// 								break;}
-// 							else // track arrives to a (tracked) track from other thread
-// 							{
-// 								/* Two different IDs connected so we write an equivalence */
-// 								#pragma omp critical
-// 								equivalences.push_back({{tid_usi, label}, {next_tidusi, next_label}});
-//
-// 								/* Now, it could be that next cube IS an intersection,
-// 								with one exit unexplored. Thus:
-// 									- if next cube is an intersection we continue
-// 									- if not we break.
-// 								Note that if next had 2 or 3 exist it always has the 128 bit,
-// 								so (next_sc & STRCUB_1EXEX) should be true for intersections and
-// 								false for 1-exit cubes. */
-//
-// 								if (next_sc & STRCUB_1EXEX)
-// 									intersection = true;
-// 								else
-// 									break ; //breaks the while loop
-// 							}
-// 							/* MPI !!*/
-//
-// 						}
-// 						/* next cube is the cube */
-// 						idx = next_idx;
-// 						sc  = next_sc;
-// 						n_pla = next_n_pla;
-// 					}
-// 					// end while tracking points connected to idx, consider next idx
-//
-// 				} //end cube loop
-// 			local_used_labels[tid] = label;
-// 			} //end parallel section
-//
-// 			/* At this point all our points are labelled,
-// 			but are redundant, we want to relabel them
-// 			with a unique size_t label */
-//
-// 			/* Calculate label number */
-// 			size_t total_labels_with_redundancies = 0;
-// 			size_t cumlabels[nthreads] = {0};
-// 			for (int i=0; i < nthreads; i++){
-// 				LogMsg(VERB_HIGH,"Thread %d used %d labels",i,local_used_labels[i]);
-// 				total_labels_with_redundancies += local_used_labels[i];
-// 				for (int j=0; j < i; j++)
-// 					cumlabels[i] += local_used_labels[j];
-// 				}
-// 			LogMsg(VERB_HIGH,"Total labels with redundancies %zu",total_labels_with_redundancies);
-// 			LogMsg(VERB_HIGH,"Equivalences %zu",equivalences.size());
-//
-// 			/* Dictionary list, asigns a unique label to each string
-// 			taking equivalencies into account
-// 			many of them would be solved by running the string backwards*/
-// 			LogMsg(VERB_NORMAL,"Dics");
-// 			std::vector<std::pair<size_t, size_t>> equiv2(equivalences.size());
-// 			for (size_t i=0; i < equivalences.size(); i++)
-// 			{
-// 				auto e = equivalences[i];
-// 				size_t id1 = label_map_index(cumlabels,e.first.first,e.first.second);
-// 				size_t id2 = label_map_index(cumlabels,e.second.first,e.second.second);
-// 				// equiv2.push_back({max(id1,id2)], min(id1,id2)});
-// 				equiv2.push_back({id1,id2});
-// 			}
-//
-// 			/* initialise label map */
-// 			std::vector<size_t> labels_redundant(total_labels_with_redundancies);
-// 			for (size_t i=0; i < total_labels_with_redundancies; i++)
-// 				labels_redundant[i] = i;
-// 			LogMsg(VERB_NORMAL,"LabelEquivalence");
-// 			LabelEquivalence le;
-//     	le.build(equiv2); // call le.get_min_label(size_t)
-//
-// 			LogMsg(VERB_NORMAL,"relabeling...");
-// 			/* vector linking each size_t label with a dense label */
-// 			auto relabeled = le.relabel_to_dense(labels_redundant);
-//
-// 			LogMsg(VERB_NORMAL,"max... %d",relabeled.size());LogFlush();
-// 			// for (int i =0, i<relabeled.size(),i++)
-//
-// 			auto max_it = std::max_element(relabeled.begin(), relabeled.end());
-// 			// if (max_it != vec.end()) {
-//       //   std::cout << "Max value: " << *max_it << std::endl;
-//     	// } else {
-//       //   std::cout << "Vector is empty." << std::endl;
-//     	// }
-// 			size_t ncubes;
-// 			if (max_it != relabeled.end()) {
-// 				ncubes = *max_it+1;
-// 				LogMsg(VERB_NORMAL,"# strings found = %d",ncubes);
-// 				LogFlush();
-//
-// 			}
-// 			else {
-// 				ncubes = 0;
-// 				LogMsg(VERB_NORMAL,"# strings found = NONE!");
-// 				LogFlush();
-// 				return strDen;
-// 			}
-//
-// 			/* Apply dense labels
-// 			calculate string length? */
-//
-// 			std::vector<std::vector<unsigned>> string_cubes(nthreads, std::vector<unsigned>(ncubes,0));
-// 			unsigned int *m2_ui = static_cast<unsigned int *>(field->m2Cpu());
-// 			size_t old_label, new_dense_label;
-// 			#pragma omp parallel
-// 			{
-// 				int tid = omp_get_thread_num();
-// 				usi tid_usi = (usi) tid;
-// 				int chunk_size = Lz / nthreads;
-// 				int Lzstart = tid * chunk_size;
-// 				int Lzend = (tid == nthreads - 1) ? Lz : Lzstart + chunk_size;
-// 				size_t disp = Lzstart*(mBytes/4/Lz/sizeof(size_t));
-//
-// // size_t *m2h     = static_cast<size_t *>(field->m2half()) + disp;
-// 				size_t *m2h     = static_cast<size_t *>(field->m2half()) + local_start[tid];
-//
-// 				size_t idx,new_dense_label;
-// 				usi l1,l2;
-//
-// 				for (size_t i=0; i < local_number_cubes[tid]; i++)
-// 				{
-// 					idx = m2h[i];
-// 					l1 = m2_usi[2*idx];
-// 					l2 = m2_usi[2*idx+1];
-// 					old_label = label_map_index(cumlabels,l1,l2);
-// 					new_dense_label = relabeled[le.get_min_label(old_label)];
-// 					/* We label from 1 not from 0 to differentiate no-string in maps */
-// 					m2_ui[idx] = (unsigned int) new_dense_label + 1;
-// 					string_cubes[tid][new_dense_label] += 1;
-// 				} //end cube loop
-//
-// 			} //end parallel section
-//
-// 			for (size_t is = 0; is<ncubes;is++)
-// 			{	for (size_t tid=1;tid<nthreads;tid++)
-// 					string_cubes[0][is] += string_cubes[tid][is];
-// 			LogMsg(VERB_HIGH,"- string #%d length = %d cubes!",is,string_cubes[0][is]);
-// 			}
-//
-// 			/* m2h contains list of cubes, run and fill lengths,
-// 			assign  */
-//
-// 			std::vector<std::vector<double>> string_length(nthreads, std::vector<double>(ncubes,0));
-//
-// 			#pragma omp parallel
-// 			{
-// 				int tid = omp_get_thread_num();
-// 				usi tid_usi = (usi) tid;
-// 				int Lzstart = tid * chunk_size;
-// 				int Lzend = (tid == nthreads - 1) ? Lz : Lzstart + chunk_size;
-// 				// size_t disp = Lzstart*(mBytes/4/Lz/sizeof(size_t));
-// 				size_t X[3];
-//
-// 				char sc, next_sc, closed_sc = STRCUB_0;
-//
-// 				// size_t *m2h     = static_cast<size_t *>(field->m2half()) + disp;
-// 				size_t *m2h     = static_cast<size_t *>(field->m2half()) + local_start[tid];
-//
-// 				usi l1,l2;
-// 				size_t idx,idx_in,idx_out,new_dense_label;
-// 				/* we read the idx, read reduced label, compute length
-// 				(coordenates?),etc... and save*/
-//
-// 				std::vector<double> pos_x;
-// 				std::vector<double> pos_y;
-// 				std::vector<double> pos_z;
-//
-// 				for (size_t i=0; i < local_number_cubes[tid]; i++)
-// 				{
-// 					idx = m2h[i];
-// 					indexXeon::idx2Vec (idx, X, Lx);
-// 					char sc_in = m234[field->Size()+idx];
-// 					new_dense_label = m2_ui[idx];
-//
-// 					/* read sc_in to identify plaquettes */
-// 						size_t ixM = ((X[0] + 1) % Lx) + X[1]*Lx + X[2]*Sf;
-// 						size_t iyM = X[0] + ((X[1] + 1) % Lx)*Lx + X[2]*Sf;
-// 						size_t izM = idx+Sf;
-// 						size_t ixyM = ((X[0] + 1) % Lx) + ((X[1] + 1) % Lx)*Lx + X[2]*Sf;
-// 						size_t iyzM = X[0] + ((X[1] + 1) % Lx)*Lx + (X[2]+1)*Sf;
-// 						size_t izxM = ((X[0] + 1) % Lx) + X[1]*Lx + (X[2]+1)*Sf;
-// 						size_t ixyzM = ((X[0] + 1) % Lx) + ((X[1] + 1) % Lx)*Lx + (X[2]+1)*Sf;
-//
-// 						pos_x.clear();
-// 						pos_y.clear();
-// 						pos_z.clear();
-//
-// 						double du[2];
-// 						if (sc_in & STRCUB_XY) {
-// 							setCross(ma[idx],ma[ixM],ma[iyM],ma[ixyM],du);
-// 							pos_x.push_back(X[0] + du[0]);
-// 							pos_y.push_back(X[1] + du[1]);
-// 							pos_z.push_back(X[2]);
-// 						}
-// 						if (sc_in & STRCUB_YZ) {
-// 							setCross(ma[idx],ma[iyM],ma[izM],ma[iyzM],du);
-// 							pos_x.push_back(X[0]);
-// 							pos_y.push_back(X[1] + du[0]);
-// 							pos_z.push_back(X[2] + du[1]);
-// 						}
-// 						if (sc_in & STRCUB_ZX) {
-// 							setCross(ma[idx],ma[izM],ma[ixM],ma[izxM],du);
-// 							pos_x.push_back(X[0] + du[1]);
-// 							pos_y.push_back(X[1]);
-// 							pos_z.push_back(X[2] + du[0]);
-// 						}
-// 						if (sc_in & STRCUB_YZ2) {
-// 							setCross(ma[ixM],ma[ixyM],ma[izxM],ma[ixyzM],du);
-// 							pos_x.push_back(X[0] + 1.);
-// 							pos_y.push_back(X[1] + du[0]);
-// 							pos_z.push_back(X[2] + du[1]);
-// 						}
-// 						if (sc_in & STRCUB_ZX2) {
-// 							setCross(ma[iyM],ma[iyzM],ma[ixyM],ma[ixyzM],du);
-// 							pos_x.push_back(X[0] + du[1]);
-// 							pos_y.push_back(X[1] + 1.);
-// 							pos_z.push_back(X[2] + du[0]);
-// 						}
-// 						if (sc_in & STRCUB_XY2) {
-// 							setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
-// 							pos_x.push_back(X[0] + du[0]);
-// 							pos_y.push_back(X[1] + du[1]);
-// 							pos_z.push_back(X[2] + 1.);
-// 						}
-//
-// 						double dl = dl_cal(pos_x,pos_y,pos_z);
-//
-// 						string_length[tid][new_dense_label] += dl;
-// 				} //end cube loop
-//
-// 			} //end parallel section
-//
-// 			for (int is = 0; is<ncubes;is++)
-// 			{	for (int tid=1;tid<nthreads;tid++)
-// 					string_length[0][is] += string_length[tid][is];
-// 			LogMsg(VERB_HIGH,"- string #%d length = %f !",is,string_length[0][is]);
-// 			}
-//
-// 			field->setM2(M2_LABEL_MAP);
-//
-// 	} //if meas strinlength
-//
-//     commSync();
-//
-//
-//
-//
-// 	return	strDen;
-// }

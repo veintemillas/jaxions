@@ -216,7 +216,8 @@ def gm(address,something='summary',printerror=False):
     stnout      float       Number of grid points which are not masked
     stringco    [n,3]       Coordinates of plaquete centers with string
     stLabels    list        Label map
-    stloop     lists       length, velocities, gammas, cubes / loop
+    stloop      lists       length, velocities, gammas, cubes / loop
+    stloops     lists       length, velocities, gammas, cubes / loop
 
     BINS ---------------------------------------------------
     binconB     float       binned normalised log10 contrast
@@ -634,6 +635,25 @@ def gm(address,something='summary',printerror=False):
             cub = f['/string/loops/cubes/data'][()] ;
             return lgt,vel,gam,cub
 
+    if (something == 'stloops'):
+        # print('br')
+        if ('/string/loops/' in f):
+            cordi = f['/string/loops/coords'][()]
+            offsi = f['/string/loops/offsets'][()]
+            duxs = {"lgt" : f['/string/loops/lengths/data'][()] ,
+                "vel" : f['/string/loops/velocities/data'][()] ,
+                "gam" : f['/string/loops/gammas/data'][()] ,
+                "cub" : f['/string/loops/cubes/data'][()] ,
+                "labels" : f['/string/loops/labels'][()] ,
+                "loop_com" : f['/string/loops/loop_com'][()],
+                "origin" : f['/string/loops/origin'][()],
+                "loop_inertia_eigs" : f['/string/loops/loop_inertia_eigs'][()] ,
+                "loop_lengths" : f['/string/loops/loop_len_com'][()] ,
+                "sizes" : f['/string/loops/sizes'][()],
+                "coords" : [cordi[offsi[i]:offsi[i+1],:] for i in range(len(offsi)-1)],
+                "closed" : f['/string/loops/closed'][()],
+                }
+            return duxs
     ##########
     # the bins
     ##########

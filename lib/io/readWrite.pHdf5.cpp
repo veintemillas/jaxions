@@ -33,6 +33,9 @@
 	#include "io/output_nyx.h"
 #endif
 
+
+
+
 #define caspr(lab,var,str)   \
 	case lab:                  \
 	sprintf(var, str);         \
@@ -3238,45 +3241,215 @@ void	writeArray (const double *aData, size_t aSize, const char *group, const cha
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-void writeStringLoopObservables(StringLoopParms slp, int rango) {
-    const char* stringGroup = "/string";
-    const char* loopsGroup  = "/string/loops";
+struct GatherBlock {
+    void*     ptr;    // rank 0: start of gathered block inside m2Cpu
+    uint64_t  count;  // total elements across ranks
+};
 
-    // Ensure /string group exists
-    if (!H5Lexists(meas_id, stringGroup, H5P_DEFAULT)) {
-        hid_t str_grp = H5Gcreate2(meas_id, stringGroup, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-				H5Gclose(str_grp);
+// Gathers 'local.size()' items into rank 0 at 'dst_bytes' and advances dst_bytes.
+// Requires: on rank 0, 'dst_bytes' points into a large-enough buffer (m2Cpu).
+template <typename T>
+static inline GatherBlock gather_append_to_rank0(const std::vector<T>& local,
+                                                 uint8_t*& dst_bytes,
+                                                 MPI_Datatype mpi_type)
+{
+    int rank, nRanks;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
+
+    uint64_t localCount = (uint64_t)local.size();
+    std::vector<uint64_t> counts(nRanks), displs(nRanks);
+
+    MPI_Allgather(&localCount, 1, MPI_UINT64_T,
+                  counts.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
+
+    displs[0] = 0;
+    for (int r = 1; r < nRanks; ++r) displs[r] = displs[r-1] + counts[r-1];
+    uint64_t totalCount = displs[nRanks-1] + counts[nRanks-1];
+
+    void* recv_ptr = (rank == 0) ? (void*)dst_bytes : nullptr;
+
+    // Safe cast: MPI_Gatherv counts/disp are int — use a temp int vec
+    std::vector<int> counts_i(nRanks), displs_i(nRanks);
+    for (int r=0; r<nRanks; ++r) {
+        counts_i[r] = (int)counts[r];
+        displs_i[r] = (int)displs[r];
     }
 
-    // Ensure /string/loops group exists
-    if (!H5Lexists(meas_id, loopsGroup, H5P_DEFAULT)) {
-        hid_t str_grp = H5Gcreate2(meas_id, loopsGroup, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-				H5Gclose(str_grp);
+    MPI_Gatherv(local.data(), (int)localCount, mpi_type,
+                recv_ptr, counts_i.data(), displs_i.data(), mpi_type,
+                0, MPI_COMM_WORLD);
+
+    GatherBlock blk{nullptr, totalCount};
+    if (rank == 0) {
+        blk.ptr = recv_ptr;
+        dst_bytes += totalCount * sizeof(T);  // advance byte pointer
     }
+    return blk;
+}
 
-    // Write the individual datasets
-    writeArray(slp.len.data(),    slp.len.size(),    loopsGroup, "lengths",    rango);
-		writeArray(slp.vel.data(),    slp.vel.size(),    loopsGroup, "velocities",    rango);
-		writeArray(slp.gam.data(),    slp.gam.size(),    loopsGroup, "gammas",    rango);
-		writeArray(slp.cub.data(),    slp.cub.size(),    loopsGroup, "cubes",    rango);
+static inline MPI_Datatype mpi_u32() { return MPI_UINT32_T; }
+static inline MPI_Datatype mpi_u64() { return MPI_UINT64_T; }
+static inline MPI_Datatype mpi_u8 () { return MPI_UINT8_T;  }
+static inline MPI_Datatype mpi_f64() { return MPI_DOUBLE;   }
 
-		/*	String metadata		*/
+static inline void h5_write_1d(const char* group, const char* name,
+                               hid_t h5type, const void* data, hsize_t N, int rango)
+{
+    // Ensure group exists under meas_id
+    if (!H5Lexists(meas_id, group, H5P_DEFAULT)) {
+        hid_t g = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        H5Gclose(g);
+    }
+    hid_t g = H5Gopen2(meas_id, group, H5P_DEFAULT);
 
-		hid_t group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);
-		herr_t status = H5Aexists(group_id, "String number");
+    // Dataset path = "<group>/<name>"
+    std::string dpath = std::string(group) + "/" + name;
 
-		if (status==0){
-			writeAttribute(group_id, &(slp.stringdata.strDen),  "String number",    H5T_NATIVE_HSIZE);
-			writeAttribute(group_id, &(slp.stringdata.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
-			writeAttribute(group_id, &(slp.stringdata.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
-			writeAttribute(group_id, &(slp.stringdata.strLen),  "String length",    H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id, &(slp.stringdata.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id, &(slp.stringdata.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id, &(slp.stringdata.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
-			writeAttribute(group_id, &(slp.stringdata.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
+    hsize_t dims[1] = { N };
+    hid_t space = H5Screate_simple(1, dims, nullptr);
+    hid_t dset  = H5Dcreate2(meas_id, dpath.c_str(), h5type, space,
+                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+		hid_t fspace = H5Dget_space(dset);
+		if (commRank() == rango) {
+			hsize_t offset = 0;
+			H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &offset, NULL, dims, NULL);
+		} else {
+			H5Sselect_none(space);
+			H5Sselect_none(fspace);
 		}
-			H5Gclose (group_id);
+
+    H5Dwrite(dset, h5type, space, fspace, H5P_DEFAULT, data);
+
+    H5Dclose(dset);
+    H5Sclose(space);
+    H5Gclose(g);
+}
+
+static inline void h5_write_2d(const char* group, const char* name,
+                               hid_t h5type, const void* data,
+                               hsize_t rows, hsize_t cols, int rango)
+{
+    if (!H5Lexists(meas_id, group, H5P_DEFAULT)) {
+        hid_t g = H5Gcreate2(meas_id, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        H5Gclose(g);
+    }
+    hid_t g = H5Gopen2(meas_id, group, H5P_DEFAULT);
+
+    std::string dpath = std::string(group) + "/" + name;
+
+    hsize_t dims[2] = { rows, cols };
+    hid_t space = H5Screate_simple(2, dims, nullptr);
+    hid_t dset  = H5Dcreate2(meas_id, dpath.c_str(), h5type, space,
+                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		hid_t fspace = H5Dget_space(dset);
+		if (commRank() == rango) {
+			hsize_t offset = 0;
+			H5Sselect_hyperslab(fspace, H5S_SELECT_SET, &offset, NULL, dims, NULL);
+		} else {
+			H5Sselect_none(space);
+			H5Sselect_none(fspace);
+		}
+    H5Dwrite(dset, h5type, space, fspace, H5P_DEFAULT, data);
+
+    H5Dclose(dset);
+    H5Sclose(space);
+    H5Gclose(g);
+}
+
+
+
+void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango) {
+	LogMsg (VERB_NORMAL, "[wSLO] String Loop Observables");
+  const char* stringGroup = "/string";
+  const char* loopsGroup  = "/string/loops";
+
+  // Ensure /string group exists
+  if (!H5Lexists(meas_id, stringGroup, H5P_DEFAULT)) {
+      hid_t str_grp = H5Gcreate2(meas_id, stringGroup, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+			H5Gclose(str_grp);
+  }
+
+  // Ensure /string/loops group exists
+  if (!H5Lexists(meas_id, loopsGroup, H5P_DEFAULT)) {
+      hid_t str_grp = H5Gcreate2(meas_id, loopsGroup, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+			H5Gclose(str_grp);
+  }
+
+  // Write the individual datasets
+  writeArray(slp.len.data(),    slp.len.size(),    loopsGroup, "lengths",    rango);
+	writeArray(slp.vel.data(),    slp.vel.size(),    loopsGroup, "velocities",    rango);
+	writeArray(slp.gam.data(),    slp.gam.size(),    loopsGroup, "gammas",    rango);
+	writeArray(slp.cub.data(),    slp.cub.size(),    loopsGroup, "cubes",    rango);
+
+
+	// ---------- NEW: gather all *loop-level* vectors to rank 0 and write ----------
+	{
+	const char* loopsGroup = "/string/loops";
+
+	int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	// Work byte-pointer inside m2Cpu (big buffer you told me about)
+	uint8_t* dst = (uint8_t*) axion->m2Cpu();
+
+	// (Optional) Check capacity vs a rough upper bound if you like.
+
+	LogMsg(VERB_NORMAL,"[wSLO] gathering");
+	// 1) Gather/append each vector in a fixed order
+	GatherBlock B_labels     = gather_append_to_rank0(slp.loop_labels,     dst, mpi_u32());
+	GatherBlock B_sizes      = gather_append_to_rank0(slp.loop_sizes,      dst, mpi_u64());
+	GatherBlock B_offsets    = gather_append_to_rank0(slp.loop_offsets,    dst, mpi_u64());
+	GatherBlock B_closed     = gather_append_to_rank0(slp.loop_closed,     dst, mpi_u8 ());
+	GatherBlock B_len_com    = gather_append_to_rank0(slp.loop_len_com,    dst, mpi_f64());
+	GatherBlock B_com        = gather_append_to_rank0(slp.loop_com,        dst, mpi_f64());
+	GatherBlock B_inertia    = gather_append_to_rank0(slp.loop_inertia,    dst, mpi_f64());
+	GatherBlock B_eigs       = gather_append_to_rank0(slp.loop_inertia_eigs,dst, mpi_f64());
+	GatherBlock B_origin     = gather_append_to_rank0(slp.loop_origin,     dst, mpi_f64());
+	GatherBlock B_coords     = gather_append_to_rank0(slp.loop_coords,     dst, mpi_f64());
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	LogMsg(VERB_NORMAL,"[wSLO] writting");
+
+	// 2) Write everything (flat names, as you chose)
+	// Scalars
+	h5_write_1d(loopsGroup, "labels",  H5T_NATIVE_UINT,  B_labels.ptr,   (hsize_t)B_labels.count, 0);
+	h5_write_1d(loopsGroup, "sizes",   H5T_NATIVE_ULLONG,B_sizes.ptr,    (hsize_t)B_sizes.count, 0);
+	h5_write_1d(loopsGroup, "offsets", H5T_NATIVE_ULLONG,B_offsets.ptr,  (hsize_t)B_offsets.count, 0);
+	h5_write_1d(loopsGroup, "closed",  H5T_NATIVE_UCHAR, B_closed.ptr,   (hsize_t)B_closed.count, 0);
+	h5_write_1d(loopsGroup, "loop_len_com", H5T_NATIVE_DOUBLE, B_len_com.ptr, (hsize_t)B_len_com.count, 0);
+
+	// 2D views for the flattened 3/6 columns
+	const uint64_t N = B_labels.count;                   // #loops
+	const uint64_t M = B_coords.count / 3;               // #vertices
+	h5_write_2d(loopsGroup, "loop_com",         H5T_NATIVE_DOUBLE, B_com.ptr,     (hsize_t)N, 3, 0);
+	h5_write_2d(loopsGroup, "loop_inertia",     H5T_NATIVE_DOUBLE, B_inertia.ptr, (hsize_t)N, 6, 0);
+	h5_write_2d(loopsGroup, "loop_inertia_eigs",H5T_NATIVE_DOUBLE, B_eigs.ptr,    (hsize_t)N, 3, 0);
+	h5_write_2d(loopsGroup, "origin",           H5T_NATIVE_DOUBLE, B_origin.ptr,  (hsize_t)N, 3, 0);
+	h5_write_2d(loopsGroup, "coords",           H5T_NATIVE_DOUBLE, B_coords.ptr,  (hsize_t)M, 3, 0);
+
 	}
+
+	/*	String metadata		*/
+
+	hid_t group_id = H5Gopen2(meas_id, "/string", H5P_DEFAULT);
+	herr_t status = H5Aexists(group_id, "String number");
+
+	if (status==0){
+		writeAttribute(group_id, &(slp.stringdata.strDen),  "String number",    H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(slp.stringdata.strChr),  "String chirality", H5T_NATIVE_HSSIZE);
+		writeAttribute(group_id, &(slp.stringdata.wallDn),  "Wall number",      H5T_NATIVE_HSIZE);
+		writeAttribute(group_id, &(slp.stringdata.strLen),  "String length",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(slp.stringdata.strDeng), "String number with gamma",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(slp.stringdata.strVel),  "String velocity",  H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(slp.stringdata.strVel2), "String velocity squared",    H5T_NATIVE_DOUBLE);
+		writeAttribute(group_id, &(slp.stringdata.strGam),  "String gamma",     H5T_NATIVE_DOUBLE);
+	}
+		commSync();
+
+		H5Gclose (group_id);
+}
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

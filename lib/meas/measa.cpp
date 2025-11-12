@@ -463,7 +463,7 @@ writePMapHdf5s (axiona, LAB);
 				StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
 				MeasDataOut.str = slp.stringdata;
 				writeStringLabelMap(axiona);
-				writeStringLoopObservables(slp, 0);
+				writeStringLoopObservables(axiona,slp, 0);
 
 			}
 		}

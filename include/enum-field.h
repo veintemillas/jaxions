@@ -3,7 +3,8 @@
 	#include<mpi.h>
 	#include<vector>
 	#include <array>
-	
+	#include <cstdint>   // <-- for std::uint32_t, std::int64_t, std::uint8_t
+
 	typedef	unsigned int uint;
 
 	namespace	AxionEnum {
@@ -927,17 +928,26 @@
 			std::vector<int>    nrt;
 		}	MeasFileParms;
 
-		typedef	struct	StringLoopParms_v
-		{
-			std::vector<double>	len;
-			std::vector<double>	vel;
-			std::vector<double>	gam;
-			std::vector<double>	cub;
-			StringData stringdata;
-			std::vector<std::array<double,3>> loop_com;
-			std::vector<std::array<double,6>> loop_inertia;
-			std::vector<double>               loop_len_com;
-		}	StringLoopParms;
+			typedef	struct	StringLoopParms_v
+			{
+				std::vector<double>	len;
+				std::vector<double>	vel;
+				std::vector<double>	gam;
+				std::vector<double>	cub;
+				std::vector<double>	lab;
+				StringData stringdata;
+				std::vector<double>   loop_com;      // N loops 3 coordinartes interleaved xyzxyz...
+				std::vector<double>   loop_inertia;
+				std::vector<double>   loop_inertia_eigs;
+				std::vector<double>   loop_len_com;
+				std::vector<uint32_t> loop_labels;   // N loops
+				std::vector<uint64_t> loop_sizes;    // N loops
+				std::vector<uint64_t> loop_offsets;  // N+1 (prefix sum of sizes)
+				std::vector<uint8_t>  loop_closed;   // N loops, 0/1
+				std::vector<double>   loop_origin;   // 3*N
+				std::vector<double>   loop_coords;   // 3*M where M = sum(sizes)
+
+			}	StringLoopParms;
 
 		typedef	struct	PropParms_v
 		{

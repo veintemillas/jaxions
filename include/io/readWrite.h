@@ -44,7 +44,7 @@
 
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
-	void writeStringLoopObservables(StringLoopParms slp, int rango);
+	void writeStringLoopObservables(Scalar *tut, StringLoopParms slp, int rango);
 
 	void	writeGadget	(Scalar *axion);
 	void	writeConfNyx (Scalar *axion, int index);

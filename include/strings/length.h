@@ -3,10 +3,13 @@
 
 #include "utils/utils.h"
 
+#include <cstdint>
+#include <array>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
+#include <cmath>
 
 /* Calculates the next cube chosing the next STRCUB data exit */
 int how_many_plaquettes(char sc)
@@ -498,4 +501,238 @@ public:
         return result;
     }
 };
+
+
+	/* tools for the segment identifiers */
+
+struct SegRec {
+    uint32_t label;      // global dense label
+    uint64_t a_key;      // canonical plaquette ID (endpoint A)
+    uint64_t b_key;      // canonical plaquette ID (endpoint B)
+    float ax, ay, az;    // wrapped endpoint coords
+    float bx, by, bz;    // wrapped endpoint coords
+};
+
+inline uint64_t canonical_plaq_key(uint32_t ix, uint32_t iy, uint32_t iz,
+                                   unsigned short flag,
+                                   uint32_t Lx, uint32_t Tz)
+{
+    uint32_t jx = ix, jy = iy, jz = iz;
+
+    switch(flag){
+				//wrapping issue
+        // case STRCUB_XY2: jz = (iz + 1) % Lz; break;
+				case STRCUB_XY2: jz = (iz + 1) % Tz; break;
+        case STRCUB_YZ2: jx = (ix + 1) % Lx; break;
+        case STRCUB_ZX2: jy = (iy + 1) % Lx; break;
+        default: break;
+    }
+
+    // pack into 64 bits:     Z  |   Y   |   X   | which-face
+    uint32_t face = (flag & (STRCUB_XY|STRCUB_XY2)) ? 0 :
+                    (flag & (STRCUB_YZ|STRCUB_YZ2)) ? 1 : 2;
+
+    return (uint64_t(jz) << 42) | (uint64_t(jy) << 21) | (uint64_t(jx) << 2) | face;
+}
+
+inline float wrapf(double a, double L){
+    a = fmod(a, L);
+    return (a < 0 ? a + L : a);
+}
+
+// Minimal torus delta in (-L/2, L/2]
+static inline double mindelta(double d, double L) {
+    d = std::fmod(d + 0.5*L, L);
+    if (d < 0.0) d += L;
+    return d - 0.5*L;
+}
+
+struct V3 {
+    double x, y, z;
+};
+
+struct Acc {
+    double L  = 0.0;   // total "mass" (length)
+    double Mx = 0.0;   // first moments (∫ r ds)
+    double My = 0.0;
+    double Mz = 0.0;
+
+    // Inertia about the origin (∫ (r^2 I - r r^T) ds)
+    double Ixx = 0.0, Iyy = 0.0, Izz = 0.0;
+    double Ixy = 0.0, Ixz = 0.0, Iyz = 0.0;
+};
+
+// Add the contribution of a single polyline segment [a,b].
+// We approximate the line integral by lumping its mass (ds) at the midpoint.
+// (Good for short segments; your segments are small by construction.)
+static inline void accum_seg(Acc& A, const V3& a, const V3& b)
+{
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double dz = b.z - a.z;
+    const double ds = std::sqrt(dx*dx + dy*dy + dz*dz);
+    if (ds == 0.0) return;
+
+    const double mx = 0.5*(a.x + b.x);
+    const double my = 0.5*(a.y + b.y);
+    const double mz = 0.5*(a.z + b.z);
+
+    A.L  += ds;
+    A.Mx += ds * mx;
+    A.My += ds * my;
+    A.Mz += ds * mz;
+
+    const double r2 = mx*mx + my*my + mz*mz;
+    // inertia tensor contribution at the origin: ds * (r^2 I - r r^T)
+    A.Ixx += ds * (r2 - mx*mx);
+    A.Iyy += ds * (r2 - my*my);
+    A.Izz += ds * (r2 - mz*mz);
+    A.Ixy -= ds * (mx*my);
+    A.Ixz -= ds * (mx*mz);
+    A.Iyz -= ds * (my*mz);
+}
+
+// Convert accumulators to COM and inertia about COM.
+// We have I_origin = I_com + M (r_c^2 I - c c^T)  ⇒
+// I_com = I_origin - M (r_c^2 I - c c^T).
+static inline void finalize(const Acc& A, V3& com, double I6[6])
+{
+    if (A.L <= 0.0) {
+        com = {0.0,0.0,0.0};
+        I6[0]=I6[1]=I6[2]=I6[3]=I6[4]=I6[5]=0.0;
+        return;
+    }
+
+    const double invM = 1.0 / A.L;
+    com.x = A.Mx * invM;
+    com.y = A.My * invM;
+    com.z = A.Mz * invM;
+
+    const double cx = com.x, cy = com.y, cz = com.z;
+    const double r2 = cx*cx + cy*cy + cz*cz;
+    const double M  = A.L;
+
+    // Diagonals:
+    const double Ixx_com = A.Ixx - M * (r2 - cx*cx);
+    const double Iyy_com = A.Iyy - M * (r2 - cy*cy);
+    const double Izz_com = A.Izz - M * (r2 - cz*cz);
+    // Off-diagonals:
+    const double Ixy_com = A.Ixy + M * (cx*cy);
+    const double Ixz_com = A.Ixz + M * (cx*cz);
+    const double Iyz_com = A.Iyz + M * (cy*cz);
+
+    // Pack as (Ixx,Iyy,Izz,Ixy,IXz,Iyz)
+    I6[0] = Ixx_com;
+    I6[1] = Iyy_com;
+    I6[2] = Izz_com;
+    I6[3] = Ixy_com;
+    I6[4] = Ixz_com;
+    I6[5] = Iyz_com;
+}
+
+static inline void inertia_principal_eigs(
+    double Ixx, double Iyy, double Izz,
+    double Ixy, double Ixz, double Iyz,
+    double evals[3])
+{
+    // Build symmetric matrix A
+    const double a11 = Ixx, a22 = Iyy, a33 = Izz;
+    const double a12 = Ixy, a13 = Ixz, a23 = Iyz;
+
+    // Invariants
+    const double trace = (a11 + a22 + a33);
+    const double q = trace / 3.0;
+
+    // A - qI
+    const double b11 = a11 - q, b22 = a22 - q, b33 = a33 - q;
+
+    // p^2 = (1/6) * (sum diag^2 + 2*sum off^2)
+    const double off2 = a12*a12 + a13*a13 + a23*a23;
+    const double diag2 = b11*b11 + b22*b22 + b33*b33;
+    const double p2 = (diag2 + 2.0*off2) / 6.0;
+    const double p  = std::sqrt(std::max(0.0, p2));
+
+    // If p ~ 0, matrix ≈ scalar * I
+    if (p < 1e-30) {
+        evals[0] = evals[1] = evals[2] = q;
+        return;
+    }
+
+    // B = (1/p) * (A - qI); compute r = det(B)/2
+    const double c11 = b11 / p, c22 = b22 / p, c33 = b33 / p;
+    const double c12 = a12 / p, c13 = a13 / p, c23 = a23 / p;
+
+    // det of symmetric 3x3
+    const double detB =
+          c11*(c22*c33 - c23*c23)
+        - c12*(c12*c33 - c13*c23)
+        + c13*(c12*c23 - c13*c22);
+
+    double r = 0.5 * detB;
+    // Clamp for safety
+    if (r >  1.0) r =  1.0;
+    if (r < -1.0) r = -1.0;
+
+    const double phi = std::acos(r) / 3.0;
+
+    // Three eigenvalues
+    const double two_p = 2.0 * p;
+    evals[0] = q + two_p * std::cos(        phi);
+    evals[1] = q + two_p * std::cos( 2.0*M_PI/3.0 + phi);
+    evals[2] = q + two_p * std::cos(-2.0*M_PI/3.0 + phi);
+
+    // Sort descending (largest principal moment first)
+    if (evals[0] < evals[1]) std::swap(evals[0], evals[1]);
+    if (evals[1] < evals[2]) std::swap(evals[1], evals[2]);
+    if (evals[0] < evals[1]) std::swap(evals[0], evals[1]);
+}
+
+
+struct GatherBlock {
+    void*     ptr;    // rank 0: start of gathered block inside m2Cpu
+    uint64_t  count;  // total elements across ranks
+};
+
+// Gathers 'local.size()' items into rank 0 at 'dst_bytes' and advances dst_bytes.
+// Requires: on rank 0, 'dst_bytes' points into a large-enough buffer (m2Cpu).
+template <typename T>
+static inline GatherBlock gather_append_to_rank0(const std::vector<T>& local,
+                                                 uint8_t*& dst_bytes,
+                                                 MPI_Datatype mpi_type)
+{
+    int rank, nRanks;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nRanks);
+
+    uint64_t localCount = (uint64_t)local.size();
+    std::vector<uint64_t> counts(nRanks), displs(nRanks);
+
+    MPI_Allgather(&localCount, 1, MPI_UINT64_T,
+                  counts.data(), 1, MPI_UINT64_T, MPI_COMM_WORLD);
+
+    displs[0] = 0;
+    for (int r = 1; r < nRanks; ++r) displs[r] = displs[r-1] + counts[r-1];
+    uint64_t totalCount = displs[nRanks-1] + counts[nRanks-1];
+
+    void* recv_ptr = (rank == 0) ? (void*)dst_bytes : nullptr;
+
+    // Safe cast: MPI_Gatherv counts/disp are int — use a temp int vec
+    std::vector<int> counts_i(nRanks), displs_i(nRanks);
+    for (int r=0; r<nRanks; ++r) {
+        counts_i[r] = (int)counts[r];
+        displs_i[r] = (int)displs[r];
+    }
+
+    MPI_Gatherv(local.data(), (int)localCount, mpi_type,
+                recv_ptr, counts_i.data(), displs_i.data(), mpi_type,
+                0, MPI_COMM_WORLD);
+
+    GatherBlock blk{nullptr, totalCount};
+    if (rank == 0) {
+        blk.ptr = recv_ptr;
+        dst_bytes += totalCount * sizeof(T);  // advance byte pointer
+    }
+    return blk;
+}
+
 #endif
