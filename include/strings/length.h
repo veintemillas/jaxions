@@ -510,8 +510,10 @@ struct SegRec {
     uint64_t a_key;      // canonical plaquette ID (endpoint A)
     uint64_t b_key;      // canonical plaquette ID (endpoint B)
     float ax, ay, az;    // wrapped endpoint coords
-    float bx, by, bz;    // wrapped endpoint coords
+		// TODO REMOVE THOSE!
+    float bx, by, bz;    // wrapped endpoint coords //
 };
+
 
 inline uint64_t canonical_plaq_key(uint32_t ix, uint32_t iy, uint32_t iz,
                                    unsigned short flag,

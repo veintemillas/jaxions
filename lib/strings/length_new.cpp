@@ -943,11 +943,6 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 		// copy offsets
 		for (int i=0;i<=N;++i) slp.loop_offsets[i] = offsets[i];
 
-
-
-		// string loop loop by label
-
-
 		// --- fill per loop in parallel ---
 		#pragma omp parallel for schedule(dynamic)
 		for (int i = 0; i < N; ++i) {
@@ -1144,7 +1139,7 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 // }
 
 	/*some debugging prints*/
-	if (1)
+	if (0)
 	{
 		if (rank==0)
 		{

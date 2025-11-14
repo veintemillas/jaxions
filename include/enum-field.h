@@ -4,6 +4,7 @@
 	#include<vector>
 	#include <array>
 	#include <cstdint>   // <-- for std::uint32_t, std::int64_t, std::uint8_t
+	#include <hdf5.h>    // for IO
 
 	typedef	unsigned int uint;
 
@@ -979,6 +980,20 @@
 			double   grav;
 
 		}	PropParms;
+
+		typedef struct IOParms_v
+		{
+			hid_t	meas_id = -1;
+			hid_t	mlist_id;
+			hsize_t tSize = 0;
+			hsize_t slabSz = 0;
+			hsize_t sLz = 0;
+			bool	opened = false;
+			bool  header = false;
+			bool	mDisabled = true;
+			H5E_auto2_t eFunc = nullptr;
+			void	   *cData = nullptr;
+		} IOParms;
 
 #ifdef	__NVCC__
 	#define	Attr	inline constexpr __host__ __device__
