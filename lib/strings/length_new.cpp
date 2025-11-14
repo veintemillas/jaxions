@@ -925,6 +925,7 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 		    sizes[i]     = (unsigned) segs_by_label[L].size(); // points == segments
 		    offsets[i+1] = offsets[i] + sizes[i];
 		}
+
 		const unsigned M = offsets.back(); // total number of points
 		// --- pre-size slp outputs (no push_backs later) ---
 		slp.loop_labels.resize(N);
@@ -935,9 +936,9 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 		slp.loop_coords.resize(3* (size_t)M);
 
 		slp.loop_com.resize(3*N);
-		slp.loop_inertia.resize(3*N);
+		slp.loop_inertia.resize(6*N);
 		slp.loop_inertia_eigs.resize(3*N);
-		slp.loop_len_com.resize(3*N);
+		slp.loop_len_com.resize(N);
 
 		// copy offsets
 		for (int i=0;i<=N;++i) slp.loop_offsets[i] = offsets[i];
@@ -998,15 +999,6 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 		slp.loop_origin[3*i+1] = py.empty()?0.0:py[0];
 		slp.loop_origin[3*i+2] = pz.empty()?0.0:pz[0];
 
-		// write coordinates at their slice
-		const unsigned base = offsets[i];
-		double *C = slp.loop_coords.data() + 3*base;
-		for (unsigned k=0; k<px.size(); ++k) {
-			C[3*k+0] = px[k];
-			C[3*k+1] = py[k];
-			C[3*k+2] = pz[k];
-		}
-
 		// unwrapped for COM/inertia + winding
 		if (px.size() >= 2) {
 			std::vector<V3> U(px.size());
@@ -1062,6 +1054,21 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 			slp.loop_inertia_eigs[3*i  ] = std::sqrt(2*evals[0]/A.L);
 			slp.loop_inertia_eigs[3*i+1] = std::sqrt(2*evals[1]/A.L);
 			slp.loop_inertia_eigs[3*i+2] = std::sqrt(2*evals[2]/A.L);
+
+			// write coordinates at their slice
+			const unsigned base = offsets[i];
+			double *C = slp.loop_coords.data() + 3*base;
+			for (unsigned k=0; k<px.size(); ++k) {
+				if ((int) mask == 0){
+				C[3*k+0] = px[0]+U[k].x;
+				C[3*k+1] = py[0]+U[k].y;
+				C[3*k+2] = pz[0]+U[k].z;
+			} else {
+				C[3*k+0] = px[k];
+				C[3*k+1] = py[k];
+				C[3*k+2] = pz[k];
+				}
+			}
 
 		}
 		else  // px.size() 1or2
@@ -1137,7 +1144,7 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 // }
 
 	/*some debugging prints*/
-	if (0)
+	if (1)
 	{
 		if (rank==0)
 		{
@@ -1146,6 +1153,7 @@ LogMsg(VERB_NORMAL,"[SL3] Total number of labels %d\n",max_global_label);
 					printf("global label %d len %lf vel %lf gam %lf cub %lf\n",1+d,slp.len[d],slp.vel[d]/slp.cub[d],slp.gam[d]/slp.cub[d],slp.cub[d]);
 				}
 		}
+		commSync();
 		for (int ran = 0 ; ran < nMPI; ran++)
 		{
 		if (rank == ran){

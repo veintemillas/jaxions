@@ -648,6 +648,7 @@ def gm(address,something='summary',printerror=False):
                 "loop_com" : f['/string/loops/loop_com'][()],
                 "origin" : f['/string/loops/origin'][()],
                 "loop_inertia_eigs" : f['/string/loops/loop_inertia_eigs'][()] ,
+                "loop_inertia" : f['/string/loops/loop_inertia'][()] ,
                 "loop_lengths" : f['/string/loops/loop_len_com'][()] ,
                 "sizes" : f['/string/loops/sizes'][()],
                 "coords" : [cordi[offsi[i]:offsi[i+1],:] for i in range(len(offsi)-1)],

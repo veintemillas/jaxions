@@ -3358,10 +3358,122 @@ static inline void h5_write_2d(const char* group, const char* name,
     H5Gclose(g);
 }
 
+// Reorders loop tables by descending loop_len_com, in-place in m2Cpu,
+// and rewires B_*.ptr to the sorted buffers. No large temporaries: only a
+// small perm array lives in the m2 tail. Writing code remains unchanged.
+static inline void sort_loops_inplace_rewire(
+    Scalar* axion,
+    GatherBlock& B_labels,
+    GatherBlock& B_sizes,
+    GatherBlock& B_offsets,   // must be global (N+1)
+    GatherBlock& B_closed,
+    GatherBlock& B_len_com,
+    GatherBlock& B_com,
+    GatherBlock& B_inertia,
+    GatherBlock& B_eigs,
+    GatherBlock& B_origin,
+    GatherBlock& B_coords
+) {
+    int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank != 0) return;
+
+    const uint64_t N = B_sizes.count;                              // #loops
+    const uint64_t M = static_cast<const uint64_t*>(B_offsets.ptr)[N]; // #vertices
+
+    // Work in the free tail of m2Cpu, right after gathered coords
+    auto* base = static_cast<uint8_t*>(axion->m2Cpu());
+    uint8_t* wr = static_cast<uint8_t*>(B_coords.ptr) + 3*M*sizeof(double);
+    auto a8 = [&](){ wr = reinterpret_cast<uint8_t*>((reinterpret_cast<uintptr_t>(wr)+7ULL) & ~7ULL); };
+    auto resv = [&](uint64_t nbytes)->void* { a8(); void* p = wr; wr += nbytes; return p; };
+
+    // (optional) capacity check
+    const uint64_t cap = axion->eSize()*axion->DataSize();
+    auto need = [&](uint64_t nb){ return (uint64_t)(wr - base) + nb <= cap; };
+
+    // Small permutation buffer
+    auto* perm = static_cast<uint32_t*>(resv(N*sizeof(uint32_t)));
+    for (uint32_t i=0;i<N;++i) perm[i]=i;
+    std::stable_sort(perm, perm+N, [&](uint32_t a, uint32_t b){
+        return static_cast<const double*>(B_len_com.ptr)[a] >
+               static_cast<const double*>(B_len_com.ptr)[b];
+    });
+
+    // Reserve sorted buffers in m2 tail
+    auto* LAB = static_cast<uint32_t*>(resv(N   * sizeof(uint32_t)));
+    auto* SIZ = static_cast<uint64_t*>(resv(N   * sizeof(uint64_t)));
+    auto* OFF = static_cast<uint64_t*>(resv((N+1)*sizeof(uint64_t)));
+    auto* CLO = static_cast<uint8_t *> (resv(N   * sizeof(uint8_t )));
+    auto* LCM = static_cast<double*  > (resv(N   * sizeof(double   )));
+    auto* COM = static_cast<double*  > (resv(3*N * sizeof(double   )));
+    auto* INE = static_cast<double*  > (resv(6*N * sizeof(double   )));
+    auto* EIG = static_cast<double*  > (resv(3*N * sizeof(double   )));
+    auto* ORI = static_cast<double*  > (resv(3*N * sizeof(double   )));
+    auto* CRD = static_cast<double*  > (resv(3*M * sizeof(double   )));
+
+    if ((uint64_t)(wr - base) > cap) {
+        LogError("[sort_loops] Not enough m2Cpu space for sorted view.");
+        return;
+    }
+
+    // Source views
+    const auto* L0 = static_cast<const uint32_t*>(B_labels.ptr);
+    const auto* S0 = static_cast<const uint64_t*>(B_sizes.ptr);
+    const auto* Of = static_cast<const uint64_t*>(B_offsets.ptr);
+    const auto* C0 = static_cast<const uint8_t *> (B_closed.ptr);
+    const auto* LC = static_cast<const double*  > (B_len_com.ptr);
+    const auto* CM = static_cast<const double*  > (B_com.ptr);
+    const auto* IN = static_cast<const double*  > (B_inertia.ptr);
+    const auto* EG = static_cast<const double*  > (B_eigs.ptr);
+    const auto* OR = static_cast<const double*  > (B_origin.ptr);
+    const auto* CF = static_cast<const double*  > (B_coords.ptr);
+
+    // Fill sorted arrays + rebuild offsets
+    OFF[0] = 0;
+    for (uint64_t ii=0; ii<N; ++ii) {
+        const uint32_t i = perm[ii];
+        LAB[ii] = L0[i];
+        SIZ[ii] = S0[i];
+        CLO[ii] = C0[i];
+        LCM[ii] = LC[i];
+        std::memcpy(&COM[3*ii], &CM[3*i], 3*sizeof(double));
+        std::memcpy(&INE[6*ii], &IN[6*i], 6*sizeof(double));
+        std::memcpy(&EIG[3*ii], &EG[3*i], 3*sizeof(double));
+        std::memcpy(&ORI[3*ii], &OR[3*i], 3*sizeof(double));
+        OFF[ii+1] = OFF[ii] + SIZ[ii];
+    }
+
+    // Coords: stream chunks in perm order using original offsets
+    uint64_t wv = 0;
+    for (uint64_t ii=0; ii<N; ++ii) {
+        const uint32_t i = perm[ii];
+        const uint64_t a0 = Of[i], a1 = Of[i+1], K = a1 - a0;
+        std::memcpy(&CRD[3*wv], &CF[3*a0], 3*K*sizeof(double));
+        wv += K;
+    }
+
+		// OFF already sized to N+1; build prefix sum in the *sorted* order.
+		OFF[0] = 0;
+		for (uint64_t ii = 0; ii < N; ++ii)
+		    OFF[ii+1] = OFF[ii] + SIZ[ii];
+
+    // Rewire gathered blocks to point to the sorted buffers
+    B_labels .ptr = LAB;
+    B_sizes  .ptr = SIZ;
+    B_offsets.ptr = OFF;            B_offsets.count = N+1; // important
+    B_closed .ptr = CLO;
+    B_len_com.ptr = LCM;
+    B_com    .ptr = COM;
+    B_inertia.ptr = INE;
+    B_eigs   .ptr = EIG;
+    B_origin .ptr = ORI;
+    B_coords .ptr = CRD;
+
+}
+
 
 
 void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango) {
-	LogMsg (VERB_NORMAL, "[wSLO] String Loop Observables");
+	LogMsg (VERB_NORMAL, "[wSLO] String Loop Observables");LogFlush();
   const char* stringGroup = "/string";
   const char* loopsGroup  = "/string/loops";
 
@@ -3395,6 +3507,14 @@ void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango) {
 
 	// (Optional) Check capacity vs a rough upper bound if you like.
 
+
+	printf("[pre-gather] rank %d: labels=%zu sizes=%zu len=%zu\n",
+       commRank(),
+       slp.loop_labels.size(),
+       slp.loop_sizes.size(),
+       slp.loop_len_com.size());
+			 // make ofsets global again!
+
 	LogMsg(VERB_NORMAL,"[wSLO] gathering");
 	// 1) Gather/append each vector in a fixed order
 	GatherBlock B_labels     = gather_append_to_rank0(slp.loop_labels,     dst, mpi_u32());
@@ -3410,13 +3530,32 @@ void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango) {
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	// make ofsets global again!
+	if (rank==0){
+	// std::vector<uint64_t> global_offsets(B_sizes.count + 1, 0);
+	uint64_t* B_offsets_ = static_cast<uint64_t*>(B_offsets.ptr);
+	uint64_t* B_sizes_   = static_cast<uint64_t*>(B_sizes.ptr);
+	uint32_t* B_labels_  = static_cast<uint32_t*>(B_labels.ptr);
+	double* B_len_       = static_cast<double*>(B_len_com.ptr);
+	B_offsets_[0] = 0;
+	for (uint64_t i = 0; i < B_sizes.count; ++i){
+	    B_offsets_[i+1] = B_sizes_[i] + B_offsets_[i];
+			printf("%d lab %hu len %lf\n",i, B_labels_[i], B_len_[i]);
+		}
+	}
+
+	// Now sort & rewire; writing code stays untouched
+	sort_loops_inplace_rewire(axion,
+	                          B_labels, B_sizes, B_offsets, B_closed,
+	                          B_len_com, B_com, B_inertia, B_eigs, B_origin, B_coords);
+
 	LogMsg(VERB_NORMAL,"[wSLO] writting");
 
 	// 2) Write everything (flat names, as you chose)
 	// Scalars
 	h5_write_1d(loopsGroup, "labels",  H5T_NATIVE_UINT,  B_labels.ptr,   (hsize_t)B_labels.count, 0);
 	h5_write_1d(loopsGroup, "sizes",   H5T_NATIVE_ULLONG,B_sizes.ptr,    (hsize_t)B_sizes.count, 0);
-	h5_write_1d(loopsGroup, "offsets", H5T_NATIVE_ULLONG,B_offsets.ptr,  (hsize_t)B_offsets.count, 0);
+	h5_write_1d(loopsGroup, "offsets", H5T_NATIVE_ULLONG,B_offsets.ptr,  (hsize_t)(B_sizes.count+1), 0);
 	h5_write_1d(loopsGroup, "closed",  H5T_NATIVE_UCHAR, B_closed.ptr,   (hsize_t)B_closed.count, 0);
 	h5_write_1d(loopsGroup, "loop_len_com", H5T_NATIVE_DOUBLE, B_len_com.ptr, (hsize_t)B_len_com.count, 0);
 
