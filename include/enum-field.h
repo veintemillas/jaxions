@@ -656,6 +656,8 @@
 			STRMEAS_LENGTH = 1,
 			STRMEAS_GAMMA  = 2,
 			STRMEAS_ENERGY = 4,
+			STRMEAS_LOOPS  = 8,  // does the whole loop analysis
+			STRMEAS_LABEL  = 16, // prints string label map
 		}	StringMeasureType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
@@ -719,7 +721,7 @@
 			MEAS_BINDELTA     = 8,
 			MEAS_ALLBIN       = 15,
 
-			MEAS_AUX          = 16,   // For whatever
+			MEAS_AUX          = 16,
 			MEAS_STRING       = 32,
 			MEAS_STRINGMAP    = 64,
 			MEAS_STRINGCOO    = 128,

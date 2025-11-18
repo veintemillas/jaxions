@@ -427,14 +427,16 @@ writePMapHdf5s (axiona, LAB);
 
 
 	if(axiona->Field() == FIELD_SAXION){
-		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF) )
+		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
 		{
 
+			/* By default */
 			if ( !(measa & MEAS_STRINGCOO)){
+					/*Identify strings */
 					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 					MeasDataOut.str = strings(axiona);
-					MeasDataOut.str = stringlength	(axiona, MeasDataOut.str, strmeas);
 
+					/* print 3D plaquete info map or just global counts */
 					if ( measa & MEAS_STRINGMAP )
 					{
 						// LogOut("+map ");
@@ -443,12 +445,24 @@ writePMapHdf5s (axiona, LAB);
 							LogMsg(VERB_NORMAL, "[Meas %d] string map",indexa);
 							writeString(axiona, MeasDataOut.str, true);
 						}
-					}
-					// else {
+					} /* we print global counts, unless we only wanted mask */
 					else if ( !(measa & MEAS_MASK)) {
 						writeString(axiona, MeasDataOut.str, false);
 					}
-			}
+
+					/* Length studies New or Old*/
+					if (strmeas & (STRMEAS_LOOPS | STRMEAS_LABEL))
+					{
+						StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
+						MeasDataOut.str = slp.stringdata;
+						if (strmeas & STRMEAS_LABEL)
+							writeStringLabelMap(axiona);
+						writeStringLoopObservables(axiona,slp, 0);
+					}
+					else
+						MeasDataOut.str = stringlength	(axiona, MeasDataOut.str, strmeas);
+
+			} /* This is mainly for developing ... prints too much! */
 			else if (measa & MEAS_STRINGCOO){
 				LogMsg(VERB_NORMAL, "[Meas %d] string2",indexa);
 				MeasDataOut.str = strings2(axiona);
@@ -1018,21 +1032,6 @@ writePMapHdf5s (axiona, LAB);
 		// 		MeasDataOut.maxTheta = thBin2.max();
 		// }
 	}
-
-
-
-	/* This is a generic placeholder to test new functions or debugging */
-	if (measa & MEAS_AUX)
-	{
-		// if	(axiona->Folded())
-		// {
-		// 	Folder	munge(axiona);
-		// 	munge(UNFOLD_ALL);
-		// }
-		// buildc_k_map(axiona, true);
-		// writeEDens(axiona);
-	}
-
 
 
 

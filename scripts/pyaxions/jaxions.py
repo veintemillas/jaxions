@@ -621,12 +621,18 @@ def gm(address,something='summary',printerror=False):
     # stringco
     ##########
 
+    if (something == 'stringco?'):
+        return '/string/codata' in f
     if (something == 'stringco'):
         return f['/string/codata'][()] ;
 
+    if (something == 'stLabels?'):
+        return '/string/labels/' in f
     if (something == 'stLabels'):
         return f['/string/labels/data'][()] ;
 
+    if (something == 'stloop?'):
+        return '/string/loops/lengths' in f
     if (something == 'stloop'):
         if ('/string/loops/' in f):
             lgt = f['/string/loops/lengths/data'][()] ;
@@ -635,6 +641,8 @@ def gm(address,something='summary',printerror=False):
             cub = f['/string/loops/cubes/data'][()] ;
             return lgt,vel,gam,cub
 
+    if (something == 'stloops?'):
+        return '/string/loops/origin' in f
     if (something == 'stloops'):
         # print('br')
         if ('/string/loops/' in f):

@@ -865,13 +865,6 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
-		if (!strcmp(argv[i], "--measaux"))
-		{
-			defaultmeasType |= MEAS_AUX;
-			PARSE1;
-		}
-
-
 		if (!strcmp(argv[i], "--p2DmapE"))
 		{
 			p2dEmapo = true ;
@@ -1945,7 +1938,10 @@ int	parseArgs (int argc, char *argv[])
 				exit(1);
 			}
 
+      /* note that strmeas is not additive */
 			sscanf(argv[i+1], "%d", reinterpret_cast<int*>(&strmeas));
+      /* We make sure we will measure at least strings to trigger string length*/
+      defaultmeasType |= MEAS_STRING;
 
 			if (strmeas < 0)
 			{
