@@ -86,8 +86,8 @@ if(${USE_GPU})
   endif()
   
   # Set CUDA architecture before enabling CUDA language
-  set(CMAKE_CUDA_ARCHITECTURES 86)
-  
+  set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA GPU architectures (e.g. 70;80;86)")
+
   # Enable CUDA language
   enable_language(CUDA)
   
