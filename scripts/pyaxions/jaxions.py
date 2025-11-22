@@ -1051,57 +1051,8 @@ def gm(address,something='summary',printerror=False):
             return np.sqrt(BV0*2/ms/V)/scaleFactorR
 
     if something == 'summary':
-        nqcd = gm(address,'nqcd')
-        ct = f.attrs[u'z']
-        print('---------------------Summary---------------------')
-        print('file: %s (%s - mode)'%(address,ftype))
-        print('-------------------------------------------------')
-        print('N=%d    L=%.2f    ct=%.5f'%(f.attrs[u'Size'],f.attrs[u'Physical size'],f.attrs[u'z']))
-        print('massA= %.5e, (nqcd = %.2f, ct^n/2=%.5e)'%(f.attrs[u'Axion mass'],gm(address,'nqcd'),ct**(nqcd/2)))
-        print()
-        if map_check:
-            print('2Dmap', end=' - ')
-        if en_check:
-            print('Energy', end=' - ')
-        if ('energy/density' in f) or ('energy/redensity' in f):
-            print('Energy 3D', end=' - ')
-        if st_check:
-            print('String', end=' - ')
-        if 'string/data' in f :
-            print('strings 3D', end=' - ')
-        print() ; print()
-        print('Partic Spectra:',end=' ')
-        if 'nSpectrum/sK' in f:
-            print('Axion K', end=' - ')
-        if 'nSpectrum/sG' in f:
-            print('Axion G', end=' - ')
-        if 'nSpectrum/sV' in f:
-            print('Axion V', end=' - ')
-        if 'nSpectrum/sKS' in f:
-            print('Saxion K', end=' - ')
-        if 'nSpectrum/sGS' in f:
-            print('Saxion G', end=' - ')
-        if 'nSpectrum/sVS' in f:
-            print('Saxion V', end=' - ')
-        print()
-        print('Energy Spectra:',end=' ')
-        if 'pSpectrum/sP' in f:
-            print('Axion ', end=' - ')
-        if 'pSpectrum/sPS' in f:
-            print('Saxion', end=' ')
-        print()
-        print('Binned data   :',end=' ')
-
-        if ('bins/contB' in f) :
-            print('E-contrast', end=' - ')
-        if ('bins/thetaB' in f) or ('bins/contB' in f):
-            print('theta', end=' - ')
-        if ('bins/logtheta2B' in f):
-            print('log theta^2', end=' - ')
-        if ('bins/rhoB' in f) or ('bins/rho' in f):
-            print('rho', end=' ')
-        print()
-        return ;
+        print_h5_structure(f)
+        return;
 
     print('Argument %s not recognised/found!'%(something))
     return ;
@@ -2847,7 +2798,51 @@ class gadget:
         print("Loaded %d particles at z=%.1f"%(npart,red))
         return pp
 
+################################################################################
+################################################################################
 
+def print_h5_structure(f):
+    """Print HDF5 file structure with datasets and attributes."""
+    # with h5py.File(filename, "r") as f:
+    _print_h5_obj(f, path="/", indent="")
+
+def _print_h5_obj(obj, path, indent):
+    # Decide what this object is
+    if isinstance(obj, h5py.Group):
+        typename = "Group"
+    elif isinstance(obj, h5py.Dataset):
+        typename = "Dataset"
+    else:
+        typename = type(obj).__name__
+
+    # Header line for this object
+    if isinstance(obj, h5py.Dataset):
+        shape = obj.shape
+        dtype = obj.dtype
+        print(f"{indent}{path} ({typename}, shape={shape}, dtype={dtype})")
+    else:
+        print(f"{indent}{path} ({typename})")
+
+    # Print attributes
+    if obj.attrs:
+        for key, val in obj.attrs.items():
+            print(f"{indent}  @ {key} = {val!r}")
+
+    # Recurse into groups
+    if isinstance(obj, h5py.Group):
+        # Get children in a stable order
+        keys = list(obj.keys())
+        for i, name in enumerate(keys):
+            child = obj[name]
+            is_last = (i == len(keys) - 1)
+
+            # Nice tree graphics
+            branch = "└── " if is_last else "├── "
+            extension = "    " if is_last else "│   "
+
+            _print_h5_obj(child, path + name + ("/" if isinstance(child, h5py.Group) else ""), indent + branch)
+            # For nested levels, indent with pipes/spaces
+            indent = indent[:-4] + extension if indent.endswith(("└── ", "├── ")) else indent
 
 #   qt plot!
 
