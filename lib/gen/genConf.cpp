@@ -68,6 +68,7 @@ class	ConfGenerator
 	void   confthermal(Cosmos *myCosmos, Scalar *field);
 	void	 confstring(Cosmos *myCosmos, Scalar *axionField);
 	void	 confstring2(Cosmos *myCosmos, Scalar *axionField);
+	void   confKM(Cosmos *myCosmos, Scalar *field);
 	// void   confapr(Cosmos *myCosmos, Scalar *field);
 
 	void   putxi(double xit, bool kspace);
@@ -270,6 +271,10 @@ void	ConfGenerator::runCpu	()
 
 		case CONF_SPAX:
 			confspax(myCosmos,axionField);
+		break;
+
+		case CONF_KM:
+			confKM(myCosmos,axionField);
 		break;
 
 		case CONF_TKACHEV:
@@ -1146,6 +1151,148 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] CONF_SPAX end! \n");
 } // endconf spectrum axions
 
+
+void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
+{
+	Profiler &prof = getProfiler(PROF_GENCONF);
+	LogMsg(VERB_NORMAL,"\n ");
+	LogMsg(VERB_NORMAL,"[GEN] CONF_KM Kinetic Misalignment started! ");
+	IcData ic = myCosmos->ICData();
+	LogFlush();
+
+	size_t VD;
+	if (myCosmos->ICData().fType == FIELD_AXION)
+	{
+		LogMsg(VERB_NORMAL,"[GEN] set field to axion! ");
+		axionField->setField(FIELD_AXION);
+		VD = (axionField->DataSize())*(axionField->Size());
+	} else if (myCosmos->ICData().fType == FIELD_SAXION)
+	{
+		LogMsg(VERB_NORMAL,"[GEN] KM with saxion ... danger of spillover! ");
+	}
+
+	LogMsg(VERB_NORMAL,"[GEN] Read data file! ");
+	LogFlush();
+
+	std::vector<double> mm,vv;
+	{
+			FILE *cacheFile = nullptr;
+			if (((cacheFile  = fopen("./initialspectrum.dat", "r")) == nullptr)){
+				printf("No initialspectrum.dat ! Exit!");
+				exit(1);
+			}
+			else
+			{					int ii = 0;
+								double ma, va;
+								while(!feof(cacheFile)){
+										fscanf (cacheFile ,"%lf %lf", &ma, &va);
+										LogMsg(VERB_PARANOID," m %.3e v %.3e !",ma,va);
+										/* In KM we interpret m as cos(keta) modes and v as */
+										mm.push_back(ma);
+										vv.push_back(va);
+										ii++;
+								}
+			}
+	}
+	/* Generate axion in momentum space */
+	prof.start();
+	LogMsg(VERB_NORMAL,"[GEN] Create KM axion field! ");
+	MomParms mopa;
+		mopa.kMax = axionField->Length();
+		/* we need to calculate the phase w eta = sqrt(k^2+mAR^2)eta
+		k^2eta^2 = (2pi eta/L)^2 x (nx^2+ny^2+nz^3)
+		(mAReta)^2
+		thus we pass 3 parameters
+		kcrit = (2pi /L)^2
+		mass  = (mAR)^2
+		ct    = eta*/
+
+		double eta = (*axionField->zV());
+		double R   = (*axionField->RV());
+		double L   = axionField->BckGnd()->PhysSize();
+		double par1 = pow(6.283185307179586/L,2);
+		double par2 = axionField->AxionMassSq()*R*R;
+		mopa.kCrt  = par1;
+		mopa.mass2 = par2;
+		mopa.ct    = eta;
+		mopa.mocoty = MOM_KM;          // specific filling modes
+		mopa.mfttab = mm;              // table of mode amplitudes
+		mopa.k0     = vv[0];           // amplitude of 0-mode velocity
+		mopa.cmplx = false;            // we will do R2C
+		mopa.randommom = ic.randommom; // amplitudes/phases randomised
+		mopa.mp = axionField->m2Cpu(); // for ctheta
+		mopa.vp = axionField->vCpu();  // for ctheta'
+		if (ic.mode0 > 0)
+			mopa.setmom0 = true;         // don't randomise 0 modes
+
+	momConf(axionField, mopa);
+
+	prof.stop();
+	prof.add("momConf", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+	/* iFFT */
+	prof.start();
+	LogMsg(VERB_NORMAL,"[GEN] fft! ");
+	auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+	myPlan.run(FFT_BCK);
+
+	prof.stop();
+	prof.add("fft", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+	/* unpad */
+	prof.start();
+
+	LogMsg(VERB_NORMAL,"[GEN] unpad ctheta to mStart! ");
+	size_t dl = axionField->Length()*axionField->Precision();
+	size_t pl = (axionField->Length()+2)*axionField->Precision();
+	size_t ss	= axionField->Length()*axionField->Depth();
+
+	char *ms = static_cast<char *>(axionField->mStart());
+	char *vs = static_cast<char *>(axionField->vCpu());
+	char *m2 = static_cast<char *>(axionField->m2Cpu());
+
+	for (size_t sl=0; sl<ss; sl++) {
+		size_t	oOff = sl*dl;
+		size_t	fOff = sl*pl;
+		memmove	(ms+oOff, m2+fOff, dl);
+	}
+
+	prof.stop();
+	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+
+	LogMsg(VERB_PARANOID,"[GEN] move ctheta' to m2! ");
+		// Lx/commSize()*Tz*(Lx>>1)+1)*2*axionField->Precision();
+		// see momconf
+		// = ss*pl;
+	memmove(m2,vs,ss*pl); // we move modes to m2 to make FFT
+
+	LogMsg(VERB_NORMAL,"[GEN] fft! ");
+	prof.start();
+
+	myPlan.run(FFT_BCK);
+	prof.stop();
+	prof.add("fft", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+/* unpad */
+	LogMsg(VERB_NORMAL,"[GEN] unpad! ");
+	prof.start();
+	for (size_t sl=0; sl<ss; sl++) {
+		size_t	oOff = sl*dl;
+		size_t	fOff = sl*pl;
+		memmove	(vs+oOff, m2+fOff, dl);
+	}
+	prof.stop();
+	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
+
+
+
+	/* If saxion was specified, convert axion only to saxion
+	and add ... possibly ... string network
+	*/
+
+	LogMsg(VERB_NORMAL,"[GEN] CONF_KM end! \n");
+} // endconf KINETIC MISALIGNMENT
 
 
 void	ConfGenerator::conftkac(Cosmos *myCosmos, Scalar *axionField)

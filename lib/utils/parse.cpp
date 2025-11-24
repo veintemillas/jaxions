@@ -2197,6 +2197,11 @@ int	parseArgs (int argc, char *argv[])
 				cType = CONF_SPAX; // legacy
 				icdatst.cType =  CONF_SPAX;
 			}
+      else if (!strcmp(argv[i+1], "km"))
+			{
+				cType = CONF_KM; // legacy
+				icdatst.cType =  CONF_KM;
+			}
       else if (!strcmp(argv[i+1], "string"))
 			{
 				icdatst.cType = CONF_STRING;

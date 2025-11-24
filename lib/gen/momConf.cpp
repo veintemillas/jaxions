@@ -90,6 +90,8 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	int	maxThreads = omp_get_max_threads();
 	int	*sd;
 
+	/* For KM */
+	Float ct = (Float) mopa.ct;
 	trackAlloc((void **) &sd, sizeof(int)*maxThreads);
 
 	std::random_device seed;		// Totally random seed coming from memory garbage
@@ -170,6 +172,20 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 											Float c0 = mm[b];
 											Float c1 = mm[b+1];
 											fM[idx]  = marsa*((Float) (c0+(c1-c0)*(sc-b)));
+										}
+									case(MOM_KM):
+										{
+											double sc   = (Float) sqrt(modP);
+											Float w = (Float) sqrt(modP*kcrit+m2);
+											Float phase = w * ct;
+											Float C = cos(phase);
+											Float S = -sin(phase);
+											int b    = (int) sc;
+											Float c0 = mm[b];
+											Float c1 = mm[b+1];
+											complex<Float> AA = marsa*((Float) (c0+(c1-c0)*(sc-b)));
+											fM[idx]  = AA*C;
+											fV[idx]  = w*AA*S;
 										}
 									break;
 									case(MOM_MSIN):
@@ -345,6 +361,14 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
                 }
 		break;
 
+		case(MOM_KM):
+		if (commRank() == 0 && mopa.setmom0){
+	        	fM[0] = complex<Float>(mm[0],0);
+						fV[0] = complex<Float>(mopa.k0,0); // we saved here vv[0]
+			LogMsg (VERB_NORMAL, "mode0 set to %f %f in rank %d", real(fM[0]), imag(fM[0]), commRank());
+                }
+		break;
+
 		case(MOM_STRING):
 		if (commRank() == 0){
 			fM[0] = complex<Float>(0,0);
@@ -444,6 +468,9 @@ void	momConf (Scalar *field, MomParms mopa)
 				case MOM_SPAX:
 				momXeon<double, MOM_SPAX>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
+				case MOM_KM:
+				momXeon<double, MOM_KM>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
+				break;
 				case MOM_STRING:
 				momXeon<double, MOM_STRING>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
@@ -492,6 +519,9 @@ void	momConf (Scalar *field, MomParms mopa)
 				break;
 				case MOM_SPAX:
 				momXeon<float, MOM_SPAX>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
+				break;
+				case MOM_KM:
+				momXeon<float, MOM_KM>  (ma, va, mopa, n1, Lz, Tz, n2, n3);
 				break;
 				case MOM_STRING:
 				momXeon<float, MOM_STRING>  (ma, va, mopa, n1, Lz, Tz, n2, n3);

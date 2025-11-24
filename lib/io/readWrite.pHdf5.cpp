@@ -570,6 +570,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
+		case	CONF_KM:
+			sprintf(icStr, "Kinetic Misalignment");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			// save initial theta1,vheta1?
+			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
+			break;
+
 		case	CONF_STRING:
 			sprintf(icStr, "Custom Strings");
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
@@ -1228,6 +1235,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					cType = CONF_SPAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+				} else if (!strcmp(icStr, "Kinetic Misalignment")) {
+					cType = CONF_KM;
 				} else if (!strcmp(icStr, "Custom Strings")) {
 					cType = CONF_STRING;
 					// readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
@@ -1881,6 +1890,13 @@ void	createMeas (Scalar *axion, int index)
 			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
+			break;
+
+		case	CONF_KM:
+			sprintf(icStr, "Kinetic Misalignment");
+			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			// save initial theta1,vheta1?
+			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			break;
 
 		case	CONF_STRING:

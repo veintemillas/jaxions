@@ -328,6 +328,7 @@
 			CONF_SPAX       = 512,
 			CONF_THERMAL    = 1024,
 			CONF_STRING     = 2048,
+			CONF_KM         = 4096,
 		}	ConfType;
 
 		typedef enum	ConfsubType_s
@@ -361,6 +362,7 @@
 			MOM_SPAX    = 2048,  // given spectrum
 			MOM_MVTHERMAL = 4096,
 			MOM_STRING   = 4096*2,
+			MOM_KM       = 4096*4,
 		}	MomConfType;
 
 		typedef enum	DeviceType_s
@@ -909,6 +911,7 @@
 			MomConfType   mocoty;
 			double        mass2;
 			double        k0;
+			double        ct;
 			FieldType     ftype;
 			std::vector<double>     mfttab;
 			bool 	      cmplx;
