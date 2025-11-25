@@ -217,7 +217,7 @@ double  Cosmos::Rp  (const double ct)
   double rp;
   if (ueCosm) {
     rp = (R(ct+1.e-3)-R(ct-1.e-3))/(2.e-3 * R(ct));
-    LogMsg(VERB_NORMAL,"[Cos] calculating Rp =R(ct+e)-R(ct-e)/2eR = %e",rp);
+    LogMsg(VERB_HIGH,"[Cos] calculating Rp =R(ct+e)-R(ct-e)/2eR = %e",rp);
   }
   else {
   // R = ct^frw
