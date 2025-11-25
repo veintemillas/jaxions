@@ -34,13 +34,6 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 	std::vector<double> 	ii;
 	tk::spline mf;
 
-	if (Moco == MOM_SPAX){
-		for (int il = 0; il < mm.size();il++){
-			ii.push_back((double) il);
-		}
-		mf.set_points(ii,mm);
-		LogMsg(VERB_NORMAL,"[momXeon] Called SPAX, mm.size -= %d",mm.size());
-	}
 
 	/* used only for MOM_STRING*/
 	std::vector<double> 	xx,yy,zz,x0;
@@ -166,13 +159,13 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									break;
 									case(MOM_SPAX):
 										{
-											//Float sc = mf((double) sqrt( (Float) modP));
 											double sc = (Float) sqrt(modP);
 											int b    = (int) sc;
 											Float c0 = mm[b];
 											Float c1 = mm[b+1];
 											fM[idx]  = marsa*((Float) (c0+(c1-c0)*(sc-b)));
 										}
+									break;
 									case(MOM_KM):
 										{
 											double sc   = (Float) sqrt(modP);
