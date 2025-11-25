@@ -412,6 +412,8 @@ def INCOgen(ict,verb=False,**kwargs):
             INCO += ' --sIter %d --kcr %f'%(lr,kwargs['lola_string_multiplier'])
     if ict == 'spax':
         INCO = ' --ctype %s'%ict
+    if ict == 'km':
+        INCO = ' --ctype %s'%ict
     if ict == 'smooth':
         INCO = ' --ctype %s'%ict
         if 'smvar' in kwargs:
