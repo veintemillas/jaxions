@@ -201,26 +201,6 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 										}
 									break;
 
-									case(MOM_MVTHERMAL):
-										{
-											// needs mass!
-											Float wT = sqrt(((Float) modP) + m2)/kcrit;
-											Float nnnnnn = sqrt(1./(exp(wT)-1.));
-											Float wT_sqrt = sqrt(wT);
-											// field (goes to V array)
-											// the zero mode has infinite thermal expectation value in the continuum
-											// discrete version not ... 0? adjusted to VEV? ...
-											fM[idx] = (modP == 0) ? 0 : marsa*nnnnnn/wT_sqrt ;
-											// velocity (goes into M)
-											// the zero mode is finite mE/mP -> kcrit
-											vl = Twop*(uni(mt64));
-											al = distri(mt64);
-											marsa   = exp( complex<Float>(0,vl) )*al;
-											// fV[idx] = (modP == 0) ? marsa*sqrt(kcrit) : marsa*mE*mP ;
-											fV[idx] =  marsa*nnnnnn*wT_sqrt ;
-										}
-									break;
-
 									case(MOM_MEXP):
 										{
 											Float mP = sqrt(((Float) modP))/(kcrit);
@@ -259,6 +239,26 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 							}
 						break;
 
+						case(MOM_MVTHERMAL):
+							{
+								Float r1 = distri(mt64);
+								Float r2 = distri(mt64);
+
+								Float wT = sqrt(((Float) modP) + m2)/kcrit;
+								if (wT ==0) {
+										fM[idx] = complex<Float>(0.0,0.0); fV[idx] = complex<Float>(r1,r2);
+								} else {
+									Float nnnnnn = 1./sqrt(wT*(exp(wT)-1.));
+									// field (goes to V array)
+									fM[idx] = complex<Float>(r1,r2)*nnnnnn ;
+									// velocity (goes into M)
+									r1 = distri(mt64);
+									r2 = distri(mt64);
+									fV[idx] =  complex<Float>(r1,r2)*nnnnnn*wT ;
+								}
+							}
+						break;
+
 						case(MOM_STRING):
 						{
 								/* Theory in pieces/duality.pdf
@@ -284,7 +284,7 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 								}
 								else // read points and connect them to calculate
 								{
-									complex<Float> su = (0,0);
+									complex<Float> su = (0.0,0.0);
 
 									/* most of the grid */
 									if (px != 0){
@@ -366,6 +366,12 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		if (commRank() == 0){
 			fM[0] = complex<Float>(0,0);
 			LogMsg (VERB_NORMAL, "mode0 set to %f %f in rank %d", real(fM[0]), imag(fM[0]), commRank());
+		}
+		break;
+
+		case(MOM_MVTHERMAL):
+		if (commRank() == 0){
+			LogMsg (VERB_NORMAL, "mode0 left alone ");
 		}
 		break;
 
