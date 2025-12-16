@@ -60,8 +60,13 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     N0 = int(N0_match.group(1))
     depth = int(depth_match.group(1))
     L0 = float(L0_match.group(1))
-    msa0 = float(msa0_match.group(1))
+    if msa0_match:
+        msa0 = float(msa0_match.group(1))
+    else:
+        msa0 = None
 
+    # silently ignore missing msa0
+    msa0 = None   # or pass, depending on your logic
     #for mpiexec usage on bonden
     os.environ['OMP_NUM_THREADS'] = str(THR)
 
@@ -396,6 +401,8 @@ def INCOgen(ict,verb=False,**kwargs):
     def fif(ka,ja,xic):
         if ka in kwargs:
             xic += ' --%s '%ja + str(kwargs[ka])
+            if verb:
+                print(xic)
         else:
             if verb:
                 print('%s missing in kwargs: jaxion defaults will be used'%ka)
@@ -432,6 +439,11 @@ def INCOgen(ict,verb=False,**kwargs):
     if ict == 'string':
         INCO = ' --ctype %s'%ict
         INCO = fif('sIter','sIter',INCO)
+
+    if ict == 'thermal':
+        INCO = ' --ctype %s'%ict
+        INCO = fif('RPQ','RPQ',INCO)
+        INCO = fif('kcr','kcr',INCO)
 
     if 'kickalpha' in kwargs:
         INCO += ' --kickalpha '+str(kwargs['kickalpha'])
