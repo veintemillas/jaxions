@@ -2632,18 +2632,18 @@ if (icdatst.cType == CONF_SMOOTH )
       if (lz2e <= 2.0){
         LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(zFinl,frw*(2.0-lz2e)) );
         icdatst.zi = pow(exp(2*icdatst.logi)/(2*LL),1/(2.0+frw*(2-lz2e)));
-        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from zf = %f logi = %f msa = %.f",LL,icdatst.zi,zFinl,icdatst.logi,msa);
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from zf = %f logi = %f msa = %.3f",LL,icdatst.zi,zFinl,icdatst.logi,msa);
       }
       else if (lz2e*frw <= 2*(1+frw)){
         icdatst.zi = exp(icdatst.logi) * sizeL/sizeN / msa;
         LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(icdatst.zi,frw*(2.0-lz2e)) );
-        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from logi = %f msa = %.f",LL,icdatst.zi,icdatst.logi,msa);
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from logi = %f msa = %.3f",LL,icdatst.zi,icdatst.logi,msa);
       }
       else {
         LogMsg(VERB_NORMAL,"[parse] Core increasing so fast that log decreases with time !");
         icdatst.zi = exp(icdatst.logi) * sizeL/sizeN / msa;
         LL         = msa*msa / (2.0*sizeL*sizeL/(sizeN*sizeN) * pow(icdatst.zi,frw*(2.0-lz2e)) );
-        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from logi = %f msa = %.f",LL,icdatst.zi,icdatst.logi,msa);
+        LogMsg(VERB_NORMAL,"[parse] Adjusting LL = %f, zi = %f from logi = %f msa = %.3f",LL,icdatst.zi,icdatst.logi,msa);
       }
     } // end use logi
     else // using zi

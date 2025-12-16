@@ -66,7 +66,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	SpectrumMaskType mask = info.mask ;
 	LogMsg(VERB_HIGH,"[Meas ...] spmtype, mask passed = %d",mask);
 	if (axiona->Field() == FIELD_SAXION)
-		mask = mask & (SPMASK_FLAT | SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF | SPMASK_BALL);
+		mask = mask & (SPMASK_FLAT | SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF | SPMASK_BALL | SPMASK_SAXI);
 	else if (axiona->Field() == FIELD_AXION){
 		// if (mask & (SPMASK_VIL | SPMASK_VIL2 | SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
 		// 	mask = mask | SPMASK_FLAT;
@@ -203,7 +203,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	// LogOut("[MS*] m2 values %.2e %.2e %.2e %.2e \n",mm2[0],mm2[1],mm2[2],mm2[3]);
 
 
-	if( info.maty & MAPT_XYMV)
+	if( (info.maty & MAPT_XYMV) || (measa & MEAS_2DMAP))
 		writeMapHdf5s  (axiona,sliceprint);
 	if( info.maty & MAPT_YZMV)
 		writeMapHdf5s2 (axiona,sliceprint);
@@ -614,19 +614,19 @@ writePMapHdf5s (axiona, LAB);
 
 			char PRELABEL[256];
 			char LABEL[256];
-			string           masklab[10] = {"0", "Vi", "Vi2", "Bal", "Red", "Gau", "Dif", "Axit", "Axit2", "AxitV"};
-			SpectrumMaskType maskara[10] = {SPMASK_FLAT,SPMASK_VIL,SPMASK_VIL2,SPMASK_BALL,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_AXIT,SPMASK_AXIT2,SPMASK_AXITV};
-			bool             prntmsk[10] = {false,true,true,true,true,true,true,true,true,true};
-			bool             mulmask[10] = {false,false,false,true,true,true,true,true,true,false};
-			bool             needene[10] = {false,false,false,false,false,false,false,true,true,true};
+			string           masklab[11] = {"0", "Vi", "Vi2", "Bal", "Red", "Gau", "Dif", "Axit", "Axit2", "AxitV", "Saxi"};
+			SpectrumMaskType maskara[11] = {SPMASK_FLAT,SPMASK_VIL,SPMASK_VIL2,SPMASK_BALL,SPMASK_REDO,SPMASK_GAUS,SPMASK_DIFF,SPMASK_AXIT,SPMASK_AXIT2,SPMASK_AXITV,SPMASK_SAXI};
+			bool             prntmsk[11] = {false,true,true,true,true,true,true,true,true,true,false};
+			bool             mulmask[11] = {false,false,false,true,true,true,true,true,true,false,false};
+			bool             needene[11] = {false,false,false,false,false,false,false,true,true,true,false};
 
 			LogMsg(VERB_NORMAL, "[Meas %d] masks are %d",indexa,mask);LogFlush();
-			for (size_t i=0; i < 10 ; i++)
+			for (size_t i=0; i < 11 ; i++)
 			{
 				LogMsg(VERB_HIGH, "[Meas %d] maskara[%d]=%d",indexa,i,maskara[i]);LogFlush();
 			}
 
-			for (size_t i=0; i < 10; i++)
+			for (size_t i=0; i < 11; i++)
 			{
 				LogMsg(VERB_HIGH,   "[Meas %d] mask %s (%d) irmask %d",indexa,masklab[i].c_str(),i,irmask);LogFlush();
 				if ( !(mask & maskara[i])){
@@ -873,11 +873,14 @@ writePMapHdf5s (axiona, LAB);
 				// 	specAna.reset0();
 				// LogOut("NSPA ");
 				LogMsg(VERB_NORMAL, "[Meas %d] NSP real and imaginary",indexa);
-				specAna.nRun(SPMASK_SAXI, nruntype);
-				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/nSpectrum", "sK_Im");
-				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/nSpectrum", "sK_Re");
-				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/nSpectrum", "sG_Im");
-				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/nSpectrum", "sG_Re");
+				// specAna.nRun(SPMASK_SAXI, nruntype); // follows the commandline
+				specAna.nSHTRun();
+				writeArray(specAna.data(SPECTRUM_KK), specAna.PowMax(), "/eSpectrum", "sK_Im");
+				writeArray(specAna.data(SPECTRUM_VV), specAna.PowMax(), "/eSpectrum", "sV_Im");
+				writeArray(specAna.data(SPECTRUM_GG), specAna.PowMax(), "/eSpectrum", "sG_Im");
+				writeArray(specAna.data(SPECTRUM_VVNL), specAna.PowMax(), "/eSpectrum", "sK_Re");
+				writeArray(specAna.data(SPECTRUM_PS), specAna.PowMax(), "/eSpectrum", "sV_Re");
+				writeArray(specAna.data(SPECTRUM_P), specAna.PowMax(), "/eSpectrum", "sG_Re");
 			}
 
 
