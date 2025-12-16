@@ -2162,6 +2162,195 @@ void	SpecBin::avekRun	() {
 }
 
 
+void	SpecBin::nSHTRun	(){
+
+	switch (fPrec)
+	{
+		case FIELD_SINGLE :
+		SpecBin::nSHTRun<float> ();
+		break;
+
+		case FIELD_DOUBLE :
+		SpecBin::nSHTRun<double> ();
+		break;
+
+		default :
+		LogError("[Spectrum nSHTRun] precision not reconised.");
+		break;
+	}
+}
+
+
+template<typename Float>
+void	SpecBin::nSHTRun	() {
+
+	Profiler &prof = getProfiler(PROF_SPEC);
+
+	LogMsg(VERB_HIGH,"[nSHTRun] Called ");
+
+
+  prof.start();
+
+	binK.assign(nbins, 0.);
+	binG.assign(nbins, 0.);
+	binV.assign(nbins, 0.);
+	binVnl.assign(nbins, 0.); // for K
+	binP.assign(nbins, 0.);   // for G
+	binPS.assign(nbins, 0.);  // for V
+
+  prof.stop();
+	prof.add(std::string("assign"), 0.0, 0.0);
+
+	if	(field->Folded())
+	{
+		Folder	munge(field);
+		munge(UNFOLD_ALL);
+	}
+
+	switch (fType) {
+		default:
+		case FIELD_AXION:
+		case FIELD_AXION_MOD:
+		case FIELD_WKB:
+				LogError ("Error: Wrong field called to numberSaxionSpectrum: no Saxion information!!");
+		return;
+
+		case	FIELD_SAXION:
+		{
+			// nPts = Lx*Ly*Lz;
+			//std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mStart());
+			std::complex<Float> *ma     = static_cast<std::complex<Float>*>(field->mCpu())+(field->getNg()-1)*field->Surf();
+			std::complex<Float> *va     = static_cast<std::complex<Float>*>(field->vCpu());
+			Float *m2sa                 = static_cast<Float *>(field->m2Cpu());
+			//Float *m2sax                = static_cast<Float *>(field->m2Cpu()) + (Ly+2)*Ly*Lz;
+			Float *m2sax                = static_cast<Float *>(field->m2half());
+			char *strdaa                = static_cast<char *>(static_cast<void *>(field->sData()));
+
+			LogMsg(VERB_HIGH,"[nSHTRun] S loop") ;
+			prof.start();
+			#pragma omp parallel for schedule(static)
+			for (size_t iz=0; iz < Lz; iz++) {
+				size_t zo = Ly*(Ly+2)*iz ;
+				size_t zi = Ly*Ly*(iz+1) ;
+				for (size_t iy=0; iy < Ly; iy++) {
+					size_t yo = (Ly+2)*iy ;
+					size_t yi = Ly*iy ;
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo;
+						size_t idx = ix + yi + zi;
+
+						m2sa[odx]  = va[idx-LyLy].real();
+						m2sax[odx] = va[idx-LyLy].imag();
+					}
+				}
+			} // end last volume loop
+
+			prof.stop();
+			prof.add(std::string("Build K (Re and Im)"), 0.0, 0.0);
+
+			// r2c FFT in m2
+			auto &myPlan = AxionFFT::fetchPlan("pSpecAx");
+
+
+			LogMsg(VERB_HIGH,"[nSHTRun] FFT1");
+			prof.start();
+			myPlan.run(FFT_FWD);
+			prof.stop();
+			prof.add(std::string("pSpecAx"), 0.0, 0.0);
+
+			LogMsg(VERB_HIGH,"[nSRun] bin") ;
+			if (spec)
+				fillBins<Float,  SPECTRUM_KK, true> ();
+			else
+				fillBins<Float,  SPECTRUM_KK, false>();
+
+			/* reset */
+			binVnl = binK;
+			binK.assign(nbins, 0.);
+
+			// Copy m2aux -> m2
+			size_t dataTotalSize = field->Precision()*field->eSize();
+			char *mA  = static_cast<char *>(field->m2Cpu());
+			char *mAh = static_cast<char *>(field->m2half());
+			prof.start();
+			memmove	(mA, mAh, dataTotalSize);
+			prof.stop();
+			prof.add(std::string("memmove"), 0.0, 0.0);
+
+			LogMsg(VERB_HIGH,"nSHTRun] FFT2");
+			prof.start();
+			myPlan.run(FFT_FWD);
+			prof.stop();
+			prof.add(std::string("pSpecAx"), 0.0, 0.0);
+
+			if (spec)
+				fillBins<Float,  SPECTRUM_KK, true> ();
+			else
+				fillBins<Float,  SPECTRUM_KK, false>();
+
+			prof.start();
+			#pragma omp parallel for schedule(static)
+			for (size_t iz=0; iz < Lz; iz++) {
+				size_t zo = Ly*(Ly+2)*iz ;
+				size_t zi = Ly*Ly*(iz+1) ;
+				for (size_t iy=0; iy < Ly; iy++) {
+					size_t yo = (Ly+2)*iy ;
+					size_t yi = Ly*iy ;
+					for (size_t ix=0; ix < Ly; ix++) {
+						size_t odx = ix + yo + zo;
+						size_t idx = ix + yi + zi;
+
+						m2sa[odx]  = ma[idx].real();
+						m2sax[odx] = ma[idx].imag();
+					}
+				}
+			} // end last volume loop
+			prof.stop();
+			prof.add(std::string("Build GV (Re and Im)"), 0.0, 0.0);
+
+			LogMsg(VERB_HIGH,"[nSHTRun] FFT3");
+			prof.start();
+			myPlan.run(FFT_FWD);
+			prof.stop();
+			prof.add(std::string("pSpecAx"), 0.0, 0.0);
+
+			LogMsg(VERB_HIGH,"[nSHTRun] bin") ;
+			if (spec)
+				fillBins<Float,  SPECTRUM_GVS, true> ();
+			else
+				fillBins<Float,  SPECTRUM_GVS, false>();
+
+			/* reset */
+			binP = binG;
+			binPS = binV;
+			binG.assign(nbins, 0.);
+			binV.assign(nbins, 0.);
+
+			// Copy m2aux -> m2
+			prof.start();
+			memmove	(mA, mAh, dataTotalSize);
+			prof.stop();
+			prof.add(std::string("memmove"), 0.0, 0.0);
+
+			LogMsg(VERB_HIGH,"nSHTRun] FFT4");
+			prof.start();
+			myPlan.run(FFT_FWD);
+			prof.stop();
+			prof.add(std::string("pSpecAx"), 0.0, 0.0);
+
+			if (spec)
+				fillBins<Float,  SPECTRUM_GVS, true> ();
+			else
+				fillBins<Float,  SPECTRUM_GVS, false>();
+
+			field->setM2     (M2_DIRTY);
+		return;
+		} //end case saxion
+
+
+		}
+}
+
 /* SMOOTHER */
 /* SMOOTHS THE M2 FIELD WITH A GIVEN FILTER IN FOURIER SPACE */
 

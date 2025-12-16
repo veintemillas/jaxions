@@ -113,9 +113,14 @@
 				/* kMax for correction tables */
 				kMax   = (Ly >=  Tz) ? (Ly>>1) : (Tz>>1);
 
-				mass2    = field->AxionMassSq()*(*field->RV())*(*field->RV());
-				mass2Sax = field->SaxionMassSq()*(*field->RV())*(*field->RV());
 				Rscale   = *field->RV();
+				mass2    = field->AxionMassSq()*Rscale*Rscale;
+				mass2Sax = field->SaxionMassSq()*Rscale*Rscale ;
+				double RPQ = field->BckGnd()->RPQ();
+				if (RPQ > 0){
+					mass2Sax = 2*field->LambdaP()*( (RPQ > Rscale) ? 0.5*(RPQ*RPQ-Rscale*Rscale) : Rscale*Rscale-RPQ*RPQ);
+				}
+
 				Rpp      = field->BckGnd()->Rp(*field->zV())*(Rscale); /* this is R' */
 				depta    = field->BckGnd()->PhysSize()/Ly;
 
@@ -194,6 +199,7 @@
 
 		void	nRun		(SpectrumMaskType mask = SPMASK_FLAT, nRunType nrt = NRUN_KGV);
 		void	nSRun		(SpectrumMaskType mask = SPMASK_FLAT, nRunType nrt = NRUN_KGV);
+		void	nSHTRun		();
 		void	pRun		();
 		void	nmodRun		();
 		void	avekRun		();
@@ -204,6 +210,9 @@
 
 		template<typename Float, SpectrumMaskType mask>
 		void	nSRun		(nRunType nrt);
+
+		template<typename Float>
+		void	nSHTRun		();
 
 		template<typename Float, SpectrumMaskType mask>
 		void	wRun		();
