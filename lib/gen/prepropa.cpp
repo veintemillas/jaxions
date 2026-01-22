@@ -309,3 +309,61 @@ void	relaxrho  (Scalar *axiona)
 		// LogOut("nN3 = %f\n",trala);
 	}
 }
+
+void	relaxrho2  (Scalar *axiona)
+{
+	LogMsg (VERB_NORMAL,"[RR2] Relax String cores");
+
+	MeasData lm;
+	lm.str.strDen = 0 ;
+	MeasInfo ninfa = deninfa;
+	ninfa.index = 0;
+	// ninfa.measdata = defaultmeasType;
+
+	Folder munge(axiona);
+	if (cDev != DEV_GPU){
+		munge(FOLD_ALL);
+	}
+
+	double dzaux;
+	initPropagator (pType, axiona, V_QCD0_PQ1_DRHO_RHO);
+	tunePropagator (axiona);
+
+	double ct0 = *axiona->zV();
+	double R0  = *axiona->RV();
+
+	double trala = 1.;
+	fIndex2 = 0 ;
+
+	// propagate 10 cycles of the saxion mass with Gamma = ms
+	// Recall gamma_JAX = gamma_EOM R^2 eta1R1
+	// save any previous value
+	double gamma_parse = axiona->BckGnd()->Gamma();
+	// use a default Gamma = ms
+	// axiona->BckGnd()->Gamma() = std::sqrt(axiona->SaxionMassSq()*R0);
+	axiona->BckGnd()->Gamma() = R0*R0/axiona->Delta();
+
+	for ( int it = 0; it<30 ; it++ )
+	{
+		if (icstudy){
+			ninfa.index=fIndex2;
+			lm = Measureme (axiona, ninfa);
+			fIndex2++;
+		}
+
+		dzaux = axiona->dzSize();
+
+		// propagate (axiona, dzaux);
+		// *axiona->zV() = ct0;
+		// *axiona->RV() = R0;
+		// initPropagator (pType, axiona, V_QCD0_PQ1_DALL_THETA);
+
+		propagate (axiona, dzaux);
+		*axiona->zV() = ct0;
+		*axiona->RV() = R0;
+		// initPropagator (pType, axiona, V_QCD0_PQ1_DRHO_RHO);
+	}
+	// deshacer entuertos
+	axiona->BckGnd()->Gamma() = gamma_parse;
+
+}

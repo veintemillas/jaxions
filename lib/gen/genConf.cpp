@@ -1806,8 +1806,12 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 
 	normaliseField(axionField, FIELD_M);
 
-	if (myCosmos->ICData().normcore)
+	axionField->setFolded(false);
+	
+	if (myCosmos->ICData().normcore){
 		normCoreField	(axionField);
+		relaxrho2(axionField);
+	}
 
 	if (!myCosmos->Mink()){ /* In Minkowski this is trivial */
 		double R  = *axionField->RV();
@@ -1820,7 +1824,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	if (!myCosmos->Mink()) /* In Minkowski this is trivial */
 		scaleField (axionField, FIELD_M, *axionField->RV());
 
-	axionField->setFolded(false);
+
 	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING2 ended'' ");
 }
 

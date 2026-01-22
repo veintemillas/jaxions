@@ -6,4 +6,5 @@
 	void	prepropa   (Scalar *axiona);
 	void	prepropa2  (Scalar *axiona);
 	void	relaxrho   (Scalar *axiona);
+	void	relaxrho2   (Scalar *axiona);
 #endif
