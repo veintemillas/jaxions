@@ -1807,7 +1807,7 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	normaliseField(axionField, FIELD_M);
 
 	axionField->setFolded(false);
-	
+
 	if (myCosmos->ICData().normcore){
 		normCoreField	(axionField);
 		relaxrho2(axionField);
@@ -1824,6 +1824,8 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	if (!myCosmos->Mink()) /* In Minkowski this is trivial */
 		scaleField (axionField, FIELD_M, *axionField->RV());
 
+	// Set velocity to zero!
+	scaleField(axionField, FIELD_V, 0.0);
 
 	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING2 ended'' ");
 }
