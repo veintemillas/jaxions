@@ -1824,10 +1824,8 @@ void	ConfGenerator::confstring2(Cosmos *myCosmos, Scalar *axionField)
 	if (!myCosmos->Mink()) /* In Minkowski this is trivial */
 		scaleField (axionField, FIELD_M, *axionField->RV());
 
-	// Set velocity to zero and test via norm!
+	// Set velocity to zero!
 	scaleField(axionField, FIELD_V, 0.0);
-	double vnorm = normField(axionField, FIELD_V);
-	LogMsg(VERB_NORMAL, "[GEN] Velocity norm = %e", vnorm);
 
 	LogMsg(VERB_NORMAL,"[GEN] CONF_STRING2 ended'' ");
 }
