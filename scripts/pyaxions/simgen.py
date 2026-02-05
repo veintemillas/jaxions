@@ -51,7 +51,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     read_params = JAX
     cwd = os.getcwd()
 
-    #Read specific values from the input JAX string (for printout and rescaling)
+    #Read specific values from the input JAX string (for printout)
     N0_match = re.search(r'--size (\d+)', read_params)
     depth_match = re.search(r'--depth (\d+)', read_params)
     L0_match = re.search(r'--lsize (\d+\.\d+)', read_params)
@@ -62,11 +62,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     L0 = float(L0_match.group(1))
     if msa0_match:
         msa0 = float(msa0_match.group(1))
-    else:
-        msa0 = None
 
-    # silently ignore missing msa0
-    msa0 = None   # or pass, depending on your logic
     #for mpiexec usage on bonden
     os.environ['OMP_NUM_THREADS'] = str(THR)
 
