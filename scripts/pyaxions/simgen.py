@@ -214,10 +214,10 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
             nqcd=7.0, fA = -1, msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
             vqcd='vqcdC',vpq=0, mink = False, xtr='',prep=False,ic='lola',logi=0.0,cti=-1.11,
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
-            spKGV=15,printmask=False,ng0calib=1.25,cummask=0,
+            spKGV=15,printmask=False,ng0calib=1.25,cummask=0, normcore=False,
             p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slc=-1, strmeas =-1,
             nologmpi=True,verbose=1,
-            verb=False,**kwargs):
+            verb=False, **kwargs):
     """
     simgen creates a string of command line flags to select options for vaxion3d
 
@@ -437,7 +437,7 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO = fif('sIter','sIter',INCO)
         if 'kmax' in kwargs:
             INCO = fif('kmax','kmax',INCO)
-        if 'normcore' in kwargs:
+        if normcore:
             INCO += ' --nncore'
 
     if ict == 'thermal':
@@ -449,7 +449,7 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO += ' --kickalpha '+str(kwargs['kickalpha'])
     if 'extrav' in kwargs:
         INCO += ' --extrav '+str(kwargs['extrav'])
-    if 'nncore' in kwargs:
+    if normcore:
         INCO += ' --nncore'
     PREP = ''
     if 'preprop' in kwargs:
