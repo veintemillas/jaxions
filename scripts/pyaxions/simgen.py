@@ -337,6 +337,9 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
         if verb:
             print('Minkowski!')
     PHYS += qcd+noth+wkbs+gams+dwgams+mnk+xtr
+
+    if normcore:
+        kwargs['normcore'] = True
     #################################################### IC condition 1 by 1
     if index >= 0:
         # READ CONF
@@ -437,8 +440,6 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO = fif('sIter','sIter',INCO)
         if 'kmax' in kwargs:
             INCO = fif('kmax','kmax',INCO)
-        if normcore:
-            INCO += ' --nncore'
 
     if ict == 'thermal':
         INCO = ' --ctype %s'%ict
@@ -449,7 +450,7 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO += ' --kickalpha '+str(kwargs['kickalpha'])
     if 'extrav' in kwargs:
         INCO += ' --extrav '+str(kwargs['extrav'])
-    if normcore:
+    if kwargs.get('normcore', False):
         INCO += ' --nncore'
     PREP = ''
     if 'preprop' in kwargs:
