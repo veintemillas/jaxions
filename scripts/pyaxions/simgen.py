@@ -437,6 +437,8 @@ def INCOgen(ict,verb=False,**kwargs):
         INCO = fif('sIter','sIter',INCO)
         if 'kmax' in kwargs:
             INCO = fif('kmax','kmax',INCO)
+        if 'normcore' in kwargs:
+            INCO = fif('normcore','normcore',INCO)
 
     if ict == 'thermal':
         INCO = ' --ctype %s'%ict
