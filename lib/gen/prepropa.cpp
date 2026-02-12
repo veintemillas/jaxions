@@ -312,7 +312,9 @@ void	relaxrho  (Scalar *axiona)
 
 void	relaxrho2  (Scalar *axiona)
 {
-	LogMsg (VERB_NORMAL,"[RR2] Relax String cores");
+	LogMsg (VERB_NORMAL,"[RR2] Relax String cores, (DEV = %s)",
+			axiona->Device() == DEV_CPU ? "CPU" :
+			axiona->Device() == DEV_GPU ? "GPU" : "UNKNOWN");
 
 	MeasData lm;
 	lm.str.strDen = 0 ;
@@ -321,7 +323,8 @@ void	relaxrho2  (Scalar *axiona)
 	// ninfa.measdata = defaultmeasType;
 
 	Folder munge(axiona);
-	if (cDev != DEV_GPU){
+	if (axiona->Device() == DEV_GPU){
+	LogMsg (VERB_NORMAL,"[RR2] fold to propagate in CPU");
 		munge(FOLD_ALL);
 	}
 
@@ -364,6 +367,12 @@ void	relaxrho2  (Scalar *axiona)
 		// initPropagator (pType, axiona, V_QCD0_PQ1_DRHO_RHO);
 	}
 	// deshacer entuertos
+	// restore gamma
 	axiona->BckGnd()->Gamma() = gamma_parse;
-
+	// unfold (ICs are prepare unfolded)
+	if (axiona->Device() == DEV_CPU){
+		LogMsg (VERB_NORMAL,"[RR2] Unfold, ICs are handled unfolded");
+		munge(UNFOLD_ALL);	
+	}
 }
+
