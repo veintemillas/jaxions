@@ -948,6 +948,10 @@ def gm(address,something='summary',printerror=False):
             temp = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
+        if (something == mapad+'rephi') and (ftype == 'Saxion'):
+            return np.array(f[mapad]['rephi'][()].reshape(Ny,N))
+        if (something == mapad+'imphi') and (ftype == 'Saxion'):
+            return np.array(f[mapad]['imphi'][()].reshape(Ny,N))
 
         if (something == 'mapE'):
             if 'map/E' in f:

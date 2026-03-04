@@ -3709,6 +3709,47 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		}
 	}
 
+	if (axion->Field() == FIELD_SAXION) {
+		hsize_t slb_re = axion->Surf();
+		hsize_t lSz_re = axion->Length();
+		hsize_t fSz    = dataSize / 2;
+		char *reBuf    = static_cast<char *>(malloc(slb_re * fSz));
+		char *imBuf    = static_cast<char *>(malloc(slb_re * fSz));
+		for (hsize_t i = 0; i < slb_re; i++) {
+			memcpy(reBuf + i*fSz, dataM + i*dataSize,       fSz);
+			memcpy(imBuf + i*fSz, dataM + i*dataSize + fSz, fSz);
+		}
+		hid_t riSpace_f, reSpace_m, imSpace_m, riChunk, reSet_id, imSet_id;
+		riSpace_f = H5Screate_simple(1, &slb_re, maxD);
+		if (myRank != prank)
+			H5Sselect_none(riSpace_f);
+		riChunk = H5Pcreate(H5P_DATASET_CREATE);
+		H5Pset_chunk(riChunk, 1, &lSz_re);
+		H5Pset_fill_time(riChunk, H5D_FILL_TIME_NEVER);
+		reSet_id = H5Dcreate(meas_id, "/map/rephi", dataType, riSpace_f, H5P_DEFAULT, riChunk, H5P_DEFAULT);
+		imSet_id = H5Dcreate(meas_id, "/map/imphi", dataType, riSpace_f, H5P_DEFAULT, riChunk, H5P_DEFAULT);
+		reSpace_m = H5Dget_space(reSet_id);
+		imSpace_m = H5Dget_space(imSet_id);
+		hsize_t re_offset = 0;
+		if (myRank == prank) {
+			H5Sselect_hyperslab(reSpace_m, H5S_SELECT_SET, &re_offset, NULL, &slb_re, NULL);
+			H5Sselect_hyperslab(imSpace_m, H5S_SELECT_SET, &re_offset, NULL, &slb_re, NULL);
+		} else {
+			H5Sselect_none(reSpace_m);
+			H5Sselect_none(imSpace_m);
+		}
+		H5Dwrite(reSet_id, dataType, riSpace_f, reSpace_m, H5P_DEFAULT, reBuf);
+		H5Dwrite(imSet_id, dataType, riSpace_f, imSpace_m, H5P_DEFAULT, imBuf);
+		H5Dclose(reSet_id);
+		H5Dclose(imSet_id);
+		H5Sclose(reSpace_m);
+		H5Sclose(imSpace_m);
+		H5Sclose(riSpace_f);
+		H5Pclose(riChunk);
+		free(reBuf);
+		free(imBuf);
+	}
+
 	LogMsg (VERB_HIGH, "Write 2D map successful");LogFlush();
 
 	/*	Close the dataset	*/
