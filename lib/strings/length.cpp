@@ -240,49 +240,49 @@ StringData	stringlength	(Scalar *field, StringData strDen_in, StringMeasureType 
 						// three strings are piercing the cube
 						// we consider 15 possible connection patterns and average over them
 						double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					             + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
+					             + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)))
 						  				 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
 					  double dl2 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
+					 	  				 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)))
 					 	  				 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
 					  double dl3 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)))
 					 		  			 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
 				    double dl4 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)))
 							  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
 					  double dl5 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)))
 					 		  			 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
 					  double dl6 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)))
 					 	  				 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
 					  double dl7 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)))
 					 		  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
 					  double dl8 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)))
 					 		  			 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
 					  double dl9 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-					 	  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+					 	  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)))
 					 	  				 + sqrt((pos_x.at(2)-pos_x.at(4))*(pos_x.at(2)-pos_x.at(4))+(pos_y.at(2)-pos_y.at(4))*(pos_y.at(2)-pos_y.at(4))+(pos_z.at(2)-pos_z.at(4))*(pos_z.at(2)-pos_z.at(4)));
 					  double dl10 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-					 	  				  + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+					 	  				  + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)))
 					 		  			  + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
 					  double dl11 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
 					  double dl12 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
 					  double dl13 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)))
 						  					+ sqrt((pos_x.at(4)-pos_x.at(3))*(pos_x.at(4)-pos_x.at(3))+(pos_y.at(4)-pos_y.at(3))*(pos_y.at(4)-pos_y.at(3))+(pos_z.at(4)-pos_z.at(3))*(pos_z.at(4)-pos_z.at(3)));
 					  double dl14 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)))
 							  			  + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
 					  double dl15 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)))
 						  				  + sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
 					  length += (dl1 + dl2 + dl3 + dl4 + dl5 + dl6 + dl7 + dl8 + dl9 + dl10 + dl11 + dl12 + dl13 + dl14 + dl15)/15.;
 				  }
@@ -582,6 +582,8 @@ StringData	stringlength2	(Scalar *field, StringData strDen_in, StringMeasureType
 						pos_y.push_back(iy + 1.);
 						pos_z.push_back(rank*Lz + iz + du[0]);
 					}
+					/* In the case iz = Lz-1 this would go out of bounds */
+					if ( iz < Lz - 1 )
 					if (strdaa[izM] & STRING_XY) {
 						double du[2];
 						setCross(ma[izM],ma[izxM],ma[iyzM],ma[ixyzM],du);
@@ -608,49 +610,49 @@ StringData	stringlength2	(Scalar *field, StringData strDen_in, StringMeasureType
 						// three strings are piercing the cube
 						// we consider 15 possible connection patterns and average over them
 						double dl1 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)));
+						  				 + sqrt((pos_x.at(3)-pos_x.at(2))*(pos_x.at(3)-pos_x.at(2))+(pos_y.at(3)-pos_y.at(2))*(pos_y.at(3)-pos_y.at(2))+(pos_z.at(3)-pos_z.at(2))*(pos_z.at(3)-pos_z.at(2)))
 							  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
 					  double dl2 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
+						  				 + sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)))
 							  			 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
 					  double dl3 = sqrt((pos_x.at(1)-pos_x.at(0))*(pos_x.at(1)-pos_x.at(0))+(pos_y.at(1)-pos_y.at(0))*(pos_y.at(1)-pos_y.at(0))+(pos_z.at(1)-pos_z.at(0))*(pos_z.at(1)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
+						  				 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)))
 						  				 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
 					  double dl4 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)))
 						  				 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
 					 double dl5 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-					  					 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+					  					 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)))
 						  				 + sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
 					  double dl6 = sqrt((pos_x.at(2)-pos_x.at(0))*(pos_x.at(2)-pos_x.at(0))+(pos_y.at(2)-pos_y.at(0))*(pos_y.at(2)-pos_y.at(0))+(pos_z.at(2)-pos_z.at(0))*(pos_z.at(2)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)))
 							  			 + sqrt((pos_x.at(3)-pos_x.at(4))*(pos_x.at(3)-pos_x.at(4))+(pos_y.at(3)-pos_y.at(4))*(pos_y.at(3)-pos_y.at(4))+(pos_z.at(3)-pos_z.at(4))*(pos_z.at(3)-pos_z.at(4)));
 					  double dl7 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)))
 							  			 + sqrt((pos_x.at(5)-pos_x.at(4))*(pos_x.at(5)-pos_x.at(4))+(pos_y.at(5)-pos_y.at(4))*(pos_y.at(5)-pos_y.at(4))+(pos_z.at(5)-pos_z.at(4))*(pos_z.at(5)-pos_z.at(4)));
 					  double dl8 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)))
 							  			 + sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
 					  double dl9 = sqrt((pos_x.at(3)-pos_x.at(0))*(pos_x.at(3)-pos_x.at(0))+(pos_y.at(3)-pos_y.at(0))*(pos_y.at(3)-pos_y.at(0))+(pos_z.at(3)-pos_z.at(0))*(pos_z.at(3)-pos_z.at(0)))
-						  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+						  				 + sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)))
 							  			 + sqrt((pos_x.at(2)-pos_x.at(4))*(pos_x.at(2)-pos_x.at(4))+(pos_y.at(2)-pos_y.at(4))*(pos_y.at(2)-pos_y.at(4))+(pos_z.at(2)-pos_z.at(4))*(pos_z.at(2)-pos_z.at(4)));
 					  double dl10 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(5)-pos_x.at(3))*(pos_x.at(5)-pos_x.at(3))+(pos_y.at(5)-pos_y.at(3))*(pos_y.at(5)-pos_y.at(3))+(pos_z.at(5)-pos_z.at(3))*(pos_z.at(5)-pos_z.at(3)));
 					  double dl11 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(5)-pos_x.at(2))*(pos_x.at(5)-pos_x.at(2))+(pos_y.at(5)-pos_y.at(2))*(pos_y.at(5)-pos_y.at(2))+(pos_z.at(5)-pos_z.at(2))*(pos_z.at(5)-pos_z.at(2)));
 				  	double dl12 = sqrt((pos_x.at(4)-pos_x.at(0))*(pos_x.at(4)-pos_x.at(0))+(pos_y.at(4)-pos_y.at(0))*(pos_y.at(4)-pos_y.at(0))+(pos_z.at(4)-pos_z.at(0))*(pos_z.at(4)-pos_z.at(0)))
-					   						+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)));
+					   						+ sqrt((pos_x.at(5)-pos_x.at(1))*(pos_x.at(5)-pos_x.at(1))+(pos_y.at(5)-pos_y.at(1))*(pos_y.at(5)-pos_y.at(1))+(pos_z.at(5)-pos_z.at(1))*(pos_z.at(5)-pos_z.at(1)))
 						  					+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
 					  double dl13 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(2)-pos_x.at(1))*(pos_x.at(2)-pos_x.at(1))+(pos_y.at(2)-pos_y.at(1))*(pos_y.at(2)-pos_y.at(1))+(pos_z.at(2)-pos_z.at(1))*(pos_z.at(2)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(4)-pos_x.at(3))*(pos_x.at(4)-pos_x.at(3))+(pos_y.at(4)-pos_y.at(3))*(pos_y.at(4)-pos_y.at(3))+(pos_z.at(4)-pos_z.at(3))*(pos_z.at(4)-pos_z.at(3)));
 					  double dl14 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(3)-pos_x.at(1))*(pos_x.at(3)-pos_x.at(1))+(pos_y.at(3)-pos_y.at(1))*(pos_y.at(3)-pos_y.at(1))+(pos_z.at(3)-pos_z.at(1))*(pos_z.at(3)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(4)-pos_x.at(2))*(pos_x.at(4)-pos_x.at(2))+(pos_y.at(4)-pos_y.at(2))*(pos_y.at(4)-pos_y.at(2))+(pos_z.at(4)-pos_z.at(2))*(pos_z.at(4)-pos_z.at(2)));
 					  double dl15 = sqrt((pos_x.at(5)-pos_x.at(0))*(pos_x.at(5)-pos_x.at(0))+(pos_y.at(5)-pos_y.at(0))*(pos_y.at(5)-pos_y.at(0))+(pos_z.at(5)-pos_z.at(0))*(pos_z.at(5)-pos_z.at(0)))
-						  					+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)));
+						  					+ sqrt((pos_x.at(4)-pos_x.at(1))*(pos_x.at(4)-pos_x.at(1))+(pos_y.at(4)-pos_y.at(1))*(pos_y.at(4)-pos_y.at(1))+(pos_z.at(4)-pos_z.at(1))*(pos_z.at(4)-pos_z.at(1)))
 							  				+ sqrt((pos_x.at(2)-pos_x.at(3))*(pos_x.at(2)-pos_x.at(3))+(pos_y.at(2)-pos_y.at(3))*(pos_y.at(2)-pos_y.at(3))+(pos_z.at(2)-pos_z.at(3))*(pos_z.at(2)-pos_z.at(3)));
 					  length += (dl1 + dl2 + dl3 + dl4 + dl5 + dl6 + dl7 + dl8 + dl9 + dl10 + dl11 + dl12 + dl13 + dl14 + dl15)/15.;
 				  }

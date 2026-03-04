@@ -436,6 +436,18 @@ writePMapHdf5s (axiona, LAB);
 					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
 					MeasDataOut.str = strings(axiona);
 
+					/* Length studies New or Old*/
+					if (strmeas & (STRMEAS_LOOPS | STRMEAS_LABEL))
+					{
+						StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
+						MeasDataOut.str = slp.stringdata;
+						if (strmeas & STRMEAS_LABEL)
+							writeStringLabelMap(axiona);
+						writeStringLoopObservables(axiona,slp, 0);
+					}
+					else
+						MeasDataOut.str = stringlength	(axiona, MeasDataOut.str, strmeas);
+
 					/* print 3D plaquete info map or just global counts */
 					if ( measa & MEAS_STRINGMAP )
 					{
@@ -449,18 +461,6 @@ writePMapHdf5s (axiona, LAB);
 					else if ( !(measa & MEAS_MASK)) {
 						writeString(axiona, MeasDataOut.str, false);
 					}
-
-					/* Length studies New or Old*/
-					if (strmeas & (STRMEAS_LOOPS | STRMEAS_LABEL))
-					{
-						StringLoopParms slp = stringlength3(axiona,MeasDataOut.str,strmeas);
-						MeasDataOut.str = slp.stringdata;
-						if (strmeas & STRMEAS_LABEL)
-							writeStringLabelMap(axiona);
-						writeStringLoopObservables(axiona,slp, 0);
-					}
-					else
-						MeasDataOut.str = stringlength	(axiona, MeasDataOut.str, strmeas);
 
 			} /* This is mainly for developing ... prints too much! */
 			else if (measa & MEAS_STRINGCOO){
