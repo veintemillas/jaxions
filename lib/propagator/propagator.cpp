@@ -234,7 +234,7 @@ class	PropRKN4 : public PropClass<4, PROP_NORMAL, pot> {
 				{
 					if (field->LowMemGPU())
 						this->setBaseName("Lowmem G RKN4 ");
-					else 
+					else
 						this->setBaseName("RKN4 ");
 				}
 			break;
@@ -534,7 +534,7 @@ void	tunePropagator (Scalar *field) {
 		// if (pType == PROP_BASE)
 		// 	sprintf (tuneName, "%s/tuneCache.dat", wisDir);
 		if (pType & PROP_BASE)
-			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+			sprintf (tuneName, "%s/tuneCache_2.dat", wisDir);
 
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
 LogMsg(VERB_HIGH,"[tp] new cache!!");
@@ -748,7 +748,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 		char tuneName[2048];
 		// sprintf (tuneName, "%s/tuneCache.dat", wisDir);
 		if (pType & PROP_BASE){
-			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+			sprintf (tuneName, "%s/tuneCache_2.dat", wisDir);
 			LogMsg(VERB_HIGH,"[tp] tuneName = %s",tuneName);
 		}
 		// We distinguish between opening and appending a new line

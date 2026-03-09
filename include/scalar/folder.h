@@ -25,10 +25,10 @@
 		void	unfoldField();
 
 		template<typename cFloat>
-		void	unfoldField2D(const size_t cZ);
+		void	unfoldField2D(const size_t cZ, const int nf = 0);
 
 		template<typename cFloat>
-		void	unfoldField2DYZ(const size_t sX);
+		void	unfoldField2DYZ(const size_t sX, const int nf = 0);
 
 		template<typename cFloat>
 		void	foldM2();
@@ -44,6 +44,6 @@
 			 Folder(Scalar *scalar);
 			~Folder() {};
 
-		void	operator()(FoldType fType, size_t cZ=0);
+		void	operator()(FoldType fType, size_t cZ=0, const int nf = 0);
 	};
 #endif

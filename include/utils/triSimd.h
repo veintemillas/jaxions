@@ -111,6 +111,8 @@ constexpr _MInt_  two       = {  8589934594,  8589934594,  8589934594,  85899345
 constexpr _MHnt_  hOne      = {  4294967297,  4294967297,  4294967297,  4294967297 };
 constexpr _MHnt_  hTwo      = {  8589934594,  8589934594,  8589934594,  8589934594 };
 constexpr _MHnt_  iZerh     = {           0,           0,           0,           0 };
+constexpr _MData_ cMulSgn   = {          1.,         -1.,          1.,          -1.,         1.,          -1.,         1.,          -1.};
+
 #elif   defined(__AVX__)
 constexpr _MData_ rPid	    = { M_1_PI/(1<<24), M_1_PI/(1<<24), M_1_PI/(1<<24), M_1_PI/(1<<24) };
 constexpr _MData_ dPid	    = { M_1_PI/(1<<23), M_1_PI/(1<<23), M_1_PI/(1<<23), M_1_PI/(1<<23) };
@@ -145,6 +147,7 @@ constexpr _MData_ s6d       = {        s6_d,        s6_d,        s6_d,        s6
 constexpr _MData_ s7d       = {        s7_d,        s7_d,        s7_d,        s7_d };
 constexpr _MData_ s8d       = {        s8_d,        s8_d,        s8_d,        s8_d };
 constexpr _MInt_  iZero     = {           0,           0,           0,           0 };
+constexpr _MData_ cMulSgn   = {          1.,         -1.,          1.,          -1.};
 constexpr _MInt_  one       = {  4294967297,  4294967297,  4294967297,  4294967297 };
 constexpr _MInt_  two       = {  8589934594,  8589934594,  8589934594,  8589934594 };
 constexpr _MHnt_  iZerh     = {           0,           0 };
@@ -180,6 +183,7 @@ constexpr _MData_ s6d       = {        s6_d,        s6_d };
 constexpr _MData_ s7d       = {        s7_d,        s7_d };
 constexpr _MData_ s8d       = {        s8_d,        s8_d };
 constexpr _MInt_  iZero     = {           0,           0 };
+constexpr _MData_ cMulSgn   = {          1.,         -1. };
 constexpr _MInt_  one       = {  4294967297,  4294967297 };
 constexpr _MInt_  two       = {  8589934594,  8589934594 };
 #endif
@@ -640,6 +644,7 @@ constexpr _MData_ s2f       = {        s2_f,        s2_f,        s2_f,        s2
 				       s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f };
 constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,
 				       s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f };
+constexpr _MData_ cMulSgnf  = { 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f, 1.f,-1.f };
 #elif   defined(__AVX__)
 constexpr _MData_ oPif      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
 constexpr _MData_ zeroNegf  = {       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f,       -0.0f };
@@ -663,6 +668,7 @@ constexpr _MData_ s0f       = {        s0_f,        s0_f,        s0_f,        s0
 constexpr _MData_ s1f       = {        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f,        s1_f };
 constexpr _MData_ s2f       = {        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f,        s2_f };
 constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f,        s3_f };
+constexpr _MData_ cMulSgnf  = {         1.f,        -1.f,         1.f,        -1.f,         1.f,        -1.f,         1.f,        -1.f};
 #else
 constexpr _MData_ oPif      = {     1./M_PI,     1./M_PI,     1./M_PI,     1./M_PI };
 constexpr _MData_ zeroNegf  = {       -0.0f,       -0.0f,       -0.0f,       -0.0f };
@@ -681,6 +687,7 @@ constexpr _MData_ s0f       = {        s0_f,        s0_f,        s0_f,        s0
 constexpr _MData_ s1f       = {        s1_f,        s1_f,        s1_f,        s1_f };
 constexpr _MData_ s2f       = {        s2_f,        s2_f,        s2_f,        s2_f };
 constexpr _MData_ s3f       = {        s3_f,        s3_f,        s3_f,        s3_f };
+constexpr _MData_ cMulSgnf  = {         1.f,        -1.f,         1.f,        -1.f};
 #endif
 
 /*	Sleef	*/
@@ -966,6 +973,106 @@ inline _MData_	opCode(vqcd0_ps, const _MData_ &x)
 	return	opCode(mul_ps, opCode(shuffle_ps, x, x, 0b10110001), opCode(shuffle_ps, x, x, 0b11110101));
 #endif
 }
+
+/* swap re<->im inside each complex pair: [re,im,re,im,...] -> [im,re,im,re,...]*/
+inline _MData_ opCode(cswap_ps, const _MData_ &x)
+{
+#if defined(__AVX__)
+    return opCode(permute_ps, x, 0b10110001);
+#else
+    return opCode(shuffle_ps, x, x, 0b10110001);
+#endif
+}
+
+inline _MData_ opCode(cmul_ps, const _MData_ &a, const _MData_ &b)
+{
+#if defined(__AVX__)
+    _MData_ brbr = opCode(permute_ps, b, 0b10100000);
+    _MData_ bibi = opCode(permute_ps, b, 0b11110101);
+#else
+    _MData_ brbr = opCode(shuffle_ps, b, b, 0b10100000);
+    _MData_ bibi = opCode(shuffle_ps, b, b, 0b11110101);
+#endif
+
+    _MData_ t1 = opCode(mul_ps, a, brbr);
+    _MData_ t2 = opCode(mul_ps, opCode(cswap_ps, a), bibi);
+
+#if defined(__AVX512F__) || defined(__FMA__)
+    return opCode(fmadd_ps, cMulSgnf, t2, t1);
+#else
+    return opCode(add_ps, t1, opCode(mul_ps, cMulSgnf, t2));
+#endif
+}
+
+/* [re,im,re,im,...] -> [re,re,re,re,...] (pairwise) */
+inline _MData_ opCode(dupRe_ps, const _MData_ &x)
+{
+#if defined(__AVX__)
+    return opCode(permute_ps, x, 0b10100000);   // (0,0,2,2,4,4,...)
+#else
+    return opCode(shuffle_ps, x, x, 0b10100000);
+#endif
+}
+
+/* [re,im,re,im,...] -> [im,im,im,im,...] (pairwise) */
+inline _MData_ opCode(dupIm_ps, const _MData_ &x)
+{
+#if defined(__AVX__)
+    return opCode(permute_ps, x, 0b11110101);   // (1,1,3,3,5,5,...)
+#else
+    return opCode(shuffle_ps, x, x, 0b11110101);
+#endif
+}
+
+/* returns Im(f1^2 * f2) replicated in both lanes of each complex pair */
+inline _MData_ opCode(im_f1sq_f2_ps, const _MData_ &f1, const _MData_ &f2)
+{
+    // f1 = [a,b,...], f2 = [c,d,...]
+    // a2,b2 in lanes
+    _MData_ a2b2 = opCode(mul_ps, f1, f1);               // [a^2, b^2, ...]
+    _MData_ diff = opCode(sub_ps, a2b2, opCode(cswap_ps, a2b2)); // [a^2-b^2, b^2-a^2,...]
+    _MData_ a2mb2 = opCode(dupRe_ps, diff);              // [a^2-b^2, a^2-b^2, ...]
+
+    // ab from your vqcd0_ps: [b^2, a*b] per pair
+    _MData_ ab   = opCode(dupIm_ps, opCode(vqcd0_ps, f1));  // [ab,ab,...]
+    _MData_ twoab = opCode(mul_ps, ab, opCode(set1_ps, 2.f));
+
+    _MData_ c = opCode(dupRe_ps, f2);                    // [c,c,...]
+    _MData_ d = opCode(dupIm_ps, f2);                    // [d,d,...]
+
+#if defined(__AVX512F__) || defined(__FMA__)
+    // S = (2ab)*c + (a^2-b^2)*d
+    return opCode(fmadd_ps, a2mb2, d, opCode(mul_ps, twoab, c));
+#else
+    return opCode(add_ps, opCode(mul_ps, twoab, c), opCode(mul_ps, a2mb2, d));
+#endif
+}
+
+// /* X = x_r,x_i
+//    Y = y_r,y_i
+//    returns x_ry_r-x_iy_i, x_r y_i + y_r x_i ... */
+// inline _MData_ opCode(cmul_ps, const _MData_ &a, const _MData_ &b)
+// {
+//   // brbr = [br0, br0, br1, br1, ...]
+// #if defined(__AVX__)
+//   _MData_ brbr = opCode(permute_ps, b, 0b10100000);
+//   _MData_ bibi = opCode(permute_ps, b, 0b11110101);
+// #else
+//   _MData_ brbr = opCode(shuffle_ps, b, b, 0b10100000);
+//   _MData_ bibi = opCode(shuffle_ps, b, b, 0b11110101);
+// #endif
+//
+//   // a * br  gives [ar*br, ai*br, ...]
+//   _MData_ p1 = opCode(mul_ps, a, brbr);
+//
+//   // swap(a) * bi gives [ai*bi, ar*bi, ...]
+//   _MData_ asw = opCode(cswap_ps, a);
+//   _MData_ p2  = opCode(mul_ps, asw, bibi);
+//
+// // addsub: even lanes subtract, odd lanes add
+// // => [ar*br - ai*bi, ai*br + ar*bi, ...]
+//   return opCode(addsub_ps, p1, p2);
+// }
 
 // One-step Newton–Raphson refinement of rsqrt
 // returns ~22–23 bits accuracy, good for your normalization pass.

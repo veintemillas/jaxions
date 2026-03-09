@@ -42,11 +42,6 @@ class	Plot2D():
 		else :
 			self.R = self.z
 
-		if (map == 'Moore'):
-			self.Lx  = fileHdf5["/"].attrs.get("Size")
-			self.Ly  = len(fileHdf5['m'+field][()])//self.Lx
-			self.Lz  = fileHdf5["/"].attrs.get("Depth")
-
 		fileHdf5.close()
 
 		self.allData = []
@@ -89,14 +84,6 @@ class	Plot2D():
 			else :
 				R = zR
 
-			if (map == 'Moore'):
-				Lx  = fileHdf5["/"].attrs.get("Size")
-				Ly  = len(fileHdf5['m'+field][()])//Lx
-				Lz  = fileHdf5["/"].attrs.get("Depth")
-
-			# if 'R' in fileHdf5:
-			# 	R = fileHdf5["/"].attrs.get("R")
-
 			L1=Lx
 			L2=Ly
 
@@ -113,50 +100,18 @@ class	Plot2D():
 
 
 			if fl == "Saxion":
-				mTmp  = fileHdf5[map]['m'+field][()].reshape(L2,L1,2)
+				mTmp1  = fileHdf5[map]['m'][()].reshape(L2,L1,2)
+				mTmp2  = fileHdf5[map]['m2'][()].reshape(L2,L1,2)
 				# remove shift?
 				shift = fileHdf5["/potential"].attrs.get("Shift")
-				mTmp[:,:,0] -= shift*R
-				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0])+np.pi)/(2.*np.pi)
-				if sys.argv[-1] == 'vel':
-					vTmp  = fileHdf5[map]['v'+field][()].reshape(L2,L1,2)
-					rData = vTmp[:,:,1]*mTmp[:,:,0]-vTmp[:,:,0]*mTmp[:,:,1]
-					rMax = np.amax(rData)
-				else :
-					rData = np.sqrt(mTmp[:,:,0]**2 + mTmp[:,:,1]**2)
-					rMax = np.amax(rData)
-					rData = rData/R*0.75
-
-			elif fl == "Axion":
-				if ('map' in fileHdf5):
-					aData = fileHdf5[map]['m'][()].reshape(L2,L1)
-					aData = np.mod(aData/R,2*np.pi)/(2*np.pi) + 0.5 # mapped into (0.5,1.5)
-					aData = aData*(aData<=1) + (aData-1)*(aData>1)
-					rData = fileHdf5[map]['v'][()].reshape(L2,L1)
-					tpyVa = 3*rData.std()
-					rData = 1+rData/tpyVa
-					rMax  = R
-
-				# For Moore's Axion and velocity
-				elif ('m' in fileHdf5):
-					aData = fileHdf5['m'][()].reshape(L2,L1)
-					aData = np.mod(aData + np.pi, 2*np.pi)/(2*np.pi)
-					rData = fileHdf5['v'][()].reshape(L2,L1)
-					rMax = np.amax(rData)
-			elif fl == "Naxion":
-				mTmp  = fileHdf5[map]['m'][()].reshape(L2,L1,2)
-				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
-				rData = np.sqrt((mTmp[:,:,0]**2 + mTmp[:,:,1]**2)) # /(mAmA*R**3))
+				# mTmp[:,:,0] -= shift*R
+				# mTmp1[:,:,0] -= shift*R
+				aData = ((2*np.arctan2(mTmp1[:,:,1], mTmp1[:,:,0])
+				          + np.arctan2(mTmp2[:,:,1], mTmp2[:,:,0])+np.pi)%(2*np.pi))/(2.*np.pi)
+				rData = np.sqrt((mTmp1[:,:,0]**2 + mTmp1[:,:,1]**2)*(mTmp2[:,:,0]**2 + mTmp2[:,:,1]**2))/R
 				rMax = np.amax(rData)
-				aData = (np.arctan2(mTmp[:,:,1], mTmp[:,:,0]) + 2*np.pi)/(4.*np.pi)
-			elif fl == "Paxion":
-				mTmp1  = fileHdf5[map]['m'][()].reshape(L2,L1)
-				mTmp2  = fileHdf5[map]['v'][()].reshape(L2,L1)
-				mAmA  = fileHdf5["/"].attrs.get("Axion mass")
-				rData = np.sqrt((mTmp1[:,:]**2 + mTmp2[:,:]**2)) #/(mAmA*R**3))
-				rMax = np.amax(rData)
-				rData = rData/rMax
-				aData = (np.arctan2(mTmp2[:,:], mTmp1[:,:]) + np.pi)/(2.*np.pi)
+				rData = rData/R*0.75
+
 
 			else:
 				print("Unrecognized field type %s" % fl)
@@ -376,10 +331,5 @@ if	__name__ == '__main__':
 	elif sys.argv[-1] == 'Moore':
 		map = 'Moore'
 		print('mode Moore')
-	enz9 = ''
-	if len(sys.argv) > 1:
-		if sys.argv[-2] == '2':
-			enz9 = '2'
-			print('second scalar!------------------------------------------------------------------------')
-	p = Plot2D(map,enz9)
+	p = Plot2D(map)
 	p.start()

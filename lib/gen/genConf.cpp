@@ -2119,6 +2119,22 @@ void	ConfGenerator::axby(FieldIndex ftipo1, FieldIndex ftipo2, double a, double 
 	return;
 } //end mulmul
 
+/* This function checks if we have two complex scalars
+and if so moves f1 to f2 and returns 1,
+otherwise doesn't do a thing */
+int	scalar1toscalar2	(Scalar *field)
+{
+	if (field->nScalars() == 2)
+	{
+		memmove(field->mCpu2() ,field->mCpu() ,field->eSize()*field->DataSize());
+		memmove(field->vCpu2() ,field->vCpu() , field->Size()*field->DataSize());
+		memmove(field->m2Cpu2(),field->m2Cpu(),field->eSize()*field->DataSize());
+		return 1;
+	}
+	else
+		return 0;
+}
+
 void	genConf	(Cosmos *myCosmos, Scalar *field)
 {
 	LogMsg  (VERB_NORMAL, "[GEN] Called configurator generator II");
@@ -2129,17 +2145,24 @@ void	genConf	(Cosmos *myCosmos, Scalar *field)
 	switch (field->Device())
 	{
 		case DEV_CPU:
+			{
 			cGen->runCpu ();
-			field->exchangeGhosts(FIELD_M);
+			int twoscalars = scalar1toscalar2(field);
+			if (twoscalars)
+				cGen->runCpu ();
+			// field->exchangeGhosts(FIELD_M);
+			}
 			break;
 
 		case DEV_GPU:
+			{
 			// cGen->runGpu ();
 			// field->exchangeGhosts(FIELD_M);
 			field->setDev(DEV_CPU);
 			cGen->runCpu ();
 			field->setDev(DEV_GPU);
 			field->transferDev(FIELD_MV);
+			}
 			break;
 
 		default:

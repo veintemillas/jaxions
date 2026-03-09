@@ -24,34 +24,36 @@ void	Folder::foldField()
 	if (field->Folded() || field->Device() == DEV_GPU)
 		return;
 
-	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
-	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
-	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
-
-	fSize = field->DataSize();
-	shift = field->DataAlign()/fSize;
-
-	LogMsg (VERB_NORMAL, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
-
-	for (size_t iz=0; iz < Lz; iz++)
+	for (int nf =0; nf < field->nScalars();nf++)
 	{
-		memcpy (mg1, &m[n2*iz], sizeof(cFloat)*n2);
-		memcpy (mg2, &v[n2*iz], sizeof(cFloat)*n2);
+		cFloat *mg1 = static_cast<cFloat *> ((void *) nf==0 ? field->mFrontGhost():field->mFrontGhost2());
+		cFloat *mg2 = static_cast<cFloat *> ((void *) nf==0 ? field->mBackGhost() :field->mBackGhost2()) ;
+		cFloat *m   = static_cast<cFloat *> ((void *) nf==0 ? field->mStart()     :field->mStart2())     ;
+	 	cFloat *v   = static_cast<cFloat *> ((void *) nf==0 ? field->vStart()     :field->vStart2())     ;
 
-		#pragma omp parallel for schedule(static)
-		for (size_t iy=0; iy < n1/shift; iy++)
-			for (size_t ix=0; ix < n1; ix++)
-				for (size_t sy=0; sy<shift; sy++)
-				{
-					size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-					size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+		fSize = field->DataSize();
+		shift = field->DataAlign()/fSize;
 
-					m[dIdx] = mg1[oIdx];
-					v[dIdx] = mg2[oIdx];
-				}
+		LogMsg (VERB_NORMAL, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+
+		for (size_t iz=0; iz < Lz; iz++)
+		{
+			memcpy (mg1, &m[n2*iz], sizeof(cFloat)*n2);
+			memcpy (mg2, &v[n2*iz], sizeof(cFloat)*n2);
+
+			#pragma omp parallel for schedule(static)
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
+						size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+
+						m[dIdx] = mg1[oIdx];
+						v[dIdx] = mg2[oIdx];
+					}
+		}
 	}
-
 	field->setFolded(true);
 	LogMsg (VERB_HIGH, "[Folder] Field folded");
 
@@ -64,34 +66,36 @@ void	Folder::unfoldField()
 	if (!field->Folded() || field->Device() == DEV_GPU)
 		return;
 
-	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
-	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
-	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
-
-	fSize = field->DataSize();
-	shift = field->DataAlign()/fSize;
-
-	LogMsg (VERB_NORMAL, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
-
-	for (size_t iz=0; iz < Lz; iz++)
+	for (int nf =0; nf < field->nScalars();nf++)
 	{
-		memcpy (mg1, m + n2*iz, fSize*n2);
-		memcpy (mg2, v + n2*iz, fSize*n2);
+		cFloat *mg1 = static_cast<cFloat *> ((void *) nf==0 ? field->mFrontGhost():field->mFrontGhost2());
+		cFloat *mg2 = static_cast<cFloat *> ((void *) nf==0 ? field->mBackGhost() :field->mBackGhost2()) ;
+		cFloat *m   = static_cast<cFloat *> ((void *) nf==0 ? field->mStart()     :field->mStart2())     ;
+	 	cFloat *v   = static_cast<cFloat *> ((void *) nf==0 ? field->vStart()     :field->vStart2())     ;
 
-		#pragma omp parallel for schedule(static)
-		for (size_t iy=0; iy < n1/shift; iy++)
-			for (size_t ix=0; ix < n1; ix++)
-				for (size_t sy=0; sy<shift; sy++)
-				{
-					size_t oIdx = iy*n1*shift + ix*shift + sy;
-					size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+		fSize = field->DataSize();
+		shift = field->DataAlign()/fSize;
 
-					m[dIdx]    = mg1[oIdx];
-					v[dIdx]    = mg2[oIdx];
-				}
+		LogMsg (VERB_NORMAL, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+
+		for (size_t iz=0; iz < Lz; iz++)
+		{
+			memcpy (mg1, m + n2*iz, fSize*n2);
+			memcpy (mg2, v + n2*iz, fSize*n2);
+
+			#pragma omp parallel for schedule(static)
+			for (size_t iy=0; iy < n1/shift; iy++)
+				for (size_t ix=0; ix < n1; ix++)
+					for (size_t sy=0; sy<shift; sy++)
+					{
+						size_t oIdx = iy*n1*shift + ix*shift + sy;
+						size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+
+						m[dIdx]    = mg1[oIdx];
+						v[dIdx]    = mg2[oIdx];
+					}
+		}
 	}
-
 	field->setFolded(false);
  	LogMsg (VERB_HIGH, "[Folder] Field unfolded");
 
@@ -103,19 +107,19 @@ void	Folder::unfoldField()
 
 
 template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
-void	Folder::unfoldField2D (const size_t sZ)
+void	Folder::unfoldField2D (const size_t sZ, const int nf)
 {
 	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
 		return;
 
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
 	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
-	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
+	cFloat *m   = static_cast<cFloat *> ((void *) nf==0 ? field->mStart():field->mStart2())     ;
+ 	cFloat *v   = static_cast<cFloat *> ((void *) nf==0 ? field->vStart():field->vStart2())     ;
 
 	if (!field->Folded())
 	{
-		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying data to ghost zones");LogFlush();
+		LogMsg (VERB_HIGH, "unfoldField2D (field%d) called in an unfolded configuration, copying data to ghost zones",nf);LogFlush();
 		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
 		memcpy (mg2, &v[n2*sZ], sizeof(cFloat)*n2);
 		return;
@@ -124,7 +128,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);LogFlush();
+	LogMsg (VERB_HIGH, "Calling unfoldField2D (field%d) mAlign=%d, fSize=%d, shift=%d", nf, field->DataAlign(), fSize, shift);LogFlush();
 
 	#pragma omp parallel for schedule(static)
 	for (size_t iy=0; iy < n1/shift; iy++)
@@ -150,22 +154,22 @@ void	Folder::unfoldField2D (const size_t sZ)
 
 // unfolds a X=constant slice
 template<typename cFloat>
-void	Folder::unfoldField2DYZ (const size_t sX)
+void	Folder::unfoldField2DYZ (const size_t sX, const int nf)
 {
 	if ((sX < 0) || (sX > field->Length()) || field->Device() == DEV_GPU)
 		return;
 
 	cFloat *mg1 = static_cast<cFloat *> (field->mFrontGhost());
 	cFloat *mg2 = static_cast<cFloat *> (field->mBackGhost());
-	cFloat *m  = static_cast<cFloat *> (field->mStart());
-	cFloat *v  = static_cast<cFloat *> (field->vStart());
+	cFloat *m  = static_cast<cFloat *> (nf==0 ? field->mStart() : field->mStart2()) ;
+	cFloat *v  = static_cast<cFloat *> (nf==0 ? field->vStart() : field->vStart2()) ;
 
 	int z0 = 0;
 	size_t zT = field->Depth();
 
 	if (!field->Folded())
 	{
-		LogMsg (VERB_HIGH, "[uf2X] unfoldField2D called in an unfolded configuration, copying data to ghost zones");
+		LogMsg (VERB_HIGH, "[uf2X] unfoldField2D (field%d)called in an unfolded configuration, copying data to ghost zones",nf);
 		LogFlush();
 		// memcpy ( m,        &m[(sZ+1)*n2], sizeof(cFloat)*n2);
 		// memcpy (&m[n2+n3], &v[sZ*n2],     sizeof(cFloat)*n2);
@@ -189,7 +193,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	LogMsg (VERB_HIGH, "[uf2X] Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	LogMsg (VERB_HIGH, "[uf2X] Calling unfoldField2D (field%d) mAlign=%d, fSize=%d, shift=%d", nf,field->DataAlign(), fSize, shift);
 	LogFlush();
 
 	#pragma omp parallel for schedule(static)
@@ -206,7 +210,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 			}
 			return;
 
-	LogMsg (VERB_HIGH, "[uf2X] Slice unfolded");
+	LogMsg (VERB_HIGH, "[uf2X] Slice unfolded (field%d)",nf);
 	LogFlush();
 	return;
 }
@@ -332,7 +336,7 @@ void	Folder::unfoldM22D (const size_t sZ)
 
 /* basic operator */
 
-void	Folder::operator()(FoldType fType, size_t cZ)
+void	Folder::operator()(FoldType fType, size_t cZ, int nf)
 {
 	// Careful here, GPUS might want to call CPU routines
 	if (field->Device() == DEV_GPU)
@@ -474,14 +478,14 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					{
 						case	FIELD_SAXION:
 						case	FIELD_NAXION:
-							unfoldField2D<complex<double>>(cZ);
+							unfoldField2D<complex<double>>(cZ,nf);
 							break;
 
 						case	FIELD_AXION_MOD:
 						case	FIELD_AXION:
 						case	FIELD_WKB:
 						case  FIELD_PAXION:
-							unfoldField2D<double>(cZ);
+							unfoldField2D<double>(cZ,nf);
 							break;
 
 						default:
@@ -496,14 +500,14 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					{
 						case	FIELD_SAXION:
 						case	FIELD_NAXION:
-							unfoldField2D<complex<float>>(cZ);
+							unfoldField2D<complex<float>>(cZ,nf);
 							break;
 
 						case	FIELD_AXION_MOD:
 						case	FIELD_AXION:
 						case	FIELD_WKB:
 						case  FIELD_PAXION:
-							unfoldField2D<float>(cZ);
+							unfoldField2D<float>(cZ,nf);
 							break;
 
 						default:
@@ -531,14 +535,14 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					{
 						case	FIELD_SAXION:
 						case	FIELD_NAXION:
-							unfoldField2DYZ<complex<double>>(cZ);
+							unfoldField2DYZ<complex<double>>(cZ,nf);
 							break;
 
 						case	FIELD_AXION_MOD:
 						case	FIELD_AXION:
 						case	FIELD_WKB:
 						case  FIELD_PAXION:
-							unfoldField2DYZ<double>(cZ);
+							unfoldField2DYZ<double>(cZ,nf);
 							break;
 
 						default:
@@ -553,14 +557,14 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					{
 						case	FIELD_SAXION:
 						case	FIELD_NAXION:
-							unfoldField2DYZ<complex<float>>(cZ);
+							unfoldField2DYZ<complex<float>>(cZ,nf);
 							break;
 
 						case	FIELD_AXION_MOD:
 						case	FIELD_AXION:
 						case	FIELD_WKB:
 						case  FIELD_PAXION:
-							unfoldField2DYZ<float>(cZ);
+							unfoldField2DYZ<float>(cZ,nf);
 							break;
 
 						default:
@@ -744,7 +748,7 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 					default:
 						break;
 				}
-				
+
 				break;
 
 		default:

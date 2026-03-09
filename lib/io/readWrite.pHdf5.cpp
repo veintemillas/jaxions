@@ -230,8 +230,8 @@ void	enableErrorStack	()
 
 void	writeConf (Scalar *axion, int index, const bool restart)
 {
-	hid_t	file_id, mset_id, vset_id, plist_id, chunk_id;
-	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
+	hid_t	file_id, mset1_id, mset2_id, vset1_id,vset2_id, plist_id, chunk_id;
+	hid_t	mSpace1,mSpace2, vSpace1,vSpace2, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
 	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], vPQStr[32], icStr[16], smStr[16];
@@ -332,6 +332,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	hsize_t totlZ = axion->TotalDepth();
 	hsize_t tmpS  = axion->Length();
 
+	hsize_t nScalars  = axion->nScalars();
+
 	switch (axion->Field())
 	{
 		case 	FIELD_SX_RD:
@@ -347,7 +349,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case 	FIELD_AX_MOD_RD:
 		case	FIELD_AXION_MOD:
 		{
-			total = tmpS*tmpS*totlZ;
+			total = tmpS*tmpS*totlZ ;
 			slab  = axion->Surf();
 
 			sprintf(fStr, "Axion Mod");
@@ -457,6 +459,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	double msa = axion->Msa();
 	double few = axion->BckGnd()->Frw();
 
+	writeAttribute(file_id, &nScalars, "nScalars", H5T_NATIVE_UINT);
+
 	writeAttribute(file_id, fStr,   "Field type",    attr_type);
 	writeAttribute(file_id, prec,   "Precision",     attr_type);
 	writeAttribute(file_id, &tmpS,  "Size",          H5T_NATIVE_UINT);
@@ -489,7 +493,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	double zthres   = axion->BckGnd()->ZThRes();
 	double zrestore = axion->BckGnd()->ZRestore();
 	double lz2e     = axion->BckGnd()->LamZ2Exp();
+	double hera     = axion->BckGnd()->S2beta();
 
+	writeAttribute(vGrp_id, &hera,    "sin2alpha",     H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &lStr,    "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,      "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &lz2e,    "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
@@ -504,6 +510,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	writeAttribute(vGrp_id, &zthres,  "z Threshold",   H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &zrestore,"z Restore",     H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &nQcdr,   "nQcd2",         H5T_NATIVE_DOUBLE);
+
 
 	H5Gclose(vGrp_id);
 
@@ -683,16 +690,20 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	}
 
 	/*	Create a dataset for the whole axion data	*/
-	char mCh[8] = "/m";
-	char vCh[8] = "/v";
+	char mCh1[8] = "/m";
+	char vCh1[8] = "/v";
+	char mCh2[8] = "/m2";
+	char vCh2[8] = "/v2";
 
-	mset_id = H5Dcreate (file_id, mCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-	if (axion->Field() != FIELD_NAXION)
-		vset_id = H5Dcreate (file_id, vCh, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
-
+	mset1_id = H5Dcreate (file_id, mCh1, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	mset2_id = H5Dcreate (file_id, mCh2, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	if (axion->Field() != FIELD_NAXION){
+		vset1_id = H5Dcreate (file_id, vCh1, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+		vset2_id = H5Dcreate (file_id, vCh2, dataType, totalSpace, H5P_DEFAULT, chunk_id, H5P_DEFAULT);
+	}
 	commSync();
 
-	if ((mset_id < 0) || (vset_id < 0))
+	if ((mset1_id < 0) || (vset1_id < 0) || (mset2_id < 0) || (vset2_id < 0) )
 	{
 		LogError ("Error creating datasets");
 		exit (0);
@@ -700,9 +711,12 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	/*	We read 2D slabs as a workaround for the 2Gb data transaction limitation of MPIO	*/
 
-	mSpace = H5Dget_space (mset_id);
-	if (axion->Field() != FIELD_NAXION)
-		vSpace = H5Dget_space (vset_id);
+	mSpace1 = H5Dget_space (mset1_id);
+	mSpace2 = H5Dget_space (mset2_id);
+	if (axion->Field() != FIELD_NAXION){
+		vSpace1 = H5Dget_space (vset1_id);
+		vSpace2 = H5Dget_space (vset2_id);
+		}
 	memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
 
 	commSync();
@@ -713,34 +727,43 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	{
 		/*	Select the slab in the file	*/
 		offset = (((hsize_t) (myRank*axion->Depth()))+zDim)*slab;
-		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-		if (axion->Field() != FIELD_NAXION)
-			H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-
+		H5Sselect_hyperslab(mSpace1, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+		H5Sselect_hyperslab(mSpace2, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+		if (axion->Field() != FIELD_NAXION){
+			H5Sselect_hyperslab(vSpace1, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+			H5Sselect_hyperslab(vSpace2, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+		}
 		/*	Write raw data	*/
-		auto mErr = H5Dwrite (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
-		auto vErr = mErr;
-		if (axion->Field() != FIELD_NAXION)
-			vErr = H5Dwrite (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> (axion->vStart())  +slab*zDim*dataSize));
-
-		if (mErr < 0)
+		auto mErr1 = H5Dwrite (mset1_id, dataType, memSpace, mSpace1, plist_id, (static_cast<char *> (axion->mStart())+slab*zDim*dataSize));
+		auto mErr2 = H5Dwrite (mset2_id, dataType, memSpace, mSpace2, plist_id, (static_cast<char *> (axion->mStart2())+slab*zDim*dataSize));
+		auto vErr1 = mErr1;
+		auto vErr2 = mErr2;
+		if (axion->Field() != FIELD_NAXION){
+			vErr1 = H5Dwrite (vset1_id, dataType, memSpace, vSpace1, plist_id, (static_cast<char *> (axion->vStart())  +slab*zDim*dataSize));
+			vErr1 = H5Dwrite (vset2_id, dataType, memSpace, vSpace1, plist_id, (static_cast<char *> (axion->vStart2())  +slab*zDim*dataSize));
+		}
+		if ((mErr1 < 0) || (mErr2 < 0))
 		{
 			LogError ("Error writing dataset");
 			exit(0);
 		}
 		if (axion->Field() != FIELD_NAXION)
-			if (vErr < 0){
+			if ((vErr1 < 0)||(vErr2 < 0)){
 				LogError ("Error writing dataset"); exit(0);}
 
 		//commSync();
 	}
 
 	/*	Close the dataset	*/
-	H5Sclose (mSpace);
-	H5Dclose (mset_id);
+	H5Sclose (mSpace1);
+	H5Sclose (mSpace2);
+	H5Dclose (mset1_id);
+	H5Dclose (mset2_id);
 	if (axion->Field() != FIELD_NAXION){
-		H5Sclose (vSpace);
-		H5Dclose (vset_id);}
+		H5Sclose (vSpace1);
+		H5Sclose (vSpace2);
+		H5Dclose (vset1_id);
+		H5Dclose (vset2_id);}
 
 	H5Sclose (memSpace);
 
@@ -751,9 +774,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	H5Fclose (file_id);
 
 	prof.stop();
-	prof.add(std::string("Write configuration"), 0., (2.*total*dataSize + 81.)*1e-9);
+	prof.add(std::string("Write configuration"), 0., (nScalars*2.*total*dataSize + 81.)*1e-9);
 
-	LogMsg (VERB_NORMAL, "Written %lu bytes", total*dataSize*2 + 81);
+	LogMsg (VERB_NORMAL, "Written %lu bytes", nScalars*total*dataSize*2 + 81);
 
 	/*	Fold back the field	*/
 
@@ -780,8 +803,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	{
 
 		/* Some definitions */
-		hid_t	file_id, mset_id, vset_id, plist_id;
-		hid_t	mSpace, vSpace, memSpace, dataType;
+		hid_t	file_id, plist_id, mset1_id, vset1_id,mset2_id, vset2_id;
+		hid_t	mSpace1, vSpace1, mSpace2, vSpace2, memSpace, dataType;
 		hid_t	attr_type;
 		hsize_t	slab, offset;
 		FieldPrecision	precision;
@@ -835,6 +858,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		//  --------------
 		//  (do not change, except precision, which does automatically)
 
+			uint nscalars;
+			readAttribute (file_id, &nscalars, "nScalars",  H5T_NATIVE_UINT);
 
 			double	zTmp, RTmp, maaR, fTmp;
 			uint	tStep, cStep, totlZ;
@@ -1011,6 +1036,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				//if (strcmp(fStr, "Paxion"))
 				//{
 				// note: if no value is read in commandline, Lambda() gives -1.e8
+
+				double sin2alpha;
+				readAttribute (vGrp_id, &sin2alpha, "sin2alpha",  H5T_NATIVE_DOUBLE);
+				myCosmos->SetS2beta(sin2alpha);
+
 				if (myCosmos->Lambda() == -1.e8) {
 					double	lda, lz2e;
 
@@ -1343,6 +1373,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		ictemp.cType    = cType;
 		ictemp.smvarType= smvarType;
 		myCosmos->SetICData(ictemp);
+		myCosmos->SetNumScalars((size_t) nscalars);
 
 		size_t Nz = Nz_read/zGrid;
 
@@ -1447,15 +1478,23 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		/*	Open a dataset for the whole axion data	*/
 
-		if ((mset_id = H5Dopen (file_id, "/m", H5P_DEFAULT)) < 0)
+		if ((mset1_id = H5Dopen (file_id, "/m", H5P_DEFAULT)) < 0)
 			LogError ("Error opening dataset");
 
-		if ((vset_id = H5Dopen (file_id, "/v", H5P_DEFAULT)) < 0)
+		if ((vset1_id = H5Dopen (file_id, "/v", H5P_DEFAULT)) < 0)
+			LogError ("Error opening dataset");
+
+		if ((mset2_id = H5Dopen (file_id, "/m2", H5P_DEFAULT)) < 0)
+			LogError ("Error opening dataset");
+
+		if ((vset2_id = H5Dopen (file_id, "/v2", H5P_DEFAULT)) < 0)
 			LogError ("Error opening dataset");
 
 		memSpace = H5Screate_simple(1, &slab, NULL);	// Slab
-		mSpace   = H5Dget_space (mset_id);
-		vSpace   = H5Dget_space (vset_id);
+		mSpace1   = H5Dget_space (mset1_id);
+		vSpace1   = H5Dget_space (vset1_id);
+		mSpace2   = H5Dget_space (mset2_id);
+		vSpace2   = H5Dget_space (vset2_id);
 
 		for (hsize_t zDim = 0; zDim < Nz ; zDim++)
 		{
@@ -1464,15 +1503,19 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 			/*	Select the slab in the file	*/
 			offset = (((hsize_t) (myRank*Nz))+zDim)*slab;
-			H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
-			H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+			H5Sselect_hyperslab(mSpace1, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+			H5Sselect_hyperslab(vSpace1, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+			H5Sselect_hyperslab(mSpace2, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
+			H5Sselect_hyperslab(vSpace2, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
 			/*	Read raw data	*/
 
-			auto mErr = H5Dread (mset_id, dataType, memSpace, mSpace, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
-			auto vErr = H5Dread (vset_id, dataType, memSpace, vSpace, plist_id, (static_cast<char *> ((*axion)->vStart())+slab*zDim*dataSize));
+			auto mErr1 = H5Dread (mset1_id, dataType, memSpace, mSpace1, plist_id, (static_cast<char *> ((*axion)->mStart())+slab*zDim*dataSize));
+			auto vErr1 = H5Dread (vset1_id, dataType, memSpace, vSpace1, plist_id, (static_cast<char *> ((*axion)->vStart())+slab*zDim*dataSize));
+			auto mErr2 = H5Dread (mset2_id, dataType, memSpace, mSpace2, plist_id, (static_cast<char *> ((*axion)->mStart2())+slab*zDim*dataSize));
+			auto vErr2 = H5Dread (vset2_id, dataType, memSpace, vSpace2, plist_id, (static_cast<char *> ((*axion)->vStart2())+slab*zDim*dataSize));
 
-			if ((mErr < 0) || (vErr < 0)) {
+			if ((mErr1 < 0) || (vErr1 < 0) || (mErr2 < 0) || (vErr2 < 0)) {
 				LogError ("Error reading dataset from file");
 				return;
 			}
@@ -1483,10 +1526,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		/*	Close the dataset	*/
 
-		H5Sclose (mSpace);
-		H5Sclose (vSpace);
-		H5Dclose (mset_id);
-		H5Dclose (vset_id);
+		H5Sclose (mSpace1);
+		H5Sclose (vSpace1);
+		H5Dclose (mset1_id);
+		H5Dclose (vset1_id);
+		H5Sclose (mSpace2);
+		H5Sclose (vSpace2);
+		H5Dclose (mset2_id);
+		H5Dclose (vset2_id);
 		H5Sclose (memSpace);
 
 		/*	Close the file		*/
@@ -3539,7 +3586,7 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 
 
 
-void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
+void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int nf)
 {
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace,  dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -3551,10 +3598,15 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 	hsize_t lSz  = axion->Length();
 	char *dataM  = static_cast<char *>(axion->mFrontGhost());
 	char *dataV  = static_cast<char *>(axion->mBackGhost());
-	char mCh[16] = "/map/m";
-	char vCh[16] = "/map/v";
 
-	LogMsg (VERB_NORMAL, "Writing 2D maps to Hdf5 measurement file");LogFlush();
+	const char* mCh = "/map/m";
+	const char* vCh = "/map/v";
+	if (nf==1){
+		mCh = "/map/m2";
+		vCh = "/map/v2";
+	}
+
+	LogMsg (VERB_NORMAL, "Writing 2D maps to Hdf5 measurement file (field %d)",nf);LogFlush();
 	LogMsg (VERB_NORMAL, "");LogFlush();
 
 	if (header == false || opened == false)
@@ -3592,7 +3644,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 							// }
 		Folder	munge(axion);
 		LogMsg (VERB_NORMAL, "If configuration folded, unfold 2D slice");LogFlush();
-		munge(UNFOLD_SLICE, slicenumber);
+		munge(UNFOLD_SLICE, slicenumber,nf);
 	//}
 
 	/*	Create a group for map data if it doesn't exist	*/
@@ -3735,14 +3787,14 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 
 void	writeMapHdf5	(Scalar *axion)
 {
-	writeMapHdf5s	(axion, 0);
+	writeMapHdf5s	(axion, 0,0);
 }
 
 
 
 
 
-void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
+void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint, int nf)
 {
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace, memSpace, dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -3754,8 +3806,13 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	hsize_t total  = axion->Length()*axion->TotalDepth();
 	/* chunk size */
 	hsize_t slab  = axion->Length();
-	char mCh[16] = "/mapp/m";
-	char vCh[16] = "/mapp/v";
+
+	const char* mCh = "/mapp/m";
+	const char* vCh = "/mapp/v";
+	if (nf==1){
+		mCh = "/mapp/m2";
+		vCh = "/mapp/v2";
+	}
 
 	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ (%dx%d)",axion->Length(), axion->TotalDepth());
 	LogMsg (VERB_PARANOID, "[wm2] total %d slab %d myRank %d dataSize %d",total,slab, commRank(),dataSize);	LogFlush();

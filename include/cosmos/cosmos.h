@@ -11,6 +11,8 @@
 
 //		size_t	 nSize;
 
+		size_t	   n0; //number of complex scalars
+		double	   s2beta; //sin2 of mixing angle arctan(Nv/v') or so
 		double	   lSize;
 		double	   lambda;
 		double	   lz2e;
@@ -32,13 +34,17 @@
 		double	   fA;
 		tk::spline sR, sT, sRpp, schi;
 
+
+
 		public:
 
-			 Cosmos() : lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), dectime(-1.0), nQcd(-1.e8), nQcdr(-1.e8), zThRes(-1.e8), zRestore(-1.e8),
+			 Cosmos() : n0(1), s2beta(0.004),lSize(0.0), lambda(-1.e8), lz2e(2.0), indi3(-1.e8), gamma(-1.e8), dectime(-1.0), nQcd(-1.e8), nQcdr(-1.e8), zThRes(-1.e8), zRestore(-1.e8),
 			 pot(V_NONE), frw(1.0), mink(false), ueCosm(false) {}
 
 		double&   ZThRes  ()	{ return zThRes;   }
 		double&   ZRestore()	{ return zRestore; }
+		size_t&   NumScalars()	{ return n0;    }
+		double&   S2beta()	  { return s2beta; }
 		double&   PhysSize()	{ return lSize;    }
 		double&   Lambda  ()	{ return lambda;   }
 		double&   LamZ2Exp()	{ return lz2e;   }
@@ -58,7 +64,9 @@
 
 		void     SetZThRes  (const double newZT){ zThRes   = newZT; }
 		void     SetZRestore(const double newZR){ zRestore = newZR; }
+		void     SetNumScalars(const size_t n0_){ n0    = n0_; }
 		void     SetPhysSize(const double mSize){ lSize    = mSize; }
+		void     SetS2beta(const double pus){ s2beta = pus; }
 //		void     SetLatSize (const size_t mSize){ nSize    = mSize; }
 		void     SetLambda  (const double nLmda){ lambda   = nLmda; } //msa     = sqrt(2.*nLmda)*lSize/((double) nSize); }
 		void     SetLamZ2Exp(const double nLmda){ lz2e     = nLmda; }
@@ -72,7 +80,7 @@
 
 		void     SetFrw     (const double fff)	{ frw     = fff; }
 		void     SetMink    (const bool bbb)	  { mink    = bbb; if (bbb) frw = 0.0; }
-		void     SetICData  (const IcData bbb)	{ icdatastruc = bbb;  }
+		void     SetICData  (const IcData bbb)	{ icdatastruc = bbb;s2beta = bbb.beta;  }
 		void     SetUeC     (const bool bbb)	  { ueCosm = bbb;  }
 		void     SetFA      (const double ff)	  { fA = ff;  }
 		void     SetRPQ     (const double ff)	  { R_PQ = ff;  }

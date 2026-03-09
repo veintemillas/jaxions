@@ -204,9 +204,9 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 
 	if( (info.maty & MAPT_XYMV) || (measa & MEAS_2DMAP))
-		writeMapHdf5s  (axiona,sliceprint);
+		for (int nf=0;nf<2;nf++) writeMapHdf5s  (axiona,sliceprint,nf);
 	if( info.maty & MAPT_YZMV)
-		writeMapHdf5s2 (axiona,sliceprint);
+		for (int nf=0;nf<2;nf++) writeMapHdf5s2 (axiona,sliceprint,nf);
 
 	//	--------------------------------------------------------------------------
 	//

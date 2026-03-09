@@ -294,15 +294,31 @@ def gm(address,something='summary',printerror=False):
 
     # generic data: something = 'da/nombre'
 
-    if (something[0:2] == 'da'):
-        esp = something[2:]
-        dap = esp[:esp.rfind('/')]
-        try:
-            return np.array(f[dap][()])
-        except:
-            print('Data not found!')
-            return 0
-        return
+    if something.startswith("da"):
+        path = something[2:]                  # "/m2/m2" or "/m2"
+        if not path.startswith("/"):
+            path = "/" + path
+
+        # First try exact path
+        if path in f:
+            return np.array(f[path][()])
+
+        # Backward-compat: if you passed "da/m2/m2" but only "/m2" exists
+        parent = path[:path.rfind("/")] if "/" in path[1:] else path
+        if parent in f:
+            return np.array(f[parent][()])
+
+        print("Data not found:", path)
+        return 0
+    # if (something[0:2] == 'da'):
+    #     esp = something[2:]
+    #     dap = esp[:esp.rfind('/')]
+    #     try:
+    #         return np.array(f[dap][()])
+    #     except:
+    #         print('Data not found!')
+    #         return 0
+    #     return
 
     #prelim checks
     ftype = f.attrs.get('Field type').decode()
@@ -918,34 +934,36 @@ def gm(address,something='summary',printerror=False):
         if (something[0:4] == 'mapp') and  map_check :
             mapad = 'mapp'
             Ny=Nz
-
+        nuz9 = ''
+        if '2' in something:
+            nuz9 = '2'
         Nz = f.attrs[u'Depth']
         ct = f.attrs[u'z']
-        if (something == mapad+'mC') and (ftype == 'Saxion'):
-            return f[mapad]['m'][()].reshape(Ny,N,2) ;
-        if (something == mapad+'mC') and (ftype == 'Axion'):
+        if ('mC' in something) and (ftype == 'Saxion'):
+            return f[mapad]['m'+nuz9][()].reshape(Ny,N,2) ;
+        if ('mC' in something) and (ftype == 'Axion'):
             return ;
-        if (something == mapad+'vC') and (ftype == 'Saxion'):
-            return f[mapad]['v'][()].reshape(Ny,N,2) ;
-        if (something == mapad+'vC') and (ftype == 'Axion'):
+        if ('vC' in something) and (ftype == 'Saxion'):
+            return f[mapad]['v'+nuz9][()].reshape(Ny,N,2) ;
+        if ('vC' in something) and (ftype == 'Axion'):
             return ;
-        if (something == mapad+'theta') and (ftype == 'Saxion'):
-            temp = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
+        if ('theta' in something) and (ftype == 'Saxion'):
+            temp = np.array(f[mapad]['m'+nuz9][()].reshape(Ny,N,2))
             temp = np.arctan2(temp[:,:,1], temp[:,:,0])
             return temp ;
         if (something == mapad+'theta') and (ftype == 'Axion'):
-            temp = np.array(f[mapad]['m'][()].reshape(Ny,N))
+            temp = np.array(f[mapad]['m'+nuz9][()].reshape(Ny,N))
             return temp/scaleFactorR ;
         if (something == mapad+'vheta') and (ftype == 'Axion'):
-            temp = np.array(f[mapad]['v'][()].reshape(Ny,N))
+            temp = np.array(f[mapad]['v'+nuz9][()].reshape(Ny,N))
             return temp ;
         if (something == mapad+'vheta') and (ftype == 'Saxion'):
-            m   = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
-            v   = np.array(f[mapad]['v'][()].reshape(Ny,N,2))
+            m   = np.array(f[mapad]['m'+nuz9][()].reshape(Ny,N,2))
+            v   = np.array(f[mapad]['v'+nuz9][()].reshape(Ny,N,2))
             return (m[:,:,0]*v[:,:,1]-m[:,:,1]*v[:,:,0])/(m[:,:,0]**2+m[:,:,1]**2) ;
 
-        if (something == mapad+'rho') and (ftype == 'Saxion'):
-            temp = np.array(f[mapad]['m'][()].reshape(Ny,N,2))
+        if ('rho' in something) and (ftype == 'Saxion'):
+            temp = np.array(f[mapad]['m'+nuz9][()].reshape(Ny,N,2))
             # te = f.attrs[u'z']
             return np.sqrt(temp[:,:,0]**2 + temp[:,:,1]**2)/scaleFactorR
 

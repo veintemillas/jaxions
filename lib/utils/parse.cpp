@@ -15,6 +15,7 @@
 # define PARSE1 { LogMsg(VERB_NORMAL,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
 # define PARSE2 { LogMsg(VERB_NORMAL,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
 
+size_t N0     = 1;
 size_t sizeN  = 128;
 size_t sizeZ  = 128;
 int    zGrid  = 1;
@@ -961,6 +962,13 @@ int	parseArgs (int argc, char *argv[])
 			PARSE2;
 		}
 
+    if (!strcmp(argv[i], "--FUMI"))
+		{
+			N0 = 2;
+
+			PARSE1;
+		}
+
 		if (!strcmp(argv[i], "--vqcdC"))
 		{
 			uPot = true;
@@ -990,6 +998,15 @@ int	parseArgs (int argc, char *argv[])
 			uI3    = true;
 			PARSE1;
 		}
+
+    if (!strcmp(argv[i], "--vqcd1"))
+    {
+      uPot = true;
+      vqcdType = V_QCD1 ;
+      indi3  = 0.0;
+      uI3    = true;
+      PARSE1;
+    }
 
 		if (!strcmp(argv[i], "--N2"))
 		{
@@ -2810,6 +2827,8 @@ Cosmos	createCosmos()
 
 	/* Initial condition data is saved in cosmos; potential problems when reading confs?*/
 	myCosmos.SetICData(icdatst);
+
+  myCosmos.SetNumScalars(N0);
 
 	/*	I'm reading from disk	*/
 	if (fIndex >= 0) {

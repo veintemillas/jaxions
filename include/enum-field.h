@@ -983,6 +983,7 @@
 			double   frw;
 			double   fMom1;
 			double   grav;
+			int      n0;
 
 		}	PropParms;
 

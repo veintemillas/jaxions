@@ -24,8 +24,8 @@
 	void	writeEDensReduced	(Scalar *axion, int index, int newNx, int newNz);
 
 	void	writeMapHdf5	(Scalar *axion);
-	void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint);
-	void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint);
+	void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int nf=0);
+	void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint, int nf=0);
 	void	writeEMapHdf5	(Scalar *axion);
 	void	writeEMapHdf5s	(Scalar *axion, int slicenumbertoprint=0, char *eCh="/map/E");
 	void	writePMapHdf5	(Scalar *axion);

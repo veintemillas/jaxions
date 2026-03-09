@@ -41,10 +41,14 @@ using namespace profiler;
 const std::complex<double> I(0.,1.);
 const std::complex<float> If(0.,1.);
 
+/* In this version we have a number of scalars defined in cosmos */
+
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
 		: nSplit(nSp), Ng(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
+	n0 = cm->NumScalars();
+	printf("-------- %lu %d \n",n0,n0);
 	n1 = nLx;
 	n2 = nLx*nLx;
 	n3 = nLx*nLx*nLz;
@@ -58,7 +62,7 @@ const std::complex<float> If(0.,1.);
 	lowmemgpu = lowmemGPU;
 	prof.start();
 
-	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar");
+	LogMsg(VERB_NORMAL,"[sca] Constructor %d Scalars",n0);
 	LogMsg(VERB_NORMAL,"[sca] Lx           =  %d",nLx);
 	LogMsg(VERB_NORMAL,"[sca] Lz           =  %d",nLz);
 	LogMsg(VERB_NORMAL,"[sca] nSplit       =  %d ",nSplit);
@@ -206,15 +210,18 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
 	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: v3[m]  %llu n2(Lz+2)[v] %llu n3[str]", v3, (n2*(nLz + 2)),n3);
-	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = (n2*(nLz + 2))*fSize;
+	LogMsg(VERB_NORMAL, "[sca] %lu %lu %lu %lu %lu", v3, fSize,n0,n2,nLz);
+	const size_t	mBytes = v3*fSize*n0;
+	const size_t	vBytes = (n2*(nLz + 2))*fSize*n0;
+	mBytes_char = v3*fSize;
+	vBytes_char = (n2*(nLz + 2))*fSize;
 	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, n3/1e9);
 	size_t totalCPU = 0;
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
-			LogMsg(VERB_NORMAL, "[sca] allocating m, v, sData");
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v, sData (n0 %d)",n0);
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
 			trackAlloc ((void**) &str, n3+n2);
@@ -228,7 +235,7 @@ const std::complex<float> If(0.,1.);
 		case FIELD_WKB:
 			str = nullptr;
 			//this allocates a slightly larger v to host FFTs in place
-			LogMsg(VERB_NORMAL, "[sca] allocating m, v");
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v (n0 %d)",n0);
 			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
 			trackAlloc ((void**) &str, n3);
@@ -298,12 +305,12 @@ const std::complex<float> If(0.,1.);
 			if (!lowmemGPU){
 				LogMsg(VERB_NORMAL, "[sca] allocating 2mBytes for m2");
 				alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-				memset (m2, 0, 2*fSize*n3);
+				memset (m2, 0, 2*fSize*n3*n0);
 				totalCPU += mBytes*2;
 			} else {
 				LogMsg(VERB_NORMAL, "[sca] allocating mBytes for m2 [Experimental warning]");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
-				memset (m2, 0, fSize*n3);
+				memset (m2, 0, fSize*n3*n0);
 				totalCPU += mBytes;
 			}
 
@@ -353,8 +360,8 @@ const std::complex<float> If(0.,1.);
 	}
 
 	LogMsg(VERB_NORMAL, "[sca] Setting m,v to 0");
-	memset (m, 0, fSize*v3);
-	memset (v, 0, fSize*(n2*(nLz + 2)));
+	memset (m, 0, fSize*v3*n0);
+	memset (v, 0, fSize*(n2*(nLz + 2))*n0);
 	if (fieldType == FIELD_FAXION){
 		memset (rho, 0, fSize*v3);
 		memset (vho, 0, fSize*v3);
@@ -453,6 +460,18 @@ const std::complex<float> If(0.,1.);
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
 
+	LogMsg(VERB_NORMAL, "[sca] Allocate MPI requests");
+	reqSendBck.resize(n0);
+	reqRecvFwd.resize(n0);
+	reqSendFwd.resize(n0);
+	reqRecvBck.resize(n0);
+
+	for (int f=0; f<n0; f++) {
+	    reqSendBck[f].resize(NMPICHUNK);
+	    reqRecvFwd[f].resize(NMPICHUNK);
+	    reqSendFwd[f].resize(NMPICHUNK);
+	    reqRecvBck[f].resize(NMPICHUNK);
+	}
 
 	LogMsg(VERB_NORMAL, "[sca] Initialise FFT plans");LogFlush();
 
@@ -710,7 +729,8 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Copy to the GPU the slices of th
 	}
 }
 
-void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB, void* receiveBufferF, void* sendBufferF, void* receiveBufferB)
+void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB,
+												void* receiveBufferF, void* sendBufferF, void* receiveBufferB, int nf)
 {
 	/* Sends, receives, waits, etc... up to two buffers between ranks
 	sendBufferB: pointer to buffer to be sent backwards (0->R-1,1->0,2->1,etc.)
@@ -756,8 +776,8 @@ void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataTy
 	/* Initialises ALL 4 request-arrays
 	I am not sure if different calls will overwrite
 	please use only 1 call at a time */
-	static MPI_Request reqSendBck[NMPICHUNK], reqRecvFwd[NMPICHUNK];
-	static MPI_Request reqSendFwd[NMPICHUNK], reqRecvBck[NMPICHUNK];
+	// static MPI_Request reqSendBck[n0][NMPICHUNK], reqRecvFwd[n0][NMPICHUNK];
+	// static MPI_Request reqSendFwd[n0][NMPICHUNK], reqRecvBck[n0][NMPICHUNK];
 	void *sGhostBck[nchunks], *rGhostFwd[nchunks];
 	void *sGhostFwd[nchunks], *rGhostBck[nchunks];
 
@@ -786,15 +806,15 @@ void	Scalar::sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataTy
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 			for (int n=0; n<nchunks ;n++) {
 				if (sendB)
-					MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(reqSendBck[n]));
+					MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(reqSendBck[nf][n]));
 				if (sendF)
-					MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(reqSendFwd[n]));
+					MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(reqSendFwd[nf][n]));
 			}
 			for (int n=0; n<nchunks ;n++) {
 				if (sendB)
-					MPI_Start(&reqSendBck[n]);
+					MPI_Start(&reqSendBck[nf][n]);
 				if (sendF)
-					MPI_Start(&reqSendFwd[n]);
+					MPI_Start(&reqSendFwd[nf][n]);
 			}
 			break;
 
@@ -802,15 +822,15 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 			for (int n=0; n<nchunks ;n++) {
 				if (sendB)
-					MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(reqRecvFwd[n]));
+					MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(reqRecvFwd[nf][n]));
 				if (sendF)
-					MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(reqRecvBck[n]));
+					MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(reqRecvBck[nf][n]));
 			}
 			for (int n=0; n<nchunks ;n++) {
 				if (sendB)
-					MPI_Start(&reqRecvFwd[n]);
+					MPI_Start(&reqRecvFwd[nf][n]);
 				if (sendF)
-					MPI_Start(&reqRecvBck[n]);
+					MPI_Start(&reqRecvBck[nf][n]);
 			}
 			break;
 
@@ -818,22 +838,22 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 			LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
 			for (int n=0; n<nchunks ;n++) {
 				if (sendB) {
-					MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(reqSendBck[n]));
-					MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(reqRecvFwd[n]));
+					MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(reqSendBck[nf][n]));
+					MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(reqRecvFwd[nf][n]));
 				}
 				if (sendF){
-					MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(reqSendFwd[n]));
-					MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(reqRecvBck[n]));
+					MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(reqSendFwd[nf][n]));
+					MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(reqRecvBck[nf][n]));
 				}
 			}
 			for (int n=0; n<nchunks ;n++) {
 				if (sendB){
-					MPI_Start(&(reqSendBck[n]));
-					MPI_Start(&(reqRecvFwd[n]));
+					MPI_Start(&(reqSendBck[nf][n]));
+					MPI_Start(&(reqRecvFwd[nf][n]));
 				}
 				if (sendF){
-					MPI_Start(&(reqSendFwd[n]));
-					MPI_Start(&(reqRecvBck[n]));
+					MPI_Start(&(reqSendFwd[nf][n]));
+					MPI_Start(&(reqRecvBck[nf][n]));
 				}
 			}
 			LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
@@ -844,22 +864,22 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 		for (int n=0; n<nchunks ;n++) {
 			if (sendB){
-				MPI_Wait(&(reqSendBck[n]), MPI_STATUS_IGNORE);
-				MPI_Wait(&(reqRecvFwd[n]), MPI_STATUS_IGNORE);
+				MPI_Wait(&(reqSendBck[nf][n]), MPI_STATUS_IGNORE);
+				MPI_Wait(&(reqRecvFwd[nf][n]), MPI_STATUS_IGNORE);
 			}
 			if (sendF){
-				MPI_Wait(&(reqSendFwd[n]), MPI_STATUS_IGNORE);
-				MPI_Wait(&(reqRecvBck[n]), MPI_STATUS_IGNORE);
+				MPI_Wait(&(reqSendFwd[nf][n]), MPI_STATUS_IGNORE);
+				MPI_Wait(&(reqRecvBck[nf][n]), MPI_STATUS_IGNORE);
 			}
 		}
 		for (int n=0; n<nchunks ;n++) {
 			if (sendB){
-				MPI_Request_free(&(reqSendBck[n]));
-				MPI_Request_free(&(reqRecvFwd[n]));
+				MPI_Request_free(&(reqSendBck[nf][n]));
+				MPI_Request_free(&(reqRecvFwd[nf][n]));
 			}
 			if (sendF){
-				MPI_Request_free(&(reqSendFwd[n]));
-				MPI_Request_free(&(reqRecvBck[n]));
+				MPI_Request_free(&(reqSendFwd[nf][n]));
+				MPI_Request_free(&(reqRecvBck[nf][n]));
 			}
 		}
 LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
@@ -880,26 +900,33 @@ void	Scalar::sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng)
 	const size_t ghostBytes = rNg*n2*fSize;
 	LogMsg(VERB_PARANOID,"[sca] sendGhosts2 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
 
-	void *sB, *rF, *sF, *rB;
-	if (fIdx == FIELD_M){
-		sB = mStart();
-		rF = mBackGhost(); // slice after m
-		sF = static_cast<void *> (static_cast<char *> (mStart()) +fSize*n3-ghostBytes);
-		rB = mFrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
-	} else {
-		if (fIdx & FIELD_V) {
-			sB = vStart();
-			rF = vBackGhost(); // slice after m
-			sF = static_cast<void *> (static_cast<char *> (vStart()) +fSize*n3-ghostBytes);
-			rB = vFrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+	void *sB[n0], *rF[n0], *sF[n0], *rB[n0];
+	size_t a = mBytes_char;
+	size_t b = vBytes_char;
+
+	for (int n_f = 0; n_f < n0; n_f++)
+	{
+		if (fIdx == FIELD_M){
+			sB[n_f] = static_cast<void *> (static_cast<char *> (mStart())     + n_f*a);
+			rF[n_f] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n_f*a); // slice after m
+			sF[n_f] = static_cast<void *> (static_cast<char *> (mStart())     + n_f*a + fSize*n3-ghostBytes);
+			rB[n_f] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n_f*a + (Ng-rNg)*n2*fSize);
 		} else {
-			sB = m2Start();
-			rF = m2BackGhost(); // slice after m
-			sF = static_cast<void *> (static_cast<char *> (m2Start()) +fSize*n3-ghostBytes);
-			rB = m2FrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+			if (fIdx & FIELD_V) {
+				sB[n_f] = static_cast<void *> (static_cast<char *> (vStart())     + n_f*b);
+				rF[n_f] = static_cast<void *> (static_cast<char *> (vBackGhost()) + n_f*b); // slice after m
+				sF[n_f] = static_cast<void *> (static_cast<char *> (vStart())     + n_f*b + fSize*n3-ghostBytes);
+				rB[n_f] = static_cast<void *> (static_cast<char *> (vFrontGhost())+ n_f*b + (Ng-rNg)*n2*fSize);
+
+			} else {
+				sB[n_f] = static_cast<void *> (static_cast<char *> (m2Start())     + n_f*a);
+				rF[n_f] = static_cast<void *> (static_cast<char *> (m2BackGhost()) + n_f*a); // slice after m
+				sF[n_f] = static_cast<void *> (static_cast<char *> (m2Start())     + n_f*a + fSize*n3-ghostBytes);
+				rB[n_f] = static_cast<void *> (static_cast<char *> (m2FrontGhost())+ n_f*a + (Ng-rNg)*n2*fSize);
+			}
 		}
+		Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB[n_f], rF[n_f], sF[n_f], rB[n_f],n_f);
 	}
-	Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB, rF, sF, rB);
 }
 
 void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
@@ -929,8 +956,9 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 	int sendBytes[nchunks];
 	static MPI_Request rSendFwd[NMPICHUNK],  rSendBck[NMPICHUNK],   rRecvFwd[NMPICHUNK],   rRecvBck[NMPICHUNK];	// For non-blocking MPI Comms
-	void      *sGhostBck[nchunks], *sGhostFwd[nchunks], *rGhostBck[nchunks], *rGhostFwd[nchunks];
+	void      *sGhostBck[nchunks*n0], *sGhostFwd[nchunks*n0], *rGhostBck[nchunks*n0], *rGhostFwd[nchunks*n0];
 
+	for (int n_f = 0; n_f < n0; n_f++)
 	for (int n = 0; n < nchunks; n++)
 	{
 		sendBytes[n] = (int) MAX_CHUNK;
@@ -939,38 +967,38 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 
 		if (fIdx & FIELD_M)
 		{
-				sGhostBck[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK                         );                       //slice to be send back
-				sGhostFwd[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK + fSize*n3-ghostBytes   ); //slice to be send forw
-				rGhostBck[n] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);       //reception point
-				rGhostFwd[n] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);        //reception point
+				sGhostBck[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (mStart())     + n_f*mBytes_char + n*MAX_CHUNK                         );                       //slice to be send back
+				sGhostFwd[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (mStart())     + n_f*mBytes_char + n*MAX_CHUNK + fSize*n3-ghostBytes   ); //slice to be send forw
+				rGhostBck[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n_f*mBytes_char + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);       //reception point
+				rGhostFwd[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n_f*mBytes_char + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);        //reception point
 		}
 		else
 		{
 			if (fIdx & FIELD_V)
 			{
-					sGhostBck[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK                          );//slice to be send back
-					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK + fSize*n3-ghostBytes    );					//slice to be send forw
-					rGhostBck[n] = static_cast<void *> (static_cast<char *> (vFrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
-					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (vBackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+					sGhostBck[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (vStart())      + n_f*vBytes_char + n*MAX_CHUNK                          );//slice to be send back
+					sGhostFwd[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (vStart())      + n_f*vBytes_char + n*MAX_CHUNK + fSize*n3-ghostBytes    );					//slice to be send forw
+					rGhostBck[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (vFrontGhost()) + n_f*vBytes_char + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+					rGhostFwd[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (vBackGhost())  + n_f*vBytes_char + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
 			} else {
-					sGhostBck[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK) ;
-					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK + fSize*n3-ghostBytes);
-					rGhostBck[n] = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);		//reception point
-					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);	//reception point
+					sGhostBck[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (m2Start())      + n_f*mBytes_char + n*MAX_CHUNK) ;
+					sGhostFwd[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (m2Start())      + n_f*mBytes_char + n*MAX_CHUNK + fSize*n3-ghostBytes);
+					rGhostBck[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + n_f*mBytes_char + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);		//reception point
+					rGhostFwd[n+n_f*nchunks] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n_f*mBytes_char + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);	//reception point
 			}
 		}
-		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
+		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p, n_fields %d", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n],n0);
 	}
 
 	switch	(opComm)
 	{
 		case	COMM_SEND:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
-			for (int n=0; n<nchunks ;n++) {
+			for (int n=0; n<nchunks*n0 ;n++) {
 				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(rSendFwd[n]));
 				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(rSendBck[n]));
 			}
-			for (int n=0; n<nchunks ;n++) {
+			for (int n=0; n<nchunks*n0 ;n++) {
 				MPI_Start(&rSendFwd[n]);
 				MPI_Start(&rSendBck[n]);
 			}
@@ -978,11 +1006,11 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 
 		case	COMM_RECV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
-			for (int n=0; n<nchunks ;n++) {
+			for (int n=0; n<nchunks*n0 ;n++) {
 				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
 				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
 			}
-			for (int n=0; n<nchunks ;n++) {
+			for (int n=0; n<nchunks*n0 ;n++) {
 				MPI_Start(&rRecvBck[n]);
 				MPI_Start(&rRecvFwd[n]);
 			}
@@ -990,13 +1018,13 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 
 		case	COMM_SDRV:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
-			for (int n=0; n<nchunks ;n++) {
+			for (int n=0; n<nchunks*n0 ;n++) {
 				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(rSendFwd[n]));
 				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(rSendBck[n]));
 				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
 				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
 			}
-			for (int n=0; n<nchunks ;n++) {
+			for (int n=0; n<nchunks*n0 ;n++) {
 				MPI_Start(&(rRecvBck[n]));
 				MPI_Start(&(rRecvFwd[n]));
 				MPI_Start(&(rSendFwd[n]));
@@ -1008,13 +1036,13 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
 
 	case	COMM_WAIT:
 LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
-		for (int n=0; n<nchunks ;n++) {
+		for (int n=0; n<nchunks*n0 ;n++) {
 			MPI_Wait(&(rSendFwd[n]), MPI_STATUS_IGNORE);
 			MPI_Wait(&(rSendBck[n]), MPI_STATUS_IGNORE);
 			MPI_Wait(&(rRecvFwd[n]), MPI_STATUS_IGNORE);
 			MPI_Wait(&(rRecvBck[n]), MPI_STATUS_IGNORE);
 		}
-		for (int n=0; n<nchunks ;n++) {
+		for (int n=0; n<nchunks*n0 ;n++) {
 			MPI_Request_free(&(rSendFwd[n]));
 			MPI_Request_free(&(rSendBck[n]));
 			MPI_Request_free(&(rRecvFwd[n]));

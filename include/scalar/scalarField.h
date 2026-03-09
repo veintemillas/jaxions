@@ -12,6 +12,8 @@
 
 		Cosmos	*bckgnd;
 
+		size_t n0; // number of scalars
+
 		size_t n1;
 		size_t n2;
 		size_t n3;
@@ -20,6 +22,9 @@
 		size_t Tz;
 		size_t Ez;
 		size_t v3;
+
+		size_t mBytes_char;
+		size_t vBytes_char;
 
 		bool eReduced;
 		size_t rLx;
@@ -110,6 +115,31 @@
 		/* m2h plus a ghost, used when fSize=precision because in complex mode fSize=2precision and the grid does not fit in m2h */
 		void		*m2hStart    () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision + fSize*(n2)*Ng); }
 
+
+		/* Field pointers n0=2 */
+		void		*mCpu2()         { return static_cast<void *>(static_cast<char *>(m)  + mBytes_char); }
+		const void	*mCpu2()  const { return static_cast<void *>(static_cast<char *>(m)  + mBytes_char); }
+		void		*mStart2      () { return static_cast<void *>(static_cast<char *>(mStart())  + mBytes_char); }
+		void		*mFrontGhost2 () { return static_cast<void *>(static_cast<char *>(mFrontGhost())  + mBytes_char); }
+		void		*mBackGhost2  () { return static_cast<void *>(static_cast<char *>(mBackGhost())  + mBytes_char); }
+
+		/* Velocity pointers n0=2 */
+		void		*vCpu2()      { return static_cast<void *>(static_cast<char *>(v)  + vBytes_char); }
+		const void	*vCpu2()  const { return static_cast<void *>(static_cast<char *>(v)  + vBytes_char); }
+		void		*vStart2     () { return static_cast<void *>(static_cast<char *>(v) + vBytes_char); }
+
+		/* Auxiliary field pointers n0=2*/
+		void		*m2Cpu2()        { return static_cast<void *>(static_cast<char *>(m2)  + mBytes_char); }
+		const void	*m2Cpu2() const { return static_cast<void *>(static_cast<char *>(m2)  + mBytes_char); }
+		void		*m2Start2     () { return static_cast<void *>(static_cast<char *>(m2Start())  + mBytes_char); }
+		void		*m2FrontGhost2() { return static_cast<void *>(static_cast<char *>(m2FrontGhost())  + mBytes_char); }
+		void		*m2BackGhost2 () { return static_cast<void *>(static_cast<char *>(m2FrontGhost())  + mBytes_char); }
+		void		*m2half2      () { return static_cast<void *>(static_cast<char *>(m2half())  + mBytes_char); }
+		/* m2h plus a ghost, used when fSize=precision because in complex mode fSize=2precision and the grid does not fit in m2h */
+		void		*m2hStart2    () { return static_cast<void *>(static_cast<char *>(m2hStart())  + mBytes_char); }
+
+
+
 		/* Faxion rho, vho, gx, gy, gx*/
 		void		*rhoCpu       () { return                                         rho; }
 		void		*rhoStart     () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(n2)*Ng); }
@@ -152,6 +182,7 @@
 		bool            LowMemGPU()                  { return lowmemgpu; }
 		void		setLowMem(const bool nLm) { lowmem = nLm; }
 
+		size_t		nScalars()   { return n0; }
 		size_t		TotalSize()  { return n3*nSplit; }
 		size_t		Size()       { return n3; }
 		size_t		Surf()       { return n2; }
@@ -241,15 +272,18 @@
 		sendghost 3 exchages stringData ghost
 		exchangeStringGhost wraps send and receive*/
 
-		void	sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB, void* receiveBufferF, void* sendBufferF, void* receiveBufferB);
+		std::vector<std::vector<MPI_Request>> reqSendBck;
+		std::vector<std::vector<MPI_Request>> reqRecvFwd;
+		std::vector<std::vector<MPI_Request>> reqSendFwd;
+		std::vector<std::vector<MPI_Request>> reqRecvBck;
+
+		void	sendGeneral(CommOperation opComm, size_t count, MPI_Datatype dataType, void* sendBufferB, void* receiveBufferF, void* sendBufferF, void* receiveBufferB,int nf=0);
 		void	sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng = -1);
  		void	sendGhosts(FieldIndex fIdx, CommOperation cOp);	// Send the ghosts in the Cpu using MPI, use this to exchange ghosts with Cpus
 		void	exchangeGhosts(FieldIndex fIdx);	// Transfer ghosts from neighbouring ranks, use this to exchange ghosts with Gpus
 
 		void	sendGhosts3(CommOperation opComm);
 		void	exchangeStringGhost();
-
-
 
 
 		size_t  getNg() {return Ng;}
