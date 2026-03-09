@@ -748,11 +748,7 @@ inline	void	updateMThetaXeon(void * __restrict__ m_, const void * __restrict__ v
 	}
 }
 
-#undef	opCode
-#undef	opCode_N
-#undef	opCode_P
-#undef	Align
-#undef	_PREFIX_
+
 
 
 inline	void	propThetaKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, const PropParms ppar, const double dz, const double c, const double d,
@@ -814,3 +810,160 @@ LogMsg(VERB_PARANOID,"[PT] propTheta QCDL %d",V_QCDL);
 		break;
 	}
 }
+
+/* This is the propagator for zero mode and linear fluctuations as decoupled fields
+linear regime, includes gravity in the RHS ... woow
+we always use it in double precision */
+
+inline void propLinearModeKernelXeon(
+	const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_,
+	const void * __restrict__ g_,
+	const void * __restrict__ k_, const void * __restrict__ k2_,
+	const PropParms ppar, const double dz, const double c, const double d,
+	const size_t V)
+{
+#ifdef __AVX512F__
+	#define _MData_ __m512d
+	#define step 8
+#elif defined(__AVX__)
+	#define _MData_ __m256d
+	#define step 4
+#else
+	#define _MData_ __m128d
+	#define step 2
+#endif
+
+	const double * __restrict__ m  = (const double *) __builtin_assume_aligned(m_,  Align);
+	double * __restrict__ v        = (double *) __builtin_assume_aligned(v_,  Align);
+	double * __restrict__ m2       = (double *) __builtin_assume_aligned(m2_, Align);
+
+	const double * __restrict__ g  = (const double *) __builtin_assume_aligned(g_,  Align);   // Phi_k(0)
+	const double * __restrict__ kk = (const double *) __builtin_assume_aligned(k_,  Align);   // k
+	const double * __restrict__ k2 = (const double *) __builtin_assume_aligned(k2_, Align);   // k^2
+
+	const double dzc = dz*c;
+	const double dzd = dz*d;
+
+	const double R    = ppar.R;
+	const double Rpp  = ppar.Rpp;   // R''/R
+	const double Rp   = ppar.Rp;    // R'/R
+	const double mA2  = ppar.massA2;
+	const double eta  = ppar.ct;
+	const double beta = ppar.n;  // Xi =  d log chi / d log T
+
+	/* save old zero mode background */
+	const double ctheta0  = m[0];
+	const double ctheta0p = v[0];
+	const double theta0   = ctheta0/R;
+	const double thpR     = ctheta0p - ctheta0*Rp;   // Theta' R
+
+	const double mR2c = mA2*R*R*cos(theta0);
+	const double mR2s = mA2*R*R*R*sin(theta0);
+
+	const _MData_ dzcVec  = opCode(set1_pd, dzc);
+	const _MData_ dzdVec  = opCode(set1_pd, dzd);
+	const _MData_ RppVec  = opCode(set1_pd, Rpp);
+	const _MData_ mR2cVec = opCode(set1_pd, mR2c);
+	const _MData_ mR2sVec = opCode(set1_pd, mR2s);
+	const _MData_ etaVec  = opCode(set1_pd, eta);
+	const _MData_ thpRVec = opCode(set1_pd, thpR);
+	const _MData_ b4Vec   = opCode(set1_pd, beta/4.0);
+	const _MData_ t23Vec  = opCode(set1_pd, 2.0/3.0);
+	const _MData_ twoVec  = opCode(set1_pd, 2.0);
+	const _MData_ thrVec  = opCode(set1_pd, 3.0);
+	const _MData_ m4Vec   = opCode(set1_pd, -4.0);
+	const _MData_ iS3Vec  = opCode(set1_pd, 1.0/sqrt(3.0));
+
+	#pragma omp parallel for schedule(static)
+	for (size_t i = 0; i < V; i += step) {
+
+		_MData_ mk   = opCode(load_pd, &m[i]);
+		_MData_ vk   = opCode(load_pd, &v[i]);
+		_MData_ phi0 = opCode(load_pd, &g[i]);
+		_MData_ kv   = opCode(load_pd, &kk[i]);
+		_MData_ k2v  = opCode(load_pd, &k2[i]);
+
+		/* x = k eta / sqrt(3) */
+		_MData_ x  = opCode(mul_pd, opCode(mul_pd, kv, etaVec), iS3Vec);
+		_MData_ x2 = opCode(mul_pd, x, x);
+		_MData_ x3 = opCode(mul_pd, x2, x);
+		_MData_ x4 = opCode(mul_pd, x2, x2);
+
+		_MData_ sx = opCode(sin_pd, x);
+		_MData_ cx = opCode(cos_pd, x);
+
+		/* Phi_k(eta) = 3 Phi_k(0) (sin x - x cos x)/x^3 */
+		_MData_ phik = opCode(mul_pd, thrVec,
+			opCode(mul_pd, phi0,
+				opCode(div_pd,
+					opCode(sub_pd, sx, opCode(mul_pd, x, cx)),
+					x3)));
+
+		/* Phi'_k(eta) = Phi_k(0) (k/sqrt3) * 3 [ (x^2-3) sin x + 3 x cos x ] / x^4 */
+		_MData_ gp = opCode(mul_pd, phi0,
+			opCode(mul_pd, opCode(mul_pd, kv, iS3Vec),
+				opCode(mul_pd, thrVec,
+					opCode(div_pd,
+						opCode(add_pd,
+							opCode(mul_pd, opCode(sub_pd, x2, thrVec), sx),
+							opCode(mul_pd, opCode(mul_pd, thrVec, x), cx)),
+						x4))));
+
+		_MData_ keta  = opCode(mul_pd, kv, etaVec);
+		_MData_ keta2 = opCode(mul_pd, keta, keta);
+
+		_MData_ bracket = opCode(add_pd,
+			opCode(mul_pd, t23Vec, opCode(mul_pd, keta2, phik)),
+			opCode(add_pd,
+				opCode(mul_pd, opCode(mul_pd, twoVec, etaVec), gp),
+				phik));
+
+		_MData_ src = opCode(add_pd,
+			opCode(mul_pd, m4Vec, opCode(mul_pd, gp, thpRVec)),
+			opCode(mul_pd, mR2sVec,
+				opCode(add_pd,
+					opCode(mul_pd, twoVec, phik),
+					opCode(mul_pd, b4Vec, bracket))));
+
+		/* psi_k'' = (mA^2 R^2 cos(theta0) - k^2 + R''/R) psi_k + src */
+		_MData_ acc = opCode(add_pd,
+			opCode(mul_pd,
+				opCode(add_pd, opCode(sub_pd, mR2cVec, k2v), RppVec),
+				mk),
+			src);
+
+#if defined(__AVX512F__) || defined(__FMA__)
+		_MData_ vnew = opCode(fmadd_pd, acc, dzcVec, vk);
+		_MData_ mnew = opCode(fmadd_pd, vnew, dzdVec, mk);
+#else
+		_MData_ vnew = opCode(add_pd, vk, opCode(mul_pd, acc, dzcVec));
+		_MData_ mnew = opCode(add_pd, mk, opCode(mul_pd, vnew, dzdVec));
+#endif
+
+		opCode(store_pd, &v[i],  vnew);
+		opCode(store_pd, &m2[i], mnew);
+	}
+
+	/* overwrite zero mode with correct scalar equation */
+	{
+		const double acc0  = Rpp*ctheta0 - mR2s;
+		const double v0new = ctheta0p + dzc*acc0;
+		const double m0new = ctheta0  + dzd*v0new;
+
+		v[0]  = v0new;
+		m2[0] = m0new;
+
+		LogMsg(VERB_PARANOID,
+			"[LNK] zero mode th %.3e cthp %.3e acc %.3e -> cth %.3e cthp %.3e",
+			theta0, ctheta0p, acc0, m0new, v0new);
+	}
+
+#undef _MData_
+#undef step
+}
+
+#undef	opCode
+#undef	opCode_N
+#undef	opCode_P
+#undef	Align
+#undef	_PREFIX_

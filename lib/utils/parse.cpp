@@ -88,6 +88,7 @@ bool uexCosm  = false;
 bool uRPQ     = false;
 bool spectral = false;
 bool fpectral = false;
+bool linmodevol = false;
 bool mink			= false;
 bool aMod     = false;
 bool icstudy  = false ;
@@ -2399,6 +2400,16 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
+    if (!strcmp(argv[i], "--linmodevol"))
+		{
+			linmodevol = true;
+      defaultmeasType |= MEAS_LINMODES;
+      pType |= PROP_MODES;
+
+			PARSE1;
+		}
+
+
 		if (!strcmp(argv[i], "--restart"))
 		{
 			restart_flag = true;
@@ -2765,8 +2776,8 @@ if (icdatst.cType == CONF_SMOOTH )
 		logMpi = ZERO_RANK;
 
 
-
   icdatst.fType = fTypeP;
+  icdatst.linmodevol = linmodevol;
 
 	//- information needs to be passed onto measurement files
  	deninfa.sliceprint = slicepp;
@@ -2798,6 +2809,8 @@ if (icdatst.cType == CONF_SMOOTH )
 	// 	nrt = NRUN_KGV;
 	deninfa.nrt = nrt;
   deninfa.maskenergyonly = maskenergyonly;
+
+
 
 	LogMsg(VERB_HIGH,"Parse Jaxions completed! %d parsed args",procArgs);
 	return	procArgs;

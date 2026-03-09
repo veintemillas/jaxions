@@ -349,6 +349,42 @@ LogMsg(VERB_PARANOID,"[Cos:] DlogMARDlogct %.2e ",dlmRlct);
     }
 }
 
+/*logarithmic derivative of m_A^2 with respect to T */
+double  Cosmos::DlogCHIlogT (const double ct)
+{
+  if (ueCosm){
+    double e = 1.e-3;
+    return sT(ct)*(schi(ct+e)-schi(ct-e))/((sT(ct+e)-sT(ct-e))*schi(ct));
+  }
+  else {
+    /*(nqcd/2 + 1)*frw*/
+    double RNow = R(ct);
+    double deri;
+
+    if (zThRes <= zRestore) /* mode restore */
+    {
+      if (RNow < zThRes)
+        deri = -nQcd;
+
+      if (RNow >= zThRes && RNow <= zRestore)
+        deri = 0;
+
+      if (RNow > zRestore)
+        deri = nQcd;
+
+    } else { /* mode saturate */
+      if (RNow < zThRes)
+        deri = -nQcd;
+      else
+        deri = 0;
+    }
+
+LogMsg(VERB_PARANOID,"[Cos:] DlogMARDlogct %.2e ",deri);
+    return deri;
+    }
+}
+
+
 double	Cosmos::LambdaP (double ct)
 {
 LogMsg(VERB_PARANOID,"[Cos:LambdaP] LambdaPhysical %e Le %e",lambda,lz2e);

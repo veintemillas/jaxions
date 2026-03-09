@@ -208,6 +208,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if( info.maty & MAPT_YZMV)
 		writeMapHdf5s2 (axiona,sliceprint);
 
+	if (axiona->BckGnd()->ICData().linmodevol)
+	{
+		writeArray(static_cast<double*>(axiona->m_aCpu()), axiona->NModes(), "/modes", "ctheta");
+		writeArray(static_cast<double*>(axiona->v_aCpu()), axiona->NModes(), "/modes", "cvheta");
+	}
+
 	//	--------------------------------------------------------------------------
 	//
 	//	ENERGY BLOCK

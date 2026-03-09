@@ -546,6 +546,7 @@
 			PROPC_BASE	    = 1,		// Propagator N neighbours
 			PROPC_SPEC	    = 2,		// Spectral flag
 			PROPC_FSPEC     = 4,		// Full Spectral flag
+			PROPC_MODES     = 8,		// Full Spectral flag
 		} PropcType;
 
 		typedef	enum	PropType_s {
@@ -553,6 +554,7 @@
 			PROP_BASE     = 1,    // Propagator N neighbours
 			PROP_SPEC     = 2,		// Spectral flag
 			PROP_FSPEC    = 4,		// Full Spectral flag
+			PROP_MODES    = 8,		// Full Spectral flag
 
 			PROP_LEAP     = 16,
 			PROP_OMELYAN2	= 32,
@@ -751,6 +753,7 @@
 			MEAS_NEEDENERGY   = 575240,				// 8 + 256 + 512 + 1024 + 16384 + 32768 + 524288
 			// MASK for those that require energy saved in m2
 			MEAS_NEEDENERGYM2 = 574984,				// 8 + 512 + 1024 + 16384 + 32768 + 524288
+			MEAS_LINMODES			= 1048576,
 		}	MeasureType;
 
 //Used when energy is called
@@ -902,6 +905,7 @@
 			AxitonInfo    axtinfo;
 			bool          randommom;
 			bool          uEvolAll;
+			bool          linmodevol;
 		}	IcData;
 
 		typedef	struct	MomParms_v

@@ -1168,6 +1168,7 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 }
 
 
+
 void	Scalar::setDims	(size_t newnLx, size_t newnLz)
 {
 	LogMsg (VERB_NORMAL, "[sf] Call reset of axion dimensions from (%d,%d,%d) to (%d,%d,%d)!",n1,n1,Lz,newnLx,newnLx,newnLz);
@@ -1183,6 +1184,28 @@ void	Scalar::setDims	(size_t newnLx, size_t newnLz)
 	} else
 	LogMsg (VERB_NORMAL, "[sf] Cannot increase data size. dismissed!");
 }
+
+// we reserve space and point pointers
+void	Scalar::setModes ()
+{
+	// nmodes must be a multiple of mAlign
+	LogMsg(VERB_NORMAL,"[Setting Modes for linear evolution]");
+	LogMsg(VERB_NORMAL,"[SML] nmodes requested %d",nmodes);
+	if ((nmodes*sizeof(double))%mAlign){
+			LogMsg(VERB_NORMAL,"[SML] nmodes requested %d not multiple of Align %d. we round up",nmodes,mAlign);
+			nmodes = (((nmodes*sizeof(double))/mAlign)+1)*mAlign/sizeof(double);
+			LogMsg(VERB_NORMAL,"[SML] nmodes %d",nmodes);
+	}
+	LogMsg(VERB_NORMAL, "[sca] allocating Mode data");
+	alignAlloc ((void**) &m_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &v_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &m2_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &g_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &k_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &k2_a,   mAlign, nmodes*sizeof(double));
+
+}
+
 
 // GENERAL BACKGROUND UPDATE REQUIRED!
 double	Scalar::Rfromct (const double ct)

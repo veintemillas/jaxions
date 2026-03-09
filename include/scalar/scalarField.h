@@ -46,6 +46,8 @@
 		bool    lowmemgpu;
 		size_t Ng;
 
+		size_t nmodes;
+
 		// conformal time
 		double	*z;
 		// scale factor
@@ -58,11 +60,16 @@
 
 		void	*m,   *v,   *m2,   *str;			// Cpu data
 		void	*rho, *vho, *g;								// Faxion data
+
+		void	*m_a,   *v_a,   *m2_a, *k_a, *k2_a, *g_a;			  // mode evolution
+
 #ifdef	USE_GPU
 		void	*m_d, *v_d, *m2_d;				// Gpu data
 
 		void	*sStreams;
 #endif
+
+
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
@@ -109,6 +116,23 @@
 		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
 		/* m2h plus a ghost, used when fSize=precision because in complex mode fSize=2precision and the grid does not fit in m2h */
 		void		*m2hStart    () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision + fSize*(n2)*Ng); }
+
+		/* Auxiliary++ field pointers for linear mode evolution no ghost*/
+
+		void		*m_aCpu()  { return m_a; }
+		const void	*m_aCpu()  const { return m_a; }
+		void		*v_aCpu()  { return v_a; }
+		const void	*v_aCpu()  const { return v_a; }
+		void		*m2_aCpu() { return m2_a; }
+		const void	*m2_aCpu() const { return m2_a; }
+		void		*g_aCpu() { return g_a; }
+		const void	*g_aCpu() const { return g_a; }
+		void		*k_Cpu()  { return k_a; }
+		const void	*k_Cpu() const { return k_a; }
+		void		*k2_Cpu()  { return k2_a; }
+		const void	*k2_Cpu() const { return k2_a; }
+		size_t		NModes ()  { return nmodes; }
+		void	setNModes	(size_t niw) {nmodes = niw;} ;
 
 		/* Faxion rho, vho, gx, gy, gx*/
 		void		*rhoCpu       () { return                                         rho; }
@@ -250,7 +274,7 @@
 		void	exchangeStringGhost();
 
 
-
+		void    setModes ();
 
 		size_t  getNg() {return Ng;}
 		void	  setCO	(size_t newN);

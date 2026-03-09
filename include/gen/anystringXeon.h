@@ -474,7 +474,11 @@
 								DD = opCode(rsqrt_ps,TT);
 								DD = opCode(mul_ps,DD,opCode(mul_ps,DD,DD)); // R3
 								// TH = opCode(add_ps,TH,opCode(div_ps,AA,DD));
+								#if defined(__FMA__)
 								TH = opCode(fmadd_ps,AA,DD,TH);
+								#else
+								TH = opCode(add_ps, opCode(mul_ps,AA,DD), TH);
+								#endif
 				}
 				AA = opCode(cos_ps, TH);
 				TT = opCode(sin_ps, TH);

@@ -77,6 +77,20 @@ class	ConfGenerator
 	void   susum(FieldIndex from, FieldIndex to);
 	void   mulmul(FieldIndex from, FieldIndex to);
 	void   axby(FieldIndex from, FieldIndex to, double a, double b);
+
+	double interp1(double x,
+		const std::vector<double> &xx,
+		const std::vector<double> &yy);
+
+	void loadSpectrum(const char *fname,
+													 std::vector<double> &kk0,
+													 std::vector<double> &mm0,
+													 std::vector<double> &vv0,
+													 std::vector<double> &mm,
+													 std::vector<double> &vv,
+													 double dk,
+													 int nModes);
+
 };
 
 ConfGenerator::ConfGenerator(Cosmos *myCosmos, Scalar *field) : myCosmos(myCosmos), axionField(field)
@@ -1174,26 +1188,14 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] Read data file! ");
 	LogFlush();
 
-	std::vector<double> mm,vv;
-	{
-			FILE *cacheFile = nullptr;
-			if (((cacheFile  = fopen("./initialspectrum.dat", "r")) == nullptr)){
-				printf("No initialspectrum.dat ! Exit!");
-				exit(1);
-			}
-			else
-			{					int ii = 0;
-								double ma, va;
-								while(!feof(cacheFile)){
-										fscanf (cacheFile ,"%lf %lf", &ma, &va);
-										LogMsg(VERB_PARANOID," m %.3e v %.3e !",ma,va);
-										/* In KM we interpret m as cos(keta) modes and v as */
-										mm.push_back(ma);
-										vv.push_back(va);
-										ii++;
-								}
-			}
-	}
+	std::vector<double> kk0, mm0, vv0;	// used for mode evolution
+	std::vector<double> mm,vv					;	// used for the interpolation
+	double L   = axionField->BckGnd()->PhysSize();
+	double k0 = pow(6.283185307179586/L,2);
+	size_t nModes = axionField->Length()*2;
+	loadSpectrum("./initialspectrum.dat", kk0, mm0, vv0, mm, vv, k0, nModes);
+
+
 	/* Generate axion in momentum space */
 	prof.start();
 	LogMsg(VERB_NORMAL,"[GEN] Create KM axion field! ");
@@ -1209,8 +1211,8 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 
 		double eta = (*axionField->zV());
 		double R   = (*axionField->RV());
-		double L   = axionField->BckGnd()->PhysSize();
-		double par1 = pow(6.283185307179586/L,2);
+
+		double par1 = k0;
 		double par2 = axionField->AxionMassSq()*R*R;
 		mopa.kCrt  = par1;
 		mopa.mass2 = par2;
@@ -1286,6 +1288,34 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
 
 
+	if (myCosmos->ICData().linmodevol){
+		LogMsg(VERB_NORMAL,"[GENKM] We fill initial conditions for modes and k table ");
+
+		double *cfield = static_cast<double*>(axionField->m_aCpu());
+		double *cvield = static_cast<double*>(axionField->v_aCpu());
+		double *k_     = static_cast<double*>(axionField->k_Cpu());
+		double *k2_    = static_cast<double*>(axionField->k2_Cpu());
+		double *gfield = static_cast<double*>(axionField->g_aCpu());
+		size_t calamar = min(mm.size(), axionField->Surf());
+
+		// we assume psik mm[i] = -1/2 theta'/calH Phi(0) R
+		// Phi(0) = 2 mm[i] / VEL
+		axionField->setNModes(vv0.size());
+		axionField->setModes();
+		
+		double VEL1 = vv0[0];
+		for (size_t i = 0; i < calamar; i++) {
+			k_[i]     = kk0[i];   // or dk*i if you prefer
+			k2_[i]    = kk0[i]*kk0[i];
+			cfield[i] = mm0[i];
+			cvield[i] = vv0[i];
+			gfield[i] = mm0[i]*2/VEL1;
+
+			LogMsg(VERB_PARANOID,
+			       "[GENKM] set mode %zu k %.3e m %.3e v %.3e g %.3e",
+			       i, k_[i], cfield[i], cvield[i], gfield[i]);
+		}
+	}
 
 	/* If saxion was specified, convert axion only to saxion
 	and add ... possibly ... string network
@@ -2118,6 +2148,86 @@ void	ConfGenerator::axby(FieldIndex ftipo1, FieldIndex ftipo2, double a, double 
 
 	return;
 } //end mulmul
+
+/* Utils for the reading of spectra */
+
+double ConfGenerator::interp1(double x,
+                      const std::vector<double> &xx,
+                      const std::vector<double> &yy)
+{
+	if (x <= xx[0]) return yy[0];
+	for (size_t i = 1; i < xx.size(); i++) {
+		if (x <= xx[i]) {
+			double t = (x - xx[i-1])/(xx[i]-xx[i-1]);
+			return yy[i-1] + t*(yy[i]-yy[i-1]);
+		}
+	}
+	return yy.back();
+}
+
+void ConfGenerator::loadSpectrum(const char *fname,
+                         std::vector<double> &kk0,
+                         std::vector<double> &mm0,
+                         std::vector<double> &vv0,
+                         std::vector<double> &mm,
+                         std::vector<double> &vv,
+                         double dk,
+                         int nModes)
+{
+	FILE *f = fopen(fname,"r");
+	if (f == nullptr) {
+		printf("Cannot open %s\n", fname);
+		exit(1);
+	}
+
+	char line[1024];
+	int idx = 0;
+	int hasK = -1;
+
+	kk0.clear();
+	mm0.clear();
+	vv0.clear();
+	mm.clear();
+	vv.clear();
+
+	while (fgets(line, sizeof(line), f) != nullptr) {
+
+		if (line[0]=='#' || line[0]=='\n' || line[0]=='\0')
+			continue;
+
+		double a,b,c;
+		int n = sscanf(line,"%lf %lf %lf",&a,&b,&c);
+		if (n < 2) continue;
+
+		if (hasK < 0)
+			hasK = (n == 3);
+
+		if (hasK) {
+			kk0.push_back(a);
+			mm0.push_back(b);
+			vv0.push_back(c);
+			LogMsg(VERB_PARANOID," [load]read k %.3e m %.3e v %.3e !",a,b,c);
+		} else {
+			kk0.push_back(dk*idx);
+			mm0.push_back(a);
+			vv0.push_back(b);
+			LogMsg(VERB_PARANOID," [load]read k %.3e m %.3e v %.3e !",dk*idx,a,b);
+		}
+
+		idx++;
+	}
+
+	fclose(f);
+
+	for (int i = 0; i < nModes; i++) {
+		double k = dk*i;
+		mm.push_back(interp1(k, kk0, mm0));
+		vv.push_back(interp1(k, kk0, vv0));
+		LogMsg(VERB_PARANOID," [load] set (%d) k %.3e m %.3e v %.3e !",i,k,mm.back(),vv.back());
+	}
+}
+
+
 
 void	genConf	(Cosmos *myCosmos, Scalar *field)
 {
