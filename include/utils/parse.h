@@ -96,6 +96,7 @@ extern SliceType        maty;
 extern nRunType         nrt;
 extern MeasInfo         deninfa;
 extern StringMeasureType strmeas;
+extern bool             measloop;
 extern GadType          gadType;
 
 extern LogMpi       logMpi;

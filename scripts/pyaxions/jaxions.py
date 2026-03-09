@@ -663,6 +663,34 @@ def gm(address,something='summary',printerror=False):
                 "closed" : f['/string/loops/closed'][()],
                 }
             return duxs
+
+    ##########
+    # loop radius observables
+    ##########
+
+    if (something == 'loopR?'):
+        return '/loops/' in f and any(key.startswith('meas_') for key in f['/loops'].keys())
+    
+    if something in ['loopR_axes', 'loopR_diag', 'loopR_axes_interp', 'loopR_diag_interp']:
+        if '/loops/' in f:
+            # Read from indexed groups: loops/meas_00000, loops/meas_00001, etc.
+            loop_groups = sorted([key for key in f['/loops'].keys() if key.startswith('meas_')])
+            if len(loop_groups) > 0:
+                data = []
+                for group in loop_groups:
+                    group_path = f'/loops/{group}'
+                    if something in f[group_path].attrs:
+                        data.append(f[group_path].attrs[something])
+                return np.array(data)
+            else:
+                if printerror:
+                    print(f'[gm] No loop measurement groups in file')
+                return np.array([])
+        else:
+            if printerror:
+                print(f'[gm] No {something} data in file')
+            return np.array([])
+
     ##########
     # the bins
     ##########

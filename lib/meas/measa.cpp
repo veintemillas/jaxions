@@ -8,6 +8,7 @@
 #include "comms/comms.h"
 #include "map/map.h"
 #include "strings/strings.h"
+#include "strings/loopradius.h"
 #include "scalar/scalar.h"
 #include "reducer/reducer.h"
 
@@ -480,6 +481,24 @@ writePMapHdf5s (axiona, LAB);
 				writeStringLoopObservables(axiona,slp, 0);
 
 			}
+		}
+	}
+
+	//	--------------------------------------------------------------------------
+	//
+	//	LOOP RADIUS BLOCK
+	//
+	//	--------------------------------------------------------------------------
+
+	if(axiona->Field() == FIELD_SAXION) {
+		if (strmeas & STRMEAS_LOOPRADIUS) {
+			LogMsg(VERB_NORMAL, "[Meas %d] loop radius", indexa);
+			
+			// Compute loop radius observables from the 2D field slice
+			LoopRadiusData loopData = computeLoopRadius(axiona, sliceprint);
+			
+			// Write loop radius data to HDF5 file
+			writeLoopRadiusData(axiona, loopData, indexa);
 		}
 	}
 

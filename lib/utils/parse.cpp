@@ -106,6 +106,7 @@ size_t       fftplanType     = 0; //FFTW_MEASURE = 0
 PropType     pType           = PROP_NONE;
 SpectrumMaskType spmask      = SPMASK_NONE;
 StringMeasureType strmeas    = STRMEAS_STRING;
+bool         measloop        = false;
 double       rmask           = 2.0 ;
 ConfType     cType           = CONF_NONE;
 ConfsubType  smvarType       = CONF_RAND;
@@ -1947,6 +1948,29 @@ int	parseArgs (int argc, char *argv[])
 			{
 				printf("Error: String measurement type is a positive integer.\n");
 				exit(1);
+			}
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--measloop"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a boolean flag for loop measurement: 0 (off), 1 (on).\n");
+				exit(1);
+			}
+
+			int measloop_int = 0;
+			sscanf(argv[i+1], "%d", &measloop_int);
+			measloop = (measloop_int != 0);
+
+			/* Set the LOOPRADIUS bit in strmeas if measloop is enabled */
+			if (measloop)
+			{
+				strmeas = static_cast<StringMeasureType>(strmeas | STRMEAS_LOOPRADIUS);
+				/* We make sure we will measure at least strings to trigger measurements*/
+				defaultmeasType |= MEAS_STRING;
 			}
 
 			PARSE2;

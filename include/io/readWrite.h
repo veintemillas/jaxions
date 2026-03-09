@@ -4,6 +4,7 @@
 	#include "scalar/scalarField.h"
 	#include <hdf5.h>
 	#include "utils/binner.h"
+	#include "strings/loopradius.h"
 
 	// void	writeConf	(Scalar  *axion, int index);
 	// void	readConf	(Cosmos *myCosmos, Scalar **axion, int index);
@@ -45,6 +46,7 @@
 	void	writeBinnerMetadata (double max, double min, size_t N, const char *group);
 
 	void writeStringLoopObservables(Scalar *tut, StringLoopParms slp, int rango);
+	void writeLoopRadiusData(Scalar *axion, const LoopRadiusData &loopData, int index);
 
 	void	writeGadget	(Scalar *axion);
 	void	writeConfNyx (Scalar *axion, int index);

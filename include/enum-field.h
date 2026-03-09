@@ -654,13 +654,14 @@
 		}	nRunType;
 
 		typedef	enum	StringMeasureType_s {
-			STRMEAS_STRING = 0,
-			STRMEAS_LENGTH = 1,
-			STRMEAS_GAMMA  = 2,
-			STRMEAS_ENERGY = 4,
-			STRMEAS_LOOPS  = 8,  // does the whole loop analysis
-			STRMEAS_LABEL  = 16, // prints string label map
-		}	StringMeasureType;
+		STRMEAS_STRING     = 0,
+		STRMEAS_LENGTH     = 1,
+		STRMEAS_GAMMA      = 2,
+		STRMEAS_ENERGY     = 4,
+		STRMEAS_LOOPS      = 8,  // does the whole loop analysis
+		STRMEAS_LABEL      = 16, // prints string label map
+		STRMEAS_LOOPRADIUS = 32  // measures loop radius observables
+	}	StringMeasureType;
 
 // 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304
 

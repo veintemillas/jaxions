@@ -18,6 +18,7 @@
 
 #include "fft/fftCode.h"
 #include "scalar/fourier.h"
+#include "strings/loopradius.h"
 
 /* In case one reads from Moore format */
 #include "utils/simpleops.h"
@@ -2895,6 +2896,90 @@ void	writeArray (const double *aData, size_t aSize, const char *group, const cha
 void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango)
 {
 	writeStringLoopObservables(axion, slp, rango, iop);
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void writeLoopRadiusData(Scalar *axion, const LoopRadiusData &loopData, int index)
+{
+	hid_t	group_id, base_id;
+	size_t	sBytes	 = 0;
+
+	int myRank = commRank();
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	/*	Start profiling		*/
+	LogMsg (VERB_NORMAL, "[wLRD] Writing loop radius data for measurement %d", index);
+	prof.start();
+
+	if (header == false || opened == false)
+	{
+		LogError ("[wLRD] Error: measurement file not opened. Ignoring write request.");
+		prof.stop();
+		return;
+	}
+
+	/*	Create parent /loops group if it doesn't exist (like writeArray	pattern)	*/
+	auto status = H5Lexists (meas_id, "/loops", H5P_DEFAULT);
+
+	if (!status)
+		base_id = H5Gcreate2(meas_id, "/loops", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0)
+			base_id = H5Gopen2(meas_id, "/loops", H5P_DEFAULT);
+		else {
+			LogError ("[wLRD] Error: can't check whether group /loops exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create child group for this measurement (relative to base_id)	*/
+	char LABEL[256];
+	sprintf(LABEL, "meas_%05d", index);
+
+	status = H5Lexists (base_id, LABEL, H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(base_id, LABEL, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(base_id, LABEL, H5P_DEFAULT);
+			LogMsg(VERB_NORMAL, "[wLRD] Warning: group %s exists!", LABEL);
+		} else {
+			LogError ("[wLRD] Error: can't check whether group %s exists", LABEL);
+			H5Gclose(base_id);
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Write loop radius observables as attributes	*/
+	double R_axes = loopData.R_axes;
+	double R_diag = loopData.R_diag;
+	double R_axes_interp = loopData.R_axes_interp;
+	double R_diag_interp = loopData.R_diag_interp;
+
+	writeAttribute(group_id, &R_axes,         "loopR_axes",        H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &R_diag,         "loopR_diag",        H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &R_axes_interp,  "loopR_axes_interp", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &R_diag_interp,  "loopR_diag_interp", H5T_NATIVE_DOUBLE);
+
+	sBytes = 32;
+
+	/*	Close both groups like writeArray	*/
+	H5Gclose (group_id);
+	H5Gclose (base_id);
+
+	prof.stop();
+	prof.add(std::string("Write loop radius"), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "[wLRD] Written %lu bytes to disk", sBytes);
+
+	commSync();
 }
 
 //------------------------------------------------------------------------------

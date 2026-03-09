@@ -214,6 +214,7 @@ int	main (int argc, char *argv[])
 		ninfa.index=index;
 		if (ninfa.printconf & PRINTCONF_INITIAL)
 			ninfa.measdata |= MEAS_3DMAP ;
+		LogMsg(VERB_NORMAL,"[VAX DEBUG] Before Measureme: ninfa.strmeas = %d", (int)ninfa.strmeas);
 		lm = Measureme (axion, ninfa);
 	}
 	else if (restart_flag)	{
@@ -224,6 +225,7 @@ int	main (int argc, char *argv[])
 		index = fIndex;
 		LogOut("First measurement from read file %d \n",index);
 		ninfa.index=index;
+		LogMsg(VERB_NORMAL,"[VAX DEBUG] Before Measureme: ninfa.strmeas = %d", (int)ninfa.strmeas);
 		lm = Measureme (axion, ninfa);
 	}
 
