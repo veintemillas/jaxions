@@ -89,6 +89,7 @@ bool uRPQ     = false;
 bool spectral = false;
 bool fpectral = false;
 bool linmodevol = false;
+bool lme_no_rhs = false;
 bool mink			= false;
 bool aMod     = false;
 bool icstudy  = false ;
@@ -2404,11 +2405,16 @@ int	parseArgs (int argc, char *argv[])
 		{
 			linmodevol = true;
       defaultmeasType |= MEAS_LINMODES;
-      pType |= PROP_MODES;
+      pType = PROP_MODES;
 
 			PARSE1;
 		}
 
+    if (!strcmp(argv[i], "--lme-no-rhs"))
+		{
+			lme_no_rhs = true;
+			PARSE1;
+		}
 
 		if (!strcmp(argv[i], "--restart"))
 		{
@@ -2778,6 +2784,7 @@ if (icdatst.cType == CONF_SMOOTH )
 
   icdatst.fType = fTypeP;
   icdatst.linmodevol = linmodevol;
+  icdatst.lme_no_rhs = lme_no_rhs;
 
 	//- information needs to be passed onto measurement files
  	deninfa.sliceprint = slicepp;

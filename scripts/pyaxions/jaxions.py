@@ -294,15 +294,24 @@ def gm(address,something='summary',printerror=False):
 
     # generic data: something = 'da/nombre'
 
-    if (something[0:2] == 'da'):
-        esp = something[2:]
-        dap = esp[:esp.rfind('/')]
+    # if (something[0:2] == 'da'):
+    #     esp = something[2:]
+    #     dap = esp[:esp.rfind('/')]
+    #     try:
+    #         return np.array(f[dap][()])
+    #     except:
+    #         print('Data not found!')
+    #         return 0
+    #     return
+
+    if something[:2] == 'da':
+        dap = something[2:]
         try:
             return np.array(f[dap][()])
-        except:
-            print('Data not found!')
+        except Exception as e:
+            print(f'Data not found: {dap}')
+            print(e)
             return 0
-        return
 
     #prelim checks
     ftype = f.attrs.get('Field type').decode()

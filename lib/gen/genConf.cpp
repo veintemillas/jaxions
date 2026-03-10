@@ -1195,6 +1195,16 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	size_t nModes = axionField->Length()*2;
 	loadSpectrum("./initialspectrum.dat", kk0, mm0, vv0, mm, vv, k0, nModes);
 
+	// check the interpolation suits
+	if (kk0.back() < k0*axionField->Length()*pow(3,0.5)) {
+		LogMsg(VERB_NORMAL,"[confKM] Error! We need more modes in the UV! ");
+		LogMsg(VERB_NORMAL,"[confKM] Max provided %.2f , needed %.2f!",kk0.back(),k0*axionField->Length()*pow(3,0.5));
+		exit(1);
+	}
+	if (kk0.front() != 0.0) {
+		LogMsg(VERB_NORMAL,"[confKM] Error! The lowest mode provided must be 0 ");
+		exit(1);
+	}
 
 	/* Generate axion in momentum space */
 	prof.start();
@@ -1291,30 +1301,43 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	if (myCosmos->ICData().linmodevol){
 		LogMsg(VERB_NORMAL,"[GENKM] We fill initial conditions for modes and k table ");
 
-		double *cfield = static_cast<double*>(axionField->m_aCpu());
-		double *cvield = static_cast<double*>(axionField->v_aCpu());
-		double *k_     = static_cast<double*>(axionField->k_Cpu());
-		double *k2_    = static_cast<double*>(axionField->k2_Cpu());
-		double *gfield = static_cast<double*>(axionField->g_aCpu());
-		size_t calamar = min(mm.size(), axionField->Surf());
+		size_t calamar = mm0.size();
 
 		// we assume psik mm[i] = -1/2 theta'/calH Phi(0) R
 		// Phi(0) = 2 mm[i] / VEL
 		axionField->setNModes(vv0.size());
 		axionField->setModes();
-		
-		double VEL1 = vv0[0];
-		for (size_t i = 0; i < calamar; i++) {
+
+		double *cfield = static_cast<double*>(axionField->m_aCpu());
+		double *cvield = static_cast<double*>(axionField->v_aCpu());
+		double *k_     = static_cast<double*>(axionField->k_Cpu());
+		double *k2_    = static_cast<double*>(axionField->k2_Cpu());
+		double *gfield = static_cast<double*>(axionField->g_aCpu());
+
+
+		double VEL1 = vv0[0]-mm0[0];
+		double w,C,S;
+		LogMsg(VERB_NORMAL,"[GENKM] Initialise %d modes with vel = %.2f",calamar,VEL1);
+		for (size_t i = 1; i < calamar; i++) {
 			k_[i]     = kk0[i];   // or dk*i if you prefer
 			k2_[i]    = kk0[i]*kk0[i];
-			cfield[i] = mm0[i];
-			cvield[i] = vv0[i];
-			gfield[i] = mm0[i]*2/VEL1;
+			// neglect the mass in the ICs
+			w         = k_[i]; //sqrt(k2_[i]+1.0); // general mass and time!
+			C         = cos(w);
+			S         = -sin(w);
+			gfield[i] = 1.0;
+			cfield[i] = -1/2*VEL1*C;
+			cvield[i] =  1/2*VEL1*S;
 
+
+			if (i%10 == 0)
 			LogMsg(VERB_PARANOID,
 			       "[GENKM] set mode %zu k %.3e m %.3e v %.3e g %.3e",
 			       i, k_[i], cfield[i], cvield[i], gfield[i]);
 		}
+		cfield[0] = mm0[0];
+		cvield[0] = vv0[0];
+		gfield[0] = 0.0;
 	}
 
 	/* If saxion was specified, convert axion only to saxion
@@ -2206,12 +2229,12 @@ void ConfGenerator::loadSpectrum(const char *fname,
 			kk0.push_back(a);
 			mm0.push_back(b);
 			vv0.push_back(c);
-			LogMsg(VERB_PARANOID," [load]read k %.3e m %.3e v %.3e !",a,b,c);
+			// LogMsg(VERB_PARANOID," [load]read k %.3e m %.3e v %.3e !",a,b,c);
 		} else {
 			kk0.push_back(dk*idx);
 			mm0.push_back(a);
 			vv0.push_back(b);
-			LogMsg(VERB_PARANOID," [load]read k %.3e m %.3e v %.3e !",dk*idx,a,b);
+			// LogMsg(VERB_PARANOID," [load]read k %.3e m %.3e v %.3e !",dk*idx,a,b);
 		}
 
 		idx++;
@@ -2223,7 +2246,8 @@ void ConfGenerator::loadSpectrum(const char *fname,
 		double k = dk*i;
 		mm.push_back(interp1(k, kk0, mm0));
 		vv.push_back(interp1(k, kk0, vv0));
-		LogMsg(VERB_PARANOID," [load] set (%d) k %.3e m %.3e v %.3e !",i,k,mm.back(),vv.back());
+		if ((i%100) == 0 || i == nModes-1)
+			LogMsg(VERB_PARANOID," [load] set (%d) k %.3e m %.3e v %.3e !",i,k,mm.back(),vv.back());
 	}
 }
 

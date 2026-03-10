@@ -906,6 +906,7 @@
 			bool          randommom;
 			bool          uEvolAll;
 			bool          linmodevol;
+			bool          lme_no_rhs;
 		}	IcData;
 
 		typedef	struct	MomParms_v
@@ -987,6 +988,8 @@
 			double   frw;
 			double   fMom1;
 			double   grav;
+			size_t   nmodes;
+			bool     rhsoff;
 
 		}	PropParms;
 

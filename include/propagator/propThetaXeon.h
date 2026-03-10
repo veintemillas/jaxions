@@ -819,8 +819,7 @@ inline void propLinearModeKernelXeon(
 	const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_,
 	const void * __restrict__ g_,
 	const void * __restrict__ k_, const void * __restrict__ k2_,
-	const PropParms ppar, const double dz, const double c, const double d,
-	const size_t V)
+	const PropParms ppar, const double dz, const double c, const double d)
 {
 #ifdef __AVX512F__
 	#define _MData_ __m512d
@@ -850,6 +849,7 @@ inline void propLinearModeKernelXeon(
 	const double mA2  = ppar.massA2;
 	const double eta  = ppar.ct;
 	const double beta = ppar.n;  // Xi =  d log chi / d log T
+	const bool   rhs  = !ppar.rhsoff;  // use the rhs?
 
 	/* save old zero mode background */
 	const double ctheta0  = m[0];
@@ -874,92 +874,228 @@ inline void propLinearModeKernelXeon(
 	const _MData_ m4Vec   = opCode(set1_pd, -4.0);
 	const _MData_ iS3Vec  = opCode(set1_pd, 1.0/sqrt(3.0));
 
+
 	#pragma omp parallel for schedule(static)
-	for (size_t i = 0; i < V; i += step) {
+	for (size_t i = 0; i < ppar.nmodes; i += step) {
 
-		_MData_ mk   = opCode(load_pd, &m[i]);
-		_MData_ vk   = opCode(load_pd, &v[i]);
-		_MData_ phi0 = opCode(load_pd, &g[i]);
-		_MData_ kv   = opCode(load_pd, &kk[i]);
-		_MData_ k2v  = opCode(load_pd, &k2[i]);
+		_MData_ mk   = opCode(load_pd, &m[i]);    // psi_k
+		_MData_ vk   = opCode(load_pd, &v[i]);    // psi_k'
+		_MData_ kv   = opCode(load_pd, &kk[i]);   // k
+		_MData_ k2v  = opCode(load_pd, &k2[i]);   // k^2
+		_MData_ src  = opCode(set1_pd, 0.0);
 
-		/* x = k eta / sqrt(3) */
-		_MData_ x  = opCode(mul_pd, opCode(mul_pd, kv, etaVec), iS3Vec);
-		_MData_ x2 = opCode(mul_pd, x, x);
-		_MData_ x3 = opCode(mul_pd, x2, x);
-		_MData_ x4 = opCode(mul_pd, x2, x2);
+		if (rhs)
+		{
+			_MData_ phi0 = opCode(load_pd, &g[i]);  // Phi_k(0)
 
-		_MData_ sx = opCode(sin_pd, x);
-		_MData_ cx = opCode(cos_pd, x);
+			// Useful common factors
+			_MData_ phi03 = opCode(mul_pd, phi0, thrVec);     // 3*Phi_k(0)
+			_MData_ kis3  = opCode(mul_pd, kv, iS3Vec);       // k/sqrt(3)
 
-		/* Phi_k(eta) = 3 Phi_k(0) (sin x - x cos x)/x^3 */
-		_MData_ phik = opCode(mul_pd, thrVec,
-			opCode(mul_pd, phi0,
-				opCode(div_pd,
-					opCode(sub_pd, sx, opCode(mul_pd, x, cx)),
-					x3)));
+			// x = k eta / sqrt(3)
+			_MData_ x  = opCode(mul_pd, kis3, etaVec);
+			_MData_ x2 = opCode(mul_pd, x, x);
+			_MData_ x3 = opCode(mul_pd, x2, x);
+			_MData_ x4 = opCode(mul_pd, x2, x2);
 
-		/* Phi'_k(eta) = Phi_k(0) (k/sqrt3) * 3 [ (x^2-3) sin x + 3 x cos x ] / x^4 */
-		_MData_ gp = opCode(mul_pd, phi0,
-			opCode(mul_pd, opCode(mul_pd, kv, iS3Vec),
-				opCode(mul_pd, thrVec,
-					opCode(div_pd,
-						opCode(add_pd,
-							opCode(mul_pd, opCode(sub_pd, x2, thrVec), sx),
-							opCode(mul_pd, opCode(mul_pd, thrVec, x), cx)),
-						x4))));
+			_MData_ sx = opCode(sin_pd, x);
+			_MData_ cx = opCode(cos_pd, x);
 
-		_MData_ keta  = opCode(mul_pd, kv, etaVec);
-		_MData_ keta2 = opCode(mul_pd, keta, keta);
+			// numPhi = sin(x) - x cos(x)
+			_MData_ numPhi = opCode(sub_pd, sx, opCode(mul_pd, x, cx));
 
-		_MData_ bracket = opCode(add_pd,
-			opCode(mul_pd, t23Vec, opCode(mul_pd, keta2, phik)),
-			opCode(add_pd,
-				opCode(mul_pd, opCode(mul_pd, twoVec, etaVec), gp),
-				phik));
+			// Phi_k = 3 Phi_k(0) [sin(x) - x cos(x)] / x^3
+			_MData_ phik = opCode(mul_pd, phi03, opCode(div_pd, numPhi, x3));
 
-		_MData_ src = opCode(add_pd,
-			opCode(mul_pd, m4Vec, opCode(mul_pd, gp, thpRVec)),
-			opCode(mul_pd, mR2sVec,
-				opCode(add_pd,
-					opCode(mul_pd, twoVec, phik),
-					opCode(mul_pd, b4Vec, bracket))));
+			// numGp = (x^2 - 3) sin(x) + 3 x cos(x)
+			_MData_ numGp = opCode(add_pd,
+				opCode(mul_pd, opCode(sub_pd, x2, thrVec), sx),
+				opCode(mul_pd, opCode(mul_pd, thrVec, x), cx));
 
-		/* psi_k'' = (mA^2 R^2 cos(theta0) - k^2 + R''/R) psi_k + src */
-		_MData_ acc = opCode(add_pd,
-			opCode(mul_pd,
-				opCode(add_pd, opCode(sub_pd, mR2cVec, k2v), RppVec),
-				mk),
-			src);
+			// Phi'_k = 3 Phi_k(0) (k/sqrt3) * numGp / x^4
+			_MData_ gp = opCode(mul_pd,
+				opCode(mul_pd, phi03, kis3),
+				opCode(div_pd, numGp, x4));
 
-#if defined(__AVX512F__) || defined(__FMA__)
+			// k*eta = sqrt(3)*x  (reuse x instead of recomputing kv*eta)
+			_MData_ keta  = opCode(mul_pd, x, opCode(sqrt_pd, thrVec)); // or precompute sqrt3Vec outside loop
+			_MData_ keta2 = opCode(mul_pd, keta, keta);
+
+			// Reused pieces
+			_MData_ twoPhik  = opCode(mul_pd, twoVec, phik);                  // 2 Phi_k
+			_MData_ twoEtaGp = opCode(mul_pd, opCode(mul_pd, twoVec, etaVec), gp); // 2 eta Phi'_k
+
+			// delta_rad = (2/3)(k eta)^2 Phi_k + 2 eta Phi'_k + 2 Phi_k
+			_MData_ bracket = opCode(add_pd,
+				opCode(mul_pd, t23Vec, opCode(mul_pd, keta2, phik)),
+				opCode(add_pd, twoEtaGp, twoPhik));
+
+			// src = -4 Phi'_k theta0'R + mR2s [ 2 Phi_k + (beta/4) * bracket ]
+			_MData_ metricSrc = opCode(mul_pd, m4Vec, opCode(mul_pd, gp, thpRVec));
+			_MData_ tempSrc   = opCode(add_pd, twoPhik, opCode(mul_pd, b4Vec, bracket));
+			src = opCode(add_pd, metricSrc, opCode(mul_pd, mR2sVec, tempSrc));
+		}
+
+		// acc = [R''/R - (mA^2 R^2 cos(theta0) + k^2)] psi_k + src
+		_MData_ coeff = opCode(sub_pd, RppVec, opCode(add_pd, mR2cVec, k2v));
+		_MData_ acc   = opCode(add_pd, opCode(mul_pd, coeff, mk), src);
+
+	#if defined(__AVX512F__) || defined(__FMA__)
 		_MData_ vnew = opCode(fmadd_pd, acc, dzcVec, vk);
 		_MData_ mnew = opCode(fmadd_pd, vnew, dzdVec, mk);
-#else
+	#else
 		_MData_ vnew = opCode(add_pd, vk, opCode(mul_pd, acc, dzcVec));
 		_MData_ mnew = opCode(add_pd, mk, opCode(mul_pd, vnew, dzdVec));
-#endif
+	#endif
 
 		opCode(store_pd, &v[i],  vnew);
 		opCode(store_pd, &m2[i], mnew);
 	}
 
+// 	#pragma omp parallel for schedule(static)
+// 	for (size_t i = 0; i < ppar.nmodes; i += step) {
+//
+// 		// Load a SIMD packet of modes starting at i
+// 		// mk   = current mode amplitude psi_k
+// 		// vk   = current mode velocity psi_k'
+// 		// phi0 = primordial / initial gravitational potential Phi_k(0)
+// 		// kv   = comoving wavenumber k
+// 		// k2v  = k^2
+// 		_MData_ mk   = opCode(load_pd, &m[i]);
+// 		_MData_ vk   = opCode(load_pd, &v[i]);
+// 		_MData_ kv   = opCode(load_pd, &kk[i]);
+// 		_MData_ k2v  = opCode(load_pd, &k2[i]);
+// 		_MData_ src  = opCode(set1_pd, 0.0);
+//
+// 		if (rhs)
+// 		{
+// 			_MData_ phi0 = opCode(load_pd, &g[i]);
+//
+// 			// x = k eta / sqrt(3)
+// 			// This is the usual radiation-era sound-horizon variable
+// 			// appearing in the analytic evolution of the metric potential.
+// 			_MData_ x  = opCode(mul_pd, opCode(mul_pd, kv, etaVec), iS3Vec);
+// 			_MData_ x2 = opCode(mul_pd, x, x);    // x^2
+// 			_MData_ x3 = opCode(mul_pd, x2, x);   // x^3
+// 			_MData_ x4 = opCode(mul_pd, x2, x2);  // x^4
+//
+// 			// sin(x), cos(x): needed for the analytic radiation-era Phi_k solution
+// 			_MData_ sx = opCode(sin_pd, x);
+// 			_MData_ cx = opCode(cos_pd, x);
+//
+// 			// Gravitational potential at conformal time eta:
+// 			//
+// 			// Phi_k(eta) = 3 Phi_k(0) [sin(x) - x cos(x)] / x^3
+// 			//
+// 			// This is the standard radiation-dominated transfer function for Phi_k.
+// 			_MData_ phik = opCode(mul_pd, thrVec,
+// 				opCode(mul_pd, phi0,
+// 					opCode(div_pd,
+// 						opCode(sub_pd, sx, opCode(mul_pd, x, cx)),
+// 						x3)));
+//
+// 		// Conformal-time derivative of the gravitational potential:
+// 		//
+// 		// Phi'_k(eta) = Phi_k(0) (k/sqrt(3)) * 3 * [ (x^2 - 3) sin(x) + 3 x cos(x) ] / x^4
+// 		//
+// 		// This enters the source term that drives the mode equation.
+// 			_MData_ gp = opCode(mul_pd, phi0,
+// 				opCode(mul_pd, opCode(mul_pd, kv, iS3Vec),
+// 					opCode(mul_pd, thrVec,
+// 						opCode(div_pd,
+// 							opCode(add_pd,
+// 								opCode(mul_pd, opCode(sub_pd, x2, thrVec), sx),
+// 								opCode(mul_pd, opCode(mul_pd, thrVec, x), cx)),
+// 						x4))));
+//
+// 			// k*eta and (k*eta)^2
+// 			// These combinations appear repeatedly in the forcing/source structure.
+// 			_MData_ keta  = opCode(mul_pd, kv, etaVec);
+// 			_MData_ keta2 = opCode(mul_pd, keta, keta);
+//
+// 			// Auxiliary combination entering the external source:
+// 			//
+// 			// bracket = (2/3) (k eta)^2 Phi_k + 2 eta Phi'_k + Phi_k
+// 			//
+// 			// This looks like the metric combination induced by the scalar perturbation
+// 			// that couples into the axion/fluctuation mode equation.
+// 			_MData_ bracket = opCode(add_pd,
+// 				opCode(mul_pd, t23Vec, opCode(mul_pd, keta2, phik)),
+// 				opCode(add_pd,
+// 					opCode(mul_pd, opCode(mul_pd, twoVec, etaVec), gp),
+// 						opCode(mul_pd, twoVec, phik)));
+//
+// 			// Source term driving psi_k:
+// 			//
+// 			// src = -4 Phi'_k theta0' + (-R^2 sin(theta0)) [ 2 Phi_k + b4 * bracket ]
+// 			//
+// 			// Interpreting your variable names:
+// 			// - thpRVec probably stores theta0' (background field derivative)
+// 			// - m4Vec  likely corresponds to -4
+// 			// - mR2sVec likely corresponds to -R^2 sin(theta0)
+// 			// - b4Vec is some model-dependent coefficient multiplying 'bracket'
+// 			src = opCode(add_pd,
+// 				opCode(mul_pd, m4Vec, opCode(mul_pd, gp, thpRVec)),
+// 				opCode(mul_pd, mR2sVec,
+// 					opCode(add_pd,
+// 						opCode(mul_pd, twoVec, phik),
+// 						opCode(mul_pd, b4Vec, bracket))));
+// 		} // end calculating source
+//
+// 		// Mode acceleration psi_k'' from the linearized equation of motion:
+// 		//
+// 		// psi_k'' = [ -mA^2 R^2 cos(theta0) - k^2 + R''/R ] psi_k + src
+// 		//
+// 		// where:
+// 		// - mR2cVec = mA^2 R^2 cos(theta0)
+// 		// - k2v     = k^2
+// 		// - RppVec  = R''/R
+// 		//
+// 		// So the first term is the homogeneous evolution operator,
+// 		// and src is the inhomogeneous forcing.
+// 		_MData_ acc = opCode(add_pd,
+// 			opCode(mul_pd,
+// 				opCode(sub_pd, RppVec, opCode(add_pd, mR2cVec, k2v)),
+// 				mk),
+// 			src);
+//
+// #if defined(__AVX512F__) || defined(__FMA__)
+// 		// Time update:
+// 		// 1) update velocity/momentum: psi_k' <- psi_k' + psi_k'' * dzc
+// 		// 2) update field amplitude:    psi_k  <- psi_k  + psi_k'  * dzd
+// 		//
+// 		// Using fused multiply-add when available for better performance/precision.
+// 		_MData_ vnew = opCode(fmadd_pd, acc, dzcVec, vk);
+// 		_MData_ mnew = opCode(fmadd_pd, vnew, dzdVec, mk);
+// #else
+// 		// Same update without FMA support.
+// 		_MData_ vnew = opCode(add_pd, vk, opCode(mul_pd, acc, dzcVec));
+// 		_MData_ mnew = opCode(add_pd, mk, opCode(mul_pd, vnew, dzdVec));
+// #endif
+//
+// 		// Store updated psi_k' back into v
+// 		// Store updated psi_k into m2
+// 		// (m2 may be the output buffer for the new field state)
+// 		opCode(store_pd, &v[i],  vnew);
+// 		opCode(store_pd, &m2[i], mnew);
+// 	}
+
 	/* overwrite zero mode with correct scalar equation */
-	{
-		const double acc0  = Rpp*ctheta0 - mR2s;
-		const double v0new = ctheta0p + dzc*acc0;
-		const double m0new = ctheta0  + dzd*v0new;
 
-		v[0]  = v0new;
-		m2[0] = m0new;
+	const double acc0  = Rpp*ctheta0 - mR2s;
+	const double v0new = ctheta0p + dzc*acc0;
+	const double m0new = ctheta0  + dzd*v0new;
 
-		LogMsg(VERB_PARANOID,
-			"[LNK] zero mode th %.3e cthp %.3e acc %.3e -> cth %.3e cthp %.3e",
-			theta0, ctheta0p, acc0, m0new, v0new);
-	}
+	v[0]  = v0new;
+	m2[0] = m0new;
+
+	LogMsg(VERB_PARANOID,
+		"[LNK] zero mode th %.3e cthp %.3e acc %.3e -> cth %.3e cthp %.3e",
+		theta0, ctheta0p, acc0, m0new, v0new);
 
 #undef _MData_
 #undef step
+
 }
 
 #undef	opCode

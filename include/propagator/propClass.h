@@ -500,7 +500,7 @@
 	void	PropClass<nStages, lastStage, VQcd>::tRunCpu	(const double dz) {
 		double *z  = axion->zV();
 		double *cD = d;
-
+		double lme = axion->BckGnd()->ICData().linmodevol;
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
 		PropParms ppar;
@@ -1169,8 +1169,7 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 
 	PropParms ppar;
 
-	size_t V   = axion->NModes();
-	// we make sure it is aligned rounding up
+	// it only works for propagators iwthout first or last step
 	#pragma unroll
 	for (int s = 0; s<nStages; s+=2) {
 
@@ -1179,14 +1178,14 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 		loadparms(&ppar, axion);
 
 		propLinearModeKernelXeon(axion->m_aCpu(), axion->v_aCpu(), axion->m2_aCpu(),
-		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(),ppar, dz, c1, d1, V);
+		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(),ppar, dz, c1, d1);
 		*z += dz*d1;
 		axion->updateR();
 
 		loadparms(&ppar, axion);
 
 		propLinearModeKernelXeon(axion->m2_aCpu(), axion->v_aCpu(), axion->m_aCpu(),
-		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(), ppar, dz, c2, d2, V);
+		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(), ppar, dz, c2, d2);
 		*z += dz*d2;
 		axion->updateR();
 	}
@@ -1339,7 +1338,8 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 		(*pipar).frw    = axion->BckGnd()->Frw();
 		(*pipar).dectime= axion->BckGnd()->DecTime();
 		(*pipar).RPQ    = axion->BckGnd()->RPQ();
-
+		(*pipar).nmodes = axion->NModes();
+		(*pipar).rhsoff = axion->BckGnd()->ICData().lme_no_rhs;
 
 	}
 #endif
