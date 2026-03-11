@@ -1326,8 +1326,8 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 			C         = cos(w);
 			S         = -sin(w);
 			gfield[i] = 1.0;
-			cfield[i] = -1/2*VEL1*C;
-			cvield[i] =  1/2*VEL1*S;
+			cfield[i] = -0.5*VEL1*C;
+			cvield[i] =  0.5*VEL1*S;
 
 
 			if (i%10 == 0)
