@@ -1204,79 +1204,81 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				hid_t icGrp_id = H5Gopen2(file_id, "/ic", H5P_DEFAULT);
 				readAttribute(icGrp_id, &mode0, "Axion zero mode", H5T_NATIVE_DOUBLE);
 				readAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
-
+				ConfType acType = CONF_NONE;
 				if (!strcmp(icStr, "Smooth")) {
-					cType = CONF_SMOOTH;
+					acType = CONF_SMOOTH;
 					readAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "kMax")) {
-					cType = CONF_KMAX;
+					acType = CONF_KMAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "VilGor")) {
-					cType = CONF_VILGOR;
+					acType = CONF_VILGOR;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Lola")) {
-					cType = CONF_LOLA;
+					acType = CONF_LOLA;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Cole")) {
-					cType = CONF_COLE;
+					acType = CONF_COLE;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Tkachev")) {
-					cType = CONF_TKACHEV;
+					acType = CONF_TKACHEV;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Thermal")) {
-  				cType = CONF_THERMAL;
+  				acType = CONF_THERMAL;
   				readAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Axion Spectrum")) {
-					cType = CONF_SPAX;
+					acType = CONF_SPAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Kinetic Misalignment")) {
-					cType = CONF_KM;
+					acType = CONF_KM;
 				} else if (!strcmp(icStr, "Custom Strings")) {
-					cType = CONF_STRING;
+					acType = CONF_STRING;
 					// readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 				} else if (!strcmp(icStr, "Moore")) {
-					cType = CONF_SMOOTH;
+					acType = CONF_SMOOTH;
 					/* The m and v fields are not conformal so we will need to rescale them */
 					Moore = true;
 				}
-				myCosmos->ICData().cType = cType;
+				myCosmos->ICData().cType = acType;
 
 				readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
-
+				ConfsubType asmvarType = CONF_RAND;
 				if (!strcmp(icStr, "Random")) {
-					smvarType = CONF_RAND;
+					asmvarType = CONF_RAND;
 				} else if (!strcmp(icStr, "String XY")) {
-					smvarType = CONF_STRINGXY;
+					asmvarType = CONF_STRINGXY;
 				} else if (!strcmp(icStr, "String YZ")) {
-					smvarType = CONF_STRINGYZ;
+					asmvarType = CONF_STRINGYZ;
 				} else if (!strcmp(icStr, "Minicluster")) {
-					smvarType = CONF_MINICLUSTER;
+					asmvarType = CONF_MINICLUSTER;
 				} else if (!strcmp(icStr, "Minicluster 0")) {
-					smvarType = CONF_MINICLUSTER0;
+					asmvarType = CONF_MINICLUSTER0;
 				} else if (!strcmp(icStr, "Axion noise")) {
-					smvarType = CONF_AXNOISE;
+					asmvarType = CONF_AXNOISE;
 				} else if (!strcmp(icStr, "Saxion noise")) {
-					smvarType = CONF_SAXNOISE;
+					asmvarType = CONF_SAXNOISE;
 				} else if (!strcmp(icStr, "Axion one mode")) {
-					smvarType = CONF_AX1MODE;
+					asmvarType = CONF_AX1MODE;
 				} else if (!strcmp(icStr, "Parametric Resonance")) {
-					smvarType = CONF_PARRES;
+					asmvarType = CONF_PARRES;
 				} else if (!strcmp(icStr, "String + wave")) {
-					smvarType = CONF_STRWAVE;
+					asmvarType = CONF_STRWAVE;
 				} else {
 					LogError("Error: unrecognized configuration type %s", icStr);
 				}
+
 				H5Gclose(icGrp_id);
+
+				myCosmos->ICData().smvarType = asmvarType;
 			}
 			/* end IC group */
-			myCosmos->ICData().smvarType = smvarType;
 		/* we do not need this anymore */
 		H5Tclose (attr_type);
 
@@ -1341,8 +1343,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		ictemp.kMax     = kMax;
 		ictemp.mode0    = mode0;
 		ictemp.zi       = zTmp;
-		ictemp.cType    = cType;
-		ictemp.smvarType= smvarType;
+		// ictemp.cType    = cType;
+		// ictemp.smvarType= smvarType;
 		myCosmos->SetICData(ictemp);
 
 		size_t Nz = Nz_read/zGrid;
@@ -1384,6 +1386,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, 0);
 
+		ConfType cType_aux = myCosmos->ICData().cType;
 		myCosmos->ICData().cType = CONF_NONE;
 		slab   = (hsize_t) (Nx_read*Nx_read);
 		// We create a larger axion file if we need to expand
@@ -1423,6 +1426,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		}
 
 		(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, fTypeCreate,    lType, myCosmos->ICData().Nghost);
+
+		myCosmos->ICData().cType = cType_aux;
 
 		if (fTypeRead == FIELD_AXION)
 			(*axion)->setField(FIELD_AXION);
