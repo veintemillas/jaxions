@@ -1317,17 +1317,18 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 
 		double VEL1 = vv0[0]-mm0[0];
 		double w,C,S;
+
 		LogMsg(VERB_NORMAL,"[GENKM] Initialise %d modes with vel = %.2f",calamar,VEL1);
 		for (size_t i = 1; i < calamar; i++) {
 			k_[i]     = kk0[i];   // or dk*i if you prefer
 			k2_[i]    = kk0[i]*kk0[i];
 			// neglect the mass in the ICs
 			w         = k_[i]; //sqrt(k2_[i]+1.0); // general mass and time!
-			C         = cos(w);
-			S         = -sin(w);
+			C         = cos(w*eta);
+			S         = -sin(w*eta);
 			gfield[i] = 1.0;
 			cfield[i] = -0.5*VEL1*C;
-			cvield[i] =  0.5*VEL1*S;
+			cvield[i] = -0.5*VEL1*S*w;
 
 
 			if (i%10 == 0)

@@ -509,6 +509,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	hid_t icGrp_id = H5Gcreate2(file_id, "/ic", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
+	ConfType cType = axion->BckGnd()->ICData().cType;
 	switch (cType) {
 		case	CONF_SMOOTH:
 			sprintf(icStr, "Smooth");
@@ -1245,6 +1246,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 					/* The m and v fields are not conformal so we will need to rescale them */
 					Moore = true;
 				}
+				myCosmos->ICData().cType = cType;
 
 				readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
 
@@ -1274,10 +1276,9 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				H5Gclose(icGrp_id);
 			}
 			/* end IC group */
-
+			myCosmos->ICData().smvarType = smvarType;
 		/* we do not need this anymore */
 		H5Tclose (attr_type);
-
 
 			//    PRECISION
 			//    ---------
