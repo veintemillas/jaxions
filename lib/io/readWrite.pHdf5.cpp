@@ -801,6 +801,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		else
 			sprintf(base, "%s/%s.restart", outDir, outName);
 
+		/* Many functions run only on CPU, so we switch off GPU and restore later */
+		bool wasGPU = false;
+		if (cDev == DEV_GPU){
+			wasGPU = true;
+			cDev = DEV_CPU;
+			LogMsg(VERB_NORMAL,"[rC] DEV=GPU, but we set DEVICE to CPU temporarily during readConf.");
+		}
 		/* Start */
 
 		LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk (%s)", base);
@@ -1596,8 +1603,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// delete auxion;
 		// LogMsg(VERB_NORMAL, "AUXION deleted");
 
-		if (cDev == DEV_GPU)
+		if (wasGPU){
+			LogMsg(VERB_NORMAL,"[rC] Set DEVICE to GPU at the end of readConf.");
+			cDev == DEV_GPU;
 			(*axion)->transferDev(FIELD_MV);
+		}
 
 		LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) Nz_read)*slab*2 + 77);
 		/* If transformed add information */
