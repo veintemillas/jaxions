@@ -287,7 +287,8 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
     GRID=" --size %d --depth %d --zgrid %d"%(N,N//zRANKS,zRANKS)
     ####################################################
     SIMU=" --prec %s --device %s --prop %s --steps %d --wDz %f --sst0 %d --fftplan %d --ftype %s"%(prec,dev,prop,steps,wDz,sst0,fftplan, ftype)
-    print('Using --ftype %s'%ftype)
+    if verb:
+        print('Using --ftype %s'%ftype)
 
     if not (spec or fspec):
         SIMU += ' --lap %d'%lap
