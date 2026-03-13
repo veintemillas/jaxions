@@ -40,12 +40,12 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     VERB allows for more verbosity in the output by printing the full mpirun command with all the flags. If FALSE, only the used size, depth, lsize and msa will be given
     BONDEN is used to slightly modify the mpi commands for the use of our new computer
     """
-
-    print('')
-    print('')
-    print('--------------------------------------------------------------------------------------------')
-    print(f'Mode: {MODE} ')
-    print('')
+    if VERB:
+        print('')
+        print('')
+        print('--------------------------------------------------------------------------------------------')
+        print(f'Mode: {MODE} ')
+        print('')
 
     #Get important parameters from JAX input string
     read_params = JAX
@@ -72,16 +72,17 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         output.read()
 
         if VERB:
-            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
-        else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
+
         if BONDEN:
             output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         else:
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
         output.read()
-        print('')
-        print('Done!')
+        if VERB:
+            print('')
+            print('Done!')
 
     elif MODE == 'run':
         #Clear "out" folder, in case it exists
@@ -89,17 +90,17 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         output.read()
 
         if VERB:
-            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt')
-        else:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%f'%(N0, RANK, L0, msa0))
+            print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} 2>&1 | tee log.txt')
 
         if BONDEN:
             output = os.popen(f'mpiexec {USA} -n {RANK} vaxion3d {JAX}  --p3D 1 2>&1 | tee log-run.txt')
         else:
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --p3D 1 2>&1 | tee log-run.txt')
         output.read()
-        print('')
-        print('Done!')
+        if VERB:
+            print('')
+            print('Done!')
 
     elif MODE == 'con':
 
@@ -145,9 +146,11 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
             output = os.popen(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
 
         output.read()
-        print('')
-        print('Done!')
-    print('--------------------------------------------------------------------------------------------')
+        if VERB:
+            print('')
+            print('Done!')
+    if VERB:
+        print('--------------------------------------------------------------------------------------------')
 
 def runstring(JAX, RANK=1, THR=1, USA=' --bind-to socket --mca btl_base_warn_component_unused  0', OUT_CON='out1', CON_OPTIONS ='', VERB=False, BONDEN = False):
     """

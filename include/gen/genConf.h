@@ -4,4 +4,5 @@
 	#include "scalar/scalarField.h"
 
 	void	genConf	(Cosmos *myCosmos, Scalar *field);
+
 #endif

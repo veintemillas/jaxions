@@ -29,7 +29,7 @@ void	randXeon (std::complex<Float> * __restrict__ m, Scalar *field, IcData ic)
 	const size_t V  = field->Size();
 	const double L  = field->BckGnd()->PhysSize();
 	int rank = commRank();
-	size_t Lz = Lx/commSize();
+	size_t Lz = field->Depth();
 	size_t Tz = field->TotalDepth();
 	size_t local_z_start = rank*Lz;
 

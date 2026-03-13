@@ -73,6 +73,7 @@
 		inline void	tSpecCpu(const double)	override;	// Axion spectral propagator
 		inline void	tFpecCpu(const double)	override;	// Axion spectral propagator exeriment
 
+		inline void	tModeRunCpu	(const double)	override;	// Axion linear Mode propagator
 
 		inline void	nRunCpu	(const double)	override;			// Naxion propagator
 
@@ -80,7 +81,7 @@
 
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
-		inline void     tlowGpu  (const double)  override;      // Lowmem GPU theta useful for serverGPUs
+		inline void tlowGpu  (const double)  override;      // Lowmem GPU theta useful for serverGPUs
 
 		inline double	cFlops	(const PropcType)	override;
 		inline double	cBytes	(const PropcType)	override;
@@ -153,6 +154,9 @@
 					}
 					break;
 
+			case PROP_MODES:
+				propAxion  = [this](const double dz) { this->tModeRunCpu(dz); };
+			break;
 			default:
 			case PROPC_BASE:
 				switch (field->Device()) {
@@ -496,21 +500,12 @@
 	void	PropClass<nStages, lastStage, VQcd>::tRunCpu	(const double dz) {
 		double *z  = axion->zV();
 		double *cD = d;
-
+		double lme = axion->BckGnd()->ICData().linmodevol;
 		const bool wMod = (axion->Field() == FIELD_AXION_MOD) ? true : false;
 
 		PropParms ppar;
-		ppar.Ng     = axion->getNg();
-		ppar.ood2a  = ood2;
-		ppar.PC     = axion->getCO();
-		ppar.Lx     = Lx;
-		ppar.frw    = axion->BckGnd()->Frw();
+		loadparms(&ppar, axion);
 
-		ppar.massA2 = axion->AxionMassSq();
-		ppar.R      = *axion->RV();
-		ppar.Rpp    = axion->Rpp();
-
-		ppar.beta  = axion->BckGnd()->ICData().beta;
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
@@ -523,8 +518,6 @@
 			updateMThetaXeon(axion->mCpu(), axion->vCpu(), dz, d0, Lx, BO, V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d0;
 			axion->updateR();
-			ppar.R   = *axion->RV();
-			ppar.Rpp = axion->Rpp();
 			cD = &(d[1]);
 		}
 
@@ -533,6 +526,8 @@
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
 			const double c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
+
+			loadparms(&ppar, axion);
 
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c1, d1, 2*BO, V , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -543,9 +538,7 @@
 			axion->updateR();
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
-			ppar.massA2 = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
+			loadparms(&ppar, axion);
 
 			propThetaKernelXeon(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
@@ -563,9 +556,7 @@
 
 			const double	c0 = c[nStages], maa = axion->AxionMassSq();
 
-			ppar.massA  = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
+			loadparms(&ppar, axion);
 
 			propThetaKernelXeon(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0., 2*BO, V   , precision, xBlock, yBlock, zBlock, wMod, VQcd);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -1169,6 +1160,38 @@
 	}
 
 
+/* Theta linear mode propagator CPU */
+
+template<const int nStages, const PropStage lastStage, VqcdType VQcd>
+void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
+	double *z  = axion->zV();
+	double *cD = d;
+
+	PropParms ppar;
+
+	// it only works for propagators iwthout first or last step
+	#pragma unroll
+	for (int s = 0; s<nStages; s+=2) {
+
+		const double c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
+
+		loadparms(&ppar, axion);
+
+		propLinearModeKernelXeon(axion->m_aCpu(), axion->v_aCpu(), axion->m2_aCpu(),
+		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(),ppar, dz, c1, d1);
+		*z += dz*d1;
+		axion->updateR();
+
+		loadparms(&ppar, axion);
+
+		propLinearModeKernelXeon(axion->m2_aCpu(), axion->v_aCpu(), axion->m_aCpu(),
+		axion->g_aCpu(),axion->k_Cpu(),axion->k2_Cpu(), ppar, dz, c2, d2);
+		*z += dz*d2;
+		axion->updateR();
+	}
+}
+
+
 
 
 
@@ -1302,6 +1325,10 @@
 		(*pipar).R      = *axion->RV();
 		(*pipar).Rpp    = axion->Rpp();
 		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
+		(*pipar).ct     = *axion->zV();
+
+		(*pipar).beta   = axion->BckGnd()->ICData().beta;
+		(*pipar).n      = axion->BckGnd()->DlogCHIlogT(*axion->zV());
 
 		(*pipar).Ng     = axion->getNg();
 		(*pipar).Lx     = axion->Length();;
@@ -1311,6 +1338,8 @@
 		(*pipar).frw    = axion->BckGnd()->Frw();
 		(*pipar).dectime= axion->BckGnd()->DecTime();
 		(*pipar).RPQ    = axion->BckGnd()->RPQ();
+		(*pipar).nmodes = axion->NModes();
+		(*pipar).rhsoff = axion->BckGnd()->ICData().lme_no_rhs;
 
 	}
 #endif

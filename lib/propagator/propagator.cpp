@@ -226,6 +226,12 @@ class	PropRKN4 : public PropClass<4, PROP_NORMAL, pot> {
 				} else
 					this->setBaseName("RKN4 ");
 			break;
+			case PROPC_MODES:
+				if (field->Device() == DEV_CPU) {
+					this->setBaseName("RKN4 linear mode evol ");
+				} else
+					this->setBaseName("RKN4 LME ");
+			break;
 			default:
 			case PROPC_BASE:
 				if (field->LowMem())
@@ -234,7 +240,7 @@ class	PropRKN4 : public PropClass<4, PROP_NORMAL, pot> {
 				{
 					if (field->LowMemGPU())
 						this->setBaseName("Lowmem G RKN4 ");
-					else 
+					else
 						this->setBaseName("RKN4 ");
 				}
 			break;
@@ -266,6 +272,11 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 	{
  		LogMsg	(VERB_NORMAL, "[ip] propagator Spectral selected",pType);LogFlush();
 		propclass = PROPC_SPEC;
+	}
+	if 	(pType & PROP_MODES) // overwritting
+	{
+ 		LogMsg	(VERB_NORMAL, "[ip] propagator LME linear mode evolution selected",pType);LogFlush();
+		propclass = PROPC_MODES;
 	}
 	LogMsg	(VERB_NORMAL, "[ip] propclass set to %d", propclass);
 
@@ -502,6 +513,8 @@ void	tunePropagator (Scalar *field) {
 	if (pType & PROP_SPEC)
 		return;
 	if (pType & PROP_FSPEC)
+		return;
+	if (pType & PROP_MODES)
 		return;
 
 	int  myRank   = commRank();

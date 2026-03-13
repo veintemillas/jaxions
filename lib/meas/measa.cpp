@@ -209,6 +209,19 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if( info.maty & MAPT_YZMV)
 		writeMapHdf5s2 (axiona,sliceprint);
 
+	if (axiona->BckGnd()->ICData().linmodevol)
+	{
+		LogMsg(VERB_HIGH, "[Meas %d] Linear Mode maps",indexa);
+		// printf("dlog %.2f\n",axiona->BckGnd()->DlogCHIlogT(*axiona->zV()));
+		writeArray(static_cast<double*>(axiona->m_aCpu()), axiona->NModes(), "/modes", "ctheta");
+		writeArray(static_cast<double*>(axiona->v_aCpu()), axiona->NModes(), "/modes", "cvheta");
+		if (indexa == 0){
+				LogMsg(VERB_HIGH, "[Meas %d] Linear mode k's",indexa);
+				writeArray(static_cast<double*>(axiona->k_Cpu()), axiona->NModes(), "/modes", "k");
+		}
+
+	}
+
 	//	--------------------------------------------------------------------------
 	//
 	//	ENERGY BLOCK

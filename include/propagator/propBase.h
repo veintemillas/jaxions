@@ -33,6 +33,8 @@
 		virtual void	tSpecCpu(const double) = 0;	// Axion spectral propagator
 		virtual void	tFpecCpu(const double) = 0;	// Axion spectral propagator
 
+		virtual void	tModeRunCpu	(const double) = 0;	// Axion linear Mode propagator
+
 		virtual void	nRunCpu	(const double) = 0;	// Naxion propagator
 
 		virtual void	pRunCpu	(const double) = 0;	// Paxion propagator

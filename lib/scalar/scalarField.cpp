@@ -567,6 +567,19 @@ const std::complex<float> If(0.,1.);
 		trackFree((void *) R);
 //printf("%d 6\n",commRank());fflush(stdout);commSync();
 
+if (m_a != nullptr)
+	trackFree((void *) m_a);
+if (v_a != nullptr)
+		trackFree((void *) v_a);
+if (m2_a != nullptr)
+	trackFree((void *) m2_a);
+if (g_a != nullptr)
+	trackFree((void *) g_a);
+if (k_a != nullptr)
+	trackFree((void *) k_a);
+if (k2_a != nullptr)
+	trackFree((void *) k2_a);
+
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -1168,6 +1181,7 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 }
 
 
+
 void	Scalar::setDims	(size_t newnLx, size_t newnLz)
 {
 	LogMsg (VERB_NORMAL, "[sf] Call reset of axion dimensions from (%d,%d,%d) to (%d,%d,%d)!",n1,n1,Lz,newnLx,newnLx,newnLz);
@@ -1183,6 +1197,28 @@ void	Scalar::setDims	(size_t newnLx, size_t newnLz)
 	} else
 	LogMsg (VERB_NORMAL, "[sf] Cannot increase data size. dismissed!");
 }
+
+// we reserve space and point pointers
+void	Scalar::setModes ()
+{
+	// nmodes must be a multiple of mAlign
+	LogMsg(VERB_NORMAL,"[Setting Modes for linear evolution]");
+	LogMsg(VERB_NORMAL,"[SML] nmodes requested %d, mAlign %d, double %d, control %d",nmodes,mAlign,sizeof(double),(nmodes*sizeof(double))%mAlign);
+	if ( (nmodes*sizeof(double))%mAlign > 0 ){
+			LogMsg(VERB_NORMAL,"[SML] nmodes requested %d not multiple of Align %d. we round up",nmodes,mAlign);
+			nmodes = (((nmodes*sizeof(double))/mAlign)+1)*mAlign/sizeof(double);
+			LogMsg(VERB_NORMAL,"[SML] nmodes %d",nmodes);
+	}
+	LogMsg(VERB_NORMAL, "[SML] allocating Mode data");
+	alignAlloc ((void**) &m_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &v_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &m2_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &g_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &k_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &k2_a,   mAlign, nmodes*sizeof(double));
+	LogMsg(VERB_NORMAL,"[SML Modes for linear evolution] good!");
+}
+
 
 // GENERAL BACKGROUND UPDATE REQUIRED!
 double	Scalar::Rfromct (const double ct)
@@ -1391,7 +1427,13 @@ double	Scalar::dzSize	   (double zNow) {
 		case FIELD_AXION:
 		case FIELD_AXION_MOD:
 		case FIELD_WKB:
-			dct = wDz/std::sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
+			if (k_a == nullptr)
+				dct = wDz/std::sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
+			else
+				{
+				dct = wDz/std::sqrt(mAx2*(RNow*RNow) + 12.*(oodl*oodl));
+				dct = min(dct,wDz/static_cast<double*>(k_a)[nmodes-1]);	
+				}
 		break;
 
 		case FIELD_NAXION:
