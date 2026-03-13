@@ -1222,7 +1222,7 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 		double eta = (*axionField->zV());
 		double R   = (*axionField->RV());
 
-		double par1 = k0;
+		double par1 = k0*k0;
 		double par2 = axionField->AxionMassSq()*R*R;
 		mopa.kCrt  = par1;
 		mopa.mass2 = par2;
