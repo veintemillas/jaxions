@@ -18,6 +18,7 @@
 
 #include "fft/fftCode.h"
 #include "scalar/fourier.h"
+#include "strings/loopradius.h"
 
 /* In case one reads from Moore format */
 #include "utils/simpleops.h"
@@ -801,13 +802,6 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		else
 			sprintf(base, "%s/%s.restart", outDir, outName);
 
-		/* Many functions run only on CPU, so we switch off GPU and restore later */
-		bool wasGPU = false;
-		if (cDev == DEV_GPU){
-			wasGPU = true;
-			cDev = DEV_CPU;
-			LogMsg(VERB_NORMAL,"[rC] DEV=GPU, but we set DEVICE to CPU temporarily during readConf.");
-		}
 		/* Start */
 
 		LogMsg (VERB_NORMAL, "Reading Hdf5 configuration from disk (%s)", base);
@@ -1211,83 +1205,83 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 				hid_t icGrp_id = H5Gopen2(file_id, "/ic", H5P_DEFAULT);
 				readAttribute(icGrp_id, &mode0, "Axion zero mode", H5T_NATIVE_DOUBLE);
 				readAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
-				ConfType acType = CONF_NONE;
+
 				if (!strcmp(icStr, "Smooth")) {
-					acType = CONF_SMOOTH;
+					cType = CONF_SMOOTH;
 					readAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "kMax")) {
-					acType = CONF_KMAX;
+					cType = CONF_KMAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "VilGor")) {
-					acType = CONF_VILGOR;
+					cType = CONF_VILGOR;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Lola")) {
-					acType = CONF_LOLA;
+					cType = CONF_LOLA;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Cole")) {
-					acType = CONF_COLE;
+					cType = CONF_COLE;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Tkachev")) {
-					acType = CONF_TKACHEV;
+					cType = CONF_TKACHEV;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Thermal")) {
-  				acType = CONF_THERMAL;
+  				cType = CONF_THERMAL;
   				readAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Axion Spectrum")) {
-					acType = CONF_SPAX;
+					cType = CONF_SPAX;
 					readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 					// readAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 				} else if (!strcmp(icStr, "Kinetic Misalignment")) {
-					acType = CONF_KM;
+					cType = CONF_KM;
 				} else if (!strcmp(icStr, "Custom Strings")) {
-					acType = CONF_STRING;
+					cType = CONF_STRING;
 					// readAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 				} else if (!strcmp(icStr, "Moore")) {
-					acType = CONF_SMOOTH;
+					cType = CONF_SMOOTH;
 					/* The m and v fields are not conformal so we will need to rescale them */
 					Moore = true;
 				}
-				myCosmos->ICData().cType = acType;
+				myCosmos->ICData().cType = cType;
 
 				readAttribute(icGrp_id, &icStr, "Configuration type",   attr_type);
-				ConfsubType asmvarType = CONF_RAND;
+
 				if (!strcmp(icStr, "Random")) {
-					asmvarType = CONF_RAND;
+					smvarType = CONF_RAND;
 				} else if (!strcmp(icStr, "String XY")) {
-					asmvarType = CONF_STRINGXY;
+					smvarType = CONF_STRINGXY;
 				} else if (!strcmp(icStr, "String YZ")) {
-					asmvarType = CONF_STRINGYZ;
+					smvarType = CONF_STRINGYZ;
 				} else if (!strcmp(icStr, "Minicluster")) {
-					asmvarType = CONF_MINICLUSTER;
+					smvarType = CONF_MINICLUSTER;
 				} else if (!strcmp(icStr, "Minicluster 0")) {
-					asmvarType = CONF_MINICLUSTER0;
+					smvarType = CONF_MINICLUSTER0;
 				} else if (!strcmp(icStr, "Axion noise")) {
-					asmvarType = CONF_AXNOISE;
+					smvarType = CONF_AXNOISE;
 				} else if (!strcmp(icStr, "Saxion noise")) {
-					asmvarType = CONF_SAXNOISE;
+					smvarType = CONF_SAXNOISE;
 				} else if (!strcmp(icStr, "Axion one mode")) {
-					asmvarType = CONF_AX1MODE;
+					smvarType = CONF_AX1MODE;
 				} else if (!strcmp(icStr, "Parametric Resonance")) {
-					asmvarType = CONF_PARRES;
+					smvarType = CONF_PARRES;
 				} else if (!strcmp(icStr, "String + wave")) {
-					asmvarType = CONF_STRWAVE;
+					smvarType = CONF_STRWAVE;
 				} else {
 					LogError("Error: unrecognized configuration type %s", icStr);
 				}
-
 				H5Gclose(icGrp_id);
-
-				myCosmos->ICData().smvarType = asmvarType;
 			}
+			myCosmos->ICData().smvarType = smvarType;
 			/* end IC group */
+
 		/* we do not need this anymore */
 		H5Tclose (attr_type);
+
 
 			//    PRECISION
 			//    ---------
@@ -1350,8 +1344,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		ictemp.kMax     = kMax;
 		ictemp.mode0    = mode0;
 		ictemp.zi       = zTmp;
-		// ictemp.cType    = cType;
-		// ictemp.smvarType= smvarType;
+		ictemp.cType    = cType;
+		ictemp.smvarType= smvarType;
 		myCosmos->SetICData(ictemp);
 
 		size_t Nz = Nz_read/zGrid;
@@ -1393,7 +1387,6 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		prof.stop();
 		prof.add(std::string("Read configuration"), 0, 0);
 
-		ConfType cType_aux = myCosmos->ICData().cType;
 		myCosmos->ICData().cType = CONF_NONE;
 		slab   = (hsize_t) (Nx_read*Nx_read);
 		// We create a larger axion file if we need to expand
@@ -1433,8 +1426,6 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		}
 
 		(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, fTypeCreate,    lType, myCosmos->ICData().Nghost);
-
-		myCosmos->ICData().cType = cType_aux;
 
 		if (fTypeRead == FIELD_AXION)
 			(*axion)->setField(FIELD_AXION);
@@ -1603,11 +1594,8 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		// delete auxion;
 		// LogMsg(VERB_NORMAL, "AUXION deleted");
 
-		if (wasGPU){
-			LogMsg(VERB_NORMAL,"[rC] Set DEVICE to GPU at the end of readConf.");
-			cDev == DEV_GPU;
+		if (cDev == DEV_GPU)
 			(*axion)->transferDev(FIELD_MV);
-		}
 
 		LogMsg (VERB_NORMAL, "[rC] Read %lu bytes", ((size_t) Nz_read)*slab*2 + 77);
 		/* If transformed add information */
@@ -2911,6 +2899,90 @@ void	writeArray (const double *aData, size_t aSize, const char *group, const cha
 void writeStringLoopObservables(Scalar *axion, StringLoopParms slp, int rango)
 {
 	writeStringLoopObservables(axion, slp, rango, iop);
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+void writeLoopRadiusData(Scalar *axion, const LoopRadiusData &loopData, int index)
+{
+	hid_t	group_id, base_id;
+	size_t	sBytes	 = 0;
+
+	int myRank = commRank();
+
+	Profiler &prof = getProfiler(PROF_HDF5);
+
+	/*	Start profiling		*/
+	LogMsg (VERB_NORMAL, "[wLRD] Writing loop radius data for measurement %d", index);
+	prof.start();
+
+	if (header == false || opened == false)
+	{
+		LogError ("[wLRD] Error: measurement file not opened. Ignoring write request.");
+		prof.stop();
+		return;
+	}
+
+	/*	Create parent /loops group if it doesn't exist (like writeArray	pattern)	*/
+	auto status = H5Lexists (meas_id, "/loops", H5P_DEFAULT);
+
+	if (!status)
+		base_id = H5Gcreate2(meas_id, "/loops", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0)
+			base_id = H5Gopen2(meas_id, "/loops", H5P_DEFAULT);
+		else {
+			LogError ("[wLRD] Error: can't check whether group /loops exists");
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Create child group for this measurement (relative to base_id)	*/
+	char LABEL[256];
+	sprintf(LABEL, "meas_%05d", index);
+
+	status = H5Lexists (base_id, LABEL, H5P_DEFAULT);
+
+	if (!status)
+		group_id = H5Gcreate2(base_id, LABEL, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else {
+		if (status > 0) {
+			group_id = H5Gopen2(base_id, LABEL, H5P_DEFAULT);
+			LogMsg(VERB_NORMAL, "[wLRD] Warning: group %s exists!", LABEL);
+		} else {
+			LogError ("[wLRD] Error: can't check whether group %s exists", LABEL);
+			H5Gclose(base_id);
+			prof.stop();
+			return;
+		}
+	}
+
+	/*	Write loop radius observables as attributes	*/
+	double R_axes = loopData.R_axes;
+	double R_diag = loopData.R_diag;
+	double R_axes_interp = loopData.R_axes_interp;
+	double R_diag_interp = loopData.R_diag_interp;
+
+	writeAttribute(group_id, &R_axes,         "loopR_axes",        H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &R_diag,         "loopR_diag",        H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &R_axes_interp,  "loopR_axes_interp", H5T_NATIVE_DOUBLE);
+	writeAttribute(group_id, &R_diag_interp,  "loopR_diag_interp", H5T_NATIVE_DOUBLE);
+
+	sBytes = 32;
+
+	/*	Close both groups like writeArray	*/
+	H5Gclose (group_id);
+	H5Gclose (base_id);
+
+	prof.stop();
+	prof.add(std::string("Write loop radius"), 0, 1e-9*sBytes);
+
+	LogMsg (VERB_NORMAL, "[wLRD] Written %lu bytes to disk", sBytes);
+
+	commSync();
 }
 
 //------------------------------------------------------------------------------
