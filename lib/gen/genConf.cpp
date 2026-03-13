@@ -1191,7 +1191,7 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	std::vector<double> kk0, mm0, vv0;	// used for mode evolution
 	std::vector<double> mm,vv					;	// used for the interpolation
 	double L   = axionField->BckGnd()->PhysSize();
-	double k0 = pow(6.283185307179586/L,2);
+	double k0 = 6.283185307179586/L;
 	size_t nModes = axionField->Length()*2;
 	loadSpectrum("./initialspectrum.dat", kk0, mm0, vv0, mm, vv, k0, nModes);
 
@@ -1316,30 +1316,106 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 
 
 		double VEL1 = vv0[0]-mm0[0];
-		double w,C,S;
+		double w,C,S,phik0;
 
-		LogMsg(VERB_NORMAL,"[GENKM] Initialise %d modes with vel = %.2f",calamar,VEL1);
-		for (size_t i = 1; i < calamar; i++) {
-			k_[i]     = kk0[i];   // or dk*i if you prefer
-			k2_[i]    = kk0[i]*kk0[i];
-			// neglect the mass in the ICs
-			w         = k_[i]; //sqrt(k2_[i]+1.0); // general mass and time!
-			C         = cos(w*eta);
-			S         = -sin(w*eta);
-			gfield[i] = 1.0;
-			cfield[i] = -0.5*VEL1*C;
-			cvield[i] = -0.5*VEL1*S*w;
+		/* Version with Unnormalised modes */
+		if (0) {
+			LogMsg(VERB_NORMAL,"[GENKM] Initialise %d modes with vel = %.2f Phi(0) = 1",calamar,VEL1);
+			for (size_t i = 1; i < calamar; i++) {
+				k_[i]     = kk0[i];   // or dk*i if you prefer
+				k2_[i]    = kk0[i]*kk0[i];
+				// neglect the mass in the ICs
+				w         = k_[i];
+				C         = cos(w*eta);
+				S         = -sin(w*eta);
+				gfield[i] = 1.0;
+				cfield[i] = -0.5*VEL1*C;
+				cvield[i] = -0.5*VEL1*S*w;
 
 
-			if (i%10 == 0)
-			LogMsg(VERB_PARANOID,
-			       "[GENKM] set mode %zu k %.3e m %.3e v %.3e g %.3e",
-			       i, k_[i], cfield[i], cvield[i], gfield[i]);
+				if (i%10 == 0)
+				LogMsg(VERB_PARANOID,
+				       "[GENKM] set mode %zu k %.3e m %.3e v %.3e g %.3e",
+				       i, k_[i], cfield[i], cvield[i], gfield[i]);
+			}
 		}
-		cfield[0] = mm0[0];
-		cvield[0] = vv0[0];
-		gfield[0] = 0.0;
-	}
+		/* Here we normalise the modes to read and compare with spectra
+		and build an easy estimate of <theta_k^2>
+		to do it we follow the steps we do to build the m,v field on disk
+			sc = sqrt(nx^2+ny^2+nz^2)
+			w  = sqrt(modP*kcrit+m2)       sqrt(n^2 k0^2 + mc^2)
+			phase = w*ct
+			C,S = cos phase, - sin phase
+			b = (int) sc
+			m = m(as function of n, read or prepared)[b] * C * random
+			v = m(as function of n, read or prepared)[b] * S * same random * w
+			- --- - --- I think the mass should NOT be there! - --- - ---
+			m0,v0 are not changed by volumes or N-factors
+
+			To interpret initial conditions.
+				The kin-mis-program gives
+					m = ((0.44 2pi^2 As)/(9 L k))^1/2 VEL1
+						= 4.5 * 10**-5 * (L*k[1:])**(-3/2) * vheta1
+					recall this is
+					m = -0.5 thetadot_1 phik_1 R_1/H_1      (R_1=1, we took phik_(1=0))
+					phi0^2 = As (k/kpivot)^(ns-1) (2/3)^2 2pi^2/k^3 1/V
+					m = -1/3 (theta_1/H_1) (As 0.44 2pi^2/(Lk)^3)^1/2
+					from m we can calculate the value of phi_0 assumed
+					phi_0 = phik_1 = m/(-0.5 thetadot_1/H_1)
+					problem for v->0!
+					phi_0 = As (k/kpivot)^(ns-1) (2/3)^2 2pi^2/k^3 1/V
+		*/
+		if (1){
+			double prefa = std::sqrt(2.1e-9 * 0.44 * 9.0/9.0 * 3.14159 / (L*L*L) );
+			double accu = 0.0;
+			LogMsg(VERB_NORMAL,"[GENKM] Initialise %d modes with vel = %.2f Phi(0) = adiabatic",calamar,VEL1);
+			for (size_t i = 1; i < calamar; i++) {
+				k_[i]     = kk0[i];   // or dk*i if you prefer
+				k2_[i]    = kk0[i]*kk0[i];
+				w         = k_[i];
+				/* This expression is off by O(1) */
+				C         = cos(w*eta);
+				S         = -sin(w*eta);
+				phik0     = prefa / std::sqrt(w*w*w);
+				gfield[i] = phik0;
+				cfield[i] = -0.5*VEL1*C*phik0;
+				cvield[i] = -0.5*VEL1*S*phik0*w;
+
+				// approximation
+				accu += cfield[i]*cfield[i]*4*3.14159*i*i;
+
+				if (i%10 == 0)
+				LogMsg(VERB_PARANOID,
+							 "[GENKM] set mode %zu k %.3e m %.3e v %.3e g %.3e",
+							 i, k_[i], cfield[i], cvield[i], gfield[i]);
+			}
+			cfield[0] = mm0[0];
+			cvield[0] = vv0[0];
+			gfield[0] = 0.0;
+
+			/* check fluctuations
+			calculate directly from m,v fields and from cfield,vfield*/
+			LogMsg(VERB_NORMAL,"fluctuations theta^2 estimated %.5e",accu);
+
+			double acca = 0.0;
+			double mean = 0.0;
+			double no   = 0.0;
+
+			for (size_t idx = 0; idx < axionField->Size(); idx++) {
+			float t = static_cast<float*>(axionField->mStart())[idx];
+			mean += t;
+			acca += t*t;
+			no += 1;
+			}
+			mean /= no;
+			double var = acca / no - mean * mean;
+			double std = sqrt(var);
+
+			LogMsg(VERB_NORMAL,"fluctuations theta^2 measured %.5e", var);
+
+		}
+
+	} //end linmodeevol
 
 	/* If saxion was specified, convert axion only to saxion
 	and add ... possibly ... string network
