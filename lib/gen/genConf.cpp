@@ -1191,7 +1191,7 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	std::vector<double> kk0, mm0, vv0;	// used for mode evolution
 	std::vector<double> mm,vv					;	// used for the interpolation
 	double L   = axionField->BckGnd()->PhysSize();
-	double k0 = pow(6.283185307179586/L,2);
+	double k0 = 6.283185307179586/L;
 	size_t nModes = axionField->Length()*2;
 	loadSpectrum("./initialspectrum.dat", kk0, mm0, vv0, mm, vv, k0, nModes);
 
@@ -1222,7 +1222,7 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 		double eta = (*axionField->zV());
 		double R   = (*axionField->RV());
 
-		double par1 = k0;
+		double par1 = k0*k0;
 		double par2 = axionField->AxionMassSq()*R*R;
 		mopa.kCrt  = par1;
 		mopa.mass2 = par2;
