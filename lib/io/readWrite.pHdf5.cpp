@@ -235,7 +235,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
-	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], vPQStr[32], icStr[16], smStr[16];
+	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], vPQStr[32], icStr[32], smStr[32];
 	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -279,7 +279,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	char base[256];
+	char base[1024];
 	/* JAVI if restart do not write number for simplicity */
 	if (!restart)
 	sprintf(base, "%s/%s.%05d", outDir, outName, index);
@@ -787,13 +787,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		hid_t	attr_type;
 		hsize_t	slab, offset;
 		FieldPrecision	precision;
-		char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], vPQStr[32], smStr[16];
+		char	prec[16], fStr[16], lStr[16], icStr[32], vStr[32], vPQStr[32], smStr[32];
 		int	length = 32;
 		const hsize_t maxD[1] = { H5S_UNLIMITED };
 		size_t	dataSize;
 		int myRank = commRank();
 		bool Moore = 0;
-		char base[256];
+		char base[1024];
 
 		/* JAVI if restart flag, do not read index number for simplicity */
 		/* restart files have to pass the same parameters of the simulation! */
@@ -1633,7 +1633,7 @@ void	createMeas (Scalar *axion, int index)
 {
 	hid_t	plist_id, dataType;
 
-	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], vPQStr[32], smStr[16], dStr[16], rStr[16];
+	char	prec[16], fStr[16], lStr[16], icStr[32], vStr[32], vPQStr[32], smStr[32], dStr[16], rStr[16];
 	int	length = 32;
 
 //	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -1663,7 +1663,7 @@ void	createMeas (Scalar *axion, int index)
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	char base[256];
+	char base[1024];
 
 	sprintf(base, "%s/%s.m.%05d", outDir, outName, index);
 
@@ -4468,7 +4468,7 @@ void	writeGadget (Scalar *axion, double eMean, size_t realN, size_t nParts, doub
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	char base[256];
+	char base[1024];
 	sprintf(base, "%s/ics.hdf5", outDir, outName);
 
 	/*	Create the file and release the plist	*/
@@ -5388,7 +5388,7 @@ double	readEDens (Cosmos *myCosmos, Scalar **axion, int index)
 
 	FieldPrecision	precision;
 
-	char	prec[16], fStr[16], lStr[16], icStr[16], vStr[32], smStr[16];
+	char	prec[16], fStr[16], lStr[16], icStr[32], vStr[32], smStr[32];
 	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -5410,7 +5410,7 @@ double	readEDens (Cosmos *myCosmos, Scalar **axion, int index)
 	plist_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_fapl_mpio (plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-	char base[256];
+	char base[1024];
 
 	sprintf(base, "%s/%s.m.%05d", outDir, outName, index);
 
