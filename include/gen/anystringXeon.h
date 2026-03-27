@@ -213,7 +213,7 @@
 								_MData_ Yn = opCode(fmadd_pd, Xacc, TT, opCode(mul_pd, Yacc, AA));                        // X*T + Y*D
 						#else
 								_MData_ Xn = opCode(sub_pd, opCode(mul_pd,Xacc,AA), opCode(mul_pd,Yacc,TT));
-								_MData_ Yn = opCode(add_pd, opCode(mul_pd,Xacc,TT), opCode(mul_pd,Yacc,DD));
+								_MData_ Yn = opCode(add_pd, opCode(mul_pd,Xacc,TT), opCode(mul_pd,Yacc,AA));
 						#endif
 						Xacc = Xn; Yacc = Yn;
 
@@ -307,6 +307,7 @@
 		#define	_MData_ __m128
 		#define	step 4
 	#endif
+
 
 			std::vector<double> xsf,ysf,zsf;
 			for (size_t i=0;i<len;i++){
