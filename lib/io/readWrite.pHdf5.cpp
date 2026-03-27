@@ -3814,7 +3814,7 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint)
 		}
 	}
 
-	if (axion->Field() == FIELD_SAXION) {
+	if (0) {
 		hsize_t slb_re = axion->Surf();
 		hsize_t lSz_re = axion->Length();
 		hsize_t fSz    = dataSize / 2;
