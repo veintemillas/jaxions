@@ -58,10 +58,16 @@
 		// propagation constants //FIX ME place in propClass?
 		std::vector<double>	co;
 
-		void	*m,   *v,   *m2,   *str;			// Cpu data
-		void	*rho, *vho, *g;								// Faxion data
 
-		void	*m_a,   *v_a,   *m2_a, *k_a, *k2_a, *g_a;			  // mode evolution
+
+
+		// CPU data
+		void *m   = nullptr, *v   = nullptr, *m2  = nullptr, *str = nullptr;
+		//FAXION data
+		void *rho = nullptr, *vho = nullptr, *g   = nullptr;
+		//Aux data
+		void *m_a  = nullptr, *v_a  = nullptr, *m2_a = nullptr;
+		void *k_a  = nullptr, *k2_a = nullptr, *g_a  = nullptr;
 
 #ifdef	USE_GPU
 		void	*m_d, *v_d, *m2_d;				// Gpu data
@@ -188,6 +194,7 @@
 		size_t		rSize()      { return eReduced ? (rLx*rLx*rLz) : n3; }
 		size_t		eDepth()     { return Ez; }
 		size_t		eSize()      { return v3; }
+		size_t          vSize()      { return n2*(Lz+2); }
 
 		FieldPrecision	Precision()  { return precision; }
 		DeviceType	Device()     { return device; }
