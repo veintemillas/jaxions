@@ -12,19 +12,22 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 		case FIELD_DOUBLE:
 		{
 			complex<double> *field;
-			size_t vol = sField->eSize();
+			size_t vol = 0;
 
 			switch (fIdx)
 			{
 				case FIELD_M:
+				vol = sField->eSize();
 				field = static_cast<complex<double>*> (sField->mCpu());
 				break;
 
 				case FIELD_V:
+				vol = sField->vSize();
 				field = static_cast<complex<double>*> (sField->vCpu());
 				break;
 
 				case FIELD_M2:
+				vol = sField->eSize();
 				if (sField->LowMem()) {
 					LogError ("Error: can't scale m2 with lowmem");
 					return;
@@ -50,19 +53,22 @@ void	scaleXeon (Scalar *sField, FieldIndex fIdx, double factor)
 		{
 			complex<float> *field;
 			float  fac = factor;
-			size_t vol = sField->eSize();
+			size_t vol = 0;
 
 			switch (fIdx)
 			{
 				case FIELD_M:
+				vol = sField->eSize();
 				field = static_cast<complex<float> *> (sField->mCpu());
 				break;
 
 				case FIELD_V:
+				vol = sField->vSize();	
 				field = static_cast<complex<float> *> (sField->vCpu());
 				break;
 
 				case FIELD_M2:
+				vol = sField->eSize();
 				if (sField->LowMem()) {
 					LogError ("Error: can't scale m2 with lowmem");
 					return;
