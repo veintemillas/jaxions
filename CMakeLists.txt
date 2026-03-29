@@ -43,10 +43,9 @@ set(USE_PROP_OM2 OFF CACHE BOOL "Omelyan 2 propagators")
 set(USE_PROP_OM4 OFF CACHE BOOL "Omelyan 4 propagators")
 set(USE_PROP_LEAP OFF CACHE BOOL "Leapfrog propagators")
 
+set(USE_2DCYL OFF CACHE BOOL "Cylindrical 2D")
+
 set(USE_NN_BINS OFF CACHE BOOL "Output occupation number bins")
-
-#set(USE_2D OFF CACHE BOOL "Uses only the Z=1 plane")
-
 
 # do all the build definitions
 #
@@ -76,24 +75,24 @@ if(${USE_GPU})
   set(GPU_ARCH sm_86 CACHE STRING "set the GPU architecture (default: sm_86)")
   set(GPU_COMP compute_86 CACHE STRING "set the GPU compute capability (default: compute_86)")
   set(DEFARCH "860")
-  
+
   # Use modern CMake CUDA support
   find_package(CUDAToolkit REQUIRED)
-  
+
   # Set CUDA compiler if not already set
   if(NOT CMAKE_CUDA_COMPILER)
     set(CMAKE_CUDA_COMPILER ${CUDAToolkit_NVCC_EXECUTABLE})
   endif()
-  
+
   # Set CUDA architecture before enabling CUDA language
   set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA GPU architectures (e.g. 70;80;86)")
 
   # Enable CUDA language
   enable_language(CUDA)
-  
+
   set(CMAKE_CUDA_STANDARD 17)
   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-  
+
   # Set CUDA compiler flags
   set(CMAKE_CUDA_FLAGS "-ftz=true -prec-div=false -prec-sqrt=false --expt-relaxed-constexpr -DCUB_IGNORE_DEPRECATED_API")
 
@@ -167,6 +166,10 @@ if(${USE_PROP_OM2})
 endif()
 if(${USE_PROP_OM4})
   set(PROP_FLAGS "${PROP_FLAGS} -DUSE_PROP_OM4")
+endif()
+
+if(USE_2DCYL)
+  add_compile_definitions(-DUSE_2DCYL)
 endif()
 
 set(OUTPUT_FLAGS "")

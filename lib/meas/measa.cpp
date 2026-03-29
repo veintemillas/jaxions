@@ -441,13 +441,13 @@ writePMapHdf5s (axiona, LAB);
 
 
 	if(axiona->Field() == FIELD_SAXION){
-		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF))
+		if ( (measa & (MEAS_STRING | MEAS_STRINGMAP | MEAS_STRINGCOO | MEAS_MASK)) || (mask & (SPMASK_REDO | SPMASK_GAUS | SPMASK_DIFF)))
 		{
 
 			/* By default */
 			if ( !(measa & MEAS_STRINGCOO)){
 					/*Identify strings */
-					LogMsg(VERB_NORMAL, "[Meas %d] string",indexa);
+					LogMsg(VERB_NORMAL, "[Meas %d] string (measa %d, mask %d)",indexa,measa,mask);
 					MeasDataOut.str = strings(axiona);
 
 					/* Length studies New or Old*/
@@ -506,10 +506,10 @@ writePMapHdf5s (axiona, LAB);
 	if(axiona->Field() == FIELD_SAXION) {
 		if (strmeas & STRMEAS_LOOPRADIUS) {
 			LogMsg(VERB_NORMAL, "[Meas %d] loop radius", indexa);
-			
+
 			// Compute loop radius observables from the 2D field slice
 			LoopRadiusData loopData = computeLoopRadius(axiona, sliceprint);
-			
+
 			// Write loop radius data to HDF5 file
 			writeLoopRadiusData(axiona, loopData, indexa);
 		}

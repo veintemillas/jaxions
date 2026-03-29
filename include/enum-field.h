@@ -784,6 +784,10 @@
 			MAPT_YZV     = 32,
 			MAPT_YZMV    = 48,
 
+			MAPT_XZM     = 64,
+			MAPT_XZV     = 128,
+			MAPT_XZMV    = 192,
+
 			MAPT_XYPE    = 1024,
 			MAPT_XYPE2   = 2048,
 
@@ -964,6 +968,7 @@
 		typedef	struct	PropParms_v
 		{
 			size_t   Ng;
+			size_t   lap;
 			size_t   Lx;
 			size_t   Lz;
 			size_t   Tz;
@@ -973,6 +978,7 @@
 			double   R;
 			double   ct;
 			double   *PC;
+			double   *PCp;
 			double   ood2a;
 			double   massA;
 			double   massA2;

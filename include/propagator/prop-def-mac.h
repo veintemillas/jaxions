@@ -93,12 +93,23 @@
 
 
 	/* Used in Gpu propagators */
-	#define PK_GPU(preci,X)  \
-	case	V_##X:							\
-	propagateKernel<preci, V_##X>		<<<gridSize,blockSize,0,stream>>> ((const complex<preci> *) m, (complex<preci> *) v, (complex<preci> *) m2, \
-											zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, (preci) LL, Lx, Sf, Vo, Vf, NN); \
-	LogMsg(VERB_PARANOID,"macro V_##X preci called"); \
-	break;
+	#define PK_GPU(preci,X)                                                         \
+	case V_##X:                                                                     \
+	    if (UpdateM) {                                                         \
+	        propagateKernel<preci, V_##X, true><<<gridSize,blockSize,0,stream>>>(  \
+	            (const complex<preci> *) m, (complex<preci> *) v,                   \
+	            (complex<preci> *) m2,                                              \
+	            zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd,                      \
+	            (const preci *) ood2, (preci) LL, Lx, Sf, Vo, Vf, NN);              \
+	    } else {                                                                    \
+	        propagateKernel<preci, V_##X, false><<<gridSize,blockSize,0,stream>>>( \
+	            (const complex<preci> *) m, (complex<preci> *) v,                   \
+	            (complex<preci> *) m2,                                              \
+	            zR, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd,                      \
+	            (const preci *) ood2, (preci) LL, Lx, Sf, Vo, Vf, NN);              \
+	    }                                                                           \
+	    LogMsg(VERB_PARANOID,"macro V_##X preci called");                           \
+	    break;
 
 	#define CAZ3_GPU(preci,qcd,pq)  \
 	PK_GPU(preci,qcd##_##pq)  \
