@@ -968,7 +968,7 @@
 		typedef	struct	PropParms_v
 		{
 			size_t   Ng;
-			size_t   lap;
+			size_t   Lap;
 			size_t   Lx;
 			size_t   Lz;
 			size_t   Tz;

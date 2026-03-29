@@ -49,7 +49,7 @@ const std::complex<float> If(0.,1.);
 #ifdef USE_2DCYL
 	Ng = 1;
 	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates Ngg=1, lap=%d",lap);
-#elseif
+#else
 	Ng = Ngg;
 #endif
 
@@ -1050,12 +1050,16 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
+#ifdef USE_2DCYL
+return;
+#else
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	recallGhosts(fIdx);
 	sendGhosts2(fIdx, COMM_SDRV);
 	sendGhosts2(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
+#endif
 }
 
 /* For sending 1st slice from string data backwards */

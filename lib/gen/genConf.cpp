@@ -210,7 +210,7 @@ void	ConfGenerator::runGpu	()
 			cudaMemcpy(axionField->vGpu(), static_cast<char *> (axionField->mGpu()) + axionField->DataSize()*axionField->Surf(), axionField->DataSize()*axionField->Size(), cudaMemcpyDeviceToDevice);
 			scaleField(axionField, FIELD_M, *axionField->RV());
 			axionField->exchangeGhosts(FIELD_M);
-			updateVGpu(axionField->mGpu(), axionField->vGpu(), ppar, ppar.R, 1.0, Vo, Vf,
+			propagateGpu(axionField->mGpu(), axionField->vGpu(), axionField->mGpu(), ppar, ppar.R, 1.0, 0.0, Vo, Vf,
 				   axionField->BckGnd()->QcdPot() & V_TYPE, axionField->Precision(), 512, 1, 1, ((cudaStream_t *)axionField->Streams())[2]);
 					// FIXME --> xDefaultBlockGpu, yDefaultBlockGpu, zDefaultBlockGpu, ((cudaStream_t *)axionField->Streams())[2]);
 		}

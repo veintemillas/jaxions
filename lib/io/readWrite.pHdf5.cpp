@@ -1372,14 +1372,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		if ( (sizeN == Nx_read) && (sizeZ == Nz)){
 			LogMsg(VERB_NORMAL,"[rc] Reading exact size %dx%dx%d(x%d), size requested %dx%dx%d(x%d)",Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
 		}
-		else if ( (sizeN > Nx_read) && (sizeZ > Nz) )
+		else if ( (sizeN > Nx_read) || (sizeZ > Nz) )
 		{
 			LogMsg(VERB_NORMAL,"[rc] We will be expanding from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
 				Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
 				Nxcreate = sizeN;
 				Nzcreate = sizeZ;
 		}
-		else if ( (sizeN < Nx_read) && (sizeZ < Nz) )
+		else if ( (sizeN < Nx_read) || (sizeZ < Nz) )
 		{
 			LogMsg(VERB_NORMAL,"[rc] We will be reducing from %dx%dx%d(x%d) to %dx%dx%d(x%d)",
 			Nx_read,Nx_read,Nz,zGrid, sizeN,sizeN,sizeZ,zGrid);
@@ -1561,15 +1561,15 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			// mend?
 
 		/* Reduce or expand if required */
-
-		if ((sizeN > Nx_read) && (sizeZ > Nz))
+		LogMsg(VERB_NORMAL, "[rC] sizeN %d Nx_read %d sizeZ %d Nz %d",sizeN,Nx_read,sizeZ,Nz);
+		if ((sizeN > Nx_read) || (sizeZ > Nz))
 		{
 				LogMsg(VERB_NORMAL, "[rC] Expansion from XY %d Z %d to XY %d Z %d",Nx_read,Nz*zGrid, sizeN,sizeZ*zGrid);
 				(*axion)->setReduced	(true, Nx_read, Nz);
 				expandField(*axion);
 				(*axion)->setReduced	(false, 1, 1); // 2,3 entries have no effect
 		}
-		else if ((sizeN < Nx_read) && (sizeZ < Nz))
+		else if ((sizeN < Nx_read) || (sizeZ < Nz))
 		{
 			LogMsg(VERB_NORMAL, "[rc] Reduction by a factor %d in x and %d in z",Nx_read/sizeN,Nz/sizeZ);
 			LogOut("0\n");
@@ -3898,7 +3898,7 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 {
 	/* in 2D Cylindrical syms, we use another function */
 #ifdef USE_2DCYL
-	writeMapHdf5s3 (axiona,sliceprint);
+	writeMapHdf5s3 (axion,slicenumbertoprint);
 	return;
 #endif
 

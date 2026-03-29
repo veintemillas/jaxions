@@ -339,13 +339,13 @@
 
 			loadparms(&ppar, axion);
 
-			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c0, 0.0, uS*2, uV, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[2]);
 			axion->exchangeGhosts(FIELD_M);
-			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c0, 0.0, uS, uS*2, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[0]);
 			if (uV>uS)
-			updateVGpu(axion->mGpu(), axion->vGpu(), ppar, dz, c0, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
+			propagateGpu(axion->mGpu(), axion->vGpu(), axion->mGpu(), ppar, dz, c0, 0.0, uV,  ext, VQcd, precision, xBlock, yBlock, zBlock,
 				  ((cudaStream_t *)axion->Streams())[1]);
 		}
 
@@ -1346,7 +1346,7 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 		(*pipar).Lap    = axion->getLap();
 		(*pipar).Lx     = axion->Length();;
 		(*pipar).PC     = axion->getCO();
-		(*pipar).PCp    = axion->getCOp
+		(*pipar).PCp    = axion->getCOp();
 		(*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
 		(*pipar).gamma  = axion->BckGnd()->Gamma();
 		(*pipar).frw    = axion->BckGnd()->Frw();

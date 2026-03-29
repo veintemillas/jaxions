@@ -239,7 +239,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 
 	for (int i =0; i<NN; i++) {
-		LogMsg(VERB_PARANOID,"C_LAP[%d] %f C_DER[%d] %f", i, (ppar.PC)[i],(ppar.PCp)[i]);
+		LogMsg(VERB_PARANOID,"C_LAP[%d] %f C_DER[%d] %f", i, (ppar.PC)[i],i,(ppar.PCp)[i]);
 	}
 
 	if (precision == FIELD_DOUBLE)
