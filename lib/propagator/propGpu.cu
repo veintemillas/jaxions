@@ -1,9 +1,9 @@
 #include "kernelParms.cuh"
 #include "complexGpu.cuh"
 #include "utils/index.cuh"
-#include "cudaErrors.h"
 #include "enum-field.h"
 #include "propagator/prop-def-mac.h"
+
 
 //#include "utils/parse.h"
 //#include "scalar/varNQCD.h"
@@ -13,6 +13,8 @@
 
 using namespace gpuCu;
 using namespace indexHelper;
+
+#include "cudaErrors.h"
 
 template<typename Float, const VqcdType VQcd, bool UpdateM>
 static __device__ __forceinline__
@@ -50,6 +52,7 @@ void propagateCoreGpu(
 
 #ifdef USE_2DCYL
 	complex<Float> malPx, malMx, malPy, malMy;
+
 	for (size_t nv=1; nv <= NN; nv++)
 	{
 		if (X[0] + nv >= Lx)
@@ -180,11 +183,11 @@ void propagateCoreGpu(
 		mel *= kReal/pot;
 	}
 
-	#ifdef USE_2DCYL
-		v[idx-Sf] = mel;
-	#else
-		v[idx-NN*Sf] = mel;
-	#endif
+#ifdef USE_2DCYL
+	v[idx-Sf] = mel;
+#else
+	v[idx-NN*Sf] = mel;
+#endif
 
 	if constexpr (UpdateM)
 	{
@@ -225,7 +228,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	else
 		LogMsg(VERB_PARANOID,"[pG] updateVGPU called");
 
-	LogMsg(VERB_PARANOID,"[pG] dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+	//LogMsg(VERB_PARANOID,"[pG] dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 
 	const uint Lx    = ppar.Lx;
 	const uint Sf  = Lx*Lx;
@@ -233,14 +236,21 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 
+//LogMsg(VERB_PARANOID,"[pG] gridsize %d %d %d ",(Sf+xBlock-1)/xBlock,(Lz2+yBlock-1)/yBlock,1);
 	const uint NN    = ppar.Lap;
 
-	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for lap/der coefficients NN = %d",2*NN*sizeof(double), NN);
+//	LogMsg(VERB_PARANOID,"[pG] allocate %d bits for lap/der coefficients NN = %d",2*NN*sizeof(double), NN);
+
+//
+//	for (int i =0; i<NN; i++) {
+//		LogMsg(VERB_PARANOID,"C_LAP[%d] %f C_DER[%d] %f", i, (ppar.PC)[i],i,(ppar.PCp)[i]);
+//	}
 
 
-	for (int i =0; i<NN; i++) {
-		LogMsg(VERB_PARANOID,"C_LAP[%d] %f C_DER[%d] %f", i, (ppar.PC)[i],i,(ppar.PCp)[i]);
-	}
+//	LogMsg(VERB_HIGH,"m=%p v=%p m2=%p ",m, v, m2);LogFlush();
+
+//	LogMsg(VERB_HIGH, "grid=(%u,%u,%u) block=(%u,%u,%u)\n", (unsigned)gridSize.x, (unsigned)gridSize.y, (unsigned)gridSize.z,
+// (unsigned)blockSize.x, (unsigned)blockSize.y, (unsigned)blockSize.z);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -261,12 +271,12 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		double *ood2 = nullptr;
 		cudaMalloc(&ood2, 2*NN*sizeof(double));
 
-		double aux[2*NN];
+		std::vector<double> aux(2*NN);
 		for (int i =0; i<NN; i++){
 	        	aux[i] = (double) ((ppar.PC)[i]*ppar.ood2a);
 						aux[NN+i] = (double) ((ppar.PCp)[i]*ppar.ood2a);
 		}
-		cudaMemcpy(ood2,aux,2*NN*sizeof(double),cudaMemcpyHostToDevice);
+		cudaMemcpy(ood2,aux.data(),2*NN*sizeof(double),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
@@ -294,21 +304,23 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 		float *ood2 = nullptr;
 		cudaMalloc(&ood2, 2*NN*sizeof(float));
 
-		float aux[2*NN];
+		std::vector<float> aux(2*NN);
 		for (int i =0; i<NN; i++){
 			aux[i]    = (float) ((ppar.PC)[i]*ppar.ood2a);
 			aux[NN+i] = (float) ((ppar.PCp)[i]*ppar.ood2a);
 		}
-		cudaMemcpy(ood2,aux,2*NN*sizeof(float),cudaMemcpyHostToDevice);
+		cudaMemcpy(ood2,aux.data(),2*NN*sizeof(float),cudaMemcpyHostToDevice);
 
 		switch (VQcd) {
 
 			DEFALLPROPTEM_K_GPU(float)
 
 			default:
+			cudaFree(ood2);
 			return;
 		}
 		cudaFree(ood2);
+
 	}
 	//cudaDeviceSynchronize();
 

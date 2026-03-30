@@ -43,12 +43,12 @@ const std::complex<float> If(0.,1.);
 
 
 	Scalar::Scalar(Cosmos *cm, const size_t nLx, const size_t nLz, FieldPrecision prec, DeviceType dev, const double zI, bool lowmem, const int nSp, FieldType newType, LambdaType lType, size_t Ngg)
-		: nSplit(nSp), Ng(Ngg), lap(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
+		: nSplit(nSp), lap(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 
 #ifdef USE_2DCYL
 	Ng = 1;
-	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates Ngg=1, lap=%d",lap);
+	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates Ng=1, lap=%d",lap);
 #else
 	Ng = Ngg;
 #endif
@@ -76,7 +76,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] Device       =  %d (CPU/GPU %d/%d)",dev,DEV_CPU,DEV_GPU);
 	LogMsg(VERB_NORMAL,"[sca] Lowmem       =  %d ",lowmem);
 	LogMsg(VERB_NORMAL,"[sca] LowmemGPU    =  %d %d ",lowmemGPU,lowmemgpu);
-	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d ", Ngg);
+	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d (arg %d)", Ng,Ngg);
 	LogMsg(VERB_NORMAL,"[sca] Laplacian     = %d ", lap);
 
 	if (cm == nullptr) {
@@ -1051,7 +1051,7 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
 #ifdef USE_2DCYL
-return;
+	return;
 #else
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	recallGhosts(fIdx);

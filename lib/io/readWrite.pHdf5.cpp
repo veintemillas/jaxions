@@ -1436,7 +1436,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 			exit(1);
 		}
 
-		(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, cDev, zTmp, lowmem, zGrid, fTypeCreate,    lType, myCosmos->ICData().Nghost);
+		(*axion) = new Scalar(myCosmos, Nxcreate, Nzcreate, precision, wasGPU? DEV_GPU : cDev, zTmp, lowmem, zGrid, fTypeCreate,    lType, myCosmos->ICData().Nghost);
 
 		myCosmos->ICData().cType = cType_aux;
 
