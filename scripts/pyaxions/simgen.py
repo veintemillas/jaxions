@@ -219,7 +219,7 @@ def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,p
             index=-100,ict='lola',dump=10,meas=0,p3D=0,spmask=1,rmask=1.5,redmp=-1.0,wTime=-1.0,
             spKGV=15,printmask=False,ng0calib=1.25,cummask=0, normcore=False,
             p2Dmap=False,p2DmapE=False,p2DmapPE=False,p2DmapPE2=False, p2DmapYZ=False, slc=-1, strmeas=-1, measloop=-1,
-            nologmpi=True,verbose=1, ftype='Saxion', verb=False, **kwargs):
+            nologmpi=True,verbose=1, ftype='saxion', verb=False, **kwargs):
     """
     simgen creates a string of command line flags to select options for vaxion3d
 
