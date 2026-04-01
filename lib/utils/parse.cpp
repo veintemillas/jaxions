@@ -14,8 +14,10 @@
 
 # define PARSE1 { LogMsg(VERB_NORMAL,"%s   ",argv[i]); passed = true; procArgs++; goto endFor; }
 # define PARSE2 { LogMsg(VERB_NORMAL,"%s %s",argv[i],argv[i+1]); i++; passed = true; procArgs++; goto endFor; }
+bool argIs(const char *arg, const char *opt1, const char *opt2);
 
 size_t sizeN  = 128;
+size_t sizeY  = 0;    // will be interpreted as sizeN
 size_t sizeZ  = 128;
 int    zGrid  = 1;
 int    nSteps = 5;
@@ -670,6 +672,9 @@ int	parseArgs (int argc, char *argv[])
 
 	// defaults
 	icdatst.Nghost    = 1;
+  icdatst.Nx        = 128;
+  icdatst.Ny        = 0;
+  icdatst.Nz        = 128;
 	icdatst.icdrule   = false;
 	icdatst.preprop   = false;
 	icdatst.icstudy   = false;
@@ -1062,7 +1067,7 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
-		if (!strcmp(argv[i], "--size"))
+		if (argIs(argv[i], "--nx", "--size")) // if (!strcmp(argv[i], "--size"))
 		{
 			if (i+1 == argc)
 			{
@@ -1072,16 +1077,30 @@ int	parseArgs (int argc, char *argv[])
 
 			sscanf(argv[i+1], "%zu", &sizeN);
 
-			if (sizeN < 2)
-			{
-				printf("Error: Size must be larger than 2.\n");
-				exit(1);
-			}
-
+      icdatst.Nx = sizeN;
 			PARSE2;
 		}
 
-		if (!strcmp(argv[i], "--depth"))
+    if (!strcmp(argv[i], "--ny"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need a size.\n");
+				exit(1);
+			}
+
+			sscanf(argv[i+1], "%zu", &sizeY);
+
+			if (sizeY < 1)
+			{
+				printf("Error: Size must be larger than 0.\n");
+				exit(1);
+			}
+      icdatst.Ny = sizeY;
+			PARSE2;
+		}
+
+		if (argIs(argv[i], "--nz", "--depth")) // if (!strcmp(argv[i], "--size")) //if (!strcmp(argv[i], "--depth"))
 		{
 			if (i+1 == argc)
 			{
@@ -1090,6 +1109,7 @@ int	parseArgs (int argc, char *argv[])
 			}
 
 			sscanf(argv[i+1], "%zu", &sizeZ);
+      icdatst.Nz = sizeZ;
 			PARSE2;
 		}
 
@@ -2299,6 +2319,10 @@ int	parseArgs (int argc, char *argv[])
 			{
 				icdatst.smvarType = CONF_AXITON;
 			}
+      else if (!strcmp(argv[i+1], "flat"))
+			{
+				icdatst.smvarType = CONF_FLAT;
+			}
 			else
 			{
 				printf("Error: Unrecognized configuration type %s, using [random]\n", argv[i+1]);
@@ -2922,4 +2946,12 @@ Cosmos	createCosmos()
 	}
 
 	return	myCosmos;
+}
+
+
+/* helpers */
+
+bool argIs(const char *arg, const char *opt1, const char *opt2)
+{
+    return !strcmp(arg, opt1) || !strcmp(arg, opt2);
 }
