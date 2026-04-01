@@ -43,7 +43,7 @@ from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 #   finds all axion.m.XXXXX files under an address
 
-def findmfiles(address='./'):
+def findmfiles(address='./',verb=False):
     if address == '':
         address = './'
     else:
@@ -56,10 +56,12 @@ def findmfiles(address='./'):
         except:
             print('Excluded corrupted file in %s: %s'%(address,filename))
 
-          #print(filename)
-    return np.array(sorted(list)) ;
+    res = np.array(sorted(list))
+    if verb:
+        print(res[0],'to',res[1],'.',len(res),'files.')
+    return res ;
 
-
+fm = findmfiles
 
 #   finds all XXXXX.m.XXXXX files with a exactly specified neme and address
 
@@ -679,7 +681,7 @@ def gm(address,something='summary',printerror=False):
 
     if (something == 'loopR?'):
         return '/loops/' in f and any(key.startswith('meas_') for key in f['/loops'].keys())
-    
+
     if something in ['loopR_axes', 'loopR_diag', 'loopR_axes_interp', 'loopR_diag_interp']:
         if '/loops/' in f:
             # Read from indexed groups: loops/meas_00000, loops/meas_00001, etc.
