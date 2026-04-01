@@ -347,6 +347,7 @@
 			CONF_STRWAVE      = 10,
 			CONF_THETAVEL     = 11,
 			CONF_VELRAND      = 12,
+			CONF_FLAT         = 13,
 		}	ConfsubType;
 
 		typedef	enum	MomConfType_s
@@ -876,6 +877,9 @@
 		typedef	struct	IcData_v
 		{
 			FieldType     fType;
+			size_t        Nx;
+			size_t        Ny;
+			size_t        Nz;
 			size_t        Nghost;
 			bool          icdrule;
 			bool          preprop;
