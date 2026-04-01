@@ -12,18 +12,27 @@
 
 		Cosmos	*bckgnd;
 
-		size_t n1;
-		size_t n2;
-		size_t n3;
+		/* Geometry
+		Nx Ny Nz in each rank,
+		nSplit ranks
+		total sites along z , Nzt = Nz*nSplit
+		ghost only along z, Nx Ny Nz_g
+		*/
 
-		size_t Lz;
+		size_t Nx;
+		size_t Ny;
+		size_t Nz;
+		size_t Nz_g;
+		size_t Nxy;
+		size_t Nxyz;
+
 		size_t Tz;
-		size_t Ez;
-		size_t v3;
+		size_t Nxyz_g;	// volume with ghost
 
 		bool eReduced;
-		size_t rLx;
-		size_t rLz;
+		size_t rNx;		// reduced fields
+		size_t rNy;		// reduced fields
+		size_t rNz;
 		size_t rTz;
 
 		const int  nSplit;
@@ -103,27 +112,27 @@
 		/* Field pointers */
 		void		*mCpu()  { return m; }
 		const void	*mCpu()  const { return m; }
-		void		*mStart      () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2)*Ng); }
+		void		*mStart      () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(Nxy)*Ng); }
 		void		*mFrontGhost () { return m; }
-		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(n2*Ng+n3)); }
+		void		*mBackGhost  () { return static_cast<void *>(static_cast<char *>(m)  + fSize*(Nxy*Ng+Nxyz)); }
 
 		/* Velocity pointers */
-		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(n3)); }
+		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(Nxyz)); }
 		void		*vCpu()  { return v; }
 		const void	*vCpu()  const { return v; }
-		void		*vStart      () { return (fieldType == FIELD_PAXION) ? (static_cast<void *>(static_cast<char *>(v)  + fSize*(n2)*Ng)) : v; }
+		void		*vStart      () { return (fieldType == FIELD_PAXION) ? (static_cast<void *>(static_cast<char *>(v)  + fSize*(Nxy)*Ng)) : v; }
 		void		*vFrontGhost () { return v; }
-		void		*vBackGhost  () { return static_cast<void *>(static_cast<char *>(v)  + fSize*(n2*Ng+n3)); }
+		void		*vBackGhost  () { return static_cast<void *>(static_cast<char *>(v)  + fSize*(Nxy*Ng+Nxyz)); }
 
 		/* Auxiliary field pointers */
 		void		*m2Cpu() { return m2; }
 		const void	*m2Cpu() const { return m2; }
-		void		*m2Start     () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2)*Ng); }
+		void		*m2Start     () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(Nxy)*Ng); }
 		void		*m2FrontGhost() { return m2; }
-		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(n2*Ng+n3)); }
-		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision); }
+		void		*m2BackGhost () { return static_cast<void *>(static_cast<char *>(m2) + fSize*(Nxy*Ng+Nxyz)); }
+		void		*m2half      () { return static_cast<void *>(static_cast<char *>(m2) + (Nxyz_g)*precision); }
 		/* m2h plus a ghost, used when fSize=precision because in complex mode fSize=2precision and the grid does not fit in m2h */
-		void		*m2hStart    () { return static_cast<void *>(static_cast<char *>(m2) + (v3)*precision + fSize*(n2)*Ng); }
+		void		*m2hStart    () { return static_cast<void *>(static_cast<char *>(m2) + (Nxyz_g)*precision + fSize*(Nxy)*Ng); }
 
 		/* Auxiliary++ field pointers for linear mode evolution no ghost*/
 
@@ -144,36 +153,36 @@
 
 		/* Faxion rho, vho, gx, gy, gx*/
 		void		*rhoCpu       () { return                                         rho; }
-		void		*rhoStart     () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(n2)*Ng); }
+		void		*rhoStart     () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(Nxy)*Ng); }
 		void		*rhoFrontGhost() { return                                         rho; }
-		void		*rhoBackGhost () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(n2*Ng+n3)); }
+		void		*rhoBackGhost () { return static_cast<void *>(static_cast<char *>(rho) + fSize*(Nxy*Ng+Nxyz)); }
 
 		void		*vhoCpu       () { return                                         vho; }
-		void		*vhoStart     () { return static_cast<void *>(static_cast<char *>(vho) + fSize*(n2)*Ng); }
+		void		*vhoStart     () { return static_cast<void *>(static_cast<char *>(vho) + fSize*(Nxy)*Ng); }
 		void		*vhoFrontGhost() { return                                         vho; }
-		void		*vhoBackGhost () { return static_cast<void *>(static_cast<char *>(vho) + fSize*(n2*Ng+n3)); }
+		void		*vhoBackGhost () { return static_cast<void *>(static_cast<char *>(vho) + fSize*(Nxy*Ng+Nxyz)); }
 
 		void		*gxCpu       () { return                                         g; }
-		void		*gxStart     () { return static_cast<void *>(static_cast<char *>(g) + fSize*(n2)*Ng); }
+		void		*gxStart     () { return static_cast<void *>(static_cast<char *>(g) + fSize*(Nxy)*Ng); }
 		void		*gxFrontGhost() { return                                         g; }
-		void		*gxBackGhost () { return static_cast<void *>(static_cast<char *>(g) + fSize*(n2*Ng+n3)); }
+		void		*gxBackGhost () { return static_cast<void *>(static_cast<char *>(g) + fSize*(Nxy*Ng+Nxyz)); }
 
-		void		*gyCpu       () { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision                ); }
-		void		*gyStart     () { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision + fSize*(n2)*Ng); }
-		void		*gyFrontGhost() { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision                ); }
-		void		*gyBackGhost () { return static_cast<void *>(static_cast<char *>(g) + (v3)*precision + fSize*(n2*Ng+n3)); }
+		void		*gyCpu       () { return static_cast<void *>(static_cast<char *>(g) + (Nxyz_g)*precision                ); }
+		void		*gyStart     () { return static_cast<void *>(static_cast<char *>(g) + (Nxyz_g)*precision + fSize*(Nxy)*Ng); }
+		void		*gyFrontGhost() { return static_cast<void *>(static_cast<char *>(g) + (Nxyz_g)*precision                ); }
+		void		*gyBackGhost () { return static_cast<void *>(static_cast<char *>(g) + (Nxyz_g)*precision + fSize*(Nxy*Ng+Nxyz)); }
 
-		void		*gzCpu       () { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision                ); }
-		void		*gzStart     () { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision + fSize*(n2)*Ng); }
-		void		*gzFrontGhost() { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision                ); }
-		void		*gzBackGhost () { return static_cast<void *>(static_cast<char *>(g) + 2*(v3)*precision + fSize*(n2*Ng+n3)); }
+		void		*gzCpu       () { return static_cast<void *>(static_cast<char *>(g) + 2*(Nxyz_g)*precision                ); }
+		void		*gzStart     () { return static_cast<void *>(static_cast<char *>(g) + 2*(Nxyz_g)*precision + fSize*(Nxy)*Ng); }
+		void		*gzFrontGhost() { return static_cast<void *>(static_cast<char *>(g) + 2*(Nxyz_g)*precision                ); }
+		void		*gzBackGhost () { return static_cast<void *>(static_cast<char *>(g) + 2*(Nxyz_g)*precision + fSize*(Nxy*Ng+Nxyz)); }
 
 		void		*sData() { return str; }
 		const void	*sData() const { return str; }
 
 #ifdef	USE_GPU
 		void		*mGpu() { return m_d; }
-		void		*mGpuStart() { return static_cast<void *>(static_cast<char *>(m_d)  + fSize*(n2)*Ng); }
+		void		*mGpuStart() { return static_cast<void *>(static_cast<char *>(m_d)  + fSize*(Nxy)*Ng); }
 		const void	*mGpu() const { return m_d; }
 		void		*vGpu() { return v_d; }
 		const void	*vGpu() const { return v_d; }
@@ -184,19 +193,40 @@
 		bool            LowMemGPU()                  { return lowmemgpu; }
 		void		setLowMem(const bool nLm) { lowmem = nLm; }
 
-		size_t		TotalSize()  { return n3*nSplit; }
-		size_t		Size()       { return n3; }
-		size_t		Surf()       { return n2; }
-		size_t		Length()     { return n1; }
-		size_t		TotalDepth() { return Lz*nSplit; }
-		size_t		Depth()      { return Lz; }
-		size_t		rLength()    { return eReduced ? rLx : n1; }
-		size_t		rTotalDepth(){ return eReduced ? rLz*nSplit : Lz*nSplit; }
-		size_t		rDepth()     { return eReduced ? rLz : Lz; }
-		size_t		rSize()      { return eReduced ? (rLx*rLx*rLz) : n3; }
-		size_t		eDepth()     { return Ez; }
-		size_t		eSize()      { return v3; }
-		size_t          vSize()      { return n2*(Lz+2); }
+		// OUTDATED
+		size_t		TotalSize()  { return Nxyz*nSplit; }
+		size_t		Size()       { return Nxyz; }
+		size_t		Surf()       { return Nxy; }
+		size_t		Length()     { return Nx; }
+		size_t		TotalDepth() { return Nz*nSplit; }
+		size_t		Depth()      { return Nz; }
+
+		size_t		rLength()    { return eReduced ? rNx : Nx; }
+		size_t		rTotalDepth(){ return eReduced ? rNz*nSplit : Nz*nSplit; }
+		size_t		rDepth()     { return eReduced ? rNz : Nz; }
+		size_t		rSize()      { return eReduced ? (rNx*rNy*rNz) : Nxyz; }
+		size_t		eDepth()     { return Nz_g; }
+		size_t		eSize()      { return Nxyz_g; }
+		size_t    vSize()      { return Nxy*(Nz+2); }
+
+		// TO STAY
+		size_t		NX()         { return Nx; }
+		size_t		NY()         { return Ny; }
+		size_t		NZ()         { return Nz; }
+		size_t		TZ()         { return Nz*nSplit; }
+		size_t		NXY()        { return Nxy; }
+		size_t		NXYZ()       { return Nxyz; }
+		size_t		TXYZ()       { return Nxyz*nSplit; }
+
+		size_t		rNX()        { return eReduced ? rNx : Nx; }
+		size_t		rNY()        { return eReduced ? rNy : Ny; }
+		size_t		rNZ()     { return eReduced ? rNz : Nz; }
+		size_t		rTZ()        { return eReduced ? rNz*nSplit : Nz*nSplit; }
+		size_t		rNXYZ()      { return eReduced ? (rNx*rNy*rNz) : Nxyz; }
+		size_t		NZg()        { return Nz_g; }
+		size_t		NXYZg()      { return Nxyz_g; }
+
+
 
 		FieldPrecision	Precision()  { return precision; }
 		DeviceType	Device()     { return device; }
@@ -217,7 +247,7 @@
 		bool		Reduced()    { return eReduced; }
 
 
-		double		Delta()      { return bckgnd->PhysSize()/((double) n1); }
+		double		Delta()      { return bckgnd->PhysSize()/((double) Nx); }
 		// double		Msa()        { return msa; } //sqrt(2.*bckgnd->Lambda())*Delta(); }
 
 		/*	Overloading	*/
