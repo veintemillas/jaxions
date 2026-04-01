@@ -18,9 +18,10 @@ void normCoreKernelXeon (Scalar *field)
 	const Float delta = field->Delta();
 	const Float R = static_cast<Float>(*field->RV());
 	const Float msa = sqrt(2*field->LambdaP())*R*delta;
-	const size_t n1 = field->Length();
-	const size_t n2 = field->Surf();
-	const size_t n3 = field->Size();
+	const size_t Nx = field->NX();
+	const size_t Ny = field->NY();
+	const size_t S = field->NXY();
+	const size_t V = field->NXYZ();
 
 	field->exchangeGhosts(FIELD_M);
 
@@ -35,65 +36,47 @@ void normCoreKernelXeon (Scalar *field)
 		maux = static_cast<complex<Float>*> (field->m2Cpu());
 
 	#pragma omp parallel for default(shared) schedule(static)
-	for (size_t idx=0; idx<n3; idx++)
+	for (size_t idx=0; idx<V; idx++)
 	{
-		size_t iPx, iMx, iPy, iMy, iPz, iMz, X[3];
-		indexXeon::idx2Vec (idx, X, n1);
 
-		Float gradtot, gradx, grady, gradz, sss, sss2, sss4, rhof;
+		size_t X[3];
+    size_t O[4];
+		indexXeon::idx2VecNeigh(idx, X, O, Nx, Ny);
 
-		if (X[0] == 0)
-		{
-			iPx = idx + 1;
-			iMx = idx + n1 - 1;
-		} else {
-			if (X[0] == n1 - 1)
-			{
-				iPx = idx - n1 + 1;
-				iMx = idx - 1;
-			} else {
-				iPx = idx + 1;
-				iMx = idx - 1;
-			}
-		}
+		complex<Float> fp_x = mCp[O[0]];
+		complex<Float> fm_x = mCp[O[1]];
+		complex<Float> fp_y = mCp[O[2]];
+		complex<Float> fm_y = mCp[O[3]];
+		complex<Float> fp_z = mCp[idx+S];
+		complex<Float> fm_z = mCp[idx-S];
+		complex<Float> f0   = mCp[idx];
+		complex<Float> if0  = complex<Float>(1,0)/f0;
 
-		if (X[1] == 0)
-		{
-			iPy = idx + n1;
-			iMy = idx + n2 - n1;
-		} else {
-			if (X[1] == n1 - 1)
-			{
-				iPy = idx - n2 + n1;
-				iMy = idx - n1;
-			} else {
-				iPy = idx + n1;
-				iMy = idx - n1;
-			}
-		}
+		Float gradx   = imag((fp_x - f0)*if0);
+		Float gradtot = gradx*gradx;
 
-		iPz = idx + n2;
-		iMz = idx - n2;
+		gradx   = imag((f0 - fm_x)*if0);
+		gradtot += gradx*gradx;
 
-		gradx = imag((mCp[iPx] - mCp[idx])/mCp[idx]);
-		gradtot = gradx*gradx ;
-		gradx = imag((mCp[idx] - mCp[iMx])/mCp[idx]);
-		gradtot += gradx*gradx ;
-		grady = imag((mCp[iPy] - mCp[idx])/mCp[idx]);
-		gradtot += grady*grady ;
-		grady = imag((mCp[idx] - mCp[iMy])/mCp[idx]);
-		gradtot += grady*grady ;
-		gradz = imag((mCp[iPz] - mCp[idx])/mCp[idx]);
-		gradtot += gradz*gradz ;
-		gradz = imag((mCp[idx] - mCp[iMz])/mCp[idx]);
-		gradtot += gradz*gradz ;
+		Float grady   = imag((fp_y - f0)*if0);
+		gradtot += grady*grady;
 
+		grady   = imag((f0 - fm_y)*if0);
+		gradtot += grady*grady;
+
+		Float gradz   = imag((fp_z - f0)*if0);
+		gradtot += gradz*gradz;
+
+	gradz   = imag((f0 - fm_z)*if0);
+		gradtot += gradz*gradz;
+
+		Float rhof = (float) 1.0;
 		if (gradtot > 0.0000001)
 		{
-					sss  = msa/sqrt(gradtot/2.);
+					Float sss  = msa/sqrt(gradtot/2.);
 					//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
-					sss2 = sss*sss;
-					sss4 = sss2*sss2;
+					Float sss2 = sss*sss;
+					Float sss4 = sss2*sss2;
 					// rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
 					rhof  = (0.43*sss + 0.164*sss2 + 0.036*sss4)/(1.0+0.39*sss+0.2*sss2+0.036*sss4);
 					// rhof  = (0.40*sss + 0.1619383*sss2 + 0.01719206*sss4)/(1.0+0.28552459*sss+0.2*sss2+0.01719206*sss4);
@@ -107,16 +90,13 @@ void normCoreKernelXeon (Scalar *field)
 					// }
 
 		}
-		else
-		{
-			rhof = 1.0 ;
-		}
+
 		maux[idx] = mCp[idx]*rhof/abs(mCp[idx]);
 
 	}
 
 	//Copies maux to m
-	memcpy (static_cast<char *>(field->mStart()), static_cast<char *>(static_cast<void *>(maux)), field->DataSize()*n3);
+	memcpy (static_cast<char *>(field->mStart()), static_cast<char *>(static_cast<void *>(maux)), field->DataSize()*V);
 
 	commSync();
 
@@ -126,6 +106,9 @@ void normCoreKernelXeon (Scalar *field)
 
 void	normCoreXeon (Scalar *sField)
 {
+
+	sField->exchangeGhosts(FIELD_M);
+
 	switch (sField->Precision())
 	{
 		case FIELD_DOUBLE:
