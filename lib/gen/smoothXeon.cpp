@@ -2,7 +2,6 @@
 #include <cstring>
 
 #include "scalar/scalarField.h"
-#include "utils/index.h"
 #include "utils/utils.h"
 
 using namespace std;
@@ -12,48 +11,28 @@ void	iteraXeon (const complex<Float> * __restrict__ mCp, complex<Float> * __rest
 {
 	const Float One = 1.;
 	const Float OneSixth = (1./6.);
+	const Float beta = OneSixth*(One-alpha);
+
+	// Since S = Lx * Ly, recover Ly from S and Lx
+	const size_t Ly = S / Lx;
 
 	#pragma omp parallel for default(shared) schedule(static)
 	for (size_t idx=0; idx<V; idx++)
 	{
-		long long int iMz;
-		size_t iPx, iMx, iPy, iMy, iPz,  X[3];
-		indexXeon::idx2Vec (idx, X, Lx);
+		size_t X[3];
+		size_t O[4];
 
-		if (X[0] == 0)
-		{
-			iPx = idx + 1;
-			iMx = idx + Lx - 1;
-		} else {
-			if (X[0] == Lx - 1)
-			{
-				iPx = idx - Lx + 1;
-				iMx = idx - 1;
-			} else {
-				iPx = idx + 1;
-				iMx = idx - 1;
-			}
-		}
+		indexXeon::idx2VecNeigh(idx, X, O, Lx, Ly);
 
-		if (X[1] == 0)
-		{
-			iPy = idx + Lx;
-			iMy = idx + S - Lx;
-		} else {
-			if (X[1] == Lx - 1)
-			{
-				iPy = idx - S + Lx;
-				iMy = idx - Lx;
-			} else {
-				iPy = idx + Lx;
-				iMy = idx - Lx;
-			}
-		}
+		const size_t iPx = O[0];
+		const size_t iMx = O[1];
+		const size_t iPy = O[2];
+		const size_t iMy = O[3];
+		const size_t iPz = idx + S;
+		const size_t iMz = idx - S;
 
-		iPz = idx + S;
-		iMz = (long long int) idx - (long long int) S;
 		//Uses v to copy the smoothed configuration
-		vCp[idx]   = alpha*mCp[idx] + OneSixth*(One-alpha)*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
+		vCp[idx]   = alpha*mCp[idx] + beta*(mCp[iPx] + mCp[iMx] + mCp[iPy] + mCp[iMy] + mCp[iPz] + mCp[iMz]);
 	}
 
 }
@@ -63,32 +42,69 @@ void	smoothXeon (Scalar *field, const size_t iter, const double alpha)
 	LogMsg(VERB_SILENT,"[smo] Called smoothXeon");
 	field->exchangeGhosts(FIELD_M);
 
-	switch	(field->Precision())
+	// m into m2
+	if (!field->LowMem())
 	{
-		case	FIELD_DOUBLE:
-		for (size_t it=0; it<iter; it++)
+		size_t peter = iter/2;
+		switch	(field->Precision())
 		{
-			LogMsg(VERB_HIGH,"[smo] Smoothing step %d",it);
-			iteraXeon(static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->m2Cpu()), field->Length(), field->Surf(), field->Size(), alpha);
-			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->m2Cpu()), field->DataSize()*field->Size());
-			field->exchangeGhosts(FIELD_M);
-		}
-		break;
+			case	FIELD_DOUBLE:
+			for (size_t it=0; it<peter; it++)
+			{
+				LogMsg(VERB_PARANOID,"[smo] Smoothing step %d",it);
+				iteraXeon(static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->m2Start()), field->Length(), field->Surf(), field->Size(), alpha);
+				field->exchangeGhosts(FIELD_M2);
+				iteraXeon(static_cast<const complex<double>*>(field->m2Start()), static_cast<complex<double>*>(field->mStart()), field->Length(), field->Surf(), field->Size(), alpha);
+				field->exchangeGhosts(FIELD_M);
+			}
+			break;
 
-		case	FIELD_SINGLE:
-		for (size_t it=0; it<iter; it++)
+			case	FIELD_SINGLE:
+			for (size_t it=0; it<peter; it++)
+			{
+				LogMsg(VERB_PARANOID,"[smo] Smoothing step %d",it);
+				iteraXeon(static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->m2Start()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
+				field->exchangeGhosts(FIELD_M2);
+				iteraXeon(static_cast<const complex<float>*>(field->m2Start()), static_cast<complex<float>*>(field->mStart()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
+				field->exchangeGhosts(FIELD_M);
+			}
+			break;
+
+			default:
+			LogError ("Unrecognized precision");
+			exit(1);
+			break;
+		}
+	}
+	else
+	{
+		switch	(field->Precision())
 		{
-			LogMsg(VERB_HIGH,"[smo] Smoothing step %d",it);
-			iteraXeon(static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->m2Cpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
-			memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->m2Cpu()), field->DataSize()*field->Size());
-			field->exchangeGhosts(FIELD_M);
-		}
-		break;
+			case	FIELD_DOUBLE:
+			for (size_t it=0; it<iter; it++)
+			{
+				LogMsg(VERB_PARANOID,"[smo] Smoothing step %d",it);
+				iteraXeon(static_cast<const complex<double>*>(field->mStart()), static_cast<complex<double>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), alpha);
+				memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
+				field->exchangeGhosts(FIELD_M);
+			}
+			break;
 
-		default:
-		LogError ("Unrecognized precision");
-		exit(1);
-		break;
+			case	VERB_PARANOID:
+			for (size_t it=0; it<iter; it++)
+			{
+				LogMsg(VERB_HIGH,"[smo] Smoothing step %d",it);
+				iteraXeon(static_cast<const complex<float>*>(field->mStart()), static_cast<complex<float>*>(field->vCpu()), field->Length(), field->Surf(), field->Size(), static_cast<float>(alpha));
+				memcpy (static_cast<char *>(field->mStart()), static_cast<char*>(field->vCpu()), field->DataSize()*field->Size());
+				field->exchangeGhosts(FIELD_M);
+			}
+			break;
+
+			default:
+			LogError ("Unrecognized precision");
+			exit(1);
+			break;
+		}
 	}
 	LogMsg(VERB_SILENT,"[smo] END smoothXeon ");
 }
