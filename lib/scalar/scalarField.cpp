@@ -46,6 +46,7 @@ const std::complex<float> If(0.,1.);
 		: nSplit(nSp), lap(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 
+
 #ifdef USE_2DCYL
 	Ng = 1;
 	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates Ng=1, lap=%d",lap);
@@ -53,22 +54,26 @@ const std::complex<float> If(0.,1.);
 	Ng = Ngg;
 #endif
 
-	n1 = nLx;
-	n2 = nLx*nLx;
-	n3 = nLx*nLx*nLz;
-	Lz = nLz;
-	Tz = Lz*nSp;
-	Ez = nLz + 2*Ng;
-	v3 = nLx*nLx*(nLz + 2*Ng);
+	Nx     = cm->ICData().Nx; // nLx; 		 // n1
+#ifdef USE_2DCYL
+	Ny     = 1;
+#else
+	Ny     = cm->ICData().Ny > 0? cm->ICData().Ny : Nx;
+#endif
+	Nz     = cm->ICData().Nz; // nLz;      // Lz
+	Nz_g   = Nz+2*Ng;  // Ez
+	Nxy    = Nx * Ny ; // n2
+	Nxyz   = Nxy * Nz; // n3
+	Tz     = Nz*nSp;
+	Nz_g   = nLz + 2*Ng;      // Ez
+	Nxyz_g = Nxy*(Nz + 2*Ng); // v3
 
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
 	lowmemgpu = lowmemGPU;
 	prof.start();
 
-	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar");
-	LogMsg(VERB_NORMAL,"[sca] Lx           =  %d",nLx);
-	LogMsg(VERB_NORMAL,"[sca] Lz           =  %d",nLz);
+	LogMsg(VERB_NORMAL,"[sca] Constructor Scalar Nx,Ny,Nz (%d %d %d)",Nx,Ny,Nz);
 	LogMsg(VERB_NORMAL,"[sca] nSplit       =  %d ",nSplit);
 	LogMsg(VERB_NORMAL,"[sca] Field Type   =  %d (SAX/AX/WKB %d/%d/%d) ",newType,FIELD_SAXION,FIELD_AXION,FIELD_WKB);
 	// LogMsg(VERB_NORMAL,"[sca] Lambda Type  =  %d (FIXED/Z2 %d/%d) ",lType,LAMBDA_FIXED,LAMBDA_Z2);
@@ -87,12 +92,10 @@ const std::complex<float> If(0.,1.);
 	}
 
 	bckgnd = cm;
-	// Ng = cm->ICData().Nghost ;
-	// Ez = nLz + 2*Ng;
-	// v3 = nLx*nLx*(nLz + 2*Ng);
+
 	size_t nData;
 
-	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) nLx);
+	msa = sqrt(2.*bckgnd->Lambda())*bckgnd->PhysSize()/((double) Nx);
 
 
 
@@ -184,50 +187,43 @@ const std::complex<float> If(0.,1.);
 			break;
 	}
 
-//	switch	(dev)
-//	{
-//		case DEV_CPU:
-			#ifdef	__AVX512F__
-			LogMsg(VERB_NORMAL, "[sca] Using AVX-512 64 bytes alignment");
-			mAlign = 64;
-			#elif	defined(__AVX__) || defined(__AVX2__)
-			LogMsg(VERB_NORMAL, "[sca] Using AVX 32 bytes alignment");
-			mAlign = 32;
-			#else
-			LogMsg(VERB_NORMAL, "[sca] Using SSE 16 bytes alignment");
-			mAlign = 16;
-			#endif
-//			break;
-
-//		case DEV_GPU:
-//			LogMsg(VERB_NORMAL, "Using 16 bytes alignment for the Gpu");
-//			mAlign = 16;
-//			break;
-//	}
+	#ifdef	__AVX512F__
+	LogMsg(VERB_NORMAL, "[sca] Using AVX-512 64 bytes alignment");
+	mAlign = 64;
+	#elif	defined(__AVX__) || defined(__AVX2__)
+	LogMsg(VERB_NORMAL, "[sca] Using AVX 32 bytes alignment");
+	mAlign = 32;
+	#else
+	LogMsg(VERB_NORMAL, "[sca] Using SSE 16 bytes alignment");
+	mAlign = 16;
+	#endif
 
 	shift = mAlign/fSize;
 
-	if (n2*fSize % mAlign)
+	if (Nxy*fSize % mAlign)
 	{
 		LogError("Error: misaligned memory. Are you using an odd dimension?");
 		exit(1);
 	}
 	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
-	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: v3[m]  %llu n2(Lz+2)[v] %llu n3[str]", v3, (n2*(nLz + 2)),n3);
-	const size_t	mBytes = v3*fSize;
-	const size_t	vBytes = (n2*(nLz + 2))*fSize;
-	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, n3/1e9);
+	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m]  %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str]", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
+	const size_t	mBytes = Nxyz_g       * fSize;
+	const size_t	vBytes = Nxy*(Nz + 2) * fSize;
+	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, (Nxyz+Nxy)/1e9);
 	size_t totalCPU = 0;
 	switch (fieldType)
 	{
 		case FIELD_SAXION:
 		case FIELD_SX_RD:
-			LogMsg(VERB_NORMAL, "[sca] allocating m, v, sData");
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v (saxion)");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, vBytes);
-			trackAlloc ((void**) &str, n3+n2);
-			totalCPU += mBytes+vBytes+n3+n2;
+			trackAlloc ((void**) &str, Nxyz+Nxy);
+			totalCPU += mBytes+vBytes+(Nxyz+Nxy);
+
+			memset (m, 0, mBytes);
+			memset (v, 0, vBytes);
 			break;
 
 		case FIELD_AXION_MOD:
@@ -237,18 +233,24 @@ const std::complex<float> If(0.,1.);
 		case FIELD_WKB:
 			str = nullptr;
 			//this allocates a slightly larger v to host FFTs in place
-			LogMsg(VERB_NORMAL, "[sca] allocating m, v");
+			LogMsg(VERB_NORMAL, "[sca] allocating m, v (axion, wkb)");
 			alignAlloc ((void**) &m, mAlign, mBytes+vBytes);
 			v = static_cast<void *>(static_cast<char *>(m) + mBytes );
-			trackAlloc ((void**) &str, n3);
-			totalCPU += mBytes+vBytes+n3;
+			trackAlloc ((void**) &str, Nxyz);
+			totalCPU += mBytes+vBytes+Nxyz;
+			memset (m, 0, mBytes);
+			memset (v, 0, vBytes);
 			break;
+
 		case FIELD_PAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating m,v for Paxion");
 			alignAlloc ((void**) &m,   mAlign, mBytes);
 			alignAlloc ((void**) &v,   mAlign, mBytes);
-			trackAlloc ((void**) &str, n3);
-			totalCPU += mBytes*2 + n3;
+			trackAlloc ((void**) &str, Nxyz);
+			totalCPU += mBytes*2 + Nxyz;
+			memset (m, 0, mBytes);
+			memset (v, 0, mBytes);
+			break;
 
 		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
@@ -257,8 +259,15 @@ const std::complex<float> If(0.,1.);
 			alignAlloc ((void**) &rho, mAlign, mBytes);
 			alignAlloc ((void**) &vho, mAlign, mBytes);
 			alignAlloc ((void**) &g,   mAlign, 3*mBytes);
-			trackAlloc ((void**) &str, n3);
-			totalCPU += mBytes*7+vBytes+n3;
+			trackAlloc ((void**) &str, Nxyz);
+			totalCPU += mBytes*7+vBytes+Nxyz;
+
+			memset (m, 0, mBytes);
+			memset (v, 0, mBytes);
+			memset (rho, 0, fSize*Nxyz_g);
+			memset (vho, 0, fSize*Nxyz_g);
+			memset (g, 0, 3*fSize*Nxyz_g);
+
 			break;
 
 
@@ -267,9 +276,6 @@ const std::complex<float> If(0.,1.);
 			exit(1);
 			break;
 	}
-	// MODIFICATION UNTIL HERE
-	// NOTE THAT DOES NOT AFFECT CREATION IN SAXION MODE
-
 
 	/*	This MUST be revised, otherwise
 		simulations can segfault after
@@ -307,12 +313,12 @@ const std::complex<float> If(0.,1.);
 			if (!lowmemGPU){
 				LogMsg(VERB_NORMAL, "[sca] allocating 2mBytes for m2");
 				alignAlloc ((void**) &m2, mAlign, 2*mBytes);
-				memset (m2, 0, 2*fSize*n3);
+				memset (m2, 0, Nxyz_g * 2 * fSize);
 				totalCPU += mBytes*2;
 			} else {
 				LogMsg(VERB_NORMAL, "[sca] allocating mBytes for m2 [Experimental warning]");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
-				memset (m2, 0, fSize*n3);
+				memset (m2, 0, fSize*Nxyz_g);
 				totalCPU += mBytes;
 			}
 
@@ -347,7 +353,7 @@ const std::complex<float> If(0.,1.);
 
 	if (str == nullptr && (fieldType & (FIELD_SAXION != 0)))
 	{
-		LogError ("Error: couldn't allocate %lu bytes on host for the string map", n3+n2);
+		LogError ("Error: couldn't allocate %lu bytes on host for the string map", Nxyz+Nxy);
 		exit(1);
 	}
 
@@ -361,14 +367,7 @@ const std::complex<float> If(0.,1.);
 		}
 	}
 
-	LogMsg(VERB_NORMAL, "[sca] Setting m,v to 0");
-	memset (m, 0, fSize*v3);
-	memset (v, 0, fSize*(n2*(nLz + 2)));
-	if (fieldType == FIELD_FAXION){
-		memset (rho, 0, fSize*v3);
-		memset (vho, 0, fSize*v3);
-		memset (g, 0, 3*fSize*v3);
-	}
+
 
 
 
@@ -407,14 +406,14 @@ const std::complex<float> If(0.,1.);
 		exit   (1);
 #else
 		if (fieldType == FIELD_SAXION) {
-			LogMsg(VERB_NORMAL, "[sca] GPU allocating m, %.2e Gbytes",mBytes/1.e9);
+			LogMsg(VERB_NORMAL, "[sca] GPU (saxion) allocating m, %.2e Gbytes",mBytes/1.e9);
 			if (cudaMalloc(&m_d,  mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
 				exit(1);
 			}
 			totalGPU += mBytes;
-			LogMsg(VERB_NORMAL, "[sca] GPU allocating v, %.2e Gbytes",vBytes/1.e9);
+			LogMsg(VERB_NORMAL, "[sca] GPU (saxion) allocating v, %.2e Gbytes",vBytes/1.e9);
 			if (cudaMalloc(&v_d,  vBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field v", vBytes);
@@ -422,14 +421,14 @@ const std::complex<float> If(0.,1.);
 			}
 			totalGPU += vBytes;
 		} else {
-			LogMsg(VERB_NORMAL, "[sca] GPU allocating m & v, %.2e Gbytes",2*mBytes/1.e9);
+			LogMsg(VERB_NORMAL, "[sca] GPU (axion) allocating m & v, %.2e Gbytes",2*mBytes/1.e9);
 			if (cudaMalloc(&m_d, 2*mBytes) != cudaSuccess)
 			{
 				LogError ("Error: couldn't allocate %lu bytes for the gpu field m", mBytes);
 				exit(1);
 			}
 			totalGPU += 2*mBytes;
-			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*v3);
+			v_d = static_cast<void *>(static_cast<char *>(m_d) + fSize*Nxyz_g);
 		}
 
 		// IN SAXION MODE, WE HAVE LOWMEM GPU AND WE CAN AVOID THIS M2 FIELD!
@@ -626,8 +625,8 @@ if (k2_a != nullptr)
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 {
-	size_t Gc = Ng*n2*fSize;  // Number of chars of the ghost region
-	size_t Tc = n3*fSize;			// Number of chars to transfer
+	size_t Gc = Ng*Nxy*fSize;  // Number of chars of the ghost region
+	size_t Tc = Nxyz*fSize;			// Number of chars to transfer
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -654,9 +653,9 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 
 void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 {
-	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
-	size_t Tc  = v3*fSize;              // Number of chars to transfer
-	size_t Tvc = (n2*(Lz+2))*fSize;     // Number of chars to transfer
+	size_t Gc  = Ng*Nxy*fSize;           // Number of chars of the ghost region
+	size_t Tc  = Nxyz_g*fSize;              // Number of chars to transfer
+	size_t Tvc = Nxy*(Nz+2)*fSize;     // Number of chars to transfer
 
 	if (device == DEV_GPU)
 	{
@@ -682,9 +681,9 @@ void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 
 void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the slices of the Gpu that are to be exchanged
 {
-	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
+	size_t Gc  = Ng*Nxy*fSize;           // Number of chars of the ghost region
 	                                    // The same than the chars we have to transfer
-	size_t Tc  = n3*fSize;              // Number of chars of the total physical unghosted array
+	size_t Tc  = Nxyz*fSize;              // Number of chars of the total physical unghosted array
 
 	if (device == DEV_GPU)
 	{
@@ -708,9 +707,9 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the slices of the
 
 void	Scalar::transferGhosts(FieldIndex fIdx)	// Copy to the GPU the slices of the CPU that HAVE BEEN UPDATED
 {
-	size_t Gc  = Ng*n2*fSize;           // Number of chars of the ghost region
+	size_t Gc  = Ng*Nxy*fSize;           // Number of chars of the ghost region
 																			// The same than the chars we have to transfer
-	size_t Tc  = n3*fSize;              // Number of chars of the total physical unghosted array
+	size_t Tc  = Nxyz*fSize;              // Number of chars of the total physical unghosted array
 	size_t Lc  = Gc+Tc;                 // Number of chars before the lastghost region (1 ghost region+physical vol)
 	if (device == DEV_GPU)
 	{
@@ -899,26 +898,26 @@ void	Scalar::sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng)
 		rNg = Ng;
 	}
 
-	const size_t ghostBytes = rNg*n2*fSize;
+	const size_t ghostBytes = rNg*Nxy*fSize;
 	LogMsg(VERB_PARANOID,"[sca] sendGhosts2 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
 
 	void *sB, *rF, *sF, *rB;
 	if (fIdx == FIELD_M){
 		sB = mStart();
 		rF = mBackGhost(); // slice after m
-		sF = static_cast<void *> (static_cast<char *> (mStart()) +fSize*n3-ghostBytes);
-		rB = mFrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+		sF = static_cast<void *> (static_cast<char *> (mStart()) +fSize*Nxyz-ghostBytes);
+		rB = mFrontGhost() + (Ng-rNg)*Nxy*fSize;  // mCpu
 	} else {
 		if (fIdx & FIELD_V) {
 			sB = vStart();
 			rF = vBackGhost(); // slice after m
-			sF = static_cast<void *> (static_cast<char *> (vStart()) +fSize*n3-ghostBytes);
-			rB = vFrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+			sF = static_cast<void *> (static_cast<char *> (vStart()) +fSize*Nxyz-ghostBytes);
+			rB = vFrontGhost() + (Ng-rNg)*Nxy*fSize;  // mCpu
 		} else {
 			sB = m2Start();
 			rF = m2BackGhost(); // slice after m
-			sF = static_cast<void *> (static_cast<char *> (m2Start()) +fSize*n3-ghostBytes);
-			rB = m2FrontGhost() + (Ng-rNg)*n2*fSize;  // mCpu
+			sF = static_cast<void *> (static_cast<char *> (m2Start()) +fSize*Nxyz-ghostBytes);
+			rB = m2FrontGhost() + (Ng-rNg)*Nxy*fSize;  // mCpu
 		}
 	}
 	Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB, rF, sF, rB);
@@ -934,7 +933,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	// const size_t MAX_CHUNK  = 2147483648;
 	// OJO this is NOT 2^31! is the maximum multiple of 64 below 2^31
 	const size_t MAX_CHUNK  = 2147483584;
-	const size_t ghostBytes = Ng*n2*fSize;
+	const size_t ghostBytes = Ng*Nxy*fSize;
 	size_t nchunks    = 1 + (ghostBytes/MAX_CHUNK);
 	int lastchunk     = (ghostBytes - (nchunks-1)*MAX_CHUNK);
 
@@ -962,23 +961,23 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 		if (fIdx & FIELD_M)
 		{
 				sGhostBck[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK                         );                       //slice to be send back
-				sGhostFwd[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK + fSize*n3-ghostBytes   ); //slice to be send forw
-				rGhostBck[n] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);       //reception point
-				rGhostFwd[n] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);        //reception point
+				sGhostFwd[n] = static_cast<void *> (static_cast<char *> (mStart())     + n*MAX_CHUNK + fSize*Nxyz-ghostBytes   ); //slice to be send forw
+				rGhostBck[n] = static_cast<void *> (static_cast<char *> (mFrontGhost())+ n*MAX_CHUNK + fSize*Ng*Nxy-ghostBytes);       //reception point
+				rGhostFwd[n] = static_cast<void *> (static_cast<char *> (mBackGhost()) + n*MAX_CHUNK + fSize*Ng*Nxy-ghostBytes);        //reception point
 		}
 		else
 		{
 			if (fIdx & FIELD_V)
 			{
 					sGhostBck[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK                          );//slice to be send back
-					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK + fSize*n3-ghostBytes    );					//slice to be send forw
-					rGhostBck[n] = static_cast<void *> (static_cast<char *> (vFrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
-					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (vBackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes );	//reception point
+					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (vStart())      + n*MAX_CHUNK + fSize*Nxyz-ghostBytes    );					//slice to be send forw
+					rGhostBck[n] = static_cast<void *> (static_cast<char *> (vFrontGhost()) + n*MAX_CHUNK + fSize*Ng*Nxy-ghostBytes );	//reception point
+					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (vBackGhost())  + n*MAX_CHUNK + fSize*Ng*Nxy-ghostBytes );	//reception point
 			} else {
 					sGhostBck[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK) ;
-					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK + fSize*n3-ghostBytes);
-					rGhostBck[n] = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);		//reception point
-					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n*MAX_CHUNK + fSize*Ng*n2-ghostBytes);	//reception point
+					sGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2Start())      + n*MAX_CHUNK + fSize*Nxyz-ghostBytes);
+					rGhostBck[n] = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + n*MAX_CHUNK + fSize*Ng*Nxy-ghostBytes);		//reception point
+					rGhostFwd[n] = static_cast<void *> (static_cast<char *> (m2BackGhost())  + n*MAX_CHUNK + fSize*Ng*Nxy-ghostBytes);	//reception point
 			}
 		}
 		LogMsg(VERB_PARANOID,"[sca] n = %d size %d %p %p %p %p", n, sendBytes[n], sGhostBck[n], sGhostFwd[n], rGhostBck[n], rGhostFwd[n]);
@@ -1067,12 +1066,12 @@ void	Scalar::sendGhosts3(CommOperation opComm)
 {
 
 	/* string data is char = byte*/
-	const size_t ghostBytes = n2;
+	const size_t ghostBytes = Nxy;
 	LogMsg(VERB_PARANOID,"[sca] sendGhosts3 ghostBytes %lu GByte %e",ghostBytes,ghostBytes/1.e9);
 
 	void *sB, *rF, *sF, *rB;
 	sB = sData();
-	rF = static_cast<void *> (static_cast<char *> (sData()) +n3);
+	rF = static_cast<void *> (static_cast<char *> (sData()) +Nxyz);
 	sF = mFrontGhost(); // equal pointers trigger no transfer
 	rB = mFrontGhost();
 	Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB, rF, sF, rB);
@@ -1125,7 +1124,7 @@ void	Scalar::setField (FieldType newType)
 #ifdef  USE_GPU
 			if (device == DEV_GPU && lowmemgpu)
 			{
-				m2_d = static_cast<void *>(static_cast<char *>(m_d)+fSize*v3);
+				m2_d = static_cast<void *>(static_cast<char *>(m_d)+fSize*Nxyz_g);
 				LogMsg(VERB_NORMAL,"[sca] lowmemgpu uses the second half of m as m2 (potential risks! change it soon)",fieldType);
 			}
 #endif
@@ -1185,11 +1184,13 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 	eReduced = eRed;
 
 	if (eRed == true) {
-		rLx = nLx;
-		rLz = nLz;
+		rNx = nLx;
+		rNy = nLx;
+		rNz = nLz;
 	} else {
-		rLx = n1;
-		rLz = Lz;
+		rNx = Nx;
+		rNy = Nx;
+		rNz = Nz;
 	}
 }
 
@@ -1197,15 +1198,16 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 
 void	Scalar::setDims	(size_t newnLx, size_t newnLz)
 {
-	LogMsg (VERB_NORMAL, "[sf] Call reset of axion dimensions from (%d,%d,%d) to (%d,%d,%d)!",n1,n1,Lz,newnLx,newnLx,newnLz);
-	if (newnLx < n1 && newnLz < Lz){
-		n1 = newnLx;
-		n2 = newnLx*newnLx;
-		n3 = newnLx*newnLx*newnLz;
-		Lz = newnLz;
-		Tz = Lz*nSplit;
-		Ez = newnLz + 2*Ng;
-		v3 = newnLx*newnLx*(newnLz + 2*Ng);
+	LogMsg (VERB_NORMAL, "[sf] Call reset of axion dimensions from (%d,%d,%d) to (%d,%d,%d)!",Nx,Ny,Nz,newnLx,newnLx,newnLz);
+	if (newnLx < Nx && newnLz < Nz){
+		Nx     = newnLx;
+		Ny     = newnLx;
+		Nxy    = newnLx*newnLx;
+		Nxyz   = newnLx*newnLx*newnLz;
+		Nz     = newnLz;
+		Tz     = Nz*nSplit;
+		Nz_g   = newnLz + 2*Ng;
+		Nxyz_g = newnLx*newnLx*(newnLz + 2*Ng);
 		LogMsg (VERB_NORMAL, "[sf] Dimensions reset - but FFTs not changed, RENEW THE PLANS MANUALLY!");
 	} else
 	LogMsg (VERB_NORMAL, "[sf] Cannot increase data size. dismissed!");
@@ -1414,7 +1416,7 @@ double	Scalar::dzSize	   () {
 /* TODO Need to update everything to zNow */
 double	Scalar::dzSize	   (double zNow) {
 	double RNow = Rfromct(zNow);
-	double oodl = ((double) n1)/bckgnd->PhysSize();
+	double oodl = ((double) Nx)/bckgnd->PhysSize();
 	double mAx2 = AxionMassSq(zNow);
 	double lamP = bckgnd->LambdaP(zNow);
 	double mAfq = 0.;
@@ -1591,39 +1593,76 @@ double  Scalar::Saskia  (const double ct)
 	return  0.;
 }
 
-void	Scalar::setCO(size_t newN)
+void Scalar::setCO(size_t N)
 {
-	co.resize(newN); co.assign(newN, 0.);
-	cop.resize(newN); cop.assign(newN, 0.);
+    co.assign(N, 0.0);
+    cop.assign(N, 0.0);
 
-	switch(newN)
-	{
-		case 0:
-		break;
+    if (N == 0) return;
 
-		case 1:
-		default:
-			co = {1.}  ;
-			cop = {1./2.} ;
-			break;
-		case 2:
-			co = {4./3., -1./12.};
-			cop = {2./3., -1./12.};
-			break;
-		case 3:
-			co = {1.5, -3./20.0,1./90.};
-			cop = {3./4., -3./20.0,1./60.}; //FIXME
-			break;
-		case 4:
-			co = {1.6, -0.2, 8./315., -1./560.};
-			cop = {0.8, -0.2, 4./105., -2./560.};//FIXME
-			break;
-		case 5:
-			co = {5./3., -5./21., 5./126., -5./1008., 1./3150.};
-			cop = {5./6., -5./21., 5./84., -10./1008., 5./6300.};//FIXME
-			break;
-	}
+    long double factN = 1.0L;
+    for (size_t i = 2; i <= N; ++i)
+        factN *= (long double)i;
+
+    const long double num = factN * factN;
+
+    long double factNmK = factN;   // will update from (N-1)! downward
+    long double factNpK = factN;   // will update from (N+1)! upward
+
+    // Start with k=1:
+    factNmK /= (long double)N;     // (N-1)!
+    factNpK *= (long double)(N+1); // (N+1)!
+
+    for (size_t k = 1; k <= N; ++k)
+    {
+        long double sgn = (k % 2) ? 1.0L : -1.0L;
+        long double denom = factNmK * factNpK;
+        long double kk = (long double)k;
+
+        co[k-1]  = (double)(2.0L * sgn * num / (kk * kk * denom));
+        cop[k-1] = (double)(sgn * num / (kk * denom));
+
+        if (k < N) {
+            factNmK /= (long double)(N - k);
+            factNpK *= (long double)(N + k + 1);
+        }
+    }
 }
+
+// void	Scalar::setCO(size_t newN)
+// {
+// 	co.resize(newN); co.assign(newN, 0.);
+// 	cop.resize(newN); cop.assign(newN, 0.);
+//
+// 	switch(newN)
+// 	{
+// 		case 0:
+// 		break;
+//
+// 		case 1:
+// 		default:
+// 			co = {1.}  ;
+// 			cop = {1./2.} ;
+// 			break;
+// 		case 2:
+// 			co = {4./3., -1./12.};
+// 			cop = {2./3., -1./12.};
+// 			break;
+// 		case 3:
+// 			co = {1.5, -3./20.0,1./90.};
+// 			cop = {3./4., -3./20.0,1./60.}; //FIXME
+// 			break;
+// 		case 4:
+// 			co = {1.6, -0.2, 8./315., -1./560.};
+// 			cop = {0.8, -0.2, 4./105., -2./560.};//FIXME
+// 			break;
+// 		case 5:
+// 			co = {5./3., -5./21., 5./126., -5./1008., 1./3150.};
+// 			cop = {5./6., -5./21., 5./84., -10./1008., 5./6300.};//FIXME
+// 			break;
+// 	}
+// }
+
 
 /*	Follow all the functions written by Javier	*/
 /*	These should be rewritten following the
@@ -1676,7 +1715,7 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 	//array for contrast comparisons
 	Float  ct_local[numaxitons] ;
 	// for folding issues
-	size_t cues = n1/shift ;
+	size_t cues = Nx/shift ;
 
 
 	for(int i = 0; i < numaxitons ; i++)
@@ -1699,54 +1738,54 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 		size_t idaux, ixyzAux	;
 
 //		#pragma omp parallel for default(shared) schedule(static)
-		for (size_t idx = 0; idx < n3; idx++)
+		for (size_t idx = 0; idx < Nxyz; idx++)
 		{
 			//size_t ix, iy, iz;
 			// ONE CAN USE DENSITY CONTRAST BUT HF FLUCTUATIONS MASK THE AXITONS
 			// IT IS PERHAPS GOOD TO USE THE THETA FIELD INSTEAD
 				if (mCONT[idx]> contrastthreshold)
 				{
-					// iz = idx/n2 ;
-					// iy = (idx%n2)/n1 ;
-					// ix = (idx%n2)%n1 ;
+					// iz = idx/Nxy ;
+					// iy = (idx%Nxy)/Nx ;
+					// ix = (idx%Nxy)%Nx ;
 
 					Float val = mCONT[idx];
 
-					iz = idx/n2 ;
-					iy = (idx%n2)/n1 ;
-					ix = (idx%n2)%n1 ;
+					iz = idx/Nxy ;
+					iy = (idx%Nxy)/Nx ;
+					ix = (idx%Nxy)%Nx ;
 
 					if (folded)
 					{
 						size_t sy = iy/(cues)	;
 						size_t iiy = iy - sy*cues;
-						fidx = iz*n2+ iiy*n1*shift + ix*shift + sy ;
+						fidx = iz*Nxy+ iiy*Nx*shift + ix*shift + sy ;
 					}
 					else
 					{
 						fidx = idx;
 					}
 
-					if (abs(mTheta[n2+fidx]/(*z)) < 3.14)
+					if (abs(mTheta[Nxy+fidx]/(*z)) < 3.14)
 					continue;
 
-					ixyzAux = (ix+1)%n1;
-					idaux = ixyzAux + iy*n1+(iz)*n2 ;
+					ixyzAux = (ix+1)%Nx;
+					idaux = ixyzAux + iy*Nx+(iz)*Nxy ;
 					if (mCONT[idaux] - val < 0)
 					continue;
 
-					ixyzAux = (ix-1+n1)%n1;
-					idaux = ixyzAux + iy*n1+(iz)*n2 ;
+					ixyzAux = (ix-1+Nx)%Nx;
+					idaux = ixyzAux + iy*Nx+(iz)*Nxy ;
 					if (mCONT[idaux] - val < 0)
 					continue;
 
-					ixyzAux = (iy+1)%n1;
-					idaux = ix + ixyzAux*n1+(iz)*n2 ;
+					ixyzAux = (iy+1)%Nx;
+					idaux = ix + ixyzAux*Nx+(iz)*Nxy ;
 					if (mCONT[idaux] - val < 0)
 					continue;
 
-					ixyzAux = (iy-1+n1)%n1;
-					idaux = ix + ixyzAux*n1+(iz)*n2 ;
+					ixyzAux = (iy-1+Nx)%Nx;
+					idaux = ix + ixyzAux*Nx+(iz)*Nxy ;
 					if (mCONT[idaux] - val < 0)
 					continue;
 
@@ -1755,13 +1794,13 @@ void	Scalar::axitonfinder(Float contrastthreshold, void *idxbin, int numaxitons)
 					// I NEVERTHELESS USE THIS WITHOUT MPI
 					// CHANGE M2 TO HAVE GHOSTS? FFT, ETC...
 
-					ixyzAux = (iz+1)%Lz;
-					idaux = ix + iy*n1+(ixyzAux)*n2 ;
+					ixyzAux = (iz+1)%Nz;
+					idaux = ix + iy*Nx+(ixyzAux)*Nxy ;
 					if (mCONT[idaux] - val > 0)
 					continue;
 
-					ixyzAux = (iz-1+Lz)%Lz;
-					idaux = ix + iy*n1+(ixyzAux)*n2 ;
+					ixyzAux = (iz-1+Nz)%Nz;
+					idaux = ix + iy*Nx+(ixyzAux)*Nxy ;
 					if (mCONT[idaux] - val > 0)
 					continue;
 
