@@ -331,14 +331,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 	int cSteps = dump*index;
 	hsize_t totlZ = axion->TotalDepth();
-	hsize_t tmpS  = axion->Length();
+	hsize_t tmpS  = axion->NX();
 
 	switch (axion->Field())
 	{
 		case 	FIELD_SX_RD:
 		case 	FIELD_SAXION:
 		{
-			total = tmpS*tmpS*totlZ*2;
+			total = axion->Surf()*totlZ*2;
 			slab  = axion->Surf()*2;
 
 			sprintf(fStr, "Saxion");
@@ -348,7 +348,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case 	FIELD_AX_MOD_RD:
 		case	FIELD_AXION_MOD:
 		{
-			total = tmpS*tmpS*totlZ;
+			total = axion->Surf()*totlZ;
 			slab  = axion->Surf();
 
 			sprintf(fStr, "Axion Mod");
@@ -359,7 +359,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	FIELD_AXION:
 		case	FIELD_WKB:
 		{
-			total = tmpS*tmpS*totlZ;
+			total = axion->Surf()*totlZ;
 			slab  = axion->Surf();
 
 			sprintf(fStr, "Axion");
@@ -368,7 +368,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		case 	FIELD_NAXION:
 		{
-			total = tmpS*tmpS*totlZ*2;
+			total = axion->Surf()*totlZ*2;
 			slab  = axion->Surf()*2;
 			sprintf(fStr, "Naxion");
 		}
@@ -376,7 +376,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		case 	FIELD_PAXION:
 		{
-			total = tmpS*tmpS*totlZ;
+			total = axion->Surf()*totlZ;
 			slab  = axion->Surf();
 			sprintf(fStr, "Paxion");
 		}
