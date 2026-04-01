@@ -13,24 +13,14 @@ QCD=4.0   ;   MSA=1.00   ;   L=6.0    ;   ZEN=4.0   ;   WKB=20.0
 XTR="  "
 PHYS="--qcd $QCD --msa $MSA --lsize $L  --zf $ZEN $XTR"
 #%%%%%%%%%%%%%%%%%%%%%%%%# initial conditions %
-#PCO=2.0  ;
-#PREP=" --preprop --prepcoe 4.0 --icstudy --lz2e 8.0 --prevqcdtype 17409 --pregam 0.2 "
-#KCR=$(echo "$L * 1.0 / $ZIN  " | bc -l)
-#INCO=" --ctype kmax --zi 0.1 --kmax $N --kcr $KCR"
-INCO=" --ctype smooth --kcr 1.1 --sIter 5 "
 #INCO=" --ctype smooth --smvar axnoise  --mode0 2 --kcr 1.1 --sIter 5 --notheta "
-#INCO=" --ctype smooth --smvar parres  --mode0 0.0 --kmax 0 --kcr 1.1 --sIter 0 --notheta --nncore "
-#INCO=" --ctype smooth --zi 0.1 --sIter 5"
-#INCO=" --ctype lola --logi 0.0 --sIter 0 --kcr 1.0"
+INCO=" --ctype lola --logi 2.0 --sIter 0 --kcr 1.0"
 #INCO=" --ctype spax --zi 4.0 --sIter 0 "
 #%%%%%%%%%%%%%%%%%%%%%%%%# output and extra %
 DUMP=10
-WTIM=1.0
-MEAS=$(echo 1+2+4+8+32+128+65536+16384 | bc )
-SPMA=$(echo 1 | bc )
-SKGV=$(echo 1 | bc )
-#OUTP="--dump $DUMP --meas $MEAS --p3D 2 --p2DmapE --p2DmapPE --p2DmapPE2 --spmask 2 --rmask 4.0/file --redmp 256 --p2Dmap --nologmpi --wTime $WTIM  "
-OUTP="--dump $DUMP --meas $MEAS --p2DmapE --p2DmapP --spmask $SPMA --spKGV $SKGV --rmask 4.0 --p2Dmap --nologmpi --wTime $WTIM --verbose 1 "
+MEAS=$(echo 32+256 | bc ) ; SPMA=$(echo 1 | bc ) ; SKGV=$(echo 1 | bc )
+#OUTP=" --p3D 2 --p2DmapE --p2DmapPE --p2DmapPE2 --rmask 4.0/file --redmp 256 --wTime $WTIM  "
+OUTP="--dump $DUMP --meas $MEAS --spmask $SPMA --spKGV $SKGV --rmask 4.0 --p2Dmap --nologmpi --verbose 1 "
 echo "vaxion3d   $PHYS"
 echo "         " $GRID
 echo "         " $SIMU
