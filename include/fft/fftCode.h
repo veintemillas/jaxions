@@ -24,14 +24,14 @@
 			FFTdir		dFft;
 			FieldPrecision	prec;
 
-			size_t		Lx, Lz;
+			size_t		Nx, Ny, Nz;
 
 			void		importWisdom();
 			void		exportWisdom();
 
 			public:
 
-					 FFTplan() : planForward(nullptr), planBackward(nullptr), type(FFT_NOTYPE), dFft(FFT_NONE), prec(FIELD_NONE), Lx(0), Lz(0) {}
+					 FFTplan() : planForward(nullptr), planBackward(nullptr), type(FFT_NOTYPE), dFft(FFT_NONE), prec(FIELD_NONE), Nx(0), Ny(0), Nz(0) {}
 					 FFTplan(Scalar * axion, FFTtype type, FFTdir dFft, size_t red);
 //					~FFTplan() {};
 
