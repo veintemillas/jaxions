@@ -242,6 +242,17 @@ int	main (int argc, char *argv[])
 	// SIMPLE OUTPUT CHECK
 	printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
 
+	// Creation ends here
+	if (myCosmos.ICData().nSteps == 0){
+		LogOut("--------------------------------------------------\n");
+		LogOut("           END CREATION                   \n");
+		LogOut("--------------------------------------------------\n");
+		fclose(file_samp);
+		delete axion;
+		endAxions();
+		return 0;
+	}
+
 	//--------------------------------------------------
 	// Axiton TRACKER (if THETA)
 	//--------------------------------------------------
@@ -263,14 +274,14 @@ int	main (int argc, char *argv[])
 
 
 	LogOut ("Start redshift loop\n\n");
-	for (int iz = 0; iz < nSteps; iz++)
+	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
 	{
 
 		// time step
 		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
 		//  dzaux = 0.0;
 		//  else
-		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
+		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/myCosmos.ICData().nSteps ;
 
 		//will we dump? and when?
 		switch(dumpmode)

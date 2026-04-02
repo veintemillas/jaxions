@@ -469,6 +469,7 @@
 			VERB_NORMAL    = 1,
 			VERB_HIGH      = 2,
 			VERB_PARANOID  = 3,
+			VERB_DEBUG  = 4,
 		}	VerbosityLevel;
 
 		typedef	enum	PrintConf_s
@@ -904,13 +905,14 @@
 			ConfsubType   smvarType;
 			MomConfType   mocoty;
 			FieldIndex    fieldindex;
+			size_t 				nSteps;
 			double        grav;
 			double        L1_pc;
 			bool          grav_hyb;
 			bool          grav_sat;
 			bool          part_vel;
-                        bool          sm_vel;
-                        bool          part_disp;
+			bool          sm_vel;
+			bool          part_disp;
 			AxitonInfo    axtinfo;
 			bool          randommom;
 			bool          uEvolAll;
