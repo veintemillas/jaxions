@@ -1747,9 +1747,9 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: I need a number of steps.\n");
 				exit(1);
 			}
-			nSteps = atoi(argv[i+1]);
+			icdatst.nSteps = atoi(argv[i+1]);
 
-			if (nSteps < 0)
+			if (icdatst.nSteps < 0)
 			{
 				printf("Error: Number of steps must be > 0.\n");
 				exit(1);
