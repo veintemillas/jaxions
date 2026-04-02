@@ -18,6 +18,8 @@
 		size_t shift;
 		size_t fSize;
 
+		bool somethingdone;
+		
 		template<typename cFloat>
 		void	foldField();
 

@@ -21,7 +21,7 @@ using namespace std;
 template<typename cFloat>
 void	Folder::foldField()
 {
-	if (field->Folded() || field->Device() == DEV_GPU)
+	if (field->Folded() || field->Device() == DEV_GPU || n1 == n2 )
 		return;
 
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -53,7 +53,9 @@ void	Folder::foldField()
 	}
 
 	field->setFolded(true);
+	somethingdone = true;
 	LogMsg (VERB_HIGH, "[Folder] Field folded");
+
 
 	return;
 }
@@ -61,7 +63,7 @@ void	Folder::foldField()
 template<typename cFloat>
 void	Folder::unfoldField()
 {
-	if (!field->Folded() || field->Device() == DEV_GPU)
+	if (!field->Folded() || field->Device() == DEV_GPU || n1 == n2 )
 		return;
 
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -113,7 +115,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
  	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
 
-	if (!field->Folded())
+	if (!field->Folded() || n1 == n2 )
 	{
 		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying %d slice to ghost zone 1",sZ);LogFlush();
 		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
@@ -141,7 +143,7 @@ void	Folder::unfoldField2D (const size_t sZ)
 			}
 
 	LogMsg (VERB_HIGH, "Slice unfolded");LogFlush();
-
+	somethingdone = true;
 	return;
 }
 
@@ -164,7 +166,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	int z0 = 0;
 	size_t zT = field->Depth();
 
-	if (!field->Folded())
+	if (!field->Folded() || n1 == n2)
 	{
 		LogMsg (VERB_HIGH, "[uf2X] unfoldField2D called in an unfolded configuration, copying data to ghost zones");
 		LogFlush();
@@ -184,6 +186,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 				}
 				LogMsg (VERB_PARANOID, "[uf2X] done");
 				LogFlush();
+		somethingdone = true;
 		return;
 	}
 
@@ -209,6 +212,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 
 	LogMsg (VERB_HIGH, "[uf2X] Slice unfolded");
 	LogFlush();
+	somethingdone = true;
 	return;
 }
 
@@ -218,7 +222,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	template<typename cFloat>
 	void	Folder::foldM2()
 	{
-		if (field->M2Folded() || field->Device() == DEV_GPU)
+		if (field->M2Folded() || field->Device() == DEV_GPU || n1 == n2)
 			return;
 
 		cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -247,14 +251,14 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 
 		field->setM2Folded(true);
 		LogMsg (VERB_HIGH, "[Folder] Field M2 folded (from M2Start)");
-
+		somethingdone = true;
 		return;
 	}
 
 	template<typename cFloat>
 	void	Folder::unfoldM2()
 	{
-		if (!field->M2Folded() || field->Device() == DEV_GPU)
+		if (!field->M2Folded() || field->Device() == DEV_GPU || n1 == n2)
 			return;
 
 		cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -283,14 +287,14 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 
 		field->setM2Folded(false);
 	 	LogMsg (VERB_HIGH, "[Folder] Field M2 unfolded (m2Start)");
-
+		somethingdone = true;
 		return;
 	}
 
 
 
 
-
+// CHECK IF NEEDED
 template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
 void	Folder::unfoldM22D (const size_t sZ)
 {
@@ -324,7 +328,7 @@ void	Folder::unfoldM22D (const size_t sZ)
 			}
 
 	LogMsg (VERB_HIGH, "Slice unfolded");
-
+	somethingdone = true;
 	return;
 }
 
@@ -335,12 +339,12 @@ void	Folder::unfoldM22D (const size_t sZ)
 
 void	Folder::operator()(FoldType fType, size_t cZ)
 {
+	somethingdone = false;
 	// Careful here, GPUS might want to call CPU routines
 	if (field->Device() == DEV_GPU)
 		return;
 
-	LogMsg  (VERB_HIGH, "[Fold] Called with m/v field %d (folded/unfolded 1/0)",field->Folded());
-	LogMsg  (VERB_HIGH, "[Fold] Called with m2  field %d (folded/unfolded 1/0)",field->M2Folded());
+	LogMsg  (VERB_NORMAL, "[Fold] Called with m/v/m2 fields %d %d (folded/unfolded 1/0)",field->Folded(),field->M2Folded());
 
 	profiler::Profiler &prof = profiler::getProfiler(PROF_FOLD);
 
@@ -757,7 +761,8 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 
 	prof.add(Name(), GFlops(), GBytes());	// In truth is x4 because we move data to the ghost slices before folding/unfolding
 
-	LogMsg  (VERB_HIGH, "Folder %s reporting %lf GFlops %lf GBytes", Name().c_str(), prof.Prof()[Name()].GFlops(), prof.Prof()[Name()].GBytes());
+	if (somethingdone)
+		LogMsg  (VERB_HIGH, "Folder %s reporting %lf GFlops %lf GBytes", Name().c_str(), prof.Prof()[Name()].GFlops(), prof.Prof()[Name()].GBytes());
 
 	reset();
 }
