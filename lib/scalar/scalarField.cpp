@@ -461,81 +461,70 @@ const std::complex<float> If(0.,1.);
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
 
+	if(0)
+	{
+		LogMsg(VERB_NORMAL, "[sca] Initialise FFT plans");LogFlush();
+		/*	WKB fields won't trigger configuration read or FFT initialization	*/
+		if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
+			prof.start();
+			AxionFFT::initFFT(prec);
 
-	LogMsg(VERB_NORMAL, "[sca] Initialise FFT plans");LogFlush();
+			/* For spectra, reducer, genConf */
+			AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
-	/*	WKB fields won't trigger configuration read or FFT initialization	*/
-
-	if (fieldType != FIELD_WKB && !(fieldType & FIELD_REDUCED)) {
-		prof.start();
-		AxionFFT::initFFT(prec);
-
-		/* For spectra, reducer, genConf */
-		AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
-
-		if (fieldType == FIELD_SAXION) {
-			if (!lowmem) {
-				AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
-				AxionFFT::initPlan (this, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
-			}
-		}
-
-		/* If spectral initSpectral plans
-		at the moment this is always done which avoids some issues
-		when reading configurations without the explicit flag */
-		// AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
-
-		/* If fspectral initSpectral plans*/
-		if (fpectral) {
-			LogMsg(VERB_NORMAL,"Initialising fspectral plans");
-			// Saxion m inplace
-			AxionFFT::initPlan (this, FFT_CtoC_MtoM,   FFT_FWDBCK, "C2CM2M");
-			// Saxion v inplace
-			AxionFFT::initPlan (this, FFT_CtoC_VtoV,   FFT_FWDBCK, "C2CV2V");
-			AxionFFT::initPlan (this, FFT_CtoC_M2toM2, FFT_FWDBCK, "C2CM22M2");
-			AxionFFT::initPlan (this, FFT_CtoC_M2toM,  FFT_FWDBCK, "C2CM22M");
-			// Axion m/v inplace and m2/m
-			// for WKB? for fspectral axion
-			AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
-			AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
-			AxionFFT::initPlan (this, FFT_RtoC_M2toM,     FFT_FWDBCK, "R2CM22M");
-			AxionFFT::initPlan (this, FFT_RtoC_M2toV,     FFT_FWDBCK, "R2CM22V");
-		}
-		/*	If present, read fileName	*/
-
-		ConfType cType = cm->ICData().cType;
-		if (cType == CONF_NONE) {
-			LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
-			if (fIndex == -1) {
-				LogError ("Error: neither file nor initial configuration specified");
-				exit(2);
+			if (fieldType == FIELD_SAXION) {
+				if (!lowmem) {
+					AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
+					AxionFFT::initPlan (this, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
+				}
 			}
 
+			/* If spectral initSpectral plans
+			at the moment this is always done which avoids some issues
+			when reading configurations without the explicit flag */
+			// AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
+
+			/* If fspectral initSpectral plans*/
+			if (fpectral) {
+				LogMsg(VERB_NORMAL,"Initialising fspectral plans");
+				// Saxion m inplace
+				AxionFFT::initPlan (this, FFT_CtoC_MtoM,   FFT_FWDBCK, "C2CM2M");
+				// Saxion v inplace
+				AxionFFT::initPlan (this, FFT_CtoC_VtoV,   FFT_FWDBCK, "C2CV2V");
+				AxionFFT::initPlan (this, FFT_CtoC_M2toM2, FFT_FWDBCK, "C2CM22M2");
+				AxionFFT::initPlan (this, FFT_CtoC_M2toM,  FFT_FWDBCK, "C2CM22M");
+				// Axion m/v inplace and m2/m
+				// for WKB? for fspectral axion
+				AxionFFT::initPlan (this, FFT_RtoC_MtoM_WKB,  FFT_FWDBCK, "R2CM2M");
+				AxionFFT::initPlan (this, FFT_RtoC_VtoV_WKB,  FFT_FWDBCK, "R2CV2V");
+				AxionFFT::initPlan (this, FFT_RtoC_M2toM,     FFT_FWDBCK, "R2CM22M");
+				AxionFFT::initPlan (this, FFT_RtoC_M2toV,     FFT_FWDBCK, "R2CM22V");
+			}
 			prof.stop();
 			prof.add(std::string("Init FFT"), 0.0, 0.0);
-		} else {
-			if (fieldType & FIELD_AXION) {
-				//LogError ("Configuration generation for axion fields not supported");
-				LogMsg(VERB_NORMAL,"[sca] Initialisation in axion mode is in testing mode, only for SPAX ICs");
-				prof.stop();
-				prof.add(std::string("Init FFT"), 0.0, 0.0);
-				genConf (cm, this);
-			} else {
-				//if ( !(cType == CONF_SMOOTH) ) {
-				//	if (lowmem)
-				//		AxionFFT::initPlan (this, FFT_CtoC_MtoM,  FFT_FWDBCK, "Init");
-				//	else
-				//		AxionFFT::initPlan (this, FFT_CtoC_MtoM2, FFT_FWDBCK, "Init");
-				LogMsg(VERB_NORMAL,"[sca] WARNING!! Skipping initialisation of FFT, do it in genconf!");
-				//}
-				prof.stop();
-
-				prof.add(std::string("Init FFT"), 0.0, 0.0);
-				genConf	(cm, this);
-			}
 		}
-		LogFlush();
+	} // end init FFT
+
+
+			/*	If present, read fileName	*/
+
+	ConfType cType = cm->ICData().cType;
+	if (cType == CONF_NONE) {
+
+		LogMsg (VERB_HIGH, "No configuration selected. Hope we are reading from a file...");
+
+		if (fIndex == -1) {
+			LogError ("Error: neither file nor initial configuration specified");
+			exit(2);
+		}
 	}
+	else
+	{
+		genConf (cm, this);
+	}
+
+
+	LogMsg(VERB_NORMAL, "[sca] Scalar Field built");LogFlush();
 }
 
 // END SCALAR
@@ -1179,13 +1168,14 @@ void	Scalar::setVMomSpace (bool foli)
 {
 	vmomspace = foli;
 }
-void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
+
+void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLy, size_t nLz)
 {
 	eReduced = eRed;
 
 	if (eRed == true) {
 		rNx = nLx;
-		rNy = nLx;
+		rNy = nLy;
 		rNz = nLz;
 	} else {
 		rNx = Nx;
@@ -1193,8 +1183,27 @@ void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
 		rNz = Nz;
 	}
 }
+void	Scalar::setReduced (bool eRed, size_t nLx, size_t nLz)
+{
+	setReduced (eRed,  nLx, nLx, nLz);
+}
 
-
+void	Scalar::setDims	(size_t newnLx, size_t newnLy, size_t newnLz)
+{
+	LogMsg (VERB_NORMAL, "[sf] Call reset of axion dimensions from (%d,%d,%d) to (%d,%d,%d)!",Nx,Ny,Nz,newnLx,newnLy,newnLz);
+	if (newnLx < Nx && newnLz < Nz){
+		Nx     = newnLx;
+		Ny     = newnLy;
+		Nxy    = newnLx*newnLy;
+		Nxyz   = newnLx*newnLy*newnLz;
+		Nz     = newnLz;
+		Tz     = Nz*nSplit;
+		Nz_g   = newnLz + 2*Ng;
+		Nxyz_g = newnLx*newnLy*(newnLz + 2*Ng);
+		LogMsg (VERB_NORMAL, "[sf] Dimensions reset - but FFTs not changed, RENEW THE PLANS MANUALLY!");
+	} else
+	LogMsg (VERB_NORMAL, "[sf] Cannot increase data size. dismissed!");
+}
 
 void	Scalar::setDims	(size_t newnLx, size_t newnLz)
 {

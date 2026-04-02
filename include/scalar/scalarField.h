@@ -291,7 +291,9 @@
 		void	setVMomSpace	(bool foli);
 		void	updateR ();
 		void	setReduced	(bool eRed, size_t nLx = 0, size_t nLz = 0);
+		void	setReduced	(bool eRed, size_t nLx, size_t nLy, size_t nLz);
 		void	setDims	(size_t newnLx, size_t newnLz);
+		void	setDims	(size_t newnLx, size_t newnLy, size_t newnLz);
 
 		void	transferDev(FieldIndex fIdx);		// Move data to device (Gpu or Xeon)
 		void	transferCpu(FieldIndex fIdx);		// Move data to Cpu
