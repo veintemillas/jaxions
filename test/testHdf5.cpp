@@ -215,23 +215,22 @@ int	main (int argc, char *argv[])
 	double nFc  = 1.;
 	int    kMax = axion->Length()/ScaleSize;
 
+	size_t redX = axion->Length()/ScaleSize;
+	size_t redZ = axion->Depth()/ScaleSize;
 
-	if (!axion->LowMem() && axion->Depth()/ScaleSize >= 2) {
+	if (!axion->LowMem() && redZ >= 2) {
 		if (axion->Precision() == FIELD_DOUBLE) {
-			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
+
+			reduced = reduceField(axion, redX, redX, redZ, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
 			energy(axion, eRes, EN_MAP);
-			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
-			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); });
-			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
+			reduceField(axion, redX, redX, redZ, FIELD_M2,
 				  [kMax = kMax] (int px, int py, int pz, complex<double> x) -> complex<double> { return ((px*px + py*py + pz*pz) <= kMax*kMax) ? x : complex<double>(0.,0.); });
 		} else {
-			reduced = reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_MV,
+			reduced = reduceField(axion, redX, redX, redZ, FIELD_MV,
 				  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); }, false);
 			energy(axion, eRes, EN_MAP);
-			//reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
-			//	  [eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc*(px*px + py*py + pz*pz)))); });
-			reduceField(axion, axion->Length()/ScaleSize, axion->Depth()/ScaleSize, FIELD_M2,
+			reduceField(axion, redX, redX, redZ, FIELD_M2,
 				  [kMax = kMax] (int px, int py, int pz, complex<float> x) -> complex<float> { return ((px*px + py*py + pz*pz) <= kMax*kMax) ? x : complex<float>(0.,0.); });
 		}
 

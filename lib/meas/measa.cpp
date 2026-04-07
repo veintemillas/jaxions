@@ -397,10 +397,10 @@ writePMapHdf5s (axiona, LAB);
 
 
 										if (axiona->Precision() == FIELD_DOUBLE) {
-											reduceField(axiona, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
+											reduceField(axiona, redmap, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<double> x) -> complex<double>
 													 { return x*exp(-eFc*(px*px + py*py + pz*pz)); });
 										} else {
-											reduceField(axiona, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>
+											reduceField(axiona, redmap, redmap, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<float>  x) -> complex<float>
 													 { return x*((float) exp(-eFc*(px*px + py*py + pz*pz))); });
 										}
 									writeEDens (axiona);

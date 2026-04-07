@@ -11,6 +11,18 @@
 using namespace std;
 using namespace profiler;
 
+/*
+--------------------------------------------------------------------------------
+	 REDUCER-CLASS
+	 defines:
+	 	parms
+		template transform
+		template reduce (which uses transform)
+
+--------------------------------------------------------------------------------
+*/
+
+
 template<typename Float>
 class	Reducer : public Tunable
 {
@@ -21,7 +33,7 @@ class	Reducer : public Tunable
 
 	std::function<complex<Float>(int, int, int, complex<Float>)> filter;
 
-	const size_t newLx, newLz;
+	const size_t newNx, newNy, newNz;
 	const bool   inPlace;
 
 
@@ -30,8 +42,8 @@ class	Reducer : public Tunable
 
 	public:
 
-		 Reducer(Scalar *field, int newLx, int newLz, FieldIndex fType, std::function<complex<Float>(int, int, int, complex<Float>)> myFilter, bool isInPlace=false) :
-			axionField(field), fType(fType), filter(myFilter), newLx(newLx), newLz(newLz), inPlace(isInPlace) {};
+		 Reducer(Scalar *field, int newNx, int newNy, int newNz, FieldIndex fType, std::function<complex<Float>(int, int, int, complex<Float>)> myFilter, bool isInPlace=false) :
+			axionField(field), fType(fType), filter(myFilter), newNx(newNx), newNy(newNy), newNz(newNz), inPlace(isInPlace) {};
 		~Reducer() {};
 
 	Scalar*	runCpu	();
@@ -56,26 +68,41 @@ Scalar*	Reducer<Float>::runGpu	()
 #endif
 }
 
+
+/*
+--------------------------------------------------------------------------------
+	 REDUCER-CLASS FUNCTION-TEMPLATE THAT TRANSFORMS : PAD FFT FILTER IFFT UNPAD
+	 Reducer<Float>::transformField
+--------------------------------------------------------------------------------
+*/
+
+
 template<typename Float>
 template<typename Field1, typename Field2, typename Field3, const bool pad>
 void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const char *plan, FFTdir fDir) {
 	auto &myPlan = AxionFFT::fetchPlan(plan);
-	size_t Lx  = axionField->Length();
-	size_t Lz  = axionField->Depth();
-	size_t Tz  = axionField->TotalDepth();
+	size_t Nx  = axionField->NX();
+	size_t Ny  = axionField->NY();
+	size_t Nz  = axionField->NZ();
+	size_t Tz  = axionField->TZ();
 
-	size_t Ly  = Lx/commSize();
+	size_t hNx  =  Nx/2; // help
+	size_t hNy  =  Ny/2; // help
+	size_t hTz  =  Tz/2; // help
+	Float  nrm   = 1./((double) (axionField->TXYZ()));
 
-	size_t hLx = Lx >> 1;
-	//size_t hLz = Lz >> 1;
-	size_t hTz = Tz >> 1;
 
-	Float  nrm   = 1./((double) (axionField->TotalSize()));
-	size_t zBase = Ly*commRank();
+	const bool is2D = (Ny == 1);
 
+	const uint NKx = (pad ? hNx + 1 : Nx);
+	const uint NKy = is2D ? 1 : Ny/commSize();
+	const uint NKz = is2D ? Nz : Tz;
+	const size_t kBase = is2D
+    ? Nz * commRank()
+    : (Ny/commSize()) * commRank();
 	/*	m2 has always the energy, whether it's axion or saxion	*/
 
-	size_t Sm = Lx*Lz;
+	size_t Sm = Ny*Nz; // CHECK!
 
 	if (fDir != FFT_NONE) {
 		/*	Pad f1 into f2 for the horrible r2c transform			*/
@@ -83,17 +110,17 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 			if (static_cast<void*>(f1) == static_cast<void*>(f2)) {
 				// Energy
 				for (size_t sl=Sm-1; sl>0; sl--) {
-					auto    oOff = sl* Lx;
-					auto    fOff = sl*(Lx+2);
-					memmove (f1+fOff, f1+oOff, sizeof(Field1)*Lx);
+					auto    oOff = sl* Nx;
+					auto    fOff = sl*(Nx+2);
+					memmove (f1+fOff, f1+oOff, sizeof(Field1)*Nx);
 				}
 			} else {
 				// Axion
 				#pragma omp parallel for schedule(static)
 				for (size_t sl=0; sl<Sm; sl++) {
-					auto    oOff = sl* Lx;
-					auto    fOff = sl*(Lx+2);
-					memcpy  (f3+fOff, f1+oOff, sizeof(Field1)*Lx);
+					auto    oOff = sl* Nx;
+					auto    fOff = sl*(Nx+2);
+					memcpy  (f3+fOff, f1+oOff, sizeof(Field1)*Nx);
 				}
 			}
 		}
@@ -101,77 +128,80 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 		myPlan.run(FFT_FWD);
 	}
 
-	uint dX = (pad == true) ? hLx+1 : Lx;
+	uint dX = (pad == true) ? hNx+1 : Nx;
 
 	#pragma omp parallel for collapse(3) schedule(static)
-	for (uint py = 0; py<Ly; py++)
-		for (uint pz = 0; pz<Tz; pz++)
-			for (uint px = 0; px<dX; px++) {
-				int kx = px;
-				int ky = py + zBase;
-				int kz = pz;
+	for (uint py = 0; py < NKy; py++)
+	for (uint pz = 0; pz < NKz; pz++)
+	for (uint px = 0; px < NKx; px++) {
 
-				if (kx > static_cast<int>(hLx)) kx -= Lx;
-				if (ky > static_cast<int>(hLx)) ky -= Lx;
-				if (kz > static_cast<int>(hTz)) kz -= Tz;
+			int kx = px;
+			int ky = is2D ? 0 : int(py + kBase);
+			int kz = is2D ? int(pz + kBase) : int(pz);
 
-				size_t idx = px + dX*(pz + Tz*py);
+			if (kx > int(hNx)) kx -= Nx;
+			if (!is2D && ky > int(hNy)) ky -= Ny;
+			if (kz > int(hTz)) kz -= Tz;
 
-				auto x = f2[idx];
-				f2[idx] = filter(kx, ky, kz, x)*nrm;
-			}
+			size_t idx = is2D
+					? px + NKx * pz
+					: px + NKx * (pz + Tz * py);
+
+			auto x = f2[idx];
+			f2[idx] = filter(kx, ky, kz, x) * nrm;
+	}
 
 	myPlan.run(FFT_BCK);
 
 	/*	Unpad f3 if necessary					*/
 	if (pad) {
 		for (size_t sl=1; sl<Sm; sl++) {
-			auto    oOff = sl*(Lx+2);
-			auto    fOff = sl* Lx;
-			memmove  (f3+fOff, f3+oOff, sizeof(Field1)*Lx);
+			auto    oOff = sl*(Nx+2);
+			auto    fOff = sl* Nx;
+			memmove  (f3+fOff, f3+oOff, sizeof(Field1)*Nx);
 		}
 	}
 
-	double iX = ((double) Lx)/((double) newLx);
-	double iY = ((double) Lx)/((double) newLx);
-	double iZ = ((double) Lz)/((double) newLz);
+	double iX = ((double) Nx)/((double) newNx);
+	double iY = ((double) Ny)/((double) newNy);
+	double iZ = ((double) Nz)/((double) newNz);
 
 	double fX = 0., fY = 0., fZ = 0.;
 
-	for (size_t iz = 0; iz < newLz; fZ += iZ, iz++) {
+	for (size_t iz = 0; iz < newNz; fZ += iZ, iz++) {
 		size_t zMax = ceil (fZ);
 		size_t zMin = floor(fZ);
 
-		if (zMax >= Lz) zMax = Lz-1;
+		if (zMax >= Nz) zMax = Nz-1;
 
 		double  rZ = fZ - zMin;
 
-		for (size_t iy=0; iy < newLx; fY += iY, iy++) {
+		for (size_t iy=0; iy < newNy; fY += iY, iy++) {
 			size_t yMax = ceil (fY);
 			size_t yMin = floor(fY);
 
-			if (yMax >= Lx) yMax = Lx-1;
+			if (yMax >= Ny) yMax = Ny-1;
 
 			double  rY = fY - yMin;
 
-			for (size_t ix=0; ix < newLx; fX += iX, ix++) {
+			for (size_t ix=0; ix < newNx; fX += iX, ix++) {
 				size_t xMax = ceil (fX);
 				size_t xMin = floor(fX);
 
-				if (xMax >= Lx) xMax = Lx-1;
+				if (xMax >= Nx) xMax = Nx-1;
 
 				double  rX = fX - xMin;
 
-				size_t idx = ix + newLx*(iy + newLx*iz);
+				size_t idx = ix + newNx*(iy + newNy*iz);
 
-				size_t xyz = xMin + Lx*(yMin + Lx*zMin);
-				size_t Xyz = xMax + Lx*(yMin + Lx*zMin);
-				size_t xYz = xMin + Lx*(yMax + Lx*zMin);
-				size_t XYz = xMax + Lx*(yMax + Lx*zMin);
-				size_t xyZ = xMin + Lx*(yMin + Lx*zMax);
-				size_t XyZ = xMax + Lx*(yMin + Lx*zMax);
-				size_t xYZ = xMin + Lx*(yMax + Lx*zMax);
-				size_t XYZ = xMax + Lx*(yMax + Lx*zMax);
+				size_t xyz = xMin + Nx*(yMin + Ny*zMin);
+				size_t Xyz = xMax + Nx*(yMin + Ny*zMin);
+				size_t xYz = xMin + Nx*(yMax + Ny*zMin);
+				size_t XYz = xMax + Nx*(yMax + Ny*zMin);
+				size_t xyZ = xMin + Nx*(yMin + Ny*zMax);
+				size_t XyZ = xMax + Nx*(yMin + Ny*zMax);
+				size_t xYZ = xMin + Nx*(yMax + Ny*zMax);
+				size_t XYZ = xMax + Nx*(yMax + Ny*zMax);
 
 				// Averages over the eight points involved in the reduction
 				f3[idx] = f3[xyz]*((Float)((1.-rX)*(1.-rY)*(1.-rZ))) + f3[Xyz]*((Float)(rX*(1.-rY)*(1.-rZ))) +
@@ -187,6 +217,14 @@ void	Reducer<Float>::transformField	(Field1 *f1, Field2 *f2, Field3 *f3, const c
 	}
 }
 
+/*
+--------------------------------------------------------------------------------
+	 REDUCER-CLASS FUNCTION-TEMPLATE THAT REDUCES
+	 Reducer<Float>::runCpu
+--------------------------------------------------------------------------------
+*/
+
+
 template<typename Float>
 Scalar*	Reducer<Float>::runCpu	()
 {
@@ -199,7 +237,10 @@ Scalar*	Reducer<Float>::runCpu	()
 		outField = new Scalar(axionField->BckGnd(), newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
 				      axionField->Field() | FIELD_REDUCED, axionField->LambdaT());
 		*/
-		outField = new Scalar(axionField->BckGnd(), newLx, newLz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
+		axionField->BckGnd()->ICData().Nx = newNx;
+		axionField->BckGnd()->ICData().Ny = newNy;
+		axionField->BckGnd()->ICData().Nz = newNz;
+		outField = new Scalar(axionField->BckGnd(), newNx, newNz, axionField->Precision(), axionField->Device(), *axionField->zV(), true, commSize(),
 				       axionField->Field(), axionField->LambdaT());
 	} else {
 		outField = axionField;
@@ -207,16 +248,19 @@ Scalar*	Reducer<Float>::runCpu	()
 
 	if (fType & FIELD_MV) {
 		/*	Unfold field	*/
-		Folder	munge(axionField);
-		munge(UNFOLD_ALL);
+		if (axionField->Folded()){
+			Folder	munge(axionField);
+			munge(UNFOLD_ALL);
+		}
 
 		if (axionField->Field() == FIELD_SAXION) {
 			complex<Float> *mIn  = static_cast<complex<Float>*>(axionField->mStart());
 			complex<Float> *vIn  = static_cast<complex<Float>*>(axionField->vCpu());
 			complex<Float> *fOut = static_cast<complex<Float>*>(axionField->m2Cpu());
 
-			size_t volData     = newLx*newLx*newLz*sizeof(complex<Float>);
+			size_t volData     = newNx*newNy*newNz*sizeof(complex<Float>);
 
+			AxionFFT::initPlan (axionField, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
 			transformField<complex<Float>,complex<Float>,complex<Float>,false>(mIn, fOut, fOut, "SpSx");
 
 
@@ -224,13 +268,14 @@ Scalar*	Reducer<Float>::runCpu	()
 				// the transformfield funciton leaves m in m2
 				// copy red axionField into mStart of the reduced-field
 				complex<Float> *mD = static_cast<complex<Float>*>(static_cast<void *>(
-					static_cast<char *>(axionField->mCpu())  + axionField->DataSize()*(newLx*newLx)*axionField->getNg() ));
+					static_cast<char *>(axionField->mCpu())  + axionField->DataSize()*(newNx*newNy)*axionField->getNg() ));
 				memcpy(mD, fOut, volData);
 			} else {
 				complex<Float> *mD = static_cast<complex<Float>*>(outField->mStart());
 				memcpy(mD, fOut, volData);
 			}
 
+			AxionFFT::initPlan (axionField, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
 			transformField<complex<Float>,complex<Float>,complex<Float>,false>(vIn, fOut, fOut, "RdSxV");
 
 			if (inPlace) {
@@ -250,15 +295,16 @@ Scalar*	Reducer<Float>::runCpu	()
 			Float          *fOut = static_cast<Float*>         (axionField->m2Cpu());
 			complex<Float> *fMid = static_cast<complex<Float>*>(axionField->m2Cpu());
 
-			size_t volData     = newLx*newLx*newLz*sizeof(Float);
+			size_t volData     = newNx*newNy*newNz*sizeof(Float);
 
+			AxionFFT::initPlan (axionField, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 			transformField<Float,complex<Float>,Float,true>(mIn, fMid, fOut, "pSpecAx");
 
 			if (inPlace) {
 				// the transformfield funciton leaves m in m2
 				// copy red axionField into mStart of the reduced-field
 				Float *mD = static_cast<Float*>(static_cast<void *>(
-					static_cast<char *>(axionField->mCpu())  + axionField->DataSize()*(newLx*newLx)*axionField->getNg() ));
+					static_cast<char *>(axionField->mCpu())  + axionField->DataSize()*(newNx*newNy)*axionField->getNg() ));
 				memcpy(mD, fOut, volData);
 			} else {
 				// Copy m to the second axionField
@@ -279,7 +325,7 @@ Scalar*	Reducer<Float>::runCpu	()
 		axionField->setM2 (M2_DIRTY);
 		if (inPlace){
 			LogMsg (VERB_NORMAL, "[r] Fields reduced in place! resetting axion Dims");
-		  axionField->setDims(newLx,newLz);
+		  axionField->setDims(newNx,newNy,newNz);
 			}
 	}
 	else  // CASE REDUCE ENERGY
@@ -288,6 +334,7 @@ Scalar*	Reducer<Float>::runCpu	()
 		/*	and ALWAYS in place					*/
 		Float          *mR = static_cast<Float *>(axionField->m2Cpu());
 		complex<Float> *mC = static_cast<complex<Float>*>(axionField->m2Cpu());
+		AxionFFT::initPlan (axionField, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
 		/*	Reduce rho energy as well, needs new FFT		*/
 		if (axionField->Field() == FIELD_SAXION) {
@@ -334,7 +381,7 @@ Scalar*	Reducer<Float>::runCpu	()
 				transformField<Float,complex<Float>,Float,true>(mR, mC, mR, "pSpecAx");
 		}
 		// Signal the axionfield that it contains a reduced energy
-		axionField->setReduced(true, newLx, newLz);
+		axionField->setReduced(true, newNx, newNy, newNz);
 		axionField->setM2 (M2_ENERGY);
 	}
 
@@ -342,8 +389,17 @@ Scalar*	Reducer<Float>::runCpu	()
 	return	outField;
 }
 
+
+/*
+--------------------------------------------------------------------------------
+	 MAIN TEMPLATE
+	 redField<Float>(field,x,y,z,ftype,filter,inplace?)
+--------------------------------------------------------------------------------
+*/
+
+
 template<typename Float>
-Scalar*	redField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<complex<Float>(int, int, int, complex<Float>)> myFilter, bool isInPlace)
+Scalar*	redField	(Scalar *field, size_t newNx, size_t newNy, size_t newNz, FieldIndex fType, std::function<complex<Float>(int, int, int, complex<Float>)> myFilter, bool isInPlace)
 {
 	if (field->LowMem()) {
 		LogError("Error: lowmem not supported yet");
@@ -375,13 +431,11 @@ Scalar*	redField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, s
 		isInPlace = true;
 	}
 
-	auto	reducer = std::make_unique<Reducer<Float>> (field, newLx, newLz, fType, myFilter, isInPlace);
+	auto	reducer = std::make_unique<Reducer<Float>> (field, newNx, newNy, newNz, fType, myFilter, isInPlace);
 	Profiler &prof = getProfiler(PROF_REDUCER);
 
 	std::stringstream ss;
-	ss << "Reduce " << field->Length() << "x" << field->Length() << "x" << field->TotalDepth() << " to " << newLx << "x" << newLx << "x" << newLz*commSize();
-
-	//size_t oldVol = field->Size();
+	ss << "Reduce " << field->NX() << "x" << field->NY() << "x" << field->TZ() << " to " << newNx << "x" << newNy << "x" << newNz*commSize();
 
 	reducer->setName(ss.str().c_str());
 	prof.start();
@@ -416,20 +470,28 @@ Scalar*	redField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, s
 	return	outField;
 }
 
-Scalar*	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<complex<float>(int, int, int, complex<float>)> myFilter, bool isInPlace) {
+/*
+--------------------------------------------------------------------------------
+	 MAIN FUNCTIONS
+	 reduceField(scalarField,newNx, newNy,newNz,fType,filters,inplace?)
+--------------------------------------------------------------------------------
+*/
+
+
+Scalar*	reduceField	(Scalar *field, size_t newNx, size_t newNy, size_t newNz, FieldIndex fType, std::function<complex<float>(int, int, int, complex<float>)> myFilter, bool isInPlace) {
 	if (field->Precision() != FIELD_SINGLE) {
 		LogError("Error: double precision filter for single precision configuration");
 		return	nullptr;
 	}
 
-	return	redField<float>(field, newLx, newLz, fType, myFilter, isInPlace);
+	return	redField<float>(field, newNx, newNy, newNz, fType, myFilter, isInPlace);
 }
 
-Scalar*	reduceField	(Scalar *field, size_t newLx, size_t newLz, FieldIndex fType, std::function<complex<double>(int, int, int, complex<double>)> myFilter, bool isInPlace) {
+Scalar*	reduceField	(Scalar *field, size_t newNx, size_t newNy, size_t newNz, FieldIndex fType, std::function<complex<double>(int, int, int, complex<double>)> myFilter, bool isInPlace) {
 	if (field->Precision() != FIELD_DOUBLE) {
 		LogError("Error: single precision filter for double precision configuration");
 		return	nullptr;
 	}
 
-	return	redField(field, newLx, newLz, fType, myFilter, isInPlace);
+	return	redField(field, newNx, newNy, newNz, fType, myFilter, isInPlace);
 }

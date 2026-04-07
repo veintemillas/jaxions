@@ -20,7 +20,7 @@ void	dContrast	(Scalar *axion, size_t &rSize, bool &rhoMap) {
 		Float  eFc = 0.5*M_PI*M_PI*(ScaleSize*ScaleSize)/((Float) axion->Surf());
 		size_t nLz = rSize / commSize();
 
-		reduceField(axion, rSize, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<Float> x) -> complex<Float>
+		reduceField(axion, rSize, rSize, nLz, FIELD_M2, [eFc = eFc] (int px, int py, int pz, complex<Float> x) -> complex<Float>
 		{ return (x*exp(-eFc*(px*px + py*py + pz*pz))); });
 	}
 

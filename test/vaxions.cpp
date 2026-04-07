@@ -761,7 +761,7 @@ void	checkTime (Scalar *axion, int index) {
 void printposter(Scalar *axion)
 {
 	LogOut("--------------------------------------------------\n");
-	LogOut("        SIMULATION (%d x %d x %d) ", axion->Length(), axion->Length(), axion->Depth());
+	LogOut("        SIMULATION (%d x %d x %d) ", axion->NX(), axion->NY(), axion->NZ());
 	if (zGrid>1)
 		LogOut(" x %d \n\n", zGrid);
 	else

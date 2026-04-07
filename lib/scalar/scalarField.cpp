@@ -461,7 +461,7 @@ const std::complex<float> If(0.,1.);
 	prof.stop();
 	prof.add(std::string("Init Allocation"), 0.0, 0.0);
 
-	if(0)
+	// if(0)
 	{
 		LogMsg(VERB_NORMAL, "[sca] Initialise FFT plans");LogFlush();
 		/*	WKB fields won't trigger configuration read or FFT initialization	*/
@@ -470,8 +470,10 @@ const std::complex<float> If(0.,1.);
 			AxionFFT::initFFT(prec);
 
 			/* For spectra, reducer, genConf */
+			if(0)
 			AxionFFT::initPlan (this, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
+			if(0)
 			if (fieldType == FIELD_SAXION) {
 				if (!lowmem) {
 					AxionFFT::initPlan (this, FFT_SPSX,       FFT_FWDBCK,     "SpSx");

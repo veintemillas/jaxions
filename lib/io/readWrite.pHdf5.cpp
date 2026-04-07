@@ -1591,7 +1591,10 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		//CHECK RENEW
 		/* Reduce or expand if required */
-		LogMsg(VERB_NORMAL, "[rC] sizeN %d Nx_read %d sizeZ %d Nz %d",sizeN,Nx_read,sizeZ,Nz_read);LogFlush();
+		LogMsg(VERB_NORMAL, "[rC] Requested (x,y,z) %d %d %d(x%d) Read %d %d (x%d)",
+						ictemp.Nx,ictemp.Ny,ictemp.Nz,zGrid,
+						Nx_read, Ny_read, Nz_read,zGrid);
+						LogFlush();
 		if ( ictemp.Nx*ictemp.Ny*ictemp.Nz > Nx_read*Ny_read*Nz_read) // ((Nxcreate > Nx_read) || (Nycreate > Ny_read) || (Nzcreate > Nz_read))
 		{
 				LogMsg(VERB_NORMAL, "[rC] Expansion from XYZ %d %d %d  to %d %d %d",Nx_read,Ny_read,Nz_read*zGrid, Nxcreate,Nycreate,Nzcreate*zGrid);LogFlush();
@@ -1602,20 +1605,31 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		else if (ictemp.Nx*ictemp.Ny*ictemp.Nz < Nxcreate*Nycreate*Nzcreate )
 		{
 			LogMsg(VERB_NORMAL, "[rc] Reduction %d %d %d(x%d) > %d %d %d(x%d) in x y z",Nx_read, Ny_read, Nz_read,zGrid, ictemp.Nx, ictemp.Ny,ictemp.Nz,zGrid);
+			double eFc_x  = 2*M_PI*M_PI/((double) ictemp.Nx*ictemp.Nx);
+			double eFc_y  = 2*M_PI*M_PI/((double) ictemp.Ny*ictemp.Ny);
+			double eFc_z   = 2*M_PI*M_PI/((double) ictemp.Nz*ictemp.Nz*zGrid*zGrid);
+			double nFc  = 1.;
 
 			LogMsg(VERB_NORMAL, "[rc] 1 - reduce in place in (*axion)");
+			if ((*axion)->Precision() == FIELD_DOUBLE) {
+			  reduceField((*axion), ictemp.Nx, ictemp.Ny, ictemp.Nz, FIELD_MV,
+			      [eFc_x = eFc_x, eFc_y = eFc_y, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc_x*px*px -eFc_y*py*py -eFc_z*pz*pz)); }, true);
+			} else {
+			  reduceField((*axion), ictemp.Nx, ictemp.Ny, ictemp.Nz, FIELD_MV,
+			      [eFc_x = eFc_x, eFc_y = eFc_y, eFc_z = eFc_z, nFc = nFc] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc*exp(-eFc_x*px*px -eFc_y*py*py -eFc_z*pz*pz))); }, true);
+			}
 
-			reduceFieldGauss((*axion), ictemp.Nx, ictemp.Ny,ictemp.Nz, 1.8, 3.0);
-
-			LogMsg(VERB_NORMAL, "[rc] 2 - remove plans from large axion");
-			AxionFFT::removePlan("pSpecAx");
-			AxionFFT::removePlan("SpSx");
-			AxionFFT::removePlan("RdSxV");
-			LogMsg(VERB_NORMAL, "[rc] 3 - insert plans for correct size axion");
-			AxionFFT::initPlan (*axion, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
-			AxionFFT::initPlan (*axion, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
-			AxionFFT::initPlan (*axion, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
-			LogMsg(VERB_NORMAL, "[rc] 4 - Reduction complete!");
+			// We will do this if we need to, but I have removed plan creation from scalar
+			// we create when we need
+			// LogMsg(VERB_NORMAL, "[rc] 2 - remove plans from large axion");
+			// AxionFFT::removePlan("pSpecAx");
+			// AxionFFT::removePlan("SpSx");
+			// AxionFFT::removePlan("RdSxV");
+			// LogMsg(VERB_NORMAL, "[rc] 3 - insert plans for correct size axion");
+			// AxionFFT::initPlan (*axion, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+			// AxionFFT::initPlan (*axion, FFT_SPSX,       FFT_FWDBCK,     "SpSx");
+			// AxionFFT::initPlan (*axion, FFT_RDSX_V,     FFT_FWDBCK,    "RdSxV");
+			// LogMsg(VERB_NORMAL, "[rc] 4 - Reduction complete!");
 			// LogMsg(VERB_NORMAL, "[rc] 8 - Remove auxion");
 			// delete auxion; kkils the FFTs do not use!
 		}

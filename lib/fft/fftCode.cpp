@@ -2,6 +2,8 @@
 #include <map>
 #include <fftw3-mpi.h>
 #include "fft/fftCode.h"
+#include "fft/traits.h"
+#include "fft/planfactory.h"
 #include "utils/parse.h"
 
 using namespace std;
@@ -242,10 +244,16 @@ namespace AxionFFT {
 							exit(0);
 						}
 
+						// if (dFft & FFT_FWD)
+						// 	planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Nz, Ny, Nx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+						// if (dFft & FFT_BCK)
+						// 	planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Nz, Ny, Nx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
 						if (dFft & FFT_FWD)
-							planForward  = static_cast<void *>(fftwf_mpi_plan_dft_3d(Nz, Ny, Nx, m,  m2, MPI_COMM_WORLD, FFTW_FORWARD,  fftplanType | FFTW_MPI_TRANSPOSED_OUT));
+							planForward  = makeFFTPlan<float>(FFTKind::DFT,Nz, Ny, Nx, m, m2, FFTW_FORWARD,fftplanType);
+
 						if (dFft & FFT_BCK)
-							planBackward = static_cast<void *>(fftwf_mpi_plan_dft_3d(Nz, Ny, Nx, m2, m2, MPI_COMM_WORLD, FFTW_BACKWARD, fftplanType | FFTW_MPI_TRANSPOSED_IN));
+							planBackward = makeFFTPlan<float>(FFTKind::DFT,Nz, Ny, Nx, m2, m2, FFTW_BACKWARD,fftplanType);
+
 						break;
 
 					case	FFT_RHO_SX:

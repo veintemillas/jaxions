@@ -71,7 +71,7 @@ int	main (int argc, char *argv[])
 	LogOut("--------------------------------------------------\n\n");
 	LogOut("Usage:\n");
 	LogOut("mpirun -np R redu --index i --zgrid R --size N --depth Z --redmp n --nologmpi --beta f \n");
-	LogOut("mpirun -np %d redu --zgrid %d --index %d --size %d --depth %d --redmp %d --beta %f \n", 
+	LogOut("mpirun -np %d redu --zgrid %d --index %d --size %d --depth %d --redmp %d --beta %f \n",
 			zGrid,zGrid, fIndex, axion->Length(), axion->Depth(), deninfa.redmap, myCosmos.ICData().beta);
 	commSync();
 
@@ -85,13 +85,13 @@ int	main (int argc, char *argv[])
 	int    kMax = axion->Length()/ScaleSize;
 	int    kMax2= (nLx/2)*(nLx/2);
 
-	
+
 	if (!axion->LowMem() && nLx >= 2 && nLz >= 2) {
 		if (axion->Precision() == FIELD_DOUBLE) {
-			reduced = reduceField(axion, nLx, nLz, FIELD_MV,
+			reduced = reduceField(axion, nLx, nLx, nLz, FIELD_MV,
 					[eFc = eFc, nFc = nFc] (int px, int py, int pz, complex<double> x) -> complex<double> { return x*((double) nFc*exp(-eFc*(px*px + py*py + pz*pz))); }, false);
 		} else {
-			reduced = reduceField(axion, nLx, nLz, FIELD_MV,
+			reduced = reduceField(axion, nLx, nLx, nLz, FIELD_MV,
 					[eFc = eFc, nFc = nFc, kMax2 = kMax2] (int px, int py, int pz, complex<float>  x) -> complex<float>  { return x*((float)  (nFc* ((px*px + py*py + pz*pz > kMax2) ? 0 : 1))); }, false);
 		}
 
