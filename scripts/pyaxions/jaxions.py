@@ -58,7 +58,7 @@ def findmfiles(address='./',verb=False):
 
     res = np.array(sorted(list))
     if verb:
-        print(res[0],'to',res[1],'.',len(res),'files.')
+        print(res[0],'to',res[-1],'.',len(res),'files.')
     return res ;
 
 fm = findmfiles
@@ -940,7 +940,7 @@ def gm(address,something='summary',printerror=False):
         elif len(mal) == N*N:
             return mal.reshape(N,N)
 
-    map_check = 'map' in f
+    map_check = ('map' in f) or ('mapp' in f)
 
     if (something == 'map?'):
         return map_check ;
