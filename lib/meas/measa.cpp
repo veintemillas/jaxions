@@ -35,7 +35,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	LogOut("~");
 	LogMsg(VERB_NORMAL, "\n ");
 	LogMsg(VERB_NORMAL, "[Meas %d] MEASUREMENT %d, MAP %d, NRT %d, SPMASK %d ctime %2.3f\n", info.index, info.measdata,
-	info.maty, info.nrt, info.mask, *axiona->zV());
+	info.maty, info.nrt, info.mask, *axiona->zV());LogFlush();
 
 	bool wasGPU = false;
 	if (cDev == DEV_GPU){
@@ -160,7 +160,7 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 	if (axiona->Field() != FIELD_SAXION)
 	 	shiftz = 0.0;
 
-	if (measa != MEAS_NOTHING)
+	if ((measa != MEAS_NOTHING) || (info.maty))
 	{
 
 	createMeas(axiona, indexa);
