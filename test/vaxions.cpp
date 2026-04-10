@@ -273,17 +273,15 @@ int	main (int argc, char *argv[])
 	tunePropagator (axion);
 
 
-	LogOut ("Start redshift loop\n\n");
+	LogOut ("Start redshift loop (steps %lu)\n\n", myCosmos.ICData().nSteps);
 	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
 	{
 
-		// time step
-		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
-		//  dzaux = 0.0;
-		//  else
 		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/myCosmos.ICData().nSteps ;
 
+
 		//will we dump? and when?
+
 		switch(dumpmode)
 			{
 				case DUMP_EVERYN:
@@ -299,20 +297,20 @@ int	main (int argc, char *argv[])
 					for (int i =i_meas; i< measfilepar.ct.size(); i++){
 						if (*axion->zV() > measfilepar.ct[i])
 							i_meas++;
-							LogMsg(VERB_NORMAL,"[VAX] Time jumped over measurement! jumping once!");
+							LogMsg(VERB_NORMAL,"[VAX] Time jumped over measurement! jumping once!");LogFlush();
 					}
 				}
 
 				if ( (*axion->zV())+dzaux >= measfilepar.ct[i_meas] && (*axion->zV()) < measfilepar.ct[i_meas]){
-					LogMsg(VERB_NORMAL,"[VAX] dct adjusted from %e",dzaux);
+					LogMsg(VERB_NORMAL,"[VAX] dct adjusted from %e",dzaux);LogFlush();
 					dzaux = measfilepar.ct[i_meas] - (*axion->zV());
-					LogMsg(VERB_NORMAL,"                   to   %e",dzaux);
+					LogMsg(VERB_NORMAL,"                   to   %e",dzaux);LogFlush();
 					measrightnow = true;
 					loadmeasfromlist(&measfilepar, &ninfa, i_meas);
 					defaultmeasType = ninfa.measdata;
 					// actually, if this is the last measurement, do not measure!
 					if ( (i_meas == measfilepar.ct.size()-1) ){
-						LogMsg(VERB_NORMAL,"[VAX] last measurement, do not measure and pass END!",dzaux);
+						LogMsg(VERB_NORMAL,"[VAX] last measurement, do not measure and pass END!",dzaux);LogFlush();
 						measrightnow = false;
 					}
 				}
@@ -320,8 +318,8 @@ int	main (int argc, char *argv[])
 				break;
 			}
 
-			LogFlush();
 			// PROPAGATOR
+
 			propagate (axion, dzaux);
 			counter++;
 
