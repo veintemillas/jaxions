@@ -10,16 +10,17 @@
 
 		Scalar *field;
 
-		const size_t Lz;
-		const size_t n1;
-		const size_t n2;
-		const size_t n3;
+		const size_t Nz;
+		const size_t Nx;
+		const size_t Ny;
+		const size_t Nxy;
+		const size_t Nxyz;
 
 		size_t shift;
 		size_t fSize;
 
 		bool somethingdone;
-		
+
 		template<typename cFloat>
 		void	foldField();
 
@@ -31,6 +32,9 @@
 
 		template<typename cFloat>
 		void	unfoldField2DYZ(const size_t sX);
+
+		template<typename cFloat>
+		void	unfoldField2DXZ (const size_t sY);
 
 		template<typename cFloat>
 		void	foldM2();
