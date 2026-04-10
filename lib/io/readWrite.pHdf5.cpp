@@ -3675,7 +3675,8 @@ void	writeSpectrum (Scalar *axion, void *spectrumK, void *spectrumG, void *spect
 
 
 
-
+/* This prints XY maps but in 2DCYL Y=1, and X does not contant string
+so it is not used */
 
 void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 {
@@ -3685,8 +3686,8 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	hsize_t LLx  = axion->Length();
-	hsize_t LLy  = axion->Length();
+	hsize_t LLx  = axion->NX();
+	hsize_t LLy  = axion->NY();
 	if (iLy > 0)
 		LLy = iLy;
 	hsize_t slb  = LLx*LLy; //axion->Surf();
@@ -3847,47 +3848,6 @@ void	writeMapHdf5s	(Scalar *axion, int slicenumbertoprint, int iLy)
 		}
 	}
 
-	if (0) {
-		hsize_t slb_re = axion->Surf();
-		hsize_t lSz_re = axion->Length();
-		hsize_t fSz    = dataSize / 2;
-		char *reBuf    = static_cast<char *>(malloc(slb_re * fSz));
-		char *imBuf    = static_cast<char *>(malloc(slb_re * fSz));
-		for (hsize_t i = 0; i < slb_re; i++) {
-			memcpy(reBuf + i*fSz, dataM + i*dataSize,       fSz);
-			memcpy(imBuf + i*fSz, dataM + i*dataSize + fSz, fSz);
-		}
-		hid_t riSpace_f, reSpace_m, imSpace_m, riChunk, reSet_id, imSet_id;
-		riSpace_f = H5Screate_simple(1, &slb_re, maxD);
-		if (myRank != prank)
-			H5Sselect_none(riSpace_f);
-		riChunk = H5Pcreate(H5P_DATASET_CREATE);
-		H5Pset_chunk(riChunk, 1, &lSz_re);
-		H5Pset_fill_time(riChunk, H5D_FILL_TIME_NEVER);
-		reSet_id = H5Dcreate(meas_id, "/map/rephi", dataType, riSpace_f, H5P_DEFAULT, riChunk, H5P_DEFAULT);
-		imSet_id = H5Dcreate(meas_id, "/map/imphi", dataType, riSpace_f, H5P_DEFAULT, riChunk, H5P_DEFAULT);
-		reSpace_m = H5Dget_space(reSet_id);
-		imSpace_m = H5Dget_space(imSet_id);
-		hsize_t re_offset = 0;
-		if (myRank == prank) {
-			H5Sselect_hyperslab(reSpace_m, H5S_SELECT_SET, &re_offset, NULL, &slb_re, NULL);
-			H5Sselect_hyperslab(imSpace_m, H5S_SELECT_SET, &re_offset, NULL, &slb_re, NULL);
-		} else {
-			H5Sselect_none(reSpace_m);
-			H5Sselect_none(imSpace_m);
-		}
-		H5Dwrite(reSet_id, dataType, riSpace_f, reSpace_m, H5P_DEFAULT, reBuf);
-		H5Dwrite(imSet_id, dataType, riSpace_f, imSpace_m, H5P_DEFAULT, imBuf);
-		H5Dclose(reSet_id);
-		H5Dclose(imSet_id);
-		H5Sclose(reSpace_m);
-		H5Sclose(imSpace_m);
-		H5Sclose(riSpace_f);
-		H5Pclose(riChunk);
-		free(reBuf);
-		free(imBuf);
-	}
-
 	LogMsg (VERB_HIGH, "Write 2D map successful");LogFlush();
 
 	/*	Close the dataset	*/
@@ -3927,13 +3887,12 @@ void	writeMapHdf5s3	(Scalar *axion, int slicenumbertoprint)
 }
 
 
+/* This prints YZ maps, but now in 2D Cylindrical syms Y=1,
+but we can use it for XZ */
+
 void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 {
-	/* in 2D Cylindrical syms, we use another function */
-#ifdef USE_2DCYL
-	writeMapHdf5s3 (axion,slicenumbertoprint);
-	return;
-#endif
+
 
 	hid_t	mapSpace, chunk_id, group_id, mSet_id, vSet_id, mSpace, vSpace, memSpace, dataType;
 	hsize_t	dataSize = axion->DataSize();
@@ -3941,16 +3900,37 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	int myRank = commRank();
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
-	/* total values to be written is NOT Surf but Ly*Lz*zGrid*/
-	hsize_t total  = axion->Length()*axion->TotalDepth();
-	/* chunk size */
-	hsize_t slab  = axion->Length();
+
+	/*	Unfold field before writing configuration	*/
+	Folder	munge(axion);
+	int slicenumber = slicenumbertoprint ;
+
+
+	/* total values to be written & chunk size & contiguous dim & MPI dim */
+	hsize_t total,slab, N1;
 	char mCh[16] = "/mapp/m";
 	char vCh[16] = "/mapp/v";
+	/* will copy from */
+	char *m_cp,*v_cp;
+#ifdef USE_2DCYL
+	N1     = axion->NX();
+	slicenumber = slicenumbertoprint>N1? 0 : slicenumbertoprint;
+	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file XZ (%dx%d) (Y-slice %d)",N1, axion->TZ(),slicenumber);
+	munge(UNFOLD_ALL, slicenumber);
+	m_cp = static_cast<char *>(axion->mStart());
+	v_cp = static_cast<char *>(axion->vStart());
+#else
+	N1     = axion->NY();
+	slicenumber = slicenumbertoprint>N1? 0 : slicenumbertoprint;
+	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ (%dx%d) (X-slice %d)",N1, axion->TZ(),slicenumber);
+	munge(UNFOLD_SLICEYZ, slicenumber);
+	m_cp = static_cast<char *>(axion->mFrontGhost());
+	v_cp = static_cast<char *>(axion->mBackGhost());
+#endif
 
-	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ (%dx%d)",axion->Length(), axion->TotalDepth());
+	total  = N1*axion->TZ();
+	slab   = N1;
 	LogMsg (VERB_PARANOID, "[wm2] total %d slab %d myRank %d dataSize %d",total,slab, commRank(),dataSize);	LogFlush();
-	LogFlush();
 
 	if (header == false || opened == false)
 	{
@@ -3973,21 +3953,6 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 	} else {
 		dataType = H5T_NATIVE_FLOAT;
 	}
-
-	/*	Unfold field before writing configuration	*/
-	//if (axion->Folded())
-	//{
-		int slicenumber = slicenumbertoprint ;
-		if (slicenumbertoprint > axion->Length())
-		{
-			LogMsg (VERB_NORMAL, "[wm2] Sliceprintnumberchanged to 0");
-			slicenumber = 0;
-		}
-		Folder	munge(axion);
-		LogMsg (VERB_NORMAL, "[wm2] If configuration folded, unfold 2D slice");	LogFlush();
-		munge(UNFOLD_SLICEYZ, slicenumber);
-	//}
-
 
 	/*	Create a group for map data if it doesn't exist	*/
 	auto status = H5Lexists (meas_id, "/mapp", H5P_DEFAULT);
@@ -4067,18 +4032,18 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 
 	hsize_t partial = total/commSize();
 	LogMsg (VERB_HIGH, "[wm2] Ready to write");	LogFlush();
-	LogMsg (VERB_PARANOID, "[wm2] total %d commSize() %d sizeN %d dataSize %d",total,commSize(),sizeN,dataSize);	LogFlush();
-	for (hsize_t yDim=0; yDim < axion->Depth(); yDim++)
+	LogMsg (VERB_PARANOID, "[wm2] total %d commSize() %d sizeN %d dataSize %d",total,commSize(),N1,dataSize);	LogFlush();
+	for (hsize_t zDim=0; zDim < axion->NZ(); zDim++)
 	{
-		hsize_t offset = (hsize_t) myRank*partial + yDim*slab;
+		hsize_t offset = (hsize_t) myRank*partial + zDim*slab;
 
 		H5Sselect_hyperslab(mSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 		H5Sselect_hyperslab(vSpace, H5S_SELECT_SET, &offset, NULL, &slab, NULL);
 
-		LogMsg (VERB_PARANOID, "[wm2] line yDim %d ",yDim);	LogFlush();
+		LogMsg (VERB_PARANOID, "[wm2] line zDim %d ",zDim);	LogFlush();
 		/*	Write raw data	recall slab = sizeN*2*/
-		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, (static_cast<char *> (axion->mFrontGhost())) +axion->Length()*yDim*dataSize);
-		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, (static_cast<char *> (axion->mBackGhost() )) +axion->Length()*yDim*dataSize);
+		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, m_cp +N1*zDim*dataSize);
+		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, v_cp +N1*zDim*dataSize);
 
 		if ((mErr < 0) || (vErr < 0))
 		{
