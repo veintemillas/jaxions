@@ -673,7 +673,7 @@ int	parseArgs (int argc, char *argv[])
 	// defaults
 	icdatst.Nghost    = 1;
   icdatst.Nx        = 128;
-  icdatst.Ny        = 0;
+  icdatst.Ny        = 1;
   icdatst.Nz        = 128;
 	icdatst.icdrule   = false;
 	icdatst.preprop   = false;
@@ -1786,7 +1786,7 @@ int	parseArgs (int argc, char *argv[])
 
 			dump = atoi(argv[i+1]);
 
-			if (dump < 0)
+			if (dump <= 0)
 			{
 				printf("Error: Print rate must be equal or greater than zero.\n");
 				exit(1);
