@@ -29,7 +29,7 @@
 /*
 	2Dcyl version vector along X (z cylindrical coordinate), MPI along Z (radial)
 */
-template<const VqcdType VQcd>
+template<const VqcdType VQcd, bool UpdateM = true>
 inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, const double dz, const double c, const double d,
 				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
@@ -542,14 +542,19 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 								tmp = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
 							}
 
-	#if	defined(__AVX512F__) || defined(__FMA__)
-							mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
-	#else
-							mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
-	#endif
 
-							opCode(store_pd,  &v[idxV0], tmp);
+	opCode(store_pd,  &v[idxV0], tmp);
+
+	if constexpr (UpdateM)
+							{
+							#if	defined(__AVX512F__) || defined(__FMA__)
+													mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
+							#else
+													mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
+							#endif
+
 							opCode(stream_pd, &m2[idxP0], mPx);
+							}
 						}
 					}
 				}
@@ -1094,15 +1099,17 @@ tmp = opCode(sub_ps,
 				tmp   = opCode(div_ps, opCode(mul_ps, mel, vecma), mPx);
 			}
 
-#if	defined(__AVX512F__) || defined(__FMA__)
-			mPx = opCode(fmadd_ps, tmp, opCode(set1_ps, dzd), mel);
-#else
-			mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
-#endif
-
-
 			opCode(store_ps,  &v[idxV0], tmp);
+
+			if constexpr (UpdateM)
+			{
+			#if	defined(__AVX512F__) || defined(__FMA__)
+						mPx = opCode(fmadd_ps, tmp, opCode(set1_ps, dzd), mel);
+			#else
+						mPx = opCode(add_ps, mel, opCode(mul_ps, tmp, opCode(set1_ps, dzd)));
+			#endif
 			opCode(stream_ps, &m2[idxP0], mPx);	// Avoids cache thrashing
+			}
 		}
 		} // end zC,xC loops
 	  } //
@@ -1117,151 +1124,144 @@ tmp = opCode(sub_ps,
 
 
 
-inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, const double dz, const double d, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
-			    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
+inline void updateMXeon(void * __restrict__ m_,
+                        const void * __restrict__ v_,
+                        PropParms ppar,
+                        const double dz,
+                        const double d,
+                        const size_t Vo,
+                        const size_t Vf,
+                        FieldPrecision precision,
+                        const unsigned int bSizeX,
+                        const unsigned int bSizeY,
+                        const unsigned int bSizeZ)
 {
-	const uint z0 = Vo/(Lx*Lx);
-	const uint zF = Vf/(Lx*Lx);
-	const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
+	const size_t Nx = ppar.Lx;
+	const size_t Sf = Nx;
+
+	const uint z0 = Vo / Sf;
+	const uint zF = Vf / Sf;
+
+	const uint zTiles = (zF - z0 + bSizeZ - 1) / bSizeZ;
+	const uint xTiles = (Nx  + bSizeX - 1) / bSizeX;
 
 	if (precision == FIELD_DOUBLE)
 	{
-	#if	defined(__AVX512F__)
-		#define	_MData_ __m512d
-		#define	step 4
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
-	#elif	defined(__AVX__)
-		#define	_MData_ __m256d
-		#define	step 2
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
-	#else
-		#define	_MData_ __m128d
-		#define	step 1
-		const size_t XC = Lx;
-		const size_t YC = Lx;
-	#endif
-
-		double * __restrict__ m		= (double * __restrict__) __builtin_assume_aligned (m_, Align);
-		const double * __restrict__ v	= (const double * __restrict__) __builtin_assume_aligned (v_, Align);
-
-		const double dzd = dz*d;
-
-		const uint bY = (YC + bSizeY - 1)/bSizeY;
-
-		for (uint zT = 0; zT < zM; zT++)
-		 for (uint yT = 0; yT < bY; yT++)
-		  #pragma omp parallel default(shared)
-		  {
-			_MData_ mIn, vIn, tmp;
-			size_t idxM0, idxV0;
-
-			#pragma omp for collapse(3) schedule(static)
-			for (uint zz = 0; zz < bSizeZ; zz++) {
-		 	  for (uint yy = 0; yy < bSizeY; yy++) {
-			    for (uint xC = 0; xC < XC; xC += step) {
-			      uint zC = zz + bSizeZ*zT + z0;
-			      uint yC = yy + bSizeY*yT;
-
-			      auto idx = zC*(YC*XC) + yC*XC + xC;
-
-			      if ((yC >= YC) || (zC >= zF)) continue;
-
-			      idxM0 =  idx       << 1;
-			      idxV0 = (idx - Vo) << 1;
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-			      vIn = opCode(load_pd, &v[idxV0]);
-			      mIn = opCode(load_pd, &m[idxM0]);
-			      tmp = opCode(fmadd_pd, opCode(set1_pd, dzd), vIn, mIn);
-			      opCode(store_pd, &m[idxM0], tmp);
+#if defined(__AVX512F__)
+		#define _MData_ __m512d
+		#define step 4
+#elif defined(__AVX__)
+		#define _MData_ __m256d
+		#define step 2
 #else
-			      mIn = opCode(load_pd, &m[idxM0]);
-			      tmp = opCode(load_pd, &v[idxV0]);
-			      vIn = opCode(mul_pd, opCode(set1_pd, dzd), tmp);
-			      tmp = opCode(add_pd, mIn, vIn);
-			      opCode(store_pd, &m[idxM0], tmp);
+		#define _MData_ __m128d
+		#define step 1
 #endif
-			    }
-			  }
+
+		double * __restrict__ m       = (double * __restrict__) __builtin_assume_aligned(m_, Align);
+		const double * __restrict__ v = (const double * __restrict__) __builtin_assume_aligned(v_, Align);
+
+		const double dzd = dz * d;
+
+		#pragma omp parallel default(shared)
+		{
+			_MData_ mIn, vIn, tmp;
+
+			#pragma omp for collapse(2) schedule(static)
+			for (uint zT = 0; zT < zTiles; zT++) {
+				for (uint xT = 0; xT < xTiles; xT++) {
+
+					const uint zBeg = z0 + zT * bSizeZ;
+					const uint zEnd = (zBeg + bSizeZ < zF) ? (zBeg + bSizeZ) : zF;
+
+					const uint xBeg = xT * bSizeX;
+					const uint xEnd = (xBeg + bSizeX < Nx) ? (xBeg + bSizeX) : Nx;
+
+					for (uint zC = zBeg; zC < zEnd; zC++) {
+						for (uint xC = xBeg; xC < xEnd; xC += step) {
+
+							const size_t idx = zC * Nx + xC;
+
+							const size_t idxM0 = (idx << 1);
+							const size_t idxV0 = ((idx - Vo) << 1);
+
+#if defined(__AVX512F__) || defined(__FMA__)
+							vIn = opCode(load_pd, &v[idxV0]);
+							mIn = opCode(load_pd, &m[idxM0]);
+							tmp = opCode(fmadd_pd, opCode(set1_pd, dzd), vIn, mIn);
+#else
+							vIn = opCode(load_pd, &v[idxV0]);
+							mIn = opCode(load_pd, &m[idxM0]);
+							tmp = opCode(add_pd, mIn, opCode(mul_pd, opCode(set1_pd, dzd), vIn));
+#endif
+							opCode(store_pd, &m[idxM0], tmp);
+						}
+					}
+				}
 			}
-		    }
-#undef	_MData_
-#undef	step
+		}
+
+#undef _MData_
+#undef step
 	}
 	else if (precision == FIELD_SINGLE)
 	{
-	#if	defined(__AVX512F__)
-		#define	_MData_ __m512
-		#define	step 8
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
-	#elif	defined(__AVX__)
-		#define	_MData_ __m256
-		#define	step 4
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
-	#else
-		#define	_MData_ __m128
-		#define	step 2
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
-	#endif
-
-		float * __restrict__ m		= (float * __restrict__) __builtin_assume_aligned (m_, Align);
-		const float * __restrict__ v	= (const float * __restrict__) __builtin_assume_aligned (v_, Align);
-
-		const float dzd = dz*d;
-#if	defined(__AVX512F__)
-//		const float __attribute__((aligned(Align))) dzdAux[16] = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd  };
-#elif	defined(__AVX__)
-//		const float __attribute__((aligned(Align))) dzdAux[8]  = { dzd, dzd, dzd, dzd, dzd, dzd, dzd, dzd };
+#if defined(__AVX512F__)
+		#define _MData_ __m512
+		#define step 8
+#elif defined(__AVX__)
+		#define _MData_ __m256
+		#define step 4
 #else
-//		const float __attribute__((aligned(Align))) dzdAux[4]  = { dzd, dzd, dzd, dzd };
+		#define _MData_ __m128
+		#define step 2
 #endif
-//		const _MData_ dzdVec = opCode(load_ps, dzdAux);
 
-		const uint bY = (YC + bSizeY - 1)/bSizeY;
+		float * __restrict__ m       = (float * __restrict__) __builtin_assume_aligned(m_, Align);
+		const float * __restrict__ v = (const float * __restrict__) __builtin_assume_aligned(v_, Align);
 
-		for (uint zT = 0; zT < zM; zT++)
-		 for (uint yT = 0; yT < bY; yT++)
-		    #pragma omp parallel default(shared)
-		    {
+		const float dzd = (float)(dz * d);
+
+		#pragma omp parallel default(shared)
+		{
 			_MData_ mIn, vIn, tmp;
-			size_t idxM0, idxV0;
 
-			#pragma omp for collapse(3) schedule(static)
-			for (uint zz = 0; zz < bSizeZ; zz++) {
-		 	  for (uint yy = 0; yy < bSizeY; yy++) {
-			    for (uint xC = 0; xC < XC; xC += step) {
-			      uint zC = zz + bSizeZ*zT + z0;
-			      uint yC = yy + bSizeY*yT;
+			#pragma omp for collapse(2) schedule(static)
+			for (uint zT = 0; zT < zTiles; zT++) {
+				for (uint xT = 0; xT < xTiles; xT++) {
 
-			      auto idx = zC*(YC*XC) + yC*XC + xC;
+					const uint zBeg = z0 + zT * bSizeZ;
+					const uint zEnd = (zBeg + bSizeZ < zF) ? (zBeg + bSizeZ) : zF;
 
-			      if ((yC >= YC) || (zC >= zF)) continue;
+					const uint xBeg = xT * bSizeX;
+					const uint xEnd = (xBeg + bSizeX < Nx) ? (xBeg + bSizeX) : Nx;
 
-			      idxM0 =  idx       << 1;
-			      idxV0 = (idx - Vo) << 1;
+					for (uint zC = zBeg; zC < zEnd; zC++) {
+						for (uint xC = xBeg; xC < xEnd; xC += step) {
 
-#if	defined(__AVX512F__) || defined(__FMA__)
-			      vIn = opCode(load_ps, &v[idxV0]);
-			      mIn = opCode(load_ps, &m[idxM0]);
-			      tmp = opCode(fmadd_ps, opCode(set1_ps, dzd), vIn, mIn);
-			      opCode(store_ps, &m[idxM0], tmp);
+							const size_t idx = zC * Nx + xC;
+
+							const size_t idxM0 = (idx << 1);
+							const size_t idxV0 = ((idx - Vo) << 1);
+
+#if defined(__AVX512F__) || defined(__FMA__)
+							vIn = opCode(load_ps, &v[idxV0]);
+							mIn = opCode(load_ps, &m[idxM0]);
+							tmp = opCode(fmadd_ps, opCode(set1_ps, dzd), vIn, mIn);
 #else
-			      vIn = opCode(load_ps, &v[idxV0]);
-			      mIn = opCode(load_ps, &m[idxM0]);
-			      tmp = opCode(add_ps, mIn, opCode(mul_ps, opCode(set1_ps, dzd), vIn));
-			      opCode(store_ps, &m[idxM0], tmp);
+							vIn = opCode(load_ps, &v[idxV0]);
+							mIn = opCode(load_ps, &m[idxM0]);
+							tmp = opCode(add_ps, mIn, opCode(mul_ps, opCode(set1_ps, dzd), vIn));
 #endif
-			    }
-			  }
+							opCode(store_ps, &m[idxM0], tmp);
+						}
+					}
+				}
 			}
-		    }
-#undef	_MData_
-#undef	step
+		}
+
+#undef _MData_
+#undef step
 	}
 }
 

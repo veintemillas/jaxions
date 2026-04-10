@@ -668,7 +668,7 @@ LogMsg(VERB_PARANOID,"[GSP] ");
 			const double d0 = d[0];
 			/* First drift no kick c = 0 */
 
-			updateMXeon(axion->mCpu(), axion->vCpu(), dz, d0, Lx, BO, V+BO, precision, xBlock, yBlock, zBlock);
+			updateMXeon(axion->mCpu(), axion->vCpu(), ppar, dz, d0, BO, V+BO, precision, xBlock, yBlock, zBlock);
 			*z += dz*d0;
 			axion->updateR();
 			cD = &(d[1]);
@@ -705,11 +705,8 @@ LogMsg(VERB_PARANOID,"[GSP] ");
 
 		if (lastStage == PROP_LAST) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
-
-			const double    c0 = c[nStages], maa = axion->AxionMassSq();
-			/* Last kick but not drift d = 0 */
-
 			loadparms(&ppar, axion);
+			const double    c0 = c[nStages];
 
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -728,36 +725,44 @@ LogMsg(VERB_PARANOID,"[GSP] ");
 
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::lowCpu	(const double dz) {
+
+LogMsg(VERB_PARANOID,"[GSPlowmem] ");
+
 		double *z = axion->zV();
 
 		PropParms ppar;
-		ppar.Ng     = axion->getNg();
-		ppar.Lx     = Lx;
-		ppar.PC     = axion->getCO();
-		ppar.ood2a  = ood2;
-		ppar.gamma  = axion->BckGnd()->Gamma();
-		ppar.frw    = axion->BckGnd()->Frw();
-		ppar.dectime= axion->BckGnd()->DecTime();
-
+		loadparms(&ppar, axion);
 
 		size_t BO = ppar.Ng*S;
+
+		auto *cD  = d;
+
+		if (lastStage == PROP_FIRST) {
+			const double d0 = d[0];
+			/* First drift no kick c = 0 */
+
+			updateMXeon(axion->mCpu(), axion->vCpu(), ppar, dz, d0, BO, V+BO, precision, xBlock, yBlock, zBlock);
+			*z += dz*d0;
+			axion->updateR();
+			cD = &(d[1]);
+		}
 
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 
-			ppar.lambda = axion->LambdaP();
-			ppar.massA2 = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
+			loadparms(&ppar, axion);
 
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
 			const double c0 = c[s], d0 = d[s];
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd,false>(axion->mCpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd,false>(axion->mCpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c0, 0.0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			if (V>BO)
+			propagateKernelXeon<VQcd,false>(axion->mCpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c0, 0.0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
+			updateMXeon(axion->mCpu(), axion->vCpu(), ppar, dz, d0, BO, V+BO, precision, xBlock, yBlock, zBlock);
 
 			/*missing update M?*/
 			*z += dz*d0;
@@ -767,17 +772,16 @@ LogMsg(VERB_PARANOID,"[GSP] ");
 		if (lastStage) {
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
-			ppar.lambda = axion->LambdaP();
-			ppar.massA2 = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
+			loadparms(&ppar, axion);
 
 			const double c0 = c[nStages];
 
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd,false>(axion->mCpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
-			updateVXeon<VQcd>(axion->mCpu(), axion->vCpu(), ppar, dz, c0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+			propagateKernelXeon<VQcd,false>(axion->mCpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c0, 0.0, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
+			if (V>BO)
+			propagateKernelXeon<VQcd,false>(axion->mCpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c0, 0.0, V   , V+BO, precision, xBlock, yBlock, zBlock);
+
 
 		}
 	}
