@@ -288,6 +288,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 			xBlock = prop->TunedBlockX();
 			yBlock = prop->TunedBlockY();
 			zBlock = prop->TunedBlockZ();
+			LogMsg(VERB_NORMAL,"[ip] Prop is tuned with xyzBlocks  %d %d %d \n",xBlock,yBlock,zBlock);
 		}
 
 	LogMsg(VERB_NORMAL,"\n");
@@ -327,7 +328,7 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 #endif
 
 		default:
-			LogError ("Error: unrecognized propagator PROP_ %d (RKN4/MLEAP/LEAP/OM4/OM2 %d/%d/%d/%d/%d) ",
+			LogError ("[ip] Error: unrecognized propagator PROP_ %d (RKN4/MLEAP/LEAP/OM4/OM2 %d/%d/%d/%d/%d) ",
 				pType, PROP_RKN4,PROP_MLEAP,PROP_LEAP,PROP_OMELYAN4,PROP_OMELYAN2);
 			exit(1);
 		break;
@@ -336,15 +337,17 @@ void	initPropagator	(PropType pType, Scalar *field, VqcdType pot, int Ng=-1) {
 	LogMsg(VERB_HIGH,"[ip] getBaseName");
 	prop->getBaseName();
 
-	LogMsg(VERB_HIGH,"[ip] set blocks");
+
 	if (wasTuned) {
+		LogMsg(VERB_HIGH,"[ip] set blocks");
 		prop->SetBlockX(xBlock);
 		prop->SetBlockY(yBlock);
 		prop->SetBlockZ(zBlock);
 		prop->UpdateBestBlock();
+		LogMsg(VERB_NORMAL,"[ip] Prop was tuned with xyzBlocks  %d %d %d \n",xBlock,yBlock,zBlock);
 	}
 
-	LogMsg	(VERB_NORMAL, "Propagator %s successfully initialized", prop->Name().c_str());
+	LogMsg	(VERB_NORMAL, "[ip] Propagator %s successfully initialized", prop->Name().c_str());
  	LogFlush();
 
 }
@@ -357,7 +360,7 @@ using	namespace profiler;
 
 void	propagate	(Scalar *field, const double dz)
 {
-	LogMsg	(VERB_HIGH, "[pate] Called propagator");
+	LogMsg	(VERB_HIGH, "[pate] Called propagator dz= %.5e", dz);
 LogFlush();
 	Profiler &prof = getProfiler(PROF_PROP);
 
@@ -507,6 +510,7 @@ void	resetPropagator(Scalar *field) {
 
 
 void	tunePropagator (Scalar *field) {
+
 	// Hash CPU model so we don't mix different cache files
 	LogMsg(VERB_NORMAL,"\n");
  	LogMsg(VERB_NORMAL,"[tp] Tune propagator!\n");
@@ -535,19 +539,23 @@ void	tunePropagator (Scalar *field) {
 	prof.start();
 
 	if (field->Device() == DEV_CPU)
-		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign());
+		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), false);
 	else
-		prop->InitBlockSize(field->Length(), field->Depth(), field->DataSize(), field->DataAlign(), true);
+		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), true);
 
+		LogMsg(VERB_HIGH,"[tp] Initial block Size %d %d %d",prop->BlockX(),prop->BlockY(),prop->BlockZ());
 	/*	Check for a cache file	*/
 
 	if (myRank == 0) {
 		FILE *cacheFile;
 		char tuneName[2048];
-		// if (pType == PROP_BASE)
-		// 	sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+
 		if (pType & PROP_BASE)
+#ifdef USE_2DCYL
+			sprintf (tuneName, "%s/tuneCache_2D.dat", wisDir);
+#else
 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+#endif
 
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
 LogMsg(VERB_HIGH,"[tp] new cache!!");
@@ -555,7 +563,7 @@ LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tune
 			newFile = true;
 		} else {
 			int	     rMpi, rThreads;
-			size_t       rLx, rLz, Nghost;
+			size_t       rNx, rNy, rNz, Nghost;
 			unsigned int rBx, rBy, rBz, fType, myField ;
 			if      (field->Field() == FIELD_SAXION)
 				myField = 0;
@@ -571,11 +579,32 @@ LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tune
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 LogMsg(VERB_HIGH,"[tp] Reading cache file %s",tuneName);
 			do {
-				fscanf (cacheFile, "%s %d %d %lu %lu %u %u %u %u %lu\n", reinterpret_cast<char*>(&mDev), &rMpi, &rThreads, &rLx, &rLz, &fType, &rBx, &rBy, &rBz, &Nghost);
+				int nRead = fscanf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu",
+									mDev,
+									&rMpi, &rThreads,
+									&rNx, &rNy, &rNz,
+									&fType, &rBx, &rBy, &rBz, &Nghost);
+				// Backward compatibility: old format (no NY)
+				if (nRead == 10) {
+				// Old format: Dev MPI Threads Lx Lz fType Bx By Bz Ng
+				rNz = rNy;   // what was read as rNy is actually old Lz
+				rNy = rNx;   // assume NY = NX
+				}
+
 				std::string fDev(mDev);
-LogMsg(VERB_HIGH,"[tp] Read: MPI %d, threads %d, Ng %d, Lx,Lz (%d,%d) rBx,y,z (%d,%d,%d)  ",rMpi, rThreads, Nghost, rLx, rLz, rBx, rBy, rBz);
-				if (rMpi == commSize() && rThreads == omp_get_max_threads() && rLx == field->Length() && rLz == field->Depth() && fType == myField && fDev == tDev && Nghost == field->getNg()) {
-					if ((field->Device() == DEV_CPU && (rBx <= prop->BlockX() && rBy <= field->Surf()/prop->BlockX() && rBz <= field->Depth())) ||
+
+LogMsg(VERB_HIGH,"[tp] Read: MPI %d, threads %d, Ng %lu, Nx,Ny,Nz (%lu,%lu,%lu) rBx,y,z (%u,%u,%u)  ",rMpi, rThreads, Nghost, rNx, rNy, rNz, rBx, rBy, rBz);
+
+				if (rMpi == commSize() &&
+				rThreads == omp_get_max_threads() &&
+				rNx == field->NX() &&
+				rNy == field->NY() &&
+				rNz == field->NZ() &&
+				fType == myField &&
+				fDev == tDev &&
+				Nghost == field->getNg())
+				{
+					if ((field->Device() == DEV_CPU ) ||
 					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
 						found = true;
 LogMsg(VERB_HIGH,"[tp] X!!");
@@ -631,7 +660,8 @@ LogMsg (VERB_HIGH,   "Chosen block %u x %u x %u\n", prop->BlockX(), prop->BlockY
 
 	// Otherwise we start tuning
 
-LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
+LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");LogFlush();
+
 
 	start = std::chrono::high_resolution_clock::now();
 	propagate(field, 0.);
@@ -656,6 +686,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 	else
 		LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime);
 
+	LogFlush();
 	prop->AdvanceBlockSize();
 
 	while (!prop->IsTuned()) {
@@ -751,7 +782,19 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 	Profiler &propProf = getProfiler(PROF_PROP);
 	propProf.reset(prop->Name());
 
-	prop->SetBestBlock();
+
+LogMsg(VERB_NORMAL, "[DBG] before SetBestBlock");
+LogFlush();
+
+prop->SetBestBlock();
+
+LogMsg(VERB_NORMAL, "[DBG] after SetBestBlock: %u x %u x %u",
+       prop->BlockX(), prop->BlockY(), prop->BlockZ());
+LogFlush();
+
+LogMsg(VERB_NORMAL, "[DBG] before cache write");
+
+LogFlush();
 	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
 
 	/*	Write cache file if necessary, block of rank 0 prevails		*/
@@ -759,9 +802,13 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 	if (myRank == 0) {
 		FILE *cacheFile;
 		char tuneName[2048];
-		// sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+
 		if (pType & PROP_BASE){
+#ifdef USE_2DCYL
+			sprintf (tuneName, "%s/tuneCache_2D.dat", wisDir);
+#else
 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+#endif
 			LogMsg(VERB_HIGH,"[tp] tuneName = %s",tuneName);
 		}
 		// We distinguish between opening and appending a new line
@@ -792,16 +839,20 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");
 			fType = 3;
 
 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-		fprintf (cacheFile, "%s %d %d %lu %lu %u %u %u %u %lu\n", myDev.c_str(), commSize(), omp_get_max_threads(), field->Length(), field->Depth(),
-									fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), field->getNg());
+		fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu\n",
+         myDev.c_str(), commSize(), omp_get_max_threads(),
+         field->NX(), field->NY(), field->NZ(),
+         fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
+         field->getNg());
 		fclose  (cacheFile);
 	}
-LogMsg (VERB_NORMAL, "\n");
 
 	commSync();
 	prof.stop();
 	prof.add(prop->Name(), 0., 0.);
 
+	LogMsg(VERB_NORMAL, "[DBG] leaving tunePropagator");
+LogFlush();
 }
 
 void	initGravity	(Scalar *field){
