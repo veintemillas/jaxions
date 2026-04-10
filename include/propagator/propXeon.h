@@ -41,6 +41,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 	const size_t NN    = ppar.Ng;
 	const size_t Lx    = ppar.Lx;
+	const size_t Ly    = ppar.Ly;
 	const size_t Sf    = Lx*Lx;
 	const size_t NSf   = Sf*NN;
 	const double *PC   = ppar.PC;
