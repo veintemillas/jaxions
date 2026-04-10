@@ -46,21 +46,21 @@ const std::complex<float> If(0.,1.);
 		: nSplit(nSp), lap(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 
-
-#ifdef USE_2DCYL
-	Ng = 1;
-	LogMsg(VERB_NORMAL,"[sca] Cylindrical coordinates Ng=1, lap=%d",lap);
-#else
 	Ng = Ngg;
-#endif
 
 	Nx     = cm->ICData().Nx; // nLx; 		 // n1
+	Nz     = cm->ICData().Nz; // nLz;      // Lz
 #ifdef USE_2DCYL
-	Ny     = 1;
+	if (Nz <= 1){  // CYL in XY plane
+		Nz     = 1;
+		Ng     = 1;  // we just need one!
+	}	else {
+		Ny     = 1; // CYL in XZ plane for MPI
+	}
 #else
 	Ny     = cm->ICData().Ny > 0? cm->ICData().Ny : Nx;
 #endif
-	Nz     = cm->ICData().Nz; // nLz;      // Lz
+
 	Nz_g   = Nz+2*Ng;  // Ez
 	Nxy    = Nx * Ny ; // n2
 	Nxyz   = Nxy * Nz; // n3
@@ -207,7 +207,7 @@ const std::complex<float> If(0.,1.);
 	}
 	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
-	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m]  %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str]", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
+	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m] %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str] %llu", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
 	const size_t	mBytes = Nxyz_g       * fSize;
 	const size_t	vBytes = Nxy*(Nz + 2) * fSize;
 	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, (Nxyz+Nxy)/1e9);
