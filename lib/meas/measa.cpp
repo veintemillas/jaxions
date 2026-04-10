@@ -206,8 +206,12 @@ MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 
 	if( (info.maty & MAPT_XYMV) || (measa & MEAS_2DMAP))
 		writeMapHdf5s  (axiona,sliceprint);
-	if( info.maty & MAPT_YZMV)
+	if( info.maty & MAPT_YZMV){
 		writeMapHdf5s2 (axiona,sliceprint);
+	}
+#ifdef USE_2DCYL
+	writeMapHdf5s2 (axiona,-1);
+#endif
 
 	if (axiona->BckGnd()->ICData().linmodevol)
 	{
