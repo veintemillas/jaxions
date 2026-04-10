@@ -11,7 +11,12 @@
 	#include "utils/utils.h"
 
 
+	#ifdef USE_2DCYL
+	#include "propagator/propXeon_2Dcyl.h"
+	#else
 	#include "propagator/propXeon.h"
+	#endif
+
 	#include "propagator/propThetaXeon.h"
 	#include "propagator/laplacian.h"
 	#include "propagator/sPropXeon.h"
@@ -647,16 +652,12 @@
 
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunCpu	(const double dz) {
+
+LogMsg(VERB_PARANOID,"[GSP] ");
 		double *z = axion->zV();
 
 		PropParms ppar;
-		ppar.Ng     = axion->getNg();
-		ppar.Lx     = Lx;
-		ppar.PC     = axion->getCO();
-		ppar.ood2a  = ood2;
-		ppar.gamma  = axion->BckGnd()->Gamma();
-		ppar.frw    = axion->BckGnd()->Frw();
-		ppar.dectime= axion->BckGnd()->DecTime();
+		loadparms(&ppar, axion);
 
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
@@ -676,12 +677,7 @@
 		#pragma unroll
 		for (int s = 0; s<nStages; s+=2) {
 
-			ppar.lambda = axion->LambdaP();
-			ppar.massA2 = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
-			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
-
+			loadparms(&ppar, axion);
 			axion->sendGhosts(FIELD_M, COMM_SDRV);
 
 			const double	c1 = c[s], c2 = c[s+1], d1 = cD[s], d2 = cD[s+1];
@@ -696,11 +692,7 @@
 
 			axion->sendGhosts(FIELD_M2, COMM_SDRV);
 
-			ppar.lambda = axion->LambdaP();
-			ppar.massA2 = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
-			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
+			loadparms(&ppar, axion);
 
 			propagateKernelXeon<VQcd>(axion->m2Cpu(), axion->vCpu(), axion->mCpu(), ppar, dz, c2, d2, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M2, COMM_WAIT);
@@ -717,11 +709,7 @@
 			const double    c0 = c[nStages], maa = axion->AxionMassSq();
 			/* Last kick but not drift d = 0 */
 
-			ppar.lambda = axion->LambdaP();
-			ppar.massA2 = axion->AxionMassSq();
-			ppar.R      = *axion->RV();
-			ppar.Rpp    = axion->Rpp();
-			ppar.Rp     = axion->BckGnd()->Rp(*axion->zV());
+			loadparms(&ppar, axion);
 
 			propagateKernelXeon<VQcd>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, dz, c0, 0.0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -1344,7 +1332,10 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 
 		(*pipar).Ng     = axion->getNg();
 		(*pipar).Lap    = axion->getLap();
-		(*pipar).Lx     = axion->Length();;
+		(*pipar).Lx     = axion->NX();
+		(*pipar).Ly     = axion->NY();
+		(*pipar).Lz     = axion->NZ();
+		(*pipar).Tz     = axion->TZ();
 		(*pipar).PC     = axion->getCO();
 		(*pipar).PCp    = axion->getCOp();
 		(*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
