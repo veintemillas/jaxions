@@ -65,6 +65,7 @@
 			UNFOLD_ALL,
 			UNFOLD_SLICE,
 			UNFOLD_SLICEYZ,
+			UNFOLD_SLICEXZ,
 			FOLD_M2,
 			UNFOLD_M2,
 			UNFOLD_SLICEM2,
@@ -976,6 +977,7 @@
 			size_t   Ng;
 			size_t   Lap;
 			size_t   Lx;
+			size_t   Ly;
 			size_t   Lz;
 			size_t   Tz;
 			size_t   Vo;
