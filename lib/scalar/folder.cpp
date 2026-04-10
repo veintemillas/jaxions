@@ -14,14 +14,14 @@
 
 using namespace std;
 
-	Folder::Folder(Scalar *scalar) : field(scalar), Lz(scalar->Depth()), n1(scalar->Length()), n2(scalar->Surf()), n3(scalar->Size())
+	Folder::Folder(Scalar *scalar) : field(scalar), Nx(scalar->NX()), Ny(scalar->NY()), Nz(scalar->NZ()),  Nxy(scalar->NXY()), Nxyz(scalar->NXYZ())
 {
 }
 
 template<typename cFloat>
 void	Folder::foldField()
 {
-	if (field->Folded() || field->Device() == DEV_GPU || n1 == n2 )
+	if (field->Folded() || field->Device() == DEV_GPU)
 		return;
 
 	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -30,162 +30,131 @@ void	Folder::foldField()
  	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
 
 	fSize = field->DataSize();
-	shift = field->DataAlign()/fSize;
+	shift = field->DataAlign()/fSize; // number of cFloat elements in a vector
 
-	LogMsg (VERB_NORMAL, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	size_t N1=Nx , N2=Ny; // we vectorise the 2 direction
+	bool foldX = (Ny == 1)? true:false;
+	if (foldX)
+		{N1=1;N2=Nx;}
+	size_t Nv = N2/shift; // number of vectors
 
-	for (size_t iz=0; iz < Lz; iz++)
+	if (N2 % shift != 0) {
+		LogError("[fold] ERROR: fold dimension %zu not divisible by shift=%zu",
+		       N2, shift);
+		return;
+	}
+
+	LogMsg (VERB_NORMAL, "[fold] Calling foldField (%c) mAlign=%d, fSize=%d, shift=%d ", foldX? 'X':'Y', field->DataAlign(), fSize, shift);
+	LogFlush();
+	for (size_t iz=0; iz < Nz; iz++)
 	{
-		memcpy (mg1, &m[n2*iz], sizeof(cFloat)*n2);
-		memcpy (mg2, &v[n2*iz], sizeof(cFloat)*n2);
+		memcpy (mg1, &m[Nxy*iz], sizeof(cFloat)*Nxy);
+		memcpy (mg2, &v[Nxy*iz], sizeof(cFloat)*Nxy);
 
 		#pragma omp parallel for schedule(static)
-		for (size_t iy=0; iy < n1/shift; iy++)
-			for (size_t ix=0; ix < n1; ix++)
-				for (size_t sy=0; sy<shift; sy++)
+		for (size_t i_v=0; i_v < Nv; i_v++)
+			for (size_t ix=0; ix < N1; ix++)
+				for (size_t s=0; s<shift; s++)
 				{
-					size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-					size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+					size_t oIdx = (i_v+s*Nv)*N1 + ix;
+					size_t dIdx = iz*Nxy + i_v*N1*shift + ix*shift + s;
 
 					m[dIdx] = mg1[oIdx];
 					v[dIdx] = mg2[oIdx];
 				}
+
 	}
 
 	field->setFolded(true);
 	somethingdone = true;
-	LogMsg (VERB_HIGH, "[Folder] Field folded");
+	LogMsg (VERB_HIGH, "[fold] Field folded");
 
 
 	return;
 }
 
 template<typename cFloat>
-void	Folder::unfoldField()
+void Folder::unfoldField()
 {
-	if (!field->Folded() || field->Device() == DEV_GPU || n1 == n2 )
+	if (!field->Folded() || field->Device() == DEV_GPU)
 		return;
 
-	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
-	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
-	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
+	cFloat *mg1 = static_cast<cFloat *>((void *) field->mFrontGhost());
+	cFloat *mg2 = static_cast<cFloat *>((void *) field->mBackGhost());
+	cFloat *m   = static_cast<cFloat *>((void *) field->mStart());
+	cFloat *v   = static_cast<cFloat *>((void *) field->vStart());
 
 	fSize = field->DataSize();
-	shift = field->DataAlign()/fSize;
+	shift = field->DataAlign()/fSize;   // number of cFloat elements in a vector
 
-	LogMsg (VERB_NORMAL, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	size_t N1 = Nx, N2 = Ny;            // N2 = folded direction, N1 = non-folded direction
+	bool foldX = (Ny == 1);
 
-	for (size_t iz=0; iz < Lz; iz++)
+	if (foldX) {
+		N1 = 1;
+		N2 = Nx;
+	}
+
+	if (N2 % shift != 0) {
+		LogError("[unfold] ERROR: folded dimension %zu not divisible by shift=%zu",
+		       N2, shift);
+		return;
+	}
+
+	size_t Nv = N2/shift;               // number of vectors along folded direction
+
+	LogMsg(VERB_NORMAL,
+	       "[unfold] Calling unfoldField (%s) mAlign=%d, fSize=%d, shift=%zu",
+	       foldX ? "X" : "Y", field->DataAlign(), fSize, shift);
+
+	for (size_t iz = 0; iz < Nz; iz++)
 	{
-		memcpy (mg1, m + n2*iz, fSize*n2);
-		memcpy (mg2, v + n2*iz, fSize*n2);
+		memcpy(mg1, m + Nxy*iz, fSize*Nxy);
+		memcpy(mg2, v + Nxy*iz, fSize*Nxy);
 
 		#pragma omp parallel for schedule(static)
-		for (size_t iy=0; iy < n1/shift; iy++)
-			for (size_t ix=0; ix < n1; ix++)
-				for (size_t sy=0; sy<shift; sy++)
+		for (size_t i_v = 0; i_v < Nv; i_v++)
+			for (size_t ix = 0; ix < N1; ix++)
+				for (size_t s = 0; s < shift; s++)
 				{
-					size_t oIdx = iy*n1*shift + ix*shift + sy;
-					size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+					// source index inside folded z-slice: [i_v][ix][s]
+					size_t oIdx = i_v*N1*shift + ix*shift + s;
 
-					m[dIdx]    = mg1[oIdx];
-					v[dIdx]    = mg2[oIdx];
+					// destination index inside original z-slice
+					// original layout is [(i_v + s*Nv)][ix]
+					size_t dIdx = (i_v + s*Nv)*N1 + ix;
+
+					m[Nxy*iz + dIdx] = mg1[oIdx];
+					v[Nxy*iz + dIdx] = mg2[oIdx];
 				}
 	}
 
 	field->setFolded(false);
- 	LogMsg (VERB_HIGH, "[Folder] Field unfolded");
+	LogMsg(VERB_HIGH, "[unfold] Field unfolded");
 
 	return;
 }
 
 
-
-
-
-template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
-void	Folder::unfoldField2D (const size_t sZ)
+template<typename cFloat>   // Only rank 0 can do this; currently we quietly exit for any other rank.
+void Folder::unfoldField2D(const size_t sZ)
 {
-	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
+	if (sZ >= Nz || field->Device() == DEV_GPU)
 		return;
 
-	cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
-	cFloat *mg2 = static_cast<cFloat *> ((void *) field->mBackGhost());
-	cFloat *m   = static_cast<cFloat *> ((void *) field->mStart());
- 	cFloat *v   = static_cast<cFloat *> ((void *) field->vStart());
+	cFloat *mg1 = static_cast<cFloat *>((void *) field->mFrontGhost());
+	cFloat *mg2 = static_cast<cFloat *>((void *) field->mBackGhost());
+	cFloat *m   = static_cast<cFloat *>((void *) field->mStart());
+	cFloat *v   = static_cast<cFloat *>((void *) field->vStart());
 
-	if (!field->Folded() || n1 == n2 )
+	if (!field->Folded())
 	{
-		LogMsg (VERB_HIGH, "unfoldField2D called in an unfolded configuration, copying %d slice to ghost zone 1",sZ);LogFlush();
-		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
-		memcpy (mg2, &v[n2*sZ], sizeof(cFloat)*n2);
-		LogMsg (VERB_HIGH, "copying Done");LogFlush();
-		return;
-	}
-
-	fSize = field->DataSize();
-	shift = field->DataAlign()/fSize;
-
-	LogMsg (VERB_HIGH, "Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);LogFlush();
-
-	#pragma omp parallel for schedule(static)
-	for (size_t iy=0; iy < n1/shift; iy++)
-		for (size_t ix=0; ix < n1; ix++)
-			for (size_t sy=0; sy<shift; sy++)
-			{
-				size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-				size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
-				//this copies m into buffer 1
-				mg1[dIdx]	= m[oIdx];
-				//this copies v into buffer last
-				mg2[dIdx]	= v[oIdx];
-			}
-
-	LogMsg (VERB_HIGH, "Slice unfolded");LogFlush();
-	somethingdone = true;
-	return;
-}
-
-
-
-
-
-// unfolds a X=constant slice
-template<typename cFloat>
-void	Folder::unfoldField2DYZ (const size_t sX)
-{
-	if ((sX < 0) || (sX > field->Length()) || field->Device() == DEV_GPU)
-		return;
-
-	cFloat *mg1 = static_cast<cFloat *> (field->mFrontGhost());
-	cFloat *mg2 = static_cast<cFloat *> (field->mBackGhost());
-	cFloat *m  = static_cast<cFloat *> (field->mStart());
-	cFloat *v  = static_cast<cFloat *> (field->vStart());
-
-	int z0 = 0;
-	size_t zT = field->Depth();
-
-	if (!field->Folded() || n1 == n2)
-	{
-		LogMsg (VERB_HIGH, "[uf2X] unfoldField2D called in an unfolded configuration, copying data to ghost zones");
+		LogMsg(VERB_HIGH, "[ufXY] unfoldField2D called in an unfolded configuration, copying %zu slice to ghost zone 1", sZ);
 		LogFlush();
-		// memcpy ( m,        &m[(sZ+1)*n2], sizeof(cFloat)*n2);
-		// memcpy (&m[n2+n3], &v[sZ*n2],     sizeof(cFloat)*n2);
-		// in m ghost zone, y is permuted for x and z for y to ease the block saving
-		#pragma omp parallel for schedule(static)
-		for (size_t iy=0; iy < n1; iy++)
-			for (size_t iz=z0; iz < zT ; iz++)
-				{
-					size_t oIdx = iz*n2 + iy*n1 + sX;
-					size_t dIdx =         iz*n1 + iy ;
-					//this copies m into buffer 1
-					mg1[dIdx] = m[oIdx];
-					//this copies v into buffer last
-					mg2[dIdx]	= v[oIdx];
-				}
-				LogMsg (VERB_PARANOID, "[uf2X] done");
-				LogFlush();
+		memcpy(mg1, &m[Nxy*sZ], sizeof(cFloat)*Nxy);
+		memcpy(mg2, &v[Nxy*sZ], sizeof(cFloat)*Nxy);
+		LogMsg(VERB_HIGH, "[ufXY] copying Done");
+		LogFlush();
 		somethingdone = true;
 		return;
 	}
@@ -193,27 +162,219 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	fSize = field->DataSize();
 	shift = field->DataAlign()/fSize;
 
-	LogMsg (VERB_HIGH, "[uf2X] Calling unfoldField2D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
+	const bool foldX = (Ny == 1);
+	const size_t N1  = foldX ? 1  : Nx;
+	const size_t N2  = foldX ? Nx : Ny;
+
+	if (N2 % shift != 0)
+		return;
+
+	const size_t Nv = N2/shift;
+
+	LogMsg(VERB_HIGH, "[ufXY] Calling unfoldField2D (%s) mAlign=%d, fSize=%d, shift=%d",
+	       foldX ? "X" : "Y", field->DataAlign(), fSize, shift);
 	LogFlush();
 
-	#pragma omp parallel for schedule(static)
-	for (size_t iy=0; iy < n1/shift; iy++)
-		for (size_t sy=0; sy<shift; sy++)
-			for (size_t iz=z0; iz < zT ; iz++)
+	if (!foldX)
+	{
+		// Y-fold: folded layout [i_v][x][s], with y = i_v + s*Nv
+		#pragma omp parallel for schedule(static)
+		for (size_t i_v = 0; i_v < Nv; i_v++)
+			for (size_t ix = 0; ix < Nx; ix++)
+				for (size_t s = 0; s < shift; s++)
+				{
+					size_t iy   = i_v + s*Nv;
+					size_t oIdx = sZ*Nxy + i_v*N1*shift + ix*shift + s;
+					size_t dIdx = iy*Nx + ix;
+
+					mg1[dIdx] = m[oIdx];
+					mg2[dIdx] = v[oIdx];
+				}
+	}
+	else
+	{
+		// X-fold with Ny == 1: folded layout [i_v][s], with x = i_v + s*Nv
+		#pragma omp parallel for schedule(static)
+		for (size_t i_v = 0; i_v < Nv; i_v++)
+			for (size_t s = 0; s < shift; s++)
 			{
-				size_t oIdx = (iz)*n2 + iy*n1*shift + sX*shift + sy;
-				size_t dIdx = iz*n1 + (iy+sy*(n1/shift));
-				//this copies m into buffer 1
+				size_t ix   = i_v + s*Nv;
+				size_t oIdx = sZ*Nxy + i_v*N1*shift + s;   // N1 = 1
+				size_t dIdx = ix;                          // Ny = 1 -> y = 0
+
 				mg1[dIdx] = m[oIdx];
-				//this copies v into buffer last
 				mg2[dIdx] = v[oIdx];
 			}
-			return;
+	}
 
-	LogMsg (VERB_HIGH, "[uf2X] Slice unfolded");
+	LogMsg(VERB_HIGH, "[ufXY] Slice unfolded");
 	LogFlush();
 	somethingdone = true;
-	return;
+}
+
+
+
+
+
+/* unfolds a X = constant slice */
+
+template<typename cFloat>
+void Folder::unfoldField2DYZ(const size_t sX)
+{
+	if ((sX >= Nx) || field->Device() == DEV_GPU)
+		return;
+
+	cFloat *mg1 = static_cast<cFloat *>(field->mFrontGhost());
+	cFloat *mg2 = static_cast<cFloat *>(field->mBackGhost());
+	cFloat *m   = static_cast<cFloat *>(field->mStart());
+	cFloat *v   = static_cast<cFloat *>(field->vStart());
+
+	const size_t z0 = 0;
+	const size_t zT = Nz;
+
+	if (!field->Folded())
+	{
+		LogMsg(VERB_HIGH, "[ufYZ] unfoldField2D called in an unfolded configuration, copying %zu slice to ghost zone 1", sX);
+		#pragma omp parallel for schedule(static)
+		for (size_t iy = 0; iy < Ny; iy++)
+			for (size_t iz = z0; iz < zT; iz++)
+			{
+				size_t oIdx = iz*Nxy + iy*Nx + sX;
+				size_t dIdx = iz*Ny + iy;
+				mg1[dIdx] = m[oIdx];
+				mg2[dIdx] = v[oIdx];
+			}
+		LogMsg(VERB_HIGH, "[ufYZ] copying Done");
+		somethingdone = true;
+		return;
+	}
+
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
+
+	const bool foldX = (Ny == 1);
+
+	size_t N1 = foldX ? 1  : Nx;
+	size_t N2 = foldX ? Nx : Ny;
+
+	if (N2 % shift != 0)
+		return;
+
+	LogMsg(VERB_HIGH, "[ufYZ] Calling unfoldField2D (%s) mAlign=%d, fSize=%d, shift=%d",
+	       foldX ? "X" : "Y", field->DataAlign(), fSize, shift);
+	LogFlush();
+
+	const size_t Nv     = N2/shift;
+	const size_t ixBase = foldX ? 0 : sX;
+
+	#pragma omp parallel for schedule(static)
+	for (size_t i_v = 0; i_v < Nv; i_v++)
+		for (size_t s = 0; s < shift; s++)
+			for (size_t iz = z0; iz < zT; iz++)
+			{
+				size_t c = i_v + s*Nv;
+
+				if (foldX && c != sX)
+					continue;
+
+				size_t iy   = foldX ? 0 : c;
+				size_t oIdx = iz*Nxy + i_v*N1*shift + ixBase*shift + s;
+				size_t dIdx = iz*Ny + iy;
+
+				mg1[dIdx] = m[oIdx];
+				mg2[dIdx] = v[oIdx];
+			}
+
+	LogMsg(VERB_HIGH, "[ufYZ] Slice unfolded");
+	somethingdone = true;
+}
+
+
+template<typename cFloat>
+void Folder::unfoldField2DXZ(const size_t sY)
+{
+	if (sY >= Ny || field->Device() == DEV_GPU)
+		return;
+
+	cFloat *mg1 = static_cast<cFloat *>(field->mFrontGhost());
+	cFloat *mg2 = static_cast<cFloat *>(field->mBackGhost());
+	cFloat *m   = static_cast<cFloat *>(field->mStart());
+	cFloat *v   = static_cast<cFloat *>(field->vStart());
+
+	// ---- Unfolded case ----
+	if (!field->Folded())
+	{
+		LogMsg(VERB_HIGH, "[ufXZ] unfoldField2D called in an unfolded configuration, copying %zu slice to ghost zone 1", sY);
+		#pragma omp parallel for schedule(static)
+		for (size_t iz = 0; iz < Nz; iz++)
+			for (size_t ix = 0; ix < Nx; ix++)
+			{
+				size_t oIdx = iz*Nxy + sY*Nx + ix;
+				size_t dIdx = iz*Nx + ix;
+
+				mg1[dIdx] = m[oIdx];
+				mg2[dIdx] = v[oIdx];
+			}
+		LogMsg(VERB_HIGH, "[ufXZ] copying Done");
+		somethingdone = true;
+		return;
+	}
+
+	// ---- Folded case ----
+	fSize = field->DataSize();
+	shift = field->DataAlign()/fSize;
+
+	const bool foldX = (Ny == 1);
+	const size_t N1  = foldX ? 1  : Nx;
+	const size_t N2  = foldX ? Nx : Ny;
+
+	if (N2 % shift != 0)
+		return;
+
+	const size_t Nv = N2/shift;
+
+	LogMsg(VERB_HIGH, "[ufXZ] Calling unfoldField2D (%s) mAlign=%d, fSize=%d, shift=%d",
+	       foldX ? "X" : "Y", field->DataAlign(), fSize, shift);
+	LogFlush();
+
+	if (!foldX)
+	{
+		// Y-fold: folded layout [i_v][x][s], y = i_v + s*Nv
+		// We fix y = sY → need (i_v, s) such that:
+		//   sY = i_v + s*Nv
+		const size_t i_v = sY % Nv;
+		const size_t s   = sY / Nv;
+
+		#pragma omp parallel for schedule(static)
+		for (size_t iz = 0; iz < Nz; iz++)
+			for (size_t ix = 0; ix < Nx; ix++)
+			{
+				size_t oIdx = iz*Nxy + i_v*N1*shift + ix*shift + s;
+				size_t dIdx = iz*Nx + ix;
+
+				mg1[dIdx] = m[oIdx];
+				mg2[dIdx] = v[oIdx];
+			}
+	}
+	else
+	{
+		// X-fold (Ny == 1): trivial, y = 0 only
+		// so sY must be 0; just decode x = i_v + s*Nv
+		#pragma omp parallel for schedule(static)
+		for (size_t i_v = 0; i_v < Nv; i_v++)
+			for (size_t s = 0; s < shift; s++)
+				for (size_t iz = 0; iz < Nz; iz++)
+				{
+					size_t ix   = i_v + s*Nv;
+					size_t oIdx = iz*Nxy + i_v*N1*shift + s;
+					size_t dIdx = iz*Nx + ix;
+
+					mg1[dIdx] = m[oIdx];
+					mg2[dIdx] = v[oIdx];
+				}
+	}
+
+	somethingdone = true;
 }
 
 
@@ -222,7 +383,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	template<typename cFloat>
 	void	Folder::foldM2()
 	{
-		if (field->M2Folded() || field->Device() == DEV_GPU || n1 == n2)
+		if (field->M2Folded() || field->Device() == DEV_GPU || Nx == Nxy)
 			return;
 
 		cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -233,17 +394,17 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 
 		LogMsg (VERB_NORMAL, "Calling foldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
-		for (size_t iz=0; iz < Lz; iz++)
+		for (size_t iz=0; iz < Nz; iz++)
 		{
-			memcpy (mg1, &m[n2*iz], sizeof(cFloat)*n2);
+			memcpy (mg1, &m[Nxy*iz], sizeof(cFloat)*Nxy);
 
 			#pragma omp parallel for schedule(static)
-			for (size_t iy=0; iy < n1/shift; iy++)
-				for (size_t ix=0; ix < n1; ix++)
+			for (size_t iy=0; iy < Nx/shift; iy++)
+				for (size_t ix=0; ix < Nx; ix++)
 					for (size_t sy=0; sy<shift; sy++)
 					{
-						size_t oIdx = (iy+sy*(n1/shift))*n1 + ix;
-						size_t dIdx = iz*n2 + ((size_t) (iy*n1*shift + ix*shift + sy));
+						size_t oIdx = (iy+sy*(Nx/shift))*Nx + ix;
+						size_t dIdx = iz*Nxy + ((size_t) (iy*Nx*shift + ix*shift + sy));
 
 						m[dIdx] = mg1[oIdx];
 					}
@@ -258,7 +419,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 	template<typename cFloat>
 	void	Folder::unfoldM2()
 	{
-		if (!field->M2Folded() || field->Device() == DEV_GPU || n1 == n2)
+		if (!field->M2Folded() || field->Device() == DEV_GPU || Nx == Nxy)
 			return;
 
 		cFloat *mg1 = static_cast<cFloat *> ((void *) field->mFrontGhost());
@@ -269,17 +430,17 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 
 		LogMsg (VERB_NORMAL, "Calling unfoldField mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);
 
-		for (size_t iz=0; iz < Lz; iz++)
+		for (size_t iz=0; iz < Nz; iz++)
 		{
-			memcpy (mg1, m + n2*iz, fSize*n2);
+			memcpy (mg1, m + Nxy*iz, fSize*Nxy);
 
 			#pragma omp parallel for schedule(static)
-			for (size_t iy=0; iy < n1/shift; iy++)
-				for (size_t ix=0; ix < n1; ix++)
+			for (size_t iy=0; iy < Nx/shift; iy++)
+				for (size_t ix=0; ix < Nx; ix++)
 					for (size_t sy=0; sy<shift; sy++)
 					{
-						size_t oIdx = iy*n1*shift + ix*shift + sy;
-						size_t dIdx = iz*n2 + (iy+sy*(n1/shift))*n1 + ix;
+						size_t oIdx = iy*Nx*shift + ix*shift + sy;
+						size_t dIdx = iz*Nxy + (iy+sy*(Nx/shift))*Nx + ix;
 
 						m[dIdx]    = mg1[oIdx];
 					}
@@ -295,7 +456,7 @@ void	Folder::unfoldField2DYZ (const size_t sX)
 
 
 // CHECK IF NEEDED
-template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Lz
+template<typename cFloat>	// Only rank 0 can do this, and currently we quietly exist for any other rank. This can generate bugs if sZ > local Nz
 void	Folder::unfoldM22D (const size_t sZ)
 {
 	if ((sZ < 0) || (sZ > field->Depth()) || field->Device() == DEV_GPU)
@@ -307,7 +468,7 @@ void	Folder::unfoldM22D (const size_t sZ)
 	if (!field->M2Folded())
 	{
 		LogMsg (VERB_HIGH, "unfoldM22D called in an unfolded configuration, copying data to ghost zones");LogFlush();
-		memcpy (mg1, &m[n2*sZ], sizeof(cFloat)*n2);
+		memcpy (mg1, &m[Nxy*sZ], sizeof(cFloat)*Nxy);
 		return;
 	}
 
@@ -317,12 +478,12 @@ void	Folder::unfoldM22D (const size_t sZ)
 	LogMsg (VERB_HIGH, "Calling unfoldM22D mAlign=%d, fSize=%d, shift=%d", field->DataAlign(), fSize, shift);LogFlush();
 
 	#pragma omp parallel for schedule(static)
-	for (size_t iy=0; iy < n1/shift; iy++)
-		for (size_t ix=0; ix < n1; ix++)
+	for (size_t iy=0; iy < Nx/shift; iy++)
+		for (size_t ix=0; ix < Nx; ix++)
 			for (size_t sy=0; sy<shift; sy++)
 			{
-				size_t oIdx = (sZ)*n2 + iy*n1*shift + ix*shift + sy;
-				size_t dIdx = (iy+sy*(n1/shift))*n1 + ix;
+				size_t oIdx = (sZ)*Nxy + iy*Nx*shift + ix*shift + sy;
+				size_t dIdx = (iy+sy*(Nx/shift))*Nx + ix;
 				//this copies m into buffer 1
 				mg1[dIdx]	= m[oIdx];
 			}
@@ -344,7 +505,8 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 	if (field->Device() == DEV_GPU)
 		return;
 
-	LogMsg  (VERB_NORMAL, "[Fold] Called with m/v/m2 fields %d %d (folded/unfolded 1/0)",field->Folded(),field->M2Folded());
+	LogMsg  (VERB_NORMAL, "[Fold] Called with m/v %s and m2 %s",field->Folded()? "FOLDED":"UNFOLDED",field->M2Folded()? "FOLDED":"UNFOLDED");
+	LogFlush();
 
 	profiler::Profiler &prof = profiler::getProfiler(PROF_FOLD);
 
@@ -566,6 +728,63 @@ void	Folder::operator()(FoldType fType, size_t cZ)
 						case	FIELD_WKB:
 						case  FIELD_PAXION:
 							unfoldField2DYZ<float>(cZ);
+							break;
+
+						default:
+							break;
+					}
+
+					break;
+
+				default:
+					break;
+			}
+
+			break;
+
+		case	UNFOLD_SLICEXZ:
+
+			setName("Unfold slice XZ");
+			add(0., field->NX()*field->NZ()*field->DataSize()*2.e-9);
+
+			switch(field->Precision())
+			{
+				case	FIELD_DOUBLE:
+
+					switch (field->Field())
+					{
+						case	FIELD_SAXION:
+						case	FIELD_NAXION:
+							unfoldField2DXZ<complex<double>>(cZ);
+							break;
+
+						case	FIELD_AXION_MOD:
+						case	FIELD_AXION:
+						case	FIELD_WKB:
+						case  FIELD_PAXION:
+							unfoldField2DXZ<double>(cZ);
+							break;
+
+						default:
+							break;
+					}
+
+					break;
+
+				case	FIELD_SINGLE:
+
+					switch (field->Field())
+					{
+						case	FIELD_SAXION:
+						case	FIELD_NAXION:
+							unfoldField2DXZ<complex<float>>(cZ);
+							break;
+
+						case	FIELD_AXION_MOD:
+						case	FIELD_AXION:
+						case	FIELD_WKB:
+						case  FIELD_PAXION:
+							unfoldField2DXZ<float>(cZ);
 							break;
 
 						default:
