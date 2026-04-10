@@ -17,8 +17,8 @@ import h5py
 import subprocess
 
 
-def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
-    '''simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200)
+def simu(R,msa,N,Ng=2,Np=1,omp=1,plota=False,rescale=1,n_save=200,gpu=False,verb=0,options=''):
+    '''simu(R,msa,N,Np=1,Ng=2,plota=False,rescale=1,n_save=200)
     Prepares files for a NxN caxion3d simulation and runs then.
     ICs are prepared in python as a static loop of radious R
     where theta is calcualted from KR equivalent B-field
@@ -26,9 +26,13 @@ def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
     dx = 1, msa = equivalent to saxion mass
     The program currently works only in Minkowsky, FRW is easy to implement
     Ng is the number of neighbours in the laplacian
+    Np is the number of MPI ranks
+    omp is the number of OMP threads
     n_save is hoe many measurements are desired before collapse (approx(
     rescale does not work always, keep it to 1
-    plota gives some extra info'''
+    plota gives some extra info
+    options to give extra jaxion commands to creation and evolution like ' --p2DmapYZ '
+    '''
     if plota:
         print('Simulation')
     N_create = N//rescale
@@ -43,19 +47,19 @@ def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
 
     # create caxion3d generic ICs file
 
-    JAXI, GRID, N = generic_jax(msa_create,N_create,Ng=Ng,dump=0)
-    create_jax(GRID+JAXI)
+    JAXI, GRID, N = generic_jax(msa_create,N_create,Ng=1,Np=Np,gpu=False,verb=verb,options=options)
+    create_jax(GRID+JAXI,Np=Np,omp=omp)
 
     if plota:
         print('Copy into file', N_create,R_create,msa_create)
-    copyics(phi,filename='out/m/axion.00000',n=0)
+    copyics(np.transpose(phi,(1,0,2)),filename='out/m/axion.00000',n=0)
 
     if plota:
         print('Run jaxions', N,R,msa)
     # run jaxions!
     dump = int(N*np.sqrt(12)/n_save)
-    JAXI, GRID, N = generic_jax(msa,N,Ng=Ng,dump=dump)
-    run_jax(JAXI,N)
+    JAXI, GRID, N = generic_jax(msa,N,Ng=Ng,Np=Np,gpu=gpu,verb=verb,dump=dump,options=options)
+    run_jax(GRID+JAXI+' --index 0 ',Np=Np,omp=omp)
 
     # pack everything
 
@@ -73,8 +77,8 @@ def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
 def namea(N,msa,Ng):
     return 'data/out%d-%d-%d'%(N,1000*msa,Ng)
 
-def generic_jax(msa,N,Ng=2,dump=100,gpu=True,verb=0):
-    GRID=" --nx %d --nz %d --zgrid 1"%(N,N)
+def generic_jax(msa,N,Ng=2,Np=1,dump=100,gpu=True,verb=0,options=''):
+    GRID=" --nx %d --nz %d --zgrid %d"%(N,N//Np,Np)
     if gpu:
         SIMU=" --device gpu --measCPU  --steps 20000000 --wDz 1.0 --lap %d"%Ng
     else:
@@ -82,37 +86,25 @@ def generic_jax(msa,N,Ng=2,dump=100,gpu=True,verb=0):
     PHYS=" --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d "%(msa,N,N)
     INCO=" --ctype smooth --zi 0.1 --sIter 0 --nncore "
     # you might want to add plot --p2Dmap
-    OUTP=" --dump %d --meas 0 --p2DmapYZ  --nologmpi --verbose %d "%(dump,verb)
+    OUTP=" --dump %d --meas 0 --nologmpi --verbose %d %s"%(dump,verb,options)
     return SIMU+PHYS+INCO+OUTP, GRID, N
 
-def create_jax(JAXI):
-    #!rm axion.log.*
-    subprocess.run('rm axion.log.*', shell=True, capture_output=True, text=True)
-    # create any ICS
-    with open ('create.sh', 'w') as rsh:
-        rsh.write('''\
-        #! /bin/bash
-        mpirun -np 1 caxion3d %s --steps 0 --p3D 1 > log-create.txt
-        '''%(JAXI))
-    # !chmod u+x create.sh
-    # !./create.sh
-    subprocess.run('chmod u+x create.sh', shell=True, capture_output=True, text=True)
-    subprocess.run('./create.sh', shell=True, capture_output=True, text=True)
-    return JAXI
-
-def run_jax(JAXI,N,np=1):
+def run_jax(JAXI,Np=1,omp=1,r_file='run.sh',o_file='log-con.txt'):
     # run sim
     subprocess.run('rm out/m/axion.m.*', shell=True, capture_output=True, text=True)
-    with open ('run.sh', 'w') as rsh:
+    with open (r_file, 'w') as rsh:
         rsh.write('''\
         #! /bin/bash
-        export OMP_NUM_THREADS=1
-        mpirun -np %d caxion3d --nx %d --nz %d --zgrid %d %s --index 0 > log-con.txt
-        '''%(np,N,N//np,np,JAXI))
+        export OMP_NUM_THREADS=%d
+        mpirun -np %d caxion3d %s > %s
+        '''%(omp,Np,JAXI,o_file))
     # !chmod u+x run.sh
     # !./run.sh
-    subprocess.run('chmod u+x run.sh', shell=True, capture_output=True, text=True)
-    subprocess.run('./run.sh', shell=True, capture_output=True, text=True)
+    subprocess.run('chmod u+x %s'%r_file, shell=True, capture_output=True, text=True)
+    subprocess.run('./%s'%r_file, shell=True, capture_output=True, text=True)
+
+def create_jax(JAXI,Np=1,omp=1):
+    run_jax(JAXI+' --steps 0 --p3D 1 ',Np=Np,omp=omp,r_file='create.sh',o_file='log-create.txt')
 
 def copyics(phi,filename='out/m/axion.00000',n=0):
     Nz,Nx,c = phi.shape
