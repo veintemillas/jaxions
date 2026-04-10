@@ -62,424 +62,503 @@ LogMsg(VERB_HIGH,"[pX2D] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo
 		return ;
 
 //sponge
-const uint  nAbsZ   = 16;     // sponge width fast axis
-const uint  nAbsR   = 16;     // sponge width radial
-const float sigAbsZ = 0.5f;  // strength
-const float sigAbsR = 0.5f;
+	const uint  nAbsZ   = 16;     // sponge width fast axis
+	const uint  nAbsR   = 16;     // sponge width radial
+	const float sigAbsZ = 0.5f;  // strength
+	const float sigAbsR = 0.5f;
 
 	if (precision == FIELD_DOUBLE)
 	{
-#if	defined(__AVX512F__)
+	#if	defined(__AVX512F__)
 	#define	_MData_ __m512d
 	#define	step 4
-#elif	defined(__AVX__)
+	#elif	defined(__AVX__)
 	#define	_MData_ __m256d
 	#define	step 2
-#else
+	#else
 	#define	_MData_ __m128d
 	#define	step 1
-#endif
+	#endif
 
-		const size_t Nc    = step;      // 8 complex for AVX512, 4 for AVX, 2 for SSE
+		const size_t Nc    = step;      // 4 complex for AVX512, 2 for AVX, 1 for SSE2
 		const size_t Sfold = Nx/step;   // physical spacing between packed x values
 
-		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned (m_, Align);
-		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned (v_, Align);
-		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned (m2_, Align);
+		const double * __restrict__ m	= (const double * __restrict__) __builtin_assume_aligned(m_, Align);
+		double * __restrict__ v		= (double * __restrict__) __builtin_assume_aligned(v_, Align);
+		double * __restrict__ m2	= (double * __restrict__) __builtin_assume_aligned(m2_, Align);
 
 		const double dzc = dz*c;
 		const double dzd = dz*d;
-		const double R2 = R*R;
-		const double zQ = mA2*R2*R;
-		double gasa;
-		switch	(VQcd & V_QCD) {
-				case	V_QCD2:
-				gasa = (mA2*R2)/2;
-				break;
+		const double Rf  = R;
+		const double R2  = Rf*Rf;
+		const double zQ  = mA2*R2*Rf;
 
-				default:
-				case	V_QCDC:
+		double gasa;
+		switch (VQcd & V_QCD) {
+			case V_QCD2:
+				gasa = (mA2*R2)/2.;
+			break;
+
+			default:
+			case V_QCDC:
 				gasa = (mA2*R2*R2);
-				break;
+			break;
 		}
-		//For V_QCD2 & V_QCDC
+
 		const double zN = gasa;
 
-		const double R4 = R2*R2;
-		const double LaLa = LL*2./R4;
-		double GGGG = gamma/R;
+		const double R4    = R2*R2;
+		const double LaLa  = LL*2./R4;
+		double GGGG        = gamma/Rf;
 		if (deti > 0)
 			GGGG *= R2/deti;
-		const double mola = GGGG*dzc/2.;
+		const double mola  = GGGG*dzc/2.;
 		const double damp1 = 1./(1.+mola);
 		const double damp2 = (1.-mola)*damp1;
-		const double epsi = mola/(1.+mola);
+		const double epsi  = mola/(1.+mola);
 
 		_MData_ COL[NN], COD[NN];
-		for (size_t nv = 0; nv < NN ; nv++){
-			COL[nv]  = opCode(set1_pd, PC[nv]*ood2);
-			COD[nv]  = opCode(set1_pd, PCp[nv]*ood2);
+		for (size_t nv = 0; nv < NN; nv++) {
+			COL[nv] = opCode(set1_pd, PC[nv]*ood2);
+			COD[nv] = opCode(set1_pd, PCp[nv]*ood2);
 		}
 
-#if	defined(__AVX512F__)
+	#if	defined(__AVX512F__)
 		const size_t XC = (Nx<<2);
 
-		const double    __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
-		const double    __attribute__((aligned(Align))) zNAux[8] = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };	// to complex congugate
-		const double    __attribute__((aligned(Align))) zRAux[8] = { R , 0., R , 0., R , 0., R , 0. };	// Only real part
-		const double    __attribute__((aligned(Align))) cjgAux[8] = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
-		const long long __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5 };
-		const long long __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1 };
+		const double __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };
+		const double __attribute__((aligned(Align))) zNAux[8]  = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };
+		const double __attribute__((aligned(Align))) zRAux[8]  = { Rf, 0., Rf, 0., Rf, 0., Rf, 0. };
+		const double __attribute__((aligned(Align))) cjgAux[8] = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 
-		const _MInt_  vShRg = opCode(load_si512, shfRg);
-		const _MInt_  vShLf = opCode(load_si512, shfLf);
-#elif	defined(__AVX__)
+		const long long __attribute__((aligned(Align))) shfRg[8] = {6, 7, 0, 1, 2, 3, 4, 5};
+		const long long __attribute__((aligned(Align))) shfLf[8] = {2, 3, 4, 5, 6, 7, 0, 1};
+
+		const _MInt_ vShRg = opCode(load_si512, shfRg);
+		const _MInt_ vShLf = opCode(load_si512, shfLf);
+	#elif	defined(__AVX__)
 		const size_t XC = (Nx<<1);
 
-		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[4] = { zN,-zN, zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[4] = { R , 0., R , 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0., zQ, 0. };
+		const double __attribute__((aligned(Align))) zNAux[4]  = { zN,-zN, zN,-zN };
+		const double __attribute__((aligned(Align))) zRAux[4]  = { Rf, 0., Rf, 0. };
 		const double __attribute__((aligned(Align))) cjgAux[4] = { 1.,-1., 1.,-1. };
-#else
+	#else
 		const size_t XC = Nx;
 
-		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
-		const double __attribute__((aligned(Align))) zNAux[2] = { zN,-zN };	// to complex congugate
-		const double __attribute__((aligned(Align))) zRAux[2] = { R , 0. };	// Only real part
+		const double __attribute__((aligned(Align))) zQAux[2]  = { zQ, 0. };
+		const double __attribute__((aligned(Align))) zNAux[2]  = { zN,-zN };
+		const double __attribute__((aligned(Align))) zRAux[2]  = { Rf, 0. };
 		const double __attribute__((aligned(Align))) cjgAux[2] = { 1.,-1. };
-#endif
-		const _MData_ zQVec  = opCode(load_pd, zQAux);
-		const _MData_ zNVec  = opCode(load_pd, zNAux);
-		const _MData_ zRVec  = opCode(load_pd, zRAux);
-		const _MData_ cjg    = opCode(load_pd, cjgAux);
+	#endif
+
+		const _MData_ zQVec = opCode(load_pd, zQAux);
+		const _MData_ zNVec = opCode(load_pd, zNAux);
+		const _MData_ zRVec = opCode(load_pd, zRAux);
+		const _MData_ cjg   = opCode(load_pd, cjgAux);
 
 		const uint z0 = Vo/(Nx);
 		const uint zF = Vf/(Nx);
 
-	/* no chuncking tricks
-	xC, zC are coordinates of the complex field
-	idx is float, not complex<float> so it runs up to 2*Nx*Nz
+		const uint zTiles = (zF - z0 + bSizeZ - 1) / bSizeZ;
+		const uint xTiles = (Nx  + bSizeX - 1) / bSizeX;
 
-	we assume the field is folded as phi(x,z)
-	rephi(0,0) imphi(0,0) rephi(0+S,0) imphi(0+S,0) rephi(0+2S,0) imphi(0+2S,0) ... rephi(0+(F-1)S,0) imphi(0+(F-1)S,0)
-	rephi(1,0) imphi(1,0) rephi(1+S,0) imphi(1+S,0) rephi(1+2S,0) imphi(1+2S,0) ... rephi(1+(F-1)S,0) imphi(1+(F-1)S,0)
-	...
-	rephi(0,1) imphi(0,1) rephi(0+S,1) imphi(0+S,1) rephi(0+2S,1) imphi(0+2S,1) ... rephi(0+(F-1)S,1) imphi(0+(F-1)S,1)
-	F is the size of the vector (mAlign/datasize)
-	S is the vector index = (0...,Nx/F)
-	*/
 		#pragma omp parallel default(shared)
 		{
-			_MData_ tmp, mel, mPx, mMx, mPz,mMz, mPy, tmp2, lap;
+			_MData_ tmp, mel, mPx, mMx, mPz, mMz, mPy, tmp2, lap;
+
 			#pragma omp for collapse(2) schedule(static)
-			for (uint zC = z0; zC < zF; zC++) {							// Cylindrical RHO
-			 for (uint xC = 0; xC < Nx; xC += step) {				// Axial direction Z, vectorised // CHECK
+			for (uint zT = 0; zT < zTiles; zT++) {
+				for (uint xT = 0; xT < xTiles; xT++) {
 
-		size_t idxMx, idxPx, idxMz, idxPz, idxP0, idxV0;
-		size_t idx = zC*(Nx) + xC;
-		size_t zC_global = zC + Nz*commRank();
-		// if ((yC >= YC) || (zC >= zF)) continue;
+					const uint zBeg = z0 + zT * bSizeZ;
+					const uint zEnd = (zBeg + bSizeZ < zF) ? (zBeg + bSizeZ) : zF;
 
+					const uint xBeg = xT * bSizeX;
+					const uint xEnd = (xBeg + bSizeX < Nx) ? (xBeg + bSizeX) : Nx;
 
-		idxP0 =  (idx << 1);
-		idxV0 =  (idx-NSf) << 1;
-		mel = opCode(load_pd, &m[idxP0]);
-		lap = opCode(set1_pd, 0.0);
+					for (uint zC = zBeg; zC < zEnd; zC++) {
+						for (uint xC = xBeg; xC < xEnd; xC += step) {
 
-		for (size_t nv = 1; nv <= NN; nv++)
-		{
-			const _MData_ c_lap = COL[nv - 1];
-			const _MData_ c_der = COD[nv - 1];
+							size_t idxMx, idxPx, idxMz, idxPz, idxP0, idxV0;
+							size_t idx = zC * Nx + xC;
+							size_t zC_global = zC - NN + Nz * commRank();
 
-			/* ------------------ X direction (axial Zc) ------------------ */
+							idxP0 =  (idx << 1);
+							idxV0 =  ((idx - NSf) << 1);
 
-			if (xC >= nv*step) {
-				idxMx = ((idx - nv*step) << 1);
-				mMx   = opCode(load_pd, &m[idxMx]);
-			} else {
-				// left boundary at x=0
-				// BC: phi(-x) = -phi*(x)
+							mel = opCode(load_pd, &m[idxP0]);
+							lap = opCode(set1_pd, 0.0);
 
-				size_t idxRef = ((zC*Nx + nv) << 1);
-				_MData_ vRef  = opCode(load_pd, &m[idxRef]);
+							const uint j        = xC / step;
+							const uint zFastMax = j + (Nc - 1)*Sfold;
 
-				size_t idxInt = ((zC*Nx + (Sfold - nv)) << 1);
-				_MData_ vInt  = opCode(load_pd, &m[idxInt]);
+							for (size_t nv = 1; nv <= NN; nv++)
+							{
+								const _MData_ c_lap = COL[nv - 1];
+								const _MData_ c_der = COD[nv - 1];
 
-				alignas(Align) double bxRef[2*step];
-				alignas(Align) double bxInt[2*step];
-				alignas(Align) double bxOut[2*step];
+								/* ------------------ X direction (axial Zc) ------------------ */
 
-				opCode(store_pd, bxRef, vRef);
-				opCode(store_pd, bxInt, vInt);
+								if (xC >= nv*step) {
+									idxMx = ((idx - nv*step) << 1);
+									mMx   = opCode(load_pd, &m[idxMx]);
+								} else {
+									const size_t idxWrap = ((zC*Nx + (xC + (Sfold - nv)*step)) << 1);
 
-				for (size_t q = 0; q < Nc; q++) {
-					const uint xq = xC + q*Sfold;
+									alignas(Align) double bxWrap[2*step];
+									alignas(Align) double bxOut [2*step];
 
-					if (xq < nv) {
-						double re = bxRef[2*q + 0];
-						double im = bxRef[2*q + 1];
+									opCode(store_pd, bxWrap, opCode(load_pd, &m[idxWrap]));
 
-						re = -re;   // imag unchanged for -conj
+									for (size_t q = 0; q < Nc; q++) {
+										const uint xq = j + q*Sfold;
 
-						bxOut[2*q + 0] = re;
-						bxOut[2*q + 1] = im;
-					} else {
-						bxOut[2*q + 0] = bxInt[2*q + 0];
-						bxOut[2*q + 1] = bxInt[2*q + 1];
+										if (xq < nv) {
+											const uint xRef = nv - xq;
+
+											const uint jRef = xRef % Sfold;
+											const uint qRef = xRef / Sfold;
+
+											const size_t idxRefScalar = ((zC*Nx + jRef*step + qRef) << 1);
+
+											double re = m[idxRefScalar + 0];
+											double im = m[idxRefScalar + 1];
+
+											// BC: phi(-x) = phi*(x)
+											bxOut[2*q + 0] =  re;
+											bxOut[2*q + 1] = -im;
+										} else {
+											bxOut[2*q + 0] = bxWrap[2*(q-1) + 0];
+											bxOut[2*q + 1] = bxWrap[2*(q-1) + 1];
+										}
+									}
+
+									mMx = opCode(load_pd, bxOut);
+								}
+
+								if (j + nv < Sfold) {
+									idxPx = ((idx + nv*step) << 1);
+									mPx   = opCode(load_pd, &m[idxPx]);
+								} else {
+									const uint jWrap = j + nv - Sfold;
+
+									alignas(Align) double bxWrap[2*step];
+									alignas(Align) double bxOut [2*step];
+									alignas(Align) double bxMel [2*step];
+
+									const size_t idxWrap = ((zC*Nx + jWrap*step) << 1);
+									opCode(store_pd, bxWrap, opCode(load_pd, &m[idxWrap]));
+									opCode(store_pd, bxMel, mel);
+
+									for (size_t q = 0; q < Nc; q++) {
+										const uint xq = j + q*Sfold;
+										const uint xp = xq + nv;
+
+										if (xp >= Nx) {
+											bxOut[2*q + 0] = bxMel[2*q + 0];
+											bxOut[2*q + 1] = bxMel[2*q + 1];
+										} else {
+											bxOut[2*q + 0] = bxWrap[2*(q+1) + 0];
+											bxOut[2*q + 1] = bxWrap[2*(q+1) + 1];
+										}
+									}
+
+									mPx = opCode(load_pd, bxOut);
+								}
+
+								/* ------------------ Z direction (cylindrical rho) ------------------ */
+
+								if (zC_global >= nv) {
+									idxMz = ((idx - nv*Sf) << 1);
+									mMz   = opCode(load_pd, &m[idxMz]);
+								} else {
+									idxMz = ((idx + (nv - zC_global)*Sf) << 1);
+									mMz   = opCode(load_pd, &m[idxMz]);
+								}
+
+								if (zC_global + nv < Tz) {
+									idxPz = ((idx + nv*Sf) << 1);
+									mPz   = opCode(load_pd, &m[idxPz]);
+								} else {
+									mPz = mel;
+								}
+
+								/* ------------------ Cylindrical XZ operator ------------------ */
+
+								if (zC_global == 0) {
+									tmp = opCode(add_pd, mPx, mMx);
+									tmp = opCode(add_pd, tmp, opCode(add_pd, mPz, mMz));
+									tmp = opCode(add_pd, tmp, opCode(add_pd, mPz, mMz));
+									tmp = opCode(add_pd, tmp, opCode(mul_pd, mel, opCode(set1_pd, -6.0)));
+									tmp = opCode(mul_pd, tmp, c_lap);
+								} else {
+									tmp = opCode(add_pd, mPx, mMx);
+									tmp = opCode(add_pd, tmp, opCode(add_pd, mPz, mMz));
+									tmp = opCode(add_pd, tmp, opCode(mul_pd, mel, opCode(set1_pd, -4.0)));
+									tmp = opCode(mul_pd, tmp, c_lap);
+
+									tmp2 = opCode(sub_pd, mPz, mMz);
+									tmp2 = opCode(mul_pd, tmp2,
+											opCode(mul_pd, c_der, opCode(set1_pd, 1.0/double(zC_global))));
+
+									tmp = opCode(add_pd, tmp, tmp2);
+								}
+
+								lap = opCode(add_pd, lap, tmp);
+							} // end neighbour loop
+
+							mPy = opCode(mul_pd, mel, mel);
+
+	#if	defined(__AVX__)
+							mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b0101), mPy);
+	#else
+							mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b0001), mPy);
+	#endif
+
+							/* mMx = acceleration */
+							if (VQcd & V_EVOL_THETA)
+								mMx = lap;
+							else
+								switch (VQcd & V_PQ) {
+									case V_PQ1:
+										mMx = opCode(sub_pd, lap,
+													opCode(mul_pd, mel,
+														opCode(sub_pd,
+															opCode(mul_pd,
+																opCode(sub_pd, mPx, opCode(set1_pd, R2)),
+																opCode(set1_pd, LL)),
+															opCode(set1_pd, A))));
+									break;
+
+									case V_PQ3:
+										tmp2 = opCode(sub_pd, mPx, opCode(set1_pd, R2));
+										tmp  = opCode(mul_pd, opCode(set1_pd, 2.*R2),
+													opCode(sub_pd, opCode(set1_pd, 1.0),
+														opCode(div_pd, opCode(set1_pd, Rf),
+															opCode(sqrt_pd, mPx))));
+										tmp = opCode(kkk_pd, tmp, tmp2, mPx, opCode(set1_pd, R2));
+
+										mMx = opCode(sub_pd, lap,
+													opCode(mul_pd, mel,
+														opCode(sub_pd,
+															opCode(mul_pd, tmp, opCode(set1_pd, LL)),
+															opCode(set1_pd, A))));
+									break;
+
+									case V_PQ2:
+										mMx = opCode(sub_pd, lap,
+													opCode(mul_pd, mel,
+														opCode(sub_pd,
+															opCode(mul_pd,
+																opCode(sub_pd,
+																	opCode(mul_pd, mPx, mPx),
+																	opCode(set1_pd, R4)),
+																opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
+															opCode(set1_pd, A))));
+									break;
+								}
+
+							/* mMx = mMx + VQCD part */
+							if (!(VQcd & V_EVOL_RHO))
+								switch (VQcd & V_QCD) {
+									case V_QCD1:
+										mMx = opCode(add_pd, mMx, zQVec);
+									break;
+
+									case V_QCDV:
+										mMx = opCode(add_pd, mMx,
+													opCode(mul_pd, opCode(set1_pd, zQ),
+														opCode(sub_pd, zRVec, mel)));
+									break;
+
+									case V_QCD2:
+										mMx = opCode(add_pd, mMx, opCode(mul_pd, zNVec, mel));
+									break;
+
+									case V_QCDC:
+										tmp2 = opCode(div_pd,
+													opCode(vqcd0_pd, mel),
+													opCode(sqrt_pd,
+														opCode(mul_pd, mPx,
+															opCode(mul_pd, mPx, mPx))));
+										mMx = opCode(add_pd, mMx, opCode(mul_pd, zNVec, tmp2));
+									break;
+
+									default:
+									case V_QCDL:
+										tmp2 = opCode(div_pd,
+													opCode(vqcd0_pd, mel),
+													opCode(sqrt_pd,
+														opCode(mul_pd, mPx,
+															opCode(mul_pd, mPx, mPx))));
+										mMx = opCode(add_pd, mMx, opCode(mul_pd, zNVec, tmp2));
+									break;
+
+									case V_QCD0:
+									break;
+								}
+
+							mPy = opCode(load_pd, &v[idxV0]);
+
+							/* Project accelerations and velocities if needed */
+							if (VQcd & V_EVOL_THETA)
+							{
+	#if	defined(__AVX__)
+								lap = opCode(permute_pd, opCode(mul_pd, mel, cjg), 0b0101);
+								auto vecmv = opCode(mul_pd, mMx, lap);
+								auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b0101), vecmv);
+								vecmv = opCode(mul_pd, mPy, lap);
+								vecmv = opCode(add_pd, opCode(permute_pd, vecmv, 0b0101), vecmv);
+	#else
+								lap = opCode(mul_pd, mel, cjg);
+								lap = opCode(shuffle_pd, lap, lap, 0b0001);
+								auto vecmv = opCode(mul_pd, mMx, lap);
+								auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b0001), vecmv);
+								vecmv = opCode(mul_pd, mPy, lap);
+								vecmv = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b0001), vecmv);
+	#endif
+								mMx = opCode(add_pd,
+											opCode(div_pd, opCode(mul_pd, lap, vecma), mPx),
+											opCode(mul_pd, mel, opCode(set1_pd, A)));
+
+								mPy = opCode(add_pd,
+											opCode(div_pd, opCode(mul_pd, lap, vecmv), mPx),
+											opCode(mul_pd, mel, opCode(set1_pd, Rp)));
+							}
+
+							/* update velocities with/without damping */
+							const bool inRhoSponge = (zC_global >= Tz - nAbsR);
+							const bool inZSponge   = (zFastMax   >= Nx - nAbsZ);
+
+							switch (VQcd & V_DAMP) {
+
+								default:
+								case V_NONE:
+									if (!(inRhoSponge || inZSponge)) {
+	#if defined(__AVX512F__) || defined(__FMA__)
+										tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
+	#else
+										tmp = opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc)));
+	#endif
+									} else {
+										alignas(Align) double sigAux[2*step];
+
+										double sigRho = 0.0;
+										if (inRhoSponge) {
+											const double u = double(zC_global - (Tz - nAbsR)) / double(nAbsR);
+											sigRho = sigAbsR * u * u;
+										}
+
+										for (size_t q = 0; q < Nc; q++) {
+											double sig = sigRho;
+
+											if (inZSponge) {
+												const uint zFast = j + q*Sfold;
+												if (zFast >= Nx - nAbsZ) {
+													const double u = double(zFast - (Nx - nAbsZ)) / double(nAbsZ);
+													sig += sigAbsZ * u * u;
+												}
+											}
+
+											sigAux[2*q + 0] = sig;
+											sigAux[2*q + 1] = sig;
+										}
+
+										const _MData_ sigVec = opCode(load_pd, sigAux);
+										const _MData_ one    = opCode(set1_pd, 1.0);
+										const _MData_ half   = opCode(set1_pd, 0.5);
+										const _MData_ dzv    = opCode(set1_pd, dzc);
+
+										const _MData_ molaS  = opCode(mul_pd, half, opCode(mul_pd, sigVec, dzv));
+										const _MData_ damp1S = opCode(div_pd, one, opCode(add_pd, one, molaS));
+										const _MData_ damp2S = opCode(mul_pd, opCode(sub_pd, one, molaS), damp1S);
+
+										tmp = opCode(add_pd,
+													opCode(mul_pd, mPy, damp2S),
+													opCode(mul_pd, opCode(mul_pd, mMx, dzv), damp1S));
+									}
+								break;
+
+								case V_DAMP_RHO:
+								{
+									tmp = opCode(mul_pd, mel, mPy);
+	#if	defined(__AVX__)
+									auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b0101), tmp);
+	#else
+									auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b0001), tmp);
+	#endif
+
+									tmp = opCode(mul_pd, mel, mMx);
+	#if	defined(__AVX__)
+									auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b0101), tmp);
+	#else
+									auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b0001), tmp);
+	#endif
+
+	#if	defined(__AVX512F__) || defined(__FMA__)
+									tmp = opCode(sub_pd,
+										opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
+										opCode(mul_pd,
+											opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+											opCode(fmadd_pd,
+												opCode(sub_pd, vecmv, opCode(mul_pd, mPx, opCode(set1_pd, Rp))),
+												opCode(set1_pd, 2.0),
+												opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+	#else
+									tmp = opCode(sub_pd,
+										opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
+										opCode(mul_pd,
+											opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
+											opCode(add_pd,
+												opCode(mul_pd,
+													opCode(sub_pd, vecmv, opCode(mul_pd, mPx, opCode(set1_pd, Rp))),
+													opCode(set1_pd, 2.0)),
+												opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
+	#endif
+								}
+								break;
+
+								case V_DAMP_ALL:
+	#if	defined(__AVX512F__) || defined(__FMA__)
+									tmp = opCode(fmadd_pd, mPy, opCode(set1_pd, damp2),
+											opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
+	#else
+									tmp = opCode(add_pd,
+											opCode(mul_pd, mPy, opCode(set1_pd, damp2)),
+											opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
+	#endif
+								break;
+							}
+
+							if (VQcd & V_EVOL_RHO)
+							{
+								auto vecmv = opCode(mul_pd, mel, tmp);
+	#if	defined(__AVX__)
+								auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b0101), vecmv);
+	#else
+								auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b0001), vecmv);
+	#endif
+								tmp = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
+							}
+
+	#if	defined(__AVX512F__) || defined(__FMA__)
+							mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
+	#else
+							mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
+	#endif
+
+							opCode(store_pd,  &v[idxV0], tmp);
+							opCode(stream_pd, &m2[idxP0], mPx);
+						}
 					}
 				}
-
-				mMx = opCode(load_pd, bxOut);
 			}
-
-			if (xC + nv*step < Nx) {
-				idxPx = ((idx + nv*step) << 1);
-				mPx   = opCode(load_pd, &m[idxPx]);
-			} else {
-				// outer axial boundary, temporary absorbing placeholder
-				mPx = mel;
-			}
-
-			/* ------------------ Z direction (cylindrical rho) ------------------ */
-
-			if (zC_global >= nv) {
-				idxMz = ((idx - nv*Sf) << 1);
-				mMz   = opCode(load_pd, &m[idxMz]);
-			} else {
-				// reflection across rho=0
-				idxMz = ((idx + (nv - zC_global)*Sf) << 1);
-				mMz   = opCode(load_pd, &m[idxMz]);
-			}
-
-			if (zC_global + nv < Tz) {
-				idxPz = ((idx + nv*Sf) << 1);
-				mPz   = opCode(load_pd, &m[idxPz]);
-			} else {
-				// outer radial boundary placeholder
-				mPz = mel;
-			}
-
-			/* ------------------ Cylindrical XZ operator ------------------ */
-
-			if (zC_global == 0) {
-				tmp = opCode(add_pd, mPx, mMx);
-				tmp = opCode(add_pd, tmp, opCode(add_pd, mPz, mMz));
-				tmp = opCode(add_pd, tmp, opCode(add_pd, mPz, mMz));
-				tmp = opCode(add_pd, tmp, opCode(mul_pd, mel, opCode(set1_pd, -6.0)));
-				tmp = opCode(mul_pd, tmp, c_lap);
-			} else {
-				tmp = opCode(add_pd, mPx, mMx);
-				tmp = opCode(add_pd, tmp, opCode(add_pd, mPz, mMz));
-				tmp = opCode(add_pd, tmp, opCode(mul_pd, mel, opCode(set1_pd, -4.0)));
-				tmp = opCode(mul_pd, tmp, c_lap);
-
-				tmp2 = opCode(sub_pd, mPz, mMz);
-				tmp2 = opCode(mul_pd, tmp2, opCode(div_pd, c_der, opCode(set1_pd, double(zC_global))));
-
-				tmp = opCode(add_pd, tmp, tmp2);
-			}
-
-			lap = opCode(add_pd, lap, tmp);
-		} // end neighbour loop
-
-			mPy = opCode(mul_pd, mel, mel);
-
-#if	defined(__AVX512F__)
-			mPx = opCode(add_pd, opCode(castsi512_pd, opCode(shuffle_epi32, opCode(castpd_si512, mPy), _MM_PERM_BADC)), mPy);
-#elif	defined(__AVX__)
-			mPx = opCode(add_pd, opCode(permute_pd, mPy, 0b00000101), mPy);
-#else
-			mPx = opCode(add_pd, opCode(shuffle_pd, mPy, mPy, 0b00000001), mPy);
-#endif
-
-			/* mMx = acceleration
-						 = lap - Phi *
-									( PQ-part
-										- R''p/R )
-			*/
-			if (VQcd & V_EVOL_THETA)
-				mMx = lap;
-			else
-				switch	(VQcd & V_PQ) {
-					case V_PQ1:
-						mMx = opCode(sub_pd, lap,
-										opCode(mul_pd, mel,
-											opCode(sub_pd,
-												opCode(mul_pd, opCode(sub_pd, mPx, opCode(set1_pd, R2)),
-													opCode(set1_pd, LL)),
-												opCode(set1_pd, A))));
-					break;
-					case V_PQ3:
-						// a = p^2 - R^2
-						tmp2 = opCode(sub_pd, mPx, opCode(set1_pd, R2));
-						// b = 2R^2(1-R/p)
-						tmp  = opCode(mul_pd, opCode(set1_pd, 2*R2),
-										opCode(sub_pd,opCode(set1_pd, 1.0),
-											opCode(div_pd,opCode(set1_pd, R),
-												opCode(sqrt_pd, mPx))));
-						// tmp(cuadratic) if p > R and tmp2(quartic) if p < R
-						tmp = opCode(kkk_pd,tmp,tmp2,mPx,opCode(set1_pd, R2));
-
-						mMx = opCode(sub_pd, lap,
-										opCode(mul_pd, mel,
-											opCode(sub_pd,
-												opCode(mul_pd, tmp,
-													opCode(set1_pd, LL)),
-												opCode(set1_pd, A))));
-					break;
-					case V_PQ2:
-						mMx = opCode(sub_pd, lap,
-										opCode(mul_pd, mel,
-											opCode(sub_pd,
-												opCode(mul_pd,
-													opCode(sub_pd, opCode(mul_pd, mPx, mPx), opCode(set1_pd, R4)),
-														opCode(mul_pd, mPx, opCode(set1_pd, LaLa))),
-											opCode(set1_pd, A))));
-					break;
-				}
-			/* mMx = mMx + VQCD part */
-			if ( !(VQcd & V_EVOL_RHO) )
-				switch	(VQcd & V_QCD) {
-					case V_QCD1:
-						mMx = opCode(add_pd, mMx, zQVec);
-					break;
-					case V_QCDV:
-						mMx = opCode(add_pd, mMx, opCode(mul_pd, opCode(set1_pd, zQ), opCode(sub_pd, zRVec, mel)));
-					break;
-					case V_QCD2:
-						mMx = opCode(sub_pd, mMx, opCode(mul_pd,zNVec,mel));
-					break;
-					case V_QCDC:
-						tmp2 = opCode(div_pd,
-										opCode(vqcd0_pd,mel),
-											opCode(sqrt_pd, opCode(mul_pd, mPx, opCode(mul_pd, mPx, mPx) ) ) ); //
-						mMx = opCode(add_pd, mMx, opCode(mul_pd, zNVec, tmp2));
-					break;
-					case V_QCDL:
-					/* Compute explicitly each arctan */
-					break;
-
-					default:
-					case V_QCD0:
-					break;
-				}
-
-			mPy = opCode(load_pd, &v[idxV0]);
-
-			/* Proyect accelerations (mMx) and velocities (mPy) if needed */
-
-			if (VQcd & V_EVOL_THETA)
-			{
-#if	defined(__AVX__)// || defined(__AVX512F__)
-				//0.-(-mi mr)
-				lap = opCode(permute_pd, opCode(mul_pd, mel, cjg), 0b01010101);
-				//1.- (ar ai)*(-mi mr) = (-ar*mi ai*mr)
-				auto vecmv = opCode(mul_pd, mMx, lap);
-				//2.- (-ar*mi ai*mr, -ar*mi ai*mr)
-				auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b01010101), vecmv);
-				//3.- (vr vi)*(-mi mr) = (-vr*mi vi*mr)
-				vecmv = opCode(mul_pd, mPy, lap);
-				//4.- (-vr*mi vi*mr, -vr*mi vi*mr)
-				vecmv = opCode(add_pd, opCode(permute_pd, vecmv, 0b01010101), vecmv);
-#else
-				lap = opCode(mul_pd, mel, cjg);
-				lap = opCode(shuffle_pd, lap, lap, 0b00000001);
-				auto vecmv = opCode(mul_pd, mMx, lap);
-				auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
-				vecmv = opCode(mul_pd, mPy, lap);
-				vecmv = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
-#endif
-				//5.- (-ar*mi ai*mr, -ar*mi ai*mr)*(-mi mr)/|m|^2 + R''/R (mr mi)
-				mMx   = opCode(add_pd,
-									opCode(div_pd, opCode(mul_pd, lap, vecma), mPx),
-										opCode(mul_pd, mel, opCode(set1_pd, A)));
-				//6.- (-vr*mi vi*mr, -vr*mi vi*mr)*(-mi mr)/|m|^2 + R/R (mr mi)
-				mPy   = opCode(add_pd,
-									opCode(div_pd, opCode(mul_pd, lap, vecmv), mPx),
-										opCode(mul_pd, mel, opCode(set1_pd, Rp)));
-			}
-
-			switch	(VQcd & V_DAMP) {
-
-				default:
-				case	V_NONE:
-#if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy);
-#else
-				tmp = opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc)));
-#endif
-				break;
-
-				case	V_DAMP_RHO:
-				{
-					//New implementation
-					tmp = opCode(mul_pd, mel, mPy);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecmv = opCode(add_pd, opCode(permute_pd, tmp, 0b00000101), tmp);
-#else
-					auto vecmv = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
-#endif
-
-					// vecma = MA
-					// mel = M, mMx = A
-					tmp = opCode(mul_pd, mel, mMx);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-					auto vecma = opCode(add_pd, opCode(permute_pd, tmp, 0b00000001), tmp);
-#else
-					auto vecma = opCode(add_pd, opCode(shuffle_pd, tmp, tmp, 0b00000001), tmp);
-#endif
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-// A*dzc + mPy - epsi (M/|M|^2)(2*(vecmv-|M|^2 R'/R) +vecma dzc)
-tmp = opCode(sub_pd,
-	opCode(fmadd_pd, mMx, opCode(set1_pd, dzc), mPy),
-	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-		opCode(fmadd_pd, opCode(sub_pd,vecmv,opCode(mul_pd,mPx,opCode(set1_pd, Rp))), opCode(set1_pd, 2.0), opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
-#else
-tmp = opCode(sub_pd,
-	opCode(add_pd, mPy, opCode(mul_pd, mMx, opCode(set1_pd, dzc))),
-	opCode(mul_pd, opCode(mul_pd, opCode(set1_pd, epsi), opCode(div_pd, mel, mPx)),
-		opCode(add_pd,
-			opCode(mul_pd, opCode(sub_pd,vecmv,opCode(mul_pd,mPx,opCode(set1_pd, Rp))), opCode(set1_pd, 2.0)),
-			opCode(mul_pd, vecma, opCode(set1_pd, dzc)))));
-#endif
-				}
-				break;
-
-				case	V_DAMP_ALL:
-#if	defined(__AVX512F__) || defined(__FMA__)
-				tmp = opCode(fmadd_pd, mPy, opCode(set1_pd, damp2), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
-#else
-				tmp = opCode(add_pd, opCode(mul_pd, mPy, opCode(set1_pd, damp2)), opCode(mul_pd, mMx, opCode(set1_pd, damp1*dzc)));
-#endif
-				break;
-			}
-
-			if (VQcd & V_EVOL_RHO)
-			{
-				auto vecmv = opCode(mul_pd, mel, tmp);
-#if	defined(__AVX__)// || defined(__AVX512F__)
-				auto vecma = opCode(add_pd, opCode(permute_pd, vecmv, 0b00000101), vecmv);
-#else
-				auto vecma = opCode(add_pd, opCode(shuffle_pd, vecmv, vecmv, 0b00000001), vecmv);
-#endif
-				tmp   = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
-			}
-
-#if	defined(__AVX512F__) || defined(__FMA__)
-			mPx = opCode(fmadd_pd, tmp, opCode(set1_pd, dzd), mel);
-#else
-			mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
-#endif
-			opCode(store_pd,  &v[idxV0], tmp);
-			opCode(stream_pd, &m2[idxP0], mPx);
-		    }
-		  }
 		}
-#undef	_MData_
-#undef	step
-	} else if (precision == FIELD_SINGLE) {
+	#undef	_MData_
+	#undef	step
+	}
+	else if (precision == FIELD_SINGLE) {
 #if	defined(__AVX512F__)
 	#define	_MData_ __m512
 	#define	step 8
