@@ -18,10 +18,10 @@ import subprocess
 
 
 def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
-    '''simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200) 
+    '''simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200)
     Prepares files for a NxN caxion3d simulation and runs then.
     ICs are prepared in python as a static loop of radious R
-    where theta is calcualted from KR equivalent B-field 
+    where theta is calcualted from KR equivalent B-field
     and rho according to the distance from the string and msa
     dx = 1, msa = equivalent to saxion mass
     The program currently works only in Minkowsky, FRW is easy to implement
@@ -42,9 +42,9 @@ def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
     phi   = phiics(theta,msa_create)
 
     # create caxion3d generic ICs file
-    
-    JAXI = generic_jax(msa_create,N_create,Ng=Ng,dump=0)
-    create_jax(JAXI)
+
+    JAXI, GRID, N = generic_jax(msa_create,N_create,Ng=Ng,dump=0)
+    create_jax(GRID+JAXI)
 
     if plota:
         print('Copy into file', N_create,R_create,msa_create)
@@ -54,11 +54,11 @@ def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
         print('Run jaxions', N,R,msa)
     # run jaxions!
     dump = int(N*np.sqrt(12)/n_save)
-    JAXI = generic_jax(msa,N,Ng=Ng,dump=dump)
-    run_jax(JAXI)
-    
-    # pack everything 
-    
+    JAXI, GRID, N = generic_jax(msa,N,Ng=Ng,dump=dump)
+    run_jax(JAXI,N)
+
+    # pack everything
+
     result = subprocess.run('mv axion.log.* out', shell=True, capture_output=True, text=True)
     # print("STDOUT:", result.stdout,result.stderr)
     result = subprocess.run('mv log-c*.txt out', shell=True, capture_output=True, text=True)
@@ -73,14 +73,17 @@ def simu(R,msa,N,Ng=2,plota=False,rescale=1,n_save=200):
 def namea(N,msa,Ng):
     return 'data/out%d-%d-%d'%(N,1000*msa,Ng)
 
-def generic_jax(msa,N,Ng=2,dump=100):
-    GRID=" --size %d --depth 1 --zgrid 1"%N
-    SIMU=" --device gpu --measCPU  --steps 20000000 --wDz 1.0 --lap %d"%Ng
+def generic_jax(msa,N,Ng=2,dump=100,gpu=True,verb=0):
+    GRID=" --nx %d --nz %d --zgrid 1"%(N,N)
+    if gpu:
+        SIMU=" --device gpu --measCPU  --steps 20000000 --wDz 1.0 --lap %d"%Ng
+    else:
+        SIMU=" --steps 20000000 --wDz 1.0 --lap %d"%Ng
     PHYS=" --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d "%(msa,N,N)
     INCO=" --ctype smooth --zi 0.1 --sIter 0 --nncore "
     # you might want to add plot --p2Dmap
-    OUTP=" --dump %d --meas 128 --p2DmapYZ  --nologmpi --verbose 0 "%dump
-    return GRID+SIMU+PHYS+INCO+OUTP     
+    OUTP=" --dump %d --meas 0 --p2DmapYZ  --nologmpi --verbose %d "%(dump,verb)
+    return SIMU+PHYS+INCO+OUTP, GRID, N
 
 def create_jax(JAXI):
     #!rm axion.log.*
@@ -96,15 +99,16 @@ def create_jax(JAXI):
     subprocess.run('chmod u+x create.sh', shell=True, capture_output=True, text=True)
     subprocess.run('./create.sh', shell=True, capture_output=True, text=True)
     return JAXI
-    
-def run_jax(JAXI):    
+
+def run_jax(JAXI,N,np=1):
     # run sim
     subprocess.run('rm out/m/axion.m.*', shell=True, capture_output=True, text=True)
     with open ('run.sh', 'w') as rsh:
         rsh.write('''\
         #! /bin/bash
-        mpirun -np 1 caxion3d %s --index 0 > log-con.txt 
-        '''%(JAXI))
+        export OMP_NUM_THREADS=1
+        mpirun -np %d caxion3d --nx %d --nz %d --zgrid %d %s --index 0 > log-con.txt
+        '''%(np,N,N//np,np,JAXI))
     # !chmod u+x run.sh
     # !./run.sh
     subprocess.run('chmod u+x run.sh', shell=True, capture_output=True, text=True)
@@ -117,13 +121,14 @@ def copyics(phi,filename='out/m/axion.00000',n=0):
     data = f1['/m']       # load the data
     # paste field
     # save
+    print('data length',len(data[...] ))
     data[...] = np.reshape(phi,Nz*Nx*2)
     # velocity field (MINKOWSKY!)
     vata = f1['/v']       # load the data
     vata[...] = np.reshape(phi*n,Nz*Nx*2)
-    f1.close()     
+    f1.close()
 
-# Auxiliary 
+# Auxiliary
 def buildr(mf):
     N = pa.gm(mf[0],'N')
     n = np.arange(N)
@@ -136,14 +141,14 @@ def buildr(mf):
     return t,r,g
 
 def findmer(li,ftype='re_complex'):
-    """ 
-    # finds the coordinate where 
+    """
+    # finds the coordinate where
     # a real part of a complex field changes sign
-    # a real field changes by pi 
+    # a real field changes by pi
     # in a 1D array """
     R = -1
     m = -1
-    if ftype=='re_complex':        
+    if ftype=='re_complex':
         for i in range(len(li)-1):
             if ((li[i+1]>0) & (li[i]<0)):
                 m = i
@@ -173,9 +178,9 @@ def rhof(r):
     return (0.43*r +0.164*r2+0.036*r4)/(1+0.039*r+0.2*r2+0.036*r4)
 
 def phiics(theta,msa):
-    """ 
+    """
     phiics(theta,msa)
-    # takes a theta loop IC field and returns 
+    # takes a theta loop IC field and returns
     # phi = rho exp(i theta)
     # with the rho field adjusted to minimise the EOM
     # currently, curvature is not taken into account
@@ -190,18 +195,18 @@ def phiics(theta,msa):
     phi[:,:,0]=rho*np.cos(theta)
     phi[:,:,1]=rho*np.sin(theta)
     return phi
-    
+
 def thetaics(nrh,nz,R,plota=False,readIC=True):
     """ thetaics(nrh,nz,R,plota=False,readIC=True)
-    # creates a nrh x nz map with the theta field 
-    # of a loop of radious R 
+    # creates a nrh x nz map with the theta field
+    # of a loop of radious R
     # By integrating static B-field along z
     # code units dx=1, v=1
     plota = true plots the field
     readIC = False forces creation of ICS, otherwise, they are uploaded if existing
-    
+
     """
-    
+
     name = 'theta_%dx%dR%d.pkl'%(nrh,nz,R)
     b_create = True
     # check if ICs are already present
@@ -220,40 +225,40 @@ def thetaics(nrh,nz,R,plota=False,readIC=True):
         # fields
         theta = np.zeros((nz,nrh))
         Bzfie = np.zeros((nz,nrh))
-        
+
         # set initial conditions at z=0
         theta[0,(rh<=R)] = np.pi
-        
+
         RH,Z = np.meshgrid(rh,z)
-        
+
         # read interpolatio table
         with open('aux/tableszetat1t2_4.pkl', 'rb') as f:
             dica = pickle.load(f)
-            
+
         zeta,t1,t2 = dica['zeta'],dica['t1'],dica['t2']
         f1 = CubicSpline(zeta, t1)
         f2 = CubicSpline(zeta, t2)
-        
+
         def I1f(z):
             return (3*np.pi/4*z + 2**1.5*z**3/(1-z**2)) * f1(z)
         def I2f(z):
             return (np.pi + 2**1.5*z**2/(1-z**2)) * f2(z)
-    
+
         def Bz(RH,Z,R):
             ZETA = 2*R*RH/(R**2 + RH**2 + Z**2)
             return (R*RH*I1f(ZETA)-R**2*I2f(ZETA))/(R**2+RH**2+Z**2)**(3/2)
         # precalculation B
         Bzfie = Bz(RH,Z,R)
-    
+
         def filltheta(theta,Bzfie,z,rh,R,Z,threshold=10,calculate=True):
             check = np.zeros((len(rh)))
             for i in range(nrh):
-                for j in range(1,nz-1):
+                for j in range(1,nz):
                     if (rh[i]-R)**2+z[j]**2 > threshold**2:
                         # Far from the string we sum B fields
-                        theta[j,i] = theta[j-1,i]+Bzfie[j-1:j+1,i].mean()*(Z[j,i]-Z[j-1,i])
+                        theta[j,i] = theta[j-1,i]+(Bzfie[j-1,i]+Bzfie[j,i])*(Z[j,i]-Z[j-1,i])/2
                     else:
-                        # Close to the string 
+                        # Close to the string
                         if calculate:
                             # calculate numerically the integrals
                             def Bzr(zi,Ri):
@@ -264,7 +269,7 @@ def thetaics(nrh,nz,R,plota=False,readIC=True):
                         else:
                             # or use the simple analytical expression
                             theta[j,i] = np.arctan2(z[j],(rh[i]-R))
-        
+
             return check
 
         # this finally calculates theta
@@ -291,7 +296,7 @@ def thetaics(nrh,nz,R,plota=False,readIC=True):
 # save them for further use
 def buildf1f2(ninterp=10000):
     name = 'tableszetat1t2_%d.pkl'%np.log10(ninterp)
-    
+
     def I1i(x,zet):
         return np.cos(x)/(1-zet*np.cos(x))**(3/2)
     def I2i(x,zet):
@@ -306,7 +311,7 @@ def buildf1f2(ninterp=10000):
         I1t[i] = res1
         res2, err2 = quad(I2i, 0, np.pi,args=(zeta[i]))
         I2t[i] = res2
-    
+
     t1,t2 = np.ones(len(zeta)+1),np.ones(len(zeta)+1)
     zc = zeta[1:]
     t1[1:-1] = (I1t[1:]/(3*np.pi/4*zc + 2**1.5*zc**3/(1-zc**2)))
@@ -315,7 +320,7 @@ def buildf1f2(ninterp=10000):
     # f1 = CubicSpline(zeta, t1)
     # f2 = CubicSpline(zeta, t2)
     dica = {'zeta':zeta,'t1':t1,'t2':t2}
-    
+
     file = open('aux/'+name,'wb')
     pickle.dump(dica, file)
     file.close()
