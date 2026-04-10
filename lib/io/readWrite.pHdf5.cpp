@@ -3888,7 +3888,9 @@ void	writeMapHdf5s3	(Scalar *axion, int slicenumbertoprint)
 
 
 /* This prints YZ maps, but now in 2D Cylindrical syms Y=1,
-but we can use it for XZ */
+but we can use it for XZ
+if slicenumbertoprint = 0,1,etc... we print one X slice,
+if slicenumbertoprint = -1 we print one line*/
 
 void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 {
@@ -3907,25 +3909,39 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 
 
 	/* total values to be written & chunk size & contiguous dim & MPI dim */
-	hsize_t total,slab, N1;
+	hsize_t total,slab, N1, stride = 1;
+	char groupPath[16] = "/mapp";
 	char mCh[16] = "/mapp/m";
 	char vCh[16] = "/mapp/v";
 	/* will copy from */
 	char *m_cp,*v_cp;
+	m_cp = static_cast<char *>(axion->mFrontGhost());
+	v_cp = static_cast<char *>(axion->mBackGhost());
+
 #ifdef USE_2DCYL
+	m_cp = static_cast<char *>(axion->mStart());
+	v_cp = static_cast<char *>(axion->vStart());
+	if (slicenumbertoprint>=0){
 	N1     = axion->NX();
 	slicenumber = slicenumbertoprint>N1? 0 : slicenumbertoprint;
 	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file XZ (%dx%d) (Y-slice %d)",N1, axion->TZ(),slicenumber);
 	munge(UNFOLD_ALL, slicenumber);
-	m_cp = static_cast<char *>(axion->mStart());
-	v_cp = static_cast<char *>(axion->vStart());
+	}
+	else
+	{
+		N1=1;
+		stride = axion->NX(); // we will not unfold
+		slicenumber =0;
+		LogMsg (VERB_NORMAL, "[wm2] Writing 1D line to Hdf5 measurement file X =0 (length TZ= %lu)",axion->TZ());
+		strcpy(groupPath, "/chunk");
+		strcpy(mCh, "/chunk/m");
+		strcpy(vCh, "/chunk/v");
+	}
 #else
 	N1     = axion->NY();
 	slicenumber = slicenumbertoprint>N1? 0 : slicenumbertoprint;
 	LogMsg (VERB_NORMAL, "[wm2] Writing 2D maps to Hdf5 measurement file YZ (%dx%d) (X-slice %d)",N1, axion->TZ(),slicenumber);
 	munge(UNFOLD_SLICEYZ, slicenumber);
-	m_cp = static_cast<char *>(axion->mFrontGhost());
-	v_cp = static_cast<char *>(axion->mBackGhost());
 #endif
 
 	total  = N1*axion->TZ();
@@ -3954,15 +3970,16 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 		dataType = H5T_NATIVE_FLOAT;
 	}
 
+
 	/*	Create a group for map data if it doesn't exist	*/
-	auto status = H5Lexists (meas_id, "/mapp", H5P_DEFAULT);
+	auto status = H5Lexists (meas_id, groupPath, H5P_DEFAULT);
 
 	if (!status)
-		group_id = H5Gcreate2(meas_id, "/mapp", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		group_id = H5Gcreate2(meas_id, groupPath, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else {
 		if (status > 0) {
-			group_id = H5Gopen2(meas_id, "/mapp", H5P_DEFAULT);		// Group exists
-			LogMsg (VERB_HIGH, "[wm2] Group /map exists");
+			group_id = H5Gopen2(meas_id, groupPath, H5P_DEFAULT);		// Group exists
+			LogMsg (VERB_HIGH, "[wm2] Group %s exists",groupPath);
 		} else {
 			LogError ("[wm2] Error: can't check whether group /mapp exists");
 			prof.stop();
@@ -4042,8 +4059,8 @@ void	writeMapHdf5s2	(Scalar *axion, int slicenumbertoprint)
 
 		LogMsg (VERB_PARANOID, "[wm2] line zDim %d ",zDim);	LogFlush();
 		/*	Write raw data	recall slab = sizeN*2*/
-		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, m_cp +N1*zDim*dataSize);
-		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, v_cp +N1*zDim*dataSize);
+		auto mErr = H5Dwrite (mSet_id, dataType, memSpace, mSpace, H5P_DEFAULT, m_cp +stride*N1*zDim*dataSize);
+		auto vErr = H5Dwrite (vSet_id, dataType, memSpace, vSpace, H5P_DEFAULT, v_cp +stride*N1*zDim*dataSize);
 
 		if ((mErr < 0) || (vErr < 0))
 		{
