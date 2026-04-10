@@ -28,13 +28,19 @@
 		unsigned int	ySize;
 		unsigned int	zSize;
 
+		bool legacySquareLayout;
+		unsigned int alignBlock;
+
 		bool		isTuned;
 		bool		isGpu;
+
+		bool adaptiveMode;
+		unsigned int tunePhase;   // 0 = coarse X, 1 = coarse Y, 2 = coarse Z, 3 = refine X, ...
 
 		public:
 
 				Tunable() noexcept : name(""), gFlops(0.), gBytes(0.), xBlock(0), yBlock(0), zBlock(0), xBest(0), yBest(0), zBest(0),
-						     ySize(0), zSize(0), isTuned(false), isGpu(false) {}
+						     ySize(0), zSize(0), isTuned(false), isGpu(false), legacySquareLayout(false), alignBlock(1) {}
 
 		double		GFlops () const noexcept { return gFlops; }
 		double		GBytes () const noexcept { return gBytes; }
@@ -64,91 +70,101 @@
 		void		UpdateBestBlock() noexcept { xBest  = xBlock; yBest  = yBlock; zBest  = zBlock; }
 		void		SetBestBlock()    noexcept { xBlock = xBest;  yBlock = yBest;  zBlock = zBest;  }
 
-		void		AdvanceBlockSize() noexcept {
+		void AdvanceBlockSize() noexcept {
+			if (legacySquareLayout) {
+				// old square code unchanged
+				if (isGpu) {
+					do {
+						if (xBlock < xMax) {
+							do {
+								xBlock++;
+							} while ((xSize % xBlock) != 0);
+						} else {
+							xBlock = 7;
+							do {
+								xBlock++;
+							} while ((xSize % xBlock) != 0);
 
-			if (isGpu) {
+							if (yBlock < yMax) {
+								do {
+									yBlock++;
+								} while ((ySize % yBlock) != 0);
+							} else {
+								isTuned = true;
+							}
+						}
+					} while (!isTuned && TotalThreads() > ((size_t) maxThreadsPerBlock()));
+				} else {
+					if (yBlock < ySize) {
+						do {
+							yBlock++;
+						} while ((ySize % yBlock) != 0);
+					} else {
+						yBlock = 3;
+						do {
+							yBlock++;
+						} while ((ySize % yBlock) != 0);
+
+						if (zBlock < zSize) {
+							do {
+								zBlock++;
+							} while ((zSize % zBlock) != 0);
+						} else {
+							isTuned = true;
+						}
+					}
+				}
+				return;
+			}
+
+			// generic path: no exact divisibility required
+			if (!isGpu) {
+					unsigned int step = (alignBlock == 0) ? 1 : alignBlock;
+					unsigned int yStep = (ySize == 1) ? 1 : step;
+
+					if (xBlock + step <= xMax) {
+						xBlock += step;
+					} else {
+						xBlock = step;
+
+						if (yBlock + yStep <= yMax) {
+							yBlock += yStep;
+						} else {
+							yBlock = (ySize == 1) ? 1 : yStep;
+
+							if (zBlock < zMax) {
+								zBlock++;
+							} else {
+								isTuned = true;
+							}
+						}
+					}
+
+					return;
+				}
+
+				// keep GPU generic for now
 				do {
 					if (xBlock < xMax) {
-						do {
-							xBlock++;
-						}	while ((xSize % xBlock) != 0);
+						xBlock++;
 					} else {
-						xBlock = 7;
-						do {
-							xBlock++;
-						}	while ((xSize % xBlock) != 0);
-						
+						xBlock = 1;
 
 						if (yBlock < yMax) {
-							do {
-								yBlock++;
-							}	while ((ySize % yBlock) != 0);
+							yBlock++;
 						} else {
-							isTuned = true;
+							yBlock = 1;
+
+							if (zBlock < zMax) {
+								zBlock++;
+							} else {
+								isTuned = true;
+							}
 						}
 					}
-				}	while (!isTuned && TotalThreads() > ((size_t) maxThreadsPerBlock()));
-			} else {
-				if (yBlock < ySize) {
-					do {
-						yBlock++;
-					}	while ((ySize % yBlock) != 0);
-				} else {
-					yBlock = 3;
-					do {
-						yBlock++;
-					}	while ((ySize % yBlock) != 0);
-
-					if (zBlock < zSize) {
-						do {
-							zBlock++;
-						}	while ((zSize % zBlock) != 0);
-					} else {
-						isTuned = true;
-					}
-				}
-			}
+				} while (!isTuned && TotalThreads() > ((size_t) maxThreadsPerBlock()));
 		}
-/*
-		void		AdvanceBlockSize(std::vector<int> allowedSizes1, std::vector<int> allowedSizes2) {
 
-			static int idx1 = 0, idx2 = 0;
-
-			if (isGpu) {
-				do {
-					if ((xBlock < xMax) && (idx1 < allowedSizes1.size() - 1)  {
-						idx1++;
-						xBlock = allowedSizes1[idx1];
-					} else {
-						idx1   = 0;
-						xBlock = allowedSizes1[0];
-
-						if ((yBlock < yMax) && (idx2 < allowedSizes2.size() - 1)){
-							idx2++;
-							yBlock = allowedSizes2[idx2];
-						} else {
-							isTuned = true;
-						}
-					}
-				}	while (!isTuned && TotalThreads() > ((size_t) maxThreadsPerBlock()));
-			} else {
-				if ((yBlock < ySize) && (idx1 < allowedSizes1.size() - 1)) {
-					idx1++;
-					yBlock = allowedSizes1[idx1];
-				} else {
-					idx1   = 0;
-					yBlock = allowedSizes1[0];
-
-					if ((zBlock < zSize) && (idx2 < allowedSizes2.size() - 1)) {
-						idx2++;
-						zBlock = allowedSizes2[idx2];
-					} else {
-						isTuned = true;
-					}
-				}
-			}
-		}
-*/
 		std::string	Name   () const noexcept { return name; }
 
 		void		reset  ()                     { gFlops = 0.; gBytes = 0.; }
@@ -157,26 +173,43 @@
 		void		setName   (const char * newName) { name.assign(newName); }
 		void		appendName(const char * appName) { name += std::string(appName); }
 
-		void		InitBlockSize(unsigned int Lx, unsigned int Lz, size_t dataSize, size_t alignSize, bool gpu = false) {
-			int tmp   = alignSize/dataSize;
-			int shift = 0;
-			//size_t lV = SIZE_MAX;
+		void InitBlockSize(unsigned int Nx, unsigned int Ny, unsigned int Nz,
+                   size_t dataSize, size_t alignSize, bool gpu) {
 
-			isGpu = gpu;
+		unsigned int tmp = (dataSize == 0) ? 1 : alignSize / dataSize;
+		if (tmp == 0) tmp = 1;
+		alignBlock = tmp;
 
+		bool validPackedShape =
+			(Nx % tmp == 0) &&
+			((Ny == 1) || (Ny % tmp == 0));
+
+		if (!validPackedShape)
+			LogError("Error: lattice shape incompatible with packed alignment requirements");
+
+		// bool useLegacySquare = validPackedShape && (Nx == Ny) && (Ny > 1);
+		// bool usePacked1D     = validPackedShape && (Ny == 1);
+		// bool useAdaptiveRect = validPackedShape && (Nx != Ny) && (Ny > 1);
+
+		int shift = 0;
+
+		isGpu = gpu;
+		legacySquareLayout = (Nx == Ny);
+
+		if (legacySquareLayout) {
+			// Keep old behaviour exactly
 			if (!isGpu) {
-
 				while (tmp != 1) {
 					shift++;
 					tmp >>= 1;
 				}
 
-				xSize = (Lx << shift);
+				xSize = (Nx << shift);
 				xMax  = xSize;
-				ySize = (Lx >> shift);
+				ySize = (Nx >> shift);
 				yMax  = ySize;
-				zSize = Lz;
-				zMax  = Lz;
+				zSize = Nz;
+				zMax  = Nz;
 
 				xBest = xBlock = xMax;
 				yBest = yBlock = 2;
@@ -184,27 +217,57 @@
 			} else {
 				size_t xTmp = maxThreadsPerDim(0);
 				size_t yTmp = maxThreadsPerDim(1);
-				//auto zTmp = 1;
-				//lV = maxThreadsPerBlock();
 
-				xMax = (Lx*Lx > xTmp) ? xTmp : Lx*Lx;
-				yMax = (Lz > yTmp) ? yTmp : Lz;
+				xMax = (Nx*Ny > xTmp) ? xTmp : Nx*Ny;
+				yMax = (Nz > yTmp) ? yTmp : Nz;
 				zMax = 1;
 
-				xSize = Lx*Lx;
-				ySize = Lz;
+				xSize = Nx*Ny;
+				ySize = Nz;
 				zSize = 1;
 
-				if (yTmp*maxGridSize(2) < Lz)
+				if (yTmp*maxGridSize(2) < Nz)
 					LogError("Error: not enough threads on gpu to accomodate z-dimension");
 
 				xBest = xBlock = 4;
 				yBest = yBlock = 1;
 				zBest = zBlock = 1;
 			}
+		} else {
+			// Generic path for arbitrary Nx,Ny,Nz
+			xSize = Nx;
+			ySize = Ny;
+			zSize = Nz;
 
-			isTuned = false;
+			if (!isGpu) {
+
+				xSize = Nx; ySize = Ny; zSize = Nz;
+				xMax = Nx; yMax = Ny; zMax = Nz;
+				xBest = xBlock = tmp; zBest = zBlock = 1;
+				yBest = yBlock = Ny == 1? 1 : tmp;
+
+			} else {
+				size_t xTmp = maxThreadsPerDim(0);
+				size_t yTmp = maxThreadsPerDim(1);
+				size_t zTmp = maxThreadsPerDim(2);
+
+				xMax = (Nx > xTmp) ? xTmp : Nx;
+				yMax = (Ny > yTmp) ? yTmp : Ny;
+				zMax = (Nz > zTmp) ? zTmp : Nz;
+
+				xBest = xBlock = (xMax >= 4) ? 4 : xMax;
+				yBest = yBlock = 1;
+				zBest = zBlock = 1;
+			}
 		}
+
+		isTuned = false;
+	}
+
+	void InitBlockSize(unsigned int Lx, unsigned int Lz, size_t dataSize, size_t alignSize, bool gpu = false) {
+		InitBlockSize(Lx, Lx, Lz, dataSize, alignSize, gpu);
+	}
+
 	};
 
 
