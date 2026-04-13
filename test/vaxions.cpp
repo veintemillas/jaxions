@@ -206,8 +206,9 @@ int	main (int argc, char *argv[])
 	// INITIAL MEASUREMENT
 	//--------------------------------------------------
 
-
-	ninfa.measdata |= MEAS_NNSPEC ;
+#ifndef USE_2DCYL
+	ninfa.measdata |= MEAS_NNSPEC;
+#endif
 	if (!restart_flag && (fIndex == -1)){
 		index = fIndex2;
 		LogOut("First measurement file %d \n",index);
