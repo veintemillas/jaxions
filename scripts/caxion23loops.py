@@ -33,8 +33,8 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     verb     : jaxions verbosity level
     options  : extra jaxion commands, e.g. ' --p2DmapYZ'
     outdir   : output directory name.
-               If None (default), saved to data/outN-1000*msa-Ng.
-               If given, saved to that name in the current directory.
+               If None (default), saved to data/outN-1000*msa-Ng in cwd.
+               If given, saved to that name directly in cwd.
     n_save   : approximate number of measurements before collapse
     rescale  : create ICs at 1/rescale resolution, then run at full N
                (keep at 1 for now to avoid problems)
@@ -53,7 +53,7 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     phi   = phiics(theta, msa_create)
 
     # Build and run ICs-only step (creates the HDF5 skeleton)
-    JAXI, GRID, _ = generic_jax(msa_create, N_create, Ng=1, Np=Np,
+    JAXI, GRID, _ = generic_jax(msa_create, N_create, R=R_create, Ng=1, Np=Np,
                                  gpu=False, verb=verb, dump=1, options=options)
     create_jax(GRID + JAXI, Np=Np, omp=omp)
 
@@ -65,7 +65,7 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
         print('Run jaxions', N, R, msa)
 
     dump = int(N * np.sqrt(12) / n_save)
-    JAXI, GRID, _ = generic_jax(msa, N, Ng=Ng, Np=Np, gpu=gpu, verb=verb,
+    JAXI, GRID, _ = generic_jax(msa, N, R=R, Ng=Ng, Np=Np, gpu=gpu, verb=verb,
                                  dump=dump, options=options)
     run_jax(GRID + JAXI + ' --index 0 ', Np=Np, omp=omp)
 
@@ -103,20 +103,23 @@ def namea(N, msa, Ng):
 # jaxions command-line helpers  (MPI / OMP / GPU-aware)
 # ---------------------------------------------------------------------------
 
-def generic_jax(msa, N, Ng=2, Np=1, dump=100, gpu=True, verb=0, options=''):
+def generic_jax(msa, N, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0, options=''):
     '''Build jaxions command strings.
 
     Returns (JAXI, GRID, N) where:
         JAXI : simulation + physics + IC + output flags
         GRID : grid/decomposition flags
         N    : grid size (passed through for convenience)
+    R    : loop radius in code units; sets zf=1.7*R to stop shortly after collapse.
+           If None, falls back to zf=N (run to end of box).
     '''
+    zf = int(1.7 * R) if R is not None else N
     GRID = " --nx %d --nz %d --zgrid %d" % (N, N // Np, Np)
     if gpu:
         SIMU = " --device gpu --measCPU  --steps 20000000 --wDz 1.0 --lap %d" % Ng
     else:
         SIMU = " --steps 20000000 --wDz 1.0 --lap %d" % Ng
-    PHYS = " --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d " % (msa, N, N)
+    PHYS = " --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d " % (msa, N, zf)
     INCO = " --ctype smooth --zi 0.1 --sIter 0 --nncore "
     OUTP = " --dump %d --meas 0 --nologmpi --verbose %d %s" % (dump, verb, options)
     return SIMU + PHYS + INCO + OUTP, GRID, N
