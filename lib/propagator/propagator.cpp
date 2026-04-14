@@ -826,16 +826,25 @@ void tunePropagator (Scalar *field) {
 		        "[tpA] stats min %.3f max %.3f mean %.3f median %.3f std %.3f",
 		        pstats.minTime, pstats.maxTime, pstats.meanTime, pstats.medianTime, pstats.stdTime);
 
-		if (nEvals >= prop->AdaptiveMaxEvals())
+		int Onepassonly = true;
+		if(Onepassonly){
+			// Do only one coarse region + one interpolation pass.
+			// Stop before the next refined-region coarse scan.
 			stop = true;
-		else if (prop->RegionAtMinResolution(R))
-			stop = true;
-		else if (prevBestTime != std::numeric_limits<size_t>::max() &&
-		         relImprove < prop->AdaptiveStopRelImprove())
-			stop = true;
-		else
-			R = prop->RefineAroundBest(R, globalBest, nextRegionId++);
-	}
+		} else
+		{
+			if (nEvals >= prop->AdaptiveMaxEvals())
+				stop = true;
+			else if (prop->RegionAtMinResolution(R))
+				stop = true;
+			else if (prevBestTime != std::numeric_limits<size_t>::max() &&
+			         relImprove < prop->AdaptiveStopRelImprove())
+				stop = true;
+			else
+				R = prop->RefineAroundBest(R, globalBest, nextRegionId++);
+		} 
+
+	} // end while
 
 	if (myRank == 0 && tlog != nullptr)
 		fclose(tlog);
