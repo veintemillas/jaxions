@@ -507,13 +507,11 @@ void	resetPropagator(Scalar *field) {
 }
 
 
+void tunePropagator (Scalar *field) {
 
-
-void	tunePropagator (Scalar *field) {
-
-	// Hash CPU model so we don't mix different cache files
 	LogMsg(VERB_NORMAL,"\n");
- 	LogMsg(VERB_NORMAL,"[tp] Tune propagator!\n");
+	LogMsg(VERB_NORMAL,"[tpA] Adaptive tune propagator!\n");
+
 	if (pType & PROP_SPEC)
 		return;
 	if (pType & PROP_FSPEC)
@@ -522,7 +520,6 @@ void	tunePropagator (Scalar *field) {
 		return;
 
 	int  myRank   = commRank();
-	//int  nThreads = 1;
 	bool newFile  = false, found = false;
 
 	if (prop == nullptr) {
@@ -531,11 +528,7 @@ void	tunePropagator (Scalar *field) {
 	}
 
 	Profiler &prof = getProfiler(PROF_TUNER);
-
-	std::chrono::high_resolution_clock::time_point start, end;
-	size_t bestTime, lastTime, cTime;
-
-	LogMsg (VERB_HIGH, "[tp] Started tuner");
+	LogMsg (VERB_HIGH, "[tpA] Started adaptive tuner");
 	prof.start();
 
 	if (field->Device() == DEV_CPU)
@@ -543,9 +536,13 @@ void	tunePropagator (Scalar *field) {
 	else
 		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), true);
 
-		LogMsg(VERB_HIGH,"[tp] Initial block Size %d %d %d",prop->BlockX(),prop->BlockY(),prop->BlockZ());
-	/*	Check for a cache file	*/
+	LogMsg(VERB_HIGH,"[tpA] Initial block Size %u %u %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
 
+	prop->SetAdaptiveStopRelImprove(0.01);
+	prop->SetAdaptiveCoarsePoints(5);
+	prop->SetAdaptiveMaxEvals(100);
+
+	/* cache lookup */
 	if (myRank == 0) {
 		FILE *cacheFile;
 		char tuneName[2048];
@@ -558,81 +555,67 @@ void	tunePropagator (Scalar *field) {
 #endif
 
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
-LogMsg(VERB_HIGH,"[tp] new cache!!");
-LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
+			LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
 			newFile = true;
 		} else {
-			int	     rMpi, rThreads;
+			int          rMpi, rThreads;
 			size_t       rNx, rNy, rNz, Nghost;
-			unsigned int rBx, rBy, rBz, fType, myField ;
-			if      (field->Field() == FIELD_SAXION)
-				myField = 0;
-			else if (field->Field() == FIELD_AXION)
-				myField = 1;
-			else if (field->Field() == FIELD_NAXION)
-				myField = 2;
-			else if (field->Field() == FIELD_PAXION)
-				myField = 3;
+			unsigned int rBx, rBy, rBz, fType, myField;
 
-			char	     mDev[8];
+			if      (field->Field() == FIELD_SAXION) myField = 0;
+			else if (field->Field() == FIELD_AXION)  myField = 1;
+			else if (field->Field() == FIELD_NAXION) myField = 2;
+			else if (field->Field() == FIELD_PAXION) myField = 3;
+			else myField = 999;
 
+			char mDev[8];
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-LogMsg(VERB_HIGH,"[tp] Reading cache file %s",tuneName);
+
 			do {
-				int nRead = fscanf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu",
-									mDev,
-									&rMpi, &rThreads,
-									&rNx, &rNy, &rNz,
-									&fType, &rBx, &rBy, &rBz, &Nghost);
-				// Backward compatibility: old format (no NY)
+				int nRead = fscanf (cacheFile, "%7s %d %d %lu %lu %lu %u %u %u %u %lu",
+				                    mDev,
+				                    &rMpi, &rThreads,
+				                    &rNx, &rNy, &rNz,
+				                    &fType, &rBx, &rBy, &rBz, &Nghost);
+
 				if (nRead == 10) {
-				// Old format: Dev MPI Threads Lx Lz fType Bx By Bz Ng
-				rNz = rNy;   // what was read as rNy is actually old Lz
-				rNy = rNx;   // assume NY = NX
+					rNz = rNy;
+					rNy = rNx;
 				}
 
 				std::string fDev(mDev);
 
-LogMsg(VERB_HIGH,"[tp] Read: MPI %d, threads %d, Ng %lu, Nx,Ny,Nz (%lu,%lu,%lu) rBx,y,z (%u,%u,%u)  ",rMpi, rThreads, Nghost, rNx, rNy, rNz, rBx, rBy, rBz);
-
 				if (rMpi == commSize() &&
-				rThreads == omp_get_max_threads() &&
-				rNx == field->NX() &&
-				rNy == field->NY() &&
-				rNz == field->NZ() &&
-				fType == myField &&
-				fDev == tDev &&
-				Nghost == field->getNg())
+				    rThreads == omp_get_max_threads() &&
+				    rNx == field->NX() &&
+				    rNy == field->NY() &&
+				    rNz == field->NZ() &&
+				    fType == myField &&
+				    fDev == tDev &&
+				    Nghost == field->getNg())
 				{
 					if ((field->Device() == DEV_CPU ) ||
-					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
+					    (field->Device() == DEV_GPU &&
+					     (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ())))
+					{
 						found = true;
-LogMsg(VERB_HIGH,"[tp] X!!");
 						prop->SetBlockX(rBx);
-LogMsg(VERB_HIGH,"[tp] Y!!");
 						prop->SetBlockY(rBy);
-LogMsg(VERB_HIGH,"[tp] Z!!");
 						prop->SetBlockZ(rBz);
-LogMsg(VERB_HIGH,"[tp] update best block!!");
 						prop->UpdateBestBlock();
 					}
 				}
-			}	while(!feof(cacheFile) && !found);
+			} while(!feof(cacheFile) && !found);
 
-			fclose (cacheFile);
-LogMsg(VERB_HIGH,"[tp] cache file closed!!");
+			fclose(cacheFile);
 		}
 	}
-LogMsg(VERB_HIGH,"[tp] BCAST!");
 
 	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
-
 	commSync();
 
-	// If a cache file was found, we broadcast the best block and exit
 	if (found) {
-LogMsg(VERB_HIGH,"[tp] optimum found!");
-		unsigned int block[3];
+		unsigned int block[3] = {0,0,0};
 
 		if (myRank == 0) {
 			block[0] = prop->TunedBlockX();
@@ -650,79 +633,212 @@ LogMsg(VERB_HIGH,"[tp] optimum found!");
 			prop->UpdateBestBlock();
 		}
 
-LogMsg (VERB_NORMAL, "Tuned values read from cache file. Best block %u x %u x %u", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
-LogMsg (VERB_HIGH,   "Chosen block %u x %u x %u\n", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+		LogMsg (VERB_NORMAL, "Adaptive tuned values read from cache file. Best block %u x %u x %u",
+		        prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
 		prop->Tune();
 		prof.stop();
 		prof.add(prop->Name(), 0., 0.);
 		return;
 	}
 
-	// Otherwise we start tuning
-
-LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");LogFlush();
-
-
-	start = std::chrono::high_resolution_clock::now();
-	propagate(field, 0.);
-	end   = std::chrono::high_resolution_clock::now();
-
-	cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
-
-	// If there is an error in GPU propagation, we set the time to an absurd value
-	#ifdef USE_GPU
-	if (field->Device() == DEV_GPU) {
-		auto gErr = cudaGetLastError();
-
-		if (gErr != cudaSuccess)
-			cTime = std::numeric_limits<std::size_t>::max();
-	}
-	#endif
-
-	MPI_Allreduce(&cTime, &bestTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
-
-	if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
-		LogMsg (VERB_HIGH, "Block %u x %u x %u gave an error and couldn't run on the GPU", prop->BlockX(), prop->BlockY(), prop->BlockZ());
-	else
-		LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime);
-
+	LogMsg (VERB_HIGH, "[tpA] Start adaptive tuning ... ");
 	LogFlush();
-	prop->AdvanceBlockSize();
 
-	while (!prop->IsTuned()) {
+	auto evalBlock = [&](unsigned int bx, unsigned int by, unsigned int bz) -> size_t {
+		prop->SetBlockX(bx);
+		prop->SetBlockY(by);
+		prop->SetBlockZ(bz);
 
-		start = std::chrono::high_resolution_clock::now();
-		propagate(field, 0.);
-		end   = std::chrono::high_resolution_clock::now();
+		propagate(field, 0.); // warmup
 
-		cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+		size_t bestLocal = std::numeric_limits<size_t>::max();
 
-		#ifdef USE_GPU
-		if (field->Device() == DEV_GPU) {
-			auto gErr = cudaGetLastError();
+		for (int rep = 0; rep < 3; rep++) {
+			auto start = std::chrono::high_resolution_clock::now();
+			propagate(field, 0.);
+			auto end   = std::chrono::high_resolution_clock::now();
 
-			if (gErr != cudaSuccess)
-				cTime = std::numeric_limits<std::size_t>::max();
-		}
-		#endif
+			size_t cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
-    MPI_Allreduce(&cTime, &lastTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
-
-		if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
-			LogMsg (VERB_HIGH, "Block %u x %u x %u gave an error and couldn't run on the GPU", prop->BlockX(), prop->BlockY(), prop->BlockZ());
-		else{
-			LogMsg (VERB_HIGH, "Test Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), lastTime);
-			LogMsg (VERB_HIGH, "Best Block %u x %u x %u done in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
-		}
-
-		if (lastTime < bestTime) {
-			bestTime = lastTime;
-			prop->UpdateBestBlock();
-			LogMsg (VERB_HIGH, "Best block updated");
+#ifdef USE_GPU
+			if (field->Device() == DEV_GPU) {
+				auto gErr = cudaGetLastError();
+				if (gErr != cudaSuccess)
+					cTime = std::numeric_limits<std::size_t>::max();
+			}
+#endif
+			if (cTime < bestLocal)
+				bestLocal = cTime;
 		}
 
-		prop->AdvanceBlockSize();
+		size_t worstRank;
+		MPI_Allreduce(&bestLocal, &worstRank, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+		return worstRank;
+	};
+
+	FILE *tlog = nullptr;
+	if (myRank == 0) {
+		char tuName[2048];
+		sprintf (tuName, "%s/../tune.txt", outDir);
+		tlog = fopen(tuName, "a");
+		if (tlog != nullptr) {
+			const char *fName =
+				(field->Field() == FIELD_SAXION) ? "Saxion" :
+				(field->Field() == FIELD_AXION)  ? "Axion"  :
+				(field->Field() == FIELD_NAXION) ? "Naxion" :
+				(field->Field() == FIELD_PAXION) ? "Paxion" : "Unknown";
+			const char *dName = (field->Device() == DEV_GPU) ? "Gpu" : "Cpu";
+			prop->AppendTuneLogHeader(tlog, fName, dName, field->NX(), field->NY(), field->NZ());
+		}
 	}
+
+	Tunable::SearchRegion R;
+	R.xLo = prop->MinBlockX(); R.xHi = prop->MaxBlockX();
+	R.yLo = prop->MinBlockY(); R.yHi = prop->MaxBlockY();
+	R.zLo = prop->MinBlockZ(); R.zHi = prop->MaxBlockZ();
+	R.dx  = prop->StepBlockX();
+	R.dy  = prop->StepBlockY();
+	R.dz  = prop->StepBlockZ();
+	R.level = 0;
+	R.regionId = 0;
+
+	size_t globalBestTime = std::numeric_limits<size_t>::max();
+	Tunable::BlockCandidate globalBest;
+	unsigned int nEvals = 0;
+	int nextRegionId = 1;
+
+	std::map<std::tuple<unsigned int,unsigned int,unsigned int>, size_t> visited;
+
+	auto evalOrReuse = [&](Tunable::BlockCandidate &c) {
+		auto key = std::make_tuple(c.bx, c.by, c.bz);
+		auto it = visited.find(key);
+		if (it != visited.end()) {
+			c.timeNs = it->second;
+			c.valid = (c.timeNs != std::numeric_limits<size_t>::max());
+			return;
+		}
+
+		c.timeNs = evalBlock(c.bx, c.by, c.bz);
+		c.valid = (c.timeNs != std::numeric_limits<size_t>::max());
+		visited[key] = c.timeNs;
+		nEvals++;
+	};
+
+	bool stop = false;
+
+	while (!stop) {
+		auto cand = prop->SampleRegion(R, prop->AdaptiveCoarsePoints(), false);
+
+		for (auto &c : cand)
+			evalOrReuse(c);
+
+		auto stats = prop->ComputeStats(cand);
+
+		if (myRank == 0 && tlog != nullptr)
+			prop->AppendBatchLog(tlog, "coarse", cand, stats);
+
+		if (stats.nValid == 0) {
+			LogError("Adaptive tuner found no valid candidates in current region");
+			break;
+		}
+
+		size_t prevBestTime = globalBestTime;
+		if (stats.best.timeNs < globalBestTime) {
+			globalBestTime = stats.best.timeNs;
+			globalBest = stats.best;
+			prop->SetBlockX(globalBest.bx);
+			prop->SetBlockY(globalBest.by);
+			prop->SetBlockZ(globalBest.bz);
+			prop->UpdateBestBlock();
+		}
+
+		auto proposal = prop->ProposeFromTopK(cand, 3, R);
+
+		std::vector<Tunable::BlockCandidate> local;
+		local.push_back(proposal);
+
+		const std::array<std::array<int,3>,6> stencil = {{
+			{{+1,0,0}}, {{-1,0,0}},
+			{{0,+1,0}}, {{0,-1,0}},
+			{{0,0,+1}}, {{0,0,-1}}
+		}};
+
+		for (const auto &d : stencil) {
+			Tunable::BlockCandidate c;
+			long long bx = (long long) proposal.bx + (long long) d[0] * (long long) prop->StepBlockX();
+			long long by = (long long) proposal.by + (long long) d[1] * (long long) prop->StepBlockY();
+			long long bz = (long long) proposal.bz + (long long) d[2] * (long long) prop->StepBlockZ();
+
+			if (bx < 0 || by < 0 || bz < 0)
+				continue;
+
+			c.bx = (unsigned int) bx;
+			c.by = (unsigned int) by;
+			c.bz = (unsigned int) bz;
+			c.predicted = true;
+			c.level = R.level;
+			c.regionId = R.regionId;
+
+			if (!prop->IsValidBlock(c.bx, c.by, c.bz))
+				continue;
+
+			local.push_back(c);
+		}
+
+		std::set<std::tuple<unsigned int,unsigned int,unsigned int>> uniq;
+		std::vector<Tunable::BlockCandidate> localUnique;
+		for (auto &c : local) {
+			auto key = std::make_tuple(c.bx, c.by, c.bz);
+			if (uniq.insert(key).second)
+				localUnique.push_back(c);
+		}
+		local.swap(localUnique);
+
+		for (auto &c : local)
+			evalOrReuse(c);
+
+		auto pstats = prop->ComputeStats(local);
+
+		if (myRank == 0 && tlog != nullptr)
+			prop->AppendBatchLog(tlog, "interp", local, pstats);
+
+		if (pstats.nValid > 0 && pstats.best.timeNs < globalBestTime) {
+			globalBestTime = pstats.best.timeNs;
+			globalBest = pstats.best;
+			prop->SetBlockX(globalBest.bx);
+			prop->SetBlockY(globalBest.by);
+			prop->SetBlockZ(globalBest.bz);
+			prop->UpdateBestBlock();
+		}
+
+		double relImprove = 1.0;
+		if (prevBestTime != std::numeric_limits<size_t>::max() &&
+		    prevBestTime > 0 &&
+		    globalBestTime <= prevBestTime)
+			relImprove = (double)(prevBestTime - globalBestTime) / (double) prevBestTime;
+
+		LogMsg (VERB_NORMAL,
+		        "[tpA] level %d region %d best %u x %u x %u time %lu ns relImprove %.6f evals %u",
+		        R.level, R.regionId,
+		        globalBest.bx, globalBest.by, globalBest.bz,
+		        globalBestTime, nEvals ? globalBestTime : 0, nEvals);
+		LogMsg (VERB_HIGH,
+		        "[tpA] stats min %.3f max %.3f mean %.3f median %.3f std %.3f",
+		        pstats.minTime, pstats.maxTime, pstats.meanTime, pstats.medianTime, pstats.stdTime);
+
+		if (nEvals >= prop->AdaptiveMaxEvals())
+			stop = true;
+		else if (prop->RegionAtMinResolution(R))
+			stop = true;
+		else if (prevBestTime != std::numeric_limits<size_t>::max() &&
+		         relImprove < prop->AdaptiveStopRelImprove())
+			stop = true;
+		else
+			R = prop->RefineAroundBest(R, globalBest, nextRegionId++);
+	}
+
+	if (myRank == 0 && tlog != nullptr)
+		fclose(tlog);
 
 	prop->getBaseName();
 
@@ -739,7 +855,7 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");LogFlush();
 			break;
 
 		case FIELD_AXION:
-		if (pType & PROP_BASE){
+			if (pType & PROP_BASE){
 				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
 				prop->appendName(loli);
 			} else {
@@ -758,21 +874,21 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");LogFlush();
 
 		case FIELD_NAXION:
 			if (pType & PROP_BASE){
-					sprintf (loli, "N %01d Ng %01d Naxion", Nng, field->getNg());
-					prop->appendName(loli);
-				} else {
-					prop->appendName("Naxion");
-				}
-				break;
+				sprintf (loli, "N %01d Ng %01d Naxion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Naxion");
+			}
+			break;
 
 		case FIELD_PAXION:
 			if (pType & PROP_BASE){
-					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
-					prop->appendName(loli);
-				} else {
-					prop->appendName("Paxion");
-				}
-				break;
+				sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
+				prop->appendName(loli);
+			} else {
+				prop->appendName("Paxion");
+			}
+			break;
 		default:
 			LogError ("Error: invalid field type");
 			prof.stop();
@@ -782,22 +898,10 @@ LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");LogFlush();
 	Profiler &propProf = getProfiler(PROF_PROP);
 	propProf.reset(prop->Name());
 
+	prop->SetBestBlock();
 
-LogMsg(VERB_NORMAL, "[DBG] before SetBestBlock");
-LogFlush();
-
-prop->SetBestBlock();
-
-LogMsg(VERB_NORMAL, "[DBG] after SetBestBlock: %u x %u x %u",
-       prop->BlockX(), prop->BlockY(), prop->BlockZ());
-LogFlush();
-
-LogMsg(VERB_NORMAL, "[DBG] before cache write");
-
-LogFlush();
-	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
-
-	/*	Write cache file if necessary, block of rank 0 prevails		*/
+	LogMsg (VERB_NORMAL, "Adaptive propagator tuned! Best block %u x %u x %u in %lu ns",
+	        prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), globalBestTime);
 
 	if (myRank == 0) {
 		FILE *cacheFile;
@@ -809,9 +913,8 @@ LogFlush();
 #else
 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
 #endif
-			LogMsg(VERB_HIGH,"[tp] tuneName = %s",tuneName);
 		}
-		// We distinguish between opening and appending a new line
+
 		if (!newFile) {
 			if ((cacheFile = fopen(tuneName, "a")) == nullptr) {
 				LogError ("Error: can't open cache file, can't save tuning results");
@@ -828,32 +931,374 @@ LogFlush();
 			}
 		}
 
-		unsigned int fType ;
-		if      (field->Field() == FIELD_SAXION)
-			fType = 0;
-		else if (field->Field() == FIELD_AXION)
-			fType = 1;
-		else if (field->Field() == FIELD_NAXION)
-			fType = 2;
-		else if (field->Field() == FIELD_PAXION)
-			fType = 3;
+		unsigned int fType;
+		if      (field->Field() == FIELD_SAXION) fType = 0;
+		else if (field->Field() == FIELD_AXION)  fType = 1;
+		else if (field->Field() == FIELD_NAXION) fType = 2;
+		else if (field->Field() == FIELD_PAXION) fType = 3;
+		else fType = 999;
 
 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 		fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu\n",
-         myDev.c_str(), commSize(), omp_get_max_threads(),
-         field->NX(), field->NY(), field->NZ(),
-         fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
-         field->getNg());
-		fclose  (cacheFile);
+		         myDev.c_str(), commSize(), omp_get_max_threads(),
+		         field->NX(), field->NY(), field->NZ(),
+		         fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
+		         field->getNg());
+		fclose(cacheFile);
 	}
 
 	commSync();
 	prof.stop();
 	prof.add(prop->Name(), 0., 0.);
-
-	LogMsg(VERB_NORMAL, "[DBG] leaving tunePropagator");
-LogFlush();
+	LogFlush();
 }
+
+
+// void	tunePropagator (Scalar *field) {
+//
+// 	// Hash CPU model so we don't mix different cache files
+// 	LogMsg(VERB_NORMAL,"\n");
+//  	LogMsg(VERB_NORMAL,"[tp] Tune propagator!\n");
+// 	if (pType & PROP_SPEC)
+// 		return;
+// 	if (pType & PROP_FSPEC)
+// 		return;
+// 	if (pType & PROP_MODES)
+// 		return;
+//
+// 	int  myRank   = commRank();
+// 	//int  nThreads = 1;
+// 	bool newFile  = false, found = false;
+//
+// 	if (prop == nullptr) {
+// 		LogError("Error: propagator not initialized, can't be tuned.");
+// 		return;
+// 	}
+//
+// 	Profiler &prof = getProfiler(PROF_TUNER);
+//
+// 	std::chrono::high_resolution_clock::time_point start, end;
+// 	size_t bestTime, lastTime, cTime;
+//
+// 	LogMsg (VERB_HIGH, "[tp] Started tuner");
+// 	prof.start();
+//
+// 	if (field->Device() == DEV_CPU)
+// 		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), false);
+// 	else
+// 		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), true);
+//
+// 		LogMsg(VERB_HIGH,"[tp] Initial block Size %d %d %d",prop->BlockX(),prop->BlockY(),prop->BlockZ());
+// 	/*	Check for a cache file	*/
+//
+// 	if (myRank == 0) {
+// 		FILE *cacheFile;
+// 		char tuneName[2048];
+//
+// 		if (pType & PROP_BASE)
+// #ifdef USE_2DCYL
+// 			sprintf (tuneName, "%s/tuneCache_2D.dat", wisDir);
+// #else
+// 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+// #endif
+//
+// 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
+// LogMsg(VERB_HIGH,"[tp] new cache!!");
+// LogMsg (VERB_NORMAL, "Missing tuning cache file %s, will create a new one", tuneName);
+// 			newFile = true;
+// 		} else {
+// 			int	     rMpi, rThreads;
+// 			size_t       rNx, rNy, rNz, Nghost;
+// 			unsigned int rBx, rBy, rBz, fType, myField ;
+// 			if      (field->Field() == FIELD_SAXION)
+// 				myField = 0;
+// 			else if (field->Field() == FIELD_AXION)
+// 				myField = 1;
+// 			else if (field->Field() == FIELD_NAXION)
+// 				myField = 2;
+// 			else if (field->Field() == FIELD_PAXION)
+// 				myField = 3;
+//
+// 			char	     mDev[8];
+//
+// 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
+// LogMsg(VERB_HIGH,"[tp] Reading cache file %s",tuneName);
+// 			do {
+// 				int nRead = fscanf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu",
+// 									mDev,
+// 									&rMpi, &rThreads,
+// 									&rNx, &rNy, &rNz,
+// 									&fType, &rBx, &rBy, &rBz, &Nghost);
+// 				// Backward compatibility: old format (no NY)
+// 				if (nRead == 10) {
+// 				// Old format: Dev MPI Threads Lx Lz fType Bx By Bz Ng
+// 				rNz = rNy;   // what was read as rNy is actually old Lz
+// 				rNy = rNx;   // assume NY = NX
+// 				}
+//
+// 				std::string fDev(mDev);
+//
+// LogMsg(VERB_HIGH,"[tp] Read: MPI %d, threads %d, Ng %lu, Nx,Ny,Nz (%lu,%lu,%lu) rBx,y,z (%u,%u,%u)  ",rMpi, rThreads, Nghost, rNx, rNy, rNz, rBx, rBy, rBz);
+//
+// 				if (rMpi == commSize() &&
+// 				rThreads == omp_get_max_threads() &&
+// 				rNx == field->NX() &&
+// 				rNy == field->NY() &&
+// 				rNz == field->NZ() &&
+// 				fType == myField &&
+// 				fDev == tDev &&
+// 				Nghost == field->getNg())
+// 				{
+// 					if ((field->Device() == DEV_CPU ) ||
+// 					    (field->Device() == DEV_GPU	&& (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ()))) {
+// 						found = true;
+// LogMsg(VERB_HIGH,"[tp] X!!");
+// 						prop->SetBlockX(rBx);
+// LogMsg(VERB_HIGH,"[tp] Y!!");
+// 						prop->SetBlockY(rBy);
+// LogMsg(VERB_HIGH,"[tp] Z!!");
+// 						prop->SetBlockZ(rBz);
+// LogMsg(VERB_HIGH,"[tp] update best block!!");
+// 						prop->UpdateBestBlock();
+// 					}
+// 				}
+// 			}	while(!feof(cacheFile) && !found);
+//
+// 			fclose (cacheFile);
+// LogMsg(VERB_HIGH,"[tp] cache file closed!!");
+// 		}
+// 	}
+// LogMsg(VERB_HIGH,"[tp] BCAST!");
+//
+// 	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
+//
+// 	commSync();
+//
+// 	// If a cache file was found, we broadcast the best block and exit
+// 	if (found) {
+// LogMsg(VERB_HIGH,"[tp] optimum found!");
+// 		unsigned int block[3];
+//
+// 		if (myRank == 0) {
+// 			block[0] = prop->TunedBlockX();
+// 			block[1] = prop->TunedBlockY();
+// 			block[2] = prop->TunedBlockZ();
+// 		}
+//
+// 		MPI_Bcast (&block, sizeof(int)*3, MPI_BYTE, 0, MPI_COMM_WORLD);
+// 		commSync();
+//
+// 		if (myRank != 0) {
+// 			prop->SetBlockX(block[0]);
+// 			prop->SetBlockY(block[1]);
+// 			prop->SetBlockZ(block[2]);
+// 			prop->UpdateBestBlock();
+// 		}
+//
+// LogMsg (VERB_NORMAL, "Tuned values read from cache file. Best block %u x %u x %u", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ());
+// LogMsg (VERB_HIGH,   "Chosen block %u x %u x %u\n", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+// 		prop->Tune();
+// 		prof.stop();
+// 		prof.add(prop->Name(), 0., 0.);
+// 		return;
+// 	}
+//
+// 	// Otherwise we start tuning
+//
+// LogMsg (VERB_HIGH,   "[tp] Start tuning ... ");LogFlush();
+//
+//
+// 	start = std::chrono::high_resolution_clock::now();
+// 	propagate(field, 0.);
+// 	end   = std::chrono::high_resolution_clock::now();
+//
+// 	cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+//
+// 	// If there is an error in GPU propagation, we set the time to an absurd value
+// 	#ifdef USE_GPU
+// 	if (field->Device() == DEV_GPU) {
+// 		auto gErr = cudaGetLastError();
+//
+// 		if (gErr != cudaSuccess)
+// 			cTime = std::numeric_limits<std::size_t>::max();
+// 	}
+// 	#endif
+//
+// 	MPI_Allreduce(&cTime, &bestTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+//
+// 	if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
+// 		LogMsg (VERB_HIGH, "Block %u x %u x %u gave an error and couldn't run on the GPU", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+// 	else
+// 		LogMsg (VERB_HIGH, "Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), bestTime);
+//
+// 	LogFlush();
+// 	prop->AdvanceBlockSize();
+//
+// 	while (!prop->IsTuned()) {
+//
+// 		start = std::chrono::high_resolution_clock::now();
+// 		propagate(field, 0.);
+// 		end   = std::chrono::high_resolution_clock::now();
+//
+// 		cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+//
+// 		#ifdef USE_GPU
+// 		if (field->Device() == DEV_GPU) {
+// 			auto gErr = cudaGetLastError();
+//
+// 			if (gErr != cudaSuccess)
+// 				cTime = std::numeric_limits<std::size_t>::max();
+// 		}
+// 		#endif
+//
+//     MPI_Allreduce(&cTime, &lastTime, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+//
+// 		if (field->Device() == DEV_GPU && cTime == std::numeric_limits<std::size_t>::max())
+// 			LogMsg (VERB_HIGH, "Block %u x %u x %u gave an error and couldn't run on the GPU", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+// 		else{
+// 			LogMsg (VERB_HIGH, "Test Block %u x %u x %u done in %lu ns", prop->BlockX(), prop->BlockY(), prop->BlockZ(), lastTime);
+// 			LogMsg (VERB_HIGH, "Best Block %u x %u x %u done in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
+// 		}
+//
+// 		if (lastTime < bestTime) {
+// 			bestTime = lastTime;
+// 			prop->UpdateBestBlock();
+// 			LogMsg (VERB_HIGH, "Best block updated");
+// 		}
+//
+// 		prop->AdvanceBlockSize();
+// 	}
+//
+// 	prop->getBaseName();
+//
+// 	char loli[2048];
+//
+// 	switch (field->Field()) {
+// 		case FIELD_SAXION:
+// 			if (pType & PROP_BASE){
+// 				sprintf (loli, "N %01d Ng %01d Saxion", Nng, field->getNg());
+// 				prop->appendName(loli);
+// 			} else {
+// 				prop->appendName("Saxion");
+// 			}
+// 			break;
+//
+// 		case FIELD_AXION:
+// 		if (pType & PROP_BASE){
+// 				sprintf (loli, "N %01d Ng %01d Axion", Nng, field->getNg());
+// 				prop->appendName(loli);
+// 			} else {
+// 				prop->appendName("Axion");
+// 			}
+// 			break;
+//
+// 		case FIELD_AXION_MOD:
+// 			if (pType & PROP_BASE){
+// 				sprintf (loli, "N %01d Ng %01d Axion Mod", Nng, field->getNg());
+// 				prop->appendName(loli);
+// 			} else {
+// 				prop->appendName("Axion Mod");
+// 			}
+// 			break;
+//
+// 		case FIELD_NAXION:
+// 			if (pType & PROP_BASE){
+// 					sprintf (loli, "N %01d Ng %01d Naxion", Nng, field->getNg());
+// 					prop->appendName(loli);
+// 				} else {
+// 					prop->appendName("Naxion");
+// 				}
+// 				break;
+//
+// 		case FIELD_PAXION:
+// 			if (pType & PROP_BASE){
+// 					sprintf (loli, "N %01d Ng %01d Paxion", Nng, field->getNg());
+// 					prop->appendName(loli);
+// 				} else {
+// 					prop->appendName("Paxion");
+// 				}
+// 				break;
+// 		default:
+// 			LogError ("Error: invalid field type");
+// 			prof.stop();
+// 			return;
+// 	}
+//
+// 	Profiler &propProf = getProfiler(PROF_PROP);
+// 	propProf.reset(prop->Name());
+//
+//
+// LogMsg(VERB_NORMAL, "[DBG] before SetBestBlock");
+// LogFlush();
+//
+// prop->SetBestBlock();
+//
+// LogMsg(VERB_NORMAL, "[DBG] after SetBestBlock: %u x %u x %u",
+//        prop->BlockX(), prop->BlockY(), prop->BlockZ());
+// LogFlush();
+//
+// LogMsg(VERB_NORMAL, "[DBG] before cache write");
+//
+// LogFlush();
+// 	LogMsg (VERB_NORMAL, "Propagator tuned! Best block %u x %u x %u in %lu ns", prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(), bestTime);
+//
+// 	/*	Write cache file if necessary, block of rank 0 prevails		*/
+//
+// 	if (myRank == 0) {
+// 		FILE *cacheFile;
+// 		char tuneName[2048];
+//
+// 		if (pType & PROP_BASE){
+// #ifdef USE_2DCYL
+// 			sprintf (tuneName, "%s/tuneCache_2D.dat", wisDir);
+// #else
+// 			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+// #endif
+// 			LogMsg(VERB_HIGH,"[tp] tuneName = %s",tuneName);
+// 		}
+// 		// We distinguish between opening and appending a new line
+// 		if (!newFile) {
+// 			if ((cacheFile = fopen(tuneName, "a")) == nullptr) {
+// 				LogError ("Error: can't open cache file, can't save tuning results");
+// 				commSync();
+// 				prof.stop();
+// 				prof.add(prop->Name(), 0., 0.);
+// 			}
+// 		} else {
+// 			if ((cacheFile = fopen(tuneName, "w")) == nullptr) {
+// 				LogError ("Error: can't create cache file, can't save tuning results");
+// 				commSync();
+// 				prof.stop();
+// 				prof.add(prop->Name(), 0., 0.);
+// 			}
+// 		}
+//
+// 		unsigned int fType ;
+// 		if      (field->Field() == FIELD_SAXION)
+// 			fType = 0;
+// 		else if (field->Field() == FIELD_AXION)
+// 			fType = 1;
+// 		else if (field->Field() == FIELD_NAXION)
+// 			fType = 2;
+// 		else if (field->Field() == FIELD_PAXION)
+// 			fType = 3;
+//
+// 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
+// 		fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu\n",
+//          myDev.c_str(), commSize(), omp_get_max_threads(),
+//          field->NX(), field->NY(), field->NZ(),
+//          fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
+//          field->getNg());
+// 		fclose  (cacheFile);
+// 	}
+//
+// 	commSync();
+// 	prof.stop();
+// 	prof.add(prop->Name(), 0., 0.);
+//
+// 	LogMsg(VERB_NORMAL, "[DBG] leaving tunePropagator");
+// LogFlush();
+// }
 
 void	initGravity	(Scalar *field){
 
