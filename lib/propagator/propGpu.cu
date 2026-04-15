@@ -62,7 +62,7 @@ void propagateCoreGpu(
 			malPx = m[idx + nv];
 
 		if (X0 < nv)
-			malMx = m[idx + (nv-X0)]; // symmetric boundary conditions around x=0
+			malMx = conj(m[idx + (nv-X0)]); // symmetric boundary conditions around x=0
 		else
 			malMx = m[idx - nv];
 
