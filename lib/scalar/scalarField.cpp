@@ -853,7 +853,7 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 
 
 	case	COMM_WAIT:
-LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 		for (int n=0; n<nchunks ;n++) {
 			if (sendB){
 				MPI_Wait(&(reqSendBck[n]), MPI_STATUS_IGNORE);
@@ -874,7 +874,8 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 				MPI_Request_free(&(reqRecvBck[n]));
 			}
 		}
-LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
+
 		break;
 	}
 }
@@ -912,6 +913,12 @@ void	Scalar::sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng)
 		}
 	}
 	Scalar::sendGeneral(opComm, ghostBytes, MPI_BYTE, sB, rF, sF, rB);
+
+	if (opComm == COMM_WAIT){
+	#ifdef USE_2DCYL
+			ghostcylindricalpatch(fIdx);
+	#endif
+	}
 }
 
 void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
@@ -977,7 +984,7 @@ void	Scalar::sendGhosts(FieldIndex fIdx, CommOperation opComm)
 	switch	(opComm)
 	{
 		case	COMM_SEND:
-LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 			for (int n=0; n<nchunks ;n++) {
 				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,   MPI_COMM_WORLD, &(rSendFwd[n]));
 				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1, MPI_COMM_WORLD, &(rSendBck[n]));
@@ -989,7 +996,7 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SEND");
 			break;
 
 		case	COMM_RECV:
-LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 			for (int n=0; n<nchunks ;n++) {
 				MPI_Recv_init(rGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*fwdNeig+1, MPI_COMM_WORLD, &(rRecvFwd[n]));
 				MPI_Recv_init(rGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*bckNeig,   MPI_COMM_WORLD, &(rRecvBck[n]));
@@ -1001,7 +1008,7 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] RECV");
 			break;
 
 		case	COMM_SDRV:
-LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
 			for (int n=0; n<nchunks ;n++) {
 				MPI_Send_init(sGhostFwd[n], sendBytes[n], MPI_BYTE, fwdNeig, 2*rank,      MPI_COMM_WORLD, &(rSendFwd[n]));
 				MPI_Send_init(sGhostBck[n], sendBytes[n], MPI_BYTE, bckNeig, 2*rank+1,    MPI_COMM_WORLD, &(rSendBck[n]));
@@ -1014,12 +1021,12 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV");
 				MPI_Start(&(rSendFwd[n]));
 				MPI_Start(&(rSendBck[n]));
 			}
-LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] SDRV Done");LogFlush();
 			break;
 
 
 	case	COMM_WAIT:
-LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
+// LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 		for (int n=0; n<nchunks ;n++) {
 			MPI_Wait(&(rSendFwd[n]), MPI_STATUS_IGNORE);
 			MPI_Wait(&(rSendBck[n]), MPI_STATUS_IGNORE);
@@ -1032,24 +1039,70 @@ LogMsg(VERB_PARANOID,"[COMM_TESTS] WAIT");
 			MPI_Request_free(&(rRecvFwd[n]));
 			MPI_Request_free(&(rRecvBck[n]));
 		}
-LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
+		// LogMsg(VERB_PARANOID,"[COMM_TESTS] FREE");
+#ifdef USE_2DCYL
+		ghostcylindricalpatch(fIdx);
+#endif
 		break;
 
 	}
 }
 
+void	Scalar::ghostcylindricalpatch(FieldIndex fIdx)
+{
+	const size_t ghostsurfBytes = Nxy*fSize; // a line for cyl
+	LogMsg(VERB_HIGH,"[sca] patch ghost for loop cylindrical BCs, ghost-line-Bytes %lu GByte %e",ghostsurfBytes,ghostsurfBytes/1.e9);
+
+	void *from, *to;
+	if (commRank() == 0){ // only RHO~0 slices have reflected BCs
+		if (fIdx == FIELD_M)
+		{
+			for (int nv =1; nv <= Ng; nv++){
+				from = static_cast<void *> (static_cast<char *> (mStart())      + nv * ghostsurfBytes);
+				to   = static_cast<void *> (static_cast<char *> (mFrontGhost()) + ghostsurfBytes*(Ng-nv));
+				memcpy(to, from, ghostsurfBytes);
+			}
+		}
+		else if (fIdx == FIELD_M2)
+		{
+			for (int nv =1; nv <= Ng; nv++){
+				from = static_cast<void *> (static_cast<char *> (m2Start())      + nv * ghostsurfBytes);
+				to   = static_cast<void *> (static_cast<char *> (m2BackGhost()) + ghostsurfBytes*(Ng-nv));
+				memcpy(to, from, ghostsurfBytes);
+			}
+
+		}
+	} // end RHO=0 BC
+
+	if (commRank() == commSize()-1){ // only the last rank will have absorbing boundaries
+		if (fIdx == FIELD_M)
+		{
+			for (int nv =1; nv <= Ng; nv++){
+				from = static_cast<void *> (static_cast<char *> (mStart())      + (Nz-1) * ghostsurfBytes);
+				to   = static_cast<void *> (static_cast<char *> (mBackGhost()) + ghostsurfBytes*(nv-1));
+				memcpy(to, from, ghostsurfBytes);
+			}
+		}
+		else if (fIdx == FIELD_M2)
+		{
+			for (int nv =1; nv <= Ng; nv++){
+				from = static_cast<void *> (static_cast<char *> (m2Start())      + (Nz-1) * ghostsurfBytes);
+				to   = static_cast<void *> (static_cast<char *> (m2BackGhost()) + ghostsurfBytes*(nv-1));
+				memcpy(to, from, ghostsurfBytes);
+			}
+
+		}
+	} // end RHO=0 BC
+}
+
 void	Scalar::exchangeGhosts(FieldIndex fIdx)
 {
-#ifdef USE_2DCYL
-	return;
-#else
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts (fIdx %d)",fIdx);LogFlush();
 	recallGhosts(fIdx);
 	sendGhosts2(fIdx, COMM_SDRV);
 	sendGhosts2(fIdx, COMM_WAIT);
 	transferGhosts(fIdx);
 LogMsg(VERB_PARANOID,"[sca] Exchange Ghosts Done!");LogFlush();
-#endif
 }
 
 /* For sending 1st slice from string data backwards */

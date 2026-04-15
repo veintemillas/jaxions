@@ -45,35 +45,29 @@ void propagateCoreGpu(
 			break;
 	}
 
-	idx2Vec(idx, X, Lx);
-
 	mel = complex<Float>(0,0);
 	tmp = m[idx];
 
 #ifdef USE_2DCYL
+
+	uint X0 = idx % Lx;
+
 	complex<Float> malPx, malMx, malPy, malMy;
 
 	for (size_t nv=1; nv <= NN; nv++)
 	{
-		if (X[0] + nv >= Lx)
+		if (X0 + nv >= Lx)
 			malPx = m[idx]; 				// this cancels this term, here we would need absorbing boundary conditions ...
 		else
 			malPx = m[idx + nv];
 
-		if (X[0] < nv)
-			malMx = m[idx + (nv-X[0])]; // symmetric boundary conditions around x=0
+		if (X0 < nv)
+			malMx = m[idx + (nv-X0)]; // symmetric boundary conditions around x=0
 		else
 			malMx = m[idx - nv];
 
-		if (X[1] + nv >= Lx)
-			malPy = m[idx] ; // TODO absorbing boundary!
-		else
-			malPy = m[idx + nv*Lx];
-
-		if (X[1] < nv)
-			malMy = conj(m[idx + Lx*(nv-X[1])]); // antisymmetric BC at y=0
-		else
-			malMy = m[idx - nv*Lx];
+		malPz = m[idx + nv*Lx]; // requires a special ghost at rank Np - 1
+		malMz = m[idx - nv*Lx]; // requires a special ghost at rank 0
 
 		const Float c_lap = ood2[nv - 1];
 		const Float c_der = ood2[NN + nv - 1];
@@ -84,6 +78,9 @@ void propagateCoreGpu(
 			mel += (malPx+malMx+malPy+malMy - ((Float) 4.)*tmp)*c_lap + (malPx - malMx)/((Float) X[0])*c_der;
 	}
 #else
+
+	idx2Vec(idx, X, Lx); // will only work for Lx=Ly
+
 	for (size_t nv=1; nv <= NN; nv++)
 	{
 		if (X[0] + nv >= Lx)

@@ -313,7 +313,7 @@
 
 		void	sendGhosts3(CommOperation opComm);
 		void	exchangeStringGhost();
-
+		void	ghostcylindricalpatch(FieldIndex fIdx);
 
 		void    setModes ();
 
