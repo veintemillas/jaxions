@@ -532,7 +532,7 @@ void tunePropagator (Scalar *field) {
 	prof.start();
 
 	if (field->Device() == DEV_CPU)
-		prop->InitBlockSize(field->NX(), field->NY(), 4*field->getLap(), field->DataSize(), field->DataAlign(), false);
+		prop->InitBlockSize(field->NX(), field->NY(), std::min(field->NZ(),4*field->getLap()), field->DataSize(), field->DataAlign(), false);
 	else
 		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), true);
 
@@ -558,7 +558,7 @@ void tunePropagator (Scalar *field) {
 
 	prop->SetAdaptiveStopRelImprove(0.01);		//
 	prop->SetAdaptiveCoarsePoints(adaptive_coarse_points);	//
-	prop->SetAdaptiveMaxEvals(10);						//
+	prop->SetAdaptiveMaxEvals(100);						//
 
 	/* cache lookup */
 	if (myRank == 0) {
@@ -755,6 +755,8 @@ void tunePropagator (Scalar *field) {
 	bool stop = false;
 
 	while (!stop) {
+
+		size_t nEvalsBeforeIter = nEvals;
 		auto cand = prop->SampleRegion(R, prop->AdaptiveCoarsePoints(), false);
 
 		for (auto &c : cand)
@@ -813,6 +815,62 @@ void tunePropagator (Scalar *field) {
 			local.push_back(c);
 		}
 
+		if(0)
+		{
+			auto proposal = prop->ProposeFromTopK(cand, 3, R);
+
+			std::vector<Tunable::BlockCandidate> local;
+
+			auto pushLocal = [&](unsigned int bx, unsigned int by, unsigned int bz) {
+				Tunable::BlockCandidate c;
+				c.bx = bx;
+				c.by = by;
+				c.bz = bz;
+				c.predicted = true;
+				c.level = R.level;
+				c.regionId = R.regionId;
+
+				if (!prop->IsValidBlock(c.bx, c.by, c.bz))
+					return;
+
+				local.push_back(c);
+			};
+
+			// always test the interpolated proposal
+			pushLocal(proposal.bx, proposal.by, proposal.bz);
+
+			// x-directed search: best points are often near large xBlock,
+			// so walk downward in x instead of only checking +-1 around center
+			{
+				const unsigned int sx = prop->StepBlockX();
+				for (int k = 1; k <= 4; k++) {
+					long long bx = (long long) proposal.bx - (long long) k * (long long) sx;
+					if (bx < (long long) prop->MinBlockX())
+						break;
+
+					pushLocal((unsigned int) bx, proposal.by, proposal.bz);
+				}
+			}
+
+			// keep a light local check in y
+			{
+				const unsigned int sy = prop->StepBlockY();
+				if ((long long) proposal.by - (long long) sy >= (long long) prop->MinBlockY())
+					pushLocal(proposal.bx, proposal.by - sy, proposal.bz);
+				if (proposal.by + sy <= prop->MaxBlockY())
+					pushLocal(proposal.bx, proposal.by + sy, proposal.bz);
+			}
+
+			// keep a light local check in z
+			{
+				const unsigned int sz = prop->StepBlockZ();
+				if ((long long) proposal.bz - (long long) sz >= (long long) prop->MinBlockZ())
+					pushLocal(proposal.bx, proposal.by, proposal.bz - sz);
+				if (proposal.bz + sz <= prop->MaxBlockZ())
+					pushLocal(proposal.bx, proposal.by, proposal.bz + sz);
+			}
+		}
+
 		std::set<std::tuple<unsigned int,unsigned int,unsigned int>> uniq;
 		std::vector<Tunable::BlockCandidate> localUnique;
 		for (auto &c : local) {
@@ -830,6 +888,11 @@ void tunePropagator (Scalar *field) {
 		if (myRank == 0 && tlog != nullptr)
 			prop->AppendBatchLog(tlog, "interp", local, pstats);
 
+		if (nEvals == nEvalsBeforeIter) {
+			stop = true;
+			LogMsg(VERB_NORMAL, "[tpA] stopped, no new points evaluated");
+		}
+		
 		if (pstats.nValid > 0 && pstats.best.timeNs < globalBestTime) {
 			globalBestTime = pstats.best.timeNs;
 			globalBest = pstats.best;
@@ -870,7 +933,8 @@ void tunePropagator (Scalar *field) {
 				LogMsg(VERB_NORMAL,"[tpA] stopped, min resolution reached");
 			}
 			else if (prevBestTime != std::numeric_limits<size_t>::max() &&
-			         relImprove < prop->AdaptiveStopRelImprove()){
+			         relImprove < prop->AdaptiveStopRelImprove() &&
+			         globalBest.bx + 2 * prop->StepBlockX() < prop->MaxBlockX()){
 				stop = true;
 				LogMsg(VERB_NORMAL,"[tpA] stopped, relative resolution reached");
 				}

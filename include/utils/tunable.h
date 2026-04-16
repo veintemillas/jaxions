@@ -439,12 +439,43 @@ class Tunable {
 		return vals;
 	}
 
+	std::vector<unsigned int> SampleDimHighToLow(unsigned int lo, unsigned int hi,
+	                                             unsigned int step, unsigned int nPts) const
+	{
+		std::vector<unsigned int> vals;
+		if (nPts < 2) nPts = 2;
+		if (step == 0) step = 1;
+
+		if (hi <= lo) {
+			vals.push_back(lo);
+			return vals;
+		}
+
+		unsigned int nFine = 1 + (hi - lo) / step;
+		if (nFine <= nPts) {
+			for (unsigned int i = 0; i < nFine; i++)
+				vals.push_back(hi - i * step);
+		} else {
+			for (unsigned int i = 0; i < nPts; i++) {
+				double alpha = (double) i / (double) (nPts - 1);
+				double raw = (double) hi - alpha * (double) (hi - lo);
+				unsigned int s = SnapToGrid((unsigned int) std::llround(raw), lo, hi, step);
+				vals.push_back(s);
+			}
+		}
+
+		std::sort(vals.begin(), vals.end(), std::greater<unsigned int>());
+		vals.erase(std::unique(vals.begin(), vals.end()), vals.end());
+		return vals;
+	}
+
 	std::vector<BlockCandidate> SampleRegion(const SearchRegion &R, unsigned int nPts,
 	                                         bool predicted = false) const
 	{
 		std::vector<BlockCandidate> out;
 
-		auto xs = SampleDim(R.xLo, R.xHi, R.dx, nPts);
+		// auto xs = SampleDim(R.xLo, R.xHi, R.dx, nPts);
+		auto xs = SampleDimHighToLow(R.xLo, R.xHi, R.dx, nPts);
 		auto ys = SampleDim(R.yLo, R.yHi, R.dy, nPts);
 		auto zs = SampleDim(R.zLo, R.zHi, R.dz, nPts);
 
