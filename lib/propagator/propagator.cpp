@@ -556,6 +556,10 @@ void tunePropagator (Scalar *field) {
 	    fclose(capa);
 	}
 
+	if (adaptive_coarse_points == 0){
+		LogMsg(VERB_NORMAL,"[tpA] Forcing to leave tuner");
+		return ;
+	}
 	prop->SetAdaptiveStopRelImprove(0.01);		//
 	prop->SetAdaptiveCoarsePoints(adaptive_coarse_points);	//
 	prop->SetAdaptiveMaxEvals(100);						//

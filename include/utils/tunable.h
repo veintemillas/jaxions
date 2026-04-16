@@ -366,6 +366,15 @@ class Tunable {
 				xBest = xBlock = (xMax >= 4) ? 4 : xMax;
 				yBest = yBlock = 1;
 				zBest = zBlock = 1;
+
+				#ifdef USE_2DCYL
+        			ySize = 1;
+        			yMin  = 1;
+        			yMax  = 1;
+        			yStepMin = 1;
+        			yBest = yBlock = 1;
+				#endif
+
 			}
 		}
 
