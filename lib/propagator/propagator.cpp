@@ -532,15 +532,33 @@ void tunePropagator (Scalar *field) {
 	prof.start();
 
 	if (field->Device() == DEV_CPU)
-		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), false);
+		prop->InitBlockSize(field->NX(), field->NY(), 4*field->getLap(), field->DataSize(), field->DataAlign(), false);
 	else
 		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), true);
 
 	LogMsg(VERB_HIGH,"[tpA] Initial block Size %u %u %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
 
-	prop->SetAdaptiveStopRelImprove(0.01);
-	prop->SetAdaptiveCoarsePoints(5);
-	prop->SetAdaptiveMaxEvals(100);
+	/* check if force retune is requested */
+	FILE *capa = nullptr;
+	bool force_tune = false;
+	int adaptive_coarse_points = 5;
+
+	if ((capa = fopen("./forcetune", "r")) != nullptr) {
+	    force_tune = true;
+
+	    // try to read an integer from the file
+	    if (fscanf(capa, "%d", &adaptive_coarse_points) == 1) {
+	        LogMsg(VERB_NORMAL, "[tpA] FORCE RETUNE with adaptive_coarse_points %d", adaptive_coarse_points);
+	    } else {
+	        LogMsg(VERB_NORMAL, "[tpA] FORCE RETUNE (no valid integer found, use %d)",adaptive_coarse_points);
+	    }
+
+	    fclose(capa);
+	}
+
+	prop->SetAdaptiveStopRelImprove(0.01);		//
+	prop->SetAdaptiveCoarsePoints(adaptive_coarse_points);	//
+	prop->SetAdaptiveMaxEvals(10);						//
 
 	/* cache lookup */
 	if (myRank == 0) {
@@ -608,13 +626,14 @@ void tunePropagator (Scalar *field) {
 			} while(!feof(cacheFile) && !found);
 
 			fclose(cacheFile);
-		}
-	}
+		} // end reading tuneName
+	} // end task for myRank = 0
 
 	MPI_Bcast (&found, sizeof(found), MPI_BYTE, 0, MPI_COMM_WORLD);
 	commSync();
 
 	if (found) {
+		/* broadcast best block */
 		unsigned int block[3] = {0,0,0};
 
 		if (myRank == 0) {
@@ -638,12 +657,20 @@ void tunePropagator (Scalar *field) {
 		prop->Tune();
 		prof.stop();
 		prof.add(prop->Name(), 0., 0.);
+
+		if (!force_tune)
 		return;
 	}
 
-	LogMsg (VERB_HIGH, "[tpA] Start adaptive tuning ... ");
+	/* If not found or forced, tune the propagator */
+
+	if (force_tune)
+		LogMsg (VERB_HIGH, "[tpA] Start adaptive tuning ... (forced)");
+	else
+		LogMsg (VERB_HIGH, "[tpA] Start adaptive tuning ... ");
 	LogFlush();
 
+	/* helper does three evaluations and gets the worst timing from all ranks */
 	auto evalBlock = [&](unsigned int bx, unsigned int by, unsigned int bz) -> size_t {
 		prop->SetBlockX(bx);
 		prop->SetBlockY(by);
@@ -676,6 +703,7 @@ void tunePropagator (Scalar *field) {
 		return worstRank;
 	};
 
+	/* we record tuning data for curiosity and improvement */
 	FILE *tlog = nullptr;
 	if (myRank == 0) {
 		char tuName[2048];
@@ -826,23 +854,29 @@ void tunePropagator (Scalar *field) {
 		        "[tpA] stats min %.3f max %.3f mean %.3f median %.3f std %.3f",
 		        pstats.minTime, pstats.maxTime, pstats.meanTime, pstats.medianTime, pstats.stdTime);
 
-		int Onepassonly = true;
+		int Onepassonly = false;
 		if(Onepassonly){
 			// Do only one coarse region + one interpolation pass.
 			// Stop before the next refined-region coarse scan.
 			stop = true;
 		} else
 		{
-			if (nEvals >= prop->AdaptiveMaxEvals())
+			if (nEvals >= prop->AdaptiveMaxEvals()){
 				stop = true;
-			else if (prop->RegionAtMinResolution(R))
+				LogMsg(VERB_NORMAL,"[tpA] stopped, max adaptive evaluations reached");
+				}
+			else if (prop->RegionAtMinResolution(R)){
 				stop = true;
+				LogMsg(VERB_NORMAL,"[tpA] stopped, min resolution reached");
+			}
 			else if (prevBestTime != std::numeric_limits<size_t>::max() &&
-			         relImprove < prop->AdaptiveStopRelImprove())
+			         relImprove < prop->AdaptiveStopRelImprove()){
 				stop = true;
+				LogMsg(VERB_NORMAL,"[tpA] stopped, relative resolution reached");
+				}
 			else
 				R = prop->RefineAroundBest(R, globalBest, nextRegionId++);
-		} 
+		}
 
 	} // end while
 
