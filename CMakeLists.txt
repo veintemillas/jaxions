@@ -169,7 +169,7 @@ if(${USE_PROP_OM4})
 endif()
 
 if(USE_2DCYL)
-  add_compile_definitions(-DUSE_2DCYL)
+  add_compile_definitions(USE_2DCYL)
 endif()
 
 set(OUTPUT_FLAGS "")
