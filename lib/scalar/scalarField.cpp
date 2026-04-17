@@ -1071,7 +1071,7 @@ void	Scalar::ghostcylindricalpatch(FieldIndex fIdx)
 		{
 			for (int nv =1; nv <= Ng; nv++){
 				from = static_cast<void *> (static_cast<char *> (m2Start())      + nv * ghostsurfBytes);
-				to   = static_cast<void *> (static_cast<char *> (m2BackGhost()) + ghostsurfBytes*(Ng-nv));
+				to   = static_cast<void *> (static_cast<char *> (m2FrontGhost()) + ghostsurfBytes*(Ng-nv));
 				memcpy(to, from, ghostsurfBytes);
 			}
 

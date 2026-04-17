@@ -72,11 +72,12 @@ void propagateCoreGpu(
 		const Float c_lap = ood2[nv - 1];
 		const Float c_der = ood2[NN + nv - 1];
 
-		if (X[0]==0)
-			mel += (malPx+malMx+malPx+malMx + malPz+malMz - ((Float) 6.)*tmp)*c_lap ;
+		if (X0 == 0)
+			mel += (malPx+malMx+malPz+malMz + malPz+malMz - ((Float) 6.)*tmp)*c_lap ;
 		else
-			mel += (malPx+malMx+malPz+malMz - ((Float) 4.)*tmp)*c_lap + (malPz - malMz)/((Float) X[0])*c_der;
+			mel += (malPx+malMx+malPz+malMz - ((Float) 4.)*tmp)*c_lap + (malPz - malMz)/((Float) X0)*c_der;
 	}
+
 #else
 
 	idx2Vec(idx, X, Lx); // will only work for Lx=Ly
@@ -208,14 +209,14 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 #ifdef USE_2DCYL
 	uint X = threadIdx.x + blockDim.x * blockIdx.x;
 	uint Z = threadIdx.y + blockDim.y * blockIdx.y;
-	if (X >= Lx || Z >= Sf/Lx) return;
+	//if (X >= Lx || Z >= Sf/Lx) return;
 	uint idx = Vo + X + Lx*Z;
+	
 #else
 	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x)
         	     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
-	if (idx >= Vf) return;
 #endif
-
+	if (idx >= Vf) return;
 	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Sf, NN);
 }
 
@@ -231,19 +232,17 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 */
 	bool UpdateM = (m2 != m);
 	if (UpdateM)
-		LogMsg(VERB_PARANOID,"[pG] propGPU called");
+		LogMsg(VERB_HIGH,"[pG] propGPU called");
 	else
-		LogMsg(VERB_PARANOID,"[pG] updateVGPU called");
-
-	//LogMsg(VERB_PARANOID,"[pG] dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+		LogMsg(VERB_HIGH,"[pG] updateVGPU called");
 
 	const uint Lx    = ppar.Lx;
 	const uint Ly    = ppar.Ly;
 	const uint Lz    = ppar.Lz;
 #ifdef USE_2DCYL
         const uint Sf  = Lx*Lz;
-        const uint Lz2 = (Vf-Vo)/Sf;
-        dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz+zBlock-1)/zBlock, 1);
+        const uint Lz_2 = (Vf-Vo)/Lx; // # z-slices to calculate
+        dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
 	dim3 blockSize(xBlock, zBlock, 1);
 #else
 	const uint Sf  = Lx*Ly;
@@ -251,6 +250,8 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 #endif
+        LogMsg(VERB_HIGH,"[pG] Lx %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+
 //LogMsg(VERB_PARANOID,"[pG] gridsize %d %d %d ",(Sf+xBlock-1)/xBlock,(Lz2+yBlock-1)/yBlock,1);
 	const uint NN    = ppar.Lap;
 
@@ -264,7 +265,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 //	LogMsg(VERB_HIGH,"m=%p v=%p m2=%p ",m, v, m2);LogFlush();
 
-	LogMsg(VERB_HIGH, "grid=(%u,%u,%u) block=(%u,%u,%u)\n", (unsigned)gridSize.x, (unsigned)gridSize.y, (unsigned)gridSize.z,
+	LogMsg(VERB_HIGH, "grid=(%u,%u,%u) block=(%u,%u,%u)", (unsigned)gridSize.x, (unsigned)gridSize.y, (unsigned)gridSize.z,
  (unsigned)blockSize.x, (unsigned)blockSize.y, (unsigned)blockSize.z);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
