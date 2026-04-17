@@ -27,7 +27,7 @@ void propagateCoreGpu(
 	const Float gFac, const Float eps, const Float dp1, const Float dp2,
 	const Float dzc, const Float dzd,
 	const Float* __restrict__ ood2,
-	const Float LL, const uint Lx, const uint Sf, const uint NN)
+	const Float LL, const uint Lx, const uint Lz, const uint Sf, const uint NN)
 	{
 	uint X[3], idxPx, idxPy, idxMx, idxMy;
 
@@ -50,8 +50,9 @@ void propagateCoreGpu(
 
 #ifdef USE_2DCYL
 
-	uint X0 = idx % Lx;
-
+	uint X0 = idx % Lx;                        // z coordinate
+	uint Z0_global = Lz + idx/Lx - NN;         // radial coordinate, Lz is Nz*commRank()
+	
 	complex<Float> malPx, malMx, malPz, malMz;
 
 	for (size_t nv=1; nv <= NN; nv++)
@@ -72,7 +73,7 @@ void propagateCoreGpu(
 		const Float c_lap = ood2[nv - 1];
 		const Float c_der = ood2[NN + nv - 1];
 
-		if (X0 == 0)
+		if (Z0_global == 0)
 			mel += (malPx+malMx+malPz+malMz + malPz+malMz - ((Float) 6.)*tmp)*c_lap ;
 		else
 			mel += (malPx+malMx+malPz+malMz - ((Float) 4.)*tmp)*c_lap + (malPz - malMz)/((Float) X0)*c_der;
@@ -199,7 +200,7 @@ void propagateCoreGpu(
 template<typename Float, const VqcdType VQcd, bool UpdateM>
 __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4,
 				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float* __restrict__ ood2, const Float LL,
-				const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN)
+				const uint Lx, const uint Lz, const uint Sf, const uint Vo, const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 //	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -211,13 +212,13 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 	uint Z = threadIdx.y + blockDim.y * blockIdx.y;
 	//if (X >= Lx || Z >= Sf/Lx) return;
 	uint idx = Vo + X + Lx*Z;
-	
+	// here Lz includes commRank(), Lz=Nz*commRank()!
 #else
 	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x)
         	     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 #endif
 	if (idx >= Vf) return;
-	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Sf, NN);
+	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Lz, Sf, NN);
 }
 
 void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
@@ -238,19 +239,22 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 
 	const uint Lx    = ppar.Lx;
 	const uint Ly    = ppar.Ly;
-	const uint Lz    = ppar.Lz;
 #ifdef USE_2DCYL
-        const uint Sf  = Lx*Lz;
+	const uint Lz    = ppar.Lz*commRank();
+        const uint Sf  = Lx*Lz;       // unused
         const uint Lz_2 = (Vf-Vo)/Lx; // # z-slices to calculate
         dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
 	dim3 blockSize(xBlock, zBlock, 1);
+	LogMsg(VERB_HIGH,"[pG2D] Lx %lu Lz_offset %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Lz,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 #else
+	const uint Lz    = ppar.Lz;
 	const uint Sf  = Lx*Ly;
 	const uint Lz2 = (Vf-Vo)/Sf;
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
+	LogMsg(VERB_HIGH,"[pG] Lx %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 #endif
-        LogMsg(VERB_HIGH,"[pG] Lx %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+     
 
 //LogMsg(VERB_PARANOID,"[pG] gridsize %d %d %d ",(Sf+xBlock-1)/xBlock,(Lz2+yBlock-1)/yBlock,1);
 	const uint NN    = ppar.Lap;
