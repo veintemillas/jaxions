@@ -534,7 +534,7 @@ void tunePropagator (Scalar *field) {
 	if (field->Device() == DEV_CPU)
 		prop->InitBlockSize(field->NX(), field->NY(), std::min(field->NZ(),4*field->getLap()), field->DataSize(), field->DataAlign(), false);
 	else
-		prop->InitBlockSize(field->NX(), field->NY(), field->NZ(), field->DataSize(), field->DataAlign(), true);
+		prop->InitBlockSize(field->NX(), field->NY(), std::min(field->NZ(),4*field->getLap()), field->DataSize(), field->DataAlign(), true);
 
 	LogMsg(VERB_HIGH,"[tpA] Initial block Size %u %u %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
 
@@ -581,7 +581,7 @@ void tunePropagator (Scalar *field) {
 			newFile = true;
 		} else {
 			int          rMpi, rThreads;
-			size_t       rNx, rNy, rNz, Nghost;
+			size_t       rNx, rNy, rNz, Nghost, rBestTimeNs;
 			unsigned int rBx, rBy, rBz, fType, myField;
 
 			bool         foundAny = false;
