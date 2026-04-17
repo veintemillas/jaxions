@@ -571,9 +571,9 @@ void tunePropagator (Scalar *field) {
 
 		if (pType & PROP_BASE)
 #ifdef USE_2DCYL
-			sprintf (tuneName, "%s/tuneCache_2D.dat", wisDir);
+			sprintf (tuneName, "%s/tuneCache_2D.txt", wisDir);
 #else
-			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+			sprintf (tuneName, "%s/tuneCache.txt", wisDir);
 #endif
 
 		if ((cacheFile = fopen(tuneName, "r")) == nullptr) {
@@ -584,6 +584,10 @@ void tunePropagator (Scalar *field) {
 			size_t       rNx, rNy, rNz, Nghost;
 			unsigned int rBx, rBy, rBz, fType, myField;
 
+			bool         foundAny = false;
+			size_t       bestCachedTime = std::numeric_limits<size_t>::max();
+			unsigned int bestBx = 1, bestBy = 1, bestBz = 1;
+
 			if      (field->Field() == FIELD_SAXION) myField = 0;
 			else if (field->Field() == FIELD_AXION)  myField = 1;
 			else if (field->Field() == FIELD_NAXION) myField = 2;
@@ -593,17 +597,15 @@ void tunePropagator (Scalar *field) {
 			char mDev[8];
 			std::string tDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
 
-			do {
-				int nRead = fscanf (cacheFile, "%7s %d %d %lu %lu %lu %u %u %u %u %lu",
+			while(true) {
+				int nRead = fscanf (cacheFile, "%7s %d %d %lu %lu %lu %u %u %u %u %lu %lu",
 				                    mDev,
 				                    &rMpi, &rThreads,
 				                    &rNx, &rNy, &rNz,
-				                    &fType, &rBx, &rBy, &rBz, &Nghost);
+				                    &fType, &rBx, &rBy, &rBz, &Nghost, &rBestTimeNs);
 
-				if (nRead == 10) {
-					rNz = rNy;
-					rNy = rNx;
-				}
+				if (nRead == EOF || nRead < 12)
+					break;
 
 				std::string fDev(mDev);
 
@@ -620,16 +622,38 @@ void tunePropagator (Scalar *field) {
 					    (field->Device() == DEV_GPU &&
 					     (rBx <= prop->MaxBlockX() && rBy <= prop->MaxBlockY() && rBz <= prop->MaxBlockZ())))
 					{
-						found = true;
-						prop->SetBlockX(rBx);
-						prop->SetBlockY(rBy);
-						prop->SetBlockZ(rBz);
-						prop->UpdateBestBlock();
+						LogMsg(VERB_HIGH,
+							"Tune cache match: dev=%s mpi=%d threads=%d lattice=%lu %lu %lu field=%u "
+							"block=%u x %u x %u Ng=%lu time=%lu ns",
+							fDev.c_str(), rMpi, rThreads,
+							rNx, rNy, rNz, fType,
+							rBx, rBy, rBz, Nghost, rBestTimeNs);
+							
+						if (!foundAny || rBestTimeNs < bestCachedTime) {
+							foundAny = true;
+							bestCachedTime = rBestTimeNs;
+							bestBx = rBx;
+							bestBy = rBy;
+							bestBz = rBz;
+						}
+
 					}
 				}
-			} while(!feof(cacheFile) && !found);
+			} // end while
 
 			fclose(cacheFile);
+
+			if (foundAny) {
+				found = true;
+				prop->SetBlockX(bestBx);
+				prop->SetBlockY(bestBy);
+				prop->SetBlockZ(bestBz);
+				prop->UpdateBestBlock();
+
+				LogMsg(VERB_NORMAL,
+					 "Adaptive tuned values read from cache file. Best block %u x %u x %u with cached best time %lu ns",
+					 bestBx, bestBy, bestBz, bestCachedTime);
+}
 		} // end reading tuneName
 	} // end task for myRank = 0
 
@@ -896,7 +920,7 @@ void tunePropagator (Scalar *field) {
 			stop = true;
 			LogMsg(VERB_NORMAL, "[tpA] stopped, no new points evaluated");
 		}
-		
+
 		if (pstats.nValid > 0 && pstats.best.timeNs < globalBestTime) {
 			globalBestTime = pstats.best.timeNs;
 			globalBest = pstats.best;
@@ -1020,9 +1044,9 @@ void tunePropagator (Scalar *field) {
 
 		if (pType & PROP_BASE){
 #ifdef USE_2DCYL
-			sprintf (tuneName, "%s/tuneCache_2D.dat", wisDir);
+			sprintf (tuneName, "%s/tuneCache_2D.txt", wisDir);
 #else
-			sprintf (tuneName, "%s/tuneCache.dat", wisDir);
+			sprintf (tuneName, "%s/tuneCache.txt", wisDir);
 #endif
 		}
 
@@ -1050,11 +1074,11 @@ void tunePropagator (Scalar *field) {
 		else fType = 999;
 
 		std::string myDev(field->Device() == DEV_GPU ? "Gpu" : "Cpu");
-		fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu\n",
+		fprintf (cacheFile, "%s %d %d %lu %lu %lu %u %u %u %u %lu %lu\n",
 		         myDev.c_str(), commSize(), omp_get_max_threads(),
 		         field->NX(), field->NY(), field->NZ(),
 		         fType, prop->TunedBlockX(), prop->TunedBlockY(), prop->TunedBlockZ(),
-		         field->getNg());
+		         field->getNg(), globalBestTime);
 		fclose(cacheFile);
 	}
 
