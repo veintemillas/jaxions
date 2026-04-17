@@ -444,6 +444,7 @@
 	#ifdef	USE_GPU
 
 		PropParms ppar;
+		loadparms(&ppar, axion);
 
 		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
 		const uint ext = uV + uS;
@@ -480,9 +481,9 @@
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[1]);
 			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, ppar, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
 
+			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[2]);
 			*z += dz*d0;
 			axion->updateR();
-			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[2]);
 		}
 
 		if (lastStage == PROP_LAST) {
