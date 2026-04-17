@@ -76,7 +76,7 @@ void propagateCoreGpu(
 		if (Z0_global == 0)
 			mel += (malPx+malMx+malPz+malMz + malPz+malMz - ((Float) 6.)*tmp)*c_lap ;
 		else
-			mel += (malPx+malMx+malPz+malMz - ((Float) 4.)*tmp)*c_lap + (malPz - malMz)/((Float) X0)*c_der;
+			mel += (malPx+malMx+malPz+malMz - ((Float) 4.)*tmp)*c_lap + (malPz - malMz)/((Float) Z0_global)*c_der;
 	}
 
 #else
