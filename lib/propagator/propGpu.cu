@@ -50,8 +50,9 @@ void propagateCoreGpu(
 
 #ifdef USE_2DCYL
 
-	uint X0 = idx % Lx;                        // z coordinate
-	uint Z0_global = Lz + idx/Lx - NN;         // radial coordinate, Lz is Nz*commRank()
+	uint X0 = idx % Lx;                        // z coordinatea
+	uint Z  = idx/Lx - NN;
+	uint Z0_global = Lz + Z;         // radial coordinate, Lz is Nz*commRank()
 	
 	complex<Float> malPx, malMx, malPz, malMz;
 
@@ -67,8 +68,16 @@ void propagateCoreGpu(
 		else
 			malMx = m[idx - nv];
 
+
 		malPz = m[idx + nv*Lx]; // requires a special ghost at rank Np - 1
-		malMz = m[idx - nv*Lx]; // requires a special ghost at rank 0
+
+		//malMz = m[idx - nv*Lx]; // requires a special ghost at rank 0
+		
+
+		if (Z0_global < nv)	// this doesn't 
+			malMz = m[idx + (nv-Z)*Lx];
+		else
+			malMz = m[idx - nv*Lx];
 
 		const Float c_lap = ood2[nv - 1];
 		const Float c_der = ood2[NN + nv - 1];
@@ -210,9 +219,10 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 #ifdef USE_2DCYL
 	uint X = threadIdx.x + blockDim.x * blockIdx.x;
 	uint Z = threadIdx.y + blockDim.y * blockIdx.y;
-	//if (X >= Lx || Z >= Sf/Lx) return;
+	if (X >= Lx || Z >= Sf) return;
 	uint idx = Vo + X + Lx*Z;
-	// here Lz includes commRank(), Lz=Nz*commRank()!
+	// here Lz = Nz (per rank) and
+	// Sf includes commRank(), Sf=Nz*commRank()!
 #else
 	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x)
         	     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -240,9 +250,9 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	const uint Lx    = ppar.Lx;
 	const uint Ly    = ppar.Ly;
 #ifdef USE_2DCYL
-	const uint Lz    = ppar.Lz*commRank();
-        const uint Sf  = Lx*Lz;       // unused
-        const uint Lz_2 = (Vf-Vo)/Lx; // # z-slices to calculate
+	const uint Sf    = ppar.Lz*commRank();
+        const uint Lz    = Lx*Lz;       // unused
+        const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
         dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
 	dim3 blockSize(xBlock, zBlock, 1);
 	LogMsg(VERB_HIGH,"[pG2D] Lx %lu Lz_offset %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Lz,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
@@ -357,43 +367,68 @@ static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, cFloat * _
 }
 
 template<typename cFloat, typename Float>
-__global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf)
+__global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN)
 {
-	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
-	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 
-	if	(idx >= Vf)
-		return;
 
-	updateMCoreGpu<cFloat,Float>(idx, m, v, dzd, Sf);
+#ifdef USE_2DCYL
+        uint X = threadIdx.x + blockDim.x * blockIdx.x;
+        uint Z = threadIdx.y + blockDim.y * blockIdx.y;
+        if (X >= Lx || Z >= Sf) return;
+        uint idx = Vo + X + Lx*Z;
+        // Sf = Nz here
+	uint m_v_gap = NN*Lx;
+#else
+        uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x)
+                     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
+	uint m_v_gap = NN*Sf;
+#endif
+        if (idx >= Vf) return;
+
+	updateMCoreGpu<cFloat,Float>(idx, m, v, dzd, m_v_gap);
 }
 
-void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, const uint Lx, const uint Vo, const uint Vf, FieldPrecision precision,
+void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, PropParms ppar, const uint Vo, const uint Vf, FieldPrecision precision,
 		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream, FieldType fType=FIELD_SAXION)
 {
-/*
-	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3	gridSize((Lx*Lx+BSSIZE-1)/BSSIZE,Lz2,1);
-	dim3	blockSize(BSSIZE,1,1);
-*/
-	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3 gridSize((Lx*Lx+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
-	dim3 blockSize(xBlock, yBlock, 1);
+
+
+        LogMsg(VERB_HIGH,"[pG] updateMGPU called");
+	
+	const uint NN    = ppar.Lap;
+        const uint Lx    = ppar.Lx;
+        const uint Ly    = ppar.Ly;
+#ifdef USE_2DCYL
+        const uint Sf    = ppar.Lz;
+        //const uint Lz    = Lx*Lz;     
+        const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
+        dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
+        dim3 blockSize(xBlock, zBlock, 1);
+//        LogMsg(VERB_HIGH,"[pG2D] Lx %lu Lz_offset %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Lz,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+#else
+        const uint Lz    = ppar.Lz;
+        const uint Sf  = Lx*Ly;
+        const uint Lz2 = (Vf-Vo)/Sf;
+        dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
+        dim3 blockSize(xBlock, yBlock, 1);
+ //       LogMsg(VERB_HIGH,"[pG] Lx %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+#endif
+
 
 	if (precision == FIELD_DOUBLE)
 	{
 		const double dzd  = dz*d;
 		if (fType & FIELD_AXION)
-			updateMKernel<<<gridSize,blockSize,0,stream>>> ((        double *) m, (const         double *) v, dzd, Lx, Lx*Lx, Vo, Vf);
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((        double *) m, (const         double *) v, dzd, Lx, Sf, Vo, Vf,NN);
 		else
-			updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<double>*) m, (const complex<double>*) v, dzd, Lx, Lx*Lx, Vo, Vf);
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<double>*) m, (const complex<double>*) v, dzd, Lx, Sf, Vo, Vf,NN);
 	}
 	else if (precision == FIELD_SINGLE)
 	{
 		const float dzd  = dz*d;
 		if (fType & FIELD_AXION)
-			updateMKernel<<<gridSize,blockSize,0,stream>>> ((        float  *) m, (const         float  *) v, dzd, Lx, Lx*Lx, Vo, Vf);
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((        float  *) m, (const         float  *) v, dzd, Lx, Sf, Vo, Vf,NN);
 		else
-			updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<float> *) m, (const complex<float> *) v, dzd, Lx, Lx*Lx, Vo, Vf);
+			updateMKernel<<<gridSize,blockSize,0,stream>>> ((complex<float> *) m, (const complex<float> *) v, dzd, Lx, Sf, Vo, Vf, NN);
 	}
 }

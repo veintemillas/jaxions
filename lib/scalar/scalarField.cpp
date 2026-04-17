@@ -292,18 +292,15 @@ const std::complex<float> If(0.,1.);
 	{
 		case FIELD_SAXION:
 
-			if (!lowmem && !lowmemGPU) {
+			if (lowmem && lowmemGPU)
+				m2 = nullptr;
+			else {
 				LogMsg(VERB_NORMAL, "[sca] allocating mBytes for m2");
 				alignAlloc ((void**) &m2, mAlign, mBytes);
 				memset (m2, 0, mBytes);
 				totalCPU += mBytes;
-			} else if (!lowmem && lowmemGPU) {
-				LogMsg(VERB_NORMAL, "[sca] lowmemGPU allocating mBytes for m2 [Experimental warning!!]");
-				alignAlloc ((void**) &m2, mAlign, mBytes);
-				memset (m2, 0, mBytes);
-				totalCPU += mBytes;
-			} else
-				m2 = nullptr;
+			}
+		
 			break;
 
 		case FIELD_AXION_MOD:
