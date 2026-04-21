@@ -121,7 +121,7 @@ def generic_jax(msa, N, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0, options=
         SIMU = " --steps 20000000 --wDz 1.0 --lap %d" % Ng
     PHYS = " --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d " % (msa, N, zf)
     INCO = " --ctype smooth --zi 0.1 --sIter 0 --nncore "
-    OUTP = " --dump %d --meas 0 --nologmpi --verbose %d %s" % (dump, verb, options)
+    OUTP = " --p2DmapXZ --dump %d --meas 0 --nologmpi --verbose %d %s" % (dump, verb, options)
     return SIMU + PHYS + INCO + OUTP, GRID, N
 
 
@@ -132,7 +132,7 @@ def run_jax(JAXI, Np=1, omp=1, r_file='run.sh', o_file='log-con.txt'):
         rsh.write('''\
         #! /bin/bash
         export OMP_NUM_THREADS=%d
-        mpirun -np %d caxion3d %s > %s
+        mpirun -np %d caxion3d %s > %s 2>&1
         ''' % (omp, Np, JAXI, o_file))
     subprocess.run('chmod u+x %s' % r_file, shell=True, capture_output=True, text=True)
     subprocess.run('./%s'           % r_file, shell=True, capture_output=True, text=True)
