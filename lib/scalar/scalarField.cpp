@@ -913,8 +913,9 @@ void	Scalar::sendGhosts2(FieldIndex fIdx, CommOperation opComm, int ng)
 
 	if (opComm == COMM_WAIT){
 	#ifdef USE_2DCYL
-	#ifdef  USE_GPU
-			ghostcylindricalpatch(fIdx);
+	#ifdef USE_GPU
+			if (device == DEV_GPU)
+				ghostcylindricalpatch(fIdx);
 	#endif
 	#endif
 	}

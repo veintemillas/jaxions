@@ -52,7 +52,7 @@ void propagateCoreGpu(
 
 	uint X0 = idx % Lx;                        // z coordinatea
 	uint Z  = idx/Lx - NN;
-	uint Z0_global = Lz + Z;         // radial coordinate, Lz is Nz*commRank()
+	uint Z0_global = Sf + Z;         // radial coordinate, Sf is Nz*commRank()
 	
 	complex<Float> malPx, malMx, malPz, malMz;
 
