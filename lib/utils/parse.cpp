@@ -839,6 +839,13 @@ int	parseArgs (int argc, char *argv[])
 			PARSE1;
 		}
 
+		if (!strcmp(argv[i], "--p2DmapXZ"))
+		{
+			p2dmapo = true ;
+			maty |= MAPT_XZMV;
+			PARSE1;
+		}
+
 		if (!strcmp(argv[i], "--p2DmapYZ"))
 		{
 			p2dmapo = true ;
