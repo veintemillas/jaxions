@@ -217,7 +217,7 @@
 		if (lastStage == PROP_FIRST) {
 			const double	d0 = d[0];
 
-			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, ppar, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2], FIELD_AXION);
+			updateMGpu(axion->mGpu(), axion->vGpu(), ppar, dz, d0, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2], FIELD_AXION);
 			*z += dz*d0;
 			axion->updateR();
 			cD = &(d[1]);
@@ -283,20 +283,20 @@
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	void	PropClass<nStages, lastStage, VQcd>::sRunGpu	(const double dz) {
 	#ifdef	USE_GPU
+
 		PropParms ppar;
 		loadparms(&ppar, axion);
+
 		const uint uLx = Lx, uLz = Lz, uS = ppar.Ng*S, uV = V;
 		const uint ext = uV + uS;
 
-
 		double *z = axion->zV();
-
 		auto *cD = d;
 
 		if (lastStage == PROP_FIRST) {
 			const double	d0 = d[0];
 
-			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, ppar, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
+			updateMGpu(axion->mGpu(), axion->vGpu(), ppar, dz, d0, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
 			*z += dz*d0;
 			axion->updateR();
 			cD = &(d[1]);
@@ -450,13 +450,12 @@
 		const uint ext = uV + uS;
 
 		double *z = axion->zV();
-		axion->updateR();
 
 		auto *cD = d;
 		if (lastStage == PROP_FIRST) {
 			const double	d0 = d[0];
 
-			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, ppar, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
+			updateMGpu(axion->mGpu(), axion->vGpu(), ppar, dz, d0, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
 			*z += dz*d0;
 			axion->updateR();
 			cD = &(d[1]);
@@ -479,7 +478,7 @@
 				  ((cudaStream_t *)axion->Streams())[1]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[0]);
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[1]);
-			updateMGpu(axion->mGpu(), axion->vGpu(), dz, d0, ppar, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
+			updateMGpu(axion->mGpu(), axion->vGpu(), ppar, dz, d0, uS, ext, precision, xBlock, yBlock, zBlock, ((cudaStream_t *)axion->Streams())[2]);
 
 			cudaStreamSynchronize(((cudaStream_t *)axion->Streams())[2]);
 			*z += dz*d0;

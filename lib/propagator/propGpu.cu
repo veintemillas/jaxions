@@ -207,9 +207,10 @@ void propagateCoreGpu(
 }
 
 template<typename Float, const VqcdType VQcd, bool UpdateM>
-__global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, const Float z, const Float z2, const Float z4,
-				const Float zQ, const Float gFac, const Float eps, const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float* __restrict__ ood2, const Float LL,
-				const uint Lx, const uint Lz, const uint Sf, const uint Vo, const uint Vf, const uint NN)
+__global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<Float> * __restrict__ v, complex<Float> * __restrict__ m2, 
+			const Float z, const Float z2, const Float z4, const Float zQ, const Float gFac, const Float eps, 
+			const Float dp1, const Float dp2, const Float dzc, const Float dzd, const Float* __restrict__ ood2, const Float LL,
+			const uint Lx, const uint Lz, const uint Sf, const uint Vo, const uint Vf, const uint NN)
 {
 	//uint idx = Vo + (threadIdx.x + blockDim.x*(blockIdx.x + gridDim.x*blockIdx.y));
 //	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x) + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
@@ -219,7 +220,8 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 #ifdef USE_2DCYL
 	uint X = threadIdx.x + blockDim.x * blockIdx.x;
 	uint Z = threadIdx.y + blockDim.y * blockIdx.y;
-	if (X >= Lx || Z >= Sf) return;
+	const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
+	if (X >= Lx || Z >= Lz_2) return;
 	uint idx = Vo + X + Lx*Z;
 	// here Lz = Nz (per rank) and
 	// Sf includes commRank(), Sf=Nz*commRank()!
@@ -231,16 +233,14 @@ __global__ void	propagateKernel(const complex<Float> * __restrict__ m, complex<F
 	propagateCoreGpu<Float, VQcd, UpdateM>(idx, m, v, m2, z, z2, z4, zQ, gFac, eps, dp1, dp2, dzc, dzd, ood2, LL, Lx, Lz, Sf, NN);
 }
 
-void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, const double dz, const double c, const double d,
-				const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision, const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
+void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __restrict__ m2, PropParms ppar, 
+			const double dz, const double c, const double d,
+			const uint Vo, const uint Vf, const VqcdType VQcd, FieldPrecision precision, 
+			const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream)
 {
 	if (Vo>Vf)
 		return ;
-/*
-	const uint Lz2 = (Vf-Vo)/(Lx*Lx);
-	dim3	  gridSize((Lx*Lx+BLSIZE-1)/BLSIZE,Lz2,1);
-	dim3	  blockSize(BLSIZE,1,1);
-*/
+
 	bool UpdateM = (m2 != m);
 	if (UpdateM)
 		LogMsg(VERB_HIGH,"[pG] propGPU called");
@@ -251,18 +251,20 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	const uint Ly    = ppar.Ly;
 #ifdef USE_2DCYL
 	const uint Sf    = ppar.Lz*commRank();
-        const uint Lz    = Lx*Lz;       // unused
-        const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
-        dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
+	const uint Lz    = ppar.Lz;
+	const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
+	dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
 	dim3 blockSize(xBlock, zBlock, 1);
-	LogMsg(VERB_HIGH,"[pG2D] Lx %lu Lz_offset %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Lz,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+	LogMsg(VERB_HIGH,"[pG2D] Lx %lu Lz %lu z-slices %lu Sf(Nz*nMPI) %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y z Block %lu %lu %lu",
+		Lx,Lz,Lz_2,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 #else
 	const uint Lz    = ppar.Lz;
 	const uint Sf  = Lx*Ly;
 	const uint Lz2 = (Vf-Vo)/Sf;
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
-	LogMsg(VERB_HIGH,"[pG] Lx %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+	LogMsg(VERB_HIGH,"[pG] Lx %lu Lz %lu z-slices %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y x Block %lu %lu %lu",
+		Lx,Lz,Lz_2,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 #endif
      
 
@@ -367,51 +369,56 @@ static __device__ void	__forceinline__ updateMCoreGpu(const uint idx, cFloat * _
 }
 
 template<typename cFloat, typename Float>
-__global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict__ v, const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN)
+__global__ void	updateMKernel(cFloat * __restrict__ m, const cFloat * __restrict__ v, 
+	const Float dzd, const uint Lx, const uint Sf, const uint Vo, const uint Vf, const uint NN)
 {
-
-
+\
 #ifdef USE_2DCYL
-        uint X = threadIdx.x + blockDim.x * blockIdx.x;
-        uint Z = threadIdx.y + blockDim.y * blockIdx.y;
-        if (X >= Lx || Z >= Sf) return;
-        uint idx = Vo + X + Lx*Z;
-        // Sf = Nz here
+	uint X = threadIdx.x + blockDim.x * blockIdx.x;
+	uint Z = threadIdx.y + blockDim.y * blockIdx.y;
+	const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
+	if (X >= Lx || Z >= Lz_2) return;
+	uint idx = Vo + X + Lx*Z;
 	uint m_v_gap = NN*Lx;
 #else
-        uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x)
-                     + Sf*(threadIdx.y + blockDim.y*blockIdx.y);
+	uint idx = Vo + (threadIdx.x + blockDim.x*blockIdx.x)
+					+ Sf*(threadIdx.y + blockDim.y*blockIdx.y);
 	uint m_v_gap = NN*Sf;
 #endif
-        if (idx >= Vf) return;
-
+	if (idx >= Vf) return;
 	updateMCoreGpu<cFloat,Float>(idx, m, v, dzd, m_v_gap);
 }
 
-void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, const double dz, const double d, PropParms ppar, const uint Vo, const uint Vf, FieldPrecision precision,
-		   const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream, FieldType fType=FIELD_SAXION)
+void	updateMGpu(void * __restrict__ m, const void * __restrict__ v, PropParms ppar, 
+		const double dz, const double d, const uint Vo, const uint Vf, FieldPrecision precision,
+		const int xBlock, const int yBlock, const int zBlock, cudaStream_t &stream, FieldType fType=FIELD_SAXION)
 {
 
-
-        LogMsg(VERB_HIGH,"[pG] updateMGPU called");
+		if (Vo>Vf)
+			return ;
+        
+			LogMsg(VERB_HIGH,"[pG] updateMGPU called");
 	
 	const uint NN    = ppar.Lap;
         const uint Lx    = ppar.Lx;
         const uint Ly    = ppar.Ly;
+
+		/* Warning : The usage of Sf depends on the build */
 #ifdef USE_2DCYL
         const uint Sf    = ppar.Lz;
-        //const uint Lz    = Lx*Lz;     
         const uint Lz_2  = (Vf-Vo)/Lx; // # z-slices to calculate
         dim3 gridSize((Lx+xBlock-1)/xBlock, (Lz_2+zBlock-1)/zBlock, 1);
         dim3 blockSize(xBlock, zBlock, 1);
-//        LogMsg(VERB_HIGH,"[pG2D] Lx %lu Lz_offset %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Lz,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+    	LogMsg(VERB_HIGH,"[uMGpu2D] Lx %lu Lz_offset %lu Sf(Lz) %lu dz %f d %f Vo %lu Vf %lu precision %d x y z Block %lu %lu %lu",
+			Lx,Lz_2,Sf,dz,d,Vo,Vf,precision,xBlock,yBlock,zBlock);
 #else
         const uint Lz    = ppar.Lz;
         const uint Sf  = Lx*Ly;
         const uint Lz2 = (Vf-Vo)/Sf;
         dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
         dim3 blockSize(xBlock, yBlock, 1);
- //       LogMsg(VERB_HIGH,"[pG] Lx %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y xBlock %lu %lu %lu",Lx,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+     	LogMsg(VERB_HIGH,"[uMGpu] Lx %lu Sf %lu dz %f d %f Vo %lu Vf %lu precision %d x y z Block %lu %lu %lu",
+			Lx,Sf,dz,d,Vo,Vf,precision,xBlock,yBlock,zBlock);
 #endif
 
 
