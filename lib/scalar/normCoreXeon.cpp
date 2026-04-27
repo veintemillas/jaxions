@@ -75,6 +75,10 @@ void normCoreKernelXeon (Scalar *field)
 		iPz = idx + n2;
 		iMz = idx - n2;
 
+		if (imag(mCp[idx]) == 0.0 && real(mCp[idx])==0.0){
+			rhof = 0.0;
+		}
+		else{
 		gradx = imag((mCp[iPx] - mCp[idx])/mCp[idx]);
 		gradtot = gradx*gradx ;
 		gradx = imag((mCp[idx] - mCp[iMx])/mCp[idx]);
@@ -87,29 +91,30 @@ void normCoreKernelXeon (Scalar *field)
 		gradtot += gradz*gradz ;
 		gradz = imag((mCp[idx] - mCp[iMz])/mCp[idx]);
 		gradtot += gradz*gradz ;
+		
+			if (gradtot > 0.0000001)
+			{
+						sss  = msa/sqrt(gradtot/2.);
+						//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
+						sss2 = sss*sss;
+						sss4 = sss2*sss2;
+						// rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
+						rhof  = (0.43*sss + 0.164*sss2 + 0.036*sss4)/(1.0+0.39*sss+0.2*sss2+0.036*sss4);
+						// rhof  = (0.40*sss + 0.1619383*sss2 + 0.01719206*sss4)/(1.0+0.28552459*sss+0.2*sss2+0.01719206*sss4);
+						// sss  = sqrt(LLa)*zia*deltaa/sqrt(gradtot);
+						// if (sss < 1.64447) {
+						// rhof  = 0.6081*sss ;
+						// }
+						// else
+						// {
+						// 	rhof = 1.0	;
+						// }
 
-		if (gradtot > 0.0000001)
-		{
-					sss  = msa/sqrt(gradtot/2.);
-					//rhof  = 0.5832*sss*(sss+1.0)*(sss+1.0)/(1.0+0.5832*sss*(1.5 + 2.0*sss + sss*sss));
-					sss2 = sss*sss;
-					sss4 = sss2*sss2;
-					// rhof  = (0.6081*sss+0.328*sss2+0.144*sss4)/(1.0+0.5515*sss+0.4*sss2+0.144*sss4);
-					rhof  = (0.43*sss + 0.164*sss2 + 0.036*sss4)/(1.0+0.39*sss+0.2*sss2+0.036*sss4);
-					// rhof  = (0.40*sss + 0.1619383*sss2 + 0.01719206*sss4)/(1.0+0.28552459*sss+0.2*sss2+0.01719206*sss4);
-					// sss  = sqrt(LLa)*zia*deltaa/sqrt(gradtot);
-					// if (sss < 1.64447) {
-					// rhof  = 0.6081*sss ;
-					// }
-					// else
-					// {
-					// 	rhof = 1.0	;
-					// }
-
-		}
-		else
-		{
-			rhof = 1.0 ;
+			}
+			else
+			{
+				rhof = 1.0 ;
+			}
 		}
 		maux[idx] = mCp[idx]*rhof/abs(mCp[idx]);
 
