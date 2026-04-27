@@ -42,7 +42,8 @@ void	normXeon (Scalar *sField, FieldIndex fIdx)
 			for (size_t lpc = 0; lpc < vol; lpc++)
 			{
 				double mod = abs(field[lpc]);
-				field[lpc] /= mod;
+				if (mod != 0.0)
+					field[lpc] /= mod;
 			}
 
 			break;
