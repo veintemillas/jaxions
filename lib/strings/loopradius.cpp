@@ -9,6 +9,7 @@
 #include "utils/logger.h"
 
 namespace {
+
 	// Constants for the weighted masking method
 	const double SIGMA = 30.0;        // Weighting parameter: w = exp(-phi²*σ)
 	const double D_ALPHA = M_PI / 8.0; // Angular width for masking
@@ -247,90 +248,77 @@ namespace {
 }
 
 // Template implementations for float
-double loopRadiusAxes(const float *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
-	
+double loopRadiusAxes(const float *rephi, lrpar p) {
+
 	// Cardinal axes angles: 0, π/2, π, 3π/2
 	const double angles[4] = {0.0, M_PI/2.0, M_PI, 3.0*M_PI/2.0};
 	
-	double R = computeWeightedRadius(rephi, Lx, Ly, x0, y0, angles, 4);
-	return R * delta;
+	double R = computeWeightedRadius(rephi, p.Lx, p.Ly, p.x0, p.y0, angles, 4);
+	return R * p.delta;
 }
 
-double loopRadiusDiag(const float *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusDiag(const float *rephi, lrpar p) {
 	
 	// Diagonal angles: π/4, 3π/4, 5π/4, 7π/4
 	const double angles[4] = {M_PI/4.0, 3.0*M_PI/4.0, 5.0*M_PI/4.0, 7.0*M_PI/4.0};
 	
-	double R = computeWeightedRadius(rephi, Lx, Ly, x0, y0, angles, 4);
-	return R * delta;
+	double R = computeWeightedRadius(rephi, p.Lx, p.Ly, p.x0, p.y0, angles, 4);
+	return R * p.delta;
 }
 
-double loopRadiusAxesInterp(const float *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusAxesInterp(const float *rephi, lrpar p) {
 	
-	double R = findHorizontalZeroCrossings(rephi, Lx, Ly, x0, y0);
-	return R * delta;
+	double R = findHorizontalZeroCrossings(rephi, p.Lx, p.Ly, p.x0, p.y0);
+	return R * p.delta;
 }
 
-double loopRadiusDiagInterp(const float *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusDiagInterp(const float *rephi, lrpar p) {
 	
-	double R = findDiagonalZeroCrossings(rephi, Lx, Ly, x0, y0);
-	return R * delta;
+	double R = findDiagonalZeroCrossings(rephi, p.Lx, p.Ly, p.x0, p.y0);
+	return R * p.delta;
 }
 
 // Template implementations for double
-double loopRadiusAxes(const double *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusAxes(const double *rephi, lrpar p) {
 	
 	const double angles[4] = {0.0, M_PI/2.0, M_PI, 3.0*M_PI/2.0};
 	
-	double R = computeWeightedRadius(rephi, Lx, Ly, x0, y0, angles, 4);
-	return R * delta;
+	double R = computeWeightedRadius(rephi, p.Lx, p.Ly, p.x0, p.y0, angles, 4);
+	return R * p.delta;
 }
 
-double loopRadiusDiag(const double *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusDiag(const double *rephi, lrpar p) {
 	
 	const double angles[4] = {M_PI/4.0, 3.0*M_PI/4.0, 5.0*M_PI/4.0, 7.0*M_PI/4.0};
 	
-	double R = computeWeightedRadius(rephi, Lx, Ly, x0, y0, angles, 4);
-	return R * delta;
+	double R = computeWeightedRadius(rephi, p.Lx, p.Ly, p.x0, p.y0, angles, 4);
+	return R * p.delta;
 }
 
-double loopRadiusAxesInterp(const double *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusAxesInterp(const double *rephi, lrpar p) {
 	
-	double R = findHorizontalZeroCrossings(rephi, Lx, Ly, x0, y0);
-	return R * delta;
+	double R = findHorizontalZeroCrossings(rephi, p.Lx, p.Ly, p.x0, p.y0);
+	return R * p.delta;
 }
 
-double loopRadiusDiagInterp(const double *rephi, size_t Lx, size_t Ly, double delta) {
-	double x0, y0;
-	computeCenterOfMass(rephi, Lx, Ly, x0, y0);
+double loopRadiusDiagInterp(const double *rephi, lrpar p) {
 	
-	double R = findDiagonalZeroCrossings(rephi, Lx, Ly, x0, y0);
-	return R * delta;
+	double R = findDiagonalZeroCrossings(rephi, p.Lx, p.Ly, p.x0, p.y0);
+	return R * p.delta;
 }
 
 // Main entry point that extracts rephi from Scalar field
 LoopRadiusData computeLoopRadius(Scalar *axion, int slice) {
 	LoopRadiusData result = {0.0, 0.0, 0.0, 0.0};
 	
+	LogMsg(VERB_NORMAL, "[LoopRadius] Compute loop radius (field %s)",axion->Folded()? "Folded":"Unfolded");
+	
 	if (axion->Field() != FIELD_SAXION) {
-		LogMsg(VERB_HIGH, "[LoopRadius] Only SAXION fields supported");
+		LogMsg(VERB_NORMAL, "[LoopRadius] Only SAXION fields supported");
 		return result;
 	}
-	
+
+
 	size_t Lx = axion->Length();
 	size_t Ly = axion->Length(); // Assuming square grid
 	size_t Lz = axion->Depth();   // Local depth (per rank)
@@ -343,43 +331,48 @@ LoopRadiusData computeLoopRadius(Scalar *axion, int slice) {
 	int localSlice = slice % slicesPerRank;  // Local index on that rank
 	
 	// Only compute if this rank owns the slice (others keep result={0,0,0,0})
+
 	if (myRank == prank) {
+
+		/* This copies m unfolded into mFrontGhost */
+		Folder	munge(axion);
+		LogMsg (VERB_NORMAL, "[LoopRadius] If configuration folded, unfold 2D slice");
+		munge(UNFOLD_SLICE, localSlice);
+	
 		// Extract 2D slice real part from 3D complex field
 		// Field layout: [z][y][x][complex] where complex = {real, imag}
 		size_t sliceSize = Lx * Ly;
-		
+		double x0 = -1,y0 = -1;			// for the COM 
 		if (axion->Precision() == FIELD_DOUBLE) {
-			std::vector<double> rephi(sliceSize);
 			
-			// Access field data directly
-			double *field = static_cast<double*>(axion->mCpu());
-			size_t sliceOffset = localSlice * sliceSize * 2; // *2 for complex
-			
-			// Extract real part (every other value, starting at offset 0)
-			for (size_t i = 0; i < sliceSize; i++) {
-				rephi[i] = field[sliceOffset + 2*i];  // Real part at even indices
+			double *re_phi = static_cast<double*>(axion->mFrontGhost());
+			for (size_t co = 2 ; co < sliceSize; co++){
+				re_phi[co] = re_phi[co*2];
 			}
 			
-			result.R_axes = loopRadiusAxes(rephi.data(), Lx, Ly, delta);
-			result.R_diag = loopRadiusDiag(rephi.data(), Lx, Ly, delta);
-			result.R_axes_interp = loopRadiusAxesInterp(rephi.data(), Lx, Ly, delta);
-			result.R_diag_interp = loopRadiusDiagInterp(rephi.data(), Lx, Ly, delta);
+			computeCenterOfMass(re_phi, Lx, Ly, x0, y0);		
+			lrpar para;
+			para.Lx=Lx;para.Ly=Ly;para.x0=x0;para.y0=y0,para.delta=delta;
+
+			result.R_axes = loopRadiusAxes(re_phi, para);
+			result.R_diag = loopRadiusDiag(re_phi, para);
+			result.R_axes_interp = loopRadiusAxesInterp(re_phi, para);
+			result.R_diag_interp = loopRadiusDiagInterp(re_phi, para);
 		} else {
-			std::vector<float> rephi(sliceSize);
-			
-			// Access field data directly
-			float *field = static_cast<float*>(axion->mCpu());
-			size_t sliceOffset = localSlice * sliceSize * 2; // *2 for complex
-			
-			// Extract real part (every other value, starting at offset 0)
-			for (size_t i = 0; i < sliceSize; i++) {
-				rephi[i] = field[sliceOffset + 2*i];  // Real part at even indices
+
+			float *re_phi = static_cast<float*>(axion->mFrontGhost());
+			for (size_t co = 2 ; co < sliceSize; co++){
+				re_phi[co] = re_phi[co*2];
 			}
-			
-			result.R_axes = loopRadiusAxes(rephi.data(), Lx, Ly, delta);
-			result.R_diag = loopRadiusDiag(rephi.data(), Lx, Ly, delta);
-			result.R_axes_interp = loopRadiusAxesInterp(rephi.data(), Lx, Ly, delta);
-			result.R_diag_interp = loopRadiusDiagInterp(rephi.data(), Lx, Ly, delta);
+			 
+			computeCenterOfMass(re_phi, Lx, Ly, x0, y0);
+			lrpar para;
+			para.Lx=Lx;para.Ly=Ly;para.x0=x0;para.y0=y0;para.delta=delta;
+
+			result.R_axes = loopRadiusAxes(re_phi, para);
+			result.R_diag = loopRadiusDiag(re_phi, para);
+			result.R_axes_interp = loopRadiusAxesInterp(re_phi, para);
+			result.R_diag_interp = loopRadiusDiagInterp(re_phi, para);
 		}
 	} else {
 		LogMsg(VERB_HIGH, "[LoopRadius] Slice %d not on rank %d (owned by rank %d)", slice, myRank, prank);
