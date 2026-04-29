@@ -13,6 +13,14 @@ struct LoopRadiusData {
 	double R_diag_interp;  // Loop radius along diagonals using zero-crossing interpolation
 };
 
+struct lrpar{
+	double x0;
+	double y0;
+	double delta;
+	size_t Lx;
+	size_t Ly;
+};
+
 /**
  * @brief Compute all loop radius observables from a 2D field slice
  * 
@@ -38,8 +46,8 @@ LoopRadiusData computeLoopRadius(Scalar *axion, int slice);
  * @param delta  Grid spacing in physical units
  * @return Radius in physical units
  */
-double loopRadiusAxes(const float *rephi, size_t Lx, size_t Ly, double delta);
-double loopRadiusAxes(const double *rephi, size_t Lx, size_t Ly, double delta);
+double loopRadiusAxes(const float *rephi, lrpar p);
+double loopRadiusAxes(const double *rephi, lrpar p);
 
 /**
  * @brief Compute loop radius using weighted masking along diagonals
@@ -53,8 +61,8 @@ double loopRadiusAxes(const double *rephi, size_t Lx, size_t Ly, double delta);
  * @param delta  Grid spacing in physical units
  * @return Radius in physical units
  */
-double loopRadiusDiag(const float *rephi, size_t Lx, size_t Ly, double delta);
-double loopRadiusDiag(const double *rephi, size_t Lx, size_t Ly, double delta);
+double loopRadiusDiag(const float *rephi, lrpar p);
+double loopRadiusDiag(const double *rephi, lrpar p);
 
 /**
  * @brief Compute loop radius using zero-crossing interpolation along horizontal axis
@@ -68,8 +76,8 @@ double loopRadiusDiag(const double *rephi, size_t Lx, size_t Ly, double delta);
  * @param delta  Grid spacing in physical units
  * @return Radius in physical units
  */
-double loopRadiusAxesInterp(const float *rephi, size_t Lx, size_t Ly, double delta);
-double loopRadiusAxesInterp(const double *rephi, size_t Lx, size_t Ly, double delta);
+double loopRadiusAxesInterp(const float *rephi, lrpar p);
+double loopRadiusAxesInterp(const double *rephi, lrpar p);
 
 /**
  * @brief Compute loop radius using zero-crossing interpolation along π/4 diagonal
@@ -83,7 +91,7 @@ double loopRadiusAxesInterp(const double *rephi, size_t Lx, size_t Ly, double de
  * @param delta  Grid spacing in physical units
  * @return Radius in physical units
  */
-double loopRadiusDiagInterp(const float *rephi, size_t Lx, size_t Ly, double delta);
-double loopRadiusDiagInterp(const double *rephi, size_t Lx, size_t Ly, double delta);
+double loopRadiusDiagInterp(const float *rephi, lrpar p);
+double loopRadiusDiagInterp(const double *rephi, lrpar p);
 
 #endif	// _LOOPRADIUS_
