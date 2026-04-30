@@ -186,8 +186,9 @@ def gm(address,something='summary',printerror=False):
 
     ftype       string      Saxion/Axion
     ct/z/time   float       conformal time
-    N/Size      float       Number of lattice points along 1D
-    L           float       Phyiscal Box Length [ADM u.]
+    Nx/N/Size   float       Number of lattice points along x (fast)
+    Ny,Nz                   Number of lattice points along y,z
+    L           float       Phyiscal Box Length [ADM u.] (along x)
     massA       float       Axion mass    [ADM u.]
     massS       float       Saxion mass   [ADM u.]
     msa         float       Saxion mass*L/N
@@ -333,6 +334,9 @@ def gm(address,something='summary',printerror=False):
         return f.attrs[u'z'] ;
     if (something == 'Size') or (something == 'N') or (something == 'sizeN'):
         return int(f.attrs[u'Size']) ;
+    if (something[0] == 'N') :
+        return int(f.attrs[something]) ;
+    
     if something == 'L':
         return f.attrs[u'Physical size'] ;
     if something == 'nqcd':

@@ -15,17 +15,19 @@ from IPython.display import clear_output
 # ---------------------------------------------------------------------------
 
 def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
-         gpu=False, verb=0, options='', outdir=None):
+         gpu=False, verb=0, options='', outdir=None, Nz=-1):
     '''simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
             gpu=False, verb=0, options='', outdir=None)
 
-    Prepares files for a NxN caxion3d simulation and runs them.
+    Prepares files for a N_rho x N_z caxion3d simulation and runs them.
     ICs are prepared in python as a static loop of radius R
     where theta is calculated from KR equivalent B-field
     and rho according to the distance from the string and msa.
     dx = 1, msa = equivalent to saxion mass.
     The program currently works only in Minkowski; FRW is easy to implement.
 
+    N        : number of points along rho direction
+    Nz       : -1? Nz=N; otherwise Nz
     Ng       : number of neighbours in the Laplacian
     Np       : number of MPI ranks
     omp      : number of OMP threads
@@ -42,30 +44,38 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     if plota:
         print('Simulation')
 
-    N_create   = N // rescale
-    R_create   = R / rescale
+    if Nz < 1:
+        Nz_ = N
+    else:
+        Nz_ = Nz
+    N_create   = N // rescale       # rho
+    Nz_create  = Nz_ // rescale     # z
+    R_create   = R / rescale        # is along rho
     msa_create = msa * rescale
 
     if plota:
-        print('Creation with N, R, msa =', N_create, R_create, msa_create)
+        print('Creation with Nrho, Nz, R, msa =', N_create, Nz_create, R_create, msa_create)
 
-    theta = thetaics(N_create, N_create, R_create, plota=plota, readIC=True)
+    theta = thetaics(N_create, Nz_create, R_create, plota=plota, readIC=True)
     phi   = phiics(theta, msa_create)
 
     # Build and run ICs-only step (creates the HDF5 skeleton)
-    JAXI, GRID, _ = generic_jax(msa_create, N_create, R=R_create, Ng=1, Np=Np,
+    # in jaxions, we permute, fast axis is z, slow is rho
+    # so x,z 
+    JAXI, GRID, _ = generic_jax(msa_create, Nx=Nz_create, nz=N_create, R=R_create, Ng=1, Np=Np,
                                  gpu=False, verb=verb, dump=1, options=options)
     create_jax(GRID + JAXI, Np=Np, omp=omp)
 
     if plota:
         print('Copy into file', N_create, R_create, msa_create)
+    # phis are created slow(rho) fast (z)
     copyics(np.transpose(phi, (1, 0, 2)), filename='out/m/axion.00000', n=0)
 
     if plota:
         print('Run jaxions', N, R, msa)
 
     dump = int(N * np.sqrt(12) / n_save)
-    JAXI, GRID, _ = generic_jax(msa, N, R=R, Ng=Ng, Np=Np, gpu=gpu, verb=verb,
+    JAXI, GRID, _ = generic_jax(msa, Nx=Nz_, nz=N, R=R, Ng=Ng, Np=Np, gpu=gpu, verb=verb,
                                  dump=dump, options=options)
     run_jax(GRID + JAXI + ' --index 0 ', Np=Np, omp=omp)
 
@@ -76,7 +86,12 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
 
     # Resolve destination directory
     if outdir is None:
-        dest = namea(N, msa, Ng)           # e.g. data/out128-500-2
+        xtr=''
+        if gpu:
+            xtr += 'gpu'
+        else :
+            xtr += 'cpu'
+        dest = namea(N,Nz_, msa, Ng,xtr)           # e.g. data/out128-500-2
         os.makedirs('data', exist_ok=True)  # ensure data/ exists
     else:
         dest = outdir                       # placed directly in cwd
@@ -94,16 +109,16 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
         print('Output saved to', dest)
 
 
-def namea(N, msa, Ng):
+def namea(Nrho,Nz, msa, Ng, xtr):
     '''Default output directory name: data/outN-1000*msa-Ng'''
-    return 'data/out%d-%d-%d' % (N, 1000 * msa, Ng)
+    return 'data/o%d.%d-m%d-l%d-'% (Nrho,Nz, 1000 * msa, Ng)+xtr
 
 
 # ---------------------------------------------------------------------------
 # jaxions command-line helpers  (MPI / OMP / GPU-aware)
 # ---------------------------------------------------------------------------
 
-def generic_jax(msa, N, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0, options=''):
+def generic_jax(msa, Nx, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0, options='', nz=-1):
     '''Build jaxions command strings.
 
     Returns (JAXI, GRID, N) where:
@@ -113,16 +128,22 @@ def generic_jax(msa, N, R=None, Ng=2, Np=1, dump=100, gpu=True, verb=0, options=
     R    : loop radius in code units; sets zf=1.7*R to stop shortly after collapse.
            If None, falls back to zf=N (run to end of box).
     '''
-    zf = int(1.7 * R) if R is not None else N
-    GRID = " --nx %d --nz %d --zgrid %d" % (N, N // Np, Np)
+
+    if nz<1:
+        Nz = Nx
+    else :
+        Nz = nz
+
+    zf = int(1.7 * R) if R is not None else Nx
+    GRID = " --nx %d --nz %d --zgrid %d" % (Nx, Nz // Np, Np)
     if gpu:
         SIMU = " --device gpu --measCPU  --steps 20000000 --wDz 1.0 --lap %d" % Ng
     else:
         SIMU = " --steps 20000000 --wDz 1.0 --lap %d" % Ng
-    PHYS = " --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d " % (msa, N, zf)
+    PHYS = " --vqcd0 --mink --notheta --msa %f --lsize %d  --zf %d " % (msa, Nx, zf)
     INCO = " --ctype smooth --zi 0.1 --sIter 0 --nncore "
     OUTP = " --p2DmapXZ --dump %d --meas 0 --nologmpi --verbose %d %s" % (dump, verb, options)
-    return SIMU + PHYS + INCO + OUTP, GRID, N
+    return SIMU + PHYS + INCO + OUTP, GRID, Nx
 
 
 def run_jax(JAXI, Np=1, omp=1, r_file='run.sh', o_file='log-con.txt'):
@@ -170,15 +191,16 @@ def buildr(mf, sigma=50):
     Uses Gaussian-weighted centroid (findmer2) for all frames.
     Returns (t, r, v, gamma).
     '''
-    N   = pa.gm(mf[0], 'N')
+    Nz   = pa.gm(mf[0], 'Nx')
+    Nrho = pa.gm(mf[0], 'Nz')
     msa = pa.gm(mf[0], 'msa')
     t     = pa.gml(mf, 'ct')
     r     = np.zeros_like(t)
     v     = np.zeros_like(t)
     gamma = np.zeros_like(t)
     for it in range(len(mf)):
-        li   = np.reshape(pa.gm(mf[it], 'da/chunk/m/'), (N, 2))[:, 0]
-        vel2 = np.reshape(pa.gm(mf[it], 'da/chunk/v/'), (N, 2))[:, 0] ** 2
+        li   = np.reshape(pa.gm(mf[it], 'da/chunk/m/'), (Nrho, 2))[:, 0]
+        vel2 = np.reshape(pa.gm(mf[it], 'da/chunk/v/'), (Nrho, 2))[:, 0] ** 2
         r[it], v[it], gamma[it] = findmer2(li, vel2, msa, sigma, 're_complex')
     return t, r, v, gamma
 
