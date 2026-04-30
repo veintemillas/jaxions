@@ -1841,6 +1841,11 @@ void	createMeas (Scalar *axion, int index)
 
 	writeAttribute(meas_id, fStr,   "Field type",    attr_type);
 	writeAttribute(meas_id, prec,   "Precision",     attr_type);
+	writeAttribute(meas_id, &tmpS,  "Nx",          H5T_NATIVE_UINT);
+	hsize_t ny = axion->NY(), nz = axion->TZ();
+	writeAttribute(meas_id, &ny, "Ny",          H5T_NATIVE_UINT);
+	writeAttribute(meas_id, &nz, "Nz",          H5T_NATIVE_UINT);
+
 	writeAttribute(meas_id, &tmpS,  "Size",          H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &totlZ, "Depth",         H5T_NATIVE_HSIZE);
 	writeAttribute(meas_id, &ms,    "Saxion mass",   H5T_NATIVE_DOUBLE);
