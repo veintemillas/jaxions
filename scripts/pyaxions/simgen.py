@@ -76,11 +76,11 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         base = ''
         if N0_match:
             base += f' --size {N0}'
-            if depth_match:
-                base += f' --depth {depth}'
-                if zgrid_match:
-                    base += f' --zgrid {zgrid_match.group(1)}'
-                    if prec_match:
+        if depth_match:
+            base += f' --depth {depth}'
+        if zgrid_match:
+            base += f' --zgrid {zgrid_match.group(1)}'
+        if prec_match:
             base += f' --prec {prec_match.group(1)}'
         if steps_match:
             base += f' --steps {steps_match.group(1)}'
