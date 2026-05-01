@@ -30,7 +30,7 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
 
     *Note that for "con" and "paxion", the user can either specify a specific index or the last config file will be used.
     *For "paxion", the flags --size, --depth, --zgrid, --prec, --fftplan, --lap are extracted from JAX automatically.
-     PAX_OPTIONS should contain paxion-specific flags only (e.g. --Rc, --zf, --ftype, --steps, --wDz, --meas, --dump, --p3D, --wDz, ...).
+     PAX_OPTIONS should contain paxion-specific flags only (e.g. --Rc, --zf, --ftype, --steps, --wDz, --meas, --dump, --p3D, ...).
 
     JAX         string  vaxion3d flags generated with simgen
     MODE        str     'run' (default), 'create', 'con', or 'paxion'
@@ -56,14 +56,14 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     cwd = os.getcwd()
 
     # Read specific values from the input JAX string (for printout and reuse)
-    N0_match    = re.search(r'--size (\d+)',          read_params)
-    depth_match = re.search(r'--depth (\d+)',         read_params)
-    zgrid_match = re.search(r'--zgrid (\d+)',         read_params)
-    L0_match    = re.search(r'--lsize (\d+\.\d+)',    read_params)
-    msa0_match  = re.search(r'--msa (\d+\.\d+)',      read_params)
-    prec_match  = re.search(r'--prec (\S+)',          read_params)
-    fftplan_match = re.search(r'--fftplan (\d+)',     read_params)
-    lap_match   = re.search(r'--lap (\d+)',           read_params)
+    N0_match      = re.search(r'--size (\d+)',       read_params)
+    depth_match   = re.search(r'--depth (\d+)',      read_params)
+    zgrid_match   = re.search(r'--zgrid (\d+)',      read_params)
+    L0_match      = re.search(r'--lsize (\d+\.\d+)', read_params)
+    msa0_match    = re.search(r'--msa (\d+\.\d+)',   read_params)
+    prec_match    = re.search(r'--prec (\S+)',        read_params)
+    fftplan_match = re.search(r'--fftplan (\d+)',    read_params)
+    lap_match     = re.search(r'--lap (\d+)',         read_params)
 
     N0    = int(N0_match.group(1))
     depth = int(depth_match.group(1))
@@ -135,7 +135,15 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
 
         # properly link config files
         find = f'{index:05d}'
-        os.symlink(f'{cwd}/out/m/axion.{find}', f'{cwd}/{OUT_CON}/m/axion.{find}')
+        symlink_src = f'{cwd}/out/m/axion.{find}'
+        symlink_dst = f'{cwd}/{OUT_CON}/m/axion.{find}'
+        if not os.path.exists(symlink_src):
+            raise FileNotFoundError(
+                f"Source config file not found: {symlink_src}\n"
+                f"Make sure 'out/m/axion.{find}' exists before running con mode."
+            )
+        if not os.path.exists(symlink_dst):
+            os.symlink(symlink_src, symlink_dst)
 
         if VERB:
             print(f'mpirun {USA} -np {RANK} -x OMP_NUM_THREADS={THR} vaxion3d {JAX} --index {index} {extra_con_options} 2>&1 | tee log-con.txt')
@@ -154,7 +162,6 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     elif MODE == 'paxion':
         # Extract compatible grid/simu flags from JAX to pass to paxion3d
         pax_base = ''
-
         if N0_match:
             pax_base += f' --size {N0}'
         if depth_match:
@@ -183,6 +190,11 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         find = f'{index:05d}'
         symlink_src = f'{cwd}/out/m/axion.{find}'
         symlink_dst = f'{cwd}/{pax_out}/m/axion.{find}'
+        if not os.path.exists(symlink_src):
+            raise FileNotFoundError(
+                f"Source config file not found: {symlink_src}\n"
+                f"Make sure 'out/m/axion.{find}' exists before running paxion mode."
+            )
         if not os.path.exists(symlink_dst):
             os.symlink(symlink_src, symlink_dst)
 
@@ -202,7 +214,6 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
 
     if VERB:
         print('--------------------------------------------------------------------------------------------')
-
 
 def simgen (N=256,zRANKS=1,prec='single',dev='cpu', fftplan = 64, lowmem=False,prop='rkn4', spec=False, fspec=False, steps=1000000,wDz=1.0,sst0=10,lap=1,
             nqcd=7.0, fA = -1, msa=1.0,lamb=-1.0,ctf=128.,L=256.0, ind3=1.0,notheta=False,wkb=-1.,gam=0.0,dwgam=1.0,
