@@ -530,6 +530,7 @@ const std::complex<float> If(0.,1.);
 	kmax = std::sqrt ((double) (2*n2+Tz*Tz));
 	kmax = 6.283185307179586*kmax/bckgnd->PhysSize();
 	_adaptive_time_next_eval = 0; // next dt evaluation will trigger 
+	_adaptive_time_dct = 1.0e30;
 
 }
 
@@ -1660,8 +1661,7 @@ double	Scalar::dct_Adaptive	   () {
 
 		{	
 			// axion potential is weaker than linear
-			double MADX = 0;
-			MADX = kmax*kmax + AxionMassSq();
+			double MADX = kmax*kmax + AxionMassSq();
 			dct_l  = wDz/std::sqrt(MADX);
 			if (nonlinear)
 				nonlinear = false;
@@ -1693,6 +1693,9 @@ double	Scalar::dct_Adaptive	   () {
 				}
 				float globi = max;
 				MPI_Allreduce(&max, &globi, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
+				if (g*globi>kmax*kmax/m)
+					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! kmax*kmax/m = %e g|UPS|^2 = %e (g= %e)",kmax*kmax/m,g*globi,g);
+
 				MADX    = kmax*kmax/m + g*globi;
 				dct_nl  = wDz/MADX;
 			} 
@@ -1708,6 +1711,8 @@ double	Scalar::dct_Adaptive	   () {
 				}
 				double globi = max;
 				MPI_Allreduce(&max, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+				if (g*globi>kmax*kmax/m)
+					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! kmax*kmax/m = %e g|UPS|^2 = %e (g= %e)",kmax*kmax/m,g*globi,g);				
 				MADX    = kmax*kmax/m + g*globi;
 				dct_nl  = wDz/MADX;
 			} else {LogError("Wrong precision!");}
