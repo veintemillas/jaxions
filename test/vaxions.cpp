@@ -278,8 +278,12 @@ int	main (int argc, char *argv[])
 	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
 	{
 
-		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/myCosmos.ICData().nSteps ;
-
+		// time step
+		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
+		//  dzaux = 0.0;
+		//  else
+		LogMsg(VERB_HIGH,"[vax] propagation loop %d / %d",iz,nSteps);
+		 dzaux = (uwDz) ? axion->dct_Adaptive() : (zFinl-zInit)/nSteps ;
 
 		//will we dump? and when?
 

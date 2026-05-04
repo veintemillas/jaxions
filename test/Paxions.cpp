@@ -254,7 +254,7 @@ int	main (int argc, char *argv[])
 	for (int iz = 0; iz < nSteps; iz++)
 	{
 
-		dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
+		dzaux = (uwDz) ? axion->dct_Adaptive() : (zFinl-zInit)/nSteps ;
 
 		/* normalise dynamical graavity time-step?
 		Option 1, (Naive) allow only phase~1 per iteration in the point with the largest grav-pot.
