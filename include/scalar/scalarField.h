@@ -58,9 +58,6 @@
 		// propagation constants //FIX ME place in propClass?
 		std::vector<double>	co;
 
-
-
-
 		// CPU data
 		void *m   = nullptr, *v   = nullptr, *m2  = nullptr, *str = nullptr;
 		//FAXION data
@@ -75,7 +72,7 @@
 		void	*sStreams;
 #endif
 
-
+		
 		void	recallGhosts(FieldIndex fIdx);		// Move the fileds that will become ghosts from the Cpu to the Gpu
 		void	transferGhosts(FieldIndex fIdx);	// Copy back the ghosts to the Gpu
 
@@ -237,6 +234,7 @@
 		double		SaxionShift(const double ct);
 		double		Saskia     (const double zNow);
 		double		dzSize     (const double zNow);
+		double		dct_Adaptive ();
 		double		Rfromct    (const double ct);
 		double		LambdaP   (); // Returns the value of Lambda with the 1/z2 included IF needed
 		double		Msa();
@@ -288,6 +286,38 @@
 		double  *getCO() {return &(co[0]); };
 
 		void  setDev(DeviceType newdev) { device = newdev; }
+
+
+		// Adaptive time stuff
+		double kmax;
+		int _adaptive_time_next_eval;
+		int _adaptive_time_freq;
+		double _adaptive_time_dct;
+
+		struct DtSample {
+		float t;
+		float dt_lin;
+		float dt_nl;
+		};
+
+		struct DtHistory {
+		std::vector<DtSample> data;
+		const size_t N = 7;
+
+		void push(float t, float dt_lin, float dt_nl) {
+			if (data.size() == N)
+			data.erase(data.begin());   // drop oldest
+
+			data.push_back({t, dt_lin, dt_nl});
+		}
+		};
+
+		DtHistory hist;
+
+
+
+
+
 		/*	Eliminar	*/
 
 		void	writeAXITONlist (double contrastthreshold, void *idxbin, int numaxitons);

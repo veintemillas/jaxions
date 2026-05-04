@@ -528,6 +528,13 @@ const std::complex<float> If(0.,1.);
 		}
 		LogFlush();
 	}
+
+	// Adaptive time stepping stuff
+
+	kmax = std::sqrt ((double) (2*n2+Tz*Tz));
+	kmax = 6.283185307179586*kmax/bckgnd->PhysSize();
+	_adaptive_time_next_eval = 0; // next dt evaluation will trigger 
+
 }
 
 // END SCALAR
@@ -1471,6 +1478,198 @@ double	Scalar::dzSize	   (double zNow) {
 	return dct;
 }
 
+/* Calculates a suggested time-stepping 
+based on non-linear and linear parts of potential
+It is potential-based, so each propagator and 
+potential get a different treatment 
+
+It should suggest the frequency needed 
+
+_adaptive_time_freq
+_adaptive_time_next_eval
+_adaptive_time_dt
+
+*/
+
+double	Scalar::dct_Adaptive	   () {
+
+	bool nonlinear = false;
+
+	if (_adaptive_time_next_eval > 0){
+		LogMsg(VERB_HIGH,"[sca] dt eval linear, %d to go non-linear",
+			_adaptive_time_next_eval);
+	}
+	else {
+		nonlinear = true;
+		LogMsg(VERB_HIGH,"[sca] dt re-evaluation (%d)",_adaptive_time_next_eval);
+	}
+
+	// generic things we might need
+	double ct   = *zV();
+	double R    = Rfromct(ct);
+	double wDz_ = wDz; // now a global parm, merge into icdata!
+	auto   &pot = bckgnd->QcdPot();
+
+	double dct_l  = 0.0;
+	double dct_nl = -1.0;
+
+	switch(fieldType){
+		case FIELD_SAXION:
+		{
+			//              V = lambda * (phi^2-R^2)^2/4
+			// EOM          phi''-Lap phi + lambda phi (phi^2-R^2) + ... 
+			// ACC   		Lap phi + lambda [ (3phi^2-R2)] dphi
+			// ACC_LIN		w2 = k2 + 2lambda R^2    (phi=R)
+			// dz suggested is always wdz_paramter/sqrt( dACC/dphi )
+			// w2_NL        k^2 + lambda [ (3phi^2-R2)]
+			// missing PQ2
+			double lamP = bckgnd->LambdaP(ct);
+			double MADX = kmax*kmax + lamP*(2*R*R);
+			dct_l  = wDz/std::sqrt(MADX);
+
+			if (nonlinear)
+			if (precision == FIELD_SINGLE)
+			{
+				float *fieldc = static_cast<float*>(mStart());
+				float *fieldv = static_cast<float*>(vStart());
+				float max = 0.f, v_max = 0.f;
+				#pragma omp parallel for schedule(static) reduction(max:max) //reduction(max:max,v_max)
+				for (int i = 0 ; i < n3; i++){
+					float candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
+					float vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
+				max = std::max(max, candidate);
+				v_max = std::max(v_max, vandidate);
+				}
+				double phi2_veq = R*R + std::sqrt(2/lamP)*((double) v_max);
+				if (phi2_veq>9.0 || max > 9.0)
+					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! phi^2_MAX = %e phi^2_veq = %e",max,phi2_veq);
+				phi2_veq = std::max((double) max,phi2_veq);
+				double globi = phi2_veq;
+				MPI_Allreduce(&phi2_veq, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+				MADX    = kmax*kmax + lamP*(3*phi2_veq-R*R);
+				
+				dct_nl  = wDz/std::sqrt(MADX);				
+			} 
+			else if (precision == FIELD_DOUBLE){
+				double *fieldc = static_cast<double*>(mStart());
+				double *fieldv = static_cast<double*>(vStart());
+				double max = 0.0, v_max = 0.0;
+				#pragma omp parallel for schedule(static) reduction(max:max,v_max)
+				for (int i = 0 ; i < n3; i++){
+					double candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
+					double vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
+					max = std::max(max, candidate);
+					v_max = std::max(v_max, vandidate);
+				}
+				double phi2_veq = R*R + std::sqrt(2/lamP)*(v_max);
+				if (phi2_veq>9.0 || max > 9.0)
+					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! phi^2_MAX = %e phi^2_veq = %e",max,phi2_veq);
+				phi2_veq = std::max(max,phi2_veq);
+				double globi = phi2_veq;
+				MPI_Allreduce(&phi2_veq, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+				MADX    = kmax*kmax + lamP*(3*phi2_veq-R*R);
+				
+				dct_nl  = wDz/std::sqrt(MADX);				
+			} else {LogError("Wrong precision!");}
+		}
+		break;
+		case FIELD_AXION:
+		case FIELD_AXION_MOD:
+		case FIELD_WKB:
+
+		{	
+			// axion potential is weaker than linear
+			double MADX = 0;
+			MADX = kmax*kmax + AxionMassSq();
+			dct_l  = wDz/std::sqrt(MADX);
+			if (nonlinear)
+				nonlinear = false;
+		}
+		break;
+		case FIELD_PAXION:
+		{
+			// EOM          UPS' = Lap UPS/2mc - beta/8R^2|UPS|^2 UPS
+			// freq         w = k^2/2mc - beta|UPS|^2/8R^2
+			// dt           wDz/freq
+			double g    = std::abs(bckgnd->ICData().beta)/(8.0*R*R);
+			double mc2  = AxionMassSq(*zV())*R*R;
+			// this definition avoids problems when mass is too small
+			double m    = std::sqrt(kmax*kmax + mc2) + std::sqrt(mc2);
+			double MADX = kmax*kmax/m;
+			dct_l       = wDz/MADX;
+
+			if (nonlinear)
+			if (precision == FIELD_SINGLE)
+			{
+				float *fieldr = static_cast<float*>(mStart());
+				float *fieldi = static_cast<float*>(vStart());
+				float max = 0;
+				#pragma omp parallel for schedule(static)
+				for (int i = 0 ; i < n3; i++){
+					float candidate = fieldr[i]*fieldr[i]+fieldi[i]*fieldi[i];
+					if (candidate > max)
+						max = candidate;
+				}
+				float globi = max;
+				MPI_Allreduce(&max, &globi, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
+				MADX    = kmax*kmax/m + g*globi;
+				dct_nl  = wDz/MADX;
+			} 
+			else if (precision == FIELD_DOUBLE){
+				double *fieldr = static_cast<double*>(mStart());
+				double *fieldi = static_cast<double*>(vStart());
+				double max = 0;
+				#pragma omp parallel for schedule(static)
+				for (int i = 0 ; i < n3; i++){
+					double candidate = fieldr[i]*fieldr[i]+fieldi[i]*fieldi[i];
+					if (candidate > max)
+						max = candidate;
+				}
+				double globi = max;
+				MPI_Allreduce(&max, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+				MADX    = kmax*kmax/m + g*globi;
+				dct_nl  = wDz/MADX;
+			} else {LogError("Wrong precision!");}
+
+		}
+		break;
+		default:
+			LogError(" dz set to 0 because FIELD is undefined!");
+		break;
+	}
+
+	_adaptive_time_next_eval--;
+
+	/* now estimate when to estimate again based on dct_l-dct_nl
+	BASICS: 
+	- recalculate NL at least once every ~20 time-steps
+	- if NL dominates: 
+		- if stable ... extrapolate and recalculate less time-steps
+		- if unstable ... more
+	- if NL < 5% recalculate every ~20 time-steps
+	*/
+	if (nonlinear){
+		// hist.push(t, dt_l, dt_nl);
+
+		if (dct_nl > dct_l*(1.0-0.1))
+			_adaptive_time_next_eval = 100;
+		else 
+			_adaptive_time_next_eval = 10;
+	
+		LogMsg(VERB_NORMAL,"[sca:dt] dct_NL = %e (dct_L = %e ) (wDz_eff %e) ct = %e",dct_nl, dct_l,wDz*dct_nl/dct_l,ct);
+		_adaptive_time_dct = dct_nl;
+		return dct_nl;
+	} else {
+		dct_nl = std::min(dct_l,_adaptive_time_dct); 
+		if (_adaptive_time_dct<dct_l)
+			LogMsg(VERB_NORMAL,"[sca:dt] dct_NL (adopted) = %e (dct_L = %e ) (wDz_eff %e) ct = %e",_adaptive_time_dct,dct_l, wDz*dct_nl/dct_l, ct);
+		else 
+			LogMsg(VERB_NORMAL,"[sca:dt] dct_L = %e ct = %e",dct_l, ct);
+		return dct_nl;
+	}
+	
+	
+}
 
 
 double Scalar::SaxionShift()
