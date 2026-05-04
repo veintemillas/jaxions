@@ -270,7 +270,8 @@ int	main (int argc, char *argv[])
 		// if ((axion->Field() == FIELD_AXION ) || (axion->Field() == FIELD_SAXION ))
 		//  dzaux = 0.0;
 		//  else
-		 dzaux = (uwDz) ? axion->dzSize() : (zFinl-zInit)/nSteps ;
+		LogMsg(VERB_HIGH,"[vax] propagation loop %d / %d",iz,nSteps);
+		 dzaux = (uwDz) ? axion->dct_Adaptive() : (zFinl-zInit)/nSteps ;
 
 		//will we dump? and when?
 		switch(dumpmode)
