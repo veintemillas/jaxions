@@ -1615,12 +1615,12 @@ double	Scalar::dct_Adaptive	   () {
 				float *fieldc = static_cast<float*>(mStart());
 				float *fieldv = static_cast<float*>(vStart());
 				float max = 0.f, v_max = 0.f;
-				#pragma omp parallel for schedule(static) reduction(max:max) //reduction(max:max,v_max)
+				#pragma omp parallel for schedule(static) reduction(max:max, v_max) 
 				for (int i = 0 ; i < n3; i++){
 					float candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
 					float vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
-				max = std::max(max, candidate);
-				v_max = std::max(v_max, vandidate);
+					max = std::max(max, candidate);
+					v_max = std::max(v_max, vandidate);
 				}
 				double phi2_veq = R*R + std::sqrt(2/lamP)*((double) v_max);
 				if (phi2_veq>9.0 || max > 9.0)
@@ -1628,7 +1628,7 @@ double	Scalar::dct_Adaptive	   () {
 				phi2_veq = std::max((double) max,phi2_veq);
 				double globi = phi2_veq;
 				MPI_Allreduce(&phi2_veq, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-				MADX    = kmax*kmax + lamP*(3*phi2_veq-R*R);
+				MADX    = kmax*kmax + lamP*(3*globi-R*R);
 				
 				dct_nl  = wDz/std::sqrt(MADX);				
 			} 
@@ -1649,7 +1649,7 @@ double	Scalar::dct_Adaptive	   () {
 				phi2_veq = std::max(max,phi2_veq);
 				double globi = phi2_veq;
 				MPI_Allreduce(&phi2_veq, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-				MADX    = kmax*kmax + lamP*(3*phi2_veq-R*R);
+				MADX    = kmax*kmax + lamP*(3*globi-R*R);
 				
 				dct_nl  = wDz/std::sqrt(MADX);				
 			} else {LogError("Wrong precision!");}
@@ -1685,11 +1685,10 @@ double	Scalar::dct_Adaptive	   () {
 				float *fieldr = static_cast<float*>(mStart());
 				float *fieldi = static_cast<float*>(vStart());
 				float max = 0;
-				#pragma omp parallel for schedule(static)
+				#pragma omp parallel for schedule(static) reduction(max:max)
 				for (int i = 0 ; i < n3; i++){
 					float candidate = fieldr[i]*fieldr[i]+fieldi[i]*fieldi[i];
-					if (candidate > max)
-						max = candidate;
+					max = std::max(max, candidate);
 				}
 				float globi = max;
 				MPI_Allreduce(&max, &globi, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
@@ -1703,11 +1702,10 @@ double	Scalar::dct_Adaptive	   () {
 				double *fieldr = static_cast<double*>(mStart());
 				double *fieldi = static_cast<double*>(vStart());
 				double max = 0;
-				#pragma omp parallel for schedule(static)
+				#pragma omp parallel for schedule(static) reduction(max:max)
 				for (int i = 0 ; i < n3; i++){
 					double candidate = fieldr[i]*fieldr[i]+fieldi[i]*fieldi[i];
-					if (candidate > max)
-						max = candidate;
+					max = std::max(max, candidate);
 				}
 				double globi = max;
 				MPI_Allreduce(&max, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -1753,7 +1751,7 @@ double	Scalar::dct_Adaptive	   () {
 			LogMsg(VERB_NORMAL,"[sca:dt] dct_L = %e ct = %e",dct_l, ct);
 		return dct_nl;
 	}
-	
+	LogFlush();
 	
 }
 
