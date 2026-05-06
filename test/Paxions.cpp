@@ -4,6 +4,10 @@
 
 #include <complex>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
 
 #include "propagator/allProp.h"
 #include "energy/energy.h"
@@ -26,6 +30,11 @@ using namespace AxionWKB;
 
 double find_saturation_ct (Scalar *axion, FILE *file);
 void   find_MC(Scalar *axion, double MC_thr);
+void   readmeasfile (Scalar *axion, DumpType *dumpmode_p, MeasFileParms *measfilepar, MeasInfo *ninfa);
+void   mysplit (std::string *str, std::vector<std::string> *result);
+int    readheader (std::string *str, std::vector<int> *perm);
+int    readmeasline2 (std::string *str, double *ctime, std::vector<int> *lint, std::vector<int> *perm, int n_max);
+void   loadmeasfromlist(MeasFileParms *mfp, MeasInfo *info, int i_meas);
 
 int	main (int argc, char *argv[])
 {
@@ -131,11 +140,10 @@ int	main (int argc, char *argv[])
 	int i_meas = 0;
 	bool measrightnow = false;
 
-	/* Add measfile support */
-
-	// MeasFileParms measfilepar;
-	// readmeasfile (axion, &dumpmode, &measfilepar, &ninfa);
-	// i_meas = 0;
+	DumpType dumpmode = DUMP_EVERYN;
+	MeasFileParms measfilepar;
+	readmeasfile(axion, &dumpmode, &measfilepar, &ninfa);
+	i_meas = 0;
 
 	ninfa.index=index;
 	// ninfa.measdata |= MEAS_3DMAP;
@@ -277,8 +285,37 @@ int	main (int argc, char *argv[])
 		if (*axion->zV() < axion->BckGnd()->ZThRes() && *axion->zV() + dzaux > axion->BckGnd()->ZThRes())
 			dzaux = axion->BckGnd()->ZThRes() - *axion->zV();
 
-		if (!(iz%dump)){
-			measrightnow = true;
+		switch(dumpmode)
+		{
+			case DUMP_EVERYN:
+			if (!(iz%dump)){
+				measrightnow = true;
+			}
+			break;
+
+			case DUMP_FROMLIST:
+			if (*axion->zV() > measfilepar.ct[i_meas])
+			{
+				for (int i = i_meas; i < (int)measfilepar.ct.size(); i++){
+					if (*axion->zV() > measfilepar.ct[i])
+						i_meas++;
+					LogMsg(VERB_NORMAL,"[PAX] Time jumped over measurement! jumping once!");
+				}
+			}
+
+			if ( (*axion->zV())+dzaux >= measfilepar.ct[i_meas] && (*axion->zV()) < measfilepar.ct[i_meas]){
+				LogMsg(VERB_NORMAL,"[PAX] dct adjusted from %e",dzaux);
+				dzaux = measfilepar.ct[i_meas] - (*axion->zV());
+				LogMsg(VERB_NORMAL,"                   to   %e",dzaux);
+				measrightnow = true;
+				loadmeasfromlist(&measfilepar, &ninfa, i_meas);
+				defaultmeasType = ninfa.measdata;
+				if ( (i_meas == (int)measfilepar.ct.size()-1) ){
+					LogMsg(VERB_NORMAL,"[PAX] last measurement, do not measure and pass END!");
+					measrightnow = false;
+				}
+			}
+			break;
 		}
 
 		propagate (axion, dzaux);
@@ -422,6 +459,157 @@ int	main (int argc, char *argv[])
 /*
 	AUXILIARY FUNCTIONS
 */
+
+void mysplit (std::string *str, std::vector<std::string> *result)
+{
+	std::istringstream iss(*str);
+	(*result).clear();
+	for(std::string s; iss >> s; )
+		(*result).push_back(s);
+}
+
+int readheader (std::string *str, std::vector<int> *perm)
+{
+	int n = 0;
+	std::vector<std::string> result;
+	mysplit(str, &result);
+
+	for (int k = 0; k < (int)result.size(); k++)
+	{
+		if (result[k] == "ct")
+			{(*perm)[k] = 0; n++;}
+		else if (result[k] == "meas")
+			{(*perm)[k] = 1; n++;}
+		else if (result[k] == "map")
+			{(*perm)[k] = 2; n++;}
+		else if (result[k] == "mask")
+			{(*perm)[k] = 3; n++;}
+		else if (result[k] == "kgv")
+			{(*perm)[k] = 4; n++;}
+	}
+	return n;
+}
+
+int readmeasline2 (std::string *str, double *ctime, std::vector<int> *lint, std::vector<int> *perm, int n_max)
+{
+	std::vector<std::string> result;
+	mysplit(str, &result);
+	(*lint).clear();
+	(*lint) = {0, 0, 0, 0};
+	int kmax = result.size();
+	LogMsg(VERB_PARANOID,"kmax %d n_max %d",kmax,n_max);
+	if (kmax > n_max)
+		kmax = n_max;
+
+	for (int k = 0; k < kmax; k++)
+	{
+		if ( (*perm)[k] == 0)
+			*ctime = std::stof(result[k]);
+		else
+			(*lint)[(*perm)[k]-1] = std::stoi(result[k]);
+	}
+	return result.size()-n_max;
+}
+
+void readmeasfile (Scalar *axion, DumpType *dumpmode_p, MeasFileParms *measfilepar, MeasInfo *ninfa)
+{
+	FILE *cacheFile = nullptr;
+	if ((cacheFile = fopen("./measfile.dat", "r")) == nullptr)
+	{
+		LogMsg(VERB_NORMAL,"[PAX] No measfile.dat ! Use linear dump mode by default");
+	}
+	else
+	{
+		fclose(cacheFile);
+		LogOut("Reading measurement files from measfile.dat \n");
+
+		*dumpmode_p = DUMP_FROMLIST;
+		LogMsg(VERB_NORMAL,"[PAX] Reading measurement files from list");
+		double mesi;
+		int i_meas = 0;
+		int n_header;
+
+		std::ifstream file("./measfile.dat");
+		std::string str;
+		std::vector<int> lint;
+		std::vector<int> perm = {0,1,2,3,4};
+
+		std::getline(file, str);
+		n_header = readheader(&str, &perm);
+		if (n_header == 0)
+		{
+			LogMsg(VERB_NORMAL,"[PAX] old measfile.dat format");
+			file.seekg(ios::beg);
+			n_header = 2;
+		}
+		else
+		{
+			LogMsg(VERB_NORMAL,"[PAX] header: %s", str.c_str());
+		}
+		LogMsg(VERB_NORMAL,"[PAX] perm %d %d %d %d %d", perm[0], perm[1], perm[2], perm[3], perm[4]);
+
+		while (std::getline(file, str))
+		{
+			readmeasline2(&str, &mesi, &lint, &perm, n_header);
+
+			if (lint[0] < 0)
+				lint[0] = defaultmeasType;
+
+			lint[1] |= deninfa.maty;
+			lint[2] |= deninfa.mask;
+			lint[3] |= deninfa.nrt;
+
+			if (mesi < *axion->zV())
+			{
+				LogMsg(VERB_NORMAL,"[PAX] read z=%f < current time (z=%f) > DISCARDED",mesi,*axion->zV());
+			}
+			else
+			{
+				(*measfilepar).ct.push_back(mesi);
+				(*measfilepar).meas.push_back(lint[0]);
+				(*measfilepar).map.push_back(lint[1]);
+				(*measfilepar).mask.push_back(lint[2]);
+				(*measfilepar).nrt.push_back(lint[3]);
+				LogMsg(VERB_NORMAL,"[PAX] i_meas=%d read z=%f meas=%d map=%d mask=%d nrt=%d",
+					i_meas, (*measfilepar).ct[i_meas], (*measfilepar).meas[i_meas],
+					(*measfilepar).map[i_meas], (*measfilepar).mask[i_meas], (*measfilepar).nrt[i_meas]);
+				i_meas++;
+			}
+		}
+
+		for (int i = i_meas-1; i > 0; i--)
+			if ((*measfilepar).ct[i] == (*measfilepar).ct[i-1])
+			{
+				LogMsg(VERB_NORMAL,"[PAX] merge %d %d at t %f with %d %d > %d", i, i-1,
+					(*measfilepar).ct[i], (*measfilepar).meas[i], (*measfilepar).meas[i-1],
+					(*measfilepar).meas[i] | (*measfilepar).meas[i-1]);
+				(*measfilepar).meas[i-1] |= (*measfilepar).meas[i];
+				(*measfilepar).ct.erase(  (*measfilepar).ct.begin()+i);
+				(*measfilepar).meas.erase((*measfilepar).meas.begin()+i);
+				(*measfilepar).map.erase( (*measfilepar).map.begin()+i);
+				(*measfilepar).mask.erase((*measfilepar).mask.begin()+i);
+				(*measfilepar).nrt.erase( (*measfilepar).nrt.begin()+i);
+			}
+
+		LogOut("List dump mode! number of measurements = %d (=%d)\n", (int)(*measfilepar).meas.size(), i_meas);
+		zFinl = (*measfilepar).ct[(*measfilepar).ct.size()-1];
+		LogOut("zFinl overwritten to last measurement %lf\n", zFinl);
+		(*ninfa).measdata |= (MeasureType)      (*measfilepar).meas[0];
+		(*ninfa).maty     |= (SliceType)         (*measfilepar).map[0];
+		(*ninfa).mask     |= (SpectrumMaskType)  (*measfilepar).mask[0];
+		(*ninfa).nrt      |= (nRunType)          (*measfilepar).nrt[0];
+		LogOut("First measurement set to %d %d %d %d\n", (*ninfa).measdata, (*ninfa).maty, (*ninfa).mask, (*ninfa).nrt);
+		LogOut("- . - . - . - . - . - . - . - . - . - . - . - . -\n");
+	}
+}
+
+void loadmeasfromlist(MeasFileParms *mfp, MeasInfo *info, int i_meas)
+{
+	(*info).measdata = (MeasureType)     (*mfp).meas[i_meas];
+	(*info).maty     = (SliceType)       (*mfp).map[i_meas];
+	(*info).mask     = (SpectrumMaskType)(*mfp).mask[i_meas];
+	(*info).nrt      = (nRunType)        (*mfp).nrt[i_meas];
+}
 
 /* Finds the time at which the gravitational term becomes large
   phase difference between two points
