@@ -28,6 +28,7 @@
 		#include <cuda_device_runtime_api.h>
 		#include "propagator/propGpu.h"
 		#include "propagator/propThetaGpu.h"
+		#include "propagator/propPaxGpu.h"
 	#endif
 
 	#ifdef	__GNUG__
@@ -78,6 +79,7 @@
 		inline void	nRunCpu	(const double)	override;			// Naxion propagator
 
 		inline void	pRunCpu	(const double)	override;			// Paxion propagator
+		inline void	pRunGpu	(const double)	override;			// Paxion propagator
 
 		inline void	lowCpu	(const double)	override;	// Lowmem only available for saxion non-spectral
 		inline void	lowGpu	(const double)	override;
@@ -176,9 +178,11 @@
 						if (field->LowMemGPU() || field->LowMem()) {
 							propSaxion = [this](const double dz) { this->lowGpu(dz); };
 							propAxion  = [this](const double dz) { this->tlowGpu(dz); };
+							propPaxion = [this](const double dz) { this->pRunGpu(dz); };
 						} else {
 							propSaxion = [this](const double dz) { this->sRunGpu(dz); };
 							propAxion  = [this](const double dz) { this->tRunGpu(dz); };
+							propPaxion = [this](const double dz) { this->pRunGpu(dz); };
 						}
 						break;
 
@@ -489,7 +493,64 @@
 	}
 
 
+	// Generic GPU paxion propagator
 
+	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
+	void	PropClass<nStages, lastStage, VQcd>::pRunGpu	(const double dz) {
+	#ifdef  USE_GPU
+		double *z  = axion->zV();
+		PropParms ppar;
+		loadparms(&ppar, axion);
+
+		/* Returns ghost size region in slices */
+		size_t BO = ppar.Ng*S;
+		LogMsg(VERB_PARANOID,"[propPaxGPU] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+
+		ppar.sign   = 1;
+		ppar.grav   = axion->BckGnd()->ICData().grav; /*TODO*/
+
+		/* No gravity in GPU yet */
+		// if (gravity){
+		// 	calculateGraviPotential	();
+		// 	propagatePaxKernelXeon<KIDI_POT_GRAV>(axion->mCpu(), axion->vCpu(), axion->m2Cpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock);
+		// } else
+			propagatePaxGPU<KIDI_POT>(axion->mGpu(), axion->vGpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
+			cudaDeviceSynchronize(); 
+
+		#pragma unroll
+		for (int s = 0; s<nStages; s++) {
+
+			const double	c1 = c[s], d1 = d[s];
+
+			loadparms(&ppar, axion);
+			ppar.sign   = 1;
+			
+			propagatePaxGPU<KIDI_LAP>(axion->mGpu(), axion->vGpu(), ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[2]);
+			axion->exchangeGhosts(FIELD_M);
+			propagatePaxGPU<KIDI_LAP>(axion->mGpu(), axion->vGpu(), ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
+			propagatePaxGPU<KIDI_LAP>(axion->mGpu(), axion->vGpu(), ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[1]);
+			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+
+			loadparms(&ppar, axion);
+			ppar.sign   = -1;
+
+			propagatePaxGPU<KIDI_LAP>(axion->vGpu(), axion->mGpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[2]);
+			axion->exchangeGhosts(FIELD_M);
+			propagatePaxGPU<KIDI_LAP>(axion->vGpu(), axion->mGpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
+			propagatePaxGPU<KIDI_LAP>(axion->vGpu(), axion->mGpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[1]);
+			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot
+
+			*z += dz*d1;
+			axion->updateR();
+			}		
+
+			propagatePaxGPU<KIDI_POT>(axion->mGpu(), axion->vGpu(), ppar, 0.5*dz, BO,   V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
+			cudaDeviceSynchronize(); 
+	#else
+		LogError ("Error: gpu support not built");
+		exit(1);
+	#endif
+	}
 
 
 	/*		CPU PROPAGATORS			*/
@@ -1322,6 +1383,7 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 	{
 		(*pipar).lambda = axion->LambdaP();
 		(*pipar).massA2 = axion->AxionMassSq();
+		(*pipar).massA  = axion->AxionMass();
 		(*pipar).R      = *axion->RV();
 		(*pipar).Rpp    = axion->Rpp();
 		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());

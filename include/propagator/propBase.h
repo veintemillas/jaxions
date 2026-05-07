@@ -38,6 +38,7 @@
 		virtual void	nRunCpu	(const double) = 0;	// Naxion propagator
 
 		virtual void	pRunCpu	(const double) = 0;	// Paxion propagator
+		virtual void	pRunGpu	(const double) = 0;	// Paxion propagator
 
 		virtual void	lowCpu	(const double) = 0;	// Lowmem only available for saxion
 		virtual void	lowGpu	(const double) = 0;
