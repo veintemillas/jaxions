@@ -207,10 +207,12 @@ const std::complex<float> If(0.,1.);
 	}
 	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
-	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m] %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str] %llu", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
-	const size_t	mBytes = Nxyz_g       * fSize;
-	const size_t	vBytes = Nxy*(Nz + 2) * fSize;
-	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, (Nxyz+Nxy)/1e9);
+	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: v3[m]  %llu n2(Lz+2)[v] %llu n3[str]", v3, (n2*(nLz + 2)),n3);
+	const size_t	mBytes = v3*fSize;
+	// EXPERIMENTAL to allow AXION TO PAXION
+	// const size_t	vBytes = (n2*(nLz + 2))*fSize;
+	const size_t	vBytes = mBytes;	
+	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, n3/1e9);
 	size_t totalCPU = 0;
 	switch (fieldType)
 	{
@@ -690,6 +692,9 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the slices of the
 			if (fIdx & FIELD_M) {
 				cudaMemcpyAsync(static_cast<char *> (m) + Gc, static_cast<char *> (m_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m) + Tc, static_cast<char *> (m_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
+			} else if (fIdx == FIELD_V) { // useful for PAXION mode
+				cudaMemcpyAsync(static_cast<char *> (v) + Gc, static_cast<char *> (v_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (v) + Tc, static_cast<char *> (v_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			} else {
 				cudaMemcpyAsync(static_cast<char *> (m2) + Gc, static_cast<char *> (m2_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m2) + Tc, static_cast<char *> (m2_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
@@ -1624,7 +1629,7 @@ double	Scalar::dct_Adaptive	   () {
 				}
 				double phi2_veq = R*R + std::sqrt(2/lamP)*((double) v_max);
 				if (phi2_veq>9.0 || max > 9.0)
-					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! phi^2_MAX = %e phi^2_veq = %e",max,phi2_veq);
+					LogMsg(VERB_HIGH,"[sca:dt] Warning, large potential! phi^2_MAX = %e phi^2_veq = %e",max,phi2_veq);
 				phi2_veq = std::max((double) max,phi2_veq);
 				double globi = phi2_veq;
 				MPI_Allreduce(&phi2_veq, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -1645,7 +1650,7 @@ double	Scalar::dct_Adaptive	   () {
 				}
 				double phi2_veq = R*R + std::sqrt(2/lamP)*(v_max);
 				if (phi2_veq>9.0 || max > 9.0)
-					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! phi^2_MAX = %e phi^2_veq = %e",max,phi2_veq);
+					LogMsg(VERB_HIGH,"[sca:dt] Warning, large potential! phi^2_MAX = %e phi^2_veq = %e",max,phi2_veq);
 				phi2_veq = std::max(max,phi2_veq);
 				double globi = phi2_veq;
 				MPI_Allreduce(&phi2_veq, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
@@ -1693,7 +1698,7 @@ double	Scalar::dct_Adaptive	   () {
 				float globi = max;
 				MPI_Allreduce(&max, &globi, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
 				if (g*globi>kmax*kmax/m)
-					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! kmax*kmax/m = %e g|UPS|^2 = %e (g= %e)",kmax*kmax/m,g*globi,g);
+					LogMsg(VERB_HIGH,"[sca:dt] Warning, large potential! kmax*kmax/m = %e g|UPS|^2 = %e (g= %e)",kmax*kmax/m,g*globi,g);
 
 				MADX    = kmax*kmax/m + g*globi;
 				dct_nl  = wDz/MADX;
@@ -1710,7 +1715,7 @@ double	Scalar::dct_Adaptive	   () {
 				double globi = max;
 				MPI_Allreduce(&max, &globi, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 				if (g*globi>kmax*kmax/m)
-					LogMsg(VERB_NORMAL,"[sca:dt] Warning, large potential! kmax*kmax/m = %e g|UPS|^2 = %e (g= %e)",kmax*kmax/m,g*globi,g);				
+					LogMsg(VERB_HIGH,"[sca:dt] Warning, large potential! kmax*kmax/m = %e g|UPS|^2 = %e (g= %e)",kmax*kmax/m,g*globi,g);				
 				MADX    = kmax*kmax/m + g*globi;
 				dct_nl  = wDz/MADX;
 			} else {LogError("Wrong precision!");}
@@ -1740,15 +1745,15 @@ double	Scalar::dct_Adaptive	   () {
 		else 
 			_adaptive_time_next_eval = 10;
 	
-		LogMsg(VERB_NORMAL,"[sca:dt] dct_NL = %e (dct_L = %e ) (wDz_eff %e) ct = %e",dct_nl, dct_l,wDz*dct_nl/dct_l,ct);
+		LogMsg(VERB_HIGH,"[sca:dt] dct_NL = %e (dct_L = %e ) (wDz_eff %e) ct = %e",dct_nl, dct_l,wDz*dct_nl/dct_l,ct);
 		_adaptive_time_dct = dct_nl;
 		return dct_nl;
 	} else {
 		dct_nl = std::min(dct_l,_adaptive_time_dct); 
 		if (_adaptive_time_dct<dct_l)
-			LogMsg(VERB_NORMAL,"[sca:dt] dct_NL (adopted) = %e (dct_L = %e ) (wDz_eff %e) ct = %e",_adaptive_time_dct,dct_l, wDz*dct_nl/dct_l, ct);
+			LogMsg(VERB_HIGH,"[sca:dt] dct_NL (adopted) = %e (dct_L = %e ) (wDz_eff %e) ct = %e",_adaptive_time_dct,dct_l, wDz*dct_nl/dct_l, ct);
 		else 
-			LogMsg(VERB_NORMAL,"[sca:dt] dct_L = %e ct = %e",dct_l, ct);
+			LogMsg(VERB_HIGH,"[sca:dt] dct_L = %e ct = %e",dct_l, ct);
 		return dct_nl;
 	}
 	LogFlush();
