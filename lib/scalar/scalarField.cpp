@@ -1665,7 +1665,7 @@ double	Scalar::dct_Adaptive	   () {
 	} else {
 		dct_nl = std::min(dct_l,_adaptive_time_dct); 
 		if (_adaptive_time_dct<dct_l)
-			LogMsg(VERB_NORMAL,"[sca:dt] dct_NL (adopted) = %e (dct_L = %e ) (wDz_eff %e) ct = %e",_adaptive_time_dct,dct_l, wDz*dct_nl/dct_l, ct);
+			LogMsg(VERB_PARANOID,"[sca:dt] dct_NL (adopted) = %e (dct_L = %e ) (wDz_eff %e) ct = %e",_adaptive_time_dct,dct_l, wDz*dct_nl/dct_l, ct);
 		else 
 			LogMsg(VERB_NORMAL,"[sca:dt] dct_L = %e ct = %e",dct_l, ct);
 		return dct_nl;

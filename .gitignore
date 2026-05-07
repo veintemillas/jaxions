@@ -1,3 +1,9 @@
 .vscode
 scripts/__pycache__
 scripts/pyaxions/__pycache__
+include/cub/
+include/cuda/
+include/nv/
+include/thrust/
+**/.DS_Store
+**/.ipynb_checkpoints/
