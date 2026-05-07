@@ -46,8 +46,8 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	const double beta = ppar.beta;
 	const double u    = 2.0*ppar.frw - 1.0;
 	const double u2   = (-ppar.n/2 + 4) * ppar.frw - 1;
-	const double KKt  =  ppar.sign*1*ct*(pow(ct+dz,u)-pow(ct,u))/(8.0*R*R*u*pow(ct+dz,u)); //change 1 -> ppar.beta after testing
-	const double KKt2 = -ppar.sign*1*ct/(96*ppar.massA*pow(R,4))*(pow(ct+dz,u2)-pow(ct,u2))/(u2*pow(ct+dz,u2));
+	const double KKt  =  ppar.sign*ppar.beta*ct*(pow(ct+dz,u)-pow(ct,u))/(8.0*R*R*u*pow(ct+dz,u));
+	const double KKt2 = -ppar.sign*ppar.beta*ct/(96*ppar.massA*pow(R,4))*(pow(ct+dz,u2)-pow(ct,u2))/(u2*pow(ct+dz,u2));
 	LogMsg(VERB_PARANOID,"PPX ct  %e dz  %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
 	LogMsg(VERB_PARANOID,"PPX KKt %e KKt2 %e", KKt, KKt2);
 	/* integrate in time assuming powerlaw int d z/ m_A R */
@@ -93,8 +93,10 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 		const size_t YC = (Lx>>1);
 #endif
 		const _MData_ m6Vec  = opCode(set1_pd, -6.0);
+		const _MData_ oneVec  = opCode(set1_pd, 1.0);
 		const _MData_ KKtVec = opCode(set1_pd, KKt);
 		const _MData_ KKt2Vec = opCode(set1_pd, KKt2);
+		const _MData_ KKhalfVec = opCode(set1_pd, 0.5*KKt);
 		const _MData_ graVec = opCode(set1_pd, grav);
 
 
@@ -229,7 +231,7 @@ else
 				{
 						vel = opCode(load_pd, &v[idx]);
 						acu = opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel));
-						acu = opCode(add_pd, opCode(mul_pd, KKtVec, acu), opCode(mul_pd, KKt2Vec, opCode(mul_pd, acu, acu)));
+						acu = opCode(div_pd, opCode(mul_pd, KKtVec, acu),opCode(add_pd, oneVec, opCode(mul_pd, KKhalfVec, acu)));
 						mMy = opCode(sin_pd, acu);
 						mPy = opCode(cos_pd, acu);
 						tmp = opCode(sub_pd, opCode(mul_pd, mPy, mel), opCode(mul_pd, mMy, vel));
@@ -305,8 +307,10 @@ else
 #endif
 
 		const _MData_ m6Vec  = opCode(set1_ps, -6.f);
+		const _MData_ oneVec  = opCode(set1_ps, 1.0f);
 		const _MData_ KKtVec = opCode(set1_ps, KKtf);
 		const _MData_ KKt2Vec = opCode(set1_ps, KKt2f);
+		const _MData_ KKhalfVec = opCode(set1_ps, 0.5*KKt);
 		const _MData_ graVec = opCode(set1_ps, gravf);//i4R2);
 
 		const uint z0 = Vo/(Lx*Lx);
@@ -442,7 +446,7 @@ else
 				{
 						vel = opCode(load_ps, &v[idx]);
 						acu = opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel));
-						acu = opCode(add_ps, opCode(mul_ps, KKtVec, acu), opCode(mul_ps, KKt2Vec, opCode(mul_ps, acu, acu)));
+						acu = opCode(div_ps, opCode(mul_ps, KKtVec, acu),opCode(add_ps, oneVec, opCode(mul_ps, KKhalfVec, acu)));
 						mMy = opCode(sin_ps, acu);
 						mPy = opCode(cos_ps, acu);
 						tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
