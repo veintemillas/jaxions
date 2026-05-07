@@ -95,7 +95,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					X[2] = tmi/YC;
 					X[1] = tmi - X[2]*YC;
 					X[0] = idx - tmi*XC;
-					X[2]--;	// Removes ghosts
+					X[2] -= Ng;	// Removes ghosts
 				}
 
 				if (X[0] == XC-step)
@@ -115,8 +115,8 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					mPy  = opCode(load_pd, &m[idxPy]);
 					mPyp = opCode(load_pd, &v[idxPy]);
 #if	defined(__AVX512F__)
-					mMy  = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy])), mPy);
-					mMyp = opCode(add_pd, opCode(permutexvar_pd, vShRg, opCode(load_pd, &v[idxMy])), mPy);
+					mMy  = opCode(permutexvar_pd, vShRg, opCode(load_pd, &m[idxMy]));
+					mMyp = opCode(permutexvar_pd, vShRg, opCode(load_pd, &v[idxMy]));
 #elif	defined(__AVX2__)       //AVX2
 					mMy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
 					mMyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxMy])), opCode(setr_epi32, 6,7,0,1,2,3,4,5)));
@@ -144,8 +144,8 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					{
 						idxPy = idx - Sf + XC;
 #if	defined(__AVX512F__)
-						mPy  = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy])), mMy);
-						mPyp = opCode(add_pd, opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxPy])), mMy);
+						mPy  = opCode(permutexvar_pd, vShLf, opCode(load_pd, &m[idxPy]));
+						mPyp = opCode(permutexvar_pd, vShLf, opCode(load_pd, &v[idxPy]));
 #elif	defined(__AVX2__)       //AVX2
 						mPy  = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &m[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
 						mPyp = opCode(castsi256_pd, opCode(permutevar8x32_epi32, opCode(castpd_si256, opCode(load_pd, &v[idxPy])), opCode(setr_epi32, 2,3,4,5,6,7,0,1)));
@@ -336,7 +336,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 					mPyp = opCode(load_ps, &v[idxPy]);
 #if	defined(__AVX512F__)
 					mMy = opCode(permutexvar_ps, vShRg, opCode(load_ps, &m[idxMy]));
-					mPyp = opCode(permutexvar_ps, vShRg, opCode(load_ps, &v[idxMy]));;
+					mMyp = opCode(permutexvar_ps, vShRg, opCode(load_ps, &v[idxMy]));;
 #elif	defined(__AVX2__)
 					mMy = opCode(permutevar8x32_ps, opCode(load_ps, &m[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
 					mMyp = opCode(permutevar8x32_ps, opCode(load_ps, &v[idxMy]), opCode(setr_epi32, 7,0,1,2,3,4,5,6));
