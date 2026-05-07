@@ -527,7 +527,7 @@ const std::complex<float> If(0.,1.);
 
 	// Adaptive time stepping stuff
 
-	kmax = std::sqrt ((double) (2*n2+Tz*Tz));
+	kmax = std::sqrt ((double) (2*Nxy+Tz*Tz));
 	kmax = 6.283185307179586*kmax/bckgnd->PhysSize();
 	_adaptive_time_next_eval = 0; // next dt evaluation will trigger 
 	_adaptive_time_dct = 1.0e30;
@@ -1616,7 +1616,7 @@ double	Scalar::dct_Adaptive	   () {
 				float *fieldv = static_cast<float*>(vStart());
 				float max = 0.f, v_max = 0.f;
 				#pragma omp parallel for schedule(static) reduction(max:max, v_max) 
-				for (int i = 0 ; i < n3; i++){
+				for (int i = 0 ; i < Nxyz; i++){
 					float candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
 					float vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
 					max = std::max(max, candidate);
@@ -1637,7 +1637,7 @@ double	Scalar::dct_Adaptive	   () {
 				double *fieldv = static_cast<double*>(vStart());
 				double max = 0.0, v_max = 0.0;
 				#pragma omp parallel for schedule(static) reduction(max:max,v_max)
-				for (int i = 0 ; i < n3; i++){
+				for (int i = 0 ; i < Nxyz; i++){
 					double candidate = fieldc[2*i]*fieldc[2*i]+fieldc[2*i+1]*fieldc[2*i+1];
 					double vandidate = std::max(std::abs(fieldv[2*i]),std::abs(fieldv[2*i+1]));
 					max = std::max(max, candidate);
@@ -1686,7 +1686,7 @@ double	Scalar::dct_Adaptive	   () {
 				float *fieldi = static_cast<float*>(vStart());
 				float max = 0;
 				#pragma omp parallel for schedule(static) reduction(max:max)
-				for (int i = 0 ; i < n3; i++){
+				for (int i = 0 ; i < Nxyz; i++){
 					float candidate = fieldr[i]*fieldr[i]+fieldi[i]*fieldi[i];
 					max = std::max(max, candidate);
 				}
@@ -1703,7 +1703,7 @@ double	Scalar::dct_Adaptive	   () {
 				double *fieldi = static_cast<double*>(vStart());
 				double max = 0;
 				#pragma omp parallel for schedule(static) reduction(max:max)
-				for (int i = 0 ; i < n3; i++){
+				for (int i = 0 ; i < Nxyz; i++){
 					double candidate = fieldr[i]*fieldr[i]+fieldi[i]*fieldi[i];
 					max = std::max(max, candidate);
 				}
