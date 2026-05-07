@@ -258,8 +258,8 @@ int	main (int argc, char *argv[])
 	// Axiton TRACKER (if THETA)
 	//--------------------------------------------------
 
-		initTracker(axion);
-		searchAxitons();
+		//initTracker(axion);
+		//searchAxitons();
 
 	//--------------------------------------------------
 	// TIME ITERATION LOOP
@@ -393,8 +393,8 @@ int	main (int argc, char *argv[])
 						tunePropagator (axion);
 
 						/* Axiton tracker */
-						initTracker(axion);
-						searchAxitons();
+						//initTracker(axion);
+						//searchAxitons();
 					}
 			}
 
@@ -416,7 +416,7 @@ int	main (int argc, char *argv[])
 
 				/* checks for more axitons */
 
-				searchAxitons ();
+				//searchAxitons ();
 
 				ninfa.index=index;
 				// in case theta transitioned, the meas was saved as the default

@@ -1174,6 +1174,9 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	IcData ic = myCosmos->ICData();
 	LogFlush();
 
+
+	AxionFFT::initPlan (axionField, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+
 	size_t VD;
 	if (myCosmos->ICData().fType == FIELD_AXION)
 	{

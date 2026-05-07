@@ -264,7 +264,7 @@ void	propagateGpu(const void * __restrict__ m, void * __restrict__ v, void * __r
 	dim3 gridSize((Sf+xBlock-1)/xBlock, (Lz2+yBlock-1)/yBlock, 1);
 	dim3 blockSize(xBlock, yBlock, 1);
 	LogMsg(VERB_HIGH,"[pG] Lx %lu Lz %lu z-slices %lu Sf %lu dz %f c %f d %f Vo %lu Vf %lu VQcd %lu precision %d x y x Block %lu %lu %lu",
-		Lx,Lz,Lz_2,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
+		Lx,Lz,Lz2,Sf,dz,c,d,Vo,Vf,VQcd,precision,xBlock,yBlock,zBlock);
 #endif
      
 

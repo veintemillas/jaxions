@@ -8,8 +8,8 @@
 
 	#include "enum-field.h"
 	#include "scalar/scalarField.h"
-//	#include "scalar/varNQCD.h"
-
+	#include"fft/fftCode.h"
+	
 	class	SpecBin {
 
 		private:
@@ -176,6 +176,9 @@
 				pl            =  (Ly+2)*field->Precision(); 			/* padded data line length */
 				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision(); /* total data volume including padding */
 				dataBareSize  =  V*field->Precision();            /* total data volume without padding */
+
+				LogMsg(VERB_HIGH,"[spe] Preparing FFT plan pSpecAx");
+				AxionFFT::initPlan (field, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
 				LogMsg(VERB_HIGH,"[spe] SpecBin constructor ended.");
 				LogFlush();

@@ -27,22 +27,20 @@
 	#endif
 #endif
 /*
-#define	bSizeX	1024
-#define	bSizeY	64
-#define	bSizeZ	2
+3D CPU propagator kernel, 
+	UpdateM = true  calculates v and updates m into m2
+	UpdateM = false only calculates v
+	prepared for Ny <> Nx (in principle) but not heavily tested
 */
 template<const VqcdType VQcd, bool UpdateM = true>
-// inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, size_t NN, double *R, const double dz, const double c, const double d,
-// 				    const double ood2, const double LL, const double aMass2, const double gamma, const size_t Lx, const size_t Vo, const size_t Vf, FieldPrecision precision,
-// 				    const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict__ v_, void * __restrict__ m2_, PropParms ppar, const double dz, const double c, const double d,
 				    const size_t Vo, const size_t Vf, FieldPrecision precision, const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
 {
 
 	const size_t NN    = ppar.Ng;
-	const size_t Lx    = ppar.Lx;
-	const size_t Ly    = ppar.Ly;
-	const size_t Sf    = Lx*Lx;
+	const size_t Nx    = ppar.Lx;
+	const size_t Ny    = ppar.Ly;
+	const size_t Sf    = Nx*Ny;
 	const size_t NSf   = Sf*NN;
 	const double *PC   = ppar.PC;
 
@@ -58,6 +56,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 
 	/* Linear term in the EOM contains T,Rpp,etc... */
 	const double A     = Rpp - LL*RPQ*RPQ;
+
+	LogMsg(VERB_HIGH,"[pX] z0 %lu zF %lu bSizeX %d bSizeY %d bSizeZ %d [NN %d]",Vo/Sf, Vf/Sf, bSizeX, bSizeY, bSizeZ, NN);LogFlush();
 
 	if (Vo>Vf)
 		return ;
@@ -112,8 +112,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 			COV[nv]  = opCode(set1_pd, PC[nv]*ood2);
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+		const size_t XC = (Nx<<2);
+		const size_t YC = (Ny>>2);
 
 		const double    __attribute__((aligned(Align))) zQAux[8] = { zQ, 0., zQ, 0., zQ, 0., zQ, 0. };	// Only real part
 		const double    __attribute__((aligned(Align))) zNAux[8] = { zN,-zN, zN,-zN, zN,-zN, zN,-zN };	// to complex congugate
@@ -125,16 +125,16 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const _MInt_  vShRg = opCode(load_si512, shfRg);
 		const _MInt_  vShLf = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+		const size_t XC = (Nx<<1);
+		const size_t YC = (Ny>>1);
 
 		const double __attribute__((aligned(Align))) zQAux[4] = { zQ, 0., zQ, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) zNAux[4] = { zN,-zN, zN,-zN };	// to complex congugate
 		const double __attribute__((aligned(Align))) zRAux[4] = { R , 0., R , 0. };	// Only real part
 		const double __attribute__((aligned(Align))) cjgAux[4] = { 1.,-1., 1.,-1. };
 #else
-		const size_t XC = Lx;
-		const size_t YC = Lx;
+		const size_t XC = Nx;
+		const size_t YC = Ny;
 
 		const double __attribute__((aligned(Align))) zQAux[2] = { zQ, 0. };	// Only real part
 		const double __attribute__((aligned(Align))) zNAux[2] = { zN,-zN };	// to complex congugate
@@ -146,8 +146,8 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 		const _MData_ zRVec  = opCode(load_pd, zRAux);
 		const _MData_ cjg    = opCode(load_pd, cjgAux);
 
-		const uint z0 = Vo/(Lx*Lx);
-		const uint zF = Vf/(Lx*Lx);
+		const uint z0 = Vo/Sf;
+		const uint zF = Vf/Sf;
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
@@ -179,7 +179,7 @@ inline	void	propagateKernelXeon(const void * __restrict__ m_, void * __restrict_
 			mel = opCode(load_pd, &m[idxP0]);
 			lap = opCode(set1_pd, 0.0);
 
-
+			/* Build laplacian */
 			for (size_t nv=1; nv < NN+1; nv++)
 			{
 
@@ -427,8 +427,11 @@ tmp = opCode(sub_pd,
 				tmp   = opCode(div_pd, opCode(mul_pd, mel, vecma), mPx);
 			}
 
-			opCode(store_pd,  &v[idxV0], tmp);
 
+				/* Save v */
+				opCode(store_pd,  &v[idxV0], tmp);
+
+				/* If UpdateM (Default) save also m in m2 */
 				if constexpr (UpdateM)
 				{
 #if	defined(__AVX512F__) || defined(__FMA__)
@@ -436,7 +439,7 @@ tmp = opCode(sub_pd,
 #else
 				mPx = opCode(add_pd, mel, opCode(mul_pd, tmp, opCode(set1_pd, dzd)));
 #endif
-				
+			
 				opCode(stream_pd, &m2[idxP0], mPx);
 				}
 		      }
@@ -496,8 +499,8 @@ tmp = opCode(sub_pd,
 			COV[nv]  = opCode(set1_ps, PC[nv]*ood2);
 
 #if	defined(__AVX512F__)
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
+		const size_t XC = (Nx<<3);
+		const size_t YC = (Ny>>3);
 
 		const float __attribute__((aligned(Align))) zQAux[16] = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zNAux[16] = { zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN, zN, -zN };
@@ -511,8 +514,8 @@ tmp = opCode(sub_pd,
 		const _MInt_  vShRg  = opCode(load_si512, shfRg);
 		const _MInt_  vShLf  = opCode(load_si512, shfLf);
 #elif	defined(__AVX__)
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+		const size_t XC = (Nx<<2);
+		const size_t YC = (Ny>>2);
 
 		const float __attribute__((aligned(Align))) zQAux[8]  = { zQ, 0.f, zQ, 0.f, zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zNAux[8]  = { zN, -zN, zN, -zN, zN, -zN, zN, -zN };
@@ -520,8 +523,8 @@ tmp = opCode(sub_pd,
 
 		const float __attribute__((aligned(Align))) cjgAux[8]  = { 1.,-1., 1.,-1., 1.,-1., 1.,-1. };
 #else
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+		const size_t XC = (Nx<<1);
+		const size_t YC = (Ny>>1);
 
 		const float __attribute__((aligned(Align))) zQAux[4]  = { zQ, 0.f, zQ, 0.f };
 		const float __attribute__((aligned(Align))) zNAux[4]  = { zN, -zN, zN, -zN };
@@ -534,8 +537,8 @@ tmp = opCode(sub_pd,
 		const _MData_ zRVec  = opCode(load_ps, zRAux);
 		const _MData_ cjg  = opCode(load_ps, cjgAux);
 
-		const uint z0 = Vo/(Lx*Lx);
-		const uint zF = Vf/(Lx*Lx);
+		const uint z0 = Vo/Sf;
+		const uint zF = Vf/Sf;
 		const uint zM = (zF-z0+bSizeZ-1)/bSizeZ;
 		const uint bY = (YC + bSizeY - 1)/bSizeY;
 
@@ -859,14 +862,21 @@ LogMsg(VERB_PARANOID,"[pX] z0 %d zF %d zM %d bY %d bSizeZ %d bSizeY %d [NN %d]",
 
 
 
-inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_, 
-							PropParms ppar, const double dz, const double d, 
-							const size_t Vo, const size_t Vf, FieldPrecision precision,
-			    			const unsigned int bSizeX, const unsigned int bSizeY, const unsigned int bSizeZ)
+inline	void	updateMXeon(void * __restrict__ m_, 
+							const void * __restrict__ v_, 
+							PropParms ppar,
+							const double dz, 
+							const double d,  
+							const size_t Vo, 
+							const size_t Vf, 
+							FieldPrecision precision,
+			    			const unsigned int bSizeX, 
+							const unsigned int bSizeY, 
+							const unsigned int bSizeZ)
 {
-	const size_t Lx = ppar.Lx;
-	const size_t Ly = ppar.Ly;
-	const size_t Sf = Lx*Ly;
+	const size_t Nx = ppar.Lx;
+	const size_t Ny = ppar.Ly;
+	const size_t Sf = Nx*Ny;
 
 	const uint z0 = Vo/Sf;
 	const uint zF = Vf/Sf;
@@ -877,18 +887,18 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_,
 	#if	defined(__AVX512F__)
 		#define	_MData_ __m512d
 		#define	step 4
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+		const size_t XC = (Nx<<2);
+		const size_t YC = (Ny>>2);
 	#elif	defined(__AVX__)
 		#define	_MData_ __m256d
 		#define	step 2
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+		const size_t XC = (Nx<<1);
+		const size_t YC = (Ny>>1);
 	#else
 		#define	_MData_ __m128d
 		#define	step 1
-		const size_t XC = Lx;
-		const size_t YC = Lx;
+		const size_t XC = Nx;
+		const size_t YC = Ny;
 	#endif
 
 		double * __restrict__ m		= (double * __restrict__) __builtin_assume_aligned (m_, Align);
@@ -943,18 +953,18 @@ inline	void	updateMXeon(void * __restrict__ m_, const void * __restrict__ v_,
 	#if	defined(__AVX512F__)
 		#define	_MData_ __m512
 		#define	step 8
-		const size_t XC = (Lx<<3);
-		const size_t YC = (Lx>>3);
+		const size_t XC = (Nx<<3);
+		const size_t YC = (Ny>>3);
 	#elif	defined(__AVX__)
 		#define	_MData_ __m256
 		#define	step 4
-		const size_t XC = (Lx<<2);
-		const size_t YC = (Lx>>2);
+		const size_t XC = (Nx<<2);
+		const size_t YC = (Ny>>2);
 	#else
 		#define	_MData_ __m128
 		#define	step 2
-		const size_t XC = (Lx<<1);
-		const size_t YC = (Lx>>1);
+		const size_t XC = (Nx<<1);
+		const size_t YC = (Ny>>1);
 	#endif
 
 		float * __restrict__ m		= (float * __restrict__) __builtin_assume_aligned (m_, Align);

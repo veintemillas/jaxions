@@ -673,7 +673,7 @@ int	parseArgs (int argc, char *argv[])
 	// defaults
 	icdatst.Nghost    = 1;
   icdatst.Nx        = 128;
-  icdatst.Ny        = 1;
+  icdatst.Ny        = 0;
   icdatst.Nz        = 128;
 	icdatst.icdrule   = false;
 	icdatst.preprop   = false;
