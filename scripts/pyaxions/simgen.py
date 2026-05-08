@@ -393,11 +393,7 @@ def INCOgen(ict, verb=False, **kwargs):
     if ict == 'spax':
         INCO = ' --ctype %s' % ict
     if ict == 'km':
-<<<<<<< HEAD
         INCO = ' --ctype %s --mode0 1'%ict
-=======
-        INCO = ' --ctype %s' % ict
->>>>>>> 3c21037 (cleanup and completion of simgen.py)
     if ict == 'smooth':
         INCO = ' --ctype %s' % ict
         if 'smvar' in kwargs:
