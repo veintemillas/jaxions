@@ -207,12 +207,11 @@ const std::complex<float> If(0.,1.);
 	}
 	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
-	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: v3[m]  %llu n2(Lz+2)[v] %llu n3[str]", v3, (n2*(nLz + 2)),n3);
-	const size_t	mBytes = v3*fSize;
-	// EXPERIMENTAL to allow AXION TO PAXION
-	// const size_t	vBytes = (n2*(nLz + 2))*fSize;
-	const size_t	vBytes = mBytes;	
-	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, n3/1e9);
+	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m] %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str] %llu", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
+	const size_t	mBytes = Nxyz_g       * fSize;
+	const size_t	vBytes = mBytes // Nxy*(Nz + 2) * fSize; // EXPERIMENTAL to allow AXION TO PAXION
+	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, (Nxyz+Nxy)/1e9);
+
 	size_t totalCPU = 0;
 	switch (fieldType)
 	{
