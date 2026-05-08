@@ -52,8 +52,8 @@ void normCoreKernelXeon (Scalar *field)
 		complex<Float> f0   = mCp[idx];
 		complex<Float> if0  = complex<Float>(1,0)/f0;
 
-		if (imag(f0]) == ((Float) 0.0) && real(f0) == ((Float) 0.0)){
-			rhof = 0.0;
+		if (imag(f0) == ((Float) 0.0) && real(f0) == ((Float) 0.0)){
+			maux[idx] = complex<Float>(0.0, 0.0);
 		}
 		else {
 			
@@ -79,13 +79,17 @@ void normCoreKernelXeon (Scalar *field)
 
 			if (gradtot > 0.0000001)
 			{
-						Float sss  = msa/sqrt(gradtot/2.);
-						Float sss2 = sss*sss;
-						Float sss4 = sss2*sss2;
-						rhof  = (0.43*sss + 0.164*sss2 + 0.036*sss4)/(1.0+0.39*sss+0.2*sss2+0.036*sss4);
+				Float sss  = msa/sqrt(gradtot/2.);
+				Float sss2 = sss*sss;
+				Float sss4 = sss2*sss2;
+				rhof  = (0.43*sss + 0.164*sss2 + 0.036*sss4)/(1.0+0.39*sss+0.2*sss2+0.036*sss4);
 			}
+			maux[idx] = mCp[idx]*rhof/abs(mCp[idx]); 
+
+			
+			
 		}
-		maux[idx] = mCp[idx]*rhof/abs(mCp[idx]);
+		
 
 	}
 
