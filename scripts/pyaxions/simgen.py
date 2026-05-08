@@ -55,20 +55,21 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
     read_params = JAX
     cwd = os.getcwd()
 
-    N0_match      = re.search(r'--size (\d+)',        read_params)
-    depth_match   = re.search(r'--depth (\d+)',       read_params)
-    zgrid_match   = re.search(r'--zgrid (\d+)',       read_params)
-    L0_match      = re.search(r'--lsize (\d+\.\d+)', read_params)
-    msa0_match    = re.search(r'--msa (\d+\.\d+)',   read_params)
-    prec_match    = re.search(r'--prec (\S+)',        read_params)
-    steps_match   = re.search(r'--steps (\d+)',       read_params)
-    wDz_match     = re.search(r'--wDz (\S+)',         read_params)
-    fftplan_match = re.search(r'--fftplan (\d+)',     read_params)
+    N0_match      = re.search(r'--size (\d+)',             read_params)
+    depth_match   = re.search(r'--depth (\d+)',            read_params)
+    zgrid_match   = re.search(r'--zgrid (\d+)',            read_params)
+    L0_match      = re.search(r'--lsize (\d+(?:\.\d+)?)',  read_params)
+    msa0_match    = re.search(r'--msa (\d+(?:\.\d+)?)',    read_params)
+    prec_match    = re.search(r'--prec (\S+)',             read_params)
+    steps_match   = re.search(r'--steps (\d+)',            read_params)
+    wDz_match     = re.search(r'--wDz (\d+(?:\.\d+)?)',    read_params)
+    fftplan_match = re.search(r'--fftplan (\d+)',          read_params)
+    device_match  = re.search(r'--device (\S+)',           read_params)
 
-    N0    = int(N0_match.group(1))
-    depth = int(depth_match.group(1))
-    L0    = float(L0_match.group(1))
-    msa0  = float(msa0_match.group(1)) if msa0_match else None
+    N0    = int(N0_match.group(1))       if N0_match    else None
+    depth = int(depth_match.group(1))    if depth_match else None
+    L0    = float(L0_match.group(1))     if L0_match    else None
+    msa0  = float(msa0_match.group(1))   if msa0_match  else None
 
     os.environ['OMP_NUM_THREADS'] = str(THR)
 
@@ -91,6 +92,11 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         ftype_match = re.search(r'--ftype (\S+)', read_params)
         if ftype_match:
             base += f' --ftype {ftype_match.group(1)}'
+        if device_match:
+            if device_match.group(1) == 'cpu':
+                base += f' --device cpu'
+            elif device_match.group(1) == 'gpu':
+                base += f' --device gpu --measCPU'
         return base
 
     def symlink_config(src_dir, dst_dir, find):
