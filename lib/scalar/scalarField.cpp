@@ -209,7 +209,7 @@ const std::complex<float> If(0.,1.);
 
 	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m] %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str] %llu", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
 	const size_t	mBytes = Nxyz_g       * fSize;
-	const size_t	vBytes = mBytes // Nxy*(Nz + 2) * fSize; // EXPERIMENTAL to allow AXION TO PAXION
+	const size_t	vBytes = mBytes; // Nxy*(Nz + 2) * fSize; // EXPERIMENTAL to allow AXION TO PAXION
 	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, (Nxyz+Nxy)/1e9);
 
 	size_t totalCPU = 0;
