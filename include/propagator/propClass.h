@@ -1306,8 +1306,9 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 						break;
 
 					case FIELD_AXION:
-					case FIELD_AXION_MOD:	// Seguro??
-						return	(1e-9 * ((double) axion->Size()) * (23. * ((double) nStages) + (lastStage ? 15. : 0.)));
+					case FIELD_AXION_MOD:				// Seguro??
+						lapla = 8.0 * axion->getNg();
+						return	(1e-9 * ((double) axion->Size()) * ( (10.0 + lapla) * ((double) nStages) + (lastStage ? (8.0 + lapla) : 0.)));
 						break;
 
 					default:
@@ -1368,12 +1369,21 @@ void	PropClass<nStages, lastStage, VQcd>::tModeRunCpu	(const double dz) {
 	template<const int nStages, const PropStage lastStage, VqcdType VQcd>
 	double	PropClass<nStages, lastStage, VQcd>::cBytes	(const PropcType spec) {
 
-		double lapla = 1.0 + 6.0 * axion->getNg();
+		double lapla = 1.0  + 6.0 * axion->getNg();
 
 		switch (spec)
 		{
 			case PROPC_BASE:
-				return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   (3. + lapla)    * ((double) nStages) + (lastStage ? (2. + lapla) : 0.)));
+				{
+					switch (axion->Field())
+						case FIELD_AXION:
+						case FIELD_AXION_MOD:
+							return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   (3. + lapla)    * ((double) nStages) + (lastStage ? (2. + lapla) : 0.)));
+						break;
+						default: 
+							return	(1e-9 * ((double) (axion->Size()*axion->DataSize())) * (   (3. + lapla)    * ((double) nStages) + (lastStage ? (2. + lapla) : 0.)));
+						break;
+				}
 			break;
 
 			case PROPC_SPEC:

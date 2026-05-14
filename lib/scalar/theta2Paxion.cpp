@@ -75,7 +75,10 @@ void	thetaToPaxion	(Scalar *field)
 			break;
 
 		case DEV_GPU:
-			t2n->runGpu ();
+			// t2n->runGpu ();
+			field->transferCpu(FIELD_MV);
+			t2n->runCpu ();
+			field->transferDev(FIELD_MV);
 			break;
 
 		default:

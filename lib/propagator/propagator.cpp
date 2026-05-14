@@ -700,36 +700,104 @@ void tunePropagator (Scalar *field) {
 
 	/* helper does three evaluations and gets the worst timing from all ranks */
 	auto evalBlock = [&](unsigned int bx, unsigned int by, unsigned int bz) -> size_t {
-		prop->SetBlockX(bx);
-		prop->SetBlockY(by);
-		prop->SetBlockZ(bz);
+    prop->SetBlockX(bx);
+    prop->SetBlockY(by);
+    prop->SetBlockZ(bz);
 
-		propagate(field, 0.); // warmup
+	#ifdef USE_GPU
+    if (field->Device() == DEV_GPU)
+        cudaGetLastError(); // clear stale error
+	#endif
 
-		size_t bestLocal = std::numeric_limits<size_t>::max();
+    propagate(field, 0.); // warmup
 
-		for (int rep = 0; rep < 3; rep++) {
-			auto start = std::chrono::high_resolution_clock::now();
-			propagate(field, 0.);
-			auto end   = std::chrono::high_resolution_clock::now();
+	#ifdef USE_GPU
+    if (field->Device() == DEV_GPU) {
+        cudaError_t err = cudaDeviceSynchronize();
+        if (err != cudaSuccess) {
+            LogMsg(VERB_NORMAL,
+                   "[tpA] warmup failed for block %u x %u x %u: %s",
+                   bx, by, bz, cudaGetErrorString(err));
+            return std::numeric_limits<size_t>::max();
+        }
+    }
+	#endif
 
-			size_t cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+    size_t bestLocal = std::numeric_limits<size_t>::max();
 
-#ifdef USE_GPU
-			if (field->Device() == DEV_GPU) {
-				auto gErr = cudaGetLastError();
-				if (gErr != cudaSuccess)
-					cTime = std::numeric_limits<std::size_t>::max();
-			}
-#endif
-			if (cTime < bestLocal)
-				bestLocal = cTime;
-		}
+    for (int rep = 0; rep < 3; rep++) {
+	#ifdef USE_GPU
+        if (field->Device() == DEV_GPU)
+            cudaGetLastError();
+	#endif
 
-		size_t worstRank;
-		MPI_Allreduce(&bestLocal, &worstRank, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
-		return worstRank;
+        auto start = std::chrono::high_resolution_clock::now();
+
+        propagate(field, 0.);
+
+	#ifdef USE_GPU
+        cudaError_t err = cudaSuccess;
+        if (field->Device() == DEV_GPU)
+            err = cudaDeviceSynchronize();
+	#endif
+
+        auto end = std::chrono::high_resolution_clock::now();
+
+        size_t cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+
+	#ifdef USE_GPU
+        if (field->Device() == DEV_GPU && err != cudaSuccess) {
+            LogMsg(VERB_NORMAL,
+                   "[tpA] timed eval failed for block %u x %u x %u rep %d: %s",
+                   bx, by, bz, rep, cudaGetErrorString(err));
+            cTime = std::numeric_limits<size_t>::max();
+        }
+	#endif
+
+        if (cTime < bestLocal)
+            bestLocal = cTime;
+    }
+
+    size_t worstRank;
+    MPI_Allreduce(&bestLocal, &worstRank, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+    return worstRank;
 	};
+
+// 	auto evalBlock = [&](unsigned int bx, unsigned int by, unsigned int bz) -> size_t {
+// 		prop->SetBlockX(bx);
+// 		prop->SetBlockY(by);
+// 		prop->SetBlockZ(bz);
+
+// #ifdef USE_GPU
+//     if (field->Device() == DEV_GPU)
+//         cudaGetLastError(); // clear stale error
+// #endif
+// 		propagate(field, 0.); // warmup
+
+// 		size_t bestLocal = std::numeric_limits<size_t>::max();
+
+// 		for (int rep = 0; rep < 3; rep++) {
+// 			auto start = std::chrono::high_resolution_clock::now();
+// 			propagate(field, 0.);
+// 			auto end   = std::chrono::high_resolution_clock::now();
+
+// 			size_t cTime = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
+
+// #ifdef USE_GPU
+// 			if (field->Device() == DEV_GPU) {
+// 				auto gErr = cudaGetLastError();
+// 				if (gErr != cudaSuccess)
+// 					cTime = std::numeric_limits<std::size_t>::max();
+// 			}
+// #endif
+// 			if (cTime < bestLocal)
+// 				bestLocal = cTime;
+// 		}
+
+// 		size_t worstRank;
+// 		MPI_Allreduce(&bestLocal, &worstRank, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+// 		return worstRank;
+// 	};
 
 	/* we record tuning data for curiosity and improvement */
 	FILE *tlog = nullptr;

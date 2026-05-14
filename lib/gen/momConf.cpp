@@ -357,8 +357,9 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 		case(MOM_KM):
 		if (commRank() == 0 && mopa.setmom0){
 	        	fM[0] = complex<Float>(mm[0],0);
-						fV[0] = complex<Float>(mopa.k0,0); // we saved here vv[0]
-			LogMsg (VERB_NORMAL, "mode0 set to %f %f in rank %d", real(fM[0]), imag(fM[0]), commRank());
+				fV[0] = complex<Float>(mopa.k0,0); // we saved here vv[0]
+			LogMsg (VERB_NORMAL, "mode0 of c_theta set to (%f, %f) in rank %d", real(fM[0]), imag(fM[0]), commRank());
+			LogMsg (VERB_NORMAL, "mode0 of c_vheta set to (%f, %f) in rank %d", mopa.k0, 0.0, commRank());
                 }
 		break;
 
