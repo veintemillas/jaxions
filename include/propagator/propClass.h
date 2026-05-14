@@ -552,7 +552,7 @@
 			ppar.sign   = -1;
 
 			propagatePaxGPU<KIDI_LAP>(axion->vGpu(), axion->mGpu(), ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[2]);
-			axion->exchangeGhosts(FIELD_M);
+			axion->exchangeGhosts(FIELD_V);
 			propagatePaxGPU<KIDI_LAP>(axion->vGpu(), axion->mGpu(), ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
 			propagatePaxGPU<KIDI_LAP>(axion->vGpu(), axion->mGpu(), ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[1]);
 			cudaDeviceSynchronize();        // This is not strictly necessary, but simplifies things a lot

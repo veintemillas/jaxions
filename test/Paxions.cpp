@@ -167,6 +167,7 @@ int	main (int argc, char *argv[])
 	/*typical value of phi*/
 	double typ_phi = 1;
 
+	bool gravi = axion->BckGnd()->ICData().grav > 0.0 ;
 	if (axion->BckGnd()->ICData().grav>0.0)
 	{
 
@@ -257,13 +258,14 @@ int	main (int argc, char *argv[])
 	//--------------------------------------------------
 	//      MAIN LOOP
 	//-------------------------------------------------
+	
 
-	LogOut ("Start redshift loop\n\n");
-	for (int iz = 0; iz < nSteps; iz++)
+	LogOut ("Start redshift loop (%d steps) \n\n",myCosmos.ICData().nSteps);
+	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
 	{
 
-		dzaux = (uwDz) ? axion->dct_Adaptive() : (zFinl-zInit)/nSteps ;
-
+		dzaux = (uwDz) ? axion->dct_Adaptive() : (zFinl-zInit)/myCosmos.ICData().nSteps ;
+		
 		/* normalise dynamical graavity time-step?
 		Option 1, (Naive) allow only phase~1 per iteration in the point with the largest grav-pot.
 		there is really not need because our integrator is exact in V as we alternate V and K Kick operators. */
@@ -290,6 +292,7 @@ int	main (int argc, char *argv[])
 			case DUMP_EVERYN:
 			if (!(iz%dump)){
 				measrightnow = true;
+				
 			}
 			break;
 
@@ -300,6 +303,7 @@ int	main (int argc, char *argv[])
 					if (*axion->zV() > measfilepar.ct[i])
 						i_meas++;
 					LogMsg(VERB_NORMAL,"[PAX] Time jumped over measurement! jumping once!");
+					
 				}
 			}
 
@@ -314,6 +318,7 @@ int	main (int argc, char *argv[])
 					LogMsg(VERB_NORMAL,"[PAX] last measurement, do not measure and pass END!");
 					measrightnow = false;
 				}
+				
 			}
 			break;
 		}
@@ -322,8 +327,9 @@ int	main (int argc, char *argv[])
 		//ct_sat = find_saturation_ct(axion, file_sat);
 
 
-		if (axion->BckGnd()->ICData().grav_sat)
+		if (gravi)
 		{
+			
 			if (*axion->zV() >= ct_sat && !sat)
 			{
 
@@ -409,7 +415,7 @@ int	main (int argc, char *argv[])
 		if(measrightnow)
 		{
 			//if (*axion->zV() < ct_sat && axion->BckGnd()->ICData().grav_sat) // TO REVIEW THIS CHANGE
-			if (*axion->zV() < ct_sat)
+			if (*axion->zV() < ct_sat && gravi)
 				ct_sat = find_saturation_ct(axion, file_sat);
 			ninfa.index=index;
 			lm = Measureme (axion, ninfa);
