@@ -37,7 +37,7 @@
     LogMsg(VERB_NORMAL, "[ONYXp] Done!");LogFlush();
 		bool bhave_hydro = false;
 
-	if (axion->FieldType() == FIELD_SAXION)
+	if (axion->Field() == FIELD_SAXION)
 	{
 		LogMsg(VERB_NORMAL, "[ONYXp] FIELD_SAXION ");
     /* Number and names of scalar fields to print */
@@ -50,7 +50,7 @@
 		field_name[3] = "cv_im";
 		the_sim_header.particle_idx = 0;
 	}
-	else if (axion->FieldType() == FIELD_AXION)
+	else if (axion->Field() == FIELD_AXION)
 	{
 		LogMsg(VERB_NORMAL, "[ONYXp] FIELD_AXION ");
     /* Number and names of scalar fields to print */
@@ -200,7 +200,7 @@
         phi = Phi/R
         phi'= Phi'/R - phi (R'/R) */
 
-	if (faxion->FieldType() == FIELD_SAXION){
+	if (faxion->Field() == FIELD_SAXION){
       	
 		LogMsg(VERB_NORMAL,"[ONYXdgd] FIELD_SAXION : Output phi, phi' NOT CONFORMAL FIELDS");
 		
@@ -259,7 +259,7 @@
           }}}
         }
 	}
-	else (faxion->FieldType() == FIELD_AXION){
+	else (faxion->Field() == FIELD_AXION){
 
 	  	LogMsg(VERB_NORMAL,"[ONYXdgd] FIELD_AXION : Output Psi, Psi' CONFORMAL FIELDS");
 	
