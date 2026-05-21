@@ -54,7 +54,7 @@
 	{
 		LogMsg(VERB_NORMAL, "[ONYXp] FIELD_AXION ");
     /* Number and names of scalar fields to print */
-	  n_data_items = 4;
+	  n_data_items = 2;
 
 		field_name.resize(n_data_items);
 		field_name[0] = "Psi";
@@ -251,10 +251,10 @@
           // myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1];
 
           /* m_re, m_im v_re, v_im */
-          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx*2]/RRR;
-          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->mStart())[fidx*2+1]/RRR;
-          myFab.dataPtr(2)[idx] = static_cast<float*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
-          myFab.dataPtr(3)[idx] = static_cast<float*>(faxion->vStart())[fidx*2+1]/RRR - myFab.dataPtr(1)[idx]*Hc;
+          myFab.dataPtr(0)[idx] = static_cast<double*>(faxion->mStart())[fidx*2]/RRR;
+          myFab.dataPtr(1)[idx] = static_cast<double*>(faxion->mStart())[fidx*2+1]/RRR;
+          myFab.dataPtr(2)[idx] = static_cast<double*>(faxion->vStart())[fidx*2]/RRR   - myFab.dataPtr(0)[idx]*Hc;
+          myFab.dataPtr(3)[idx] = static_cast<double*>(faxion->vStart())[fidx*2+1]/RRR - myFab.dataPtr(1)[idx]*Hc;
 
           }}}
         }
@@ -293,8 +293,8 @@
         	size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
 
           /* m_re, m_im v_re, v_im */
-          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx];
-          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->vStart())[fidx];
+          myFab.dataPtr(0)[idx] = static_cast<double*>(faxion->mStart())[fidx];
+          myFab.dataPtr(1)[idx] = static_cast<double*>(faxion->vStart())[fidx];
           }}}
         }
 	}
