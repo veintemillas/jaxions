@@ -37,7 +37,9 @@
     LogMsg(VERB_NORMAL, "[ONYXp] Done!");LogFlush();
 		bool bhave_hydro = false;
 
-
+	if (axion->FieldType() == FIELD_SAXION)
+	{
+		LogMsg(VERB_NORMAL, "[ONYXp] FIELD_SAXION ");
     /* Number and names of scalar fields to print */
 	  n_data_items = 4;
 
@@ -47,8 +49,21 @@
 		field_name[2] = "cv_re";
 		field_name[3] = "cv_im";
 		the_sim_header.particle_idx = 0;
+	}
+	else if (axion->FieldType() == FIELD_AXION)
+	{
+		LogMsg(VERB_NORMAL, "[ONYXp] FIELD_AXION ");
+    /* Number and names of scalar fields to print */
+	  n_data_items = 4;
 
-    /* There is only one refinement level in jaxions,
+		field_name.resize(n_data_items);
+		field_name[0] = "Psi";
+		field_name[1] = "Psiprime";
+		the_sim_header.particle_idx = 0;
+
+	}
+
+	/* There is only one refinement level in jaxions,
     so we require 1 Multifab in the Multifab vector mfs */
 		f_lev = 0;
     mfs.resize(f_lev+1);
@@ -107,9 +122,9 @@
 		the_sim_header.offset.push_back( 0 );
 
 		the_sim_header.a_start	 = *faxion->RV();
-		the_sim_header.dx	       = faxion->Delta(); // not sure?!?
+		the_sim_header.dx	     = faxion->Delta(); // not sure?!?
 		the_sim_header.boxlength = faxion->BckGnd()->PhysSize();
-		the_sim_header.h0	       = 0.7;
+		the_sim_header.h0	     = 0.7;
 		the_sim_header.omega_b	 = 0.0;
 
 		the_sim_header.omega_m	 = 0.31;
@@ -145,7 +160,8 @@
 		}
 		Header.close();
 
-    LogMsg(VERB_NORMAL,"[ONYXp] WriteGridsFile");LogFlush();
+
+    LogMsg(VERB_NORMAL,"[ONYXp] WriteGridsFile");LogFlush();
 		amrex::nyx_output_plugin::writeGridsFile(fname_);
 
     LogMsg(VERB_NORMAL,"[ONYXp] Finalize");LogFlush();
@@ -167,11 +183,9 @@
 
 			// std::cout << ng[0] << " " << ng[1] << " " << ng[2] << std::endl;
 
-      LogMsg(VERB_NORMAL,"[ONYXdgd] Output phi, phi' NOT CONFORMAL FIELDS");
-
 			//write data to mf
 			// for(MFIter mfi(mfs); mfi.isValid(); ++mfi) {
-      for(MFIter mfi(*(mfs[blevel])); mfi.isValid(); ++mfi) {
+    for(MFIter mfi(*(mfs[blevel])); mfi.isValid(); ++mfi) {
 			  FArrayBox &myFab = (*(mfs[blevel]))[mfi];
 			  const Box& box = mfi.validbox();
 			  const int  *fab_lo = box.loVect();
@@ -186,11 +200,15 @@
         phi = Phi/R
         phi'= Phi'/R - phi (R'/R) */
 
-        double RRR = *faxion->RV();
+	if (faxion->FieldType() == FIELD_SAXION){
+      	
+		LogMsg(VERB_NORMAL,"[ONYXdgd] FIELD_SAXION : Output phi, phi' NOT CONFORMAL FIELDS");
+		
+		double RRR = *faxion->RV();
         double ct  = *faxion->zV();
         double Hc  = faxion->BckGnd()->Rp(ct);
-        
-	if (faxion->Precision() == FIELD_SINGLE)
+
+		if (faxion->Precision() == FIELD_SINGLE)
         {
           #pragma omp parallel for default(shared)
 			    for (int k = fab_lo[2]; k <= fab_hi[2]; k++) {
@@ -240,8 +258,49 @@
 
           }}}
         }
+	}
+	else (faxion->FieldType() == FIELD_AXION){
 
-			} // MFI
+	  	LogMsg(VERB_NORMAL,"[ONYXdgd] FIELD_AXION : Output Psi, Psi' CONFORMAL FIELDS");
+	
+        
+	if (faxion->Precision() == FIELD_SINGLE)
+        {
+          #pragma omp parallel for default(shared)
+			    for (int k = fab_lo[2]; k <= fab_hi[2]; k++) {
+			      for (int j = fab_lo[1]; j <= fab_hi[1]; j++) {
+			    	  for (int i = fab_lo[0]; i <= fab_hi[0]; i++) {
+
+			IntVect iv(i,j,k);
+			int idx = myFab.box().index(iv);
+          	size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
+
+          /* Psi,Psi' */
+          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx];
+          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->vStart())[fidx];
+
+          }}}
+        }
+        else
+        {
+          #pragma omp parallel for default(shared)
+          for (int k = fab_lo[2]; k <= fab_hi[2]; k++) {
+            for (int j = fab_lo[1]; j <= fab_hi[1]; j++) {
+              for (int i = fab_lo[0]; i <= fab_hi[0]; i++) {
+
+        	IntVect iv(i,j,k);
+        	int idx = myFab.box().index(iv);
+        	size_t fidx = faxion->Surf()*k+faxion->Length()*j + i;
+
+          /* m_re, m_im v_re, v_im */
+          myFab.dataPtr(0)[idx] = static_cast<float*>(faxion->mStart())[fidx];
+          myFab.dataPtr(1)[idx] = static_cast<float*>(faxion->vStart())[fidx];
+          }}}
+        }
+	}
+			
+
+	} // MFI
 
 
 	//	char nyxname[256], filename[256];
@@ -320,7 +379,7 @@
 		inputs << "nyx.initial_z = " << 1/the_sim_header.a_start-1 << std::endl;
 		// inputs << "amr.n_cell           = " << sizex_[0] << " " << sizey_[0] << " " << sizez_[0] << std::endl;
 		// inputs << "nyx.n_particles      = " << sizex_[0] << " " << sizey_[0] << " " << sizez_[0] << std::endl;
-    inputs << "amr.n_cell           = 0 0 0" << std::endl;
+    	inputs << "amr.n_cell           = 0 0 0" << std::endl;
 		inputs << "nyx.n_particles      = 0 0 0" << std::endl;
 
 		inputs << "geometry.prob_lo     = 0 0 0" << std::endl;
@@ -349,7 +408,7 @@
 		/* Writes header according to WriteGenericPlotfileHeader of
     /AMReX_PlotFileUtil.cpp */
 
-		os << "ARMeX_Jaxions_output" << '\n';
+		os << "AMReX_Jaxions_output" << '\n';
     /* number of fields */
 		os << n_data_items << '\n';
     /* names of the fields */
