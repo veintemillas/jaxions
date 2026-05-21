@@ -259,7 +259,7 @@
           }}}
         }
 	}
-	else (faxion->Field() == FIELD_AXION){
+	else if (faxion->Field() == FIELD_AXION){
 
 	  	LogMsg(VERB_NORMAL,"[ONYXdgd] FIELD_AXION : Output Psi, Psi' CONFORMAL FIELDS");
 	
