@@ -115,6 +115,8 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         output.read()
 
     if MODE == 'create':
+        os.makedirs('out/m', exist_ok=True)
+        os.environ['AXIONS_OUTPUT'] = f"{cwd}/out/m"
         os.popen('rm out/m/axion.m.*').read()
         if VERB:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%s' % (N0, RANK, L0, msa0))
@@ -122,6 +124,8 @@ def runsim(JAX, MODE='run', RANK=1, THR=1, USA=' --bind-to socket --mca btl_base
         mpirun(f'vaxion3d {JAX} --steps 0 --p3D 1 2>&1 | tee log-create.txt')
 
     elif MODE == 'run':
+        os.makedirs('out/m', exist_ok=True)
+        os.environ['AXIONS_OUTPUT'] = f"{cwd}/out/m"
         os.popen('rm out/m/axion.m.*').read()
         if VERB:
             print('Overview: N=%d, MPI_RANKS=%d, L=%f, msa=%s' % (N0, RANK, L0, msa0))
