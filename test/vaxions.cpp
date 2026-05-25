@@ -563,7 +563,7 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global)
 			} else {
 				fprintf(fichero,"%f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
 				static_cast<float *> (axion->mStart())[idxp],
-				static_cast<float *> (axion->vStart())[idxp]);
+				(static_cast<float *> (axion->vStart()) + axion->getNg()*axion->Surf())[idxp]);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){
@@ -580,7 +580,7 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global)
 			} else {
 				fprintf(fichero,"%f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
 				static_cast<double *> (axion->mStart())[idxp],
-				static_cast<double *> (axion->vStart())[idxp]);
+				(static_cast<double *> (axion->vStart()) + axion->getNg()*axion->Surf())[idxp]);
 			}
 		}
 	}
