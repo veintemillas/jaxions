@@ -41,7 +41,7 @@ using namespace AxionWKB;
 
 // vaxions3d definitions
 
-void    printsample  (FILE *fichero, Scalar *axion, size_t idxprint);
+void    printsample  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta);
 double  findzdoom(Scalar *axion);
 void    checkTime (Scalar *axion, int index);
 void    printposter (Scalar *axion);
@@ -160,6 +160,8 @@ int	main (int argc, char *argv[])
 	MeasInfo ninfa = deninfa;
 	// //- information needs to be passed onto measurement files
 
+	//-maximum value of the theta angle in the simulation
+	double maximumtheta = M_PI;
 	lm.maxTheta = M_PI;
 
 	// dump decision function
@@ -238,7 +240,7 @@ int	main (int argc, char *argv[])
 	}
 
 	// SIMPLE OUTPUT CHECK
-	printsample(file_samp, axion, ninfa.idxprint);
+	printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
 
 	//--------------------------------------------------
 	// Axiton TRACKER (if THETA)
@@ -316,7 +318,7 @@ int	main (int argc, char *argv[])
  			LogFlush();
 
 			// SIMPLE OUTPUT CHECK
-			printsample(file_samp, axion, ninfa.idxprint);
+			printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -525,29 +527,26 @@ int	main (int argc, char *argv[])
 
 
 
-void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global)
+void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global, size_t nstrings_global, double maximumtheta)
 {
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
 	double llphys = axion->LambdaP();
 
-	/* unfold if needed */
-
 	size_t S0 = sizeN*sizeN ;
 
-	/* Calculate rank */
 	size_t zidx = idxprint_global/axion->Surf();
 	int rankprint = zidx/axion->Depth();
 	size_t idxprinta = idxprint_global - rankprint*axion->Size();
 	size_t idxp = unfoldidx(idxprinta, axion);
 
-	LogMsg(VERB_HIGH,"printsample [global idx %lu ] [local idx=%lu] [folded %lu] from rank %d", idxprint_global,	idxprint, idxp, rankprint);
+	LogMsg(VERB_HIGH,"printsample [global idx %lu ] [local idx=%lu] [folded %lu] from rank %d", idxprint_global, idxprint, idxp, rankprint);
 	if (commRank() == rankprint){
 		if (sPrec == FIELD_SINGLE) {
-			float buff[4];
 			if (axion->Field() == FIELD_SAXION) {
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
+				float buff[4];
 #ifdef USE_GPU
 				if (axion->Device() == DEV_GPU) {
 					cudaMemcpy(buff, &(static_cast<float*>(axion->mGpuStart())[2*idxprinta]),2*sizeof(float),cudaMemcpyDeviceToHost);
@@ -558,34 +557,62 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global)
 					memcpy(buff,&(static_cast<float*> (axion->mStart())[2*idxp]),2*sizeof(float));
 					memcpy(&(buff[2]),&(static_cast<float*> (axion->vStart())[2*idxp]),2*sizeof(float));
 				}
-				fprintf(fichero,"%f %f %f %f %f %f %f %f %e\n", z_now, R_now, axmass_now, llphys,
-				buff[0], buff[1], buff[2], buff[3], saskia);
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
+				buff[0], buff[1], buff[2], buff[3],
+				nstrings_global, maximumtheta, saskia);
 			} else {
-				fprintf(fichero,"%f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
-				static_cast<float *> (axion->mStart())[idxp],
-				(static_cast<float *> (axion->vStart()) + axion->getNg()*axion->Surf())[idxp]);
+				float m_val, v_val;
+#ifdef USE_GPU
+				if (axion->Device() == DEV_GPU) {
+					cudaMemcpy(&m_val, &(static_cast<float*>(axion->mGpuStart())[idxp]), sizeof(float), cudaMemcpyDeviceToHost);
+					cudaMemcpy(&v_val, &(static_cast<float*>(axion->vGpu())[idxp]),      sizeof(float), cudaMemcpyDeviceToHost);
+				} else
+#endif
+				{
+					m_val = static_cast<float*>(axion->mStart())[idxp];
+					v_val = static_cast<float*>(axion->vStart())[idxp];
+				}
+				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
+				m_val, v_val, maximumtheta);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){
 			if (axion->Field() == FIELD_SAXION) {
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
-
-				fprintf(fichero,"%f %f %f %f %f %f %f %f %e\n", z_now, R_now, axmass_now, llphys,
-				static_cast<complex<double> *> (axion->mStart())[idxp].real(),
-				static_cast<complex<double> *> (axion->mStart())[idxp].imag(),
-				static_cast<complex<double> *> (axion->vStart())[idxp].real(),
-				static_cast<complex<double> *> (axion->vStart())[idxp].imag(),
-				saskia);
+				double buff[4];
+#ifdef USE_GPU
+				if (axion->Device() == DEV_GPU) {
+					cudaMemcpy(buff, &(static_cast<double*>(axion->mGpuStart())[2*idxprinta]),2*sizeof(double),cudaMemcpyDeviceToHost);
+					cudaMemcpy(&(buff[2]), &(static_cast<double*>(axion->vGpu())[2*idxprinta]),2*sizeof(double),cudaMemcpyDeviceToHost);
+				} else
+#endif
+				{
+					memcpy(buff,&(static_cast<double*> (axion->mStart())[2*idxp]),2*sizeof(double));
+					memcpy(&(buff[2]),&(static_cast<double*> (axion->vStart())[2*idxp]),2*sizeof(double));
+				}
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
+				buff[0], buff[1], buff[2], buff[3],
+				nstrings_global, maximumtheta, saskia);
 			} else {
-				fprintf(fichero,"%f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
-				static_cast<double *> (axion->mStart())[idxp],
-				(static_cast<double *> (axion->vStart()) + axion->getNg()*axion->Surf())[idxp]);
+				double m_val, v_val;
+#ifdef USE_GPU
+				if (axion->Device() == DEV_GPU) {
+					cudaMemcpy(&m_val, &(static_cast<double*>(axion->mGpuStart())[idxp]), sizeof(double), cudaMemcpyDeviceToHost);
+					cudaMemcpy(&v_val, &(static_cast<double*>(axion->vGpu())[idxp]),      sizeof(double), cudaMemcpyDeviceToHost);
+				} else
+#endif
+				{
+					m_val = static_cast<double*>(axion->mStart())[idxp];
+					v_val = static_cast<double*>(axion->vStart())[idxp];
+				}
+				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
+				m_val, v_val, maximumtheta);
 			}
+			fflush(fichero);
 		}
 	}
 }
-
 
 double findzdoom(Scalar *axion)
 {
