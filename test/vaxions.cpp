@@ -41,7 +41,7 @@ using namespace AxionWKB;
 
 // vaxions3d definitions
 
-void    printsample  (FILE *fichero, Scalar *axion, size_t idxprint, size_t nstrings_global, double maximumtheta);
+void    printsample  (FILE *fichero, Scalar *axion, size_t idxprint);
 double  findzdoom(Scalar *axion);
 void    checkTime (Scalar *axion, int index);
 void    printposter (Scalar *axion);
@@ -160,8 +160,6 @@ int	main (int argc, char *argv[])
 	MeasInfo ninfa = deninfa;
 	// //- information needs to be passed onto measurement files
 
-	//-maximum value of the theta angle in the simulation
-	double maximumtheta = M_PI;
 	lm.maxTheta = M_PI;
 
 	// dump decision function
@@ -240,7 +238,7 @@ int	main (int argc, char *argv[])
 	}
 
 	// SIMPLE OUTPUT CHECK
-	printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
+	printsample(file_samp, axion, ninfa.idxprint);
 
 	//--------------------------------------------------
 	// Axiton TRACKER (if THETA)
@@ -318,7 +316,7 @@ int	main (int argc, char *argv[])
  			LogFlush();
 
 			// SIMPLE OUTPUT CHECK
-			printsample(file_samp, axion, ninfa.idxprint, lm.str.strDen, lm.maxTheta);
+			printsample(file_samp, axion, ninfa.idxprint);
 
 			// CHECKS IF SAXION
 			if ((axion->Field() == FIELD_SAXION ) && coSwitch2theta)
@@ -527,7 +525,7 @@ int	main (int argc, char *argv[])
 
 
 
-void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global, size_t nstrings_global, double maximumtheta)
+void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global)
 {
 	double z_now = (*axion->zV());
 	double R_now = (*axion->RV());
@@ -560,13 +558,12 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global, size_t n
 					memcpy(buff,&(static_cast<float*> (axion->mStart())[2*idxp]),2*sizeof(float));
 					memcpy(&(buff[2]),&(static_cast<float*> (axion->vStart())[2*idxp]),2*sizeof(float));
 				}
-				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
-				buff[0], buff[1], buff[2], buff[3],
-				nstrings_global, maximumtheta, saskia);
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %e\n", z_now, R_now, axmass_now, llphys,
+				buff[0], buff[1], buff[2], buff[3], saskia);
 			} else {
-				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
+				fprintf(fichero,"%f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
 				static_cast<float *> (axion->mStart())[idxp],
-				static_cast<float *> (axion->vStart())[idxp], maximumtheta);
+				(static_cast<float *> (axion->vStart()) + axion->getNg()*axion->Surf())[idxp]);
 			}
 			fflush(fichero);
 		} else if (sPrec == FIELD_DOUBLE){
@@ -574,16 +571,16 @@ void printsample(FILE *fichero, Scalar *axion,  size_t idxprint_global, size_t n
 				double axmass_now = axion->AxionMass();
 				double saskia = axion->Saskia();
 
-				fprintf(fichero,"%f %f %f %f %f %f %f %f %ld %f %e\n", z_now, R_now, axmass_now, llphys,
+				fprintf(fichero,"%f %f %f %f %f %f %f %f %e\n", z_now, R_now, axmass_now, llphys,
 				static_cast<complex<double> *> (axion->mStart())[idxp].real(),
 				static_cast<complex<double> *> (axion->mStart())[idxp].imag(),
 				static_cast<complex<double> *> (axion->vStart())[idxp].real(),
 				static_cast<complex<double> *> (axion->vStart())[idxp].imag(),
-				nstrings_global, maximumtheta, saskia);
+				saskia);
 			} else {
-				fprintf(fichero,"%f %f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
+				fprintf(fichero,"%f %f %f %f %f\n", z_now, R_now, axion->AxionMass(),
 				static_cast<double *> (axion->mStart())[idxp],
-				static_cast<double *> (axion->vStart())[idxp], maximumtheta);
+				(static_cast<double *> (axion->vStart()) + axion->getNg()*axion->Surf())[idxp]);
 			}
 		}
 	}
