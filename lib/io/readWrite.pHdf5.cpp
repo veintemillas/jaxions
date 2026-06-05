@@ -1413,8 +1413,11 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		{
 			fTypeRead = FIELD_AXION;
 			fTypeCreate = FIELD_AXION;
-			if (fTypeP == FIELD_SAXION)
+			if (fTypeP == FIELD_SAXION) {
 				fTypeCreate = FIELD_SAXION;
+			} else if (fTypeP == FIELD_PAXION) {
+				fTypeCreate = FIELD_PAXION;
+			}
 		}
 		else if (!strcmp(fStr, "Axion Mod"))
 		{

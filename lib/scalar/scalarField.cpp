@@ -240,7 +240,7 @@ const std::complex<float> If(0.,1.);
 			alignAlloc ((void**) &v,   mAlign, mBytes);
 			trackAlloc ((void**) &str, n3);
 			totalCPU += mBytes*2 + n3;
-
+			break;
 		case FIELD_FAXION:
 			LogMsg(VERB_NORMAL, "[sca] allocating theta, vheta, rho, vho, gra");
 			alignAlloc ((void**) &m,   mAlign, mBytes); // will not compute grads
@@ -1109,6 +1109,11 @@ void	Scalar::setField (FieldType newType)
 		case FIELD_AXION:
 		if (fieldType & FIELD_AXION){
 			LogError ("Error: transformation from axion to axion irrelevant");
+			break;
+		}
+		if (fieldType & FIELD_PAXION){
+			LogMsg(VERB_NORMAL,"[sca] trivially transform from Paxion (%d) to axion (%d)",fieldType,FIELD_AXION);
+			fieldType = FIELD_AXION;
 			break;
 		}
 			fSize /= 2;
