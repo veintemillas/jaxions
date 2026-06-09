@@ -165,20 +165,33 @@ static __device__ __forceinline__ void propagatePaxCoreGpu_POT(
 	Float * __restrict__ re,
 	Float * __restrict__ im,
 	const Float mcdth,
-	const Float isqrtmcR2
+	const Float isqrtmcR2, 
+    const Float iR2, 
+    const Float R3  
 ) {
-	const Float rho2 = re[idx]*re[idx] + im[idx]*im[idx];
+
+    /* 0-version works */
+    const Float rho2 = re[idx]*re[idx] + im[idx]*im[idx];
 	const Float x = pax_sqrt<Float>(rho2) * isqrtmcR2;
-
 	Float phase;
-
-	if (x > (Float) 0.0)
-		phase = mcdth*(pax_j1<Float>((Float) 2.0*x)/x - (Float) 1.0);
+	if (x > (Float) 0.0){
+        // saturating value
+		phase = -mcdth*(pax_j1<Float>((Float) 2.0*x)/x - (Float) 1.0);
+        // cuadratic approx
+        // phase = -mcdth*(-x*x/ ((Float) 2.0));
+        // comoving UV stop
+        // phase = -mcdth*(-x*x/ ((Float) 2.0) + x*x*x*x);
+    }
 	else
 		phase = (Float) 0.0;
+    
 
-	// const Float s = pax_sin<Float>(phase);
-	// const Float c = pax_cos<Float>(phase);
+
+    /* version simple 
+	const Float rho2 = re[idx]*re[idx] + im[idx]*im[idx];
+	Float phase = rho2 * iR2 - rho2*rho2*R3;
+    */
+
     Float s, c;
     pax_sincos<Float>(phase, &s, &c);
 
@@ -195,7 +208,9 @@ __global__ void propagatePAXKernel_POT(
 	const uint Vo,
 	const uint Vf,
 	const Float mcdth,
-	const Float isqrtmcR2
+	const Float isqrtmcR2, 
+	const Float iR2,
+	const Float R3
 ) {
 	const uint local = threadIdx.x + blockDim.x*blockIdx.x;
 	const uint zloc  = threadIdx.y + blockDim.y*blockIdx.y;
@@ -208,7 +223,7 @@ __global__ void propagatePAXKernel_POT(
 	if (idx >= Vf)
 		return;
 
-	propagatePaxCoreGpu_POT<Float>(idx, m, v, mcdth, isqrtmcR2);
+	propagatePaxCoreGpu_POT<Float>(idx, m, v, mcdth, isqrtmcR2, iR2, R3);
 }
 
 template<KickDriftType kidi>
@@ -292,17 +307,23 @@ void propagatePaxGPU(
     {
         double mcdth = dt*ppar.massA*ppar.R/2.0 ;
         double isqrtmcR2 = 1.0/std::sqrt(ppar.massA*ppar.R*ppar.R*ppar.R);
+        double iR2 = dt/(8.0*ppar.R*ppar.R) ;
+        double R3  = dt * ppar.beta * pow(ppar.R,1.0/3.0);
+
         switch (precision) 
             {
                 case FIELD_SINGLE:
                 {
                     float mcdth_f     = (float) mcdth;
                     float isqrtmcR2_f = (float) isqrtmcR2;
+                    float fiR2 = (float) iR2;
+                    float fR3  = (float) R3 ;
+
                     propagatePAXKernel_POT<float>
                         <<<gridSize, blockSize, 0, stream>>>(
                             static_cast<float *>(m),
                             static_cast<float *>(v),
-                            Sf, Vo, Vf, mcdth_f, isqrtmcR2_f
+                            Sf, Vo, Vf, mcdth_f, isqrtmcR2_f, fiR2, fR3
                         );
                 }
                 break;
@@ -313,7 +334,7 @@ void propagatePaxGPU(
                         <<<gridSize, blockSize, 0, stream>>>(
                             static_cast<double *>(m),
                             static_cast<double *>(v),
-                            Sf, Vo, Vf, mcdth, isqrtmcR2
+                            Sf, Vo, Vf, mcdth, isqrtmcR2, iR2, R3
                         );
                 }   
                 break;

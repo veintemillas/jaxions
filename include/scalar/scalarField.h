@@ -53,7 +53,7 @@
 		bool folded, M2folded;
 		bool	lowmem;
 		bool    lowmemgpu;
-		size_t Ng;
+		size_t Ng, Ng_v;
 		size_t lap;
 
 		size_t nmodes;
@@ -117,9 +117,9 @@
 		void		*vGhost () { return static_cast<void *>(static_cast<char *>(v) + fSize*(Nxyz)); }
 		void		*vCpu()  { return v; }
 		const void	*vCpu()  const { return v; }
-		void		*vStart      () { return (fieldType == FIELD_PAXION) ? (static_cast<void *>(static_cast<char *>(v)  + fSize*(Nxy)*Ng)) : v; }
+		void		*vStart      () { return (fieldType == FIELD_PAXION) ? (static_cast<void *>(static_cast<char *>(v)  + fSize*(Nxy)*Ng_v)) : v; }
 		void		*vFrontGhost () { return v; }
-		void		*vBackGhost  () { return static_cast<void *>(static_cast<char *>(v)  + fSize*(Nxy*Ng+Nxyz)); }
+		void		*vBackGhost  () { return static_cast<void *>(static_cast<char *>(v)  + fSize*(Nxy*Ng_v+Nxyz)); }
 
 		/* Auxiliary field pointers */
 		void		*m2Cpu() { return m2; }
@@ -204,7 +204,7 @@
 		size_t		rSize()      { return eReduced ? (rNx*rNy*rNz) : Nxyz; }
 		size_t		eDepth()     { return Nz_g; }
 		size_t		eSize()      { return Nxyz_g; }
-		size_t    vSize()      { return Nxy*(Nz+2); }
+		size_t       vSize()     { return Nxy*(Nz+2*Ng_v); }
 
 		// TO STAY
 		size_t		NX()         { return Nx; }
@@ -316,6 +316,7 @@
 		void    setModes ();
 
 		size_t  getNg() {return Ng;}
+		size_t  getNgv() {return Ng_v;}
 		size_t  getLap() {return lap;}
 		void	  setCO	(size_t newN);
 		double  *getCO() {return &(co[0]); };

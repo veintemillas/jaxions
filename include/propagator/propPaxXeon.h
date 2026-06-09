@@ -120,12 +120,16 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 		      for (uint xC = 0; xC < XC; xC += step) {
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
+			
+			if (zC >= zF || yC >= YC)
+				continue;
 
 			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
 			size_t idx = zC*(YC*XC) + yC*XC + xC;
 
-			if (idx >= Vf)
+			if (idx < Vo || idx >= Vf)
 				continue;
+			
 			{
 				X[0] = xC;
 				X[1] = yC;
@@ -227,6 +231,7 @@ else
 
 				case KIDI_POT:
 				{
+						// saturating at x = 1 version 
 						vel = opCode(load_pd, &v[idx]);
 						acu = opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel));
 						acu = opCode(add_pd, opCode(mul_pd, KKtVec, acu), opCode(mul_pd, KKt2Vec, opCode(mul_pd, acu, acu)));
@@ -236,6 +241,16 @@ else
 						opCode(store_pd, &m[idx], tmp);
 						tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
 						opCode(store_pd, &v[idx], tmp);
+						// saturating at x = 1 version 
+						// vel = opCode(load_pd, &v[idx]);
+						// acu = opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel));
+						// acu = opCode(add_pd, opCode(mul_pd, KKtVec, acu), opCode(mul_pd, KKt2Vec, opCode(mul_pd, acu, acu)));
+						// mMy = opCode(sin_pd, acu);
+						// mPy = opCode(cos_pd, acu);
+						// tmp = opCode(sub_pd, opCode(mul_pd, mPy, mel), opCode(mimgeul_pd, mMy, vel));
+						// opCode(store_pd, &m[idx], tmp);
+						// tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
+						// opCode(store_pd, &v[idx], tmp);
 				}
 				break;
 				case KIDI_POT_GRAV:
@@ -327,11 +342,16 @@ else
 			uint zC = zz + bSizeZ*zT + z0;
 			uint yC = yy + bSizeY*yT;
 
-			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
-			size_t idx = zC*(YC*XC) + yC*XC + xC;
-
-			if (idx >= Vf)
+			if (zC >= zF || yC >= YC)
 				continue;
+
+			size_t idx = zC*Sf + yC*XC + xC;
+
+			if (idx < Vo || idx >= Vf)
+				continue;
+
+			size_t X[2], idxMx, idxPx, idxMy, idxPy, idxMz, idxPz;
+			
 			{
 				X[0] = xC;
 				X[1] = yC;
@@ -440,15 +460,29 @@ else
 
 				case KIDI_POT:
 				{
+						// cuartic
 						vel = opCode(load_ps, &v[idx]);
 						acu = opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel));
-						acu = opCode(add_ps, opCode(mul_ps, KKtVec, acu), opCode(mul_ps, KKt2Vec, opCode(mul_ps, acu, acu)));
+						acu = opCode(mul_ps, KKtVec, acu);
 						mMy = opCode(sin_ps, acu);
 						mPy = opCode(cos_ps, acu);
 						tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
 						opCode(store_ps, &m[idx], tmp);
 						tmp = opCode(add_ps, opCode(mul_ps, mPy, vel), opCode(mul_ps, mMy, mel));
 						opCode(store_ps, &v[idx], tmp);
+
+						// We saturate the potential inspired by the J1 non-linear GP
+
+						// vel = opCode(load_ps, &v[idx]);
+						// acu = opCode(add_ps, opCode(mul_ps,vel,vel), opCode(mul_ps,mel,mel));
+						// acu = opCode(add_ps, opCode(mul_ps, KKtVec, acu), opCode(mul_ps, KKt2Vec, opCode(mul_ps, acu, acu)));
+						// mMy = opCode(sin_ps, acu);
+						// mPy = opCode(cos_ps, acu);
+						// tmp = opCode(sub_ps, opCode(mul_ps, mPy, mel), opCode(mul_ps, mMy, vel));
+						// opCode(store_ps, &m[idx], tmp);
+						// tmp = opCode(add_ps, opCode(mul_ps, mPy, vel), opCode(mul_ps, mMy, mel));
+						// opCode(store_ps, &v[idx], tmp);
+
 				}
 				break;
 

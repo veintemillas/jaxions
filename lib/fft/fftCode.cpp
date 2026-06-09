@@ -155,7 +155,8 @@ namespace AxionFFT {
 							break;
 
 					case	FFT_CtoC_M2toM2:
-
+					pfrom = m2;
+					pto   = m2;
 						if (axion->m2Cpu() == nullptr) {
 							LogError ("Can't create C->C plan with m2 in lowmem runs");
 							exit(0);
@@ -362,6 +363,8 @@ namespace AxionFFT {
 						break;
 
 					case	FFT_CtoC_M2toM2:
+					pfrom = m2;
+					pto   = m2;
 
 						if (axion->m2Cpu() == nullptr) {
 							LogError ("Can't create C->C plan with m2 in lowmem runs");

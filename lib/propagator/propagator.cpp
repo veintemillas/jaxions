@@ -538,6 +538,15 @@ void tunePropagator (Scalar *field) {
 
 	LogMsg(VERB_HIGH,"[tpA] Initial block Size %u %u %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
 
+	/* check if notune is requested */
+	FILE *caps = nullptr;
+
+	if ((caps = fopen("./notune", "r")) != nullptr) {
+	    fclose(caps);
+		LogMsg(VERB_NORMAL, "[tpA] No tuning requested, Initial block Size %u %u %u", prop->BlockX(), prop->BlockY(), prop->BlockZ());
+		return ;
+	}
+	
 	/* check if force retune is requested */
 	FILE *capa = nullptr;
 	bool force_tune = false;

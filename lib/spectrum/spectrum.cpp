@@ -37,13 +37,13 @@ void	SpecBin::fillCosTable () {
 
 }
 
-template<typename Float, const SpectrumType sType, const bool spectral>
+template<typename Float, const SpectrumType sType, const bool spectral, const bool halfcomplex>
 void	SpecBin::fillBins	() {
 
 	Profiler &prof = getProfiler(PROF_SPEC);
 	prof.start();
 
-	LogMsg(VERB_HIGH,"[FB] Filling beans sType %d ",sType) ;LogFlush();
+	LogMsg(VERB_HIGH,"[FB] Filling beans sType %d %s",sType,halfcomplex ? "halfcomplex" : "full") ;LogFlush();
 	using cFloat = std::complex<Float>;
 
 	/* The factor that will multiply the |ft|^2, taken to be L^3/(2 N^6) */
@@ -148,19 +148,23 @@ void	SpecBin::fillBins	() {
 	#pragma omp parallel
 	{
 		int  tIdx = omp_get_thread_num ();
+		size_t nmodes = halfcomplex? Lx*Ly*Lz : Ly*Ly*Lz;
+		size_t nx     = halfcomplex? Lx : Ly;   // Lx is halfcomplexed
+		size_t hnx    = halfcomplex? Lx : Ly/2; // Lx is halfcomplexed
 
 		#pragma omp for schedule(static)
-		for (size_t idx=0; idx<nModeshc; idx++) {
-			size_t tmp = idx/Lx;
-			int    kx  = idx - tmp*Lx;
+		for (size_t idx=0; idx< nmodes ; idx++) {
+			size_t tmp = idx/nx;
+			int    kx  = idx - tmp*nx;
 			int    ky  = tmp/Tz;
 			int    kz  = tmp - ((size_t) ky)*Tz;
 			ky += zBase;	// For MPI, transposition makes the Y-dimension smaller
 
 			//ASSUMES THAT THE FFTS FOR SPECTRA ARE ALWAYS OF r2c type
 			//and thus always in reduced format with half+1 of the elements in x
+			if (!halfcomplex)
+				if (kx > static_cast<int>(hnx)) kx -= static_cast<int>(nx); // half complex, this line is not needed
 
-			// if (kx > static_cast<int>(hLx)) kx -= static_cast<int>(Ly); // half complex, this line is not needed
 			if (ky > static_cast<int>(hLy)) ky -= static_cast<int>(Ly);
 			if (kz > static_cast<int>(hTz)) kz -= static_cast<int>(Tz);
 
@@ -226,13 +230,17 @@ void	SpecBin::fillBins	() {
 				break;
 			}
 
-			/* FFTS are assumed outcome of FFT r2c
-				if c2c this needs some changes */
-			// recall hLx - 1 = N/2
-			if ((kx == 0) || (kx == static_cast<int>(hLx - 1)))
+
+			if (halfcomplex){
+				// FFTS are assumed outcome of FFT r2c
+				// recall hLx - 1 = N/2
+				if ((kx == 0) || (kx == static_cast<int>(hLx - 1)))
+					m2 = m*m;
+				else
+					m2 = 2*m*m;
+			} else {
 				m2 = m*m;
-			else
-				m2 = 2*m*m;
+			}
 
 			double		mw;
 
@@ -1825,6 +1833,71 @@ void	SpecBin::nRun	(nRunType nrt) {
 					fillBins<Float,  SPECTRUM_VNL, true> ();
 				else
 					fillBins<Float,  SPECTRUM_VNL, false>();
+			}
+
+			field->setM2     (M2_DIRTY);
+		}
+		break;
+
+		case	FIELD_PAXION:
+		{
+			LogMsg(VERB_HIGH,"[NRUN] Paxion spectrum is being tested");
+			// Upsilon = m + i v
+			// Upsilon(k) = m(k) + i v(k)
+			// |Upsilon(k)|^2 = |m(k) + i v(k)|^2
+			// For now we only calculate Upsilon
+
+			auto &myPlan = AxionFFT::fetchPlan("FFT_CtoC_M2toM2");
+
+			char *mO = static_cast<char *>(field->mStart());
+			char *vO = static_cast<char *>(field->vStart());
+			char *mF = static_cast<char *>(field->m2Cpu());
+			char *mU = static_cast<char *>(field->m2half());
+
+			Float *m   = static_cast<Float*>(field->mStart());
+			Float *v   = static_cast<Float*>(field->vStart());
+			Float *m2  = static_cast<Float*>(field->m2Cpu());
+
+			size_t dataTotalSize = field->Precision()*field->Size();
+			size_t dataLine = field->DataSize()*Ly;
+			size_t Sm	= Ly*Lz;
+
+			if (1)
+			{
+				LogMsg(VERB_HIGH,"[nRun] loop (Paxion)") ;
+				#pragma omp parallel for schedule(static)
+				for (size_t iz=0; iz < Lz; iz++) {
+					size_t zi = Ly*Ly*iz ;
+					for (size_t iy=0; iy < Ly; iy++) {
+						size_t yi = Ly*iy ;
+						for (size_t ix=0; ix < Ly; ix++) {
+							size_t idx = ix + yi + zi;
+
+							switch(mask){
+								default:
+								case SPMASK_FLAT:
+											m2[2*idx]   = m[idx];
+											m2[2*idx+1] = v[idx];
+										break;
+								// case SPMASK_AXITV:
+								// 			m2[odx] = R2*std::sin(m[idx] * iR2)*0.5*(1-std::tanh(5*(m2h[idx]/ethres-1)));
+								// 		break;
+								// case SPMASK_AXIT:
+								// case SPMASK_AXIT2:
+								// 		if (strdaa[idx] & STRING_MASK)
+								// 				m2[odx] = 0 ;
+								// 		else
+								// 				m2[odx] = R2*std::sin(m[idx] * iR2);
+								// 		break;
+							} //end mask
+					}}} // end last volume loop
+
+				myPlan.run(FFT_FWD);
+
+				if (spec)
+					fillBins<Float,  SPECTRUM_KK, true, false> ();
+				else
+					fillBins<Float,  SPECTRUM_KK, false, false>();
 			}
 
 			field->setM2     (M2_DIRTY);

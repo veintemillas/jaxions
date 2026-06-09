@@ -768,7 +768,7 @@ def gm(address,something='summary',printerror=False):
         return ;
 
     if (something[0:3] == 'esp') and  esp_check :
-        if ftype == 'Saxion' or ftype == 'Axion':
+        if ftype == 'Saxion' or ftype == 'Axion' or ftype == 'Paxion':
             if (something[:3] == 'esp') and ('eSpectrum/s'+something[3:] in f):
                 # print('requested '+'nSpectrum/s'+something[3:]+'/data/')
                 return np.array(f['eSpectrum/s'+something[3:]+'/data/']) ;

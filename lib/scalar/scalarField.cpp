@@ -46,7 +46,8 @@ const std::complex<float> If(0.,1.);
 		: nSplit(nSp), lap(Ngg), device(dev), precision(prec), fieldType(newType), lambdaType(lType), lowmem(lowmem)
 {
 
-	Ng = Ngg;
+	Ng   = Ngg;
+	Ng_v = Ngg; /* Space can be saved in NON-PAXION SIMs*/
 
 	Nx     = cm->ICData().Nx; // nLx; 		 // n1
 	Nz     = cm->ICData().Nz; // nLz;      // Lz
@@ -67,6 +68,7 @@ const std::complex<float> If(0.,1.);
 	Tz     = Nz*nSp;
 	Nz_g   = nLz + 2*Ng;      // Ez
 	Nxyz_g = Nxy*(Nz + 2*Ng); // v3
+	size_t Nxyz_g_v = Nxy*(Nz + 2*Ng_v);
 
 	Profiler &prof = getProfiler(PROF_SCALAR);
 
@@ -81,7 +83,7 @@ const std::complex<float> If(0.,1.);
 	LogMsg(VERB_NORMAL,"[sca] Device       =  %d (CPU/GPU %d/%d)",dev,DEV_CPU,DEV_GPU);
 	LogMsg(VERB_NORMAL,"[sca] Lowmem       =  %d ",lowmem);
 	LogMsg(VERB_NORMAL,"[sca] LowmemGPU    =  %d %d ",lowmemGPU,lowmemgpu);
-	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d (arg %d)", Ng,Ngg);
+	LogMsg(VERB_NORMAL,"[sca] Nghost       =  %d (%d in the v - field)", Ng,Ng_v);
 	LogMsg(VERB_NORMAL,"[sca] Laplacian     = %d ", lap);
 
 	if (cm == nullptr) {
@@ -207,9 +209,9 @@ const std::complex<float> If(0.,1.);
 	}
 	LogMsg(VERB_NORMAL, "[sca] Allocating RAM for CPU ");
 
-	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m] %llu Nxy*(Nz + 2)[v] %llu Nxyz+Nxy[str] %llu", Nxyz_g, Nxy*(Nz + 2), Nxyz+Nxy);
-	const size_t	mBytes = Nxyz_g       * fSize;
-	const size_t	vBytes = mBytes; // Nxy*(Nz + 2) * fSize; // EXPERIMENTAL to allow AXION TO PAXION
+	LogMsg(VERB_NORMAL, "[sca] Number of points to be allocatted: Nxyz_g[m] %llu Nxyz_g_v [v] %llu Nxyz+Nxy[str] %llu", Nxyz_g, Nxyz_g_v, Nxyz+Nxy);
+	const size_t	mBytes = Nxyz_g  * fSize;
+	const size_t	vBytes = Nxyz_g_v* fSize;
 	LogMsg(VERB_NORMAL, "[sca] Bytes to be allocatted: mBytes %.3e GB, vBytes %.3e GB, strBytes %.3e GB", mBytes/1e9, vBytes/1e9, (Nxyz+Nxy)/1e9);
 
 	size_t totalCPU = 0;
@@ -622,8 +624,9 @@ if (k2_a != nullptr)
 
 void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 {
-	size_t Gc = Ng*Nxy*fSize;  // Number of chars of the ghost region
+	size_t Gc = Ng*Nxy*fSize;        // Number of chars of the ghost region
 	size_t Tc = Nxyz*fSize;			// Number of chars to transfer
+
 	if (device == DEV_GPU)
 	{
 		#ifndef	USE_GPU
@@ -639,8 +642,12 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 			if (fIdx & FIELD_M)
 				cudaMemcpy((((char *) m_d) + Gc), (((char *) m) + Gc),  Tc, cudaMemcpyHostToDevice);
 
-			if (fIdx & FIELD_V)
-				cudaMemcpy(v_d,  v,  Tc, cudaMemcpyHostToDevice);
+			if (fIdx & FIELD_V){
+			if (fieldType == FIELD_PAXION)
+				cudaMemcpy((((char *) v_d) + Gc), (((char *) v) + Gc),  Tc, cudaMemcpyHostToDevice);
+			else
+				cudaMemcpy(v_d, v,  Tc, cudaMemcpyHostToDevice);
+			}
 
 			if ((fIdx & FIELD_M2) && (!lowmem))
 				cudaMemcpy((((char *) m2_d) + Gc), (((char *) m2) + Gc),  Tc, cudaMemcpyHostToDevice);
@@ -650,9 +657,9 @@ void	Scalar::transferDev(FieldIndex fIdx)	// Transfers only the internal volume
 
 void	Scalar::transferCpu(FieldIndex fIdx)	// Copies all the array to the CPU
 {
-	size_t Gc  = Ng*Nxy*fSize;           // Number of chars of the ghost region
+
 	size_t Tc  = Nxyz_g*fSize;              // Number of chars to transfer
-	size_t Tvc = Nxy*(Nz+2)*fSize;     // Number of chars to transfer
+	size_t Tvc = Nxy*(Nz+2*Ng_v)*fSize;     // Number of chars to transfer
 
 	if (device == DEV_GPU)
 	{
@@ -691,10 +698,12 @@ void	Scalar::recallGhosts(FieldIndex fIdx)		// Copy to the Cpu the slices of the
 			if (fIdx & FIELD_M) {
 				cudaMemcpyAsync(static_cast<char *> (m) + Gc, static_cast<char *> (m_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m) + Tc, static_cast<char *> (m_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
-			} else if (fIdx == FIELD_V) { // useful for PAXION mode
+			} 
+			if (fIdx & FIELD_V) { // useful for PAXION mode
 				cudaMemcpyAsync(static_cast<char *> (v) + Gc, static_cast<char *> (v_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (v) + Tc, static_cast<char *> (v_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
-			} else {
+			} 
+			if (fIdx & FIELD_M2) {
 				cudaMemcpyAsync(static_cast<char *> (m2) + Gc, static_cast<char *> (m2_d) + Gc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m2) + Tc, static_cast<char *> (m2_d) + Tc, Gc, cudaMemcpyDeviceToHost, ((cudaStream_t *)sStreams)[1]);
 			}
@@ -720,7 +729,12 @@ void	Scalar::transferGhosts(FieldIndex fIdx)	// Copy to the GPU the slices of th
 			if (fIdx & FIELD_M) {
 				cudaMemcpyAsync(static_cast<char *> (m_d),       static_cast<char *> (m),      Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m_d)  + Lc, static_cast<char *> (m) + Lc, Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
-			} else {
+			} 
+			if (fIdx & FIELD_V) { // for paxion evolution
+				cudaMemcpyAsync(static_cast<char *> (v_d),      static_cast<char *> (v),     Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
+				cudaMemcpyAsync(static_cast<char *> (v_d) + Lc, static_cast<char *> (v)+ Lc, Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
+			}
+			if (fIdx & FIELD_M2) {
 				cudaMemcpyAsync(static_cast<char *> (m2_d),      static_cast<char *> (m2),     Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[0]);
 				cudaMemcpyAsync(static_cast<char *> (m2_d) + Lc, static_cast<char *> (m2)+ Lc, Gc, cudaMemcpyHostToDevice, ((cudaStream_t *)sStreams)[1]);
 			}

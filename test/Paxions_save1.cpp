@@ -1,4 +1,4 @@
-// #include <cmath>
+#include <cmath>
 #include <cstring>
 #include <chrono>
 
@@ -26,8 +26,6 @@
 #include "axiton/tracker.h"
 
 #include "propagator/propPaxXeon.h"
-// #include "propagator/propPaxGpu.h"
-
 
 using namespace std;
 using namespace AxionWKB;
@@ -39,8 +37,6 @@ void   mysplit (std::string *str, std::vector<std::string> *result);
 int    readheader (std::string *str, std::vector<int> *perm);
 int    readmeasline2 (std::string *str, double *ctime, std::vector<int> *lint, std::vector<int> *perm, int n_max);
 void   loadmeasfromlist(MeasFileParms *mfp, MeasInfo *info, int i_meas);
-
-void loadparmss(PropParms *pipar, Scalar *field);
 
 int	main (int argc, char *argv[])
 {
@@ -279,25 +275,24 @@ int	main (int argc, char *argv[])
 	// Measureme (axion, ninfa);
 
 	// dzaux = axion->dct_Adaptive();
-	// propagatePaxGPU<KIDI_POT>(axion->mGpu(), axion->vGpu(), ppar, 0.5*dzaux, axion->Surf()*axion->getNg(),   V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
+	// propagatePaxGPU<KIDI_POT>(axion->mGpu(), axion->vGpu(), ppar, 0.5*dzaux, BO,   V+BO, precision, xBlock, yBlock, zBlock,((cudaStream_t *)axion->Streams())[0]);
 	// cudaDeviceSynchronize(); 
 
 	// ninfa.index= 1000;
 	// Measureme (axion, ninfa);
-	// return 0;
 	// }
-	
+	// 
+
+	ninfa.index=index;
+	lm = Measureme (axion, ninfa);
+	index++;
+
 
 	//--------------------------------------------------
 	//      MAIN LOOP
 	//-------------------------------------------------
 	
-	ninfa.index=index;
-	lm = Measureme (axion, ninfa);
-	index++;
-	i_meas++ ;
 
-	
 	LogOut ("Start redshift loop (%d steps) \n\n",myCosmos.ICData().nSteps);
 	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
 	{
@@ -846,35 +841,3 @@ void find_MC(Scalar *axion, double MC_thr)
 	return ;
 
 }
-
-
-	void loadparmss(PropParms *pipar, Scalar *axion)
-	{
-		(*pipar).lambda = axion->LambdaP();
-		(*pipar).massA2 = axion->AxionMassSq();
-		(*pipar).massA  = axion->AxionMass();
-		(*pipar).R      = *axion->RV();
-		(*pipar).Rpp    = axion->Rpp();
-		(*pipar).Rp     = axion->BckGnd()->Rp(*axion->zV());
-		(*pipar).ct     = *axion->zV();
-
-		(*pipar).beta   = axion->BckGnd()->ICData().beta;
-		(*pipar).n      = axion->BckGnd()->DlogCHIlogT(*axion->zV());
-
-		(*pipar).Ng     = axion->getNg();
-		(*pipar).Lap    = axion->getLap();
-		(*pipar).Lx     = axion->NX();
-		(*pipar).Ly     = axion->NY();
-		(*pipar).Lz     = axion->NZ();
-		(*pipar).Tz     = axion->TZ();
-		(*pipar).PC     = axion->getCO();
-		(*pipar).PCp    = axion->getCOp();
-		(*pipar).ood2a  = 1./(axion->Delta()*axion->Delta());
-		(*pipar).gamma  = axion->BckGnd()->Gamma();
-		(*pipar).frw    = axion->BckGnd()->Frw();
-		(*pipar).dectime= axion->BckGnd()->DecTime();
-		(*pipar).RPQ    = axion->BckGnd()->RPQ();
-		(*pipar).nmodes = axion->NModes();
-		(*pipar).rhsoff = axion->BckGnd()->ICData().lme_no_rhs;
-
-	}

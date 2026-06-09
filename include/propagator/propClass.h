@@ -1163,7 +1163,7 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 		#pragma unroll
 		for (int s = 0; s<nStages; s++) {
 
-			axion->sendGhosts(FIELD_M, COMM_SDRV);
+			axion->sendGhosts2(FIELD_M, COMM_SDRV);
 
 			const double	c1 = c[s], d1 = d[s];
 
@@ -1174,11 +1174,11 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 			ppar.sign   = 1;
 			/*updates v(2) with m(1) lap data and NL function */
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
-			axion->sendGhosts(FIELD_M, COMM_WAIT);
+			axion->sendGhosts2(FIELD_M, COMM_WAIT);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 
-			axion->sendGhosts(FIELD_V, COMM_SDRV);
+			axion->sendGhosts2(FIELD_V, COMM_SDRV);
 
 			ppar.ct     = *axion->zV();
 			ppar.R      = *axion->RV();
@@ -1186,7 +1186,7 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 			ppar.massA  = axion->AxionMass();
 			ppar.sign   = -1;
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
-			axion->sendGhosts(FIELD_V, COMM_WAIT);
+			axion->sendGhosts2(FIELD_V, COMM_WAIT);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, V   , V+BO, precision, xBlock, yBlock, zBlock);
 			*axion->zV() += dz*d1;

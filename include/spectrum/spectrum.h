@@ -177,8 +177,12 @@
 				dataTotalSize =  (Ly+2)*Ly*Lz*field->Precision(); /* total data volume including padding */
 				dataBareSize  =  V*field->Precision();            /* total data volume without padding */
 
-				LogMsg(VERB_HIGH,"[spe] Preparing FFT plan pSpecAx");
+				LogMsg(VERB_HIGH,"[spe] Preparing FFT plan pSpecAx for R2C");
 				AxionFFT::initPlan (field, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+				if (field->Field() == FIELD_PAXION){
+					LogMsg(VERB_HIGH,"[spe] Preparing FFT plan FFT_CtoC_M2toM2");
+					AxionFFT::initPlan (field, FFT_CtoC_M2toM2,  FFT_FWDBCK, "FFT_CtoC_M2toM2");
+				}
 
 				LogMsg(VERB_HIGH,"[spe] SpecBin constructor ended.");
 				LogFlush();
@@ -194,7 +198,7 @@
 		inline const double*	data(SpectrumType sType)	const;
 		inline	     double*	data(SpectrumType sType);
 
-		template<typename cFloat, const SpectrumType sType, const bool spectral>
+		template<typename cFloat, const SpectrumType sType, const bool spectral, const bool halfcomplex = true>
 		void	fillBins	();
 
 		template<typename cFloat>

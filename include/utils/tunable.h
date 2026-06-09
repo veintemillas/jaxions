@@ -280,7 +280,7 @@ class Tunable {
 		int shift = 0;
 
 		isGpu = gpu;
-		legacySquareLayout = (Nx == Ny);
+		legacySquareLayout = false; //(Nx == Ny);
 		adaptiveMode = !legacySquareLayout;
 
 		if (legacySquareLayout) {
