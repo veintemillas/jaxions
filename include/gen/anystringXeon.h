@@ -44,7 +44,7 @@
 	*/
 
 	inline	void	cthetaSolidAngleXeon(void * __restrict__ m2_, const size_t Lx, const size_t Lz, const size_t dLz, const size_t Tz, FieldPrecision precision,
-												size_t len, double* xs, double* ys, double* zs, int *eps, int p_copies_dipole=0, int Bext=0)
+												size_t len, double* xs, double* ys, double* zs, int *eps, int p_copies_dipole=0, int Bext=0, double Bamp=0.0)
 	{
 
   /* com calculation */
@@ -261,7 +261,11 @@
 					}
 					if (Bext != 0)
 					{
-						double phase = Bext*6.2831853071795864*((double) yy)/((double)Lx);
+						/* Sinusoidal external field: phase = Bamp*sin(2*pi*Bext*y/L).
+						   Bext (int) = wavenumber (# periods across the box, keeps it
+						   periodic); Bamp (= ic.kcr) = amplitude in radians.  Periodic
+						   for any Bamp and adds zero net winding. */
+						double phase = Bamp*sin(Bext*6.2831853071795864*((double) yy)/((double)Lx));
 						_MData_ TH = opCode(set1_pd, phase);
 						{
 							AA = opCode(cos_pd, TH);
@@ -504,7 +508,8 @@
 
 				if (Bext != 0)
                                         {
-                                                float phase = Bext*6.2831853071795864*((float) yy)/((float)Lx);
+                                                /* phase = Bamp*sin(2*pi*Bext*y/L); see double path above. */
+                                                float phase = Bamp*sin(Bext*6.2831853071795864*((double) yy)/((double)Lx));
                                                 _MData_ TH = opCode(set1_ps, phase);
                                                 {
                                                         AA = opCode(cos_ps, TH);

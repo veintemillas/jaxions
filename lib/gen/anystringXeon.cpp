@@ -34,7 +34,9 @@ void anystringXeon (Scalar *field, IcData ic,
     size_t local_z_start = size_t(rank) * Lz;
 
     LogMsg(VERB_NORMAL,"[θX] Calculation with %d copies in dipole approx",ic.kMax);
-    cthetaSolidAngleXeon(field->mStart(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax, ic.Bext);
+    /* External field for the loop: phase = ic.kcr*sin(2*pi*ic.Bext*y/L).
+       ic.Bext (int) = wavenumber (0 = off); ic.kcr (double) = amplitude. */
+    cthetaSolidAngleXeon(field->mStart(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax, ic.Bext, ic.kcr);
 
 }
 
