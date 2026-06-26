@@ -424,7 +424,7 @@ def INCOgen(ict, verb=False, **kwargs):
         if 'kMax' in kwargs:
             INCO = fif('kMax', 'kMax', INCO)
         if 'kcr' in kwargs:
-        INCO = fif('kcr', 'kcr', INCO)
+            INCO = fif('kcr', 'kcr', INCO)
     if ict == 'thermal':
         INCO = ' --ctype %s' % ict
         INCO = fif('RPQ', 'RPQ', INCO)
