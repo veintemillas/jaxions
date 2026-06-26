@@ -682,6 +682,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.alpha     = 0.143;
 	icdatst.siter     = 40;
 	icdatst.kcr       = 1.0;
+	icdatst.Bext      = 0;
 	icdatst.kMax      = 2;
 	icdatst.mode0     = 0.0;
 	icdatst.beta      = 1.0;
@@ -1110,6 +1111,19 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Critical kappa must be larger than or equal to 0.\n");
 				exit(1);
 			}
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--Bext"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need an integer value for Bext.\n");
+				exit(1);
+			}
+
+			icdatst.Bext = atoi(argv[i+1]);	// external winding for anystring loop force (can be negative)
 
 			PARSE2;
 		}

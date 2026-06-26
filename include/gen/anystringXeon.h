@@ -44,7 +44,7 @@
 	*/
 
 	inline	void	cthetaSolidAngleXeon(void * __restrict__ m2_, const size_t Lx, const size_t Lz, const size_t dLz, const size_t Tz, FieldPrecision precision,
-												size_t len, double* xs, double* ys, double* zs, int *eps, int p_copies_dipole=0)
+												size_t len, double* xs, double* ys, double* zs, int *eps, int p_copies_dipole=0, int Bext=0)
 	{
 
   /* com calculation */
@@ -259,6 +259,20 @@
 					Yacc = opCode(add_pd, opCode(mul_pd, Xacc, TT), opCode(mul_pd, Yacc, AA));
 					Xacc = XS1;
 					}
+					if (Bext != 0)
+					{
+						double phase = Bext*6.2831853071795864*((double) yy)/((double)Lx);
+						_MData_ TH = opCode(set1_pd, phase);
+						{
+							AA = opCode(cos_pd, TH);
+                                        		TT = opCode(sin_pd, TH);
+                                        		XS1 = opCode(sub_pd, opCode(mul_pd, Xacc, AA), opCode(mul_pd, Yacc, TT));
+                                        		Yacc = opCode(add_pd, opCode(mul_pd, Xacc, TT), opCode(mul_pd, Yacc, AA));
+                                        		Xacc = XS1;
+						}	
+					}
+
+
 
 					// Store Real and Imaginary
 					{
@@ -487,6 +501,20 @@
 				Yacc = opCode(add_ps, opCode(mul_ps, Xacc, TT), opCode(mul_ps, Yacc, AA));
 				Xacc = XS1;
 				}
+
+				if (Bext != 0)
+                                        {
+                                                float phase = Bext*6.2831853071795864*((float) yy)/((float)Lx);
+                                                _MData_ TH = opCode(set1_ps, phase);
+                                                {
+                                                        AA = opCode(cos_ps, TH);
+                                                        TT = opCode(sin_ps, TH);
+                                                        XS1 = opCode(sub_ps, opCode(mul_ps, Xacc, AA), opCode(mul_ps, Yacc, TT));
+                                                        Yacc = opCode(add_ps, opCode(mul_ps, Xacc, TT), opCode(mul_ps, Yacc, AA));
+                                                        Xacc = XS1;
+                                                }
+                                        }
+
 
 				// Store theta
 				// opCode(store_ps,  &m2[idx], TH);
