@@ -409,20 +409,20 @@ def INCOgen(ict, verb=False, **kwargs):
         if 'smvar' in kwargs:
             INCO += ' --smvar %s' % (kwargs['smvar'])
         INCO = fif('mode0', 'mode0', INCO)
-        INCO = fif('kMax', 'kMax', INCO)
+        INCO = fif('kmax', 'kmax', INCO)
         INCO = fif('kcr', 'kcr', INCO)
     if ict == 'cole':
         INCO = ' --ctype %s' % ict
-        INCO = fif('kMax', 'kMax', INCO)
+        INCO = fif('kmax', 'kmax', INCO)
     if ict == 'tkachev':
         INCO = ' --ctype %s' % ict
-        INCO = fif('kMax', 'kMax', INCO)
+        INCO = fif('kmax', 'kmax', INCO)
         INCO = fif('kcr', 'kcr', INCO)
     if ict == 'string':
         INCO = ' --ctype %s' % ict
         INCO = fif('sIter', 'sIter', INCO)
-        if 'kMax' in kwargs:
-            INCO = fif('kMax', 'kMax', INCO)
+        if 'kmax' in kwargs:
+            INCO = fif('kmax', 'kmax', INCO)
         if 'kcr' in kwargs:
             INCO = fif('kcr', 'kcr', INCO)
     if ict == 'thermal':
