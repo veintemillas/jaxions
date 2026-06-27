@@ -1135,23 +1135,15 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 	void	PropClass<nStages, lastStage, VQcd>::pRunCpu	(const double dz) {
 
 		PropParms ppar;
-		ppar.Ng    = axion->getNg();
-		ppar.ood2a = ood2;
-		ppar.PC    = axion->getCO();
-		ppar.Lx    = Lx;
-		ppar.beta  = axion->BckGnd()->ICData().beta;
-		ppar.frw   = axion->BckGnd()->Frw();
+		loadparms(&ppar, axion);
+		// ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 
 		/* Returns ghost size region in slices */
 		size_t BO = ppar.Ng*S;
 
-		LogMsg(VERB_PARANOID,"[propPax] Ng %d ood2 %e beta %f PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
+		LogMsg(VERB_PARANOID,"[propPax] Ng %d ood2 %e beta %f n %e PC %f %f %f ",ppar.Ng,ppar.ood2a,ppar.beta,ppar.n,ppar.PC[0],ppar.PC[1],ppar.PC[2]);
 
 		void *nada;
-		ppar.ct     = *axion->zV();
-		ppar.R      = *axion->RV();
-		ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
-		ppar.massA  = axion->AxionMass();
 		ppar.sign   = 1;
 		ppar.grav   = axion->BckGnd()->ICData().grav; /*TODO*/
 		if (gravity){
@@ -1167,10 +1159,8 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 
 			const double	c1 = c[s], d1 = d[s];
 
-			ppar.ct     = *axion->zV();
-			ppar.R      = *axion->RV();
-			ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
-			ppar.massA  = axion->AxionMass();
+			loadparms(&ppar, axion);
+			// ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
 			ppar.sign   = 1;
 			/*updates v(2) with m(1) lap data and NL function */
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
@@ -1180,11 +1170,10 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 
 			axion->sendGhosts2(FIELD_V, COMM_SDRV);
 
-			ppar.ct     = *axion->zV();
-			ppar.R      = *axion->RV();
-			ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
-			ppar.massA  = axion->AxionMass();
-			ppar.sign   = -1;
+			loadparms(&ppar, axion);
+			// ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
+			ppar.sign   = 1;
+
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts2(FIELD_V, COMM_WAIT);
 			propagatePaxKernelXeon<KIDI_LAP>(axion->vCpu(), axion->mCpu(), nada, ppar, dz*d1, BO  , 2*BO, precision, xBlock, yBlock, zBlock);
@@ -1198,10 +1187,8 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 
 			const double	c0 = c[nStages];
 			/* Last kick but not drift d = 0 */
-			ppar.ct     = *axion->zV();
-			ppar.R      = *axion->RV();
-			ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
-			ppar.massA  = axion->AxionMass();
+			loadparms(&ppar, axion);
+			// ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);	
 			ppar.sign   = 1;
 			propagatePaxKernelXeon<KIDI_LAP>(axion->mCpu(), axion->vCpu(), nada, ppar, dz*c0, 2*BO, V   , precision, xBlock, yBlock, zBlock);
 			axion->sendGhosts(FIELD_M, COMM_WAIT);
@@ -1210,11 +1197,9 @@ LogMsg(VERB_PARANOID,"[GSPlowmem] ");
 
 		}
 
-		ppar.ct     = *axion->zV();
-		ppar.R      = *axion->RV();
-		ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);
-		ppar.massA  = axion->AxionMass();
-		ppar.sign   = 1;
+		loadparms(&ppar, axion);
+		// ppar.n      = axion->BckGnd()->DlogMARDlogct(ppar.ct);	
+		ppar.sign   = 1;	
 
 		if (gravity){
 			calculateGraviPotential	();
