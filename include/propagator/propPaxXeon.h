@@ -42,21 +42,25 @@ inline	void	propagatePaxKernelXeon(const void * __restrict__ m_, void * __restri
 	const size_t NSf  = Sf*NN;
 	const double *PC  = ppar.PC;
 	const double R    = ppar.R;
-	const double massA = std::sqrt(ppar.massA2);
+	const double massA = ppar.massA;
 	const double beta = ppar.beta;
 	const double u    = 2.0*ppar.frw - 1.0;
+	const double n_qcd = -ppar.n;  // n = dlogchi/dlotT
 	const double u2   = (-ppar.n/2 + 4) * ppar.frw - 1;
 	const double KKt  =  ppar.sign*1*ct*(pow(ct+dz,u)-pow(ct,u))/(8.0*R*R*u*pow(ct+dz,u)); //change 1 -> ppar.beta after testing
 	const double KKt2 = -ppar.sign*1*ct/(96*ppar.massA*pow(R,4))*(pow(ct+dz,u2)-pow(ct,u2))/(u2*pow(ct+dz,u2));
 	LogMsg(VERB_PARANOID,"PPX ct  %e dz  %e FRW %f R %e u %f sign %d beta %f",ct,dz,ppar.frw,R,u,ppar.sign,ppar.beta);
+	LogMsg(VERB_PARANOID,"mass %e",massA);
 	LogMsg(VERB_PARANOID,"PPX KKt %e KKt2 %e", KKt, KKt2);
 	/* integrate in time assuming powerlaw int d z/ m_A R */
 	const double grav = -ppar.massA*ppar.grav*dz;
-	double alpho = (ppar.n - 1);
-	double dzp = (std::abs(alpho) < 1.e-2) ? ct*std::log(1.0 + dz/ct) : ct/alpho*(1. - pow(1.+dz/ct,-alpho));
-	const double ood2 = ppar.sign*dzp*ppar.ood2a/(2.0*ppar.massA*R);
-	LogMsg(VERB_PARANOID,"PPX od2 %e dct %e dcp %e n %.2f alpho %.e",ood2, dz, dzp, ppar.n,alpho);
-	LogMsg(VERB_PARANOID,"mA grav %e",grav);
+	const double alpho = (n_qcd/2.0 +1.0 - 1.0);
+	LogMsg(VERB_PARANOID,"PPX nqcd %e", n_qcd);
+	// const double dzp = (std::abs(alpho) < 1.e-2) ? ct*std::log(1.0 + dz/ct) : ct/alpho*(1. - pow(1.+dz/ct,-alpho));
+	const double dct_1 = dz; // ct*std::log(1.0 + dz/ct);
+	const double ood2 = ppar.sign*dct_1*ppar.ood2a/(2.0*ppar.massA*R);
+	LogMsg(VERB_PARANOID,"PPX od2 %e dct %e dcp %e n %.2f alpho %.e",ood2, dz, dct_1, ppar.n,alpho);
+	LogMsg(VERB_PARANOID,"mA grav %e",grav);LogFlush();
 
 	if (precision == FIELD_DOUBLE)
 	{
@@ -241,6 +245,7 @@ else
 						opCode(store_pd, &m[idx], tmp);
 						tmp = opCode(add_pd, opCode(mul_pd, mPy, vel), opCode(mul_pd, mMy, mel));
 						opCode(store_pd, &v[idx], tmp);
+
 						// saturating at x = 1 version 
 						// vel = opCode(load_pd, &v[idx]);
 						// acu = opCode(add_pd, opCode(mul_pd,vel,vel), opCode(mul_pd,mel,mel));
