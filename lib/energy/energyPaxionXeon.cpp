@@ -33,7 +33,7 @@ void	energyPaxionKernelXeon(const void * __restrict__ m_, const void * __restric
 	const double R     = ppar.R;
 	const double ood2a = ppar.ood2a/R/R;
 	const double beta  = ppar.beta;
-	const size_t Lx = ppar.Lx, Sf = Lx*Lx, Vo = ppar.Vo, Vf = ppar.Vf, Ng = ppar.Ng, Vh = Vf+Ng*Vo;
+	const size_t Lx = ppar.Lx, Sf = Lx*Lx, Vo = ppar.Vo, Vf = ppar.Vf, Ng = ppar.Ng, Vh = Vf+Vo; // (Vf includes 1 ghost region)
 
 	double * __restrict__ eRes = (double * __restrict__) eRes_;
 	double gxC = 0., gyC = 0., gzC = 0., ntC = 0., ptC = 0.;
