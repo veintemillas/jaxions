@@ -530,8 +530,13 @@ const std::complex<float> If(0.,1.);
 
 	// Adaptive time stepping stuff
 
+#ifdef USE_2DCYL
+	kmax = 3.1416*1.41*Nx/bckgnd->PhysSize();
+	LogMsg(VERB_NORMAL, "[sca] kmax %.3e",kmax); LogFlush();
+#else
 	kmax = std::sqrt ((double) (2*Nxy+Tz*Tz));
 	kmax = 6.283185307179586*kmax/bckgnd->PhysSize();
+#endif
 	_adaptive_time_next_eval = 0; // next dt evaluation will trigger 
 	_adaptive_time_dct = 1.0e30;
 
@@ -1613,6 +1618,8 @@ double	Scalar::dct_Adaptive	   () {
 	double dct_l  = 0.0;
 	double dct_nl = -1.0;
 
+	// recalculate, just in case
+	kmax = 3.1416*1.41*Nx/bckgnd->PhysSize();
 	switch(fieldType){
 		case FIELD_SAXION:
 		{
