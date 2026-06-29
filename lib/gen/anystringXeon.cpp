@@ -33,8 +33,8 @@ void anystringXeon (Scalar *field, IcData ic,
 
     size_t local_z_start = size_t(rank) * Lz;
 
-    LogMsg(VERB_NORMAL,"[θX] Calculation with %d copies in dipole approx",ic.kMax);
-    cthetaSolidAngleXeon(field->mStart(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax);
+    LogMsg(VERB_NORMAL,"[θX] Calculation with %d copies in dipole approx with Bext field %d %.5e",ic.kMax, ic.Bext, ic.kcr);
+    cthetaSolidAngleXeon(field->mStart(), Lx, Lz, local_z_start, Lz*nSplit, field->Precision(), len, xs, ys, zs, eps,ic.kMax, ic.Bext, ic.kcr);
 
 }
 

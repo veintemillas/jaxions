@@ -897,6 +897,7 @@
 			size_t        siter;
 			size_t        kMax ;
 			double        kcr;
+			int           Bext;	// external winding for anystring loop force (0 = off)
 			double        mode0;
 			double        beta;
 			double        zi;

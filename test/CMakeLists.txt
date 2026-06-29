@@ -21,7 +21,7 @@ if(USE_GPU)
 endif()
 
 if(USE_2DCYL)
-add_executable(caxion3d vaxions.cpp)
+add_executable(caxion3d caxions_amr.cpp)
 target_link_libraries(caxion3d  PRIVATE  ${LIBS} )
 else()
 add_executable(vaxion3d     vaxions.cpp)

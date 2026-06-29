@@ -241,6 +241,8 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 
 						case(MOM_MVTHERMAL):
 							{
+							if (modP <= 3*kmax2 ){
+							
 								Float r1 = distri(mt64);
 								Float r2 = distri(mt64);
 
@@ -256,6 +258,10 @@ void	momXeon (complex<Float> * __restrict__ fM, complex<Float> * __restrict__ fV
 									r2 = distri(mt64);
 									fV[idx] =  complex<Float>(r1,r2)*nnnnnn*wT ;
 								}
+							} else {
+								fM[idx] = complex<Float>(0,0);
+								fV[idx] = complex<Float>(0,0);
+							}
 							}
 						break;
 

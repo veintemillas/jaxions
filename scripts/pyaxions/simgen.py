@@ -413,6 +413,10 @@ def INCOgen(ict, verb=False, **kwargs):
         INCO = fif('sIter', 'sIter', INCO)
         if 'kmax' in kwargs:
             INCO = fif('kmax', 'kmax', INCO)
+        if 'kcr' in kwargs:
+            INCO = fif('kcr', 'kcr', INCO)
+        if 'Bext' in kwargs:
+            INCO = fif('Bext', 'Bext', INCO)
     if ict == 'thermal':
         INCO = ' --ctype %s' % ict
         INCO = fif('RPQ', 'RPQ', INCO)

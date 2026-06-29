@@ -353,8 +353,11 @@ LogMsg(VERB_PARANOID,"[Cos:] DlogMARDlogct %.2e ",dlmRlct);
 double  Cosmos::DlogCHIlogT (const double ct)
 {
   if (ueCosm){
-    double e = 1.e-3;
-    return sT(ct)*(schi(ct+e)-schi(ct-e))/((sT(ct+e)-sT(ct-e))*schi(ct));
+    const double e = 1.e-2;
+    const double dchi = schi(ct+e)-schi(ct-e), dT = sT(ct+e)-sT(ct-e), chi = schi(ct), T = sT(ct);
+    const double deri = (dchi/dT) * (T/chi);
+    LogMsg(VERB_HIGH,"[cosmos DlogCHIlogT] %.3e %.3e %.3e %.3e -> %.3e",dchi, dT,chi,T,deri);
+    return deri;
   }
   else {
     /*(nqcd/2 + 1)*frw*/

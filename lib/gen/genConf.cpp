@@ -954,8 +954,9 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	IcData ic = myCosmos->ICData();
 	LogFlush();
 
+
 	AxionFFT::initPlan (axionField, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
-	
+
 	size_t VD;
 	if (myCosmos->ICData().fType == FIELD_AXION)
 	{
@@ -1687,15 +1688,17 @@ void	ConfGenerator::confthermal(Cosmos *myCosmos, Scalar *axionField)
 
 	// Term controling T/H1 imput by pTf = kcr
 
+	
 	LogMsg(VERB_NORMAL,"[GEN] lambda %e"     , axionField->LambdaP());
 	LogMsg(VERB_NORMAL,"[GEN] RPQ %.2f"      , RPQ);
 	LogMsg(VERB_NORMAL,"[GEN] k0 (2pi/L) %e ", k0);
 	LogMsg(VERB_NORMAL,"[GEN] mass/k0 %e"    , sqrt(mS2));
 	LogMsg(VERB_NORMAL,"[GEN] pTf %.2f"      , ic.kcr);
 	LogMsg(VERB_NORMAL,"[GEN] v/H1 = %.2f"   , ic.kcr* 3.1416 * axionField->Length()/(1.7 * RPQ * axionField->BckGnd()->PhysSize()));
+	LogMsg(VERB_NORMAL,"[GEN] kMax = %d (Warning!, this is a new feature adjust ICs)"   , ic.kMax);
 
 	MomParms mopa;
-		mopa.kMax   = axionField->Length();
+		mopa.kMax   = ic.kMax; // axionField->Length(); I changed this
 		mopa.mass2  = mS2;
 		mopa.k0     = k0;
 		mopa.kCrt   = ic.kcr * N/2;

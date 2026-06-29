@@ -15,7 +15,7 @@ from IPython.display import clear_output
 # ---------------------------------------------------------------------------
 
 def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
-         gpu=False, verb=0, options='', outdir=None, Nz=-1):
+         gpu=False, verb=0, options='', outdir=None, Nz=-1, amr = 1.0):
     '''simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
             gpu=False, verb=0, options='', outdir=None)
 
@@ -75,6 +75,13 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
         print('Run jaxions', N, R, msa)
 
     dump = int(N * np.sqrt(12) / n_save)
+    if plota:
+        print('dump ', dump)
+
+    AMR = False
+    if amr < 0.5 and amr > 0.0:
+        AMR = True
+        options = options+' --kcr %.5f'%amr
     JAXI, GRID, _ = generic_jax(msa, Nx=Nz_, nz=N, R=R, Ng=Ng, Np=Np, gpu=gpu, verb=verb,
                                  dump=dump, options=options)
     run_jax(GRID + JAXI + ' --index 0 ', Np=Np, omp=omp)
@@ -91,6 +98,8 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
             xtr += 'gpu'
         else :
             xtr += 'cpu'
+        if AMR: 
+            xtr += 'A'
         dest = namea(N,Nz_, msa, Ng,xtr)           # e.g. data/out128-500-2
         os.makedirs('data', exist_ok=True)  # ensure data/ exists
     else:
@@ -107,6 +116,7 @@ def simu(R, msa, N, Ng=2, Np=1, omp=1, plota=False, rescale=1, n_save=200,
     subprocess.run('mv out %s' % dest, shell=True, capture_output=True, text=True)
     if plota:
         print('Output saved to', dest)
+
 
 
 def namea(Nrho,Nz, msa, Ng, xtr):
@@ -199,9 +209,12 @@ def buildr(mf, sigma=50):
     v     = np.zeros_like(t)
     gamma = np.zeros_like(t)
     for it in range(len(mf)):
+        L    = pa.gm(mf[it],'L')
         li   = np.reshape(pa.gm(mf[it], 'da/chunk/m/'), (Nrho, 2))[:, 0]
         vel2 = np.reshape(pa.gm(mf[it], 'da/chunk/v/'), (Nrho, 2))[:, 0] ** 2
         r[it], v[it], gamma[it] = findmer2(li, vel2, msa, sigma, 're_complex')
+        r[it] *= L/Nz
+        v[it] *= L/Nz
     return t, r, v, gamma
 
 
@@ -314,11 +327,25 @@ def findmer2(li, vel2, msa, sigma=50, ftype='re_complex'):
 # Initial conditions
 # ---------------------------------------------------------------------------
 
-def rhof(r):
+def rhof_(r):
     '''Radial profile rho(r) for a straight string (r in units of 1/ms).'''
     r2 = r * r;  r4 = r2 * r2
     return (0.43 * r + 0.164 * r2 + 0.036 * r4) / (1 + 0.039 * r + 0.2 * r2 + 0.036 * r4)
 
+C1,C2,C3,C4 = 4.10687112e-01, 3.02701871e-12, 3.01917484e-02, 4.69463456e-03
+
+def rhof_fit(x, a, b, c, d, kappa=0.5):
+    x = np.asarray(x)
+    sk = np.sqrt(kappa)
+
+    P = (a + b*x + c*x*x) / (1 + d*x + (c/sk)*x*x)
+    rho = x*P / np.sqrt(1 + x*x*P*P)
+
+    return rho
+
+def rhof(x):
+    '''Radial profile rho(r) for a straight string (r in units of 1/ms). chati'''
+    return rhof_fit(x, a=4.10687112e-01,b=3.02701871e-12,c=3.01917484e-02,d=4.69463456e-03, kappa=0.5)
 
 def phiics(theta, msa):
     '''Build phi = rho * exp(i*theta) with rho minimising the EOM.'''
