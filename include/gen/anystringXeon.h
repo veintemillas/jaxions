@@ -500,6 +500,14 @@
 
 				if (Bext != 0)
 					{
+						// topology, constant
+						// float phase = (Bext*6.2831853071795864*((float) yy)/((float)Lx));
+						// add also Bx
+						// TH = opCode(add_ps,TH,
+						// 	opCode(mul_ps,opCode(set1_ps,Bamp),
+						// 		opCode(sin_ps,
+						// 			opCode(mul_ps,opCode(set1_ps,Bext*6.2831853071795864/((float)Lx)),X))));
+						// oscillatory
 						float phase = Bamp*sin(Bext*6.2831853071795864*((float) yy)/((float)Lx));
 						_MData_ TH = opCode(set1_ps, phase);
 						AA = opCode(cos_ps, TH);
