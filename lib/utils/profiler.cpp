@@ -23,7 +23,7 @@ namespace profiler {
 
 			aTime += fCount.DTime();
 
-			LogMsg (VERB_SILENT, "\tFunction %-20s GFlops %.4lf\tGBytes %.4lf\tTotal time %.2lfs (%.2lf\%)", name.c_str(), fCount.GFlops(), fCount.GBytes(), fCount.DTime(), 100.*fCount.DTime()/tTime);
+			LogMsg (VERB_SILENT, "\tFunction %-20s GFlops %.4lf\tGBytes %.4lf\tTotal time %.2lfs (%.2lf%%)", name.c_str(), fCount.GFlops(), fCount.GBytes(), fCount.DTime(), 100.*fCount.DTime()/tTime);
         	}
 
 		return	aTime;
@@ -106,7 +106,7 @@ namespace profiler {
 			LogMsg(VERB_SILENT, "Total %s: %.2lf", cProf.name().c_str(), cTime);
 			LogMsg(VERB_SILENT, "");
 		}
-		LogMsg (VERB_SILENT, "Unaccounted time %.2lfs of %.2lfs (%.2lf\%)", tTime - aTime, tTime, 100.*(1. - aTime/tTime));
+		LogMsg (VERB_SILENT, "Unaccounted time %.2lfs of %.2lfs (%.2lf%%)", tTime - aTime, tTime, 100.*(1. - aTime/tTime));
 	}
 
 	Profiler&	getProfiler(ProfType pType) {

@@ -43,7 +43,10 @@ void	SpecBin::fillBins	() {
 	Profiler &prof = getProfiler(PROF_SPEC);
 	prof.start();
 
-	LogMsg(VERB_HIGH,"[FB] Filling beans sType %d %s",sType,halfcomplex ? "halfcomplex" : "full") ;LogFlush();
+	LogMsg(VERB_HIGH,"[FB] Filling %d beans sType %d %s",
+		nbins,
+		sType,
+		halfcomplex ? "halfcomplex" : "full") ;LogFlush();
 	using cFloat = std::complex<Float>;
 
 	/* The factor that will multiply the |ft|^2, taken to be L^3/(2 N^6) */

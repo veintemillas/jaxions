@@ -859,6 +859,7 @@
 			StringData	str;
 			StringEnergyData strE;
 			double			maxTheta;
+			double			sigma;
 			double 			eA;
 			double 			eS;
 		}	MeasData;
@@ -919,6 +920,7 @@
 			bool          uEvolAll;
 			bool          linmodevol;
 			bool          lme_no_rhs;
+			bool          km_use_mv_a_data;
 		}	IcData;
 
 		typedef	struct	MomParms_v

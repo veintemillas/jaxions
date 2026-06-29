@@ -111,9 +111,8 @@ void    writeAttribute	(void *data, const char *name, hid_t h5_Type)
 			writeAttribute(meas_id, (unsigned int*) data, name, H5T_NATIVE_UINT);
 	}	else if (h5_Type == H5T_C_S1) {
 				char *arr_ptr = (char *) data;
-				int	length = std::max( (int) strlen(arr_ptr), 32);
-				hid_t attr_type;
-				attr_type = H5Tcopy(H5T_C_S1);
+				size_t length = strlen(arr_ptr) + 1;  // include '\0'
+				hid_t attr_type = H5Tcopy(H5T_C_S1);
 				H5Tset_size   (attr_type, length);
 				H5Tset_strpad (attr_type, H5T_STR_NULLTERM);
 			writeAttribute(meas_id, arr_ptr, name, attr_type);
@@ -145,7 +144,7 @@ void    writeAttributeg	(void *data, const char *group, const char *name, hid_t 
 			writeAttribute(group_id, (unsigned int*) data, name, H5T_NATIVE_UINT);
 	}	else if (h5_Type == H5T_C_S1) {
 				char *arr_ptr = (char *) data;
-				int	length = std::max( (int) strlen(arr_ptr), 32);
+				size_t length = strlen(arr_ptr) + 1;
 				hid_t attr_type;
 				attr_type = H5Tcopy(H5T_C_S1);
 				H5Tset_size   (attr_type, length);
@@ -235,7 +234,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	hid_t	mSpace, vSpace, memSpace, dataType, totalSpace;
 	hsize_t	total, slice, slab, offset;
 
-	char	prec[16], fStr[16], lStr[16], rStr[16], dStr[16], vStr[32], vPQStr[32], icStr[32], smStr[32];
+	char	prec[32], fStr[32], lStr[32], rStr[32], dStr[32], vStr[32], vPQStr[32], icStr[32], smStr[32];
 	int	length = 32;
 
 	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -496,13 +495,13 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	double zrestore = axion->BckGnd()->ZRestore();
 	double lz2e     = axion->BckGnd()->LamZ2Exp();
 
-	writeAttribute(vGrp_id, &lStr,    "Lambda type",   attr_type);
+	writeAttribute(vGrp_id, lStr,    "Lambda type",   attr_type);
 	writeAttribute(vGrp_id, &LL,      "Lambda",        H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &lz2e,    "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &vStr,    "VQcd type",     attr_type);
-	writeAttribute(vGrp_id, &vPQStr,  "VPQ type",      attr_type);
-	writeAttribute(vGrp_id, &dStr,    "Damping type",  attr_type);
-	writeAttribute(vGrp_id, &rStr,    "Evolution type",attr_type);
+	writeAttribute(vGrp_id, vStr,    "VQcd type",     attr_type);
+	writeAttribute(vGrp_id, vPQStr,  "VPQ type",      attr_type);
+	writeAttribute(vGrp_id, dStr,    "Damping type",  attr_type);
+	writeAttribute(vGrp_id, rStr,    "Evolution type",attr_type);
 	writeAttribute(vGrp_id, &nQcd,    "nQcd",          H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &gamma,   "Gamma",         H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &shift,   "Shift",         H5T_NATIVE_DOUBLE);
@@ -519,14 +518,14 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	switch (cType) {
 		case	CONF_SMOOTH:
 			sprintf(icStr, "Smooth");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_KMAX:
 			sprintf(icStr, "kMax");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
@@ -535,21 +534,21 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		case	CONF_VILGORS:
 		case	CONF_VILGOR:
 			sprintf(icStr, "VilGor");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_LOLA:
 			sprintf(icStr, "Lola");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_COLE:
 			sprintf(icStr, "Cole");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",		 H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			/* FIX ME read all attributes from Icdata from myCosmos
@@ -559,34 +558,34 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_THERMAL:
 			sprintf(icStr, "Thermal");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_SPAX:
 			sprintf(icStr, "Axion Spectrum");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_KM:
 			sprintf(icStr, "Kinetic Misalignment");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			// save initial theta1,vheta1?
 			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			break;
 
 		case	CONF_STRING:
 			sprintf(icStr, "Custom Strings");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
@@ -650,7 +649,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 	}
 
 	writeAttribute(icGrp_id, &mode0, "Axion zero mode",    H5T_NATIVE_DOUBLE);
-	writeAttribute(icGrp_id, &smStr, "Configuration type", attr_type);
+	writeAttribute(icGrp_id, smStr, "Configuration type", attr_type);
 
 	H5Gclose(icGrp_id);
 
@@ -792,7 +791,7 @@ void	writeConf (Scalar *axion, int index, const bool restart)
 		hid_t	attr_type;
 		hsize_t	slab, offset;
 		FieldPrecision	precision;
-		char	prec[16], fStr[16], lStr[16], icStr[32], vStr[32], vPQStr[32], smStr[32];
+		char	prec[32], fStr[32], lStr[32], icStr[32], vStr[32], vPQStr[32], smStr[32];
 		int	length = 32;
 		const hsize_t maxD[1] = { H5S_UNLIMITED };
 		size_t	dataSize;
@@ -1666,7 +1665,7 @@ void	createMeas (Scalar *axion, int index)
 {
 	hid_t	plist_id, dataType;
 
-	char	prec[16], fStr[16], lStr[16], icStr[32], vStr[32], vPQStr[32], smStr[32], dStr[16], rStr[16];
+	char	prec[32], fStr[32], lStr[32], icStr[32], vStr[32], vPQStr[32], smStr[32], dStr[32], rStr[32];
 	int	length = 32;
 
 //	const hsize_t maxD[1] = { H5S_UNLIMITED };
@@ -1781,12 +1780,12 @@ void	createMeas (Scalar *axion, int index)
 	switch (axion->LambdaT())
 	{
 		case 	LAMBDA_Z2:
-			sprintf(lStr, "z2");
+			std::snprintf(lStr, sizeof(lStr), "z2");
 			llPhys /= (*axion->zV())*(*axion->zV());
 			break;
 
 		case	LAMBDA_FIXED:
-			sprintf(lStr, "Fixed");
+			std::snprintf(lStr, sizeof(lStr), "Fixed");
 			break;
 
 		default:
@@ -1874,14 +1873,14 @@ void	createMeas (Scalar *axion, int index)
 	double lz2e     = axion->BckGnd()->LamZ2Exp();
 	double laam     = axion->LambdaP();
 
-	writeAttribute(vGrp_id, &lStr,  "Lambda type",        attr_type);
+	writeAttribute(vGrp_id, lStr,  "Lambda type",        attr_type);
 	writeAttribute(vGrp_id, &LL,    "Lambda",             H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &lz2e,  "Lambda Z2 exponent", H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &laam,  "LambdaP",            H5T_NATIVE_DOUBLE);
-	writeAttribute(vGrp_id, &vStr,  "VQcd type",          attr_type);
-	writeAttribute(vGrp_id, &vPQStr,"VPQ type",           attr_type);
-	writeAttribute(vGrp_id, &dStr,  "Damping type",       attr_type);
-	writeAttribute(vGrp_id, &rStr,  "Evolution type",     attr_type);
+	writeAttribute(vGrp_id, vStr,  "VQcd type",          attr_type);
+	writeAttribute(vGrp_id, vPQStr,"VPQ type",           attr_type);
+	writeAttribute(vGrp_id, dStr,  "Damping type",       attr_type);
+	writeAttribute(vGrp_id, rStr,  "Evolution type",     attr_type);
 	writeAttribute(vGrp_id, &nQcd,  "nQcd",               H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &nQcdr, "nQcd2",              H5T_NATIVE_DOUBLE);
 	writeAttribute(vGrp_id, &gamma, "Gamma",              H5T_NATIVE_DOUBLE);
@@ -1897,35 +1896,35 @@ void	createMeas (Scalar *axion, int index)
 	switch (cType) {
 		case	CONF_SMOOTH:
 			sprintf(icStr, "Smooth");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &iter,  "Smoothing iterations", H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &alpha, "Smoothing constant",   H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_KMAX:
 			sprintf(icStr, "kMax");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_VILGOR:
 			sprintf(icStr, "VilGor");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_LOLA:
 			sprintf(icStr, "Lola");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_COLE:
 			sprintf(icStr, "Cole");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
@@ -1933,34 +1932,34 @@ void	createMeas (Scalar *axion, int index)
 
 		case	CONF_TKACHEV:
 			sprintf(icStr, "Tkachev");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_THERMAL:
 			sprintf(icStr, "Thermal");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kCrit, "Temperature",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_SPAX:
 			sprintf(icStr, "Axion Spectrum");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
 
 		case	CONF_KM:
 			sprintf(icStr, "Kinetic Misalignment");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			// save initial theta1,vheta1?
 			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			break;
 
 		case	CONF_STRING:
 			sprintf(icStr, "Custom Strings");
-			writeAttribute(icGrp_id, &icStr, "Initial conditions",   attr_type);
+			writeAttribute(icGrp_id, icStr, "Initial conditions",   attr_type);
 			// writeAttribute(icGrp_id, &kMax,  "Max k",                H5T_NATIVE_HSIZE);
 			// writeAttribute(icGrp_id, &kCrit, "Critical kappa",       H5T_NATIVE_DOUBLE);
 			break;
@@ -2016,7 +2015,7 @@ void	createMeas (Scalar *axion, int index)
 	}
 
 	writeAttribute(icGrp_id, &mode0, "Axion zero mode",    H5T_NATIVE_DOUBLE);
-	writeAttribute(icGrp_id, &smStr, "Configuration type", attr_type);
+	writeAttribute(icGrp_id, smStr, "Configuration type", attr_type);
 
 	H5Gclose(icGrp_id);
 

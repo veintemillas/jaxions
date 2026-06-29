@@ -92,6 +92,7 @@ bool spectral = false;
 bool fpectral = false;
 bool linmodevol = false;
 bool lme_no_rhs = false;
+bool km_use_mv_a_data = false;
 bool mink			= false;
 bool aMod     = false;
 bool icstudy  = false ;
@@ -150,7 +151,7 @@ FieldPrecision	sPrec  = FIELD_SINGLE;
 DeviceType	cDev   = DEV_CPU;
 
 VerbosityLevel	verb   = VERB_NORMAL;
-LogMpi		logMpi = ALL_RANKS;
+LogMpi		logMpi = ZERO_RANK;
 bool debug        = false;
 
 // PrintConf prinoconfo  = PRINTCONF_NONE;
@@ -712,7 +713,7 @@ int	parseArgs (int argc, char *argv[])
 
 	/* Default measurements */
 	deninfa.idxprint  = 0;
-  deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
+  	deninfa.nbinsspec = -1;              // (natural width bin width = 2pi/L0)
 	deninfa.printconf = PRINTCONF_NONE;  // no configuration
 
   deninfa.edens_average  = 0;
@@ -2946,7 +2947,7 @@ Cosmos	createCosmos()
 		myCosmos.SetZRestore(zrestore);
 		myCosmos.SetIndi3   (indi3);
 		myCosmos.SetFrw     (frw);
-    myCosmos.SetRPQ     (RPQ);
+    	myCosmos.SetRPQ     (RPQ);
 		myCosmos.SetMink    (mink);
 		myCosmos.SetUeC     (uexCosm);
 		myCosmos.SetFA      (fA);

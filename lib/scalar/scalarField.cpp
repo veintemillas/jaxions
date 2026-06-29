@@ -535,6 +535,8 @@ const std::complex<float> If(0.,1.);
 	_adaptive_time_next_eval = 0; // next dt evaluation will trigger 
 	_adaptive_time_dct = 1.0e30;
 
+	LogMsg(VERB_NORMAL, "[sca] kmax %.3e",kmax);LogFlush();
+
 }
 
 // END SCALAR
@@ -1192,7 +1194,7 @@ void	Scalar::setField (FieldType newType)
 			fieldType = newType;
 
 			LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
-			LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
+			LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%d)!",fieldType);
 #ifdef  USE_GPU
 			if (device == DEV_GPU && lowmemgpu)
 			{
@@ -1209,7 +1211,7 @@ void	Scalar::setField (FieldType newType)
 				shift /= 2;
 				fieldType = newType;
 				LogMsg(VERB_NORMAL,"[sca] fSize set to %d, shift set to %d ", fSize, shift);
-				LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%)!",fieldType);
+				LogMsg(VERB_NORMAL,"[sca] Field set to AXION (%d)!",fieldType);
 			}
 			break;
 
@@ -1319,10 +1321,10 @@ void	Scalar::setModes ()
 	LogMsg(VERB_NORMAL, "[SML] allocating Mode data");
 	alignAlloc ((void**) &m_a,   mAlign, nmodes*sizeof(double));
 	alignAlloc ((void**) &v_a,   mAlign, nmodes*sizeof(double));
-	alignAlloc ((void**) &m2_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &m2_a,  mAlign, nmodes*sizeof(double));
 	alignAlloc ((void**) &g_a,   mAlign, nmodes*sizeof(double));
 	alignAlloc ((void**) &k_a,   mAlign, nmodes*sizeof(double));
-	alignAlloc ((void**) &k2_a,   mAlign, nmodes*sizeof(double));
+	alignAlloc ((void**) &k2_a,  mAlign, nmodes*sizeof(double));
 	LogMsg(VERB_NORMAL,"[SML Modes for linear evolution] good!");
 }
 

@@ -954,6 +954,8 @@ void	ConfGenerator::confspax(Cosmos *myCosmos, Scalar *axionField)
 	IcData ic = myCosmos->ICData();
 	LogFlush();
 
+	AxionFFT::initPlan (axionField, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
+	
 	size_t VD;
 	if (myCosmos->ICData().fType == FIELD_AXION)
 	{
@@ -1174,6 +1176,7 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	IcData ic = myCosmos->ICData();
 	LogFlush();
 
+	bool km_use_mv_a_data = ic.km_use_mv_a_data;
 
 	AxionFFT::initPlan (axionField, FFT_PSPEC_AX,  FFT_FWDBCK, "pSpecAx");
 
@@ -1191,24 +1194,50 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	LogMsg(VERB_NORMAL,"[GEN] Read data file! ");
 	LogFlush();
 
-	std::vector<double> kk0, mm0, vv0;	// used for mode evolution
+	std::vector<double> kk0, mm0, vv0;				// used for mode evolution
 	std::vector<double> mm,vv					;	// used for the interpolation
 	double L   = axionField->BckGnd()->PhysSize();
 	double k0 = 6.283185307179586/L;
 	size_t nModes = axionField->Length()*2;
-	loadSpectrum("./initialspectrum.dat", kk0, mm0, vv0, mm, vv, k0, nModes);
+	
+	if (km_use_mv_a_data)
+	{
+		LogMsg(VERB_NORMAL,"[confKM] We use modes in m_aCpu and v_aCpu! ");
 
-	// check the interpolation suits
-	if (kk0.back() < k0*axionField->Length()*pow(3,0.5)) {
-		LogMsg(VERB_NORMAL,"[confKM] Error! We need more modes in the UV! ");
-		LogMsg(VERB_NORMAL,"[confKM] Max provided %.2f , needed %.2f!",kk0.back(),k0*axionField->Length()*pow(3,0.5));
-		exit(1);
-	}
-	if (kk0.front() != 0.0) {
-		LogMsg(VERB_NORMAL,"[confKM] Error! The lowest mode provided must be 0 ");
-		exit(1);
-	}
+		const size_t nModes = axionField->NModes();
 
+		mm.resize(nModes);
+		vv.resize(nModes);
+		kk0.resize(nModes);
+
+		double *cfield = static_cast<double*>(axionField->m_aCpu());
+		double *cvield = static_cast<double*>(axionField->v_aCpu());
+
+		for (size_t ik = 0; ik < nModes; ik++)
+		{
+			kk0[ik] = k0 * double(ik);
+			mm[ik]  = cfield[ik];
+			vv[ik]  = cvield[ik];
+		}
+
+		mm0 = mm;
+		vv0 = vv;
+	}
+	else
+	{
+		loadSpectrum("./initialspectrum.dat", kk0, mm0, vv0, mm, vv, k0, nModes);
+
+		// check the interpolation suits
+		if (kk0.back() < k0*axionField->Length()*pow(3,0.5)) {
+			LogMsg(VERB_NORMAL,"[confKM] Error! We need more modes in the UV! ");
+			LogMsg(VERB_NORMAL,"[confKM] Max provided %.2f , needed %.2f!",kk0.back(),k0*axionField->Length()*pow(3,0.5));
+			exit(1);
+		}
+		if (kk0.front() != 0.0) {
+			LogMsg(VERB_NORMAL,"[confKM] Error! The lowest mode provided must be 0 ");
+			exit(1);
+		}
+	}
 	/* Generate axion in momentum space */
 	prof.start();
 	LogMsg(VERB_NORMAL,"[GEN] Create KM axion field! ");
@@ -1238,7 +1267,7 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 		mopa.mp = axionField->m2Cpu(); // for ctheta
 		mopa.vp = axionField->vCpu();  // for ctheta'
 		if (ic.mode0 > 0)
-			mopa.setmom0 = true;         // don't randomise 0 modes
+			mopa.setmom0 = true;       // don't randomise 0 modes
 
 	momConf(axionField, mopa);
 
@@ -1301,7 +1330,8 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 	prof.add("unpad", 0., axionField->Size()*axionField->DataSize()*1e-9);
 
 
-	if (myCosmos->ICData().linmodevol){
+	if ((myCosmos->ICData().linmodevol) && !km_use_mv_a_data ){
+
 		LogMsg(VERB_NORMAL,"[GENKM] We fill initial conditions for modes and k table ");
 
 		size_t calamar = mm0.size();
@@ -1398,21 +1428,80 @@ void	ConfGenerator::confKM(Cosmos *myCosmos, Scalar *axionField)
 
 			/* check fluctuations
 			calculate directly from m,v fields and from cfield,vfield*/
+
 			LogMsg(VERB_NORMAL,"fluctuations theta^2 estimated %.5e",accu);
 
 			double acca = 0.0;
 			double mean = 0.0;
 			double no   = 0.0;
 
-			for (size_t idx = 0; idx < axionField->Size(); idx++) {
-			float t = static_cast<float*>(axionField->mStart())[idx];
-			mean += t;
-			acca += t*t;
-			no += 1;
+			if (axionField->Precision()==FIELD_SINGLE)
+			{
+				float *field = static_cast<float*>(axionField->mStart());
+				for (size_t idx = 0; idx < axionField->Size(); idx++)
+					{
+						float t = field[idx];
+
+						if (!std::isfinite(t))
+						{
+							LogMsg(VERB_NORMAL,
+								"[ERROR] field[%zu] = %.8e is not finite",
+								idx, double(t));
+							break;
+						}
+
+						mean += (double) t;
+						acca += t*t;
+						no += 1.0;
+					}
+			} else {
+				double *field = static_cast<double*>(axionField->mStart());
+				for (size_t idx = 0; idx < axionField->Size(); idx++)
+					{
+						double t = field[idx];
+
+						if (!std::isfinite(t))
+						{
+							LogMsg(VERB_NORMAL,
+								"[ERROR] field[%zu] = %.8e is not finite",
+								idx, double(t));
+							break;
+						}
+
+						mean += t;
+						acca += t*t;
+						no += 1.0;
+					}
 			}
+				
+
+
+
+			if (!std::isfinite(mean))
+				LogMsg(VERB_NORMAL,"[ERROR] mean became NaN/Inf");
+
+			if (!std::isfinite(acca))
+				LogMsg(VERB_NORMAL,"[ERROR] acca became NaN/Inf");
+
 			mean /= no;
-			double var = acca / no - mean * mean;
+
+			double var = acca/no - mean*mean;
+
+			if (!std::isfinite(var))
+			{
+				LogMsg(VERB_NORMAL,
+					"[ERROR] var = %.8e acca = %.8e no = %.8e mean = %.8e",
+					var, acca, no, mean);
+			}
+
 			double std = sqrt(var);
+
+			if (!std::isfinite(std))
+			{
+				LogMsg(VERB_NORMAL,
+					"[ERROR] std = %.8e var = %.8e",
+					std, var);
+			}
 
 			LogMsg(VERB_NORMAL,"fluctuations theta^2 measured %.5e", var);
 

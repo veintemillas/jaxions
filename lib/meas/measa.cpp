@@ -25,6 +25,7 @@ using namespace profiler;
 
 double xivilgor(double logi);
 
+
 template<typename Float>
 MeasData	Measureme  (Scalar *axiona, MeasInfo info)
 {
@@ -976,7 +977,7 @@ writePMapHdf5s (axiona, LAB);
 					// complex<Float> shhhs = (shs,0.);
 					// Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 					// 				 [s=shhhs] (complex<Float> x) { return (double) arg(x-s); });
-					Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+					Binner<3000,complex<Float>> thBin(static_cast<complex<Float> *>(axiona->mStart()) , axiona->Size(),
 									 [] (complex<Float> x) { return (double) arg(x); });
 					thBin.run();
 					writeBinner(thBin, "/bins", "thetaB");
@@ -991,7 +992,7 @@ writePMapHdf5s (axiona, LAB);
 					// complex<Float> shhhs = (shs,0.);
 					// Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
 					// 					[z=z_now,s=shhhs] (complex<Float> x) { return (double) abs(x-s)/z; } );
-					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+					Binner<3000,complex<Float>> rhoBin(static_cast<complex<Float> *>(axiona->mStart()) , axiona->Size(),
 										[z=R_now] (complex<Float> x) { return (double) abs(x)/z; } );
 					rhoBin.run();
 					writeBinner(rhoBin, "/bins", "rhoB");
@@ -1000,7 +1001,7 @@ writePMapHdf5s (axiona, LAB);
 					{
 						// LogOut("binL ");
 						LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",indexa);
-						Binner<3000,complex<Float>> logth2Bin(static_cast<complex<Float> *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+						Binner<3000,complex<Float>> logth2Bin(static_cast<complex<Float> *>(axiona->mStart()) , axiona->Size(),
 										 [] (complex<Float> x) { return (double) log10(1.0e-10+pow(arg(x),2)); });
 						logth2Bin.run();
 						writeBinner(logth2Bin, "/bins", "logtheta2B");
@@ -1011,7 +1012,7 @@ writePMapHdf5s (axiona, LAB);
 		{
 			// LogOut("binthetha ");
 			LogMsg(VERB_NORMAL, "[Meas %d] bin theta ",indexa);
-				Binner<3000,Float> thBin(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+				Binner<3000,Float> thBin(static_cast<Float *>(axiona->mStart()) , axiona->Size(),
 								 [z=R_now] (Float x) { return (double) (x/z); });
 				thBin.run();
 				writeBinner(thBin, "/bins", "thetaB");
@@ -1025,7 +1026,7 @@ writePMapHdf5s (axiona, LAB);
 				{
 					// LogOut("bintt2 ");
 					LogMsg(VERB_NORMAL, "[Meas %d] bin log10 theta^2 ",indexa);
-					Binner<3000,Float> logth2Bin2(static_cast<Float *>(axiona->mCpu()) + axiona->Surf(), axiona->Size(),
+					Binner<3000,Float> logth2Bin2(static_cast<Float *>(axiona->mStart()) , axiona->Size(),
 									 [z=R_now] (Float x) -> float { return (double) log10(1.0e-10+pow(x/z,2)); });
 					logth2Bin2.run();
 					writeBinner(logth2Bin2, "/bins", "logtheta2B");
@@ -1157,3 +1158,5 @@ MeasData	Measureme  (Scalar *axiona,  MeasInfo infa)
 double xivilgor(double logi){
 	return (249.48 + 38.8431*logi + 1086.06* logi*logi)/(21775.3 + 3665.11*logi)  ;
 }
+
+
