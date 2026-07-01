@@ -303,7 +303,9 @@ int	main (int argc, char *argv[])
 	double delta = axion->BckGnd()->PhysSize()/ ((double) axion->TZ());
 	double radius_save = L;
 	bool refine = true;
-	
+	int  amr_count = 0;                               // number of AMR refinements done
+	int  amr_max   = myCosmos.ICData().maxamr;        // cap (-1 = unlimited), from --maxamr
+
 
 	LogOut ("Start redshift loop (steps %lu)\n\n", myCosmos.ICData().nSteps);
 	for (int iz = 0; iz < myCosmos.ICData().nSteps; iz++)
@@ -369,6 +371,12 @@ int	main (int argc, char *argv[])
 			if ((axion->Field() == FIELD_SAXION ))
 			{
 				axion->exchangeGhosts(FIELD_M);
+				// find_R reads the field on the host (axion->mStart()). On GPU the
+				// live field is on the device, so bring it back exactly like
+				// vaxions/Measureme do before any host-side read (vaxions.cpp:704,
+				// measa.cpp:44) or find_R measures a stale configuration.
+				if (cDev == DEV_GPU)
+					axion->transferCpu(FIELD_MV);
 				int cross = 0 ;
 				double r = find_R(axion,&cross) * delta;
 				if (r < radius_save)
@@ -394,6 +402,15 @@ int	main (int argc, char *argv[])
 							//reset flag
 							measrightnow = false;
 						}
+
+						// On a GPU run, do the whole compression host-side: switch
+						// to CPU mode so the exchangeGhosts calls below stay host-only
+						// and don't clobber the half-compressed host buffer with stale
+						// device ghosts. The host copy is current here (both find_R
+						// and Measureme just transferCpu'd it).
+						if (cDev == DEV_GPU)
+							axion->setDev(DEV_CPU);
+
 						Folder munge(axion);
 						munge(UNFOLD_ALL);
 
@@ -415,10 +432,26 @@ int	main (int argc, char *argv[])
 
 						measrightnow = true;
 						axion->setFolded(false);
-						
+
+						// Back to GPU mode and push the freshly compressed host
+						// configuration to the device, or the next propagate (and
+						// every find_R after it) runs on the old, uncompressed field.
+						if (cDev == DEV_GPU) {
+							axion->setDev(DEV_GPU);
+							axion->transferDev(FIELD_MV);
+						}
+
 						L     /= 2.0;
 						delta /= 2.0;
 						axion->BckGnd()->SetPhysSize(L);
+
+						// Cap refinement levels (--maxamr): stop AMR after amr_max
+						// refinements so delta (and the adaptive dt) can't spiral to 0.
+						amr_count++;
+						if (amr_max >= 0 && amr_count >= amr_max){
+							LogOut("Max AMR levels (%d) reached. No more AMR\n", amr_max);
+							refine = false;
+						}
 
 						// double la = axion->BckGnd()->Lambda()/std::sqrt(2.0);
 						// axion->BckGnd()->SetLambda(la);

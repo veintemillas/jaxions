@@ -898,6 +898,7 @@
 			size_t        kMax ;
 			double        kcr;
 			int           Bext;	// external winding for anystring loop force (0 = off)
+			int           maxamr;	// caxion AMR: max refinement levels (-1 = unlimited)
 			double        mode0;
 			double        beta;
 			double        zi;

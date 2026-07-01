@@ -688,6 +688,7 @@ int	parseArgs (int argc, char *argv[])
 	icdatst.alpha     = 0.143;
 	icdatst.siter     = 40;
 	icdatst.kcr       = 1.0;
+	icdatst.maxamr    = -1;
 	icdatst.Bext      = 0;
 	icdatst.kMax      = 2;
 	icdatst.mode0     = 0.0;
@@ -1139,6 +1140,19 @@ int	parseArgs (int argc, char *argv[])
 				printf("Error: Critical kappa must be larger than or equal to 0.\n");
 				exit(1);
 			}
+
+			PARSE2;
+		}
+
+		if (!strcmp(argv[i], "--maxamr"))
+		{
+			if (i+1 == argc)
+			{
+				printf("Error: I need an integer value for the maximum AMR refinement levels.\n");
+				exit(1);
+			}
+
+			icdatst.maxamr = atoi(argv[i+1]);	// caxion AMR: cap refinement levels (-1 = unlimited)
 
 			PARSE2;
 		}
